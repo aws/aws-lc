@@ -22,14 +22,13 @@ global	gcm_gmult_ssse3
 ALIGN	16
 gcm_gmult_ssse3:
 
-$L$gmult_seh_begin:
+$L$SEH_begin_gcm_gmult_ssse3_1:
 	sub	rsp,40
-$L$gmult_seh_allocstack:
+$L$SEH_prolog_gcm_gmult_ssse3_2:
 	movdqa	XMMWORD[rsp],xmm6
-$L$gmult_seh_save_xmm6:
+$L$SEH_prolog_gcm_gmult_ssse3_3:
 	movdqa	XMMWORD[16+rsp],xmm10
-$L$gmult_seh_save_xmm10:
-$L$gmult_seh_prolog_end:
+$L$SEH_prolog_gcm_gmult_ssse3_4:
 	movdqu	xmm0,XMMWORD[rcx]
 	movdqa	xmm10,XMMWORD[$L$reverse_bytes]
 	movdqa	xmm2,XMMWORD[$L$low4_mask]
@@ -208,8 +207,8 @@ DB	102,65,15,56,0,210
 	movdqa	xmm10,XMMWORD[16+rsp]
 	add	rsp,40
 	DB	0F3h,0C3h		;repret
-$L$gmult_seh_end:
 
+$L$SEH_end_gcm_gmult_ssse3_5:
 
 
 
@@ -220,17 +219,16 @@ $L$gmult_seh_end:
 global	gcm_ghash_ssse3
 ALIGN	16
 gcm_ghash_ssse3:
-$L$ghash_seh_begin:
 
+$L$SEH_begin_gcm_ghash_ssse3_1:
 	sub	rsp,56
-$L$ghash_seh_allocstack:
+$L$SEH_prolog_gcm_ghash_ssse3_2:
 	movdqa	XMMWORD[rsp],xmm6
-$L$ghash_seh_save_xmm6:
+$L$SEH_prolog_gcm_ghash_ssse3_3:
 	movdqa	XMMWORD[16+rsp],xmm10
-$L$ghash_seh_save_xmm10:
+$L$SEH_prolog_gcm_ghash_ssse3_4:
 	movdqa	XMMWORD[32+rsp],xmm11
-$L$ghash_seh_save_xmm11:
-$L$ghash_seh_prolog_end:
+$L$SEH_prolog_gcm_ghash_ssse3_5:
 	movdqu	xmm0,XMMWORD[rcx]
 	movdqa	xmm10,XMMWORD[$L$reverse_bytes]
 	movdqa	xmm11,XMMWORD[$L$low4_mask]
@@ -432,8 +430,8 @@ DB	102,65,15,56,0,194
 	movdqa	xmm11,XMMWORD[32+rsp]
 	add	rsp,56
 	DB	0F3h,0C3h		;repret
-$L$ghash_seh_end:
 
+$L$SEH_end_gcm_ghash_ssse3_6:
 
 
 ALIGN	16
@@ -446,52 +444,45 @@ $L$low4_mask:
 	DQ	0x0f0f0f0f0f0f0f0f,0x0f0f0f0f0f0f0f0f
 section	.pdata rdata align=4
 ALIGN	4
-	DD	$L$gmult_seh_begin wrt ..imagebase
-	DD	$L$gmult_seh_end wrt ..imagebase
-	DD	$L$gmult_seh_info wrt ..imagebase
+	DD	$L$SEH_begin_gcm_gmult_ssse3_1 wrt ..imagebase
+	DD	$L$SEH_end_gcm_gmult_ssse3_5 wrt ..imagebase
+	DD	$L$SEH_info_gcm_gmult_ssse3_0 wrt ..imagebase
 
-	DD	$L$ghash_seh_begin wrt ..imagebase
-	DD	$L$ghash_seh_end wrt ..imagebase
-	DD	$L$ghash_seh_info wrt ..imagebase
+	DD	$L$SEH_begin_gcm_ghash_ssse3_1 wrt ..imagebase
+	DD	$L$SEH_end_gcm_ghash_ssse3_6 wrt ..imagebase
+	DD	$L$SEH_info_gcm_ghash_ssse3_0 wrt ..imagebase
+
 
 section	.xdata rdata align=8
-ALIGN	8
-$L$gmult_seh_info:
+ALIGN	4
+$L$SEH_info_gcm_gmult_ssse3_0:
 	DB	1
-	DB	$L$gmult_seh_prolog_end-$L$gmult_seh_begin
+	DB	$L$SEH_prolog_gcm_gmult_ssse3_4-$L$SEH_begin_gcm_gmult_ssse3_1
 	DB	5
 	DB	0
-
-	DB	$L$gmult_seh_save_xmm10-$L$gmult_seh_begin
+	DB	$L$SEH_prolog_gcm_gmult_ssse3_4-$L$SEH_begin_gcm_gmult_ssse3_1
 	DB	168
 	DW	1
-
-	DB	$L$gmult_seh_save_xmm6-$L$gmult_seh_begin
+	DB	$L$SEH_prolog_gcm_gmult_ssse3_3-$L$SEH_begin_gcm_gmult_ssse3_1
 	DB	104
 	DW	0
-
-	DB	$L$gmult_seh_allocstack-$L$gmult_seh_begin
+	DB	$L$SEH_prolog_gcm_gmult_ssse3_2-$L$SEH_begin_gcm_gmult_ssse3_1
 	DB	66
 
-ALIGN	8
-$L$ghash_seh_info:
+$L$SEH_info_gcm_ghash_ssse3_0:
 	DB	1
-	DB	$L$ghash_seh_prolog_end-$L$ghash_seh_begin
+	DB	$L$SEH_prolog_gcm_ghash_ssse3_5-$L$SEH_begin_gcm_ghash_ssse3_1
 	DB	7
 	DB	0
-
-	DB	$L$ghash_seh_save_xmm11-$L$ghash_seh_begin
+	DB	$L$SEH_prolog_gcm_ghash_ssse3_5-$L$SEH_begin_gcm_ghash_ssse3_1
 	DB	184
 	DW	2
-
-	DB	$L$ghash_seh_save_xmm10-$L$ghash_seh_begin
+	DB	$L$SEH_prolog_gcm_ghash_ssse3_4-$L$SEH_begin_gcm_ghash_ssse3_1
 	DB	168
 	DW	1
-
-	DB	$L$ghash_seh_save_xmm6-$L$ghash_seh_begin
+	DB	$L$SEH_prolog_gcm_ghash_ssse3_3-$L$SEH_begin_gcm_ghash_ssse3_1
 	DB	104
 	DW	0
-
-	DB	$L$ghash_seh_allocstack-$L$ghash_seh_begin
+	DB	$L$SEH_prolog_gcm_ghash_ssse3_2-$L$SEH_begin_gcm_ghash_ssse3_1
 	DB	98
 %endif
