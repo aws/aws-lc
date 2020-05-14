@@ -1,61 +1,49 @@
-# Contributing Guidelines
+Want to contribute? Great! First, read this page (including the small print at the end).
 
-Thank you for your interest in contributing to our project. Whether it's a bug report, new feature, correction, or additional
-documentation, we greatly value feedback and contributions from our community.
+### Before you contribute
+Before we can use your code, you must sign the
+[Google Individual Contributor License Agreement](https://cla.developers.google.com/about/google-individual)
+(CLA), which you can do online. The CLA is necessary mainly because you own the
+copyright to your changes, even after your contribution becomes part of our
+codebase, so we need your permission to use and distribute your code. We also
+need to be sure of various other things—for instance that you'll tell us if you
+know that your code infringes on other people's patents. You don't have to sign
+the CLA until after you've submitted your code for review and a member has
+approved it, but you must do it before we can put your code into our codebase.
+Before you start working on a larger contribution, you should get in touch with
+us first via email with your idea so that we can help out and possibly guide
+you. Coordinating up front makes it much easier to avoid frustration later on.
 
-Please read through this document before submitting any issues or pull requests to ensure we have all the necessary
-information to effectively respond to your bug report or contribution.
+### Code reviews
+All submissions, including submissions by project members, require review. We
+use [Gerrit](https://boringssl-review.googlesource.com) for this purpose.
 
+#### Setup
+If you have not done so on this machine, you will need to set up a password for
+Gerrit. Sign in with a Google account, visit
+[this link](https://boringssl.googlesource.com/), and click the "Generate
+Password" link in the top right. You will also need to prepare your checkout to
+[add Change-Ids](https://gerrit-review.googlesource.com/Documentation/cmd-hook-commit-msg.html)
+on commit. Run:
 
-## Reporting Bugs/Feature Requests
+    curl -Lo .git/hooks/commit-msg https://boringssl-review.googlesource.com/tools/hooks/commit-msg
+    chmod u+x .git/hooks/commit-msg
 
-We welcome you to use the GitHub issue tracker to report bugs or suggest features.
+#### Uploading changes
+To upload a change, push it to the special `refs/for/master` target:
 
-When filing an issue, please check existing open, or recently closed, issues to make sure somebody else hasn't already
-reported the issue. Please try to include as much information as you can. Details like these are incredibly useful:
+    git push origin HEAD:refs/for/master
 
-* A reproducible test case or series of steps
-* The version of our code being used
-* Any modifications you've made relevant to the bug
-* Anything unusual about your environment or deployment
+The output will then give you a link to the change. Add `agl@google.com` and
+`davidben@google.com` as reviewers.
 
+Pushing a commit with the same Change-Id as an existing change will upload a new
+version of it. (Use the `git rebase` or `git commit --amend` commands.)
 
-## Contributing via Pull Requests
-Contributions via pull requests are much appreciated. Before sending us a pull request, please ensure that:
+For more detailed instructions, see the
+[Gerrit User Guide](https://gerrit-review.googlesource.com/Documentation/intro-user.html).
 
-1. You are working against the latest source on the *master* branch.
-2. You check existing open, and recently merged, pull requests to make sure someone else hasn't addressed the problem already.
-3. You open an issue to discuss any significant work - we would hate for your time to be wasted.
-
-To send us a pull request, please:
-
-1. Fork the repository.
-2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-3. Ensure local tests pass.
-4. Commit to your fork using clear commit messages.
-5. Send us a pull request, answering any default questions in the pull request interface.
-6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
-
-GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and
-[creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
-
-
-## Finding contributions to work on
-Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels (enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any 'help wanted' issues is a great place to start.
-
-
-## Code of Conduct
-This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
-For more information see the [Code of Conduct FAQ](https://aws.github.io/code-of-conduct-faq) or contact
-opensource-codeofconduct@amazon.com with any additional questions or comments.
-
-
-## Security issue notifications
-If you discover a potential security issue in this project we ask that you notify AWS/Amazon Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/). Please do **not** create a public github issue.
-
-
-## Licensing
-
-See the [LICENSE](LICENSE) file for our project's licensing. We will ask you to confirm the licensing of your contribution.
-
-We may ask you to sign a [Contributor License Agreement (CLA)](http://en.wikipedia.org/wiki/Contributor_License_Agreement) for larger changes.
+### The small print
+Contributions made by corporations are covered by a different agreement than
+the one above, the
+[Software Grant and Corporate Contributor License Agreement](https://cla.developers.google.com/about/google-corporate).
