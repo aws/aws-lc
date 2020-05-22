@@ -37,3 +37,10 @@ else()
     target_link_libraries(bssl ssl crypto)
   endif()
 endif()
+
+install(TARGETS bssl
+        EXPORT bssl-targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+

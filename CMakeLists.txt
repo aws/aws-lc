@@ -19,6 +19,19 @@ enable_language(CXX)
 # run before all other targets.
 add_custom_target(global_target)
 
+if (UNIX AND NOT APPLE)
+  include(GNUInstallDirs)
+elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
+  set(CMAKE_INSTALL_LIBDIR "lib")
+  set(CMAKE_INSTALL_INCLUDEDIR "include")
+  set(CMAKE_INSTALL_BINDIR "bin")
+endif()
+
+install(DIRECTORY include/openssl
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        COMPONENT Development
+)
+
 if(ANDROID)
   # Android-NDK CMake files reconfigure the path and so Go and Perl won't be
   # found. However, ninja will still find them in $PATH if we just name them.
@@ -626,4 +639,5 @@ add_custom_target(
               ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests bssl_shim handshaker
-    USES_TERMINAL)
+    ${MAYBE_USES_TERMINAL})
+
