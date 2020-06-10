@@ -555,3 +555,10 @@ if(WIN32)
   target_link_libraries(crypto_test ws2_32)
 endif()
 add_dependencies(all_tests crypto_test)
+
+install(TARGETS crypto
+        EXPORT crypto-targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
