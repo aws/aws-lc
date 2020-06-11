@@ -1,0 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - export CC=clang-8
+      - export CXX=clang++-8
+      - export AWSLC_FUZZ=1
+      - export AWSLC_FIPS=1
+  build:
+    commands:
+      - ./tests/ci/run_posix_tests.sh
