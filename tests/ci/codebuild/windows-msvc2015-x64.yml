@@ -1,0 +1,10 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0.
+
+version: 0.2
+
+phases:
+  build:
+    commands:
+      # vcvarsall will set the required lib and libpath for MSVC to compile everything
+      - .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
