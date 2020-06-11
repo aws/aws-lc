@@ -6,7 +6,6 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - if [ $(clang -dumpversion) == 9.0.1 ]; then echo "Found correct clang version 9"; else clang --version && echo "clang version mismatch" && exit 1; fi
       - export CC=clang-9
       - export CXX=clang++-9
       - export GO111MODULE=on
