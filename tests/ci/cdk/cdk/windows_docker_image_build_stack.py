@@ -44,11 +44,29 @@ class WindowsDockerImageBuildStack(core.Stack):
                             document_type="Command")
 
         # Define a role for EC2.
+        s3_read_write_policy = iam.PolicyDocument.from_json(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:Put*",
+                            "s3:Get*"
+                        ],
+                        "Resource": [
+                            "arn:aws:s3:::{}/*".format(s3_bucket_name)
+                        ]
+                    }
+                ]
+            }
+        )
+        inline_policies = {"s3_read_write_policy": s3_read_write_policy}
         role = iam.Role(scope=self, id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+                        inline_policies=inline_policies,
                         managed_policies=[
                             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
-                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
                             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryPowerUser")
                         ])
 
