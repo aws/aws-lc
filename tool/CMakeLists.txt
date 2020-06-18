@@ -35,6 +35,6 @@ endif()
 
 install(TARGETS bssl
         EXPORT bssl-targets
-	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
