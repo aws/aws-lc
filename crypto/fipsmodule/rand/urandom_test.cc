@@ -35,6 +35,10 @@
 #define PTRACE_O_EXITKILL (1 << 20)
 #endif
 
+#if !defined(PTRACE_O_TRACESYSGOOD)
+#define PTRACE_O_TRACESYSGOOD (1)
+#endif
+
 // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to
 // simulate the absence of RDRAND of machines that have it.
 
