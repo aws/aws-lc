@@ -23,6 +23,7 @@
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
 
+#include <linux/types.h>
 #include <linux/random.h>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
