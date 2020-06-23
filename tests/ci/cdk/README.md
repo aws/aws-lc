@@ -10,7 +10,39 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
 * Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 * [Connect GitHub and AWS account using access token](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
 
-#### Command
+### Minimal permissions:
+
+* CodeBuild
+  * codebuild:Create*
+  * codebuild:Update*
+  * codebuild:Batch*
+* EC2
+  * ec2:Describe*
+  * ec2:Create*
+  * ec2:RunInstances
+  * ec2:RequestSpotInstances
+  * ec2:TerminateInstances
+* ECR
+  * ecr:Batch*
+  * ecr:Get*
+  * ecr:Describe*
+  * ecr:List*
+  * ecr:Initiate*
+  * ecr:Upload*
+  * ecr:Complete*
+  * ecr:Put*
+* S3
+  * s3:Put*
+  * s3:Get*
+* SSM
+  * ssm:Describe*
+  * ssm:List*
+  * ssm:Get*
+  * ssm:Put*
+  * ssm:Update*
+  * ssm:List*
+
+### Command
 
 ```
 $ ./run-cdk.sh {aws-account-id} {region} {github-repo-owner} {github-repo-name} {ACTION}
