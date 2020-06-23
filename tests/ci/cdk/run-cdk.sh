@@ -90,7 +90,10 @@ function images_pushed_to_ecr() {
   target_images=("$@")
   ecr_repo_name="${CDK_DEPLOY_ACCOUNT}.dkr.ecr.${CDK_DEPLOY_REGION}.amazonaws.com/${repo_name}"
   echo "Checking if docker images [${target_images[@]}] are pushed to ${ecr_repo_name}"
-  for i in {1..16}; do
+
+  # Every 5 min, this function checks if the target docker img is created.
+  # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
+  for i in {1..30}; do
     images_in_ecr=$(aws ecr describe-images --repository-name ${repo_name})
     images_pushed=0
     for target_image in "${target_images[@]}"; do
@@ -112,6 +115,9 @@ function images_pushed_to_ecr() {
 }
 
 function deploy() {
+  # Always destroy windows build stacks (which include EC2 instance) on EXIT.
+  trap destroy_windows_img_build_stack EXIT
+
   echo "Creating AWS resources through CDK."
   create_aws_resources
 
@@ -122,8 +128,6 @@ function deploy() {
   build_windows_img
 
   echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
-  sleep 1800
-
   linux_aarch_img_tags=("ubuntu-19.10_gcc-9x_latest"
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.10_clang-9x_sanitizer_latest")
@@ -142,9 +146,6 @@ function deploy() {
   images_pushed_to_ecr "${ECR_LINUX_X86_REPO_NAME}" "${linux_x86_img_tags[@]}"
   windows_img_tags=("vs2015_latest" "vs2017_latest")
   images_pushed_to_ecr "${ECR_WINDOWS_REPO_NAME}" "${windows_img_tags[@]}"
-
-  echo "Destroy AWS resources created for Windows docker build."
-  destroy_windows_img_build_stack
 }
 
 function destroy() {
