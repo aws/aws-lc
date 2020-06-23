@@ -12,6 +12,8 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
 
 ### Minimal permissions:
 
+To run commands for set up and update this CI, below permissions should be configured through AWS IAM:
+
 * CodeBuild
   * codebuild:Create*
   * codebuild:Update*
@@ -20,7 +22,6 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
   * ec2:Describe*
   * ec2:Create*
   * ec2:RunInstances
-  * ec2:RequestSpotInstances
   * ec2:TerminateInstances
 * ECR
   * ecr:Batch*
