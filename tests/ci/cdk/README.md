@@ -71,6 +71,39 @@ To compare deployed stack with current state, run command:
 ./run-cdk.sh 123456789 us-west-2 GitHubUserName aws-lc DIFF
 ```
 
+## Files
+
+Inspired by [AWS CDK blog](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-python/)
+
+Below is CI file structure.
+
+```
+(.env) $ tree
+.
+├── README.md
+├── app.py
+├── cdk
+│   ├── __init__.py
+│   ├── ecr_stack.py
+│   ├── github_codebuild_stack.py
+│   ├── linux_docker_images_build_stack.py
+│   ├── windows_docker_build_ssm_document.yaml
+│   └── windows_docker_image_build_stack.py
+├── cdk.json
+├── requirements.txt
+├── run-cdk.sh
+├── setup.py
+└── util
+    ├── __init__.py
+    └── util.py
+```
+* `README.md` — The introductory README for this project.
+* `app.py` — The “main” for this sample application.
+* `cdk.json` — A configuration file for CDK that defines what executable CDK should run to generate the CDK construct tree.
+* `cdk` — A CDK module directory
+* `requirements.txt` — This file is used by pip to install all of the dependencies for your application. In this case, it contains only -e . This tells pip to install the requirements specified in setup.py. It also tells pip to run python setup.py develop to install the code in the cdk module so that it can be edited in place.
+* `setup.py` — Defines how this Python package would be constructed and what the dependencies are.
+
 ## Development Reference
 
 The `cdk.json` file tells the CDK Toolkit how to execute this CDK app `app.py`.
