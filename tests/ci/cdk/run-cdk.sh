@@ -89,7 +89,7 @@ function images_pushed_to_ecr() {
   shift
   target_images=("$@")
   ecr_repo_name="${CDK_DEPLOY_ACCOUNT}.dkr.ecr.${CDK_DEPLOY_REGION}.amazonaws.com/${repo_name}"
-  echo "Checking if docker images [${target_images[@]}] are pushed to ${ecr_repo_name}"
+  echo "Checking if docker images [${target_images[@]}] are pushed to ${ecr_repo_name}."
 
   # Every 5 min, this function checks if the target docker img is created.
   # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
@@ -168,7 +168,7 @@ DESTROY)
   destroy
   ;;
 *)
-  echo "Action: $ACTION is not supported"
+  echo "Action: $ACTION is not supported."
   ;;
 esac
 
