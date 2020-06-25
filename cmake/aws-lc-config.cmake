@@ -1,11 +1,14 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
+# Copied from s2n https://github.com/awslabs/s2n/tree/master/cmake/modules
+#
 # - Try to find LibCrypto include dirs and libraries
 #
 # Usage of this module as follows:
 #
 #     find_package(AWS-LC)
+#     target_link_libraries(project-target LibCrypto::Crypto)
 #
 # Variables used by this module, they can change the default behaviour and need
 # to be set before calling find_package:
