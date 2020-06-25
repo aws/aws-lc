@@ -27,43 +27,12 @@ class LinuxDockerImagesBuildStack(core.Stack):
             clone_depth=1)
 
         # Define a role.
-        ecr_power_user_policy = iam.PolicyDocument.from_json(
-            {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "ecr:GetAuthorizationToken",
-                            "ecr:BatchCheckLayerAvailability",
-                            "ecr:GetDownloadUrlForLayer",
-                            "ecr:GetRepositoryPolicy",
-                            "ecr:DescribeRepositories",
-                            "ecr:ListImages",
-                            "ecr:DescribeImages",
-                            "ecr:BatchGetImage",
-                            "ecr:GetLifecyclePolicy",
-                            "ecr:GetLifecyclePolicyPreview",
-                            "ecr:ListTagsForResource",
-                            "ecr:DescribeImageScanFindings",
-                            "ecr:InitiateLayerUpload",
-                            "ecr:UploadLayerPart",
-                            "ecr:CompleteLayerUpload",
-                            "ecr:PutImage"
-                        ],
-                        "Resource": [
-                            "arn:aws:ecr:::{}/*".format(ecr_linux_aarch_repo_name),
-                            "arn:aws:ecr:::{}/*".format(ecr_linux_x86_repo_name)
-                        ]
-                    }
-                ]
-            }
-        )
-        inline_policies = {"ecr_power_user_policy": ecr_power_user_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                        inline_policies=inline_policies)
+                        managed_policies=[
+                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryPowerUser")
+                        ])
 
         # Define CodeBuild project.
         project = codebuild.Project(
