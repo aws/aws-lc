@@ -106,7 +106,7 @@ function images_pushed_to_ecr() {
       echo "All required images are pushed to ${ecr_repo_name}."
       return
     else
-      echo "$i: Wait 5 min for docker image creation."
+      echo "${i}: Wait 5 min for docker image creation."
       sleep 300
     fi
   done
@@ -154,7 +154,7 @@ function destroy() {
 
 # Main logics
 
-case $ACTION in
+case ${ACTION} in
 DEPLOY)
   deploy
   ;;
@@ -168,7 +168,7 @@ DESTROY)
   destroy
   ;;
 *)
-  echo "Action: $ACTION is not supported."
+  echo "Action: ${ACTION} is not supported."
   ;;
 esac
 
