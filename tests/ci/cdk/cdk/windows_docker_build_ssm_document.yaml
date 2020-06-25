@@ -1,0 +1,17 @@
+---
+schemaVersion: '2.2'
+description: aws-lc:buildWindowsDockerImages
+mainSteps:
+- action: aws:runPowerShellScript
+  name: runPowerShellScript
+  inputs:
+    timeoutSeconds: '7200'
+    runCommand:
+    - mkdir docker-images
+    - cd docker-images
+    - Read-S3Object -BucketName S3_BUCKET_PLACEHOLDER -Key windows.zip -File windows.zip
+    - Expand-Archive .\windows.zip -DestinationPath .\
+    - cd .\windows
+    - Invoke-Expression -Command (Get-ECRLoginCommand -Region REGION_PLACEHOLDER).Command
+    - .\build_images.ps1
+    - .\push_images.ps1 ECR_PLACEHOLDER
