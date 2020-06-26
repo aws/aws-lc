@@ -3,11 +3,11 @@
 add_custom_target(all_tests)
 
 add_subdirectory(unit)
-add_subdirectory(unit/cavp)
-add_subdirectory(acvp-fips/modulewrapper)
+add_subdirectory(../util/fipstools/cavp)
+add_subdirectory(../util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
-  add_subdirectory(fuzz)
+  add_subdirectory(../fuzz)
 endif()
 
 if(NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
