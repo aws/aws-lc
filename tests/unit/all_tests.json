@@ -1,0 +1,7 @@
+[
+	["tests/unit/crypto_test"],
+	["tests/unit/urandom_test"],
+	["$AWSLC_ia32cap=~0x4000000000000000", "tests/unit/urandom_test"],
+	["tests/unit/crypto_test", "--fork_unsafe_buffering", "--gtest_filter=RandTest.*:-RandTest.Fork"],
+	["tests/unit/decrepit_test"]
+]
