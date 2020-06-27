@@ -30,7 +30,7 @@ if [[  "${AWSLC_CODING_GUIDELINES_TEST}" == "1" ]]; then
   source ./tests/coding_guidelines/coding_guidelines_test.sh
 fi
 
-if [[ "$AWSLC_FUZZ" == "1" ]]; then 
-echo "Testing building fuzz tests."
+if [[ "${AWSLC_FUZZ}" == "1" ]]; then
+  echo "Testing building fuzz tests."
   run_build -DFUZZ=1
 fi

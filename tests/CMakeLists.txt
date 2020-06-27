@@ -17,7 +17,7 @@ endif()
 
 add_custom_target(
     run_tests
-    COMMAND ${GO_EXECUTABLE} run tests/unit/all_tests.go -build-dir
+    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
             ${CMAKE_BINARY_DIR}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests
