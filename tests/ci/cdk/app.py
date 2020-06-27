@@ -21,9 +21,9 @@ env = {"account": aws_account, "region": aws_region}
 
 # Define AWS ECR stacks.
 # ECR holds the docker images, which are pre-built to accelerate the code builds/tests of git pull requests.
-linux_aarch_ecr_repo = EnvUtil.get("ECR_LINUX_AARCH_REPO_NAME", "aws-lc-docker-img-linux-aarch")
-linux_x86_ecr_repo = EnvUtil.get("ECR_LINUX_X86_REPO_NAME", "aws-lc-docker-img-linux-x86")
-windows_ecr_repo = EnvUtil.get("ECR_WINDOWS_REPO_NAME", "aws-lc-docker-img-windows")
+linux_aarch_ecr_repo = EnvUtil.get("ECR_LINUX_AARCH_REPO_NAME", "aws-lc-test-docker-images-linux-aarch")
+linux_x86_ecr_repo = EnvUtil.get("ECR_LINUX_X86_REPO_NAME", "aws-lc-test-docker-images-linux-x86")
+windows_ecr_repo = EnvUtil.get("ECR_WINDOWS_REPO_NAME", "aws-lc-test-docker-images-windows")
 EcrStack(app, linux_aarch_ecr_repo, env=env)
 EcrStack(app, linux_x86_ecr_repo, env=env)
 EcrStack(app, windows_ecr_repo, env=env)
