@@ -14,8 +14,6 @@ class LinuxDockerImagesBuildStack(core.Stack):
         super().__init__(scope, id, **kwargs)
 
         # Fetch environment variables.
-        ecr_linux_aarch_repo_name = EnvUtil.get("ECR_LINUX_AARCH_REPO_NAME", "aws-lc-test-docker-images-linux-aarch")
-        ecr_linux_x86_repo_name = EnvUtil.get("ECR_LINUX_X86_REPO_NAME", "aws-lc-test-docker-images-linux-x86")
         github_repo_owner = EnvUtil.get("GITHUB_REPO_OWNER", "awslabs")
         github_repo = EnvUtil.get("GITHUB_REPO", "aws-lc")
 
