@@ -9,7 +9,6 @@ phases:
       - export CC=gcc-9
       - export CXX=g++-9
       - export AWSLC_CODING_GUIDELINES_TEST=1
-      - export GO111MODULE=on
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh
