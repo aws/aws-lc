@@ -66,7 +66,7 @@ linux_aarch_test_stacks = [
 ]
 for stack in linux_aarch_test_stacks:
     GitHubCodeBuildStack(app, stack["id"], linux_aarch_ecr_repo, stack["img"],
-                         "./tests/ci/codebuild/{}".format(stack["spec"]), env=env)
+                         "./tests/ci/codebuild/{}".format(stack["spec"]), privileged=True, env=env)
 # Define CodeBuild running on Linux x86-64.
 linux_x86_test_stacks = [
     {
@@ -142,7 +142,7 @@ linux_x86_test_stacks = [
 ]
 for stack in linux_x86_test_stacks:
     GitHubCodeBuildStack(app, stack["id"], linux_x86_ecr_repo, stack["img"],
-                         "./tests/ci/codebuild/{}".format(stack["spec"]), env=env)
+                         "./tests/ci/codebuild/{}".format(stack["spec"]), privileged=True, env=env)
 # Define CodeBuild for sanitizer tests.
 linux_sanitizer_test_stacks = [
     {
