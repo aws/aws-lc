@@ -10,6 +10,7 @@ phases:
       - export CXX=clang++-8
       - export AWSLC_FUZZ=1
       - export AWSLC_FIPS=1
+      - go version
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh

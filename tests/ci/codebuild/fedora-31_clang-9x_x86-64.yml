@@ -9,6 +9,7 @@ phases:
       - export CC=clang-9
       - export CXX=clang++-9
       - export GO111MODULE=on
+      - go version
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh

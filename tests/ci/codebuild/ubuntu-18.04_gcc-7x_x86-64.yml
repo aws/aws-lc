@@ -8,6 +8,7 @@ phases:
     commands:
       - export CC=gcc-7
       - export CXX=g++-7
+      - go version
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh

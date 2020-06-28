@@ -11,6 +11,7 @@ phases:
       - export CXX=g++
       - export AWSLC_32BIT=1
       - export GO111MODULE=on
+      - go version
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh
