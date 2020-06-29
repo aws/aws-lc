@@ -208,7 +208,8 @@ template <typename... Args>
     WriteFile(stderr_handle, buf, strlen(buf), &unused, nullptr);
   }
 #else
-  ssize_t unused_ret = write(STDERR_FILENO, buf, strlen(buf));
+  ssize_t success = write(STDERR_FILENO, buf, strlen(buf));
+  printf("Write returns %d.", success);
 #endif
   abort();
 }
