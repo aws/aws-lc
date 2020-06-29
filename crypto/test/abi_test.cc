@@ -209,7 +209,7 @@ template <typename... Args>
   }
 #else
   ssize_t success = write(STDERR_FILENO, buf, strlen(buf));
-  printf("Write returns %d.", success);
+  printf("Write returns %ld.", success);
 #endif
   abort();
 }
