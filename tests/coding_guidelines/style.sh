@@ -16,6 +16,7 @@ HEADERS_WITHOUT_PRAGMA=`find . -type f -name "*.h" | grep -v third_party |
 if [ ! -z "$HEADERS_WITHOUT_PRAGMA" ] ; then
   echo "The following headers do not contain the 'pragma once' guard:
         $HEADERS_WITHOUT_PRAGMA"
-  return -1
+  # TODO: re-enable "#pragma once" when CI is active.
+  # exit -1
 fi
 
