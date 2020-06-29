@@ -208,7 +208,7 @@ template <typename... Args>
     WriteFile(stderr_handle, buf, strlen(buf), &unused, nullptr);
   }
 #else
-  ssize_t unused_ret = write(STDERR_FILENO, buf, strlen(buf));
+  (void)write(STDERR_FILENO, buf, strlen(buf));
 #endif
   abort();
 }
