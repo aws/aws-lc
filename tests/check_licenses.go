@@ -20,6 +20,9 @@ func main() {
 		"|Google" +
 		"|Intel" +
 		"|Marc Bevand" +
+		"|Go Authors" +
+		"|HRSS authors" +
+		"|Chromium Authors" +
 		"|OpenSSL license|OpenSSL Project)")
 	filematcher, _ := regexp.Compile("(Dockerfile|\\.(ASM|c|cc|cmake|h|sh|go|pl|ps1|yml|s|S))$")
 
