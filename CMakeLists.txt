@@ -522,26 +522,8 @@ if(ANDROID AND NOT ANDROID_NDK_REVISION AND ${ARCH} STREQUAL "arm")
 endif()
 
 if(USE_CUSTOM_LIBCXX)
-  set(AWSLC_ALLOW_CXX_RUNTIME 1)
-endif()
-
-if(AWSLC_ALLOW_CXX_RUNTIME)
-  add_definitions(-DAWSLC_ALLOW_CXX_RUNTIME)
-endif()
-
-if(USE_CUSTOM_LIBCXX)
   if(NOT CLANG)
     message(FATAL_ERROR "USE_CUSTOM_LIBCXX only supported with Clang")
-  endif()
-
-  # The docker images set an environement variable to the llvm project directory which the sandbox builds will use,
-  # you can also pass in the llvm project path as a CMake parameter which takes precedance over the environment variable
-  if(DEFINED ENV{LLVM_PROJECT_HOME} AND NOT LLVM_PROJECT_HOME)
-    set(LLVM_PROJECT_HOME $ENV{LLVM_PROJECT_HOME})
-  endif()
-
-  if(NOT LLVM_PROJECT_HOME)
-    message(FATAL "Could not find path to LLVM project, must set LLVM_PROJECT_HOME environment variable or pass in -DLLVM_PROJECT_HOME")
   endif()
 
   # CMAKE_CXX_FLAGS ends up in the linker flags as well, so use
@@ -551,25 +533,24 @@ if(USE_CUSTOM_LIBCXX)
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -nostdlib++")
   include_directories(
     SYSTEM
-          ${LLVM_PROJECT_HOME}/libcxx/include
-          ${LLVM_PROJECT_HOME}/libcxxabi/include
+    util/bot/libcxx/include
+    util/bot/libcxxabi/include
   )
 
   # This is patterned after buildtools/third_party/libc++/BUILD.gn and
   # buildtools/third_party/libc++abi/BUILD.gn in Chromium.
 
-  file(GLOB LIBCXX_SOURCES "${LLVM_PROJECT_HOME}/libcxx/src/*.cpp")
-  file(GLOB LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/*.cpp")
+  file(GLOB LIBCXX_SOURCES "util/bot/libcxx/src/*.cpp")
+  file(GLOB LIBCXXABI_SOURCES "util/bot/libcxxabi/src/*.cpp")
 
   # This file is meant for exception-less builds.
-  list(REMOVE_ITEM LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/cxa_noexception.cpp")
-
+  list(REMOVE_ITEM LIBCXXABI_SOURCES "trunk/src/cxa_noexception.cpp")
   # libc++ also defines new and delete.
-  list(REMOVE_ITEM LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/stdlib_new_delete.cpp")
+  list(REMOVE_ITEM LIBCXXABI_SOURCES "trunk/src/stdlib_new_delete.cpp")
   if(TSAN)
     # ThreadSanitizer tries to intercept these symbols. Skip them to avoid
     # symbol conflicts.
-    list(REMOVE_ITEM LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/cxa_guard.cpp")
+    list(REMOVE_ITEM LIBCXXABI_SOURCES "trunk/src/cxa_guard.cpp")
   endif()
 
   add_library(libcxxabi ${LIBCXXABI_SOURCES})
@@ -592,9 +573,7 @@ if(USE_CUSTOM_LIBCXX)
     -D_LIBCPP_BUILDING_LIBRARY
     -DLIBCXX_BUILDING_LIBCXXABI
   )
-  set_target_properties(libcxx PROPERTIES COMPILE_FLAGS "-Wno-unused-parameter")
   target_link_libraries(libcxx libcxxabi)
-
 endif()
 
 # Add minimal googletest targets. The provided one has many side-effects, and
