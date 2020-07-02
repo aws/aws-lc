@@ -69,6 +69,3 @@ class GitHubCodeBuildStack(core.Stack):
             # see: https://github.com/aws/aws-cdk/issues/5517
             cfn_build = build.node.default_child
             cfn_build.add_override("Properties.Environment.Type", "ARM_CONTAINER")
-            # ARM compute type should be 'BUILD_GENERAL1_LARGE'.
-            # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html
-            cfn_build.add_override("Properties.Environment.ComputeType", "BUILD_GENERAL1_LARGE")
