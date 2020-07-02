@@ -17,7 +17,6 @@ class WindowsDockerImageBuildStack(core.Stack):
         super().__init__(scope, id, **kwargs)
 
         # Fetch environment variables.
-        ecr_win_repo_name = EnvUtil.get("ECR_WINDOWS_REPO_NAME", "aws-lc-test-docker-images-windows")
         s3_bucket_name = EnvUtil.get("S3_FOR_WIN_DOCKER_IMG_BUILD", "windows-docker-images")
         win_ec2_tag_key = EnvUtil.get("WIN_EC2_TAG_KEY", "aws-lc")
         win_ec2_tag_value = EnvUtil.get("WIN_EC2_TAG_VALUE", "aws-lc-windows")
@@ -62,12 +61,48 @@ class WindowsDockerImageBuildStack(core.Stack):
                 ]
             }
         )
-        inline_policies = {"s3_read_write_policy": s3_read_write_policy}
+        env = kwargs['env']
+        ecr_power_user_policy = iam.PolicyDocument.from_json(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ecr:GetAuthorizationToken"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ecr:BatchCheckLayerAvailability",
+                            "ecr:GetDownloadUrlForLayer",
+                            "ecr:GetRepositoryPolicy",
+                            "ecr:DescribeRepositories",
+                            "ecr:ListImages",
+                            "ecr:DescribeImages",
+                            "ecr:BatchGetImage",
+                            "ecr:GetLifecyclePolicy",
+                            "ecr:GetLifecyclePolicyPreview",
+                            "ecr:ListTagsForResource",
+                            "ecr:DescribeImageScanFindings",
+                            "ecr:InitiateLayerUpload",
+                            "ecr:UploadLayerPart",
+                            "ecr:CompleteLayerUpload",
+                            "ecr:PutImage"
+                        ],
+                        "Resource": "arn:aws:ecr:{}:{}:repository/{}".format(env['region'], env['account'],
+                                                                             ecr_repo_name)
+                    }
+                ]
+            }
+        )
+        inline_policies = {"s3_read_write_policy": s3_read_write_policy, "ecr_power_user_policy": ecr_power_user_policy}
         role = iam.Role(scope=self, id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
                         inline_policies=inline_policies,
                         managed_policies=[
-                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryPowerUser"),
                             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")
                         ])
 

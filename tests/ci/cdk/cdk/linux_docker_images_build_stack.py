@@ -26,12 +26,47 @@ class LinuxDockerImagesBuildStack(core.Stack):
             clone_depth=1)
 
         # Define a role.
+        env = kwargs['env']
+        ecr_power_user_policy = iam.PolicyDocument.from_json(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ecr:GetAuthorizationToken"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ecr:BatchCheckLayerAvailability",
+                            "ecr:GetDownloadUrlForLayer",
+                            "ecr:GetRepositoryPolicy",
+                            "ecr:DescribeRepositories",
+                            "ecr:ListImages",
+                            "ecr:DescribeImages",
+                            "ecr:BatchGetImage",
+                            "ecr:GetLifecyclePolicy",
+                            "ecr:GetLifecyclePolicyPreview",
+                            "ecr:ListTagsForResource",
+                            "ecr:DescribeImageScanFindings",
+                            "ecr:InitiateLayerUpload",
+                            "ecr:UploadLayerPart",
+                            "ecr:CompleteLayerUpload",
+                            "ecr:PutImage"
+                        ],
+                        "Resource": "arn:aws:ecr:{}:{}:repository/{}".format(env['region'], env['account'], ecr_repo)
+                    }
+                ]
+            }
+        )
+        inline_policies = {"ecr_power_user_policy": ecr_power_user_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                        managed_policies=[
-                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryPowerUser")
-                        ])
+                        inline_policies=inline_policies)
 
         # Define build img.
         build_image = codebuild.LinuxBuildImage.STANDARD_2_0
