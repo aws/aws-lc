@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import typing
 from util.util import EnvUtil
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
@@ -10,7 +11,7 @@ class LinuxDockerImagesBuildStack(core.Stack):
     """Define a stack used to build Linux Docker images."""
 
     def __init__(self, scope: core.Construct, id: str, ecr_repo: str,
-                 build_spec_file: str, **kwargs) -> None:
+                 build_spec_file: str, env_type: typing.Optional[str] = 'Linux', **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # Fetch environment variables.
@@ -32,6 +33,11 @@ class LinuxDockerImagesBuildStack(core.Stack):
                             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryPowerUser")
                         ])
 
+        # Define build img.
+        build_image = codebuild.LinuxBuildImage.STANDARD_2_0
+        if env_type is 'ARM':
+            build_image = codebuild.LinuxBuildImage.AMAZON_LINUX_2_ARM
+
         # Define CodeBuild project.
         project = codebuild.Project(
             scope=self,
@@ -41,7 +47,7 @@ class LinuxDockerImagesBuildStack(core.Stack):
             environment=codebuild.BuildEnvironment(
                 compute_type=codebuild.ComputeType.LARGE,
                 privileged=True,
-                build_image=codebuild.LinuxBuildImage.STANDARD_2_0),
+                build_image=build_image),
             environment_variables={
                 "AWS_ACCOUNT_ID": codebuild.BuildEnvironmentVariable(value=kwargs['env']['account']),
                 "AWS_ECR_REPO": codebuild.BuildEnvironmentVariable(value=ecr_repo)

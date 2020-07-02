@@ -33,18 +33,21 @@ linux_docker_img_build_stacks = [
     {
         "id": "aws-lc-test-docker-images-build-linux-aarch",
         "repo_name": linux_aarch_ecr_repo,
+        "env_type": "ARM",
         "build_spec": "linux-aarch-docker-img-build.yml"
     },
     {
         "id": "aws-lc-test-docker-images-build-linux-x86",
         "repo_name": linux_x86_ecr_repo,
+        "env_type": "Linux",
         "build_spec": "linux-x86-docker-img-build.yml"
     }
 ]
 code_build_dir = "./tests/ci/codebuild"
 for stack in linux_docker_img_build_stacks:
     LinuxDockerImagesBuildStack(app, stack["id"], stack["repo_name"],
-                                "./tests/ci/codebuild/{}".format(stack["build_spec"]), env=env)
+                                "./tests/ci/codebuild/{}".format(stack["build_spec"]), env_type=stack["env_type"],
+                                env=env)
 # DIND is not supported on Windows and, therefore, AWS CodeBuild is not used to build Windows Server container images.
 # Windows Docker images are created by running commands in Windows EC2 instance.
 WindowsDockerImageBuildStack(app, "aws-lc-test-docker-images-build-windows", windows_ecr_repo, env=env)
