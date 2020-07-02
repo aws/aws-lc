@@ -17,15 +17,12 @@ RUN set -ex && \
     libunwind-dev \
     pkg-config \
     ca-certificates \
-    wget
-
-# Install golang 1.13+, which has GO111MODULE=on by default, and support load crypto/ed25519.
-RUN cd /tmp && \
+    wget && \
+    cd /tmp && \
     wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
     tar -xvf go1.13.12.linux-amd64.tar.gz && \
-    mv go /usr/local
-
-RUN apt-get autoremove --purge -y && \
+    mv go /usr/local && \
+    apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* && \
