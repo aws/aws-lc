@@ -66,7 +66,7 @@ linux_aarch_test_stacks = [
 ]
 for stack in linux_aarch_test_stacks:
     GitHubCodeBuildStack(app, stack["id"], linux_aarch_ecr_repo, stack["img"],
-                         "./tests/ci/codebuild/{}".format(stack["spec"]), privileged=True, env=env)
+                         "./tests/ci/codebuild/{}".format(stack["spec"]), env_type="ARM", privileged=True, env=env)
 # Define CodeBuild running on Linux x86-64.
 linux_x86_test_stacks = [
     {
@@ -149,20 +149,23 @@ linux_sanitizer_test_stacks = [
         "id": "aws-lc-test-ubuntu-19-10--clang-9x--sanitizer",
         "img": "ubuntu-19.10_clang-9x_sanitizer_latest",
         "spec": "ubuntu-19.10_clang-9x_aarch64_sanitizer.yml",
+        "env_type": "ARM",
         "repo": linux_aarch_ecr_repo,
     },
     {
         "id": "aws-lc-test-ubuntu-19-10--clang-9x--x86-64--sanitizer",
         "img": "ubuntu-19.10_clang-9x_sanitizer_latest",
         "spec": "ubuntu-19.10_clang-9x_x86-64_sanitizer.yml",
+        "env_type": "Linux",
         "repo": linux_x86_ecr_repo,
     },
 ]
 for stack in linux_sanitizer_test_stacks:
     GitHubCodeBuildStack(app, stack["id"], stack["repo"], stack["img"],
-                         "./tests/ci/codebuild/{}".format(stack["spec"]), privileged=True, env=env)
+                         "./tests/ci/codebuild/{}".format(stack["spec"]), env_type=stack["env_type"], privileged=True,
+                         env=env)
 # Define CodeBuild running on Windows.
 GitHubCodeBuildStack(app, "aws-lc-test-windows-msvc2015-x64--vs2015", windows_ecr_repo, "vs2015_latest",
-                     "./tests/ci/codebuild/windows-msvc2015-x64.yml", is_windows, env=env)
+                     "./tests/ci/codebuild/windows-msvc2015-x64.yml", env_type="Windows", env=env)
 
 app.synth()
