@@ -79,9 +79,9 @@ function build_windows_img() {
   exit 1
 }
 
-function destroy_windows_img_build_stack() {
-  # Destroy all temporary resources created for Windows docker image build.
-  cdk destroy aws-lc-test-docker-images-build-windows* --force
+function destroy_docker_img_build_stack() {
+  # Destroy all temporary resources created for all docker image build.
+  cdk destroy aws-lc-test-docker-images-build-* --force
 }
 
 function images_pushed_to_ecr() {
@@ -115,8 +115,8 @@ function images_pushed_to_ecr() {
 }
 
 function deploy() {
-  # Always destroy windows build stacks (which include EC2 instance) on EXIT.
-  trap destroy_windows_img_build_stack EXIT
+  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
+  trap destroy_docker_img_build_stack EXIT
 
   echo "Creating AWS resources through CDK."
   create_aws_resources

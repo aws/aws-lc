@@ -14,7 +14,12 @@ RUN set -ex && \
     cmake \
     ninja-build \
     perl \
-    golang && \
+    ca-certificates \
+    wget && \
+    cd /tmp && \
+    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
+    tar -xvf go1.13.12.linux-amd64.tar.gz && \
+    mv go /usr/local && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
@@ -23,3 +28,5 @@ RUN set -ex && \
 
 ENV CC=gcc-9
 ENV CXX=g++-9
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"

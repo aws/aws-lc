@@ -12,12 +12,11 @@ class WindowsDockerImageBuildStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
-                 ecr_repo_name: str,
+                 ecr_repo: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # Fetch environment variables.
-        ecr_win_repo_name = EnvUtil.get("ECR_WINDOWS_REPO_NAME", "aws-lc-test-docker-images-windows")
         s3_bucket_name = EnvUtil.get("S3_FOR_WIN_DOCKER_IMG_BUILD", "windows-docker-images")
         win_ec2_tag_key = EnvUtil.get("WIN_EC2_TAG_KEY", "aws-lc")
         win_ec2_tag_value = EnvUtil.get("WIN_EC2_TAG_VALUE", "aws-lc-windows")
@@ -32,7 +31,7 @@ class WindowsDockerImageBuildStack(core.Stack):
         # Define SSM command document.
         aws_account_id = kwargs["env"]["account"]
         aws_region = kwargs["env"]["region"]
-        ecr_repo = "{}.dkr.ecr.{}.amazonaws.com/{}".format(aws_account_id, aws_region, ecr_repo_name)
+        ecr_repo = "{}.dkr.ecr.{}.amazonaws.com/{}".format(aws_account_id, aws_region, ecr_repo)
         with open('./cdk/windows_docker_build_ssm_document.yaml') as file:
             file_text = file.read().replace("ECR_PLACEHOLDER", ecr_repo) \
                 .replace("S3_BUCKET_PLACEHOLDER", s3_bucket_name) \
@@ -62,6 +61,7 @@ class WindowsDockerImageBuildStack(core.Stack):
                 ]
             }
         )
+        env = kwargs['env']
         ecr_power_user_policy = iam.PolicyDocument.from_json(
             {
                 "Version": "2012-10-17",
@@ -69,7 +69,13 @@ class WindowsDockerImageBuildStack(core.Stack):
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "ecr:GetAuthorizationToken",
+                            "ecr:GetAuthorizationToken"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
                             "ecr:BatchCheckLayerAvailability",
                             "ecr:GetDownloadUrlForLayer",
                             "ecr:GetRepositoryPolicy",
@@ -86,9 +92,7 @@ class WindowsDockerImageBuildStack(core.Stack):
                             "ecr:CompleteLayerUpload",
                             "ecr:PutImage"
                         ],
-                        "Resource": [
-                            "arn:aws:ecr:::{}/*".format(ecr_win_repo_name)
-                        ]
+                        "Resource": "arn:aws:ecr:{}:{}:repository/{}".format(env['region'], env['account'], ecr_repo)
                     }
                 ]
             }

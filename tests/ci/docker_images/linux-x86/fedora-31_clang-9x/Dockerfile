@@ -13,9 +13,8 @@ RUN dnf -y install \
     ninja-build \
     perl \
     golang \
-    --setopt=install_weak_deps=False --best
-
-RUN dnf -y autoremove && \
+    --setopt=install_weak_deps=False --best && \
+    dnf -y autoremove && \
     dnf clean all && \
     rm -rf /tmp/*
 
