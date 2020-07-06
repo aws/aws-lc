@@ -17,7 +17,7 @@ echo "Testing AWS-LC in ${build_type} mode with undefined behavior sanitizer."
 build_and_test -DUBSAN=1 "${cflags[@]}"
 
 if [ $(dpkg --print-architecture) == "arm64" ]; then
-  # ARM MSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/17
+  # ARM MSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/13
   echo "Building AWS-LC in ${build_type} mode with memory sanitizer."
   run_build -DMSAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 else
@@ -26,7 +26,7 @@ else
 fi
 
 if [ $(dpkg --print-architecture) == "amd64" ]; then
-  # x86 TSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/17
+  # x86 TSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/13
   echo "Building AWS-LC in ${build_type} mode with memory sanitizer."
   run_build -DTSAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 else
