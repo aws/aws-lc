@@ -21,9 +21,9 @@ env = {"account": aws_account, "region": aws_region}
 
 # Define AWS ECR stacks.
 # ECR holds the docker images, which are pre-built to accelerate the code builds/tests of git pull requests.
-linux_aarch_ecr_repo = EnvUtil.get("ECR_LINUX_AARCH_REPO_NAME", "aws-lc-docker-img-linux-aarch")
-linux_x86_ecr_repo = EnvUtil.get("ECR_LINUX_X86_REPO_NAME", "aws-lc-docker-img-linux-x86")
-windows_ecr_repo = EnvUtil.get("ECR_WINDOWS_REPO_NAME", "aws-lc-docker-img-windows")
+linux_aarch_ecr_repo = EnvUtil.get("ECR_LINUX_AARCH_REPO_NAME", "aws-lc-test-docker-images-linux-aarch")
+linux_x86_ecr_repo = EnvUtil.get("ECR_LINUX_X86_REPO_NAME", "aws-lc-test-docker-images-linux-x86")
+windows_ecr_repo = EnvUtil.get("ECR_WINDOWS_REPO_NAME", "aws-lc-test-docker-images-windows")
 EcrStack(app, linux_aarch_ecr_repo, env=env)
 EcrStack(app, linux_x86_ecr_repo, env=env)
 EcrStack(app, windows_ecr_repo, env=env)
@@ -33,18 +33,21 @@ linux_docker_img_build_stacks = [
     {
         "id": "aws-lc-test-docker-images-build-linux-aarch",
         "repo_name": linux_aarch_ecr_repo,
+        "env_type": "ARM",
         "build_spec": "linux-aarch-docker-img-build.yml"
     },
     {
         "id": "aws-lc-test-docker-images-build-linux-x86",
         "repo_name": linux_x86_ecr_repo,
+        "env_type": "Linux",
         "build_spec": "linux-x86-docker-img-build.yml"
     }
 ]
 code_build_dir = "./tests/ci/codebuild"
 for stack in linux_docker_img_build_stacks:
     LinuxDockerImagesBuildStack(app, stack["id"], stack["repo_name"],
-                                "./tests/ci/codebuild/{}".format(stack["build_spec"]), env=env)
+                                "./tests/ci/codebuild/{}".format(stack["build_spec"]), env_type=stack["env_type"],
+                                env=env)
 # DIND is not supported on Windows and, therefore, AWS CodeBuild is not used to build Windows Server container images.
 # Windows Docker images are created by running commands in Windows EC2 instance.
 WindowsDockerImageBuildStack(app, "aws-lc-test-docker-images-build-windows", windows_ecr_repo, env=env)
@@ -66,7 +69,7 @@ linux_aarch_test_stacks = [
 ]
 for stack in linux_aarch_test_stacks:
     GitHubCodeBuildStack(app, stack["id"], linux_aarch_ecr_repo, stack["img"],
-                         "./tests/ci/codebuild/{}".format(stack["spec"]), env=env)
+                         "./tests/ci/codebuild/{}".format(stack["spec"]), env_type="ARM", privileged=True, env=env)
 # Define CodeBuild running on Linux x86-64.
 linux_x86_test_stacks = [
     {
@@ -142,27 +145,30 @@ linux_x86_test_stacks = [
 ]
 for stack in linux_x86_test_stacks:
     GitHubCodeBuildStack(app, stack["id"], linux_x86_ecr_repo, stack["img"],
-                         "./tests/ci/codebuild/{}".format(stack["spec"]), env=env)
+                         "./tests/ci/codebuild/{}".format(stack["spec"]), privileged=True, env=env)
 # Define CodeBuild for sanitizer tests.
 linux_sanitizer_test_stacks = [
     {
         "id": "aws-lc-test-ubuntu-19-10--clang-9x--sanitizer",
         "img": "ubuntu-19.10_clang-9x_sanitizer_latest",
         "spec": "ubuntu-19.10_clang-9x_aarch64_sanitizer.yml",
+        "env_type": "ARM",
         "repo": linux_aarch_ecr_repo,
     },
     {
         "id": "aws-lc-test-ubuntu-19-10--clang-9x--x86-64--sanitizer",
         "img": "ubuntu-19.10_clang-9x_sanitizer_latest",
         "spec": "ubuntu-19.10_clang-9x_x86-64_sanitizer.yml",
+        "env_type": "Linux",
         "repo": linux_x86_ecr_repo,
     },
 ]
 for stack in linux_sanitizer_test_stacks:
     GitHubCodeBuildStack(app, stack["id"], stack["repo"], stack["img"],
-                         "./tests/ci/codebuild/{}".format(stack["spec"]), privileged=True, env=env)
+                         "./tests/ci/codebuild/{}".format(stack["spec"]), env_type=stack["env_type"], privileged=True,
+                         env=env)
 # Define CodeBuild running on Windows.
 GitHubCodeBuildStack(app, "aws-lc-test-windows-msvc2015-x64--vs2015", windows_ecr_repo, "vs2015_latest",
-                     "./tests/ci/codebuild/windows-msvc2015-x64.yml", is_windows, env=env)
+                     "./tests/ci/codebuild/windows-msvc2015-x64.yml", env_type="Windows", env=env)
 
 app.synth()

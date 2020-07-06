@@ -16,7 +16,7 @@ class GitHubCodeBuildStack(core.Stack):
                  ecr_repo_name: str,
                  docker_img_tag: str,
                  build_spec_file: str,
-                 is_windows: typing.Optional[bool] = False,
+                 env_type: typing.Optional[str] = 'Linux',
                  privileged: typing.Optional[bool] = False,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -41,7 +41,7 @@ class GitHubCodeBuildStack(core.Stack):
         # Define CodeBuild environment.
         ecr_repo = ecr.Repository.from_repository_name(scope=self, id=ecr_repo_name, repository_name=ecr_repo_name)
         build_image = codebuild.LinuxBuildImage.from_ecr_repository(repository=ecr_repo, tag=docker_img_tag)
-        if is_windows:
+        if env_type is 'Windows':
             build_image = codebuild.WindowsBuildImage.from_ecr_repository(repository=ecr_repo, tag=docker_img_tag)
 
         # Define a role.
@@ -53,7 +53,7 @@ class GitHubCodeBuildStack(core.Stack):
                         ])
 
         # Define CodeBuild.
-        codebuild.Project(
+        build = codebuild.Project(
             scope=self,
             id=id,
             project_name=id,
@@ -63,3 +63,9 @@ class GitHubCodeBuildStack(core.Stack):
                                                    privileged=privileged,
                                                    build_image=build_image),
             build_spec=codebuild.BuildSpec.from_source_filename(build_spec_file))
+
+        if env_type is 'ARM':
+            # Workaround to change environment type.
+            # see: https://github.com/aws/aws-cdk/issues/5517
+            cfn_build = build.node.default_child
+            cfn_build.add_override("Properties.Environment.Type", "ARM_CONTAINER")

@@ -8,7 +8,6 @@ phases:
     commands:
       - export CC=clang-9
       - export CXX=clang++-9
-      - export GO111MODULE=on
-  build:
-    commands:
-      - ./tests/ci/run_posix_sanitizers.sh
+  # build:
+  #   commands:
+  #     - ./tests/ci/run_posix_sanitizers.sh
