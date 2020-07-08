@@ -25,6 +25,11 @@ if [[  "${AWSLC_FIPS}" == "1" ]]; then
   ./test_build_dir/util/fipstools/cavp/test_fips
 fi
 
+if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
+  echo "Testing the C99 compatibility of AWS-LC headers."
+  ./tests/c99_gcc_test.sh
+fi
+
 if [[  "${AWSLC_CODING_GUIDELINES_TEST}" == "1" ]]; then
   echo "Testing that AWS-LC is compliant with the coding guidelines."
   source ./tests/coding_guidelines/coding_guidelines_test.sh
