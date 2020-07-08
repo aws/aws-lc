@@ -1,0 +1,18 @@
+Index: aws-lc/third_party/boringssl/CMakeLists.txt
+===================================================================
+--- aws-lc.orig/third_party/boringssl/CMakeLists.txt
++++ aws-lc/third_party/boringssl/CMakeLists.txt
+@@ -620,10 +620,10 @@ endif()
+ add_custom_target(
+     run_tests
+     COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+-            ${CMAKE_BINARY_DIR}
++            ${CMAKE_CURRENT_BINARY_DIR}
+     COMMAND cd ssl/test/runner &&
+             ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
+-              ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
++            ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
++    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+     DEPENDS all_tests bssl_shim handshaker
+     USES_TERMINAL)
