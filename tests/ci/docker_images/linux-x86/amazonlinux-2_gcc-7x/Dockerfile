@@ -5,6 +5,11 @@ FROM amazonlinux:2
 
 SHELL ["/bin/bash", "-c"]
 
+# Enable the EPEL repository on Amazon Linux 2
+# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/add-repositories.html
+RUN set -ex && \
+    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
 # gcc 7.3.1 is the latest version versions `yum --showduplicates list gcc`
 RUN set -ex && \
     yum -y update && yum install -y \
