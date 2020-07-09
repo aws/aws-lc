@@ -16,6 +16,7 @@ RUN set -ex && \
     perl \
     libunwind-dev \
     pkg-config \
+    quilt \
     ca-certificates \
     wget && \
     cd /tmp && \
