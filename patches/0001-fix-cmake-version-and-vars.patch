@@ -2,6 +2,12 @@ Index: aws-lc/third_party/boringssl/CMakeLists.txt
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/CMakeLists.txt
 +++ aws-lc/third_party/boringssl/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.3)
++cmake_minimum_required(VERSION 2.8.12)
+ 
+ # Defer enabling C and CXX languages.
+ project(BoringSSL NONE)
 @@ -620,10 +620,10 @@ endif()
  add_custom_target(
      run_tests
