@@ -1,3 +1,4 @@
 0001-fix-cmake-version-and-vars.patch
 0002-cmake-install-config.patch
 0003-c99-compliant.patch
+0004-disable-urandom-test-docker.patch
