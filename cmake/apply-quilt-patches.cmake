@@ -5,6 +5,10 @@ find_program(QUILT_EXECUTABLE
     DOC ${_doc}
     )
 
+if(NOT QUILT_EXECUTABLE)
+    message(FATAL_ERROR "Unable to find quilt executable")
+endif()
+
 # Display list of patches being applied
 execute_process(
     COMMAND ${QUILT_EXECUTABLE} series -v
