@@ -13,10 +13,28 @@ Index: aws-lc/third_party/boringssl/CMakeLists.txt
  
  function(go_executable dest package)
 -  set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
-+  set(godeps "${CMAKE_CURRENT_SOURCE_DIR}/util/godeps.go")
++  set(godeps "${BoringSSL_SOURCE_DIR}/util/godeps.go")
    if(${CMAKE_VERSION} VERSION_LESS "3.7" OR
       NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
      # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
+@@ -423,7 +423,7 @@ function(go_executable dest package)
+                        COMMAND ${GO_EXECUTABLE} build
+                                -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
+                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-                       DEPENDS ${sources} ${CMAKE_SOURCE_DIR}/go.mod)
++                       DEPENDS ${sources} ${BoringSSL_SOURCE_DIR}/go.mod)
+   else()
+     # Ninja expects the target in the depfile to match the output. This is a
+     # relative path from the build directory.
+@@ -439,7 +439,7 @@ function(go_executable dest package)
+                        COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
+                                -target ${target} -pkg ${package} -out ${depfile}
+                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-                       DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
++                       DEPENDS ${godeps} ${BoringSSL_SOURCE_DIR}/go.mod
+                        DEPFILE ${depfile})
+   endif()
+ endfunction()
 @@ -620,10 +620,10 @@ endif()
  add_custom_target(
      run_tests
