@@ -8,7 +8,7 @@ function run_build {
   cd test_build_dir || exit 1
 
   if [[ "${AWSLC_32BIT}" == "1" ]]; then
-    cflags+=("-DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake")
+    cflags+=("-DCMAKE_TOOLCHAIN_FILE=../third_party/boringssl/util/32-bit-toolchain.cmake")
   fi
 
   if [[ -x "$(command -v ninja)" ]]; then
