@@ -2,3 +2,4 @@
 0002-cmake-install-config.patch
 0003-c99-compliant.patch
 0004-disable-urandom-test-docker.patch
+0005-fix-ssl-test-runner-output.patch
