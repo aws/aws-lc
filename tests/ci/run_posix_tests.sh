@@ -22,7 +22,7 @@ run_build -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
 if [[  "${AWSLC_FIPS}" == "1" ]]; then
   echo "Testing AWS-LC in FIPS release mode."
   build_and_test -DFIPS=1 -DCMAKE_BUILD_TYPE=Release
-  ./test_build_dir/util/fipstools/cavp/test_fips
+  ./test_build_dir/third_party/boringssl/util/fipstools/cavp/test_fips
 fi
 
 if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
