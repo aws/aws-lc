@@ -1,0 +1,50 @@
+Index: aws-lc/third_party/boringssl/include/openssl/sha.h
+===================================================================
+--- aws-lc.orig/third_party/boringssl/include/openssl/sha.h
++++ aws-lc/third_party/boringssl/include/openssl/sha.h
+@@ -97,22 +97,7 @@ OPENSSL_EXPORT void SHA1_Transform(SHA_C
+                                    const uint8_t block[SHA_CBLOCK]);
+ 
+ struct sha_state_st {
+-#if defined(OPENSSL_WINDOWS)
+   uint32_t h[5];
+-#else
+-  // wpa_supplicant accesses |h0|..|h4| so we must support those names
+-  // for compatibility with it until it can be updated.
+-  union {
+-    uint32_t h[5];
+-    struct {
+-      uint32_t h0;
+-      uint32_t h1;
+-      uint32_t h2;
+-      uint32_t h3;
+-      uint32_t h4;
+-    };
+-  };
+-#endif
+   uint32_t Nl, Nh;
+   uint8_t data[SHA_CBLOCK];
+   unsigned num;
+Index: aws-lc/third_party/boringssl/include/openssl/srtp.h
+===================================================================
+--- aws-lc.orig/third_party/boringssl/include/openssl/srtp.h
++++ /dev/null
+@@ -1,18 +0,0 @@
+-/* Copyright (c) 2015, Google Inc.
+- *
+- * Permission to use, copy, modify, and/or distribute this software for any
+- * purpose with or without fee is hereby granted, provided that the above
+- * copyright notice and this permission notice appear in all copies.
+- *
+- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+-
+-/* This header is provided in order to make compiling against code that expects
+-   OpenSSL easier. */
+-
+-#include "ssl.h"
