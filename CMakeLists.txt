@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 
 # Defer enabling C and CXX languages.
-project(BoringSSL NONE)
+project(AWSLC NONE)
 
 if(WIN32)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -640,4 +640,3 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests bssl_shim handshaker
     ${MAYBE_USES_TERMINAL})
-
