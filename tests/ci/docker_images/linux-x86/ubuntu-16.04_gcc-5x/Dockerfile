@@ -18,6 +18,7 @@ RUN set -ex && \
     cmake \
     ninja-build \
     perl \
+    quilt \
     ca-certificates \
     wget && \
     cd /tmp && \
