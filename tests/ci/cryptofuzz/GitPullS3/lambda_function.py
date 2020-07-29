@@ -192,32 +192,32 @@ def lambda_handler(event, context):
                          'assignPublicIp': 'ENABLED'
                      }
                  })
-    # ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
-    #              launchType='FARGATE',
-    #              taskDefinition=os.environ['FEDORA_X86'],
-    #              count=1,
-    #              platformVersion='1.4.0',
-    #              networkConfiguration={
-    #                  'awsvpcConfiguration': {
-    #                      'subnets': [
-    #                          os.environ["SUBNET_ID"]
-    #                      ],
-    #                      'assignPublicIp': 'ENABLED'
-    #                  }
-    #              })
-    # ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
-    #              launchType='FARGATE',
-    #              taskDefinition=os.environ['UBUNTU_AARCH'],
-    #              count=1,
-    #              platformVersion='1.4.0',
-    #              networkConfiguration={
-    #                  'awsvpcConfiguration': {
-    #                      'subnets': [
-    #                          os.environ['SUBNET_ID']
-    #                      ],
-    #                      'assignPublicIp': 'ENABLED'
-    #                  }
-    #              })
+    ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
+                 launchType='FARGATE',
+                 taskDefinition=os.environ['FEDORA_X86'],
+                 count=1,
+                 platformVersion='1.4.0',
+                 networkConfiguration={
+                     'awsvpcConfiguration': {
+                         'subnets': [
+                             os.environ["SUBNET_ID"]
+                         ],
+                         'assignPublicIp': 'ENABLED'
+                     }
+                 })
+    ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
+                 launchType='FARGATE',
+                 taskDefinition=os.environ['UBUNTU_AARCH'],
+                 count=1,
+                 platformVersion='1.4.0',
+                 networkConfiguration={
+                     'awsvpcConfiguration': {
+                         'subnets': [
+                             os.environ['SUBNET_ID']
+                         ],
+                         'assignPublicIp': 'ENABLED'
+                     }
+                 })
     if cleanup:
         logger.info('Cleanup Lambda container...')
         shutil.rmtree(repo_path)
