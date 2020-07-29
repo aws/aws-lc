@@ -15,7 +15,6 @@ class ReportStack(core.Stack):
         super().__init__(scope, id, **kwargs)
 
         # Fetch environment variables.
-        corpus_bucket = EnvUtil.get("CORPUS_BUCKET", "cryptofuzz-corpus-bucket")
         report_bucket = EnvUtil.get("REPORT_BUCKET", "cryptofuzz-report-bucket")
         interesting_input_bucket = EnvUtil.get("INTERESTING_INPUT_BUCKET", "cryptofuzz-interesting-input-bucket")
         commit_secret_name = EnvUtil.get("COMMIT_SECRET_NAME", "CommitID")
@@ -23,10 +22,6 @@ class ReportStack(core.Stack):
         fedora_x86 = EnvUtil.get("FEDORA_X86", "aws-lc-cryptofuzz-ubuntu-19-10--x86--clang-9x-sanitizer")
         ubuntu_aarch = EnvUtil.get("UBUNTU_AARCH", "aws-lc-cryptofuzz-ubuntu-19-10--x86--clang-9x-sanitizer")
         aws_account = EnvUtil.get("CDK_DEPLOY_ACCOUNT", "923900853817")
-
-        # Create the S3 bucket for the corpus
-        s3_corpus_bucket = s3.Bucket(self, corpus_bucket,
-                                     bucket_name=corpus_bucket)
 
         # Create the S3 bucket for the reports
         s3_report_bucket = s3.Bucket(self, report_bucket,
@@ -43,7 +38,6 @@ class ReportStack(core.Stack):
                                          handler="lambda_function.lambda_handler",
                                          environment={
                                              "REPORT_BUCKET": report_bucket,
-                                             "CORPUS_BUCKET": corpus_bucket,
                                              "INTERESTING_INPUT_BUCKET": interesting_input_bucket,
                                              "COMMIT_SECRET_NAME": commit_secret_name,
                                              "UBUNTU_X86": ubuntu_x86,
@@ -61,7 +55,6 @@ class ReportStack(core.Stack):
 
         # Granting S3 permissions to the report lambda
         s3_report_bucket.grant_read_write(report_lambda)
-        s3_corpus_bucket.grant_read_write(report_lambda)
         s3_interesting_input_bucket.grant_read_write(report_lambda)
         commit_secret.grant_read(report_lambda)
 

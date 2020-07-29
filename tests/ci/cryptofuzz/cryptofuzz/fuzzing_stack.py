@@ -156,39 +156,39 @@ class FuzzingStack(core.Stack):
             logging=ecs.LogDrivers.aws_logs(stream_prefix=fedora_x86)
         )
 
-        # aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__task_definition = \
-        #     ecs.TaskDefinition(self, ubuntu_aarch,
-        #                        family=ubuntu_aarch,
-        #                        compatibility=ecs.Compatibility.FARGATE,
-        #                        cpu="4096",
-        #                        memory_mib="30720",
-        #                        task_role=task_role,
-        #                        execution_role=execution_role)
-        #
-        # # Create linux parameters to allow docker container to run with special permissions
-        # aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__linux_parameters = \
-        #     ecs.LinuxParameters(self, "aws-lc-cryptofuzz-ubuntu-19-10--aarch--clang-9x_sanitizer--linux_parameters")
-        #
-        # aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__linux_parameters\
-        #     .add_capabilities(ecs.Capability.SYS_PTRACE)
-        #
-        # # Build docker image to use for task definition
-        # aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__task_definition.add_container(
-        #     ubuntu_aarch,
-        #     image=ecs.ContainerImage.from_asset("../docker_images/linux-aarch/cryptofuzz_ubuntu-19.10_clang-9x_sanitizer"),
-        #     linux_parameters=aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__linux_parameters,
-        #     environment={
-        #         "REPO_NAME": github_repo,
-        #         "REPO_OWNER": github_repo_owner,
-        #         "GITHUB_CODE_BUCKET": github_code_bucket,
-        #         "CORPUS_BUCKET": corpus_bucket,
-        #         "INTERESTING_INPUT_BUCKET": interesting_input_bucket,
-        #         "COMMIT_SECRET_NAME": commit_secret_name,
-        #         "BUILD_CONFIGURATION": ubuntu_aarch,
-        #         "CRYPTOFUZZ_DEP_BUCKET": cryptofuzz_dep_bucket
-        #     },
-        #     logging=ecs.LogDrivers.aws_logs(stream_prefix=ubuntu_aarch)
-        # )
+        aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__task_definition = \
+            ecs.TaskDefinition(self, ubuntu_aarch,
+                               family=ubuntu_aarch,
+                               compatibility=ecs.Compatibility.FARGATE,
+                               cpu="4096",
+                               memory_mib="30720",
+                               task_role=task_role,
+                               execution_role=execution_role)
+
+        # Create linux parameters to allow docker container to run with special permissions
+        aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__linux_parameters = \
+            ecs.LinuxParameters(self, "aws-lc-cryptofuzz-ubuntu-19-10--aarch--clang-9x_sanitizer--linux_parameters")
+
+        aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__linux_parameters\
+            .add_capabilities(ecs.Capability.SYS_PTRACE)
+
+        # Build docker image to use for task definition
+        aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__task_definition.add_container(
+            ubuntu_aarch,
+            image=ecs.ContainerImage.from_asset("../docker_images/linux-aarch/cryptofuzz_ubuntu-19.10_clang-9x_sanitizer"),
+            linux_parameters=aws_lc_cryptofuzz_ubuntu_19_10__aarch__clang_9x_sanitizer__linux_parameters,
+            environment={
+                "REPO_NAME": github_repo,
+                "REPO_OWNER": github_repo_owner,
+                "GITHUB_CODE_BUCKET": github_code_bucket,
+                "CORPUS_BUCKET": corpus_bucket,
+                "INTERESTING_INPUT_BUCKET": interesting_input_bucket,
+                "COMMIT_SECRET_NAME": commit_secret_name,
+                "BUILD_CONFIGURATION": ubuntu_aarch,
+                "CRYPTOFUZZ_DEP_BUCKET": cryptofuzz_dep_bucket
+            },
+            logging=ecs.LogDrivers.aws_logs(stream_prefix=ubuntu_aarch)
+        )
 
         # Create ECS cluster
         cluster = ecs.Cluster(self, fargate_cluster_name,

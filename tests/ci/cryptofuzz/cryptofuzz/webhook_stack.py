@@ -30,16 +30,13 @@ class WebhookStack(core.Stack):
         pub_key_secret_name = EnvUtil.get("PUBLIC_KEY_SECRET_NAME", "PublicSSHKey")
         commit_secret_name = EnvUtil.get("COMMIT_SECRET_NAME", "CommitID")
         fargate_cluster_name = EnvUtil.get("FARGATE_CLUSTER_NAME", "fargate-cryptofuzz-cluster")
-        corpus_bucket = EnvUtil.get("CORPUS_BUCKET", "cryptofuzz-corpus-bucket")
         report_bucket = EnvUtil.get("REPORT_BUCKET", "cryptofuzz-report-bucket")
         ubuntu_x86 = EnvUtil.get("UBUNTU_X86", "aws-lc-cryptofuzz-ubuntu-19-10--x86--clang-9x-sanitizer")
         fedora_x86 = EnvUtil.get("FEDORA_X86", "aws-lc-cryptofuzz-ubuntu-19-10--x86--clang-9x-sanitizer")
         ubuntu_aarch = EnvUtil.get("UBUNTU_AARCH", "aws-lc-cryptofuzz-ubuntu-19-10--x86--clang-9x-sanitizer")
         interesting_input_bucket = EnvUtil.get("INTERESTING_INPUT_BUCKET", "cryptofuzz-interesting-input-bucket")
         gen_corpus_container_name = EnvUtil.get("GEN_CORPUS_CONTAINER_NAME", "gen_corpus_container")
-        gen_corpus_image = EnvUtil.get("GEN_CORPUS_IMAGE", "gen_corpus_image")
         corpus_volume = EnvUtil.get("CORPUS_VOLUME", "corpus_volume")
-        corpus_file_system_id = EnvUtil.get("CORPUS_FILE_SYSTEM_ID", "corpus-file-system-id")
         security_group_name = EnvUtil.get("SECURITY_GROUP_NAME", "security-group")
 
         # Set up a secret to hold the private SSH key
@@ -75,7 +72,6 @@ class WebhookStack(core.Stack):
 
         # Creating EFS filesystem to store corpus
         file_system = efs.FileSystem(self, "Corpus File System",
-                                     file_system_name=corpus_file_system_id,
                                      vpc=self.vpc,
                                      encrypted=True,
                                      security_group=security_group)
@@ -149,16 +145,16 @@ class WebhookStack(core.Stack):
 
         # Set up Lambda function for handling SSH key generation
         ssh_handler = lambda_.Function(self, "SSH Handler",
-                                       runtime=lambda_.Runtime.PYTHON_2_7,
+                                       runtime=lambda_.Runtime.PYTHON_3_7,
                                        code=lambda_.Code.from_asset("CreateSSHKey"),
                                        handler="lambda_function.lambda_handler",
                                        environment={
                                            "PRIVATE_KEY_SECRET_NAME": priv_key_secret_name,
                                            "PUBLIC_KEY_SECRET_NAME": pub_key_secret_name,
                                            "GEN_CORPUS_CONTAINER_NAME": gen_corpus_container_name,
-                                           "GEN_CORPUS_IMAGE": corpus_gen_ecr_repo.to_string(),
+                                           "GEN_CORPUS_IMAGE": corpus_gen_ecr_repo.repository_uri,
                                            "CORPUS_VOLUME": corpus_volume,
-                                           "CORPUS_FILE_SYSTEM_ID": corpus_file_system_id,
+                                           "CORPUS_FILE_SYSTEM_ID": file_system.file_system_id,
                                            "SUBNET_ID": subnets[0],
                                            "FARGATE_CLUSTER_NAME": fargate_cluster_name,
                                            "SECURITY_GROUP_NAME": security_group_name
@@ -178,9 +174,9 @@ class WebhookStack(core.Stack):
         ssh_handler_ref = core.Reference(value="SSH Handler Ref",
                                          target=ssh_handler)
 
-        # Make SSH Public Key part of the output of the Cloud Formation stack
-        public_key = core.CfnOutput(self, "Public Key",
-                                    value=ssh_handler_ref.to_string())  # Doesn't actually work, need to change
+        # Make SSH Public Key secret name a part of the output of the Cloud Formation stack
+        public_key = core.CfnOutput(self, "Pulic Key Secret Name",
+                                    value=pub_key_secret_name)
 
         git_handler_role = iam.Role(self, "Git Handler Role",
                                     assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -192,7 +188,7 @@ class WebhookStack(core.Stack):
 
         # Set up Lambda function for handling zipping up code and running ECS tasks
         git_handler = lambda_.Function(self, "Webhook Handler",
-                                       runtime=lambda_.Runtime.PYTHON_2_7,
+                                       runtime=lambda_.Runtime.PYTHON_3_7,
                                        code=lambda_.Code.from_asset("GitPullS3"),
                                        handler="lambda_function.lambda_handler",
                                        environment={
@@ -200,7 +196,6 @@ class WebhookStack(core.Stack):
                                            "PRIVATE_KEY_SECRET_NAME": priv_key_secret_name,
                                            "PUBLIC_KEY_SECRET_NAME": pub_key_secret_name,
                                            "FARGATE_CLUSTER_NAME": fargate_cluster_name,
-                                           "CORPUS_BUCKET": corpus_bucket,
                                            "INTERESTING_INPUT_BUCKET": interesting_input_bucket,
                                            "REPORT_BUCKET": report_bucket,
                                            "UBUNTU_X86": ubuntu_x86,
@@ -227,11 +222,10 @@ class WebhookStack(core.Stack):
 
         # Attach Lambda Function to API Gateway
         get_webhook_integration = \
-            apigateway.LambdaIntegration(git_handler,
-                                         request_templates={"application/json": '{"statusCode": "200"}'},
-                                         integration_responses=[
-                                             apigateway.IntegrationResponse(status_code="200")
-                                         ])
+            apigateway.LambdaIntegration(git_handler)
 
         # Allow HTTP POST requests
-        api.root.add_method("POST", get_webhook_integration)
+        api.root.add_method("POST", get_webhook_integration,
+                            method_responses=[
+                                apigateway.MethodResponse(status_code="200")
+                            ])

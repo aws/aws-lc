@@ -12,14 +12,10 @@ import json
 import stat
 import shutil
 from zipfile import ZipFile
-from ipaddress import ip_network, ip_address
+import ipaddress
 import logging
-import hmac
-import hashlib
-import distutils.util
 
 # If true the function will not include .git folder in the zip
-# exclude_git = bool(distutils.util.strtobool(os.environ['ExcludeGit']))
 exclude_git = False
 
 # If true the function will delete all files at the end of each invocation, useful if you run into storage space
@@ -38,6 +34,7 @@ s3 = client('s3')
 kms = client('kms')
 secrets_manager = client('secretsmanager')
 ecs = client('ecs')
+
 
 def write_key(filename, contents):
     logger.info('Writing keys to /tmp/...')
@@ -117,16 +114,16 @@ def zip_repo(repo_path, repo_name):
     zf.close()
     return '/tmp/'+repo_name.replace('/', '_')+'.zip'
 
-def push_s3(filename, repo_name, branch_name, outputbucket):
+
+def push_s3(filename, repo_name, outputbucket):
     s3key = '%s/%s' % (repo_name, filename.replace('/tmp/', ''))
     logger.info('pushing zip to s3://%s/%s' % (outputbucket, s3key))
     data = open(filename, 'rb')
     s3.put_object(Bucket=outputbucket, Body=data, Key=s3key)
     logger.info('Completed S3 upload...')
 
+
 def lambda_handler(event, context):
-    # keybucket = event['context']['key-bucket']
-    # outputbucket = event['context']['output-bucket']
     logger.info("Event %s", event)
     outputbucket = os.environ['GITHUB_CODE_BUCKET']
     commit_id = json.loads(event['body'])['after']
@@ -138,48 +135,25 @@ def lambda_handler(event, context):
     os.system(command)
     s3.put_object(Bucket=os.environ['INTERESTING_INPUT_BUCKET'],
                   Key=path)
-    # pubkey = event['context']['public-key']
 
-    # Source IP ranges to allow requests from, if the IP is in one of these the request will not be chacked for an api key
-    # Add all the GitHub Webhook IP addresses
-    iprange = [ip_address(u'192.30.252.0'),
-               ip_address(u'185.199.108.0'),
-               ip_address(u'140.82.112.0')]  # Doesn't quite work, should look at other lambda to see how things are formatted
+    # Add all the GitHub Webhook IP ranges in CIDR notation
+    ipranges_cidr = ['192.30.252.0/22',
+                     '185.199.108.0/22',
+                     '140.82.112.0/20']
 
-    # for i in event['context']['allowed-ips'].split(','):
-    #     ipranges.append(ip_network(u'%s' % i))
-    # APIKeys, it is recommended to use a different API key for each repo that uses this function
-    # apikeys = event['context']['api-secrets'].split(',')
+    # Convert CIDR notation to IP ranges
+    valid_ips = []
+    for cidr in ipranges_cidr:
+        valid_ips.extend([ip for ip in ipaddress.ip_network(cidr)])
 
-    # ip = ip_address(event['requestContext']['identity']['sourceIp'])
-    # secure = False
-    # for cur in iprange:
-    #     if cur == ip:
-    #         secure = True
+    ip = ipaddress.ip_address(event['requestContext']['identity']['sourceIp'])
+    secure = False
+    for cur in valid_ips:
+        if cur == ip:
+            secure = True
 
-    secure = True
-    try:
-        # GitHub
-        full_name = json.loads(event['body'])['repository']['full_name']
-    except KeyError:
-        try:
-            # BitBucket #14
-            full_name = json.loads(event['body'])['repository']['fullName']
-        except KeyError:
-            try:
-                # GitLab
-                full_name = json.loads(event['body'])['repository']['path_with_namespace']
-            except KeyError:
-                try:
-                    # GitLab 8.5+
-                    full_name = json.loads(event['body'])['project']['path_with_namespace']
-                except KeyError:
-                    try:
-                        # BitBucket server
-                        full_name = json.loads(event['body'])['repository']['name']
-                    except KeyError:
-                        # BitBucket pull-request
-                        full_name = json.loads(event['body'])['pullRequest']['fromRef']['repository']['name']
+    # GitHub
+    full_name = json.loads(event['body'])['repository']['full_name']
     if not secure:
         logger.error('Source IP %s is not allowed' % event['requestContext']['identity']['sourceIp'])
         raise Exception('Source IP %s is not allowed' % event['requestContext']['identity']['sourceIp'])
@@ -190,39 +164,9 @@ def lambda_handler(event, context):
         repo_name = full_name + '/release'
     else:
         repo_name = full_name
-        try:
-            # branch names should contain [name] only, tag names - "tags/[name]"
-            branch_name = json.loads(event['body'])['ref'].replace('refs/heads/', '').replace('refs/tags/', 'tags/')
-        except KeyError:
-            try:
-                # Bibucket server
-                branch_name = json.loads(event['body'])['push']['changes'][0]['new']['name']
-            except:
-                branch_name = 'master'
-    try:
-        # GitLab
-        remote_url = json.loads(event['body'])['project']['git_ssh_url']
-    except Exception:
-        try:
-            remote_url = 'git@'+json.loads(event['body'])['repository']['links']['html']['href'].replace('https://', '').replace('/', ':', 1)+'.git'
-        except:
-            try:
-                # GitHub
-                remote_url = json.loads(event['body'])['repository']['ssh_url']
-            except:
-                # Bitbucket
-                try:
-                    for i, url in enumerate(json.loads(event['body'])['repository']['links']['clone']):
-                        if url['name'] == 'ssh':
-                            ssh_index = i
-                    remote_url = json.loads(event['body'])['repository']['links']['clone'][ssh_index]['href']
-                except:
-                    # BitBucket pull-request
-                    for i, url in enumerate(json.loads(event['body'])['pullRequest']['fromRef']['repository']['links']['clone']):
-                        if url['name'] == 'ssh':
-                            ssh_index = i
 
-                    remote_url = json.loads(event['body'])['pullRequest']['fromRef']['repository']['links']['clone'][ssh_index]['href']
+    # GitHub
+    remote_url = json.loads(event['body'])['repository']['ssh_url']
     repo_path = '/tmp/%s' % repo_name
     creds = RemoteCallbacks(credentials=get_keys(), )
     try:
@@ -232,7 +176,7 @@ def lambda_handler(event, context):
     except Exception:
         logger.info('creating new repo for %s in %s' % (remote_url, repo_path))
         repo = create_repo(repo_path, remote_url, creds)
-    pull_repo(repo, branch_name, remote_url, creds)
+    pull_repo(repo, remote_url, creds)
     zipfile = zip_repo(repo_path, repo_name)
     push_s3(zipfile, repo_name, branch_name, outputbucket)
     ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
@@ -248,32 +192,32 @@ def lambda_handler(event, context):
                          'assignPublicIp': 'ENABLED'
                      }
                  })
-    ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
-                 launchType='FARGATE',
-                 taskDefinition=os.environ['FEDORA_X86'],
-                 count=1,
-                 platformVersion='1.4.0',
-                 networkConfiguration={
-                     'awsvpcConfiguration': {
-                         'subnets': [
-                             os.environ["SUBNET_ID"]
-                         ],
-                         'assignPublicIp': 'ENABLED'
-                     }
-                 })
-    ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
-                 launchType='FARGATE',
-                 taskDefinition=os.environ['UBUNTU_AARCH'],
-                 count=1,
-                 platformVersion='1.4.0',
-                 networkConfiguration={
-                     'awsvpcConfiguration': {
-                         'subnets': [
-                             os.environ['SUBNET_ID']
-                         ],
-                         'assignPublicIp': 'ENABLED'
-                     }
-                 })
+    # ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
+    #              launchType='FARGATE',
+    #              taskDefinition=os.environ['FEDORA_X86'],
+    #              count=1,
+    #              platformVersion='1.4.0',
+    #              networkConfiguration={
+    #                  'awsvpcConfiguration': {
+    #                      'subnets': [
+    #                          os.environ["SUBNET_ID"]
+    #                      ],
+    #                      'assignPublicIp': 'ENABLED'
+    #                  }
+    #              })
+    # ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
+    #              launchType='FARGATE',
+    #              taskDefinition=os.environ['UBUNTU_AARCH'],
+    #              count=1,
+    #              platformVersion='1.4.0',
+    #              networkConfiguration={
+    #                  'awsvpcConfiguration': {
+    #                      'subnets': [
+    #                          os.environ['SUBNET_ID']
+    #                      ],
+    #                      'assignPublicIp': 'ENABLED'
+    #                  }
+    #              })
     if cleanup:
         logger.info('Cleanup Lambda container...')
         shutil.rmtree(repo_path)
