@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="a0c9e6f7-6e7e-4120-9f55-dcb1f09fc9c2" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/lambda_function.py" beforeDir="false" afterPath="$PROJECT_DIR$/lambda_function.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/LICENCE.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/LICENCE.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/NOTICE.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/NOTICE.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/THIRD_PARTY_LICENSES.md" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/THIRD_PARTY_LICENSES.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/_cffi_errors.h" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/_cffi_errors.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/_cffi_include.h" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/_cffi_include.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/_embedding.h" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/_embedding.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/backend_ctypes.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/backend_ctypes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/cffi_opcode.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/cffi_opcode.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/commontypes.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/commontypes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/cparser.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/cparser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/error.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/error.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/ffiplatform.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/ffiplatform.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/lock.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/lock.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/parse_c_type.h" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/parse_c_type.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/recompiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/recompiler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/setuptools_ext.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/setuptools_ext.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/vengine_cpy.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/vengine_cpy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/vengine_gen.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/vengine_gen.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/cffi/verifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/cffi/verifier.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/ipaddress.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/ipaddress.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/lambda_function.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/lambda_function.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/libgit2.tar.gz" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/libgit2.tar.gz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/_ast_gen.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/_ast_gen.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/_build_tables.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/_build_tables.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/_c_ast.cfg" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/_c_ast.cfg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/ast_transforms.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/ast_transforms.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/c_ast.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/c_ast.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/c_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/c_generator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/c_lexer.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/c_lexer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/c_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/c_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/lextab.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/lextab.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/cpp.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/cpp.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/ctokens.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/ctokens.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/lex.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/lex.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/yacc.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/yacc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/ygen.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/ply/ygen.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/plyparser.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/plyparser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pycparser/yacctab.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pycparser/yacctab.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/_build.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/_build.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/_run.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/_run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/blame.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/blame.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/credentials.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/credentials.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/decl.h" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/decl.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/errors.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/errors.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/ffi.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/ffi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/index.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/index.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/py2.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/py2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/py3.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/py3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/refspec.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/refspec.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/remote.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/remote.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/repository.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/repository.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/submodule.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/submodule.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/pygit2/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/pygit2/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GitPullS3/six.py" beforeDir="false" afterPath="$PROJECT_DIR$/../GitPullS3/six.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../../.." />
+  </component>
+  <component name="ProjectId" id="1f0e9TphCrvt0wlNd2delK5PqYI" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a0c9e6f7-6e7e-4120-9f55-dcb1f09fc9c2" name="Default Changelist" comment="" />
+      <created>1595359285604</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1595359285604</updated>
+    </task>
+    <servers />
+  </component>
+</project>
