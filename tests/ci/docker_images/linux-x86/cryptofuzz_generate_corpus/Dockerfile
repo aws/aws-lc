@@ -7,8 +7,8 @@ SHELL ["/bin/bash", "-c"]
 
 COPY . .
 
+# Install dependencies
 RUN set -ex && \
-    apt -o APT::Sandbox::User=root update && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
@@ -73,8 +73,8 @@ ENV CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_NO_OPENSSL"
 # Set fuzzer in environment variable
 ENV LIBFUZZER_LINK="-fsanitize=fuzzer"
 
-CMD chmod +x cryptofuzz.sh && \
-    cd /aws-lc-cryptofuzz/ && \
+# Generate corpus
+CMD cd /aws-lc-cryptofuzz/ && \
     make && \
     mkdir /mount/efs/corpus/ && \
     ./generate_corpus /mount/efs/corpus/

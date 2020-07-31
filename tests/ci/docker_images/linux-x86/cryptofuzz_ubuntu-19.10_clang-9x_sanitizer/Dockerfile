@@ -60,13 +60,10 @@ RUN set -ex && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
+# Install aws cli
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip -q awscliv2.zip && \
     ./aws/install
-
-# Bucket name may need to be find-replaced later on (can do it in the bash script)
-# RUN aws s3 cp s3://cryptofuzz-dep-bucket/cryptofuzz.sh . && \
-#     aws s3 cp s3://cryptofuzz-dep-bucket/aws-lc-cryptofuzz ./aws-lc-cryptofuzz/ --recursive
 
 # Set environment variables for building
 ENV CC=clang-9
@@ -249,8 +246,6 @@ ENV CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_LINUX"
 ENV LIBKCAPI_A_PATH=/libkcapi/.libs/libkcapi.a
 ENV LIBKCAPI_INCLUDE_PATH=/libkcapi/lib
 ENV CPATH=$CPATH:$LIBKCAPI_INCLUDE_PATH
-
-RUN echo $CPATH
 
 # Build linux crypto api module within aws-lc-cryptofuzz
 RUN cd aws-lc-cryptofuzz/modules/linux/ && \
