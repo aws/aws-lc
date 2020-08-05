@@ -8,11 +8,9 @@
 from pygit2 import Keypair, discover_repository, Repository, clone_repository, RemoteCallbacks
 from boto3 import client
 import os
-import json
 import stat
 import shutil
 from zipfile import ZipFile
-import ipaddress
 import logging
 
 # If true the function will not include .git folder in the zip
@@ -126,7 +124,7 @@ def push_s3(filename, repo_name, outputbucket):
 def lambda_handler(event, context):
     logger.info("Event %s", event)
     outputbucket = os.environ['GITHUB_CODE_BUCKET']
-    commit_id = json.loads(event['body'])['after']
+    commit_id = event['after']
     secrets_manager.put_secret_value(SecretId=os.environ['COMMIT_SECRET_NAME'],
                                      SecretString=commit_id)
 
@@ -136,37 +134,23 @@ def lambda_handler(event, context):
     s3.put_object(Bucket=os.environ['INTERESTING_INPUT_BUCKET'],
                   Key=path)
 
-    # Add all the GitHub Webhook IP ranges in CIDR notation
-    ipranges_cidr = ['192.30.252.0/22',
-                     '185.199.108.0/22',
-                     '140.82.112.0/20']
-
-    # Convert CIDR notation to IP ranges
-    valid_ips = []
-    for cidr in ipranges_cidr:
-        valid_ips.extend([ip for ip in ipaddress.ip_network(cidr)])
-
-    ip = ipaddress.ip_address(event['requestContext']['identity']['sourceIp'])
-    secure = False
-    for cur in valid_ips:
-        if cur == ip:
-            secure = True
-
     # GitHub
-    full_name = json.loads(event['body'])['repository']['full_name']
-    if not secure:
-        logger.error('Source IP %s is not allowed' % event['requestContext']['identity']['sourceIp'])
-        raise Exception('Source IP %s is not allowed' % event['requestContext']['identity']['sourceIp'])
+    full_name = event['repository']['full_name']
 
     # GitHub publish event
-    if('action' in json.loads(event['body']) and json.loads(event['body'])['action'] == 'published'):
-        branch_name = 'tags/%s' % json.loads(event['body'])['release']['tag_name']
+    if ('action' in event and event['action'] == 'published'):
+        branch_name = 'tags/%s' % event['release']['tag_name']
         repo_name = full_name + '/release'
     else:
         repo_name = full_name
+        try:
+            # branch names should contain [name] only, tag names - "tags/[name]"
+            branch_name = event['ref'].replace('refs/heads/', '').replace('refs/tags/', 'tags/')
+        except KeyError:
+            branch_name = 'master'
 
     # GitHub
-    remote_url = json.loads(event['body'])['repository']['ssh_url']
+    remote_url = event['repository']['ssh_url']
     repo_path = '/tmp/%s' % repo_name
     creds = RemoteCallbacks(credentials=get_keys(), )
     try:
@@ -176,9 +160,11 @@ def lambda_handler(event, context):
     except Exception:
         logger.info('creating new repo for %s in %s' % (remote_url, repo_path))
         repo = create_repo(repo_path, remote_url, creds)
-    pull_repo(repo, remote_url, creds)
+    pull_repo(repo, branch_name, remote_url, creds)
     zipfile = zip_repo(repo_path, repo_name)
-    push_s3(zipfile, repo_name, branch_name, outputbucket)
+    push_s3(zipfile, repo_name, outputbucket)
+
+    # Run tasks corresponding to each of the build configurations
     ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
                  launchType='FARGATE',
                  taskDefinition=os.environ['UBUNTU_X86'],
@@ -189,9 +175,26 @@ def lambda_handler(event, context):
                          'subnets': [
                              os.environ['SUBNET_ID']
                          ],
+                         'securityGroups': [
+                             os.environ['SECURITY_GROUP_ID']
+                         ],
                          'assignPublicIp': 'ENABLED'
                      }
+                 },
+                 overrides={
+                     'containerOverrides': [
+                         {
+                             'name': os.environ['UBUNTU_X86'],
+                             'environment': [
+                                 {
+                                     'name': 'COMMIT_ID',
+                                     'value': commit_id
+                                 }
+                             ]
+                         }
+                     ]
                  })
+
     ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
                  launchType='FARGATE',
                  taskDefinition=os.environ['FEDORA_X86'],
@@ -202,9 +205,27 @@ def lambda_handler(event, context):
                          'subnets': [
                              os.environ["SUBNET_ID"]
                          ],
+                         'securityGroups': [
+                             os.environ['SECURITY_GROUP_ID']
+                         ],
                          'assignPublicIp': 'ENABLED'
                      }
+                 },
+                 overrides={
+                     'containerOverrides': [
+                         {
+                             'name': os.environ['FEDORA_X86'],
+                             'environment': [
+                                 {
+                                     'name': 'COMMIT_ID',
+                                     'value': secrets_manager.get_secret_value(
+                                         SecretId=os.environ['COMMIT_SECRET_NAME'])
+                                 }
+                             ]
+                         }
+                     ]
                  })
+
     ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
                  launchType='FARGATE',
                  taskDefinition=os.environ['UBUNTU_AARCH'],
@@ -215,8 +236,24 @@ def lambda_handler(event, context):
                          'subnets': [
                              os.environ['SUBNET_ID']
                          ],
+                         'securityGroup': [
+                             os.environ['SECURITY_GROUP_ID']
+                         ],
                          'assignPublicIp': 'ENABLED'
                      }
+                 },
+                 overrides={
+                     'containerOverrides': [
+                         {
+                             'name': os.environ['UBUNTU_AARCH'],
+                             'environment': [
+                                 {
+                                     'name': 'COMMIT_ID',
+                                     'value': secrets_manager.get_secret_value(SecretId=os.environ['COMMIT_SECRET_NAME'])
+                                 }
+                             ]
+                         }
+                     ]
                  })
     if cleanup:
         logger.info('Cleanup Lambda container...')

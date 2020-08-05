@@ -12,24 +12,19 @@ set -exuo pipefail
 #              non-zero error code.
 
 # Installing dependencies locally for GitPullS3
-virtualenv GitPullS3/v-env
-source GitPullS3/v-env/bin/activate
-pip install pygit2
-pip install boto3
-pip install ipaddress
-deactivate
+pip2 install --upgrade pip setuptools wheel
+pip2 install --target ./GitPullS3 pygit2
+pip2 install --target ./GitPullS3 botocore==1.17.34
+pip2 install --target ./GitPullS3 boto3==1.14.34
+pip2 install --target ./GitPullS3 ipaddress
 
 # Installing dependencies locally for CreateSSHKey
-virtualenv CreateSSHKey/v-env
-source CreateSSHKey/v-env/bin/activate
-pip install botocore==1.17.31
-pip install boto3
-pip install cryptography
-deactivate
+pip2 install --target ./CreateSSHKey botocore==1.17.34
+pip2 install --target ./CreateSSHKey boto3==1.14.34
+pip2 install --target ./CreateSSHKey asn1crypto
+pip2 install --target ./CreateSSHKey cryptography
 
 # Installing dependencies locally for ReportFunction
-virtualenv ReportFunction/v-env
-source ReportFunction/v-env/bin/activate
-pip install botocore==1.17.31
-pip install boto3
+pip3 install --target ./ReportFunction botocore==1.17.34
+pip3 install --target ./ReportFunction boto3==1.14.34
 
