@@ -42,15 +42,15 @@ Index: aws-lc/third_party/boringssl/crypto/trust_token/trust_token_test.cc
    CBS_init(&real_response, issue_resp, resp_len);
    uint16_t count;
 -  uint32_t public_metadata;
-+  uint32_t tmp_public_metadata;
++  uint32_t local_public_metadata;
    bssl::ScopedCBB bad_response;
    ASSERT_TRUE(CBB_init(bad_response.get(), 0));
    ASSERT_TRUE(CBS_get_u16(&real_response, &count));
    ASSERT_TRUE(CBB_add_u16(bad_response.get(), count));
 -  ASSERT_TRUE(CBS_get_u32(&real_response, &public_metadata));
 -  ASSERT_TRUE(CBB_add_u32(bad_response.get(), public_metadata));
-+  ASSERT_TRUE(CBS_get_u32(&real_response, &tmp_public_metadata));
-+  ASSERT_TRUE(CBB_add_u32(bad_response.get(), tmp_public_metadata));
++  ASSERT_TRUE(CBS_get_u32(&real_response, &local_public_metadata));
++  ASSERT_TRUE(CBB_add_u32(bad_response.get(), local_public_metadata));
  
    for (size_t i = 0; i < count; i++) {
      uint8_t s[PMBTOKEN_NONCE_SIZE];
@@ -59,15 +59,15 @@ Index: aws-lc/third_party/boringssl/crypto/trust_token/trust_token_test.cc
    CBS_init(&real_response, issue_resp, resp_len);
    uint16_t count;
 -  uint32_t public_metadata;
-+  uint32_t tmp_public_metadata;
++  uint32_t local_public_metadata;
    bssl::ScopedCBB bad_response;
    ASSERT_TRUE(CBB_init(bad_response.get(), 0));
    ASSERT_TRUE(CBS_get_u16(&real_response, &count));
    ASSERT_TRUE(CBB_add_u16(bad_response.get(), count));
 -  ASSERT_TRUE(CBS_get_u32(&real_response, &public_metadata));
 -  ASSERT_TRUE(CBB_add_u32(bad_response.get(), public_metadata));
-+  ASSERT_TRUE(CBS_get_u32(&real_response, &tmp_public_metadata));
-+  ASSERT_TRUE(CBB_add_u32(bad_response.get(), tmp_public_metadata));
++  ASSERT_TRUE(CBS_get_u32(&real_response, &local_public_metadata));
++  ASSERT_TRUE(CBB_add_u32(bad_response.get(), local_public_metadata));
  
    for (size_t i = 0; i < count; i++) {
      uint8_t s[PMBTOKEN_NONCE_SIZE];
