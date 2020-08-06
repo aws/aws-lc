@@ -38,7 +38,6 @@ execute_process(
     RESULT_VARIABLE PUSH_RESULT
     )
 
-message(STATUS "What happended to PUSH_RESULT : ${PUSH_RESULT}")
 # Fail if unable to apply all patches successfully
 if(PUSH_RESULT EQUAL 1)
     message(FATAL_ERROR "Unable to apply patches, exiting.")
