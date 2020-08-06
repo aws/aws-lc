@@ -28,7 +28,7 @@ class ReportStack(core.Stack):
         # Create lambda that generates the reports after fuzzing is complete
         report_lambda = lambda_.Function(self, "report-lambda",
                                          runtime=lambda_.Runtime.PYTHON_3_7,
-                                         code=lambda_.Code.from_asset("reportFunction"),
+                                         code=lambda_.Code.from_asset("ReportFunction"),
                                          handler="lambda_function.lambda_handler",
                                          environment={
                                              "REPORT_BUCKET": env['report_bucket'],
