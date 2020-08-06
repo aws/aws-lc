@@ -12,7 +12,7 @@ execute_process(
     )
 # Check quilt command exit status.
 # https://man7.org/linux/man-pages/man1/quilt.1.html#EXIT_STATUS
-if(EXIT_CODE EQUAL "1")
+if(EXIT_CODE EQUAL 1)
     message(FATAL_ERROR "Unable to show patch files, exiting.")
 endif()
 
@@ -24,7 +24,7 @@ execute_process(
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     RESULT_VARIABLE EXIT_CODE
     )
-if(EXIT_CODE EQUAL "1")
+if(EXIT_CODE EQUAL 1)
     message(FATAL_ERROR "Unable to clean up patch stacks, exiting.")
 endif()
 
@@ -40,6 +40,6 @@ execute_process(
 
 message(STATUS "What happended to PUSH_RESULT : ${PUSH_RESULT}")
 # Fail if unable to apply all patches successfully
-if(PUSH_RESULT EQUAL "1")
-   message(FATAL_ERROR "Unable to apply patches, exiting.")
+if(PUSH_RESULT EQUAL 1)
+    message(FATAL_ERROR "Unable to apply patches, exiting.")
 endif()
