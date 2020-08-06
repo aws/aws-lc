@@ -8,6 +8,7 @@
 import traceback
 import boto3
 import os
+import cfnresponse
 from cryptography.hazmat.primitives import serialization as crypto_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
@@ -294,6 +295,7 @@ def lambda_handler(event, context):
                                                              cpu='4096',
                                                              memory='30720')
 
+            # Run task to create corpus
             ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
                          launchType='FARGATE',
                          taskDefinition='generate_corpus',
@@ -313,5 +315,7 @@ def lambda_handler(event, context):
                         )
         else:
             pub_key = event['PhysicalResourceId']
+        cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, pub_key)
     except:
         traceback.print_exc()
+        cfnresponse.send(event, context, cfnresponse.FAILED, {}, '')

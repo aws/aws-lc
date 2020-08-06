@@ -14,17 +14,15 @@ set -exuo pipefail
 # Installing dependencies locally for GitPullS3
 pip2 install --upgrade pip setuptools wheel
 pip2 install --target ./GitPullS3 pygit2
-pip2 install --target ./GitPullS3 botocore==1.17.34
 pip2 install --target ./GitPullS3 boto3==1.14.34
 pip2 install --target ./GitPullS3 ipaddress
 
 # Installing dependencies locally for CreateSSHKey
-pip2 install --target ./CreateSSHKey botocore==1.17.34
+pip2 install --target ./CreateSSHKey cfnresponse
 pip2 install --target ./CreateSSHKey boto3==1.14.34
 pip2 install --target ./CreateSSHKey asn1crypto
 pip2 install --target ./CreateSSHKey cryptography
 
 # Installing dependencies locally for ReportFunction
-pip3 install --target ./ReportFunction botocore==1.17.34
 pip3 install --target ./ReportFunction boto3==1.14.34
 

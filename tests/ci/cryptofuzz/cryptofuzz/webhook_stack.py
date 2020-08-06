@@ -240,12 +240,9 @@ class WebhookStack(core.Stack):
         cr = core.CustomResource(self, "Generate SSH Key Resource",
                                  service_token=ssh_handler.function_arn)
 
-        ssh_handler_ref = core.Reference(value="SSH Handler Ref",
-                                         target=ssh_handler)
-
         # Make SSH Public Key secret name a part of the output of the Cloud Formation stack
-        public_key = core.CfnOutput(self, "Pulic Key Secret Name",
-                                    value=env['pub_key_secret_name'])
+        public_key = core.CfnOutput(self, "Public Key",
+                                    value=cr.get_att_string('physicalResourceId'))
 
         git_handler_role = iam.Role(self, "Git Handler Role",
                                     assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
