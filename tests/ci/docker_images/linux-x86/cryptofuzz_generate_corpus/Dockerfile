@@ -38,7 +38,6 @@ ENV DEPENDENCIES_DIR=/home/dependencies
 ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
 
 RUN set -ex && \
-    apt -o APT::Sandbox::User=root update && \
     apt-get update && \
     apt-get -y --no-install-recommends install \
     llvm \
