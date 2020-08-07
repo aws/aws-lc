@@ -11,8 +11,8 @@ set -exuo pipefail
 #              non-zero error code.
 
 # Set necessary environment variables
-chmod +x env.sh
-source env.sh
+chmod +x /env.sh
+source /env.sh
 
 # Build aws-lc and corresponding module in aws-lc-cryptofuzz
 aws s3 cp s3://${GITHUB_CODE_BUCKET}/${REPO_OWNER}/${REPO_NAME}/${REPO_OWNER}_${REPO_NAME}.zip ./ 
