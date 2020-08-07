@@ -33,7 +33,8 @@ RUN set -ex && \
     mercurial \
     bison \
     flex \
-    texinfo && \
+    texinfo \
+    quilt && \
     cd /tmp && \
     wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
     tar -xvf go1.13.12.linux-amd64.tar.gz && \
@@ -71,21 +72,8 @@ ENV CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -
 ENV GOROOT=/usr/local/go
 ENV PATH="$GOROOT/bin:$PATH"
 
+# Build all other crypto libraries to fuzz against
 RUN source build_configs_install_deps.sh
 
 # Build aws-lc and run cryptofuzz
-CMD aws s3 cp s3://${GITHUB_CODE_BUCKET}/${REPO_OWNER}/${REPO_NAME}/${REPO_OWNER}_${REPO_NAME}.zip ./ && \
-    unzip ${REPO_OWNER}_${REPO_NAME}.zip -d aws-lc && \
-    cd / && \
-    ls && \
-    cd aws-lc/ && \
-    mkdir build/ && \
-    cd build/ && \
-    cmake -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 .. && \
-    make crypto -j$(nproc) && \
-    cd / && \
-    cd aws-lc-cryptofuzz/modules/openssl/ && \
-    make && \
-    cd / && \
-    chmod +x cryptofuzz.sh && \
-    ./cryptofuzz.sh 
+CMD source run_aws_lc_cryptofuzz.sh
