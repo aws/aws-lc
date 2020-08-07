@@ -8,7 +8,25 @@ find_program(QUILT_EXECUTABLE
 # Display list of patches being applied
 execute_process(
     COMMAND ${QUILT_EXECUTABLE} series -v
+    RESULT_VARIABLE EXIT_CODE
     )
+# Check quilt command exit status.
+# https://man7.org/linux/man-pages/man1/quilt.1.html#EXIT_STATUS
+if(EXIT_CODE EQUAL 1)
+    message(FATAL_ERROR "Unable to show patch files, exiting.")
+endif()
+
+# Always try to clean up patch stacks before push.
+#   -a : Remove all applied patches
+#   -v : verbose operation
+execute_process(
+    COMMAND ${QUILT_EXECUTABLE} pop -av
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    RESULT_VARIABLE EXIT_CODE
+    )
+if(EXIT_CODE EQUAL 1)
+    message(FATAL_ERROR "Unable to clean up patch stacks, exiting.")
+endif()
 
 # Use quilt to apply patch series
 #   -a : apply all patches in the series file
@@ -24,4 +42,3 @@ execute_process(
 if(PUSH_RESULT EQUAL 1)
     message(FATAL_ERROR "Unable to apply patches, exiting.")
 endif()
-
