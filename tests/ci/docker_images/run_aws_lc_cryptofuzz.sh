@@ -1,6 +1,11 @@
 #!/bin/bash
 
-set -e
+set -ex
+
+# Set necessary environment variables
+chmod +x env.sh
+source env.sh
+
 # Build aws-lc and corresponding module in aws-lc-cryptofuzz
 aws s3 cp s3://${GITHUB_CODE_BUCKET}/${REPO_OWNER}/${REPO_NAME}/${REPO_OWNER}_${REPO_NAME}.zip ./ 
 unzip ${REPO_OWNER}_${REPO_NAME}.zip -d aws-lc 
