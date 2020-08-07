@@ -640,3 +640,12 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests bssl_shim handshaker
     ${MAYBE_USES_TERMINAL})
+
+# Copy awslc-config.cmake to build artifacts. 
+configure_file("cmake/awslc-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
+    @ONLY)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake/"
+    COMPONENT Development)
