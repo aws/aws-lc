@@ -13,7 +13,7 @@ python2 gen_repository.py
 # Set environment variables so that cryptofuzz can find AWS-LC
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_AWS_LC"
 export OPENSSL_INCLUDE_PATH=/aws-lc/third_party/boringssl/include/
-export OPENSSL_LIBCRYPTO_A_PATH=/aws-lc/build/crypto/libcrypto.a
+export OPENSSL_LIBCRYPTO_A_PATH=/aws-lc/build/third_party/boringssl/crypto/libcrypto.a
 export CPATH=$CPATH:$OPENSSL_INCLUDE_PATH
 
 # Build Botan
