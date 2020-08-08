@@ -224,9 +224,9 @@ export LIBFUZZER_LINK="-fsanitize=fuzzer"
 
 # Store all necessary environment variables for build aws-lc and running aws-lc-cryptofuzz
 echo '#!/bin/bash' | tee -a /env.sh
-echo "export CXXFLAGS=${CXXFLAGS}" | tee -a /env.sh
-echo "export CFLAGS=${CFLAGS}" | tee -a /env.sh
+echo 'export CXXFLAGS="${CXXFLAGS}"' | tee -a /env.sh
+echo 'export CFLAGS="${CFLAGS}"' | tee -a /env.sh
 echo "export CPATH=${CPATH}" | tee -a /env.sh
 echo "export OPENSSL_INCLUDE_PATH=${OPENSSL_INCLUDE_PATH}" | tee -a /env.sh
 echo "export OPENSSL_LIBCRYPTO_A_PATH=${OPENSSL_LIBCRYPTO_A_PATH}" | tee -a /env.sh
-echo "export LIBFUZZER_LINK=${LIBFUZZER_LINK}" | tee -a /env.sh
+echo 'export LIBFUZZER_LINK="${LIBFUZZER_LINK}"' | tee -a /env.sh
