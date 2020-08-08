@@ -33,6 +33,7 @@ cd aws-lc-cryptofuzz/
 make
 ./cryptofuzz /mount/efs/corpus/ -max_total_time=100
 mkdir ../${BUILD_CONFIGURATION}/
+touch ../${BUILD_CONFIGURATION}/empty
 cp crash* ../${BUILD_CONFIGURATION}/
 cp crash* /mount/efs/corpus/
 cp leak* ../${BUILD_CONFIGURATION}/
