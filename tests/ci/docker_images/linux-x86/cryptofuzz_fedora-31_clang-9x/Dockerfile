@@ -37,12 +37,6 @@ RUN dnf -y install \
     dnf clean all && \
     rm -rf /tmp/*
 
-# Set environment variables for building
-ENV CC=clang-9
-ENV CXX=clang++-9
-ENV CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -O2 -g"
-ENV CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -g"
-
 # Build all other crypto libraries to fuzz against
 RUN source build_configs_install_deps.sh
 

@@ -65,10 +65,6 @@ RUN set -ex && \
     rm -rf /tmp/*
 
 # Set environment variables for building
-ENV CC=clang-9
-ENV CXX=clang++-9
-ENV CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -O2 -g"
-ENV CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -g"
 ENV GOROOT=/usr/local/go
 ENV PATH="$GOROOT/bin:$PATH"
 

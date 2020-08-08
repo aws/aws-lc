@@ -9,6 +9,12 @@ set -exo pipefail
 # -o pipefail: Makes sure to exit a pipeline with a non-zero error code if any command in the pipeline exists with a
 #              non-zero error code.
 
+# Set initial values of flag/compiler environment variables
+export CC=clang-9
+export CXX=clang++-9
+export CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -O2 -g"
+export CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -g"
+
 # Install aws cli
 cd / 
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" 
@@ -224,6 +230,8 @@ export LIBFUZZER_LINK="-fsanitize=fuzzer"
 
 # Store all necessary environment variables for build aws-lc and running aws-lc-cryptofuzz
 echo '#!/bin/bash' | tee -a /env.sh
+echo 'export CC=${CC}' | tee -a /env.sh
+echo 'export CXX=${CXX}' | tee -a /env.sh
 echo 'export CXXFLAGS="${CXXFLAGS}"' | tee -a /env.sh
 echo 'export CFLAGS="${CFLAGS}"' | tee -a /env.sh
 echo "export CPATH=${CPATH}" | tee -a /env.sh
