@@ -1,9 +1,149 @@
+## Overview
 
-# Welcome to your CDK Python project!
+AWS-LC Fuzzing CI uses AWS CDK to define and deploy AWS resources (e.g. AWS Lambda, ECR).
 
-This is a blank project for Python development with CDK.
+## CI Setup
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+### Before running CDK command:
+
+* Install [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html#getting_started_install)
+* Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+* [Connect GitHub and AWS account using access token](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
+
+### Minimal permissions:
+
+To setup or update the CI in your account you will need the following IAM permissions. 
+
+* CloudWatch
+  * logs:CreateLogGroup
+  * logs:CreateLogStream
+  * logs:DescribeLogGroups
+  * logs:DescribeLogStreams
+  * logs:PutLogEvents
+  * logs:GetLogEvents
+  * logs:FilterLogEvents
+* ECS
+  * ecr:GetAuthorizationToken
+  * ecr:BatchCheckLayerAvailability
+  * ecr:GetDownloadUrlForLayer
+  * ecr:BatchGetImage
+* ECR
+  * ecr:Batch*
+  * ecr:Get*
+  * ecr:Describe*
+  * ecr:List*
+  * ecr:Initiate*
+  * ecr:Upload*
+  * ecr:Complete*
+  * ecr:Put*
+* IAM
+  * iam:PassRole
+* S3
+  * s3:*
+* SecretsManager
+  * secretsmanager:GetSecretValue
+  * secretsmanager:DescribeSecret
+  * secretsmanager:PutSecretValue
+  * secretsmanager:UpdateSecret
+
+### Command
+Before running the command with the action that you would like to perform, set the following environment variables appropriately:
+```
+export CDK_DEPLOY_ACCOUNT={aws-account-id}
+export CDK_DEPLOY_REGION={region}
+export GITHUB_REPO_OWNER={github-repo-owner}
+```
+
+Afterwards, clone the aws-lc-cryptofuzz repository and place it in this directory (aws-lc/tests/ci/cryptofuzz):
+```
+git clone https://git-codecommit.us-east-2.amazonaws.com/v1/repos/aws-lc-cryptofuzz
+```
+
+To make sure all docker files have the appropriate build context before they are uploaded to Amazon ECR, run the following in the docker_images directory (aws-lc/tests/ci/docker_images):
+```
+./configure_build_contexts.sh
+```
+
+Lastly, you will have to install dependencies for each of the lambda functions, to complete their build packages before they are uploaded to AWS Lambda:
+* CreateSSHKey
+  * Build context available here: https://github.com/aws-quickstart/quickstart-git2s3/tree/master/functions/source/CreateSSHKey
+* GitPullS3
+  * Build context available here: https://github.com/aws-quickstart/quickstart-git2s3/tree/master/functions/source/GitPullS3
+* ReportFunction
+  * Run the following command in this directory (aws-lc/tests/ci/cryptofuzz):
+  ```
+  pip3 install --target=./ReportFunction boto3
+  ```
+
+Then, you can proceed with the general commands.
+General command:
+```
+$ ./run-cryptofuzz.sh {ACTION}
+```
+
+#### Examples
+
+To see the synthesized CloudFormation template, run command:
+```
+./run-cryptofuzz.sh SYNTH
+```
+
+To set up AWS-LC Fuzzing CI, run command:
+```
+./run-cryptofuzz.sh DEPLOY
+```
+
+To destroy all AWS resources created above, run command:
+```
+# This command does not delete S3 and ECR, which require manually deletion.
+./run-cryptofuzz.sh DESTROY
+```
+
+To compare deployed stack with current state, run command:
+```
+./run-cryptofuzz.sh DIFF
+```
+
+## Files
+
+Inspired by [AWS CDK blog](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-python/)
+
+Below is CI file structure.
+
+```
+(.env) $ tree
+.
+├── CreateSSHKey
+│   ├── lambda_function.py
+├── GitPullS3
+│   ├── lambda_function.py
+├── ReportFunction
+│   ├── lambda_function.py
+├── README.md
+├── app.py
+├── cdk
+│   ├── __init__.py
+│   ├── webhook_stack.py
+│   ├── fuzzing_stack.py
+│   ├── report_stack.py
+├── cdk.json
+├── requirements.txt
+├── run-cryptofuzz.sh
+├── setup.py
+└── util
+    ├── __init__.py
+    └── util.py
+```
+* `README.md` — The introductory README for this project.
+* `app.py` — The “main” for this sample application.
+* `cdk.json` — A configuration file for CDK that defines what executable CDK should run to generate the CDK construct tree.
+* `cdk` — A CDK module directory
+* `requirements.txt` — This file is used by pip to install all of the dependencies for your application. In this case, it contains only -e . This tells pip to install the requirements specified in setup.py. It also tells pip to run python setup.py develop to install the code in the cdk module so that it can be edited in place.
+* `setup.py` — Defines how this Python package would be constructed and what the dependencies are.
+
+## Development Reference
+
+The `cdk.json` file tells the CDK Toolkit how to execute this CDK app `app.py`.
 
 This project is set up like a standard Python project.  The initialization
 process also creates a virtualenv within this project, stored under the .env
@@ -47,12 +187,10 @@ To add additional dependencies, for example other CDK libraries, just add
 them to your `setup.py` file and rerun the `pip install -r requirements.txt`
 command.
 
-## Useful commands
+### Useful commands
 
  * `cdk ls`          list all stacks in the app
  * `cdk synth`       emits the synthesized CloudFormation template
  * `cdk deploy`      deploy this stack to your default AWS account/region
  * `cdk diff`        compare deployed stack with current state
  * `cdk docs`        open CDK documentation
-
-Enjoy!
