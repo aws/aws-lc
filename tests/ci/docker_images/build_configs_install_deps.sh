@@ -42,7 +42,7 @@ make -j$(nproc)
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BOTAN"
 export LIBBOTAN_A_PATH=/botan/libbotan-2.a
 export BOTAN_INCLUDE_PATH=/botan/build/include
-export CPATH=$CPATH:BOTAN_INCLUDE_PATH
+export CPATH=$CPATH:$BOTAN_INCLUDE_PATH
 
 # Build botan module within aws-lc-cryptofuzz
 cd / 
@@ -78,7 +78,7 @@ make -j$(nproc)
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_WOLFCRYPT"
 export WOLFCRYPT_LIBWOLFSSL_A_PATH=/wolfssl/src/.libs/libwolfssl.a
 export WOLFCRYPT_INCLUDE_PATH=/wolfssl/
-export CPATH=$CPATH:WOLFCRYPT_INCLUDE_PATH
+export CPATH=$CPATH:$WOLFCRYPT_INCLUDE_PATH
 
 # Build WolfCrypt module within aws-lc-cryptofuzz
 cd / 
@@ -230,11 +230,11 @@ export LIBFUZZER_LINK="-fsanitize=fuzzer"
 
 # Store all necessary environment variables for build aws-lc and running aws-lc-cryptofuzz
 echo '#!/bin/bash' | tee -a /env.sh
-echo 'export CC=${CC}' | tee -a /env.sh
-echo 'export CXX=${CXX}' | tee -a /env.sh
-echo 'export CXXFLAGS="${CXXFLAGS}"' | tee -a /env.sh
-echo 'export CFLAGS="${CFLAGS}"' | tee -a /env.sh
+echo "export CC=${CC}" | tee -a /env.sh
+echo "export CXX=${CXX}" | tee -a /env.sh
+echo "export CXXFLAGS=\"${CXXFLAGS}\"" | tee -a /env.sh
+echo "export CFLAGS=\"${CFLAGS}\"" | tee -a /env.sh
 echo "export CPATH=${CPATH}" | tee -a /env.sh
 echo "export OPENSSL_INCLUDE_PATH=${OPENSSL_INCLUDE_PATH}" | tee -a /env.sh
 echo "export OPENSSL_LIBCRYPTO_A_PATH=${OPENSSL_LIBCRYPTO_A_PATH}" | tee -a /env.sh
-echo 'export LIBFUZZER_LINK="${LIBFUZZER_LINK}"' | tee -a /env.sh
+echo "export LIBFUZZER_LINK=\"${LIBFUZZER_LINK}\"" | tee -a /env.sh
