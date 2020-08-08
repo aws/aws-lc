@@ -1,5 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+# Based off: https://github.com/aws-quickstart/quickstart-git2s3/blob/master/functions/source/CreateSSHKey/lambda_function.py
 
 import traceback
 import boto3
