@@ -1,9 +1,5 @@
-#  Copyright 2016 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.
-#  This file is licensed to you under the AWS Customer Agreement (the "License").
-#  You may not use this file except in compliance with the License.
-#  A copy of the License is located at http://aws.amazon.com/agreement/ .
-#  This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
-#  See the License for the specific language governing permissions and limitations under the License.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 from pygit2 import Keypair, discover_repository, Repository, clone_repository, RemoteCallbacks
 from boto3 import client
@@ -29,7 +25,6 @@ logging.getLogger('boto3').setLevel(logging.ERROR)
 logging.getLogger('botocore').setLevel(logging.ERROR)
 
 s3 = client('s3')
-kms = client('kms')
 secrets_manager = client('secretsmanager')
 ecs = client('ecs')
 
@@ -54,7 +49,6 @@ def get_keys(update=False):
         privkey = secrets_manager.get_secret_value(SecretId=priv_key_secret_name)
         pubkey = secrets_manager.get_secret_value(SecretId=pub_key_secret_name)
         logger.info('pub_key %s', pubkey)
-        logger.info('priv_key %s', privkey)
         privkey = privkey['SecretString']
         pubkey = pubkey['SecretString']
         write_key('/tmp/id_rsa', privkey)
@@ -125,14 +119,15 @@ def lambda_handler(event, context):
     logger.info("Event %s", event)
     outputbucket = os.environ['GITHUB_CODE_BUCKET']
     commit_id = event['after']
-    secrets_manager.put_secret_value(SecretId=os.environ['COMMIT_SECRET_NAME'],
-                                     SecretString=commit_id)
 
-    path = '/tmp/{}/'.format(commit_id)
-    command = 'mkdir {}'.format(path)
-    os.system(command)
-    s3.put_object(Bucket=os.environ['INTERESTING_INPUT_BUCKET'],
-                  Key=path)
+    # Create /tmp/tmp and upload it to interesting input bucket with key
+    s3key = '{}/tmp'.format(commit_id)
+    f = open('/tmp/tmp', 'w')
+    f.write('tmp')
+    f.close()
+    s3.upload_file(Filename='/tmp/tmp',
+                   Bucket=os.environ['INTERESTING_INPUT_BUCKET'],
+                   Key=s3key)
 
     # GitHub
     full_name = event['repository']['full_name']
@@ -165,96 +160,39 @@ def lambda_handler(event, context):
     push_s3(zipfile, repo_name, outputbucket)
 
     # Run tasks corresponding to each of the build configurations
-    ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
-                 launchType='FARGATE',
-                 taskDefinition=os.environ['UBUNTU_X86'],
-                 count=1,
-                 platformVersion='1.4.0',
-                 networkConfiguration={
-                     'awsvpcConfiguration': {
-                         'subnets': [
-                             os.environ['SUBNET_ID']
-                         ],
-                         'securityGroups': [
-                             os.environ['SECURITY_GROUP_ID']
-                         ],
-                         'assignPublicIp': 'ENABLED'
-                     }
-                 },
-                 overrides={
-                     'containerOverrides': [
-                         {
-                             'name': os.environ['UBUNTU_X86'],
-                             'environment': [
-                                 {
-                                     'name': 'COMMIT_ID',
-                                     'value': commit_id
-                                 }
-                             ]
-                         }
-                     ]
-                 })
+    build_configurations = [os.environ['UBUNTU_X86'], os.environ['FEDORA_X86'], os.environ['UBUNTU_AARCH']]
 
-    ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
-                 launchType='FARGATE',
-                 taskDefinition=os.environ['FEDORA_X86'],
-                 count=1,
-                 platformVersion='1.4.0',
-                 networkConfiguration={
-                     'awsvpcConfiguration': {
-                         'subnets': [
-                             os.environ["SUBNET_ID"]
-                         ],
-                         'securityGroups': [
-                             os.environ['SECURITY_GROUP_ID']
-                         ],
-                         'assignPublicIp': 'ENABLED'
-                     }
-                 },
-                 overrides={
-                     'containerOverrides': [
-                         {
-                             'name': os.environ['FEDORA_X86'],
-                             'environment': [
-                                 {
-                                     'name': 'COMMIT_ID',
-                                     'value': secrets_manager.get_secret_value(
-                                         SecretId=os.environ['COMMIT_SECRET_NAME'])
-                                 }
-                             ]
+    for build_configuration in build_configurations:
+        ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
+                     launchType='FARGATE',
+                     taskDefinition=build_configuration,
+                     count=1,
+                     platformVersion='1.4.0',
+                     networkConfiguration={
+                         'awsvpcConfiguration': {
+                             'subnets': [
+                                 os.environ['SUBNET_ID_1'],
+                                 os.environ['SUBNET_ID_2']
+                             ],
+                             'securityGroups': [
+                                 os.environ['SECURITY_GROUP_ID']
+                             ],
+                             'assignPublicIp': 'ENABLED'
                          }
-                     ]
-                 })
-
-    ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
-                 launchType='FARGATE',
-                 taskDefinition=os.environ['UBUNTU_AARCH'],
-                 count=1,
-                 platformVersion='1.4.0',
-                 networkConfiguration={
-                     'awsvpcConfiguration': {
-                         'subnets': [
-                             os.environ['SUBNET_ID']
-                         ],
-                         'securityGroup': [
-                             os.environ['SECURITY_GROUP_ID']
-                         ],
-                         'assignPublicIp': 'ENABLED'
-                     }
-                 },
-                 overrides={
-                     'containerOverrides': [
-                         {
-                             'name': os.environ['UBUNTU_AARCH'],
-                             'environment': [
-                                 {
-                                     'name': 'COMMIT_ID',
-                                     'value': secrets_manager.get_secret_value(SecretId=os.environ['COMMIT_SECRET_NAME'])
-                                 }
-                             ]
-                         }
-                     ]
-                 })
+                     },
+                     overrides={
+                         'containerOverrides': [
+                             {
+                                 'name': build_configuration,
+                                 'environment': [
+                                     {
+                                         'name': 'COMMIT_ID',
+                                         'value': commit_id
+                                     }
+                                 ]
+                             }
+                         ]
+                     })
     if cleanup:
         logger.info('Cleanup Lambda container...')
         shutil.rmtree(repo_path)

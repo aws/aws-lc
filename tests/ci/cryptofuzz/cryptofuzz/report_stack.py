@@ -1,9 +1,11 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from aws_cdk import core, \
     aws_s3 as s3, \
     aws_lambda as lambda_, \
     aws_s3_notifications as s3_notifications, \
-    aws_iam as iam, \
-    aws_secretsmanager as secretsmanager
+    aws_iam as iam
 
 
 # This stack contains all the infrastructure relating to the report and its generation.
@@ -14,7 +16,7 @@ from aws_cdk import core, \
 # S3 bucket trigger going to lambda function that creates the report
 class ReportStack(core.Stack):
 
-    def __init__(self, scope: core.Construct, id: str, commit_secret: secretsmanager.Secret, env, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, id: str, env, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # Create the S3 bucket for the reports
@@ -33,7 +35,6 @@ class ReportStack(core.Stack):
                                          environment={
                                              "REPORT_BUCKET": env['report_bucket'],
                                              "INTERESTING_INPUT_BUCKET": env['interesting_input_bucket'],
-                                             "COMMIT_SECRET_NAME": env['commit_secret_name'],
                                              "UBUNTU_X86": env['ubuntu_x86'],
                                              "FEDORA_X86": env['fedora_x86'],
                                              "UBUNTU_AARCH": env['ubuntu_aarch']
@@ -47,7 +48,6 @@ class ReportStack(core.Stack):
         # Granting S3 permissions to the report lambda
         s3_report_bucket.grant_read_write(report_lambda)
         s3_interesting_input_bucket.grant_read_write(report_lambda)
-        commit_secret.grant_read(report_lambda)
 
         # Add S3 buckets trigger permissions to the report lambda resource policy
         report_lambda.add_permission(id="S3 Invoke Access",

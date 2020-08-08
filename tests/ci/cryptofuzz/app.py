@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import core
 from util.util import EnvUtil
@@ -59,7 +61,6 @@ FuzzingStack(app, "FuzzingStack",
              webhook_stack.vpc,
              env)
 ReportStack(app, "ReportStack",
-            webhook_stack.commit_secret,
             env)
 
 

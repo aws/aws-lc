@@ -7,7 +7,6 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 doc/doc.css
-.idea/
 
 util/bot/android_ndk
 util/bot/android_sdk/public

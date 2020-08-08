@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from aws_cdk import core, \
     aws_apigateway as apigateway, \
     aws_lambda as lambda_, \
@@ -17,6 +20,7 @@ from aws_cdk import core, \
 # Security group that allows all inbound and outbound traffic
 # ECR repositories for each of the docker files relating to cryptofuzz
 # Lambda function for generating SSH key, generating corpus, and creating task definitions for build configurations
+# (Along with custom resource to trigger it upon CloudFormation lifecycle events)
 # Lambda function that handles requests coming from GitHub (zips latest code and runs cryptofuzz on build configurations)
 # (Also associated IAM policies/roles)
 # API gateway with lambda integration
@@ -32,10 +36,6 @@ class WebhookStack(core.Stack):
         # Set up a secret to hold the public SSH key
         pub_secret = secretsmanager.Secret(self, "PublicSSHKey",
                                            secret_name=env['pub_key_secret_name'])
-
-        # Set up a secret to store the commit ID
-        self.commit_secret = secretsmanager.Secret(self, "CommitID",
-                                                   secret_name=env['commit_secret_name'])
 
         # Set up GitHub Code Bucket
         code_bucket = s3.Bucket(self, "GitHub Code Bucket",
@@ -217,7 +217,8 @@ class WebhookStack(core.Stack):
                                            "UBUNTU_AARCH": env['ubuntu_aarch'],
                                            "CORPUS_VOLUME": env['corpus_volume'],
                                            "CORPUS_FILE_SYSTEM_ID": file_system.file_system_id,
-                                           "SUBNET_ID": subnets[0],
+                                           "SUBNET_ID_1": subnets[0],
+                                           "SUBNET_ID_2": subnets[1],
                                            "FARGATE_CLUSTER_NAME": env['fargate_cluster_name'],
                                            "SECURITY_GROUP_ID": security_group.security_group_id,
                                            "EXECUTION_ROLE_ARN": execution_role.role_arn,
@@ -231,7 +232,7 @@ class WebhookStack(core.Stack):
                                        role=ssh_handler_role,
                                        timeout=core.Duration.minutes(5))
 
-        # Allow writing to secret in Secrets Manager
+        # Allow writing to secrets in Secrets Manager
         priv_secret.grant_write(ssh_handler)
         pub_secret.grant_write(ssh_handler)
 
@@ -242,7 +243,7 @@ class WebhookStack(core.Stack):
 
         # Make SSH Public Key secret name a part of the output of the Cloud Formation stack
         public_key = core.CfnOutput(self, "Public Key",
-                                    value=cr.get_att_string('physicalResourceId'))
+                                    value=env['pub_key_secret_name'])
 
         git_handler_role = iam.Role(self, "Git Handler Role",
                                     assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -270,16 +271,15 @@ class WebhookStack(core.Stack):
                                            "GITHUB_REPO_OWNER": env['repo_owner'],
                                            "GITHUB_REPO": env['repo'],
                                            "SECURITY_GROUP_ID": security_group.security_group_id,
-                                           "SUBNET_ID": subnets[0],
-                                           "COMMIT_SECRET_NAME": env['commit_secret_name']
+                                           "SUBNET_ID_1": subnets[0],
+                                           "SUBNET_ID_2": subnets[1],
                                        },
                                        timeout=core.Duration.minutes(5),
                                        role=git_handler_role)
 
-        # Allow reading secret from Secrets Manager and read/write from necessary S3 buckets
+        # Allow reading/writing secrets from Secrets Manager and read/write from necessary S3 buckets
         priv_secret.grant_read(git_handler)
         pub_secret.grant_read(git_handler)
-        self.commit_secret.grant_write(git_handler)
         code_bucket.grant_read_write(git_handler)
 
         # Set up API Gateway
