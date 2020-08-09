@@ -4,7 +4,6 @@ __pycache__
 .pytest_cache
 .env
 *.egg-info
-install_lambda_deps.sh
 .idea/
 
 # CDK asset staging directory
