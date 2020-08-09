@@ -198,7 +198,7 @@ class WebhookStack(core.Stack):
 
         # Set up Lambda function for handling SSH key generation
         ssh_handler = lambda_.Function(self, "SSH Handler",
-                                       runtime=lambda_.Runtime.PYTHON_2_7,
+                                       runtime=lambda_.Runtime.PYTHON_3_7,
                                        code=lambda_.Code.from_asset("CreateSSHKey"),
                                        handler="lambda_function.lambda_handler",
                                        environment={
@@ -255,7 +255,7 @@ class WebhookStack(core.Stack):
 
         # Set up Lambda function for handling zipping up code and running ECS tasks
         git_handler = lambda_.Function(self, "Webhook Handler",
-                                       runtime=lambda_.Runtime.PYTHON_2_7,
+                                       runtime=lambda_.Runtime.PYTHON_3_7,
                                        code=lambda_.Code.from_asset("GitPullS3"),
                                        handler="lambda_function.lambda_handler",
                                        environment={
