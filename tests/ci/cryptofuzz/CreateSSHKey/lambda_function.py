@@ -20,11 +20,11 @@ def lambda_handler(event, context):
                 crypto_serialization.Encoding.PEM,
                 crypto_serialization.PrivateFormat.PKCS8,
                 crypto_serialization.NoEncryption()
-            )
+            ).decode("utf-8")
             pub_key = new_key.public_key().public_bytes(
                 crypto_serialization.Encoding.OpenSSH,
                 crypto_serialization.PublicFormat.OpenSSH
-            )
+            ).decode("utf-8")
             # Store keys as secret strings
             priv_key_secret_name = os.environ['PRIVATE_KEY_SECRET_NAME']
             secrets_manager = boto3.client('secretsmanager')
@@ -115,7 +115,7 @@ def lambda_handler(event, context):
             # Run task to create corpus
             ecs.run_task(cluster=os.environ['FARGATE_CLUSTER_NAME'],
                          launchType='FARGATE',
-                         taskDefinition='generate_corpus',
+                         taskDefinition=os.environ['GEN_CORPUS_CONTAINER_NAME'],
                          count=1,
                          platformVersion='1.4.0',
                          networkConfiguration={
@@ -136,3 +136,4 @@ def lambda_handler(event, context):
     except:
         traceback.print_exc()
         cfnresponse.send(event, context, cfnresponse.FAILED, {}, '')
+
