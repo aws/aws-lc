@@ -219,7 +219,7 @@ export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_SYMCRYPT"
 export SYMCRYPT_INCLUDE_PATH=/SymCrypt/inc/
 export LIBSYMCRYPT_COMMON_A_PATH=/SymCrypt/b/lib/x86_64/Generic/libsymcrypt_common.a
 export SYMCRYPT_GENERIC_A_PATH=/SymCrypt/b/lib/x86_64/Generic/symcrypt_generic.a
-CPATH+=:${LIBSYMCRYPT_INCLUDE_PATH}
+CPATH+=:${SYMCRYPT_INCLUDE_PATH}
 
 # Build SymCrypt module within aws-lc-cryptofuzz
 cd / 
