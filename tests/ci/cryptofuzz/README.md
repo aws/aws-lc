@@ -64,16 +64,10 @@ To make sure all docker files have the appropriate build context before they are
 ./configure_build_contexts.sh
 ```
 
-Lastly, you will have to install dependencies for each of the lambda functions, to complete their build packages before they are uploaded to AWS Lambda:
-* CreateSSHKey
-  * Build context available here: https://github.com/aws-quickstart/quickstart-git2s3/tree/master/functions/source/CreateSSHKey
-* GitPullS3
-  * Build context available here: https://github.com/aws-quickstart/quickstart-git2s3/tree/master/functions/source/GitPullS3
-* ReportFunction
-  * Run the following command in this directory (aws-lc/tests/ci/cryptofuzz):
-  ```
-  pip3 install --target=./ReportFunction boto3
-  ```
+Lastly, you will have to install dependencies for each of the lambda functions, to complete their build packages before they are uploaded to AWS Lambda. You can do so using the following script:
+```
+./install_lambda_deps.sh
+```
 
 Then, you can proceed with the general commands.
 General command:
@@ -92,10 +86,11 @@ To set up AWS-LC Fuzzing CI, run command:
 ```
 ./run-cryptofuzz.sh DEPLOY
 ```
+Afterwards, you will get two stack outputs. One of them is the API Gateway Endpoint link, while the other is the name of the Secret in SecretsManager that holds the SSH public key. To finish setting up the CI, add the public key to your GitHub account, and setup a GitHub Webhook using the API Gateway Endpoint link.
 
 To destroy all AWS resources created above, run command:
 ```
-# This command does not delete S3 and ECR, which require manually deletion.
+# This command does not delete S3, ECR, and EFS, which require manual deletion.
 ./run-cryptofuzz.sh DESTROY
 ```
 
