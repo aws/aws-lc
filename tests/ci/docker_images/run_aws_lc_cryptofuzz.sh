@@ -21,7 +21,7 @@ ls
 cd aws-lc/ 
 mkdir build/ 
 cd build/ 
-cmake -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 .. 
+cmake -DCMAKE_CXX_FLAGS="${CXXFLAGS}" -DCMAKE_C_FLAGS="${CFLAGS}" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 .. 
 make crypto -j$(nproc) 
 cd / 
 cd aws-lc-cryptofuzz/modules/openssl/ 

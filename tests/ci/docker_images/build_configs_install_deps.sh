@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #!/bin/bash
 
-set -exo pipefail
+set -exuo pipefail
 
 # -e: Exit on any failure
 # -x: Print the command before running
+# -u: Any variable that is not set will cause an error if used
 # -o pipefail: Makes sure to exit a pipeline with a non-zero error code if any command in the pipeline exists with a
 #              non-zero error code.
 
@@ -26,23 +27,23 @@ cd aws-lc-cryptofuzz/
 python2 gen_repository.py
 
 # Set environment variables so that cryptofuzz can find AWS-LC
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_AWS_LC"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_AWS_LC"
 export OPENSSL_INCLUDE_PATH=/aws-lc/third_party/boringssl/include/
 export OPENSSL_LIBCRYPTO_A_PATH=/aws-lc/build/third_party/boringssl/crypto/libcrypto.a
-export CPATH=$CPATH:$OPENSSL_INCLUDE_PATH
+CPATH+=:${OPENSSL_INCLUDE_PATH}
 
 # Build Botan
 cd / 
 git clone --depth 1 https://github.com/randombit/botan.git 
 cd botan/ 
-./configure.py --cc-bin=$CXX --cc-abi-flags="$CXXFLAGS" --disable-shared --disable-modules=locking_allocator 
+./configure.py --cc-bin=${CXX} --cc-abi-flags="${CXXFLAGS}" --disable-shared --disable-modules=locking_allocator 
 make -j$(nproc)
 
 # Set environment variables so that cryptofuzz can find Botan
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BOTAN"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_BOTAN"
 export LIBBOTAN_A_PATH=/botan/libbotan-2.a
 export BOTAN_INCLUDE_PATH=/botan/build/include
-export CPATH=$CPATH:$BOTAN_INCLUDE_PATH
+CPATH+=:${BOTAN_INCLUDE_PATH}
 
 # Build botan module within aws-lc-cryptofuzz
 cd / 
@@ -56,10 +57,10 @@ cd cryptopp/
 make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find Crypto++
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_CRYPTOPP"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_CRYPTOPP"
 export LIBCRYPTOPP_A_PATH=/cryptopp/libcryptopp.a
 export CRYPTOPP_INCLUDE_PATH=/cryptopp/
-export CPATH=$CPATH:$CRYPTOPP_INCLUDE_PATH
+CPATH+=:${CRYPTOPP_INCLUDE_PATH}
 
 # Build Crypto++ module within aws-lc-cryptofuzz
 cd / 
@@ -75,10 +76,10 @@ autoreconf -ivf
 make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find WolfCrypt
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_WOLFCRYPT"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_WOLFCRYPT"
 export WOLFCRYPT_LIBWOLFSSL_A_PATH=/wolfssl/src/.libs/libwolfssl.a
 export WOLFCRYPT_INCLUDE_PATH=/wolfssl/
-export CPATH=$CPATH:$WOLFCRYPT_INCLUDE_PATH
+CPATH+=:${WOLFCRYPT_INCLUDE_PATH}
 
 # Build WolfCrypt module within aws-lc-cryptofuzz
 cd / 
@@ -103,8 +104,8 @@ make -j$(nproc)
 # Set environment variables so that aws-lc-cryptofuzz can find mbedTLS
 export MBEDTLS_LIBMBEDCRYPTO_A_PATH=/mbedtls/build/library/libmbedcrypto.a
 export MBEDTLS_INCLUDE_PATH=/mbedtls/include
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_MBEDTLS"
-export CPATH=$CPATH:$MBEDTLS_INCLUDE_PATH
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_MBEDTLS"
+CPATH+=:${MBEDTLS_INCLUDE_PATH}
 
 # Build mbedTLS module within aws-lc-cryptofuzz
 cd / 
@@ -118,10 +119,10 @@ cd libtomcrypt
 make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find libtomcrypt
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_LIBTOMCRYPT"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_LIBTOMCRYPT"
 export LIBTOMCRYPT_INCLUDE_PATH=/libtomcrypt/src/headers/
 export LIBTOMCRYPT_A_PATH=/libtomcrypt/libtomcrypt.a
-export CPATH=$CPATH:$LIBTOMCRYPT_INCLUDE_PATH
+CPATH+=:${LIBTOMCRYPT_INCLUDE_PATH}
 
 # Build libtomcrypt module within aws-lc-cryptofuzz
 cd / 
@@ -137,10 +138,10 @@ autoreconf -ivf
 make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find libgmp
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_LIBGMP"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_LIBGMP"
 export LIBGMP_INCLUDE_PATH=/libgmp/
 export LIBGMP_A_PATH=/libgmp/.libs/libgmp.a
-export CPATH=$CPATH:$LIBGMP_INCLUDE_PATH
+CPATH+=:${LIBGMP_INCLUDE_PATH}
 
 # Build libgmp module within aws-lc-cryptofuzz
 cd / 
@@ -155,10 +156,10 @@ cd mpdecimal-2.4.2/
 ./configure && make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find mpdecimal
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_MPDECIMAL"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_MPDECIMAL"
 export LIBMPDEC_A_PATH=/mpdecimal-2.4.2/libmpdec/libmpdec.a
 export LIBMPDEC_INCLUDE_PATH=/mpdecimal-2.4.2/libmpdec/
-export CPATH=$CPATH:$LIBMPDEC_INCLUDE_PATH
+CPATH+=:${LIBMPDEC_INCLUDE_PATH}
 
 # Build mpdecimal module within aws-lc-cryptofuzz
 cd / 
@@ -174,10 +175,10 @@ autoreconf -ivf
 make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find libsodium
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_LIBSODIUM"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_LIBSODIUM"
 export LIBSODIUM_A_PATH=/libsodium/src/libsodium/.libs/libsodium.a
 export LIBSODIUM_INCLUDE_PATH=/libsodium/src/libsodium/include
-export CPATH=$CPATH:$LIBSODIUM_INCLUDE_PATH
+CPATH+=:${LIBSODIUM_INCLUDE_PATH}
 
 # Build libsodium module within aws-lc-cryptofuzz
 cd / 
@@ -193,10 +194,10 @@ autoreconf -ivf
 make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find linux crypto api
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_LINUX"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_LINUX"
 export LIBKCAPI_A_PATH=/libkcapi/.libs/libkcapi.a
 export LIBKCAPI_INCLUDE_PATH=/libkcapi/lib
-export CPATH=$CPATH:$LIBKCAPI_INCLUDE_PATH
+CPATH+=:${LIBKCAPI_INCLUDE_PATH}
 
 # Build linux crypto api module within aws-lc-cryptofuzz
 cd / 
@@ -214,11 +215,11 @@ cmake ../
 make -j$(nproc)
 
 # Set environment variables so that aws-lc-cryptofuzz can find SymCrypt
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_SYMCRYPT"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_SYMCRYPT"
 export SYMCRYPT_INCLUDE_PATH=/SymCrypt/inc/
 export LIBSYMCRYPT_COMMON_A_PATH=/SymCrypt/b/lib/x86_64/Generic/libsymcrypt_common.a
 export SYMCRYPT_GENERIC_A_PATH=/SymCrypt/b/lib/x86_64/Generic/symcrypt_generic.a
-export CPATH=$CPATH:$LIBSYMCRYPT_INCLUDE_PATH
+CPATH+=:${LIBSYMCRYPT_INCLUDE_PATH}
 
 # Build SymCrypt module within aws-lc-cryptofuzz
 cd / 
