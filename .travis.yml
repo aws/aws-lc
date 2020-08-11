@@ -1,22 +1,22 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-sudo: required
 language: c
 
+# Install additional dependencies first
 addons:
   homebrew:
     packages:
       - ninja
       - quilt
 
-matrix:
-  include:
-    - os: osx
-      osx_image:
-        - xcode10.3
-        - xcode12u
-      compiler: clang
+# Build matrix: test OSX with two versions of xcode/clang
+os: osx
+osx_image:
+  - xcode10.3
+  - xcode12u
+compiler: clang
 
+# Run the script which contains all the build logic
 script:
   - tests/ci/run_posix_tests.sh
