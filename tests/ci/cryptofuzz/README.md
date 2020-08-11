@@ -89,6 +89,17 @@ To set up AWS-LC Fuzzing CI, run command:
 ```
 Afterwards, you will get two stack outputs. One of them is the API Gateway Endpoint link, while the other is the name of the Secret in SecretsManager that holds the SSH public key. To finish setting up the CI, add the public key to your GitHub account, and setup a GitHub Webhook using the API Gateway Endpoint link.
 
+Make sure that there is a task with task definition called "gen_corpus_container" running in the ECS cluster "fargate-cryptofuzz-cluster". If you see that it didn't start running (for example, if there was a connection failure of any sort), then you will have to manually run the task. In the ECS console, go to Clusters (in the left bar) -> fargate-cryptofuzz-cluster -> Tasks -> Run New Task. Run the task with the following configurations:
+
+* Launch type: Fargate
+* Task Definition: gen_corpus_container
+* Platform Version: 1.4.0 (Not the default of LATEST)
+* Cluster VPC (you will need to select the VPC created by the CloudFormation WebhookStack)
+  * Go to CloudFormation -> Stacks -> WebhookStack -> Resources, and you should see the ID of the VPC that was created by CloudFormation
+* Subnets: Choose all of them
+* Security Groups: Click Edit -> Select existing Security Group, and check security-group
+* Auto-assign public IP: ENABLED
+
 To destroy all AWS resources created above, run command:
 ```
 # This command does not delete S3, ECR, and EFS, which require manual deletion.
