@@ -24,4 +24,4 @@ compiler: clang
 script:
   - cmake --version
   - quilt --version
-  - tests/ci/run_posix_tests.sh
+  - tests/ci/run_mac_tests.sh
