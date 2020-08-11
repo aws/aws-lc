@@ -1,8 +1,10 @@
 set(_doc "Command line tool to manage a series of patches")
 
+message(STATUS "Finding Quilt and applying patches")
 find_program(QUILT_EXECUTABLE
     NAMES quilt
     DOC ${_doc}
+    REQUIRED
     )
 
 # Display list of patches being applied
