@@ -4,8 +4,11 @@ message(STATUS "Finding Quilt and applying patches")
 find_program(QUILT_EXECUTABLE
     NAMES quilt
     DOC ${_doc}
-    REQUIRED
-    )
+)
+
+if(NOT QUILT_EXECUTABLE)
+    message(FATAL_ERROR "Unable to find Quilt")
+endif()
 
 # Display list of patches being applied
 execute_process(
