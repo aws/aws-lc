@@ -121,15 +121,6 @@ def lambda_handler(event, context):
     outputbucket = os.environ['GITHUB_CODE_BUCKET']
     commit_id = event['after']
 
-    # Create /tmp/tmp and upload it to interesting input bucket with key
-    s3key = '{}/tmp'.format(commit_id)
-    f = open('/tmp/tmp', 'w')
-    f.write('tmp')
-    f.close()
-    s3.upload_file(Filename='/tmp/tmp',
-                   Bucket=os.environ['INTERESTING_INPUT_BUCKET'],
-                   Key=s3key)
-
     # GitHub
     full_name = event['repository']['full_name']
 

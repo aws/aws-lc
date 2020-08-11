@@ -17,15 +17,25 @@ def lambda_handler(event, context):
     # Extract the commit id from the event that triggered the lambda function
     commit_id = event['Records'][0]['s3']['object']['key'].split('/')[0]
     try:
+        build_configurations = [os.environ['UBUNTU_X86'], os.environ['FEDORA_X86'], os.environ['UBUNTU_AARCH']]
         # First check to see whether all containers have finished running
-        s3_resource.Object(interesting_input_bucket, '{}/{}/empty'.format(commit_id, os.environ['UBUNTU_X86'])).load()
-        s3_resource.Object(interesting_input_bucket, '{}/{}/empty'.format(commit_id, os.environ['FEDORA_X86'])).load()
-        s3_resource.Object(interesting_input_bucket, '{}/{}/empty'.format(commit_id, os.environ['UBUNTU_AARCH'])).load()
+        for build_configuration in build_configurations:
+            s3_resource.Object(interesting_input_bucket, '{}/{}/empty'.format(commit_id, build_configuration)).load()
 
         # Creating report
         report_file = "/tmp/{}".format(commit_id)
         f = open(report_file, 'w')
-        f.write('Interesting Inputs Path: s3://{}/{}'.format(report_bucket, commit_id))
+        # Write interesting inputs path to report file
+        f.write('Interesting Inputs Path: s3://{}/{}\n'.format(interesting_input_bucket, commit_id))
+        # Write whether there were any errors in any of the build configurations to the report file
+        errors = ['crash', 'leak', 'timeout']
+        for build_configuration in build_configurations:
+            for error in errors:
+                try:
+                    s3_resource.Object(interesting_input_bucket, '{}/{}/{}'.format(commit_id, build_configuration, error)).load()
+                    f.write('{} in {}\n'.format(error, build_configuration))
+                except botocore.exceptions.ClientError as e:
+                    f.write('No {} in {}\n'.format(error, build_configuration))
         f.close()
         s3_client.upload_file(report_file, report_bucket, commit_id)
     except botocore.exceptions.ClientError as e:
