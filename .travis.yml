@@ -1,6 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+git:
+  depth: 1
 language: c
 
 # Install additional dependencies first
@@ -19,4 +21,6 @@ compiler: clang
 
 # Run the script which contains all the build logic
 script:
+  - cmake --version
+  - quilt --version
   - tests/ci/run_posix_tests.sh
