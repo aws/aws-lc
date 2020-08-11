@@ -1,0 +1,22 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+sudo: required
+language: c
+
+addons:
+  homebrew:
+    packages:
+      - ninja
+      - quilt
+
+matrix:
+  include:
+    - os: osx
+      osx_image:
+        - xcode10.3
+        - xcode12u
+      compiler: clang
+
+script:
+  - tests/ci/run_posix_tests.sh
