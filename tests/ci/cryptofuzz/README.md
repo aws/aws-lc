@@ -9,6 +9,7 @@ AWS-LC Fuzzing CI uses AWS CDK to define and deploy AWS resources (e.g. AWS Lamb
 * Install [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html#getting_started_install)
 * Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 * [Connect GitHub and AWS account using access token](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
+* Install python 3.7 and associated pip
 
 ### Minimal permissions:
 
