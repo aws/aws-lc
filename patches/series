@@ -4,3 +4,4 @@
 0004-disable-urandom-test-docker.patch
 0005-fix-ssl-test-runner-output.patch
 0006-fix-gcc4-compile-errors.patch
+0007-fix-fuzz-test-path-to-libc.patch
