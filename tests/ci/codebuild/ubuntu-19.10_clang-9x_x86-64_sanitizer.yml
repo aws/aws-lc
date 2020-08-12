@@ -8,7 +8,6 @@ phases:
     commands:
       - export CC=clang-9
       - export CXX=clang++-9
-  # TODO: re-enable sanitizers when patch is ready.
-  # build:
-  #   commands:
-  #     - ./tests/ci/run_posix_sanitizers.sh
+  build:
+    commands:
+     - ./tests/ci/run_posix_sanitizers.sh
