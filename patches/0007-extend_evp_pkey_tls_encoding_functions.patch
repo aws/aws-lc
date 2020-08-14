@@ -1,0 +1,774 @@
+Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
+===================================================================
+--- aws-lc.orig/third_party/boringssl/crypto/evp/evp.c
++++ aws-lc/third_party/boringssl/crypto/evp/evp.c
+@@ -441,3 +441,275 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
+   // of DSA. We do not support these, so the base ID is simply the ID.
+   return EVP_PKEY_id(pkey);
+ }
++
++static int evp_pkey_tls_encodedpoint_ec_curve_supported(const EC_KEY *ec_key) {
++
++  int ret = 0;
++  int curve_nid = 0;
++  const EC_GROUP *ec_key_group = NULL;
++
++  if (NULL == ec_key) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
++    goto err;
++  }
++
++  ec_key_group = EC_KEY_get0_group(ec_key);
++  if (NULL == ec_key_group) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
++    goto err;
++  }
++
++  // For the EVP_PKEY_EC key type we only support 4 different EC curves:
++  // NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1 and NID_secp521r1
++  curve_nid = EC_GROUP_get_curve_name(ec_key_group);
++  if ((NID_secp224r1 != curve_nid) &&
++      (NID_X9_62_prime256v1 != curve_nid) &&
++      (NID_secp384r1 != curve_nid) &&
++      (NID_secp521r1 != curve_nid)) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
++    goto err;
++  }
++
++  ret = 1;
++
++err:
++  return ret;
++}
++
++static int evp_pkey_set1_tls_encodedpoint_ec_key(EVP_PKEY *pkey,
++                                                  const uint8_t *in,
++                                                  size_t len) {
++  int ret = 0;
++  EC_KEY *ec_key = NULL;
++  const EC_GROUP *ec_key_group = NULL;
++  EC_POINT *ec_point = NULL;
++
++  if ((NULL == pkey) || (NULL == in)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
++    goto err;
++  }
++
++  if (EVP_PKEY_EC != pkey->type) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
++    goto err;
++  }
++
++  // This function is TLS-specific. Only support TLS EC point representation,
++  // which must be uncompressed
++  // (https://tools.ietf.org/html/rfc8422#section-5.4.1)
++  // TLS wire-encoding format for supported NIST curves are:
++  // compression || x-coordinate || y-coordinate
++  // where:
++  // compression = 0x04 if uncompressed
++  // compression = 0x02/0x03 if compressed (depending on y-coordinate parity)
++  if ((len > 0) && (POINT_CONVERSION_UNCOMPRESSED != in[0])) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_CONVERSION_FORM_NOT_SUPPORTED);
++    goto err;
++  }
++
++  ec_key = EVP_PKEY_get0_EC_KEY(pkey);
++  if (NULL == ec_key) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
++    goto err;
++  }
++
++  if (0 == evp_pkey_tls_encodedpoint_ec_curve_supported(ec_key)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  ec_key_group = EC_KEY_get0_group(ec_key);
++  if (NULL == ec_key_group) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
++    goto err;
++  }
++
++  ec_point = EC_POINT_new(ec_key_group);
++  if (NULL == ec_point) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  if (0 == EC_POINT_oct2point(ec_key_group, ec_point, in, len, NULL)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  if (0 == EC_KEY_set_public_key(ec_key, (const EC_POINT *) ec_point)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  ret = 1;
++
++err:
++  EC_POINT_free(ec_point);
++  return ret;
++}
++
++static int EVP_PKEY_set1_tls_encodedpoint_x25519(EVP_PKEY *pkey,
++                                                    const uint8_t *in,
++                                                    size_t len) {
++  int ret = 0;
++
++  if ((NULL == pkey) || (NULL == in)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
++    goto err;
++  }
++
++  if (EVP_PKEY_X25519 != pkey->type) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
++    goto err;
++  }
++
++  if ((NULL == pkey->ameth) || (NULL == pkey->ameth->set_pub_raw)) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
++    goto err;
++  }
++
++  if (0 == pkey->ameth->set_pub_raw(pkey, in, len)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  ret = 1;
++
++err:
++  return ret;
++}
++
++int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
++                                    size_t len) {
++
++  if (NULL == pkey) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
++    goto err;
++  }
++
++  switch (pkey->type) {
++    // Only support key types: EVP_PKEY_X25519 and EVP_PKEY_EC
++    case EVP_PKEY_X25519:
++      return EVP_PKEY_set1_tls_encodedpoint_x25519(pkey, in, len);
++    case EVP_PKEY_EC:
++      return evp_pkey_set1_tls_encodedpoint_ec_key(pkey, in, len);
++    default:
++      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
++      goto err;
++  }
++
++err:
++  return 0;
++}
++
++static size_t EVP_PKEY_get1_tls_encodedpoint_ec_key(const EVP_PKEY *pkey,
++                                                      uint8_t **out_ptr) {
++
++  size_t ret = 0;
++  const EC_KEY *ec_key = NULL;
++
++  if ((NULL == pkey) || (NULL == out_ptr)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
++    goto err;
++  }
++
++  if (EVP_PKEY_EC != pkey->type) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
++    goto err;
++  }
++
++  ec_key = EVP_PKEY_get0_EC_KEY(pkey);
++  if (NULL == ec_key) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
++    goto err;
++  }
++
++  if (0 == evp_pkey_tls_encodedpoint_ec_curve_supported(ec_key)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  // This function is TLS-specific. Only support TLS EC point representation,
++  // which must be uncompressed
++  // (https://tools.ietf.org/html/rfc8422#section-5.4.1)
++  if (POINT_CONVERSION_UNCOMPRESSED != EC_KEY_get_conv_form(ec_key)) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_CONVERSION_FORM_NOT_SUPPORTED);
++    goto err;
++  }
++
++  // Returns the length of |*out_ptr|
++  ret = EC_KEY_key2buf(ec_key, POINT_CONVERSION_UNCOMPRESSED, out_ptr, NULL);
++  if (0 == ret) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++err:
++  return ret;
++}
++
++#define X25519_KEY_SIZE 32
++static size_t EVP_PKEY_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
++                                                      uint8_t **out_ptr) {
++
++  size_t ret = 0;
++  size_t out_len = 0;
++
++  if ((NULL == pkey) || (NULL == out_ptr)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
++    goto err;
++  }
++
++  if (EVP_PKEY_X25519 != pkey->type) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
++    goto err;
++  }
++
++  if ((NULL == pkey->ameth) || (NULL == pkey->ameth->get_pub_raw)) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
++    goto err;
++  }
++
++  out_len = X25519_KEY_SIZE;
++  *out_ptr = OPENSSL_malloc(X25519_KEY_SIZE);
++  if (NULL == *out_ptr) {
++    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
++    goto err;
++  }
++
++  if (0 == pkey->ameth->get_pub_raw(pkey, *out_ptr, &out_len)) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  if (X25519_KEY_SIZE != out_len) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
++    goto err;
++  }
++
++  ret = X25519_KEY_SIZE;
++
++err:
++  return ret;
++}
++
++size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
++
++  if (NULL == pkey) {
++    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
++    goto err;
++  }
++
++  switch (pkey->type) {
++    // Only support key types: EVP_PKEY_X25519 and EVP_PKEY_EC
++    case EVP_PKEY_X25519:
++      return EVP_PKEY_get1_tls_encodedpoint_x25519(pkey, out_ptr);
++    case EVP_PKEY_EC:
++      return EVP_PKEY_get1_tls_encodedpoint_ec_key(pkey, out_ptr);
++    default:
++      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
++      goto err;
++    }
++
++err:
++  return 0;
++}
+Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
+===================================================================
+--- aws-lc.orig/third_party/boringssl/crypto/evp/evp_test.cc
++++ aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
+@@ -52,6 +52,8 @@
+  */
+ 
+ #include <openssl/evp.h>
++#include <openssl/ec_key.h>
++#include <openssl/bn.h>
+ 
+ #include <stdio.h>
+ #include <stdint.h>
+@@ -900,3 +902,396 @@ TEST(EVPTest, WycheproofRSAPKCS1Decrypt)
+   RunWycheproofPKCS1DecryptTest(
+       "third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt");
+ }
++
++struct ectlsencodedpoint_test_data {
++    const uint8_t *public_key;
++    size_t public_key_size;
++    const uint8_t *private_key;
++    size_t private_key_size;
++    const uint8_t *expected_shared_secret;
++    size_t expected_shared_secret_size;
++    int key_type;
++    int curve_nid;
++};
++
++static EVP_PKEY * instantiate_public_key(int key_type, int curve_nid) {
++
++  EVP_PKEY *pkey = NULL;
++
++  if (NID_X25519 == curve_nid) {
++    pkey = EVP_PKEY_new();
++    EXPECT_TRUE(pkey);
++    EXPECT_TRUE(EVP_PKEY_set_type(pkey, key_type));
++  }
++  else {
++    EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve_nid);
++    EXPECT_TRUE(ec_key);
++    pkey = EVP_PKEY_new();
++    EXPECT_TRUE(pkey);
++    EXPECT_TRUE(EVP_PKEY_assign(pkey, EVP_PKEY_EC, (EC_KEY *) ec_key));
++  }
++
++  return pkey;
++}
++
++static EVP_PKEY * instantiate_and_set_public_key(const uint8_t *public_key,
++  size_t public_key_size, int curve_nid) {
++
++  EVP_PKEY *pkey = NULL;
++
++  if (NID_X25519 != curve_nid) {
++    EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve_nid);
++    EXPECT_TRUE(ec_key);
++    const EC_GROUP *ec_key_group = EC_KEY_get0_group(ec_key);
++    EXPECT_TRUE(ec_key_group);
++    EC_POINT *ec_point = EC_POINT_new(ec_key_group);
++    EXPECT_TRUE(ec_point);
++    EXPECT_TRUE(EC_POINT_oct2point(ec_key_group, ec_point, public_key,
++      public_key_size, NULL));
++    EXPECT_TRUE(EC_KEY_set_public_key(ec_key, ec_point));
++    pkey = EVP_PKEY_new();
++    EXPECT_TRUE(pkey);
++    EXPECT_TRUE(EVP_PKEY_assign(pkey, EVP_PKEY_EC, (EC_KEY *) ec_key));
++    EC_POINT_free(ec_point);
++  }
++
++  return pkey;
++}
++
++static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
++  size_t private_key_size, int key_type, int curve_nid) {
++
++  EVP_PKEY *pkey = NULL;
++
++  if (NID_X25519 == curve_nid) {
++    pkey = EVP_PKEY_new_raw_private_key(curve_nid, nullptr, private_key,
++      private_key_size);
++    EXPECT_TRUE(pkey);
++  }
++  else {
++    EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve_nid);
++    EXPECT_TRUE(ec_key);
++    BIGNUM *private_key_bn = BN_bin2bn(private_key, private_key_size, NULL);
++    EXPECT_TRUE(private_key_bn);
++    EXPECT_TRUE(EC_KEY_set_private_key(ec_key, private_key_bn));
++    BN_free(private_key_bn);
++    pkey = EVP_PKEY_new();
++    EXPECT_TRUE(pkey);
++    EXPECT_TRUE(EVP_PKEY_assign(pkey, key_type, (EC_KEY *) ec_key));
++  }
++
++  return pkey;
++}
++
++TEST(EVPTest, ECTLSEncodedPoint) {
++
++    // TLS wire-encoding format
++    // (https://tools.ietf.org/html/rfc8422#section-5.4)
++    // x25519: u-coordinate
++    // NIST curves: 0x04 || x-coordinate || y-coordinate
++
++    // Taken from https://tools.ietf.org/html/rfc7748#section-5.2
++    static const uint8_t kX25519PublicKey[32] = {
++      0xe6, 0xdb, 0x68, 0x67, 0x58, 0x30, 0x30, 0xdb, 0x35, 0x94, 0xc1, 0xa4,
++      0x24, 0xb1, 0x5f, 0x7c, 0x72, 0x66, 0x24, 0xec, 0x26, 0xb3, 0x35, 0x3b,
++      0x10, 0xa9, 0x03, 0xa6, 0xd0, 0xab, 0x1c, 0x4c,
++    };
++    static const uint8_t kX25519PrivateKey[32] = {
++      0xa5, 0x46, 0xe3, 0x6b, 0xf0, 0x52, 0x7c, 0x9d, 0x3b, 0x16, 0x15, 0x4b,
++      0x82, 0x46, 0x5e, 0xdd, 0x62, 0x14, 0x4c, 0x0a, 0xc1, 0xfc, 0x5a, 0x18,
++      0x50, 0x6a, 0x22, 0x44, 0xba, 0x44, 0x9a, 0xc4
++    };
++    static const uint8_t kX25519ExpectedSharedSecret[32] = {
++      0xc3, 0xda, 0x55, 0x37, 0x9d, 0xe9, 0xc6, 0x90, 0x8e, 0x94, 0xea, 0x4d,
++      0xf2, 0x8d, 0x08, 0x4f, 0x32, 0xec, 0xcf, 0x03, 0x49, 0x1c, 0x71, 0xf7,
++      0x54, 0xb4, 0x07, 0x55, 0x77, 0xa2, 0x85, 0x52
++    };
++
++    struct ectlsencodedpoint_test_data x25519_test_data = {
++      .public_key = kX25519PublicKey,
++      .public_key_size = 32,
++      .private_key = kX25519PrivateKey,
++      .private_key_size = 32,
++      .expected_shared_secret = kX25519ExpectedSharedSecret,
++      .expected_shared_secret_size = 32,
++      .key_type = EVP_PKEY_X25519,
++      .curve_nid = NID_X25519
++    };
++
++    // P-{224,256,384,521} test vectors, taken from CAVP
++    // (CAVP 20.1 - KASValidityTest_ECCStaticUnified_KDFConcat_NOKC)
++    // https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/key-management
++
++    static const uint8_t kP224PublicKey[] = {
++      /* uncompressed */
++      0x04,
++      /* x-coordinate */
++      0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
++      0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
++      0xc5, 0x82, 0x78, 0x85,
++      /* y-coordinate */
++      0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
++      0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
++      0xd6, 0x45, 0xa3, 0xea
++    };
++    static const uint8_t kP224PrivateKey[] = {
++      0xc7, 0x39, 0x45, 0x68, 0x8b, 0x3d, 0xbb, 0xc6, 0xc2, 0xe7, 0x54, 0x75,
++      0xdf, 0x61, 0xd1, 0x44, 0x9d, 0x05, 0xf9, 0x64, 0x49, 0x62, 0x92, 0x67,
++      0xf2, 0x19, 0x5d, 0xaf
++    };
++    static const uint8_t kP224ExpectedSharedSecret[] = {
++      0x50, 0x28, 0xd8, 0xa1, 0x62, 0xfe, 0xac, 0xbd, 0xfa, 0x5e, 0xca, 0x8c,
++      0xdf, 0x50, 0xcc, 0xb9, 0xe0, 0x7c, 0x6b, 0x7f, 0x96, 0xa8, 0xa8, 0x93,
++      0x24, 0xdd, 0xed, 0x7a
++    };
++
++    struct ectlsencodedpoint_test_data p224_test_data = {
++      .public_key = kP224PublicKey,
++      .public_key_size = 1 + 28 + 28,
++      .private_key = kP224PrivateKey,
++      .private_key_size = 28,
++      .expected_shared_secret = kP224ExpectedSharedSecret,
++      .expected_shared_secret_size = 28,
++      .key_type = EVP_PKEY_EC,
++      .curve_nid = NID_secp224r1
++    };
++
++    static const uint8_t kP256PublicKey[] = {
++      /* uncompressed */
++      0x04,
++      /* x-coordinate */
++      0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
++      0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
++      0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b,
++      /* y-coordinate */
++      0x36, 0xac, 0x98, 0x3e, 0x2d, 0x6f, 0xb9, 0x7a, 0x9e, 0x74, 0x09, 0x0d,
++      0x26, 0xf4, 0x83, 0x34, 0xce, 0x4f, 0x4b, 0x74, 0x9f, 0x3f, 0xd7, 0xaa,
++      0x92, 0xe2, 0xc5, 0x40, 0x23, 0x2c, 0xe1, 0xbd
++    };
++    static const uint8_t kP256PrivateKey[] = {
++      0x4c, 0xab, 0xbc, 0x3f, 0xad, 0x44, 0x43, 0xcd, 0xa1, 0x36, 0x46, 0x39,
++      0x1e, 0x08, 0xbd, 0xa9, 0xd5, 0x29, 0xe1, 0x03, 0x96, 0xc0, 0xcb, 0xd2,
++      0xde, 0x9c, 0x1c, 0x73, 0xaf, 0xaa, 0x32, 0x99
++    };
++    static const uint8_t kP256ExpectedSharedSecret[] = {
++      0x89, 0x00, 0x1b, 0x34, 0x36, 0xf7, 0xe6, 0x6b, 0x00, 0x8d, 0x68, 0xa6,
++      0xc4, 0x7e, 0x01, 0x82, 0x49, 0x49, 0x4b, 0x92, 0x33, 0x92, 0x1b, 0x80,
++      0x7a, 0x75, 0x49, 0xd3, 0xad, 0xe2, 0x01, 0xa2
++    };
++
++    struct ectlsencodedpoint_test_data p256_test_data = {
++      .public_key = kP256PublicKey,
++      .public_key_size = 1 + 32 + 32,
++      .private_key = kP256PrivateKey,
++      .private_key_size = 32,
++      .expected_shared_secret = kP256ExpectedSharedSecret,
++      .expected_shared_secret_size = 32,
++      .key_type = EVP_PKEY_EC,
++      .curve_nid = NID_X9_62_prime256v1
++    };
++
++    static const uint8_t kP384PublicKey[] = {
++      /* uncompressed */
++      0x04,
++      /* x-coordinate */
++      0xe4, 0xe7, 0x0e, 0x43, 0xc6, 0xd0, 0x43, 0x46, 0xdd, 0xd7, 0x62, 0xa6,
++      0x14, 0x17, 0x6d, 0x22, 0x78, 0xb0, 0x47, 0xc5, 0xec, 0x28, 0x64, 0x84,
++      0x65, 0xf2, 0xa3, 0x90, 0xf6, 0xdd, 0x6b, 0xba, 0x54, 0xb9, 0x0b, 0x1e,
++      0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d,
++      /* y-coordinate */
++      0xf9, 0x62, 0xa2, 0x73, 0x6a, 0xce, 0x52, 0x56, 0x18, 0x15, 0xd5, 0x99,
++      0x53, 0xa0, 0x19, 0x1b, 0x1f, 0xb1, 0xf2, 0x88, 0xa4, 0x5f, 0x8e, 0x28,
++      0x3d, 0x40, 0xa5, 0xff, 0x0e, 0x83, 0x3f, 0xf3, 0x0b, 0xd6, 0x05, 0xb1,
++      0x0c, 0xf8, 0xc2, 0x6c, 0x57, 0x4d, 0x4c, 0x2f, 0x0d, 0xcd, 0xce, 0x21
++    };
++    static const uint8_t kP384PrivateKey[] = {
++      0x08, 0x95, 0x0a, 0xc9, 0x2e, 0x16, 0xce, 0x9e, 0x50, 0xed, 0xe3, 0x65,
++      0x00, 0x3c, 0xb6, 0x2c, 0xea, 0x61, 0x03, 0xcf, 0xe5, 0x35, 0xfa, 0xb3,
++      0xdc, 0x6f, 0x01, 0x45, 0xf3, 0x8e, 0xf1, 0x1c, 0x10, 0x3e, 0xf1, 0x40,
++      0x79, 0x7e, 0x4f, 0x1e, 0x5f, 0x05, 0x3f, 0x8e, 0x83, 0x0c, 0xa7, 0xd9
++    };
++    static const uint8_t kP384ExpectedSharedSecret[] = {
++      0x4b, 0x3c, 0xda, 0x1c, 0xef, 0xb6, 0x8d, 0x0a, 0x2e, 0xf3, 0x53, 0x04,
++      0xa9, 0xb0, 0xca, 0x1d, 0x8c, 0xda, 0x8b, 0xdf, 0xc8, 0x01, 0x09, 0x8c,
++      0xf7, 0x3c, 0x21, 0x8e, 0x65, 0x67, 0x22, 0xc3, 0x64, 0x96, 0x9a, 0x2a,
++      0x1f, 0x57, 0xd1, 0x93, 0x03, 0x95, 0x98, 0x22, 0x7e, 0xf2, 0xb5, 0x18
++    };
++
++    struct ectlsencodedpoint_test_data p384_test_data = {
++      .public_key = kP384PublicKey,
++      .public_key_size = 1 + 48 + 48,
++      .private_key = kP384PrivateKey,
++      .private_key_size = 48,
++      .expected_shared_secret = kP384ExpectedSharedSecret,
++      .expected_shared_secret_size = 48,
++      .key_type = EVP_PKEY_EC,
++      .curve_nid = NID_secp384r1
++    };
++
++    static const uint8_t kP521PublicKey[] = {
++      /* uncompressed */
++      0x04,
++      /* x-coordinate */
++      0x01, 0x03, 0x7e, 0x95, 0xff, 0x8e, 0x40, 0x31, 0xe0, 0xb0, 0x36, 0x1c,
++      0x58, 0xc0, 0x62, 0x61, 0x39, 0x56, 0xaa, 0x30, 0x77, 0x0c, 0xed, 0x17,
++      0x15, 0xed, 0x1b, 0x4d, 0x34, 0x29, 0x33, 0x0f, 0xac, 0x2f, 0xc5, 0xc9,
++      0x3a, 0x69, 0xf7, 0x98, 0x63, 0x3a, 0x15, 0x75, 0x5e, 0x2d, 0xb8, 0x65,
++      0x09, 0x87, 0xf5, 0x75, 0x85, 0xcd, 0xe3, 0x51, 0x6b, 0x6d, 0xd0, 0xfc,
++      0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b,
++      /* y-coordinate */
++      0x01, 0x1b, 0xba, 0xcc, 0x17, 0x80, 0x56, 0x8b, 0x9b, 0x32, 0xd4, 0x82,
++      0x3f, 0x32, 0x9a, 0x46, 0xd8, 0x39, 0x39, 0xd1, 0x18, 0xcc, 0x97, 0x79,
++      0x8d, 0x5d, 0xfa, 0x08, 0xb4, 0x27, 0xd3, 0xae, 0xe4, 0x76, 0x4f, 0x46,
++      0x47, 0xf9, 0xf2, 0x4e, 0xcf, 0x0f, 0xee, 0x6d, 0x61, 0x9c, 0x79, 0x73,
++      0xa8, 0x55, 0x4a, 0xd5, 0x51, 0x13, 0x0d, 0x1e, 0x3f, 0x6c, 0x9d, 0x2e,
++      0xe3, 0xa2, 0xa8, 0x6f, 0xf5, 0xc3
++    };
++    static const uint8_t kP521PrivateKey[] = {
++      0x01, 0xab, 0x4b, 0x1a, 0x8b, 0x60, 0xbb, 0x40, 0x23, 0xd6, 0x55, 0x05,
++      0x0f, 0x0a, 0xd5, 0xd6, 0xe1, 0xbf, 0x5b, 0xc5, 0x23, 0x90, 0x2a, 0x2f,
++      0x59, 0x69, 0x3e, 0xd0, 0xb9, 0x4f, 0x3c, 0x61, 0x06, 0xde, 0xb5, 0x92,
++      0xe0, 0xf1, 0x74, 0xa7, 0x8b, 0xbd, 0xef, 0x23, 0xec, 0xeb, 0x23, 0xfc,
++      0x97, 0x4b, 0x1c, 0xf5, 0x6a, 0x37, 0x73, 0x66, 0x6a, 0xfc, 0x76, 0x6f,
++      0x3d, 0xdc, 0xb4, 0xc2, 0x92, 0xd0
++    };
++    static const uint8_t kP521ExpectedSharedSecret[] = {
++      0x01, 0x1e, 0x28, 0x45, 0xc3, 0x2d, 0x1e, 0x49, 0xfc, 0x6a, 0x0e, 0x3c,
++      0xc8, 0x05, 0xc0, 0x98, 0x45, 0x11, 0xb0, 0x7f, 0xf6, 0xea, 0x41, 0xe1,
++      0xe1, 0x12, 0xee, 0x9c, 0x40, 0x8c, 0x74, 0xc3, 0x53, 0x5c, 0x97, 0xf2,
++      0xf1, 0x8d, 0x62, 0xf4, 0x3d, 0x27, 0x21, 0x40, 0x7b, 0x82, 0x13, 0xd0,
++      0x0b, 0xd3, 0x58, 0x86, 0x6a, 0x33, 0xc6, 0x0c, 0x67, 0x51, 0xd2, 0xdc,
++      0x23, 0x50, 0x06, 0x15, 0xb2, 0xba
++    };
++
++    struct ectlsencodedpoint_test_data p521_test_data = {
++      .public_key = kP521PublicKey,
++      .public_key_size = 1 + 66 + 66,
++      .private_key = kP521PrivateKey,
++      .private_key_size = 66,
++      .expected_shared_secret = kP521ExpectedSharedSecret,
++      .expected_shared_secret_size = 66,
++      .key_type = EVP_PKEY_EC,
++      .curve_nid = NID_secp521r1
++    };
++
++    ectlsencodedpoint_test_data test_data_all[] = {x25519_test_data,
++      p224_test_data, p256_test_data, p384_test_data, p521_test_data};
++
++    uint8_t *output = nullptr;
++    size_t output_size = 0;
++    uint8_t *shared_secret = nullptr;
++    size_t shared_secret_size = 0;
++    EVP_PKEY_CTX *pkey_ctx = nullptr;
++    EVP_PKEY *pkey_public = nullptr;
++    EVP_PKEY *pkey_private = nullptr;
++
++    for (ectlsencodedpoint_test_data test_data : test_data_all) {
++
++      pkey_private = instantiate_and_set_private_key(test_data.private_key,
++        test_data.private_key_size, test_data.key_type, test_data.curve_nid);
++      ASSERT_TRUE(pkey_private);
++      pkey_public = instantiate_public_key(test_data.key_type,
++        test_data.curve_nid);
++      ASSERT_TRUE(pkey_public);
++
++      // Test we can parse EC point into an EVP_PKEY object
++      ASSERT_TRUE(EVP_PKEY_set1_tls_encodedpoint(pkey_public,
++        test_data.public_key, test_data.public_key_size));
++
++      // Test we can successfully perform a ECDH key derivation using the
++      // parsed public key and a corresponding private key
++      pkey_ctx = EVP_PKEY_CTX_new(pkey_private, nullptr);
++      ASSERT_TRUE(pkey_ctx);
++      ASSERT_TRUE(EVP_PKEY_derive_init(pkey_ctx));
++      ASSERT_TRUE(EVP_PKEY_derive_set_peer(pkey_ctx, pkey_public));
++      ASSERT_TRUE(EVP_PKEY_derive(pkey_ctx, nullptr, &shared_secret_size));
++      EXPECT_EQ(shared_secret_size, test_data.expected_shared_secret_size);
++      shared_secret = (uint8_t *) OPENSSL_malloc(shared_secret_size);
++      ASSERT_TRUE(shared_secret);
++      ASSERT_TRUE(EVP_PKEY_derive(pkey_ctx, shared_secret,
++        &shared_secret_size));
++      EXPECT_EQ(shared_secret_size, test_data.expected_shared_secret_size);
++      EXPECT_EQ(Bytes(shared_secret, shared_secret_size),
++        Bytes(test_data.expected_shared_secret, shared_secret_size));
++
++      // Test we can write EC point from the EVP_PKEY object to wire format
++      output_size = EVP_PKEY_get1_tls_encodedpoint(pkey_public, &output);
++      EXPECT_EQ(output_size, test_data.public_key_size);
++      EXPECT_EQ(Bytes(output, output_size),
++        Bytes(test_data.public_key, output_size));
++
++      OPENSSL_free(output);
++      OPENSSL_free(shared_secret);
++      EVP_PKEY_CTX_free(pkey_ctx);
++      EVP_PKEY_free(pkey_public);
++      EVP_PKEY_free(pkey_private);
++      output_size = 0;
++      shared_secret_size = 0;
++    }
++
++    pkey_private = instantiate_and_set_private_key(p521_test_data.private_key,
++        p521_test_data.private_key_size, p521_test_data.key_type,
++        p521_test_data.curve_nid);
++    EVP_PKEY_free(pkey_private);
++
++    // Test various unsupported key types are rejected
++    int key_types_not_supported[] = {EVP_PKEY_RSA, EVP_PKEY_DSA,
++      EVP_PKEY_ED25519};
++    const uint8_t not_supported[] = {'n','o','t',' ','s','u','p','p','o','r',
++      't','e','d'};
++    size_t not_supported_size = 13;
++    uint8_t *not_supported_out = nullptr;
++    bssl::UniquePtr<EVP_PKEY> pkey_key_type_not_supported(EVP_PKEY_new());
++
++    for (int key_type : key_types_not_supported) {
++      ASSERT_TRUE(pkey_key_type_not_supported.get());
++      ASSERT_TRUE(EVP_PKEY_set_type(pkey_key_type_not_supported.get(),
++        key_type));
++
++      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(
++        pkey_key_type_not_supported.get(), not_supported, not_supported_size));
++      EXPECT_EQ(EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE,
++        ERR_GET_REASON(ERR_peek_last_error()));
++      ERR_clear_error();
++
++      ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(
++        pkey_key_type_not_supported.get(), &not_supported_out));
++      EXPECT_EQ(EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE,
++        ERR_GET_REASON(ERR_peek_last_error()));
++      ERR_clear_error();
++    }
++
++    // Test compressed encoded EC point is rejected
++    static const uint8_t kP256PublicKeyCompressed[] = {
++      /* uncompressed + parity bit */
++      0x03,
++      /* x-coordinate */
++      0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
++      0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
++      0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b,
++    };
++
++    bssl::UniquePtr<EVP_PKEY> pkey_public_compressed(instantiate_public_key(
++      EVP_PKEY_EC, NID_X9_62_prime256v1));
++    ASSERT_TRUE(pkey_public_compressed);
++
++    ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public_compressed.get(),
++      kP256PublicKeyCompressed, 1 + 32));
++    EXPECT_EQ(EVP_R_CONVERSION_FORM_NOT_SUPPORTED,
++      ERR_GET_REASON(ERR_peek_last_error()));
++    ERR_clear_error();
++
++    uint8_t *output_compressed = NULL;
++    bssl::UniquePtr<EVP_PKEY> pkey_public_compressed_set(
++      instantiate_and_set_public_key(kP256PublicKeyCompressed, 1 + 32,
++        NID_X9_62_prime256v1));
++    EC_KEY_set_conv_form(EVP_PKEY_get0_EC_KEY(pkey_public_compressed_set.get()),
++      POINT_CONVERSION_COMPRESSED);
++    ASSERT_TRUE(pkey_public_compressed_set.get());
++
++    ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(
++      pkey_public_compressed_set.get(), &output_compressed));
++    EXPECT_EQ(EVP_R_CONVERSION_FORM_NOT_SUPPORTED,
++      ERR_GET_REASON(ERR_peek_last_error()));
++    ERR_clear_error();
++}
+Index: aws-lc/third_party/boringssl/crypto/evp/p_x25519_asn1.c
+===================================================================
+--- aws-lc.orig/third_party/boringssl/crypto/evp/p_x25519_asn1.c
++++ aws-lc/third_party/boringssl/crypto/evp/p_x25519_asn1.c
+@@ -216,33 +216,3 @@ const EVP_PKEY_ASN1_METHOD x25519_asn1_m
+     NULL /* param_cmp */,
+     x25519_free,
+ };
+-
+-int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
+-                                   size_t len) {
+-  // TODO(davidben): In OpenSSL, this function also works for |EVP_PKEY_EC|
+-  // keys. Add support if it ever comes up.
+-  if (pkey->type != EVP_PKEY_X25519) {
+-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+-    return 0;
+-  }
+-
+-  return x25519_set_pub_raw(pkey, in, len);
+-}
+-
+-size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
+-  // TODO(davidben): In OpenSSL, this function also works for |EVP_PKEY_EC|
+-  // keys. Add support if it ever comes up.
+-  if (pkey->type != EVP_PKEY_X25519) {
+-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+-    return 0;
+-  }
+-
+-  const X25519_KEY *key = pkey->pkey.ptr;
+-  if (key == NULL) {
+-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+-    return 0;
+-  }
+-
+-  *out_ptr = OPENSSL_memdup(key->pub, 32);
+-  return *out_ptr == NULL ? 0 : 32;
+-}
+Index: aws-lc/third_party/boringssl/include/openssl/evp.h
+===================================================================
+--- aws-lc.orig/third_party/boringssl/include/openssl/evp.h
++++ aws-lc/third_party/boringssl/include/openssl/evp.h
+@@ -915,20 +915,32 @@ OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(cons
+ OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
+                                                  int encoding);
+ 
++// TLS-specific function.
+ // EVP_PKEY_set1_tls_encodedpoint replaces |pkey| with a public key encoded by
+ // |in|. It returns one on success and zero on error.
+ //
+-// This function only works on X25519 keys.
++// This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
++// types. For the EC key type, the EC point representation must be in
++// uncompressed form.
++//
++// The following curve types are supported for the EC key type:
++// NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1.
+ OPENSSL_EXPORT int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey,
+                                                   const uint8_t *in,
+                                                   size_t len);
+ 
++// TLS-specific function.
+ // EVP_PKEY_get1_tls_encodedpoint sets |*out_ptr| to a newly-allocated buffer
+ // containing the raw encoded public key for |pkey|. The caller must call
+ // |OPENSSL_free| to release this buffer. The function returns the length of the
+ // buffer on success and zero on error.
+ //
+-// This function only works on X25519 keys.
++// This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
++// types. For the EC key type, the EC point representation must be in
++// uncompressed form.
++//
++// The following curve types are supported for the EC key type:
++// NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1.
+ OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
+                                                      uint8_t **out_ptr);
+ 
+@@ -1115,5 +1127,6 @@ BSSL_NAMESPACE_END
+ #define EVP_R_INVALID_PARAMETERS 133
+ #define EVP_R_INVALID_PEER_KEY 134
+ #define EVP_R_NOT_XOF_OR_INVALID_LENGTH 135
++#define EVP_R_CONVERSION_FORM_NOT_SUPPORTED 136
+ 
+ #endif  // OPENSSL_HEADER_EVP_H
