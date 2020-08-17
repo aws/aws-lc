@@ -2,7 +2,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/evp/evp.c
 +++ aws-lc/third_party/boringssl/crypto/evp/evp.c
-@@ -441,3 +441,275 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
+@@ -441,3 +441,283 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
    // of DSA. We do not support these, so the base ID is simply the ID.
    return EVP_PKEY_id(pkey);
  }
@@ -54,6 +54,11 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +    goto err;
 +  }
 +
++  if (1 > len) {
++    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
++    goto err;
++  }
++
 +  if (EVP_PKEY_EC != pkey->type) {
 +    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
 +    goto err;
@@ -67,7 +72,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  // where:
 +  // compression = 0x04 if uncompressed
 +  // compression = 0x02/0x03 if compressed (depending on y-coordinate parity)
-+  if ((len > 0) && (POINT_CONVERSION_UNCOMPRESSED != in[0])) {
++  if (POINT_CONVERSION_UNCOMPRESSED != in[0]) {
 +    OPENSSL_PUT_ERROR(EVP, EVP_R_CONVERSION_FORM_NOT_SUPPORTED);
 +    goto err;
 +  }
@@ -254,6 +259,9 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  ret = X25519_KEY_SIZE;
 +
 +err:
++  if (0 == ret) {
++    OPENSSL_free(*out_ptr);
++  }
 +  return ret;
 +}
 +
@@ -384,17 +392,17 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 +    // NIST curves: 0x04 || x-coordinate || y-coordinate
 +
 +    // Taken from https://tools.ietf.org/html/rfc7748#section-5.2
-+    static const uint8_t kX25519PublicKey[32] = {
++    static const uint8_t kX25519PublicKey[] = {
 +      0xe6, 0xdb, 0x68, 0x67, 0x58, 0x30, 0x30, 0xdb, 0x35, 0x94, 0xc1, 0xa4,
 +      0x24, 0xb1, 0x5f, 0x7c, 0x72, 0x66, 0x24, 0xec, 0x26, 0xb3, 0x35, 0x3b,
 +      0x10, 0xa9, 0x03, 0xa6, 0xd0, 0xab, 0x1c, 0x4c,
 +    };
-+    static const uint8_t kX25519PrivateKey[32] = {
++    static const uint8_t kX25519PrivateKey[] = {
 +      0xa5, 0x46, 0xe3, 0x6b, 0xf0, 0x52, 0x7c, 0x9d, 0x3b, 0x16, 0x15, 0x4b,
 +      0x82, 0x46, 0x5e, 0xdd, 0x62, 0x14, 0x4c, 0x0a, 0xc1, 0xfc, 0x5a, 0x18,
 +      0x50, 0x6a, 0x22, 0x44, 0xba, 0x44, 0x9a, 0xc4
 +    };
-+    static const uint8_t kX25519ExpectedSharedSecret[32] = {
++    static const uint8_t kX25519ExpectedSharedSecret[] = {
 +      0xc3, 0xda, 0x55, 0x37, 0x9d, 0xe9, 0xc6, 0x90, 0x8e, 0x94, 0xea, 0x4d,
 +      0xf2, 0x8d, 0x08, 0x4f, 0x32, 0xec, 0xcf, 0x03, 0x49, 0x1c, 0x71, 0xf7,
 +      0x54, 0xb4, 0x07, 0x55, 0x77, 0xa2, 0x85, 0x52
