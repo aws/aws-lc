@@ -1,0 +1,35 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+/*
+ * SHA384 defines
+ */
+
+// Identifier for type of env_md_st struct.  SHA384 has NID 673
+let NID = 673;
+
+// Length of message digest in bytes
+let SHA_DIGEST_LENGTH = 48;
+
+// Names of init, update, and final functions in C code.
+let SHA_INIT = "sha384_init";
+let SHA_UPDATE = "sha384_update";
+let SHA_FINAL = "sha384_final";
+
+// Name of EVP storage global
+let EVP_SHA_STORAGE = "EVP_sha384_storage";
+
+// Name of EVP init function in C code.
+let EVP_SHA_INIT = "EVP_sha384_init";
+
+// Initial hash value
+let SHA_H0 = {{ SHA384H0 }};
+
+// Cryptol spec for SHA final function
+let SHA_FINAL_SPEC = {{ SHA384Final }};
+
+// Cryptol spec for SHA imperative function
+let SHA_IMP_SPEC = {{ SHA384Imp }};

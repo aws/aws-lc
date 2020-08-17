@@ -1,0 +1,35 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+/*
+ * SHA512 defines
+ */
+
+// Identifier for type of env_md_st struct.  SHA512 has NID 674
+let NID = 674;
+
+// Length of message digest in bytes
+let SHA_DIGEST_LENGTH = 64;
+
+// Names of init, update, and final functions in C code.
+let SHA_INIT = "sha512_init";
+let SHA_UPDATE = "sha512_update";
+let SHA_FINAL = "sha512_final";
+
+// Name of EVP storage global
+let EVP_SHA_STORAGE = "EVP_sha512_storage";
+
+// Name of EVP init function in C code.
+let EVP_SHA_INIT = "EVP_sha512_init";
+
+// Initial hash value
+let SHA_H0 = {{ SHA512H0 }};
+
+// Cryptol spec for SHA final function
+let SHA_FINAL_SPEC = {{ SHA512Final }};
+
+// Cryptol spec for SHA imperative function
+let SHA_IMP_SPEC = {{ SHA512Imp }};

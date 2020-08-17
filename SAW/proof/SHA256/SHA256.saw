@@ -1,0 +1,522 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA256Imp.cry";
+
+m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+
+// Include helper functions
+include "../common/helpers.saw";
+
+////////////////////////////////////////////////////////////////////////////////
+// Specifications
+
+/*
+ * Specification of OPENSSL memory management functions
+ */
+let OPENSSL_malloc_spec size = do {
+  crucible_execute_func [crucible_term {{ `size : [64] }}];
+  ptr <- crucible_alloc_aligned 128 (llvm_array size (llvm_int 8));
+  crucible_return ptr;
+};
+
+let OPENSSL_free_nonnull_spec size = do {
+  ptr <- crucible_alloc (llvm_array size (llvm_int 8));
+  crucible_execute_func [ptr];
+};
+
+let OPENSSL_free_null_spec = do {
+  crucible_execute_func [crucible_null];
+};
+
+let OPENSSL_cleanse_spec len = do {
+  ptr <- crucible_alloc (llvm_array len (llvm_int 8));
+  crucible_execute_func [ptr, crucible_term {{ `len : [64] }}];
+  crucible_points_to ptr (crucible_term {{ zero : [len][8] }});
+};
+
+
+/*
+ * SHA256 defines
+ */
+let NID_sha256 = 672;
+let SHA256_CBLOCK = 64;
+let SHA256_DIGEST_LENGTH = 32;
+let SHA256_CTX_SIZE = eval_int {{ (`SHA256_DIGEST_LENGTH + 4 + 4 + `SHA256_CBLOCK + 4 + 4) : [64] }};
+
+
+/*
+ * Specification of block function for SHA256
+ */
+let sha256_block_data_order_spec io32cap check_postcond = do {
+  if check_postcond then do {
+    return ();
+  } else do {
+    crucible_alloc_global "OPENSSL_ia32cap_P";
+    crucible_points_to
+      (crucible_global "OPENSSL_ia32cap_P")
+      (crucible_term io32cap);
+  };
+
+  (state, state_ptr) <- ptr_to_fresh "state" (llvm_array 8 (llvm_int 32));
+
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array SHA256_CBLOCK (llvm_int 8));
+
+  crucible_execute_func [state_ptr, data_ptr, crucible_term {{ 1 : [64] }}];
+
+  crucible_points_to state_ptr (crucible_term {{ SHA256Block state (split (join data)) }});
+};
+
+
+/*
+ * Helpers for specifying the SHA256 structs
+ */
+let fresh_sha256_state_st name n = do {
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 (llvm_int 32));
+  block <- crucible_fresh_var (str_concat name ".block") (llvm_array n (llvm_int 8));
+  sz <- crucible_fresh_var (str_concat name ".sz") (llvm_int 64);
+  return {{ { h = h, block = (block # zero) : [64][8], n = `n : [32], sz = sz } }};
+};
+
+// Specify the sha256_state_st struct
+let points_to_sha256_state_st ptr state = do {
+  crucible_points_to (crucible_field ptr "h") (crucible_term {{ state.h }});
+  crucible_points_to (crucible_field ptr "Nl") (crucible_term {{ drop`{32} state.sz }});
+  crucible_points_to (crucible_field ptr "Nh") (crucible_term {{ take`{32} state.sz }});
+  crucible_points_to (crucible_field ptr "data") (crucible_term {{ state.block }});
+  crucible_points_to (crucible_field ptr "num") (crucible_term {{ state.n }});
+  crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ 32 : [32] }});
+};
+
+// Specify the env_md_st struct for SHA256
+let points_to_env_md_st ptr = do {
+  crucible_points_to (crucible_field ptr "type") (crucible_term {{ `NID_sha256 : [32] }});
+  crucible_points_to (crucible_field ptr "md_size") (crucible_term {{ `SHA256_DIGEST_LENGTH : [32] }});
+  crucible_points_to (crucible_field ptr "flags") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "init") (crucible_global "sha256_init");
+  crucible_points_to (crucible_field ptr "update") (crucible_global "sha256_update");
+  crucible_points_to (crucible_field ptr "final") (crucible_global "sha256_final");
+  crucible_points_to (crucible_field ptr "block_size") (crucible_term {{ `SHA256_CBLOCK : [32] }});
+  crucible_points_to (crucible_field ptr "ctx_size") (crucible_term {{ `SHA256_CTX_SIZE : [32] }});
+};
+
+// Specify the env_md_ctx_st struct
+let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr = do {
+  crucible_points_to (crucible_field ptr "digest") digest_ptr;
+  crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
+  crucible_points_to (crucible_field ptr "pctx") crucible_null;
+  crucible_points_to (crucible_field ptr "pctx_ops") crucible_null;
+};
+
+// Specification of EVP_sha256_init, the initialization function for
+// EVP_sha256_storage
+let EVP_sha256_init_spec = do {
+  crucible_alloc_global "EVP_sha256_storage";
+  crucible_execute_func [];
+  points_to_env_md_st (crucible_global "EVP_sha256_storage");
+};
+
+
+/*
+ * Specifications of EVP_Digest, EVP_DigestInit, EVP_DigestUpdate, and
+ * EVP_DigestFinal functions for SHA256.
+ */
+let EVP_DigestInit_spec = do {
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+  type_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st type_ptr;
+
+  crucible_execute_func [ctx_ptr, type_ptr];
+
+  sha256_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha256_state_st");
+  points_to_sha256_state_st
+    sha256_ctx_ptr
+    {{ { h = H0, block = zero : [64][8], n = 0 : [32], sz = 0 : [64] } }};
+  points_to_env_md_ctx_st ctx_ptr type_ptr sha256_ctx_ptr;
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DigestUpdate_spec num len = do {
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  sha256_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha256_state_st");
+  sha256_ctx <- fresh_sha256_state_st "sha256_ctx" num;
+  points_to_sha256_state_st sha256_ctx_ptr sha256_ctx;
+
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha256_ctx_ptr;
+
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array len (llvm_int 8));
+
+  crucible_execute_func [ctx_ptr, data_ptr, crucible_term {{ `len : [64] }}];
+
+  points_to_sha256_state_st sha256_ctx_ptr {{ SHA256Update sha256_ctx data }};
+
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha256_ctx_ptr;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DigestFinal_spec num = do {
+  md_out_ptr <- crucible_alloc (llvm_array 32 (llvm_int 8));
+
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  sha256_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha256_state_st");
+  sha256_ctx <- fresh_sha256_state_st "sha256_ctx" num;
+  points_to_sha256_state_st sha256_ctx_ptr sha256_ctx;
+
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha256_ctx_ptr;
+
+  crucible_execute_func [ctx_ptr, md_out_ptr, crucible_null];
+
+  crucible_points_to md_out_ptr (crucible_term {{ split`{32} (SHA256Final sha256_ctx) }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_Digest_spec len = do {
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array len (llvm_int 8));
+
+  md_out_ptr <- crucible_alloc (llvm_array 32 (llvm_int 8));
+
+  type_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st type_ptr;
+
+  crucible_execute_func
+    [ data_ptr
+    , crucible_term {{ `len : [64] }}
+    , md_out_ptr
+    , crucible_null
+    , type_ptr
+    , crucible_null
+    ];
+
+  crucible_points_to md_out_ptr (crucible_term {{ split`{32} (SHA256Imp data) }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+OPENSSL_malloc_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_malloc"
+  (OPENSSL_malloc_spec SHA256_CTX_SIZE);
+
+OPENSSL_free_nonnull_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  (OPENSSL_free_nonnull_spec SHA256_CTX_SIZE);
+
+OPENSSL_free_null_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  OPENSSL_free_null_spec;
+
+OPENSSL_cleanse_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_cleanse"
+  (OPENSSL_cleanse_spec SHA256_CTX_SIZE);
+
+
+let bvShl11 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 11";
+let bvShl14 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 14";
+let bvShl15 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 15";
+let bvShl18 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 18";
+let bvShl21 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 21";
+let bvShl23 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 23";
+let bvShl25 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 25";
+let bvShl26 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 26";
+let bvShl27 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 27";
+let bvShl30 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 30";
+
+let bvShr2  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 2";
+let bvShr3  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 3";
+let bvShr5  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 5";
+let bvShr6  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 6";
+let bvShr7  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 7";
+let bvShr9  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 9";
+let bvShr10 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 10";
+let bvShr11 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 11";
+let bvShr14 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 14";
+let bvShr17 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 17";
+
+let bvShr2_64  = parse_core "\\(x : bitvector 64) -> bvShr 64 x 2";
+let bvShr17_64 = parse_core "\\(x : bitvector 64) -> bvShr 64 x 17";
+
+let slice_32_32_0 = parse_core "\\(x : bitvector 64) -> slice Bool 32 32 0 x";
+let slice_32_32_64 = parse_core "\\(x : bitvector 128) -> slice Bool 32 32 64 x";
+let slice_96_32_0 = parse_core "\\(x : bitvector 128) -> slice Bool 96 32 0 x";
+
+let slice_18_14_0 = parse_core "\\(x : bitvector 32) -> slice Bool 18 14 0 x";
+let slice_0_18_14 = parse_core "\\(x : bitvector 32) -> slice Bool 0 18 14 x";
+let slice_21_11_0 = parse_core "\\(x : bitvector 32) -> slice Bool 21 11 0 x";
+let slice_0_21_11 = parse_core "\\(x : bitvector 32) -> slice Bool 0 21 11 x";
+let slice_23_9_0  = parse_core "\\(x : bitvector 32) -> slice Bool 23 9 0 x";
+let slice_0_23_9  = parse_core "\\(x : bitvector 32) -> slice Bool 0 23 9 x";
+let slice_26_6_0  = parse_core "\\(x : bitvector 32) -> slice Bool 26 6 0 x";
+let slice_0_26_6  = parse_core "\\(x : bitvector 32) -> slice Bool 0 26 6 x";
+let slice_27_5_0  = parse_core "\\(x : bitvector 32) -> slice Bool 27 5 0 x";
+let slice_0_27_5  = parse_core "\\(x : bitvector 32) -> slice Bool 0 27 5 x";
+let slice_30_2_0  = parse_core "\\(x : bitvector 32) -> slice Bool 30 2 0 x";
+let slice_0_30_2  = parse_core "\\(x : bitvector 32) -> slice Bool 0 30 2 x";
+
+
+let prove_folding_theorem t = prove_print abc (rewrite (cryptol_ss ()) t);
+
+rotate15_thm <- prove_folding_theorem {{ \x -> (bvShr17 x) || (bvShl15 x) == x <<< 15 }};
+rotate18_thm <- prove_folding_theorem {{ \x -> (bvShr14 x) || (bvShl18 x) == x <<< 18 }};
+rotate21_thm <- prove_folding_theorem {{ \x -> (bvShr11 x) || (bvShl21 x) == x <<< 21 }};
+rotate23_thm <- prove_folding_theorem {{ \x -> (bvShr9  x) || (bvShl23 x) == x <<< 23 }};
+rotate25_thm <- prove_folding_theorem {{ \x -> (bvShr7  x) || (bvShl25 x) == x <<< 25 }};
+rotate26_thm <- prove_folding_theorem {{ \x -> (bvShr6  x) || (bvShl26 x) == x <<< 26 }};
+rotate27_thm <- prove_folding_theorem {{ \x -> (bvShr5  x) || (bvShl27 x) == x <<< 27 }};
+rotate30_thm <- prove_folding_theorem {{ \x -> (bvShr2  x) || (bvShl30 x) == x <<< 30 }};
+
+Sigma0_thm   <- prove_folding_theorem {{ \x -> (x ^ ((x ^ (x <<< 23)) <<< 21)) <<< 30 == S0 x }};
+Sigma0_1_thm <- prove_folding_theorem {{ \x -> ((((x <<< 23) ^ x) <<< 21) ^ x) <<< 30 == S0 x }};
+Sigma1_thm   <- prove_folding_theorem {{ \x -> (x ^ ((x ^ (x <<< 18)) <<< 27)) <<< 26 == S1 x }};
+Sigma1_1_thm <- prove_folding_theorem {{ \x -> ((((x <<< 18) ^ x) <<< 27) ^ x) <<< 26 == S1 x }};
+sigma0_thm <- prove_folding_theorem {{ \x -> (bvShr3  x) ^ ((x ^ (x <<< 21)) <<< 25) == s0 x }};
+sigma1_thm <- prove_folding_theorem {{ \x -> (bvShr10 x) ^ ((x ^ (x <<< 30)) <<< 15) == s1 x }};
+
+Ch_thm   <- prove_folding_theorem {{ \x y z -> z ^ (x && (z ^ y)) == Ch x y z }};
+Ch_1_thm <- prove_folding_theorem {{ \x y z -> z ^ (x && (y ^ z)) == Ch x y z }};
+Ch_2_thm <- prove_folding_theorem {{ \x y z -> z ^ ((y ^ z) && x) == Ch x y z }};
+Ch_3_thm <- prove_folding_theorem {{ \x y z -> z ^ ((y ^ z) && x) == Ch x y z }};
+Ch_4_thm <- prove_folding_theorem {{ \x y z -> ((y ^ z) && x) ^ z == Ch x y z }};
+Ch_5_thm <- prove_folding_theorem {{ \x y z -> ((z ^ y) && x) ^ z == Ch x y z }};
+Ch_6_thm <- prove_folding_theorem {{ \x y z -> (x && (y ^ z)) ^ z == Ch x y z }};
+Ch_7_thm <- prove_folding_theorem {{ \x y z -> (x && (z ^ y)) ^ z == Ch x y z }};
+
+Maj_thm   <- prove_folding_theorem {{ \x y z -> Ch (x ^ y) z y == Maj x y z }};
+Maj_1_thm <- prove_folding_theorem {{ \x y z -> Ch (y ^ x) z y == Maj x y z }};
+
+let bvult = parse_core "\\(x y : bitvector 64) -> bvult 64 x y";
+// replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract domain to work
+cmp_sub_thm <- prove_folding_theorem
+  {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};
+
+slice_append_0_thm <- prove_folding_theorem
+  {{ \(x : [64]) (y : [64]) -> slice_32_32_64 (x # y) == slice_32_32_0 x }};
+slice_append_1_thm <- prove_folding_theorem
+  {{ \(x : [64]) (y : [64]) -> slice_96_32_0  (x # y) == slice_32_32_0 y }};
+
+rotate18_1_thm <- prove_folding_theorem {{ \x -> (slice_18_14_0 x) # (slice_0_18_14 x) == x <<< 18 }};
+rotate21_1_thm <- prove_folding_theorem {{ \x -> (slice_21_11_0 x) # (slice_0_21_11 x) == x <<< 21 }};
+rotate23_1_thm <- prove_folding_theorem {{ \x -> (slice_23_9_0  x) # (slice_0_23_9  x) == x <<< 23 }};
+rotate26_1_thm <- prove_folding_theorem {{ \x -> (slice_26_6_0  x) # (slice_0_26_6  x) == x <<< 26 }};
+rotate27_1_thm <- prove_folding_theorem {{ \x -> (slice_27_5_0  x) # (slice_0_27_5  x) == x <<< 27 }};
+rotate30_1_thm <- prove_folding_theorem {{ \x -> (slice_30_2_0  x) # (slice_0_30_2  x) == x <<< 30 }};
+
+rotate23_slice_add_thm <- prove_folding_theorem
+  {{ \x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 ->
+      (slice_23_9_0 (x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 +x8 + x9 + x10 + x11 + x12 + x13 + x14))
+        # (slice_0_23_9 (569573376 + x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 +x8 + x9 + x10 + x11 + x12 + x13 + x14))
+      == (569573376 + x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 +x8 + x9 + x10 + x11 + x12 + x13 + x14) <<< 23
+  }};
+
+xor_append_96_32_thm <- prove_folding_theorem
+  {{ \(x : [96]) (y : [32]) u v -> (x # y) ^ (u # v) == (x ^ u) # (y ^ v) }};
+xor_append_64_32_thm <- prove_folding_theorem
+  {{ \(x : [64]) (y : [32]) u v -> (x # y) ^ (u # v) == (x ^ u) # (y ^ v) }};
+xor_append_32_32_thm <- prove_folding_theorem
+  {{ \(x : [32]) (y : [32]) u v -> (x # y) ^ (u # v) == (x ^ u) # (y ^ v) }};
+xor_append_64_64_thm <- prove_folding_theorem
+  {{ \(x : [64]) (y : [64]) u v -> (x # y) ^ (u # v) == (x ^ u) # (y ^ v) }};
+xor_append_64_32_32_thm <- prove_folding_theorem
+  {{ \(x : [64]) (y : [32]) (z : [32]) u v -> ((x # y) # z) ^ (u # v) == (x ^ u) # ((y # z) ^ v) }};
+
+sigma0_avx_thm <- prove_folding_theorem
+  {{ \x -> (bvShr7 x) ^ (bvShr3 x) ^ (bvShl14 x) ^ (bvShr11 (bvShr7 x)) ^ (bvShl11 (bvShl14 x)) == s0 x }};
+sigma1_avx_thm <- prove_folding_theorem
+  {{ \x ->
+      slice_32_32_0 (((bvShr10 x) # (bvShr10 x)) ^ (bvShr17_64 (x # x)) ^ (bvShr2_64 (bvShr17_64 (x # x)))) == s1 x
+  }};
+
+let scalar_thms =
+  [ rotate15_thm
+  , rotate18_thm
+  , rotate21_thm
+  , rotate23_thm
+  , rotate25_thm
+  , rotate26_thm
+  , rotate27_thm
+  , rotate30_thm
+  , Sigma0_thm
+  , Sigma0_1_thm
+  , Sigma1_thm
+  , Sigma1_1_thm
+  , sigma0_thm
+  , sigma1_thm
+  , Ch_thm
+  , Ch_1_thm
+  , Ch_2_thm
+  , Ch_3_thm
+  , Ch_4_thm
+  , Ch_5_thm
+  , Ch_6_thm
+  , Ch_7_thm
+  , Maj_thm
+  , Maj_1_thm
+  , cmp_sub_thm
+  ];
+
+let avx_thms =
+  [ slice_append_0_thm
+  , slice_append_1_thm
+  , rotate18_1_thm
+  , rotate21_1_thm
+  , rotate23_1_thm
+  , rotate26_1_thm
+  , rotate27_1_thm
+  , rotate30_1_thm
+  , rotate23_slice_add_thm
+  , xor_append_96_32_thm
+  , xor_append_64_32_thm
+  , xor_append_32_32_thm
+  , xor_append_64_64_thm
+  , xor_append_64_32_32_thm
+  , Sigma0_thm
+  , Sigma0_1_thm
+  , Sigma1_thm
+  , Sigma1_1_thm
+  , sigma0_avx_thm
+  , sigma1_avx_thm
+  , Ch_thm
+  , Ch_1_thm
+  , Ch_2_thm
+  , Ch_3_thm
+  , Ch_4_thm
+  , Ch_5_thm
+  , Ch_6_thm
+  , Ch_7_thm
+  , Maj_thm
+  , Maj_1_thm
+  , cmp_sub_thm
+  ];
+
+concat_assoc_0_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y :  [8]) (z :  [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_1_thm <- prove_folding_theorem
+  {{ \(x : [16]) (y :  [8]) (z :  [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_2_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y : [16]) (z :  [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_3_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y :  [8]) (z : [16]) -> x # (y # z) == (x # y) # z }};
+let concat_assoc_thms =
+  [ concat_assoc_0_thm
+  , concat_assoc_1_thm
+  , concat_assoc_2_thm
+  , concat_assoc_3_thm
+  ];
+
+
+enable_what4_hash_consing;
+
+crucible_llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "sha256_block_data_order"
+  [ ("K256", 704) // immutable constants
+  ]
+  true
+  (sha256_block_data_order_spec {{ [0, 0, 0, 0] : [4][32] }} false)
+  (do {
+    simplify (cryptol_ss ());
+    simplify (addsimps scalar_thms empty_ss);
+    simplify (addsimps concat_assoc_thms empty_ss);
+    w4_unint_yices ["S0", "S1", "s0", "s1", "Ch"];
+  });
+
+crucible_llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "sha256_block_data_order"
+  [ ("K256", 704) // immutable constants
+  ]
+  true
+  (sha256_block_data_order_spec {{ [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF] : [4][32] }} false)
+  (do {
+    simplify (cryptol_ss ());
+    simplify (addsimps avx_thms empty_ss);
+    simplify (addsimps concat_assoc_thms empty_ss);
+    w4_unint_yices ["S0", "S1", "s0", "s1", "Ch"];
+  });
+
+disable_what4_hash_consing;
+
+sha256_block_data_order_spec <- crucible_llvm_unsafe_assume_spec m "sha256_block_data_order"
+  (sha256_block_data_order_spec {{ [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF] : [4][32] }} true);
+
+
+crucible_llvm_verify m "EVP_sha256_init" [] true EVP_sha256_init_spec (w4_unint_yices []);
+
+
+crucible_llvm_verify m "EVP_DigestInit"
+  [ OPENSSL_malloc_ov
+  , OPENSSL_free_null_ov
+  ]
+  true
+  EVP_DigestInit_spec
+  (w4_unint_yices []);
+
+crucible_llvm_verify m "EVP_DigestUpdate"
+  [sha256_block_data_order_spec]
+  true
+  // num=0, len=120 covers the case with one call to the block function,
+  // on one block from data, and the rest of data copied in c->data
+  (EVP_DigestUpdate_spec 0 120)
+  (w4_unint_yices ["SHA256Block"]);
+crucible_llvm_verify m "EVP_DigestUpdate"
+  [sha256_block_data_order_spec]
+  true
+  // num=0, len=63 covers the case without any calls to the block function,
+  // and data copied in c->data
+  (EVP_DigestUpdate_spec 0 63)
+  (w4_unint_yices ["SHA256Block"]);
+crucible_llvm_verify m "EVP_DigestUpdate"
+  [sha256_block_data_order_spec]
+  true
+  // num=63, len=121 covers the case with two calls to the block function,
+  // the first one on c->data, the second one on one block from data,
+  // and the rest of data copied in c->data
+  (EVP_DigestUpdate_spec 63 121)
+  (w4_unint_yices ["SHA256Block"]);
+
+crucible_llvm_verify m "EVP_DigestFinal"
+  [ sha256_block_data_order_spec
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  // num=55 covers the case with one call to the block function
+  (EVP_DigestFinal_spec 55)
+  (w4_unint_yices ["SHA256Block"]);
+crucible_llvm_verify m "EVP_DigestFinal"
+  [ sha256_block_data_order_spec
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  // num=56 covers the case with two calls to the block function
+  (EVP_DigestFinal_spec 56)
+  (w4_unint_yices ["SHA256Block"]);
+
+crucible_llvm_verify m "EVP_Digest"
+  [ sha256_block_data_order_spec
+  , OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  (EVP_Digest_spec 120)
+  (w4_unint_yices ["SHA256Block"]);
+

@@ -1,0 +1,58 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * SAW helpers
+ */
+// Given a value `v` of type `ty`, allocates and returns a pointer to memory
+// storing `v`
+let alloc_init ty v = do {
+  p <- crucible_alloc ty;
+  crucible_points_to p v;
+  return p;
+};
+
+// Given a value `v` of type `ty`, allocates and returns a read only pointer to
+// memory storing `v`
+let alloc_init_readonly ty v = do {
+  p <- crucible_alloc_readonly ty;
+  crucible_points_to p v;
+  return p;
+};
+
+// Given a name `n` and a type `ty`, allocates a fresh variable `x` of type
+// `ty` and returns a tuple of `x` and a pointer to `x`.
+let ptr_to_fresh n ty = do {
+  x <- crucible_fresh_var n ty;
+  p <- alloc_init ty (crucible_term x);
+  return (x, p);
+};
+
+// Given a name `n` and a type `ty`, allocates a fresh variable `x` of type
+// `ty` and returns a tuple of `x` and a read only pointer to `x`.
+let ptr_to_fresh_readonly n ty = do {
+  x <- crucible_fresh_var n ty;
+  p <- alloc_init_readonly ty (crucible_term x);
+  return (x, p);
+};
+
+// Given a name `n` and a value `v`, assert that the `n` has a value of `v`
+let global_points_to n v = do {
+  crucible_points_to (crucible_global n) (crucible_term v);
+};
+
+// Given a name `n` and a value `v`, declare that n is initialized, and assert that has value v
+let global_alloc_init n v = do {
+  crucible_alloc_global n;
+  global_points_to n v;
+};
+
+// llvm integer type aliases
+let i8 = llvm_int 8;
+let i16 = llvm_int 16;
+let i32 = llvm_int 32;
+let i64 = llvm_int 64;
+let i128 = llvm_int 128;
+

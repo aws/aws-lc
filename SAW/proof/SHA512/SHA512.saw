@@ -1,0 +1,357 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+enable_experimental;
+
+// Load LLVM bytecode
+m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+
+
+/*
+ * SHA512 defines
+ */
+// Size of a block in bytes
+let SHA512_CBLOCK = 128;
+
+// Size of the SHA512 context struct
+let SHA512_CTX_SIZE = llvm_sizeof m (llvm_struct "struct.sha512_state_st");
+
+// Include helper functions
+include "../common/helpers.saw";
+
+////////////////////////////////////////////////////////////////////////////////
+// Specifications
+
+/*
+ * This section of the SAW script contains specifications of the functions that
+ * SAW will verify.  Each specification can be broken down into 3 components:
+ * preconditions, a function call description, and postconditions.
+ *
+ * A precondition is a predicate that must be true prior to the application of
+ * a function for the specification's postcondition to hold.  Preconditions are
+ * typically restrictions on function inputs or global state.  For example, a
+ * function that returns the first element of an array might have a
+ * precondition that the array is not empty.  A specification makes no
+ * guarantees about how the function acts when the precondition is violated.
+ * In a SAW specification, preconditions are the statements that come before a
+ * function call description.  If a function has no preconditions we say that
+ * the precondition is "true", meaning that the postcondition holds for all
+ * possible inputs and program states.
+ *
+ * A function call description tells SAW how to call the function being
+ * specified.  It has the form:
+ *     crucible_execute_func [<list of arguments>]
+ * These arguments are typically from the preconditions, specification inputs,
+ * global variables, and literals.  SAW does not actually execute the function,
+ * but rather uses symbolic execution to examine all possible executions
+ * through the function, subject to precondition constraints.  For example,
+ * if a precondition states that a variable `ctx_ptr` is a pointer to an
+ * `env_md_ctx_st` struct:
+ *     ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+ * And the function call description takes `ctx_ptr` as an input:
+ *     crucible_execute_func [ctx_ptr];
+ * Then SAW will reason about the function over all possible `env_md_ctx_st`
+ * structs.  We call `ctx_ptr` a symbol because SAW does not evaluate it, but
+ * rather treats it as the set of all possible `env_md_ctx_st` structs.
+ *
+ * A postcondition is a predicate that must be true following the application
+ * of a function, assuming the function's precondition held.  From a logic
+ * perspective, you can think of this as:
+ *     (<conjunction of preconditions> /\ <function application>) ->
+ *     <conjunction of postconditions>
+ * where "/\" is logical AND and "->" is logical implication.  If a SAW proof
+ * succeeds, then SAW guarantees that the postconditions hold following function
+ * application, so long as the function's preconditions held just prior to the
+ * function's application.  In a SAW specification, postconditions are the
+ * statements that come after a function call description.  If a function has
+ * no postconditions, then we say that the postcondition is "true", meaning
+ * that the specification makes no guarantees about the function's behavior.
+ */
+
+/*
+ * Architecture features for the AVX+shrd code path
+ */
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+
+
+/*
+ * Specification of block function for SHA512
+ */
+let sha512_block_data_order_spec = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: `state_ptr` points to an array of 8 64 bit integers
+  (state, state_ptr) <- ptr_to_fresh "state" (llvm_array 8 i64);
+
+  // Precondition: `data_ptr` points to a const message block
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array SHA512_CBLOCK i8);
+
+  // Call function with `state_ptr`, `data_ptr`, and the value `1`
+  crucible_execute_func [state_ptr, data_ptr, crucible_term {{ 1 : [64] }}];
+
+  // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The data pointed to by `state_ptr` is equivalent to the
+  // return value of the SHA512Block Cryptol spec function applied to `state`
+  // and `data`.
+  crucible_points_to state_ptr (crucible_term {{ SHA512Block state (split (join data)) }});
+};
+
+
+/*
+ * Helpers for specifying the SHA512 structs
+ */
+// Create a Cryptol SHA512State
+let fresh_sha512_state_st name n = do {
+  // Hash value
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
+  // Message block
+  block <- crucible_fresh_var (str_concat name ".block") (llvm_array n i8);
+  // Size
+  sz <- crucible_fresh_var (str_concat name ".sz") i128;
+  // Build SHA512State, padding `block` with zeros to fit
+  return {{ { h = h, block = (block # zero) : [SHA512_CBLOCK][8], n = `n : [32], sz = sz } }};
+};
+
+/*
+ * The next three functions all specify structs used in the C SHA
+ * implementation.  Most of the statements in these are of the form:
+ *    crucible_points_to (crucible_field ptr "name") (crucible_term {{ term }})
+ * which indicates that the field `name` of the struct pointed to by `ptr`
+ * contains the value `term`.  Some have the form:
+ *    crucible_points_to (crucible_field ptr "name") (crucible_global GLOBAL)
+ * which indicates that the field `name` of the struct pointed to by `ptr`
+ * contains the value of the global variable `GLOBAL`.
+ * All statements that do not match these two forms are documented inline
+ */
+// Specify the sha512_state_st struct from a SHA512State
+let points_to_sha512_state_st ptr state num = do {
+  crucible_points_to (crucible_field ptr "h") (crucible_term {{ state.h }});
+
+  // Specify `sha512_state_st.Nl` contains last 64 bits of `state.sz`
+  crucible_points_to (crucible_field ptr "Nl") (crucible_term {{ drop`{64} state.sz }});
+
+  // Specify `sha512_state_st.Nh` contains first 64 bits of `state.sz`
+  crucible_points_to (crucible_field ptr "Nh") (crucible_term {{ take`{64} state.sz }});
+
+  if eval_bool {{ `num == 0 }} then do {
+    // Do not specify anything about `sha512_state_st.p`
+    return ();
+  } else do {
+    // Specify that the first `num` bytes of `sha512_state_st.p` match the
+    // first `num` bits of `state.block`.
+    // Untyped check because the size of `sha512_state_st.p` does not match
+    // the size of (take`{num} state.block) unless `num` == `SHA512_CBLOCK`
+    crucible_points_to_untyped (crucible_field ptr "p") (crucible_term {{ take`{num} state.block }});
+  };
+
+  crucible_points_to (crucible_field ptr "num") (crucible_term {{ state.n }});
+  crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+};
+
+// Specify the env_md_st struct
+let points_to_env_md_st ptr = do {
+  crucible_points_to (crucible_field ptr "type") (crucible_term {{ `NID : [32] }});
+  crucible_points_to (crucible_field ptr "md_size") (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+  crucible_points_to (crucible_field ptr "flags") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "init") (crucible_global SHA_INIT);
+  crucible_points_to (crucible_field ptr "update") (crucible_global SHA_UPDATE);
+  crucible_points_to (crucible_field ptr "final") (crucible_global SHA_FINAL);
+  crucible_points_to (crucible_field ptr "block_size") (crucible_term {{ `SHA512_CBLOCK : [32] }});
+  crucible_points_to (crucible_field ptr "ctx_size") (crucible_term {{ `SHA512_CTX_SIZE : [32] }});
+};
+
+// Specify the env_md_ctx_st struct
+let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr = do {
+  crucible_points_to (crucible_field ptr "digest") digest_ptr;
+  crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
+
+  // Specify that the `pctx` and `pctx_ops` fields are null
+  crucible_points_to (crucible_field ptr "pctx") crucible_null;
+  crucible_points_to (crucible_field ptr "pctx_ops") crucible_null;
+};
+
+// Specifications of the various EVP functions
+include "evp-function-specs.saw";
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+// Assume OpenSSL memory functions satisfy specs
+include "memory.saw";
+
+// Include rewrite rules
+include "sha512_block_data_order-goal-rewrites.saw";
+
+enable_what4_hash_consing;
+
+// Verify the block data function assembly satisfies the
+// `sha512_block_data_order_spec` specification
+sha512_block_data_order_spec <- crucible_llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "sha512_block_data_order"
+  [ ("K512", 5120) // Initializes the global for round constants, called K, at a size of 5120 bytes
+  ]
+  true
+  sha512_block_data_order_spec
+  (do {
+    simplify (cryptol_ss ());
+    simplify (addsimps thms empty_ss);
+    simplify (addsimp concat_assoc_thm empty_ss);
+    w4_unint_yices ["S0", "S1", "s0", "s1", "Ch"];
+  });
+
+disable_what4_hash_consing;
+
+
+// Verify the `EVP_SHA_INIT` C function satisfies the `EVP_sha_init_spec`
+// specification
+crucible_llvm_verify m EVP_SHA_INIT [] true EVP_sha_init_spec (w4_unint_yices []);
+
+// Verify the `EVP_DigestInit` C function satisfies the `EVP_DigestInit_spec`
+// specification
+crucible_llvm_verify m "EVP_DigestInit"
+  [ OPENSSL_malloc_ov
+  , OPENSSL_free_null_ov
+  ]
+  true
+  EVP_DigestInit_spec
+  (w4_unint_yices []);
+
+
+// range of valid indices in the internal block ([0 .. (SHA512_CBLOCK - 1)])
+nums <- for (eval_list {{ [0 .. (SHA512_CBLOCK - 1)] : [SHA512_CBLOCK][64] }})
+  (\x -> (return (eval_int x)) : (TopLevel Int));
+
+// Verify the `EVP_DigestUpdate` C function satisfies the
+// `EVP_DigestUpdate_spec` specification.
+if quick_check then do {
+  // There are 3 cases to consider to ensure the proof covers all possible code
+  // paths through the update function
+  crucible_llvm_verify m "EVP_DigestUpdate"
+    [sha512_block_data_order_spec]
+    true
+    // num=0, len=240 covers the case with one call to the block function,
+    // on one block from data, and the rest of data copied in c->data
+    (EVP_DigestUpdate_spec 0 240)
+    (w4_unint_yices ["SHA512Block"]);
+  crucible_llvm_verify m "EVP_DigestUpdate"
+    [sha512_block_data_order_spec]
+    true
+    // num=0, len=127 covers the case without any calls to the block function,
+    // and data copied in c->data
+    (EVP_DigestUpdate_spec 0 127)
+    (w4_unint_yices ["SHA512Block"]);
+  crucible_llvm_verify m "EVP_DigestUpdate"
+    [sha512_block_data_order_spec]
+    true
+    // num=127, len=241 covers the case with two calls to the block function,
+    // the first one on c->data, the second one on one block from data,
+    // and the rest of data copied in c->data
+    (EVP_DigestUpdate_spec 127 241)
+    (w4_unint_yices ["SHA512Block"]);
+  return ();
+} else do {
+  let verify_update_at_num num = do {
+    print (str_concat "Verifying EVP_DigestUpdate at num=" (show num));
+    if eval_bool {{ `num == 0 }} then do {
+      // this covers the case without any calls to the block
+      // function, and data copied in c->data
+      crucible_llvm_verify m "EVP_DigestUpdate"
+        [sha512_block_data_order_spec]
+        true
+        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK - 1 |}))
+        (w4_unint_yices ["SHA512Block"]);
+      // this covers the case with one call to the block
+      // function, on one block from data, and the rest of
+      // data copied in c->data
+      crucible_llvm_verify m "EVP_DigestUpdate"
+        [sha512_block_data_order_spec]
+        true
+        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK + 1 |}))
+        (w4_unint_yices ["SHA512Block"]);
+    } else do {
+      // this covers the case without any calls to the block
+      // function, and data copied in c->data
+      crucible_llvm_verify m "EVP_DigestUpdate"
+        [sha512_block_data_order_spec]
+        true
+        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK - 1 - num |}))
+        (w4_unint_yices ["SHA512Block"]);
+      // this covers the case with one call to the block
+      // function, on c->data, and the rest of data copied
+      // in c->data
+      crucible_llvm_verify m "EVP_DigestUpdate"
+        [sha512_block_data_order_spec]
+        true
+        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK + 1 - num |}))
+        (w4_unint_yices ["SHA512Block"]);
+      // this covers the case with two calls to the block
+      // function, the first one on c->data, the second one
+      // on one block from data, and the rest of data copied
+      // in c->data
+      crucible_llvm_verify m "EVP_DigestUpdate"
+        [sha512_block_data_order_spec]
+        true
+        (EVP_DigestUpdate_spec num (eval_size {| 2 * SHA512_CBLOCK + 1 - num |}))
+        (w4_unint_yices ["SHA512Block"]);
+    };
+  };
+  for nums verify_update_at_num;
+  return ();
+};
+
+
+// Verify the `EVP_DigestFinal` C function satisfies the
+// `EVP_DigestFinal_spec` specification.
+let EVP_DigestFinal_ovs =
+  [ sha512_block_data_order_spec
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_cleanse_ov
+  ];
+if quick_check then do {
+  // There are 2 cases to consider to ensure the proof covers all possible code
+  // paths through the update function
+  crucible_llvm_verify m "EVP_DigestFinal"
+    EVP_DigestFinal_ovs
+    true
+    // num=111 covers the case with one call to the block function
+    (EVP_DigestFinal_spec 111)
+    (w4_unint_yices ["SHA512Block"]);
+  crucible_llvm_verify m "EVP_DigestFinal"
+    EVP_DigestFinal_ovs
+    true
+    // num=112 covers the case with two calls to the block function
+    (EVP_DigestFinal_spec 112)
+    (w4_unint_yices ["SHA512Block"]);
+  return ();
+} else do {
+  let verify_final_at_num num = do {
+    print (str_concat "Verifying EVP_DigestFinal at num=" (show num));
+    crucible_llvm_verify m "EVP_DigestFinal"
+      EVP_DigestFinal_ovs
+      true
+      (EVP_DigestFinal_spec num)
+      (w4_unint_yices ["SHA512Block"]);
+  };
+  for nums verify_final_at_num;
+  return ();
+};
+
+
+// Verify the `EVP_Digest` C function satisfies the `EVP_Digest_spec`
+// specification
+crucible_llvm_verify m "EVP_Digest"
+  [ sha512_block_data_order_spec
+  , OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  (EVP_Digest_spec 240)
+  (w4_unint_yices ["SHA512Block"]);
+
