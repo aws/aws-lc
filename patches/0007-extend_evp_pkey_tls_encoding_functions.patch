@@ -2,7 +2,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/evp/evp.c
 +++ aws-lc/third_party/boringssl/crypto/evp/evp.c
-@@ -441,3 +441,283 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
+@@ -441,3 +441,284 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
    // of DSA. We do not support these, so the base ID is simply the ID.
    return EVP_PKEY_id(pkey);
  }
@@ -261,6 +261,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +err:
 +  if (0 == ret) {
 +    OPENSSL_free(*out_ptr);
++    *out_ptr = NULL;
 +  }
 +  return ret;
 +}
@@ -738,7 +739,7 @@ Index: aws-lc/third_party/boringssl/include/openssl/evp.h
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/include/openssl/evp.h
 +++ aws-lc/third_party/boringssl/include/openssl/evp.h
-@@ -915,20 +915,32 @@ OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(cons
+@@ -915,20 +915,33 @@ OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(cons
  OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
                                                   int encoding);
  
@@ -761,19 +762,21 @@ Index: aws-lc/third_party/boringssl/include/openssl/evp.h
  // EVP_PKEY_get1_tls_encodedpoint sets |*out_ptr| to a newly-allocated buffer
  // containing the raw encoded public key for |pkey|. The caller must call
  // |OPENSSL_free| to release this buffer. The function returns the length of the
- // buffer on success and zero on error.
- //
--// This function only works on X25519 keys.
+-// buffer on success and zero on error.
++// buffer on success and zero on error. Additionally, on error |*out_ptr| is a
++// null-pointer.
++//
 +// This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
 +// types. For the EC key type, the EC point representation must be in
 +// uncompressed form.
-+//
+ //
+-// This function only works on X25519 keys.
 +// The following curve types are supported for the EC key type:
 +// NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1.
  OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
                                                       uint8_t **out_ptr);
  
-@@ -1115,5 +1127,6 @@ BSSL_NAMESPACE_END
+@@ -1115,5 +1128,6 @@ BSSL_NAMESPACE_END
  #define EVP_R_INVALID_PARAMETERS 133
  #define EVP_R_INVALID_PEER_KEY 134
  #define EVP_R_NOT_XOF_OR_INVALID_LENGTH 135
