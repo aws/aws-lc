@@ -18,7 +18,7 @@
 #
 # If artifact folder is provided:
 #     set(AWSLC_ARTIFACT_FOLDER "xxxx")
-#     find_package(AWS-LC HINTS "hits that can find AWSLC built artifacts")
+#     find_package(AWS-LC HINTS "hints that can find AWSLC built artifacts")
 #     target_link_libraries(project-target LibCrypto::Crypto)
 # else:
 #     find_package(AWS-LC)
