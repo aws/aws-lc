@@ -2,7 +2,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/evp/evp.c
 +++ aws-lc/third_party/boringssl/crypto/evp/evp.c
-@@ -441,3 +441,284 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
+@@ -441,3 +441,280 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
    // of DSA. We do not support these, so the base ID is simply the ID.
    return EVP_PKEY_id(pkey);
  }
@@ -24,8 +24,6 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +    goto err;
 +  }
 +
-+  // For the EVP_PKEY_EC key type we only support 4 different EC curves:
-+  // NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1 and NID_secp521r1
 +  curve_nid = EC_GROUP_get_curve_name(ec_key_group);
 +  if ((NID_secp224r1 != curve_nid) &&
 +      (NID_X9_62_prime256v1 != curve_nid) &&
@@ -73,7 +71,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  // compression = 0x04 if uncompressed
 +  // compression = 0x02/0x03 if compressed (depending on y-coordinate parity)
 +  if (POINT_CONVERSION_UNCOMPRESSED != in[0]) {
-+    OPENSSL_PUT_ERROR(EVP, EVP_R_CONVERSION_FORM_NOT_SUPPORTED);
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
 +    goto err;
 +  }
 +
@@ -117,7 +115,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  return ret;
 +}
 +
-+static int EVP_PKEY_set1_tls_encodedpoint_x25519(EVP_PKEY *pkey,
++static int evp_pkey_set1_tls_encodedpoint_x25519(EVP_PKEY *pkey,
 +                                                    const uint8_t *in,
 +                                                    size_t len) {
 +  int ret = 0;
@@ -157,9 +155,8 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  }
 +
 +  switch (pkey->type) {
-+    // Only support key types: EVP_PKEY_X25519 and EVP_PKEY_EC
 +    case EVP_PKEY_X25519:
-+      return EVP_PKEY_set1_tls_encodedpoint_x25519(pkey, in, len);
++      return evp_pkey_set1_tls_encodedpoint_x25519(pkey, in, len);
 +    case EVP_PKEY_EC:
 +      return evp_pkey_set1_tls_encodedpoint_ec_key(pkey, in, len);
 +    default:
@@ -171,7 +168,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  return 0;
 +}
 +
-+static size_t EVP_PKEY_get1_tls_encodedpoint_ec_key(const EVP_PKEY *pkey,
++static size_t evp_pkey_get1_tls_encodedpoint_ec_key(const EVP_PKEY *pkey,
 +                                                      uint8_t **out_ptr) {
 +
 +  size_t ret = 0;
@@ -202,7 +199,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  // which must be uncompressed
 +  // (https://tools.ietf.org/html/rfc8422#section-5.4.1)
 +  if (POINT_CONVERSION_UNCOMPRESSED != EC_KEY_get_conv_form(ec_key)) {
-+    OPENSSL_PUT_ERROR(EVP, EVP_R_CONVERSION_FORM_NOT_SUPPORTED);
++    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
 +    goto err;
 +  }
 +
@@ -218,7 +215,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +}
 +
 +#define X25519_KEY_SIZE 32
-+static size_t EVP_PKEY_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
++static size_t evp_pkey_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
 +                                                      uint8_t **out_ptr) {
 +
 +  size_t ret = 0;
@@ -274,11 +271,10 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  }
 +
 +  switch (pkey->type) {
-+    // Only support key types: EVP_PKEY_X25519 and EVP_PKEY_EC
 +    case EVP_PKEY_X25519:
-+      return EVP_PKEY_get1_tls_encodedpoint_x25519(pkey, out_ptr);
++      return evp_pkey_get1_tls_encodedpoint_x25519(pkey, out_ptr);
 +    case EVP_PKEY_EC:
-+      return EVP_PKEY_get1_tls_encodedpoint_ec_key(pkey, out_ptr);
++      return evp_pkey_get1_tls_encodedpoint_ec_key(pkey, out_ptr);
 +    default:
 +      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
 +      goto err;
@@ -291,15 +287,15 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/evp/evp_test.cc
 +++ aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
-@@ -52,6 +52,8 @@
+@@ -51,6 +51,8 @@
+  * ====================================================================
   */
  
- #include <openssl/evp.h>
-+#include <openssl/ec_key.h>
 +#include <openssl/bn.h>
++#include <openssl/ec_key.h>
+ #include <openssl/evp.h>
  
  #include <stdio.h>
- #include <stdint.h>
 @@ -900,3 +902,396 @@ TEST(EVPTest, WycheproofRSAPKCS1Decrypt)
    RunWycheproofPKCS1DecryptTest(
        "third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt");
@@ -396,7 +392,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 +    static const uint8_t kX25519PublicKey[] = {
 +      0xe6, 0xdb, 0x68, 0x67, 0x58, 0x30, 0x30, 0xdb, 0x35, 0x94, 0xc1, 0xa4,
 +      0x24, 0xb1, 0x5f, 0x7c, 0x72, 0x66, 0x24, 0xec, 0x26, 0xb3, 0x35, 0x3b,
-+      0x10, 0xa9, 0x03, 0xa6, 0xd0, 0xab, 0x1c, 0x4c,
++      0x10, 0xa9, 0x03, 0xa6, 0xd0, 0xab, 0x1c, 0x4c
 +    };
 +    static const uint8_t kX25519PrivateKey[] = {
 +      0xa5, 0x46, 0xe3, 0x6b, 0xf0, 0x52, 0x7c, 0x9d, 0x3b, 0x16, 0x15, 0x4b,
@@ -679,7 +675,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 +
 +    ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public_compressed.get(),
 +      kP256PublicKeyCompressed, 1 + 32));
-+    EXPECT_EQ(EVP_R_CONVERSION_FORM_NOT_SUPPORTED,
++    EXPECT_EQ(ERR_R_EVP_LIB,
 +      ERR_GET_REASON(ERR_peek_last_error()));
 +    ERR_clear_error();
 +
@@ -693,7 +689,7 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 +
 +    ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(
 +      pkey_public_compressed_set.get(), &output_compressed));
-+    EXPECT_EQ(EVP_R_CONVERSION_FORM_NOT_SUPPORTED,
++    EXPECT_EQ(ERR_R_EVP_LIB,
 +      ERR_GET_REASON(ERR_peek_last_error()));
 +    ERR_clear_error();
 +}
@@ -739,47 +735,37 @@ Index: aws-lc/third_party/boringssl/include/openssl/evp.h
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/include/openssl/evp.h
 +++ aws-lc/third_party/boringssl/include/openssl/evp.h
-@@ -915,20 +915,33 @@ OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(cons
- OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
-                                                  int encoding);
- 
-+// TLS-specific function.
+@@ -918,17 +918,29 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_p
  // EVP_PKEY_set1_tls_encodedpoint replaces |pkey| with a public key encoded by
  // |in|. It returns one on success and zero on error.
  //
 -// This function only works on X25519 keys.
 +// This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
-+// types. For the EC key type, the EC point representation must be in
-+// uncompressed form.
++// types. The supported curve for |EVP_PKEY_X25519| is Curve25519. The supported
++// curves for |EVP_PKEY_EC| are: NID_secp224r1, NID_X9_62_prime256v1,
++// NID_secp384r1, NID_secp521r1
 +//
-+// The following curve types are supported for the EC key type:
-+// NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1.
++// For the EC key type, the EC point representation must be in
++// uncompressed form.
  OPENSSL_EXPORT int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey,
                                                    const uint8_t *in,
                                                    size_t len);
  
-+// TLS-specific function.
  // EVP_PKEY_get1_tls_encodedpoint sets |*out_ptr| to a newly-allocated buffer
  // containing the raw encoded public key for |pkey|. The caller must call
- // |OPENSSL_free| to release this buffer. The function returns the length of the
+-// |OPENSSL_free| to release this buffer. The function returns the length of the
 -// buffer on success and zero on error.
-+// buffer on success and zero on error. Additionally, on error |*out_ptr| is a
-+// null-pointer.
++// |OPENSSL_free| to release this buffer on success. The function returns the
++// length of the buffer on success and zero on error.
 +//
 +// This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
-+// types. For the EC key type, the EC point representation must be in
-+// uncompressed form.
++// types. The supported curve for |EVP_PKEY_X25519| is Curve25519. The supported
++// curves for |EVP_PKEY_EC| are: NID_secp224r1, NID_X9_62_prime256v1,
++// NID_secp384r1, NID_secp521r1
  //
 -// This function only works on X25519 keys.
-+// The following curve types are supported for the EC key type:
-+// NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1.
++// For the EC key type, the EC point representation must be in
++// uncompressed form.
  OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
                                                       uint8_t **out_ptr);
  
-@@ -1115,5 +1128,6 @@ BSSL_NAMESPACE_END
- #define EVP_R_INVALID_PARAMETERS 133
- #define EVP_R_INVALID_PEER_KEY 134
- #define EVP_R_NOT_XOF_OR_INVALID_LENGTH 135
-+#define EVP_R_CONVERSION_FORM_NOT_SUPPORTED 136
- 
- #endif  // OPENSSL_HEADER_EVP_H
