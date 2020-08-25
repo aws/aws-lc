@@ -26,7 +26,7 @@ You can test the images by running `docker run -it vs2015` or `docker run -it
 vs2017`. To emulate a CodeBuild run locally execute the following inside one of
 the docker images :
 ```
-$ git clone https://github.com/awslabs/aws-lc.git -b master --depth 1
+$ git clone https://github.com/awslabs/aws-lc.git -b main --depth 1
 $ cd aws-lc
 # Depending on the docker image run:
 $ .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
