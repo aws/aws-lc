@@ -3,11 +3,31 @@
 AWS Lib Crypto (aws-lc) is a fork of BoringSSL, which is itself a fork of OpenSSL, that will is tailored for AWS usages.      
 
 ## Quickstart for Ubuntu
-1. Fork aws-lc on GitHub
-2. Run the following commands on Ubuntu.
+1. Setup required dependencies
+```
+sudo apt update
+sudo apt install build-essentials
+sudo apt install ninja-build
+sudo apt install quilt
+sudo wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz
+tar -xvf go1.13.12.linux-amd64.tar.gz
+mv go /usr/local
+export GOROOT=/usr/local/go
+export PATH="$GOROOT/bin:$PATH"
+```
+2. Fork aws-lc on Github
 ```
 git clone https://github.com/${YOUR_GITHUB_ACCOUNT_NAME}/aws-lc.git
-cd aws-lc
+mkdir awslc-install awslc-build
+```
+3. Execute build and tets
+```
+cd awslc-build
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=$(pwd)/../awslc-install ..
+ninja install
+
+//Execute tests when required
+ninja run_tests
 
 ```
 
