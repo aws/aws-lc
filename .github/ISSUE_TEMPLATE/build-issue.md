@@ -9,7 +9,7 @@ assignees: ''
 
 ### Problem:
 
-A short description of the problem you are facing, include any build output and reproduction steps.
+A short description of the problem you are facing. Please include any build output and reproduction steps.
 
 #### Relevant details
 CPU architecture: (x86, x86-64, ARMv7...)
