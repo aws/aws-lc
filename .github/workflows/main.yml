@@ -19,12 +19,23 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    # Check out main repo and individually check out submodules.
+    # Once all submodules are public, this can be replaced with a single checkout action with submodules:true
     - uses: actions/checkout@v2
+      name: check out top-level repository
+    - uses: actions/checkout@v2
+      name: check out aws-lc source
       with: 
-        submodules: true
-        token: ${{ secrets.AWSLC_TOKEN }}
+        repository: awslabs/aws-lc
+        ssh-key: ${{ secrets.AWSLC_ACCESS_KEY }}
+        path: ./src
+    - uses: actions/checkout@v2
+      name: check out cryptol specs
+      with: 
+        repository: GaloisInc/cryptol-specs
+        path: ./cryptol-specs
+        ref: 12e5b26d38359a8b0f3779dd970ebd4479b4bad1
 
-    # Runs a single command using the runners shell
-    - name: Run the LC Proofs in Docker
-      uses: ./action/
+    # Runs the formal verification action
+    - name: Proofs
+      uses: ./

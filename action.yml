@@ -1,8 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-name: 'Run Proofs'
-description: 'Run the LC proofs'
+name: 'AWS-LC Formal Verification'
+description: 'Run the proofs to verify AWS-LC'
 runs:
   using: 'docker'
-  image: '../SAW/Dockerfile'
+  image: 'Dockerfile'
