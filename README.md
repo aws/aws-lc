@@ -34,7 +34,7 @@ ninja run_tests
 ```
 
 ## Have a Question?
-If you have any questions about Submitting PR's, Opening Issues, aws-lc API usage, or any similar topic, we have a public chatroom available here to answer your questions: https://gitter.im/awslabs/aws-lc
+If you have any questions about Submitting PR's, Opening Issues, aws-lc API usage or any similar topic, we have a public chatroom available here to answer your questions: https://gitter.im/awslabs/aws-lc
 
 Otherwise, if you think you might have found a security impacting issue, please instead follow [our Security Notification Process.](#security-issue-notifications)
 
