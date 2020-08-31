@@ -1,6 +1,6 @@
 # AWS Lib Crypto (aws-lc) Public Preview
 
-AWS Lib Crypto (aws-lc) is a cryptographic library origionally forked from BoringSSL and is designed to cater to AWS's needs.  This library will be supported and ehnanced by crypto experts within Amazon.  
+AWS Lib Crypto (aws-lc) is a cryptographic library originally forked from BoringSSL and is designed to cater to AWS's needs.  This library will be supported and ehnanced by crypto experts within Amazon.  
 
 ## Quickstart for Ubuntu
 1. Setup required dependencies
@@ -20,7 +20,7 @@ export PATH="$GOROOT/bin:$PATH"
 git clone https://github.com/${YOUR_GITHUB_ACCOUNT_NAME}/aws-lc.git
 mkdir awslc-install awslc-build
 ```
-3. Execute build and tets
+3. Execute build and tests
 ```
 cd awslc-build
 cmake -GNinja -DCMAKE_INSTALL_PREFIX=$(pwd)/../awslc-install ..
@@ -32,7 +32,7 @@ ninja run_tests
 ```
 
 ## Have a Question?
-If you have any questions about Submitting PR's, Opening Issues, aws-lc API usage, or something similar, we have a public chatroom available here to answer your questions: https://gitter.im/awslabs/aws-lc
+If you have any questions about Submitting PR's, Opening Issues, aws-lc API usage, or any similar topic, we have a public chatroom available here to answer your questions: https://gitter.im/awslabs/aws-lc
 
 Otherwise, if you think you might have found a security impacting issue, please instead follow [our Security Notification Process.](#security-issue-notifications)
 
