@@ -34,7 +34,7 @@ jobs:
       with: 
         repository: GaloisInc/cryptol-specs
         path: ./cryptol-specs
-        ref: 12e5b26d38359a8b0f3779dd970ebd4479b4bad1
+        ref: 2e33ca77b5e81ed96d35073da3e09008afd4553f
 
     # Runs the formal verification action
     - name: Proofs
