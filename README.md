@@ -1,6 +1,6 @@
-# AWS Lib Crypto (aws-lc) Public Preview
+# AWS libcrypto (aws-lc) Public Preview
 
-AWS Lib Crypto (aws-lc) is a cryptographic library originally forked from BoringSSL and is designed to cater to AWS's needs.  This library will be supported and ehnanced by crypto experts within Amazon.  
+AWS libcrypto (aws-lc) is a cryptographic library originally forked from BoringSSL and is designed to cater to AWS's needs.  This library will be supported and enhanced by cryptography experts within Amazon.
 
 ## Quickstart for Ubuntu
 1. Setup required dependencies
