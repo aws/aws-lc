@@ -2,7 +2,15 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/evp/evp.c
 +++ aws-lc/third_party/boringssl/crypto/evp/evp.c
-@@ -441,3 +441,280 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
+@@ -59,6 +59,7 @@
+ #include <assert.h>
+ #include <string.h>
+ 
++#include <openssl/curve25519.h>
+ #include <openssl/dsa.h>
+ #include <openssl/ec.h>
+ #include <openssl/err.h>
+@@ -441,3 +442,279 @@ int EVP_PKEY_base_id(const EVP_PKEY *pke
    // of DSA. We do not support these, so the base ID is simply the ID.
    return EVP_PKEY_id(pkey);
  }
@@ -214,7 +222,6 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +  return ret;
 +}
 +
-+#define X25519_KEY_SIZE 32
 +static size_t evp_pkey_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
 +                                                      uint8_t **out_ptr) {
 +
@@ -236,8 +243,8 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +    goto err;
 +  }
 +
-+  out_len = X25519_KEY_SIZE;
-+  *out_ptr = OPENSSL_malloc(X25519_KEY_SIZE);
++  out_len = X25519_SHARED_KEY_LEN;
++  *out_ptr = OPENSSL_malloc(X25519_SHARED_KEY_LEN);
 +  if (NULL == *out_ptr) {
 +    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
 +    goto err;
@@ -248,12 +255,12 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp.c
 +    goto err;
 +  }
 +
-+  if (X25519_KEY_SIZE != out_len) {
++  if (X25519_SHARED_KEY_LEN != out_len) {
 +    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
 +    goto err;
 +  }
 +
-+  ret = X25519_KEY_SIZE;
++  ret = X25519_SHARED_KEY_LEN;
 +
 +err:
 +  if (0 == ret) {
@@ -287,16 +294,17 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/evp/evp_test.cc
 +++ aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
-@@ -51,6 +51,8 @@
+@@ -51,6 +51,9 @@
   * ====================================================================
   */
  
 +#include <openssl/bn.h>
++#include <openssl/curve25519.h>
 +#include <openssl/ec_key.h>
  #include <openssl/evp.h>
  
  #include <stdio.h>
-@@ -900,3 +902,396 @@ TEST(EVPTest, WycheproofRSAPKCS1Decrypt)
+@@ -900,3 +903,391 @@ TEST(EVPTest, WycheproofRSAPKCS1Decrypt)
    RunWycheproofPKCS1DecryptTest(
        "third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt");
  }
@@ -407,11 +415,11 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 +
 +    struct ectlsencodedpoint_test_data x25519_test_data = {
 +      .public_key = kX25519PublicKey,
-+      .public_key_size = 32,
++      .public_key_size = X25519_PUBLIC_VALUE_LEN,
 +      .private_key = kX25519PrivateKey,
-+      .private_key_size = 32,
++      .private_key_size = X25519_PRIVATE_KEY_LEN,
 +      .expected_shared_secret = kX25519ExpectedSharedSecret,
-+      .expected_shared_secret_size = 32,
++      .expected_shared_secret_size = X25519_SHARED_KEY_LEN,
 +      .key_type = EVP_PKEY_X25519,
 +      .curve_nid = NID_X25519
 +    };
@@ -627,17 +635,12 @@ Index: aws-lc/third_party/boringssl/crypto/evp/evp_test.cc
 +      shared_secret_size = 0;
 +    }
 +
-+    pkey_private = instantiate_and_set_private_key(p521_test_data.private_key,
-+        p521_test_data.private_key_size, p521_test_data.key_type,
-+        p521_test_data.curve_nid);
-+    EVP_PKEY_free(pkey_private);
-+
 +    // Test various unsupported key types are rejected
 +    int key_types_not_supported[] = {EVP_PKEY_RSA, EVP_PKEY_DSA,
 +      EVP_PKEY_ED25519};
 +    const uint8_t not_supported[] = {'n','o','t',' ','s','u','p','p','o','r',
 +      't','e','d'};
-+    size_t not_supported_size = 13;
++    size_t not_supported_size = 13; // specific size irrelevant
 +    uint8_t *not_supported_out = nullptr;
 +    bssl::UniquePtr<EVP_PKEY> pkey_key_type_not_supported(EVP_PKEY_new());
 +
