@@ -11,7 +11,7 @@ sudo apt install ninja-build
 sudo apt install quilt
 sudo apt install cmake
 sudo apt install perl
-sudo wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz
 tar -xvf go1.13.12.linux-amd64.tar.gz
 mv go /usr/local
 export GOROOT=/usr/local/go
