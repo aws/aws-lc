@@ -1,6 +1,6 @@
 # AWS libcrypto (aws-lc) Public Preview
 
-AWS libcrypto (aws-lc) is a cryptographic library originally forked from BoringSSL and is designed to cater to AWS's needs.  This library will be supported and enhanced by cryptography experts within Amazon.
+AWS libcrypto (aws-lc) is a cryptographic library originally forked from BoringSSL and is designed to cater to AWS's needs.  This library is supported and enhanced by cryptography experts within Amazon.
 
 ## Quickstart for Ubuntu
 1. Setup required dependencies
@@ -39,5 +39,5 @@ If you have any questions about Submitting PR's, Opening Issues, aws-lc API usag
 Otherwise, if you think you might have found a security impacting issue, please instead follow [our Security Notification Process.](#security-issue-notifications)
 
 ## Security issue notifications
-If you discover a potential security issue in s2n we ask that you notify
+If you discover a potential security issue in aws-lc we ask that you notify
 AWS Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/). Please do **not** create a public github issue. 
