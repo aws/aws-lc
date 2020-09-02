@@ -19,7 +19,16 @@ export PATH="$GOROOT/bin:$PATH"
 ```
 2. Fork aws-lc on Github
 ```
-git clone https://github.com/${YOUR_GITHUB_ACCOUNT_NAME}/aws-lc.git
+# Create your fork in GitHub if it doesn't exist and clone it
+git clone git@github.com:${GITHUB_USERNAME}/aws-lc.git && cd aws-lc
+git remote add upstream git@github.com:awslabs/aws-lc.git
+
+# Update your fork and branch if needed
+git checkout main
+git fetch upstream
+git merge upstream/main
+git push origin/main
+
 mkdir awslc-install awslc-build
 ```
 3. Execute build and tests
@@ -39,5 +48,5 @@ If you have any questions about Submitting PR's, Opening Issues, aws-lc API usag
 Otherwise, if you think you might have found a security impacting issue, please instead follow [our Security Notification Process.](#security-issue-notifications)
 
 ## Security issue notifications
-If you discover a potential security issue in s2n we ask that you notify
+If you discover a potential security issue in aws-lc we ask that you notify
 AWS Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/). Please do **not** create a public github issue. 
