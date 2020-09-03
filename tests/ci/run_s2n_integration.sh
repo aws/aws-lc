@@ -19,7 +19,8 @@ cmake ${AWS_LC_DIR} -GNinja "-B${ROOT}/aws-lc-build" "-DCMAKE_INSTALL_PREFIX=${R
 ninja -C aws-lc-build install
 
 # While AWS-LC is a private project pretend to be BoringSSL so s2n uses the correct APIs
-CFLAGS="-DOPENSSL_IS_AWSLC=1"
+# TODO: delete below CFLAGS when S2N merges PR/2273.
+CFLAGS="-DOPENSSL_IS_BORINGSSL=1"
 export CFLAGS
 
 cmake s2n -GNinja "-B${ROOT}/s2n-build" "-DCMAKE_PREFIX_PATH=${ROOT}/aws-lc-install"
