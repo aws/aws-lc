@@ -10,6 +10,6 @@ phases:
       - export CC=gcc
       - export CXX=g++
       - export GO111MODULE=on
-  # build:
-  #   commands:
-  #     - ./tests/ci/run_posix_tests.sh
+  build:
+    commands:
+      - ./tests/ci/run_posix_tests.sh
