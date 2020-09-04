@@ -25,3 +25,7 @@ script:
   - cmake --version
   - quilt --version
   - tests/ci/run_mac_tests.sh
+
+# Setting environment variables.
+env:
+  - RSA_TEST_THREADS_LIMIT=1024
