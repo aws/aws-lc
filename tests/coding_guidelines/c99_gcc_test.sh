@@ -4,26 +4,19 @@
 
 # This test is aimed to run with GCC 6 and above on x86-64 architectures.
 
-echo "Testing the C99 compatibility of AWS-LC headers."
+ROOT_DIR="./third_party/boringssl/"
+INCLUDE_DIR="$ROOT_DIR/include"
 
-AWSLC_ROOT_DIR="."
-AWSLC_INC_DIR=$AWSLC_ROOT_DIR/include
+INCLUDE_FILES=`ls $INCLUDE_DIR/openssl/*.h | grep -v $INCLUDE_DIR/openssl/arm_arch.h`
 
-INC_FILES=`ls $AWSLC_INC_DIR/awslc/*.h | grep -v $AWSLC_INC_DIR/awslc/arm_arch.h`
-
-INC_FILES_STR=""
-for f in $INC_FILES; do
-  INC_FILES_STR+="-include $f "
-done
-
-TMP_C_FILE_NAME=`mktemp --suffix .c`
-
-# - This compilation line gets no source file as its input (it uses the -c flag).
-# Instead it uses the force include flag (-include) to include all of 
-# AWS-LC headers except for arm_arch.h, which cannot run on x86-64 architectures.
-# - The -Wpedantic flag ensures that the compiler will fault if a non C99 line
-# exists in the code
-# - The -fsyntax-only tells the compiler to check the symtax without producing 
+# - This compilation line gets no source files as its input (it uses the -c flag).
+#   Instead it uses the force include flag (-include) to include all of headers
+#   except for arm_arch.h, which cannot run on x86-64 architectures.
+# - The -Wpedantic flag ensures that the compiler will fault if a non C99 line 
+#   exists in the code.
+# - The -fsyntax-only tells the compiler to check the syntax without producing 
 #   any outputs.
-$CC -std=c99 $TMP_C_FILE_NAME -c -I$AWSLC_INC_DIR $INC_FILES_STR -Wpedantic -fsyntax-only
+
+$CC -std=c99 -c -I$INCLUDE_DIR -include $INCLUDE_FILES -Wpedantic -fsyntax-only
+
 
