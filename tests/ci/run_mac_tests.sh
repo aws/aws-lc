@@ -4,7 +4,6 @@
 
 source tests/ci/common_posix_setup.sh
 
-# Only run a subset of the tests due to limited Travis resources
 echo "Testing AWS-LC in debug mode."
 build_and_test
 
