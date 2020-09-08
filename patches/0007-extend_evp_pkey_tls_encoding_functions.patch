@@ -772,4 +772,3 @@ Index: aws-lc/third_party/boringssl/include/openssl/evp.h
  OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
                                                       uint8_t **out_ptr);
  
-
