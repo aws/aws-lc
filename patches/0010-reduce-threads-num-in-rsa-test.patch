@@ -7,7 +7,7 @@ Index: aws-lc/third_party/boringssl/crypto/rsa_extra/rsa_test.cc
    constexpr size_t kNumThreads = 2048;
  #endif
 -
-+  // In some platforms, the number of threads should be reduce because resources are limited.
++  // On some platforms, the number of threads should be reduced because resources are limited.
 +  // e.g. Travis CI MacOS has 2 cores and 4 GB memories.
 +  size_t numOfThreads = kNumThreads;
 +  const char* rsaThreadsLimit = getenv("RSA_TEST_THREADS_LIMIT");
