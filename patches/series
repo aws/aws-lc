@@ -6,4 +6,5 @@
 0006-fix-gcc4-compile-errors.patch
 0007-extend_evp_pkey_tls_encoding_functions.patch
 0008-fix-abi-test-compilation.patch
+0009-add-macro-openssl-is-awslc.patch
 0010-reduce-threads-num-in-rsa-test.patch
