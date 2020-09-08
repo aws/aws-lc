@@ -27,7 +27,7 @@ fi
 
 if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
     echo "Testing the C99 compatability of AWS-LC headers."
-    ./tests/c99_gcc_test.sh
+    ./tests/coding_guidelines/c99_gcc_test.sh
 fi
 
 if [[  "${AWSLC_CODING_GUIDELINES_TEST}" == "1" ]]; then
