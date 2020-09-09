@@ -1,9 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 set(_doc "Command line tool to manage a series of patches")
 
+message(STATUS "Finding Quilt and applying patches")
 find_program(QUILT_EXECUTABLE
     NAMES quilt
     DOC ${_doc}
     )
+
+if(NOT QUILT_EXECUTABLE)
+    message(FATAL_ERROR "Unable to find Quilt")
+endif()
 
 # Display list of patches being applied
 execute_process(

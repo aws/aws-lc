@@ -14,22 +14,23 @@ import (
 
 func main() {
 	license_regex, _ := regexp.Compile("(?i)(SPDX-License-Identifier: Apache-2.0" +
-		"|Brian Smith" +
-		"|CloudFlare Ltd." +
-		"|Eric Young" +
-		"|Google" +
-		"|Intel" +
-		"|Marc Bevand" +
-		"|OpenSSL license|OpenSSL Project)")
+        "|Brian Smith" +
+        "|CloudFlare Ltd." +
+        "|Eric Young" +
+        "|Google" +
+        "|Intel" +
+        "|Marc Bevand" +
+        "|OpenSSL license|OpenSSL Project)")
 	filematcher, _ := regexp.Compile("(Dockerfile|\\.(ASM|c|cc|cmake|h|sh|go|pl|ps1|yml|s|S))$")
 
 	var files []string
 	var unlicensed_files []string
 
 	excludes := []string {
-		".peg", // exlude all .peg.go files
-		"build",
-		"third_party",
+        ".github",
+        ".peg", // exlude all .peg.go files
+        "build",
+        "third_party",
 	}
 
 	// Collect all non-excluded source files into |files|
@@ -58,8 +59,7 @@ func main() {
 			fmt.Println(fmt.Sprintf("%s is missing a copyright header", failure))
 		}
 
-		// TODO: re-enable Copyright check when patch is ready.
-		// panic("FAILED Copyright Check")
+		panic("FAILED Copyright Check")
 	} else {
 		fmt.Println("PASSED Copyright Check")
 	}
