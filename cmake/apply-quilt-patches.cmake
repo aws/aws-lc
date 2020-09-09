@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 set(_doc "Command line tool to manage a series of patches")
 
 message(STATUS "Finding Quilt and applying patches")
