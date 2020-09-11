@@ -78,7 +78,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
  #include <assert.h>
  #include <string.h>
  
-@@ -737,4 +743,129 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp
+@@ -737,4 +743,276 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp
    out->cmp_x_coordinate = ec_GFp_nistp256_cmp_x_coordinate;
  }
  
@@ -186,13 +186,160 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +  return 1;
 +}
 +
++static void ecp_nistz256_add(const EC_GROUP *group, EC_RAW_POINT *r,
++                             const EC_RAW_POINT *a_, const EC_RAW_POINT *b_) {
++  P256_POINT a, b;
++  OPENSSL_memcpy(a.X, a_->X.words, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(a.Y, a_->Y.words, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(a.Z, a_->Z.words, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(b.X, b_->X.words, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(b.Y, b_->Y.words, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(b.Z, b_->Z.words, P256_LIMBS * sizeof(BN_ULONG));
++  ecp_nistz256_point_add(&a, &a, &b);
++  OPENSSL_memcpy(r->X.words, a.X, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Y.words, a.Y, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Z.words, a.Z, P256_LIMBS * sizeof(BN_ULONG));
++}
++
++static void ecp_nistz256_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
++                             const EC_RAW_POINT *a_) {
++  P256_POINT a;
++  OPENSSL_memcpy(a.X, a_->X.words, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(a.Y, a_->Y.words, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(a.Z, a_->Z.words, P256_LIMBS * sizeof(BN_ULONG));
++  ecp_nistz256_point_double(&a, &a);
++  OPENSSL_memcpy(r->X.words, a.X, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Y.words, a.Y, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Z.words, a.Z, P256_LIMBS * sizeof(BN_ULONG));
++}
++
++static void ecp_nistz256_inv0_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
++                                      const EC_SCALAR *in) {
++  // table[i] stores a power of |in| corresponding to the matching enum value.
++  enum {
++    // The following indices specify the power in binary.
++    i_1 = 0,
++    i_10,
++    i_11,
++    i_101,
++    i_111,
++    i_1010,
++    i_1111,
++    i_10101,
++    i_101010,
++    i_101111,
++    // The following indices specify 2^N-1, or N ones in a row.
++    i_x6,
++    i_x8,
++    i_x16,
++    i_x32
++  };
++  BN_ULONG table[15][P256_LIMBS];
++
++  // https://briansmith.org/ecc-inversion-addition-chains-01#p256_scalar_inversion
++  //
++  // Even though this code path spares 12 squarings, 4.5%, and 13
++  // multiplications, 25%, the overall sign operation is not that much faster,
++  // not more that 2%. Most of the performance of this function comes from the
++  // scalar operations.
++
++  // Pre-calculate powers.
++  OPENSSL_memcpy(table[i_1], in->words, P256_LIMBS * sizeof(BN_ULONG));
++
++  ecp_nistz256_ord_sqr_mont(table[i_10], table[i_1], 1);
++
++  ecp_nistz256_ord_mul_mont(table[i_11], table[i_1], table[i_10]);
++
++  ecp_nistz256_ord_mul_mont(table[i_101], table[i_11], table[i_10]);
++
++  ecp_nistz256_ord_mul_mont(table[i_111], table[i_101], table[i_10]);
++
++  ecp_nistz256_ord_sqr_mont(table[i_1010], table[i_101], 1);
++
++  ecp_nistz256_ord_mul_mont(table[i_1111], table[i_1010], table[i_101]);
++
++  ecp_nistz256_ord_sqr_mont(table[i_10101], table[i_1010], 1);
++  ecp_nistz256_ord_mul_mont(table[i_10101], table[i_10101], table[i_1]);
++
++  ecp_nistz256_ord_sqr_mont(table[i_101010], table[i_10101], 1);
++
++  ecp_nistz256_ord_mul_mont(table[i_101111], table[i_101010], table[i_101]);
++
++  ecp_nistz256_ord_mul_mont(table[i_x6], table[i_101010], table[i_10101]);
++
++  ecp_nistz256_ord_sqr_mont(table[i_x8], table[i_x6], 2);
++  ecp_nistz256_ord_mul_mont(table[i_x8], table[i_x8], table[i_11]);
++
++  ecp_nistz256_ord_sqr_mont(table[i_x16], table[i_x8], 8);
++  ecp_nistz256_ord_mul_mont(table[i_x16], table[i_x16], table[i_x8]);
++
++  ecp_nistz256_ord_sqr_mont(table[i_x32], table[i_x16], 16);
++  ecp_nistz256_ord_mul_mont(table[i_x32], table[i_x32], table[i_x16]);
++
++  // Compute |in| raised to the order-2.
++  ecp_nistz256_ord_sqr_mont(out->words, table[i_x32], 64);
++  ecp_nistz256_ord_mul_mont(out->words, out->words, table[i_x32]);
++  static const struct {
++    uint8_t p, i;
++  } kChain[27] = {{32, i_x32},    {6, i_101111}, {5, i_111},    {4, i_11},
++                  {5, i_1111},    {5, i_10101},  {4, i_101},    {3, i_101},
++                  {3, i_101},     {5, i_111},    {9, i_101111}, {6, i_1111},
++                  {2, i_1},       {5, i_1},      {6, i_1111},   {5, i_111},
++                  {4, i_111},     {5, i_111},    {5, i_101},    {3, i_11},
++                  {10, i_101111}, {2, i_11},     {5, i_11},     {5, i_11},
++                  {3, i_1},       {7, i_10101},  {6, i_1111}};
++  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kChain); i++) {
++    ecp_nistz256_ord_sqr_mont(out->words, out->words, kChain[i].p);
++    ecp_nistz256_ord_mul_mont(out->words, out->words, table[kChain[i].i]);
++  }
++}
++
++static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
++                                         const EC_RAW_POINT *p,
++                                         const EC_SCALAR *r) {
++  if (ec_GFp_simple_is_at_infinity(group, p)) {
++    return 0;
++  }
++
++  assert(group->order.width == P256_LIMBS);
++  assert(group->field.width == P256_LIMBS);
++
++  // We wish to compare X/Z^2 with r. This is equivalent to comparing X with
++  // r*Z^2. Note that X and Z are represented in Montgomery form, while r is
++  // not.
++  BN_ULONG r_Z2[P256_LIMBS], Z2_mont[P256_LIMBS], X[P256_LIMBS];
++  ecp_nistz256_mul_mont(Z2_mont, p->Z.words, p->Z.words);
++  ecp_nistz256_mul_mont(r_Z2, r->words, Z2_mont);
++  ecp_nistz256_from_mont(X, p->X.words);
++
++  if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
++    return 1;
++  }
++
++  // During signing the x coefficient is reduced modulo the group order.
++  // Therefore there is a small possibility, less than 1/2^128, that group_order
++  // < p.x < P. in that case we need not only to compare against |r| but also to
++  // compare against r+group_order.
++  if (bn_less_than_words(r->words, group->field_minus_order.words,
++                         P256_LIMBS)) {
++    // We can ignore the carry because: r + group_order < p < 2^256.
++    bn_add_words(r_Z2, r->words, group->order.d, P256_LIMBS);
++    ecp_nistz256_mul_mont(r_Z2, r_Z2, Z2_mont);
++    if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
++      return 1;
++    }
++  }
++
++  return 0;
++}
++
 +DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_arm_method) {
 +  out->group_init = ec_GFp_mont_group_init;
 +  out->group_finish = ec_GFp_mont_group_finish;
 +  out->group_set_curve = ec_GFp_mont_group_set_curve;
 +  out->point_get_affine_coordinates = ecp_nistz256_get_affine;
-+  out->add = ec_GFp_nistp256_add;
-+  out->dbl = ec_GFp_nistp256_dbl;
++  out->add = ecp_nistz256_add;
++  out->dbl = ecp_nistz256_dbl;
 +  out->mul = ec_GFp_nistp256_point_mul;
 +  out->mul_base = ec_GFp_nistp256_point_mul_base;
 +  out->mul_public = ec_GFp_nistp256_point_mul_public;
@@ -200,10 +347,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +  out->felem_sqr = ec_GFp_mont_felem_sqr;
 +  out->felem_to_bytes = ec_GFp_mont_felem_to_bytes;
 +  out->felem_from_bytes = ec_GFp_mont_felem_from_bytes;
-+  out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
++  out->scalar_inv0_montgomery = ecp_nistz256_inv0_mod_ord;
 +  out->scalar_to_montgomery_inv_vartime =
 +      ec_simple_scalar_to_montgomery_inv_vartime;
-+  out->cmp_x_coordinate = ec_GFp_nistp256_cmp_x_coordinate;
++  out->cmp_x_coordinate = ecp_nistz256_cmp_x_coordinate;
 +}
 +#endif
 +
