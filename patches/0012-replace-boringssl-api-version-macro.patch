@@ -6,7 +6,7 @@ Index: aws-lc/third_party/boringssl/include/openssl/base.h
  #define OPENSSL_VERSION_NUMBER 0x1010007f
  #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
  
-+// BORINGSSL_API_VERSION is replaced with AWSLC_API_VERSION to avoid users intepreting AWSLC as BoringSSL.
++// BORINGSSL_API_VERSION is replaced with AWSLC_API_VERSION to avoid users interpreting AWSLC as BoringSSL.
 +// Below is comments from BorringSSL on BORINGSSL_API_VERSION.
  // BORINGSSL_API_VERSION is a positive integer that increments as BoringSSL
  // changes over time. The value itself is not meaningful. It will be incremented
