@@ -11,5 +11,4 @@ phases:
       - export AWS_LC_GO_TEST_TIMEOUT='60m'
   build:
     commands:
-      - go version
       - ./tests/ci/run_posix_sanitizers.sh
