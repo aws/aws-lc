@@ -52,6 +52,13 @@ class GitHubCodeBuildStack(core.Stack):
                             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryReadOnly")
                         ])
 
+        # Define timeout.
+        if env_type is 'ARM':
+            # ARM sanitizer code build takes 90 minutes to complete.
+            timeout = core.Duration.minutes(120)
+        else:
+            timeout = core.Duration.minutes(60)
+
         # Define CodeBuild.
         build = codebuild.Project(
             scope=self,
@@ -59,6 +66,7 @@ class GitHubCodeBuildStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=role,
+            timeout=timeout,
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.LARGE,
                                                    privileged=privileged,
                                                    build_image=build_image),
