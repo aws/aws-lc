@@ -8,7 +8,7 @@ batch:
   build-list:
 
     # Pre push check.
-    - identifier: aws-lc-pre-push
+    - identifier: AwsLcPrePush
       buildspec: ./tests/ci/codebuild/pre-push.yml
       env:
         type: LINUX_CONTAINER
@@ -17,7 +17,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-18.04_gcc-7x_latest
 
     # x86-64
-    - identifier: aws-lc-ubuntu-16-04--gcc-5x--x86
+    - identifier: AwsLcUbuntu1604Gcc5xX86
       buildspec: ./tests/ci/codebuild/ubuntu-16.04_gcc-5x_x86.yml
       env:
         type: LINUX_CONTAINER
@@ -26,7 +26,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-16.04_gcc-5x_latest
 
     # aarch
-    - identifier: aws-lc-ubuntu-19-10--gcc-9x
+    - identifier: AwsLcUbuntu1910Gcc9xAARCH
       buildspec: ./tests/ci/codebuild/ubuntu-19.10_gcc-9x_aarch64.yml
       env:
         type: ARM_CONTAINER
@@ -35,10 +35,10 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-aarch:ubuntu-19.10_gcc-9x_latest
 
     # windows
-    - identifier: aws-lc-test-ubuntu-19-10--gcc-9x
+    - identifier: AwsLcUbuntuWindows2015
       buildspec: ./tests/ci/codebuild/windows-msvc2015-x64.yml
       env:
         type: WINDOWS_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-windows:vs2015_latest
