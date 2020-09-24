@@ -1,0 +1,47 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-matrix
+batch:
+  build-matrix:
+    static:
+      ignore-failure: true
+    dynamic:
+
+      # Pre push check.
+      - identifier: aws-lc-pre-push
+        buildspec: ./tests/ci/codebuild/pre-push.yml
+        env:
+          type: LINUX_CONTAINER
+          privileged-mode: false
+          compute-type: BUILD_GENERAL1_MEDIUM
+          image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-18.04_gcc-7x_latest
+
+      # x86-64
+      - identifier: aws-lc-ubuntu-16-04--gcc-5x--x86
+        buildspec: ./tests/ci/codebuild/ubuntu-16.04_gcc-5x_x86.yml
+        env:
+          type: LINUX_CONTAINER
+          privileged-mode: true
+          compute-type: BUILD_GENERAL1_LARGE
+          image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-16.04_gcc-5x_latest
+
+      # aarch
+      - identifier: aws-lc-ubuntu-19-10--gcc-9x
+        buildspec: ./tests/ci/codebuild/ubuntu-19.10_gcc-9x_aarch64.yml
+        env:
+          type: ARM_CONTAINER
+          privileged-mode: true
+          compute-type: BUILD_GENERAL1_LARGE
+          image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-aarch:ubuntu-19.10_gcc-9x_latest
+
+      # windows
+      - identifier: aws-lc-test-ubuntu-19-10--gcc-9x
+        buildspec: ./tests/ci/codebuild/windows-msvc2015-x64.yml
+        env:
+          type: WINDOWS_CONTAINER
+          privileged-mode: true
+          compute-type: BUILD_GENERAL1_LARGE
+          image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-windows:vs2015_latest
