@@ -41,7 +41,7 @@ class GitHubCodeBuildStack(core.Stack):
         # Define CodeBuild environment.
         ecr_repo = ecr.Repository.from_repository_name(scope=self, id=ecr_repo_name, repository_name=ecr_repo_name)
         build_image = codebuild.LinuxBuildImage.from_ecr_repository(repository=ecr_repo, tag=docker_img_tag)
-        if env_type is 'Windows':
+        if env_type == 'Windows':
             build_image = codebuild.WindowsBuildImage.from_ecr_repository(repository=ecr_repo, tag=docker_img_tag)
 
         # Define a role.
@@ -53,7 +53,7 @@ class GitHubCodeBuildStack(core.Stack):
                         ])
 
         # Define timeout.
-        if env_type is 'ARM':
+        if env_type == 'ARM':
             # ARM sanitizer code build takes 90 minutes to complete.
             timeout = core.Duration.minutes(120)
         else:
@@ -72,7 +72,7 @@ class GitHubCodeBuildStack(core.Stack):
                                                    build_image=build_image),
             build_spec=codebuild.BuildSpec.from_source_filename(build_spec_file))
 
-        if env_type is 'ARM':
+        if env_type == 'ARM':
             # Workaround to change environment type.
             # see: https://github.com/aws/aws-cdk/issues/5517
             cfn_build = build.node.default_child
