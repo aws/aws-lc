@@ -315,43 +315,54 @@ let EVP_DigestFinal_ovs =
 if quick_check then do {
   // There are 2 cases to consider to ensure the proof covers all possible code
   // paths through the update function
-  crucible_llvm_verify m "EVP_DigestFinal"
-    EVP_DigestFinal_ovs
-    true
-    // num=111 covers the case with one call to the block function
-    (EVP_DigestFinal_spec 111)
-    (w4_unint_yices ["SHA512Block"]);
-  crucible_llvm_verify m "EVP_DigestFinal"
-    EVP_DigestFinal_ovs
-    true
-    // num=112 covers the case with two calls to the block function
-    (EVP_DigestFinal_spec 112)
-    (w4_unint_yices ["SHA512Block"]);
-  return ();
-} else do {
-  let verify_final_at_num num = do {
-    print (str_concat "Verifying EVP_DigestFinal at num=" (show num));
+  
+  let verify_final_with_length withLength = do {
+    print (str_concat "Verifying EVP_DigestFinal withLength=" (show withLength));
     crucible_llvm_verify m "EVP_DigestFinal"
       EVP_DigestFinal_ovs
       true
-      (EVP_DigestFinal_spec num)
+      // num=111 covers the case with one call to the block function
+      (EVP_DigestFinal_spec withLength 111)
+      (w4_unint_yices ["SHA512Block"]);
+    crucible_llvm_verify m "EVP_DigestFinal"
+      EVP_DigestFinal_ovs
+      true
+      // num=112 covers the case with two calls to the block function
+      (EVP_DigestFinal_spec withLength 112)
       (w4_unint_yices ["SHA512Block"]);
   };
-  for nums verify_final_at_num;
+  for [false, true] verify_final_with_length;
+  return ();
+} else do {
+  let verify_final_with_length withLength = do {
+    let verify_final_at_num num = do {
+      print (str_concat "Verifying EVP_DigestFinal at num=" (show num));
+      crucible_llvm_verify m "EVP_DigestFinal"
+        EVP_DigestFinal_ovs
+        true
+        (EVP_DigestFinal_spec withLength num)
+        (w4_unint_yices ["SHA512Block"]);
+    };
+    for nums verify_final_at_num;
+  };
+  for [false, true] verify_final_with_length;
   return ();
 };
 
 
 // Verify the `EVP_Digest` C function satisfies the `EVP_Digest_spec`
 // specification
-crucible_llvm_verify m "EVP_Digest"
-  [ sha512_block_data_order_spec
-  , OPENSSL_malloc_ov
-  , OPENSSL_free_nonnull_ov
-  , OPENSSL_free_null_ov
-  , OPENSSL_cleanse_ov
-  ]
-  true
-  (EVP_Digest_spec 240)
-  (w4_unint_yices ["SHA512Block"]);
+let verify_digest_with_length withLength = do {
+  crucible_llvm_verify m "EVP_Digest"
+    [ sha512_block_data_order_spec
+    , OPENSSL_malloc_ov
+    , OPENSSL_free_nonnull_ov
+    , OPENSSL_free_null_ov
+    , OPENSSL_cleanse_ov
+    ]
+    true
+    (EVP_Digest_spec withLength 240)
+    (w4_unint_yices ["SHA512Block"]);
+};
+for [false, true] verify_digest_with_length;
 
