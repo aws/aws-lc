@@ -8,37 +8,37 @@ batch:
   build-list:
 
     # Pre push check.
-    - identifier: AwsLcPrePush
+    - identifier: PrePushChecker
       buildspec: ./tests/ci/codebuild/pre-push.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENERAL1_MEDIUM
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-18.04_gcc-7x_latest
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-18.04_gcc-7x_latest
 
     # x86-64
-    - identifier: AwsLcUbuntu1604Gcc5xX86
+    - identifier: Ubuntu1604Gcc5xX86
       buildspec: ./tests/ci/codebuild/ubuntu-16.04_gcc-5x_x86.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-16.04_gcc-5x_latest
+        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-x86:ubuntu-16.04_gcc-5x_latest
 
     # aarch
-    - identifier: AwsLcUbuntu1910Gcc9xAARCH
+    - identifier: Ubuntu1910Gcc9xAARCH
       buildspec: ./tests/ci/codebuild/ubuntu-19.10_gcc-9x_aarch64.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-aarch:ubuntu-19.10_gcc-9x_latest
+        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-aarch:ubuntu-19.10_gcc-9x_latest
 
     # windows
-    - identifier: AwsLcUbuntuWindows2015
+    - identifier: UbuntuWindows2015
       buildspec: ./tests/ci/codebuild/windows-msvc2015-x64.yml
       env:
         type: WINDOWS_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-windows:vs2015_latest
+        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-windows:vs2015_latest
