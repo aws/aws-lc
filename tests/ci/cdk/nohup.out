@@ -1,0 +1,41 @@
++ export CDK_DEPLOY_ACCOUNT=654358955777
++ CDK_DEPLOY_ACCOUNT=654358955777
++ shift
++ export CDK_DEPLOY_REGION=us-west-2
++ CDK_DEPLOY_REGION=us-west-2
++ shift
++ export GITHUB_REPO_OWNER=bryce-shang
++ GITHUB_REPO_OWNER=bryce-shang
++ shift
++ export GITHUB_REPO=aws-lc
++ GITHUB_REPO=aws-lc
++ shift
++ export ACTION=DEPLOY
++ ACTION=DEPLOY
++ shift
+++ date +%Y-%m-%d-%H-%M
++ export DATE_NOW=2020-09-28-21-34
++ DATE_NOW=2020-09-28-21-34
++ export ECR_LINUX_AARCH_REPO_NAME=aws-lc-docker-images-linux-aarch
++ ECR_LINUX_AARCH_REPO_NAME=aws-lc-docker-images-linux-aarch
++ export ECR_LINUX_X86_REPO_NAME=aws-lc-docker-images-linux-x86
++ ECR_LINUX_X86_REPO_NAME=aws-lc-docker-images-linux-x86
++ export ECR_WINDOWS_REPO_NAME=aws-lc-docker-images-windows
++ ECR_WINDOWS_REPO_NAME=aws-lc-docker-images-windows
++ export S3_FOR_WIN_DOCKER_IMG_BUILD=windows-docker-images
++ S3_FOR_WIN_DOCKER_IMG_BUILD=windows-docker-images
++ export WIN_EC2_TAG_KEY=aws-lc
++ WIN_EC2_TAG_KEY=aws-lc
++ export WIN_EC2_TAG_VALUE=aws-lc-windows-docker-image-build
++ WIN_EC2_TAG_VALUE=aws-lc-windows-docker-image-build
++ export WIN_DOCKER_BUILD_SSM_DOCUMENT=awslc-ssm-windows-docker-img-build-doc
++ WIN_DOCKER_BUILD_SSM_DOCUMENT=awslc-ssm-windows-docker-img-build-doc
++ case ${ACTION} in
++ deploy
++ trap destroy_docker_img_build_stack EXIT
++ echo 'Executing AWS SSM commands to build Windows docker images.'
+Executing AWS SSM commands to build Windows docker images.
++ build_windows_img
++ echo 'Wait 10 min for EC2 ready for SSM command execution.'
+Wait 10 min for EC2 ready for SSM command execution.
++ sleep 600

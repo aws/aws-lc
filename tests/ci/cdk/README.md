@@ -18,6 +18,9 @@ To setup or update the CI in your account you will need the following IAM permis
   * codebuild:Create*
   * codebuild:Update*
   * codebuild:Batch*
+  * codebuild:StartBuild
+  * codebuild:StopBuild
+  * codebuild:RetryBuild
 * EC2
   * ec2:Describe*
   * ec2:Create*
@@ -86,17 +89,15 @@ Below is CI file structure.
 ├── cdk
 │   ├── __init__.py
 │   ├── ecr_stack.py
-│   ├── github_codebuild_stack.py
-│   ├── linux_docker_images_build_stack.py
-│   ├── windows_docker_build_ssm_document.yaml
-│   └── windows_docker_image_build_stack.py
+│   ├── ...
 ├── cdk.json
 ├── requirements.txt
 ├── run-cdk.sh
 ├── setup.py
 └── util
     ├── __init__.py
-    └── util.py
+    └── env_util.py
+    └── ...
 ```
 * `README.md` — The introductory README for this project.
 * `app.py` — The “main” for this sample application.
