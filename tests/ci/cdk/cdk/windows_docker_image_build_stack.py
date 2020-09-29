@@ -4,7 +4,7 @@
 from aws_cdk import core, aws_ec2 as ec2, aws_s3 as s3, aws_iam as iam, aws_ssm as ssm
 from util.iam_policies import ecr_power_user_policy_in_json, s3_read_write_policy_in_json
 from util.metadata import AWS_ACCOUNT, AWS_REGION, WINDOWS_ECR_REPO, S3_BUCKET_NAME, GITHUB_REPO_OWNER, WIN_EC2_TAG_KEY, \
-    WIN_EC2_TAG_VALUE, SSM_DOCUMENT_NAME
+    WIN_EC2_TAG_VALUE, SSM_DOCUMENT_NAME, GITHUB_SOURCE_VERSION
 from util.yml_loader import YmlLoader
 
 
@@ -20,7 +20,7 @@ class WindowsDockerImageBuildStack(core.Stack):
         # Define SSM command document.
         ecr_repo = "{}.dkr.ecr.{}.amazonaws.com/{}".format(AWS_ACCOUNT, AWS_REGION, WINDOWS_ECR_REPO)
         placeholder_map = {"ECR_PLACEHOLDER": ecr_repo, "GITHUB_OWNER_PLACEHOLDER": GITHUB_REPO_OWNER,
-                           "REGION_PLACEHOLDER": AWS_REGION}
+                           "REGION_PLACEHOLDER": AWS_REGION, "GITHUB_SOURCE_VERSION_PLACEHOLDER": GITHUB_SOURCE_VERSION}
         content = YmlLoader.load("./cdk/ssm/windows_docker_build_ssm_document.yaml", placeholder_map)
         ssm.CfnDocument(scope=self,
                         id="{}-ssm-document".format(id),

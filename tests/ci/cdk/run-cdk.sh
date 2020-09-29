@@ -28,10 +28,10 @@ export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
 export ECR_LINUX_AARCH_REPO_NAME="aws-lc-docker-images-linux-aarch"
 export ECR_LINUX_X86_REPO_NAME="aws-lc-docker-images-linux-x86"
 export ECR_WINDOWS_REPO_NAME="aws-lc-docker-images-windows"
-export AWS_LC_S3_BUCKET_PREFIX="windows-docker-images"
+export AWS_LC_S3_BUCKET_PREFIX="aws-lc-windows-docker-image-build"
 export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
 export WIN_EC2_TAG_KEY="aws-lc"
-export WIN_EC2_TAG_VALUE="windows-docker-img-${DATE_NOW}"
+export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
 export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
 
 # Functions
