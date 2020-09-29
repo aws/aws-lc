@@ -46,7 +46,7 @@ class WindowsDockerImageBuildStack(core.Stack):
                         ])
 
         # Define Windows EC2 instance, where the SSM document will be executed.
-        machine_image = ec2.MachineImage.latest_windows(ec2.WindowsVersion.WINDOWS_SERVER_2019_ENGLISH_FULL_CONTAINERSLATEST)
+        machine_image = ec2.MachineImage.latest_windows(ec2.WindowsVersion.WINDOWS_SERVER_2016_ENGLISH_FULL_CONTAINERS)
         vpc = ec2.Vpc(scope=self, id="{}-vpc".format(id))
         block_device_volume = ec2.BlockDeviceVolume.ebs(volume_size=200, delete_on_termination=True)
         block_device = ec2.BlockDevice(device_name="/dev/sda1", volume=block_device_volume)
