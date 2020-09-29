@@ -5,3 +5,4 @@
 docker build -t ubuntu-19.10-aarch:gcc-9x ubuntu-19.10_gcc-9x
 docker build -t ubuntu-19.10-aarch:clang-9x ubuntu-19.10_clang-9x
 docker build -t ubuntu-19.10-aarch:sanitizer ubuntu-19.10_clang-9x_sanitizer
+docker build -t amazonlinux2-aarch:gcc-7x amazonlinux-2_gcc-7x
