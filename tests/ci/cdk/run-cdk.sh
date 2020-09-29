@@ -24,16 +24,36 @@ export ACTION=$1
 shift
 
 # Export other environment variables.
+export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
 export ECR_LINUX_AARCH_REPO_NAME="aws-lc-docker-images-linux-aarch"
 export ECR_LINUX_X86_REPO_NAME="aws-lc-docker-images-linux-x86"
 export ECR_WINDOWS_REPO_NAME="aws-lc-docker-images-windows"
-export S3_FOR_WIN_DOCKER_IMG_BUILD="aws-lc-windows-docker-image-build"
+export AWS_LC_S3_BUCKET_PREFIX="windows-docker-images"
+export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
 export WIN_EC2_TAG_KEY="aws-lc"
-export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build"
-export WIN_DOCKER_BUILD_SSM_DOCUMENT="awslc-ssm-windows-docker-img-build-doc"
+export WIN_EC2_TAG_VALUE="windows-docker-img-${DATE_NOW}"
+export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
 
 # Functions
+function delete_s3_buckets() {
+  aws s3api list-buckets --query "Buckets[].Name" | jq '.[]' | while read -r i; do
+    # Delete the bucket if its name uses AWS_LC_S3_BUCKET_PREFIX.
+    if [[ ${i} == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
+      aws s3 rm "s3://${i}" --recursive
+      aws s3api delete-bucket --bucket "${i}"
+    fi
+  done
+}
+
+function destroy_all() {
+  cdk destroy aws-lc-* --force
+  # CDK stack destroy does not delete s3 bucket automatically.
+  delete_s3_buckets
+}
+
 function create_aws_resources() {
+  # Clean up resources before deployment.
+  destroy_all
   cdk deploy aws-lc-* --require-approval never
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
   aws codebuild update-webhook --project-name aws-lc-ci --build-type BUILD_BATCH
@@ -73,17 +93,9 @@ function build_windows_img() {
   exit 1
 }
 
-function delete_s3_bucket() {
-  # Make sure s3 bucket is empty before deleting the bucket.
-  aws s3 rm s3://${S3_FOR_WIN_DOCKER_IMG_BUILD} --recursive
-  aws s3api delete-bucket --bucket ${S3_FOR_WIN_DOCKER_IMG_BUILD}
-}
-
 function destroy_docker_img_build_stack() {
   # Destroy all temporary resources created for all docker image build.
   cdk destroy aws-lc-docker-image-build-* --force
-  # CDK stack destroy does not delete s3 bucket automatically.
-  delete_s3_bucket
 }
 
 function images_pushed_to_ecr() {
@@ -100,7 +112,7 @@ function images_pushed_to_ecr() {
     images_in_ecr=$(aws ecr describe-images --repository-name ${repo_name})
     images_pushed=0
     for target_image in "${target_images[@]}"; do
-      if [[ ${images_in_ecr} != *"$target_image"* ]]; then
+      if [[ ${images_in_ecr} != *"${target_image}"* ]]; then
         images_pushed=1
         break
       fi
@@ -151,12 +163,6 @@ function deploy() {
   images_pushed_to_ecr "${ECR_WINDOWS_REPO_NAME}" "${windows_img_tags[@]}"
 }
 
-function destroy() {
-  cdk destroy aws-lc-* --force
-  # CDK stack destroy does not delete s3 bucket automatically.
-  delete_s3_bucket
-}
-
 # Main logics
 
 case ${ACTION} in
@@ -170,7 +176,7 @@ SYNTH)
   cdk synth aws-lc*
   ;;
 DESTROY)
-  destroy
+  destroy_all
   ;;
 *)
   echo "Action: ${ACTION} is not supported."
