@@ -18,8 +18,6 @@ choco install activeperl --version 5.24.3.2404 -y && `
 choco install nasm --version 2.14.02 -y && `
 choco install golang --version 1.13.1 -y && `
 choco install cmake --version 3.15.4 --installargs 'ADD_CMAKE_TO_PATH=""System""' -y && `
-choco install cyg-get -y
-
-RUN cyg-get install quilt
+choco install cyg-get -y && cyg-get install quilt
 
 CMD [ "cmd.exe" ]
