@@ -23,10 +23,20 @@ docker tag ubuntu-19.10-aarch:clang-9x ${ECS_REPO}:ubuntu-19.10_clang-9x_latest
 docker push ${ECS_REPO}:ubuntu-19.10_clang-9x_latest
 docker push ${ECS_REPO}:ubuntu-19.10_clang-9x_`date +%Y-%m-%d`
 
-docker tag amazonlinux2-aarch:gcc-7x ${ECS_REPO}:amazonlinux2-aarch_gcc-7x_`date +%Y-%m-%d`
-docker tag amazonlinux2-aarch:gcc-7x ${ECS_REPO}:amazonlinux2-aarch_gcc-7x_latest
-docker push ${ECS_REPO}:amazonlinux2-aarch_gcc-7x_latest
-docker push ${ECS_REPO}:amazonlinux2-aarch_gcc-7x_`date +%Y-%m-%d`
+docker tag ubuntu-20.04-aarch:gcc-9x ${ECS_REPO}:ubuntu-20.04_gcc-9x_`date +%Y-%m-%d`
+docker tag ubuntu-20.04-aarch:gcc-9x ${ECS_REPO}:ubuntu-20.04_gcc-9x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_gcc-9x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_gcc-9x_`date +%Y-%m-%d`
+
+docker tag ubuntu-20.04-aarch:clang-9x ${ECS_REPO}:ubuntu-20.04_clang-9x_`date +%Y-%m-%d`
+docker tag ubuntu-20.04-aarch:clang-9x ${ECS_REPO}:ubuntu-20.04_clang-9x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-9x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-9x_`date +%Y-%m-%d`
+
+docker tag amazonlinux-2-aarch:gcc-7x ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_`date +%Y-%m-%d`
+docker tag amazonlinux-2-aarch:gcc-7x ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_latest
+docker push ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_latest
+docker push ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_`date +%Y-%m-%d`
 
 docker tag ubuntu-19.10-aarch:sanitizer ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_`date +%Y-%m-%d`
 docker tag ubuntu-19.10-aarch:sanitizer ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_latest
