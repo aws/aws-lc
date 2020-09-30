@@ -159,3 +159,52 @@ command.
  * `cdk deploy`      deploy this stack to your default AWS account/region
  * `cdk diff`        compare deployed stack with current state
  * `cdk docs`        open CDK documentation
+ 
+### Useful Docker image build commands
+
+**Note**: below commands use default GitHub repo `awslabs/aws-c` and branch `main`. To custom GitHub repo and branch, change code `cdk/util/metadata.py`.
+
+#### Linux Docker image build
+
+```bash
+# Launch Linux Docker image CodeBuild resources.
+cdk deploy aws-lc-docker-image-build-linux --require-approval never
+
+# Trigger the Linux CodeBuild.
+aws codebuild start-build-batch --project-name aws-lc-docker-image-build-linux
+```
+
+#### Windows Docker image build
+Windows docker image build requires more resources (like EC2 host, S3, SSM and so on) set up because DIND (Docker in Docker)
+ is not supported by Windows. Below are some commands specific to windows docker image build.
+ 
+```bash
+# Define environment variables needed by Windows docker image build.
+export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
+export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
+export WIN_EC2_TAG_KEY="aws-lc"
+export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
+export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
+
+# Clean up all Windows docker image build resources.
+cdk destroy aws-lc-docker-image-build-windows --force
+aws s3 rm "s3://${S3_FOR_WIN_DOCKER_IMG_BUILD}" --recursive
+aws s3api delete-bucket --bucket "${S3_FOR_WIN_DOCKER_IMG_BUILD}"
+
+# Deploy Windows docker image build resources.
+cdk deploy aws-lc-docker-image-build-windows --require-approval never
+
+# Sleep 10 minutes so Windows EC2 is ready to execute SSM commands.
+sleep 600
+
+# Trigger SSM commands
+instance_id=$(aws ec2 describe-instances \
+    --filters "Name=tag:${WIN_EC2_TAG_KEY},Values=${WIN_EC2_TAG_VALUE}" | jq -r '.Reservations[0].Instances[0].InstanceId')
+aws ssm send-command \
+        --instance-ids "${instance_id}" \
+        --document-name "${WIN_DOCKER_BUILD_SSM_DOCUMENT}" \
+        --output-s3-bucket-name "${S3_FOR_WIN_DOCKER_IMG_BUILD}" \
+        --output-s3-key-prefix 'ssm-runcommand-logs'
+
+# Go to AWS console, you can check run command by clicking `AWS Systems Manager > Run Command`.
+```
