@@ -15,7 +15,7 @@ docker tag vs2015 ${ECS_REPO}:vs2015-$(Get-Date -UFormat %Y-%m-%d-%H)
 docker push ${ECS_REPO}:vs2015_latest
 docker push ${ECS_REPO}:vs2015-$(Get-Date -UFormat %Y-%m-%d-%H)
 
-docker tag vs2017 ${ECS_REPO}:vs2017_latest
-docker tag vs2017 ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)
-docker push ${ECS_REPO}:vs2017_latest
-docker push ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)
+# docker tag vs2017 ${ECS_REPO}:vs2017_latest
+# docker tag vs2017 ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)
+# docker push ${ECS_REPO}:vs2017_latest
+# docker push ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)
