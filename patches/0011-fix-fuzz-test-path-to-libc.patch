@@ -1,0 +1,77 @@
+Index: aws-lc/third_party/boringssl/CMakeLists.txt
+===================================================================
+--- aws-lc.orig/third_party/boringssl/CMakeLists.txt
++++ aws-lc/third_party/boringssl/CMakeLists.txt
+@@ -527,6 +527,16 @@ if(USE_CUSTOM_LIBCXX)
+     message(FATAL_ERROR "USE_CUSTOM_LIBCXX only supported with Clang")
+   endif()
+ 
++  # The docker images set an environement variable to the llvm project directory which the sandbox builds will use,
++  # you can also pass in the llvm project path as a CMake parameter which takes precedance over the environment variable
++  if(DEFINED ENV{LLVM_PROJECT_HOME} AND NOT LLVM_PROJECT_HOME)
++    set(LLVM_PROJECT_HOME $ENV{LLVM_PROJECT_HOME})
++  endif()
++
++  if(NOT LLVM_PROJECT_HOME)
++    message(FATAL "Could not find path to LLVM project, must set LLVM_PROJECT_HOME environment variable or pass in -DLLVM_PROJECT_HOME")
++  endif()
++
+   # CMAKE_CXX_FLAGS ends up in the linker flags as well, so use
+   # add_compile_options. There does not appear to be a way to set
+   # language-specific compile-only flags.
+@@ -534,24 +544,25 @@ if(USE_CUSTOM_LIBCXX)
+   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -nostdlib++")
+   include_directories(
+     SYSTEM
+-    util/bot/libcxx/include
+-    util/bot/libcxxabi/include
++    ${LLVM_PROJECT_HOME}/libcxx/include
++    ${LLVM_PROJECT_HOME}/libcxxabi/include
+   )
+ 
+   # This is patterned after buildtools/third_party/libc++/BUILD.gn and
+   # buildtools/third_party/libc++abi/BUILD.gn in Chromium.
+ 
+-  file(GLOB LIBCXX_SOURCES "util/bot/libcxx/src/*.cpp")
+-  file(GLOB LIBCXXABI_SOURCES "util/bot/libcxxabi/src/*.cpp")
++  file(GLOB LIBCXX_SOURCES "${LLVM_PROJECT_HOME}/libcxx/src/*.cpp")
++  file(GLOB LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/*.cpp")
+ 
+   # This file is meant for exception-less builds.
+-  list(REMOVE_ITEM LIBCXXABI_SOURCES "trunk/src/cxa_noexception.cpp")
++  list(REMOVE_ITEM LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/cxa_noexception.cpp")
++
+   # libc++ also defines new and delete.
+-  list(REMOVE_ITEM LIBCXXABI_SOURCES "trunk/src/stdlib_new_delete.cpp")
++  list(REMOVE_ITEM LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/stdlib_new_delete.cpp")
+   if(TSAN)
+     # ThreadSanitizer tries to intercept these symbols. Skip them to avoid
+     # symbol conflicts.
+-    list(REMOVE_ITEM LIBCXXABI_SOURCES "trunk/src/cxa_guard.cpp")
++    list(REMOVE_ITEM LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/cxa_guard.cpp")
+   endif()
+ 
+   add_library(libcxxabi ${LIBCXXABI_SOURCES})
+@@ -632,12 +643,21 @@ if(UNIX AND NOT APPLE AND NOT ANDROID)
+   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
+ endif()
+ 
++# Define GO_TEST_TIMEOUT based on env variable.
++# This is needed because sanitizer test in aarch64 takes 45 mins, which exceeds `go test` default timeout(10m).
++# https://golang.org/pkg/cmd/go/internal/test/
++if(DEFINED ENV{AWS_LC_GO_TEST_TIMEOUT})
++    set(GO_TEST_TIMEOUT "$ENV{AWS_LC_GO_TEST_TIMEOUT}")
++else()
++    set(GO_TEST_TIMEOUT "10m")
++endif()
++
+ add_custom_target(
+     run_tests
+     COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+             ${CMAKE_CURRENT_BINARY_DIR}
+     COMMAND cd ssl/test/runner &&
+-            ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
++            ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
+               ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+     DEPENDS all_tests bssl_shim handshaker

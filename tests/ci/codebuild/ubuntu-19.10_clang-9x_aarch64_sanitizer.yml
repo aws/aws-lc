@@ -8,6 +8,7 @@ phases:
     commands:
       - export CC=clang-9
       - export CXX=clang++-9
-  # build:
-  #   commands:
-  #     - ./tests/ci/run_posix_sanitizers.sh
+      - export AWS_LC_GO_TEST_TIMEOUT='60m'
+  build:
+    commands:
+      - ./tests/ci/run_posix_sanitizers.sh

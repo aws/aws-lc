@@ -1,0 +1,31 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+git:
+  depth: 1
+language: c
+
+# Install additional dependencies first. brew update is required to find quilt on xcode10.3
+addons:
+  homebrew:
+    update: true
+    packages:
+      - ninja
+      - quilt
+
+# Build matrix: test OSX with two versions of xcode/clang
+os: osx
+osx_image:
+  - xcode10.3
+  - xcode12u
+compiler: clang
+
+# Run the script which contains all the build logic
+script:
+  - cmake --version
+  - quilt --version
+  - tests/ci/run_posix_tests.sh
+
+# Setting environment variables.
+env:
+  - RSA_TEST_THREADS_LIMIT=1024
