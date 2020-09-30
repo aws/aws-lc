@@ -3,7 +3,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM mcr.microsoft.com/windows/servercore:1607-KB4556813
+FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
 ADD https://download.microsoft.com/download/6/A/A/6AA4EDFF-645B-48C5-81CC-ED5963AEAD48/vc_redist.x64.exe /vc_redist.x64.exe
 RUN start /wait C:\vc_redist.x64.exe /quiet /norestart
@@ -17,7 +17,6 @@ choco install ninja --version 1.9.0.20190208 -y && `
 choco install activeperl --version 5.24.3.2404 -y && `
 choco install nasm --version 2.14.02 -y && `
 choco install golang --version 1.13.1 -y && `
-choco install cmake --version 3.15.4 --installargs 'ADD_CMAKE_TO_PATH=""System""' -y && `
-choco install cyg-get -y && cyg-get install quilt
+choco install cmake --version 3.15.4 --installargs 'ADD_CMAKE_TO_PATH=""System""' -y`
 
 CMD [ "cmd.exe" ]
