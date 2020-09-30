@@ -5,6 +5,8 @@ FROM ubuntu:20.04
 
 SHELL ["/bin/bash", "-c"]
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \

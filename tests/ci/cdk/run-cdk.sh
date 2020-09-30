@@ -144,6 +144,9 @@ function deploy() {
 
   echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
   linux_aarch_img_tags=("ubuntu-19.10_gcc-9x_latest"
+    "amazonlinux-2_gcc-7x_latest"
+    "ubuntu-20.04_gcc-9x_latest"
+    "ubuntu-20.04_clang-10x_latest"
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.10_clang-9x_sanitizer_latest")
   images_pushed_to_ecr "${ECR_LINUX_AARCH_REPO_NAME}" "${linux_aarch_img_tags[@]}"
@@ -155,6 +158,8 @@ function deploy() {
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.04_gcc-8x_latest"
     "ubuntu-19.04_clang-8x_latest"
+    "ubuntu-20.04_gcc-9x_latest"
+    "ubuntu-20.04_clang-10x_latest"
     "centos-7_gcc-4x_latest"
     "amazonlinux-2_gcc-7x_latest"
     "s2n_integration_clang-9x_latest")

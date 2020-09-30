@@ -6,8 +6,8 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - export CC=clang-9
-      - export CXX=clang++-9
+      - export CC=clang-10
+      - export CXX=clang++-10
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh

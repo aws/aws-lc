@@ -66,13 +66,13 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_gcc-9x_latest
 
-    - identifier: ubuntu2004_clang9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-9x.yml
+    - identifier: ubuntu2004_clang10x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
     - identifier: ubuntu1904_gcc8x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.04_gcc-8x.yml
@@ -173,13 +173,13 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_gcc-9x_latest
 
-    - identifier: ubuntu2004_clang9x_aarch
-      buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_clang-9x.yml
+    - identifier: ubuntu2004_clang10x_aarch
+      buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_clang-10x.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
     - identifier: ubuntu1910_clang9x_aarch_sanitizer
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-19.10_clang-9x_sanitizer.yml

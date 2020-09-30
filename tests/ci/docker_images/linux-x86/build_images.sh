@@ -10,7 +10,7 @@ docker build -t ubuntu-19.04:clang-8x ubuntu-19.04_clang-8x
 docker build -t ubuntu-19.10:gcc-9x ubuntu-19.10_gcc-9x
 docker build -t ubuntu-19.10:clang-9x ubuntu-19.10_clang-9x
 docker build -t ubuntu-20.04:gcc-9x ubuntu-20.04_gcc-9x
-docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
+docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
 docker build -t ubuntu-19.10:sanitizer ubuntu-19.10_clang-9x_sanitizer
 docker build -t centos-7:gcc-4x centos-7_gcc-4x
 docker build -t amazonlinux-2:gcc-7x amazonlinux-2_gcc-7x

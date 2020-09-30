@@ -1,16 +1,17 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM arm64v8/ubuntu:20.04
+FROM ubuntu:20.04
 
 SHELL ["/bin/bash", "-c"]
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
-    gcc-9 \
-    g++-9 \
+    clang \
     cmake \
     ninja-build \
     perl \
@@ -29,7 +30,7 @@ RUN set -ex && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
-ENV CC=gcc-9
-ENV CXX=g++-9
+ENV CC=clang-10
+ENV CXX=clang++-10
 ENV GOROOT=/usr/local/go
 ENV PATH="$GOROOT/bin:$PATH"
