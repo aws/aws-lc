@@ -6,8 +6,6 @@ FROM ubuntu:18.04
 SHELL ["/bin/bash", "-c"]
 
 RUN set -ex && \
-    # https://github.com/golang/go/wiki/Ubuntu
-    add-apt-repository ppa:longsleep/golang-backports && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
@@ -16,7 +14,12 @@ RUN set -ex && \
     ninja-build \
     perl \
     quilt \
-    golang-go && \
+    ca-certificates \
+    wget && \
+    cd /tmp && \
+    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
+    tar -xvf go1.13.12.linux-amd64.tar.gz && \
+    mv go /usr/local && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
