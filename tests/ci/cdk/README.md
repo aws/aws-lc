@@ -162,7 +162,10 @@ command.
  
 ### Useful Docker image build commands
 
-**Note**: below commands use default GitHub repo `awslabs/aws-c` and branch `main`. To custom GitHub repo and branch, change code `cdk/util/metadata.py`.
+**Notes**:
+* below commands use default values set in `cdk/util/metadata.py`.
+* Always clean up resources set up for Docker image build.
+  * `cdk destroy aws-lc-docker-image-build-* --force`
 
 #### Linux Docker image build
 
@@ -172,11 +175,13 @@ cdk deploy aws-lc-docker-image-build-linux --require-approval never
 
 # Trigger the Linux CodeBuild.
 aws codebuild start-build-batch --project-name aws-lc-docker-image-build-linux
+
+# Go to AWS console, you can check CodeBuild by clicking "Developer Tools > CodeBuild > Build projects".
 ```
 
 #### Windows Docker image build
-Windows docker image build requires more resources (like EC2 host, S3, SSM and so on) set up because DIND (Docker in Docker)
- is not supported by Windows. Below are some commands specific to windows docker image build.
+Windows docker image build requires more resources (like EC2 host, S3, SSM and so on) set up because DIND (Docker in Docker) is not supported by Windows.
+Below are some commands specific to windows docker image build.
  
 ```bash
 # Define environment variables needed by Windows docker image build.

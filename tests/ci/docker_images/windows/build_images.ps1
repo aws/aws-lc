@@ -3,4 +3,4 @@
 
 docker build -t aws-lc/windows_base:1607-KB4556813 .\windows_base
 docker build -t vs2015 .\vs2015
-# docker build -t vs2017 .\vs2017
+docker build -t vs2017 .\vs2017

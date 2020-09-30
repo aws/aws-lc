@@ -63,7 +63,7 @@ class AwsLcGitHubCIStack(core.Stack):
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
 
-        # TODO: add build type BUILD_BATCH when CFN finishes the feature release.
+        # TODO: add build type BUILD_BATCH when CFN finishes the feature release. See CryptoAlg-575.
 
         # Add 'BuildBatchConfig' property, which is not supported in CDK.
         # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
