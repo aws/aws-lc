@@ -160,7 +160,7 @@ batch:
     ###########
     # Windows #
     ###########
-    - identifier: windows-msvc2015-x64
+    - identifier: windows_msvc2015_x64
       buildspec: ./tests/ci/codebuild/windows-msvc2015-x64.yml
       env:
         type: WINDOWS_CONTAINER
