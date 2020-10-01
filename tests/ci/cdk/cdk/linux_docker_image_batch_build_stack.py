@@ -50,7 +50,7 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
                 "AWS_ECR_REPO_AARCH": codebuild.BuildEnvironmentVariable(value=LINUX_AARCH_ECR_REPO)
             },
             role=role,
-            timeout=core.Duration.minutes(480),
+            timeout=core.Duration.minutes(120),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
 
         # Add 'BuildBatchConfig' property, which is not supported in CDK.
@@ -59,5 +59,5 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
         cfn_build = project.node.default_child
         cfn_build.add_override("Properties.BuildBatchConfig", {
             "ServiceRole": role.role_arn,
-            "TimeoutInMins": 480
+            "TimeoutInMins": 120
         })
