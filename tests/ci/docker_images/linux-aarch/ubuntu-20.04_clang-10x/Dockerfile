@@ -21,8 +21,8 @@ RUN set -ex && \
     ca-certificates \
     wget && \
     cd /tmp && \
-    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
-    tar -xvf go1.13.12.linux-amd64.tar.gz && \
+    wget https://dl.google.com/go/go1.15.2.linux-arm64.tar.gz && \
+    tar -xvf go1.15.2.linux-arm64.tar.gz && \
     mv go /usr/local && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
