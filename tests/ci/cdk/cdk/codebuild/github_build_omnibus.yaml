@@ -201,7 +201,7 @@ batch:
     # Windows #
     ###########
     - identifier: windows_msvc2015_x64
-      buildspec: ./tests/ci/codebuild/windows-msvc2015-x64.yml
+      buildspec: ./tests/ci/codebuild/windows-x86/windows-msvc2015.yml
       env:
         type: WINDOWS_CONTAINER
         privileged-mode: false
