@@ -14,6 +14,7 @@ class AwsLcGitHubCIStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
+                 spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
@@ -48,7 +49,7 @@ class AwsLcGitHubCIStack(core.Stack):
                            "ECR_REPO_X86_PLACEHOLDER": LINUX_X86_ECR_REPO,
                            "ECR_REPO_AARCH_PLACEHOLDER": LINUX_AARCH_ECR_REPO,
                            "ECR_REPO_WINDOWS_PLACEHOLDER": WINDOWS_X86_ECR_REPO}
-        build_spec_content = YmlLoader.load("./cdk/codebuild/github_build_omnibus.yaml", placeholder_map)
+        build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
         project = codebuild.Project(
