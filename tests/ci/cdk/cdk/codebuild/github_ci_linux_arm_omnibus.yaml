@@ -10,7 +10,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-19.10_gcc-9x.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-19.10_gcc-9x_latest
 
@@ -18,7 +18,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-19.10_clang-9x.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
 
@@ -26,7 +26,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_gcc-9x.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_gcc-9x_latest
 
@@ -34,7 +34,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_clang-10x.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
@@ -50,17 +50,6 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/amazonlinux-2_gcc-7x.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:amazonlinux-2-aarch_gcc-7x_latest
-
-    ###########
-    # Windows #
-    ###########
-    - identifier: windows_msvc2015_x64
-      buildspec: ./tests/ci/codebuild/windows-x86/windows-msvc2015.yml
-      env:
-        type: WINDOWS_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_WINDOWS_PLACEHOLDER:vs2015_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:amazonlinux-2-aarch_gcc-7x_latest
