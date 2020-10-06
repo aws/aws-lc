@@ -163,7 +163,7 @@ command.
 ### Useful Docker image build commands
 
 **Notes**:
-* below commands use default values set in `cdk/util/metadata.py`.
+* below commands replicate steps that are performed in `run-cdk.sh` but use default values set in `cdk/util/metadata.py`.
 * Always clean up resources set up for Docker image build.
   * `cdk destroy aws-lc-docker-image-build-* --force`
 
@@ -173,7 +173,7 @@ command.
 # Launch Linux Docker image CodeBuild resources.
 cdk deploy aws-lc-docker-image-build-linux --require-approval never
 
-# Trigger the Linux CodeBuild.
+# Trigger CodeBuild to build Linux Docker Images
 aws codebuild start-build-batch --project-name aws-lc-docker-image-build-linux
 
 # Go to AWS console, you can check CodeBuild by clicking "Developer Tools > CodeBuild > Build projects".
@@ -202,7 +202,7 @@ cdk deploy aws-lc-docker-image-build-windows --require-approval never
 # Sleep 10 minutes so Windows EC2 is ready to execute SSM commands.
 sleep 600
 
-# Trigger SSM commands
+# Trigger SSM commands to build Windows Docker Images.
 instance_id=$(aws ec2 describe-instances \
     --filters "Name=tag:${WIN_EC2_TAG_KEY},Values=${WIN_EC2_TAG_VALUE}" | jq -r '.Reservations[0].Instances[0].InstanceId')
 aws ssm send-command \

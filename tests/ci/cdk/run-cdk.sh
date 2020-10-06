@@ -38,7 +38,7 @@ export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
 function delete_s3_buckets() {
   aws s3api list-buckets --query "Buckets[].Name" | jq '.[]' | while read -r i; do
     # Delete the bucket if its name uses AWS_LC_S3_BUCKET_PREFIX.
-    if [[ ${i} == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
+    if [[ ${i} == "${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
       aws s3 rm "s3://${i}" --recursive
       aws s3api delete-bucket --bucket "${i}"
     fi

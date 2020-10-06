@@ -22,7 +22,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-16.04_gcc-5x_32-bits.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-16.04_gcc-5x_latest
 
@@ -30,7 +30,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-18.04_clang-6x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-18.04_clang-6x_latest
 
