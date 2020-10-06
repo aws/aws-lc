@@ -27,7 +27,7 @@ shift
 export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
 export ECR_LINUX_AARCH_REPO_NAME="aws-lc-docker-images-linux-aarch"
 export ECR_LINUX_X86_REPO_NAME="aws-lc-docker-images-linux-x86"
-export ECR_WINDOWS_REPO_NAME="aws-lc-docker-images-windows"
+export ECR_WINDOWS_X86_REPO_NAME="aws-lc-docker-images-windows-x86"
 export AWS_LC_S3_BUCKET_PREFIX="aws-lc-windows-docker-image-build"
 export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
 export WIN_EC2_TAG_KEY="aws-lc"
@@ -165,7 +165,7 @@ function deploy() {
     "s2n_integration_clang-9x_latest")
   images_pushed_to_ecr "${ECR_LINUX_X86_REPO_NAME}" "${linux_x86_img_tags[@]}"
   windows_img_tags=("vs2015_latest" "vs2017_latest")
-  images_pushed_to_ecr "${ECR_WINDOWS_REPO_NAME}" "${windows_img_tags[@]}"
+  images_pushed_to_ecr "${ECR_WINDOWS_X86_REPO_NAME}" "${windows_img_tags[@]}"
 }
 
 # Main logics
