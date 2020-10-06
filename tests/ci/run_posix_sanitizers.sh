@@ -27,9 +27,9 @@ fi
 
 if [ $(dpkg --print-architecture) == "amd64" ]; then
   # x86 TSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/13
-  echo "Building AWS-LC in ${build_type} mode with memory sanitizer."
+  echo "Building AWS-LC in ${build_type} mode with thread sanitizer."
   run_build -DTSAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 else
-  echo "Testing AWS-LC in ${build_type} mode with memory sanitizer."
+  echo "Testing AWS-LC in ${build_type} mode with thread sanitizer."
   build_and_test -DTSAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 fi
