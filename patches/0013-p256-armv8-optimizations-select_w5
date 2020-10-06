@@ -40,8 +40,8 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/internal.h
  // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.
  const EC_METHOD *EC_GFp_nistz256_method(void);
  
-+// [TODO] EC_GFp_nistz256_arm_method is a GFp method using montgomery multiplication, with
-+// x86-64 optimized P256. See http://eprint.iacr.org/2013/816.
++// [TODO] This method definition will be removed and the method above will be for both
++// x86_64 and armv8 optimized P256.
 +const EC_METHOD *EC_GFp_nistz256_arm_method(void);
 +
  // An EC_WRAPPED_SCALAR is an |EC_SCALAR| with a parallel |BIGNUM|
@@ -65,32 +65,75 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
-@@ -24,6 +24,12 @@
- #include <openssl/mem.h>
- #include <openssl/type_check.h>
- 
-+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64) &&	\
-+    !defined(OPENSSL_SMALL)
-+// TODO: see "Ideally" in TODO below
-+#include "p256-x86_64.h"
-+#endif
-+
- #include <assert.h>
- #include <string.h>
- 
-@@ -737,4 +743,525 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp
+@@ -737,4 +737,524 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp
    out->cmp_x_coordinate = ec_GFp_nistp256_cmp_x_coordinate;
  }
  
 +#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64) && \
 +    !defined(OPENSSL_SMALL)
 +
-+// [TODO] repeating code for now:
-+// ecp_nistz256_get_affine() and
-+// ecp_nistz256_mod_inverse_sqr_mont()
-+// were copied from p256-x86_64.c
++// [TODO] repeating code from p256-x86_64.c for now:
 +// Ideally p256-x86_64.[h,c] should become p256-nistz256.[h,c]
 +// and be used by both x86_64 and armv8
++
++#include "p256-x86_64.h"
++
++typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
++
++// One converted into the Montgomery domain
++static const BN_ULONG ONE[P256_LIMBS] = {
++    TOBN(0x00000000, 0x00000001), TOBN(0xffffffff, 0x00000000),
++    TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
++};
++
++// Precomputed tables for the default generator
++#include "p256-x86_64-table.h"
++
++// Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
++// util.c for details
++static crypto_word_t booth_recode_w5(crypto_word_t in) {
++  crypto_word_t s, d;
++
++  s = ~((in >> 5) - 1);
++  d = (1 << 6) - in - 1;
++  d = (d & s) | (in & ~s);
++  d = (d >> 1) + (d & 1);
++
++  return (d << 1) + (s & 1);
++}
++
++static crypto_word_t booth_recode_w7(crypto_word_t in) {
++  crypto_word_t s, d;
++
++  s = ~((in >> 7) - 1);
++  d = (1 << 8) - in - 1;
++  d = (d & s) | (in & ~s);
++  d = (d >> 1) + (d & 1);
++
++  return (d << 1) + (s & 1);
++}
++
++// copy_conditional copies |src| to |dst| if |move| is one and leaves it as-is
++// if |move| is zero.
++//
++// WARNING: this breaks the usual convention of constant-time functions
++// returning masks.
++static void copy_conditional(BN_ULONG dst[P256_LIMBS],
++                             const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
++  BN_ULONG mask1 = ((BN_ULONG)0) - move;
++  BN_ULONG mask2 = ~mask1;
++
++  dst[0] = (src[0] & mask1) ^ (dst[0] & mask2);
++  dst[1] = (src[1] & mask1) ^ (dst[1] & mask2);
++  dst[2] = (src[2] & mask1) ^ (dst[2] & mask2);
++  dst[3] = (src[3] & mask1) ^ (dst[3] & mask2);
++  if (P256_LIMBS == 8) {
++    dst[4] = (src[4] & mask1) ^ (dst[4] & mask2);
++    dst[5] = (src[5] & mask1) ^ (dst[5] & mask2);
++    dst[6] = (src[6] & mask1) ^ (dst[6] & mask2);
++    dst[7] = (src[7] & mask1) ^ (dst[7] & mask2);
++  }
++}
 +
 +// ecp_nistz256_mod_inverse_sqr_mont sets |r| to (|in| * 2^-256)^-2 * 2^256 mod
 +// p. That is, |r| is the modular inverse square of |in| for input and output in
@@ -211,63 +254,6 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +  OPENSSL_memcpy(r->X.words, a.X, P256_LIMBS * sizeof(BN_ULONG));
 +  OPENSSL_memcpy(r->Y.words, a.Y, P256_LIMBS * sizeof(BN_ULONG));
 +  OPENSSL_memcpy(r->Z.words, a.Z, P256_LIMBS * sizeof(BN_ULONG));
-+}
-+
-+typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
-+
-+// One converted into the Montgomery domain
-+static const BN_ULONG ONE[P256_LIMBS] = {
-+    TOBN(0x00000000, 0x00000001), TOBN(0xffffffff, 0x00000000),
-+    TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
-+};
-+
-+// Precomputed tables for the default generator
-+#include "p256-x86_64-table.h"
-+
-+// Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
-+// util.c for details
-+static crypto_word_t booth_recode_w5(crypto_word_t in) {
-+  crypto_word_t s, d;
-+
-+  s = ~((in >> 5) - 1);
-+  d = (1 << 6) - in - 1;
-+  d = (d & s) | (in & ~s);
-+  d = (d >> 1) + (d & 1);
-+
-+  return (d << 1) + (s & 1);
-+}
-+
-+static crypto_word_t booth_recode_w7(crypto_word_t in) {
-+  crypto_word_t s, d;
-+
-+  s = ~((in >> 7) - 1);
-+  d = (1 << 8) - in - 1;
-+  d = (d & s) | (in & ~s);
-+  d = (d >> 1) + (d & 1);
-+
-+  return (d << 1) + (s & 1);
-+}
-+
-+// copy_conditional copies |src| to |dst| if |move| is one and leaves it as-is
-+// if |move| is zero.
-+//
-+// WARNING: this breaks the usual convention of constant-time functions
-+// returning masks.
-+static void copy_conditional(BN_ULONG dst[P256_LIMBS],
-+                             const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
-+  BN_ULONG mask1 = ((BN_ULONG)0) - move;
-+  BN_ULONG mask2 = ~mask1;
-+
-+  dst[0] = (src[0] & mask1) ^ (dst[0] & mask2);
-+  dst[1] = (src[1] & mask1) ^ (dst[1] & mask2);
-+  dst[2] = (src[2] & mask1) ^ (dst[2] & mask2);
-+  dst[3] = (src[3] & mask1) ^ (dst[3] & mask2);
-+  if (P256_LIMBS == 8) {
-+    dst[4] = (src[4] & mask1) ^ (dst[4] & mask2);
-+    dst[5] = (src[5] & mask1) ^ (dst[5] & mask2);
-+    dst[6] = (src[6] & mask1) ^ (dst[6] & mask2);
-+    dst[7] = (src[7] & mask1) ^ (dst[7] & mask2);
-+  }
 +}
 +
 +// r = p * p_scalar
@@ -608,7 +594,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 ===================================================================
 --- /dev/null
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
-@@ -0,0 +1,1966 @@
+@@ -0,0 +1,1682 @@
 +#! /usr/bin/env perl
 +# Copyright 2015-2020 The OpenSSL Project Authors. All Rights Reserved.
 +#
@@ -664,52 +650,6 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +#include "openssl/arm_arch.h"
 +
 +.text
-+___
-+########################################################################
-+# Convert ecp_nistz256_table.c to layout expected by ecp_nistz_gather_w7
-+#
-+$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-+open TABLE,"<p256-x86_64-table.h"		or
-+open TABLE,"<${dir}../p256-x86_64-table.h"	or
-+die "failed to open  p256-x86_64-table.h (used to be ecp_nistz256_table.c:)",$!;
-+
-+use integer;
-+
-+foreach(<TABLE>) {
-+	s/TOBN\(\s*(0x[0-9a-f]+),\s*(0x[0-9a-f]+)\s*\)/push @arr,hex($2),hex($1)/geo;
-+}
-+close TABLE;
-+
-+# See ecp_nistz256_table.c for explanation for why it's 64*16*37.
-+# 64*16*37-1 is because $#arr returns last valid index or @arr, not
-+# amount of elements.
-+die "insane number of elements" if ($#arr != 64*16*37-1);
-+
-+$code.=<<___;
-+.globl	ecp_nistz256_precomputed
-+.type	ecp_nistz256_precomputed,%object
-+.align	12
-+ecp_nistz256_precomputed:
-+___
-+########################################################################
-+# this conversion smashes P256_POINT_AFFINE by individual bytes with
-+# 64 byte interval, similar to
-+#	1111222233334444
-+#	1234123412341234
-+for(1..37) {
-+	@tbl = splice(@arr,0,64*16);
-+	for($i=0;$i<64;$i++) {
-+		undef @line;
-+		for($j=0;$j<64;$j++) {
-+			push @line,(@tbl[$j*16+$i/4]>>(($i%4)*8))&0xff;
-+		}
-+		$code.=".byte\t";
-+		$code.=join(',',map { sprintf "0x%02x",$_} @line);
-+		$code.="\n";
-+	}
-+}
-+$code.=<<___;
-+.size	ecp_nistz256_precomputed,.-ecp_nistz256_precomputed
 +.align	5
 +.Lpoly:
 +.quad	0xffffffffffffffff,0x00000000ffffffff,0x0000000000000000,0xffffffff00000001
@@ -2297,7 +2237,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +
 +    // [$T0a-$T0f] := [$T0a-$T0f] AND $TMP0
 +    // values read from the table will be 0'd if $M0 != $INDEX
-+    // [$Ra-$Rf] := [$Ra-$Rf] OR [$T0a-$T0b]
++    // [$Ra-$Rf] := [$Ra-$Rf] OR [$T0a-$T0f]
 +    // values in output registers will remain the same if $M0 != $INDEX
 +    and     $T0a.16b, $T0a.16b, $TMP0.16b    ////    pand   $TMP0, $T0a
 +    and     $T0b.16b, $T0b.16b, $TMP0.16b    ////    pand   $TMP0, $T0b
@@ -2330,244 +2270,6 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +.size	ecp_nistz256_select_w5,.-ecp_nistz256_select_w5
 +___
 +}
-+########################################################################
-+# scatter-gather subroutines
-+{
-+my ($out,$inp,$index,$mask)=map("x$_",(0..3));
-+$code.=<<___;
-+// void	ecp_nistz256_scatter_w5(void *x0,const P256_POINT *x1,
-+//					 int x2);
-+.globl	ecp_nistz256_scatter_w5
-+.type	ecp_nistz256_scatter_w5,%function
-+.align	4
-+ecp_nistz256_scatter_w5:
-+	stp	x29,x30,[sp,#-16]!
-+	add	x29,sp,#0
-+
-+	add	$out,$out,$index,lsl#2
-+
-+	ldp	x4,x5,[$inp]		// X
-+	ldp	x6,x7,[$inp,#16]
-+	str	w4,[$out,#64*0-4]
-+	lsr	x4,x4,#32
-+	str	w5,[$out,#64*1-4]
-+	lsr	x5,x5,#32
-+	str	w6,[$out,#64*2-4]
-+	lsr	x6,x6,#32
-+	str	w7,[$out,#64*3-4]
-+	lsr	x7,x7,#32
-+	str	w4,[$out,#64*4-4]
-+	str	w5,[$out,#64*5-4]
-+	str	w6,[$out,#64*6-4]
-+	str	w7,[$out,#64*7-4]
-+	add	$out,$out,#64*8
-+
-+	ldp	x4,x5,[$inp,#32]	// Y
-+	ldp	x6,x7,[$inp,#48]
-+	str	w4,[$out,#64*0-4]
-+	lsr	x4,x4,#32
-+	str	w5,[$out,#64*1-4]
-+	lsr	x5,x5,#32
-+	str	w6,[$out,#64*2-4]
-+	lsr	x6,x6,#32
-+	str	w7,[$out,#64*3-4]
-+	lsr	x7,x7,#32
-+	str	w4,[$out,#64*4-4]
-+	str	w5,[$out,#64*5-4]
-+	str	w6,[$out,#64*6-4]
-+	str	w7,[$out,#64*7-4]
-+	add	$out,$out,#64*8
-+
-+	ldp	x4,x5,[$inp,#64]	// Z
-+	ldp	x6,x7,[$inp,#80]
-+	str	w4,[$out,#64*0-4]
-+	lsr	x4,x4,#32
-+	str	w5,[$out,#64*1-4]
-+	lsr	x5,x5,#32
-+	str	w6,[$out,#64*2-4]
-+	lsr	x6,x6,#32
-+	str	w7,[$out,#64*3-4]
-+	lsr	x7,x7,#32
-+	str	w4,[$out,#64*4-4]
-+	str	w5,[$out,#64*5-4]
-+	str	w6,[$out,#64*6-4]
-+	str	w7,[$out,#64*7-4]
-+
-+	ldr	x29,[sp],#16
-+	ret
-+.size	ecp_nistz256_scatter_w5,.-ecp_nistz256_scatter_w5
-+
-+// void	ecp_nistz256_gather_w5(P256_POINT *x0,const void *x1,
-+//					      int x2);
-+.globl	ecp_nistz256_gather_w5
-+.type	ecp_nistz256_gather_w5,%function
-+.align	4
-+ecp_nistz256_gather_w5:
-+	stp	x29,x30,[sp,#-16]!
-+	add	x29,sp,#0
-+
-+	cmp	$index,xzr
-+	csetm	x3,ne
-+	add	$index,$index,x3
-+	add	$inp,$inp,$index,lsl#2
-+
-+	ldr	w4,[$inp,#64*0]
-+	ldr	w5,[$inp,#64*1]
-+	ldr	w6,[$inp,#64*2]
-+	ldr	w7,[$inp,#64*3]
-+	ldr	w8,[$inp,#64*4]
-+	ldr	w9,[$inp,#64*5]
-+	ldr	w10,[$inp,#64*6]
-+	ldr	w11,[$inp,#64*7]
-+	add	$inp,$inp,#64*8
-+	orr	x4,x4,x8,lsl#32
-+	orr	x5,x5,x9,lsl#32
-+	orr	x6,x6,x10,lsl#32
-+	orr	x7,x7,x11,lsl#32
-+	csel	x4,x4,xzr,ne
-+	csel	x5,x5,xzr,ne
-+	csel	x6,x6,xzr,ne
-+	csel	x7,x7,xzr,ne
-+	stp	x4,x5,[$out]		// X
-+	stp	x6,x7,[$out,#16]
-+
-+	ldr	w4,[$inp,#64*0]
-+	ldr	w5,[$inp,#64*1]
-+	ldr	w6,[$inp,#64*2]
-+	ldr	w7,[$inp,#64*3]
-+	ldr	w8,[$inp,#64*4]
-+	ldr	w9,[$inp,#64*5]
-+	ldr	w10,[$inp,#64*6]
-+	ldr	w11,[$inp,#64*7]
-+	add	$inp,$inp,#64*8
-+	orr	x4,x4,x8,lsl#32
-+	orr	x5,x5,x9,lsl#32
-+	orr	x6,x6,x10,lsl#32
-+	orr	x7,x7,x11,lsl#32
-+	csel	x4,x4,xzr,ne
-+	csel	x5,x5,xzr,ne
-+	csel	x6,x6,xzr,ne
-+	csel	x7,x7,xzr,ne
-+	stp	x4,x5,[$out,#32]	// Y
-+	stp	x6,x7,[$out,#48]
-+
-+	ldr	w4,[$inp,#64*0]
-+	ldr	w5,[$inp,#64*1]
-+	ldr	w6,[$inp,#64*2]
-+	ldr	w7,[$inp,#64*3]
-+	ldr	w8,[$inp,#64*4]
-+	ldr	w9,[$inp,#64*5]
-+	ldr	w10,[$inp,#64*6]
-+	ldr	w11,[$inp,#64*7]
-+	orr	x4,x4,x8,lsl#32
-+	orr	x5,x5,x9,lsl#32
-+	orr	x6,x6,x10,lsl#32
-+	orr	x7,x7,x11,lsl#32
-+	csel	x4,x4,xzr,ne
-+	csel	x5,x5,xzr,ne
-+	csel	x6,x6,xzr,ne
-+	csel	x7,x7,xzr,ne
-+	stp	x4,x5,[$out,#64]	// Z
-+	stp	x6,x7,[$out,#80]
-+
-+	ldr	x29,[sp],#16
-+	ret
-+.size	ecp_nistz256_gather_w5,.-ecp_nistz256_gather_w5
-+
-+// void	ecp_nistz256_scatter_w7(void *x0,const P256_POINT_AFFINE *x1,
-+//					 int x2);
-+.globl	ecp_nistz256_scatter_w7
-+.type	ecp_nistz256_scatter_w7,%function
-+.align	4
-+ecp_nistz256_scatter_w7:
-+	stp	x29,x30,[sp,#-16]!
-+	add	x29,sp,#0
-+
-+	add	$out,$out,$index
-+	mov	$index,#64/8
-+.Loop_scatter_w7:
-+	ldr	x3,[$inp],#8
-+	subs	$index,$index,#1
-+	prfm	pstl1strm,[$out,#4096+64*0]
-+	prfm	pstl1strm,[$out,#4096+64*1]
-+	prfm	pstl1strm,[$out,#4096+64*2]
-+	prfm	pstl1strm,[$out,#4096+64*3]
-+	prfm	pstl1strm,[$out,#4096+64*4]
-+	prfm	pstl1strm,[$out,#4096+64*5]
-+	prfm	pstl1strm,[$out,#4096+64*6]
-+	prfm	pstl1strm,[$out,#4096+64*7]
-+	strb	w3,[$out,#64*0]
-+	lsr	x3,x3,#8
-+	strb	w3,[$out,#64*1]
-+	lsr	x3,x3,#8
-+	strb	w3,[$out,#64*2]
-+	lsr	x3,x3,#8
-+	strb	w3,[$out,#64*3]
-+	lsr	x3,x3,#8
-+	strb	w3,[$out,#64*4]
-+	lsr	x3,x3,#8
-+	strb	w3,[$out,#64*5]
-+	lsr	x3,x3,#8
-+	strb	w3,[$out,#64*6]
-+	lsr	x3,x3,#8
-+	strb	w3,[$out,#64*7]
-+	add	$out,$out,#64*8
-+	b.ne	.Loop_scatter_w7
-+
-+	ldr	x29,[sp],#16
-+	ret
-+.size	ecp_nistz256_scatter_w7,.-ecp_nistz256_scatter_w7
-+
-+// void	ecp_nistz256_gather_w7(P256_POINT_AFFINE *x0,const void *x1,
-+//						     int x2);
-+.globl	ecp_nistz256_gather_w7
-+.type	ecp_nistz256_gather_w7,%function
-+.align	4
-+ecp_nistz256_gather_w7:
-+	stp	x29,x30,[sp,#-16]!
-+	add	x29,sp,#0
-+
-+	cmp	$index,xzr
-+	csetm	x3,ne
-+	add	$index,$index,x3
-+	add	$inp,$inp,$index
-+	mov	$index,#64/8
-+	nop
-+.Loop_gather_w7:
-+	ldrb	w4,[$inp,#64*0]
-+	prfm	pldl1strm,[$inp,#4096+64*0]
-+	subs	$index,$index,#1
-+	ldrb	w5,[$inp,#64*1]
-+	prfm	pldl1strm,[$inp,#4096+64*1]
-+	ldrb	w6,[$inp,#64*2]
-+	prfm	pldl1strm,[$inp,#4096+64*2]
-+	ldrb	w7,[$inp,#64*3]
-+	prfm	pldl1strm,[$inp,#4096+64*3]
-+	ldrb	w8,[$inp,#64*4]
-+	prfm	pldl1strm,[$inp,#4096+64*4]
-+	ldrb	w9,[$inp,#64*5]
-+	prfm	pldl1strm,[$inp,#4096+64*5]
-+	ldrb	w10,[$inp,#64*6]
-+	prfm	pldl1strm,[$inp,#4096+64*6]
-+	ldrb	w11,[$inp,#64*7]
-+	prfm	pldl1strm,[$inp,#4096+64*7]
-+	add	$inp,$inp,#64*8
-+	orr	x4,x4,x5,lsl#8
-+	orr	x6,x6,x7,lsl#8
-+	orr	x8,x8,x9,lsl#8
-+	orr	x4,x4,x6,lsl#16
-+	orr	x10,x10,x11,lsl#8
-+	orr	x4,x4,x8,lsl#32
-+	orr	x4,x4,x10,lsl#48
-+	and	x4,x4,x3
-+	str	x4,[$out],#8
-+	b.ne	.Loop_gather_w7
-+
-+	ldr	x29,[sp],#16
-+	ret
-+.size	ecp_nistz256_gather_w7,.-ecp_nistz256_gather_w7
-+___
-+}
 +
 +foreach (split("\n",$code)) {
 +	s/\`([^\`]*)\`/eval $1/ge;
@@ -2575,3 +2277,36 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +	print $_,"\n";
 +}
 +close STDOUT or die "error closing STDOUT: $!";	# enforce flush
+Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
+===================================================================
+--- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
++++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
+@@ -33,10 +33,9 @@
+ #include "../../test/test_util.h"
+ #include "p256-x86_64.h"
+ 
+-
+ // Disable tests if BORINGSSL_SHARED_LIBRARY is defined. These tests need access
+ // to internal functions.
+-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
++#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
+     !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
+ 
+ TEST(P256_X86_64Test, SelectW5) {
+@@ -68,6 +67,7 @@ TEST(P256_X86_64Test, SelectW5) {
+   P256_POINT val;
+   CHECK_ABI(ecp_nistz256_select_w5, &val, table, 7);
+ }
++#if !defined(OPENSSL_AARCH64)
+ 
+ TEST(P256_X86_64Test, SelectW7) {
+   // Fill a table with some garbage input.
+@@ -165,6 +165,8 @@ TEST(P256_X86_64Test, BEEU) {
+   }
+ }
+ 
++#endif
++
+ static bool GetFieldElement(FileTest *t, BN_ULONG out[P256_LIMBS],
+                             const char *name) {
+   std::vector<uint8_t> bytes;
