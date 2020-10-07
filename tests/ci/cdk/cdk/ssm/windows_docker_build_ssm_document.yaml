@@ -1,0 +1,26 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+schemaVersion: '2.2'
+description: aws-lc:buildWindowsDockerImages
+mainSteps:
+- action: aws:runPowerShellScript
+  name: runPowerShellScript
+  inputs:
+    timeoutSeconds: '7200'
+    runCommand:
+    - mkdir docker-images
+    - cd docker-images
+    # Install choco and git
+    - Set-ExecutionPolicy Bypass -Scope Process -Force; [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; $env:chocolateyUseWindowsCompression = 'true'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) | Out-Null
+    - choco install git --version 2.23.0 -y
+    - $env:path+='C:\Program Files\Git\cmd'
+    # Git clone aws-lc repo.
+    - git clone https://github.com/GITHUB_OWNER_PLACEHOLDER/aws-lc.git
+    # Build Windows docker images.
+    - cd .\aws-lc\tests\ci\docker_images\windows
+    - git checkout GITHUB_SOURCE_VERSION_PLACEHOLDER
+    - Invoke-Expression -Command (Get-ECRLoginCommand -Region REGION_PLACEHOLDER).Command
+    - .\build_images.ps1
+    - .\push_images.ps1 ECR_PLACEHOLDER

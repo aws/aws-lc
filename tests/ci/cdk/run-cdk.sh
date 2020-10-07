@@ -25,31 +25,45 @@ shift
 
 # Export other environment variables.
 export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
-export ECR_LINUX_AARCH_REPO_NAME="aws-lc-test-docker-images-linux-aarch"
-export ECR_LINUX_X86_REPO_NAME="aws-lc-test-docker-images-linux-x86"
-export ECR_WINDOWS_REPO_NAME="aws-lc-test-docker-images-windows"
-export S3_FOR_WIN_DOCKER_IMG_BUILD="windows-docker-images-${DATE_NOW}"
+export ECR_LINUX_AARCH_REPO_NAME="aws-lc-docker-images-linux-aarch"
+export ECR_LINUX_X86_REPO_NAME="aws-lc-docker-images-linux-x86"
+export ECR_WINDOWS_REPO_NAME="aws-lc-docker-images-windows"
+export AWS_LC_S3_BUCKET_PREFIX="aws-lc-windows-docker-image-build"
+export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
 export WIN_EC2_TAG_KEY="aws-lc"
-export WIN_EC2_TAG_VALUE="windows-docker-img-${DATE_NOW}"
+export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
 export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
 
 # Functions
+function delete_s3_buckets() {
+  aws s3api list-buckets --query "Buckets[].Name" | jq '.[]' | while read -r i; do
+    # Delete the bucket if its name uses AWS_LC_S3_BUCKET_PREFIX.
+    if [[ ${i} == "${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
+      aws s3 rm "s3://${i}" --recursive
+      aws s3api delete-bucket --bucket "${i}"
+    fi
+  done
+}
+
+function destroy_all() {
+  cdk destroy aws-lc-* --force
+  # CDK stack destroy does not delete s3 bucket automatically.
+  delete_s3_buckets
+}
+
 function create_aws_resources() {
-  cdk deploy aws-lc-test-* --require-approval never
+  # Clean up resources before deployment.
+  destroy_all
+  cdk deploy aws-lc-* --require-approval never
+  # Need to use aws cli to change webhook build type because CFN is not ready yet.
+  aws codebuild update-webhook --project-name aws-lc-ci --build-type BUILD_BATCH
 }
 
 function build_linux_img() {
-  aws codebuild start-build --project-name ${ECR_LINUX_AARCH_REPO_NAME}
-  aws codebuild start-build --project-name ${ECR_LINUX_X86_REPO_NAME}
+  aws codebuild start-build-batch --project-name aws-lc-docker-image-build-linux
 }
 
 function build_windows_img() {
-  # Upload windows docker file and build scripts to S3.
-  cd ../docker_images
-  zip -r -X "windows.zip" "./windows"
-  aws s3 cp "windows.zip" "s3://${S3_FOR_WIN_DOCKER_IMG_BUILD}/"
-  rm windows.zip
-
   # EC2 takes 10 min to be ready for running command.
   echo "Wait 10 min for EC2 ready for SSM command execution."
   sleep 600
@@ -81,7 +95,7 @@ function build_windows_img() {
 
 function destroy_docker_img_build_stack() {
   # Destroy all temporary resources created for all docker image build.
-  cdk destroy aws-lc-test-docker-images-build-* --force
+  cdk destroy aws-lc-docker-image-build-* --force
 }
 
 function images_pushed_to_ecr() {
@@ -89,7 +103,8 @@ function images_pushed_to_ecr() {
   shift
   target_images=("$@")
   ecr_repo_name="${CDK_DEPLOY_ACCOUNT}.dkr.ecr.${CDK_DEPLOY_REGION}.amazonaws.com/${repo_name}"
-  echo "Checking if docker images [${target_images[@]}] are pushed to ${ecr_repo_name}."
+  docker_images=$*
+  echo "Checking if docker images [${docker_images}] are pushed to ${ecr_repo_name}."
 
   # Every 5 min, this function checks if the target docker img is created.
   # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
@@ -97,7 +112,7 @@ function images_pushed_to_ecr() {
     images_in_ecr=$(aws ecr describe-images --repository-name ${repo_name})
     images_pushed=0
     for target_image in "${target_images[@]}"; do
-      if [[ ${images_in_ecr} != *"$target_image"* ]]; then
+      if [[ ${images_in_ecr} != *"${target_image}"* ]]; then
         images_pushed=1
         break
       fi
@@ -148,10 +163,6 @@ function deploy() {
   images_pushed_to_ecr "${ECR_WINDOWS_REPO_NAME}" "${windows_img_tags[@]}"
 }
 
-function destroy() {
-  cdk destroy aws-lc-test-* --force
-}
-
 # Main logics
 
 case ${ACTION} in
@@ -165,7 +176,7 @@ SYNTH)
   cdk synth aws-lc*
   ;;
 DESTROY)
-  destroy
+  destroy_all
   ;;
 *)
   echo "Action: ${ACTION} is not supported."
