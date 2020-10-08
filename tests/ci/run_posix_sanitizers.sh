@@ -9,7 +9,7 @@ cflags=("-DCMAKE_BUILD_TYPE=${build_type}")
 
 if [ $(dpkg --print-architecture) == "arm64" ]; then
   # BoringSSL provides two sets tests: the C/C++ tests and the blackbox tests.
-  # https://github.com/google/boringssl/blob/master/BUILDING.md
+  # Details: https://github.com/google/boringssl/blob/master/BUILDING.md
   # The blackbox tests (run `go test` under `ssl/test/runner`) takes 30 minutes to complete on ARM when ASAN clang flag enabled.
   # This does not happen on X86 ASAN and ARM (when ASAN disabled).
   # TODO: Add detailed reproduces steps and open a GitHub issue on https://github.com/google/sanitizers/issues
