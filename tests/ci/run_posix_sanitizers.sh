@@ -7,8 +7,19 @@ source tests/ci/common_posix_setup.sh
 build_type=Release
 cflags=("-DCMAKE_BUILD_TYPE=${build_type}")
 
-echo "Testing AWS-LC in ${build_type} mode with address sanitizer."
-build_and_test -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+if [ $(dpkg --print-architecture) == "arm64" ]; then
+  # BoringSSL provides two sets tests: the C/C++ tests and the blackbox tests.
+  # https://github.com/google/boringssl/blob/master/BUILDING.md
+  # The blackbox tests (run `go test` under `ssl/test/runner`) takes 30 minutes to complete on ARM when ASAN clang flag enabled.
+  # This does not happen on X86 ASAN and ARM (when ASAN disabled).
+  # TODO: Add detailed reproduces steps and open a GitHub issue on https://github.com/google/sanitizers/issues
+  echo "Building AWS-LC in ${build_type} mode with address sanitizer, and running only non ssl test."
+  run_build -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+  cd third_party/boringssl && go run util/all_tests.go
+else
+  echo "Testing AWS-LC in ${build_type} mode with address sanitizer."
+  build_and_test -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+fi
 
 echo "Testing AWS-LC in ${build_type} mode with control flow integrity sanitizer."
 build_and_test -DCFI=1 "${cflags[@]}"
