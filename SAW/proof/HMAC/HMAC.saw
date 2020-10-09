@@ -16,13 +16,17 @@ let zeroed_hmac_ctx_st ptr = do {
   points_to_env_md_ctx_st (crucible_field ptr "md_ctx") crucible_null crucible_null;
 };
 
-// Specify the relation between  hmac_ctx_st and HMACState
-let points_to_hmac_ctx_st ptr md_ptr context num = do {
-  // Allocate state structs for `i_ctx`, `o_ctx`, and `md_ctx` fields in `ptr`
+// Allocate state structs for `i_ctx`, `o_ctx`, and `md_ctx` fields in an
+// `hmac_ctx_st`
+let alloc_sha512_state_sts = do {
   i_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
   o_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
   md_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
+  return (i_ctx_ptr, o_ctx_ptr, md_ctx_ptr);
+};
 
+// Specify the relation between  hmac_ctx_st and HMACState
+let points_to_hmac_ctx_st ptr md_ptr context num i_ctx_ptr o_ctx_ptr md_ctx_ptr = do {
   // Check that `i_ctx`, `o_ctx`, and `md_ctx` match the spec.  We set the
   // `num` argument for `i_ctx` and `o_ctx` to 0 because HMAC_Init_ex pads or
   // hashes the key to make it exactly 128 bytes, so the `block` field of these
@@ -44,7 +48,7 @@ let points_to_hmac_ctx_st ptr md_ptr context num = do {
 
 // Create a Cryptol HMACState
 let fresh_hmac_state_st name num = do {
-  // Create Cryptol SHA512States.  We set `n` to 0 for `i_ctx` and `o_ctx`
+  // Create Cryptol SHAStates.  We set `n` to 0 for `i_ctx` and `o_ctx`
   // because the init function always sets `n` to 0.
   i_ctx <- fresh_sha512_state_st (str_concat name ".i_ctx") 0;
   o_ctx <- fresh_sha512_state_st (str_concat name ".o_ctx") 0;
@@ -97,9 +101,12 @@ let HMAC_Init_ex_spec key_len = do {
   // AVX+shrd code path
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
+  // Postcondition: `i_ctx_ptr`, `o_ctx_ptr`, and `md_ctx_ptr` are
+  // `sha512_state_st` structs
+  (i_ctx_ptr, o_ctx_ptr, md_ctx_ptr) <- alloc_sha512_state_sts;
   // Postcondition: The data pointed to by `hmac_ctx_ptr` matches the context
   // returned by the cryptol function `HMACInit` when applied to `key`.
-  points_to_hmac_ctx_st hmac_ctx_ptr md_ptr {{ HMACInit key }} 0;
+  points_to_hmac_ctx_st hmac_ctx_ptr md_ptr {{ HMACInit key }} 0 i_ctx_ptr o_ctx_ptr md_ctx_ptr;
 
   // Postcondition: The function returns 1
   crucible_return (crucible_term {{ 1 : [32] }});
@@ -119,8 +126,11 @@ let HMAC_Update_spec num len = do {
   hmac_ctx_ptr <- crucible_alloc (llvm_struct "struct.hmac_ctx_st");
   // Precondition: `hmac_ctx` is a fresh Cryptol HMACState
   hmac_ctx <- fresh_hmac_state_st "hmac_ctx" num;
+  // Precondition: `i_ctx_ptr`, `o_ctx_ptr`, and `md_ctx_ptr` are
+  // `sha512_state_st` structs
+  (i_ctx_ptr, o_ctx_ptr, md_ctx_ptr) <- alloc_sha512_state_sts;
   // Precondition: `hmac_ctx_ptr` matches `hmac_ctx`
-  points_to_hmac_ctx_st hmac_ctx_ptr digest_ptr hmac_ctx num;
+  points_to_hmac_ctx_st hmac_ctx_ptr digest_ptr hmac_ctx num i_ctx_ptr o_ctx_ptr md_ctx_ptr;
 
   // Precondition: `data` is an array of `len` bytes.  `data_ptr` points
   // to `data`.
@@ -136,7 +146,7 @@ let HMAC_Update_spec num len = do {
   // Postcondition: The data pointed to by `hmac_ctx_ptr` matches the context
   // returned by the cryptol function `HMACInit` when applied to `hmac_ctx` and
   // `data`.
-  points_to_hmac_ctx_st hmac_ctx_ptr digest_ptr {{ HMACUpdate hmac_ctx data }} (eval_size {| (num + len) % SHA512_CBLOCK |});
+  points_to_hmac_ctx_st hmac_ctx_ptr digest_ptr {{ HMACUpdate hmac_ctx data }} (eval_size {| (num + len) % SHA512_CBLOCK |}) i_ctx_ptr o_ctx_ptr md_ctx_ptr;
 
   // Postcondition: The function returns 1
   crucible_return (crucible_term {{ 1 : [32] }});
@@ -156,8 +166,11 @@ let HMAC_Final_spec withLength num = do {
   hmac_ctx_ptr <- crucible_alloc (llvm_struct "struct.hmac_ctx_st");
   // Precondition: `hmac_ctx` is a fresh Cryptol HMACState
   hmac_ctx <- fresh_hmac_state_st "hmac_ctx" num;
+  // Precondition: `i_ctx_ptr`, `o_ctx_ptr`, and `md_ctx_ptr` are
+  // `sha512_state_st` structs
+  (i_ctx_ptr, o_ctx_ptr, md_ctx_ptr) <- alloc_sha512_state_sts;
   // Precondition: `hmac_ctx_ptr` matches `hmac_ctx`
-  points_to_hmac_ctx_st hmac_ctx_ptr digest_ptr hmac_ctx num;
+  points_to_hmac_ctx_st hmac_ctx_ptr digest_ptr hmac_ctx num i_ctx_ptr o_ctx_ptr md_ctx_ptr;
 
   // Precondition: out_ptr is allocated and correct length, and 
   // out_len_ptr is null or points to an int.
@@ -276,7 +289,7 @@ crucible_llvm_verify m "HMAC_Update"
   // num=0, len=240 covers the case with one call to the block function, on one
   // block from data, and the rest of data copied in hmac_ctx->md_ctx->data
   (HMAC_Update_spec 0 240)
-  (w4_unint_yices ["SHA512Block"]);
+  (w4_unint_yices ["processBlock_Common"]);
 crucible_llvm_verify m "HMAC_Update"
   [ sha512_block_data_order_spec
   , OPENSSL_malloc_ov
@@ -288,7 +301,7 @@ crucible_llvm_verify m "HMAC_Update"
   // num=0, len=127 covers the case without any calls to the block function,
   // and data copied in ctx->md_ctx->data
   (HMAC_Update_spec 0 127)
-  (w4_unint_yices ["SHA512Block"]);
+  (w4_unint_yices ["processBlock_Common"]);
 crucible_llvm_verify m "HMAC_Update"
   [sha512_block_data_order_spec]
   true
@@ -296,7 +309,7 @@ crucible_llvm_verify m "HMAC_Update"
   // the first one on ctx->md_ctx->data, the second one on one block from data,
   // and the rest of data copied in ctx->md_ctx->data
   (HMAC_Update_spec 127 241)
-  (w4_unint_yices ["SHA512Block"]);
+  (w4_unint_yices ["processBlock_Common"]);
 
 // Verify the `HMAC_Final` C function satisfies the `HMAC_Final_spec`
 // specification.
@@ -316,13 +329,13 @@ let verify_final_with_length withLength = do {
     true
     // num=111 covers the case with one call to the block function
     (HMAC_Final_spec withLength 111)
-    (w4_unint_yices ["SHA512Block"]);
+    (w4_unint_yices ["processBlock_Common"]);
   crucible_llvm_verify m "HMAC_Final"
     HMAC_Final_ovs
     true
     // num=112 covers the case with two calls to the block function
     (HMAC_Final_spec withLength 112)
-    (w4_unint_yices ["SHA512Block"]);
+    (w4_unint_yices ["processBlock_Common"]);
 };
 for [false, true] verify_final_with_length;
 
@@ -345,7 +358,7 @@ let verify_hmac_with_length withLength = do {
     ]
     true
     (HMAC_spec withLength 240 240)
-    (w4_unint_yices ["SHA512Block"]);
+    (w4_unint_yices ["processBlock_Common"]);
 };
 for [false, true] verify_hmac_with_length;
 

@@ -97,16 +97,16 @@ let sha512_block_data_order_spec = do {
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   // Postcondition: The data pointed to by `state_ptr` is equivalent to the
-  // return value of the SHA512Block Cryptol spec function applied to `state`
+  // return value of the processBlock_Common Cryptol spec function applied to `state`
   // and `data`.
-  crucible_points_to state_ptr (crucible_term {{ SHA512Block state (split (join data)) }});
+  crucible_points_to state_ptr (crucible_term {{ processBlock_Common state (split (join data)) }});
 };
 
 
 /*
  * Helpers for specifying the SHA512 structs
  */
-// Create a Cryptol SHA512State
+// Create a Cryptol SHAState
 let fresh_sha512_state_st name n = do {
   // Hash value
   h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
@@ -114,7 +114,7 @@ let fresh_sha512_state_st name n = do {
   block <- crucible_fresh_var (str_concat name ".block") (llvm_array n i8);
   // Size
   sz <- crucible_fresh_var (str_concat name ".sz") i128;
-  // Build SHA512State, padding `block` with zeros to fit
+  // Build SHAState, padding `block` with zeros to fit
   return {{ { h = h, block = (block # zero) : [SHA512_CBLOCK][8], n = `n : [32], sz = sz } }};
 };
 
@@ -129,7 +129,7 @@ let fresh_sha512_state_st name n = do {
  * contains the value of the global variable `GLOBAL`.
  * All statements that do not match these two forms are documented inline
  */
-// Specify the sha512_state_st struct from a SHA512State
+// Specify the sha512_state_st struct from a SHAState
 let points_to_sha512_state_st ptr state num = do {
   crucible_points_to (crucible_field ptr "h") (crucible_term {{ state.h }});
 
@@ -237,14 +237,14 @@ if quick_check then do {
     // num=0, len=240 covers the case with one call to the block function,
     // on one block from data, and the rest of data copied in c->data
     (EVP_DigestUpdate_spec 0 240)
-    (w4_unint_yices ["SHA512Block"]);
+    (w4_unint_yices ["processBlock_Common"]);
   crucible_llvm_verify m "EVP_DigestUpdate"
     [sha512_block_data_order_spec]
     true
     // num=0, len=127 covers the case without any calls to the block function,
     // and data copied in c->data
     (EVP_DigestUpdate_spec 0 127)
-    (w4_unint_yices ["SHA512Block"]);
+    (w4_unint_yices ["processBlock_Common"]);
   crucible_llvm_verify m "EVP_DigestUpdate"
     [sha512_block_data_order_spec]
     true
@@ -252,7 +252,7 @@ if quick_check then do {
     // the first one on c->data, the second one on one block from data,
     // and the rest of data copied in c->data
     (EVP_DigestUpdate_spec 127 241)
-    (w4_unint_yices ["SHA512Block"]);
+    (w4_unint_yices ["processBlock_Common"]);
   return ();
 } else do {
   let verify_update_at_num num = do {
@@ -264,7 +264,7 @@ if quick_check then do {
         [sha512_block_data_order_spec]
         true
         (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK - 1 |}))
-        (w4_unint_yices ["SHA512Block"]);
+        (w4_unint_yices ["processBlock_Common"]);
       // this covers the case with one call to the block
       // function, on one block from data, and the rest of
       // data copied in c->data
@@ -272,7 +272,7 @@ if quick_check then do {
         [sha512_block_data_order_spec]
         true
         (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK + 1 |}))
-        (w4_unint_yices ["SHA512Block"]);
+        (w4_unint_yices ["processBlock_Common"]);
     } else do {
       // this covers the case without any calls to the block
       // function, and data copied in c->data
@@ -280,7 +280,7 @@ if quick_check then do {
         [sha512_block_data_order_spec]
         true
         (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK - 1 - num |}))
-        (w4_unint_yices ["SHA512Block"]);
+        (w4_unint_yices ["processBlock_Common"]);
       // this covers the case with one call to the block
       // function, on c->data, and the rest of data copied
       // in c->data
@@ -288,7 +288,7 @@ if quick_check then do {
         [sha512_block_data_order_spec]
         true
         (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK + 1 - num |}))
-        (w4_unint_yices ["SHA512Block"]);
+        (w4_unint_yices ["processBlock_Common"]);
       // this covers the case with two calls to the block
       // function, the first one on c->data, the second one
       // on one block from data, and the rest of data copied
@@ -297,7 +297,7 @@ if quick_check then do {
         [sha512_block_data_order_spec]
         true
         (EVP_DigestUpdate_spec num (eval_size {| 2 * SHA512_CBLOCK + 1 - num |}))
-        (w4_unint_yices ["SHA512Block"]);
+        (w4_unint_yices ["processBlock_Common"]);
     };
   };
   for nums verify_update_at_num;
@@ -323,13 +323,13 @@ if quick_check then do {
       true
       // num=111 covers the case with one call to the block function
       (EVP_DigestFinal_spec withLength 111)
-      (w4_unint_yices ["SHA512Block"]);
+      (w4_unint_yices ["processBlock_Common"]);
     crucible_llvm_verify m "EVP_DigestFinal"
       EVP_DigestFinal_ovs
       true
       // num=112 covers the case with two calls to the block function
       (EVP_DigestFinal_spec withLength 112)
-      (w4_unint_yices ["SHA512Block"]);
+      (w4_unint_yices ["processBlock_Common"]);
   };
   for [false, true] verify_final_with_length;
   return ();
@@ -341,7 +341,7 @@ if quick_check then do {
         EVP_DigestFinal_ovs
         true
         (EVP_DigestFinal_spec withLength num)
-        (w4_unint_yices ["SHA512Block"]);
+        (w4_unint_yices ["processBlock_Common"]);
     };
     for nums verify_final_at_num;
   };
@@ -362,7 +362,6 @@ let verify_digest_with_length withLength = do {
     ]
     true
     (EVP_Digest_spec withLength 240)
-    (w4_unint_yices ["SHA512Block"]);
+    (w4_unint_yices ["processBlock_Common"]);
 };
 for [false, true] verify_digest_with_length;
-

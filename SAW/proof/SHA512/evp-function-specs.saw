@@ -41,7 +41,7 @@ let EVP_DigestInit_spec = do {
   sha512_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
   points_to_sha512_state_st
     sha512_ctx_ptr
-    {{ { h = SHA_H0, block = zero : [SHA512_CBLOCK][8], n = 0 : [32], sz = 0 : [128] } }}
+    {{ { h = SHAH0, block = zero : [SHA512_CBLOCK][8], n = 0 : [32], sz = 0 : [128] } }}
     0;
   points_to_env_md_ctx_st ctx_ptr type_ptr sha512_ctx_ptr;
 
@@ -64,7 +64,7 @@ let EVP_DigestUpdate_spec num len = do {
 
   // Precondition: `sha512_ctx_ptr` is a pointer to a `sha512_state_st` struct
   sha512_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
-  // Precondition: `sha512_ctx` is a fresh Cryptol SHA512State
+  // Precondition: `sha512_ctx` is a fresh Cryptol SHAState
   sha512_ctx <- fresh_sha512_state_st "sha512_ctx" num;
   // Precondition: `sha512_ctx_ptr` matches `sha512_ctx`.  The message blocks
   // of the two must only match up to the first `num` bits
@@ -85,12 +85,12 @@ let EVP_DigestUpdate_spec num len = do {
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   // Postcondition: The context `sha512_ctx_ptr` points to matches the result
-  // of executing the cryptol function `SHA512Update` on `sha512_ctx` and
+  // of executing the cryptol function `SHAUpdate` on `sha512_ctx` and
   // `data`, with the exception of the message block, which must only match up
   // to the first `(num + len) % SHA512_CBLOCK` bytes.  This is because the
   // C implementation does not clear the unused bytes of message block, and
   // therefore the tail end of the block contains garbage.
-  points_to_sha512_state_st sha512_ctx_ptr {{ SHA512Update sha512_ctx data }} (eval_size {| (num + len) % SHA512_CBLOCK |});
+  points_to_sha512_state_st sha512_ctx_ptr {{ SHAUpdate sha512_ctx data }} (eval_size {| (num + len) % SHA512_CBLOCK |});
 
   // Postcondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
   // `sha512_ctx_ptr`.
@@ -146,7 +146,7 @@ let EVP_DigestFinal_spec withLength num = do {
 
   // Precondition: `sha512_ctx_ptr` is a pointer to a `sha512_state_st` struct
   sha512_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
-  // Precondition: `sha512_ctx` is a fresh Cryptol SHA512State
+  // Precondition: `sha512_ctx` is a fresh Cryptol SHAState
   sha512_ctx <- fresh_sha512_state_st "sha512_ctx" num;
   // Precondition: `sha512_ctx_ptr` matches `sha512_ctx`.  The message blocks
   // of the two must only match up to the first `num` bits
@@ -162,13 +162,13 @@ let EVP_DigestFinal_spec withLength num = do {
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   // Postcondition: The data pointed to by `md_out_ptr` matches the message
-  // digest returned by the Cryptol function `SHA_FINAL_SPEC`.  The reverses,
+  // digest returned by the Cryptol function `SHAFinal`.  The reverses,
   // splits, and joins transform the Cryptol function's big endian output to
   // little endian.
   // If length output is used, s_ptr points to correct length.
   digestOut_post withLength md_out_ptr s_ptr
-    (crucible_term {{ reverse (split`{SHA_DIGEST_LENGTH} (join (reverse (split`{each=64} (SHA_FINAL_SPEC sha512_ctx))))) }});
-  
+    (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAFinal sha512_ctx) }});
+
   // Postcondition: The function returns 1
   crucible_return (crucible_term {{ 1 : [32] }});
 };
@@ -205,12 +205,12 @@ let EVP_Digest_spec withLength len = do {
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   // Postcondition: The data pointed to by `md_out_ptr` matches the message
-  // digest returned by the Cryptol function `SHA_IMP_SPEC`.  The reverses,
+  // digest returned by the Cryptol function `SHAImp`.  The reverses,
   // splits, and joins transform the Cryptol function's big endian output to
   // little endian.
   // If length output is used, s_ptr points to correct length.
   digestOut_post withLength md_out_ptr size_ptr
-    (crucible_term {{ reverse (split`{SHA_DIGEST_LENGTH} (join (reverse (split`{each=64} (SHA_IMP_SPEC data))))) }});
+    (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAImp data) }});
 
   // Postcondition:  The function returns the value `1`
   crucible_return (crucible_term {{ 1 : [32] }});

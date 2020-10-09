@@ -4,7 +4,7 @@
 */
 
 
-import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA512Imp.cry";
+import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA384.cry";
 
 let quick_check = false;
 include "SHA512-384.saw";

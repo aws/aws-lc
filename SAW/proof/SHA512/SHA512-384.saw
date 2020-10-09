@@ -24,12 +24,3 @@ let EVP_SHA_STORAGE = "EVP_sha384_storage";
 
 // Name of EVP init function in C code.
 let EVP_SHA_INIT = "EVP_sha384_init";
-
-// Initial hash value
-let SHA_H0 = {{ SHA384H0 }};
-
-// Cryptol spec for SHA final function
-let SHA_FINAL_SPEC = {{ SHA384Final }};
-
-// Cryptol spec for SHA imperative function
-let SHA_IMP_SPEC = {{ SHA384Imp }};
