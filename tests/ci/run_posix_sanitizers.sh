@@ -11,7 +11,7 @@ if [ $(dpkg --print-architecture) == "arm64" ]; then
   # BoringSSL provides two sets tests: the C/C++ tests and the blackbox tests.
   # Details: https://github.com/google/boringssl/blob/master/BUILDING.md
   # The blackbox tests (run `go test` under `ssl/test/runner`) takes 30 minutes to complete on ARM when ASAN clang flag enabled.
-  # This does not happen on X86 ASAN and ARM (when ASAN disabled).
+  # But the blackbox tests takes less than 2 minutes to compulete on other test dimensions -- X86 ASAN and ARM (when ASAN disabled).
   # Instead of running the two sets tests, only the former test is executed here.
   # TODO: Open a GitHub issue on https://github.com/google/sanitizers/issues, and then link the issue here.
   echo "Building AWS-LC in ${build_type} mode with address sanitizer, and running only non ssl test."
