@@ -19,22 +19,11 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Check out main repo and individually check out submodules.
-    # Once all submodules are public, this can be replaced with a single checkout action with submodules:true
+    # Check out main repo and submodules.
     - uses: actions/checkout@v2
-      name: check out top-level repository
-    - uses: actions/checkout@v2
-      name: check out aws-lc source
-      with: 
-        repository: awslabs/aws-lc
-        ssh-key: ${{ secrets.AWSLC_ACCESS_KEY }}
-        path: ./src
-    - uses: actions/checkout@v2
-      name: check out cryptol specs
-      with: 
-        repository: GaloisInc/cryptol-specs
-        path: ./cryptol-specs
-        ref: 2e33ca77b5e81ed96d35073da3e09008afd4553f
+      name: check out top-level repository and all submodules
+      with:
+        submodules: true
 
     # Runs the formal verification action
     - name: Proofs
