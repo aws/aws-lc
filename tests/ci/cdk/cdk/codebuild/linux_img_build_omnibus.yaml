@@ -1,0 +1,30 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
+batch:
+  build-list:
+
+    #############
+    # Linux x86 #
+    #############
+    - identifier: linux_x86_docker_img_build
+      buildspec: ./tests/ci/codebuild/linux-x86-docker-img-build.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: aws/codebuild/standard:4.0
+
+    ###############
+    # Linux aarch #
+    ###############
+    - identifier: linux_aarch_docker_img_build
+      buildspec: ./tests/ci/codebuild/linux-aarch-docker-img-build.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: aws/codebuild/amazonlinux2-aarch64-standard:1.0
