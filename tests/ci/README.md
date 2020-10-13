@@ -33,7 +33,7 @@ $ ./tests/ci/run_posix_tests.sh
 
 ## Test locations
 ### Unit tests
-Runs `test_build_dir/crypto/crypto_test` for:
+Runs all tests for:
 * Debug
 * Release
 * Small
@@ -69,7 +69,7 @@ Travis|Xcode 11*|x86-64|macOS 10.14
 clang 8.0.0
 
 ### Sanitizer tests
-Runs Release `test_build_dir/crypto/crypto_test` with:
+Runs all tests with:
 * Address sanitizer
 * Memory sanitizer
 * Control flow integrity
