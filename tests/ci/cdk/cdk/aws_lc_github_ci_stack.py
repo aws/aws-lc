@@ -4,7 +4,7 @@
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
 from util.iam_policies import codebuild_batch_policy_in_json
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, LINUX_X86_ECR_REPO, \
-    LINUX_AARCH_ECR_REPO, WINDOWS_ECR_REPO
+    LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO
 from util.yml_loader import YmlLoader
 
 
@@ -14,6 +14,7 @@ class AwsLcGitHubCIStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
+                 spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
@@ -47,8 +48,8 @@ class AwsLcGitHubCIStack(core.Stack):
         placeholder_map = {"AWS_ACCOUNT_ID_PLACEHOLDER": AWS_ACCOUNT, "AWS_REGION_PLACEHOLDER": AWS_REGION,
                            "ECR_REPO_X86_PLACEHOLDER": LINUX_X86_ECR_REPO,
                            "ECR_REPO_AARCH_PLACEHOLDER": LINUX_AARCH_ECR_REPO,
-                           "ECR_REPO_WINDOWS_PLACEHOLDER": WINDOWS_ECR_REPO}
-        build_spec_content = YmlLoader.load("./cdk/codebuild/github_build_omnibus.yaml", placeholder_map)
+                           "ECR_REPO_WINDOWS_PLACEHOLDER": WINDOWS_X86_ECR_REPO}
+        build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
         project = codebuild.Project(

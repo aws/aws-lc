@@ -3,7 +3,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from util.metadata import AWS_REGION, AWS_ACCOUNT, LINUX_AARCH_ECR_REPO, LINUX_X86_ECR_REPO, WINDOWS_ECR_REPO
+from util.metadata import AWS_REGION, AWS_ACCOUNT, LINUX_AARCH_ECR_REPO, LINUX_X86_ECR_REPO, WINDOWS_X86_ECR_REPO
 
 
 def codebuild_batch_policy_in_json(project_ids):
@@ -61,7 +61,7 @@ def ecr_power_user_policy_in_json():
     ecr_arn_prefix = "arn:aws:ecr:{}:{}:repository".format(AWS_REGION, AWS_ACCOUNT)
     linux_x86_ecr_arn = "{}/{}".format(ecr_arn_prefix, LINUX_X86_ECR_REPO)
     linux_aarch_ecr_arn = "{}/{}".format(ecr_arn_prefix, LINUX_AARCH_ECR_REPO)
-    windows_ecr_arn = "{}/{}".format(ecr_arn_prefix, WINDOWS_ECR_REPO)
+    windows_ecr_arn = "{}/{}".format(ecr_arn_prefix, WINDOWS_X86_ECR_REPO)
     return {
         "Version": "2012-10-17",
         "Statement": [
