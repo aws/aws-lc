@@ -65,7 +65,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
-@@ -737,4 +737,524 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp
+@@ -737,4 +737,588 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp
    out->cmp_x_coordinate = ec_GFp_nistp256_cmp_x_coordinate;
  }
  
@@ -133,6 +133,29 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +    dst[6] = (src[6] & mask1) ^ (dst[6] & mask2);
 +    dst[7] = (src[7] & mask1) ^ (dst[7] & mask2);
 +  }
++}
++
++// is_not_zero returns one iff in != 0 and zero otherwise.
++//
++// WARNING: this breaks the usual convention of constant-time functions
++// returning masks.
++//
++// (define-fun is_not_zero ((in (_ BitVec 64))) (_ BitVec 64)
++//   (bvlshr (bvor in (bvsub #x0000000000000000 in)) #x000000000000003f)
++// )
++//
++// (declare-fun x () (_ BitVec 64))
++//
++// (assert (and (= x #x0000000000000000) (= (is_not_zero x) #x0000000000000001)))
++// (check-sat)
++//
++// (assert (and (not (= x #x0000000000000000)) (= (is_not_zero x) #x0000000000000000)))
++// (check-sat)
++//
++static BN_ULONG is_not_zero(BN_ULONG in) {
++  in |= (0 - in);
++  in >>= BN_BITS2 - 1;
++  return in;
 +}
 +
 +// ecp_nistz256_mod_inverse_sqr_mont sets |r| to (|in| * 2^-256)^-2 * 2^256 mod
@@ -348,18 +371,6 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +  ecp_nistz256_point_add(r, r, &h);
 +}
 +
-+static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-+                                   const EC_RAW_POINT *p,
-+                                   const EC_SCALAR *scalar) {
-+  alignas(32) P256_POINT out;
-+  ecp_nistz256_windowed_mul(group, &out, p, scalar);
-+
-+  assert(group->field.width == P256_LIMBS);
-+  OPENSSL_memcpy(r->X.words, out.X, P256_LIMBS * sizeof(BN_ULONG));
-+  OPENSSL_memcpy(r->Y.words, out.Y, P256_LIMBS * sizeof(BN_ULONG));
-+  OPENSSL_memcpy(r->Z.words, out.Z, P256_LIMBS * sizeof(BN_ULONG));
-+}
-+
 +typedef union {
 +  P256_POINT p;
 +  P256_POINT_AFFINE a;
@@ -385,6 +396,59 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +  *index += kWindowSize;
 +
 +  return booth_recode_w7(wvalue);
++}
++
++static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
++                                   const EC_RAW_POINT *p,
++                                   const EC_SCALAR *scalar) {
++  alignas(32) P256_POINT out;
++  ecp_nistz256_windowed_mul(group, &out, p, scalar);
++
++  assert(group->field.width == P256_LIMBS);
++  OPENSSL_memcpy(r->X.words, out.X, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Y.words, out.Y, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Z.words, out.Z, P256_LIMBS * sizeof(BN_ULONG));
++}
++
++static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
++                                        const EC_SCALAR *scalar) {
++  alignas(32) p256_point_union_t t, p;
++
++  uint8_t p_str[33];
++  OPENSSL_memcpy(p_str, scalar->bytes, 32);
++  p_str[32] = 0;
++
++  // First window
++  size_t index = 0;
++  crypto_word_t wvalue = calc_first_wvalue(&index, p_str);
++
++  ecp_nistz256_select_w7(&p.a, ecp_nistz256_precomputed[0], wvalue >> 1);
++  ecp_nistz256_neg(p.p.Z, p.p.Y);
++  copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
++
++  // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
++  // is infinity and |ONE| otherwise. |p| was computed from the table, so it
++  // is infinity iff |wvalue >> 1| is zero.
++  OPENSSL_memset(p.p.Z, 0, sizeof(p.p.Z));
++  copy_conditional(p.p.Z, ONE, is_not_zero(wvalue >> 1));
++
++  for (int i = 1; i < 37; i++) {
++    wvalue = calc_wvalue(&index, p_str);
++
++    ecp_nistz256_select_w7(&t.a, ecp_nistz256_precomputed[i], wvalue >> 1);
++
++    ecp_nistz256_neg(t.p.Z, t.a.Y);
++    copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
++
++    // Note |ecp_nistz256_point_add_affine| does not work if |p.p| and |t.a|
++    // are the same non-infinity point.
++    ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
++  }
++
++  assert(group->field.width == P256_LIMBS);
++  OPENSSL_memcpy(r->X.words, p.p.X, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Y.words, p.p.Y, P256_LIMBS * sizeof(BN_ULONG));
++  OPENSSL_memcpy(r->Z.words, p.p.Z, P256_LIMBS * sizeof(BN_ULONG));
 +}
 +
 +static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
@@ -576,7 +640,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256.c
 +  out->add = ecp_nistz256_add;
 +  out->dbl = ecp_nistz256_dbl;
 +  out->mul = ecp_nistz256_point_mul;
-+  out->mul_base = ec_GFp_nistp256_point_mul_base;
++  out->mul_base = ecp_nistz256_point_mul_base;
 +  out->mul_public = ecp_nistz256_points_mul_public;
 +  out->felem_mul = ec_GFp_mont_felem_mul;
 +  out->felem_sqr = ec_GFp_mont_felem_sqr;
@@ -594,7 +658,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 ===================================================================
 --- /dev/null
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
-@@ -0,0 +1,1682 @@
+@@ -0,0 +1,1754 @@
 +#! /usr/bin/env perl
 +# Copyright 2015-2020 The OpenSSL Project Authors. All Rights Reserved.
 +#
@@ -2190,6 +2254,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +my ($Ra,$Rb,$Rc,$Rd,$Re,$Rf)=map("v$_",(16..21));
 +my ($T0a,$T0b,$T0c,$T0d,$T0e,$T0f)=map("v$_",(22..27));
 +$code.=<<___;
++////////////////////////////////////////////////////////////////////////
 +// void ecp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
 +.globl	ecp_nistz256_select_w5
 +.type	ecp_nistz256_select_w5,%function
@@ -2268,6 +2333,77 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +                                            ////    movdqu	$Rf, 16*5($val)
 +	ret
 +.size	ecp_nistz256_select_w5,.-ecp_nistz256_select_w5
++
++////////////////////////////////////////////////////////////////////////
++// void ecp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
++.globl	ecp_nistz256_select_w7
++.type	ecp_nistz256_select_w7,%function
++.align	4
++ecp_nistz256_select_w7:
++    // $ONE (vec_4*32) := | 1 | 1 | 1 | 1 |
++    // $INDEX (vec_4*32) := | idx | idx | idx | idx |
++    movi    $ONE.4s, #1                     ////    movdqa  .LOne(%rip), $ONE
++    dup     $INDEX.4s, $index               ////    movd    $index, $INDEX
++                                            ////    pshufd  \$0, $INDEX, $INDEX
++    // [$Ra-$Rd] := 0
++    eor     $Ra.16b, $Ra.16b, $Ra.16b       ////    pxor    $Ra, $Ra
++    eor     $Rb.16b, $Rb.16b, $Rb.16b       ////    pxor    $Rb, $Rb
++    eor     $Rc.16b, $Rc.16b, $Rc.16b       ////    pxor    $Rc, $Rc
++    eor     $Rd.16b, $Rd.16b, $Rd.16b       ////    pxor    $Rd, $Rd
++
++    // $M0 := $ONE
++    mov     $M0.16b, $ONE.16b               ////    movdqa  $ONE, $M0
++
++    // $Ctr := 64; loop counter
++    mov     $Ctr, #64                       ////    mov \$64, %rax
++
++.Lselect_w7_loop:
++    // [T0a-T0d] := Load a (2 * 256-bit = 4 * 128-bit) table entry at in_t
++    //  and advance in_t to point to the next entry
++    ld1     {$T0a.2d, $T0b.2d, $T0c.2d, $T0d.2d}, [$in_t],#64
++                                            ////    movdqa  16*0($in_t), $T0a
++                                            ////    movdqa  16*1($in_t), $T0b
++                                            ////    movdqa  16*2($in_t), $T0c
++                                            ////    movdqa  16*3($in_t), $T0d
++                                            ////    lea 16*4($in_t), $in_t
++
++    // $TMP0 = ($M0 == $INDEX)? All 1s : All 0s
++    cmeq    $TMP0.4s, $M0.4s, $INDEX.4s     ////    movdqa  $M0, $TMP0
++                                            ////    pcmpeqd $INDEX, $TMP0
++    // Increment $M0 lanes
++    add     $M0.4s, $M0.4s, $ONE.4s         ////    paddd   $ONE, $M0
++
++    // prefetch data for load into L1 cache in a streaming fashion
++    // (streaming prefetch for datat that is used only once)
++    prfm    pldl1strm, [$in_t]              ////    prefetcht0	255($in_t)
++
++    // [$T0a-$T0d] := [$T0a-$T0d] AND $TMP0
++    // values read from the table will be 0'd if $M0 != $INDEX
++    // [$Ra-$Rd] := [$Ra-$Rd] OR [$T0a-$T0d]
++    // values in output registers will remain the same if $M0 != $INDEX
++    and     $T0a.16b, $T0a.16b, $TMP0.16b    ////    pand   $TMP0, $T0a
++    and     $T0b.16b, $T0b.16b, $TMP0.16b    ////    pand   $TMP0, $T0b
++    orr     $Ra.16b, $Ra.16b, $T0a.16b       ////    por    $T0a, $Ra
++    orr     $Rb.16b, $Rb.16b, $T0b.16b       ////    pand   $TMP0, $T0c
++                                             ////    por    $T0b, $Rb
++    and     $T0c.16b, $T0c.16b, $TMP0.16b    ////    pand   $TMP0, $T0d
++    and     $T0d.16b, $T0d.16b, $TMP0.16b    ////    por    $T0c, $Rc
++    orr     $Rc.16b, $Rc.16b, $T0c.16b       ////    por    $T0d, $Rd
++    orr     $Rd.16b, $Rd.16b, $T0d.16b
++
++    // Decrement loop counter; loop back if not 0
++    subs    $Ctr, $Ctr, #1                  ////    dec %rax
++    bne     .Lselect_w7_loop                ////    jnz .Lselect_loop_sse_w7
++
++    // Write [$Ra-$Rd] to memory at the output pointer
++    st1     {$Ra.2d, $Rb.2d, $Rc.2d, $Rd.2d}, [$val]
++                                            ////    movdqu	$Ra, 16*0($val)
++                                            ////    movdqu	$Rb, 16*1($val)
++                                            ////    movdqu	$Rc, 16*2($val)
++                                            ////    movdqu	$Rd, 16*3($val)
++
++	ret
++.size	ecp_nistz256_select_w7,.-ecp_nistz256_select_w7
 +___
 +}
 +
@@ -2293,14 +2429,14 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
      !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
  
  TEST(P256_X86_64Test, SelectW5) {
-@@ -68,6 +67,7 @@ TEST(P256_X86_64Test, SelectW5) {
-   P256_POINT val;
-   CHECK_ABI(ecp_nistz256_select_w5, &val, table, 7);
+@@ -98,6 +97,7 @@ TEST(P256_X86_64Test, SelectW7) {
+   CHECK_ABI(ecp_nistz256_select_w7, &val, table, 42);
  }
-+#if !defined(OPENSSL_AARCH64)
  
- TEST(P256_X86_64Test, SelectW7) {
-   // Fill a table with some garbage input.
++#if !defined(OPENSSL_AARCH64)
+ TEST(P256_X86_64Test, BEEU) {
+   if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
+     // No AVX support; cannot run the BEEU code.
 @@ -165,6 +165,8 @@ TEST(P256_X86_64Test, BEEU) {
    }
  }
