@@ -665,7 +665,7 @@ TEST_P(PerAEADTest, InvalidNonceLength) {
   }
 }
 
-#if defined(SUPPORTS_ABI_TEST)
+#if defined(SUPPORTS_ABI_TEST) && !defined(BORINGSSL_RELEASE_BUILD)
 // CHECK_ABI can't pass enums, i.e. |evp_aead_seal| and |evp_aead_open|. Thus
 // these two wrappers.
 static int aead_ctx_init_for_seal(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,

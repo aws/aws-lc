@@ -208,7 +208,8 @@ template <typename... Args>
     WriteFile(stderr_handle, buf, strlen(buf), &unused, nullptr);
   }
 #else
-  write(STDERR_FILENO, buf, strlen(buf));
+  OPENSSL_UNUSED ssize_t unused_ret =
+          write(STDERR_FILENO, buf, strlen(buf));
 #endif
   abort();
 }

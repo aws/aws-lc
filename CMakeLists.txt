@@ -80,6 +80,8 @@ if(NOT FIPS)
     # CMake automatically connects include_directories to the NASM
     # command-line, but not add_definitions.
     set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DBORINGSSL_DISPATCH_TEST")
+  elseif(CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
+    add_definitions(-DBORINGSSL_RELEASE_BUILD)
   endif()
 endif()
 

@@ -1,4 +1,3 @@
-0008-fix-abi-test-compilation.patch
 0009-add-macro-openssl-is-awslc.patch
 0010-reduce-threads-num-in-rsa-test.patch
 0011-fix-fuzz-test-path-to-libc.patch
