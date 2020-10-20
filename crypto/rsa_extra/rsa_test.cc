@@ -1137,7 +1137,13 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
   constexpr size_t kSignaturesPerThread = 100;
   constexpr size_t kNumThreads = 2048;
 #endif
-
+  // On some platforms, the number of threads should be reduced because resources are limited.
+  // e.g. Travis CI MacOS has 2 cores and 4 GB memories.
+  size_t numOfThreads = kNumThreads;
+  const char* rsaThreadsLimit = getenv("RSA_TEST_THREADS_LIMIT");
+  if (rsaThreadsLimit != nullptr) {
+    numOfThreads = std::stoul(std::string(rsaThreadsLimit), nullptr);
+  }
   const uint8_t kDummyHash[32] = {0};
   auto worker = [&] {
     uint8_t sig[256];
@@ -1151,8 +1157,8 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
   };
 
   std::vector<std::thread> threads;
-  threads.reserve(kNumThreads);
-  for (size_t i = 0; i < kNumThreads; i++) {
+  threads.reserve(numOfThreads);
+  for (size_t i = 0; i < numOfThreads; i++) {
     threads.emplace_back(worker);
   }
   for (auto &thread : threads) {
