@@ -23,6 +23,8 @@
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
 
+#include <linux/types.h>
+
 #include <linux/random.h>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
@@ -32,6 +34,10 @@
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
+#endif
+
+#if !defined(PTRACE_O_TRACESYSGOOD)
+#define PTRACE_O_TRACESYSGOOD (1)
 #endif
 
 // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to

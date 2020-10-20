@@ -84,8 +84,8 @@ static std::vector<const TRUST_TOKEN_METHOD *> AllMethods() {
 
 class TrustTokenProtocolTestBase : public ::testing::Test {
  public:
-  explicit TrustTokenProtocolTestBase(const TRUST_TOKEN_METHOD *method)
-      : method_(method) {}
+  explicit TrustTokenProtocolTestBase(const TRUST_TOKEN_METHOD *trust_token_method)
+      : method_(trust_token_method) {}
 
   // KeyID returns the key ID associated with key index |i|.
   static uint32_t KeyID(size_t i) {
@@ -550,13 +550,13 @@ TEST_P(TrustTokenMetadataTest, TruncatedProof) {
   CBS real_response;
   CBS_init(&real_response, issue_resp, resp_len);
   uint16_t count;
-  uint32_t public_metadata;
+  uint32_t local_public_metadata;
   bssl::ScopedCBB bad_response;
   ASSERT_TRUE(CBB_init(bad_response.get(), 0));
   ASSERT_TRUE(CBS_get_u16(&real_response, &count));
   ASSERT_TRUE(CBB_add_u16(bad_response.get(), count));
-  ASSERT_TRUE(CBS_get_u32(&real_response, &public_metadata));
-  ASSERT_TRUE(CBB_add_u32(bad_response.get(), public_metadata));
+  ASSERT_TRUE(CBS_get_u32(&real_response, &local_public_metadata));
+  ASSERT_TRUE(CBB_add_u32(bad_response.get(), local_public_metadata));
 
   for (size_t i = 0; i < count; i++) {
     uint8_t s[PMBTOKEN_NONCE_SIZE];
@@ -609,13 +609,13 @@ TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
   CBS real_response;
   CBS_init(&real_response, issue_resp, resp_len);
   uint16_t count;
-  uint32_t public_metadata;
+  uint32_t local_public_metadata;
   bssl::ScopedCBB bad_response;
   ASSERT_TRUE(CBB_init(bad_response.get(), 0));
   ASSERT_TRUE(CBS_get_u16(&real_response, &count));
   ASSERT_TRUE(CBB_add_u16(bad_response.get(), count));
-  ASSERT_TRUE(CBS_get_u32(&real_response, &public_metadata));
-  ASSERT_TRUE(CBB_add_u32(bad_response.get(), public_metadata));
+  ASSERT_TRUE(CBS_get_u32(&real_response, &local_public_metadata));
+  ASSERT_TRUE(CBB_add_u32(bad_response.get(), local_public_metadata));
 
   for (size_t i = 0; i < count; i++) {
     uint8_t s[PMBTOKEN_NONCE_SIZE];
