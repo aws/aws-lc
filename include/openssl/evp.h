@@ -918,17 +918,29 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
 // EVP_PKEY_set1_tls_encodedpoint replaces |pkey| with a public key encoded by
 // |in|. It returns one on success and zero on error.
 //
-// This function only works on X25519 keys.
+// This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
+// types. The supported curve for |EVP_PKEY_X25519| is Curve25519. The supported
+// curves for |EVP_PKEY_EC| are: NID_secp224r1, NID_X9_62_prime256v1,
+// NID_secp384r1, NID_secp521r1
+//
+// For the EC key type, the EC point representation must be in
+// uncompressed form.
 OPENSSL_EXPORT int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey,
                                                   const uint8_t *in,
                                                   size_t len);
 
 // EVP_PKEY_get1_tls_encodedpoint sets |*out_ptr| to a newly-allocated buffer
 // containing the raw encoded public key for |pkey|. The caller must call
-// |OPENSSL_free| to release this buffer. The function returns the length of the
-// buffer on success and zero on error.
+// |OPENSSL_free| to release this buffer on success. The function returns the
+// length of the buffer on success and zero on error.
 //
-// This function only works on X25519 keys.
+// This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
+// types. The supported curve for |EVP_PKEY_X25519| is Curve25519. The supported
+// curves for |EVP_PKEY_EC| are: NID_secp224r1, NID_X9_62_prime256v1,
+// NID_secp384r1, NID_secp521r1
+//
+// For the EC key type, the EC point representation must be in
+// uncompressed form.
 OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
                                                      uint8_t **out_ptr);
 
