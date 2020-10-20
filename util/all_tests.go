@@ -243,11 +243,16 @@ func runTest(test test) (bool, error) {
 	}
 }
 
+func fileExists(filename string) bool {
+    _, err := os.Stat(filename)
+    return err == nil
+}
+
 // setWorkingDirectory walks up directories as needed until the current working
 // directory is the top of a BoringSSL checkout.
 func setWorkingDirectory() {
 	for i := 0; i < 64; i++ {
-		if _, err := os.Stat("BUILDING.md"); err == nil {
+		if fileExists("BUILDING.md") {
 			return
 		}
 		os.Chdir("..")
@@ -386,6 +391,8 @@ func main() {
 	flag.Parse()
 	setWorkingDirectory()
 
+	inDocker := fileExists("/.dockerenv")
+
 	testCases, err := testconfig.ParseTestConfig("util/all_tests.json")
 	if err != nil {
 		fmt.Printf("Failed to parse input: %s\n", err)
@@ -424,6 +431,9 @@ func main() {
 					testForCPU.cpu = cpu
 					tests <- testForCPU
 				}
+			} else if inDocker && strings.Contains(baseTest.Cmd[0], "urandom_test") {
+				fmt.Printf("Running in Docker, skipping: %v\n", baseTest)
+				continue
 			} else {
 				shards, err := test.getGTestShards()
 				if err != nil {
