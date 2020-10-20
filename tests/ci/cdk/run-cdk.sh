@@ -27,7 +27,7 @@ shift
 export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
 export ECR_LINUX_AARCH_REPO_NAME="aws-lc-docker-images-linux-aarch"
 export ECR_LINUX_X86_REPO_NAME="aws-lc-docker-images-linux-x86"
-export ECR_WINDOWS_REPO_NAME="aws-lc-docker-images-windows"
+export ECR_WINDOWS_X86_REPO_NAME="aws-lc-docker-images-windows-x86"
 export AWS_LC_S3_BUCKET_PREFIX="aws-lc-windows-docker-image-build"
 export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
 export WIN_EC2_TAG_KEY="aws-lc"
@@ -56,7 +56,13 @@ function create_aws_resources() {
   destroy_all
   cdk deploy aws-lc-* --require-approval never
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
+<<<<<<< HEAD
   aws codebuild update-webhook --project-name aws-lc-ci --build-type BUILD_BATCH
+=======
+  aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
+>>>>>>> main
 }
 
 function build_linux_img() {
@@ -144,6 +150,9 @@ function deploy() {
 
   echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
   linux_aarch_img_tags=("ubuntu-19.10_gcc-9x_latest"
+    "amazonlinux-2_gcc-7x_latest"
+    "ubuntu-20.04_gcc-9x_latest"
+    "ubuntu-20.04_clang-10x_latest"
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.10_clang-9x_sanitizer_latest")
   images_pushed_to_ecr "${ECR_LINUX_AARCH_REPO_NAME}" "${linux_aarch_img_tags[@]}"
@@ -155,12 +164,18 @@ function deploy() {
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.04_gcc-8x_latest"
     "ubuntu-19.04_clang-8x_latest"
+    "ubuntu-20.04_gcc-9x_latest"
+    "ubuntu-20.04_clang-10x_latest"
     "centos-7_gcc-4x_latest"
     "amazonlinux-2_gcc-7x_latest"
     "s2n_integration_clang-9x_latest")
   images_pushed_to_ecr "${ECR_LINUX_X86_REPO_NAME}" "${linux_x86_img_tags[@]}"
   windows_img_tags=("vs2015_latest" "vs2017_latest")
+<<<<<<< HEAD
   images_pushed_to_ecr "${ECR_WINDOWS_REPO_NAME}" "${windows_img_tags[@]}"
+=======
+  images_pushed_to_ecr "${ECR_WINDOWS_X86_REPO_NAME}" "${windows_img_tags[@]}"
+>>>>>>> main
 }
 
 # Main logics

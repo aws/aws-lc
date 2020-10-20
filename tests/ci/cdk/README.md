@@ -9,6 +9,7 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
 * Install [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html#getting_started_install)
 * Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 * [Connect GitHub and AWS account using access token](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
+  * Note: This step should grant AWS CodeBuild with access to create WebHook.
 
 ### Minimal permissions:
 
@@ -185,6 +186,7 @@ Below are some commands specific to windows docker image build.
  
 ```bash
 # Define environment variables needed by Windows docker image build.
+export AWS_LC_S3_BUCKET_PREFIX="aws-lc-windows-docker-image-build"
 export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
 export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
 export WIN_EC2_TAG_KEY="aws-lc"
