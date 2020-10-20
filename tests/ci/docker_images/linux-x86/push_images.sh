@@ -77,3 +77,13 @@ docker tag integration:s2n ${ECS_REPO}:s2n_integration_clang-9x_`date +%Y-%m-%d`
 docker tag integration:s2n ${ECS_REPO}:s2n_integration_clang-9x_latest
 docker push ${ECS_REPO}:s2n_integration_clang-9x_latest
 docker push ${ECS_REPO}:s2n_integration_clang-9x_`date +%Y-%m-%d`
+
+docker tag ubuntu-20.04:gcc-9x ${ECS_REPO}:ubuntu-20.04_gcc-9x_`date +%Y-%m-%d`
+docker tag ubuntu-20.04:gcc-9x ${ECS_REPO}:ubuntu-20.04_gcc-9x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_gcc-9x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_gcc-9x_`date +%Y-%m-%d`
+
+docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_`date +%Y-%m-%d`
+docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_`date +%Y-%m-%d`

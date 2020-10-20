@@ -1,0 +1,143 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
+batch:
+  build-list:
+    - identifier: pre_push_checker
+      buildspec: ./tests/ci/codebuild/linux-x86/pre-push.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
+
+    - identifier: ubuntu1604_gcc5x_x86
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-16.04_gcc-5x_32-bits.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-16.04_gcc-5x_latest
+
+    - identifier: ubuntu1804_clang6x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-18.04_clang-6x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-18.04_clang-6x_latest
+
+    - identifier: ubuntu1804_gcc7x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-18.04_gcc-7x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
+
+    - identifier: ubuntu1910_gcc9x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_gcc-9x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_gcc-9x_latest
+
+    - identifier: ubuntu1910_clang9x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_clang-9x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
+
+    - identifier: ubuntu2004_gcc9x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_gcc-9x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_gcc-9x_latest
+
+    - identifier: ubuntu2004_clang10x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+
+    - identifier: ubuntu1904_gcc8x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.04_gcc-8x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.04_gcc-8x_latest
+
+    - identifier: ubuntu1904_clang8x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.04_clang-8x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.04_clang-8x_latest
+
+    - identifier: centos7_gcc4x_x86
+      buildspec: ./tests/ci/codebuild/linux-x86/centos-7_gcc-4x-32-bits.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:centos-7_gcc-4x_latest
+
+    - identifier: centos7_gcc4x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/centos-7_gcc-4x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:centos-7_gcc-4x_latest
+
+    - identifier: amazonlinux2_gcc7x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+
+    - identifier: s2n_integration
+      buildspec: ./tests/ci/codebuild/linux-x86/s2n_integration.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:s2n_integration_clang-9x_latest
+
+    - identifier: fedora31_gcc9x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_gcc-9x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:fedora-31_gcc-9x_latest
+
+    - identifier: fedora31_clang9x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:fedora-31_clang-9x_latest
+
+    - identifier: ubuntu1910_clang9x_x86_64_sanitizer
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_clang-9x_sanitizer.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
