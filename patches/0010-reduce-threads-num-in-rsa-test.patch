@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/crypto/rsa_extra/rsa_test.cc
+Index: aws-lc/crypto/rsa_extra/rsa_test.cc
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/rsa_extra/rsa_test.cc
-+++ aws-lc/third_party/boringssl/crypto/rsa_extra/rsa_test.cc
+--- aws-lc.orig/crypto/rsa_extra/rsa_test.cc
++++ aws-lc/crypto/rsa_extra/rsa_test.cc
 @@ -1137,7 +1137,13 @@ TEST(RSATest, DISABLED_BlindingCacheConc
    constexpr size_t kSignaturesPerThread = 100;
    constexpr size_t kNumThreads = 2048;

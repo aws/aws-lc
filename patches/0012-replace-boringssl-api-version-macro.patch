@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/include/openssl/base.h
+Index: aws-lc/include/openssl/base.h
 ===================================================================
---- aws-lc.orig/third_party/boringssl/include/openssl/base.h
-+++ aws-lc/third_party/boringssl/include/openssl/base.h
+--- aws-lc.orig/include/openssl/base.h
++++ aws-lc/include/openssl/base.h
 @@ -176,6 +176,8 @@ extern "C" {
  #define OPENSSL_VERSION_NUMBER 0x1010007f
  #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER

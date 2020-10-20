@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/CMakeLists.txt
+Index: aws-lc/CMakeLists.txt
 ===================================================================
---- aws-lc.orig/third_party/boringssl/CMakeLists.txt
-+++ aws-lc/third_party/boringssl/CMakeLists.txt
+--- aws-lc.orig/CMakeLists.txt
++++ aws-lc/CMakeLists.txt
 @@ -527,6 +527,16 @@ if(USE_CUSTOM_LIBCXX)
      message(FATAL_ERROR "USE_CUSTOM_LIBCXX only supported with Clang")
    endif()

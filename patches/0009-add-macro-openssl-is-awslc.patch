@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/include/openssl/base.h
+Index: aws-lc/include/openssl/base.h
 ===================================================================
---- aws-lc.orig/third_party/boringssl/include/openssl/base.h
-+++ aws-lc/third_party/boringssl/include/openssl/base.h
+--- aws-lc.orig/include/openssl/base.h
++++ aws-lc/include/openssl/base.h
 @@ -172,7 +172,7 @@ extern "C" {
  #define OPENSSL_THREADS
  #endif

@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/include/openssl/sha.h
+Index: aws-lc/include/openssl/sha.h
 ===================================================================
---- aws-lc.orig/third_party/boringssl/include/openssl/sha.h
-+++ aws-lc/third_party/boringssl/include/openssl/sha.h
+--- aws-lc.orig/include/openssl/sha.h
++++ aws-lc/include/openssl/sha.h
 @@ -97,22 +97,7 @@ OPENSSL_EXPORT void SHA1_Transform(SHA_C
                                     const uint8_t block[SHA_CBLOCK]);
  
@@ -25,9 +25,9 @@ Index: aws-lc/third_party/boringssl/include/openssl/sha.h
    uint32_t Nl, Nh;
    uint8_t data[SHA_CBLOCK];
    unsigned num;
-Index: aws-lc/third_party/boringssl/include/openssl/srtp.h
+Index: aws-lc/include/openssl/srtp.h
 ===================================================================
---- aws-lc.orig/third_party/boringssl/include/openssl/srtp.h
+--- aws-lc.orig/include/openssl/srtp.h
 +++ /dev/null
 @@ -1,18 +0,0 @@
 -/* Copyright (c) 2015, Google Inc.
