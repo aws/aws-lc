@@ -24,7 +24,7 @@ Index: aws-lc/ssl/test/runner/runner.go
  				// otherwise some output would be skipped.
  				line += fmt.Sprintf(" (%s: attach to process %d to continue)", msg.test.name, msg.pid)
  			}
-+            line += "\n"
++				line += "\n"
  			lineLen = len(line)
  			os.Stdout.WriteString(line)
  		}
