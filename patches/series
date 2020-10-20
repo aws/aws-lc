@@ -1,3 +1,2 @@
-0010-reduce-threads-num-in-rsa-test.patch
 0011-fix-fuzz-test-path-to-libc.patch
 0012-replace-boringssl-api-version-macro.patch
