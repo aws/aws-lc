@@ -15601,7 +15601,7 @@ func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg,
 
 	testOutput := testresult.NewResults()
 	for msg := range statusChan {
-		if !*pipe {
+		if !*pipe && (started % 1000 == 0 || done == total) {
 			// Erase the previous status line.
 			var erase string
 			for i := 0; i < lineLen; i++ {
@@ -15641,7 +15641,7 @@ func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg,
 			}
 		}
 
-		if !*pipe {
+		if !*pipe && (started % 1000 == 0 || done == total) {
 			// Print a new status line.
 			line := fmt.Sprintf("%d/%d/%d/%d/%d", failed, unimplemented, done, started, total)
 			if msg.statusType == statusShimStarted && *waitForDebugger {
@@ -15649,6 +15649,7 @@ func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg,
 				// otherwise some output would be skipped.
 				line += fmt.Sprintf(" (%s: attach to process %d to continue)", msg.test.name, msg.pid)
 			}
+				line += "\n"
 			lineLen = len(line)
 			os.Stdout.WriteString(line)
 		}

@@ -1,4 +1,3 @@
-0005-fix-ssl-test-runner-output.patch
 0006-fix-gcc4-compile-errors.patch
 0007-extend_evp_pkey_tls_encoding_functions.patch
 0008-fix-abi-test-compilation.patch
