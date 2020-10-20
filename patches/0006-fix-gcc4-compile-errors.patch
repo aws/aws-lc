@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/rand/urandom_test.cc
+Index: aws-lc/crypto/fipsmodule/rand/urandom_test.cc
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/rand/urandom_test.cc
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/rand/urandom_test.cc
+--- aws-lc.orig/crypto/fipsmodule/rand/urandom_test.cc
++++ aws-lc/crypto/fipsmodule/rand/urandom_test.cc
 @@ -23,6 +23,8 @@
  #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
      !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
@@ -22,10 +22,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/rand/urandom_test.cc
  // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to
  // simulate the absence of RDRAND of machines that have it.
  
-Index: aws-lc/third_party/boringssl/crypto/trust_token/trust_token_test.cc
+Index: aws-lc/crypto/trust_token/trust_token_test.cc
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/trust_token/trust_token_test.cc
-+++ aws-lc/third_party/boringssl/crypto/trust_token/trust_token_test.cc
+--- aws-lc.orig/crypto/trust_token/trust_token_test.cc
++++ aws-lc/crypto/trust_token/trust_token_test.cc
 @@ -84,8 +84,8 @@ static std::vector<const TRUST_TOKEN_MET
  
  class TrustTokenProtocolTestBase : public ::testing::Test {

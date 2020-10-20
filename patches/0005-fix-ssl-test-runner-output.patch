@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/ssl/test/runner/runner.go
+Index: aws-lc/ssl/test/runner/runner.go
 ===================================================================
---- aws-lc.orig/third_party/boringssl/ssl/test/runner/runner.go
-+++ aws-lc/third_party/boringssl/ssl/test/runner/runner.go
+--- aws-lc.orig/ssl/test/runner/runner.go
++++ aws-lc/ssl/test/runner/runner.go
 @@ -15601,7 +15601,7 @@ func statusPrinter(doneChan chan *testre
  
  	testOutput := testresult.NewResults()

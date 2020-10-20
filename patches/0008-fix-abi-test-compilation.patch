@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/CMakeLists.txt
+Index: aws-lc/CMakeLists.txt
 ===================================================================
---- aws-lc.orig/third_party/boringssl/CMakeLists.txt
-+++ aws-lc/third_party/boringssl/CMakeLists.txt
+--- aws-lc.orig/CMakeLists.txt
++++ aws-lc/CMakeLists.txt
 @@ -80,6 +80,8 @@ if(NOT FIPS)
      # CMake automatically connects include_directories to the NASM
      # command-line, but not add_definitions.
@@ -11,10 +11,10 @@ Index: aws-lc/third_party/boringssl/CMakeLists.txt
    endif()
  endif()
  
-Index: aws-lc/third_party/boringssl/crypto/cipher_extra/aead_test.cc
+Index: aws-lc/crypto/cipher_extra/aead_test.cc
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/cipher_extra/aead_test.cc
-+++ aws-lc/third_party/boringssl/crypto/cipher_extra/aead_test.cc
+--- aws-lc.orig/crypto/cipher_extra/aead_test.cc
++++ aws-lc/crypto/cipher_extra/aead_test.cc
 @@ -665,7 +665,7 @@ TEST_P(PerAEADTest, InvalidNonceLength)
    }
  }
@@ -24,10 +24,10 @@ Index: aws-lc/third_party/boringssl/crypto/cipher_extra/aead_test.cc
  // CHECK_ABI can't pass enums, i.e. |evp_aead_seal| and |evp_aead_open|. Thus
  // these two wrappers.
  static int aead_ctx_init_for_seal(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
-Index: aws-lc/third_party/boringssl/crypto/test/abi_test.cc
+Index: aws-lc/crypto/test/abi_test.cc
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/test/abi_test.cc
-+++ aws-lc/third_party/boringssl/crypto/test/abi_test.cc
+--- aws-lc.orig/crypto/test/abi_test.cc
++++ aws-lc/crypto/test/abi_test.cc
 @@ -208,7 +208,8 @@ template <typename... Args>
      WriteFile(stderr_handle, buf, strlen(buf), &unused, nullptr);
    }
