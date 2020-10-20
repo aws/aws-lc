@@ -59,6 +59,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/curve25519.h>
 #include <openssl/dsa.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -440,4 +441,280 @@ int EVP_PKEY_base_id(const EVP_PKEY *pkey) {
   // the same algorithm: NID_rsa vs NID_rsaEncryption and five distinct spelling
   // of DSA. We do not support these, so the base ID is simply the ID.
   return EVP_PKEY_id(pkey);
+}
+
+static int evp_pkey_tls_encodedpoint_ec_curve_supported(const EC_KEY *ec_key) {
+
+  int ret = 0;
+  int curve_nid = 0;
+  const EC_GROUP *ec_key_group = NULL;
+
+  if (NULL == ec_key) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    goto err;
+  }
+
+  ec_key_group = EC_KEY_get0_group(ec_key);
+  if (NULL == ec_key_group) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    goto err;
+  }
+
+  curve_nid = EC_GROUP_get_curve_name(ec_key_group);
+  if ((NID_secp224r1 != curve_nid) &&
+      (NID_X9_62_prime256v1 != curve_nid) &&
+      (NID_secp384r1 != curve_nid) &&
+      (NID_secp521r1 != curve_nid)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  return ret;
+}
+
+static int evp_pkey_set1_tls_encodedpoint_ec_key(EVP_PKEY *pkey,
+                                                  const uint8_t *in,
+                                                  size_t len) {
+  int ret = 0;
+  EC_KEY *ec_key = NULL;
+  const EC_GROUP *ec_key_group = NULL;
+  EC_POINT *ec_point = NULL;
+
+  if ((NULL == pkey) || (NULL == in)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    goto err;
+  }
+
+  if (1 > len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+    goto err;
+  }
+
+  if (EVP_PKEY_EC != pkey->type) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+    goto err;
+  }
+
+  // This function is TLS-specific. Only support TLS EC point representation,
+  // which must be uncompressed
+  // (https://tools.ietf.org/html/rfc8422#section-5.4.1)
+  // TLS wire-encoding format for supported NIST curves are:
+  // compression || x-coordinate || y-coordinate
+  // where:
+  // compression = 0x04 if uncompressed
+  // compression = 0x02/0x03 if compressed (depending on y-coordinate parity)
+  if (POINT_CONVERSION_UNCOMPRESSED != in[0]) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  ec_key = EVP_PKEY_get0_EC_KEY(pkey);
+  if (NULL == ec_key) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    goto err;
+  }
+
+  if (0 == evp_pkey_tls_encodedpoint_ec_curve_supported(ec_key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  ec_key_group = EC_KEY_get0_group(ec_key);
+  if (NULL == ec_key_group) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    goto err;
+  }
+
+  ec_point = EC_POINT_new(ec_key_group);
+  if (NULL == ec_point) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  if (0 == EC_POINT_oct2point(ec_key_group, ec_point, in, len, NULL)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  if (0 == EC_KEY_set_public_key(ec_key, (const EC_POINT *) ec_point)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  EC_POINT_free(ec_point);
+  return ret;
+}
+
+static int evp_pkey_set1_tls_encodedpoint_x25519(EVP_PKEY *pkey,
+                                                    const uint8_t *in,
+                                                    size_t len) {
+  int ret = 0;
+
+  if ((NULL == pkey) || (NULL == in)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    goto err;
+  }
+
+  if (EVP_PKEY_X25519 != pkey->type) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+    goto err;
+  }
+
+  if ((NULL == pkey->ameth) || (NULL == pkey->ameth->set_pub_raw)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto err;
+  }
+
+  if (0 == pkey->ameth->set_pub_raw(pkey, in, len)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  return ret;
+}
+
+int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
+                                    size_t len) {
+
+  if (NULL == pkey) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    goto err;
+  }
+
+  switch (pkey->type) {
+    case EVP_PKEY_X25519:
+      return evp_pkey_set1_tls_encodedpoint_x25519(pkey, in, len);
+    case EVP_PKEY_EC:
+      return evp_pkey_set1_tls_encodedpoint_ec_key(pkey, in, len);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+      goto err;
+  }
+
+err:
+  return 0;
+}
+
+static size_t evp_pkey_get1_tls_encodedpoint_ec_key(const EVP_PKEY *pkey,
+                                                      uint8_t **out_ptr) {
+
+  size_t ret = 0;
+  const EC_KEY *ec_key = NULL;
+
+  if ((NULL == pkey) || (NULL == out_ptr)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    goto err;
+  }
+
+  if (EVP_PKEY_EC != pkey->type) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+    goto err;
+  }
+
+  ec_key = EVP_PKEY_get0_EC_KEY(pkey);
+  if (NULL == ec_key) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    goto err;
+  }
+
+  if (0 == evp_pkey_tls_encodedpoint_ec_curve_supported(ec_key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  // This function is TLS-specific. Only support TLS EC point representation,
+  // which must be uncompressed
+  // (https://tools.ietf.org/html/rfc8422#section-5.4.1)
+  if (POINT_CONVERSION_UNCOMPRESSED != EC_KEY_get_conv_form(ec_key)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  // Returns the length of |*out_ptr|
+  ret = EC_KEY_key2buf(ec_key, POINT_CONVERSION_UNCOMPRESSED, out_ptr, NULL);
+  if (0 == ret) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+err:
+  return ret;
+}
+
+static size_t evp_pkey_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
+                                                      uint8_t **out_ptr) {
+
+  size_t ret = 0;
+  size_t out_len = 0;
+
+  if ((NULL == pkey) || (NULL == out_ptr)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    goto err;
+  }
+
+  if (EVP_PKEY_X25519 != pkey->type) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+    goto err;
+  }
+
+  if ((NULL == pkey->ameth) || (NULL == pkey->ameth->get_pub_raw)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto err;
+  }
+
+  out_len = X25519_SHARED_KEY_LEN;
+  *out_ptr = OPENSSL_malloc(X25519_SHARED_KEY_LEN);
+  if (NULL == *out_ptr) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  if (0 == pkey->ameth->get_pub_raw(pkey, *out_ptr, &out_len)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  if (X25519_SHARED_KEY_LEN != out_len) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
+    goto err;
+  }
+
+  ret = X25519_SHARED_KEY_LEN;
+
+err:
+  if (0 == ret) {
+    OPENSSL_free(*out_ptr);
+    *out_ptr = NULL;
+  }
+  return ret;
+}
+
+size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
+
+  if (NULL == pkey) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    goto err;
+  }
+
+  switch (pkey->type) {
+    case EVP_PKEY_X25519:
+      return evp_pkey_get1_tls_encodedpoint_x25519(pkey, out_ptr);
+    case EVP_PKEY_EC:
+      return evp_pkey_get1_tls_encodedpoint_ec_key(pkey, out_ptr);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+      goto err;
+    }
+
+err:
+  return 0;
 }

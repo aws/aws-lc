@@ -216,33 +216,3 @@ const EVP_PKEY_ASN1_METHOD x25519_asn1_meth = {
     NULL /* param_cmp */,
     x25519_free,
 };
-
-int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
-                                   size_t len) {
-  // TODO(davidben): In OpenSSL, this function also works for |EVP_PKEY_EC|
-  // keys. Add support if it ever comes up.
-  if (pkey->type != EVP_PKEY_X25519) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-    return 0;
-  }
-
-  return x25519_set_pub_raw(pkey, in, len);
-}
-
-size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
-  // TODO(davidben): In OpenSSL, this function also works for |EVP_PKEY_EC|
-  // keys. Add support if it ever comes up.
-  if (pkey->type != EVP_PKEY_X25519) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-    return 0;
-  }
-
-  const X25519_KEY *key = pkey->pkey.ptr;
-  if (key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
-    return 0;
-  }
-
-  *out_ptr = OPENSSL_memdup(key->pub, 32);
-  return *out_ptr == NULL ? 0 : 32;
-}
