@@ -24,7 +24,7 @@ Index: aws-lc/util/all_tests.go
  	flag.Parse()
  	setWorkingDirectory()
  
-+    inDocker := fileExists("/.dockerenv")
++	inDocker := fileExists("/.dockerenv")
 +
  	testCases, err := testconfig.ParseTestConfig("util/all_tests.json")
  	if err != nil {
@@ -35,9 +35,9 @@ Index: aws-lc/util/all_tests.go
  				}
 -			} else {
 +			} else if inDocker && strings.Contains(baseTest.Cmd[0], "urandom_test") {
-+                fmt.Printf("Running in Docker, skipping: %v\n", baseTest)
-+                continue
-+            } else {
++				fmt.Printf("Running in Docker, skipping: %v\n", baseTest)
++				continue
++			} else {
  				shards, err := test.getGTestShards()
  				if err != nil {
  					fmt.Printf("Error listing tests: %s\n", err)
