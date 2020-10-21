@@ -2400,7 +2400,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +    add     $M0.4s, $M0.4s, $ONE.4s         ////    paddd   $ONE, $M0
 +
 +    // prefetch data for load into L1 cache in a streaming fashion
-+    // (streaming prefetch for datat that is used only once)
++    // (streaming prefetch for data that is used only once)
 +    prfm    pldl1strm, [$in_t]              ////    prefetcht0	255($in_t)
 +
 +    // [$T0a-$T0d] := [$T0a-$T0d] AND $TMP0
@@ -2445,7 +2445,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
-@@ -33,10 +33,9 @@
+@@ -33,15 +33,14 @@
  #include "../../test/test_util.h"
  #include "p256-x86_64.h"
  
@@ -2457,6 +2457,21 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
      !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
  
  TEST(P256_X86_64Test, SelectW5) {
+   // Fill a table with some garbage input.
+-  alignas(64) P256_POINT table[16];
++  __attribute__((aligned(64))) P256_POINT table[16];
+   for (size_t i = 0; i < 16; i++) {
+     OPENSSL_memset(table[i].X, 3 * i, sizeof(table[i].X));
+     OPENSSL_memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
+@@ -71,7 +70,7 @@ TEST(P256_X86_64Test, SelectW5) {
+ 
+ TEST(P256_X86_64Test, SelectW7) {
+   // Fill a table with some garbage input.
+-  alignas(64) P256_POINT_AFFINE table[64];
++  __attribute__((aligned(64))) P256_POINT_AFFINE table[64];
+   for (size_t i = 0; i < 64; i++) {
+     OPENSSL_memset(table[i].X, 2 * i, sizeof(table[i].X));
+     OPENSSL_memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
 @@ -99,11 +98,12 @@ TEST(P256_X86_64Test, SelectW7) {
  }
  
