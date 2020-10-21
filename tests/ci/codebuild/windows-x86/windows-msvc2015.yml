@@ -6,9 +6,5 @@ version: 0.2
 phases:
   build:
     commands:
-      # Installing cyg-get and quilt during Docker image build can result in https://github.com/microsoft/hcsshim/issues/835.
-      - Set-ExecutionPolicy Bypass -Scope Process -Force; [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; $env:chocolateyUseWindowsCompression = 'true'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) | Out-Null
-      - choco install cyg-get -y
-      - cyg-get install quilt
       # vcvarsall will set the required lib and libpath for MSVC to compile everything
       # - .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"

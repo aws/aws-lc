@@ -17,7 +17,6 @@ RUN set -ex && \
     llvm-dev \
     lld \
     git \
-    quilt \
     ca-certificates && \
     mkdir -p ${DEPENDENCIES_DIR} && \
     cd ${DEPENDENCIES_DIR} && \

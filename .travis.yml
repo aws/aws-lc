@@ -5,13 +5,12 @@ git:
   depth: 1
 language: c
 
-# Install additional dependencies first. brew update is required to find quilt on xcode10.3
+# Install additional dependencies first. Enable brew update when you need to find other softwares (like quilt) on xcode10.3
 addons:
   homebrew:
-    update: true
+    update: false
     packages:
       - ninja
-      - quilt
 
 # Build matrix: test OSX with two versions of xcode/clang
 os: osx
@@ -23,7 +22,6 @@ compiler: clang
 # Run the script which contains all the build logic
 script:
   - cmake --version
-  - quilt --version
   - tests/ci/run_posix_tests.sh
 
 # Setting environment variables.

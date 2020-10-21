@@ -17,7 +17,6 @@ RUN set -ex && \
     perl \
     golang \
     git \
-    quilt \
     ca-certificates && \
     apt-get autoremove --purge -y && \
     apt-get clean && \

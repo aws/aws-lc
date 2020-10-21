@@ -19,7 +19,6 @@ RUN set -ex && \
     cmake \
     ninja-build \
     perl \
-    quilt \
     golang && \
     yum clean packages && \
     yum clean metadata && \
