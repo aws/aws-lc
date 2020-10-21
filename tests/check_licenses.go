@@ -30,7 +30,11 @@ func main() {
         ".github",
         ".peg", // exlude all .peg.go files
         "build",
-        "third_party",
+		"third_party",
+		"crypto", // boringssl source code files
+		"ssl",
+		"util",
+		"sources.cmake",
 	}
 
 	// Collect all non-excluded source files into |files|
