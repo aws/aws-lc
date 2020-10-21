@@ -4,8 +4,7 @@
 
 # This test is aimed to run with GCC 6 and above on x86-64 architectures.
 
-ROOT_DIR="./third_party/boringssl/"
-INCLUDE_DIR="$ROOT_DIR/include"
+INCLUDE_DIR="./include"
 
 INCLUDE_FILES=`ls $INCLUDE_DIR/openssl/*.h | grep -v $INCLUDE_DIR/openssl/arm_arch.h`
 
