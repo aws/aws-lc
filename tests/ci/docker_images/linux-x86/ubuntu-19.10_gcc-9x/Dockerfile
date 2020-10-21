@@ -14,7 +14,6 @@ RUN set -ex && \
     cmake \
     ninja-build \
     perl \
-    quilt \
     libunwind-dev \
     pkg-config \
     ca-certificates \
