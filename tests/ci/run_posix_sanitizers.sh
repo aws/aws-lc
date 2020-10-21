@@ -16,7 +16,7 @@ if [ $(dpkg --print-architecture) == "arm64" ]; then
   # TODO: Open a GitHub issue on https://github.com/google/sanitizers/issues, and then link the issue here.
   echo "Building AWS-LC in ${build_type} mode with address sanitizer, and running only non ssl test."
   run_build -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
-  cd third_party/boringssl && go run util/all_tests.go && cd ../../
+  go run util/all_tests.go
 else
   echo "Testing AWS-LC in ${build_type} mode with address sanitizer."
   build_and_test -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
