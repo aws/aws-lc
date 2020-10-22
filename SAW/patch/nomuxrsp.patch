@@ -1,0 +1,50 @@
+diff --git a/crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl b/crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl
+index 48a556087..4446430dd 100644
+--- a/crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl
++++ b/crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl
+@@ -478,14 +478,14 @@ $code.=<<___;
+ 	mov		0xf0-0x80($key),$rounds
+ 	vpshufb		$Ii,$Xi,$Xi
+ 
+-	and		$end0,$in0
+-	and		%rsp,$end0
+-	sub		$in0,$end0
+-	jc		.Ldec_no_key_aliasing
+-	cmp		\$768,$end0
+-	jnc		.Ldec_no_key_aliasing
+-	sub		$end0,%rsp		# avoid aliasing with key
+-.Ldec_no_key_aliasing:
++#	and		$end0,$in0
++#	and		%rsp,$end0
++#	sub		$in0,$end0
++#	jc		.Ldec_no_key_aliasing
++#	cmp		\$768,$end0
++#	jnc		.Ldec_no_key_aliasing
++#	sub		$end0,%rsp		# avoid aliasing with key
++#.Ldec_no_key_aliasing:
+ 
+ 	vmovdqu		0x50($inp),$Z3		# I[5]
+ 	lea		($inp),$in0
+@@ -719,14 +719,14 @@ $code.=<<___;
+ 	and		\$-128,%rsp		# ensure stack alignment
+ 	mov		0xf0-0x80($key),$rounds
+ 
+-	and		$end0,$in0
+-	and		%rsp,$end0
+-	sub		$in0,$end0
+-	jc		.Lenc_no_key_aliasing
+-	cmp		\$768,$end0
+-	jnc		.Lenc_no_key_aliasing
+-	sub		$end0,%rsp		# avoid aliasing with key
+-.Lenc_no_key_aliasing:
++#	and		$end0,$in0
++#	and		%rsp,$end0
++#	sub		$in0,$end0
++#	jc		.Lenc_no_key_aliasing
++#	cmp		\$768,$end0
++#	jnc		.Lenc_no_key_aliasing
++#	sub		$end0,%rsp		# avoid aliasing with key
++#.Lenc_no_key_aliasing:
+ 
+ 	lea		($out),$in0
+ 

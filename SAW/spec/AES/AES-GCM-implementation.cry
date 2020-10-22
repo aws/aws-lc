@@ -1,0 +1,107 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module AES_GCM_Implementation where
+
+import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Authenticated::AES_256_GCM
+import AES_GCM
+
+
+/*
+ * GCM polyval mul/red implementations
+ */
+gcm_polyval_mul_pmult3 : {n} (fin n) => [2 * (1 + n)] -> [2 * (1 + n)] -> [4 * (1 + n)]
+gcm_polyval_mul_pmult3 X Y = r3 # (r2 ^ r1 ^ r3 ^ m1) # (r1 ^ r0 ^ r2 ^ m0) # r0
+  where
+    [X_hi, X_lo] = split X
+    [Y_hi, Y_lo] = split Y
+    [r1, r0] = split ((0 : [1]) # (pmult X_lo Y_lo))
+    [r3, r2] = split ((0 : [1]) # (pmult X_hi Y_hi))
+    [m1, m0] = split ((0 : [1]) # (pmult (X_lo ^ X_hi) (Y_hi ^ Y_lo)))
+
+gcm_polyval_mul_pmult4 : {n} (fin n) => [2 * (1 + n)] -> [2 * (1 + n)] -> [4 * (1 + n)]
+gcm_polyval_mul_pmult4 X Y = (hi ^ (0 : [1 + n]) # (hi_bits (m0 ^ m1))) # (lo ^ ((lo_bits (m0 ^ m1)) # (0 : [1 + n])))
+  where
+    [X_hi, X_lo] = split X
+    [Y_hi, Y_lo] = split Y
+    lo = (0 : [1]) # (pmult X_lo Y_lo)
+    hi = (0 : [1]) # (pmult X_hi Y_hi)
+    m0 = (0 : [1]) # (pmult X_lo Y_hi)
+    m1 = (0 : [1]) # (pmult X_hi Y_lo)
+
+gcm_polyval_red_pmult : [256] -> [128]
+gcm_polyval_red_pmult X = (d1 ^ x3) # (d0 ^ x2)
+  where
+    [x3, x2, x1, x0] = split X
+    [a1, a0] = split ((0 : [1]) # (pmult <| x^^63 + x^^62 + x^^57 |> x0))
+    b1 = x0 ^ a1
+    b0 = x1 ^ a0
+    [c1, c0] = split ((0 : [1]) # (pmult <| x^^63 + x^^62 + x^^57 |> b0))
+    d1 = b0 ^ c1
+    d0 = b1 ^ c0
+
+gcm_polyval_avx : [128] -> [128] -> [128]
+gcm_polyval_avx H X = x30
+  where
+    [H_hi, H_lo] = split H
+    [X_hi, X_lo] = split X
+    x17 = (0 : [1]) # (pmult H_lo X_lo)
+    x18 = ((0 : [1]) # (pmult H_hi X_hi)) ^ x17
+    x19 = x18 ^ ((0 : [1]) # (pmult (H_lo ^ H_hi) (X_lo ^ X_hi)))
+    x20 = (lo_bits x19) # (0 : [64])
+    x21 = x17 ^ x20
+    x22 = hi_bits x21
+    x23 = lo_bits x21
+    x25 = (take`{8} ((x23 << 57) ^ (x23 << 62) ^ (x23 << 63))) # (0 : [120])
+    x26 = x21 ^ x25
+    x27 = (hi_bits x26) >> 1
+    x28 = (lo_bits x26) >> 1
+    x29 = (x26 ^ (x27 # x28)) ^ ((x27 >> 5) # (x28 >> 5))
+    x30 = ((((x18 ^ x20) ^ ((0 : [64]) # (hi_bits x19))) ^ x25) ^ ((0 : [64]) # (take`{8} ((x22 << 57) ^ (x22 << 62) ^ (x22 << 63))) # (0 : [56]))) ^ (((hi_bits x29) >> 1) # ((lo_bits x29) >> 1))
+
+
+/*
+ * aesni_gcm_cipher Cryptol implementation
+ */
+aesni_gcm_cipher : {n} (fin n) => [32] -> AES_GCM_Ctx -> [(3 + n) * 6 * 16][8] -> [16][8]
+aesni_gcm_cipher enc ctx in = ctx''.Xi
+  where
+    enc_blks = if enc ! 0
+      then split (aesni_gcm_ctr32_encrypt_block ctx in)
+      else split (map join (split in))
+    ctx' = aesni_gcm_cipher_block6 enc False ctx (enc_blks @ 0)
+    ctx'' = foldl (aesni_gcm_cipher_block6 enc (enc ! 0)) ctx' (enc_blks @@ [1 .. (2 + n)])
+
+aesni_gcm_ctr32_encrypt_block : {n} (fin n) => AES_GCM_Ctx -> [n * 16][8] -> [n][16 * 8]
+aesni_gcm_ctr32_encrypt_block ctx in = out
+  where
+    ctr = drop ((ctx.len / 16) + 1)
+    in' = split in
+    out = [ swap8 ((join (reverse blk)) ^ (join (reverse (EKi ctx (ctr + i))))) | blk <- in' | i <- [0 ...] ]
+
+aesni_gcm_cipher_block6 : [32] -> Bit -> AES_GCM_Ctx -> [6][128] -> AES_GCM_Ctx
+aesni_gcm_cipher_block6 enc karatsuba ctx blks = ctx'
+  where
+    gcm_polyval_mul_fun = if karatsuba
+      then gcm_polyval_mul_pmult3
+      else gcm_polyval_mul_pmult4
+    Htable = get_Htable ctx
+    Xi = join ctx.Xi
+    Xi_0 = gcm_polyval_mul_fun (Htable @ 0) (blks @ 5)
+    Xi_1 = gcm_polyval_mul_fun (Htable @ 1) (blks @ 4)
+    Xi_2 = gcm_polyval_mul_fun (Htable @ 3) (blks @ 3)
+    Xi_3 = gcm_polyval_mul_fun (Htable @ 4) (blks @ 2)
+    Xi_4 = gcm_polyval_mul_fun (Htable @ 6) (blks @ 1)
+    Xi_5 = gcm_polyval_mul_fun (Htable @ 7) (Xi ^ (blks @ 0))
+    Xi_6 = gcm_polyval_red_pmult (Xi_0 ^ Xi_1 ^ Xi_2 ^ Xi_3 ^ Xi_4 ^ Xi_5)
+    Xi' = split Xi_6
+    ctx' =
+      { key = ctx.key
+      , iv = ctx.iv
+      , Xi = Xi'
+      , len = ctx.len + 6 * 16
+      }
+

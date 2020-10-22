@@ -1,0 +1,93 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module AES_GCM where
+
+import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Authenticated::AES_256_GCM
+import X86
+
+
+/*
+ * Helpers.
+ */
+swap8 : {parts, a} (fin parts) => [parts * 8]a -> [parts * 8]a
+swap8 x = join`{each=8} (reverse (split`{each=8} x))
+
+hi_bits : {n} (fin n) => [2 * n] -> [n]
+hi_bits = take
+
+lo_bits : {n} (fin n) => [2 * n] -> [n]
+lo_bits = drop
+
+
+/*
+ * AES specifications.
+ */
+aes_key_to_schedule : [Nr + 1][128] -> KeySchedule
+aes_key_to_schedule key = (key' @ 0, key' @@ [1 .. (Nr - 1)], key' @ `Nr)
+  where
+    key' = map msgToState_x86 key
+
+aes_key_from_schedule : KeySchedule -> [4 * (Nr - 1)][32]
+aes_key_from_schedule (init_key, middle_keys, final_key) = join (map reverse (map split (key' @@ [2 .. Nr])))
+  where
+    key' = map stateToMsg_x86 ([init_key] # middle_keys # [final_key])
+
+aes_hw_ctr32_encrypt_blocks : [16][8] -> [32][8] -> [16][8] -> [16][8]
+aes_hw_ctr32_encrypt_blocks in key ivec = in ^ enc_ivec
+  where
+    enc_ivec = aes_hw_encrypt ivec key
+
+
+/*
+ * GCM specifications.
+ */
+gcm_init : [2][64] -> [12][128]
+gcm_init Xi = gcm_init_Htable (gcm_init_H (join Xi))
+
+gcm_init_Htable : [128] -> [12][128]
+gcm_init_Htable h0 = [h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11]
+  where
+    h1 = gcm_polyval h0 h0
+    h2 = ((hi_bits h1) ^ (lo_bits h1)) # ((hi_bits h0) ^ (lo_bits h0))
+    h3 = gcm_polyval h0 h1
+    h4 = gcm_polyval h0 h3
+    h5 = ((hi_bits h4) ^ (lo_bits h4)) # ((hi_bits h3) ^ (lo_bits h3))
+    h6 = gcm_polyval h0 h4
+    h7 = gcm_polyval h0 h6
+    h8 = ((hi_bits h7) ^ (lo_bits h7)) # ((hi_bits h6) ^ (lo_bits h6))
+    h9 = gcm_polyval h0 h7
+    h10 = gcm_polyval h0 h9
+    h11 = ((hi_bits h9) ^ (lo_bits h9)) # ((hi_bits h10) ^ (lo_bits h10))
+
+gcm_gmult : [128] -> [16][8] -> [16][8]
+gcm_gmult H Xi = split (gcm_polyval H (join Xi))
+
+gcm_ghash : {n} (fin n) => [128] -> [16][8] -> [n * 16][8] -> [16][8]
+gcm_ghash H Xi inp = foldl (gcm_ghash_block H) Xi (split inp)
+
+gcm_ghash_block : [128] -> [16][8] -> [16][8] -> [16][8]
+gcm_ghash_block H Xi inp = split (gcm_polyval H ((join Xi) ^ (join inp)))
+
+
+/*
+ * AES_GCM context specification helpers.
+ */
+get_Htable : AES_GCM_Ctx -> [12][128]
+get_Htable ctx = gcm_init (get_H ctx)
+
+get_i : AES_GCM_Ctx -> [32]
+get_i ctx = drop ((ctx.len + 15) / 16)
+
+get_Yi : AES_GCM_Ctx -> [16][8]
+get_Yi ctx = ctx.iv # (split ((get_i ctx) + 2))
+
+get_EKi : AES_GCM_Ctx -> [16][8]
+get_EKi ctx = EKi ctx (get_i ctx)
+
+get_EK0 : AES_GCM_Ctx -> [16][8]
+get_EK0 ctx = EKi ctx 0
+

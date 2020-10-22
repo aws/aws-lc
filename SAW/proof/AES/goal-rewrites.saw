@@ -1,0 +1,377 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * Rewrite rules proofs and goal tactics. This does not
+ * contain any specifications or assumtions, thus it does
+ * not require inspection in order to trust the
+ * verification result.
+ */
+
+import "../../spec/AES/AES-GCM-implementation.cry";
+
+
+let slice_0_64_64 = parse_core "\\(x : bitvector 128) -> slice Bool 0 64 64 x";
+let slice_64_64_0 = parse_core "\\(x : bitvector 128) -> slice Bool 64 64 0 x";
+let slice_0_128_128 = parse_core "\\(x : bitvector 256) -> slice Bool 0 128 128 x";
+let slice_128_128_0 = parse_core "\\(x : bitvector 256) -> slice Bool 128 128 0 x";
+let slice_0_64_192 = parse_core "\\(x : bitvector 256) -> slice Bool 0 64 192 x";
+let slice_64_64_128 = parse_core "\\(x : bitvector 256) -> slice Bool 64 64 128 x";
+let slice_128_64_64 = parse_core "\\(x : bitvector 256) -> slice Bool 128 64 64 x";
+let slice_192_64_0 = parse_core "\\(x : bitvector 256) -> slice Bool 192 64 0 x";
+let slice_0_32_96 = parse_core "\\(x : bitvector 128) -> slice Bool 0 32 96 x";
+let slice_32_32_64 = parse_core "\\(x : bitvector 128) -> slice Bool 32 32 64 x";
+let slice_64_32_32 = parse_core "\\(x : bitvector 128) -> slice Bool 64 32 32 x";
+let slice_96_32_0 = parse_core "\\(x : bitvector 128) -> slice Bool 96 32 0 x";
+let slice_0_8_120 = parse_core "\\(x : bitvector 128) -> slice Bool 0 8 120 x";
+let slice_8_8_112 = parse_core "\\(x : bitvector 128) -> slice Bool 8 8 112 x";
+let slice_16_8_104 = parse_core "\\(x : bitvector 128) -> slice Bool 16 8 104 x";
+let slice_24_8_96 = parse_core "\\(x : bitvector 128) -> slice Bool 24 8 96 x";
+let slice_32_8_88 = parse_core "\\(x : bitvector 128) -> slice Bool 32 8 88 x";
+let slice_40_8_80 = parse_core "\\(x : bitvector 128) -> slice Bool 40 8 80 x";
+let slice_48_8_72 = parse_core "\\(x : bitvector 128) -> slice Bool 48 8 72 x";
+let slice_56_8_64 = parse_core "\\(x : bitvector 128) -> slice Bool 56 8 64  x";
+let slice_64_8_56 = parse_core "\\(x : bitvector 128) -> slice Bool 64 8 56 x";
+let slice_72_8_48 = parse_core "\\(x : bitvector 128) -> slice Bool 72 8 48 x";
+let slice_80_8_40 = parse_core "\\(x : bitvector 128) -> slice Bool 80 8 40 x";
+let slice_88_8_32 = parse_core "\\(x : bitvector 128) -> slice Bool 88 8 32 x";
+let slice_96_8_24 = parse_core "\\(x : bitvector 128) -> slice Bool 96 8 24 x";
+let slice_104_8_16 = parse_core "\\(x : bitvector 128) -> slice Bool 104 8 16 x";
+let slice_112_8_8 = parse_core "\\(x : bitvector 128) -> slice Bool 112 8 8 x";
+let slice_120_8_0 = parse_core "\\(x : bitvector 128) -> slice Bool 120 8 0 x";
+let slice_0_8_56 = parse_core "\\(x : bitvector 64) -> slice Bool 0 8 56 x";
+let slice_8_8_48 = parse_core "\\(x : bitvector 64) -> slice Bool 8 8 48 x";
+let slice_16_8_40 = parse_core "\\(x : bitvector 64) -> slice Bool 16 8 40 x";
+let slice_24_8_32 = parse_core "\\(x : bitvector 64) -> slice Bool 24 8 32 x";
+let slice_32_8_24 = parse_core "\\(x : bitvector 64) -> slice Bool 32 8 24 x";
+let slice_40_8_16 = parse_core "\\(x : bitvector 64) -> slice Bool 40 8 16 x";
+let slice_48_8_8 = parse_core "\\(x : bitvector 64) -> slice Bool 48 8 8 x";
+let slice_56_8_0 = parse_core "\\(x : bitvector 64) -> slice Bool 56 8 0 x";
+let slice_384_128_0 = parse_core "\\(x : bitvector 512) -> slice Bool 384 128 0 x";
+let slice_384_32_96 = parse_core "\\(x : bitvector 512) -> slice Bool 384 32 96 x";
+let slice_416_32_64 = parse_core "\\(x : bitvector 512) -> slice Bool 416 32 64 x";
+let slice_448_32_32 = parse_core "\\(x : bitvector 512) -> slice Bool 448 32 32 x";
+let slice_480_32_0 = parse_core "\\(x : bitvector 512) -> slice Bool 480 32 0 x";
+
+let bvUExt_384_128 = parse_core "\\(x : bitvector 128) -> bvUExt 384 128 x";
+
+
+slice_384_0_thm <- prove_folding_theorem {{ \x y -> slice_384_128_0 (x && y) == (slice_384_128_0 x) && (slice_384_128_0 y) }};
+slice_384_1_thm <- prove_folding_theorem {{ \x y -> slice_384_128_0 (x || y) == (slice_384_128_0 x) || (slice_384_128_0 y) }};
+slice_384_2_thm <- prove_folding_theorem {{ \x y -> slice_384_128_0 (x ^  y) == (slice_384_128_0 x) ^  (slice_384_128_0 y) }};
+slice_384_3_thm <- prove_folding_theorem {{ \x -> slice_384_128_0 (bvUExt_384_128 x) == x }};
+slice_384_4_thm <- prove_folding_theorem {{ \x -> slice_384_32_96 x == slice_0_32_96 (slice_384_128_0 x) }};
+slice_384_5_thm <- prove_folding_theorem {{ \x -> slice_416_32_64 x == slice_32_32_64 (slice_384_128_0 x) }};
+slice_384_6_thm <- prove_folding_theorem {{ \x -> slice_448_32_32 x == slice_64_32_32 (slice_384_128_0 x) }};
+slice_384_7_thm <- prove_folding_theorem {{ \x -> slice_480_32_0 x == slice_96_32_0 (slice_384_128_0 x) }};
+let slice_384_thms =
+  [ slice_384_0_thm
+  , slice_384_1_thm
+  , slice_384_2_thm
+  , slice_384_3_thm
+  , slice_384_4_thm
+  , slice_384_5_thm
+  , slice_384_6_thm
+  , slice_384_7_thm
+  ];
+
+bar0 <- prove_folding_theorem {{ \(x : [128]) -> \y -> (x ^ y) ^ y == x }};
+bar1 <- prove_folding_theorem {{ \(x : [128]) -> \y -> (y ^ x) ^ y == x }};
+bar2 <- prove_folding_theorem {{ \(x : [128]) -> \y -> y ^ (x ^ y) == x }};
+bar3 <- prove_folding_theorem {{ \(x : [128]) -> \y -> y ^ (y ^ x) == x }};
+
+
+slice_xor_0_thm <- prove_folding_theorem {{ \x y -> slice_64_64_0 (x ^ y) == (slice_64_64_0 x) ^ (slice_64_64_0 y) }};
+slice_xor_1_thm <- prove_folding_theorem {{ \x y -> slice_0_64_64 (x ^ y) == (slice_0_64_64 x) ^ (slice_0_64_64 y) }};
+slice_xor_2_thm <- prove_folding_theorem {{ \x y -> slice_128_128_0 (x ^ y) == (slice_128_128_0 x) ^ (slice_128_128_0 y) }};
+slice_xor_3_thm <- prove_folding_theorem {{ \x y -> slice_0_128_128 (x ^ y) == (slice_0_128_128 x) ^ (slice_0_128_128 y) }};
+slice_xor_4_thm <- prove_folding_theorem {{ \x y -> slice_0_64_192 (x ^ y) == (slice_0_64_192 x) ^ (slice_0_64_192 y) }};
+slice_xor_5_thm <- prove_folding_theorem {{ \x y -> slice_64_64_128 (x ^ y) == (slice_64_64_128 x) ^ (slice_64_64_128 y) }};
+slice_xor_6_thm <- prove_folding_theorem {{ \x y -> slice_128_64_64 (x ^ y) == (slice_128_64_64 x) ^ (slice_128_64_64 y) }};
+slice_xor_7_thm <- prove_folding_theorem {{ \x y -> slice_192_64_0 (x ^ y) == (slice_192_64_0 x) ^ (slice_192_64_0 y) }};
+
+slice_append_0_thm <- prove_folding_theorem {{ \x y -> slice_64_64_0 (x # y) == y }};
+slice_append_1_thm <- prove_folding_theorem {{ \x y -> slice_0_64_64 (x # y) == x }};
+slice_append_2_thm <- prove_folding_theorem {{ \x y -> slice_128_128_0 (x # y) == y }};
+slice_append_3_thm <- prove_folding_theorem {{ \x y -> slice_0_128_128 (x # y) == x }};
+slice_append_4_thm <- prove_folding_theorem {{ \x y -> slice_0_64_192 (x # y) == slice_0_64_64 x }};
+slice_append_5_thm <- prove_folding_theorem {{ \x y -> slice_64_64_128 (x # y) == slice_64_64_0 x }};
+slice_append_6_thm <- prove_folding_theorem {{ \x y -> slice_128_64_64 (x # y) == slice_0_64_64 y }};
+slice_append_7_thm <- prove_folding_theorem {{ \x y -> slice_192_64_0 (x # y) == slice_64_64_0 y }};
+slice_append_8_thm <- prove_folding_theorem
+  {{ \x (y0 : [8]) (y1 : [8]) (y2 : [8]) (y3 : [8]) (y4 : [8]) (y5 : [8]) (y6 : [8]) (y7 : [8]) -> slice_0_64_64 ((((((((x # y0) # y1) # y2) # y3) # y4) # y5) # y6) # y7) == x }};
+slice_append_9_thm <- prove_folding_theorem
+  {{ \x (y0 : [8]) (y1 : [8]) (y2 : [8]) (y3 : [8]) (y4 : [8]) (y5 : [8]) (y6 : [8]) (y7 : [8]) -> slice_64_64_0 ((((((((x # y0) # y1) # y2) # y3) # y4) # y5) # y6) # y7) == y0 # y1 # y2 # y3 # y4 # y5 # y6 # y7 }};
+slice_append_10_thm <- prove_folding_theorem
+  {{ \x (y0 : [8]) (y1 : [8]) (y2 : [8]) (y3 : [8]) (y4 : [8]) (y5 : [8]) (y6 : [8]) (y7 : [8]) -> slice_0_64_64 (y0 # (y1 # (y2 # (y3 # (y4 # (y5 # (y6 # (y7 # x)))))))) == y0 # y1 # y2 # y3 # y4 # y5 # y6 # y7 }};
+slice_append_11_thm <- prove_folding_theorem
+  {{ \x (y0 : [8]) (y1 : [8]) (y2 : [8]) (y3 : [8]) (y4 : [8]) (y5 : [8]) (y6 : [8]) (y7 : [8]) -> slice_64_64_0 (y0 # (y1 # (y2 # (y3 # (y4 # (y5 # (y6 # (y7 # x)))))))) == x }};
+
+append_slice_thm <- prove_folding_theorem
+  {{ \x -> (slice_0_8_56 x) # (slice_8_8_48 x) # (slice_16_8_40 x) # (slice_24_8_32 x) # (slice_32_8_24 x) # (slice_40_8_16 x) # (slice_48_8_8 x) # (slice_56_8_0 x) == x }};
+
+slice_ite_0_thm <- prove_folding_theorem {{ \c x y -> slice_64_64_0 (if c then x else y) == if c then (slice_64_64_0 x) else (slice_64_64_0 y) }};
+slice_ite_1_thm <- prove_folding_theorem {{ \c x y -> slice_0_64_64 (if c then x else y) == if c then (slice_0_64_64 x) else (slice_0_64_64 y) }};
+
+let xor_slice_append_thms =
+  [ slice_xor_0_thm
+  , slice_xor_1_thm
+  , slice_xor_2_thm
+  , slice_xor_3_thm
+  , slice_xor_4_thm
+  , slice_xor_5_thm
+  , slice_xor_6_thm
+  , slice_xor_7_thm
+  , slice_append_0_thm
+  , slice_append_1_thm
+  , slice_append_2_thm
+  , slice_append_3_thm
+  , slice_append_4_thm
+  , slice_append_5_thm
+  , slice_append_6_thm
+  , slice_append_7_thm
+  , slice_append_8_thm
+  , slice_append_9_thm
+  , slice_append_10_thm
+  , slice_append_11_thm
+  , append_slice_thm
+  , slice_ite_0_thm
+  , slice_ite_1_thm
+  ];
+
+
+slice_slice_0_thm <- prove_folding_theorem {{ \x -> slice_0_8_120 x == slice_0_8_56 (slice_0_64_64 x) }};
+slice_slice_1_thm <- prove_folding_theorem {{ \x -> slice_8_8_112 x == slice_8_8_48 (slice_0_64_64 x) }};
+slice_slice_2_thm <- prove_folding_theorem {{ \x -> slice_16_8_104 x == slice_16_8_40 (slice_0_64_64 x) }};
+slice_slice_3_thm <- prove_folding_theorem {{ \x -> slice_24_8_96 x == slice_24_8_32 (slice_0_64_64 x) }};
+slice_slice_4_thm <- prove_folding_theorem {{ \x -> slice_32_8_88 x == slice_32_8_24 (slice_0_64_64 x) }};
+slice_slice_5_thm <- prove_folding_theorem {{ \x -> slice_40_8_80 x == slice_40_8_16 (slice_0_64_64 x) }};
+slice_slice_6_thm <- prove_folding_theorem {{ \x -> slice_48_8_72 x == slice_48_8_8 (slice_0_64_64 x) }};
+slice_slice_7_thm <- prove_folding_theorem {{ \x -> slice_56_8_64 x == slice_56_8_0 (slice_0_64_64 x) }};
+slice_slice_8_thm <- prove_folding_theorem {{ \x -> slice_64_8_56 x == slice_0_8_56 (slice_64_64_0 x) }};
+slice_slice_9_thm <- prove_folding_theorem {{ \x -> slice_72_8_48 x == slice_8_8_48 (slice_64_64_0 x) }};
+slice_slice_10_thm <- prove_folding_theorem {{ \x -> slice_80_8_40 x == slice_16_8_40 (slice_64_64_0 x) }};
+slice_slice_11_thm <- prove_folding_theorem {{ \x -> slice_88_8_32 x == slice_24_8_32 (slice_64_64_0 x) }};
+slice_slice_12_thm <- prove_folding_theorem {{ \x -> slice_96_8_24 x == slice_32_8_24 (slice_64_64_0 x) }};
+slice_slice_13_thm <- prove_folding_theorem {{ \x -> slice_104_8_16 x == slice_40_8_16 (slice_64_64_0 x) }};
+slice_slice_14_thm <- prove_folding_theorem {{ \x -> slice_112_8_8 x == slice_48_8_8 (slice_64_64_0 x) }};
+slice_slice_15_thm <- prove_folding_theorem {{ \x -> slice_120_8_0 x == slice_56_8_0 (slice_64_64_0 x) }};
+
+let slice_slice_thms =
+  [ slice_slice_0_thm
+  , slice_slice_1_thm
+  , slice_slice_2_thm
+  , slice_slice_3_thm
+  , slice_slice_4_thm
+  , slice_slice_5_thm
+  , slice_slice_6_thm
+  , slice_slice_7_thm
+  , slice_slice_8_thm
+  , slice_slice_9_thm
+  , slice_slice_10_thm
+  , slice_slice_11_thm
+  , slice_slice_12_thm
+  , slice_slice_13_thm
+  , slice_slice_14_thm
+  , slice_slice_15_thm
+  ];
+
+
+concat_assoc_0_thm <- prove_folding_theorem
+  {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) -> x0 # (x1 # (x2 # (x3 # (x4 # (x5 # (x6 # (x7 # (x8 # (x9 # (x10 # (x11 # (x12 # (x13 # (x14 # x15)))))))))))))) == ((((((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15 }};
+concat_assoc_1_thm <- prove_folding_theorem
+  {{ \(x0 : [32]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) -> ((x0 # (x1 # (x2 # (x3 # x4)))) # (x5 # (x6 # (x7 # x8)))) # (x9 # (x10 # (x11 # x12))) == (((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12 }};
+let concat_assoc_0_thms =
+  [ concat_assoc_0_thm
+  , concat_assoc_1_thm
+  ];
+
+concat_assoc_2_thm <- prove_folding_theorem
+  {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> x0 # (x1 # (x2 # (x3 # (x4 # (x5 # (x6 # x7)))))) == ((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7 }};
+let concat_assoc_1_thms =
+  [ concat_assoc_2_thm
+  ];
+
+concat_assoc_3_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y :  [8]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_4_thm <- prove_folding_theorem
+  {{ \(x : [16]) (y :  [8]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_5_thm <- prove_folding_theorem
+  {{ \(x : [24]) (y :  [8]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_6_thm <- prove_folding_theorem
+  {{ \(x : [32]) (y :  [8]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_7_thm <- prove_folding_theorem
+  {{ \(x : [40]) (y :  [8]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_8_thm <- prove_folding_theorem
+  {{ \(x : [48]) (y :  [8]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_9_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y : [16]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_10_thm <- prove_folding_theorem
+  {{ \(x : [16]) (y : [16]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_11_thm <- prove_folding_theorem
+  {{ \(x : [24]) (y : [16]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_12_thm <- prove_folding_theorem
+  {{ \(x : [32]) (y : [16]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_13_thm <- prove_folding_theorem
+  {{ \(x : [40]) (y : [16]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_14_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y : [24]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_15_thm <- prove_folding_theorem
+  {{ \(x : [16]) (y : [24]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_16_thm <- prove_folding_theorem
+  {{ \(x : [24]) (y : [24]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_17_thm <- prove_folding_theorem
+  {{ \(x : [32]) (y : [24]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_18_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y : [32]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_19_thm <- prove_folding_theorem
+  {{ \(x : [16]) (y : [32]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_20_thm <- prove_folding_theorem
+  {{ \(x : [24]) (y : [32]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_21_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y : [40]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_22_thm <- prove_folding_theorem
+  {{ \(x : [16]) (y : [40]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+concat_assoc_23_thm <- prove_folding_theorem
+  {{ \(x :  [8]) (y : [48]) (z : [8]) -> x # (y # z) == (x # y) # z }};
+let concat_assoc_2_thms =
+  [ concat_assoc_3_thm
+  , concat_assoc_4_thm
+  , concat_assoc_5_thm
+  , concat_assoc_6_thm
+  , concat_assoc_7_thm
+  , concat_assoc_8_thm
+  , concat_assoc_9_thm
+  , concat_assoc_10_thm
+  , concat_assoc_11_thm
+  , concat_assoc_12_thm
+  , concat_assoc_13_thm
+  , concat_assoc_14_thm
+  , concat_assoc_15_thm
+  , concat_assoc_16_thm
+  , concat_assoc_17_thm
+  , concat_assoc_18_thm
+  , concat_assoc_19_thm
+  , concat_assoc_20_thm
+  , concat_assoc_21_thm
+  , concat_assoc_22_thm
+  , concat_assoc_23_thm
+  ];
+
+
+gcm_pmult_pmod_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_pmult_pmod x y == gcm_polyval (gcm_init_H x) y }});
+
+
+polyval_avx_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \H Xi -> gcm_polyval H Xi == gcm_polyval_avx H Xi }});
+ghash_mul_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) y -> gcm_polyval_mul x y == gcm_polyval_mul_pmult3 x y }});
+ghash_red_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x -> gcm_polyval_red x == gcm_polyval_red_pmult x }});
+
+
+gcm_polyval_mul_0_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) (y : [128]) -> gcm_polyval_mul_pmult3 x y == gcm_polyval_mul x y }});
+gcm_polyval_mul_1_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) (y : [128]) -> gcm_polyval_mul_pmult4 x y == gcm_polyval_mul x y }});
+gcm_polyval_red_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x -> gcm_polyval_red_pmult x == gcm_polyval_red x }});
+gcm_polyval_red_xor_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_polyval_red (x ^ y) == (gcm_polyval_red x) ^ (gcm_polyval_red y) }});
+gcm_polyval_mul_red_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_polyval_red (gcm_polyval_mul x y) == gcm_polyval x y }});
+gcm_polyval_assoc_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y z -> gcm_polyval x (gcm_polyval y z) == gcm_polyval (gcm_polyval x y) z }});
+gcm_polyval_xor_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) y z -> gcm_polyval x (y ^ z) == (gcm_polyval x y) ^ (gcm_polyval x z) }});
+append_xor_thm <- prove_folding_theorem
+  {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) y0 y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 y11 y12 y13 y14 y15 -> ((((((((((((((((x0 ^ y0) # (x1 ^ y1)) # (x2 ^ y2)) # (x3 ^ y3)) # (x4 ^ y4)) # (x5 ^ y5)) # (x6 ^ y6)) # (x7 ^ y7)) # (x8 ^ y8)) # (x9 ^ y9)) # (x10 ^ y10)) # (x11 ^ y11)) # (x12 ^ y12)) # (x13 ^ y13)) # (x14 ^ y14)) # (x15 ^ y15)) == (x0 # x1 # x2 # x3 # x4 # x5 # x6 # x7 # x8 # x9 # x10 # x11 # x12 # x13 # x14 # x15) ^ (y0 # y1 # y2 # y3 # y4 # y5 # y6 # y7 # y8 # y9 # y10 # y11 # y12 # y13 # y14 # y15) }};
+append_slice_thm <- prove_folding_theorem
+  {{ \x -> (slice_0_8_120 x) # (slice_8_8_112 x) # (slice_16_8_104 x) # (slice_24_8_96 x) # (slice_32_8_88 x) # (slice_40_8_80 x) # (slice_48_8_72 x) # (slice_56_8_64 x) # (slice_64_8_56 x) # (slice_72_8_48 x) # (slice_80_8_40 x) # (slice_88_8_32 x) # (slice_96_8_24 x) # (slice_104_8_16 x) # (slice_112_8_8 x) # (slice_120_8_0 x) == x }};
+let gcm_polyval_thms =
+  [ gcm_polyval_mul_0_thm
+  , gcm_polyval_mul_1_thm
+  , gcm_polyval_red_thm
+  , gcm_polyval_red_xor_thm
+  , gcm_polyval_mul_red_thm
+  , gcm_polyval_assoc_thm
+  , gcm_polyval_xor_thm
+  , append_xor_thm
+  , append_slice_thm
+  ];
+
+let prove_ctr32_encrypt_thm gcm_len len = prove_print
+  (do {
+    w4_unint_yices ["aes_hw_encrypt"];
+  })
+  (rewrite (cryptol_ss ()) {{ \key iv Xi (in : [len][8]) -> ctr32_encrypt ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in == join (map split (aesni_gcm_ctr32_encrypt_block ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in)) }});
+
+ctr32_encrypt_thm <- prove_ctr32_encrypt_thm aesni_gcm_cipher_gcm_len evp_cipher_update_bulk;
+
+let prove_cipher_update_avx_thm enc gcm_len len = prove_print
+  (do {
+    unfolding ["cipher_update", "cipher_update_byte"];
+    simplify (cryptol_ss ());
+    simplify (addsimp ctr32_encrypt_thm empty_ss);
+    simplify (addsimp gcm_pmult_pmod_thm empty_ss);
+    goal_eval_unint ["pmult", "pmod", "gcm_polyval", "gcm_polyval_mul", "gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red", "gcm_polyval_red_pmult", "aes_hw_encrypt", "aesni_gcm_ctr32_encrypt_block"];
+    simplify (addsimps gcm_polyval_thms empty_ss);
+    simplify (addsimps [concat_assoc_0_thm] empty_ss);
+    w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aes_hw_encrypt"];
+  })
+  (rewrite (cryptol_ss ()) {{ \key iv Xi (in : [len][8]) -> (cipher_update enc ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in).Xi == aesni_gcm_cipher enc ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in }});
+
+encrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 1 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk;
+decrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 0 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk;
+let cipher_update_avx_thms =
+  [ encrypt_update_avx_thm
+  , decrypt_update_avx_thm
+  ];
+
+aesenc_key0_0_thm <- prove_print
+  (do {
+    w4_unint_yices ["AESRound", "AESFinalRound"];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : [96]) (y : [32]) key0 key1 -> aesenc ((x # y) ^ key0) key1 == aesenc (key0 ^ (x # y)) key1 }});
+aesenc_key0_1_thm <- prove_print
+  (do {
+    w4_unint_yices ["AESRound", "AESFinalRound"];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : [120]) (y : [8]) key0 key1 -> aesenc ((x # y) ^ key0) key1 == aesenc (key0 ^ (x # y)) key1 }});
+aesenclast_thm <- prove_print
+  (do {
+    w4_unint_yices ["ShiftRows", "SubBytes"];
+  })
+  (rewrite (cryptol_ss ()) {{ \x y z -> aesenclast x (y ^ z) == (aesenclast x y) ^ z }});
+aesenc_aesenclast_thm <- prove_print
+  (do {
+    w4_unint_yices ["AESRound", "AESFinalRound"];
+  })
+  (rewrite (cryptol_ss ()) {{ \in key0 key1 key2 key3 key4 key5 key6 key7 key8 key9 key10 key11 key12 key13 key14 -> aesenclast (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (key0 ^ in) key1) key2) key3) key4) key5) key6) key7) key8) key9) key10) key11) key12) key13) key14 == swap8 (aesEncryptWithKeySchedule (swap8 in) (aes_key_to_schedule [key0, key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12, key13, key14])) }});
+
+// replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract
+// domain to work. This simplifies goals related to the 64-byte alignment of
+// the stack.
+let bvult = parse_core "\\(x y : bitvector 64) -> bvult 64 x y";
+cmp_sub_thm <- prove_folding_theorem
+  {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};
+
+
+/*
+ * Goal tactics.
+ */
+let aesni_gcm_cipher_tactic = do {
+  simplify (addsimps [aesenc_key0_0_thm, aesenc_key0_1_thm, aesenclast_thm] empty_ss);
+  simplify (addsimps [aesenc_aesenclast_thm] empty_ss);
+  simplify (cryptol_ss ());
+  simplify (addsimps cipher_update_avx_thms empty_ss);
+  simplify (addsimp ctr32_encrypt_thm empty_ss);
+  goal_eval_unint ["pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule"];
+  simplify (addsimps xor_slice_append_thms basic_ss);
+  simplify (addsimps slice_slice_thms empty_ss);
+  simplify (addsimps xor_slice_append_thms basic_ss);
+  simplify (addsimps concat_assoc_0_thms empty_ss);
+  simplify (addsimps concat_assoc_1_thms empty_ss);
+  simplify (addsimps concat_assoc_2_thms empty_ss);
+  simplify (addsimps [cmp_sub_thm] empty_ss);
+  w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule"];
+};
+
+let evp_cipher_tactic = do {
+  unfolding ["cipher_update", "cipher_update_byte", "cipher_final"];
+  simplify (addsimp gcm_pmult_pmod_thm empty_ss);
+  w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aes_hw_encrypt"];
+};
+

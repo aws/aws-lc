@@ -10,6 +10,7 @@ AWS libcrypto includes many cryptographic algorithm implementations for several 
 | ----------| -------------| --------------- | -----------| ------------ | --------- |
 | SHA-2     | 384, 512     | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal, EVP_Digest     | SandyBridge+ | InputLength, NoEngine, MemCorrect | [SAW](SAW/README.md) |
 | HMAC      | with <nobr>SHA-384</nobr> | HMAC_CTX_init, HMAC_Init_ex, HMAC_Update, HMAC_Final, HMAC | SandyBridge+ | InputLength, NoEngine, MemCorrect, InitZero | [SAW](SAW/README.md) |
+| AES-GCM   | 256 | EVP_CipherInit_ex, EVP_EncryptUpdate, EVP_DecryptUpdate, EVP_EncryptFinal_ex, EVP_DecryptFinal_ex | SandyBridge+ | InputLength, NoEngine, MemCorrect, InitZero, AESNI_GCM_Patch, AES_GCM_FROM_CIPHER_CTX_Correct | [SAW](SAW/README.md) |
 
 The platforms for which code is verified are defined in the following table. In all cases, the actual verification is performed on code that is produced by Clang 10, but the verification results also apply to any compiler that produces semantically equivalent code.
 
@@ -25,6 +26,8 @@ The caveats associated with some of the verification results are defined in the 
 | NoEngine      | For any API operation that accepts an ENGINE*, the implementation is only verified when the supplied pointer is null. |
 | MemCorrect    | Basic memory management functions such as OPENSSL_malloc and OPENSSL_free are not verified, and are assumed to behave correctly. |
 | InitZero      | The specification for the "init" function requires a context to be in a "zeroized" state. According to this specification, contexts cannot be reused without first being returned to this zeroized state by some other mechanism. |
+| AESNI_GCM_Patch | Functions aesni_gcm_encrypt and aesni_gcm_decrypt are patched in order to remove the key aliasing check. This check is a no-op when these functions are called in compliance with the ABI. |
+| AES_GCM_FROM_CIPHER_CTX_Correct | Getter function aes_gcm_from_cipher_ctx is not verified, and is assumed to behave correctly. |
 
 
 ## License

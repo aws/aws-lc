@@ -1,0 +1,81 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Specifications
+
+let gcm_init_avx_spec = do {
+  (_Htable, Htable_ptr) <- ptr_to_fresh "Htable" (llvm_array 12 (llvm_int 128));
+  (Xi, Xi_ptr) <- ptr_to_fresh_readonly "Xi" (llvm_array 2 (llvm_int 64));
+
+  crucible_execute_func [Htable_ptr, Xi_ptr];
+
+  crucible_points_to Htable_ptr (crucible_term {{ gcm_init Xi }});
+};
+
+let gcm_gmult_avx_spec = do {
+  (Xi, Xi_ptr) <- ptr_to_fresh "Xi" (llvm_array 16 (llvm_int 8));
+  Htable_ptr <- crucible_alloc_readonly (llvm_array 12 (llvm_int 128));
+  Htable0 <- crucible_fresh_var "Htable0" (llvm_int 128);
+  crucible_points_to_untyped (crucible_elem Htable_ptr 1) (crucible_term {{ drop`{1} (gcm_init_Htable Htable0) }});
+  crucible_points_to_untyped (crucible_elem Htable_ptr 0) (crucible_term {{ Htable0 }});
+
+  crucible_execute_func [Xi_ptr, Htable_ptr];
+
+  crucible_points_to Xi_ptr (crucible_term {{ gcm_gmult Htable0 Xi }});
+};
+
+// len must be a multiple of 16
+let gcm_ghash_avx_spec len = do {
+  (Xi, Xi_ptr) <- ptr_to_fresh "Xi" (llvm_array 16 (llvm_int 8));
+  Htable_ptr <- crucible_alloc_readonly (llvm_array 12 (llvm_int 128));
+  Htable0 <- crucible_fresh_var "Htable0" (llvm_int 128);
+  crucible_points_to_untyped (crucible_elem Htable_ptr 1) (crucible_term {{ drop`{1} (gcm_init_Htable Htable0) }});
+  crucible_points_to_untyped (crucible_elem Htable_ptr 0) (crucible_term {{ Htable0 }});
+  (inp, inp_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
+
+  crucible_execute_func [Xi_ptr, Htable_ptr, inp_ptr, (crucible_term {{ `len : [64] }})];
+
+  crucible_points_to Xi_ptr (crucible_term {{ gcm_ghash Htable0 Xi inp }});
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+enable_what4_hash_consing;
+gcm_init_avx_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_init_avx"
+  [ ("gcm_ghash_avx", 1800) // similar hack to the one in AESNI-GCM.saw to grab .L0x1c2_polynomial, we need a better way to handle this
+  ]
+  true
+  gcm_init_avx_spec
+  (do {
+    unfolding ["gcm_init", "gcm_init_Htable"];
+    simplify (addsimps [polyval_avx_thm] empty_ss);
+    w4_unint_yices ["pmult"];
+  });
+disable_what4_hash_consing;
+
+gcm_gmult_avx_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_gmult_avx"
+  [ ("gcm_ghash_avx", 1800)
+  ]
+  true
+  gcm_gmult_avx_spec
+  rme;
+
+enable_what4_hash_consing;
+gcm_ghash_avx_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_ghash_avx"
+  [ ("gcm_ghash_avx", 1800)
+  ]
+  true
+  (gcm_ghash_avx_spec evp_cipher_update_len_blocks)
+  (do {
+    unfolding ["gcm_ghash", "gcm_ghash_block", "gcm_polyval"];
+    simplify (addsimps [ghash_mul_thm, ghash_red_thm] empty_ss);
+    w4_unint_yices ["pmult"];
+  });
+disable_what4_hash_consing;
+

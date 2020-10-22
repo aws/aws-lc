@@ -1,0 +1,134 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+// Specification of aes_256_gcm_generic_init, the initialization function
+// for aes_256_gcm_generic_storage.
+let aes_256_gcm_generic_init_spec = do {
+  crucible_alloc_global "aes_256_gcm_generic_storage";
+  crucible_execute_func [];
+  points_to_evp_cipher_st (crucible_global "aes_256_gcm_generic_storage");
+};
+
+
+/*
+ * Specifications of EVP_CipherInit_ex, EVP_EncryptUpdate,
+ * EVP_DecryptUpdate, EVP_EncryptFinal_ex, and EVP_DecryptFinal_ex functions
+ * for AES-GCM.
+ */
+let EVP_CipherInit_ex_spec enc = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_cipher_ctx_st");
+  crucible_points_to (crucible_field ctx_ptr "cipher") crucible_null;
+
+  cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
+  points_to_evp_cipher_st cipher_ptr;
+
+  (key, key_ptr) <- ptr_to_fresh_readonly "key" (llvm_array aes_key_len (llvm_int 8));
+  (iv, iv_ptr) <- ptr_to_fresh_readonly "iv" (llvm_array aes_iv_len (llvm_int 8));
+
+  crucible_execute_func [ctx_ptr, cipher_ptr, crucible_null, key_ptr, iv_ptr, (crucible_term enc)];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  cipher_data_ptr <- crucible_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
+
+  let ctx = {{ { key = key, iv = iv, Xi = zero, len = 0 } : AES_GCM_Ctx }};
+  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx 0 {{ 1 : [32] }} 0xffffffff;
+
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr enc;
+};
+
+let EVP_CipherUpdate_spec enc gcm_len len = do {
+  cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
+  points_to_evp_cipher_st cipher_ptr;
+
+  cipher_data_ptr <- crucible_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
+  ctx <- fresh_aes_gcm_ctx gcm_len;
+  let mres = eval_size {| gcm_len % AES_BLOCK_SIZE |};
+  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx mres {{ 1 : [32] }} 0xffffffff;
+
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_ctx_st");
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr enc;
+
+  (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
+  out_ptr <- crucible_alloc (llvm_array len (llvm_int 8));
+  out_len_ptr <- crucible_alloc (llvm_int 32);
+
+  crucible_execute_func [ctx_ptr, out_ptr, out_len_ptr, in_ptr, (crucible_term {{ `len : [32] }})];
+
+  let ctx' = {{ cipher_update enc ctx in_ }};
+  let mres' = eval_size {| (gcm_len + len) % AES_BLOCK_SIZE |};
+  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx' mres' {{ 1 : [32] }} 0xffffffff;
+
+  crucible_points_to out_ptr (crucible_term {{ ctr32_encrypt ctx in_ }});
+
+  crucible_points_to out_len_ptr (crucible_term {{ `len : [32] }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_EncryptFinal_ex_spec gcm_len = do {
+  cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
+  points_to_evp_cipher_st cipher_ptr;
+
+  cipher_data_ptr <- crucible_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
+  ctx <- fresh_aes_gcm_ctx gcm_len;
+  let mres = eval_size {| gcm_len % AES_BLOCK_SIZE |};
+  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx mres {{ 1 : [32] }} 0xffffffff;
+
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_cipher_ctx_st");
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ 1 : [32]}};
+
+  out_ptr <- crucible_fresh_pointer (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+  out_len_ptr <- crucible_alloc (llvm_int 32);
+
+  crucible_execute_func [ctx_ptr, out_ptr, out_len_ptr];
+
+  Xi' <- crucible_fresh_var "Xi" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+  let ctx' = {{ { key = ctx.key, iv = ctx.iv, Xi = Xi', len = ctx.len } : AES_GCM_Ctx }};
+  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx' mres {{ 0 : [32] }} AES_BLOCK_SIZE;
+
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ 1 : [32]}};
+
+  crucible_points_to_untyped (crucible_field ctx_ptr "buf") (crucible_term {{ cipher_final ctx }});
+
+  crucible_points_to out_len_ptr (crucible_term {{ 0 : [32] }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DecryptFinal_ex_spec gcm_len = do {
+  cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
+  points_to_evp_cipher_st cipher_ptr;
+
+  cipher_data_ptr <- crucible_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
+  ctx <- fresh_aes_gcm_ctx gcm_len;
+  let mres = eval_size {| gcm_len % AES_BLOCK_SIZE |};
+  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx mres {{ 1 : [32] }} AES_BLOCK_SIZE;
+
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_ctx_st");
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ 0 : [32]}};
+
+  buf <- crucible_fresh_var "buf" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+  crucible_points_to_untyped (crucible_field ctx_ptr "buf") (crucible_term buf);
+
+  out_ptr <- crucible_fresh_pointer (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+  out_len_ptr <- crucible_alloc (llvm_int 32);
+
+  crucible_execute_func [ctx_ptr, out_ptr, out_len_ptr];
+
+  let ret = {{ buf == cipher_final ctx }};
+
+  Xi' <- crucible_fresh_var "Xi" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+  let ctx' = {{ { key = ctx.key, iv = ctx.iv, Xi = Xi', len = ctx.len } : AES_GCM_Ctx }};
+  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx' mres {{ (if ret then 0 else 1) : [32] }} AES_BLOCK_SIZE;
+
+  crucible_points_to out_len_ptr (crucible_term {{ 0 : [32] }});
+
+  crucible_return (crucible_term {{ (if ret then 1 else 0) : [32] }});
+};
+

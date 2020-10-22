@@ -8,7 +8,8 @@ set -e
 
 Z3_URL='https://github.com/Z3Prover/z3/releases/download/z3-4.8.8/z3-4.8.8-x64-ubuntu-16.04.zip'
 YICES_URL='https://yices.csl.sri.com/releases/2.6.2/yices-2.6.2-x86_64-pc-linux-gnu-static-gmp.tar.gz'
-SAW_URL=' https://saw.galois.com/builds/nightly/saw-0.6.0.99-2020-09-30-Ubuntu14.04-64.tar.gz'
+SAW_URL='https://saw.galois.com/builds/nightly/saw-0.6.0.99-2020-10-12-Ubuntu14.04-64.tar.gz'
+
 mkdir -p bin deps
 
 # fetch Z3

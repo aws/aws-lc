@@ -1,0 +1,50 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module X86 where
+
+import Primitive::Symmetric::Cipher::Block::AES
+
+
+clmul : [64] -> [64] -> [128]
+clmul x y = 0b0 # pmult x y
+
+aesenc : [128] -> [128] -> [128]
+aesenc pt key =
+  stateToMsg_x86 (AESRound (msgToState_x86 key, msgToState_x86 pt))
+
+aesenclast : [128] -> [128] -> [128]
+aesenclast pt key =
+  stateToMsg_x86 (AESFinalRound (msgToState_x86 key, msgToState_x86 pt))
+
+aesdec : [128] -> [128] -> [128]
+aesdec pt key =
+  stateToMsg_x86 (AESInvRound (msgToState_x86 key, msgToState_x86 pt))
+
+aesdeclast : [128] -> [128] -> [128]
+aesdeclast pt key =
+  stateToMsg_x86 (AESFinalInvRound (msgToState_x86 key, msgToState_x86 pt))
+
+aeskeygenassist : [128] -> [8] -> [128]
+aeskeygenassist src imm = join
+  ( (RotWord_x86 (SubWord x3) ^ rcon)
+  # SubWord x3
+  # (RotWord_x86 (SubWord x1) ^ rcon)
+  # SubWord x1
+  )
+  where
+    [x3, x2, x1, x0] = [split x | x <- split src]
+    rcon = [0, 0, 0, imm]
+
+
+RotWord_x86 : [4]GF28 -> [4]GF28
+RotWord_x86 x = reverse (RotWord (reverse x))
+
+msgToState_x86 : [128] -> State
+msgToState_x86 msg = transpose (split (reverse (split msg)))
+
+stateToMsg_x86 : State -> [128]
+stateToMsg_x86 st = join (reverse (join (transpose st)))
+

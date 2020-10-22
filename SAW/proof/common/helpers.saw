@@ -56,3 +56,13 @@ let i32 = llvm_int 32;
 let i64 = llvm_int 64;
 let i128 = llvm_int 128;
 
+let do_prove = true;
+let llvm_verify m func overrides pathsat spec tactic = if do_prove
+  then crucible_llvm_verify m func overrides pathsat spec tactic
+  else crucible_llvm_unsafe_assume_spec m func spec;
+let llvm_verify_x86 m elf func globals pathsat spec tactic = if do_prove
+  then crucible_llvm_verify_x86 m elf func globals pathsat spec tactic
+  else crucible_llvm_unsafe_assume_spec m func spec;
+
+let prove_folding_theorem t = prove_print abc (rewrite (cryptol_ss ()) t);
+

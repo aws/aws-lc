@@ -1,0 +1,245 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AES.cry";
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry";
+import "../../spec/AES/X86.cry";
+import "../../spec/AES/AES-GCM.cry";
+
+
+enable_experimental;
+
+
+include "../common/helpers.saw";
+
+
+/*
+ * Verification parameters.
+ */
+let evp_cipher_update_gcm_len = 10;
+let evp_cipher_update_bulk = 288; // multiple of 96, minimum 288
+let evp_cipher_update_len_blocks = 16; // multiple of 16
+let evp_cipher_update_mres = 10; // reduced mod 16
+
+let evp_cipher_update_len = eval_size {| (16 - evp_cipher_update_gcm_len % 16) % 16 + evp_cipher_update_bulk + evp_cipher_update_len_blocks + evp_cipher_update_mres |};
+let aesni_gcm_cipher_gcm_len = eval_size {| ((evp_cipher_update_gcm_len + 15) / 16) * 16 |};
+let aesni_gcm_cipher_len = eval_size {| evp_cipher_update_bulk + evp_cipher_update_len_blocks + evp_cipher_update_mres |};
+let evp_cipher_final_gcm_len = eval_size {| evp_cipher_update_gcm_len + evp_cipher_update_len |};
+
+
+include "goal-rewrites.saw";
+
+
+m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+
+
+let NID_aes_256_gcm = 901;
+let aes_block_size = 1;
+// the IV for AES-GCM consists of 12 32-bit integers
+let aes_iv_len = 12;
+
+
+/*
+ * Architecture features for the AVX+shrd code path
+ */
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+
+
+include "AES.saw";
+include "GHASH.saw";
+include "AESNI-GCM.saw";
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Specifications
+
+let OPENSSL_malloc_spec size = do {
+  crucible_execute_func [crucible_term {{ `size : [64] }}];
+  ptr <- crucible_alloc_aligned 16 (llvm_array size (llvm_int 8));
+  crucible_return ptr;
+};
+
+
+let EVP_AES_GCM_CTX_PADDING = 8;
+let EVP_AES_GCM_CTX_size = llvm_sizeof m (llvm_struct "struct.EVP_AES_GCM_CTX");
+let ctx_size = eval_size {| EVP_AES_GCM_CTX_size + EVP_AES_GCM_CTX_PADDING |};
+
+
+OPENSSL_malloc_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_malloc"
+  (OPENSSL_malloc_spec EVP_AES_GCM_CTX_size);
+OPENSSL_malloc_696_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_malloc"
+  (OPENSSL_malloc_spec 696);
+
+
+/*
+ * Helpers for specifying the AES-GCM structs
+ */
+let EVP_CIPH_GCM_MODE = 0x6;
+let EVP_CIPH_ALWAYS_CALL_INIT = 0x80;
+let EVP_CIPH_CUSTOM_IV = 0x100;
+let EVP_CIPH_CTRL_INIT = 0x200;
+let EVP_CIPH_FLAG_CUSTOM_CIPHER = 0x400;
+let EVP_CIPH_FLAG_AEAD_CIPHER = 0x800;
+let EVP_CIPH_CUSTOM_COPY = 0x1000;
+
+let points_to_evp_cipher_st ptr = do {
+  crucible_points_to (crucible_elem ptr 0) (crucible_term {{ `NID_aes_256_gcm : [32] }});
+  crucible_points_to (crucible_elem ptr 1) (crucible_term {{ `aes_block_size : [32] }});
+  crucible_points_to (crucible_elem ptr 2) (crucible_term {{ `aes_key_len : [32] }});
+  crucible_points_to (crucible_elem ptr 3) (crucible_term {{ `aes_iv_len : [32] }});
+  crucible_points_to (crucible_elem ptr 4) (crucible_term {{ `ctx_size : [32] }});
+  let flags = eval_size {| EVP_CIPH_GCM_MODE + EVP_CIPH_CUSTOM_IV + EVP_CIPH_CUSTOM_COPY +
+                           EVP_CIPH_FLAG_CUSTOM_CIPHER + EVP_CIPH_ALWAYS_CALL_INIT +
+                           EVP_CIPH_CTRL_INIT + EVP_CIPH_FLAG_AEAD_CIPHER |};
+  crucible_points_to (crucible_elem ptr 5) (crucible_term {{ `flags : [32] }});
+  crucible_points_to (crucible_elem ptr 6) crucible_null;
+  crucible_points_to (crucible_elem ptr 7) (crucible_global "aes_gcm_init_key");
+  crucible_points_to (crucible_elem ptr 8) (crucible_global "aes_gcm_cipher");
+  crucible_points_to (crucible_elem ptr 9) (crucible_global "aes_gcm_cleanup");
+  crucible_points_to (crucible_elem ptr 10) (crucible_global "aes_gcm_ctrl");
+};
+
+let points_to_evp_cipher_ctx_st ptr cipher_ptr cipher_data_ptr enc = do {
+  crucible_points_to (crucible_field ptr "cipher") cipher_ptr;
+  crucible_points_to (crucible_field ptr "cipher_data") cipher_data_ptr;
+  crucible_points_to (crucible_field ptr "key_len") (crucible_term {{ `aes_key_len : [32] }});
+  crucible_points_to (crucible_field ptr "encrypt") (crucible_term enc);
+  crucible_points_to (crucible_field ptr "flags") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "buf_len") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "final_used") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "block_mask") (crucible_term {{ 0 : [32] }});
+};
+
+let fresh_aes_gcm_ctx len = do {
+  key <- fresh_aes_key_st;
+  iv <- crucible_fresh_var "iv" (llvm_array aes_iv_len (llvm_int 8));
+  Xi <- crucible_fresh_var "Xi" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+  return {{ { key = key, iv = iv, Xi = Xi, len = `len } : AES_GCM_Ctx }};
+};
+
+let points_to_gcm128_key_st ptr ctx = do {
+  crucible_points_to_untyped (crucible_elem ptr 1) (crucible_term {{ get_Htable ctx }});
+  crucible_points_to_untyped (crucible_elem ptr 0) (crucible_term {{ get_H ctx }});
+  crucible_points_to (crucible_elem ptr 2) (crucible_global "gcm_gmult_avx");
+  crucible_points_to (crucible_elem ptr 3) (crucible_global "gcm_ghash_avx");
+  crucible_points_to (crucible_elem ptr 4) (crucible_global "aes_hw_encrypt");
+  crucible_points_to (crucible_elem ptr 5) (crucible_term {{ 1 : [8] }});
+};
+
+let points_to_GCM128_CONTEXT ptr ctx mres = do {
+  crucible_points_to_untyped (crucible_elem ptr 0) (crucible_term {{ get_Yi ctx }});
+  if eval_bool {{ `mres == 0 }} then do {
+    return ();
+  } else do {
+    crucible_points_to_untyped (crucible_elem ptr 1) (crucible_term {{ get_EKi ctx }});
+  };
+  crucible_points_to_untyped (crucible_elem ptr 2) (crucible_term {{ get_EK0 ctx }});
+  crucible_points_to_untyped (crucible_elem ptr 3) (crucible_term {{ [(0 : [64]), ctx.len] }});
+  crucible_points_to_untyped (crucible_elem ptr 4) (crucible_term {{ ctx.Xi }});
+  points_to_gcm128_key_st (crucible_elem ptr 5) ctx;
+  crucible_points_to (crucible_elem ptr 6) (crucible_term {{ `mres : [32] }});
+  crucible_points_to (crucible_elem ptr 7) (crucible_term {{ 0 : [32] }});
+};
+
+let points_to_EVP_AES_GCM_CTX ptr ctx mres iv_set taglen = do {
+  points_to_GCM128_CONTEXT (crucible_field ptr "gcm") ctx mres;
+  points_to_aes_key_st (crucible_field ptr "ks") {{ ctx.key }};
+  crucible_points_to (crucible_field ptr "key_set") (crucible_term {{ 1 : [32] }});
+  crucible_points_to (crucible_field ptr "iv_set") (crucible_term iv_set);
+  crucible_points_to (crucible_field ptr "ivlen") (crucible_term {{ `aes_iv_len : [32] }});
+  crucible_points_to (crucible_field ptr "taglen") (crucible_term {{ `taglen : [32] }});
+  crucible_points_to (crucible_field ptr "iv_gen") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "ctr") (crucible_global "aes_hw_ctr32_encrypt_blocks");
+};
+
+
+let aes_gcm_from_cipher_ctx_spec = do {
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_ctx_st");
+  cipher_data_ptr <- crucible_alloc_readonly_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
+  crucible_points_to (crucible_field ctx_ptr "cipher_data") cipher_data_ptr;
+
+  crucible_execute_func [ctx_ptr];
+
+  crucible_return cipher_data_ptr;
+};
+
+
+include "evp-function-specs.saw";
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+aes_gcm_from_cipher_ctx_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "aes_gcm_from_cipher_ctx"
+  aes_gcm_from_cipher_ctx_spec;
+
+
+llvm_verify m "aes_256_gcm_generic_init" [] true aes_256_gcm_generic_init_spec (w4_unint_yices []);
+
+
+let evp_cipher_ovs =
+  [ OPENSSL_malloc_ov
+  , OPENSSL_malloc_696_ov
+  , aes_gcm_from_cipher_ctx_ov
+  , aes_hw_set_encrypt_key_ov
+  , aes_hw_encrypt_ov
+  , aes_hw_encrypt_in_place_ov
+  , aes_hw_ctr32_encrypt_blocks_ov
+  , gcm_init_avx_ov
+  , gcm_gmult_avx_ov
+  , gcm_ghash_avx_ov
+  , aesni_gcm_encrypt_ov
+  , aesni_gcm_decrypt_ov
+  ];
+
+
+llvm_verify m "EVP_CipherInit_ex"
+  evp_cipher_ovs
+  true
+  (EVP_CipherInit_ex_spec {{ 1 : [32] }})
+  evp_cipher_tactic;
+
+llvm_verify m "EVP_CipherInit_ex"
+  evp_cipher_ovs
+  true
+  (EVP_CipherInit_ex_spec {{ 0 : [32] }})
+  evp_cipher_tactic;
+
+
+enable_what4_hash_consing;
+
+llvm_verify m "EVP_EncryptUpdate"
+  evp_cipher_ovs
+  true
+  (EVP_CipherUpdate_spec {{ 1 : [32] }} evp_cipher_update_gcm_len evp_cipher_update_len)
+  evp_cipher_tactic;
+
+llvm_verify m "EVP_DecryptUpdate"
+  evp_cipher_ovs
+  true
+  (EVP_CipherUpdate_spec {{ 0 : [32] }} evp_cipher_update_gcm_len evp_cipher_update_len)
+  evp_cipher_tactic;
+
+disable_what4_hash_consing;
+
+
+llvm_verify m "EVP_EncryptFinal_ex"
+  evp_cipher_ovs
+  true
+  (EVP_EncryptFinal_ex_spec evp_cipher_final_gcm_len)
+  evp_cipher_tactic;
+
+llvm_verify m "EVP_DecryptFinal_ex"
+  evp_cipher_ovs
+  true
+  (EVP_DecryptFinal_ex_spec evp_cipher_final_gcm_len)
+  evp_cipher_tactic;
+
