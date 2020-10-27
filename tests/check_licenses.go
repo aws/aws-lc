@@ -14,22 +14,22 @@ import (
 
 func main() {
 	license_regex, _ := regexp.Compile("(?i)(SPDX-License-Identifier: Apache-2.0" +
-        "|Brian Smith" +
-        "|CloudFlare Ltd." +
-        "|Eric Young" +
-        "|Google" +
-        "|Intel" +
-        "|Marc Bevand" +
-        "|OpenSSL license|OpenSSL Project)")
+		"|Brian Smith" +
+		"|CloudFlare Ltd." +
+		"|Eric Young" +
+		"|Google" +
+		"|Intel" +
+		"|Marc Bevand" +
+		"|OpenSSL license|OpenSSL Project)")
 	filematcher, _ := regexp.Compile("(Dockerfile|\\.(ASM|c|cc|cmake|h|sh|go|pl|ps1|yml|s|S))$")
 
 	var files []string
 	var unlicensed_files []string
 
-	excludes := []string {
-        ".github",
-        ".peg", // exlude all .peg.go files
-        "build",
+	excludes := []string{
+		".github",
+		".peg", // exlude all .peg.go files
+		"build",
 		"third_party",
 		"crypto", // boringssl source code files
 		"ssl",
