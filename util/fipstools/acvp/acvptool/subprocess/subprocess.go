@@ -76,8 +76,15 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"SHA2-256":      &hashPrimitive{"SHA2-256", 32},
 		"SHA2-384":      &hashPrimitive{"SHA2-384", 48},
 		"SHA2-512":      &hashPrimitive{"SHA2-512", 64},
-		"ACVP-AES-ECB":  &blockCipher{"AES", 16, false},
-		"ACVP-AES-CBC":  &blockCipher{"AES-CBC", 16, true},
+		"ACVP-AES-ECB":  &blockCipher{"AES", 16, true, false, iterateAES},
+		"ACVP-AES-CBC":  &blockCipher{"AES-CBC", 16, true, true, iterateAESCBC},
+		"ACVP-AES-CTR":  &blockCipher{"AES-CTR", 16, false, true, nil},
+		"ACVP-TDES-ECB": &blockCipher{"3DES-ECB", 8, true, false, iterate3DES},
+		"ACVP-TDES-CBC": &blockCipher{"3DES-CBC", 8, true, true, iterate3DESCBC},
+		"ACVP-AES-GCM":  &aead{"AES-GCM", false},
+		"ACVP-AES-CCM":  &aead{"AES-CCM", true},
+		"ACVP-AES-KW":   &aead{"AES-KW", false},
+		"ACVP-AES-KWP":  &aead{"AES-KWP", false},
 		"HMAC-SHA-1":    &hmacPrimitive{"HMAC-SHA-1", 20},
 		"HMAC-SHA2-224": &hmacPrimitive{"HMAC-SHA2-224", 28},
 		"HMAC-SHA2-256": &hmacPrimitive{"HMAC-SHA2-256", 32},
@@ -87,6 +94,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"hmacDRBG":      &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
 		"KDF":           &kdfPrimitive{},
 		"CMAC-AES":      &keyedMACPrimitive{"CMAC-AES"},
+		"RSA":           &rsa{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
 
@@ -185,7 +193,7 @@ func (m *Subprocess) Config() ([]byte, error) {
 }
 
 // Process runs a set of test vectors and returns the result.
-func (m *Subprocess) Process(algorithm string, vectorSet []byte) ([]byte, error) {
+func (m *Subprocess) Process(algorithm string, vectorSet []byte) (interface{}, error) {
 	prim, ok := m.primitives[algorithm]
 	if !ok {
 		return nil, fmt.Errorf("unknown algorithm %q", algorithm)
@@ -194,7 +202,7 @@ func (m *Subprocess) Process(algorithm string, vectorSet []byte) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(ret)
+	return ret, nil
 }
 
 type primitive interface {

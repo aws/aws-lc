@@ -36,8 +36,47 @@ const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void) {
       pmbtoken_exp1_sign,
       pmbtoken_exp1_unblind,
       pmbtoken_exp1_read,
+      1, /* has_private_metadata */
+      3, /* max_keys */
+      1, /* has_srr */
   };
   return &kMethod;
+}
+
+const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_voprf(void) {
+  static const TRUST_TOKEN_METHOD kMethod = {
+      voprf_exp2_generate_key,
+      voprf_exp2_client_key_from_bytes,
+      voprf_exp2_issuer_key_from_bytes,
+      voprf_exp2_blind,
+      voprf_exp2_sign,
+      voprf_exp2_unblind,
+      voprf_exp2_read,
+      0, /* has_private_metadata */
+      6, /* max_keys */
+      0, /* has_srr */
+  };
+  return &kMethod;
+}
+
+const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_pmb(void) {
+  static const TRUST_TOKEN_METHOD kMethod = {
+      pmbtoken_exp2_generate_key,
+      pmbtoken_exp2_client_key_from_bytes,
+      pmbtoken_exp2_issuer_key_from_bytes,
+      pmbtoken_exp2_blind,
+      pmbtoken_exp2_sign,
+      pmbtoken_exp2_unblind,
+      pmbtoken_exp2_read,
+      1, /* has_private_metadata */
+      3, /* max_keys */
+      0, /* has_srr */
+  };
+  return &kMethod;
+}
+
+void TRUST_TOKEN_PRETOKEN_free(TRUST_TOKEN_PRETOKEN *pretoken) {
+  OPENSSL_free(pretoken);
 }
 
 TRUST_TOKEN *TRUST_TOKEN_new(const uint8_t *data, size_t len) {
@@ -125,13 +164,14 @@ void TRUST_TOKEN_CLIENT_free(TRUST_TOKEN_CLIENT *ctx) {
     return;
   }
   EVP_PKEY_free(ctx->srr_key);
-  sk_PMBTOKEN_PRETOKEN_pop_free(ctx->pretokens, PMBTOKEN_PRETOKEN_free);
+  sk_TRUST_TOKEN_PRETOKEN_pop_free(ctx->pretokens, TRUST_TOKEN_PRETOKEN_free);
   OPENSSL_free(ctx);
 }
 
 int TRUST_TOKEN_CLIENT_add_key(TRUST_TOKEN_CLIENT *ctx, size_t *out_key_index,
                                const uint8_t *key, size_t key_len) {
-  if (ctx->num_keys == OPENSSL_ARRAY_SIZE(ctx->keys)) {
+  if (ctx->num_keys == OPENSSL_ARRAY_SIZE(ctx->keys) ||
+      ctx->num_keys >= ctx->method->max_keys) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_TOO_MANY_KEYS);
     return 0;
   }
@@ -153,6 +193,9 @@ int TRUST_TOKEN_CLIENT_add_key(TRUST_TOKEN_CLIENT *ctx, size_t *out_key_index,
 }
 
 int TRUST_TOKEN_CLIENT_set_srr_key(TRUST_TOKEN_CLIENT *ctx, EVP_PKEY *key) {
+  if (!ctx->method->has_srr) {
+    return 1;
+  }
   EVP_PKEY_free(ctx->srr_key);
   EVP_PKEY_up_ref(key);
   ctx->srr_key = key;
@@ -167,7 +210,7 @@ int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
 
   int ret = 0;
   CBB request;
-  STACK_OF(PMBTOKEN_PRETOKEN) *pretokens = NULL;
+  STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens = NULL;
   if (!CBB_init(&request, 0) ||
       !CBB_add_u16(&request, count)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
@@ -184,14 +227,14 @@ int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
     goto err;
   }
 
-  sk_PMBTOKEN_PRETOKEN_pop_free(ctx->pretokens, PMBTOKEN_PRETOKEN_free);
+  sk_TRUST_TOKEN_PRETOKEN_pop_free(ctx->pretokens, TRUST_TOKEN_PRETOKEN_free);
   ctx->pretokens = pretokens;
   pretokens = NULL;
   ret = 1;
 
 err:
   CBB_cleanup(&request);
-  sk_PMBTOKEN_PRETOKEN_pop_free(pretokens, PMBTOKEN_PRETOKEN_free);
+  sk_TRUST_TOKEN_PRETOKEN_pop_free(pretokens, TRUST_TOKEN_PRETOKEN_free);
   return ret;
 }
 
@@ -225,7 +268,7 @@ STACK_OF(TRUST_TOKEN) *
     return NULL;
   }
 
-  if (count > sk_PMBTOKEN_PRETOKEN_num(ctx->pretokens)) {
+  if (count > sk_TRUST_TOKEN_PRETOKEN_num(ctx->pretokens)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return NULL;
   }
@@ -242,7 +285,7 @@ STACK_OF(TRUST_TOKEN) *
     return NULL;
   }
 
-  sk_PMBTOKEN_PRETOKEN_pop_free(ctx->pretokens, PMBTOKEN_PRETOKEN_free);
+  sk_TRUST_TOKEN_PRETOKEN_pop_free(ctx->pretokens, TRUST_TOKEN_PRETOKEN_free);
   ctx->pretokens = NULL;
 
   *out_key_index = key_index;
@@ -270,20 +313,32 @@ int TRUST_TOKEN_CLIENT_begin_redemption(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
 }
 
 int TRUST_TOKEN_CLIENT_finish_redemption(TRUST_TOKEN_CLIENT *ctx,
-                                         uint8_t **out_srr, size_t *out_srr_len,
+                                         uint8_t **out_rr, size_t *out_rr_len,
                                          uint8_t **out_sig, size_t *out_sig_len,
                                          const uint8_t *response,
                                          size_t response_len) {
-  if (ctx->srr_key == NULL) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_NO_SRR_KEY_CONFIGURED);
+  CBS in, srr, sig;
+  CBS_init(&in, response, response_len);
+  if (!ctx->method->has_srr) {
+    if (!CBS_stow(&in, out_rr, out_rr_len)) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+
+    *out_sig = NULL;
+    *out_sig_len = 0;
+    return 1;
+  }
+
+  if (!CBS_get_u16_length_prefixed(&in, &srr) ||
+      !CBS_get_u16_length_prefixed(&in, &sig) ||
+      CBS_len(&in) != 0) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_ERROR);
     return 0;
   }
 
-  CBS in, srr, sig;
-  CBS_init(&in, response, response_len);
-  if (!CBS_get_u16_length_prefixed(&in, &srr) ||
-      !CBS_get_u16_length_prefixed(&in, &sig)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_ERROR);
+  if (ctx->srr_key == NULL) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_NO_SRR_KEY_CONFIGURED);
     return 0;
   }
 
@@ -309,8 +364,8 @@ int TRUST_TOKEN_CLIENT_finish_redemption(TRUST_TOKEN_CLIENT *ctx,
     return 0;
   }
 
-  *out_srr = srr_buf;
-  *out_srr_len = srr_len;
+  *out_rr = srr_buf;
+  *out_rr_len = srr_len;
   *out_sig = sig_buf;
   *out_sig_len = sig_len;
   return 1;
@@ -346,7 +401,8 @@ void TRUST_TOKEN_ISSUER_free(TRUST_TOKEN_ISSUER *ctx) {
 
 int TRUST_TOKEN_ISSUER_add_key(TRUST_TOKEN_ISSUER *ctx, const uint8_t *key,
                                size_t key_len) {
-  if (ctx->num_keys == OPENSSL_ARRAY_SIZE(ctx->keys)) {
+  if (ctx->num_keys == OPENSSL_ARRAY_SIZE(ctx->keys) ||
+      ctx->num_keys >= ctx->method->max_keys) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_TOO_MANY_KEYS);
     return 0;
   }
@@ -411,7 +467,8 @@ int TRUST_TOKEN_ISSUER_issue(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
 
   const struct trust_token_issuer_key_st *key =
       trust_token_issuer_get_key(ctx, public_metadata);
-  if (key == NULL || private_metadata > 1) {
+  if (key == NULL || private_metadata > 1 ||
+      (!ctx->method->has_private_metadata && private_metadata != 0)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_METADATA);
     return 0;
   }
@@ -544,7 +601,7 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
 
   const struct trust_token_issuer_key_st *key =
       trust_token_issuer_get_key(ctx, public_metadata);
-  uint8_t nonce[PMBTOKEN_NONCE_SIZE];
+  uint8_t nonce[TRUST_TOKEN_NONCE_SIZE];
   if (key == NULL ||
       !ctx->method->read(&key->key, nonce, &private_metadata,
                          CBS_data(&token_cbs), CBS_len(&token_cbs))) {
@@ -628,16 +685,56 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
     goto err;
   }
 
-  CBB child;
-  uint8_t *ptr;
-  if (!CBB_add_u16_length_prefixed(&response, &child) ||
-      !CBB_add_bytes(&child, srr_buf, srr_len) ||
-      !CBB_add_u16_length_prefixed(&response, &child) ||
-      !CBB_reserve(&child, &ptr, sig_len) ||
-      !EVP_DigestSign(&md_ctx, ptr, &sig_len, srr_buf, srr_len) ||
-      !CBB_did_write(&child, sig_len)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    goto err;
+  // Merge SRR and Signature into single string.
+  // TODO(svaldez): Expose API to construct this from the caller.
+  if (!ctx->method->has_srr) {
+    static const char kSRRHeader[] = "body=:";
+    static const char kSRRSplit[] = ":, signature=:";
+    static const char kSRREnd[] = ":";
+
+    size_t srr_b64_len, sig_b64_len;
+    if (!EVP_EncodedLength(&srr_b64_len, srr_len) ||
+        !EVP_EncodedLength(&sig_b64_len, sig_len)) {
+      goto err;
+    }
+
+    sig_buf = OPENSSL_malloc(sig_len);
+    uint8_t *srr_b64_buf = OPENSSL_malloc(srr_b64_len);
+    uint8_t *sig_b64_buf = OPENSSL_malloc(sig_b64_len);
+    if (!sig_buf ||
+        !srr_b64_buf ||
+        !sig_b64_buf ||
+        !EVP_DigestSign(&md_ctx, sig_buf, &sig_len, srr_buf, srr_len) ||
+        !CBB_add_bytes(&response, (const uint8_t *)kSRRHeader,
+                       strlen(kSRRHeader)) ||
+        !CBB_add_bytes(&response, srr_b64_buf,
+                       EVP_EncodeBlock(srr_b64_buf, srr_buf, srr_len)) ||
+        !CBB_add_bytes(&response, (const uint8_t *)kSRRSplit,
+                       strlen(kSRRSplit)) ||
+        !CBB_add_bytes(&response, sig_b64_buf,
+                       EVP_EncodeBlock(sig_b64_buf, sig_buf, sig_len)) ||
+        !CBB_add_bytes(&response, (const uint8_t *)kSRREnd, strlen(kSRREnd))) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+      OPENSSL_free(srr_b64_buf);
+      OPENSSL_free(sig_b64_buf);
+      goto err;
+    }
+
+    OPENSSL_free(srr_b64_buf);
+    OPENSSL_free(sig_b64_buf);
+  } else {
+    CBB child;
+    uint8_t *ptr;
+    if (!CBB_add_u16_length_prefixed(&response, &child) ||
+        !CBB_add_bytes(&child, srr_buf, srr_len) ||
+        !CBB_add_u16_length_prefixed(&response, &child) ||
+        !CBB_reserve(&child, &ptr, sig_len) ||
+        !EVP_DigestSign(&md_ctx, ptr, &sig_len, srr_buf, srr_len) ||
+        !CBB_did_write(&child, sig_len) ||
+        !CBB_flush(&response)) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
   }
 
   if (!CBS_stow(&client_data, &client_data_buf, &client_data_len) ||
@@ -646,7 +743,7 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
     goto err;
   }
 
-  TRUST_TOKEN *token = TRUST_TOKEN_new(nonce, PMBTOKEN_NONCE_SIZE);
+  TRUST_TOKEN *token = TRUST_TOKEN_new(nonce, TRUST_TOKEN_NONCE_SIZE);
   if (token == NULL) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
