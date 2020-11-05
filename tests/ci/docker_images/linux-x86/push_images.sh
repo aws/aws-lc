@@ -87,3 +87,8 @@ docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_`date +%Y-%
 docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_latest
 docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_latest
 docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_`date +%Y-%m-%d`
+
+docker tag ubuntu-20.04:awslc-formal-verification ${ECS_REPO}:ubuntu-20.04_awslc-formal-verification_`date +%Y-%m-%d`
+docker tag ubuntu-20.04:awslc-formal-verification ${ECS_REPO}:ubuntu-20.04_awslc-formal-verification_latest
+docker push ${ECS_REPO}:ubuntu-20.04_awslc-formal-verification_latest
+docker push ${ECS_REPO}:ubuntu-20.04_awslc-formal-verification_`date +%Y-%m-%d`

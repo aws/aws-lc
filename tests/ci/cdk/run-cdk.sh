@@ -162,6 +162,7 @@ function deploy() {
     "ubuntu-19.04_clang-8x_latest"
     "ubuntu-20.04_gcc-9x_latest"
     "ubuntu-20.04_clang-10x_latest"
+    "ubuntu-20.04_awslc-saw"
     "centos-7_gcc-4x_latest"
     "amazonlinux-2_gcc-7x_latest"
     "s2n_integration_clang-9x_latest")
