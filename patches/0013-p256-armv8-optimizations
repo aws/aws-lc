@@ -2490,7 +2490,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm
 ===================================================================
 --- /dev/null
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm.pl
-@@ -0,0 +1,434 @@
+@@ -0,0 +1,438 @@
 +# Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 +# SPDX-License-Identifier: Apache-2.0
 +#
@@ -2813,6 +2813,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm
 +
 +.Lbeeu_update_B_X_or_A_Y:
 +    // Try T := B - A; if cs, continue with B > A (cs: carry set = no borrow)
++    // Note: this is a case of unsigned arithmetic, where T fits in 4 64-bit words
++    //       without taking a sign bit if generated. The lack of a carry would
++    //       indicate a negative result. See, for example,
++    //       https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/condition-codes-1-condition-flags-and-codes
 +    subs    $t0, $b0, $a0
 +    sbcs    $t1, $b1, $a1
 +    sbcs    $t2, $b2, $a2
