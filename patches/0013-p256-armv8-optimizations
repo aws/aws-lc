@@ -1,7 +1,7 @@
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/CMakeLists.txt
+Index: aws-lc/crypto/fipsmodule/CMakeLists.txt
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/CMakeLists.txt
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/CMakeLists.txt
+--- aws-lc/crypto/fipsmodule/CMakeLists.txt
++++ aws-lc/crypto/fipsmodule/CMakeLists.txt
 @@ -64,6 +64,8 @@ if(${ARCH} STREQUAL "aarch64")
      armv8-mont.${ASM_EXT}
      ghash-neon-armv8.${ASM_EXT}
@@ -20,10 +20,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/CMakeLists.txt
  perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
  perlasm(rsaz-avx2.${ASM_EXT} bn/asm/rsaz-avx2.pl)
  perlasm(sha1-586.${ASM_EXT} sha/asm/sha1-586.pl)
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/ec.c
+Index: aws-lc/crypto/fipsmodule/ec/ec.c
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/ec.c
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/ec.c
+--- aws-lc/crypto/fipsmodule/ec/ec.c
++++ aws-lc/crypto/fipsmodule/ec/ec.c
 @@ -246,7 +246,8 @@ DEFINE_METHOD_FUNCTION(struct built_in_c
    out->curves[2].param_len = 32;
    out->curves[2].params = kP256Params;
@@ -34,10 +34,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/ec.c
      !defined(OPENSSL_SMALL)
        EC_GFp_nistz256_method();
  #else
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.h
+Index: aws-lc/crypto/fipsmodule/ec/p256-x86_64.h
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.h
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.h
+--- aws-lc/crypto/fipsmodule/ec/p256-x86_64.h
++++ aws-lc/crypto/fipsmodule/ec/p256-x86_64.h
 @@ -30,7 +30,8 @@ extern "C" {
  #endif
 
@@ -58,10 +58,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.h
 +          !defined(OPENSSL_SMALL) */
 
  #endif  // OPENSSL_HEADER_EC_P256_X86_64_H
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
+Index: aws-lc/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 ===================================================================
 --- /dev/null
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
++++ aws-lc/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 @@ -0,0 +1,1767 @@
 +#! /usr/bin/env perl
 +# Copyright 2015-2020 The OpenSSL Project Authors. All Rights Reserved.
@@ -1830,10 +1830,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 +	print $_,"\n";
 +}
 +close STDOUT or die "error closing STDOUT: $!";	# enforce flush
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
+Index: aws-lc/crypto/fipsmodule/ec/p256-x86_64_test.cc
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
+--- aws-lc/crypto/fipsmodule/ec/p256-x86_64_test.cc
++++ aws-lc/crypto/fipsmodule/ec/p256-x86_64_test.cc
 @@ -33,15 +33,15 @@
  #include "../../test/test_util.h"
  #include "p256-x86_64.h"
@@ -1884,10 +1884,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
 +#endif /* !defined(OPENSSL_NO_ASM) && \
 +          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
 +          !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY) */
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm.pl
+Index: aws-lc/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm.pl
 ===================================================================
 --- /dev/null
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm.pl
++++ aws-lc/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm.pl
 @@ -0,0 +1,438 @@
 +# Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 +# SPDX-License-Identifier: Apache-2.0
@@ -2327,10 +2327,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm
 +    print $_,"\n";
 +}
 +close STDOUT or die "error closing STDOUT: $!"; # enforce flush
-Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.c
+Index: aws-lc/crypto/fipsmodule/ec/p256-x86_64.c
 ===================================================================
---- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.c
-+++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.c
+--- aws-lc/crypto/fipsmodule/ec/p256-x86_64.c
++++ aws-lc/crypto/fipsmodule/ec/p256-x86_64.c
 @@ -33,8 +33,8 @@
  #include "internal.h"
  #include "p256-x86_64.h"
@@ -2363,10 +2363,10 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.c
 +#endif /* !defined(OPENSSL_NO_ASM) && \
 +          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
            !defined(OPENSSL_SMALL) */
-Index: aws-lc/third_party/boringssl/CMakeLists.txt
+Index: aws-lc/CMakeLists.txt
 ===================================================================
---- aws-lc.orig/third_party/boringssl/CMakeLists.txt
-+++ aws-lc/third_party/boringssl/CMakeLists.txt
+--- aws-lc/CMakeLists.txt
++++ aws-lc/CMakeLists.txt
 @@ -477,6 +477,10 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
    add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
  endif()
