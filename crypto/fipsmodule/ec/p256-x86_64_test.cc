@@ -33,15 +33,15 @@
 #include "../../test/test_util.h"
 #include "p256-x86_64.h"
 
-
 // Disable tests if BORINGSSL_SHARED_LIBRARY is defined. These tests need access
 // to internal functions.
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) && \
     !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
 
 TEST(P256_X86_64Test, SelectW5) {
   // Fill a table with some garbage input.
-  alignas(64) P256_POINT table[16];
+  __attribute__((aligned(64))) P256_POINT table[16];
   for (size_t i = 0; i < 16; i++) {
     OPENSSL_memset(table[i].X, 3 * i, sizeof(table[i].X));
     OPENSSL_memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
@@ -71,7 +71,7 @@ TEST(P256_X86_64Test, SelectW5) {
 
 TEST(P256_X86_64Test, SelectW7) {
   // Fill a table with some garbage input.
-  alignas(64) P256_POINT_AFFINE table[64];
+  __attribute__((aligned(64))) P256_POINT_AFFINE table[64];
   for (size_t i = 0; i < 64; i++) {
     OPENSSL_memset(table[i].X, 2 * i, sizeof(table[i].X));
     OPENSSL_memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
@@ -99,11 +99,12 @@ TEST(P256_X86_64Test, SelectW7) {
 }
 
 TEST(P256_X86_64Test, BEEU) {
+#if defined(OPENSSL_X86_64)
   if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
     // No AVX support; cannot run the BEEU code.
     return;
   }
-
+#endif
   bssl::UniquePtr<EC_GROUP> group(
       EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_TRUE(group);
@@ -574,4 +575,6 @@ TEST(P256_X86_64Test, ABI) {
   CHECK_ABI(ecp_nistz256_point_add_affine, &p, &kInfinity, &kC);
 }
 
-#endif
+#endif /* !defined(OPENSSL_NO_ASM) && \
+          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
+          !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY) */
