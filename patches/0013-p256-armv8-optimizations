@@ -30,7 +30,7 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/ec.c
    out->curves[2].method =
 -#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
 +#if !defined(OPENSSL_NO_ASM) && \
-+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&   \
++    (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&   \
      !defined(OPENSSL_SMALL)
        EC_GFp_nistz256_method();
  #else
@@ -40,23 +40,23 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.h
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.h
 @@ -30,7 +30,8 @@ extern "C" {
  #endif
- 
- 
+
+
 -#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
 +#if !defined(OPENSSL_NO_ASM) && \
-+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
++    (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) && \
      !defined(OPENSSL_SMALL)
- 
+
  // P-256 field operations.
 @@ -148,6 +149,8 @@ void ecp_nistz256_point_add_affine(P256_
- 
+
  #if defined(__cplusplus)
  }  // extern C++
 -#endif
-+#endif /* !defined(OPENSSL_NO_ASM) &&                           \
-+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
-+          !defined(OPENSSL_SMALL)*/
- 
++#endif /* !defined(OPENSSL_NO_ASM) && \
++          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
++          !defined(OPENSSL_SMALL) */
+
  #endif  // OPENSSL_HEADER_EC_P256_X86_64_H
 Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256-armv8-asm.pl
 ===================================================================
@@ -1834,17 +1834,18 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
 ===================================================================
 --- aws-lc.orig/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
 +++ aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
-@@ -33,15 +33,14 @@
+@@ -33,15 +33,15 @@
  #include "../../test/test_util.h"
  #include "p256-x86_64.h"
- 
+
 -
  // Disable tests if BORINGSSL_SHARED_LIBRARY is defined. These tests need access
  // to internal functions.
 -#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-+#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
++#if !defined(OPENSSL_NO_ASM) && \
++    (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) && \
      !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
- 
+
  TEST(P256_X86_64Test, SelectW5) {
    // Fill a table with some garbage input.
 -  alignas(64) P256_POINT table[16];
@@ -1852,8 +1853,8 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
    for (size_t i = 0; i < 16; i++) {
      OPENSSL_memset(table[i].X, 3 * i, sizeof(table[i].X));
      OPENSSL_memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
-@@ -71,7 +70,7 @@ TEST(P256_X86_64Test, SelectW5) {
- 
+@@ -71,7 +71,7 @@ TEST(P256_X86_64Test, SelectW5) {
+
  TEST(P256_X86_64Test, SelectW7) {
    // Fill a table with some garbage input.
 -  alignas(64) P256_POINT_AFFINE table[64];
@@ -1861,9 +1862,9 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
    for (size_t i = 0; i < 64; i++) {
      OPENSSL_memset(table[i].X, 2 * i, sizeof(table[i].X));
      OPENSSL_memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
-@@ -99,11 +98,12 @@ TEST(P256_X86_64Test, SelectW7) {
+@@ -99,11 +99,12 @@ TEST(P256_X86_64Test, SelectW7) {
  }
- 
+
  TEST(P256_X86_64Test, BEEU) {
 +#if defined(OPENSSL_X86_64)
    if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
@@ -1875,6 +1876,14 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64_test.cc
    bssl::UniquePtr<EC_GROUP> group(
        EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
    ASSERT_TRUE(group);
+@@ -574,4 +575,6 @@ TEST(P256_X86_64Test, ABI) {
+   CHECK_ABI(ecp_nistz256_point_add_affine, &p, &kInfinity, &kC);
+ }
+
+-#endif
++#endif /* !defined(OPENSSL_NO_ASM) && \
++          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
++          !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY) */
 Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/asm/p256_beeu-armv8-asm.pl
 ===================================================================
 --- /dev/null
@@ -2325,13 +2334,13 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.c
 @@ -33,8 +33,8 @@
  #include "internal.h"
  #include "p256-x86_64.h"
- 
+
 -
 -#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
 +#if !defined(OPENSSL_NO_ASM) &&  \
-+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \
++    (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&    \
      !defined(OPENSSL_SMALL)
- 
+
  typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 @@ -555,10 +555,12 @@ static void ecp_nistz256_inv0_mod_ord(co
  static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
@@ -2343,15 +2352,29 @@ Index: aws-lc/third_party/boringssl/crypto/fipsmodule/ec/p256-x86_64.c
      return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
    }
 +#endif
- 
+
    assert(group->order.width == P256_LIMBS);
    if (!beeu_mod_inverse_vartime(out->words, in->words, group->order.d)) {
 @@ -629,5 +631,6 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp
    out->cmp_x_coordinate = ecp_nistz256_cmp_x_coordinate;
  }
- 
+
 -#endif /* !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
--          !defined(OPENSSL_SMALL) */
-+#endif /* !defined(OPENSSL_NO_ASM) &&                           \
-+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
-+          !defined(OPENSSL_SMALL)*/
++#endif /* !defined(OPENSSL_NO_ASM) && \
++          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
+           !defined(OPENSSL_SMALL) */
+Index: aws-lc/third_party/boringssl/CMakeLists.txt
+===================================================================
+--- aws-lc.orig/third_party/boringssl/CMakeLists.txt
++++ aws-lc/third_party/boringssl/CMakeLists.txt
+@@ -477,6 +477,10 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
+   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
+ endif()
+
++if(OPENSSL_AARCH64_P256)
++  add_definitions(-DOPENSSL_AARCH64_P256)
++endif()
++
+ if(OPENSSL_NO_ASM)
+   add_definitions(-DOPENSSL_NO_ASM)
+   set(ARCH "generic")
