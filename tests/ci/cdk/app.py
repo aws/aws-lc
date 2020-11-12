@@ -31,5 +31,6 @@ WindowsDockerImageBuildStack(app, "aws-lc-docker-image-build-windows")
 AwsLcGitHubCIStack(app, "aws-lc-ci-linux-x86", "./cdk/codebuild/github_ci_linux_x86_omnibus.yaml")
 AwsLcGitHubCIStack(app, "aws-lc-ci-linux-arm", "./cdk/codebuild/github_ci_linux_arm_omnibus.yaml")
 AwsLcGitHubCIStack(app, "aws-lc-ci-windows-x86", "./cdk/codebuild/github_ci_windows_x86_omnibus.yaml")
+AwsLcGitHubCIStack(app, "aws-lc-ci-formal-verification", "./cdk/codebuild/github_ci_formal_verification_omnibus.yaml")
 
 app.synth()

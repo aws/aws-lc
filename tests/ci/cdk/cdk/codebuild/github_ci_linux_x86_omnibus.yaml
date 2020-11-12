@@ -141,11 +141,3 @@ batch:
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
-
-    - identifier: ubuntu2004_formal_verification
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_formal_verification.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_awslc-formal-verification_latest
