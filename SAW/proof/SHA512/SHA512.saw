@@ -255,55 +255,35 @@ if quick_check then do {
     (w4_unint_yices ["processBlock_Common"]);
   return ();
 } else do {
-  let verify_update_at_num num = do {
-    print (str_concat "Verifying EVP_DigestUpdate at num=" (show num));
-    if eval_bool {{ `num == 0 }} then do {
-      // this covers the case without any calls to the block
-      // function, and data copied in c->data
-      crucible_llvm_verify m "EVP_DigestUpdate"
+  // this covers the case with all lengths given a target_num.
+  print (str_concat "Verifying EVP_DigestUpdate at target_num=" (show target_num));
+  let verify_update_at_len len = do {
+    print (str_concat "Verifying EVP_DigestUpdate at len=" (show len));
+    crucible_llvm_verify m "EVP_DigestUpdate"
         [sha512_block_data_order_spec]
         true
-        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK - 1 |}))
+        (EVP_DigestUpdate_spec target_num len)
         (w4_unint_yices ["processBlock_Common"]);
-      // this covers the case with one call to the block
-      // function, on one block from data, and the rest of
-      // data copied in c->data
-      crucible_llvm_verify m "EVP_DigestUpdate"
-        [sha512_block_data_order_spec]
-        true
-        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK + 1 |}))
-        (w4_unint_yices ["processBlock_Common"]);
-    } else do {
-      // this covers the case without any calls to the block
-      // function, and data copied in c->data
-      crucible_llvm_verify m "EVP_DigestUpdate"
-        [sha512_block_data_order_spec]
-        true
-        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK - 1 - num |}))
-        (w4_unint_yices ["processBlock_Common"]);
-      // this covers the case with one call to the block
-      // function, on c->data, and the rest of data copied
-      // in c->data
-      crucible_llvm_verify m "EVP_DigestUpdate"
-        [sha512_block_data_order_spec]
-        true
-        (EVP_DigestUpdate_spec num (eval_size {| SHA512_CBLOCK + 1 - num |}))
-        (w4_unint_yices ["processBlock_Common"]);
-      // this covers the case with two calls to the block
-      // function, the first one on c->data, the second one
-      // on one block from data, and the rest of data copied
-      // in c->data
-      crucible_llvm_verify m "EVP_DigestUpdate"
-        [sha512_block_data_order_spec]
-        true
-        (EVP_DigestUpdate_spec num (eval_size {| 2 * SHA512_CBLOCK + 1 - num |}))
-        (w4_unint_yices ["processBlock_Common"]);
-    };
   };
-  for nums verify_update_at_num;
+  // Given a fixed `num`, the `lens` cover all possible parameters especially below cases:
+  // When len = (SHA512_CBLOCK - 1), this covers the case without any calls to the block function, 
+  //   and data copied in c->data.
+  // When len = (SHA512_CBLOCK + 1), this covers the case with one call to the block function, 
+  //   on one block from data, and the rest of data copied in c->data.
+  // When len = (SHA512_CBLOCK + 1), this covers the case with two calls to the block function,
+  //   the first one on c->data,  the second one on one block from data, and the rest of data copied in c->data.
+  // Note: when num = 0, 'len = 256' check fails due to 'sha512_block_data_order' limit. See https://github.com/awslabs/aws-lc-verification/issues/25
+  if eval_bool {{ `target_num == 0 }} then do {
+    lens <- for (eval_list {{ [0 .. (2 * SHA512_CBLOCK - 1)] : [2 * SHA512_CBLOCK][64] }})
+      (\x -> (return (eval_int x)) : (TopLevel Int));
+    for lens verify_update_at_len;
+  } else do {
+    lens <- for (eval_list {{ [0 .. (2 * SHA512_CBLOCK + 1 - target_num)] : [2 * SHA512_CBLOCK + 2 - target_num][64] }})
+      (\x -> (return (eval_int x)) : (TopLevel Int));
+    for lens verify_update_at_len;
+  };
   return ();
 };
-
 
 // Verify the `EVP_DigestFinal` C function satisfies the
 // `EVP_DigestFinal_spec` specification.

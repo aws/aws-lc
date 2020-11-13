@@ -10,6 +10,6 @@ mkdir -p build_src/x86
 cd build_src/x86
 export CC=clang
 export CXX=clang++
-(cd ../../../src/third_party/boringssl; patch -p1 -r - --forward <"$PATCH"/nomuxrsp.patch || true)
+(cd ../../../src; patch -p1 -r - --forward <"$PATCH"/nomuxrsp.patch || true)
 cmake -DCMAKE_BUILD_TYPE=Rel ../../../src
 make

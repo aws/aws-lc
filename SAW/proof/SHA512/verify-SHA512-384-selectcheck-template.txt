@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-
 import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA384.cry";
 
 let quick_check = false;
+let target_num = TARGET_NUM_PLACEHOLDER;
 include "SHA512-384.saw";
 include "SHA512.saw";

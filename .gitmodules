@@ -1,6 +1,6 @@
 [submodule "src"]
 	path = src
-	url = git@github.com:awslabs/aws-lc.git
+	url = https://github.com/awslabs/aws-lc.git
 	branch = main
 [submodule "cryptol-specs"]
 	path = cryptol-specs
