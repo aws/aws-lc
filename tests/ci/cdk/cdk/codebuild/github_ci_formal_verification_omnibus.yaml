@@ -6,7 +6,7 @@ version: 0.2
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
 batch:
   build-list:
-    # When 'SHA512_384_SELECTCHECK' is undefined, SHA512-384 formal verification is executed with a few parameters.
+    # When no SELECTCHECK env variable is undefined, formal verification is executed with a few parameters.
     - identifier: ubuntu2004_formal_verification_quickcheck
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_formal_verification.yml
       env:
@@ -16,7 +16,7 @@ batch:
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_awslc-saw_latest
 
     # When 'SHA512_384_SELECTCHECK' is defined, SHA512-384 formal verification is executed against more parameters.
-    - identifier: ubuntu2004_formal_verification_selectcheck
+    - identifier: ubuntu2004_formal_verification_sha_selectcheck
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_formal_verification.yml
       env:
         type: LINUX_CONTAINER
@@ -25,4 +25,14 @@ batch:
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_awslc-saw_latest
         variables:
           SHA512_384_SELECTCHECK: 1
+
+    # When 'HMAC_SELECTCHECK' is defined, HMAC-SHA384 formal verification is executed against more parameters.
+    - identifier: ubuntu2004_formal_verification_hmac_selectcheck
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_formal_verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_awslc-saw_latest
+        variables:
           HMAC_SELECTCHECK: 1

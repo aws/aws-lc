@@ -19,7 +19,7 @@ else
 fi
 
 # TODO: delete ci-prep branch, and then lock in a specific code commit.
-git clone --recurse-submodules --branch ci-prep https://github.com/awslabs/aws-lc-verification.git
+git clone --recurse-submodules --branch hmac-saw https://github.com/awslabs/aws-lc-verification.git
 cd aws-lc-verification
 # aws-lc-verification stores aws-lc code in src. Below is to support the need of testing in other forked repo.
 (rm -rf src && git clone ${aws_lc_repo} src && cd src && git checkout ${aws_lc_version})
