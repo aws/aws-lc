@@ -25,3 +25,4 @@ batch:
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_awslc-saw_latest
         variables:
           SHA512_384_SELECTCHECK: 1
+          HMAC_SELECTCHECK: 1
