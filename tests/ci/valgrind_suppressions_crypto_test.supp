@@ -1,3 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+###############################################################################
+# Suppression file produced by running:
+# valgrind --gen-suppressions=yes ./test_build_dir/crypto/crypto_test
+# https://www.valgrind.org/docs/manual/manual-core.html#manual-core.suppress
+#
+# These errors are specific to the internals of the Gtest framework.
+###############################################################################
 {
    <insert_a_suppression_name_here>
    Memcheck:Value8

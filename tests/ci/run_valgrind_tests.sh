@@ -27,8 +27,8 @@ VALGRIND_SUPPRESSIONS_FILE_CRYPTO_TEST=tests/ci/valgrind_suppressions_crypto_tes
 #   1: Executable to be executed under Valgrind
 #   2: Valgrind suppression file for $1
 # Output:
-#   0                       if Valgrind exists without any errors
-#   ${VALGRIND_ERROR_CODE}  if Valgrind exists with errors
+#   0                       if Valgrind exist without any errors
+#   ${VALGRIND_ERROR_CODE}  if Valgrind exist with errors
 ################################################################################
 run_valgrind () {
 
