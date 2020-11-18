@@ -466,17 +466,6 @@ typedef struct x509_purpose_st {
 #define X509_PURPOSE_MIN 1
 #define X509_PURPOSE_MAX 9
 
-// Flags for X509V3_add1_i2d
-
-#define X509V3_ADD_OP_MASK 0xfL
-#define X509V3_ADD_DEFAULT 0L
-#define X509V3_ADD_APPEND 1L
-#define X509V3_ADD_REPLACE 2L
-#define X509V3_ADD_REPLACE_EXISTING 3L
-#define X509V3_ADD_KEEP_EXISTING 4L
-#define X509V3_ADD_DELETE 5L
-#define X509V3_ADD_SILENT 0x10
-
 DEFINE_STACK_OF(X509_PURPOSE)
 
 DECLARE_ASN1_FUNCTIONS(BASIC_CONSTRAINTS)
@@ -525,7 +514,7 @@ OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
 OPENSSL_EXPORT char *i2s_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method,
                                            const ASN1_OCTET_STRING *ia5);
 OPENSSL_EXPORT ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(
-    X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *str);
+    X509V3_EXT_METHOD *method, X509V3_CTX *ctx, const char *str);
 
 DECLARE_ASN1_FUNCTIONS(EXTENDED_KEY_USAGE)
 OPENSSL_EXPORT int i2a_ACCESS_DESCRIPTION(BIO *bp, const ACCESS_DESCRIPTION *a);
@@ -565,7 +554,7 @@ DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
 OPENSSL_EXPORT GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
                                               const X509V3_EXT_METHOD *method,
                                               X509V3_CTX *ctx, int gen_type,
-                                              char *value, int is_nc);
+                                              const char *value, int is_nc);
 
 OPENSSL_EXPORT GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method,
                                               X509V3_CTX *ctx, CONF_VALUE *cnf);
@@ -579,32 +568,36 @@ OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
 // this function so we cannot, yet, replace the type with a dummy struct.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf_nid(LHASH_OF(CONF_VALUE) *conf,
                                                    X509V3_CTX *ctx, int ext_nid,
-                                                   char *value);
+                                                   const char *value);
 
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf_nid(CONF *conf, X509V3_CTX *ctx,
-                                                    int ext_nid, char *value);
+                                                    int ext_nid,
+                                                    const char *value);
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf(CONF *conf, X509V3_CTX *ctx,
-                                                char *name, char *value);
+                                                const char *name,
+                                                const char *value);
 OPENSSL_EXPORT int X509V3_EXT_add_nconf_sk(CONF *conf, X509V3_CTX *ctx,
-                                           char *section,
+                                           const char *section,
                                            STACK_OF(X509_EXTENSION) **sk);
 OPENSSL_EXPORT int X509V3_EXT_add_nconf(CONF *conf, X509V3_CTX *ctx,
-                                        char *section, X509 *cert);
+                                        const char *section, X509 *cert);
 OPENSSL_EXPORT int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx,
-                                            char *section, X509_REQ *req);
+                                            const char *section, X509_REQ *req);
 OPENSSL_EXPORT int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx,
-                                            char *section, X509_CRL *crl);
+                                            const char *section, X509_CRL *crl);
 
-OPENSSL_EXPORT int X509V3_add_value_bool_nf(char *name, int asn1_bool,
+OPENSSL_EXPORT int X509V3_add_value_bool_nf(const char *name, int asn1_bool,
                                             STACK_OF(CONF_VALUE) **extlist);
-OPENSSL_EXPORT int X509V3_get_value_bool(CONF_VALUE *value, int *asn1_bool);
-OPENSSL_EXPORT int X509V3_get_value_int(CONF_VALUE *value, ASN1_INTEGER **aint);
+OPENSSL_EXPORT int X509V3_get_value_bool(const CONF_VALUE *value,
+                                         int *asn1_bool);
+OPENSSL_EXPORT int X509V3_get_value_int(const CONF_VALUE *value,
+                                        ASN1_INTEGER **aint);
 OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf);
 
-OPENSSL_EXPORT char *X509V3_get_string(X509V3_CTX *ctx, char *name,
-                                       char *section);
+OPENSSL_EXPORT char *X509V3_get_string(X509V3_CTX *ctx, const char *name,
+                                       const char *section);
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx,
-                                                        char *section);
+                                                        const char *section);
 OPENSSL_EXPORT void X509V3_string_free(X509V3_CTX *ctx, char *str);
 OPENSSL_EXPORT void X509V3_section_free(X509V3_CTX *ctx,
                                         STACK_OF(CONF_VALUE) *section);
@@ -621,30 +614,135 @@ OPENSSL_EXPORT int X509V3_add_value_bool(const char *name, int asn1_bool,
 OPENSSL_EXPORT int X509V3_add_value_int(const char *name, ASN1_INTEGER *aint,
                                         STACK_OF(CONF_VALUE) **extlist);
 OPENSSL_EXPORT char *i2s_ASN1_INTEGER(X509V3_EXT_METHOD *meth,
-                                      ASN1_INTEGER *aint);
+                                      const ASN1_INTEGER *aint);
 OPENSSL_EXPORT ASN1_INTEGER *s2i_ASN1_INTEGER(X509V3_EXT_METHOD *meth,
-                                              char *value);
+                                              const char *value);
 OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(X509V3_EXT_METHOD *meth,
-                                         ASN1_ENUMERATED *aint);
+                                         const ASN1_ENUMERATED *aint);
 OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED_TABLE(X509V3_EXT_METHOD *meth,
-                                               ASN1_ENUMERATED *aint);
+                                               const ASN1_ENUMERATED *aint);
 OPENSSL_EXPORT int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
 OPENSSL_EXPORT int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
 OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);
 OPENSSL_EXPORT void X509V3_EXT_cleanup(void);
 
-OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(X509_EXTENSION *ext);
+OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(
+    const X509_EXTENSION *ext);
 OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid);
 OPENSSL_EXPORT int X509V3_add_standard_extensions(void);
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
-OPENSSL_EXPORT void *X509V3_EXT_d2i(X509_EXTENSION *ext);
-OPENSSL_EXPORT void *X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid,
-                                    int *crit, int *idx);
+
+// X509V3_EXT_d2i decodes |ext| and returns a pointer to a newly-allocated
+// structure, with type dependent on the type of the extension. It returns NULL
+// if |ext| is an unsupported extension or if there was a syntax error in the
+// extension. The caller should cast the return value to the expected type and
+// free the structure when done.
+//
+// WARNING: Casting the return value to the wrong type is a potentially
+// exploitable memory error, so callers must not use this function before
+// checking |ext| is of a known type.
+OPENSSL_EXPORT void *X509V3_EXT_d2i(const X509_EXTENSION *ext);
+
+// X509V3_get_d2i finds and decodes the extension in |extensions| of type |nid|.
+// If found, it decodes it and returns a newly-allocated structure, with type
+// dependent on |nid|. If the extension is not found or on error, it returns
+// NULL. The caller may distinguish these cases using the |out_critical| value.
+//
+// If |out_critical| is not NULL, this function sets |*out_critical| to one if
+// the extension is found and critical, zero if it is found and not critical, -1
+// if it is not found, and -2 if there is an invalid duplicate extension. Note
+// this function may set |*out_critical| to one or zero and still return NULL if
+// the extension is found but has a syntax error.
+//
+// If |out_idx| is not NULL, this function looks for the first occurrence of the
+// extension after |*out_idx|. It then sets |*out_idx| to the index of the
+// extension, or -1 if not found. If |out_idx| is non-NULL, duplicate extensions
+// are not treated as an error. Callers, however, should not rely on this
+// behavior as it may be removed in the future. Duplicate extensions are
+// forbidden in RFC5280.
+//
+// WARNING: This function is difficult to use correctly. Callers should pass a
+// non-NULL |out_critical| and check both the return value and |*out_critical|
+// to handle errors. If the return value is NULL and |*out_critical| is not -1,
+// there was an error. Otherwise, the function succeeded and but may return NULL
+// for a missing extension. Callers should pass NULL to |out_idx| so that
+// duplicate extensions are handled correctly.
+//
+// Additionally, casting the return value to the wrong type is a potentially
+// exploitable memory error, so callers must ensure the cast and |nid| match.
+OPENSSL_EXPORT void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions,
+                                    int nid, int *out_critical, int *out_idx);
+
+// X509V3_EXT_free casts |ext_data| into the type that corresponds to |nid| and
+// releases memory associated with it. It returns one on success and zero if
+// |nid| is not a known extension.
+//
+// WARNING: Casting |ext_data| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |ext_data|'s type matches |nid|.
+//
+// TODO(davidben): OpenSSL upstream no longer exposes this function. Remove it?
 OPENSSL_EXPORT int X509V3_EXT_free(int nid, void *ext_data);
 
-
+// X509V3_EXT_i2d casts |ext_struc| into the type that corresponds to
+// |ext_nid|, serializes it, and returns a newly-allocated |X509_EXTENSION|
+// object containing the serialization, or NULL on error. The |X509_EXTENSION|
+// has OID |ext_nid| and is critical if |crit| is one.
+//
+// WARNING: Casting |ext_struc| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |ext_struct|'s type matches |ext_nid|.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
                                               void *ext_struc);
+
+// The following constants control the behavior of |X509V3_add1_i2d| and related
+// functions.
+
+// X509V3_ADD_OP_MASK can be ANDed with the flags to determine how duplicate
+// extensions are processed.
+#define X509V3_ADD_OP_MASK 0xfL
+
+// X509V3_ADD_DEFAULT causes the function to fail if the extension was already
+// present.
+#define X509V3_ADD_DEFAULT 0L
+
+// X509V3_ADD_APPEND causes the function to unconditionally appended the new
+// extension to to the extensions list, even if there is a duplicate.
+#define X509V3_ADD_APPEND 1L
+
+// X509V3_ADD_REPLACE causes the function to replace the existing extension, or
+// append if it is not present.
+#define X509V3_ADD_REPLACE 2L
+
+// X509V3_ADD_REPLACE causes the function to replace the existing extension and
+// fail if it is not present.
+#define X509V3_ADD_REPLACE_EXISTING 3L
+
+// X509V3_ADD_KEEP_EXISTING causes the function to succeed without replacing the
+// extension if already present.
+#define X509V3_ADD_KEEP_EXISTING 4L
+
+// X509V3_ADD_DELETE causes the function to remove the matching extension. No
+// new extension is added. If there is no matching extension, the function
+// fails. The |value| parameter is ignored in this mode.
+#define X509V3_ADD_DELETE 5L
+
+// X509V3_ADD_SILENT may be ORed into one of the values above to indicate the
+// function should not add to the error queue on duplicate or missing extension.
+// The function will continue to return zero in those cases, and it will
+// continue to return -1 and add to the error queue on other errors.
+#define X509V3_ADD_SILENT 0x10
+
+// X509V3_add1_i2d casts |value| to the type that corresponds to |nid|,
+// serializes it, and appends it to the extension list in |*x|. If |*x| is NULL,
+// it will set |*x| to a newly-allocated |STACK_OF(X509_EXTENSION)| as needed.
+// The |crit| parameter determines whether the new extension is critical.
+// |flags| may be some combination of the |X509V3_ADD_*| constants to control
+// the function's behavior on duplicate extension.
+//
+// This function returns one on success, zero if the operation failed due to a
+// missing or duplicate extension, and -1 on other errors.
+//
+// WARNING: Casting |value| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |value|'s type matches |nid|.
 OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
 
