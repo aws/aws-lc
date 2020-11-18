@@ -15,8 +15,8 @@ $(aws ecr get-login --no-include-email --region us-west-2)
 # Tag images with date to help find old images, CodeBuild uses the latest tag and gets updated automatically
 docker tag amazonlinux-2-aarch:gcc-7x ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_`date +%Y-%m-%d`
 docker tag amazonlinux-2-aarch:gcc-7x ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_latest
-docker push ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_latest
-docker push ${ECS_REPO}:amazonlinux-2-aarch_gcc-7x_`date +%Y-%m-%d`
+docker push ${ECS_REPO}:amazonlinux-2_gcc-7x_latest
+docker push ${ECS_REPO}:amazonlinux-2_gcc-7x_`date +%Y-%m-%d`
 
 docker tag ubuntu-19.10-aarch:gcc-9x ${ECS_REPO}:ubuntu-19.10_gcc-9x_`date +%Y-%m-%d`
 docker tag ubuntu-19.10-aarch:gcc-9x ${ECS_REPO}:ubuntu-19.10_gcc-9x_latest
