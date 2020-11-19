@@ -31,7 +31,7 @@
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
-#include "p256-x86_64.h"
+#include "p256-nistz.h"
 
 // Disable tests if BORINGSSL_SHARED_LIBRARY is defined. These tests need access
 // to internal functions.
@@ -39,7 +39,7 @@
     (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) && \
     !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
 
-TEST(P256_X86_64Test, SelectW5) {
+TEST(P256_NistzTest, SelectW5) {
   // Fill a table with some garbage input.
   __attribute__((aligned(64))) P256_POINT table[16];
   for (size_t i = 0; i < 16; i++) {
@@ -69,7 +69,7 @@ TEST(P256_X86_64Test, SelectW5) {
   CHECK_ABI(ecp_nistz256_select_w5, &val, table, 7);
 }
 
-TEST(P256_X86_64Test, SelectW7) {
+TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
   __attribute__((aligned(64))) P256_POINT_AFFINE table[64];
   for (size_t i = 0; i < 64; i++) {
@@ -98,7 +98,7 @@ TEST(P256_X86_64Test, SelectW7) {
   CHECK_ABI(ecp_nistz256_select_w7, &val, table, 42);
 }
 
-TEST(P256_X86_64Test, BEEU) {
+TEST(P256_NistzTest, BEEU) {
 #if defined(OPENSSL_X86_64)
   if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
     // No AVX support; cannot run the BEEU code.
@@ -485,8 +485,8 @@ static void TestOrdMulMont(FileTest *t) {
   }
 }
 
-TEST(P256_X86_64Test, TestVectors) {
-  return FileTestGTest("crypto/fipsmodule/ec/p256-x86_64_tests.txt",
+TEST(P256_NistzTest, TestVectors) {
+  return FileTestGTest("crypto/fipsmodule/ec/p256-nistz_tests.txt",
                        [](FileTest *t) {
     if (t->GetParameter() == "Negate") {
       TestNegate(t);
@@ -505,7 +505,7 @@ TEST(P256_X86_64Test, TestVectors) {
 }
 
 // Instrument the functions covered in TestVectors for ABI checking.
-TEST(P256_X86_64Test, ABI) {
+TEST(P256_NistzTest, ABI) {
   BN_ULONG a[P256_LIMBS], b[P256_LIMBS], c[P256_LIMBS];
   OPENSSL_memset(a, 0x01, sizeof(a));
   // These functions are all constant-time, so it is only necessary to

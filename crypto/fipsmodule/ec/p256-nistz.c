@@ -31,7 +31,7 @@
 #include "../delocate.h"
 #include "../../internal.h"
 #include "internal.h"
-#include "p256-x86_64.h"
+#include "p256-nistz.h"
 
 #if !defined(OPENSSL_NO_ASM) &&  \
     (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&    \
@@ -46,7 +46,7 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 };
 
 // Precomputed tables for the default generator
-#include "p256-x86_64-table.h"
+#include "p256-nistz-table.h"
 
 // Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
 // util.c for details
