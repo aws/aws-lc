@@ -7,7 +7,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 RUN apt-get update
 RUN apt-get install -y wget unzip git cmake clang llvm golang python3-pip libncurses5 quilt
 RUN pip3 install wllvm
-   
+
 ADD ./SAW/scripts /lc/scripts
 RUN /lc/scripts/install.sh
 ENV CRYPTOLPATH=../../../cryptol-specs

@@ -246,34 +246,37 @@ crucible_llvm_verify m "HMAC_CTX_init"
   HMAC_CTX_init_spec
   (w4_unint_yices []);
 
-// Verify the `HMAC_Init_ex` C function satisfies the `HMAC_Init_ex_spec`
-// specification.  There are two cases to consider.
-crucible_llvm_verify m "HMAC_Init_ex"
-  [ sha512_block_data_order_spec
-  , OPENSSL_malloc_ov
-  , OPENSSL_free_nonnull_ov
-  , OPENSSL_free_null_ov
-  , OPENSSL_cleanse_ov
-  ]
-  true
-  // key_len=128 covers the case where the key is less than or equal to 128
+let verify_HMAC_Init_ex_spec key_len = do {
+  print (str_concat "Verifying HMAC_Init_ex_spec at key_len=" (show key_len));
+  crucible_llvm_verify m "HMAC_Init_ex"
+    [ sha512_block_data_order_spec
+    , OPENSSL_malloc_ov
+    , OPENSSL_free_nonnull_ov
+    , OPENSSL_free_null_ov
+    , OPENSSL_cleanse_ov
+    ]
+    true
+    (HMAC_Init_ex_spec key_len)
+    (w4_unint_yices []);
+};
+
+// Verify the `HMAC_Init_ex` C function satisfies the `HMAC_Init_ex_spec` specification.  
+if HMAC_quick_check then do {
+  // There are two cases to consider.
+  // Case 1: key_len=128 covers the case where the key is less than or equal to 128
   // bytes long and will be used as-is when XORed to create the pad inputs to
   // the SHA384 update function calls
-  (HMAC_Init_ex_spec 128)
-  (w4_unint_yices []);
-crucible_llvm_verify m "HMAC_Init_ex"
-  [ sha512_block_data_order_spec
-  , OPENSSL_malloc_ov
-  , OPENSSL_free_nonnull_ov
-  , OPENSSL_free_null_ov
-  , OPENSSL_cleanse_ov
-  ]
-  true
-  // key_len=129 covers the case where the key is greater than 128 bytes long
+  // Case 2: key_len=129 covers the case where the key is greater than 128 bytes long
   // and will be hashed before being XORed to create the pad inputs to the
   // SHA384 update function calls
-  (HMAC_Init_ex_spec 129)
-  (w4_unint_yices []);
+  for [128, 129] verify_HMAC_Init_ex_spec;
+  return ();
+} else do {
+  key_lens <- for (eval_list {{ [0 .. (SHA512_CBLOCK + 1)] : [SHA512_CBLOCK + 2][64] }})
+    (\x -> (return (eval_int x)) : (TopLevel Int));
+  for key_lens verify_HMAC_Init_ex_spec;
+  return ();
+};
 
 // Verify the `HMAC_Update` C function satisfies the `HMAC_Update_spec`
 // specification.  There are 3 cases to consider to ensure the proof covers all
@@ -320,24 +323,40 @@ let HMAC_Final_ovs =
   , OPENSSL_free_null_ov
   , OPENSSL_cleanse_ov
   ];
-  
+
+let verify_HMAC_Final_spec withLength num = do {
+  print (str_concat "Verifying HMAC_Final_spec at num=" (show num));
+  crucible_llvm_verify m "HMAC_Final"
+    HMAC_Final_ovs
+    true
+    (HMAC_Final_spec withLength num)
+    (w4_unint_yices ["processBlock_Common"]);
+};
+
 let verify_final_with_length withLength = do {
   // There are 2 cases to consider to ensure the proof covers all possible code
   // paths through the update function
-  crucible_llvm_verify m "HMAC_Final"
-    HMAC_Final_ovs
-    true
-    // num=111 covers the case with one call to the block function
-    (HMAC_Final_spec withLength 111)
-    (w4_unint_yices ["processBlock_Common"]);
-  crucible_llvm_verify m "HMAC_Final"
-    HMAC_Final_ovs
-    true
-    // num=112 covers the case with two calls to the block function
-    (HMAC_Final_spec withLength 112)
-    (w4_unint_yices ["processBlock_Common"]);
+  // Case 1: num=111 covers the case with one call to the block function
+  (verify_HMAC_Final_spec withLength 111);
+  // Case 2: num=112 covers the case with two calls to the block function
+  (verify_HMAC_Final_spec withLength 112);
 };
-for [false, true] verify_final_with_length;
+
+let verify_final_with_num target_num = do {
+  (verify_HMAC_Final_spec false target_num);
+  (verify_HMAC_Final_spec true target_num);
+};
+
+if HMAC_quick_check then do {
+  for [false, true] verify_final_with_length;
+  return();
+} else do {
+  // range of valid indices in the internal block ([0 .. (SHA512_CBLOCK - 1)])
+  nums <- for (eval_list {{ [0 .. (SHA512_CBLOCK - 1)] : [SHA512_CBLOCK][64] }})
+    (\x -> (return (eval_int x)) : (TopLevel Int));
+  for nums verify_final_with_num;
+  return();
+};
 
 // Assume `OPENSSL_cleanse` satisfies `OPENSSL_cleanse_spec` for the
 // hmac_ctx_st struct
@@ -361,5 +380,3 @@ let verify_hmac_with_length withLength = do {
     (w4_unint_yices ["processBlock_Common"]);
 };
 for [false, true] verify_hmac_with_length;
-
-

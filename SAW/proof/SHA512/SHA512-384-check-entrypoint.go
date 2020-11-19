@@ -6,60 +6,20 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
+	utility "aws-lc-verification/proof/common"
 	"log"
 	"os"
-	"os/exec"
-	"strconv"
-	"strings"
 	"sync"
 )
 
-// A utility function to terminate this program when err exists.
-func checkError(e error) {
-	if e != nil {
-		log.Fatal(e)
-	}
-}
-
-// A function to create and run "verify-SHA512-384-check.saw" given a "target_num".
-func createAndRunSawScript(target_num int, wg *sync.WaitGroup) {
-	log.Printf("Start creating saw script for selected num %d", target_num)
-	// Create a new saw script for the target_num.
-	file_name := fmt.Sprint("verify-SHA512-384-check-num-", target_num, ".saw")
-	file, err := os.Create(file_name)
-	checkError(err)
-	// Read file content of verification template.
-	content, err := ioutil.ReadFile("verify-SHA512-384-selectcheck-template.txt")
-	checkError(err)
-	verification_template := string(content)
-	// Replace some placeholders of the file content with target values.
-	text := strings.Replace(verification_template, "TARGET_NUM_PLACEHOLDER", strconv.Itoa(target_num), 1)
-	defer file.Close()
-	file.WriteString(text)
-	defer os.Remove(file_name)
-	// Run saw script.
-	defer wg.Done()
-	runSawScript(file_name)
-}
-
-// A function to run saw script.
-func runSawScript(path_to_saw_file string) {
-	log.Printf("Running saw script %s", path_to_saw_file)
-	cmd := exec.Command("saw", path_to_saw_file)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	checkError(err)
-}
+const sha_process_limit int = 20
 
 func main() {
-	log.Printf("Starting SHA512-384 check.")
+	log.Printf("Started SHA512-384 check.")
 	// When 'SHA512_384_SELECTCHECK' is undefined, quickcheck is executed.
 	env_var := os.Getenv("SHA512_384_SELECTCHECK")
 	if len(env_var) == 0 {
-		runSawScript("verify-SHA512-384-quickcheck.saw")
+		utility.RunSawScript("verify-SHA512-384-quickcheck.saw")
 		return
 	}
 
@@ -70,9 +30,13 @@ func main() {
 
 	// Generate saw scripts based on above verification template and target num ranges.
 	var wg sync.WaitGroup
+	process_count := 0
 	for _, num := range target_nums {
 		wg.Add(1)
-		go createAndRunSawScript(num, &wg)
+		saw_template := "verify-SHA512-384-selectcheck-template.txt"
+		placeholder_name := "TARGET_NUM_PLACEHOLDER"
+		go utility.CreateAndRunSawScript(saw_template, placeholder_name, num, &wg)
+		utility.Wait(&process_count, sha_process_limit, &wg)
 	}
 
 	wg.Wait()
