@@ -4,4 +4,5 @@
 	branch = main
 [submodule "cryptol-specs"]
 	path = cryptol-specs
+	branch = sha-imperative
 	url = https://github.com/GaloisInc/cryptol-specs.git

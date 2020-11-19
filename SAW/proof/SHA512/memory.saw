@@ -3,63 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+include "../common/memory.saw";
 
 /*
- * This file contains OpenSSL specs and assumptions needed for the SHA proofs
+ * Assumptions on OpenSSL memory management functions for the SHA proofs
  */
-
-////////////////////////////////////////////////////////////////////////////////
-// Specifications
-
-/*
- * Specification of OPENSSL memory management functions
- */
-let OPENSSL_malloc_spec size = do {
-  // Precondition: true
-
-  // Call function with argument `size`.
-  // `crucible_term` converts `size` to a symbol so that SAW may reason about
-  // it during symbolic execution.  This line also contains a type annotation
-  // on `size` to declare that it is a 64 bit integer.  This is necessary
-  // because SAW integers are unbounded, but the function expects a 64 bit
-  // value so the spec must explicitly convert the unbounded SAW integer to a
-  // 64 bit value.
-  crucible_execute_func [crucible_term {{ `size : [64] }}];
-
-  // Postcondition: returns a pointer to a 128 byte aligned array of `size`
-  // bytes
-  ptr <- crucible_alloc_aligned 128 (llvm_array size i8);
-  crucible_return ptr;
-};
-
-let OPENSSL_free_nonnull_spec size = do {
-  // Precondition: `ptr` is a pointer to an array of `size` bytes
-  ptr <- crucible_alloc (llvm_array size i8);
-
-  // Call function with argument `ptr`
-  crucible_execute_func [ptr];
-
-  // Postcondition: true
-};
-
-let OPENSSL_free_null_spec = do {
-  // Precondition: true
-
-  // Call function with NULL as the argument
-  crucible_execute_func [crucible_null];
-
-  // Postcondition: true
-};
-
-let OPENSSL_cleanse_spec len = do {
-  // Precondition: `ptr` is a pointer to an array of `len` bytes
-  ptr <- crucible_alloc (llvm_array len i8);
-
-  // Call function with arguments `ptr` and `len`
-  crucible_execute_func [ptr, crucible_term {{ `len : [64] }}];
-
-  // Postcondition: Data pointed to by `ptr` has been invalidated
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Proof commands
@@ -75,12 +23,6 @@ OPENSSL_free_nonnull_ov <- crucible_llvm_unsafe_assume_spec
   m
   "OPENSSL_free"
   (OPENSSL_free_nonnull_spec SHA512_CTX_SIZE);
-
-// Assume `OPENSSL_free` satisfies `OPENSSL_free_null_spec`
-OPENSSL_free_null_ov <- crucible_llvm_unsafe_assume_spec
-  m
-  "OPENSSL_free"
-  OPENSSL_free_null_spec;
 
 // Assume `OPENSSL_cleanse` satisfies `OPENSSL_cleanse_spec`
 OPENSSL_cleanse_ov <- crucible_llvm_unsafe_assume_spec

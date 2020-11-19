@@ -11,71 +11,7 @@
  */
 
 import "../../spec/AES/AES-GCM-implementation.cry";
-
-
-let slice_0_64_64 = parse_core "\\(x : bitvector 128) -> slice Bool 0 64 64 x";
-let slice_64_64_0 = parse_core "\\(x : bitvector 128) -> slice Bool 64 64 0 x";
-let slice_0_128_128 = parse_core "\\(x : bitvector 256) -> slice Bool 0 128 128 x";
-let slice_128_128_0 = parse_core "\\(x : bitvector 256) -> slice Bool 128 128 0 x";
-let slice_0_64_192 = parse_core "\\(x : bitvector 256) -> slice Bool 0 64 192 x";
-let slice_64_64_128 = parse_core "\\(x : bitvector 256) -> slice Bool 64 64 128 x";
-let slice_128_64_64 = parse_core "\\(x : bitvector 256) -> slice Bool 128 64 64 x";
-let slice_192_64_0 = parse_core "\\(x : bitvector 256) -> slice Bool 192 64 0 x";
-let slice_0_32_96 = parse_core "\\(x : bitvector 128) -> slice Bool 0 32 96 x";
-let slice_32_32_64 = parse_core "\\(x : bitvector 128) -> slice Bool 32 32 64 x";
-let slice_64_32_32 = parse_core "\\(x : bitvector 128) -> slice Bool 64 32 32 x";
-let slice_96_32_0 = parse_core "\\(x : bitvector 128) -> slice Bool 96 32 0 x";
-let slice_0_8_120 = parse_core "\\(x : bitvector 128) -> slice Bool 0 8 120 x";
-let slice_8_8_112 = parse_core "\\(x : bitvector 128) -> slice Bool 8 8 112 x";
-let slice_16_8_104 = parse_core "\\(x : bitvector 128) -> slice Bool 16 8 104 x";
-let slice_24_8_96 = parse_core "\\(x : bitvector 128) -> slice Bool 24 8 96 x";
-let slice_32_8_88 = parse_core "\\(x : bitvector 128) -> slice Bool 32 8 88 x";
-let slice_40_8_80 = parse_core "\\(x : bitvector 128) -> slice Bool 40 8 80 x";
-let slice_48_8_72 = parse_core "\\(x : bitvector 128) -> slice Bool 48 8 72 x";
-let slice_56_8_64 = parse_core "\\(x : bitvector 128) -> slice Bool 56 8 64  x";
-let slice_64_8_56 = parse_core "\\(x : bitvector 128) -> slice Bool 64 8 56 x";
-let slice_72_8_48 = parse_core "\\(x : bitvector 128) -> slice Bool 72 8 48 x";
-let slice_80_8_40 = parse_core "\\(x : bitvector 128) -> slice Bool 80 8 40 x";
-let slice_88_8_32 = parse_core "\\(x : bitvector 128) -> slice Bool 88 8 32 x";
-let slice_96_8_24 = parse_core "\\(x : bitvector 128) -> slice Bool 96 8 24 x";
-let slice_104_8_16 = parse_core "\\(x : bitvector 128) -> slice Bool 104 8 16 x";
-let slice_112_8_8 = parse_core "\\(x : bitvector 128) -> slice Bool 112 8 8 x";
-let slice_120_8_0 = parse_core "\\(x : bitvector 128) -> slice Bool 120 8 0 x";
-let slice_0_8_56 = parse_core "\\(x : bitvector 64) -> slice Bool 0 8 56 x";
-let slice_8_8_48 = parse_core "\\(x : bitvector 64) -> slice Bool 8 8 48 x";
-let slice_16_8_40 = parse_core "\\(x : bitvector 64) -> slice Bool 16 8 40 x";
-let slice_24_8_32 = parse_core "\\(x : bitvector 64) -> slice Bool 24 8 32 x";
-let slice_32_8_24 = parse_core "\\(x : bitvector 64) -> slice Bool 32 8 24 x";
-let slice_40_8_16 = parse_core "\\(x : bitvector 64) -> slice Bool 40 8 16 x";
-let slice_48_8_8 = parse_core "\\(x : bitvector 64) -> slice Bool 48 8 8 x";
-let slice_56_8_0 = parse_core "\\(x : bitvector 64) -> slice Bool 56 8 0 x";
-let slice_384_128_0 = parse_core "\\(x : bitvector 512) -> slice Bool 384 128 0 x";
-let slice_384_32_96 = parse_core "\\(x : bitvector 512) -> slice Bool 384 32 96 x";
-let slice_416_32_64 = parse_core "\\(x : bitvector 512) -> slice Bool 416 32 64 x";
-let slice_448_32_32 = parse_core "\\(x : bitvector 512) -> slice Bool 448 32 32 x";
-let slice_480_32_0 = parse_core "\\(x : bitvector 512) -> slice Bool 480 32 0 x";
-
-let bvUExt_384_128 = parse_core "\\(x : bitvector 128) -> bvUExt 384 128 x";
-
-
-slice_384_0_thm <- prove_folding_theorem {{ \x y -> slice_384_128_0 (x && y) == (slice_384_128_0 x) && (slice_384_128_0 y) }};
-slice_384_1_thm <- prove_folding_theorem {{ \x y -> slice_384_128_0 (x || y) == (slice_384_128_0 x) || (slice_384_128_0 y) }};
-slice_384_2_thm <- prove_folding_theorem {{ \x y -> slice_384_128_0 (x ^  y) == (slice_384_128_0 x) ^  (slice_384_128_0 y) }};
-slice_384_3_thm <- prove_folding_theorem {{ \x -> slice_384_128_0 (bvUExt_384_128 x) == x }};
-slice_384_4_thm <- prove_folding_theorem {{ \x -> slice_384_32_96 x == slice_0_32_96 (slice_384_128_0 x) }};
-slice_384_5_thm <- prove_folding_theorem {{ \x -> slice_416_32_64 x == slice_32_32_64 (slice_384_128_0 x) }};
-slice_384_6_thm <- prove_folding_theorem {{ \x -> slice_448_32_32 x == slice_64_32_32 (slice_384_128_0 x) }};
-slice_384_7_thm <- prove_folding_theorem {{ \x -> slice_480_32_0 x == slice_96_32_0 (slice_384_128_0 x) }};
-let slice_384_thms =
-  [ slice_384_0_thm
-  , slice_384_1_thm
-  , slice_384_2_thm
-  , slice_384_3_thm
-  , slice_384_4_thm
-  , slice_384_5_thm
-  , slice_384_6_thm
-  , slice_384_7_thm
-  ];
+include "goal-rewrites-AES.saw";
 
 bar0 <- prove_folding_theorem {{ \(x : [128]) -> \y -> (x ^ y) ^ y == x }};
 bar1 <- prove_folding_theorem {{ \(x : [128]) -> \y -> (y ^ x) ^ y == x }};

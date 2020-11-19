@@ -1,0 +1,127 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AESKeyWrapPadded.cry";
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AES.cry";
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry";
+import "../../spec/AES/X86.cry";
+import "../../spec/AES/AES-GCM.cry";
+
+m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+
+// Include helper functions
+include "../common/helpers.saw";
+// Include memory management specs
+include "../common/memory.saw";
+// Include override for value_barrier_w
+include "../common/internal.saw";
+
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+include "../AES/goal-rewrites-AES.saw";
+include "../AES/AES.saw";
+
+let {{kwp_default_iv = [0xa6, 0x59, 0x59, 0xa6] : [4][8]}};
+
+// The core spec for (un)wrap padded accepts a plaintext length and pad length.
+// The correct pad length is calculated by the top-level spec.
+let AES_wrap_key_padded_spec len = do {
+  let pad = eval_size {| (len+7)/8*8-len |};
+  global_alloc_init "OPENSSL_ia32cap_P" {{ia32cap}};
+  
+  key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  key <- fresh_aes_key_st;
+  points_to_aes_key_st key_ptr key;
+  (indata, indata_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
+  out_ptr <- crucible_alloc (llvm_array (eval_size {|len+pad+8|}) (llvm_int 8));
+  out_len_ptr <- crucible_alloc (llvm_int 64);
+
+  crucible_execute_func [key_ptr, out_ptr, out_len_ptr, crucible_term {{`len+`pad+8 : [64]}}, indata_ptr, crucible_term {{`len : [64]}}];
+
+  crucible_points_to out_ptr (crucible_term {{aesWrapKeyPadded`{len, pad} (join key) kwp_default_iv indata}});
+  crucible_points_to out_len_ptr (crucible_term {{`len+`pad+8 : [64]}});
+  crucible_return (crucible_term {{1 : [32]}});
+};
+
+let AES_unwrap_key_padded_spec len = do {
+  let pad = eval_size {| (len+7)/8*8-len |};
+  global_alloc_init "OPENSSL_ia32cap_P" {{ia32cap}};
+  
+  key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  (key_low, key_high) <- fresh_aes_key_256_parts;
+  points_to_inv_aes_key_st key_ptr (key_low, key_high);
+  (indata, indata_ptr) <- ptr_to_fresh_readonly "in" (llvm_array (eval_size {|len+pad+8|}) (llvm_int 8));
+  out_ptr <- crucible_alloc (llvm_array (eval_size {|len + pad|}) (llvm_int 8));
+  out_len_ptr <- crucible_alloc (llvm_int 64);
+
+  crucible_execute_func [key_ptr, out_ptr, out_len_ptr, crucible_term {{`len+`pad : [64]}}, indata_ptr, crucible_term {{`len+`pad+8 : [64]}}];
+
+  // The cryptol spec only produces the plaintext when unwrap succeeds. So this part is only checked conditionally.
+  // Use a new symbolic variable to represent the value stored in the output buffer.
+  unwrapped <- crucible_fresh_var "unwrapped" (llvm_array (eval_size {|len + pad|}) (llvm_int 8));
+  // If the unwrap succeeds, the output buffer holds this symbolic value, and this value is equal to the result of unwrap.
+  let unwrap_res = {{aesUnwrapKeyPadded (join (key_low#key_high)) kwp_default_iv indata}};
+  crucible_conditional_points_to {{unwrap_res.0}} out_ptr (crucible_term unwrapped);
+  crucible_postcond {{unwrap_res.0 ==> (unwrap_res.2 == unwrapped)}};
+
+  // Similarly, the output length is only correct when unwrap succeeds.
+  out_len <- crucible_fresh_var "out_len_out" (llvm_int 64);
+  crucible_conditional_points_to {{unwrap_res.0}} out_len_ptr (crucible_term out_len);
+  crucible_postcond {{unwrap_res.0 ==> 
+    out_len == (0 : [32]) # (join unwrap_res.1)}};
+
+  crucible_return (crucible_term {{if unwrap_res.0 then (1 : [32]) else (0 : [32])}});
+};
+
+// Proof commands
+
+// Wrap (padded) uses a temporary heap buffer.
+// Assume correct behavior of malloc at the appropriate sizes.
+malloc_lengths <- for (eval_list {{ ([16, 24, 32]) : [3][32] }})
+  (\x -> (return (eval_int x)) : (TopLevel Int));
+
+let OPENSSL_malloc_ov length = 
+  crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_malloc"
+  (OPENSSL_malloc_spec length);
+
+let OPENSSL_free_nonnull_ov length =
+  crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  (OPENSSL_free_nonnull_spec length);
+
+OPENSSL_malloc_ovs <- for malloc_lengths OPENSSL_malloc_ov;
+OPENSSL_free_nonnull_ovs <- for malloc_lengths OPENSSL_free_nonnull_ov;
+
+// Up to 8 bytes, the code uses a simpler branch that only performs a single encrypt.
+// After 16 bytes, all code and boundary conditions are covered.
+// Length 32 is also included because it is a common key size.
+wrap_padded_lengths <- for (eval_list {{ ([1 .. 16]#[32]) : [17][32] }})
+  (\x -> (return (eval_int x)) : (TopLevel Int));
+
+let verify_wrap_padded length = do {
+  print (str_concat "Verifying wrap and uwrap with padding at length=" (show length));
+
+  crucible_llvm_verify m "AES_wrap_key_padded" 
+    (concat
+      (concat 
+        [aes_hw_encrypt_ov, aes_hw_encrypt_in_place_ov]
+        OPENSSL_malloc_ovs
+      )
+      OPENSSL_free_nonnull_ovs
+    )
+    true
+    (AES_wrap_key_padded_spec length)
+    (do {w4_unint_yices ["aesEncrypt"];});
+
+  crucible_llvm_verify m "AES_unwrap_key_padded" 
+    [aes_hw_decrypt_ov, aes_hw_decrypt_in_place_ov, value_barrier_w_ov] 
+    true 
+    (AES_unwrap_key_padded_spec length)
+    (do {w4_unint_yices ["aesDecrypt"];});
+};
+for wrap_padded_lengths verify_wrap_padded;
+

@@ -1,0 +1,100 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AESKeyWrap.cry";
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AES.cry";
+import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry";
+import "../../spec/AES/X86.cry";
+import "../../spec/AES/AES-GCM.cry";
+
+m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+
+// Include helper functions
+include "../common/helpers.saw";
+
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+include "../AES/goal-rewrites-AES.saw";
+include "../AES/AES.saw";
+
+let {{ kw_default_iv = [0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6] : [8][8] }};
+
+let ivPre withIv = do {
+  if withIv then do {
+    ptr_to_fresh_readonly "iv" (llvm_array 8 (llvm_int 8));
+  } else do {
+    return ({{kw_default_iv}}, crucible_null);
+  };
+};
+
+// Spec for wrap function.
+// The withLen parameter determines whether the IV pointer is non-null.
+let AES_wrap_key_spec withIv len = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  
+  key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  key <- fresh_aes_key_st;
+  points_to_aes_key_st key_ptr key;
+  (iv, iv_ptr) <- ivPre withIv;
+  (indata, indata_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
+  out_ptr <- crucible_alloc (llvm_array (eval_size {|len+8|}) (llvm_int 8));
+
+  crucible_execute_func [key_ptr, iv_ptr, out_ptr, indata_ptr, crucible_term {{`len : [64]}}];
+
+  if eval_bool {{ `len >= 16 /\ `len % 8 == 0 }} then do {
+    crucible_points_to out_ptr (crucible_term {{aesWrapKey (join key) iv indata}});
+    crucible_return (crucible_term {{`len+8 : [32]}});
+  } else do {
+    crucible_return (crucible_term {{-1 : [32]}});
+  };
+};
+
+// Spec for unwrap function.
+// The withLen parameter determines whether the IV pointer is non-null.
+let AES_unwrap_key_spec withIv len = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ia32cap}};
+  
+  key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  (key_low, key_high) <- fresh_aes_key_256_parts;
+  points_to_inv_aes_key_st key_ptr (key_low, key_high);
+  (iv, iv_ptr) <- ivPre withIv;
+  (indata, indata_ptr) <- ptr_to_fresh_readonly "in" (llvm_array (eval_size {|len+8|}) (llvm_int 8));
+  out_ptr <- crucible_alloc (llvm_array len (llvm_int 8));
+
+  crucible_execute_func [key_ptr, iv_ptr, out_ptr, indata_ptr, crucible_term {{`len+8 : [64]}}];
+
+  if eval_bool {{ `len >= 16 /\ `len % 8 == 0 }} then do {
+    let unwrap_res = {{ aesUnwrapKey (join (key_low#key_high)) iv indata }};
+    // The cryptol spec only produces the plaintext when unwrap succeeds. So this part is only checked conditionally.
+    // Use a new symbolic variable to represent the value stored in the output buffer.
+    unwrapped <- crucible_fresh_var "unwrapped" (llvm_array len (llvm_int 8));
+    // If the unwrap succeeds, the output buffer holds this symbolic value, and this value is equal to the result of unwrap.
+    crucible_conditional_points_to {{unwrap_res.0}} out_ptr (crucible_term unwrapped);
+    crucible_postcond {{unwrap_res.0 ==> unwrap_res.1 == unwrapped}};
+    crucible_return (crucible_term {{if unwrap_res.0 then (`len : [32]) else (-1 : [32])}});
+  } else do {
+    crucible_return (crucible_term {{-1 : [32]}});
+  };
+};
+
+// Wrap and unwrap (unpadded) proof commands
+
+// Outer loop over whether an IV is supplied
+let verify_wrap_iv withIv = do {
+  // Testing at length 16 is sufficient to cover all "good" branches and boundary conditions.
+  // Additional checks are for common key sizes (32), and for extra spot checking
+  wrap_lengths <- for (eval_list {{ ([0 .. 17] # [24, 32, 40]): [21][32] }})
+    (\x -> (return (eval_int x)) : (TopLevel Int));
+  // Wrap and unwrap (no padding) proof commands
+  let verify_wrap length = do {
+    
+    print (str_concat (str_concat (str_concat "Verifying wrap and uwrap withIv=" (show withIv)) " at length=") (show length));
+    crucible_llvm_verify m "AES_wrap_key" [aes_hw_encrypt_in_place_ov] true (AES_wrap_key_spec withIv length) (do {w4_unint_yices ["aesEncrypt"];});
+    crucible_llvm_verify m "AES_unwrap_key" [aes_hw_decrypt_in_place_ov] true (AES_unwrap_key_spec withIv length) (do {w4_unint_yices ["aesDecrypt"];});
+  };
+  for wrap_lengths verify_wrap;
+};
+for [false, true] verify_wrap_iv;
+
+

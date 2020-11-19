@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+// Using experimental proof command "crucible_llvm_verify_x86"
+enable_experimental;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Specifications
@@ -21,10 +24,22 @@ let points_to_aes_key_st ptr key = do {
   crucible_points_to_untyped ptr (crucible_struct [(crucible_term {{ key }}), crucible_term ({{ aes_key_from_schedule (ExpandKey (join key)) }}), (crucible_term {{ `aes_rounds : [32] }})]);
 };
 
-let points_to_inv_aes_key_st ptr key = do {
-  crucible_points_to_untyped ptr (crucible_struct [crucible_term ({{ inv_aes_key_from_schedule (ExpandKey (swap128 (join key))) }}), (crucible_term {{ key }}), (crucible_term {{ `aes_rounds : [32] }})]);
+// Some specs manipulate the blocks of the key, it is useful to represent the key as a pair of blocks.
+let fresh_aes_key_256_parts = do {
+  low <- crucible_fresh_var "key_low" (llvm_array (eval_size {|aes_key_len/2|}) (llvm_int 8));
+  high <- crucible_fresh_var "key_high" (llvm_array (eval_size {|aes_key_len/2|}) (llvm_int 8));
+  return (low,high);
 };
 
+// For AES decrypt, the round keys are stored in memory in reverse order.
+let points_to_inv_aes_key_st ptr (low,high) = do {
+  crucible_points_to (crucible_elem ptr 1) (crucible_term {{ `aes_rounds : [32] }});
+
+  crucible_points_to_untyped (crucible_elem (crucible_elem ptr 0) 0) (crucible_term {{ (inv_aes_key_from_schedule (ExpandKey (join (low#high))))}});
+
+  crucible_points_to_untyped (crucible_elem (crucible_elem ptr 0) (eval_size {|4 *13 |})) (crucible_term high);
+  crucible_points_to_untyped (crucible_elem (crucible_elem ptr 0) (eval_size {|4 *14 |})) (crucible_term low);
+};
 
 let aes_hw_set_encrypt_key_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
@@ -71,23 +86,23 @@ let aes_hw_decrypt_spec = do {
   (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
   out_ptr <- crucible_alloc (llvm_array AES_BLOCK_SIZE (llvm_int 8));
   key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
-  key <- fresh_aes_key_st;
-  points_to_inv_aes_key_st key_ptr key;
+  (key_low, key_high) <- fresh_aes_key_256_parts;
+  points_to_inv_aes_key_st key_ptr (key_low, key_high);
 
   crucible_execute_func [in_ptr, out_ptr, key_ptr];
 
-  crucible_points_to out_ptr (crucible_term {{ aes_hw_decrypt in_ (split (swap128 (join key))) }});
+  crucible_points_to out_ptr (crucible_term {{ aes_hw_decrypt in_ (key_low # key_high) }});
 };
 
 let aes_hw_decrypt_in_place_spec = do {
   (in_, inout_ptr) <- ptr_to_fresh "in" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
   key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
-  key <- fresh_aes_key_st;
-  points_to_inv_aes_key_st key_ptr key;
+  (key_low, key_high) <- fresh_aes_key_256_parts;
+  points_to_inv_aes_key_st key_ptr (key_low, key_high);
 
   crucible_execute_func [inout_ptr, inout_ptr, key_ptr];
 
-  crucible_points_to inout_ptr (crucible_term {{ aes_hw_decrypt in_ (split (swap128 (join key))) }});
+  crucible_points_to inout_ptr (crucible_term {{ aes_hw_decrypt in_ (key_low # key_high) }});
 };
 
 
@@ -107,9 +122,9 @@ let aes_hw_ctr32_encrypt_blocks_spec len = do {
 };
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Proof commands
-
 aes_hw_set_encrypt_key_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_set_encrypt_key"
   []
   true
