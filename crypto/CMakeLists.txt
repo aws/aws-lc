@@ -511,7 +511,7 @@ add_executable(
   fipsmodule/aes/aes_test.cc
   fipsmodule/bn/bn_test.cc
   fipsmodule/ec/ec_test.cc
-  fipsmodule/ec/p256-x86_64_test.cc
+  fipsmodule/ec/p256-nistz_test.cc
   fipsmodule/ecdsa/ecdsa_test.cc
   fipsmodule/md5/md5_test.cc
   fipsmodule/modes/gcm_test.cc
@@ -561,4 +561,3 @@ install(TARGETS crypto
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
