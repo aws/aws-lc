@@ -566,6 +566,11 @@ static int evp_pkey_set1_tls_encodedpoint_x25519(EVP_PKEY *pkey,
     goto err;
   }
 
+  if (1 > len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+    goto err;
+  }
+
   if ((NULL == pkey->ameth) || (NULL == pkey->ameth->set_pub_raw)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     goto err;
