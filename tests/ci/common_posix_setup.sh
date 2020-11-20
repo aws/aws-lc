@@ -37,3 +37,12 @@ function build_and_test {
   run_build "$@"
   run_test 
 }
+
+function run_test_valgrind {
+  $BUILD_COMMAND -C test_build_dir run_tests_valgrind
+}
+
+function build_and_test_valgrind {
+  run_build "$@"
+  run_test_valgrind
+}

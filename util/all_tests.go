@@ -38,6 +38,7 @@ import (
 
 var (
 	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	valgrindSuppDir = flag.String("valgrind-supp-dir", ".", "The directory where Valgrind suppression files can be found.")
 	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
@@ -105,8 +106,11 @@ var armCPUs = []string{
 	"crypto", // Support for NEON and crypto extensions.
 }
 
-func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
+func valgrindOf(dbAttach bool, supp string, path string, args ...string) *exec.Cmd {
 	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--quiet"}
+	if len(supp) > 1 {
+		valgrindArgs = append(valgrindArgs, "--suppressions=" + *valgrindSuppDir + "/" + supp)
+	}
 	if dbAttach {
 		valgrindArgs = append(valgrindArgs, "--db-attach=yes", "--db-command=xterm -e gdb -nw %f %p")
 	}
@@ -165,7 +169,11 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	}
 	var cmd *exec.Cmd
 	if *useValgrind {
-		cmd = valgrindOf(false, prog, args...)
+		supp := ""
+		if len(test.ValgrindSupp) > 0 {
+			supp = test.ValgrindSupp[0]
+		}
+		cmd = valgrindOf(false, supp, prog, args...)
 	} else if *useCallgrind {
 		cmd = callgrindOf(prog, args...)
 	} else if *useGDB {
@@ -409,6 +417,11 @@ func main() {
 	go func() {
 		for _, baseTest := range testCases {
 			test := test{Test: baseTest}
+			if *useValgrind {
+				if test.SkipValgrind {
+					continue
+				}
+			}
 			if *useSDE {
 				if test.SkipSDE {
 					continue
