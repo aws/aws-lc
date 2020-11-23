@@ -20,7 +20,7 @@ EcrStack(app, "aws-lc-ecr-linux-x86", LINUX_X86_ECR_REPO)
 EcrStack(app, "aws-lc-ecr-linux-aarch", LINUX_AARCH_ECR_REPO)
 EcrStack(app, "aws-lc-ecr-windows-x86", WINDOWS_X86_ECR_REPO)
 
-# Define CodeBuild Batch job for testing code.
+# Define CodeBuild Batch job for building Docker images.
 LinuxDockerImageBatchBuildStack(app, "aws-lc-docker-image-build-linux")
 
 # DIND is not supported on Windows and, therefore, AWS CodeBuild is not used to build Windows Server container images.
