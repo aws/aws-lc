@@ -566,6 +566,11 @@ static int evp_pkey_set1_tls_encodedpoint_x25519(EVP_PKEY *pkey,
     goto err;
   }
 
+  if (1 > len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+    goto err;
+  }
+
   if ((NULL == pkey->ameth) || (NULL == pkey->ameth->set_pub_raw)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     goto err;
@@ -658,24 +663,24 @@ static size_t evp_pkey_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
 
   if ((NULL == pkey) || (NULL == out_ptr)) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
-    goto err;
+    return 0;
   }
 
   if (EVP_PKEY_X25519 != pkey->type) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-    goto err;
+    return 0;
   }
 
   if ((NULL == pkey->ameth) || (NULL == pkey->ameth->get_pub_raw)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    goto err;
+    return 0;
   }
 
   out_len = X25519_SHARED_KEY_LEN;
   *out_ptr = OPENSSL_malloc(X25519_SHARED_KEY_LEN);
   if (NULL == *out_ptr) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
-    goto err;
+    return 0;
   }
 
   if (0 == pkey->ameth->get_pub_raw(pkey, *out_ptr, &out_len)) {

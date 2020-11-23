@@ -1230,6 +1230,50 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       shared_secret_size = 0;
     }
 
+    // Above tests explore the happy path. Now test that some invalid
+    // input parameters are handled gracefully and with no crashes.
+    for (ectlsencodedpoint_test_data test_data : test_data_all) {
+
+      pkey_public = instantiate_public_key(test_data.key_type,
+        test_data.curve_nid);
+      ASSERT_TRUE(pkey_public);
+
+      // pkey = NULL should result in |ERR_R_PASSED_NULL_PARAMETER| being passed
+      // back for both functions.
+      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(nullptr,
+        test_data.public_key, test_data.public_key_size));
+      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+        ERR_GET_REASON(ERR_peek_last_error()));
+      ERR_clear_error();
+      ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(nullptr, &output));
+      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+        ERR_GET_REASON(ERR_peek_last_error()));
+      ERR_clear_error();
+
+      // For |EVP_PKEY_get1_tls_encodedpoint| if out_ptr = NULL, we should also
+      // expect |ERR_R_PASSED_NULL_PARAMETER| being passed back.
+      ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(pkey_public, nullptr));
+      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+        ERR_GET_REASON(ERR_peek_last_error()));
+      ERR_clear_error();
+
+      // For |EVP_PKEY_set1_tls_encodedpoint| if in = NULL or len < 1, we should
+      // expect |ERR_R_PASSED_NULL_PARAMETER| or |EVP_R_INVALID_PARAMETERS|,
+      // respectively.
+      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public,
+        nullptr, test_data.public_key_size));
+      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+        ERR_GET_REASON(ERR_peek_last_error()));
+      ERR_clear_error();
+      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public,
+        test_data.public_key, 0));
+      EXPECT_EQ(EVP_R_INVALID_PARAMETERS,
+        ERR_GET_REASON(ERR_peek_last_error()));
+      ERR_clear_error();
+
+      EVP_PKEY_free(pkey_public);
+    }
+
     // Test various unsupported key types are rejected
     int key_types_not_supported[] = {EVP_PKEY_RSA, EVP_PKEY_DSA,
       EVP_PKEY_ED25519};
