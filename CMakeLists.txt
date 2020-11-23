@@ -477,6 +477,10 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
+if(OPENSSL_AARCH64_P256)
+  add_definitions(-DOPENSSL_AARCH64_P256)
+endif()
+
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
