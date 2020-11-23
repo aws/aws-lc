@@ -1,6 +1,8 @@
 //------------------------------------------------------------------------------------
-// Copyright (C) Amazon
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 //------------------------------------------------------------------------------------
+
 // void select_w5(uint64_t *val, uint64_t *in_t, int index);
     .arch armv8.4-a+crc+sve
     .text

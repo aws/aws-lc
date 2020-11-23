@@ -1,3 +1,6 @@
+Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.<br />
+SPDX-License-Identifier: Apache-2.0
+
 #P256 Armv8 Assembly Functions
 This application was used to develop the assembly functions committed to
 [awsls:p256-armv8](https://github.com/awslabs/aws-lc/tree/p256-armv8)
@@ -35,3 +38,11 @@ for a reference, see A. Menezes, P. vanOorschot, and S. Vanstone's Handbook of A
 
  The python model for this function is in `beeu.py`.
  It is used to compute the modular inverse of a value |a| modulo n, where n is odd.
+ 
+ ## Tests
+ The tests for the three described functions are performed in `main.c`
+ 
+ ## Additional code
+ The code in `experiment.c` is not used in the implementation and is only included 
+ as a reference to some of the C code used in the early experimentation. It was used
+ to compile into ARMv8 assembly and experiment with the generated instructions. 

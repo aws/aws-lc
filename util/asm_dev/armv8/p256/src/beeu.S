@@ -1,6 +1,8 @@
 //------------------------------------------------------------------------------------
-// Copyright (C) Amazon
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 //------------------------------------------------------------------------------------
+
 // int beeu_mod_inverse_vartime(uint64_t out[4],
 //                              uint64_t a[4],
 //                              uint64_t n[4]);

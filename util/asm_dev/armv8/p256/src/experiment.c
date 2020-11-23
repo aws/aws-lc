@@ -1,6 +1,14 @@
-//------------------------------------------------------------------------------------
-// Copyright (C) Amazon
-//------------------------------------------------------------------------------------
+/*
+------------------------------------------------------------------------------------
+ Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ SPDX-License-Identifier: Apache-2.0
+------------------------------------------------------------------------------------
+*/
+
+/*
+The functions in this file were compiled into ARMv8 assembly code
+in order to experiment with the generated instructions.
+*/
 
 #include <inttypes.h>
 
