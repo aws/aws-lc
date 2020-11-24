@@ -7,7 +7,7 @@
 
 /*
 The functions in this file were compiled into ARMv8 assembly code
-in order to experiment with the generated instructions.
+in order to experiment with the generated instructions and use them in beeu.S.
 */
 
 #include <inttypes.h>

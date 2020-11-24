@@ -198,6 +198,7 @@ int main()
                 )
             {
                 printf("beeu Test FAILED at k = %ld; a_out != a\n", k);
+                break;
             }
         }
     }

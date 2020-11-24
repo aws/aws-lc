@@ -43,6 +43,8 @@ for a reference, see A. Menezes, P. vanOorschot, and S. Vanstone's Handbook of A
  The tests for the three described functions are performed in `main.c`
  
  ## Additional code
- The code in `experiment.c` is not used in the implementation and is only included 
- as a reference to some of the C code used in the early experimentation. It was used
- to compile into ARMv8 assembly and experiment with the generated instructions. 
+ The code in `beeu_scratch.c` is not directly used in the implementation; it was used
+ to compile into ARMv8 assembly and experiment with the generated instructions for `beeu.S`. <br/>
+ The Makefile, as inspired by [ARM SVE examples](https://developer.arm.com/documentation/dai0548/a/),
+ when building, creates the assembly files from the C files, so it is easy to see the assembly
+ instructions equivalent to the functions in this file.
