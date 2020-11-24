@@ -2513,7 +2513,8 @@ TEST_P(SSLVersionTest, SessionTimeout) {
   }
 }
 
-TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
+// These tests fail intermittently in Docker containers. Tracking root cause in CryptoAlg-534
+TEST_P(SSLVersionTest, DISABLED_DefaultTicketKeyInitialization) {
   static const uint8_t kZeroKey[kTicketKeyLen] = {};
   uint8_t ticket_key[kTicketKeyLen];
   ASSERT_EQ(1, SSL_CTX_get_tlsext_ticket_keys(server_ctx_.get(), ticket_key,
