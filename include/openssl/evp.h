@@ -928,7 +928,9 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
                                                  int encoding);
 
 // EVP_PKEY_set1_tls_encodedpoint replaces |pkey| with a public key encoded by
-// |in|. It returns one on success and zero on error.
+// |in|. It returns one on success and zero on error. |len| is the size of |in|.
+// Any value of |len| below 1 is interpreted as an invalid input and will result
+// in an error.
 //
 // This function only works on X25519 |EVP_PKEY_X25519| and EC |EVP_PKEY_EC| key
 // types. The supported curve for |EVP_PKEY_X25519| is Curve25519. The supported
