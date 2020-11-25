@@ -26,7 +26,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-18.04_clang-6x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-18.04_clang-6x_latest
 
@@ -34,7 +34,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-18.04_gcc-7x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
 
@@ -42,7 +42,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_gcc-9x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_gcc-9x_latest
 
@@ -50,7 +50,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_clang-9x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
 
@@ -58,7 +58,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_gcc-9x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_gcc-9x_latest
 
@@ -66,7 +66,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
@@ -74,7 +74,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.04_gcc-8x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.04_gcc-8x_latest
 
@@ -82,7 +82,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.04_clang-8x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.04_clang-8x_latest
 
@@ -98,7 +98,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/centos-7_gcc-4x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:centos-7_gcc-4x_latest
 
@@ -106,7 +106,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
 
@@ -122,7 +122,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_gcc-9x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:fedora-31_gcc-9x_latest
 
@@ -130,7 +130,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:fedora-31_clang-9x_latest
 
@@ -138,6 +138,6 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_clang-9x_sanitizer.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
