@@ -108,7 +108,7 @@ var armCPUs = []string{
 
 func valgrindOf(dbAttach bool, supp string, path string, args ...string) *exec.Cmd {
 	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--quiet"}
-	if len(supp) > 1 {
+	if len(supp) > 0 {
 		valgrindArgs = append(valgrindArgs, "--suppressions=" + *valgrindSuppDir + "/" + supp)
 	}
 	if dbAttach {
