@@ -49,6 +49,7 @@ add_executable(
   ssl_test
 
   span_test.cc
+  # ssl_memcmp_test.cc
   ssl_test.cc
   ssl_c_test.c
 
@@ -68,4 +69,3 @@ install(TARGETS ssl
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-

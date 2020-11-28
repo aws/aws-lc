@@ -2513,13 +2513,38 @@ TEST_P(SSLVersionTest, SessionTimeout) {
   }
 }
 
-// These tests fail intermittently in Docker containers. Tracking root cause in CryptoAlg-534
-TEST_P(SSLVersionTest, DISABLED_DefaultTicketKeyInitialization) {
+TEST_P(SSLVersionTest, OpenSSLMemCmp) {
+  const size_t local_len = 2;
+  static const uint8_t ticket_key0[local_len] = {0x00, 0x00};
+  uint8_t ticket_key1[local_len] = {0x00, 0x01};
+  uint8_t ticket_key2[local_len] = {0x01, 0x00};
+  uint8_t ticket_key3[local_len] = {0x01, 0x01};
+  printf("memcmp ticket_key1 vs ticket_key0 %d.\n", memcmp(ticket_key1, ticket_key0, local_len));
+  printf("memcmp ticket_key2 vs ticket_key0 %d.\n", memcmp(ticket_key2, ticket_key0, local_len));
+  printf("memcmp ticket_key3 vs ticket_key0 %d.\n", memcmp(ticket_key3, ticket_key0, local_len));
+}
+
+TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
   static const uint8_t kZeroKey[kTicketKeyLen] = {};
   uint8_t ticket_key[kTicketKeyLen];
   ASSERT_EQ(1, SSL_CTX_get_tlsext_ticket_keys(server_ctx_.get(), ticket_key,
                                               kTicketKeyLen));
-  ASSERT_NE(0, OPENSSL_memcmp(ticket_key, kZeroKey, kTicketKeyLen));
+  printf("DefaultTicketKeyInitialization before mem COMPARE.\n");
+  int result = OPENSSL_memcmp(ticket_key, kZeroKey, kTicketKeyLen);
+  if (result == 0) {
+    printf("DefaultTicketKeyInitialization when memcmp = 0\n");
+    printf("ticket_key:\n");
+    print_tk(ticket_key);
+    printf("kZeroKey:\n");
+    print_tk(kZeroKey);
+    int result2 = OPENSSL_memcmp(ticket_key, kZeroKey, kTicketKeyLen);
+    printf("Compared result2 %d.\n", result2);
+  } else {
+    printf("DefaultTicketKeyInitialization when memcmp != 0\n");
+    printf("ticket_key:\n");
+    print_tk(ticket_key);
+  }
+  ASSERT_NE(0, result);
 }
 
 TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {

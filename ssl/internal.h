@@ -3571,5 +3571,18 @@ struct ssl_session_st {
   friend void SSL_SESSION_free(SSL_SESSION *);
 };
 
+inline void print_sub_tk(const uint8_t *ticket_key, size_t start, size_t end) {
+  printf("print from [%zu, %zu]: ", start, end);
+  for (size_t i = start; i <= end; i++) {
+    printf("%02x", ticket_key[i]);
+  }
+  printf("\n");
+}
+
+inline void print_tk(const uint8_t *ticket_key) {
+  print_sub_tk(ticket_key, 0, 15);
+  print_sub_tk(ticket_key, 16, 31);
+  print_sub_tk(ticket_key, 32, 47);
+}
 
 #endif  // OPENSSL_HEADER_SSL_INTERNAL_H
