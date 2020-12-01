@@ -1,0 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - if [ $(gcc -dumpfullversion) == 7.3.1 ]; then echo "Found correct gcc version 7"; else gcc --version && echo "gcc version mismatch" && exit 1; fi
+      - export CC=gcc
+      - export CXX=g++
+      - export GO111MODULE=on
+  build:
+    commands:
+      - ./tests/ci/run_valgrind_tests.sh

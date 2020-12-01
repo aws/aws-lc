@@ -1,0 +1,77 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+###############################################################################
+# Suppression file produced by running:
+# valgrind --gen-suppressions=yes ./test_build_dir/crypto/crypto_test
+# https://www.valgrind.org/docs/manual/manual-core.html#manual-core.suppress
+#
+# These errors are specific to the internals of the Gtest framework.
+###############################################################################
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Value8
+   fun:_itoa_word
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing9internal220PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing9internal220TypeWithoutFormatterI13ASN1TestParamLNS0_8TypeKindE2EE10PrintValueERKS2_PSo
+   fun:_ZN7testing9internal2lsIcSt11char_traitsIcE13ASN1TestParamEERSt13basic_ostreamIT_T0_ES9_RKT1_
+   fun:_ZN16testing_internal26DefaultPrintNonContainerToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal14DefaultPrintToI13ASN1TestParamEEvNS0_15WrapPrinterTypeILNS0_18DefaultPrinterTypeE3EEERKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:_itoa_word
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing9internal220PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing9internal220TypeWithoutFormatterI13ASN1TestParamLNS0_8TypeKindE2EE10PrintValueERKS2_PSo
+   fun:_ZN7testing9internal2lsIcSt11char_traitsIcE13ASN1TestParamEERSt13basic_ostreamIT_T0_ES9_RKT1_
+   fun:_ZN16testing_internal26DefaultPrintNonContainerToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal14DefaultPrintToI13ASN1TestParamEEvNS0_15WrapPrinterTypeILNS0_18DefaultPrinterTypeE3EEERKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing9internal220PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing9internal220TypeWithoutFormatterI13ASN1TestParamLNS0_8TypeKindE2EE10PrintValueERKS2_PSo
+   fun:_ZN7testing9internal2lsIcSt11char_traitsIcE13ASN1TestParamEERSt13basic_ostreamIT_T0_ES9_RKT1_
+   fun:_ZN16testing_internal26DefaultPrintNonContainerToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal14DefaultPrintToI13ASN1TestParamEEvNS0_15WrapPrinterTypeILNS0_18DefaultPrinterTypeE3EEERKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal16UniversalPrinterI13ASN1TestParamE5PrintERKS2_PSo
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing9internal220PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing9internal220TypeWithoutFormatterI13ASN1TestParamLNS0_8TypeKindE2EE10PrintValueERKS2_PSo
+   fun:_ZN7testing9internal2lsIcSt11char_traitsIcE13ASN1TestParamEERSt13basic_ostreamIT_T0_ES9_RKT1_
+   fun:_ZN16testing_internal26DefaultPrintNonContainerToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal14DefaultPrintToI13ASN1TestParamEEvNS0_15WrapPrinterTypeILNS0_18DefaultPrinterTypeE3EEERKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal16UniversalPrinterI13ASN1TestParamE5PrintERKS2_PSo
+}
