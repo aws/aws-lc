@@ -80,3 +80,11 @@ CI Tool|Compiler|CPU platform|OS
 ------------ | -------------| -------------|-------------
 CodeBuild|clang 9.0.0|x86-64|Ubuntu 19.10
 CodeBuild|clang 9.0.0|aarch64|ubuntu 19.10
+
+### Valgrind tests
+
+The following Valgrind tests are run for a subset of targets in `utils/all_tests.json` using the debug build of AWS-LC:
+
+CI Tool|Compiler|CPU platform|OS| memcheck 
+------------ | -------------| -------------|-------------|-------------
+CodeBuild|gcc 7.3.1|x86-64|AL2 | X

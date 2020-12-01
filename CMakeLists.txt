@@ -667,6 +667,14 @@ add_custom_target(
     DEPENDS all_tests bssl_shim handshaker
     ${MAYBE_USES_TERMINAL})
 
+add_custom_target(
+    run_tests_valgrind
+    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+            ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DEPENDS all_tests
+    ${MAYBE_USES_TERMINAL})
+
 # Copy awslc-config.cmake to build artifacts. 
 configure_file("cmake/awslc-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"

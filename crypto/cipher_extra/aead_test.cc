@@ -728,6 +728,7 @@ TEST_P(PerAEADTest, ABI) {
       GetParam().ad_len != 0 ? GetParam().ad_len : sizeof(ad_buf) - 1;
 
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  OPENSSL_memset(nonce, 'T', sizeof(nonce));
   const size_t nonce_len = EVP_AEAD_nonce_length(aead());
   ASSERT_LE(nonce_len, sizeof(nonce));
 
