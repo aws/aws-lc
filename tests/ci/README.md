@@ -88,6 +88,3 @@ The following Valgrind tests are run for a subset of targets in `utils/all_tests
 CI Tool|Compiler|CPU platform|OS| memcheck 
 ------------ | -------------| -------------|-------------|-------------
 CodeBuild|gcc 7.3.1|x86-64|AL2 | X
-(Disabled) CodeBuild|gcc 7.3.1|aarch64|AL2 | X
-
-Valgrind target for ARM is disabled due to time out.
