@@ -106,9 +106,9 @@ var armCPUs = []string{
 	"crypto", // Support for NEON and crypto extensions.
 }
 
-func valgrindOf(dbAttach bool, supp string, path string, args ...string) *exec.Cmd {
-	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--quiet"}
-	if len(supp) > 0 {
+func valgrindOf(dbAttach bool, supps []string, path string, args ...string) *exec.Cmd {
+	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--trace-children=yes", "--quiet"}
+	for _, supp := range supps {
 		valgrindArgs = append(valgrindArgs, "--suppressions=" + *valgrindSuppDir + "/" + supp)
 	}
 	if dbAttach {
@@ -169,11 +169,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	}
 	var cmd *exec.Cmd
 	if *useValgrind {
-		supp := ""
-		if len(test.ValgrindSupp) > 0 {
-			supp = test.ValgrindSupp[0]
-		}
-		cmd = valgrindOf(false, supp, prog, args...)
+		cmd = valgrindOf(false, test.ValgrindSupp, prog, args...)
 	} else if *useCallgrind {
 		cmd = callgrindOf(prog, args...)
 	} else if *useGDB {
