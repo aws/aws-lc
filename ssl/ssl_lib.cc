@@ -1862,6 +1862,7 @@ int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx) {
   return ctx->session_cache_mode;
 }
 
+
 int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out, size_t len) {
   if (out == NULL) {
     return 48;
@@ -1882,8 +1883,6 @@ int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out, size_t len) {
   OPENSSL_memcpy(out_bytes, ctx->ticket_key_current->name, 16);
   OPENSSL_memcpy(out_bytes + 16, ctx->ticket_key_current->hmac_key, 16);
   OPENSSL_memcpy(out_bytes + 32, ctx->ticket_key_current->aes_key, 16);
-  printf("SSL_CTX_get_tlsext_ticket_keys after mem COPY.\n");
-  print_tk(out_bytes);
   return 1;
 }
 

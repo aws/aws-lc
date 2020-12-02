@@ -11,7 +11,6 @@ RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
-    git \
     gcc-9 \
     g++-9 \
     cmake \
