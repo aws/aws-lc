@@ -2537,8 +2537,8 @@ TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
     print_tk(ticket_key);
     printf("kZeroKey:\n");
     print_tk(kZeroKey);
-    int result2 = OPENSSL_memcmp(ticket_key, kZeroKey, kTicketKeyLen);
-    printf("Compared result2 %d.\n", result2);
+    result = IS_EQUAL_memcmp(ticket_key, kZeroKey, kTicketKeyLen);
+    printf("Result is updated to %d:\n", result);
   } else {
     printf("DefaultTicketKeyInitialization when memcmp != 0\n");
     printf("ticket_key:\n");

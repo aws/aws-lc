@@ -787,6 +787,15 @@ static inline int OPENSSL_memcmp(const void *s1, const void *s2, size_t n) {
   return memcmp(s1, s2, n);
 }
 
+static inline int IS_EQUAL_memcmp(const uint8_t *s1, const uint8_t *s2, size_t n) {
+  for (size_t i = 0; i < n; i++) {
+    if (s1[i] != s2[i]) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static inline void *OPENSSL_memcpy(void *dst, const void *src, size_t n) {
   if (n == 0) {
     return dst;
