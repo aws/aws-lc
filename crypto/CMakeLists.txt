@@ -299,6 +299,7 @@ add_library(
   evp/sign.c
   ex_data.c
   hkdf/hkdf.c
+  hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
   mem.c
@@ -339,6 +340,7 @@ add_library(
   thread_win.c
   trust_token/pmbtoken.c
   trust_token/trust_token.c
+  trust_token/voprf.c
   x509/a_digest.c
   x509/a_sign.c
   x509/a_strex.c
@@ -414,12 +416,10 @@ add_library(
   x509v3/v3_pci.c
   x509v3/v3_pcia.c
   x509v3/v3_pcons.c
-  x509v3/v3_pku.c
   x509v3/v3_pmaps.c
   x509v3/v3_prn.c
   x509v3/v3_purp.c
   x509v3/v3_skey.c
-  x509v3/v3_sxnet.c
   x509v3/v3_utl.c
 
   $<TARGET_OBJECTS:fipsmodule>
@@ -496,6 +496,7 @@ add_executable(
   compiler_test.cc
   constant_time_test.cc
   cpu-arm-linux_test.cc
+  crypto_test.cc
   curve25519/ed25519_test.cc
   curve25519/spake25519_test.cc
   curve25519/x25519_test.cc
@@ -519,6 +520,7 @@ add_executable(
   fipsmodule/rand/fork_detect_test.cc
   fipsmodule/sha/sha_test.cc
   hkdf/hkdf_test.cc
+  hpke/hpke_test.cc
   hmac_extra/hmac_test.cc
   hrss/hrss_test.cc
   impl_dispatch_test.cc
