@@ -396,41 +396,6 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
   return true;
 }
 
-static const char *EarlyDataReasonToString(ssl_early_data_reason_t reason) {
-  switch (reason) {
-    case ssl_early_data_unknown:
-      return "unknown";
-    case ssl_early_data_disabled:
-      return "disabled";
-    case ssl_early_data_accepted:
-      return "accepted";
-    case ssl_early_data_protocol_version:
-      return "protocol_version";
-    case ssl_early_data_peer_declined:
-      return "peer_declined";
-    case ssl_early_data_no_session_offered:
-      return "no_session_offered";
-    case ssl_early_data_session_not_resumed:
-      return "session_not_resumed";
-    case ssl_early_data_unsupported_for_session:
-      return "unsupported_for_session";
-    case ssl_early_data_hello_retry_request:
-      return "hello_retry_request";
-    case ssl_early_data_alpn_mismatch:
-      return "alpn_mismatch";
-    case ssl_early_data_channel_id:
-      return "channel_id";
-    case ssl_early_data_token_binding:
-      return "token_binding";
-    case ssl_early_data_ticket_age_skew:
-      return "ticket_age_skew";
-    case ssl_early_data_quic_parameter_mismatch:
-      return "quic_parameter_mismatch";
-  }
-
-  abort();
-}
-
 // CheckHandshakeProperties checks, immediately after |ssl| completes its
 // initial handshake (or False Starts), whether all the properties are
 // consistent with the test configuration and invariants.
@@ -524,16 +489,38 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
   }
 
-  if (!config->is_server) {
-    const uint8_t *alpn_proto;
-    unsigned alpn_proto_len;
-    SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
-    if (alpn_proto_len != config->expect_alpn.size() ||
-        OPENSSL_memcmp(alpn_proto, config->expect_alpn.data(),
-                       alpn_proto_len) != 0) {
-      fprintf(stderr, "negotiated alpn proto mismatch\n");
-      return false;
-    }
+  // On the server, the protocol selected in the ALPN callback must be echoed
+  // out of |SSL_get0_alpn_selected|. On the client, it should report what the
+  // test expected.
+  const std::string &expect_alpn =
+      config->is_server ? config->select_alpn : config->expect_alpn;
+  const uint8_t *alpn_proto;
+  unsigned alpn_proto_len;
+  SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
+  if (alpn_proto_len != expect_alpn.size() ||
+      OPENSSL_memcmp(alpn_proto, expect_alpn.data(), alpn_proto_len) != 0) {
+    fprintf(stderr, "negotiated alpn proto mismatch\n");
+    return false;
+  }
+
+  if (SSL_has_application_settings(ssl) !=
+      (config->expect_peer_application_settings ? 1 : 0)) {
+    fprintf(stderr,
+            "connection %s application settings, but expected the opposite\n",
+            SSL_has_application_settings(ssl) ? "has" : "does not have");
+    return false;
+  }
+  std::string expect_settings = config->expect_peer_application_settings
+                                    ? *config->expect_peer_application_settings
+                                    : "";
+  const uint8_t *peer_settings;
+  size_t peer_settings_len;
+  SSL_get0_peer_application_settings(ssl, &peer_settings, &peer_settings_len);
+  if (expect_settings !=
+      std::string(reinterpret_cast<const char *>(peer_settings),
+                  peer_settings_len)) {
+    fprintf(stderr, "peer application settings mismatch\n");
+    return false;
   }
 
   if (!config->expect_quic_transport_params.empty() && expect_handshake_done) {
@@ -611,8 +598,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
   }
 
-  uint16_t cipher_id =
-      static_cast<uint16_t>(SSL_CIPHER_get_id(SSL_get_current_cipher(ssl)));
+  uint16_t cipher_id = SSL_CIPHER_get_protocol_id(SSL_get_current_cipher(ssl));
   if (config->expect_cipher_aes != 0 &&
       EVP_has_aes_hardware() &&
       static_cast<uint16_t>(config->expect_cipher_aes) != cipher_id) {
@@ -629,6 +615,13 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
+  if (config->expect_cipher != 0 &&
+      static_cast<uint16_t>(config->expect_cipher) != cipher_id) {
+    fprintf(stderr, "Cipher ID was %04x, wanted %04x\n", cipher_id,
+            static_cast<uint16_t>(config->expect_cipher));
+    return false;
+  }
+
   // The early data status is only applicable after the handshake is confirmed.
   if (!SSL_in_early_data(ssl)) {
     if ((config->expect_accept_early_data && !SSL_early_data_accepted(ssl)) ||
@@ -640,7 +633,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
 
     const char *early_data_reason =
-        EarlyDataReasonToString(SSL_get_early_data_reason(ssl));
+        SSL_early_data_reason_string(SSL_get_early_data_reason(ssl));
     if (!config->expect_early_data_reason.empty() &&
         config->expect_early_data_reason != early_data_reason) {
       fprintf(stderr, "Early data reason was \"%s\", expected \"%s\"\n",
@@ -802,6 +795,12 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
 
   if (!ret) {
+    // Print the |SSL_get_error| code. Otherwise, some failures are silent and
+    // hard to debug.
+    int ssl_err = SSL_get_error(ssl.get(), -1);
+    if (ssl_err != SSL_ERROR_NONE) {
+      fprintf(stderr, "SSL error: %s\n", SSL_error_description(ssl_err));
+    }
     return false;
   }
 
