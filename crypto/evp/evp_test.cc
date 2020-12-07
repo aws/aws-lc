@@ -1009,14 +1009,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     };
 
     struct ectlsencodedpoint_test_data x25519_test_data = {
-      .public_key = kX25519PublicKey,
-      .public_key_size = X25519_PUBLIC_VALUE_LEN,
-      .private_key = kX25519PrivateKey,
-      .private_key_size = X25519_PRIVATE_KEY_LEN,
-      .expected_shared_secret = kX25519ExpectedSharedSecret,
-      .expected_shared_secret_size = X25519_SHARED_KEY_LEN,
-      .key_type = EVP_PKEY_X25519,
-      .curve_nid = NID_X25519
+      kX25519PublicKey, // public_key
+      X25519_PUBLIC_VALUE_LEN, // public_key_size
+      kX25519PrivateKey, // private_key
+      X25519_PRIVATE_KEY_LEN, // private_key_size
+      kX25519ExpectedSharedSecret, // expected_shared_secret
+      X25519_SHARED_KEY_LEN, // expected_shared_secret_size
+      EVP_PKEY_X25519, // key_type
+      NID_X25519 // curve_nid
     };
 
     // P-{224,256,384,521} test vectors, taken from CAVP
@@ -1047,14 +1047,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     };
 
     struct ectlsencodedpoint_test_data p224_test_data = {
-      .public_key = kP224PublicKey,
-      .public_key_size = 1 + 28 + 28,
-      .private_key = kP224PrivateKey,
-      .private_key_size = 28,
-      .expected_shared_secret = kP224ExpectedSharedSecret,
-      .expected_shared_secret_size = 28,
-      .key_type = EVP_PKEY_EC,
-      .curve_nid = NID_secp224r1
+      kP224PublicKey, // public_key
+      (1 + 28 + 28), // public_key_size
+      kP224PrivateKey, // private_key
+      28, // private_key_size
+      kP224ExpectedSharedSecret, // expected_shared_secret
+      28, // expected_shared_secret_size
+      EVP_PKEY_EC, // key_type
+      NID_secp224r1 // curve_nid
     };
 
     static const uint8_t kP256PublicKey[] = {
@@ -1081,14 +1081,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     };
 
     struct ectlsencodedpoint_test_data p256_test_data = {
-      .public_key = kP256PublicKey,
-      .public_key_size = 1 + 32 + 32,
-      .private_key = kP256PrivateKey,
-      .private_key_size = 32,
-      .expected_shared_secret = kP256ExpectedSharedSecret,
-      .expected_shared_secret_size = 32,
-      .key_type = EVP_PKEY_EC,
-      .curve_nid = NID_X9_62_prime256v1
+      kP256PublicKey, // public_key
+      (1 + 32 + 32), // public_key_size
+      kP256PrivateKey, // private_key
+      32, // private_key_size
+      kP256ExpectedSharedSecret, // expected_shared_secret
+      32, // expected_shared_secret_size
+      EVP_PKEY_EC, // key_type
+      NID_X9_62_prime256v1 // curve_nid
     };
 
     static const uint8_t kP384PublicKey[] = {
@@ -1119,14 +1119,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     };
 
     struct ectlsencodedpoint_test_data p384_test_data = {
-      .public_key = kP384PublicKey,
-      .public_key_size = 1 + 48 + 48,
-      .private_key = kP384PrivateKey,
-      .private_key_size = 48,
-      .expected_shared_secret = kP384ExpectedSharedSecret,
-      .expected_shared_secret_size = 48,
-      .key_type = EVP_PKEY_EC,
-      .curve_nid = NID_secp384r1
+      kP384PublicKey, // public_key
+      (1 + 48 + 48), // public_key_size
+      kP384PrivateKey, // private_key
+      48, // private_key_size
+      kP384ExpectedSharedSecret, // expected_shared_secret
+      48, // expected_shared_secret_size
+      EVP_PKEY_EC, // key_type
+      NID_secp384r1 // curve_nid
     };
 
     static const uint8_t kP521PublicKey[] = {
@@ -1165,14 +1165,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     };
 
     struct ectlsencodedpoint_test_data p521_test_data = {
-      .public_key = kP521PublicKey,
-      .public_key_size = 1 + 66 + 66,
-      .private_key = kP521PrivateKey,
-      .private_key_size = 66,
-      .expected_shared_secret = kP521ExpectedSharedSecret,
-      .expected_shared_secret_size = 66,
-      .key_type = EVP_PKEY_EC,
-      .curve_nid = NID_secp521r1
+      kP521PublicKey, // public_key
+      (1 + 66 + 66), // public_key_size
+      kP521PrivateKey, // private_key
+      66, // private_key_size
+      kP521ExpectedSharedSecret, // expected_shared_secret
+      66, // expected_shared_secret_size
+      EVP_PKEY_EC, // key_type
+      NID_secp521r1 // curve_nid
     };
 
     ectlsencodedpoint_test_data test_data_all[] = {x25519_test_data,
