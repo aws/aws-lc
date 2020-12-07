@@ -41,7 +41,7 @@
 
 TEST(P256_NistzTest, SelectW5) {
   // Fill a table with some garbage input.
-  __attribute__((aligned(64))) P256_POINT table[16];
+  alignas(64) P256_POINT table[16];
   for (size_t i = 0; i < 16; i++) {
     OPENSSL_memset(table[i].X, 3 * i, sizeof(table[i].X));
     OPENSSL_memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
@@ -71,7 +71,7 @@ TEST(P256_NistzTest, SelectW5) {
 
 TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
-  __attribute__((aligned(64))) P256_POINT_AFFINE table[64];
+  alignas(64) P256_POINT_AFFINE table[64];
   for (size_t i = 0; i < 64; i++) {
     OPENSSL_memset(table[i].X, 2 * i, sizeof(table[i].X));
     OPENSSL_memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
