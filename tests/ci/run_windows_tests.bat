@@ -38,7 +38,7 @@ mkdir %BUILD_DIR%
 mkdir %INSTALL_DIR%
 cd %BUILD_DIR%
 
-cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 -DCMAKE_INSTALL_PREFIX="%INSTALL_DIR%" -DCMAKE_PREFIX_PATH="%INSTALL_DIR%" %CODEBUILD_SRC_DIR% || goto error
+cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 -DCMAKE_INSTALL_PREFIX="%INSTALL_DIR%" -DCMAKE_PREFIX_PATH="%INSTALL_DIR%" -DCMAKE_ASM_NASM_COMPILER="C:/Program Files/NASM/nasm.exe" %CODEBUILD_SRC_DIR% || goto error
 
 @echo  LOG: %date%-%time% %1 %2 cmake generation complete, starting build
 ninja || goto error
