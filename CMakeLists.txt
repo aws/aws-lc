@@ -7,6 +7,9 @@ if(WIN32)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
   set(CMAKE_GENERATOR_CC cl)
+  # https://gitlab.kitware.com/cmake/cmake/-/issues/18941
+  # https://gitlab.kitware.com/cmake/cmake/blob/v3.14.3/Modules/CMakeDetermineASMCompiler.cmake#L85-87
+  set(CMAKE_ASM_NASM_COMPILER_ID "NASM")
 endif()
 
 include(sources.cmake)
@@ -197,6 +200,7 @@ elseif(MSVC)
       "C4061" # enumerator 'identifier' in switch of enum 'enumeration' is not
               # explicitly handled by a case label
               # Disable this because it flags even when there is a default.
+      "C4091" # 'keyword' : ignored on left of 'type' when no variable is declared
       "C4100" # 'exarg' : unreferenced formal parameter
       "C4127" # conditional expression is constant
       "C4200" # nonstandard extension used : zero-sized array in
