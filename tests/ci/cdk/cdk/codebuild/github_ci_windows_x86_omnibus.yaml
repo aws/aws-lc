@@ -9,7 +9,8 @@ batch:
     - identifier: windows_msvc2015_x64
       buildspec: ./tests/ci/codebuild/windows-x86/windows-msvc2015.yml
       env:
-        type: WINDOWS_CONTAINER
+        # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html
+        type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_WINDOWS_PLACEHOLDER:vs2015_latest
