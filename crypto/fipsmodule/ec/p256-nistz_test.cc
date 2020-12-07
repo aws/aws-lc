@@ -41,7 +41,15 @@
 
 TEST(P256_NistzTest, SelectW5) {
   // Fill a table with some garbage input.
-  alignas(64) P256_POINT table[16];
+  // A bug on aarch not fixed in gcc 7 and 9 prevents the alignas usage.
+  // See references
+  // 1. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57271
+  // 2. https://github.com/facebook/folly/issues/1098
+  #if defined(__aarch64__)
+    __attribute__((aligned(64))) P256_POINT table[16];
+  #else
+    alignas(64) P256_POINT table[16];
+  #endif
   for (size_t i = 0; i < 16; i++) {
     OPENSSL_memset(table[i].X, 3 * i, sizeof(table[i].X));
     OPENSSL_memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
@@ -71,7 +79,15 @@ TEST(P256_NistzTest, SelectW5) {
 
 TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
-  alignas(64) P256_POINT_AFFINE table[64];
+  // A bug on aarch not fixed in gcc 7 and 9 prevents the alignas usage.
+  // See references
+  // 1. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57271
+  // 2. https://github.com/facebook/folly/issues/1098
+  #if defined(__aarch64__)
+    __attribute__((aligned(64))) P256_POINT_AFFINE table[64];
+  #else
+    alignas(64) P256_POINT_AFFINE table[64];
+  #endif
   for (size_t i = 0; i < 64; i++) {
     OPENSSL_memset(table[i].X, 2 * i, sizeof(table[i].X));
     OPENSSL_memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
