@@ -197,7 +197,6 @@ elseif(MSVC)
       "C4061" # enumerator 'identifier' in switch of enum 'enumeration' is not
               # explicitly handled by a case label
               # Disable this because it flags even when there is a default.
-      "C4091" # 'keyword' : ignored on left of 'type' when no variable is declared
       "C4100" # 'exarg' : unreferenced formal parameter
       "C4127" # conditional expression is constant
       "C4200" # nonstandard extension used : zero-sized array in
