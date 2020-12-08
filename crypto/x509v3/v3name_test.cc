@@ -63,6 +63,7 @@
 #include <openssl/mem.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
+#include "openssl/asn1.h"
 
 #include "../internal.h"
 #include "internal.h"
@@ -410,4 +411,683 @@ TEST(X509V3Test, NameTest) {
         ++pfn;
     }
     EXPECT_EQ(0, errors);
+}
+
+struct gennamedata {
+    const unsigned char der[22];
+    size_t derlen;
+} gennames[] = {
+    {
+        /*
+        * [0] {
+        *   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+        *   [0] {
+        *     SEQUENCE {}
+        *   }
+        * }
+        */
+        {
+            0xa0, 0x13, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+            0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x02, 0x30, 0x00
+        },
+        21
+    }, {
+        /*
+        * [0] {
+        *   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+        *   [0] {
+        *     [APPLICATION 0] {}
+        *   }
+        * }
+        */
+        {
+            0xa0, 0x13, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+            0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x02, 0x60, 0x00
+        },
+        21
+    }, {
+        /*
+        * [0] {
+        *   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+        *   [0] {
+        *     UTF8String { "a" }
+        *   }
+        * }
+        */
+        {
+            0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+            0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x0c, 0x01, 0x61
+        },
+        22
+    }, {
+        /*
+        * [0] {
+        *   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.2 }
+        *   [0] {
+        *     UTF8String { "a" }
+        *   }
+        * }
+        */
+        {
+            0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+            0x01, 0x84, 0xb7, 0x09, 0x02, 0x02, 0xa0, 0x03, 0x0c, 0x01, 0x61
+        },
+        22
+    }, {
+        /*
+        * [0] {
+        *   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+        *   [0] {
+        *     UTF8String { "b" }
+        *   }
+        * }
+        */
+        {
+            0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+            0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x0c, 0x01, 0x62
+        },
+        22
+    }, {
+        /*
+        * [0] {
+        *   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+        *   [0] {
+        *     BOOLEAN { TRUE }
+        *   }
+        * }
+        */
+        {
+            0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+            0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x01, 0x01, 0xff
+        },
+        22
+    }, {
+        /*
+        * [0] {
+        *   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+        *   [0] {
+        *     BOOLEAN { FALSE }
+        *   }
+        * }
+        */
+        {
+            0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+            0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x01, 0x01, 0x00
+        },
+        22
+    }, {
+        /* [1 PRIMITIVE] { "a" } */
+        {
+            0x81, 0x01, 0x61
+        },
+        3
+    }, {
+        /* [1 PRIMITIVE] { "b" } */
+        {
+            0x81, 0x01, 0x62
+        },
+        3
+    }, {
+        /* [2 PRIMITIVE] { "a" } */
+        {
+            0x82, 0x01, 0x61
+        },
+        3
+    }, {
+        /* [2 PRIMITIVE] { "b" } */
+        {
+            0x82, 0x01, 0x62
+        },
+        3
+    }, {
+        /*
+        * [4] {
+        *   SEQUENCE {
+        *     SET {
+        *       SEQUENCE {
+        *         # commonName
+        *         OBJECT_IDENTIFIER { 2.5.4.3 }
+        *         UTF8String { "a" }
+        *       }
+        *     }
+        *   }
+        * }
+        */
+        {
+            0xa4, 0x0e, 0x30, 0x0c, 0x31, 0x0a, 0x30, 0x08, 0x06, 0x03, 0x55,
+            0x04, 0x03, 0x0c, 0x01, 0x61
+        },
+        16
+    }, {
+        /*
+        * [4] {
+        *   SEQUENCE {
+        *     SET {
+        *       SEQUENCE {
+        *         # commonName
+        *         OBJECT_IDENTIFIER { 2.5.4.3 }
+        *         UTF8String { "b" }
+        *       }
+        *     }
+        *   }
+        * }
+        */
+        {
+            0xa4, 0x0e, 0x30, 0x0c, 0x31, 0x0a, 0x30, 0x08, 0x06, 0x03, 0x55,
+            0x04, 0x03, 0x0c, 0x01, 0x62
+        },
+        16
+    },
+#if 0
+/* There is currently a bug which prevents AWS-LC from parsing correct encodings
+ * of EDIPARTYNAME.
+ * Enable these tests when this bug has been fixed. */
+      {
+        /*
+        * [5] {
+        *   [1] {
+        *     UTF8String { "a" }
+        *   }
+        * }
+        */
+        {
+            0xa5, 0x05, 0xa1, 0x03, 0x0c, 0x01, 0x61
+        },
+        7
+    }, {
+        /*
+        * [5] {
+        *   [1] {
+        *     UTF8String { "b" }
+        *   }
+        * }
+        */
+        {
+            0xa5, 0x05, 0xa1, 0x03, 0x0c, 0x01, 0x62
+        },
+        7
+    }, {
+        /*
+        * [5] {
+        *   [0] {
+        *     UTF8String {}
+        *   }
+        *   [1] {
+        *     UTF8String { "a" }
+        *   }
+        * }
+        */
+        {
+            0xa5, 0x09, 0xa0, 0x02, 0x0c, 0x00, 0xa1, 0x03, 0x0c, 0x01, 0x61
+        },
+        11
+    }, {
+        /*
+        * [5] {
+        *   [0] {
+        *     UTF8String { "a" }
+        *   }
+        *   [1] {
+        *     UTF8String { "a" }
+        *   }
+        * }
+        */
+        {
+            0xa5, 0x0a, 0xa0, 0x03, 0x0c, 0x01, 0x61, 0xa1, 0x03, 0x0c, 0x01,
+            0x61
+        },
+        12
+    }, {
+        /*
+        * [5] {
+        *   [0] {
+        *     UTF8String { "b" }
+        *   }
+        *   [1] {
+        *     UTF8String { "a" }
+        *   }
+        * }
+        */
+        {
+            0xa5, 0x0a, 0xa0, 0x03, 0x0c, 0x01, 0x62, 0xa1, 0x03, 0x0c, 0x01,
+            0x61
+        },
+        12
+    },
+#endif
+       {
+        /* [6 PRIMITIVE] { "a" } */
+        {
+            0x86, 0x01, 0x61
+        },
+        3
+    }, {
+        /* [6 PRIMITIVE] { "b" } */
+        {
+            0x86, 0x01, 0x62
+        },
+        3
+    }, {
+        /* [7 PRIMITIVE] { `11111111` } */
+        {
+            0x87, 0x04, 0x11, 0x11, 0x11, 0x11
+        },
+        6
+    }, {
+        /* [7 PRIMITIVE] { `22222222`} */
+        {
+            0x87, 0x04, 0x22, 0x22, 0x22, 0x22
+        },
+        6
+    }, {
+        /* [7 PRIMITIVE] { `11111111111111111111111111111111` } */
+        {
+            0x87, 0x10, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+            0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11
+        },
+        18
+    }, {
+        /* [7 PRIMITIVE] { `22222222222222222222222222222222` } */
+        {
+            0x87, 0x10, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+            0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22
+        },
+        18
+    }, {
+        /* [8 PRIMITIVE] { 1.2.840.113554.4.1.72585.2.1 } */
+        {
+            0x88, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84,
+            0xb7, 0x09, 0x02, 0x01
+        },
+        15
+    }, {
+        /* [8 PRIMITIVE] { 1.2.840.113554.4.1.72585.2.2 } */
+        {
+            0x88, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84,
+            0xb7, 0x09, 0x02, 0x02
+        },
+        15
+    }
+};
+
+#define AWSLC_NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+static int test_GENERAL_NAME_cmp(void)
+{
+    size_t i = 0;
+    size_t j = 0;
+    GENERAL_NAME **namesa = (GENERAL_NAME **) OPENSSL_malloc(sizeof(*namesa) * AWSLC_NELEM(gennames));
+    GENERAL_NAME **namesb = (GENERAL_NAME **) OPENSSL_malloc(sizeof(*namesb) * AWSLC_NELEM(gennames));
+    int testresult = 0; /* Error */
+
+    OPENSSL_cleanse(namesa, sizeof(*namesa) * AWSLC_NELEM(gennames));
+    OPENSSL_cleanse(namesb, sizeof(*namesb) * AWSLC_NELEM(gennames));
+
+    if ((NULL == namesa) || (NULL == namesb)) {
+        goto end;
+    }
+
+    for (i = 0; i < AWSLC_NELEM(gennames); i++) {
+        const unsigned char *derp = gennames[i].der;
+
+        /*
+         * We create two versions of each GENERAL_NAME so that we ensure when
+         * we compare them they are always different pointers.
+         */
+        namesa[i] = d2i_GENERAL_NAME(NULL, &derp, gennames[i].derlen);
+        derp = gennames[i].der;
+        namesb[i] = d2i_GENERAL_NAME(NULL, &derp, gennames[i].derlen);
+        if ((NULL == namesa[i]) || (NULL == namesb[i])) {
+            goto end;
+        }
+    }
+
+    /* Every name should be equal to itself and not equal to any others. */
+    for (i = 0; i < AWSLC_NELEM(gennames); i++) {
+        for (j = 0; j < AWSLC_NELEM(gennames); j++) {
+            if (i == j) {
+                /* Expect equal */
+                if (0 != GENERAL_NAME_cmp(namesa[i], namesb[j])) {
+                    goto end;
+                }
+            } else {
+                /* Expect not equal */
+                if (0 == GENERAL_NAME_cmp(namesa[i], namesb[j])) {
+                    goto end;
+                }
+            }
+        }
+    }
+
+    testresult = 1;
+
+ end:
+    for (i = 0; i < AWSLC_NELEM(gennames); i++) {
+        if (namesa != NULL) {
+            GENERAL_NAME_free(namesa[i]);
+        }
+        if (namesb != NULL) {
+            GENERAL_NAME_free(namesb[i]);
+        }
+    }
+    OPENSSL_free(namesa);
+    OPENSSL_free(namesb);
+
+    /* Returns 1 if success and 0 otherwise */
+    return testresult;
+}
+
+static int test_edipartyname_GENERAL_NAME_cmp(void) {
+
+    /* Define edipartyname structures directly */
+
+    /*
+    * [5] {
+    *   [1] {
+    *     UTF8String { "a" }
+    *   }
+    * }
+    */
+    ASN1_UTF8STRING partynameAa = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameA = {
+        .nameAssigner = NULL,
+        .partyName = &partynameAa
+    };
+
+    GENERAL_NAME gennameAa = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameA }
+    };
+
+    ASN1_UTF8STRING partynameBa = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameBa = {
+        .nameAssigner = NULL,
+        .partyName = &partynameBa
+    };
+
+    GENERAL_NAME gennameBa = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameBa }
+    };
+
+    /*
+    * [5] {
+    *   [1] {
+    *     UTF8String { "b" }
+    *   }
+    * }
+    */
+    ASN1_UTF8STRING partynameAb = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "b",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameAb = {
+        .nameAssigner = NULL,
+        .partyName = &partynameAb
+    };
+
+    GENERAL_NAME gennameAb = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameAb }
+    };
+
+    ASN1_UTF8STRING partynameBb = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "b",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameBb = {
+        .nameAssigner = NULL,
+        .partyName = &partynameBb
+    };
+
+    GENERAL_NAME gennameBb = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameBb }
+    };
+
+    /*
+    * [5] {
+    *   [0] {
+    *     UTF8String {}
+    *   }
+    *   [1] {
+    *     UTF8String { "a" }
+    *   }
+    * }
+    */
+    ASN1_UTF8STRING partynameAea = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    ASN1_UTF8STRING nameAssignerAea = {
+        .length = 0,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameAea = {
+        .nameAssigner = &nameAssignerAea,
+        .partyName = &partynameAea
+    };
+
+    GENERAL_NAME gennameAea = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameAea }
+    };
+
+    ASN1_UTF8STRING partynameBea = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    ASN1_UTF8STRING nameAssignerBea = {
+        .length = 0,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameBea = {
+        .nameAssigner = &nameAssignerBea,
+        .partyName = &partynameBea
+    };
+
+    GENERAL_NAME gennameBea = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameBea }
+    };
+
+    /*
+    * [5] {
+    *   [0] {
+    *     UTF8String { "a" }
+    *   }
+    *   [1] {
+    *     UTF8String { "a" }
+    *   }
+    * }
+    */
+    ASN1_UTF8STRING partynameAaa = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    ASN1_UTF8STRING nameAssignerAaa = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameAaa = {
+        .nameAssigner = &nameAssignerAaa,
+        .partyName = &partynameAaa
+    };
+
+    GENERAL_NAME gennameAaa = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameAaa }
+    };
+
+    ASN1_UTF8STRING partynameBaa = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    ASN1_UTF8STRING nameAssignerBaa = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameBaa = {
+        .nameAssigner = &nameAssignerBaa,
+        .partyName = &partynameBaa
+    };
+
+    GENERAL_NAME gennameBaa = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameBaa }
+    };
+
+    /*
+    * [5] {
+    *   [0] {
+    *     UTF8String { "b" }
+    *   }
+    *   [1] {
+    *     UTF8String { "a" }
+    *   }
+    * }
+    */
+    ASN1_UTF8STRING partynameAba = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    ASN1_UTF8STRING nameAssignerAba = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "b",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameAba = {
+        .nameAssigner = &nameAssignerAba,
+        .partyName = &partynameAba
+    };
+
+    GENERAL_NAME gennameAba = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameAba }
+    };
+
+    ASN1_UTF8STRING partynameBba = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "a",
+        .flags = (long) 0
+    };
+
+    ASN1_UTF8STRING nameAssignerBba = {
+        .length = 1,
+        .type = V_ASN1_UTF8STRING,
+        .data = (unsigned char *) "b",
+        .flags = (long) 0
+    };
+
+    EDIPARTYNAME edipartynameBba = {
+        .nameAssigner = &nameAssignerBba,
+        .partyName = &partynameBba
+    };
+
+    GENERAL_NAME gennameBba = {
+        .type = GEN_EDIPARTY,
+        .d = { .ediPartyName = &edipartynameBba }
+    };
+
+    /* Put everything in two arrays */
+
+#define EDIPARTYNAME_NUM_TEST_CASES 5
+
+    GENERAL_NAME * gennameAarr[EDIPARTYNAME_NUM_TEST_CASES] = {
+        &gennameAa,
+        &gennameAb,
+        &gennameAea,
+        &gennameAaa,
+        &gennameAba
+    };
+
+    GENERAL_NAME * gennameBarr[EDIPARTYNAME_NUM_TEST_CASES] = {
+        &gennameBa,
+        &gennameBb,
+        &gennameBea,
+        &gennameBaa,
+        &gennameBba
+    };
+
+    /* Try all combinations and bail if an error is spotted */
+
+    int result = 0; /* Error */
+
+    for (int i = 0; i < EDIPARTYNAME_NUM_TEST_CASES; i++) {
+        for (int j = 0; j < EDIPARTYNAME_NUM_TEST_CASES; j++) {
+            if (i == j) {
+                /* Expect equal */
+                if (0 != GENERAL_NAME_cmp(gennameAarr[i], gennameBarr[j])) {
+                    goto end;
+                }
+            }
+            else {
+                /* Expect not equal */
+                if (0 == GENERAL_NAME_cmp(gennameAarr[i], gennameBarr[j])) {
+                    goto end;
+                }
+            }
+        }
+    }
+
+    result = 1;
+
+end:
+
+    /* Returns 1 if success and 0 otherwise */
+    return result;
+}
+
+/* TODO Adopt to GTest */
+TEST(X509V3Test, GeneralNameTest) {
+    ASSERT_EQ(1, test_GENERAL_NAME_cmp());
+    ASSERT_EQ(1, test_edipartyname_GENERAL_NAME_cmp());
 }
