@@ -41,11 +41,13 @@
 
 TEST(P256_NistzTest, SelectW5) {
   // Fill a table with some garbage input.
-  // A bug on aarch not fixed in gcc 7 and 9 prevents the alignas usage.
-  // See references
-  // 1. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57271
-  // 2. https://github.com/facebook/folly/issues/1098
   #if defined(__aarch64__)
+    // A bug on aarch not fixed in gcc 7 and 9 prevents the alignas usage 
+    // in cpp files where the argument to alignas is "seemingly" larger than the size of the array being aligned (faulty check).
+    // See references
+    // 1. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89357#c3
+    // 2. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57271
+    // 3. https://github.com/facebook/folly/issues/1098
     __attribute__((aligned(64))) P256_POINT table[16];
   #else
     alignas(64) P256_POINT table[16];
@@ -79,11 +81,13 @@ TEST(P256_NistzTest, SelectW5) {
 
 TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
-  // A bug on aarch not fixed in gcc 7 and 9 prevents the alignas usage.
-  // See references
-  // 1. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57271
-  // 2. https://github.com/facebook/folly/issues/1098
   #if defined(__aarch64__)
+    // A bug on aarch not fixed in gcc 7 and 9 prevents the alignas usage 
+    // in cpp files where the argument to alignas is "seemingly" larger than the size of the array being aligned (faulty check).
+    // See references
+    // 1. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89357#c3
+    // 2. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57271
+    // 3. https://github.com/facebook/folly/issues/1098
     __attribute__((aligned(64))) P256_POINT_AFFINE table[64];
   #else
     alignas(64) P256_POINT_AFFINE table[64];
