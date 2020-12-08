@@ -7,9 +7,6 @@ if(WIN32)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
   set(CMAKE_GENERATOR_CC cl)
-  # https://gitlab.kitware.com/cmake/cmake/-/issues/18941
-  # https://gitlab.kitware.com/cmake/cmake/blob/v3.14.3/Modules/CMakeDetermineASMCompiler.cmake#L85-87
-  set(CMAKE_ASM_NASM_COMPILER_ID "NASM")
 endif()
 
 include(sources.cmake)
