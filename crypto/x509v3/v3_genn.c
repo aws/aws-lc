@@ -102,6 +102,41 @@ IMPLEMENT_ASN1_FUNCTIONS(GENERAL_NAMES)
 
 IMPLEMENT_ASN1_DUP_FUNCTION(GENERAL_NAME)
 
+static int edipartyname_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b)
+{
+    int res = -1;
+
+    if ((a == NULL) || (b == NULL)) {
+        /*
+         * Shouldn't be possible in a valid GENERAL_NAME, but we handle it
+         * anyway. OTHERNAME_cmp treats NULL != NULL so we do the same here
+         */
+        return -1;
+    }
+    if ((a->nameAssigner == NULL) && (b->nameAssigner != NULL)) {
+        return -1;
+    }
+    if ((a->nameAssigner != NULL) && (b->nameAssigner == NULL)) {
+        return -1;
+    }
+    /* If we get here then both have nameAssigner set, or both unset */
+    if (a->nameAssigner != NULL) {
+        res = ASN1_STRING_cmp(a->nameAssigner, b->nameAssigner);
+        if (res != 0) {
+            return res;
+        }
+    }
+    /*
+     * partyName is required, so these should never be NULL. We treat it in
+     * the same way as the a == NULL || b == NULL case above
+     */
+    if ((a->partyName == NULL) || (b->partyName == NULL)) {
+        return -1;
+    }
+
+    return ASN1_STRING_cmp(a->partyName, b->partyName);
+}
+
 /* Returns 0 if they are equal, != 0 otherwise. */
 int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b)
 {
@@ -111,8 +146,11 @@ int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b)
         return -1;
     switch (a->type) {
     case GEN_X400:
+        result = ASN1_TYPE_cmp(a->d.x400Address, b->d.x400Address);
+        break;
+
     case GEN_EDIPARTY:
-        result = ASN1_TYPE_cmp(a->d.other, b->d.other);
+        result = edipartyname_cmp(a->d.ediPartyName, b->d.ediPartyName);
         break;
 
     case GEN_OTHERNAME:
@@ -159,8 +197,11 @@ void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value)
 {
     switch (type) {
     case GEN_X400:
+        a->d.x400Address = value;
+        break;
+
     case GEN_EDIPARTY:
-        a->d.other = value;
+        a->d.ediPartyName = value;
         break;
 
     case GEN_OTHERNAME:
@@ -188,14 +229,16 @@ void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value)
     a->type = type;
 }
 
-void *GENERAL_NAME_get0_value(GENERAL_NAME *a, int *ptype)
+void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *ptype)
 {
     if (ptype)
         *ptype = a->type;
     switch (a->type) {
     case GEN_X400:
+        return a->d.x400Address;
+
     case GEN_EDIPARTY:
-        return a->d.other;
+        return a->d.ediPartyName;
 
     case GEN_OTHERNAME:
         return a->d.otherName;
@@ -233,7 +276,7 @@ int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
     return 1;
 }
 
-int GENERAL_NAME_get0_otherName(GENERAL_NAME *gen,
+int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
                                 ASN1_OBJECT **poid, ASN1_TYPE **pvalue)
 {
     if (gen->type != GEN_OTHERNAME)

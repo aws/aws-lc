@@ -14,6 +14,7 @@ RUN dnf -y install \
     cmake \
     ninja-build \
     perl \
+    git \
     golang \
     --setopt=install_weak_deps=False --best && \
     dnf -y autoremove && \

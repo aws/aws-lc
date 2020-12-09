@@ -5,7 +5,7 @@ $ECS_REPO=$args[0]
 
 if ($args[0] -eq $null) {
     # This is a ECS repository in our CI account
-    $ECS_REPO="620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-windows"
+    $ECS_REPO="620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86"
 }
 
 Write-Host "$ECS_REPO"

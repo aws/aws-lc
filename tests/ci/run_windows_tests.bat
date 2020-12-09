@@ -9,9 +9,9 @@ call %1 x64 || goto error
 SET
 call :build_and_test Release "" || goto error
 
-@rem call :build_and_test Release "-DAWSLC_SMALL=1" || goto error
+@rem call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
 @rem The NO_ASM fails due to some missing 'dummy_chacha20_poly1305_asm'
-@rem call :build_and_test Release "-DAWSLC_NO_ASM=1" || goto error
+@rem call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
 @rem The SHARED_LIBS build fails due to go not being able to write some file
 @rem call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
 @rem The debug build currently fails due to 1073741515 missing Dll call :build_and_test aws-lc Debug || goto error

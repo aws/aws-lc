@@ -23,7 +23,7 @@ else
 fi
 
 echo "Testing AWS-LC in ${build_type} mode with control flow integrity sanitizer."
-build_and_test -DCFI=1 "${cflags[@]}"
+build_and_test -DCFI=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 
 echo "Testing AWS-LC in ${build_type} mode with undefined behavior sanitizer."
 build_and_test -DUBSAN=1 "${cflags[@]}"

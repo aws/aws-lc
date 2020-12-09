@@ -52,4 +52,4 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:amazonlinux-2-aarch_gcc-7x_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:amazonlinux-2_gcc-7x_latest

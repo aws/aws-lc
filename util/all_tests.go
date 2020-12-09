@@ -38,6 +38,7 @@ import (
 
 var (
 	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	valgrindSuppDir = flag.String("valgrind-supp-dir", ".", "The directory where Valgrind suppression files can be found.")
 	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
@@ -105,8 +106,11 @@ var armCPUs = []string{
 	"crypto", // Support for NEON and crypto extensions.
 }
 
-func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
-	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--quiet"}
+func valgrindOf(dbAttach bool, supps []string, path string, args ...string) *exec.Cmd {
+	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--trace-children=yes", "--quiet"}
+	for _, supp := range supps {
+		valgrindArgs = append(valgrindArgs, "--suppressions=" + *valgrindSuppDir + "/" + supp)
+	}
 	if dbAttach {
 		valgrindArgs = append(valgrindArgs, "--db-attach=yes", "--db-command=xterm -e gdb -nw %f %p")
 	}
@@ -165,7 +169,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	}
 	var cmd *exec.Cmd
 	if *useValgrind {
-		cmd = valgrindOf(false, prog, args...)
+		cmd = valgrindOf(false, test.ValgrindSupp, prog, args...)
 	} else if *useCallgrind {
 		cmd = callgrindOf(prog, args...)
 	} else if *useGDB {
@@ -244,8 +248,8 @@ func runTest(test test) (bool, error) {
 }
 
 func fileExists(filename string) bool {
-    _, err := os.Stat(filename)
-    return err == nil
+	_, err := os.Stat(filename)
+	return err == nil
 }
 
 // setWorkingDirectory walks up directories as needed until the current working
@@ -391,8 +395,6 @@ func main() {
 	flag.Parse()
 	setWorkingDirectory()
 
-	inDocker := fileExists("/.dockerenv")
-
 	testCases, err := testconfig.ParseTestConfig("util/all_tests.json")
 	if err != nil {
 		fmt.Printf("Failed to parse input: %s\n", err)
@@ -411,6 +413,11 @@ func main() {
 	go func() {
 		for _, baseTest := range testCases {
 			test := test{Test: baseTest}
+			if *useValgrind {
+				if test.SkipValgrind {
+					continue
+				}
+			}
 			if *useSDE {
 				if test.SkipSDE {
 					continue
@@ -431,9 +438,6 @@ func main() {
 					testForCPU.cpu = cpu
 					tests <- testForCPU
 				}
-			} else if inDocker && strings.Contains(baseTest.Cmd[0], "urandom_test") {
-				fmt.Printf("Running in Docker, skipping: %v\n", baseTest)
-				continue
 			} else {
 				shards, err := test.getGTestShards()
 				if err != nil {

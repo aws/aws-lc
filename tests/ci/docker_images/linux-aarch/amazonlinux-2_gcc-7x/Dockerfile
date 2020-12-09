@@ -8,7 +8,8 @@ SHELL ["/bin/bash", "-c"]
 # Enable the EPEL repository on Amazon Linux 2 before installing packages
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/add-repositories.html
 
-# gcc 7.3.1 is the latest version versions `yum --showduplicates list gcc`
+# gcc 7.3.1 is the latest version versions `yum --showduplicates list gcc`.
+# Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
     yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
     yum -y update && yum install -y \
@@ -17,7 +18,8 @@ RUN set -ex && \
     cmake \
     ninja-build \
     perl \
-    golang && \
+    golang \
+    valgrind && \
     yum clean packages && \
     yum clean metadata && \
     yum clean all && \

@@ -477,6 +477,10 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
+if(OPENSSL_AARCH64_P256)
+  add_definitions(-DOPENSSL_AARCH64_P256)
+endif()
+
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
@@ -661,6 +665,14 @@ add_custom_target(
               ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests bssl_shim handshaker
+    ${MAYBE_USES_TERMINAL})
+
+add_custom_target(
+    run_tests_valgrind
+    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+            ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DEPENDS all_tests
     ${MAYBE_USES_TERMINAL})
 
 # Copy awslc-config.cmake to build artifacts. 

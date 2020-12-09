@@ -153,9 +153,11 @@ function deploy() {
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.10_clang-9x_sanitizer_latest")
   images_pushed_to_ecr "${ECR_LINUX_AARCH_REPO_NAME}" "${linux_aarch_img_tags[@]}"
-  linux_x86_img_tags=("ubuntu-18.04_gcc-7x_latest"
-    "ubuntu-16.04_gcc-5x_latest"
+  linux_x86_img_tags=("ubuntu-16.04_gcc-5x_latest"
+    "ubuntu-18.04_gcc-7x_latest"
     "ubuntu-18.04_clang-6x_latest"
+    "ubuntu-19.04_gcc-8x_latest"
+    "ubuntu-19.04_clang-8x_latest"
     "ubuntu-19.10_gcc-9x_latest"
     "ubuntu-19.10_clang-9x_sanitizer_latest"
     "ubuntu-19.10_clang-9x_latest"
