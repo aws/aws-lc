@@ -42,6 +42,7 @@
 #define SUPPORTS_UNWIND_TEST
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
+OPENSSL_MSVC_PRAGMA(warning(disable : 4091))
 #include <dbghelp.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif

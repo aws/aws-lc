@@ -789,38 +789,36 @@ static int test_edipartyname_GENERAL_NAME_cmp(void) {
     * }
     */
     ASN1_UTF8STRING partynameAa = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameA = {
-        .nameAssigner = NULL,
-        .partyName = &partynameAa
+        NULL, // nameAssigner 
+        &partynameAa // partyName 
     };
 
-    GENERAL_NAME gennameAa = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameA }
-    };
+    GENERAL_NAME gennameAa;
+    gennameAa.type = GEN_EDIPARTY;
+    gennameAa.d.ediPartyName = &edipartynameA;
 
     ASN1_UTF8STRING partynameBa = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameBa = {
-        .nameAssigner = NULL,
-        .partyName = &partynameBa
+        NULL, // nameAssigner 
+        &partynameBa // partyName 
     };
 
-    GENERAL_NAME gennameBa = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameBa }
-    };
+    GENERAL_NAME gennameBa;
+    gennameBa.type = GEN_EDIPARTY;
+    gennameBa.d.ediPartyName = &edipartynameBa;
 
     /*
     * [5] {
@@ -830,38 +828,36 @@ static int test_edipartyname_GENERAL_NAME_cmp(void) {
     * }
     */
     ASN1_UTF8STRING partynameAb = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "b",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "b", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameAb = {
-        .nameAssigner = NULL,
-        .partyName = &partynameAb
+        NULL, // nameAssigner 
+        &partynameAb // partyName 
     };
 
-    GENERAL_NAME gennameAb = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameAb }
-    };
+    GENERAL_NAME gennameAb;
+    gennameAb.type = GEN_EDIPARTY;
+    gennameAb.d.ediPartyName = &edipartynameAb;
 
     ASN1_UTF8STRING partynameBb = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "b",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "b", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameBb = {
-        .nameAssigner = NULL,
-        .partyName = &partynameBb
+        NULL, // nameAssigner 
+        &partynameBb // partyName 
     };
 
-    GENERAL_NAME gennameBb = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameBb }
-    };
+    GENERAL_NAME gennameBb;
+    gennameBb.type = GEN_EDIPARTY;
+    gennameBb.d.ediPartyName = &edipartynameBb;
 
     /*
     * [5] {
@@ -874,52 +870,50 @@ static int test_edipartyname_GENERAL_NAME_cmp(void) {
     * }
     */
     ASN1_UTF8STRING partynameAea = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     ASN1_UTF8STRING nameAssignerAea = {
-        .length = 0,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "",
-        .flags = (long) 0
+        0, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameAea = {
-        .nameAssigner = &nameAssignerAea,
-        .partyName = &partynameAea
+        &nameAssignerAea, // nameAssigner 
+        &partynameAea // partyName 
     };
 
-    GENERAL_NAME gennameAea = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameAea }
-    };
+    GENERAL_NAME gennameAea;
+    gennameAea.type = GEN_EDIPARTY;
+    gennameAea.d.ediPartyName = &edipartynameAea;
 
     ASN1_UTF8STRING partynameBea = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     ASN1_UTF8STRING nameAssignerBea = {
-        .length = 0,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "",
-        .flags = (long) 0
+        0, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameBea = {
-        .nameAssigner = &nameAssignerBea,
-        .partyName = &partynameBea
+        &nameAssignerBea, // nameAssigner 
+        &partynameBea // partyName 
     };
 
-    GENERAL_NAME gennameBea = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameBea }
-    };
+    GENERAL_NAME gennameBea;
+    gennameBea.type = GEN_EDIPARTY;
+    gennameBea.d.ediPartyName = &edipartynameBea;
 
     /*
     * [5] {
@@ -932,52 +926,50 @@ static int test_edipartyname_GENERAL_NAME_cmp(void) {
     * }
     */
     ASN1_UTF8STRING partynameAaa = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     ASN1_UTF8STRING nameAssignerAaa = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameAaa = {
-        .nameAssigner = &nameAssignerAaa,
-        .partyName = &partynameAaa
+        &nameAssignerAaa, // nameAssigner 
+        &partynameAaa // partyName 
     };
 
-    GENERAL_NAME gennameAaa = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameAaa }
-    };
+    GENERAL_NAME gennameAaa;
+    gennameAaa.type = GEN_EDIPARTY;
+    gennameAaa.d.ediPartyName = &edipartynameAaa;
 
     ASN1_UTF8STRING partynameBaa = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     ASN1_UTF8STRING nameAssignerBaa = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameBaa = {
-        .nameAssigner = &nameAssignerBaa,
-        .partyName = &partynameBaa
+        &nameAssignerBaa, // nameAssigner 
+        &partynameBaa // partyName 
     };
 
-    GENERAL_NAME gennameBaa = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameBaa }
-    };
+    GENERAL_NAME gennameBaa;
+    gennameBaa.type = GEN_EDIPARTY;
+    gennameBaa.d.ediPartyName = &edipartynameBaa;
 
     /*
     * [5] {
@@ -990,52 +982,50 @@ static int test_edipartyname_GENERAL_NAME_cmp(void) {
     * }
     */
     ASN1_UTF8STRING partynameAba = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     ASN1_UTF8STRING nameAssignerAba = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "b",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "b", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameAba = {
-        .nameAssigner = &nameAssignerAba,
-        .partyName = &partynameAba
+        &nameAssignerAba, // nameAssigner 
+        &partynameAba // partyName 
     };
 
-    GENERAL_NAME gennameAba = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameAba }
-    };
+    GENERAL_NAME gennameAba;
+    gennameAba.type = GEN_EDIPARTY;
+    gennameAba.d.ediPartyName = &edipartynameAba;
 
     ASN1_UTF8STRING partynameBba = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "a",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "a", // data 
+        (long) 0 // flags 
     };
 
     ASN1_UTF8STRING nameAssignerBba = {
-        .length = 1,
-        .type = V_ASN1_UTF8STRING,
-        .data = (unsigned char *) "b",
-        .flags = (long) 0
+        1, // length 
+        V_ASN1_UTF8STRING, // type 
+        (unsigned char *) "b", // data 
+        (long) 0 // flags 
     };
 
     EDIPARTYNAME edipartynameBba = {
-        .nameAssigner = &nameAssignerBba,
-        .partyName = &partynameBba
+        &nameAssignerBba, // nameAssigner 
+        &partynameBba // partyName 
     };
 
-    GENERAL_NAME gennameBba = {
-        .type = GEN_EDIPARTY,
-        .d = { .ediPartyName = &edipartynameBba }
-    };
+    GENERAL_NAME gennameBba;
+    gennameBba.type = GEN_EDIPARTY;
+    gennameBba.d.ediPartyName = &edipartynameBba;
 
     /* Put everything in two arrays */
 
