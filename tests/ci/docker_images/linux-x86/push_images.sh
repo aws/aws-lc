@@ -48,6 +48,11 @@ docker tag ubuntu-19.10:sanitizer ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_la
 docker push ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_latest
 docker push ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_`date +%Y-%m-%d`
 
+docker tag ubuntu-20.04:gcc-10x ${ECS_REPO}:ubuntu-20.04_gcc-10x_`date +%Y-%m-%d`
+docker tag ubuntu-20.04:gcc-10x ${ECS_REPO}:ubuntu-20.04_gcc-10x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_gcc-10x_latest
+docker push ${ECS_REPO}:ubuntu-20.04_gcc-10x_`date +%Y-%m-%d`
+
 docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_`date +%Y-%m-%d`
 docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_latest
 docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_latest

@@ -15,6 +15,14 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
 
+    - identifier: ubuntu2004_gcc10x_aarch
+      buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_gcc-10x.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_gcc-10x_latest
+
     - identifier: ubuntu2004_clang10x_aarch
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_clang-10x.yml
       env:

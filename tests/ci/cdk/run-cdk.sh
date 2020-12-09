@@ -154,6 +154,7 @@ function deploy() {
 
   echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
   linux_aarch_img_tags=("amazonlinux-2_gcc-7x_latest"
+    "ubuntu-20.04_gcc-10x_latest"
     "ubuntu-20.04_clang-10x_latest"
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.10_clang-9x_sanitizer_latest")
@@ -166,6 +167,7 @@ function deploy() {
     "ubuntu-19.10_clang-9x_sanitizer_latest"
     "ubuntu-19.10_clang-9x_latest"
     "ubuntu-19.04_gcc-8x_latest"
+    "ubuntu-20.04_gcc-10x_latest"
     "ubuntu-19.04_clang-8x_latest"
     "ubuntu-20.04_clang-10x_latest"
     "ubuntu-20.04_clang-10x_formal-verification_latest"

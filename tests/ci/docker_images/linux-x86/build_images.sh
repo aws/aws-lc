@@ -18,6 +18,7 @@ docker build -t amazonlinux-2:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2:gcc-7x-intel-sde amazonlinux-2_gcc-7x-intel-sde
 docker build -t fedora-31:clang-9x fedora-31_clang-9x
 docker build -t integration:s2n s2n_integration_clang-9x
+docker build -t ubuntu-20.04:gcc-10x ubuntu-20.04_gcc-10x
 docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
 
 ###########################################################
