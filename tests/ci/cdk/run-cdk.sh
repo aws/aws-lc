@@ -59,7 +59,6 @@ function create_aws_resources() {
   aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-formal-verification --build-type BUILD_BATCH
 }
 
 function build_linux_img() {
@@ -165,7 +164,7 @@ function deploy() {
     "ubuntu-19.04_clang-8x_latest"
     "ubuntu-20.04_gcc-9x_latest"
     "ubuntu-20.04_clang-10x_latest"
-    "ubuntu-20.04_awslc-saw"
+    "ubuntu-20.04_clang-10x_formal-verification_latest"
     "centos-7_gcc-4x_latest"
     "amazonlinux-2_gcc-7x_latest"
     "s2n_integration_clang-9x_latest")

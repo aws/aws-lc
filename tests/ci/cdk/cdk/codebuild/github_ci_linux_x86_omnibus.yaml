@@ -149,3 +149,34 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
+
+    # When no SELECTCHECK env variable is undefined, formal verification is executed with a few parameters.
+    - identifier: ubuntu2004_clang10x_formal_verification_quickcheck
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENSHA512_384_SELECTCHECKERAL1_MEDIUM
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+
+    # When 'SHA512_384_SELECTCHECK' is defined, SHA512-384 formal verification is executed against more parameters.
+    - identifier: ubuntu2004_clang10x_formal_verification_sha_selectcheck
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+        variables:
+          SHA512_384_SELECTCHECK: 1
+
+    # When 'HMAC_SELECTCHECK' is defined, HMAC-SHA384 formal verification is executed against more parameters.
+    - identifier: ubuntu2004_clang10x_formal_verification_hmac_selectcheck
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+        variables:
+          HMAC_SELECTCHECK: 1

@@ -26,4 +26,4 @@ docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
 # Build images defined in other GitHub repo #
 #############################################
 
-./ubuntu-20.04_formal_verification/create_image.sh ubuntu-20.04:awslc-formal-verification
+./ubuntu-20.04_clnag-10x_formal-verification/create_image.sh ubuntu-20.04:clang-10x_formal-verification
