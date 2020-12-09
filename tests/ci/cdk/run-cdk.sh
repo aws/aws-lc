@@ -45,10 +45,18 @@ function delete_s3_buckets() {
   done
 }
 
+function delete_container_repositories() {
+  aws ecr delete-repository --repository-name ${ECR_LINUX_AARCH_REPO_NAME} --force
+  aws ecr delete-repository --repository-name ${ECR_LINUX_X86_REPO_NAME} --force
+  aws ecr delete-repository --repository-name ${ECR_WINDOWS_X86_REPO_NAME} --force
+}
+
 function destroy_all() {
   cdk destroy aws-lc-* --force
   # CDK stack destroy does not delete s3 bucket automatically.
   delete_s3_buckets
+  # CDK stack destroy does not delete ecr automatically.
+  delete_container_repositories
 }
 
 function create_aws_resources() {
