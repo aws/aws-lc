@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 if [ -z ${1+x} ]; then
-  ECS_REPO="620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-test-docker-images-linux-aarch"
+  ECS_REPO="620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch"
 else
   ECS_REPO=$1
 fi

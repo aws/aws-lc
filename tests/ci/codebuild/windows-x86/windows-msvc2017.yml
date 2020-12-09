@@ -7,4 +7,4 @@ phases:
   build:
     commands:
       # vcvarsall will set the required lib and libpath for MSVC to compile everything
-      - .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
+      - .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
