@@ -156,7 +156,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENSHA512_384_SELECTCHECKERAL1_MEDIUM
+        compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
 
     # When 'SHA512_384_SELECTCHECK' is defined, SHA512-384 formal verification is executed against more parameters.
