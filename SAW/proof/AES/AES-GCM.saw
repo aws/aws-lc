@@ -12,7 +12,11 @@ import "../../spec/AES/AES-GCM.cry";
 enable_experimental;
 
 
+m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+
+
 include "../common/helpers.saw";
+include "../common/memory.saw";
 
 
 /*
@@ -30,9 +34,6 @@ let evp_cipher_final_gcm_len = eval_size {| evp_cipher_update_gcm_len + evp_ciph
 
 
 include "goal-rewrites.saw";
-
-
-m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
 
 
 let NID_aes_256_gcm = 901;
@@ -55,26 +56,9 @@ include "AESNI-GCM.saw";
 ////////////////////////////////////////////////////////////////////////////////
 // Specifications
 
-let OPENSSL_malloc_spec size = do {
-  crucible_execute_func [crucible_term {{ `size : [64] }}];
-  ptr <- crucible_alloc_aligned 16 (llvm_array size (llvm_int 8));
-  crucible_return ptr;
-};
-
-
 let EVP_AES_GCM_CTX_PADDING = 8;
 let EVP_AES_GCM_CTX_size = llvm_sizeof m (llvm_struct "struct.EVP_AES_GCM_CTX");
 let ctx_size = eval_size {| EVP_AES_GCM_CTX_size + EVP_AES_GCM_CTX_PADDING |};
-
-
-OPENSSL_malloc_ov <- crucible_llvm_unsafe_assume_spec
-  m
-  "OPENSSL_malloc"
-  (OPENSSL_malloc_spec EVP_AES_GCM_CTX_size);
-OPENSSL_malloc_696_ov <- crucible_llvm_unsafe_assume_spec
-  m
-  "OPENSSL_malloc"
-  (OPENSSL_malloc_spec 696);
 
 
 /*
@@ -187,7 +171,6 @@ llvm_verify m "aes_256_gcm_generic_init" [] true aes_256_gcm_generic_init_spec (
 
 let evp_cipher_ovs =
   [ OPENSSL_malloc_ov
-  , OPENSSL_malloc_696_ov
   , aes_gcm_from_cipher_ctx_ov
   , aes_hw_set_encrypt_key_ov
   , aes_hw_encrypt_ov

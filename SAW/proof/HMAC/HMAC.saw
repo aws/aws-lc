@@ -358,13 +358,6 @@ if HMAC_quick_check then do {
   return();
 };
 
-// Assume `OPENSSL_cleanse` satisfies `OPENSSL_cleanse_spec` for the
-// hmac_ctx_st struct
-OPENSSL_cleanse_hmac_ov <- crucible_llvm_unsafe_assume_spec
-  m
-  "OPENSSL_cleanse"
-  (OPENSSL_cleanse_spec HMAC_CTX_SIZE);
-
 let verify_hmac_with_length withLength = do {
   // Verify the `HMAC` C function satisfies the `HMAC_spec` specification
   crucible_llvm_verify m "HMAC"
@@ -373,7 +366,6 @@ let verify_hmac_with_length withLength = do {
     , OPENSSL_free_nonnull_ov
     , OPENSSL_free_null_ov
     , OPENSSL_cleanse_ov
-    , OPENSSL_cleanse_hmac_ov
     ]
     true
     (HMAC_spec withLength 240 240)

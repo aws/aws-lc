@@ -77,15 +77,9 @@ let AES_unwrap_key_padded_spec len = do {
 // Proof commands
 
 // Wrap (padded) uses a temporary heap buffer.
-// Assume correct behavior of malloc at the appropriate sizes.
-malloc_lengths <- for (eval_list {{ ([16, 24, 32]) : [3][32] }})
+// Assume correct behavior of free at the appropriate sizes.
+free_lengths <- for (eval_list {{ ([16, 24, 32]) : [3][32] }})
   (\x -> (return (eval_int x)) : (TopLevel Int));
-
-let OPENSSL_malloc_ov length = 
-  crucible_llvm_unsafe_assume_spec
-  m
-  "OPENSSL_malloc"
-  (OPENSSL_malloc_spec length);
 
 let OPENSSL_free_nonnull_ov length =
   crucible_llvm_unsafe_assume_spec
@@ -93,8 +87,7 @@ let OPENSSL_free_nonnull_ov length =
   "OPENSSL_free"
   (OPENSSL_free_nonnull_spec length);
 
-OPENSSL_malloc_ovs <- for malloc_lengths OPENSSL_malloc_ov;
-OPENSSL_free_nonnull_ovs <- for malloc_lengths OPENSSL_free_nonnull_ov;
+OPENSSL_free_nonnull_ovs <- for free_lengths OPENSSL_free_nonnull_ov;
 
 // Up to 8 bytes, the code uses a simpler branch that only performs a single encrypt.
 // After 16 bytes, all code and boundary conditions are covered.
@@ -107,10 +100,7 @@ let verify_wrap_padded length = do {
 
   crucible_llvm_verify m "AES_wrap_key_padded" 
     (concat
-      (concat 
-        [aes_hw_encrypt_ov, aes_hw_encrypt_in_place_ov]
-        OPENSSL_malloc_ovs
-      )
+      [aes_hw_encrypt_ov, aes_hw_encrypt_in_place_ov, OPENSSL_malloc_ov]
       OPENSSL_free_nonnull_ovs
     )
     true
