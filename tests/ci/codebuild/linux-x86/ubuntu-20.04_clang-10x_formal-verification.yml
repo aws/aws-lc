@@ -10,6 +10,4 @@ phases:
       - export CXX=clang++-10
   build:
     commands:
-      # CODEBUILD_SOURCE_REPO_URL and CODEBUILD_SOURCE_VERSION are defined by AWS CodeBuild. See below link
-      # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html
-      - ./tests/ci/run_formal_verification.sh ${CODEBUILD_SOURCE_REPO_URL} ${CODEBUILD_SOURCE_VERSION}
+      - ./tests/ci/run_formal_verification.sh
