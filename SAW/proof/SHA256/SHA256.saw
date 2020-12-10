@@ -231,47 +231,47 @@ OPENSSL_cleanse_ov <- crucible_llvm_unsafe_assume_spec
   (OPENSSL_cleanse_spec SHA256_CTX_SIZE);
 
 
-let bvShl11 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 11";
-let bvShl14 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 14";
-let bvShl15 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 15";
-let bvShl18 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 18";
-let bvShl21 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 21";
-let bvShl23 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 23";
-let bvShl25 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 25";
-let bvShl26 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 26";
-let bvShl27 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 27";
-let bvShl30 = parse_core "\\(x : bitvector 32) -> bvShl 32 x 30";
+let bvShl11 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 11";
+let bvShl14 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 14";
+let bvShl15 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 15";
+let bvShl18 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 18";
+let bvShl21 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 21";
+let bvShl23 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 23";
+let bvShl25 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 25";
+let bvShl26 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 26";
+let bvShl27 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 27";
+let bvShl30 = parse_core "\\(x : Vec 32 Bool) -> bvShl 32 x 30";
 
-let bvShr2  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 2";
-let bvShr3  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 3";
-let bvShr5  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 5";
-let bvShr6  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 6";
-let bvShr7  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 7";
-let bvShr9  = parse_core "\\(x : bitvector 32) -> bvShr 32 x 9";
-let bvShr10 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 10";
-let bvShr11 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 11";
-let bvShr14 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 14";
-let bvShr17 = parse_core "\\(x : bitvector 32) -> bvShr 32 x 17";
+let bvShr2  = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 2";
+let bvShr3  = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 3";
+let bvShr5  = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 5";
+let bvShr6  = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 6";
+let bvShr7  = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 7";
+let bvShr9  = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 9";
+let bvShr10 = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 10";
+let bvShr11 = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 11";
+let bvShr14 = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 14";
+let bvShr17 = parse_core "\\(x : Vec 32 Bool) -> bvShr 32 x 17";
 
-let bvShr2_64  = parse_core "\\(x : bitvector 64) -> bvShr 64 x 2";
-let bvShr17_64 = parse_core "\\(x : bitvector 64) -> bvShr 64 x 17";
+let bvShr2_64  = parse_core "\\(x : Vec 64 Bool) -> bvShr 64 x 2";
+let bvShr17_64 = parse_core "\\(x : Vec 64 Bool) -> bvShr 64 x 17";
 
-let slice_32_32_0 = parse_core "\\(x : bitvector 64) -> slice Bool 32 32 0 x";
-let slice_32_32_64 = parse_core "\\(x : bitvector 128) -> slice Bool 32 32 64 x";
-let slice_96_32_0 = parse_core "\\(x : bitvector 128) -> slice Bool 96 32 0 x";
+let slice_32_32_0 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 32 32 0 x";
+let slice_32_32_64 = parse_core "\\(x : Vec 128 Bool) -> slice Bool 32 32 64 x";
+let slice_96_32_0 = parse_core "\\(x : Vec 128 Bool) -> slice Bool 96 32 0 x";
 
-let slice_18_14_0 = parse_core "\\(x : bitvector 32) -> slice Bool 18 14 0 x";
-let slice_0_18_14 = parse_core "\\(x : bitvector 32) -> slice Bool 0 18 14 x";
-let slice_21_11_0 = parse_core "\\(x : bitvector 32) -> slice Bool 21 11 0 x";
-let slice_0_21_11 = parse_core "\\(x : bitvector 32) -> slice Bool 0 21 11 x";
-let slice_23_9_0  = parse_core "\\(x : bitvector 32) -> slice Bool 23 9 0 x";
-let slice_0_23_9  = parse_core "\\(x : bitvector 32) -> slice Bool 0 23 9 x";
-let slice_26_6_0  = parse_core "\\(x : bitvector 32) -> slice Bool 26 6 0 x";
-let slice_0_26_6  = parse_core "\\(x : bitvector 32) -> slice Bool 0 26 6 x";
-let slice_27_5_0  = parse_core "\\(x : bitvector 32) -> slice Bool 27 5 0 x";
-let slice_0_27_5  = parse_core "\\(x : bitvector 32) -> slice Bool 0 27 5 x";
-let slice_30_2_0  = parse_core "\\(x : bitvector 32) -> slice Bool 30 2 0 x";
-let slice_0_30_2  = parse_core "\\(x : bitvector 32) -> slice Bool 0 30 2 x";
+let slice_18_14_0 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 18 14 0 x";
+let slice_0_18_14 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 18 14 x";
+let slice_21_11_0 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 21 11 0 x";
+let slice_0_21_11 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 21 11 x";
+let slice_23_9_0  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 23 9 0 x";
+let slice_0_23_9  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 23 9 x";
+let slice_26_6_0  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 26 6 0 x";
+let slice_0_26_6  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 26 6 x";
+let slice_27_5_0  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 27 5 0 x";
+let slice_0_27_5  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 27 5 x";
+let slice_30_2_0  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 30 2 0 x";
+let slice_0_30_2  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 30 2 x";
 
 
 let prove_folding_theorem t = prove_print abc (rewrite (cryptol_ss ()) t);
@@ -304,7 +304,7 @@ Ch_7_thm <- prove_folding_theorem {{ \x y z -> (x && (z ^ y)) ^ z == Ch x y z }}
 Maj_thm   <- prove_folding_theorem {{ \x y z -> Ch (x ^ y) z y == Maj x y z }};
 Maj_1_thm <- prove_folding_theorem {{ \x y z -> Ch (y ^ x) z y == Maj x y z }};
 
-let bvult = parse_core "\\(x y : bitvector 64) -> bvult 64 x y";
+let bvult = parse_core "\\(x y : Vec 64 Bool) -> bvult 64 x y";
 // replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract domain to work
 cmp_sub_thm <- prove_folding_theorem
   {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};

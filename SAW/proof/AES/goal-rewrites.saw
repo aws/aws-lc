@@ -280,7 +280,7 @@ aesenc_aesenclast_thm <- prove_print
 // replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract
 // domain to work. This simplifies goals related to the 64-byte alignment of
 // the stack.
-let bvult = parse_core "\\(x y : bitvector 64) -> bvult 64 x y";
+let bvult = parse_core "\\(x y : Vec 64 Bool) -> bvult 64 x y";
 cmp_sub_thm <- prove_folding_theorem
   {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};
 

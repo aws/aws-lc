@@ -17,35 +17,35 @@
  */
 
 // bvShl<N> functions take a 64 bit vector and shift left by N
-let bvShl3  = parse_core "\\(x : bitvector 64) -> bvShl 64 x 3";
-let bvShl7  = parse_core "\\(x : bitvector 64) -> bvShl 64 x 7";
-let bvShl42 = parse_core "\\(x : bitvector 64) -> bvShl 64 x 42";
-let bvShl56 = parse_core "\\(x : bitvector 64) -> bvShl 64 x 56";
+let bvShl3  = parse_core "\\(x : Vec 64 Bool) -> bvShl 64 x 3";
+let bvShl7  = parse_core "\\(x : Vec 64 Bool) -> bvShl 64 x 7";
+let bvShl42 = parse_core "\\(x : Vec 64 Bool) -> bvShl 64 x 42";
+let bvShl56 = parse_core "\\(x : Vec 64 Bool) -> bvShl 64 x 56";
 
 // bvShr<N> functions take a 64 bit vector and shift right by N
-let bvShr1  = parse_core "\\(x : bitvector 64) -> bvShr 64 x 1";
-let bvShr7  = parse_core "\\(x : bitvector 64) -> bvShr 64 x 7";
-let bvShr6  = parse_core "\\(x : bitvector 64) -> bvShr 64 x 6";
-let bvShr19 = parse_core "\\(x : bitvector 64) -> bvShr 64 x 19";
-let bvShr42 = parse_core "\\(x : bitvector 64) -> bvShr 64 x 42";
+let bvShr1  = parse_core "\\(x : Vec 64 Bool) -> bvShr 64 x 1";
+let bvShr7  = parse_core "\\(x : Vec 64 Bool) -> bvShr 64 x 7";
+let bvShr6  = parse_core "\\(x : Vec 64 Bool) -> bvShr 64 x 6";
+let bvShr19 = parse_core "\\(x : Vec 64 Bool) -> bvShr 64 x 19";
+let bvShr42 = parse_core "\\(x : Vec 64 Bool) -> bvShr 64 x 42";
 
 // slice_<A>_<B>_<C> functions take a 64 bit vector x and return the slice of
 // size B that immediately follows the first A bits of x and that immediately
 // precedes the final C bits of x.
-let slice_8_56_0  = parse_core "\\(x : bitvector 64) -> slice Bool 8 56 0 x";
-let slice_0_8_56  = parse_core "\\(x : bitvector 64) -> slice Bool 0 8 56 x";
-let slice_36_28_0 = parse_core "\\(x : bitvector 64) -> slice Bool 36 28 0 x";
-let slice_0_36_28 = parse_core "\\(x : bitvector 64) -> slice Bool 0 36 28 x";
-let slice_41_23_0 = parse_core "\\(x : bitvector 64) -> slice Bool 41 23 0 x";
-let slice_0_41_23 = parse_core "\\(x : bitvector 64) -> slice Bool 0 41 23 x";
-let slice_50_14_0 = parse_core "\\(x : bitvector 64) -> slice Bool 50 14 0 x";
-let slice_0_50_14 = parse_core "\\(x : bitvector 64) -> slice Bool 0 50 14 x";
-let slice_58_6_0  = parse_core "\\(x : bitvector 64) -> slice Bool 58 6 0 x";
-let slice_0_58_6  = parse_core "\\(x : bitvector 64) -> slice Bool 0 58 6 x";
-let slice_59_5_0  = parse_core "\\(x : bitvector 64) -> slice Bool 59 5 0 x";
-let slice_0_59_5  = parse_core "\\(x : bitvector 64) -> slice Bool 0 59 5 x";
-let slice_60_4_0  = parse_core "\\(x : bitvector 64) -> slice Bool 60 4 0 x";
-let slice_0_60_4  = parse_core "\\(x : bitvector 64) -> slice Bool 0 60 4 x";
+let slice_8_56_0  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 8 56 0 x";
+let slice_0_8_56  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 8 56 x";
+let slice_36_28_0 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 36 28 0 x";
+let slice_0_36_28 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 36 28 x";
+let slice_41_23_0 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 41 23 0 x";
+let slice_0_41_23 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 41 23 x";
+let slice_50_14_0 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 50 14 0 x";
+let slice_0_50_14 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 50 14 x";
+let slice_58_6_0  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 58 6 0 x";
+let slice_0_58_6  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 58 6 x";
+let slice_59_5_0  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 59 5 0 x";
+let slice_0_59_5  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 59 5 x";
+let slice_60_4_0  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 60 4 0 x";
+let slice_0_60_4  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 60 4 x";
 
 
 // Helper function for proving theorems
@@ -124,7 +124,7 @@ Maj_1_thm <- prove_folding_theorem {{ \x y z -> Ch (y ^ x) z y == Maj x y z }};
 // replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract
 // domain to work. This simplifies goals related to the 64-byte alignment of
 // the stack.
-let bvult = parse_core "\\(x y : bitvector 64) -> bvult 64 x y";
+let bvult = parse_core "\\(x y : Vec 64 Bool) -> bvult 64 x y";
 cmp_sub_thm <- prove_folding_theorem
   {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};
 
