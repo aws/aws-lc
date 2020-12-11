@@ -2,7 +2,6 @@
 #include <time.h>
 #include <assert.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/times.h>
 #include <string.h>
 
@@ -34,6 +33,7 @@ void test_close_streams(void)
     BIO_free_all(bio_err);
 }
 
+#if defined(PID_CPU_TICKS)
 FILE* open_fpstat(void)
 {
     char filename[100];
@@ -44,15 +44,15 @@ FILE* open_fpstat(void)
     printf("pid: %d\n", pid);
 
     sprintf(filename, "/proc/%d/stat", pid);
-    //printf("filename: %s\n", filename);
     fpstat = fopen(filename, "r");
     if (fpstat == NULL)
     {
-        perror("FOPEN ERROR ");
+        BIO_printf(bio_err, "ERROR: opening /proc/<pid>/stat failed.\n");
+        ERR_print_errors(bio_err);
     }
-
     return fpstat;
 }
+#endif
 
 void close_fpstat(FILE *fpstat)
 {
@@ -70,29 +70,42 @@ uint64_t time_now(void)
     return ret;
 }
 
-#ifdef __linux__
+#if defined(PID_CPU_TICKS)
 int64_t cpu_now(FILE *fpstat, unsigned int *flags)
 {
+	if (NULL == fpstat)
+    {
+        return -1;
+    }
+
+    // Values read from proc/<pid>/stat:
+    // flags: (9) kernel flags;
+    // see the PF_* defines in the Linux kernel source file include/linux/sched.h
+
+    // (14) clock ticks when process is scheduled in user mode
     long unsigned int utime_ticks = 0;
+    // (16) clock ticks when process' children are scheduled in user mode
     long int cutime_ticks = -1;
+    // (15) clock ticks when process is scheduled in kernel mode
     long unsigned int stime_ticks = 0;
+    // (17) clock ticks when process' children are scheduled in kernel mode
     long int cstime_ticks = -1;
 
     // https://github.com/fho/code_snippets/blob/master/c/getusage.c#L48
     // https://linux.die.net/man/5/proc
-    if (fscanf(fpstat, "%*d %*s %*c %*d %*d %*d %*d %*d %u %*u %*u %*u %*u"
+    if (fscanf(fpstat, "%*d %*s %*c %*d %*d %*d %*d %*d "
+               "%u %*u %*u %*u %*u "
                "%lu %lu %ld %ld %*d %*d %*d %*d %*u %*u %*d",
                flags, &utime_ticks, &stime_ticks, &cutime_ticks, &cstime_ticks) == EOF)
     {
-        perror("ERROR: fscanf");
+        BIO_printf(bio_err, "ERROR: reading from /proc/<pid>/stat.\n");
+        ERR_print_errors(bio_err);
     }
-    printf("uticks: %lu\n", utime_ticks);
-    printf("cuticks: %ld\n", cutime_ticks);
-    printf("sticks: %lu\n", stime_ticks);
-    printf("csticks: %ld\n", cstime_ticks);
+    printf("uticks: %lu, cuticks: %ld\n", utime_ticks, cutime_ticks);
+    printf("sticks: %lu, csticks: %ld\n", stime_ticks, cstime_ticks);
     printf("flags: %.8X\n\n", *flags);
 #if 0
-    // calling this on EC2 causes "Illegal instruction (core dumped)"
+    // calling this on Graviton2 EC2 causes "Illegal instruction (core dumped)"
     register uint64_t x0 __asm__ ("x0");
     __asm__ ("mrs x0, CurrentEL;" : : : "%x0");
     printf("EL = %lX\n", x0 >> 2);

@@ -23,20 +23,19 @@ void benchmark_ecdh_p256(int num_itr)
     size_t test_outlen;
     int ecdh_checks = 1;
     uint64_t start, now, us;
-#ifdef __linux__
-    FILE* fpstat;
+#if defined(PID_CPU_TICKS)
     int64_t cpu_ticks_start, cpu_ticks_end;
     int64_t cpu_ticks = 0;
     unsigned int flags = 0;
+    FILE* fpstat = NULL;
 #endif
 
-#ifdef __linux__
+#if defined(PID_CPU_TICKS)
+    // Open /proc/<pid>/stat
     fpstat = open_fpstat();
-	if (
-        (NULL == fpstat) ||
-#else
-	if (
 #endif
+
+    if (
         /* Create the context for parameter generation */
         (NULL == (pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL))) ||
         /* Initialise the parameter generation */
@@ -136,7 +135,7 @@ void benchmark_ecdh_p256(int num_itr)
     if (1 == ecdh_checks)
     {
         start = time_now();
-#ifdef __linux__
+#if defined(PID_CPU_TICKS)
         cpu_ticks_start = cpu_now(fpstat, &flags);
 #endif
         /* Benchmark key generation and key derivation on A's side */
@@ -147,13 +146,13 @@ void benchmark_ecdh_p256(int num_itr)
         }
 
         now = time_now();
-#ifdef __linux__
+#if defined(PID_CPU_TICKS)
         cpu_ticks_end = cpu_now(fpstat, &flags);
 #endif
         us = now - start;
         BIO_printf(bio_out, "ECDH P-256: %u operations in %luus (%.1f ops/sec)\n",
                    num_itr, (long unsigned)us, ((double)num_itr/us) * 1000000);
-#ifdef __linux__
+#if defined(PID_CPU_TICKS)
         cpu_ticks = cpu_ticks_end - cpu_ticks_start;
         BIO_printf(bio_out, "            in %ld cpu ticks\n",
                    cpu_ticks);
@@ -184,8 +183,10 @@ void benchmark_ecdh_p256(int num_itr)
         OPENSSL_free(secret_b);
     }
 
-#ifdef __linux__
+#if defined(PID_CPU_TICKS)
+    // Close /proc/<pid>/stat
     close_fpstat(fpstat);
 #endif
+
 	return;
 }
