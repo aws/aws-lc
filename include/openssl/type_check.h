@@ -75,12 +75,12 @@ extern "C" {
 #define AWSLC_CONCAT(left, right) left##right
 #define AWSLC_STATIC_ASSERT_DEFINE(cond, msg) typedef struct { \
         unsigned int AWSLC_CONCAT(static_assertion_, msg) : (cond) ? 1 : - 1; \
-    } AWSLC_CONCAT(static_assertion_, msg) OPENSSL_UNUSED;
+    } AWSLC_CONCAT(static_assertion_, msg) OPENSSL_UNUSED
 #define AWSLC_STATIC_ASSERT_ADD_LINE0(cond, suffix) AWSLC_STATIC_ASSERT_DEFINE(cond, AWSLC_CONCAT(at_line_, suffix))
 #define AWSLC_STATIC_ASSERT_ADD_LINE1(cond, line, suffix) AWSLC_STATIC_ASSERT_ADD_LINE0(cond, AWSLC_CONCAT(line, suffix))
 #define AWSLC_STATIC_ASSERT_ADD_LINE2(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE1(cond, __LINE__, suffix)
 #define AWSLC_STATIC_ASSERT_ADD_ERROR(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE2(cond, AWSLC_CONCAT(_see_error_, suffix))
-#define OPENSSL_STATIC_ASSERT(cond, error) AWSLC_STATIC_ASSERT_ADD_ERROR(cond, error)
+#define OPENSSL_STATIC_ASSERT(cond, error) AWSLC_STATIC_ASSERT_ADD_ERROR(cond, error);
 
 // CHECKED_CAST casts |p| from type |from| to type |to|.
 //
