@@ -16,7 +16,7 @@ enable_language(CXX)
 
 # Fail CMake build when some vulnerable gcc versions are used.
 set(VUL_GCC_VERSIONS "")
-# These versions are disabled due to a bug reported in memcmp, which is fundamental and crucial for crypto.
+# These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
 list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
 if(CMAKE_COMPILER_IS_GNUCXX)
