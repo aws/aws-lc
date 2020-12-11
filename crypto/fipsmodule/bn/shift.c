@@ -297,14 +297,14 @@ int BN_mask_bits(BIGNUM *a, int n) {
 
 static int bn_count_low_zero_bits_word(BN_ULONG l) {
   OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                        "crypto_word_t is too small");
+                        crypto_word_t_is_too_small);
   OPENSSL_STATIC_ASSERT(sizeof(int) <= sizeof(crypto_word_t),
-                        "crypto_word_t is too small");
+                        crypto_word_t_is_too_small);
   OPENSSL_STATIC_ASSERT(BN_BITS2 == sizeof(BN_ULONG) * 8,
-                        "BN_ULONG has padding bits");
+                        BN_ULONG_has_padding_bits);
   // C has very bizarre rules for types smaller than an int.
   OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) >= sizeof(int),
-                        "BN_ULONG gets promoted to int");
+                        BN_ULONG_gets_promoted_to_int);
 
   crypto_word_t mask;
   int bits = 0;
@@ -343,9 +343,9 @@ static int bn_count_low_zero_bits_word(BN_ULONG l) {
 
 int BN_count_low_zero_bits(const BIGNUM *bn) {
   OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                        "crypto_word_t is too small");
+                        crypto_word_t_is_too_small);
   OPENSSL_STATIC_ASSERT(sizeof(int) <= sizeof(crypto_word_t),
-                        "crypto_word_t is too small");
+                        crypto_word_t_is_too_small);
 
   int ret = 0;
   crypto_word_t saw_nonzero = 0;

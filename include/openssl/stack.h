@@ -418,7 +418,7 @@ BSSL_NAMESPACE_END
 // are |type|, where |type| must be a typedef for a pointer.
 #define DEFINE_SPECIAL_STACK_OF(type)                   \
   OPENSSL_STATIC_ASSERT(sizeof(type) == sizeof(void *), \
-                        #type " is not a pointer");     \
+                        AWSLC_CONCAT(type, is_not_a_pointer));     \
   BORINGSSL_DEFINE_STACK_OF_IMPL(type, type, const type)
 
 
