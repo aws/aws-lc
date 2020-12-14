@@ -1,0 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - export CC=clang-10
+      - export CXX=clang++-10
+  build:
+    commands:
+      - ./tests/ci/run_formal_verification.sh
