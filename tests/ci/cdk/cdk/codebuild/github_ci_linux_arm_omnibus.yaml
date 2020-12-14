@@ -6,13 +6,6 @@ version: 0.2
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
 batch:
   build-list:
-    - identifier: ubuntu1910_gcc9x_aarch
-      buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-19.10_gcc-9x.yml
-      env:
-        type: ARM_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-19.10_gcc-9x_latest
 
     - identifier: ubuntu1910_clang9x_aarch
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-19.10_clang-9x.yml
@@ -21,14 +14,6 @@ batch:
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
-
-    - identifier: ubuntu2004_gcc9x_aarch
-      buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_gcc-9x.yml
-      env:
-        type: ARM_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_gcc-9x_latest
 
     - identifier: ubuntu2004_clang10x_aarch
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_clang-10x.yml

@@ -49,12 +49,6 @@ CodeBuild|gcc 7.3.1|x86-64|AL2
 CodeBuild|gcc 7.3.1|aarch64|AL2
 CodeBuild|gcc 7.4.4|x86-64|Ubuntu 18.04
 CodeBuild|gcc 8.3.0|x86-64|Ubuntu 19.04
-CodeBuild|gcc 9.2.1|x86-64|Ubuntu 19.10
-CodeBuild|gcc 9.2.1|aarch64|Ubuntu 20.04
-CodeBuild|gcc 9.2.1|aarch64|Ubuntu 19.10
-CodeBuild|gcc 9.3.0|aarch64|Ubuntu 20.04
-CodeBuild|gcc 9.3.0|x86-64|Ubuntu 20.04
-CodeBuild|gcc 9.3.1|x86-64|Fedora 31
 CodeBuild|clang 6.0.0|x86-64|Ubuntu 18.04
 CodeBuild|clang 8.0.0|x86-64|Ubuntu 19.04
 CodeBuild|clang 9.0.0|x86-64|Ubuntu 19.10
