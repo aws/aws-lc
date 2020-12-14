@@ -14,6 +14,19 @@ include(sources.cmake)
 enable_language(C)
 enable_language(CXX)
 
+# Fail CMake build when some vulnerable gcc versions are used.
+set(VUL_GCC_VERSIONS "")
+# These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
+list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
+if(CMAKE_COMPILER_IS_GNUCXX)
+  foreach(vul_gcc_version ${VUL_GCC_VERSIONS})
+    if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
+      message(FATAL_ERROR "GCC ${CMAKE_C_COMPILER_VERSION} is not supported.")
+    endif()
+  endforeach()
+endif()
+
 # This is a dummy target which all other targets depend on (manually - see other
 # CMakeLists.txt files). This gives us a hook to add any targets which need to
 # run before all other targets.

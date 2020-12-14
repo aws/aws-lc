@@ -38,11 +38,6 @@ docker tag ubuntu-19.04:clang-8x ${ECS_REPO}:ubuntu-19.04_clang-8x_latest
 docker push ${ECS_REPO}:ubuntu-19.04_clang-8x_latest
 docker push ${ECS_REPO}:ubuntu-19.04_clang-8x_`date +%Y-%m-%d`
 
-docker tag ubuntu-19.10:gcc-9x ${ECS_REPO}:ubuntu-19.10_gcc-9x_`date +%Y-%m-%d`
-docker tag ubuntu-19.10:gcc-9x ${ECS_REPO}:ubuntu-19.10_gcc-9x_latest
-docker push ${ECS_REPO}:ubuntu-19.10_gcc-9x_latest
-docker push ${ECS_REPO}:ubuntu-19.10_gcc-9x_`date +%Y-%m-%d`
-
 docker tag ubuntu-19.10:clang-9x ${ECS_REPO}:ubuntu-19.10_clang-9x_`date +%Y-%m-%d`
 docker tag ubuntu-19.10:clang-9x ${ECS_REPO}:ubuntu-19.10_clang-9x_latest
 docker push ${ECS_REPO}:ubuntu-19.10_clang-9x_latest
@@ -52,11 +47,6 @@ docker tag ubuntu-19.10:sanitizer ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_`d
 docker tag ubuntu-19.10:sanitizer ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_latest
 docker push ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_latest
 docker push ${ECS_REPO}:ubuntu-19.10_clang-9x_sanitizer_`date +%Y-%m-%d`
-
-docker tag ubuntu-20.04:gcc-9x ${ECS_REPO}:ubuntu-20.04_gcc-9x_`date +%Y-%m-%d`
-docker tag ubuntu-20.04:gcc-9x ${ECS_REPO}:ubuntu-20.04_gcc-9x_latest
-docker push ${ECS_REPO}:ubuntu-20.04_gcc-9x_latest
-docker push ${ECS_REPO}:ubuntu-20.04_gcc-9x_`date +%Y-%m-%d`
 
 docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_`date +%Y-%m-%d`
 docker tag ubuntu-20.04:clang-10x ${ECS_REPO}:ubuntu-20.04_clang-10x_latest
@@ -73,11 +63,6 @@ docker tag amazonlinux-2:gcc-7x ${ECS_REPO}:amazonlinux-2_gcc-7x_latest
 docker push ${ECS_REPO}:amazonlinux-2_gcc-7x_latest
 docker push ${ECS_REPO}:amazonlinux-2_gcc-7x_`date +%Y-%m-%d`
 
-docker tag fedora-31:gcc-9x ${ECS_REPO}:fedora-31_gcc-9x_`date +%Y-%m-%d`
-docker tag fedora-31:gcc-9x ${ECS_REPO}:fedora-31_gcc-9x_latest
-docker push ${ECS_REPO}:fedora-31_gcc-9x_latest
-docker push ${ECS_REPO}:fedora-31_gcc-9x_`date +%Y-%m-%d`
-
 docker tag fedora-31:clang-9x ${ECS_REPO}:fedora-31_clang-9x_`date +%Y-%m-%d`
 docker tag fedora-31:clang-9x ${ECS_REPO}:fedora-31_clang-9x_latest
 docker push ${ECS_REPO}:fedora-31_clang-9x_latest
@@ -87,3 +72,8 @@ docker tag integration:s2n ${ECS_REPO}:s2n_integration_clang-9x_`date +%Y-%m-%d`
 docker tag integration:s2n ${ECS_REPO}:s2n_integration_clang-9x_latest
 docker push ${ECS_REPO}:s2n_integration_clang-9x_latest
 docker push ${ECS_REPO}:s2n_integration_clang-9x_`date +%Y-%m-%d`
+
+docker tag ubuntu-20.04:clang-10x_formal-verification ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_`date +%Y-%m-%d`
+docker tag ubuntu-20.04:clang-10x_formal-verification ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_`date +%Y-%m-%d`
