@@ -45,10 +45,18 @@ function delete_s3_buckets() {
   done
 }
 
+function delete_container_repositories() {
+  aws ecr delete-repository --repository-name ${ECR_LINUX_AARCH_REPO_NAME} --force
+  aws ecr delete-repository --repository-name ${ECR_LINUX_X86_REPO_NAME} --force
+  aws ecr delete-repository --repository-name ${ECR_WINDOWS_X86_REPO_NAME} --force
+}
+
 function destroy_all() {
   cdk destroy aws-lc-* --force
   # CDK stack destroy does not delete s3 bucket automatically.
   delete_s3_buckets
+  # CDK stack destroy does not delete ecr automatically.
+  delete_container_repositories
 }
 
 function create_aws_resources() {
@@ -160,6 +168,7 @@ function deploy() {
     "ubuntu-19.04_gcc-8x_latest"
     "ubuntu-19.04_clang-8x_latest"
     "ubuntu-20.04_clang-10x_latest"
+    "ubuntu-20.04_clang-10x_formal-verification_latest"
     "centos-7_gcc-4x_latest"
     "amazonlinux-2_gcc-7x_latest"
     "s2n_integration_clang-9x_latest")

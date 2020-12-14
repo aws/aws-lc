@@ -72,3 +72,8 @@ docker tag integration:s2n ${ECS_REPO}:s2n_integration_clang-9x_`date +%Y-%m-%d`
 docker tag integration:s2n ${ECS_REPO}:s2n_integration_clang-9x_latest
 docker push ${ECS_REPO}:s2n_integration_clang-9x_latest
 docker push ${ECS_REPO}:s2n_integration_clang-9x_`date +%Y-%m-%d`
+
+docker tag ubuntu-20.04:clang-10x_formal-verification ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_`date +%Y-%m-%d`
+docker tag ubuntu-20.04:clang-10x_formal-verification ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_latest
+docker push ${ECS_REPO}:ubuntu-20.04_clang-10x_formal-verification_`date +%Y-%m-%d`
