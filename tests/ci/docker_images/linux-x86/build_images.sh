@@ -19,8 +19,8 @@ docker build -t fedora-31:clang-9x fedora-31_clang-9x
 docker build -t integration:s2n s2n_integration_clang-9x
 docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
 
-#############################################
-# Build images defined in other GitHub repo #
-#############################################
+###########################################################
+# Build images defined in aws-lc-verification GitHub repo #
+###########################################################
 
 ./ubuntu-20.04_clang-10x_formal-verification/create_image.sh ubuntu-20.04:clang-10x_formal-verification
