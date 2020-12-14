@@ -38,14 +38,6 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
 
-    - identifier: ubuntu1910_gcc9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_gcc-9x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_gcc-9x_latest
-
     - identifier: ubuntu1910_clang9x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_clang-9x.yml
       env:
@@ -53,14 +45,6 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
-
-    - identifier: ubuntu2004_gcc9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_gcc-9x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:ubuntu-20.04_gcc-9x_latest
 
     - identifier: ubuntu2004_clang10x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x.yml
@@ -125,14 +109,6 @@ batch:
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:s2n_integration_clang-9x_latest
-
-    - identifier: fedora31_gcc9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_gcc-9x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_X86_PLACEHOLDER:fedora-31_gcc-9x_latest
 
     - identifier: fedora31_clang9x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
