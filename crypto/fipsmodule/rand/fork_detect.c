@@ -32,16 +32,16 @@
 
 
 #if defined(MADV_WIPEONFORK)
-OPENSSL_STATIC_ASSERT(MADV_WIPEONFORK == 18, MADV_WIPEONFORK_is_not_18);
+OPENSSL_STATIC_ASSERT(MADV_WIPEONFORK == 18, MADV_WIPEONFORK_is_not_18)
 #else
 #define MADV_WIPEONFORK 18
 #endif
 
-DEFINE_STATIC_ONCE(g_fork_detect_once);
-DEFINE_STATIC_MUTEX(g_fork_detect_lock);
-DEFINE_BSS_GET(volatile char *, g_fork_detect_addr);
-DEFINE_BSS_GET(uint64_t, g_fork_generation);
-DEFINE_BSS_GET(int, g_ignore_madv_wipeonfork);
+DEFINE_STATIC_ONCE(g_fork_detect_once)
+DEFINE_STATIC_MUTEX(g_fork_detect_lock)
+DEFINE_BSS_GET(volatile char *, g_fork_detect_addr)
+DEFINE_BSS_GET(uint64_t, g_fork_generation)
+DEFINE_BSS_GET(int, g_ignore_madv_wipeonfork)
 
 static void init_fork_detect(void) {
   if (*g_ignore_madv_wipeonfork_bss_get()) {
