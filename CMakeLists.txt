@@ -178,7 +178,6 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   endif()
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_CXX_FLAGS} -Wmissing-prototypes -Wold-style-definition -Wstrict-prototypes")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wpedantic")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_CXX_FLAGS} -Wmissing-declarations")
 
   if(NOT MSVC)
