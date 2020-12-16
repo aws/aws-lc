@@ -130,11 +130,7 @@ die "can't locate x86_64-xlate.pl";
 # necessary to disable AVX2 code when SHA Extensions code is disabled? Upstream
 # did not tie them together until after $shaext was added.
 $avx = 1;
-
-# TODO(davidben): Consider enabling the Intel SHA Extensions code once it's
-# been tested.
-$shaext=0;	### set to zero if compiling for 1.0.1
-$avx=1		if (!$shaext && $avx);
+$shaext=1;	### set to zero if compiling for 1.0.1
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
@@ -560,6 +556,7 @@ $code.=<<___;
 .align	64
 sha256_block_data_order_shaext:
 _shaext_shortcut:
+.cfi_startproc
 ___
 $code.=<<___ if ($win64);
 	lea	`-8-5*16`(%rsp),%rsp
@@ -703,6 +700,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
+.cfi_endproc
 .size	sha256_block_data_order_shaext,.-sha256_block_data_order_shaext
 ___
 }}}
