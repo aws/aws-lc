@@ -72,6 +72,14 @@ extern "C" {
 // C11 (and up), we can reintroduce these keywords. Instead, use a method that
 // is guaranteed to be C99 compliant and still gives use an equivalent static
 // assert mechanism.
+//
+// The solution below defines a struct type containing a bit field.
+// The name of that type is |static_assertion_msg|. |msg| is a concatenation of
+// a user-chosen error (which should be chosen with respect to actual assertion)
+// and the line the assertion is defined. This should ensure name uniqueness.
+// The width of the bit field is set to 1 or -1, depending on the evaluation of
+// the boolean expression |cond|. If the condition is false, the width requested
+// is -1, which is illegal and would cause the compiler to throw an error.
 #define AWSLC_CONCAT(left, right) left##right
 #define AWSLC_STATIC_ASSERT_DEFINE(cond, msg) typedef struct { \
         unsigned int AWSLC_CONCAT(static_assertion_, msg) : (cond) ? 1 : - 1; \
