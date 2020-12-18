@@ -5,7 +5,7 @@
 
 set -ex
 
-saw proof/SHA256/SHA256.saw
+# TODO: reenable proof on SHA-256 when resolved https://github.com/awslabs/aws-lc-verification/issues/32
 (cd proof/SHA512 && go run SHA512-384-check-entrypoint.go)
 saw proof/SHA512/verify-SHA512-512-quickcheck.saw
 (cd proof/HMAC && go run HMAC-check-entrypoint.go)
