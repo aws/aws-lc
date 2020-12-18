@@ -80,6 +80,12 @@ extern "C" {
 // The width of the bit field is set to 1 or -1, depending on the evaluation of
 // the boolean expression |cond|. If the condition is false, the width requested
 // is -1, which is illegal and would cause the compiler to throw an error.
+//
+// An example of an error thrown during compilation:
+// ```
+// error: negative width in bit-field 
+//      'static_assertion_at_line_913_error_is_AEAD_state_is_too_small'
+// ```
 #define AWSLC_CONCAT(left, right) left##right
 #define AWSLC_STATIC_ASSERT_DEFINE(cond, msg) typedef struct { \
         unsigned int AWSLC_CONCAT(static_assertion_, msg) : (cond) ? 1 : - 1; \
