@@ -19,7 +19,7 @@ INCLUDE_FILES=`ls $INCLUDE_DIR/openssl/*.h | grep -v $INCLUDE_DIR/openssl/arm_ar
 # This test has some known limitations:
 # "Some users try to use -Wpedantic to check programs for strict ISO C
 # conformance. They soon find that it does not do quite what they want: it finds
-# some non-ISO practices, but not all—only those for which ISO C requires a
+# some non-ISO practices, but not all — only those for which ISO C requires a
 # diagnostic, and some others for which diagnostics have been added."
 # https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 

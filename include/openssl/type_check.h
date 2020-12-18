@@ -68,9 +68,9 @@ extern "C" {
 // a C++ translation unit or on Windows (excluding when using a Clang compiler).
 // The former was used in other cases. However, these two keywords are not
 // defined before C11. So, we can't rely on these when we want to be C99
-// compliant. If we at some point decides that we want to only be compliant with
+// compliant. If we at some point decide that we want to only be compliant with
 // C11 (and up), we can reintroduce these keywords. Instead, use a method that
-// is guaranteed to be C99 compliant and still gives use an equivalent static
+// is guaranteed to be C99 compliant and still give us an equivalent static
 // assert mechanism.
 //
 // The solution below defines a struct type containing a bit field.
@@ -87,7 +87,7 @@ extern "C" {
 #define AWSLC_STATIC_ASSERT_ADD_LINE0(cond, suffix) AWSLC_STATIC_ASSERT_DEFINE(cond, AWSLC_CONCAT(at_line_, suffix))
 #define AWSLC_STATIC_ASSERT_ADD_LINE1(cond, line, suffix) AWSLC_STATIC_ASSERT_ADD_LINE0(cond, AWSLC_CONCAT(line, suffix))
 #define AWSLC_STATIC_ASSERT_ADD_LINE2(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE1(cond, __LINE__, suffix)
-#define AWSLC_STATIC_ASSERT_ADD_ERROR(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE2(cond, AWSLC_CONCAT(_see_error_, suffix))
+#define AWSLC_STATIC_ASSERT_ADD_ERROR(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE2(cond, AWSLC_CONCAT(_error_is_, suffix))
 #define OPENSSL_STATIC_ASSERT(cond, error) AWSLC_STATIC_ASSERT_ADD_ERROR(cond, error);
 
 // CHECKED_CAST casts |p| from type |from| to type |to|.
