@@ -13,4 +13,5 @@ saw proof/SHA512/verify-SHA512-512-quickcheck.saw
 saw proof/AES/verify-AES-GCM.saw
 saw proof/AES_KW/verify-AES_KW.saw
 saw proof/AES_KW/verify-AES_KWP.saw
+saw proof/ECDSA/verify-ECDSA.saw
 

@@ -176,6 +176,14 @@ let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr = do {
   crucible_points_to (crucible_field ptr "pctx_ops") crucible_null;
 };
 
+// Specify the env_md_ctx_st struct with non-null pctx and pctx_ops
+let points_to_env_md_ctx_st_with_pctx ptr digest_ptr md_data_ptr pctx_ptr = do {
+  crucible_points_to (crucible_field ptr "digest") digest_ptr;
+  crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
+  crucible_points_to (crucible_field ptr "pctx") pctx_ptr;
+  crucible_points_to (crucible_field ptr "pctx_ops") (crucible_global "md_pctx_ops");
+};
+
 // Specifications of the various EVP functions
 include "evp-function-specs.saw";
 

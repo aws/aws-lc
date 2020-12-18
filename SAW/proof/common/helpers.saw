@@ -58,6 +58,8 @@ let i16 = llvm_int 16;
 let i32 = llvm_int 32;
 let i64 = llvm_int 64;
 let i128 = llvm_int 128;
+let i384 = llvm_int 384;
+let i512 = llvm_int 512;
 
 let do_prove = true;
 let llvm_verify m func overrides pathsat spec tactic = if do_prove

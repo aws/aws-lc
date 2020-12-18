@@ -1,0 +1,54 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+// EVP_DigestVerifyFinal requires OPENSSL_realloc overrides when it
+// defends against potential laxness in the DER parser.
+let {{
+compute_realloc_params : {n} (fin n) => [n][64] -> [n]([64], [64])
+compute_realloc_params lens = take [ p | (_, p) <- s ]
+  where s = [(0, (0, 0))] # [ (i + len, if i + len <= cap then (cap, 0) else (max (i + len) (2 * cap), i)) | len <- lens | (i, (cap, _)) <- s ]
+}};
+OPENSSL_realloc_ovs <- for (eval_list {{ compute_realloc_params [1, 1, 1, 1, `r_bytes, 1, 1, `s_bytes] }}) (\x -> do {
+  let size = eval_int {{ x.0 }};
+  let orig_size = eval_int {{ x.1 }};
+  if eval_bool {{ `orig_size != 0 }} then do {
+    crucible_llvm_unsafe_assume_spec
+      m
+      "OPENSSL_realloc"
+      (OPENSSL_realloc_spec orig_size size);
+  } else do {
+    return OPENSSL_realloc_null_ov;
+  };
+});
+
+// EVP_DigestSignFinal/EVP_DigestVerifyFinal require OPENSSL_free overrides
+// when they marshal/parse the signature to/from ASN1 format.
+OPENSSL_free_nonnull_ecdsa_sig_st_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  (OPENSSL_free_nonnull_spec (llvm_sizeof m (llvm_struct ecdsa_sig_st)));
+OPENSSL_free_nonnull_bignum_st_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  (OPENSSL_free_nonnull_spec (llvm_sizeof m (llvm_struct "struct.bignum_st")));
+OPENSSL_free_nonnull_cbb_buffer_st_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  (OPENSSL_free_nonnull_spec (llvm_sizeof m (llvm_struct "struct.cbb_buffer_st")));
+
+// ec_group_new_from_data requires an OPENSSL_free override for size ec_bytes
+OPENSSL_free_nonnull_ec_bytes_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  (OPENSSL_free_nonnull_spec ec_bytes);
+
+// EVP_DigestVerifyFinal requires an memcmp_ov override when it
+// defends against potential laxness in the DER parser.
+memcmp_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "memcmp"
+  (memcmp_spec sig_len);
+

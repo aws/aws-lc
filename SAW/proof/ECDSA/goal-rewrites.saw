@@ -1,0 +1,142 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * Rewrite rules proofs and goal tactics. This does not
+ * contain any specifications or assumtions, thus it does
+ * not require inspection in order to trust the
+ * verification result.
+ */
+
+fieldElementBV_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \x -> fieldElementFromBV (fieldElementToBV (x % `P384_p)) == x % `P384_p }});
+
+scalarBV_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \x -> scalarFromBV (scalarToBV (x % `P384_n)) == x % `P384_n }});
+
+ite_integerToBV_thm <- prove_print
+  (do {
+    w4_unint_z3 ["integerToBV"];
+  })
+  (rewrite (cryptol_ss ()) {{ \x y z -> (if x then (integerToBV`{P384_w} y) else (integerToBV z)) == integerToBV (if x then y else z) }});
+
+integerBV_thm' <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \x -> integerToBV`{P384_w} (integerFromBV x) == x }});
+integerBV_thm <- prove_print
+  (do {
+    simplify (addsimp integerBV_thm' empty_ss);
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \x -> integerToBV`{P384_w} (integerFromBV (integerToBV`{P384_w} x)) == integerToBV x }});
+
+mod_eq_0_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x0 : Integer) x1 x2 x3 -> ((x0 * (x1 + x2)) % `P384_n == (x0 * (x1 + x3)) % `P384_n) == ((x0 * x2) % `P384_n == (x0 * x3) % `P384_n) }});
+
+add_mod_0_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : Integer) y -> ((x % `P384_n) + y) % `P384_n == (x + y) % `P384_n }});
+add_mod_1_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : Integer) y -> (x + (y % `P384_n)) % `P384_n == (x + y) % `P384_n }});
+mul_mod_0_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : Integer) y -> ((x % `P384_n) * y) % `P384_n == (x * y) % `P384_n }});
+mul_mod_1_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : Integer) y -> (x * (y % `P384_n)) % `P384_n == (x * y) % `P384_n }});
+mod_mod_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : Integer) -> (x % `P384_n) % `P384_n == x % `P384_n }});
+mod_0_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x0 : Integer) x1 x2 -> (x0 * (x1 * (x2 % `P384_n))) % `P384_n == (x0 * (x1 * x2)) % `P384_n }});
+mod_1_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x0 : Integer) x1 x2 -> (x0 * ((x1 % `P384_n) * x2)) % `P384_n == (x0 * (x1 * x2)) % `P384_n }});
+mod_2_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x0 : Integer) x1 x2 -> ((x0 * (x1 % `P384_n)) * x2) % `P384_n == ((x0 * x1) * x2) % `P384_n }});
+mod_3_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x0 : Integer) x1 x2 -> (((x0 % `P384_n) * x1) * x2) % `P384_n == ((x0 * x1) * x2) % `P384_n }});
+mod_4_thm <- prove_print
+  (do {
+    simplify (addsimp mod_eq_0_thm empty_ss);
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x0 : Integer) x1 x2 x3 -> (x0 * (x1 + (x2 % `P384_n) * x3)) % `P384_n == (x0 * (x1 + x2 * x3)) % `P384_n }});
+let mod_thms =
+  [ add_mod_0_thm
+  , add_mod_1_thm
+  , mul_mod_0_thm
+  , mul_mod_1_thm
+  , mod_mod_thm
+  , mod_0_thm
+  , mod_1_thm
+  , mod_2_thm
+  , mod_3_thm
+  , mod_4_thm
+  ];
+
+mont_p_0_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \x -> (((x * P384_R_p) % `P384_p) * P384_R_p_inv) % `P384_p == x % `P384_p }});
+mont_n_0_thm <- prove_print
+  (do {
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \x -> (((x * P384_R_n) % `P384_n) * P384_R_n_inv) % `P384_n == x % `P384_n }});
+mont_n_1_thm <- prove_print
+  (do {
+    simplify (addsimps mod_thms empty_ss);
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \x y -> ((x * ((y * P384_R_n) % `P384_n)) * P384_R_n_inv) % `P384_n == (x * y) % `P384_n }});
+let mont_thms =
+  [ mont_p_0_thm
+  , mont_n_0_thm
+  , mont_n_1_thm
+  ];
+
+append_assoc_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ())
+  {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) (x16 : [8]) (x17 : [8]) (x18 : [8]) (x19 : [8]) (x20 : [8]) (x21 : [8]) (x22 : [8]) (x23 : [8]) (x24 : [8]) (x25 : [8]) (x26 : [8]) (x27 : [8]) (x28 : [8]) (x29 : [8]) (x30 : [8]) (x31 : [8]) (x32 : [8]) (x33 : [8]) (x34 : [8]) (x35 : [8]) (x36 : [8]) (x37 : [8]) (x38 : [8]) (x39 : [8]) (x40 : [8]) (x41 : [8]) (x42 : [8]) (x43 : [8]) (x44 : [8]) (x45 : [8]) (x46 : [8]) (x47 : [8]) ->
+      (((((((((((((((((((((((((((((((((((((((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) # x16) # x17) # x18) # x19) # x20) # x21) # x22) # x23) # x24) # x25) # x26) # x27) # x28) # x29) # x30) # x31) # x32) # x33) # x34) # x35) # x36) # x37) # x38) # x39) # x40) # x41) # x42) # x43) # x44) # x45) # x46) # x47)
+      == (x0 # (x1 # (x2 # (x3 # (x4 # (x5 # (x6 # (x7 # (x8 # (x9 # (x10 # (x11 # (x12 # (x13 # (x14 # (x15 # (x16 # (x17 # (x18 # (x19 # (x20 # (x21 # (x22 # (x23 # (x24 # (x25 # (x26 # (x27 # (x28 # (x29 # (x30 # (x31 # (x32 # (x33 # (x34 # (x35 # (x36 # (x37 # (x38 # (x39 # (x40 # (x41 # (x42 # (x43 # (x44 # (x45 # (x46 # x47)))))))))))))))))))))))))))))))))))))))))))))))
+  }});
+

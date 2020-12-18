@@ -1,0 +1,196 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+let bn_add_words_spec n = do {
+  let num_bits = eval_size {| n * 64 |};
+  rp <- crucible_alloc (llvm_int num_bits);
+  (a, ap) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (b, bp) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  crucible_execute_func [rp, ap, bp, (crucible_term {{ `n : [64] }})];
+  crucible_points_to rp (crucible_term {{ integerToBV`{num_bits} (if (integerFromBV a) + (integerFromBV b) >= 2 ^^ `num_bits then (integerFromBV a) + (integerFromBV b) - 2 ^^ `num_bits else (integerFromBV a) + (integerFromBV b)) }});
+  crucible_return (crucible_term {{ if (integerFromBV a) + (integerFromBV b) >= 2 ^^ `num_bits then 1 : [64] else 0 }});
+};
+let bn_add_words_same_res_left_spec n = do {
+  let num_bits = eval_size {| n * 64 |};
+  (a, ap) <- ptr_to_fresh "a" (llvm_int num_bits);
+  (b, bp) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  crucible_execute_func [ap, ap, bp, (crucible_term {{ `n : [64] }})];
+  crucible_points_to ap (crucible_term {{ integerToBV`{num_bits} (if (integerFromBV a) + (integerFromBV b) >= 2 ^^ `num_bits then (integerFromBV a) + (integerFromBV b) - 2 ^^ `num_bits else (integerFromBV a) + (integerFromBV b)) }});
+  crucible_return (crucible_term {{ if (integerFromBV a) + (integerFromBV b) >= 2 ^^ `num_bits then 1 : [64] else 0 }});
+};
+
+let bn_sub_words_spec n = do {
+  let num_bits = eval_size {| n * 64 |};
+  rp <- crucible_alloc (llvm_int num_bits);
+  (a, ap) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (b, bp) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  crucible_execute_func [rp, ap, bp, (crucible_term {{ `n : [64] }})];
+  crucible_points_to rp (crucible_term {{ integerToBV`{num_bits} (if (integerFromBV a) < (integerFromBV b) then (integerFromBV a) - (integerFromBV b) + 2 ^^ `num_bits else (integerFromBV a) - (integerFromBV b)) }});
+  crucible_return (crucible_term {{ if (integerFromBV a) < (integerFromBV b) then 1 : [64] else 0 }});
+};
+
+let bn_mul_mont_spec num N = do {
+  let num_bits = eval_size {| num * 64 |};
+  r_ptr <- crucible_alloc (llvm_int num_bits);
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  n_ptr <- crucible_alloc_readonly (llvm_int num_bits);
+  crucible_points_to n_ptr (crucible_term {{ integerToBV`{num_bits} `N }});
+  n0_ptr <- crucible_alloc_readonly i64;
+  let n0 = eval_int {{ bn_mont_n0`{N} }};
+  crucible_points_to n0_ptr (crucible_term {{ `n0 : [64] }});
+
+  crucible_execute_func [r_ptr, a_ptr, b_ptr, n_ptr, n0_ptr, (crucible_term {{ `num : [64] }})];
+
+  let R_inv = eval_int {{ fromInteger`{[width N]} mont_R_inv`{N} }};
+  crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} (((integerFromBV a) * (integerFromBV b) * `R_inv) % `N) }});
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+let bn_mul_mont_same_res_left_spec num N = do {
+  let num_bits = eval_size {| num * 64 |};
+  (a, a_ptr) <- ptr_to_fresh "a" (llvm_int num_bits);
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  n_ptr <- crucible_alloc_readonly (llvm_int num_bits);
+  crucible_points_to n_ptr (crucible_term {{ integerToBV`{num_bits} `N }});
+  n0_ptr <- crucible_alloc_readonly i64;
+  let n0 = eval_int {{ bn_mont_n0`{N} }};
+  crucible_points_to n0_ptr (crucible_term {{ `n0 : [64] }});
+
+  crucible_execute_func [a_ptr, a_ptr, b_ptr, n_ptr, n0_ptr, (crucible_term {{ `num : [64] }})];
+
+  let R_inv = eval_int {{ fromInteger`{[width N]} mont_R_inv`{N} }};
+  crucible_points_to a_ptr (crucible_term {{ integerToBV`{num_bits} (((integerFromBV a) * (integerFromBV b) * `R_inv) % `N) }});
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let bn_reduce_once_spec num = do {
+  let num_bits = eval_size {| num * 64 |};
+  r_ptr <- crucible_alloc (llvm_int num_bits);
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (m, m_ptr) <- ptr_to_fresh_readonly "m" (llvm_int num_bits);
+  crucible_precond {{ 0 <= (integerFromBV a) }};
+  crucible_precond {{ 0 <= (integerFromBV m) }};
+  crucible_precond {{ (integerFromBV a) < 2 * (integerFromBV m) }};
+  crucible_execute_func [r_ptr, a_ptr, (crucible_term {{ 0 : [64] }}), m_ptr, (crucible_term {{ `num : [64] }})];
+  crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} ((integerFromBV a) % (integerFromBV m)) }});
+  crucible_return (crucible_term {{ if (integerFromBV a) < (integerFromBV m) then ~0 : [64] else 0 }});
+};
+let bn_reduce_once_in_place_spec carry num = do {
+  let num_bits = eval_size {| num * 64 |};
+  (r, r_ptr) <- ptr_to_fresh "r" (llvm_int num_bits);
+  (m, m_ptr) <- ptr_to_fresh_readonly "m" (llvm_int num_bits);
+  tmp_ptr <- crucible_alloc (llvm_int num_bits);
+  let (carry_i64, r_integer) = if carry then ({{ 1 : [64] }}, {{ 2 ^^ `num_bits + (integerFromBV r) }}) else ({{ 0 : [64] }}, {{ integerFromBV r }});
+  crucible_precond {{ 0 <= (integerFromBV r) /\ (integerFromBV r) < 2 ^^ `num_bits }};
+  crucible_precond {{ 0 < (integerFromBV m) /\ (integerFromBV m) < 2 ^^ `num_bits }};
+  crucible_precond {{ r_integer < 2 * (integerFromBV m) }};
+  crucible_execute_func [r_ptr, (crucible_term carry_i64), m_ptr, tmp_ptr, (crucible_term {{ `num : [64] }})];
+  crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} (r_integer % (integerFromBV m)) }});
+  crucible_return (crucible_term {{ if r_integer < (integerFromBV m) then ~0 : [64] else 0 }});
+};
+
+let bn_select_words_true_spec num = do {
+  let num_bits = eval_size {| num * 64 |};
+  r_ptr <- crucible_alloc (llvm_int num_bits);
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (_b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  crucible_execute_func [r_ptr, (crucible_term {{ ~0 : [64] }}), a_ptr, b_ptr, (crucible_term {{ `num : [64] }})];
+  crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} (integerFromBV a) }});
+};
+let bn_select_words_same_res_left_true_spec num = do {
+  let num_bits = eval_size {| num * 64 |};
+  (a, a_ptr) <- ptr_to_fresh "a" (llvm_int num_bits);
+  (_b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  crucible_execute_func [a_ptr, (crucible_term {{ ~0 : [64] }}), a_ptr, b_ptr, (crucible_term {{ `num : [64] }})];
+  crucible_points_to a_ptr (crucible_term {{ integerToBV`{num_bits} (integerFromBV a) }});
+};
+let bn_select_words_false_spec num = do {
+  let num_bits = eval_size {| num * 64 |};
+  r_ptr <- crucible_alloc (llvm_int num_bits);
+  (_a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  crucible_execute_func [r_ptr, (crucible_term {{ 0 : [64] }}), a_ptr, b_ptr, (crucible_term {{ `num : [64] }})];
+  crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} (integerFromBV b) }});
+};
+let bn_select_words_same_res_left_false_spec num = do {
+  let num_bits = eval_size {| num * 64 |};
+  (_a, a_ptr) <- ptr_to_fresh "a" (llvm_int num_bits);
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+  crucible_execute_func [a_ptr, (crucible_term {{ 0 : [64] }}), a_ptr, b_ptr, (crucible_term {{ `num : [64] }})];
+  crucible_points_to a_ptr (crucible_term {{ integerToBV`{num_bits} (integerFromBV b) }});
+};
+
+
+let BN_FLG_MALLOCED =  {{ 1 : [32] }};
+let BN_FLG_STATIC_DATA = {{ 2 : [32] }};
+
+let points_to_bignum_st ptr d_ptr width dmax flags = do {
+  crucible_points_to (crucible_field ptr "d") d_ptr;
+  crucible_points_to (crucible_field ptr "width") (crucible_term {{ `width : [32] }});
+  crucible_points_to (crucible_field ptr "dmax") (crucible_term {{ `dmax : [32] }});
+  crucible_points_to (crucible_field ptr "neg") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "flags") (crucible_term flags);
+};
+
+
+let pointer_to_bn_mont_ctx_st num N = do {
+  let num_bits = eval_size {| num * 64 |};
+  let RR_bn_dmax = eval_size {| 2 * num + 1 |};
+  let R = {{ 2 ^^ `num_bits }};
+
+  ptr <- crucible_alloc_readonly (llvm_struct "struct.bn_mont_ctx_st");
+
+  RR_d_ptr <- crucible_alloc_readonly (llvm_int num_bits);
+  crucible_points_to RR_d_ptr (crucible_term {{ (fromInteger ((R * R) % `N)) : [num_bits] }});
+  points_to_bignum_st (crucible_field ptr "RR") RR_d_ptr num RR_bn_dmax {{ 0 : [32] }};
+
+  let n0 = eval_int {{ bn_mont_n0`{N} }};
+  crucible_points_to_untyped (crucible_field ptr "n0") (crucible_term {{ `n0 : [64] }});
+
+  N_d_ptr <- crucible_alloc_readonly (llvm_int num_bits);
+  crucible_points_to N_d_ptr (crucible_term {{ (fromInteger `N) : [num_bits] }});
+  points_to_bignum_st (crucible_field ptr "N") N_d_ptr num num {{ 0 : [32] }};
+
+  return ptr;
+};
+
+
+let BN_value_one_spec = do {
+  crucible_execute_func [];
+  ret_ptr <- crucible_alloc (llvm_struct "struct.bignum_st");
+  ret_d_ptr <- crucible_alloc (llvm_array 1 i64);
+  crucible_points_to ret_d_ptr (crucible_term {{ [1 : [64]] }});
+  points_to_bignum_st ret_ptr ret_d_ptr 1 1 BN_FLG_STATIC_DATA;
+  crucible_return ret_ptr;
+};
+
+let BN_div_spec numerator_width divisor_width = do {
+  numerator_ptr <- crucible_alloc (llvm_struct "struct.bignum_st");
+  (numerator, numerator_d_ptr) <- ptr_to_fresh "numerator" (llvm_array numerator_width i64);
+  points_to_bignum_st numerator_ptr numerator_d_ptr numerator_width numerator_width {{ 0 : [32] }};
+  divisor_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  (divisor, divisor_d_ptr) <- ptr_to_fresh_readonly "divisor" (llvm_array divisor_width i64);
+  points_to_bignum_st divisor_ptr divisor_d_ptr divisor_width divisor_width {{ 0 : [32] }};
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_ctx");
+  crucible_execute_func
+    [ crucible_null // quotient_ptr
+    , numerator_ptr // rem_ptr
+    , numerator_ptr
+    , divisor_ptr
+    , ctx_ptr
+    ];
+
+  crucible_points_to_untyped numerator_d_ptr (crucible_term {{ take`{divisor_width} (reverse (split`{each=64} ((join (reverse numerator)) % (0 # (join (reverse divisor)))))) }});
+  points_to_bignum_st numerator_ptr numerator_d_ptr divisor_width numerator_width {{ 0 : [32] }};
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+
+BN_value_one_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_value_one"
+  BN_value_one_spec;
+

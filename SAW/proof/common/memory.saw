@@ -80,6 +80,14 @@ let OPENSSL_cleanse_spec = do {
   // Postcondition: Data pointed to by `ptr` has been invalidated
 };
 
+let memcmp_spec count = do {
+  (lhs, lhs_ptr) <- ptr_to_fresh_readonly "lhs" (llvm_array count i8);
+  (rhs, rhs_ptr) <- ptr_to_fresh_readonly "rhs" (llvm_array count i8);
+  crucible_execute_func [lhs_ptr, rhs_ptr, (crucible_term {{ `count : [64] }})];
+  crucible_return (crucible_term {{ if (join lhs) < (join rhs) then (0 - 1) : [32] else if (join lhs) == (join rhs) then 0 else 1 }});
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Proof commands
 
