@@ -1,3 +1,10 @@
+/*
+------------------------------------------------------------------------------------
+ Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ SPDX-License-Identifier: Apache-2.0
+------------------------------------------------------------------------------------
+*/
+
 #include <openssl/evp.h>
 #include <openssl/ec.h>
 #ifdef AWSLC_BENCHMARK
@@ -8,7 +15,7 @@
 
 #define MAX_ECDH_SIZE   256
 
-void benchmark_ecdh_p256(int num_itr)
+void benchmark_ecdh_p256(uint64_t msec)
 {
     EVP_PKEY_CTX *kctx = NULL;
     EVP_PKEY_CTX *test_ctx = NULL;
@@ -22,18 +29,8 @@ void benchmark_ecdh_p256(int num_itr)
     size_t outlen;
     size_t test_outlen;
     int ecdh_checks = 1;
-    uint64_t start, now, us;
-#if defined(PID_CPU_TICKS)
-    int64_t cpu_ticks_start, cpu_ticks_end;
-    int64_t cpu_ticks = 0;
-    unsigned int flags = 0;
-    FILE* fpstat = NULL;
-#endif
-
-#if defined(PID_CPU_TICKS)
-    // Open /proc/<pid>/stat
-    fpstat = open_fpstat();
-#endif
+    uint64_t start, end, num_itr;
+    uint64_t usec = msec * 1000;
 
     if (
         /* Create the context for parameter generation */
@@ -134,29 +131,28 @@ void benchmark_ecdh_p256(int num_itr)
 
     if (1 == ecdh_checks)
     {
+        /* Warm up and instrument the function to calculate how many iterations it should run for */
         start = time_now();
-#if defined(PID_CPU_TICKS)
-        cpu_ticks_start = cpu_now(fpstat, &flags);
-#endif
+        /* key generation and key derivation on A's side */
+        for (int i = 0; i < WARM_UP_NUM_ITER; i++)
+        {
+            EVP_PKEY_keygen(kctx, &key_A);
+            EVP_PKEY_derive(ctx, secret_a, &outlen);
+        }
+        end = time_now();
+        num_itr = calculate_iterations(start, end, WARM_UP_NUM_ITER, usec);
+
+        start = time_now();
+
         /* Benchmark key generation and key derivation on A's side */
         for (int i = 0; i < num_itr; i++)
         {
             EVP_PKEY_keygen(kctx, &key_A);
             EVP_PKEY_derive(ctx, secret_a, &outlen);
         }
+        end = time_now();
 
-        now = time_now();
-#if defined(PID_CPU_TICKS)
-        cpu_ticks_end = cpu_now(fpstat, &flags);
-#endif
-        us = now - start;
-        BIO_printf(bio_out, "ECDH P-256: %u operations in %luus (%.1f ops/sec)\n",
-                   num_itr, (long unsigned)us, ((double)num_itr/us) * 1000000);
-#if defined(PID_CPU_TICKS)
-        cpu_ticks = cpu_ticks_end - cpu_ticks_start;
-        BIO_printf(bio_out, "            in %ld cpu ticks\n",
-                   cpu_ticks);
-#endif
+        report_results(start, end, num_itr, "ECDH P-256");
     }
 
     if (1 == ecdh_checks)
@@ -182,11 +178,6 @@ void benchmark_ecdh_p256(int num_itr)
     {
         OPENSSL_free(secret_b);
     }
-
-#if defined(PID_CPU_TICKS)
-    // Close /proc/<pid>/stat
-    close_fpstat(fpstat);
-#endif
 
 	return;
 }

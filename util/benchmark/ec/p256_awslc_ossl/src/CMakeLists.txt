@@ -1,3 +1,8 @@
+#------------------------------------------------------------------------------------
+# Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#------------------------------------------------------------------------------------
+
 # Build ec_benchmark with AWS-LC
 #-------------------------------
 # Add the source files to the target that builds with AWS-LC

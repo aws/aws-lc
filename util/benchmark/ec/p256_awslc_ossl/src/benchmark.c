@@ -1,3 +1,10 @@
+/*
+------------------------------------------------------------------------------------
+ Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ SPDX-License-Identifier: Apache-2.0
+------------------------------------------------------------------------------------
+*/
+
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
@@ -7,15 +14,10 @@
 
 #include "benchmark.h"
 
-void handle_errors(void)
-{
-    printf("Error!\n");
-}
-
 BIO *bio_out = NULL;
 BIO *bio_err = NULL;
 
-void test_open_streams(void)
+void open_test_streams(void)
 {
     bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
     bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
@@ -24,7 +26,7 @@ void test_open_streams(void)
     assert(bio_err != NULL);
 }
 
-void test_close_streams(void)
+void close_test_streams(void)
 {
     (void)BIO_flush(bio_out);
     (void)BIO_flush(bio_err);
@@ -33,83 +35,63 @@ void test_close_streams(void)
     BIO_free_all(bio_err);
 }
 
-#if defined(PID_CPU_TICKS)
-FILE* open_fpstat(void)
-{
-    char filename[100];
-    pid_t pid;
-    FILE *fpstat;
-
-    pid = getpid();
-    printf("pid: %d\n", pid);
-
-    sprintf(filename, "/proc/%d/stat", pid);
-    fpstat = fopen(filename, "r");
-    if (fpstat == NULL)
-    {
-        BIO_printf(bio_err, "ERROR: opening /proc/<pid>/stat failed.\n");
-        ERR_print_errors(bio_err);
-    }
-    return fpstat;
-}
-#endif
-
-void close_fpstat(FILE *fpstat)
-{
-    fclose(fpstat);
-}
-
 uint64_t time_now(void)
 {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t ret = 0;
 
-    uint64_t ret = ts.tv_sec;
+#if defined(AARCH64_TIMER)
+    int64_t virtual_timer_value;
+    /* In the following assembly call:
+     * ISB: Instruction Synchronization Barrier; i.e. ensures the previous instructions
+     *      are done execution before the ones following it.
+     * Read CNTVCT_EL0, the counter-timer virtual count register
+     * similarly to https://github.com/google/benchmark/blob/master/src/cycleclock.h
+     */
+    asm volatile("isb; mrs %0, cntvct_el0" : "=r"(ret));
+#else
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    ret = ts.tv_sec;
     ret *= 1000000;
     ret += ts.tv_nsec / 1000;
+#endif
     return ret;
 }
 
-#if defined(PID_CPU_TICKS)
-int64_t cpu_now(FILE *fpstat, unsigned int *flags)
+uint64_t calculate_iterations(uint64_t start, uint64_t end,
+                              uint64_t iterations_run, uint64_t usec_desired)
 {
-	if (NULL == fpstat)
-    {
-        return -1;
-    }
+    double usec_spent_per_iter;
+#if defined(AARCH64_TIMER)
+    uint64_t timer_freq, usec_spent;
 
-    // Values read from proc/<pid>/stat:
-    // flags: (9) kernel flags;
-    // see the PF_* defines in the Linux kernel source file include/linux/sched.h
+    /* Read CNTFRQ_EL0, the counter-timer frequency register */
+    asm volatile("mrs %0, cntfrq_el0" : "=r"(timer_freq));
 
-    // (14) clock ticks when process is scheduled in user mode
-    long unsigned int utime_ticks = 0;
-    // (16) clock ticks when process' children are scheduled in user mode
-    long int cutime_ticks = -1;
-    // (15) clock ticks when process is scheduled in kernel mode
-    long unsigned int stime_ticks = 0;
-    // (17) clock ticks when process' children are scheduled in kernel mode
-    long int cstime_ticks = -1;
-
-    // https://github.com/fho/code_snippets/blob/master/c/getusage.c#L48
-    // https://linux.die.net/man/5/proc
-    if (fscanf(fpstat, "%*d %*s %*c %*d %*d %*d %*d %*d "
-               "%u %*u %*u %*u %*u "
-               "%lu %lu %ld %ld %*d %*d %*d %*d %*u %*u %*d",
-               flags, &utime_ticks, &stime_ticks, &cutime_ticks, &cstime_ticks) == EOF)
-    {
-        BIO_printf(bio_err, "ERROR: reading from /proc/<pid>/stat.\n");
-        ERR_print_errors(bio_err);
-    }
-    printf("uticks: %lu, cuticks: %ld\n", utime_ticks, cutime_ticks);
-    printf("sticks: %lu, csticks: %ld\n", stime_ticks, cstime_ticks);
-    printf("flags: %.8X\n\n", *flags);
-#if 0
-    // calling this on Graviton2 EC2 causes "Illegal instruction (core dumped)"
-    register uint64_t x0 __asm__ ("x0");
-    __asm__ ("mrs x0, CurrentEL;" : : : "%x0");
-    printf("EL = %lX\n", x0 >> 2);
+    usec_spent = ((double)(end - start) / timer_freq) * 1000000;
+    usec_spent_per_iter = usec_spent / iterations_run;
+#else
+    usec_spent_per_iter = (double)(end - start) / iterations_run;
 #endif
-    return ((int64_t)utime_ticks + (int64_t)cutime_ticks);
+    uint64_t num_itr = (uint64_t)(usec_desired / usec_spent_per_iter);
+
+    return num_itr;/* (uint64_t)(usec_desired / usec_spent_per_iter);*/
 }
+
+void report_results(uint64_t start, uint64_t end,
+                    uint64_t iterations, const char *benchmark)
+{
+    int64_t usec;
+#if defined(AARCH64_TIMER)
+    int64_t timer_freq;
+    /* Read CNTFRQ_EL0, the counter-timer frequency register */
+    asm volatile("mrs %0, cntfrq_el0" : "=r"(timer_freq));
+
+    usec = ((double)(end - start) / timer_freq) * 1000000;
+#else
+    usec = end - start;
 #endif
+    BIO_printf(bio_out, "%s: %lu operations in %luus (%.1f ops/sec)\n",
+               benchmark, (unsigned long)iterations, (long unsigned)usec, ((double)iterations/usec) * 1000000);
+
+}

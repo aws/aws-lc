@@ -1,3 +1,10 @@
+/*
+------------------------------------------------------------------------------------
+ Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ SPDX-License-Identifier: Apache-2.0
+------------------------------------------------------------------------------------
+*/
+
 #include <string.h>     /* for memset() */
 
 #include <openssl/evp.h>
@@ -21,30 +28,15 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
   return memset(dst, c, n);
 }
 
-void benchmark_ecdsa_p256(int num_itr)
+void benchmark_ecdsa_p256(uint64_t msec)
 {
     EC_KEY *key = NULL;
     uint8_t signature[ECDSA_SIGNATURE_BYTE_SIZE];
     uint8_t digest[DIGEST_BYTE_SIZE];
     int ecdsa_checks = 1;
     unsigned sig_len;
-    uint64_t start, now, us;
-#if defined(OPENSSL102)
-    int num_itr_sign = num_itr;
-#else
-    int num_itr_sign = 10 * num_itr;
-#endif
-#if defined(PID_CPU_TICKS)
-    FILE* fpstat = NULL;
-    int64_t cpu_ticks_start, cpu_ticks_end;
-    int64_t cpu_ticks = 0;
-    unsigned int flags = 0;
-#endif
-
-#if defined(PID_CPU_TICKS)
-    // Open /proc/<pid>/stat
-    fpstat = open_fpstat();
-#endif
+    uint64_t start, now, end, num_itr;
+    uint64_t usec = msec * 1000;
 
     /* Instantiate a key on the ANSI X9.62 Prime 256v1 (P-256) curve */
     key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -80,64 +72,54 @@ void benchmark_ecdsa_p256(int num_itr)
 
     if (1 == ecdsa_checks)
     {
-        /* Benchmark ECDSA signing */
-        start = time_now();
-#if defined(PID_CPU_TICKS)
-        cpu_ticks_start = cpu_now(fpstat, &flags);
-#endif
+        /*
+         * ECDSA signing
+         */
 
-        for (int i = 0; i < num_itr_sign; i++)
+        /* Warm up and instrument the function to calculate how many iterations it should run for */
+        start = time_now();
+        /* key generation and key derivation on A's side */
+        for (int i = 0; i < WARM_UP_NUM_ITER; i++)
         {
             ECDSA_sign(0, digest, sizeof(digest), signature, &sig_len, key);
         }
+        end = time_now();
+        num_itr = calculate_iterations(start, end, WARM_UP_NUM_ITER, usec);
 
-        now = time_now();
-#if defined(PID_CPU_TICKS)
-        cpu_ticks_end = cpu_now(fpstat, &flags);
-#endif
-        us = now - start;
-        BIO_printf(bio_out, "ECDSA P-256 sign: %u operations in %luus (%.1f ops/sec)\n",
-                   num_itr_sign, (long unsigned)us,
-                   ((double)num_itr_sign/us) * 1000000);
-#if defined(PID_CPU_TICKS)
-        cpu_ticks = cpu_ticks_end - cpu_ticks_start;
-        BIO_printf(bio_out, "            in %ld cpu ticks\n",
-                   cpu_ticks);
+        /* Benchmark ECDSA signing */
+        start = time_now();
+        for (int i = 0; i < num_itr; i++)
+        {
+            ECDSA_sign(0, digest, sizeof(digest), signature, &sig_len, key);
+        }
+        end = time_now();
 
-        // Close /proc/<pid>/stat
-        close_fpstat(fpstat);
-#endif
+        report_results(start, end, num_itr, "ECDSA P-256 sign");
+
+        /*
+         * ECDSA verification
+         */
+
+        /* Warm up and instrument the function to calculate how many iterations it should run for */
+        start = time_now();
+        /* key generation and key derivation on A's side */
+        for (int i = 0; i < WARM_UP_NUM_ITER; i++)
+        {
+            ECDSA_verify(0, digest, sizeof(digest), signature, sig_len, key);
+        }
+        end = time_now();
+        num_itr = calculate_iterations(start, end, WARM_UP_NUM_ITER, usec);
 
         /* Benchmark ECDSA verification */
-#if defined(PID_CPU_TICKS)
-        // Open /proc/<pid>/stat
-        fpstat = open_fpstat();
-#endif
-
         start = time_now();
-#if defined(PID_CPU_TICKS)
-        cpu_ticks_start = cpu_now(fpstat, &flags);
-#endif
         for (int i = 0; i < num_itr; i++)
         {
             ECDSA_verify(0, digest, sizeof(digest), signature, sig_len, key);
         }
 
-        now = time_now();
-#if defined(PID_CPU_TICKS)
-        cpu_ticks_end = cpu_now(fpstat, &flags);
-#endif
-        us = now - start;
-        BIO_printf(bio_out, "ECDSA P-256 verify: %u operations in %luus (%.1f ops/sec)\n",
-                   num_itr, (long unsigned)us,
-                   ((double)num_itr/us) * 1000000);
-#if defined(PID_CPU_TICKS)
-        cpu_ticks = cpu_ticks_end - cpu_ticks_start;
-        BIO_printf(bio_out, "            in %ld cpu ticks\n",
-                   cpu_ticks);
-        // Close /proc/<pid>/stat
-        close_fpstat(fpstat);
-#endif
+        end = time_now();
+
+        report_results(start, end, num_itr, "ECDSA P-256 verify");
     }
 
     if (1 == ecdsa_checks)
