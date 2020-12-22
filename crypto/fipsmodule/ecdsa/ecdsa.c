@@ -227,7 +227,7 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, EC_SCALAR *out_kinv_mont,
       // Pass a SHA512 hash of the private key and digest as additional data
       // into the RBG. This is a hardening measure against entropy failure.
       OPENSSL_STATIC_ASSERT(SHA512_DIGEST_LENGTH >= 32,
-                            "additional_data is too large for SHA-512");
+                            additional_data_is_too_large_for_SHA_512);
       SHA512_CTX sha;
       uint8_t additional_data[SHA512_DIGEST_LENGTH];
       SHA512_Init(&sha);
