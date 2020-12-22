@@ -204,7 +204,7 @@ int ec_GFp_mont_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
   // cache pressure and makes the constant-time selects faster.)
   OPENSSL_STATIC_ASSERT(
       OPENSSL_ARRAY_SIZE(comb) == OPENSSL_ARRAY_SIZE(out->comb),
-      "comb sizes did not match");
+      comb_sizes_did_not_match);
   return ec_jacobian_to_affine_batch(group, out->comb, comb,
                                      OPENSSL_ARRAY_SIZE(comb));
 }

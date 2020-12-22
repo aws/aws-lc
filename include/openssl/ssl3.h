@@ -253,7 +253,7 @@ extern "C" {
 
 OPENSSL_STATIC_ASSERT(SSL3_RT_MAX_ENCRYPTED_OVERHEAD >=
                           SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD,
-                      "max overheads are inconsistent");
+                      max_overheads_are_inconsistent)
 
 // SSL3_RT_MAX_COMPRESSED_LENGTH is an alias for
 // |SSL3_RT_MAX_PLAIN_LENGTH|. Compression is gone, so don't include the

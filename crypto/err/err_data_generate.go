@@ -276,9 +276,9 @@ func main() {
 `)
 
 	for i, name := range libraryNames {
-		fmt.Fprintf(out, "OPENSSL_STATIC_ASSERT(ERR_LIB_%s == %d, \"library value changed\");\n", name, i+1)
+		fmt.Fprintf(out, "OPENSSL_STATIC_ASSERT(ERR_LIB_%s == %d, library_value_changed);\n", name, i+1)
 	}
-	fmt.Fprintf(out, "OPENSSL_STATIC_ASSERT(ERR_NUM_LIBS == %d, \"number of libraries changed\");\n", len(libraryNames)+1)
+	fmt.Fprintf(out, "OPENSSL_STATIC_ASSERT(ERR_NUM_LIBS == %d, number_of_libraries_changed);\n", len(libraryNames)+1)
 	out.WriteString("\n")
 
 	e.reasons.WriteTo(out, "Reason")

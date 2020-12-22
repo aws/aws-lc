@@ -63,17 +63,38 @@
 extern "C" {
 #endif
 
-
-#if defined(__cplusplus) || (defined(_MSC_VER) && !defined(__clang__))
-// In C++ and non-clang MSVC, |static_assert| is a keyword.
-#define OPENSSL_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
-#else
-// C11 defines the |_Static_assert| keyword and the |static_assert| macro in
-// assert.h. While the former is available at all versions in Clang and GCC, the
-// later depends on libc and, in glibc, depends on being built in C11 mode. We
-// do not require this, for now, so use |_Static_assert| directly.
-#define OPENSSL_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
-#endif
+// Previously we defined |OPENSSL_STATIC_ASSERT| to use one of two keywords:
+// |Static_assert| or |static_assert|. The latter was used if we were compiling
+// a C++ translation unit or on Windows (excluding when using a Clang compiler).
+// The former was used in other cases. However, these two keywords are not
+// defined before C11. So, we can't rely on these when we want to be C99
+// compliant. If we at some point decide that we want to only be compliant with
+// C11 (and up), we can reintroduce these keywords. Instead, use a method that
+// is guaranteed to be C99 compliant and still give us an equivalent static
+// assert mechanism.
+//
+// The solution below defines a struct type containing a bit field.
+// The name of that type is |static_assertion_msg|. |msg| is a concatenation of
+// a user-chosen error (which should be chosen with respect to actual assertion)
+// and the line the assertion is defined. This should ensure name uniqueness.
+// The width of the bit field is set to 1 or -1, depending on the evaluation of
+// the boolean expression |cond|. If the condition is false, the width requested
+// is -1, which is illegal and would cause the compiler to throw an error.
+//
+// An example of an error thrown during compilation:
+// ```
+// error: negative width in bit-field 
+//      'static_assertion_at_line_913_error_is_AEAD_state_is_too_small'
+// ```
+#define AWSLC_CONCAT(left, right) left##right
+#define AWSLC_STATIC_ASSERT_DEFINE(cond, msg) typedef struct { \
+        unsigned int AWSLC_CONCAT(static_assertion_, msg) : (cond) ? 1 : - 1; \
+    } AWSLC_CONCAT(static_assertion_, msg) OPENSSL_UNUSED
+#define AWSLC_STATIC_ASSERT_ADD_LINE0(cond, suffix) AWSLC_STATIC_ASSERT_DEFINE(cond, AWSLC_CONCAT(at_line_, suffix))
+#define AWSLC_STATIC_ASSERT_ADD_LINE1(cond, line, suffix) AWSLC_STATIC_ASSERT_ADD_LINE0(cond, AWSLC_CONCAT(line, suffix))
+#define AWSLC_STATIC_ASSERT_ADD_LINE2(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE1(cond, __LINE__, suffix)
+#define AWSLC_STATIC_ASSERT_ADD_ERROR(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE2(cond, AWSLC_CONCAT(_error_is_, suffix))
+#define OPENSSL_STATIC_ASSERT(cond, error) AWSLC_STATIC_ASSERT_ADD_ERROR(cond, error);
 
 // CHECKED_CAST casts |p| from type |from| to type |to|.
 //
