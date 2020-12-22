@@ -121,7 +121,7 @@ long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a)
         return -1;
 
     OPENSSL_STATIC_ASSERT(sizeof(uint64_t) >= sizeof(long),
-                          "long larger than uint64_t");
+                          long_larger_than_uint64_t);
 
     if (a->length > (int)sizeof(uint64_t)) {
         /* hmm... a bit ugly */

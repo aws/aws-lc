@@ -191,10 +191,10 @@ static int bn_mont_ctx_set_N_and_n0(BN_MONT_CTX *mont, const BIGNUM *mod) {
   // math instead of |uint64_t|-based math, which would be double-precision.
   // However, currently only the assembler files know which is which.
   OPENSSL_STATIC_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
-                        "BN_MONT_CTX_N0_LIMBS value is invalid");
+                        BN_MONT_CTX_N0_LIMBS_value_is_invalid);
   OPENSSL_STATIC_ASSERT(
       sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS == sizeof(uint64_t),
-      "uint64_t is insufficient precision for n0");
+      uint64_t_is_insufficient_precision_for_n0);
   uint64_t n0 = bn_mont_n0(&mont->N);
   mont->n0[0] = (BN_ULONG)n0;
 #if BN_MONT_CTX_N0_LIMBS == 2

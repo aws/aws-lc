@@ -115,7 +115,7 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     // If |out| is at least two blocks behind |in| or completely disjoint, there
     // is no need to decrypt to a temporary block.
     OPENSSL_STATIC_ASSERT(16 % sizeof(size_t) == 0,
-                          "block cannot be evenly divided into words");
+                          block_cannot_be_evenly_divided_into_words);
     const uint8_t *iv = ivec;
     while (len >= 16) {
       (*block)(in, out, key);
@@ -130,7 +130,7 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     OPENSSL_memcpy(ivec, iv, 16);
   } else {
     OPENSSL_STATIC_ASSERT(16 % sizeof(size_t) == 0,
-                          "block cannot be evenly divided into words");
+                          block_cannot_be_evenly_divided_into_words);
 
     while (len >= 16) {
       (*block)(in, tmp.c, key);

@@ -1136,7 +1136,7 @@ void ec_affine_select(const EC_GROUP *group, EC_AFFINE *out, BN_ULONG mask,
 void ec_precomp_select(const EC_GROUP *group, EC_PRECOMP *out, BN_ULONG mask,
                        const EC_PRECOMP *a, const EC_PRECOMP *b) {
   OPENSSL_STATIC_ASSERT(sizeof(out->comb) == sizeof(*out),
-                        "out->comb does not span the entire structure");
+                        out_comb_does_not_span_the_entire_structure);
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(out->comb); i++) {
     ec_affine_select(group, &out->comb[i], mask, &a->comb[i], &b->comb[i]);
   }

@@ -282,7 +282,7 @@ static void bn_mul_recursive(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   BN_ULONG c_pos = c + bn_add_words(&t[n2], t, &t[n2], n2);
   bn_select_words(&t[n2], neg, &t[n2 * 2], &t[n2], n2);
   OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                        "crypto_word_t is too small");
+                        crypto_word_t_is_too_small);
   c = constant_time_select_w(neg, c_neg, c_pos);
 
   // We now have our three components. Add them together.
@@ -396,7 +396,7 @@ static void bn_mul_part_recursive(BN_ULONG *r, const BN_ULONG *a,
   BN_ULONG c_pos = c + bn_add_words(&t[n2], t, &t[n2], n2);
   bn_select_words(&t[n2], neg, &t[n2 * 2], &t[n2], n2);
   OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                        "crypto_word_t is too small");
+                        crypto_word_t_is_too_small);
   c = constant_time_select_w(neg, c_neg, c_pos);
 
   // We now have our three components. Add them together.

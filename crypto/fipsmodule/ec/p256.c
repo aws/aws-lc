@@ -88,7 +88,7 @@ static void fiat_p256_to_generic(EC_FELEM *out, const fiat_p256_felem in) {
   // zero when rounding up to |BN_ULONG|s.
   OPENSSL_STATIC_ASSERT(
       256 / 8 == sizeof(BN_ULONG) * ((256 + BN_BITS2 - 1) / BN_BITS2),
-      "fiat_p256_to_bytes leaves bytes uninitialized");
+      fiat_p256_to_bytes_leaves_bytes_uninitialized);
   fiat_p256_to_bytes(out->bytes, in);
 }
 
