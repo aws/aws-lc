@@ -271,7 +271,7 @@ $code.=<<___ if ($SZ==4 || $avx);
 ___
 $code.=<<___ if ($SZ==4 && $shaext);
 	test	\$`1<<29`,%r11d		# check for SHA
-	jnz	_shaext_shortcut
+	jnz	.Lshaext_shortcut
 ___
     # XOP codepath removed.
 $code.=<<___ if ($avx>1);
@@ -555,7 +555,7 @@ $code.=<<___;
 .type	sha256_block_data_order_shaext,\@function,3
 .align	64
 sha256_block_data_order_shaext:
-_shaext_shortcut:
+.Lshaext_shortcut:
 .cfi_startproc
 ___
 $code.=<<___ if ($win64);
