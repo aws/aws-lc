@@ -16,18 +16,21 @@ target_sources(${PROJECT_NAME}_awslc
         )
 
 # Find AWS-LC libcrypto.a
+# For more HINTS to find the library and include files see
+# aws-lc/cmake/awslc-config.cmake
 find_library(AWSLC_LIBCRYPTO crypto
         HINTS ${CMAKE_SOURCE_DIR}/../aws-lc/build/crypto
         )
-#message(STATUS "HINTS: ${CMAKE_SOURCE_DIR}/../aws-lc/build/crypto")
-#message(STATUS "AWSLC_LIBCRYPTO ${AWSLC_LIBCRYPTO}")
 
 # Add libcrypto.a as a link library to the target
 target_link_libraries(${PROJECT_NAME}_awslc PUBLIC ${AWSLC_LIBCRYPTO})
+
 # Add pthread as a link library using code from "aws-lc/crypto/CMakeLists.txt"
 if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(${PROJECT_NAME}_awslc PUBLIC pthread)
 endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Werror -Wpedantic")
 
 # Include directories, adding AWS-LC include
 target_include_directories(${PROJECT_NAME}_awslc
@@ -51,15 +54,15 @@ target_sources(${PROJECT_NAME}_ossl
         main.c
         )
 
-# Find AWS-LC libcrypto.a
+# Find OpenSSL libcrypto.a
 find_library(OPENSSL_LIBCRYPTO crypto
         HINTS ${CMAKE_SOURCE_DIR}/../openssl
         )
-#message(STATUS "HINTS: ${CMAKE_SOURCE_DIR}/../openssl")
-#message(STATUS "OPENSSL_LIBCRYPTO ${OPENSSL_LIBCRYPTO}")
 
 # Add libcrypto.a as a link library to the target
 target_link_libraries(${PROJECT_NAME}_ossl PUBLIC ${OPENSSL_LIBCRYPTO})
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Werror -Wpedantic")
 
 # Include directories, adding AWS-LC include
 target_include_directories(${PROJECT_NAME}_ossl
