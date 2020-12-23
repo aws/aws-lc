@@ -3,8 +3,8 @@
 #include <openssl/err.h>
 #include <openssl/bio.h>
 
-#if defined(__aarch64__) && defined(CPU_TICKS)
-#define AARCH64_TIMER   1
+#if defined(__aarch64__) && defined(COUNTER_REGISTER)
+#define AARCH64_COUNTER_TIMER   1
 #endif
 
 #define NUM_ELEM(x)    (sizeof(x)/sizeof((x)[0]))

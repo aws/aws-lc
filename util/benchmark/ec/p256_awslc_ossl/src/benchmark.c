@@ -40,11 +40,12 @@ uint64_t time_now(void)
     struct timespec ts;
     uint64_t ret = 0;
 
-#if defined(AARCH64_TIMER)
+#if defined(AARCH64_COUNTER_TIMER)
     int64_t virtual_timer_value;
     /* In the following assembly call:
      * ISB: Instruction Synchronization Barrier; i.e. ensures the previous instructions
-     *      are done execution before the ones following it.
+     *      are done executing and changing the context, e.g. system registers, cache, ...
+     *      before the ones following it, where the context changes would be visible.
      * Read CNTVCT_EL0, the counter-timer virtual count register
      * similarly to https://github.com/google/benchmark/blob/master/src/cycleclock.h
      */
@@ -62,7 +63,7 @@ uint64_t calculate_iterations(uint64_t start, uint64_t end,
                               uint64_t iterations_run, uint64_t usec_desired)
 {
     double usec_spent_per_iter;
-#if defined(AARCH64_TIMER)
+#if defined(AARCH64_COUNTER_TIMER)
     uint64_t timer_freq, usec_spent;
 
     /* Read CNTFRQ_EL0, the counter-timer frequency register */
@@ -82,7 +83,7 @@ void report_results(uint64_t start, uint64_t end,
                     uint64_t iterations, const char *benchmark)
 {
     int64_t usec;
-#if defined(AARCH64_TIMER)
+#if defined(AARCH64_COUNTER_TIMER)
     int64_t timer_freq;
     /* Read CNTFRQ_EL0, the counter-timer frequency register */
     asm volatile("mrs %0, cntfrq_el0" : "=r"(timer_freq));

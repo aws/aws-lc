@@ -10,11 +10,10 @@ set(CMAKE_C_STANDARD 99)
 
 include_directories(.)
 
-if(UNIX)
-    if(CPU_TICKS)
-        add_definitions(-DCPU_TICKS)
-    endif(CPU_TICKS)
-endif(UNIX)
+# Currently, this option only takes effect on ARMv8 (AArch64)
+if(COUNTER_REGISTER)
+    add_definitions(-DCOUNTER_REGISTER)
+endif(COUNTER_REGISTER)
 
 add_executable(${PROJECT_NAME}_awslc "")
 add_executable(${PROJECT_NAME}_ossl "")

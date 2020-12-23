@@ -24,15 +24,15 @@ while [[ "$#" -gt 0 ]]; do
         --ossl102)
             OPENSSL102=1;
             OPENSSL102_DIR=${BENCH_DIR}/../openssl102/openssl;;
-        --cpu_ticks)
-            CPU_TICKS=1;;
+        --counter)
+            CNTR_REG=1;;
         *)
             echo "Unknown parameter passed: $1" && \
             echo "Possible options are: " && \
             echo " benchmark-build-run.sh [-t|--test <\"ecdhp256\"|\"ecdsap256\">]" && \
             echo "                        [-m|--msec <milliseconds>]" && \
             echo "                        [--ossl102]" && \
-            echo "                        [--cpu_ticks]";
+            echo "                        [--counter]";
             exit 1 ;;
     esac
     shift
@@ -41,7 +41,7 @@ done
 # Check that AWS-LC directory exists
 if [[ ! -d ${AWSLC_DIR} ]]
 then
-    echo "${AWS-LC} directory not found"; exit 1;
+    echo "AWS-LC directory not found: ${AWSLC_DIR}"; exit 1;
 ## checkout AWS-LC if it doesn't exist already
 #     echo "Checkout AWS-LC main tip" && \
 #         cd .. && \
@@ -110,7 +110,7 @@ fi
 echo "Build benchmark binaries" && \
     mkdir -p build && \
     cd build && \
-    cmake -DOPENSSL102_LIB="${OPENSSL102}" -DCPU_TICKS="${CPU_TICKS}" .. && \
+    cmake -DOPENSSL102_LIB="${OPENSSL102}" -DCOUNTER_REGISTER="${CNTR_REG}" .. && \
     cmake --build . && \
     BUILD_SUCCESS=1
 
