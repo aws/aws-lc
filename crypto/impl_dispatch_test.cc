@@ -22,6 +22,7 @@
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
+#include <openssl/sha.h>
 #include <openssl/cpu.h>
 #include <openssl/mem.h>
 
@@ -43,6 +44,7 @@ class ImplDispatchTest : public ::testing::Test {
 #else
         false;
 #endif
+    sha_ext_ = OPENSSL_ia32cap_P[2] & (1 << 29);
 #endif  // X86 || X86_64
   }
 
@@ -76,6 +78,7 @@ class ImplDispatchTest : public ::testing::Test {
   bool avx_movbe_ = false;
   bool ssse3_ = false;
   bool is_x86_64_ = false;
+  bool sha_ext_ = false;
 #endif
 };
 
@@ -88,6 +91,7 @@ constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
+constexpr size_t kFlag_sha256_shaext = 6;
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
@@ -142,6 +146,18 @@ TEST_F(ImplDispatchTest, AES_single_block) {
         uint8_t in[AES_BLOCK_SIZE] = {0};
         uint8_t out[AES_BLOCK_SIZE];
         AES_encrypt(in, out, &key);
+      });
+}
+
+TEST_F(ImplDispatchTest, SHA256) {
+  AssertFunctionsHit(
+      {
+          {kFlag_sha256_shaext, sha_ext_},
+      },
+      [] {
+        const uint8_t in[32] = {0};
+        uint8_t out[SHA256_DIGEST_LENGTH];
+        SHA256(in, 32, out);
       });
 }
 

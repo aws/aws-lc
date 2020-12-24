@@ -557,6 +557,10 @@ $code.=<<___;
 sha256_block_data_order_shaext:
 .Lshaext_shortcut:
 .cfi_startproc
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern BORINGSSL_function_hit
+	movb \$1,BORINGSSL_function_hit+6(%rip)
+#endif
 ___
 $code.=<<___ if ($win64);
 	lea	`-8-5*16`(%rsp),%rsp
