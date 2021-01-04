@@ -38,13 +38,13 @@ class ImplDispatchTest : public ::testing::Test {
     aesni_ = OPENSSL_ia32cap_P[1] & (1 << (57 - 32));
     avx_movbe_ = ((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41;
     ssse3_ = OPENSSL_ia32cap_P[1] & (1 << (41 - 32));
+    sha_ext_ = OPENSSL_ia32cap_P[2] & (1 << 29);
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
 #else
         false;
 #endif
-    sha_ext_ = OPENSSL_ia32cap_P[2] & (1 << 29);
 #endif  // X86 || X86_64
   }
 
@@ -77,8 +77,8 @@ class ImplDispatchTest : public ::testing::Test {
   bool aesni_ = false;
   bool avx_movbe_ = false;
   bool ssse3_ = false;
-  bool is_x86_64_ = false;
   bool sha_ext_ = false;
+  bool is_x86_64_ = false;
 #endif
 };
 
