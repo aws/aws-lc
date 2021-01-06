@@ -8,7 +8,7 @@ project(benchmark_ec_p256 C)
 
 set(CMAKE_C_STANDARD 99)
 
-include_directories(.)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Currently, this option only takes effect on ARMv8 (AArch64)
 if(COUNTER_REGISTER)

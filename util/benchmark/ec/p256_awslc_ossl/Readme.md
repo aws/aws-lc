@@ -6,7 +6,8 @@ This application performs benchmarking of ECDH and ECDSA on the NIST curve P-256
 using both OpenSSL and AWS-LC.
 
 ## Assumptions for building the application
-* This folder is copied under the same parent directory of `aws-lc`.
+* This folder and its contents are to be copied under the same parent directory of `aws-lc`, 
+since the build script expects this folder structure.
 * If the parent directory contains an `openssl` folder, it will be preserved.
 Otherwise, OpenSSL 1.1.1h will be checked out.
 * If the parent directory contains an `openssl` folder and it contains `libcrypto.a`,
