@@ -16,7 +16,6 @@
 //  Chapter 14, Algorithm 14.61 and Note 14.64
 //  http://cacr.uwaterloo.ca/hac/about/chap14.pdf)
 
-    .arch armv8.4-a+crc+sve
     .text
     .align  4
     .global beeu_mod_inverse_vartime
@@ -159,7 +158,9 @@ beeu_mod_inverse_vartime:
     //    sp  <------------------- 112 bytes ----------------> old sp
     //   x29 (FP)
     //
-    paciasp
+
+    // Pointer authentication - store pointer
+    .inst   0xd503233f      // paciasp
     stp     x29,x30,[sp,#-112]!
     add	    x29,sp,#0
     stp     x19,x20,[sp,#16]
@@ -362,7 +363,9 @@ beeu_mod_inverse_vartime:
     ldp     x25,x26,[sp,#64]
     ldp     x27,x28,[sp,#80]
     ldp     x29,x30,[sp],#112
-    autiasp
+
+    // Pointer authentication - authenticate pointer before return
+    .inst   0xd50323bf      // autiasp
     ret
 
     .size beeu_mod_inverse_vartime, .-beeu_mod_inverse_vartime
