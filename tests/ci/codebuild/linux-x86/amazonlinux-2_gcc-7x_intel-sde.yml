@@ -7,7 +7,7 @@ phases:
   pre_build:
     commands:
       - if [ $(gcc -dumpfullversion) == 7.3.1 ]; then echo "Found correct gcc version 7"; else gcc --version && echo "gcc version mismatch" && exit 1; fi
-      # # Based on Interl SDE README, SELinux should be turned off to allow pin to work.
+      # Based on Intel SDE README, SELinux should be turned off to allow pin to work.
       # https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html#system-configuration
       - if [ $(getenforce) == 'Disabled' ]; then echo "SELinux is disabled. Disabling SELinux is needed by sde to allow pin work." ; else echo "SELinux should be turned off to allow sde pin to work." && exit 1; fi
       - export CC=gcc
