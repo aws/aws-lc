@@ -16,9 +16,6 @@ build_and_test -DOPENSSL_SMALL=1 -DCMAKE_BUILD_TYPE=Release
 echo "Testing AWS-LC in no asm mode."
 build_and_test -DOPENSSL_NO_ASM=1 -DCMAKE_BUILD_TYPE=Release
 
-echo "Testing AWS-LC with AArch64 P-256 optimizations."
-build_and_test -DOPENSSL_AARCH64_P256=1 -DCMAKE_BUILD_TYPE=Release
-
 echo "Testing building shared lib."
 run_build -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
 

@@ -47,7 +47,6 @@
 select_w5:
     // Pointer authentication - store pointer
 	.inst	0xd503233f		// paciasp
-
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -108,7 +107,6 @@ select_w5:
     // Pointer authentication - authenticate pointer before return
     add	sp,x29,#0
     ldp	x29,x30,[sp],#16
-
     .inst	0xd50323bf		// autiasp
     ret
 
@@ -122,7 +120,6 @@ select_w5:
 select_w7:
     // Pointer authentication - store pointer
 	.inst	0xd503233f		// paciasp
-
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 

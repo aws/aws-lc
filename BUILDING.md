@@ -85,12 +85,6 @@ remove some code that is especially large.
 See [CMake's documentation](https://cmake.org/cmake/help/v3.4/manual/cmake-variables.7.html)
 for other variables which may be used to configure the build.
 
-### Building for ARMv8 (AArch64)
-In order to enable AArch64 optimizations for the NIST curve P-256, run `cmake`
-as follows:
-
-    cmake -DOPENSSL_AARCH64_P256=1 -DCMAKE_BUILD_TYPE=Release -GNinja ..
-
 ### Building for Android
 
 It's possible to build BoringSSL with the Android NDK using CMake. Recent
