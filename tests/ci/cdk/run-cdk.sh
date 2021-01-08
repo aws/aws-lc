@@ -171,6 +171,7 @@ function deploy() {
     "ubuntu-20.04_clang-10x_formal-verification_latest"
     "centos-7_gcc-4x_latest"
     "amazonlinux-2_gcc-7x_latest"
+    "amazonlinux-2_gcc-7x_intel-sde_latest"
     "s2n_integration_clang-9x_latest")
   images_pushed_to_ecr "${ECR_LINUX_X86_REPO_NAME}" "${linux_x86_img_tags[@]}"
   windows_img_tags=("vs2015_latest" "vs2017_latest")
