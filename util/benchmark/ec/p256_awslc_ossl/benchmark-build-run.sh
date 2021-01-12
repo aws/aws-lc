@@ -54,7 +54,7 @@ echo "Build AWS-LC" && \
     cd ${AWSLC_DIR} && \
     mkdir -p build && \
     cd build && \
-    cmake -DOPENSSL_AARCH64_P256=1 -DCMAKE_BUILD_TYPE=Release -GNinja .. && \
+    cmake -DCMAKE_BUILD_TYPE=Release -GNinja .. && \
     ninja && \
     cd ${BENCH_DIR}
 

@@ -32,5 +32,5 @@ Command line options can be passed to the shell script
 ```
 for example,
 ```commandline
-./benchmark-build-run.sh -t "ecdhp256" -i 300
+./benchmark-build-run.sh -t "ecdhp256" -m 3000
 ```

@@ -178,6 +178,4 @@ void benchmark_ecdh_p256(uint64_t msec)
     {
         OPENSSL_free(secret_b);
     }
-
-	return;
 }

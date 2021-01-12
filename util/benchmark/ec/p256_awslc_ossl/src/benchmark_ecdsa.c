@@ -128,6 +128,4 @@ void benchmark_ecdsa_p256(uint64_t msec)
     }
 
     EC_KEY_free(key);
-
-	return;
 }
