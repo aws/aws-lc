@@ -1723,10 +1723,6 @@ ecp_nistz256_select_w7:
     // Increment $M0 lanes
     add     $M0.4s, $M0.4s, $ONE.4s         ////    paddd   $ONE, $M0
 
-    // prefetch data for load into L1 cache in a streaming fashion
-    // (streaming prefetch for data that is used only once)
-    prfm    pldl1strm, [$in_t]              ////    prefetcht0	255($in_t)
-
     // [$T0a-$T0d] := [$T0a-$T0d] AND $TMP0
     // values read from the table will be 0'd if $M0 != $INDEX
     // [$Ra-$Rd] := [$Ra-$Rd] OR [$T0a-$T0d]

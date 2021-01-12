@@ -4,7 +4,6 @@
 //------------------------------------------------------------------------------------
 
 // void select_w5(uint64_t *val, uint64_t *in_t, int index);
-    .arch armv8.4-a+crc+sve
     .text
     .align  4
     .global select_w5
@@ -46,6 +45,11 @@
     T0f         .req v27
 
 select_w5:
+    // Pointer authentication - store pointer
+	.inst	0xd503233f		// paciasp
+	stp	x29,x30,[sp,#-16]!
+	add	x29,sp,#0
+
     // [Ra - Rf] := 0
     eor     Ra.16b, Ra.16b, Ra.16b
     eor     Rb.16b, Rb.16b, Rb.16b
@@ -59,7 +63,6 @@ select_w5:
     dup     Idx_in.4s, idx  // Idx_in (vec_4*32) := | idx | idx | idx | idx |
 
     mov     Val_in, val     // Val_in := val
-//    mov     In_t_in, in_t   // In_t_in := in_t
     mov     Ctr, #16        // Ctr := 16; loop counter
 
 .Lselect_w5_loop:
@@ -76,7 +79,7 @@ select_w5:
 
     // [T0a-T0f] := [T0a-T0f] AND Mask;
     // values read from the table will be 0'd if M0 != Idx_in
-    // [Ra-Rf] := [Ra-Rf] OR [T0a-T0b]
+    // [Ra-Rf] := [Ra-Rf] OR [T0a-T0f]
     // values in output registers will remain the same if M0 != Idx_in
     and     T0a.16b, T0a.16b, Mask.16b
     and     T0b.16b, T0b.16b, Mask.16b
@@ -100,6 +103,11 @@ select_w5:
     // Write [Ra-Rf] to memory at the output pointer
     st1     {Ra.2d, Rb.2d, Rc.2d, Rd.2d}, [Val_in],#64
     st1     {Re.2d, Rf.2d}, [Val_in]
+
+    // Pointer authentication - authenticate pointer before return
+    add	sp,x29,#0
+    ldp	x29,x30,[sp],#16
+    .inst	0xd50323bf		// autiasp
     ret
 
     .size select_w5, .-select_w5
@@ -110,6 +118,11 @@ select_w5:
 .type select_w7, %function
 
 select_w7:
+    // Pointer authentication - store pointer
+	.inst	0xd503233f		// paciasp
+	stp	x29,x30,[sp,#-16]!
+	add	x29,sp,#0
+
     // One (vec_4*32) := | 1 | 1 | 1 | 1 |
     // Idx_in (vec_4*32) := | idx | idx | idx | idx |
     movi    One.4s, #1
@@ -138,10 +151,6 @@ select_w7:
     // Increment M0 lanes
     add     M0.4s, M0.4s, One.4s
 
-    // prefetch data for load into L1 cache in a streaming fashion
-    // (streaming prefetch for datat that is used only once)
-    prfm    pldl1strm, [in_t]
-
     // [T0a-T0d] := [T0a-T0d] AND Mask;
     // values read from the table will be 0'd if M0 != Idx_in
     // [Ra-Rd] := [Ra-Rd] OR [T0a-T0d]
@@ -162,6 +171,9 @@ select_w7:
 
     // Write [Ra-Rd] to memory at the output pointer
     st1     {Ra.2d, Rb.2d, Rc.2d, Rd.2d}, [val]
-    ret
 
+    // Pointer authentication - authenticate pointer before return
+    ldp	x29,x30,[sp],#16
+	.inst	0xd50323bf		// autiasp
+    ret
     .size select_w7, .-select_w7

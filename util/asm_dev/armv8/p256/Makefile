@@ -12,7 +12,7 @@ BUILDDIR = ./build
 CFLAGS = -I$(SRCDIR) -std=c11 -MMD
 CFLAGS += -Wall -Wextra -Wpedantic
 CFLAGS += -Werror -Wshadow -Wconversion
-CFLAGS += -march=armv8.4-a+sve -g -O2
+CFLAGS += -g -O2 -fstack-protector -fsanitize=address
 
 SRC_C := $(wildcard $(SRCDIR)/*.c)
 SRC_ASM := $(wildcard $(SRCDIR)/*.S)
