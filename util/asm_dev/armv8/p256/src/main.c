@@ -67,11 +67,12 @@ static void beeu_print(const int res, const uint64_t out_exp[4], const uint64_t 
 int main()
 {
 #ifdef SELECT_FN
-    uint64_t table[TABLE_LONG_SIZE];
-    uint64_t val[ENTRY_LONG_SIZE];
     uint32_t index;
     uint32_t idx_64;
     uint32_t j;
+
+    uint64_t table[TABLE_LONG_SIZE];
+    uint64_t val[ENTRY_LONG_SIZE];
 
     uint64_t table_w7[TABLE_LONG_SIZE_W7];
     uint64_t val_w7[ENTRY_LONG_SIZE_W7];
@@ -150,7 +151,6 @@ int main()
     {
         printf("select_w7 Test passed\n");
     }
-
 #endif
 
 #ifdef BEEU

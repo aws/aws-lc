@@ -46,3 +46,12 @@ function build_and_test_valgrind {
   run_build "$@"
   run_test_valgrind
 }
+
+function run_test_with_sde {
+  $BUILD_COMMAND -C test_build_dir run_tests_with_sde
+}
+
+function build_and_test_with_sde {
+  run_build "$@"
+  run_test_with_sde
+}
