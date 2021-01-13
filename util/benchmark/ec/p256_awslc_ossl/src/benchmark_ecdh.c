@@ -32,6 +32,9 @@ void benchmark_ecdh_p256(uint64_t msec)
     uint64_t start, end, num_itr;
     uint64_t usec = msec * 1000;
 
+    /* The correctness of the key generation and ECDH key derivation
+     * is first tested. Benchmarking starts afterwards.
+     */
     if (
         /* Create the context for parameter generation */
         (NULL == (pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL))) ||
@@ -129,6 +132,11 @@ void benchmark_ecdh_p256(uint64_t msec)
         }
     }
 
+    /* Benchmarking key generation and key derivation together:
+     * - this follows the speed test of AWS-LC
+     * - and practically, both operations are done together for ephemeral ECDH;
+     *   for example, in TLS handshake.
+     */
     if (1 == ecdh_checks)
     {
         /* Warm up and instrument the function to calculate how many iterations it should run for */
