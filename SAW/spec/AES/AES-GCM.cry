@@ -47,11 +47,16 @@ inv_aes_key_from_schedule (init_key, middle_keys, final_key) = join (map reverse
 aes_hw_decrypt : [16][8] -> [32][8] -> [16][8]
 aes_hw_decrypt in key = split (aesDecrypt ((join in), (join key)))
 
-aes_hw_ctr32_encrypt_blocks : [16][8] -> [32][8] -> [16][8] -> [16][8]
-aes_hw_ctr32_encrypt_blocks in key ivec = in ^ enc_ivec
+aes_hw_ctr32_encrypt_blocks_helper : {n} (fin n) => [n][128] -> [32][8] -> [128] -> [n][128]
+aes_hw_ctr32_encrypt_blocks_helper in key ivec = cs
   where
-    enc_ivec = aes_hw_encrypt ivec key
+    cs = [p ^ (join (aes_hw_encrypt (split ctr) key)) | p <- in | ctr <- ctrs]
+    ctrs = [ join ((take`{3} ivec32) # [(ivec32 @ 3) + i]) | i <- [0 ...]]
+    ivec32 = split`{4} ivec
 
+aes_hw_ctr32_encrypt_blocks : {n} (fin n) => [16*n][8] -> [32][8] -> [16][8] -> [16*n][8]
+aes_hw_ctr32_encrypt_blocks in key ivec =
+  split (join (aes_hw_ctr32_encrypt_blocks_helper (split (join in)) key (join ivec)))
 
 /*
  * GCM specifications.

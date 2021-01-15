@@ -43,6 +43,8 @@ let EVP_CipherInit_ex_spec enc = do {
 };
 
 let EVP_CipherUpdate_spec enc gcm_len len = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
   cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
   points_to_evp_cipher_st cipher_ptr;
 
