@@ -7,7 +7,7 @@ phases:
   pre_build:
     commands:
       - export CC=gcc-10
-      - export CXX=gcc++-10
+      - export CXX=g++-10
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh
