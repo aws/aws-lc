@@ -278,6 +278,9 @@ OPENSSL_EXPORT int RSA_private_decrypt(size_t flen, const uint8_t *from,
                                        uint8_t *to, RSA *rsa, int padding);
 
 
+// Salt length matches digest
+#define RSA_PSS_SALTLEN_DIGEST -1
+
 // Signing / Verification
 //
 // These functions are considered non-mutating for thread-safety purposes and

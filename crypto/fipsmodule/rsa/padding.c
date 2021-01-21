@@ -506,7 +506,7 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   //	-1	sLen == hLen
   //	-2	salt length is autorecovered from signature
   //	-N	reserved
-  if (sLen == -1) {
+  if (sLen == RSA_PSS_SALTLEN_DIGEST) {
     sLen = hLen;
   } else if (sLen == -2) {
     sLen = -2;
@@ -620,7 +620,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   //   -2  salt length is maximized
   //   -N  reserved
   size_t sLen;
-  if (sLenRequested == -1) {
+  if (sLenRequested == RSA_PSS_SALTLEN_DIGEST) {
     sLen = hLen;
   } else if (sLenRequested == -2) {
     sLen = emLen - hLen - 2;
