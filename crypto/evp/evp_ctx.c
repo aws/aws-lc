@@ -68,6 +68,7 @@
 
 static const EVP_PKEY_METHOD *const evp_methods[] = {
     &rsa_pkey_meth,
+    &rsa_pss_pkey_meth,
     &ec_pkey_meth,
     &ed25519_pkey_meth,
     &x25519_pkey_meth,

@@ -558,6 +558,24 @@ const EVP_PKEY_METHOD rsa_pkey_meth = {
     pkey_rsa_ctrl,
 };
 
+const EVP_PKEY_METHOD rsa_pss_pkey_meth = {
+    EVP_PKEY_RSA_PSS,
+    pkey_rsa_init,
+    pkey_rsa_copy,
+    pkey_rsa_cleanup,
+    pkey_rsa_keygen,
+    pkey_rsa_sign,
+    NULL /* sign_message */,
+    pkey_rsa_verify,
+    NULL /* verify_message */,
+    pkey_rsa_verify_recover,
+    pkey_rsa_encrypt,
+    pkey_rsa_decrypt,
+    NULL /* derive */,
+    NULL /* paramgen */,
+    pkey_rsa_ctrl,
+};
+
 int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, -1, EVP_PKEY_CTRL_RSA_PADDING,
                            padding, NULL);
