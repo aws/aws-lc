@@ -17,23 +17,15 @@ include "goal-rewrites.saw";
 /*
  * Verification parameters.
  */
-let ec_bits = eval_size {| P384_w |};
-let ec_bytes = eval_size {| (ec_bits + 7) / 8 |};
-let ec_words = eval_size {| (ec_bytes + 7) / 8 |};
-let max_sig_len = eval_size {| 1 + 1 + 1 + 1 + (ec_bits / 8 + 1) + 1 + 1 + (ec_bits / 8 + 1) |};
-let EC_MAX_BYTES = 66;
-let EC_MAX_WORDS = eval_size {| ((EC_MAX_BYTES + 7) / 8) |};
-
 let r_bits = 383;
 let s_bits = 383;
 let r_bytes = eval_size {| r_bits / 8 + 1 |};
 let s_bytes = eval_size {| s_bits / 8 + 1 |};
-let sig_len = eval_size {| 1 + 1 + 1 + 1 + r_bytes + 1 + 1 + s_bytes |};
+// compute the ASN1 signature length (in bytes)
+let compute_asn1_sig_len r_len s_len = eval_size {| 1 /* sequence tag */ + 1 /* sequence len */ + 1 /* integer tag */ + 1 /* integer len */ + r_len + 1 /* integer tag */ + 1 /* integer len */ + s_len |};
+let sig_len = compute_asn1_sig_len r_bytes s_bytes;
 
 
-let NID_secp384r1 = 715;
-let NID_X9_62_id_ecPublicKey = 408;
-let EVP_PKEY_EC = NID_X9_62_id_ecPublicKey;
 let EVP_PKEY_OP_SIGN = 8; // (1 << 3)
 let EVP_PKEY_OP_VERIFY = 16; // (1 << 4)
 
@@ -44,6 +36,10 @@ let ecdsa_sig_st = "struct.DSA_SIG_st";
 include "../BN/BN.saw";
 include "../EC/EC.saw";
 include "memory.saw";
+
+
+let max_ec_bytes = eval_size {| ec_bits / 8 + 1 |};
+let max_sig_len = compute_asn1_sig_len max_ec_bytes max_ec_bytes;
 
 
 let digest_to_scalar_spec = do {
@@ -111,7 +107,8 @@ let ECDSA_do_sign_spec = do {
 
   (digest, digest_ptr) <- ptr_to_fresh_readonly "digest" (llvm_array SHA_DIGEST_LENGTH i8);
 
-  (ec_key_ptr, _pub_key, priv_key) <- pointer_to_fresh_ec_key_st true;
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  (ec_key_ptr, _pub_key, priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr true;
 
   // the symbolic integer to be used as the random integer `k` by the sign
   // operation
@@ -150,7 +147,8 @@ let ECDSA_do_verify_spec = do {
   points_to_p384_bignum_st s_ptr s_d_ptr BN_FLG_MALLOCED;
   points_to_ecdsa_sig_st sig_ptr r_ptr s_ptr;
 
-  (ec_key_ptr, pub_key, _priv_key) <- pointer_to_fresh_ec_key_st false;
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  (ec_key_ptr, pub_key, _priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr false;
 
   crucible_execute_func [digest_ptr, (crucible_term {{ `SHA_DIGEST_LENGTH : [64] }}), sig_ptr, ec_key_ptr];
 
@@ -165,11 +163,6 @@ include "evp-function-specs.saw";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Proof commands
-
-BN_div_ov <- crucible_llvm_unsafe_assume_spec
-  m
-  "BN_div"
-  (BN_div_spec (eval_size {| 2 * ec_words + 1 |}) ec_words);
 
 BN_num_bits_r_bits_ov <- llvm_verify m "BN_num_bits"
   []
@@ -283,28 +276,6 @@ ECDSA_do_verify_ov <- llvm_verify m "ECDSA_do_verify"
     goal_eval_unint ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
     w4_unint_z3 ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
   });
-
-
-llvm_verify m "ec_group_new_from_data"
-  [ OPENSSL_malloc_ov
-  , OPENSSL_free_nonnull_bignum_st_ov
-  , OPENSSL_free_nonnull_ec_bytes_ov
-  , OPENSSL_free_null_ov
-  , OPENSSL_cleanse_ov
-  , CRYPTO_refcount_inc_ov
-  , CRYPTO_refcount_dec_and_test_zero_ov
-  , BN_div_ov
-  , BN_value_one_ov
-  , bn_add_words_ov
-  , bn_add_words_same_res_left_ov
-  , bn_sub_words_ov
-  , bn_mul_mont_p_ov
-  , bn_mul_mont_same_res_left_p_ov
-  , value_barrier_w_ov
-  ]
-  true
-  ec_group_new_from_data_spec
-  (w4_unint_yices []);
 
 
 llvm_verify m "EVP_DigestSignInit"

@@ -1,0 +1,147 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+import "../../../cryptol-specs/Common/EC/EC_P384.cry";
+
+
+include "../ECDSA/goal-rewrites.saw";
+
+
+/*
+ * Verification parameters.
+ */
+let EVP_PKEY_OP_DERIVE = eval_int {{ (1 << 8) : [64] }};
+
+
+m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+
+
+include "../common/helpers.saw";
+include "../common/internal.saw";
+include "../common/memory.saw";
+include "../BN/BN.saw";
+include "../EC/EC.saw";
+
+
+let ptr_to_new_evp_pkey_ctx_st pkey_ptr = do {
+  ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_ctx_st");
+  ec_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.EC_PKEY_CTX");
+  crucible_points_to (crucible_field ec_pkey_ctx_ptr "md") crucible_null;
+  crucible_points_to (crucible_field ec_pkey_ctx_ptr "gen_group") crucible_null;
+  points_to_evp_pkey_ctx_st ptr pkey_ptr crucible_null EVP_PKEY_OP_UNDEFINED ec_pkey_ctx_ptr;
+  return ptr;
+};
+
+
+// Specifications of the various EVP functions
+include "evp-function-specs.saw";
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+jacobian_affine_0_thm <- prove_print
+  (do {
+    assume_unsat;
+  })
+  (rewrite (cryptol_ss ()) {{ \k -> fromJacobian { x = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).x % `P384_p), y = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).y % `P384_p), z = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).z % `P384_p) } == ec_point_affine_scalar_mul (k % `P384_n) P384_G }});
+jacobian_affine_2_thm <- prove_print
+  (do {
+    assume_unsat;
+  })
+  (rewrite (cryptol_ss ()) {{ \d Q -> fromJacobian { x = ((ec_point_jacobian_scalar_mul d Q).x % `P384_p), y = ((ec_point_jacobian_scalar_mul d Q).y % `P384_p), z = ((ec_point_jacobian_scalar_mul d Q).z % `P384_p) } == ec_point_affine_scalar_mul d (fromJacobian Q) }});
+
+
+llvm_verify m "EVP_PKEY_CTX_new_id"
+  [ OPENSSL_malloc_ov
+  ]
+  true
+  EVP_PKEY_CTX_new_id_spec
+  (w4_unint_z3 []);
+llvm_verify m "EVP_PKEY_CTX_new"
+  [ OPENSSL_malloc_ov
+  , CRYPTO_refcount_inc_ov
+  ]
+  true
+  EVP_PKEY_CTX_new_spec
+  (w4_unint_z3 []);
+
+
+llvm_verify m "EVP_PKEY_paramgen_init"
+  []
+  true
+  (EVP_PKEY_operation_init_spec EVP_PKEY_OP_PARAMGEN)
+  (w4_unint_z3 []);
+
+llvm_verify m "EVP_PKEY_CTX_set_ec_paramgen_curve_nid"
+  [ EC_GROUP_new_by_curve_name_ov
+  ]
+  true
+  EVP_PKEY_CTX_set_ec_paramgen_curve_nid_spec
+  (w4_unint_z3 []);
+
+llvm_verify m "EVP_PKEY_paramgen"
+  [ OPENSSL_malloc_ov
+  ]
+  true
+  EVP_PKEY_paramgen_spec
+  (w4_unint_z3 []);
+
+
+llvm_verify m "EVP_PKEY_keygen_init"
+  []
+  true
+  (EVP_PKEY_operation_init_spec EVP_PKEY_OP_KEYGEN)
+  (w4_unint_z3 []);
+
+llvm_verify m "EVP_PKEY_keygen"
+  [ ec_random_nonzero_scalar_ov
+  , ec_point_mul_scalar_base_ov
+  , OPENSSL_malloc_ov
+  ]
+  true
+  EVP_PKEY_keygen_spec
+  (do {
+    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
+    simplify (cryptol_ss ());
+    simplify (addsimp scalarBV_thm empty_ss);
+    simplify (addsimp fieldElementBV_thm empty_ss);
+    simplify (addsimps mont_thms empty_ss);
+    simplify (addsimp jacobian_affine_0_thm empty_ss);
+    goal_eval_unint ["ec_point_affine_scalar_mul", "fromJacobian"];
+    w4_unint_z3 ["ec_point_affine_scalar_mul", "fromJacobian"];
+  });
+
+
+llvm_verify m "EVP_PKEY_derive_init"
+  []
+  true
+  (EVP_PKEY_operation_init_spec EVP_PKEY_OP_DERIVE)
+  (w4_unint_z3 []);
+
+llvm_verify m "EVP_PKEY_derive_set_peer"
+  [ CRYPTO_refcount_inc_ov
+  ]
+  true
+  EVP_PKEY_derive_set_peer_spec
+  (w4_unint_z3 []);
+
+llvm_verify m "EVP_PKEY_derive"
+  [ ec_point_mul_scalar_ov
+  , ec_get_x_coordinate_as_bytes_ov
+  ]
+  true
+  EVP_PKEY_derive_spec
+  (do {
+    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
+    simplify (cryptol_ss ());
+    simplify (addsimp fieldElementBV_thm empty_ss);
+    simplify (addsimps mont_thms empty_ss);
+    simplify (addsimp jacobian_affine_2_thm empty_ss);
+    goal_eval_unint ["ec_point_affine_scalar_mul", "fromJacobian"];
+    w4_unint_z3 ["ec_point_affine_scalar_mul", "fromJacobian"];
+  });
+

@@ -4,6 +4,26 @@
 */
 
 
+/*
+ * Verification parameters.
+ */
+let ec_bits = eval_size {| P384_w |};
+let ec_bytes = eval_size {| (ec_bits + 7) / 8 |};
+let ec_words = eval_size {| (ec_bytes + 7) / 8 |};
+let EC_MAX_BYTES = 66;
+let EC_MAX_WORDS = eval_size {| ((EC_MAX_BYTES + 7) / 8) |};
+
+let NID_secp384r1 = 715;
+let NID_X9_62_id_ecPublicKey = 408;
+let EVP_PKEY_EC = NID_X9_62_id_ecPublicKey;
+let EVP_PKEY_OP_UNDEFINED = 0;
+let EVP_PKEY_OP_KEYGEN = eval_int {{ (1 << 2) : [64] }};
+let EVP_PKEY_OP_PARAMGEN = eval_int {{ (1 << 9) : [64] }};
+
+
+include "memory.saw";
+
+
 let points_to_p384_bignum_st ptr d_ptr flags = points_to_bignum_st ptr d_ptr ec_words ec_words flags;
 
 
@@ -76,7 +96,7 @@ let OPENSSL_built_in_curves_init_spec = do {
 
 
 let points_to_EC_WRAPPED_SCALAR ptr scalar = do {
-  points_to_p384_bignum_st (crucible_field ptr "bignum") (crucible_field ptr "scalar") {{ 0 : [32] }};
+  points_to_p384_bignum_st (crucible_field ptr "bignum") (crucible_field ptr "scalar") BN_FLG_STATIC_DATA;
   crucible_points_to_untyped (crucible_field ptr "scalar") (crucible_term scalar);
 };
 
@@ -106,7 +126,7 @@ let points_to_fresh_ec_point_st ptr group_ptr = do {
   points_to_fresh_EC_RAW_POINT (crucible_field ptr "raw");
 };
 
-let pointer_to_fresh_ec_group_st = do {
+let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
   ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
 
   meth_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_method_st");
@@ -121,7 +141,7 @@ let pointer_to_fresh_ec_group_st = do {
   crucible_points_to order_d_ptr (crucible_term {{ fromInteger`{[P384_w]} `P384_n }});
   points_to_p384_bignum_st (crucible_field ptr "order") order_d_ptr {{ 0 : [32] }};
 
-  crucible_points_to (crucible_field ptr "curve_name") (crucible_term {{ 0 : [32] }});
+  crucible_points_to (crucible_field ptr "curve_name") (crucible_term {{ `curve_name : [32] }});
 
   order_mont_ptr <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
   crucible_points_to (crucible_field ptr "order_mont") order_mont_ptr;
@@ -143,24 +163,33 @@ let pointer_to_fresh_ec_group_st = do {
 
   return ptr;
 };
+let pointer_to_fresh_ec_group_st = pointer_to_fresh_ec_group_st_with_curve_name NID_secp384r1;
 
 
-let points_to_evp_pkey_ctx_st ptr pkey_ptr op data_ptr = do {
+let points_to_evp_pkey_ctx_st_common ptr = do {
   crucible_points_to (crucible_field ptr "pmeth") (crucible_global "ec_pkey_meth");
   crucible_points_to (crucible_field ptr "engine") crucible_null;
+};
+
+let points_to_evp_pkey_ctx_st ptr pkey_ptr peerkey_ptr op data_ptr = do {
+  points_to_evp_pkey_ctx_st_common ptr;
   crucible_points_to (crucible_field ptr "pkey") pkey_ptr;
-  crucible_points_to (crucible_field ptr "peerkey") crucible_null;
-  crucible_points_to (crucible_field ptr "operation") (crucible_term (if op then {{ `EVP_PKEY_OP_SIGN : [32] }} else {{ `EVP_PKEY_OP_VERIFY : [32] }}));
+  crucible_points_to (crucible_field ptr "peerkey") peerkey_ptr;
+  crucible_points_to (crucible_field ptr "operation") (crucible_term {{ `op : [32] }});
   crucible_points_to (crucible_field ptr "data") data_ptr;
+};
+
+let points_to_evp_pkey_st_with_references ptr references pkey_ptr = do {
+  crucible_points_to (crucible_field ptr "references") (crucible_term references);
+  crucible_points_to (crucible_field ptr "type") (crucible_term {{ `EVP_PKEY_EC : [32] }});
+  crucible_points_to (crucible_field ptr "pkey") pkey_ptr;
+  crucible_points_to (crucible_field ptr "ameth") (crucible_global "ec_asn1_meth");
 };
 
 let points_to_evp_pkey_st ptr pkey_ptr = do {
   references <- crucible_fresh_var "references" i32;
-  crucible_points_to (crucible_field ptr "references") (crucible_term references);
   crucible_precond {{ references != 0 }};
-  crucible_points_to (crucible_field ptr "type") (crucible_term {{ `EVP_PKEY_EC : [32] }});
-  crucible_points_to (crucible_field ptr "pkey") pkey_ptr;
-  crucible_points_to (crucible_field ptr "ameth") (crucible_global "ec_asn1_meth");
+  points_to_evp_pkey_st_with_references ptr references pkey_ptr;
 };
 
 let POINT_CONVERSION_UNCOMPRESSED = 4;
@@ -177,31 +206,48 @@ let points_to_ec_key_st ptr group_ptr pub_key_ptr priv_key_ptr = do {
   crucible_points_to (crucible_field ptr "ecdsa_meth") crucible_null;
 };
 
-let pointer_to_fresh_ec_key_st is_priv = do {
+let pointer_to_fresh_ec_key_st group_ptr is_priv = do {
   ec_key_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_key_st");
 
-  ec_group_ptr <- pointer_to_fresh_ec_group_st;
-
   pub_key_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_point_st");
-  pub_key <- points_to_fresh_ec_point_st pub_key_ptr ec_group_ptr;
+  pub_key <- points_to_fresh_ec_point_st pub_key_ptr group_ptr;
 
   (priv_key_ptr, priv_key) <- if is_priv then do {
     priv_key_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_WRAPPED_SCALAR");
     priv_key <- crucible_fresh_var "priv_key" i384;
     points_to_EC_WRAPPED_SCALAR priv_key_ptr priv_key;
+    crucible_precond {{ (scalarFromBV priv_key) % `P384_n == scalarFromBV priv_key }};
     return (priv_key_ptr, priv_key);
   } else do {
     priv_key_ptr <- crucible_fresh_pointer (llvm_struct "struct.EC_WRAPPED_SCALAR");
     return (priv_key_ptr, {{ undefined : [384] }});
   };
 
-  points_to_ec_key_st ec_key_ptr ec_group_ptr pub_key_ptr priv_key_ptr;
+  points_to_ec_key_st ec_key_ptr group_ptr pub_key_ptr priv_key_ptr;
 
   return (ec_key_ptr, pub_key, priv_key);
 };
 
 let points_to_EC_PKEY_CTX ptr md_ptr = do {
   crucible_points_to (crucible_field ptr "md") md_ptr;
+};
+
+
+let ec_group_new_from_data_spec = do {
+  curve_ptr <- crucible_alloc_readonly (llvm_struct "struct.built_in_curve");
+  ec_method_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_method_st");
+  points_to_built_in_curve curve_ptr ec_method_ptr;
+
+  crucible_execute_func [curve_ptr];
+
+  ec_group_ptr <- pointer_to_fresh_ec_group_st_with_curve_name 0;
+  crucible_return ec_group_ptr;
+};
+
+let EC_GROUP_new_by_curve_name_spec = do {
+  crucible_execute_func [(crucible_term {{ `NID_secp384r1 : [32] }})];
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  crucible_return ec_group_ptr;
 };
 
 
@@ -353,6 +399,21 @@ let ec_random_nonzero_scalar_spec = do {
 };
 
 
+let ec_point_mul_scalar_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  r_ptr <- crucible_alloc (llvm_struct "struct.EC_RAW_POINT");
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
+  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  (scalar, scalar_ptr) <- ptr_to_fresh_readonly "p_scalar" i384;
+  crucible_precond {{ (scalarFromBV scalar) % `P384_n == scalarFromBV scalar }};
+
+  crucible_execute_func [group_ptr, r_ptr, p_ptr, scalar_ptr];
+
+  points_to_EC_RAW_POINT r_ptr
+    {{ jacobianToMontBV (ec_point_jacobian_scalar_mul (scalarFromBV scalar) (jacobianFromMontBV p)) }};
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
 let ec_point_mul_scalar_base_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_RAW_POINT");
@@ -402,6 +463,20 @@ let ec_get_x_coordinate_as_scalar_spec = do {
   crucible_execute_func [group_ptr, out_ptr, p_ptr];
 
   crucible_points_to out_ptr (crucible_term {{ scalarToBV (((fromJacobian (jacobianFromMontBV p)).x) % `P384_n) }});
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let ec_get_x_coordinate_as_bytes_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  out_ptr <- crucible_alloc (llvm_array EC_MAX_BYTES i8);
+  out_len_ptr <- crucible_alloc i64;
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
+  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+
+  crucible_execute_func [group_ptr, out_ptr, out_len_ptr, (crucible_term {{ `EC_MAX_BYTES : [64] }}), p_ptr];
+
+  crucible_points_to_untyped out_ptr (crucible_term {{ split`{each=8} (fieldElementToBV (((fromJacobian (jacobianFromMontBV p)).x) % `P384_p)) }});
+  crucible_points_to out_len_ptr (crucible_term {{ `ec_bytes : [64] }});
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
@@ -512,6 +587,39 @@ bn_reduce_once_in_place_false_ov <- llvm_verify
   });
 
 
+BN_div_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_div"
+  (BN_div_spec (eval_size {| 2 * ec_words + 1 |}) ec_words);
+
+
+llvm_verify m "ec_group_new_from_data"
+  [ OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_bignum_st_ov
+  , OPENSSL_free_nonnull_ec_bytes_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  , CRYPTO_refcount_inc_ov
+  , CRYPTO_refcount_dec_and_test_zero_ov
+  , BN_div_ov
+  , BN_value_one_ov
+  , bn_add_words_ov
+  , bn_add_words_same_res_left_ov
+  , bn_sub_words_ov
+  , bn_mul_mont_p_ov
+  , bn_mul_mont_same_res_left_p_ov
+  , value_barrier_w_ov
+  ]
+  true
+  ec_group_new_from_data_spec
+  (w4_unint_yices []);
+
+EC_GROUP_new_by_curve_name_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "EC_GROUP_new_by_curve_name"
+  EC_GROUP_new_by_curve_name_spec;
+
+
 BN_is_zero_ov <- llvm_verify
   m
   "BN_is_zero"
@@ -611,6 +719,11 @@ ec_random_nonzero_scalar_ov <- crucible_llvm_unsafe_assume_spec
   ec_random_nonzero_scalar_spec;
 
 
+ec_point_mul_scalar_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "ec_point_mul_scalar"
+  ec_point_mul_scalar_spec;
+
 ec_point_mul_scalar_base_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_point_mul_scalar_base"
@@ -630,4 +743,9 @@ ec_get_x_coordinate_as_scalar_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_get_x_coordinate_as_scalar"
   ec_get_x_coordinate_as_scalar_spec;
+
+ec_get_x_coordinate_as_bytes_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "ec_get_x_coordinate_as_bytes"
+  ec_get_x_coordinate_as_bytes_spec;
 

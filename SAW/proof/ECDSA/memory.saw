@@ -30,20 +30,10 @@ OPENSSL_free_nonnull_ecdsa_sig_st_ov <- crucible_llvm_unsafe_assume_spec
   m
   "OPENSSL_free"
   (OPENSSL_free_nonnull_spec (llvm_sizeof m (llvm_struct ecdsa_sig_st)));
-OPENSSL_free_nonnull_bignum_st_ov <- crucible_llvm_unsafe_assume_spec
-  m
-  "OPENSSL_free"
-  (OPENSSL_free_nonnull_spec (llvm_sizeof m (llvm_struct "struct.bignum_st")));
 OPENSSL_free_nonnull_cbb_buffer_st_ov <- crucible_llvm_unsafe_assume_spec
   m
   "OPENSSL_free"
   (OPENSSL_free_nonnull_spec (llvm_sizeof m (llvm_struct "struct.cbb_buffer_st")));
-
-// ec_group_new_from_data requires an OPENSSL_free override for size ec_bytes
-OPENSSL_free_nonnull_ec_bytes_ov <- crucible_llvm_unsafe_assume_spec
-  m
-  "OPENSSL_free"
-  (OPENSSL_free_nonnull_spec ec_bytes);
 
 // EVP_DigestVerifyFinal requires an memcmp_ov override when it
 // defends against potential laxness in the DER parser.

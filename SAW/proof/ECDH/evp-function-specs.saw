@@ -1,0 +1,159 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+let EVP_PKEY_CTX_new_id_spec = do {
+  crucible_execute_func [(crucible_term {{ `EVP_PKEY_EC : [32] }}), crucible_null];
+
+  ctx_ptr <- ptr_to_new_evp_pkey_ctx_st crucible_null;
+  crucible_return ctx_ptr;
+};
+
+let EVP_PKEY_CTX_new_spec = do {
+  pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
+  ec_key_ptr <- crucible_fresh_pointer (llvm_struct "struct.ec_key_st");
+  references <- crucible_fresh_var "references" i32;
+  points_to_evp_pkey_st_with_references pkey_ptr references ec_key_ptr;
+
+  crucible_execute_func [pkey_ptr, crucible_null];
+
+  references' <- crucible_fresh_var "references'" i32;
+  points_to_evp_pkey_st_with_references pkey_ptr references' ec_key_ptr;
+
+  ctx_ptr <- ptr_to_new_evp_pkey_ctx_st pkey_ptr;
+
+  crucible_return ctx_ptr;
+};
+
+
+let EVP_PKEY_operation_init_spec op = do {
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_ctx_st");
+  points_to_evp_pkey_ctx_st_common ctx_ptr;
+
+  crucible_execute_func [ctx_ptr, (crucible_term {{ `op : [32] }})];
+
+  points_to_evp_pkey_ctx_st_common ctx_ptr;
+  crucible_points_to (crucible_field ctx_ptr "operation") (crucible_term {{ `op : [32] }});
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+
+let EVP_PKEY_CTX_set_ec_paramgen_curve_nid_spec = do {
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
+  points_to_evp_pkey_ctx_st_common ctx_ptr;
+  crucible_points_to (crucible_field ctx_ptr "operation") (crucible_term {{ `EVP_PKEY_OP_PARAMGEN : [32] }});
+  ec_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.EC_PKEY_CTX");
+  crucible_points_to (crucible_field ec_pkey_ctx_ptr "gen_group") crucible_null;
+  crucible_points_to (crucible_field ctx_ptr "data") ec_pkey_ctx_ptr;
+
+  crucible_execute_func [ctx_ptr, (crucible_term {{ `NID_secp384r1 : [32] }})];
+
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  crucible_points_to (crucible_field ec_pkey_ctx_ptr "gen_group") group_ptr;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_PKEY_paramgen_spec = do {
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
+  points_to_evp_pkey_ctx_st_common ctx_ptr;
+  crucible_points_to (crucible_field ctx_ptr "operation") (crucible_term {{ `EVP_PKEY_OP_PARAMGEN : [32] }});
+  ec_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_PKEY_CTX");
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  crucible_points_to (crucible_field ec_pkey_ctx_ptr "gen_group") group_ptr;
+  crucible_points_to (crucible_field ctx_ptr "data") ec_pkey_ctx_ptr;
+
+  out_pkey_ptr_ptr <- crucible_alloc i64;
+  crucible_points_to out_pkey_ptr_ptr crucible_null;
+
+  crucible_execute_func [ctx_ptr, out_pkey_ptr_ptr];
+
+  out_key_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
+  ec_key_ptr <- crucible_alloc (llvm_struct "struct.ec_key_st");
+  points_to_ec_key_st ec_key_ptr group_ptr crucible_null crucible_null;
+  points_to_evp_pkey_st_with_references out_key_ptr {{ 1 : [32] }} ec_key_ptr;
+  crucible_points_to out_pkey_ptr_ptr out_key_ptr;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+
+let EVP_PKEY_keygen_spec = do {
+  d <- crucible_fresh_cryptol_var "d" {| Integer |};
+  crucible_ghost_value ec_random_nonzero_scalar_out d;
+
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
+  points_to_evp_pkey_ctx_st_common ctx_ptr;
+  crucible_points_to (crucible_field ctx_ptr "operation") (crucible_term {{ `EVP_PKEY_OP_KEYGEN : [32] }});
+  ec_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_PKEY_CTX");
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  crucible_points_to (crucible_field ec_pkey_ctx_ptr "gen_group") group_ptr;
+  crucible_points_to (crucible_field ctx_ptr "data") ec_pkey_ctx_ptr;
+
+  out_pkey_ptr_ptr <- crucible_alloc i64;
+  crucible_points_to out_pkey_ptr_ptr crucible_null;
+
+  crucible_execute_func [ctx_ptr, out_pkey_ptr_ptr];
+
+  out_key_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
+  ec_key_ptr <- crucible_alloc (llvm_struct "struct.ec_key_st");
+  pub_key_ptr <- crucible_alloc (llvm_struct "struct.ec_point_st");
+  pub_key <- points_to_fresh_ec_point_st pub_key_ptr group_ptr;
+  crucible_postcond {{ fromJacobian (jacobianFromMontBV pub_key) == EC_keyPrivateToPublic d }};
+  priv_key_ptr <- crucible_alloc (llvm_struct "struct.EC_WRAPPED_SCALAR");
+  points_to_EC_WRAPPED_SCALAR priv_key_ptr {{ scalarToBV (d % `P384_n) }};
+  points_to_ec_key_st ec_key_ptr group_ptr pub_key_ptr priv_key_ptr;
+  points_to_evp_pkey_st_with_references out_key_ptr {{ 1 : [32] }} ec_key_ptr;
+  crucible_points_to out_pkey_ptr_ptr out_key_ptr;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+
+let EVP_PKEY_derive_set_peer_spec = do {
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_ctx_st");
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  pkey_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_st");
+  (ec_key_ptr, _pub_key, _priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr true;
+  points_to_evp_pkey_st pkey_ptr ec_key_ptr;
+  points_to_evp_pkey_ctx_st ctx_ptr pkey_ptr crucible_null EVP_PKEY_OP_DERIVE crucible_null;
+
+  peerkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
+  (peer_ec_key_ptr, _peer_pub_key, _peer_priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr false;
+  points_to_evp_pkey_st peerkey_ptr peer_ec_key_ptr;
+
+  crucible_execute_func [ctx_ptr, peerkey_ptr];
+
+  references <- crucible_fresh_var "references" i32;
+  points_to_evp_pkey_st_with_references peerkey_ptr references peer_ec_key_ptr;
+  points_to_evp_pkey_ctx_st ctx_ptr pkey_ptr peerkey_ptr EVP_PKEY_OP_DERIVE crucible_null;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_PKEY_derive_spec = do {
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  pkey_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_st");
+  (ec_key_ptr, _pub_key, priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr true;
+  points_to_evp_pkey_st pkey_ptr ec_key_ptr;
+  peerkey_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_st");
+  (peer_ec_key_ptr, peer_pub_key, _peer_priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr false;
+  points_to_evp_pkey_st peerkey_ptr peer_ec_key_ptr;
+  points_to_evp_pkey_ctx_st ctx_ptr pkey_ptr peerkey_ptr EVP_PKEY_OP_DERIVE crucible_null;
+
+  key_ptr <- crucible_alloc (llvm_array ec_bytes i8);
+  out_key_len_ptr <- crucible_alloc i64;
+  crucible_points_to out_key_len_ptr (crucible_term {{ `ec_bytes : [64] }});
+
+  crucible_execute_func [ctx_ptr, key_ptr, out_key_len_ptr];
+
+  crucible_points_to key_ptr (crucible_term {{ split`{each=8} (fieldElementToBV (ECDH_derive (scalarFromBV priv_key) (fromJacobian (jacobianFromMontBV peer_pub_key)))) }});
+
+  crucible_points_to out_key_len_ptr (crucible_term {{ `ec_bytes : [64] }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+

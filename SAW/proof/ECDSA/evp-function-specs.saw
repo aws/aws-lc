@@ -4,19 +4,7 @@
 */
 
 
-let ec_group_new_from_data_spec = do {
-  curve_ptr <- crucible_alloc_readonly (llvm_struct "struct.built_in_curve");
-  ec_method_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_method_st");
-  points_to_built_in_curve curve_ptr ec_method_ptr;
-
-  crucible_execute_func [curve_ptr];
-
-  ec_group_ptr <- pointer_to_fresh_ec_group_st;
-  crucible_return ec_group_ptr;
-};
-
-
-let EVP_DigestSignVerifyInit_spec op = do {
+let EVP_DigestSignVerifyInit_spec is_sign = do {
   ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
   points_to_env_md_ctx_st ctx_ptr crucible_null crucible_null;
 
@@ -24,7 +12,8 @@ let EVP_DigestSignVerifyInit_spec op = do {
   points_to_env_md_st type_ptr;
 
   pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
-  (ec_key_ptr, _pub_key, _priv_key) <- pointer_to_fresh_ec_key_st op;
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  (ec_key_ptr, _pub_key, _priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr is_sign;
   points_to_evp_pkey_st pkey_ptr ec_key_ptr;
 
   crucible_execute_func [ctx_ptr, crucible_null, type_ptr, crucible_null, pkey_ptr];
@@ -34,13 +23,13 @@ let EVP_DigestSignVerifyInit_spec op = do {
   evp_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_ctx_st");
   ec_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.EC_PKEY_CTX");
   points_to_EC_PKEY_CTX ec_pkey_ctx_ptr type_ptr;
-  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr op ec_pkey_ctx_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null (if is_sign then EVP_PKEY_OP_SIGN else EVP_PKEY_OP_VERIFY) ec_pkey_ctx_ptr;
   points_to_env_md_ctx_st_with_pctx ctx_ptr type_ptr sha512_state_ptr evp_pkey_ctx_ptr;
 
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
-let EVP_DigestSignVerifyUpdate_spec op num len = do {
+let EVP_DigestSignVerifyUpdate_spec is_sign num len = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
@@ -54,11 +43,12 @@ let EVP_DigestSignVerifyUpdate_spec op num len = do {
 
   evp_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
   pkey_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_st");
-  (ec_key_ptr, _pub_key, _priv_key) <- pointer_to_fresh_ec_key_st op;
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  (ec_key_ptr, _pub_key, _priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr is_sign;
   points_to_evp_pkey_st pkey_ptr ec_key_ptr;
   ec_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_PKEY_CTX");
   points_to_EC_PKEY_CTX ec_pkey_ctx_ptr digest_ptr;
-  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr op ec_pkey_ctx_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null (if is_sign then EVP_PKEY_OP_SIGN else EVP_PKEY_OP_VERIFY) ec_pkey_ctx_ptr;
 
   points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr;
 
@@ -88,11 +78,12 @@ let EVP_DigestSignFinal_spec num = do {
 
   evp_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
   pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
-  (ec_key_ptr, _pub_key, priv_key) <- pointer_to_fresh_ec_key_st true;
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  (ec_key_ptr, _pub_key, priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr true;
   points_to_evp_pkey_st pkey_ptr ec_key_ptr;
   ec_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_PKEY_CTX");
   points_to_EC_PKEY_CTX ec_pkey_ctx_ptr digest_ptr;
-  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr true ec_pkey_ctx_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null EVP_PKEY_OP_SIGN ec_pkey_ctx_ptr;
 
   points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr;
 
@@ -134,11 +125,12 @@ let EVP_DigestVerifyFinal_spec num = do {
 
   evp_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
   pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
-  (ec_key_ptr, pub_key, _priv_key) <- pointer_to_fresh_ec_key_st false;
+  ec_group_ptr <- pointer_to_fresh_ec_group_st;
+  (ec_key_ptr, pub_key, _priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr false;
   points_to_evp_pkey_st pkey_ptr ec_key_ptr;
   ec_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_PKEY_CTX");
   points_to_EC_PKEY_CTX ec_pkey_ctx_ptr digest_ptr;
-  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr false ec_pkey_ctx_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null EVP_PKEY_OP_VERIFY ec_pkey_ctx_ptr;
 
   points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr;
 
