@@ -600,24 +600,24 @@ int EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md(EVP_PKEY_CTX *ctx,
 }
 
 int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int salt_len) {
-  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA,
+  return RSA_pkey_ctx_ctrl(ctx,
                            (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY),
                            EVP_PKEY_CTRL_RSA_PSS_SALTLEN, salt_len, NULL);
 }
 
 int EVP_PKEY_CTX_get_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int *out_salt_len) {
-  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA,
+  return RSA_pkey_ctx_ctrl(ctx,
                            (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY),
                            EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN, 0, out_salt_len);
 }
 
 int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx, int bits) {
-  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_KEYGEN,
+  return RSA_pkey_ctx_ctrl(ctx, EVP_PKEY_OP_KEYGEN,
                            EVP_PKEY_CTRL_RSA_KEYGEN_BITS, bits, NULL);
 }
 
 int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx, BIGNUM *e) {
-  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_KEYGEN,
+  return RSA_pkey_ctx_ctrl(ctx, EVP_PKEY_OP_KEYGEN,
                            EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, e);
 }
 
@@ -632,13 +632,13 @@ int EVP_PKEY_CTX_get_rsa_oaep_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
 }
 
 int EVP_PKEY_CTX_set_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
-  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA,
+  return RSA_pkey_ctx_ctrl(ctx,
                            EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT,
                            EVP_PKEY_CTRL_RSA_MGF1_MD, 0, (void*) md);
 }
 
 int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
-  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA,
+  return RSA_pkey_ctx_ctrl(ctx,
                            EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT,
                            EVP_PKEY_CTRL_GET_RSA_MGF1_MD, 0, (void*) out_md);
 }

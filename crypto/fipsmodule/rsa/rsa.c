@@ -60,8 +60,10 @@
 #include <string.h>
 
 #include <openssl/bn.h>
+#include <openssl/base.h>
 #include <openssl/digest.h>
 #include <openssl/engine.h>
+#include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/ex_data.h>
 #include <openssl/md5.h>
@@ -73,6 +75,7 @@
 #include "../bn/internal.h"
 #include "../delocate.h"
 #include "../../internal.h"
+#include "../../evp/internal.h"
 #include "internal.h"
 
 
@@ -915,4 +918,17 @@ int RSA_flags(const RSA *rsa) { return rsa->flags; }
 
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
   return 1;
+}
+
+int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2)
+{
+  /* If key type not RSA or RSA-PSS return error */
+  if (ctx != NULL && ctx->pmeth != NULL 
+      && ctx->pmeth->pkey_id != EVP_PKEY_RSA
+      && ctx->pmeth->pkey_id != EVP_PKEY_RSA_PSS) {
+    // TODO(shang): investigate if a new error reason should be defined to replace EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
+    OPENSSL_PUT_ERROR(RSA, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+  return EVP_PKEY_CTX_ctrl(ctx, -1, optype, cmd, p1, p2);
 }
