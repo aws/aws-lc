@@ -109,8 +109,19 @@ static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
 }
 
 static int rsa_pss_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  // TODO(shang): add pss paramters decode.
+  RSASSA_PSS_PARAMS *pss = NULL;
+  if (!RSASSA_PSS_parse_params(params, &pss)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
   RSA *rsa = RSA_parse_public_key(key);
+  if (rsa != NULL) {
+    rsa->pss = pss;
+  } else {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSASSA_PSS_PARAMS_free(pss);
+    return 0;
+  }
   if (rsa == NULL || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     RSA_free(rsa);
@@ -166,8 +177,20 @@ static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
 }
 
 static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  // TODO(shang): add pss paramters decode.
+  RSASSA_PSS_PARAMS *pss = NULL;
+  if (!RSASSA_PSS_parse_params(params, &pss)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   RSA *rsa = RSA_parse_private_key(key);
+  if (rsa != NULL) {
+    rsa->pss = pss;
+  } else {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSASSA_PSS_PARAMS_free(pss);
+    return 0;
+  }
   if (rsa == NULL || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     RSA_free(rsa);

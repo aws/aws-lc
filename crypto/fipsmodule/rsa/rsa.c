@@ -121,6 +121,72 @@ RSA *RSA_new_method(const ENGINE *engine) {
   return rsa;
 }
 
+RSA_INTEGER *RSA_INTEGER_new(void) {
+  RSA_INTEGER *ret = OPENSSL_malloc(sizeof(RSA_INTEGER));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSA_INTEGER));
+  return ret;
+}
+
+RSA_ALGOR_IDENTIFIER *RSA_ALGOR_IDENTIFIER_new(void) {
+  RSA_ALGOR_IDENTIFIER *ret = OPENSSL_malloc(sizeof(RSA_ALGOR_IDENTIFIER));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSA_ALGOR_IDENTIFIER));
+  return ret;
+}
+
+RSA_MGA_IDENTIFIER *RSA_MGA_IDENTIFIER_new(void) {
+  RSA_MGA_IDENTIFIER *ret = OPENSSL_malloc(sizeof(RSA_MGA_IDENTIFIER));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSA_MGA_IDENTIFIER));
+  return ret;
+}
+
+RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void) {
+  RSASSA_PSS_PARAMS *ret = OPENSSL_malloc(sizeof(RSASSA_PSS_PARAMS));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSASSA_PSS_PARAMS));
+  return ret;
+}
+
+void RSA_INTEGER_free(RSA_INTEGER *ptr) {
+  OPENSSL_free(ptr);
+}
+
+void RSA_ALGOR_IDENTIFIER_free(RSA_ALGOR_IDENTIFIER *algor) {
+  OPENSSL_free(algor);
+}
+
+void RSA_MGA_IDENTIFIER_free(RSA_MGA_IDENTIFIER *mga) {
+  if (mga == NULL) {
+    return;
+  }
+  RSA_ALGOR_IDENTIFIER_free(mga->mask_gen);
+  RSA_ALGOR_IDENTIFIER_free(mga->one_way_hash);
+}
+
+void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params) {
+  if (params == NULL) {
+    return;
+  }
+  RSA_ALGOR_IDENTIFIER_free(params->hash_algor);
+  RSA_MGA_IDENTIFIER_free(params->mask_gen_algor);
+  RSA_INTEGER_free(params->salt_len);
+  RSA_INTEGER_free(params->trailer_field);
+}
+
 void RSA_free(RSA *rsa) {
   unsigned u;
 
@@ -147,6 +213,7 @@ void RSA_free(RSA *rsa) {
   BN_free(rsa->dmp1);
   BN_free(rsa->dmq1);
   BN_free(rsa->iqmp);
+  RSASSA_PSS_PARAMS_free(rsa->pss);
   BN_MONT_CTX_free(rsa->mont_n);
   BN_MONT_CTX_free(rsa->mont_p);
   BN_MONT_CTX_free(rsa->mont_q);
@@ -926,7 +993,6 @@ int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2)
   if (ctx != NULL && ctx->pmeth != NULL 
       && ctx->pmeth->pkey_id != EVP_PKEY_RSA
       && ctx->pmeth->pkey_id != EVP_PKEY_RSA_PSS) {
-    // TODO(shang): investigate if a new error reason should be defined to replace EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE.
     OPENSSL_PUT_ERROR(RSA, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
