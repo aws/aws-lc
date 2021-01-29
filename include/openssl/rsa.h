@@ -692,6 +692,33 @@ struct rsa_meth_st {
 
 typedef struct bn_blinding_st BN_BLINDING;
 
+// object identifier.
+struct rsa_obj_identifier_st {
+  uint8_t oid[9];
+  uint8_t oid_len;
+};
+
+// Mask Generation algorithm identifier.
+struct rsa_mga_identifier {
+  // Mask generation algorithm identifier.
+  RSA_OBJ_IDENTIFIER *mga;
+  // Associated hash algorithm identifier.
+  RSA_OBJ_IDENTIFIER *ha;
+};
+
+// RSASSA-PSS-params is defined on rfc4055 section 3.1.
+// See https://tools.ietf.org/html/rfc4055#page-7
+struct rsassa_pss_params_st {
+  // hashAlgorithm
+  RSA_OBJ_IDENTIFIER *hash_algo;
+  // maskGenAlgorithm
+  RSA_MGA_IDENTIFIER *mask_gen_algo;
+  // saltLength
+  int salt_len;
+  // trailerField
+  int trailer_field;
+};
+
 struct rsa_st {
   RSA_METHOD *meth;
 
