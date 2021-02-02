@@ -175,6 +175,7 @@ void RSA_MGA_IDENTIFIER_free(RSA_MGA_IDENTIFIER *mga) {
   }
   RSA_ALGOR_IDENTIFIER_free(mga->mask_gen);
   RSA_ALGOR_IDENTIFIER_free(mga->one_way_hash);
+  OPENSSL_free(mga);
 }
 
 void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params) {
@@ -185,6 +186,7 @@ void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params) {
   RSA_MGA_IDENTIFIER_free(params->mask_gen_algor);
   RSA_INTEGER_free(params->salt_len);
   RSA_INTEGER_free(params->trailer_field);
+  OPENSSL_free(params);
 }
 
 void RSA_free(RSA *rsa) {

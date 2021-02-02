@@ -151,8 +151,10 @@ TEST_P(RSASSAPSSASN1Test, TestDecodeParams) {
   CBS params;
   params.data = param.der;
   params.len = param.der_len;
-  RSASSA_PSS_PARAMS *pss = NULL;
+  RSASSA_PSS_PARAMS *pss = nullptr;
   ASSERT_TRUE(RSASSA_PSS_parse_params(&params, &pss));
+  // Holds ownership of heap-allocated RSASSA_PSS_PARAMS.
+  bssl::UniquePtr<RSASSA_PSS_PARAMS> pss_ptr(pss);
   // Expect all bytes of params are used.
   ASSERT_FALSE(CBS_len(&params));
   // Validate Hash Algorithm of RSASSA-PSS-params.
@@ -191,7 +193,6 @@ TEST_P(RSASSAPSSASN1Test, TestDecodeParams) {
     // When no expectation, make sure this value is absent.
     EXPECT_FALSE(pss->trailer_field);
   }
-  RSASSA_PSS_PARAMS_free(pss);
 }
 
 INSTANTIATE_TEST_SUITE_P(All, RSASSAPSSASN1Test,
@@ -214,7 +215,7 @@ TEST_P(RSASSAPSSInvalidASN1Test, TestDecodeInvalidBytes) {
   CBS params;
   params.data = param.der;
   params.len = param.der_len;
-  RSASSA_PSS_PARAMS *pss = NULL;
+  RSASSA_PSS_PARAMS *pss = nullptr;
   ASSERT_FALSE(RSASSA_PSS_parse_params(&params, &pss));
 }
 
