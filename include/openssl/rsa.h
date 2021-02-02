@@ -278,6 +278,9 @@ OPENSSL_EXPORT int RSA_private_decrypt(size_t flen, const uint8_t *from,
                                        uint8_t *to, RSA *rsa, int padding);
 
 
+// Salt length matches digest
+#define RSA_PSS_SALTLEN_DIGEST -1
+
 // Signing / Verification
 //
 // These functions are considered non-mutating for thread-safety purposes and
@@ -434,11 +437,11 @@ OPENSSL_EXPORT int RSA_check_fips(RSA *key);
 // |mHash|, where |mHash| is a digest produced by |Hash|. |EM| must point to
 // exactly |RSA_size(rsa)| bytes of data. The |mgf1Hash| argument specifies the
 // hash function for generating the mask. If NULL, |Hash| is used. The |sLen|
-// argument specifies the expected salt length in bytes. If |sLen| is -1 then
+// argument specifies the expected salt length in bytes. If |sLen| is RSA_PSS_SALTLEN_DIGEST then
 // the salt length is the same as the hash length. If -2, then the salt length
 // is recovered and all values accepted.
 //
-// If unsure, use -1.
+// If unsure, use RSA_PSS_SALTLEN_DIGEST.
 //
 // It returns one on success or zero on error.
 //
@@ -454,9 +457,9 @@ OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa,
 // where |mHash| is a digest produced by |Hash|. |RSA_size(rsa)| bytes of
 // output will be written to |EM|. The |mgf1Hash| argument specifies the hash
 // function for generating the mask. If NULL, |Hash| is used. The |sLen|
-// argument specifies the expected salt length in bytes. If |sLen| is -1 then
-// the salt length is the same as the hash length. If -2, then the salt length
-// is maximal given the space in |EM|.
+// argument specifies the expected salt length in bytes.
+// If |sLen| is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as 
+// the hash length. If -2, then the salt length is maximal given the space in |EM|.
 //
 // It returns one on success or zero on error.
 //
