@@ -191,7 +191,6 @@ static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
     // Trailer field can be absent, which means default.
     return 1;
   }
-  // TODO: add trailer field validation. Its value must be 1.
   return parse_rsa_int(&cs, trailer_field);
 }
 
