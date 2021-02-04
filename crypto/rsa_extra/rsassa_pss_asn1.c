@@ -9,6 +9,7 @@
 #include <openssl/rsa.h>
 
 #include "../internal.h"
+#include "../evp/internal.h"
 
 const RSA_PSS_SUPPORTED_ALGOR sha1_func = {
     NID_sha1,
@@ -230,5 +231,24 @@ int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   RSA_MGA_IDENTIFIER_free(mask_gen_algor);
   RSA_INTEGER_free(salt_len);
   RSA_INTEGER_free(trailer_field);
+  return 0;
+}
+
+int RSASSA_PSS_supported_hash(int nid, RSA_ALGOR_IDENTIFIER **out) {
+  if (nid == NID_sha1) {
+    (*out) = NULL;
+    return 1;
+  }
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions); i++) {
+    const RSA_PSS_SUPPORTED_ALGOR *supported_algr = rsa_pss_hash_functions[i];
+    if (nid == supported_algr->nid) {
+      *out = RSA_ALGOR_IDENTIFIER_new();
+      if ((*out) != NULL) {
+        (*out)->nid = supported_algr->nid;
+        return 1;
+      }
+    }
+  }
+  OPENSSL_PUT_ERROR(RSA, EVP_R_UNSUPPORTED_ALGORITHM);
   return 0;
 }

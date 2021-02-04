@@ -203,12 +203,13 @@ struct evp_pkey_method_st {
 
   int (*keygen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
+  int (*sign_init)(EVP_PKEY_CTX *ctx);
   int (*sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
               const uint8_t *tbs, size_t tbslen);
 
   int (*sign_message)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
                       const uint8_t *tbs, size_t tbslen);
-
+  int (*verify_init)(EVP_PKEY_CTX *ctx);
   int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
                 const uint8_t *tbs, size_t tbslen);
 
@@ -249,6 +250,12 @@ typedef struct {
   uint8_t priv[32];
   char has_private;
 } X25519_KEY;
+
+// RSASSA_PSS_supported_hash return one on success and zero on failure.
+// When success and the hash is sha1, |*out| will hold NULL.
+// When success and the hash is not sha1, set |*out| will have hold allocated RSA_ALGOR_IDENTIFIER.
+// When failure, return zero.
+int RSASSA_PSS_supported_hash(int nid, RSA_ALGOR_IDENTIFIER **out);
 
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;

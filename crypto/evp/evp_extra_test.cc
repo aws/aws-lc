@@ -239,7 +239,9 @@ static const uint8_t kExampleRSAKeyPKCS8[] = {
 };
 
 // kExampleRSAPSSKeyPKCS8 is encoded in a PKCS #8 PrivateKeyInfo.
-// kExampleRSAPSSKeyPKCS8 contains pss params for decoding params test.
+// kExampleRSAPSSKeyPKCS8 contains a DER-encoded RSASSA-PSS-params:
+//    Hash Algorithm: sha256
+//    Mask Algorithm: mgf1 with sha256
 static const uint8_t kExampleRSAPSSKeyPKCS8[] = {
     0x30, 0x82, 0x04, 0xea, 0x02, 0x01, 0x00, 0x30, 0x38, 0x06, 0x09, 0x2a,
     0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a, 0x30, 0x2b, 0xa0, 0x0d,
@@ -898,3 +900,64 @@ TEST(EVPExtraTest, Ed25519Keygen) {
   ASSERT_TRUE(EVP_DigestVerify(ctx.get(), sig, len,
                                reinterpret_cast<const uint8_t *>("hello"), 5));
 }
+
+struct RsassaPssParamsMatchTestInput {
+  const uint8_t *der;
+  size_t der_len;
+  const EVP_MD *signature_md;
+  const EVP_MD *rsa_mgf1_md;
+  int match;
+} kRsassaPssParamsMatchTestInputs[] = {
+    {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha1(),
+     EVP_sha1(), 0},
+    {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha224(),
+     EVP_sha224(), 0},
+    {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha256(),
+     EVP_sha256(), 1},
+    {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha384(),
+     EVP_sha384(), 0},
+    {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha512(),
+     EVP_sha512(), 0},
+    {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha512_256(),
+     EVP_sha512_256(), 0},
+};
+
+class EVPRsaPssExtraTest
+    : public testing::TestWithParam<RsassaPssParamsMatchTestInput> {};
+
+// This test checks params match.
+// All parameters in the signature structure algorithm identifier MUST
+// match the parameters in the key structure algorithm identifier except
+// the saltLength field.
+// See 3.3. https://tools.ietf.org/html/rfc4055#page-9
+TEST_P(EVPRsaPssExtraTest, PssParamsMatch) {
+  const auto &param = GetParam();
+  const uint8_t *p = param.der;
+  const EVP_MD *signature_md = param.signature_md;
+  const EVP_MD *rsa_mgf1_md = param.rsa_mgf1_md;
+  // Holds ownership of heap-allocated EVP_PKEY.
+  bssl::UniquePtr<EVP_PKEY> pkey_up(
+      d2i_AutoPrivateKey(NULL, &p, param.der_len));
+  ASSERT_TRUE(pkey_up);
+  EXPECT_EQ(param.der + param.der_len, p);
+  EXPECT_EQ(EVP_PKEY_RSA_PSS, EVP_PKEY_id(pkey_up.get()));
+  // Holds ownership of heap-allocated EVP_PKEY_CTX.
+  bssl::UniquePtr<EVP_PKEY_CTX> pkey_ctx_up(
+      EVP_PKEY_CTX_new(pkey_up.get(), NULL));
+  ASSERT_TRUE(pkey_ctx_up);
+  EVP_PKEY_CTX *pkey_ctx = pkey_ctx_up.get();
+  // Init pss params by calling |EVP_PKEY_sign_init|.
+  // These pss params are fetched from the key structure.
+  ASSERT_TRUE(EVP_PKEY_sign_init(pkey_ctx));
+  EXPECT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
+  // Compare one way hash func.
+  EXPECT_EQ(EVP_PKEY_CTX_set_signature_md(pkey_ctx, signature_md), param.match);
+  // Compare one way hash func of mask gen.
+  EXPECT_EQ(EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, rsa_mgf1_md), param.match);
+  EXPECT_TRUE(
+      EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, RSA_PSS_SALTLEN_DIGEST));
+  ERR_clear_error();
+}
+
+INSTANTIATE_TEST_SUITE_P(All, EVPRsaPssExtraTest,
+                         testing::ValuesIn(kRsassaPssParamsMatchTestInputs));
