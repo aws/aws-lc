@@ -17,24 +17,10 @@ const RSA_PSS_SUPPORTED_ALGOR sha1_func = {
     5,
 };
 
-const RSA_PSS_SUPPORTED_ALGOR sha224_func = {
-    NID_sha224,
-    // 2.16.840.1.101.3.4.2.4
-    {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04},
-    9,
-};
-
 const RSA_PSS_SUPPORTED_ALGOR sha256_func = {
     NID_sha256,
     // 2.16.840.1.101.3.4.2.1
     {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01},
-    9,
-};
-
-const RSA_PSS_SUPPORTED_ALGOR sha384_func = {
-    NID_sha384,
-    // 2.16.840.1.101.3.4.2.2
-    {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02},
     9,
 };
 
@@ -48,7 +34,7 @@ const RSA_PSS_SUPPORTED_ALGOR sha512_func = {
 // Used to check if the oid is in the supported five hash functions.
 // Section 2.1. https://tools.ietf.org/html/rfc4055#page-4
 static const RSA_PSS_SUPPORTED_ALGOR *const rsa_pss_hash_functions[] = {
-    &sha1_func, &sha224_func, &sha256_func, &sha384_func, &sha512_func,
+    &sha1_func, &sha256_func, &sha512_func,
 };
 
 const RSA_PSS_SUPPORTED_ALGOR MGF1 = {
