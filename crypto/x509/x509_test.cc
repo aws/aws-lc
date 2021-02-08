@@ -201,6 +201,31 @@ Z0IL+OQFz6+LcTHxD27JJCebrATXZA0wThGTQDm7crL+a+SujBY=
 -----END CERTIFICATE-----
 )";
 
+// kExampleRsassaPssCert is an example RSA-PSS self-signed certificate,
+// signed with sha256. The Public Key Algorithm of 'kExamplePSSCert' is 'rsaEncryption'.
+// But the Public Key Algorithm of'kExampleRsassaPssCert' is 'rsassaPss'.
+static const char kExampleRsassaPssCert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDDDCCAcMCFHg/A8W4Ltk2dAz6XmuAzRhcy2AzMD4GCSqGSIb3DQEBCjAxoA0w
+CwYJYIZIAWUDBAIBoRowGAYJKoZIhvcNAQEIMAsGCWCGSAFlAwQCAaIEAgIA3jAN
+MQswCQYDVQQDDAJDQTAgFw0xOTEyMTgxOTIyMjZaGA8yMTE5MTEyNDE5MjIyNlow
+FjEUMBIGA1UEAwwLZXhhbXBsZS5jb20wggEgMAsGCSqGSIb3DQEBCgOCAQ8AMIIB
+CgKCAQEArRRhhPBrpx0Wyu/RPzG1krirpQO8FScrFL3efZzc0wPJhmiynHHooIiP
+emrumxKTIFEJn7xH/uVNYPl0ae2UvvZ9wF2Avnsmgj2i9sEMUf/T2mba1hyDPukp
+GyTdwyBNXHoOsVG2+WrhMW0NkGxOJwdvqK7k/fmNRW54p5cdf+oXBICd3ZeXUGwN
++/O9P8AUR+swPF5/xQT0l6cIL8p1Ii3IOwQbsbIclwcgB+A+JxMBOrsS2t3wmO/t
+00nYJQQ39GvFOG7FLMt771bG/lkXfE+uM9BPqORk63XJP5GYtI0G9yc8KjJffjMn
+ELfyNu9y6h+/jheUxnol+M4ZlVyBNQIDAQABMD4GCSqGSIb3DQEBCjAxoA0wCwYJ
+YIZIAWUDBAIBoRowGAYJKoZIhvcNAQEIMAsGCWCGSAFlAwQCAaIEAgIA3gOCAQEA
+CYrASuTnV7G0Fs4YD4oYTHPtP3hmXnOqLYFwg5mkD1jNUQAoZ1228iswPduZQgO9
+7A2vhI/qFW1efyWdElqC9RrTzldtdS9nAMeOJ6m+dXNfHbsPjZl2+g+kreAxCO7/
++tdZ/TBqAS6llEIo7EqMGPeE+HwwHa2Jv5La7HAT/KNA3jCGaucTGVV77CgWVc/c
+NJq2EIf9DOe2+zokWnMQxbV84ks26uQy3CfF8UZrxwcr3aKJxzR29u2Io6vvnTs7
+dJZFafFLwtdLF6n7/OuycizeY0z/PjBnZN7Xw3pTDruglf9wNco1m/hMdLqJ8XTi
+/6wGTUyETfm7J2j9U1yy9g==
+-----END CERTIFICATE-----
+)";
+
 // kBadPSSCertPEM is a self-signed RSA-PSS certificate with bad parameters.
 static const char kBadPSSCertPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -1450,6 +1475,17 @@ TEST(X509Test, TestPSS) {
   ASSERT_TRUE(pkey);
 
   ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
+}
+
+TEST(X509Test, TestRsaSsaPss) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExampleRsassaPssCert));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  // TODO(shang): reenable this verification when EVP_PKEY_RSA_PSS pmeth is implemented.
+  // ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
 }
 
 TEST(X509Test, TestPSSBadParameters) {
