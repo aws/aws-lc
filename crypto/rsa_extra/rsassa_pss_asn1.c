@@ -7,7 +7,6 @@
 #include <openssl/digest.h>
 #include <openssl/mem.h>
 #include <openssl/err.h>
-#include <openssl/rsa.h>
 
 #include "../internal.h"
 #include "rsassa_pss.h"
