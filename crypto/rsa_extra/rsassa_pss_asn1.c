@@ -66,7 +66,7 @@ static const RSA_PSS_SUPPORTED_ALGOR *const rsa_pss_mg_functions[] = {
 };
 
 // parse_oid return one on success and zero on failure.
-// Given oid and supported algorithms, if match, set out to be the algorithm
+// Given |oid| and |supported_algors|, if match, set |*out| to be the algorithm
 // identifier.
 static int parse_oid(CBS *oid,
                      const RSA_PSS_SUPPORTED_ALGOR *const supported_algors[],

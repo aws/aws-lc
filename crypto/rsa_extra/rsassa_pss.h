@@ -66,8 +66,9 @@ OPENSSL_EXPORT int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd,
 
 // RSASSA_PSS_PARAMS_get return one on success and zero on failure.
 // When success, |*md|, |*mgf1md| and |saltlen| will get assigned.
-OPENSSL_EXPORT int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
-                      const EVP_MD **mgf1md, int *saltlen);
+OPENSSL_EXPORT int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss,
+                                         const EVP_MD **md,
+                                         const EVP_MD **mgf1md, int *saltlen);
 
 #if defined(__cplusplus)
 }  // extern C
