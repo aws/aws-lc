@@ -7,6 +7,7 @@
 #include <openssl/digest.h>
 #include <openssl/mem.h>
 #include <openssl/err.h>
+#include <openssl/rsa.h>
 
 #include "../internal.h"
 #include "rsassa_pss.h"
@@ -107,7 +108,7 @@ static int decode_one_way_hash(CBS *cbs, RSA_ALGOR_IDENTIFIER **hash_algor) {
                 OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions), hash_algor)) {
     return 1;
   }
-  OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+  OPENSSL_PUT_ERROR(RSA, EVP_R_DECODE_ERROR);
   return 0;
 }
 
@@ -134,7 +135,7 @@ static int decode_mask_gen(CBS *cbs, RSA_MGA_IDENTIFIER **mga) {
       return 1;
     }
   }
-  OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+  OPENSSL_PUT_ERROR(RSA, EVP_R_DECODE_ERROR);
   RSA_ALGOR_IDENTIFIER_free(mgf1);
   RSA_ALGOR_IDENTIFIER_free(hash_algor);
   return 0;
@@ -173,7 +174,7 @@ static int parse_rsa_int(CBS *cbs, RSA_INTEGER **rsa_int) {
       return 1;
     }
   }
-  OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+  OPENSSL_PUT_ERROR(RSA, EVP_R_DECODE_ERROR);
   return 0;
 }
 
