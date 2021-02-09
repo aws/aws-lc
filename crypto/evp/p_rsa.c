@@ -68,6 +68,7 @@
 #include "../internal.h"
 #include "../fipsmodule/rsa/internal.h"
 #include "internal.h"
+#include "../rsa_extra/rsassa_pss.h"
 
 typedef struct {
   // Key gen parameters
@@ -117,74 +118,6 @@ static int pss_parameter_match(EVP_PKEY_CTX *ctx, const EVP_MD *k_md,
   return 1;
 }
 
-// RSASSA_PSS_hash_create return one on success and zero on failure.
-// When success and the given algorithm is not default (sha1), *out will hold
-// the allocated RSA_ALGOR_IDENTIFIER.
-static int RSASSA_PSS_hash_create(const EVP_MD *sigmd, RSA_ALGOR_IDENTIFIER **out) {
-  if (sigmd == NULL) {
-    *out = NULL;
-    return 1;
-  }
-  return RSASSA_PSS_supported_hash(EVP_MD_type(sigmd), out);
-}
-
-// RSASSA_PSS_mga_create return one on success and zero on failure.
-// When success and the given algorithm is not default (sha1), *out will hold
-// the allocated RSA_ALGOR_IDENTIFIER.
-static int RSASSA_PSS_mga_create(const EVP_MD *mgf1md, RSA_MGA_IDENTIFIER **out) {
-  if (mgf1md == NULL || EVP_MD_type(mgf1md) == NID_sha1) {
-    *out = NULL;
-    return 1;
-  }
-  RSA_MGA_IDENTIFIER *mga = RSA_MGA_IDENTIFIER_new();
-  if (mga == NULL) {
-    return 0;
-  }
-  if (RSASSA_PSS_supported_hash(EVP_MD_type(mgf1md), &(mga->one_way_hash))) {
-    *out = mga;
-    return 1;
-  }
-  RSA_MGA_IDENTIFIER_free(mga);
-  return 0;
-}
-
-// RSASSA_PSS_saltlen_create return one on success and zero on failure.
-// When success and the given len is not default (20), *out will hold
-// the allocated RSA_INTEGER.
-static int RSASSA_PSS_saltlen_create(int saltlen, RSA_INTEGER **out) {
-  if (saltlen == 20) {
-    return 1;
-  }
-  *out = RSA_INTEGER_new();
-  if (*out != NULL) {
-    (*out)->value = saltlen;
-    return 1;
-  }
-  return 0;
-}
-
-// RSASSA_PSS_PARAMS_create return one on success and zero on failure.
-// When success and the given algorithms are not default (sha1), *out will hold the allocated RSASSA_PSS_PARAMS.
-static int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd, const EVP_MD *mgf1md,
-                                    int saltlen, RSASSA_PSS_PARAMS **out) {
-  // If all parameters are default values don't set pss.
-  if (sigmd == NULL && mgf1md == NULL && saltlen == -2) {
-    return 1;
-  }
-  RSASSA_PSS_PARAMS *pss = RSASSA_PSS_PARAMS_new();
-  if (pss == NULL) {
-    return 0;
-  }
-  if (!RSASSA_PSS_hash_create(sigmd, &pss->hash_algor) ||
-      !RSASSA_PSS_mga_create(mgf1md, &pss->mask_gen_algor) ||
-      !RSASSA_PSS_saltlen_create(saltlen, &pss->salt_len)) {
-    RSASSA_PSS_PARAMS_free(pss);
-    return 0;
-  }
-  *out = pss;
-  return 1;
-}
-
 // Set PSS parameters when generating a key, if necessary.
 static int rsa_set_pss_param(RSA *rsa, EVP_PKEY_CTX *ctx) {
   if (!pkey_ctx_is_pss(ctx)) {
@@ -192,63 +125,6 @@ static int rsa_set_pss_param(RSA *rsa, EVP_PKEY_CTX *ctx) {
   }
   RSA_PKEY_CTX *rctx = ctx->data;
   return RSASSA_PSS_PARAMS_create(rctx->md, rctx->mgf1md, rctx->saltlen, &(rsa->pss));
-}
-
-static const EVP_MD *nid_to_EVP_MD(int nid) {
-  switch (nid) {
-      case NID_sha1:
-        return EVP_sha1();
-      case NID_sha224:
-        return EVP_sha224();
-      case NID_sha256:
-        return EVP_sha256();
-      case NID_sha384:
-        return EVP_sha384();
-      case NID_sha512:
-        return EVP_sha512();
-      default:
-        return NULL;
-    }
-}
-
-static int RSASSA_PSS_hash_to_EVP_MD(
-    RSA_ALGOR_IDENTIFIER *hash_algor, const EVP_MD **md) {
-  if (hash_algor) {
-    *md = nid_to_EVP_MD(hash_algor->nid);
-  } else {
-    *md = EVP_sha1();
-  }
-  return *md != NULL;
-}
-
-static int rsa_pss_get_param(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
-                      const EVP_MD **mgf1md, int *saltlen)
-{
-    if (pss == NULL) {
-      return 0;
-    }
-    if (!RSASSA_PSS_hash_to_EVP_MD(pss->hash_algor, md)) {
-      return 0;
-    }
-    RSA_ALGOR_IDENTIFIER *mga_hash = NULL;
-    if (pss->mask_gen_algor) {
-      mga_hash = pss->mask_gen_algor->one_way_hash;
-    }
-    if (!RSASSA_PSS_hash_to_EVP_MD(mga_hash, mgf1md)) {
-      return 0;
-    }
-    if (pss->salt_len) {
-      if (pss->salt_len->value < 0) {
-        return 0;
-      }
-      *saltlen = pss->salt_len->value;
-    } else {
-      *saltlen = 20;
-    }
-    if (pss->trailer_field && pss->trailer_field->value != 1) {
-      return 0;
-    }
-    return 1;
 }
 
 /*
@@ -271,7 +147,7 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
     return 1;
   }
   // Get and check parameters.
-  if (!rsa_pss_get_param(rsa->pss, &md, &mgf1md, &min_saltlen)) {
+  if (!RSASSA_PSS_PARAMS_get(rsa->pss, &md, &mgf1md, &min_saltlen)) {
     return 0;
   }
 

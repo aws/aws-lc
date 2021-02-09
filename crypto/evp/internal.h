@@ -251,12 +251,6 @@ typedef struct {
   char has_private;
 } X25519_KEY;
 
-// RSASSA_PSS_supported_hash return one on success and zero on failure.
-// When success and the hash is sha1, |*out| will hold NULL.
-// When success and the hash is not sha1, set |*out| will have hold allocated RSA_ALGOR_IDENTIFIER.
-// When failure, return zero.
-int RSASSA_PSS_supported_hash(int nid, RSA_ALGOR_IDENTIFIER **out);
-
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;

@@ -59,13 +59,10 @@
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/rsa.h>
 
-#include "../fipsmodule/rsa/internal.h"
 #include "internal.h"
 #include "../rsa_extra/rsassa_pss.h"
-
 
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   // See RFC 3279, section 2.3.1.
