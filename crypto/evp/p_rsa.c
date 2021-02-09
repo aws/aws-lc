@@ -127,10 +127,8 @@ static int rsa_set_pss_param(RSA *rsa, EVP_PKEY_CTX *ctx) {
   return RSASSA_PSS_PARAMS_create(rctx->md, rctx->mgf1md, rctx->saltlen, &(rsa->pss));
 }
 
-/*
- * Called for PSS sign or verify initialisation: checks PSS parameter
- * sanity and sets any restrictions on key usage.
- */
+// Called for PSS sign or verify initialisation: checks PSS parameter
+// sanity and sets any restrictions on key usage.
 static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
   RSA *rsa;
   RSA_PKEY_CTX *rctx = ctx->data;

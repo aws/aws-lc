@@ -234,11 +234,11 @@ int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   return 0;
 }
 
-// RSASSA_PSS_supported_hash return one on success and zero on failure.
+// pss_parse_nid return one on success and zero on failure.
 // When success and the hash is sha1, |*out| will hold NULL.
 // When success and the hash is not sha1, set |*out| will have hold allocated
 // RSA_ALGOR_IDENTIFIER. When failure, return zero.
-static int RSASSA_PSS_supported_hash(int nid, RSA_ALGOR_IDENTIFIER **out) {
+static int pss_parse_nid(int nid, RSA_ALGOR_IDENTIFIER **out) {
   if (nid == NID_sha1) {
     (*out) = NULL;
     return 1;
@@ -331,7 +331,7 @@ static int pss_hash_create(const EVP_MD *sigmd, RSA_ALGOR_IDENTIFIER **out) {
     *out = NULL;
     return 1;
   }
-  return RSASSA_PSS_supported_hash(EVP_MD_type(sigmd), out);
+  return pss_parse_nid(EVP_MD_type(sigmd), out);
 }
 
 // pss_mga_create return one on success and zero on failure.
@@ -346,7 +346,7 @@ static int pss_mga_create(const EVP_MD *mgf1md, RSA_MGA_IDENTIFIER **out) {
   if (mga == NULL) {
     return 0;
   }
-  if (RSASSA_PSS_supported_hash(EVP_MD_type(mgf1md), &(mga->one_way_hash))) {
+  if (pss_parse_nid(EVP_MD_type(mgf1md), &(mga->one_way_hash))) {
     *out = mga;
     return 1;
   }
