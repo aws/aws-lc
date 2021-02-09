@@ -60,10 +60,8 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/base.h>
 #include <openssl/digest.h>
 #include <openssl/engine.h>
-#include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/ex_data.h>
 #include <openssl/md5.h>
@@ -75,7 +73,6 @@
 #include "../bn/internal.h"
 #include "../delocate.h"
 #include "../../internal.h"
-#include "../../evp/internal.h"
 #include "internal.h"
 
 
