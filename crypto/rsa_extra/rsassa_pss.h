@@ -53,8 +53,8 @@ void RSA_MGA_IDENTIFIER_free(RSA_MGA_IDENTIFIER *identifier);
 OPENSSL_EXPORT void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params);
 
 // RSASSA_PSS_parse_params return one on success and zero on failure.
-// If success and the params are not empty, pss will be allocated and have the bytes parsed.
-// Otherwise, pss will be NULL.
+// If success and the |*params| are not empty, |*pss| will be allocated and
+// have the bytes parsed. Otherwise, |*pss| will be NULL.
 OPENSSL_EXPORT int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss);
 
 #if defined(__cplusplus)
