@@ -43,7 +43,6 @@ struct rsassa_pss_params_st {
 RSA_INTEGER *RSA_INTEGER_new(void);
 RSA_ALGOR_IDENTIFIER *RSA_ALGOR_IDENTIFIER_new(void);
 RSA_MGA_IDENTIFIER *RSA_MGA_IDENTIFIER_new(void);
-// Otherwise, pss will be NULL.
 OPENSSL_EXPORT RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void);
 
 // RSASSA_PSS_PARAMS related free functions.
@@ -53,21 +52,14 @@ void RSA_MGA_IDENTIFIER_free(RSA_MGA_IDENTIFIER *identifier);
 OPENSSL_EXPORT void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params);
 
 // RSASSA_PSS_parse_params return one on success and zero on failure.
-// If success and the params are not empty, pss will be allocated and have the
-// bytes parsed. Otherwise, pss will be NULL.
+// If success and the |params| are not empty, |*pss| will be allocated
+// and have the bytes parsed. Otherwise, |*pss| will be NULL.
 OPENSSL_EXPORT int RSASSA_PSS_parse_params(CBS *params,
                                            RSASSA_PSS_PARAMS **pss);
 
-// RSASSA_PSS_supported_hash return one on success and zero on failure.
-// When success and the hash is sha1, |*out| will hold NULL.
-// When success and the hash is not sha1, set |*out| will have hold allocated
-// RSA_ALGOR_IDENTIFIER. When failure, return zero.
-OPENSSL_EXPORT int RSASSA_PSS_supported_hash(int nid,
-                                             RSA_ALGOR_IDENTIFIER **out);
-
 // RSASSA_PSS_PARAMS_create return one on success and zero on failure.
 // When success and the given algorithms are not default (sha1), |*out| will hold
-// the allocated RSASSA_PSS_PARAMS.
+// the allocated |RSASSA_PSS_PARAMS|.
 OPENSSL_EXPORT int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd,
                                             const EVP_MD *mgf1md, int saltlen,
                                             RSASSA_PSS_PARAMS **out);

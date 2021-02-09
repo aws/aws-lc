@@ -234,7 +234,11 @@ int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   return 0;
 }
 
-int RSASSA_PSS_supported_hash(int nid, RSA_ALGOR_IDENTIFIER **out) {
+// RSASSA_PSS_supported_hash return one on success and zero on failure.
+// When success and the hash is sha1, |*out| will hold NULL.
+// When success and the hash is not sha1, set |*out| will have hold allocated
+// RSA_ALGOR_IDENTIFIER. When failure, return zero.
+static int RSASSA_PSS_supported_hash(int nid, RSA_ALGOR_IDENTIFIER **out) {
   if (nid == NID_sha1) {
     (*out) = NULL;
     return 1;
