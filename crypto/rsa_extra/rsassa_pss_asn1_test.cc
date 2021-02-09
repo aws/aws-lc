@@ -3,14 +3,12 @@
 
 #include <openssl/base.h>
 
-#include <stdlib.h>
-
 #include <gtest/gtest.h>
 
 #include <openssl/bytestring.h>
 #include <openssl/nid.h>
 
-#include <openssl/rsa.h>
+#include "rsassa_pss.h"
 
 // Below test inputs are created by running 'openssl req -x509',
 // and then exacting the bytes of RSASSA-PSS-params from generated results.
@@ -119,14 +117,14 @@ static const uint8_t pss_with_invalid_mgf1_oid[] = {
     0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x09, 0x30, 0x0b, 0x06, 0x09,
     0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04};
 
-struct RSASSAPSSParamsTestInput {
+struct PssParamsTestInput {
   const uint8_t *der;
   size_t der_len;
   int expected_hash_nid;
   int expected_mask_gen_nid;
   int expected_salt_len;
   int expected_trailer_field;
-} kRSASSAPSSParamsTestInputs[] = {
+} kPssParamsTestInputs[] = {
     {pss_sha1_salt_absent, sizeof(pss_sha1_salt_absent), NID_undef, NID_undef,
      NID_undef, NID_undef},
     {pss_sha224_salt_absent, sizeof(pss_sha224_salt_absent), NID_sha224,
@@ -143,10 +141,9 @@ struct RSASSAPSSParamsTestInput {
      NID_undef},
 };
 
-class RSASSAPSSASN1Test
-    : public testing::TestWithParam<RSASSAPSSParamsTestInput> {};
+class RsassaPssTest: public testing::TestWithParam<PssParamsTestInput> {};
 
-TEST_P(RSASSAPSSASN1Test, TestDecodeParams) {
+TEST_P(RsassaPssTest, DecodeParamsDer) {
   const auto &param = GetParam();
   CBS params;
   params.data = param.der;
@@ -195,22 +192,21 @@ TEST_P(RSASSAPSSASN1Test, TestDecodeParams) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(All, RSASSAPSSASN1Test,
-                         testing::ValuesIn(kRSASSAPSSParamsTestInputs));
+INSTANTIATE_TEST_SUITE_P(All, RsassaPssTest, testing::ValuesIn(kPssParamsTestInputs));
 
-struct RSASSAPSSParamsInvalidInput {
+struct PssParamsInvalidInput {
   const uint8_t *der;
   size_t der_len;
-} kRSASSAPSSParamsInvalidInputs[] = {
+} kPssParamsInvalidInputs[] = {
     {invalid_pss_salt_missing, sizeof(invalid_pss_salt_missing)},
     {pss_with_invalid_sha256_oid, sizeof(pss_with_invalid_sha256_oid)},
     {pss_with_invalid_mgf1_oid, sizeof(pss_with_invalid_mgf1_oid)},
 };
 
-class RSASSAPSSInvalidASN1Test
-    : public testing::TestWithParam<RSASSAPSSParamsInvalidInput> {};
+class RsassaPssInvalidTest
+    : public testing::TestWithParam<PssParamsInvalidInput> {};
 
-TEST_P(RSASSAPSSInvalidASN1Test, TestDecodeInvalidBytes) {
+TEST_P(RsassaPssInvalidTest, DecodeInvalidDer) {
   const auto &param = GetParam();
   CBS params;
   params.data = param.der;
@@ -219,5 +215,5 @@ TEST_P(RSASSAPSSInvalidASN1Test, TestDecodeInvalidBytes) {
   ASSERT_FALSE(RSASSA_PSS_parse_params(&params, &pss));
 }
 
-INSTANTIATE_TEST_SUITE_P(All, RSASSAPSSInvalidASN1Test,
-                         testing::ValuesIn(kRSASSAPSSParamsInvalidInputs));
+INSTANTIATE_TEST_SUITE_P(All, RsassaPssInvalidTest,
+                         testing::ValuesIn(kPssParamsInvalidInputs));
