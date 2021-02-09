@@ -655,59 +655,6 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
 // on success or zero otherwise.
 OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);
 
-// * Start of RSASSA-PSS-params *
-
-// Section 2.1. https://tools.ietf.org/html/rfc4055#page-4
-struct rsa_pss_supported_algor_st {
-  int nid;
-  uint8_t oid[9];
-  uint8_t oid_len;
-};
-
-struct rsa_algor_identifier_st {
-  int nid;
-};
-
-struct rsa_mga_identifier_st {
-  // Mask generation algorithm identifier.
-  RSA_ALGOR_IDENTIFIER *mask_gen;
-  // Associated hash algorithm identifier.
-  RSA_ALGOR_IDENTIFIER *one_way_hash;
-};
-
-struct rsa_integer_st {
-  int64_t value;
-};
-
-// RSASSA-PSS-params is defined on rfc4055 section 3.1.
-// See https://tools.ietf.org/html/rfc4055#page-7
-struct rsassa_pss_params_st {
-  RSA_ALGOR_IDENTIFIER *hash_algor;
-  RSA_MGA_IDENTIFIER *mask_gen_algor;
-  RSA_INTEGER *salt_len;
-  RSA_INTEGER *trailer_field;
-};
-
-// RSASSA_PSS_PARAMS related malloc functions.
-RSA_INTEGER *RSA_INTEGER_new(void);
-RSA_ALGOR_IDENTIFIER *RSA_ALGOR_IDENTIFIER_new(void);
-RSA_MGA_IDENTIFIER *RSA_MGA_IDENTIFIER_new(void);
-// Otherwise, pss will be NULL.
-OPENSSL_EXPORT RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void);
-
-// RSASSA_PSS_PARAMS related free functions.
-void RSA_INTEGER_free(RSA_INTEGER *ptr);
-void RSA_ALGOR_IDENTIFIER_free(RSA_ALGOR_IDENTIFIER *ptr);
-void RSA_MGA_IDENTIFIER_free(RSA_MGA_IDENTIFIER *identifier);
-OPENSSL_EXPORT void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params);
-
-// RSASSA_PSS_parse_params return one on success and zero on failure.
-// If success and the params are not empty, pss will be allocated and have the bytes parsed.
-// Otherwise, pss will be NULL.
-OPENSSL_EXPORT int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss);
-
-// * End of RSASSA-PSS-params *
-
 struct rsa_meth_st {
   struct openssl_method_common_st common;
 
@@ -818,7 +765,6 @@ extern "C++" {
 
 BSSL_NAMESPACE_BEGIN
 
-BORINGSSL_MAKE_DELETER(RSASSA_PSS_PARAMS, RSASSA_PSS_PARAMS_free)
 BORINGSSL_MAKE_DELETER(RSA, RSA_free)
 BORINGSSL_MAKE_UP_REF(RSA, RSA_up_ref)
 

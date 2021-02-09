@@ -5,11 +5,12 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
+#include <openssl/mem.h>
 #include <openssl/err.h>
-#include <openssl/rsa.h>
 
 #include "../internal.h"
 #include "../evp/internal.h"
+#include "rsassa_pss.h"
 
 const RSA_PSS_SUPPORTED_ALGOR sha1_func = {
     NID_sha1,
@@ -251,4 +252,72 @@ int RSASSA_PSS_supported_hash(int nid, RSA_ALGOR_IDENTIFIER **out) {
   }
   OPENSSL_PUT_ERROR(RSA, EVP_R_UNSUPPORTED_ALGORITHM);
   return 0;
+}
+
+RSA_INTEGER *RSA_INTEGER_new(void) {
+  RSA_INTEGER *ret = OPENSSL_malloc(sizeof(RSA_INTEGER));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSA_INTEGER));
+  return ret;
+}
+
+RSA_ALGOR_IDENTIFIER *RSA_ALGOR_IDENTIFIER_new(void) {
+  RSA_ALGOR_IDENTIFIER *ret = OPENSSL_malloc(sizeof(RSA_ALGOR_IDENTIFIER));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSA_ALGOR_IDENTIFIER));
+  return ret;
+}
+
+RSA_MGA_IDENTIFIER *RSA_MGA_IDENTIFIER_new(void) {
+  RSA_MGA_IDENTIFIER *ret = OPENSSL_malloc(sizeof(RSA_MGA_IDENTIFIER));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSA_MGA_IDENTIFIER));
+  return ret;
+}
+
+RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void) {
+  RSASSA_PSS_PARAMS *ret = OPENSSL_malloc(sizeof(RSASSA_PSS_PARAMS));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(RSASSA_PSS_PARAMS));
+  return ret;
+}
+
+void RSA_INTEGER_free(RSA_INTEGER *ptr) {
+  OPENSSL_free(ptr);
+}
+
+void RSA_ALGOR_IDENTIFIER_free(RSA_ALGOR_IDENTIFIER *algor) {
+  OPENSSL_free(algor);
+}
+
+void RSA_MGA_IDENTIFIER_free(RSA_MGA_IDENTIFIER *mga) {
+  if (mga == NULL) {
+    return;
+  }
+  RSA_ALGOR_IDENTIFIER_free(mga->mask_gen);
+  RSA_ALGOR_IDENTIFIER_free(mga->one_way_hash);
+  OPENSSL_free(mga);
+}
+
+void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params) {
+  if (params == NULL) {
+    return;
+  }
+  RSA_ALGOR_IDENTIFIER_free(params->hash_algor);
+  RSA_MGA_IDENTIFIER_free(params->mask_gen_algor);
+  RSA_INTEGER_free(params->salt_len);
+  RSA_INTEGER_free(params->trailer_field);
+  OPENSSL_free(params);
 }
