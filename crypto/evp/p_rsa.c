@@ -151,8 +151,7 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
 
   // See if minimum salt length exceeds maximum possible.
   max_saltlen = RSA_size(rsa) - EVP_MD_size(md);
-  // TODO(shang): investigate how below check is derived.
-  // Seems based on https://tools.ietf.org/html/rfc8017#section-9.1.1
+  // 8.1.1. Step1 https://tools.ietf.org/html/rfc8017#page-32
   if ((RSA_bits(rsa) & 0x7) == 1) {
     max_saltlen--;
   }

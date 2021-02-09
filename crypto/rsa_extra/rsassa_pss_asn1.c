@@ -358,6 +358,9 @@ static int pss_mga_create(const EVP_MD *mgf1md, RSA_MGA_IDENTIFIER **out) {
 // When success and the given len is not default (20), |*out| will hold
 // the allocated RSA_INTEGER.
 static int pss_saltlen_create(int saltlen, RSA_INTEGER **out) {
+  if (saltlen <= 0) {
+    return 0;
+  }
   if (saltlen == 20) {
     return 1;
   }
