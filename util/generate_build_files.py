@@ -21,7 +21,7 @@ import os
 import subprocess
 import sys
 import json
-
+from string import Template
 
 # OS_ARCH_COMBOS maps from OS and platform to the OpenSSL assembly "style" for
 # that platform and the extension used by asm files.
@@ -41,15 +41,7 @@ OS_ARCH_COMBOS = [
 
 # NON_PERL_FILES enumerates assembly files that are not processed by the
 # perlasm system.
-NON_PERL_FILES = {
-    ('linux', 'arm'): [
-        'src/crypto/curve25519/asm/x25519-asm-arm.S',
-        'src/crypto/poly1305/poly1305_arm_asm.S',
-    ],
-    ('linux', 'x86_64'): [
-        'src/crypto/hrss/asm/poly_rq_mul.S',
-    ],
-}
+NON_PERL_FILES = {}
 
 PREFIX = None
 EMBED_TEST_DATA = True
@@ -155,7 +147,7 @@ class Android(object):
     Returns:
       A copy of |asm| with files filtered according to |want_bcm|
     """
-    return [(archinfo, filter(lambda p: ("/crypto/fipsmodule/" in p) == want_bcm, files))
+    return [(archinfo, filter(lambda p: (os.path.join(SRC_DIR, "crypto/fipsmodule/") in p) == want_bcm, files))
             for (archinfo, files) in asm]
 
 
@@ -418,7 +410,7 @@ class GYP(object):
 class CMake(object):
 
   def __init__(self):
-    self.header = \
+    self.header = Template(\
 R'''# Copyright (c) 2019 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -427,7 +419,7 @@ R'''# Copyright (c) 2019 The Chromium Authors. All rights reserved.
 
 cmake_minimum_required(VERSION 3.0)
 
-project(BoringSSL LANGUAGES C CXX)
+project(AWSLC LANGUAGES C CXX)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CLANG 1)
@@ -451,6 +443,19 @@ endif()
 if(NOT WIN32)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=700")
 endif()
+
+if(UNIX AND NOT APPLE)
+  include(GNUInstallDirs)
+elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
+  set(CMAKE_INSTALL_LIBDIR "lib")
+  set(CMAKE_INSTALL_INCLUDEDIR "include")
+  set(CMAKE_INSTALL_BINDIR "bin")
+endif()
+
+install(DIRECTORY ${openssl_dir}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        COMPONENT Development
+)
 
 if(WIN32)
   add_definitions(-D_HAS_EXCEPTIONS=0)
@@ -549,9 +554,10 @@ if(BUILD_SHARED_LIBS)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
-include_directories(src/include)
+include_directories(${include_dir})
 
-'''
+''').safe_substitute(include_dir = os.path.join(SRC_DIR, "include"),
+                     openssl_dir = os.path.join(SRC_DIR, "include", "openssl"))
 
   def PrintLibrary(self, out, name, files):
     out.write('add_library(\n')
@@ -580,7 +586,7 @@ include_directories(src/include)
     out.write(')\n\n')
 
   def WriteFiles(self, files, asm_outputs):
-    with open('CMakeLists.txt', 'w+') as cmake:
+    with open(os.path.join(DEST_DIR, 'CMakeLists.txt'), 'w+') as cmake:
       cmake.write(self.header)
 
       for ((osname, arch), asm_files) in asm_outputs:
@@ -616,6 +622,22 @@ if(WIN32)
   target_link_libraries(bssl ws2_32)
 endif()
 
+install(TARGETS crypto
+        EXPORT crypto-targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(TARGETS ssl
+        EXPORT ssl-targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(TARGETS bssl
+        EXPORT bssl-targets
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 ''')
 
 class JSON(object):
@@ -639,7 +661,7 @@ def FindCMakeFiles(directory):
 
 def OnlyFIPSFragments(path, dent, is_dir):
   return is_dir or (path.startswith(
-      os.path.join('src', 'crypto', 'fipsmodule', '')) and
+      os.path.join(SRC_DIR, 'crypto', 'fipsmodule', '')) and
       NoTests(path, dent, is_dir))
 
 def NoTestsNorFIPSFragments(path, dent, is_dir):
@@ -743,7 +765,7 @@ def ExtractPerlAsmFromCMakeFile(cmakefile):
       perlasms.append({
           'extra_args': params[2:],
           'input': os.path.join(os.path.dirname(cmakefile), params[1]),
-          'output': os.path.join(os.path.dirname(cmakefile), params[0]),
+          'output': os.path.join(os.path.relpath(os.path.dirname(cmakefile), SRC_DIR), params[0])
       })
 
   return perlasms
@@ -751,9 +773,9 @@ def ExtractPerlAsmFromCMakeFile(cmakefile):
 
 def ReadPerlAsmOperations():
   """Returns a list of all perlasm() directives found in CMake config files in
-  src/."""
+  src_dir"""
   perlasms = []
-  cmakefiles = FindCMakeFiles('src')
+  cmakefiles = FindCMakeFiles(SRC_DIR)
 
   for cmakefile in cmakefiles:
     perlasms.extend(ExtractPerlAsmFromCMakeFile(cmakefile))
@@ -798,14 +820,12 @@ def WriteAsmFiles(perlasms):
   for osarch in OS_ARCH_COMBOS:
     (osname, arch, perlasm_style, extra_args, asm_ext) = osarch
     key = (osname, arch)
-    outDir = '%s-%s' % key
+    outDir = os.path.join(DEST_DIR, ('%s-%s' % key))
 
     for perlasm in perlasms:
       filename = os.path.basename(perlasm['input'])
       output = perlasm['output']
-      if not output.startswith('src'):
-        raise ValueError('output missing src: %s' % output)
-      output = os.path.join(outDir, output[4:])
+      output = os.path.join(outDir, output)
       if output.endswith('-armx.${ASM_EXT}'):
         output = output.replace('-armx',
                                 '-armx64' if arch == 'aarch64' else '-armx32')
@@ -816,10 +836,10 @@ def WriteAsmFiles(perlasms):
                 perlasm['extra_args'] + extra_args)
         asmfiles.setdefault(key, []).append(output)
 
-  for (key, non_perl_asm_files) in NON_PERL_FILES.iteritems():
+  for (key, non_perl_asm_files) in NON_PERL_FILES.items():
     asmfiles.setdefault(key, []).extend(non_perl_asm_files)
 
-  for files in asmfiles.itervalues():
+  for files in asmfiles.values():
     files.sort()
 
   return asmfiles
@@ -855,48 +875,52 @@ def ExtractVariablesFromCMakeFile(cmakefile):
 
 
 def main(platforms):
-  cmake = ExtractVariablesFromCMakeFile(os.path.join('src', 'sources.cmake'))
-  crypto_c_files = (FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments) +
-                    FindCFiles(os.path.join('src', 'third_party', 'fiat'), NoTestsNorFIPSFragments))
-  fips_fragments = FindCFiles(os.path.join('src', 'crypto', 'fipsmodule'), OnlyFIPSFragments)
-  ssl_source_files = FindCFiles(os.path.join('src', 'ssl'), NoTests)
-  tool_c_files = FindCFiles(os.path.join('src', 'tool'), NoTests)
-  tool_h_files = FindHeaderFiles(os.path.join('src', 'tool'), AllFiles)
+  cmake = ExtractVariablesFromCMakeFile(os.path.join(SRC_DIR, 'sources.cmake'))
+  crypto_c_files = (FindCFiles(os.path.join(SRC_DIR, 'crypto'), NoTestsNorFIPSFragments) +
+                    FindCFiles(os.path.join(SRC_DIR, 'third_party', 'fiat'), NoTestsNorFIPSFragments))
+  fips_fragments = FindCFiles(os.path.join(SRC_DIR, 'crypto', 'fipsmodule'), OnlyFIPSFragments)
+  ssl_source_files = FindCFiles(os.path.join(SRC_DIR, 'ssl'), NoTests)
+  tool_c_files = FindCFiles(os.path.join(SRC_DIR, 'tool'), NoTests)
+  tool_h_files = FindHeaderFiles(os.path.join(SRC_DIR, 'tool'), AllFiles)
 
   # BCM shared library C files
   bcm_crypto_c_files = [
-      os.path.join('src', 'crypto', 'fipsmodule', 'bcm.c')
+      os.path.join(SRC_DIR, 'crypto', 'fipsmodule', 'bcm.c')
   ]
 
   # Generate err_data.c
-  with open('err_data.c', 'w+') as err_data:
+  if not os.path.isdir(DEST_DIR):
+    os.makedirs(DEST_DIR)
+
+  with open(os.path.join(DEST_DIR, 'err_data.c'), 'w+') as err_data:
     subprocess.check_call(['go', 'run', 'err_data_generate.go'],
-                          cwd=os.path.join('src', 'crypto', 'err'),
+                          cwd=os.path.join(SRC_DIR, 'crypto', 'err'),
                           stdout=err_data)
-  crypto_c_files.append('err_data.c')
+
+  crypto_c_files.append(os.path.join(DEST_DIR, 'err_data.c'))
   crypto_c_files.sort()
 
-  test_support_c_files = FindCFiles(os.path.join('src', 'crypto', 'test'),
+  test_support_c_files = FindCFiles(os.path.join(SRC_DIR, 'crypto', 'test'),
                                     NotGTestSupport)
   test_support_h_files = (
-      FindHeaderFiles(os.path.join('src', 'crypto', 'test'), AllFiles) +
-      FindHeaderFiles(os.path.join('src', 'ssl', 'test'), NoTestRunnerFiles))
+      FindHeaderFiles(os.path.join(SRC_DIR, 'crypto', 'test'), AllFiles) +
+      FindHeaderFiles(os.path.join(SRC_DIR, 'ssl', 'test'), NoTestRunnerFiles))
 
   crypto_test_files = []
   if EMBED_TEST_DATA:
     # Generate crypto_test_data.cc
-    with open('crypto_test_data.cc', 'w+') as out:
+    with open(os.path.join(DEST_DIR, 'crypto_test_data.cc'), 'w+') as out:
       subprocess.check_call(
           ['go', 'run', 'util/embed_test_data.go'] + cmake['CRYPTO_TEST_DATA'],
-          cwd='src',
+          cwd=SRC_DIR,
           stdout=out)
-    crypto_test_files += ['crypto_test_data.cc']
+    crypto_test_files += [os.path.join(DEST_DIR, 'crypto_test_data.cc')]
 
-  crypto_test_files += FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
+  crypto_test_files += FindCFiles(os.path.join(SRC_DIR, 'crypto'), OnlyTests)
   crypto_test_files += [
-      'src/crypto/test/abi_test.cc',
-      'src/crypto/test/file_test_gtest.cc',
-      'src/crypto/test/gtest_main.cc',
+      os.path.join(SRC_DIR, 'crypto/test/abi_test.cc'),
+      os.path.join(SRC_DIR, 'crypto/test/file_test_gtest.cc'),
+      os.path.join(SRC_DIR, 'crypto/test/gtest_main.cc'),
   ]
   # urandom_test.cc is in a separate binary so that it can be test PRNG
   # initialisation.
@@ -906,31 +930,31 @@ def main(platforms):
   ]
   crypto_test_files.sort()
 
-  ssl_test_files = FindCFiles(os.path.join('src', 'ssl'), OnlyTests)
+  ssl_test_files = FindCFiles(os.path.join(SRC_DIR, 'ssl'), OnlyTests)
   ssl_test_files += [
-      'src/crypto/test/abi_test.cc',
-      'src/crypto/test/gtest_main.cc',
+      os.path.join(SRC_DIR, 'crypto/test/abi_test.cc'),
+      os.path.join(SRC_DIR, 'crypto/test/gtest_main.cc'),
   ]
   ssl_test_files.sort()
 
   urandom_test_files = [
-      'src/crypto/fipsmodule/rand/urandom_test.cc',
+      os.path.join(SRC_DIR, "crypto/fipsmodule/rand/urandom_test.cc"),
   ]
 
-  fuzz_c_files = FindCFiles(os.path.join('src', 'fuzz'), NoTests)
+  fuzz_c_files = FindCFiles(os.path.join(SRC_DIR, 'fuzz'), NoTests)
 
-  ssl_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
+  ssl_h_files = FindHeaderFiles(os.path.join(SRC_DIR, 'include', 'openssl'),
                                 SSLHeaderFiles)
 
   def NotSSLHeaderFiles(path, filename, is_dir):
     return not SSLHeaderFiles(path, filename, is_dir)
-  crypto_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
+  crypto_h_files = FindHeaderFiles(os.path.join(SRC_DIR, 'include', 'openssl'),
                                    NotSSLHeaderFiles)
 
-  ssl_internal_h_files = FindHeaderFiles(os.path.join('src', 'ssl'), NoTests)
+  ssl_internal_h_files = FindHeaderFiles(os.path.join(SRC_DIR, 'ssl'), NoTests)
   crypto_internal_h_files = (
-      FindHeaderFiles(os.path.join('src', 'crypto'), NoTests) +
-      FindHeaderFiles(os.path.join('src', 'third_party', 'fiat'), NoTests))
+      FindHeaderFiles(os.path.join(SRC_DIR, 'crypto'), NoTests) +
+      FindHeaderFiles(os.path.join(SRC_DIR, 'third_party', 'fiat'), NoTests))
 
   files = {
       'bcm_crypto': bcm_crypto_c_files,
@@ -938,7 +962,7 @@ def main(platforms):
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
       'crypto_test': crypto_test_files,
-      'crypto_test_data': sorted('src/' + x for x in cmake['CRYPTO_TEST_DATA']),
+      'crypto_test_data': sorted(os.path.join(SRC_DIR, x) for x in cmake['CRYPTO_TEST_DATA']),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'ssl': ssl_source_files,
@@ -952,7 +976,7 @@ def main(platforms):
       'urandom_test': urandom_test_files,
   }
 
-  asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).iteritems())
+  asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
 
   for platform in platforms:
     platform.WriteFiles(files, asm_outputs)
@@ -979,9 +1003,28 @@ if __name__ == '__main__':
       '--embed_test_data', type='choice', dest='embed_test_data',
       action='store', default="true", choices=["true", "false"],
       help='For Bazel or GN, don\'t embed data files in crypto_test_data.cc')
+  parser.add_option(
+      '--src-dir', type='string', dest='src_dir', default=os.getcwd(),
+      help='Source directory for AWS-LC')
+  parser.add_option(
+      '--dest-dir', type='string', dest='dest_dir', default=os.path.join(os.getcwd(), 'generated-src'),
+      help='Destination directory for intermediate build files')
   options, args = parser.parse_args(sys.argv[1:])
   PREFIX = options.prefix
   EMBED_TEST_DATA = (options.embed_test_data == "true")
+
+  SRC_DIR = os.path.abspath(options.src_dir)
+  DEST_DIR = os.path.abspath(options.dest_dir)
+
+  NON_PERL_FILES = {
+      ('linux', 'arm'): [
+          os.path.join(SRC_DIR, "crypto/curve25519/asm/x25519-asm-arm.S"),
+          os.path.join(SRC_DIR, "crypto/poly1305/asm/poly1305_asm_arm.S"),
+      ],
+      ('linux', 'x86_64'): [
+          os.path.join(SRC_DIR, "crypto/hrss/asm/poly_rq_mul.S"),
+      ],
+  }
 
   if not args:
     parser.print_help()
