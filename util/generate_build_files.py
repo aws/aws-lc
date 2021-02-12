@@ -556,8 +556,8 @@ endif()
 
 include_directories(${include_dir})
 
-''').safe_substitute(include_dir = os.path.join(SRC_DIR, "include"),
-                     openssl_dir = os.path.join(SRC_DIR, "include", "openssl"))
+''').safe_substitute(include_dir = os.path.relpath(os.path.join(SRC_DIR, "include"), DEST_DIR),
+                     openssl_dir = os.path.relpath(os.path.join(SRC_DIR, "include", "openssl"), DEST_DIR))
 
   def PrintLibrary(self, out, name, files):
     out.write('add_library(\n')
@@ -717,7 +717,7 @@ def FindCFiles(directory, filter_func):
         continue
       if not filter_func(path, filename, False):
         continue
-      cfiles.append(os.path.join(path, filename))
+      cfiles.append(os.path.relpath(os.path.join(path, filename), DEST_DIR))
 
     for (i, dirname) in enumerate(dirnames):
       if not filter_func(path, dirname, True):
@@ -825,14 +825,14 @@ def WriteAsmFiles(perlasms):
     for perlasm in perlasms:
       filename = os.path.basename(perlasm['input'])
       output = perlasm['output']
-      output = os.path.join(outDir, output)
+      output = os.path.relpath(os.path.join(outDir, output), DEST_DIR)
       if output.endswith('-armx.${ASM_EXT}'):
         output = output.replace('-armx',
                                 '-armx64' if arch == 'aarch64' else '-armx32')
       output = output.replace('${ASM_EXT}', asm_ext)
 
       if arch in ArchForAsmFilename(filename):
-        PerlAsm(output, perlasm['input'], perlasm_style,
+        PerlAsm(os.path.join(DEST_DIR, output), perlasm['input'], perlasm_style,
                 perlasm['extra_args'] + extra_args)
         asmfiles.setdefault(key, []).append(output)
 
@@ -897,7 +897,7 @@ def main(platforms):
                           cwd=os.path.join(SRC_DIR, 'crypto', 'err'),
                           stdout=err_data)
 
-  crypto_c_files.append(os.path.join(DEST_DIR, 'err_data.c'))
+  crypto_c_files.append('err_data.c')
   crypto_c_files.sort()
 
   test_support_c_files = FindCFiles(os.path.join(SRC_DIR, 'crypto', 'test'),
@@ -914,7 +914,7 @@ def main(platforms):
           ['go', 'run', 'util/embed_test_data.go'] + cmake['CRYPTO_TEST_DATA'],
           cwd=SRC_DIR,
           stdout=out)
-    crypto_test_files += [os.path.join(DEST_DIR, 'crypto_test_data.cc')]
+    crypto_test_files += ['crypto_test_data.cc']
 
   crypto_test_files += FindCFiles(os.path.join(SRC_DIR, 'crypto'), OnlyTests)
   crypto_test_files += [
@@ -1013,16 +1013,16 @@ if __name__ == '__main__':
   PREFIX = options.prefix
   EMBED_TEST_DATA = (options.embed_test_data == "true")
 
-  SRC_DIR = os.path.abspath(options.src_dir)
-  DEST_DIR = os.path.abspath(options.dest_dir)
+  SRC_DIR = os.path.relpath(options.src_dir, os.getcwd())
+  DEST_DIR = os.path.relpath(options.dest_dir, os.getcwd())
 
   NON_PERL_FILES = {
       ('linux', 'arm'): [
-          os.path.join(SRC_DIR, "crypto/curve25519/asm/x25519-asm-arm.S"),
-          os.path.join(SRC_DIR, "crypto/poly1305/asm/poly1305_asm_arm.S"),
+          os.path.relpath(os.path.join(SRC_DIR, "crypto/curve25519/asm/x25519-asm-arm.S"), DEST_DIR),
+          os.path.relpath(os.path.join(SRC_DIR, "crypto/poly1305/asm/poly1305_asm_arm.S"), DEST_DIR),
       ],
       ('linux', 'x86_64'): [
-          os.path.join(SRC_DIR, "crypto/hrss/asm/poly_rq_mul.S"),
+          os.path.relpath(os.path.join(SRC_DIR, "crypto/hrss/asm/poly_rq_mul.S"), DEST_DIR),
       ],
   }
 
