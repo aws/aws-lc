@@ -110,6 +110,11 @@ else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
+if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
+  # Enable p256_nistz on ARMv8 (AArch64) by default
+  add_definitions(-DOPENSSL_AARCH64_P256)
+endif()
+
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
     enable_language(ASM)

@@ -516,8 +516,6 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
   set(ARCH "x86")
 elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
   set(ARCH "aarch64")
-  # Enable p256_nistz on ARMv8 (AArch64) by default
-  add_definitions(-DOPENSSL_AARCH64_P256)
 elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
   set(ARCH "aarch64")
 # Apple A12 Bionic chipset which is added in iPhone XS/XS Max/XR uses arm64e architecture.
@@ -532,6 +530,11 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
+if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
+  # Enable p256_nistz on ARMv8 (AArch64) by default
+  add_definitions(-DOPENSSL_AARCH64_P256)
 endif()
 
 if(ANDROID AND NOT ANDROID_NDK_REVISION AND ${ARCH} STREQUAL "arm")
