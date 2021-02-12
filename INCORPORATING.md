@@ -48,8 +48,12 @@ checked into the incorporating project's source repository. This avoids
 incorporating projects needing to support Perl and Go in their build systems.
 
 The script [`util/generate_build_files.py`](/util/generate_build_files.py)
-expects to be run from the `third_party/boringssl` directory and to find the
-BoringSSL source code in `src/`. You should pass it a single argument: the name
+expects to be run from the `aws-lc` directory and can be provided a different
+source directory using `--src-dir`. The generated build files will be output to
+`aws-lc/generated-src` unless a different path is provided to the argument
+`--dest-dir`. If an absolute path is not provided, it will be assumed that both
+the source and destination directories exist from the working directory where the
+script is invoked from. You should also pass another argument: the name
 of the build system that you're using. If you don't use any of the supported
 build systems then you should augment `generate_build_files.py` with support
 for it.
