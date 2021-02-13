@@ -7,6 +7,7 @@ if(NOT OPENSSL_NO_ASM)
       # in order to decide whether to generate 32- or 64-bit asm.
       if(APPLE)
         set(PERLASM_STYLE ios64)
+
       else()
         set(PERLASM_STYLE linux64)
       endif()
@@ -61,29 +62,57 @@ if(NOT OPENSSL_NO_ASM)
   endif()
 endif()
 
-function(perlasm dest src)
-  get_filename_component(dir ${dest} DIRECTORY)
-  if ("${dir}" STREQUAL "")
-    set(dir ".")
+if(PERL_EXECUTABLE)
+  function(perlasm dest src)
+    get_filename_component(dir ${dest} DIRECTORY)
+    if ("${dir}" STREQUAL "")
+      set(dir ".")
+    endif()
+
+    add_custom_command(
+      OUTPUT ${dest}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
+      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
+      DEPENDS
+      ${src}
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
+      WORKING_DIRECTORY .
+    )
+  endfunction()
+  perlasm(chacha/chacha-armv4.${ASM_EXT} chacha/asm/chacha-armv4.pl)
+  perlasm(chacha/chacha-armv8.${ASM_EXT} chacha/asm/chacha-armv8.pl)
+  perlasm(chacha/chacha-x86.${ASM_EXT} chacha/asm/chacha-x86.pl)
+  perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
+  perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
+  perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
+  perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
+  perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
+  perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
+  perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
+  perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
+
+else()
+  if(APPLE AND ${ARCH} STREQUAL "aarch64")
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-aarch64/crypto/)
+  elseif(APPLE AND ${ARCH} STREQUAL "arm")
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-arm/crypto/)
+  elseif(APPLE)
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/mac-${ARCH}/crypto/)
+  elseif(UNIX)
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/linux-${ARCH}/crypto/)
+  elseif(WIN32)
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/win-${ARCH}/crypto/)
   endif()
+  message("Copying platform assembly files from ${ASSEMBLY_SOURCE} to ${CMAKE_CURRENT_BINARY_DIR}")
+  file(COPY ${ASSEMBLY_SOURCE}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-  add_custom_command(
-    OUTPUT ${dest}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-    COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
-    DEPENDS
-    ${src}
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
-    WORKING_DIRECTORY .
-  )
-endfunction()
-
+endif()
 add_subdirectory(fipsmodule)
 add_subdirectory(test)
 
@@ -147,48 +176,40 @@ if(${ARCH} STREQUAL "x86_64")
   )
 endif()
 
-perlasm(chacha/chacha-armv4.${ASM_EXT} chacha/asm/chacha-armv4.pl)
-perlasm(chacha/chacha-armv8.${ASM_EXT} chacha/asm/chacha-armv8.pl)
-perlasm(chacha/chacha-x86.${ASM_EXT} chacha/asm/chacha-x86.pl)
-perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
-perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
-perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
-perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
-perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
-perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
-perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
-perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
-
-add_custom_command(
-  OUTPUT err_data.c
-  COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
-  DEPENDS
-  err/err_data_generate.go
-  err/asn1.errordata
-  err/bio.errordata
-  err/bn.errordata
-  err/cipher.errordata
-  err/conf.errordata
-  err/dh.errordata
-  err/digest.errordata
-  err/dsa.errordata
-  err/ecdh.errordata
-  err/ecdsa.errordata
-  err/ec.errordata
-  err/engine.errordata
-  err/evp.errordata
-  err/hkdf.errordata
-  err/obj.errordata
-  err/pem.errordata
-  err/pkcs7.errordata
-  err/pkcs8.errordata
-  err/rsa.errordata
-  err/ssl.errordata
-  err/trust_token.errordata
-  err/x509.errordata
-  err/x509v3.errordata
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
-)
+if(GO_EXECUTABLE)
+  add_custom_command(
+    OUTPUT err_data.c
+    COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
+    DEPENDS
+    err/err_data_generate.go
+    err/asn1.errordata
+    err/bio.errordata
+    err/bn.errordata
+    err/cipher.errordata
+    err/conf.errordata
+    err/dh.errordata
+    err/digest.errordata
+    err/dsa.errordata
+    err/ecdh.errordata
+    err/ecdsa.errordata
+    err/ec.errordata
+    err/engine.errordata
+    err/evp.errordata
+    err/hkdf.errordata
+    err/obj.errordata
+    err/pem.errordata
+    err/pkcs7.errordata
+    err/pkcs8.errordata
+    err/rsa.errordata
+    err/ssl.errordata
+    err/trust_token.errordata
+    err/x509.errordata
+    err/x509v3.errordata
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
+  )
+else()
+  file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+endif()
 
 add_library(
   crypto
