@@ -147,6 +147,11 @@ struct evp_pkey_asn1_method_st {
 OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
                                      int cmd, int p1, void *p2);
 
+// EVP_RSA_PKEY_CTX_ctrl is a wrapper of |EVP_PKEY_CTX_ctrl|.
+// Before calling |EVP_PKEY_CTX_ctrl|, a check is added to make sure
+// the |ctx->pmeth->pkey_id| is either |EVP_PKEY_RSA| or |EVP_PKEY_RSA_PSS|.
+int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2);
+
 #define EVP_PKEY_CTRL_MD 1
 #define EVP_PKEY_CTRL_GET_MD 2
 

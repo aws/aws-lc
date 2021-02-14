@@ -548,11 +548,6 @@ OPENSSL_EXPORT int RSA_get_ex_new_index(long argl, void *argp,
 OPENSSL_EXPORT int RSA_set_ex_data(RSA *rsa, int idx, void *arg);
 OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 
-// RSA_pkey_ctx_ctrl is a wrapper of EVP_PKEY_CTX_ctrl.
-// Before calling EVP_PKEY_CTX_ctrl, a check is added to make sure
-// the ctx->pmeth->pkey_id is either EVP_PKEY_RSA or EVP_PKEY_RSA_PSS.
-int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2);
-
 // Flags.
 
 // RSA_FLAG_OPAQUE specifies that this RSA_METHOD does not expose its key
