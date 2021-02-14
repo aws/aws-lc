@@ -548,7 +548,6 @@ OPENSSL_EXPORT int RSA_get_ex_new_index(long argl, void *argp,
 OPENSSL_EXPORT int RSA_set_ex_data(RSA *rsa, int idx, void *arg);
 OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 
-
 // Flags.
 
 // RSA_FLAG_OPAQUE specifies that this RSA_METHOD does not expose its key

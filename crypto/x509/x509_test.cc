@@ -1483,7 +1483,6 @@ TEST(X509Test, TestRsaSsaPss) {
 
   bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   ASSERT_TRUE(pkey);
-
   // TODO(shang): reenable this verification when EVP_PKEY_RSA_PSS pmeth is implemented.
   // ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
 }
