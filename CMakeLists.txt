@@ -55,7 +55,7 @@ if(ANDROID)
     set(GO_EXECUTABLE "go")
   endif()
 else()
-  find_package(Perl REQUIRED)
+  find_package(Perl)
   find_program(GO_EXECUTABLE go)
 endif()
 
@@ -74,7 +74,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(NOT GO_EXECUTABLE)
-  message(FATAL_ERROR "Could not find Go")
+  message(STATUS "Go not found. Disabling some code generation and using pre-generated code in generated-src/")
+endif()
+if (NOT PERL_EXECUTABLE)
+  message(STATUS "Perl not found. Disabling some code generation and using pre-generated code in generated-src/")
+endif()
+
+if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
+  set(GENERATE_CODE_ROOT "${CMAKE_SOURCE_DIR}/generated-src")
+  message("Not generating code")
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -105,7 +113,7 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
          "${${VAR}_RELEASE}")
 endforeach()
 
-if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS)
+if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   add_definitions(-DBORINGSSL_PREFIX=${BORINGSSL_PREFIX})
   # CMake automatically connects include_directories to the NASM command-line,
   # but not add_definitions.
@@ -402,6 +410,10 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(FIPS AND NOT GO_EXECUTABLE AND NOT PERL_EXECUTABLE)
+  message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
+endif()
+
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
@@ -631,14 +643,17 @@ endforeach()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt"
      "${EMBED_TEST_DATA_ARGS}")
 
-add_custom_command(
-  OUTPUT crypto_test_data.cc
-  COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go -file-list
-          "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt" >
-          "${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc"
-  DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
+if(GO_EXECUTABLE)
+  add_custom_command(
+    OUTPUT crypto_test_data.cc
+    COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go -file-list
+            "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt" >
+            "${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc"
+    DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+else()
+  file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+endif()
 add_library(crypto_test_data OBJECT crypto_test_data.cc)
 
 add_subdirectory(crypto)
@@ -674,33 +689,50 @@ else()
   set(GO_TEST_TIMEOUT "10m")
 endif()
 
-add_custom_target(
-    run_tests
-    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-            ${CMAKE_BINARY_DIR}
-    COMMAND cd ssl/test/runner &&
-            ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-              ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS all_tests bssl_shim handshaker
-    ${MAYBE_USES_TERMINAL})
+if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
+  # USES_TERMINAL is only available in CMake 3.2 or later.
+  set(MAYBE_USES_TERMINAL USES_TERMINAL)
+endif()
 
-add_custom_target(
-    run_tests_valgrind
-    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-            ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS all_tests
-    ${MAYBE_USES_TERMINAL})
+if(GO_EXECUTABLE)
+  add_custom_target(
+      run_tests
+      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+              ${CMAKE_BINARY_DIR}
+      COMMAND cd ssl/test/runner &&
+              ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
+                ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      DEPENDS all_tests bssl_shim handshaker
+      ${MAYBE_USES_TERMINAL})
 
-add_custom_target(
-    run_tests_with_sde
-    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-            ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS all_tests
-    ${MAYBE_USES_TERMINAL})
+  add_custom_target(
+      run_tests_valgrind
+      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+              ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      DEPENDS all_tests
+      ${MAYBE_USES_TERMINAL})
 
+  add_custom_target(
+      run_tests_with_sde
+      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+              ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      DEPENDS all_tests
+      ${MAYBE_USES_TERMINAL})
+else()
+  add_custom_target(
+          run_minimal_tests
+          COMMAND crypto_test
+          COMMAND urandom_test
+          COMMAND ssl_test
+          COMMAND decrepit_test
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests
+          ${MAYBE_USES_TERMINAL})
+
+endif()
 # Copy awslc-config.cmake to build artifacts.
 configure_file("cmake/awslc-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
