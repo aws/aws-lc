@@ -410,7 +410,7 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
-if(FIPS AND NOT GO_EXECUTABLE AND NOT PERL_EXECUTABLE)
+if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()
 
