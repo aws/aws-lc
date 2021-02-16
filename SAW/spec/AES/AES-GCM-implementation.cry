@@ -105,3 +105,36 @@ aesni_gcm_cipher_block6 enc karatsuba ctx blks = ctx'
       , len = ctx.len + 6 * 16
       }
 
+gcm_ghash_avx : {n} (fin n, 1 <= n, n <= 8) => [128] -> [16][8] -> [n * 16][8] -> [16][8]
+gcm_ghash_avx H Xi in = Xi''
+  where
+    [H0, H1, _, H2, H3, _, H4, H5, _, H6, H7, _] = gcm_init_Htable H
+    Htable = [H0, H1, H2, H3, H4, H5, H6, H7]
+    Xi' = join Xi
+    blks = map join (split in)
+    Xi_0 = gcm_polyval_mul_pmult3 (Htable @ (`n - 1)) (Xi' ^ (blks @ 0))
+    Xi_1 = gcm_polyval_mul_pmult3 (Htable @ (`n - 2)) (blks @ 1)
+    Xi_2 = gcm_polyval_mul_pmult3 (Htable @ (`n - 3)) (blks @ 2)
+    Xi_3 = gcm_polyval_mul_pmult3 (Htable @ (`n - 4)) (blks @ 3)
+    Xi_4 = gcm_polyval_mul_pmult3 (Htable @ (`n - 5)) (blks @ 4)
+    Xi_5 = gcm_polyval_mul_pmult3 (Htable @ (`n - 6)) (blks @ 5)
+    Xi_6 = gcm_polyval_mul_pmult3 (Htable @ (`n - 7)) (blks @ 6)
+    Xi_7 = gcm_polyval_mul_pmult3 (Htable @ (`n - 8)) (blks @ 7)
+    T1 = if `n == 8
+      then Xi_7 ^ Xi_6 ^ Xi_5 ^ Xi_4 ^ Xi_3 ^ Xi_2 ^ Xi_1 ^ Xi_0
+      else if `n == 7
+        then Xi_6 ^ Xi_5 ^ Xi_4 ^ Xi_3 ^ Xi_2 ^ Xi_1 ^ Xi_0
+        else if `n == 6
+          then Xi_5 ^ Xi_4 ^ Xi_3 ^ Xi_2 ^ Xi_1 ^ Xi_0
+          else if `n == 5
+            then Xi_4 ^ Xi_3 ^ Xi_2 ^ Xi_1 ^ Xi_0
+            else if `n == 4
+              then Xi_3 ^ Xi_2 ^ Xi_1 ^ Xi_0
+              else if `n == 3
+                then Xi_2 ^ Xi_1 ^ Xi_0
+                else if `n == 2
+                  then Xi_1 ^ Xi_0
+                  else Xi_0
+    Xi_n = gcm_polyval_red_pmult T1
+    Xi'' = split Xi_n
+

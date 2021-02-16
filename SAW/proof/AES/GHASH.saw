@@ -73,9 +73,15 @@ gcm_ghash_avx_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_
   true
   (gcm_ghash_avx_spec evp_cipher_update_len_blocks)
   (do {
-    unfolding ["gcm_ghash", "gcm_ghash_block", "gcm_polyval"];
-    simplify (addsimps [ghash_mul_thm, ghash_red_thm] empty_ss);
-    w4_unint_yices ["pmult"];
+    simplify (cryptol_ss ());
+    simplify (addsimp gcm_ghash_avx_thm empty_ss);
+    simplify (addsimps xor_slice_append_thms basic_ss);
+    simplify (addsimps slice_slice_thms empty_ss);
+    simplify (addsimps xor_slice_append_thms basic_ss);
+    simplify (addsimps concat_assoc_0_thms empty_ss);
+    simplify (addsimps concat_assoc_1_thms empty_ss);
+    simplify (addsimps concat_assoc_2_thms empty_ss);
+    w4_unint_z3 ["pmult", "gcm_polyval"];
   });
 disable_what4_hash_consing;
 

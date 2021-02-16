@@ -24,7 +24,7 @@ include "../common/memory.saw";
  */
 let evp_cipher_update_gcm_len = 10;
 let evp_cipher_update_bulk = 288; // multiple of 96, minimum 288
-let evp_cipher_update_len_blocks = 16; // multiple of 16
+let evp_cipher_update_len_blocks = 80; // multiple of 16
 let evp_cipher_update_mres = 10; // reduced mod 16
 
 let evp_cipher_update_len = eval_size {| (16 - evp_cipher_update_gcm_len % 16) % 16 + evp_cipher_update_bulk + evp_cipher_update_len_blocks + evp_cipher_update_mres |};

@@ -184,19 +184,10 @@ the binary analysis from inferring that the return address is still on the stack
 when the routine returns. The called helper routines do not modify r11.
 */
 add_x86_preserved_reg "r11";
-llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_ctr32_encrypt_blocks"
-  []
-  true
-  (aes_hw_ctr32_encrypt_blocks_spec 2)
-  (do {
-    simplify (cryptol_ss ());
-    simplify (addsimps slice_384_thms basic_ss);
-    w4_unint_yices ["AESRound", "AESFinalRound"];
-  });
 aes_hw_ctr32_encrypt_blocks_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_ctr32_encrypt_blocks"
   []
   true
-  (aes_hw_ctr32_encrypt_blocks_spec 1)
+  (aes_hw_ctr32_encrypt_blocks_spec 5)
   (do {
     simplify (cryptol_ss ());
     simplify (addsimps slice_384_thms basic_ss);
