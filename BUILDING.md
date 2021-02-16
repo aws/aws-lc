@@ -12,7 +12,7 @@ most recent stable version of each tool.
 
   * [CMake](https://cmake.org/download/) 3.0 or later is required.
 
-  * A recent version of Perl is recommended. On Windows,
+  * A recent version of Perl is required. On Windows,
     [Active State Perl](http://www.activestate.com/activeperl/) has been
     reported to work, as has MSYS Perl.
     [Strawberry Perl](http://strawberryperl.com/) also works but it adds GCC
@@ -20,7 +20,12 @@ most recent stable version of each tool.
     (removing `C:\Strawberry\c\bin` from `PATH` should resolve any problems).
     If Perl is not found by CMake, it may be configured explicitly by setting
     `PERL_EXECUTABLE`.
-    * If your project is unable to use Perl, see [this section.](#using-pre-generated-build-files) 
+    * To build without Perl (not recommended) see [this section.](#using-pre-generated-build-files)
+
+  * The most recent stable version of [Go](https://golang.org/dl/) is required.
+    Note Go is exempt from the five year support window. If not found by CMake,
+    the go executable may be configured explicitly by setting `GO_EXECUTABLE`. 
+    * To build without Go (not recommended) see [this section.](#using-pre-generated-build-files)
 
   * Building with [Ninja](https://ninja-build.org/) instead of Make is
     recommended, because it makes builds faster. On Windows, CMake's Visual
@@ -35,11 +40,6 @@ most recent stable version of each tool.
     (Visual Studio 2015) or later with Platform SDK 8.1 or later are supported.
     Recent versions of GCC (4.8+) and Clang should work on non-Windows
     platforms, and maybe on Windows too.
-
-  * The most recent stable version of [Go](https://golang.org/dl/) is recommended.
-    Note Go is exempt from the five year support window. If not found by CMake,
-    the go executable may be configured explicitly by setting `GO_EXECUTABLE`. 
-    * If your project is unable to use Go, see [this section.](#using-pre-generated-build-files) 
 
   * On x86_64 Linux, the tests have an optional
     [libunwind](https://www.nongnu.org/libunwind/) dependency to test the
@@ -224,3 +224,4 @@ It is still recommended to have both Go and Perl installed to be able to run the
 range of unit tests, as well as running valgrind and SDE tests. Building without Go now
 produces a new target, `run_minimal_tests` in place of `run_tests`.
 
+More information on this can be found in [INCORPORATING.md](/INCORPORATING.md).
