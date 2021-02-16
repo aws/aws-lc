@@ -39,8 +39,6 @@ OS_ARCH_COMBOS = [
     ('win', 'x86_64', 'nasm', [], 'asm'),
 ]
 
-# NON_PERL_FILES enumerates assembly files that are not processed by the
-# perlasm system.
 NON_PERL_FILES = {}
 
 def FindCMakeFiles(directory):
@@ -391,6 +389,8 @@ if __name__ == '__main__':
   SRC_DIR = os.getcwd()
   DEST_DIR = os.path.relpath('generated-src', os.getcwd())
 
+  # NON_PERL_FILES enumerates assembly files that are not processed by the
+  # perlasm system.
   NON_PERL_FILES = {
       ('linux', 'arm'): [
           os.path.relpath(os.path.join(SRC_DIR, "crypto/curve25519/asm/x25519-asm-arm.S"), DEST_DIR),
