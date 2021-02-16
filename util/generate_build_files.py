@@ -39,8 +39,6 @@ OS_ARCH_COMBOS = [
     ('win', 'x86_64', 'nasm', [], 'asm'),
 ]
 
-NON_PERL_FILES = {}
-
 def FindCMakeFiles(directory):
   """Returns list of all CMakeLists.txt files recursively in directory."""
   cmakefiles = []
