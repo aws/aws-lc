@@ -7,7 +7,6 @@ if(NOT OPENSSL_NO_ASM)
       # in order to decide whether to generate 32- or 64-bit asm.
       if(APPLE)
         set(PERLASM_STYLE ios64)
-
       else()
         set(PERLASM_STYLE linux64)
       endif()

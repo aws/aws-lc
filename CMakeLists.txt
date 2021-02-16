@@ -82,7 +82,6 @@ endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
   set(GENERATE_CODE_ROOT "${CMAKE_SOURCE_DIR}/generated-src")
-  message("Not generating code")
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -140,6 +139,8 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   add_dependencies(global_target boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
+  message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS") 
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -731,7 +732,6 @@ else()
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
-
 endif()
 # Copy awslc-config.cmake to build artifacts.
 configure_file("cmake/awslc-config.cmake"
