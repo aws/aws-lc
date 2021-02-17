@@ -1,0 +1,159 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+let BN_num_bits_spec num_bits = do {
+  let num = eval_size {| ((num_bits - 1) / 64) + 1 |};
+  let num_bits_max = eval_size {| num * 64 |};
+
+  bn_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  (bn, bn_d_ptr) <- ptr_to_fresh_readonly "bn" (llvm_int num_bits_max);
+  points_to_bignum_st_same bn_ptr bn_d_ptr num;
+
+  crucible_precond {{ is_num_bits_bn`{num_bits} bn }};
+
+  crucible_execute_func [bn_ptr];
+
+  crucible_return (crucible_term {{ `num_bits : [32] }});
+};
+
+bn_uadd_consttime_n_p_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_uadd_consttime"
+  (bn_uadd_consttime_spec n_words p_words);
+
+bn_mul_consttime_p_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mul_consttime"
+  (bn_mul_consttime_spec p_words p_words);
+
+bn_mod_sub_consttime_p_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mod_sub_consttime"
+  (bn_mod_sub_consttime_spec p_words);
+
+bn_from_montgomery_in_place_p_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_from_montgomery_in_place"
+  (bn_from_montgomery_in_place_spec p_words);
+
+bn_mul_mont_with_N_p_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mul_mont"
+  (bn_mul_mont_with_N_spec p_words);
+bn_mul_mont_with_N_same_res_left_p_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mul_mont"
+  (bn_mul_mont_with_N_same_res_left_spec p_words);
+bn_mul_mont_with_N_same_res_left_n_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mul_mont"
+  (bn_mul_mont_with_N_same_res_left_spec n_words);
+bn_mul_mont_with_N_same_res_left_right_n_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mul_mont"
+  (bn_mul_mont_with_N_same_res_left_right_spec n_words);
+
+BN_mod_exp_mont_n_1_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_mod_exp_mont"
+  (BN_mod_exp_mont_spec n_words 1 0);
+BN_mod_exp_mont_n_1_1_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_mod_exp_mont"
+  (BN_mod_exp_mont_spec n_words 1 1);
+BN_mod_exp_mont_n_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_mod_exp_mont_consttime"
+  (BN_mod_exp_mont_spec n_words n_words 0);
+BN_mod_exp_mont_p_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_mod_exp_mont_consttime"
+  (BN_mod_exp_mont_spec p_words p_words 0);
+
+BN_equal_consttime_ov <- llvm_verify m "BN_equal_consttime"
+  []
+  true
+  (BN_equal_consttime_spec n_words)
+  (do {
+    w4_unint_z3 [];
+  });
+
+BN_ucmp_lt_n_ov <- llvm_verify m "BN_ucmp"
+  [ value_barrier_w_ov
+  ]
+  true
+  (BN_ucmp_lt_spec n_words)
+  (do {
+    w4_unint_yices [];
+  });
+BN_ucmp_gt_p_ov <- llvm_verify m "BN_ucmp"
+  [ value_barrier_w_ov
+  ]
+  true
+  (BN_ucmp_gt_spec p_words p_words)
+  (do {
+    w4_unint_z3 [];
+  });
+BN_ucmp_gt_n_e_ov <- llvm_verify m "BN_ucmp"
+  [ value_barrier_w_ov
+  ]
+  true
+  (BN_ucmp_gt_spec n_words 1)
+  (do {
+    w4_unint_z3 [];
+  });
+BN_ucmp_n_ov <- llvm_verify m "BN_ucmp"
+  [ value_barrier_w_ov
+  ]
+  true
+  (BN_ucmp_spec n_words)
+  (do {
+    w4_unint_z3 [];
+  });
+BN_ucmp_p_ov <- llvm_verify m "BN_ucmp"
+  [ value_barrier_w_ov
+  ]
+  true
+  (BN_ucmp_spec p_words)
+  (do {
+    w4_unint_z3 [];
+  });
+
+BN_bn2bin_padded_n_ov <- llvm_verify m "BN_bn2bin_padded"
+  []
+  true
+  (BN_bn2bin_padded_spec n_words 0)
+  (do {
+    w4_unint_z3 [];
+  });
+BN_bn2bin_padded_n_1_ov <- llvm_verify m "BN_bn2bin_padded"
+  []
+  true
+  (BN_bn2bin_padded_spec n_words 1)
+  (do {
+    w4_unint_z3 [];
+  });
+
+BN_bin2bn_n_ov <- llvm_verify m "BN_bin2bn"
+  [ OPENSSL_malloc_ov
+  ]
+  true
+  (BN_bin2bn_spec n_words)
+  (do {
+    w4_unint_z3 [];
+  });
+
+BN_num_bits_n_bits_ov <- llvm_verify m "BN_num_bits"
+  []
+  true
+  (BN_num_bits_spec n_bits)
+  (w4_unint_z3 []);
+BN_num_bits_e_bits_ov <- llvm_verify m "BN_num_bits"
+  []
+  true
+  (BN_num_bits_spec 17)
+  (w4_unint_z3 []);
+

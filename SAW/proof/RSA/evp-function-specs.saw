@@ -1,0 +1,138 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+let EVP_DigestSignVerifyInit_spec is_sign = do {
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+  points_to_env_md_ctx_st ctx_ptr crucible_null crucible_null;
+
+  type_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st type_ptr;
+
+  pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
+  (rsa_ptr, _n, _d, _e, _p, _q) <- pointer_to_fresh_rsa_st true is_sign false false;
+  points_to_evp_pkey_st pkey_ptr rsa_ptr;
+
+  crucible_execute_func [ctx_ptr, crucible_null, type_ptr, crucible_null, pkey_ptr];
+
+  sha512_state_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
+  points_to_sha512_state_st sha512_state_ptr {{ SHAInit }} 0;
+  evp_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_ctx_st");
+  rsa_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.RSA_PKEY_CTX");
+  crucible_points_to (crucible_field rsa_pkey_ctx_ptr "md") type_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null (if is_sign then EVP_PKEY_OP_SIGN else EVP_PKEY_OP_VERIFY) rsa_pkey_ctx_ptr;
+  points_to_env_md_ctx_st_with_pctx ctx_ptr type_ptr sha512_state_ptr evp_pkey_ctx_ptr;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DigestSignVerifyUpdate_spec is_sign num len = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
+
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  sha512_state_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
+  sha512_state <- fresh_sha512_state_st "sha512_state" num;
+  points_to_sha512_state_st sha512_state_ptr sha512_state num;
+
+  evp_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
+  pkey_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_st");
+  (rsa_ptr, _n, _d, _e, _p, _q) <- pointer_to_fresh_rsa_st true is_sign false false;
+  points_to_evp_pkey_st pkey_ptr rsa_ptr;
+  rsa_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.RSA_PKEY_CTX");
+  points_to_RSA_PKEY_CTX rsa_pkey_ctx_ptr digest_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null (if is_sign then EVP_PKEY_OP_SIGN else EVP_PKEY_OP_VERIFY) rsa_pkey_ctx_ptr;
+
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr;
+
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array len i8);
+
+  crucible_execute_func [ctx_ptr, data_ptr, crucible_term {{ `len : [64] }}];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  points_to_sha512_state_st sha512_state_ptr {{ SHAUpdate sha512_state data }} (eval_size {| (num + len) % SHA512_CBLOCK |});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DigestSignFinal_spec num = do {
+  salt <- crucible_fresh_cryptol_var "salt" {| [salt_len][8] |};
+  crucible_ghost_value random_out salt;
+  a <- crucible_fresh_cryptol_var "a" {| Integer |};
+  crucible_ghost_value rsa_blinding_factor a;
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
+
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  sha512_state_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
+  sha512_state <- fresh_sha512_state_st "sha512_state" num;
+  points_to_sha512_state_st sha512_state_ptr sha512_state num;
+
+  evp_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
+  pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
+  (rsa_ptr, n, d, _e, _p, _q) <- pointer_to_fresh_rsa_st false true true true;
+  points_to_evp_pkey_st pkey_ptr rsa_ptr;
+  rsa_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.RSA_PKEY_CTX");
+  points_to_RSA_PKEY_CTX rsa_pkey_ctx_ptr digest_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null EVP_PKEY_OP_SIGN rsa_pkey_ctx_ptr;
+
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr;
+
+  out_sig_ptr <- crucible_alloc (llvm_array n_bytes i8);
+  out_sig_len_ptr <- crucible_alloc i64;
+  crucible_points_to out_sig_len_ptr (crucible_term {{ `n_bytes : [64] }});
+
+  crucible_execute_func [ctx_ptr, out_sig_ptr, out_sig_len_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ split`{each=8} (integerToBV`{n_bits} (RSA_sign`{n_bytes} (split`{each=8} (SHAFinal sha512_state)) salt (integerFromBV d) (integerFromBV n))) }};
+  crucible_points_to out_sig_ptr (crucible_term res);
+
+  crucible_points_to out_sig_len_ptr (crucible_term {{ `n_bytes : [64] }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DigestVerifyFinal_spec num = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
+
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  sha512_state_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
+  sha512_state <- fresh_sha512_state_st "sha512_state" num;
+  points_to_sha512_state_st sha512_state_ptr sha512_state num;
+
+  evp_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
+  pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
+  (rsa_ptr, n, _d, e, _p, _q) <- pointer_to_fresh_rsa_st false false false false;
+  points_to_evp_pkey_st pkey_ptr rsa_ptr;
+  rsa_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.RSA_PKEY_CTX");
+  points_to_RSA_PKEY_CTX rsa_pkey_ctx_ptr digest_ptr;
+  points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr pkey_ptr crucible_null EVP_PKEY_OP_VERIFY rsa_pkey_ctx_ptr;
+
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr;
+
+  (sig, sig_ptr) <- ptr_to_fresh_readonly "sig" (llvm_array n_bytes i8);
+
+  crucible_execute_func [ctx_ptr, sig_ptr, (crucible_term {{ `n_bytes : [64] }})];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ RSA_verify`{n_bytes} (split`{each=8} (SHAFinal sha512_state)) (integerFromBV (join sig)) (integerFromBV e) (integerFromBV n) }};
+  crucible_return (crucible_term {{ if res then (1 : [32]) else 0 }});
+};
+

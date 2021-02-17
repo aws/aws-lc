@@ -1,0 +1,745 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+import "../../../cryptol-specs/Primitive/Asymmetric/Signature/RSA_PSS_SHA384.cry";
+import "../../../cryptol-specs/Common/utils.cry";
+
+
+include "../SHA512/SHA512-384-common.saw";
+include "../common/internal.saw";
+include "../common/memory.saw";
+
+
+/*
+ * Verification parameters.
+ */
+let n_bits = 1024; // multiple of 128
+let n_bytes = eval_size {| n_bits / 8 |};
+let n_words = eval_size {| n_bytes / 8 |};
+let p_bits = eval_size {| n_bits / 2 |};
+let p_bytes = eval_size {| p_bits / 8 |};
+let p_words = eval_size {| p_bytes / 8 |};
+let salt_len = SHA_DIGEST_LENGTH;
+let salt_len_param = eval_int {{ -1 : [32] }};
+
+
+/*
+ * Constants
+ */
+let NID_rsassaPss = 912;
+let EVP_PKEY_RSA_PSS = NID_rsassaPss;
+let EVP_PKEY_OP_SIGN = 8; // (1 << 3)
+let EVP_PKEY_OP_VERIFY = 16; // (1 << 4)
+let EVP_PKEY_OP_ENCRYPT = 64; // (1 << 6)
+let EVP_PKEY_OP_DECRYPT = 128; // (1 << 7)
+
+let RSA_FLAG_NO_BLINDING = 8;
+let RSA_PKCS1_PADDING = 1;
+let RSA_NO_PADDING = 3;
+let RSA_PKCS1_OAEP_PADDING = 4;
+let RSA_PKCS1_PSS_PADDING = 6;
+
+
+let {{
+is_num_bits_bn : {m, n} (fin m, fin n, m <= n) => [n] -> Bit
+is_num_bits_bn x = if `m == `n
+  then x @ 0
+  else take`{n - m} x == 0 /\ x @ `(n - m)
+}};
+
+
+include "memory.saw";
+include "../BN/BN.saw";
+include "BN.saw";
+include "arithmetic-axioms.saw";
+include "goal-rewrites.saw";
+
+
+/*
+ * Structure definitions
+ */
+let points_to_evp_pkey_ctx_st_common ptr = do {
+  crucible_points_to (crucible_field ptr "pmeth") (crucible_global "rsa_pkey_meth");
+  crucible_points_to (crucible_field ptr "engine") crucible_null;
+};
+
+let points_to_evp_pkey_ctx_st ptr pkey_ptr peerkey_ptr op data_ptr = do {
+  points_to_evp_pkey_ctx_st_common ptr;
+  crucible_points_to (crucible_field ptr "pkey") pkey_ptr;
+  crucible_points_to (crucible_field ptr "peerkey") peerkey_ptr;
+  crucible_points_to (crucible_field ptr "operation") (crucible_term {{ `op : [32] }});
+  crucible_points_to (crucible_field ptr "data") data_ptr;
+};
+
+let points_to_evp_pkey_st_with_references ptr references pkey_ptr = do {
+  crucible_points_to (crucible_field ptr "references") (crucible_term references);
+  crucible_points_to (crucible_field ptr "type") (crucible_term {{ `EVP_PKEY_RSA_PSS : [32] }});
+  crucible_points_to (crucible_field ptr "pkey") pkey_ptr;
+  crucible_points_to (crucible_field ptr "ameth") (crucible_global "rsa_asn1_meth");
+};
+
+let points_to_evp_pkey_st ptr pkey_ptr = do {
+  references <- crucible_fresh_var "references" i32;
+  crucible_precond {{ references != 0 }};
+  points_to_evp_pkey_st_with_references ptr references pkey_ptr;
+};
+
+
+//let points_to_bn_blinding_st ptr Ai_ptr = do {
+//  crucible_points_to (crucible_field ptr "Ai") Ai_ptr;
+//};
+
+let points_to_rsa_st
+      ptr
+      meth_ptr
+      n_ptr
+      e_ptr
+      d_ptr
+      flags
+      p_ptr
+      q_ptr
+      dmp1_ptr
+      dmq1_ptr
+      iqmp_ptr
+      inv_small_mod_large_mont_ptr
+      mont_n_ptr
+      mont_p_ptr
+      mont_q_ptr = do {
+  crucible_points_to (crucible_field ptr "meth") meth_ptr;
+  crucible_points_to (crucible_field ptr "n") n_ptr;
+  crucible_points_to (crucible_field ptr "e") e_ptr;
+  crucible_points_to (crucible_field ptr "d") d_ptr;
+  crucible_points_to (crucible_field ptr "flags")
+                     (crucible_term {{ `flags: [32] }});
+
+  // Fields for the p+q case
+  crucible_points_to (crucible_field ptr "p") p_ptr;
+  crucible_points_to (crucible_field ptr "q") q_ptr;
+  crucible_points_to (crucible_field ptr "dmp1") dmp1_ptr;
+  crucible_points_to (crucible_field ptr "dmq1") dmq1_ptr;
+  crucible_points_to (crucible_field ptr "iqmp") iqmp_ptr;
+  crucible_points_to (crucible_field ptr "mont_p") mont_p_ptr;
+  crucible_points_to (crucible_field ptr "mont_q") mont_q_ptr;
+  crucible_points_to (crucible_field ptr "dmp1_fixed") crucible_null;
+  crucible_points_to (crucible_field ptr "dmq1_fixed") crucible_null;
+  crucible_points_to (crucible_field ptr "inv_small_mod_large_mont") inv_small_mod_large_mont_ptr;
+
+  crucible_points_to (crucible_field ptr "mont_n") mont_n_ptr;
+  // Must be null for ensure_fixed_copy
+  crucible_points_to (crucible_field ptr "d_fixed") crucible_null;
+
+  // private_key_frozen is a 1 bit bit-field of type `unsigned`, but the
+  // compiler allocates 8 bits for it
+  crucible_points_to (crucible_field ptr "private_key_frozen")
+                     (crucible_term {{ 0 : [8] }});
+};
+
+let pointer_to_base_fresh_rsa_st is_ro = do {
+  ptr <- if is_ro then do {
+    crucible_alloc_readonly (llvm_struct "struct.rsa_st");
+  } else do {
+    crucible_alloc (llvm_struct "struct.rsa_st");
+  };
+
+  meth_ptr <- crucible_alloc_readonly (llvm_struct "struct.rsa_meth_st");
+  let sizeof_rsa_meth_st = llvm_sizeof m (llvm_struct "struct.rsa_meth_st");
+  crucible_points_to_untyped meth_ptr (crucible_term {{ zero : [sizeof_rsa_meth_st][8] }});
+
+  n_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  (n_d, n_d_ptr) <- ptr_to_fresh_readonly "n_d" (llvm_int n_bits);
+  points_to_bignum_st_same n_ptr n_d_ptr n_words;
+  crucible_precond {{ is_num_bits_bn`{n_bits} n_d }};
+
+  e_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  (e_d, e_d_ptr) <- ptr_to_fresh_readonly "e_d" i64;
+  points_to_bignum_st_same e_ptr e_d_ptr 1;
+  crucible_precond {{ is_num_bits_bn`{17} e_d }};
+
+  crucible_points_to (crucible_field ptr "meth") meth_ptr;
+  crucible_points_to (crucible_field ptr "n") n_ptr;
+  crucible_points_to (crucible_field ptr "e") e_ptr;
+
+  return (ptr, n_d, e_d);
+};
+
+let pointer_to_fresh_rsa_st is_ro is_priv with_crt with_blinding = do {
+  ptr <- if is_ro then do {
+    crucible_alloc_readonly (llvm_struct "struct.rsa_st");
+  } else do {
+    crucible_alloc (llvm_struct "struct.rsa_st");
+  };
+
+  meth_ptr <- crucible_alloc_readonly (llvm_struct "struct.rsa_meth_st");
+  let sizeof_rsa_meth_st = llvm_sizeof m (llvm_struct "struct.rsa_meth_st");
+  crucible_points_to_untyped meth_ptr (crucible_term {{ zero : [sizeof_rsa_meth_st][8] }});
+
+  (n_d_ptr, n_d, p_d_ptr, p_d, q_d_ptr, q_d) <- if with_crt then do {
+    (p_d, p_d_ptr) <- ptr_to_fresh_readonly "p_d" (llvm_int p_bits);
+    (q_d, q_d_ptr) <- ptr_to_fresh_readonly "q_d" (llvm_int p_bits);
+    n_d_ptr <- crucible_alloc_readonly (llvm_int n_bits);
+    let n_d = {{ integerToBV`{n_bits} ((integerModulusFromBV p_d) * (integerModulusFromBV q_d)) }};
+    crucible_points_to n_d_ptr (crucible_term n_d);
+    return (n_d_ptr, n_d, p_d_ptr, p_d, q_d_ptr, q_d);
+  } else do {
+    (n_d, n_d_ptr) <- ptr_to_fresh_readonly "n_d" (llvm_int n_bits);
+    return (n_d_ptr, n_d, crucible_null, {{ undefined : [p_bits] }}, crucible_null, {{ undefined : [p_bits] }});
+  };
+
+  n_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  points_to_bignum_st_same n_ptr n_d_ptr n_words;
+  crucible_precond {{ is_num_bits_bn`{n_bits} n_d }};
+  crucible_precond {{ (integerFromBV n_d) % 2 == 1 }};
+  crucible_precond {{ (integerModulusFromBV n_d) == (integerFromBV n_d) }};
+
+  e_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  (e_d, e_d_ptr) <- ptr_to_fresh_readonly "e_d" i64;
+  points_to_bignum_st_same e_ptr e_d_ptr 1;
+  crucible_precond {{ is_num_bits_bn`{17} e_d }};
+
+  mont_n_ptr <- pointer_to_bn_mont_ctx_st_with_N_d n_words n_d_ptr n_d;
+
+  (d_ptr, d_d) <- if is_priv then do {
+    d_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+    (d_d, d_d_ptr) <- ptr_to_fresh_readonly "d_d" (llvm_int n_bits);
+    points_to_bignum_st_same d_ptr d_d_ptr n_words;
+
+    crucible_precond {{ ((integerFromBV d_d) * (integerFromBV e_d)) % (phi (integerFromBV n_d)) == 1 }};
+    crucible_precond {{ (rad (integerFromBV n_d)) == (integerFromBV n_d) }};
+
+    return (d_ptr, d_d);
+  } else do {
+    return (crucible_null, {{ undefined : [n_bits] }});
+  };
+
+  (p_ptr, q_ptr, dmp1_ptr, dmq1_ptr, iqmp_ptr, inv_small_mod_large_mont_ptr, mont_p_ptr, mont_q_ptr) <- if with_crt then do {
+    // CRT case
+    // Fields for p+q case
+    p_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+    points_to_bignum_st_same p_ptr p_d_ptr p_words;
+    crucible_precond {{ is_num_bits_bn`{p_bits} p_d }};
+    crucible_precond {{ (integerFromBV p_d) % 2 == 1 }}; // p must be odd
+
+    q_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+    points_to_bignum_st_same q_ptr q_d_ptr p_words;
+    crucible_precond {{ is_num_bits_bn`{p_bits} q_d }};
+    crucible_precond {{ (integerFromBV q_d) % 2 == 1 }}; // p must be odd
+
+    crucible_precond {{ (integerFromBV p_d) > (integerFromBV q_d) }};
+
+    dmp1_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+    dmp1_d_ptr <- crucible_alloc_readonly (llvm_int p_bits);
+    crucible_points_to dmp1_d_ptr (crucible_term {{ integerToBV`{p_bits} ((integerFromBV d_d) % ((integerModulusFromBV p_d) - 1)) }});
+    points_to_bignum_st_same dmp1_ptr dmp1_d_ptr p_words;
+
+    dmq1_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+    dmq1_d_ptr <- crucible_alloc_readonly (llvm_int p_bits);
+    crucible_points_to dmq1_d_ptr (crucible_term {{ integerToBV`{p_bits} ((integerFromBV d_d) % ((integerModulusFromBV q_d) - 1)) }});
+    points_to_bignum_st_same dmq1_ptr dmq1_d_ptr p_words;
+
+    iqmp_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+    (iqmp_d, iqmp_d_ptr) <- ptr_to_fresh_readonly "iqmp_d" (llvm_int p_bits);
+    points_to_bignum_st_same iqmp_ptr iqmp_d_ptr p_words;
+
+    inv_small_mod_large_mont_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+    inv_small_mod_large_mont_d_ptr <- crucible_alloc_readonly (llvm_int p_bits);
+    crucible_points_to inv_small_mod_large_mont_d_ptr (crucible_term {{ integerToBV`{p_bits} (((inv (integerModulusFromBV q_d) (integerModulusFromBV p_d)) * (2 ^^ `p_bits)) % (integerModulusFromBV p_d)) }});
+    points_to_bignum_st_same inv_small_mod_large_mont_ptr inv_small_mod_large_mont_d_ptr p_words;
+
+    mont_p_ptr <- pointer_to_bn_mont_ctx_st_with_N_d p_words p_d_ptr p_d;
+
+    mont_q_ptr <- pointer_to_bn_mont_ctx_st_with_N_d p_words q_d_ptr q_d;
+
+    return
+      ( p_ptr
+      , q_ptr
+      , dmp1_ptr
+      , dmq1_ptr
+      , iqmp_ptr
+      , inv_small_mod_large_mont_ptr
+      , mont_p_ptr
+      , mont_q_ptr
+      );
+  } else do {
+    return
+      ( crucible_null
+      , crucible_null
+      , crucible_null
+      , crucible_null
+      , crucible_null
+      , crucible_null
+      , crucible_null
+      , crucible_null
+      );
+  };
+
+  points_to_rsa_st
+    ptr
+    meth_ptr
+    n_ptr
+    e_ptr
+    d_ptr
+    (if with_blinding then 0 else RSA_FLAG_NO_BLINDING) // rsa_flags
+    p_ptr
+    q_ptr
+    dmp1_ptr
+    dmq1_ptr
+    iqmp_ptr
+    inv_small_mod_large_mont_ptr
+    mont_n_ptr
+    mont_p_ptr
+    mont_q_ptr;
+
+  return (ptr, n_d, d_d, e_d, p_d, q_d);
+};
+
+let points_to_RSA_PKEY_CTX ptr md_ptr = do {
+  crucible_points_to (crucible_field ptr "nbits") (crucible_term {{ `n_bits : [32] }});
+  crucible_points_to (crucible_field ptr "pub_exp") crucible_null;
+  crucible_points_to (crucible_field ptr "pad_mode") (crucible_term {{ `RSA_PKCS1_PSS_PADDING : [32] }});
+  crucible_points_to (crucible_field ptr "md") md_ptr;
+  crucible_points_to (crucible_field ptr "mgf1md") crucible_null;
+  crucible_points_to (crucible_field ptr "saltlen") (crucible_term {{ `salt_len_param : [32] }});
+  crucible_points_to (crucible_field ptr "oaep_label") crucible_null;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Specifications
+
+random_out <- crucible_declare_ghost_state "random_out";
+let RAND_bytes_spec size = do {
+  out <- crucible_fresh_cryptol_var "out" {| [size][8] |};
+  crucible_ghost_value random_out out;
+
+  out_ptr <- crucible_alloc (llvm_array size i8);
+  crucible_execute_func [out_ptr, crucible_term {{ `size : [64] }}];
+
+  crucible_points_to out_ptr (crucible_term out);
+
+  // RAND_bytes always returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let RSA_padding_add_PKCS1_PSS_mgf1_spec = do {
+  salt <- crucible_fresh_cryptol_var "salt" {| [salt_len][8] |};
+  crucible_ghost_value random_out salt;
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (rsa_ptr, _, _) <- pointer_to_base_fresh_rsa_st true;
+  EM_ptr <- crucible_alloc (llvm_array n_bytes i8);
+  (mHash, mHash_ptr) <- ptr_to_fresh_readonly "mHash" (llvm_array SHA_DIGEST_LENGTH i8);
+  Hash_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st Hash_ptr;
+
+  crucible_execute_func [rsa_ptr, EM_ptr, mHash_ptr, Hash_ptr, crucible_null, (crucible_term {{ `salt_len_param : [32] }})];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_points_to EM_ptr (crucible_term {{ PSS_mgf1_encode`{n_bytes} mHash salt }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let RSA_verify_PKCS1_PSS_mgf1_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (rsa_ptr, _, _) <- pointer_to_base_fresh_rsa_st true;
+  (mHash, mHash_ptr) <- ptr_to_fresh_readonly "mHash" (llvm_array SHA_DIGEST_LENGTH i8);
+  Hash_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st Hash_ptr;
+  (EM, EM_ptr) <- ptr_to_fresh_readonly "EM" (llvm_array n_bytes i8);
+
+  crucible_execute_func [rsa_ptr, mHash_ptr, Hash_ptr, crucible_null, EM_ptr, (crucible_term {{ `salt_len_param : [32] }})];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_return (crucible_term {{ if (PSS_mgf1_verify mHash EM) then (1 : [32]) else 0 }});
+};
+
+rsa_blinding_factor <- crucible_declare_ghost_state "rsa_blinding_factor";
+let rsa_blinding_get_spec = do {
+  a <- crucible_fresh_cryptol_var "a" {| Integer |};
+  crucible_ghost_value rsa_blinding_factor a;
+
+  (rsa_ptr, n, e) <- pointer_to_base_fresh_rsa_st true;
+  index_used_ptr <- crucible_alloc i32;
+  ctx_ptr <- pointer_to_bignum_ctx;
+
+  crucible_execute_func [rsa_ptr, index_used_ptr, ctx_ptr];
+
+  ret_ptr <- crucible_alloc (llvm_struct "struct.bn_blinding_st");
+  A_ptr <- crucible_alloc (llvm_struct "struct.bignum_st");
+  A_d_ptr <- crucible_alloc (llvm_int n_bits);
+  crucible_points_to A_d_ptr (crucible_term {{ integerToBV`{n_bits} (((exp a (integerFromBV e)) * (2 ^^ `n_bits)) % (integerModulusFromBV n)) }});
+  points_to_bignum_st_same A_ptr A_d_ptr n_words;
+  Ai_ptr <- crucible_alloc (llvm_struct "struct.bignum_st");
+  Ai_d_ptr <- crucible_alloc (llvm_int n_bits);
+  crucible_points_to Ai_d_ptr (crucible_term {{ integerToBV`{n_bits} (((inv a (integerModulusFromBV n)) * (2 ^^ `n_bits)) % (integerModulusFromBV n)) }});
+  points_to_bignum_st_same Ai_ptr Ai_d_ptr n_words;
+  crucible_points_to (crucible_field ret_ptr "A") A_ptr;
+  crucible_points_to (crucible_field ret_ptr "Ai") Ai_ptr;
+  crucible_points_to (crucible_field ret_ptr "counter") (crucible_term {{ 0 : [32] }});
+
+
+  index_used <- crucible_fresh_var "index_used" i32;
+  crucible_points_to index_used_ptr (crucible_term index_used);
+
+  crucible_return ret_ptr;
+};
+
+let rsa_blinding_release_spec = do {
+  (rsa_ptr, _, _) <- pointer_to_base_fresh_rsa_st true;
+  index_used <- crucible_fresh_var "index_used" i32;
+  blinding_ptr <- crucible_alloc (llvm_struct "struct.bn_blinding_st");
+
+  crucible_execute_func [rsa_ptr, blinding_ptr, (crucible_term index_used)];
+};
+
+let RSA_sign_pss_mgf1_spec with_crt with_blinding = do {
+  salt <- crucible_fresh_cryptol_var "salt" {| [salt_len][8] |};
+  crucible_ghost_value random_out salt;
+  a <- crucible_fresh_cryptol_var "a" {| Integer |};
+  crucible_ghost_value rsa_blinding_factor a;
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (rsa_ptr, n, d, _e, _p, _q) <- pointer_to_fresh_rsa_st false true with_crt with_blinding;
+  out_len_ptr <- crucible_alloc i64;
+  out_ptr <- crucible_alloc (llvm_array n_bytes i8);
+  (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array SHA_DIGEST_LENGTH i8);
+  md_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st md_ptr;
+
+  crucible_execute_func
+    [ rsa_ptr
+    , out_len_ptr
+    , out_ptr
+    , (crucible_term {{ `n_bytes : [64] }})
+    , in_ptr
+    , (crucible_term {{ `SHA_DIGEST_LENGTH : [64] }})
+    , md_ptr
+    , crucible_null
+    , (crucible_term {{ `salt_len_param : [32] }})
+    ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ split`{each=8} (integerToBV`{n_bits} (RSA_sign`{n_bytes} in_ salt (integerFromBV d) (integerFromBV n))) }};
+  crucible_points_to out_ptr (crucible_term res);
+
+  crucible_points_to out_len_ptr (crucible_term {{ `n_bytes : [64] }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let RSA_verify_pss_mgf1_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (rsa_ptr, n, _d, e, _p, _q) <- pointer_to_fresh_rsa_st false false false false;
+  (msg, msg_ptr) <- ptr_to_fresh_readonly "msg" (llvm_array SHA_DIGEST_LENGTH i8);
+  md_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st md_ptr;
+  (sig, sig_ptr) <- ptr_to_fresh_readonly "sig" (llvm_array n_bytes i8);
+
+  crucible_execute_func
+    [ rsa_ptr
+    , msg_ptr
+    , (crucible_term {{ `SHA_DIGEST_LENGTH : [64] }})
+    , md_ptr
+    , crucible_null
+    , (crucible_term {{ `salt_len_param : [32] }})
+    , sig_ptr
+    , (crucible_term {{ `n_bytes : [64] }})
+    ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ RSA_verify`{n_bytes} msg (integerFromBV (join sig)) (integerFromBV e) (integerFromBV n) }};
+  crucible_return (crucible_term {{ if res then (1 : [32]) else 0 }});
+};
+
+// Specifications of the various EVP functions
+include "evp-function-specs.saw";
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+RAND_bytes_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "RAND_bytes"
+  (RAND_bytes_spec salt_len);
+
+RSA_padding_add_PKCS1_PSS_mgf1_ov <- llvm_verify
+  m
+  "RSA_padding_add_PKCS1_PSS_mgf1"
+  [ sha512_block_data_order_spec
+  , RAND_bytes_ov
+  , BN_num_bits_n_bits_ov
+  , OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_salt_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  RSA_padding_add_PKCS1_PSS_mgf1_spec
+  (do {
+    w4_unint_z3 ["processBlock_Common"];
+  });
+
+EVP_DigestFinal_ex_0x34_ov <- llvm_verify m "EVP_DigestFinal_ex"
+  [ sha512_block_data_order_spec
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  (EVP_DigestFinal_ex_spec false 0x34)
+  (w4_unint_z3 ["processBlock_Common"]);
+EVP_DigestFinal_ex_0x68_ov <- llvm_verify m "EVP_DigestFinal_ex"
+  [ sha512_block_data_order_spec
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  (EVP_DigestFinal_ex_spec false 0x68)
+  (w4_unint_z3 ["processBlock_Common"]);
+
+enable_smt_array_memory_model;
+RSA_verify_PKCS1_PSS_mgf1_ov <- llvm_verify
+  m
+  "RSA_verify_PKCS1_PSS_mgf1"
+  [ EVP_DigestFinal_ex_0x34_ov
+  , EVP_DigestFinal_ex_0x68_ov
+  , sha512_block_data_order_spec
+  , BN_num_bits_n_bits_ov
+  , OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_salt_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  , memcmp_ov
+  , ERR_put_error_ov
+  ]
+  true
+  RSA_verify_PKCS1_PSS_mgf1_spec
+  (do {
+    w4_unint_z3 ["processBlock_Common"];
+  });
+disable_smt_array_memory_model;
+
+rsa_blinding_get_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "rsa_blinding_get"
+  rsa_blinding_get_spec;
+
+rsa_blinding_release_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "rsa_blinding_release"
+  rsa_blinding_release_spec;
+
+let RSA_sign_pss_mgf1_ovs =
+  [ RSA_padding_add_PKCS1_PSS_mgf1_ov
+  , rsa_blinding_get_ov
+  , rsa_blinding_release_ov
+  , BN_mod_exp_mont_n_ov
+  , BN_mod_exp_mont_p_ov
+  , BN_mod_exp_mont_n_1_ov
+  , BN_mod_exp_mont_n_1_1_ov
+  , BN_bn2bin_padded_n_ov
+  , BN_bn2bin_padded_n_1_ov
+  , BN_bin2bn_n_ov
+  , BN_equal_consttime_ov
+  , BN_ucmp_lt_n_ov
+  , BN_ucmp_gt_p_ov
+  , BN_num_bits_n_bits_ov
+  , BN_num_bits_e_bits_ov
+  , bn_uadd_consttime_n_p_ov
+  , bn_mul_consttime_p_ov
+  , bn_mod_sub_consttime_p_ov
+  , bn_from_montgomery_in_place_p_ov
+  , bn_mul_mont_with_N_p_ov
+  , bn_mul_mont_with_N_same_res_left_p_ov
+  , bn_mul_mont_with_N_same_res_left_n_ov
+  , bn_mul_mont_with_N_same_res_left_right_n_ov
+  , sha512_block_data_order_spec
+  , value_barrier_w_ov
+  , ERR_put_error_ov
+  , CRYPTO_MUTEX_lock_read_ov
+  , CRYPTO_MUTEX_unlock_read_ov
+  , CRYPTO_MUTEX_lock_write_ov
+  , CRYPTO_MUTEX_unlock_write_ov
+  , OPENSSL_malloc_ov
+  , OPENSSL_realloc_null_ov
+  , OPENSSL_realloc_nonnull_ov
+  , OPENSSL_free_nonnull_1_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  ];
+
+llvm_verify
+  m
+  "RSA_sign_pss_mgf1"
+  RSA_sign_pss_mgf1_ovs
+  true
+  (RSA_sign_pss_mgf1_spec false false)
+  (do {
+    sign_pss_mgf1_base_tactic;
+    goal_num_when 0 (simplify (addsimp PSS_mgf1_encode_0_thm empty_ss));
+    goal_num_when 1 vrfy_no_blinding_tactic;
+    goal_num_when 2 sign_tactic;
+    goal_num_when 3 vrfy_no_blinding_tactic;
+    goal_num_when 4 vrfy_no_blinding_tactic;
+    goal_eval_unint ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+    w4_unint_z3 ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+  });
+
+llvm_verify
+  m
+  "RSA_sign_pss_mgf1"
+  RSA_sign_pss_mgf1_ovs
+  true
+  (RSA_sign_pss_mgf1_spec true false)
+  (do {
+    sign_pss_mgf1_base_tactic;
+    goal_num_when 0 (simplify (addsimp PSS_mgf1_encode_0_thm empty_ss));
+    goal_num_when 2 vrfy_no_blinding_tactic;
+    goal_num_when 3 sign_tactic;
+    goal_num_when 4 vrfy_no_blinding_tactic;
+    goal_num_when 5 vrfy_no_blinding_tactic;
+    goal_eval_unint ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+    w4_unint_z3 ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+  });
+
+llvm_verify
+  m
+  "RSA_sign_pss_mgf1"
+  RSA_sign_pss_mgf1_ovs
+  true
+  (RSA_sign_pss_mgf1_spec false true)
+  (do {
+    sign_pss_mgf1_base_tactic;
+    goal_num_when 0 (simplify (addsimp PSS_mgf1_encode_0_thm empty_ss));
+    goal_num_when 1 vrfy_tactic;
+    goal_num_when 2 sign_tactic;
+    goal_num_when 3 vrfy_tactic;
+    goal_num_when 4 vrfy_tactic;
+    goal_eval_unint ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+    w4_unint_z3 ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+  });
+
+RSA_sign_pss_mgf1_ov <- llvm_verify
+  m
+  "RSA_sign_pss_mgf1"
+  RSA_sign_pss_mgf1_ovs
+  true
+  (RSA_sign_pss_mgf1_spec true true)
+  (do {
+    sign_pss_mgf1_base_tactic;
+    goal_num_when 0 (simplify (addsimp PSS_mgf1_encode_0_thm empty_ss));
+    goal_num_when 3 vrfy_tactic;
+    goal_num_when 4 sign_tactic;
+    goal_num_when 5 vrfy_tactic;
+    goal_num_when 6 vrfy_tactic;
+    goal_eval_unint ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+    w4_unint_z3 ["PSS_mgf1_encode", "processBlock_Common", "mont_R_inv_with_N", "bn_mont_n0_with_N", "exp", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+  });
+
+RSA_verify_pss_mgf1_ov <- llvm_verify
+  m
+  "RSA_verify_pss_mgf1"
+  [ RSA_verify_PKCS1_PSS_mgf1_ov
+  , BN_mod_exp_mont_n_1_ov
+  , BN_bn2bin_padded_n_ov
+  , BN_bin2bn_n_ov
+  , BN_ucmp_n_ov
+  , BN_ucmp_gt_n_e_ov
+  , BN_num_bits_n_bits_ov
+  , BN_num_bits_e_bits_ov
+  , sha512_block_data_order_spec
+  , value_barrier_w_ov
+  , ERR_put_error_ov
+  , CRYPTO_MUTEX_lock_read_ov
+  , CRYPTO_MUTEX_unlock_read_ov
+  , CRYPTO_MUTEX_lock_write_ov
+  , CRYPTO_MUTEX_unlock_write_ov
+  , OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_1_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  ]
+  true
+  RSA_verify_pss_mgf1_spec
+  (do {
+    goal_eval_unint ["PSS_mgf1_verify", "processBlock_Common", "bn_mont_n0_with_N", "exp", "integerToBV", "integerFromBV"];
+    goal_num_ite 0
+      (w4_unint_z3 ["PSS_mgf1_verify", "processBlock_Common", "bn_mont_n0_with_N", "exp", "phi", "rad"])
+      (w4_unint_z3 ["PSS_mgf1_verify", "processBlock_Common", "bn_mont_n0_with_N", "exp", "phi", "rad", "integerToBV", "integerFromBV"]);
+  });
+
+
+llvm_verify m "EVP_DigestSignInit"
+  [ OPENSSL_malloc_ov
+  , CRYPTO_refcount_inc_ov
+  ]
+  true
+  (EVP_DigestSignVerifyInit_spec true)
+  (w4_unint_z3 ["integerToBV", "integerFromBV"]);
+llvm_verify m "EVP_DigestVerifyInit"
+  [ OPENSSL_malloc_ov
+  , CRYPTO_refcount_inc_ov
+  ]
+  true
+  (EVP_DigestSignVerifyInit_spec false)
+  (w4_unint_z3 ["integerToBV", "integerFromBV"]);
+
+llvm_verify m "EVP_DigestSignUpdate"
+  [ sha512_block_data_order_spec
+  ]
+  true
+  (EVP_DigestSignVerifyUpdate_spec true 127 241)
+  (w4_unint_z3 ["processBlock_Common", "bn_mont_n0_with_N", "phi", "rad", "integerToBV", "integerFromBV"]);
+llvm_verify m "EVP_DigestVerifyUpdate"
+  [ sha512_block_data_order_spec
+  ]
+  true
+  (EVP_DigestSignVerifyUpdate_spec false 127 241)
+  (w4_unint_z3 ["processBlock_Common", "bn_mont_n0_with_N", "phi", "rad", "integerToBV", "integerFromBV"]);
+
+llvm_verify m "EVP_DigestSignFinal"
+  [ RSA_sign_pss_mgf1_ov
+  , BN_num_bits_n_bits_ov
+  , sha512_block_data_order_spec
+  , OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_free_nonnull_1_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  , CRYPTO_refcount_inc_ov
+  , CRYPTO_refcount_dec_and_test_zero_ov
+  ]
+  true
+  (EVP_DigestSignFinal_spec 112)
+  (do {
+    goal_eval_unint ["RSA_sign", "processBlock_Common", "bn_mont_n0_with_N", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+    w4_unint_z3 ["RSA_sign", "processBlock_Common", "bn_mont_n0_with_N", "inv", "phi", "rad", "integerToBV", "integerFromBV"];
+  });
+
+llvm_verify m "EVP_DigestVerifyFinal"
+  [ RSA_verify_pss_mgf1_ov
+  , sha512_block_data_order_spec
+  , OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_free_nonnull_1_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  , CRYPTO_refcount_inc_ov
+  , CRYPTO_refcount_dec_and_test_zero_ov
+  ]
+  true
+  (EVP_DigestVerifyFinal_spec 112)
+  (do {
+    goal_eval_unint ["RSA_verify", "processBlock_Common", "bn_mont_n0_with_N", "phi", "rad", "integerToBV", "integerFromBV"];
+    w4_unint_z3 ["RSA_verify", "processBlock_Common", "bn_mont_n0_with_N", "phi", "rad", "integerToBV", "integerFromBV"];
+  });
+

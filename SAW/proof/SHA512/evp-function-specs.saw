@@ -129,7 +129,7 @@ let digestOut_post withLength out_ptr s_ptr out_value = do {
   };
 };
 
-let EVP_DigestFinal_spec withLength num = do {
+let EVP_DigestFinalCommon_spec is_ex withLength num = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   // Precondition: md_out_ptr is allocated and correct length, and 
@@ -137,7 +137,11 @@ let EVP_DigestFinal_spec withLength num = do {
   (md_out_ptr, s_ptr) <- digestOut_pre withLength;
 
   // Precondition: `ctx_ptr` points to an `env_md_ctx_st` struct
-  ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+  ctx_ptr <- if is_ex then do {
+    crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
+  } else do {
+    crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+  };
 
   // Precondition: `digest_ptr` points to a const `env_md_st` struct satisfying
   // the `digest_ptr` specification.
@@ -145,12 +149,10 @@ let EVP_DigestFinal_spec withLength num = do {
   points_to_env_md_st digest_ptr;
 
   // Precondition: `sha512_ctx_ptr` is a pointer to a `sha512_state_st` struct
-  sha512_ctx_ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
   // Precondition: `sha512_ctx` is a fresh Cryptol SHAState
-  sha512_ctx <- fresh_sha512_state_st "sha512_ctx" num;
   // Precondition: `sha512_ctx_ptr` matches `sha512_ctx`.  The message blocks
   // of the two must only match up to the first `num` bits
-  points_to_sha512_state_st sha512_ctx_ptr sha512_ctx num;
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st "sha512_ctx" num;
 
   // Precondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
   // `sha512_ctx_ptr`.
@@ -172,6 +174,8 @@ let EVP_DigestFinal_spec withLength num = do {
   // Postcondition: The function returns 1
   crucible_return (crucible_term {{ 1 : [32] }});
 };
+let EVP_DigestFinal_ex_spec = EVP_DigestFinalCommon_spec true;
+let EVP_DigestFinal_spec = EVP_DigestFinalCommon_spec false;
 
 let EVP_Digest_spec withLength len = do {
   // Precondition: The function uses the AVX+shrd code path

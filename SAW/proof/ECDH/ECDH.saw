@@ -5,6 +5,7 @@
 
 
 import "../../../cryptol-specs/Common/EC/EC_P384.cry";
+import "../../../cryptol-specs/Common/utils.cry";
 
 
 include "../ECDSA/goal-rewrites.saw";

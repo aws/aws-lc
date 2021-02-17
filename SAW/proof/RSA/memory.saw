@@ -1,0 +1,40 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+let OPENSSL_realloc_spec size = do {
+  ptr <- crucible_alloc (llvm_array 4 i64);
+  ptr0 <- crucible_fresh_pointer i64;
+  ptr1 <- crucible_fresh_pointer i64;
+  ptr2 <- crucible_fresh_pointer i64;
+  ptr3 <- crucible_fresh_pointer i64;
+  crucible_points_to ptr (crucible_array [ptr0, ptr1, ptr2, ptr3]);
+  crucible_execute_func [ptr, (crucible_term {{ `size : [64] }})];
+  ret <- crucible_alloc_aligned 16 (llvm_array size i8);
+  crucible_points_to_untyped ret (crucible_array [ptr0, ptr1, ptr2, ptr3]);
+  crucible_return ret;
+};
+
+
+OPENSSL_realloc_nonnull_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_realloc"
+  (OPENSSL_realloc_spec 64);
+
+OPENSSL_free_nonnull_salt_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "OPENSSL_free"
+  (OPENSSL_free_nonnull_spec salt_len);
+
+OPENSSL_free_nonnull_1_ov <- crucible_llvm_unsafe_assume_spec
+  m
+ "OPENSSL_free"
+ (OPENSSL_free_nonnull_spec 1);
+
+// RSA_verify_PKCS1_PSS_mgf1_ov requires an memcmp_ov override
+memcmp_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "memcmp"
+  (memcmp_spec SHA_DIGEST_LENGTH);
+

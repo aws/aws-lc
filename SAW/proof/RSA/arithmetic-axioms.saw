@@ -1,0 +1,46 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * Arithmetic axioms that are assumed without proof. They cannot be proved
+ * with an SMT solver.
+ */
+
+let {{
+inv : Integer -> Integer -> Integer
+inv x n = undefined
+}};
+
+exp_0_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \a x (m : [n_bits]) -> (exp (a % (integerModulusFromBV m)) x) % (integerModulusFromBV m) == (exp a x) % (integerModulusFromBV m) }});
+exp_1_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \a x (m : [p_bits]) -> (exp (a % (integerModulusFromBV m)) x) % (integerModulusFromBV m) == (exp a x) % (integerModulusFromBV m) }});
+exp_2_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x (d : [n_bits]) (e : [64]) -> exp (exp x (integerFromBV d)) (integerFromBV e) == exp x ((integerFromBV d) * (integerFromBV e)) }});
+exp_3_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x (d : [n_bits]) (e : [64]) -> exp (exp x (integerFromBV e)) (integerFromBV d) == exp x ((integerFromBV d) * (integerFromBV e)) }});
+exp_4_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \a b x -> (exp (a * b) x) == (exp a x) * (exp b x) }});
+
+integerToBV_0_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x (m : [n_bits]) -> (integerToBV`{n_bits + 64} (x % (integerModulusFromBV m))) == 0 # (integerToBV`{n_bits} (x % (integerModulusFromBV m))) }});
+
+mul_bitwidth_0_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \(x : [p_bits]) (y : [p_bits]) -> (integerFromBV (integerToBV`{n_bits} ((integerFromBV x) * (integerFromBV y)))) == (integerFromBV x) * (integerFromBV y) }});
+mul_bitwidth_1_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \(x : [p_bits]) (y : [p_bits]) -> (integerFromBV (integerToBV`{n_bits} ((integerModulusFromBV x) * (integerModulusFromBV y)))) == (integerModulusFromBV x) * (integerModulusFromBV y) }});
+mul_bitwidth_2_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \(x : [p_bits]) (y : [p_bits]) -> (integerModulusFromBV (integerToBV`{n_bits} ((integerModulusFromBV x) * (integerModulusFromBV y)))) == (integerModulusFromBV x) * (integerModulusFromBV y) }});
+
+mul_mod_rearrgange_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x y z (m : [n_bits]) -> (((x * (y * y)) % (integerModulusFromBV m)) * (z * z)) % (integerModulusFromBV m) == (x * ((y * z) % (integerModulusFromBV m)) * ((y * z) % (integerModulusFromBV m))) % (integerModulusFromBV m) }});
+
+mont_R_inv_0_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x (m : [p_bits]) -> (((x * (integerFromBV (mont_R_inv_with_N m))) % (integerModulusFromBV m)) * (((2 ^^ `p_bits) * (2 ^^ `p_bits)) % (integerModulusFromBV m)) * (integerFromBV (mont_R_inv_with_N m))) % (integerModulusFromBV m) == x % (integerModulusFromBV m) }});
+mont_R_inv_1_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x y (m : [p_bits]) -> ((x * ((y * (2 ^^ `p_bits)) % (integerModulusFromBV m))) * (integerFromBV (mont_R_inv_with_N m))) % (integerModulusFromBV m) == (x * y) % (integerModulusFromBV m) }});
+mont_R_inv_2_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x y (m : [n_bits]) -> ((x * ((y * (2 ^^ `n_bits)) % (integerModulusFromBV m))) * (integerFromBV (mont_R_inv_with_N m))) % (integerModulusFromBV m) == (x * y) % (integerModulusFromBV m) }});
+mont_R_inv_3_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x y (m : [n_bits]) -> (((x * (2 ^^ `n_bits)) % (integerModulusFromBV m)) * y) % (integerModulusFromBV m) == (x * y * (2 ^^ `n_bits)) % (integerModulusFromBV m) }});
+
+inv_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \a (m : [n_bits]) -> (a * (inv a (integerModulusFromBV m))) % (integerModulusFromBV m) == 1 }});
+
+
+fermat_euler_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \a x n -> (exp a x) % n == if (x % (phi n) == 1 /\ (rad n) == n) then (a % n) else ((1 * (exp a x)) % n) }});
+
+fermat_euler_1_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \a b x n -> ((exp a x) * b) % n == if (x % (phi n) == 1 /\ (rad n) == n) then ((a * b) % n) else ((1 * ((exp a x) * b)) % n) }});
+
+fermat_euler_2_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x (d : [n_bits]) (p : [p_bits]) -> (exp x ((integerFromBV d) % ((integerModulusFromBV p) - 1))) % (integerModulusFromBV p) == (exp x (integerFromBV d)) % (integerModulusFromBV p) }});
+
+
+crt_thm <- prove_print assume_unsat (rewrite (cryptol_ss ()) {{ \x (p : [p_bits]) (q : [p_bits]) -> (((((x % (integerModulusFromBV p)) - (x % (integerModulusFromBV q))) % (integerModulusFromBV p)) * (inv (integerModulusFromBV q) (integerModulusFromBV p))) % (integerModulusFromBV p)) * (integerFromBV q) + (x % (integerModulusFromBV q)) == x % (integerModulusFromBV (integerToBV`{n_bits} ((integerModulusFromBV p) * (integerModulusFromBV q)))) }});
+

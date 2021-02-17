@@ -66,6 +66,24 @@ let ERR_put_error_spec = do {
     ];
 };
 
+// TODO: Override the functions that call into these CRYPTO_MUTEX functions,
+// rather than the CRYPTO_MUTEX functions themselves
+let CRYPTO_MUTEX_lock_spec = do {
+  lock_ptr <- crucible_alloc (llvm_struct "union.crypto_mutex_st");
+  crucible_execute_func [lock_ptr];
+};
+
+let CRYPTO_get_fork_generation_spec = do {
+  crucible_execute_func [];
+  ret <- crucible_fresh_var "ret" i64;
+  crucible_return (crucible_term ret);
+};
+
+CRYPTO_get_fork_generation_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "CRYPTO_get_fork_generation"
+  (CRYPTO_get_fork_generation_spec);
+
 
 // Proof commands
 
@@ -112,4 +130,24 @@ ERR_put_error_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ERR_put_error"
   ERR_put_error_spec;
+
+CRYPTO_MUTEX_lock_read_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "CRYPTO_MUTEX_lock_read"
+  CRYPTO_MUTEX_lock_spec;
+
+CRYPTO_MUTEX_unlock_read_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "CRYPTO_MUTEX_unlock_read"
+  CRYPTO_MUTEX_lock_spec;
+
+CRYPTO_MUTEX_lock_write_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "CRYPTO_MUTEX_lock_write"
+  CRYPTO_MUTEX_lock_spec;
+
+CRYPTO_MUTEX_unlock_write_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "CRYPTO_MUTEX_unlock_write"
+  CRYPTO_MUTEX_lock_spec;
 

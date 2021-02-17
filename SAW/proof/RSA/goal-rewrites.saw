@@ -1,0 +1,88 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * Rewrite rules proofs and goal tactics. This does not
+ * contain any specifications or assumtions, thus it does
+ * not require inspection in order to trust the
+ * verification result.
+ */
+
+let intLt = parse_core "\\(x y : Integer) -> intLt x y";
+
+let slice_64_1024_0 = parse_core "\\(x : Vec 1088 Bool) -> slice Bool 64 1024 0 x";
+let slice_64_2048_0 = parse_core "\\(x : Vec 2112 Bool) -> slice Bool 64 2048 0 x";
+let slice_64_3072_0 = parse_core "\\(x : Vec 3136 Bool) -> slice Bool 64 3072 0 x";
+
+slice_append_0_thm <- prove_folding_theorem {{ \x y -> slice_64_1024_0 (x # y) == y }};
+slice_append_1_thm <- prove_folding_theorem {{ \x y -> slice_64_2048_0 (x # y) == y }};
+slice_append_2_thm <- prove_folding_theorem {{ \x y -> slice_64_3072_0 (x # y) == y }};
+
+integerModulusFromBV_0_thm <- prove_print (w4_unint_z3 []) (rewrite (cryptol_ss ()) {{ \x (m : [n_bits]) -> integerFromBV (integerToBV`{n_bits} (x % (integerModulusFromBV m))) == x % (integerModulusFromBV m) }});
+integerModulusFromBV_1_thm <- prove_print
+  (do {
+    w4_unint_z3 ["integerFromBV"];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : Integer) (m : [n_bits]) -> (x % (integerModulusFromBV m)) % (integerModulusFromBV m) == x % (integerModulusFromBV m) }});
+integerModulusFromBV_2_thm <- prove_print (w4_unint_z3 []) (rewrite (cryptol_ss ()) {{ \x (m : [p_bits]) -> integerFromBV (integerToBV`{p_bits} (x % (integerModulusFromBV m))) == x % (integerModulusFromBV m) }});
+integerModulusFromBV_3_thm <- prove_print
+  (do {
+    w4_unint_z3 ["integerFromBV"];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : Integer) (m : [p_bits]) -> (x % (integerModulusFromBV m)) % (integerModulusFromBV m) == x % (integerModulusFromBV m) }});
+integerModulusFromBV_4_thm <- prove_print (w4_unint_z3 []) (rewrite (cryptol_ss ()) {{ \x (m : [p_bits]) -> integerFromBV (integerToBV`{p_bits} (x % ((integerModulusFromBV m) - 1))) == x % ((integerModulusFromBV m) - 1) }});
+
+integerFromBV_0_thm <- prove_print (w4_unint_z3 []) (rewrite (cryptol_ss ()) {{ \(x : [n_bits]) -> 0 <= (integerFromBV x) == True }});
+
+fermat_euler_0_thm <- prove_print
+  (do {
+    simplify (cryptol_ss ());
+    simplify basic_ss;
+    simplify (addsimp fermat_euler_thm empty_ss);
+    w4_unint_z3 ["exp", "phi", "rad"];
+  })
+  (rewrite (cryptol_ss ()) {{ \a x n -> (exp a x) % n == if (x % (phi n) == 1 /\ (rad n) == n) then (if (0 <= a /\ a < n) then a else (a % n)) else ((1 * (exp a x)) % n) }});
+
+intLt_0_thm <- prove_print
+  (w4_unint_z3 ["integerFromBV"])
+  (rewrite (cryptol_ss ()) (rewrite basic_ss {{ \(x : [n_bits]) (y : [n_bits]) -> (intLt (integerFromBV x) (integerFromBV y)) == if ((integerFromBV x) < 2 ^^ (`n_bits - 1) /\ 2 ^^ (`n_bits - 1) <= (integerFromBV y)) then True else ((integerFromBV x) - (integerFromBV y) < 0) }}));
+intLt_1_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \(n : [n_bits]) -> 2 ^^ (`n_bits - 1) <= (integerFromBV n) == (is_num_bits_bn`{n_bits} n) }});
+intLt_2_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \m s -> (integerFromBV (join (PSS_mgf1_encode`{n_bytes} m s))) < 2 ^^ (`n_bits - 1) == True }});
+PSS_mgf1_encode_0_thm <- prove_print
+  (do {
+    simplify (cryptol_ss ());
+    simplify basic_ss;
+    simplify (addsimps [intLt_0_thm, intLt_1_thm, intLt_2_thm] empty_ss);
+    w4_unint_z3 ["PSS_mgf1_encode", "integerFromBV"];
+  })
+  (rewrite (cryptol_ss ()) {{ \(n : [n_bits]) m s -> intLt (integerFromBV (join (PSS_mgf1_encode`{n_bytes} m s))) (integerFromBV n) == if (is_num_bits_bn`{n_bits} n) then True else ((integerFromBV (join (PSS_mgf1_encode`{n_bytes} m s))) - (integerFromBV n) < 0) }});
+
+
+let sign_pss_mgf1_base_tactic = do {
+  simplify (cryptol_ss ());
+  simplify basic_ss;
+  simplify (addsimps [mul_bitwidth_0_thm] empty_ss);
+  simplify (addsimps [integerModulusFromBV_0_thm, integerModulusFromBV_1_thm, integerModulusFromBV_2_thm, integerModulusFromBV_3_thm, integerModulusFromBV_4_thm] empty_ss);
+  simplify (addsimps [mont_R_inv_0_thm, mont_R_inv_1_thm, mont_R_inv_2_thm, mont_R_inv_3_thm] empty_ss);
+  simplify (addsimps [fermat_euler_2_thm] empty_ss);
+  simplify (addsimps [exp_1_thm] empty_ss);
+  simplify (addsimps [crt_thm, integerToBV_0_thm, slice_append_0_thm, slice_append_1_thm, slice_append_2_thm] empty_ss);
+  simplify (addsimps [integerModulusFromBV_0_thm, integerModulusFromBV_1_thm, integerModulusFromBV_2_thm, integerModulusFromBV_3_thm, integerModulusFromBV_4_thm] empty_ss);
+  simplify (addsimps [exp_0_thm] empty_ss);
+  simplify (addsimps [exp_2_thm] empty_ss);
+};
+let sign_tactic = do {
+  simplify (addsimps [exp_3_thm, exp_4_thm] empty_ss);
+  simplify (addsimps [mul_mod_rearrgange_thm] empty_ss);
+  simplify (addsimps [fermat_euler_1_thm, inv_thm] empty_ss);
+  simplify (addsimps [mul_bitwidth_1_thm, mul_bitwidth_2_thm] empty_ss);
+};
+let vrfy_tactic = simplify (addsimps [fermat_euler_thm] empty_ss);
+let vrfy_no_blinding_tactic = simplify (addsimps [fermat_euler_0_thm, integerFromBV_0_thm] empty_ss);
+

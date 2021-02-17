@@ -5,6 +5,7 @@
 
 
 import "../../../cryptol-specs/Common/EC/EC_P384.cry";
+import "../../../cryptol-specs/Common/utils.cry";
 
 
 include "../SHA512/SHA512-384-common.saw";
@@ -78,7 +79,7 @@ let points_to_fresh_asn1_sig ptr = do {
 
 
 let {{
-is_num_bits_bn : {m} (m <= P384_w) => [w] -> Bit
+is_num_bits_bn : {m} (m <= P384_w) => [P384_w] -> Bit
 is_num_bits_bn x = if `m == `P384_w
   then x @ 0
   else take`{P384_w - m} x == 0 /\ x @ (`P384_w - `m)

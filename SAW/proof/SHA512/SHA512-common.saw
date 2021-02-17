@@ -119,8 +119,8 @@ let fresh_sha512_state_st name n = do {
 };
 
 /*
- * The next three functions all specify structs used in the C SHA
- * implementation.  Most of the statements in these are of the form:
+ * The next functions all specify structs used in the C SHA implementation.
+ * Most of the statements in these are of the form:
  *    crucible_points_to (crucible_field ptr "name") (crucible_term {{ term }})
  * which indicates that the field `name` of the struct pointed to by `ptr`
  * contains the value `term`.  Some have the form:
@@ -130,14 +130,12 @@ let fresh_sha512_state_st name n = do {
  * All statements that do not match these two forms are documented inline
  */
 // Specify the sha512_state_st struct from a SHAState
-let points_to_sha512_state_st ptr state num = do {
-  crucible_points_to (crucible_field ptr "h") (crucible_term {{ state.h }});
+let points_to_sha512_state_st_common ptr (h, sz, block, n) num = do {
+  crucible_points_to (crucible_field ptr "h") (crucible_term h);
 
-  // Specify `sha512_state_st.Nl` contains last 64 bits of `state.sz`
-  crucible_points_to (crucible_field ptr "Nl") (crucible_term {{ drop`{64} state.sz }});
-
-  // Specify `sha512_state_st.Nh` contains first 64 bits of `state.sz`
-  crucible_points_to (crucible_field ptr "Nh") (crucible_term {{ take`{64} state.sz }});
+  // Specify `sha512_state_st.Nl` and `sha512_state_st.Nh` contain `sz`
+  //llvm_points_to_at_type (crucible_field ptr "Nl") i128 (crucible_term sz);
+  llvm_points_to_untyped (crucible_field ptr "Nl") (crucible_term sz);
 
   if eval_bool {{ `num == 0 }} then do {
     // Do not specify anything about `sha512_state_st.p`
@@ -147,11 +145,33 @@ let points_to_sha512_state_st ptr state num = do {
     // first `num` bits of `state.block`.
     // Untyped check because the size of `sha512_state_st.p` does not match
     // the size of (take`{num} state.block) unless `num` == `SHA512_CBLOCK`
-    crucible_points_to_untyped (crucible_field ptr "p") (crucible_term {{ take`{num} state.block }});
+    crucible_points_to_untyped (crucible_field ptr "p") (crucible_term block);
   };
 
-  crucible_points_to (crucible_field ptr "num") (crucible_term {{ state.n }});
+  crucible_points_to (crucible_field ptr "num") (crucible_term n);
   crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+};
+
+// Specify the sha512_state_st struct from a SHAState
+let points_to_sha512_state_st ptr state num = do {
+ points_to_sha512_state_st_common ptr ({{ state.h }}, {{ state.sz }}, {{ take`{num} state.block }}, {{ state.n }}) num;
+};
+
+let pointer_to_fresh_sha512_state_st name n = do {
+  // Hash value
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
+  // Message block
+  block <- crucible_fresh_var (str_concat name ".block") (llvm_array n i8);
+  // Size
+  sz <- crucible_fresh_var (str_concat name ".sz") i128;
+  // Build SHAState, padding `block` with zeros to fit
+  let state = {{ { h = h, block = (block # zero) : [SHA512_CBLOCK][8], n = `n : [32], sz = sz } }};
+
+  // `ptr` is a pointer to a `sha512_state_st` struct
+  ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
+  points_to_sha512_state_st_common ptr (h, sz, block, {{ `n : [32]}}) n;
+
+  return (state, ptr);
 };
 
 // Specify the env_md_st struct

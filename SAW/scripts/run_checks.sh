@@ -15,4 +15,5 @@ saw proof/AES_KW/verify-AES_KW.saw
 saw proof/AES_KW/verify-AES_KWP.saw
 saw proof/ECDSA/verify-ECDSA.saw
 saw proof/ECDH/verify-ECDH.saw
+saw proof/RSA/verify-RSA.saw
 

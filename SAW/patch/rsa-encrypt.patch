@@ -1,0 +1,13 @@
+diff --git a/crypto/fipsmodule/rsa/padding.c b/crypto/fipsmodule/rsa/padding.c
+index 28f1b45b4..526ce22c9 100644
+--- a/crypto/fipsmodule/rsa/padding.c
++++ b/crypto/fipsmodule/rsa/padding.c
+@@ -351,7 +351,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
+   }
+   OPENSSL_memset(db + mdlen, 0, emlen - from_len - 2 * mdlen - 1);
+   db[emlen - from_len - mdlen - 1] = 0x01;
+-  OPENSSL_memcpy(db + emlen - from_len - mdlen, from, from_len);
++  OPENSSL_memcpy(db + (emlen - from_len - mdlen), from, from_len);
+   if (!RAND_bytes(seed, mdlen)) {
+     return 0;
+   }
