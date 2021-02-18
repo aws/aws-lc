@@ -289,11 +289,11 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if config.Bugs.MockQUICTransport != nil && len(hs.clientHello.sessionId) > 0 {
+	if config.Bugs.MockQUICTransport != nil && len(hs.clientHello.sessionID) > 0 {
 		return fmt.Errorf("tls: QUIC client did not disable compatibility mode")
 	}
 	if config.Bugs.ExpectNoTLS12Session {
-		if len(hs.clientHello.sessionId) > 0 && c.vers >= VersionTLS13 {
+		if len(hs.clientHello.sessionID) > 0 && c.vers >= VersionTLS13 {
 			return fmt.Errorf("tls: client offered an unexpected session ID")
 		}
 		if len(hs.clientHello.sessionTicket) > 0 {
@@ -349,6 +349,10 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
+	if len(hs.clientHello.sessionID) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
+		return errors.New("tls: expected non-empty session ID from client")
+	}
+
 	applyBugsToClientHello(hs.clientHello, config)
 
 	return nil
@@ -376,7 +380,7 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	hs.hello = &serverHelloMsg{
 		isDTLS:                c.isDTLS,
 		vers:                  c.wireVersion,
-		sessionId:             hs.clientHello.sessionId,
+		sessionID:             hs.clientHello.sessionID,
 		compressionMethod:     config.Bugs.SendCompressionMethod,
 		versOverride:          config.Bugs.SendServerHelloVersion,
 		supportedVersOverride: config.Bugs.SendServerSupportedVersionExtension,
@@ -401,6 +405,14 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	encryptedExtensions.empty = config.Bugs.EmptyEncryptedExtensions
 	if err := hs.processClientExtensions(&encryptedExtensions.extensions); err != nil {
 		return err
+	}
+
+	if config.Bugs.ExpectClientECH && hs.clientHello.clientECH == nil {
+		return errors.New("tls: expected client to send ClientECH")
+	}
+
+	if hs.clientHello.clientECH != nil && len(config.Bugs.SendECHRetryConfigs) > 0 {
+		encryptedExtensions.extensions.echRetryConfigs = config.Bugs.SendECHRetryConfigs
 	}
 
 	// Select the cipher suite.
@@ -545,7 +557,7 @@ ResendHelloRetryRequest:
 	}
 	helloRetryRequest := &helloRetryRequestMsg{
 		vers:                c.wireVersion,
-		sessionId:           hs.clientHello.sessionId,
+		sessionID:           hs.clientHello.sessionID,
 		cipherSuite:         cipherSuite,
 		compressionMethod:   config.Bugs.SendCompressionMethod,
 		duplicateExtensions: config.Bugs.DuplicateHelloRetryRequestExtensions,
@@ -739,7 +751,7 @@ ResendHelloRetryRequest:
 			}
 
 			sessionCipher := cipherSuiteFromID(hs.sessionState.cipherSuite)
-			if err := c.useInTrafficSecret(c.wireVersion, sessionCipher, earlyTrafficSecret); err != nil {
+			if err := c.useInTrafficSecret(encryptionEarlyData, c.wireVersion, sessionCipher, earlyTrafficSecret); err != nil {
 				return err
 			}
 
@@ -846,7 +858,7 @@ ResendHelloRetryRequest:
 
 	// Switch to handshake traffic keys.
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
+	c.useOutTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
 	// Derive handshake traffic read key, but don't switch yet.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 
@@ -924,7 +936,7 @@ ResendHelloRetryRequest:
 						return fmt.Errorf("expected to send compressed cert with alg %d, but picked %d", expected, id)
 					}
 
-					if override := config.Bugs.SendCertCompressionAlgId; override != 0 {
+					if override := config.Bugs.SendCertCompressionAlgID; override != 0 {
 						id = override
 					}
 
@@ -1030,7 +1042,7 @@ ResendHelloRetryRequest:
 
 	// Switch to application data keys on write. In particular, any alerts
 	// from the client certificate are sent over these keys.
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret)
+	c.useOutTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, serverTrafficSecret)
 
 	// Send 0.5-RTT messages.
 	for _, halfRTTMsg := range config.Bugs.SendHalfRTTData {
@@ -1055,7 +1067,7 @@ ResendHelloRetryRequest:
 	}
 
 	// Switch input stream to handshake traffic keys.
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, clientHandshakeTrafficSecret); err != nil {
 		return err
 	}
 
@@ -1184,7 +1196,7 @@ ResendHelloRetryRequest:
 	hs.writeClientHash(clientFinished.marshal())
 
 	// Switch to application data keys on read.
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, clientTrafficSecret); err != nil {
 		return err
 	}
 
@@ -1242,10 +1254,6 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeJDK11)
 	}
 
-	if len(hs.clientHello.sessionId) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
-		return false, errors.New("tls: expected non-empty session ID from client")
-	}
-
 	foundCompression := false
 	// We only support null compression, so check that the client offered it.
 	for _, compression := range hs.clientHello.compressionMethods {
@@ -1297,11 +1305,11 @@ Curves:
 
 	// For test purposes, check that the peer never offers a session when
 	// renegotiating.
-	if c.cipherSuite != nil && len(hs.clientHello.sessionId) > 0 && c.config.Bugs.FailIfResumeOnRenego {
+	if c.cipherSuite != nil && len(hs.clientHello.sessionID) > 0 && c.config.Bugs.FailIfResumeOnRenego {
 		return false, errors.New("tls: offered resumption on renegotiation")
 	}
 
-	if c.config.Bugs.FailIfSessionOffered && (len(hs.clientHello.sessionTicket) > 0 || len(hs.clientHello.sessionId) > 0) {
+	if c.config.Bugs.FailIfSessionOffered && (len(hs.clientHello.sessionTicket) > 0 || len(hs.clientHello.sessionID) > 0) {
 		return false, errors.New("tls: client offered a session ticket or ID")
 	}
 
@@ -1441,7 +1449,16 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 
 	if len(hs.clientHello.quicTransportParams) > 0 {
 		c.quicTransportParams = hs.clientHello.quicTransportParams
+	}
+	if c.config.QUICTransportParamsUseLegacyCodepoint.IncludeStandard() {
 		serverExtensions.quicTransportParams = c.config.QUICTransportParams
+	}
+
+	if len(hs.clientHello.quicTransportParamsLegacy) > 0 {
+		c.quicTransportParamsLegacy = hs.clientHello.quicTransportParamsLegacy
+	}
+	if c.config.QUICTransportParamsUseLegacyCodepoint.IncludeLegacy() {
+		serverExtensions.quicTransportParamsLegacy = c.config.QUICTransportParams
 	}
 
 	if c.vers < VersionTLS13 || config.Bugs.NegotiateEMSAtAllVersions {
@@ -1467,7 +1484,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		serverExtensions.tokenBindingVersion = config.TokenBindingVersion
 	}
 
-	if len(hs.clientHello.tokenBindingParams) > 0 && (!hs.clientHello.extendedMasterSecret || hs.clientHello.secureRenegotiation == nil) {
+	if c.vers < VersionTLS13 && len(hs.clientHello.tokenBindingParams) > 0 && (!hs.clientHello.extendedMasterSecret || hs.clientHello.secureRenegotiation == nil) {
 		return errors.New("client sent Token Binding without EMS and/or RI")
 	}
 
@@ -1539,8 +1556,8 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 		}
 
 		var ok bool
-		sessionId := string(hs.clientHello.sessionId)
-		if hs.sessionState, ok = c.config.ServerSessionCache.Get(sessionId); !ok {
+		sessionID := string(hs.clientHello.sessionID)
+		if hs.sessionState, ok = c.config.ServerSessionCache.Get(sessionID); !ok {
 			return false
 		}
 	}
@@ -1596,7 +1613,7 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 	}
 	// We echo the client's session ID in the ServerHello to let it know
 	// that we're doing a resumption.
-	hs.hello.sessionId = hs.clientHello.sessionId
+	hs.hello.sessionID = hs.clientHello.sessionID
 	hs.hello.extensions.ticketSupported = c.config.Bugs.RenewTicketOnResume
 
 	if c.config.Bugs.SendSCTListOnResume != nil {
@@ -1654,14 +1671,14 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	// Generate a session ID if we're to save the session.
 	if !hs.hello.extensions.ticketSupported && config.ServerSessionCache != nil {
-		hs.hello.sessionId = make([]byte, 32)
-		if _, err := io.ReadFull(config.rand(), hs.hello.sessionId); err != nil {
+		hs.hello.sessionID = make([]byte, 32)
+		if _, err := io.ReadFull(config.rand(), hs.hello.sessionID); err != nil {
 			c.sendAlert(alertInternalError)
 			return errors.New("tls: short read from Rand: " + err.Error())
 		}
 	}
 	if config.Bugs.EchoSessionIDInFullHandshake {
-		hs.hello.sessionId = hs.clientHello.sessionId
+		hs.hello.sessionID = hs.clientHello.sessionID
 	}
 
 	hs.finishedHash = newFinishedHash(c.wireVersion, c.isDTLS, hs.suite)
@@ -1996,8 +2013,8 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 	}
 
 	if !hs.hello.extensions.ticketSupported || hs.c.config.Bugs.SkipNewSessionTicket {
-		if c.config.ServerSessionCache != nil && len(hs.hello.sessionId) != 0 {
-			c.config.ServerSessionCache.Put(string(hs.hello.sessionId), &state)
+		if c.config.ServerSessionCache != nil && len(hs.hello.sessionID) != 0 {
+			c.config.ServerSessionCache.Put(string(hs.hello.sessionID), &state)
 		}
 		return nil
 	}

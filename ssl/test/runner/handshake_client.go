@@ -19,6 +19,8 @@ import (
 	"math/big"
 	"net"
 	"time"
+
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
 )
 
 type clientHandshakeState struct {
@@ -58,7 +60,7 @@ func fixClientHellos(hello *clientHelloMsg, in []byte) ([]byte, error) {
 	}
 
 	hello.random = newHello.random
-	hello.sessionId = newHello.sessionId
+	hello.sessionID = newHello.sessionID
 
 	// Replace |ret|'s key shares with those of |hello|. For simplicity, we
 	// require their lengths match, which is satisfied by matching the
@@ -113,33 +115,44 @@ func (c *Conn) clientHandshake() error {
 		prefixExtensions = append(prefixExtensions, extensionNextProtoNeg)
 	}
 
+	quicTransportParams := c.config.QUICTransportParams
+	quicTransportParamsLegacy := c.config.QUICTransportParams
+	if !c.config.QUICTransportParamsUseLegacyCodepoint.IncludeStandard() {
+		quicTransportParams = nil
+	}
+	if !c.config.QUICTransportParamsUseLegacyCodepoint.IncludeLegacy() {
+		quicTransportParamsLegacy = nil
+	}
+
 	minVersion := c.config.minVersion(c.isDTLS)
 	maxVersion := c.config.maxVersion(c.isDTLS)
 	hello := &clientHelloMsg{
-		isDTLS:                  c.isDTLS,
-		compressionMethods:      []uint8{compressionNone},
-		random:                  make([]byte, 32),
-		ocspStapling:            !c.config.Bugs.NoOCSPStapling,
-		sctListSupported:        !c.config.Bugs.NoSignedCertificateTimestamps,
-		serverName:              c.config.ServerName,
-		supportedCurves:         c.config.curvePreferences(),
-		supportedPoints:         []uint8{pointFormatUncompressed},
-		nextProtoNeg:            len(c.config.NextProtos) > 0,
-		secureRenegotiation:     []byte{},
-		alpnProtocols:           c.config.NextProtos,
-		quicTransportParams:     c.config.QUICTransportParams,
-		duplicateExtension:      c.config.Bugs.DuplicateExtension,
-		channelIDSupported:      c.config.ChannelID != nil,
-		tokenBindingParams:      c.config.TokenBindingParams,
-		tokenBindingVersion:     c.config.TokenBindingVersion,
-		extendedMasterSecret:    maxVersion >= VersionTLS10,
-		srtpProtectionProfiles:  c.config.SRTPProtectionProfiles,
-		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
-		customExtension:         c.config.Bugs.CustomExtension,
-		omitExtensions:          c.config.Bugs.OmitExtensions,
-		emptyExtensions:         c.config.Bugs.EmptyExtensions,
-		delegatedCredentials:    !c.config.Bugs.DisableDelegatedCredentials,
-		prefixExtensions:        prefixExtensions,
+		isDTLS:                    c.isDTLS,
+		compressionMethods:        []uint8{compressionNone},
+		random:                    make([]byte, 32),
+		ocspStapling:              !c.config.Bugs.NoOCSPStapling,
+		sctListSupported:          !c.config.Bugs.NoSignedCertificateTimestamps,
+		serverName:                c.config.ServerName,
+		echIsInner:                c.config.Bugs.SendECHIsInner,
+		supportedCurves:           c.config.curvePreferences(),
+		supportedPoints:           []uint8{pointFormatUncompressed},
+		nextProtoNeg:              len(c.config.NextProtos) > 0,
+		secureRenegotiation:       []byte{},
+		alpnProtocols:             c.config.NextProtos,
+		quicTransportParams:       quicTransportParams,
+		quicTransportParamsLegacy: quicTransportParamsLegacy,
+		duplicateExtension:        c.config.Bugs.DuplicateExtension,
+		channelIDSupported:        c.config.ChannelID != nil,
+		tokenBindingParams:        c.config.TokenBindingParams,
+		tokenBindingVersion:       c.config.TokenBindingVersion,
+		extendedMasterSecret:      maxVersion >= VersionTLS10,
+		srtpProtectionProfiles:    c.config.SRTPProtectionProfiles,
+		srtpMasterKeyIdentifier:   c.config.Bugs.SRTPMasterKeyIdentifer,
+		customExtension:           c.config.Bugs.CustomExtension,
+		omitExtensions:            c.config.Bugs.OmitExtensions,
+		emptyExtensions:           c.config.Bugs.EmptyExtensions,
+		delegatedCredentials:      !c.config.Bugs.DisableDelegatedCredentials,
+		prefixExtensions:          prefixExtensions,
 	}
 
 	if maxVersion >= VersionTLS13 {
@@ -211,6 +224,16 @@ func (c *Conn) clientHandshake() error {
 		hello.alpsProtocols = append(hello.alpsProtocols, protocol)
 	}
 
+	if c.config.Bugs.SendPlaceholderEncryptedClientHello {
+		hello.clientECH = &clientECH{
+			hpkeKDF:  hpke.HKDFSHA256,
+			hpkeAEAD: hpke.AES128GCM,
+			configID: []byte{0x02, 0x0d, 0xe8, 0xae, 0xf5, 0x8b, 0x59, 0xb5},
+			enc:      []byte{0xe2, 0xf0, 0x96, 0x64, 0x18, 0x35, 0x10, 0xb3},
+			payload:  []byte{0xa8, 0x53, 0x3a, 0x8d, 0xe8, 0x5f, 0x7c, 0xd7},
+		}
+	}
+
 	var keyShares map[CurveID]ecdhCurve
 	if maxVersion >= VersionTLS13 {
 		keyShares = make(map[CurveID]ecdhCurve)
@@ -257,9 +280,9 @@ func (c *Conn) clientHandshake() error {
 	hello.cipherSuites = make([]uint16, 0, len(possibleCipherSuites))
 
 NextCipherSuite:
-	for _, suiteId := range possibleCipherSuites {
+	for _, suiteID := range possibleCipherSuites {
 		for _, suite := range cipherSuites {
-			if suite.id != suiteId {
+			if suite.id != suiteID {
 				continue
 			}
 			// Don't advertise TLS 1.2-only cipher suites unless
@@ -267,7 +290,7 @@ NextCipherSuite:
 			if maxVersion < VersionTLS12 && suite.flags&suiteTLS12 != 0 {
 				continue
 			}
-			hello.cipherSuites = append(hello.cipherSuites, suiteId)
+			hello.cipherSuites = append(hello.cipherSuites, suiteID)
 			continue NextCipherSuite
 		}
 	}
@@ -376,20 +399,20 @@ NextCipherSuite:
 				// A random session ID is used to detect when the
 				// server accepted the ticket and is resuming a session
 				// (see RFC 5077).
-				sessionIdLen := 16
+				sessionIDLen := 16
 				if c.config.Bugs.TicketSessionIDLength != 0 {
-					sessionIdLen = c.config.Bugs.TicketSessionIDLength
+					sessionIDLen = c.config.Bugs.TicketSessionIDLength
 				}
 				if c.config.Bugs.EmptyTicketSessionID {
-					sessionIdLen = 0
+					sessionIDLen = 0
 				}
-				hello.sessionId = make([]byte, sessionIdLen)
-				if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
+				hello.sessionID = make([]byte, sessionIDLen)
+				if _, err := io.ReadFull(c.config.rand(), hello.sessionID); err != nil {
 					c.sendAlert(alertInternalError)
 					return errors.New("tls: short read from Rand: " + err.Error())
 				}
 			} else {
-				hello.sessionId = session.sessionId
+				hello.sessionID = session.sessionID
 			}
 		}
 	}
@@ -398,15 +421,15 @@ NextCipherSuite:
 	// ID. Although BoringSSL always enables compatibility mode, other
 	// implementations make it conditional on the ClientHello. We test
 	// BoringSSL's expected behavior with SendClientHelloSessionID.
-	if len(hello.sessionId) == 0 && maxVersion >= VersionTLS13 {
-		hello.sessionId = make([]byte, 32)
-		if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
+	if len(hello.sessionID) == 0 && maxVersion >= VersionTLS13 {
+		hello.sessionID = make([]byte, 32)
+		if _, err := io.ReadFull(c.config.rand(), hello.sessionID); err != nil {
 			c.sendAlert(alertInternalError)
 			return errors.New("tls: short read from Rand: " + err.Error())
 		}
 	}
 	if c.config.Bugs.MockQUICTransport != nil && !c.config.Bugs.CompatModeWithQUIC {
-		hello.sessionId = []byte{}
+		hello.sessionID = []byte{}
 	}
 
 	if c.config.Bugs.SendCipherSuites != nil {
@@ -425,7 +448,7 @@ NextCipherSuite:
 		hello.hasEarlyData = false
 	}
 	if c.config.Bugs.SendClientHelloSessionID != nil {
-		hello.sessionId = c.config.Bugs.SendClientHelloSessionID
+		hello.sessionID = c.config.Bugs.SendClientHelloSessionID
 	}
 
 	var helloBytes []byte
@@ -436,7 +459,7 @@ NextCipherSuite:
 			vers:         hello.vers,
 			cipherSuites: hello.cipherSuites,
 			// No session resumption for V2ClientHello.
-			sessionId: nil,
+			sessionID: nil,
 			challenge: hello.random[1:],
 		}
 		helloBytes = v2Hello.marshal()
@@ -505,7 +528,7 @@ NextCipherSuite:
 		earlyTrafficSecret := finishedHash.deriveSecret(earlyTrafficLabel)
 		c.earlyExporterSecret = finishedHash.deriveSecret(earlyExporterLabel)
 
-		c.useOutTrafficSecret(session.wireVersion, pskCipherSuite, earlyTrafficSecret)
+		c.useOutTrafficSecret(encryptionEarlyData, session.wireVersion, pskCipherSuite, earlyTrafficSecret)
 		for _, earlyData := range c.config.Bugs.SendEarlyData {
 			if _, err := c.writeRecord(recordTypeApplicationData, earlyData); err != nil {
 				return err
@@ -740,13 +763,13 @@ NextCipherSuite:
 		hs.writeServerHash(helloRetryRequest.marshal())
 		hs.writeClientHash(secondHelloBytes)
 	}
-	hs.writeServerHash(hs.serverHello.marshal())
 
 	if c.vers >= VersionTLS13 {
 		if err := hs.doTLS13Handshake(); err != nil {
 			return err
 		}
 	} else {
+		hs.writeServerHash(hs.serverHello.marshal())
 		if c.config.Bugs.EarlyChangeCipherSpec > 0 {
 			hs.establishKeys()
 			c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
@@ -814,7 +837,7 @@ NextCipherSuite:
 			if c.config.Bugs.RequireSessionTickets && len(hs.session.sessionTicket) == 0 {
 				return errors.New("tls: new session used session IDs instead of tickets")
 			}
-			if c.config.Bugs.RequireSessionIDs && len(hs.session.sessionId) == 0 {
+			if c.config.Bugs.RequireSessionIDs && len(hs.session.sessionID) == 0 {
 				return errors.New("tls: new session used session tickets instead of IDs")
 			}
 			sessionCache.Put(cacheKey, hs.session)
@@ -835,13 +858,9 @@ NextCipherSuite:
 func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c := hs.c
 
-	if !bytes.Equal(hs.hello.sessionId, hs.serverHello.sessionId) {
+	if !bytes.Equal(hs.hello.sessionID, hs.serverHello.sessionID) {
 		return errors.New("tls: session IDs did not match.")
 	}
-
-	// Once the PRF hash is known, TLS 1.3 does not require a handshake
-	// buffer.
-	hs.finishedHash.discardHandshakeBuffer()
 
 	zeroSecret := hs.finishedHash.zeroSecret()
 
@@ -891,11 +910,30 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		hs.finishedHash.addEntropy(zeroSecret)
 	}
 
+	// Determine whether the server indicated ECH acceptance.
+
+	// Generate ServerHelloECHConf, which is identical to the ServerHello except
+	// that the last 8 bytes of the random value are zeroes.
+	echAcceptConfirmation := hs.finishedHash.deriveSecretPeek([]byte("ech accept confirmation"), hs.serverHello.marshalForECHConf())
+	serverAcceptedECH := bytes.Equal(echAcceptConfirmation[:8], hs.serverHello.random[24:])
+	if c.config.Bugs.ExpectServerAcceptECH && !serverAcceptedECH {
+		return errors.New("tls: server did not indicate ECH acceptance")
+	}
+	if !c.config.Bugs.ExpectServerAcceptECH && serverAcceptedECH {
+		return errors.New("tls: server indicated ECH acceptance")
+	}
+
+	// Once the PRF hash is known, TLS 1.3 does not require a handshake
+	// buffer.
+	hs.finishedHash.discardHandshakeBuffer()
+
+	hs.writeServerHash(hs.serverHello.marshal())
+
 	// Derive handshake traffic keys and switch read key to handshake
 	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, serverHandshakeTrafficSecret); err != nil {
 		return err
 	}
 
@@ -1070,7 +1108,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Switch to application data keys on read. In particular, any alerts
 	// from the client certificate are read over these keys.
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, serverTrafficSecret); err != nil {
 		return err
 	}
 
@@ -1105,7 +1143,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Send EndOfEarlyData and then switch write key to handshake
 	// traffic key.
-	if encryptedExtensions.extensions.hasEarlyData && c.out.cipher != nil && !c.config.Bugs.SkipEndOfEarlyData {
+	if encryptedExtensions.extensions.hasEarlyData && !c.config.Bugs.SkipEndOfEarlyData && c.config.Bugs.MockQUICTransport == nil {
 		if c.config.Bugs.SendStrayEarlyHandshake {
 			helloRequest := new(helloRequestMsg)
 			c.writeRecord(recordTypeHandshake, helloRequest.marshal())
@@ -1129,7 +1167,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
+	c.useOutTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
 
 	// The client EncryptedExtensions message is sent if some extension uses it.
 	// (Currently only ALPS does.)
@@ -1235,7 +1273,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.flushHandshake()
 
 	// Switch to application data keys.
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret)
+	c.useOutTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, clientTrafficSecret)
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
 	for _, ticket := range deferredTickets {
 		if err := c.processTLS13NewSessionTicket(ticket, hs.suite); err != nil {
@@ -1731,6 +1769,14 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		c.quicTransportParams = serverExtensions.quicTransportParams
 	}
 
+	if len(serverExtensions.quicTransportParamsLegacy) > 0 {
+		if c.vers < VersionTLS13 {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: server sent QUIC transport params for TLS version less than 1.3")
+		}
+		c.quicTransportParamsLegacy = serverExtensions.quicTransportParamsLegacy
+	}
+
 	if serverExtensions.hasApplicationSettings {
 		if c.vers < VersionTLS13 {
 			return errors.New("tls: server sent application settings at invalid version")
@@ -1759,14 +1805,14 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 }
 
 func (hs *clientHandshakeState) serverResumedSession() bool {
-	// If the server responded with the same sessionId then it means the
+	// If the server responded with the same sessionID then it means the
 	// sessionTicket is being used to resume a TLS session.
 	//
-	// Note that, if hs.hello.sessionId is a non-nil empty array, this will
+	// Note that, if hs.hello.sessionID is a non-nil empty array, this will
 	// accept an empty session ID from the server as resumption. See
 	// EmptyTicketSessionID.
-	return hs.session != nil && hs.hello.sessionId != nil &&
-		bytes.Equal(hs.serverHello.sessionId, hs.hello.sessionId)
+	return hs.session != nil && hs.hello.sessionID != nil &&
+		bytes.Equal(hs.serverHello.sessionID, hs.hello.sessionID)
 }
 
 func (hs *clientHandshakeState) processServerHello() (bool, error) {
@@ -1857,8 +1903,8 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		if c.config.Bugs.ExpectNewTicket {
 			return errors.New("tls: expected new ticket")
 		}
-		if hs.session == nil && len(hs.serverHello.sessionId) > 0 {
-			session.sessionId = hs.serverHello.sessionId
+		if hs.session == nil && len(hs.serverHello.sessionID) > 0 {
+			session.sessionID = hs.serverHello.sessionID
 			hs.session = session
 		}
 		return nil

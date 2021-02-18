@@ -477,8 +477,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   // Set up the key schedule and incorporate the PSK into the running secret.
   if (ssl->s3->session_reused) {
     if (!tls13_init_key_schedule(
-            hs, MakeConstSpan(hs->new_session->master_key,
-                              hs->new_session->master_key_length))) {
+            hs, MakeConstSpan(hs->new_session->secret,
+                              hs->new_session->secret_length))) {
       return ssl_hs_error;
     }
   } else if (!tls13_init_key_schedule(hs, MakeConstSpan(kZeroes, hash_len))) {
@@ -636,20 +636,58 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
+  Span<uint8_t> random(ssl->s3->server_random);
+  RAND_bytes(random.data(), random.size());
+
+  // If the ClientHello has an ech_is_inner extension, we must be the ECH
+  // backend server. In response to ech_is_inner, we will overwrite part of the
+  // ServerHello.random with the ECH acceptance confirmation.
+  if (hs->ech_is_inner_present) {
+    // Construct the ServerHelloECHConf message, which is the same as
+    // ServerHello, except the last 8 bytes of its random field are zeroed out.
+    Span<uint8_t> random_suffix = random.subspan(24);
+    OPENSSL_memset(random_suffix.data(), 0, random_suffix.size());
+
+    ScopedCBB cbb;
+    CBB body, extensions, session_id;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                   SSL3_MT_SERVER_HELLO) ||
+        !CBB_add_u16(&body, TLS1_2_VERSION) ||
+        !CBB_add_bytes(&body, random.data(), random.size()) ||
+        !CBB_add_u8_length_prefixed(&body, &session_id) ||
+        !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
+        !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
+        !CBB_add_u8(&body, 0) ||
+        !CBB_add_u16_length_prefixed(&body, &extensions) ||
+        !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
+        !ssl_ext_key_share_add_serverhello(hs, &extensions, /*dry_run=*/true) ||
+        !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
+        !CBB_flush(cbb.get())) {
+      return ssl_hs_error;
+    }
+
+    // Note that |cbb| includes the message type and length fields, but not the
+    // record layer header.
+    if (!tls13_ech_accept_confirmation(
+            hs, random_suffix,
+            bssl::MakeConstSpan(CBB_data(cbb.get()), CBB_len(cbb.get())))) {
+      return ssl_hs_error;
+    }
+  }
+
   // Send a ServerHello.
   ScopedCBB cbb;
   CBB body, extensions, session_id;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
       !CBB_add_u16(&body, TLS1_2_VERSION) ||
-      !RAND_bytes(ssl->s3->server_random, sizeof(ssl->s3->server_random)) ||
-      !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_bytes(&body, random.data(), random.size()) ||
       !CBB_add_u8_length_prefixed(&body, &session_id) ||
       !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
       !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
       !CBB_add_u8(&body, 0) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
+      !ssl_ext_key_share_add_serverhello(hs, &extensions, /*dry_run=*/false) ||
       !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
       !ssl_add_message_cbb(ssl, cbb.get())) {
     return ssl_hs_error;
@@ -844,7 +882,7 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
                                hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
-    hs->tls13_state = state13_read_client_certificate;
+    hs->tls13_state = state13_process_end_of_early_data;
     return ssl->s3->early_data_accepted ? ssl_hs_early_return : ssl_hs_ok;
   }
 
@@ -855,27 +893,31 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  // If early data was not accepted, the EndOfEarlyData will be in the discarded
-  // early data.
-  if (hs->ssl->s3->early_data_accepted) {
-    SSLMessage msg;
-    if (!ssl->method->get_message(ssl, &msg)) {
-      return ssl_hs_read_message;
+  // In protocols that use EndOfEarlyData, we must consume the extra message and
+  // switch to client_handshake_secret after the early return.
+  if (ssl->quic_method == nullptr) {
+    // If early data was not accepted, the EndOfEarlyData will be in the
+    // discarded early data.
+    if (hs->ssl->s3->early_data_accepted) {
+      SSLMessage msg;
+      if (!ssl->method->get_message(ssl, &msg)) {
+        return ssl_hs_read_message;
+      }
+      if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
+        return ssl_hs_error;
+      }
+      if (CBS_len(&msg.body) != 0) {
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+        return ssl_hs_error;
+      }
+      ssl->method->next_message(ssl);
     }
-    if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                               hs->new_session.get(),
+                               hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
-    if (CBS_len(&msg.body) != 0) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return ssl_hs_error;
-    }
-    ssl->method->next_message(ssl);
-  }
-  if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
-                             hs->new_session.get(),
-                             hs->client_handshake_secret())) {
-    return ssl_hs_error;
   }
   hs->tls13_state = state13_read_client_encrypted_extensions;
   return ssl_hs_ok;

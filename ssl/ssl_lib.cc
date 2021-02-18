@@ -565,7 +565,6 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       grease_enabled(false),
       allow_unknown_alpn_protos(false),
       false_start_allowed_without_alpn(false),
-      ignore_tls13_downgrade(false),
       handoff(false),
       enable_early_data(false) {
   CRYPTO_MUTEX_init(&lock);
@@ -711,7 +710,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
       ctx->signed_cert_timestamps_enabled;
   ssl->config->ocsp_stapling_enabled = ctx->ocsp_stapling_enabled;
   ssl->config->handoff = ctx->handoff;
-  ssl->config->ignore_tls13_downgrade = ctx->ignore_tls13_downgrade;
   ssl->quic_method = ctx->quic_method;
 
   if (!ssl->method->ssl_new(ssl.get()) ||
@@ -724,6 +722,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
 SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
     : ssl(ssl_arg),
+      ech_grease_enabled(false),
       signed_cert_timestamps_enabled(false),
       ocsp_stapling_enabled(false),
       channel_id_enabled(false),
@@ -731,8 +730,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       retain_only_sha256_of_client_certs(false),
       handoff(false),
       shed_handshake_config(false),
-      ignore_tls13_downgrade(false),
-      jdk11_workaround(false) {
+      jdk11_workaround(false),
+      quic_use_legacy_codepoint(true) {
   assert(ssl);
 }
 
@@ -1467,6 +1466,13 @@ const char *SSL_error_description(int err) {
     default:
       return nullptr;
   }
+}
+
+void SSL_set_enable_ech_grease(SSL *ssl, int enable) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->ech_grease_enabled = !!enable;
 }
 
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
@@ -2929,22 +2935,15 @@ void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx, int allowed) {
   ctx->false_start_allowed_without_alpn = !!allowed;
 }
 
-int SSL_is_tls13_downgrade(const SSL *ssl) { return ssl->s3->tls13_downgrade; }
+int SSL_is_tls13_downgrade(const SSL *ssl) { return 0; }
 
 int SSL_used_hello_retry_request(const SSL *ssl) {
   return ssl->s3->used_hello_retry_request;
 }
 
-void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx, int ignore) {
-  ctx->ignore_tls13_downgrade = !!ignore;
-}
+void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx, int ignore) {}
 
-void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl->config->ignore_tls13_downgrade = !!ignore;
-}
+void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore) {}
 
 void SSL_set_shed_handshake_config(SSL *ssl, int enable) {
   if (!ssl->config) {
@@ -2958,6 +2957,13 @@ void SSL_set_jdk11_workaround(SSL *ssl, int enable) {
     return;
   }
   ssl->config->jdk11_workaround = !!enable;
+}
+
+void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->quic_use_legacy_codepoint = !!use_legacy;
 }
 
 int SSL_clear(SSL *ssl) {

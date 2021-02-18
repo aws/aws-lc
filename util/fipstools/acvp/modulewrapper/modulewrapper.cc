@@ -29,9 +29,11 @@
 #include <openssl/bn.h>
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
+#include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdh.h>
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
@@ -40,7 +42,9 @@
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
+#include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
+#include "../../../../crypto/fipsmodule/tls/internal.h"
 
 static constexpr size_t kMaxArgs = 8;
 static constexpr size_t kMaxArgLength = (1 << 20);
@@ -164,6 +168,13 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         }]
       },
       {
+        "algorithm": "SHA2-512/256",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }]
+      },
+      {
         "algorithm": "SHA-1",
         "revision": "1.0",
         "messageLength": [{
@@ -203,9 +214,9 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
           "min": 0, "max": 256, "increment": 8
         }],
         "aadLen": [{
-          "min": 0, "max": 256, "increment": 8
+          "min": 0, "max": 320, "increment": 8
         }],
-        "tagLen": [128],
+        "tagLen": [32, 64, 96, 104, 112, 120, 128],
         "ivLen": [96],
         "ivGen": "external"
       },
@@ -237,7 +248,7 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "keyLen": [
             128, 192, 256
         ],
-        "payloadLen": [{"min": 8, "max": 1024, "increment": 8}]
+        "payloadLen": [{"min": 8, "max": 4096, "increment": 8}]
       },
       {
         "algorithm": "ACVP-AES-CCM",
@@ -442,8 +453,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -458,8 +467,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -474,8 +481,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -494,9 +499,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         },{
@@ -515,9 +517,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         },{
@@ -536,9 +535,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         }]
@@ -680,6 +676,7 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
       },
       {
         "algorithm": "CMAC-AES",
+        "acvptoolTestOnly": true,
         "revision": "1.0",
         "capabilities": [{
           "direction": ["gen", "ver"],
@@ -695,6 +692,53 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             "increment": 8
           }]
         }]
+      },
+      {
+        "algorithm": "kdf-components",
+        "revision": "1.0",
+        "mode": "tls",
+        "tlsVersion": [
+          "v1.0/1.1",
+          "v1.2"
+        ],
+        "hashAlg": [
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
+        ]
+      },
+      {
+        "algorithm": "KAS-ECC-SSC",
+        "revision": "Sp800-56Ar3",
+        "scheme": {
+          "ephemeralUnified": {
+            "kasRole": [
+              "initiator",
+              "responder"
+            ]
+          }
+        },
+        "domainParameterGenerationMethods": [
+          "P-224",
+          "P-256",
+          "P-384",
+          "P-521"
+        ]
+      },
+      {
+        "algorithm": "KAS-FFC-SSC",
+        "revision": "Sp800-56Ar3",
+        "scheme": {
+          "dhEphem": {
+            "kasRole": [
+              "initiator"
+            ]
+          }
+        },
+        "domainParameterGenerationMethods": [
+          "FB",
+          "FC"
+        ]
       }
     ])";
   return WriteReply(
@@ -810,6 +854,13 @@ static bool AES_CBC(const Span<const uint8_t> args[]) {
 }
 
 static bool AES_CTR(const Span<const uint8_t> args[]) {
+  static const uint32_t kOneIteration = 1;
+  if (args[3].size() != sizeof(kOneIteration) ||
+      memcmp(args[3].data(), &kOneIteration, sizeof(kOneIteration))) {
+    fprintf(stderr, "Only a single iteration supported with AES-CTR\n");
+    return false;
+  }
+
   AES_KEY key;
   if (AES_set_encrypt_key(args[0].data(), args[0].size() * 8, &key) != 0) {
     return false;
@@ -1422,6 +1473,20 @@ static bool CMAC_AES(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(mac, mac_len));
 }
 
+static bool CMAC_AESVerify(const Span<const uint8_t> args[]) {
+  // This function is just for testing since libcrypto doesn't do the
+  // verification itself. The regcap doesn't advertise "ver" support.
+  uint8_t mac[16];
+  if (!AES_CMAC(mac, args[0].data(), args[0].size(), args[1].data(),
+                args[1].size()) ||
+      args[2].size() > sizeof(mac)) {
+    return false;
+  }
+
+  const uint8_t ok = (OPENSSL_memcmp(mac, args[2].data(), args[2].size()) == 0);
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(&ok, sizeof(ok)));
+}
+
 static std::map<unsigned, bssl::UniquePtr<RSA>>& CachedRSAKeys() {
   static std::map<unsigned, bssl::UniquePtr<RSA>> keys;
   return keys;
@@ -1546,6 +1611,142 @@ static bool RSASigVer(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(&ok, 1));
 }
 
+template<const EVP_MD *(MDFunc)()>
+static bool TLSKDF(const Span<const uint8_t> args[]) {
+  const Span<const uint8_t> out_len_bytes = args[0];
+  const Span<const uint8_t> secret = args[1];
+  const Span<const uint8_t> label = args[2];
+  const Span<const uint8_t> seed1 = args[3];
+  const Span<const uint8_t> seed2 = args[4];
+  const EVP_MD *md = MDFunc();
+
+  uint32_t out_len;
+  if (out_len_bytes.size() != sizeof(out_len)) {
+    return 0;
+  }
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  std::vector<uint8_t> out(static_cast<size_t>(out_len));
+  if (!CRYPTO_tls1_prf(md, out.data(), out.size(), secret.data(), secret.size(),
+                       reinterpret_cast<const char *>(label.data()),
+                       label.size(), seed1.data(), seed1.size(), seed2.data(),
+                       seed2.size())) {
+    return 0;
+  }
+
+  return WriteReply(STDOUT_FILENO, out);
+}
+
+template <int Nid>
+static bool ECDH(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<BIGNUM> their_x(BytesToBIGNUM(args[0]));
+  bssl::UniquePtr<BIGNUM> their_y(BytesToBIGNUM(args[1]));
+  const Span<const uint8_t> private_key = args[2];
+
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(Nid));
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+
+  const EC_GROUP *const group = EC_KEY_get0_group(ec_key.get());
+  bssl::UniquePtr<EC_POINT> their_point(EC_POINT_new(group));
+  if (!EC_POINT_set_affine_coordinates_GFp(
+          group, their_point.get(), their_x.get(), their_y.get(), ctx.get())) {
+    fprintf(stderr, "Invalid peer point for ECDH.\n");
+    return false;
+  }
+
+  if (!private_key.empty()) {
+    bssl::UniquePtr<BIGNUM> our_k(BytesToBIGNUM(private_key));
+    if (!EC_KEY_set_private_key(ec_key.get(), our_k.get())) {
+      fprintf(stderr, "EC_KEY_set_private_key failed.\n");
+      return false;
+    }
+
+    bssl::UniquePtr<EC_POINT> our_pub(EC_POINT_new(group));
+    if (!EC_POINT_mul(group, our_pub.get(), our_k.get(), nullptr, nullptr,
+                      ctx.get()) ||
+        !EC_KEY_set_public_key(ec_key.get(), our_pub.get())) {
+      fprintf(stderr, "Calculating public key failed.\n");
+      return false;
+    }
+  } else if (!EC_KEY_generate_key_fips(ec_key.get())) {
+    fprintf(stderr, "EC_KEY_generate_key_fips failed.\n");
+    return false;
+  }
+
+  // The output buffer is one larger than |EC_MAX_BYTES| so that truncation
+  // can be detected.
+  std::vector<uint8_t> output(EC_MAX_BYTES + 1);
+  const int out_len =
+      ECDH_compute_key(output.data(), output.size(), their_point.get(),
+                       ec_key.get(), /*kdf=*/nullptr);
+  if (out_len < 0) {
+    fprintf(stderr, "ECDH_compute_key failed.\n");
+    return false;
+  } else if (static_cast<size_t>(out_len) == output.size()) {
+    fprintf(stderr, "ECDH_compute_key output may have been truncated.\n");
+    return false;
+  }
+  output.resize(static_cast<size_t>(out_len));
+
+  const EC_POINT *pub = EC_KEY_get0_public_key(ec_key.get());
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+  if (!EC_POINT_get_affine_coordinates_GFp(group, pub, x.get(), y.get(),
+                                           ctx.get())) {
+    fprintf(stderr, "EC_POINT_get_affine_coordinates_GFp failed.\n");
+    return false;
+  }
+
+  return WriteReply(STDOUT_FILENO, BIGNUMBytes(x.get()), BIGNUMBytes(y.get()),
+                    output);
+}
+
+static bool FFDH(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<BIGNUM> p(BytesToBIGNUM(args[0]));
+  bssl::UniquePtr<BIGNUM> q(BytesToBIGNUM(args[1]));
+  bssl::UniquePtr<BIGNUM> g(BytesToBIGNUM(args[2]));
+  bssl::UniquePtr<BIGNUM> their_pub(BytesToBIGNUM(args[3]));
+  const Span<const uint8_t> private_key_span = args[4];
+  const Span<const uint8_t> public_key_span = args[5];
+
+  bssl::UniquePtr<DH> dh(DH_new());
+  if (!DH_set0_pqg(dh.get(), p.get(), q.get(), g.get())) {
+    fprintf(stderr, "DH_set0_pqg failed.\n");
+    return 0;
+  }
+
+  // DH_set0_pqg took ownership of these values.
+  p.release();
+  q.release();
+  g.release();
+
+  if (!private_key_span.empty()) {
+    bssl::UniquePtr<BIGNUM> private_key(BytesToBIGNUM(private_key_span));
+    bssl::UniquePtr<BIGNUM> public_key(BytesToBIGNUM(public_key_span));
+
+    if (!DH_set0_key(dh.get(), public_key.get(), private_key.get())) {
+      fprintf(stderr, "DH_set0_key failed.\n");
+      return 0;
+    }
+
+    // DH_set0_key took ownership of these values.
+    public_key.release();
+    private_key.release();
+  } else if (!DH_generate_key(dh.get())) {
+    fprintf(stderr, "DH_generate_key failed.\n");
+    return false;
+  }
+
+  std::vector<uint8_t> z(DH_size(dh.get()));
+  if (DH_compute_key_padded(z.data(), their_pub.get(), dh.get()) !=
+      static_cast<int>(z.size())) {
+    fprintf(stderr, "DH_compute_key_hashed failed.\n");
+    return false;
+  }
+
+  return WriteReply(STDOUT_FILENO, BIGNUMBytes(DH_get0_pub_key(dh.get())), z);
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -1555,14 +1756,15 @@ static constexpr struct {
     {"SHA-1", 1, Hash<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224", 1, Hash<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
-    {"SHA2-384", 1, Hash<SHA384, SHA256_DIGEST_LENGTH>},
+    {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
+    {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
-    {"AES-CTR/encrypt", 3, AES_CTR},
-    {"AES-CTR/decrypt", 3, AES_CTR},
+    {"AES-CTR/encrypt", 4, AES_CTR},
+    {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
     {"AES-GCM/open", 5, AEADOpen<AESGCMSetup>},
     {"AES-KW/seal", 5, AESKeyWrapSeal},
@@ -1586,6 +1788,7 @@ static constexpr struct {
     {"ECDSA/sigGen", 4, ECDSASigGen},
     {"ECDSA/sigVer", 7, ECDSASigVer},
     {"CMAC-AES", 3, CMAC_AES},
+    {"CMAC-AES/verify", 3, CMAC_AESVerify},
     {"RSA/keyGen", 1, RSAKeyGen},
     {"RSA/sigGen/SHA2-224/pkcs1v1.5", 2, RSASigGen<EVP_sha224, false>},
     {"RSA/sigGen/SHA2-256/pkcs1v1.5", 2, RSASigGen<EVP_sha256, false>},
@@ -1607,6 +1810,15 @@ static constexpr struct {
     {"RSA/sigVer/SHA2-384/pss", 4, RSASigVer<EVP_sha384, true>},
     {"RSA/sigVer/SHA2-512/pss", 4, RSASigVer<EVP_sha512, true>},
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
+    {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
+    {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
+    {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
+    {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},
+    {"ECDH/P-224", 3, ECDH<NID_secp224r1>},
+    {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
+    {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
+    {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
+    {"FFDH", 6, FFDH},
 };
 
 int main() {

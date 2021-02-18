@@ -2576,11 +2576,6 @@ xAcCIHweeRRqIYPwenRoeV8UmZpotPHLnhVe5h8yUmFedckU
 -----END CERTIFICATE-----
 )";
 
-/*
-
-Test cases disabled. TODO re-enable in Jan 2021.
-https://crbug.com/boringssl/375
-
 // kV1WithExtensionsPEM is an X.509v1 certificate with extensions.
 static const char kV1WithExtensionsPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -2612,7 +2607,6 @@ BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
 BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=
 -----END CERTIFICATE-----
 )";
-*/
 
 // kV1WithIssuerUniqueIDPEM is an X.509v1 certificate with an issuerUniqueID.
 static const char kV1WithIssuerUniqueIDPEM[] = R"(
@@ -2654,10 +2648,8 @@ TEST(X509Test, InvalidVersion) {
   EXPECT_FALSE(CertFromPEM(kNegativeVersionPEM));
   EXPECT_FALSE(CertFromPEM(kFutureVersionPEM));
   EXPECT_FALSE(CertFromPEM(kOverflowVersionPEM));
-  // Test cases disabled. TODO re-enable in Jan 2021.
-  // https://crbug.com/boringssl/375
-  //EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
-  //EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
+  EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
+  EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithIssuerUniqueIDPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithSubjectUniqueIDPEM));
 }
@@ -2812,4 +2804,185 @@ TEST(X509Test, AlgorithmParameters) {
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
   EXPECT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
+}
+
+TEST(X509Test, GeneralName)  {
+  const std::vector<uint8_t> kNames[] = {
+      // [0] {
+      //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+      //   [0] {
+      //     SEQUENCE {}
+      //   }
+      // }
+      {0xa0, 0x13, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+       0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x02, 0x30, 0x00},
+      // [0] {
+      //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+      //   [0] {
+      //     [APPLICATION 0] {}
+      //   }
+      // }
+      {0xa0, 0x13, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+       0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x02, 0x60, 0x00},
+      // [0] {
+      //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+      //   [0] {
+      //     UTF8String { "a" }
+      //   }
+      // }
+      {0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+       0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x0c, 0x01, 0x61},
+      // [0] {
+      //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.2 }
+      //   [0] {
+      //     UTF8String { "a" }
+      //   }
+      // }
+      {0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+       0x01, 0x84, 0xb7, 0x09, 0x02, 0x02, 0xa0, 0x03, 0x0c, 0x01, 0x61},
+      // [0] {
+      //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+      //   [0] {
+      //     UTF8String { "b" }
+      //   }
+      // }
+      {0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+       0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x0c, 0x01, 0x62},
+      // [0] {
+      //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+      //   [0] {
+      //     BOOLEAN { TRUE }
+      //   }
+      // }
+      {0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+       0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x01, 0x01, 0xff},
+      // [0] {
+      //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2.1 }
+      //   [0] {
+      //     BOOLEAN { FALSE }
+      //   }
+      // }
+      {0xa0, 0x14, 0x06, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+       0x01, 0x84, 0xb7, 0x09, 0x02, 0x01, 0xa0, 0x03, 0x01, 0x01, 0x00},
+      // [1 PRIMITIVE] { "a" }
+      {0x81, 0x01, 0x61},
+      // [1 PRIMITIVE] { "b" }
+      {0x81, 0x01, 0x62},
+      // [2 PRIMITIVE] { "a" }
+      {0x82, 0x01, 0x61},
+      // [2 PRIMITIVE] { "b" }
+      {0x82, 0x01, 0x62},
+      // [4] {
+      //   SEQUENCE {
+      //     SET {
+      //       SEQUENCE {
+      //         # commonName
+      //         OBJECT_IDENTIFIER { 2.5.4.3 }
+      //         UTF8String { "a" }
+      //       }
+      //     }
+      //   }
+      // }
+      {0xa4, 0x0e, 0x30, 0x0c, 0x31, 0x0a, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04,
+       0x03, 0x0c, 0x01, 0x61},
+      // [4] {
+      //   SEQUENCE {
+      //     SET {
+      //       SEQUENCE {
+      //         # commonName
+      //         OBJECT_IDENTIFIER { 2.5.4.3 }
+      //         UTF8String { "b" }
+      //       }
+      //     }
+      //   }
+      // }
+      {0xa4, 0x0e, 0x30, 0x0c, 0x31, 0x0a, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04,
+       0x03, 0x0c, 0x01, 0x62},
+      // [5] {
+      //   [1] {
+      //     UTF8String { "a" }
+      //   }
+      // }
+      {0xa5, 0x05, 0xa1, 0x03, 0x0c, 0x01, 0x61},
+      // [5] {
+      //   [1] {
+      //     UTF8String { "b" }
+      //   }
+      // }
+      {0xa5, 0x05, 0xa1, 0x03, 0x0c, 0x01, 0x62},
+      // [5] {
+      //   [0] {
+      //     UTF8String {}
+      //   }
+      //   [1] {
+      //     UTF8String { "a" }
+      //   }
+      // }
+      {0xa5, 0x09, 0xa0, 0x02, 0x0c, 0x00, 0xa1, 0x03, 0x0c, 0x01, 0x61},
+      // [5] {
+      //   [0] {
+      //     UTF8String { "a" }
+      //   }
+      //   [1] {
+      //     UTF8String { "a" }
+      //   }
+      // }
+      {0xa5, 0x0a, 0xa0, 0x03, 0x0c, 0x01, 0x61, 0xa1, 0x03, 0x0c, 0x01, 0x61},
+      // [5] {
+      //   [0] {
+      //     UTF8String { "b" }
+      //   }
+      //   [1] {
+      //     UTF8String { "a" }
+      //   }
+      // }
+      {0xa5, 0x0a, 0xa0, 0x03, 0x0c, 0x01, 0x62, 0xa1, 0x03, 0x0c, 0x01, 0x61},
+      // [6 PRIMITIVE] { "a" }
+      {0x86, 0x01, 0x61},
+      // [6 PRIMITIVE] { "b" }
+      {0x86, 0x01, 0x62},
+      // [7 PRIMITIVE] { `11111111` }
+      {0x87, 0x04, 0x11, 0x11, 0x11, 0x11},
+      // [7 PRIMITIVE] { `22222222`}
+      {0x87, 0x04, 0x22, 0x22, 0x22, 0x22},
+      // [7 PRIMITIVE] { `11111111111111111111111111111111` }
+      {0x87, 0x10, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+       0x11, 0x11, 0x11, 0x11, 0x11, 0x11},
+      // [7 PRIMITIVE] { `22222222222222222222222222222222` }
+      {0x87, 0x10, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+       0x22, 0x22, 0x22, 0x22, 0x22, 0x22},
+      // [8 PRIMITIVE] { 1.2.840.113554.4.1.72585.2.1 }
+      {0x88, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+       0x09, 0x02, 0x01},
+      // [8 PRIMITIVE] { 1.2.840.113554.4.1.72585.2.2 }
+      {0x88, 0x0d, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+       0x09, 0x02, 0x02},
+  };
+
+  // Every name should be equal to itself and not equal to any others.
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kNames); i++) {
+    SCOPED_TRACE(Bytes(kNames[i]));
+
+    const uint8_t *ptr = kNames[i].data();
+    bssl::UniquePtr<GENERAL_NAME> a(
+        d2i_GENERAL_NAME(nullptr, &ptr, kNames[i].size()));
+    ASSERT_TRUE(a);
+    ASSERT_EQ(ptr, kNames[i].data() + kNames[i].size());
+
+    for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(kNames); j++) {
+      SCOPED_TRACE(Bytes(kNames[j]));
+
+      ptr = kNames[j].data();
+      bssl::UniquePtr<GENERAL_NAME> b(
+          d2i_GENERAL_NAME(nullptr, &ptr, kNames[j].size()));
+      ASSERT_TRUE(b);
+      ASSERT_EQ(ptr, kNames[j].data() + kNames[j].size());
+
+      if (i == j) {
+        EXPECT_EQ(GENERAL_NAME_cmp(a.get(), b.get()), 0);
+      } else {
+        EXPECT_NE(GENERAL_NAME_cmp(a.get(), b.get()), 0);
+      }
+    }
+  }
 }
