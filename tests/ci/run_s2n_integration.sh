@@ -8,7 +8,7 @@ AWS_LC_DIR=${PWD##*/}
 cd ../
 ROOT=$(pwd)
 mkdir -p aws-lc-build aws-lc-install s2n-build
-git clone https://github.com/awslabs/s2n.git
+git clone https://github.com/aws/s2n-tls.git
 ls
 
 # s2n's FindLibCrypto.cmake expects to find both the archieve (.a) and shared object (.so) libcrypto
