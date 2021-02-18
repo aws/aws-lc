@@ -94,7 +94,7 @@ typedef struct poly1305_state_internal_t {
 
 OPENSSL_STATIC_ASSERT(
     sizeof(struct poly1305_state_internal_t) + 63 <= sizeof(poly1305_state),
-    "poly1305_state isn't large enough to hold aligned poly1305_state_internal_t");
+    _poly1305_state_isn_t_large_enough_to_hold_aligned_poly1305_state_internal_t);
 
 static inline poly1305_state_internal *poly1305_aligned_state(
     poly1305_state *state) {
