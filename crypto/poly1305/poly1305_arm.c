@@ -185,7 +185,7 @@ struct poly1305_state_st {
 
 OPENSSL_STATIC_ASSERT(
     sizeof(struct poly1305_state_st) + 63 <= sizeof(poly1305_state),
-    "poly1305_state isn't large enough to hold aligned poly1305_state_st.");
+    _poly1305_state_isn_t_large_enough_to_hold_aligned_poly1305_state_st);
 
 void CRYPTO_poly1305_init_neon(poly1305_state *state, const uint8_t key[32]) {
   struct poly1305_state_st *st = (struct poly1305_state_st *)(state);
