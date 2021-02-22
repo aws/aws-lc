@@ -250,12 +250,11 @@ type blockCipherTestGroup struct {
 	Direction string `json:"direction"`
 	KeyBits   int    `json:"keylen"`
 	Tests     []struct {
-		ID            uint64  `json:"tcId"`
-		InputBits     *uint64 `json:"payloadLen"`
-		PlaintextHex  string  `json:"pt"`
-		CiphertextHex string  `json:"ct"`
-		IVHex         string  `json:"iv"`
-		KeyHex        string  `json:"key"`
+		ID            uint64 `json:"tcId"`
+		PlaintextHex  string `json:"pt"`
+		CiphertextHex string `json:"ct"`
+		IVHex         string `json:"iv"`
+		KeyHex        string `json:"key"`
 
 		// 3DES tests serialise the key differently.
 		Key1Hex string `json:"key1"`
@@ -283,9 +282,9 @@ type blockCipherMCTResult struct {
 	IVHex         string `json:"iv,omitempty"`
 
 	// 3DES tests serialise the key differently.
-	Key1Hex string `json:"key1,omitempty"`
-	Key2Hex string `json:"key2,omitempty"`
-	Key3Hex string `json:"key3,omitempty"`
+	Key1Hex string `json:"key1"`
+	Key2Hex string `json:"key2"`
+	Key3Hex string `json:"key3"`
 }
 
 func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, error) {
@@ -365,15 +364,6 @@ func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, er
 				inputHex = test.PlaintextHex
 			} else {
 				inputHex = test.CiphertextHex
-			}
-
-			if test.InputBits != nil {
-				if *test.InputBits%8 != 0 {
-					return nil, fmt.Errorf("input to test case %d/%d is not a whole number of bytes", group.ID, test.ID)
-				}
-				if inputBits := 4 * uint64(len(inputHex)); *test.InputBits != inputBits {
-					return nil, fmt.Errorf("input to test case %d/%d is %q (%d bits), but %d bits is specified", group.ID, test.ID, inputHex, inputBits, *test.InputBits)
-				}
 			}
 
 			input, err := hex.DecodeString(inputHex)

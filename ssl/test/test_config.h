@@ -39,7 +39,6 @@ struct TestConfig {
   std::string key_file;
   std::string cert_file;
   std::string expect_server_name;
-  bool enable_ech_grease = false;
   std::string expect_certificate_types;
   bool require_any_client_certificate = false;
   std::string advertise_npn;
@@ -68,15 +67,11 @@ struct TestConfig {
   std::string expect_advertised_alpn;
   std::string select_alpn;
   bool decline_alpn = false;
-  bool reject_alpn = false;
   bool select_empty_alpn = false;
-  bool defer_alps = false;
   std::vector<std::pair<std::string, std::string>> application_settings;
   std::unique_ptr<std::string> expect_peer_application_settings;
   std::string quic_transport_params;
   std::string expect_quic_transport_params;
-  // Set quic_use_legacy_codepoint to 0 or 1 to configure, -1 uses default.
-  int quic_use_legacy_codepoint = -1;
   bool expect_session_miss = false;
   bool expect_extended_master_secret = false;
   std::string psk;
@@ -164,6 +159,8 @@ struct TestConfig {
   bool use_custom_verify_callback = false;
   std::string expect_msg_callback;
   bool allow_false_start_without_alpn = false;
+  bool ignore_tls13_downgrade = false;
+  bool expect_tls13_downgrade = false;
   bool handoff = false;
   bool use_ocsp_callback = false;
   bool set_ocsp_in_callback = false;
@@ -185,7 +182,6 @@ struct TestConfig {
   bool expect_hrr = false;
   bool expect_no_hrr = false;
   bool wait_for_debugger = false;
-  std::string quic_early_data_context;
 
   int argc;
   char **argv;

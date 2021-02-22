@@ -18,7 +18,6 @@ package testresult
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 )
@@ -45,7 +44,7 @@ func NewResults() *Results {
 
 func (t *Results) addResult(name, result, expected string) {
 	if _, found := t.Tests[name]; found {
-		panic(fmt.Sprintf("duplicate test name %q", name))
+		panic(name)
 	}
 	t.Tests[name] = Result{
 		Actual:       result,

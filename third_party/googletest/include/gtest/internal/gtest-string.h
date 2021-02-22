@@ -47,7 +47,6 @@
 #endif
 
 #include <string.h>
-#include <cstdint>
 #include <string>
 
 #include "gtest/internal/gtest-port.h"
@@ -95,8 +94,7 @@ class GTEST_API_ String {
   static const char* Utf16ToAnsi(LPCWSTR utf16_str);
 #endif
 
-  // Compares two C strings.  Returns true if and only if they have the same
-  // content.
+  // Compares two C strings.  Returns true iff they have the same content.
   //
   // Unlike strcmp(), this function can handle NULL argument(s).  A
   // NULL C string is considered different to any non-NULL C string,
@@ -109,16 +107,16 @@ class GTEST_API_ String {
   // returned.
   static std::string ShowWideCString(const wchar_t* wide_c_str);
 
-  // Compares two wide C strings.  Returns true if and only if they have the
-  // same content.
+  // Compares two wide C strings.  Returns true iff they have the same
+  // content.
   //
   // Unlike wcscmp(), this function can handle NULL argument(s).  A
   // NULL C string is considered different to any non-NULL C string,
   // including the empty string.
   static bool WideCStringEquals(const wchar_t* lhs, const wchar_t* rhs);
 
-  // Compares two C strings, ignoring case.  Returns true if and only if
-  // they have the same content.
+  // Compares two C strings, ignoring case.  Returns true iff they
+  // have the same content.
   //
   // Unlike strcasecmp(), this function can handle NULL argument(s).
   // A NULL C string is considered different to any non-NULL C string,
@@ -126,8 +124,8 @@ class GTEST_API_ String {
   static bool CaseInsensitiveCStringEquals(const char* lhs,
                                            const char* rhs);
 
-  // Compares two wide C strings, ignoring case.  Returns true if and only if
-  // they have the same content.
+  // Compares two wide C strings, ignoring case.  Returns true iff they
+  // have the same content.
   //
   // Unlike wcscasecmp(), this function can handle NULL argument(s).
   // A NULL C string is considered different to any non-NULL wide C string,
@@ -141,22 +139,16 @@ class GTEST_API_ String {
   static bool CaseInsensitiveWideCStringEquals(const wchar_t* lhs,
                                                const wchar_t* rhs);
 
-  // Returns true if and only if the given string ends with the given suffix,
-  // ignoring case. Any string is considered to end with an empty suffix.
+  // Returns true iff the given string ends with the given suffix, ignoring
+  // case. Any string is considered to end with an empty suffix.
   static bool EndsWithCaseInsensitive(
       const std::string& str, const std::string& suffix);
 
   // Formats an int value as "%02d".
   static std::string FormatIntWidth2(int value);  // "%02d" for width == 2
 
-  // Formats an int value to given width with leading zeros.
-  static std::string FormatIntWidthN(int value, int width);
-
   // Formats an int value as "%X".
   static std::string FormatHexInt(int value);
-
-  // Formats an int value as "%X".
-  static std::string FormatHexUInt32(uint32_t value);
 
   // Formats a byte as "%02X".
   static std::string FormatByte(unsigned char value);

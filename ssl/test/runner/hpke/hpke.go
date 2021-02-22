@@ -14,7 +14,7 @@
 
 // Package hpke implements Hybrid Public Key Encryption (HPKE).
 //
-// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
+// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-05.
 package hpke
 
 import (
@@ -193,7 +193,8 @@ func keySchedule(mode uint8, kemID, kdfID, aeadID uint16, sharedSecret, info, ps
 	keyScheduleContext = append(keyScheduleContext, pskIDHash...)
 	keyScheduleContext = append(keyScheduleContext, infoHash...)
 
-	secret := labeledExtract(kdfHash, sharedSecret, suiteID, []byte("secret"), psk)
+	pskHash := labeledExtract(kdfHash, nil, suiteID, []byte("psk_hash"), psk)
+	secret := labeledExtract(kdfHash, pskHash, suiteID, []byte("secret"), sharedSecret)
 	key := labeledExpand(kdfHash, secret, suiteID, []byte("key"), keyScheduleContext, expectedKeyLength(aeadID))
 
 	aead, err := newAEAD(aeadID, key)
@@ -201,7 +202,7 @@ func keySchedule(mode uint8, kemID, kdfID, aeadID uint16, sharedSecret, info, ps
 		return nil, err
 	}
 
-	baseNonce := labeledExpand(kdfHash, secret, suiteID, []byte("base_nonce"), keyScheduleContext, aead.NonceSize())
+	nonce := labeledExpand(kdfHash, secret, suiteID, []byte("nonce"), keyScheduleContext, aead.NonceSize())
 	exporterSecret := labeledExpand(kdfHash, secret, suiteID, []byte("exp"), keyScheduleContext, kdfHash.Size())
 
 	return &Context{
@@ -210,7 +211,7 @@ func keySchedule(mode uint8, kemID, kdfID, aeadID uint16, sharedSecret, info, ps
 		aeadID:         aeadID,
 		aead:           aead,
 		key:            key,
-		baseNonce:      baseNonce,
+		baseNonce:      nonce,
 		seq:            0,
 		exporterSecret: exporterSecret,
 	}, nil
