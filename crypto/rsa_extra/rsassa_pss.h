@@ -43,7 +43,6 @@ struct rsassa_pss_params_st {
 RSA_INTEGER *RSA_INTEGER_new(void);
 RSA_ALGOR_IDENTIFIER *RSA_ALGOR_IDENTIFIER_new(void);
 RSA_MGA_IDENTIFIER *RSA_MGA_IDENTIFIER_new(void);
-// Otherwise, pss will be NULL.
 OPENSSL_EXPORT RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void);
 
 // RSASSA_PSS_PARAMS related free functions.
