@@ -37,7 +37,6 @@ OS_ARCH_COMBOS = [
     ('mac', 'x86_64', 'macosx', [], 'S'),
     ('win', 'x86', 'win32n', ['-DOPENSSL_IA32_SSE2'], 'asm'),
     ('win', 'x86_64', 'nasm', [], 'asm'),
-    ('win', 'aarch64', 'win64', [], 'S'),
 ]
 
 def FindCMakeFiles(directory):

@@ -267,8 +267,8 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
 
     case ASN1_ITYPE_CHOICE:
         /*
-         * It never makes sense for CHOICE types to have implicit tagging, so if
-         * tag != -1, then this looks like an error in the template.
+         * It never makes sense for CHOICE types to have implicit tagging, so
+         * if tag != -1, then this looks like an error in the template.
          */
         if (tag != -1) {
             OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);

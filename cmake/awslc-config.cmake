@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copied from s2n https://github.com/aws/s2n-tls/tree/main/cmake/modules
+# Copied from s2n https://github.com/awslabs/s2n/tree/main/cmake/modules
 #
 # - Try to find LibCrypto include dirs and libraries
 #

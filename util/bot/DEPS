@@ -19,16 +19,11 @@ vars = {
   'checkout_sde': False,
   'checkout_nasm': False,
   'checkout_libcxx': False,
-  'vs_version': 'env',
 
   'android_sdk_platform-tools_version': 'Jxtur3_L9RzY4q79K-AwIahwFW4oi5uYVD5URx9h62wC',
 }
 
 deps = {
-  # TODO(davidben): Before updating this, update the builders to specify
-  # ANDROID_ARM_NEON=0. The NDK now defaults armeabi-v7a to assuming NEON, but
-  # we wish to retain test coverage for non-NEON code. (Perhaps worth having
-  # both configurations.)
   'boringssl/util/bot/android_ndk': {
     'url': Var('chromium_git') + '/android_ndk.git' + '@' + '27c0a8d090c666a50e40fceb4ee5b40b1a2d3f87',
     'condition': 'checkout_android',
@@ -158,6 +153,18 @@ hooks = [
     ],
   },
   {
+    'name': 'yasm_win32',
+    'pattern': '.',
+    'condition': 'host_os == "win" and not checkout_nasm',
+    'action': [ 'download_from_google_storage',
+                '--no_resume',
+                '--platform=win32',
+                '--no_auth',
+                '--bucket', 'chromium-tools',
+                '-s', 'boringssl/util/bot/yasm-win32.exe.sha1',
+    ],
+  },
+  {
     'name': 'nasm_win32',
     'pattern': '.',
     'condition': 'host_os == "win" and checkout_nasm',
@@ -176,7 +183,6 @@ hooks = [
     'action': [ 'python',
                 'boringssl/util/bot/vs_toolchain.py',
                 'update',
-                Var('vs_version'),
     ],
   },
   {

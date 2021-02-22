@@ -126,8 +126,6 @@ BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
-      ech_present(false),
-      ech_is_inner_present(false),
       scts_requested(false),
       needs_psk_binder(false),
       handshake_finalized(false),
@@ -496,8 +494,9 @@ bool ssl_send_finished(SSL_HANDSHAKE *hs) {
   }
 
   // Log the master secret, if logging is enabled.
-  if (!ssl_log_secret(ssl, "CLIENT_RANDOM",
-                      MakeConstSpan(session->secret, session->secret_length))) {
+  if (!ssl_log_secret(
+          ssl, "CLIENT_RANDOM",
+          MakeConstSpan(session->master_key, session->master_key_length))) {
     return 0;
   }
 

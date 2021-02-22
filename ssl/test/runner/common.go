@@ -119,17 +119,14 @@ const (
 	extensionCertificateAuthorities     uint16 = 47
 	extensionSignatureAlgorithmsCert    uint16 = 50
 	extensionKeyShare                   uint16 = 51
-	extensionQUICTransportParams        uint16 = 57    // draft-ietf-quic-tls-33 and later
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionApplicationSettings        uint16 = 17513 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
-	extensionQUICTransportParamsLegacy  uint16 = 0xffa5 // draft-ietf-quic-tls-32 and earlier
+	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
-	extensionEncryptedClientHello       uint16 = 0xfe09 // not IANA assigned
-	extensionECHIsInner                 uint16 = 0xda09 // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -264,7 +261,6 @@ type ConnectionState struct {
 	PeerSignatureAlgorithm     signatureAlgorithm    // algorithm used by the peer in the handshake
 	CurveID                    CurveID               // the curve used in ECDHE
 	QUICTransportParams        []byte                // the QUIC transport params received from the peer
-	QUICTransportParamsLegacy  []byte                // the legacy QUIC transport params received from the peer
 	HasApplicationSettings     bool                  // whether ALPS was negotiated
 	PeerApplicationSettings    []byte                // application settings received from the peer
 }
@@ -284,7 +280,7 @@ const (
 // ClientSessionState contains the state needed by clients to resume TLS
 // sessions.
 type ClientSessionState struct {
-	sessionID                []uint8             // Session ID supplied by the server. nil if the session has a ticket.
+	sessionId                []uint8             // Session ID supplied by the server. nil if the session has a ticket.
 	sessionTicket            []uint8             // Encrypted ticket used for session resumption with server
 	vers                     uint16              // SSL/TLS version negotiated for the session
 	wireVersion              uint16              // Wire SSL/TLS version negotiated for the session
@@ -325,10 +321,10 @@ type ClientSessionCache interface {
 type ServerSessionCache interface {
 	// Get searches for a sessionState associated with the given session
 	// ID. On return, ok is true if one was found.
-	Get(sessionID string) (session *sessionState, ok bool)
+	Get(sessionId string) (session *sessionState, ok bool)
 
 	// Put adds the sessionState to the cache with the given session ID.
-	Put(sessionID string, session *sessionState)
+	Put(sessionId string, session *sessionState)
 }
 
 // CertCompressionAlg is a certificate compression algorithm, specified as a
@@ -339,43 +335,6 @@ type CertCompressionAlg struct {
 	// Decompress depresses the contents of in and writes the result to out, which
 	// will be the correct size. It returns true on success and false otherwise.
 	Decompress func(out, in []byte) bool
-}
-
-// QUICUseCodepoint controls which TLS extension codepoint is used to convey the
-// QUIC transport parameters. QUICUseCodepointStandard means use 57,
-// QUICUseCodepointLegacy means use legacy value 0xff5a, QUICUseCodepointBoth
-// means use both. QUICUseCodepointNeither means do not send transport
-// parameters.
-type QUICUseCodepoint int
-
-const (
-	QUICUseCodepointStandard QUICUseCodepoint = iota
-	QUICUseCodepointLegacy
-	QUICUseCodepointBoth
-	QUICUseCodepointNeither
-	NumQUICUseCodepoints
-)
-
-func (c QUICUseCodepoint) IncludeStandard() bool {
-	return c == QUICUseCodepointStandard || c == QUICUseCodepointBoth
-}
-
-func (c QUICUseCodepoint) IncludeLegacy() bool {
-	return c == QUICUseCodepointLegacy || c == QUICUseCodepointBoth
-}
-
-func (c QUICUseCodepoint) String() string {
-	switch c {
-	case QUICUseCodepointStandard:
-		return "Standard"
-	case QUICUseCodepointLegacy:
-		return "Legacy"
-	case QUICUseCodepointBoth:
-		return "Both"
-	case QUICUseCodepointNeither:
-		return "Neither"
-	}
-	panic("unknown value")
 }
 
 // A Config structure is used to configure a TLS client or server.
@@ -548,10 +507,6 @@ type Config struct {
 	// QUICTransportParams, if not empty, will be sent in the QUIC
 	// transport parameters extension.
 	QUICTransportParams []byte
-
-	// QUICTransportParamsUseLegacyCodepoint controls which TLS extension
-	// codepoint is used to convey the QUIC transport parameters.
-	QUICTransportParamsUseLegacyCodepoint QUICUseCodepoint
 
 	CertCompressionAlgs map[uint16]CertCompressionAlg
 
@@ -838,28 +793,6 @@ type ProtocolBugs struct {
 	// ExpectServerName, if not empty, is the hostname the client
 	// must specify in the server_name extension.
 	ExpectServerName string
-
-	// ExpectClientECH causes the server to expect the peer to send an
-	// encrypted_client_hello extension containing a ClientECH structure.
-	ExpectClientECH bool
-
-	// ExpectServerAcceptECH causes the client to expect that the server will
-	// indicate ECH acceptance in the ServerHello.
-	ExpectServerAcceptECH bool
-
-	// SendECHRetryConfigs, if not empty, contains the ECH server's serialized
-	// retry configs.
-	SendECHRetryConfigs []byte
-
-	// SendEncryptedClientHello, when true, causes the client to send a
-	// placeholder encrypted_client_hello extension on the ClientHelloOuter
-	// message.
-	SendPlaceholderEncryptedClientHello bool
-
-	// SendECHIsInner, when non-nil, causes the client to send an ech_is_inner
-	// extension on the ClientHelloOuter message. When nil, the extension will
-	// be omitted.
-	SendECHIsInner []byte
 
 	// SwapNPNAndALPN switches the relative order between NPN and ALPN in
 	// both ClientHello and ServerHello.
@@ -1726,9 +1659,9 @@ type ProtocolBugs struct {
 	// used on this connection, or zero if there are no special requirements.
 	ExpectedCompressedCert uint16
 
-	// SendCertCompressionAlgID, if not zero, sets the algorithm ID that will be
+	// SendCertCompressionAlgId, if not zero, sets the algorithm ID that will be
 	// sent in the compressed certificate message.
-	SendCertCompressionAlgID uint16
+	SendCertCompressionAlgId uint16
 
 	// SendCertUncompressedLength, if not zero, sets the uncompressed length that
 	// will be sent in the compressed certificate message.
@@ -2099,12 +2032,12 @@ type lruServerSessionCache struct {
 	lruSessionCache
 }
 
-func (c *lruServerSessionCache) Put(sessionID string, session *sessionState) {
-	c.lruSessionCache.Put(sessionID, session)
+func (c *lruServerSessionCache) Put(sessionId string, session *sessionState) {
+	c.lruSessionCache.Put(sessionId, session)
 }
 
-func (c *lruServerSessionCache) Get(sessionID string) (*sessionState, bool) {
-	cs, ok := c.lruSessionCache.Get(sessionID)
+func (c *lruServerSessionCache) Get(sessionId string) (*sessionState, bool) {
+	cs, ok := c.lruSessionCache.Get(sessionId)
 	if !ok {
 		return nil, false
 	}
