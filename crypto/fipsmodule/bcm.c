@@ -60,6 +60,8 @@
 #include "cipher/e_aes.c"
 #include "cipher/e_des.c"
 #include "des/des.c"
+#include "dh/check.c"
+#include "dh/dh.c"
 #include "digest/digest.c"
 #include "digest/digests.c"
 #include "ecdh/ecdh.c"
@@ -193,7 +195,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
-#if defined(OPENSSL_ANDROID)
+#if defined(OPENSSL_AARCH64) || defined(OPENSSL_ANDROID)
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
 #else

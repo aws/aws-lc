@@ -529,6 +529,8 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
   set(ARCH "x86")
 elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
   set(ARCH "aarch64")
+elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ARM64")
+  set(ARCH "aarch64")
 elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
   set(ARCH "aarch64")
 # Apple A12 Bionic chipset which is added in iPhone XS/XS Max/XR uses arm64e architecture.
@@ -696,6 +698,30 @@ if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
 endif()
 
 if(GO_EXECUTABLE)
+  if(FIPS)
+    add_custom_target(
+      acvp_tests
+      COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
+              boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+      COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
+              boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+      COMMAND cd util/fipstools/acvp/acvptool/test &&
+              ${GO_EXECUTABLE} run check_expected.go
+              -tool ${CMAKE_BINARY_DIR}/acvptool
+              -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
+              -tests tests.json
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      DEPENDS modulewrapper
+      USES_TERMINAL)
+
+    add_custom_target(
+      fips_specific_tests_if_any
+      DEPENDS acvp_tests
+    )
+  else()
+    add_custom_target(fips_specific_tests_if_any)
+  endif()
+
   add_custom_target(
       run_tests
       COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
@@ -704,7 +730,7 @@ if(GO_EXECUTABLE)
               ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                 ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS all_tests bssl_shim handshaker
+      DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
       ${MAYBE_USES_TERMINAL})
 
   add_custom_target(
@@ -733,6 +759,7 @@ else()
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
 endif()
+
 # Copy awslc-config.cmake to build artifacts.
 configure_file("cmake/awslc-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
