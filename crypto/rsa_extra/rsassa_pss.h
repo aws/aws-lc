@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-// Section 2.1. https://tools.ietf.org/html/rfc4055#page-4
+// Section 2.1. https://tools.ietf.org/html/rfc4055#section-2.1
 typedef struct rsa_pss_supported_algor_st {
   int nid;
   uint8_t oid[9];
