@@ -661,12 +661,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  if (config->expect_tls13_downgrade != !!SSL_is_tls13_downgrade(ssl)) {
-    fprintf(stderr, "Got %s downgrade signal, but wanted the opposite.\n",
-            SSL_is_tls13_downgrade(ssl) ? "" : "no ");
-    return false;
-  }
-
   if (config->expect_delegated_credential_used !=
       !!SSL_delegated_credential_used(ssl)) {
     fprintf(stderr,
@@ -727,7 +721,9 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     BIO_push(packeted.get(), bio.release());
     bio = std::move(packeted);
   }
-  if (config->async) {
+  if (config->async && !config->is_quic) {
+    // Note async tests only affect callbacks in QUIC. The IO path does not
+    // behave differently when synchronous or asynchronous our QUIC APIs.
     bssl::UniquePtr<BIO> async_scoped =
         config->is_dtls ? AsyncBioCreateDatagram() : AsyncBioCreate();
     if (!async_scoped) {
@@ -972,6 +968,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     if (config->read_with_unfinished_write) {
       if (!config->async) {
         fprintf(stderr, "-read-with-unfinished-write requires -async.\n");
+        return false;
+      }
+      if (config->is_quic) {
+        fprintf(stderr,
+                "-read-with-unfinished-write is incompatible with QUIC.\n");
         return false;
       }
 

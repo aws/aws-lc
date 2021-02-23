@@ -61,8 +61,11 @@ type Conn struct {
 	// not applicable.
 	curveID CurveID
 	// quicTransportParams contains the QUIC transport params received
-	// by the peer.
+	// by the peer using codepoint 57.
 	quicTransportParams []byte
+	// quicTransportParams contains the QUIC transport params received
+	// by the peer using legacy codepoint 0xffa5.
+	quicTransportParamsLegacy []byte
 
 	clientRandom, serverRandom [32]byte
 	earlyExporterSecret        []byte
@@ -754,7 +757,7 @@ func (hc *halfConn) splitBlock(b *block, n int) (*block, *block) {
 	return b, bb
 }
 
-func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []byte) error {
+func (c *Conn) useInTrafficSecret(level encryptionLevel, version uint16, suite *cipherSuite, secret []byte) error {
 	if c.hand.Len() != 0 {
 		return c.in.setErrorLocked(errors.New("tls: buffered handshake messages on cipher change"))
 	}
@@ -763,6 +766,7 @@ func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []b
 		side = clientWrite
 	}
 	if c.config.Bugs.MockQUICTransport != nil {
+		c.config.Bugs.MockQUICTransport.readLevel = level
 		c.config.Bugs.MockQUICTransport.readSecret = secret
 		c.config.Bugs.MockQUICTransport.readCipherSuite = suite.id
 	}
@@ -771,12 +775,13 @@ func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []b
 	return nil
 }
 
-func (c *Conn) useOutTrafficSecret(version uint16, suite *cipherSuite, secret []byte) {
+func (c *Conn) useOutTrafficSecret(level encryptionLevel, version uint16, suite *cipherSuite, secret []byte) {
 	side := serverWrite
 	if c.isClient {
 		side = clientWrite
 	}
 	if c.config.Bugs.MockQUICTransport != nil {
+		c.config.Bugs.MockQUICTransport.writeLevel = level
 		c.config.Bugs.MockQUICTransport.writeSecret = secret
 		c.config.Bugs.MockQUICTransport.writeCipherSuite = suite.id
 	}
@@ -1677,7 +1682,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 		if c.config.Bugs.RejectUnsolicitedKeyUpdate {
 			return errors.New("tls: unexpected KeyUpdate message")
 		}
-		if err := c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret)); err != nil {
+		if err := c.useInTrafficSecret(encryptionApplication, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret)); err != nil {
 			return err
 		}
 		if keyUpdate.keyUpdateRequest == keyUpdateRequested {
@@ -1711,7 +1716,7 @@ func (c *Conn) ReadKeyUpdateACK() error {
 		return errors.New("tls: received invalid KeyUpdate message")
 	}
 
-	return c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret))
+	return c.useInTrafficSecret(encryptionApplication, c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.in.trafficSecret))
 }
 
 func (c *Conn) Renegotiate() error {
@@ -1893,6 +1898,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.PeerSignatureAlgorithm = c.peerSignatureAlgorithm
 		state.CurveID = c.curveID
 		state.QUICTransportParams = c.quicTransportParams
+		state.QUICTransportParamsLegacy = c.quicTransportParamsLegacy
 		state.HasApplicationSettings = c.hasApplicationSettings
 		state.PeerApplicationSettings = c.peerApplicationSettings
 	}
@@ -2065,7 +2071,7 @@ func (c *Conn) sendKeyUpdateLocked(keyUpdateRequest byte) error {
 	if err := c.flushHandshake(); err != nil {
 		return err
 	}
-	c.useOutTrafficSecret(c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret))
+	c.useOutTrafficSecret(encryptionApplication, c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.wireVersion, c.out.trafficSecret))
 	return nil
 }
 
