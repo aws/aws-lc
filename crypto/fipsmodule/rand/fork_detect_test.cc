@@ -18,7 +18,12 @@
 // after multi-threaded fork is not supported".
 #if defined(OPENSSL_LINUX) && !defined(OPENSSL_TSAN)
 #include <errno.h>
+
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

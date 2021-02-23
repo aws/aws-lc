@@ -56,7 +56,11 @@
 
 #include <openssl/obj.h>
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>
+
 #include <limits.h>
 #include <string.h>
 
