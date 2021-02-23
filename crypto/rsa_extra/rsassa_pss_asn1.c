@@ -170,7 +170,7 @@ static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
 }
 
 // Decode [1] MaskGenAlgorithm of RSASSA-PSS-params: return one on success and
-// zero on failure. See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// zero on failure. See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_mask_gen(CBS *seq, RSA_MGA_IDENTIFIER **mga) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, 1)) {
