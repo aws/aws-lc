@@ -205,7 +205,7 @@ static int decode_pss_salt_len(CBS *seq, RSA_INTEGER **salt_len) {
 }
 
 // Decode [3] trailerField of RSASSA-PSS-params
-// See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, 3)) {
