@@ -31,7 +31,7 @@ typedef struct rsa_integer_st {
 } RSA_INTEGER;
 
 // RSASSA-PSS-params is defined on rfc4055 section 3.1.
-// See https://tools.ietf.org/html/rfc4055#page-7
+// See https://tools.ietf.org/html/rfc4055#section-3.1
 struct rsassa_pss_params_st {
   RSA_ALGOR_IDENTIFIER *hash_algor;
   RSA_MGA_IDENTIFIER *mask_gen_algor;
