@@ -547,6 +547,18 @@ else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
+# If ARCH is originally set as either x86 or x86_64, perform an additional
+# check to determine whether 32-bit or 64-bit is supported. This happens in some
+# cases such as when building in Docker, where the host-level architecture is 64-bit
+# but the Docker image should result in building for a 32-bit architecture.
+if (${ARCH} STREQUAL "x86" OR ${ARCH} STREQUAL "x86_64")
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(ARCH "x86_64")
+  else()
+    set(ARCH "x86")
+  endif()
+endif()
+
 if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
   # Enable p256_nistz on ARMv8 (AArch64) by default
   add_definitions(-DOPENSSL_AARCH64_P256)
