@@ -126,7 +126,11 @@
 #include <openssl/base.h>
 #include <openssl/thread.h>
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>  // for PRIu64 and friends
+
 #include <stdio.h>  // for FILE*
 
 #if defined(__cplusplus)
