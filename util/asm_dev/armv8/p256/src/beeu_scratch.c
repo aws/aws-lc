@@ -10,6 +10,9 @@ The functions in this file were compiled into ARMv8 assembly code
 in order to experiment with the generated instructions and use them in beeu.S.
 */
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>
 
 typedef double *__attribute__((aligned(64))) aligned_double;
