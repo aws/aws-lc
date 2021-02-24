@@ -11,6 +11,12 @@
 #include "../internal.h"
 #include "rsassa_pss.h"
 
+// Below macros are used with |get_context_specific_value|.
+#define TAG_VALUE_INDEX_0 0
+#define TAG_VALUE_INDEX_1 1
+#define TAG_VALUE_INDEX_2 2
+#define TAG_VALUE_INDEX_3 3
+
 const RSA_PSS_SUPPORTED_ALGOR sha1_func = {
     NID_sha1,
     // 1.3.14.3.2.26
@@ -162,10 +168,10 @@ static int get_context_specific_value(CBS *seq, CBS *out, int index) {
 }
 
 // Decode [0] HashAlgorithm of RSASSA-PSS-params: return one on success and zero
-// on failure. See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
+// on failure. See https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
   CBS cs;
-  if (!get_context_specific_value(seq, &cs, 0)) {
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_0)) {
     // HashAlgorithm field can be absent, which means default(sha1) is encoded.
     return 1;
   }
@@ -176,7 +182,7 @@ static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
 // zero on failure. See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_mask_gen(CBS *seq, RSA_MGA_IDENTIFIER **mga) {
   CBS cs;
-  if (!get_context_specific_value(seq, &cs, 1)) {
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_1)) {
     // MaskGenAlgorithm field can be absent, which means default(mgf1) is encoded.
     return 1;
   }
@@ -200,7 +206,7 @@ static int parse_rsa_int(CBS *cbs, RSA_INTEGER **rsa_int) {
 // See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_salt_len(CBS *seq, RSA_INTEGER **salt_len) {
   CBS cs;
-  if (!get_context_specific_value(seq, &cs, 2)) {
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_2)) {
     // saltLength field can be absent, which means default(20) is encoded.
     return 1;
   }
@@ -211,7 +217,7 @@ static int decode_pss_salt_len(CBS *seq, RSA_INTEGER **salt_len) {
 // See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
   CBS cs;
-  if (!get_context_specific_value(seq, &cs, 3)) {
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_3)) {
     // Trailer field can be absent, which means default(1) is encoded.
     return 1;
   }
