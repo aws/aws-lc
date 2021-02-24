@@ -51,6 +51,11 @@ let slice_384_32_96 = parse_core "\\(x : Vec 512 Bool) -> slice Bool 384 32 96 x
 let slice_416_32_64 = parse_core "\\(x : Vec 512 Bool) -> slice Bool 416 32 64 x";
 let slice_448_32_32 = parse_core "\\(x : Vec 512 Bool) -> slice Bool 448 32 32 x";
 let slice_480_32_0 = parse_core "\\(x : Vec 512 Bool) -> slice Bool 480 32 0 x";
+let slice_0_8_24 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 8 24 x";
+let slice_8_8_16 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 8 8 16 x";
+let slice_16_8_8 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 16 8 8 x";
+let slice_24_8_0 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 24 8 0 x";
+let slice_32_32_0 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 32 32 0 x";
 
 let bvUExt_384_128 = parse_core "\\(x : Vec 128 Bool) -> bvUExt 384 128 x";
 
@@ -73,3 +78,79 @@ let slice_384_thms =
   , slice_384_6_thm
   , slice_384_7_thm
   ];
+
+slice_xor_8_thm <- prove_folding_theorem {{ \x y -> slice_0_8_24 (x ^ y) == (slice_0_8_24 x) ^ (slice_0_8_24 y) }};
+slice_xor_9_thm <- prove_folding_theorem {{ \x y -> slice_8_8_16 (x ^ y) == (slice_8_8_16 x) ^ (slice_8_8_16 y) }};
+slice_xor_10_thm <- prove_folding_theorem {{ \x y -> slice_16_8_8 (x ^ y) == (slice_16_8_8 x) ^ (slice_16_8_8 y) }};
+slice_xor_11_thm <- prove_folding_theorem {{ \x y -> slice_24_8_0 (x ^ y) == (slice_24_8_0 x) ^ (slice_24_8_0 y) }};
+slice_xor_12_thm <- prove_folding_theorem {{ \x y -> slice_0_8_120 (x ^ y) == (slice_0_8_120 x) ^ (slice_0_8_120 y) }};
+slice_xor_13_thm <- prove_folding_theorem {{ \x y -> slice_8_8_112 (x ^ y) == (slice_8_8_112 x) ^ (slice_8_8_112 y) }};
+slice_xor_14_thm <- prove_folding_theorem {{ \x y -> slice_16_8_104 (x ^ y) == (slice_16_8_104 x) ^ (slice_16_8_104 y) }};
+slice_xor_15_thm <- prove_folding_theorem {{ \x y -> slice_24_8_96 (x ^ y) == (slice_24_8_96 x) ^ (slice_24_8_96 y) }};
+slice_xor_16_thm <- prove_folding_theorem {{ \x y -> slice_32_8_88 (x ^ y) == (slice_32_8_88 x) ^ (slice_32_8_88 y) }};
+slice_xor_17_thm <- prove_folding_theorem {{ \x y -> slice_40_8_80 (x ^ y) == (slice_40_8_80 x) ^ (slice_40_8_80 y) }};
+slice_xor_18_thm <- prove_folding_theorem {{ \x y -> slice_48_8_72 (x ^ y) == (slice_48_8_72 x) ^ (slice_48_8_72 y) }};
+slice_xor_19_thm <- prove_folding_theorem {{ \x y -> slice_56_8_64 (x ^ y) == (slice_56_8_64 x) ^ (slice_56_8_64 y) }};
+slice_xor_20_thm <- prove_folding_theorem {{ \x y -> slice_64_8_56 (x ^ y) == (slice_64_8_56 x) ^ (slice_64_8_56 y) }};
+slice_xor_21_thm <- prove_folding_theorem {{ \x y -> slice_72_8_48 (x ^ y) == (slice_72_8_48 x) ^ (slice_72_8_48 y) }};
+slice_xor_22_thm <- prove_folding_theorem {{ \x y -> slice_80_8_40 (x ^ y) == (slice_80_8_40 x) ^ (slice_80_8_40 y) }};
+slice_xor_23_thm <- prove_folding_theorem {{ \x y -> slice_88_8_32 (x ^ y) == (slice_88_8_32 x) ^ (slice_88_8_32 y) }};
+slice_xor_24_thm <- prove_folding_theorem {{ \x y -> slice_96_8_24 (x ^ y) == (slice_96_8_24 x) ^ (slice_96_8_24 y) }};
+slice_xor_25_thm <- prove_folding_theorem {{ \x y -> slice_104_8_16 (x ^ y) == (slice_104_8_16 x) ^ (slice_104_8_16 y) }};
+slice_xor_26_thm <- prove_folding_theorem {{ \x y -> slice_112_8_8 (x ^ y) == (slice_112_8_8 x) ^ (slice_112_8_8 y) }};
+slice_xor_27_thm <- prove_folding_theorem {{ \x y -> slice_120_8_0 (x ^ y) == (slice_120_8_0 x) ^ (slice_120_8_0 y) }};
+
+slice_add_0_thm <- prove_folding_theorem {{ \x y -> slice_56_8_0 (x + y) == slice_24_8_0 ((slice_32_32_0 x) + (slice_32_32_0 y)) }};
+slice_add_1_thm <- prove_folding_theorem {{ \x y -> slice_48_8_8 (x + y) == slice_16_8_8 ((slice_32_32_0 x) + (slice_32_32_0 y)) }};
+slice_add_2_thm <- prove_folding_theorem {{ \x y -> slice_40_8_16 (x + y) == slice_8_8_16 ((slice_32_32_0 x) + (slice_32_32_0 y)) }};
+slice_add_3_thm <- prove_folding_theorem {{ \x y -> slice_32_8_24 (x + y) == slice_0_8_24 ((slice_32_32_0 x) + (slice_32_32_0 y)) }};
+
+let add_xor_slice_thms =
+  [ slice_add_0_thm
+  , slice_add_1_thm
+  , slice_add_2_thm
+  , slice_add_3_thm
+  , slice_xor_8_thm
+  , slice_xor_9_thm
+  , slice_xor_10_thm
+  , slice_xor_11_thm
+  , slice_xor_12_thm
+  , slice_xor_13_thm
+  , slice_xor_14_thm
+  , slice_xor_15_thm
+  , slice_xor_16_thm
+  , slice_xor_17_thm
+  , slice_xor_18_thm
+  , slice_xor_19_thm
+  , slice_xor_20_thm
+  , slice_xor_21_thm
+  , slice_xor_22_thm
+  , slice_xor_23_thm
+  , slice_xor_24_thm
+  , slice_xor_25_thm
+  , slice_xor_26_thm
+  , slice_xor_27_thm
+  ];
+
+aesenclast_0_thm <- prove_print
+  (do {
+    w4_unint_yices ["ShiftRows", "SubBytes"];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : [8]) y z key -> aesenclast key ((x # y) ^ z) == (x # y) ^ (aesenclast key z) }});
+aesenclast_1_thm <- prove_print
+  (do {
+    w4_unint_yices ["ShiftRows", "SubBytes"];
+  })
+  (rewrite (cryptol_ss ()) {{ \(x : [8]) y z key -> aesenclast key (z ^ (x # y)) == (x # y) ^ (aesenclast key z) }});
+let aesenclast_thms =
+  [ aesenclast_0_thm
+  , aesenclast_1_thm
+  ];
+
+// replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract
+// domain to work. This simplifies goals related to the 64-byte alignment of
+// the stack.
+let bvult = parse_core "\\(x y : Vec 64 Bool) -> bvult 64 x y";
+cmp_sub_thm <- prove_folding_theorem
+  {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};
+

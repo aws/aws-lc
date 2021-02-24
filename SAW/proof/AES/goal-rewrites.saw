@@ -288,13 +288,6 @@ aesenc_aesenclast_thm <- prove_print
   })
   (rewrite (cryptol_ss ()) {{ \in key0 key1 key2 key3 key4 key5 key6 key7 key8 key9 key10 key11 key12 key13 key14 -> aesenclast (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (key0 ^ in) key1) key2) key3) key4) key5) key6) key7) key8) key9) key10) key11) key12) key13) key14 == swap8 (aesEncryptWithKeySchedule (swap8 in) (aes_key_to_schedule [key0, key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12, key13, key14])) }});
 
-// replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract
-// domain to work. This simplifies goals related to the 64-byte alignment of
-// the stack.
-let bvult = parse_core "\\(x y : Vec 64 Bool) -> bvult 64 x y";
-cmp_sub_thm <- prove_folding_theorem
-  {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};
-
 
 /*
  * Goal tactics.
