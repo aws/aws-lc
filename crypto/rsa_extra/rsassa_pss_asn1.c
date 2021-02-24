@@ -101,8 +101,10 @@ static int is_absent_or_null(CBS *params) {
 // See 2.1. https://tools.ietf.org/html/rfc4055#page-5
 static int decode_one_way_hash(CBS *cbs, RSA_ALGOR_IDENTIFIER **hash_algor) {
   CBS seq, oid;
-  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(cbs) == 0) &&
-      CBS_get_asn1(&seq, &oid, CBS_ASN1_OBJECT) && is_absent_or_null(&seq) &&
+  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) &&
+      (CBS_len(cbs) == 0) &&
+      CBS_get_asn1(&seq, &oid, CBS_ASN1_OBJECT) &&
+      is_absent_or_null(&seq) &&
       parse_oid(&oid, rsa_pss_hash_functions,
                 OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions), hash_algor)) {
     return 1;
@@ -117,14 +119,15 @@ static int decode_mask_gen(CBS *cbs, RSA_MGA_IDENTIFIER **mga) {
   CBS seq, mgf1_oid, hash_seq, hash_oid;
   RSA_ALGOR_IDENTIFIER *mgf1 = NULL;
   RSA_ALGOR_IDENTIFIER *hash_algor = NULL;
-  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(cbs) == 0) &&
+  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) &&
+      (CBS_len(cbs) == 0) &&
       CBS_get_asn1(&seq, &mgf1_oid, CBS_ASN1_OBJECT) &&
+      parse_oid(&mgf1_oid, rsa_pss_mg_functions,
+                OPENSSL_ARRAY_SIZE(rsa_pss_mg_functions), &mgf1) &&
       CBS_get_asn1(&seq, &hash_seq, CBS_ASN1_SEQUENCE) &&
       (CBS_len(&seq) == 0) &&
       CBS_get_asn1(&hash_seq, &hash_oid, CBS_ASN1_OBJECT) &&
       is_absent_or_null(&hash_seq) &&
-      parse_oid(&mgf1_oid, rsa_pss_mg_functions,
-                OPENSSL_ARRAY_SIZE(rsa_pss_mg_functions), &mgf1) &&
       parse_oid(&hash_oid, rsa_pss_hash_functions,
                 OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions), &hash_algor)) {
     *mga = RSA_MGA_IDENTIFIER_new();
@@ -163,7 +166,7 @@ static int get_context_specific_value(CBS *seq, CBS *out, int index) {
 static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, 0)) {
-    // HashAlgorithm field can be absent, which means default.
+    // HashAlgorithm field can be absent, which means default(sha1) is encoded.
     return 1;
   }
   return decode_one_way_hash(&cs, hash_algor);
@@ -174,7 +177,7 @@ static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
 static int decode_pss_mask_gen(CBS *seq, RSA_MGA_IDENTIFIER **mga) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, 1)) {
-    // MaskGenAlgorithm field can be absent, which means default.
+    // MaskGenAlgorithm field can be absent, which means default(mgf1) is encoded.
     return 1;
   }
   return decode_mask_gen(&cs, mga);
@@ -198,7 +201,7 @@ static int parse_rsa_int(CBS *cbs, RSA_INTEGER **rsa_int) {
 static int decode_pss_salt_len(CBS *seq, RSA_INTEGER **salt_len) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, 2)) {
-    // saltLength field can be absent, which means default.
+    // saltLength field can be absent, which means default(20) is encoded.
     return 1;
   }
   return parse_rsa_int(&cs, salt_len);
@@ -209,7 +212,7 @@ static int decode_pss_salt_len(CBS *seq, RSA_INTEGER **salt_len) {
 static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, 3)) {
-    // Trailer field can be absent, which means default.
+    // Trailer field can be absent, which means default(1) is encoded.
     return 1;
   }
   return parse_rsa_int(&cs, trailer_field);
@@ -227,11 +230,13 @@ int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   RSA_INTEGER *salt_len = NULL;
   RSA_INTEGER *trailer_field = NULL;
   CBS seq;
-  if (CBS_get_asn1(params, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(params) == 0) &&
+  if (CBS_get_asn1(params, &seq, CBS_ASN1_SEQUENCE) &&
+      (CBS_len(params) == 0) &&
       decode_pss_hash(&seq, &hash_algor) &&
       decode_pss_mask_gen(&seq, &mask_gen_algor) &&
       decode_pss_salt_len(&seq, &salt_len) &&
-      decode_pss_trailer_field(&seq, &trailer_field) && (CBS_len(&seq) == 0)) {
+      decode_pss_trailer_field(&seq, &trailer_field) &&
+      (CBS_len(&seq) == 0)) {
     *pss_params = RSASSA_PSS_PARAMS_new();
     if ((*pss_params) != NULL) {
       (*pss_params)->hash_algor = hash_algor;
