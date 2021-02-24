@@ -60,7 +60,7 @@ const RSA_PSS_SUPPORTED_ALGOR MGF1 = {
 };
 
 // Used to check if the oid is in the supported mask generation functions.
-// Section 2.2. https://tools.ietf.org/html/rfc4055#page-4
+// Section 2.2. https://tools.ietf.org/html/rfc4055#section-2.2
 static const RSA_PSS_SUPPORTED_ALGOR *const rsa_pss_mg_functions[] = {
     &MGF1,
 };
@@ -89,7 +89,7 @@ static int parse_oid(CBS *oid,
 
 // For One-way Hash Functions:
 // All implementations MUST accept both NULL and absent parameters as legal and
-// equivalent encodings. See 2.1. https://tools.ietf.org/html/rfc4055#page-5
+// equivalent encodings. See 2.1. https://tools.ietf.org/html/rfc4055#section-2.1
 static int is_absent_or_null(CBS *params) {
   CBS null;
   return (CBS_len(params) == 0) ||
@@ -112,7 +112,7 @@ static int decode_one_way_hash(CBS *cbs, RSA_ALGOR_IDENTIFIER **hash_algor) {
 }
 
 // Decode Mask Generation Functions: return one on success and zero on failure.
-// See 2.2. https://tools.ietf.org/html/rfc4055#page-5
+// See 2.2. https://tools.ietf.org/html/rfc4055#section-2.2
 static int decode_mask_gen(CBS *cbs, RSA_MGA_IDENTIFIER **mga) {
   CBS seq, mgf1_oid, hash_seq, hash_oid;
   RSA_ALGOR_IDENTIFIER *mgf1 = NULL;
@@ -159,7 +159,7 @@ static int get_context_specific_value(CBS *seq, CBS *out, int index) {
 }
 
 // Decode [0] HashAlgorithm of RSASSA-PSS-params: return one on success and zero
-// on failure. See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// on failure. See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, 0)) {
@@ -216,7 +216,7 @@ static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
 }
 
 // Get RSASSA-PSS-params sequence
-// See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   if (CBS_len(params) == 0) {
     // The parameters may be either absent.
