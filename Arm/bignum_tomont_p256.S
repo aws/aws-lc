@@ -1,0 +1,117 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// ----------------------------------------------------------------------------
+// Convert to Montgomery form z := (2^256 * x) mod p_256
+// Input x[4]; output z[4]
+//
+//    extern void bignum_tomont_p256
+//     (uint64_t z[static 4], uint64_t x[static 4]);
+//
+// Standard ARM ABI: X0 = z, X1 = x
+// ----------------------------------------------------------------------------
+
+.globl   bignum_tomont_p256
+
+// ----------------------------------------------------------------------------
+// Core "x |-> (2^64 * x) mod p_256" macro, with x assumed to be < p_256.
+// Input is in [d4;d3;d2;d1] and output in [d3;d2;d1;d0]
+// using d4 as well as t1, t2, t3 as temporaries.
+// ----------------------------------------------------------------------------
+
+.macro modstep_p256 d4, d3,d2,d1,d0, t1,t2,t3
+// Writing the input as z = 2^256 * h + 2^192 * l + t = 2^192 * hl + t, our
+// intended quotient approximation is MIN ((hl + hl>>32 + 1)>>64) (2^64 - 1).
+                subs    xzr, xzr, xzr   // set carry flag for +1
+                extr    \t3, \d4, \d3, 32
+                adcs    xzr, \d3, \t3
+                lsr     \t3, \d4, 32
+                adcs    \t3, \d4, \t3
+                csetm   \d0, cs
+                orr     \t3, \t3, \d0
+// First do [t2;t1] = 2^32 * q, which we use twice
+                lsl     \t1, \t3, 32
+                lsr     \t2, \t3, 32
+// Add 2^224 * q to sum
+                adds    \d3, \d3, \t1
+                adc     \d4, \d4, \t2
+// Accumulate [t2;t1;d0] = (2^96 - 1) * q
+                subs    \d0, xzr, \t3
+                sbcs    \t1, \t1, xzr
+                sbc     \t2, \t2, xzr
+// Subtract (2^256 + 2^192 + 2^96 - 1) * q
+                subs    \d0, xzr, \d0
+                sbcs    \d1, \d1, \t1
+                sbcs    \d2, \d2, \t2
+                sbcs    \d3, \d3, \t3
+                sbcs    \d4, \d4, \t3
+// Use top word as mask to correct
+                adds    \d0, \d0, \d4
+                mov     \t1, 0x00000000ffffffff
+                and     \t1, \t1, \d4
+                adcs    \d1, \d1, \t1
+                adcs    \d2, \d2, xzr
+                mov     \t1, 0xffffffff00000001
+                and     \t1, \t1, \d4
+                adc     \d3, \d3, \t1
+.endm
+
+#define d0 x2
+#define d1 x3
+#define d2 x4
+#define d3 x5
+#define d4 x6
+
+#define t0 x1
+#define t1 x7
+#define t2 x8
+#define t3 x9
+
+bignum_tomont_p256:
+
+// Load the input
+
+                ldp     d0, d1, [x1]
+                ldp     d2, d3, [x1, 16]
+
+// Do an initial reduction to make sure this is < p_256, using just
+// a copy of the bignum_mod_p256 code. This is needed to set up the
+// invariant "input < p_256" for the main modular reduction steps.
+
+                mov     t0, 0xffffffffffffffff
+                mov     t1, 0x00000000ffffffff
+                mov     t3, 0xffffffff00000001
+                subs    t0, d0, t0
+                sbcs    t1, d1, t1
+                sbcs    t2, d2, xzr
+                sbcs    t3, d3, t3
+                csel    d0, d0, t0, cc
+                csel    d1, d1, t1, cc
+                csel    d2, d2, t2, cc
+                csel    d3, d3, t3, cc
+
+// Successively multiply by 2^64 and reduce
+
+                modstep_p256 d3,d2,d1,d0,d4, t1,t2,t3
+                modstep_p256 d2,d1,d0,d4,d3, t1,t2,t3
+                modstep_p256 d1,d0,d4,d3,d2, t1,t2,t3
+                modstep_p256 d0,d4,d3,d2,d1, t1,t2,t3
+
+// Store the result and return
+
+                stp     d1, d2, [x0]
+                stp     d3, d4, [x0, #16]
+
+                ret
