@@ -708,6 +708,7 @@ void ec_GFp_nistp_recode_scalar_bits(crypto_word_t *sign, crypto_word_t *digit,
 
 const EC_METHOD *EC_GFp_nistp224_method(void);
 const EC_METHOD *EC_GFp_nistp256_method(void);
+const EC_METHOD *EC_GFp_nistp384_method(void);
 
 // EC_GFp_nistz256_method is a GFp method using montgomery multiplication, with
 // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.
