@@ -586,8 +586,23 @@ if(WIN32)
 endif()
 add_dependencies(all_tests crypto_test)
 
+configure_file("crypto-config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
+        @ONLY)
+
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(EXPORT crypto-targets
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
+        NAMESPACE AWS::
+        COMPONENT Development
+)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/"
+        COMPONENT Development
 )
