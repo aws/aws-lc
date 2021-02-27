@@ -12,7 +12,7 @@
  ; * permissions and limitations under the License.
 
 ; ----------------------------------------------------------------------------
-; Add modulo m, z := (x + y) mod m, assuming x reduced
+; Add modulo m, z := (x + y) mod m, assuming x and y reduced
 ; Inputs x[k], y[k], m[k]; output z[k]
 ;
 ;    extern void bignum_modadd

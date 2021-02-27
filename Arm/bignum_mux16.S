@@ -14,7 +14,7 @@
  */
 
 // ----------------------------------------------------------------------------
-// Select element from 16-element table, z := x[i]
+// Select element from 16-element table, z := xs[k*i]
 // Inputs xs[16*k], i; output z[k]
 //
 //    extern void bignum_mux16
