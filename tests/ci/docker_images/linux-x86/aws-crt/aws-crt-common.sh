@@ -34,11 +34,6 @@ AWS_CRT_UBUNTU_16_X64="${BASE_AWS_CRT_DOCKER_IMG_PREFIX}/${AWS_CRT_UBUNTU_16_X64
 ####################################
 
 function login_github_docker_pkg() {
-  jq_installed=$(command -v jq)
-  if [[ -z "${jq_installed}" ]]; then
-    # Install 'jq' for json response parser.
-    apt-get update -y && apt-get install -y jq
-  fi
   if [[ -z "${GITHUB_READ_PKG_ACCESS_TOKEN+x}" || -z "${GITHUB_READ_PKG_ACCESS_TOKEN}" ]]; then
     # GITHUB_READ_PKG_ACCESS_TOKEN is required when pulling images from 'docker.pkg.github.com'.
     # When creating GitHub personal access token, make sure ONLY "read:packages" is granted.
