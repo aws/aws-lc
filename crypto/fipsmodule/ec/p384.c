@@ -5,8 +5,8 @@
 ------------------------------------------------------------------------------------
 */
 
-// Implementation of P-384 that uses Fiat-crypto for the field arithmetic.
-// Similar to p256.c
+// Implementation of P-384 that uses Fiat-crypto for the field arithmetic
+// found in third_party/fiat, similarly to p256.c
 
 #include <openssl/ec.h>
 
@@ -145,6 +145,13 @@ static void fiat_p384_inv_square(fiat_p384_felem out,
   }                                // 2^255 - 2^15
   fiat_p384_mul(ret, ret, x15);    // 2^255 - 2^0
 
+  // Why (1 + 30) in the loop?
+  // This is as expressed in https://briansmith.org/ecc-inversion-addition-chains-01#p384_field_inversion
+  // My guess is to say that we're going to shift 31 bits, but this time we won't add x31
+  // to make all the new bits 1s, as was done in previous steps,
+  // but we're going to add x30 so there will be 255 1s, then a 0, then 30 1s to form this pattern:
+  // ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe ffffffff
+  // (the last 2 1s are appended in the following step).
   for (int i = 0; i < (1 + 30); i++) {
     fiat_p384_square(ret, ret);
   }                                // 2^286 - 2^31
@@ -154,6 +161,11 @@ static void fiat_p384_inv_square(fiat_p384_felem out,
   fiat_p384_square(ret, ret);      // 2^288 - 2^32 - 2^2
   fiat_p384_mul(ret, ret, x2);     // 2^288 - 2^32 - 2^0
 
+  // Why not 94 instead of (64 + 30) in the loop?
+  // Similarly to the comment above, there is a shift of 94 bits but what will be added is x30,
+  // which will cause 64 of those bits to be 64 0s and 30 1s to complete the pattern above with:
+  // 00000000 00000000 fffffffc
+  // (the last 2 0s are appended by the last 2 shifts).
   for (int i = 0; i < (64 + 30); i++) {
     fiat_p384_square(ret, ret);
   }                                // 2^382 - 2^126 - 2^94
@@ -170,13 +182,16 @@ static void fiat_p384_inv_square(fiat_p384_felem out,
 // elliptic curve group itself. Points on the curve are represented in Jacobian
 // coordinates.
 //
-
+// fiat_p384_point_double calculates 2*(x_in, y_in, z_in)
+//
 // The method is taken from:
 //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
 //
 // Coq transcription and correctness proof:
 // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
 // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
+// Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed.
+// while x_out == y_in is not (maybe this works, but it's not tested).
 static void fiat_p384_point_double(fiat_p384_felem x_out, fiat_p384_felem y_out,
                                    fiat_p384_felem z_out,
                                    const fiat_p384_felem x_in,
@@ -220,8 +235,11 @@ static void fiat_p384_point_double(fiat_p384_felem x_out, fiat_p384_felem y_out,
   fiat_p384_sub(y_out, y_out, gamma);
 }
 
+// fiat_p384_point_add calculates (x1, y1, z1) + (x2, y2, z2)
+//
 // The method is taken from:
 //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-add-2007-bl
+// adapted for mixed addition (z2 = 1, or z2 = 0 for the point at infinity).
 //
 // Coq transcription and correctness proof:
 // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L467>
