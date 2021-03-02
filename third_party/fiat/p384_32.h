@@ -33,13 +33,13 @@ static __inline__ uint32_t fiat_p384_value_barrier_u32(uint32_t a) {
 #endif
 
 // TODO: if we regenerate the Fiat-crypto files with only the needed functions, no need for these declarations.
-static void fiat_p384_opp(uint32_t out1[6], const uint32_t arg1[6]) __attribute__ ((unused));
-static void fiat_p384_from_montgomery(uint32_t out1[6], const uint32_t arg1[6]) __attribute__ ((unused));
-static void fiat_p384_to_montgomery(uint32_t out1[6], const uint32_t arg1[6]) __attribute__ ((unused));
-static void fiat_p384_set_one(uint32_t out1[6]) __attribute__ ((unused));
-static void fiat_p384_msat(uint32_t out1[7]) __attribute__ ((unused));
-static void fiat_p384_divstep(uint32_t* out1, uint32_t out2[7], uint32_t out3[7], uint32_t out4[6], uint32_t out5[6], uint32_t arg1, const uint32_t arg2[7], const uint32_t arg3[7], const uint32_t arg4[6], const uint32_t arg5[6]) __attribute__ ((unused));
-static void fiat_p384_divstep_precomp(uint32_t out1[6]) __attribute__ ((unused));
+OPENSSL_UNUSED static void fiat_p384_opp(uint32_t out1[6], const uint32_t arg1[6]);
+OPENSSL_UNUSED static void fiat_p384_from_montgomery(uint32_t out1[6], const uint32_t arg1[6]);
+OPENSSL_UNUSED static void fiat_p384_to_montgomery(uint32_t out1[6], const uint32_t arg1[6]);
+OPENSSL_UNUSED static void fiat_p384_set_one(uint32_t out1[6]);
+OPENSSL_UNUSED static void fiat_p384_msat(uint32_t out1[7]);
+OPENSSL_UNUSED static void fiat_p384_divstep(uint32_t* out1, uint32_t out2[7], uint32_t out3[7], uint32_t out4[6], uint32_t out5[6], uint32_t arg1, const uint32_t arg2[7], const uint32_t arg3[7], const uint32_t arg4[6], const uint32_t arg5[6]);
+OPENSSL_UNUSED static void fiat_p384_divstep_precomp(uint32_t out1[6]);
 
 /*
  * The function fiat_p384_addcarryx_u32 is an addition with carry.
