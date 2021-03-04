@@ -14,6 +14,8 @@ include(sources.cmake)
 enable_language(C)
 enable_language(CXX)
 
+option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
+
 # Fail CMake build when some vulnerable gcc versions are used.
 set(VUL_GCC_VERSIONS "")
 # These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
@@ -620,9 +622,11 @@ target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
 include_directories(third_party/googletest/include)
 
-# Declare a dummy target to build all unit tests. Test targets should inject
-# themselves as dependencies next to the target definition.
-add_custom_target(all_tests)
+if(BUILD_TESTING)
+  # Declare a dummy target to build all unit tests. Test targets should inject
+  # themselves as dependencies next to the target definition.
+  add_custom_target(all_tests)
+endif()
 
 # On Windows, CRYPTO_TEST_DATA is too long to fit in command-line limits.
 # TODO(davidben): CMake 3.12 has a list(JOIN) command. Use that when we've
@@ -649,7 +653,6 @@ add_library(crypto_test_data OBJECT crypto_test_data.cc)
 
 add_subdirectory(crypto)
 add_subdirectory(ssl)
-add_subdirectory(ssl/test)
 add_subdirectory(tool)
 add_subdirectory(util/fipstools/cavp)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
@@ -685,67 +688,69 @@ if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
   set(MAYBE_USES_TERMINAL USES_TERMINAL)
 endif()
 
-if(GO_EXECUTABLE)
-  if(FIPS)
-    add_custom_target(
-      acvp_tests
-      COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
-              boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
-      COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
-              boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-      COMMAND cd util/fipstools/acvp/acvptool/test &&
-              ${GO_EXECUTABLE} run check_expected.go
-              -tool ${CMAKE_BINARY_DIR}/acvptool
-              -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
-              -tests tests.json
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS modulewrapper
-      USES_TERMINAL)
+if(BUILD_TESTING)
+  if(GO_EXECUTABLE)
+    if(FIPS)
+      add_custom_target(
+        acvp_tests
+        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
+                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
+                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+        COMMAND cd util/fipstools/acvp/acvptool/test &&
+                ${GO_EXECUTABLE} run check_expected.go
+                -tool ${CMAKE_BINARY_DIR}/acvptool
+                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
+                -tests tests.json
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS modulewrapper
+        USES_TERMINAL)
+
+      add_custom_target(
+        fips_specific_tests_if_any
+        DEPENDS acvp_tests
+      )
+    else()
+      add_custom_target(fips_specific_tests_if_any)
+    endif()
 
     add_custom_target(
-      fips_specific_tests_if_any
-      DEPENDS acvp_tests
-    )
+        run_tests
+        COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                ${CMAKE_BINARY_DIR}
+        COMMAND cd ssl/test/runner &&
+                ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
+                  ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
+        ${MAYBE_USES_TERMINAL})
+
+    add_custom_target(
+        run_tests_valgrind
+        COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS all_tests
+        ${MAYBE_USES_TERMINAL})
+
+    add_custom_target(
+        run_tests_with_sde
+        COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS all_tests
+        ${MAYBE_USES_TERMINAL})
   else()
-    add_custom_target(fips_specific_tests_if_any)
+    add_custom_target(
+            run_minimal_tests
+            COMMAND crypto_test
+            COMMAND urandom_test
+            COMMAND ssl_test
+            COMMAND decrepit_test
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            DEPENDS all_tests
+            ${MAYBE_USES_TERMINAL})
   endif()
-
-  add_custom_target(
-      run_tests
-      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-              ${CMAKE_BINARY_DIR}
-      COMMAND cd ssl/test/runner &&
-              ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
-      ${MAYBE_USES_TERMINAL})
-
-  add_custom_target(
-      run_tests_valgrind
-      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-              ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS all_tests
-      ${MAYBE_USES_TERMINAL})
-
-  add_custom_target(
-      run_tests_with_sde
-      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-              ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS all_tests
-      ${MAYBE_USES_TERMINAL})
-else()
-  add_custom_target(
-          run_minimal_tests
-          COMMAND crypto_test
-          COMMAND urandom_test
-          COMMAND ssl_test
-          COMMAND decrepit_test
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-          DEPENDS all_tests
-          ${MAYBE_USES_TERMINAL})
 endif()
 
 # Copy awslc-config.cmake to build artifacts.
