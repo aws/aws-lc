@@ -105,8 +105,15 @@ aesni_gcm_cipher_block6 enc karatsuba ctx blks = ctx'
       , len = ctx.len + 6 * 16
       }
 
-gcm_ghash_avx : {n} (fin n, 1 <= n, n <= 8) => [128] -> [16][8] -> [n * 16][8] -> [16][8]
+gcm_ghash_avx : {n, m} (fin n, 1 <= m, m <= 8) => [128] -> [16][8] -> [(n * 8 + m) * 16][8] -> [16][8]
 gcm_ghash_avx H Xi in = Xi''
+  where
+    bulk # tl = in
+    Xi' = foldl (gcm_ghash_avx_8`{8} H) Xi (split`{n} bulk)
+    Xi'' = gcm_ghash_avx_8`{m} H Xi' tl
+
+gcm_ghash_avx_8 : {n} (1 <= n, n <= 8) => [128] -> [16][8] -> [n * 16][8] -> [16][8]
+gcm_ghash_avx_8 H Xi in = Xi''
   where
     [H0, H1, _, H2, H3, _, H4, H5, _, H6, H7, _] = gcm_init_Htable H
     Htable = [H0, H1, H2, H3, H4, H5, H6, H7]

@@ -235,7 +235,7 @@ let prove_gcm_ghash_avx_thm len = prove_print
     simplify (addsimps [concat_assoc_0_thm] empty_ss);
     w4_unint_yices ["pmult", "pmod", "gcm_polyval"];
   })
-  (rewrite (cryptol_ss ()) {{ \H Xi (in : [len][8]) -> gcm_ghash H Xi in == gcm_ghash_avx H Xi in }});
+  (rewrite (cryptol_ss ()) {{ \H Xi (in : [len][8]) -> gcm_ghash H Xi in == gcm_ghash_avx`{n=((len/16)-1)/8} H Xi in }});
 
 gcm_ghash_avx_thm <- prove_gcm_ghash_avx_thm evp_cipher_update_len_blocks;
 
