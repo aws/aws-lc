@@ -13,7 +13,7 @@ batch:
         type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_WINDOWS_PLACEHOLDER:vs2015_latest
+        image: ECR_REPO_WINDOWS_PLACEHOLDER:vs2015_latest
 
     - identifier: windows_msvc2017_x64
       buildspec: ./tests/ci/codebuild/windows-x86/windows-msvc2017.yml
@@ -22,4 +22,4 @@ batch:
         type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_WINDOWS_PLACEHOLDER:vs2017_latest
+        image: ECR_REPO_WINDOWS_PLACEHOLDER:vs2017_latest

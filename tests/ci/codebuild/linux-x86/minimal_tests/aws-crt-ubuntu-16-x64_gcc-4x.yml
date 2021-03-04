@@ -1,0 +1,21 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  install:
+    on-failure: ABORT
+    commands:
+      # Copy from aws-c-cal GitHub CI log.
+      # For example: https://github.com/awslabs/aws-c-cal/actions/runs/615499981
+      - apt-add-repository -y ppa:ubuntu-toolchain-r/test
+      - apt-get -qq update -y
+      - apt-get -qq install -y g++-4.8 libstdc++-4.8-dev build-essential
+  pre_build:
+    commands:
+      - export CC=gcc-4.8
+      - export CXX=g++-4.8
+  build:
+    commands:
+      - ./tests/ci/run_minimal_tests.sh
