@@ -228,7 +228,7 @@ static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
 // See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   if (CBS_len(params) == 0) {
-    // The parameters may be either absent.
+    // The parameters may be absent.
     return 1;
   }
   RSA_ALGOR_IDENTIFIER *hash_algor = NULL;

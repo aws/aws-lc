@@ -14,8 +14,8 @@
 // and then exacting the bytes of RSASSA-PSS-params from generated results.
 
 // pss_sha1_salt_absent is a DER-encoded RSASSA-PSS-params:
-//    Hash Algorithm: sha1
-//    Mask Algorithm: mgf1 with sha1
+//    Hash Algorithm: sha1 (absent)
+//    Mask Algorithm: mgf1 with sha1 (absent)
 //    Minimum Salt Length: 0x14 (absent)
 //    Trailer Field: 0xBC (absent)
 static const uint8_t pss_sha1_salt_absent[] = {0x30, 0x00};
