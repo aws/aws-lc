@@ -8,9 +8,8 @@
 // Implementation of P-384 that uses Fiat-crypto for the field arithmetic
 // found in third_party/fiat, similarly to p256.c
 
-#include <openssl/ec.h>
-
 #include <openssl/bn.h>
+#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -190,7 +189,7 @@ static void fiat_p384_inv_square(fiat_p384_felem out,
 // Coq transcription and correctness proof:
 // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
 // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
-// Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed.
+// Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
 // while x_out == y_in is not (maybe this works, but it's not tested).
 static void fiat_p384_point_double(fiat_p384_felem x_out, fiat_p384_felem y_out,
                                    fiat_p384_felem z_out,
@@ -221,9 +220,11 @@ static void fiat_p384_point_double(fiat_p384_felem x_out, fiat_p384_felem y_out,
   fiat_p384_sub(x_out, x_out, tmptmp);
 
   // z' = (y + z)^2 - gamma - delta
-  fiat_p384_add(delta, gamma, delta);
+  // The following calculation differs from that in p256.c:
+  // An add is replaced with a sub in order to save 5 cmovznz.
   fiat_p384_add(ftmp, y_in, z_in);
   fiat_p384_square(z_out, ftmp);
+  fiat_p384_sub(z_out, z_out, gamma);
   fiat_p384_sub(z_out, z_out, delta);
 
   // y' = alpha*(4*beta - x') - 8*gamma^2
@@ -404,8 +405,7 @@ static void ec_GFp_nistp384_add(const EC_GROUP *group, EC_RAW_POINT *r,
   fiat_p384_from_generic(x2, &b->X);
   fiat_p384_from_generic(y2, &b->Y);
   fiat_p384_from_generic(z2, &b->Z);
-  fiat_p384_point_add(x1, y1, z1, x1, y1, z1, 0 /* both Jacobian */, x2, y2,
-                      z2);
+  fiat_p384_point_add(x1, y1, z1, x1, y1, z1, 0 /* both Jacobian */, x2, y2, z2);
   fiat_p384_to_generic(&r->X, x1);
   fiat_p384_to_generic(&r->Y, y1);
   fiat_p384_to_generic(&r->Z, z1);
@@ -423,6 +423,78 @@ static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   fiat_p384_to_generic(&r->Z, z);
 }
 
+static void ec_GFp_nistp384_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
+                                         size_t *out_len, const EC_FELEM *in) {
+  size_t len = BN_num_bytes(&group->field);
+  EC_FELEM felem_tmp;
+  fiat_p384_felem tmp;
+  fiat_p384_from_generic(tmp, in);
+  fiat_p384_from_montgomery(felem_tmp.words, tmp);
+  // Convert to a big-endian byte array.
+  for (size_t i = 0; i < len; i++) {
+    out[i] = felem_tmp.bytes[len - 1 - i];
+  }
+  *out_len = len;
+}
+
+static int ec_GFp_nistp384_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
+                                          const uint8_t *in, size_t len) {
+  // This function calls bn_cmp_words_consttime
+  if (!ec_GFp_simple_felem_from_bytes(group, out, in, len)) {
+    return 0;
+  }
+
+  fiat_p384_to_montgomery(out->words, out->words);
+  return 1;
+}
+
+static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
+                                            const EC_RAW_POINT *p,
+                                            const EC_SCALAR *r) {
+  if (ec_GFp_simple_is_at_infinity(group, p)) {
+    return 0;
+  }
+
+  // We wish to compare X/Z^2 with r. This is equivalent to comparing X with
+  // r*Z^2. Note that X and Z are represented in Montgomery form, while r is
+  // not.
+  fiat_p384_felem Z2_mont;
+  fiat_p384_from_generic(Z2_mont, &p->Z);
+  fiat_p384_mul(Z2_mont, Z2_mont, Z2_mont);
+
+  fiat_p384_felem r_Z2;
+  fiat_p384_from_bytes(r_Z2, r->bytes);  // r < order < p, so this is valid.
+  fiat_p384_mul(r_Z2, r_Z2, Z2_mont);
+
+  fiat_p384_felem X;
+  fiat_p384_from_generic(X, &p->X);
+  fiat_p384_from_montgomery(X, X);
+
+  if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
+    return 1;
+  }
+
+  // During signing the x coefficient is reduced modulo the group order.
+  // Therefore there is a small possibility, less than 2^189/2^384 = 1/2^195,
+  // that group_order < p.x < p.
+  // In that case, we need not only to compare against |r| but also to
+  // compare against r+group_order.
+  assert(group->field.width == group->order.width);
+  if (bn_less_than_words(r->words, group->field_minus_order.words,
+                         group->field.width)) {
+    // We can ignore the carry because: r + group_order < p < 2^384.
+    EC_FELEM tmp;
+    bn_add_words(tmp.words, r->words, group->order.d, group->order.width);
+    fiat_p384_from_generic(r_Z2, &tmp);
+    fiat_p384_mul(r_Z2, r_Z2, Z2_mont);
+    if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
@@ -430,23 +502,23 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
   out->point_get_affine_coordinates =
       ec_GFp_nistp384_point_get_affine_coordinates;
   out->jacobian_to_affine_batch =
-      ec_GFp_mont_jacobian_to_affine_batch; // needed for TrustToken tests
+      ec_GFp_mont_jacobian_to_affine_batch;     // needed for TrustToken tests
   out->add = ec_GFp_nistp384_add;
   out->dbl = ec_GFp_nistp384_dbl;
   out->mul = ec_GFp_mont_mul;
   out->mul_base = ec_GFp_mont_mul_base;
-  out->mul_batch = ec_GFp_mont_mul_batch; // needed for TrustToken tests
+  out->mul_batch = ec_GFp_mont_mul_batch;       // needed for TrustToken tests
   out->mul_public_batch = ec_GFp_mont_mul_public_batch;
-  out->init_precomp = ec_GFp_mont_init_precomp;
-  out->mul_precomp = ec_GFp_mont_mul_precomp;
+  out->init_precomp = ec_GFp_mont_init_precomp; // needed for TrustToken tests
+  out->mul_precomp = ec_GFp_mont_mul_precomp;   // needed for TrustToken tests
   out->felem_mul = ec_GFp_mont_felem_mul;
   out->felem_sqr = ec_GFp_mont_felem_sqr;
-  out->felem_to_bytes = ec_GFp_mont_felem_to_bytes;
-  out->felem_from_bytes = ec_GFp_mont_felem_from_bytes;
-  out->felem_reduce = ec_GFp_mont_felem_reduce;
-  out->felem_exp = ec_GFp_mont_felem_exp;
+  out->felem_to_bytes = ec_GFp_nistp384_mont_felem_to_bytes;
+  out->felem_from_bytes = ec_GFp_nistp384_mont_felem_from_bytes;
+  out->felem_reduce = ec_GFp_mont_felem_reduce; // needed for ECTest.HashToCurve
+  out->felem_exp = ec_GFp_mont_felem_exp;       // needed for ECTest.HashToCurve
   out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
   out->scalar_to_montgomery_inv_vartime =
       ec_simple_scalar_to_montgomery_inv_vartime;
-  out->cmp_x_coordinate = ec_GFp_mont_cmp_x_coordinate;
+  out->cmp_x_coordinate = ec_GFp_nistp384_cmp_x_coordinate;
 }
