@@ -2,10 +2,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-parent_dir="$(dirname -- "$(realpath -- "$file_name")")"
-# shellcheck source=../common.sh
-source "${parent_dir}/common.sh"
-
 #################################
 # Set up environment variables #
 #################################
