@@ -242,6 +242,43 @@ static const uint8_t pss_with_invalid_mgf1_oid[] = {
     0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x09, 0x30, 0x0b, 0x06, 0x09,
     0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04};
 
+// pss_with_tag2_before_tag0 has tag [2] before tag [0].
+static const uint8_t pss_with_tag2_before_tag0[] = {
+    0x30, 0x34, 0xA2, 0x03, 0x02, 0x01, 0x1E, 0xA0, 0x0F, 0x30, 0x0D,
+    0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
+    0x05, 0x00, 0xA1, 0x1C, 0x30, 0x1A, 0x06, 0x09, 0x2A, 0x86, 0x48,
+    0x86, 0xF7, 0x0D, 0x01, 0x01, 0x08, 0x30, 0x0D, 0x06, 0x09, 0x60,
+    0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00
+};
+
+// pss_with_tag4 has tag [4].
+static const uint8_t pss_with_tag4[] = {
+    0x30, 0x05, 0xA4, 0x03, 0x02, 0x01, 0x1E};
+
+// pss_with_double_salt_30 has two tag[2].
+static const uint8_t pss_with_double_salt_30[] = {
+    0x30, 0x0A, 0xA2, 0x03, 0x02, 0x01, 0x1E, 0xA2, 0x03, 0x02, 0x01, 0x1E};
+
+// pss_with_sequence_length_too_short should use 0x05 as length instead of 0x04.
+// This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_sequence_length_too_short[] = {
+    0x30, 0x04, 0xA2, 0x03, 0x02, 0x01, 0x1E};
+
+// pss_with_sequence_length_too_long should use 0x05 as length instead of 0x06.
+// This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_sequence_length_too_long[] = {
+    0x30, 0x06, 0xA2, 0x03, 0x02, 0x01, 0x1E};
+
+// pss_with_tag2_length_too_short should use 0x03 as tag2 length instead of 0x02.
+// This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_tag2_length_too_short[] = {
+    0x30, 0x05, 0xA2, 0x02, 0x02, 0x01, 0x1E};
+
+// pss_with_tag2_length_too_long should use 0x03 as tag2 length instead of 0x04.
+// This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_tag2_length_too_long[] = {
+    0x30, 0x05, 0xA2, 0x04, 0x02, 0x01, 0x1E};
+
 static const int omit_salt_len = -1;
 
 struct PssParamsTestInput {
@@ -349,6 +386,13 @@ struct PssParamsInvalidInput {
     {invalid_pss_salt_missing, sizeof(invalid_pss_salt_missing)},
     {pss_with_invalid_sha256_oid, sizeof(pss_with_invalid_sha256_oid)},
     {pss_with_invalid_mgf1_oid, sizeof(pss_with_invalid_mgf1_oid)},
+    {pss_with_tag2_before_tag0, sizeof(pss_with_tag2_before_tag0)},
+    {pss_with_tag4, sizeof(pss_with_tag4)},
+    {pss_with_double_salt_30, sizeof(pss_with_double_salt_30)},
+    {pss_with_sequence_length_too_short, sizeof(pss_with_sequence_length_too_short)},
+    {pss_with_sequence_length_too_long, sizeof(pss_with_sequence_length_too_long)},
+    {pss_with_tag2_length_too_short, sizeof(pss_with_tag2_length_too_short)},
+    {pss_with_tag2_length_too_long, sizeof(pss_with_tag2_length_too_long)},
 };
 
 class RsassaPssInvalidTest
