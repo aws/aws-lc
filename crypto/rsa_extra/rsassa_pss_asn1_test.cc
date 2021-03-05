@@ -302,7 +302,7 @@ TEST_P(RsassaPssTest, DecodeParamsDer) {
   // Expect all bytes of params are used.
   ASSERT_FALSE(CBS_len(&params));
   // Validate Hash Algorithm of RSASSA-PSS-params.
-  if (param.expected_hash_nid) {
+  if (param.expected_hash_nid != NID_undef) {
     ASSERT_TRUE(pss->hash_algor);
     EXPECT_EQ(pss->hash_algor->nid, param.expected_hash_nid);
   } else {
@@ -311,7 +311,7 @@ TEST_P(RsassaPssTest, DecodeParamsDer) {
   }
   // Validate Mask Algorithm of RSASSA-PSS-params.
   RSA_MGA_IDENTIFIER *mga = pss->mask_gen_algor;
-  if (param.expected_mask_gen_nid) {
+  if (param.expected_mask_gen_nid != NID_undef) {
     ASSERT_TRUE(mga);
     ASSERT_TRUE(mga->mask_gen);
     EXPECT_EQ(mga->mask_gen->nid, param.expected_mask_gen_nid);
