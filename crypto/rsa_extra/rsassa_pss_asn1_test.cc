@@ -17,14 +17,14 @@
 //    Hash Algorithm: sha1 (absent)
 //    Mask Algorithm: mgf1 with sha1 (absent)
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t pss_sha1_salt_absent[] = {0x30, 0x00};
 
 // pss_sha224_salt_absent is a DER-encoded RSASSA-PSS-params:
 //    Hash Algorithm: sha224
 //    Mask Algorithm: mgf1 with sha224
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t pss_sha224_salt_absent[] = {
     0x30, 0x2b, 0xa0, 0x0d, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x04, 0xa1, 0x1a, 0x30, 0x18, 0x06, 0x09, 0x2a,
@@ -35,7 +35,7 @@ static const uint8_t pss_sha224_salt_absent[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha256
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t pss_sha256_salt_absent[] = {
     0x30, 0x2B, 0xA0, 0x0D, 0x30, 0x0B, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x01, 0xA1, 0x1A, 0x30, 0x18, 0x06, 0x09, 0x2A,
@@ -46,7 +46,7 @@ static const uint8_t pss_sha256_salt_absent[] = {
 //    Hash Algorithm: sha384
 //    Mask Algorithm: mgf1 with sha384
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t pss_sha384_salt_absent[] = {
     0x30, 0x2B, 0xA0, 0x0D, 0x30, 0x0B, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x02, 0xA1, 0x1A, 0x30, 0x18, 0x06, 0x09, 0x2A,
@@ -57,7 +57,7 @@ static const uint8_t pss_sha384_salt_absent[] = {
 //    Hash Algorithm: sha512
 //    Mask Algorithm: mgf1 with sha512
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t pss_sha512_salt_absent[] = {
     0x30, 0x2B, 0xA0, 0x0D, 0x30, 0x0B, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x03, 0xA1, 0x1A, 0x30, 0x18, 0x06, 0x09, 0x2A,
@@ -68,7 +68,7 @@ static const uint8_t pss_sha512_salt_absent[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha256
 //    Minimum Salt Length: 0x14 (default)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t pss_sha256_salt_default[] = {
     0x30, 0x30, 0xa0, 0x0d, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86,
     0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0xa1, 0x1a, 0x30,
@@ -80,7 +80,7 @@ static const uint8_t pss_sha256_salt_default[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha256
 //    Minimum Salt Length: 0x1e (30)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t pss_sha256_salt_30[] = {
     0x30, 0x30, 0xa0, 0x0d, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86,
     0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0xa1, 0x1a, 0x30,
@@ -101,7 +101,7 @@ static const uint8_t pss_sha256_salt_30[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha256
 //    Minimum Salt Length: 0x00 (0)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t jdk_pss_sha256_salt_0[] = {
     0x30, 0x34, 0xA0, 0x0F, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48,
     0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0xA1, 0x1C, 0x30,
@@ -113,7 +113,7 @@ static const uint8_t jdk_pss_sha256_salt_0[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha256
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t jdk_pss_sha256_salt_absent[] = {
     0x30, 0x2F, 0xA0, 0x0F, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86,
     0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0xA1,
@@ -125,7 +125,7 @@ static const uint8_t jdk_pss_sha256_salt_absent[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha256
 //    Minimum Salt Length: 0x1e (30)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t jdk_pss_sha256_salt_30[] = {
     0x30, 0x34, 0xA0, 0x0F, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48,
     0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0xA1, 0x1C, 0x30,
@@ -137,7 +137,7 @@ static const uint8_t jdk_pss_sha256_salt_30[] = {
 //    Hash Algorithm: sha224
 //    Mask Algorithm: mgf1 with sha224
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t jdk_pss_sha224_salt_absent[] = {
     0x30, 0x2F, 0xA0, 0x0F, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86,
     0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04, 0x05, 0x00, 0xA1,
@@ -149,7 +149,7 @@ static const uint8_t jdk_pss_sha224_salt_absent[] = {
 //    Hash Algorithm: sha384
 //    Mask Algorithm: mgf1 with sha384
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t jdk_pss_sha384_salt_absent[] = {
     0x30, 0x2F, 0xA0, 0x0F, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86,
     0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0xA1,
@@ -161,7 +161,7 @@ static const uint8_t jdk_pss_sha384_salt_absent[] = {
 //    Hash Algorithm: sha512
 //    Mask Algorithm: mgf1 with sha512
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t jdk_pss_sha512_salt_absent[] = {
     0x30, 0x2F, 0xA0, 0x0F, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86,
     0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0xA1,
@@ -173,7 +173,7 @@ static const uint8_t jdk_pss_sha512_salt_absent[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha512
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 // This is to test params decode when different hash funcs are used.
 static const uint8_t jdk_pss_sha256_mgf1_sha512[] = {
     0x30, 0x2F, 0xA0, 0x0F, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86,
@@ -186,7 +186,7 @@ static const uint8_t jdk_pss_sha256_mgf1_sha512[] = {
 //    Hash Algorithm: sha1 (absent)
 //    Mask Algorithm: mgf1 with sha256
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 // This is to test params decode when different hash funcs are used, and one
 // hash func is the default (sha1), which is omitted during encode.
 static const uint8_t jdk_pss_sha1_mgf1_sha256[] = {
@@ -198,7 +198,7 @@ static const uint8_t jdk_pss_sha1_mgf1_sha256[] = {
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha1 (absent)
 //    Minimum Salt Length: 0x14 (absent)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 // This is to test params decode when different hash funcs are used, and one
 // hash func is the default (sha1), which is omitted during encode.
 static const uint8_t jdk_pss_sha256_mgf1_sha1[] = {
@@ -209,9 +209,18 @@ static const uint8_t jdk_pss_sha256_mgf1_sha1[] = {
 //    Hash Algorithm: sha1 (absent)
 //    Mask Algorithm: mgf1 with sha1 (absent)
 //    Minimum Salt Length: 0x1e (30)
-//    Trailer Field: 0xBC (absent)
+//    Trailer Field: 0x01 (absent)
 static const uint8_t jdk_pss_sha1_mgf1_sha1_salt_30[] = {
     0x30, 0x05, 0xA2, 0x03, 0x02, 0x01, 0x1E};
+
+// These bytes are manually created for test purpose.
+// pss_with_trailer_field_1 is a DER-encoded RSASSA-PSS-params:
+//    Hash Algorithm: sha1 (absent)
+//    Mask Algorithm: mgf1 with sha1 (absent)
+//    Minimum Salt Length: 0x14 (absent)
+//    Trailer Field: 0x01 (default, not absent)
+static const uint8_t pss_with_trailer_field_1[] = {
+    0x30, 0x05, 0xA3, 0x03, 0x02, 0x01, 0x01};
 
 // Invalid test inputs:
 
@@ -278,6 +287,14 @@ static const uint8_t pss_with_tag2_length_too_short[] = {
 // This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
 static const uint8_t pss_with_tag2_length_too_long[] = {
     0x30, 0x05, 0xA2, 0x04, 0x02, 0x01, 0x1E};
+
+// pss_with_negative_salt_length is modified from jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_negative_salt_length[] = {
+    0x30, 0x05, 0xA2, 0x03, 0x02, 0x01, 0xFF};
+
+// pss_with_negative_salt_length is modified from jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_trailer_field_not_1[] = {
+    0x30, 0x05, 0xA3, 0x03, 0x02, 0x01, 0x02};
 
 static const int omit_salt_len = -1;
 
@@ -393,6 +410,8 @@ struct PssParamsInvalidInput {
     {pss_with_sequence_length_too_long, sizeof(pss_with_sequence_length_too_long)},
     {pss_with_tag2_length_too_short, sizeof(pss_with_tag2_length_too_short)},
     {pss_with_tag2_length_too_long, sizeof(pss_with_tag2_length_too_long)},
+    {pss_with_negative_salt_length, sizeof(pss_with_negative_salt_length)},
+    {pss_with_trailer_field_not_1, sizeof(pss_with_trailer_field_not_1)},
 };
 
 class RsassaPssInvalidTest
@@ -409,3 +428,24 @@ TEST_P(RsassaPssInvalidTest, DecodeInvalidDer) {
 
 INSTANTIATE_TEST_SUITE_P(All, RsassaPssInvalidTest,
                          testing::ValuesIn(kPssParamsInvalidInputs));
+
+TEST(RsassaPssTest, DecodeParamsDerWithTrailerField) {
+  CBS params;
+  params.data = pss_with_trailer_field_1;
+  params.len = sizeof(pss_with_trailer_field_1);
+  RSASSA_PSS_PARAMS *pss = nullptr;
+  ASSERT_TRUE(RSASSA_PSS_parse_params(&params, &pss));
+  // Holds ownership of heap-allocated RSASSA_PSS_PARAMS.
+  bssl::UniquePtr<RSASSA_PSS_PARAMS> pss_ptr(pss);
+  // Expect all bytes of params are used.
+  ASSERT_FALSE(CBS_len(&params));
+  // Validate Hash Algorithm of RSASSA-PSS-params.
+  EXPECT_FALSE(pss->hash_algor);
+  // Validate Mask Algorithm of RSASSA-PSS-params.
+  EXPECT_FALSE(pss->mask_gen_algor);
+  // Validate Salt Length of RSASSA-PSS-params.
+  EXPECT_FALSE(pss->salt_len);
+  // Validate Trailer field of RSASSA-PSS-params.
+  ASSERT_TRUE(pss->trailer_field);
+  EXPECT_EQ(pss->trailer_field->value, 1);
+}

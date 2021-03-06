@@ -189,14 +189,38 @@ static int decode_pss_mask_gen(CBS *seq, RSA_MGA_IDENTIFIER **mga) {
   return decode_mask_gen(&cs, mga);
 }
 
-static int parse_rsa_int(CBS *cbs, RSA_INTEGER **rsa_int) {
+static RSA_INTEGER *create_RSA_INTEGER(const int64_t value) {
+  RSA_INTEGER *rsa_int = RSA_INTEGER_new();
+  if (rsa_int != NULL) {
+    rsa_int->value = value;
+    return rsa_int;
+  }
+  return NULL;
+}
+
+static int parse_trailer_field(CBS *cbs, RSA_INTEGER **rsa_int) {
   int64_t value = 0;
   if (CBS_get_asn1_int64(cbs, &value) && CBS_len(cbs) == 0) {
-    *rsa_int = RSA_INTEGER_new();
-    if ((*rsa_int) != NULL) {
-      (*rsa_int)->value = value;
-      return 1;
+    if (value != 1) {
+      // If present, trailerField field MUST be 1.
+      return 0;
     }
+    *rsa_int = create_RSA_INTEGER(value);
+    return (*rsa_int) != NULL;
+  }
+  OPENSSL_PUT_ERROR(RSA, EVP_R_DECODE_ERROR);
+  return 0;
+}
+
+static int parse_salt_length(CBS *cbs, RSA_INTEGER **rsa_int) {
+  int64_t value = 0;
+  if (CBS_get_asn1_int64(cbs, &value) && CBS_len(cbs) == 0) {
+    if (value < 0) {
+      // If present, salt length field MUST be non-negative.
+      return 0;
+    }
+    *rsa_int = create_RSA_INTEGER(value);
+    return (*rsa_int) != NULL;
   }
   OPENSSL_PUT_ERROR(RSA, EVP_R_DECODE_ERROR);
   return 0;
@@ -210,7 +234,7 @@ static int decode_pss_salt_len(CBS *seq, RSA_INTEGER **salt_len) {
     // saltLength field can be absent, which means default(20) is encoded.
     return 1;
   }
-  return parse_rsa_int(&cs, salt_len);
+  return parse_salt_length(&cs, salt_len);
 }
 
 // Decode [3] trailerField of RSASSA-PSS-params
@@ -221,7 +245,7 @@ static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
     // Trailer field can be absent, which means default(1) is encoded.
     return 1;
   }
-  return parse_rsa_int(&cs, trailer_field);
+  return parse_trailer_field(&cs, trailer_field);
 }
 
 // Get RSASSA-PSS-params sequence
