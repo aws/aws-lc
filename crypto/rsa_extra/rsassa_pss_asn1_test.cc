@@ -353,7 +353,7 @@ TEST_P(RsassaPssTest, DecodeParamsDer) {
   ASSERT_TRUE(RSASSA_PSS_parse_params(&params, &pss));
   // Holds ownership of heap-allocated RSASSA_PSS_PARAMS.
   bssl::UniquePtr<RSASSA_PSS_PARAMS> pss_ptr(pss);
-  // Expect all bytes of params are used.
+  // Expect all bytes of params are consumed.
   ASSERT_FALSE(CBS_len(&params));
   // Validate Hash Algorithm of RSASSA-PSS-params.
   if (param.expected_hash_nid != NID_undef) {
