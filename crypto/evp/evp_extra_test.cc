@@ -238,7 +238,6 @@ static const uint8_t kExampleRSAKeyPKCS8[] = {
     0x08, 0xf1, 0x2d, 0x86, 0x9d, 0xa5, 0x20, 0x1b, 0xe5, 0xdf,
 };
 
-// kExampleRSAPSSKeyPKCS8 is encoded in a PKCS #8 PrivateKeyInfo.
 // kExampleRSAPSSKeyPKCS8 contains a DER-encoded RSASSA-PSS-params:
 //    Hash Algorithm: sha256
 //    Mask Algorithm: mgf1 with sha256

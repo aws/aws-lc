@@ -346,7 +346,9 @@ RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void) {
   return ret;
 }
 
-void RSA_INTEGER_free(RSA_INTEGER *ptr) { OPENSSL_free(ptr); }
+void RSA_INTEGER_free(RSA_INTEGER *ptr) {
+  OPENSSL_free(ptr);
+}
 
 void RSA_ALGOR_IDENTIFIER_free(RSA_ALGOR_IDENTIFIER *algor) {
   OPENSSL_free(algor);
