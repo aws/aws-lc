@@ -1,3 +1,4 @@
+#############################################################################
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -10,6 +11,7 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
+#############################################################################
 
 OBJ = bignum_add.o \
       bignum_add_p256.o \
@@ -111,10 +113,40 @@ OBJ = bignum_add.o \
       bignum_triple_p384.o \
       word_clz.o \
       word_ctz.o \
-      word_negmodinv.o \
+      word_negmodinv.o
 
 %.o : %.asm ; nasm -felf64 $<
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
-clean:; rm -f libs2nbignum.a *.o
+clean:; rm -f libs2nbignum.a *.o *.correct
+
+# Proof-related parts
+#
+# The proof files are all independent, though each one loads the
+# same common infrastructure "base.ml". So you can potentially
+# run the proofs in parallel for more speed, e.g.
+#
+#    nohup make -j 16 proofs &
+#
+# On debian, the underlying prover HOL Light can be installed as a package
+# by something like
+#
+#    sudo apt-get install hol-light
+#
+# for which you would set this below:
+#
+#    HOLDIR=/usr/share/hol-light
+#
+# If you build hol-light yourself (see https://github.com/jrh13/hol-light)
+# in your home directory, and do "make" inside the subdirectory hol-light,
+# then the following HOLDIR setting should be right:
+
+HOLDIR=$(HOME)/hol-light
+HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
+
+PROOFS = $(OBJ:.o=.correct)
+
+%.correct: %.ml %.o ; (cd ..; (echo 'loadt "X86/base.ml";;'; echo 'loadt "X86/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+
+proofs: $(PROOFS);

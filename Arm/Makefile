@@ -1,3 +1,4 @@
+#############################################################################
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -10,6 +11,25 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
+#############################################################################
+
+# If actually on an ARM8 machine, just use the GNU assmbler (as). Otherwise
+# use a cross-assembling version so that the code can still be assembled
+# and the proofs checked against the object files (though you won't be able
+# to run code without additional emulation infrastructure). The aarch64
+# cross-assembling version can be installed manually by something like:
+#
+#  sudo apt-get install binutils-aarch64-linux-gnu
+
+UNAME_RESULT=$(shell uname -p)
+
+ifeq ($(UNAME_RESULT),aarch64)
+GAS=as
+else
+GAS=aarch64-linux-gnu-as
+endif
+
+# List of object files
 
 OBJ = bignum_add.o \
       bignum_add_p256.o \
@@ -113,8 +133,38 @@ OBJ = bignum_add.o \
       word_ctz.o \
       word_negmodinv.o \
 
-%.o : %.S ; gcc -c $<
+%.o : %.S ; cpp $< | $(GAS) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
-clean:; rm -f libs2nbignum.a *.o
+clean:; rm -f libs2nbignum.a *.o *.correct
+
+# Proof-related parts
+#
+# The proof files are all independent, though each one loads the
+# same common infrastructure "base.ml". So you can potentially
+# run the proofs in parallel for more speed, e.g.
+#
+#    nohup make -j 16 proofs &
+#
+# On debian, the underlying prover HOL Light can be installed as a package
+# by something like
+#
+#    sudo apt-get install hol-light
+#
+# for which you would set this below:
+#
+#    HOLDIR=/usr/share/hol-light
+#
+# If you build hol-light yourself (see https://github.com/jrh13/hol-light)
+# in your home directory, and do "make" inside the subdirectory hol-light,
+# then the following HOLDIR setting should be right:
+
+HOLDIR=$(HOME)/hol-light
+HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
+
+PROOFS = $(OBJ:.o=.correct)
+
+%.correct: %.ml %.o ; (cd ..; (echo 'loadt "Arm/base.ml";;'; echo 'loadt "Arm/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+
+proofs: $(PROOFS);

@@ -15,220 +15,125 @@
 
 // ----------------------------------------------------------------------------
 // Negated modular inverse, z := (-1/x) mod 2^{64k}
-// Input x[k]; output z[k]; temporary buffer t[>=k]
+// Input x[k]; output z[k]
 //
 //    extern void bignum_negmodinv
-//     (uint64_t k, uint64_t *z, uint64_t *t, uint64_t *x);
+//     (uint64_t k, uint64_t *z, uint64_t *x);
 //
-// The output is z with t (at least k words) used as a temporary buffer.
 // Assuming x is odd (otherwise nothing makes sense) the result satisfies
 //
 //       x * z + 1 == 0 (mod 2^{64 * k})
 //
-// Standard ARM ABI: X0 = k, X1 = z, X2 = t, X3 = x
+// but is not necessarily reduced mod x.
+//
+// Standard ARM ABI: X0 = k, X1 = z, X2 = x
 // ----------------------------------------------------------------------------
 
-#define y x16
-#define a x17
-
-// This is undisturbed by our local_mulc calls
-
 #define k x0
+#define z x1
+#define x x2
 
-// These we can put in the right place for bignum_mulc calls
-
-#define b x4
-#define x x5
-
-// Ditto this, though for second it becomes b2 - b
-
-#define b2 x2
+#define w x3
+#define a x4
+#define m x5
+#define h x6
+#define l x7
+#define e x8
+#define i x9
 
 .text
 
 .globl bignum_negmodinv
-.extern wordnegmodinv
-.extern bignum_mul
-.extern bignum_mulc
 
 bignum_negmodinv:
 
-// If length = 0 do nothing else
+// If k = 0 do nothing
 
-                cbz     x0, end
+                cbz     k, end
 
-// So now we can assume k >= 1. Preserve the parameters from function calls
+// Compute word-level negated modular inverse w for x[0].
 
-                mov     x, x1
-                mov     y, x2
-                mov     a, x3
+                ldr     a, [x]
+                lsl     w, a, 2
+                sub     w, a, w
+                eor     w, w, 2
+                mov     h, 1
+                madd    h, a, w, h
+                mul     l, h, h
+                madd    w, h, w, w
+                mul     h, l, l
+                madd    w, l, w, w
+                mul     l, h, h
+                madd    w, h, w, w
+                madd    w, l, w, w
 
-// Initially set up a 1-word modular inverse in x as our starting-point
+// Write that as lowest word of the output, then if k = 1 we're finished
 
-// ************************************
-// Hacked version of wordnegmodinv.S using later registers x7-x9 only
-// ************************************
-
-                ldr     x7, [a]
-
-                lsl x8, x7, 2
-                sub x8, x7, x8
-                eor x8, x8, 2
-                mov x9, 1
-                madd x9, x7, x8, x9
-                mul x7, x9, x9
-                madd x8, x9, x8, x8
-                mul x9, x7, x7
-                madd x8, x7, x8, x8
-                mul x7, x9, x9
-                madd x8, x9, x8, x8
-                madd x8, x7, x8, x8
-
-                str     x8, [x]
-
-// ************************************
-// ******* BACK TO MAIN BIGNUM-LEVEL ROUTINE
-// ************************************
-
-// If in fact we only have k = 1 then that's already the final answer
-
+                str     w, [z]
                 cmp     k, 1
                 beq     end
 
-// We can now assume k >= 2; set b = 1 to indicate 1-word accuracy
+// Otherwise compute and write the other digits (1..k-1) of w * x + 1.
+// Note that at this point CF was set by the comparison (subtraction) "k - 1".
+// Since k >= 2 if we got here, this subtraction didn't carry; allowing
+// for the inverted carry on ARM that means that CF is guaranteed to be set.
+// This allows us to ignore the nominal "a * w + 1" from adding the low
+// part of the product, since its only contribution is to set the carry
+// flag. Thus, we only calculate the high part of a * w explicitly.
 
-                mov     b, 1
+                umulh   h, a, w
+                mov     i, 1
+initloop:
+                ldr     a, [x, i, LSL 3]
+                mul     l, a, w
+                adcs    l, l, h
+                umulh   h, a, w
+                str     l, [z, i, LSL 3]
+                add     i, i, 1
+                sub     a, k, i
+                cbnz    a, initloop
 
-// Now the start of the main loop; part of our loop invariant is that b < k
+// For simpler indexing, z := z + 8 and k := k - 1 per outer iteration
+// Then we can use the same index for x and for z and effective size k.
+//
+// But we also offset k by 1 so the "real" size is k + 1, which is why the
+// test at the end of the inner loop is i < k <=> i' = i + 1 < k + 1.
+// This lets us avoid some special cases inside the loop at the cost
+// of needing the additional "finale" tail for the final iteration
+// since we do one outer loop iteration too few.
 
-mainloop:
+                subs    k, k, 2
+                beq     finale
 
-// Set b2 = min(2 * b,k)
-// Note that we don't need to consider overflow in 2 * b
-// Besides being a crazy number, we must then violate nonoverlapping
-// since the numbers would be >= 2^63 words and so > 2^64 bytes long
+outerloop:
+                add     z, z, 8
+                ldr     e, [z]
+                mul     m, e, w
+                str     m, [z]
+                ldr     a, [x]
+                umulh   h, a, m
+                subs    xzr, e, 1         // Effective carry from a * m + e
+                mov     i, 1
+innerloop:
+                ldr     a, [x, i, LSL 3]
+                ldr     e, [z, i, LSL 3]
+                mul     l, a, m
+                adcs    e, e, h
+                umulh   h, a, m
+                adc     h, h, xzr
+                adds    e, e, l
+                str     e, [z, i, LSL 3]
+                sub     a, i, k
+                add     i, i, 1
+                cbnz    a, innerloop
 
-                add     b2, b, b
-                cmp     k, b2
-                csel    b2, k, b2, cc
+                subs    k, k, 1
+                bne     outerloop
 
-// Set y = a * x + 1
-// Actually because of the optimization below we could add
-// any nonzero word, since the high part would be the same.
-
-                mov     x1, y
-                mov     x3, a
-                mov     x6, 1
-
-// [y,b2] := [a,b2] * [x,b] + 1
-
-// ************************************
-// Hacked version of bignum_mulc using same x2=m in place of x0 for p.
-// THIS IS NOT THE STANDARD CALLING CONVENTION
-// ************************************
-
-                mov x7, xzr
-                mov x9, xzr
-outerloop1:     mov x8, xzr
-                add x11, x9, 1
-                cmp x11, x2
-                csel x12, x11, x2, cc
-                subs x11, x11, x4
-                csel x11, x11, xzr, cs
-                subs x10, x12, x11
-                bls innerend1
-                lsl x14, x11, 3
-                add x14, x14, x3
-                sub x15, x9, x12
-                lsl x15, x15, 3
-                add x15, x15, x5
-innerloop1:     ldr x11, [x14], #8
-                ldr x12, [x15, x10, LSL 3]
-                mul x13, x11, x12
-                umulh x11, x11, x12
-                adds x6, x6, x13
-                adcs x7, x7, x11
-                adc x8, x8, xzr
-                subs x10, x10, 1
-                bne innerloop1
-innerend1:      str x6, [x1, x9, LSL 3]
-                mov x6, x7
-                mov x7, x8
-                add x9, x9, 1
-                cmp x9, x2
-                bcc outerloop1
-
-// ************************************
-// ******* BACK TO MAIN BIGNUM-LEVEL ROUTINE
-// ************************************
-
-// Set x' = x * y + x = (y + 1) * x = (a * x + 2) * x
-// There is a nice optimization here: the low b of x
-// are already correct, by the inductive hypothesis.
-// And the bottom b of y = a * x + 1 is zero too.
-// Hence to get x + x * y we can do x * y_hi and store
-// it in the high part of x. Remember that in general
-// b2 - b < b, and we need to allow for sizes that
-// are not exactly a power of 2, hence the b2 - b to
-// get the size of the top "half".
-
-                lsl     x6, b, 3
-
-                add     x1, x, x6
-
-// NB: temporarily "b2" = b2 - b to save space
-
-                sub     b2, b2, b
-                add     x3, y, x6
-                mov     x6, 0
-
-// [x+8*b,b2-b] := [y+8*b,b2-b] * [x,b]
-
-// ************************************
-// Hacked version of bignum_mulc using same x2=m in place of x0 for p.
-// THIS IS NOT THE STANDARD CALLING CONVENTION
-// ************************************
-
-                mov x7, xzr
-                mov x9, xzr
-outerloop2:     mov x8, xzr
-                add x11, x9, 1
-                cmp x11, x2
-                csel x12, x11, x2, cc
-                subs x11, x11, x4
-                csel x11, x11, xzr, cs
-                subs x10, x12, x11
-                bls innerend2
-                lsl x14, x11, 3
-                add x14, x14, x3
-                sub x15, x9, x12
-                lsl x15, x15, 3
-                add x15, x15, x5
-innerloop2:     ldr x11, [x14], #8
-                ldr x12, [x15, x10, LSL 3]
-                mul x13, x11, x12
-                umulh x11, x11, x12
-                adds x6, x6, x13
-                adcs x7, x7, x11
-                adc x8, x8, xzr
-                subs x10, x10, 1
-                bne innerloop2
-innerend2:      str x6, [x1, x9, LSL 3]
-                mov x6, x7
-                mov x7, x8
-                add x9, x9, 1
-                cmp x9, x2
-                bcc outerloop2
-
-// ************************************
-// ******* BACK TO MAIN BIGNUM-LEVEL ROUTINE
-// ************************************
-
-// Set b = b2 and loop if it's not the whole bignum
-
-                add     b, b, b2
-                cmp     b, k
-                bcc     mainloop
+finale:
+                ldr     e, [z, 8]
+                mul     m, e, w
+                str     m, [z, 8]
 
 end:
                 ret
