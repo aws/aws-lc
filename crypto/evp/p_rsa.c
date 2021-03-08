@@ -105,7 +105,7 @@ static int pkey_ctx_is_pss(EVP_PKEY_CTX *ctx) {
 // All parameters in the signature structure algorithm identifier |s_md| MUST
 // match the parameters in the key structure algorithm identifier |k_md| except
 // the saltLength field.
-// See 3.3. https://tools.ietf.org/html/rfc4055#page-9
+// See 3.3. https://tools.ietf.org/html/rfc4055#section-3.3
 static int pss_parameter_match(EVP_PKEY_CTX *ctx, const EVP_MD *k_md,
                                const EVP_MD *s_md) {
   if (pkey_ctx_is_pss(ctx) && k_md) {
@@ -151,7 +151,7 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
 
   // See if minimum salt length exceeds maximum possible.
   max_saltlen = RSA_size(rsa) - EVP_MD_size(md);
-  // 8.1.1. Step1 https://tools.ietf.org/html/rfc8017#page-32
+  // 8.1.1. Step1 https://tools.ietf.org/html/rfc8017#section-8.1.1
   if ((RSA_bits(rsa) & 0x7) == 1) {
     max_saltlen--;
   }
