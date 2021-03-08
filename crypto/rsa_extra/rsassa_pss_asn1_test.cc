@@ -8,7 +8,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/nid.h>
 
-#include "rsassa_pss.h"
+#include "internal.h"
 
 // Below test inputs are created by running 'openssl req -x509',
 // and then exacting the bytes of RSASSA-PSS-params from generated results.

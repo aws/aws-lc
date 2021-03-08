@@ -63,8 +63,8 @@
 #include <openssl/rsa.h>
 
 #include "../fipsmodule/rsa/internal.h"
+#include "../rsa_extra/internal.h"
 #include "internal.h"
-#include "../rsa_extra/rsassa_pss.h"
 
 
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {

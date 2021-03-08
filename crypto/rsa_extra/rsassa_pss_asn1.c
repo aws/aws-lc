@@ -9,7 +9,7 @@
 #include <openssl/err.h>
 
 #include "../internal.h"
-#include "rsassa_pss.h"
+#include "internal.h"
 
 // Below macros are used with |get_context_specific_value|.
 #define TAG_VALUE_INDEX_0 0
