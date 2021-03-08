@@ -487,8 +487,8 @@ TEST_P(PssConversionTest, CreationAndGetSuccess) {
   if (param.expect_pss_hash_is_null) {
     // hash_algor is NULL when the default value (sha1) is passed.
     // Pss params encode expects this default value is omitted.
-    // See https://tools.ietf.org/html/rfc4055#page-7
-    // Sec 3.1. -- MUST omit the hashAlgorithm field when SHA-1 is used.
+    // See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
+    // MUST omit the hashAlgorithm field when SHA-1 is used.
     EXPECT_FALSE(pss->hash_algor);
     EXPECT_FALSE(pss->mask_gen_algor);
   } else {
@@ -509,8 +509,8 @@ TEST_P(PssConversionTest, CreationAndGetSuccess) {
     EXPECT_EQ(pss->salt_len->value, saltlen);
   }
   // Trailer field should not be set because it's for encoding only.
-  // See https://tools.ietf.org/html/rfc4055#page-8
-  // Sec 3.1. -- MUST omit the trailerField field.
+  // See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
+  // MUST omit the trailerField field.
   EXPECT_FALSE(pss->trailer_field);
 
   // STEP 2: validate |RSASSA_PSS_PARAMS_get|.
@@ -587,7 +587,7 @@ struct InvalidPssGetTestInput {
 class InvalidPssGetTest
     : public testing::TestWithParam<InvalidPssGetTestInput> {};
 
-TEST_P(InvalidPssGetTest, CreationFailure) {
+TEST_P(InvalidPssGetTest, GetFailure) {
   const auto &param = GetParam();
   RSA_ALGOR_IDENTIFIER pss_hash = {param.nid};
   RSA_MGA_IDENTIFIER pss_mga = {nullptr, &pss_hash};

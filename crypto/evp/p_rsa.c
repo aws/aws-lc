@@ -70,6 +70,8 @@
 #include "internal.h"
 #include "../rsa_extra/internal.h"
 
+#define NO_PSS_SALT_LEN_RESTRICTION -1
+
 typedef struct {
   // Key gen parameters
   int nbits;
@@ -82,7 +84,7 @@ typedef struct {
   const EVP_MD *mgf1md;
   // PSS salt length
   int saltlen;
-  // Minimum salt length or -1 if no PSS parameter restriction.
+  // Minimum salt length or NO_PSS_SALT_LEN_RESTRICTION.
   int min_saltlen;
   // tbuf is a buffer which is either NULL, or is the size of the RSA modulus.
   // It's used to store the output of RSA operations.
@@ -184,7 +186,7 @@ static int pkey_rsa_init(EVP_PKEY_CTX *ctx) {
     rctx->pad_mode = RSA_PKCS1_PADDING;
   }
   rctx->saltlen = -2;
-  rctx->min_saltlen = -1;
+  rctx->min_saltlen = NO_PSS_SALT_LEN_RESTRICTION;
 
   ctx->data = rctx;
 
@@ -511,7 +513,7 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
           return 0;
         }
         int min_saltlen = rctx->min_saltlen;
-        if (min_saltlen != -1) {
+        if (min_saltlen != NO_PSS_SALT_LEN_RESTRICTION) {
           if ((p1 == RSA_PSS_SALTLEN_DIGEST &&
                (size_t)min_saltlen > EVP_MD_size(rctx->md)) ||
               (p1 >= 0 && p1 < min_saltlen)) {
@@ -638,7 +640,7 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   if (pkey_ctx_is_pss(ctx)) {
     EVP_PKEY_assign(pkey, EVP_PKEY_RSA_PSS, rsa);
   } else {
-    EVP_PKEY_assign(pkey, EVP_PKEY_RSA, rsa);
+    EVP_PKEY_assign_RSA(pkey, rsa);
   }
   return 1;
 }
