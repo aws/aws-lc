@@ -322,8 +322,8 @@ extern void bignum_neg_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 extern void bignum_neg_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Negated modular inverse, z := (-1/x) mod 2^{64k}
-// Input x[k]; output z[k]; temporary buffer t[>=k]
-extern void bignum_negmodinv (uint64_t k, uint64_t *z, uint64_t *t, uint64_t *x);
+// Input x[k]; output z[k]
+extern void bignum_negmodinv (uint64_t k, uint64_t *z, uint64_t *x);
 
 // Test bignum for nonzero-ness x =/= 0
 // Input x[k]; output function return
