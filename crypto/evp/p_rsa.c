@@ -68,7 +68,7 @@
 #include "../internal.h"
 #include "../fipsmodule/rsa/internal.h"
 #include "internal.h"
-#include "../rsa_extra/rsassa_pss.h"
+#include "../rsa_extra/internal.h"
 
 typedef struct {
   // Key gen parameters

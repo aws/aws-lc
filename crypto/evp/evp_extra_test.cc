@@ -1193,7 +1193,6 @@ struct BadPssKeyTestInput {
   size_t der_len;
 } kBadPssKeyTestInputs[] = {
     {badRSAPSSKeyPKCS8_SaltLengthTooLarge, sizeof(badRSAPSSKeyPKCS8_SaltLengthTooLarge)},
-    {badRSAPSSKeyPKCS8_SaltLengthIsNegative, sizeof(badRSAPSSKeyPKCS8_SaltLengthIsNegative)}
 };
 
 class EVPRsaPssBadKeyTest : public testing::TestWithParam<BadPssKeyTestInput> {

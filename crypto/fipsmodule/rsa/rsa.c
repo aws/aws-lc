@@ -70,11 +70,11 @@
 #include <openssl/sha.h>
 #include <openssl/thread.h>
 
+#include "../../internal.h"
+#include "../../rsa_extra/internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
-#include "../../internal.h"
 #include "internal.h"
-#include "../../rsa_extra/rsassa_pss.h"
 
 
 // RSA_R_BLOCK_TYPE_IS_NOT_02 is part of the legacy SSLv23 padding scheme.

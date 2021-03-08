@@ -9,7 +9,13 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
-#include "rsassa_pss.h"
+#include "internal.h"
+
+// Below macros are used with |get_context_specific_value|.
+#define TAG_VALUE_INDEX_0 0
+#define TAG_VALUE_INDEX_1 1
+#define TAG_VALUE_INDEX_2 2
+#define TAG_VALUE_INDEX_3 3
 
 const RSA_PSS_SUPPORTED_ALGOR sha1_func = {
     NID_sha1,
@@ -60,7 +66,7 @@ const RSA_PSS_SUPPORTED_ALGOR MGF1 = {
 };
 
 // Used to check if the oid is in the supported mask generation functions.
-// Section 2.2. https://tools.ietf.org/html/rfc4055#page-4
+// Section 2.2. https://tools.ietf.org/html/rfc4055#section-2.2
 static const RSA_PSS_SUPPORTED_ALGOR *const rsa_pss_mg_functions[] = {
     &MGF1,
 };
@@ -89,7 +95,7 @@ static int parse_oid(CBS *oid,
 
 // For One-way Hash Functions:
 // All implementations MUST accept both NULL and absent parameters as legal and
-// equivalent encodings. See 2.1. https://tools.ietf.org/html/rfc4055#page-5
+// equivalent encodings. See 2.1. https://tools.ietf.org/html/rfc4055#section-2.1
 static int is_absent_or_null(CBS *params) {
   CBS null;
   return (CBS_len(params) == 0) ||
@@ -101,8 +107,10 @@ static int is_absent_or_null(CBS *params) {
 // See 2.1. https://tools.ietf.org/html/rfc4055#page-5
 static int decode_one_way_hash(CBS *cbs, RSA_ALGOR_IDENTIFIER **hash_algor) {
   CBS seq, oid;
-  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(cbs) == 0) &&
-      CBS_get_asn1(&seq, &oid, CBS_ASN1_OBJECT) && is_absent_or_null(&seq) &&
+  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) &&
+      (CBS_len(cbs) == 0) &&
+      CBS_get_asn1(&seq, &oid, CBS_ASN1_OBJECT) &&
+      is_absent_or_null(&seq) &&
       parse_oid(&oid, rsa_pss_hash_functions,
                 OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions), hash_algor)) {
     return 1;
@@ -112,19 +120,20 @@ static int decode_one_way_hash(CBS *cbs, RSA_ALGOR_IDENTIFIER **hash_algor) {
 }
 
 // Decode Mask Generation Functions: return one on success and zero on failure.
-// See 2.2. https://tools.ietf.org/html/rfc4055#page-5
+// See 2.2. https://tools.ietf.org/html/rfc4055#section-2.2
 static int decode_mask_gen(CBS *cbs, RSA_MGA_IDENTIFIER **mga) {
   CBS seq, mgf1_oid, hash_seq, hash_oid;
   RSA_ALGOR_IDENTIFIER *mgf1 = NULL;
   RSA_ALGOR_IDENTIFIER *hash_algor = NULL;
-  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(cbs) == 0) &&
+  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) &&
+      (CBS_len(cbs) == 0) &&
       CBS_get_asn1(&seq, &mgf1_oid, CBS_ASN1_OBJECT) &&
+      parse_oid(&mgf1_oid, rsa_pss_mg_functions,
+                OPENSSL_ARRAY_SIZE(rsa_pss_mg_functions), &mgf1) &&
       CBS_get_asn1(&seq, &hash_seq, CBS_ASN1_SEQUENCE) &&
       (CBS_len(&seq) == 0) &&
       CBS_get_asn1(&hash_seq, &hash_oid, CBS_ASN1_OBJECT) &&
-      (CBS_len(&hash_seq) == 0) &&
-      parse_oid(&mgf1_oid, rsa_pss_mg_functions,
-                OPENSSL_ARRAY_SIZE(rsa_pss_mg_functions), &mgf1) &&
+      is_absent_or_null(&hash_seq) &&
       parse_oid(&hash_oid, rsa_pss_hash_functions,
                 OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions), &hash_algor)) {
     *mga = RSA_MGA_IDENTIFIER_new();
@@ -140,72 +149,110 @@ static int decode_mask_gen(CBS *cbs, RSA_MGA_IDENTIFIER **mga) {
   return 0;
 }
 
+// get_context_specific_value sets |*out| to the contents of DER-encoded, ASN.1
+// element (not including tag and length bytes) and advances |seq| over it.
+// When the tag value does not exist, |seq| gets recovered.
+// It returns one when the element exists.
+static int get_context_specific_value(CBS *seq, CBS *out, int index) {
+  unsigned int tag_value = CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | index;
+  CBS seq_cp = {seq->data, seq->len};
+  if (CBS_get_asn1(seq, out, tag_value)) {
+    return 1;
+  } else {
+    // All fields of RSASSA-PSS-params can be absent, which means default.
+    // Recover |seq|.
+    seq->data = seq_cp.data;
+    seq->len = seq_cp.len;
+    return 0;
+  }
+}
+
 // Decode [0] HashAlgorithm of RSASSA-PSS-params: return one on success and zero
-// on failure. See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// on failure. See https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
   CBS cs;
-  if (!CBS_get_asn1(seq, &cs,
-                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
-    // HashAlgorithm field can be absent, which means default.
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_0)) {
+    // HashAlgorithm field can be absent, which means default(sha1) is encoded.
     return 1;
   }
   return decode_one_way_hash(&cs, hash_algor);
 }
 
 // Decode [1] MaskGenAlgorithm of RSASSA-PSS-params: return one on success and
-// zero on failure. See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// zero on failure. See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_mask_gen(CBS *seq, RSA_MGA_IDENTIFIER **mga) {
   CBS cs;
-  if (!CBS_get_asn1(seq, &cs,
-                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1)) {
-    // MaskGenAlgorithm field can be absent, which means default.
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_1)) {
+    // MaskGenAlgorithm field can be absent, which means default(mgf1) is encoded.
     return 1;
   }
   return decode_mask_gen(&cs, mga);
 }
 
-static int parse_rsa_int(CBS *cbs, RSA_INTEGER **rsa_int) {
+static RSA_INTEGER *create_RSA_INTEGER(const int64_t value) {
+  RSA_INTEGER *rsa_int = RSA_INTEGER_new();
+  if (rsa_int != NULL) {
+    rsa_int->value = value;
+    return rsa_int;
+  }
+  return NULL;
+}
+
+static int parse_trailer_field(CBS *cbs, RSA_INTEGER **rsa_int) {
   int64_t value = 0;
   if (CBS_get_asn1_int64(cbs, &value) && CBS_len(cbs) == 0) {
-    *rsa_int = RSA_INTEGER_new();
-    if ((*rsa_int) != NULL) {
-      (*rsa_int)->value = value;
-      return 1;
+    if (value != 1) {
+      // If present, trailerField field MUST be 1.
+      return 0;
     }
+    *rsa_int = create_RSA_INTEGER(value);
+    return (*rsa_int) != NULL;
+  }
+  OPENSSL_PUT_ERROR(RSA, EVP_R_DECODE_ERROR);
+  return 0;
+}
+
+static int parse_salt_length(CBS *cbs, RSA_INTEGER **rsa_int) {
+  int64_t value = 0;
+  if (CBS_get_asn1_int64(cbs, &value) && CBS_len(cbs) == 0) {
+    if (value < 0) {
+      // If present, salt length field MUST be non-negative.
+      return 0;
+    }
+    *rsa_int = create_RSA_INTEGER(value);
+    return (*rsa_int) != NULL;
   }
   OPENSSL_PUT_ERROR(RSA, EVP_R_DECODE_ERROR);
   return 0;
 }
 
 // Decode [2] saltLength of RSASSA-PSS-params
-// See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_salt_len(CBS *seq, RSA_INTEGER **salt_len) {
   CBS cs;
-  if (!CBS_get_asn1(seq, &cs,
-                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 2)) {
-    // saltLength field can be absent, which means default.
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_2)) {
+    // saltLength field can be absent, which means default(20) is encoded.
     return 1;
   }
-  return parse_rsa_int(&cs, salt_len);
+  return parse_salt_length(&cs, salt_len);
 }
 
 // Decode [3] trailerField of RSASSA-PSS-params
-// See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 static int decode_pss_trailer_field(CBS *seq, RSA_INTEGER **trailer_field) {
   CBS cs;
-  if (!CBS_get_asn1(seq, &cs,
-                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 3)) {
-    // Trailer field can be absent, which means default.
+  if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_3)) {
+    // Trailer field can be absent, which means default(1) is encoded.
     return 1;
   }
-  return parse_rsa_int(&cs, trailer_field);
+  return parse_trailer_field(&cs, trailer_field);
 }
 
 // Get RSASSA-PSS-params sequence
-// See 3.1. https://tools.ietf.org/html/rfc4055#page-7
+// See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
 int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   if (CBS_len(params) == 0) {
-    // The parameters may be either absent.
+    // The parameters may be absent.
     return 1;
   }
   RSA_ALGOR_IDENTIFIER *hash_algor = NULL;
@@ -213,11 +260,13 @@ int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   RSA_INTEGER *salt_len = NULL;
   RSA_INTEGER *trailer_field = NULL;
   CBS seq;
-  if (CBS_get_asn1(params, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(params) == 0) &&
+  if (CBS_get_asn1(params, &seq, CBS_ASN1_SEQUENCE) &&
+      (CBS_len(params) == 0) &&
       decode_pss_hash(&seq, &hash_algor) &&
       decode_pss_mask_gen(&seq, &mask_gen_algor) &&
       decode_pss_salt_len(&seq, &salt_len) &&
-      decode_pss_trailer_field(&seq, &trailer_field) && (CBS_len(&seq) == 0)) {
+      decode_pss_trailer_field(&seq, &trailer_field) &&
+      (CBS_len(&seq) == 0)) {
     *pss_params = RSASSA_PSS_PARAMS_new();
     if ((*pss_params) != NULL) {
       (*pss_params)->hash_algor = hash_algor;
