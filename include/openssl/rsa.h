@@ -650,7 +650,6 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
 // on success or zero otherwise.
 OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);
 
-
 struct rsa_meth_st {
   struct openssl_method_common_st common;
 
@@ -708,6 +707,9 @@ struct rsa_st {
   BIGNUM *dmp1;
   BIGNUM *dmq1;
   BIGNUM *iqmp;
+
+  // If a PSS only key this contains the parameter restrictions.
+  RSASSA_PSS_PARAMS *pss;
 
   // be careful using this if the RSA structure is shared
   CRYPTO_EX_DATA ex_data;
