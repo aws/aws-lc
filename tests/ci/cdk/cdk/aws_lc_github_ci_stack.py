@@ -43,10 +43,7 @@ class AwsLcGitHubCIStack(core.Stack):
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                        inline_policies=inline_policies,
-                        managed_policies=[
-                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryReadOnly")
-                        ])
+                        inline_policies=inline_policies)
 
         # Create build spec.
         placeholder_map = {"AWS_ACCOUNT_ID_PLACEHOLDER": AWS_ACCOUNT, "AWS_REGION_PLACEHOLDER": AWS_REGION,
