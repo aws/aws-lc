@@ -483,6 +483,9 @@ endif()
 
 SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
 
+if(WIN32)
+  target_link_libraries(crypto ws2_32)
+endif()
 if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(crypto pthread)
 endif()
