@@ -90,6 +90,10 @@ function create_docker_img_build_stack() {
 
 function create_github_ci_stack() {
   cdk deploy aws-lc-ci-* --require-approval never
+  # Need to use aws cli to change webhook build type because CFN is not ready yet.
+  aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
 }
 
 function build_linux_img() {
