@@ -4,7 +4,7 @@
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
 from util.metadata import AWS_ACCOUNT, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_SOURCE_VERSION, LINUX_AARCH_ECR_REPO, \
     LINUX_X86_ECR_REPO
-from util.iam_policies import codebuild_batch_policy_in_json, ecr_power_user_policy_in_json
+from util.iam_policies import code_build_batch_policy_in_json, ecr_power_user_policy_in_json
 from util.yml_loader import YmlLoader
 
 
@@ -22,9 +22,10 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
             clone_depth=1)
 
         # Define a role.
-        codebuild_batch_policy = iam.PolicyDocument.from_json(codebuild_batch_policy_in_json([id]))
-        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json())
-        inline_policies = {"codebuild_batch_policy": codebuild_batch_policy,
+        code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
+        ecr_repo_names = [LINUX_AARCH_ECR_REPO, LINUX_X86_ECR_REPO]
+        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json(ecr_repo_names))
+        inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                            "ecr_power_user_policy": ecr_power_user_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
