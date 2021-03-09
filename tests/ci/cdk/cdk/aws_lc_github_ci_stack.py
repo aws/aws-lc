@@ -2,9 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
-from util.iam_policies import codebuild_batch_policy_in_json
-from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, LINUX_X86_ECR_REPO, \
-    LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO
+from util.iam_policies import code_build_batch_policy_in_json, ecr_pull_only_policy_in_json
+from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.yml_loader import YmlLoader
 
 
@@ -14,6 +13,7 @@ class AwsLcGitHubCIStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
+                 ecr_repo_name: str,
                  spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -32,10 +32,14 @@ class AwsLcGitHubCIStack(core.Stack):
             clone_depth=1)
 
         # Define a IAM role for this stack.
-        codebuild_batch_policy = iam.PolicyDocument.from_json(
-            codebuild_batch_policy_in_json([id])
+        code_build_batch_policy = iam.PolicyDocument.from_json(
+            code_build_batch_policy_in_json([id])
         )
-        inline_policies = {"codebuild_batch_policy": codebuild_batch_policy}
+        ecr_pull_only_policy = iam.PolicyDocument.from_json(
+            ecr_pull_only_policy_in_json(ecr_repo_name)
+        )
+        inline_policies = {"code_build_batch_policy": code_build_batch_policy,
+                           "ecr_pull_only_policy": ecr_pull_only_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
@@ -46,9 +50,7 @@ class AwsLcGitHubCIStack(core.Stack):
 
         # Create build spec.
         placeholder_map = {"AWS_ACCOUNT_ID_PLACEHOLDER": AWS_ACCOUNT, "AWS_REGION_PLACEHOLDER": AWS_REGION,
-                           "ECR_REPO_X86_PLACEHOLDER": LINUX_X86_ECR_REPO,
-                           "ECR_REPO_AARCH_PLACEHOLDER": LINUX_AARCH_ECR_REPO,
-                           "ECR_REPO_WINDOWS_PLACEHOLDER": WINDOWS_X86_ECR_REPO}
+                           "ECR_REPO_PLACEHOLDER": ecr_repo_name}
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
