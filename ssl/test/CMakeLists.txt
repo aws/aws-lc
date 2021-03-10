@@ -16,6 +16,9 @@ add_executable(
 add_dependencies(bssl_shim global_target)
 
 target_link_libraries(bssl_shim test_support_lib ssl crypto)
+if(WIN32)
+  target_link_libraries(bssl_shim ws2_32)
+endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   add_executable(
