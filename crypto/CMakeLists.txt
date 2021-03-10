@@ -120,10 +120,6 @@ else()
 endif()
 add_subdirectory(fipsmodule)
 
-if(BUILD_TESTING)
-  add_subdirectory(test)
-endif()
-
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
@@ -497,6 +493,8 @@ if(USE_CUSTOM_LIBCXX)
 endif()
 
 if(BUILD_TESTING)
+  add_subdirectory(test)
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.

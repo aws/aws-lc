@@ -42,6 +42,7 @@ var (
 	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
+	sslTests		= flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
 	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
 	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "Runs the given number of workers when testing.")
@@ -418,6 +419,13 @@ func main() {
 					continue
 				}
 			}
+
+			if *sslTests {
+				if strings.Contains(fmt.Sprint(test.Cmd), "ssl_test") {
+					continue
+				}
+			}
+
 			if *useSDE {
 				if test.SkipSDE {
 					continue
