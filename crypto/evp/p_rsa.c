@@ -155,6 +155,7 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
     max_saltlen--;
   }
   if (min_saltlen > max_saltlen) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PSS_SALT_LEN);
     return 0;
   }
 

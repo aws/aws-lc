@@ -458,6 +458,7 @@ static const EVP_MD *nid_to_EVP_MD(const int nid) {
     case NID_sha512:
       return EVP_sha512();
     default:
+      OPENSSL_PUT_ERROR(RSA, EVP_R_UNSUPPORTED_ALGORITHM);
       return NULL;
   }
 }
@@ -491,6 +492,7 @@ int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
   }
   if (pss->salt_len) {
     if (pss->salt_len->value < 0) {
+      OPENSSL_PUT_ERROR(RSA, EVP_R_INVALID_PSS_SALT_LEN);
       return 0;
     }
     *saltlen = pss->salt_len->value;
@@ -498,6 +500,7 @@ int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
     *saltlen = 20;
   }
   if (pss->trailer_field && pss->trailer_field->value != 1) {
+    OPENSSL_PUT_ERROR(RSA, EVP_R_INVALID_PSS_TRAILER_FIELD);
     return 0;
   }
   return 1;
