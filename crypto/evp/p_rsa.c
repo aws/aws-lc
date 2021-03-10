@@ -100,7 +100,7 @@ typedef struct {
 } RSA_OAEP_LABEL_PARAMS;
 
 static int pkey_ctx_is_pss(EVP_PKEY_CTX *ctx) {
-  return ctx && ctx->pmeth && (ctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS);
+  return ctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS;
 }
 
 // This method checks params match if necessary (|ctx| is pss and params exist).

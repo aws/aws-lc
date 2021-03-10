@@ -220,15 +220,11 @@ int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {
   }
 
   ctx->operation = EVP_PKEY_OP_SIGN;
-  if (!ctx->pmeth->sign_init) {
+  if ((ctx->pmeth->sign_init == NULL) || (ctx->pmeth->sign_init(ctx))) {
     return 1;
   }
-  if (ctx->pmeth->sign_init(ctx)) {
-    return 1;
-  } else {
-    ctx->operation = EVP_PKEY_OP_UNDEFINED;
-    return 0;
-  }
+  ctx->operation = EVP_PKEY_OP_UNDEFINED;
+  return 0;
 }
 
 int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
@@ -251,15 +247,11 @@ int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx) {
     return 0;
   }
   ctx->operation = EVP_PKEY_OP_VERIFY;
-  if (!ctx->pmeth->verify_init) {
+  if ((ctx->pmeth->verify_init == NULL) || (ctx->pmeth->verify_init(ctx))) {
     return 1;
   }
-  if (ctx->pmeth->verify_init(ctx)) {
-    return 1;
-  } else {
-    ctx->operation = EVP_PKEY_OP_UNDEFINED;
-    return 0;
-  }
+  ctx->operation = EVP_PKEY_OP_UNDEFINED;
+  return 0;
 }
 
 int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t sig_len,
