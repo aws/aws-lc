@@ -12,7 +12,7 @@ endif()
 include(sources.cmake)
 
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
-option(BUILD_LIBSSL "" ON)
+option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 
 enable_language(C)
 
