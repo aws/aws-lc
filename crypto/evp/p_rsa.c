@@ -103,12 +103,9 @@ static int pkey_ctx_is_pss(EVP_PKEY_CTX *ctx) {
   return ctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS;
 }
 
-// This method checks params match if necessary (|ctx| is pss and params exist).
-// All parameters in the signature structure algorithm identifier |s_md| MUST
-// match the parameters in the key structure algorithm identifier |k_md| except
-// the saltLength field.
-// See 3.3. https://tools.ietf.org/html/rfc4055#section-3.3
-static int pss_parameter_match(EVP_PKEY_CTX *ctx, const EVP_MD *k_md,
+// This method checks if the NID of |s_md| is the same as the NID of |k_md| when
+// |pkey_ctx_is_pss(ctx)| is true.
+static int pss_hash_algorithm_match(EVP_PKEY_CTX *ctx, const EVP_MD *k_md,
                                const EVP_MD *s_md) {
   if (pkey_ctx_is_pss(ctx) && k_md) {
     if (s_md) {
@@ -558,7 +555,9 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       if (!check_padding_md(p2, rctx->pad_mode)) {
         return 0;
       }
-      if (!pss_parameter_match(ctx, rctx->md, p2)) {
+      // Check if the hashAlgorithm is matched.
+      // Sec 3.3 https://tools.ietf.org/html/rfc4055#section-3.3
+      if (!pss_hash_algorithm_match(ctx, rctx->md, p2)) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PSS_MD);
         return 0;
       }
@@ -583,7 +582,9 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
           *(const EVP_MD **)p2 = rctx->md;
         }
       } else {
-        if (!pss_parameter_match(ctx, rctx->mgf1md, p2)) {
+        // Check if the hashAlgorithm is matched.
+        // Sec 3.3 https://tools.ietf.org/html/rfc4055#section-3.3
+        if (!pss_hash_algorithm_match(ctx, rctx->mgf1md, p2)) {
           OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_MGF1_MD);
           return 0;
         }
