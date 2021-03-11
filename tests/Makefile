@@ -1,0 +1,45 @@
+#############################################################################
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+#  http://aws.amazon.com/apache2.0
+#
+# or in the "LICENSE" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#############################################################################
+
+# Set ARCH to "X86" or "Arm" as appropriate; this is literally the
+# directory name in which the libs2nbignum.a file should be found.
+# If this block fails to do it automatically, replace with manual
+# setting: ARCH=X86 or ARCH=Arm as appropriate
+
+UNAME_RESULT=$(shell uname -m)
+
+ifeq ($(UNAME_RESULT),x86_64)
+ARCH=X86
+endif
+
+ifeq ($(UNAME_RESULT),aarch64)
+ARCH=Arm
+endif
+
+# Build the test program "test". This can then be invoked, optionally
+# with a parameter with the number of tests per function, e.g.
+#
+#   ./test 10
+#
+# The "go" target runs it with 100 tests per function and filters
+# most of the "good result" output to leave the summary and errors
+
+default: test;
+
+go: test; ./test 100 | grep -v OK
+
+test: test.c ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -o test test.c -L../$(ARCH) -ls2nbignum
+
+clean: ; rm -f test
