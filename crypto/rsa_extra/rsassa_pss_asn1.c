@@ -83,10 +83,11 @@ static int parse_oid(CBS *oid,
         OPENSSL_memcmp(CBS_data(oid), supported_algr->oid,
                        supported_algr->oid_len) == 0) {
       *out = RSA_ALGOR_IDENTIFIER_new();
-      if (*out != NULL) {
-        (*out)->nid = supported_algr->nid;
+      if (*out == NULL) {
+        return 0;
       }
-      return (*out) != NULL;
+      (*out)->nid = supported_algr->nid;
+      return 1;
     }
   }
   OPENSSL_PUT_ERROR(RSA, EVP_R_UNSUPPORTED_ALGORITHM);
