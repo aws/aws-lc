@@ -407,13 +407,13 @@ static int pss_mga_create(const EVP_MD *mgf1md, RSA_MGA_IDENTIFIER **out) {
 }
 
 // pss_saltlen_create returns one on success and zero on failure.
-// When success and the given length |saltlen| is not default (20), |*out| will hold
-// the newly allocated RSA_INTEGER.
+// When success and the given length |saltlen| is not default (20), |*out| will
+// hold the newly allocated RSA_INTEGER.
 static int pss_saltlen_create(int saltlen, RSA_INTEGER **out) {
   if (saltlen <= 0) {
     return 0;
   }
-  if (saltlen == 20) {
+  if (saltlen == PSS_DEFAULT_SALT_LEN) {
     return 1;
   }
   *out = RSA_INTEGER_new();
@@ -499,9 +499,10 @@ int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
     }
     *saltlen = pss->salt_len->value;
   } else {
-    *saltlen = 20;
+    *saltlen = PSS_DEFAULT_SALT_LEN;
   }
-  if (pss->trailer_field && pss->trailer_field->value != 1) {
+  if (pss->trailer_field &&
+      pss->trailer_field->value != PSS_TRAILER_FIELD_VALUE) {
     OPENSSL_PUT_ERROR(RSA, EVP_R_INVALID_PSS_TRAILER_FIELD);
     return 0;
   }

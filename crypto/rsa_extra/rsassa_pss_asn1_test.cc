@@ -319,7 +319,7 @@ struct PssParseTestInput {
     {pss_sha512_salt_absent, sizeof(pss_sha512_salt_absent), NID_sha512,
      NID_mgf1, NID_sha512, omit_salt_len},
     {pss_sha256_salt_default, sizeof(pss_sha256_salt_default), NID_sha256,
-     NID_mgf1, NID_sha256, 20},
+     NID_mgf1, NID_sha256, PSS_DEFAULT_SALT_LEN},
     {pss_sha256_salt_30, sizeof(pss_sha256_salt_30), NID_sha256, NID_mgf1,
      NID_sha256, 30},
     {jdk_pss_sha256_salt_0, sizeof(jdk_pss_sha256_salt_0), NID_sha256, NID_mgf1,
@@ -440,7 +440,7 @@ struct PssConversionTestInput {
   int expect_pss_hash_is_null;
   int expect_pss_saltlen_is_null;
 } kPssConversionTestInputs[] = {
-    {EVP_sha1(), 20, 0, 1, 1},
+    {EVP_sha1(), PSS_DEFAULT_SALT_LEN, 0, 1, 1},
     {EVP_sha224(), 30, 0, 0, 0},
     {EVP_sha256(), 30, 0, 0, 0},
     {EVP_sha384(), 30, 0, 0, 0},
@@ -540,7 +540,7 @@ TEST(RsassaPssTest, DecodeParamsDerWithTrailerField) {
   EXPECT_FALSE(pss->salt_len);
   // Validate Trailer field of RSASSA-PSS-params.
   ASSERT_TRUE(pss->trailer_field);
-  EXPECT_EQ(pss->trailer_field->value, 1);
+  EXPECT_EQ(pss->trailer_field->value, PSS_TRAILER_FIELD_VALUE);
 }
 
 struct InvalidPssCreateTestInput {
@@ -552,7 +552,7 @@ struct InvalidPssCreateTestInput {
     // Expect test fails because saltlen cannot be negative.
     {EVP_sha256(), -1},
     // Expect test fails because md5 is not supported.
-    {EVP_md5(), 20},
+    {EVP_md5(), PSS_DEFAULT_SALT_LEN},
 };
 
 class InvalidPssCreateTest
@@ -577,11 +577,11 @@ struct InvalidPssGetTestInput {
   int trailerfiled;
 } kInvalidPssGetTestInputs[] = {
     // Expect test fails because md5 is not supported.
-    {NID_md5, 20, 1},
+    {NID_md5, PSS_DEFAULT_SALT_LEN, PSS_TRAILER_FIELD_VALUE},
     // Expect test fails because saltlen cannot be negative.
-    {NID_sha256, -1, 1},
+    {NID_sha256, -1, PSS_TRAILER_FIELD_VALUE},
     // Expect test fails because trailer field MUST be 1.
-    {NID_sha256, 20, 2},
+    {NID_sha256, PSS_DEFAULT_SALT_LEN, 2},
 };
 
 class InvalidPssGetTest
@@ -624,5 +624,5 @@ TEST(PssGetTest, AllParamsAbsent) {
       nullptr,
       nullptr,
   };
-  test_RSASSA_PSS_PARAMS_get(&pss, EVP_sha1(), 20);
+  test_RSASSA_PSS_PARAMS_get(&pss, EVP_sha1(), PSS_DEFAULT_SALT_LEN);
 }

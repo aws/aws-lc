@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+#define PSS_DEFAULT_SALT_LEN 20
+#define PSS_TRAILER_FIELD_VALUE 1
+
 // Section 2.1. https://tools.ietf.org/html/rfc4055#section-2.1
 typedef struct rsa_pss_supported_algor_st {
   int nid;
