@@ -426,7 +426,7 @@ static int pss_saltlen_create(int saltlen, RSA_INTEGER **out) {
 
 int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd, const EVP_MD *mgf1md,
                              int saltlen, RSASSA_PSS_PARAMS **out) {
-  // If all parameters are default values don't set pss.
+  // If all parameters are not changed after |pkey_rsa_init|, don't create pss.
   if (sigmd == NULL && mgf1md == NULL && saltlen == -2) {
     return 1;
   }
