@@ -641,11 +641,10 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   }
 
   if (pkey_ctx_is_pss(ctx)) {
-    EVP_PKEY_assign(pkey, EVP_PKEY_RSA_PSS, rsa);
+    return EVP_PKEY_assign(pkey, EVP_PKEY_RSA_PSS, rsa);
   } else {
-    EVP_PKEY_assign_RSA(pkey, rsa);
+    return EVP_PKEY_assign_RSA(pkey, rsa);
   }
-  return 1;
 }
 
 const EVP_PKEY_METHOD rsa_pkey_meth = {
