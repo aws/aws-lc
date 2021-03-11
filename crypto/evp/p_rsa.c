@@ -634,7 +634,8 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  if (!RSA_generate_key_ex(rsa, rctx->nbits, rctx->pub_exp, NULL) || !rsa_set_pss_param(rsa, ctx)) {
+  if (!RSA_generate_key_ex(rsa, rctx->nbits, rctx->pub_exp, NULL) ||
+      !rsa_set_pss_param(rsa, ctx)) {
     RSA_free(rsa);
     return 0;
   }

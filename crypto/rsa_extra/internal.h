@@ -58,8 +58,8 @@ OPENSSL_EXPORT int RSASSA_PSS_parse_params(CBS *params,
                                            RSASSA_PSS_PARAMS **pss);
 
 // RSASSA_PSS_PARAMS_create return one on success and zero on failure.
-// When success and the given algorithms are not default (sha1), |*out| will hold
-// the allocated |RSASSA_PSS_PARAMS|.
+// When success and the given algorithms are not default (sha1),
+// |*out| will hold the allocated |RSASSA_PSS_PARAMS|.
 OPENSSL_EXPORT int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd,
                                             const EVP_MD *mgf1md, int saltlen,
                                             RSASSA_PSS_PARAMS **out);

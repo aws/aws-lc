@@ -501,8 +501,8 @@ TEST_P(PssConversionTest, CreationAndGetSuccess) {
   // Validate the saltlen of pss.
   if (param.expect_pss_saltlen_is_null) {
     // salt_len is NULL when the default value (20) is passed.
-    // Pss params encode expects this default value is omitted.
-    // This absent is not a MUST but implemented in other lib like OpenSSL.
+    // Pss params encode expects the default value to be omitted.
+    // This is not a MUST but it is implemented in OpenSSL.
     EXPECT_FALSE(pss->salt_len);
   } else {
     ASSERT_TRUE(pss->salt_len);

@@ -285,19 +285,19 @@ int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
 
 // pss_parse_nid return one on success and zero on failure.
 // When success and the hash is sha1, |*out| will hold NULL.
-// When success and the hash is not sha1, set |*out| will have hold allocated
-// RSA_ALGOR_IDENTIFIER. When failure, return zero.
+// When success and the hash is not sha1, |*out| will hold a newly allocated
+// RSA_ALGOR_IDENTIFIER with NID |nid|.
 static int pss_parse_nid(int nid, RSA_ALGOR_IDENTIFIER **out) {
   if (nid == NID_sha1) {
     (*out) = NULL;
     return 1;
   }
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions); i++) {
-    const RSA_PSS_SUPPORTED_ALGOR *supported_algr = rsa_pss_hash_functions[i];
-    if (nid == supported_algr->nid) {
+    const RSA_PSS_SUPPORTED_ALGOR *supported_algor = rsa_pss_hash_functions[i];
+    if (nid == supported_algor->nid) {
       *out = RSA_ALGOR_IDENTIFIER_new();
       if ((*out) != NULL) {
-        (*out)->nid = supported_algr->nid;
+        (*out)->nid = supported_algor->nid;
         return 1;
       }
     }
@@ -374,7 +374,7 @@ void RSASSA_PSS_PARAMS_free(RSASSA_PSS_PARAMS *params) {
   OPENSSL_free(params);
 }
 
-// pss_hash_create return one on success and zero on failure.
+// pss_hash_create returns one on success and zero on failure.
 // When success and the given algorithm is not default (sha1), |*out| will hold
 // the allocated RSA_ALGOR_IDENTIFIER.
 static int pss_hash_create(const EVP_MD *sigmd, RSA_ALGOR_IDENTIFIER **out) {
@@ -385,7 +385,7 @@ static int pss_hash_create(const EVP_MD *sigmd, RSA_ALGOR_IDENTIFIER **out) {
   return pss_parse_nid(EVP_MD_type(sigmd), out);
 }
 
-// pss_mga_create return one on success and zero on failure.
+// pss_mga_create returns one on success and zero on failure.
 // When success and the given algorithm is not default (sha1), *out will hold
 // the allocated RSA_ALGOR_IDENTIFIER.
 static int pss_mga_create(const EVP_MD *mgf1md, RSA_MGA_IDENTIFIER **out) {
@@ -405,9 +405,9 @@ static int pss_mga_create(const EVP_MD *mgf1md, RSA_MGA_IDENTIFIER **out) {
   return 0;
 }
 
-// pss_saltlen_create return one on success and zero on failure.
-// When success and the given len is not default (20), |*out| will hold
-// the allocated RSA_INTEGER.
+// pss_saltlen_create returns one on success and zero on failure.
+// When success and the given length |saltlen| is not default (20), |*out| will hold
+// the newly allocated RSA_INTEGER.
 static int pss_saltlen_create(int saltlen, RSA_INTEGER **out) {
   if (saltlen <= 0) {
     return 0;
@@ -444,7 +444,7 @@ int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd, const EVP_MD *mgf1md,
 }
 
 // nid_to_EVP_MD maps |nid| to the corresponding |EVP_md()| supported by pss.
-// It returns NULL if the |nid| is not matched or supported.
+// It returns NULL if the |nid| is not supported.
 static const EVP_MD *nid_to_EVP_MD(const int nid) {
   switch (nid) {
     case NID_sha1:
@@ -464,7 +464,8 @@ static const EVP_MD *nid_to_EVP_MD(const int nid) {
 }
 
 // hash_algor_to_EVP_MD return one on success and zero on failure.
-// When success, |*md| will be assigned with the corresponding EVP_md().
+// When success, |*md| will be assigned with the corresponding EVP_md()
+// or the default EVP_sha1() in case hash_algor is not provided.
 static int hash_algor_to_EVP_MD(RSA_ALGOR_IDENTIFIER *hash_algor,
                                 const EVP_MD **md) {
   if (hash_algor) {
