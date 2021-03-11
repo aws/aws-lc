@@ -13,6 +13,14 @@
 # permissions and limitations under the License.
 #############################################################################
 
+# The x86 assembly (.asm) files are all written for the NASM assembler
+# (https://www.nasm.us/). This gives broadly "Intel-like" notation for
+# x86, with destinations on the left and fairly uncluttered syntax.
+# NASM can be installed easily on most platforms via some package
+# manager invocation like:
+#
+#  sudo apt-get install nasm
+
 OBJ = bignum_add.o \
       bignum_add_p256.o \
       bignum_add_p384.o \

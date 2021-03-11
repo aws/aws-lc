@@ -1,0 +1,684 @@
+(*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *)
+
+(* ========================================================================= *)
+(* Simplified model of aarch64 (64-bit ARM) semantics.                       *)
+(* ========================================================================= *)
+
+(* ------------------------------------------------------------------------- *)
+(* Stating assumptions about instruction decoding. For ARM we                *)
+(* currently go all the way to the semantics in one jump, no asm.            *)
+(* ------------------------------------------------------------------------- *)
+
+let arm_decode = new_definition `arm_decode s pc inst <=>
+  ?i:int32. aligned_bytes_loaded s pc (bytelist_of_num 4 (val i)) /\
+            decode i = SOME inst`;;
+
+let ARM_DECODE_CONS = prove
+ (`!s pc l i inst l'. aligned_bytes_loaded s (word pc) l ==>
+   read_int32 l = SOME (i, l') ==> decode i = SOME inst ==>
+   arm_decode s (word pc) inst /\
+   aligned_bytes_loaded s (word (pc + 4)) l'`,
+  REWRITE_TAC [read_int32; read_word_eq_some;
+    aligned_bytes_loaded_word] THEN
+  REPLICATE_TAC 9 STRIP_TAC THEN
+  POP_ASSUM_LIST (fun [h1;h2;h3;h4;h5;h6] ->
+    let t1,t2 = CONJ_PAIR (REWRITE_RULE
+      [GSYM WORD_ADD; h3; bytes_loaded_append; h4] h5) in
+    let th1 = MATCH_MP DIVIDES_ADD (CONJ h6 (SPEC `4` DIVIDES_REFL)) in
+    REWRITE_TAC [th1; h6; t2; h1; arm_decode; aligned_bytes_loaded_word] THEN
+    EXISTS_TAC `i:int32` THEN REWRITE_TAC [h1; h2; VAL_WORD;
+      DIMINDEX_32; ARITH_RULE `2 EXP 32 = 256 EXP 4`;
+      BYTELIST_OF_NUM_MOD; SYM h3; BYTELIST_OF_NUM_OF_BYTELIST; t1]));;
+
+let arm_decode_unique = prove
+ (`!s pc x y. arm_decode s pc x ==> arm_decode s pc y ==> x = y`,
+  REWRITE_TAC [arm_decode] THEN REPEAT STRIP_TAC THEN
+  POP_ASSUM_LIST (fun [d2;l2; d1;l1] ->
+    let t = REWRITE_RULE [LENGTH_BYTELIST_OF_NUM]
+      (MATCH_MP (MATCH_MP aligned_bytes_loaded_unique l1) l2) in
+    let t2 = REWRITE_RULE [NUM_OF_BYTELIST_OF_NUM; GSYM CONG;
+      ARITH_RULE `256 EXP 4 = 2 EXP 32`; SYM DIMINDEX_32;
+      GSYM WORD_EQ; WORD_VAL] (AP_TERM `num_of_bytelist` t) in
+    ACCEPT_TAC (REWRITE_RULE [REWRITE_RULE [t2] d1; OPTION_INJ] d2)));;
+
+let ARM_DECODES_THM =
+  let pth = (UNDISCH_ALL o prove)
+   (`i = i' ==> pc + 4 = pc' ==>
+     aligned_bytes_loaded s (word pc) l ==>
+     read_int32 l = SOME (a, l') ==> decode a = SOME i ==>
+     arm_decode s (word pc) i' /\
+     aligned_bytes_loaded s (word pc') l'`,
+    REPEAT (DISCH_THEN (SUBST1_TAC o SYM)) THEN
+    MATCH_ACCEPT_TAC ARM_DECODE_CONS)
+  and pth_pc = (UNDISCH o ARITH_RULE) `n + 4 = p ==> (pc + n) + 4 = pc + p`
+  and r32,dec,n4 = `read_int32`,`decode`,`4`
+  and ei,ei' = `i:armstate->armstate->bool`,`i':armstate->armstate->bool`
+  and pl,el,el' = `(+):num->num->num`,`l:byte list`,`l':byte list`
+  and ea,en,ep,epc,epc' = `a:int32`,`n:num`,`p:num`,`pc:num`,`pc':num` in
+  let rec go th =
+    let pc,l = (rand o rand F_F I) (dest_comb (concl th)) in
+    let th1 = READ_WORD_CONV (mk_comb (r32, l)) in
+    let a,l' = dest_pair (rand (rhs (concl th1))) in
+    let th2 = DECODE_CONV (mk_comb (dec, a)) in
+    let i = rand (rhs (concl th2)) in
+    let th3 = REWRITE_CONV (invert_condition :: ARM_INSTRUCTION_ALIASES) i in
+    let i' = rhs (concl th3) in
+    let th4 = match pc with
+    | Comb(Comb(Const("+",_),pc),a) ->
+      let th = NUM_ADD_CONV (mk_comb (mk_comb (pl, a), n4)) in
+      PROVE_HYP th (INST [pc,epc; a,en; rhs (concl th),ep] pth_pc)
+    | _ -> REFL (mk_comb (mk_comb (pl, pc), n4)) in
+    let pc' = rhs (concl th4) in
+    let th' = itlist PROVE_HYP [th3; th4; th; th1; th2]
+      (INST [i,ei; i',ei'; pc,epc; pc',epc'; l,el; a,ea; l',el'] pth) in
+    match l' with
+    | Const("NIL",_) -> CONJUNCT1 th'
+    | _ -> let dth,bth = CONJ_PAIR th' in CONJ dth (go bth) in
+  GENL [`s:armstate`; `pc:num`] o DISCH_ALL o go o
+    (fun dth -> EQ_MP dth (ASSUME (lhs (concl dth)))) o
+    AP_TERM `aligned_bytes_loaded s (word pc)`;;
+
+let ARM_MK_EXEC_RULE th0 =
+  let th0 = INST [`pc':num`,`pc:num`] (SPEC_ALL th0) in
+  let th1 = AP_TERM `LENGTH:byte list->num` th0 in
+  let th2 =
+    (REWRITE_CONV [LENGTH_BYTELIST_OF_NUM; LENGTH_BYTELIST_OF_INT;
+      LENGTH; LENGTH_APPEND] THENC NUM_REDUCE_CONV) (rhs (concl th1)) in
+  CONJ (TRANS th1 th2) (ARM_DECODES_THM th0);;
+
+(* ------------------------------------------------------------------------- *)
+(* For ARM this is a trivial function.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let arm_execute = define
+ `arm_execute = \i:(armstate->armstate->bool). i`;;
+
+(* ------------------------------------------------------------------------- *)
+(* Now the basic fetch-decode-execute cycle.                                 *)
+(* ------------------------------------------------------------------------- *)
+
+let arm = define
+ `arm s s' <=>
+    ?instr. arm_decode s (read PC s) instr /\
+            (PC := word_add (read PC s) (word 4) ,,
+             arm_execute instr) s s'`;;
+
+(* ------------------------------------------------------------------------- *)
+(* Shorthand for the set of all flags for modification lists.                *)
+(* ------------------------------------------------------------------------- *)
+
+let SOME_FLAGS = new_definition
+ `SOME_FLAGS = [NF; ZF; CF; VF]`;;
+
+(* ------------------------------------------------------------------------- *)
+(* Normalize an address in the same style as x86 bsid.                       *)
+(* ------------------------------------------------------------------------- *)
+
+let OFFSET_ADDRESS_CLAUSES = prove
+ (`offset_address (Register_Offset r) s = word(val(read r s)) /\
+   offset_address (Shiftreg_Offset r 1) s = word(2 * val(read r s)) /\
+   offset_address (Shiftreg_Offset r 2) s = word(4 * val(read r s)) /\
+   offset_address (Shiftreg_Offset r 3) s = word(8 * val(read r s)) /\
+   offset_address (Shiftreg_Offset r 4) s = word(16 * val(read r s)) /\
+   offset_address (Immediate_Offset w) s = w /\
+   offset_address (Preimmediate_Offset w) s = w /\
+   offset_address (Postimmediate_Offset w) s = word 0`,
+  REWRITE_TAC[offset_address; word_shl; WORD_VAL] THEN
+  CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[MULT_AC]);;
+
+(* ------------------------------------------------------------------------- *)
+(* Basic execution of ARM instruction into sequence of state updates.        *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_EXEC_CONV =
+  let qth = prove(`bytes64 (word_add a (word 0)) = bytes64 a`,
+                  REWRITE_TAC[WORD_ADD_0])
+  and rth = prove
+   (`word_add (read SP s) (iword (-- &16)) =
+     word_sub (read SP s) (word 16) /\
+     word_add (word_add (read SP s) (iword (-- &16))) (word 8) =
+     word_sub (read SP s) (word 8)`,
+    CONJ_TAC THEN CONV_TAC WORD_RULE) in
+  ((GEN_REWRITE_CONV I ARM_LOAD_STORE_CLAUSES THENC
+    REWRITE_CONV [offset_writesback; offset_writeback;
+                  OFFSET_ADDRESS_CLAUSES] THENC
+    ONCE_DEPTH_CONV(EQT_INTRO o ORTHOGONAL_COMPONENTS_CONV) THENC
+    REWRITE_CONV[] THENC
+    ONCE_DEPTH_CONV(LAND_CONV DIMINDEX_CONV THENC NUM_DIV_CONV) THENC
+    GEN_REWRITE_CONV ONCE_DEPTH_CONV [GSYM BYTES64_WBYTES] THENC
+    GEN_REWRITE_CONV ONCE_DEPTH_CONV [qth] THENC
+    GEN_REWRITE_CONV ONCE_DEPTH_CONV [rth] THENC
+    GEN_REWRITE_CONV ONCE_DEPTH_CONV [CONJUNCT2 SEQ_ID]) ORELSEC
+   (GEN_REWRITE_CONV I ARM_OPERATION_CLAUSES THENC
+    REWRITE_CONV [condition_semantics])) THENC
+  REWRITE_CONV[ARM_ZERO_REGISTER; READ_RVALUE] THENC
+  WORD_REDUCE_CONV THENC
+  ONCE_DEPTH_CONV WORD_WORD_OPERATION_CONV;;
+
+(* ------------------------------------------------------------------------- *)
+(* Additional proof support for SP restriction to "aligned 16".              *)
+(* ------------------------------------------------------------------------- *)
+
+let XREG_NE_SP = prove
+ (`~(X0 = SP) /\ ~(X1 = SP) /\ ~(X2 = SP) /\ ~(X3 = SP) /\ ~(X4 = SP) /\
+   ~(X5 = SP) /\ ~(X6 = SP) /\ ~(X7 = SP) /\ ~(X8 = SP) /\ ~(X9 = SP) /\
+   ~(X10 = SP) /\ ~(X11 = SP) /\ ~(X12 = SP) /\ ~(X13 = SP) /\ ~(X14 = SP) /\
+   ~(X15 = SP) /\ ~(X16 = SP) /\ ~(X17 = SP) /\ ~(X18 = SP) /\ ~(X19 = SP) /\
+   ~(X20 = SP) /\ ~(X21 = SP) /\ ~(X22 = SP) /\ ~(X23 = SP) /\ ~(X24 = SP) /\
+   ~(X25 = SP) /\ ~(X26 = SP) /\ ~(X27 = SP) /\ ~(X28 = SP) /\ ~(X29 = SP) /\
+   ~(X30 = SP)`,
+  REPEAT CONJ_TAC THEN DISCH_THEN(MP_TAC o MATCH_MP (MESON[]
+   `c = d
+    ==> !y z s. read c (write c y (write d z s)) =
+                read c (write d y (write c z s))`)) THEN
+  DISCH_THEN(MP_TAC o SPECL [`word 0:int64`; `word 1:int64`]) THEN
+  CONV_TAC(DEPTH_CONV COMPONENT_READ_OVER_WRITE_CONV) THEN
+  REWRITE_TAC[WORD_NE_10]);;
+
+let NORMALIZE_ALIGNED_16_CONV =
+  let pth = prove
+   (`(!n x:int64.
+      16 divides n ==> (aligned 16 (word_add x (word n)) <=> aligned 16 x)) /\
+     (!n x:int64.
+      16 divides n ==> (aligned 16 (word_add (word n) x) <=> aligned 16 x)) /\
+     (!n x:int64.
+      16 divides n ==> (aligned 16 (word_sub x (word n)) <=> aligned 16 x)) /\
+     (!n x:int64.
+      16 divides n ==> (aligned 16 (word_sub (word n) x) <=> aligned 16 x))`,
+    REPEAT STRIP_TAC THEN FIRST (map MATCH_MP_TAC
+     (CONJUNCTS ALIGNED_WORD_ADD_EQ @ CONJUNCTS ALIGNED_WORD_SUB_EQ)) THEN
+    ASM_REWRITE_TAC[ALIGNED_WORD; DIMINDEX_64] THEN
+    CONV_TAC NUM_REDUCE_CONV THEN CONV_TAC DIVIDES_CONV) in
+  let funs = map (PART_MATCH (lhs o rand)) (CONJUNCTS pth) in
+  let conv tm =
+    try let th = tryfind (fun f -> f tm) funs in
+        MP th (EQT_ELIM(DIVIDES_CONV(lhand(concl th))))
+    with Failure _ -> failwith ""
+  and ptm = `aligned 16 :int64->bool` in
+  fun tm ->
+    if is_comb tm && rator tm = ptm then REPEATC conv tm
+    else failwith "NORMALIZE_ALIGNED_16_CONV";;
+
+let SUB_ALIGNED_16_CONV =
+  let ptm = `aligned 16 :int64->bool` in
+  let rec subconv conv tm =
+    match tm with
+    | Comb(ptm',_) when ptm' = ptm -> RAND_CONV conv tm
+    | Comb(l,r) -> COMB_CONV (subconv conv) tm
+    | Abs(x,bod) -> ABS_CONV (subconv conv) tm
+    | _ -> REFL tm in
+  subconv;;
+
+let (ALIGNED_16_TAC:tactic) =
+  let basetac =
+    CONV_TAC
+     (SUB_ALIGNED_16_CONV(TOP_DEPTH_CONV COMPONENT_READ_OVER_WRITE_CONV)) THEN
+    ASM (GEN_REWRITE_TAC
+      (LAND_CONV o SUB_ALIGNED_16_CONV o TOP_DEPTH_CONV)) [] THEN
+    CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_ALIGNED_16_CONV) THEN
+    ASSUM_LIST(fun thl ->
+      REWRITE_TAC(mapfilter (CONV_RULE NORMALIZE_ALIGNED_16_CONV) thl))
+  and trigger = free_in `aligned:num->int64->bool` in
+  fun (asl,w) -> if trigger w then basetac (asl,w) else ALL_TAC (asl,w);;
+
+let ALIGNED_16_CONV ths =
+  let baseconv =
+    SUB_ALIGNED_16_CONV(TOP_DEPTH_CONV COMPONENT_READ_OVER_WRITE_CONV) THENC
+    GEN_REWRITE_CONV (SUB_ALIGNED_16_CONV o TOP_DEPTH_CONV) ths THENC
+    ONCE_DEPTH_CONV NORMALIZE_ALIGNED_16_CONV THENC
+    REWRITE_CONV(mapfilter (CONV_RULE NORMALIZE_ALIGNED_16_CONV) ths)
+  and trigger = free_in `aligned:num->int64->bool` in
+  fun tm -> if trigger tm then baseconv tm else REFL tm;;
+
+(* ------------------------------------------------------------------------- *)
+(* Support for the "forward symbolic execution" proof style.                 *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_THM =
+  let pth = prove
+   (`read PC s = word pc ==> arm_decode s (word pc) instr ==>
+     (arm s s' <=> (PC := word (pc + 4) ,, instr) s s')`,
+    REPEAT STRIP_TAC THEN REWRITE_TAC [arm] THEN
+    ASM_REWRITE_TAC[GSYM WORD_ADD; arm_execute] THEN
+    ASM_MESON_TAC[arm_decode_unique]) in
+  fun conj th ->
+    let th = MATCH_MP pth th in
+    let rec go conj = try
+      let th1,th2 = CONJ_PAIR conj in
+      try MATCH_MP th th1 with Failure _ -> go th2
+    with Failure _ -> MATCH_MP th conj in
+    go conj;;
+
+let ARM_ENSURES_SUBLEMMA_TAC =
+  ENSURES_SUBLEMMA_TAC o MATCH_MP aligned_bytes_loaded_update o CONJUNCT1;;
+
+let ARM_ENSURES_SUBSUBLEMMA_TAC =
+  ENSURES_SUBSUBLEMMA_TAC o
+  map (MATCH_MP aligned_bytes_loaded_update o CONJUNCT1);;
+
+let WORD_SUB_ADD = WORD_RULE `word_sub (word (a + b)) (word b) = word a`;;
+
+let ARM_CONV execth2 ths tm =
+  let th = tryfind (MATCH_MP execth2) ths in
+  let eth = tryfind (fun th2 -> GEN_REWRITE_CONV I [ARM_THM th th2] tm) ths in
+ (K eth THENC
+  ONCE_DEPTH_CONV ARM_EXEC_CONV THENC
+  REWRITE_CONV[XREG_NE_SP; SEQ; condition_semantics] THENC
+  ALIGNED_16_CONV ths THENC
+  REWRITE_CONV[SEQ; condition_semantics] THENC
+  GEN_REWRITE_CONV ONCE_DEPTH_CONV [assign] THENC
+  REWRITE_CONV[] THENC
+  TOP_DEPTH_CONV COMPONENT_READ_OVER_WRITE_CONV THENC
+  GEN_REWRITE_CONV TOP_DEPTH_CONV [WRITE_RVALUE] THENC
+  ONCE_REWRITE_CONV [WORD_SUB_ADD] THENC
+  ONCE_DEPTH_CONV
+   (REWR_CONV (GSYM ADD_ASSOC) THENC RAND_CONV NUM_REDUCE_CONV) THENC
+  ONCE_DEPTH_CONV
+   (GEN_REWRITE_CONV I [GSYM WORD_ADD] THENC
+    GEN_REWRITE_CONV (RAND_CONV o TOP_DEPTH_CONV) [GSYM ADD_ASSOC] THENC
+    RAND_CONV NUM_REDUCE_CONV) THENC
+  TOP_DEPTH_CONV COMPONENT_WRITE_OVER_WRITE_CONV THENC
+  GEN_REWRITE_CONV (SUB_COMPONENTS_CONV o TOP_DEPTH_CONV) ths THENC
+  GEN_REWRITE_CONV TOP_DEPTH_CONV [WORD_VAL] THENC
+  ONCE_DEPTH_CONV WORD_PC_PLUS_CONV THENC
+  ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV THENC
+  ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV
+ ) tm;;
+
+let ARM_BASIC_STEP_TAC =
+  let arm_tm = `arm` and arm_ty = `:armstate` in
+  fun execth2 sname (asl,w) ->
+    let sv = rand w and sv' = mk_var(sname,arm_ty) in
+    let atm = mk_comb(mk_comb(arm_tm,sv),sv') in
+    let eth = ARM_CONV execth2 (map snd asl) atm in
+    (GEN_REWRITE_TAC I [eventually_CASES] THEN DISJ2_TAC THEN CONJ_TAC THENL
+     [GEN_REWRITE_TAC BINDER_CONV [eth] THEN CONV_TAC EXISTS_NONTRIVIAL_CONV;
+      X_GEN_TAC sv' THEN GEN_REWRITE_TAC LAND_CONV [eth]]) (asl,w);;
+
+let ARM_STEP_TAC (execth::subths) sname =
+  let execth1,execth2 = CONJ_PAIR execth in
+
+  (*** This does the basic decoding setup ***)
+
+  ARM_BASIC_STEP_TAC execth2 sname THEN
+
+  (*** This part shows the code isn't self-modifying ***)
+
+  NONSELFMODIFYING_STATE_UPDATE_TAC
+    (MATCH_MP aligned_bytes_loaded_update execth1) THEN
+
+  (*** Attempt also to show subroutines aren't modified, if applicable ***)
+
+  MAP_EVERY (TRY o NONSELFMODIFYING_STATE_UPDATE_TAC o
+    MATCH_MP aligned_bytes_loaded_update o CONJUNCT1) subths THEN
+
+  (*** This part produces any updated versions of existing asms ***)
+
+  ASSUMPTION_STATE_UPDATE_TAC THEN
+
+  (*** Produce updated "MAYCHANGE" assumption ***)
+
+  MAYCHANGE_STATE_UPDATE_TAC THEN
+
+  (*** This adds state component theorems for the updates ***)
+  (*** Could also assume th itself but I throw it away   ***)
+
+  DISCH_THEN(fun th ->
+    let thl = STATE_UPDATE_NEW_RULE th in
+    if thl = [] then ALL_TAC else
+    MP_TAC(end_itlist CONJ thl) THEN
+    ASSEMBLER_SIMPLIFY_TAC THEN
+    STRIP_TAC);;
+
+let ARM_VERBOSE_STEP_TAC exth sname g =
+  Format.print_string("Stepping to state "^sname); Format.print_newline();
+  ARM_STEP_TAC [exth] sname g;;
+
+let ARM_VERBOSE_SUBSTEP_TAC exths sname g =
+  Format.print_string("Stepping to state "^sname); Format.print_newline();
+  ARM_STEP_TAC exths sname g;;
+
+(* ------------------------------------------------------------------------- *)
+(* Throw away assumptions according to patterns.                             *)
+(* ------------------------------------------------------------------------- *)
+
+let DISCARD_ASSUMPTIONS_TAC P =
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check P));;
+
+let DISCARD_MATCHING_ASSUMPTIONS pats =
+  DISCARD_ASSUMPTIONS_TAC
+   (fun th -> exists (fun ptm -> can (term_match [] ptm) (concl th)) pats);;
+
+let DISCARD_FLAGS_TAC =
+  DISCARD_MATCHING_ASSUMPTIONS
+   [`read CF s = y`; `read ZF s = y`;
+    `read NF s = y`; `read VF s = y`];;
+
+let DISCARD_STATE_TAC s =
+  DISCARD_ASSUMPTIONS_TAC (free_in (mk_var(s,`:armstate`)) o concl);;
+
+let DISCARD_OLDSTATE_TAC s =
+  let v = mk_var(s,`:armstate`) in
+  let rec badread okvs tm =
+    match tm with
+      Comb(Comb(Const("read",_),cmp),s) -> not(mem s okvs)
+    | Comb(s,t) -> badread okvs s || badread okvs t
+    | Abs(v,t) -> badread (v::okvs) t
+    | _ -> false in
+  DISCARD_ASSUMPTIONS_TAC(badread [v] o concl);;
+
+(* ------------------------------------------------------------------------- *)
+(* More convenient stepping tactics, optionally with accumulation.           *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_SINGLE_STEP_TAC th s =
+  time (ARM_VERBOSE_STEP_TAC th s) THEN DISCARD_OLDSTATE_TAC s;;
+
+let ARM_VACCSTEP_TAC th aflag s =
+  ARM_VERBOSE_STEP_TAC th s THEN
+  (if aflag then TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC) else ALL_TAC);;
+
+let ARM_ACCSTEP_TAC th aflag s =
+  ARM_SINGLE_STEP_TAC th s THEN
+  (if aflag then TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC) else ALL_TAC);;
+
+let ARM_VSTEPS_TAC th snums =
+  MAP_EVERY (ARM_VERBOSE_STEP_TAC th) (statenames "s" snums);;
+
+let ARM_STEPS_TAC th snums =
+  MAP_EVERY (ARM_SINGLE_STEP_TAC th) (statenames "s" snums);;
+
+let ARM_VACCSTEPS_TAC th anums snums =
+  MAP_EVERY (fun n -> ARM_VACCSTEP_TAC th (mem n anums) ("s"^string_of_int n))
+            snums;;
+
+let ARM_ACCSTEPS_TAC th anums snums =
+  MAP_EVERY (fun n -> ARM_ACCSTEP_TAC th (mem n anums) ("s"^string_of_int n))
+            snums;;
+
+(* ------------------------------------------------------------------------- *)
+(* More convenient wrappings of basic simulation flow.                       *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_SIM_TAC execth snums =
+  REWRITE_TAC(!simulation_precanon_thms) THEN
+  ENSURES_INIT_TAC "s0" THEN ARM_STEPS_TAC execth snums THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[VAL_WORD_SUB_EQ_0] THEN ASM_REWRITE_TAC[];;
+
+let ARM_ACCSIM_TAC execth anums snums =
+  REWRITE_TAC(!simulation_precanon_thms) THEN
+  ENSURES_INIT_TAC "s0" THEN ARM_ACCSTEPS_TAC execth anums snums THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[VAL_WORD_SUB_EQ_0] THEN ASM_REWRITE_TAC[];;
+
+(* ------------------------------------------------------------------------- *)
+(* Simulate through a lemma in ?- ensures step P Q C ==> eventually R s      *)
+(* ------------------------------------------------------------------------- *)
+
+let (ARM_BIGSTEP_TAC:thm->string->tactic) =
+  let lemma = prove
+   (`P s /\ (!s':S. Q s' /\ C s s' ==> eventually step R s')
+     ==> ensures step P Q C ==> eventually step R s`,
+    STRIP_TAC THEN GEN_REWRITE_TAC LAND_CONV [ensures] THEN
+    DISCH_THEN(MP_TAC o SPEC `s:S`) THEN ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC(MESON[]
+     `(!s:S. eventually step P s ==> eventually step Q s)
+      ==> eventually step P s ==> eventually step Q s`) THEN
+    GEN_REWRITE_TAC I [EVENTUALLY_IMP_EVENTUALLY] THEN
+    ASM_REWRITE_TAC[]) in
+  fun execth sname (asl,w) ->
+    let sv = mk_var(sname,type_of(rand(rand w))) in
+    (GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV)
+      (!simulation_precanon_thms) THEN
+     MATCH_MP_TAC lemma THEN CONJ_TAC THENL
+      [BETA_TAC THEN ASM_REWRITE_TAC[];
+       BETA_TAC THEN X_GEN_TAC sv THEN
+       REPEAT(DISCH_THEN(CONJUNCTS_THEN2 STRIP_ASSUME_TAC MP_TAC)) THEN
+       GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV) [MAYCHANGE; SEQ_ID] THEN
+       GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV) [GSYM SEQ_ASSOC] THEN
+       GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV) [ASSIGNS_SEQ] THEN
+       GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV) [ASSIGNS_THM] THEN
+       REWRITE_TAC[LEFT_IMP_EXISTS_THM] THEN REPEAT GEN_TAC THEN
+       NONSELFMODIFYING_STATE_UPDATE_TAC
+        (MATCH_MP aligned_bytes_loaded_update (CONJUNCT1 execth)) THEN
+       ASSUMPTION_STATE_UPDATE_TAC THEN
+       MAYCHANGE_STATE_UPDATE_TAC THEN
+       DISCH_THEN(K ALL_TAC) THEN DISCARD_OLDSTATE_TAC sname])
+    (asl,w);;
+
+(* ------------------------------------------------------------------------- *)
+(* Simulate a subroutine, instantiating it from the state.                   *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
+  let subimpth =
+    let th = MATCH_MP aligned_bytes_loaded_of_append3
+      (TRANS machinecode
+         (N_SUBLIST_CONV (SPEC_ALL submachinecode) offset
+                         (rhs(concl machinecode)))) in
+    let len = rand (lhand (concl th)) in
+    let th = REWRITE_RULE [
+      (REWRITE_CONV [LENGTH] THENC NUM_REDUCE_CONV) len] th in
+    MP th (EQT_ELIM (NUM_DIVIDES_CONV (lhand (concl th)))) in
+  fun ilist0 n ->
+    let sname = "s"^string_of_int(n-1)
+    and sname' = "s"^string_of_int n in
+    let svar = mk_var(sname,`:armstate`)
+    and svar0 = mk_var("s",`:armstate`) in
+    let ilist = map (vsubst[svar,svar0]) ilist0 in
+    MP_TAC(SPECL ilist subth) THEN
+    ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    REWRITE_TAC[ALLPAIRS; ALL; NONOVERLAPPING_CLAUSES] THEN
+    ANTS_TAC THENL
+     [CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
+      ALIGNED_16_TAC THEN REPEAT CONJ_TAC THEN NONOVERLAPPING_TAC;
+      CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV
+       NORMALIZE_RELATIVE_ADDRESS_CONV))] THEN
+    ARM_BIGSTEP_TAC execth sname' THENL
+     [MATCH_MP_TAC subimpth THEN FIRST_X_ASSUM ACCEPT_TAC;
+      ALL_TAC];;
+
+let ARM_SUBROUTINE_SIM_ABBREV_TAC tupper ilist0 =
+  let tac = ARM_SUBROUTINE_SIM_TAC tupper ilist0 in
+  fun comp0 abn n (asl,w) ->
+    let svar0 = mk_var("s",`:armstate`)
+    and svar0' = mk_var("s'",`:armstate`)
+    and svar = mk_var("s"^string_of_int(n-1),`:armstate`)
+    and svar' = mk_var("s"^string_of_int n,`:armstate`) in
+    let comp1 =
+      rand(concl(PURE_ONCE_REWRITE_CONV (map snd asl)
+        (vsubst[svar,svar0;svar',svar0'] comp0))) in
+    (tac n THEN
+     ABBREV_TAC(mk_eq(mk_var(abn,type_of comp1),comp1))) (asl,w);;
+
+(* ------------------------------------------------------------------------- *)
+(* Fix up call/return boilerplate given core correctness.                    *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_ADD_RETURN_NOSTACK_TAC =
+  let lemma1 = prove
+   (`ensures step P Q R /\
+     (!s s'. P s /\ Q s' /\ R s s' ==> Q' s')
+     ==> ensures step P (\s. Q s /\ Q' s) R`,
+    ONCE_REWRITE_TAC[IMP_CONJ_ALT] THEN DISCH_TAC THEN
+    MATCH_MP_TAC ENSURES_SUBLEMMA_THM THEN
+    REWRITE_TAC[SUBSUMED_REFL] THEN ASM_MESON_TAC[]) in
+  let lemma2 = prove
+   (`C ,, C = C /\
+     (!s s'. program_decodes s /\ pcdata s /\ returndata s /\ P s /\
+             Q s' /\ C s s'
+             ==> program_decodes s' /\ returndata s') /\
+     ensures step (\s. program_decodes s /\ returndata s /\ Q s) R C
+     ==> ensures step (\s. program_decodes s /\ pcdata s /\ P s) Q C
+          ==> ensures step
+               (\s. program_decodes s /\ pcdata s /\ returndata s /\ P s) R C`,
+    ONCE_REWRITE_TAC[TAUT
+     `a /\ p /\ q ==> r ==> s <=> a ==> p ==> r ==> q ==> s`] THEN
+    DISCH_TAC THEN DISCH_TAC THEN DISCH_TAC THEN
+    MATCH_MP_TAC(ONCE_REWRITE_RULE
+     [TAUT `p /\ q /\ r ==> s <=> p /\ q ==> r ==> s`]
+     ENSURES_TRANS_SIMPLE) THEN
+    ASM_REWRITE_TAC[] THEN
+    GEN_REWRITE_TAC (LAND_CONV o BINDER_CONV)
+     [TAUT `p /\ q /\ r <=> r /\ p /\ q`] THEN
+    MATCH_MP_TAC lemma1 THEN ASM_REWRITE_TAC[] THEN
+    CONJ_TAC THENL [ALL_TAC; ASM_MESON_TAC[]] THEN
+    FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (REWRITE_RULE[IMP_CONJ_ALT]
+          ENSURES_PRECONDITION_THM)) THEN
+    SIMP_TAC[]) in
+  fun execth coreth ->
+    MP_TAC coreth THEN
+    REPEAT(MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
+    REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
+    REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    DISCH_THEN(fun th ->
+      REPEAT GEN_TAC THEN
+      TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
+      MP_TAC th) THEN
+    ASM_REWRITE_TAC[] THEN
+    TRY(ANTS_TAC THENL
+     [REPEAT CONJ_TAC THEN ALIGNED_16_TAC THEN
+      TRY DISJ2_TAC THEN NONOVERLAPPING_TAC;
+      ALL_TAC]) THEN
+    MATCH_MP_TAC lemma2 THEN REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
+     [MAYCHANGE_IDEMPOT_TAC;
+      REPEAT GEN_TAC THEN REWRITE_TAC(!simulation_precanon_thms) THEN
+      REPEAT(DISCH_THEN(CONJUNCTS_THEN2 STRIP_ASSUME_TAC MP_TAC)) THEN
+      REWRITE_TAC[MAYCHANGE; SEQ_ID] THEN
+      REWRITE_TAC[GSYM SEQ_ASSOC] THEN
+      REWRITE_TAC[ASSIGNS_SEQ] THEN REWRITE_TAC[ASSIGNS_THM] THEN
+      REWRITE_TAC[LEFT_IMP_EXISTS_THM] THEN REPEAT GEN_TAC THEN
+      NONSELFMODIFYING_STATE_UPDATE_TAC
+       (MATCH_MP aligned_bytes_loaded_update (CONJUNCT1 execth)) THEN
+      ASSUMPTION_STATE_UPDATE_TAC THEN
+      DISCH_THEN(K ALL_TAC) THEN ASM_REWRITE_TAC[] THEN NO_TAC;
+      REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
+      REPEAT(FIRST_X_ASSUM(DISJ_CASES_TAC o check
+       (can (term_match [] `read PC s = a \/ Q` o concl)))) THEN
+      ARM_STEPS_TAC execth [1] THEN
+      ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]];;
+
+(* ------------------------------------------------------------------------- *)
+(* Version with register save/restore and stack adjustment.                  *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_ADD_RETURN_STACK_TAC =
+  let mono2lemma = MESON[]
+   `(!x. (!y. P x y) ==> (!y. Q x y)) ==> (!x y. P x y) ==> (!x y. Q x y)` in
+  fun execth coreth reglist stackoff ->
+    let regs = dest_list reglist in
+    let n = let n0 = length regs / 2 in
+            if 16 * n0 = stackoff then n0 else n0 + 1 in
+    MP_TAC coreth THEN
+    REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
+    (if free_in `SP` (concl coreth) then
+      DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
+      MATCH_MP_TAC MONO_FORALL THEN GEN_TAC
+     else
+      MATCH_MP_TAC MONO_FORALL THEN GEN_TAC THEN
+      DISCH_THEN(fun th ->
+        WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th)) THEN
+    REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
+    REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    DISCH_THEN(fun th ->
+      REPEAT GEN_TAC THEN
+      TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
+      MP_TAC th) THEN
+    ASM_REWRITE_TAC[] THEN
+    TRY(ANTS_TAC THENL
+     [REPEAT CONJ_TAC THEN ALIGNED_16_TAC THEN
+      TRY DISJ2_TAC THEN NONOVERLAPPING_TAC;
+      ALL_TAC]) THEN
+    DISCH_THEN(fun th ->
+      ENSURES_EXISTING_PRESERVED_TAC `SP` THEN
+      MAP_EVERY (fun c -> ENSURES_PRESERVED_TAC ("init_"^fst(dest_const c)) c)
+                regs THEN
+      REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
+      ARM_STEPS_TAC execth (1--n) THEN
+      MP_TAC th) THEN
+    ARM_BIGSTEP_TAC execth ("s"^string_of_int(n+1)) THEN
+    REWRITE_TAC(!simulation_precanon_thms) THEN
+    ARM_STEPS_TAC execth ((n+2)--(2*n+2)) THEN
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];;
+
+(* ------------------------------------------------------------------------- *)
+(* Handling more general branch targets                                      *)
+(* ------------------------------------------------------------------------- *)
+
+let BL_TARGET_CONV =
+  let pth = prove
+   (`pc < 0x8000000 /\ tgt < 0x8000000 /\ 4 divides pc /\ 4 divides tgt ==>
+     word_add (word pc) (word_sx (word (val (iword
+      ((&tgt - &pc) div &4):26 word) * 4):28 word)):int64 = word tgt`,
+    STRIP_TAC THEN SUBGOAL_THEN
+    `word (val (iword ((&tgt - &pc) div &4):26 word) * 4) =
+      iword (&tgt - &pc):28 word` (fun th ->
+      IMP_REWRITE_TAC [
+        th; word_sx; IVAL_IWORD; WORD_VAL; WORD_IWORD; IWORD_IVAL;
+        GSYM IWORD_INT_ADD; INT_SUB_ADD2] THEN
+      CONV_TAC (ONCE_DEPTH_CONV DIMINDEX_CONV THENC
+        NUM_REDUCE_CONV THENC INT_REDUCE_CONV) THEN ASM_ARITH_TAC) THEN
+    let arith = ARITH_RULE `~(&2 = &0:int) /\ ~(&4 = &0:int)` in
+    SUBGOAL_THEN `&tgt - &pc = ((&tgt - &pc) div &4) * &4` (fun th ->
+      CONV_TAC (RAND_CONV (ONCE_REWRITE_CONV [th]))) THENL
+     [REPEAT (POP_ASSUM
+        (SUBST1_TAC o SYM o REWRITE_RULE [DIVIDES_DIV_MULT])) THEN
+      IMP_REWRITE_TAC [GSYM INT_OF_NUM_MUL; GSYM INT_SUB_RDISTRIB;
+        INT_DIV_MUL; arith]; ALL_TAC] THEN
+    REWRITE_TAC [iword; VAL_WORD] THEN AP_TERM_TAC THEN
+    CONV_TAC (ONCE_DEPTH_CONV DIMINDEX_CONV) THEN
+    IMP_REWRITE_TAC [GSYM INT_OF_NUM_EQ; INT_OF_NUM_OF_INT;
+      GSYM INT_OF_NUM_MUL; GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_POW;
+      INT_REM_REM; INT_REM_POS; INT_POW_EQ_0; INT_REM_MUL_REM;
+      INT_POW_LE; INT_POS; arith;
+      ARITH_RULE `&2:int pow 28 = &4 * &2 pow 26`;
+      INT_DIV_MUL; INT_REM_MUL; INT_ADD_RID; INT_MUL_SYM])
+
+  and pth2 = METIS [aligned_bytes_loaded_word]
+   `aligned_bytes_loaded s (word pc) v ==> 4 divides pc` in
+
+  fun asl ->
+    let rec prover = function
+    | Comb(Comb(Const("/\\",_),a),b) -> CONJ (prover a) (prover b)
+    | Comb(Comb(Const("num_divides",_),_),
+        Comb(Comb(Const("+",_),_),_)) as tm ->
+      let th = PART_MATCH rand DIVIDES_ADD tm in
+      MP th (prover (lhand (concl th)))
+    | Comb(Comb(Const("num_divides",_),_),n) as tm when is_numeral n ->
+      EQT_ELIM (NUM_DIVIDES_CONV tm)
+    | Comb(Comb(Const("num_divides",_),_),pc) ->
+      let pth' = INST [pc,`pc:num`] pth2
+      and lconsts = frees pc in
+      let tm' = lhand (concl pth') in
+      tryfind (fun h ->
+        MP (INSTANTIATE (term_match lconsts tm' (concl h)) pth') h) asl
+    | Comb(Comb(Const("<",_),pc),_) as tm ->
+      let pc = repeat lhand pc in
+      tryfind (fun h ->
+        match concl h with
+        | Comb(Comb(Const("<",_),pc'),_)
+        | Comb(Comb(Const("<=",_),pc'),_) when pc' = pc ->
+          MP (ARITH_RULE (list_mk_comb (`==>`, [concl h; tm]))) h
+        | _ -> fail ()) asl
+    | t -> failwith ("BL_TARGET_TAC " ^ string_of_term t) in
+    fun tm ->
+      let th = PART_MATCH (lhs o rand) pth tm in
+      MP th (prover (lhand (concl th)));;
+
+let BL_TARGET_TAC =
+  ASSUM_LIST (CONV_TAC o CHANGED_CONV o ONCE_DEPTH_CONV o BL_TARGET_CONV) THEN
+  REWRITE_TAC [];;

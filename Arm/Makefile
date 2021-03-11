@@ -131,7 +131,7 @@ OBJ = bignum_add.o \
       bignum_triple_p384.o \
       word_clz.o \
       word_ctz.o \
-      word_negmodinv.o \
+      word_negmodinv.o
 
 %.o : %.S ; cpp $< | $(GAS) -o $@ -
 
