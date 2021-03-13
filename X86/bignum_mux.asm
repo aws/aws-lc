@@ -28,9 +28,7 @@
 %define z rdx
 %define x rcx
 %define y r8
-%define m r9
-%define n r10
-%define i r11
+%define i r9
 %define a rax
 
                 global  bignum_mux
@@ -40,21 +38,15 @@ bignum_mux:
                 test    k, k
                 jz      end                     ; If length = 0 do nothing
 
-                neg     b                       ; CF <=> (b != 0)
-                sbb     m, m                    ; m = mask for (b != 0)
-                mov     n, m
-                not     n                       ; n = mask for (b == 0)
                 xor     i, i
-
+                neg     b                       ; CF <=> (b != 0)
 loop:
                 mov     a, [x+8*i]
                 mov     b, [y+8*i]
-                and     a, m
-                and     b, n
-                or      a, b
+                cmovnc  a, b                    ; CF ? a : b
                 mov     [z+8*i],a
                 inc     i
-                cmp     i, k
-                jc      loop
+                dec     k
+                jnz     loop
 end:
                 ret
