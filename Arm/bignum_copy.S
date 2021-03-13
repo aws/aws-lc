@@ -57,10 +57,8 @@ copyloop:
 padding:
                 cmp     i, k
                 bcs     end
-                mov     a, 0
-
 padloop:
-                str     a, [z, i, LSL 3]
+                str     xzr, [z, i, LSL 3]
                 add     i, i, 1
                 cmp     i, k
                 bcc     padloop

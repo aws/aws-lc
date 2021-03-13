@@ -33,9 +33,8 @@ let bignum_copy_mc =
   0xeb02009f;       (* arm_CMP X4 X2 *)
   0x54ffff83;       (* arm_BCC (word 2097136) *)
   0xeb00009f;       (* arm_CMP X4 X0 *)
-  0x540000c2;       (* arm_BCS (word 24) *)
-  0xd2800005;       (* arm_MOV X5 (rvalue (word 0)) *)
-  0xf8247825;       (* arm_STR X5 X1 (Shiftreg_Offset X4 3) *)
+  0x540000a2;       (* arm_BCS (word 20) *)
+  0xf824783f;       (* arm_STR XZR X1 (Shiftreg_Offset X4 3) *)
   0x91000484;       (* arm_ADD X4 X4 (rvalue (word 1)) *)
   0xeb00009f;       (* arm_CMP X4 X0 *)
   0x54ffffa3;       (* arm_BCC (word 2097140) *)
@@ -50,14 +49,14 @@ let BIGNUM_COPY_EXEC = ARM_MK_EXEC_RULE bignum_copy_mc;;
 
 let BIGNUM_COPY_CORRECT = prove
  (`!k z n x a pc.
-     nonoverlapping (word pc,0x44) (z,8 * val k) /\
+     nonoverlapping (word pc,0x40) (z,8 * val k) /\
      (x = z \/ nonoverlapping (x,8 * MIN (val n) (val k)) (z,8 * val k))
      ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) bignum_copy_mc /\
                 read PC s = word pc /\
                 C_ARGUMENTS [k; z; n; x] s /\
                 bignum_from_memory (x,val n) s = a)
-           (\s. read PC s = word (pc + 0x40) /\
+           (\s. read PC s = word (pc + 0x3c) /\
                 bignum_from_memory (z,val k) s = lowdigits a (val k))
           (MAYCHANGE [PC; X2; X4; X5] ,, MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
@@ -157,14 +156,13 @@ let BIGNUM_COPY_CORRECT = prove
   SUBGOAL_THEN `~(k:num <= n)` ASSUME_TAC THENL
    [ASM_REWRITE_TAC[NOT_LE]; ALL_TAC] THEN
 
-  ENSURES_WHILE_AUP_TAC `n:num` `k:num` `pc + 0x30` `pc + 0x38`
+  ENSURES_WHILE_AUP_TAC `n:num` `k:num` `pc + 0x2c` `pc + 0x34`
    `\i s. read X0 s = word k /\
           read X1 s = z /\
           read X4 s = word i /\
-          read X5 s = word 0 /\
           bignum_from_memory(z,i) s = a` THEN
   ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
-   [ARM_SIM_TAC BIGNUM_COPY_EXEC (1--3);
+   [ARM_SIM_TAC BIGNUM_COPY_EXEC (1--2);
     X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
     REWRITE_TAC[BIGNUM_FROM_MEMORY_STEP] THEN
     ARM_SIM_TAC BIGNUM_COPY_EXEC (1--2) THEN
@@ -175,7 +173,7 @@ let BIGNUM_COPY_CORRECT = prove
 
 let BIGNUM_COPY_SUBROUTINE_CORRECT = prove
  (`!k z n x a pc returnaddress.
-     nonoverlapping (word pc,0x44) (z,8 * val k) /\
+     nonoverlapping (word pc,0x40) (z,8 * val k) /\
      (x = z \/ nonoverlapping(x,8 * MIN (val n) (val k)) (z,8 * val k))
      ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) bignum_copy_mc  /\
