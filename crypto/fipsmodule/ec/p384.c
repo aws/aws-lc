@@ -423,13 +423,18 @@ static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   fiat_p384_to_generic(&r->Z, z);
 }
 
+// The calls to from/to_generic are needed for the case
+// when BORINGSSL_HAS_UINT128 is undefined, i.e. p384_32.h fiat code is used;
+// while OPENSSL_64_BIT is defined, i.e. BN_ULONG is uint64_t
 static void ec_GFp_nistp384_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
                                          size_t *out_len, const EC_FELEM *in) {
   size_t len = BN_num_bytes(&group->field);
   EC_FELEM felem_tmp;
   fiat_p384_felem tmp;
   fiat_p384_from_generic(tmp, in);
-  fiat_p384_from_montgomery(felem_tmp.words, tmp);
+  fiat_p384_from_montgomery(tmp, tmp);
+  fiat_p384_to_generic(&felem_tmp, tmp);
+
   // Convert to a big-endian byte array.
   for (size_t i = 0; i < len; i++) {
     out[i] = felem_tmp.bytes[len - 1 - i];
@@ -439,12 +444,15 @@ static void ec_GFp_nistp384_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *
 
 static int ec_GFp_nistp384_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
                                           const uint8_t *in, size_t len) {
+  EC_FELEM felem_tmp;
+  fiat_p384_felem tmp;
   // This function calls bn_cmp_words_consttime
-  if (!ec_GFp_simple_felem_from_bytes(group, out, in, len)) {
+  if (!ec_GFp_simple_felem_from_bytes(group, &felem_tmp, in, len)) {
     return 0;
   }
-
-  fiat_p384_to_montgomery(out->words, out->words);
+  fiat_p384_from_generic(tmp, &felem_tmp);
+  fiat_p384_to_montgomery(tmp, tmp);
+  fiat_p384_to_generic(out, tmp);
   return 1;
 }
 
