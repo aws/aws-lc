@@ -42,7 +42,7 @@ var (
 	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
-	sslTests		= flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
+	sslTests        = flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
 	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
 	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "Runs the given number of workers when testing.")
@@ -110,7 +110,7 @@ var armCPUs = []string{
 func valgrindOf(dbAttach bool, supps []string, path string, args ...string) *exec.Cmd {
 	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--trace-children=yes", "--quiet"}
 	for _, supp := range supps {
-		valgrindArgs = append(valgrindArgs, "--suppressions=" + *valgrindSuppDir + "/" + supp)
+		valgrindArgs = append(valgrindArgs, "--suppressions="+*valgrindSuppDir+"/"+supp)
 	}
 	if dbAttach {
 		valgrindArgs = append(valgrindArgs, "--db-attach=yes", "--db-command=xterm -e gdb -nw %f %p")
@@ -420,7 +420,7 @@ func main() {
 				}
 			}
 
-			if *sslTests {
+			if !(*sslTests) {
 				if strings.Contains(fmt.Sprint(test.Cmd), "ssl_test") {
 					continue
 				}
