@@ -508,13 +508,20 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       if (type == EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN) {
         *(int *)p2 = rctx->saltlen;
       } else {
+        // |p1| can be |-2|, |-1| and non-negative.
+        // The functions of these values are mentioned in the API doc of
+        // |EVP_PKEY_CTX_set_rsa_pss_saltlen| in |evp.h|.
+        // Accordingly, |-2| is the smallest value that |p1| can be.
         if (p1 < -2) {
           return 0;
         }
         int min_saltlen = rctx->min_saltlen;
         if (min_saltlen != NO_PSS_SALT_LEN_RESTRICTION) {
+          // Check |min_saltlen| when |p1| is -1.
           if ((p1 == RSA_PSS_SALTLEN_DIGEST &&
                (size_t)min_saltlen > EVP_MD_size(rctx->md)) ||
+              // Check |min_saltlen| when |p1| is the value gives the size of
+              // the salt in bytes.
               (p1 >= 0 && p1 < min_saltlen)) {
             OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PSS_SALTLEN);
             return 0;
