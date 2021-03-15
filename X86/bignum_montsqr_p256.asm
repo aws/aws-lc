@@ -31,12 +31,6 @@
 
 %define zero rbp
 
-; Some temp registers for the last correction stage
-
-%define d rax
-%define u rdx
-%define v rcx
-
 ; Macro "mulpadd i x" adds rdx * x to the (i,i+1) position of
 ; the rotating register window r15,...,r8 maintaining consistent
 ; double-carrying using ADCX and ADOX and using rbx/rax as temps
@@ -85,9 +79,11 @@ bignum_montsqr_p256:
         push    r14
         push    r15
 
-; Set up an initial window [r14;...;r9] = [23;03;01]
+; Compute [r15;r8] = [00] which we use later, but mainly
+; set up an initial window [r14;...;r9] = [23;03;01]
 
         mov     rdx, [x]
+        mulx    r15, r8, rdx
         mulx    r10, r9, [x+8*1]
         mulx    r12, r11, [x+8*3]
         mov     rdx, [x+8*2]
@@ -111,10 +107,8 @@ bignum_montsqr_p256:
 ; Double and add to the 00 + 11 + 22 + 33 terms
 
         xor     zero, zero
-        mov     rdx, [x]
-        mulx    rdx, r8, rdx
         adcx    r9, r9
-        adox    r9, rdx
+        adox    r9, r15
         mov     rdx, [x+8*1]
         mulx    rdx, rax, rdx
         adcx    r10, r10
@@ -134,8 +128,8 @@ bignum_montsqr_p256:
         adcx    r15, zero
         adox    r15, zero
 
-; First two waves of Montgomery reduction.
-; Catch the carry at the 6 position (r14) in r9, which is no longer needed
+; First two waves of Montgomery reduction. Consolidate the double carries
+; in r9 and propagate up to the top in r8, which is no longer needed otherwise.
 
         xor     zero, zero
         mov     rdx, 0x0000000100000000
@@ -148,9 +142,12 @@ bignum_montsqr_p256:
         mov     r9, zero
         adox    r9, zero
         adcx    r9, zero
+        add     r14, r9
+        adc     r15, zero
+        mov     r8, zero
+        adc     r8, zero
 
-; Now two more steps of Montgomery reduction.
-; Catch the carry at the 8 position (r14) in r8
+; Now two more steps of Montgomery reduction, again with r8 = top carry
 
         xor     zero, zero
         mov     rdx, 0x0000000100000000
@@ -160,48 +157,31 @@ bignum_montsqr_p256:
         mulpadd 5, r10
         mulpadd 6, r11
         adcx    r15, zero
-        mov     r8, zero
         adox    r8, zero
         adcx    r8, zero
 
-; Finally add in the skipped carry to give a pre-reduced 5-word form
-; in the window [r8; r15;r14;r13;r12]
+; Load [rax;r11;rbp;rdx;rcx] = 2^320 - p_256, re-using earlier numbers a bit
+; Do [rax;r11;rbp;rdx;rcx] = [r8;r15;r14;r13;r12] + (2^320 - p_256)
 
-        add     r14, r9
-        adc     r15, 0
-        adc     r8, 0
+        mov     rcx, 1
+        add     rcx, r12
+        lea     rdx, [rdx-1]
+        adc     rdx, r13
+        lea     rbp, [rbp-1]
+        mov     rax, rbp
+        adc     rbp, r14
+        mov     r11,  0x00000000fffffffe
+        adc     r11, r15
+        adc     rax, r8
 
-; Load non-trivial digits of p_256 = [v; 0; u; -1]
+; Now carry is set if r + (2^320 - p_256) >= 2^320, i.e. r >= p_256
+; where r is the pre-reduced form. So conditionally select the
+; output accordingly.
 
-        mov     u, 0x00000000ffffffff
-        mov     v, 0xffffffff00000001
-
-; Now do the subtraction (0,p_256-1) - (r8,r15,r14,r13,r12) to get the carry
-
-        mov     d, -2
-        sub     d, r12
-        mov     d, u
-        sbb     d, r13
-        mov     d, 0
-        sbb     d, r14
-        mov     d, v
-        sbb     d, r15
-
-; This last last comparison in the chain will actually even set the mask
-; for us, so we don't need to separately create it from the carry.
-; This means p_256 - 1 < (c,d1,d0,d5,d4), i.e. we are so far >= p_256
-
-        mov     d, 0
-        sbb     d, r8
-        and     u, d
-        and     v, d
-
-; Do a masked subtraction of p_256 and write back
-
-        sub     r12, d
-        sbb     r13, u
-        sbb     r14, 0
-        sbb     r15, v
+        cmovc   r12, rcx
+        cmovc   r13, rdx
+        cmovc   r14, rbp
+        cmovc   r15, r11
 
 ; Write back reduced value
 

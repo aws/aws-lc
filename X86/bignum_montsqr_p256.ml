@@ -30,6 +30,8 @@ let bignum_montsqr_p256_mc =
   0x41; 0x56;              (* PUSH (% r14) *)
   0x41; 0x57;              (* PUSH (% r15) *)
   0x48; 0x8b; 0x16;        (* MOV (% rdx) (Memop Quadword (%% (rsi,0))) *)
+  0xc4; 0x62; 0xbb; 0xf6; 0xfa;
+                           (* MULX4 (% r15,% r8) (% rdx,% rdx) *)
   0xc4; 0x62; 0xb3; 0xf6; 0x56; 0x08;
                            (* MULX4 (% r10,% r9) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0xc4; 0x62; 0xa3; 0xf6; 0x66; 0x18;
@@ -64,13 +66,10 @@ let bignum_montsqr_p256_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf5;
                            (* ADCX (% r14) (% rbp) *)
   0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
-  0x48; 0x8b; 0x16;        (* MOV (% rdx) (Memop Quadword (%% (rsi,0))) *)
-  0xc4; 0xe2; 0xbb; 0xf6; 0xd2;
-                           (* MULX4 (% rdx,% r8) (% rdx,% rdx) *)
   0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xc9;
                            (* ADCX (% r9) (% r9) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xca;
-                           (* ADOX (% r9) (% rdx) *)
+  0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xcf;
+                           (* ADOX (% r9) (% r15) *)
   0x48; 0x8b; 0x56; 0x08;  (* MOV (% rdx) (Memop Quadword (%% (rsi,8))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0xd2;
                            (* MULX4 (% rdx,% rax) (% rdx,% rdx) *)
@@ -140,6 +139,10 @@ let bignum_montsqr_p256_mc =
                            (* ADOX (% r9) (% rbp) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xcd;
                            (* ADCX (% r9) (% rbp) *)
+  0x4d; 0x01; 0xce;        (* ADD (% r14) (% r9) *)
+  0x49; 0x11; 0xef;        (* ADC (% r15) (% rbp) *)
+  0x49; 0x89; 0xe8;        (* MOV (% r8) (% rbp) *)
+  0x49; 0x11; 0xe8;        (* ADC (% r8) (% rbp) *)
   0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
   0x48; 0xba; 0x00; 0x00; 0x00; 0x00; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% rdx) (Imm64 (word 4294967296)) *)
@@ -171,37 +174,26 @@ let bignum_montsqr_p256_mc =
                            (* ADOX (% r15) (% rbx) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
                            (* ADCX (% r15) (% rbp) *)
-  0x49; 0x89; 0xe8;        (* MOV (% r8) (% rbp) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xc5;
                            (* ADOX (% r8) (% rbp) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc5;
                            (* ADCX (% r8) (% rbp) *)
-  0x4d; 0x01; 0xce;        (* ADD (% r14) (% r9) *)
-  0x49; 0x83; 0xd7; 0x00;  (* ADC (% r15) (Imm8 (word 0)) *)
-  0x49; 0x83; 0xd0; 0x00;  (* ADC (% r8) (Imm8 (word 0)) *)
-  0xba; 0xff; 0xff; 0xff; 0xff;
-                           (* MOV (% edx) (Imm32 (word 4294967295)) *)
-  0x48; 0xb9; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
-                           (* MOV (% rcx) (Imm64 (word 18446744069414584321)) *)
-  0x48; 0xc7; 0xc0; 0xfe; 0xff; 0xff; 0xff;
-                           (* MOV (% rax) (Imm32 (word 4294967294)) *)
-  0x4c; 0x29; 0xe0;        (* SUB (% rax) (% r12) *)
-  0x48; 0x89; 0xd0;        (* MOV (% rax) (% rdx) *)
-  0x4c; 0x19; 0xe8;        (* SBB (% rax) (% r13) *)
-  0xb8; 0x00; 0x00; 0x00; 0x00;
-                           (* MOV (% eax) (Imm32 (word 0)) *)
-  0x4c; 0x19; 0xf0;        (* SBB (% rax) (% r14) *)
-  0x48; 0x89; 0xc8;        (* MOV (% rax) (% rcx) *)
-  0x4c; 0x19; 0xf8;        (* SBB (% rax) (% r15) *)
-  0xb8; 0x00; 0x00; 0x00; 0x00;
-                           (* MOV (% eax) (Imm32 (word 0)) *)
-  0x4c; 0x19; 0xc0;        (* SBB (% rax) (% r8) *)
-  0x48; 0x21; 0xc2;        (* AND (% rdx) (% rax) *)
-  0x48; 0x21; 0xc1;        (* AND (% rcx) (% rax) *)
-  0x49; 0x29; 0xc4;        (* SUB (% r12) (% rax) *)
-  0x49; 0x19; 0xd5;        (* SBB (% r13) (% rdx) *)
-  0x49; 0x83; 0xde; 0x00;  (* SBB (% r14) (Imm8 (word 0)) *)
-  0x49; 0x19; 0xcf;        (* SBB (% r15) (% rcx) *)
+  0xb9; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% ecx) (Imm32 (word 1)) *)
+  0x4c; 0x01; 0xe1;        (* ADD (% rcx) (% r12) *)
+  0x48; 0x8d; 0x52; 0xff;  (* LEA (% rdx) (%% (rdx,18446744073709551615)) *)
+  0x4c; 0x11; 0xea;        (* ADC (% rdx) (% r13) *)
+  0x48; 0x8d; 0x6d; 0xff;  (* LEA (% rbp) (%% (rbp,18446744073709551615)) *)
+  0x48; 0x89; 0xe8;        (* MOV (% rax) (% rbp) *)
+  0x4c; 0x11; 0xf5;        (* ADC (% rbp) (% r14) *)
+  0x41; 0xbb; 0xfe; 0xff; 0xff; 0xff;
+                           (* MOV (% r11d) (Imm32 (word 4294967294)) *)
+  0x4d; 0x11; 0xfb;        (* ADC (% r11) (% r15) *)
+  0x4c; 0x11; 0xc0;        (* ADC (% rax) (% r8) *)
+  0x4c; 0x0f; 0x42; 0xe1;  (* CMOVB (% r12) (% rcx) *)
+  0x4c; 0x0f; 0x42; 0xea;  (* CMOVB (% r13) (% rdx) *)
+  0x4c; 0x0f; 0x42; 0xf5;  (* CMOVB (% r14) (% rbp) *)
+  0x4d; 0x0f; 0x42; 0xfb;  (* CMOVB (% r15) (% r11) *)
   0x4c; 0x89; 0x27;        (* MOV (Memop Quadword (%% (rdi,0))) (% r12) *)
   0x4c; 0x89; 0x6f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r13) *)
   0x4c; 0x89; 0x77; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r14) *)
@@ -225,13 +217,13 @@ let p_256 = new_definition `p_256 = 11579208921035624876269744694940757353008614
 
 let BIGNUM_MONTSQR_P256_CORRECT = time prove
  (`!z x a pc.
-        nonoverlapping (word pc,0x238) (z,8 * 4)
+        nonoverlapping (word pc,0x220) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montsqr_p256_mc /\
                   read RIP s = word(pc + 0x0a) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
-             (\s. read RIP s = word (pc + 0x22d) /\
+             (\s. read RIP s = word (pc + 0x215) /\
                   (a EXP 2 <= 2 EXP 256 * p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 (2 EXP 256) * a EXP 2) MOD p_256))
@@ -246,13 +238,13 @@ let BIGNUM_MONTSQR_P256_CORRECT = time prove
   (*** Globalize the a EXP 2 <= 2 EXP 256 * p_256  assumption ***)
 
   ASM_CASES_TAC `a EXP 2 <= 2 EXP 256 * p_256` THENL
-   [ASM_REWRITE_TAC[]; X86_SIM_TAC BIGNUM_MONTSQR_P256_EXEC (1--105)] THEN
+   [ASM_REWRITE_TAC[]; X86_SIM_TAC BIGNUM_MONTSQR_P256_EXEC (1--100)] THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,4) s0` THEN
 
-  X86_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_EXEC (1--83) (1--83) THEN
+  X86_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_EXEC (1--82) (1--82) THEN
   ABBREV_TAC
-   `t = bignum_of_wordlist [sum_s68; sum_s72; sum_s81; sum_s82; sum_s83]` THEN
+   `t = bignum_of_wordlist [sum_s71; sum_s75; sum_s78; sum_s80; sum_s82]` THEN
   SUBGOAL_THEN
    `t < 2 * p_256 /\ (2 EXP 256 * t == a EXP 2) (mod p_256)`
   STRIP_ASSUME_TAC THENL
@@ -273,28 +265,9 @@ let BIGNUM_MONTSQR_P256_CORRECT = time prove
       ASM_REWRITE_TAC[] THEN REAL_INTEGER_TAC];
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
-  X86_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_EXEC (84--95) (84--95) THEN
-  SUBGOAL_THEN
-  `sum_s95:int64 = word_neg(word(bitval(p_256 <= t))) /\
-   (carry_s95 <=> p_256 <= t)`
-  (CONJUNCTS_THEN SUBST_ALL_TAC) THENL
-   [SUBGOAL_THEN `p_256 <= t <=> p_256 - 1 < t` SUBST1_TAC THENL
-     [REWRITE_TAC[p_256] THEN ARITH_TAC; ALL_TAC] THEN
-    MATCH_MP_TAC FLAG_AND_MASK_FROM_CARRY_LT THEN
-    EXISTS_TAC `256` THEN REWRITE_TAC[GSYM REAL_OF_NUM_MUL] THEN
-    GEN_REWRITE_TAC I [CONJ_ASSOC] THEN CONJ_TAC THENL
-     [UNDISCH_TAC `t < 2 * p_256` THEN
-      REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; p_256] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN REAL_ARITH_TAC;
-      EXPAND_TAC "t" THEN
-      REWRITE_TAC[p_256; bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN
-      RULE_ASSUM_TAC(REWRITE_RULE[VAL_WORD_BITVAL]) THEN
-      ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
-      DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC];
-    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
+  (*** Final correction stage ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_EXEC (96--105) (96--105) THEN
+  X86_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_EXEC [84;86;89;91;92] (83--100) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   TRANS_TAC EQ_TRANS `t MOD p_256` THEN CONJ_TAC THENL
@@ -305,33 +278,37 @@ let BIGNUM_MONTSQR_P256_CORRECT = time prove
         ==> (e * i == 1) (mod p) ==> (t == i * a EXP 2) (mod p)`)) THEN
     REWRITE_TAC[INVERSE_MOD_RMUL_EQ; COPRIME_REXP; COPRIME_2] THEN
     REWRITE_TAC[p_256] THEN CONV_TAC NUM_REDUCE_CONV] THEN
-  ASM_SIMP_TAC[MOD_CASES] THEN
-  REWRITE_TAC[GSYM REAL_OF_NUM_EQ; GSYM REAL_OF_NUM_ADD] THEN
-  ONCE_REWRITE_TAC[COND_RAND] THEN
-  SIMP_TAC[GSYM REAL_OF_NUM_SUB; GSYM REAL_OF_NUM_ADD; GSYM NOT_LT] THEN
-  REWRITE_TAC[GSYM REAL_OF_NUM_MUL; GSYM REAL_OF_NUM_POW] THEN
-  MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
-  MAP_EVERY EXISTS_TAC [`256`; `&0:real`] THEN ASM_REWRITE_TAC[] THEN
-  CONJ_TAC THENL [BOUNDER_TAC; ALL_TAC] THEN CONJ_TAC THENL
-   [UNDISCH_TAC `t < 2 * p_256` THEN
-      REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; p_256] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN REAL_ARITH_TAC;
-    ALL_TAC] THEN
-  CONJ_TAC THENL [REAL_INTEGER_TAC; ALL_TAC] THEN
-  REWRITE_TAC[GSYM NOT_LE; COND_SWAP] THEN
+  CONV_TAC SYM_CONV THEN MATCH_MP_TAC EQUAL_FROM_CONGRUENT_MOD_MOD THEN
+  MAP_EVERY EXISTS_TAC
+   [`256`; `if t < p_256 then &t:real else &t - &p_256`] THEN
+  REPEAT CONJ_TAC THENL
+   [REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN BOUNDER_TAC;
+    REWRITE_TAC[p_256] THEN ARITH_TAC;
+    REWRITE_TAC[p_256] THEN ARITH_TAC;
+    ALL_TAC;
+    ASM_SIMP_TAC[MOD_CASES] THEN
+    GEN_REWRITE_TAC LAND_CONV [COND_RAND] THEN
+    SIMP_TAC[REAL_OF_NUM_SUB; GSYM NOT_LT]] THEN
+  SUBGOAL_THEN `carry_s92 <=> p_256 <= t` SUBST_ALL_TAC THENL
+   [MATCH_MP_TAC FLAG_FROM_CARRY_LE THEN EXISTS_TAC `320` THEN
+    EXPAND_TAC "t" THEN
+    REWRITE_TAC[p_256; bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
+    CONV_TAC NUM_REDUCE_CONV THEN
+    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC;
+    REWRITE_TAC[GSYM NOT_LT; COND_SWAP]] THEN
   COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN EXPAND_TAC "t" THEN
   REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist; p_256] THEN
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
   ASM_REWRITE_TAC[BITVAL_CLAUSES; VAL_WORD_BITVAL] THEN
-  CONV_TAC WORD_REDUCE_CONV THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
 
 let BIGNUM_MONTSQR_P256_SUBROUTINE_CORRECT = time prove
  (`!z x a pc stackpointer returnaddress.
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 48),56) /\
         ALL (nonoverlapping (word_sub stackpointer (word 48),48))
-            [(word pc,0x238); (x,8 * 4)] /\
-        nonoverlapping (word pc,0x238) (z,8 * 4)
+            [(word pc,0x220); (x,8 * 4)] /\
+        nonoverlapping (word pc,0x220) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montsqr_p256_mc /\
                   read RIP s = word pc /\
