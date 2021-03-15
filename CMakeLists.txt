@@ -737,7 +737,7 @@ if(BUILD_TESTING)
       add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR}
+                  ${CMAKE_BINARY_DIR} -ssl-tests=false
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
