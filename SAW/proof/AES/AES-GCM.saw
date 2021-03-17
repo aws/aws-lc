@@ -97,7 +97,6 @@ let points_to_evp_cipher_ctx_st ptr cipher_ptr cipher_data_ptr enc = do {
   crucible_points_to (crucible_field ptr "flags") (crucible_term {{ 0 : [32] }});
   crucible_points_to (crucible_field ptr "buf_len") (crucible_term {{ 0 : [32] }});
   crucible_points_to (crucible_field ptr "final_used") (crucible_term {{ 0 : [32] }});
-  crucible_points_to (crucible_field ptr "block_mask") (crucible_term {{ 0 : [32] }});
 };
 
 let fresh_aes_gcm_ctx len = do {
