@@ -227,6 +227,7 @@ Options:
                                  Only required for ci setup.
     --action                     Required. The value can be
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
+                                   'update-ci': update aws-lc ci. This only update AWS CodeBuild for GitHub CI.
                                    'destroy-ci': destroys AWS and Docker image resources used by aws-lc ci.
                                    'build-img': builds Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
@@ -323,6 +324,9 @@ function main() {
       exit 1
     fi
     setup_ci
+    ;;
+  update-ci)
+    create_github_ci_stack
     ;;
   destroy-ci)
     destroy_ci

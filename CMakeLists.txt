@@ -712,7 +712,7 @@ if(BUILD_TESTING)
                 -tests tests.json
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         DEPENDS modulewrapper
-        USES_TERMINAL)
+        ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
         fips_specific_tests_if_any
