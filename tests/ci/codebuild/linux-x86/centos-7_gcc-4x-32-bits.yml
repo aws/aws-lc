@@ -10,7 +10,6 @@ phases:
       - export CC=gcc
       - export CXX=g++
       - export AWSLC_32BIT=1
-      - export GO111MODULE=on
   build:
     commands:
       - ./tests/ci/run_posix_tests.sh
