@@ -138,7 +138,7 @@ function build_windows_img() {
 }
 
 function linux_docker_img_build_status_check() {
-  # Every 5 min, this function checks if the linux docker image batch code build is finished successfully.
+  # Every 5 min, this function checks if the linux docker image batch code build finished successfully.
   # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
   for i in {1..30}; do
     # https://docs.aws.amazon.com/cli/latest/reference/codebuild/batch-get-build-batches.html
@@ -337,7 +337,7 @@ function main() {
     cdk diff aws-lc-ci-*
     ;;
   *)
-    echo "--action is required. Use '--help' to see allowed enums."
+    echo "--action is required. Use '--help' to see allowed actions."
     exit 1
     ;;
   esac
