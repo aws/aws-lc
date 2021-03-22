@@ -2,12 +2,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-parent_dir="$(dirname -- "$(realpath -- "$file_name")")"
-# shellcheck source=../common.sh
-source "${parent_dir}/common.sh"
-
 #################################
-# Sett up environment variables #
+# Set up environment variables #
 #################################
 
 if [[ -z "${ECS_REPO+x}" || -z "${ECS_REPO}" ]]; then
@@ -20,7 +16,8 @@ if [[ -z "${GITHUB_REPO_OWNER+x}" || -z "${GITHUB_REPO_OWNER}" ]]; then
 fi
 
 # Environment variables used by AWS-C-CAL
-# https://github.com/awslabs/aws-c-cal/blob/905b0fd0ff2ca0d86c7e49b8ef4b636bac4600ea/.github/workflows/ci.yml
+# CI of AWS-C-CAL https://github.com/awslabs/aws-c-cal/blob/905b0fd0ff2ca0d86c7e49b8ef4b636bac4600ea/.github/workflows/ci.yml
+# The CI uses Docker images provided by https://github.com/awslabs/aws-crt-builder
 BUILDER_VERSION='v0.7.2'
 BASE_AWS_CRT_DOCKER_IMG_PREFIX='docker.pkg.github.com/awslabs/aws-crt-builder'
 AWS_CRT_MANY_LINUX_SUFFIXES=('aws-crt-manylinux1-x64' 'aws-crt-manylinux1-x86' 'aws-crt-manylinux2014-x64' 'aws-crt-manylinux2014-x86')

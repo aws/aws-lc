@@ -119,7 +119,6 @@ else()
 
 endif()
 add_subdirectory(fipsmodule)
-add_subdirectory(test)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
@@ -483,6 +482,9 @@ endif()
 
 SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
 
+if(WIN32)
+  target_link_libraries(crypto ws2_32)
+endif()
 if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(crypto pthread)
 endif()
@@ -493,98 +495,102 @@ if(USE_CUSTOM_LIBCXX)
   target_link_libraries(crypto libcxx)
 endif()
 
-# urandom_test is a separate binary because it needs to be able to observe the
-# PRNG initialisation, which means that it can't have other tests running before
-# it does.
-add_executable(
-  urandom_test
+if(BUILD_TESTING)
+  add_subdirectory(test)
 
-  fipsmodule/rand/urandom_test.cc
-)
+  # urandom_test is a separate binary because it needs to be able to observe the
+  # PRNG initialisation, which means that it can't have other tests running before
+  # it does.
+  add_executable(
+    urandom_test
 
-target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
+    fipsmodule/rand/urandom_test.cc
+  )
 
-add_dependencies(urandom_test global_target)
-add_dependencies(all_tests urandom_test)
+  target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
 
-add_executable(
-  crypto_test
+  add_dependencies(urandom_test global_target)
+  add_dependencies(all_tests urandom_test)
 
-  abi_self_test.cc
-  asn1/asn1_test.cc
-  base64/base64_test.cc
-  bio/bio_test.cc
-  blake2/blake2_test.cc
-  buf/buf_test.cc
-  bytestring/bytestring_test.cc
-  chacha/chacha_test.cc
-  cipher_extra/aead_test.cc
-  cipher_extra/cipher_test.cc
-  cmac/cmac_test.cc
-  compiler_test.cc
-  constant_time_test.cc
-  cpu-arm-linux_test.cc
-  crypto_test.cc
-  curve25519/ed25519_test.cc
-  curve25519/spake25519_test.cc
-  curve25519/x25519_test.cc
-  ecdh_extra/ecdh_test.cc
-  dh_extra/dh_test.cc
-  digest_extra/digest_test.cc
-  dsa/dsa_test.cc
-  err/err_test.cc
-  evp/evp_extra_test.cc
-  evp/evp_test.cc
-  evp/pbkdf_test.cc
-  evp/scrypt_test.cc
-  fipsmodule/aes/aes_test.cc
-  fipsmodule/bn/bn_test.cc
-  fipsmodule/ec/ec_test.cc
-  fipsmodule/ec/p256-nistz_test.cc
-  fipsmodule/ecdsa/ecdsa_test.cc
-  fipsmodule/md5/md5_test.cc
-  fipsmodule/modes/gcm_test.cc
-  fipsmodule/rand/ctrdrbg_test.cc
-  fipsmodule/rand/fork_detect_test.cc
-  fipsmodule/sha/sha_test.cc
-  hkdf/hkdf_test.cc
-  hpke/hpke_test.cc
-  hmac_extra/hmac_test.cc
-  hrss/hrss_test.cc
-  impl_dispatch_test.cc
-  lhash/lhash_test.cc
-  obj/obj_test.cc
-  pem/pem_test.cc
-  pkcs7/pkcs7_test.cc
-  pkcs8/pkcs8_test.cc
-  pkcs8/pkcs12_test.cc
-  poly1305/poly1305_test.cc
-  pool/pool_test.cc
-  rand_extra/rand_test.cc
-  refcount_test.cc
-  rsa_extra/rsa_test.cc
-  self_test.cc
-  stack/stack_test.cc
-  siphash/siphash_test.cc
-  test/file_test_gtest.cc
-  thread_test.cc
-  trust_token/trust_token_test.cc
-  x509/x509_test.cc
-  x509/x509_time_test.cc
-  x509v3/tab_test.cc
-  x509v3/v3name_test.cc
+  add_executable(
+    crypto_test
 
-  $<TARGET_OBJECTS:crypto_test_data>
-  $<TARGET_OBJECTS:boringssl_gtest_main>
-)
+    abi_self_test.cc
+    asn1/asn1_test.cc
+    base64/base64_test.cc
+    bio/bio_test.cc
+    blake2/blake2_test.cc
+    buf/buf_test.cc
+    bytestring/bytestring_test.cc
+    chacha/chacha_test.cc
+    cipher_extra/aead_test.cc
+    cipher_extra/cipher_test.cc
+    cmac/cmac_test.cc
+    compiler_test.cc
+    constant_time_test.cc
+    cpu-arm-linux_test.cc
+    crypto_test.cc
+    curve25519/ed25519_test.cc
+    curve25519/spake25519_test.cc
+    curve25519/x25519_test.cc
+    ecdh_extra/ecdh_test.cc
+    dh_extra/dh_test.cc
+    digest_extra/digest_test.cc
+    dsa/dsa_test.cc
+    err/err_test.cc
+    evp/evp_extra_test.cc
+    evp/evp_test.cc
+    evp/pbkdf_test.cc
+    evp/scrypt_test.cc
+    fipsmodule/aes/aes_test.cc
+    fipsmodule/bn/bn_test.cc
+    fipsmodule/ec/ec_test.cc
+    fipsmodule/ec/p256-nistz_test.cc
+    fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/md5/md5_test.cc
+    fipsmodule/modes/gcm_test.cc
+    fipsmodule/rand/ctrdrbg_test.cc
+    fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/sha/sha_test.cc
+    hkdf/hkdf_test.cc
+    hpke/hpke_test.cc
+    hmac_extra/hmac_test.cc
+    hrss/hrss_test.cc
+    impl_dispatch_test.cc
+    lhash/lhash_test.cc
+    obj/obj_test.cc
+    pem/pem_test.cc
+    pkcs7/pkcs7_test.cc
+    pkcs8/pkcs8_test.cc
+    pkcs8/pkcs12_test.cc
+    poly1305/poly1305_test.cc
+    pool/pool_test.cc
+    rand_extra/rand_test.cc
+    refcount_test.cc
+    rsa_extra/rsa_test.cc
+    self_test.cc
+    stack/stack_test.cc
+    siphash/siphash_test.cc
+    test/file_test_gtest.cc
+    thread_test.cc
+    trust_token/trust_token_test.cc
+    x509/x509_test.cc
+    x509/x509_time_test.cc
+    x509v3/tab_test.cc
+    x509v3/v3name_test.cc
 
-add_dependencies(crypto_test global_target)
+    $<TARGET_OBJECTS:crypto_test_data>
+    $<TARGET_OBJECTS:boringssl_gtest_main>
+  )
 
-target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
-if(WIN32)
-  target_link_libraries(crypto_test ws2_32)
+  add_dependencies(crypto_test global_target)
+
+  target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
+  if(WIN32)
+    target_link_libraries(crypto_test ws2_32)
+  endif()
+  add_dependencies(all_tests crypto_test)
 endif()
-add_dependencies(all_tests crypto_test)
 
 install(TARGETS crypto
         EXPORT crypto-targets
