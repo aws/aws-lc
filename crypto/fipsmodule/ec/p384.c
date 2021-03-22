@@ -503,6 +503,479 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   return 0;
 }
 
+//                    SCALAR MULTIPLICATION OPERATIONS
+// ----------------------------------------------------------------------------
+
+// fiat_p384_get_bit returns the |i|-th bit in |in|
+static crypto_word_t fiat_p384_get_bit(const uint8_t *in, int i) {
+  if (i < 0 || i >= 384) {
+    return 0;
+  }
+  return (in[i >> 3] >> (i & 7)) & 1;
+}
+
+// Constants for scalar encoding in the scalar multiplication functions.
+#define FIAT_P384_SCALAR_RADIX       (5)
+#define FIAT_P384_SCALAR_DRADIX      (1 << FIAT_P384_SCALAR_RADIX)
+#define FIAT_P384_SCALAR_DRADIX_WNAF ((FIAT_P384_SCALAR_DRADIX) << 1)
+#define FIAT_P384_MUL_TABLE_SIZE     ((FIAT_P384_SCALAR_DRADIX) >> 1)
+
+// Compute "regular" wNAF representation of a scalar.
+// See "Exponent Recoding and Regular Exponentiation Algorithms",
+// Tunstall et al., AfricaCrypt 2009, Alg 6.
+// It forces an odd scalar and outputs digits in
+// {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
+// i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
+static void fiat_p384_mul_scalar_rwnaf(int8_t *out, const unsigned char *in) {
+  int8_t window, d;
+
+  window = (in[0] & (FIAT_P384_SCALAR_DRADIX_WNAF - 1)) | 1;
+  for (size_t i = 0; i < 76; i++) {
+    d = (window & (FIAT_P384_SCALAR_DRADIX_WNAF - 1)) - FIAT_P384_SCALAR_DRADIX;
+    out[i] = d;
+    window = (window - d) >> FIAT_P384_SCALAR_RADIX;
+    window += fiat_p384_get_bit(in, (i + 1) * FIAT_P384_SCALAR_RADIX + 1) << 1;
+    window += fiat_p384_get_bit(in, (i + 1) * FIAT_P384_SCALAR_RADIX + 2) << 2;
+    window += fiat_p384_get_bit(in, (i + 1) * FIAT_P384_SCALAR_RADIX + 3) << 3;
+    window += fiat_p384_get_bit(in, (i + 1) * FIAT_P384_SCALAR_RADIX + 4) << 4;
+    window += fiat_p384_get_bit(in, (i + 1) * FIAT_P384_SCALAR_RADIX + 5) << 5;
+  }
+  out[76] = window;
+}
+
+// Compute "textbook" wNAF representation of a scalar.
+// It outputs digits in {0, \pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}.
+// A digits is either a zero or an odd integer. It is guaranteed that a non-zero
+// digit is followed by at least (FIAT_P384_SCALAR_DRADIX - 1) zero digits.
+//
+// Note: this function is not constant-time.
+static void fiat_p384_mul_scalar_wnaf(int8_t *out, const unsigned char *in) {
+  int8_t window, d;
+
+  window = in[0] & (FIAT_P384_SCALAR_DRADIX_WNAF - 1);
+  for (size_t i = 0; i < 385; i++) {
+    d = 0;
+    if ((window & 1) && ((d = window & (FIAT_P384_SCALAR_DRADIX_WNAF - 1)) &
+                         FIAT_P384_SCALAR_DRADIX)) {
+      d -= FIAT_P384_SCALAR_DRADIX_WNAF;
+    }
+
+    out[i] = d;
+    window = (window - d) >> 1;
+    window += (fiat_p384_get_bit(in, i + 1 + FIAT_P384_SCALAR_RADIX)) <<
+                                                                      FIAT_P384_SCALAR_RADIX;
+  }
+}
+
+// fiat_p384_select_point selects the |idx|-th projective point from the given
+// precomputed table and copies it to |out| in constant time.
+static void fiat_p384_select_point(fiat_p384_felem out[3],
+                                   size_t idx,
+                                   const fiat_p384_felem table[][3],
+                                   size_t table_size) {
+  OPENSSL_memset(out, 0, sizeof(fiat_p384_felem) * 3);
+  for (size_t i = 0; i < table_size; i++) {
+    fiat_p384_limb_t mismatch = i ^ idx;
+    fiat_p384_cmovznz(out[0], mismatch, table[i][0], out[0]);
+    fiat_p384_cmovznz(out[1], mismatch, table[i][1], out[1]);
+    fiat_p384_cmovznz(out[2], mismatch, table[i][2], out[2]);
+  }
+}
+
+// fiat_p384_select_point_affine selects the |idx|-th affine point from
+// the given precomputed table and copies it to |out| in constant-time.
+static void fiat_p384_select_point_affine(fiat_p384_felem out[2],
+                                          size_t idx,
+                                          const fiat_p384_felem table[][2],
+                                          size_t table_size) {
+  OPENSSL_memset(out, 0, sizeof(fiat_p384_felem) * 2);
+  for (size_t i = 0; i < table_size; i++) {
+    fiat_p384_limb_t mismatch = i ^ idx;
+    fiat_p384_cmovznz(out[0], mismatch, table[i][0], out[0]);
+    fiat_p384_cmovznz(out[1], mismatch, table[i][1], out[1]);
+  }
+}
+
+// Multiplication of a point by a scalar, r = [scalar]P.
+// The product is computed with the use of a small table generated on-the-fly
+// and the scalar recoded in the regular-wNAF representation.
+//
+// The precomputed table |p_pre_comp| holds 16 odd multiples of P:
+//     [2i + 1]P for i in [0, 15].
+// Computing the negation of a point P = (x, y) is relatively easy -P = (x, -y).
+// So we may assume that instead of the above mentioned 16, we have 32 points:
+//     [\pm 1]P, [\pm 3]P, [\pm 5]P, ..., [\pm 31]P.
+//
+// The 384-bit scalar is recoded (regular-wNAF encoding) into 77 digits
+// each of length 5 bits, as explained in the |fiat_p384_mul_scalar_rwnaf|
+// function. Namely,
+//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_76*2^380,
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
+// scalar we have that scalar = scalar', while in the case of an even
+// scalar we have that scalar = scalar' - 1.
+//
+// The required product, [scalar]P, is computed by the following algorithm.
+//     1. Initialize the accumulator with the point from |p_pre_comp|
+//        corresponding to the most significant digit s_76 of the scalar.
+//     2. For digits s_i starting from s_75 down to s_0:
+//     3.   Double the accumulator 5 times. (note that doubling a point [a]P
+//          five times results in [2^5*a]P).
+//     4.   Read from |p_pre_comp| the point corresponding to abs(s_i),
+//          negate it if s_i is negative, and add it to the accumulator.
+//
+// Note: this function is constant-time.
+static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                                      const EC_RAW_POINT *p,
+                                      const EC_SCALAR *scalar) {
+
+  fiat_p384_felem res[3], tmp[3], ftmp;
+
+  // Table of multiples of P:  [2i + 1]P for i in [0, 15].
+  fiat_p384_felem p_pre_comp[FIAT_P384_MUL_TABLE_SIZE][3];
+
+  // Set the first point in the table to P.
+  fiat_p384_from_generic(p_pre_comp[0][0], &p->X);
+  fiat_p384_from_generic(p_pre_comp[0][1], &p->Y);
+  fiat_p384_from_generic(p_pre_comp[0][2], &p->Z);
+
+  // Compute tmp = [2]P.
+  fiat_p384_point_double(tmp[0], tmp[1], tmp[2],
+                         p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
+
+  // Generate the remaining 15 multiples of P.
+  for (size_t i = 1; i < FIAT_P384_MUL_TABLE_SIZE; i++) {
+    fiat_p384_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
+                        tmp[0], tmp[1], tmp[2], 0 /* mixed */,
+                        p_pre_comp[i - 1][0], p_pre_comp[i - 1][1],
+                        p_pre_comp[i - 1][2]);
+  }
+
+  // Recode the scalar.
+  int8_t rnaf[77] = {0};
+  fiat_p384_mul_scalar_rwnaf(rnaf, scalar->bytes);
+
+  // Initialize the accumulator |res| with the table entry corresponding to
+  // the most significant digit of the recoded scalar (note that this digit
+  // can't be negative).
+  int8_t idx = rnaf[76] >> 1;
+  fiat_p384_select_point(res, idx, p_pre_comp, FIAT_P384_MUL_TABLE_SIZE);
+
+  // Process the remaining digits of the scalar.
+  for (size_t i = 75; i < 76; i--) {
+    // Double |res| 5 times in each iteration.
+    for (size_t j = 0; j < FIAT_P384_SCALAR_RADIX; j++) {
+      fiat_p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
+    }
+
+    int8_t d = rnaf[i];
+    // is_neg = (d < 0) ? 1 : 0
+    int8_t is_neg = (d >> 7) & 1;
+    // d = abs(d)
+    d = (d ^ -is_neg) + is_neg;
+
+    idx = d >> 1;
+
+    // Select the point to add, in constant time.
+    fiat_p384_select_point(tmp, idx, p_pre_comp, FIAT_P384_MUL_TABLE_SIZE);
+
+    // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
+    fiat_p384_opp(ftmp, tmp[1]);
+    // Conditionally select y or -y depending on the sign of the digit |d|.
+    fiat_p384_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
+
+    // Add the point to the accumulator |res|.
+    fiat_p384_point_add(res[0], res[1], res[2], res[0], res[1], res[2],
+                        0 /* mixed */, tmp[0], tmp[1], tmp[2]);
+
+  }
+
+  // Conditionally subtract P if the scalar is even, in constant-time.
+  // First, compute |tmp| = |res| + (-P).
+  fiat_p384_copy(tmp[0], p_pre_comp[0][0]);
+  fiat_p384_opp(tmp[1], p_pre_comp[0][1]);
+  fiat_p384_copy(tmp[2], p_pre_comp[0][2]);
+  fiat_p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
+                      0 /* mixed */, tmp[0], tmp[1], tmp[2]);
+
+  // Select |res| or |tmp| based on the |scalar| parity, in constant-time.
+  fiat_p384_cmovznz(res[0], scalar->bytes[0] & 1, tmp[0], res[0]);
+  fiat_p384_cmovznz(res[1], scalar->bytes[0] & 1, tmp[1], res[1]);
+  fiat_p384_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
+
+  // Copy the result to the output.
+  fiat_p384_to_generic(&r->X, res[0]);
+  fiat_p384_to_generic(&r->Y, res[1]);
+  fiat_p384_to_generic(&r->Z, res[2]);
+}
+
+// Include the precomputed table for the based point scalar multiplication.
+#include "p384_table.h"
+
+// Multiplication of the base point G of P-384 curve with the given scalar.
+// The product is computed with the Comb method using the precomputed table
+// |fiat_p384_g_pre_comp| from |p384_table.h| file and the regular-wNAF scalar
+// encoding.
+//
+// The |fiat_p384_g_pre_comp| table has 20 sub-tables each holding 16 points:
+//      0 :      [1]G,        [3]G,  ..,       [31]G
+//      1 : [1*2^20]G,   [3*2^20]G, ...,  [31*2^20]G
+//                         ...
+//      i : [1*2^20i]G, [3*2^20i]G, ..., [31*2^20i]G
+//                         ...
+//     19 :   [2^380]G, [3*2^380]G, ..., [31*2^380]G.
+// Computing the negation of a point P = (x, y) is relatively easy -P = (x, -y).
+// So we may assume that for each sub-table we have 32 points instead of 16:
+//     [\pm 1*2^20i]G, [\pm 3*2^20i]G, ..., [\pm 31*2^20i]G.
+//
+// The 384-bit |scalar| is recoded (regular-wNAF encoding) into 77 digits
+// each of length 5 bits, as explained in the |fiat_p384_mul_scalar_rwnaf|
+// function. Namely,
+//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_76*2^380,
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
+// scalar we have that scalar = scalar', while in the case of an even
+// scalar we have that scalar = scalar' - 1.
+//
+// To compute the required product, [scalar]G, we may do the following.
+// Group the recoded digits of the scalar in 4 groups:
+//                                            |   corresponding multiples in
+//                    digits                  |   the recoded representation
+//     -------------------------------------------------------------------------
+//     (0): {s_0, s_4,  s_8, ..., s_72, s_76} |  { 2^0, 2^20, ..., 2^360, 2^380}
+//     (1): {s_1, s_5,  s_9, ..., s_73}       |  { 2^5, 2^25, ..., 2^365}
+//     (2): {s_2, s_6, s_10, ..., s_74}       |  {2^10, 2^30, ..., 2^370}
+//     (3): {s_3, s_7, s_11, ..., s_75}       |  {2^15, 2^35, ..., 2^375}
+//
+// The group (0) digits correspond precisely to the multiples of G that are
+// held in the 20 precomputed sub-tables, so we may simply read the appropriate
+// points from the sub-tables and sum them all up (negating if needed, i.e., if
+// a digit s_i is negative, we read the point corresponding to the abs(s_i) and
+// negate it before adding it to the sum).
+// The remaining three groups (1), (2), and (3), correspond to the multiples
+// of G from the sub-tables multiplied additionally by 2^5, 2^10, and 2^15,
+// respectively. Therefore, for these groups we may read the appropriate points
+// from the table, double them 5, 10, or 15 times, respectively, and add them
+// to the final result.
+//
+// To minimize the number of required doublings we process the digits of the
+// scalar from left to right. In other words, the algorithm is:
+//   1. Read the points corresponding to the group (3) digits from the table
+//      and add them to an accumulator.
+//   2. Double the accumulator 5 times.
+//   3. Repeat steps 1. and 2. for groups (2) and (1),
+//      and perform step 1. for group (0).
+//   4. If the scalar is even subtract G from the accumulator.
+//
+// Note: this function is constant-time.
+static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
+                                           EC_RAW_POINT *r,
+                                           const EC_SCALAR *scalar) {
+
+  fiat_p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
+  int8_t rnaf[77] = {0};
+
+  // Recode the scalar.
+  fiat_p384_mul_scalar_rwnaf(rnaf, scalar->bytes);
+
+  // Process the 4 groups of digits starting from group (3) down to group (0).
+  for (size_t i = 3; i < 4; i--) {
+    // Double |res| 5 times in each iteration except the first one.
+    for (size_t j = 0; i != 3 && j < FIAT_P384_SCALAR_RADIX; j++) {
+      fiat_p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
+    }
+
+    // For each digit |d| in the current group read the corresponding point from
+    // the table and add it to |res|. If |d| is negative negate the read point
+    // before adding to |res|.
+    for (size_t j = i; j < 77; j += 4) {
+      int8_t d = rnaf[j];
+      // is_neg = (d < 0) ? 1 : 0
+      int8_t is_neg = (d >> 7) & 1;
+      // d = abs(d)
+      d = (d ^ -is_neg) + is_neg;
+
+      int8_t idx = d >> 1;
+
+      // Select the point to add, in constant time.
+      fiat_p384_select_point_affine(tmp, idx, fiat_p384_g_pre_comp[j / 4], 16);
+
+      // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
+      fiat_p384_opp(ftmp, tmp[1]);
+      // Conditionally select y or -y depending on the sign of the digit |d|.
+      fiat_p384_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
+
+      // Add the point to the accumulator |res|.
+      // Note that the points in the pre-computed table are given with affine
+      // coordinates. The point addition function computes a sum of two points,
+      // either both given in projective, or one in projective and the other one
+      // in affine coordinates. The |mixed| flag indicates the latter option,
+      // in which case we set the third coordinate of the second point to one.
+      fiat_p384_point_add(res[0], res[1], res[2], res[0], res[1], res[2],
+                          1 /* mixed */, tmp[0], tmp[1], fiat_p384_one);
+    }
+  }
+
+  // Conditionally subtract G if the scalar is even, in constant-time.
+  // First, compute |tmp| = |res| + (-G).
+  fiat_p384_copy(tmp[0], fiat_p384_g_pre_comp[0][0][0]);
+  fiat_p384_opp(tmp[1], fiat_p384_g_pre_comp[0][0][1]);
+  fiat_p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
+                      1 /* mixed */, tmp[0], tmp[1], fiat_p384_one);
+
+  // Select |res| or |tmp| based on the |scalar| parity.
+  fiat_p384_cmovznz(res[0], scalar->bytes[0] & 1, tmp[0], res[0]);
+  fiat_p384_cmovznz(res[1], scalar->bytes[0] & 1, tmp[1], res[1]);
+  fiat_p384_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
+
+  // Copy the result to the output.
+  fiat_p384_to_generic(&r->X, res[0]);
+  fiat_p384_to_generic(&r->Y, res[1]);
+  fiat_p384_to_generic(&r->Z, res[2]);
+}
+
+// Computes [g_scalar]G + [p_scalar]P, where G is the base point of the P-384
+// curve, and P is the given point |p|.
+//
+// Both scalar products are computed by the same "textbook" wNAF method.
+// For the base point G product we use the first sub-table of the precomputed
+// table |fiat_p384_g_pre_comp| from p384_table.h file, while for P we generate
+// the |p_pre_comp| table on-the-fly. The tables hold the first 15 odd multiples
+// of G or P:
+//     g_pre_comp = {[1]G, [3]G, ..., [31]G},
+//     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
+// Computing the negation of a point P = (x, y) is relatively easy -P = (x, -y).
+// So we may assume that we also have the negatives of the points in the tables.
+//
+// The 384-bit scalars are recoded by the textbook wNAF method to 385 digits,
+// where a digit is either a zero or an odd integer in [-31, 31]. The method
+// guarantees that each non-zero digit is followed by at least four
+// zeroes.
+//
+// The result [g_scalar]G + [p_scalar]P is computed by the following algorithm:
+//     1. Initialize the accumulator with the point-at-infinity.
+//     2. For i starting from 384 down to 0:
+//     3.   Double the accumulator (doubling can be skipped while the
+//          accumulator is equal to the point-at-infinity).
+//     4.   Read from |p_pre_comp| the point corresponding to the i-th digit of
+//          p_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+//     5.   Read from |g_pre_comp| the point corresponding to the i-th digit of
+//          g_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+//
+// Note: this function is NOT constant-time.
+static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
+                                             EC_RAW_POINT *r,
+                                             const EC_SCALAR *g_scalar,
+                                             const EC_RAW_POINT *p,
+                                             const EC_SCALAR *p_scalar) {
+
+  fiat_p384_felem res[3] = {{0}, {0}, {0}}, tmp[3], ftmp;
+
+  // Table of multiples of P:  [2i + 1]P for i in [0, 15].
+  fiat_p384_felem p_pre_comp[FIAT_P384_MUL_TABLE_SIZE][3];
+
+  // Set the first point in the table to P.
+  fiat_p384_from_generic(p_pre_comp[0][0], &p->X);
+  fiat_p384_from_generic(p_pre_comp[0][1], &p->Y);
+  fiat_p384_from_generic(p_pre_comp[0][2], &p->Z);
+
+  // Compute tmp = [2]P.
+  fiat_p384_point_double(tmp[0], tmp[1], tmp[2],
+                         p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
+
+  // Generate the remaining 15 multiples of P.
+  for (size_t i = 1; i < FIAT_P384_MUL_TABLE_SIZE; i++) {
+    fiat_p384_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
+                        tmp[0], tmp[1], tmp[2], 0 /* mixed */,
+                        p_pre_comp[i - 1][0], p_pre_comp[i - 1][1],
+                        p_pre_comp[i - 1][2]);
+  }
+
+  // Recode the scalars.
+  int8_t p_wnaf[385] = {0}, g_wnaf[385] = {0};
+  fiat_p384_mul_scalar_wnaf(p_wnaf, p_scalar->bytes);
+  fiat_p384_mul_scalar_wnaf(g_wnaf, g_scalar->bytes);
+
+  // In the beginning res is set to point-at-infinity so we set the flag.
+  int8_t res_is_inf = 1;
+  int8_t d, is_neg, idx;
+
+  for (size_t i = 384; i < 385; i--) {
+
+    // If |res| is point-at-infinity there is not point in doubling so skip it.
+    if (!res_is_inf) {
+      fiat_p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
+    }
+
+    // Process the p_scalar digit.
+    d = p_wnaf[i];
+    if (d != 0) {
+      is_neg = d < 0 ? 1 : 0;
+      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
+
+      if (res_is_inf) {
+        // If |res| is point-at-infinity there is not to add the new point,
+        // we can simply copy it.
+        fiat_p384_copy(res[0], p_pre_comp[idx][0]);
+        fiat_p384_copy(res[1], p_pre_comp[idx][1]);
+        fiat_p384_copy(res[2], p_pre_comp[idx][2]);
+        res_is_inf = 0;
+      } else {
+        // Otherwise add to the accumulator either the point at position idx
+        // in the table or its negation.
+        if (is_neg) {
+          fiat_p384_opp(ftmp, p_pre_comp[idx][1]);
+        } else {
+          fiat_p384_copy(ftmp, p_pre_comp[idx][1]);
+        }
+        fiat_p384_point_add(res[0], res[1], res[2],
+                            res[0], res[1], res[2],
+                            0 /* mixed */,
+                            p_pre_comp[idx][0], ftmp, p_pre_comp[idx][2]);
+      }
+    }
+
+    // Process the g_scalar digit.
+    d = g_wnaf[i];
+    if (d != 0) {
+      is_neg = d < 0 ? 1 : 0;
+      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
+
+      if (res_is_inf) {
+        // If |res| is point-at-infinity there is not to add the new point,
+        // we can simply copy it.
+        fiat_p384_copy(res[0], fiat_p384_g_pre_comp[0][idx][0]);
+        fiat_p384_copy(res[1], fiat_p384_g_pre_comp[0][idx][1]);
+        fiat_p384_copy(res[2], fiat_p384_one);
+        res_is_inf = 0;
+      } else {
+        // Otherwise add to the accumulator either the point at position idx
+        // in the table or its negation.
+        if (is_neg) {
+          fiat_p384_opp(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
+        } else {
+          fiat_p384_copy(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
+        }
+        // Add the point to the accumulator |res|.
+        // Note that the points in the pre-computed table are given with affine
+        // coordinates. The point addition function computes a sum of two points,
+        // either both given in projective, or one in projective and the other one
+        // in affine coordinates. The |mixed| flag indicates the latter option,
+        // in which case we set the third coordinate of the second point to one.
+        fiat_p384_point_add(res[0], res[1], res[2],
+                            res[0], res[1], res[2],
+                            1 /* mixed */,
+                            fiat_p384_g_pre_comp[0][idx][0], ftmp, fiat_p384_one);
+      }
+    }
+  }
+
+  // Copy the result to the output.
+  fiat_p384_to_generic(&r->X, res[0]);
+  fiat_p384_to_generic(&r->Y, res[1]);
+  fiat_p384_to_generic(&r->Z, res[2]);
+}
+
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
@@ -513,8 +986,9 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
       ec_GFp_mont_jacobian_to_affine_batch;     // needed for TrustToken tests
   out->add = ec_GFp_nistp384_add;
   out->dbl = ec_GFp_nistp384_dbl;
-  out->mul = ec_GFp_mont_mul;
-  out->mul_base = ec_GFp_mont_mul_base;
+  out->mul = ec_GFp_nistp384_point_mul;
+  out->mul_base = ec_GFp_nistp384_point_mul_base;
+  out->mul_public = ec_GFp_nistp384_point_mul_public;
   out->mul_batch = ec_GFp_mont_mul_batch;       // needed for TrustToken tests
   out->mul_public_batch = ec_GFp_mont_mul_public_batch;
   out->init_precomp = ec_GFp_mont_init_precomp; // needed for TrustToken tests
