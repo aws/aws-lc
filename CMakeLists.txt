@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.12)
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
 
-if(WIN32)
+if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
   set(CMAKE_GENERATOR_CC cl)
@@ -11,8 +11,16 @@ endif()
 
 include(sources.cmake)
 
+option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
+option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
+
 enable_language(C)
-enable_language(CXX)
+
+# Tests and libssl both require the CXX language to be enabled. If a consumer
+# chooses to disable building the tests and libssl, do not enable CXX
+if(BUILD_TESTING OR BUILD_LIBSSL)
+  enable_language(CXX)
+endif()
 
 # Fail CMake build when some vulnerable gcc versions are used.
 set(VUL_GCC_VERSIONS "")
@@ -613,44 +621,47 @@ if(USE_CUSTOM_LIBCXX)
   target_link_libraries(libcxx libcxxabi)
 endif()
 
-# Add minimal googletest targets. The provided one has many side-effects, and
-# googletest has a very straightforward build.
-add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
-target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
+if(BUILD_TESTING)
+  # Add minimal googletest targets. The provided one has many side-effects, and
+  # googletest has a very straightforward build.
+  add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+  target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
-include_directories(third_party/googletest/include)
+  include_directories(third_party/googletest/include)
 
-# Declare a dummy target to build all unit tests. Test targets should inject
-# themselves as dependencies next to the target definition.
-add_custom_target(all_tests)
+  # Declare a dummy target to build all unit tests. Test targets should inject
+  # themselves as dependencies next to the target definition.
+  add_custom_target(all_tests)
 
-# On Windows, CRYPTO_TEST_DATA is too long to fit in command-line limits.
-# TODO(davidben): CMake 3.12 has a list(JOIN) command. Use that when we've
-# updated the minimum version.
-set(EMBED_TEST_DATA_ARGS "")
-foreach(arg ${CRYPTO_TEST_DATA})
-  set(EMBED_TEST_DATA_ARGS "${EMBED_TEST_DATA_ARGS}${arg}\n")
-endforeach()
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt"
-     "${EMBED_TEST_DATA_ARGS}")
+  # On Windows, CRYPTO_TEST_DATA is too long to fit in command-line limits.
+  # TODO(davidben): CMake 3.12 has a list(JOIN) command. Use that when we've
+  # updated the minimum version.
+  set(EMBED_TEST_DATA_ARGS "")
+  foreach(arg ${CRYPTO_TEST_DATA})
+    set(EMBED_TEST_DATA_ARGS "${EMBED_TEST_DATA_ARGS}${arg}\n")
+  endforeach()
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt"
+      "${EMBED_TEST_DATA_ARGS}")
 
-if(GO_EXECUTABLE)
-  add_custom_command(
-    OUTPUT crypto_test_data.cc
-    COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go -file-list
-            "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt" >
-            "${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc"
-    DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-else()
-  file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+  if(GO_EXECUTABLE)
+    add_custom_command(
+        OUTPUT crypto_test_data.cc
+        COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go -file-list
+        "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt" >
+        "${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc"
+        DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  else()
+    file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+  endif()
+  add_library(crypto_test_data OBJECT crypto_test_data.cc)
 endif()
-add_library(crypto_test_data OBJECT crypto_test_data.cc)
 
 add_subdirectory(crypto)
-add_subdirectory(ssl)
-add_subdirectory(ssl/test)
-add_subdirectory(tool)
+if(BUILD_LIBSSL)
+  add_subdirectory(ssl)
+  add_subdirectory(tool)
+endif()
 add_subdirectory(util/fipstools/cavp)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 add_subdirectory(decrepit)
@@ -685,59 +696,72 @@ if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
   set(MAYBE_USES_TERMINAL USES_TERMINAL)
 endif()
 
-if(GO_EXECUTABLE)
-  if(FIPS)
-    add_custom_target(
-      acvp_tests
-      COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
-              boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
-      COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
-              boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-      COMMAND cd util/fipstools/acvp/acvptool/test &&
-              ${GO_EXECUTABLE} run check_expected.go
-              -tool ${CMAKE_BINARY_DIR}/acvptool
-              -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
-              -tests tests.json
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS modulewrapper
-      USES_TERMINAL)
+if(BUILD_TESTING)
+  if(GO_EXECUTABLE)
+    if(FIPS)
+      add_custom_target(
+        acvp_tests
+        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
+                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
+                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+        COMMAND cd util/fipstools/acvp/acvptool/test &&
+                ${GO_EXECUTABLE} run check_expected.go
+                -tool ${CMAKE_BINARY_DIR}/acvptool
+                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
+                -tests tests.json
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS modulewrapper
+        USES_TERMINAL)
+
+      add_custom_target(
+        fips_specific_tests_if_any
+        DEPENDS acvp_tests
+      )
+    else()
+      add_custom_target(fips_specific_tests_if_any)
+    endif()
+
+    if(BUILD_LIBSSL)
+      add_custom_target(
+          run_tests
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${CMAKE_BINARY_DIR}
+          COMMAND cd ssl/test/runner &&
+                  ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+    else()
+      add_custom_target(
+          run_tests
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${CMAKE_BINARY_DIR} -ssl-tests=false
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL}
+      )
+    endif()
 
     add_custom_target(
-      fips_specific_tests_if_any
-      DEPENDS acvp_tests
-    )
+        run_tests_valgrind
+        COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS all_tests
+        ${MAYBE_USES_TERMINAL})
+
+    add_custom_target(
+        run_tests_with_sde
+        COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS all_tests
+        ${MAYBE_USES_TERMINAL})
   else()
-    add_custom_target(fips_specific_tests_if_any)
-  endif()
-
-  add_custom_target(
-      run_tests
-      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-              ${CMAKE_BINARY_DIR}
-      COMMAND cd ssl/test/runner &&
-              ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
-      ${MAYBE_USES_TERMINAL})
-
-  add_custom_target(
-      run_tests_valgrind
-      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-              ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS all_tests
-      ${MAYBE_USES_TERMINAL})
-
-  add_custom_target(
-      run_tests_with_sde
-      COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-              ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      DEPENDS all_tests
-      ${MAYBE_USES_TERMINAL})
-else()
-  add_custom_target(
+    if(BUILD_LIBSSL)
+      add_custom_target(
           run_minimal_tests
           COMMAND crypto_test
           COMMAND urandom_test
@@ -746,6 +770,18 @@ else()
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
+    else()
+      add_custom_command(
+          run_minimal_tests
+          COMMAND crypto_test
+          COMMAND urandom_test
+          COMMAND decrepit_test
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests
+          ${MAYBE_USES_TERMINAL}
+      )
+    endif()
+  endif()
 endif()
 
 # Copy awslc-config.cmake to build artifacts.

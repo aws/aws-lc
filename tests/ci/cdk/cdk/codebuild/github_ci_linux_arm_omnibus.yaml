@@ -13,7 +13,7 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
 
     - identifier: ubuntu2004_clang10x_aarch
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-20.04_clang-10x.yml
@@ -21,7 +21,7 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
     - identifier: ubuntu1910_clang9x_aarch_sanitizer
       buildspec: ./tests/ci/codebuild/linux-aarch/ubuntu-19.10_clang-9x_sanitizer.yml
@@ -29,7 +29,7 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
 
     - identifier: amazonlinux2_gcc7x_aarch
       buildspec: ./tests/ci/codebuild/linux-aarch/amazonlinux-2_gcc-7x.yml
@@ -37,4 +37,4 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_AARCH_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+        image: AWS_ACCOUNT_ID_PLACEHOLDER.dkr.ecr.AWS_REGION_PLACEHOLDER.amazonaws.com/ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest

@@ -35,7 +35,7 @@ class WindowsDockerImageBuildStack(core.Stack):
                   block_public_access=s3.BlockPublicAccess.BLOCK_ALL)
 
         # Define a role for EC2.
-        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json())
+        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json([WINDOWS_X86_ECR_REPO]))
         s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_BUCKET_NAME))
         inline_policies = {"ecr_power_user_policy": ecr_power_user_policy, "s3_read_write_policy": s3_read_write_policy}
         role = iam.Role(scope=self, id="{}-role".format(id),
