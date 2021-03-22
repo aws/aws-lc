@@ -149,3 +149,23 @@ def aws_secrets_manager_get_secret_policy_in_json(secret_arn):
             }
         ]
     }
+
+def aws_secrets_manager_get_secret_policy_in_json(secret_arn):
+    """
+    Define an IAM policy statement for getting secret value.
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "secretsmanager:GetSecretValue"
+                ],
+                "Resource": [
+                    secret_arn
+                ]
+            }
+        ]
+    }
