@@ -87,7 +87,7 @@ batch:
         image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
 
     - identifier: amazonlinux2_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux2-x64_gcc-7x.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -172,7 +172,7 @@ batch:
     # Build and test aws-lc without Perl/Go.
     # aws-c-cal uses Docker images maintained in aws crt repo.
     # https://github.com/awslabs/aws-crt-builder
-    # These Docker images does not have Go installed.
+    # These Docker images do not have Go installed.
     # https://github.com/awslabs/aws-c-cal/blob/905b0fd0ff2ca0d86c7e49b8ef4b636bac4600ea/.github/workflows/ci.yml
     - identifier: aws_crt_al2_x64_v0_7_2_gcc_7x
       buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-amazonlinux2-x64_gcc-7x.yml

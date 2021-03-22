@@ -32,7 +32,7 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
 
     - identifier: amazonlinux2_gcc7x_aarch
-      buildspec: ./tests/ci/codebuild/linux-aarch/amazonlinux2-x64_gcc-7x.yml
+      buildspec: ./tests/ci/codebuild/linux-aarch/amazonlinux-2_gcc-7x.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: false
