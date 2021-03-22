@@ -571,7 +571,7 @@ static void fiat_p384_mul_scalar_wnaf(int8_t *out, const unsigned char *in) {
 // precomputed table and copies it to |out| in constant time.
 static void fiat_p384_select_point(fiat_p384_felem out[3],
                                    size_t idx,
-                                   const fiat_p384_felem table[][3],
+                                   fiat_p384_felem table[][3],
                                    size_t table_size) {
   OPENSSL_memset(out, 0, sizeof(fiat_p384_felem) * 3);
   for (size_t i = 0; i < table_size; i++) {
