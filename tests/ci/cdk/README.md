@@ -8,8 +8,11 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
 
 * Install [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html#getting_started_install)
 * Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
-* [Connect GitHub and AWS account using access token](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
+* [Connect AWS CodeBuild with GitHub](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
   * Note: This step should grant AWS CodeBuild with access to create WebHook.
+* [Create GitHub Personal Access Token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)
+  * Note: This token ONLY needs ['read:packages' permission](https://docs.github.com/en/packages/learn-github-packages/about-github-packages#authenticating-to-github-packages), and should be deleted from GitHub account after docker image build.
+  * This token is needed when pulling images from 'docker.pkg.github.com'.
 
 ### Minimal permissions:
 
@@ -46,34 +49,34 @@ To setup or update the CI in your account you will need the following IAM permis
   * ssm:Put*
   * ssm:Update*
   * ssm:List*
+* SecretsManager
+  * secretsmanager:CreateSecret
+  * secretsmanager:PutSecretValue
+  * secretsmanager:DeleteSecret
+  * secretsmanager:GetSecretValue
 
 ### Command
 
+To set up AWS-LC CI, run command:
 ```
-$ ./run-cdk.sh {aws-account-id} {region} {github-repo-owner} {github-repo-name} {ACTION}
-```
-
-#### Examples
-
-To see the synthesized CloudFormation template, run command:
-```
-./run-cdk.sh 123456789 us-west-2 GitHubUserName aws-lc SYNTH
+export GITHUB_ACCESS_TOKEN='xxxxx'
+./run-cdk.sh --action deploy-ci --github-access-token ${GITHUB_ACCESS_TOKEN}
 ```
 
-To set up AWS-LC CI in AWS account `123456789` for the forked GitHub repository `https://github.com/GitHubUserName/aws-lc`, run command:
+To create/udpate Docker images, run command:
 ```
-./run-cdk.sh 123456789 us-west-2 GitHubUserName aws-lc DEPLOY
-```
-
-To destroy all AWS resources created above, run command:
-```
-# This command does not delete S3 and ECR, which require manually deletion.
-./run-cdk.sh 123456789 us-west-2 GitHubUserName aws-lc DESTROY
+export GITHUB_ACCESS_TOKEN='xxxxx'
+./run-cdk.sh --action build-img --github-access-token ${GITHUB_ACCESS_TOKEN}
 ```
 
-To compare deployed stack with current state, run command:
+To destroy AWS-LC CI resources created above, run command:
 ```
-./run-cdk.sh 123456789 us-west-2 GitHubUserName aws-lc DIFF
+./run-cdk.sh --action destroy-ci
+```
+
+For help, run command:
+```
+./run-cdk.sh --help
 ```
 
 ## Files
@@ -171,6 +174,12 @@ command.
 #### Linux Docker image build
 
 ```bash
+# Create GitHub personal access token, which is needed when pulling Docker images from 'docker.pkg.github.com'.
+export AWS_LC_CI_SECRET_NAME='aws-lc-ci-external-credential'
+secret_arn=$(aws secretsmanager create-secret --name "${AWS_LC_CI_SECRET_NAME}" --secret-string "${GITHUB_ACCESS_TOKEN}" | jq -r '.ARN')
+# Export this variable so CDK can create related IAM policy on this ARN.
+export EXTERNAL_CREDENTIAL_SECRET_ARN="${secret_arn}"
+
 # Launch Linux Docker image CodeBuild resources.
 cdk deploy aws-lc-docker-image-build-linux --require-approval never
 
@@ -186,12 +195,12 @@ Below are some commands specific to windows docker image build.
  
 ```bash
 # Define environment variables needed by Windows docker image build.
-export AWS_LC_S3_BUCKET_PREFIX="aws-lc-windows-docker-image-build"
-export DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
+DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
+export AWS_LC_S3_BUCKET_PREFIX='aws-lc-windows-docker-image-build-s3'
 export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
-export WIN_EC2_TAG_KEY="aws-lc"
+export WIN_EC2_TAG_KEY='aws-lc'
 export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
-export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
+export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document"
 
 # Clean up all Windows docker image build resources.
 cdk destroy aws-lc-docker-image-build-windows --force
