@@ -8,7 +8,7 @@ source tests/ci/common_posix_setup.sh
 echo "Building AWS-LC without building tests code and ssl module in debug mode."
 run_build -DBUILD_TESTING=0 -DBUILD_SSL=0
 
-echo "Building AWS-LC without building tests code and ssl module in debug mode."
+echo "Building AWS-LC without building tests code and ssl module in release mode."
 run_build -DBUILD_TESTING=0 -DBUILD_SSL=0 -DCMAKE_BUILD_TYPE=Release
 
 # build AWS-LC without Go.
