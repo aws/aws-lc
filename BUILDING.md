@@ -21,11 +21,13 @@ most recent stable version of each tool.
     If Perl is not found by CMake, it may be configured explicitly by setting
     `PERL_EXECUTABLE`.
     * To build without Perl (not recommended) see [this section.](#using-pre-generated-build-files)
+      * For testing in a Perl installed OS, unset `PERL_EXECUTABLE` by passing `-DBUILD_WITHOUT_PERL=1` to CMake.
 
   * The most recent stable version of [Go](https://golang.org/dl/) is required.
     Note Go is exempt from the five year support window. If not found by CMake,
     the go executable may be configured explicitly by setting `GO_EXECUTABLE`. 
     * To build without Go (not recommended) see [this section.](#using-pre-generated-build-files)
+      * For testing in a Go installed OS, unset `GO_EXECUTABLE` by passing `-DBUILD_WITHOUT_GO=1` to CMake.
 
   * Building with [Ninja](https://ninja-build.org/) instead of Make is
     recommended, because it makes builds faster. On Windows, CMake's Visual
