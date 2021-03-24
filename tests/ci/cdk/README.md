@@ -71,6 +71,7 @@ export GITHUB_ACCESS_TOKEN='xxxxx'
 
 To destroy AWS-LC CI resources created above, run command:
 ```
+# NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
 ./run-cdk.sh --action destroy-ci
 ```
 
