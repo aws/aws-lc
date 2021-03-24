@@ -54,6 +54,7 @@ var (
 	useValgrind              = flag.Bool("valgrind", false, "If true, run code under valgrind")
 	useGDB                   = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useLLDB                  = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
+	useRR                    = flag.Bool("rr-record", false, "If true, run BoringSSL code under `rr record`.")
 	waitForDebugger          = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
 	flagDebug                = flag.Bool("debug", false, "Hexdump the contents of the connection")
 	mallocTest               = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
@@ -96,6 +97,15 @@ type ShimConfiguration struct {
 	// HalfRTTTickets is the number of half-RTT tickets the client should
 	// expect before half-RTT data when testing 0-RTT.
 	HalfRTTTickets int
+
+	// AllCurves is the list of all curve code points supported by the shim.
+	// This is currently used to control tests that enable all curves but may
+	// automatically disable tests in the future.
+	AllCurves []int
+
+	// AllSignatureAlgorithms is the list of all signature algorithm code points
+	// supported by the shim.
+	AllSignatureAlgorithms []int
 }
 
 // Setup shimConfig defaults aligning with BoringSSL.
@@ -252,8 +262,16 @@ func initCertificates() {
 	garbageCertificate.PrivateKey = rsaCertificate.PrivateKey
 }
 
+func flagInts(flagName string, vals []int) []string {
+	ret := make([]string, 0, 2*len(vals))
+	for _, val := range vals {
+		ret = append(ret, flagName, strconv.Itoa(val))
+	}
+	return ret
+}
+
 func useDebugger() bool {
-	return *useGDB || *useLLDB || *waitForDebugger
+	return *useGDB || *useLLDB || *useRR || *waitForDebugger
 }
 
 // delegatedCredentialConfig specifies the shape of a delegated credential, not
@@ -376,12 +394,7 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 	dc = append(dc, pubBytes...)
 
 	var dummyConfig Config
-	parentSigner, err := getSigner(tlsVersion, parentPriv, &dummyConfig, config.algo, false /* not for verification */)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	parentSignature, err := parentSigner.signMessage(parentPriv, &dummyConfig, delegatedCredentialSignedMessage(dc, config.algo, parentDER))
+	parentSignature, err := signMessage(false /* server */, tlsVersion, parentPriv, &dummyConfig, config.algo, delegatedCredentialSignedMessage(dc, config.algo, parentDER))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1191,6 +1204,12 @@ func lldbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
+func rrOf(path string, args ...string) *exec.Cmd {
+	rrArgs := []string{"record", path}
+	rrArgs = append(rrArgs, args...)
+	return exec.Command("rr", rrArgs...)
+}
+
 func removeFirstLineIfSuffix(s, suffix string) string {
 	idx := strings.IndexByte(s, '\n')
 	if idx < 0 {
@@ -1482,6 +1501,8 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		shim = gdbOf(shimPath, flags...)
 	} else if *useLLDB {
 		shim = lldbOf(shimPath, flags...)
+	} else if *useRR {
+		shim = rrOf(shimPath, flags...)
 	} else {
 		shim = exec.Command(shimPath, flags...)
 	}
@@ -1623,16 +1644,16 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		case failed && !test.shouldFail:
 			msg = "unexpected failure"
 		case !failed && test.shouldFail:
-			msg = "unexpected success"
+			msg = fmt.Sprintf("unexpected success (wanted failure with %q / %q)", expectedError, test.expectedLocalError)
 		case failed && !correctFailure:
-			msg = "bad error (wanted '" + expectedError + "' / '" + test.expectedLocalError + "')"
+			msg = fmt.Sprintf("bad error (wanted %q / %q)", expectedError, test.expectedLocalError)
 		case mustFail:
 			msg = "test failure"
 		default:
 			panic("internal error")
 		}
 
-		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s\n%s", msg, localError, childError, stdout, stderr, extraStderr)
+		return fmt.Errorf("%s: local error %q, child error %q, stdout:\n%s\nstderr:\n%s\n%s", msg, localError, childError, stdout, stderr, extraStderr)
 	}
 
 	if len(extraStderr) > 0 || (!failed && len(stderr) > 0) {
@@ -9872,6 +9893,7 @@ var testSignatureAlgorithms = []struct {
 }{
 	{"RSA_PKCS1_SHA1", signatureRSAPKCS1WithSHA1, testCertRSA},
 	{"RSA_PKCS1_SHA256", signatureRSAPKCS1WithSHA256, testCertRSA},
+	{"RSA_PKCS1_SHA256_LEGACY", signatureRSAPKCS1WithSHA256Legacy, testCertRSA},
 	{"RSA_PKCS1_SHA384", signatureRSAPKCS1WithSHA384, testCertRSA},
 	{"RSA_PKCS1_SHA512", signatureRSAPKCS1WithSHA512, testCertRSA},
 	{"ECDSA_SHA1", signatureECDSAWithSHA1, testCertECDSAP256},
@@ -9920,51 +9942,73 @@ func addSignatureAlgorithmTests() {
 				continue
 			}
 
-			var shouldFail, rejectByDefault bool
-			// ecdsa_sha1 does not exist in TLS 1.3.
-			if ver.version >= VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
-				shouldFail = true
-			}
-			// RSA-PKCS1 does not exist in TLS 1.3.
-			if ver.version >= VersionTLS13 && hasComponent(alg.name, "PKCS1") {
-				shouldFail = true
-			}
-			// SHA-224 has been removed from TLS 1.3 and, in 1.3,
-			// the curve has to match the hash size.
-			if ver.version >= VersionTLS13 && alg.cert == testCertECDSAP224 {
-				shouldFail = true
-			}
-
-			// By default, BoringSSL does not enable ecdsa_sha1, ecdsa_secp521_sha512, and ed25519.
-			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 || alg.id == signatureEd25519 {
-				rejectByDefault = true
-			}
-
-			var signError, signLocalError, verifyError, verifyLocalError, defaultError, defaultLocalError string
-			if shouldFail {
-				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
-				signLocalError = "remote error: handshake failure"
-				verifyError = ":WRONG_SIGNATURE_TYPE:"
-				verifyLocalError = "remote error"
-				rejectByDefault = true
-			}
-			if rejectByDefault {
-				defaultError = ":WRONG_SIGNATURE_TYPE:"
-				defaultLocalError = "remote error"
-			}
-
 			suffix := "-" + alg.name + "-" + ver.name
+			for _, signTestType := range []testType{clientTest, serverTest} {
+				signPrefix := "Client-"
+				verifyPrefix := "Server-"
+				verifyTestType := serverTest
+				if signTestType == serverTest {
+					verifyTestType = clientTest
+					signPrefix, verifyPrefix = verifyPrefix, signPrefix
+				}
 
-			for _, testType := range []testType{clientTest, serverTest} {
-				prefix := "Client-"
-				if testType == serverTest {
-					prefix = "Server-"
+				var shouldFail bool
+				isTLS12PKCS1 := hasComponent(alg.name, "PKCS1") && !hasComponent(alg.name, "LEGACY")
+				isTLS13PKCS1 := hasComponent(alg.name, "PKCS1") && hasComponent(alg.name, "LEGACY")
+
+				// TLS 1.3 removes a number of signature algorithms.
+				if ver.version >= VersionTLS13 && (alg.cert == testCertECDSAP224 || alg.id == signatureECDSAWithSHA1 || isTLS12PKCS1) {
+					shouldFail = true
+				}
+
+				// The backported RSA-PKCS1 code points only exist for TLS 1.3
+				// client certificates.
+				if (ver.version < VersionTLS13 || signTestType == serverTest) && isTLS13PKCS1 {
+					shouldFail = true
+				}
+
+				// By default, BoringSSL does not sign with these algorithms.
+				signDefault := true
+				if isTLS13PKCS1 {
+					signDefault = false
+				}
+
+				// By default, BoringSSL does not accept these algorithms.
+				verifyDefault := true
+				if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 || alg.id == signatureEd25519 || isTLS13PKCS1 {
+					verifyDefault = false
+				}
+
+				var signError, signLocalError, verifyError, verifyLocalError string
+				if shouldFail {
+					signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+					signLocalError = "remote error: handshake failure"
+					verifyError = ":WRONG_SIGNATURE_TYPE:"
+					verifyLocalError = "remote error"
+					signDefault = false
+					verifyDefault = false
+				}
+				var signDefaultError, signDefaultLocalError string
+				if !signDefault {
+					signDefaultError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+					signDefaultLocalError = "remote error: handshake failure"
+				}
+				var verifyDefaultError, verifyDefaultLocalError string
+				if !verifyDefault {
+					verifyDefaultError = ":WRONG_SIGNATURE_TYPE:"
+					verifyDefaultLocalError = "remote error"
 				}
 
 				// Test the shim using the algorithm for signing.
+				signTestFlags := []string{
+					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+				}
+				signTestFlags = append(signTestFlags, flagInts("-curves", shimConfig.AllCurves)...)
+				signTestFlags = append(signTestFlags, flagInts("-signing-prefs", shimConfig.AllSignatureAlgorithms)...)
 				signTest := testCase{
-					testType: testType,
-					name:     prefix + "Sign" + suffix,
+					testType: signTestType,
+					name:     signPrefix + "Sign" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
 						VerifySignatureAlgorithms: []signatureAlgorithm{
@@ -9973,11 +10017,7 @@ func addSignatureAlgorithmTests() {
 							fakeSigAlg2,
 						},
 					},
-					flags: []string{
-						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-						"-enable-all-curves",
-					},
+					flags:              signTestFlags,
 					shouldFail:         shouldFail,
 					expectedError:      signError,
 					expectedLocalError: signLocalError,
@@ -9986,44 +10026,75 @@ func addSignatureAlgorithmTests() {
 					},
 				}
 
-				// Test that the shim will select the algorithm when configured to only
-				// support it.
-				negotiateTest := testCase{
-					testType: testType,
-					name:     prefix + "Sign-Negotiate" + suffix,
+				// Test whether the shim enables the algorithm by default.
+				signDefaultTest := testCase{
+					testType: signTestType,
+					name:     signPrefix + "SignDefault" + suffix,
 					config: Config{
-						MaxVersion:                ver.version,
-						VerifySignatureAlgorithms: allAlgorithms,
+						MaxVersion: ver.version,
+						VerifySignatureAlgorithms: []signatureAlgorithm{
+							fakeSigAlg1,
+							alg.id,
+							fakeSigAlg2,
+						},
 					},
-					flags: []string{
-						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-						"-enable-all-curves",
-						"-signing-prefs", strconv.Itoa(int(alg.id)),
-					},
+					flags: append(
+						[]string{
+							"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+							"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
+					shouldFail:         !signDefault,
+					expectedError:      signDefaultError,
+					expectedLocalError: signDefaultLocalError,
 					expectations: connectionExpectations{
 						peerSignatureAlgorithm: alg.id,
 					},
 				}
 
-				if testType == serverTest {
+				// Test that the shim will select the algorithm when configured to only
+				// support it.
+				negotiateTest := testCase{
+					testType: signTestType,
+					name:     signPrefix + "Sign-Negotiate" + suffix,
+					config: Config{
+						MaxVersion:                ver.version,
+						VerifySignatureAlgorithms: allAlgorithms,
+					},
+					flags: append(
+						[]string{
+							"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+							"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+							"-signing-prefs", strconv.Itoa(int(alg.id)),
+						},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
+					expectations: connectionExpectations{
+						peerSignatureAlgorithm: alg.id,
+					},
+				}
+
+				if signTestType == serverTest {
 					// TLS 1.2 servers only sign on some cipher suites.
 					signTest.config.CipherSuites = signingCiphers
+					signDefaultTest.config.CipherSuites = signingCiphers
 					negotiateTest.config.CipherSuites = signingCiphers
 				} else {
 					// TLS 1.2 clients only sign when the server requests certificates.
 					signTest.config.ClientAuth = RequireAnyClientCert
+					signDefaultTest.config.ClientAuth = RequireAnyClientCert
 					negotiateTest.config.ClientAuth = RequireAnyClientCert
 				}
-				testCases = append(testCases, signTest)
+				testCases = append(testCases, signTest, signDefaultTest)
 				if ver.version >= VersionTLS12 && !shouldFail {
 					testCases = append(testCases, negotiateTest)
 				}
 
 				// Test the shim using the algorithm for verifying.
 				verifyTest := testCase{
-					testType: testType,
-					name:     prefix + "Verify" + suffix,
+					testType: verifyTestType,
+					name:     verifyPrefix + "Verify" + suffix,
 					config: Config{
 						MaxVersion:   ver.version,
 						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
@@ -10037,12 +10108,14 @@ func addSignatureAlgorithmTests() {
 							IgnorePeerSignatureAlgorithmPreferences: shouldFail,
 						},
 					},
-					flags: []string{
-						"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-						"-enable-all-curves",
-						// The algorithm may be disabled by default, so explicitly enable it.
-						"-verify-prefs", strconv.Itoa(int(alg.id)),
-					},
+					flags: append(
+						[]string{
+							"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+							// The algorithm may be disabled by default, so explicitly enable it.
+							"-verify-prefs", strconv.Itoa(int(alg.id)),
+						},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
 					resumeSession:      !shouldFail,
@@ -10053,8 +10126,8 @@ func addSignatureAlgorithmTests() {
 
 				// Test whether the shim expects the algorithm enabled by default.
 				defaultTest := testCase{
-					testType: testType,
-					name:     prefix + "VerifyDefault" + suffix,
+					testType: verifyTestType,
+					name:     verifyPrefix + "VerifyDefault" + suffix,
 					config: Config{
 						MaxVersion:   ver.version,
 						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
@@ -10062,28 +10135,28 @@ func addSignatureAlgorithmTests() {
 							alg.id,
 						},
 						Bugs: ProtocolBugs{
-							SkipECDSACurveCheck:          rejectByDefault,
-							IgnoreSignatureVersionChecks: rejectByDefault,
+							SkipECDSACurveCheck:          !verifyDefault,
+							IgnoreSignatureVersionChecks: !verifyDefault,
 							// Some signature algorithms may not be advertised.
-							IgnorePeerSignatureAlgorithmPreferences: rejectByDefault,
+							IgnorePeerSignatureAlgorithmPreferences: !verifyDefault,
 						},
 					},
-					flags: []string{
-						"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-						"-enable-all-curves",
-					},
+					flags: append(
+						[]string{"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id))},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
-					resumeSession:      !rejectByDefault,
-					shouldFail:         rejectByDefault,
-					expectedError:      defaultError,
-					expectedLocalError: defaultLocalError,
+					resumeSession:      verifyDefault,
+					shouldFail:         !verifyDefault,
+					expectedError:      verifyDefaultError,
+					expectedLocalError: verifyDefaultLocalError,
 				}
 
 				// Test whether the shim handles invalid signatures for this algorithm.
 				invalidTest := testCase{
-					testType: testType,
-					name:     prefix + "InvalidSignature" + suffix,
+					testType: verifyTestType,
+					name:     verifyPrefix + "InvalidSignature" + suffix,
 					config: Config{
 						MaxVersion:   ver.version,
 						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
@@ -10094,16 +10167,16 @@ func addSignatureAlgorithmTests() {
 							InvalidSignature: true,
 						},
 					},
-					flags: []string{
-						"-enable-all-curves",
+					flags: append(
 						// The algorithm may be disabled by default, so explicitly enable it.
-						"-verify-prefs", strconv.Itoa(int(alg.id)),
-					},
+						[]string{"-verify-prefs", strconv.Itoa(int(alg.id))},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					shouldFail:    true,
 					expectedError: ":BAD_SIGNATURE:",
 				}
 
-				if testType == serverTest {
+				if verifyTestType == serverTest {
 					// TLS 1.2 servers only verify when they request client certificates.
 					verifyTest.flags = append(verifyTest.flags, "-require-any-client-certificate")
 					defaultTest.flags = append(defaultTest.flags, "-require-any-client-certificate")
@@ -11482,10 +11555,10 @@ func addCurveTests() {
 					},
 					CurvePreferences: []CurveID{curve.id},
 				},
-				flags: []string{
-					"-enable-all-curves",
-					"-expect-curve-id", strconv.Itoa(int(curve.id)),
-				},
+				flags: append(
+					[]string{"-expect-curve-id", strconv.Itoa(int(curve.id))},
+					flagInts("-curves", shimConfig.AllCurves)...,
+				),
 				expectations: connectionExpectations{
 					curveID: curve.id,
 				},
@@ -11502,10 +11575,10 @@ func addCurveTests() {
 					},
 					CurvePreferences: []CurveID{curve.id},
 				},
-				flags: []string{
-					"-enable-all-curves",
-					"-expect-curve-id", strconv.Itoa(int(curve.id)),
-				},
+				flags: append(
+					[]string{"-expect-curve-id", strconv.Itoa(int(curve.id))},
+					flagInts("-curves", shimConfig.AllCurves)...,
+				),
 				expectations: connectionExpectations{
 					curveID: curve.id,
 				},
@@ -11526,7 +11599,7 @@ func addCurveTests() {
 							SendCompressedCoordinates: true,
 						},
 					},
-					flags:         []string{"-enable-all-curves"},
+					flags:         flagInts("-curves", shimConfig.AllCurves),
 					shouldFail:    true,
 					expectedError: ":BAD_ECPOINT:",
 				})
@@ -11545,7 +11618,7 @@ func addCurveTests() {
 							SendCompressedCoordinates: true,
 						},
 					},
-					flags:         []string{"-enable-all-curves"},
+					flags:         flagInts("-curves", shimConfig.AllCurves),
 					shouldFail:    true,
 					expectedError: ":BAD_ECPOINT:",
 				})
@@ -16752,6 +16825,33 @@ func main() {
 	*resourceDir = path.Clean(*resourceDir)
 	initCertificates()
 
+	if len(*shimConfigFile) != 0 {
+		encoded, err := ioutil.ReadFile(*shimConfigFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't read config file %q: %s\n", *shimConfigFile, err)
+			os.Exit(1)
+		}
+
+		if err := json.Unmarshal(encoded, &shimConfig); err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't decode config file %q: %s\n", *shimConfigFile, err)
+			os.Exit(1)
+		}
+	}
+
+	if shimConfig.AllCurves == nil {
+		for _, curve := range testCurves {
+			shimConfig.AllCurves = append(shimConfig.AllCurves, int(curve.id))
+		}
+	}
+
+	if shimConfig.AllSignatureAlgorithms == nil {
+		for _, alg := range testSignatureAlgorithms {
+			if alg.id != 0 {
+				shimConfig.AllSignatureAlgorithms = append(shimConfig.AllSignatureAlgorithms, int(alg.id))
+			}
+		}
+	}
+
 	addBasicTests()
 	addCipherSuiteTests()
 	addBadECDSASignatureTests()
@@ -16809,19 +16909,6 @@ func main() {
 	testChan := make(chan *testCase, numWorkers)
 	doneChan := make(chan *testresult.Results)
 
-	if len(*shimConfigFile) != 0 {
-		encoded, err := ioutil.ReadFile(*shimConfigFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't read config file %q: %s\n", *shimConfigFile, err)
-			os.Exit(1)
-		}
-
-		if err := json.Unmarshal(encoded, &shimConfig); err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't decode config file %q: %s\n", *shimConfigFile, err)
-			os.Exit(1)
-		}
-	}
-
 	go statusPrinter(doneChan, statusChan, len(testCases))
 
 	for i := 0; i < numWorkers; i++ {
@@ -16861,6 +16948,11 @@ func main() {
 		}
 
 		if matched {
+			if foundTest && *useRR {
+				fmt.Fprintf(os.Stderr, "Too many matching tests. Only one test can run when RR is enabled.\n")
+				os.Exit(1)
+			}
+
 			foundTest = true
 			testChan <- &testCases[i]
 
@@ -16887,6 +16979,10 @@ func main() {
 		if err := testOutput.WriteToFile(*jsonOutput); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
+	}
+
+	if *useRR {
+		fmt.Println("RR trace recorded. Replay with `rr replay`.")
 	}
 
 	if !testOutput.HasUnexpectedResults() {
