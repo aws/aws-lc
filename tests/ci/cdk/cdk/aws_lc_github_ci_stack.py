@@ -46,8 +46,9 @@ class AwsLcGitHubCIStack(core.Stack):
                         inline_policies=inline_policies)
 
         # Create build spec.
+        ecr_repo_full_name = "{}.dkr.ecr.{}.amazonaws.com/{}".format(AWS_ACCOUNT, AWS_REGION, ecr_repo_name)
         placeholder_map = {"AWS_ACCOUNT_ID_PLACEHOLDER": AWS_ACCOUNT, "AWS_REGION_PLACEHOLDER": AWS_REGION,
-                           "ECR_REPO_PLACEHOLDER": ecr_repo_name}
+                           "ECR_REPO_PLACEHOLDER": ecr_repo_full_name}
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
