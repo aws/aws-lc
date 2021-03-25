@@ -1,18 +1,15 @@
 # Prerequistes
-EC2 x86-64 Ubuntu 19.10 host with Docker server installed (Docker instructions
-taken from
-[Docker docs](https://docs.docker.com/install/linux/docker-ce/ubuntu/)):
-```
-$ sudo apt-get update
-$ sudo apt-get install -y awscli apt-transport-https ca-certificates curl gnupg-agent software-properties-common
-$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-$ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-$ sudo apt-get update
-$ sudo apt-get install -y docker-ce
-$ sudo usermod -aG docker ${USER}
-# Log in and out
-```
 
-Build images locally with `build_images.sh`, to push to the main repository run
-`push_images.sh`. To push to your own repository pass in a complete ECS url
-`push_images.sh ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${REPOSITORY}`. 
+* [Create GitHub Personal Access Token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)
+  * Note: This token ONLY needs ['read:packages' permission](https://docs.github.com/en/packages/learn-github-packages/about-github-packages#authenticating-to-github-packages), and should be deleted from GitHub account after docker image build.
+  * This token is needed when pulling images from 'docker.pkg.github.com'.
+
+# Usage
+
+## Docker image build and pull.
+Build images locally with `build_images.sh`, which pulls Docker images from Docker hub.  
+Pull images from 'docker.pkg.github.com' with `pull_github_pkg.sh`.
+
+## Docker image push.
+To push to the ECR repository of default AWS account, run `push_images.sh`.  
+To push to the ECR repository pass in a complete ECS url `push_images.sh ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${REPOSITORY}`. 

@@ -29,29 +29,26 @@ function run_build {
   cd ../
 }
 
-function run_test {
-  $BUILD_COMMAND -C test_build_dir run_tests
+function run_cmake_custom_target {
+  $BUILD_COMMAND -C test_build_dir "$@"
 }
 
 function build_and_test {
   run_build "$@"
-  run_test 
-}
-
-function run_test_valgrind {
-  $BUILD_COMMAND -C test_build_dir run_tests_valgrind
+  run_cmake_custom_target 'run_tests'
 }
 
 function build_and_test_valgrind {
   run_build "$@"
-  run_test_valgrind
-}
-
-function run_test_with_sde {
-  $BUILD_COMMAND -C test_build_dir run_tests_with_sde
+  run_cmake_custom_target 'run_tests_valgrind'
 }
 
 function build_and_test_with_sde {
   run_build "$@"
-  run_test_with_sde
+  run_cmake_custom_target 'run_tests_with_sde'
+}
+
+function build_and_run_minimal_test {
+  run_build "$@"
+  run_cmake_custom_target 'run_minimal_tests'
 }
