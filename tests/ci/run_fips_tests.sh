@@ -10,7 +10,7 @@ fips_build_and_test
 echo "Testing AWS-LC in FIPS release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
-if [[  "${AWSLC_NO_ASAM_FIPS}" == "1" ]]; then
+if [[  "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then
   # This dimension corresponds to boringssl CI 'linux_fips_noasm_asan'.
   # https://logs.chromium.org/logs/boringssl/buildbucket/cr-buildbucket.appspot.com/8852496158370398336/+/steps/cmake/0/logs/execution_details/0
   echo "Testing AWS-LC in FIPS OPENSSL_NO_ASM release mode."

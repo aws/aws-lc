@@ -78,7 +78,7 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
         variables:
-          AWSLC_NO_ASAM_FIPS: 1
+          AWSLC_NO_ASM_FIPS: 1
 
     - identifier: ubuntu2004_clang8x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -162,7 +162,7 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
         variables:
-          AWSLC_NO_ASAM_FIPS: 1
+          AWSLC_NO_ASM_FIPS: 1
 
     - identifier: amazonlinux2_gcc7x_intel_sde_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_intel-sde.yml
