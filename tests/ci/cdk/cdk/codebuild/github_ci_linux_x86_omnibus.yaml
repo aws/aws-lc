@@ -164,7 +164,9 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
         variables:
-          AWSLC_NO_ASM_FIPS: 1
+          # TODO(shang): change value from 0 to 1 after installing LLVM LLD on AL2.
+          # https://github.com/awslabs/aws-lc/pull/120#issuecomment-808439279
+          AWSLC_NO_ASM_FIPS: 0
 
     - identifier: amazonlinux2_gcc7x_intel_sde_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_intel-sde.yml
