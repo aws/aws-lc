@@ -15,15 +15,17 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
 
     - identifier: ubuntu1604_gcc5x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-16.04_gcc-5x_32-bits.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-16.04_gcc-5x_latest
+        variables:
+          AWSLC_32BIT: 1
 
     - identifier: ubuntu1804_clang6x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-18.04_clang-6x.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -31,55 +33,99 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_clang-6x_latest
 
     - identifier: ubuntu1804_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-18.04_gcc-7x.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
 
-    - identifier: ubuntu1910_clang9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_clang-9x.yml
+    - identifier: ubuntu2004_gcc7x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-19.10_clang-9x_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
+
+    - identifier: ubuntu2004_gcc8x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
+
+    - identifier: ubuntu2004_clang7x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
+
+    - identifier: ubuntu2004_gcc7x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
+
+    - identifier: ubuntu2004_clang7x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
+        variables:
+          AWSLC_NO_ASM_FIPS: 1
+
+    - identifier: ubuntu2004_clang8x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-8x_latest
+
+    - identifier: ubuntu2004_clang9x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+
+    - identifier: ubuntu2004_clang9x_x86_64_sanitizer
+      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
 
     - identifier: ubuntu2004_clang10x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
-    - identifier: ubuntu1904_gcc8x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.04_gcc-8x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-19.04_gcc-8x_latest
-
-    - identifier: ubuntu1904_clang8x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.04_clang-8x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-19.04_clang-8x_latest
-
     - identifier: centos7_gcc4x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/centos-7_gcc-4x-32-bits.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
+        variables:
+          AWSLC_32BIT: 1
 
     - identifier: centos7_gcc4x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/centos-7_gcc-4x.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -87,12 +133,40 @@ batch:
         image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
 
     - identifier: amazonlinux2_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+
+    - identifier: amazonlinux2_clang7x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
+
+    - identifier: amazonlinux2_gcc7x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+
+    - identifier: amazonlinux2_clang7x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
+        variables:
+          # TODO(shang): change value from 0 to 1 after installing LLVM LLD on AL2.
+          # https://github.com/awslabs/aws-lc/pull/120#issuecomment-808439279
+          AWSLC_NO_ASM_FIPS: 0
 
     - identifier: amazonlinux2_gcc7x_intel_sde_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_intel-sde.yml
@@ -116,7 +190,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:s2n_integration_clang-9x_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
 
     - identifier: fedora31_clang9x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
@@ -125,14 +199,6 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:fedora-31_clang-9x_latest
-
-    - identifier: ubuntu1910_clang9x_x86_64_sanitizer
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-19.10_clang-9x_sanitizer.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-19.10_clang-9x_sanitizer_latest
 
     # When no SELECTCHECK env variable is undefined, formal verification is executed with a few parameters.
     # SAW does not support thread level parallelism.

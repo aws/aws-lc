@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 AWS_LC_DIR=${PWD##*/}
-echo "aloha ${AWS_LC_DIR}"
 cd ../
 ROOT=$(pwd)
 

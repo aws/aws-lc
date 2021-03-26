@@ -9,7 +9,6 @@ phases:
       - if [ $(gcc -dumpfullversion) == 7.3.1 ]; then echo "Found correct gcc version 7"; else gcc --version && echo "gcc version mismatch" && exit 1; fi
       - export CC=gcc
       - export CXX=g++
-      - export GO111MODULE=on
   build:
     commands:
       - ./tests/ci/run_valgrind_tests.sh

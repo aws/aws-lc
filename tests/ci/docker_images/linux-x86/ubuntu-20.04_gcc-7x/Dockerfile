@@ -9,12 +9,12 @@ RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
-    clang-10 && \
+    gcc-7 g++-7 && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
-ENV CC=clang-10
-ENV CXX=clang++-10
+ENV CC=gcc-7
+ENV CXX=g++-7
