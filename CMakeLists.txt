@@ -22,12 +22,18 @@ if(BUILD_TESTING OR BUILD_LIBSSL)
   enable_language(CXX)
 endif()
 
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  set(CLANG 1)
+elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
+  set(GCC 1)
+endif()
+
 # Fail CMake build when some vulnerable gcc versions are used.
 set(VUL_GCC_VERSIONS "")
 # These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
 list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
-if(CMAKE_COMPILER_IS_GNUCXX)
+if(GCC)
   foreach(vul_gcc_version ${VUL_GCC_VERSIONS})
     if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
       message(FATAL_ERROR "GCC ${CMAKE_C_COMPILER_VERSION} is not supported.")
@@ -151,17 +157,14 @@ elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS") 
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CLANG 1)
-endif()
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
+if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
   set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
   if(MSVC)
     # clang-cl sets different default warnings than clang. It also treats -Wall
@@ -218,7 +221,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
 
-  if(CMAKE_COMPILER_IS_GNUCXX AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
+  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
@@ -299,18 +302,10 @@ if(WIN32)
   add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
-if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
+if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
    CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
-endif()
-
-if(CMAKE_COMPILER_IS_GNUCXX)
-  if((CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.99") OR CLANG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
-  else()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  endif()
 endif()
 
 # pthread_rwlock_t requires a feature flag.
@@ -792,3 +787,7 @@ configure_file("cmake/awslc-config.cmake"
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake/"
     COMPONENT Development)
+
+if(NOT MSVC AND NOT CLANG AND NOT GCC)
+  message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
+endif()
