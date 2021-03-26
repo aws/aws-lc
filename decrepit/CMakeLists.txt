@@ -48,3 +48,9 @@ if(BUILD_TESTING)
   endif()
   add_dependencies(all_tests decrepit_test)
 endif()
+
+install(TARGETS decrepit
+        EXPORT decrepit-targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
