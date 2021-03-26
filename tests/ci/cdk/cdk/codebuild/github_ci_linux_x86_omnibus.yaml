@@ -15,12 +15,14 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
 
     - identifier: ubuntu1604_gcc5x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-16.04_gcc-5x_32-bits.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-16.04_gcc-5x_latest
+        variables:
+          AWSLC_32BIT: 1
 
     - identifier: ubuntu1804_clang6x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
