@@ -90,3 +90,15 @@ The following Valgrind tests are run for a subset of targets in `utils/all_tests
 CI Tool|Compiler|CPU platform|OS| memcheck 
 ------------ | -------------| -------------|-------------|-------------
 CodeBuild|gcc 7.3.1|x86-64|AL2 | X
+
+### Fuzz tests
+All Fuzz tests under /fuzz is run in CodeBuild for an hour total.
+
+CI Tool|Compiler|CPU platform|OS|Flags
+------------|-------------|-------------|-------------|-------------
+CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04|ASAN=1
+CodeBuild|clang 10.0.0|aarch64|ubuntu 20.04|ASAN=1
+
+To add a new fuzz test create a new executable follow [libFuzzer's](https://llvm.org/docs/LibFuzzer.html) documentation
+and existing tests. Generate a seed corpus and check it into a folder with the same name as the executable. The CI will
+pull in any files from the seed folder and merge it into the growing corpus in EFS.

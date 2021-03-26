@@ -13,6 +13,8 @@ ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
 # llvm, llvm-dev, libcxx, and libcxxabi are needed for the sanitizer tests.
 # 11.1.0 is the latest stable release as of 2021-02-16.
 # See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
+
+# The awscli is used to publish data to CloudWatch Metrics in some jobs. This requires additional IAM permission
 RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
@@ -28,7 +30,8 @@ RUN set -ex && \
     wget \
     lld \
     llvm \
-    llvm-dev && \
+    llvm-dev \
+    awscli && \
     mkdir -p ${DEPENDENCIES_DIR} && \
     cd ${DEPENDENCIES_DIR} && \
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
