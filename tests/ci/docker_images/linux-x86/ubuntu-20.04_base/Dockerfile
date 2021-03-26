@@ -7,6 +7,12 @@ SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ENV DEPENDENCIES_DIR=/home/dependencies
+ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
+
+# llvm, llvm-dev, libcxx, and libcxxabi are needed for the sanitizer tests.
+# 11.1.0 is the latest stable release as of 2021-02-16.
+# See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
 RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
@@ -19,7 +25,13 @@ RUN set -ex && \
     pkg-config \
     git \
     ca-certificates \
-    wget && \
+    wget \
+    lld \
+    llvm \
+    llvm-dev && \
+    mkdir -p ${DEPENDENCIES_DIR} && \
+    cd ${DEPENDENCIES_DIR} && \
+    git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     cd /tmp && \
     wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
     tar -xvf go1.13.12.linux-amd64.tar.gz && \
@@ -32,4 +44,5 @@ RUN set -ex && \
 
 ENV GOROOT=/usr/local/go
 ENV GO111MODULE=on
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 ENV PATH="$GOROOT/bin:$PATH"

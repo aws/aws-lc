@@ -5,6 +5,12 @@ FROM arm64v8/amazonlinux:2
 
 SHELL ["/bin/bash", "-c"]
 
+ENV DEPENDENCIES_DIR=/home/dependencies
+ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
+
+# llvm, llvm-devel, libcxx, and libcxxabi are needed for the sanitizer tests.
+# 11.1.0 is the latest stable release as of 2021-02-16.
+# See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
 # Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
     yum -y update && yum install -y \
@@ -16,7 +22,12 @@ RUN set -ex && \
     git \
     ca-certificates \
     wget \
+    llvm \
+    llvm-devel \
     valgrind && \
+    mkdir -p ${DEPENDENCIES_DIR} && \
+    cd ${DEPENDENCIES_DIR} && \
+    git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     yum clean packages && \
     yum clean metadata && \
     yum clean all && \
@@ -24,3 +35,4 @@ RUN set -ex && \
     rm -rf /var/cache/yum
 
 ENV GO111MODULE=on
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer

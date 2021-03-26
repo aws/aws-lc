@@ -76,7 +76,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_sanitizer_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
         variables:
           AWSLC_NO_ASAM_FIPS: 1
 
@@ -102,7 +102,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_sanitizer_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
 
     - identifier: ubuntu2004_clang10x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -113,15 +113,17 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
     - identifier: centos7_gcc4x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/centos-7_gcc-4x-32-bits.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
+        variables:
+          AWSLC_32BIT: 1
 
     - identifier: centos7_gcc4x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/centos-7_gcc-4x.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -158,7 +160,9 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_sanitizer_latest
+        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
+        variables:
+          AWSLC_NO_ASAM_FIPS: 1
 
     - identifier: amazonlinux2_gcc7x_intel_sde_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_intel-sde.yml
