@@ -38,6 +38,12 @@ function build_and_test {
   run_cmake_custom_target 'run_tests'
 }
 
+function fips_build_and_test {
+  run_build "$@" -DFIPS=1
+  run_cmake_custom_target 'run_tests'
+  ./test_build_dir/util/fipstools/cavp/test_fips
+}
+
 function build_and_test_valgrind {
   run_build "$@"
   run_cmake_custom_target 'run_tests_valgrind'
