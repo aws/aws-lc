@@ -12,7 +12,7 @@ echo "$SRC_ROOT"
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
-NUM_CPU_THREADS=$(nproc)
+NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
 
 function run_build {
   local cflags=("$@")
