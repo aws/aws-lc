@@ -55,13 +55,13 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
         # being used up by a bunch of idle NAT gateways
         fuzz_vpc = ec2.Vpc(
             scope=self,
-            id="FuzzingVPC",
+            id="{}-FuzzingVPC".format(id),
             subnet_configuration=[public_subnet, private_subnet],
             max_azs=1
         )
         build_security_group = ec2.SecurityGroup(
             scope=self,
-            id="FuzzingSecurityGroup",
+            id="{}-FuzzingSecurityGroup".format(id),
             vpc=fuzz_vpc
         )
 
@@ -76,7 +76,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
         # Create the EFS to store the corpus and logs
         fuzz_filesystem = efs.FileSystem(
             scope=self,
-            id="FuzzingEFS",
+            id="{}-FuzzingEFS".format(id),
             file_system_name="AWS-LC-Fuzz-Corpus",
             enable_automatic_backups=True,
             encrypted=True,
@@ -86,14 +86,9 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
         )
 
         # Create build spec.
-        placeholder_map = {"AWS_ACCOUNT_ID_PLACEHOLDER": AWS_ACCOUNT, "AWS_REGION_PLACEHOLDER": AWS_REGION,
-                           "X86_ECR_REPO_PLACEHOLDER": ecr_arn(x86_ecr_repo_name),
+        placeholder_map = {"X86_ECR_REPO_PLACEHOLDER": ecr_arn(x86_ecr_repo_name),
                            "ARM_ECR_REPO_PLACEHOLDER": ecr_arn(arm_ecr_repo_name)}
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
-
-        print(placeholder_map)
-        print(spec_file_path)
-        print(build_spec_content)
 
         # Define CodeBuild.
         fuzz_codebuild = codebuild.Project(

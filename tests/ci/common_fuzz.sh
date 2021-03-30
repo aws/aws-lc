@@ -23,7 +23,11 @@ function put_metric_count {
 }
 
 function put_metric {
-  aws --region us-west-2 cloudwatch put-metric-data \
+  # This call to publish the metric could fail but we don't want to fail the build +e turns off exit on error
+  set +e
+  aws cloudwatch put-metric-data \
     --namespace AWS-LC-Fuzz \
-    "$@"
+    "$@" || echo "Publishing metric failed, continuing with the rest of the build"
+  # Turn it back on for the rest of the build
+  set -e
 }
