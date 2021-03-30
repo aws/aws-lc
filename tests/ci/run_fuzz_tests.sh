@@ -44,8 +44,10 @@ for FUZZ_TEST in $FUZZ_TESTS;do
   put_metric_count --metric-name SharedCorpusFileCount --value "$ORIGINAL_SHARED_CORPUS_FILE_COUNT" --dimensions "FuzzTest=$FUZZ_NAME"
 
   # Perform the actual fuzzing!
-  # Step 1 run each fuzz test for the determined time. This will use the existing shared corpus and any files checked
-  # into the GitHub corpus. It will write new files to the temporary run corpus.
+  # Step 1 run each fuzz test for the determined time. This will use the existing shared corpus (in EFS) and any files
+  # checked into the GitHub corpus. This runs the fuzzer with three folders: the first folder is where new inputs will
+  # go (FUZZ_TEST_CORPUS), all other folders will be used as input (SHARED_CORPUS and SRC_CORPUS). It will write new
+  # files to the temporary run corpus.
   # https://llvm.org/docs/LibFuzzer.html#options
   #
   # Run with NUM_CPU_THREADS which will be physical cores on ARM and virtualized cores on x86 with hyper threading.
@@ -75,7 +77,8 @@ for FUZZ_TEST in $FUZZ_TESTS;do
   else
     echo "Fuzz test ${FUZZ_NAME} finished successfully, not copying run logs and run corpus"
   fi
-  # Step 2 merge any new coverage from the run corpus and GitHub src corpus into the shared corpus
+
+  # Step 2 merge any new files from the run corpus and GitHub src corpus into the shared corpus (EFS)
   time ${FUZZ_TEST} -merge=1 "$SHARED_CORPUS" "$FUZZ_TEST_CORPUS" "$SRC_CORPUS"
 
   # Calculate interesting metrics and post results to CloudWatch

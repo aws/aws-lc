@@ -92,7 +92,7 @@ CI Tool|Compiler|CPU platform|OS| memcheck
 CodeBuild|gcc 7.3.1|x86-64|AL2 | X
 
 ### Fuzz tests
-All Fuzz tests under /fuzz is run in CodeBuild for an hour total.
+All Fuzz tests under /fuzz are run in CodeBuild for an hour total.
 
 CI Tool|Compiler|CPU platform|OS|Flags
 ------------|-------------|-------------|-------------|-------------
