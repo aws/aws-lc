@@ -164,7 +164,7 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
         variables:
-          # TODO(shang): change value from 0 to 1 after installing LLVM LLD on AL2.
+          # AL2 Clang-7 does not support AddressSanitizer. Related ticket is linked in CryptoAlg-694.
           # https://github.com/awslabs/aws-lc/pull/120#issuecomment-808439279
           AWSLC_NO_ASM_FIPS: 0
 
