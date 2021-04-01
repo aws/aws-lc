@@ -2335,21 +2335,22 @@ let COMPONENT_READ_OVER_WRITE_ORTHOGONAL_CONV =
 (* "environmental" assumptions with relevance to natural number arithmetic.  *)
 (* ------------------------------------------------------------------------- *)
 
-let SIMPLE_ARITH_TAC =
+let (SIMPLE_ARITH_TAC:tactic) =
   let pats =
    [`x:num = y`; `x:num < y`; `x:num <= y`; `x:num > y`; `x:num >= y`;
     `~(x:num = y)`; `~(x:num < y)`; `~(x:num <= y)`;
     `~(x:num > y)`; `~(x:num >= y)`]
-  and avoiders = ["read"; "write"; "val"; "word"] in
+  and avoiders = ["lowdigits"; "highdigits"; "bigdigit";
+                  "read"; "write"; "val"; "word"] in
   let avoiderp tm =
     match tm with Const(n,_) -> mem n avoiders | _ -> false in
   let filtered tm =
     exists (fun p -> can (term_match [] p) tm) pats &&
     not(can (find_term avoiderp) tm) in
+  let tweak = GEN_REWRITE_RULE TRY_CONV [ARITH_RULE `~(n = 0) <=> 1 <= n`] in
   W(fun (asl,w) ->
-    let vs = frees w in
     let asl' = filter (fun (_,th) -> filtered(concl th)) asl in
-    MAP_EVERY (MP_TAC o snd) asl' THEN CONV_TAC ARITH_RULE);;
+    MAP_EVERY (MP_TAC o tweak o snd) asl' THEN CONV_TAC ARITH_RULE);;
 
 let SIMPLE_ARITH_RULE t = prove (t, SIMPLE_ARITH_TAC);;
 let ASM_SIMPLE_ARITH_RULE t =
@@ -2383,10 +2384,27 @@ let CONTAINED_TAC =
    (MATCH_MP_TAC CONTAINED_MODULO_SIMPLE THEN SIMPLE_ARITH_TAC));;
 
 (* ------------------------------------------------------------------------- *)
+(* An additional lemma for manual nonoverlap proofs.                         *)
+(* ------------------------------------------------------------------------- *)
+
+let NONOVERLAPPING_MODULO_64_OFFSET_BOTH = prove
+ (`!(z:int64) m i n j.
+        m + i <= n /\ n + j <= m + 2 EXP 64 \/
+        n + j <= m /\ m + i <= n + 2 EXP 64
+        ==> nonoverlapping_modulo (2 EXP 64)
+             (val(word_add z (word m)),i) (val(word_add z (word n)),j)`,
+  REPEAT STRIP_TAC THEN
+  REWRITE_TAC[VAL_WORD_ADD; DIMINDEX_64; VAL_WORD] THEN
+  CONV_TAC MOD_DOWN_CONV THEN
+  REWRITE_TAC[NONOVERLAPPING_MODULO_MOD2] THEN
+  MATCH_MP_TAC NONOVERLAPPING_MODULO_OFFSET_SIMPLE_BOTH THEN
+  ASM_REWRITE_TAC[]);;
+
+(* ------------------------------------------------------------------------- *)
 (* Automatically prove nonoverlapping of regions                             *)
 (* ------------------------------------------------------------------------- *)
 
-let NONOVERLAPPING_PREP_TAC, (NONOVERLAPPING_TAC:tactic) =
+let (NONOVERLAPPING_TAC:tactic) =
   let cache = ref ([]:thm list) in
 
   let fallback (((asl,t) as g):goal) =
@@ -2630,19 +2648,7 @@ let NONOVERLAPPING_PREP_TAC, (NONOVERLAPPING_TAC:tactic) =
    `x = y \/ nonoverlapping_modulo n (val x,k) (val y,l) <=>
     y = x \/ nonoverlapping_modulo n (val y,l) (val x,k)` in
 
-  let NONOVERLAPPING_PREP_TAC = ASSUM_LIST (MAP_EVERY (fun th ->
-    let f n = if is_numeral n then ALL_TAC else
-      TRY (fun asl,_ as g ->
-       (let t = mk_comb (mk_comb (`(<=)`, n), `2 EXP 64`) in
-        if can (find ((=) t o concl o snd)) asl then ALL_TAC else
-        ASSUME_TAC (prove_le asl t)) g) in
-    MAP_EVERY (f o rand) (match concl th with
-    | Comb(Comb(Comb(Const("nonoverlapping_modulo",_),_),a),b) -> [a; b]
-    | Comb(Comb(Const("\\/",_),_),
-        Comb(Comb(Comb(Const("nonoverlapping_modulo",_),_),a),b)) -> [a; b]
-    | _ -> [])))
-
-  and NONOVERLAPPING_TAC (asl,w) = match w with
+  let NONOVERLAPPING_TAC (asl,w) = match w with
   | Comb(Comb(Comb(Const("nonoverlapping_modulo",_),_),
       (Comb(Comb(_,e1),n1) as p1)),
       (Comb(Comb(_,e2),n2) as p2)) ->
@@ -2718,7 +2724,23 @@ let NONOVERLAPPING_PREP_TAC, (NONOVERLAPPING_TAC:tactic) =
     ACCEPT_TAC th (asl,w)
   | _ -> failwith "NONOVERLAPPING_TAC" in
 
-  NONOVERLAPPING_PREP_TAC, NONOVERLAPPING_TAC;;
+  let OVERRIDDEN_NONOVERLAPPING_TAC =
+    let twfn = GEN_REWRITE_RULE I [NONOVERLAPPING_MODULO_SYM] in
+    fun ((asl,w) as gl) ->
+      match w with
+        Comb(Comb(Comb(Const("nonoverlapping_modulo",_),_) as ntm,p1),p2) ->
+          (try let w' = mk_comb(mk_comb(ntm,p2),p1) in
+               let th = tryfind
+                 (fun (_,th) ->
+                    let t = concl th in
+                    if t = w then th
+                    else if t = w' then twfn th
+                    else fail()) asl in
+                ACCEPT_TAC th gl
+           with Failure _ -> NONOVERLAPPING_TAC gl)
+    | _ -> failwith "NONOVERLAPPING_TAC: inapplicable goal" in
+
+  OVERRIDDEN_NONOVERLAPPING_TAC;;
 
 (* ------------------------------------------------------------------------- *)
 (* Automatically prove component orthogonality including memory.             *)
