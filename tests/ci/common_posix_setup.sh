@@ -38,10 +38,22 @@ function build_and_test {
   run_cmake_custom_target 'run_tests'
 }
 
+function check_fips_mode {
+  # Upon completion of the build process. The module’s status can be verified by issuing:
+  # https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp3678.pdf
+  module_status=$(./test_build_dir/tool/bssl isfips)
+  if [[ "${module_status}" == "1" ]]; then
+    run_cmake_custom_target 'run_tests'
+    ./test_build_dir/util/fipstools/cavp/test_fips
+  else
+    echo "Failed to validate built module status."
+    exit 1
+  fi
+}
+
 function fips_build_and_test {
   run_build "$@" -DFIPS=1
-  run_cmake_custom_target 'run_tests'
-  ./test_build_dir/util/fipstools/cavp/test_fips
+  check_fips_mode
 }
 
 function build_and_test_valgrind {
