@@ -495,6 +495,10 @@ if(USE_CUSTOM_LIBCXX)
   target_link_libraries(crypto libcxx)
 endif()
 
+target_include_directories(crypto SYSTEM PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+  $<INSTALL_INTERFACE:include>)
+
 if(BUILD_TESTING)
   add_subdirectory(test)
 
@@ -597,3 +601,21 @@ install(TARGETS crypto
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+
+configure_file("cmake/crypto-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
+    @ONLY)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake"
+    COMPONENT Development)
+
+if (BUILD_SHARED_LIBS)
+   set (TARGET_DIR "shared")
+else()
+   set (TARGET_DIR "static")
+endif()
+
+install(EXPORT crypto-targets
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
+    COMPONENT Development)
