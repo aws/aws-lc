@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
-from util.iam_policies import code_build_batch_policy_in_json, ecr_pull_only_policy_in_json
+from util.ecr_util import ecr_arn
+from util.iam_policies import code_build_batch_policy_in_json
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.yml_loader import YmlLoader
 
@@ -35,19 +36,14 @@ class AwsLcGitHubCIStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(
             code_build_batch_policy_in_json([id])
         )
-        ecr_pull_only_policy = iam.PolicyDocument.from_json(
-            ecr_pull_only_policy_in_json(ecr_repo_name)
-        )
-        inline_policies = {"code_build_batch_policy": code_build_batch_policy,
-                           "ecr_pull_only_policy": ecr_pull_only_policy}
+        inline_policies = {"code_build_batch_policy": code_build_batch_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
                         inline_policies=inline_policies)
 
         # Create build spec.
-        ecr_repo_full_name = "{}.dkr.ecr.{}.amazonaws.com/{}".format(AWS_ACCOUNT, AWS_REGION, ecr_repo_name)
-        placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_repo_full_name}
+        placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.

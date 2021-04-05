@@ -28,7 +28,16 @@ RUN set -ex && \
     wget \
     lld \
     llvm \
-    llvm-dev && \
+    llvm-dev \
+    curl \
+    unzip && \
+    # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
+    # The awscli is used to publish data to CloudWatch Metrics in some jobs. This requires additional IAM permission
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install --bin-dir /usr/bin && \
+    rm -rf awscliv2.zip aws/ && \
+    # Download a copy of LLVM's libcxx which is required for building and running with Memory Sanitizer
     mkdir -p ${DEPENDENCIES_DIR} && \
     cd ${DEPENDENCIES_DIR} && \
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
@@ -36,6 +45,7 @@ RUN set -ex && \
     wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
     tar -xvf go1.13.12.linux-amd64.tar.gz && \
     mv go /usr/local && \
+    apt-get --purge remove -y curl unzip && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \

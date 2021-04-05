@@ -1,11 +1,24 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+
+if [ -v CODEBUILD_SRC_DIR ]; then
+  SRC_ROOT="$CODEBUILD_SRC_DIR"
+else
+  SRC_ROOT=$(pwd)
+fi
+echo "$SRC_ROOT"
+
+BUILD_ROOT="${SRC_ROOT}/test_build_dir"
+echo "$BUILD_ROOT"
+
+NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+
 function run_build {
   local cflags=("$@")
-  rm -rf test_build_dir
-  mkdir -p test_build_dir
-  cd test_build_dir || exit 1
+  rm -rf "$BUILD_ROOT"
+  mkdir -p "$BUILD_ROOT"
+  cd "$BUILD_ROOT" || exit 1
 
   if [[ "${AWSLC_32BIT}" == "1" ]]; then
     cflags+=("-DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake")
@@ -21,7 +34,7 @@ function run_build {
     cflags+=(-GNinja)
   else
     echo "Using Make."
-    BUILD_COMMAND="make"
+    BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
   cmake "${cflags[@]}" ../
@@ -30,7 +43,7 @@ function run_build {
 }
 
 function run_cmake_custom_target {
-  $BUILD_COMMAND -C test_build_dir "$@"
+  $BUILD_COMMAND -C "$BUILD_ROOT" "$@"
 }
 
 function build_and_test {
