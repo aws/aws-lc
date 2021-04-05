@@ -30,6 +30,33 @@ def code_build_batch_policy_in_json(project_ids):
         ]
     }
 
+def code_build_fuzz_policy_in_json():
+    """
+    Define an IAM policy that only grants access to publish CloudWatch metrics to the current region in the same
+    namespace used in the calls to PutMetricData in tests/ci/common_fuzz.sh.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "cloudwatch:PutMetricData",
+                "Resource": "*",
+                "Condition": {
+                    "StringEquals": {
+                        "aws:RequestedRegion": [
+                            AWS_REGION
+                        ],
+                        "cloudwatch:namespace": [
+                            "AWS-LC-Fuzz"
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+
+
 
 def s3_read_write_policy_in_json(s3_bucket_name):
     """
@@ -102,30 +129,6 @@ def ecr_power_user_policy_in_json(ecr_repo_names):
                     "ecr:PutImage"
                 ],
                 "Resource": ecr_arns
-            }
-        ]
-    }
-
-
-def ecr_pull_only_policy_in_json(ecr_repo_name):
-    """
-    Define an AWS-LC specific IAM policy statement used to pull Docker images from ECR repo.
-    Reference:
-      https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonelasticcontainerregistry.html
-    :param ecr_repo_name: repository name.
-    :return: an IAM policy statement in json.
-    """
-    return {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "ecr:BatchCheckLayerAvailability",
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:BatchGetImage",
-                ],
-                "Resource": ecr_repo_arn(ecr_repo_name)
             }
         ]
     }

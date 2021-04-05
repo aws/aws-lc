@@ -94,6 +94,7 @@ function create_github_ci_stack() {
   aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
 }
 
 function build_linux_img() {
