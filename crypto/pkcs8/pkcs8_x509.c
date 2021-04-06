@@ -647,7 +647,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   }
 
   *out_key = NULL;
-  OPENSSL_memset(&ctx, 0, sizeof(ctx));
+  OPENSSL_memset(&ctx, 0, ber_in->len);
 
   // See ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-12/pkcs-12v1.pdf, section
   // four.
