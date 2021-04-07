@@ -237,7 +237,12 @@ let prove_gcm_ghash_avx_thm len = prove_print
   })
   (rewrite (cryptol_ss ()) {{ \H Xi (in : [len][8]) -> gcm_ghash H Xi in == gcm_ghash_avx`{n=((len/16)-1)/8} H Xi in }});
 
-gcm_ghash_avx_thm <- prove_gcm_ghash_avx_thm evp_cipher_update_len_blocks;
+gcm_ghash_avx_encrypt_thm <- prove_gcm_ghash_avx_thm GHASH_length_blocks_encrypt;
+gcm_ghash_avx_decrypt_thm <- prove_gcm_ghash_avx_thm GHASH_length_blocks_decrypt;
+let gcm_ghash_avx_thms =
+  [ gcm_ghash_avx_encrypt_thm
+  , gcm_ghash_avx_encrypt_thm
+  ];
 
 let prove_ctr32_encrypt_thm gcm_len len = prove_print
   (do {
@@ -245,13 +250,18 @@ let prove_ctr32_encrypt_thm gcm_len len = prove_print
   })
   (rewrite (cryptol_ss ()) {{ \key iv Xi (in : [len][8]) -> ctr32_encrypt ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in == join (map split (aesni_gcm_ctr32_encrypt_block ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in)) }});
 
-ctr32_encrypt_thm <- prove_ctr32_encrypt_thm aesni_gcm_cipher_gcm_len evp_cipher_update_bulk;
+ctr32_encrypt_encrypt_thm <- prove_ctr32_encrypt_thm aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_encrypt;
+ctr32_encrypt_decrypt_thm <- prove_ctr32_encrypt_thm aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_decrypt;
+let ctr32_encrypt_thms =
+  [ ctr32_encrypt_encrypt_thm
+  , ctr32_encrypt_decrypt_thm
+  ];
 
 let prove_cipher_update_avx_thm enc gcm_len len = prove_print
   (do {
     unfolding ["cipher_update", "cipher_update_byte"];
     simplify (cryptol_ss ());
-    simplify (addsimp ctr32_encrypt_thm empty_ss);
+    simplify (addsimps ctr32_encrypt_thms empty_ss);
     simplify (addsimp gcm_pmult_pmod_thm empty_ss);
     goal_eval_unint ["pmult", "pmod", "gcm_polyval", "gcm_polyval_mul", "gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red", "gcm_polyval_red_pmult", "aes_hw_encrypt", "aesni_gcm_ctr32_encrypt_block"];
     simplify (addsimps gcm_polyval_thms empty_ss);
@@ -260,8 +270,9 @@ let prove_cipher_update_avx_thm enc gcm_len len = prove_print
   })
   (rewrite (cryptol_ss ()) {{ \key iv Xi (in : [len][8]) -> (cipher_update enc ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in).Xi == aesni_gcm_cipher enc ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in }});
 
-encrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 1 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk;
-decrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 0 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk;
+
+encrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 1 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_encrypt;
+decrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 0 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_decrypt;
 let cipher_update_avx_thms =
   [ encrypt_update_avx_thm
   , decrypt_update_avx_thm
@@ -297,7 +308,7 @@ let aesni_gcm_cipher_tactic = do {
   simplify (addsimps [aesenc_aesenclast_thm] empty_ss);
   simplify (cryptol_ss ());
   simplify (addsimps cipher_update_avx_thms empty_ss);
-  simplify (addsimp ctr32_encrypt_thm empty_ss);
+  simplify (addsimps ctr32_encrypt_thms empty_ss);
   goal_eval_unint ["pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule"];
   simplify (addsimps xor_slice_append_thms basic_ss);
   simplify (addsimps slice_slice_thms empty_ss);

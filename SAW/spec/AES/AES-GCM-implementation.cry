@@ -66,14 +66,14 @@ gcm_polyval_avx H X = x30
 /*
  * aesni_gcm_cipher Cryptol implementation
  */
-aesni_gcm_cipher : {n} (fin n) => [32] -> AES_GCM_Ctx -> [(3 + n) * 6 * 16][8] -> [16][8]
+aesni_gcm_cipher : {n} (fin n) => [32] -> AES_GCM_Ctx -> [(1 + n) * 6 * 16][8] -> [16][8]
 aesni_gcm_cipher enc ctx in = ctx''.Xi
   where
     enc_blks = if enc ! 0
       then split (aesni_gcm_ctr32_encrypt_block ctx in)
       else split (map join (split in))
     ctx' = aesni_gcm_cipher_block6 enc False ctx (enc_blks @ 0)
-    ctx'' = foldl (aesni_gcm_cipher_block6 enc (enc ! 0)) ctx' (enc_blks @@ [1 .. (2 + n)])
+    ctx'' = foldl (aesni_gcm_cipher_block6 enc (enc ! 0)) ctx' (drop`{1} enc_blks)
 
 aesni_gcm_ctr32_encrypt_block : {n} (fin n) => AES_GCM_Ctx -> [n * 16][8] -> [n][16 * 8]
 aesni_gcm_ctr32_encrypt_block ctx in = out

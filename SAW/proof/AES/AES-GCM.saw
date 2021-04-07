@@ -22,15 +22,66 @@ include "../common/memory.saw";
 /*
  * Verification parameters.
  */
-let evp_cipher_update_gcm_len = 10;
-let evp_cipher_update_bulk = 288; // multiple of 96, minimum 288
-let evp_cipher_update_len_blocks = 80; // multiple of 16
-let evp_cipher_update_mres = 10; // reduced mod 16
 
-let evp_cipher_update_len = eval_size {| (16 - evp_cipher_update_gcm_len % 16) % 16 + evp_cipher_update_bulk + evp_cipher_update_len_blocks + evp_cipher_update_mres |};
-let aesni_gcm_cipher_gcm_len = eval_size {| ((evp_cipher_update_gcm_len + 15) / 16) * 16 |};
-let aesni_gcm_cipher_len = eval_size {| evp_cipher_update_bulk + evp_cipher_update_len_blocks + evp_cipher_update_mres |};
+// The number of bytes of input given to the update function.
+let evp_cipher_update_len = 380;
+// The total input length before the call to the update function.
+let evp_cipher_update_gcm_len = 10;
+
+/* 
+ * The GCM implementation has multiple phases:
+ * 1) A "bulk" encryption/decryption that operates on multiples of 6 blocks, and computes
+ *    AES/CTR32 and GHASH in parallel using different functional units of the CPU. 
+ * 2) An optimized AES/CTR32 implementation that processes the remaining blocks.
+ * 3) An optimized GHASH implementation that processes the remaining blocks. 
+ *
+ * The code below calculates the correct input lengths for each subroutine.
+ */
+
+// If starting auth length is nonzero, bytes are collected and a single GCM_MUL is performed.
+// So bulk GCM auth length is the starting length rounded up to the next multiple of 16.
+let aesni_gcm_cipher_gcm_len = eval_size {| (evp_cipher_update_gcm_len + 15) / 16 * 16 |};
+let gcm_len_diff = eval_size {| aesni_gcm_cipher_gcm_len - evp_cipher_update_gcm_len |};
+let aesni_gcm_cipher_len = eval_size {| evp_cipher_update_len - (min gcm_len_diff evp_cipher_update_len) |};
+
+// To get size for bulk encrypt operatin, round down to nearest multiple of 96 (min 288)
+let evp_cipher_update_bulk_encrypt = eval_size {| max 288 (aesni_gcm_cipher_len / 96 * 96) |};
+let bulk_encrypt_used = eval_size {| aesni_gcm_cipher_len / evp_cipher_update_bulk_encrypt |};
+// Separate AES-CTR32 and GHASH encryption on the remaining whole blocks
+// When there are no blocks left after the bulk operation, prove the CTR32 and GHASH
+// operations correct for 1 block. The code is not entered, so this proof is never used,
+// but it avoids complications related to proving these operations correct on 0 blocks.
+let length_after_bulk_encrypt = eval_size {| aesni_gcm_cipher_len - bulk_encrypt_used * evp_cipher_update_bulk_encrypt |};
+let whole_blocks_after_bulk_encrypt = eval_size {| max 1 (length_after_bulk_encrypt / 16) |};
+let GHASH_length_blocks_encrypt = eval_size {| whole_blocks_after_bulk_encrypt * 16|};
+
+// Bulk decrypt core also operates on 6 blocks, but the minimum is 6 blocks.
+let evp_cipher_update_bulk_decrypt = eval_size {| max 96 (aesni_gcm_cipher_len / 96 * 96) |};
+let bulk_decrypt_used = eval_size {| aesni_gcm_cipher_len / evp_cipher_update_bulk_decrypt |};
+// Separate AES-CTR32 and GHASH decryption on the remaining whole blocks
+// Limit to minimum of 1 block like in encrypt case.
+let length_after_bulk_decrypt = eval_size {| aesni_gcm_cipher_len - bulk_decrypt_used * evp_cipher_update_bulk_decrypt |};
+let whole_blocks_after_bulk_decrypt = eval_size {| max 1 (length_after_bulk_decrypt / 16) |};
+let GHASH_length_blocks_decrypt = eval_size {| whole_blocks_after_bulk_decrypt * 16|};
+
 let evp_cipher_final_gcm_len = eval_size {| evp_cipher_update_gcm_len + evp_cipher_update_len |};
+
+// Log the calculated values to help find errors when the proof fails.
+print (str_concat "evp_cipher_update_len=" (show evp_cipher_update_len));
+print (str_concat "aesni_gcm_cipher_gcm_len=" (show aesni_gcm_cipher_gcm_len));
+print (str_concat "aesni_gcm_cipher_len=" (show aesni_gcm_cipher_len));
+
+print (str_concat "evp_cipher_update_bulk_encrypt=" (show evp_cipher_update_bulk_encrypt));
+print (str_concat "bulk_encrypt_used=" (show bulk_encrypt_used));
+print (str_concat "length_after_bulk_encrypt=" (show length_after_bulk_encrypt));
+print (str_concat "whole_blocks_after_bulk_encrypt=" (show whole_blocks_after_bulk_encrypt));
+print (str_concat "GHASH_length_blocks_encrypt=" (show GHASH_length_blocks_encrypt));
+
+print (str_concat "evp_cipher_update_bulk_decrypt=" (show evp_cipher_update_bulk_decrypt));
+print (str_concat "bulk_decrypt_used=" (show bulk_decrypt_used));
+print (str_concat "length_after_bulk_decrypt=" (show length_after_bulk_decrypt));
+print (str_concat "whole_blocks_after_bulk_decrypt=" (show whole_blocks_after_bulk_decrypt));
+print (str_concat "GHASH_length_blocks_decrypt=" (show GHASH_length_blocks_decrypt));
 
 
 include "goal-rewrites.saw";
@@ -51,6 +102,38 @@ let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
 include "AES.saw";
 include "GHASH.saw";
 include "AESNI-GCM.saw";
+
+/*
+When verifying aes_hw_ctr32_encrypt_blocks, the binary analysis must locally
+treat r11 as callee-preserved. This is necessary because this routine saves
+the original stack pointer in r11 and then calls helper routines, preventing
+the binary analysis from inferring that the return address is still on the stack
+when the routine returns. The called helper routines do not modify r11.
+*/
+
+let aes_hw_ctr32_tactic = do {
+  simplify (cryptol_ss ());
+  simplify (addsimps slice_384_thms basic_ss);
+  simplify (addsimps [cmp_sub_thm] empty_ss);
+  goal_eval_unint ["AESRound", "AESFinalRound", "aesenc", "aesenclast"];
+  simplify (addsimps add_xor_slice_thms basic_ss);
+  simplify (addsimps aesenclast_thms basic_ss);
+  w4_unint_yices ["AESRound", "AESFinalRound"];
+};
+
+add_x86_preserved_reg "r11";
+aes_hw_ctr32_encrypt_blocks_encrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_ctr32_encrypt_blocks"
+  []
+  true
+  (aes_hw_ctr32_encrypt_blocks_spec whole_blocks_after_bulk_encrypt)
+  aes_hw_ctr32_tactic;
+
+aes_hw_ctr32_encrypt_blocks_decrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_ctr32_encrypt_blocks"
+  []
+  true
+  (aes_hw_ctr32_encrypt_blocks_spec whole_blocks_after_bulk_decrypt)
+  aes_hw_ctr32_tactic;
+default_x86_preserved_reg;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,10 +257,12 @@ let evp_cipher_ovs =
   , aes_hw_set_encrypt_key_ov
   , aes_hw_encrypt_ov
   , aes_hw_encrypt_in_place_ov
-  , aes_hw_ctr32_encrypt_blocks_ov
+  , aes_hw_ctr32_encrypt_blocks_encrypt_ov
+  , aes_hw_ctr32_encrypt_blocks_decrypt_ov
   , gcm_init_avx_ov
   , gcm_gmult_avx_ov
-  , gcm_ghash_avx_ov
+  , gcm_ghash_avx_encrypt_ov
+  , gcm_ghash_avx_decrypt_ov
   , aesni_gcm_encrypt_ov
   , aesni_gcm_decrypt_ov
   ];

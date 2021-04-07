@@ -9,6 +9,9 @@
 
 let aesni_gcm_cipher_spec enc gcm_len len = do {
   let ctr = eval_size {| gcm_len / AES_BLOCK_SIZE + 2 |};
+  let encT = eval_int {{ enc }};
+  // Bulk encrypt requires 3*6 blocks of input. Bulk decrypt only requires 6 blocks.
+  let min_size = eval_size {| (1 + 2 * encT) * 6 * AES_BLOCK_SIZE |};
 
   (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
   out_ptr <- crucible_alloc (llvm_array len (llvm_int 8));
@@ -28,17 +31,21 @@ let aesni_gcm_cipher_spec enc gcm_len len = do {
 
   crucible_execute_func [in_ptr, out_ptr, (crucible_term {{ `len : [64] }}), key_ptr, ivec_ptr, Xi_ptr];
 
-  let res_len = eval_size {| len - (len % (6 * AES_BLOCK_SIZE)) |};
+  let bulk_len = eval_size {| max min_size ((len / (6 * AES_BLOCK_SIZE)) * (6 * AES_BLOCK_SIZE)) |};
+  let do_bulk = eval_size {| len / bulk_len |};
+  let res_len = eval_size {| do_bulk * bulk_len |};
   let res_ctr = eval_size {| ctr + res_len / AES_BLOCK_SIZE |};
 
-  crucible_points_to_untyped out_ptr (crucible_term {{ ctr32_encrypt ctx (take`{res_len} in_) }});
-
   crucible_points_to ivec_ptr (crucible_term {{ ivec # (split (`res_ctr : [32])) }});
-
   crucible_points_to_untyped (crucible_elem Xi_ptr 2) (crucible_term {{ get_Htable ctx }});
   crucible_points_to_untyped (crucible_elem Xi_ptr 1) (crucible_term {{ get_H ctx }});
 
-  crucible_points_to_untyped (crucible_elem Xi_ptr 0) (crucible_term {{ (cipher_update enc ctx (take`{res_len} in_)).Xi }} );
+  if eval_bool {{ `do_bulk == 0 }} then do {
+    crucible_points_to_untyped (crucible_elem Xi_ptr 0) (crucible_term Xi);
+  } else do {
+    crucible_points_to_untyped out_ptr (crucible_term {{ ctr32_encrypt ctx (take`{res_len} in_) }});
+    crucible_points_to_untyped (crucible_elem Xi_ptr 0) (crucible_term {{ (cipher_update enc ctx (take`{res_len} in_)).Xi }} );
+  };
 
   crucible_return (crucible_term {{ `res_len : [64] }});
 };
