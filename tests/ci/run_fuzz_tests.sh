@@ -8,7 +8,6 @@ source tests/ci/common_fuzz.sh
 echo "Building fuzz tests."
 run_build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFUZZ=1 -DASAN=1
 
-OVERALL_FUZZ_FAILURE=0
 PLATFORM=$(uname -m)
 DATE_NOW="$(date +%Y-%m-%d)"
 FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
@@ -61,7 +60,6 @@ for FUZZ_TEST in $FUZZ_TESTS;do
     "$FUZZ_TEST_CORPUS" "$SHARED_CORPUS" "$SRC_CORPUS" 2>&1 | tee "$SUMMARY_LOG"
   # This gets the status of the fuzz run which determines if we want to fail the build or not, otherwise we'd get the results of tee
   if [ "${PIPESTATUS[0]}" == 1 ]; then
-    OVERALL_FUZZ_FAILURE=1
     FUZZ_RUN_FAILURE=1
   fi
   set -e
@@ -74,6 +72,10 @@ for FUZZ_TEST in $FUZZ_TESTS;do
     mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
 
     cp -r "$FUZZ_TEST_ROOT" "$FAILURE_ROOT"
+
+    # If this fuzz run has failed the below metrics wont make a lot of sense, it could fail on the first input and publish a TestCount of 1 which makes all the metrics look weird
+    echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${FAILURE_ROOT} in EFS"
+    exit 1
   else
     echo "Fuzz test ${FUZZ_NAME} finished successfully, not copying run logs and run corpus"
   fi
@@ -102,5 +104,3 @@ for FUZZ_TEST in $FUZZ_TESTS;do
 
   echo "${FUZZ_NAME} starting shared ${ORIGINAL_SHARED_CORPUS_FILE_COUNT} final shared ${FINAL_SHARED_CORPUS_FILE_COUNT} new files ${NEW_FUZZ_FILES} total test count ${TEST_COUNT} test rate ${TESTS_PER_SECOND} code coverage ${BLOCK_COVERAGE} feature coverage ${FEATURE_COVERAGE}"
 done
-
-exit "$OVERALL_FUZZ_FAILURE"
