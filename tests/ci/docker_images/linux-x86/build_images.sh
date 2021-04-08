@@ -16,6 +16,7 @@ docker build -t ubuntu-20.04:clang-7x ubuntu-20.04_clang-7x
 docker build -t ubuntu-20.04:clang-8x ubuntu-20.04_clang-8x
 docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
 docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
+docker build -t ubuntu-20.04:cryptofuzz ubuntu-20.04_cryptofuzz
 docker build -t centos-7:gcc-4x centos-7_gcc-4x
 docker build -t amazonlinux-2:base amazonlinux-2_base
 docker build -t amazonlinux-2:gcc-7x amazonlinux-2_gcc-7x
