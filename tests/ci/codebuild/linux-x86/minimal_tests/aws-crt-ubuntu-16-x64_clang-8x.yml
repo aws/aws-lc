@@ -1,0 +1,23 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  install:
+    on-failure: ABORT
+    commands:
+      # Copy from aws-c-cal GitHub CI log.
+      # For example: https://github.com/awslabs/aws-c-cal/actions/runs/615499981
+      - apt-add-repository -y ppa:ubuntu-toolchain-r/test
+      - curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+      - add-apt-repository 'deb http://apt.llvm.org/xenial/   llvm-toolchain-xenial-8  main'
+      - apt-get -qq update -y
+      - apt-get -qq install -y libstdc++-8-dev clang-8 build-essential
+  pre_build:
+    commands:
+      - export CC=clang-8
+      - export CXX=clang++-8
+  build:
+    commands:
+      - ./tests/ci/run_minimal_tests.sh

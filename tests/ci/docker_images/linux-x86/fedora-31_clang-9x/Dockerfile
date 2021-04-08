@@ -21,3 +21,4 @@ RUN dnf -y install \
 
 ENV CC=clang-9
 ENV CXX=clang++-9
+ENV GO111MODULE=on
