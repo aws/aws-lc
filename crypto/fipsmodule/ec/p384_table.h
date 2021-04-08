@@ -20,7 +20,7 @@
 // and used in mul_base and mul_public functions in |p384.c| for computing
 // a scalar product with the Comb method (see the functions for details).
 //
-// The table and the method for computing the scalar products is taken from
+// The table and its usage in scalar multiplications are adapted from
 // ECCKiila project (https://arxiv.org/abs/2007.11481). The table generation
 // is based on the generation method in
 // https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L276,
