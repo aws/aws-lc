@@ -29,7 +29,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: X86_ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+        image: X86_ECR_REPO_PLACEHOLDER:ubuntu-20.04_cryptofuzz_latest
 
     - identifier: ubuntu2004_clang10_arm_cryptofuzz
       buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
@@ -37,4 +37,4 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ARM_ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+        image: ARM_ECR_REPO_PLACEHOLDER:ubuntu-20.04_cryptofuzz_latest
