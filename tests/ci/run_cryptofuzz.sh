@@ -15,7 +15,7 @@ cd "$BUILD_ROOT"
 
 # Build AWS-LC based on https://github.com/guidovranken/cryptofuzz/blob/master/docs/openssl.md
 cmake -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 \
-  -GNinja -DBUILD_TESTING=OFF -DBUILD_LIBSSL=OFF ../
+  -GNinja -DBUILD_TESTING=OFF -DBUILD_LIBSSL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 ninja
 cd ../
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BORINGSSL"
@@ -42,8 +42,7 @@ SRC_CORPUS="$CRYPTOFUZZ_SEED_CORPUS"
 # 4 minutes for building AWS-LC and Cryptofuzz
 # 55 minutes of fuzzing
 # 1 minutes of cleanup
-#TIME_FOR_EACH_FUZZ=3300
-TIME_FOR_EACH_FUZZ=60
+TIME_FOR_EACH_FUZZ=3300
 
 # Call the common fuzzing logic
 run_fuzz_test
