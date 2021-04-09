@@ -10,6 +10,7 @@ export CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -O2 -g"
 export CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -g"
 
 # Setup base of Cryptofuzz
+cd "$FUZZ_ROOT"
 MODULES_ROOT="${FUZZ_ROOT}/modules"
 git clone --depth 1 https://github.com/guidovranken/cryptofuzz.git
 cd cryptofuzz
@@ -41,6 +42,12 @@ env CRYPTOPP_INCLUDE_PATH `realpath .`
 cd "${CRYPTOFUZZ_SRC}/modules/cryptopp/"
 make
 
+# Copy over the seed corpus
+cd "$FUZZ_ROOT"
+unzip cryptofuzz_seed_corpus.zip
+rm cryptofuzz_seed_corpus.zip
+env CRYPTOFUZZ_SEED_CORPUS `realpath cryptofuzz_seed_corpus`
+env CRYPTOFUZZ_DICT `realpath cryptofuzz-dict.txt`
 
 # Save final common flags
 env CFLAGS "$CFLAGS"
