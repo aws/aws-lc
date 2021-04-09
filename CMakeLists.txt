@@ -11,7 +11,9 @@ endif()
 
 include(sources.cmake)
 
-cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
+if(POLICY CMP0077)
+  cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
+endif()
 
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
