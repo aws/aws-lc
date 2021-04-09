@@ -492,6 +492,11 @@ endif()
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
 if(USE_CUSTOM_LIBCXX)
+  install(TARGETS libcxx libcxxabi
+          EXPORT crypto-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
   target_link_libraries(crypto libcxx)
 endif()
 
