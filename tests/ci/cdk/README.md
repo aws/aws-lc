@@ -63,6 +63,11 @@ export GITHUB_ACCESS_TOKEN='xxxxx'
 ./run-cdk.sh --action deploy-ci --github-access-token ${GITHUB_ACCESS_TOKEN}
 ```
 
+To update AWS-LC CI, run command:
+```
+./run-cdk.sh --action update-ci
+```
+
 To create/udpate Docker images, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'

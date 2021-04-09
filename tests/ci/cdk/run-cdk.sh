@@ -94,6 +94,7 @@ function create_github_ci_stack() {
   aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
 }
 
 function build_linux_img() {
@@ -179,9 +180,21 @@ function win_docker_img_build_status_check() {
   exit 1
 }
 
+function validate_github_access_token {
+  # GitHub access token is only needed when building Docker images.
+  if [[ -z "${GITHUB_ACCESS_TOKEN+x}" || -z "${GITHUB_ACCESS_TOKEN}" ]]; then
+    echo '--github-access-token is required for aws-lc ci setup.'
+    exit 1
+  fi
+}
+
 function build_docker_images() {
   # Always destroy docker build stacks (which include EC2 instance) on EXIT.
   trap destroy_docker_img_build_stack EXIT
+
+  # Check prerequisite.
+  # One prerequisite is to provide GitHub access token so AWS CodeBuild can pull Docker images from GitHub.
+  validate_github_access_token
 
   # Create/update aws-ecr repo.
   cdk deploy aws-lc-ecr-* --require-approval never
@@ -319,10 +332,6 @@ function main() {
   # Execute the action.
   case ${ACTION} in
   deploy-ci)
-    if [[ -z "${GITHUB_ACCESS_TOKEN+x}" || -z "${GITHUB_ACCESS_TOKEN}" ]]; then
-      echo '--github-access-token is required for aws-lc ci setup.'
-      exit 1
-    fi
     setup_ci
     ;;
   update-ci)
