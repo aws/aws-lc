@@ -65,7 +65,7 @@ function run_fuzz_test {
   # This could fail and we want to capture that (+e)
   set +e
   FUZZ_RUN_FAILURE=0
-  time "./${FUZZ_TEST_PATH}" -print_final_stats=1 -timeout=5 -max_total_time="$TIME_FOR_EACH_FUZZ" \
+  time "./${FUZZ_TEST_PATH}" -print_final_stats=1 -timeout=10 -max_total_time="$TIME_FOR_EACH_FUZZ" \
     -jobs="$NUM_CPU_THREADS" -workers="$NUM_CPU_THREADS" \
     -artifact_prefix="$ARTIFACTS_FOLDER/" \
     "$FUZZ_TEST_CORPUS" "$SHARED_CORPUS" "$SRC_CORPUS" 2>&1 | tee "$SUMMARY_LOG"
@@ -83,6 +83,7 @@ function run_fuzz_test {
     mkdir -p "$FUZZ_TEST_FAILURE_ROOT"
 
     cp -r "$FUZZ_TEST_ROOT" "$FAILURE_ROOT"
+    cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
 
     # If this fuzz run has failed the below metrics wont make a lot of sense, it could fail on the first input and publish a TestCount of 1 which makes all the metrics look weird
     echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${FAILURE_ROOT} in EFS"
