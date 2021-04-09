@@ -16,15 +16,18 @@ MODULES_ROOT="${FUZZ_ROOT}/modules"
 git clone https://github.com/guidovranken/cryptofuzz.git
 cd cryptofuzz
 git checkout 76ffeff944403cdd840f06b8fc42e131e6258f36
+git rev-parse HEAD
 CRYPTOFUZZ_SRC=$(pwd)
 python3 gen_repository.py
 
 mkdir "$MODULES_ROOT"
 cd "$MODULES_ROOT"
 
+# Setup the other crypto libraries for differential fuzzing
 # Botan https://github.com/guidovranken/cryptofuzz/blob/master/docs/botan.md
 git clone --depth 1 https://github.com/randombit/botan.git
 cd botan
+git rev-parse HEAD
 python3 configure.py --cc-bin=$CXX --cc-abi-flags="$CXXFLAGS" --disable-shared --disable-modules=locking_allocator,x509,tls --build-targets=static --without-documentation
 make -j$(nproc)
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BOTAN"
@@ -37,6 +40,7 @@ make -j$(nproc)
 cd "$MODULES_ROOT"
 git clone --depth 1 https://github.com/weidai11/cryptopp.git
 cd cryptopp/
+git rev-parse HEAD
 make libcryptopp.a -j$(nproc)
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_CRYPTOPP"
 env LIBCRYPTOPP_A_PATH `realpath libcryptopp.a`
@@ -44,10 +48,10 @@ env CRYPTOPP_INCLUDE_PATH `realpath .`
 cd "${CRYPTOFUZZ_SRC}/modules/cryptopp/"
 make
 
-# Copy over the seed corpus
+# Extract the seed corpus, docker layers are already compressed so this won't use any more space and save time when running
 cd "$FUZZ_ROOT"
-unzip cryptofuzz_seed_corpus.zip
-rm cryptofuzz_seed_corpus.zip
+unzip cryptofuzz_data.zip
+rm cryptofuzz_data.zip
 env CRYPTOFUZZ_SEED_CORPUS `realpath cryptofuzz_seed_corpus`
 env CRYPTOFUZZ_DICT `realpath cryptofuzz-dict.txt`
 

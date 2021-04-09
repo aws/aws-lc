@@ -3,38 +3,47 @@ set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# Sourcing these files check for environment variables which may be unset so wait to enable -u
 source tests/ci/common_fuzz.sh
 source "${FUZZ_ROOT}/fuzz_env.sh"
+# After loading everything any undefined variables should fail the build
+set -u
 
+rm -rf "$BUILD_ROOT"
 mkdir -p "$BUILD_ROOT"
 cd "$BUILD_ROOT"
 
 # Build AWS-LC based on https://github.com/guidovranken/cryptofuzz/blob/master/docs/openssl.md
-cmake -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 -GNinja ../
+cmake -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 \
+  -GNinja -DBUILD_TESTING=OFF -DBUILD_LIBSSL=OFF ../
 ninja
 cd ../
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BORINGSSL"
 export OPENSSL_INCLUDE_PATH=`realpath include/`
-export OPENSSL_LIBCRYPTO_A_PATH=`realpath build/crypto/libcrypto.a`
+export OPENSSL_LIBCRYPTO_A_PATH=`realpath ${BUILD_ROOT}/crypto/libcrypto.a`
 
+# Build the common OpenSSL module with AWS-LC
 cd "${CRYPTOFUZZ_SRC}/modules/openssl"
 make "-j${NUM_CPU_THREADS}"
 
 export CFLAGS="${CFLAGS} -I $OPENSSL_INCLUDE_PATH"
 export CXXFLAGS="${CXXFLAGS} -I $OPENSSL_INCLUDE_PATH"
+export LIBFUZZER_LINK="-fsanitize=fuzzer"
 
+# Build the overall cryptofuzz binary
 cd "$CRYPTOFUZZ_SRC"
-make
+make "-j${NUM_CPU_THREADS}"
 
-FUZZ_TEST_ROOT="${BUILD_ROOT}/fuzz_run_root"
-FUZZ_TEST_CORPUS="${FUZZ_TEST_ROOT}/run_corpus"
-SHARED_CORPUS="${CORPUS_ROOT}/shared_corpus/${FUZZ_NAME}/shared_corpus"
-ARTIFACTS_FOLDER="${FUZZ_TEST_ROOT}/artifacts"
-FUZZ_RUN_LOGS="${FUZZ_TEST_ROOT}/logs"
-SUMMARY_LOG="${FUZZ_RUN_LOGS}/summary.log"
-FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
+# Common AWS-LC fuzzing setup, the cryptofuzz binary is in this folder so FUZZ_TEST_PATH=FUZZ_NAME
+FUZZ_NAME="cryptofuzz"
+FUZZ_TEST_PATH="$FUZZ_NAME"
+SRC_CORPUS="$CRYPTOFUZZ_SEED_CORPUS"
+# Perform the actual fuzzing. We want the total build time to be about an hour:
+# 4 minutes for building AWS-LC and Cryptofuzz
+# 55 minutes of fuzzing
+# 1 minutes of cleanup
+#TIME_FOR_EACH_FUZZ=3300
+TIME_FOR_EACH_FUZZ=60
 
-mkdir -p "$SHARED_CORPUS" "$FUZZ_TEST_ROOT" "$FUZZ_TEST_CORPUS" "$ARTIFACTS_FOLDER" "$FUZZ_RUN_LOGS"
-
-./cryptofuzz -print_final_stats=1 -timeout=5 -max_total_time=60 -dict "$CRYPTOFUZZ_DICT" \
-  "$FUZZ_TEST_CORPUS" "$SHARED_CORPUS" "$CRYPTOFUZZ_SEED_CORPUS" 2>&1 | tee "$SUMMARY_LOG"
+# Call the common fuzzing logic
+run_fuzz_test
