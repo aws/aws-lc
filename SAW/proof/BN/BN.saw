@@ -32,11 +32,8 @@ let bn_sub_words_spec n = do {
   crucible_return (crucible_term {{ if (integerFromBV a) < (integerFromBV b) then 1 : [64] else 0 }});
 };
 
-let bn_mul_mont_spec num N = do {
+let bn_mul_mont_spec_h num N r_ptr a_ptr b_ptr a b = do {
   let num_bits = eval_size {| num * 64 |};
-  r_ptr <- crucible_alloc (llvm_int num_bits);
-  (a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
-  (b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
   n_ptr <- crucible_alloc_readonly (llvm_int num_bits);
   crucible_points_to n_ptr (crucible_term {{ integerToBV`{num_bits} `N }});
   n0_ptr <- crucible_alloc_readonly i64;
@@ -48,22 +45,31 @@ let bn_mul_mont_spec num N = do {
   let R_inv = eval_int {{ fromInteger`{[width N]} mont_R_inv`{N} }};
   crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} (((integerFromBV a) * (integerFromBV b) * `R_inv) % `N) }});
   crucible_return (crucible_term {{ 1 : [32] }});
+
 };
+
+let bn_mul_mont_spec num N = do {
+  let num_bits = eval_size {| num * 64 |};
+  r_ptr <- crucible_alloc (llvm_int num_bits);
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
+
+  bn_mul_mont_spec_h num N r_ptr a_ptr b_ptr a b;
+};
+
 let bn_mul_mont_same_res_left_spec num N = do {
   let num_bits = eval_size {| num * 64 |};
   (a, a_ptr) <- ptr_to_fresh "a" (llvm_int num_bits);
   (b, b_ptr) <- ptr_to_fresh_readonly "b" (llvm_int num_bits);
-  n_ptr <- crucible_alloc_readonly (llvm_int num_bits);
-  crucible_points_to n_ptr (crucible_term {{ integerToBV`{num_bits} `N }});
-  n0_ptr <- crucible_alloc_readonly i64;
-  let n0 = eval_int {{ bn_mont_n0`{N} }};
-  crucible_points_to n0_ptr (crucible_term {{ `n0 : [64] }});
 
-  crucible_execute_func [a_ptr, a_ptr, b_ptr, n_ptr, n0_ptr, (crucible_term {{ `num : [64] }})];
+  bn_mul_mont_spec_h num N a_ptr a_ptr b_ptr a b;
+};
+let bn_mul_mont_same_res_right_spec num N = do {
+  let num_bits = eval_size {| num * 64 |};
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_int num_bits);
+  (b, b_ptr) <- ptr_to_fresh "b" (llvm_int num_bits);
 
-  let R_inv = eval_int {{ fromInteger`{[width N]} mont_R_inv`{N} }};
-  crucible_points_to a_ptr (crucible_term {{ integerToBV`{num_bits} (((integerFromBV a) * (integerFromBV b) * `R_inv) % `N) }});
-  crucible_return (crucible_term {{ 1 : [32] }});
+  bn_mul_mont_spec_h num N b_ptr a_ptr b_ptr a b;
 };
 
 let bn_reduce_once_spec num = do {

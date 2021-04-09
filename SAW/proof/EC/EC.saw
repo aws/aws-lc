@@ -198,7 +198,6 @@ let points_to_ec_key_st ptr group_ptr pub_key_ptr priv_key_ptr = do {
   crucible_points_to (crucible_field ptr "group") group_ptr;
   crucible_points_to (crucible_field ptr "pub_key") pub_key_ptr;
   crucible_points_to (crucible_field ptr "priv_key") priv_key_ptr;
-  crucible_points_to (crucible_field ptr "fixed_k") crucible_null;
   crucible_points_to (crucible_field ptr "enc_flag") (crucible_term {{ 0 : [32] }});
   crucible_points_to (crucible_field ptr "conv_form") (crucible_term {{ `POINT_CONVERSION_UNCOMPRESSED : [32] }});
   references <- crucible_fresh_var "references" i32;
@@ -360,6 +359,18 @@ let ec_scalar_add_spec = do {
   crucible_points_to r_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) + (scalarFromBV b)) % `P384_n) }});
 };
 
+let ec_scalar_add_same_l_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" i384;
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" i384;
+  crucible_precond {{ (scalarFromBV a) % `P384_n == scalarFromBV a }};
+  crucible_precond {{ (scalarFromBV b) % `P384_n == scalarFromBV b }};
+
+  crucible_execute_func [group_ptr, a_ptr, a_ptr, b_ptr];
+
+  crucible_points_to a_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) + (scalarFromBV b)) % `P384_n) }});
+};
+
 let ec_scalar_mul_montgomery_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc i384;
@@ -369,6 +380,26 @@ let ec_scalar_mul_montgomery_spec = do {
   crucible_execute_func [group_ptr, r_ptr, a_ptr, b_ptr];
 
   crucible_points_to r_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) * (scalarFromBV b) * P384_R_n_inv) % `P384_n) }});
+};
+
+let ec_scalar_mul_montgomery_same_r_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" i384;
+  (b, b_ptr) <- ptr_to_fresh "b" i384;
+
+  crucible_execute_func [group_ptr, b_ptr, a_ptr, b_ptr];
+
+  crucible_points_to b_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) * (scalarFromBV b) * P384_R_n_inv) % `P384_n) }});
+};
+
+let ec_scalar_mul_montgomery_same_l_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  (a, a_ptr) <- ptr_to_fresh "a" i384;
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" i384;
+
+  crucible_execute_func [group_ptr, a_ptr, a_ptr, b_ptr];
+
+  crucible_points_to a_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) * (scalarFromBV b) * P384_R_n_inv) % `P384_n) }});
 };
 
 let ec_simple_scalar_inv0_montgomery_spec = do {
@@ -524,6 +555,14 @@ bn_mul_mont_n_ov <- crucible_llvm_unsafe_assume_spec
   m
   "bn_mul_mont"
   (bn_mul_mont_spec ec_words {| P384_n |});
+bn_mul_mont_same_res_left_n_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mul_mont"
+  (bn_mul_mont_same_res_left_spec ec_words {| P384_n |});
+bn_mul_mont_same_res_right_n_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bn_mul_mont"
+  (bn_mul_mont_same_res_right_spec ec_words {| P384_n |});
 bn_mul_mont_same_res_left_n_ov <- crucible_llvm_unsafe_assume_spec
   m
   "bn_mul_mont"
@@ -697,12 +736,39 @@ ec_scalar_add_ov <- crucible_llvm_unsafe_assume_spec
   "ec_scalar_add"
   ec_scalar_add_spec;
 
+ec_scalar_add_same_l_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "ec_scalar_add"
+  ec_scalar_add_same_l_spec;
+
 ec_scalar_mul_montgomery_ov <- llvm_verify
   m
   "ec_scalar_mul_montgomery"
   [bn_mul_mont_n_ov]
   true
   ec_scalar_mul_montgomery_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
+ec_scalar_mul_montgomery_same_r_ov <- llvm_verify
+  m
+  "ec_scalar_mul_montgomery"
+  [bn_mul_mont_same_res_right_n_ov]
+  true
+  ec_scalar_mul_montgomery_same_r_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
+ec_scalar_mul_montgomery_same_l_ov <- llvm_verify
+  m
+  "ec_scalar_mul_montgomery"
+  [bn_mul_mont_same_res_left_n_ov]
+  true
+  ec_scalar_mul_montgomery_same_l_spec
   (do {
     goal_eval_unint [];
     w4_unint_z3 [];
