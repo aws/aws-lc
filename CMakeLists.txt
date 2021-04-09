@@ -175,7 +175,7 @@ if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla -fPIC")
+  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
   if(MSVC)
     # clang-cl sets different default warnings than clang. It also treats -Wall
     # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
@@ -348,10 +348,11 @@ add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
-  # Enable position-independent code globally. This is needed because
-  # some library targets are OBJECT libraries.
-  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
+
+# Enable position-independent code globally. This is needed because
+# some library targets are OBJECT libraries.
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
 if(MSAN)
   if(NOT CLANG)
@@ -518,16 +519,6 @@ endif()
 
 if(OPENSSL_AARCH64_P256)
   add_definitions(-DOPENSSL_AARCH64_P256)
-endif()
-
-# For Android build, CMAKE_SYSTEM_PROCESSOR is sometimes not defined in CMAKE_TOOLCHAIN_FILE.
-if(ANDROID)
-  if("${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "armeabi-v7a")
-    set(CMAKE_SYSTEM_PROCESSOR "armv7-a")
-  endif()
-  if("${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "arm64-v8a")
-    set(CMAKE_SYSTEM_PROCESSOR "aarch64")
-  endif()
 endif()
 
 if(OPENSSL_NO_ASM)
