@@ -12,8 +12,10 @@ export CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O
 # Setup base of Cryptofuzz
 cd "$FUZZ_ROOT"
 MODULES_ROOT="${FUZZ_ROOT}/modules"
-git clone --depth 1 https://github.com/guidovranken/cryptofuzz.git
+#git clone --depth 1 https://github.com/guidovranken/cryptofuzz.git
+git clone https://github.com/guidovranken/cryptofuzz.git
 cd cryptofuzz
+git checkout 76ffeff944403cdd840f06b8fc42e131e6258f36
 CRYPTOFUZZ_SRC=$(pwd)
 python3 gen_repository.py
 

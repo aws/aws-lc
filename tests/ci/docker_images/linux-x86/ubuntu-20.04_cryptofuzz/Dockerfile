@@ -21,5 +21,5 @@ RUN set -ex && \
 ENV FUZZ_ROOT=${DEPENDENCIES_DIR}
 ENV MODULE_ROOT="${FUZZ_ROOT}/modules"
 
-COPY build_cryptofuzz_modules.sh cryptofuzz_seed_corpus.zip cryptofuzz-dict.txt $FUZZ_ROOT/
+COPY build_cryptofuzz_modules.sh cryptofuzz_seed_data.zip $FUZZ_ROOT/
 RUN set -ex && cd $FUZZ_ROOT && "./build_cryptofuzz_modules.sh"
