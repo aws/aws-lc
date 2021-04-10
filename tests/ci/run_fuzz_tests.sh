@@ -15,6 +15,8 @@ set -u
 # ~2 minutes for merging files
 # ~3 minutes for cleanup
 TOTAL_FUZZ_TEST_TIME=3000
+FUZZ_TEST_TIMEOUT=5
+
 FUZZ_TESTS=$(find test_build_dir/fuzz -type f -executable)
 NUM_FUZZ_TESTS=$(echo "$FUZZ_TESTS" | wc -l)
 TIME_FOR_EACH_FUZZ=$((TOTAL_FUZZ_TEST_TIME/NUM_FUZZ_TESTS))

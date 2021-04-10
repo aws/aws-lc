@@ -38,11 +38,17 @@ make "-j${NUM_CPU_THREADS}"
 FUZZ_NAME="cryptofuzz"
 FUZZ_TEST_PATH="$FUZZ_NAME"
 SRC_CORPUS="$CRYPTOFUZZ_SEED_CORPUS"
+
 # Perform the actual fuzzing. We want the total build time to be about an hour:
 # 4 minutes for building AWS-LC and Cryptofuzz
 # 55 minutes of fuzzing
 # 1 minutes of cleanup
 TIME_FOR_EACH_FUZZ=3300
+
+# Some fuzz tests can take a while but still pass. This is a tradeoff: less false positive noise, but some inputs that take
+# a long time could lead to a denial of service avenue. We're mostly interested in correctness and memory safety at this
+# time so we're willing to take the fit on fuzz speed
+FUZZ_TEST_TIMEOUT=30
 
 # Call the common fuzzing logic
 run_fuzz_test
