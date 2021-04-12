@@ -12,7 +12,6 @@ phases:
       - if [ $(getenforce) == 'Disabled' ]; then echo "SELinux is disabled. Disabling SELinux is needed by sde to allow pin work." ; else echo "SELinux should be turned off to allow sde pin to work." && exit 1; fi
       - export CC=gcc
       - export CXX=g++
-      - export GO111MODULE=on
   build:
     commands:
       - ./tests/ci/run_tests_with_sde.sh

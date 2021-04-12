@@ -7,3 +7,4 @@ phases:
   build:
     commands:
       - go run ./tests/check_licenses.go
+      - ./tests/check_generated_src.sh
