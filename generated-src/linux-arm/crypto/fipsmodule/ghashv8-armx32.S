@@ -67,8 +67,7 @@ gcm_init_v8:
 	vext.8	q9,q14,q14,#8		@ Karatsuba pre-processing
 	veor	q9,q9,q14
 	vext.8	q13,q8,q9,#8		@ pack Karatsuba pre-processed
-	vst1.64	{q13,q14},[r0]		@ store Htable[1..2]
-
+	vst1.64	{q13,q14},[r0]!	@ store Htable[1..2]
 	bx	lr
 .size	gcm_init_v8,.-gcm_init_v8
 .globl	gcm_gmult_v8
