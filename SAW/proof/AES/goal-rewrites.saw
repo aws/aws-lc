@@ -241,7 +241,7 @@ gcm_ghash_avx_encrypt_thm <- prove_gcm_ghash_avx_thm GHASH_length_blocks_encrypt
 gcm_ghash_avx_decrypt_thm <- prove_gcm_ghash_avx_thm GHASH_length_blocks_decrypt;
 let gcm_ghash_avx_thms =
   [ gcm_ghash_avx_encrypt_thm
-  , gcm_ghash_avx_encrypt_thm
+  , gcm_ghash_avx_decrypt_thm
   ];
 
 let prove_ctr32_encrypt_thm gcm_len len = prove_print

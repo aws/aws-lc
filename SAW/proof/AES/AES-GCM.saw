@@ -23,8 +23,6 @@ include "../common/memory.saw";
  * Verification parameters.
  */
 
-// The number of bytes of input given to the update function.
-let evp_cipher_update_len = 380;
 // The total input length before the call to the update function.
 let evp_cipher_update_gcm_len = 10;
 

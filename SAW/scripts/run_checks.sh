@@ -9,11 +9,9 @@ set -ex
 (cd proof/SHA512 && go run SHA512-384-check-entrypoint.go)
 saw proof/SHA512/verify-SHA512-512-quickcheck.saw
 (cd proof/HMAC && go run HMAC-check-entrypoint.go)
-# TODO: add select check flavors for AES-GCM and AES-KW
-saw proof/AES/verify-AES-GCM.saw
+(cd proof/AES && go run AES-GCM-check-entrypoint.go)
 saw proof/AES_KW/verify-AES_KW.saw
 saw proof/AES_KW/verify-AES_KWP.saw
 saw proof/ECDSA/verify-ECDSA.saw
 saw proof/ECDH/verify-ECDH.saw
 saw proof/RSA/verify-RSA.saw
-
