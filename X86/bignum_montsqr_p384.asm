@@ -227,7 +227,7 @@ bignum_montsqr_p384:
         adox    rsi, rax
 
 ; We need just *one* more register as a temp for the Montgomery steps.
-; Since we are writing to the z buffer anyway, make use of that to shash rbx.
+; Since we are writing to the z buffer anyway, make use of that to stash rbx.
 
         mov     [z], rbx
 
@@ -253,56 +253,34 @@ bignum_montsqr_p384:
         mov     r8, 0
         adc     r8, 0
 
-; We now have a pre-reduced 7-word form [r8;rsi;rbp;rbx;rcx;r15;r14]
+; We now have a pre-reduced 7-word form z = [r8; rsi;rbp;rbx;rcx;r15;r14]
+; Next, accumulate in different registers z - p_384, or more precisely
+;
+;   [r8; r13;r12;r11;r10;r9;rax] = z + (2^384 - p_384)
 
-; We know, writing B = 2^{6*64} that the full implicit result is
-; B^2 c <= z + (B - 1) * p < B * p + (B - 1) * p < 2 * B * p,
-; so the top half is certainly < 2 * p. If c = 1 already, we know
-; subtracting p will give the reduced modulus. But now we do a
-; comparison to catch cases where the residue is >= p.
-; First set [0;0;0;w;v;u] = 2^384 - p_384
-
-        mov     u, 0xffffffff00000001
-        mov     v, 0x00000000ffffffff
-        mov     w, 0x0000000000000001
-
-; Let dd = [rsi;rbp;rbx;rcx;r15;r14] be the topless 6-word intermediate result.
-; Set CF if the addition dd + (2^384 - p_384) >= 2^384, hence iff dd >= p_384.
-
-        mov     d, r14
-        add     d, u
-        mov     d, r15
-        adc     d, v
-        mov     d, rcx
-        adc     d, w
-        mov     d, rbx
-        adc     d, 0
-        mov     d, rbp
-        adc     d, 0
-        mov     d, rsi
-        adc     d, 0
-
-; Now just add this new carry into the existing r8. It's easy to see they
-; can't both be 1 by our range assumptions, so this gives us a {0,1} flag
-
+        xor     r11, r11
+        xor     r12, r12
+        xor     r13, r13
+        mov     rax, 0xffffffff00000001
+        add     rax, r14
+        mov     r9, 0x00000000ffffffff
+        adc     r9, r15
+        mov     r10, 0x0000000000000001
+        adc     r10, rcx
+        adc     r11, rbx
+        adc     r12, rbp
+        adc     r13, rsi
         adc     r8, 0
 
-; Now convert it into a bitmask
+; ~ZF <=> r12 >= 1 <=> z + (2^384 - p_384) >= 2^384 <=> z >= p_384, which
+; determines whether to use the further reduced argument or the original z.
 
-        neg     r8
-
-; Masked addition of 2^384 - p_384, hence subtraction of p_384
-
-        and     u, r8
-        and     v, r8
-        and     w, r8
-
-        add    r14, u
-        adc    r15, v
-        adc    rcx, w
-        adc    rbx, 0
-        adc    rbp, 0
-        adc    rsi, 0
+        cmovnz  r14, rax
+        cmovnz  r15, r9
+        cmovnz  rcx, r10
+        cmovnz  rbx, r11
+        cmovnz  rbp, r12
+        cmovnz  rsi, r13
 
 ; Write back the result
 

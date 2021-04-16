@@ -253,56 +253,35 @@ bignum_montmul_p384:
 
         montredc r12, r11,r10,r9,r8,r15,r14,r13
 
-; We now have a pre-reduced 7-word form [r12;r11;r10;r9;r8;r15;r14]
+; We now have a pre-reduced 7-word form z = [r12; r11;r10;r9;r8;r15;r14]
+; Next, accumulate in different registers z - p_384, or more precisely
+;
+;   [r12; r13;rbp;rdx;rcx;rbx;rax] = z + (2^384 - p_384)
 
-; We know, writing B = 2^{6*64} that the full implicit result is
-; B^2 c <= z + (B - 1) * p < B * p + (B - 1) * p < 2 * B * p,
-; so the top half is certainly < 2 * p. If c = 1 already, we know
-; subtracting p will give the reduced modulus. But now we do a
-; comparison to catch cases where the residue is >= p.
-; First set [0;0;0;w;v;u] = 2^384 - p_384
+        xor     rdx, rdx
+        xor     rbp, rbp
+        xor     r13, r13
 
-        mov     u, 0xffffffff00000001
-        mov     v, 0x00000000ffffffff
-        mov     w, 0x0000000000000001
-
-; Let dd = [r11;r10;r9;r8;r15;r14] be the topless 6-word intermediate result.
-; Set CF if the addition dd + (2^384 - p_384) >= 2^384, hence iff dd >= p_384.
-
-        mov     d, r14
-        add     d, u
-        mov     d, r15
-        adc     d, v
-        mov     d, r8
-        adc     d, w
-        mov     d, r9
-        adc     d, 0
-        mov     d, r10
-        adc     d, 0
-        mov     d, r11
-        adc     d, 0
-
-; Now just add this new carry into the existing r12. It's easy to see they
-; can't both be 1 by our range assumptions, so this gives us a {0,1} flag
-
+        mov     rax, 0xffffffff00000001
+        add     rax, r14
+        mov     rbx, 0x00000000ffffffff
+        adc     rbx, r15
+        mov     rcx, 0x0000000000000001
+        adc     rcx, r8
+        adc     rdx, r9
+        adc     rbp, r10
+        adc     r13, r11
         adc     r12, 0
 
-; Now convert it into a bitmask
+; ~ZF <=> r12 >= 1 <=> z + (2^384 - p_384) >= 2^384 <=> z >= p_384, which
+; determines whether to use the further reduced argument or the original z.
 
-        neg     r12
-
-; Masked addition of 2^384 - p_384, hence subtraction of p_384
-
-        and     u, r12
-        and     v, r12
-        and     w, r12
-
-        add    r14, u
-        adc    r15, v
-        adc    r8, w
-        adc    r9, 0
-        adc    r10, 0
-        adc    r11, 0
+        cmovnz  r14, rax
+        cmovnz  r15, rbx
+        cmovnz  r8, rcx
+        cmovnz  r9, rdx
+        cmovnz  r10, rbp
+        cmovnz  r11, r13
 
 ; Write back the result
 
