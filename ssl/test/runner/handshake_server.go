@@ -534,7 +534,7 @@ Curves:
 
 	// Resolve PSK and compute the early secret.
 	if hs.sessionState != nil {
-		hs.finishedHash.addEntropy(hs.sessionState.masterSecret)
+		hs.finishedHash.addEntropy(hs.sessionState.secret)
 	} else {
 		hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
 	}
@@ -976,14 +976,14 @@ ResendHelloRetryRequest:
 		privKey := hs.cert.PrivateKey
 
 		var err error
-		certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, config, hs.clientHello.signatureAlgorithms)
+		certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.isClient, c.vers, privKey, config, hs.clientHello.signatureAlgorithms)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
 		}
 
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
+		certVerify.signature, err = signMessage(c.isClient, c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
@@ -1147,7 +1147,7 @@ ResendHelloRetryRequest:
 
 			c.peerSignatureAlgorithm = certVerify.signatureAlgorithm
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
-			if err := verifyMessage(c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
+			if err := verifyMessage(c.isClient, c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
 				c.sendAlert(alertBadCertificate)
 				return err
 			}
@@ -1639,7 +1639,7 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 		}
 	}
 
-	hs.masterSecret = hs.sessionState.masterSecret
+	hs.masterSecret = hs.sessionState.secret
 	c.extendedMasterSecret = hs.sessionState.extendedMasterSecret
 
 	return nil
@@ -1884,7 +1884,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 
 		if c.vers > VersionSSL30 {
-			err = verifyMessage(c.vers, pub, c.config, sigAlg, hs.finishedHash.buffer, certVerify.signature)
+			err = verifyMessage(c.isClient, c.vers, pub, c.config, sigAlg, hs.finishedHash.buffer, certVerify.signature)
 		} else {
 			// SSL 3.0's client certificate construction is
 			// incompatible with signatureAlgorithm.
@@ -2007,7 +2007,7 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 	state := sessionState{
 		vers:          c.vers,
 		cipherSuite:   hs.suite.id,
-		masterSecret:  hs.masterSecret,
+		secret:        hs.masterSecret,
 		certificates:  hs.certsFromClient,
 		handshakeHash: hs.finishedHash.Sum(),
 	}
@@ -2279,7 +2279,7 @@ func verifyPSKBinder(version uint16, clientHello *clientHelloMsg, sessionState *
 		return errors.New("tls: Unknown cipher suite for PSK in session")
 	}
 
-	binder := computePSKBinder(sessionState.masterSecret, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
+	binder := computePSKBinder(sessionState.secret, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
 	if !bytes.Equal(binder, binderToVerify) {
 		return errors.New("tls: PSK binder does not verify")
 	}
