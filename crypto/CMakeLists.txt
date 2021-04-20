@@ -456,7 +456,7 @@ add_library(
 
 if(FIPS_SHARED)
   set(EXTRA_INJECT_HASH_ARGS)
-  if(ANDROID)
+  if(ANDROID OR (${ARCH} STREQUAL "aarch64"))
     set(EXTRA_INJECT_HASH_ARGS "-sha256")
   endif()
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
