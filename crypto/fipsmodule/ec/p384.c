@@ -519,6 +519,8 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 // multiplication non constant-time. Therefore, such window sizes have to be
 // avoided. The windows size of 7 is chosen based on analysis analogous to
 // the one in |ec_GFp_nistp_recode_scalar_bits| function in |util.c| file.
+// See the analysis at the bottom of this file.
+//
 // Moreover, the order in which the digits of the scalar are processed in
 // |ec_GFp_nistp384_point_mul_base| is different than in ECCKiila project, to
 // ensure that the least significant digit is processed last which together with
@@ -554,8 +556,8 @@ static crypto_word_t fiat_p384_get_bit(const uint8_t *in, int i) {
 #define P384_MUL_PUB_TABLE_SIZE (1 << (P384_MUL_PUB_WSIZE - 1))
 
 // Compute "regular" wNAF representation of a scalar.
-// See "Exponent Recoding and Regular Exponentiation Algorithms",
-// Tunstall et al., AfricaCrypt 2009, Alg 6.
+// See Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
+// AfricaCrypt 2009, Alg 6.
 // It forces an odd scalar and outputs digits in
 // {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
 // i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
@@ -854,7 +856,8 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
 // Computes [g_scalar]G + [p_scalar]P, where G is the base point of the P-384
 // curve, and P is the given point |p|.
 //
-// Both scalar products are computed by the same "textbook" wNAF method, w = 7.
+// Both scalar products are computed by the same "textbook" wNAF method,
+// with w = 7 for g_scalar and w = 5 for p_scalar.
 // For the base point G product we use the first sub-table of the precomputed
 // table |fiat_p384_g_pre_comp| from p384_table.h file, while for P we generate
 // the |p_pre_comp| table on-the-fly. The tables hold the first 64 odd multiples
@@ -921,7 +924,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
 
   for (size_t i = 384; i < 385; i--) {
 
-    // If |res| is point-at-infinity there is not point in doubling so skip it.
+    // If |res| is point-at-infinity there is no point in doubling so skip it.
     if (!res_is_inf) {
       fiat_p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
     }
@@ -1025,3 +1028,226 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 }
 
 #undef BORINGSSL_NISTP384_64BIT
+
+// ----------------------------------------------------------------------------
+//  Analysis of the doubling case occurrence in the Joye-Tunstall recoding:
+//  fiat_p384_mul_scalar_rwnaf()
+// ----------------------------------------------------------------------------
+//
+// The JT scalar recoding is Algorithm 6: (Odd) Signed-Digit Recoding Algorithm in
+// Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
+// AfricaCrypt 2009, available from
+// https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.477.1245&rep=rep1&type=pdf
+//
+// We write the algorithm using variables similar to those used in the code and
+// in the proof detailed in util.c (t_i in the algorithm below is d in
+// fiat_p384_mul_scalar_rwnaf()):
+//
+// Input: k: odd scalar, where k = (b_{l-1}, ..., b_1, b_0) in binary form,
+//        w: window width
+// Output: k = (t_{h-1}, ..., t_1, t_0)
+//         with t_i \in {\pm 1, \pm 3, ..., \pm (2^{w} - 1)},
+//         h = ceil(t/w), i.e. t_i are positive and negative odd digits
+//         which absolute value is less than (2^{w} - 1).
+// i := 0
+// j := 0
+// while (k > 2^w):
+//   window := (b_{j+w}, ..., b_j)   # (w+1)-bit window in k where the
+//                                   # least significant bit is b_j
+//   t_i := window - 2^w
+//   k := k - t_i
+//   k := k / 2^w          # k >> w
+//   i += 1
+//   j += w
+// t_{h-1} := k
+//
+// Note that if b_{j+w} = 0, t_i will be negative;
+// otherwise, if b_{j+w} = 1, t_i will be positive.
+//
+// The algorithm recodes the least (w+1) bits into a (odd) digit in the range
+// [-(2^{w}-1), (2^{w}-1)] by subtracting 2^w from that digit and adding it back
+// to the remaining bits of the scalar. This ensures that, after the w-bit right
+// shift, the next least significant bit is 1, i.e. next digit is odd.
+//
+// In the following we will show that the non-trivial doubling case in
+// single-point left-to-right windowed (or m-ary, m = 2^w) scalar multiplication
+// may occur if and only if the (2^w)th bit of the group order is 1.  This only
+// holds if the scalar is fully reduced and the group order is a prime that is
+// much larger than 2^{w+1}.
+//
+// PROOF:
+//
+// Let n be the group order. Let l be the number of bits needed to represent n.
+// Assume there exists some 0 <= k < n such that signed w-bit windowed
+// multiplication hits the doubling case.
+//
+// Windowed multiplication consists of iterating over the digits t_i defined
+// above by the algorithm from most to least significant. At iteration i
+// (for i = ..., 3w, 2w, w, 0, starting from the most significant window), we:
+//
+//  1. Double the accumulator A, w times. Let A_i be the value of A at this
+//     point, and it corresponds to a value [a_i]P.
+//
+//  2. Set A to T_i + A_i, where T_i is a precomputed multiple of P, [t_i]P
+
+// From the algorithm steps we can see that the current digit
+// t_i = (b_{w+i} ... b_i) - 2^w, b_i = 1     => -2^w < t_i < 2^w, t_i: odd
+// which can also be written using C notation as
+// t_i = [(k >> i) & ((1<<(w+1)) - 1)] - (1 << w)     -- (1)
+//
+// and the accumulator value
+// a_i = b_{l-1} ... b_{i+w+1} 1
+// when written as C notation
+// a_i = (k >> (i+w+1)) << (w+1)) + (1 << w)          -- (2)
+//
+// Similarly to the recoding in util.c, a_i is bounded by
+// 0 <= a_i < n + 2^w. Additionally, a_i can only be zero if b_(i+w-1) and up
+// are all zero. (Note this implies a non-trivial P + (-P) is unreachable for
+// all groups. That would imply the subsequent a_i is zero, which means all
+// terms thus far were zero.)
+//
+// Let j be the index such that A_j = T_j ≠ ∞. We have a_j = t_j (mod n). We now
+// determine the value of a_j - t_j, which must be divisible by n.
+// Our bounds on a_j and t_j imply a_j - t_j is 0 or n.
+// If it is 0, a_j = t_j. However, 2^w divides a_j and -2^w < t_i < 2^w, so this
+// can only happen if a_j = t_j = 0, which is a trivial doubling.
+// Therefore, a_j - t_j = n.
+//
+// Now we determine j. Suppose j > 0. w divides j, so j >= w. Then,
+//
+//   n = a_j - t_j = (k >> (j+w+1)) << (w+1)) + (1 << w) - t_j
+//                 = k/2^j + 2^w - t_j
+//                 < n/2^w + 2^w + 2^w-1
+//
+// n is much larger than 2^{w+1}, so this is impossible. Thus, j = 0: only the
+// final addition may hit the doubling case.
+//
+// Finally, we consider bit patterns for n and k. Divide k into k_H + k_M + k_L
+// such that k_H is the contribution from b_(l-1) .. b_{w+1},
+// k_M is the contribution from b_w,
+// and k_L is the contribution from b_(w-1) ... b_0.
+// That is:
+//
+// - 2^{w+1} divides k_H
+// - k_M is 0 or 2^w
+// - 0 <= k_L < 2^w
+//
+// Divide n into n_H + n_M + n_L similarly.
+// From (1) and (2), we have
+//
+// t_0 = (k_M + k_L) - 2^w
+// a_0 = k_H + 2^w
+//
+// We try to find t_0 and a_0 such that
+//
+//               n = a_0 - t_0
+// n_H + n_M + n_L = k_H + 2^w - (k_M + k_L - 2^w)
+//                 = k_H + 2^{w+1} - (k_M + k_L)
+//
+// We know that k_H <= n_H.
+//
+// If k_H < n_H, then k_H <= n_H - 2^{w+1} (Note that 2^{w+1} divides both k_H
+// and n_H). Then we would have
+//
+// n_H + n_M + n_L <= n_H - 2^{w+1} + 2^{w+1} - (k_M + k_L)
+//       n_M + n_L <= - (k_M + k_L)
+//
+// Contradiction. Thus,
+//
+//          k_H = n_H                    -- (3)
+// => n_M + n_L = 2^{w+1} - (k_M + k_L)  -- (4)
+//
+// We also have n > k; hence,
+// n_M + n_L > k_M + k_L                 -- (5)
+//
+// For (3), (4) and (5) to hold,
+// n_M = 2^w, k_M = 0.
+//
+// Otherwise, if n_M = 0 and k_M = 0
+// n_L = 2^{w+1} - k_L
+// n_L >= 2^{w+1} - (2^w - 1)
+// n_L >= 2^w + 1
+// Contradiction since n_L < 2^w.
+//
+// And if n_M = 0 and k_M = 2^w, (5) would not hold.
+//
+// Since n_M = 2^w, n_L >= 1, k_L >= 1, from (4) we have
+//  k_M + k_L = 2^{w+1} - (n_M + n_L)
+//           <= 2^{w+1} - 2^w - 1
+//           <= 2^{w} - 1
+// => k_M = 0
+//
+// Putting this together, from the group order of the curve, n, we can construct
+// the scalar, k, that would incur a doubling in the last iteration as:
+//
+// if n_M = 2^w,
+// k_H = n_H and
+// k_M + k_L = 2^{w+1} - (n_M + n_L)
+//
+// COMMON CURVES:
+//
+// The group orders for common curves end in the following bit patterns:
+//
+//   P-521: ...00001001; w = 4, 5, 6, 7 are okay
+//   P-384: ...01110011; w = 2, 3, 7    are okay
+//   P-256: ...01010001; w = 2, 3, 5, 7 are okay
+//
+// This analysis resulted in chosing w = 7 in fiat_p384_mul_scalar_rwnaf().
+//
+//
+// CAN DOUBLING OCCUR IN RIGHT-TO-LEFT ALGORITHMS OR COMB ALGORITHMS?
+//
+// This question was answered empirically for P-384 group order n, w = 5,
+// by asking:
+// Is there a value d_76, such that
+// - d_{76} * 2^{380} - a_{76} = n and
+// - d_{76} * 2^{380} + a_{76} = k < n ?
+//
+// Setting
+// d_76 = 0xf
+// a_76 = (d_76 << 380) - n =
+// -0xfffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973
+// k = a_76 + (d_76 << 380) =
+// 0xe00000000000000000000000000000000000000000000000389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
+//
+// n-k =
+// 0x1fffffffffffffffffffffffffffffffffffffffffffffff8ec69b03e86e5bbeb0341b6491614ef5d9d832d5998a52e6
+// => 0 < k < n
+//
+// -(1<<380)-a_76 = -0x389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
+// => -2^380 < a_76 < 2^380
+//
+// This shows that such a k value exists.
+//
+// This resulted in modifying the comb algorithm used in
+// ec_GFp_nistp384_point_mul_base() to proceed in a left-to-right fashion in
+// order to add the least significant digit in the last iteration. That is
+// beside using w = 7 as mentioned before.
+//
+// We can probably construct values of k that would incur doubling for whenever
+// any of the higher digits, t_{j-1}, (down to the middle digit, roughly) is
+// added last. This is because the upper half of the group order of P-384 is all
+// 1s, therefore we can find a value k < n, having a 0 at the (j*w)th bit which
+// would become 1 in the recoding of t_j (being the least significant bit in
+// t_j) and making t_{j-1} a negative digit. Hence, the difference between the
+// accumulator value containing all digits and t_{j-1} * 2^{(j-1)*w} can be n.
+//
+// This was tested as follows in Python for j = 75, i.e. the second last digit:
+// let that digit's value be the smallest possible value for w = 5, i.e. -31
+//  d_75 = -31
+// # assuming the accumulator contains the most significant digit d_76
+//  a = n + (d_75 << 375); hex(a)
+// '0xf07fffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973L'
+//  hex(n)
+// '0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973L'
+//  k = a + (d_75 << 375); hex(k)
+// '0xe0ffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973L'
+//
+// # Checks
+//  hex(n-k)
+// '0x1f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000L'
+//  hex(n - (a - (d_75 << 375)))
+// '0x0L'
+// => n > k
+//    and a value k was found such that when adding d_75 last, the difference
+//    between the accumulator a and (d_75 << 375) is n
