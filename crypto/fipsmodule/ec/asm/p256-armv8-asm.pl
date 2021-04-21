@@ -917,7 +917,7 @@ ecp_nistz256_point_add:
 	ldp	x23,x24,[x29,#48]
 	ldp	x25,x26,[x29,#64]
 	ldp	x27,x28,[x29,#80]
-	add	sp,sp,#32*(12-4)	// difference in stack frames
+	add	sp,sp,#256	// #256 is from #32*(12-4). difference in stack frames
 	b	.Ldouble_shortcut
 
 .align	4
