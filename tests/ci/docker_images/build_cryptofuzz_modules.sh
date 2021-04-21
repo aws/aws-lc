@@ -36,11 +36,8 @@ make -j$(nproc)
 
 # Crypto++ https://github.com/guidovranken/cryptofuzz/blob/master/docs/cryptopp.md
 cd "$MODULES_ROOT"
-# Crypto++ broke arm compatibility with this change https://github.com/weidai11/cryptopp/commit/d1cea852f06008541966de7af433b57c4e9e2504
-#git clone --depth 1 https://github.com/weidai11/cryptopp.git
-git clone https://github.com/weidai11/cryptopp.git
+git clone --depth 1 https://github.com/weidai11/cryptopp.git
 cd cryptopp/
-git checkout fee14910eaabfa098b1a7e1b05326a8831ee5e41
 git rev-parse HEAD
 make libcryptopp.a -j$(nproc)
 export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_CRYPTOPP"
@@ -60,3 +57,6 @@ env CRYPTOFUZZ_DICT `realpath cryptofuzz-dict.txt`
 env CFLAGS "$CFLAGS"
 env CXXFLAGS "$CXXFLAGS"
 env CRYPTOFUZZ_SRC "$CRYPTOFUZZ_SRC"
+
+# Cryptofuzz builds it's modules into $CRYPTOFUZZ_SRC/modules that includes everything it needs, this saves a substantial amount of space
+rm -rf "$MODULES_ROOT"
