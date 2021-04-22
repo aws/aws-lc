@@ -102,3 +102,16 @@ CodeBuild|clang 10.0.0|aarch64|ubuntu 20.04|ASAN=1
 To add a new fuzz test create a new executable follow [libFuzzer's](https://llvm.org/docs/LibFuzzer.html) documentation
 and existing tests. Generate a seed corpus and check it into a folder with the same name as the executable. The CI will
 pull in any files from the seed folder and merge it into the growing corpus in EFS.
+
+
+### Cryptofuzz
+Each change is built and tested with [Cryptofuzz](https://github.com/guidovranken/cryptofuzz) for an hour. A seed corpus
+is included in tests/docker_images/cryptofuzz_data.zip. As new inputs are found they are saved in a shared corpus across
+runs in AWS EFS. Cryptofuzz is built with 3 modules:
+* AWS-LC
+* Botan
+* Crypto++
+
+CI Tool|Compiler|CPU platform|OS|Flags
+------------|-------------|-------------|-------------|-------------
+CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04|ASAN=1
