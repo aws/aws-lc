@@ -13,7 +13,7 @@ batch:
         type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        # Build failure on Docker image `vs2015_latest` is tracked in CryptoAlg-741.
+        # Build failure on Docker image `vs2015_latest`, tracked in CryptoAlg-741.
         image: ECR_REPO_PLACEHOLDER:vs2015-2020-12-08-01
 
     - identifier: windows_msvc2017_x64
