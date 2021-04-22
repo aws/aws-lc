@@ -58,5 +58,6 @@ env CFLAGS "$CFLAGS"
 env CXXFLAGS "$CXXFLAGS"
 env CRYPTOFUZZ_SRC "$CRYPTOFUZZ_SRC"
 
-# Cryptofuzz builds it's modules into $CRYPTOFUZZ_SRC/modules that includes everything it needs, this saves a substantial amount of space
+# Cryptofuzz builds its modules into $CRYPTOFUZZ_SRC/modules that includes everything it needs, deleting the module source
+# code saves a substantial amount of space in the docker image
 rm -rf "$MODULES_ROOT"

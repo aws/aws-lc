@@ -22,4 +22,5 @@ batch:
         type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:vs2017_latest
+        # Build failure on Docker image `vs2015_latest`, tracked in CryptoAlg-741.
+        image: ECR_REPO_PLACEHOLDER:vs2015-2020-12-08-01
