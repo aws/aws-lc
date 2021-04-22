@@ -15,7 +15,7 @@ go run build.go
 
 # Generate delocate.peg.go by running below command.
 cd ..
-/peg/peg delocate.peg
+./peg/peg delocate.peg
 
 # Clean up.
 rm -rf peg
