@@ -31,6 +31,17 @@ struct X509_val_st {
   ASN1_TIME *notAfter;
 } /* X509_VAL */;
 
+struct X509_pubkey_st {
+  X509_ALGOR *algor;
+  ASN1_BIT_STRING *public_key;
+  EVP_PKEY *pkey;
+} /* X509_PUBKEY */;
+
+struct x509_attributes_st {
+  ASN1_OBJECT *object;
+  STACK_OF(ASN1_TYPE) *set;
+} /* X509_ATTRIBUTE */;
+
 
 /* RSA-PSS functions. */
 

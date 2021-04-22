@@ -65,13 +65,13 @@ func (ka *rsaKeyAgreement) generateServerKeyExchange(config *Config, cert *Certi
 
 	var sigAlg signatureAlgorithm
 	if ka.version >= VersionTLS12 {
-		sigAlg, err = selectSignatureAlgorithm(false /* server */, ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms)
+		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	sig, err := signMessage(false /* server */, ka.version, cert.PrivateKey, config, sigAlg, serverRSAParams)
+	sig, err := signMessage(ka.version, cert.PrivateKey, config, sigAlg, serverRSAParams)
 	if err != nil {
 		return nil, errors.New("failed to sign RSA parameters: " + err.Error())
 	}
@@ -107,14 +107,11 @@ func (ka *rsaKeyAgreement) processClientKeyExchange(config *Config, cert *Certif
 		return nil, errClientKeyExchange
 	}
 
-	ciphertext := ckx.ciphertext
-	if version != VersionSSL30 {
-		ciphertextLen := int(ckx.ciphertext[0])<<8 | int(ckx.ciphertext[1])
-		if ciphertextLen != len(ckx.ciphertext)-2 {
-			return nil, errClientKeyExchange
-		}
-		ciphertext = ckx.ciphertext[2:]
+	ciphertextLen := int(ckx.ciphertext[0])<<8 | int(ckx.ciphertext[1])
+	if ciphertextLen != len(ckx.ciphertext)-2 {
+		return nil, errClientKeyExchange
 	}
+	ciphertext := ckx.ciphertext[2:]
 
 	key := cert.PrivateKey.(*rsa.PrivateKey)
 	if ka.exportKey != nil {
@@ -223,14 +220,10 @@ func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello
 		encrypted[0] = 0
 	}
 	ckx := new(clientKeyExchangeMsg)
-	if ka.version != VersionSSL30 {
-		ckx.ciphertext = make([]byte, len(encrypted)+2)
-		ckx.ciphertext[0] = byte(len(encrypted) >> 8)
-		ckx.ciphertext[1] = byte(len(encrypted))
-		copy(ckx.ciphertext[2:], encrypted)
-	} else {
-		ckx.ciphertext = encrypted
-	}
+	ckx.ciphertext = make([]byte, len(encrypted)+2)
+	ckx.ciphertext[0] = byte(len(encrypted) >> 8)
+	ckx.ciphertext[1] = byte(len(encrypted))
+	copy(ckx.ciphertext[2:], encrypted)
 	return preMasterSecret, ckx, nil
 }
 
@@ -492,13 +485,13 @@ func (ka *signedKeyAgreement) signParameters(config *Config, cert *Certificate, 
 	var sigAlg signatureAlgorithm
 	var err error
 	if ka.version >= VersionTLS12 {
-		sigAlg, err = selectSignatureAlgorithm(false /* server */, ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms)
+		sigAlg, err = selectSignatureAlgorithm(ka.version, cert.PrivateKey, config, clientHello.signatureAlgorithms)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	sig, err := signMessage(false /* server */, ka.version, cert.PrivateKey, config, sigAlg, msg)
+	sig, err := signMessage(ka.version, cert.PrivateKey, config, sigAlg, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -574,7 +567,7 @@ func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clie
 	}
 	sig = sig[2:]
 
-	return verifyMessage(true /* client */, ka.version, publicKey, config, sigAlg, msg, sig)
+	return verifyMessage(ka.version, publicKey, config, sigAlg, msg, sig)
 }
 
 // ecdheKeyAgreement implements a TLS key agreement where the server
