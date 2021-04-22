@@ -12,10 +12,8 @@ export CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O
 # Setup base of Cryptofuzz
 cd "$FUZZ_ROOT"
 MODULES_ROOT="${FUZZ_ROOT}/modules"
-#git clone --depth 1 https://github.com/guidovranken/cryptofuzz.git
-git clone https://github.com/guidovranken/cryptofuzz.git
+git clone --depth 1 https://github.com/guidovranken/cryptofuzz.git
 cd cryptofuzz
-git checkout 76ffeff944403cdd840f06b8fc42e131e6258f36
 git rev-parse HEAD
 CRYPTOFUZZ_SRC=$(pwd)
 python3 gen_repository.py
@@ -59,3 +57,7 @@ env CRYPTOFUZZ_DICT `realpath cryptofuzz-dict.txt`
 env CFLAGS "$CFLAGS"
 env CXXFLAGS "$CXXFLAGS"
 env CRYPTOFUZZ_SRC "$CRYPTOFUZZ_SRC"
+
+# Cryptofuzz builds its modules into $CRYPTOFUZZ_SRC/modules that includes everything it needs, deleting the module source
+# code saves a substantial amount of space in the docker image
+rm -rf "$MODULES_ROOT"
