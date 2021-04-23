@@ -521,10 +521,11 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 					symbol = redirector
 					changed = true
 				} else if didChange && symbolIsLocal && len(offset) > 0 {
-					// didChange happens when the inputFile index is not 0 (first one),
-					// so local symbols in the file need to get changed with suffix(`BCM` + `index`).
-					// The change is to avoid potential collides with other files.
-					// If the offset exists, append the offset.
+					// didChange is set when the inputFile index is not 0, i.e. for the first file 
+					// copied to the output.
+					// In subsequent files, local symbols are changed by appending (`BCM_` + `index`) 
+					// in order to ensure they don't collide. `index` gets incremented per file.
+					// If there is offset after the symbol, append the `offset`.
 					symbol = symbol + offset
 				}
 
