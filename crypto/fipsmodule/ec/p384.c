@@ -1251,3 +1251,116 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 // => n > k
 //    and a value k was found such that when adding d_75 last, the difference
 //    between the accumulator a and (d_75 << 375) is n
+//
+//
+// ----------------------------------------------------------------------------
+//  Python code showing the doubling case occurrence in the Joye-Tunstall
+//  recoding:
+// ----------------------------------------------------------------------------
+//
+// from array import *
+//
+// # P-384 group order
+// n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC7634D81F4372DDF581A0DB248B0A77AECEC196ACCC52973
+//
+// # k value that causes a doubling case in left-to-right reconstruction
+// k = 0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc5294d
+// # k value that causes a doubling case in right-to-left reconstruction
+// k_r2l = 0xe00000000000000000000000000000000000000000000000389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
+//
+//
+// def recode(k, w):
+//     rec = array('i', [])
+//     while k > (2 ** w):
+//         window = k & ((2 ** (w + 1)) - 1)
+//         d = window - (2 ** w)
+//         k = k - d
+//         k = (k >> w)
+//         rec.append(d)
+//     rec.append(k)
+//     return rec
+//
+// # Rebuild k from the recoded scalar proceeding from left to right
+// def rebuild_l2r(rec, w):
+//     l = rec.buffer_info()[1]  # length of the recoded scalar array
+//     # initialise accumulator
+//     a = rec[l-1]
+//     # for i from l-2 downto 0
+//     for i in range(l-2,-1,-1):
+//         a = (a << w)
+//         if (a - rec[i]) == n:
+//             print("L2R Doubling case: ")
+//             print("    i =", i, " digit =", hex(rec[i]))
+//             print("    a =", hex(a))
+//         a += rec[i]
+//     return a
+//
+// # Rebuild k from the recoded scalar proceeding from right to left
+// def rebuild_r2l(rec, w):
+//     l = rec.buffer_info()[1]  # length of the recoded scalar array
+//     # initialise accumulator
+//     a = rec[0]
+//     # for i from 1 to l-1
+//     for i in range(1,l):
+//         shifted_d = rec[i] << (w*i)
+//         if (shifted_d - a) == n:
+//             print("R2L Doubling case: ")
+//             print("    i =", i, " digit =", hex(rec[i]))
+//             print("    a =", hex(a))
+//         a += shifted_d
+//     return a
+//
+// def test_recode():
+//     w = 5
+//
+//     # Left-to-right recoding of k which causes a doubling case
+//     assert k < n
+//     print("k = ", hex(k))
+//     # recode k
+//     rec_k = recode(k,w)
+//     # print(rec_k)
+//     print("Digits of the recoded scalar:")
+//     for a in rec_k:
+//         print(hex(a), end=', ')
+//     print()
+//     # rebuild k
+//     out_k = rebuild_l2r(rec_k, w)
+//     if out_k != k:
+//         print("ERROR: rebuilt value is different from recoded value")
+//     print()
+//
+//     # Right-to-left recoding of k_r2l which causes a doubling case
+//     assert k_r2l < n
+//     print("k = ", hex(k_r2l))
+//     # recode k_r2l
+//     rec_k_r2l = recode(k_r2l,w)
+//     # print(rec_k_r2l)
+//     print("Digits of the recoded scalar:")
+//     for a in rec_k_r2l:
+//         print(hex(a), end=', ')
+//     print()
+//     # rebuild k_r2l
+//     out_k_r2l = rebuild_r2l(rec_k_r2l, w)
+//     if out_k_r2l != k_r2l:
+//         print("ERROR: rebuilt R2L value is different from recoded value")
+//     print()
+//
+// test_recode()
+// '''
+// Output:
+// -------
+// k =  0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc5294d
+// Digits of the recoded scalar:
+// -0x13, -0x15, -0x15, -0x15, -0x13, 0x7, 0xb, 0xd, -0x7, 0x1, 0x1b, -0x7, 0xf, 0x1d, -0x3, -0xb, 0x11, -0x1b, -0xd, 0x5, -0x5, -0x19, 0x9, -0x1d, -0x7, 0x1b, 0x17, -0x5, 0x13, -0x5, -0xf, 0x1f, -0x1f, 0xd, -0xd, -0x19, 0x17, 0x3, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0xf,
+// L2R Doubling case:
+//     i = 0  digit = -0x13
+//     a = 0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52960
+//
+// k =  0xe00000000000000000000000000000000000000000000000389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
+// Digits of the recoded scalar:
+// -0x13, 0x15, 0x15, 0x15, 0x13, -0x7, -0xb, -0xd, 0x7, -0x1, -0x1b, 0x7, -0xf, -0x1d, 0x3, 0xb, -0x11, 0x1b, 0xd, -0x5, 0x5, 0x19, -0x9, 0x1d, 0x7, -0x1b, -0x17, 0x5, -0x13, 0x5, 0xf, -0x1f, 0x1f, -0xd, 0xd, 0x19, -0x17, -0x3, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, 0xf,
+// R2L Doubling case:
+//     i = 76  digit = 0xf
+//     a = -0xfffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973
+// '''
+//
