@@ -34,9 +34,8 @@ def SetEnvironmentForCPU(cpu):
     # Old-style paths were relative to the win_sdk\bin directory.
     json_relative_dir = os.path.join(sdk_dir, 'bin')
   else:
-    # New-style paths are relative to the toolchain directory, which is the
-    # parent of the SDK directory.
-    json_relative_dir = os.path.split(sdk_dir)[0]
+    # New-style paths are relative to the toolchain directory.
+    json_relative_dir = toolchain_data['path']
   for k in env:
     entries = [os.path.join(*([json_relative_dir] + e)) for e in env[k]]
     # clang-cl wants INCLUDE to be ;-separated even on non-Windows,
@@ -78,10 +77,6 @@ def Update(version):
   information required to pass to vs_env.py which we use in
   |SetEnvironmentForCPU()|.
   """
-  # TODO(davidben): Once the builders specify the toolchain version directly,
-  # remove this and replace the default in DEPS from 'env' to '2015'.
-  if version == 'env':
-    version = os.environ.get('GYP_MSVS_VERSION', '2015')
   depot_tools_path = FindDepotTools()
   get_toolchain_args = [
       sys.executable,

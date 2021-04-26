@@ -1051,6 +1051,11 @@ OPENSSL_EXPORT int SSL_set_ocsp_response(SSL *ssl,
 #define SSL_SIGN_RSA_PSS_RSAE_SHA512 0x0806
 #define SSL_SIGN_ED25519 0x0807
 
+// SSL_SIGN_RSA_PKCS1_SHA256_LEGACY is a backport of RSASSA-PKCS1-v1_5 with
+// SHA-256 to TLS 1.3. It is disabled by default and only defined for client
+// certificates.
+#define SSL_SIGN_RSA_PKCS1_SHA256_LEGACY 0x0420
+
 // SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal signature algorithm used to
 // specify raw RSASSA-PKCS1-v1_5 with an MD5/SHA-1 concatenation, as used in TLS
 // before TLS 1.2.
@@ -4797,18 +4802,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 // upstream added it as |SSL_CIPHER_get_protocol_id|. Switch callers to the new
 // name and remove this one.
 OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
-
-// SSL_CTX_set_ignore_tls13_downgrade does nothing.
-OPENSSL_EXPORT void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx,
-                                                       int ignore);
-
-// SSL_set_ignore_tls13_downgrade does nothing.
-OPENSSL_EXPORT void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore);
-
-// SSL_is_tls13_downgrade returns zero. Historically, this function returned
-// whether the TLS 1.3 downgrade signal would have been enforced if not
-// disabled. The TLS 1.3 downgrade signal is now always enforced.
-OPENSSL_EXPORT int SSL_is_tls13_downgrade(const SSL *ssl);
 
 
 // Nodejs compatibility section (hidden).

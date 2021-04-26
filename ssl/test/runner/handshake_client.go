@@ -472,7 +472,7 @@ NextCipherSuite:
 			if session.vers < VersionTLS13 {
 				version = VersionTLS13
 			}
-			generatePSKBinders(version, hello, pskCipherSuite, session.masterSecret, []byte{}, []byte{}, c.config)
+			generatePSKBinders(version, hello, pskCipherSuite, session.secret, []byte{}, []byte{}, c.config)
 		}
 		if c.config.Bugs.SendClientHelloWithFixes != nil {
 			helloBytes, err = fixClientHellos(hello, c.config.Bugs.SendClientHelloWithFixes)
@@ -514,7 +514,7 @@ NextCipherSuite:
 	// Derive early write keys and set Conn state to allow early writes.
 	if sendEarlyData {
 		finishedHash := newFinishedHash(session.wireVersion, c.isDTLS, pskCipherSuite)
-		finishedHash.addEntropy(session.masterSecret)
+		finishedHash.addEntropy(session.secret)
 		finishedHash.Write(helloBytes)
 
 		if !c.config.Bugs.SkipChangeCipherSpec {
@@ -657,7 +657,7 @@ NextCipherSuite:
 		hello.raw = nil
 
 		if len(hello.pskIdentities) > 0 {
-			generatePSKBinders(c.wireVersion, hello, pskCipherSuite, session.masterSecret, helloBytes, helloRetryRequest.marshal(), c.config)
+			generatePSKBinders(c.wireVersion, hello, pskCipherSuite, session.secret, helloBytes, helloRetryRequest.marshal(), c.config)
 		}
 		secondHelloBytes = hello.marshal()
 		secondHelloBytesToWrite := secondHelloBytes
@@ -879,7 +879,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: server resumed an invalid session for the cipher suite")
 		}
-		hs.finishedHash.addEntropy(hs.session.masterSecret)
+		hs.finishedHash.addEntropy(hs.session.secret)
 		c.didResume = true
 	} else {
 		hs.finishedHash.addEntropy(zeroSecret)
@@ -1070,7 +1070,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 		c.peerSignatureAlgorithm = certVerifyMsg.signatureAlgorithm
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		err = verifyMessage(c.vers, hs.peerPublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
+		err = verifyMessage(c.isClient, c.vers, hs.peerPublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
 		if err != nil {
 			return err
 		}
@@ -1214,14 +1214,14 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			privKey := chainToSend.PrivateKey
 
 			var err error
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.isClient, c.vers, privKey, c.config, certReq.signatureAlgorithms)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
 			}
 
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
-			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
+			certVerify.signature, err = signMessage(c.isClient, c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
@@ -1437,7 +1437,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		privKey := c.config.Certificates[0].PrivateKey
 
 		if certVerify.hasSignatureAlgorithm {
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.isClient, c.vers, privKey, c.config, certReq.signatureAlgorithms)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
@@ -1445,7 +1445,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		if c.vers > VersionSSL30 {
-			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
+			certVerify.signature, err = signMessage(c.isClient, c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
 			if err == nil && c.config.Bugs.SendSignatureAlgorithm != 0 {
 				certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
 			}
@@ -1576,13 +1576,7 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 			return errors.New("tls: failed to parse public key from delegated credential: " + err.Error())
 		}
 
-		verifier, err := getSigner(c.vers, hs.peerPublicKey, c.config, dc.algorithm, true)
-		if err != nil {
-			c.sendAlert(alertBadCertificate)
-			return errors.New("tls: failed to get verifier for delegated credential: " + err.Error())
-		}
-
-		if err := verifier.verifyMessage(leafPublicKey, delegatedCredentialSignedMessage(dc.signedBytes, dc.algorithm, certs[0].Raw), dc.signature); err != nil {
+		if err := verifyMessage(c.isClient, c.vers, leafPublicKey, c.config, dc.algorithm, delegatedCredentialSignedMessage(dc.signedBytes, dc.algorithm, certs[0].Raw), dc.signature); err != nil {
 			c.sendAlert(alertBadCertificate)
 			return errors.New("tls: failed to verify delegated credential: " + err.Error())
 		}
@@ -1834,7 +1828,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 		}
 
 		// Restore masterSecret and peerCerts from previous state
-		hs.masterSecret = hs.session.masterSecret
+		hs.masterSecret = hs.session.secret
 		c.peerCertificates = hs.session.serverCertificates
 		c.extendedMasterSecret = hs.session.extendedMasterSecret
 		c.sctList = hs.session.sctList
@@ -1891,7 +1885,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		vers:               c.vers,
 		wireVersion:        c.wireVersion,
 		cipherSuite:        hs.suite.id,
-		masterSecret:       hs.masterSecret,
+		secret:             hs.masterSecret,
 		handshakeHash:      hs.finishedHash.Sum(),
 		serverCertificates: c.peerCertificates,
 		sctList:            c.sctList,
