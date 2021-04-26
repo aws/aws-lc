@@ -521,9 +521,9 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 					symbol = redirector
 					changed = true
 				} else if didChange && symbolIsLocal && len(offset) > 0 {
-					// didChange is set when the inputFile index is not 0, i.e. for the first file 
-					// copied to the output.
-					// In subsequent files, local symbols are changed by appending (`BCM_` + `index`) 
+					// didChange is set when the inputFile index is not 0; which is the index of the
+					// first file copied to the output, which is the generated assembly of bcm.c.
+					// In subsequently copied assembly files, ...
 					// in order to ensure they don't collide. `index` gets incremented per file.
 					// If there is offset after the symbol, append the `offset`.
 					symbol = symbol + offset
