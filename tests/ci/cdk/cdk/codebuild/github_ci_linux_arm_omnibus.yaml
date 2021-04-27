@@ -38,6 +38,7 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
         variables:
+          AWS_LC_GO_TEST_TIMEOUT: 60m
           AWSLC_NO_ASM_FIPS: 1
 
     - identifier: ubuntu2004_clang8x_aarch
