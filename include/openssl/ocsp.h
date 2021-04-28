@@ -56,4 +56,8 @@ int OCSP_response_status(OCSP_RESPONSE *resp);
 OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
 
+
+#define OCSP_R_NOT_BASIC_RESPONSE                        104
+#define OCSP_R_NO_RESPONSE_DATA                          108
+
 #endif  // AWSLC_OCSP_H
