@@ -201,6 +201,7 @@ if(GO_EXECUTABLE)
     err/evp.errordata
     err/hkdf.errordata
     err/obj.errordata
+    err/ocsp.errordata
     err/pem.errordata
     err/pkcs7.errordata
     err/pkcs8.errordata
