@@ -330,6 +330,7 @@ add_library(
   mem.c
   obj/obj.c
   obj/obj_xref.c
+  ocsp/ocsp_asn.c
   pem/pem_all.c
   pem/pem_info.c
   pem/pem_lib.c
