@@ -10,12 +10,7 @@ int OCSP_response_status(OCSP_RESPONSE *resp)
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
-
-  long status = ASN1_ENUMERATED_get(resp->responseStatus);
-  if(status <= 0){
-    return -1;
-  }
-  return status;
+  return ASN1_ENUMERATED_get(resp->responseStatus);
 }
 
 /* Extract basic response from OCSP_RESPONSE */
