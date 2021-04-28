@@ -65,6 +65,18 @@ func (c *Conn) serverHandshake() error {
 			return err
 		}
 
+		// We only implement enough of SSL 3.0 to test that the client doesn't:
+		// if negotiated (possibly with the NegotiateVersion bug), we send a
+		// ServerHello and look for the resulting client protocol_version alert.
+		if c.vers == VersionSSL30 {
+			c.writeRecord(recordTypeHandshake, hs.hello.marshal())
+			c.flushHandshake()
+			if _, err := c.readHandshake(); err != nil {
+				return err
+			}
+			return errors.New("tls: client did not reject an SSL 3.0 ServerHello")
+		}
+
 		// For an overview of TLS handshaking, see https://tools.ietf.org/html/rfc5246#section-7.3
 		if isResume {
 			// The client has included a session ticket and so we do an abbreviated handshake.
@@ -609,11 +621,7 @@ ResendHelloRetryRequest:
 	}
 
 	if sendHelloRetryRequest {
-		if err := hs.finishedHash.UpdateForHelloRetryRequest(); err != nil {
-			return err
-		}
-
-		oldClientHelloBytes := hs.clientHello.marshal()
+		hs.finishedHash.UpdateForHelloRetryRequest()
 		hs.writeServerHash(helloRetryRequest.marshal())
 		if c.config.Bugs.PartialServerHelloWithHelloRetryRequest {
 			data := helloRetryRequest.marshal()
@@ -699,7 +707,7 @@ ResendHelloRetryRequest:
 			}
 			if found {
 				binderToVerify := newClientHello.pskBinders[pskIndex]
-				if err := verifyPSKBinder(c.wireVersion, newClientHello, hs.sessionState, binderToVerify, oldClientHelloBytes, helloRetryRequest.marshal()); err != nil {
+				if err := verifyPSKBinder(c.wireVersion, newClientHello, hs.sessionState, binderToVerify, hs.clientHello.marshal(), helloRetryRequest.marshal()); err != nil {
 					return err
 				}
 			} else if !config.Bugs.AcceptAnySession {
@@ -976,14 +984,14 @@ ResendHelloRetryRequest:
 		privKey := hs.cert.PrivateKey
 
 		var err error
-		certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.isClient, c.vers, privKey, config, hs.clientHello.signatureAlgorithms)
+		certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, config, hs.clientHello.signatureAlgorithms)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
 		}
 
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		certVerify.signature, err = signMessage(c.isClient, c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
+		certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
@@ -1147,7 +1155,7 @@ ResendHelloRetryRequest:
 
 			c.peerSignatureAlgorithm = certVerify.signatureAlgorithm
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
-			if err := verifyMessage(c.isClient, c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
+			if err := verifyMessage(c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
 				c.sendAlert(alertBadCertificate)
 				return err
 			}
@@ -1466,7 +1474,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		if c.cipherSuite != nil {
 			disableEMS = config.Bugs.NoExtendedMasterSecretOnRenegotiation
 		}
-		serverExtensions.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !disableEMS
+		serverExtensions.extendedMasterSecret = hs.clientHello.extendedMasterSecret && !disableEMS
 	}
 
 	if hs.clientHello.channelIDSupported && config.RequestChannelID {
@@ -1662,7 +1670,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		hs.hello.extensions.sctList = config.Bugs.SendSCTListOnRenegotiation
 	}
 
-	hs.hello.extensions.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled && c.vers > VersionSSL30
+	hs.hello.extensions.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled
 	hs.hello.cipherSuite = hs.suite.id
 	if config.Bugs.SendCipherSuite != 0 {
 		hs.hello.cipherSuite = config.Bugs.SendCipherSuite
@@ -1789,41 +1797,28 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		return err
 	}
 
-	var ok bool
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
 	if config.ClientAuth >= RequestClientCert {
-		var certMsg *certificateMsg
-		var certificates [][]byte
-		if certMsg, ok = msg.(*certificateMsg); ok {
-			if c.vers == VersionSSL30 && len(certMsg.certificates) == 0 {
-				return errors.New("tls: empty certificate message in SSL 3.0")
-			}
-
-			hs.writeClientHash(certMsg.marshal())
-			for _, cert := range certMsg.certificates {
-				certificates = append(certificates, cert.data)
-			}
-		} else if c.vers == VersionSSL30 {
-			// In SSL 3.0, no certificate is signaled by a warning
-			// alert which we translate to ssl3NoCertificateMsg.
-			if _, ok := msg.(*ssl3NoCertificateMsg); !ok {
-				return errors.New("tls: client provided neither a certificate nor no_certificate warning alert")
-			}
-		} else {
-			// In TLS, the Certificate message is required. In SSL
-			// 3.0, the peer skips it when sending no certificates.
+		certMsg, ok := msg.(*certificateMsg)
+		if !ok {
 			c.sendAlert(alertUnexpectedMessage)
 			return unexpectedMessageError(certMsg, msg)
 		}
+		hs.writeClientHash(certMsg.marshal())
 
-		if len(certificates) == 0 {
+		if len(certMsg.certificates) == 0 {
 			// The client didn't actually send a certificate
 			switch config.ClientAuth {
 			case RequireAnyClientCert, RequireAndVerifyClientCert:
 				c.sendAlert(alertBadCertificate)
 				return errors.New("tls: client didn't provide a certificate")
 			}
+		}
+
+		var certificates [][]byte
+		for _, cert := range certMsg.certificates {
+			certificates = append(certificates, cert.data)
 		}
 
 		pub, err = hs.processCertsFromClient(certificates)
@@ -1883,20 +1878,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			c.peerSignatureAlgorithm = sigAlg
 		}
 
-		if c.vers > VersionSSL30 {
-			err = verifyMessage(c.isClient, c.vers, pub, c.config, sigAlg, hs.finishedHash.buffer, certVerify.signature)
-		} else {
-			// SSL 3.0's client certificate construction is
-			// incompatible with signatureAlgorithm.
-			rsaPub, ok := pub.(*rsa.PublicKey)
-			if !ok {
-				err = errors.New("unsupported key type for client certificate")
-			} else {
-				digest := hs.finishedHash.hashForClientCertificateSSL3(hs.masterSecret)
-				err = rsa.VerifyPKCS1v15(rsaPub, crypto.MD5SHA1, digest, certVerify.signature)
-			}
-		}
-		if err != nil {
+		if err := verifyMessage(c.vers, pub, c.config, sigAlg, hs.finishedHash.buffer, certVerify.signature); err != nil {
 			c.sendAlert(alertBadCertificate)
 			return errors.New("could not validate signature of connection nonces: " + err.Error())
 		}
@@ -2186,28 +2168,12 @@ func verifyChannelIDMessage(channelIDMsg *channelIDMsg, channelIDHash []byte) (*
 
 func (hs *serverHandshakeState) writeServerHash(msg []byte) {
 	// writeServerHash is called before writeRecord.
-	hs.writeHash(msg, hs.c.sendHandshakeSeq)
+	hs.finishedHash.WriteHandshake(msg, hs.c.sendHandshakeSeq)
 }
 
 func (hs *serverHandshakeState) writeClientHash(msg []byte) {
 	// writeClientHash is called after readHandshake.
-	hs.writeHash(msg, hs.c.recvHandshakeSeq-1)
-}
-
-func (hs *serverHandshakeState) writeHash(msg []byte, seqno uint16) {
-	if hs.c.isDTLS {
-		// This is somewhat hacky. DTLS hashes a slightly different format.
-		// First, the TLS header.
-		hs.finishedHash.Write(msg[:4])
-		// Then the sequence number and reassembled fragment offset (always 0).
-		hs.finishedHash.Write([]byte{byte(seqno >> 8), byte(seqno), 0, 0, 0})
-		// Then the reassembled fragment (always equal to the message length).
-		hs.finishedHash.Write(msg[1:4])
-		// And then the message body.
-		hs.finishedHash.Write(msg[4:])
-	} else {
-		hs.finishedHash.Write(msg)
-	}
+	hs.finishedHash.WriteHandshake(msg, hs.c.recvHandshakeSeq-1)
 }
 
 // tryCipherSuite returns a cipherSuite with the given id if that cipher suite

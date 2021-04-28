@@ -126,6 +126,7 @@ BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
+      ech_accept(false),
       ech_present(false),
       ech_is_inner_present(false),
       scts_requested(false),
@@ -148,6 +149,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       pending_private_key_op(false),
       grease_seeded(false),
       handback(false),
+      hints_requested(false),
       cert_compression_negotiated(false),
       apply_jdk11_workaround(false) {
   assert(ssl);
@@ -162,6 +164,28 @@ void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {
     abort();
   }
   hash_len_ = hash_len;
+}
+
+bool SSL_HANDSHAKE::GetClientHello(SSLMessage *out_msg,
+                                   SSL_CLIENT_HELLO *out_client_hello) {
+  if (!ech_client_hello_buf.empty()) {
+    // If the backing buffer is non-empty, the ClientHelloInner has been set.
+    out_msg->is_v2_hello = false;
+    out_msg->type = SSL3_MT_CLIENT_HELLO;
+    out_msg->raw = CBS(ech_client_hello_buf);
+    out_msg->body = MakeConstSpan(ech_client_hello_buf).subspan(4);
+  } else if (!ssl->method->get_message(ssl, out_msg)) {
+    // The message has already been read, so this cannot fail.
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+
+  if (!ssl_client_hello_init(ssl, out_client_hello, out_msg->body)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return false;
+  }
+  return true;
 }
 
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl) {
@@ -552,7 +576,11 @@ const SSL_SESSION *ssl_handshake_session(const SSL_HANDSHAKE *hs) {
 int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
   SSL *const ssl = hs->ssl;
   for (;;) {
-    // Resolve the operation the handshake was waiting on.
+    // Resolve the operation the handshake was waiting on. Each condition may
+    // halt the handshake by returning, or continue executing if the handshake
+    // may immediately proceed. Cases which halt the handshake can clear
+    // |hs->wait| to re-enter the state machine on the next iteration, or leave
+    // it set to keep the condition sticky.
     switch (hs->wait) {
       case ssl_hs_error:
         ERR_restore_state(hs->error.get());
@@ -570,13 +598,13 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       case ssl_hs_read_message:
       case ssl_hs_read_change_cipher_spec: {
         if (ssl->quic_method) {
+          // QUIC has no ChangeCipherSpec messages.
+          assert(hs->wait != ssl_hs_read_change_cipher_spec);
+          // The caller should call |SSL_provide_quic_data|. Clear |hs->wait| so
+          // the handshake can check if there is sufficient data next iteration.
+          ssl->s3->rwstate = SSL_ERROR_WANT_READ;
           hs->wait = ssl_hs_ok;
-          // The change cipher spec is omitted in QUIC.
-          if (hs->wait != ssl_hs_read_change_cipher_spec) {
-            ssl->s3->rwstate = SSL_ERROR_WANT_READ;
-            return -1;
-          }
-          break;
+          return -1;
         }
 
         uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -646,31 +674,30 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         return -1;
       }
 
+        // The following cases are associated with callback APIs which expect to
+        // be called each time the state machine runs. Thus they set |hs->wait|
+        // to |ssl_hs_ok| so that, next time, we re-enter the state machine and
+        // call the callback again.
       case ssl_hs_x509_lookup:
         ssl->s3->rwstate = SSL_ERROR_WANT_X509_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_channel_id_lookup:
         ssl->s3->rwstate = SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_private_key_operation:
         ssl->s3->rwstate = SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_pending_session:
         ssl->s3->rwstate = SSL_ERROR_PENDING_SESSION;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_pending_ticket:
         ssl->s3->rwstate = SSL_ERROR_PENDING_TICKET;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_certificate_verify:
         ssl->s3->rwstate = SSL_ERROR_WANT_CERTIFICATE_VERIFY;
         hs->wait = ssl_hs_ok;
@@ -686,6 +713,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         *out_early_return = true;
         hs->wait = ssl_hs_ok;
         return 1;
+
+      case ssl_hs_hints_ready:
+        ssl->s3->rwstate = SSL_ERROR_HANDSHAKE_HINTS_READY;
+        return -1;
 
       case ssl_hs_ok:
         break;

@@ -53,7 +53,7 @@ class AwsLcGitHubCIStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=role,
-            timeout=core.Duration.minutes(120),
+            timeout=core.Duration.minutes(180),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
@@ -67,5 +67,5 @@ class AwsLcGitHubCIStack(core.Stack):
         cfn_build = project.node.default_child
         cfn_build.add_override("Properties.BuildBatchConfig", {
             "ServiceRole": role.role_arn,
-            "TimeoutInMins": 120
+            "TimeoutInMins": 180
         })

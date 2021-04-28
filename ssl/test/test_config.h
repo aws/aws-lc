@@ -40,6 +40,9 @@ struct TestConfig {
   std::string cert_file;
   std::string expect_server_name;
   bool enable_ech_grease = false;
+  std::vector<std::string> ech_server_configs;
+  std::vector<std::string> ech_server_keys;
+  std::vector<int> ech_is_retry_config;
   std::string expect_certificate_types;
   bool require_any_client_certificate = false;
   std::string advertise_npn;
@@ -164,6 +167,8 @@ struct TestConfig {
   std::string expect_msg_callback;
   bool allow_false_start_without_alpn = false;
   bool handoff = false;
+  bool handshake_hints = false;
+  bool allow_hint_mismatch = false;
   bool use_ocsp_callback = false;
   bool set_ocsp_in_callback = false;
   bool decline_ocsp_callback = false;
@@ -192,11 +197,10 @@ struct TestConfig {
   bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx) const;
 
   bssl::UniquePtr<SSL> NewSSL(SSL_CTX *ssl_ctx, SSL_SESSION *session,
-                              bool is_resume,
                               std::unique_ptr<TestState> test_state) const;
 };
 
-bool ParseConfig(int argc, char **argv, TestConfig *out_initial,
+bool ParseConfig(int argc, char **argv, bool is_shim, TestConfig *out_initial,
                  TestConfig *out_resume, TestConfig *out_retry);
 
 bool SetTestConfig(SSL *ssl, const TestConfig *config);
