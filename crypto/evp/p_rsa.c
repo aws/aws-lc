@@ -138,6 +138,9 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
   if (!pkey_ctx_is_pss(ctx)) {
     return 0;
   }
+  if (ctx->pkey == NULL) {
+    return 0;
+  }
   rsa = ctx->pkey->pkey.rsa;
   // If no restrictions just return.
   if (rsa->pss == NULL) {
