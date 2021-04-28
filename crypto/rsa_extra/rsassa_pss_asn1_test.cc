@@ -547,8 +547,6 @@ struct InvalidPssCreateTestInput {
   const EVP_MD *md;
   int saltlen;
 } kInvalidPssCreateTestInputs[] = {
-    // Expect test fails because saltlen cannot be zero.
-    {EVP_sha256(), 0},
     // Expect test fails because saltlen cannot be negative.
     {EVP_sha256(), -1},
     // Expect test fails because md5 is not supported.
