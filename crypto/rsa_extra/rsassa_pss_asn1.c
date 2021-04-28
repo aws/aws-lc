@@ -479,7 +479,7 @@ static int hash_algor_to_EVP_MD(RSA_ALGOR_IDENTIFIER *hash_algor,
 
 int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
                       const EVP_MD **mgf1md, int *saltlen) {
-  if (pss == NULL) {
+  if (pss == NULL || md == NULL || mgf1md == NULL || saltlen == NULL) {
     return 0;
   }
   if (!hash_algor_to_EVP_MD(pss->hash_algor, md)) {
