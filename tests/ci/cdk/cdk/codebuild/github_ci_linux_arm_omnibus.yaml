@@ -38,6 +38,7 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
         variables:
+          # AWS_LC_GO_TEST_TIMEOUT is needed on aarch when ASAN is enabled because the ASAN is very slow.
           AWS_LC_GO_TEST_TIMEOUT: 120m
           AWSLC_NO_ASM_FIPS: 1
 
