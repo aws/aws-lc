@@ -120,8 +120,13 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
     return 0;
   }
 
-  /* Check the public key OID matches the public key type. */
-  if (pkey_nid != EVP_PKEY_id(pkey)) {
+  /* Check the public key OID matches the public key type.
+   * One special case is |EVP_PKEY_id(pkey)| may be |EVP_PKEY_RSA_PSS|.
+   * This case happens when |OBJ_find_sigid_algs| returns |NID_rsaEncryption|
+   * when |sigalg_nid| is |NID_rsassaPss|. */
+  if (pkey_nid != EVP_PKEY_id(pkey) &&
+      !(sigalg_nid == NID_rsassaPss && pkey_nid == NID_rsaEncryption &&
+        EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS)) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
   }

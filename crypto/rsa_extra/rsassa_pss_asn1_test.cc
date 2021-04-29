@@ -6,6 +6,8 @@
 #include <gtest/gtest.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/nid.h>
 
 #include "internal.h"
@@ -298,14 +300,14 @@ static const uint8_t pss_with_trailer_field_not_1[] = {
 
 static const int omit_salt_len = -1;
 
-struct PssParamsTestInput {
+struct PssParseTestInput {
   const uint8_t *der;
   size_t der_len;
   int expected_hash_nid;
   int expected_mask_gen_nid;
   int expected_mgf1_hash_nid;
   int expected_salt_len;
-} kPssParamsTestInputs[] = {
+} kPssParseTestInputs[] = {
     {pss_sha1_salt_absent, sizeof(pss_sha1_salt_absent), NID_undef, NID_undef,
      NID_undef, omit_salt_len},
     {pss_sha224_salt_absent, sizeof(pss_sha224_salt_absent), NID_sha224,
@@ -317,7 +319,7 @@ struct PssParamsTestInput {
     {pss_sha512_salt_absent, sizeof(pss_sha512_salt_absent), NID_sha512,
      NID_mgf1, NID_sha512, omit_salt_len},
     {pss_sha256_salt_default, sizeof(pss_sha256_salt_default), NID_sha256,
-     NID_mgf1, NID_sha256, 20},
+     NID_mgf1, NID_sha256, PSS_DEFAULT_SALT_LEN},
     {pss_sha256_salt_30, sizeof(pss_sha256_salt_30), NID_sha256, NID_mgf1,
      NID_sha256, 30},
     {jdk_pss_sha256_salt_0, sizeof(jdk_pss_sha256_salt_0), NID_sha256, NID_mgf1,
@@ -342,9 +344,9 @@ struct PssParamsTestInput {
      NID_undef, NID_undef, 30},
 };
 
-class RsassaPssTest: public testing::TestWithParam<PssParamsTestInput> {};
+class PssParseTest : public testing::TestWithParam<PssParseTestInput> {};
 
-TEST_P(RsassaPssTest, DecodeParamsDer) {
+TEST_P(PssParseTest, DecodeParamsDer) {
   const auto &param = GetParam();
   CBS params;
   params.data = param.der;
@@ -394,12 +396,13 @@ TEST_P(RsassaPssTest, DecodeParamsDer) {
   EXPECT_FALSE(pss->trailer_field);
 }
 
-INSTANTIATE_TEST_SUITE_P(All, RsassaPssTest, testing::ValuesIn(kPssParamsTestInputs));
+INSTANTIATE_TEST_SUITE_P(RsassaPssAll, PssParseTest,
+                         testing::ValuesIn(kPssParseTestInputs));
 
-struct PssParamsInvalidInput {
+struct InvalidPssParseInput {
   const uint8_t *der;
   size_t der_len;
-} kPssParamsInvalidInputs[] = {
+} kInvalidPssParseInputs[] = {
     {invalid_pss_salt_missing, sizeof(invalid_pss_salt_missing)},
     {pss_with_invalid_sha256_oid, sizeof(pss_with_invalid_sha256_oid)},
     {pss_with_invalid_mgf1_oid, sizeof(pss_with_invalid_mgf1_oid)},
@@ -414,20 +417,110 @@ struct PssParamsInvalidInput {
     {pss_with_trailer_field_not_1, sizeof(pss_with_trailer_field_not_1)},
 };
 
-class RsassaPssInvalidTest
-    : public testing::TestWithParam<PssParamsInvalidInput> {};
+class InvalidPssParseTest
+    : public testing::TestWithParam<InvalidPssParseInput> {};
 
-TEST_P(RsassaPssInvalidTest, DecodeInvalidDer) {
+TEST_P(InvalidPssParseTest, DecodeInvalidDer) {
   const auto &param = GetParam();
   CBS params;
   params.data = param.der;
   params.len = param.der_len;
   RSASSA_PSS_PARAMS *pss = nullptr;
   ASSERT_FALSE(RSASSA_PSS_parse_params(&params, &pss));
+  ERR_clear_error();
 }
 
-INSTANTIATE_TEST_SUITE_P(All, RsassaPssInvalidTest,
-                         testing::ValuesIn(kPssParamsInvalidInputs));
+INSTANTIATE_TEST_SUITE_P(RsassaPssAll, InvalidPssParseTest,
+                         testing::ValuesIn(kInvalidPssParseInputs));
+
+struct PssConversionTestInput {
+  const EVP_MD *md;
+  int saltlen;
+  int expect_pss_is_null;
+  int expect_pss_hash_is_null;
+  int expect_pss_saltlen_is_null;
+} kPssConversionTestInputs[] = {
+    {EVP_sha1(), PSS_DEFAULT_SALT_LEN, 0, 1, 1},
+    {EVP_sha224(), 30, 0, 0, 0},
+    {EVP_sha256(), 30, 0, 0, 0},
+    {EVP_sha384(), 30, 0, 0, 0},
+    {EVP_sha512(), 30, 0, 0, 0},
+    // This test case happens in |pkey_rsa_init| of |p_rsa.c|.
+    {nullptr, -2, 1, 1, 1},
+};
+
+static void test_RSASSA_PSS_PARAMS_get(RSASSA_PSS_PARAMS *pss,
+                                       const EVP_MD *expect_md,
+                                       int expect_saltlen) {
+  const EVP_MD *sigmd = nullptr;
+  const EVP_MD *mgf1md = nullptr;
+  int saltlen = -1;
+  ASSERT_TRUE(RSASSA_PSS_PARAMS_get(pss, &sigmd, &mgf1md, &saltlen));
+  EXPECT_EQ(sigmd, expect_md);
+  EXPECT_EQ(mgf1md, expect_md);
+  EXPECT_EQ(saltlen, expect_saltlen);
+}
+
+class PssConversionTest : public testing::TestWithParam<PssConversionTestInput> {};
+
+// This test is to check the conversion between |RSASSA_PSS_PARAMS| and
+// (|*sigmd|, |*mgf1md| and |saltlen|), which are fields of |RSA_PKEY_CTX|.
+// The 1st step is to validate |RSASSA_PSS_PARAMS_create|.
+// The 2nd step is to validate |RSASSA_PSS_PARAMS_get|.
+TEST_P(PssConversionTest, CreationAndGetSuccess) {
+  const auto &param = GetParam();
+  RSASSA_PSS_PARAMS *pss = nullptr;
+  const EVP_MD *md = param.md;
+  int saltlen = param.saltlen;
+  // STEP 1: validate |RSASSA_PSS_PARAMS_create|.
+  ASSERT_TRUE(RSASSA_PSS_PARAMS_create(md, md, saltlen, &pss));
+  // Validate if the pss should be allocated.
+  if (param.expect_pss_is_null) {
+    ASSERT_FALSE(pss);
+    return;
+  } else {
+    ASSERT_TRUE(pss);
+  }
+  // Holds ownership of heap-allocated RSASSA_PSS_PARAMS.
+  bssl::UniquePtr<RSASSA_PSS_PARAMS> pss_ptr(pss);
+  // Validate the hash_algor of pss.
+  if (param.expect_pss_hash_is_null) {
+    // hash_algor is NULL when the default value (sha1) is passed.
+    // Pss params encode expects this default value is omitted.
+    // See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
+    // MUST omit the hashAlgorithm field when SHA-1 is used.
+    EXPECT_FALSE(pss->hash_algor);
+    EXPECT_FALSE(pss->mask_gen_algor);
+  } else {
+    ASSERT_TRUE(pss->hash_algor);
+    ASSERT_TRUE(pss->mask_gen_algor);
+    ASSERT_TRUE(pss->mask_gen_algor->one_way_hash);
+    EXPECT_EQ(pss->hash_algor->nid, EVP_MD_type(md));
+    EXPECT_EQ(pss->mask_gen_algor->one_way_hash->nid, EVP_MD_type(md));
+  }
+  // Validate the saltlen of pss.
+  if (param.expect_pss_saltlen_is_null) {
+    // salt_len is NULL when the default value (20) is passed.
+    // Pss params encode expects the default value to be omitted.
+    // This is not a MUST but it is implemented in OpenSSL.
+    EXPECT_FALSE(pss->salt_len);
+  } else {
+    ASSERT_TRUE(pss->salt_len);
+    EXPECT_EQ(pss->salt_len->value, saltlen);
+  }
+  // Trailer field should not be set because it's for encoding only.
+  // See 3.1. https://tools.ietf.org/html/rfc4055#section-3.1
+  // MUST omit the trailerField field.
+  EXPECT_FALSE(pss->trailer_field);
+
+  // STEP 2: validate |RSASSA_PSS_PARAMS_get|.
+  // Validate the conversion from |RSASSA_PSS_PARAMS| to
+  // (|*sigmd|, |*mgf1md| and |saltlen|).
+  test_RSASSA_PSS_PARAMS_get(pss, md, saltlen);
+}
+
+INSTANTIATE_TEST_SUITE_P(RsassaPssAll, PssConversionTest,
+                         testing::ValuesIn(kPssConversionTestInputs));
 
 TEST(RsassaPssTest, DecodeParamsDerWithTrailerField) {
   CBS params;
@@ -447,5 +540,87 @@ TEST(RsassaPssTest, DecodeParamsDerWithTrailerField) {
   EXPECT_FALSE(pss->salt_len);
   // Validate Trailer field of RSASSA-PSS-params.
   ASSERT_TRUE(pss->trailer_field);
-  EXPECT_EQ(pss->trailer_field->value, 1);
+  EXPECT_EQ(pss->trailer_field->value, PSS_TRAILER_FIELD_VALUE);
+}
+
+struct InvalidPssCreateTestInput {
+  const EVP_MD *md;
+  int saltlen;
+} kInvalidPssCreateTestInputs[] = {
+    // Expect test fails because saltlen cannot be negative.
+    {EVP_sha256(), -1},
+    // Expect test fails because md5 is not supported.
+    {EVP_md5(), PSS_DEFAULT_SALT_LEN},
+};
+
+class InvalidPssCreateTest
+    : public testing::TestWithParam<InvalidPssCreateTestInput> {};
+
+TEST_P(InvalidPssCreateTest, CreationFailure) {
+  const auto &param = GetParam();
+  RSASSA_PSS_PARAMS *pss = nullptr;
+  const EVP_MD *md = param.md;
+  int saltlen = param.saltlen;
+  ASSERT_FALSE(RSASSA_PSS_PARAMS_create(md, md, saltlen, &pss));
+  ASSERT_FALSE(pss);
+  ERR_clear_error();
+}
+
+INSTANTIATE_TEST_SUITE_P(RsassaPssAll, InvalidPssCreateTest,
+                         testing::ValuesIn(kInvalidPssCreateTestInputs));
+
+struct InvalidPssGetTestInput {
+  int nid;
+  int saltlen;
+  int trailerfiled;
+} kInvalidPssGetTestInputs[] = {
+    // Expect test fails because md5 is not supported.
+    {NID_md5, PSS_DEFAULT_SALT_LEN, PSS_TRAILER_FIELD_VALUE},
+    // Expect test fails because saltlen cannot be negative.
+    {NID_sha256, -1, PSS_TRAILER_FIELD_VALUE},
+    // Expect test fails because trailer field MUST be 1.
+    {NID_sha256, PSS_DEFAULT_SALT_LEN, 2},
+};
+
+class InvalidPssGetTest
+    : public testing::TestWithParam<InvalidPssGetTestInput> {};
+
+TEST_P(InvalidPssGetTest, GetFailure) {
+  const auto &param = GetParam();
+  RSA_ALGOR_IDENTIFIER pss_hash = {param.nid};
+  RSA_MGA_IDENTIFIER pss_mga = {nullptr, &pss_hash};
+  RSA_INTEGER pss_saltlen = {param.saltlen};
+  RSA_INTEGER pss_trailer_field = {param.trailerfiled};
+  RSASSA_PSS_PARAMS pss = {
+      &pss_hash,
+      &pss_mga,
+      &pss_saltlen,
+      &pss_trailer_field,
+  };
+  const EVP_MD *sigmd = nullptr;
+  const EVP_MD *mgf1md = nullptr;
+  int saltlen = -1;
+  ASSERT_FALSE(RSASSA_PSS_PARAMS_get(&pss, &sigmd, &mgf1md, &saltlen));
+  ERR_clear_error();
+}
+
+INSTANTIATE_TEST_SUITE_P(RsassaPssAll, InvalidPssGetTest,
+                         testing::ValuesIn(kInvalidPssGetTestInputs));
+
+TEST(InvalidPssGetTest, PssIsNull) {
+  const EVP_MD *sigmd = nullptr;
+  const EVP_MD *mgf1md = nullptr;
+  int saltlen = -1;
+  ASSERT_FALSE(RSASSA_PSS_PARAMS_get(nullptr, &sigmd, &mgf1md, &saltlen));
+  ERR_clear_error();
+}
+
+TEST(PssGetTest, AllParamsAbsent) {
+  RSASSA_PSS_PARAMS pss = {
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+  };
+  test_RSASSA_PSS_PARAMS_get(&pss, EVP_sha1(), PSS_DEFAULT_SALT_LEN);
 }

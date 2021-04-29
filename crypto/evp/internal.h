@@ -208,12 +208,13 @@ struct evp_pkey_method_st {
 
   int (*keygen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
+  int (*sign_init)(EVP_PKEY_CTX *ctx);
   int (*sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
               const uint8_t *tbs, size_t tbslen);
 
   int (*sign_message)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
                       const uint8_t *tbs, size_t tbslen);
-
+  int (*verify_init)(EVP_PKEY_CTX *ctx);
   int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
                 const uint8_t *tbs, size_t tbslen);
 
