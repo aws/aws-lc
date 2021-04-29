@@ -1,6 +1,8 @@
-//
-// Created by Chiang, Samuel on 4/28/21.
-//
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "ocsp_local.h"
 
 /* get ocsp response status from OCSP_RESPONSE structure */
