@@ -10,6 +10,7 @@ add_library(
   d1_srtp.cc
   dtls_method.cc
   dtls_record.cc
+  encrypted_client_hello.cc
   handoff.cc
   handshake.cc
   handshake_client.cc
@@ -45,23 +46,26 @@ add_dependencies(ssl global_target)
 
 target_link_libraries(ssl crypto)
 
-add_executable(
-  ssl_test
+if(BUILD_TESTING)
+  add_executable(
+    ssl_test
 
-  span_test.cc
-  ssl_test.cc
-  ssl_c_test.c
+    span_test.cc
+    ssl_test.cc
+    ssl_c_test.c
 
-  $<TARGET_OBJECTS:boringssl_gtest_main>
-)
+    $<TARGET_OBJECTS:boringssl_gtest_main>
+  )
 
-add_dependencies(ssl_test global_target)
+  add_dependencies(ssl_test global_target)
 
-target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
-if(WIN32)
-  target_link_libraries(ssl_test ws2_32)
+  target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
+  if(WIN32)
+    target_link_libraries(ssl_test ws2_32)
+  endif()
+  add_dependencies(all_tests ssl_test)
+  add_subdirectory(test)
 endif()
-add_dependencies(all_tests ssl_test)
 
 install(TARGETS ssl
         EXPORT ssl-targets

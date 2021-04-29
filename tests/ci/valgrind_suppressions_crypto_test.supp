@@ -75,3 +75,71 @@
    fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
    fun:_ZN7testing8internal16UniversalPrinterI13ASN1TestParamE5PrintERKS2_PSo
 }
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:_itoa_word
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing8internal20PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing8internal15FallbackPrinter10PrintValueI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal17PrintWithFallbackI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal16UniversalPrinterI13ASN1TestParamE5PrintERKS2_PSo
+   fun:_ZN7testing8internal14UniversalPrintI13ASN1TestParamEEvRKT_PSo
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Value8
+   fun:_itoa_word
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing8internal20PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing8internal15FallbackPrinter10PrintValueI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal17PrintWithFallbackI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal16UniversalPrinterI13ASN1TestParamE5PrintERKS2_PSo
+   fun:_ZN7testing8internal14UniversalPrintI13ASN1TestParamEEvRKT_PSo
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:_itoa_word
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing8internal20PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing8internal15FallbackPrinter10PrintValueI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal17PrintWithFallbackI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal16UniversalPrinterI13ASN1TestParamE5PrintERKS2_PSo
+   fun:_ZN7testing8internal14UniversalPrintI13ASN1TestParamEEvRKT_PSo
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:vfprintf
+   fun:vsnprintf
+   fun:snprintf
+   fun:_ZN7testing12_GLOBAL__N_126PrintByteSegmentInObjectToEPKhmmPSo
+   fun:_ZN7testing12_GLOBAL__N_124PrintBytesInObjectToImplEPKhmPSo
+   fun:_ZN7testing8internal20PrintBytesInObjectToEPKhmPSo
+   fun:_ZN7testing8internal15FallbackPrinter10PrintValueI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal17PrintWithFallbackI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal7PrintToI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal16UniversalPrinterI13ASN1TestParamE5PrintERKS2_PSo
+   fun:_ZN7testing8internal14UniversalPrintI13ASN1TestParamEEvRKT_PSo
+   fun:_ZN7testing8internal21UniversalTersePrinterI13ASN1TestParamE5PrintERKS2_PSo
+}

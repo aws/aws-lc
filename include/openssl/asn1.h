@@ -79,28 +79,52 @@ extern "C" {
 // the new |CBS| and |CBB| library in <openssl/bytestring.h> instead.
 
 
+// Tag constants.
+//
+// These constants are used in various APIs to specify ASN.1 types and tag
+// components. See the specific API's documentation for details on which values
+// are used and how.
+
+// The following constants are tag classes.
 #define V_ASN1_UNIVERSAL 0x00
 #define V_ASN1_APPLICATION 0x40
 #define V_ASN1_CONTEXT_SPECIFIC 0x80
 #define V_ASN1_PRIVATE 0xc0
 
+// V_ASN1_CONSTRUCTED indicates an element is constructed, rather than
+// primitive.
 #define V_ASN1_CONSTRUCTED 0x20
+
+// V_ASN1_PRIMITIVE_TAG is the highest tag number which can be encoded in a
+// single byte. Note this is unrelated to whether an element is constructed or
+// primitive.
+//
+// TODO(davidben): Make this private.
 #define V_ASN1_PRIMITIVE_TAG 0x1f
 
-#define V_ASN1_APP_CHOOSE -2  // let the recipient choose
-#define V_ASN1_OTHER -3       // used in ASN1_TYPE
-#define V_ASN1_ANY -4         // used in ASN1 template code
-
-#define V_ASN1_NEG 0x100  // negative flag
-// No supported universal tags may exceed this value, to avoid ambiguity with
-// V_ASN1_NEG.
+// V_ASN1_MAX_UNIVERSAL is the highest supported universal tag number. It is
+// necessary to avoid ambiguity with |V_ASN1_NEG| and |MBSTRING_FLAG|.
+//
+// TODO(davidben): Make this private.
 #define V_ASN1_MAX_UNIVERSAL 0xff
 
-#define V_ASN1_UNDEF -1
+// V_ASN1_UNDEF is used in some APIs to indicate an ASN.1 element is omitted.
+#define V_ASN1_UNDEF (-1)
+
+// V_ASN1_APP_CHOOSE is used in some APIs to specify a default ASN.1 type based
+// on the context.
+#define V_ASN1_APP_CHOOSE (-2)
+
+// V_ASN1_OTHER is used in |ASN1_TYPE| to indicate a non-universal ASN.1 type.
+#define V_ASN1_OTHER (-3)
+
+// V_ASN1_ANY is used by the ASN.1 templates to indicate an ANY type.
+#define V_ASN1_ANY (-4)
+
+// The following constants are tag numbers for universal types.
 #define V_ASN1_EOC 0
-#define V_ASN1_BOOLEAN 1  //
+#define V_ASN1_BOOLEAN 1
 #define V_ASN1_INTEGER 2
-#define V_ASN1_NEG_INTEGER (2 | V_ASN1_NEG)
 #define V_ASN1_BIT_STRING 3
 #define V_ASN1_OCTET_STRING 4
 #define V_ASN1_NULL 5
@@ -109,24 +133,293 @@ extern "C" {
 #define V_ASN1_EXTERNAL 8
 #define V_ASN1_REAL 9
 #define V_ASN1_ENUMERATED 10
-#define V_ASN1_NEG_ENUMERATED (10 | V_ASN1_NEG)
 #define V_ASN1_UTF8STRING 12
 #define V_ASN1_SEQUENCE 16
 #define V_ASN1_SET 17
-#define V_ASN1_NUMERICSTRING 18  //
+#define V_ASN1_NUMERICSTRING 18
 #define V_ASN1_PRINTABLESTRING 19
 #define V_ASN1_T61STRING 20
-#define V_ASN1_TELETEXSTRING 20   // alias
-#define V_ASN1_VIDEOTEXSTRING 21  //
+#define V_ASN1_TELETEXSTRING 20
+#define V_ASN1_VIDEOTEXSTRING 21
 #define V_ASN1_IA5STRING 22
 #define V_ASN1_UTCTIME 23
-#define V_ASN1_GENERALIZEDTIME 24  //
-#define V_ASN1_GRAPHICSTRING 25    //
-#define V_ASN1_ISO64STRING 26      //
-#define V_ASN1_VISIBLESTRING 26    // alias
-#define V_ASN1_GENERALSTRING 27    //
-#define V_ASN1_UNIVERSALSTRING 28  //
+#define V_ASN1_GENERALIZEDTIME 24
+#define V_ASN1_GRAPHICSTRING 25
+#define V_ASN1_ISO64STRING 26
+#define V_ASN1_VISIBLESTRING 26
+#define V_ASN1_GENERALSTRING 27
+#define V_ASN1_UNIVERSALSTRING 28
 #define V_ASN1_BMPSTRING 30
+
+// The following constants are used for |ASN1_STRING| values that represent
+// negative INTEGER and ENUMERATED values. See |ASN1_STRING| for more details.
+#define V_ASN1_NEG 0x100
+#define V_ASN1_NEG_INTEGER (V_ASN1_INTEGER | V_ASN1_NEG)
+#define V_ASN1_NEG_ENUMERATED (V_ASN1_ENUMERATED | V_ASN1_NEG)
+
+
+// Strings.
+//
+// ASN.1 contains a myriad of string types, as well as types that contain data
+// that may be encoded into a string. This library uses a single type,
+// |ASN1_STRING|, to represent most values.
+
+// An asn1_string_st (aka |ASN1_STRING|) represents a value of a string-like
+// ASN.1 type. It contains a type field, and a byte string data field with a
+// type-specific representation.
+//
+// When representing a string value, the type field is one of
+// |V_ASN1_OCTET_STRING|, |V_ASN1_UTF8STRING|, |V_ASN1_NUMERICSTRING|,
+// |V_ASN1_PRINTABLESTRING|, |V_ASN1_T61STRING|, |V_ASN1_VIDEOTEXSTRING|,
+// |V_ASN1_IA5STRING|, |V_ASN1_GRAPHICSTRING|, |V_ASN1_ISO64STRING|,
+// |V_ASN1_VISIBLESTRING|, |V_ASN1_GENERALSTRING|, |V_ASN1_UNIVERSALSTRING|, or
+// |V_ASN1_BMPSTRING|. The data contains the byte representation of of the
+// string.
+//
+// When representing a BIT STRING value, the type field is |V_ASN1_BIT_STRING|.
+// The data contains the encoded form of the BIT STRING, including any padding
+// bits added to round to a whole number of bytes, but excluding the leading
+// byte containing the number of padding bits. The number of padding bits is
+// encoded in the flags field. See |ASN1_STRING_FLAG_BITS_LEFT| for details. For
+// example, DER encodes the BIT STRING {1, 0} as {0x06, 0x80 = 0b10_000000}. The
+// |ASN1_STRING| representation has data of {0x80} and flags of
+// ASN1_STRING_FLAG_BITS_LEFT | 6.
+//
+// When representing an INTEGER or ENUMERATED value, the data contains the
+// big-endian encoding of the absolute value of the integer. The sign bit is
+// encoded in the type: non-negative values have a type of |V_ASN1_INTEGER| or
+// |V_ASN1_ENUMERATED|, while negative values have a type of
+// |V_ASN1_NEG_INTEGER| or |V_ASN1_NEG_ENUMERATED|. Note this differs from DER's
+// two's complement representation.
+//
+// When representing a GeneralizedTime or UTCTime value, the type field is
+// |V_ASN1_GENERALIZEDTIME| or |V_ASN1_UTCTIME|, respectively. The data contains
+// the DER encoding of the value. For example, the UNIX epoch would be
+// "19700101000000Z" for a GeneralizedTime and "700101000000Z" for a UTCTime.
+//
+// |ASN1_STRING|, when stored in an |ASN1_TYPE|, may also represent an element
+// with tag not directly supported by this library. See |ASN1_TYPE| for details.
+//
+// |ASN1_STRING| additionally has the following typedefs: |ASN1_BIT_STRING|,
+// |ASN1_BMPSTRING|, |ASN1_ENUMERATED|, |ASN1_GENERALIZEDTIME|,
+// |ASN1_GENERALSTRING|, |ASN1_IA5STRING|, |ASN1_INTEGER|, |ASN1_OCTET_STRING|,
+// |ASN1_PRINTABLESTRING|, |ASN1_T61STRING|, |ASN1_TIME|,
+// |ASN1_UNIVERSALSTRING|, |ASN1_UTCTIME|, |ASN1_UTF8STRING|, and
+// |ASN1_VISIBLESTRING|. Other than |ASN1_TIME|, these correspond to universal
+// ASN.1 types. |ASN1_TIME| represents a CHOICE of UTCTime and GeneralizedTime,
+// with a cutoff of 2049, as used in Section 4.1.2.5 of RFC 5280.
+//
+// For clarity, callers are encouraged to use the appropriate typedef when
+// available. They are the same type as |ASN1_STRING|, so a caller may freely
+// pass them into functions expecting |ASN1_STRING|, such as
+// |ASN1_STRING_length|.
+//
+// If a function returns an |ASN1_STRING| where the typedef or ASN.1 structure
+// implies constraints on the type field, callers may assume that the type field
+// is correct. However, if a function takes an |ASN1_STRING| as input, callers
+// must ensure the type field matches. These invariants are not captured by the
+// C type system and may not be checked at runtime. For example, callers may
+// assume the output of |X509_get0_serialNumber| has type |V_ASN1_INTEGER| or
+// |V_ASN1_NEG_INTEGER|. Callers must not pass a string of type
+// |V_ASN1_OCTET_STRING| to |X509_set_serialNumber|. Doing so may break
+// invariants on the |X509| object and break the |X509_get0_serialNumber|
+// invariant.
+//
+// TODO(davidben): This is very unfriendly. Getting the type field wrong should
+// not cause memory errors, but it may do strange things. We should add runtime
+// checks to anything that consumes |ASN1_STRING|s from the caller.
+struct asn1_string_st {
+  int length;
+  int type;
+  unsigned char *data;
+  long flags;
+};
+
+// ASN1_STRING_FLAG_BITS_LEFT indicates, in a BIT STRING |ASN1_STRING|, that
+// flags & 0x7 contains the number of padding bits added to the BIT STRING
+// value. When not set, all trailing zero bits in the last byte are implicitly
+// treated as padding. This behavior is deprecated and should not be used.
+#define ASN1_STRING_FLAG_BITS_LEFT 0x08
+
+// ASN1_STRING_FLAG_MSTRING indicates that the |ASN1_STRING| is an MSTRING type,
+// which is how this library refers to a CHOICE type of several string types.
+// For example, DirectoryString as defined in RFC5280.
+//
+// TODO(davidben): This is only used in one place within the library and is easy
+// to accidentally drop. Can it be removed?
+#define ASN1_STRING_FLAG_MSTRING 0x040
+
+// ASN1_STRING_type_new returns a newly-allocated empty |ASN1_STRING| object of
+// type |type|, or NULL on error.
+OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_type_new(int type);
+
+// ASN1_STRING_new returns a newly-allocated empty |ASN1_STRING| object with an
+// arbitrary type. Prefer one of the type-specific constructors, such as
+// |ASN1_OCTET_STRING_new|, or |ASN1_STRING_type_new|.
+OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_new(void);
+
+// ASN1_STRING_free releases memory associated with |str|.
+OPENSSL_EXPORT void ASN1_STRING_free(ASN1_STRING *str);
+
+// ASN1_STRING_copy sets |dst| to a copy of |str|. It returns one on success and
+// zero on error.
+OPENSSL_EXPORT int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str);
+
+// ASN1_STRING_dup returns a newly-allocated copy of |str|, or NULL on error.
+OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_dup(const ASN1_STRING *str);
+
+// ASN1_STRING_type returns the type of |str|. This value will be one of the
+// |V_ASN1_*| constants.
+OPENSSL_EXPORT int ASN1_STRING_type(const ASN1_STRING *str);
+
+// ASN1_STRING_get0_data returns a pointer to |str|'s contents. Callers should
+// use |ASN1_STRING_length| to determine the length of the string. The string
+// may have embedded NUL bytes and may not be NUL-terminated.
+OPENSSL_EXPORT const unsigned char *ASN1_STRING_get0_data(
+    const ASN1_STRING *str);
+
+// ASN1_STRING_data returns a mutable pointer to |str|'s contents. Callers
+// should use |ASN1_STRING_length| to determine the length of the string. The
+// string may have embedded NUL bytes and may not be NUL-terminated.
+//
+// Prefer |ASN1_STRING_get0_data|.
+OPENSSL_EXPORT unsigned char *ASN1_STRING_data(ASN1_STRING *str);
+
+// ASN1_STRING_length returns the length of |str|, in bytes.
+OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *str);
+
+// ASN1_STRING_cmp compares |a| and |b|'s type and contents. It returns an
+// integer equal to, less than, or greater than zero if |a| is equal to, less
+// than, or greater than |b|, respectively. The comparison is suitable for
+// sorting, but callers should not rely on the particular comparison.
+//
+// Note if |a| or |b| are BIT STRINGs, this function does not compare the
+// |ASN1_STRING_FLAG_BITS_LEFT| flags.
+//
+// TODO(davidben): The BIT STRING comparison seems like a bug. Fix it?
+OPENSSL_EXPORT int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
+
+// ASN1_STRING_set sets the contents of |str| to a copy of |len| bytes from
+// |data|. It returns one on success and zero on error.
+OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
+
+// ASN1_STRING_set0 sets the contents of |str| to |len| bytes from |data|. It
+// takes ownership of |data|, which must have been allocated with
+// |OPENSSL_malloc|.
+OPENSSL_EXPORT void ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
+
+// TODO(davidben): Pull up and document functions specific to individual string
+// types.
+
+
+// Arbitrary elements.
+
+// ASN1_VALUE_st (aka |ASN1_VALUE|) is an opaque type used internally in the
+// library.
+typedef struct ASN1_VALUE_st ASN1_VALUE;
+
+// An asn1_type_st (aka |ASN1_TYPE|) represents an arbitrary ASN.1 element,
+// typically used used for ANY types. It contains a |type| field and a |value|
+// union dependent on |type|.
+//
+// WARNING: This struct has a complex representation. Callers must not construct
+// |ASN1_TYPE| values manually. Use |ASN1_TYPE_set| and |ASN1_TYPE_set1|
+// instead. Additionally, callers performing non-trivial operations on this type
+// are encouraged to use |CBS| and |CBB| from <openssl/bytestring.h>, and
+// convert to or from |ASN1_TYPE| with |d2i_ASN1_TYPE| or |i2d_ASN1_TYPE|.
+//
+// The |type| field corresponds to the tag of the ASN.1 element being
+// represented:
+//
+// If |type| is a |V_ASN1_*| constant for an ASN.1 string-like type, as defined
+// by |ASN1_STRING|, the tag matches the constant. |value| contains an
+// |ASN1_STRING| pointer (equivalently, one of the more specific typedefs). See
+// |ASN1_STRING| for details on the representation. Unlike |ASN1_STRING|,
+// |ASN1_TYPE| does not use the |V_ASN1_NEG| flag for negative INTEGER and
+// ENUMERATE values. For a negative value, the |ASN1_TYPE|'s |type| will be
+// |V_ASN1_INTEGER| or |V_ASN1_ENUMERATED|, but |value| will an |ASN1_STRING|
+// whose |type| is |V_ASN1_NEG_INTEGER| or |V_ASN1_NEG_ENUMERATED|.
+//
+// If |type| is |V_ASN1_OBJECT|, the tag is OBJECT IDENTIFIER and |value|
+// contains an |ASN1_OBJECT| pointer.
+//
+// If |type| is |V_ASN1_NULL|, the tag is NULL. |value| contains a NULL pointer.
+//
+// If |type| is |V_ASN1_BOOLEAN|, the tag is BOOLEAN. |value| contains an
+// |ASN1_BOOLEAN|.
+//
+// If |type| is |V_ASN1_SEQUENCE|, |V_ASN1_SET|, or |V_ASN1_OTHER|, the tag is
+// SEQUENCE, SET, or some non-universal tag, respectively. |value| is an
+// |ASN1_STRING| containing the entire element, including the tag and length.
+// The |ASN1_STRING|'s |type| field matches the containing |ASN1_TYPE|'s |type|.
+//
+// Other positive values of |type|, up to |V_ASN1_MAX_UNIVERSAL|, correspond to
+// universal primitive tags not directly supported by this library. |value| is
+// an |ASN1_STRING| containing the body of the element, excluding the tag
+// and length. The |ASN1_STRING|'s |type| field matches the containing
+// |ASN1_TYPE|'s |type|.
+struct asn1_type_st {
+  int type;
+  union {
+    char *ptr;
+    ASN1_BOOLEAN boolean;
+    ASN1_STRING *asn1_string;
+    ASN1_OBJECT *object;
+    ASN1_INTEGER *integer;
+    ASN1_ENUMERATED *enumerated;
+    ASN1_BIT_STRING *bit_string;
+    ASN1_OCTET_STRING *octet_string;
+    ASN1_PRINTABLESTRING *printablestring;
+    ASN1_T61STRING *t61string;
+    ASN1_IA5STRING *ia5string;
+    ASN1_GENERALSTRING *generalstring;
+    ASN1_BMPSTRING *bmpstring;
+    ASN1_UNIVERSALSTRING *universalstring;
+    ASN1_UTCTIME *utctime;
+    ASN1_GENERALIZEDTIME *generalizedtime;
+    ASN1_VISIBLESTRING *visiblestring;
+    ASN1_UTF8STRING *utf8string;
+    // set and sequence are left complete and still contain the entire element.
+    ASN1_STRING *set;
+    ASN1_STRING *sequence;
+    ASN1_VALUE *asn1_value;
+  } value;
+};
+
+// ASN1_TYPE_get returns the type of |a|, which will be one of the |V_ASN1_*|
+// constants, or zero if |a| is not fully initialized.
+OPENSSL_EXPORT int ASN1_TYPE_get(const ASN1_TYPE *a);
+
+// ASN1_TYPE_set sets |a| to an |ASN1_TYPE| of type |type| and value |value|,
+// releasing the previous contents of |a|.
+//
+// If |type| is |V_ASN1_BOOLEAN|, |a| is set to FALSE if |value| is NULL and
+// TRUE otherwise. If setting |a| to TRUE, |value| may be an invalid pointer,
+// such as (void*)1.
+//
+// If |type| is |V_ASN1_NULL|, |value| must be NULL.
+//
+// For other values of |type|, this function takes ownership of |value|, which
+// must point to an object of the corresponding type. See |ASN1_TYPE| for
+// details.
+OPENSSL_EXPORT void ASN1_TYPE_set(ASN1_TYPE *a, int type, void *value);
+
+// ASN1_TYPE_set1 behaves like |ASN1_TYPE_set| except it does not take ownership
+// of |value|. It returns one on success and zero on error.
+OPENSSL_EXPORT int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value);
+
+// ASN1_TYPE_cmp returns zero if |a| and |b| are equal and some non-zero value
+// otherwise. Note this function can only be used for equality checks, not an
+// ordering.
+OPENSSL_EXPORT int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b);
+
+// TODO(davidben): Most of |ASN1_TYPE|'s APIs are hidden behind macros. Expand
+// the macros, document them, and move them to this section.
+
+
+// Underdocumented functions.
+//
+// The following functions are not yet documented and organized.
 
 // For use with d2i_ASN1_type_bytes()
 #define B_ASN1_NUMERICSTRING 0x0001
@@ -167,6 +460,16 @@ extern "C" {
 #define ASN1_OBJECT_FLAG_DYNAMIC 0x01          // internal use
 #define ASN1_OBJECT_FLAG_DYNAMIC_STRINGS 0x04  // internal use
 #define ASN1_OBJECT_FLAG_DYNAMIC_DATA 0x08     // internal use
+
+// An asn1_object_st (aka |ASN1_OBJECT|) represents an ASN.1 OBJECT IDENTIFIER.
+//
+// Note: Although the struct is exposed, mutating an |ASN1_OBJECT| is only
+// permitted when initializing it. The library maintains a table of static
+// |ASN1_OBJECT|s, which may be referenced by non-const |ASN1_OBJECT| pointers.
+// Code which receives an |ASN1_OBJECT| pointer externally must assume it is
+// immutable, even if the pointer is not const.
+//
+// TODO(davidben): Document this more completely in its own section.
 struct asn1_object_st {
   const char *sn, *ln;
   int nid;
@@ -176,23 +479,6 @@ struct asn1_object_st {
 };
 
 DEFINE_STACK_OF(ASN1_OBJECT)
-
-#define ASN1_STRING_FLAG_BITS_LEFT 0x08  // Set if 0x07 has bits left value
-
-// This flag is used by ASN1 code to indicate an ASN1_STRING is an MSTRING
-// type.
-#define ASN1_STRING_FLAG_MSTRING 0x040
-// This is the base type that holds just about everything :-)
-struct asn1_string_st {
-  int length;
-  int type;
-  unsigned char *data;
-  // The value of the following field depends on the type being
-  // held.  It is mostly being used for BIT_STRING so if the
-  // input data has a non-zero 'unused bits' value, it will be
-  // handled correctly
-  long flags;
-};
 
 // ASN1_ENCODING structure: this is used to save the received
 // encoding of an ASN1 type. This is useful to get round
@@ -242,8 +528,6 @@ typedef struct asn1_string_table_st {
 // see asn1t.h
 typedef struct ASN1_TEMPLATE_st ASN1_TEMPLATE;
 typedef struct ASN1_TLC_st ASN1_TLC;
-// This is just an opaque pointer
-typedef struct ASN1_VALUE_st ASN1_VALUE;
 
 // Declare ASN1 functions: the implement macro in in asn1t.h
 
@@ -409,35 +693,6 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 DEFINE_STACK_OF(ASN1_INTEGER)
 DECLARE_ASN1_SET_OF(ASN1_INTEGER)
 
-struct asn1_type_st {
-  int type;
-  union {
-    char *ptr;
-    ASN1_BOOLEAN boolean;
-    ASN1_STRING *asn1_string;
-    ASN1_OBJECT *object;
-    ASN1_INTEGER *integer;
-    ASN1_ENUMERATED *enumerated;
-    ASN1_BIT_STRING *bit_string;
-    ASN1_OCTET_STRING *octet_string;
-    ASN1_PRINTABLESTRING *printablestring;
-    ASN1_T61STRING *t61string;
-    ASN1_IA5STRING *ia5string;
-    ASN1_GENERALSTRING *generalstring;
-    ASN1_BMPSTRING *bmpstring;
-    ASN1_UNIVERSALSTRING *universalstring;
-    ASN1_UTCTIME *utctime;
-    ASN1_GENERALIZEDTIME *generalizedtime;
-    ASN1_VISIBLESTRING *visiblestring;
-    ASN1_UTF8STRING *utf8string;
-    // set and sequence are left complete and still
-    // contain the set or sequence bytes
-    ASN1_STRING *set;
-    ASN1_STRING *sequence;
-    ASN1_VALUE *asn1_value;
-  } value;
-};
-
 DEFINE_STACK_OF(ASN1_TYPE)
 DECLARE_ASN1_SET_OF(ASN1_TYPE)
 
@@ -524,11 +779,6 @@ typedef struct BIT_STRING_BITNAME_st {
 
 DECLARE_ASN1_FUNCTIONS_fname(ASN1_TYPE, ASN1_ANY, ASN1_TYPE)
 
-OPENSSL_EXPORT int ASN1_TYPE_get(const ASN1_TYPE *a);
-OPENSSL_EXPORT void ASN1_TYPE_set(ASN1_TYPE *a, int type, void *value);
-OPENSSL_EXPORT int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value);
-OPENSSL_EXPORT int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b);
-
 OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_new(void);
 OPENSSL_EXPORT void ASN1_OBJECT_free(ASN1_OBJECT *a);
 OPENSSL_EXPORT int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp);
@@ -542,60 +792,6 @@ OPENSSL_EXPORT ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **a,
 DECLARE_ASN1_ITEM(ASN1_OBJECT)
 
 DECLARE_ASN1_SET_OF(ASN1_OBJECT)
-
-// ASN1_STRING_new returns a newly-allocated empty |ASN1_STRING| object with an
-// arbitrary type. Prefer one of the type-specific constructors, such as
-// |ASN1_OCTET_STRING_new|.
-OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_new(void);
-
-// ASN1_STRING_free releases memory associated with |str|.
-OPENSSL_EXPORT void ASN1_STRING_free(ASN1_STRING *str);
-
-// ASN1_STRING_copy sets |dst| to a copy of |str|. It returns one on success and
-// zero on error.
-OPENSSL_EXPORT int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str);
-
-// ASN1_STRING_dup returns a newly-allocated copy of |str|, or NULL on error.
-OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_dup(const ASN1_STRING *str);
-
-// ASN1_STRING_type_new returns a newly-allocated empty |ASN1_STRING| object of
-// type |type|, or NULL on error.
-OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_type_new(int type);
-
-// ASN1_STRING_cmp compares |a| and |b|'s type and contents. It returns an
-// integer equal to, less than, or greater than zero if |a| is equal to, less
-// than, or greater than |b|, respectively. The comparison is suitable for
-// sorting, but callers should not rely on the particular comparison.
-//
-// Note if |a| or |b| are BIT STRINGs, this function does not compare the
-// |ASN1_STRING_FLAG_BITS_LEFT| flags.
-//
-// TODO(davidben): The BIT STRING comparison seems like a bug. Fix it?
-OPENSSL_EXPORT int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
-
-// ASN1_STRING_set sets the contents of |str| to a copy of |len| bytes from
-// |data|. It returns one on success and zero on error.
-OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
-
-// ASN1_STRING_set0 sets the contents of |str| to |len| bytes from |data|. It
-// takes ownership of |data|, which must have been allocated with
-// |OPENSSL_malloc|.
-OPENSSL_EXPORT void ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
-
-// ASN1_STRING_length returns the length of |str|, in bytes.
-OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *str);
-
-// ASN1_STRING_type returns the type of |str|. This value will be one of the
-// |V_ASN1_*| constants.
-OPENSSL_EXPORT int ASN1_STRING_type(const ASN1_STRING *str);
-
-// ASN1_STRING_data returns a mutable pointer to |str|'s contents. Prefer
-// |ASN1_STRING_get0_data|.
-OPENSSL_EXPORT unsigned char *ASN1_STRING_data(ASN1_STRING *str);
-
-// ASN1_STRING_get0_data returns a pointer to |str|'s contents.
-OPENSSL_EXPORT const unsigned char *ASN1_STRING_get0_data(
-    const ASN1_STRING *str);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_BIT_STRING)
 OPENSSL_EXPORT int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *a,
@@ -805,7 +1001,6 @@ BSSL_NAMESPACE_END
 #define ASN1_R_AUX_ERROR 101
 #define ASN1_R_BAD_GET_ASN1_OBJECT_CALL 102
 #define ASN1_R_BAD_OBJECT_HEADER 103
-#define ASN1_R_BAD_TEMPLATE 200
 #define ASN1_R_BMPSTRING_IS_WRONG_LENGTH 104
 #define ASN1_R_BN_LIB 105
 #define ASN1_R_BOOLEAN_IS_WRONG_LENGTH 106
@@ -895,5 +1090,6 @@ BSSL_NAMESPACE_END
 #define ASN1_R_WRONG_TAG 190
 #define ASN1_R_WRONG_TYPE 191
 #define ASN1_R_NESTED_TOO_DEEP 192
+#define ASN1_R_BAD_TEMPLATE 193
 
 #endif

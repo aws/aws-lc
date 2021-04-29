@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 import json
 import os
 import os.path
@@ -11,10 +13,6 @@ import sys
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 json_data_file = os.path.join(script_dir, 'win_toolchain.json')
-
-
-# Use MSVS2015 as the default toolchain.
-CURRENT_DEFAULT_TOOLCHAIN_VERSION = '2015'
 
 
 def SetEnvironmentForCPU(cpu):
@@ -38,9 +36,8 @@ def SetEnvironmentForCPU(cpu):
     # Old-style paths were relative to the win_sdk\bin directory.
     json_relative_dir = os.path.join(sdk_dir, 'bin')
   else:
-    # New-style paths are relative to the toolchain directory, which is the
-    # parent of the SDK directory.
-    json_relative_dir = os.path.split(sdk_dir)[0]
+    # New-style paths are relative to the toolchain directory.
+    json_relative_dir = toolchain_data['path']
   for k in env:
     entries = [os.path.join(*([json_relative_dir] + e)) for e in env[k]]
     # clang-cl wants INCLUDE to be ;-separated even on non-Windows,
@@ -62,30 +59,21 @@ def FindDepotTools():
   raise Exception("depot_tools not found!")
 
 
-def GetVisualStudioVersion():
-  """Return GYP_MSVS_VERSION of Visual Studio.
-  """
-  # TODO(davidben): Replace this with a command-line argument. The depot_tools
-  # script no longer needs this environment variable.
-  return os.environ.get('GYP_MSVS_VERSION', CURRENT_DEFAULT_TOOLCHAIN_VERSION)
-
-
-def _GetDesiredVsToolchainHashes():
+def _GetDesiredVsToolchainHashes(version):
   """Load a list of SHA1s corresponding to the toolchains that we want installed
   to build with."""
-  env_version = GetVisualStudioVersion()
-  if env_version == '2015':
+  if version == '2015':
     # Update 3 final with 10.0.15063.468 SDK and no vctip.exe.
     return ['f53e4598951162bad6330f7a167486c7ae5db1e5']
-  if env_version == '2017':
+  if version == '2017':
     # VS 2017 Update 9 (15.9.12) with 10.0.18362 SDK, 10.0.17763 version of
     # Debuggers, and 10.0.17134 version of d3dcompiler_47.dll, with ARM64
     # libraries.
     return ['418b3076791776573a815eb298c8aa590307af63']
-  raise Exception('Unsupported VS version %s' % env_version)
+  raise Exception('Unsupported VS version %s' % version)
 
 
-def Update():
+def Update(version):
   """Requests an update of the toolchain to the specific hashes we have at
   this revision. The update outputs a .json of the various configuration
   information required to pass to vs_env.py which we use in
@@ -98,7 +86,7 @@ def Update():
                   'win_toolchain',
                   'get_toolchain_if_necessary.py'),
       '--output-json', json_data_file,
-    ] + _GetDesiredVsToolchainHashes()
+    ] + _GetDesiredVsToolchainHashes(version)
   subprocess.check_call(get_toolchain_args)
   return 0
 
@@ -110,7 +98,7 @@ def main():
       'update': Update,
   }
   if len(sys.argv) < 2 or sys.argv[1] not in commands:
-    print >>sys.stderr, 'Expected one of: %s' % ', '.join(commands)
+    print('Expected one of: %s' % ', '.join(commands), file=sys.stderr)
     return 1
   return commands[sys.argv[1]](*sys.argv[2:])
 

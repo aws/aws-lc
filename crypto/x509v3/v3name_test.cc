@@ -306,7 +306,7 @@ static X509 *make_cert(void)
     crt = X509_new();
     if (crt == NULL)
         goto out;
-    if (!X509_set_version(crt, 3))
+    if (!X509_set_version(crt, X509V3_VERSION))
         goto out;
     ret = crt;
     crt = NULL;
@@ -577,85 +577,7 @@ struct gennamedata {
             0x04, 0x03, 0x0c, 0x01, 0x62
         },
         16
-    },
-#if 0
-/* There is currently a bug which prevents AWS-LC from parsing correct encodings
- * of EDIPARTYNAME.
- * Enable these tests when this bug has been fixed. */
-      {
-        /*
-        * [5] {
-        *   [1] {
-        *     UTF8String { "a" }
-        *   }
-        * }
-        */
-        {
-            0xa5, 0x05, 0xa1, 0x03, 0x0c, 0x01, 0x61
-        },
-        7
-    }, {
-        /*
-        * [5] {
-        *   [1] {
-        *     UTF8String { "b" }
-        *   }
-        * }
-        */
-        {
-            0xa5, 0x05, 0xa1, 0x03, 0x0c, 0x01, 0x62
-        },
-        7
-    }, {
-        /*
-        * [5] {
-        *   [0] {
-        *     UTF8String {}
-        *   }
-        *   [1] {
-        *     UTF8String { "a" }
-        *   }
-        * }
-        */
-        {
-            0xa5, 0x09, 0xa0, 0x02, 0x0c, 0x00, 0xa1, 0x03, 0x0c, 0x01, 0x61
-        },
-        11
-    }, {
-        /*
-        * [5] {
-        *   [0] {
-        *     UTF8String { "a" }
-        *   }
-        *   [1] {
-        *     UTF8String { "a" }
-        *   }
-        * }
-        */
-        {
-            0xa5, 0x0a, 0xa0, 0x03, 0x0c, 0x01, 0x61, 0xa1, 0x03, 0x0c, 0x01,
-            0x61
-        },
-        12
-    }, {
-        /*
-        * [5] {
-        *   [0] {
-        *     UTF8String { "b" }
-        *   }
-        *   [1] {
-        *     UTF8String { "a" }
-        *   }
-        * }
-        */
-        {
-            0xa5, 0x0a, 0xa0, 0x03, 0x0c, 0x01, 0x62, 0xa1, 0x03, 0x0c, 0x01,
-            0x61
-        },
-        12
-    },
-#endif
-       {
+    },  {
         /* [6 PRIMITIVE] { "a" } */
         {
             0x86, 0x01, 0x61

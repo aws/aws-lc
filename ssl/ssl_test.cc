@@ -29,6 +29,7 @@
 #include <openssl/bio.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
+#include <openssl/curve25519.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/pem.h>
@@ -1192,6 +1193,24 @@ TEST(SSLTest, Padding) {
   }
 }
 
+static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return nullptr;
+  }
+  return bssl::UniquePtr<X509>(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}
+
+static bssl::UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return nullptr;
+  }
+  return bssl::UniquePtr<EVP_PKEY>(
+      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+}
+
 static bssl::UniquePtr<X509> GetTestCertificate() {
   static const char kCertPEM[] =
       "-----BEGIN CERTIFICATE-----\n"
@@ -1209,9 +1228,7 @@ static bssl::UniquePtr<X509> GetTestCertificate() {
       "T5oQpHL9z/cCDLAKCKRa4uV0fhEdOWBqyR9p8y5jJtye72t6CuFUV5iqcpF4BH4f\n"
       "j2VNHwsSrJwkD4QUGlUtH7vwnQmyCFxZMmWAJg==\n"
       "-----END CERTIFICATE-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  return CertFromPEM(kCertPEM);
 }
 
 static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
@@ -1231,9 +1248,7 @@ static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
       "tfDwbqkta4xcux67//khAkEAvvRXLHTaa6VFzTaiiO8SaFsHV3lQyXOtMrBpB5jd\n"
       "moZWgjHvB2W9Ckn7sDqsPB+U2tyX0joDdQEyuiMECDY8oQ==\n"
       "-----END RSA PRIVATE KEY-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  return KeyFromPEM(kKeyPEM);
 }
 
 static bssl::UniquePtr<X509> GetECDSATestCertificate() {
@@ -1250,8 +1265,7 @@ static bssl::UniquePtr<X509> GetECDSATestCertificate() {
       "BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E\n"
       "BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=\n"
       "-----END CERTIFICATE-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  return CertFromPEM(kCertPEM);
 }
 
 static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
@@ -1261,9 +1275,7 @@ static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
       "TYlodwi1b8ldMHcO6NHJzgqLtGqhRANCAATmK2niv2Wfl74vHg2UikzVl2u3qR4N\n"
       "Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB\n"
       "-----END PRIVATE KEY-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  return KeyFromPEM(kKeyPEM);
 }
 
 static bssl::UniquePtr<CRYPTO_BUFFER> BufferFromPEM(const char *pem) {
@@ -1377,9 +1389,7 @@ static bssl::UniquePtr<EVP_PKEY> GetChainTestKey() {
       "buB7ERSdaNbO21zXt9FEA3+z0RfMd/Zv2vlIWOSB5nzl/7UKti3sribK6s9ZVLfi\n"
       "SxpiPQ8d/hmSGwn4ksrWUsJD\n"
       "-----END PRIVATE KEY-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  return KeyFromPEM(kKeyPEM);
 }
 
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
@@ -1438,6 +1448,230 @@ TEST(SSLTest, AddClientCA) {
   EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(list, 0), name1));
   EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(list, 1), name2));
   EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(list, 2), name1));
+}
+
+// kECHConfig contains a serialized ECHConfig value.
+static const uint8_t kECHConfig[] = {
+    // version
+    0xfe, 0x09,
+    // length
+    0x00, 0x42,
+    // contents.public_name
+    0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
+    0x6d, 0x70, 0x6c, 0x65,
+    // contents.public_key
+    0x00, 0x20, 0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3,
+    0x6a, 0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
+    0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c,
+    // contents.kem_id
+    0x00, 0x20,
+    // contents.cipher_suites
+    0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
+    // contents.maximum_name_length
+    0x00, 0x10,
+    // contents.extensions
+    0x00, 0x00};
+
+// kECHConfigPublicKey is the public key encoded in |kECHConfig|.
+static const uint8_t kECHConfigPublicKey[X25519_PUBLIC_VALUE_LEN] = {
+    0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3, 0x6a,
+    0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
+    0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c};
+
+// kECHConfigPrivateKey is the X25519 private key corresponding to
+// |kECHConfigPublicKey|.
+static const uint8_t kECHConfigPrivateKey[X25519_PRIVATE_KEY_LEN] = {
+    0xbc, 0xb5, 0x51, 0x29, 0x31, 0x10, 0x30, 0xc9, 0xed, 0x26, 0xde,
+    0xd4, 0xb3, 0xdf, 0x3a, 0xce, 0x06, 0x8a, 0xee, 0x17, 0xab, 0xce,
+    0xd7, 0xdb, 0xf3, 0x11, 0xe5, 0xa8, 0xf3, 0xb1, 0x8e, 0x24};
+
+// MakeECHConfig serializes an ECHConfig and writes it to |*out| with the
+// specified parameters. |cipher_suites| is a list of code points which should
+// contain pairs of KDF and AEAD IDs.
+bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
+                   Span<const uint8_t> public_key,
+                   Span<const uint16_t> cipher_suites,
+                   Span<const uint8_t> extensions) {
+  bssl::ScopedCBB cbb;
+  CBB contents, child;
+  static const char kPublicName[] = "example.com";
+  if (!CBB_init(cbb.get(), 64) ||
+      !CBB_add_u16(cbb.get(), TLSEXT_TYPE_encrypted_client_hello) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(kPublicName),
+                     strlen(kPublicName)) ||
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, public_key.data(), public_key.size()) ||
+      !CBB_add_u16(&contents, kem_id) ||
+      !CBB_add_u16_length_prefixed(&contents, &child)) {
+    return false;
+  }
+  for (uint16_t cipher_suite : cipher_suites) {
+    if (!CBB_add_u16(&child, cipher_suite)) {
+      return false;
+    }
+  }
+  if (!CBB_add_u16(&contents, strlen(kPublicName)) ||  // maximum_name_length
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, extensions.data(), extensions.size()) ||
+      !CBB_flush(cbb.get())) {
+    return false;
+  }
+
+  out->assign(CBB_data(cbb.get()), CBB_data(cbb.get()) + CBB_len(cbb.get()));
+  return true;
+}
+
+TEST(SSLTest, ECHServerConfigList) {
+  // kWrongPrivateKey is an unrelated, but valid X25519 private key.
+  const uint8_t kWrongPrivateKey[X25519_PRIVATE_KEY_LEN] = {
+      0xbb, 0xfe, 0x08, 0xf7, 0x31, 0xde, 0x9c, 0x8a, 0xf2, 0x06, 0x4a,
+      0x18, 0xd7, 0x8b, 0x79, 0x31, 0xe2, 0x53, 0xdd, 0x63, 0x8f, 0x58,
+      0x42, 0xda, 0x21, 0x0e, 0x61, 0x97, 0x29, 0xcc, 0x17, 0x71};
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+
+  // Adding an ECHConfig with the wrong private key is an error.
+  ASSERT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kECHConfig, sizeof(kECHConfig),
+      kWrongPrivateKey, sizeof(kWrongPrivateKey)));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH,
+            ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // Adding an ECHConfig with the matching private key succeeds.
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kECHConfig, sizeof(kECHConfig),
+      kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  ASSERT_TRUE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), config_list.get()));
+
+  // Build a new config list and replace the old one on |ctx|.
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> next_config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      next_config_list.get(), /*is_retry_config=*/1, kECHConfig,
+      sizeof(kECHConfig), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+  ASSERT_TRUE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), next_config_list.get()));
+}
+
+TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
+  std::vector<uint8_t> ech_config;
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
+      MakeConstSpan(kECHConfigPublicKey, sizeof(kECHConfigPublicKey) - 1),
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      /*extensions=*/{}));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+  ASSERT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  uint32_t err = ERR_peek_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG, ERR_GET_REASON(err));
+  ERR_clear_error();
+}
+
+// Test that |SSL_CTX_set1_ech_server_config_list| fails when the config list
+// has no retry configs.
+TEST(SSLTest, ECHServerConfigsWithoutRetryConfigs) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+
+  // Adding an ECHConfig with the matching private key succeeds.
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/0, kECHConfig, sizeof(kECHConfig),
+      kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  ASSERT_FALSE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), config_list.get()));
+  uint32_t err = ERR_peek_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_ECH_SERVER_WOULD_HAVE_NO_RETRY_CONFIGS, ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // Add the same ECHConfig to the list, but this time mark it as a retry
+  // config.
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kECHConfig, sizeof(kECHConfig),
+      kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+  ASSERT_TRUE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), config_list.get()));
+}
+
+// Test that the server APIs reject ECHConfigs with unsupported features.
+TEST(SSLTest, UnsupportedECHConfig) {
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+
+  // Unsupported versions are rejected.
+  static const uint8_t kUnsupportedVersion[] = {0xff, 0xff, 0x00, 0x00};
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kUnsupportedVersion,
+      sizeof(kUnsupportedVersion), kECHConfigPrivateKey,
+      sizeof(kECHConfigPrivateKey)));
+
+  // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
+  std::vector<uint8_t> ech_config;
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA384, EVP_HPKE_AEAD_AES_128_GCM},
+      /*extensions=*/{}));
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  // Unsupported KEMs are rejected.
+  static const uint8_t kP256PublicKey[] = {
+      0x04, 0xe6, 0x2b, 0x69, 0xe2, 0xbf, 0x65, 0x9f, 0x97, 0xbe, 0x2f,
+      0x1e, 0x0d, 0x94, 0x8a, 0x4c, 0xd5, 0x97, 0x6b, 0xb7, 0xa9, 0x1e,
+      0x0d, 0x46, 0xfb, 0xdd, 0xa9, 0xa9, 0x1e, 0x9d, 0xdc, 0xba, 0x5a,
+      0x01, 0xe7, 0xd6, 0x97, 0xa8, 0x0a, 0x18, 0xf9, 0xc3, 0xc4, 0xa3,
+      0x1e, 0x56, 0xe2, 0x7c, 0x83, 0x48, 0xdb, 0x16, 0x1a, 0x1c, 0xf5,
+      0x1d, 0x7e, 0xf1, 0x94, 0x2d, 0x4b, 0xcf, 0x72, 0x22, 0xc1};
+  static const uint8_t kP256PrivateKey[] = {
+      0x07, 0x0f, 0x08, 0x72, 0x7a, 0xd4, 0xa0, 0x4a, 0x9c, 0xdd, 0x59,
+      0xc9, 0x4d, 0x89, 0x68, 0x77, 0x08, 0xb5, 0x6f, 0xc9, 0x5d, 0x30,
+      0x77, 0x0e, 0xe8, 0xd1, 0xc9, 0xce, 0x0a, 0x8b, 0xb4, 0x6a};
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      /*extensions=*/{}));
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kP256PrivateKey, sizeof(kP256PrivateKey)));
+
+  // Unsupported extensions are rejected.
+  static const uint8_t kExtensions[] = {0x00, 0x01, 0x00, 0x00};
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      kExtensions));
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
 }
 
 static void AppendSession(SSL_SESSION *session, void *arg) {
@@ -6073,6 +6307,107 @@ TEST_F(QUICMethodTest, ServerRejectsMissingTransportParams) {
   ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kClientError));
 }
 
+TEST_F(QUICMethodTest, QuicLegacyCodepointEnabled) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 1);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 1);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+  ExpectReceivedTransportParamsEqual(client_.get(), kServerParams);
+  ExpectReceivedTransportParamsEqual(server_.get(), kClientParams);
+}
+
+TEST_F(QUICMethodTest, QuicLegacyCodepointDisabled) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 0);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 0);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+  ExpectReceivedTransportParamsEqual(client_.get(), kServerParams);
+  ExpectReceivedTransportParamsEqual(server_.get(), kClientParams);
+}
+
+TEST_F(QUICMethodTest, QuicLegacyCodepointClientOnly) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 1);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 0);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kServerError));
+}
+
+TEST_F(QUICMethodTest, QuicLegacyCodepointServerOnly) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 0);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 1);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kServerError));
+}
+
+// Test that the default QUIC code point is consistent with
+// |TLSEXT_TYPE_quic_transport_parameters|. This test ensures we remember to
+// update the two values together.
+TEST_F(QUICMethodTest, QuicCodePointDefault) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx_.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_quic_transport_parameters, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find quic_transport_parameters extension";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+
+  ASSERT_TRUE(CreateClientAndServer());
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+}
+
 extern "C" {
 int BORINGSSL_enum_c_type_test(void);
 }
@@ -6586,6 +6921,101 @@ TEST(SSLTest, BIO) {
     EXPECT_EQ(-1, ret);
     EXPECT_TRUE(BIO_should_write(client_bio.get()));
   }
+}
+
+TEST(SSLTest, ALPNConfig) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+
+  // Set up some machinery to check the configured ALPN against what is actually
+  // sent over the wire. Note that the ALPN callback is only called when the
+  // client offers ALPN.
+  std::vector<uint8_t> observed_alpn;
+  SSL_CTX_set_alpn_select_cb(
+      ctx.get(),
+      [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+         unsigned in_len, void *arg) -> int {
+        std::vector<uint8_t> *observed_alpn_ptr =
+            static_cast<std::vector<uint8_t> *>(arg);
+        observed_alpn_ptr->assign(in, in + in_len);
+        return SSL_TLSEXT_ERR_NOACK;
+      },
+      &observed_alpn);
+  auto check_alpn_proto = [&](Span<const uint8_t> expected) {
+    observed_alpn.clear();
+    bssl::UniquePtr<SSL> client, server;
+    EXPECT_TRUE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get()));
+    EXPECT_EQ(Bytes(expected), Bytes(observed_alpn));
+  };
+
+  // Note that |SSL_CTX_set_alpn_protos|'s return value is reversed.
+  static const uint8_t kValidList[] = {0x03, 'f', 'o', 'o',
+                                       0x03, 'b', 'a', 'r'};
+  EXPECT_EQ(0,
+            SSL_CTX_set_alpn_protos(ctx.get(), kValidList, sizeof(kValidList)));
+  check_alpn_proto(kValidList);
+
+  // Invalid lists are rejected.
+  static const uint8_t kInvalidList[] = {0x04, 'f', 'o', 'o'};
+  EXPECT_EQ(1, SSL_CTX_set_alpn_protos(ctx.get(), kInvalidList,
+                                       sizeof(kInvalidList)));
+
+  // Empty lists are valid and are interpreted as disabling ALPN.
+  EXPECT_EQ(0, SSL_CTX_set_alpn_protos(ctx.get(), nullptr, 0));
+  check_alpn_proto({});
+}
+
+// Test that the key usage checker can correctly handle issuerUID and
+// subjectUID. See https://crbug.com/1199744.
+TEST(SSLTest, KeyUsageWithUIDs) {
+  static const char kGoodKeyUsage[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB7DCCAZOgAwIBAgIJANlMBNpJfb/rMAoGCCqGSM49BAMCMEUxCzAJBgNVBAYT
+AkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRn
+aXRzIFB0eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQsw
+CQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJu
+ZXQgV2lkZ2l0cyBQdHkgTHRkMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp
+4r9ln5e+Lx4NlIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsW
+Ghz1HX7xlC1Lz3IiwYEEABI0VoIEABI0VqNgMF4wHQYDVR0OBBYEFKuE0qyrlfCC
+ThZ4B1VXX+QmjYLRMB8GA1UdIwQYMBaAFKuE0qyrlfCCThZ4B1VXX+QmjYLRMA4G
+A1UdDwEB/wQEAwIHgDAMBgNVHRMEBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIEWJ
+34EcqW5MHwLIA1hZ2Tj/jV2QjN02KLxis9mFsqDKAiAMlMTkzsM51vVs9Ohqa+Rc
+4Z7qDhjIhiF4dM0uEDYRVA==
+-----END CERTIFICATE-----
+)";
+  static const char kBadKeyUsage[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB7jCCAZOgAwIBAgIJANlMBNpJfb/rMAoGCCqGSM49BAMCMEUxCzAJBgNVBAYT
+AkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRn
+aXRzIFB0eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQsw
+CQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJu
+ZXQgV2lkZ2l0cyBQdHkgTHRkMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp
+4r9ln5e+Lx4NlIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsW
+Ghz1HX7xlC1Lz3IiwYEEABI0VoIEABI0VqNgMF4wHQYDVR0OBBYEFKuE0qyrlfCC
+ThZ4B1VXX+QmjYLRMB8GA1UdIwQYMBaAFKuE0qyrlfCCThZ4B1VXX+QmjYLRMA4G
+A1UdDwEB/wQEAwIDCDAMBgNVHRMEBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQC6
+taYBUDu2gcZC6EMk79FBHArYI0ucF+kzvETegZCbBAIhANtObFec5gtso/47moPD
+RHrQbWsFUakETXL9QMlegh5t
+-----END CERTIFICATE-----
+)";
+
+  bssl::UniquePtr<X509> good = CertFromPEM(kGoodKeyUsage);
+  ASSERT_TRUE(good);
+  bssl::UniquePtr<X509> bad = CertFromPEM(kBadKeyUsage);
+  ASSERT_TRUE(bad);
+
+  // We check key usage when configuring EC certificates to distinguish ECDSA
+  // and ECDH.
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  EXPECT_TRUE(SSL_CTX_use_certificate(ctx.get(), good.get()));
+  EXPECT_FALSE(SSL_CTX_use_certificate(ctx.get(), bad.get()));
 }
 
 }  // namespace

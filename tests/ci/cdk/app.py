@@ -6,6 +6,7 @@
 from aws_cdk import core
 
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
+from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
 from cdk.windows_docker_image_build_stack import WindowsDockerImageBuildStack
 from cdk.ecr_stack import EcrStack
@@ -31,8 +32,13 @@ LinuxDockerImageBatchBuildStack(app, "aws-lc-docker-image-build-linux", env=env)
 WindowsDockerImageBuildStack(app, "aws-lc-docker-image-build-windows", env=env)
 
 # Define CodeBuild Batch job for testing code.
-AwsLcGitHubCIStack(app, "aws-lc-ci-linux-x86", "./cdk/codebuild/github_ci_linux_x86_omnibus.yaml", env=env)
-AwsLcGitHubCIStack(app, "aws-lc-ci-linux-arm", "./cdk/codebuild/github_ci_linux_arm_omnibus.yaml", env=env)
-AwsLcGitHubCIStack(app, "aws-lc-ci-windows-x86", "./cdk/codebuild/github_ci_windows_x86_omnibus.yaml", env=env)
+x86_build_spec_file = "./cdk/codebuild/github_ci_linux_x86_omnibus.yaml"
+AwsLcGitHubCIStack(app, "aws-lc-ci-linux-x86", LINUX_X86_ECR_REPO, x86_build_spec_file, env=env)
+arm_build_spec_file = "./cdk/codebuild/github_ci_linux_arm_omnibus.yaml"
+AwsLcGitHubCIStack(app, "aws-lc-ci-linux-arm", LINUX_AARCH_ECR_REPO, arm_build_spec_file, env=env)
+win_x86_build_spec_file = "./cdk/codebuild/github_ci_windows_x86_omnibus.yaml"
+AwsLcGitHubCIStack(app, "aws-lc-ci-windows-x86", WINDOWS_X86_ECR_REPO, win_x86_build_spec_file, env=env)
+fuzz_build_spec_file = "cdk/codebuild/github_ci_fuzzing_omnibus.yaml"
+AwsLcGitHubFuzzCIStack(app, "aws-lc-ci-fuzzing", LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, fuzz_build_spec_file, env=env)
 
 app.synth()

@@ -157,8 +157,8 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
 
     case ASN1_ITYPE_CHOICE:
         /*
-         * It never makes sense for CHOICE types to have implicit tagging, so
-         * if tag != -1, then this looks like an error in the template.
+         * It never makes sense for CHOICE types to have implicit tagging, so if
+         * tag != -1, then this looks like an error in the template.
          */
         if (tag != -1) {
             OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
@@ -569,7 +569,7 @@ static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
             if (!*tbool && !it->size)
                 return -1;
         }
-        c = (unsigned char)*tbool;
+        c = *tbool ? 0xff : 0x00;
         cont = &c;
         len = 1;
         break;

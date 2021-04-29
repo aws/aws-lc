@@ -47,45 +47,78 @@ if(NOT OPENSSL_NO_ASM)
       endforeach()
     endif()
   else()
-    if(${ARCH} STREQUAL "x86_64")
-      set(PERLASM_STYLE nasm)
+    if(${ARCH} STREQUAL "aarch64")
+      set(PERLASM_STYLE win64)
+      set(ASM_EXT S)
+      enable_language(ASM)
     else()
-      set(PERLASM_STYLE win32n)
-      set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
-    endif()
-    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
+      if(${ARCH} STREQUAL "x86_64")
+        set(PERLASM_STYLE nasm)
+      else()
+        set(PERLASM_STYLE win32n)
+        set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
+      endif()
+      set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
 
-    # On Windows, we use the NASM output, specifically built with Yasm.
-    set(ASM_EXT asm)
-    enable_language(ASM_NASM)
+      # On Windows, we use the NASM output.
+      set(ASM_EXT asm)
+      enable_language(ASM_NASM)
+    endif()
   endif()
 endif()
 
-function(perlasm dest src)
-  get_filename_component(dir ${dest} DIRECTORY)
-  if ("${dir}" STREQUAL "")
-    set(dir ".")
+if(PERL_EXECUTABLE)
+  function(perlasm dest src)
+    get_filename_component(dir ${dest} DIRECTORY)
+    if ("${dir}" STREQUAL "")
+      set(dir ".")
+    endif()
+
+    add_custom_command(
+      OUTPUT ${dest}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
+      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
+      DEPENDS
+      ${src}
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
+      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
+      WORKING_DIRECTORY .
+    )
+  endfunction()
+  perlasm(chacha/chacha-armv4.${ASM_EXT} chacha/asm/chacha-armv4.pl)
+  perlasm(chacha/chacha-armv8.${ASM_EXT} chacha/asm/chacha-armv8.pl)
+  perlasm(chacha/chacha-x86.${ASM_EXT} chacha/asm/chacha-x86.pl)
+  perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
+  perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
+  perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
+  perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
+  perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
+  perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
+  perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
+  perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
+
+else()
+  if(APPLE AND ${ARCH} STREQUAL "aarch64")
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-aarch64/crypto/)
+  elseif(APPLE AND ${ARCH} STREQUAL "arm")
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-arm/crypto/)
+  elseif(APPLE)
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/mac-${ARCH}/crypto/)
+  elseif(UNIX)
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/linux-${ARCH}/crypto/)
+  elseif(WIN32)
+    set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/win-${ARCH}/crypto/)
   endif()
+  message("Copying platform assembly files from ${ASSEMBLY_SOURCE} to ${CMAKE_CURRENT_BINARY_DIR}")
+  file(COPY ${ASSEMBLY_SOURCE}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-  add_custom_command(
-    OUTPUT ${dest}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-    COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
-    DEPENDS
-    ${src}
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
-    WORKING_DIRECTORY .
-  )
-endfunction()
-
+endif()
 add_subdirectory(fipsmodule)
-add_subdirectory(test)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
@@ -147,48 +180,40 @@ if(${ARCH} STREQUAL "x86_64")
   )
 endif()
 
-perlasm(chacha/chacha-armv4.${ASM_EXT} chacha/asm/chacha-armv4.pl)
-perlasm(chacha/chacha-armv8.${ASM_EXT} chacha/asm/chacha-armv8.pl)
-perlasm(chacha/chacha-x86.${ASM_EXT} chacha/asm/chacha-x86.pl)
-perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
-perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
-perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
-perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
-perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
-perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
-perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
-perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
-
-add_custom_command(
-  OUTPUT err_data.c
-  COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
-  DEPENDS
-  err/err_data_generate.go
-  err/asn1.errordata
-  err/bio.errordata
-  err/bn.errordata
-  err/cipher.errordata
-  err/conf.errordata
-  err/dh.errordata
-  err/digest.errordata
-  err/dsa.errordata
-  err/ecdh.errordata
-  err/ecdsa.errordata
-  err/ec.errordata
-  err/engine.errordata
-  err/evp.errordata
-  err/hkdf.errordata
-  err/obj.errordata
-  err/pem.errordata
-  err/pkcs7.errordata
-  err/pkcs8.errordata
-  err/rsa.errordata
-  err/ssl.errordata
-  err/trust_token.errordata
-  err/x509.errordata
-  err/x509v3.errordata
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
-)
+if(GO_EXECUTABLE)
+  add_custom_command(
+    OUTPUT err_data.c
+    COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
+    DEPENDS
+    err/err_data_generate.go
+    err/asn1.errordata
+    err/bio.errordata
+    err/bn.errordata
+    err/cipher.errordata
+    err/conf.errordata
+    err/dh.errordata
+    err/digest.errordata
+    err/dsa.errordata
+    err/ecdh.errordata
+    err/ecdsa.errordata
+    err/ec.errordata
+    err/engine.errordata
+    err/evp.errordata
+    err/hkdf.errordata
+    err/obj.errordata
+    err/pem.errordata
+    err/pkcs7.errordata
+    err/pkcs8.errordata
+    err/rsa.errordata
+    err/ssl.errordata
+    err/trust_token.errordata
+    err/x509.errordata
+    err/x509v3.errordata
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
+  )
+else()
+  file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+endif()
 
 add_library(
   crypto
@@ -234,6 +259,7 @@ add_library(
   bio/printf.c
   bio/socket.c
   bio/socket_helper.c
+  blake2/blake2.c
   bn_extra/bn_asn1.c
   bn_extra/convert.c
   buf/buf.c
@@ -258,6 +284,7 @@ add_library(
   conf/conf.c
   cpu-aarch64-fuchsia.c
   cpu-aarch64-linux.c
+  cpu-aarch64-win.c
   cpu-arm-linux.c
   cpu-arm.c
   cpu-intel.c
@@ -265,10 +292,8 @@ add_library(
   crypto.c
   curve25519/curve25519.c
   curve25519/spake25519.c
-  dh/dh.c
-  dh/params.c
-  dh/check.c
-  dh/dh_asn1.c
+  dh_extra/params.c
+  dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
   dsa/dsa.c
   dsa/dsa_asn1.c
@@ -325,6 +350,7 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/forkunsafe.c
   rand_extra/fuchsia.c
+  rand_extra/passive.c
   rand_extra/rand_extra.c
   rand_extra/windows.c
   rc4/rc4.c
@@ -364,7 +390,6 @@ add_library(
   x509/x509_ext.c
   x509/x509_lu.c
   x509/x509_obj.c
-  x509/x509_r2x.c
   x509/x509_req.c
   x509/x509_set.c
   x509/x509_trs.c
@@ -431,7 +456,7 @@ add_library(
 
 if(FIPS_SHARED)
   set(EXTRA_INJECT_HASH_ARGS)
-  if(ANDROID)
+  if((${ARCH} STREQUAL "aarch64") OR ANDROID)
     set(EXTRA_INJECT_HASH_ARGS "-sha256")
   endif()
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
@@ -457,6 +482,9 @@ endif()
 
 SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
 
+if(WIN32)
+  target_link_libraries(crypto ws2_32)
+endif()
 if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(crypto pthread)
 endif()
@@ -467,98 +495,103 @@ if(USE_CUSTOM_LIBCXX)
   target_link_libraries(crypto libcxx)
 endif()
 
-# urandom_test is a separate binary because it needs to be able to observe the
-# PRNG initialisation, which means that it can't have other tests running before
-# it does.
-add_executable(
-  urandom_test
+if(BUILD_TESTING)
+  add_subdirectory(test)
 
-  fipsmodule/rand/urandom_test.cc
-)
+  # urandom_test is a separate binary because it needs to be able to observe the
+  # PRNG initialisation, which means that it can't have other tests running before
+  # it does.
+  add_executable(
+    urandom_test
 
-target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
+    fipsmodule/rand/urandom_test.cc
+  )
 
-add_dependencies(urandom_test global_target)
-add_dependencies(all_tests urandom_test)
+  target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
 
-add_executable(
-  crypto_test
+  add_dependencies(urandom_test global_target)
+  add_dependencies(all_tests urandom_test)
 
-  abi_self_test.cc
-  asn1/asn1_test.cc
-  base64/base64_test.cc
-  buf/buf_test.cc
-  bio/bio_test.cc
-  bytestring/bytestring_test.cc
-  chacha/chacha_test.cc
-  cipher_extra/aead_test.cc
-  cipher_extra/cipher_test.cc
-  cmac/cmac_test.cc
-  compiler_test.cc
-  constant_time_test.cc
-  cpu-arm-linux_test.cc
-  crypto_test.cc
-  curve25519/ed25519_test.cc
-  curve25519/spake25519_test.cc
-  curve25519/x25519_test.cc
-  ecdh_extra/ecdh_test.cc
-  dh/dh_test.cc
-  digest_extra/digest_test.cc
-  dsa/dsa_test.cc
-  err/err_test.cc
-  evp/evp_extra_test.cc
-  evp/evp_test.cc
-  evp/pbkdf_test.cc
-  evp/scrypt_test.cc
-  fipsmodule/aes/aes_test.cc
-  fipsmodule/bn/bn_test.cc
-  fipsmodule/ec/ec_test.cc
-  fipsmodule/ec/p256-nistz_test.cc
-  fipsmodule/ecdsa/ecdsa_test.cc
-  fipsmodule/md5/md5_test.cc
-  fipsmodule/modes/gcm_test.cc
-  fipsmodule/rand/ctrdrbg_test.cc
-  fipsmodule/rand/fork_detect_test.cc
-  fipsmodule/sha/sha_test.cc
-  hkdf/hkdf_test.cc
-  hpke/hpke_test.cc
-  hmac_extra/hmac_test.cc
-  hrss/hrss_test.cc
-  impl_dispatch_test.cc
-  lhash/lhash_test.cc
-  obj/obj_test.cc
-  pem/pem_test.cc
-  pkcs7/pkcs7_test.cc
-  pkcs8/pkcs8_test.cc
-  pkcs8/pkcs12_test.cc
-  poly1305/poly1305_test.cc
-  pool/pool_test.cc
-  rand_extra/rand_test.cc
-  refcount_test.cc
-  rsa_extra/rsa_test.cc
-  rsa_extra/rsassa_pss_asn1_test.cc
-  self_test.cc
-  stack/stack_test.cc
-  siphash/siphash_test.cc
-  test/file_test_gtest.cc
-  thread_test.cc
-  trust_token/trust_token_test.cc
-  x509/x509_test.cc
-  x509/x509_time_test.cc
-  x509v3/tab_test.cc
-  x509v3/v3name_test.cc
+  add_executable(
+    crypto_test
 
-  $<TARGET_OBJECTS:crypto_test_data>
-  $<TARGET_OBJECTS:boringssl_gtest_main>
-)
+    abi_self_test.cc
+    asn1/asn1_test.cc
+    base64/base64_test.cc
+    bio/bio_test.cc
+    blake2/blake2_test.cc
+    buf/buf_test.cc
+    bytestring/bytestring_test.cc
+    chacha/chacha_test.cc
+    cipher_extra/aead_test.cc
+    cipher_extra/cipher_test.cc
+    cmac/cmac_test.cc
+    compiler_test.cc
+    constant_time_test.cc
+    cpu-arm-linux_test.cc
+    crypto_test.cc
+    curve25519/ed25519_test.cc
+    curve25519/spake25519_test.cc
+    curve25519/x25519_test.cc
+    ecdh_extra/ecdh_test.cc
+    dh_extra/dh_test.cc
+    digest_extra/digest_test.cc
+    dsa/dsa_test.cc
+    err/err_test.cc
+    evp/evp_extra_test.cc
+    evp/evp_test.cc
+    evp/pbkdf_test.cc
+    evp/scrypt_test.cc
+    fipsmodule/aes/aes_test.cc
+    fipsmodule/bn/bn_test.cc
+    fipsmodule/ec/ec_test.cc
+    fipsmodule/ec/p256-nistz_test.cc
+    fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/md5/md5_test.cc
+    fipsmodule/modes/gcm_test.cc
+    fipsmodule/rand/ctrdrbg_test.cc
+    fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/sha/sha_test.cc
+    hkdf/hkdf_test.cc
+    hpke/hpke_test.cc
+    hmac_extra/hmac_test.cc
+    hrss/hrss_test.cc
+    impl_dispatch_test.cc
+    lhash/lhash_test.cc
+    obj/obj_test.cc
+    pem/pem_test.cc
+    pkcs7/pkcs7_test.cc
+    pkcs8/pkcs8_test.cc
+    pkcs8/pkcs12_test.cc
+    poly1305/poly1305_test.cc
+    pool/pool_test.cc
+    rand_extra/rand_test.cc
+    refcount_test.cc
+    rsa_extra/rsa_test.cc
+    rsa_extra/rsassa_pss_asn1_test.cc
+    self_test.cc
+    stack/stack_test.cc
+    siphash/siphash_test.cc
+    test/file_test_gtest.cc
+    thread_test.cc
+    trust_token/trust_token_test.cc
+    x509/x509_test.cc
+    x509/x509_time_test.cc
+    x509v3/tab_test.cc
+    x509v3/v3name_test.cc
 
-add_dependencies(crypto_test global_target)
+    $<TARGET_OBJECTS:crypto_test_data>
+    $<TARGET_OBJECTS:boringssl_gtest_main>
+  )
 
-target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
-if(WIN32)
-  target_link_libraries(crypto_test ws2_32)
+  add_dependencies(crypto_test global_target)
+
+  target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
+  if(WIN32)
+    target_link_libraries(crypto_test ws2_32)
+  endif()
+  add_dependencies(all_tests crypto_test)
 endif()
-add_dependencies(all_tests crypto_test)
 
 install(TARGETS crypto
         EXPORT crypto-targets

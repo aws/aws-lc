@@ -24,6 +24,7 @@
 #include <openssl/err.h>
 
 #include "../fipsmodule/cipher/internal.h"
+#include "internal.h"
 #include "../internal.h"
 #include "../test/abi_test.h"
 #include "../test/file_test.h"
@@ -124,10 +125,6 @@ static const struct KnownAEAD kAEADs[] = {
      "aes_128_cbc_sha1_tls_implicit_iv_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
 
-    {"AES_128_CBC_SHA256_TLS", EVP_aead_aes_128_cbc_sha256_tls,
-     "aes_128_cbc_sha256_tls_tests.txt",
-     kLimitedImplementation | RequiresADLength(11)},
-
     {"AES_256_CBC_SHA1_TLS", EVP_aead_aes_256_cbc_sha1_tls,
      "aes_256_cbc_sha1_tls_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
@@ -135,14 +132,6 @@ static const struct KnownAEAD kAEADs[] = {
     {"AES_256_CBC_SHA1_TLSImplicitIV",
      EVP_aead_aes_256_cbc_sha1_tls_implicit_iv,
      "aes_256_cbc_sha1_tls_implicit_iv_tests.txt",
-     kLimitedImplementation | RequiresADLength(11)},
-
-    {"AES_256_CBC_SHA256_TLS", EVP_aead_aes_256_cbc_sha256_tls,
-     "aes_256_cbc_sha256_tls_tests.txt",
-     kLimitedImplementation | RequiresADLength(11)},
-
-    {"AES_256_CBC_SHA384_TLS", EVP_aead_aes_256_cbc_sha384_tls,
-     "aes_256_cbc_sha384_tls_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
 
     {"DES_EDE3_CBC_SHA1_TLS", EVP_aead_des_ede3_cbc_sha1_tls,
@@ -807,7 +796,7 @@ TEST_P(PerAEADTest, ABI) {
                             : sizeof(ad_buf) - 1;
 
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
-  OPENSSL_memset(nonce, 'T', sizeof(nonce));
+  OPENSSL_memset(nonce, 'N', sizeof(nonce));
   const size_t nonce_len = EVP_AEAD_nonce_length(aead());
   ASSERT_LE(nonce_len, sizeof(nonce));
 
@@ -827,6 +816,27 @@ TEST_P(PerAEADTest, ABI) {
 
   EXPECT_EQ(Bytes(plaintext + 1, sizeof(plaintext) - 1),
             Bytes(plaintext2 + 1, plaintext2_len));
+}
+
+TEST(ChaChaPoly1305Test, ABI) {
+  if (!chacha20_poly1305_asm_capable()) {
+    return;
+  }
+
+  std::unique_ptr<uint8_t[]> buf(new uint8_t[1024]);
+  for (size_t len = 0; len <= 1024; len += 5) {
+    SCOPED_TRACE(len);
+    union chacha20_poly1305_open_data open_ctx = {};
+    CHECK_ABI(chacha20_poly1305_open, buf.get(), buf.get(), len, buf.get(),
+              len % 128, &open_ctx);
+  }
+
+  for (size_t len = 0; len <= 1024; len += 5) {
+    SCOPED_TRACE(len);
+    union chacha20_poly1305_seal_data seal_ctx = {};
+    CHECK_ABI(chacha20_poly1305_seal, buf.get(), buf.get(), len, buf.get(),
+              len % 128, &seal_ctx);
+  }
 }
 #endif  // SUPPORTS_ABI_TEST
 

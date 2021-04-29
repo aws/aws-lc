@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.12)
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
 
-if(WIN32)
+if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
   set(CMAKE_GENERATOR_CC cl)
@@ -11,15 +11,29 @@ endif()
 
 include(sources.cmake)
 
+option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
+option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
+
 enable_language(C)
-enable_language(CXX)
+
+# Tests and libssl both require the CXX language to be enabled. If a consumer
+# chooses to disable building the tests and libssl, do not enable CXX
+if(BUILD_TESTING OR BUILD_LIBSSL)
+  enable_language(CXX)
+endif()
+
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  set(CLANG 1)
+elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
+  set(GCC 1)
+endif()
 
 # Fail CMake build when some vulnerable gcc versions are used.
 set(VUL_GCC_VERSIONS "")
 # These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
 list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
-if(CMAKE_COMPILER_IS_GNUCXX)
+if(GCC)
   foreach(vul_gcc_version ${VUL_GCC_VERSIONS})
     if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
       message(FATAL_ERROR "GCC ${CMAKE_C_COMPILER_VERSION} is not supported.")
@@ -55,7 +69,7 @@ if(ANDROID)
     set(GO_EXECUTABLE "go")
   endif()
 else()
-  find_package(Perl REQUIRED)
+  find_package(Perl)
   find_program(GO_EXECUTABLE go)
 endif()
 
@@ -74,7 +88,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(NOT GO_EXECUTABLE)
-  message(FATAL_ERROR "Could not find Go")
+  message(STATUS "Go not found. Disabling some code generation and using pre-generated code in generated-src/")
+endif()
+if (NOT PERL_EXECUTABLE)
+  message(STATUS "Perl not found. Disabling some code generation and using pre-generated code in generated-src/")
+endif()
+
+if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
+  set(GENERATE_CODE_ROOT "${CMAKE_SOURCE_DIR}/generated-src")
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -105,7 +126,7 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
          "${${VAR}_RELEASE}")
 endforeach()
 
-if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS)
+if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   add_definitions(-DBORINGSSL_PREFIX=${BORINGSSL_PREFIX})
   # CMake automatically connects include_directories to the NASM command-line,
   # but not add_definitions.
@@ -132,19 +153,18 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS)
   add_dependencies(global_target boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CLANG 1)
+elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
+  message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS") 
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
+if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
   set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
   if(MSVC)
     # clang-cl sets different default warnings than clang. It also treats -Wall
@@ -201,7 +221,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
 
-  if(CMAKE_COMPILER_IS_GNUCXX AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
+  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
@@ -282,18 +302,10 @@ if(WIN32)
   add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
-if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
+if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.99") OR
    CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
-endif()
-
-if(CMAKE_COMPILER_IS_GNUCXX)
-  if((CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.99") OR CLANG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
-  else()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  endif()
 endif()
 
 # pthread_rwlock_t requires a feature flag.
@@ -402,6 +414,10 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
+  message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
+endif()
+
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
@@ -497,31 +513,19 @@ endif()
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-  set(ARCH "x86_64")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64")
-  set(ARCH "x86_64")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "AMD64")
-  # cmake reports AMD64 on Windows, but we might be building for 32-bit.
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
+  # If ARCH is originally detected as 64-bit, perform an additional check
+  # to determine whether to build as 32-bit or 64-bit. This happens in some
+  # cases such as when building in Docker, where the host-level architecture is 64-bit
+  # but the Docker image should result in building for a 32-bit architecture.
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(ARCH "x86_64")
   else()
     set(ARCH "x86")
   endif()
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86")
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86|i386|i686")
   set(ARCH "x86")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i386")
-  set(ARCH "x86")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
-  set(ARCH "x86")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-  set(ARCH "aarch64")
-  # Enable p256_nistz on ARMv8 (AArch64) by default
-  add_definitions(-DOPENSSL_AARCH64_P256)
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
-  set(ARCH "aarch64")
-# Apple A12 Bionic chipset which is added in iPhone XS/XS Max/XR uses arm64e architecture.
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64e")
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64|aarch64")
   set(ARCH "aarch64")
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm*")
   set(ARCH "arm")
@@ -532,6 +536,11 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
+if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
+  # Enable p256_nistz on ARMv8 (AArch64) by default
+  add_definitions(-DOPENSSL_AARCH64_P256)
 endif()
 
 if(ANDROID AND NOT ANDROID_NDK_REVISION AND ${ARCH} STREQUAL "arm")
@@ -607,41 +616,47 @@ if(USE_CUSTOM_LIBCXX)
   target_link_libraries(libcxx libcxxabi)
 endif()
 
-# Add minimal googletest targets. The provided one has many side-effects, and
-# googletest has a very straightforward build.
-add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
-target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
+if(BUILD_TESTING)
+  # Add minimal googletest targets. The provided one has many side-effects, and
+  # googletest has a very straightforward build.
+  add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+  target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
-include_directories(third_party/googletest/include)
+  include_directories(third_party/googletest/include)
 
-# Declare a dummy target to build all unit tests. Test targets should inject
-# themselves as dependencies next to the target definition.
-add_custom_target(all_tests)
+  # Declare a dummy target to build all unit tests. Test targets should inject
+  # themselves as dependencies next to the target definition.
+  add_custom_target(all_tests)
 
-# On Windows, CRYPTO_TEST_DATA is too long to fit in command-line limits.
-# TODO(davidben): CMake 3.12 has a list(JOIN) command. Use that when we've
-# updated the minimum version.
-set(EMBED_TEST_DATA_ARGS "")
-foreach(arg ${CRYPTO_TEST_DATA})
-  set(EMBED_TEST_DATA_ARGS "${EMBED_TEST_DATA_ARGS}${arg}\n")
-endforeach()
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt"
-     "${EMBED_TEST_DATA_ARGS}")
+  # On Windows, CRYPTO_TEST_DATA is too long to fit in command-line limits.
+  # TODO(davidben): CMake 3.12 has a list(JOIN) command. Use that when we've
+  # updated the minimum version.
+  set(EMBED_TEST_DATA_ARGS "")
+  foreach(arg ${CRYPTO_TEST_DATA})
+    set(EMBED_TEST_DATA_ARGS "${EMBED_TEST_DATA_ARGS}${arg}\n")
+  endforeach()
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt"
+      "${EMBED_TEST_DATA_ARGS}")
 
-add_custom_command(
-  OUTPUT crypto_test_data.cc
-  COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go -file-list
-          "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt" >
-          "${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc"
-  DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_library(crypto_test_data OBJECT crypto_test_data.cc)
+  if(GO_EXECUTABLE)
+    add_custom_command(
+        OUTPUT crypto_test_data.cc
+        COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go -file-list
+        "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt" >
+        "${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc"
+        DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  else()
+    file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+  endif()
+  add_library(crypto_test_data OBJECT crypto_test_data.cc)
+endif()
 
 add_subdirectory(crypto)
-add_subdirectory(ssl)
-add_subdirectory(ssl/test)
-add_subdirectory(tool)
+if(BUILD_LIBSSL)
+  add_subdirectory(ssl)
+  add_subdirectory(tool)
+endif()
 add_subdirectory(util/fipstools/cavp)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 add_subdirectory(decrepit)
@@ -671,32 +686,98 @@ else()
   set(GO_TEST_TIMEOUT "10m")
 endif()
 
-add_custom_target(
-    run_tests
-    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-            ${CMAKE_BINARY_DIR}
-    COMMAND cd ssl/test/runner &&
-            ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-              ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS all_tests bssl_shim handshaker
-    ${MAYBE_USES_TERMINAL})
+if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
+  # USES_TERMINAL is only available in CMake 3.2 or later.
+  set(MAYBE_USES_TERMINAL USES_TERMINAL)
+endif()
 
-add_custom_target(
-    run_tests_valgrind
-    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-            ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS all_tests
-    ${MAYBE_USES_TERMINAL})
+if(BUILD_TESTING)
+  if(GO_EXECUTABLE)
+    if(FIPS)
+      add_custom_target(
+        acvp_tests
+        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
+                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
+                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+        COMMAND cd util/fipstools/acvp/acvptool/test &&
+                ${GO_EXECUTABLE} run check_expected.go
+                -tool ${CMAKE_BINARY_DIR}/acvptool
+                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
+                -tests tests.json
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS modulewrapper
+        ${MAYBE_USES_TERMINAL})
 
-add_custom_target(
-    run_tests_with_sde
-    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-            ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS all_tests
-    ${MAYBE_USES_TERMINAL})
+      add_custom_target(
+        fips_specific_tests_if_any
+        DEPENDS acvp_tests
+      )
+    else()
+      add_custom_target(fips_specific_tests_if_any)
+    endif()
+
+    if(BUILD_LIBSSL)
+      add_custom_target(
+          run_tests
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${CMAKE_BINARY_DIR}
+          COMMAND cd ssl/test/runner &&
+                  ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+    else()
+      add_custom_target(
+          run_tests
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${CMAKE_BINARY_DIR} -ssl-tests=false
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL}
+      )
+    endif()
+
+    add_custom_target(
+        run_tests_valgrind
+        COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS all_tests
+        ${MAYBE_USES_TERMINAL})
+
+    add_custom_target(
+        run_tests_with_sde
+        COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS all_tests
+        ${MAYBE_USES_TERMINAL})
+  else()
+    if(BUILD_LIBSSL)
+      add_custom_target(
+          run_minimal_tests
+          COMMAND crypto_test
+          COMMAND urandom_test
+          COMMAND ssl_test
+          COMMAND decrepit_test
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests
+          ${MAYBE_USES_TERMINAL})
+    else()
+      add_custom_command(
+          run_minimal_tests
+          COMMAND crypto_test
+          COMMAND urandom_test
+          COMMAND decrepit_test
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests
+          ${MAYBE_USES_TERMINAL}
+      )
+    endif()
+  endif()
+endif()
 
 # Copy awslc-config.cmake to build artifacts.
 configure_file("cmake/awslc-config.cmake"
@@ -706,3 +787,7 @@ configure_file("cmake/awslc-config.cmake"
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake/"
     COMPONENT Development)
+
+if(NOT MSVC AND NOT CLANG AND NOT GCC)
+  message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
+endif()

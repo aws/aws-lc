@@ -28,12 +28,15 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 #include <ws2tcpip.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
-
-OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #endif
 
 #include <assert.h>
+
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>
+
 #include <string.h>
 #include <time.h>
 
@@ -65,10 +68,6 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "settings_writer.h"
 #include "test_config.h"
 #include "test_state.h"
-
-#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
-#define HANDSHAKER_SUPPORTED
-#endif
 
 
 #if !defined(OPENSSL_WINDOWS)
@@ -661,12 +660,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  if (config->expect_tls13_downgrade != !!SSL_is_tls13_downgrade(ssl)) {
-    fprintf(stderr, "Got %s downgrade signal, but wanted the opposite.\n",
-            SSL_is_tls13_downgrade(ssl) ? "" : "no ");
-    return false;
-  }
-
   if (config->expect_delegated_credential_used !=
       !!SSL_delegated_credential_used(ssl)) {
     fprintf(stderr,
@@ -680,6 +673,27 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     fprintf(stderr, "Got %sHRR, but wanted opposite.\n",
             SSL_used_hello_retry_request(ssl) ? "" : "no ");
     return false;
+  }
+
+  // Test that handshake hints correctly skipped the expected operations.
+  //
+  // TODO(davidben): Add support for TLS 1.2 hints and remove the version check.
+  // Also add a check for the session cache lookup.
+  if (config->handshake_hints && !config->allow_hint_mismatch &&
+      SSL_version(ssl) == TLS1_3_VERSION) {
+    const TestState *state = GetTestState(ssl);
+    if (!SSL_used_hello_retry_request(ssl) && state->used_private_key) {
+      fprintf(
+          stderr,
+          "Performed private key operation, but hint should have skipped it\n");
+      return false;
+    }
+
+    if (state->ticket_decrypt_done) {
+      fprintf(stderr,
+              "Performed ticket decryption, but hint should have skipped it\n");
+      return false;
+    }
   }
   return true;
 }
@@ -698,7 +712,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
                          const TestConfig *retry_config, bool is_resume,
                          SSL_SESSION *session, SettingsWriter *writer) {
   bssl::UniquePtr<SSL> ssl = config->NewSSL(
-      ssl_ctx, session, is_resume, std::unique_ptr<TestState>(new TestState));
+      ssl_ctx, session, std::unique_ptr<TestState>(new TestState));
   if (!ssl) {
     return false;
   }
@@ -706,6 +720,17 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     SSL_set_accept_state(ssl.get());
   } else {
     SSL_set_connect_state(ssl.get());
+  }
+  if (config->handshake_hints) {
+#if defined(HANDSHAKER_SUPPORTED)
+    GetTestState(ssl.get())->get_handshake_hints_cb =
+        [&](const SSL_CLIENT_HELLO *client_hello) {
+          return GetHandshakeHint(ssl.get(), writer, is_resume, client_hello);
+        };
+#else
+    fprintf(stderr, "The external handshaker can only be used on Linux\n");
+    return false;
+#endif
   }
 
   int sock = Connect(config->port);
@@ -727,7 +752,9 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     BIO_push(packeted.get(), bio.release());
     bio = std::move(packeted);
   }
-  if (config->async) {
+  if (config->async && !config->is_quic) {
+    // Note async tests only affect callbacks in QUIC. The IO path does not
+    // behave differently when synchronous or asynchronous our QUIC APIs.
     bssl::UniquePtr<BIO> async_scoped =
         config->is_dtls ? AsyncBioCreateDatagram() : AsyncBioCreate();
     if (!async_scoped) {
@@ -974,6 +1001,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         fprintf(stderr, "-read-with-unfinished-write requires -async.\n");
         return false;
       }
+      if (config->is_quic) {
+        fprintf(stderr,
+                "-read-with-unfinished-write is incompatible with QUIC.\n");
+        return false;
+      }
 
       // Let only one byte of the record through.
       AsyncBioAllowWrite(GetTestState(ssl)->async_bio, 1);
@@ -1183,8 +1215,8 @@ int main(int argc, char **argv) {
   CRYPTO_library_init();
 
   TestConfig initial_config, resume_config, retry_config;
-  if (!ParseConfig(argc - 1, argv + 1, &initial_config, &resume_config,
-                   &retry_config)) {
+  if (!ParseConfig(argc - 1, argv + 1, /*is_shim=*/true, &initial_config,
+                   &resume_config, &retry_config)) {
     return Usage(argv[0]);
   }
 

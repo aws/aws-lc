@@ -1,77 +1,33 @@
-# Incorporating BoringSSL into a project
-
-**Note**: if your target project is not a Google project then first read the
-[main README](/README.md) about the purpose of BoringSSL.
-
-## Bazel
-
-If you are using [Bazel](https://bazel.build) then you can incorporate
-BoringSSL as an external repository by using a commit from the
-`master-with-bazel` branch. That branch is maintained by a bot from `master`
-and includes the needed generated files and a top-level BUILD file.
-
-For example:
-
-    git_repository(
-        name = "boringssl",
-        commit = "_some commit_",
-        remote = "https://boringssl.googlesource.com/boringssl",
-    )
-
-You would still need to keep the referenced commit up to date if a specific
-commit is referred to.
-
-## Directory layout
-
-Typically projects create a `third_party/boringssl` directory to put
-BoringSSL-specific files into. The source code of BoringSSL itself goes into
-`third_party/boringssl/src`, either by copying or as a
-[submodule](https://git-scm.com/docs/git-submodule).
-
-It's generally a mistake to put BoringSSL's source code into
-`third_party/boringssl` directly because pre-built files and custom build files
-need to go somewhere and merging these with the BoringSSL source code makes
-updating things more complex.
+# Incorporating AWS-LC into a project
 
 ## Build support
 
-BoringSSL is designed to work with many different build systems. Currently,
-different projects use [GYP](https://gyp.gsrc.io/),
-[GN](https://gn.googlesource.com/gn/+/master/docs/quick_start.md),
-[Bazel](https://bazel.build/) and [Make](https://www.gnu.org/software/make/)  to
-build BoringSSL, without too much pain.
+AWS-LC currently supports the following build systems:
+* [CMake](https://cmake.org/download) version 3.0 or later.
 
 The development build system is CMake and the CMake build knows how to
-automatically generate the intermediate files that BoringSSL needs. However,
-outside of the CMake environment, these intermediates are generated once and
-checked into the incorporating project's source repository. This avoids
+automatically generate the intermediate files that AWS-LC needs. However,
+outside of the CMake environment, these intermediates are generated and
+checked into the AWS-LC source repository in `generated-src`. This avoids
 incorporating projects needing to support Perl and Go in their build systems.
 
 The script [`util/generate_build_files.py`](/util/generate_build_files.py)
-expects to be run from the `third_party/boringssl` directory and to find the
-BoringSSL source code in `src/`. You should pass it a single argument: the name
-of the build system that you're using. If you don't use any of the supported
+expects to be run from the `aws-lc` directory. The generated build files will 
+be output to `aws-lc/generated-src`. If you don't use any of the supported
 build systems then you should augment `generate_build_files.py` with support
 for it.
 
 The script will pregenerate the intermediate files (see
 [BUILDING.md](/BUILDING.md) for details about which tools will need to be
 installed) and output helper files for that build system. It doesn't generate a
-complete build script, just file and test lists, which change often. For
-example, see the
-[file](https://code.google.com/p/chromium/codesearch#chromium/src/third_party/boringssl/BUILD.generated.gni)
-and
-[test](https://code.google.com/p/chromium/codesearch#chromium/src/third_party/boringssl/BUILD.generated_tests.gni)
-lists generated for GN in Chromium.
+complete build script, just file and test lists, which change often.
 
-Generally one checks in these generated files alongside the hand-written build
-files. Periodically an engineer updates the BoringSSL revision, regenerates
-these files and checks in the updated result. As an example, see how this is
-done [in Chromium](https://code.google.com/p/chromium/codesearch#chromium/src/third_party/boringssl/).
+Periodically an engineer will update the AWS-LC revision, regenerate
+these files and check in the updated result.
 
 ## Defines
 
-BoringSSL does not present a lot of configurability in order to reduce the
+AWS-LC does not present a lot of configurability in order to reduce the
 number of configurations that need to be tested. But there are a couple of
 \#defines that you may wish to set:
 
@@ -87,7 +43,7 @@ cost.
 
 ## Symbols
 
-You cannot link multiple versions of BoringSSL or OpenSSL into a single binary
+You cannot link multiple versions of AWS-LC/BoringSSL or OpenSSL into a single binary
 without dealing with symbol conflicts. If you are statically linking multiple
 versions together, there's not a lot that can be done because C doesn't have a
 module system.

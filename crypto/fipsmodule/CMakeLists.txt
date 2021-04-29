@@ -82,51 +82,69 @@ if(${ARCH} STREQUAL "ppc64le")
   )
 endif()
 
-perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
-perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)
-perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
-perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
-perlasm(aesv8-armx.${ASM_EXT} aes/asm/aesv8-armx.pl)
-perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
-perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
-perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)
-perlasm(bsaes-armv7.${ASM_EXT} aes/asm/bsaes-armv7.pl)
-perlasm(co-586.${ASM_EXT} bn/asm/co-586.pl)
-perlasm(ghash-armv4.${ASM_EXT} modes/asm/ghash-armv4.pl)
-perlasm(ghashp8-ppc.${ASM_EXT} modes/asm/ghashp8-ppc.pl)
-perlasm(ghashv8-armx.${ASM_EXT} modes/asm/ghashv8-armx.pl)
-perlasm(ghash-neon-armv8.${ASM_EXT} modes/asm/ghash-neon-armv8.pl)
-perlasm(ghash-ssse3-x86_64.${ASM_EXT} modes/asm/ghash-ssse3-x86_64.pl)
-perlasm(ghash-ssse3-x86.${ASM_EXT} modes/asm/ghash-ssse3-x86.pl)
-perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
-perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
-perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
-perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
-perlasm(p256-x86_64-asm.${ASM_EXT} ec/asm/p256-x86_64-asm.pl)
-perlasm(p256_beeu-x86_64-asm.${ASM_EXT} ec/asm/p256_beeu-x86_64-asm.pl)
-perlasm(p256-armv8-asm.${ASM_EXT} ec/asm/p256-armv8-asm.pl)
-perlasm(p256_beeu-armv8-asm.${ASM_EXT} ec/asm/p256_beeu-armv8-asm.pl)
-perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
-perlasm(rsaz-avx2.${ASM_EXT} bn/asm/rsaz-avx2.pl)
-perlasm(sha1-586.${ASM_EXT} sha/asm/sha1-586.pl)
-perlasm(sha1-armv4-large.${ASM_EXT} sha/asm/sha1-armv4-large.pl)
-perlasm(sha1-armv8.${ASM_EXT} sha/asm/sha1-armv8.pl)
-perlasm(sha1-x86_64.${ASM_EXT} sha/asm/sha1-x86_64.pl)
-perlasm(sha256-586.${ASM_EXT} sha/asm/sha256-586.pl)
-perlasm(sha256-armv4.${ASM_EXT} sha/asm/sha256-armv4.pl)
-perlasm(sha256-armv8.${ASM_EXT} sha/asm/sha512-armv8.pl)
-perlasm(sha256-x86_64.${ASM_EXT} sha/asm/sha512-x86_64.pl)
-perlasm(sha512-586.${ASM_EXT} sha/asm/sha512-586.pl)
-perlasm(sha512-armv4.${ASM_EXT} sha/asm/sha512-armv4.pl)
-perlasm(sha512-armv8.${ASM_EXT} sha/asm/sha512-armv8.pl)
-perlasm(sha512-x86_64.${ASM_EXT} sha/asm/sha512-x86_64.pl)
-perlasm(vpaes-armv7.${ASM_EXT} aes/asm/vpaes-armv7.pl)
-perlasm(vpaes-armv8.${ASM_EXT} aes/asm/vpaes-armv8.pl)
-perlasm(vpaes-x86_64.${ASM_EXT} aes/asm/vpaes-x86_64.pl)
-perlasm(vpaes-x86.${ASM_EXT} aes/asm/vpaes-x86.pl)
-perlasm(x86_64-mont5.${ASM_EXT} bn/asm/x86_64-mont5.pl)
-perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
-perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
+if(PERL_EXECUTABLE)
+  perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
+  perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)
+  perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
+  perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
+  perlasm(aesv8-armx.${ASM_EXT} aes/asm/aesv8-armx.pl)
+  perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
+  perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
+  perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)
+  perlasm(bsaes-armv7.${ASM_EXT} aes/asm/bsaes-armv7.pl)
+  perlasm(co-586.${ASM_EXT} bn/asm/co-586.pl)
+  perlasm(ghash-armv4.${ASM_EXT} modes/asm/ghash-armv4.pl)
+  perlasm(ghashp8-ppc.${ASM_EXT} modes/asm/ghashp8-ppc.pl)
+  perlasm(ghashv8-armx.${ASM_EXT} modes/asm/ghashv8-armx.pl)
+  perlasm(ghash-neon-armv8.${ASM_EXT} modes/asm/ghash-neon-armv8.pl)
+  perlasm(ghash-ssse3-x86_64.${ASM_EXT} modes/asm/ghash-ssse3-x86_64.pl)
+  perlasm(ghash-ssse3-x86.${ASM_EXT} modes/asm/ghash-ssse3-x86.pl)
+  perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
+  perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
+  perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
+  perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
+  perlasm(p256-x86_64-asm.${ASM_EXT} ec/asm/p256-x86_64-asm.pl)
+  perlasm(p256_beeu-x86_64-asm.${ASM_EXT} ec/asm/p256_beeu-x86_64-asm.pl)
+  perlasm(p256-armv8-asm.${ASM_EXT} ec/asm/p256-armv8-asm.pl)
+  perlasm(p256_beeu-armv8-asm.${ASM_EXT} ec/asm/p256_beeu-armv8-asm.pl)
+  perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
+  perlasm(rsaz-avx2.${ASM_EXT} bn/asm/rsaz-avx2.pl)
+  perlasm(sha1-586.${ASM_EXT} sha/asm/sha1-586.pl)
+  perlasm(sha1-armv4-large.${ASM_EXT} sha/asm/sha1-armv4-large.pl)
+  perlasm(sha1-armv8.${ASM_EXT} sha/asm/sha1-armv8.pl)
+  perlasm(sha1-x86_64.${ASM_EXT} sha/asm/sha1-x86_64.pl)
+  perlasm(sha256-586.${ASM_EXT} sha/asm/sha256-586.pl)
+  perlasm(sha256-armv4.${ASM_EXT} sha/asm/sha256-armv4.pl)
+  perlasm(sha256-armv8.${ASM_EXT} sha/asm/sha512-armv8.pl)
+  perlasm(sha256-x86_64.${ASM_EXT} sha/asm/sha512-x86_64.pl)
+  perlasm(sha512-586.${ASM_EXT} sha/asm/sha512-586.pl)
+  perlasm(sha512-armv4.${ASM_EXT} sha/asm/sha512-armv4.pl)
+  perlasm(sha512-armv8.${ASM_EXT} sha/asm/sha512-armv8.pl)
+  perlasm(sha512-x86_64.${ASM_EXT} sha/asm/sha512-x86_64.pl)
+  perlasm(vpaes-armv7.${ASM_EXT} aes/asm/vpaes-armv7.pl)
+  perlasm(vpaes-armv8.${ASM_EXT} aes/asm/vpaes-armv8.pl)
+  perlasm(vpaes-x86_64.${ASM_EXT} aes/asm/vpaes-x86_64.pl)
+  perlasm(vpaes-x86.${ASM_EXT} aes/asm/vpaes-x86.pl)
+  perlasm(x86_64-mont5.${ASM_EXT} bn/asm/x86_64-mont5.pl)
+  perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
+  perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
+endif()
+
+function(cpreprocess dest src)
+  set(TARGET "")
+  if(CMAKE_ASM_COMPILER_TARGET)
+    set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  endif()
+
+  add_custom_command(
+    OUTPUT ${dest}
+    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} $CMAKE_ASM_FLAGS -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
+    DEPENDS
+    ${src}
+    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    WORKING_DIRECTORY .
+  )
+endfunction()
 
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)
@@ -148,6 +166,18 @@ if(FIPS_DELOCATE)
     bcm.c
   )
 
+  if(${ARCH} STREQUAL "aarch64")
+    # Perlasm output on Aarch64 needs to pass through the C preprocessor before
+    # it can be parsed by delocate.
+    foreach(asm ${BCM_ASM_SOURCES})
+      cpreprocess(${asm}.s ${asm})
+      list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.s")
+    endforeach()
+  else()
+    # No preprocessing is required on other platforms.
+    set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
+  endif()
+
   add_dependencies(bcm_c_generated_asm global_target)
 
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
@@ -156,8 +186,8 @@ if(FIPS_DELOCATE)
   go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
-    COMMAND ./delocate -a $<TARGET_FILE:bcm_c_generated_asm> -o bcm-delocated.S ${BCM_ASM_SOURCES}
-    DEPENDS bcm_c_generated_asm delocate ${BCM_ASM_SOURCES}
+    COMMAND ./delocate -a $<TARGET_FILE:bcm_c_generated_asm> -o bcm-delocated.S ${BCM_ASM_PROCESSED_SOURCES}
+    DEPENDS bcm_c_generated_asm delocate ${BCM_ASM_PROCESSED_SOURCES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
@@ -174,11 +204,16 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
+  set(MAYBE_INJECT_HASH_SHA256_FLAG "")
+  if (ARCH STREQUAL "aarch64")
+    set(MAYBE_INJECT_HASH_SHA256_FLAG "-sha256")
+  endif()
+
   go_executable(inject_hash
 	        boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> ${MAYBE_INJECT_HASH_SHA256_FLAG}
     DEPENDS bcm_hashunset inject_hash
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
@@ -194,7 +229,6 @@ if(FIPS_DELOCATE)
     OBJECT
 
     fips_shared_support.c
-    is_fips.c
   )
 
   add_dependencies(fipsmodule global_target)
@@ -211,7 +245,6 @@ elseif(FIPS_SHARED)
     OBJECT
 
     fips_shared_support.c
-    is_fips.c
   )
 
   add_dependencies(fipsmodule global_target)
@@ -244,7 +277,6 @@ else()
 
     bcm.c
     fips_shared_support.c
-    is_fips.c
 
     ${BCM_ASM_SOURCES}
   )

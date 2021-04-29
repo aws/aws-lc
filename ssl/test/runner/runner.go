@@ -46,35 +46,37 @@ import (
 	"syscall"
 	"time"
 
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
 	"boringssl.googlesource.com/boringssl/util/testresult"
 )
 
 var (
-	useValgrind              = flag.Bool("valgrind", false, "If true, run code under valgrind")
-	useGDB                   = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
-	useLLDB                  = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
-	waitForDebugger          = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
-	flagDebug                = flag.Bool("debug", false, "Hexdump the contents of the connection")
-	mallocTest               = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
-	mallocTestDebug          = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
-	jsonOutput               = flag.String("json-output", "", "The file to output JSON results to.")
-	pipe                     = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
-	testToRun                = flag.String("test", "", "Semicolon-separated patterns of tests to run, or empty to run all tests")
-	skipTest                 = flag.String("skip", "", "Semicolon-separated patterns of tests to skip")
-	numWorkersFlag           = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
-	shimPath                 = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
-	handshakerPath           = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
-	resourceDir              = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
-	fuzzer                   = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
-	transcriptDir            = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
-	idleTimeout              = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
-	deterministic            = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
-	allowUnimplemented       = flag.Bool("allow-unimplemented", false, "If true, report pass even if some tests are unimplemented.")
-	looseErrors              = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
-	shimConfigFile           = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
-	includeDisabled          = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
-	repeatUntilFailure       = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
-	tls13SplitHandshakeTests = flag.Bool("tls13-split-handshake-tests", true, "If true, TLS 1.3 tests that use the handshaker will be performed")
+	useValgrind        = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	useGDB             = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+	useLLDB            = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
+	useRR              = flag.Bool("rr-record", false, "If true, run BoringSSL code under `rr record`.")
+	waitForDebugger    = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
+	flagDebug          = flag.Bool("debug", false, "Hexdump the contents of the connection")
+	mallocTest         = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
+	mallocTestDebug    = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
+	jsonOutput         = flag.String("json-output", "", "The file to output JSON results to.")
+	pipe               = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
+	testToRun          = flag.String("test", "", "Semicolon-separated patterns of tests to run, or empty to run all tests")
+	skipTest           = flag.String("skip", "", "Semicolon-separated patterns of tests to skip")
+	allowHintMismatch  = flag.String("allow-hint-mismatch", "", "Semicolon-separated patterns of tests where hints may mismatch")
+	numWorkersFlag     = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
+	shimPath           = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
+	handshakerPath     = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
+	resourceDir        = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
+	fuzzer             = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
+	transcriptDir      = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
+	idleTimeout        = flag.Duration("idle-timeout", 15*time.Second, "The number of seconds to wait for a read or write to bssl_shim.")
+	deterministic      = flag.Bool("deterministic", false, "If true, uses a deterministic PRNG in the runner.")
+	allowUnimplemented = flag.Bool("allow-unimplemented", false, "If true, report pass even if some tests are unimplemented.")
+	looseErrors        = flag.Bool("loose-errors", false, "If true, allow shims to report an untranslated error code.")
+	shimConfigFile     = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
+	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
+	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -95,6 +97,11 @@ type ShimConfiguration struct {
 	// HalfRTTTickets is the number of half-RTT tickets the client should
 	// expect before half-RTT data when testing 0-RTT.
 	HalfRTTTickets int
+
+	// AllCurves is the list of all curve code points supported by the shim.
+	// This is currently used to control tests that enable all curves but may
+	// automatically disable tests in the future.
+	AllCurves []int
 }
 
 // Setup shimConfig defaults aligning with BoringSSL.
@@ -251,8 +258,16 @@ func initCertificates() {
 	garbageCertificate.PrivateKey = rsaCertificate.PrivateKey
 }
 
+func flagInts(flagName string, vals []int) []string {
+	ret := make([]string, 0, 2*len(vals))
+	for _, val := range vals {
+		ret = append(ret, flagName, strconv.Itoa(val))
+	}
+	return ret
+}
+
 func useDebugger() bool {
-	return *useGDB || *useLLDB || *waitForDebugger
+	return *useGDB || *useLLDB || *useRR || *waitForDebugger
 }
 
 // delegatedCredentialConfig specifies the shape of a delegated credential, not
@@ -532,11 +547,16 @@ type connectionExpectations struct {
 	// expected to send.
 	peerCertificate *Certificate
 	// quicTransportParams contains the QUIC transport parameters that are to be
-	// sent by the peer.
+	// sent by the peer using codepoint 57.
 	quicTransportParams []byte
+	// quicTransportParamsLegacy contains the QUIC transport parameters that are
+	// to be sent by the peer using legacy codepoint 0xffa5.
+	quicTransportParamsLegacy []byte
 	// peerApplicationSettings are the expected application settings for the
 	// connection. If nil, no application settings are expected.
 	peerApplicationSettings []byte
+	// echAccepted is whether ECH should have been accepted on this connection.
+	echAccepted bool
 }
 
 type testCase struct {
@@ -679,6 +699,9 @@ type testCase struct {
 	// should retry for early rejection. In a server test, this is whether the
 	// test expects the shim to reject early data.
 	expectEarlyDataRejected bool
+	// skipSplitHandshake, if true, will skip the generation of a split
+	// handshake copy of the test.
+	skipSplitHandshake bool
 }
 
 var testCases []testCase
@@ -785,6 +808,21 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 					panic("transcripts are out of sync")
 				}
 			}()
+
+			// Record ClientHellos for the decode_client_hello_inner fuzzer.
+			var clientHelloCount int
+			config.Bugs.RecordClientHelloInner = func(encodedInner, outer []byte) error {
+				name := fmt.Sprintf("%s-%d-%d", test.name, num, clientHelloCount)
+				clientHelloCount++
+				dir := filepath.Join(*transcriptDir, "decode_client_hello_inner")
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					return err
+				}
+				bb := newByteBuilder()
+				bb.addU24LengthPrefixed().addBytes(encodedInner)
+				bb.addBytes(outer)
+				return ioutil.WriteFile(filepath.Join(dir, name), bb.finish(), 0644)
+			}
 		}
 
 		if config.Bugs.PacketAdaptor != nil {
@@ -943,6 +981,22 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 	if len(expectations.quicTransportParams) > 0 {
 		if !bytes.Equal(expectations.quicTransportParams, connState.QUICTransportParams) {
 			return errors.New("Peer did not send expected QUIC transport params")
+		}
+	}
+
+	if len(expectations.quicTransportParamsLegacy) > 0 {
+		if !bytes.Equal(expectations.quicTransportParamsLegacy, connState.QUICTransportParamsLegacy) {
+			return errors.New("Peer did not send expected legacy QUIC transport params")
+		}
+	}
+
+	if expectations.echAccepted {
+		if !connState.ECHAccepted {
+			return errors.New("tls: server did not accept ECH")
+		}
+	} else {
+		if connState.ECHAccepted {
+			return errors.New("tls: server unexpectedly accepted ECH")
 		}
 	}
 
@@ -1181,6 +1235,12 @@ func lldbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
+func rrOf(path string, args ...string) *exec.Cmd {
+	rrArgs := []string{"record", path}
+	rrArgs = append(rrArgs, args...)
+	return exec.Command("rr", rrArgs...)
+}
+
 func removeFirstLineIfSuffix(s, suffix string) string {
 	idx := strings.IndexByte(s, '\n')
 	if idx < 0 {
@@ -1299,20 +1359,25 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		flags = append(flags, "-quic")
 		if !test.skipTransportParamsConfig {
 			test.config.QUICTransportParams = []byte{1, 2}
+			test.config.QUICTransportParamsUseLegacyCodepoint = QUICUseCodepointStandard
 			if test.resumeConfig != nil {
 				test.resumeConfig.QUICTransportParams = []byte{1, 2}
+				test.resumeConfig.QUICTransportParamsUseLegacyCodepoint = QUICUseCodepointStandard
 			}
 			test.expectations.quicTransportParams = []byte{3, 4}
 			if test.resumeExpectations != nil {
 				test.resumeExpectations.quicTransportParams = []byte{3, 4}
 			}
+			useCodepointFlag := "0"
+			if test.config.QUICTransportParamsUseLegacyCodepoint == QUICUseCodepointLegacy {
+				useCodepointFlag = "1"
+			}
 			flags = append(flags,
-				[]string{
-					"-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{3, 4}),
-					"-expect-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{1, 2}),
-				}...)
+				"-quic-transport-params",
+				base64.StdEncoding.EncodeToString([]byte{3, 4}),
+				"-expect-quic-transport-params",
+				base64.StdEncoding.EncodeToString([]byte{1, 2}),
+				"-quic-use-legacy-codepoint", useCodepointFlag)
 		}
 		if !test.skipQUICALPNConfig {
 			flags = append(flags,
@@ -1347,6 +1412,11 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 			flags = append(flags, "-on-resume-expect-reject-early-data")
 		} else {
 			flags = append(flags, "-on-resume-expect-accept-early-data")
+		}
+
+		if test.protocol == quic {
+			// QUIC requires an early data context string.
+			flags = append(flags, "-quic-early-data-context", "context")
 		}
 
 		flags = append(flags, "-enable-early-data")
@@ -1424,8 +1494,6 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		flags = append(flags, "-tls-unique")
 	}
 
-	flags = append(flags, "-handshaker-path", *handshakerPath)
-
 	if *waitForDebugger {
 		flags = append(flags, "-wait-for-debugger")
 	}
@@ -1462,6 +1530,8 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		shim = gdbOf(shimPath, flags...)
 	} else if *useLLDB {
 		shim = lldbOf(shimPath, flags...)
+	} else if *useRR {
+		shim = rrOf(shimPath, flags...)
 	} else {
 		shim = exec.Command(shimPath, flags...)
 	}
@@ -1769,12 +1839,12 @@ func bigFromHex(hex string) *big.Int {
 	return ret
 }
 
-func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testCase) {
+func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testCase, err error) {
 	var stdout bytes.Buffer
 	shim := exec.Command(*shimPath, "-is-handshaker-supported")
 	shim.Stdout = &stdout
 	if err := shim.Run(); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	switch strings.TrimSpace(string(stdout.Bytes())) {
@@ -1783,7 +1853,12 @@ func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testC
 	case "Yes":
 		break
 	default:
-		panic("Unknown output from shim: 0x" + hex.EncodeToString(stdout.Bytes()))
+		return nil, fmt.Errorf("unknown output from shim: %q", stdout.Bytes())
+	}
+
+	var allowHintMismatchPattern []string
+	if len(*allowHintMismatch) > 0 {
+		allowHintMismatchPattern = strings.Split(*allowHintMismatch, ";")
 	}
 
 NextTest:
@@ -1791,18 +1866,7 @@ NextTest:
 		if test.protocol != tls ||
 			test.testType != serverTest ||
 			strings.Contains(test.name, "DelegatedCredentials") ||
-			strings.Contains(test.name, "QUICTransportParams") ||
-			strings.HasPrefix(test.name, "VersionNegotiation-") {
-			continue
-		}
-		// TODO(mab): Remove this when it's no longer needed.
-		//
-		// This flag exists to allow TLS 1.3 support to propagate to old
-		// versions, before enabling cross-version compatibility tests.
-		if !*tls13SplitHandshakeTests &&
-			(test.config.MaxVersion >= VersionTLS13 ||
-				test.config.MaxVersion < VersionTLS10 ||
-				(test.resumeConfig != nil && (test.resumeConfig.MaxVersion < VersionTLS10 || test.resumeConfig.MaxVersion >= VersionTLS13))) {
+			test.skipSplitHandshake {
 			continue
 		}
 
@@ -1814,14 +1878,40 @@ NextTest:
 
 		shTest := test
 		shTest.name += "-Split"
-		shTest.flags = make([]string, len(test.flags), len(test.flags)+1)
+		shTest.flags = make([]string, len(test.flags), len(test.flags)+3)
 		copy(shTest.flags, test.flags)
-		shTest.flags = append(shTest.flags, "-handoff")
+		shTest.flags = append(shTest.flags, "-handoff", "-handshaker-path", *handshakerPath)
 
 		splitHandshakeTests = append(splitHandshakeTests, shTest)
 	}
 
-	return splitHandshakeTests
+	for _, test := range tests {
+		if test.protocol == dtls ||
+			test.testType != serverTest {
+			continue
+		}
+
+		var matched bool
+		if len(allowHintMismatchPattern) > 0 {
+			matched, err = match(allowHintMismatchPattern, nil, test.name)
+			if err != nil {
+				return nil, fmt.Errorf("error matching pattern: %s", err)
+			}
+		}
+
+		shTest := test
+		shTest.name += "-Hints"
+		shTest.flags = make([]string, len(test.flags), len(test.flags)+3)
+		copy(shTest.flags, test.flags)
+		shTest.flags = append(shTest.flags, "-handshake-hints", "-handshaker-path", *handshakerPath)
+		if matched {
+			shTest.flags = append(shTest.flags, "-allow-hint-mismatch")
+		}
+
+		splitHandshakeTests = append(splitHandshakeTests, shTest)
+	}
+
+	return splitHandshakeTests, nil
 }
 
 func addBasicTests() {
@@ -4573,32 +4663,29 @@ type stateMachineTestConfig struct {
 func addAllStateMachineCoverageTests() {
 	for _, async := range []bool{false, true} {
 		for _, protocol := range []protocol{tls, dtls, quic} {
-			if protocol == quic && async == true {
-				// QUIC doesn't work with async mode.
-				continue
-			}
 			addStateMachineCoverageTests(stateMachineTestConfig{
 				protocol: protocol,
 				async:    async,
 			})
-			// QUIC doesn't work with implicit handshakes.
+			// QUIC doesn't work with the implicit handshake API. Additionally,
+			// splitting or packing handshake records is meaningless in QUIC.
 			if protocol != quic {
 				addStateMachineCoverageTests(stateMachineTestConfig{
 					protocol:          protocol,
 					async:             async,
 					implicitHandshake: true,
 				})
+				addStateMachineCoverageTests(stateMachineTestConfig{
+					protocol:       protocol,
+					async:          async,
+					splitHandshake: true,
+				})
+				addStateMachineCoverageTests(stateMachineTestConfig{
+					protocol:      protocol,
+					async:         async,
+					packHandshake: true,
+				})
 			}
-			addStateMachineCoverageTests(stateMachineTestConfig{
-				protocol:       protocol,
-				async:          async,
-				splitHandshake: true,
-			})
-			addStateMachineCoverageTests(stateMachineTestConfig{
-				protocol:      protocol,
-				async:         async,
-				packHandshake: true,
-			})
 		}
 	}
 }
@@ -4767,7 +4854,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		// Unfinished writes can only be tested when operations are async. EarlyData
 		// can't be tested as part of an ImplicitHandshake in this case since
 		// otherwise the early data will be sent as normal data.
-		if config.async && !config.implicitHandshake {
+		//
+		// Note application data is external in QUIC, so unfinished writes do not
+		// apply.
+		if config.async && !config.implicitHandshake && config.protocol != quic {
 			tests = append(tests, testCase{
 				testType: clientTest,
 				name:     "TLS13-EarlyData-UnfinishedWrite-Client",
@@ -5601,23 +5691,26 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			shimWritesFirst: true,
 		})
 
-		// Server parses a V2ClientHello.
-		tests = append(tests, testCase{
-			testType: serverTest,
-			name:     "SendV2ClientHello",
-			config: Config{
-				// Choose a cipher suite that does not involve
-				// elliptic curves, so no extensions are
-				// involved.
-				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
-				Bugs: ProtocolBugs{
-					SendV2ClientHello: true,
+		// Server parses a V2ClientHello. Test different lengths for the
+		// challenge field.
+		for _, challengeLength := range []int{16, 31, 32, 33, 48} {
+			tests = append(tests, testCase{
+				testType: serverTest,
+				name:     fmt.Sprintf("SendV2ClientHello-%d", challengeLength),
+				config: Config{
+					// Choose a cipher suite that does not involve
+					// elliptic curves, so no extensions are
+					// involved.
+					MaxVersion:   VersionTLS12,
+					CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+					Bugs: ProtocolBugs{
+						SendV2ClientHello:            true,
+						V2ClientHelloChallengeLength: challengeLength,
+					},
 				},
-			},
-			flags: []string{
-				"-expect-msg-callback",
-				`read v2clienthello
+				flags: []string{
+					"-expect-msg-callback",
+					`read v2clienthello
 write hs 2
 write hs 11
 write hs 14
@@ -5628,8 +5721,9 @@ write ccs
 write hs 20
 read alert 1 0
 `,
-			},
-		})
+				},
+			})
+		}
 
 		// Channel ID and NPN at the same time, to ensure their relative
 		// ordering is correct.
@@ -6377,24 +6471,6 @@ func addVersionNegotiationTests() {
 			expectedLocalError: "remote error: illegal parameter",
 		})
 
-		// The client should ignore the downgrade sentinel if
-		// configured.
-		testCases = append(testCases, testCase{
-			name: "Downgrade-" + test.name + "-Client-Ignore",
-			config: Config{
-				Bugs: ProtocolBugs{
-					NegotiateVersion: test.version,
-				},
-			},
-			expectations: connectionExpectations{
-				version: test.version,
-			},
-			flags: []string{
-				"-ignore-tls13-downgrade",
-				"-expect-tls13-downgrade",
-			},
-		})
-
 		// The server should emit the downgrade signal.
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -6411,31 +6487,6 @@ func addVersionNegotiationTests() {
 			expectedLocalError: test.clientShimError,
 		})
 	}
-
-	// Test that False Start is disabled when the downgrade logic triggers.
-	testCases = append(testCases, testCase{
-		name: "Downgrade-FalseStart",
-		config: Config{
-			NextProtos: []string{"foo"},
-			Bugs: ProtocolBugs{
-				NegotiateVersion:          VersionTLS12,
-				ExpectFalseStart:          true,
-				AlertBeforeFalseStartTest: alertAccessDenied,
-			},
-		},
-		expectations: connectionExpectations{
-			version: VersionTLS12,
-		},
-		flags: []string{
-			"-false-start",
-			"-advertise-alpn", "\x03foo",
-			"-ignore-tls13-downgrade",
-		},
-		shimWritesFirst:    true,
-		shouldFail:         true,
-		expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
-		expectedLocalError: "tls: peer did not false start: EOF",
-	})
 
 	// SSL 3.0 support has been removed. Test that the shim does not
 	// support it.
@@ -6587,1705 +6638,1962 @@ func addMinimumVersionTests() {
 }
 
 func addExtensionTests() {
-	// TODO(davidben): Extensions, where applicable, all move their server
-	// halves to EncryptedExtensions in TLS 1.3. Duplicate each of these
-	// tests for both. Also test interaction with 0-RTT when implemented.
-
 	// Repeat extensions tests at all versions.
-	for _, ver := range tlsVersions {
-		// Test that duplicate extensions are rejected.
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "DuplicateExtensionClient-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					DuplicateExtension: true,
-				},
-			},
-			shouldFail:         true,
-			expectedLocalError: "remote error: error decoding message",
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "DuplicateExtensionServer-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					DuplicateExtension: true,
-				},
-			},
-			shouldFail:         true,
-			expectedLocalError: "remote error: error decoding message",
-		})
+	for _, protocol := range []protocol{tls, dtls, quic} {
+		for _, ver := range allVersions(protocol) {
+			suffix := fmt.Sprintf("%s-%s", protocol.String(), ver.name)
 
-		// Test SNI.
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "ServerNameExtensionClient-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					ExpectServerName: "example.com",
-				},
-			},
-			flags: []string{"-host-name", "example.com"},
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "ServerNameExtensionClientMismatch-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					ExpectServerName: "mismatch.com",
-				},
-			},
-			flags:              []string{"-host-name", "example.com"},
-			shouldFail:         true,
-			expectedLocalError: "tls: unexpected server name",
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "ServerNameExtensionClientMissing-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					ExpectServerName: "missing.com",
-				},
-			},
-			shouldFail:         true,
-			expectedLocalError: "tls: unexpected server name",
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TolerateServerNameAck-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					SendServerNameAck: true,
-				},
-			},
-			flags:         []string{"-host-name", "example.com"},
-			resumeSession: true,
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "UnsolicitedServerNameAck-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					SendServerNameAck: true,
-				},
-			},
-			shouldFail:         true,
-			expectedError:      ":UNEXPECTED_EXTENSION:",
-			expectedLocalError: "remote error: unsupported extension",
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "ServerNameExtensionServer-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				ServerName: "example.com",
-			},
-			flags:         []string{"-expect-server-name", "example.com"},
-			resumeSession: true,
-		})
-
-		// Test ALPN.
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "ALPNClient-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				NextProtos: []string{"foo"},
-			},
-			flags: []string{
-				"-advertise-alpn", "\x03foo\x03bar\x03baz",
-				"-expect-alpn", "foo",
-			},
-			expectations: connectionExpectations{
-				nextProto:     "foo",
-				nextProtoType: alpn,
-			},
-			resumeSession: true,
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "ALPNClient-RejectUnknown-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					SendALPN: "baz",
-				},
-			},
-			flags: []string{
-				"-advertise-alpn", "\x03foo\x03bar",
-			},
-			shouldFail:         true,
-			expectedError:      ":INVALID_ALPN_PROTOCOL:",
-			expectedLocalError: "remote error: illegal parameter",
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "ALPNClient-AllowUnknown-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					SendALPN: "baz",
-				},
-			},
-			flags: []string{
-				"-advertise-alpn", "\x03foo\x03bar",
-				"-allow-unknown-alpn-protos",
-				"-expect-alpn", "baz",
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "ALPNServer-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				NextProtos: []string{"foo", "bar", "baz"},
-			},
-			flags: []string{
-				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-				"-select-alpn", "foo",
-			},
-			expectations: connectionExpectations{
-				nextProto:     "foo",
-				nextProtoType: alpn,
-			},
-			resumeSession: true,
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "ALPNServer-Decline-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				NextProtos: []string{"foo", "bar", "baz"},
-			},
-			flags: []string{"-decline-alpn"},
-			expectations: connectionExpectations{
-				noNextProto: true,
-			},
-			resumeSession: true,
-		})
-		// Test that the server implementation catches itself if the
-		// callback tries to return an invalid empty ALPN protocol.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "ALPNServer-SelectEmpty-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				NextProtos: []string{"foo", "bar", "baz"},
-			},
-			flags: []string{
-				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-				"-select-empty-alpn",
-			},
-			shouldFail:         true,
-			expectedLocalError: "remote error: internal error",
-			expectedError:      ":INVALID_ALPN_PROTOCOL:",
-		})
-
-		// Test ALPN in async mode as well to ensure that extensions callbacks are only
-		// called once.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "ALPNServer-Async-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				NextProtos: []string{"foo", "bar", "baz"},
-				// Prior to TLS 1.3, exercise the asynchronous session callback.
-				SessionTicketsDisabled: ver.version < VersionTLS13,
-			},
-			flags: []string{
-				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-				"-select-alpn", "foo",
-				"-async",
-			},
-			expectations: connectionExpectations{
-				nextProto:     "foo",
-				nextProtoType: alpn,
-			},
-			resumeSession: true,
-		})
-
-		var emptyString string
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "ALPNClient-EmptyProtocolName-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				NextProtos: []string{""},
-				Bugs: ProtocolBugs{
-					// A server returning an empty ALPN protocol
-					// should be rejected.
-					ALPNProtocol: &emptyString,
-				},
-			},
-			flags: []string{
-				"-advertise-alpn", "\x03foo",
-			},
-			shouldFail:    true,
-			expectedError: ":PARSE_TLSEXT:",
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "ALPNServer-EmptyProtocolName-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				// A ClientHello containing an empty ALPN protocol
-				// should be rejected.
-				NextProtos: []string{"foo", "", "baz"},
-			},
-			flags: []string{
-				"-select-alpn", "foo",
-			},
-			shouldFail:    true,
-			expectedError: ":PARSE_TLSEXT:",
-		})
-
-		// Test NPN and the interaction with ALPN.
-		if ver.version < VersionTLS13 {
-			// Test that the server prefers ALPN over NPN.
+			// Test that duplicate extensions are rejected.
 			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ALPNServer-Preferred-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					NextProtos: []string{"foo", "bar", "baz"},
-				},
-				flags: []string{
-					"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-					"-select-alpn", "foo",
-					"-advertise-npn", "\x03foo\x03bar\x03baz",
-				},
-				expectations: connectionExpectations{
-					nextProto:     "foo",
-					nextProtoType: alpn,
-				},
-				resumeSession: true,
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ALPNServer-Preferred-Swapped-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					NextProtos: []string{"foo", "bar", "baz"},
-					Bugs: ProtocolBugs{
-						SwapNPNAndALPN: true,
-					},
-				},
-				flags: []string{
-					"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
-					"-select-alpn", "foo",
-					"-advertise-npn", "\x03foo\x03bar\x03baz",
-				},
-				expectations: connectionExpectations{
-					nextProto:     "foo",
-					nextProtoType: alpn,
-				},
-				resumeSession: true,
-			})
-
-			// Test that negotiating both NPN and ALPN is forbidden.
-			testCases = append(testCases, testCase{
-				name: "NegotiateALPNAndNPN-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					NextProtos: []string{"foo", "bar", "baz"},
-					Bugs: ProtocolBugs{
-						NegotiateALPNAndNPN: true,
-					},
-				},
-				flags: []string{
-					"-advertise-alpn", "\x03foo",
-					"-select-next-proto", "foo",
-				},
-				shouldFail:    true,
-				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
-			})
-			testCases = append(testCases, testCase{
-				name: "NegotiateALPNAndNPN-Swapped-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					NextProtos: []string{"foo", "bar", "baz"},
-					Bugs: ProtocolBugs{
-						NegotiateALPNAndNPN: true,
-						SwapNPNAndALPN:      true,
-					},
-				},
-				flags: []string{
-					"-advertise-alpn", "\x03foo",
-					"-select-next-proto", "foo",
-				},
-				shouldFail:    true,
-				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
-			})
-		}
-
-		// Test missing ALPN in QUIC
-		if ver.version >= VersionTLS13 {
-			testCases = append(testCases, testCase{
+				protocol: protocol,
 				testType: clientTest,
-				protocol: quic,
-				name:     "QUIC-Client-ALPNMissingFromConfig-" + ver.name,
+				name:     "DuplicateExtensionClient-" + suffix,
 				config: Config{
-					MinVersion: ver.version,
 					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						DuplicateExtension: true,
+					},
 				},
-				skipQUICALPNConfig: true,
 				shouldFail:         true,
-				expectedError:      ":MISSING_ALPN:",
+				expectedLocalError: "remote error: error decoding message",
 			})
 			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: serverTest,
+				name:     "DuplicateExtensionServer-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						DuplicateExtension: true,
+					},
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: error decoding message",
+			})
+
+			// Test SNI.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
 				testType: clientTest,
-				protocol: quic,
-				name:     "QUIC-Client-ALPNMissing-" + ver.name,
+				name:     "ServerNameExtensionClient-" + suffix,
 				config: Config{
-					MinVersion: ver.version,
 					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						ExpectServerName: "example.com",
+					},
 				},
-				flags: []string{
-					"-advertise-alpn", "\x03foo",
-				},
-				skipQUICALPNConfig: true,
-				shouldFail:         true,
-				expectedError:      ":MISSING_ALPN:",
-				expectedLocalError: "remote error: no application protocol",
+				flags: []string{"-host-name", "example.com"},
 			})
 			testCases = append(testCases, testCase{
-				testType: serverTest,
-				protocol: quic,
-				name:     "QUIC-Server-ALPNMissing-" + ver.name,
-				config: Config{
-					MinVersion: ver.version,
-					MaxVersion: ver.version,
-				},
-				skipQUICALPNConfig: true,
-				shouldFail:         true,
-				expectedError:      ":MISSING_ALPN:",
-				expectedLocalError: "remote error: no application protocol",
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				protocol: quic,
-				name:     "QUIC-Server-ALPNMismatch-" + ver.name,
-				config: Config{
-					MinVersion: ver.version,
-					MaxVersion: ver.version,
-					NextProtos: []string{"foo"},
-				},
-				flags: []string{
-					"-decline-alpn",
-				},
-				skipQUICALPNConfig: true,
-				shouldFail:         true,
-				expectedError:      ":MISSING_ALPN:",
-				expectedLocalError: "remote error: no application protocol",
-			})
-		}
-
-		// Test ALPS.
-		if ver.version >= VersionTLS13 {
-			// Test that client and server can negotiate ALPS, including
-			// different values on resumption.
-			testCases = append(testCases, testCase{
+				protocol: protocol,
 				testType: clientTest,
-				name:     "ALPS-Basic-Client-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
-				},
-				resumeConfig: &Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
-				},
-				resumeSession: true,
-				expectations: connectionExpectations{
-					peerApplicationSettings: []byte("shim1"),
-				},
-				resumeExpectations: &connectionExpectations{
-					peerApplicationSettings: []byte("shim2"),
-				},
-				flags: []string{
-					"-advertise-alpn", "\x05proto",
-					"-expect-alpn", "proto",
-					"-on-initial-application-settings", "proto,shim1",
-					"-on-initial-expect-peer-application-settings", "runner1",
-					"-on-resume-application-settings", "proto,shim2",
-					"-on-resume-expect-peer-application-settings", "runner2",
-				},
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ALPS-Basic-Server-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
-				},
-				resumeConfig: &Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
-				},
-				resumeSession: true,
-				expectations: connectionExpectations{
-					peerApplicationSettings: []byte("shim1"),
-				},
-				resumeExpectations: &connectionExpectations{
-					peerApplicationSettings: []byte("shim2"),
-				},
-				flags: []string{
-					"-select-alpn", "proto",
-					"-on-initial-application-settings", "proto,shim1",
-					"-on-initial-expect-peer-application-settings", "runner1",
-					"-on-resume-application-settings", "proto,shim2",
-					"-on-resume-expect-peer-application-settings", "runner2",
-				},
-			})
-
-			// Test the client and server correctly handle empty settings.
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "ALPS-Empty-Client-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte{}},
-				},
-				resumeSession: true,
-				expectations: connectionExpectations{
-					peerApplicationSettings: []byte{},
-				},
-				flags: []string{
-					"-advertise-alpn", "\x05proto",
-					"-expect-alpn", "proto",
-					"-application-settings", "proto,",
-					"-expect-peer-application-settings", "",
-				},
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ALPS-Empty-Server-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte{}},
-				},
-				resumeSession: true,
-				expectations: connectionExpectations{
-					peerApplicationSettings: []byte{},
-				},
-				flags: []string{
-					"-select-alpn", "proto",
-					"-application-settings", "proto,",
-					"-expect-peer-application-settings", "",
-				},
-			})
-
-			// Test the client rejects application settings from the server on
-			// protocols it doesn't have them.
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "ALPS-UnsupportedProtocol-Client-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto1"},
-					ApplicationSettings: map[string][]byte{"proto1": []byte("runner")},
-					Bugs: ProtocolBugs{
-						AlwaysNegotiateApplicationSettings: true,
-					},
-				},
-				// The client supports ALPS with "proto2", but not "proto1".
-				flags: []string{
-					"-advertise-alpn", "\x06proto1\x06proto2",
-					"-application-settings", "proto2,shim",
-					"-expect-alpn", "proto1",
-				},
-				// The server sends ALPS with "proto1", which is invalid.
-				shouldFail:         true,
-				expectedError:      ":INVALID_ALPN_PROTOCOL:",
-				expectedLocalError: "remote error: illegal parameter",
-			})
-
-			// Test the server declines ALPS if it doesn't support it for the
-			// specified protocol.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ALPS-UnsupportedProtocol-Server-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto1"},
-					ApplicationSettings: map[string][]byte{"proto1": []byte("runner")},
-				},
-				// The server supports ALPS with "proto2", but not "proto1".
-				flags: []string{
-					"-select-alpn", "proto1",
-					"-application-settings", "proto2,shim",
-				},
-			})
-
-			// Test that the server rejects a missing application_settings extension.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ALPS-OmitClientApplicationSettings-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
-					Bugs: ProtocolBugs{
-						OmitClientApplicationSettings: true,
-					},
-				},
-				flags: []string{
-					"-select-alpn", "proto",
-					"-application-settings", "proto,shim",
-				},
-				// The runner is a client, so it only processes the shim's alert
-				// after checking connection state.
-				expectations: connectionExpectations{
-					peerApplicationSettings: []byte("shim"),
-				},
-				shouldFail:         true,
-				expectedError:      ":MISSING_EXTENSION:",
-				expectedLocalError: "remote error: missing extension",
-			})
-
-			// Test that the server rejects a missing EncryptedExtensions message.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ALPS-OmitClientEncryptedExtensions-" + ver.name,
-				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
-					Bugs: ProtocolBugs{
-						OmitClientEncryptedExtensions: true,
-					},
-				},
-				flags: []string{
-					"-select-alpn", "proto",
-					"-application-settings", "proto,shim",
-				},
-				// The runner is a client, so it only processes the shim's alert
-				// after checking connection state.
-				expectations: connectionExpectations{
-					peerApplicationSettings: []byte("shim"),
-				},
-				shouldFail:         true,
-				expectedError:      ":UNEXPECTED_MESSAGE:",
-				expectedLocalError: "remote error: unexpected message",
-			})
-
-			// Test that the server rejects an unexpected EncryptedExtensions message.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "UnexpectedClientEncryptedExtensions-" + ver.name,
+				name:     "ServerNameExtensionClientMismatch-" + suffix,
 				config: Config{
 					MaxVersion: ver.version,
 					Bugs: ProtocolBugs{
-						AlwaysSendClientEncryptedExtensions: true,
+						ExpectServerName: "mismatch.com",
+					},
+				},
+				flags:              []string{"-host-name", "example.com"},
+				shouldFail:         true,
+				expectedLocalError: "tls: unexpected server name",
+			})
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: clientTest,
+				name:     "ServerNameExtensionClientMissing-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						ExpectServerName: "missing.com",
 					},
 				},
 				shouldFail:         true,
-				expectedError:      ":UNEXPECTED_MESSAGE:",
-				expectedLocalError: "remote error: unexpected message",
+				expectedLocalError: "tls: unexpected server name",
 			})
-
-			// Test that the server rejects an unexpected extension in an
-			// expected EncryptedExtensions message.
 			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ExtraClientEncryptedExtension-" + ver.name,
+				protocol: protocol,
+				testType: clientTest,
+				name:     "TolerateServerNameAck-" + suffix,
 				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"proto"},
-					ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+					MaxVersion: ver.version,
 					Bugs: ProtocolBugs{
-						SendExtraClientEncryptedExtension: true,
+						SendServerNameAck: true,
 					},
 				},
-				flags: []string{
-					"-select-alpn", "proto",
-					"-application-settings", "proto,shim",
-				},
-				// The runner is a client, so it only processes the shim's alert
-				// after checking connection state.
-				expectations: connectionExpectations{
-					peerApplicationSettings: []byte("shim"),
+				flags:         []string{"-host-name", "example.com"},
+				resumeSession: true,
+			})
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: clientTest,
+				name:     "UnsolicitedServerNameAck-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						SendServerNameAck: true,
+					},
 				},
 				shouldFail:         true,
 				expectedError:      ":UNEXPECTED_EXTENSION:",
 				expectedLocalError: "remote error: unsupported extension",
 			})
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: serverTest,
+				name:     "ServerNameExtensionServer-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					ServerName: "example.com",
+				},
+				flags:         []string{"-expect-server-name", "example.com"},
+				resumeSession: true,
+			})
 
-			// Test that ALPS is carried over on 0-RTT.
-			for _, empty := range []bool{false, true} {
-				suffix := ver.name
-				runnerSettings := "runner"
-				shimSettings := "shim"
-				if empty {
-					suffix = "Empty-" + ver.name
-					runnerSettings = ""
-					shimSettings = ""
-				}
-
-				testCases = append(testCases, testCase{
-					testType: clientTest,
-					name:     "ALPS-EarlyData-Client-" + suffix,
-					config: Config{
-						MaxVersion:          ver.version,
-						NextProtos:          []string{"proto"},
-						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+			// Test ALPN.
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           clientTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNClient-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo"},
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo\x03bar\x03baz",
+					"-expect-alpn", "foo",
+				},
+				expectations: connectionExpectations{
+					nextProto:     "foo",
+					nextProtoType: alpn,
+				},
+				resumeSession: true,
+			})
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           clientTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNClient-RejectUnknown-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						SendALPN: "baz",
 					},
-					resumeSession: true,
-					earlyData:     true,
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo\x03bar",
+				},
+				shouldFail:         true,
+				expectedError:      ":INVALID_ALPN_PROTOCOL:",
+				expectedLocalError: "remote error: illegal parameter",
+			})
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           clientTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNClient-AllowUnknown-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						SendALPN: "baz",
+					},
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo\x03bar",
+					"-allow-unknown-alpn-protos",
+					"-expect-alpn", "baz",
+				},
+			})
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           serverTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNServer-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+				},
+				flags: []string{
+					"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+					"-select-alpn", "foo",
+				},
+				expectations: connectionExpectations{
+					nextProto:     "foo",
+					nextProtoType: alpn,
+				},
+				resumeSession: true,
+			})
+
+			var shouldDeclineALPNFail bool
+			var declineALPNError, declineALPNLocalError string
+			if protocol == quic {
+				// ALPN is mandatory in QUIC.
+				shouldDeclineALPNFail = true
+				declineALPNError = ":NO_APPLICATION_PROTOCOL:"
+				declineALPNLocalError = "remote error: no application protocol"
+			}
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           serverTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNServer-Decline-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+				},
+				flags: []string{"-decline-alpn"},
+				expectations: connectionExpectations{
+					noNextProto: true,
+				},
+				resumeSession:      true,
+				shouldFail:         shouldDeclineALPNFail,
+				expectedError:      declineALPNError,
+				expectedLocalError: declineALPNLocalError,
+			})
+
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           serverTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNServer-Reject-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+				},
+				flags:              []string{"-reject-alpn"},
+				shouldFail:         true,
+				expectedError:      ":NO_APPLICATION_PROTOCOL:",
+				expectedLocalError: "remote error: no application protocol",
+			})
+
+			// Test that the server implementation catches itself if the
+			// callback tries to return an invalid empty ALPN protocol.
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           serverTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNServer-SelectEmpty-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+				},
+				flags: []string{
+					"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+					"-select-empty-alpn",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: internal error",
+				expectedError:      ":INVALID_ALPN_PROTOCOL:",
+			})
+
+			// Test ALPN in async mode as well to ensure that extensions callbacks are only
+			// called once.
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           serverTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNServer-Async-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+					// Prior to TLS 1.3, exercise the asynchronous session callback.
+					SessionTicketsDisabled: ver.version < VersionTLS13,
+				},
+				flags: []string{
+					"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+					"-select-alpn", "foo",
+					"-async",
+				},
+				expectations: connectionExpectations{
+					nextProto:     "foo",
+					nextProtoType: alpn,
+				},
+				resumeSession: true,
+			})
+
+			var emptyString string
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           clientTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNClient-EmptyProtocolName-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{""},
+					Bugs: ProtocolBugs{
+						// A server returning an empty ALPN protocol
+						// should be rejected.
+						ALPNProtocol: &emptyString,
+					},
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo",
+				},
+				shouldFail:    true,
+				expectedError: ":PARSE_TLSEXT:",
+			})
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           serverTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNServer-EmptyProtocolName-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					// A ClientHello containing an empty ALPN protocol
+					// should be rejected.
+					NextProtos: []string{"foo", "", "baz"},
+				},
+				flags: []string{
+					"-select-alpn", "foo",
+				},
+				shouldFail:    true,
+				expectedError: ":PARSE_TLSEXT:",
+			})
+
+			// Test NPN and the interaction with ALPN.
+			if ver.version < VersionTLS13 && protocol == tls {
+				// Test that the server prefers ALPN over NPN.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "ALPNServer-Preferred-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"foo", "bar", "baz"},
+					},
 					flags: []string{
-						"-advertise-alpn", "\x05proto",
-						"-expect-alpn", "proto",
-						"-application-settings", "proto," + shimSettings,
-						"-expect-peer-application-settings", runnerSettings,
+						"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+						"-select-alpn", "foo",
+						"-advertise-npn", "\x03foo\x03bar\x03baz",
 					},
 					expectations: connectionExpectations{
-						peerApplicationSettings: []byte(shimSettings),
+						nextProto:     "foo",
+						nextProtoType: alpn,
 					},
+					resumeSession: true,
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "ALPNServer-Preferred-Swapped-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"foo", "bar", "baz"},
+						Bugs: ProtocolBugs{
+							SwapNPNAndALPN: true,
+						},
+					},
+					flags: []string{
+						"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+						"-select-alpn", "foo",
+						"-advertise-npn", "\x03foo\x03bar\x03baz",
+					},
+					expectations: connectionExpectations{
+						nextProto:     "foo",
+						nextProtoType: alpn,
+					},
+					resumeSession: true,
+				})
+
+				// Test that negotiating both NPN and ALPN is forbidden.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					name:     "NegotiateALPNAndNPN-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"foo", "bar", "baz"},
+						Bugs: ProtocolBugs{
+							NegotiateALPNAndNPN: true,
+						},
+					},
+					flags: []string{
+						"-advertise-alpn", "\x03foo",
+						"-select-next-proto", "foo",
+					},
+					shouldFail:    true,
+					expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					name:     "NegotiateALPNAndNPN-Swapped-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"foo", "bar", "baz"},
+						Bugs: ProtocolBugs{
+							NegotiateALPNAndNPN: true,
+							SwapNPNAndALPN:      true,
+						},
+					},
+					flags: []string{
+						"-advertise-alpn", "\x03foo",
+						"-select-next-proto", "foo",
+					},
+					shouldFail:    true,
+					expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
+				})
+			}
+
+			// Test missing ALPN in QUIC
+			if protocol == quic {
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     "Client-ALPNMissingFromConfig-" + suffix,
+					config: Config{
+						MinVersion: ver.version,
+						MaxVersion: ver.version,
+					},
+					skipQUICALPNConfig: true,
+					shouldFail:         true,
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
+				})
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     "Client-ALPNMissing-" + suffix,
+					config: Config{
+						MinVersion: ver.version,
+						MaxVersion: ver.version,
+					},
+					flags: []string{
+						"-advertise-alpn", "\x03foo",
+					},
+					skipQUICALPNConfig: true,
+					shouldFail:         true,
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
+					expectedLocalError: "remote error: no application protocol",
 				})
 				testCases = append(testCases, testCase{
 					testType: serverTest,
-					name:     "ALPS-EarlyData-Server-" + suffix,
+					protocol: protocol,
+					name:     "Server-ALPNMissing-" + suffix,
 					config: Config{
-						MaxVersion:          ver.version,
-						NextProtos:          []string{"proto"},
-						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+						MinVersion: ver.version,
+						MaxVersion: ver.version,
 					},
-					resumeSession: true,
-					earlyData:     true,
-					flags: []string{
-						"-select-alpn", "proto",
-						"-application-settings", "proto," + shimSettings,
-						"-expect-peer-application-settings", runnerSettings,
-					},
-					expectations: connectionExpectations{
-						peerApplicationSettings: []byte(shimSettings),
-					},
+					skipQUICALPNConfig: true,
+					shouldFail:         true,
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
+					expectedLocalError: "remote error: no application protocol",
 				})
-
-				// Sending application settings in 0-RTT handshakes is forbidden.
 				testCases = append(testCases, testCase{
-					testType: clientTest,
-					name:     "ALPS-EarlyData-SendApplicationSettingsWithEarlyData-Client-" + suffix,
+					testType: serverTest,
+					protocol: protocol,
+					name:     "Server-ALPNMismatch-" + suffix,
+					config: Config{
+						MinVersion: ver.version,
+						MaxVersion: ver.version,
+						NextProtos: []string{"foo"},
+					},
+					flags: []string{
+						"-decline-alpn",
+					},
+					skipQUICALPNConfig: true,
+					shouldFail:         true,
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
+					expectedLocalError: "remote error: no application protocol",
+				})
+			}
+
+			// Test ALPS.
+			if ver.version >= VersionTLS13 {
+				// Test that client and server can negotiate ALPS, including
+				// different values on resumption.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           clientTest,
+					name:               "ALPS-Basic-Client-" + suffix,
+					skipQUICALPNConfig: true,
 					config: Config{
 						MaxVersion:          ver.version,
 						NextProtos:          []string{"proto"},
-						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
-						Bugs: ProtocolBugs{
-							SendApplicationSettingsWithEarlyData: true,
-						},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
+					},
+					resumeConfig: &Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
 					},
 					resumeSession: true,
-					earlyData:     true,
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte("shim1"),
+					},
+					resumeExpectations: &connectionExpectations{
+						peerApplicationSettings: []byte("shim2"),
+					},
 					flags: []string{
 						"-advertise-alpn", "\x05proto",
 						"-expect-alpn", "proto",
-						"-application-settings", "proto," + shimSettings,
-						"-expect-peer-application-settings", runnerSettings,
+						"-on-initial-application-settings", "proto,shim1",
+						"-on-initial-expect-peer-application-settings", "runner1",
+						"-on-resume-application-settings", "proto,shim2",
+						"-on-resume-expect-peer-application-settings", "runner2",
 					},
+				})
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-Basic-Server-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
+					},
+					resumeConfig: &Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
+					},
+					resumeSession: true,
 					expectations: connectionExpectations{
-						peerApplicationSettings: []byte(shimSettings),
+						peerApplicationSettings: []byte("shim1"),
 					},
+					resumeExpectations: &connectionExpectations{
+						peerApplicationSettings: []byte("shim2"),
+					},
+					flags: []string{
+						"-select-alpn", "proto",
+						"-on-initial-application-settings", "proto,shim1",
+						"-on-initial-expect-peer-application-settings", "runner1",
+						"-on-resume-application-settings", "proto,shim2",
+						"-on-resume-expect-peer-application-settings", "runner2",
+					},
+				})
+
+				// Test that the server can defer its ALPS configuration to the ALPN
+				// selection callback.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-Basic-Server-Defer-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
+					},
+					resumeConfig: &Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
+					},
+					resumeSession: true,
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte("shim1"),
+					},
+					resumeExpectations: &connectionExpectations{
+						peerApplicationSettings: []byte("shim2"),
+					},
+					flags: []string{
+						"-select-alpn", "proto",
+						"-defer-alps",
+						"-on-initial-application-settings", "proto,shim1",
+						"-on-initial-expect-peer-application-settings", "runner1",
+						"-on-resume-application-settings", "proto,shim2",
+						"-on-resume-expect-peer-application-settings", "runner2",
+					},
+				})
+
+				// Test the client and server correctly handle empty settings.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           clientTest,
+					name:               "ALPS-Empty-Client-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte{}},
+					},
+					resumeSession: true,
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte{},
+					},
+					flags: []string{
+						"-advertise-alpn", "\x05proto",
+						"-expect-alpn", "proto",
+						"-application-settings", "proto,",
+						"-expect-peer-application-settings", "",
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-Empty-Server-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte{}},
+					},
+					resumeSession: true,
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte{},
+					},
+					flags: []string{
+						"-select-alpn", "proto",
+						"-application-settings", "proto,",
+						"-expect-peer-application-settings", "",
+					},
+				})
+
+				// Test the client rejects application settings from the server on
+				// protocols it doesn't have them.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           clientTest,
+					name:               "ALPS-UnsupportedProtocol-Client-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto1"},
+						ApplicationSettings: map[string][]byte{"proto1": []byte("runner")},
+						Bugs: ProtocolBugs{
+							AlwaysNegotiateApplicationSettings: true,
+						},
+					},
+					// The client supports ALPS with "proto2", but not "proto1".
+					flags: []string{
+						"-advertise-alpn", "\x06proto1\x06proto2",
+						"-application-settings", "proto2,shim",
+						"-expect-alpn", "proto1",
+					},
+					// The server sends ALPS with "proto1", which is invalid.
 					shouldFail:         true,
-					expectedError:      ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
+					expectedError:      ":INVALID_ALPN_PROTOCOL:",
 					expectedLocalError: "remote error: illegal parameter",
 				})
+
+				// Test the server declines ALPS if it doesn't support it for the
+				// specified protocol.
 				testCases = append(testCases, testCase{
-					testType: serverTest,
-					name:     "ALPS-EarlyData-SendApplicationSettingsWithEarlyData-Server-" + suffix,
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-UnsupportedProtocol-Server-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto1"},
+						ApplicationSettings: map[string][]byte{"proto1": []byte("runner")},
+					},
+					// The server supports ALPS with "proto2", but not "proto1".
+					flags: []string{
+						"-select-alpn", "proto1",
+						"-application-settings", "proto2,shim",
+					},
+				})
+
+				// Test that the server rejects a missing application_settings extension.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-OmitClientApplicationSettings-" + suffix,
+					skipQUICALPNConfig: true,
 					config: Config{
 						MaxVersion:          ver.version,
 						NextProtos:          []string{"proto"},
-						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
 						Bugs: ProtocolBugs{
-							SendApplicationSettingsWithEarlyData: true,
+							OmitClientApplicationSettings: true,
 						},
 					},
-					resumeSession: true,
-					earlyData:     true,
 					flags: []string{
 						"-select-alpn", "proto",
-						"-application-settings", "proto," + shimSettings,
-						"-expect-peer-application-settings", runnerSettings,
+						"-application-settings", "proto,shim",
 					},
+					// The runner is a client, so it only processes the shim's alert
+					// after checking connection state.
 					expectations: connectionExpectations{
-						peerApplicationSettings: []byte(shimSettings),
+						peerApplicationSettings: []byte("shim"),
+					},
+					shouldFail:         true,
+					expectedError:      ":MISSING_EXTENSION:",
+					expectedLocalError: "remote error: missing extension",
+				})
+
+				// Test that the server rejects a missing EncryptedExtensions message.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-OmitClientEncryptedExtensions-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+						Bugs: ProtocolBugs{
+							OmitClientEncryptedExtensions: true,
+						},
+					},
+					flags: []string{
+						"-select-alpn", "proto",
+						"-application-settings", "proto,shim",
+					},
+					// The runner is a client, so it only processes the shim's alert
+					// after checking connection state.
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte("shim"),
 					},
 					shouldFail:         true,
 					expectedError:      ":UNEXPECTED_MESSAGE:",
 					expectedLocalError: "remote error: unexpected message",
 				})
-			}
 
-			// Test that the client and server each decline early data if local
-			// ALPS preferences has changed for the current connection.
-			alpsMismatchTests := []struct {
-				name                            string
-				initialSettings, resumeSettings []byte
-			}{
-				{"DifferentValues", []byte("settings1"), []byte("settings2")},
-				{"OnOff", []byte("settings"), nil},
-				{"OffOn", nil, []byte("settings")},
-				// The empty settings value should not be mistaken for ALPS not
-				// being negotiated.
-				{"OnEmpty", []byte("settings"), []byte{}},
-				{"EmptyOn", []byte{}, []byte("settings")},
-				{"EmptyOff", []byte{}, nil},
-				{"OffEmpty", nil, []byte{}},
-			}
-			for _, test := range alpsMismatchTests {
-				flags := []string{"-on-resume-expect-early-data-reason", "alps_mismatch"}
-				if test.initialSettings != nil {
-					flags = append(flags, "-on-initial-application-settings", "proto,"+string(test.initialSettings))
-					flags = append(flags, "-on-initial-expect-peer-application-settings", "runner")
-				}
-				if test.resumeSettings != nil {
-					flags = append(flags, "-on-resume-application-settings", "proto,"+string(test.resumeSettings))
-					flags = append(flags, "-on-resume-expect-peer-application-settings", "runner")
-				}
-
-				// The client should not offer early data.
+				// Test that the server rejects an unexpected EncryptedExtensions message.
 				testCases = append(testCases, testCase{
-					testType: clientTest,
-					name:     fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Client-%s", test.name, ver.name),
+					protocol: protocol,
+					testType: serverTest,
+					name:     "UnexpectedClientEncryptedExtensions-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							AlwaysSendClientEncryptedExtensions: true,
+						},
+					},
+					shouldFail:         true,
+					expectedError:      ":UNEXPECTED_MESSAGE:",
+					expectedLocalError: "remote error: unexpected message",
+				})
+
+				// Test that the server rejects an unexpected extension in an
+				// expected EncryptedExtensions message.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ExtraClientEncryptedExtension-" + suffix,
+					skipQUICALPNConfig: true,
 					config: Config{
 						MaxVersion:          ver.version,
-						MaxEarlyDataSize:    16384,
 						NextProtos:          []string{"proto"},
 						ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+						Bugs: ProtocolBugs{
+							SendExtraClientEncryptedExtension: true,
+						},
+					},
+					flags: []string{
+						"-select-alpn", "proto",
+						"-application-settings", "proto,shim",
+					},
+					// The runner is a client, so it only processes the shim's alert
+					// after checking connection state.
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte("shim"),
+					},
+					shouldFail:         true,
+					expectedError:      ":UNEXPECTED_EXTENSION:",
+					expectedLocalError: "remote error: unsupported extension",
+				})
+
+				// Test that ALPS is carried over on 0-RTT.
+				for _, empty := range []bool{false, true} {
+					maybeEmpty := ""
+					runnerSettings := "runner"
+					shimSettings := "shim"
+					if empty {
+						maybeEmpty = "Empty-"
+						runnerSettings = ""
+						shimSettings = ""
+					}
+
+					testCases = append(testCases, testCase{
+						protocol:           protocol,
+						testType:           clientTest,
+						name:               "ALPS-EarlyData-Client-" + maybeEmpty + suffix,
+						skipQUICALPNConfig: true,
+						config: Config{
+							MaxVersion:          ver.version,
+							NextProtos:          []string{"proto"},
+							ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+						},
+						resumeSession: true,
+						earlyData:     true,
+						flags: []string{
+							"-advertise-alpn", "\x05proto",
+							"-expect-alpn", "proto",
+							"-application-settings", "proto," + shimSettings,
+							"-expect-peer-application-settings", runnerSettings,
+						},
+						expectations: connectionExpectations{
+							peerApplicationSettings: []byte(shimSettings),
+						},
+					})
+					testCases = append(testCases, testCase{
+						protocol:           protocol,
+						testType:           serverTest,
+						name:               "ALPS-EarlyData-Server-" + maybeEmpty + suffix,
+						skipQUICALPNConfig: true,
+						config: Config{
+							MaxVersion:          ver.version,
+							NextProtos:          []string{"proto"},
+							ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+						},
+						resumeSession: true,
+						earlyData:     true,
+						flags: []string{
+							"-select-alpn", "proto",
+							"-application-settings", "proto," + shimSettings,
+							"-expect-peer-application-settings", runnerSettings,
+						},
+						expectations: connectionExpectations{
+							peerApplicationSettings: []byte(shimSettings),
+						},
+					})
+
+					// Sending application settings in 0-RTT handshakes is forbidden.
+					testCases = append(testCases, testCase{
+						protocol:           protocol,
+						testType:           clientTest,
+						name:               "ALPS-EarlyData-SendApplicationSettingsWithEarlyData-Client-" + maybeEmpty + suffix,
+						skipQUICALPNConfig: true,
+						config: Config{
+							MaxVersion:          ver.version,
+							NextProtos:          []string{"proto"},
+							ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+							Bugs: ProtocolBugs{
+								SendApplicationSettingsWithEarlyData: true,
+							},
+						},
+						resumeSession: true,
+						earlyData:     true,
+						flags: []string{
+							"-advertise-alpn", "\x05proto",
+							"-expect-alpn", "proto",
+							"-application-settings", "proto," + shimSettings,
+							"-expect-peer-application-settings", runnerSettings,
+						},
+						expectations: connectionExpectations{
+							peerApplicationSettings: []byte(shimSettings),
+						},
+						shouldFail:         true,
+						expectedError:      ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
+						expectedLocalError: "remote error: illegal parameter",
+					})
+					testCases = append(testCases, testCase{
+						protocol:           protocol,
+						testType:           serverTest,
+						name:               "ALPS-EarlyData-SendApplicationSettingsWithEarlyData-Server-" + maybeEmpty + suffix,
+						skipQUICALPNConfig: true,
+						config: Config{
+							MaxVersion:          ver.version,
+							NextProtos:          []string{"proto"},
+							ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+							Bugs: ProtocolBugs{
+								SendApplicationSettingsWithEarlyData: true,
+							},
+						},
+						resumeSession: true,
+						earlyData:     true,
+						flags: []string{
+							"-select-alpn", "proto",
+							"-application-settings", "proto," + shimSettings,
+							"-expect-peer-application-settings", runnerSettings,
+						},
+						expectations: connectionExpectations{
+							peerApplicationSettings: []byte(shimSettings),
+						},
+						shouldFail:         true,
+						expectedError:      ":UNEXPECTED_MESSAGE:",
+						expectedLocalError: "remote error: unexpected message",
+					})
+				}
+
+				// Test that the client and server each decline early data if local
+				// ALPS preferences has changed for the current connection.
+				alpsMismatchTests := []struct {
+					name                            string
+					initialSettings, resumeSettings []byte
+				}{
+					{"DifferentValues", []byte("settings1"), []byte("settings2")},
+					{"OnOff", []byte("settings"), nil},
+					{"OffOn", nil, []byte("settings")},
+					// The empty settings value should not be mistaken for ALPS not
+					// being negotiated.
+					{"OnEmpty", []byte("settings"), []byte{}},
+					{"EmptyOn", []byte{}, []byte("settings")},
+					{"EmptyOff", []byte{}, nil},
+					{"OffEmpty", nil, []byte{}},
+				}
+				for _, test := range alpsMismatchTests {
+					flags := []string{"-on-resume-expect-early-data-reason", "alps_mismatch"}
+					if test.initialSettings != nil {
+						flags = append(flags, "-on-initial-application-settings", "proto,"+string(test.initialSettings))
+						flags = append(flags, "-on-initial-expect-peer-application-settings", "runner")
+					}
+					if test.resumeSettings != nil {
+						flags = append(flags, "-on-resume-application-settings", "proto,"+string(test.resumeSettings))
+						flags = append(flags, "-on-resume-expect-peer-application-settings", "runner")
+					}
+
+					// The client should not offer early data if the session is
+					// inconsistent with the new configuration. Note that if
+					// the session did not negotiate ALPS (test.initialSettings
+					// is nil), the client always offers early data.
+					if test.initialSettings != nil {
+						testCases = append(testCases, testCase{
+							protocol:           protocol,
+							testType:           clientTest,
+							name:               fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Client-%s", test.name, suffix),
+							skipQUICALPNConfig: true,
+							config: Config{
+								MaxVersion:          ver.version,
+								MaxEarlyDataSize:    16384,
+								NextProtos:          []string{"proto"},
+								ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+							},
+							resumeSession: true,
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-ticket-supports-early-data",
+								"-expect-no-offer-early-data",
+								"-advertise-alpn", "\x05proto",
+								"-expect-alpn", "proto",
+							}, flags...),
+							expectations: connectionExpectations{
+								peerApplicationSettings: test.initialSettings,
+							},
+							resumeExpectations: &connectionExpectations{
+								peerApplicationSettings: test.resumeSettings,
+							},
+						})
+					}
+
+					// The server should reject early data if the session is
+					// inconsistent with the new selection.
+					testCases = append(testCases, testCase{
+						protocol:           protocol,
+						testType:           serverTest,
+						name:               fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Server-%s", test.name, suffix),
+						skipQUICALPNConfig: true,
+						config: Config{
+							MaxVersion:          ver.version,
+							NextProtos:          []string{"proto"},
+							ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+						},
+						resumeSession:           true,
+						earlyData:               true,
+						expectEarlyDataRejected: true,
+						flags: append([]string{
+							"-select-alpn", "proto",
+						}, flags...),
+						expectations: connectionExpectations{
+							peerApplicationSettings: test.initialSettings,
+						},
+						resumeExpectations: &connectionExpectations{
+							peerApplicationSettings: test.resumeSettings,
+						},
+					})
+				}
+
+				// Test that 0-RTT continues working when the shim configures
+				// ALPS but the peer does not.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           clientTest,
+					name:               "ALPS-EarlyData-Client-ServerDecline-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"proto"},
 					},
 					resumeSession: true,
-					flags: append([]string{
-						"-enable-early-data",
-						"-expect-ticket-supports-early-data",
-						"-expect-no-offer-early-data",
+					earlyData:     true,
+					flags: []string{
 						"-advertise-alpn", "\x05proto",
 						"-expect-alpn", "proto",
-					}, flags...),
-					expectations: connectionExpectations{
-						peerApplicationSettings: test.initialSettings,
-					},
-					resumeExpectations: &connectionExpectations{
-						peerApplicationSettings: test.resumeSettings,
+						"-application-settings", "proto,shim",
 					},
 				})
-
-				// The server should reject early data.
 				testCases = append(testCases, testCase{
-					testType: serverTest,
-					name:     fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Server-%s", test.name, ver.name),
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-EarlyData-Server-ClientNoOffer-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"proto"},
+					},
+					resumeSession: true,
+					earlyData:     true,
+					flags: []string{
+						"-select-alpn", "proto",
+						"-application-settings", "proto,shim",
+					},
+				})
+			} else {
+				// Test the client rejects the ALPS extension if the server
+				// negotiated TLS 1.2 or below.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "ALPS-Reject-Client-" + suffix,
 					config: Config{
 						MaxVersion:          ver.version,
-						NextProtos:          []string{"proto"},
-						ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+						NextProtos:          []string{"foo"},
+						ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+						Bugs: ProtocolBugs{
+							AlwaysNegotiateApplicationSettings: true,
+						},
 					},
-					resumeSession:           true,
-					earlyData:               true,
-					expectEarlyDataRejected: true,
-					flags: append([]string{
-						"-select-alpn", "proto",
-					}, flags...),
-					expectations: connectionExpectations{
-						peerApplicationSettings: test.initialSettings,
+					flags: []string{
+						"-advertise-alpn", "\x03foo",
+						"-expect-alpn", "foo",
+						"-application-settings", "foo,shim",
 					},
-					resumeExpectations: &connectionExpectations{
-						peerApplicationSettings: test.resumeSettings,
+					shouldFail:         true,
+					expectedError:      ":UNEXPECTED_EXTENSION:",
+					expectedLocalError: "remote error: unsupported extension",
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "ALPS-Reject-Client-Resume-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
 					},
+					resumeConfig: &Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"foo"},
+						ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+						Bugs: ProtocolBugs{
+							AlwaysNegotiateApplicationSettings: true,
+						},
+					},
+					resumeSession: true,
+					flags: []string{
+						"-on-resume-advertise-alpn", "\x03foo",
+						"-on-resume-expect-alpn", "foo",
+						"-on-resume-application-settings", "foo,shim",
+					},
+					shouldFail:         true,
+					expectedError:      ":UNEXPECTED_EXTENSION:",
+					expectedLocalError: "remote error: unsupported extension",
+				})
+
+				// Test the server declines ALPS if it negotiates TLS 1.2 or below.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "ALPS-Decline-Server-" + suffix,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"foo"},
+						ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+					},
+					// Test both TLS 1.2 full and resumption handshakes.
+					resumeSession: true,
+					flags: []string{
+						"-select-alpn", "foo",
+						"-application-settings", "foo,shim",
+					},
+					// If not specified, runner and shim both implicitly expect ALPS
+					// is not negotiated.
 				})
 			}
-		} else {
-			// Test the client rejects the ALPS extension if the server
-			// negotiated TLS 1.2 or below.
+
+			// Test Token Binding.
+			if protocol != dtls {
+				const maxTokenBindingVersion = 16
+				const minTokenBindingVersion = 13
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TokenBinding-Server-" + suffix,
+
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						TokenBindingParams:  []byte{0, 1, 2},
+						TokenBindingVersion: maxTokenBindingVersion,
+					},
+					expectations: connectionExpectations{
+						tokenBinding:      true,
+						tokenBindingParam: 2,
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						"-expect-token-binding-param",
+						"2",
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TokenBinding-Server-UnsupportedParam-" + suffix,
+
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						TokenBindingParams:  []byte{3},
+						TokenBindingVersion: maxTokenBindingVersion,
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TokenBinding-Server-OldVersion-" + suffix,
+
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						TokenBindingParams:  []byte{0, 1, 2},
+						TokenBindingVersion: minTokenBindingVersion - 1,
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TokenBinding-Server-NewVersion-" + suffix,
+
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						TokenBindingParams:  []byte{0, 1, 2},
+						TokenBindingVersion: maxTokenBindingVersion + 1,
+					},
+					expectations: connectionExpectations{
+						tokenBinding:      true,
+						tokenBindingParam: 2,
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						"-expect-token-binding-param",
+						"2",
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TokenBinding-Server-NoParams-" + suffix,
+
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						TokenBindingParams:  []byte{},
+						TokenBindingVersion: maxTokenBindingVersion,
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+					},
+					shouldFail:    true,
+					expectedError: ":ERROR_PARSING_EXTENSION:",
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TokenBinding-Server-RepeatedParam" + suffix,
+
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						TokenBindingParams:  []byte{0, 1, 2, 2},
+						TokenBindingVersion: maxTokenBindingVersion,
+					},
+					expectations: connectionExpectations{
+						tokenBinding:      true,
+						tokenBindingParam: 2,
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						"-expect-token-binding-param",
+						"2",
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-" + suffix,
+
+					config: Config{
+						MinVersion:               ver.version,
+						MaxVersion:               ver.version,
+						TokenBindingParams:       []byte{2},
+						TokenBindingVersion:      maxTokenBindingVersion,
+						ExpectTokenBindingParams: []byte{0, 1, 2},
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
+						"-expect-token-binding-param",
+						"2",
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-Unexpected-" + suffix,
+
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						TokenBindingParams:  []byte{2},
+						TokenBindingVersion: maxTokenBindingVersion,
+					},
+					shouldFail:    true,
+					expectedError: ":UNEXPECTED_EXTENSION:",
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-ExtraParams-" + suffix,
+
+					config: Config{
+						MinVersion:               ver.version,
+						MaxVersion:               ver.version,
+						TokenBindingParams:       []byte{2, 1},
+						TokenBindingVersion:      maxTokenBindingVersion,
+						ExpectTokenBindingParams: []byte{0, 1, 2},
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
+						"-expect-token-binding-param",
+						"2",
+					},
+					shouldFail:    true,
+					expectedError: ":ERROR_PARSING_EXTENSION:",
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-NoParams-" + suffix,
+
+					config: Config{
+						MinVersion:               ver.version,
+						MaxVersion:               ver.version,
+						TokenBindingParams:       []byte{},
+						TokenBindingVersion:      maxTokenBindingVersion,
+						ExpectTokenBindingParams: []byte{0, 1, 2},
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
+						"-expect-token-binding-param",
+						"2",
+					},
+					shouldFail:    true,
+					expectedError: ":ERROR_PARSING_EXTENSION:",
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-WrongParam-" + suffix,
+
+					config: Config{
+						MinVersion:               ver.version,
+						MaxVersion:               ver.version,
+						TokenBindingParams:       []byte{3},
+						TokenBindingVersion:      maxTokenBindingVersion,
+						ExpectTokenBindingParams: []byte{0, 1, 2},
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
+						"-expect-token-binding-param",
+						"2",
+					},
+					shouldFail:    true,
+					expectedError: ":ERROR_PARSING_EXTENSION:",
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-OldVersion-" + suffix,
+
+					config: Config{
+						MinVersion:               ver.version,
+						MaxVersion:               ver.version,
+						TokenBindingParams:       []byte{2},
+						TokenBindingVersion:      minTokenBindingVersion - 1,
+						ExpectTokenBindingParams: []byte{0, 1, 2},
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-MinVersion-" + suffix,
+
+					config: Config{
+						MinVersion:               ver.version,
+						MaxVersion:               ver.version,
+						TokenBindingParams:       []byte{2},
+						TokenBindingVersion:      minTokenBindingVersion,
+						ExpectTokenBindingParams: []byte{0, 1, 2},
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
+						"-expect-token-binding-param",
+						"2",
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "TokenBinding-Client-VersionTooNew-" + suffix,
+
+					config: Config{
+						MinVersion:               ver.version,
+						MaxVersion:               ver.version,
+						TokenBindingParams:       []byte{2},
+						TokenBindingVersion:      maxTokenBindingVersion + 1,
+						ExpectTokenBindingParams: []byte{0, 1, 2},
+					},
+					flags: []string{
+						"-token-binding-params",
+						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
+					},
+					shouldFail:    true,
+					expectedError: "ERROR_PARSING_EXTENSION",
+				})
+				if ver.version < VersionTLS13 {
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: clientTest,
+						name:     "TokenBinding-Client-NoEMS-" + suffix,
+
+						config: Config{
+							MinVersion:               ver.version,
+							MaxVersion:               ver.version,
+							TokenBindingParams:       []byte{2},
+							TokenBindingVersion:      maxTokenBindingVersion,
+							ExpectTokenBindingParams: []byte{2, 1, 0},
+							Bugs: ProtocolBugs{
+								NoExtendedMasterSecret: true,
+							},
+						},
+						flags: []string{
+							"-token-binding-params",
+							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						},
+						shouldFail:    true,
+						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
+					})
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: serverTest,
+						name:     "TokenBinding-Server-NoEMS-" + suffix,
+
+						config: Config{
+							MinVersion:          ver.version,
+							MaxVersion:          ver.version,
+							TokenBindingParams:  []byte{0, 1, 2},
+							TokenBindingVersion: maxTokenBindingVersion,
+							Bugs: ProtocolBugs{
+								NoExtendedMasterSecret: true,
+							},
+						},
+						flags: []string{
+							"-token-binding-params",
+							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						},
+						shouldFail:    true,
+						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
+					})
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: clientTest,
+						name:     "TokenBinding-Client-NoRI-" + suffix,
+
+						config: Config{
+							MinVersion:               ver.version,
+							MaxVersion:               ver.version,
+							TokenBindingParams:       []byte{2},
+							TokenBindingVersion:      maxTokenBindingVersion,
+							ExpectTokenBindingParams: []byte{2, 1, 0},
+							Bugs: ProtocolBugs{
+								NoRenegotiationInfo: true,
+							},
+						},
+						flags: []string{
+							"-token-binding-params",
+							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						},
+						shouldFail:    true,
+						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
+					})
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: serverTest,
+						name:     "TokenBinding-Server-NoRI-" + suffix,
+
+						config: Config{
+							MinVersion:          ver.version,
+							MaxVersion:          ver.version,
+							TokenBindingParams:  []byte{0, 1, 2},
+							TokenBindingVersion: maxTokenBindingVersion,
+							Bugs: ProtocolBugs{
+								NoRenegotiationInfo: true,
+							},
+						},
+						flags: []string{
+							"-token-binding-params",
+							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						},
+						shouldFail:    true,
+						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
+					})
+				} else {
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: clientTest,
+						name:     "TokenBinding-WithEarlyDataFails-" + suffix,
+						config: Config{
+							MinVersion:               ver.version,
+							MaxVersion:               ver.version,
+							TokenBindingParams:       []byte{2},
+							TokenBindingVersion:      maxTokenBindingVersion,
+							ExpectTokenBindingParams: []byte{2, 1, 0},
+						},
+						resumeSession: true,
+						earlyData:     true,
+						flags: []string{
+							"-token-binding-params",
+							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+						},
+						shouldFail:    true,
+						expectedError: ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
+					})
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: serverTest,
+						name:     "TokenBinding-EarlyDataRejected-" + suffix,
+						config: Config{
+							MinVersion:          ver.version,
+							MaxVersion:          ver.version,
+							TokenBindingParams:  []byte{0, 1, 2},
+							TokenBindingVersion: maxTokenBindingVersion,
+						},
+						resumeSession:           true,
+						earlyData:               true,
+						expectEarlyDataRejected: true,
+						expectations: connectionExpectations{
+							tokenBinding:      true,
+							tokenBindingParam: 2,
+						},
+						flags: []string{
+							"-token-binding-params",
+							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
+							"-on-retry-expect-early-data-reason", "token_binding",
+						},
+					})
+				}
+			}
+
+			// Test QUIC transport params
+			if protocol == quic {
+				// Client sends params
+				for _, clientConfig := range []QUICUseCodepoint{QUICUseCodepointStandard, QUICUseCodepointLegacy} {
+					for _, serverSends := range []QUICUseCodepoint{QUICUseCodepointStandard, QUICUseCodepointLegacy, QUICUseCodepointBoth, QUICUseCodepointNeither} {
+						useCodepointFlag := "0"
+						if clientConfig == QUICUseCodepointLegacy {
+							useCodepointFlag = "1"
+						}
+						flags := []string{
+							"-quic-transport-params",
+							base64.StdEncoding.EncodeToString([]byte{1, 2}),
+							"-quic-use-legacy-codepoint", useCodepointFlag,
+						}
+						expectations := connectionExpectations{
+							quicTransportParams: []byte{1, 2},
+						}
+						shouldFail := false
+						expectedError := ""
+						expectedLocalError := ""
+						if clientConfig == QUICUseCodepointLegacy {
+							expectations = connectionExpectations{
+								quicTransportParamsLegacy: []byte{1, 2},
+							}
+						}
+						if serverSends != clientConfig {
+							expectations = connectionExpectations{}
+							shouldFail = true
+							if serverSends == QUICUseCodepointNeither {
+								expectedError = ":MISSING_EXTENSION:"
+							} else {
+								expectedLocalError = "remote error: unsupported extension"
+							}
+						} else {
+							flags = append(flags,
+								"-expect-quic-transport-params",
+								base64.StdEncoding.EncodeToString([]byte{3, 4}))
+						}
+						testCases = append(testCases, testCase{
+							testType: clientTest,
+							protocol: protocol,
+							name:     fmt.Sprintf("QUICTransportParams-Client-Client%s-Server%s-%s", clientConfig, serverSends, suffix),
+							config: Config{
+								MinVersion:                            ver.version,
+								MaxVersion:                            ver.version,
+								QUICTransportParams:                   []byte{3, 4},
+								QUICTransportParamsUseLegacyCodepoint: serverSends,
+							},
+							flags:                     flags,
+							expectations:              expectations,
+							shouldFail:                shouldFail,
+							expectedError:             expectedError,
+							expectedLocalError:        expectedLocalError,
+							skipTransportParamsConfig: true,
+						})
+					}
+				}
+				// Server sends params
+				for _, clientSends := range []QUICUseCodepoint{QUICUseCodepointStandard, QUICUseCodepointLegacy, QUICUseCodepointBoth, QUICUseCodepointNeither} {
+					for _, serverConfig := range []QUICUseCodepoint{QUICUseCodepointStandard, QUICUseCodepointLegacy} {
+						expectations := connectionExpectations{
+							quicTransportParams: []byte{3, 4},
+						}
+						shouldFail := false
+						expectedError := ""
+						useCodepointFlag := "0"
+						if serverConfig == QUICUseCodepointLegacy {
+							useCodepointFlag = "1"
+							expectations = connectionExpectations{
+								quicTransportParamsLegacy: []byte{3, 4},
+							}
+						}
+						flags := []string{
+							"-quic-transport-params",
+							base64.StdEncoding.EncodeToString([]byte{3, 4}),
+							"-quic-use-legacy-codepoint", useCodepointFlag,
+						}
+						if clientSends != QUICUseCodepointBoth && clientSends != serverConfig {
+							expectations = connectionExpectations{}
+							shouldFail = true
+							expectedError = ":MISSING_EXTENSION:"
+						} else {
+							flags = append(flags,
+								"-expect-quic-transport-params",
+								base64.StdEncoding.EncodeToString([]byte{1, 2}),
+							)
+						}
+						testCases = append(testCases, testCase{
+							testType: serverTest,
+							protocol: protocol,
+							name:     fmt.Sprintf("QUICTransportParams-Server-Client%s-Server%s-%s", clientSends, serverConfig, suffix),
+							config: Config{
+								MinVersion:                            ver.version,
+								MaxVersion:                            ver.version,
+								QUICTransportParams:                   []byte{1, 2},
+								QUICTransportParamsUseLegacyCodepoint: clientSends,
+							},
+							flags:                     flags,
+							expectations:              expectations,
+							shouldFail:                shouldFail,
+							expectedError:             expectedError,
+							skipTransportParamsConfig: true,
+						})
+					}
+				}
+			} else {
+				// Ensure non-QUIC client doesn't send QUIC transport parameters.
+				for _, clientConfig := range []QUICUseCodepoint{QUICUseCodepointStandard, QUICUseCodepointLegacy} {
+					useCodepointFlag := "0"
+					if clientConfig == QUICUseCodepointLegacy {
+						useCodepointFlag = "1"
+					}
+					testCases = append(testCases, testCase{
+						protocol: protocol,
+						testType: clientTest,
+						name:     fmt.Sprintf("QUICTransportParams-Client-NotSentInNonQUIC-%s-%s", clientConfig, suffix),
+						config: Config{
+							MinVersion:                            ver.version,
+							MaxVersion:                            ver.version,
+							QUICTransportParamsUseLegacyCodepoint: clientConfig,
+						},
+						flags: []string{
+							"-max-version",
+							strconv.Itoa(int(ver.versionWire)),
+							"-quic-transport-params",
+							base64.StdEncoding.EncodeToString([]byte{3, 4}),
+							"-quic-use-legacy-codepoint", useCodepointFlag,
+						},
+						shouldFail:                true,
+						expectedError:             ":QUIC_TRANSPORT_PARAMETERS_MISCONFIGURED:",
+						skipTransportParamsConfig: true,
+					})
+				}
+				// Ensure non-QUIC server rejects codepoint 57 but ignores legacy 0xffa5.
+				for _, clientSends := range []QUICUseCodepoint{QUICUseCodepointStandard, QUICUseCodepointLegacy, QUICUseCodepointBoth, QUICUseCodepointNeither} {
+					for _, serverConfig := range []QUICUseCodepoint{QUICUseCodepointStandard, QUICUseCodepointLegacy} {
+						shouldFail := false
+						expectedLocalError := ""
+						useCodepointFlag := "0"
+						if serverConfig == QUICUseCodepointLegacy {
+							useCodepointFlag = "1"
+						}
+						if clientSends == QUICUseCodepointStandard || clientSends == QUICUseCodepointBoth {
+							shouldFail = true
+							expectedLocalError = "remote error: unsupported extension"
+						}
+						testCases = append(testCases, testCase{
+							protocol: protocol,
+							testType: serverTest,
+							name:     fmt.Sprintf("QUICTransportParams-NonQUICServer-Client%s-Server%s-%s", clientSends, serverConfig, suffix),
+							config: Config{
+								MinVersion:                            ver.version,
+								MaxVersion:                            ver.version,
+								QUICTransportParams:                   []byte{1, 2},
+								QUICTransportParamsUseLegacyCodepoint: clientSends,
+							},
+							flags: []string{
+								"-quic-use-legacy-codepoint", useCodepointFlag,
+							},
+							shouldFail:                shouldFail,
+							expectedLocalError:        expectedLocalError,
+							skipTransportParamsConfig: true,
+						})
+					}
+				}
+
+			}
+
+			// Test ticket behavior.
+
+			// Resume with a corrupt ticket.
 			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "ALPS-Reject-Client-" + ver.name,
+				protocol: protocol,
+				testType: serverTest,
+				name:     "CorruptTicket-" + suffix,
 				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"foo"},
-					ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+					MaxVersion: ver.version,
 					Bugs: ProtocolBugs{
-						AlwaysNegotiateApplicationSettings: true,
+						FilterTicket: func(in []byte) ([]byte, error) {
+							in[len(in)-1] ^= 1
+							return in, nil
+						},
 					},
 				},
-				flags: []string{
-					"-advertise-alpn", "\x03foo",
-					"-expect-alpn", "foo",
-					"-application-settings", "foo,shim",
-				},
-				shouldFail:         true,
-				expectedError:      ":UNEXPECTED_EXTENSION:",
-				expectedLocalError: "remote error: unsupported extension",
+				resumeSession:        true,
+				expectResumeRejected: true,
 			})
+			// Test the ticket callback, with and without renewal.
 			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "ALPS-Reject-Client-Resume-" + ver.name,
+				protocol: protocol,
+				testType: serverTest,
+				name:     "TicketCallback-" + suffix,
 				config: Config{
 					MaxVersion: ver.version,
 				},
-				resumeConfig: &Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"foo"},
-					ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+				resumeSession: true,
+				flags:         []string{"-use-ticket-callback"},
+			})
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: serverTest,
+				name:     "TicketCallback-Renew-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
 					Bugs: ProtocolBugs{
-						AlwaysNegotiateApplicationSettings: true,
+						ExpectNewTicket: true,
 					},
 				},
+				flags:         []string{"-use-ticket-callback", "-renew-ticket"},
 				resumeSession: true,
-				flags: []string{
-					"-on-resume-advertise-alpn", "\x03foo",
-					"-on-resume-expect-alpn", "foo",
-					"-on-resume-application-settings", "foo,shim",
-				},
-				shouldFail:         true,
-				expectedError:      ":UNEXPECTED_EXTENSION:",
-				expectedLocalError: "remote error: unsupported extension",
 			})
 
-			// Test the server declines ALPS if it negotiates TLS 1.2 or below.
+			// Test that the ticket callback is only called once when everything before
+			// it in the ClientHello is asynchronous. This corrupts the ticket so
+			// certificate selection callbacks run.
 			testCases = append(testCases, testCase{
+				protocol: protocol,
 				testType: serverTest,
-				name:     "ALPS-Decline-Server-" + ver.name,
+				name:     "TicketCallback-SingleCall-" + suffix,
 				config: Config{
-					MaxVersion:          ver.version,
-					NextProtos:          []string{"foo"},
-					ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						FilterTicket: func(in []byte) ([]byte, error) {
+							in[len(in)-1] ^= 1
+							return in, nil
+						},
+					},
 				},
-				// Test both TLS 1.2 full and resumption handshakes.
-				resumeSession: true,
+				resumeSession:        true,
+				expectResumeRejected: true,
 				flags: []string{
-					"-select-alpn", "foo",
-					"-application-settings", "foo,shim",
+					"-use-ticket-callback",
+					"-async",
 				},
-				// If not specified, runner and shim both implicitly expect ALPS
-				// is not negotiated.
+			})
+
+			// Resume with various lengths of ticket session id.
+			if ver.version < VersionTLS13 {
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TicketSessionIDLength-0-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							EmptyTicketSessionID: true,
+						},
+					},
+					resumeSession: true,
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TicketSessionIDLength-16-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							TicketSessionIDLength: 16,
+						},
+					},
+					resumeSession: true,
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TicketSessionIDLength-32-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							TicketSessionIDLength: 32,
+						},
+					},
+					resumeSession: true,
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "TicketSessionIDLength-33-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							TicketSessionIDLength: 33,
+						},
+					},
+					resumeSession: true,
+					shouldFail:    true,
+					// The maximum session ID length is 32.
+					expectedError: ":DECODE_ERROR:",
+				})
+			}
+
+			// Basic DTLS-SRTP tests. Include fake profiles to ensure they
+			// are ignored.
+			if protocol == dtls {
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					name:     "SRTP-Client-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "SRTP-Server-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+					},
+				})
+				// Test that the MKI is ignored.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "SRTP-Server-IgnoreMKI-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{SRTP_AES128_CM_HMAC_SHA1_80},
+						Bugs: ProtocolBugs{
+							SRTPMasterKeyIdentifer: "bogus",
+						},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+					},
+				})
+				// Test that SRTP isn't negotiated on the server if there were
+				// no matching profiles.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "SRTP-Server-NoMatch-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{100, 101, 102},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: 0,
+					},
+				})
+				// Test that the server returning an invalid SRTP profile is
+				// flagged as an error by the client.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					name:     "SRTP-Client-NoMatch-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							SendSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_32,
+						},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80",
+					},
+					shouldFail:    true,
+					expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
+				})
+			}
+
+			// Test SCT list.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "SignedCertificateTimestampList-Client-" + suffix,
+				testType: clientTest,
+				config: Config{
+					MaxVersion: ver.version,
+				},
+				flags: []string{
+					"-enable-signed-cert-timestamps",
+					"-expect-signed-cert-timestamps",
+					base64.StdEncoding.EncodeToString(testSCTList),
+				},
+				resumeSession: true,
+			})
+
+			var differentSCTList []byte
+			differentSCTList = append(differentSCTList, testSCTList...)
+			differentSCTList[len(differentSCTList)-1] ^= 1
+
+			// The SCT extension did not specify that it must only be sent on resumption as it
+			// should have, so test that we tolerate but ignore it.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "SendSCTListOnResume-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						SendSCTListOnResume: differentSCTList,
+					},
+				},
+				flags: []string{
+					"-enable-signed-cert-timestamps",
+					"-expect-signed-cert-timestamps",
+					base64.StdEncoding.EncodeToString(testSCTList),
+				},
+				resumeSession: true,
+			})
+
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "SignedCertificateTimestampList-Server-" + suffix,
+				testType: serverTest,
+				config: Config{
+					MaxVersion: ver.version,
+				},
+				flags: []string{
+					"-signed-cert-timestamps",
+					base64.StdEncoding.EncodeToString(testSCTList),
+				},
+				expectations: connectionExpectations{
+					sctList: testSCTList,
+				},
+				resumeSession: true,
+			})
+
+			emptySCTListCert := *testCerts[0].cert
+			emptySCTListCert.SignedCertificateTimestampList = []byte{0, 0}
+
+			// Test empty SCT list.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "SignedCertificateTimestampListEmpty-Client-" + suffix,
+				testType: clientTest,
+				config: Config{
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{emptySCTListCert},
+				},
+				flags: []string{
+					"-enable-signed-cert-timestamps",
+				},
+				shouldFail:    true,
+				expectedError: ":ERROR_PARSING_EXTENSION:",
+			})
+
+			emptySCTCert := *testCerts[0].cert
+			emptySCTCert.SignedCertificateTimestampList = []byte{0, 6, 0, 2, 1, 2, 0, 0}
+
+			// Test empty SCT in non-empty list.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				name:     "SignedCertificateTimestampListEmptySCT-Client-" + suffix,
+				testType: clientTest,
+				config: Config{
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{emptySCTCert},
+				},
+				flags: []string{
+					"-enable-signed-cert-timestamps",
+				},
+				shouldFail:    true,
+				expectedError: ":ERROR_PARSING_EXTENSION:",
+			})
+
+			// Test that certificate-related extensions are not sent unsolicited.
+			testCases = append(testCases, testCase{
+				protocol: protocol,
+				testType: serverTest,
+				name:     "UnsolicitedCertificateExtensions-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						NoOCSPStapling:                true,
+						NoSignedCertificateTimestamps: true,
+					},
+				},
+				flags: []string{
+					"-ocsp-response",
+					base64.StdEncoding.EncodeToString(testOCSPResponse),
+					"-signed-cert-timestamps",
+					base64.StdEncoding.EncodeToString(testSCTList),
+				},
 			})
 		}
-
-		// Test Token Binding.
-
-		const maxTokenBindingVersion = 16
-		const minTokenBindingVersion = 13
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TokenBinding-Server-" + ver.name,
-
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				TokenBindingParams:  []byte{0, 1, 2},
-				TokenBindingVersion: maxTokenBindingVersion,
-			},
-			expectations: connectionExpectations{
-				tokenBinding:      true,
-				tokenBindingParam: 2,
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				"-expect-token-binding-param",
-				"2",
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TokenBinding-Server-UnsupportedParam-" + ver.name,
-
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				TokenBindingParams:  []byte{3},
-				TokenBindingVersion: maxTokenBindingVersion,
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TokenBinding-Server-OldVersion-" + ver.name,
-
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				TokenBindingParams:  []byte{0, 1, 2},
-				TokenBindingVersion: minTokenBindingVersion - 1,
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TokenBinding-Server-NewVersion-" + ver.name,
-
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				TokenBindingParams:  []byte{0, 1, 2},
-				TokenBindingVersion: maxTokenBindingVersion + 1,
-			},
-			expectations: connectionExpectations{
-				tokenBinding:      true,
-				tokenBindingParam: 2,
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				"-expect-token-binding-param",
-				"2",
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TokenBinding-Server-NoParams-" + ver.name,
-
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				TokenBindingParams:  []byte{},
-				TokenBindingVersion: maxTokenBindingVersion,
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-			},
-			shouldFail:    true,
-			expectedError: ":ERROR_PARSING_EXTENSION:",
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TokenBinding-Server-RepeatedParam" + ver.name,
-
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				TokenBindingParams:  []byte{0, 1, 2, 2},
-				TokenBindingVersion: maxTokenBindingVersion,
-			},
-			expectations: connectionExpectations{
-				tokenBinding:      true,
-				tokenBindingParam: 2,
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				"-expect-token-binding-param",
-				"2",
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-" + ver.name,
-
-			config: Config{
-				MinVersion:               ver.version,
-				MaxVersion:               ver.version,
-				TokenBindingParams:       []byte{2},
-				TokenBindingVersion:      maxTokenBindingVersion,
-				ExpectTokenBindingParams: []byte{0, 1, 2},
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expect-token-binding-param",
-				"2",
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-Unexpected-" + ver.name,
-
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				TokenBindingParams:  []byte{2},
-				TokenBindingVersion: maxTokenBindingVersion,
-			},
-			shouldFail:    true,
-			expectedError: ":UNEXPECTED_EXTENSION:",
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-ExtraParams-" + ver.name,
-
-			config: Config{
-				MinVersion:               ver.version,
-				MaxVersion:               ver.version,
-				TokenBindingParams:       []byte{2, 1},
-				TokenBindingVersion:      maxTokenBindingVersion,
-				ExpectTokenBindingParams: []byte{0, 1, 2},
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expect-token-binding-param",
-				"2",
-			},
-			shouldFail:    true,
-			expectedError: ":ERROR_PARSING_EXTENSION:",
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-NoParams-" + ver.name,
-
-			config: Config{
-				MinVersion:               ver.version,
-				MaxVersion:               ver.version,
-				TokenBindingParams:       []byte{},
-				TokenBindingVersion:      maxTokenBindingVersion,
-				ExpectTokenBindingParams: []byte{0, 1, 2},
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expect-token-binding-param",
-				"2",
-			},
-			shouldFail:    true,
-			expectedError: ":ERROR_PARSING_EXTENSION:",
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-WrongParam-" + ver.name,
-
-			config: Config{
-				MinVersion:               ver.version,
-				MaxVersion:               ver.version,
-				TokenBindingParams:       []byte{3},
-				TokenBindingVersion:      maxTokenBindingVersion,
-				ExpectTokenBindingParams: []byte{0, 1, 2},
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expect-token-binding-param",
-				"2",
-			},
-			shouldFail:    true,
-			expectedError: ":ERROR_PARSING_EXTENSION:",
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-OldVersion-" + ver.name,
-
-			config: Config{
-				MinVersion:               ver.version,
-				MaxVersion:               ver.version,
-				TokenBindingParams:       []byte{2},
-				TokenBindingVersion:      minTokenBindingVersion - 1,
-				ExpectTokenBindingParams: []byte{0, 1, 2},
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-MinVersion-" + ver.name,
-
-			config: Config{
-				MinVersion:               ver.version,
-				MaxVersion:               ver.version,
-				TokenBindingParams:       []byte{2},
-				TokenBindingVersion:      minTokenBindingVersion,
-				ExpectTokenBindingParams: []byte{0, 1, 2},
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expect-token-binding-param",
-				"2",
-			},
-		})
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "TokenBinding-Client-VersionTooNew-" + ver.name,
-
-			config: Config{
-				MinVersion:               ver.version,
-				MaxVersion:               ver.version,
-				TokenBindingParams:       []byte{2},
-				TokenBindingVersion:      maxTokenBindingVersion + 1,
-				ExpectTokenBindingParams: []byte{0, 1, 2},
-			},
-			flags: []string{
-				"-token-binding-params",
-				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-			},
-			shouldFail:    true,
-			expectedError: "ERROR_PARSING_EXTENSION",
-		})
-		if ver.version < VersionTLS13 {
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "TokenBinding-Client-NoEMS-" + ver.name,
-
-				config: Config{
-					MinVersion:               ver.version,
-					MaxVersion:               ver.version,
-					TokenBindingParams:       []byte{2},
-					TokenBindingVersion:      maxTokenBindingVersion,
-					ExpectTokenBindingParams: []byte{2, 1, 0},
-					Bugs: ProtocolBugs{
-						NoExtendedMasterSecret: true,
-					},
-				},
-				flags: []string{
-					"-token-binding-params",
-					base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				},
-				shouldFail:    true,
-				expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TokenBinding-Server-NoEMS-" + ver.name,
-
-				config: Config{
-					MinVersion:          ver.version,
-					MaxVersion:          ver.version,
-					TokenBindingParams:  []byte{0, 1, 2},
-					TokenBindingVersion: maxTokenBindingVersion,
-					Bugs: ProtocolBugs{
-						NoExtendedMasterSecret: true,
-					},
-				},
-				flags: []string{
-					"-token-binding-params",
-					base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				},
-				shouldFail:    true,
-				expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-			})
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "TokenBinding-Client-NoRI-" + ver.name,
-
-				config: Config{
-					MinVersion:               ver.version,
-					MaxVersion:               ver.version,
-					TokenBindingParams:       []byte{2},
-					TokenBindingVersion:      maxTokenBindingVersion,
-					ExpectTokenBindingParams: []byte{2, 1, 0},
-					Bugs: ProtocolBugs{
-						NoRenegotiationInfo: true,
-					},
-				},
-				flags: []string{
-					"-token-binding-params",
-					base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				},
-				shouldFail:    true,
-				expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TokenBinding-Server-NoRI-" + ver.name,
-
-				config: Config{
-					MinVersion:          ver.version,
-					MaxVersion:          ver.version,
-					TokenBindingParams:  []byte{0, 1, 2},
-					TokenBindingVersion: maxTokenBindingVersion,
-					Bugs: ProtocolBugs{
-						NoRenegotiationInfo: true,
-					},
-				},
-				flags: []string{
-					"-token-binding-params",
-					base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				},
-				shouldFail:    true,
-				expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-			})
-		} else {
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "TokenBinding-WithEarlyDataFails-" + ver.name,
-				config: Config{
-					MinVersion:               ver.version,
-					MaxVersion:               ver.version,
-					TokenBindingParams:       []byte{2},
-					TokenBindingVersion:      maxTokenBindingVersion,
-					ExpectTokenBindingParams: []byte{2, 1, 0},
-				},
-				resumeSession: true,
-				earlyData:     true,
-				flags: []string{
-					"-token-binding-params",
-					base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				},
-				shouldFail:    true,
-				expectedError: ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TokenBinding-EarlyDataRejected-" + ver.name,
-				config: Config{
-					MinVersion:          ver.version,
-					MaxVersion:          ver.version,
-					TokenBindingParams:  []byte{0, 1, 2},
-					TokenBindingVersion: maxTokenBindingVersion,
-				},
-				resumeSession:           true,
-				earlyData:               true,
-				expectEarlyDataRejected: true,
-				expectations: connectionExpectations{
-					tokenBinding:      true,
-					tokenBindingParam: 2,
-				},
-				flags: []string{
-					"-token-binding-params",
-					base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-					"-on-retry-expect-early-data-reason", "token_binding",
-				},
-			})
-		}
-
-		// Test QUIC transport params
-		if ver.version >= VersionTLS13 {
-			// Client sends params
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				protocol: quic,
-				name:     "QUICTransportParams-Client-" + ver.name,
-				config: Config{
-					MinVersion:          ver.version,
-					MaxVersion:          ver.version,
-					QUICTransportParams: []byte{1, 2},
-				},
-				flags: []string{
-					"-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{3, 4}),
-					"-expect-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{1, 2}),
-				},
-				expectations: connectionExpectations{
-					quicTransportParams: []byte{3, 4},
-				},
-				skipTransportParamsConfig: true,
-			})
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				protocol: quic,
-				name:     "QUICTransportParams-Client-RejectMissing-" + ver.name,
-				config: Config{
-					MinVersion: ver.version,
-					MaxVersion: ver.version,
-				},
-				flags: []string{
-					"-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{3, 4}),
-				},
-				shouldFail:                true,
-				expectedError:             ":MISSING_EXTENSION:",
-				skipTransportParamsConfig: true,
-			})
-			// Server sends params
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				protocol: quic,
-				name:     "QUICTransportParams-Server-" + ver.name,
-				config: Config{
-					MinVersion:          ver.version,
-					MaxVersion:          ver.version,
-					QUICTransportParams: []byte{1, 2},
-				},
-				flags: []string{
-					"-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{3, 4}),
-					"-expect-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{1, 2}),
-				},
-				expectations: connectionExpectations{
-					quicTransportParams: []byte{3, 4},
-				},
-				skipTransportParamsConfig: true,
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				protocol: quic,
-				name:     "QUICTransportParams-Server-RejectMissing-" + ver.name,
-				config: Config{
-					MinVersion: ver.version,
-					MaxVersion: ver.version,
-				},
-				flags: []string{
-					"-quic-transport-params",
-					base64.StdEncoding.EncodeToString([]byte{3, 4}),
-				},
-				expectations: connectionExpectations{
-					quicTransportParams: []byte{3, 4},
-				},
-				shouldFail:                true,
-				expectedError:             ":MISSING_EXTENSION:",
-				skipTransportParamsConfig: true,
-			})
-		}
-		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     "QUICTransportParams-Client-NotSentInTLS-" + ver.name,
-			config: Config{
-				MinVersion: ver.version,
-				MaxVersion: ver.version,
-			},
-			flags: []string{
-				"-max-version",
-				strconv.Itoa(int(ver.version)),
-				"-quic-transport-params",
-				base64.StdEncoding.EncodeToString([]byte{3, 4}),
-			},
-			shouldFail:                true,
-			expectedError:             ":QUIC_TRANSPORT_PARAMETERS_MISCONFIGURED:",
-			skipTransportParamsConfig: true,
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "QUICTransportParams-Server-RejectedInTLS-" + ver.name,
-			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				QUICTransportParams: []byte{1, 2},
-			},
-			flags: []string{
-				"-expect-quic-transport-params",
-				base64.StdEncoding.EncodeToString([]byte{1, 2}),
-			},
-			shouldFail:                true,
-			expectedLocalError:        "remote error: unsupported extension",
-			skipTransportParamsConfig: true,
-		})
-
-		// Test ticket behavior.
-
-		// Resume with a corrupt ticket.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "CorruptTicket-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					FilterTicket: func(in []byte) ([]byte, error) {
-						in[len(in)-1] ^= 1
-						return in, nil
-					},
-				},
-			},
-			resumeSession:        true,
-			expectResumeRejected: true,
-		})
-		// Test the ticket callback, with and without renewal.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TicketCallback-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-			},
-			resumeSession: true,
-			flags:         []string{"-use-ticket-callback"},
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TicketCallback-Renew-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					ExpectNewTicket: true,
-				},
-			},
-			flags:         []string{"-use-ticket-callback", "-renew-ticket"},
-			resumeSession: true,
-		})
-
-		// Test that the ticket callback is only called once when everything before
-		// it in the ClientHello is asynchronous. This corrupts the ticket so
-		// certificate selection callbacks run.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "TicketCallback-SingleCall-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					FilterTicket: func(in []byte) ([]byte, error) {
-						in[len(in)-1] ^= 1
-						return in, nil
-					},
-				},
-			},
-			resumeSession:        true,
-			expectResumeRejected: true,
-			flags: []string{
-				"-use-ticket-callback",
-				"-async",
-			},
-		})
-
-		// Resume with various lengths of ticket session id.
-		if ver.version < VersionTLS13 {
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TicketSessionIDLength-0-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						EmptyTicketSessionID: true,
-					},
-				},
-				resumeSession: true,
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TicketSessionIDLength-16-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						TicketSessionIDLength: 16,
-					},
-				},
-				resumeSession: true,
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TicketSessionIDLength-32-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						TicketSessionIDLength: 32,
-					},
-				},
-				resumeSession: true,
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "TicketSessionIDLength-33-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						TicketSessionIDLength: 33,
-					},
-				},
-				resumeSession: true,
-				shouldFail:    true,
-				// The maximum session ID length is 32.
-				expectedError: ":DECODE_ERROR:",
-			})
-		}
-
-		// Basic DTLS-SRTP tests. Include fake profiles to ensure they
-		// are ignored.
-		if ver.hasDTLS {
-			testCases = append(testCases, testCase{
-				protocol: dtls,
-				name:     "SRTP-Client-" + ver.name,
-				config: Config{
-					MaxVersion:             ver.version,
-					SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
-				},
-				flags: []string{
-					"-srtp-profiles",
-					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-				},
-				expectations: connectionExpectations{
-					srtpProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
-				},
-			})
-			testCases = append(testCases, testCase{
-				protocol: dtls,
-				testType: serverTest,
-				name:     "SRTP-Server-" + ver.name,
-				config: Config{
-					MaxVersion:             ver.version,
-					SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
-				},
-				flags: []string{
-					"-srtp-profiles",
-					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-				},
-				expectations: connectionExpectations{
-					srtpProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
-				},
-			})
-			// Test that the MKI is ignored.
-			testCases = append(testCases, testCase{
-				protocol: dtls,
-				testType: serverTest,
-				name:     "SRTP-Server-IgnoreMKI-" + ver.name,
-				config: Config{
-					MaxVersion:             ver.version,
-					SRTPProtectionProfiles: []uint16{SRTP_AES128_CM_HMAC_SHA1_80},
-					Bugs: ProtocolBugs{
-						SRTPMasterKeyIdentifer: "bogus",
-					},
-				},
-				flags: []string{
-					"-srtp-profiles",
-					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-				},
-				expectations: connectionExpectations{
-					srtpProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
-				},
-			})
-			// Test that SRTP isn't negotiated on the server if there were
-			// no matching profiles.
-			testCases = append(testCases, testCase{
-				protocol: dtls,
-				testType: serverTest,
-				name:     "SRTP-Server-NoMatch-" + ver.name,
-				config: Config{
-					MaxVersion:             ver.version,
-					SRTPProtectionProfiles: []uint16{100, 101, 102},
-				},
-				flags: []string{
-					"-srtp-profiles",
-					"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
-				},
-				expectations: connectionExpectations{
-					srtpProtectionProfile: 0,
-				},
-			})
-			// Test that the server returning an invalid SRTP profile is
-			// flagged as an error by the client.
-			testCases = append(testCases, testCase{
-				protocol: dtls,
-				name:     "SRTP-Client-NoMatch-" + ver.name,
-				config: Config{
-					MaxVersion: ver.version,
-					Bugs: ProtocolBugs{
-						SendSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_32,
-					},
-				},
-				flags: []string{
-					"-srtp-profiles",
-					"SRTP_AES128_CM_SHA1_80",
-				},
-				shouldFail:    true,
-				expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
-			})
-		}
-
-		// Test SCT list.
-		testCases = append(testCases, testCase{
-			name:     "SignedCertificateTimestampList-Client-" + ver.name,
-			testType: clientTest,
-			config: Config{
-				MaxVersion: ver.version,
-			},
-			flags: []string{
-				"-enable-signed-cert-timestamps",
-				"-expect-signed-cert-timestamps",
-				base64.StdEncoding.EncodeToString(testSCTList),
-			},
-			resumeSession: true,
-		})
-
-		var differentSCTList []byte
-		differentSCTList = append(differentSCTList, testSCTList...)
-		differentSCTList[len(differentSCTList)-1] ^= 1
-
-		// The SCT extension did not specify that it must only be sent on resumption as it
-		// should have, so test that we tolerate but ignore it.
-		testCases = append(testCases, testCase{
-			name: "SendSCTListOnResume-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					SendSCTListOnResume: differentSCTList,
-				},
-			},
-			flags: []string{
-				"-enable-signed-cert-timestamps",
-				"-expect-signed-cert-timestamps",
-				base64.StdEncoding.EncodeToString(testSCTList),
-			},
-			resumeSession: true,
-		})
-
-		testCases = append(testCases, testCase{
-			name:     "SignedCertificateTimestampList-Server-" + ver.name,
-			testType: serverTest,
-			config: Config{
-				MaxVersion: ver.version,
-			},
-			flags: []string{
-				"-signed-cert-timestamps",
-				base64.StdEncoding.EncodeToString(testSCTList),
-			},
-			expectations: connectionExpectations{
-				sctList: testSCTList,
-			},
-			resumeSession: true,
-		})
-
-		emptySCTListCert := *testCerts[0].cert
-		emptySCTListCert.SignedCertificateTimestampList = []byte{0, 0}
-
-		// Test empty SCT list.
-		testCases = append(testCases, testCase{
-			name:     "SignedCertificateTimestampListEmpty-Client-" + ver.name,
-			testType: clientTest,
-			config: Config{
-				MaxVersion:   ver.version,
-				Certificates: []Certificate{emptySCTListCert},
-			},
-			flags: []string{
-				"-enable-signed-cert-timestamps",
-			},
-			shouldFail:    true,
-			expectedError: ":ERROR_PARSING_EXTENSION:",
-		})
-
-		emptySCTCert := *testCerts[0].cert
-		emptySCTCert.SignedCertificateTimestampList = []byte{0, 6, 0, 2, 1, 2, 0, 0}
-
-		// Test empty SCT in non-empty list.
-		testCases = append(testCases, testCase{
-			name:     "SignedCertificateTimestampListEmptySCT-Client-" + ver.name,
-			testType: clientTest,
-			config: Config{
-				MaxVersion:   ver.version,
-				Certificates: []Certificate{emptySCTCert},
-			},
-			flags: []string{
-				"-enable-signed-cert-timestamps",
-			},
-			shouldFail:    true,
-			expectedError: ":ERROR_PARSING_EXTENSION:",
-		})
-
-		// Test that certificate-related extensions are not sent unsolicited.
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "UnsolicitedCertificateExtensions-" + ver.name,
-			config: Config{
-				MaxVersion: ver.version,
-				Bugs: ProtocolBugs{
-					NoOCSPStapling:                true,
-					NoSignedCertificateTimestamps: true,
-				},
-			},
-			flags: []string{
-				"-ocsp-response",
-				base64.StdEncoding.EncodeToString(testOCSPResponse),
-				"-signed-cert-timestamps",
-				base64.StdEncoding.EncodeToString(testSCTList),
-			},
-		})
 	}
 
 	testCases = append(testCases, testCase{
@@ -9739,11 +10047,13 @@ func addSignatureAlgorithmTests() {
 							fakeSigAlg2,
 						},
 					},
-					flags: []string{
-						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-						"-enable-all-curves",
-					},
+					flags: append(
+						[]string{
+							"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+							"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					shouldFail:         shouldFail,
 					expectedError:      signError,
 					expectedLocalError: signLocalError,
@@ -9761,12 +10071,14 @@ func addSignatureAlgorithmTests() {
 						MaxVersion:                ver.version,
 						VerifySignatureAlgorithms: allAlgorithms,
 					},
-					flags: []string{
-						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-						"-enable-all-curves",
-						"-signing-prefs", strconv.Itoa(int(alg.id)),
-					},
+					flags: append(
+						[]string{
+							"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+							"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+							"-signing-prefs", strconv.Itoa(int(alg.id)),
+						},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					expectations: connectionExpectations{
 						peerSignatureAlgorithm: alg.id,
 					},
@@ -9803,12 +10115,14 @@ func addSignatureAlgorithmTests() {
 							IgnorePeerSignatureAlgorithmPreferences: shouldFail,
 						},
 					},
-					flags: []string{
-						"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-						"-enable-all-curves",
-						// The algorithm may be disabled by default, so explicitly enable it.
-						"-verify-prefs", strconv.Itoa(int(alg.id)),
-					},
+					flags: append(
+						[]string{
+							"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+							// The algorithm may be disabled by default, so explicitly enable it.
+							"-verify-prefs", strconv.Itoa(int(alg.id)),
+						},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
 					resumeSession:      !shouldFail,
@@ -9834,10 +10148,10 @@ func addSignatureAlgorithmTests() {
 							IgnorePeerSignatureAlgorithmPreferences: rejectByDefault,
 						},
 					},
-					flags: []string{
-						"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-						"-enable-all-curves",
-					},
+					flags: append(
+						[]string{"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id))},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
 					resumeSession:      !rejectByDefault,
@@ -9860,11 +10174,11 @@ func addSignatureAlgorithmTests() {
 							InvalidSignature: true,
 						},
 					},
-					flags: []string{
-						"-enable-all-curves",
+					flags: append(
 						// The algorithm may be disabled by default, so explicitly enable it.
-						"-verify-prefs", strconv.Itoa(int(alg.id)),
-					},
+						[]string{"-verify-prefs", strconv.Itoa(int(alg.id))},
+						flagInts("-curves", shimConfig.AllCurves)...,
+					),
 					shouldFail:    true,
 					expectedError: ":BAD_SIGNATURE:",
 				}
@@ -11248,10 +11562,10 @@ func addCurveTests() {
 					},
 					CurvePreferences: []CurveID{curve.id},
 				},
-				flags: []string{
-					"-enable-all-curves",
-					"-expect-curve-id", strconv.Itoa(int(curve.id)),
-				},
+				flags: append(
+					[]string{"-expect-curve-id", strconv.Itoa(int(curve.id))},
+					flagInts("-curves", shimConfig.AllCurves)...,
+				),
 				expectations: connectionExpectations{
 					curveID: curve.id,
 				},
@@ -11268,10 +11582,10 @@ func addCurveTests() {
 					},
 					CurvePreferences: []CurveID{curve.id},
 				},
-				flags: []string{
-					"-enable-all-curves",
-					"-expect-curve-id", strconv.Itoa(int(curve.id)),
-				},
+				flags: append(
+					[]string{"-expect-curve-id", strconv.Itoa(int(curve.id))},
+					flagInts("-curves", shimConfig.AllCurves)...,
+				),
 				expectations: connectionExpectations{
 					curveID: curve.id,
 				},
@@ -11292,7 +11606,7 @@ func addCurveTests() {
 							SendCompressedCoordinates: true,
 						},
 					},
-					flags:         []string{"-enable-all-curves"},
+					flags:         flagInts("-curves", shimConfig.AllCurves),
 					shouldFail:    true,
 					expectedError: ":BAD_ECPOINT:",
 				})
@@ -11311,7 +11625,7 @@ func addCurveTests() {
 							SendCompressedCoordinates: true,
 						},
 					},
-					flags:         []string{"-enable-all-curves"},
+					flags:         flagInts("-curves", shimConfig.AllCurves),
 					shouldFail:    true,
 					expectedError: ":BAD_ECPOINT:",
 				})
@@ -11907,6 +12221,26 @@ func addSessionTicketTests() {
 		},
 		resumeSession:        true,
 		expectResumeRejected: true,
+	})
+
+	// Test that the server rejects ClientHellos with pre_shared_key but without
+	// psk_key_exchange_modes.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-SendNoKEMModesWithPSK-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKKeyExchangeModes: []byte{},
+			},
+		},
+		resumeSession:      true,
+		shouldFail:         true,
+		expectedLocalError: "remote error: missing extension",
+		expectedError:      ":MISSING_EXTENSION:",
 	})
 
 	// Test that the client ticket age is sent correctly.
@@ -13021,22 +13355,6 @@ func addWrongMessageTypeTests() {
 
 		testCases = append(testCases, t.test)
 	}
-
-	// The processing order for TLS 1.3 version negotiation is such that one
-	// may accidentally accept a HelloRetryRequest in lieu of ServerHello in
-	// TLS 1.2. Test that we do not do this.
-	testCases = append(testCases, testCase{
-		name: "SendServerHelloAsHelloRetryRequest",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				SendServerHelloAsHelloRetryRequest: true,
-			},
-		},
-		shouldFail:         true,
-		expectedError:      ":UNEXPECTED_MESSAGE:",
-		expectedLocalError: "remote error: unexpected message",
-	})
 }
 
 func addTrailingMessageDataTests() {
@@ -13200,7 +13518,9 @@ func addTLS13HandshakeTests() {
 		},
 	})
 
-	// Test that the client sends a fake session ID in TLS 1.3.
+	// Test that the client sends a fake session ID in TLS 1.3. We cover both
+	// normal and resumption handshakes to capture interactions with the
+	// session resumption path.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
 		name:     "TLS13SessionID-TLS13",
@@ -13210,6 +13530,7 @@ func addTLS13HandshakeTests() {
 				ExpectClientHelloSessionID: true,
 			},
 		},
+		resumeSession: true,
 	})
 
 	// Test that the client omits the fake session ID when the max version is TLS 1.2 and below.
@@ -13308,6 +13629,23 @@ func addTLS13HandshakeTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SkipEarlyData-OmitEarlyDataExtension-HelloRetryRequest-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// Require a HelloRetryRequest for every curve.
+			DefaultCurves: []CurveID{},
+			Bugs: ProtocolBugs{
+				SendFakeEarlyDataLength: 4,
+				OmitEarlyDataExtension:  true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_RECORD:",
+		expectedLocalError: "remote error: unexpected message",
 	})
 
 	testCases = append(testCases, testCase{
@@ -15721,8 +16059,8 @@ func addCertCompressionTests() {
 	}
 
 	const (
-		shrinkingAlgId = 0xff01
-		expandingAlgId = 0xff02
+		shrinkingAlgID = 0xff01
+		expandingAlgID = 0xff02
 	)
 
 	for _, ver := range tlsVersions {
@@ -15771,7 +16109,7 @@ func addCertCompressionTests() {
 				config: Config{
 					MinVersion:          ver.version,
 					MaxVersion:          ver.version,
-					CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgId: expanding},
+					CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgID: expanding},
 				},
 			})
 
@@ -15785,9 +16123,9 @@ func addCertCompressionTests() {
 			config: Config{
 				MinVersion:          ver.version,
 				MaxVersion:          ver.version,
-				CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgId: expanding},
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgID: expanding},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgId,
+					ExpectedCompressedCert: expandingAlgID,
 				},
 			},
 		})
@@ -15799,15 +16137,15 @@ func addCertCompressionTests() {
 			config: Config{
 				MinVersion:          ver.version,
 				MaxVersion:          ver.version,
-				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgId: shrinking},
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgID: shrinking},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: shrinkingAlgId,
+					ExpectedCompressedCert: shrinkingAlgID,
 				},
 			},
 		})
 
 		// With both algorithms configured, the server should pick its most
-		// preferable. (Which is expandingAlgId.)
+		// preferable. (Which is expandingAlgID.)
 		testCases = append(testCases, testCase{
 			testType: serverTest,
 			name:     "CertCompressionPriority-" + ver.name,
@@ -15816,11 +16154,11 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
-					expandingAlgId: expanding,
+					shrinkingAlgID: shrinking,
+					expandingAlgID: expanding,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgId,
+					ExpectedCompressedCert: expandingAlgID,
 				},
 			},
 		})
@@ -15833,10 +16171,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					expandingAlgId: expanding,
+					expandingAlgID: expanding,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgId,
+					ExpectedCompressedCert: expandingAlgID,
 				},
 			},
 		})
@@ -15849,27 +16187,27 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: shrinkingAlgId,
+					ExpectedCompressedCert: shrinkingAlgID,
 				},
 			},
 		})
 
 		testCases = append(testCases, testCase{
 			testType: clientTest,
-			name:     "CertCompressionBadAlgIdClient-" + ver.name,
+			name:     "CertCompressionBadAlgIDClient-" + ver.name,
 			flags:    []string{"-install-cert-compression-algs"},
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:   shrinkingAlgId,
-					SendCertCompressionAlgId: 1234,
+					ExpectedCompressedCert:   shrinkingAlgID,
+					SendCertCompressionAlgID: 1234,
 				},
 			},
 			shouldFail:    true,
@@ -15884,10 +16222,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:     shrinkingAlgId,
+					ExpectedCompressedCert:     shrinkingAlgID,
 					SendCertUncompressedLength: 12,
 				},
 			},
@@ -15903,10 +16241,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:     shrinkingAlgId,
+					ExpectedCompressedCert:     shrinkingAlgID,
 					SendCertUncompressedLength: 1 << 20,
 				},
 			},
@@ -16182,6 +16520,1020 @@ func addDelegatedCredentialTests() {
 	})
 }
 
+type echCipher struct {
+	name   string
+	cipher HPKECipherSuite
+}
+
+var echCiphers = []echCipher{
+	{
+		name:   "HKDF-SHA256-AES-128-GCM",
+		cipher: HPKECipherSuite{KDF: hpke.HKDFSHA256, AEAD: hpke.AES128GCM},
+	},
+	{
+		name:   "HKDF-SHA256-AES-256-GCM",
+		cipher: HPKECipherSuite{KDF: hpke.HKDFSHA256, AEAD: hpke.AES256GCM},
+	}, {
+		name:   "HKDF-SHA256-ChaCha20-Poly1305",
+		cipher: HPKECipherSuite{KDF: hpke.HKDFSHA256, AEAD: hpke.ChaCha20Poly1305},
+	},
+}
+
+// generateECHConfigWithSecretKey constructs a valid ECHConfig and corresponding
+// private key for the server. If the cipher list is empty, all ciphers are
+// included.
+func generateECHConfigWithSecretKey(publicName string, ciphers []HPKECipherSuite) (*ECHConfig, []byte, error) {
+	publicKeyR, secretKeyR, err := hpke.GenerateKeyPair()
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(ciphers) == 0 {
+		ciphers = make([]HPKECipherSuite, 0, len(echCiphers))
+		for _, cipher := range echCiphers {
+			ciphers = append(ciphers, cipher.cipher)
+		}
+	}
+	result := ECHConfig{
+		PublicName:   publicName,
+		PublicKey:    publicKeyR,
+		KEM:          hpke.X25519WithHKDFSHA256,
+		CipherSuites: ciphers,
+		// For real-life purposes, the maxNameLen should be
+		// based on the set of domain names that the server
+		// represents.
+		MaxNameLen: 16,
+	}
+	return &result, secretKeyR, nil
+}
+
+func addEncryptedClientHelloTests() {
+	publicECHConfig, secretKey, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
+	}
+	publicECHConfig1, secretKey1, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
+	}
+	publicECHConfig2, secretKey2, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
+	}
+	publicECHConfig3, secretKey3, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, protocol := range []protocol{tls, quic} {
+		prefix := protocol.String() + "-"
+
+		// There are two ClientHellos, so many of our tests have
+		// HelloRetryRequest variations.
+		for _, hrr := range []bool{false, true} {
+			var suffix string
+			var defaultCurves []CurveID
+			if hrr {
+				suffix = "-HelloRetryRequest"
+				// Require a HelloRetryRequest for every curve.
+				defaultCurves = []CurveID{}
+			}
+
+			// Test the server can accept ECH.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					DefaultCurves:   defaultCurves,
+				},
+				resumeSession: true,
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test the server can accept ECH with a minimal ClientHelloOuter.
+			// This confirms that the server does not unexpectedly pick up
+			// fields from the wrong ClientHello.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-MinimalClientHelloOuter" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					DefaultCurves:   defaultCurves,
+					Bugs: ProtocolBugs{
+						MinimalClientHelloOuter: true,
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test that the server can decline ECH. In particular, it must send
+			// retry configs.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-Decline" + suffix,
+				config: Config{
+					ServerName:    "secret.example",
+					DefaultCurves: defaultCurves,
+					// The client uses an ECHConfig that the server does not understand
+					// so we can observe which retry configs the server sends back.
+					ClientECHConfig: publicECHConfig,
+					Bugs: ProtocolBugs{
+						OfferSessionInClientHelloOuter: true,
+						ExpectECHRetryConfigs:          MarshalECHConfigList(publicECHConfig2, publicECHConfig3),
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					// Configure three ECHConfigs on the shim, only two of which
+					// should be sent in retry configs.
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig1)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey1),
+					"-ech-is-retry-config", "0",
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig2)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey2),
+					"-ech-is-retry-config", "1",
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig3)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey3),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "public.example",
+				},
+			})
+
+			// Test that the server considers a ClientHelloInner indicating TLS
+			// 1.2 to be a fatal error.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-TLS12InInner" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					Bugs: ProtocolBugs{
+						AllowTLS12InClientHelloInner: true,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1"},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":INVALID_CLIENT_HELLO_INNER:",
+			})
+
+			// When ech_is_inner extension is absent from the ClientHelloInner, the
+			// server should fail the connection.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-MissingECHIsInner" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					Bugs: ProtocolBugs{
+						OmitECHIsInner:       !hrr,
+						OmitSecondECHIsInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":INVALID_CLIENT_HELLO_INNER:",
+			})
+
+			// Test that the server can decode ech_outer_extensions.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionKeyShare,
+						extensionSupportedCurves,
+						// Include a custom extension, to test that unrecognized
+						// extensions are also decoded.
+						extensionCustom,
+					},
+					Bugs: ProtocolBugs{
+						CustomExtension: "test",
+						// Ensure ClientHelloOuter's extension order is different
+						// from ClientHelloInner. This tests that the server
+						// correctly reconstructs the extension order.
+						FirstExtensionInClientHelloOuter:   extensionSupportedCurves,
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test that the server rejects duplicated values in ech_outer_extensions.
+			// Besides causing the server to reconstruct an invalid ClientHelloInner
+			// with duplicated extensions, this behavior would be vulnerable to DoS
+			// attacks.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions-Duplicate" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionSupportedCurves,
+						extensionSupportedCurves,
+					},
+					Bugs: ProtocolBugs{
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":DUPLICATE_EXTENSION:",
+			})
+
+			// Test that the server rejects references to missing extensions in
+			// ech_outer_extensions.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions-Missing" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionCustom,
+					},
+					Bugs: ProtocolBugs{
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":DECODE_ERROR:",
+			})
+
+			// Test that the server rejects a references to the ECH extension in
+			// ech_outer_extensions. The ECH extension is not authenticated in the
+			// AAD and would result in an invalid ClientHelloInner.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions-SelfReference" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionEncryptedClientHello,
+					},
+					Bugs: ProtocolBugs{
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":DECODE_ERROR:",
+			})
+		}
+
+		// Test that ECH, which runs before an async early callback, interacts
+		// correctly in the state machine.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-AsyncEarlyCallback",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+			},
+			flags: []string{
+				"-async",
+				"-use-early-callback",
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "secret.example",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test ECH-enabled server with two ECHConfigs can decrypt client's ECH when
+		// it uses the second ECHConfig.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-SecondECHConfig",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig1,
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig1)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey1),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "secret.example",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test all supported ECH cipher suites.
+		for i, cipher := range echCiphers {
+			otherCipher := echCiphers[0]
+			if i == 0 {
+				otherCipher = echCiphers[1]
+			}
+
+			// Test the ECH server can handle the specified cipher.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-Cipher-" + cipher.name,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test that the ECH server rejects the specified cipher if not
+			// listed in its ECHConfig.
+			config, key, err := generateECHConfigWithSecretKey("public.example", []HPKECipherSuite{otherCipher.cipher})
+			if err != nil {
+				panic(err)
+			}
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-DisabledCipher-" + cipher.name,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
+					Bugs: ProtocolBugs{
+						ExpectECHRetryConfigs: MarshalECHConfigList(config),
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(config)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "public.example",
+				},
+			})
+		}
+
+		// Test that the ECH server handles a short ClientECH.enc value by
+		// falling back to ClientHelloOuter.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ShortClientECHEnc",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					ExpectECHRetryConfigs: MarshalECHConfigList(publicECHConfig),
+					TruncateClientECHEnc:  true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "public.example",
+			},
+		})
+
+		// Test that the server handles decryption failure by falling back to
+		// ClientHelloOuter.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-CorruptEncryptedClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					ExpectECHRetryConfigs:       MarshalECHConfigList(publicECHConfig),
+					CorruptEncryptedClientHello: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+		})
+
+		// Test that the server treats decryption failure in the second
+		// ClientHello as fatal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-CorruptSecondEncryptedClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				// Force a HelloRetryRequest.
+				DefaultCurves: []CurveID{},
+				Bugs: ProtocolBugs{
+					CorruptSecondEncryptedClientHello: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			shouldFail:         true,
+			expectedError:      ":DECRYPTION_FAILED:",
+			expectedLocalError: "remote error: error decrypting message",
+		})
+
+		// Test that the server treats a missing second ECH extension as fatal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-OmitSecondEncryptedClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				// Force a HelloRetryRequest.
+				DefaultCurves: []CurveID{},
+				Bugs: ProtocolBugs{
+					OmitSecondEncryptedClientHello: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			shouldFail:         true,
+			expectedError:      ":MISSING_EXTENSION:",
+			expectedLocalError: "remote error: missing extension",
+		})
+
+		// Test early data works with ECH, in both accept and reject cases.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-EarlyData",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+			},
+			resumeSession: true,
+			earlyData:     true,
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-EarlyDataRejected",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					// Cause the server to reject 0-RTT with a bad ticket age.
+					SendTicketAge: 1 * time.Hour,
+				},
+			},
+			resumeSession:           true,
+			earlyData:               true,
+			expectEarlyDataRejected: true,
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test servers with ECH disabled correctly ignore the extension and
+		// handshake with the ClientHelloOuter.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-Disabled",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+			},
+			flags: []string{
+				"-expect-server-name", "public.example",
+			},
+		})
+
+		// Test the client's behavior when the server ignores ECH GREASE.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectClientECH: true,
+				},
+			},
+			flags: []string{"-enable-ech-grease"},
+		})
+
+		// Test the client's ECH GREASE behavior when responding to server's
+		// HelloRetryRequest. This test implicitly checks that the first and second
+		// ClientHello messages have identical ECH extensions.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13-HelloRetryRequest",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				// P-384 requires a HelloRetryRequest against BoringSSL's default
+				// configuration. Assert this with ExpectMissingKeyShare.
+				CurvePreferences: []CurveID{CurveP384},
+				Bugs: ProtocolBugs{
+					ExpectMissingKeyShare: true,
+					ExpectClientECH:       true,
+				},
+			},
+			flags: []string{"-enable-ech-grease", "-expect-hrr"},
+		})
+
+		retryConfigValid := ECHConfig{
+			PublicName: "example.com",
+			// A real X25519 public key obtained from hpke.GenerateKeyPair().
+			PublicKey: []byte{
+				0x23, 0x1a, 0x96, 0x53, 0x52, 0x81, 0x1d, 0x7a,
+				0x36, 0x76, 0xaa, 0x5e, 0xad, 0xdb, 0x66, 0x1c,
+				0x92, 0x45, 0x8a, 0x60, 0xc7, 0x81, 0x93, 0xb0,
+				0x47, 0x7b, 0x54, 0x18, 0x6b, 0x9a, 0x1d, 0x6d},
+			KEM: hpke.X25519WithHKDFSHA256,
+			CipherSuites: []HPKECipherSuite{
+				{
+					KDF:  hpke.HKDFSHA256,
+					AEAD: hpke.AES256GCM,
+				},
+			},
+			MaxNameLen: 42,
+		}
+
+		retryConfigUnsupportedVersion := []byte{
+			// version
+			0xba, 0xdd,
+			// length
+			0x00, 0x05,
+			// contents
+			0x05, 0x04, 0x03, 0x02, 0x01,
+		}
+
+		validAndInvalidConfigsBuilder := newByteBuilder()
+		validAndInvalidConfigsBody := validAndInvalidConfigsBuilder.addU16LengthPrefixed()
+		validAndInvalidConfigsBody.addBytes(MarshalECHConfig(&retryConfigValid))
+		validAndInvalidConfigsBody.addBytes(retryConfigUnsupportedVersion)
+		validAndInvalidConfigs := validAndInvalidConfigsBuilder.finish()
+
+		// Test that the client accepts a well-formed encrypted_client_hello
+		// extension in response to ECH GREASE. The response includes one ECHConfig
+		// with a supported version and one with an unsupported version.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13-Retry-Configs",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectClientECH: true,
+					// Include an additional well-formed ECHConfig with an invalid
+					// version. This ensures the client can iterate over the retry
+					// configs.
+					SendECHRetryConfigs: validAndInvalidConfigs,
+				},
+			},
+			flags: []string{"-enable-ech-grease"},
+		})
+
+		// Test that the client aborts with a decode_error alert when it receives a
+		// syntactically-invalid encrypted_client_hello extension from the server.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13-Invalid-Retry-Configs",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectClientECH:     true,
+					SendECHRetryConfigs: []byte{0xba, 0xdd, 0xec, 0xcc},
+				},
+			},
+			flags:              []string{"-enable-ech-grease"},
+			shouldFail:         true,
+			expectedLocalError: "remote error: error decoding message",
+			expectedError:      ":ERROR_PARSING_EXTENSION:",
+		})
+
+		// Test that the server responds to an empty ech_is_inner extension with the
+		// acceptance confirmation.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ECHIsInner",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					AlwaysSendECHIsInner: true,
+				},
+			},
+			resumeSession: true,
+		})
+
+		// Test that server fails the handshake when it sees a non-empty
+		// ech_is_inner extension.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ECHIsInner-NotEmpty",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					AlwaysSendECHIsInner:  true,
+					SendInvalidECHIsInner: []byte{42, 42, 42},
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: illegal parameter",
+			expectedError:      ":ERROR_PARSING_EXTENSION:",
+		})
+
+		// When ech_is_inner extension is absent, the server should not accept ECH.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ECHIsInner-Absent",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			resumeSession: true,
+		})
+
+		// Test that a TLS 1.3 server that receives an ech_is_inner extension can
+		// negotiate TLS 1.2 without clobbering the downgrade signal.
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-ECHIsInner-Absent-TLS12",
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS13,
+					Bugs: ProtocolBugs{
+						// Omit supported_versions extension so the server negotiates
+						// TLS 1.2.
+						OmitSupportedVersions: true,
+						AlwaysSendECHIsInner:  true,
+					},
+				},
+				// Check that the client sees the TLS 1.3 downgrade signal in
+				// ServerHello.random.
+				shouldFail:         true,
+				expectedLocalError: "tls: downgrade from TLS 1.3 detected",
+			})
+		}
+
+		// Test that the handshake fails when the server has no ECHConfigs and the
+		// ClientHello contains both encrypted_client_hello and ech_is_inner
+		// extensions.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-Disabled-EncryptedClientHello-ECHIsInner",
+			config: Config{
+				MinVersion:      VersionTLS13,
+				MaxVersion:      VersionTLS13,
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					AlwaysSendECHIsInner: true,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: illegal parameter",
+			expectedError:      ":UNEXPECTED_EXTENSION:",
+		})
+	}
+}
+
+func addHintMismatchTests() {
+	// Each of these tests skips split handshakes because split handshakes does
+	// not handle a mismatch between shim and handshaker. Handshake hints,
+	// however, are designed to tolerate the mismatch.
+	//
+	// Note also these tests do not specify -handshake-hints directly. Instead,
+	// we define normal tests, that run even without a handshaker, and rely on
+	// convertToSplitHandshakeTests to generate a handshaker hints variant. This
+	// avoids repeating the -is-handshaker-supported and -handshaker-path logic.
+	// (While not useful, the tests will still pass without a handshaker.)
+	for _, protocol := range []protocol{tls, quic} {
+		// If the signing payload is different, the handshake still completes
+		// successfully. Different ALPN preferences will trigger a mismatch.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-SignatureInput",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				NextProtos: []string{"foo", "bar"},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-select-alpn", "foo",
+				"-on-handshaker-select-alpn", "bar",
+			},
+			expectations: connectionExpectations{
+				nextProto:     "foo",
+				nextProtoType: alpn,
+			},
+		})
+
+		// The shim and handshaker may have different curve preferences.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-KeyShare",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				// Send both curves in the key share list, to avoid getting
+				// mixed up with HelloRetryRequest.
+				DefaultCurves: []CurveID{CurveX25519, CurveP256},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-curves", strconv.Itoa(int(CurveX25519)),
+				"-on-handshaker-curves", strconv.Itoa(int(CurveP256)),
+			},
+			expectations: connectionExpectations{
+				curveID: CurveX25519,
+			},
+		})
+
+		// If the handshaker does HelloRetryRequest, it will omit most hints.
+		// The shim should still work.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-HandshakerHelloRetryRequest",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion:    VersionTLS13,
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: []CurveID{CurveX25519},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-curves", strconv.Itoa(int(CurveX25519)),
+				"-on-handshaker-curves", strconv.Itoa(int(CurveP256)),
+			},
+			expectations: connectionExpectations{
+				curveID: CurveX25519,
+			},
+		})
+
+		// If the shim does HelloRetryRequest, the hints from the handshaker
+		// will be ignored. This is not reported as a mismatch because hints
+		// would not have helped the shim anyway.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-ShimHelloRetryRequest",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion:    VersionTLS13,
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: []CurveID{CurveX25519},
+			},
+			flags: []string{
+				"-on-shim-curves", strconv.Itoa(int(CurveP256)),
+				"-on-handshaker-curves", strconv.Itoa(int(CurveX25519)),
+			},
+			expectations: connectionExpectations{
+				curveID: CurveP256,
+			},
+		})
+
+		// The shim and handshaker may have different signature algorithm
+		// preferences.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-SignatureAlgorithm",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				VerifySignatureAlgorithms: []signatureAlgorithm{
+					signatureRSAPSSWithSHA256,
+					signatureRSAPSSWithSHA384,
+				},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
+				"-on-shim-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
+				"-on-handshaker-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA384)),
+			},
+			expectations: connectionExpectations{
+				peerSignatureAlgorithm: signatureRSAPSSWithSHA256,
+			},
+		})
+
+		// The shim and handshaker may disagree on whether resumption is allowed.
+		// We run the first connection with tickets enabled, so the client is
+		// issued a ticket, then disable tickets on the second connection.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-NoTickets1",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			flags: []string{
+				"-on-resume-allow-hint-mismatch",
+				"-on-shim-on-resume-no-ticket",
+			},
+			resumeSession:        true,
+			expectResumeRejected: true,
+		})
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-NoTickets2",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			flags: []string{
+				"-on-resume-allow-hint-mismatch",
+				"-on-handshaker-on-resume-no-ticket",
+			},
+			resumeSession: true,
+		})
+
+		// The shim and handshaker may disagree on whether to request a client
+		// certificate.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-CertificateRequest",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion:   VersionTLS13,
+				MaxVersion:   VersionTLS13,
+				Certificates: []Certificate{rsaCertificate},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-require-any-client-certificate",
+			},
+		})
+
+		// The shim and handshaker may negotiate different versions altogether.
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-Version1",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS13,
+				},
+				flags: []string{
+					"-allow-hint-mismatch",
+					"-on-shim-max-version", strconv.Itoa(VersionTLS12),
+					"-on-handshaker-max-version", strconv.Itoa(VersionTLS13),
+				},
+				expectations: connectionExpectations{
+					version: VersionTLS12,
+				},
+			})
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-Version2",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS13,
+				},
+				flags: []string{
+					"-allow-hint-mismatch",
+					"-on-shim-max-version", strconv.Itoa(VersionTLS13),
+					"-on-handshaker-max-version", strconv.Itoa(VersionTLS12),
+				},
+				expectations: connectionExpectations{
+					version: VersionTLS13,
+				},
+			})
+		}
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -16318,6 +17670,25 @@ func main() {
 	*resourceDir = path.Clean(*resourceDir)
 	initCertificates()
 
+	if len(*shimConfigFile) != 0 {
+		encoded, err := ioutil.ReadFile(*shimConfigFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't read config file %q: %s\n", *shimConfigFile, err)
+			os.Exit(1)
+		}
+
+		if err := json.Unmarshal(encoded, &shimConfig); err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't decode config file %q: %s\n", *shimConfigFile, err)
+			os.Exit(1)
+		}
+	}
+
+	if shimConfig.AllCurves == nil {
+		for _, curve := range testCurves {
+			shimConfig.AllCurves = append(shimConfig.AllCurves, int(curve.id))
+		}
+	}
+
 	addBasicTests()
 	addCipherSuiteTests()
 	addBadECDSASignatureTests()
@@ -16360,8 +17731,15 @@ func main() {
 	addCertCompressionTests()
 	addJDK11WorkaroundTests()
 	addDelegatedCredentialTests()
+	addEncryptedClientHelloTests()
+	addHintMismatchTests()
 
-	testCases = append(testCases, convertToSplitHandshakeTests(testCases)...)
+	toAppend, err := convertToSplitHandshakeTests(testCases)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error making split handshake tests: %s", err)
+		os.Exit(1)
+	}
+	testCases = append(testCases, toAppend...)
 
 	var wg sync.WaitGroup
 
@@ -16373,19 +17751,6 @@ func main() {
 	statusChan := make(chan statusMsg, numWorkers)
 	testChan := make(chan *testCase, numWorkers)
 	doneChan := make(chan *testresult.Results)
-
-	if len(*shimConfigFile) != 0 {
-		encoded, err := ioutil.ReadFile(*shimConfigFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't read config file %q: %s\n", *shimConfigFile, err)
-			os.Exit(1)
-		}
-
-		if err := json.Unmarshal(encoded, &shimConfig); err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't decode config file %q: %s\n", *shimConfigFile, err)
-			os.Exit(1)
-		}
-	}
 
 	go statusPrinter(doneChan, statusChan, len(testCases))
 
@@ -16426,6 +17791,11 @@ func main() {
 		}
 
 		if matched {
+			if foundTest && *useRR {
+				fmt.Fprintf(os.Stderr, "Too many matching tests. Only one test can run when RR is enabled.\n")
+				os.Exit(1)
+			}
+
 			foundTest = true
 			testChan <- &testCases[i]
 
@@ -16452,6 +17822,10 @@ func main() {
 		if err := testOutput.WriteToFile(*jsonOutput); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
+	}
+
+	if *useRR {
+		fmt.Println("RR trace recorded. Replay with `rr replay`.")
 	}
 
 	if !testOutput.HasUnexpectedResults() {

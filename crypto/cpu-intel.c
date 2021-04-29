@@ -59,7 +59,11 @@
 
 #if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -17,9 +17,10 @@
 
 #include <openssl/aead.h>
 #include <openssl/bytestring.h>
+#include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/evp.h>
+#include <openssl/evp_errors.h>
 #include <openssl/hkdf.h>
 #include <openssl/sha.h>
 
@@ -27,12 +28,9 @@
 #include "internal.h"
 
 
-// This file implements draft-irtf-cfrg-hpke-05.
+// This file implements draft-irtf-cfrg-hpke-07.
 
 #define KEM_CONTEXT_LEN (2 * X25519_PUBLIC_VALUE_LEN)
-
-// HPKE KEM scheme IDs.
-#define HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
 
 // This is strlen("HPKE") + 3 * sizeof(uint16_t).
 #define HPKE_SUITE_ID_LEN 10
@@ -40,7 +38,7 @@
 #define HPKE_MODE_BASE 0
 #define HPKE_MODE_PSK 1
 
-static const char kHpkeRfcId[] = "HPKE-05 ";
+static const char kHpkeRfcId[] = "HPKE-07";
 
 static int add_label_string(CBB *cbb, const char *label) {
   return CBB_add_bytes(cbb, (const uint8_t *)label, strlen(label));
@@ -50,8 +48,8 @@ static int add_label_string(CBB *cbb, const char *label) {
 // that the suite_id used outside of the KEM also includes the kdf_id and
 // aead_id.
 static const uint8_t kX25519SuiteID[] = {
-    'K', 'E', 'M', HPKE_DHKEM_X25519_HKDF_SHA256 >> 8,
-    HPKE_DHKEM_X25519_HKDF_SHA256 & 0x00ff};
+    'K', 'E', 'M', EVP_HPKE_DHKEM_X25519_HKDF_SHA256 >> 8,
+    EVP_HPKE_DHKEM_X25519_HKDF_SHA256 & 0x00ff};
 
 // The suite_id for non-KEM pieces of HPKE is defined as concat("HPKE",
 // I2OSP(kem_id, 2), I2OSP(kdf_id, 2), I2OSP(aead_id, 2)).
@@ -60,7 +58,7 @@ static int hpke_build_suite_id(uint8_t out[HPKE_SUITE_ID_LEN], uint16_t kdf_id,
   CBB cbb;
   int ret = CBB_init_fixed(&cbb, out, HPKE_SUITE_ID_LEN) &&
             add_label_string(&cbb, "HPKE") &&
-            CBB_add_u16(&cbb, HPKE_DHKEM_X25519_HKDF_SHA256) &&
+            CBB_add_u16(&cbb, EVP_HPKE_DHKEM_X25519_HKDF_SHA256) &&
             CBB_add_u16(&cbb, kdf_id) &&
             CBB_add_u16(&cbb, aead_id);
   CBB_cleanup(&cbb);
@@ -125,11 +123,19 @@ static int hpke_extract_and_expand(const EVP_MD *hkdf_md, uint8_t *out_key,
   return 1;
 }
 
-static const EVP_AEAD *hpke_get_aead(uint16_t aead_id) {
+uint16_t EVP_HPKE_CTX_get_aead_id(const EVP_HPKE_CTX *hpke) {
+  return hpke->aead_id;
+}
+
+uint16_t EVP_HPKE_CTX_get_kdf_id(const EVP_HPKE_CTX *hpke) {
+  return hpke->kdf_id;
+}
+
+const EVP_AEAD *EVP_HPKE_get_aead(uint16_t aead_id) {
   switch (aead_id) {
-    case EVP_HPKE_AEAD_AES_GCM_128:
+    case EVP_HPKE_AEAD_AES_128_GCM:
       return EVP_aead_aes_128_gcm();
-    case EVP_HPKE_AEAD_AES_GCM_256:
+    case EVP_HPKE_AEAD_AES_256_GCM:
       return EVP_aead_aes_256_gcm();
     case EVP_HPKE_AEAD_CHACHA20POLY1305:
       return EVP_aead_chacha20_poly1305();
@@ -138,7 +144,7 @@ static const EVP_AEAD *hpke_get_aead(uint16_t aead_id) {
   return NULL;
 }
 
-static const EVP_MD *hpke_get_kdf(uint16_t kdf_id) {
+const EVP_MD *EVP_HPKE_get_hkdf_md(uint16_t kdf_id) {
   switch (kdf_id) {
     case EVP_HPKE_HKDF_SHA256:
       return EVP_sha256();
@@ -174,7 +180,7 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, uint8_t mode,
   }
 
   // Attempt to get an EVP_AEAD*.
-  const EVP_AEAD *aead = hpke_get_aead(hpke->aead_id);
+  const EVP_AEAD *aead = EVP_HPKE_get_aead(hpke->aead_id);
   if (aead == NULL) {
     return 0;
   }
@@ -216,24 +222,13 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, uint8_t mode,
     return 0;
   }
 
-  // psk_hash = LabeledExtract("", "psk_hash", psk)
-  static const char kPskHashLabel[] = "psk_hash";
-  uint8_t psk_hash[EVP_MAX_MD_SIZE];
-  size_t psk_hash_len;
-  if (!hpke_labeled_extract(hpke->hkdf_md, psk_hash, &psk_hash_len, NULL, 0,
-                            suite_id, sizeof(suite_id), kPskHashLabel, psk,
-                            psk_len)) {
-    return 0;
-  }
-
-  // secret = LabeledExtract(psk_hash, "secret", shared_secret)
+  // secret = LabeledExtract(shared_secret, "secret", psk)
   static const char kSecretExtractLabel[] = "secret";
   uint8_t secret[EVP_MAX_MD_SIZE];
   size_t secret_len;
-  if (!hpke_labeled_extract(hpke->hkdf_md, secret, &secret_len, psk_hash,
-                            psk_hash_len, suite_id, sizeof(suite_id),
-                            kSecretExtractLabel, shared_secret,
-                            shared_secret_len)) {
+  if (!hpke_labeled_extract(hpke->hkdf_md, secret, &secret_len, shared_secret,
+                            shared_secret_len, suite_id, sizeof(suite_id),
+                            kSecretExtractLabel, psk, psk_len)) {
     return 0;
   }
 
@@ -252,9 +247,9 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, uint8_t mode,
     return 0;
   }
 
-  // nonce = LabeledExpand(secret, "nonce", key_schedule_context, Nn)
-  static const char kNonceExpandLabel[] = "nonce";
-  if (!hpke_labeled_expand(hpke->hkdf_md, hpke->nonce,
+  // base_nonce = LabeledExpand(secret, "base_nonce", key_schedule_context, Nn)
+  static const char kNonceExpandLabel[] = "base_nonce";
+  if (!hpke_labeled_expand(hpke->hkdf_md, hpke->base_nonce,
                            EVP_AEAD_nonce_length(aead), secret, secret_len,
                            suite_id, sizeof(suite_id), kNonceExpandLabel,
                            context, context_len)) {
@@ -327,31 +322,48 @@ void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx) {
   EVP_AEAD_CTX_cleanup(&ctx->aead_ctx);
 }
 
-int EVP_HPKE_CTX_setup_base_s_x25519(
-    EVP_HPKE_CTX *hpke, uint8_t out_enc[X25519_PUBLIC_VALUE_LEN],
-    uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t *info, size_t info_len) {
+int EVP_HPKE_CTX_setup_base_s_x25519(EVP_HPKE_CTX *hpke, uint8_t *out_enc,
+                                     size_t out_enc_len, uint16_t kdf_id,
+                                     uint16_t aead_id,
+                                     const uint8_t *peer_public_value,
+                                     size_t peer_public_value_len,
+                                     const uint8_t *info, size_t info_len) {
+  if (out_enc_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+
   // The GenerateKeyPair() step technically belongs in the KEM's Encap()
   // function, but we've moved it up a layer to make it easier for tests to
   // inject an ephemeral keypair.
   uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN];
   X25519_keypair(out_enc, ephemeral_private);
   return EVP_HPKE_CTX_setup_base_s_x25519_for_test(
-      hpke, kdf_id, aead_id, peer_public_value, info, info_len,
-      ephemeral_private, out_enc);
+      hpke, kdf_id, aead_id, peer_public_value, peer_public_value_len, info,
+      info_len, ephemeral_private, sizeof(ephemeral_private), out_enc,
+      out_enc_len);
 }
 
 int EVP_HPKE_CTX_setup_base_s_x25519_for_test(
     EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t *info, size_t info_len,
-    const uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN],
-    const uint8_t ephemeral_public[X25519_PUBLIC_VALUE_LEN]) {
+    const uint8_t *peer_public_value, size_t peer_public_value_len,
+    const uint8_t *info, size_t info_len, const uint8_t *ephemeral_private,
+    size_t ephemeral_private_len, const uint8_t *ephemeral_public,
+    size_t ephemeral_public_len) {
+  if (peer_public_value_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
+  if (ephemeral_private_len != X25519_PRIVATE_KEY_LEN ||
+      ephemeral_public_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   hpke->is_sender = 1;
   hpke->kdf_id = kdf_id;
   hpke->aead_id = aead_id;
-  hpke->hkdf_md = hpke_get_kdf(kdf_id);
+  hpke->hkdf_md = EVP_HPKE_get_hkdf_md(kdf_id);
   if (hpke->hkdf_md == NULL) {
     return 0;
   }
@@ -366,16 +378,27 @@ int EVP_HPKE_CTX_setup_base_s_x25519_for_test(
   return 1;
 }
 
-int EVP_HPKE_CTX_setup_base_r_x25519(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t enc[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t public_key[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t private_key[X25519_PRIVATE_KEY_LEN], const uint8_t *info,
-    size_t info_len) {
+int EVP_HPKE_CTX_setup_base_r_x25519(EVP_HPKE_CTX *hpke, uint16_t kdf_id,
+                                     uint16_t aead_id, const uint8_t *enc,
+                                     size_t enc_len, const uint8_t *public_key,
+                                     size_t public_key_len,
+                                     const uint8_t *private_key,
+                                     size_t private_key_len,
+                                     const uint8_t *info, size_t info_len) {
+  if (enc_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
+  if (public_key_len != X25519_PUBLIC_VALUE_LEN ||
+      private_key_len != X25519_PRIVATE_KEY_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   hpke->is_sender = 0;
   hpke->kdf_id = kdf_id;
   hpke->aead_id = aead_id;
-  hpke->hkdf_md = hpke_get_kdf(kdf_id);
+  hpke->hkdf_md = EVP_HPKE_get_hkdf_md(kdf_id);
   if (hpke->hkdf_md == NULL) {
     return 0;
   }
@@ -389,33 +412,51 @@ int EVP_HPKE_CTX_setup_base_r_x25519(
   return 1;
 }
 
-int EVP_HPKE_CTX_setup_psk_s_x25519(
-    EVP_HPKE_CTX *hpke, uint8_t out_enc[X25519_PUBLIC_VALUE_LEN],
-    uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t *info, size_t info_len, const uint8_t *psk, size_t psk_len,
-    const uint8_t *psk_id, size_t psk_id_len) {
+int EVP_HPKE_CTX_setup_psk_s_x25519(EVP_HPKE_CTX *hpke, uint8_t *out_enc,
+                                    size_t out_enc_len, uint16_t kdf_id,
+                                    uint16_t aead_id,
+                                    const uint8_t *peer_public_value,
+                                    size_t peer_public_value_len,
+                                    const uint8_t *info, size_t info_len,
+                                    const uint8_t *psk, size_t psk_len,
+                                    const uint8_t *psk_id, size_t psk_id_len) {
+  if (out_enc_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+
   // The GenerateKeyPair() step technically belongs in the KEM's Encap()
   // function, but we've moved it up a layer to make it easier for tests to
   // inject an ephemeral keypair.
   uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN];
   X25519_keypair(out_enc, ephemeral_private);
   return EVP_HPKE_CTX_setup_psk_s_x25519_for_test(
-      hpke, kdf_id, aead_id, peer_public_value, info, info_len, psk, psk_len,
-      psk_id, psk_id_len, ephemeral_private, out_enc);
+      hpke, kdf_id, aead_id, peer_public_value, peer_public_value_len, info,
+      info_len, psk, psk_len, psk_id, psk_id_len, ephemeral_private,
+      sizeof(ephemeral_private), out_enc, out_enc_len);
 }
 
 int EVP_HPKE_CTX_setup_psk_s_x25519_for_test(
     EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
+    const uint8_t *peer_public_value, size_t peer_public_value_len,
     const uint8_t *info, size_t info_len, const uint8_t *psk, size_t psk_len,
-    const uint8_t *psk_id, size_t psk_id_len,
-    const uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN],
-    const uint8_t ephemeral_public[X25519_PUBLIC_VALUE_LEN]) {
+    const uint8_t *psk_id, size_t psk_id_len, const uint8_t *ephemeral_private,
+    size_t ephemeral_private_len, const uint8_t *ephemeral_public,
+    size_t ephemeral_public_len) {
+  if (peer_public_value_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
+  if (ephemeral_private_len != X25519_PRIVATE_KEY_LEN ||
+      ephemeral_public_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   hpke->is_sender = 1;
   hpke->kdf_id = kdf_id;
   hpke->aead_id = aead_id;
-  hpke->hkdf_md = hpke_get_kdf(kdf_id);
+  hpke->hkdf_md = EVP_HPKE_get_hkdf_md(kdf_id);
   if (hpke->hkdf_md == NULL) {
     return 0;
   }
@@ -431,16 +472,25 @@ int EVP_HPKE_CTX_setup_psk_s_x25519_for_test(
 }
 
 int EVP_HPKE_CTX_setup_psk_r_x25519(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t enc[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t public_key[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t private_key[X25519_PRIVATE_KEY_LEN], const uint8_t *info,
+    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id, const uint8_t *enc,
+    size_t enc_len, const uint8_t *public_key, size_t public_key_len,
+    const uint8_t *private_key, size_t private_key_len, const uint8_t *info,
     size_t info_len, const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
     size_t psk_id_len) {
+  if (enc_len != X25519_PUBLIC_VALUE_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
+  if (public_key_len != X25519_PUBLIC_VALUE_LEN ||
+      private_key_len != X25519_PRIVATE_KEY_LEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   hpke->is_sender = 0;
   hpke->kdf_id = kdf_id;
   hpke->aead_id = aead_id;
-  hpke->hkdf_md = hpke_get_kdf(kdf_id);
+  hpke->hkdf_md = EVP_HPKE_get_hkdf_md(kdf_id);
   if (hpke->hkdf_md == NULL) {
     return 0;
   }
@@ -466,9 +516,9 @@ static void hpke_nonce(const EVP_HPKE_CTX *hpke, uint8_t *out_nonce,
     seq_copy >>= 8;
   }
 
-  // XOR the encoded sequence with the |hpke->nonce|.
+  // XOR the encoded sequence with the |hpke->base_nonce|.
   for (size_t i = 0; i < nonce_len; i++) {
-    out_nonce[i] ^= hpke->nonce[i];
+    out_nonce[i] ^= hpke->base_nonce[i];
   }
 }
 

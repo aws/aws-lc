@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
-from util.iam_policies import codebuild_batch_policy_in_json
-from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, LINUX_X86_ECR_REPO, \
-    LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO
+from util.ecr_util import ecr_arn
+from util.iam_policies import code_build_batch_policy_in_json
+from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.yml_loader import YmlLoader
 
 
@@ -14,6 +14,7 @@ class AwsLcGitHubCIStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
+                 ecr_repo_name: str,
                  spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -32,23 +33,17 @@ class AwsLcGitHubCIStack(core.Stack):
             clone_depth=1)
 
         # Define a IAM role for this stack.
-        codebuild_batch_policy = iam.PolicyDocument.from_json(
-            codebuild_batch_policy_in_json([id])
+        code_build_batch_policy = iam.PolicyDocument.from_json(
+            code_build_batch_policy_in_json([id])
         )
-        inline_policies = {"codebuild_batch_policy": codebuild_batch_policy}
+        inline_policies = {"code_build_batch_policy": code_build_batch_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                        inline_policies=inline_policies,
-                        managed_policies=[
-                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryReadOnly")
-                        ])
+                        inline_policies=inline_policies)
 
         # Create build spec.
-        placeholder_map = {"AWS_ACCOUNT_ID_PLACEHOLDER": AWS_ACCOUNT, "AWS_REGION_PLACEHOLDER": AWS_REGION,
-                           "ECR_REPO_X86_PLACEHOLDER": LINUX_X86_ECR_REPO,
-                           "ECR_REPO_AARCH_PLACEHOLDER": LINUX_AARCH_ECR_REPO,
-                           "ECR_REPO_WINDOWS_PLACEHOLDER": WINDOWS_X86_ECR_REPO}
+        placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
@@ -58,7 +53,7 @@ class AwsLcGitHubCIStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=role,
-            timeout=core.Duration.minutes(120),
+            timeout=core.Duration.minutes(180),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
@@ -72,5 +67,5 @@ class AwsLcGitHubCIStack(core.Stack):
         cfn_build = project.node.default_child
         cfn_build.add_override("Properties.BuildBatchConfig", {
             "ServiceRole": role.role_arn,
-            "TimeoutInMins": 120
+            "TimeoutInMins": 180
         })

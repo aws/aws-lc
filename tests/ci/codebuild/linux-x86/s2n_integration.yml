@@ -4,11 +4,6 @@
 version: 0.2
 
 phases:
-  pre_build:
-    commands:
-      - export CC=clang-9
-      - export CXX=clang++-9
-      - export GO111MODULE=on
   build:
     commands:
       - ./tests/ci/run_s2n_integration.sh

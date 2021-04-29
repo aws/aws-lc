@@ -56,7 +56,11 @@
 
 #include <openssl/x509.h>
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>
+
 #include <string.h>
 
 #include <openssl/asn1.h>
