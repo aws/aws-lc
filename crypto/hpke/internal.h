@@ -33,9 +33,12 @@ extern "C" {
 //
 // See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
 
+// EVP_HPKE_DHKEM_* are KEM identifiers.
+#define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
+
 // EVP_HPKE_AEAD_* are AEAD identifiers.
-#define EVP_HPKE_AEAD_AES_GCM_128 0x0001
-#define EVP_HPKE_AEAD_AES_GCM_256 0x0002
+#define EVP_HPKE_AEAD_AES_128_GCM 0x0001
+#define EVP_HPKE_AEAD_AES_256_GCM 0x0002
 #define EVP_HPKE_AEAD_CHACHA20POLY1305 0x0003
 
 // EVP_HPKE_HKDF_* are HKDF identifiers.
@@ -86,32 +89,35 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 // recipient's public key). It returns one on success, and zero otherwise. Note
 // that this function will fail if |peer_public_value| is invalid.
 //
-// This function writes the encapsulated shared secret to |out_enc|.
+// This function writes the encapsulated shared secret, a Diffie-Hellman public
+// key, to |out_enc|. It will fail if the buffer's size in |out_enc_len| is not
+// exactly |X25519_PUBLIC_VALUE_LEN|.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519(
-    EVP_HPKE_CTX *hpke, uint8_t out_enc[X25519_PUBLIC_VALUE_LEN],
-    uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t *info, size_t info_len);
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len, uint16_t kdf_id,
+    uint16_t aead_id, const uint8_t *peer_public_value,
+    size_t peer_public_value_len, const uint8_t *info, size_t info_len);
 
 // EVP_HPKE_CTX_setup_base_s_x25519_for_test behaves like
 // |EVP_HPKE_CTX_setup_base_s_x25519|, but takes a pre-generated ephemeral
-// sender key.
+// sender key. The caller ensures that |ephemeral_public| and
+// |ephemeral_private| are a valid keypair.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519_for_test(
     EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t *info, size_t info_len,
-    const uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN],
-    const uint8_t ephemeral_public[X25519_PUBLIC_VALUE_LEN]);
+    const uint8_t *peer_public_value, size_t peer_public_value_len,
+    const uint8_t *info, size_t info_len, const uint8_t *ephemeral_private,
+    size_t ephemeral_private_len, const uint8_t *ephemeral_public,
+    size_t ephemeral_public_len);
 
 // EVP_HPKE_CTX_setup_base_r_x25519 sets up |hpke| as a recipient context that
-// can decrypt messages. |private_key| is the recipient's private key, and |enc|
-// is the encapsulated shared secret from the sender. Note that this function
-// will fail if |enc| is invalid.
+// can decrypt messages. It returns one on success, and zero otherwise.
+//
+// The recipient's keypair is composed of |public_key| and |private_key|, and
+// |enc| is the encapsulated shared secret from the sender. If |enc| is invalid,
+// this function will fail.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_r_x25519(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t enc[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t public_key[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t private_key[X25519_PRIVATE_KEY_LEN], const uint8_t *info,
+    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id, const uint8_t *enc,
+    size_t enc_len, const uint8_t *public_key, size_t public_key_len,
+    const uint8_t *private_key, size_t private_key_len, const uint8_t *info,
     size_t info_len);
 
 // EVP_HPKE_CTX_setup_psk_s_x25519 sets up |hpke| as a sender context that can
@@ -124,39 +130,44 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_r_x25519(
 // must be nonempty (|psk_len| and |psk_id_len| must be non-zero), or this
 // function will fail.
 //
-// This function writes the encapsulated shared secret to |out_enc|.
+// This function writes the encapsulated shared secret, a Diffie-Hellman public
+// key, to |out_enc|. It will fail if the buffer's size in |out_enc_len| is not
+// exactly |X25519_PUBLIC_VALUE_LEN|.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_psk_s_x25519(
-    EVP_HPKE_CTX *hpke, uint8_t out_enc[X25519_PUBLIC_VALUE_LEN],
-    uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t *info, size_t info_len, const uint8_t *psk, size_t psk_len,
-    const uint8_t *psk_id, size_t psk_id_len);
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len, uint16_t kdf_id,
+    uint16_t aead_id, const uint8_t *peer_public_value,
+    size_t peer_public_value_len, const uint8_t *info, size_t info_len,
+    const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
+    size_t psk_id_len);
 
 // EVP_HPKE_CTX_setup_psk_s_x25519_for_test behaves like
 // |EVP_HPKE_CTX_setup_psk_s_x25519|, but takes a pre-generated ephemeral sender
-// key.
+// key. The caller ensures that |ephemeral_public| and |ephemeral_private| are a
+// valid keypair.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_psk_s_x25519_for_test(
     EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN],
+    const uint8_t *peer_public_value, size_t peer_public_value_len,
     const uint8_t *info, size_t info_len, const uint8_t *psk, size_t psk_len,
-    const uint8_t *psk_id, size_t psk_id_len,
-    const uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN],
-    const uint8_t ephemeral_public[X25519_PUBLIC_VALUE_LEN]);
+    const uint8_t *psk_id, size_t psk_id_len, const uint8_t *ephemeral_private,
+    size_t ephemeral_private_len, const uint8_t *ephemeral_public,
+    size_t ephemeral_public_len);
 
 // EVP_HPKE_CTX_setup_psk_r_x25519 sets up |hpke| as a recipient context that
 // can decrypt messages. Future open (decrypt) operations will fail if the
-// sender does not possess the PSK indicated by |psk| and |psk_id|.
-// |private_key| is the recipient's private key, and |enc| is the encapsulated
-// shared secret from the sender. If |enc| is invalid, this function will fail.
+// sender does not possess the PSK indicated by |psk| and |psk_id|. It returns
+// one on success, and zero otherwise.
+//
+// The recipient's keypair is composed of |public_key| and |private_key|, and
+// |enc| is the encapsulated shared secret from the sender. If |enc| is invalid,
+// this function will fail.
 //
 // The PSK and its ID must be provided in |psk| and |psk_id|, respectively. Both
 // must be nonempty (|psk_len| and |psk_id_len| must be non-zero), or this
 // function will fail.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_psk_r_x25519(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t enc[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t public_key[X25519_PUBLIC_VALUE_LEN],
-    const uint8_t private_key[X25519_PRIVATE_KEY_LEN], const uint8_t *info,
+    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id, const uint8_t *enc,
+    size_t enc_len, const uint8_t *public_key, size_t public_key_len,
+    const uint8_t *private_key, size_t private_key_len, const uint8_t *info,
     size_t info_len, const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
     size_t psk_id_len);
 
@@ -215,6 +226,16 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *hpke, uint8_t *out,
 // added by sealing data with |EVP_HPKE_CTX_seal|. The |hpke| context must be
 // set up as a sender.
 OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *hpke);
+
+// EVP_HPKE_CTX_get_aead_id returns |hpke|'s configured AEAD. The returned value
+// is one of the |EVP_HPKE_AEAD_*| constants, or zero if the context has not
+// been set up.
+OPENSSL_EXPORT uint16_t EVP_HPKE_CTX_get_aead_id(const EVP_HPKE_CTX *hpke);
+
+// EVP_HPKE_CTX_get_aead_id returns |hpke|'s configured KDF. The returned value
+// is one of the |EVP_HPKE_HKDF_*| constants, or zero if the context has not
+// been set up.
+OPENSSL_EXPORT uint16_t EVP_HPKE_CTX_get_kdf_id(const EVP_HPKE_CTX *hpke);
 
 // EVP_HPKE_get_aead returns the AEAD corresponding to |aead_id|, or NULL if
 // |aead_id| is not a known AEAD identifier.
