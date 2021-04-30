@@ -40,6 +40,7 @@
 #endif
 
 static void maybe_disable_some_fork_detect_mechanisms(void) {
+#if !defined(OPENSSL_WINDOWS)
   if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
     CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
   }
@@ -47,6 +48,7 @@ static void maybe_disable_some_fork_detect_mechanisms(void) {
   if (getenv("BORINGSSL_IGNORE_PTHREAD_ATFORK")) {
     CRYPTO_fork_detect_ignore_pthread_atfork_for_testing();
   }
+#endif
 }
 
 
