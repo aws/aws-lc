@@ -5,9 +5,11 @@
  * this file except in compliance with the License.  You can obtain a copy
  * in the file LICENSE in the source distribution or at
  * https://www.openssl.org/source/license.html
+ *
+ * OCSP RFC: https://tools.ietf.org/html/rfc6960#section-4.2.1
  */
 
-#include "ocsp_local.h"
+#include "ocsp_internal.h"
 
 
 ASN1_SEQUENCE(OCSP_CERTID) = {
@@ -64,6 +66,7 @@ ASN1_SEQUENCE(OCSP_SINGLERESP) = {
 } ASN1_SEQUENCE_END(OCSP_SINGLERESP)
 
 IMPLEMENT_ASN1_FUNCTIONS(OCSP_SINGLERESP)
+
 ASN1_SEQUENCE(OCSP_RESPDATA) = {
     ASN1_EXP_OPT(OCSP_RESPDATA, version, ASN1_INTEGER, 0),
     ASN1_SIMPLE(OCSP_RESPDATA, responderId, OCSP_RESPID),

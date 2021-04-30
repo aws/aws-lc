@@ -7,16 +7,13 @@
  * https://www.openssl.org/source/license.html
  */
 
-
 #ifndef AWSLC_OCSP_H
 #define AWSLC_OCSP_H
 
-#pragma once
-
 #include <openssl/asn1t.h>
+#include <openssl/safestack.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-#include <openssl/safestack.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,14 +45,16 @@ DECLARE_ASN1_FUNCTIONS(OCSP_RESPBYTES)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
 
-
-/* get OCSP_RESPONSE's response status */
+/* Returns response status from |OCSP_RESPONSE| */
 int OCSP_response_status(OCSP_RESPONSE *resp);
 
-/* extract OCSP_BASICRESP in OCSP_RESPONSE */
+/* Returns |OCSP_BASICRESP| from |OCSP_RESPONSE| */
 OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
 
+#ifdef __cplusplus
+}
+#endif
 
 #define OCSP_RESPONSE_STATUS_SUCCESSFUL           0
 #define OCSP_RESPONSE_STATUS_MALFORMEDREQUEST     1
@@ -68,8 +67,4 @@ OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 #define OCSP_R_NOT_BASIC_RESPONSE                        104
 #define OCSP_R_NO_RESPONSE_DATA                          108
 
-
-#ifdef __cplusplus
-}
-#endif
 #endif  // AWSLC_OCSP_H

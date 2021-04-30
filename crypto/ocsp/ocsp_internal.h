@@ -7,15 +7,15 @@
  * https://www.openssl.org/source/license.html
  */
 
-
-#include "openssl/x509.h"
 #include "openssl/ocsp.h"
+#include "openssl/x509.h"
+
 
 /*-  CertID ::= SEQUENCE {
- *       hashAlgorithm            AlgorithmIdentifier,
- *       issuerNameHash     OCTET STRING, -- Hash of Issuer's DN
- *       issuerKeyHash      OCTET STRING, -- Hash of Issuers public key (excluding the tag & length fields)
- *       serialNumber       CertificateSerialNumber }
+ *       hashAlgorithm    AlgorithmIdentifier,
+ *       issuerNameHash   OCTET STRING,  --Hash of Issuer's DN
+ *       issuerKeyHash    OCTET STRING,  --Hash of Issuers public key (excluding the tag & length fields)
+ *       serialNumber     CertificateSerialNumber }
  */
 struct ocsp_cert_id_st {
   X509_ALGOR *hashAlgorithm;
@@ -24,7 +24,7 @@ struct ocsp_cert_id_st {
   ASN1_INTEGER *serialNumber;
 };
 
-/*-  Signature       ::=     SEQUENCE {
+/*-  Signature ::= SEQUENCE {
  *       signatureAlgorithm   AlgorithmIdentifier,
  *       signature            BIT STRING,
  *       certs                [0] EXPLICIT SEQUENCE OF Certificate OPTIONAL }
@@ -37,17 +37,17 @@ struct ocsp_signature_st {
 
 
 /*-  OCSPResponseStatus ::= ENUMERATED {
- *       successful            (0),      --Response has valid confirmations
- *       malformedRequest      (1),      --Illegal confirmation request
- *       internalError         (2),      --Internal error in issuer
- *       tryLater              (3),      --Try again later
- *                                       --(4) is not used
- *       sigRequired           (5),      --Must sign the request
- *       unauthorized          (6)       --Request unauthorized
+ *       successful         (0),  --Response has valid confirmations
+ *       malformedRequest   (1),  --Illegal confirmation request
+ *       internalError      (2),  --Internal error in issuer
+ *       tryLater           (3),  --Try again later
+ *                                --(4) is not used
+ *       sigRequired        (5),  --Must sign the request
+ *       unauthorized       (6)   --Request unauthorized
  *   }
  */
 
-/*-  ResponseBytes ::=       SEQUENCE {
+/*-  ResponseBytes ::= SEQUENCE {
  *       responseType   OBJECT IDENTIFIER,
  *       response       OCTET STRING }
  */
@@ -57,8 +57,8 @@ struct ocsp_resp_bytes_st {
 };
 
 /*-  OCSPResponse ::= SEQUENCE {
- *      responseStatus         OCSPResponseStatus,
- *      responseBytes          [0] EXPLICIT ResponseBytes OPTIONAL }
+ *      responseStatus   OCSPResponseStatus,
+ *      responseBytes    [0] EXPLICIT ResponseBytes OPTIONAL }
  */
 struct ocsp_response_st {
   ASN1_ENUMERATED *responseStatus;
@@ -66,8 +66,11 @@ struct ocsp_response_st {
 };
 
 /*-  ResponderID ::= CHOICE {
- *      byName   [1] Name,
- *      byKey    [2] KeyHash }
+ *      byName   [1]   Name,
+ *      byKey    [2]   KeyHash }
+ *
+ *   KeyHash ::= OCTET STRING --SHA-1 hash of responder's public key
+ *                            --(excluding the tag and length fields)
  */
 struct ocsp_responder_id_st {
   int type;
@@ -77,13 +80,11 @@ struct ocsp_responder_id_st {
   } value;
 };
 
-/*-  KeyHash ::= OCTET STRING --SHA-1 hash of responder's public key
- *                            --(excluding the tag and length fields)
- */
+
 
 /*-  RevokedInfo ::= SEQUENCE {
- *       revocationTime              GeneralizedTime,
- *       revocationReason    [0]     EXPLICIT CRLReason OPTIONAL }
+ *     revocationTime     GeneralizedTime,
+ *     revocationReason   [0] EXPLICIT CRLReason OPTIONAL }
  */
 struct ocsp_revoked_info_st {
   ASN1_GENERALIZEDTIME *revocationTime;
@@ -91,9 +92,9 @@ struct ocsp_revoked_info_st {
 };
 
 /*-  CertStatus ::= CHOICE {
- *       good                [0]     IMPLICIT NULL,
- *       revoked             [1]     IMPLICIT RevokedInfo,
- *       unknown             [2]     IMPLICIT UnknownInfo }
+ *       good      [0] IMPLICIT NULL,
+ *       revoked   [1] IMPLICIT RevokedInfo,
+ *       unknown   [2] IMPLICIT UnknownInfo }
  */
 struct ocsp_cert_status_st {
   int type;
@@ -105,11 +106,11 @@ struct ocsp_cert_status_st {
 };
 
 /*-  SingleResponse ::= SEQUENCE {
- *      certID                       CertID,
- *      certStatus                   CertStatus,
- *      thisUpdate                   GeneralizedTime,
- *      nextUpdate           [0]     EXPLICIT GeneralizedTime OPTIONAL,
- *      singleExtensions     [1]     EXPLICIT Extensions OPTIONAL }
+ *      certID             CertID,
+ *      certStatus         CertStatus,
+ *      thisUpdate         GeneralizedTime,
+ *      nextUpdate         [0] EXPLICIT GeneralizedTime OPTIONAL,
+ *      singleExtensions   [1] EXPLICIT Extensions OPTIONAL }
  */
 struct ocsp_single_response_st {
   OCSP_CERTID *certId;
@@ -121,9 +122,9 @@ struct ocsp_single_response_st {
 
 /*-  ResponseData ::= SEQUENCE {
  *      version              [0] EXPLICIT Version DEFAULT v1,
- *      responderID              ResponderID,
- *      producedAt               GeneralizedTime,
- *      responses                SEQUENCE OF SingleResponse,
+ *      responderID          ResponderID,
+ *      producedAt           GeneralizedTime,
+ *      responses            SEQUENCE OF SingleResponse,
  *      responseExtensions   [1] EXPLICIT Extensions OPTIONAL }
  */
 struct ocsp_response_data_st {
@@ -134,7 +135,7 @@ struct ocsp_response_data_st {
   STACK_OF(X509_EXTENSION) *responseExtensions;
 };
 
-/*-  BasicOCSPResponse       ::= SEQUENCE {
+/*-  BasicOCSPResponse ::= SEQUENCE {
  *      tbsResponseData      ResponseData,
  *      signatureAlgorithm   AlgorithmIdentifier,
  *      signature            BIT STRING,
