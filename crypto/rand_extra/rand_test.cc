@@ -39,12 +39,24 @@
 #include <unistd.h>
 #endif
 
+static void maybe_disable_some_fork_detect_mechanisms(void) {
+  if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
+    CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
+  }
+
+  if (getenv("BORINGSSL_IGNORE_PTHREAD_ATFORK")) {
+    CRYPTO_fork_detect_ignore_pthread_atfork_for_testing();
+  }
+}
+
 
 // These tests are, strictly speaking, flaky, but we use large enough buffers
 // that the probability of failing when we should pass is negligible.
 
 TEST(RandTest, NotObviouslyBroken) {
   static const uint8_t kZeros[256] = {0};
+
+  maybe_disable_some_fork_detect_mechanisms();
 
   uint8_t buf1[256], buf2[256];
   RAND_bytes(buf1, sizeof(buf1));
@@ -129,6 +141,8 @@ static bool ForkAndRand(bssl::Span<uint8_t> out) {
 TEST(RandTest, Fork) {
   static const uint8_t kZeros[16] = {0};
 
+  maybe_disable_some_fork_detect_mechanisms();
+
   // Draw a little entropy to initialize any internal PRNG buffering.
   uint8_t byte;
   RAND_bytes(&byte, 1);
@@ -181,6 +195,8 @@ TEST(RandTest, Threads) {
   constexpr size_t kFewerThreads = 10;
   constexpr size_t kMoreThreads = 20;
 
+  maybe_disable_some_fork_detect_mechanisms();
+
   // Draw entropy in parallel.
   RunConcurrentRands(kFewerThreads);
   // Draw entropy in parallel with higher concurrency than the previous maximum.
@@ -196,6 +212,8 @@ TEST(RandTest, RdrandABI) {
     fprintf(stderr, "rdrand not supported. Skipping.\n");
     return;
   }
+
+  maybe_disable_some_fork_detect_mechanisms();
 
   uint8_t buf[32];
   CHECK_ABI_SEH(CRYPTO_rdrand, buf);
