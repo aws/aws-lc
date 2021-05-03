@@ -1,0 +1,41 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
+batch:
+  build-list:
+
+    - identifier: ubuntu2004_clang10_x86_64_fuzz
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fuzz_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: X86_ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+
+    - identifier: ubuntu2004_clang10_arm_fuzz
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fuzz_tests.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ARM_ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+
+    - identifier: ubuntu2004_clang10_x86_64_cryptofuzz
+      buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: X86_ECR_REPO_PLACEHOLDER:ubuntu-20.04_cryptofuzz_latest
+
+# Turn off the ARM Cryptofuzz, fix is tracked in CryptoAlg-742
+#    - identifier: ubuntu2004_clang10_arm_cryptofuzz
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
+#      env:
+#        type: ARM_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ARM_ECR_REPO_PLACEHOLDER:ubuntu-20.04_cryptofuzz_latest

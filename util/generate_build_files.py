@@ -16,6 +16,7 @@
 
 """Enumerates source files for consumption by various build systems."""
 
+import io
 import optparse
 import os
 import subprocess
@@ -143,7 +144,7 @@ def ExtractPerlAsmFromCMakeFile(cmakefile):
   """Parses the contents of the CMakeLists.txt file passed as an argument and
   returns a list of all the perlasm() directives found in the file."""
   perlasms = []
-  with open(cmakefile) as f:
+  with io.open(cmakefile, encoding="utf-8") as f:
     for line in f:
       line = line.strip()
       if not line.startswith('perlasm('):

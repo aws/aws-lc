@@ -97,6 +97,7 @@
 #include "rsa/padding.c"
 #include "rsa/rsa.c"
 #include "rsa/rsa_impl.c"
+#include "self_check/fips.c"
 #include "self_check/self_check.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"

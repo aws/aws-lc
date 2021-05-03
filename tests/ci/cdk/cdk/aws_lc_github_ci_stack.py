@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
-from util.iam_policies import code_build_batch_policy_in_json, ecr_pull_only_policy_in_json
+from util.ecr_util import ecr_arn
+from util.iam_policies import code_build_batch_policy_in_json
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.yml_loader import YmlLoader
 
@@ -35,19 +36,14 @@ class AwsLcGitHubCIStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(
             code_build_batch_policy_in_json([id])
         )
-        ecr_pull_only_policy = iam.PolicyDocument.from_json(
-            ecr_pull_only_policy_in_json(ecr_repo_name)
-        )
-        inline_policies = {"code_build_batch_policy": code_build_batch_policy,
-                           "ecr_pull_only_policy": ecr_pull_only_policy}
+        inline_policies = {"code_build_batch_policy": code_build_batch_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
                         inline_policies=inline_policies)
 
         # Create build spec.
-        placeholder_map = {"AWS_ACCOUNT_ID_PLACEHOLDER": AWS_ACCOUNT, "AWS_REGION_PLACEHOLDER": AWS_REGION,
-                           "ECR_REPO_PLACEHOLDER": ecr_repo_name}
+        placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
@@ -57,7 +53,7 @@ class AwsLcGitHubCIStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=role,
-            timeout=core.Duration.minutes(120),
+            timeout=core.Duration.minutes(180),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
@@ -71,5 +67,5 @@ class AwsLcGitHubCIStack(core.Stack):
         cfn_build = project.node.default_child
         cfn_build.add_override("Properties.BuildBatchConfig", {
             "ServiceRole": role.role_arn,
-            "TimeoutInMins": 120
+            "TimeoutInMins": 180
         })

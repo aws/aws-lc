@@ -14,6 +14,7 @@ RUN set -ex && \
     cmake \
     ninja-build \
     perl \
+    python3 \
     ca-certificates \
     wget && \
     cd /tmp && \

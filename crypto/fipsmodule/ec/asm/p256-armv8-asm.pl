@@ -166,30 +166,6 @@ ecp_nistz256_sqr_mont:
 	ret
 .size	ecp_nistz256_sqr_mont,.-ecp_nistz256_sqr_mont
 
-// void	ecp_nistz256_add(BN_ULONG x0[4],const BN_ULONG x1[4],
-//					const BN_ULONG x2[4]);
-.globl	ecp_nistz256_add
-.type	ecp_nistz256_add,%function
-.align	4
-ecp_nistz256_add:
-	.inst	0xd503233f		// paciasp
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-
-	ldp	$acc0,$acc1,[$ap]
-	ldp	$t0,$t1,[$bp]
-	ldp	$acc2,$acc3,[$ap,#16]
-	ldp	$t2,$t3,[$bp,#16]
-	ldr	$poly1,.Lpoly+8
-	ldr	$poly3,.Lpoly+24
-
-	bl	__ecp_nistz256_add
-
-	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		// autiasp
-	ret
-.size	ecp_nistz256_add,.-ecp_nistz256_add
-
 // void	ecp_nistz256_div_by_2(BN_ULONG x0[4],const BN_ULONG x1[4]);
 .globl	ecp_nistz256_div_by_2
 .type	ecp_nistz256_div_by_2,%function
@@ -229,7 +205,7 @@ ecp_nistz256_mul_by_2:
 	mov	$t2,$acc2
 	mov	$t3,$acc3
 
-	bl	__ecp_nistz256_add	// ret = a+a	// 2*a
+	bl	__ecp_nistz256_add_to	// ret = a+a	// 2*a
 
 	ldp	x29,x30,[sp],#16
 	.inst	0xd50323bf		// autiasp
@@ -258,14 +234,14 @@ ecp_nistz256_mul_by_3:
 	mov	$a2,$acc2
 	mov	$a3,$acc3
 
-	bl	__ecp_nistz256_add	// ret = a+a	// 2*a
+	bl	__ecp_nistz256_add_to	// ret = a+a	// 2*a
 
 	mov	$t0,$a0
 	mov	$t1,$a1
 	mov	$t2,$a2
 	mov	$t3,$a3
 
-	bl	__ecp_nistz256_add	// ret += a	// 2*a+a=3*a
+	bl	__ecp_nistz256_add_to	// ret += a	// 2*a+a=3*a
 
 	ldp	x29,x30,[sp],#16
 	.inst	0xd50323bf		// autiasp
@@ -545,12 +521,12 @@ $code.=<<___;
 	ret
 .size	__ecp_nistz256_sqr_mont,.-__ecp_nistz256_sqr_mont
 
-// Note that __ecp_nistz256_add expects both input vectors pre-loaded to
+// Note that __ecp_nistz256_add_to expects both input vectors pre-loaded to
 // $a0-$a3 and $t0-$t3. This is done because it's used in multiple
 // contexts, e.g. in multiplication by 2 and 3...
-.type	__ecp_nistz256_add,%function
+.type	__ecp_nistz256_add_to,%function
 .align	4
-__ecp_nistz256_add:
+__ecp_nistz256_add_to:
 	adds	$acc0,$acc0,$t0		// ret = a+b
 	adcs	$acc1,$acc1,$t1
 	adcs	$acc2,$acc2,$t2
@@ -571,7 +547,7 @@ __ecp_nistz256_add:
 	stp	$acc2,$acc3,[$rp,#16]
 
 	ret
-.size	__ecp_nistz256_add,.-__ecp_nistz256_add
+.size	__ecp_nistz256_add_to,.-__ecp_nistz256_add_to
 
 .type	__ecp_nistz256_sub_from,%function
 .align	4
@@ -696,7 +672,7 @@ ecp_nistz256_point_double:
 	mov	$t3,$acc3
 	 ldp	$a2,$a3,[$ap_real,#64+16]
 	add	$rp,sp,#$S
-	bl	__ecp_nistz256_add	// p256_mul_by_2(S, in_y);
+	bl	__ecp_nistz256_add_to	// p256_mul_by_2(S, in_y);
 
 	add	$rp,sp,#$Zsqr
 	bl	__ecp_nistz256_sqr_mont	// p256_sqr_mont(Zsqr, in_z);
@@ -708,7 +684,7 @@ ecp_nistz256_point_double:
 	mov	$a2,$acc2
 	mov	$a3,$acc3
 	add	$rp,sp,#$M
-	bl	__ecp_nistz256_add	// p256_add(M, Zsqr, in_x);
+	bl	__ecp_nistz256_add_to	// p256_add(M, Zsqr, in_x);
 
 	add	$bp,$ap_real,#0
 	mov	$acc0,$a0		// restore Zsqr
@@ -737,7 +713,7 @@ ecp_nistz256_point_double:
 	mov	$t3,$acc3
 	 ldp	$a2,$a3,[sp,#$S+16]
 	add	$rp,$rp_real,#64
-	bl	__ecp_nistz256_add	// p256_mul_by_2(res_z, tmp0);
+	bl	__ecp_nistz256_add_to	// p256_mul_by_2(res_z, tmp0);
 
 	add	$rp,sp,#$tmp0
 	bl	__ecp_nistz256_sqr_mont	// p256_sqr_mont(tmp0, S);
@@ -761,7 +737,7 @@ ecp_nistz256_point_double:
 	mov	$a2,$acc2
 	mov	$a3,$acc3
 	add	$rp,sp,#$M
-	bl	__ecp_nistz256_add
+	bl	__ecp_nistz256_add_to
 	mov	$t0,$a0			// restore M
 	mov	$t1,$a1
 	 ldr	$bi,[$ap_real]		// forward load for p256_mul_mont
@@ -769,7 +745,7 @@ ecp_nistz256_point_double:
 	 ldp	$a0,$a1,[sp,#$S]
 	mov	$t3,$a3
 	 ldp	$a2,$a3,[sp,#$S+16]
-	bl	__ecp_nistz256_add	// p256_mul_by_3(M, M);
+	bl	__ecp_nistz256_add_to	// p256_mul_by_3(M, M);
 
 	add	$bp,$ap_real,#0
 	add	$rp,sp,#$S
@@ -782,7 +758,7 @@ ecp_nistz256_point_double:
 	mov	$t3,$acc3
 	 ldp	$a2,$a3,[sp,#$M+16]
 	add	$rp,sp,#$tmp0
-	bl	__ecp_nistz256_add	// p256_mul_by_2(tmp0, S);
+	bl	__ecp_nistz256_add_to	// p256_mul_by_2(tmp0, S);
 
 	add	$rp,$rp_real,#0
 	bl	__ecp_nistz256_sqr_mont	// p256_sqr_mont(res_x, M);
@@ -941,7 +917,7 @@ ecp_nistz256_point_add:
 	ldp	x23,x24,[x29,#48]
 	ldp	x25,x26,[x29,#64]
 	ldp	x27,x28,[x29,#80]
-	add	sp,sp,#32*(12-4)	// difference in stack frames
+	add	sp,sp,#256	// #256 is from #32*(12-4). difference in stack frames
 	b	.Ldouble_shortcut
 
 .align	4
@@ -987,7 +963,7 @@ ecp_nistz256_point_add:
 	mov	$t2,$acc2
 	mov	$t3,$acc3
 	add	$rp,sp,#$Hsqr
-	bl	__ecp_nistz256_add	// p256_mul_by_2(Hsqr, U2);
+	bl	__ecp_nistz256_add_to	// p256_mul_by_2(Hsqr, U2);
 
 	add	$bp,sp,#$Rsqr
 	add	$rp,sp,#$res_x
@@ -1197,7 +1173,7 @@ ecp_nistz256_point_add_affine:
 	mov	$t2,$acc2
 	mov	$t3,$acc3
 	add	$rp,sp,#$Hsqr
-	bl	__ecp_nistz256_add	// p256_mul_by_2(Hsqr, U2);
+	bl	__ecp_nistz256_add_to	// p256_mul_by_2(Hsqr, U2);
 
 	add	$bp,sp,#$Rsqr
 	add	$rp,sp,#$res_x

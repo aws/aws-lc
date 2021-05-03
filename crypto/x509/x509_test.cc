@@ -33,6 +33,9 @@
 #include "../internal.h"
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
+#include "openssl/asn1.h"
+#include "openssl/base.h"
+#include "openssl/nid.h"
 
 
 std::string GetTestData(const char *path);
@@ -438,6 +441,40 @@ NN/56aQz3bnT/ZSHQNciRB8U6jiD9V30t0w+FDTpGaG+7bzzUH3UVF9xf9Ctp60A
 3mfLe0scas7owSt4AEFuj2SPvcE7yvdOXbu+IEv21cEJUVExJAbhvIweHXh6yRW+
 7VVeiNzdIjkZjyTmAzoXGha4+wbxXyBRbfH+XWcO/H+8nwyG8Gktdu2QB9S9nnIp
 o/1TpfOMSGhMyMoyPrk=
+-----END X509 CRL-----
+)";
+
+// kAlgorithmMismatchCRL is kBasicCRL but with mismatched AlgorithmIdentifiers
+// in the outer structure and signed portion. The signature reflects the signed
+// portion.
+static const char kAlgorithmMismatchCRL[] = R"(
+-----BEGIN X509 CRL-----
+MIIBpzCBkAIBATANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
+CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ
+Qm9yaW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaoA4wDDAKBgNV
+HRQEAwIBATANBgkqhkiG9w0BAQwFAAOCAQEAnrBKKgvd9x9zwK9rtUvVeFeJ7+LN
+ZEAc+a5oxpPNEsJx6hXoApYEbzXMxuWBQoCs5iEBycSGudct21L+MVf27M38KrWo
+eOkq0a2siqViQZO2Fb/SUFR0k9zb8xl86Zf65lgPplALun0bV/HT7MJcl04Tc4os
+dsAReBs5nqTGNEd5AlC1iKHvQZkM//MD51DspKnDpsDiUVi54h9C1SpfZmX8H2Vv
+diyu0fZ/bPAM3VAGawatf/SyWfBMyKpoPXEG39oAzmjjOj8en82psn7m474IGaho
+/vBbhl1ms5qQiLYPjm4YELtnXQoFyC72tBjbdFd/ZE9k4CNKDbxFUXFbkw==
+-----END X509 CRL-----
+)";
+
+// kAlgorithmMismatchCRL2 is kBasicCRL but with mismatched AlgorithmIdentifiers
+// in the outer structure and signed portion. The signature reflects the outer
+// structure.
+static const char kAlgorithmMismatchCRL2[] = R"(
+-----BEGIN X509 CRL-----
+MIIBpzCBkAIBATANBgkqhkiG9w0BAQwFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
+CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ
+Qm9yaW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaoA4wDDAKBgNV
+HRQEAwIBATANBgkqhkiG9w0BAQsFAAOCAQEAjCWtU7AK8nQ5TCFfzvbU04MWNuLp
+iZfqapRSRyMta4pyRomK773rEmJmYOc/ZNeIphVOlupMgGC2wyv5Z/SD1mxccJbv
+SlUWciwjskjgvyyU9KnJ5xPgf3e3Fl3G0u9yJEFd4mg6fRavs5pEDX56b0f+SkG+
+Vl1FZU94Uylm2kCqk9fRpTxualPGP6dksj3Aitt4x2Vdni4sUfg9vIEEOx2jnisq
+iLqpT94IdETCWAciE0dgbogdOOsNzMqSASfHM/XPigYLXpYgfaR8fca6OKDwFsVH
+SrkFz8Se3F6mCHnbDzYElbmA46iKU2J12LTrso3Ewq/qHq0mebfp2z0y6g==
 -----END X509 CRL-----
 )";
 
@@ -1363,6 +1400,10 @@ TEST(X509Test, TestCRL) {
       CRLFromPEM(kUnknownCriticalCRL));
   bssl::UniquePtr<X509_CRL> unknown_critical_crl2(
       CRLFromPEM(kUnknownCriticalCRL2));
+  bssl::UniquePtr<X509_CRL> algorithm_mismatch_crl(
+      CRLFromPEM(kAlgorithmMismatchCRL));
+  bssl::UniquePtr<X509_CRL> algorithm_mismatch_crl2(
+      CRLFromPEM(kAlgorithmMismatchCRL2));
 
   ASSERT_TRUE(root);
   ASSERT_TRUE(leaf);
@@ -1372,30 +1413,38 @@ TEST(X509Test, TestCRL) {
   ASSERT_TRUE(known_critical_crl);
   ASSERT_TRUE(unknown_critical_crl);
   ASSERT_TRUE(unknown_critical_crl2);
+  ASSERT_TRUE(algorithm_mismatch_crl);
+  ASSERT_TRUE(algorithm_mismatch_crl2);
 
-  ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
                               {basic_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(
+  EXPECT_EQ(
       X509_V_ERR_CERT_REVOKED,
       Verify(leaf.get(), {root.get()}, {root.get()},
              {basic_crl.get(), revoked_crl.get()}, X509_V_FLAG_CRL_CHECK));
 
   std::vector<X509_CRL *> empty_crls;
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
             Verify(leaf.get(), {root.get()}, {root.get()}, empty_crls,
                    X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {bad_issuer_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_OK,
+  EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {known_critical_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {unknown_critical_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {unknown_critical_crl2.get()}, X509_V_FLAG_CRL_CHECK));
+  EXPECT_EQ(X509_V_ERR_CRL_SIGNATURE_FAILURE,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {algorithm_mismatch_crl.get()}, X509_V_FLAG_CRL_CHECK));
+  EXPECT_EQ(X509_V_ERR_CRL_SIGNATURE_FAILURE,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {algorithm_mismatch_crl2.get()}, X509_V_FLAG_CRL_CHECK));
 
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));
@@ -1599,7 +1648,7 @@ TEST(X509Test, RSASignManual) {
     if (new_cert) {
       cert.reset(X509_new());
       // Fill in some fields for the certificate arbitrarily.
-      EXPECT_TRUE(X509_set_version(cert.get(), 2 /* X.509v3 */));
+      EXPECT_TRUE(X509_set_version(cert.get(), X509V3_VERSION));
       EXPECT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
       EXPECT_TRUE(X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0));
       EXPECT_TRUE(
@@ -2576,6 +2625,11 @@ xAcCIHweeRRqIYPwenRoeV8UmZpotPHLnhVe5h8yUmFedckU
 -----END CERTIFICATE-----
 )";
 
+/*
+
+Test cases disabled. TODO re-enable in April 2021.
+https://crbug.com/boringssl/375
+
 // kV1WithExtensionsPEM is an X.509v1 certificate with extensions.
 static const char kV1WithExtensionsPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -2607,6 +2661,7 @@ BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
 BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=
 -----END CERTIFICATE-----
 )";
+*/
 
 // kV1WithIssuerUniqueIDPEM is an X.509v1 certificate with an issuerUniqueID.
 static const char kV1WithIssuerUniqueIDPEM[] = R"(
@@ -2648,8 +2703,10 @@ TEST(X509Test, InvalidVersion) {
   EXPECT_FALSE(CertFromPEM(kNegativeVersionPEM));
   EXPECT_FALSE(CertFromPEM(kFutureVersionPEM));
   EXPECT_FALSE(CertFromPEM(kOverflowVersionPEM));
-  EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
-  EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
+  // Test cases disabled. TODO re-enable in April 2021.
+  // https://crbug.com/boringssl/375
+  //EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
+  //EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithIssuerUniqueIDPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithSubjectUniqueIDPEM));
 }
@@ -2985,4 +3042,166 @@ TEST(X509Test, GeneralName)  {
       }
     }
   }
+}
+
+// Test that extracting fields of an |X509_ALGOR| works correctly.
+TEST(X509Test, X509AlgorExtract) {
+  static const char kTestOID[] = "1.2.840.113554.4.1.72585.2";
+  const struct {
+    int param_type;
+    std::vector<uint8_t> param_der;
+  } kTests[] = {
+      // No parameter.
+      {V_ASN1_UNDEF, {}},
+      // BOOLEAN { TRUE }
+      {V_ASN1_BOOLEAN, {0x01, 0x01, 0xff}},
+      // BOOLEAN { FALSE }
+      {V_ASN1_BOOLEAN, {0x01, 0x01, 0x00}},
+      // OCTET_STRING { "a" }
+      {V_ASN1_OCTET_STRING, {0x04, 0x01, 0x61}},
+      // BIT_STRING { `01` `00` }
+      {V_ASN1_BIT_STRING, {0x03, 0x02, 0x01, 0x00}},
+      // INTEGER { -1 }
+      {V_ASN1_INTEGER, {0x02, 0x01, 0xff}},
+      // OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2 }
+      {V_ASN1_OBJECT,
+       {0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+        0x09, 0x02}},
+      // NULL {}
+      {V_ASN1_NULL, {0x05, 0x00}},
+      // SEQUENCE {}
+      {V_ASN1_SEQUENCE, {0x30, 0x00}},
+      // SET {}
+      {V_ASN1_SET, {0x31, 0x00}},
+      // [0] { UTF8String { "a" } }
+      {V_ASN1_OTHER, {0xa0, 0x03, 0x0c, 0x01, 0x61}},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.param_der));
+
+    // Assemble an AlgorithmIdentifier with the parameter.
+    bssl::ScopedCBB cbb;
+    CBB seq, oid;
+    ASSERT_TRUE(CBB_init(cbb.get(), 64));
+    ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
+    ASSERT_TRUE(CBB_add_asn1(&seq, &oid, CBS_ASN1_OBJECT));
+    ASSERT_TRUE(CBB_add_asn1_oid_from_text(&oid, kTestOID, strlen(kTestOID)));
+    ASSERT_TRUE(CBB_add_bytes(&seq, t.param_der.data(), t.param_der.size()));
+    ASSERT_TRUE(CBB_flush(cbb.get()));
+
+    const uint8_t *ptr = CBB_data(cbb.get());
+    bssl::UniquePtr<X509_ALGOR> alg(
+        d2i_X509_ALGOR(nullptr, &ptr, CBB_len(cbb.get())));
+    ASSERT_TRUE(alg);
+
+    const ASN1_OBJECT *obj;
+    int param_type;
+    const void *param_value;
+    X509_ALGOR_get0(&obj, &param_type, &param_value, alg.get());
+
+    EXPECT_EQ(param_type, t.param_type);
+    char oid_buf[sizeof(kTestOID)];
+    ASSERT_EQ(int(sizeof(oid_buf) - 1),
+              OBJ_obj2txt(oid_buf, sizeof(oid_buf), obj,
+                          /*always_return_oid=*/1));
+    EXPECT_STREQ(oid_buf, kTestOID);
+
+    // |param_type| and |param_value| must be consistent with |ASN1_TYPE|.
+    if (param_type == V_ASN1_UNDEF) {
+      EXPECT_EQ(nullptr, param_value);
+    } else {
+      bssl::UniquePtr<ASN1_TYPE> param(ASN1_TYPE_new());
+      ASSERT_TRUE(param);
+      ASSERT_TRUE(ASN1_TYPE_set1(param.get(), param_type, param_value));
+
+      uint8_t *param_der = nullptr;
+      int param_len = i2d_ASN1_TYPE(param.get(), &param_der);
+      ASSERT_GE(param_len, 0);
+      bssl::UniquePtr<uint8_t> free_param_der(param_der);
+
+      EXPECT_EQ(Bytes(param_der, param_len), Bytes(t.param_der));
+    }
+  }
+}
+
+// Test the various |X509_ATTRIBUTE| creation functions.
+TEST(X509Test, Attribute) {
+  // The friendlyName attribute has a BMPString value. See RFC2985,
+  // section 5.5.1.
+  static const uint8_t kTest1[] = {0x26, 0x03};  // U+2603 SNOWMAN
+  static const uint8_t kTest1UTF8[] = {0xe2, 0x98, 0x83};
+  static const uint8_t kTest2[] = {0, 't', 0, 'e', 0, 's', 0, 't'};
+
+  auto check_attribute = [&](X509_ATTRIBUTE *attr, bool has_test2) {
+    EXPECT_EQ(NID_friendlyName, OBJ_obj2nid(X509_ATTRIBUTE_get0_object(attr)));
+
+    EXPECT_EQ(has_test2 ? 2 : 1, X509_ATTRIBUTE_count(attr));
+
+    // The first attribute should contain |kTest1|.
+    const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, 0);
+    ASSERT_TRUE(value);
+    EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
+    EXPECT_EQ(Bytes(kTest1),
+              Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
+                    ASN1_STRING_length(value->value.bmpstring)));
+
+    // |X509_ATTRIBUTE_get0_data| requires the type match.
+    EXPECT_FALSE(
+        X509_ATTRIBUTE_get0_data(attr, 0, V_ASN1_OCTET_STRING, nullptr));
+    const ASN1_BMPSTRING *bmpstring = static_cast<const ASN1_BMPSTRING *>(
+        X509_ATTRIBUTE_get0_data(attr, 0, V_ASN1_BMPSTRING, nullptr));
+    ASSERT_TRUE(bmpstring);
+    EXPECT_EQ(Bytes(kTest1), Bytes(ASN1_STRING_get0_data(bmpstring),
+                                   ASN1_STRING_length(bmpstring)));
+
+    if (has_test2) {
+      value = X509_ATTRIBUTE_get0_type(attr, 1);
+      ASSERT_TRUE(value);
+      EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
+      EXPECT_EQ(Bytes(kTest2),
+                Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
+                      ASN1_STRING_length(value->value.bmpstring)));
+    } else {
+      EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, 1));
+    }
+
+    EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, 2));
+  };
+
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_BMPSTRING));
+  ASSERT_TRUE(str);
+  ASSERT_TRUE(ASN1_STRING_set(str.get(), kTest1, sizeof(kTest1)));
+
+  // Test |X509_ATTRIBUTE_create|.
+  bssl::UniquePtr<X509_ATTRIBUTE> attr(
+      X509_ATTRIBUTE_create(NID_friendlyName, V_ASN1_BMPSTRING, str.get()));
+  ASSERT_TRUE(attr);
+  str.release();  // |X509_ATTRIBUTE_create| takes ownership on success.
+  check_attribute(attr.get(), /*has_test2=*/false);
+
+  // Test the |MBSTRING_*| form of |X509_ATTRIBUTE_set1_data|.
+  attr.reset(X509_ATTRIBUTE_new());
+  ASSERT_TRUE(attr);
+  ASSERT_TRUE(
+      X509_ATTRIBUTE_set1_object(attr.get(), OBJ_nid2obj(NID_friendlyName)));
+  ASSERT_TRUE(X509_ATTRIBUTE_set1_data(attr.get(), MBSTRING_UTF8, kTest1UTF8,
+                                       sizeof(kTest1UTF8)));
+  check_attribute(attr.get(), /*has_test2=*/false);
+
+  // Test the |ASN1_STRING| form of |X509_ATTRIBUTE_set1_data|.
+  ASSERT_TRUE(X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, kTest2,
+                                       sizeof(kTest2)));
+  check_attribute(attr.get(), /*has_test2=*/true);
+
+  // Test the |ASN1_TYPE| form of |X509_ATTRIBUTE_set1_data|.
+  attr.reset(X509_ATTRIBUTE_new());
+  ASSERT_TRUE(attr);
+  ASSERT_TRUE(
+      X509_ATTRIBUTE_set1_object(attr.get(), OBJ_nid2obj(NID_friendlyName)));
+  str.reset(ASN1_STRING_type_new(V_ASN1_BMPSTRING));
+  ASSERT_TRUE(str);
+  ASSERT_TRUE(ASN1_STRING_set(str.get(), kTest1, sizeof(kTest1)));
+  ASSERT_TRUE(
+      X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, str.get(), -1));
+  check_attribute(attr.get(), /*has_test2=*/false);
 }

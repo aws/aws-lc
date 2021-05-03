@@ -105,6 +105,10 @@ extern "C" {
 #elif defined(__MIPSEL__) && defined(__LP64__)
 #define OPENSSL_64_BIT
 #define OPENSSL_MIPS64
+#elif defined(__riscv) && __SIZEOF_POINTER__ == 8
+#define OPENSSL_64_BIT
+#elif defined(__riscv) && __SIZEOF_POINTER__ == 4
+#define OPENSSL_32_BIT
 #elif defined(__pnacl__)
 #define OPENSSL_32_BIT
 #define OPENSSL_PNACL
@@ -160,6 +164,10 @@ extern "C" {
 // The FIPS module on Android passively receives entropy.
 #define BORINGSSL_FIPS_PASSIVE_ENTROPY
 #endif
+#endif
+
+#if defined(__FreeBSD__)
+#define OPENSSL_FREEBSD
 #endif
 
 // BoringSSL requires platform's locking APIs to make internal global state
@@ -426,6 +434,7 @@ typedef struct spake2_ctx_st SPAKE2_CTX;
 typedef struct srtp_protection_profile_st SRTP_PROTECTION_PROFILE;
 typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_ctx_st SSL_CTX;
+typedef struct ssl_ech_server_config_list_st SSL_ECH_SERVER_CONFIG_LIST;
 typedef struct ssl_method_st SSL_METHOD;
 typedef struct ssl_private_key_method_st SSL_PRIVATE_KEY_METHOD;
 typedef struct ssl_quic_method_st SSL_QUIC_METHOD;

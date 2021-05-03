@@ -27,6 +27,8 @@
 
 #include "../../crypto/internal.h"
 #include "../internal.h"
+#include "handshake_util.h"
+#include "mock_quic_transport.h"
 #include "test_state.h"
 
 namespace {
@@ -109,7 +111,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-renegotiate-explicit", &TestConfig::renegotiate_explicit},
     {"-forbid-renegotiation-after-handshake",
      &TestConfig::forbid_renegotiation_after_handshake},
-    {"-enable-all-curves", &TestConfig::enable_all_curves},
     {"-use-old-client-cert-callback",
      &TestConfig::use_old_client_cert_callback},
     {"-send-alert", &TestConfig::send_alert},
@@ -135,6 +136,8 @@ const Flag<bool> kBoolFlags[] = {
     {"-allow-false-start-without-alpn",
      &TestConfig::allow_false_start_without_alpn},
     {"-handoff", &TestConfig::handoff},
+    {"-handshake-hints", &TestConfig::handshake_hints},
+    {"-allow-hint-mismatch", &TestConfig::allow_hint_mismatch},
     {"-use-ocsp-callback", &TestConfig::use_ocsp_callback},
     {"-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback},
     {"-decline-ocsp-callback", &TestConfig::decline_ocsp_callback},
@@ -239,6 +242,12 @@ const Flag<std::vector<int>> kIntVectorFlags[] = {
     {"-verify-prefs", &TestConfig::verify_prefs},
     {"-expect-peer-verify-pref", &TestConfig::expect_peer_verify_prefs},
     {"-curves", &TestConfig::curves},
+    {"-ech-is-retry-config", &TestConfig::ech_is_retry_config},
+};
+
+const Flag<std::vector<std::string>> kBase64VectorFlags[] = {
+    {"-ech-server-config", &TestConfig::ech_server_configs},
+    {"-ech-server-key", &TestConfig::ech_server_keys},
 };
 
 const Flag<std::vector<std::pair<std::string, std::string>>>
@@ -246,7 +255,24 @@ const Flag<std::vector<std::pair<std::string, std::string>>>
         {"-application-settings", &TestConfig::application_settings},
 };
 
-bool ParseFlag(char *flag, int argc, char **argv, int *i,
+bool DecodeBase64(std::string *out, const std::string &in) {
+  size_t len;
+  if (!EVP_DecodedLength(&len, in.size())) {
+    fprintf(stderr, "Invalid base64: %s.\n", in.c_str());
+    return false;
+  }
+  std::vector<uint8_t> buf(len);
+  if (!EVP_DecodeBase64(buf.data(), &len, buf.size(),
+                        reinterpret_cast<const uint8_t *>(in.data()),
+                        in.size())) {
+    fprintf(stderr, "Invalid base64: %s.\n", in.c_str());
+    return false;
+  }
+  out->assign(reinterpret_cast<const char *>(buf.data()), len);
+  return true;
+}
+
+bool ParseFlag(const char *flag, int argc, char **argv, int *i,
                bool skip, TestConfig *out_config) {
   bool *bool_field = FindField(out_config, kBoolFlags, flag);
   if (bool_field != NULL) {
@@ -290,21 +316,12 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
       fprintf(stderr, "Missing parameter.\n");
       return false;
     }
-    size_t len;
-    if (!EVP_DecodedLength(&len, strlen(argv[*i]))) {
-      fprintf(stderr, "Invalid base64: %s.\n", argv[*i]);
-      return false;
-    }
-    std::unique_ptr<uint8_t[]> decoded(new uint8_t[len]);
-    if (!EVP_DecodeBase64(decoded.get(), &len, len,
-                          reinterpret_cast<const uint8_t *>(argv[*i]),
-                          strlen(argv[*i]))) {
-      fprintf(stderr, "Invalid base64: %s.\n", argv[*i]);
+    std::string value;
+    if (!DecodeBase64(&value, argv[*i])) {
       return false;
     }
     if (!skip) {
-      base64_field->assign(reinterpret_cast<const char *>(decoded.get()),
-                           len);
+      *base64_field = std::move(value);
     }
     return true;
   }
@@ -338,6 +355,25 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     return true;
   }
 
+  std::vector<std::string> *base64_vector_field =
+      FindField(out_config, kBase64VectorFlags, flag);
+  if (base64_vector_field) {
+    *i = *i + 1;
+    if (*i >= argc) {
+      fprintf(stderr, "Missing parameter.\n");
+      return false;
+    }
+    std::string value;
+    if (!DecodeBase64(&value, argv[*i])) {
+      return false;
+    }
+    // Each instance of the flag adds to the list.
+    if (!skip) {
+      base64_vector_field->push_back(std::move(value));
+    }
+    return true;
+  }
+
   std::vector<std::pair<std::string, std::string>> *string_pair_vector_field =
       FindField(out_config, kStringPairVectorFlags, flag);
   if (string_pair_vector_field) {
@@ -348,8 +384,10 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     }
     const char *comma = strchr(argv[*i], ',');
     if (!comma) {
-      fprintf(stderr,
-              "Parameter should be a pair of comma-separated strings.\n");
+      fprintf(
+          stderr,
+          "Parameter should be a comma-separated triple composed of two base64 "
+          "strings followed by \"true\" or \"false\".\n");
       return false;
     }
     // Each instance of the flag adds to the list.
@@ -364,13 +402,21 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
   return false;
 }
 
-const char kInit[] = "-on-initial";
-const char kResume[] = "-on-resume";
-const char kRetry[] = "-on-retry";
+// RemovePrefix checks if |*str| begins with |prefix| + "-". If so, it advances
+// |*str| past |prefix| (but not past the "-") and returns true. Otherwise, it
+// returns false and leaves |*str| unmodified.
+bool RemovePrefix(const char **str, const char *prefix) {
+  size_t prefix_len = strlen(prefix);
+  if (strncmp(*str, prefix, strlen(prefix)) == 0 && (*str)[prefix_len] == '-') {
+    *str += strlen(prefix);
+    return true;
+  }
+  return false;
+}
 
 }  // namespace
 
-bool ParseConfig(int argc, char **argv,
+bool ParseConfig(int argc, char **argv, bool is_shim,
                  TestConfig *out_initial,
                  TestConfig *out_resume,
                  TestConfig *out_retry) {
@@ -378,21 +424,36 @@ bool ParseConfig(int argc, char **argv,
   out_initial->argv = out_resume->argv = out_retry->argv = argv;
   for (int i = 0; i < argc; i++) {
     bool skip = false;
-    char *flag = argv[i];
-    if (strncmp(flag, kInit, strlen(kInit)) == 0) {
-      if (!ParseFlag(flag + strlen(kInit), argc, argv, &i, skip, out_initial)) {
+    const char *flag = argv[i];
+
+    // -on-shim and -on-handshaker prefixes enable flags only on the shim or
+    // handshaker.
+    if (RemovePrefix(&flag, "-on-shim")) {
+      if (!is_shim) {
+        skip = true;
+      }
+    } else if (RemovePrefix(&flag, "-on-handshaker")) {
+      if (is_shim) {
+        skip = true;
+      }
+    }
+
+    // The following prefixes allow different configurations for each of the
+    // initial, resumption, and 0-RTT retry handshakes.
+    if (RemovePrefix(&flag, "-on-initial")) {
+      if (!ParseFlag(flag, argc, argv, &i, skip, out_initial)) {
         return false;
       }
-    } else if (strncmp(flag, kResume, strlen(kResume)) == 0) {
-      if (!ParseFlag(flag + strlen(kResume), argc, argv, &i, skip,
-                     out_resume)) {
+    } else if (RemovePrefix(&flag, "-on-resume")) {
+      if (!ParseFlag(flag, argc, argv, &i, skip, out_resume)) {
         return false;
       }
-    } else if (strncmp(flag, kRetry, strlen(kRetry)) == 0) {
-      if (!ParseFlag(flag + strlen(kRetry), argc, argv, &i, skip, out_retry)) {
+    } else if (RemovePrefix(&flag, "-on-retry")) {
+      if (!ParseFlag(flag, argc, argv, &i, skip, out_retry)) {
         return false;
       }
     } else {
+      // Unprefixed flags apply to all three.
       int i_init = i;
       int i_resume = i;
       if (!ParseFlag(flag, argc, argv, &i_init, skip, out_initial) ||
@@ -629,10 +690,6 @@ static void InfoCallback(const SSL *ssl, int type, int val) {
       abort();
     }
     GetTestState(ssl)->handshake_done = true;
-
-    // Callbacks may be called again on a new handshake.
-    GetTestState(ssl)->ticket_decrypt_done = false;
-    GetTestState(ssl)->alpn_select_done = false;
   }
 }
 
@@ -1022,10 +1079,15 @@ static int ClientCertCallback(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
   return 1;
 }
 
+static ssl_private_key_result_t AsyncPrivateKeyComplete(SSL *ssl, uint8_t *out,
+                                                        size_t *out_len,
+                                                        size_t max_out);
+
 static ssl_private_key_result_t AsyncPrivateKeySign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t signature_algorithm, const uint8_t *in, size_t in_len) {
   TestState *test_state = GetTestState(ssl);
+  test_state->used_private_key = true;
   if (!test_state->private_key_result.empty()) {
     fprintf(stderr, "AsyncPrivateKeySign called with operation pending.\n");
     abort();
@@ -1066,8 +1128,7 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
   }
   test_state->private_key_result.resize(len);
 
-  // The signature will be released asynchronously in |AsyncPrivateKeyComplete|.
-  return ssl_private_key_retry;
+  return AsyncPrivateKeyComplete(ssl, out, out_len, max_out);
 }
 
 static ssl_private_key_result_t AsyncPrivateKeyDecrypt(SSL *ssl, uint8_t *out,
@@ -1076,6 +1137,7 @@ static ssl_private_key_result_t AsyncPrivateKeyDecrypt(SSL *ssl, uint8_t *out,
                                                        const uint8_t *in,
                                                        size_t in_len) {
   TestState *test_state = GetTestState(ssl);
+  test_state->used_private_key = true;
   if (!test_state->private_key_result.empty()) {
     fprintf(stderr, "AsyncPrivateKeyDecrypt called with operation pending.\n");
     abort();
@@ -1094,8 +1156,7 @@ static ssl_private_key_result_t AsyncPrivateKeyDecrypt(SSL *ssl, uint8_t *out,
 
   test_state->private_key_result.resize(*out_len);
 
-  // The decryption will be released asynchronously in |AsyncPrivateComplete|.
-  return ssl_private_key_retry;
+  return AsyncPrivateKeyComplete(ssl, out, out_len, max_out);
 }
 
 static ssl_private_key_result_t AsyncPrivateKeyComplete(SSL *ssl, uint8_t *out,
@@ -1108,9 +1169,9 @@ static ssl_private_key_result_t AsyncPrivateKeyComplete(SSL *ssl, uint8_t *out,
     abort();
   }
 
-  if (test_state->private_key_retries < 2) {
+  if (GetTestConfig(ssl)->async && test_state->private_key_retries < 2) {
     // Only return the decryption on the second attempt, to test both incomplete
-    // |decrypt| and |decrypt_complete|.
+    // |sign|/|decrypt| and |complete|.
     return ssl_private_key_retry;
   }
 
@@ -1144,7 +1205,10 @@ static bool InstallCertificate(SSL *ssl) {
   if (pkey) {
     TestState *test_state = GetTestState(ssl);
     const TestConfig *config = GetTestConfig(ssl);
-    if (config->async) {
+    if (config->async || config->handshake_hints) {
+      // Install a custom private key if testing asynchronous callbacks, or if
+      // testing handshake hints. In the handshake hints case, we wish to check
+      // that hints only mismatch when allowed.
       test_state->private_key = std::move(pkey);
       SSL_set_private_key_method(ssl, &g_async_private_key_method);
     } else if (!SSL_use_PrivateKey(ssl, pkey.get())) {
@@ -1165,12 +1229,14 @@ static bool InstallCertificate(SSL *ssl) {
 
 static enum ssl_select_cert_result_t SelectCertificateCallback(
     const SSL_CLIENT_HELLO *client_hello) {
-  const TestConfig *config = GetTestConfig(client_hello->ssl);
-  GetTestState(client_hello->ssl)->early_callback_called = true;
+  SSL *ssl = client_hello->ssl;
+  const TestConfig *config = GetTestConfig(ssl);
+  TestState *test_state = GetTestState(ssl);
+  test_state->early_callback_called = true;
 
   if (!config->expect_server_name.empty()) {
     const char *server_name =
-        SSL_get_servername(client_hello->ssl, TLSEXT_NAMETYPE_host_name);
+        SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (server_name == nullptr ||
         std::string(server_name) != config->expect_server_name) {
       fprintf(stderr,
@@ -1184,48 +1250,73 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
     return ssl_select_cert_error;
   }
 
-  // Install the certificate in the early callback.
-  if (config->use_early_callback) {
-    bool early_callback_ready =
-        GetTestState(client_hello->ssl)->early_callback_ready;
-    if (config->async && !early_callback_ready) {
-      // Install the certificate asynchronously.
-      return ssl_select_cert_retry;
-    }
-    if (!InstallCertificate(client_hello->ssl)) {
-      return ssl_select_cert_error;
-    }
+  // Simulate some asynchronous work in the early callback.
+  if ((config->use_early_callback || test_state->get_handshake_hints_cb) &&
+      config->async && !test_state->early_callback_ready) {
+    return ssl_select_cert_retry;
   }
+
+  if (test_state->get_handshake_hints_cb &&
+      !test_state->get_handshake_hints_cb(client_hello)) {
+    return ssl_select_cert_error;
+  }
+
+  if (config->use_early_callback && !InstallCertificate(ssl)) {
+    return ssl_select_cert_error;
+  }
+
   return ssl_select_cert_success;
 }
 
 static int SetQuicReadSecret(SSL *ssl, enum ssl_encryption_level_t level,
                              const SSL_CIPHER *cipher, const uint8_t *secret,
                              size_t secret_len) {
-  return GetTestState(ssl)->quic_transport->SetReadSecret(level, cipher, secret,
-                                                          secret_len);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->SetReadSecret(level, cipher, secret, secret_len);
 }
 
 static int SetQuicWriteSecret(SSL *ssl, enum ssl_encryption_level_t level,
                               const SSL_CIPHER *cipher, const uint8_t *secret,
                               size_t secret_len) {
-  return GetTestState(ssl)->quic_transport->SetWriteSecret(level, cipher,
-                                                           secret, secret_len);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->SetWriteSecret(level, cipher, secret, secret_len);
 }
 
 static int AddQuicHandshakeData(SSL *ssl, enum ssl_encryption_level_t level,
                                 const uint8_t *data, size_t len) {
-  return GetTestState(ssl)->quic_transport->WriteHandshakeData(level, data,
-                                                               len);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->WriteHandshakeData(level, data, len);
 }
 
 static int FlushQuicFlight(SSL *ssl) {
-  return GetTestState(ssl)->quic_transport->Flush();
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->Flush();
 }
 
 static int SendQuicAlert(SSL *ssl, enum ssl_encryption_level_t level,
                          uint8_t alert) {
-  return GetTestState(ssl)->quic_transport->SendAlert(level, alert);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->SendAlert(level, alert);
 }
 
 static const SSL_QUIC_METHOD g_quic_method = {
@@ -1290,7 +1381,10 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
   SSL_CTX_sess_set_new_cb(ssl_ctx.get(), NewSessionCallback);
 
-  if (use_ticket_callback) {
+  if (use_ticket_callback || handshake_hints) {
+    // If using handshake hints, always enable the ticket callback, so we can
+    // check that hints only mismatch when allowed. The ticket callback also
+    // uses a constant key, which simplifies the test.
     SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx.get(), TicketKeyCallback);
   }
 
@@ -1519,7 +1613,7 @@ static int CertCallback(SSL *ssl, void *arg) {
 }
 
 bssl::UniquePtr<SSL> TestConfig::NewSSL(
-    SSL_CTX *ssl_ctx, SSL_SESSION *session, bool is_resume,
+    SSL_CTX *ssl_ctx, SSL_SESSION *session,
     std::unique_ptr<TestState> test_state) const {
   bssl::UniquePtr<SSL> ssl(SSL_new(ssl_ctx));
   if (!ssl) {
@@ -1533,7 +1627,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     if (!SetTestState(ssl.get(), std::move(test_state))) {
       return nullptr;
     }
-    GetTestState(ssl.get())->is_resume = is_resume;
   }
 
   if (fallback_scsv && !SSL_set_mode(ssl.get(), SSL_MODE_SEND_FALLBACK_SCSV)) {
@@ -1600,6 +1693,36 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (enable_ech_grease) {
     SSL_set_enable_ech_grease(ssl.get(), 1);
+  }
+  if (ech_server_configs.size() != ech_server_keys.size() ||
+      ech_server_configs.size() != ech_is_retry_config.size()) {
+    fprintf(stderr,
+            "-ech-server-config, -ech-server-key, and -ech-is-retry-config "
+            "flags must match.\n");
+    return nullptr;
+  }
+  if (!ech_server_configs.empty()) {
+    bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+        SSL_ECH_SERVER_CONFIG_LIST_new());
+    if (!config_list) {
+      return nullptr;
+    }
+    for (size_t i = 0; i < ech_server_configs.size(); i++) {
+      const std::string &ech_config = ech_server_configs[i];
+      const std::string &ech_private_key = ech_server_keys[i];
+      const int is_retry_config = ech_is_retry_config[i];
+      if (!SSL_ECH_SERVER_CONFIG_LIST_add(
+              config_list.get(), is_retry_config,
+              reinterpret_cast<const uint8_t *>(ech_config.data()),
+              ech_config.size(),
+              reinterpret_cast<const uint8_t *>(ech_private_key.data()),
+              ech_private_key.size())) {
+        return nullptr;
+      }
+    }
+    if (!SSL_CTX_set1_ech_server_config_list(ssl_ctx, config_list.get())) {
+      return nullptr;
+    }
   }
   if (!send_channel_id.empty()) {
     SSL_set_tls_channel_id_enabled(ssl.get(), 1);
@@ -1719,16 +1842,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       if (!SSL_set1_curves(ssl.get(), &nids[0], nids.size())) {
         return nullptr;
       }
-    }
-  }
-  if (enable_all_curves) {
-    static const int kAllCurves[] = {
-        NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1,
-        NID_secp521r1, NID_X25519,           NID_CECPQ2,
-    };
-    if (!SSL_set1_curves(ssl.get(), kAllCurves,
-                         OPENSSL_ARRAY_SIZE(kAllCurves))) {
-      return nullptr;
     }
   }
   if (initial_timeout_duration_ms > 0) {

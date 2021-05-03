@@ -1,0 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - export CC=gcc
+      - export CXX=g++
+  build:
+    commands:
+      - ./tests/ci/run_minimal_tests.sh

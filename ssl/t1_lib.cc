@@ -209,11 +209,11 @@ static bool is_post_quantum_group(uint16_t id) {
 }
 
 bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
-                           const SSLMessage &msg) {
+                           Span<const uint8_t> body) {
   OPENSSL_memset(out, 0, sizeof(*out));
   out->ssl = const_cast<SSL *>(ssl);
-  out->client_hello = CBS_data(&msg.body);
-  out->client_hello_len = CBS_len(&msg.body);
+  out->client_hello = body.data();
+  out->client_hello_len = body.size();
 
   CBS client_hello, random, session_id;
   CBS_init(&client_hello, out->client_hello, out->client_hello_len);
@@ -591,7 +591,7 @@ static bool ext_sni_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 
-// Encrypted Client Hello (ECH)
+// Encrypted ClientHello (ECH)
 //
 // https://tools.ietf.org/html/draft-ietf-tls-esni-09
 
@@ -620,7 +620,7 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
 
   constexpr uint16_t kdf_id = EVP_HPKE_HKDF_SHA256;
   const uint16_t aead_id = EVP_has_aes_hardware()
-                               ? EVP_HPKE_AEAD_AES_GCM_128
+                               ? EVP_HPKE_AEAD_AES_128_GCM
                                : EVP_HPKE_AEAD_CHACHA20POLY1305;
   const EVP_AEAD *aead = EVP_HPKE_get_aead(aead_id);
   assert(aead != nullptr);
@@ -746,6 +746,35 @@ static bool ext_ech_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return true;
   }
   return true;
+}
+
+static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
+  SSL *const ssl = hs->ssl;
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||  //
+      hs->ech_accept ||                              //
+      hs->ech_server_config_list == nullptr) {
+    return true;
+  }
+
+  // Write the list of retry configs to |out|. Note
+  // |SSL_CTX_set1_ech_server_config_list| ensures |ech_server_config_list|
+  // contains at least one retry config.
+  CBB body, retry_configs;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
+      !CBB_add_u16_length_prefixed(out, &body) ||
+      !CBB_add_u16_length_prefixed(&body, &retry_configs)) {
+    return false;
+  }
+  for (const ECHServerConfig &config : hs->ech_server_config_list->configs) {
+    if (!config.is_retry_config()) {
+      continue;
+    }
+    if (!CBB_add_bytes(&retry_configs, config.raw().data(),
+                       config.raw().size())) {
+      return false;
+    }
+  }
+  return CBB_flush(out);
 }
 
 static bool ext_ech_is_inner_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
@@ -1499,6 +1528,22 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
+bool ssl_is_valid_alpn_list(Span<const uint8_t> in) {
+  CBS protocol_name_list = in;
+  if (CBS_len(&protocol_name_list) == 0) {
+    return false;
+  }
+  while (CBS_len(&protocol_name_list) > 0) {
+    CBS protocol_name;
+    if (!CBS_get_u8_length_prefixed(&protocol_name_list, &protocol_name) ||
+        // Empty protocol names are forbidden.
+        CBS_len(&protocol_name) == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
                                   Span<const uint8_t> protocol) {
   if (hs->config->alpn_client_proto_list.empty()) {
@@ -1551,23 +1596,10 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   CBS protocol_name_list;
   if (!CBS_get_u16_length_prefixed(&contents, &protocol_name_list) ||
       CBS_len(&contents) != 0 ||
-      CBS_len(&protocol_name_list) < 2) {
+      !ssl_is_valid_alpn_list(protocol_name_list)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
-  }
-
-  // Validate the protocol list.
-  CBS protocol_name_list_copy = protocol_name_list;
-  while (CBS_len(&protocol_name_list_copy) > 0) {
-    CBS protocol_name;
-    if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name) ||
-        // Empty protocol names are forbidden.
-        CBS_len(&protocol_name) == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return false;
-    }
   }
 
   const uint8_t *selected;
@@ -2415,25 +2447,29 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
 }
 
 bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
-                                         Array<uint8_t> *out_secret,
-                                         uint8_t *out_alert, CBS *contents) {
-  uint16_t group_id;
-  CBS key_shares;
-  if (!tls1_get_shared_group(hs, &group_id)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_GROUP);
-    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+                                         Span<const uint8_t> *out_peer_key,
+                                         uint8_t *out_alert,
+                                         const SSL_CLIENT_HELLO *client_hello) {
+  // We only support connections that include an ECDHE key exchange.
+  CBS contents;
+  if (!ssl_client_hello_get_extension(client_hello, &contents,
+                                      TLSEXT_TYPE_key_share)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
+    *out_alert = SSL_AD_MISSING_EXTENSION;
     return false;
   }
 
-  if (!CBS_get_u16_length_prefixed(contents, &key_shares) ||
-      CBS_len(contents) != 0) {
+  CBS key_shares;
+  if (!CBS_get_u16_length_prefixed(&contents, &key_shares) ||
+      CBS_len(&contents) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
 
   // Find the corresponding key share.
+  const uint16_t group_id = hs->new_session->group_id;
   CBS peer_key;
-  CBS_init(&peer_key, NULL, 0);
+  CBS_init(&peer_key, nullptr, 0);
   while (CBS_len(&key_shares) > 0) {
     uint16_t id;
     CBS peer_key_tmp;
@@ -2456,46 +2492,23 @@ bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
     }
   }
 
-  if (CBS_len(&peer_key) == 0) {
-    *out_found = false;
-    out_secret->Reset();
-    return true;
+  if (out_peer_key != nullptr) {
+    *out_peer_key = peer_key;
   }
-
-  // Compute the DH secret.
-  Array<uint8_t> secret;
-  ScopedCBB public_key;
-  UniquePtr<SSLKeyShare> key_share = SSLKeyShare::Create(group_id);
-  if (!key_share ||
-      !CBB_init(public_key.get(), 32) ||
-      !key_share->Accept(public_key.get(), &secret, out_alert, peer_key) ||
-      !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-    return false;
-  }
-
-  *out_secret = std::move(secret);
-  *out_found = true;
+  *out_found = CBS_len(&peer_key) != 0;
   return true;
 }
 
-bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out,
-                                       bool dry_run) {
-  uint16_t group_id;
+bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   CBB kse_bytes, public_key;
-  if (!tls1_get_shared_group(hs, &group_id) ||
-      !CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
+  if (!CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
       !CBB_add_u16_length_prefixed(out, &kse_bytes) ||
-      !CBB_add_u16(&kse_bytes, group_id) ||
+      !CBB_add_u16(&kse_bytes, hs->new_session->group_id) ||
       !CBB_add_u16_length_prefixed(&kse_bytes, &public_key) ||
       !CBB_add_bytes(&public_key, hs->ecdh_public_key.data(),
                      hs->ecdh_public_key.size()) ||
       !CBB_flush(out)) {
     return false;
-  }
-  if (!dry_run) {
-    hs->ecdh_public_key.Reset();
-    hs->new_session->group_id = group_id;
   }
   return true;
 }
@@ -3264,7 +3277,7 @@ static const struct tls_extension kExtensions[] = {
     ext_ech_add_clienthello,
     ext_ech_parse_serverhello,
     ext_ech_parse_clienthello,
-    dont_add_serverhello,
+    ext_ech_add_serverhello,
   },
   {
     TLSEXT_TYPE_ech_is_inner,
@@ -4046,6 +4059,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     SSL_HANDSHAKE *hs, UniquePtr<SSL_SESSION> *out_session,
     bool *out_renew_ticket, Span<const uint8_t> ticket,
     Span<const uint8_t> session_id) {
+  SSL *const ssl = hs->ssl;
   *out_renew_ticket = false;
   out_session->reset();
 
@@ -4054,9 +4068,21 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     return ssl_ticket_aead_ignore_ticket;
   }
 
+  // Tickets in TLS 1.3 are tied into pre-shared keys (PSKs), unlike in TLS 1.2
+  // where that concept doesn't exist. The |decrypted_psk| and |ignore_psk|
+  // hints only apply to PSKs. We check the version to determine which this is.
+  const bool is_psk = ssl_protocol_version(ssl) >= TLS1_3_VERSION;
+
   Array<uint8_t> plaintext;
   enum ssl_ticket_aead_result_t result;
-  if (hs->ssl->session_ctx->ticket_aead_method != NULL) {
+  SSL_HANDSHAKE_HINTS *const hints = hs->hints.get();
+  if (is_psk && hints && !hs->hints_requested &&
+      !hints->decrypted_psk.empty()) {
+    result = plaintext.CopyFrom(hints->decrypted_psk) ? ssl_ticket_aead_success
+                                                      : ssl_ticket_aead_error;
+  } else if (is_psk && hints && !hs->hints_requested && hints->ignore_psk) {
+    result = ssl_ticket_aead_ignore_ticket;
+  } else if (ssl->session_ctx->ticket_aead_method != NULL) {
     result = ssl_decrypt_ticket_with_method(hs, &plaintext, out_renew_ticket,
                                             ticket);
   } else {
@@ -4065,13 +4091,21 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     // length should be well under the minimum size for the session material and
     // HMAC.
     if (ticket.size() < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
-      return ssl_ticket_aead_ignore_ticket;
-    }
-    if (hs->ssl->session_ctx->ticket_key_cb != NULL) {
+      result = ssl_ticket_aead_ignore_ticket;
+    } else if (ssl->session_ctx->ticket_key_cb != NULL) {
       result =
           ssl_decrypt_ticket_with_cb(hs, &plaintext, out_renew_ticket, ticket);
     } else {
       result = ssl_decrypt_ticket_with_ticket_keys(hs, &plaintext, ticket);
+    }
+  }
+
+  if (is_psk && hints && hs->hints_requested) {
+    if (result == ssl_ticket_aead_ignore_ticket) {
+      hints->ignore_psk = true;
+    } else if (result == ssl_ticket_aead_success &&
+               !hints->decrypted_psk.CopyFrom(plaintext)) {
+      return ssl_ticket_aead_error;
     }
   }
 
@@ -4081,7 +4115,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
 
   // Decode the session.
   UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(
-      plaintext.data(), plaintext.size(), hs->ssl->ctx.get()));
+      plaintext.data(), plaintext.size(), ssl->ctx.get()));
   if (!session) {
     ERR_clear_error();  // Don't leave an error on the queue.
     return ssl_ticket_aead_ignore_ticket;
