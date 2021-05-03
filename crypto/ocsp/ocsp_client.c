@@ -4,7 +4,6 @@
 #include "ocsp_internal.h"
 
 
-/* get ocsp response status from |OCSP_RESPONSE| */
 int OCSP_response_status(OCSP_RESPONSE *resp) {
   if (resp == NULL){
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
@@ -13,7 +12,6 @@ int OCSP_response_status(OCSP_RESPONSE *resp) {
   return ASN1_ENUMERATED_get(resp->responseStatus);
 }
 
-/* Extract basic response from |OCSP_RESPONSE| */
 OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp) {
   if (resp == NULL){
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
