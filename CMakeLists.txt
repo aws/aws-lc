@@ -13,7 +13,6 @@ include(sources.cmake)
 
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
-option(ENABLE_PIC "Enable CMAKE_POSITION_INDEPENDENT_CODE on static build." ON)
 
 enable_language(C)
 
@@ -340,7 +339,7 @@ add_definitions(-DBORINGSSL_IMPLEMENTATION)
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-elseif(ENABLE_PIC)
+elseif(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
