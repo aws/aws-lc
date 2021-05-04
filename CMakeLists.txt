@@ -11,14 +11,8 @@ endif()
 
 include(sources.cmake)
 
-if(POLICY CMP0077)
-  cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
-endif()
-
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
-option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
-option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 
 enable_language(C)
 
@@ -68,22 +62,18 @@ install(DIRECTORY include/openssl
 if(ANDROID)
   # Android-NDK CMake files reconfigure the path and so Go and Perl won't be
   # found. However, ninja will still find them in $PATH if we just name them.
-  if(NOT DISABLE_PERL AND NOT PERL_EXECUTABLE)
+  if(NOT PERL_EXECUTABLE)
     set(PERL_EXECUTABLE "perl")
   endif()
-  if(NOT DISABLE_GO AND NOT GO_EXECUTABLE)
+  if(NOT GO_EXECUTABLE)
     set(GO_EXECUTABLE "go")
   endif()
 else()
-  if(NOT DISABLE_PERL)
-    find_package(Perl)
-  endif()
-  if(NOT DISABLE_GO)
-    find_program(GO_EXECUTABLE go)
-  endif()
+  find_package(Perl)
+  find_program(GO_EXECUTABLE go)
 endif()
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   find_package(PkgConfig QUIET)
   if (PkgConfig_FOUND)
     pkg_check_modules(LIBUNWIND libunwind-generic)
@@ -105,7 +95,7 @@ if (NOT PERL_EXECUTABLE)
 endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
-  set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
+  set(GENERATE_CODE_ROOT "${CMAKE_SOURCE_DIR}/generated-src")
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -118,7 +108,7 @@ endif()
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
 if(NOT FIPS)
-  if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithassert" OR
+  if(CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithassert" OR
      NOT CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
     add_definitions(-DBORINGSSL_DISPATCH_TEST)
     # CMake automatically connects include_directories to the NASM
@@ -164,10 +154,10 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
-  message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+  message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS") 
 endif()
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
@@ -466,7 +456,7 @@ endif()
 function(go_executable dest package)
   set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
   if(${CMAKE_VERSION} VERSION_LESS "3.7" OR
-     NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
+     NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
     # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
     # only works with Ninja. Query the sources at configure time. Additionally,
     # everything depends on go.mod. That affects what external packages to use.
@@ -541,10 +531,10 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64|aarch64")
   set(ARCH "aarch64")
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm*")
   set(ARCH "arm")
-elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "mips")
+elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "mips")
   # Just to avoid the “unknown processor” error.
   set(ARCH "generic")
-elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "ppc64le")
+elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
