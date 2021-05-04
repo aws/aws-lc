@@ -336,8 +336,11 @@ endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
+
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
+  # Enable position-independent code globally. This is needed because
+  # some library targets are OBJECT libraries.
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 elseif(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
