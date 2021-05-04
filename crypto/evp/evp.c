@@ -204,6 +204,8 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
   switch (nid) {
     case EVP_PKEY_RSA:
       return &rsa_asn1_meth;
+    case EVP_PKEY_RSA_PSS:
+      return &rsa_pss_asn1_meth;
     case EVP_PKEY_EC:
       return &ec_asn1_meth;
     case EVP_PKEY_DSA:
@@ -238,7 +240,7 @@ int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
 }
 
 RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
-  if (pkey->type != EVP_PKEY_RSA) {
+  if (pkey->type != EVP_PKEY_RSA && pkey->type != EVP_PKEY_RSA_PSS) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_RSA_KEY);
     return NULL;
   }

@@ -70,9 +70,10 @@
 #include <openssl/sha.h>
 #include <openssl/thread.h>
 
+#include "../../internal.h"
+#include "../../rsa_extra/internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
-#include "../../internal.h"
 #include "internal.h"
 
 
@@ -144,6 +145,7 @@ void RSA_free(RSA *rsa) {
   BN_free(rsa->dmp1);
   BN_free(rsa->dmq1);
   BN_free(rsa->iqmp);
+  RSASSA_PSS_PARAMS_free(rsa->pss);
   BN_MONT_CTX_free(rsa->mont_n);
   BN_MONT_CTX_free(rsa->mont_p);
   BN_MONT_CTX_free(rsa->mont_q);

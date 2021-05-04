@@ -147,6 +147,11 @@ struct evp_pkey_asn1_method_st {
 OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
                                      int cmd, int p1, void *p2);
 
+// EVP_RSA_PKEY_CTX_ctrl is a wrapper of |EVP_PKEY_CTX_ctrl|.
+// Before calling |EVP_PKEY_CTX_ctrl|, a check is added to make sure
+// the |ctx->pmeth->pkey_id| is either |EVP_PKEY_RSA| or |EVP_PKEY_RSA_PSS|.
+int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2);
+
 #define EVP_PKEY_CTRL_MD 1
 #define EVP_PKEY_CTRL_GET_MD 2
 
@@ -203,12 +208,13 @@ struct evp_pkey_method_st {
 
   int (*keygen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
+  int (*sign_init)(EVP_PKEY_CTX *ctx);
   int (*sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
               const uint8_t *tbs, size_t tbslen);
 
   int (*sign_message)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
                       const uint8_t *tbs, size_t tbslen);
-
+  int (*verify_init)(EVP_PKEY_CTX *ctx);
   int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
                 const uint8_t *tbs, size_t tbslen);
 
@@ -253,10 +259,12 @@ typedef struct {
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
 
 extern const EVP_PKEY_METHOD rsa_pkey_meth;
+extern const EVP_PKEY_METHOD rsa_pss_pkey_meth;
 extern const EVP_PKEY_METHOD ec_pkey_meth;
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
