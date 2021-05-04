@@ -201,6 +201,7 @@ if(GO_EXECUTABLE)
     err/evp.errordata
     err/hkdf.errordata
     err/obj.errordata
+    err/ocsp.errordata
     err/pem.errordata
     err/pkcs7.errordata
     err/pkcs8.errordata
@@ -330,6 +331,8 @@ add_library(
   mem.c
   obj/obj.c
   obj/obj_xref.c
+  ocsp/ocsp_asn.c
+  ocsp/ocsp_client.c
   pem/pem_all.c
   pem/pem_info.c
   pem/pem_lib.c
