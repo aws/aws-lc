@@ -336,7 +336,6 @@ endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
-
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
   # Enable position-independent code globally. This is needed because
