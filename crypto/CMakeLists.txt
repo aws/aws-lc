@@ -360,6 +360,7 @@ add_library(
   refcount_c11.c
   refcount_lock.c
   rsa_extra/rsa_asn1.c
+  rsa_extra/rsassa_pss_asn1.c
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c
@@ -579,6 +580,7 @@ if(BUILD_TESTING)
     rand_extra/rand_test.cc
     refcount_test.cc
     rsa_extra/rsa_test.cc
+    rsa_extra/rsassa_pss_asn1_test.cc
     self_test.cc
     stack/stack_test.cc
     siphash/siphash_test.cc

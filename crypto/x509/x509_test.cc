@@ -204,6 +204,33 @@ Z0IL+OQFz6+LcTHxD27JJCebrATXZA0wThGTQDm7crL+a+SujBY=
 -----END CERTIFICATE-----
 )";
 
+// kExampleRsassaPssCert is an example RSA-PSS self-signed certificate,
+// signed with sha256. The Public Key Algorithm of 'kExamplePSSCert' is 'rsaEncryption'.
+// But the Public Key Algorithm of'kExampleRsassaPssCert' is 'rsassaPss'.
+static const char kExampleRsassaPssCert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDfDCCAjmgAwIBAgIUEIxD6A5SEeKV47rjkU8lPp4YOcEwOAYJKoZIhvcNAQEK
+MCugDTALBglghkgBZQMEAgGhGjAYBgkqhkiG9w0BAQgwCwYJYIZIAWUDBAIBMA0x
+CzAJBgNVBAMMAkNBMB4XDTIxMDIwMTAzMjA0NFoXDTIxMDMwMzAzMjA0NFowDTEL
+MAkGA1UEAwwCQ0EwggFNMDgGCSqGSIb3DQEBCjAroA0wCwYJYIZIAWUDBAIBoRow
+GAYJKoZIhvcNAQEIMAsGCWCGSAFlAwQCAQOCAQ8AMIIBCgKCAQEA1uY4qXBckPXW
+r3i7AAXzemo8DBJWMrb1kb2tOyIGuz7GAYkU7cwOpbGAaWsjg/IfHBxinTBhlEUl
+8PbjsITcXIA9y9ZM1z9lH3IV+TapcIBlzpL7eaE5Z/m0f1usdNIdEbNYN1iu/ITQ
+5+iWq8ycYAEleRifqLs3qDBWAUDkKE11CiF89OFe1ESHVfinyMM2MBjIvm4aLgg2
+RKJo+H634tN7z17Rixd7eHV1mTUeSrxIPbclG8zxHL+Lmtm6ygJ/aY6+7ddNjvqM
+dkPjK6i+sfIk0/A0MNSOhTxo6vcKRM9msKkoVBkAtX/OZaOuztcgiJbB6WICqxU9
+cDS5+aWS3wIDAQABo1MwUTAdBgNVHQ4EFgQUMVnzC8gWnX/1TWGYSzhPfcmVVbow
+HwYDVR0jBBgwFoAUMVnzC8gWnX/1TWGYSzhPfcmVVbowDwYDVR0TAQH/BAUwAwEB
+/zA4BgkqhkiG9w0BAQowK6ANMAsGCWCGSAFlAwQCAaEaMBgGCSqGSIb3DQEBCDAL
+BglghkgBZQMEAgEDggEBAI/ImUkyQWZZADALJIoyZHU1i3sRVNLJPKYU8OR0pjja
+SKCsU/+xRNi/WuyjH/oXOZyIxta+QVW6zncMVqItKxF2upTYZk8QuwVKfKYY9uO+
+9e4IwoOAUJdbQ3MvC16bDgNyovZsI5Om3mhKX6fCamVtPe14YGn4MzmusOlRVCoT
+F70J6OcMpIR+umax9pJ/7o5D6Tl6wZPxUq3nyk8jQsYBk+d47CWKJNbnXa0VhPuL
+1i+8ourm0ccQ2ku3yAElaJM7MeiavcXufOhp3CGwKU4j12aktR7JJsHFJuXqcDBk
+lCVcLZYHYFEQtpAMBDE66eBnJysn199+p9Gou4JlhJI=
+-----END CERTIFICATE-----
+)";
+
 // kBadPSSCertPEM is a self-signed RSA-PSS certificate with bad parameters.
 static const char kBadPSSCertPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -1498,6 +1525,15 @@ TEST(X509Test, TestPSS) {
   bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   ASSERT_TRUE(pkey);
 
+  ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
+}
+
+TEST(X509Test, TestRsaSsaPss) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExampleRsassaPssCert));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
   ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
 }
 
