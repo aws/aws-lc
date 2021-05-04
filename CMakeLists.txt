@@ -341,6 +341,8 @@ if(BUILD_SHARED_LIBS)
   # Enable position-independent code globally. This is needed because
   # some library targets are OBJECT libraries.
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+elseif(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
+  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
 if(MSAN)
