@@ -302,7 +302,7 @@ if(WIN32)
   add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
-if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.99") OR
+if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.9.99") OR
    CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
@@ -340,6 +340,8 @@ if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
   # Enable position-independent code globally. This is needed because
   # some library targets are OBJECT libraries.
+  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+elseif(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
