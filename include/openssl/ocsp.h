@@ -19,6 +19,7 @@
 extern "C" {
 #endif
 
+
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_responder_id_st OCSP_RESPID;
 typedef struct ocsp_signature_st OCSP_SIGNATURE;
@@ -56,14 +57,14 @@ OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 }
 #endif
 
+<<<<<<< HEAD
 #define OCSP_RESPONSE_STATUS_SUCCESSFUL           0
 #define OCSP_RESPONSE_STATUS_MALFORMEDREQUEST     1
 #define OCSP_RESPONSE_STATUS_INTERNALERROR        2
 #define OCSP_RESPONSE_STATUS_TRYLATER             3
 #define OCSP_RESPONSE_STATUS_SIGREQUIRED          5
 #define OCSP_RESPONSE_STATUS_UNAUTHORIZED         6
-
-
+    
 #define OCSP_R_NOT_BASIC_RESPONSE                        104
 #define OCSP_R_NO_RESPONSE_DATA                          108
 
