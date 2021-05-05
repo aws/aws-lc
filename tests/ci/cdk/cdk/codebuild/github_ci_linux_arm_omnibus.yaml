@@ -42,6 +42,14 @@ batch:
           AWS_LC_GO_TEST_TIMEOUT: 120m
           AWSLC_NO_ASM_FIPS: 1
 
+    - identifier: ubuntu2004_clang7x_aarch_minimal
+      buildspec: ./tests/ci/codebuild/linux-aarch/run_minimal_tests.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
+
     - identifier: ubuntu2004_clang8x_aarch
       buildspec: ./tests/ci/codebuild/linux-aarch/run_posix_tests.yml
       env:
