@@ -64,6 +64,12 @@ static void pthread_atfork_on_fork(void) {
 
   struct CRYPTO_STATIC_MUTEX *const lock = g_fork_detect_lock_bss_get();
 
+  // This zeroises the first byte of the memory page pointed to by
+  // |*g_fork_detect_addr_bss_get|. This is the same byte used as fork
+  // detection sentinel in |CRYPTO_get_fork_generation|. The same memory page,
+  // and in turn, the byte, is also the memory zeroised by the |MADV_WIPEONFORK|
+  // fork detection mechanism.
+  //
   // Aquire locks to be on the safe side. We want to avoid the checks in
   // |CRYPTO_get_fork_generation| getting executed before setting the sentinel
   // flag. The write lock prevents any other thread from owning any other type
