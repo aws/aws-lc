@@ -205,9 +205,6 @@ TEST(OCSPTest, TestBasic) {
   bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
 
-//  bssl::Span<const uint8_t> der = bssl::Span<const uint8_t>(ocsp_response_der);
-//  const uint8_t *der_ptr = der.data();
-//  ocsp_response = d2i_OCSP_RESPONSE(nullptr, &der_ptr, der.size());
   ocsp_response = LoadOCSP_RESPONSE(ocsp_response_der);
   ASSERT_TRUE(ocsp_response);
 
