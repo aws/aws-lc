@@ -104,11 +104,12 @@ static int pkey_ctx_is_pss(EVP_PKEY_CTX *ctx) {
 }
 
 // This method checks if the NID of |s_md| is the same as the NID of |k_md| when
-// |pkey_ctx_is_pss(ctx)| is true.
-static int pss_hash_algorithm_match(EVP_PKEY_CTX *ctx, const EVP_MD *k_md,
-                               const EVP_MD *s_md) {
-  if (pkey_ctx_is_pss(ctx) && k_md) {
-    if (s_md) {
+// |pkey_ctx_is_pss(ctx)| is true and there is PSS restriction, which means
+// |min_saltlen| != |NO_PSS_SALT_LEN_RESTRICTION|.
+static int pss_hash_algorithm_match(EVP_PKEY_CTX *ctx, int min_saltlen,
+                                    const EVP_MD *k_md, const EVP_MD *s_md) {
+  if (pkey_ctx_is_pss(ctx) && min_saltlen != NO_PSS_SALT_LEN_RESTRICTION) {
+    if (k_md != NULL && s_md != NULL) {
       return EVP_MD_type(k_md) == EVP_MD_type(s_md);
     } else {
       return 0;
@@ -569,7 +570,7 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       }
       // Check if the hashAlgorithm is matched.
       // Sec 3.3 https://tools.ietf.org/html/rfc4055#section-3.3
-      if (!pss_hash_algorithm_match(ctx, rctx->md, p2)) {
+      if (!pss_hash_algorithm_match(ctx, rctx->min_saltlen, rctx->md, p2)) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PSS_MD);
         return 0;
       }
@@ -596,7 +597,7 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       } else {
         // Check if the hashAlgorithm is matched.
         // Sec 3.3 https://tools.ietf.org/html/rfc4055#section-3.3
-        if (!pss_hash_algorithm_match(ctx, rctx->mgf1md, p2)) {
+        if (!pss_hash_algorithm_match(ctx, rctx->min_saltlen, rctx->mgf1md, p2)) {
           OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_MGF1_MD);
           return 0;
         }
