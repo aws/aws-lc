@@ -5,7 +5,6 @@
 
 #include "openssl/ocsp.h"
 
-
 #include "../internal.h"
 
 static const uint8_t ocsp_response_der[] = {
@@ -197,18 +196,24 @@ static const uint8_t ocsp_response_der[] = {
     0xd5, 0x38, 0x22, 0xc8, 0x14, 0x5b, 0xb9, 0x5f, 0x50, 0x8b, 0x94 };
 
 
-TEST(OCSPTest, TestBasic) {
-  OCSP_RESPONSE *ocsp_response = NULL;
-  OCSP_BASICRESP *basic_response = NULL;
+static bssl::UniquePtr<OCSP_RESPONSE> LoadOCSP_RESPONSE(bssl::Span<const uint8_t> der) {
+  const uint8_t *ptr = der.data();
+  return bssl::UniquePtr<OCSP_RESPONSE>(d2i_OCSP_RESPONSE(nullptr, &ptr, der.size()));
+}
 
-  bssl::Span<const uint8_t> der = bssl::Span<const uint8_t>(ocsp_response_der);
-  const uint8_t *der_ptr = der.data();
-  ocsp_response = d2i_OCSP_RESPONSE(NULL, &der_ptr, der.size());
+TEST(OCSPTest, TestBasic) {
+  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
+  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+
+//  bssl::Span<const uint8_t> der = bssl::Span<const uint8_t>(ocsp_response_der);
+//  const uint8_t *der_ptr = der.data();
+//  ocsp_response = d2i_OCSP_RESPONSE(nullptr, &der_ptr, der.size());
+  ocsp_response = LoadOCSP_RESPONSE(ocsp_response_der);
   ASSERT_TRUE(ocsp_response);
 
-  int ocsp_status = OCSP_response_status(ocsp_response);
+  int ocsp_status = OCSP_response_status(ocsp_response.get());
   ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ocsp_status);
 
-  basic_response = OCSP_response_get1_basic(ocsp_response);
+  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(basic_response);
 }
