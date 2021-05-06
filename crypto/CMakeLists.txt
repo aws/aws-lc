@@ -143,11 +143,15 @@ if(${ARCH} STREQUAL "arm")
 endif()
 
 if(${ARCH} STREQUAL "aarch64")
+  message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
   set(
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv8.${ASM_EXT}
     test/trampoline-armv8.${ASM_EXT}
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_add_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_montmul_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_montsqr_p384.S
   )
 endif()
 
