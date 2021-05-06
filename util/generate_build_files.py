@@ -219,9 +219,6 @@ def WriteAsmFiles(perlasms):
       filename = os.path.basename(perlasm['input'])
       output = perlasm['output']
       output = os.path.relpath(os.path.join(outDir, output), DEST_DIR)
-      if output.endswith('-armx.${ASM_EXT}'):
-        output = output.replace('-armx',
-                                '-armx64' if arch == 'aarch64' else '-armx32')
       output = output.replace('${ASM_EXT}', asm_ext)
 
       if arch in ArchForAsmFilename(filename):
