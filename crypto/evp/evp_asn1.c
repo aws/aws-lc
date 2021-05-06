@@ -71,6 +71,7 @@
 
 static const EVP_PKEY_ASN1_METHOD *const kASN1Methods[] = {
     &rsa_asn1_meth,
+    &rsa_pss_asn1_meth,
     &ec_asn1_meth,
     &dsa_asn1_meth,
     &ed25519_asn1_meth,

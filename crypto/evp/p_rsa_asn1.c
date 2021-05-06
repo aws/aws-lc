@@ -59,12 +59,10 @@
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/rsa.h>
 
-#include "../fipsmodule/rsa/internal.h"
+#include "../rsa_extra/internal.h"
 #include "internal.h"
-
 
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   // See RFC 3279, section 2.3.1.
@@ -105,6 +103,30 @@ static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   }
 
   EVP_PKEY_assign_RSA(out, rsa);
+  return 1;
+}
+
+static int rsa_pss_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  RSASSA_PSS_PARAMS *pss = NULL;
+  if (!RSASSA_PSS_parse_params(params, &pss)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+  RSA *rsa = RSA_parse_public_key(key);
+  if (rsa != NULL) {
+    rsa->pss = pss;
+  } else {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSASSA_PSS_PARAMS_free(pss);
+    return 0;
+  }
+  if (rsa == NULL ||
+      CBS_len(key) != 0 ||
+      !EVP_PKEY_assign(out, EVP_PKEY_RSA_PSS, rsa)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSA_free(rsa);
+    return 0;
+  }
   return 1;
 }
 
@@ -152,6 +174,30 @@ static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   return 1;
 }
 
+static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  RSASSA_PSS_PARAMS *pss = NULL;
+  if (!RSASSA_PSS_parse_params(params, &pss)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+  RSA *rsa = RSA_parse_private_key(key);
+  if (rsa != NULL) {
+    rsa->pss = pss;
+  } else {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSASSA_PSS_PARAMS_free(pss);
+    return 0;
+  }
+  if (rsa == NULL ||
+      CBS_len(key) != 0 ||
+      !EVP_PKEY_assign(out, EVP_PKEY_RSA_PSS, rsa)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSA_free(rsa);
+    return 0;
+  }
+  return 1;
+}
+
 static int rsa_opaque(const EVP_PKEY *pkey) {
   return RSA_is_opaque(pkey->pkey.rsa);
 }
@@ -177,6 +223,33 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
 
   rsa_priv_decode,
   rsa_priv_encode,
+
+  NULL /* set_priv_raw */,
+  NULL /* set_pub_raw */,
+  NULL /* get_priv_raw */,
+  NULL /* get_pub_raw */,
+
+  rsa_opaque,
+
+  int_rsa_size,
+  rsa_bits,
+
+  0,0,0,
+
+  int_rsa_free,
+};
+
+const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
+  EVP_PKEY_RSA_PSS,
+  // 1.2.840.113549.1.1.10
+  {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a}, 9,
+
+  rsa_pss_pub_decode,
+  NULL /* pub_encode */,
+  rsa_pub_cmp,
+
+  rsa_pss_priv_decode,
+  NULL /* priv_encode */,
 
   NULL /* set_priv_raw */,
   NULL /* set_pub_raw */,
