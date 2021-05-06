@@ -35,7 +35,7 @@ extern void bignum_add_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_
 
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_add_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
+extern void bignum_add_p384 (uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 
 // Compute "amontification" constant z :== 2^{128k} (congruent mod m)
 // Input m[k]; output z[k]; temporary buffer t[>=k]
@@ -271,7 +271,7 @@ extern void bignum_montmul_p256 (uint64_t z[static 4], uint64_t x[static 4], uin
 
 // Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_montmul_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
+extern void bignum_montmul_p384 (uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 
 // Montgomery reduce, z := (x' / 2^{64p}) MOD m
 // Inputs x[n], m[k], p; output z[k]
@@ -287,7 +287,7 @@ extern void bignum_montsqr_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Montgomery square, z := (x^2 / 2^384) mod p_384
 // Input x[6]; output z[6]
-extern void bignum_montsqr_p384 (uint64_t z[static 6], uint64_t x[static 6]);
+extern void bignum_montsqr_p384 (uint64_t z[static 6], const uint64_t x[static 6]);
 
 // Multiply z := x * y
 // Inputs x[m], y[n]; output z[k]
