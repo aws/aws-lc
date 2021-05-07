@@ -45,6 +45,7 @@ int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last)
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
+
   STACK_OF(OCSP_SINGLERESP) *sresp = bs->tbsResponseData->responses;
   OCSP_SINGLERESP *single;
 
@@ -70,9 +71,9 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
+
   OCSP_CERTSTATUS *cst = single->certStatus;
   int status = cst->type;
-
   /*
    * If certificate status is revoked, we look up certificate revocation
    * time and reason
@@ -107,6 +108,11 @@ int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
                           ASN1_GENERALIZEDTIME **revtime,
                           ASN1_GENERALIZEDTIME **thisupd,
                           ASN1_GENERALIZEDTIME **nextupd) {
+  if (bs == NULL || id == NULL){
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+
   int single_idx = OCSP_resp_find(bs, id, -1);
   if (single_idx < 0) {
     return 0;

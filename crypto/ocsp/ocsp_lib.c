@@ -34,6 +34,11 @@ OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
                               const ASN1_BIT_STRING *issuerKey,
                               const ASN1_INTEGER *serialNumber)
 {
+  if(dgst == NULL || issuerName == NULL || issuerKey == NULL){
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
   int nid;
   unsigned int i;
   X509_ALGOR *alg;
@@ -73,7 +78,7 @@ OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
     goto err;
   }
 
-  if (serialNumber) {
+  if (serialNumber != NULL) {
     if (ASN1_STRING_copy(cid->serialNumber, serialNumber) == 0)
       goto err;
   }
