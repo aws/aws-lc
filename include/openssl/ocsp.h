@@ -139,6 +139,9 @@ BSSL_NAMESPACE_END
 #define OCSP_RESPONSE_STATUS_SIGREQUIRED          5
 #define OCSP_RESPONSE_STATUS_UNAUTHORIZED         6
 
+#define V_OCSP_RESPID_NAME                        0
+#define V_OCSP_RESPID_KEY                         1
+
 #define V_OCSP_CERTSTATUS_GOOD                    0
 #define V_OCSP_CERTSTATUS_REVOKED                 1
 #define V_OCSP_CERTSTATUS_UNKNOWN                 2

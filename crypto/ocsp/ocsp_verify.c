@@ -1,13 +1,21 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include <string.h>
 #include "ocsp_internal.h"
 
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
 
-/* Verify a basic response message */
+static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs, unsigned long flags);
+static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id);
+
 int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st, unsigned long flags)
 {
+  if (bs == NULL || certs == NULL || st == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+
   X509 *signer, *x;
   STACK_OF(X509) *chain = NULL;
   STACK_OF(X509) *untrusted = NULL;
@@ -73,4 +81,53 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
   sk_X509_pop_free(chain, X509_free);
   sk_X509_free(untrusted);
   return ret;
+}
+
+static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
+                            STACK_OF(X509) *certs, unsigned long flags)
+{
+  X509 *signer;
+  OCSP_RESPID *rid = bs->tbsResponseData->responderId;
+
+  if ((signer = ocsp_find_signer_sk(certs, rid)) != NULL) {
+    *psigner = signer;
+    return 2;
+  }
+  if ((flags & OCSP_NOINTERN) == 0 &&
+      (signer = ocsp_find_signer_sk(bs->certs, rid))) {
+    *psigner = signer;
+    return 1;
+  }
+  /* Maybe lookup from store if by subject name */
+
+  *psigner = NULL;
+  return 0;
+}
+
+static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id)
+{
+  unsigned char tmphash[SHA_DIGEST_LENGTH], *keyhash;
+  X509 *x;
+
+  /* Easy if lookup by name */
+  if (id->type == V_OCSP_RESPID_NAME) {
+    return X509_find_by_subject(certs, id->value.byName);
+  }
+
+  /* Lookup by key hash */
+
+  /* If key hash isn't SHA1 length then forget it */
+  if (id->value.byKey->length != SHA_DIGEST_LENGTH) {
+    return NULL;
+  }
+  keyhash = id->value.byKey->data;
+  /* Calculate hash of each key and compare */
+  for (size_t i = 0; i < sk_X509_num(certs); i++) {
+    x = sk_X509_value(certs, i);
+    X509_pubkey_digest(x, EVP_sha1(), tmphash, NULL);
+    if (!memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH)) {
+      return x;
+    }
+  }
+  return NULL;
 }
