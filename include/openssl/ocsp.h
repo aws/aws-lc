@@ -97,7 +97,6 @@ OPENSSL_EXPORT int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b
 /* Compares certificate id, Returns 0 on equal. */
 OPENSSL_EXPORT int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
-
 #ifdef __cplusplus
 }
 #endif

@@ -30,7 +30,6 @@ OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp) {
   return ASN1_item_unpack(rb->response, ASN1_ITEM_rptr(OCSP_BASICRESP));
 }
 
-
 OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx)
 {
   if (bs == NULL) {
