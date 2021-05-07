@@ -4,8 +4,8 @@
 #include <string.h>
 #include "ocsp_internal.h"
 
+/* supporting internal static functions for OCSP_basic_verify */
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
-
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs, unsigned long flags);
 static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id);
 
