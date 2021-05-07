@@ -3,6 +3,8 @@
 
 #include "ocsp_internal.h"
 
+#define IS_OCSP_FLAG_SET(flags, query) (flags & query)
+
 /* Verify a basic response message */
 int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st, unsigned long flags)
 {
@@ -22,21 +24,24 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
   if ((ret = ocsp_verify(NULL, bs, signer, flags)) <= 0) {
     goto end;
   }
-  if ((flags & OCSP_NOVERIFY) == 0) {
+  if (IS_OCSP_FLAG_SET(flags, OCSP_NOVERIFY) == 0) {
     ret = -1;
-    if ((flags & OCSP_NOCHAIN) == 0) {
+    if (IS_OCSP_FLAG_SET(flags, OCSP_NOCHAIN) == 0) {
       if ((untrusted = sk_X509_dup(bs->certs)) == NULL) {
         goto end;
       }
-      if (!X509_add_certs(untrusted, certs, X509_ADD_FLAG_DEFAULT)) {
-        goto end;
+      for (size_t i = 0; i < sk_X509_num(certs); i++) {
+        if (!sk_X509_push(untrusted, sk_X509_value(certs, i))) {
+          OPENSSL_PUT_ERROR(OCSP, ERR_R_MALLOC_FAILURE);
+          goto end;
+        }
       }
     }
     ret = ocsp_verify_signer(signer, 1, st, flags, untrusted, &chain);
     if (ret <= 0) {
       goto end;
     }
-    if ((flags & OCSP_NOCHECKS) != 0) {
+    if (IS_OCSP_FLAG_SET(flags, OCSP_NOCHECKS) != 0) {
       ret = 1;
       goto end;
     }
@@ -52,12 +57,12 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
     }
 
     /* Easy case: explicitly trusted. Get root CA and check for explicit trust */
-    if ((flags & OCSP_NOEXPLICIT) != 0) {
+    if (IS_OCSP_FLAG_SET(flags, OCSP_NOEXPLICIT) != 0) {
       goto end;
     }
     x = sk_X509_value(chain, sk_X509_num(chain) - 1);
     if (X509_check_trust(x, NID_OCSP_sign, 0) != X509_TRUST_TRUSTED) {
-      ERR_raise(ERR_LIB_OCSP, OCSP_R_ROOT_CA_NOT_TRUSTED);
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_ROOT_CA_NOT_TRUSTED);
       ret = 0;
       goto end;
     }
