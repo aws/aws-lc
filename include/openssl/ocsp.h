@@ -132,25 +132,27 @@ BSSL_NAMESPACE_END
 }  // extern C++
 #endif  // !BORINGSSL_NO_CXX
 
-#define OCSP_RESPONSE_STATUS_SUCCESSFUL           0
-#define OCSP_RESPONSE_STATUS_MALFORMEDREQUEST     1
-#define OCSP_RESPONSE_STATUS_INTERNALERROR        2
-#define OCSP_RESPONSE_STATUS_TRYLATER             3
-#define OCSP_RESPONSE_STATUS_SIGREQUIRED          5
-#define OCSP_RESPONSE_STATUS_UNAUTHORIZED         6
+#define OCSP_RESPONSE_STATUS_SUCCESSFUL                 0
+#define OCSP_RESPONSE_STATUS_MALFORMEDREQUEST           1
+#define OCSP_RESPONSE_STATUS_INTERNALERROR              2
+#define OCSP_RESPONSE_STATUS_TRYLATER                   3
+#define OCSP_RESPONSE_STATUS_SIGREQUIRED                5
+#define OCSP_RESPONSE_STATUS_UNAUTHORIZED               6
 
-#define V_OCSP_RESPID_NAME                        0
-#define V_OCSP_RESPID_KEY                         1
+#define V_OCSP_RESPID_NAME                              0
+#define V_OCSP_RESPID_KEY                               1
 
-#define V_OCSP_CERTSTATUS_GOOD                    0
-#define V_OCSP_CERTSTATUS_REVOKED                 1
-#define V_OCSP_CERTSTATUS_UNKNOWN                 2
+#define V_OCSP_CERTSTATUS_GOOD                          0
+#define V_OCSP_CERTSTATUS_REVOKED                       1
+#define V_OCSP_CERTSTATUS_UNKNOWN                       2
 
-#define OCSP_R_DIGEST_ERR                         102
-#define OCSP_R_NOT_BASIC_RESPONSE                 104
-#define OCSP_R_NO_RESPONSE_DATA                   108
-#define OCSP_R_ROOT_CA_NOT_TRUSTED                112
-#define OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND       118
-#define OCSP_R_UNKNOWN_NID                        120
+#define OCSP_R_DIGEST_ERR                               102
+#define OCSP_R_NOT_BASIC_RESPONSE                       104
+#define OCSP_R_NO_CERTIFICATES_IN_CHAIN                 105
+#define OCSP_R_NO_RESPONSE_DATA                         108
+#define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA     111
+#define OCSP_R_ROOT_CA_NOT_TRUSTED                      112
+#define OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND             118
+#define OCSP_R_UNKNOWN_NID                              120
 
 #endif  // AWSLC_OCSP_H
