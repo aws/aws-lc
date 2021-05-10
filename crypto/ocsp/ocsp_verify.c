@@ -8,6 +8,9 @@
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs, unsigned long flags);
 static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id);
+static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain);
+static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret)
+
 
 int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st, unsigned long flags)
 {
@@ -130,4 +133,83 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id)
     }
   }
   return NULL;
+}
+
+static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain)
+{
+  STACK_OF(OCSP_SINGLERESP) *sresp = bs->tbsResponseData.responses;
+  X509 *signer, *sca;
+  OCSP_CERTID *caid = NULL;
+  int ret;
+
+  if (sk_X509_num(chain) <= 0) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_CERTIFICATES_IN_CHAIN);
+    return -1;
+  }
+
+  /* See if the issuer IDs match. */
+  ret = ocsp_check_ids(sresp, &caid);
+
+  /* If ID mismatch or other error then return */
+  if (ret <= 0) {
+    return ret;
+  }
+
+  signer = sk_X509_value(chain, 0);
+  /* Check to see if OCSP responder CA matches request CA */
+  if (sk_X509_num(chain) > 1) {
+    sca = sk_X509_value(chain, 1);
+    ret = ocsp_match_issuerid(sca, caid, sresp);
+    if (ret < 0) {
+      return ret;
+    }
+    if (ret != 0) {
+      /* We have a match, if extensions OK then success */
+      if (ocsp_check_delegated(signer)) {
+        return 1;
+      }
+      return 0;
+    }
+  }
+
+  /* Otherwise check if OCSP request signed directly by request CA */
+  return ocsp_match_issuerid(signer, caid, sresp);
+}
+
+/*
+ * Check the issuer certificate IDs for equality. If there is a mismatch with
+ * the same algorithm then there's no point trying to match any certificates
+ * against the issuer. If the issuer IDs all match then we just need to check
+ * equality against one of them.
+ */
+static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret)
+{
+  OCSP_CERTID *tmpid, *cid;
+  size_t idcount;
+
+  idcount = sk_OCSP_SINGLERESP_num(sresp);
+  if (idcount <= 0) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA);
+    return -1;
+  }
+
+  cid = sk_OCSP_SINGLERESP_value(sresp, 0)->certId;
+
+  *ret = NULL;
+  for (size_t i = 1; i < idcount; i++) {
+    tmpid = sk_OCSP_SINGLERESP_value(sresp, i)->certId;
+    /* Check to see if IDs match */
+    if (OCSP_id_issuer_cmp(cid, tmpid) != 0) {
+      /* If algorithm mismatch let caller deal with it */
+      if (OBJ_cmp(tmpid->hashAlgorithm->algorithm, cid->hashAlgorithm->algorithm) != 0) {
+        return 2;
+      }
+      /* Else mismatch */
+      return 0;
+    }
+  }
+
+  /* All IDs match: only need to check one ID */
+  *ret = cid;
+  return 1;
 }
