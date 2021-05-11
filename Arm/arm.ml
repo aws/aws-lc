@@ -391,6 +391,11 @@ let ARM_VACCSTEP_TAC th aflag s =
   ARM_VERBOSE_STEP_TAC th s THEN
   (if aflag then TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC) else ALL_TAC);;
 
+let ARM_XACCSTEP_TAC th excs aflag s =
+  ARM_SINGLE_STEP_TAC th s THEN
+  (if aflag then TRY(ACCUMULATEX_ARITH_TAC excs s THEN CLARIFY_TAC)
+   else ALL_TAC);;
+
 let ARM_ACCSTEP_TAC th aflag s =
   ARM_SINGLE_STEP_TAC th s THEN
   (if aflag then TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC) else ALL_TAC);;
@@ -404,6 +409,11 @@ let ARM_STEPS_TAC th snums =
 let ARM_VACCSTEPS_TAC th anums snums =
   MAP_EVERY (fun n -> ARM_VACCSTEP_TAC th (mem n anums) ("s"^string_of_int n))
             snums;;
+
+let ARM_XACCSTEPS_TAC th excs anums snums =
+  MAP_EVERY
+   (fun n -> ARM_XACCSTEP_TAC th excs (mem n anums) ("s"^string_of_int n))
+   snums;;
 
 let ARM_ACCSTEPS_TAC th anums snums =
   MAP_EVERY (fun n -> ARM_ACCSTEP_TAC th (mem n anums) ("s"^string_of_int n))

@@ -2330,6 +2330,11 @@ let X86_VACCSTEP_TAC th aflag s =
   X86_VERBOSE_STEP_TAC th s THEN
   (if aflag then TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC) else ALL_TAC);;
 
+let X86_XACCSTEP_TAC th excs aflag s =
+  X86_SINGLE_STEP_TAC th s THEN
+  (if aflag then TRY(ACCUMULATEX_ARITH_TAC excs s THEN CLARIFY_TAC)
+   else ALL_TAC);;
+
 let X86_ACCSTEP_TAC th aflag s =
   X86_SINGLE_STEP_TAC th s THEN
   (if aflag then TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC) else ALL_TAC);;
@@ -2343,6 +2348,11 @@ let X86_STEPS_TAC th snums =
 let X86_VACCSTEPS_TAC th anums snums =
   MAP_EVERY (fun n -> X86_VACCSTEP_TAC th (mem n anums) ("s"^string_of_int n))
             snums;;
+
+let X86_XACCSTEPS_TAC th excs anums snums =
+  MAP_EVERY
+   (fun n -> X86_XACCSTEP_TAC th excs (mem n anums) ("s"^string_of_int n))
+   snums;;
 
 let X86_ACCSTEPS_TAC th anums snums =
   MAP_EVERY (fun n -> X86_ACCSTEP_TAC th (mem n anums) ("s"^string_of_int n))

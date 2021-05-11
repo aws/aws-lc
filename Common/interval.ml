@@ -346,9 +346,10 @@ let VAL_ARITH_RULE =
 (* - secondary triggering from zero flag if result is not written (ARM xzr)  *)
 (* - includes a similar accumulation for "extr" with a zero register.        *)
 (* - ditto word_ushr and word_ushl (which are effectively the same)          *)
+(* - the X version excludes writes to certain registers (components)         *)
 (* ------------------------------------------------------------------------- *)
 
-let ACCUMULATE_ARITH_TAC =
+let ACCUMULATEX_ARITH_TAC =
   let int64_ty = `:int64`
   and patfn = can (term_match [] `read Xnn s = e`)
   and pth_zerotrig = prove
@@ -748,11 +749,18 @@ let ACCUMULATE_ARITH_TAC =
               try MATCH_MP pth_sub th with Failure _ ->
               failwith "No matching accum theorem" in
     MP_TAC th' in
+  fun excls ->
+    let filterpred t =
+      match t with
+        Comb(Comb(Const("=",_),Comb(Comb(Const("read",_),c),_)),_) ->
+          mem c excls
+      | _ -> false in
   fun s ->
     let matchfn t =
       patfn t &&
       let sv = rand(lhand t) in is_var sv && fst(dest_var sv) = s in
     FIRST_X_ASSUM(fun sth ->
+     if filterpred(concl sth) then failwith "" else
      ((fun gl -> ((MATCH_MTH_TAC o check (matchfn o concl)) sth THEN
        DISCH_THEN(X_CHOOSE_THEN (mk_var("mulhi_"^s,int64_ty))
         (X_CHOOSE_THEN (mk_var("mullo_"^s,int64_ty)) MP_TAC)) THEN
@@ -804,3 +812,5 @@ let ACCUMULATE_ARITH_TAC =
         (X_CHOOSE_THEN (mk_var("sum_"^s,int64_ty)) MP_TAC)) THEN
        DISCH_THEN(CONJUNCTS_THEN2 STRIP_ASSUME_TAC
         (REPEAT_TCL CONJUNCTS_THEN SUBST_ALL_TAC))) gl)));;
+
+let ACCUMULATE_ARITH_TAC = ACCUMULATEX_ARITH_TAC [];;
