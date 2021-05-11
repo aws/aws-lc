@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include "../internal.h"
 #include "ocsp_internal.h"
 
 
@@ -36,6 +37,10 @@ OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx)
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
+  if (bs->tbsResponseData == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_RESPONSE_DATA);
+    return NULL;
+  }
   return sk_OCSP_SINGLERESP_value(bs->tbsResponseData->responses, idx);
 }
 
@@ -43,6 +48,10 @@ int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last)
 {
   if (bs == NULL || id == NULL){
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+  if (bs->tbsResponseData == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_RESPONSE_DATA);
     return -1;
   }
 
@@ -71,17 +80,19 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
+  if(single->certStatus == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
 
   OCSP_CERTSTATUS *cst = single->certStatus;
   int status = cst->type;
-  /*
-   * If certificate status is revoked, we look up certificate revocation
-   * time and reason
-   */
+
+  // If certificate status is revoked, we look up certificate revocation time and reason
   if (status == V_OCSP_CERTSTATUS_REVOKED) {
     OCSP_REVOKEDINFO *rev = cst->value.revoked;
     if (revtime != NULL) {
-      *revtime = rev->revocationTime;
+      OPENSSL_memcpy(revtime, &rev->revocationTime, sizeof(&rev->revocationTime));
     }
     if (reason != NULL) {
       if (rev->revocationReason) {
@@ -91,14 +102,12 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
       }
     }
   }
-  /*
-   * Look up when certificate was last updated and when is next update time
-   */
+  // Look up when certificate was last updated and when is next update time
   if (thisupd != NULL) {
-    *thisupd = single->thisUpdate;
+    OPENSSL_memcpy(thisupd, &single->thisUpdate, sizeof(&single->thisUpdate));
   }
   if (nextupd != NULL) {
-    *nextupd = single->nextUpdate;
+    OPENSSL_memcpy(nextupd, &single->nextUpdate, sizeof(&single->nextUpdate));
   }
   return status;
 }
