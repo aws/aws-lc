@@ -204,6 +204,14 @@ let BIGNUM_OF_WORDLIST_BOUND = prove
   ASM_REWRITE_TAC[BIGNUM_OF_WORDLIST_BOUND_LENGTH; LE_EXP] THEN
   ASM_ARITH_TAC);;
 
+let BIGNUM_OF_WORDLIST_APPEND = prove
+ (`!l1 l2. bignum_of_wordlist (APPEND l1 l2) =
+           bignum_of_wordlist l1 +
+           2 EXP (64 * LENGTH l1) * bignum_of_wordlist l2`,
+  LIST_INDUCT_TAC THEN
+  ASM_REWRITE_TAC[bignum_of_wordlist; APPEND; LENGTH; MULT_CLAUSES] THEN
+  REWRITE_TAC[EXP; EXP_ADD] THEN ARITH_TAC);;
+
 (* ------------------------------------------------------------------------- *)
 (* Extracting a bignum from memory.                                          *)
 (* ------------------------------------------------------------------------- *)
@@ -572,3 +580,61 @@ let BIGNUM_DIGITIZE_TAC =
   BIGNUM_DIGITIZE_TAC "m_" `read(memory :> bytes(x,8 * 6)) s0`
 
 ***)
+
+(* ------------------------------------------------------------------------- *)
+(* Expansion of bignum_of_wordlist, corresponding digitization variants.     *)
+(* ------------------------------------------------------------------------- *)
+
+let BIGNUM_OF_WORDLIST_CONV =
+  let [conv_0;conv_1;conv_2;conv_base;conv_step] =
+     (map (fun t -> GEN_REWRITE_CONV I [t]) o CONJUNCTS o prove)
+   (`bignum_of_wordlist [] = 0 /\
+     bignum_of_wordlist [h] = val h /\
+     bignum_of_wordlist (CONS h t) =
+     val h + 2 EXP 64 * bignum_of_wordlist t /\
+     2 EXP n * bignum_of_wordlist [h] = 2 EXP n * val h /\
+     2 EXP n * bignum_of_wordlist(CONS h t) =
+     2 EXP n * val h + 2 EXP (n + 64) * bignum_of_wordlist t`,
+    REWRITE_TAC[bignum_of_wordlist; EXP_ADD] THEN ARITH_TAC) in
+    let rec coreconv tm =
+      (conv_base ORELSEC
+       (conv_step THENC
+        RAND_CONV (LAND_CONV(RAND_CONV NUM_ADD_CONV) THENC coreconv))) tm in
+    conv_0 ORELSEC conv_1 ORELSEC (conv_2 THENC RAND_CONV coreconv);;
+
+let BIGNUM_OF_WORDLIST_SPLIT_RULE =
+  let int64_ty = `:int64`
+  and append_tm = `APPEND:int64 list->int64 list->int64 list` in
+  fun (m,n) ->
+    let vs = map (fun n -> mk_var("x"^string_of_int n,int64_ty)) (1--(m+n)) in
+    let vs1,vs2 = chop_list m vs in
+    let th = SPECL [mk_list(vs1,int64_ty); mk_list(vs2,int64_ty)]
+                   BIGNUM_OF_WORDLIST_APPEND in
+    CONV_RULE
+     (BINOP2_CONV
+       (GEN_REWRITE_CONV (RAND_CONV o TOP_DEPTH_CONV) [APPEND])
+       (RAND_CONV(LAND_CONV(RAND_CONV
+         (GEN_REWRITE_CONV (RAND_CONV o TOP_DEPTH_CONV) [LENGTH] THENC
+          NUM_REDUCE_CONV))))) th;;
+
+let BIGNUM_LEXPAND_CONV =
+  let strip_add = striplist (dest_binop `(+):num->num->num`)
+  and ofw_tm = `bignum_of_wordlist`
+  and ty64 = `:int64` in
+  fun tm ->
+    let th = BIGNUM_EXPAND_CONV tm in
+    let mts = strip_add(rand(concl th)) in
+    let tms =
+      if mts = [] then [] else map rand ((hd mts)::map rand (tl mts)) in
+    let tm' = mk_comb(ofw_tm,mk_list(tms,ty64)) in
+    TRANS th (SYM(BIGNUM_OF_WORDLIST_CONV tm'));;
+
+let BIGNUM_LDIGITIZE_TAC =
+  let ty64 = `:int64` in
+  fun s tm ->
+    let th = BIGNUM_LEXPAND_CONV tm in
+    let tms = dest_list(rand(rand(concl th))) in
+    let vs =
+      map (fun i -> mk_var(s^string_of_int i,ty64)) (0--(length tms - 1)) in
+    let abseqs = map2 (curry mk_eq) vs tms in
+    SUBST_ALL_TAC th THEN MAP_EVERY ABBREV_TAC abseqs;;
