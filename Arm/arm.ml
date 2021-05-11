@@ -588,21 +588,22 @@ let ARM_ADD_RETURN_NOSTACK_TAC =
 
 let ARM_ADD_RETURN_STACK_TAC =
   let mono2lemma = MESON[]
-   `(!x. (!y. P x y) ==> (!y. Q x y)) ==> (!x y. P x y) ==> (!x y. Q x y)` in
+   `(!x. (!y. P x y) ==> (!y. Q x y)) ==> (!x y. P x y) ==> (!x y. Q x y)`
+  and sp_tm = `SP` and x30_tm = `X30` in
   fun execth coreth reglist stackoff ->
     let regs = dest_list reglist in
     let n = let n0 = length regs / 2 in
             if 16 * n0 = stackoff then n0 else n0 + 1 in
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
-    (if free_in `SP` (concl coreth) then
+    (if free_in sp_tm (concl coreth) then
       DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
       MATCH_MP_TAC MONO_FORALL THEN GEN_TAC
      else
       MATCH_MP_TAC MONO_FORALL THEN GEN_TAC THEN
       DISCH_THEN(fun th ->
         WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th)) THEN
-    REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
+    REWRITE_TAC[NONOVERLAPPING_CLAUSES; PAIRWISE; ALLPAIRS; ALL] THEN
     REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
     DISCH_THEN(fun th ->
       REPEAT GEN_TAC THEN
@@ -614,9 +615,11 @@ let ARM_ADD_RETURN_STACK_TAC =
       TRY DISJ2_TAC THEN NONOVERLAPPING_TAC;
       ALL_TAC]) THEN
     DISCH_THEN(fun th ->
-      ENSURES_EXISTING_PRESERVED_TAC `SP` THEN
+      ENSURES_EXISTING_PRESERVED_TAC sp_tm THEN
+      (if mem x30_tm regs then ENSURES_EXISTING_PRESERVED_TAC x30_tm
+       else ALL_TAC) THEN
       MAP_EVERY (fun c -> ENSURES_PRESERVED_TAC ("init_"^fst(dest_const c)) c)
-                regs THEN
+                (subtract regs [x30_tm]) THEN
       REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
       ARM_STEPS_TAC execth (1--n) THEN
       MP_TAC th) THEN
