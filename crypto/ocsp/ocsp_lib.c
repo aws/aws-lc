@@ -70,7 +70,7 @@ OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
   if (!(ASN1_OCTET_STRING_set(cid->issuerNameHash, md, i))) {
     goto err;
   }
-  /* Calculate the issuerKey hash, excluding tag and length */
+  // Calculate the issuerKey hash, excluding tag and length
   if (!EVP_Digest(issuerKey->data, issuerKey->length, md, &i, dgst, NULL)) {
     goto err;
   }
@@ -118,10 +118,12 @@ int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b)
     return -1;
   }
 
+  // Compare OCSP issuer name and key
   int ret = OCSP_id_issuer_cmp(a, b);
   if (ret != 0) {
     return ret;
   }
+  // Compare certificate serialNumber
   ret = ASN1_INTEGER_cmp(a->serialNumber, b->serialNumber);
   return ret;
 }

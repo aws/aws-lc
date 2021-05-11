@@ -539,7 +539,7 @@ TEST(OCSPTest, TestGoodOCSP) {
   basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(basic_response);
 
-  /* set up trust store and certificate chain */
+  // set up trust store and certificate chain
   bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
   X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca_cert).get());
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
@@ -547,12 +547,11 @@ TEST(OCSPTest, TestGoodOCSP) {
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = nullptr;
-  /* find the issuer in the chain. If it's not there. Fail everything. */
+  // find the issuer in the certificate chain. If it's not there. Fail everything.
   for (size_t i = 0; i < sk_X509_num(server_cert_chain.get()); i++) {
     X509 *issuer_candidate = sk_X509_value(server_cert_chain.get(), i);
     ASSERT_TRUE(issuer_candidate);
     const int issuer_value = X509_check_issued(issuer_candidate, subject);
-
     if (issuer_value == X509_V_OK) {
       issuer = issuer_candidate;
       break;
@@ -560,15 +559,16 @@ TEST(OCSPTest, TestGoodOCSP) {
   }
   ASSERT_TRUE(issuer);
 
-  /* Expect basic verify here, but we skip the step for now because functionality has not been implemented yet */
+  // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
 
   int status = 0;
   int reason = 0;
+  // Convert issuer certificate to |OCSP_CERTID|
   bssl::UniquePtr<OCSP_CERTID> cert_id = bssl::UniquePtr<OCSP_CERTID>(OCSP_cert_to_id(EVP_sha1(), subject, issuer));
   ASSERT_TRUE(cert_id);
 
   ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
-  /* Actual verification of the response */
+  // Actual verification of the response
   const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
   ASSERT_EQ(1, ocsp_resp_find_status_res);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
@@ -587,7 +587,7 @@ TEST(OCSPTest, TestRevokedOCSP) {
   basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(basic_response);
 
-  /* set up trust store and certificate chain */
+  // set up trust store and certificate chain
   bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
   X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca_cert).get());
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
@@ -595,12 +595,11 @@ TEST(OCSPTest, TestRevokedOCSP) {
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = nullptr;
-  /* find the issuer in the chain. If it's not there. Fail everything. */
+  // find the issuer in the certificate chain. If it's not there. Fail everything
   for (size_t i = 0; i < sk_X509_num(server_cert_chain.get()); i++) {
     X509 *issuer_candidate = sk_X509_value(server_cert_chain.get(), i);
     ASSERT_TRUE(issuer_candidate);
     const int issuer_value = X509_check_issued(issuer_candidate, subject);
-
     if (issuer_value == X509_V_OK) {
       issuer = issuer_candidate;
       break;
@@ -608,15 +607,16 @@ TEST(OCSPTest, TestRevokedOCSP) {
   }
   ASSERT_TRUE(issuer);
 
-  /* Expect basic verify here, but we skip the step for now because functionality has not been implemented yet */
+  // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
 
   int status = 0;
   int reason = 0;
+  // Convert issuer certificate to |OCSP_CERTID|
   bssl::UniquePtr<OCSP_CERTID> cert_id = bssl::UniquePtr<OCSP_CERTID>(OCSP_cert_to_id(EVP_sha1(), subject, issuer));
   ASSERT_TRUE(cert_id);
 
   ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
-  /* Actual verification of the response */
+  // Actual verification of the response
   const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
   ASSERT_EQ(1, ocsp_resp_find_status_res);
   ASSERT_EQ(V_OCSP_CERTSTATUS_REVOKED, status);

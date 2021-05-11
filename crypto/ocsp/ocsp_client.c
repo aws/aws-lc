@@ -55,6 +55,7 @@ int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last)
     return -1;
   }
 
+  // |OCSP_SINGLERESP| stack is in |OCSP_BASICRESP| responseData, we look for OCSP_CERTID in here
   STACK_OF(OCSP_SINGLERESP) *sresp = bs->tbsResponseData->responses;
   OCSP_SINGLERESP *single;
 
@@ -122,12 +123,14 @@ int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
     return -1;
   }
 
+  // we look for index of equivalent |OCSP_CERTID| of issuer certificate in |OCSP_BASICRESP|
   int single_idx = OCSP_resp_find(bs, id, -1);
   if (single_idx < 0) {
     return 0;
   }
   OCSP_SINGLERESP *single = OCSP_resp_get0(bs, single_idx);
 
+  // Extract the update time and revocation status of certificate sent back from OCSP responder
   int single_status = OCSP_single_get0_status(single, reason, revtime, thisupd, nextupd);
   if (status != NULL) {
     *status = single_status;
