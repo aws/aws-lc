@@ -10,6 +10,7 @@ add_library(
   d1_srtp.cc
   dtls_method.cc
   dtls_record.cc
+  encrypted_client_hello.cc
   handoff.cc
   handshake.cc
   handshake_client.cc
@@ -45,6 +46,10 @@ add_dependencies(ssl global_target)
 
 target_link_libraries(ssl crypto)
 
+target_include_directories(ssl SYSTEM PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+  $<INSTALL_INTERFACE:include>)
+
 if(BUILD_TESTING)
   add_executable(
     ssl_test
@@ -72,3 +77,20 @@ install(TARGETS ssl
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+configure_file("cmake/ssl-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/ssl-config.cmake"
+    @ONLY)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ssl-config.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake"
+    COMPONENT Development)
+
+if (BUILD_SHARED_LIBS)
+   set (TARGET_DIR "shared")
+else()
+   set (TARGET_DIR "static")
+endif()
+
+install(EXPORT ssl-targets
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake/${TARGET_DIR}"
+    COMPONENT Development)

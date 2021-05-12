@@ -26,6 +26,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/span.h>
+#include <openssl/x509v3.h>
 
 #include "../test/test_util.h"
 
@@ -125,9 +126,93 @@ TEST(ASN1Test, SerializeObject) {
 TEST(ASN1Test, SerializeBoolean) {
   static const uint8_t kTrue[] = {0x01, 0x01, 0xff};
   TestSerialize(0xff, i2d_ASN1_BOOLEAN, kTrue);
+  // Other constants are also correctly encoded as TRUE.
+  TestSerialize(1, i2d_ASN1_BOOLEAN, kTrue);
+  TestSerialize(0x100, i2d_ASN1_BOOLEAN, kTrue);
 
   static const uint8_t kFalse[] = {0x01, 0x01, 0x00};
   TestSerialize(0x00, i2d_ASN1_BOOLEAN, kFalse);
+}
+
+// The templates go through a different codepath, so test them separately.
+TEST(ASN1Test, SerializeEmbeddedBoolean) {
+  bssl::UniquePtr<BASIC_CONSTRAINTS> val(BASIC_CONSTRAINTS_new());
+  ASSERT_TRUE(val);
+
+  // BasicConstraints defaults to FALSE, so the encoding should be empty.
+  static const uint8_t kLeaf[] = {0x30, 0x00};
+  val->ca = 0;
+  TestSerialize(val.get(), i2d_BASIC_CONSTRAINTS, kLeaf);
+
+  // TRUE should always be encoded as 0xff, independent of what value the caller
+  // placed in the |ASN1_BOOLEAN|.
+  static const uint8_t kCA[] = {0x30, 0x03, 0x01, 0x01, 0xff};
+  val->ca = 0xff;
+  TestSerialize(val.get(), i2d_BASIC_CONSTRAINTS, kCA);
+  val->ca = 1;
+  TestSerialize(val.get(), i2d_BASIC_CONSTRAINTS, kCA);
+  val->ca = 0x100;
+  TestSerialize(val.get(), i2d_BASIC_CONSTRAINTS, kCA);
+}
+
+TEST(ASN1Test, ASN1Type) {
+  const struct {
+    int type;
+    std::vector<uint8_t> der;
+  } kTests[] = {
+      // BOOLEAN { TRUE }
+      {V_ASN1_BOOLEAN, {0x01, 0x01, 0xff}},
+      // BOOLEAN { FALSE }
+      {V_ASN1_BOOLEAN, {0x01, 0x01, 0x00}},
+      // OCTET_STRING { "a" }
+      {V_ASN1_OCTET_STRING, {0x04, 0x01, 0x61}},
+      // BIT_STRING { `01` `00` }
+      {V_ASN1_BIT_STRING, {0x03, 0x02, 0x01, 0x00}},
+      // INTEGER { -1 }
+      {V_ASN1_INTEGER, {0x02, 0x01, 0xff}},
+      // OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2 }
+      {V_ASN1_OBJECT,
+       {0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+        0x09, 0x02}},
+      // NULL {}
+      {V_ASN1_NULL, {0x05, 0x00}},
+      // SEQUENCE {}
+      {V_ASN1_SEQUENCE, {0x30, 0x00}},
+      // SET {}
+      {V_ASN1_SET, {0x31, 0x00}},
+      // [0] { UTF8String { "a" } }
+      {V_ASN1_OTHER, {0xa0, 0x03, 0x0c, 0x01, 0x61}},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.der));
+
+    // The input should successfully parse.
+    const uint8_t *ptr = t.der.data();
+    bssl::UniquePtr<ASN1_TYPE> val(d2i_ASN1_TYPE(nullptr, &ptr, t.der.size()));
+    ASSERT_TRUE(val);
+
+    EXPECT_EQ(ASN1_TYPE_get(val.get()), t.type);
+    EXPECT_EQ(val->type, t.type);
+    TestSerialize(val.get(), i2d_ASN1_TYPE, t.der);
+  }
+}
+
+// Test that reading |value.ptr| from a FALSE |ASN1_TYPE| behaves correctly. The
+// type historically supported this, so maintain the invariant in case external
+// code relies on it.
+TEST(ASN1Test, UnusedBooleanBits) {
+  // OCTET_STRING { "a" }
+  static const uint8_t kDER[] = {0x04, 0x01, 0x61};
+  const uint8_t *ptr = kDER;
+  bssl::UniquePtr<ASN1_TYPE> val(d2i_ASN1_TYPE(nullptr, &ptr, sizeof(kDER)));
+  ASSERT_TRUE(val);
+  EXPECT_EQ(V_ASN1_OCTET_STRING, val->type);
+  EXPECT_TRUE(val->value.ptr);
+
+  // Set |val| to a BOOLEAN containing FALSE.
+  ASN1_TYPE_set(val.get(), V_ASN1_BOOLEAN, NULL);
+  EXPECT_EQ(V_ASN1_BOOLEAN, val->type);
+  EXPECT_FALSE(val->value.ptr);
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
