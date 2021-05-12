@@ -4,12 +4,19 @@
 #include <string.h>
 #include "ocsp_internal.h"
 
-/* supporting internal static functions for OCSP_basic_verify */
+// supporting internal static functions for OCSP_basic_verify
+
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
+// find signer in cert stack or |OCSP_BASICRESP|'s cert stack
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs, unsigned long flags);
 static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id);
+
+// check OCSP issuer
 static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain);
-static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret)
+static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret);
+static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid, STACK_OF(OCSP_SINGLERESP) *sresp);
+static int ocsp_check_delegated(X509 *x);
+
 
 
 int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st, unsigned long flags)
@@ -23,13 +30,9 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
   STACK_OF(X509) *chain = NULL;
   STACK_OF(X509) *untrusted = NULL;
   int ret = ocsp_find_signer(&signer, bs, certs, flags);
-
   if (ret == 0) {
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND);
     goto end;
-  }
-  if ((ret == 2) && (flags & OCSP_TRUSTOTHER) != 0) {
-    flags |= OCSP_NOVERIFY;
   }
 
   if ((ret = ocsp_verify(NULL, bs, signer, flags)) <= 0) {
@@ -92,16 +95,21 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
   X509 *signer;
   OCSP_RESPID *rid = bs->tbsResponseData->responderId;
 
+  // look for signer in certs stack
   if ((signer = ocsp_find_signer_sk(certs, rid)) != NULL) {
     *psigner = signer;
-    return 2;
+    if (IS_OCSP_FLAG_SET(flags,OCSP_TRUSTOTHER) != 0) {
+      flags |= OCSP_NOVERIFY;
+    }
+    return 1;
   }
-  if ((flags & OCSP_NOINTERN) == 0 &&
+  // look in certs stack the responder may have included in |OCSP_BASICRESP|, unless the flags contain OCSP_NOINTERN
+  if (IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN) == 0 &&
       (signer = ocsp_find_signer_sk(bs->certs, rid))) {
     *psigner = signer;
     return 1;
   }
-  /* Maybe lookup from store if by subject name */
+  // Maybe lookup from store if by subject name
 
   *psigner = NULL;
   return 0;
@@ -112,23 +120,23 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id)
   unsigned char tmphash[SHA_DIGEST_LENGTH], *keyhash;
   X509 *x;
 
-  /* Easy if lookup by name */
+  // Easy if lookup by name
   if (id->type == V_OCSP_RESPID_NAME) {
     return X509_find_by_subject(certs, id->value.byName);
   }
 
-  /* Lookup by key hash */
+  // Lookup by key hash
 
-  /* If key hash isn't SHA1 length then forget it */
+  // If key hash isn't SHA1 length then forget it
   if (id->value.byKey->length != SHA_DIGEST_LENGTH) {
     return NULL;
   }
   keyhash = id->value.byKey->data;
-  /* Calculate hash of each key and compare */
+  // Calculate hash of each key and compare
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
     x = sk_X509_value(certs, i);
     X509_pubkey_digest(x, EVP_sha1(), tmphash, NULL);
-    if (!memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH)) {
+    if (memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
       return x;
     }
   }
@@ -212,4 +220,63 @@ static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret)
   /* All IDs match: only need to check one ID */
   *ret = cid;
   return 1;
+}
+
+static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid, STACK_OF(OCSP_SINGLERESP) *sresp)
+{
+  /* If only one ID to match then do it */
+  if (cid) {
+    const EVP_MD *dgst;
+    X509_NAME *iname;
+    int mdlen;
+    unsigned char md[EVP_MAX_MD_SIZE];
+    if ((dgst = EVP_get_digestbyobj(cid->hashAlgorithm->algorithm)) == NULL) {
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_MESSAGE_DIGEST);
+      return -1;
+    }
+
+    mdlen = EVP_MD_size(dgst);
+    if (mdlen < 0) {
+      return -1;
+    }
+    iname = X509_get_subject_name(cert);
+    if (!X509_NAME_digest(iname, dgst, md, NULL)) {
+      return -1;
+    }
+
+    if ((cid->issuerNameHash->length != mdlen) || (cid->issuerKeyHash->length != mdlen)) {
+      return 0;
+    }
+    if (memcmp(md, cid->issuerNameHash->data, mdlen) != 0) {
+      return 0;
+    }
+    X509_pubkey_digest(cert, dgst, md, NULL);
+    if (memcmp(md, cid->issuerKeyHash->data, mdlen) != 0) {
+      return 0;
+    }
+    return 1;
+
+  } else {
+    /* We have to match the whole lot */
+    int ret;
+    OCSP_CERTID *tmpid;
+    for (size_t i = 0; i < sk_OCSP_SINGLERESP_num(sresp); i++) {
+      tmpid = sk_OCSP_SINGLERESP_value(sresp, i)->certId;
+      ret = ocsp_match_issuerid(cert, tmpid, NULL);
+      if (ret <= 0) {
+        return ret;
+      }
+    }
+    return 1;
+  }
+}
+
+static int ocsp_check_delegated(X509 *x)
+{
+  if ((X509_get_extension_flags(x) & EXFLAG_XKUSAGE)
+      && (X509_get_extended_key_usage(x) & XKU_OCSP_SIGN)) {
+    return 1;
+  }
+  OPENSSL_PUT_ERROR(OCSP, OCSP_R_MISSING_OCSPSIGNING_USAGE);
+  return 0;
 }
