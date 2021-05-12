@@ -147,12 +147,14 @@ BSSL_NAMESPACE_END
 #define V_OCSP_CERTSTATUS_UNKNOWN                       2
 
 #define OCSP_R_DIGEST_ERR                               102
+#define OCSP_R_MISSING_OCSPSIGNING_USAGE                103
 #define OCSP_R_NOT_BASIC_RESPONSE                       104
 #define OCSP_R_NO_CERTIFICATES_IN_CHAIN                 105
 #define OCSP_R_NO_RESPONSE_DATA                         108
 #define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA     111
 #define OCSP_R_ROOT_CA_NOT_TRUSTED                      112
 #define OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND             118
+#define OCSP_R_UNKNOWN_MESSAGE_DIGEST                   119
 #define OCSP_R_UNKNOWN_NID                              120
 
 #endif  // AWSLC_OCSP_H
