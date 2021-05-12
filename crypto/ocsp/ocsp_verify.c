@@ -11,6 +11,11 @@
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs, STACK_OF(X509) *certs, unsigned long flags);
 static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id);
 
+// verifies signer certicate with "untrusted stack" and returns cert chain if verify is OK
+// Returns 1 on success, 0 on failure, or -1 on fatal error
+static int ocsp_verify_signer(X509 *signer, X509_STORE *st, unsigned long flags,
+                              STACK_OF(X509) *untrusted, STACK_OF(X509) **chain);
+
 // check OCSP issuer
 static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain);
 static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret);
@@ -35,8 +40,20 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
     goto end;
   }
 
-  if ((ret = ocsp_verify(NULL, bs, signer, flags)) <= 0) {
-    goto end;
+  if (!(flags & OCSP_NOSIGS)) {
+    EVP_PKEY *skey;
+    if ((skey = X509_get_pubkey(signer)) == NULL) {
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_SIGNER_KEY);
+      goto end;
+    }
+    ret = ASN1_item_verify(ASN1_ITEM_rptr(OCSP_RESPDATA),\
+        bs->signatureAlgorithm,bs->signature,bs->tbsResponseData,skey);
+    EVP_PKEY_free(skey);
+
+    if (ret <= 0) {
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNATURE_FAILURE);
+      goto end;
+    }
   }
   if (IS_OCSP_FLAG_SET(flags, OCSP_NOVERIFY) == 0) {
     ret = -1;
@@ -51,7 +68,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
         }
       }
     }
-    ret = ocsp_verify_signer(signer, 1, st, flags, untrusted, &chain);
+    ret = ocsp_verify_signer(signer, st, flags, untrusted, &chain);
     if (ret <= 0) {
       goto end;
     }
@@ -143,9 +160,41 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id)
   return NULL;
 }
 
+static int ocsp_verify_signer(X509 *signer, X509_STORE *st, unsigned long flags,
+                              STACK_OF(X509) *untrusted, STACK_OF(X509) **chain)
+{
+  X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+  int ret = -1;
+
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_MALLOC_FAILURE);
+    goto end;
+  }
+  if (!X509_STORE_CTX_init(ctx, st, signer, untrusted)) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
+    goto end;
+  }
+  X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER);
+
+  ret = X509_verify_cert(ctx);
+  if (ret <= 0) {
+    ret = X509_STORE_CTX_get_error(ctx);
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_CERTIFICATE_VERIFY_ERROR);
+    goto end;
+  }
+  if (chain != NULL) {
+    *chain = X509_STORE_CTX_get1_chain(ctx);
+  }
+
+  end:
+  X509_STORE_CTX_free(ctx);
+  return ret;
+}
+
+
 static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain)
 {
-  STACK_OF(OCSP_SINGLERESP) *sresp = bs->tbsResponseData.responses;
+  STACK_OF(OCSP_SINGLERESP) *sresp = bs->tbsResponseData->responses;
   X509 *signer, *sca;
   OCSP_CERTID *caid = NULL;
   int ret;

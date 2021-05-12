@@ -560,6 +560,8 @@ TEST(OCSPTest, TestGoodOCSP) {
   ASSERT_TRUE(issuer);
 
   // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
+  const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
+  ASSERT_EQ(1, ocsp_verify_err);
 
   int status = 0;
   int reason = 0;
@@ -608,6 +610,8 @@ TEST(OCSPTest, TestRevokedOCSP) {
   ASSERT_TRUE(issuer);
 
   // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
+  const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
+  ASSERT_EQ(1, ocsp_verify_err);
 
   int status = 0;
   int reason = 0;
