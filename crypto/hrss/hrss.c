@@ -180,8 +180,7 @@ static inline void poly3_vec_rshift1(vec_t a_s[6], vec_t a_a[6]) {
 // vec_broadcast_bit duplicates the least-significant bit in |a| to all bits in
 // a vector and returns the result.
 static inline vec_t vec_broadcast_bit(vec_t a) {
-  return _mm_shuffle_epi32(_mm_srai_epi32(_mm_slli_epi64(a, 63), 31),
-                           0b01010101);
+  return _mm_shuffle_epi32(_mm_srai_epi32(_mm_slli_epi64(a, 63), 31), 0x55);
 }
 
 // vec_get_word returns the |i|th uint16_t in |v|. (This is a macro because the
