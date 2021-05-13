@@ -313,7 +313,7 @@ static void fe_copy(fe *h, const fe *f) {
 
 static void fe_copy_lt(fe_loose *h, const fe *f) {
   OPENSSL_STATIC_ASSERT(sizeof(fe_loose) == sizeof(fe),
-                        fe_and_fe_loose_mismatch);
+                        fe_and_fe_loose_mismatch)
   OPENSSL_memmove(h, f, sizeof(fe));
 }
 #if !defined(OPENSSL_SMALL)
