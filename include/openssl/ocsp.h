@@ -20,18 +20,14 @@ extern "C" {
 #endif
 
 /* Various OCSP flags and values */
-#  define OCSP_NOCERTS                    0x1
 #  define OCSP_NOINTERN                   0x2
 #  define OCSP_NOSIGS                     0x4
 #  define OCSP_NOCHAIN                    0x8
 #  define OCSP_NOVERIFY                   0x10
 #  define OCSP_NOEXPLICIT                 0x20
-#  define OCSP_NOCASIGN                   0x40
-#  define OCSP_NODELEGATED                0x80
 #  define OCSP_NOCHECKS                   0x100
 #  define OCSP_TRUSTOTHER                 0x200
-#  define OCSP_RESPID_KEY                 0x400
-#  define OCSP_NOTIME                     0x800
+
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_responder_id_st OCSP_RESPID;
