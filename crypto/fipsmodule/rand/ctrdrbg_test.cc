@@ -23,7 +23,7 @@
 
 
 TEST(CTRDRBGTest, Basic) {
-  const uint8_t kSeed[CTR_DRBG_ENTROPY_LEN] = {
+  const uint8_t kSeed[CTR_DRBG_MAX_ENTROPY_LEN] = {
       0xe4, 0xbc, 0x23, 0xc5, 0x08, 0x9a, 0x19, 0xd8, 0x6f, 0x41, 0x19, 0xcb,
       0x3f, 0xa0, 0x8c, 0x0a, 0x49, 0x91, 0xe0, 0xa1, 0xde, 0xf1, 0x7e, 0x10,
       0x1e, 0x4c, 0x14, 0xd9, 0xc3, 0x23, 0x46, 0x0a, 0x7c, 0x2f, 0xb5, 0x8e,
@@ -31,9 +31,9 @@ TEST(CTRDRBGTest, Basic) {
   };
 
   CTR_DRBG_STATE drbg;
-  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0));
+  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0, CTR_DRBG_AES_256));
 
-  const uint8_t kReseed[CTR_DRBG_ENTROPY_LEN] = {
+  const uint8_t kReseed[CTR_DRBG_MAX_ENTROPY_LEN] = {
       0xfd, 0x85, 0xa8, 0x36, 0xbb, 0xa8, 0x50, 0x19, 0x88, 0x1e, 0x8c, 0x6b,
       0xad, 0x23, 0xc9, 0x06, 0x1a, 0xdc, 0x75, 0x47, 0x76, 0x59, 0xac, 0xae,
       0xa8, 0xe4, 0xa0, 0x1d, 0xfe, 0x07, 0xa1, 0x83, 0x2d, 0xad, 0x1c, 0x13,
@@ -61,10 +61,10 @@ TEST(CTRDRBGTest, Basic) {
 }
 
 TEST(CTRDRBGTest, Large) {
-  const uint8_t kSeed[CTR_DRBG_ENTROPY_LEN] = {0};
+  const uint8_t kSeed[CTR_DRBG_MAX_ENTROPY_LEN] = {0};
 
   CTR_DRBG_STATE drbg;
-  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0));
+  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0, CTR_DRBG_AES_256));
 
   std::unique_ptr<uint8_t[]> buf(new uint8_t[CTR_DRBG_MAX_GENERATE_LENGTH]);
   ASSERT_TRUE(CTR_DRBG_generate(&drbg, buf.get(), CTR_DRBG_MAX_GENERATE_LENGTH,
@@ -95,13 +95,16 @@ TEST(CTRDRBGTest, TestVectors) {
     ASSERT_TRUE(t->GetBytes(&ai2, "AdditionalInput2"));
     ASSERT_TRUE(t->GetBytes(&expected, "ReturnedBits"));
 
-    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), seed.size());
-    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), reseed.size());
+    // We need to work on these tests because seed.data() won't have the correct size
+    // Disable tests for now?
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_AES_256_ENTROPY_LEN), seed.size());
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_AES_256_ENTROPY_LEN), reseed.size());
 
     CTR_DRBG_STATE drbg;
     CTR_DRBG_init(&drbg, seed.data(),
                   personalisation.empty() ? nullptr : personalisation.data(),
-                  personalisation.size());
+                  personalisation.size(),
+                  CTR_DRBG_AES_256);
     CTR_DRBG_reseed(&drbg, reseed.data(),
                     ai_reseed.empty() ? nullptr : ai_reseed.data(),
                     ai_reseed.size());
