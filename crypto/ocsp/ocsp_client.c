@@ -93,7 +93,7 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
   if (status == V_OCSP_CERTSTATUS_REVOKED) {
     OCSP_REVOKEDINFO *rev = cst->value.revoked;
     if (revtime != NULL) {
-      OPENSSL_memcpy(revtime, rev->revocationTime, sizeof(&rev->revocationTime));
+      *revtime = rev->revocationTime;
     }
     if (reason != NULL) {
       if (rev->revocationReason) {
@@ -105,10 +105,10 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
   }
   // Look up when certificate was last updated and when is next update time
   if (thisupd != NULL) {
-    OPENSSL_memcpy(thisupd, single->thisUpdate, sizeof(&single->thisUpdate));
+    *thisupd = single->thisUpdate;
   }
   if (nextupd != NULL) {
-    OPENSSL_memcpy(nextupd, single->nextUpdate, sizeof(&single->nextUpdate));
+    *nextupd = single->nextUpdate;
   }
   return status;
 }
