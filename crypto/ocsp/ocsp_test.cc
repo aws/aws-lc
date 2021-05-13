@@ -559,14 +559,9 @@ TEST(OCSPTest, TestGoodOCSP) {
   }
   ASSERT_TRUE(issuer);
 
-<<<<<<< HEAD
-  // Expect basic verify here, but we skip step for now since functionality has
-  // not been implemented yet.
-=======
-  // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
+  // Checks that OCSP response CAN be verified, not that it has been verified.
   const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
   ASSERT_EQ(1, ocsp_verify_err);
->>>>>>> add complete OCSP_basic_verfiy functionality
 
   int status = 0;
   int reason = 0;
@@ -614,14 +609,9 @@ TEST(OCSPTest, TestRevokedOCSP) {
   }
   ASSERT_TRUE(issuer);
 
-<<<<<<< HEAD
-  // Expect basic verify here, but we skip step for now since functionality has
-  // not been implemented yet.
-=======
-  // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
+  // Checks that OCSP response CAN be verified, not that it has been verified.
   const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
   ASSERT_EQ(1, ocsp_verify_err);
->>>>>>> add complete OCSP_basic_verfiy functionality
 
   int status = 0;
   int reason = 0;
