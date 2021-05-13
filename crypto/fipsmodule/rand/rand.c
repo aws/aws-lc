@@ -275,7 +275,7 @@ static void rand_get_seed(struct rand_thread_state *state,
     BORINGSSL_FIPS_abort();
   }
 
-  OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _);
+  OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _)
   for (size_t i = CRNGT_BLOCK_SIZE; i < sizeof(entropy);
        i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,

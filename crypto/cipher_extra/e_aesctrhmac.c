@@ -37,11 +37,11 @@ struct aead_aes_ctr_hmac_sha256_ctx {
 
 OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                           sizeof(struct aead_aes_ctr_hmac_sha256_ctx),
-                      AEAD_state_is_too_small);
+                      AEAD_state_is_too_small)
 #if defined(__GNUC__) || defined(__clang__)
 OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
                           alignof(struct aead_aes_ctr_hmac_sha256_ctx),
-                      AEAD_state_has_insufficient_alignment);
+                      AEAD_state_has_insufficient_alignment)
 #endif
 
 static void hmac_init(SHA256_CTX *out_inner, SHA256_CTX *out_outer,

@@ -149,7 +149,7 @@ typedef uint32_t fe_limb_t;
 #endif  // BORINGSSL_CURVE25519_64BIT
 
 OPENSSL_STATIC_ASSERT(sizeof(fe) == sizeof(fe_limb_t) * FE_NUM_LIMBS,
-                      fe_limb_t_FE_NUM_LIMBS_is_inconsistent_with_fe);
+                      fe_limb_t_FE_NUM_LIMBS_is_inconsistent_with_fe)
 
 static void fe_frombytes_strict(fe *h, const uint8_t s[32]) {
   // |fiat_25519_from_bytes| requires the top-most bit be clear.
