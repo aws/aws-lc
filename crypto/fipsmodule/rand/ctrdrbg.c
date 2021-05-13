@@ -27,64 +27,118 @@
 // See table 3.
 static const uint64_t kMaxReseedCount = UINT64_C(1) << 48;
 
+OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_128_ENTROPY_LEN == 32,
+  CTR_DRBG_AES_128_entropy_length_is_not_32);
+OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_256_ENTROPY_LEN == 48,
+  CTR_DRBG_AES_256_entropy_length_is_not_48);
+OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_128_ENTROPY_LEN,
+  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max);
+OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_256_ENTROPY_LEN,
+  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max);
+
 int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
-                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
-                  const uint8_t *personalization, size_t personalization_len) {
-  // Section 10.2.1.3.1
-  if (personalization_len > CTR_DRBG_ENTROPY_LEN) {
+                  const uint8_t entropy[CTR_DRBG_MAX_ENTROPY_LEN],
+                  const uint8_t *personalization, size_t personalization_len,
+                  ctr_drbg_key_len_t ctr_drbg_key_len) {
+
+  if (drbg == NULL) {
     return 0;
   }
 
-  uint8_t seed_material[CTR_DRBG_ENTROPY_LEN];
-  OPENSSL_memcpy(seed_material, entropy, CTR_DRBG_ENTROPY_LEN);
+  const uint8_t *init_mask;
 
-  for (size_t i = 0; i < personalization_len; i++) {
-    seed_material[i] ^= personalization[i];
-  }
+  // kInitMask128 is the result of encrypting blocks with big-endian value 1 and
+  // 2 with the all-zero AES-128 key.
+  static const uint8_t kInitMask128[CTR_DRBG_AES_128_ENTROPY_LEN] = {
+      0x58, 0xe2, 0xfc, 0xce, 0xfa, 0x7e, 0x30, 0x61, 0x36, 0x7f, 0x1d, 0x57,
+      0xa4, 0xe7, 0x45, 0x5a, 0x03, 0x88, 0xda, 0xce, 0x60, 0xb6, 0xa3, 0x92,
+      0xf3, 0x28, 0xc2, 0xb9, 0x71, 0xb2, 0xfe, 0x78,
+  };
 
-  // Section 10.2.1.2
-
-  // kInitMask is the result of encrypting blocks with big-endian value 1, 2
+  // kInitMask256 is the result of encrypting blocks with big-endian value 1, 2
   // and 3 with the all-zero AES-256 key.
-  static const uint8_t kInitMask[CTR_DRBG_ENTROPY_LEN] = {
+  static const uint8_t kInitMask256[CTR_DRBG_AES_256_ENTROPY_LEN] = {
       0x53, 0x0f, 0x8a, 0xfb, 0xc7, 0x45, 0x36, 0xb9, 0xa9, 0x63, 0xb4, 0xf1,
       0xc4, 0xcb, 0x73, 0x8b, 0xce, 0xa7, 0x40, 0x3d, 0x4d, 0x60, 0x6b, 0x6e,
       0x07, 0x4e, 0xc5, 0xd3, 0xba, 0xf3, 0x9d, 0x18, 0x72, 0x60, 0x03, 0xca,
       0x37, 0xa6, 0x2a, 0x74, 0xd1, 0xa2, 0xf5, 0x8e, 0x75, 0x06, 0x35, 0x8e,
   };
 
-  for (size_t i = 0; i < sizeof(kInitMask); i++) {
-    seed_material[i] ^= kInitMask[i];
+  // Table 3
+  switch (ctr_drbg_key_len) {
+    case CTR_DRBG_AES_128:
+      drbg->aes_key_len = CTR_DRBG_AES_128_KEY_LEN;
+      drbg->entropy_len = CTR_DRBG_AES_128_ENTROPY_LEN;
+      init_mask = kInitMask128;
+      break;
+    case CTR_DRBG_AES_256:
+      drbg->aes_key_len = CTR_DRBG_AES_256_KEY_LEN;
+      drbg->entropy_len = CTR_DRBG_AES_256_ENTROPY_LEN;
+      init_mask = kInitMask256;
+      break;
+    default:
+      return 0;
   }
 
-  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material, 32);
-  OPENSSL_memcpy(drbg->counter.bytes, seed_material + 32, 16);
+  // Section 10.2.1.3.1
+  if (personalization_len > drbg->entropy_len) {
+    return 0;
+  }
+
+  uint8_t seed_material[CTR_DRBG_MAX_ENTROPY_LEN];
+  OPENSSL_memcpy(seed_material, entropy, drbg->entropy_len);
+
+  for (size_t i = 0; i < personalization_len; i++) {
+    seed_material[i] ^= personalization[i];
+  }
+
+  // Section 10.2.1.2
+  for (size_t i = 0; i < drbg->entropy_len; i++) {
+    seed_material[i] ^= init_mask[i];
+  }
+
+  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material,
+    drbg->aes_key_len);
+
+  OPENSSL_STATIC_ASSERT(sizeof(drbg->counter.bytes) <= CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES,
+    CTR_DRBG_state_counter_insufficient_size);
+  OPENSSL_memcpy(drbg->counter.bytes, seed_material + drbg->aes_key_len,
+    CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES);
   drbg->reseed_counter = 1;
 
   return 1;
 }
 
-OPENSSL_STATIC_ASSERT(CTR_DRBG_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
-                      not_a_multiple_of_AES_block_size)
+// Simplifies 10.2.1.2 and 10.2.1.5.1
+OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_128_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
+  not_a_multiple_of_AES_block_size);
+OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_256_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
+  not_a_multiple_of_AES_block_size);
+OPENSSL_STATIC_ASSERT(CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES == AES_BLOCK_SIZE,
+  state_counter_length_is_not_equal_to_the_block_length);
 
 // ctr_inc adds |n| to the last four bytes of |drbg->counter|, treated as a
 // big-endian number.
 static void ctr32_add(CTR_DRBG_STATE *drbg, uint32_t n) {
+  OPENSSL_STATIC_ASSERT(sizeof(drbg->counter.words) == (4 * sizeof(uint32_t)),
+    ctr_drbg_counter_is_not_of_expected_size);
+
   drbg->counter.words[3] =
       CRYPTO_bswap4(CRYPTO_bswap4(drbg->counter.words[3]) + n);
 }
 
+// |drbg| is not NULL when this function is called.
 static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
                            size_t data_len) {
-  // Per section 10.2.1.2, |data_len| must be |CTR_DRBG_ENTROPY_LEN|. Here, we
+  // Per section 10.2.1.2, |data_len| must be |drbg->entropy_len|. Here, we
   // allow shorter inputs and right-pad them with zeros. This is equivalent to
   // the specified algorithm but saves a copy in |CTR_DRBG_generate|.
-  if (data_len > CTR_DRBG_ENTROPY_LEN) {
+  if (data_len > drbg->entropy_len) {
     return 0;
   }
 
-  uint8_t temp[CTR_DRBG_ENTROPY_LEN];
-  for (size_t i = 0; i < CTR_DRBG_ENTROPY_LEN; i += AES_BLOCK_SIZE) {
+  uint8_t temp[CTR_DRBG_MAX_ENTROPY_LEN] = {0};
+  for (size_t i = 0; i < drbg->entropy_len; i += AES_BLOCK_SIZE) {
     ctr32_add(drbg, 1);
     drbg->block(drbg->counter.bytes, temp + i, &drbg->ks);
   }
@@ -93,25 +147,34 @@ static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
     temp[i] ^= data[i];
   }
 
-  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, temp, 32);
-  OPENSSL_memcpy(drbg->counter.bytes, temp + 32, 16);
+  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, temp,
+    drbg->aes_key_len);
+  OPENSSL_memcpy(drbg->counter.bytes, temp + drbg->aes_key_len,
+    CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES);
 
   return 1;
 }
 
 int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
-                    const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
+                    const uint8_t entropy[CTR_DRBG_MAX_ENTROPY_LEN],
                     const uint8_t *additional_data,
                     size_t additional_data_len) {
+
+  if (drbg == NULL) {
+    return 0;
+  }
+
+  uint32_t entropy_len = drbg->entropy_len;
+
   // Section 10.2.1.4
-  uint8_t entropy_copy[CTR_DRBG_ENTROPY_LEN];
+  uint8_t entropy_copy[CTR_DRBG_MAX_ENTROPY_LEN] = {0};
 
   if (additional_data_len > 0) {
-    if (additional_data_len > CTR_DRBG_ENTROPY_LEN) {
+    if (additional_data_len > entropy_len) {
       return 0;
     }
 
-    OPENSSL_memcpy(entropy_copy, entropy, CTR_DRBG_ENTROPY_LEN);
+    OPENSSL_memcpy(entropy_copy, entropy, entropy_len);
     for (size_t i = 0; i < additional_data_len; i++) {
       entropy_copy[i] ^= additional_data[i];
     }
@@ -119,7 +182,7 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
     entropy = entropy_copy;
   }
 
-  if (!ctr_drbg_update(drbg, entropy, CTR_DRBG_ENTROPY_LEN)) {
+  if (ctr_drbg_update(drbg, entropy, entropy_len) == 0) {
     return 0;
   }
 
@@ -131,6 +194,10 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
 int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
                       const uint8_t *additional_data,
                       size_t additional_data_len) {
+  if (drbg == NULL) {
+    return 0;
+  }
+
   // See 9.3.1
   if (out_len > CTR_DRBG_MAX_GENERATE_LENGTH) {
     return 0;
@@ -141,8 +208,8 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
     return 0;
   }
 
-  if (additional_data_len != 0 &&
-      !ctr_drbg_update(drbg, additional_data, additional_data_len)) {
+  if ((additional_data_len != 0) &&
+      (ctr_drbg_update(drbg, additional_data, additional_data_len) == 0)) {
     return 0;
   }
 
@@ -189,7 +256,7 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
 
   // Right-padding |additional_data| in step 2.2 is handled implicitly by
   // |ctr_drbg_update|, to save a copy.
-  if (!ctr_drbg_update(drbg, additional_data, additional_data_len)) {
+  if (ctr_drbg_update(drbg, additional_data, additional_data_len) == 0) {
     return 0;
   }
 

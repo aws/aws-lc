@@ -302,20 +302,45 @@ static void rand_get_seed(struct rand_thread_state *state,
 // rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if
 // that entropy came directly from the CPU and zero otherwise.
 static void rand_get_seed(struct rand_thread_state *state,
-                          uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_used_cpu) {
+                          uint8_t seed[CTR_DRBG_MAX_ENTROPY_LEN],
+                          int *out_used_cpu,
+                          ctr_drbg_key_len_t ctr_drbg_key_len) {
+
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
-  CRYPTO_sysrand(seed, CTR_DRBG_ENTROPY_LEN);
+  switch (ctr_drbg_key_len) {
+    case CTR_DRBG_AES_128:
+      CRYPTO_sysrand(seed, CTR_DRBG_AES_128_ENTROPY_LEN);
+      break;
+    case CTR_DRBG_AES_256:
+      CRYPTO_sysrand(seed, CTR_DRBG_AES_256_ENTROPY_LEN);
+      break;
+    default:
+      abort();
+  }
+
   *out_used_cpu = 0;
 }
 
 #endif
 
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
-                                     const uint8_t user_additional_data[32]) {
+                                     const uint8_t user_additional_data[32],
+                                     ctr_drbg_key_len_t ctr_drbg_key_len) {
   if (out_len == 0) {
     return;
+  }
+
+  uint32_t entropy_len = 0;
+  switch (ctr_drbg_key_len) {
+    case CTR_DRBG_AES_128:
+      entropy_len = CTR_DRBG_AES_128_ENTROPY_LEN;
+      break;
+    case CTR_DRBG_AES_256:
+      entropy_len = CTR_DRBG_AES_256_ENTROPY_LEN;
+      break;
+    default:
+      abort();
   }
 
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
@@ -365,24 +390,25 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
 
     state->last_block_valid = 0;
-    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+    uint8_t seed[CTR_DRBG_MAX_ENTROPY_LEN];
     int used_cpu;
-    rand_get_seed(state, seed, &used_cpu);
+    rand_get_seed(state, seed, &used_cpu, ctr_drbg_key_len);
 
-    uint8_t personalization[CTR_DRBG_ENTROPY_LEN];
+    uint8_t personalization[CTR_DRBG_MAX_ENTROPY_LEN];
     size_t personalization_len = 0;
 #if defined(OPENSSL_URANDOM)
     // If we used RDRAND, also opportunistically read from the system. This
     // avoids solely relying on the hardware once the entropy pool has been
     // initialized.
-    if (used_cpu &&
-        CRYPTO_sysrand_if_available(personalization, sizeof(personalization))) {
-      personalization_len = sizeof(personalization);
+    if (used_cpu) {
+      if (CRYPTO_sysrand_if_available(personalization, entropy_len)) {
+        personalization_len = entropy_len;
+      }
     }
 #endif
 
     if (!CTR_DRBG_init(&state->drbg, seed, personalization,
-                       personalization_len)) {
+                       personalization_len, ctr_drbg_key_len)) {
       abort();
     }
     state->calls = 0;
@@ -405,9 +431,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
   if (state->calls >= kReseedInterval ||
       state->fork_generation != fork_generation) {
-    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+    uint8_t seed[CTR_DRBG_MAX_ENTROPY_LEN];
     int used_cpu;
-    rand_get_seed(state, seed, &used_cpu);
+    rand_get_seed(state, seed, &used_cpu, ctr_drbg_key_len);
 #if defined(BORINGSSL_FIPS)
     // Take a read lock around accesses to |state->drbg|. This is needed to
     // avoid returning bad entropy if we race with
@@ -461,7 +487,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
   static const uint8_t kZeroAdditionalData[32] = {0};
-  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
+  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData, CTR_DRBG_AES_256);
   return 1;
 }
 
