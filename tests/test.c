@@ -104,6 +104,7 @@ enum {
        TEST_BIGNUM_HALF_P256,
        TEST_BIGNUM_HALF_P384,
        TEST_BIGNUM_ISZERO,
+       TEST_BIGNUM_KMUL_16_32,
        TEST_BIGNUM_KSQR_16_32,
        TEST_BIGNUM_LE,
        TEST_BIGNUM_LT,
@@ -2008,6 +2009,41 @@ int test_bignum_iszero(void)
    }
   printf("All OK\n");
   return 0;
+}
+
+int test_bignum_kmul_specific
+  (uint64_t p,uint64_t m,uint64_t n, char *name,
+   void (*f)(uint64_t *,uint64_t *,uint64_t *,uint64_t *))
+{ uint64_t i, j;
+  printf("Testing %s with %d cases\n",name,tests);
+  int c;
+  for (i = 0; i < tests; ++i)
+   { random_bignum(m,b0);
+     random_bignum(n,b1);
+     random_bignum(p,b2);
+     for (j = 0; j < p; ++j) b3[j] = b2[j] + 1;
+     (*f)(b2,b0,b1,b5);
+     reference_mul(p,b3,m,b0,n,b1);
+     c = reference_compare(p,b2,p,b3);
+     if (c != 0)
+      { printf("### Disparity: [sizes %4lu x %4lu -> %4lu] "
+               "...0x%016lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+               m,n,p,b0[0],b1[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (p == 0) printf("OK: [size %4lu x %4lu -> %4lu]\n",m,n,p);
+        else printf("OK: [size %4lu x %4lu -> %4lu] "
+                    "...0x%016lx * ...0x%016lx =..0x%016lx\n",
+                    m,n,p,b0[0],b1[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_kmul_16_32(void)
+{ return test_bignum_kmul_specific(32,16,16,"bignum_kmul_16_32",bignum_kmul_16_32);
 }
 
 int test_bignum_ksqr_specific
@@ -3960,6 +3996,7 @@ int test_all()
   failures += test_bignum_half_p256();
   failures += test_bignum_half_p384();
   failures += test_bignum_iszero();
+  failures += test_bignum_kmul_16_32();
   failures += test_bignum_ksqr_16_32();
   failures += test_bignum_le();
   failures += test_bignum_lt();
