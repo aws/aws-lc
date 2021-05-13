@@ -539,7 +539,7 @@ TEST(OCSPTest, TestGoodOCSP) {
   basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(basic_response);
 
-  // set up trust store and certificate chain
+  // Set up trust store and certificate chain
   bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
   X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca_cert).get());
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
@@ -547,7 +547,7 @@ TEST(OCSPTest, TestGoodOCSP) {
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = nullptr;
-  // find the issuer in the certificate chain. If it's not there. Fail everything.
+  // Find the issuer in the certificate chain. If it's not there, fail everything.
   for (size_t i = 0; i < sk_X509_num(server_cert_chain.get()); i++) {
     X509 *issuer_candidate = sk_X509_value(server_cert_chain.get(), i);
     ASSERT_TRUE(issuer_candidate);
@@ -559,7 +559,8 @@ TEST(OCSPTest, TestGoodOCSP) {
   }
   ASSERT_TRUE(issuer);
 
-  // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
+  // Expect basic verify here, but we skip step for now since functionality has
+  // not been implemented yet.
 
   int status = 0;
   int reason = 0;
@@ -587,7 +588,7 @@ TEST(OCSPTest, TestRevokedOCSP) {
   basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(basic_response);
 
-  // set up trust store and certificate chain
+  // Set up trust store and certificate chain
   bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
   X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca_cert).get());
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
@@ -595,7 +596,7 @@ TEST(OCSPTest, TestRevokedOCSP) {
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = nullptr;
-  // find the issuer in the certificate chain. If it's not there. Fail everything
+  // Find the issuer in the certificate chain. If it's not there, fail everything.
   for (size_t i = 0; i < sk_X509_num(server_cert_chain.get()); i++) {
     X509 *issuer_candidate = sk_X509_value(server_cert_chain.get(), i);
     ASSERT_TRUE(issuer_candidate);
@@ -607,7 +608,8 @@ TEST(OCSPTest, TestRevokedOCSP) {
   }
   ASSERT_TRUE(issuer);
 
-  // Expect basic verify here, but we skip the step for now because functionality has not been implemented yet
+  // Expect basic verify here, but we skip step for now since functionality has
+  // not been implemented yet.
 
   int status = 0;
   int reason = 0;
