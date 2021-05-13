@@ -76,7 +76,8 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
       goto end;
     }
 
-    // At this point we have a valid certificate chain, need to verify it against the OCSP issuer criteria.
+    // At this point we have a valid certificate chain, need to verify it
+    // against the OCSP issuer criteria.
     ret = ocsp_check_issuer(bs, chain);
 
     // If fatal error or valid match then finish
@@ -84,7 +85,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
       goto end;
     }
 
-    // Easy case: explicitly trusted. Get root CA and check for explicit trust/
+    // Easy case: explicitly trusted. Get root CA and check for explicit trust
     if (IS_OCSP_FLAG_SET(flags, OCSP_NOEXPLICIT)) {
       goto end;
     }
@@ -122,7 +123,8 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
     }
     return 1;
   }
-  // look in certs stack the responder may have included in |OCSP_BASICRESP|, unless the flags contain OCSP_NOINTERN
+  // look in certs stack the responder may have included in |OCSP_BASICRESP|,
+  // unless the flags contain OCSP_NOINTERN
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN) &&
       (signer = ocsp_find_signer_sk(bs->certs, rid))) {
     *psigner = signer;
