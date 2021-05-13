@@ -72,6 +72,7 @@ OBJ = bignum_add.o \
       bignum_half_p256.o \
       bignum_half_p384.o \
       bignum_iszero.o \
+      bignum_ksqr_16_32.o \
       bignum_le.o \
       bignum_lt.o \
       bignum_madd.o \

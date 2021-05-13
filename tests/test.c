@@ -104,6 +104,7 @@ enum {
        TEST_BIGNUM_HALF_P256,
        TEST_BIGNUM_HALF_P384,
        TEST_BIGNUM_ISZERO,
+       TEST_BIGNUM_KSQR_16_32,
        TEST_BIGNUM_LE,
        TEST_BIGNUM_LT,
        TEST_BIGNUM_MADD,
@@ -1371,7 +1372,7 @@ int test_bignum_copy(void)
       }
      else if (b0[k1] != d)
       { printf("### Disparity: [sizes %4lu := %4lu]: writes off end\n",k1,k2);
-        return 0;
+        return 1;
       }
      else if (VERBOSE)
       { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4lu := %4lu]\n",k1,k2);
@@ -2007,6 +2008,40 @@ int test_bignum_iszero(void)
    }
   printf("All OK\n");
   return 0;
+}
+
+int test_bignum_ksqr_specific
+  (uint64_t p,uint64_t n, char *name,
+   void (*f)(uint64_t *,uint64_t *,uint64_t *))
+{ uint64_t i, j;
+  printf("Testing %s with %d cases\n",name,tests);
+  int c;
+  for (i = 0; i < tests; ++i)
+   { random_bignum(n,b0);
+     random_bignum(p,b2);
+     for (j = 0; j < p; ++j) b3[j] = b2[j] + 1;
+     (*f)(b2,b0,b5);
+     reference_mul(p,b3,n,b0,n,b0);
+     c = reference_compare(p,b2,p,b3);
+     if (c != 0)
+      { printf("### Disparity: [sizes %4lu x %4lu -> %4lu] "
+               "...0x%016lx^2  = ....0x%016lx not ...0x%016lx\n",
+               n,n,p,b0[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (p == 0) printf("OK: [size %4lu x %4lu -> %4lu]\n",n,n,p);
+        else printf("OK: [size %4lu x %4lu -> %4lu] "
+                    "...0x%016lx^2 =..0x%016lx\n",
+                    n,n,p,b0[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_ksqr_16_32(void)
+{ return test_bignum_ksqr_specific(32,16,"bignum_ksqr_16_32",bignum_ksqr_16_32);
 }
 
 int test_bignum_le(void)
@@ -3558,6 +3593,7 @@ int test_bignum_sqr_specific
       { printf("### Disparity: [sizes %4lu x %4lu -> %4lu] "
                "...0x%016lx^2  = ....0x%016lx not ...0x%016lx\n",
                n,n,p,b0[0],b2[0],b3[0]);
+        return 1;
       }
      else if (VERBOSE)
       { if (p == 0) printf("OK: [size %4lu x %4lu -> %4lu]\n",n,n,p);
@@ -3924,6 +3960,7 @@ int test_all()
   failures += test_bignum_half_p256();
   failures += test_bignum_half_p384();
   failures += test_bignum_iszero();
+  failures += test_bignum_ksqr_16_32();
   failures += test_bignum_le();
   failures += test_bignum_lt();
   failures += test_bignum_madd();
@@ -4180,6 +4217,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_HALF_P256:       return test_bignum_half_p256();
      case TEST_BIGNUM_HALF_P384:       return test_bignum_half_p384();
      case TEST_BIGNUM_ISZERO:          return test_bignum_iszero();
+     case TEST_BIGNUM_KSQR_16_32:      return test_bignum_ksqr_16_32();
      case TEST_BIGNUM_LE:              return test_bignum_le();
      case TEST_BIGNUM_LT:              return test_bignum_lt();
      case TEST_BIGNUM_MADD:            return test_bignum_madd();
