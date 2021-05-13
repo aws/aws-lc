@@ -148,6 +148,13 @@ if(${ARCH} STREQUAL "aarch64")
 
     chacha/chacha-armv8.${ASM_EXT}
     test/trampoline-armv8.${ASM_EXT}
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_add_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_montmul_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_montsqr_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_sub_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_neg_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_tomont_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/Arm/bignum_demont_p384.S
   )
 endif()
 

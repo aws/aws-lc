@@ -19,6 +19,14 @@
 
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP384_64BIT 1
+// the following is needed until the gradual transition from fiat is done
+OPENSSL_UNUSED static void fiat_p384_add(uint64_t out1[6], const uint64_t arg1[6], const uint64_t arg2[6]);
+OPENSSL_UNUSED static void fiat_p384_mul(uint64_t out1[6], const uint64_t arg1[6], const uint64_t arg2[6]);
+OPENSSL_UNUSED static void fiat_p384_square(uint64_t out1[6], const uint64_t arg1[6]);
+OPENSSL_UNUSED static void fiat_p384_sub(uint64_t out1[6], const uint64_t arg1[6], const uint64_t arg2[6]);
+OPENSSL_UNUSED static void fiat_p384_opp(uint64_t out1[6], const uint64_t arg1[6]);
+OPENSSL_UNUSED static void fiat_p384_from_montgomery(uint64_t out1[6], const uint64_t arg1[6]);
+OPENSSL_UNUSED static void fiat_p384_to_montgomery(uint64_t out1[6], const uint64_t arg1[6]);
 #include "../../../third_party/fiat/p384_64.h"
 #else
 #include "../../../third_party/fiat/p384_32.h"
@@ -37,6 +45,36 @@ typedef uint32_t fiat_p384_felem[FIAT_P384_NLIMBS];
 static const fiat_p384_felem fiat_p384_one = {
     0x1, 0xffffffff, 0xffffffff, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 #endif  // 64BIT
+
+#if !defined(OPENSSL_NO_ASM) && defined(BORINGSSL_NISTP384_64BIT) && \
+    defined(OPENSSL_AARCH64) &&                                      \
+    !defined(OPENSSL_SMALL)
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#define p384_add(c, a, b)       bignum_add_p384(c, a, b)
+#define p384_montmul(c, a, b)   bignum_montmul_p384(c, a, b)
+#define p384_montsqr(c, a)      bignum_montsqr_p384(c, a)
+#define p384_sub(c, a, b)       bignum_sub_p384(c, a, b)
+#define p384_neg(c, a)          bignum_neg_p384(c, a)
+#define p384_to_mont(c, a)      bignum_tomont_p384(c, a)
+#define p384_from_mont(c, a)    bignum_demont_p384(c, a)
+#else
+
+#if 0 // to be enabled when all fiat is replaceable
+#if defined(BORINGSSL_NISTP384_64BIT)
+#include "../../../third_party/fiat/p384_64.h"
+#else
+#include "../../../third_party/fiat/p384_32.h"
+#endif // defined(BORINGSSL_NISTP384_64BIT)
+#endif // #if 0
+#define p384_add(c, a, b)       fiat_p384_add(c, a, b)
+#define p384_montmul(c, a, b)   fiat_p384_mul(c, a, b)
+#define p384_montsqr(c, a)      fiat_p384_square(c, a)
+#define p384_sub(c, a, b)       fiat_p384_sub(c, a, b)
+#define p384_neg(c, a)          fiat_p384_opp(c, a)
+#define p384_to_mont(c, a)      fiat_p384_to_montgomery(c, a)
+#define p384_from_mont(c, a)    fiat_p384_from_montgomery(c, a)
+#endif
+
 
 static fiat_p384_limb_t fiat_p384_nz(
     const fiat_p384_limb_t in1[FIAT_P384_NLIMBS]) {
@@ -90,59 +128,59 @@ static void fiat_p384_inv_square(fiat_p384_felem out,
   // squaring the element => doubling the exponent
   // multiplying by an element => adding to the exponent the power of that element
   fiat_p384_felem x2, x3, x6, x12, x15, x30, x60, x120;
-  fiat_p384_square(x2, in);   // 2^2 - 2^1
-  fiat_p384_mul(x2, x2, in);  // 2^2 - 2^0
+  p384_montsqr(x2, in);   // 2^2 - 2^1
+  p384_montmul(x2, x2, in);  // 2^2 - 2^0
 
-  fiat_p384_square(x3, x2);   // 2^3 - 2^1
-  fiat_p384_mul(x3, x3, in);  // 2^3 - 2^0
+  p384_montsqr(x3, x2);   // 2^3 - 2^1
+  p384_montmul(x3, x3, in);  // 2^3 - 2^0
 
-  fiat_p384_square(x6, x3);
+  p384_montsqr(x6, x3);
   for (int i = 1; i < 3; i++) {
-    fiat_p384_square(x6, x6);
+    p384_montsqr(x6, x6);
   }                           // 2^6 - 2^3
-  fiat_p384_mul(x6, x6, x3);  // 2^6 - 2^0
+  p384_montmul(x6, x6, x3);  // 2^6 - 2^0
 
-  fiat_p384_square(x12, x6);
+  p384_montsqr(x12, x6);
   for (int i = 1; i < 6; i++) {
-    fiat_p384_square(x12, x12);
+    p384_montsqr(x12, x12);
   }                             // 2^12 - 2^6
-  fiat_p384_mul(x12, x12, x6);  // 2^12 - 2^0
+  p384_montmul(x12, x12, x6);  // 2^12 - 2^0
 
-  fiat_p384_square(x15, x12);
+  p384_montsqr(x15, x12);
   for (int i = 1; i < 3; i++) {
-    fiat_p384_square(x15, x15);
+    p384_montsqr(x15, x15);
   }                             // 2^15 - 2^3
-  fiat_p384_mul(x15, x15, x3);  // 2^15 - 2^0
+  p384_montmul(x15, x15, x3);  // 2^15 - 2^0
 
-  fiat_p384_square(x30, x15);
+  p384_montsqr(x30, x15);
   for (int i = 1; i < 15; i++) {
-    fiat_p384_square(x30, x30);
+    p384_montsqr(x30, x30);
   }                              // 2^30 - 2^15
-  fiat_p384_mul(x30, x30, x15);  // 2^30 - 2^0
+  p384_montmul(x30, x30, x15);  // 2^30 - 2^0
 
-  fiat_p384_square(x60, x30);
+  p384_montsqr(x60, x30);
   for (int i = 1; i < 30; i++) {
-    fiat_p384_square(x60, x60);
+    p384_montsqr(x60, x60);
   }                              // 2^60 - 2^30
-  fiat_p384_mul(x60, x60, x30);  // 2^60 - 2^0
+  p384_montmul(x60, x60, x30);  // 2^60 - 2^0
 
-  fiat_p384_square(x120, x60);
+  p384_montsqr(x120, x60);
   for (int i = 1; i < 60; i++) {
-    fiat_p384_square(x120, x120);
+    p384_montsqr(x120, x120);
   }                                // 2^120 - 2^60
-  fiat_p384_mul(x120, x120, x60);  // 2^120 - 2^0
+  p384_montmul(x120, x120, x60);  // 2^120 - 2^0
 
   fiat_p384_felem ret;
-  fiat_p384_square(ret, x120);
+  p384_montsqr(ret, x120);
   for (int i = 1; i < 120; i++) {
-    fiat_p384_square(ret, ret);
+    p384_montsqr(ret, ret);
   }                                // 2^240 - 2^120
-  fiat_p384_mul(ret, ret, x120);   // 2^240 - 2^0
+  p384_montmul(ret, ret, x120);   // 2^240 - 2^0
 
   for (int i = 0; i < 15; i++) {
-    fiat_p384_square(ret, ret);
+    p384_montsqr(ret, ret);
   }                                // 2^255 - 2^15
-  fiat_p384_mul(ret, ret, x15);    // 2^255 - 2^0
+  p384_montmul(ret, ret, x15);    // 2^255 - 2^0
 
   // Why (1 + 30) in the loop?
   // This is as expressed in https://briansmith.org/ecc-inversion-addition-chains-01#p384_field_inversion
@@ -152,13 +190,13 @@ static void fiat_p384_inv_square(fiat_p384_felem out,
   // ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe ffffffff
   // (the last 2 1s are appended in the following step).
   for (int i = 0; i < (1 + 30); i++) {
-    fiat_p384_square(ret, ret);
+    p384_montsqr(ret, ret);
   }                                // 2^286 - 2^31
-  fiat_p384_mul(ret, ret, x30);    // 2^286 - 2^30 - 2^0
+  p384_montmul(ret, ret, x30);    // 2^286 - 2^30 - 2^0
 
-  fiat_p384_square(ret, ret);
-  fiat_p384_square(ret, ret);      // 2^288 - 2^32 - 2^2
-  fiat_p384_mul(ret, ret, x2);     // 2^288 - 2^32 - 2^0
+  p384_montsqr(ret, ret);
+  p384_montsqr(ret, ret);      // 2^288 - 2^32 - 2^2
+  p384_montmul(ret, ret, x2);     // 2^288 - 2^32 - 2^0
 
   // Why not 94 instead of (64 + 30) in the loop?
   // Similarly to the comment above, there is a shift of 94 bits but what will be added is x30,
@@ -166,12 +204,12 @@ static void fiat_p384_inv_square(fiat_p384_felem out,
   // 00000000 00000000 fffffffc
   // (the last 2 0s are appended by the last 2 shifts).
   for (int i = 0; i < (64 + 30); i++) {
-    fiat_p384_square(ret, ret);
+    p384_montsqr(ret, ret);
   }                                // 2^382 - 2^126 - 2^94
-  fiat_p384_mul(ret, ret, x30);    // 2^382 - 2^126 - 2^94 + 2^30 - 2^0
+  p384_montmul(ret, ret, x30);    // 2^382 - 2^126 - 2^94 + 2^30 - 2^0
 
-  fiat_p384_square(ret, ret);
-  fiat_p384_square(out, ret);      // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
+  p384_montsqr(ret, ret);
+  p384_montsqr(out, ret);      // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
 }
 
 // Group operations
@@ -198,42 +236,42 @@ static void fiat_p384_point_double(fiat_p384_felem x_out, fiat_p384_felem y_out,
                                    const fiat_p384_felem z_in) {
   fiat_p384_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
   // delta = z^2
-  fiat_p384_square(delta, z_in);
+  p384_montsqr(delta, z_in);
   // gamma = y^2
-  fiat_p384_square(gamma, y_in);
+  p384_montsqr(gamma, y_in);
   // beta = x*gamma
-  fiat_p384_mul(beta, x_in, gamma);
+  p384_montmul(beta, x_in, gamma);
 
   // alpha = 3*(x-delta)*(x+delta)
-  fiat_p384_sub(ftmp, x_in, delta);
-  fiat_p384_add(ftmp2, x_in, delta);
+  p384_sub(ftmp, x_in, delta);
+  p384_add(ftmp2, x_in, delta);
 
-  fiat_p384_add(tmptmp, ftmp2, ftmp2);
-  fiat_p384_add(ftmp2, ftmp2, tmptmp);
-  fiat_p384_mul(alpha, ftmp, ftmp2);
+  p384_add(tmptmp, ftmp2, ftmp2);
+  p384_add(ftmp2, ftmp2, tmptmp);
+  p384_montmul(alpha, ftmp, ftmp2);
 
   // x' = alpha^2 - 8*beta
-  fiat_p384_square(x_out, alpha);
-  fiat_p384_add(fourbeta, beta, beta);
-  fiat_p384_add(fourbeta, fourbeta, fourbeta);
-  fiat_p384_add(tmptmp, fourbeta, fourbeta);
-  fiat_p384_sub(x_out, x_out, tmptmp);
+  p384_montsqr(x_out, alpha);
+  p384_add(fourbeta, beta, beta);
+  p384_add(fourbeta, fourbeta, fourbeta);
+  p384_add(tmptmp, fourbeta, fourbeta);
+  p384_sub(x_out, x_out, tmptmp);
 
   // z' = (y + z)^2 - gamma - delta
   // The following calculation differs from that in p256.c:
   // An add is replaced with a sub in order to save 5 cmovznz.
-  fiat_p384_add(ftmp, y_in, z_in);
-  fiat_p384_square(z_out, ftmp);
-  fiat_p384_sub(z_out, z_out, gamma);
-  fiat_p384_sub(z_out, z_out, delta);
+  p384_add(ftmp, y_in, z_in);
+  p384_montsqr(z_out, ftmp);
+  p384_sub(z_out, z_out, gamma);
+  p384_sub(z_out, z_out, delta);
 
   // y' = alpha*(4*beta - x') - 8*gamma^2
-  fiat_p384_sub(y_out, fourbeta, x_out);
-  fiat_p384_add(gamma, gamma, gamma);
-  fiat_p384_square(gamma, gamma);
-  fiat_p384_mul(y_out, alpha, y_out);
-  fiat_p384_add(gamma, gamma, gamma);
-  fiat_p384_sub(y_out, y_out, gamma);
+  p384_sub(y_out, fourbeta, x_out);
+  p384_add(gamma, gamma, gamma);
+  p384_montsqr(gamma, gamma);
+  p384_montmul(y_out, alpha, y_out);
+  p384_add(gamma, gamma, gamma);
+  p384_sub(y_out, y_out, gamma);
 }
 
 // fiat_p384_point_add calculates (x1, y1, z1) + (x2, y2, z2)
@@ -258,62 +296,62 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
 
   // z1z1 = z1z1 = z1**2
   fiat_p384_felem z1z1;
-  fiat_p384_square(z1z1, z1);
+  p384_montsqr(z1z1, z1);
 
   fiat_p384_felem u1, s1, two_z1z2;
   if (!mixed) {
     // z2z2 = z2**2
     fiat_p384_felem z2z2;
-    fiat_p384_square(z2z2, z2);
+    p384_montsqr(z2z2, z2);
 
     // u1 = x1*z2z2
-    fiat_p384_mul(u1, x1, z2z2);
+    p384_montmul(u1, x1, z2z2);
 
     // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
-    fiat_p384_add(two_z1z2, z1, z2);
-    fiat_p384_square(two_z1z2, two_z1z2);
-    fiat_p384_sub(two_z1z2, two_z1z2, z1z1);
-    fiat_p384_sub(two_z1z2, two_z1z2, z2z2);
+    p384_add(two_z1z2, z1, z2);
+    p384_montsqr(two_z1z2, two_z1z2);
+    p384_sub(two_z1z2, two_z1z2, z1z1);
+    p384_sub(two_z1z2, two_z1z2, z2z2);
 
     // s1 = y1 * z2**3
-    fiat_p384_mul(s1, z2, z2z2);
-    fiat_p384_mul(s1, s1, y1);
+    p384_montmul(s1, z2, z2z2);
+    p384_montmul(s1, s1, y1);
   } else {
     // We'll assume z2 = 1 (special case z2 = 0 is handled later).
 
     // u1 = x1*z2z2
     fiat_p384_copy(u1, x1);
     // two_z1z2 = 2z1z2
-    fiat_p384_add(two_z1z2, z1, z1);
+    p384_add(two_z1z2, z1, z1);
     // s1 = y1 * z2**3
     fiat_p384_copy(s1, y1);
   }
 
   // u2 = x2*z1z1
   fiat_p384_felem u2;
-  fiat_p384_mul(u2, x2, z1z1);
+  p384_montmul(u2, x2, z1z1);
 
   // h = u2 - u1
   fiat_p384_felem h;
-  fiat_p384_sub(h, u2, u1);
+  p384_sub(h, u2, u1);
 
   fiat_p384_limb_t xneq = fiat_p384_nz(h);
 
   // z_out = two_z1z2 * h
-  fiat_p384_mul(z_out, h, two_z1z2);
+  p384_montmul(z_out, h, two_z1z2);
 
   // z1z1z1 = z1 * z1z1
   fiat_p384_felem z1z1z1;
-  fiat_p384_mul(z1z1z1, z1, z1z1);
+  p384_montmul(z1z1z1, z1, z1z1);
 
   // s2 = y2 * z1**3
   fiat_p384_felem s2;
-  fiat_p384_mul(s2, y2, z1z1z1);
+  p384_montmul(s2, y2, z1z1z1);
 
   // r = (s2 - s1)*2
   fiat_p384_felem r;
-  fiat_p384_sub(r, s2, s1);
-  fiat_p384_add(r, r, r);
+  p384_sub(r, s2, s1);
+  p384_add(r, r, r);
 
   fiat_p384_limb_t yneq = fiat_p384_nz(r);
 
@@ -328,30 +366,30 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
 
   // I = (2h)**2
   fiat_p384_felem i;
-  fiat_p384_add(i, h, h);
-  fiat_p384_square(i, i);
+  p384_add(i, h, h);
+  p384_montsqr(i, i);
 
   // J = h * I
   fiat_p384_felem j;
-  fiat_p384_mul(j, h, i);
+  p384_montmul(j, h, i);
 
   // V = U1 * I
   fiat_p384_felem v;
-  fiat_p384_mul(v, u1, i);
+  p384_montmul(v, u1, i);
 
   // x_out = r**2 - J - 2V
-  fiat_p384_square(x_out, r);
-  fiat_p384_sub(x_out, x_out, j);
-  fiat_p384_sub(x_out, x_out, v);
-  fiat_p384_sub(x_out, x_out, v);
+  p384_montsqr(x_out, r);
+  p384_sub(x_out, x_out, j);
+  p384_sub(x_out, x_out, v);
+  p384_sub(x_out, x_out, v);
 
   // y_out = r(V-x_out) - 2 * s1 * J
-  fiat_p384_sub(y_out, v, x_out);
-  fiat_p384_mul(y_out, y_out, r);
+  p384_sub(y_out, v, x_out);
+  p384_montmul(y_out, y_out, r);
   fiat_p384_felem s1j;
-  fiat_p384_mul(s1j, s1, j);
-  fiat_p384_sub(y_out, y_out, s1j);
-  fiat_p384_sub(y_out, y_out, s1j);
+  p384_montmul(s1j, s1, j);
+  p384_sub(y_out, y_out, s1j);
+  p384_sub(y_out, y_out, s1j);
 
   fiat_p384_cmovznz(x_out, z1nz, x2, x_out);
   fiat_p384_cmovznz(x3, z2nz, x1, x_out);
@@ -380,16 +418,16 @@ static int ec_GFp_nistp384_point_get_affine_coordinates(
   if (x_out != NULL) {
     fiat_p384_felem x;
     fiat_p384_from_generic(x, &point->X);
-    fiat_p384_mul(x, x, z2);
+    p384_montmul(x, x, z2);
     fiat_p384_to_generic(x_out, x);
   }
 
   if (y_out != NULL) {
     fiat_p384_felem y;
     fiat_p384_from_generic(y, &point->Y);
-    fiat_p384_square(z2, z2);  // z^-4
-    fiat_p384_mul(y, y, z1);   // y * z
-    fiat_p384_mul(y, y, z2);   // y * z^-3
+    p384_montsqr(z2, z2);  // z^-4
+    p384_montmul(y, y, z1);   // y * z
+    p384_montmul(y, y, z2);   // y * z^-3
     fiat_p384_to_generic(y_out, y);
   }
 
@@ -432,7 +470,7 @@ static void ec_GFp_nistp384_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *
   EC_FELEM felem_tmp;
   fiat_p384_felem tmp;
   fiat_p384_from_generic(tmp, in);
-  fiat_p384_from_montgomery(tmp, tmp);
+  p384_from_mont(tmp, tmp);
   fiat_p384_to_generic(&felem_tmp, tmp);
 
   // Convert to a big-endian byte array.
@@ -451,7 +489,7 @@ static int ec_GFp_nistp384_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM
     return 0;
   }
   fiat_p384_from_generic(tmp, &felem_tmp);
-  fiat_p384_to_montgomery(tmp, tmp);
+  p384_to_mont(tmp, tmp);
   fiat_p384_to_generic(out, tmp);
   return 1;
 }
@@ -468,15 +506,15 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   // not.
   fiat_p384_felem Z2_mont;
   fiat_p384_from_generic(Z2_mont, &p->Z);
-  fiat_p384_mul(Z2_mont, Z2_mont, Z2_mont);
+  p384_montmul(Z2_mont, Z2_mont, Z2_mont);
 
   fiat_p384_felem r_Z2;
   fiat_p384_from_bytes(r_Z2, r->bytes);  // r < order < p, so this is valid.
-  fiat_p384_mul(r_Z2, r_Z2, Z2_mont);
+  p384_montmul(r_Z2, r_Z2, Z2_mont);
 
   fiat_p384_felem X;
   fiat_p384_from_generic(X, &p->X);
-  fiat_p384_from_montgomery(X, X);
+  p384_from_mont(X, X);
 
   if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
     return 1;
@@ -494,7 +532,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
     EC_FELEM tmp;
     bn_add_words(tmp.words, r->words, group->order.d, group->order.width);
     fiat_p384_from_generic(r_Z2, &tmp);
-    fiat_p384_mul(r_Z2, r_Z2, Z2_mont);
+    p384_montmul(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
       return 1;
     }
@@ -692,7 +730,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
     fiat_p384_select_point(tmp, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
 
     // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-    fiat_p384_opp(ftmp, tmp[1]);
+    p384_neg(ftmp, tmp[1]);
     // Conditionally select y or -y depending on the sign of the digit |d|.
     fiat_p384_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
 
@@ -705,7 +743,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   // Conditionally subtract P if the scalar is even, in constant-time.
   // First, compute |tmp| = |res| + (-P).
   fiat_p384_copy(tmp[0], p_pre_comp[0][0]);
-  fiat_p384_opp(tmp[1], p_pre_comp[0][1]);
+  p384_neg(tmp[1], p_pre_comp[0][1]);
   fiat_p384_copy(tmp[2], p_pre_comp[0][2]);
   fiat_p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
                       0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
@@ -820,7 +858,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
                                     P384_MUL_TABLE_SIZE);
 
       // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-      fiat_p384_opp(ftmp, tmp[1]);
+      p384_neg(ftmp, tmp[1]);
       // Conditionally select y or -y depending on the sign of the digit |d|.
       fiat_p384_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
 
@@ -838,7 +876,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
   // Conditionally subtract G if the scalar is even, in constant-time.
   // First, compute |tmp| = |res| + (-G).
   fiat_p384_copy(tmp[0], fiat_p384_g_pre_comp[0][0][0]);
-  fiat_p384_opp(tmp[1], fiat_p384_g_pre_comp[0][0][1]);
+  p384_neg(tmp[1], fiat_p384_g_pre_comp[0][0][1]);
   fiat_p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
                       1 /* mixed */, tmp[0], tmp[1], fiat_p384_one);
 
@@ -946,7 +984,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
         // Otherwise add to the accumulator either the point at position idx
         // in the table or its negation.
         if (is_neg) {
-          fiat_p384_opp(ftmp, p_pre_comp[idx][1]);
+          p384_neg(ftmp, p_pre_comp[idx][1]);
         } else {
           fiat_p384_copy(ftmp, p_pre_comp[idx][1]);
         }
@@ -974,7 +1012,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
         // Otherwise add to the accumulator either the point at position idx
         // in the table or its negation.
         if (is_neg) {
-          fiat_p384_opp(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
+          p384_neg(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
         } else {
           fiat_p384_copy(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
         }
