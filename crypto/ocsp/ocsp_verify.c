@@ -123,6 +123,7 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
     }
     return 1;
   }
+
   // look in certs stack the responder may have included in |OCSP_BASICRESP|,
   // unless the flags contain OCSP_NOINTERN
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN) &&
