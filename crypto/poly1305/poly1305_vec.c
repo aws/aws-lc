@@ -83,7 +83,7 @@ typedef struct poly1305_state_internal_t {
   union {
     xmmi H[5];  //  80 bytes
     uint64_t HH[10];
-  };
+  } u;
   // uint64_t r0,r1,r2;       [24 bytes]
   // uint64_t pad0,pad1;      [16 bytes]
   uint64_t started;        //   8 bytes
@@ -137,11 +137,11 @@ void CRYPTO_poly1305_init(poly1305_state *state, const uint8_t key[32]) {
   p->R24.d[3] = load_u32_le(key + 28);
 
   // H = 0
-  st->H[0] = _mm_setzero_si128();
-  st->H[1] = _mm_setzero_si128();
-  st->H[2] = _mm_setzero_si128();
-  st->H[3] = _mm_setzero_si128();
-  st->H[4] = _mm_setzero_si128();
+  st->u.H[0] = _mm_setzero_si128();
+  st->u.H[1] = _mm_setzero_si128();
+  st->u.H[2] = _mm_setzero_si128();
+  st->u.H[3] = _mm_setzero_si128();
+  st->u.H[4] = _mm_setzero_si128();
 
   st->started = 0;
   st->leftover = 0;
@@ -232,12 +232,12 @@ static void poly1305_first_block(poly1305_state_internal *st,
                           _mm_loadl_epi64((const xmmi *)(m + 16)));
   T6 = _mm_unpacklo_epi64(_mm_loadl_epi64((const xmmi *)(m + 8)),
                           _mm_loadl_epi64((const xmmi *)(m + 24)));
-  st->H[0] = _mm_and_si128(MMASK, T5);
-  st->H[1] = _mm_and_si128(MMASK, _mm_srli_epi64(T5, 26));
+  st->u.H[0] = _mm_and_si128(MMASK, T5);
+  st->u.H[1] = _mm_and_si128(MMASK, _mm_srli_epi64(T5, 26));
   T5 = _mm_or_si128(_mm_srli_epi64(T5, 52), _mm_slli_epi64(T6, 12));
-  st->H[2] = _mm_and_si128(MMASK, T5);
-  st->H[3] = _mm_and_si128(MMASK, _mm_srli_epi64(T5, 26));
-  st->H[4] = _mm_or_si128(_mm_srli_epi64(T6, 40), HIBIT);
+  st->u.H[2] = _mm_and_si128(MMASK, T5);
+  st->u.H[3] = _mm_and_si128(MMASK, _mm_srli_epi64(T5, 26));
+  st->u.H[4] = _mm_or_si128(_mm_srli_epi64(T6, 40), HIBIT);
 }
 
 static void poly1305_blocks(poly1305_state_internal *st, const uint8_t *m,
@@ -252,11 +252,11 @@ static void poly1305_blocks(poly1305_state_internal *st, const uint8_t *m,
   xmmi M0, M1, M2, M3, M4;
   xmmi C1, C2;
 
-  H0 = st->H[0];
-  H1 = st->H[1];
-  H2 = st->H[2];
-  H3 = st->H[3];
-  H4 = st->H[4];
+  H0 = st->u.H[0];
+  H1 = st->u.H[1];
+  H2 = st->u.H[2];
+  H3 = st->u.H[3];
+  H4 = st->u.H[4];
 
   while (bytes >= 64) {
     // H *= [r^4,r^4]
@@ -423,11 +423,11 @@ static void poly1305_blocks(poly1305_state_internal *st, const uint8_t *m,
     bytes -= 64;
   }
 
-  st->H[0] = H0;
-  st->H[1] = H1;
-  st->H[2] = H2;
-  st->H[3] = H3;
-  st->H[4] = H4;
+  st->u.H[0] = H0;
+  st->u.H[1] = H1;
+  st->u.H[2] = H2;
+  st->u.H[3] = H3;
+  st->u.H[4] = H4;
 }
 
 static size_t poly1305_combine(poly1305_state_internal *st, const uint8_t *m,
@@ -447,11 +447,11 @@ static size_t poly1305_combine(poly1305_state_internal *st, const uint8_t *m,
   uint64_t c;
   size_t consumed = 0;
 
-  H0 = st->H[0];
-  H1 = st->H[1];
-  H2 = st->H[2];
-  H3 = st->H[3];
-  H4 = st->H[4];
+  H0 = st->u.H[0];
+  H1 = st->u.H[1];
+  H2 = st->u.H[2];
+  H3 = st->u.H[3];
+  H4 = st->u.H[4];
 
   // p = [r^2,r^2]
   p = &st->P[1];
@@ -666,9 +666,9 @@ static size_t poly1305_combine(poly1305_state_internal *st, const uint8_t *m,
   t0 &= 0x3ffffff;
   t1 = t1 + c;
 
-  st->HH[0] = ((t0) | (t1 << 26)) & UINT64_C(0xfffffffffff);
-  st->HH[1] = ((t1 >> 18) | (t2 << 8) | (t3 << 34)) & UINT64_C(0xfffffffffff);
-  st->HH[2] = ((t3 >> 10) | (t4 << 16)) & UINT64_C(0x3ffffffffff);
+  st->u.HH[0] = ((t0) | (t1 << 26)) & UINT64_C(0xfffffffffff);
+  st->u.HH[1] = ((t1 >> 18) | (t2 << 8) | (t3 << 34)) & UINT64_C(0xfffffffffff);
+  st->u.HH[2] = ((t3 >> 10) | (t4 << 16)) & UINT64_C(0x3ffffffffff);
 
   return consumed;
 }
@@ -750,9 +750,9 @@ void CRYPTO_poly1305_finish(poly1305_state *state, uint8_t mac[16]) {
   }
 
   // st->HH will either be 0 or have the combined result
-  h0 = st->HH[0];
-  h1 = st->HH[1];
-  h2 = st->HH[2];
+  h0 = st->u.HH[0];
+  h1 = st->u.HH[1];
+  h2 = st->u.HH[2];
 
   p = &st->P[1];
   r0 = ((uint64_t)p->R20.d[3] << 32) | (uint64_t)p->R20.d[1];
