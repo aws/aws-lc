@@ -1880,7 +1880,7 @@ static struct public_key *public_key_from_external(
     struct HRSS_public_key *ext) {
   OPENSSL_STATIC_ASSERT(
       sizeof(struct HRSS_public_key) >= sizeof(struct public_key) + 15,
-      HRSS_public_key_too_small);
+      HRSS_public_key_too_small)
 
   uintptr_t p = (uintptr_t)ext;
   p = (p + 15) & ~15;
@@ -1894,7 +1894,7 @@ static struct private_key *private_key_from_external(
     struct HRSS_private_key *ext) {
   OPENSSL_STATIC_ASSERT(
       sizeof(struct HRSS_private_key) >= sizeof(struct private_key) + 15,
-      HRSS_private_key_too_small);
+      HRSS_private_key_too_small)
 
   uintptr_t p = (uintptr_t)ext;
   p = (p + 15) & ~15;
