@@ -1,8 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "../internal.h"
-#include "ocsp_internal.h"
+#include "internal.h"
 
 
 int OCSP_response_status(OCSP_RESPONSE *resp) {
