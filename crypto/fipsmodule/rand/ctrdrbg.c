@@ -28,18 +28,14 @@
 static const uint64_t kMaxReseedCount = UINT64_C(1) << 48;
 
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_128_ENTROPY_LEN == 32,
-  CTR_DRBG_AES_128_entropy_length_is_not_32);
+  CTR_DRBG_AES_128_entropy_length_is_not_32)
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_256_ENTROPY_LEN == 48,
-  CTR_DRBG_AES_256_entropy_length_is_not_48);
-OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_128_ENTROPY_LEN,
-  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max);
-OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_256_ENTROPY_LEN,
-  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max);
+  CTR_DRBG_AES_256_entropy_length_is_not_48)
 
 int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                   const uint8_t entropy[CTR_DRBG_MAX_ENTROPY_LEN],
                   const uint8_t *personalization, size_t personalization_len,
-                  ctr_drbg_key_len_t ctr_drbg_key_len) {
+                  size_t ctr_drbg_key_len) {
 
   if (drbg == NULL) {
     return 0;
@@ -66,12 +62,12 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
 
   // Table 3
   switch (ctr_drbg_key_len) {
-    case CTR_DRBG_AES_128:
+    case CTR_DRBG_AES_128_KEY_LEN:
       drbg->aes_key_len = CTR_DRBG_AES_128_KEY_LEN;
       drbg->entropy_len = CTR_DRBG_AES_128_ENTROPY_LEN;
       init_mask = kInitMask128;
       break;
-    case CTR_DRBG_AES_256:
+    case CTR_DRBG_AES_256_KEY_LEN:
       drbg->aes_key_len = CTR_DRBG_AES_256_KEY_LEN;
       drbg->entropy_len = CTR_DRBG_AES_256_ENTROPY_LEN;
       init_mask = kInitMask256;
@@ -100,10 +96,10 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
   drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material,
     drbg->aes_key_len);
 
-  OPENSSL_STATIC_ASSERT(sizeof(drbg->counter.bytes) <= CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES,
-    CTR_DRBG_state_counter_insufficient_size);
+  OPENSSL_STATIC_ASSERT(sizeof(drbg->counter.bytes) >= CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES,
+    CTR_DRBG_state_counter_insufficient_size)
   OPENSSL_memcpy(drbg->counter.bytes, seed_material + drbg->aes_key_len,
-    CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES);
+    CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES)
   drbg->reseed_counter = 1;
 
   return 1;
@@ -111,17 +107,17 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
 
 // Simplifies 10.2.1.2 and 10.2.1.5.1
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_128_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
-  not_a_multiple_of_AES_block_size);
+  not_a_multiple_of_AES_block_size)
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_256_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
-  not_a_multiple_of_AES_block_size);
+  not_a_multiple_of_AES_block_size)
 OPENSSL_STATIC_ASSERT(CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES == AES_BLOCK_SIZE,
-  state_counter_length_is_not_equal_to_the_block_length);
+  state_counter_length_is_not_equal_to_the_block_length)
 
 // ctr_inc adds |n| to the last four bytes of |drbg->counter|, treated as a
 // big-endian number.
 static void ctr32_add(CTR_DRBG_STATE *drbg, uint32_t n) {
   OPENSSL_STATIC_ASSERT(sizeof(drbg->counter.words) == (4 * sizeof(uint32_t)),
-    ctr_drbg_counter_is_not_of_expected_size);
+    ctr_drbg_counter_is_not_of_expected_size)
 
   drbg->counter.words[3] =
       CRYPTO_bswap4(CRYPTO_bswap4(drbg->counter.words[3]) + n);
