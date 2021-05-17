@@ -76,6 +76,43 @@ struct rand_thread_state {
 #endif
 };
 
+// Sometimes used to bound indexing into arrays that can have max size
+// |CTR_DRBG_MAX_ENTROPY_LEN|
+OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_128_ENTROPY_LEN,
+  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max)
+OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_256_ENTROPY_LEN,
+  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max)
+// Sometimes used to bound indexing into arrays that can have max size
+// |CTR_DRBG_MAX_AES_KEY_LEN|
+OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_AES_KEY_LEN >= CTR_DRBG_AES_128_ENTROPY_LEN,
+  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max)
+OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_AES_KEY_LEN >= CTR_DRBG_AES_256_ENTROPY_LEN,
+  CTR_DRBG_MAX_ENTROPY_LEN_is_not_max)
+
+static size_t ctr_drbg_get_entropy_length(ctr_drbg_key_len_t ctr_drbg_key_len) {
+  switch (ctr_drbg_key_len) {
+    case CTR_DRBG_AES_128:
+      return CTR_DRBG_AES_128_ENTROPY_LEN;
+      break;
+    case CTR_DRBG_AES_256:
+      return CTR_DRBG_AES_256_ENTROPY_LEN;
+    default:
+      abort();
+  }
+}
+
+static size_t ctr_drbg_get_key_length(ctr_drbg_key_len_t ctr_drbg_key_len) {
+  switch (ctr_drbg_key_len) {
+    case CTR_DRBG_AES_128:
+      return CTR_DRBG_AES_128_KEY_LEN;
+      break;
+    case CTR_DRBG_AES_256:
+      return CTR_DRBG_AES_256_KEY_LEN;
+    default:
+      abort();
+  }
+}
+
 #if defined(BORINGSSL_FIPS)
 // thread_states_list is the head of a linked-list of all |rand_thread_state|
 // objects in the process, one per thread. This is needed because FIPS requires
@@ -308,22 +345,19 @@ static void rand_get_seed(struct rand_thread_state *state,
 
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
-  switch (ctr_drbg_key_len) {
-    case CTR_DRBG_AES_128:
-      CRYPTO_sysrand(seed, CTR_DRBG_AES_128_ENTROPY_LEN);
-      break;
-    case CTR_DRBG_AES_256:
-      CRYPTO_sysrand(seed, CTR_DRBG_AES_256_ENTROPY_LEN);
-      break;
-    default:
-      abort();
+  size_t entropy_len = ctr_drbg_get_entropy_length(ctr_drbg_key_len);
+  if (entropy_len == 0) {
+    abort();
   }
 
+  CRYPTO_sysrand(seed, entropy_len);
   *out_used_cpu = 0;
 }
 
 #endif
 
+OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_MAX_AES_KEY_LEN,
+  )
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32],
                                      ctr_drbg_key_len_t ctr_drbg_key_len) {
@@ -331,17 +365,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     return;
   }
 
-  uint32_t entropy_len = 0;
-  switch (ctr_drbg_key_len) {
-    case CTR_DRBG_AES_128:
-      entropy_len = CTR_DRBG_AES_128_ENTROPY_LEN;
-      break;
-    case CTR_DRBG_AES_256:
-      entropy_len = CTR_DRBG_AES_256_ENTROPY_LEN;
-      break;
-    default:
-      abort();
-  }
+  size_t entropy_len = ctr_drbg_get_entropy_length(ctr_drbg_key_len);
+  size_t key_len = ctr_drbg_get_key_length(ctr_drbg_key_len);
 
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
 
@@ -349,29 +374,28 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   // can, against forks & VM clones. We do not over-read this information and
   // don't reseed with it so, from the point of view of FIPS, this doesn't
   // provide “prediction resistance”. But, in practice, it does.
-  uint8_t additional_data[32];
+  uint8_t additional_data[CTR_DRBG_MAX_ENTROPY_LEN];
   // Intel chips have fast RDRAND instructions while, in other cases, RDRAND can
   // be _slower_ than a system call.
   if (!have_fast_rdrand() ||
-      !rdrand(additional_data, sizeof(additional_data))) {
+      !rdrand(additional_data, entropy_len)) {
     // Without a hardware RNG to save us from address-space duplication, the OS
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
     // and so is disabled when we have fork detection, or if the application has
     // promised not to fork.
     if (fork_generation != 0 || rand_fork_unsafe_buffering_enabled()) {
-      OPENSSL_memset(additional_data, 0, sizeof(additional_data));
+      OPENSSL_memset(additional_data, 0, CTR_DRBG_MAX_ENTROPY_LEN);
     } else if (!have_rdrand()) {
       // No alternative so block for OS entropy.
-      CRYPTO_sysrand(additional_data, sizeof(additional_data));
-    } else if (!CRYPTO_sysrand_if_available(additional_data,
-                                            sizeof(additional_data)) &&
-               !rdrand(additional_data, sizeof(additional_data))) {
+      CRYPTO_sysrand(additional_data, entropy_len);
+    } else if (!CRYPTO_sysrand_if_available(additional_data, entropy_len) &&
+               !rdrand(additional_data, entropy_len)) {
       // RDRAND failed: block for OS entropy.
-      CRYPTO_sysrand(additional_data, sizeof(additional_data));
+      CRYPTO_sysrand(additional_data, entropy_len);
     }
   }
 
-  for (size_t i = 0; i < sizeof(additional_data); i++) {
+  for (size_t i = 0; i < entropy_len; i++) {
     additional_data[i] ^= user_additional_data[i];
   }
 

@@ -121,8 +121,8 @@ typedef struct {
     uint32_t words[CTR_DRBG_STATE_COUNTER_LEN_IN_WORDS];
   } counter;
   uint64_t reseed_counter;
-  uint32_t aes_key_len;
-  uint32_t entropy_len;
+  size_t aes_key_len;
+  size_t entropy_len;
 } CTR_DRBG_STATE;
 
 // See SP 800-90Ar1, 9.3.1 (counted in bytes).
@@ -132,6 +132,7 @@ typedef struct {
 #define CTR_DRBG_AES_128_ENTROPY_LEN (CTR_DRBG_AES_OUTPUT_LEN + CTR_DRBG_AES_128_KEY_LEN)
 #define CTR_DRBG_AES_256_KEY_LEN 32
 #define CTR_DRBG_AES_256_ENTROPY_LEN (CTR_DRBG_AES_OUTPUT_LEN + CTR_DRBG_AES_256_KEY_LEN)
+#define CTR_DRBG_MAX_AES_KEY_LEN CTR_DRBG_AES_256_KEY_LEN
 #define CTR_DRBG_MAX_ENTROPY_LEN CTR_DRBG_AES_256_ENTROPY_LEN
 #define CTR_DRBG_MAX_GENERATE_LENGTH 65536
 
@@ -143,7 +144,7 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t entropy[CTR_DRBG_MAX_ENTROPY_LEN],
                                  const uint8_t *personalization,
                                  size_t personalization_len,
-                                 ctr_drbg_key_len_t ctr_drbg_key_len);
+                                 size_t ctr_drbg_key_len);
 
 // CTR_DRBG_reseed reseeds |drbg| given |CTR_DRBG_ENTROPY_LEN| bytes of entropy
 // in |entropy| and, optionally, up to |CTR_DRBG_ENTROPY_LEN| bytes of
