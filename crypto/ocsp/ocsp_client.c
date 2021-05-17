@@ -30,8 +30,7 @@ OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp) {
   return ASN1_item_unpack(rb->response, ASN1_ITEM_rptr(OCSP_BASICRESP));
 }
 
-OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx)
-{
+OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx) {
   if (bs == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
@@ -43,8 +42,7 @@ OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx)
   return sk_OCSP_SINGLERESP_value(bs->tbsResponseData->responses, idx);
 }
 
-int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last)
-{
+int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last) {
   if (bs == NULL || id == NULL){
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
@@ -80,25 +78,26 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
-  if(single->certStatus == NULL) {
+  OCSP_CERTSTATUS *cst = single->certStatus;
+  if(cst == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
-
-  OCSP_CERTSTATUS *cst = single->certStatus;
   int status = cst->type;
 
   // If certificate status is revoked, we look up certificate revocation time and reason
   if (status == V_OCSP_CERTSTATUS_REVOKED) {
     OCSP_REVOKEDINFO *rev = cst->value.revoked;
-    if (revtime != NULL) {
-      *revtime = rev->revocationTime;
-    }
-    if (reason != NULL) {
-      if (rev->revocationReason) {
-        *reason = ASN1_ENUMERATED_get(rev->revocationReason);
-      } else {
-        *reason = -1;
+    if(rev != NULL) {
+      if (revtime != NULL) {
+        *revtime = rev->revocationTime;
+      }
+      if (reason != NULL) {
+        if (rev->revocationReason) {
+          *reason = ASN1_ENUMERATED_get(rev->revocationReason);
+        } else {
+          *reason = -1;
+        }
       }
     }
   }
