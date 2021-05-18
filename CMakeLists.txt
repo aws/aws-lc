@@ -179,6 +179,10 @@ if(GCC OR CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
 
+  if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
+  endif()
+
   # TODO(CryptoAlg-759): remove '-Wno-overlength-strings' and '-Wno-c11-extensions' if awslc has to follow c99 spec.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-overlength-strings")
   if(CLANG)
