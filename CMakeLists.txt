@@ -175,19 +175,13 @@ if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Wpedantic -Werror")
+  # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
 
   if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
-  endif()
-
-  # TODO(CryptoAlg-759): remove '-Wno-overlength-strings' and '-Wno-c11-extensions' if awslc has to follow c99 spec.
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-overlength-strings")
-  if(CLANG)
-    # Only Clang warns error: _Alignas is a C11-specific feature [-Werror,-Wc11-extensions].
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-c11-extensions")
   endif()
 
   set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
