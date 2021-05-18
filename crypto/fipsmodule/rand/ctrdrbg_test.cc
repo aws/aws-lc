@@ -31,7 +31,7 @@ TEST(CTRDRBGTest, Basic) {
   };
 
   CTR_DRBG_STATE drbg;
-  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0, CTR_DRBG_AES_256));
+  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0, CTR_DRBG_AES_256_KEY_LEN));
 
   const uint8_t kReseed[CTR_DRBG_MAX_ENTROPY_LEN] = {
       0xfd, 0x85, 0xa8, 0x36, 0xbb, 0xa8, 0x50, 0x19, 0x88, 0x1e, 0x8c, 0x6b,
@@ -64,7 +64,7 @@ TEST(CTRDRBGTest, Large) {
   const uint8_t kSeed[CTR_DRBG_MAX_ENTROPY_LEN] = {0};
 
   CTR_DRBG_STATE drbg;
-  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0, CTR_DRBG_AES_256));
+  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0, CTR_DRBG_AES_256_KEY_LEN));
 
   std::unique_ptr<uint8_t[]> buf(new uint8_t[CTR_DRBG_MAX_GENERATE_LENGTH]);
   ASSERT_TRUE(CTR_DRBG_generate(&drbg, buf.get(), CTR_DRBG_MAX_GENERATE_LENGTH,
@@ -104,7 +104,7 @@ TEST(CTRDRBGTest, TestVectors) {
     CTR_DRBG_init(&drbg, seed.data(),
                   personalisation.empty() ? nullptr : personalisation.data(),
                   personalisation.size(),
-                  CTR_DRBG_AES_256);
+                  CTR_DRBG_AES_256_KEY_LEN);
     CTR_DRBG_reseed(&drbg, reseed.data(),
                     ai_reseed.empty() ? nullptr : ai_reseed.data(),
                     ai_reseed.size());
