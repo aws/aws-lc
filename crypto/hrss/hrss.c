@@ -912,12 +912,14 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
 //
 // Coefficients are ordered little-endian, thus the coefficient of x^0 is the
 // first element of the array.
-union poly {
+struct poly {
 #if defined(HRSS_HAVE_VECTOR_UNIT)
-  // N + 3 = 704, which is a multiple of 64 and thus aligns things, esp for
-  // the vector code.
-  uint16_t v[N + 3];
-  vec_t vectors[VECS_PER_POLY];
+  union {
+    // N + 3 = 704, which is a multiple of 64 and thus aligns things, esp for
+    // the vector code.
+    uint16_t v[N + 3];
+    vec_t vectors[VECS_PER_POLY];
+  };
 #else
   // Even if !HRSS_HAVE_VECTOR_UNIT, external assembly may be called that
   // requires alignment.
@@ -925,7 +927,7 @@ union poly {
 #endif
 };
 
-OPENSSL_UNUSED static void poly_print(const union poly *p) {
+OPENSSL_UNUSED static void poly_print(const struct poly *p) {
   printf("[");
   for (unsigned i = 0; i < N; i++) {
     if (i) {
@@ -1181,14 +1183,14 @@ static void poly_mul_vec_aux(vec_t *restrict out, vec_t *restrict scratch,
 }
 
 // poly_mul_vec sets |*out| to |x|×|y| mod (𝑥^n - 1).
-static void poly_mul_vec(union poly *out, const union poly *x,
-                         const union poly *y) {
+static void poly_mul_vec(struct poly *out, const struct poly *x,
+                         const struct poly *y) {
   OPENSSL_memset((uint16_t *)&x->v[N], 0, 3 * sizeof(uint16_t));
   OPENSSL_memset((uint16_t *)&y->v[N], 0, 3 * sizeof(uint16_t));
 
   OPENSSL_STATIC_ASSERT(sizeof(out->v) == sizeof(vec_t) * VECS_PER_POLY,
                         struct_poly_is_the_wrong_size)
-  OPENSSL_STATIC_ASSERT(alignof(union poly) == alignof(vec_t),
+  OPENSSL_STATIC_ASSERT(alignof(struct poly) == alignof(vec_t),
                         struct_poly_has_incorrect_alignment)
 
   vec_t prod[VECS_PER_POLY * 2];
@@ -1270,8 +1272,8 @@ static void poly_mul_novec_aux(uint16_t *out, uint16_t *scratch,
 }
 
 // poly_mul_novec sets |*out| to |x|×|y| mod (𝑥^n - 1).
-static void poly_mul_novec(union poly *out, const union poly *x,
-                           const union poly *y) {
+static void poly_mul_novec(struct poly *out, const struct poly *x,
+                           const struct poly *y) {
   uint16_t prod[2 * N];
   uint16_t scratch[1318];
   poly_mul_novec_aux(prod, scratch, x->v, y->v, N);
@@ -1282,8 +1284,8 @@ static void poly_mul_novec(union poly *out, const union poly *x,
   OPENSSL_memset(&out->v[N], 0, 3 * sizeof(uint16_t));
 }
 
-static void poly_mul(union poly *r, const union poly *a,
-                     const union poly *b) {
+static void poly_mul(struct poly *r, const struct poly *a,
+                     const struct poly *b) {
 #if defined(POLY_RQ_MUL_ASM)
   const int has_avx2 = (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
   if (has_avx2) {
@@ -1304,7 +1306,7 @@ static void poly_mul(union poly *r, const union poly *a,
 }
 
 // poly_mul_x_minus_1 sets |p| to |p|×(𝑥 - 1) mod (𝑥^n - 1).
-static void poly_mul_x_minus_1(union poly *p) {
+static void poly_mul_x_minus_1(struct poly *p) {
   // Multiplying by (𝑥 - 1) means negating each coefficient and adding in
   // the value of the previous one.
   const uint16_t orig_final_coefficient = p->v[N - 1];
@@ -1316,7 +1318,7 @@ static void poly_mul_x_minus_1(union poly *p) {
 }
 
 // poly_mod_phiN sets |p| to |p| mod Φ(N).
-static void poly_mod_phiN(union poly *p) {
+static void poly_mod_phiN(struct poly *p) {
   const uint16_t coeff700 = p->v[N - 1];
 
   for (unsigned i = 0; i < N; i++) {
@@ -1325,7 +1327,7 @@ static void poly_mod_phiN(union poly *p) {
 }
 
 // poly_clamp reduces each coefficient mod Q.
-static void poly_clamp(union poly *p) {
+static void poly_clamp(struct poly *p) {
   for (unsigned i = 0; i < N; i++) {
     p->v[i] &= Q - 1;
   }
@@ -1336,7 +1338,7 @@ static void poly_clamp(union poly *p) {
 // --------------------
 
 // poly2_from_poly sets |*out| to |in| mod 2.
-static void poly2_from_poly(struct poly2 *out, const union poly *in) {
+static void poly2_from_poly(struct poly2 *out, const struct poly *in) {
   crypto_word_t *words = out->v;
   unsigned shift = 0;
   crypto_word_t word = 0;
@@ -1368,7 +1370,7 @@ static uint16_t mod3(int16_t a) {
 }
 
 // poly3_from_poly sets |*out| to |in|.
-static void poly3_from_poly(struct poly3 *out, const union poly *in) {
+static void poly3_from_poly(struct poly3 *out, const struct poly *in) {
   crypto_word_t *words_s = out->s.v;
   crypto_word_t *words_a = out->a.v;
   crypto_word_t s = 0;
@@ -1407,7 +1409,7 @@ static void poly3_from_poly(struct poly3 *out, const union poly *in) {
 // Q-1}. It returns a mask indicating whether all coefficients were found to be
 // in that set.
 static crypto_word_t poly3_from_poly_checked(struct poly3 *out,
-                                             const union poly *in) {
+                                             const struct poly *in) {
   crypto_word_t *words_s = out->s.v;
   crypto_word_t *words_a = out->a.v;
   crypto_word_t s = 0;
@@ -1449,7 +1451,7 @@ static crypto_word_t poly3_from_poly_checked(struct poly3 *out,
   return ok;
 }
 
-static void poly_from_poly2(union poly *out, const struct poly2 *in) {
+static void poly_from_poly2(struct poly *out, const struct poly2 *in) {
   const crypto_word_t *words = in->v;
   unsigned shift = 0;
   crypto_word_t word = *words;
@@ -1467,7 +1469,7 @@ static void poly_from_poly2(union poly *out, const struct poly2 *in) {
   }
 }
 
-static void poly_from_poly3(union poly *out, const struct poly3 *in) {
+static void poly_from_poly3(struct poly *out, const struct poly3 *in) {
   const crypto_word_t *words_s = in->s.v;
   const crypto_word_t *words_a = in->a.v;
   crypto_word_t word_s = ~(*words_s);
@@ -1497,7 +1499,7 @@ static void poly_from_poly3(union poly *out, const struct poly3 *in) {
 // poly_invert_mod2 sets |*out| to |in^-1| (i.e. such that |*out|×|in| = 1 mod
 // Φ(N)), all mod 2. This isn't useful in itself, but is part of doing inversion
 // mod Q.
-static void poly_invert_mod2(union poly *out, const union poly *in) {
+static void poly_invert_mod2(struct poly *out, const struct poly *in) {
   // This algorithm is taken from section 7.1 of [SAFEGCD].
   struct poly2 v, r, f, g;
 
@@ -1545,10 +1547,10 @@ static void poly_invert_mod2(union poly *out, const union poly *in) {
 }
 
 // poly_invert sets |*out| to |in^-1| (i.e. such that |*out|×|in| = 1 mod Φ(N)).
-static void poly_invert(union poly *out, const union poly *in) {
+static void poly_invert(struct poly *out, const struct poly *in) {
   // Inversion mod Q, which is done based on the result of inverting mod
   // 2. See [NTRUTN14] paper, bottom of page two.
-  union poly a, *b, tmp;
+  struct poly a, *b, tmp;
 
   // a = -in.
   for (unsigned i = 0; i < N; i++) {
@@ -1574,7 +1576,7 @@ static void poly_invert(union poly *out, const union poly *in) {
 #define POLY_BYTES 1138
 
 // poly_marshal serialises all but the final coefficient of |in| to |out|.
-static void poly_marshal(uint8_t out[POLY_BYTES], const union poly *in) {
+static void poly_marshal(uint8_t out[POLY_BYTES], const struct poly *in) {
   const uint16_t *p = in->v;
 
   for (size_t i = 0; i < N / 8; i++) {
@@ -1610,7 +1612,7 @@ static void poly_marshal(uint8_t out[POLY_BYTES], const union poly *in) {
 // all but the final coefficients match, and the final coefficient is calculated
 // such that evaluating |out| at one results in zero. It returns one on success
 // or zero if |in| is an invalid encoding.
-static int poly_unmarshal(union poly *out, const uint8_t in[POLY_BYTES]) {
+static int poly_unmarshal(struct poly *out, const uint8_t in[POLY_BYTES]) {
   uint16_t *p = out->v;
 
   for (size_t i = 0; i < N / 8; i++) {
@@ -1670,7 +1672,7 @@ static uint16_t mod3_from_modQ(uint16_t v) {
 // all in {0, 1, Q-1, 65535} and |in| is mod Φ(N). (Note that coefficients may
 // have invalid values when processing attacker-controlled inputs.)
 static void poly_marshal_mod3(uint8_t out[HRSS_POLY3_BYTES],
-                              const union poly *in) {
+                              const struct poly *in) {
   const uint16_t *coeffs = in->v;
 
   // Only 700 coefficients are marshaled because in[700] must be zero.
@@ -1695,7 +1697,7 @@ static void poly_marshal_mod3(uint8_t out[HRSS_POLY3_BYTES],
 // with HRSS-SXY the sampling algorithm is now a private detail of the
 // implementation (previously it had to match between two parties). This
 // function uses that freedom to implement a flatter distribution of values.
-static void poly_short_sample(union poly *out,
+static void poly_short_sample(struct poly *out,
                               const uint8_t in[HRSS_SAMPLE_BYTES]) {
   OPENSSL_STATIC_ASSERT(HRSS_SAMPLE_BYTES == N - 1,
                         HRSS_SAMPLE_BYTES_incorrect)
@@ -1710,7 +1712,7 @@ static void poly_short_sample(union poly *out,
 
 // poly_short_sample_plus performs the T+ sample as defined in [HRSSNIST],
 // section 1.8.2.
-static void poly_short_sample_plus(union poly *out,
+static void poly_short_sample_plus(struct poly *out,
                                    const uint8_t in[HRSS_SAMPLE_BYTES]) {
   poly_short_sample(out, in);
 
@@ -1731,7 +1733,7 @@ static void poly_short_sample_plus(union poly *out,
 }
 
 // poly_lift computes the function discussed in [HRSS], appendix B.
-static void poly_lift(union poly *out, const union poly *a) {
+static void poly_lift(struct poly *out, const struct poly *a) {
   // We wish to calculate a/(𝑥-1) mod Φ(N) over GF(3), where Φ(N) is the
   // Nth cyclotomic polynomial, i.e. 1 + 𝑥 + … + 𝑥^700 (since N is prime).
 
@@ -1846,12 +1848,12 @@ static void poly_lift(union poly *out, const union poly *a) {
 }
 
 struct public_key {
-  union poly ph;
+  struct poly ph;
 };
 
 struct private_key {
   struct poly3 f, f_inverse;
-  union poly ph_inverse;
+  struct poly ph_inverse;
   uint8_t hmac_key[32];
 };
 
@@ -1896,23 +1898,23 @@ void HRSS_generate_key(
   OPENSSL_memcpy(priv->hmac_key, in + 2 * HRSS_SAMPLE_BYTES,
                  sizeof(priv->hmac_key));
 
-  union poly f;
+  struct poly f;
   poly_short_sample_plus(&f, in);
   poly3_from_poly(&priv->f, &f);
   HRSS_poly3_invert(&priv->f_inverse, &priv->f);
 
   // pg_phi1 is p (i.e. 3) × g × Φ(1) (i.e. 𝑥-1).
-  union poly pg_phi1;
+  struct poly pg_phi1;
   poly_short_sample_plus(&pg_phi1, in + HRSS_SAMPLE_BYTES);
   for (unsigned i = 0; i < N; i++) {
     pg_phi1.v[i] *= 3;
   }
   poly_mul_x_minus_1(&pg_phi1);
 
-  union poly pfg_phi1;
+  struct poly pfg_phi1;
   poly_mul(&pfg_phi1, &f, &pg_phi1);
 
-  union poly pfg_phi1_inverse;
+  struct poly pfg_phi1_inverse;
   poly_invert(&pfg_phi1_inverse, &pfg_phi1);
 
   poly_mul(&pub->ph, &pfg_phi1_inverse, &pg_phi1);
@@ -1932,12 +1934,12 @@ void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES],
                 const uint8_t in[HRSS_SAMPLE_BYTES + HRSS_SAMPLE_BYTES]) {
   const struct public_key *pub =
       public_key_from_external((struct HRSS_public_key *)in_pub);
-  union poly m, r, m_lifted;
+  struct poly m, r, m_lifted;
   poly_short_sample(&m, in);
   poly_short_sample(&r, in + HRSS_SAMPLE_BYTES);
   poly_lift(&m_lifted, &m);
 
-  union poly prh_plus_m;
+  struct poly prh_plus_m;
   poly_mul(&prh_plus_m, &r, &pub->ph);
   for (unsigned i = 0; i < N; i++) {
     prh_plus_m.v[i] += m_lifted.v[i];
@@ -1996,7 +1998,7 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
                         HRSS_shared_key_length_incorrect)
   SHA256_Final(out_shared_key, &hash_ctx);
 
-  union poly c;
+  struct poly c;
   // If the ciphertext is publicly invalid then a random shared key is still
   // returned to simply the logic of the caller, but this path is not constant
   // time.
@@ -2005,7 +2007,7 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
     return;
   }
 
-  union poly f, cf;
+  struct poly f, cf;
   struct poly3 cf3, m3;
   poly_from_poly3(&f, &priv->f);
   poly_mul(&cf, &c, &f);
@@ -2013,11 +2015,11 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   // Note that cf3 is not reduced mod Φ(N). That reduction is deferred.
   HRSS_poly3_mul(&m3, &cf3, &priv->f_inverse);
 
-  union poly m, m_lifted;
+  struct poly m, m_lifted;
   poly_from_poly3(&m, &m3);
   poly_lift(&m_lifted, &m);
 
-  union poly r;
+  struct poly r;
   for (unsigned i = 0; i < N; i++) {
     r.v[i] = c.v[i] - m_lifted.v[i];
   }
