@@ -84,7 +84,9 @@ TEST(CTRDRBGTest, Large) {
 }
 
 TEST(CTRDRBGTest, TestVectors) {
-  FileTestGTest("crypto/fipsmodule/rand/ctrdrbg_vectors.txt", [](FileTest *t) {
+
+  // KATs for 128-bit key size.
+  FileTestGTest("crypto/fipsmodule/rand/ctrdrbg_vectors_128.txt", [](FileTest *t) {
     std::vector<uint8_t> seed, personalisation, reseed, ai_reseed, ai1, ai2,
         expected;
     ASSERT_TRUE(t->GetBytes(&seed, "EntropyInput"));
@@ -95,8 +97,41 @@ TEST(CTRDRBGTest, TestVectors) {
     ASSERT_TRUE(t->GetBytes(&ai2, "AdditionalInput2"));
     ASSERT_TRUE(t->GetBytes(&expected, "ReturnedBits"));
 
-    // We need to work on these tests because seed.data() won't have the correct size
-    // Disable tests for now?
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_AES_128_ENTROPY_LEN), seed.size());
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_AES_128_ENTROPY_LEN), reseed.size());
+
+    CTR_DRBG_STATE drbg;
+    CTR_DRBG_init(&drbg, seed.data(),
+                  personalisation.empty() ? nullptr : personalisation.data(),
+                  personalisation.size(),
+                  CTR_DRBG_AES_128_KEY_LEN);
+    CTR_DRBG_reseed(&drbg, reseed.data(),
+                    ai_reseed.empty() ? nullptr : ai_reseed.data(),
+                    ai_reseed.size());
+
+    std::vector<uint8_t> out;
+    out.resize(expected.size());
+
+    CTR_DRBG_generate(&drbg, out.data(), out.size(),
+                      ai1.empty() ? nullptr : ai1.data(), ai1.size());
+    CTR_DRBG_generate(&drbg, out.data(), out.size(),
+                      ai2.empty() ? nullptr : ai2.data(), ai2.size());
+
+    EXPECT_EQ(Bytes(expected), Bytes(out));
+  });
+
+  // KATs for 256-bit key size.
+  FileTestGTest("crypto/fipsmodule/rand/ctrdrbg_vectors_256.txt", [](FileTest *t) {
+    std::vector<uint8_t> seed, personalisation, reseed, ai_reseed, ai1, ai2,
+        expected;
+    ASSERT_TRUE(t->GetBytes(&seed, "EntropyInput"));
+    ASSERT_TRUE(t->GetBytes(&personalisation, "PersonalizationString"));
+    ASSERT_TRUE(t->GetBytes(&reseed, "EntropyInputReseed"));
+    ASSERT_TRUE(t->GetBytes(&ai_reseed, "AdditionalInputReseed"));
+    ASSERT_TRUE(t->GetBytes(&ai1, "AdditionalInput1"));
+    ASSERT_TRUE(t->GetBytes(&ai2, "AdditionalInput2"));
+    ASSERT_TRUE(t->GetBytes(&expected, "ReturnedBits"));
+
     ASSERT_EQ(static_cast<size_t>(CTR_DRBG_AES_256_ENTROPY_LEN), seed.size());
     ASSERT_EQ(static_cast<size_t>(CTR_DRBG_AES_256_ENTROPY_LEN), reseed.size());
 
