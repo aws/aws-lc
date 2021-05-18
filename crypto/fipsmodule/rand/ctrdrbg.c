@@ -26,7 +26,6 @@
 
 // See table 3.
 static const uint64_t kMaxReseedCount = UINT64_C(1) << 48;
-
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_128_ENTROPY_LEN == 32,
   CTR_DRBG_AES_128_entropy_length_is_not_32)
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_256_ENTROPY_LEN == 48,
@@ -99,9 +98,9 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
   OPENSSL_STATIC_ASSERT(sizeof(drbg->counter.bytes) >= CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES,
     CTR_DRBG_state_counter_insufficient_size)
   OPENSSL_memcpy(drbg->counter.bytes, seed_material + drbg->aes_key_len,
-    CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES)
-  drbg->reseed_counter = 1;
+    CTR_DRBG_STATE_COUNTER_LEN_IN_BYTES);
 
+  drbg->reseed_counter = 1;
   return 1;
 }
 
@@ -123,7 +122,8 @@ static void ctr32_add(CTR_DRBG_STATE *drbg, uint32_t n) {
       CRYPTO_bswap4(CRYPTO_bswap4(drbg->counter.words[3]) + n);
 }
 
-// |drbg| is not NULL when this function is called.
+// |drbg| is not |NULL| when this function is called.
+// |data_len| is <= |CTR_DRBG_MAX_ENTROPY_LEN|.
 static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
                            size_t data_len) {
   // Per section 10.2.1.2, |data_len| must be |drbg->entropy_len|. Here, we
@@ -133,7 +133,7 @@ static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
     return 0;
   }
 
-  uint8_t temp[CTR_DRBG_MAX_ENTROPY_LEN] = {0};
+  uint8_t temp[CTR_DRBG_MAX_ENTROPY_LEN];
   for (size_t i = 0; i < drbg->entropy_len; i += AES_BLOCK_SIZE) {
     ctr32_add(drbg, 1);
     drbg->block(drbg->counter.bytes, temp + i, &drbg->ks);
@@ -163,9 +163,10 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
   uint32_t entropy_len = drbg->entropy_len;
 
   // Section 10.2.1.4
-  uint8_t entropy_copy[CTR_DRBG_MAX_ENTROPY_LEN] = {0};
+  uint8_t entropy_copy[CTR_DRBG_MAX_ENTROPY_LEN];
 
   if (additional_data_len > 0) {
+    // This also ensures |additional_data_len| <= |CTR_DRBG_MAX_ENTROPY_LEN|.
     if (additional_data_len > entropy_len) {
       return 0;
     }
