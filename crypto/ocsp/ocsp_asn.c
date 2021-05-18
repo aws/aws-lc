@@ -10,7 +10,7 @@
 // OCSP ASN1 structure definitions can be found in RFC link below
 // https://tools.ietf.org/html/rfc6960#section-4.2.1
 
-#include "ocsp_internal.h"
+#include "internal.h"
 
 
 ASN1_SEQUENCE(OCSP_CERTID) = {

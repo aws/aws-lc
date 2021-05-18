@@ -697,18 +697,7 @@ TEST(OCSPTest, TestGoodOCSP) {
       {LoadX509fromPEM(server_cert).get(),LoadX509fromPEM(ca_cert).get()});
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
-  X509 *issuer = nullptr;
-  // Find the issuer in the certificate chain. If it's not there, fail everything.
-  for (size_t i = 0; i < sk_X509_num(server_cert_chain.get()); i++) {
-    X509 *issuer_candidate = sk_X509_value(server_cert_chain.get(), i);
-    ASSERT_TRUE(issuer_candidate);
-    const int issuer_value = X509_check_issued(issuer_candidate, subject);
-    if (issuer_value == X509_V_OK) {
-      issuer = issuer_candidate;
-      break;
-    }
-  }
-  ASSERT_TRUE(issuer);
+  X509 *issuer = sk_X509_value(server_cert_chain.get(), 1);
 
   // Checks that OCSP response CAN be verified, not that it has been verified.
   const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
@@ -748,18 +737,7 @@ TEST(OCSPTest, TestRevokedOCSP) {
       {LoadX509fromPEM(server_cert).get(),LoadX509fromPEM(ca_cert).get()});
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
-  X509 *issuer = nullptr;
-  // Find the issuer in the certificate chain. If it's not there, fail everything.
-  for (size_t i = 0; i < sk_X509_num(server_cert_chain.get()); i++) {
-    X509 *issuer_candidate = sk_X509_value(server_cert_chain.get(), i);
-    ASSERT_TRUE(issuer_candidate);
-    const int issuer_value = X509_check_issued(issuer_candidate, subject);
-    if (issuer_value == X509_V_OK) {
-      issuer = issuer_candidate;
-      break;
-    }
-  }
-  ASSERT_TRUE(issuer);
+  X509 *issuer = sk_X509_value(server_cert_chain.get(), 1);
 
   // Checks that OCSP response CAN be verified, not that it has been verified.
   const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
