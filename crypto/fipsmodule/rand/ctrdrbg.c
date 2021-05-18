@@ -104,7 +104,7 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
   return 1;
 }
 
-// Simplifies 10.2.1.2 and 10.2.1.5.1
+// Simplifies 10.2.1.2 and 10.2.1.5.1.
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_128_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
   not_a_multiple_of_AES_block_size)
 OPENSSL_STATIC_ASSERT(CTR_DRBG_AES_256_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
@@ -184,7 +184,6 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
   }
 
   drbg->reseed_counter = 1;
-
   return 1;
 }
 

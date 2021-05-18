@@ -354,7 +354,7 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 // We want to ensure that |CTR_DRBG_MAX_AES_KEY_LEN| is always 32, because this
 // is assumed higher up the stack e.g. big number library module (see
-// |bn_rand_range_words()|). But we do not want to poison the rest of the code
+// |bn_rand_range_words()|). But we do not want to pollute the rest of the code
 // with includes and |CTR_DRBG_MAX_AES_KEY_LEN|. The assert below will catch
 // if the max value ever changes.
 OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_AES_KEY_LEN == 32,
