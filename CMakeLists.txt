@@ -181,6 +181,7 @@ if(GCC OR CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
 
   if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
+    # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
   endif()
 
