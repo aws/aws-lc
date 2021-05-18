@@ -52,24 +52,6 @@ OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 // Returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
-// Returns |OCSP_SINGLERESP| in the index of |OCSP_BASICRESP|.
-OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
-
-// Returns index of |OCSP_SINGLERESP| in |OCSP_BASICRESP| matching a
-// given certificate ID, returns -1 if not found.
-OPENSSL_EXPORT int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last);
-
-// Returns status of |OCSP_SINGLERESP|
-//
-// Note: 1. Reason value is allowed to be null.
-//       2. Time values passed into function are allowed to be NULL if certificate
-//          fields are empty.
-//       3. revtime and reason values only set if the certificate status is revoked.
-OPENSSL_EXPORT int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
-                            ASN1_GENERALIZEDTIME **revtime,
-                            ASN1_GENERALIZEDTIME **thisupd,
-                            ASN1_GENERALIZEDTIME **nextupd);
-
 // Looks up a cert id and extract the update time and revocation status of
 // certificate sent back from OCSP responder if found. Returns 1 on success.
 //
@@ -84,18 +66,6 @@ OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, in
 // Returns a |OCSP_CERTID| converted from a certificate and its issuer.
 OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
                                             const X509 *issuer);
-
-OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
-                                             const X509_NAME *issuerName,
-                                             const ASN1_BIT_STRING *issuerKey,
-                                             const ASN1_INTEGER *serialNumber);
-
-// --- OCSP compare functions ---
-// Compares certificate id issuers, returns 0 on equal.
-OPENSSL_EXPORT int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
-
-// Compares certificate id, returns 0 on equal.
-OPENSSL_EXPORT int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 #ifdef __cplusplus
 }
