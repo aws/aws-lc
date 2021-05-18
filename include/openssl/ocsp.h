@@ -64,6 +64,9 @@ OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, in
                           ASN1_GENERALIZEDTIME **nextupd);
 
 // Returns a |OCSP_CERTID| converted from a certificate and its issuer.
+//
+// Note: 1. If subject is NULL, we get the subject name from the issuer and set
+//          the serial number is NULL.
 OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
                                             const X509 *issuer);
 
