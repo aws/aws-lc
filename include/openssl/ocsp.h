@@ -19,6 +19,15 @@
 extern "C" {
 #endif
 
+/* Various OCSP flags and values */
+#  define OCSP_NOINTERN                   0x2
+#  define OCSP_NOSIGS                     0x4
+#  define OCSP_NOCHAIN                    0x8
+#  define OCSP_NOVERIFY                   0x10
+#  define OCSP_NOEXPLICIT                 0x20
+#  define OCSP_NOCHECKS                   0x100
+#  define OCSP_TRUSTOTHER                 0x200
+
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_responder_id_st OCSP_RESPID;
@@ -55,13 +64,20 @@ OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 // Looks up a cert id and extract the update time and revocation status of
 // certificate sent back from OCSP responder if found. Returns 1 on success.
 //
-// Note: 1. Revocation status code is passed into *status parameter. Status code will
-//          not be passed if *status is NULL.
+// Note: 1. Revocation status code is passed into |*status| parameter. Status code will
+//          not be passed if |*status| is NULL.
 OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
                           int *reason,
                           ASN1_GENERALIZEDTIME **revtime,
                           ASN1_GENERALIZEDTIME **thisupd,
                           ASN1_GENERALIZEDTIME **nextupd);
+
+// Verifies a basic response message. Returns 1 on success, 0 on error, or -1 on
+// fatal errors such as malloc failure.
+//
+// Note: 1. Checks that OCSP response CAN be verified, not that it has been verified.
+OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
+                                     X509_STORE *st, unsigned long flags);
 
 // Returns a |OCSP_CERTID| converted from a certificate and its issuer.
 //
@@ -88,20 +104,33 @@ BSSL_NAMESPACE_END
 }  // extern C++
 #endif  // !BORINGSSL_NO_CXX
 
-#define OCSP_RESPONSE_STATUS_SUCCESSFUL           0
-#define OCSP_RESPONSE_STATUS_MALFORMEDREQUEST     1
-#define OCSP_RESPONSE_STATUS_INTERNALERROR        2
-#define OCSP_RESPONSE_STATUS_TRYLATER             3
-#define OCSP_RESPONSE_STATUS_SIGREQUIRED          5
-#define OCSP_RESPONSE_STATUS_UNAUTHORIZED         6
+#define OCSP_RESPONSE_STATUS_SUCCESSFUL                 0
+#define OCSP_RESPONSE_STATUS_MALFORMEDREQUEST           1
+#define OCSP_RESPONSE_STATUS_INTERNALERROR              2
+#define OCSP_RESPONSE_STATUS_TRYLATER                   3
+#define OCSP_RESPONSE_STATUS_SIGREQUIRED                5
+#define OCSP_RESPONSE_STATUS_UNAUTHORIZED               6
 
-#define V_OCSP_CERTSTATUS_GOOD                    0
-#define V_OCSP_CERTSTATUS_REVOKED                 1
-#define V_OCSP_CERTSTATUS_UNKNOWN                 2
+#define V_OCSP_RESPID_NAME                              0
+#define V_OCSP_RESPID_KEY                               1
 
-#define OCSP_R_DIGEST_ERR                         102
-#define OCSP_R_NOT_BASIC_RESPONSE                 104
-#define OCSP_R_NO_RESPONSE_DATA                   108
-#define OCSP_R_UNKNOWN_NID                        120
+#define V_OCSP_CERTSTATUS_GOOD                          0
+#define V_OCSP_CERTSTATUS_REVOKED                       1
+#define V_OCSP_CERTSTATUS_UNKNOWN                       2
+
+#define OCSP_R_CERTIFICATE_VERIFY_ERROR                 101
+#define OCSP_R_DIGEST_ERR                               102
+#define OCSP_R_MISSING_OCSPSIGNING_USAGE                103
+#define OCSP_R_NOT_BASIC_RESPONSE                       104
+#define OCSP_R_NO_CERTIFICATES_IN_CHAIN                 105
+#define OCSP_R_NO_RESPONSE_DATA                         108
+#define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA     111
+#define OCSP_R_ROOT_CA_NOT_TRUSTED                      112
+#define OCSP_R_SIGNATURE_FAILURE                        117
+#define OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND             118
+#define OCSP_R_UNKNOWN_MESSAGE_DIGEST                   119
+#define OCSP_R_UNKNOWN_NID                              120
+#define OCSP_R_NO_SIGNER_KEY                            130
+
 
 #endif  // AWSLC_OCSP_H

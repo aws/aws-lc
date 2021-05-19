@@ -85,7 +85,7 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
   }
   int status = cst->type;
 
-  // If certificate status is revoked, we look up certificate revocation time and reason
+  // If certificate status is revoked, we look up certificate revocation time and reason.
   if (status == V_OCSP_CERTSTATUS_REVOKED) {
     OCSP_REVOKEDINFO *rev = cst->value.revoked;
     if(rev != NULL) {
@@ -101,7 +101,7 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
       }
     }
   }
-  // Look up when certificate was last updated and when is next update time
+  // Send back when certificate was last updated and when is the next update time.
   if (thisupd != NULL) {
     *thisupd = single->thisUpdate;
   }
