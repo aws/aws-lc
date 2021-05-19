@@ -72,7 +72,10 @@ OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, in
                           ASN1_GENERALIZEDTIME **thisupd,
                           ASN1_GENERALIZEDTIME **nextupd);
 
-/* Verifies a basic response message. Returns 1 on success, 0 on error, or -1 on fatal errors such as malloc failure. */
+// Verifies a basic response message. Returns 1 on success, 0 on error, or -1 on
+// fatal errors such as malloc failure.
+//
+// Note: 1. Checks that OCSP response CAN be verified, not that it has been verified.
 OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                                      X509_STORE *st, unsigned long flags);
 

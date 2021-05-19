@@ -27,6 +27,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
+
   X509 *signer, *x;
   STACK_OF(X509) *chain = NULL;
   STACK_OF(X509) *untrusted = NULL;
@@ -40,8 +41,8 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
 
   // check if public key in signer matches key in |OCSP_BASICRESP|
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOSIGS)) {
-    EVP_PKEY *skey;
-    if ((skey = X509_get_pubkey(signer)) == NULL) {
+    EVP_PKEY *skey = X509_get_pubkey(signer);
+    if (skey == NULL) {
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_SIGNER_KEY);
       goto end;
     }
@@ -57,7 +58,8 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOVERIFY)) {
     ret = -1;
     if (!IS_OCSP_FLAG_SET(flags, OCSP_NOCHAIN)) {
-      if ((untrusted = sk_X509_dup(bs->certs)) == NULL) {
+      untrusted = sk_X509_dup(bs->certs);
+      if (untrusted == NULL) {
         goto end;
       }
       for (size_t i = 0; i < sk_X509_num(certs); i++) {
@@ -114,9 +116,9 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
 
   X509 *signer;
   OCSP_RESPID *rid = bs->tbsResponseData->responderId;
-
   // look for signer in certs stack
-  if ((signer = ocsp_find_signer_sk(certs, rid)) != NULL) {
+  signer = ocsp_find_signer_sk(certs, rid);
+  if (signer != NULL) {
     *psigner = signer;
     if (IS_OCSP_FLAG_SET(flags, OCSP_TRUSTOTHER)) {
       flags |= OCSP_NOVERIFY;
@@ -126,8 +128,8 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
 
   // look in certs stack the responder may have included in |OCSP_BASICRESP|,
   // unless the flags contain OCSP_NOINTERN
-  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN) &&
-      (signer = ocsp_find_signer_sk(bs->certs, rid))) {
+  signer = ocsp_find_signer_sk(bs->certs, rid);
+  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN) && signer) {
     *psigner = signer;
     return 1;
   }
@@ -306,7 +308,8 @@ static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid, STACK_OF(OCSP_SINGL
     X509_NAME *iname;
     unsigned char md[EVP_MAX_MD_SIZE];
     // set up message digest for comparison
-    if ((dgst = EVP_get_digestbyobj(cid->hashAlgorithm->algorithm)) == NULL) {
+    dgst = EVP_get_digestbyobj(cid->hashAlgorithm->algorithm);
+    if (dgst == NULL) {
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_MESSAGE_DIGEST);
       return -1;
     }
