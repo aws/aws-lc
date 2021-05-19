@@ -180,8 +180,7 @@ static inline void poly3_vec_rshift1(vec_t a_s[6], vec_t a_a[6]) {
 // vec_broadcast_bit duplicates the least-significant bit in |a| to all bits in
 // a vector and returns the result.
 static inline vec_t vec_broadcast_bit(vec_t a) {
-  return _mm_shuffle_epi32(_mm_srai_epi32(_mm_slli_epi64(a, 63), 31),
-                           0b01010101);
+  return _mm_shuffle_epi32(_mm_srai_epi32(_mm_slli_epi64(a, 63), 31), 0x55);
 }
 
 // vec_get_word returns the |i|th uint16_t in |v|. (This is a macro because the
@@ -1869,7 +1868,7 @@ static struct public_key *public_key_from_external(
     struct HRSS_public_key *ext) {
   OPENSSL_STATIC_ASSERT(
       sizeof(struct HRSS_public_key) >= sizeof(struct public_key) + 15,
-      HRSS_public_key_too_small);
+      HRSS_public_key_too_small)
 
   uintptr_t p = (uintptr_t)ext;
   p = (p + 15) & ~15;
@@ -1883,7 +1882,7 @@ static struct private_key *private_key_from_external(
     struct HRSS_private_key *ext) {
   OPENSSL_STATIC_ASSERT(
       sizeof(struct HRSS_private_key) >= sizeof(struct private_key) + 15,
-      HRSS_private_key_too_small);
+      HRSS_private_key_too_small)
 
   uintptr_t p = (uintptr_t)ext;
   p = (p + 15) & ~15;
