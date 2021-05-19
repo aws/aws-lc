@@ -175,6 +175,7 @@ if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
