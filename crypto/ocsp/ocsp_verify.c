@@ -21,7 +21,8 @@ static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid, STACK_OF(OCSP_SINGL
 static int ocsp_check_delegated(X509 *x);
 
 
-int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st, unsigned long flags) {
+int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
+                      X509_STORE *st, unsigned long flags) {
   if (bs == NULL || certs == NULL || st == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
@@ -106,8 +107,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
 }
 
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
-                            STACK_OF(X509) *certs, unsigned long flags)
-{
+                            STACK_OF(X509) *certs, unsigned long flags) {
   if (psigner == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
@@ -138,8 +138,7 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
   return 0;
 }
 
-static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id)
-{
+static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
   if (certs == NULL || id == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
@@ -170,8 +169,8 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id)
 }
 
 static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
-                              STACK_OF(X509) *untrusted, STACK_OF(X509) **chain)
-{
+                              STACK_OF(X509) *untrusted,
+                              STACK_OF(X509) **chain) {
   if (signer == NULL || untrusted == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
@@ -208,8 +207,7 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
 }
 
 
-static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain)
-{
+static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain) {
   if (chain == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
@@ -258,8 +256,7 @@ static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain)
  // the same algorithm then there's no point trying to match any certificates
  // against the issuer. If the issuer IDs all match then we just need to check
  // equality against one of them.
-static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret)
-{
+static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret) {
   if (sresp == NULL || ret == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
@@ -294,8 +291,8 @@ static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret)
   return 1;
 }
 
-static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid, STACK_OF(OCSP_SINGLERESP) *sresp)
-{
+static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid,
+                               STACK_OF(OCSP_SINGLERESP) *sresp) {
   if (cert == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
@@ -347,8 +344,7 @@ static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid, STACK_OF(OCSP_SINGL
   }
 }
 
-static int ocsp_check_delegated(X509 *x)
-{
+static int ocsp_check_delegated(X509 *x) {
   if (x == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
