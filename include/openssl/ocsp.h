@@ -64,8 +64,8 @@ OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 // Looks up a cert id and extract the update time and revocation status of
 // certificate sent back from OCSP responder if found. Returns 1 on success.
 //
-// Note: 1. Revocation status code is passed into *status parameter. Status code will
-//          not be passed if *status is NULL.
+// Note: 1. Revocation status code is passed into |*status| parameter. Status code will
+//          not be passed if |*status| is NULL.
 OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
                           int *reason,
                           ASN1_GENERALIZEDTIME **revtime,

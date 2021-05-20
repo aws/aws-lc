@@ -659,18 +659,25 @@ static bssl::UniquePtr<X509> LoadX509fromPEM(const char *pem) {
   return bssl::UniquePtr<X509>(X509_parse_from_buffer(buf.get()));
 }
 
-// Test valid OCSP date range
-TEST(OCSPTest, TestGoodOCSP) {
+static void ExtractBasicOCSP(bssl::Span<const uint8_t> der,
+                             int ocsp_status,
+                             bssl::UniquePtr<OCSP_BASICRESP> *basic_response){
   bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
-  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
 
-  ocsp_response = LoadOCSP_RESPONSE(ocsp_response_der);
+  ocsp_response = LoadOCSP_RESPONSE(der);
   ASSERT_TRUE(ocsp_response);
 
-  int ocsp_status = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ocsp_status);
+  int ret = OCSP_response_status(ocsp_response.get());
+  ASSERT_EQ(ocsp_status, ret);
 
-  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
+  *basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
+  ASSERT_TRUE(*basic_response);
+}
+
+// Test valid OCSP date range
+TEST(OCSPTest, TestGoodOCSP) {
+  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+  ExtractBasicOCSP(ocsp_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
   ASSERT_TRUE(basic_response);
 
   // Set up trust store and certificate chain
@@ -698,18 +705,10 @@ TEST(OCSPTest, TestGoodOCSP) {
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
 }
 
-/* Test OCSP response status is revoked  */
+// Test OCSP response status is revoked
 TEST(OCSPTest, TestRevokedOCSP) {
-  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-
-  ocsp_response = LoadOCSP_RESPONSE(ocsp_revoked_response_der);
-  ASSERT_TRUE(ocsp_response);
-
-  int ocsp_status = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ocsp_status);
-
-  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
+  ExtractBasicOCSP(ocsp_revoked_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
   ASSERT_TRUE(basic_response);
 
   // Set up trust store and certificate chain
