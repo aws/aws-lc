@@ -738,24 +738,17 @@ TEST(OCSPTest, TestRevokedOCSP) {
 
 // Test valid OCSP date range, but the data itself is untrusted
 TEST(OCSPTest, TestUntrustedDataOCSP) {
-  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
-  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-
   // convert const good ocsp response test file to changeable pointer
   bssl::Span<const uint8_t> der = bssl::Span<const uint8_t>(ocsp_response_der);
-  std::unique_ptr<uint8_t[]> malformed_der(new uint8_t[der.size()]);
-  OPENSSL_memcpy(malformed_der.get(), der.data(), der.size());
+  std::unique_ptr<uint8_t[]> ptr(new uint8_t[der.size()]);
+  OPENSSL_memcpy(ptr.get(), der.data(), der.size());
 
   // flip a byte right in the middle of the cert
-  malformed_der[800] = (uint8_t) (malformed_der[800] + 1);
-  const uint8_t *ptr = malformed_der.get();
-  ocsp_response = bssl::UniquePtr<OCSP_RESPONSE>(d2i_OCSP_RESPONSE(nullptr, &ptr, der.size()));
-  ASSERT_TRUE(ocsp_response);
+  ptr[800] = ptr[800] + 1;
+  bssl::Span<const uint8_t> malformed_der = bssl::Span<const uint8_t>(ptr.get(), der.size());
 
-  int ocsp_status = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ocsp_status);
-
-  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
+  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+  ExtractBasicOCSP(malformed_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
   ASSERT_TRUE(basic_response);
 
   // Set up trust store and certificate chain
@@ -773,17 +766,8 @@ TEST(OCSPTest, TestUntrustedDataOCSP) {
 // the requested certificate. (So this would be a completely valid response to a
 // different OCSP request for the other certificate.)
 TEST(OCSPTest, TestNotRequestedOCSP) {
-  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-
-  ocsp_response = LoadOCSP_RESPONSE(ocsp_response_der);
-  ASSERT_TRUE(ocsp_response);
-
-  int ocsp_status = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ocsp_status);
-
-  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(
-      OCSP_response_get1_basic(ocsp_response.get()));
+  ExtractBasicOCSP(ocsp_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
   ASSERT_TRUE(basic_response);
 
   // Set up trust store and certificate chain (server certificate is different)
@@ -818,17 +802,8 @@ TEST(OCSPTest, TestNotRequestedOCSP) {
 // valid OCSP responder for some other case and chains to a trusted root).
 // Thus, this response is not valid for any request
 TEST(OCSPTest, TestNotValidResponseOCSP) {
-  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-
-  ocsp_response = LoadOCSP_RESPONSE(ocsp_response_wrong_signer_der);
-  ASSERT_TRUE(ocsp_response);
-
-  int ocsp_status = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ocsp_status);
-
-  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(
-      OCSP_response_get1_basic(ocsp_response.get()));
+  ExtractBasicOCSP(ocsp_response_wrong_signer_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
   ASSERT_TRUE(basic_response);
 
   // Set up trust store and certificate chain (server certificate is different)
