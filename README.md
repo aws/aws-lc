@@ -49,9 +49,8 @@ existing applications. We’re open to discussing adding missing functionality a
 understanding your use case in an Issue or on Gitter.
 
 ### Compiler Compatibility
-AWS-LC’s libcrypto is a C99 library and will work with any compiler that supports the
-standard. To build libssl and AWS-LC’s tests you will need a compiler that supports
-C++11. AWS-LC is tested with:
+AWS-LC’s libcrypto is a C library and is tested with a variety of C compilers. To
+build libssl and AWS-LC’s tests you will need a C++ compiler. AWS-LC is tested with:
 
 * GCC 4.8.5 to 8.4
 * Clang 7 to 10
@@ -70,7 +69,7 @@ support Unix and Windows operating systems. AWS-LC is tested on:
 * Centos 7
 * Ubuntu 18.04 and 20.04
 * Fedora 31
-* Windows Server 10
+* Windows Server 2019
 
 If you use another OS and would like to make sure we maintain support, please open an
 issue to discuss adding it to our CI.
