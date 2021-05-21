@@ -3,7 +3,7 @@
 [![Join the chat at https://gitter.im/awslabs/aws-lc](https://badges.gitter.im/awslabs/aws-lc.svg)](https://gitter.im/awslabs/aws-lc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 AWS-LC is a general-purpose cryptographic library maintained by the AWS Cryptography
-team for AWS and there customers.It іs based on code from the Google BoringSSL project
+team for AWS and there customers. It іs based on code from the Google BoringSSL project
 and the OpenSSL project.
 
 AWS-LC contains portable C implementations of algorithms needed for TLS and common
@@ -37,7 +37,7 @@ for more information.
 
 ## Why AWS-LC?
 
-AWS-LCs goal is to maintain a secure libcrypto that is compatible with software and
+AWS-LC's goal is to maintain a secure libcrypto that is compatible with software and
 applications used at AWS. AWS-LC also serves as the new home for the AWS Cryptography
 team to publish open source contributions and enhancements that are submitted to
 other libcrypto projects.
@@ -59,7 +59,7 @@ C++11. AWS-LC is tested with:
 
 For a complete list of tested compilers see
 [tests/ci/Readme.md](https://github.com/awslabs/aws-lc/blob/main/tests/ci/README.md).
-If you use another compiler and would like to make sure we maintain support please
+If you use another compiler and would like to make sure we maintain support, please
 open an issue to discuss adding it to our CI.
 
 ### OS Compatibility
@@ -72,7 +72,7 @@ support Unix and Windows operating systems. AWS-LC is tested on:
 * Fedora 31
 * Windows Server 10
 
-If you use another OS and would like to make sure we maintain support please open an
+If you use another OS and would like to make sure we maintain support, please open an
 issue to discuss adding it to our CI.
 
 ### CPU Compatibility
@@ -84,7 +84,7 @@ Intel CPUs to test x86 and x86-64 compatibility. The
 [Intel Software Development Emulator](https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html)
 is used to test all modern x86 processors.
 
-If you use another CPU and would like to make sure we maintain support please open an
+If you use another CPU and would like to make sure we maintain support, please open an
 issue to discuss adding it to our CI.
 
 ## AWS-LC safety mechanisms
@@ -124,7 +124,7 @@ follow our Security Notification Process.
 
 ## Security issue notifications
 
-If you discover a potential security issue in AWS-LC we ask that you notify AWS
+If you discover a potential security issue in AWS-LC, we ask that you notify AWS
 Security via our
 [vulnerability reporting page](https://aws.amazon.com/security/vulnerability-reporting/).
 Please do **not** create a public GitHub issue.
