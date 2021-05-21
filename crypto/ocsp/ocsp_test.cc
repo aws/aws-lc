@@ -1,5 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+#include <time.h>
 
 #include <gtest/gtest.h>
 
@@ -12,6 +13,11 @@
 // https://github.com/aws/s2n-tls/blob/main/tests/pems/ocsp
 // OCSP testing methods were taken from s2n's validation tests:
 // https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c
+
+static const time_t valid_ocsp_time = 1552824239;
+static const time_t expired_after_ocsp_time = 7283958536;
+static const time_t invalid_before_ocsp_time = 1425019604;
+
 static const char ca_cert[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIFODCCAyCgAwIBAgIJAIbNvSGMRNd3MA0GCSqGSIb3DQEBCwUAMCgxCzAJBgNV
@@ -674,7 +680,7 @@ static void ExtractBasicOCSP(bssl::Span<const uint8_t> der,
   ASSERT_TRUE(*basic_response);
 }
 
-// Test valid OCSP date range
+// Test valid OCSP response
 TEST(OCSPTest, TestGoodOCSP) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   ExtractBasicOCSP(ocsp_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
@@ -703,6 +709,24 @@ TEST(OCSPTest, TestGoodOCSP) {
   const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
   ASSERT_EQ(1, ocsp_resp_find_status_res);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
+
+  // If OCSP response is verifiable and all good, an OCSP client should check
+  // time fields to see if the response is still valid
+
+  // check valid connection timestamp
+  time_t connection_time = valid_ocsp_time;
+  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+
+  // check expired connection timestamp
+  connection_time = expired_after_ocsp_time;
+  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+  ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
+
+  // check before OCSP was last updated connection timestamp
+  connection_time = invalid_before_ocsp_time;
+  ASSERT_EQ(1, X509_cmp_time(thisupd, &connection_time));
+  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
 }
 
 // Test OCSP response status is revoked
@@ -736,7 +760,7 @@ TEST(OCSPTest, TestRevokedOCSP) {
   ASSERT_EQ(V_OCSP_CERTSTATUS_REVOKED, status);
 }
 
-// Test valid OCSP date range, but the data itself is untrusted
+// Test valid OCSP response, but the data itself is untrusted
 TEST(OCSPTest, TestUntrustedDataOCSP) {
   // convert const good ocsp response test file to changeable pointer
   bssl::Span<const uint8_t> der = bssl::Span<const uint8_t>(ocsp_response_der);
