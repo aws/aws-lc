@@ -92,6 +92,7 @@ static size_t ctr_drbg_get_entropy_length(ctr_drbg_key_len_t ctr_drbg_key_len) {
     case CTR_DRBG_AES_256:
       return CTR_DRBG_AES_256_ENTROPY_LEN;
     default:
+      fprintf(stderr, "CTR-DRBG key type not supported!\n");
       abort();
   }
 }
@@ -111,6 +112,7 @@ static size_t ctr_drbg_get_key_length(ctr_drbg_key_len_t ctr_drbg_key_len) {
     case CTR_DRBG_AES_256:
       return CTR_DRBG_AES_256_KEY_LEN;
     default:
+      fprintf(stderr, "CTR-DRBG key type not supported!\n");
       abort();
   }
 }
