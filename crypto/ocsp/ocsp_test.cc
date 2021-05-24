@@ -563,6 +563,37 @@ TEST(OCSPTest, TestGoodOCSP) {
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
 }
 
+// Test against same good OCSP response, but checking behavior of not specifying
+// hash algorithm used for |OCSP_cert_to_id| this time (should default to sha1).
+TEST(OCSPTest, TestDefaultHash) {
+  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+  ExtractBasicOCSP(ocsp_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
+  ASSERT_TRUE(basic_response);
+
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
+      {LoadX509fromPEM(server_cert).get(),LoadX509fromPEM(ca_cert).get()});;
+
+  X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
+  X509 *issuer = sk_X509_value(server_cert_chain.get(), 1);
+
+  // Expect basic verify here, but we skip step for now since functionality has
+  // not been implemented yet.
+
+  int status = 0;
+  int reason = 0;
+  // Testing behavior of default hash algorithm, when |*dgst| is set to NULL.
+  // The hash algorithm should automatically be set to sha1.
+  bssl::UniquePtr<OCSP_CERTID> cert_id = bssl::UniquePtr<OCSP_CERTID>(OCSP_cert_to_id(nullptr, subject, issuer));
+  ASSERT_TRUE(cert_id);
+
+  ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
+  // Actual verification of the response should work if hash algorithm of |cert_id|
+  // has been set to sha1 successfully
+  const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
+  ASSERT_EQ(1, ocsp_resp_find_status_res);
+  ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
+}
+
 TEST(OCSPTest, TestRevokedOCSP) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   ExtractBasicOCSP(ocsp_revoked_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
