@@ -177,16 +177,19 @@ if(GCC OR CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
+  if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2"))
+    # GCC 4.1.2 and below do not support all of these flags or they raise false positives
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result -Wvla")
+  endif()
 
   if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
     # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
   endif()
 
-  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
+  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
   if(MSVC)
     # clang-cl sets different default warnings than clang. It also treats -Wall
     # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
@@ -208,9 +211,10 @@ if(GCC OR CLANG)
 
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
-  else()
+  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2")
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
-    # and declare that the code is trying to free a stack pointer.
+    # and declare that the code is trying to free a stack pointer. GCC 4.1.2
+    # doesn't support this flag and can't use it.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
 
@@ -242,7 +246,7 @@ if(GCC OR CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
 
-  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
+  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
