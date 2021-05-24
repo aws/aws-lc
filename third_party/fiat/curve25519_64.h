@@ -12,8 +12,8 @@
 typedef unsigned char fiat_25519_uint1;
 typedef signed char fiat_25519_int1;
 // Pedantic warnings can be disabled by adding prefix __extension__.
-__extension__ typedef signed __int128 fiat_25519_int128;
-__extension__ typedef unsigned __int128 fiat_25519_uint128;
+__extension__ typedef __int128_t fiat_25519_int128;
+__extension__ typedef __uint128_t fiat_25519_uint128;
 
 #if (-1 & 3) != 3
 #error "This code only works on a two's complement system"
