@@ -132,7 +132,7 @@
 // reports support for C11.
 #define alignas(x) __attribute__ ((aligned (x)))
 // The macro alignof(type) returns the alignment assigned by the compiler
-// to a given type. This macro is supposed to work unless the #prgama pack is
+// to a given type. This macro is supposed to work unless the #pragma pack is
 // defined, in that case, it will always return 2.
 // "Note that the alignment of any given struct or union type is required by
 // the ISO C standard to be at least a perfect multiple of the lowest common
