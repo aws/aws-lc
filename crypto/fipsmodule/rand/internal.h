@@ -136,24 +136,36 @@ typedef struct {
 #define CTR_DRBG_MAX_ENTROPY_LEN CTR_DRBG_AES_256_ENTROPY_LEN
 #define CTR_DRBG_MAX_GENERATE_LENGTH 65536
 
-// CTR_DRBG_init initialises |*drbg| given a maximum of
-// |CTR_DRBG_MAX_ENTROPY_LEN| bytes of entropy in |entropy| and, optionally, a
-// personalization string up to |CTR_DRBG_MAX_ENTROPY_LEN| bytes in length. The
-// accepted max lengths for each parameter depends on the length of the
-// underlying block cipher. |ctr_drbg_key_len| configures the size of the
-// underlying AES key length. See |ctr_drbg_key_len_t| for available key lenths.
-// It returns one on success and zero on error.
+// CTR_DRBG_init initialises |*drbg|.
+// * |entropy|: |CTR_DRBG_MAX_ENTROPY_LEN| bytes in length.
+//      |CTR_DRBG_AES_128_ENTROPY_LEN| or |CTR_DRBG_AES_256_ENTROPY_LEN| used as
+//      entropy. The former for 128-bit key lengths and the latter for 256-bit
+//      key lengths.
+// * |personalization|: Optional personalization string. The maximal accepted
+//      amount of bytes accepted is |CTR_DRBG_AES_128_ENTROPY_LEN| or
+//      |CTR_DRBG_AES_256_ENTROPY_LEN| depending on the key length. The former
+//      for 128-bit key length and the latter for 256-bit key length.
+// * |personalization_len|: Length of |personalization|.
+// * |ctr_drbg_key_len|: Configures the size of the underlying AES key length.
+//      Accepted values are 128 and 256.
+// Function returns one on success and zero on error.
 OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t entropy[CTR_DRBG_MAX_ENTROPY_LEN],
                                  const uint8_t *personalization,
                                  size_t personalization_len,
                                  size_t ctr_drbg_key_len);
 
-// CTR_DRBG_reseed reseeds |drbg| given a maximum of |CTR_DRBG_MAX_ENTROPY_LEN|
-// bytes of entropy in |entropy| and, optionally, up to 
-// |CTR_DRBG_MAX_ENTROPY_LEN| bytes of additional data. The accepted max lengths
-// for each parameter depends on the length of the underlying block cipher. It
-// returns one on success or zero on error.
+// CTR_DRBG_reseed reseeds |drbg|.
+// * |entropy|: |CTR_DRBG_MAX_ENTROPY_LEN| bytes in length.
+//      |CTR_DRBG_AES_128_ENTROPY_LEN| or |CTR_DRBG_AES_256_ENTROPY_LEN| used as
+//      entropy. The former for 128-bit key lengths and the latter for 256-bit
+//      key lengths.
+// * |additional_data|: Optional additional data string. The maximal accepted
+//      amount of bytes accepted is |CTR_DRBG_AES_128_ENTROPY_LEN| or
+//      |CTR_DRBG_AES_256_ENTROPY_LEN| depending on the key length. The former
+//      for 128-bit key length and the latter for 256-bit key length.
+// * |additional_data_len|: Length of |additional_data|.
+// Function returns one on success or zero on error.
 OPENSSL_EXPORT int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
                                    const uint8_t entropy[CTR_DRBG_MAX_ENTROPY_LEN],
                                    const uint8_t *additional_data,
@@ -162,8 +174,10 @@ OPENSSL_EXPORT int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
 // CTR_DRBG_generate processes up to |CTR_DRBG_MAX_ENTROPY_LEN| bytes of
 // additional data (if any) and then writes |out_len| random bytes to |out|,
 // where |out_len| <= |CTR_DRBG_MAX_GENERATE_LENGTH|. The accepted max length
-// for |additional_data_len| depends on the length of the underlying block
-// cipher.It returns one on success or zero on error.
+// for |additional_data_len| depends on the key length of the underlying block
+// cipher (|CTR_DRBG_AES_128_ENTROPY_LEN| for 128-bit key length and
+// |CTR_DRBG_AES_256_ENTROPY_LEN| for 256-bit key length. It returns one on
+// success or zero on error.
 OPENSSL_EXPORT int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out,
                                      size_t out_len,
                                      const uint8_t *additional_data,

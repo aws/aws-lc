@@ -76,8 +76,9 @@ struct rand_thread_state {
 #endif
 };
 
-// Sometimes used to bound indexing into arrays that can have max size
-// |CTR_DRBG_MAX_ENTROPY_LEN|
+// |CTR_DRBG_AES_128_ENTROPY_LEN| and |CTR_DRBG_AES_256_ENTROPY_LEN| are used as
+// upper bounds for indexing into |CTR_DRBG_MAX_ENTROPY_LEN| length arrays.
+// Ensure there are no OOB events.
 OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_128_ENTROPY_LEN,
   CTR_DRBG_MAX_ENTROPY_LEN_is_not_max)
 OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_ENTROPY_LEN >= CTR_DRBG_AES_256_ENTROPY_LEN,
