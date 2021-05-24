@@ -261,6 +261,9 @@ OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_new(void);
 // ASN1_STRING_free releases memory associated with |str|.
 OPENSSL_EXPORT void ASN1_STRING_free(ASN1_STRING *str);
 
+// ASN1_STRING_free releases memory associated with |str|.
+OPENSSL_EXPORT void ASN1_STRING_clear_free(ASN1_STRING *str);
+
 // ASN1_STRING_copy sets |dst| to a copy of |str|. It returns one on success and
 // zero on error.
 OPENSSL_EXPORT int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str);
