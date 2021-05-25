@@ -817,7 +817,8 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
     const vec_t c_a = vec_broadcast_bit(f_a[0] & g_a[0]);
     const vec_t c_s = vec_broadcast_bit((f_s[0] ^ g_s[0]) & c_a);
 
-    delta = constant_time_select_int(lsb_to_all(mask[0]), -delta, delta);
+    uint64_t mask0 = _mm_cvtsi128_si64(mask);
+    delta = constant_time_select_int(lsb_to_all(mask0), -delta, delta);
     delta++;
 
     poly3_vec_cswap(f_s, f_a, g_s, g_a, mask);
