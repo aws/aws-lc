@@ -171,18 +171,36 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
+macro(check_compiler file_to_test flag_to_set)
+  try_compile(
+          RESULT
+          ${CMAKE_BINARY_DIR}
+          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "-Werror"
+          OUTPUT_VARIABLE ERROR_MESSAGE)
+  if(RESULT)
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -D${flag_to_set}")
+    message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
+  else()
+    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}:")
+    message(STATUS "    ${ERROR_MESSAGE}")
+  endif()
+endmacro()
+
 if(GCC OR CLANG)
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
+  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2"))
-    # GCC 4.1.2 and below do not support all of these flags or they raise false positives
+    # GCC 4.1.2 and below do not support all of these flags or they raise false positives.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
-    set(C_CXX_FLAGS "-Wvla")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla")
   endif()
 
   if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
@@ -214,7 +232,7 @@ if(GCC OR CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
   elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2")
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
-    # and declare that the code is trying to free a stack pointer. GCC 4.1.2
+    # and declare that the code is trying to free a stack pointer. GCC 4.1.2 and lower
     # doesn't support this flag and can't use it.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
