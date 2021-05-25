@@ -100,7 +100,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
     ret = 1;
   }
 
-  end:
+end:
   sk_X509_pop_free(chain, X509_free);
   sk_X509_free(untrusted);
   return ret;
