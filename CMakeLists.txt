@@ -170,8 +170,22 @@ endif()
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
+macro(check_compiler file_to_test flag_to_set)
+  try_compile(
+          RESULT
+          ${CMAKE_BINARY_DIR}
+          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "-Werror")
+  if(RESULT)
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -D${flag_to_set}")
+    message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
+  else()
+    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}")
+  endif()
+endmacro()
 
 if(GCC OR CLANG)
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_SUPPORTED)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -186,7 +200,7 @@ if(GCC OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
   endif()
 
-  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
+  set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
   if(MSVC)
     # clang-cl sets different default warnings than clang. It also treats -Wall
     # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
