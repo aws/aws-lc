@@ -917,7 +917,7 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
 // Coefficients are ordered little-endian, thus the coefficient of x^0 is the
 // first element of the array.
 struct poly {
-  uint16_t v[N+3];
+  alignas(16) uint16_t v[N+3];
 };
 
 #if defined(HRSS_HAVE_VECTOR_UNIT)
