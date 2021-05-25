@@ -817,7 +817,11 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
     const vec_t c_a = vec_broadcast_bit(f_a[0] & g_a[0]);
     const vec_t c_s = vec_broadcast_bit((f_s[0] ^ g_s[0]) & c_a);
 
-    delta = constant_time_select_int(lsb_to_all(mask[0]), -delta, delta);
+    // This is necessary because older versions of GCC, such as version 4.1.2,
+    // do not support accessing individual elements of the __m128i type
+    alignas(16) uint64_t mask_tmp[2];
+    _mm_store_si128((void*) mask_tmp, mask);
+    delta = constant_time_select_int(lsb_to_all(mask_tmp[0]), -delta, delta);
     delta++;
 
     poly3_vec_cswap(f_s, f_a, g_s, g_a, mask);
@@ -913,19 +917,25 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
 // Coefficients are ordered little-endian, thus the coefficient of x^0 is the
 // first element of the array.
 struct poly {
-#if defined(HRSS_HAVE_VECTOR_UNIT)
-  union {
-    // N + 3 = 704, which is a multiple of 64 and thus aligns things, esp for
-    // the vector code.
-    uint16_t v[N + 3];
-    vec_t vectors[VECS_PER_POLY];
-  };
-#else
-  // Even if !HRSS_HAVE_VECTOR_UNIT, external assembly may be called that
-  // requires alignment.
-  alignas(16) uint16_t v[N + 3];
-#endif
+  alignas(16) uint16_t v[N+3];
 };
+
+#if defined(HRSS_HAVE_VECTOR_UNIT)
+struct poly_vec {
+  // N + 3 = 704, which is a multiple of 64 and thus aligns things, esp for
+  // the vector code.
+  vec_t vectors[VECS_PER_POLY];
+};
+
+static void poly_vec2poly(struct poly *p, const struct poly_vec *pv)
+{
+  OPENSSL_memcpy(p, pv, sizeof(*p));
+}
+static void poly2poly_vec(struct poly_vec *pv, const struct poly *p)
+{
+  OPENSSL_memcpy(pv, p, sizeof(*p));
+}
+#endif
 
 OPENSSL_UNUSED static void poly_print(const struct poly *p) {
   printf("[");
@@ -1190,25 +1200,30 @@ static void poly_mul_vec(struct poly *out, const struct poly *x,
 
   OPENSSL_STATIC_ASSERT(sizeof(out->v) == sizeof(vec_t) * VECS_PER_POLY,
                         struct_poly_is_the_wrong_size)
-  OPENSSL_STATIC_ASSERT(alignof(struct poly) == alignof(vec_t),
-                        struct_poly_has_incorrect_alignment)
+
+  struct poly_vec x_vec = {{{0}}};
+  struct poly_vec y_vec = {{{0}}};
+  poly2poly_vec(&x_vec, x);
+  poly2poly_vec(&y_vec, y);
+
 
   vec_t prod[VECS_PER_POLY * 2];
   vec_t scratch[172];
-  poly_mul_vec_aux(prod, scratch, x->vectors, y->vectors, VECS_PER_POLY);
+  poly_mul_vec_aux(prod, scratch, x_vec.vectors, y_vec.vectors, VECS_PER_POLY);
 
   // |prod| needs to be reduced mod (𝑥^n - 1), which just involves adding the
   // upper-half to the lower-half. However, N is 701, which isn't a multiple of
   // the vector size, so the upper-half vectors all have to be shifted before
   // being added to the lower-half.
-  vec_t *out_vecs = (vec_t *)out->v;
+  struct poly_vec out_vecs = {{{0}}};
 
   for (size_t i = 0; i < VECS_PER_POLY; i++) {
     const vec_t prev = prod[VECS_PER_POLY - 1 + i];
     const vec_t this = prod[VECS_PER_POLY + i];
-    out_vecs[i] = vec_add(prod[i], vec_merge_3_5(prev, this));
+    out_vecs.vectors[i] = vec_add(prod[i], vec_merge_3_5(prev, this));
   }
 
+  poly_vec2poly(out, &out_vecs);
   OPENSSL_memset(&out->v[N], 0, 3 * sizeof(uint16_t));
 }
 
