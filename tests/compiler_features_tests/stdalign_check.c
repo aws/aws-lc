@@ -6,8 +6,9 @@
 
 #include <stdalign.h>
 #include <stdint.h>
+#include <stddef.h>
 
-void main() {
+int main() {
     alignas(8) uint8_t test[16];
-    int alignment = alignof(test);
+    size_t alignment = alignof(uint8_t);
 }

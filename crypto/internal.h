@@ -125,26 +125,9 @@
 #if defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
-#elif !defined(AWS_LC_STDALIGN_SUPPORTED)
-// |alignas| and |alignof| were added in C11. GCC added support in version 4.8.
-// Testing for __STDC_VERSION__/__cplusplus doesn't work because 4.7 already
-// reports support for C11.
+#elif !defined(AWS_LC_STDALIGN_AVAILABLE)
 #define alignas(x) __attribute__ ((aligned (x)))
-// The macro alignof(type) returns the alignment assigned by the compiler
-// to a given type. This macro is supposed to work unless the #pragma pack is
-// defined, in that case, it will always return 2.
-// "Note that the alignment of any given struct or union type is required by
-// the ISO C standard to be at least a perfect multiple of the lowest common
-// multiple of the alignments of all of the members of the struct or union in
-// question." [https://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/Type-Attributes.html]
-#define alignof(type) \
-    (offsetof(              \
-        struct {            \
-            char c;         \
-            type member;    \
-        },                  \
-        member))
-
+#define alignof(x) __alignof__ (x)
 #else
 #include <stdalign.h>
 #endif

@@ -176,17 +176,19 @@ macro(check_compiler file_to_test flag_to_set)
           RESULT
           ${CMAKE_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
-          COMPILE_DEFINITIONS "-Werror")
+          COMPILE_DEFINITIONS "-Werror"
+          OUTPUT_VARIABLE ERROR_MESSAGE)
   if(RESULT)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -D${flag_to_set}")
     message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
   else()
-    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}")
+    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}:")
+    message(STATUS "    ${ERROR_MESSAGE}")
   endif()
 endmacro()
 
 if(GCC OR CLANG)
-  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_SUPPORTED)
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.

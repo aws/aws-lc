@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-void main() {
+int main() {
     uint16_t test16 = 0;
     test16 = __builtin_bswap16(test16);
 
