@@ -172,6 +172,14 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 endif()
 
 if(GCC OR CLANG)
+  try_compile(
+          AWS_LC_BUILTIN_SWAP_SUPPORTED
+          ${CMAKE_BINARY_DIR}
+          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/builtin_swap_check.c"
+          COMPILE_DEFINITIONS "-Werror")
+  if(AWS_LC_BUILTIN_SWAP_SUPPORTED)
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -DAWS_LC_BUILTIN_SWAP_SUPPORTED")
+  endif()
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -182,7 +190,7 @@ if(GCC OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
-    set(C_CXX_FLAGS "-Wvla")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla")
   endif()
 
   if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
