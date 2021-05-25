@@ -83,6 +83,10 @@ OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
 //
 // Note: 1. If subject is NULL, we get the subject name from the issuer and set
 //          the serial number is NULL.
+//       2. OpenSSL's legacy OCSP code decided to make sha1 as default hash
+//          algorithm when the digest is set as NULL. We keep this to maintain
+//          backwards compatibility, but strongly advise to set a digest when
+//          using this function.
 OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
                                             const X509 *issuer);
 
