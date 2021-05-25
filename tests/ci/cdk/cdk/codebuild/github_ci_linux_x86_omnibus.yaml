@@ -331,14 +331,6 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
 
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_3x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-3x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
     - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_6x
       buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-6x.yml
       env:

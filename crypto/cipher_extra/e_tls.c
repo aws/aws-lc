@@ -43,15 +43,15 @@ typedef struct {
 } AEAD_TLS_CTX;
 
 OPENSSL_STATIC_ASSERT(EVP_MAX_MD_SIZE < 256,
-                      mac_key_len_does_not_fit_in_uint8_t);
+                      mac_key_len_does_not_fit_in_uint8_t)
 
 OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                           sizeof(AEAD_TLS_CTX),
-                      AEAD_state_is_too_small);
+                      AEAD_state_is_too_small)
 #if defined(__GNUC__) || defined(__clang__)
 OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
                           alignof(AEAD_TLS_CTX),
-                      AEAD_state_has_insufficient_alignment);
+                      AEAD_state_has_insufficient_alignment)
 #endif
 
 static void aead_tls_cleanup(EVP_AEAD_CTX *ctx) {

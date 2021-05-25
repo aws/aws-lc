@@ -417,7 +417,7 @@ void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
                      const BN_ULONG *b, size_t num) {
   for (size_t i = 0; i < num; i++) {
     OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                          crypto_word_t_is_too_small);
+                          crypto_word_t_is_too_small)
     r[i] = constant_time_select_w(mask, a[i], b[i]);
   }
 }

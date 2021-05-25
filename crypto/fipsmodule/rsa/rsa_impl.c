@@ -401,7 +401,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
 
   // Double the length of the cache.
   OPENSSL_STATIC_ASSERT(MAX_BLINDINGS_PER_RSA < UINT_MAX / 2,
-                        MAX_BLINDINGS_PER_RSA_too_large);
+                        MAX_BLINDINGS_PER_RSA_too_large)
   unsigned new_num_blindings = rsa->num_blindings * 2;
   if (new_num_blindings == 0) {
     new_num_blindings = 1;
@@ -413,7 +413,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
 
   OPENSSL_STATIC_ASSERT(
       MAX_BLINDINGS_PER_RSA < UINT_MAX / sizeof(BN_BLINDING *),
-      MAX_BLINDINGS_PER_RSA_too_large);
+      MAX_BLINDINGS_PER_RSA_too_large)
   BN_BLINDING **new_blindings =
       OPENSSL_malloc(sizeof(BN_BLINDING *) * new_num_blindings);
   uint8_t *new_blindings_inuse = OPENSSL_malloc(new_num_blindings);

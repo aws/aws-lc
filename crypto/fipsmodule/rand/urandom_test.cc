@@ -512,6 +512,10 @@ int main(int argc, char **argv) {
     CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
   }
 
+  if (getenv("BORINGSSL_IGNORE_PTHREAD_ATFORK")) {
+    CRYPTO_fork_detect_ignore_pthread_atfork_for_testing();
+  }
+
   return RUN_ALL_TESTS();
 }
 

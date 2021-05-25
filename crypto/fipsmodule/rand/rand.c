@@ -81,9 +81,9 @@ struct rand_thread_state {
 // objects in the process, one per thread. This is needed because FIPS requires
 // that they be zeroed on process exit, but thread-local destructors aren't
 // called when the whole process is exiting.
-DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list);
-DEFINE_STATIC_MUTEX(thread_states_list_lock);
-DEFINE_STATIC_MUTEX(state_clear_all_lock);
+DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list)
+DEFINE_STATIC_MUTEX(thread_states_list_lock)
+DEFINE_STATIC_MUTEX(state_clear_all_lock)
 
 static void rand_thread_state_clear_all(void) __attribute__((destructor));
 static void rand_thread_state_clear_all(void) {
@@ -275,7 +275,7 @@ static void rand_get_seed(struct rand_thread_state *state,
     BORINGSSL_FIPS_abort();
   }
 
-  OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _);
+  OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _)
   for (size_t i = CRNGT_BLOCK_SIZE; i < sizeof(entropy);
        i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
