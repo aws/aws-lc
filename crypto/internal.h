@@ -716,7 +716,7 @@ OPENSSL_EXPORT void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
 
 // Endianness conversions.
 
-#if defined(__GNUC__) && __GNUC__ >= 2
+#if defined(AWS_LC_BUILTIN_SWAP_SUPPORTED)
 static inline uint16_t CRYPTO_bswap2(uint16_t x) {
   return __builtin_bswap16(x);
 }
