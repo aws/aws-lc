@@ -125,6 +125,9 @@
 #if defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
+#elif !defined(AWS_LC_STDALIGN_AVAILABLE)
+#define alignas(x) __attribute__ ((aligned (x)))
+#define alignof(x) __alignof__ (x)
 #else
 #include <stdalign.h>
 #endif
@@ -696,7 +699,7 @@ OPENSSL_EXPORT void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
 
 // Endianness conversions.
 
-#if defined(__GNUC__) && __GNUC__ >= 2
+#if defined(AWS_LC_BUILTIN_SWAP_SUPPORTED)
 static inline uint16_t CRYPTO_bswap2(uint16_t x) {
   return __builtin_bswap16(x);
 }

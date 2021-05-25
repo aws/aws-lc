@@ -42,6 +42,10 @@ OPENSSL_EXPORT uint64_t CRYPTO_get_fork_generation(void);
 // used for testing purposes.
 OPENSSL_EXPORT void CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing(void);
 
+// CRYPTO_fork_detect_ignore_pthread_atfork_for_testing is an internal detail
+// used for testing purposes.
+OPENSSL_EXPORT void CRYPTO_fork_detect_ignore_pthread_atfork_for_testing(void);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

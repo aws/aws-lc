@@ -100,6 +100,15 @@ static void ForkInChild(std::function<void()> f) {
 }
 
 TEST(ForkDetect, Test) {
+
+  if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
+    CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
+  }
+
+  if (getenv("BORINGSSL_IGNORE_PTHREAD_ATFORK")) {
+    CRYPTO_fork_detect_ignore_pthread_atfork_for_testing();
+  }
+
   const uint64_t start = CRYPTO_get_fork_generation();
   if (start == 0) {
     fprintf(stderr, "Fork detection not supported. Skipping test.\n");

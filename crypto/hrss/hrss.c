@@ -180,8 +180,7 @@ static inline void poly3_vec_rshift1(vec_t a_s[6], vec_t a_a[6]) {
 // vec_broadcast_bit duplicates the least-significant bit in |a| to all bits in
 // a vector and returns the result.
 static inline vec_t vec_broadcast_bit(vec_t a) {
-  return _mm_shuffle_epi32(_mm_srai_epi32(_mm_slli_epi64(a, 63), 31),
-                           0b01010101);
+  return _mm_shuffle_epi32(_mm_srai_epi32(_mm_slli_epi64(a, 63), 31), 0x55);
 }
 
 // vec_get_word returns the |i|th uint16_t in |v|. (This is a macro because the
@@ -1190,9 +1189,9 @@ static void poly_mul_vec(struct poly *out, const struct poly *x,
   OPENSSL_memset((uint16_t *)&y->v[N], 0, 3 * sizeof(uint16_t));
 
   OPENSSL_STATIC_ASSERT(sizeof(out->v) == sizeof(vec_t) * VECS_PER_POLY,
-                        struct_poly_is_the_wrong_size);
+                        struct_poly_is_the_wrong_size)
   OPENSSL_STATIC_ASSERT(alignof(struct poly) == alignof(vec_t),
-                        struct_poly_has_incorrect_alignment);
+                        struct_poly_has_incorrect_alignment)
 
   vec_t prod[VECS_PER_POLY * 2];
   vec_t scratch[172];
@@ -1701,7 +1700,7 @@ static void poly_marshal_mod3(uint8_t out[HRSS_POLY3_BYTES],
 static void poly_short_sample(struct poly *out,
                               const uint8_t in[HRSS_SAMPLE_BYTES]) {
   OPENSSL_STATIC_ASSERT(HRSS_SAMPLE_BYTES == N - 1,
-                        HRSS_SAMPLE_BYTES_incorrect);
+                        HRSS_SAMPLE_BYTES_incorrect)
   for (size_t i = 0; i < N - 1; i++) {
     uint16_t v = mod3(in[i]);
     // Map {0, 1, 2} -> {0, 1, 0xffff}
@@ -1869,7 +1868,7 @@ static struct public_key *public_key_from_external(
     struct HRSS_public_key *ext) {
   OPENSSL_STATIC_ASSERT(
       sizeof(struct HRSS_public_key) >= sizeof(struct public_key) + 15,
-      HRSS_public_key_too_small);
+      HRSS_public_key_too_small)
 
   uintptr_t p = (uintptr_t)ext;
   p = (p + 15) & ~15;
@@ -1883,7 +1882,7 @@ static struct private_key *private_key_from_external(
     struct HRSS_private_key *ext) {
   OPENSSL_STATIC_ASSERT(
       sizeof(struct HRSS_private_key) >= sizeof(struct private_key) + 15,
-      HRSS_private_key_too_small);
+      HRSS_private_key_too_small)
 
   uintptr_t p = (uintptr_t)ext;
   p = (p + 15) & ~15;
@@ -1972,7 +1971,7 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   // function infallible.
   uint8_t masked_key[SHA256_CBLOCK];
   OPENSSL_STATIC_ASSERT(sizeof(priv->hmac_key) <= sizeof(masked_key),
-                        HRSS_HMAC_key_larger_than_SHA_256_block_size);
+                        HRSS_HMAC_key_larger_than_SHA_256_block_size)
   for (size_t i = 0; i < sizeof(priv->hmac_key); i++) {
     masked_key[i] = priv->hmac_key[i] ^ 0x36;
   }
@@ -1996,7 +1995,7 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   SHA256_Update(&hash_ctx, masked_key, sizeof(masked_key));
   SHA256_Update(&hash_ctx, inner_digest, sizeof(inner_digest));
   OPENSSL_STATIC_ASSERT(HRSS_KEY_BYTES == SHA256_DIGEST_LENGTH,
-                        HRSS_shared_key_length_incorrect);
+                        HRSS_shared_key_length_incorrect)
   SHA256_Final(out_shared_key, &hash_ctx);
 
   struct poly c;
@@ -2056,7 +2055,7 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
 
   uint8_t expected_ciphertext[HRSS_CIPHERTEXT_BYTES];
   OPENSSL_STATIC_ASSERT(HRSS_CIPHERTEXT_BYTES == POLY_BYTES,
-                        ciphertext_is_the_wrong_size);
+                        ciphertext_is_the_wrong_size)
   assert(ciphertext_len == sizeof(expected_ciphertext));
   poly_marshal(expected_ciphertext, &c);
 
