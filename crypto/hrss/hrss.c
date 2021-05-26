@@ -1200,6 +1200,8 @@ static void poly_mul_vec(struct poly *out, const struct poly *x,
 
   OPENSSL_STATIC_ASSERT(sizeof(out->v) == sizeof(vec_t) * VECS_PER_POLY,
                         struct_poly_is_the_wrong_size)
+  OPENSSL_STATIC_ASSERT(alignof(struct poly) == alignof(vec_t),
+                        struct_poly_has_incorrect_alignment)
 
   struct poly_vec x_vec = {{{0}}};
   struct poly_vec y_vec = {{{0}}};
