@@ -15,7 +15,7 @@
 // https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c
 
 static const time_t valid_ocsp_time = 1640636363;
-static const time_t expired_after_ocsp_time = 1937435106;
+static const time_t expired_after_ocsp_time = 1956169163;
 static const time_t invalid_before_ocsp_time = 1425019604;
 
 static const char ca_cert[] = R"(
