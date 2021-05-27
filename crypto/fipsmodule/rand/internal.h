@@ -141,8 +141,8 @@ typedef struct {
 //      |CTR_DRBG_AES_128_ENTROPY_LEN| or |CTR_DRBG_AES_256_ENTROPY_LEN| used as
 //      entropy. The former for 128-bit key lengths and the latter for 256-bit
 //      key lengths.
-// * |personalization|: Optional personalization string. The maximal accepted
-//      amount of bytes accepted is |CTR_DRBG_AES_128_ENTROPY_LEN| or
+// * |personalization|: Optional personalization string. The maximal amount of
+//      bytes accepted is |CTR_DRBG_AES_128_ENTROPY_LEN| or
 //      |CTR_DRBG_AES_256_ENTROPY_LEN| depending on the key length. The former
 //      for 128-bit key length and the latter for 256-bit key length.
 // * |personalization_len|: Length of |personalization|.
@@ -160,8 +160,8 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
 //      |CTR_DRBG_AES_128_ENTROPY_LEN| or |CTR_DRBG_AES_256_ENTROPY_LEN| used as
 //      entropy. The former for 128-bit key lengths and the latter for 256-bit
 //      key lengths.
-// * |additional_data|: Optional additional data string. The maximal accepted
-//      amount of bytes accepted is |CTR_DRBG_AES_128_ENTROPY_LEN| or
+// * |additional_data|: Optional additional data string. The maximal amount of
+//      bytes accepted is |CTR_DRBG_AES_128_ENTROPY_LEN| or
 //      |CTR_DRBG_AES_256_ENTROPY_LEN| depending on the key length. The former
 //      for 128-bit key length and the latter for 256-bit key length.
 // * |additional_data_len|: Length of |additional_data|.
