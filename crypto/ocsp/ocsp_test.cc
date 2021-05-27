@@ -14,7 +14,7 @@
 // OCSP testing methods were taken from s2n's validation tests:
 // https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c
 
-static const time_t valid_ocsp_time = 1621989009;
+static const time_t valid_ocsp_time = 1640636363;
 static const time_t expired_after_ocsp_time = 1937435106;
 static const time_t invalid_before_ocsp_time = 1425019604;
 
