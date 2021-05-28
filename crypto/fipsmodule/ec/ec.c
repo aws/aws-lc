@@ -699,6 +699,21 @@ const char *EC_curve_nid2nist(int nid) {
   return NULL;
 }
 
+const char *EC_curve_nid2name(int nid) {
+  // Firt check if the NID is of one of the NIST curves.
+  const char *name = EC_curve_nid2nist(nid);
+  if (name != NULL) {
+    return name;
+  }
+
+  // Then check the rest of the built-in curves.
+  switch (nid) {
+    case NID_secp256k1:
+      return "secp256k1";
+  }
+  return NULL;
+}
+
 int EC_curve_nist2nid(const char *name) {
   if (strcmp(name, "P-224") == 0) {
     return NID_secp224r1;
@@ -711,6 +726,20 @@ int EC_curve_nist2nid(const char *name) {
   }
   if (strcmp(name, "P-521") == 0) {
     return NID_secp521r1;
+  }
+  return NID_undef;
+}
+
+int EC_curve_name2nid(const char *name) {
+  // Firt check if the name is of one of the NIST curves.
+  int nid = EC_curve_nist2nid(name);
+  if (nid != NID_undef) {
+    return nid;
+  }
+
+  // Then check the rest of the built-in curves.
+  if (strcmp(name, "secp256k1") == 0) {
+    return NID_secp256k1;
   }
   return NID_undef;
 }

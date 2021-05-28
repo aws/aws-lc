@@ -167,6 +167,11 @@ OPENSSL_EXPORT const char *EC_curve_nid2nist(int nid);
 // it returns |NID_X9_62_prime256v1| for "P-256".
 OPENSSL_EXPORT int EC_curve_nist2nid(const char *name);
 
+// TODO: add comment
+OPENSSL_EXPORT const char *EC_curve_nid2name(int nid);
+
+// TODO: add comment
+OPENSSL_EXPORT int EC_curve_name2nid(const char *name);
 
 // Points on elliptic curves.
 
