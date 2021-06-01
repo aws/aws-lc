@@ -810,7 +810,7 @@ int boringssl_fips_self_test(
   // DBRG KAT
   CTR_DRBG_STATE drbg;
   if (!CTR_DRBG_init(&drbg, kDRBGEntropy, kDRBGPersonalization,
-                     sizeof(kDRBGPersonalization)) ||
+                     sizeof(kDRBGPersonalization), CTR_DRBG_AES_256_KEY_LEN) ||
       !CTR_DRBG_generate(&drbg, output, sizeof(kDRBGOutput), kDRBGAD,
                          sizeof(kDRBGAD)) ||
       !check_test(kDRBGOutput, output, sizeof(kDRBGOutput),

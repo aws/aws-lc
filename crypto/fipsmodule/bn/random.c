@@ -271,7 +271,7 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
     // Steps 4 and 5. Use |words| and |mask| together to obtain a string of N
     // bits, where N is the bit length of |max_exclusive|.
     RAND_bytes_with_additional_data((uint8_t *)out, words * sizeof(BN_ULONG),
-                                    additional_data);
+                                    additional_data, CTR_DRBG_AES_256);
     out[words - 1] &= mask;
 
     // If out >= max_exclusive or out < min_inclusive, retry. This implements
