@@ -14,9 +14,10 @@
 // OCSP testing methods were taken from s2n's validation tests:
 // https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c
 
-static const time_t valid_ocsp_time = 1640636363;
-static const time_t expired_after_ocsp_time = 1956169163;
-static const time_t invalid_before_ocsp_time = 1425019604;
+static const time_t invalid_before_ocsp_update_time = 1621988613;
+static const time_t valid_after_ocsp_update_time = 1621988615;
+static const time_t valid_before_ocsp_expire_time = 1937348613;
+static const time_t invalid_after_ocsp_expire_time = 1937348615;
 
 static const char ca_cert[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -665,9 +666,14 @@ static bssl::UniquePtr<X509> LoadX509fromPEM(const char *pem) {
   return bssl::UniquePtr<X509>(X509_parse_from_buffer(buf.get()));
 }
 
-static void ExtractBasicOCSP(bssl::Span<const uint8_t> der,
-                             int ocsp_status,
-                             bssl::UniquePtr<OCSP_BASICRESP> *basic_response){
+static void ExtractAndVerifyBasicOCSP(
+                            bssl::Span<const uint8_t> der,
+                            int ocsp_status,
+                            const char *ca,
+                            const char *server,
+                            int ocsp_verify_status,
+                            bssl::UniquePtr<OCSP_BASICRESP> *basic_response,
+                            bssl::UniquePtr<STACK_OF(X509)> *server_cert_chain){
   bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
 
   ocsp_response = LoadOCSP_RESPONSE(der);
@@ -678,23 +684,30 @@ static void ExtractBasicOCSP(bssl::Span<const uint8_t> der,
 
   *basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(*basic_response);
+
+  // Set up trust store and certificate chain
+  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+  X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca).get());
+  *server_cert_chain = CertsToStack(
+      {LoadX509fromPEM(server).get(),LoadX509fromPEM(ca).get()});
+  ASSERT_TRUE(*server_cert_chain);
+
+  // Does basic verification on OCSP response.
+  const int ocsp_verify_err = OCSP_basic_verify(basic_response->get(), server_cert_chain->get(), trust_store.get(), 0);
+  ASSERT_EQ(ocsp_verify_status, ocsp_verify_err);
 }
 
 // Test valid OCSP response
 TEST(OCSPTest, TestGoodOCSP) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  ExtractBasicOCSP(ocsp_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
-  ASSERT_TRUE(basic_response);
-
-  // Set up trust store and certificate chain
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca_cert).get());
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
-      {LoadX509fromPEM(server_cert).get(),LoadX509fromPEM(ca_cert).get()});
-
-  // Checks that OCSP response CAN be verified, not that it has been verified.
-  const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
-  ASSERT_EQ(1, ocsp_verify_err);
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+  ExtractAndVerifyBasicOCSP(ocsp_response_der,
+                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                            ca_cert,
+                            server_cert,
+                            1,
+                            &basic_response,
+                            &server_cert_chain);
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = sk_X509_value(server_cert_chain.get(), 1);
@@ -705,7 +718,7 @@ TEST(OCSPTest, TestGoodOCSP) {
   ASSERT_TRUE(cert_id);
 
   ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
-  // Actual verification of the response
+  // Checks revocation status of the response
   const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
   ASSERT_EQ(1, ocsp_resp_find_status_res);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
@@ -713,38 +726,42 @@ TEST(OCSPTest, TestGoodOCSP) {
   // If OCSP response is verifiable and all good, an OCSP client should check
   // time fields to see if the response is still valid
 
-  // check valid connection timestamp
-  time_t connection_time = valid_ocsp_time;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
-
-  // check expired connection timestamp
-  connection_time = expired_after_ocsp_time;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
-
-  // check before OCSP was last updated connection timestamp
-  connection_time = invalid_before_ocsp_time;
+  // Check before OCSP was last updated connection timestamp
+  time_t connection_time = invalid_before_ocsp_update_time;
   ASSERT_EQ(1, X509_cmp_time(thisupd, &connection_time));
   ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+
+  // Check valid connection timestamp right after OCSP response was validated.
+  connection_time = valid_after_ocsp_update_time;
+  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+
+  // Check valid connection timestamp right before OCSP response expires.
+  connection_time = valid_before_ocsp_expire_time;
+  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+
+  // Check expired connection timestamp
+  connection_time = invalid_after_ocsp_expire_time;
+  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+  ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
 }
 
 // Test against same good OCSP response, but checking behavior of not specifying
 // hash algorithm used for |OCSP_cert_to_id| this time (should default to sha1).
 TEST(OCSPTest, TestDefaultHash) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  ExtractBasicOCSP(ocsp_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
-  ASSERT_TRUE(basic_response);
-
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
-      {LoadX509fromPEM(server_cert).get(),LoadX509fromPEM(ca_cert).get()});;
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+  ExtractAndVerifyBasicOCSP(ocsp_response_der,
+                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                            ca_cert,
+                            server_cert,
+                            1,
+                            &basic_response,
+                            &server_cert_chain);
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = sk_X509_value(server_cert_chain.get(), 1);
-
-  // Expect basic verify here, but we skip step for now since functionality has
-  // not been implemented yet.
-
   int status = 0;
   int reason = 0;
   // Testing behavior of default hash algorithm, when |*dgst| is set to NULL.
@@ -753,8 +770,8 @@ TEST(OCSPTest, TestDefaultHash) {
   ASSERT_TRUE(cert_id);
 
   ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
-  // Actual verification of the response should work if hash algorithm of |cert_id|
-  // has been set to sha1 successfully
+  // Revocation status check of the response should work if hash algorithm of
+  // |cert_id| has been set to sha1 successfully.
   const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
   ASSERT_EQ(1, ocsp_resp_find_status_res);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
@@ -763,18 +780,14 @@ TEST(OCSPTest, TestDefaultHash) {
 // Test OCSP response status is revoked
 TEST(OCSPTest, TestRevokedOCSP) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  ExtractBasicOCSP(ocsp_revoked_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
-  ASSERT_TRUE(basic_response);
-
-  // Set up trust store and certificate chain
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca_cert).get());
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
-      {LoadX509fromPEM(server_cert).get(),LoadX509fromPEM(ca_cert).get()});
-
-  // Checks that OCSP response CAN be verified, not that it has been verified.
-  const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
-  ASSERT_EQ(1, ocsp_verify_err);
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+  ExtractAndVerifyBasicOCSP(ocsp_revoked_response_der,
+                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                            ca_cert,
+                            server_cert,
+                            1,
+                            &basic_response,
+                            &server_cert_chain);
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = sk_X509_value(server_cert_chain.get(), 1);
@@ -785,7 +798,7 @@ TEST(OCSPTest, TestRevokedOCSP) {
   ASSERT_TRUE(cert_id);
 
   ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
-  // Actual verification of the response
+  // Checks revocation status of the response
   const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
   ASSERT_EQ(1, ocsp_resp_find_status_res);
   ASSERT_EQ(V_OCSP_CERTSTATUS_REVOKED, status);
@@ -793,28 +806,24 @@ TEST(OCSPTest, TestRevokedOCSP) {
 
 // Test valid OCSP response, but the data itself is untrusted
 TEST(OCSPTest, TestUntrustedDataOCSP) {
-  // convert const good ocsp response test file to changeable pointer
+  // Convert const good ocsp response test file to changeable pointer
   bssl::Span<const uint8_t> der = bssl::Span<const uint8_t>(ocsp_response_der);
   std::unique_ptr<uint8_t[]> ptr(new uint8_t[der.size()]);
   OPENSSL_memcpy(ptr.get(), der.data(), der.size());
 
-  // flip a byte right in the middle of the cert
+  // Mess up a byte right in the middle of the cert
   ptr[800] = ptr[800] + 1;
   bssl::Span<const uint8_t> malformed_der = bssl::Span<const uint8_t>(ptr.get(), der.size());
 
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  ExtractBasicOCSP(malformed_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
-  ASSERT_TRUE(basic_response);
-
-  // Set up trust store and certificate chain
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  X509_STORE_add_cert(trust_store.get(),LoadX509fromPEM(ca_cert).get());
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain = CertsToStack(
-      {LoadX509fromPEM(server_cert).get(),LoadX509fromPEM(ca_cert).get()});
-
-  // Checks that OCSP response CAN be verified, not that it has been verified.
-  const int ocsp_verify_err = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
-  ASSERT_EQ(0, ocsp_verify_err);
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+  ExtractAndVerifyBasicOCSP(malformed_der,
+                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                            ca_cert,
+                            server_cert,
+                            0,
+                            &basic_response,
+                            &server_cert_chain);
 }
 
 // Test OCSP response signed by the correct responder certificate, but not for
@@ -822,21 +831,14 @@ TEST(OCSPTest, TestUntrustedDataOCSP) {
 // different OCSP request for the other certificate.)
 TEST(OCSPTest, TestNotRequestedOCSP) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  ExtractBasicOCSP(ocsp_response_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
-  ASSERT_TRUE(basic_response);
-
-  // Set up trust store and certificate chain (server certificate is different)
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  X509_STORE_add_cert(trust_store.get(),
-                      LoadX509fromPEM(ca_cert).get());
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain =
-      CertsToStack({LoadX509fromPEM(server_ecdsa_cert).get(),
-                    LoadX509fromPEM(ca_cert).get()});
-
-  // Checks that OCSP response CAN be verified, not that it has been verified.
-  const int ocsp_verify_err = OCSP_basic_verify(
-      basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
-  ASSERT_EQ(1, ocsp_verify_err);
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+  ExtractAndVerifyBasicOCSP(ocsp_response_der,
+                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                            ca_cert,
+                            server_ecdsa_cert,
+                            1,
+                            &basic_response,
+                            &server_cert_chain);
 
   X509 *subject = sk_X509_value(server_cert_chain.get(), 0);
   X509 *issuer = sk_X509_value(server_cert_chain.get(), 1);
@@ -847,30 +849,23 @@ TEST(OCSPTest, TestNotRequestedOCSP) {
   ASSERT_TRUE(cert_id);
 
   ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
-  // Actual verification of the response
+  // Checks revocation status of the response
   const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response.get(), cert_id.get(), &status, &reason, &revtime, &thisupd, &nextupd);
   ASSERT_EQ(0, ocsp_resp_find_status_res);
 }
 
-// Test OCSP response signed by the wrong responder certificate, but the requested
-// certificate was signed. (however this incorrect OCSP responder certificate is a
-// valid OCSP responder for some other case and chains to a trusted root).
-// Thus, this response is not valid for any request
+// Test OCSP response where the requested certificate was signed by the OCSP
+// responder, but signed by the wrong responder certificate. However, this incorrect
+// OCSP responder certificate may be a valid OCSP responder for some other case
+// and also chains to a trusted root.
 TEST(OCSPTest, TestNotValidResponseOCSP) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  ExtractBasicOCSP(ocsp_response_wrong_signer_der, OCSP_RESPONSE_STATUS_SUCCESSFUL, &basic_response);
-  ASSERT_TRUE(basic_response);
-
-  // Set up trust store and certificate chain (server certificate is different)
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  X509_STORE_add_cert(trust_store.get(),
-                      LoadX509fromPEM(ca_cert).get());
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain =
-      CertsToStack({LoadX509fromPEM(server_ecdsa_cert).get(),
-                    LoadX509fromPEM(ca_cert).get()});
-
-  // Checks that OCSP response CAN be verified, not that it has been verified.
-  const int ocsp_verify_err = OCSP_basic_verify(
-      basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
-  ASSERT_EQ(0, ocsp_verify_err);
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+  ExtractAndVerifyBasicOCSP(ocsp_response_wrong_signer_der,
+                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                            ca_cert,
+                            server_ecdsa_cert,
+                            0,
+                            &basic_response,
+                            &server_cert_chain);
 }

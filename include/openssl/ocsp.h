@@ -21,12 +21,8 @@ extern "C" {
 
 /* Various OCSP flags and values */
 #  define OCSP_NOINTERN                   0x2
-#  define OCSP_NOSIGS                     0x4
 #  define OCSP_NOCHAIN                    0x8
-#  define OCSP_NOVERIFY                   0x10
 #  define OCSP_NOEXPLICIT                 0x20
-#  define OCSP_NOCHECKS                   0x100
-#  define OCSP_TRUSTOTHER                 0x200
 
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
