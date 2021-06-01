@@ -53,7 +53,8 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/modes/gcm_tests.txt
-  crypto/fipsmodule/rand/ctrdrbg_vectors.txt
+  crypto/fipsmodule/rand/ctrdrbg_vectors_128.txt
+  crypto/fipsmodule/rand/ctrdrbg_vectors_256.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/pkcs8/test/empty_password.p12
