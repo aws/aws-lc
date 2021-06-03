@@ -26,22 +26,21 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
   unsigned char tmphash[SHA_DIGEST_LENGTH], *keyhash;
 
   // If key hash isn't SHA1 length then forget it
-  if(id->value.byKey != NULL) {
-    if (id->value.byKey->length != SHA_DIGEST_LENGTH) {
+  if(id->value.byKey == NULL || id->value.byKey->length != SHA_DIGEST_LENGTH) {
       return NULL;
-    }
-    keyhash = id->value.byKey->data;
-    // Calculate hash of each key and compare
-    X509 *cert;
-    for (size_t i = 0; i < sk_X509_num(certs); i++) {
-      cert = sk_X509_value(certs, i);
-      if (0 <= X509_pubkey_digest(cert, EVP_sha1(), tmphash, NULL)) {
-        if (memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
-          return cert;
-        }
+  }
+  keyhash = id->value.byKey->data;
+  // Calculate hash of each key and compare
+  X509 *cert;
+  for (size_t i = 0; i < sk_X509_num(certs); i++) {
+    cert = sk_X509_value(certs, i);
+    if (!X509_pubkey_digest(cert, EVP_sha1(), tmphash, NULL)) {
+      if (memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
+        return cert;
       }
     }
   }
+
   return NULL;
 }
 
