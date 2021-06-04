@@ -13,6 +13,12 @@ fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 echo "Testing shared AWS-LC in FIPS debug mode."
 fips_build_and_test -DBUILD_SHARED_LIBS=1
 
+# Passive entropy collection is currently only used on Android. Enable this mode
+# manually to verify the mechanism works. This test can be removed if passive
+# entropy collection becomes AWS-LC global.
+echo "Testing AWS-LC in FIPs mode with passive entropy collection enabled."
+fips_build_and_test -DTEST_PASSIVE_ENTROPY=1
+
 # FIPS build in release mode is disabled for GCC due to some build issues relating to '-O3'.
 if [[ "${CC}" == 'clang'*  ]]; then
   echo "Testing shared AWS-LC in FIPS release mode."
