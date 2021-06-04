@@ -523,7 +523,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
   static const uint8_t kZeroAdditionalData[CTR_DRBG_MAX_AES_KEY_LEN] = {0};
-  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData, CTR_DRBG_AES_128);
+  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData, CTR_DRBG_AES_256);
   return 1;
 }
 
