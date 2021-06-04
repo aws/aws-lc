@@ -257,7 +257,7 @@ int main(int argc, char **argv) {
   printf("About to seed CTR-DRBG with ");
   hexdump(kDRBGEntropy, sizeof(kDRBGEntropy));
   if (!CTR_DRBG_init(&drbg, kDRBGEntropy, kDRBGPersonalization,
-                     sizeof(kDRBGPersonalization)) ||
+                     sizeof(kDRBGPersonalization), CTR_DRBG_AES_256_KEY_LEN) ||
       !CTR_DRBG_generate(&drbg, output, sizeof(output), kDRBGAD,
                          sizeof(kDRBGAD)) ||
       !CTR_DRBG_reseed(&drbg, kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD)) ||

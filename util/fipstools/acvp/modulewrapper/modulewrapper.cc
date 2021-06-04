@@ -1366,7 +1366,7 @@ static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
 
   uint32_t out_len;
   if (out_len_bytes.size() != sizeof(out_len) ||
-      entropy.size() != CTR_DRBG_ENTROPY_LEN ||
+      entropy.size() != CTR_DRBG_AES_256_ENTROPY_LEN ||
       // nonces are not supported
       nonce.size() != 0) {
     return false;
@@ -1379,7 +1379,7 @@ static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
 
   CTR_DRBG_STATE drbg;
   if (!CTR_DRBG_init(&drbg, entropy.data(), personalisation.data(),
-                     personalisation.size()) ||
+                     personalisation.size(), CTR_DRBG_AES_256_KEY_LEN) ||
       !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data1.data(),
                          additional_data1.size()) ||
       !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data2.data(),
