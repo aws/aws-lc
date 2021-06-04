@@ -344,7 +344,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
     goto end;
   }
 
-  // Verify signer and if valid, check the certificate chain
+  // Verify signer and if valid, check the certificate chain.
   ret = ocsp_setup_untrusted(bs, certs, &untrusted, flags);
   if (ret <= 0) {
     goto end;
