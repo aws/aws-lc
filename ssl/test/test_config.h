@@ -43,6 +43,7 @@ struct TestConfig {
   std::vector<std::string> ech_server_configs;
   std::vector<std::string> ech_server_keys;
   std::vector<int> ech_is_retry_config;
+  bool expect_ech_accept = false;
   std::string expect_certificate_types;
   bool require_any_client_certificate = false;
   std::string advertise_npn;
@@ -61,8 +62,6 @@ struct TestConfig {
   std::string expect_channel_id;
   bool enable_channel_id = false;
   std::string send_channel_id;
-  int expect_token_binding_param = -1;
-  std::string send_token_binding_params;
   bool shim_writes_first = false;
   std::string host_name;
   std::string advertise_alpn;
@@ -190,6 +189,7 @@ struct TestConfig {
   bool expect_no_hrr = false;
   bool wait_for_debugger = false;
   std::string quic_early_data_context;
+  int early_write_after_message = 0;
 
   int argc;
   char **argv;

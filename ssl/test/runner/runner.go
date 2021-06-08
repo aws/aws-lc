@@ -518,12 +518,6 @@ type connectionExpectations struct {
 	// channelID controls whether the connection should have negotiated a
 	// Channel ID with channelIDKey.
 	channelID bool
-	// tokenBinding controls whether the connection should have negotiated Token
-	// Binding.
-	tokenBinding bool
-	// tokenBindingParam is the Token Binding parameter that should have been
-	// negotiated (if tokenBinding is true).
-	tokenBindingParam uint8
 	// nextProto controls whether the connection should negotiate a next
 	// protocol via NPN or ALPN.
 	nextProto string
@@ -907,17 +901,6 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		return fmt.Errorf("channel ID unexpectedly negotiated")
 	}
 
-	if expectations.tokenBinding {
-		if !connState.TokenBindingNegotiated {
-			return errors.New("no Token Binding negotiated")
-		}
-		if connState.TokenBindingParam != expectations.tokenBindingParam {
-			return fmt.Errorf("expected param %02x, but got %02x", expectations.tokenBindingParam, connState.TokenBindingParam)
-		}
-	} else if connState.TokenBindingNegotiated {
-		return errors.New("Token Binding unexpectedly negotiated")
-	}
-
 	if expected := expectations.nextProto; expected != "" {
 		if actual := connState.NegotiatedProtocol; actual != expected {
 			return fmt.Errorf("next proto mismatch: got %s, wanted %s", actual, expected)
@@ -1060,7 +1043,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		shimPrefix = test.resumeShimPrefix
 	}
 	if test.shimWritesFirst || test.readWithUnfinishedWrite {
-		shimPrefix = "hello"
+		shimPrefix = shimInitialWrite
 	}
 	if test.renegotiate > 0 {
 		// If readWithUnfinishedWrite is set, the shim prefix will be
@@ -1294,6 +1277,10 @@ func translateExpectedError(errorStr string) string {
 	return errorStr
 }
 
+// shimInitialWrite is the data we expect from the shim when the
+// -shim-writes-first flag is used.
+const shimInitialWrite = "hello"
+
 func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocNumToFail int64) error {
 	// Help debugging panics on the Go side.
 	defer func() {
@@ -1433,7 +1420,7 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 			// Configure the shim to send some data in early data.
 			flags = append(flags, "-on-resume-shim-writes-first")
 			if resumeConfig.Bugs.ExpectEarlyData == nil {
-				resumeConfig.Bugs.ExpectEarlyData = [][]byte{[]byte("hello")}
+				resumeConfig.Bugs.ExpectEarlyData = [][]byte{[]byte(shimInitialWrite)}
 			}
 		} else {
 			// By default, send some early data and expect half-RTT data response.
@@ -1866,6 +1853,7 @@ NextTest:
 		if test.protocol != tls ||
 			test.testType != serverTest ||
 			strings.Contains(test.name, "DelegatedCredentials") ||
+			strings.Contains(test.name, "ECH-Server") ||
 			test.skipSplitHandshake {
 			continue
 		}
@@ -4842,10 +4830,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MinVersion:       VersionTLS13,
 					MaxEarlyDataSize: 2,
 					Bugs: ProtocolBugs{
-						ExpectEarlyData: [][]byte{{'h', 'e'}},
+						ExpectEarlyData: [][]byte{[]byte(shimInitialWrite[:2])},
 					},
 				},
-				resumeShimPrefix: "llo",
+				resumeShimPrefix: shimInitialWrite[2:],
 				resumeSession:    true,
 				earlyData:        true,
 			})
@@ -4865,8 +4853,9 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MaxVersion: VersionTLS13,
 					MinVersion: VersionTLS13,
 					Bugs: ProtocolBugs{
+						// Write the server response before expecting early data.
 						ExpectEarlyData:     [][]byte{},
-						ExpectLateEarlyData: [][]byte{{'h', 'e', 'l', 'l', 'o'}},
+						ExpectLateEarlyData: [][]byte{[]byte(shimInitialWrite)},
 					},
 				},
 				resumeSession: true,
@@ -7692,411 +7681,6 @@ func addExtensionTests() {
 				})
 			}
 
-			// Test Token Binding.
-			if protocol != dtls {
-				const maxTokenBindingVersion = 16
-				const minTokenBindingVersion = 13
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: serverTest,
-					name:     "TokenBinding-Server-" + suffix,
-
-					config: Config{
-						MinVersion:          ver.version,
-						MaxVersion:          ver.version,
-						TokenBindingParams:  []byte{0, 1, 2},
-						TokenBindingVersion: maxTokenBindingVersion,
-					},
-					expectations: connectionExpectations{
-						tokenBinding:      true,
-						tokenBindingParam: 2,
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						"-expect-token-binding-param",
-						"2",
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: serverTest,
-					name:     "TokenBinding-Server-UnsupportedParam-" + suffix,
-
-					config: Config{
-						MinVersion:          ver.version,
-						MaxVersion:          ver.version,
-						TokenBindingParams:  []byte{3},
-						TokenBindingVersion: maxTokenBindingVersion,
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: serverTest,
-					name:     "TokenBinding-Server-OldVersion-" + suffix,
-
-					config: Config{
-						MinVersion:          ver.version,
-						MaxVersion:          ver.version,
-						TokenBindingParams:  []byte{0, 1, 2},
-						TokenBindingVersion: minTokenBindingVersion - 1,
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: serverTest,
-					name:     "TokenBinding-Server-NewVersion-" + suffix,
-
-					config: Config{
-						MinVersion:          ver.version,
-						MaxVersion:          ver.version,
-						TokenBindingParams:  []byte{0, 1, 2},
-						TokenBindingVersion: maxTokenBindingVersion + 1,
-					},
-					expectations: connectionExpectations{
-						tokenBinding:      true,
-						tokenBindingParam: 2,
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						"-expect-token-binding-param",
-						"2",
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: serverTest,
-					name:     "TokenBinding-Server-NoParams-" + suffix,
-
-					config: Config{
-						MinVersion:          ver.version,
-						MaxVersion:          ver.version,
-						TokenBindingParams:  []byte{},
-						TokenBindingVersion: maxTokenBindingVersion,
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-					},
-					shouldFail:    true,
-					expectedError: ":ERROR_PARSING_EXTENSION:",
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: serverTest,
-					name:     "TokenBinding-Server-RepeatedParam" + suffix,
-
-					config: Config{
-						MinVersion:          ver.version,
-						MaxVersion:          ver.version,
-						TokenBindingParams:  []byte{0, 1, 2, 2},
-						TokenBindingVersion: maxTokenBindingVersion,
-					},
-					expectations: connectionExpectations{
-						tokenBinding:      true,
-						tokenBindingParam: 2,
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						"-expect-token-binding-param",
-						"2",
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-" + suffix,
-
-					config: Config{
-						MinVersion:               ver.version,
-						MaxVersion:               ver.version,
-						TokenBindingParams:       []byte{2},
-						TokenBindingVersion:      maxTokenBindingVersion,
-						ExpectTokenBindingParams: []byte{0, 1, 2},
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-						"-expect-token-binding-param",
-						"2",
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-Unexpected-" + suffix,
-
-					config: Config{
-						MinVersion:          ver.version,
-						MaxVersion:          ver.version,
-						TokenBindingParams:  []byte{2},
-						TokenBindingVersion: maxTokenBindingVersion,
-					},
-					shouldFail:    true,
-					expectedError: ":UNEXPECTED_EXTENSION:",
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-ExtraParams-" + suffix,
-
-					config: Config{
-						MinVersion:               ver.version,
-						MaxVersion:               ver.version,
-						TokenBindingParams:       []byte{2, 1},
-						TokenBindingVersion:      maxTokenBindingVersion,
-						ExpectTokenBindingParams: []byte{0, 1, 2},
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-						"-expect-token-binding-param",
-						"2",
-					},
-					shouldFail:    true,
-					expectedError: ":ERROR_PARSING_EXTENSION:",
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-NoParams-" + suffix,
-
-					config: Config{
-						MinVersion:               ver.version,
-						MaxVersion:               ver.version,
-						TokenBindingParams:       []byte{},
-						TokenBindingVersion:      maxTokenBindingVersion,
-						ExpectTokenBindingParams: []byte{0, 1, 2},
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-						"-expect-token-binding-param",
-						"2",
-					},
-					shouldFail:    true,
-					expectedError: ":ERROR_PARSING_EXTENSION:",
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-WrongParam-" + suffix,
-
-					config: Config{
-						MinVersion:               ver.version,
-						MaxVersion:               ver.version,
-						TokenBindingParams:       []byte{3},
-						TokenBindingVersion:      maxTokenBindingVersion,
-						ExpectTokenBindingParams: []byte{0, 1, 2},
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-						"-expect-token-binding-param",
-						"2",
-					},
-					shouldFail:    true,
-					expectedError: ":ERROR_PARSING_EXTENSION:",
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-OldVersion-" + suffix,
-
-					config: Config{
-						MinVersion:               ver.version,
-						MaxVersion:               ver.version,
-						TokenBindingParams:       []byte{2},
-						TokenBindingVersion:      minTokenBindingVersion - 1,
-						ExpectTokenBindingParams: []byte{0, 1, 2},
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-MinVersion-" + suffix,
-
-					config: Config{
-						MinVersion:               ver.version,
-						MaxVersion:               ver.version,
-						TokenBindingParams:       []byte{2},
-						TokenBindingVersion:      minTokenBindingVersion,
-						ExpectTokenBindingParams: []byte{0, 1, 2},
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-						"-expect-token-binding-param",
-						"2",
-					},
-				})
-				testCases = append(testCases, testCase{
-					protocol: protocol,
-					testType: clientTest,
-					name:     "TokenBinding-Client-VersionTooNew-" + suffix,
-
-					config: Config{
-						MinVersion:               ver.version,
-						MaxVersion:               ver.version,
-						TokenBindingParams:       []byte{2},
-						TokenBindingVersion:      maxTokenBindingVersion + 1,
-						ExpectTokenBindingParams: []byte{0, 1, 2},
-					},
-					flags: []string{
-						"-token-binding-params",
-						base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-					},
-					shouldFail:    true,
-					expectedError: "ERROR_PARSING_EXTENSION",
-				})
-				if ver.version < VersionTLS13 {
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						testType: clientTest,
-						name:     "TokenBinding-Client-NoEMS-" + suffix,
-
-						config: Config{
-							MinVersion:               ver.version,
-							MaxVersion:               ver.version,
-							TokenBindingParams:       []byte{2},
-							TokenBindingVersion:      maxTokenBindingVersion,
-							ExpectTokenBindingParams: []byte{2, 1, 0},
-							Bugs: ProtocolBugs{
-								NoExtendedMasterSecret: true,
-							},
-						},
-						flags: []string{
-							"-token-binding-params",
-							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						},
-						shouldFail:    true,
-						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-					})
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						testType: serverTest,
-						name:     "TokenBinding-Server-NoEMS-" + suffix,
-
-						config: Config{
-							MinVersion:          ver.version,
-							MaxVersion:          ver.version,
-							TokenBindingParams:  []byte{0, 1, 2},
-							TokenBindingVersion: maxTokenBindingVersion,
-							Bugs: ProtocolBugs{
-								NoExtendedMasterSecret: true,
-							},
-						},
-						flags: []string{
-							"-token-binding-params",
-							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						},
-						shouldFail:    true,
-						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-					})
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						testType: clientTest,
-						name:     "TokenBinding-Client-NoRI-" + suffix,
-
-						config: Config{
-							MinVersion:               ver.version,
-							MaxVersion:               ver.version,
-							TokenBindingParams:       []byte{2},
-							TokenBindingVersion:      maxTokenBindingVersion,
-							ExpectTokenBindingParams: []byte{2, 1, 0},
-							Bugs: ProtocolBugs{
-								NoRenegotiationInfo: true,
-							},
-						},
-						flags: []string{
-							"-token-binding-params",
-							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						},
-						shouldFail:    true,
-						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-					})
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						testType: serverTest,
-						name:     "TokenBinding-Server-NoRI-" + suffix,
-
-						config: Config{
-							MinVersion:          ver.version,
-							MaxVersion:          ver.version,
-							TokenBindingParams:  []byte{0, 1, 2},
-							TokenBindingVersion: maxTokenBindingVersion,
-							Bugs: ProtocolBugs{
-								NoRenegotiationInfo: true,
-							},
-						},
-						flags: []string{
-							"-token-binding-params",
-							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						},
-						shouldFail:    true,
-						expectedError: ":NEGOTIATED_TB_WITHOUT_EMS_OR_RI:",
-					})
-				} else {
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						testType: clientTest,
-						name:     "TokenBinding-WithEarlyDataFails-" + suffix,
-						config: Config{
-							MinVersion:               ver.version,
-							MaxVersion:               ver.version,
-							TokenBindingParams:       []byte{2},
-							TokenBindingVersion:      maxTokenBindingVersion,
-							ExpectTokenBindingParams: []byte{2, 1, 0},
-						},
-						resumeSession: true,
-						earlyData:     true,
-						flags: []string{
-							"-token-binding-params",
-							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-						},
-						shouldFail:    true,
-						expectedError: ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
-					})
-					testCases = append(testCases, testCase{
-						protocol: protocol,
-						testType: serverTest,
-						name:     "TokenBinding-EarlyDataRejected-" + suffix,
-						config: Config{
-							MinVersion:          ver.version,
-							MaxVersion:          ver.version,
-							TokenBindingParams:  []byte{0, 1, 2},
-							TokenBindingVersion: maxTokenBindingVersion,
-						},
-						resumeSession:           true,
-						earlyData:               true,
-						expectEarlyDataRejected: true,
-						expectations: connectionExpectations{
-							tokenBinding:      true,
-							tokenBindingParam: 2,
-						},
-						flags: []string{
-							"-token-binding-params",
-							base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-							"-on-retry-expect-early-data-reason", "token_binding",
-						},
-					})
-				}
-			}
-
 			// Test QUIC transport params
 			if protocol == quic {
 				// Client sends params
@@ -8477,6 +8061,40 @@ func addExtensionTests() {
 					},
 					shouldFail:    true,
 					expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
+				})
+			} else {
+				// DTLS-SRTP is not defined for other protocols. Configuring it
+				// on the client and server should ignore the extension.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					name:     "SRTP-Client-Ignore-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: 0,
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "SRTP-Server-Ignore-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: 0,
+					},
 				})
 			}
 
@@ -15147,6 +14765,51 @@ func addTLS13HandshakeTests() {
 		expectedError:      ":CIPHER_MISMATCH_ON_EARLY_DATA:",
 		expectedLocalError: "remote error: illegal parameter",
 	})
+
+	// Test that the client can write early data when it has received a partial
+	// ServerHello..Finished flight. See https://crbug.com/1208784. Note the
+	// EncryptedExtensions test assumes EncryptedExtensions and Finished are in
+	// separate records, i.e. that PackHandshakeFlight is disabled.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyData-WriteAfterServerHello",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				// Write the server response before expecting early data.
+				ExpectEarlyData:     [][]byte{},
+				ExpectLateEarlyData: [][]byte{[]byte(shimInitialWrite)},
+			},
+		},
+		resumeSession: true,
+		earlyData:     true,
+		flags: []string{
+			"-async",
+			"-on-resume-early-write-after-message",
+			strconv.Itoa(int(typeServerHello)),
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyData-WriteAfterEncryptedExtensions",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				// Write the server response before expecting early data.
+				ExpectEarlyData:     [][]byte{},
+				ExpectLateEarlyData: [][]byte{[]byte(shimInitialWrite)},
+			},
+		},
+		resumeSession: true,
+		earlyData:     true,
+		flags: []string{
+			"-async",
+			"-on-resume-early-write-after-message",
+			strconv.Itoa(int(typeEncryptedExtensions)),
+		},
+	})
 }
 
 func addTLS13CipherPreferenceTests() {
@@ -16539,50 +16202,34 @@ var echCiphers = []echCipher{
 	},
 }
 
-// generateECHConfigWithSecretKey constructs a valid ECHConfig and corresponding
-// private key for the server. If the cipher list is empty, all ciphers are
-// included.
-func generateECHConfigWithSecretKey(publicName string, ciphers []HPKECipherSuite) (*ECHConfig, []byte, error) {
-	publicKeyR, secretKeyR, err := hpke.GenerateKeyPair()
+// generateServerECHConfig constructs a ServerECHConfig with a fresh X25519
+// keypair and using |template| as a template for the ECHConfig. If
+// |template.CipherSuites| is empty, all ciphers are included. |template.KEM|
+// and |template.PublicKey| are ignored.
+func generateServerECHConfig(template *ECHConfig) ServerECHConfig {
+	publicKey, secretKey, err := hpke.GenerateKeyPairX25519()
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
-	if len(ciphers) == 0 {
-		ciphers = make([]HPKECipherSuite, 0, len(echCiphers))
-		for _, cipher := range echCiphers {
-			ciphers = append(ciphers, cipher.cipher)
+	templateCopy := *template
+	templateCopy.KEM = hpke.X25519WithHKDFSHA256
+	templateCopy.PublicKey = publicKey
+	if len(templateCopy.CipherSuites) == 0 {
+		templateCopy.CipherSuites = make([]HPKECipherSuite, len(echCiphers))
+		for i, cipher := range echCiphers {
+			templateCopy.CipherSuites[i] = cipher.cipher
 		}
 	}
-	result := ECHConfig{
-		PublicName:   publicName,
-		PublicKey:    publicKeyR,
-		KEM:          hpke.X25519WithHKDFSHA256,
-		CipherSuites: ciphers,
-		// For real-life purposes, the maxNameLen should be
-		// based on the set of domain names that the server
-		// represents.
-		MaxNameLen: 16,
-	}
-	return &result, secretKeyR, nil
+	return ServerECHConfig{ECHConfig: CreateECHConfig(&templateCopy), Key: secretKey}
 }
 
 func addEncryptedClientHelloTests() {
-	publicECHConfig, secretKey, err := generateECHConfigWithSecretKey("public.example", nil)
-	if err != nil {
-		panic(err)
-	}
-	publicECHConfig1, secretKey1, err := generateECHConfigWithSecretKey("public.example", nil)
-	if err != nil {
-		panic(err)
-	}
-	publicECHConfig2, secretKey2, err := generateECHConfigWithSecretKey("public.example", nil)
-	if err != nil {
-		panic(err)
-	}
-	publicECHConfig3, secretKey3, err := generateECHConfigWithSecretKey("public.example", nil)
-	if err != nil {
-		panic(err)
-	}
+	// echConfig's ConfigID should match the one used in ssl/test/fuzzer.h.
+	echConfig := generateServerECHConfig(&ECHConfig{ConfigID: 42, PublicName: "public.example"})
+	echConfig1 := generateServerECHConfig(&ECHConfig{ConfigID: 43, PublicName: "public.example"})
+	echConfig2 := generateServerECHConfig(&ECHConfig{ConfigID: 44, PublicName: "public.example"})
+	echConfig3 := generateServerECHConfig(&ECHConfig{ConfigID: 45, PublicName: "public.example"})
+	echConfigRepeatID := generateServerECHConfig(&ECHConfig{ConfigID: 42, PublicName: "public.example"})
 
 	for _, protocol := range []protocol{tls, quic} {
 		prefix := protocol.String() + "-"
@@ -16605,15 +16252,16 @@ func addEncryptedClientHelloTests() {
 				name:     prefix + "ECH-Server" + suffix,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					DefaultCurves:   defaultCurves,
 				},
 				resumeSession: true,
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16629,7 +16277,7 @@ func addEncryptedClientHelloTests() {
 				name:     prefix + "ECH-Server-MinimalClientHelloOuter" + suffix,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					DefaultCurves:   defaultCurves,
 					Bugs: ProtocolBugs{
 						MinimalClientHelloOuter: true,
@@ -16637,10 +16285,11 @@ func addEncryptedClientHelloTests() {
 				},
 				resumeSession: true,
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16658,24 +16307,24 @@ func addEncryptedClientHelloTests() {
 					DefaultCurves: defaultCurves,
 					// The client uses an ECHConfig that the server does not understand
 					// so we can observe which retry configs the server sends back.
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					Bugs: ProtocolBugs{
 						OfferSessionInClientHelloOuter: true,
-						ExpectECHRetryConfigs:          MarshalECHConfigList(publicECHConfig2, publicECHConfig3),
+						ExpectECHRetryConfigs:          CreateECHConfigList(echConfig2.ECHConfig.Raw, echConfig3.ECHConfig.Raw),
 					},
 				},
 				resumeSession: true,
 				flags: []string{
 					// Configure three ECHConfigs on the shim, only two of which
 					// should be sent in retry configs.
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig1)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey1),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig1.Key),
 					"-ech-is-retry-config", "0",
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig2)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey2),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig2.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig2.Key),
 					"-ech-is-retry-config", "1",
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig3)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey3),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig3.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig3.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "public.example",
 				},
@@ -16690,14 +16339,14 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					Bugs: ProtocolBugs{
 						AllowTLS12InClientHelloInner: true,
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1"},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16713,15 +16362,15 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					Bugs: ProtocolBugs{
 						OmitECHIsInner:       !hrr,
 						OmitSecondECHIsInner: hrr,
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 				},
 				shouldFail:         true,
@@ -16737,7 +16386,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionKeyShare,
 						extensionSupportedCurves,
@@ -16755,10 +16404,11 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16776,7 +16426,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionSupportedCurves,
 						extensionSupportedCurves,
@@ -16786,10 +16436,9 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
-					"-expect-server-name", "secret.example",
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16805,7 +16454,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionCustom,
 					},
@@ -16814,10 +16463,11 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16834,7 +16484,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionEncryptedClientHello,
 					},
@@ -16843,10 +16493,9 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
-					"-expect-server-name", "secret.example",
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16862,15 +16511,16 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-AsyncEarlyCallback",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 			},
 			flags: []string{
 				"-async",
 				"-use-early-callback",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -16885,16 +16535,42 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-SecondECHConfig",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig1,
+				ClientECHConfig: echConfig1.ECHConfig,
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig1)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey1),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig1.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
+				"-expect-ech-accept",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test ECH-enabled server with two ECHConfigs that have the same config
+		// ID can decrypt client's ECH when it uses the second ECHConfig.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-RepeatedConfigID",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: echConfigRepeatID.ECHConfig,
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-is-retry-config", "1",
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfigRepeatID.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfigRepeatID.Key),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "secret.example",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -16903,10 +16579,7 @@ func addEncryptedClientHelloTests() {
 
 		// Test all supported ECH cipher suites.
 		for i, cipher := range echCiphers {
-			otherCipher := echCiphers[0]
-			if i == 0 {
-				otherCipher = echCiphers[1]
-			}
+			otherCipher := echCiphers[(i+1)%len(echCiphers)]
 
 			// Test the ECH server can handle the specified cipher.
 			testCases = append(testCases, testCase{
@@ -16915,14 +16588,15 @@ func addEncryptedClientHelloTests() {
 				name:     prefix + "ECH-Server-Cipher-" + cipher.name,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16931,25 +16605,26 @@ func addEncryptedClientHelloTests() {
 
 			// Test that the ECH server rejects the specified cipher if not
 			// listed in its ECHConfig.
-			config, key, err := generateECHConfigWithSecretKey("public.example", []HPKECipherSuite{otherCipher.cipher})
-			if err != nil {
-				panic(err)
-			}
+			config := generateServerECHConfig(&ECHConfig{
+				ConfigID:     42,
+				PublicName:   "public.name",
+				CipherSuites: []HPKECipherSuite{otherCipher.cipher},
+			})
 			testCases = append(testCases, testCase{
 				testType: serverTest,
 				protocol: protocol,
 				name:     prefix + "ECH-Server-DisabledCipher-" + cipher.name,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: publicECHConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
 					Bugs: ProtocolBugs{
-						ExpectECHRetryConfigs: MarshalECHConfigList(config),
+						ExpectECHRetryConfigs: CreateECHConfigList(config.ECHConfig.Raw),
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(config)),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(config.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(config.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "public.example",
 				},
@@ -16964,15 +16639,15 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-ShortClientECHEnc",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
-					ExpectECHRetryConfigs: MarshalECHConfigList(publicECHConfig),
+					ExpectECHRetryConfigs: CreateECHConfigList(echConfig.ECHConfig.Raw),
 					TruncateClientECHEnc:  true,
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "public.example",
 			},
@@ -16986,15 +16661,15 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-CorruptEncryptedClientHello",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
-					ExpectECHRetryConfigs:       MarshalECHConfigList(publicECHConfig),
+					ExpectECHRetryConfigs:       CreateECHConfigList(echConfig.ECHConfig.Raw),
 					CorruptEncryptedClientHello: true,
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 		})
@@ -17007,7 +16682,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-CorruptSecondEncryptedClientHello",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				// Force a HelloRetryRequest.
 				DefaultCurves: []CurveID{},
 				Bugs: ProtocolBugs{
@@ -17015,8 +16690,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
@@ -17031,7 +16706,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-OmitSecondEncryptedClientHello",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				// Force a HelloRetryRequest.
 				DefaultCurves: []CurveID{},
 				Bugs: ProtocolBugs{
@@ -17039,13 +16714,37 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
 			expectedError:      ":MISSING_EXTENSION:",
 			expectedLocalError: "remote error: missing extension",
+		})
+
+		// Test that the server treats a mismatched config ID in the second ClientHello as fatal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-DifferentConfigIDSecondClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: echConfig.ECHConfig,
+				// Force a HelloRetryRequest.
+				DefaultCurves: []CurveID{},
+				Bugs: ProtocolBugs{
+					CorruptSecondEncryptedClientHelloConfigID: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-is-retry-config", "1",
+			},
+			shouldFail:         true,
+			expectedError:      ":DECODE_ERROR:",
+			expectedLocalError: "remote error: illegal parameter",
 		})
 
 		// Test early data works with ECH, in both accept and reject cases.
@@ -17055,14 +16754,15 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-EarlyData",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 			},
 			resumeSession: true,
 			earlyData:     true,
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -17074,7 +16774,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-EarlyDataRejected",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
 					// Cause the server to reject 0-RTT with a bad ticket age.
 					SendTicketAge: 1 * time.Hour,
@@ -17084,9 +16784,10 @@ func addEncryptedClientHelloTests() {
 			earlyData:               true,
 			expectEarlyDataRejected: true,
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -17101,7 +16802,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-Disabled",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 			},
 			flags: []string{
 				"-expect-server-name", "public.example",
@@ -17144,25 +16845,7 @@ func addEncryptedClientHelloTests() {
 			flags: []string{"-enable-ech-grease", "-expect-hrr"},
 		})
 
-		retryConfigValid := ECHConfig{
-			PublicName: "example.com",
-			// A real X25519 public key obtained from hpke.GenerateKeyPair().
-			PublicKey: []byte{
-				0x23, 0x1a, 0x96, 0x53, 0x52, 0x81, 0x1d, 0x7a,
-				0x36, 0x76, 0xaa, 0x5e, 0xad, 0xdb, 0x66, 0x1c,
-				0x92, 0x45, 0x8a, 0x60, 0xc7, 0x81, 0x93, 0xb0,
-				0x47, 0x7b, 0x54, 0x18, 0x6b, 0x9a, 0x1d, 0x6d},
-			KEM: hpke.X25519WithHKDFSHA256,
-			CipherSuites: []HPKECipherSuite{
-				{
-					KDF:  hpke.HKDFSHA256,
-					AEAD: hpke.AES256GCM,
-				},
-			},
-			MaxNameLen: 42,
-		}
-
-		retryConfigUnsupportedVersion := []byte{
+		unsupportedVersion := []byte{
 			// version
 			0xba, 0xdd,
 			// length
@@ -17170,12 +16853,6 @@ func addEncryptedClientHelloTests() {
 			// contents
 			0x05, 0x04, 0x03, 0x02, 0x01,
 		}
-
-		validAndInvalidConfigsBuilder := newByteBuilder()
-		validAndInvalidConfigsBody := validAndInvalidConfigsBuilder.addU16LengthPrefixed()
-		validAndInvalidConfigsBody.addBytes(MarshalECHConfig(&retryConfigValid))
-		validAndInvalidConfigsBody.addBytes(retryConfigUnsupportedVersion)
-		validAndInvalidConfigs := validAndInvalidConfigsBuilder.finish()
 
 		// Test that the client accepts a well-formed encrypted_client_hello
 		// extension in response to ECH GREASE. The response includes one ECHConfig
@@ -17189,14 +16866,36 @@ func addEncryptedClientHelloTests() {
 				MaxVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
 					ExpectClientECH: true,
-					// Include an additional well-formed ECHConfig with an invalid
-					// version. This ensures the client can iterate over the retry
-					// configs.
-					SendECHRetryConfigs: validAndInvalidConfigs,
+					// Include an additional well-formed ECHConfig with an
+					// unsupported version. This ensures the client can skip
+					// unsupported configs.
+					SendECHRetryConfigs: CreateECHConfigList(echConfig.ECHConfig.Raw, unsupportedVersion),
 				},
 			},
 			flags: []string{"-enable-ech-grease"},
 		})
+
+		if protocol != quic {
+			// Test that the client rejects retry configs in TLS 1.2.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-GREASE-Client-TLS12-Retry-Configs",
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						ExpectClientECH:                       true,
+						SendECHRetryConfigs:                   CreateECHConfigList(echConfig.ECHConfig.Raw, unsupportedVersion),
+						SendECHRetryConfigsInTLS12ServerHello: true,
+					},
+				},
+				flags:              []string{"-enable-ech-grease"},
+				shouldFail:         true,
+				expectedLocalError: "remote error: unsupported extension",
+				expectedError:      ":UNEXPECTED_EXTENSION:",
+			})
+		}
 
 		// Test that the client aborts with a decode_error alert when it receives a
 		// syntactically-invalid encrypted_client_hello extension from the server.
@@ -17299,7 +16998,7 @@ func addEncryptedClientHelloTests() {
 			config: Config{
 				MinVersion:      VersionTLS13,
 				MaxVersion:      VersionTLS13,
-				ClientECHConfig: publicECHConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
 					AlwaysSendECHIsInner: true,
 				},

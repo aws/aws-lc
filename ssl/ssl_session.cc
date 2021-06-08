@@ -350,19 +350,19 @@ const EVP_MD *ssl_session_get_digest(const SSL_SESSION *session) {
                                   session->cipher);
 }
 
-int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
+bool ssl_get_new_session(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (ssl->mode & SSL_MODE_NO_SESSION_CREATION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SESSION_MAY_NOT_BE_CREATED);
-    return 0;
+    return false;
   }
 
   UniquePtr<SSL_SESSION> session = ssl_session_new(ssl->ctx->x509_method);
   if (session == NULL) {
-    return 0;
+    return false;
   }
 
-  session->is_server = is_server;
+  session->is_server = ssl->server;
   session->ssl_version = ssl->version;
   session->is_quic = ssl->quic_method != nullptr;
 
@@ -384,24 +384,9 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
     session->auth_timeout = ssl->session_ctx->session_timeout;
   }
 
-  if (is_server) {
-    if (hs->ticket_expected || version >= TLS1_3_VERSION) {
-      // Don't set session IDs for sessions resumed with tickets. This will keep
-      // them out of the session cache.
-      session->session_id_length = 0;
-    } else {
-      session->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
-      if (!RAND_bytes(session->session_id, session->session_id_length)) {
-        return 0;
-      }
-    }
-  } else {
-    session->session_id_length = 0;
-  }
-
   if (hs->config->cert->sid_ctx_length > sizeof(session->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+    return false;
   }
   OPENSSL_memcpy(session->sid_ctx, hs->config->cert->sid_ctx,
                  hs->config->cert->sid_ctx_length);
@@ -413,7 +398,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
 
   hs->new_session = std::move(session);
   ssl_set_session(ssl, NULL);
-  return 1;
+  return true;
 }
 
 int ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx) {
@@ -1019,7 +1004,8 @@ int SSL_SESSION_should_be_single_use(const SSL_SESSION *session) {
 }
 
 int SSL_SESSION_is_resumable(const SSL_SESSION *session) {
-  return !session->not_resumable;
+  return !session->not_resumable &&
+         (session->session_id_length != 0 || !session->ticket.empty());
 }
 
 int SSL_SESSION_has_ticket(const SSL_SESSION *session) {
@@ -1297,13 +1283,4 @@ void SSL_CTX_set_info_callback(
 void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl, int type,
                                                 int value) {
   return ctx->info_callback;
-}
-
-void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx,
-                               void (*cb)(SSL *ssl, EVP_PKEY **pkey)) {
-  ctx->channel_id_cb = cb;
-}
-
-void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl, EVP_PKEY **pkey) {
-  return ctx->channel_id_cb;
 }

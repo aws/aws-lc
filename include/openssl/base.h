@@ -160,10 +160,6 @@ extern "C" {
 
 #if defined(__ANDROID_API__)
 #define OPENSSL_ANDROID
-#if defined(BORINGSSL_FIPS)
-// The FIPS module on Android passively receives entropy.
-#define BORINGSSL_FIPS_PASSIVE_ENTROPY
-#endif
 #endif
 
 #if defined(__FreeBSD__)
@@ -202,7 +198,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 14
+#define AWSLC_API_VERSION 15
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -379,7 +375,6 @@ typedef struct X509_info_st X509_INFO;
 typedef struct X509_name_entry_st X509_NAME_ENTRY;
 typedef struct X509_name_st X509_NAME;
 typedef struct X509_pubkey_st X509_PUBKEY;
-typedef struct X509_req_info_st X509_REQ_INFO;
 typedef struct X509_req_st X509_REQ;
 typedef struct X509_sig_st X509_SIG;
 typedef struct X509_val_st X509_VAL;
@@ -412,6 +407,11 @@ typedef struct evp_aead_st EVP_AEAD;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 typedef struct evp_cipher_st EVP_CIPHER;
 typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
+typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
+typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;
+typedef struct evp_hpke_kdf_st EVP_HPKE_KDF;
+typedef struct evp_hpke_kem_st EVP_HPKE_KEM;
+typedef struct evp_hpke_key_st EVP_HPKE_KEY;
 typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;

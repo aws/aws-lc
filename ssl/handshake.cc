@@ -126,7 +126,6 @@ BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
-      ech_accept(false),
       ech_present(false),
       ech_is_inner_present(false),
       scts_requested(false),
@@ -151,7 +150,9 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       handback(false),
       hints_requested(false),
       cert_compression_negotiated(false),
-      apply_jdk11_workaround(false) {
+      apply_jdk11_workaround(false),
+      can_release_private_key(false),
+      channel_id_negotiated(false) {
   assert(ssl);
 }
 
@@ -680,10 +681,6 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         // call the callback again.
       case ssl_hs_x509_lookup:
         ssl->s3->rwstate = SSL_ERROR_WANT_X509_LOOKUP;
-        hs->wait = ssl_hs_ok;
-        return -1;
-      case ssl_hs_channel_id_lookup:
-        ssl->s3->rwstate = SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
       case ssl_hs_private_key_operation:

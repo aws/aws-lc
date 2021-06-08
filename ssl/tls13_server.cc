@@ -23,12 +23,12 @@
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/hpke.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/stack.h>
 
 #include "../crypto/internal.h"
-#include "../crypto/hpke/internal.h"
 #include "internal.h"
 
 
@@ -155,7 +155,7 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
         (!ssl->quic_method || !ssl->config->quic_early_data_context.empty());
     if (enable_early_data) {
       // QUIC does not use the max_early_data_size parameter and always sets it
-      // to a fixed value. See draft-ietf-quic-tls-22, section 4.5.
+      // to a fixed value. See RFC 9001, section 4.6.1.
       session->ticket_max_early_data =
           ssl->quic_method != nullptr ? 0xffffffff : kMaxEarlyDataAccepted;
     }
@@ -188,7 +188,7 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
       }
     }
 
-    // Add a fake extension. See draft-davidben-tls-grease-01.
+    // Add a fake extension. See RFC 8701.
     if (!CBB_add_u16(&extensions,
                      ssl_get_grease_value(hs, ssl_grease_ticket_extension)) ||
         !CBB_add_u16(&extensions, 0 /* empty */)) {
@@ -377,7 +377,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
                          &offered_ticket, msg, &client_hello)) {
     case ssl_ticket_aead_ignore_ticket:
       assert(!session);
-      if (!ssl_get_new_session(hs, 1 /* server */)) {
+      if (!ssl_get_new_session(hs)) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
       }
@@ -394,6 +394,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       }
 
       ssl->s3->session_reused = true;
+      hs->can_release_private_key = true;
 
       // Resumption incorporates fresh key material, so refresh the timeout.
       ssl_session_renew_timeout(ssl, hs->new_session.get(),
@@ -444,12 +445,9 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->early_data_reason = ssl_early_data_unsupported_for_session;
   } else if (!hs->early_data_offered) {
     ssl->s3->early_data_reason = ssl_early_data_peer_declined;
-  } else if (ssl->s3->channel_id_valid) {
+  } else if (hs->channel_id_negotiated) {
     // Channel ID is incompatible with 0-RTT.
     ssl->s3->early_data_reason = ssl_early_data_channel_id;
-  } else if (ssl->s3->token_binding_negotiated) {
-    // Token Binding is incompatible with 0-RTT.
-    ssl->s3->early_data_reason = ssl_early_data_token_binding;
   } else if (MakeConstSpan(ssl->s3->alpn_selected) != session->early_alpn) {
     // The negotiated ALPN must match the one in the ticket.
     ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
@@ -608,7 +606,7 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (hs->ech_accept) {
+  if (ssl->s3->ech_accept) {
     // If we previously accepted the ClientHelloInner, check that the second
     // ClientHello contains an encrypted_client_hello extension.
     CBS ech_body;
@@ -621,10 +619,11 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
 
     // Parse a ClientECH out of the extension body.
     uint16_t kdf_id, aead_id;
-    CBS config_id, enc, payload;
+    uint8_t config_id;
+    CBS enc, payload;
     if (!CBS_get_u16(&ech_body, &kdf_id) ||  //
         !CBS_get_u16(&ech_body, &aead_id) ||
-        !CBS_get_u8_length_prefixed(&ech_body, &config_id) ||
+        !CBS_get_u8(&ech_body, &config_id) ||
         !CBS_get_u16_length_prefixed(&ech_body, &enc) ||
         !CBS_get_u16_length_prefixed(&ech_body, &payload) ||
         CBS_len(&ech_body) != 0) {
@@ -634,10 +633,11 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     }
 
     // Check that ClientECH.cipher_suite is unchanged and that
-    // ClientECH.config_id and ClientECH.enc are empty.
-    if (kdf_id != EVP_HPKE_CTX_get_kdf_id(hs->ech_hpke_ctx.get()) ||
-        aead_id != EVP_HPKE_CTX_get_aead_id(hs->ech_hpke_ctx.get()) ||
-        CBS_len(&config_id) > 0 || CBS_len(&enc) > 0) {
+    // ClientECH.enc is empty.
+    if (kdf_id != EVP_HPKE_KDF_id(EVP_HPKE_CTX_kdf(hs->ech_hpke_ctx.get())) ||
+        aead_id !=
+            EVP_HPKE_AEAD_id(EVP_HPKE_CTX_aead(hs->ech_hpke_ctx.get())) ||
+        config_id != hs->ech_config_id || CBS_len(&enc) > 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
@@ -769,8 +769,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  assert(!hs->ech_accept || hs->ech_is_inner_present);
-
+  assert(!ssl->s3->ech_accept || hs->ech_is_inner_present);
   if (hs->ech_is_inner_present) {
     // Construct the ServerHelloECHConf message, which is the same as
     // ServerHello, except the last 8 bytes of its random field are zeroed out.
@@ -820,7 +819,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     hs->cert_request = !!(hs->config->verify_mode & SSL_VERIFY_PEER);
     // Only request a certificate if Channel ID isn't negotiated.
     if ((hs->config->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
-        ssl->s3->channel_id_valid) {
+        hs->channel_id_negotiated) {
       hs->cert_request = false;
     }
   }
@@ -901,6 +900,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_hints_ready;
   }
 
+  hs->can_release_private_key = true;
   if (!tls13_add_finished(hs) ||
       // Update the secret to the master secret and derive traffic keys.
       !tls13_advance_key_schedule(
@@ -978,9 +978,8 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     hs->in_early_data = true;
   }
 
-  // QUIC doesn't use an EndOfEarlyData message (draft-ietf-quic-tls-22,
-  // section 8.3), so we switch to client_handshake_secret before the early
-  // return.
+  // QUIC doesn't use an EndOfEarlyData message (RFC 9001, section 8.3), so we
+  // switch to client_handshake_secret before the early return.
   if (ssl->quic_method != nullptr) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                                hs->new_session.get(),
@@ -1156,7 +1155,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl->s3->channel_id_valid) {
+  if (!hs->channel_id_negotiated) {
     hs->tls13_state = state13_read_client_finished;
     return ssl_hs_ok;
   }

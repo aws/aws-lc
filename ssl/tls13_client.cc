@@ -388,6 +388,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     }
 
     ssl->s3->session_reused = true;
+    hs->can_release_private_key = true;
     // Only authentication information carries over in TLS 1.3.
     hs->new_session =
         SSL_SESSION_dup(ssl->session.get(), SSL_SESSION_DUP_AUTH_ONLY);
@@ -400,7 +401,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     // Resumption incorporates fresh key material, so refresh the timeout.
     ssl_session_renew_timeout(ssl, hs->new_session.get(),
                               ssl->session_ctx->session_psk_dhe_timeout);
-  } else if (!ssl_get_new_session(hs, 0)) {
+  } else if (!ssl_get_new_session(hs)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
@@ -500,9 +501,9 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-    // Channel ID and Token Binding are incompatible with 0-RTT. The ALPS
-    // extension should be negotiated implicitly.
-    if (ssl->s3->channel_id_valid || ssl->s3->token_binding_negotiated ||
+    // Channel ID is incompatible with 0-RTT. The ALPS extension should be
+    // negotiated implicitly.
+    if (hs->channel_id_negotiated ||
         hs->new_session->has_application_settings) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION_ON_EARLY_DATA);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -712,8 +713,7 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (ssl->s3->early_data_accepted) {
-    // QUIC omits the EndOfEarlyData message. See draft-ietf-quic-tls-22,
-    // section 8.3.
+    // QUIC omits the EndOfEarlyData message. See RFC 9001, section 8.3.
     if (ssl->quic_method == nullptr) {
       ScopedCBB cbb;
       CBB body;
@@ -817,18 +817,10 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  hs->can_release_private_key = true;
 
   // Send a Channel ID assertion if necessary.
-  if (ssl->s3->channel_id_valid) {
-    if (!ssl_do_channel_id_callback(hs)) {
-      hs->tls13_state = state_complete_second_flight;
-      return ssl_hs_error;
-    }
-
-    if (hs->config->channel_id_private == NULL) {
-      return ssl_hs_channel_id_lookup;
-    }
-
+  if (hs->channel_id_negotiated) {
     ScopedCBB cbb;
     CBB body;
     if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||
@@ -1042,7 +1034,7 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
     }
 
     // QUIC does not use the max_early_data_size parameter and always sets it to
-    // a fixed value. See draft-ietf-quic-tls-22, section 4.5.
+    // a fixed value. See RFC 9001, section 4.6.1.
     if (ssl->quic_method != nullptr &&
         session->ticket_max_early_data != 0xffffffff) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -1051,8 +1043,8 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
     }
   }
 
-  // Generate a session ID for this session. Some callers expect all sessions to
-  // have a session ID.
+  // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
+  // Envoy's tests depend on this, although perhaps they shouldn't.
   SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id);
   session->session_id_length = SHA256_DIGEST_LENGTH;
 

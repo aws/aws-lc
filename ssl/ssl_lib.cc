@@ -275,9 +275,7 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   SSL *const ssl = hs->ssl;
   SSL_CTX *ctx = ssl->session_ctx.get();
-  // Never cache sessions with empty session IDs.
-  if (ssl->s3->established_session->session_id_length == 0 ||
-      ssl->s3->established_session->not_resumable ||
+  if (!SSL_SESSION_is_resumable(ssl->s3->established_session.get()) ||
       (ctx->session_cache_mode & mode) != mode) {
     return;
   }
@@ -463,7 +461,8 @@ static bool ssl_can_renegotiate(const SSL *ssl) {
     return false;
   }
 
-  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl->s3->have_version &&
+      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
 
@@ -731,7 +730,7 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       handoff(false),
       shed_handshake_config(false),
       jdk11_workaround(false),
-      quic_use_legacy_codepoint(true) {
+      quic_use_legacy_codepoint(false) {
   assert(ssl);
 }
 
@@ -1317,8 +1316,6 @@ const char *SSL_early_data_reason_string(enum ssl_early_data_reason_t reason) {
       return "alpn_mismatch";
     case ssl_early_data_channel_id:
       return "channel_id";
-    case ssl_early_data_token_binding:
-      return "token_binding";
     case ssl_early_data_ticket_age_skew:
       return "ticket_age_skew";
     case ssl_early_data_quic_parameter_mismatch:
@@ -1372,7 +1369,6 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_ERROR_HANDOFF:
     case SSL_ERROR_HANDBACK:
     case SSL_ERROR_WANT_X509_LOOKUP:
-    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP:
     case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
     case SSL_ERROR_PENDING_TICKET:
     case SSL_ERROR_EARLY_DATA_REJECTED:
@@ -1446,8 +1442,6 @@ const char *SSL_error_description(int err) {
       return "WANT_CONNECT";
     case SSL_ERROR_WANT_ACCEPT:
       return "WANT_ACCEPT";
-    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP:
-      return "WANT_CHANNEL_ID_LOOKUP";
     case SSL_ERROR_PENDING_SESSION:
       return "PENDING_SESSION";
     case SSL_ERROR_PENDING_CERTIFICATE:
@@ -1464,18 +1458,13 @@ const char *SSL_error_description(int err) {
       return "HANDOFF";
     case SSL_ERROR_HANDBACK:
       return "HANDBACK";
+    case SSL_ERROR_WANT_RENEGOTIATE:
+      return "WANT_RENEGOTIATE";
     case SSL_ERROR_HANDSHAKE_HINTS_READY:
       return "HANDSHAKE_HINTS_READY";
     default:
       return nullptr;
   }
-}
-
-void SSL_set_enable_ech_grease(SSL *ssl, int enable) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl->config->ech_grease_enabled = !!enable;
 }
 
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
@@ -1787,6 +1776,9 @@ int SSL_renegotiate(SSL *ssl) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
     return 0;
   }
+
+  // We should not have told the caller to release the private key.
+  assert(!SSL_can_release_private_key(ssl));
 
   // Renegotiation is only supported at quiescent points in the application
   // protocol, namely in HTTPS, just before reading the HTTP response.
@@ -2189,63 +2181,6 @@ int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
   return 1;
 }
 
-SSL_ECH_SERVER_CONFIG_LIST *SSL_ECH_SERVER_CONFIG_LIST_new() {
-  return New<SSL_ECH_SERVER_CONFIG_LIST>();
-}
-
-void SSL_ECH_SERVER_CONFIG_LIST_up_ref(SSL_ECH_SERVER_CONFIG_LIST *configs) {
-  CRYPTO_refcount_inc(&configs->references);
-}
-
-void SSL_ECH_SERVER_CONFIG_LIST_free(SSL_ECH_SERVER_CONFIG_LIST *configs) {
-  if (configs == nullptr ||
-      !CRYPTO_refcount_dec_and_test_zero(&configs->references)) {
-    return;
-  }
-
-  configs->~ssl_ech_server_config_list_st();
-  OPENSSL_free(configs);
-}
-
-int SSL_ECH_SERVER_CONFIG_LIST_add(SSL_ECH_SERVER_CONFIG_LIST *configs,
-                                   int is_retry_config,
-                                   const uint8_t *ech_config,
-                                   size_t ech_config_len,
-                                   const uint8_t *private_key,
-                                   size_t private_key_len) {
-  ECHServerConfig parsed_config;
-  if (!parsed_config.Init(MakeConstSpan(ech_config, ech_config_len),
-                          MakeConstSpan(private_key, private_key_len),
-                          !!is_retry_config)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return 0;
-  }
-  if (!configs->configs.Push(std::move(parsed_config))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  return 1;
-}
-
-int SSL_CTX_set1_ech_server_config_list(SSL_CTX *ctx,
-                                        SSL_ECH_SERVER_CONFIG_LIST *list) {
-  bool has_retry_config = false;
-  for (const bssl::ECHServerConfig &config : list->configs) {
-    if (config.is_retry_config()) {
-      has_retry_config = true;
-      break;
-    }
-  }
-  if (!has_retry_config) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_SERVER_WOULD_HAVE_NO_RETRY_CONFIGS);
-    return 0;
-  }
-  UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> owned_list = UpRef(list);
-  MutexWriteLock lock(&ctx->lock);
-  ctx->ech_server_config_list.swap(owned_list);
-  return 1;
-}
-
 int SSL_select_next_proto(uint8_t **out, uint8_t *out_len, const uint8_t *peer,
                           unsigned peer_len, const uint8_t *supported,
                           unsigned supported_len) {
@@ -2432,8 +2367,6 @@ int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
   }
 
   ctx->channel_id_private = UpRef(private_key);
-  ctx->channel_id_enabled = true;
-
   return 1;
 }
 
@@ -2447,8 +2380,6 @@ int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
   }
 
   ssl->config->channel_id_private = UpRef(private_key);
-  ssl->config->channel_id_enabled = true;
-
   return 1;
 }
 
@@ -2458,25 +2389,6 @@ size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out, size_t max_out) {
   }
   OPENSSL_memcpy(out, ssl->s3->channel_id, (max_out < 64) ? max_out : 64);
   return 64;
-}
-
-int SSL_set_token_binding_params(SSL *ssl, const uint8_t *params, size_t len) {
-  if (!ssl->config) {
-    return 0;
-  }
-  if (len > 256) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return 0;
-  }
-  return ssl->config->token_binding_params.CopyFrom(MakeConstSpan(params, len));
-}
-
-int SSL_is_token_binding_negotiated(const SSL *ssl) {
-  return ssl->s3->token_binding_negotiated;
-}
-
-uint8_t SSL_get_negotiated_token_binding_param(const SSL *ssl) {
-  return ssl->s3->negotiated_token_binding_param;
 }
 
 size_t SSL_get0_certificate_types(const SSL *ssl, const uint8_t **out_types) {
@@ -2838,6 +2750,17 @@ void SSL_CTX_set_current_time_cb(SSL_CTX *ctx,
                                  void (*cb)(const SSL *ssl,
                                             struct timeval *out_clock)) {
   ctx->current_time_cb = cb;
+}
+
+int SSL_can_release_private_key(const SSL *ssl) {
+  if (ssl_can_renegotiate(ssl)) {
+    // If the connection can renegotiate (client only), the private key may be
+    // used in a future handshake.
+    return 0;
+  }
+
+  // Otherwise, this is determined by the current handshake.
+  return !ssl->s3->hs || ssl->s3->hs->can_release_private_key;
 }
 
 int SSL_is_init_finished(const SSL *ssl) {

@@ -508,12 +508,10 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 // TODO(davidben): Remove this. It's used by accept BIOs which are bizarre.
 #define SSL_ERROR_WANT_ACCEPT 8
 
-// SSL_ERROR_WANT_CHANNEL_ID_LOOKUP indicates the operation failed looking up
-// the Channel ID key. The caller may retry the operation when |channel_id_cb|
-// is ready to return a key or one has been configured with
-// |SSL_set1_tls_channel_id|.
+// SSL_ERROR_WANT_CHANNEL_ID_LOOKUP is never used.
 //
-// See also |SSL_CTX_set_channel_id_cb|.
+// TODO(davidben): Remove this. Some callers reference it when stringifying
+// errors. They should use |SSL_error_description| instead.
 #define SSL_ERROR_WANT_CHANNEL_ID_LOOKUP 9
 
 // SSL_ERROR_PENDING_SESSION indicates the operation failed because the session
@@ -1281,6 +1279,15 @@ OPENSSL_EXPORT void SSL_set_private_key_method(
 OPENSSL_EXPORT void SSL_CTX_set_private_key_method(
     SSL_CTX *ctx, const SSL_PRIVATE_KEY_METHOD *key_method);
 
+// SSL_can_release_private_key returns one if |ssl| will no longer call into the
+// private key and zero otherwise. If the function returns one, the caller can
+// release state associated with the private key.
+//
+// NOTE: This function assumes the caller does not use |SSL_clear| to reuse
+// |ssl| for a second connection. If |SSL_clear| is used, BoringSSL may still
+// use the private key on the second connection.
+OPENSSL_EXPORT int SSL_can_release_private_key(const SSL *ssl);
+
 
 // Cipher suites.
 //
@@ -1784,8 +1791,10 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 // used without leaking a correlator.
 OPENSSL_EXPORT int SSL_SESSION_should_be_single_use(const SSL_SESSION *session);
 
-// SSL_SESSION_is_resumable returns one if |session| is resumable and zero
-// otherwise.
+// SSL_SESSION_is_resumable returns one if |session| is complete and contains a
+// session ID or ticket. It returns zero otherwise. Note this function does not
+// ensure |session| will be resumed. It may be expired, dropped by the server,
+// or associated with incompatible parameters.
 OPENSSL_EXPORT int SSL_SESSION_is_resumable(const SSL_SESSION *session);
 
 // SSL_SESSION_has_ticket returns one if |session| has a ticket and zero
@@ -2963,15 +2972,16 @@ OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
 
 // Channel ID.
 //
-// See draft-balfanz-tls-channelid-01.
+// See draft-balfanz-tls-channelid-01. This is an old, experimental mechanism
+// and should not be used in new code.
 
 // SSL_CTX_set_tls_channel_id_enabled configures whether connections associated
-// with |ctx| should enable Channel ID.
+// with |ctx| should enable Channel ID as a server.
 OPENSSL_EXPORT void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx,
                                                        int enabled);
 
 // SSL_set_tls_channel_id_enabled configures whether |ssl| should enable Channel
-// ID.
+// ID as a server.
 OPENSSL_EXPORT void SSL_set_tls_channel_id_enabled(SSL *ssl, int enabled);
 
 // SSL_CTX_set1_tls_channel_id configures a TLS client to send a TLS Channel ID
@@ -2985,54 +2995,14 @@ OPENSSL_EXPORT int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx,
 // success and zero on error.
 OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
 
-// SSL_get_tls_channel_id gets the client's TLS Channel ID from a server |SSL*|
+// SSL_get_tls_channel_id gets the client's TLS Channel ID from a server |SSL|
 // and copies up to the first |max_out| bytes into |out|. The Channel ID
 // consists of the client's P-256 public key as an (x,y) pair where each is a
 // 32-byte, big-endian field element. It returns 0 if the client didn't offer a
-// Channel ID and the length of the complete Channel ID otherwise.
+// Channel ID and the length of the complete Channel ID otherwise. This function
+// always returns zero if |ssl| is a client.
 OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
                                              size_t max_out);
-
-// SSL_CTX_set_channel_id_cb sets a callback to be called when a TLS Channel ID
-// is requested. The callback may set |*out_pkey| to a key, passing a reference
-// to the caller. If none is returned, the handshake will pause and
-// |SSL_get_error| will return |SSL_ERROR_WANT_CHANNEL_ID_LOOKUP|.
-//
-// See also |SSL_ERROR_WANT_CHANNEL_ID_LOOKUP|.
-OPENSSL_EXPORT void SSL_CTX_set_channel_id_cb(
-    SSL_CTX *ctx, void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey));
-
-// SSL_CTX_get_channel_id_cb returns the callback set by
-// |SSL_CTX_set_channel_id_cb|.
-OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(
-    SSL *ssl, EVP_PKEY **out_pkey);
-
-
-// Token Binding.
-//
-// See draft-ietf-tokbind-protocol-16.
-
-// SSL_set_token_binding_params sets |params| as the Token Binding Key
-// parameters (section 3 of draft-ietf-tokbind-protocol-16) to negotiate on the
-// connection. If this function is not called, or if |len| is 0, then this
-// endpoint will not attempt to negotiate Token Binding. |params| are provided
-// in preference order, with the more preferred parameters at the beginning of
-// the list. This function returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SSL_set_token_binding_params(SSL *ssl, const uint8_t *params,
-                                                size_t len);
-
-// SSL_is_token_binding_negotiated returns 1 if Token Binding was negotiated
-// on this connection and 0 otherwise. On a server, it is possible for this
-// function to return 1 when the client's view of the connection is that Token
-// Binding was not negotiated. This occurs when the server indicates a version
-// of Token Binding less than the client's minimum version.
-OPENSSL_EXPORT int SSL_is_token_binding_negotiated(const SSL *ssl);
-
-// SSL_get_negotiated_token_binding_param returns the TokenBindingKeyParameters
-// enum value that was negotiated. It is only valid to call this function if
-// SSL_is_token_binding_negotiated returned 1, otherwise this function returns
-// an undefined value.
-OPENSSL_EXPORT uint8_t SSL_get_negotiated_token_binding_param(const SSL *ssl);
 
 
 // DTLS-SRTP.
@@ -3070,8 +3040,8 @@ OPENSSL_EXPORT int SSL_CTX_set_srtp_profiles(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_srtp_profiles(SSL *ssl, const char *profiles);
 
 // SSL_get_srtp_profiles returns the SRTP profiles supported by |ssl|.
-OPENSSL_EXPORT STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(
-    SSL *ssl);
+OPENSSL_EXPORT const STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(
+    const SSL *ssl);
 
 // SSL_get_selected_srtp_profile returns the selected SRTP profile, or NULL if
 // SRTP was not negotiated.
@@ -3202,7 +3172,7 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 //
 // QUIC acts as an underlying transport for the TLS 1.3 handshake. The following
 // functions allow a QUIC implementation to serve as the underlying transport as
-// described in draft-ietf-quic-tls.
+// described in RFC 9001.
 //
 // When configured for QUIC, |SSL_do_handshake| will drive the handshake as
 // before, but it will not use the configured |BIO|. It will call functions on
@@ -3222,8 +3192,7 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // confirm the handshake. As a client, |SSL_ERROR_EARLY_DATA_REJECTED| and
 // |SSL_reset_early_data_reject| behave as usual.
 //
-// See https://tools.ietf.org/html/draft-ietf-quic-tls-15#section-4.1 for more
-// details.
+// See https://www.rfc-editor.org/rfc/rfc9001.html#section-4.1 for more details.
 //
 // To avoid DoS attacks, the QUIC implementation must limit the amount of data
 // being queued up. The implementation can call
@@ -3234,7 +3203,8 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // |SSL_set_quic_transport_params|. |SSL_get_peer_quic_transport_params| may be
 // used to query the value received from the peer. BoringSSL handles this
 // extension as an opaque byte string. The caller is responsible for serializing
-// and parsing them. See draft-ietf-quic-transport (section 7.3) for details.
+// and parsing them. See https://www.rfc-editor.org/rfc/rfc9000#section-7.4 for
+// details.
 //
 // QUIC additionally imposes restrictions on 0-RTT. In particular, the QUIC
 // transport layer requires that if a server accepts 0-RTT data, then the
@@ -3346,7 +3316,7 @@ struct ssl_quic_method_st {
 // that may be received at the given encryption level. This function should be
 // used to limit buffering in the QUIC implementation.
 //
-// See https://tools.ietf.org/html/draft-ietf-quic-transport-16#section-4.4.
+// See https://www.rfc-editor.org/rfc/rfc9000#section-7.5
 OPENSSL_EXPORT size_t SSL_quic_max_handshake_flight_len(
     const SSL *ssl, enum ssl_encryption_level_t level);
 
@@ -3409,8 +3379,8 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(
 
 // SSL_set_quic_use_legacy_codepoint configures whether to use the legacy QUIC
 // extension codepoint 0xffa5 as opposed to the official value 57. Call with
-// |use_legacy| set to 1 to use 0xffa5 and call with 0 to use 57. The default
-// value for this is currently 1 but it will change to 0 at a later date.
+// |use_legacy| set to 1 to use 0xffa5 and call with 0 to use 57. By default,
+// the standard code point is used.
 OPENSSL_EXPORT void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy);
 
 // SSL_set_quic_early_data_context configures a context string in QUIC servers
@@ -3559,8 +3529,7 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   ssl_early_data_alpn_mismatch = 9,
   // The connection negotiated Channel ID, which is incompatible with 0-RTT.
   ssl_early_data_channel_id = 10,
-  // The connection negotiated token binding, which is incompatible with 0-RTT.
-  ssl_early_data_token_binding = 11,
+  // Value 11 is reserved. (It has historically |ssl_early_data_token_binding|.)
   // The client and server ticket age were too far apart.
   ssl_early_data_ticket_age_skew = 12,
   // QUIC parameters differ between this connection and the original.
@@ -3590,7 +3559,7 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 //
 // ECH support in BoringSSL is still experimental and under development.
 //
-// See https://tools.ietf.org/html/draft-ietf-tls-esni-09.
+// See https://tools.ietf.org/html/draft-ietf-tls-esni-10.
 
 // SSL_set_enable_ech_grease configures whether the client may send ECH GREASE
 // as part of this connection.
@@ -3662,6 +3631,9 @@ OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
 OPENSSL_EXPORT int SSL_CTX_set1_ech_server_config_list(
     SSL_CTX *ctx, SSL_ECH_SERVER_CONFIG_LIST *list);
 
+// SSL_ech_accepted returns one if |ssl| negotiated ECH and zero otherwise.
+OPENSSL_EXPORT int SSL_ech_accepted(const SSL *ssl);
+
 
 // Alerts.
 //
@@ -3716,6 +3688,7 @@ OPENSSL_EXPORT int SSL_CTX_set1_ech_server_config_list(
 #define SSL_AD_UNKNOWN_PSK_IDENTITY TLS1_AD_UNKNOWN_PSK_IDENTITY
 #define SSL_AD_CERTIFICATE_REQUIRED TLS1_AD_CERTIFICATE_REQUIRED
 #define SSL_AD_NO_APPLICATION_PROTOCOL TLS1_AD_NO_APPLICATION_PROTOCOL
+#define SSL_AD_ECH_REQUIRED TLS1_AD_ECH_REQUIRED
 
 // SSL_alert_type_string_long returns a string description of |value| as an
 // alert type (warning or fatal).
@@ -4277,7 +4250,7 @@ OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
                                                                    int enable);
 
 // SSL_CTX_set_grease_enabled configures whether sockets on |ctx| should enable
-// GREASE. See draft-davidben-tls-grease-01.
+// GREASE. See RFC 8701.
 OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
 
 // SSL_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
@@ -5506,5 +5479,6 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_UNKNOWN_PSK_IDENTITY 1115
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
+#define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
 
 #endif  // OPENSSL_HEADER_SSL_H

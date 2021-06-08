@@ -124,11 +124,11 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/hpke.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "../crypto/hpke/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
@@ -593,7 +593,7 @@ static bool ext_sni_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // Encrypted ClientHello (ECH)
 //
-// https://tools.ietf.org/html/draft-ietf-tls-esni-09
+// https://tools.ietf.org/html/draft-ietf-tls-esni-10
 
 // random_size returns a random value between |min| and |max|, inclusive.
 static size_t random_size(size_t min, size_t max) {
@@ -618,73 +618,47 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
-  constexpr uint16_t kdf_id = EVP_HPKE_HKDF_SHA256;
-  const uint16_t aead_id = EVP_has_aes_hardware()
-                               ? EVP_HPKE_AEAD_AES_128_GCM
-                               : EVP_HPKE_AEAD_CHACHA20POLY1305;
-  const EVP_AEAD *aead = EVP_HPKE_get_aead(aead_id);
-  assert(aead != nullptr);
-
-  uint8_t ech_config_id[8];
-  RAND_bytes(ech_config_id, sizeof(ech_config_id));
+  const uint16_t kdf_id = EVP_HPKE_HKDF_SHA256;
+  const uint16_t aead_id = EVP_has_aes_hardware() ? EVP_HPKE_AES_128_GCM
+                                                  : EVP_HPKE_CHACHA20_POLY1305;
+  constexpr size_t kAEADOverhead = 16;  // Both AEADs have a 16-byte tag.
+  uint8_t ech_config_id;
+  RAND_bytes(&ech_config_id, 1);
 
   uint8_t ech_enc[X25519_PUBLIC_VALUE_LEN];
   uint8_t private_key_unused[X25519_PRIVATE_KEY_LEN];
   X25519_keypair(ech_enc, private_key_unused);
 
-  // To determine a plausible length for the payload, we first estimate the size
-  // of a typical EncodedClientHelloInner, with an expected use of
-  // outer_extensions. To limit the size, we only consider initial ClientHellos
-  // that do not offer resumption.
+  // To determine a plausible length for the payload, we estimate the size of a
+  // typical EncodedClientHelloInner without resumption:
   //
-  //   Field/Extension                           Size
-  // ---------------------------------------------------------------------
-  //   version                                      2
-  //   random                                      32
-  //   legacy_session_id                            1
-  //      - Has a U8 length prefix, but body is
-  //        always empty string in inner CH.
-  //   cipher_suites                                2  (length prefix)
-  //      - Only includes TLS 1.3 ciphers (3).      6
-  //      - Maybe also include a GREASE suite.      2
-  //   legacy_compression_methods                   2  (length prefix)
-  //      - Always has "null" compression method.   1
-  //   extensions:                                  2  (length prefix)
-  //      - encrypted_client_hello (empty).         4  (id + length prefix)
-  //      - supported_versions.                     4  (id + length prefix)
-  //        - U8 length prefix                      1
-  //        - U16 protocol version (TLS 1.3)        2
-  //      - outer_extensions.                       4  (id + length prefix)
-  //        - U8 length prefix                      1
-  //        - N extension IDs (2 bytes each):
-  //          - key_share                           2
-  //          - sigalgs                             2
-  //          - sct                                 2
-  //          - alpn                                2
-  //          - supported_groups.                   2
-  //          - status_request.                     2
-  //          - psk_key_exchange_modes.             2
-  //          - compress_certificate.               2
+  //   2+32+1+2   version, random, legacy_session_id, legacy_compression_methods
+  //   2+4*2      cipher_suites (three TLS 1.3 ciphers, GREASE)
+  //   2          extensions prefix
+  //   4          ech_is_inner
+  //   4+1+2*2    supported_versions (TLS 1.3, GREASE)
+  //   4+1+10*2   outer_extensions (key_share, sigalgs, sct, alpn,
+  //              supported_groups, status_request, psk_key_exchange_modes,
+  //              compress_certificate, GREASE x2)
   //
-  // The server_name extension has an overhead of 9 bytes, plus up to an
-  // estimated 100 bytes of hostname. Rounding up to a multiple of 32 yields a
-  // range of 96 to 192. Note that this estimate does not fully capture
-  // optional extensions like GREASE, but the rounding gives some leeway.
-
-  uint8_t payload[EVP_AEAD_MAX_OVERHEAD + 192];
-  const size_t payload_len =
-      EVP_AEAD_max_overhead(aead) + 32 * random_size(96 / 32, 192 / 32);
+  // The server_name extension has an overhead of 9 bytes. For now, arbitrarily
+  // estimate maximum_name_length to be between 32 and 100 bytes.
+  //
+  // TODO(davidben): If the padding scheme changes to also round the entire
+  // payload, adjust this to match. See
+  // https://github.com/tlswg/draft-ietf-tls-esni/issues/433
+  uint8_t payload[196 + kAEADOverhead];
+  const size_t payload_len = random_size(128, 196) + kAEADOverhead;
   assert(payload_len <= sizeof(payload));
   RAND_bytes(payload, payload_len);
 
   // Inside the TLS extension contents, write a serialized ClientEncryptedCH.
-  CBB ech_body, config_id_cbb, enc_cbb, payload_cbb;
+  CBB ech_body, enc_cbb, payload_cbb;
   if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
       !CBB_add_u16_length_prefixed(out, &ech_body) ||
       !CBB_add_u16(&ech_body, kdf_id) ||  //
       !CBB_add_u16(&ech_body, aead_id) ||
-      !CBB_add_u8_length_prefixed(&ech_body, &config_id_cbb) ||
-      !CBB_add_bytes(&config_id_cbb, ech_config_id, sizeof(ech_config_id)) ||
+      !CBB_add_u8(&ech_body, ech_config_id) ||
       !CBB_add_u16_length_prefixed(&ech_body, &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, ech_enc, OPENSSL_ARRAY_SIZE(ech_enc)) ||
       !CBB_add_u16_length_prefixed(&ech_body, &payload_cbb) ||
@@ -714,8 +688,17 @@ static bool ext_ech_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_ech_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                       CBS *contents) {
+  SSL *const ssl = hs->ssl;
   if (contents == NULL) {
     return true;
+  }
+
+  // The ECH extension may not be sent in TLS 1.2 ServerHello, only TLS 1.3
+  // EncryptedExtension.
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+    return false;
   }
 
   // If the client only sent GREASE, we must check the extension syntactically.
@@ -751,7 +734,7 @@ static bool ext_ech_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||  //
-      hs->ech_accept ||                              //
+      ssl->s3->ech_accept ||                         //
       hs->ech_server_config_list == nullptr) {
     return true;
   }
@@ -765,12 +748,12 @@ static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(&body, &retry_configs)) {
     return false;
   }
-  for (const ECHServerConfig &config : hs->ech_server_config_list->configs) {
-    if (!config.is_retry_config()) {
+  for (const auto &config : hs->ech_server_config_list->configs) {
+    if (!config->is_retry_config()) {
       continue;
     }
-    if (!CBB_add_bytes(&retry_configs, config.raw().data(),
-                       config.raw().size())) {
+    if (!CBB_add_bytes(&retry_configs, config->ech_config().data(),
+                       config->ech_config().size())) {
       return false;
     }
   }
@@ -1667,13 +1650,9 @@ static bool ext_alpn_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 //
 // https://tools.ietf.org/html/draft-balfanz-tls-channelid-01
 
-static void ext_channel_id_init(SSL_HANDSHAKE *hs) {
-  hs->ssl->s3->channel_id_valid = false;
-}
-
 static bool ext_channel_id_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (!hs->config->channel_id_enabled || SSL_is_dtls(ssl)) {
+  if (!hs->config->channel_id_private || SSL_is_dtls(ssl)) {
     return true;
   }
 
@@ -1688,19 +1667,18 @@ static bool ext_channel_id_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 static bool ext_channel_id_parse_serverhello(SSL_HANDSHAKE *hs,
                                              uint8_t *out_alert,
                                              CBS *contents) {
-  SSL *const ssl = hs->ssl;
   if (contents == NULL) {
     return true;
   }
 
-  assert(!SSL_is_dtls(ssl));
-  assert(hs->config->channel_id_enabled);
+  assert(!SSL_is_dtls(hs->ssl));
+  assert(hs->config->channel_id_private);
 
   if (CBS_len(contents) != 0) {
     return false;
   }
 
-  ssl->s3->channel_id_valid = true;
+  hs->channel_id_negotiated = true;
   return true;
 }
 
@@ -1716,13 +1694,12 @@ static bool ext_channel_id_parse_clienthello(SSL_HANDSHAKE *hs,
     return false;
   }
 
-  ssl->s3->channel_id_valid = true;
+  hs->channel_id_negotiated = true;
   return true;
 }
 
 static bool ext_channel_id_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
-  SSL *const ssl = hs->ssl;
-  if (!ssl->s3->channel_id_valid) {
+  if (!hs->channel_id_negotiated) {
     return true;
   }
 
@@ -1739,16 +1716,13 @@ static bool ext_channel_id_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 //
 // https://tools.ietf.org/html/rfc5764
 
-
-static void ext_srtp_init(SSL_HANDSHAKE *hs) {
-  hs->ssl->s3->srtp_profile = NULL;
-}
-
 static bool ext_srtp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  STACK_OF(SRTP_PROTECTION_PROFILE) *profiles = SSL_get_srtp_profiles(ssl);
+  const STACK_OF(SRTP_PROTECTION_PROFILE) *profiles =
+      SSL_get_srtp_profiles(ssl);
   if (profiles == NULL ||
-      sk_SRTP_PROTECTION_PROFILE_num(profiles) == 0) {
+      sk_SRTP_PROTECTION_PROFILE_num(profiles) == 0 ||
+      !SSL_is_dtls(ssl)) {
     return true;
   }
 
@@ -1784,6 +1758,7 @@ static bool ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // single uint16_t profile ID, then followed by a u8-prefixed srtp_mki field.
   //
   // See https://tools.ietf.org/html/rfc5764#section-4.1.1
+  assert(SSL_is_dtls(ssl));
   CBS profile_ids, srtp_mki;
   uint16_t profile_id;
   if (!CBS_get_u16_length_prefixed(contents, &profile_ids) ||
@@ -1802,11 +1777,8 @@ static bool ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return false;
   }
 
-  STACK_OF(SRTP_PROTECTION_PROFILE) *profiles = SSL_get_srtp_profiles(ssl);
-
-  // Check to see if the server gave us something we support (and presumably
-  // offered).
-  for (const SRTP_PROTECTION_PROFILE *profile : profiles) {
+  // Check to see if the server gave us something we support and offered.
+  for (const SRTP_PROTECTION_PROFILE *profile : SSL_get_srtp_profiles(ssl)) {
     if (profile->id == profile_id) {
       ssl->s3->srtp_profile = profile;
       return true;
@@ -1821,7 +1793,8 @@ static bool ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_srtp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                        CBS *contents) {
   SSL *const ssl = hs->ssl;
-  if (contents == NULL) {
+  // DTLS-SRTP is only defined for DTLS.
+  if (contents == NULL || !SSL_is_dtls(ssl)) {
     return true;
   }
 
@@ -1865,6 +1838,7 @@ static bool ext_srtp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
+  assert(SSL_is_dtls(ssl));
   CBB contents, profile_ids;
   if (!CBB_add_u16(out, TLSEXT_TYPE_srtp) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
@@ -1986,7 +1960,7 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // Per RFC 8446 section 4.1.4, skip offering the session if the selected
   // cipher in HelloRetryRequest does not match. This avoids performing the
   // transcript hash transformation for multiple hashes.
-  if (ssl->s3 && ssl->s3->used_hello_retry_request &&
+  if (ssl->s3->used_hello_retry_request &&
       ssl->session->cipher->algorithm_prf != hs->new_cipher->algorithm_prf) {
     return true;
   }
@@ -2354,7 +2328,7 @@ static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       return CBB_flush(out);
     }
   } else {
-    // Add a fake group. See draft-davidben-tls-grease-01.
+    // Add a fake group. See RFC 8701.
     if (ssl->ctx->grease_enabled &&
         (!CBB_add_u16(&kse_bytes,
                       ssl_get_grease_value(hs, ssl_grease_group)) ||
@@ -2531,7 +2505,7 @@ static bool ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) 
     return false;
   }
 
-  // Add a fake version. See draft-davidben-tls-grease-01.
+  // Add a fake version. See RFC 8701.
   if (ssl->ctx->grease_enabled &&
       !CBB_add_u16(&versions, ssl_get_grease_value(hs, ssl_grease_version))) {
     return false;
@@ -2584,7 +2558,7 @@ static bool ext_supported_groups_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return false;
   }
 
-  // Add a fake group. See draft-davidben-tls-grease-01.
+  // Add a fake group. See RFC 8701.
   if (ssl->ctx->grease_enabled &&
       !CBB_add_u16(&groups_bytes,
                    ssl_get_grease_value(hs, ssl_grease_group))) {
@@ -2653,153 +2627,6 @@ static bool ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,
   return true;
 }
 
-// Token Binding
-//
-// https://tools.ietf.org/html/draft-ietf-tokbind-negotiation-10
-
-// The Token Binding version number currently matches the draft number of
-// draft-ietf-tokbind-protocol, and when published as an RFC it will be 0x0100.
-// Since there are no wire changes to the protocol from draft 13 through the
-// current draft (16), this implementation supports all versions in that range.
-static uint16_t kTokenBindingMaxVersion = 16;
-static uint16_t kTokenBindingMinVersion = 13;
-
-static bool ext_token_binding_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  SSL *const ssl = hs->ssl;
-  if (hs->config->token_binding_params.empty() || SSL_is_dtls(ssl)) {
-    return true;
-  }
-
-  CBB contents, params;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_token_binding) ||
-      !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16(&contents, kTokenBindingMaxVersion) ||
-      !CBB_add_u8_length_prefixed(&contents, &params) ||
-      !CBB_add_bytes(&params, hs->config->token_binding_params.data(),
-                     hs->config->token_binding_params.size()) ||
-      !CBB_flush(out)) {
-    return false;
-  }
-
-  return true;
-}
-
-static bool ext_token_binding_parse_serverhello(SSL_HANDSHAKE *hs,
-                                                uint8_t *out_alert,
-                                                CBS *contents) {
-  SSL *const ssl = hs->ssl;
-  if (contents == nullptr) {
-    return true;
-  }
-
-  CBS params_list;
-  uint16_t version;
-  uint8_t param;
-  if (!CBS_get_u16(contents, &version) ||
-      !CBS_get_u8_length_prefixed(contents, &params_list) ||
-      !CBS_get_u8(&params_list, &param) ||
-      CBS_len(&params_list) > 0 ||
-      CBS_len(contents) > 0) {
-    *out_alert = SSL_AD_DECODE_ERROR;
-    return false;
-  }
-
-  // The server-negotiated version must be less than or equal to our version.
-  if (version > kTokenBindingMaxVersion) {
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-    return false;
-  }
-
-  // If the server-selected version is less than what we support, then Token
-  // Binding wasn't negotiated (but the extension was parsed successfully).
-  if (version < kTokenBindingMinVersion) {
-    return true;
-  }
-
-  for (uint8_t config_param : hs->config->token_binding_params) {
-    if (param == config_param) {
-      ssl->s3->negotiated_token_binding_param = param;
-      ssl->s3->token_binding_negotiated = true;
-      return true;
-    }
-  }
-
-  *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-  return false;
-}
-
-// select_tb_param looks for the first token binding param in
-// |hs->ssl->token_binding_params| that is also in |params| and puts it in
-// |hs->ssl->negotiated_token_binding_param|. It returns true if a token binding
-// param is found, and false otherwise.
-static bool select_tb_param(SSL_HANDSHAKE *hs,
-                            Span<const uint8_t> peer_params) {
-  for (uint8_t tb_param : hs->config->token_binding_params) {
-    for (uint8_t peer_param : peer_params) {
-      if (tb_param == peer_param) {
-        hs->ssl->s3->negotiated_token_binding_param = tb_param;
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-static bool ext_token_binding_parse_clienthello(SSL_HANDSHAKE *hs,
-                                                uint8_t *out_alert,
-                                                CBS *contents) {
-  SSL *const ssl = hs->ssl;
-  if (contents == nullptr || hs->config->token_binding_params.empty()) {
-    return true;
-  }
-
-  CBS params;
-  uint16_t version;
-  if (!CBS_get_u16(contents, &version) ||
-      !CBS_get_u8_length_prefixed(contents, &params) ||
-      CBS_len(&params) == 0 ||
-      CBS_len(contents) > 0) {
-    *out_alert = SSL_AD_DECODE_ERROR;
-    return false;
-  }
-
-  // If the client-selected version is less than what we support, then Token
-  // Binding wasn't negotiated (but the extension was parsed successfully).
-  if (version < kTokenBindingMinVersion) {
-    return true;
-  }
-
-  // If the client-selected version is higher than we support, use our max
-  // version. Otherwise, use the client's version.
-  hs->negotiated_token_binding_version =
-      std::min(version, kTokenBindingMaxVersion);
-  if (!select_tb_param(hs, params)) {
-    return true;
-  }
-
-  ssl->s3->token_binding_negotiated = true;
-  return true;
-}
-
-static bool ext_token_binding_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
-  SSL *const ssl = hs->ssl;
-
-  if (!ssl->s3->token_binding_negotiated) {
-    return true;
-  }
-
-  CBB contents, params;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_token_binding) ||
-      !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16(&contents, hs->negotiated_token_binding_version) ||
-      !CBB_add_u8_length_prefixed(&contents, &params) ||
-      !CBB_add_u8(&params, ssl->s3->negotiated_token_binding_param) ||
-      !CBB_flush(out)) {
-    return false;
-  }
-
-  return true;
-}
 
 // QUIC Transport Parameters
 
@@ -2821,7 +2648,7 @@ static bool ext_quic_transport_params_add_clienthello_impl(
     return true;
   }
 
-  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters_standard;
+  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters;
   if (hs->config->quic_use_legacy_codepoint) {
     extension_type = TLSEXT_TYPE_quic_transport_parameters_legacy;
   }
@@ -2957,7 +2784,7 @@ static bool ext_quic_transport_params_add_serverhello_impl(
     return true;
   }
 
-  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters_standard;
+  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters;
   if (hs->config->quic_use_legacy_codepoint) {
     extension_type = TLSEXT_TYPE_quic_transport_parameters_legacy;
   }
@@ -3371,7 +3198,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_channel_id,
-    ext_channel_id_init,
+    NULL,
     ext_channel_id_add_clienthello,
     ext_channel_id_parse_serverhello,
     ext_channel_id_parse_clienthello,
@@ -3379,7 +3206,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_srtp,
-    ext_srtp_init,
+    NULL,
     ext_srtp_add_clienthello,
     ext_srtp_parse_serverhello,
     ext_srtp_parse_clienthello,
@@ -3426,7 +3253,7 @@ static const struct tls_extension kExtensions[] = {
     dont_add_serverhello,
   },
   {
-    TLSEXT_TYPE_quic_transport_parameters_standard,
+    TLSEXT_TYPE_quic_transport_parameters,
     NULL,
     ext_quic_transport_params_add_clienthello,
     ext_quic_transport_params_parse_serverhello,
@@ -3440,14 +3267,6 @@ static const struct tls_extension kExtensions[] = {
     ext_quic_transport_params_parse_serverhello_legacy,
     ext_quic_transport_params_parse_clienthello_legacy,
     ext_quic_transport_params_add_serverhello_legacy,
-  },
-  {
-    TLSEXT_TYPE_token_binding,
-    NULL,
-    ext_token_binding_add_clienthello,
-    ext_token_binding_parse_serverhello,
-    ext_token_binding_parse_clienthello,
-    ext_token_binding_add_serverhello,
   },
   {
     TLSEXT_TYPE_cert_compression,
@@ -3520,7 +3339,7 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
 
   uint16_t grease_ext1 = 0;
   if (ssl->ctx->grease_enabled) {
-    // Add a fake empty extension. See draft-davidben-tls-grease-01.
+    // Add a fake empty extension. See RFC 8701.
     grease_ext1 = ssl_get_grease_value(hs, ssl_grease_extension1);
     if (!CBB_add_u16(&extensions, grease_ext1) ||
         !CBB_add_u16(&extensions, 0 /* zero length */)) {
@@ -3548,7 +3367,7 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
   }
 
   if (ssl->ctx->grease_enabled) {
-    // Add a fake non-empty extension. See draft-davidben-tls-grease-01.
+    // Add a fake non-empty extension. See RFC 8701.
     uint16_t grease_ext2 = ssl_get_grease_value(hs, ssl_grease_extension2);
 
     // The two fake extensions must not have the same value. GREASE values are
@@ -3833,18 +3652,8 @@ static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
 
 static bool ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-
-  if (ssl->s3->token_binding_negotiated &&
-      !(SSL_get_secure_renegotiation_support(ssl) &&
-        SSL_get_extms_support(ssl))) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_TB_WITHOUT_EMS_OR_RI);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
-    return false;
-  }
-
   int ret = SSL_TLSEXT_ERR_NOACK;
   int al = SSL_AD_UNRECOGNIZED_NAME;
-
   if (ssl->ctx->servername_callback != 0) {
     ret = ssl->ctx->servername_callback(ssl, &al, ssl->ctx->servername_arg);
   } else if (ssl->session_ctx->servername_callback != 0) {
@@ -4121,10 +3930,12 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  // Copy the client's session ID into the new session, to denote the ticket has
-  // been accepted.
-  OPENSSL_memcpy(session->session_id, session_id.data(), session_id.size());
-  session->session_id_length = session_id.size();
+  // Envoy's tests expect the session to have a session ID that matches the
+  // placeholder used by the client. It's unclear whether this is a good idea,
+  // but we maintain it for now.
+  SHA256(ticket.data(), ticket.size(), session->session_id);
+  // Other consumers may expect a non-empty session ID to indicate resumption.
+  session->session_id_length = SHA256_DIGEST_LENGTH;
 
   *out_session = std::move(session);
   return ssl_ticket_aead_success;
@@ -4272,11 +4083,11 @@ bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-    ssl->s3->channel_id_valid = false;
     return false;
   }
 
   OPENSSL_memcpy(ssl->s3->channel_id, p, 64);
+  ssl->s3->channel_id_valid = true;
   return true;
 }
 
@@ -4385,23 +4196,6 @@ bool tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
   hs->new_session->original_handshake_hash_len = (uint8_t)digest_len;
 
   return true;
-}
-
-bool ssl_do_channel_id_callback(SSL_HANDSHAKE *hs) {
-  if (hs->config->channel_id_private != NULL ||
-      hs->ssl->ctx->channel_id_cb == NULL) {
-    return true;
-  }
-
-  EVP_PKEY *key = NULL;
-  hs->ssl->ctx->channel_id_cb(hs->ssl, &key);
-  if (key == NULL) {
-    // The caller should try again later.
-    return true;
-  }
-
-  UniquePtr<EVP_PKEY> free_key(key);
-  return SSL_set1_tls_channel_id(hs->ssl, key);
 }
 
 bool ssl_is_sct_list_valid(const CBS *contents) {

@@ -58,6 +58,7 @@ const Flag<bool> kBoolFlags[] = {
     {"-quic", &TestConfig::is_quic},
     {"-fallback-scsv", &TestConfig::fallback_scsv},
     {"-enable-ech-grease", &TestConfig::enable_ech_grease},
+    {"-expect-ech-accept", &TestConfig::expect_ech_accept},
     {"-require-any-client-certificate",
      &TestConfig::require_any_client_certificate},
     {"-false-start", &TestConfig::false_start},
@@ -200,7 +201,6 @@ const Flag<std::unique_ptr<std::string>> kOptionalStringFlags[] = {
 const Flag<std::string> kBase64Flags[] = {
     {"-expect-certificate-types", &TestConfig::expect_certificate_types},
     {"-expect-channel-id", &TestConfig::expect_channel_id},
-    {"-token-binding-params", &TestConfig::send_token_binding_params},
     {"-expect-ocsp-response", &TestConfig::expect_ocsp_response},
     {"-expect-signed-cert-timestamps",
      &TestConfig::expect_signed_cert_timestamps},
@@ -215,7 +215,6 @@ const Flag<std::string> kBase64Flags[] = {
 const Flag<int> kIntFlags[] = {
     {"-port", &TestConfig::port},
     {"-resume-count", &TestConfig::resume_count},
-    {"-expect-token-binding-param", &TestConfig::expect_token_binding_param},
     {"-min-version", &TestConfig::min_version},
     {"-max-version", &TestConfig::max_version},
     {"-expect-version", &TestConfig::expect_version},
@@ -235,6 +234,7 @@ const Flag<int> kIntFlags[] = {
     {"-read-size", &TestConfig::read_size},
     {"-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew},
     {"-quic-use-legacy-codepoint", &TestConfig::quic_use_legacy_codepoint},
+    {"-early-write-after-message", &TestConfig::early_write_after_message},
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
@@ -599,6 +599,9 @@ static void MessageCallback(int is_write, int version, int content_type,
       char text[16];
       snprintf(text, sizeof(text), "hs %d\n", type);
       state->msg_callback_text += text;
+      if (!is_write) {
+        state->last_message_received = type;
+      }
       return;
     }
 
@@ -691,10 +694,6 @@ static void InfoCallback(const SSL *ssl, int type, int val) {
     }
     GetTestState(ssl)->handshake_done = true;
   }
-}
-
-static void ChannelIdCallback(SSL *ssl, EVP_PKEY **out_pkey) {
-  *out_pkey = GetTestState(ssl)->channel_id.release();
 }
 
 static SSL_SESSION *GetSessionCallback(SSL *ssl, const uint8_t *data, int len,
@@ -1374,8 +1373,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
-  SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
-
   SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
 
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
@@ -1725,20 +1722,10 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     }
   }
   if (!send_channel_id.empty()) {
-    SSL_set_tls_channel_id_enabled(ssl.get(), 1);
-    if (!async) {
-      // The async case will be supplied by |ChannelIdCallback|.
-      bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(send_channel_id);
-      if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
-        return nullptr;
-      }
+    bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(send_channel_id);
+    if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
+      return nullptr;
     }
-  }
-  if (!send_token_binding_params.empty()) {
-    SSL_set_token_binding_params(
-        ssl.get(),
-        reinterpret_cast<const uint8_t *>(send_token_binding_params.data()),
-        send_token_binding_params.length());
   }
   if (!host_name.empty() &&
       !SSL_set_tlsext_host_name(ssl.get(), host_name.c_str())) {

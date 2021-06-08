@@ -232,7 +232,8 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
 // disqualifies it for split handshakes.
 static bool uses_disallowed_feature(const SSL *ssl) {
   return ssl->method->is_dtls || (ssl->config->cert && ssl->config->cert->dc) ||
-         ssl->config->quic_transport_params.size() > 0;
+         ssl->config->quic_transport_params.size() > 0 ||
+         ssl->ctx->ech_server_config_list;
 }
 
 bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff) {
@@ -338,6 +339,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
   } else {
     session = s3->session_reused ? ssl->session.get() : hs->new_session.get();
   }
+  static const uint8_t kUnusedChannelID[64] = {0};
   if (!CBB_add_asn1(out, &seq, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&seq, kHandbackVersion) ||
       !CBB_add_asn1_uint64(&seq, type) ||
@@ -352,7 +354,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
       !CBB_add_asn1_octet_string(&seq, read_iv, read_iv_len) ||
       !CBB_add_asn1_octet_string(&seq, write_iv, write_iv_len) ||
       !CBB_add_asn1_bool(&seq, s3->session_reused) ||
-      !CBB_add_asn1_bool(&seq, s3->channel_id_valid) ||
+      !CBB_add_asn1_bool(&seq, hs->channel_id_negotiated) ||
       !ssl_session_serialize(session, &seq) ||
       !CBB_add_asn1_octet_string(&seq, s3->next_proto_negotiated.data(),
                                  s3->next_proto_negotiated.size()) ||
@@ -361,10 +363,12 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
       !CBB_add_asn1_octet_string(
           &seq, reinterpret_cast<uint8_t *>(s3->hostname.get()),
           hostname_len) ||
-      !CBB_add_asn1_octet_string(&seq, s3->channel_id,
-                                 sizeof(s3->channel_id)) ||
-      !CBB_add_asn1_bool(&seq, ssl->s3->token_binding_negotiated) ||
-      !CBB_add_asn1_uint64(&seq, ssl->s3->negotiated_token_binding_param) ||
+      !CBB_add_asn1_octet_string(&seq, kUnusedChannelID,
+                                 sizeof(kUnusedChannelID)) ||
+      // These two fields were historically |token_binding_negotiated| and
+      // |negotiated_token_binding_param|.
+      !CBB_add_asn1_bool(&seq, 0) ||
+      !CBB_add_asn1_uint64(&seq, 0) ||
       !CBB_add_asn1_bool(&seq, s3->hs->next_proto_neg_seen) ||
       !CBB_add_asn1_bool(&seq, s3->hs->cert_request) ||
       !CBB_add_asn1_bool(&seq, s3->hs->extended_master_secret) ||
@@ -443,12 +447,13 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   }
 
   SSL3_STATE *const s3 = ssl->s3;
-  uint64_t handback_version, negotiated_token_binding_param, cipher, type_u64;
+  uint64_t handback_version, unused_token_binding_param, cipher, type_u64;
 
   CBS seq, read_seq, write_seq, server_rand, client_rand, read_iv, write_iv,
-      next_proto, alpn, hostname, channel_id, transcript, key_share;
-  int session_reused, channel_id_valid, cert_request, extended_master_secret,
-      ticket_expected, token_binding_negotiated, next_proto_neg_seen;
+      next_proto, alpn, hostname, unused_channel_id, transcript, key_share;
+  int session_reused, channel_id_negotiated, cert_request,
+      extended_master_secret, ticket_expected, unused_token_binding,
+      next_proto_neg_seen;
   SSL_SESSION *session = nullptr;
 
   CBS handback_cbs(handback);
@@ -476,7 +481,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       !CBS_get_asn1(&seq, &read_iv, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&seq, &write_iv, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1_bool(&seq, &session_reused) ||
-      !CBS_get_asn1_bool(&seq, &channel_id_valid)) {
+      !CBS_get_asn1_bool(&seq, &channel_id_negotiated)) {
     return false;
   }
 
@@ -495,12 +500,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   if (!session || !CBS_get_asn1(&seq, &next_proto, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&seq, &alpn, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&seq, &hostname, CBS_ASN1_OCTETSTRING) ||
-      !CBS_get_asn1(&seq, &channel_id, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&channel_id) != sizeof(s3->channel_id) ||
-      !CBS_copy_bytes(&channel_id, s3->channel_id,
-                      sizeof(s3->channel_id)) ||
-      !CBS_get_asn1_bool(&seq, &token_binding_negotiated) ||
-      !CBS_get_asn1_uint64(&seq, &negotiated_token_binding_param) ||
+      !CBS_get_asn1(&seq, &unused_channel_id, CBS_ASN1_OCTETSTRING) ||
+      !CBS_get_asn1_bool(&seq, &unused_token_binding) ||
+      !CBS_get_asn1_uint64(&seq, &unused_token_binding_param) ||
       !CBS_get_asn1_bool(&seq, &next_proto_neg_seen) ||
       !CBS_get_asn1_bool(&seq, &cert_request) ||
       !CBS_get_asn1_bool(&seq, &extended_master_secret) ||
@@ -614,7 +616,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       return false;
   }
   s3->session_reused = session_reused;
-  s3->channel_id_valid = channel_id_valid;
+  hs->channel_id_negotiated = channel_id_negotiated;
   s3->next_proto_negotiated.CopyFrom(next_proto);
   s3->alpn_selected.CopyFrom(alpn);
 
@@ -629,9 +631,6 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
     s3->hostname.reset(hostname_str);
   }
 
-  s3->token_binding_negotiated = token_binding_negotiated;
-  s3->negotiated_token_binding_param =
-      static_cast<uint8_t>(negotiated_token_binding_param);
   hs->next_proto_neg_seen = next_proto_neg_seen;
   hs->wait = ssl_hs_flush;
   hs->extended_master_secret = extended_master_secret;

@@ -1251,6 +1251,19 @@ static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
   return KeyFromPEM(kKeyPEM);
 }
 
+static bssl::UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
+    const SSL_METHOD *method) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  if (!ctx || !cert || !key ||
+      !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
+      !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
+    return nullptr;
+  }
+  return ctx;
+}
+
 static bssl::UniquePtr<X509> GetECDSATestCertificate() {
   static const char kCertPEM[] =
       "-----BEGIN CERTIFICATE-----\n"
@@ -1453,22 +1466,24 @@ TEST(SSLTest, AddClientCA) {
 // kECHConfig contains a serialized ECHConfig value.
 static const uint8_t kECHConfig[] = {
     // version
-    0xfe, 0x09,
+    0xfe, 0x0a,
     // length
-    0x00, 0x42,
-    // contents.public_name
-    0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
-    0x6d, 0x70, 0x6c, 0x65,
+    0x00, 0x43,
+    // contents.config_id
+    0x42,
+    // contents.kem_id
+    0x00, 0x20,
     // contents.public_key
     0x00, 0x20, 0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3,
     0x6a, 0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
     0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c,
-    // contents.kem_id
-    0x00, 0x20,
     // contents.cipher_suites
     0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
     // contents.maximum_name_length
     0x00, 0x10,
+    // contents.public_name
+    0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
+    0x6d, 0x70, 0x6c, 0x65,
     // contents.extensions
     0x00, 0x00};
 
@@ -1488,8 +1503,8 @@ static const uint8_t kECHConfigPrivateKey[X25519_PRIVATE_KEY_LEN] = {
 // MakeECHConfig serializes an ECHConfig and writes it to |*out| with the
 // specified parameters. |cipher_suites| is a list of code points which should
 // contain pairs of KDF and AEAD IDs.
-bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
-                   Span<const uint8_t> public_key,
+bool MakeECHConfig(std::vector<uint8_t> *out, uint8_t config_id,
+                   uint16_t kem_id, Span<const uint8_t> public_key,
                    Span<const uint16_t> cipher_suites,
                    Span<const uint8_t> extensions) {
   bssl::ScopedCBB cbb;
@@ -1498,12 +1513,10 @@ bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
   if (!CBB_init(cbb.get(), 64) ||
       !CBB_add_u16(cbb.get(), TLSEXT_TYPE_encrypted_client_hello) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
-      !CBB_add_u16_length_prefixed(&contents, &child) ||
-      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(kPublicName),
-                     strlen(kPublicName)) ||
+      !CBB_add_u8(&contents, config_id) ||
+      !CBB_add_u16(&contents, kem_id) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
       !CBB_add_bytes(&child, public_key.data(), public_key.size()) ||
-      !CBB_add_u16(&contents, kem_id) ||
       !CBB_add_u16_length_prefixed(&contents, &child)) {
     return false;
   }
@@ -1513,6 +1526,9 @@ bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
     }
   }
   if (!CBB_add_u16(&contents, strlen(kPublicName)) ||  // maximum_name_length
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(kPublicName),
+                     strlen(kPublicName)) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
       !CBB_add_bytes(&child, extensions.data(), extensions.size()) ||
       !CBB_flush(cbb.get())) {
@@ -1568,9 +1584,9 @@ TEST(SSLTest, ECHServerConfigList) {
 TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
   std::vector<uint8_t> ech_config;
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
+      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
       MakeConstSpan(kECHConfigPublicKey, sizeof(kECHConfigPublicKey) - 1),
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
       /*extensions=*/{}));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -1585,7 +1601,8 @@ TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
 
   uint32_t err = ERR_peek_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG, ERR_GET_REASON(err));
+  EXPECT_EQ(SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH,
+            ERR_GET_REASON(err));
   ERR_clear_error();
 }
 
@@ -1636,8 +1653,8 @@ TEST(SSLTest, UnsupportedECHConfig) {
   // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
   std::vector<uint8_t> ech_config;
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA384, EVP_HPKE_AEAD_AES_128_GCM},
+      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      std::vector<uint16_t>{0x002 /* HKDF-SHA384 */, EVP_HPKE_AES_128_GCM},
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
       config_list.get(), /*is_retry_config=*/1, ech_config.data(),
@@ -1656,8 +1673,8 @@ TEST(SSLTest, UnsupportedECHConfig) {
       0xc9, 0x4d, 0x89, 0x68, 0x77, 0x08, 0xb5, 0x6f, 0xc9, 0x5d, 0x30,
       0x77, 0x0e, 0xe8, 0xd1, 0xc9, 0xce, 0x0a, 0x8b, 0xb4, 0x6a};
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      &ech_config, 0x42, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
       config_list.get(), /*is_retry_config=*/1, ech_config.data(),
@@ -1666,8 +1683,8 @@ TEST(SSLTest, UnsupportedECHConfig) {
   // Unsupported extensions are rejected.
   static const uint8_t kExtensions[] = {0x00, 0x01, 0x00, 0x00};
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
       kExtensions));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
       config_list.get(), /*is_retry_config=*/1, ech_config.data(),
@@ -1861,6 +1878,32 @@ static bool FlushNewSessionTickets(SSL *client, SSL *server) {
   }
 }
 
+// CreateClientAndServer creates a client and server |SSL| objects whose |BIO|s
+// are paired with each other. It does not run the handshake. The caller is
+// expected to configure the objects and drive the handshake as needed.
+static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
+                                  bssl::UniquePtr<SSL> *out_server,
+                                  SSL_CTX *client_ctx, SSL_CTX *server_ctx) {
+  bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
+  if (!client || !server) {
+    return false;
+  }
+  SSL_set_connect_state(client.get());
+  SSL_set_accept_state(server.get());
+
+  BIO *bio1, *bio2;
+  if (!BIO_new_bio_pair(&bio1, 0, &bio2, 0)) {
+    return false;
+  }
+  // SSL_set_bio takes ownership.
+  SSL_set_bio(client.get(), bio1, bio1);
+  SSL_set_bio(server.get(), bio2, bio2);
+
+  *out_client = std::move(client);
+  *out_server = std::move(server);
+  return true;
+}
+
 struct ClientConfig {
   SSL_SESSION *session = nullptr;
   std::string servername;
@@ -1871,18 +1914,14 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
                                    bssl::UniquePtr<SSL> *out_server,
                                    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
                                    const ClientConfig &config = ClientConfig(),
-                                   bool do_handshake = true,
                                    bool shed_handshake_config = true) {
-  bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
-  if (!client || !server) {
+  bssl::UniquePtr<SSL> client, server;
+  if (!CreateClientAndServer(&client, &server, client_ctx, server_ctx)) {
     return false;
   }
   if (config.early_data) {
     SSL_set_early_data_enabled(client.get(), 1);
   }
-  SSL_set_connect_state(client.get());
-  SSL_set_accept_state(server.get());
-
   if (config.session) {
     SSL_set_session(client.get(), config.session);
   }
@@ -1891,18 +1930,10 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
     return false;
   }
 
-  BIO *bio1, *bio2;
-  if (!BIO_new_bio_pair(&bio1, 0, &bio2, 0)) {
-    return false;
-  }
-  // SSL_set_bio takes ownership.
-  SSL_set_bio(client.get(), bio1, bio1);
-  SSL_set_bio(server.get(), bio2, bio2);
-
   SSL_set_shed_handshake_config(client.get(), shed_handshake_config);
   SSL_set_shed_handshake_config(server.get(), shed_handshake_config);
 
-  if (do_handshake && !CompleteHandshakes(client.get(), server.get())) {
+  if (!CompleteHandshakes(client.get(), server.get())) {
     return false;
   }
 
@@ -1948,7 +1979,7 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
 
   bool Connect(const ClientConfig &config = ClientConfig()) {
     return ConnectClientAndServer(&client_, &server_, client_ctx_.get(),
-                                  server_ctx_.get(), config, true,
+                                  server_ctx_.get(), config,
                                   shed_handshake_config_);
   }
 
@@ -2040,16 +2071,10 @@ TEST_P(SSLVersionTest, OneSidedShutdown) {
 
 TEST(SSLTest, SessionDuplication) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
@@ -2878,16 +2903,11 @@ TEST_P(SSLVersionTest, SNICallback) {
 
 // Test that the early callback can swap the maximum version.
 TEST(SSLTest, EarlyCallbackVersionSwitch) {
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
@@ -3858,12 +3878,8 @@ class TicketAEADMethodTest
     : public ::testing::TestWithParam<TicketAEADMethodParam> {};
 
 TEST_P(TicketAEADMethodTest, Resume) {
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  ASSERT_TRUE(cert);
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(key);
-
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(server_ctx);
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(client_ctx);
@@ -3873,8 +3889,6 @@ TEST_P(TicketAEADMethodTest, Resume) {
   const ssl_test_ticket_aead_failure_mode failure_mode =
       testing::get<2>(GetParam());
 
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
@@ -4018,16 +4032,9 @@ TEST(SSLTest, SelectNextProto) {
 
 TEST(SSLTest, SealRecord) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(SSL_CTX_new(TLSv1_2_method()));
+      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
@@ -4061,16 +4068,9 @@ TEST(SSLTest, SealRecord) {
 
 TEST(SSLTest, SealRecordInPlace) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(SSL_CTX_new(TLSv1_2_method()));
+      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
@@ -4099,16 +4099,9 @@ TEST(SSLTest, SealRecordInPlace) {
 
 TEST(SSLTest, SealRecordTrailingData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(SSL_CTX_new(TLSv1_2_method()));
+      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
@@ -4138,16 +4131,9 @@ TEST(SSLTest, SealRecordTrailingData) {
 
 TEST(SSLTest, SealRecordInvalidSpanSize) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(SSL_CTX_new(TLSv1_2_method()));
+      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
@@ -4272,17 +4258,10 @@ TEST_P(SSLVersionTest, SSLPending) {
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
 TEST(SSLTest, ShutdownIgnoresTickets) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(ctx);
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
 
   SSL_CTX_set_session_cache_mode(ctx.get(), SSL_SESS_CACHE_BOTH);
 
@@ -4365,16 +4344,10 @@ static int XORDecompressFunc(SSL *ssl, CRYPTO_BUFFER **out,
 
 TEST(SSLTest, CertCompression) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
@@ -4407,7 +4380,8 @@ void MoveBIOs(SSL *dest, SSL *src) {
 TEST(SSLTest, Handoff) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> handshaker_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> handshaker_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(handshaker_ctx);
@@ -4419,36 +4393,28 @@ TEST(SSLTest, Handoff) {
   SSL_CTX_get_tlsext_ticket_keys(server_ctx.get(), &keys, sizeof(keys));
   SSL_CTX_set_tlsext_ticket_keys(handshaker_ctx.get(), &keys, sizeof(keys));
 
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(handshaker_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(handshaker_ctx.get(), key.get()));
-
   for (bool early_data : {false, true}) {
     SCOPED_TRACE(early_data);
     for (bool is_resume : {false, true}) {
       SCOPED_TRACE(is_resume);
       bssl::UniquePtr<SSL> client, server;
-      auto config = ClientConfig();
-      config.early_data = early_data;
+      ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                        server_ctx.get()));
+      SSL_set_early_data_enabled(client.get(), early_data);
       if (is_resume) {
         ASSERT_TRUE(g_last_session);
-        config.session = g_last_session.get();
+        SSL_set_session(client.get(), g_last_session.get());
+        if (early_data) {
+          EXPECT_GT(g_last_session->ticket_max_early_data, 0u);
+        }
       }
-      if (is_resume && config.early_data) {
-        EXPECT_GT(g_last_session->ticket_max_early_data, 0u);
-      }
-      ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                         server_ctx.get(), config,
-                                         false /* don't handshake */));
+
 
       int client_ret = SSL_do_handshake(client.get());
       int client_err = SSL_get_error(client.get(), client_ret);
 
       uint8_t byte_written;
-      if (config.early_data && is_resume) {
+      if (early_data && is_resume) {
         ASSERT_EQ(client_err, 0);
         EXPECT_TRUE(SSL_in_early_data(client.get()));
         // Attempt to write early data.
@@ -4501,7 +4467,7 @@ TEST(SSLTest, Handoff) {
       ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
       EXPECT_EQ(is_resume, SSL_session_reused(client.get()));
 
-      if (config.early_data && is_resume) {
+      if (early_data && is_resume) {
         // In this case, one byte of early data has already been written above.
         EXPECT_TRUE(SSL_early_data_accepted(client.get()));
       } else {
@@ -4522,24 +4488,17 @@ TEST(SSLTest, Handoff) {
 
 TEST(SSLTest, HandoffDeclined) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
   SSL_CTX_set_handoff_mode(server_ctx.get(), 1);
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
 
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
-
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(), ClientConfig(),
-                                     false /* don't handshake */));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   int client_ret = SSL_do_handshake(client.get());
   int client_err = SSL_get_error(client.get(), client_ret);
@@ -4785,15 +4744,10 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
 TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {
   // If there are pending handshake mesages, an |SSL_write| of zero bytes should
   // flush them.
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
@@ -5289,16 +5243,9 @@ class QUICMethodTest : public testing::Test {
  protected:
   void SetUp() override {
     client_ctx_.reset(SSL_CTX_new(TLS_method()));
-    server_ctx_.reset(SSL_CTX_new(TLS_method()));
+    server_ctx_ = CreateContextWithTestCertificate(TLS_method());
     ASSERT_TRUE(client_ctx_);
     ASSERT_TRUE(server_ctx_);
-
-    bssl::UniquePtr<X509> cert = GetTestCertificate();
-    bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-    ASSERT_TRUE(cert);
-    ASSERT_TRUE(key);
-    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx_.get(), cert.get()));
-    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx_.get(), key.get()));
 
     SSL_CTX_set_min_proto_version(server_ctx_.get(), TLS1_3_VERSION);
     SSL_CTX_set_max_proto_version(server_ctx_.get(), TLS1_3_VERSION);
@@ -6611,26 +6558,47 @@ TEST_P(SSLVersionTest, UnrelatedServerNoResume) {
   EXPECT_FALSE(SSL_session_reused(server.get()));
 }
 
+Span<const uint8_t> SessionIDOf(const SSL* ssl) {
+  const SSL_SESSION *session = SSL_get_session(ssl);
+  unsigned len;
+  const uint8_t *data = SSL_SESSION_get_id(session, &len);
+  return MakeConstSpan(data, len);
+}
+
+TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
+  // This checks that the session IDs at client and server match after a ticket
+  // resumption. It's unclear whether this should be true, but Envoy depends
+  // on it in their tests so this will give an early signal if we break it.
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+
+  bssl::UniquePtr<SSL> client, server;
+  ClientConfig config;
+  config.session = session.get();
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx_.get(), config));
+  EXPECT_TRUE(SSL_session_reused(client.get()));
+  EXPECT_TRUE(SSL_session_reused(server.get()));
+
+  EXPECT_EQ(Bytes(SessionIDOf(client.get())), Bytes(SessionIDOf(server.get())));
+}
+
 TEST(SSLTest, WriteWhileExplicitRenegotiate) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(ctx);
 
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> pkey = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(pkey);
-  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), pkey.get()));
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(
       ctx.get(), "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get(),
-                                     ClientConfig(), true /* do_handshake */,
-                                     false /* don't shed handshake config */));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, ctx.get(), ctx.get()));
   SSL_set_renegotiate_mode(client.get(), ssl_renegotiate_explicit);
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
   static const uint8_t kInput[] = {'h', 'e', 'l', 'l', 'o'};
 
@@ -6748,16 +6716,10 @@ TEST(SSLTest, WriteWhileExplicitRenegotiate) {
 
 TEST(SSLTest, CopyWithoutEarlyData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
@@ -6769,13 +6731,11 @@ TEST(SSLTest, CopyWithoutEarlyData) {
   ASSERT_TRUE(session);
 
   // The client should attempt early data with |session|.
-  auto config = ClientConfig();
-  config.early_data = true;
-  config.session = session.get();
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(), config,
-                                     /*do_handshake=*/false));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  SSL_set_session(client.get(), session.get());
+  SSL_set_early_data_enabled(client.get(), 1);
   ASSERT_EQ(1, SSL_do_handshake(client.get()));
   EXPECT_TRUE(SSL_in_early_data(client.get()));
 
@@ -6785,9 +6745,11 @@ TEST(SSLTest, CopyWithoutEarlyData) {
       SSL_SESSION_copy_without_early_data(session.get()));
   ASSERT_TRUE(session2);
   EXPECT_NE(session.get(), session2.get());
-  config.session = session2.get();
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(), config));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+  SSL_set_session(client.get(), session2.get());
+  SSL_set_early_data_enabled(client.get(), 1);
+  EXPECT_TRUE(CompleteHandshakes(client.get(), server.get()));
   EXPECT_TRUE(SSL_session_reused(client.get()));
   EXPECT_EQ(ssl_early_data_unsupported_for_session,
             SSL_get_early_data_reason(client.get()));
@@ -6801,18 +6763,15 @@ TEST(SSLTest, CopyWithoutEarlyData) {
 
 TEST(SSLTest, ProcessTLS13NewSessionTicket) {
   // Configure client and server to negotiate TLS 1.3 only.
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
@@ -6866,16 +6825,10 @@ TEST(SSLTest, ProcessTLS13NewSessionTicket) {
 
 TEST(SSLTest, BIO) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  ASSERT_TRUE(cert);
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   for (bool take_ownership : {true, false}) {
     // For simplicity, get the handshake out of the way first.
@@ -7016,6 +6969,113 @@ RHrQbWsFUakETXL9QMlegh5t
   ASSERT_TRUE(ctx);
   EXPECT_TRUE(SSL_CTX_use_certificate(ctx.get(), good.get()));
   EXPECT_FALSE(SSL_CTX_use_certificate(ctx.get(), bad.get()));
+}
+
+// Test that |SSL_can_release_private_key| reports true as early as expected.
+// The internal asserts in the library check we do not report true too early.
+TEST(SSLTest, CanReleasePrivateKey) {
+  bssl::UniquePtr<SSL_CTX> client_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+
+  // Note this assumes the transport buffer is large enough to fit the client
+  // and server first flights. We check this with |SSL_ERROR_WANT_READ|. If the
+  // transport buffer was too small it would return |SSL_ERROR_WANT_WRITE|.
+  auto check_first_server_round_trip = [&](SSL *client, SSL *server) {
+    // Write the ClientHello.
+    ASSERT_EQ(-1, SSL_do_handshake(client));
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client, -1));
+
+    // Consume the ClientHello and write the server flight.
+    ASSERT_EQ(-1, SSL_do_handshake(server));
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server, -1));
+
+    EXPECT_TRUE(SSL_can_release_private_key(server));
+  };
+
+  {
+    SCOPED_TRACE("TLS 1.2 ECDHE");
+    bssl::UniquePtr<SSL_CTX> server_ctx(
+        CreateContextWithTestCertificate(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(
+        SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
+    ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(
+        server_ctx.get(), "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"));
+    // Configure the server to request client certificates, so we can also test
+    // the client half.
+    SSL_CTX_set_custom_verify(
+        server_ctx.get(), SSL_VERIFY_PEER,
+        [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_ok; });
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+    check_first_server_round_trip(client.get(), server.get());
+
+    // Consume the server flight and write the client response. The client still
+    // has a Finished message to consume but can also release its key early.
+    ASSERT_EQ(-1, SSL_do_handshake(client.get()));
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client.get(), -1));
+    EXPECT_TRUE(SSL_can_release_private_key(client.get()));
+
+    // However, a client that has not disabled renegotiation can never release
+    // the key.
+    ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+    SSL_set_renegotiate_mode(client.get(), ssl_renegotiate_freely);
+    check_first_server_round_trip(client.get(), server.get());
+    ASSERT_EQ(-1, SSL_do_handshake(client.get()));
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client.get(), -1));
+    EXPECT_FALSE(SSL_can_release_private_key(client.get()));
+  }
+
+  {
+    SCOPED_TRACE("TLS 1.2 resumption");
+    bssl::UniquePtr<SSL_CTX> server_ctx(
+        CreateContextWithTestCertificate(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(
+        SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
+    bssl::UniquePtr<SSL_SESSION> session =
+        CreateClientSession(client_ctx.get(), server_ctx.get());
+    ASSERT_TRUE(session);
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+    SSL_set_session(client.get(), session.get());
+    check_first_server_round_trip(client.get(), server.get());
+  }
+
+  {
+    SCOPED_TRACE("TLS 1.3 1-RTT");
+    bssl::UniquePtr<SSL_CTX> server_ctx(
+        CreateContextWithTestCertificate(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(
+        SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+    check_first_server_round_trip(client.get(), server.get());
+  }
+
+  {
+    SCOPED_TRACE("TLS 1.3 resumption");
+    bssl::UniquePtr<SSL_CTX> server_ctx(
+        CreateContextWithTestCertificate(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(
+        SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+    bssl::UniquePtr<SSL_SESSION> session =
+        CreateClientSession(client_ctx.get(), server_ctx.get());
+    ASSERT_TRUE(session);
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                      server_ctx.get()));
+    SSL_set_session(client.get(), session.get());
+    check_first_server_round_trip(client.get(), server.get());
+  }
 }
 
 }  // namespace

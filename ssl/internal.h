@@ -154,6 +154,7 @@
 #include <openssl/aead.h>
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
+#include <openssl/hpke.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
 #include <openssl/span.h>
@@ -162,7 +163,6 @@
 
 #include "../crypto/err/internal.h"
 #include "../crypto/internal.h"
-#include "../crypto/hpke/internal.h"
 
 
 #if defined(OPENSSL_WINDOWS)
@@ -1431,10 +1431,11 @@ bool tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
 
 class ECHServerConfig {
  public:
+  static constexpr bool kAllowUniquePtr = true;
   ECHServerConfig() : is_retry_config_(false), initialized_(false) {}
-  ECHServerConfig(ECHServerConfig &&other) = default;
+  ECHServerConfig(const ECHServerConfig &other) = delete;
   ~ECHServerConfig() = default;
-  ECHServerConfig &operator=(ECHServerConfig &&) = default;
+  ECHServerConfig &operator=(ECHServerConfig &&) = delete;
 
   // Init parses |ech_config| as an ECHConfig and saves a copy of |private_key|.
   // It returns true on success and false on error. It will also error if
@@ -1443,45 +1444,31 @@ class ECHServerConfig {
   bool Init(Span<const uint8_t> ech_config, Span<const uint8_t> private_key,
             bool is_retry_config);
 
-  // SupportsCipherSuite returns true when this ECHConfig supports the HPKE
-  // ciphersuite composed of |kdf_id| and |aead_id|. This function must only be
-  // called on an initialized object.
-  bool SupportsCipherSuite(uint16_t kdf_id, uint16_t aead_id) const;
+  // SetupContext sets up |ctx| for a new connection, given the specified
+  // HPKE ciphersuite and encapsulated KEM key. It returns true on success and
+  // false on error. This function may only be called on an initialized object.
+  bool SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id, uint16_t aead_id,
+                    Span<const uint8_t> enc) const;
 
-  Span<const uint8_t> raw() const {
+  Span<const uint8_t> ech_config() const {
     assert(initialized_);
-    return raw_;
-  }
-  Span<const uint8_t> public_key() const {
-    assert(initialized_);
-    return public_key_;
-  }
-  Span<const uint8_t> private_key() const {
-    assert(initialized_);
-    return MakeConstSpan(private_key_, sizeof(private_key_));
-  }
-  Span<const uint8_t> config_id_sha256() const {
-    assert(initialized_);
-    return MakeConstSpan(config_id_sha256_, sizeof(config_id_sha256_));
+    return ech_config_;
   }
   bool is_retry_config() const {
     assert(initialized_);
     return is_retry_config_;
   }
+  uint8_t config_id() const {
+    assert(initialized_);
+    return config_id_;
+  }
 
  private:
-  Array<uint8_t> raw_;
-  Span<const uint8_t> public_key_;
+  Array<uint8_t> ech_config_;
   Span<const uint8_t> cipher_suites_;
+  ScopedEVP_HPKE_KEY key_;
 
-  // private_key_ is the key corresponding to |public_key|. For clients, it must
-  // be empty (|private_key_present_ == false|). For servers, it must be a valid
-  // X25519 private key.
-  uint8_t private_key_[X25519_PRIVATE_KEY_LEN];
-
-  // config_id_ stores the precomputed result of |ConfigID| for
-  // |EVP_HPKE_HKDF_SHA256|.
-  uint8_t config_id_sha256_[8];
+  uint8_t config_id_;
 
   bool is_retry_config_ : 1;
   bool initialized_ : 1;
@@ -1504,11 +1491,13 @@ OPENSSL_EXPORT bool ssl_decode_client_hello_inner(
 // otherwise, regardless of whether the decrypt was successful. It sets
 // |out_encoded_client_hello_inner| to true if the decryption fails, and false
 // otherwise.
-bool ssl_client_hello_decrypt(
-    EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out_encoded_client_hello_inner,
-    bool *out_is_decrypt_error, const SSL_CLIENT_HELLO *client_hello_outer,
-    uint16_t kdf_id, uint16_t aead_id, Span<const uint8_t> config_id,
-    Span<const uint8_t> enc, Span<const uint8_t> payload);
+bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx,
+                              Array<uint8_t> *out_encoded_client_hello_inner,
+                              bool *out_is_decrypt_error,
+                              const SSL_CLIENT_HELLO *client_hello_outer,
+                              uint16_t kdf_id, uint16_t aead_id,
+                              uint8_t config_id, Span<const uint8_t> enc,
+                              Span<const uint8_t> payload);
 
 // tls13_ech_accept_confirmation computes the server's ECH acceptance signal,
 // writing it to |out|. It returns true on success, and false on failure.
@@ -1568,7 +1557,6 @@ enum ssl_hs_wait_t {
   ssl_hs_handoff,
   ssl_hs_handback,
   ssl_hs_x509_lookup,
-  ssl_hs_channel_id_lookup,
   ssl_hs_private_key_operation,
   ssl_hs_pending_session,
   ssl_hs_pending_ticket,
@@ -1801,12 +1789,6 @@ struct SSL_HANDSHAKE {
   // peer_key is the peer's ECDH key for a TLS 1.2 client.
   Array<uint8_t> peer_key;
 
-  // negotiated_token_binding_version is used by a server to store the
-  // on-the-wire encoding of the Token Binding protocol version to advertise in
-  // the ServerHello/EncryptedExtensions if the Token Binding extension is to be
-  // sent.
-  uint16_t negotiated_token_binding_version;
-
   // cert_compression_alg_id, for a server, contains the negotiated certificate
   // compression algorithm for this client. It is only valid if
   // |cert_compression_negotiated| is true.
@@ -1869,10 +1851,6 @@ struct SSL_HANDSHAKE {
   // field, if non-null, contains hints configured by the caller and will
   // influence the handshake on match.
   UniquePtr<SSL_HANDSHAKE_HINTS> hints;
-
-  // ech_accept, on the server, indicates whether the server should overwrite
-  // part of ServerHello.random with the ECH accept_confirmation value.
-  bool ech_accept : 1;
 
   // ech_present, on the server, indicates whether the ClientHello contained an
   // encrypted_client_hello extension.
@@ -1971,6 +1949,14 @@ struct SSL_HANDSHAKE {
   // which implemented TLS 1.3 incorrectly.
   bool apply_jdk11_workaround : 1;
 
+  // can_release_private_key is true if the private key will no longer be used
+  // in this handshake.
+  bool can_release_private_key : 1;
+
+  // channel_id_negotiated is true if Channel ID should be used in this
+  // handshake.
+  bool channel_id_negotiated : 1;
+
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
 
@@ -1981,6 +1967,9 @@ struct SSL_HANDSHAKE {
   // early_data_written is the amount of early data that has been written by the
   // record layer.
   uint16_t early_data_written = 0;
+
+  // ech_config_id is the ECH config sent by the client.
+  uint8_t ech_config_id = 0;
 
   // session_id is the session ID in the ClientHello.
   uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH] = {0};
@@ -2325,10 +2314,11 @@ struct SSL_PROTOCOL_METHOD {
   // init_message begins a new handshake message of type |type|. |cbb| is the
   // root CBB to be passed into |finish_message|. |*body| is set to a child CBB
   // the caller should write to. It returns true on success and false on error.
-  bool (*init_message)(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+  bool (*init_message)(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
   // finish_message finishes a handshake message. It sets |*out_msg| to the
   // serialized message. It returns true on success and false on error.
-  bool (*finish_message)(SSL *ssl, CBB *cbb, bssl::Array<uint8_t> *out_msg);
+  bool (*finish_message)(const SSL *ssl, CBB *cbb,
+                         bssl::Array<uint8_t> *out_msg);
   // add_message adds a handshake message to the pending flight. It returns
   // true on success and false on error.
   bool (*add_message)(SSL *ssl, bssl::Array<uint8_t> msg);
@@ -2539,9 +2529,8 @@ struct SSL3_STATE {
   // key_update_count is the number of consecutive KeyUpdates received.
   uint8_t key_update_count = 0;
 
-  // The negotiated Token Binding key parameter. Only valid if
-  // |token_binding_negotiated| is set.
-  uint8_t negotiated_token_binding_param = 0;
+  // ech_accept indicates whether ECH was accepted by the server.
+  bool ech_accept : 1;
 
   // skip_early_data instructs the record layer to skip unexpected early data
   // messages when 0RTT is rejected.
@@ -2576,9 +2565,8 @@ struct SSL3_STATE {
 
   bool send_connection_binding : 1;
 
-  // In a client, this means that the server supported Channel ID and that a
-  // Channel ID was sent. In a server it means that we echoed support for
-  // Channel IDs and that |channel_id| will be valid after the handshake.
+  // channel_id_valid is true if, on the server, the client has negotiated a
+  // Channel ID and the |channel_id| field is filled in.
   bool channel_id_valid : 1;
 
   // key_update_pending is true if we have a KeyUpdate acknowledgment
@@ -2590,9 +2578,6 @@ struct SSL3_STATE {
 
   // early_data_accepted is true if early data was accepted by the server.
   bool early_data_accepted : 1;
-
-  // token_binding_negotiated is set if Token Binding was negotiated.
-  bool token_binding_negotiated : 1;
 
   // alert_dispatch is true there is an alert in |send_alert| to be sent.
   bool alert_dispatch : 1;
@@ -2876,7 +2861,8 @@ struct SSL_CONFIG {
 
   Array<uint16_t> supported_group_list;  // our list
 
-  // The client's Channel ID private key.
+  // channel_id_private is the client's Channel ID private key, or null if
+  // Channel ID should not be offered on this connection.
   UniquePtr<EVP_PKEY> channel_id_private;
 
   // For a client, this contains the list of supported protocols in wire
@@ -2886,9 +2872,6 @@ struct SSL_CONFIG {
   // alps_configs contains the list of supported protocols to use with ALPS,
   // along with their corresponding ALPS values.
   GrowableArray<ALPSConfig> alps_configs;
-
-  // Contains a list of supported Token Binding key parameters.
-  Array<uint8_t> token_binding_params;
 
   // Contains the QUIC transport params that this endpoint will send.
   Array<uint8_t> quic_transport_params;
@@ -2918,9 +2901,8 @@ struct SSL_CONFIG {
   // whether OCSP stapling will be requested.
   bool ocsp_stapling_enabled : 1;
 
-  // channel_id_enabled is copied from the |SSL_CTX|. For a server, means that
-  // we'll accept Channel IDs from clients. For a client, means that we'll
-  // advertise support.
+  // channel_id_enabled is copied from the |SSL_CTX|. For a server, it means
+  // that we'll accept Channel IDs from clients. It is ignored on the client.
   bool channel_id_enabled : 1;
 
   // If enforce_rsa_key_usage is true, the handshake will fail if the
@@ -2970,7 +2952,7 @@ bool ssl_is_key_type_supported(int key_type);
 bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                        const EVP_PKEY *privkey);
 bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
-int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server);
+bool ssl_get_new_session(SSL_HANDSHAKE *hs);
 int ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out, const SSL_SESSION *session);
 int ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx);
 
@@ -3073,14 +3055,14 @@ int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
 bool tls_new(SSL *ssl);
 void tls_free(SSL *ssl);
 
-bool tls_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-bool tls_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
+bool tls_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+bool tls_finish_message(const SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
 bool tls_add_message(SSL *ssl, Array<uint8_t> msg);
 bool tls_add_change_cipher_spec(SSL *ssl);
 int tls_flush_flight(SSL *ssl);
 
-bool dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-bool dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
+bool dtls1_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+bool dtls1_finish_message(const SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
 bool dtls1_add_message(SSL *ssl, Array<uint8_t> msg);
 bool dtls1_add_change_cipher_spec(SSL *ssl);
 int dtls1_flush_flight(SSL *ssl);
@@ -3212,12 +3194,6 @@ bool tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len);
 // data.
 bool tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs);
 
-// ssl_do_channel_id_callback checks runs |hs->ssl->ctx->channel_id_cb| if
-// necessary. It returns true on success and false on fatal error. Note that, on
-// success, |hs->ssl->channel_id_private| may be unset, in which case the
-// operation should be retried later.
-bool ssl_do_channel_id_callback(SSL_HANDSHAKE *hs);
-
 // ssl_can_write returns whether |ssl| is allowed to write.
 bool ssl_can_write(const SSL *ssl);
 
@@ -3340,9 +3316,6 @@ struct ssl_ctx_st {
   // get client cert callback
   int (*client_cert_cb)(SSL *ssl, X509 **out_x509,
                         EVP_PKEY **out_pkey) = nullptr;
-
-  // get channel id callback
-  void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey) = nullptr;
 
   CRYPTO_EX_DATA ex_data;
 
@@ -3471,7 +3444,8 @@ struct ssl_ctx_st {
   // Supported group values inherited by SSL structure
   bssl::Array<uint16_t> supported_group_list;
 
-  // The client's Channel ID private key.
+  // channel_id_private is the client's Channel ID private key, or null if
+  // Channel ID should not be offered on this connection.
   bssl::UniquePtr<EVP_PKEY> channel_id_private;
 
   // ech_server_config_list contains the server's list of ECHConfig values and
@@ -3526,7 +3500,7 @@ struct ssl_ctx_st {
   // advertise support.
   bool channel_id_enabled : 1;
 
-  // grease_enabled is whether draft-davidben-tls-grease-01 is enabled.
+  // grease_enabled is whether GREASE (RFC 8701) is enabled.
   bool grease_enabled : 1;
 
   // allow_unknown_alpn_protos is whether the client allows unsolicited ALPN
@@ -3798,7 +3772,7 @@ struct ssl_ech_server_config_list_st {
   ssl_ech_server_config_list_st &operator=(
       const ssl_ech_server_config_list_st &) = delete;
 
-  bssl::GrowableArray<bssl::ECHServerConfig> configs;
+  bssl::GrowableArray<bssl::UniquePtr<bssl::ECHServerConfig>> configs;
   CRYPTO_refcount_t references = 1;
 
  private:
