@@ -13,19 +13,19 @@
 # permissions and limitations under the License.
 #############################################################################
 
-# Set ARCH to "X86" or "Arm" as appropriate; this is literally the
+# Set ARCH to "x86" or "arm" as appropriate; this is literally the
 # directory name in which the libs2nbignum.a file should be found.
 # If this block fails to do it automatically, replace with manual
-# setting: ARCH=X86 or ARCH=Arm as appropriate
+# setting: ARCH=x86 or ARCH=arm as appropriate
 
 UNAME_RESULT=$(shell uname -m)
 
 ifeq ($(UNAME_RESULT),x86_64)
-ARCH=X86
+ARCH=x86
 endif
 
 ifeq ($(UNAME_RESULT),aarch64)
-ARCH=Arm
+ARCH=arm
 endif
 
 # Build the test program "test". This can then be invoked, optionally
