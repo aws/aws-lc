@@ -42,7 +42,9 @@ list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
 if(GCC)
   foreach(vul_gcc_version ${VUL_GCC_VERSIONS})
     if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
-      message(FATAL_ERROR "GCC ${CMAKE_C_COMPILER_VERSION} is not supported.")
+      message(WARNING "Currently, GCC ${CMAKE_C_COMPILER_VERSION} is not supported due to a memcmp related bug reported in "
+                      "https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.\n"
+                      "This is the risk you take if you use this compiler. We strongly recommend avoid using the compiler.")
     endif()
   endforeach()
 endif()
