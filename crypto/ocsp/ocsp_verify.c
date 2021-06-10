@@ -82,13 +82,12 @@ static int ocsp_verify_key(OCSP_BASICRESP *bs, X509 *signer)
     return -1;
   }
 
-  int ret;
   EVP_PKEY *skey = X509_get_pubkey(signer);
   if (skey == NULL) {
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_SIGNER_KEY);
     return -1;
   }
-  ret = ASN1_item_verify(ASN1_ITEM_rptr(OCSP_RESPDATA),\
+  int ret = ASN1_item_verify(ASN1_ITEM_rptr(OCSP_RESPDATA),\
       bs->signatureAlgorithm,bs->signature,bs->tbsResponseData,skey);
   EVP_PKEY_free(skey);
   if (ret <= 0) {
@@ -176,7 +175,7 @@ static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret) {
 
   OCSP_CERTID *tmpid, *cid;
   size_t idcount = sk_OCSP_SINGLERESP_num(sresp);
-  if (idcount <= 0) {
+  if (idcount == 0) {
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA);
     return -1;
   }
@@ -189,7 +188,7 @@ static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret) {
     if (OCSP_id_issuer_cmp(cid, tmpid) != 0) {
       // If algorithm mismatch, let caller deal with it instead
       if (OBJ_cmp(tmpid->hashAlgorithm->algorithm, cid->hashAlgorithm->algorithm) != 0) {
-        return 2;
+        return 1;
       }
       return 0;
     }
@@ -225,8 +224,11 @@ static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid,
     }
 
     // Compare message digest with |OCSP_CERTID|
-    if ((cid->issuerNameHash->length != (int)mdlen) || (cid->issuerKeyHash->length != (int)mdlen)) {
-      return 0;
+    if(cid->issuerNameHash->length >= 0 && cid->issuerKeyHash->length >= 0) {
+      if (((size_t)cid->issuerNameHash->length != mdlen) ||
+          (size_t)cid->issuerKeyHash->length != mdlen) {
+        return 0;
+      }
     }
     if (memcmp(md, cid->issuerNameHash->data, mdlen) != 0) {
       return 0;
