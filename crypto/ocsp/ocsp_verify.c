@@ -4,8 +4,6 @@
 #include <string.h>
 #include "internal.h"
 
-// Supporting internal static functions for OCSP_basic_verify
-
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
 
 // Set up |X509_STORE_CTX| to verify signer and returns cert chain if verify is OK
@@ -17,20 +15,20 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
     return NULL;
   }
 
-  // Easy if lookup by name
+  // Easy if lookup by name.
   if (id->type == V_OCSP_RESPID_NAME) {
     return X509_find_by_subject(certs, id->value.byName);
   }
 
-  // Lookup by key hash
+  // Lookup by key hash.
   unsigned char tmphash[SHA_DIGEST_LENGTH], *keyhash;
 
-  // If key hash isn't SHA1 length then forget it
+  // If key hash isn't SHA1 length then forget it.
   if(id->value.byKey == NULL || id->value.byKey->length != SHA_DIGEST_LENGTH) {
       return NULL;
   }
   keyhash = id->value.byKey->data;
-  // Calculate hash of each key and compare
+  // Calculate hash of each key and compare.
   X509 *cert;
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
     cert = sk_X509_value(certs, i);
@@ -44,7 +42,7 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
   return NULL;
 }
 
-// Find signer in cert stack or |OCSP_BASICRESP|'s cert stack
+// Find signer in cert stack or |OCSP_BASICRESP|'s cert stack.
 static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
                             STACK_OF(X509) *certs, unsigned long flags) {
   if (psigner == NULL) {
@@ -54,7 +52,7 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
 
   X509 *signer;
   OCSP_RESPID *rid = bs->tbsResponseData->responderId;
-  // look for signer in certs stack
+  // look for signer in certs stack.
   signer = ocsp_find_signer_sk(certs, rid);
   if (signer != NULL) {
     *psigner = signer;
@@ -62,19 +60,19 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
   }
 
   // look in certs stack the responder may have included in |OCSP_BASICRESP|,
-  // unless the flags contain OCSP_NOINTERN
+  // unless the flags contain OCSP_NOINTERN.
   signer = ocsp_find_signer_sk(bs->certs, rid);
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN) && signer) {
     *psigner = signer;
     return 1;
   }
-  // Maybe lookup from store if by subject name
+  // Maybe lookup from store if by subject name.
 
   *psigner = NULL;
   return 0;
 }
 
-// check if public key in signer matches key in |OCSP_BASICRESP|
+// check if public key in signer matches key in |OCSP_BASICRESP|.
 static int ocsp_verify_key(OCSP_BASICRESP *bs, X509 *signer)
 {
   if (signer == NULL) {
@@ -97,7 +95,7 @@ static int ocsp_verify_key(OCSP_BASICRESP *bs, X509 *signer)
   return ret;
 }
 
-// Set untrusted certificate stack from |OCSP_BASICRESP|
+// Set untrusted certificate stack from |OCSP_BASICRESP|.
 static int ocsp_setup_untrusted(OCSP_BASICRESP *bs,
                                 STACK_OF(X509) *certs,
                                 STACK_OF(X509) **untrusted,
@@ -130,7 +128,7 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
     return -1;
   }
 
-  // Set up |X509_STORE_CTX| with |*signer|, |*st|, and |*untrusted|
+  // Set up |X509_STORE_CTX| with |*signer|, |*st|, and |*untrusted|.
   X509_STORE_CTX *ctx = X509_STORE_CTX_new();
   int ret = -1;
 
@@ -147,7 +145,7 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
     goto end;
   }
 
-  // Verify |X509_STORE_CTX| and return certificate chain
+  // Verify |X509_STORE_CTX| and return certificate chain.
   ret = X509_verify_cert(ctx);
   if (ret <= 0) {
     ret = X509_STORE_CTX_get_error(ctx);
@@ -184,9 +182,9 @@ static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret) {
   *ret = NULL;
   for (size_t i = 1; i < idcount; i++) {
     tmpid = sk_OCSP_SINGLERESP_value(sresp, i)->certId;
-    // Check to see if IDs match
+    // Check to see if IDs match.
     if (OCSP_id_issuer_cmp(cid, tmpid) != 0) {
-      // If algorithm mismatch, let caller deal with it instead
+      // If algorithm mismatch, let caller deal with it instead.
       if (OBJ_cmp(tmpid->hashAlgorithm->algorithm, cid->hashAlgorithm->algorithm) != 0) {
         return 1;
       }
@@ -194,7 +192,7 @@ static int ocsp_check_ids(STACK_OF(OCSP_SINGLERESP) *sresp, OCSP_CERTID **ret) {
     }
   }
 
-  // All IDs match: only need to check one ID
+  // All IDs match: only need to check one ID.
   *ret = cid;
   return 1;
 }
@@ -292,17 +290,17 @@ static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain) {
     return -1;
   }
 
-  // See if the issuer IDs match
+  // See if the issuer IDs match.
   ret = ocsp_check_ids(sresp, &caid);
 
-  // If ID mismatch or other error then return
+  // If ID mismatch or other error then return.
   if (ret <= 0) {
     return ret;
   }
 
   X509 *signer, *sca;
   signer = sk_X509_value(chain, 0);
-  // Check to see if OCSP responder CA matches request CA
+  // Check to see if OCSP responder CA matches request CA.
   if (sk_X509_num(chain) > 1) {
     sca = sk_X509_value(chain, 1);
     ret = ocsp_match_issuerid(sca, caid, sresp);
@@ -310,7 +308,7 @@ static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain) {
       return ret;
     }
     if (ret != 0) {
-      // If matches, then check extension flags
+      // If matches, then check extension flags.
       if (ocsp_check_delegated(signer)) {
         return 1;
       }
@@ -318,7 +316,7 @@ static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain) {
     }
   }
 
-  // Otherwise check if OCSP request signed directly by request CA
+  // Otherwise check if OCSP request signed directly by request CA.
   return ocsp_match_issuerid(signer, caid, sresp);
 }
 
@@ -333,14 +331,14 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
   STACK_OF(X509) *chain = NULL;
   STACK_OF(X509) *untrusted = NULL;
 
-  // Look for signer certificate
+  // Look for signer certificate.
   int ret = ocsp_find_signer(&signer, bs, certs, flags);
   if (ret <= 0) {
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND);
     goto end;
   }
 
-  // Check if public key in signer matches key in |OCSP_BASICRESP|
+  // Check if public key in signer matches key in |OCSP_BASICRESP|.
   ret = ocsp_verify_key(bs, signer);
   if (ret <= 0) {
     goto end;
@@ -363,7 +361,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
   // If a certificate chain is not verifiable against the OCSP issuer criteria,
   // we try to check for explicit trust.
   if (ret == 0) {
-    // Easy case: explicitly trusted. Get root CA and check for explicit trust
+    // Easy case: explicitly trusted. Get root CA and check for explicit trust.
     if (IS_OCSP_FLAG_SET(flags, OCSP_NOEXPLICIT)) {
       goto end;
     }
