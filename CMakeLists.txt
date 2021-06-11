@@ -44,7 +44,7 @@ if(GCC)
     if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
       message(WARNING "Currently, GCC ${CMAKE_C_COMPILER_VERSION} is not supported due to a memcmp related bug reported in "
                       "https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.\n"
-                      "This is the risk you take if you use this compiler. We strongly recommend avoid using the compiler.")
+                      "We strongly recommend against using the GCC ${CMAKE_C_COMPILER_VERSION} compiler.")
     endif()
   endforeach()
 endif()
