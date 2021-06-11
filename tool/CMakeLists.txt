@@ -1,7 +1,9 @@
 include_directories(../include)
 
+cmake_policy(SET CMP0060 NEW)
+
 add_executable(
-  bssl
+  awslc
 
   args.cc
   ciphers.cc
@@ -21,25 +23,68 @@ add_executable(
   transport_common.cc
 )
 
-add_dependencies(bssl global_target)
+target_include_directories(awslc PUBLIC ${INCLUDE_DIR} ${INCLUDE_DIR}/internal/tool)
+target_compile_options(awslc PUBLIC -DAWSLC_BENCHMARK)
+
+add_dependencies(awslc global_target)
 
 if(WIN32)
-  target_link_libraries(bssl ws2_32)
+  target_link_libraries(awslc ws2_32)
 endif()
 
 if(APPLE OR WIN32 OR ANDROID)
-  target_link_libraries(bssl ssl crypto)
+  target_link_libraries(awslc ssl crypto)
+  set(LIBRT_FLAGS "")
 else()
   find_library(FOUND_LIBRT rt)
   if(FOUND_LIBRT)
-    target_link_libraries(bssl ssl crypto -lrt)
+    target_link_libraries(awslc ssl crypto -lrt)
+    set(LIBRT_FLAGS "-lrt")
   else()
-    target_link_libraries(bssl ssl crypto)
+    target_link_libraries(awslc ssl crypto)
+    set(LIBRT_FLAGS "")
   endif()
 endif()
 
-install(TARGETS bssl
-        EXPORT bssl-targets
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+function(build_benchmark target_name additional_include_dir lib_crypto)
+  message(${additional_include_dir})
+  add_executable(
+          ${target_name}
+          speed.cc
+          args.cc
+          const.cc
+          benchmark.cc
+  )
+  # Link with the internal tool directory for shared headers with the rest of the tool instead of the top level AWS-LC
+  # include directory
+  target_include_directories(${target_name} PUBLIC ${additional_include_dir} ${INCLUDE_DIR}/internal/tool)
+  target_link_libraries(${target_name} ${lib_crypto} ${LIBRT_FLAGS})
 
+  string(TOUPPER ${target_name} upper_target_name)
+  target_compile_options(${target_name} PUBLIC -D${upper_target_name})
+  install(TARGETS ${target_name}
+          EXPORT ${target_name}-targets
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+          )
+endfunction()
+
+if(INCLUDE_DIR)
+  build_benchmark(awslc_benchmark ${INCLUDE_DIR} crypto)
+endif()
+
+if(BORINGSSL_INSTALL_DIR)
+  build_benchmark(boringssl_benchmark ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_INSTALL_DIR}/build/crypto/libcrypto.a)
+
+  # libpthread is a linux only library
+  if(NOT MSVC AND NOT ANDROID)
+    # BoringSSL uses pthread_rwlock_unlock from pthread
+    target_link_libraries(boringssl_benchmark pthread)
+    # BoringSSL uses both anonymous structs and unions
+    target_compile_options(boringssl_benchmark PUBLIC -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
+  endif()
+endif()
+
+install(TARGETS awslc
+        EXPORT awslc-targets
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        )

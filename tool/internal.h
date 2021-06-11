@@ -29,6 +29,10 @@ OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
 #include <map>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
+// for benchmark.cc
+typedef std::vector<std::string>           args_list_t;
+
+
 struct FileCloser {
   void operator()(FILE *file) {
     fclose(file);
