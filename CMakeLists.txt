@@ -34,21 +34,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-# Fail CMake build when some vulnerable gcc versions are used.
-set(VUL_GCC_VERSIONS "")
-# These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
-# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
-list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
-if(GCC)
-  foreach(vul_gcc_version ${VUL_GCC_VERSIONS})
-    if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
-      message(WARNING "Currently, GCC ${CMAKE_C_COMPILER_VERSION} is not supported due to a memcmp related bug reported in "
-                      "https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.\n"
-                      "We strongly recommend against using the GCC ${CMAKE_C_COMPILER_VERSION} compiler.")
-    endif()
-  endforeach()
-endif()
-
 # This is a dummy target which all other targets depend on (manually - see other
 # CMakeLists.txt files). This gives us a hook to add any targets which need to
 # run before all other targets.
@@ -188,6 +173,45 @@ macro(check_compiler file_to_test flag_to_set)
     message(STATUS "    ${ERROR_MESSAGE}")
   endif()
 endmacro()
+
+macro(check_run file_to_test flag_to_set compile_flags)
+  message(STATUS "Run check_run file_to_test '${file_to_test}', "
+          "flag_to_set '${flag_to_set}', "
+          "and compile_flags '${compile_flags}'.")
+  try_run(
+          ${flag_to_set}
+          COMPILE_RESULT
+          "${CMAKE_CURRENT_BINARY_DIR}"
+          "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "${compile_flags}"
+          OUTPUT_VARIABLE COMPILE_AND_RUN_OUTPUT)
+  if (NOT COMPILE_RESULT)
+    message(WARNING "COMPILE_AND_RUN_OUTPUT ${COMPILE_AND_RUN_OUTPUT}")
+  endif()
+endmacro()
+
+# Detect if memcmp is wrongly stripped like strcmp.
+# If exists, let CMake generate a warning.
+# memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
+if (GCC)
+  # CMake try_run requires these variables must be preset.
+  # https://cmake.org/cmake/help/latest/command/try_run.html
+  set(MEMCMP_INVALID_STRIPPED "")
+  set(MEMCMP_INVALID_STRIPPED__TRYRUN_OUTPUT "")
+  if (CMAKE_BUILD_TYPE_LOWER MATCHES "release")
+    # CMAKE_C_FLAGS_RELEASE enables `-O3`.
+    check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELEASE}")
+  elseif(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo")
+    # CMAKE_C_FLAGS_RELEASE enables `-O2`.
+    check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+  endif()
+
+  if (MEMCMP_INVALID_STRIPPED)
+    message(WARNING "Currently, GCC ${CMAKE_C_COMPILER_VERSION} is not supported due to a memcmp related bug reported in "
+            "https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.\n"
+            "We strongly recommend against using the GCC ${CMAKE_C_COMPILER_VERSION} compiler.")
+  endif ()
+endif ()
 
 if(GCC OR CLANG)
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
