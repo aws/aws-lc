@@ -15,3 +15,5 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/trust_token.h>
+
+#define BM_NAMESPACE          bssl

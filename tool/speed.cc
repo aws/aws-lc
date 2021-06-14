@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(OPENSSL_BENCHMARK)
+#if not defined(OPENSSL_BENCHMARK)
 #include "bssl_bm.h"
 #else
 #include "ossl_bm.h"
@@ -193,7 +193,7 @@ static bool SpeedRSA(const std::string &selected) {
   for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kRSAKeys); i++) {
     const std::string name = kRSAKeys[i].name;
 
-    bssl::UniquePtr<RSA> key(
+    BM_NAMESPACE::UniquePtr<RSA> key(
         RSA_private_key_from_bytes(kRSAKeys[i].key, kRSAKeys[i].key_len));
     if (key == nullptr) {
       fprintf(stderr, "Failed to parse %s key.\n", name.c_str());
@@ -239,7 +239,7 @@ static bool SpeedRSA(const std::string &selected) {
           // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we
           // were to use |key| directly instead, then these costs wouldn't be
           // accounted for.
-          bssl::UniquePtr<RSA> verify_key(RSA_new());
+          BM_NAMESPACE::UniquePtr<RSA> verify_key(RSA_new());
           if (!verify_key) {
             return false;
           }
@@ -269,7 +269,7 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
     return true;
   }
 
-  bssl::UniquePtr<BIGNUM> e(BN_new());
+  BM_NAMESPACE::UniquePtr<BIGNUM> e(BN_new());
   if (!BN_set_word(e.get(), 65537)) {
     return false;
   }
@@ -282,7 +282,7 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
     std::vector<unsigned> durations;
 
     for (;;) {
-      bssl::UniquePtr<RSA> rsa(RSA_new());
+      BM_NAMESPACE::UniquePtr<RSA> rsa(RSA_new());
 
       const uint64_t iteration_start = time_now();
       if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
@@ -349,7 +349,7 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
   static const unsigned kAlignment = 16;
 
   name += ChunkLenSuffix(chunk_len);
-  bssl::ScopedEVP_AEAD_CTX ctx;
+  BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
   const size_t key_len = EVP_AEAD_key_length(aead);
   const size_t nonce_len = EVP_AEAD_nonce_length(aead);
   const size_t overhead_len = EVP_AEAD_max_overhead(aead);
@@ -539,7 +539,7 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-  bssl::ScopedEVP_MD_CTX ctx;
+  BM_NAMESPACE::ScopedEVP_MD_CTX ctx;
   uint8_t scratch[16384];
 
   if (chunk_len > sizeof(scratch)) {
@@ -620,7 +620,7 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
     return true;
   }
 
-  bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new_by_curve_name(nid));
+  BM_NAMESPACE::UniquePtr<EC_KEY> peer_key(EC_KEY_new_by_curve_name(nid));
   if (!peer_key ||
       !EC_KEY_generate_key(peer_key.get())) {
     return false;
@@ -642,16 +642,16 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
 
   TimeResults results;
   if (!TimeFunction(&results, [nid, peer_value_len, &peer_value]() -> bool {
-        bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+        BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
         if (!key ||
             !EC_KEY_generate_key(key.get())) {
           return false;
         }
         const EC_GROUP *const group = EC_KEY_get0_group(key.get());
-        bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group));
-        bssl::UniquePtr<EC_POINT> peer_point(EC_POINT_new(group));
-        bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
-        bssl::UniquePtr<BIGNUM> x(BN_new());
+        BM_NAMESPACE::UniquePtr<EC_POINT> point(EC_POINT_new(group));
+        BM_NAMESPACE::UniquePtr<EC_POINT> peer_point(EC_POINT_new(group));
+        BM_NAMESPACE::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+        BM_NAMESPACE::UniquePtr<BIGNUM> x(BN_new());
         if (!point || !peer_point || !ctx || !x ||
             !EC_POINT_oct2point(group, peer_point.get(), peer_value.get(),
                                 peer_value_len, ctx.get()) ||
@@ -677,7 +677,7 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
     return true;
   }
 
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+  BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
   if (!key ||
       !EC_KEY_generate_key(key.get())) {
     return false;
@@ -806,7 +806,7 @@ static bool SpeedSPAKE2(const std::string &selected) {
   static const uint8_t kAliceName[] = {'A'};
   static const uint8_t kBobName[] = {'B'};
   static const uint8_t kPassword[] = "password";
-  bssl::UniquePtr<SPAKE2_CTX> alice(SPAKE2_CTX_new(spake2_role_alice,
+  BM_NAMESPACE::UniquePtr<SPAKE2_CTX> alice(SPAKE2_CTX_new(spake2_role_alice,
                                     kAliceName, sizeof(kAliceName), kBobName,
                                     sizeof(kBobName)));
   uint8_t alice_msg[SPAKE2_MAX_MSG_SIZE];
@@ -820,7 +820,7 @@ static bool SpeedSPAKE2(const std::string &selected) {
   }
 
   if (!TimeFunction(&results, [&alice_msg, alice_msg_len]() -> bool {
-        bssl::UniquePtr<SPAKE2_CTX> bob(SPAKE2_CTX_new(spake2_role_bob,
+        BM_NAMESPACE::UniquePtr<SPAKE2_CTX> bob(SPAKE2_CTX_new(spake2_role_bob,
                                         kBobName, sizeof(kBobName), kAliceName,
                                         sizeof(kAliceName)));
         uint8_t bob_msg[SPAKE2_MAX_MSG_SIZE], bob_key[64];
@@ -1003,9 +1003,9 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   }
   results.Print(name + " generate_key");
 
-  bssl::UniquePtr<TRUST_TOKEN_CLIENT> client(
+  BM_NAMESPACE::UniquePtr<TRUST_TOKEN_CLIENT> client(
       TRUST_TOKEN_CLIENT_new(method, batchsize));
-  bssl::UniquePtr<TRUST_TOKEN_ISSUER> issuer(
+  BM_NAMESPACE::UniquePtr<TRUST_TOKEN_ISSUER> issuer(
       TRUST_TOKEN_ISSUER_new(method, batchsize));
   uint8_t priv_key[TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE];
   uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
@@ -1023,9 +1023,9 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
 
   uint8_t public_key[32], private_key[64];
   ED25519_keypair(public_key, private_key);
-  bssl::UniquePtr<EVP_PKEY> priv(
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> priv(
       EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, nullptr, private_key, 32));
-  bssl::UniquePtr<EVP_PKEY> pub(
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> pub(
       EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, nullptr, public_key, 32));
   if (!priv || !pub) {
     fprintf(stderr, "failed to generate trust token SRR key.\n");
@@ -1066,9 +1066,9 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
     fprintf(stderr, "TRUST_TOKEN_CLIENT_begin_issuance failed.\n");
     return false;
   }
-  bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
+  BM_NAMESPACE::UniquePtr<uint8_t> free_issue_msg(issue_msg);
 
-  bssl::UniquePtr<STACK_OF(TRUST_TOKEN_PRETOKEN)> pretokens(
+  BM_NAMESPACE::UniquePtr<STACK_OF(TRUST_TOKEN_PRETOKEN)> pretokens(
       sk_TRUST_TOKEN_PRETOKEN_deep_copy(client->pretokens,
                                         trust_token_pretoken_dup,
                                         TRUST_TOKEN_PRETOKEN_free));
@@ -1098,11 +1098,11 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
     fprintf(stderr, "TRUST_TOKEN_ISSUER_issue failed.\n");
     return false;
   }
-  bssl::UniquePtr<uint8_t> free_issue_resp(issue_resp);
+  BM_NAMESPACE::UniquePtr<uint8_t> free_issue_resp(issue_resp);
 
   if (!TimeFunction(&results, [&]() -> bool {
         size_t key_index2;
-        bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
+        BM_NAMESPACE::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
             TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index2,
                                                issue_resp, resp_len));
 
@@ -1117,7 +1117,7 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   }
   results.Print(name + " finish_issuance");
 
-  bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
+  BM_NAMESPACE::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
       TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index, issue_resp,
                                          resp_len));
   if (!tokens || sk_TRUST_TOKEN_num(tokens.get()) < 1) {
@@ -1152,7 +1152,7 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
     fprintf(stderr, "TRUST_TOKEN_CLIENT_begin_redemption failed.\n");
     return false;
   }
-  bssl::UniquePtr<uint8_t> free_redeem_msg(redeem_msg);
+  BM_NAMESPACE::UniquePtr<uint8_t> free_redeem_msg(redeem_msg);
 
   if (!TimeFunction(&results, [&]() -> bool {
         uint8_t *redeem_resp = NULL;
@@ -1188,9 +1188,9 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
     fprintf(stderr, "TRUST_TOKEN_ISSUER_redeem failed.\n");
     return false;
   }
-  bssl::UniquePtr<uint8_t> free_redeem_resp(redeem_resp);
-  bssl::UniquePtr<uint8_t> free_client_data(client_data);
-  bssl::UniquePtr<TRUST_TOKEN> free_rtoken(rtoken);
+  BM_NAMESPACE::UniquePtr<uint8_t> free_redeem_resp(redeem_resp);
+  BM_NAMESPACE::UniquePtr<uint8_t> free_client_data(client_data);
+  BM_NAMESPACE::UniquePtr<TRUST_TOKEN> free_rtoken(rtoken);
 
   if (!TimeFunction(&results, [&]() -> bool {
         uint8_t *srr = NULL, *sig = NULL;
@@ -1316,6 +1316,12 @@ bool Speed(const std::vector<std::string> &args) {
   // via the AEAD interface. In order for that to work, they have some TLS
   // knowledge in them and construct a couple of the AD bytes internally.
   static const size_t kLegacyADLen = kTLSADLen - 2;
+
+  #ifdef OPENSSL_BENCHMARK
+  printf("~~~~ DEBUG: OPENSSL MACRO: %d ~~~~\n", OPENSSL_BENCHMARK);
+  #else
+  printf("~~~~ DEBUG: NOT OPENSSL MACRO ~~~~\n");
+  #endif
 
   if (g_print_json) {
     puts("[");

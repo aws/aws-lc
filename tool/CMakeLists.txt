@@ -72,14 +72,14 @@ endif()
 
 # This expects a directory which contains lib/libcrypto.a and the includes in include/openssl/*.h
 if(OPENSSL_INSTALL_DIR)
-  build_benchmark(openssl_benchmark ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/libcrypto.a)
+  build_benchmark(openssl_benchmark ${OPENSSL_INSTALL_DIR}/build/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
 
   # libpthread is a linux only library
   if(NOT MSVC AND NOT ANDROID)
     # OpenSSL uses pthread_rwlock_unlock from pthread and  dlopen/close from dl
-    target_link_libraries(openssl_benchmark pthread dl)
+    target_link_libraries(openssl_benchmark -DOPENSSL_BENCHMARK pthread dl)
     # OpenSSL uses both anonymous structs and unions
-    target_compile_options(openssl_benchmark PUBLIC -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
+    target_compile_options(openssl_benchmark PUBLIC -DOPENSSL_BENCHMARK -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
   endif()
 endif()
 
