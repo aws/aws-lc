@@ -20,7 +20,7 @@
 //
 // The functions are listed in alphabetical order with a brief description
 // in comments for each one. For more detailed documentation see the comment
-// banner at the top of the corresponding assembly (.S or .asm) file, and
+// banner at the top of the corresponding assembly (.S) file, and
 // for the last word in what properties it satisfies see the spec in the
 // formal proof (the .ml file in the architecture-specific directory).
 // ----------------------------------------------------------------------------

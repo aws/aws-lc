@@ -13,13 +13,7 @@
 # permissions and limitations under the License.
 #############################################################################
 
-# The x86 assembly (.asm) files are all written for the NASM assembler
-# (https://www.nasm.us/). This gives broadly "Intel-like" notation for
-# x86, with destinations on the left and fairly uncluttered syntax.
-# NASM can be installed easily on most platforms via some package
-# manager invocation like:
-#
-#  sudo apt-get install nasm
+# The x86 assembly (.S) files are all written for the GNU assembler
 
 OBJ = fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
@@ -125,7 +119,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_tomont_p384.o \
       p384/bignum_triple_p384.o
 
-%.o : %.asm ; nasm -felf64 $<
+%.o : %.S ; cpp $< | as -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
