@@ -194,6 +194,10 @@ endmacro()
 # If exists, let CMake generate a warning.
 # memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
 if (GCC)
+  # CMake try_run requires these variables must be preset.
+  # https://cmake.org/cmake/help/latest/command/try_run.html
+  set(MEMCMP_INVALID_STRIPPED "")
+  set(MEMCMP_INVALID_STRIPPED__TRYRUN_OUTPUT "")
   if (CMAKE_BUILD_TYPE_LOWER MATCHES "release")
     # CMAKE_C_FLAGS_RELEASE enables `-O3`.
     check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELEASE}")
