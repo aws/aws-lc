@@ -79,7 +79,7 @@ if(OPENSSL_INSTALL_DIR)
     # OpenSSL uses pthread_rwlock_unlock from pthread and  dlopen/close from dl
     target_link_libraries(openssl_benchmark -DOPENSSL_BENCHMARK pthread dl)
     # OpenSSL uses both anonymous structs and unions
-    target_compile_options(openssl_benchmark PUBLIC -DOPENSSL_BENCHMARK -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
+    target_compile_options(openssl_benchmark PUBLIC -DOPENSSL_BENCHMARK -Wno-error=unused-function -Wno-error=unused-variable)
   endif()
 endif()
 

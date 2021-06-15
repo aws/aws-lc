@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if not defined(OPENSSL_BENCHMARK)
+#if !defined(OPENSSL_BENCHMARK)
 #include "bssl_bm.h"
 #else
 #include "ossl_bm.h"
@@ -193,8 +193,13 @@ static bool SpeedRSA(const std::string &selected) {
   for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kRSAKeys); i++) {
     const std::string name = kRSAKeys[i].name;
 
-    BM_NAMESPACE::UniquePtr<RSA> key(
-        RSA_private_key_from_bytes(kRSAKeys[i].key, kRSAKeys[i].key_len));
+//    BM_NAMESPACE::UniquePtr<RSA> key(RSA_private_key_from_bytes(kRSAKeys[i].key, kRSAKeys[i].key_len));
+    /* d2i_RSAPrivateKey expects to be able to modify the input pointer as it parses the input data and we don't want it
+     * to modify the original *key data. Therefore create a new temp variable that points to the same data and pass
+     * in the reference to it. As a sanity check make sure input_key points to the end of the *key.
+     */
+    const uint8_t *input_key = kRSAKeys[i].key;
+    BM_NAMESPACE::UniquePtr<RSA> key(d2i_RSAPrivateKey(NULL, &input_key, (long) kRSAKeys[i].key_len));
     if (key == nullptr) {
       fprintf(stderr, "Failed to parse %s key.\n", name.c_str());
       ERR_print_errors_fp(stderr);
@@ -330,11 +335,13 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
   return true;
 }
 
+#if !defined(OPENSSL_BENCHMARK)
 static uint8_t *align(uint8_t *in, unsigned alignment) {
   return reinterpret_cast<uint8_t *>(
       (reinterpret_cast<uintptr_t>(in) + alignment) &
       ~static_cast<size_t>(alignment - 1));
 }
+#endif
 
 static std::string ChunkLenSuffix(size_t chunk_len) {
   char buf[32];
@@ -343,6 +350,7 @@ static std::string ChunkLenSuffix(size_t chunk_len) {
   return buf;
 }
 
+#if !defined(OPENSSL_BENCHMARK)
 static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
                            size_t chunk_len, size_t ad_len,
                            evp_aead_direction_t direction) {
@@ -467,6 +475,7 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
 
   return true;
 }
+#endif
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
                           const std::string &selected) {
@@ -539,7 +548,8 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-  BM_NAMESPACE::ScopedEVP_MD_CTX ctx;
+//  BM_NAMESPACE::ScopedEVP_MD_CTX ctx;
+  BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
   uint8_t scratch[16384];
 
   if (chunk_len > sizeof(scratch)) {
@@ -727,6 +737,7 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected);
 }
 
+#if !defined(OPENSSL_BENCHMARK)
 static bool Speed25519(const std::string &selected) {
   if (!selected.empty() && selected.find("25519") == std::string::npos) {
     return true;
@@ -842,6 +853,7 @@ static bool SpeedSPAKE2(const std::string &selected) {
 
   return true;
 }
+#endif
 
 static bool SpeedScrypt(const std::string &selected) {
   if (!selected.empty() && selected.find("scrypt") == std::string::npos) {
@@ -878,6 +890,7 @@ static bool SpeedScrypt(const std::string &selected) {
   return true;
 }
 
+#if !defined(OPENSSL_BENCHMARK)
 static bool SpeedHRSS(const std::string &selected) {
   if (!selected.empty() && selected != "HRSS") {
     return true;
@@ -1209,6 +1222,7 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
 
   return true;
 }
+#endif
 
 #if defined(BORINGSSL_FIPS)
 static bool SpeedSelfTest(const std::string &selected) {
@@ -1308,76 +1322,66 @@ bool Speed(const std::vector<std::string> &args) {
     }
   }
 
+#if !defined(OPENSSL_BENCHMARK)
   // kTLSADLen is the number of bytes of additional data that TLS passes to
   // AEADs.
   static const size_t kTLSADLen = 13;
+
   // kLegacyADLen is the number of bytes that TLS passes to the "legacy" AEADs.
   // These are AEADs that weren't originally defined as AEADs, but which we use
   // via the AEAD interface. In order for that to work, they have some TLS
   // knowledge in them and construct a couple of the AD bytes internally.
   static const size_t kLegacyADLen = kTLSADLen - 2;
-
-  #ifdef OPENSSL_BENCHMARK
-  printf("~~~~ DEBUG: OPENSSL MACRO: %d ~~~~\n", OPENSSL_BENCHMARK);
-  #else
-  printf("~~~~ DEBUG: NOT OPENSSL MACRO ~~~~\n");
-  #endif
+#endif
 
   if (g_print_json) {
     puts("[");
   }
-  if (!SpeedRSA(selected) ||
-      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
-      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
-      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen,
-                 selected) ||
-      !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "DES-EDE3-CBC-SHA1",
-                 kLegacyADLen, selected) ||
-      !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1",
-                 kLegacyADLen, selected) ||
-      !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1",
-                 kLegacyADLen, selected) ||
-      !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1",
-                     kLegacyADLen, selected) ||
-      !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1",
-                     kLegacyADLen, selected) ||
-      !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen,
-                 selected) ||
-      !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen,
-                 selected) ||
-      !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen,
-                     selected) ||
-      !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen,
-                     selected) ||
-      !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AES-128-CCM-Bluetooth",
-                 kTLSADLen, selected) ||
-      !SpeedAESBlock("AES-128", 128, selected) ||
-      !SpeedAESBlock("AES-256", 256, selected) ||
-      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
-      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
-      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
-      !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
-      !SpeedRandom(selected) ||
-      !SpeedECDH(selected) ||
-      !SpeedECDSA(selected) ||
-      !Speed25519(selected) ||
-      !SpeedSPAKE2(selected) ||
-      !SpeedScrypt(selected) ||
-      !SpeedRSAKeyGen(selected) ||
-      !SpeedHRSS(selected) ||
-      !SpeedHashToCurve(selected) ||
-      !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1,
-                       selected) ||
-      !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(),
-                       10, selected) ||
-      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch1",
-                       TRUST_TOKEN_experiment_v2_voprf(), 1, selected) ||
-      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10",
-                       TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
-      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1",
-                       TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
-      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10",
-                       TRUST_TOKEN_experiment_v2_pmb(), 10, selected)) {
+  if(!SpeedAESBlock("AES-128", 128, selected) ||
+     !SpeedAESBlock("AES-192", 192, selected) ||
+     !SpeedAESBlock("AES-256", 256, selected) ||
+     !SpeedHash(EVP_md4(), "MD4", selected) ||
+     !SpeedHash(EVP_md5(), "MD5", selected) ||
+     !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
+     !SpeedHash(EVP_sha224(), "sha-224", selected) ||
+     !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
+     !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
+     !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+     !SpeedRandom(selected) ||
+     !SpeedECDH(selected) ||
+     !SpeedECDSA(selected) ||
+     !SpeedScrypt(selected) ||
+     !SpeedRSA(selected) ||
+     !SpeedRSAKeyGen(selected)
+#if !defined(OPENSSL_BENCHMARK)
+     ||
+     !SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
+     !Speed25519(selected) ||
+     !SpeedSPAKE2(selected) ||
+     !SpeedRSAKeyGen(selected) ||
+     !SpeedHRSS(selected) ||
+     !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+     !SpeedHashToCurve(selected) ||
+     !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
+     !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
+     !SpeedTrustToken("TrustToken-Exp2VOfPRF-Batch1", TRUST_TOKEN_experiment_v2_voprf(), 1, selected) ||
+     !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
+     !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
+     !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected)
+#endif
+     ) {
     return false;
   }
 #if defined(BORINGSSL_FIPS)
