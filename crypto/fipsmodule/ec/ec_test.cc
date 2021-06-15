@@ -186,7 +186,7 @@ TEST(ECTest, Encoding) {
 // (CAVP 20.1 - KASValidityTest_ECCStaticUnified_KDFConcat_NOKC)
 // https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/key-management
 
-static const uint8_t kP224PublicKey_uncompressed[] = {
+static const uint8_t kP224PublicKey_uncompressed_0x02[] = {
   /* uncompressed */
   0x04,
   /* x-coordinate */
@@ -199,69 +199,7 @@ static const uint8_t kP224PublicKey_uncompressed[] = {
   0xd6, 0x45, 0xa3, 0xea
 };
 
-// The 1st byte should be |0x04| to indicate this is uncompressed ECPublicKey.
-// This test is modified from |kP224PublicKey_uncompressed|.
-static const uint8_t kP224PublicKey_wrong_uncompressed_byte[] = {
-  /* wrong uncompressed byte */
-  0x01,
-  /* x-coordinate */
-  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
-  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
-  0xc5, 0x82, 0x78, 0x85,
-  /* y-coordinate */
-  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
-  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
-  0xd6, 0x45, 0xa3, 0xea
-};
-
-// The last byte should be |0xea| instead of |0xe1|.
-// This test is modified from |kP224PublicKey_uncompressed|.
-static const uint8_t kP224PublicKey_uncompressed_wrong_y[] = {
-  /* uncompressed */
-  0x04,
-  /* x-coordinate */
-  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
-  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
-  0xc5, 0x82, 0x78, 0x85,
-  /* y-coordinate */
-  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
-  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
-  0xd6, 0x45, 0xa3, 0xe1
-};
-
-// The last byte |0xe1| should not exist.
-// This test is modified from |kP224PublicKey_uncompressed|.
-static const uint8_t kP224PublicKey_uncompressed_too_long[] = {
-  /* uncompressed */
-  0x04,
-  /* x-coordinate */
-  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
-  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
-  0xc5, 0x82, 0x78, 0x85,
-  /* y-coordinate */
-  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
-  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
-  0xd6, 0x45, 0xa3, 0xea,
-  /* extra but not needed bytes */
-  0xe1
-};
-
-// Additional one byte |0xea| should be appended to this array.
-// This test is modified from |kP224PublicKey_uncompressed|.
-static const uint8_t kP224PublicKey_uncompressed_too_short[] = {
-  /* uncompressed */
-  0x04,
-  /* x-coordinate */
-  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
-  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
-  0xc5, 0x82, 0x78, 0x85,
-  /* y-coordinate */
-  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
-  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
-  0xd6, 0x45, 0xa3
-};
-
-static const uint8_t kP224PublicKey_compressed[] = {
+static const uint8_t kP224PublicKey_compressed_0x02[] = {
   0x02,
   /* x-coordinate */
   0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
@@ -269,49 +207,49 @@ static const uint8_t kP224PublicKey_compressed[] = {
   0xc5, 0x82, 0x78, 0x85
 };
 
-// The 1st byte should be 0x02.
-// This test is modified from |kP224PublicKey_compressed|.
-static const uint8_t kP224PublicKey_wrong_compressed_byte[] = {
-  0x01,
+static const uint8_t kP224PublicKey_uncompressed_0x03[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* y-coordinate */
+  0x1f, 0xbc, 0x51, 0x84, 0x51, 0x5c, 0x88, 0xd7, 0x9f, 0xc6, 0x3f, 0x83,
+  0xfb, 0xe4, 0x85, 0xc3, 0xa2, 0x89, 0x69, 0x25, 0x22, 0x58, 0xfa, 0xe5,
+  0x29, 0xba, 0x5c, 0x17
+};
+
+static const uint8_t kP224PublicKey_compressed_0x03[] = {
+  0x03,
   /* x-coordinate */
   0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
   0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
   0xc5, 0x82, 0x78, 0x85
 };
 
-// The last byte should be |0x85| instead of |0x87|.
-// This test is modified from |kP224PublicKey_compressed|.
-static const uint8_t kP224PublicKey_compressed_wrong_x[] = {
-  0x02,
+static const uint8_t kP256PublicKey_uncompressed_0x02[] = {
+  /* uncompressed */
+  0x04,
   /* x-coordinate */
-  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
-  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
-  0xc5, 0x82, 0x78, 0x87
+  0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
+  0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
+  0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b,
+  /* y-coordinate */
+  0xc9, 0x53, 0x67, 0xc0, 0xd2, 0x90, 0x46, 0x86, 0x61, 0x8b, 0xf6, 0xf2,
+  0xd9, 0x0b, 0x7c, 0xcb, 0x31, 0xb0, 0xb4, 0x8c, 0x60, 0xc0, 0x28, 0x55,
+  0x6d, 0x1d, 0x3a, 0xbf, 0xdc, 0xd3, 0x1e, 0x42
 };
 
-// Additional one byte |0x85| should be appended to this array.
-// This test is modified from |kP224PublicKey_compressed|.
-static const uint8_t kP224PublicKey_compressed_too_short[] = {
+static const uint8_t kP256PublicKey_compressed_0x02[] = {
   0x02,
   /* x-coordinate */
-  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
-  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
-  0xc5, 0x82, 0x78
+  0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
+  0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
+  0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b
 };
 
-// The last byte |0xe1| should not exist.
-// This test is modified from |kP224PublicKey_compressed|.
-static const uint8_t kP224PublicKey_compressed_too_long[] = {
-  0x02,
-  /* x-coordinate */
-  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
-  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
-  0xc5, 0x82, 0x78, 0x85,
-  /* extra but not needed bytes */
-  0xe1
-};
-
-static const uint8_t kP256PublicKey_uncompressed[] = {
+static const uint8_t kP256PublicKey_uncompressed_0x03[] = {
   /* uncompressed */
   0x04,
   /* x-coordinate */
@@ -324,7 +262,7 @@ static const uint8_t kP256PublicKey_uncompressed[] = {
   0x92, 0xe2, 0xc5, 0x40, 0x23, 0x2c, 0xe1, 0xbd
 };
 
-static const uint8_t kP256PublicKey_compressed[] = {
+static const uint8_t kP256PublicKey_compressed_0x03[] = {
   0x03,
   /* x-coordinate */
   0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
@@ -332,7 +270,31 @@ static const uint8_t kP256PublicKey_compressed[] = {
   0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b
 };
 
-static const uint8_t kP384PublicKey_uncompressed[] = {
+static const uint8_t kP384PublicKey_uncompressed_0x02[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0xe4, 0xe7, 0x0e, 0x43, 0xc6, 0xd0, 0x43, 0x46, 0xdd, 0xd7, 0x62, 0xa6,
+  0x14, 0x17, 0x6d, 0x22, 0x78, 0xb0, 0x47, 0xc5, 0xec, 0x28, 0x64, 0x84,
+  0x65, 0xf2, 0xa3, 0x90, 0xf6, 0xdd, 0x6b, 0xba, 0x54, 0xb9, 0x0b, 0x1e,
+  0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d,
+  /* y-coordinate */
+  0x06, 0x9d, 0x5d, 0x8c, 0x95, 0x31, 0xad, 0xa9, 0xe7, 0xea, 0x2a, 0x66,
+  0xac, 0x5f, 0xe6, 0xe4, 0xe0, 0x4e, 0x0d, 0x77, 0x5b, 0xa0, 0x71, 0xd7,
+  0xc2, 0xbf, 0x5a, 0x00, 0xf1, 0x7c, 0xc0, 0x0b, 0xf4, 0x29, 0xfa, 0x4d,
+  0xf3, 0x07, 0x3d, 0x93, 0xa8, 0xb2, 0xb3, 0xd1, 0xf2, 0x32, 0x31, 0xde
+};
+
+static const uint8_t kP384PublicKey_compressed_0x02[] = {
+  0x02,
+  /* x-coordinate */
+  0xe4, 0xe7, 0x0e, 0x43, 0xc6, 0xd0, 0x43, 0x46, 0xdd, 0xd7, 0x62, 0xa6,
+  0x14, 0x17, 0x6d, 0x22, 0x78, 0xb0, 0x47, 0xc5, 0xec, 0x28, 0x64, 0x84,
+  0x65, 0xf2, 0xa3, 0x90, 0xf6, 0xdd, 0x6b, 0xba, 0x54, 0xb9, 0x0b, 0x1e,
+  0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d
+};
+
+static const uint8_t kP384PublicKey_uncompressed_0x03[] = {
   /* uncompressed */
   0x04,
   /* x-coordinate */
@@ -347,7 +309,7 @@ static const uint8_t kP384PublicKey_uncompressed[] = {
   0x0c, 0xf8, 0xc2, 0x6c, 0x57, 0x4d, 0x4c, 0x2f, 0x0d, 0xcd, 0xce, 0x21
 };
 
-static const uint8_t kP384PublicKey_compressed[] = {
+static const uint8_t kP384PublicKey_compressed_0x03[] = {
   0x03,
   /* x-coordinate */
   0xe4, 0xe7, 0x0e, 0x43, 0xc6, 0xd0, 0x43, 0x46, 0xdd, 0xd7, 0x62, 0xa6,
@@ -356,7 +318,37 @@ static const uint8_t kP384PublicKey_compressed[] = {
   0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d
 };
 
-static const uint8_t kP521PublicKey_uncompressed[] = {
+static const uint8_t kP521PublicKey_uncompressed_0x02[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0x01, 0x03, 0x7e, 0x95, 0xff, 0x8e, 0x40, 0x31, 0xe0, 0xb0, 0x36, 0x1c,
+  0x58, 0xc0, 0x62, 0x61, 0x39, 0x56, 0xaa, 0x30, 0x77, 0x0c, 0xed, 0x17,
+  0x15, 0xed, 0x1b, 0x4d, 0x34, 0x29, 0x33, 0x0f, 0xac, 0x2f, 0xc5, 0xc9,
+  0x3a, 0x69, 0xf7, 0x98, 0x63, 0x3a, 0x15, 0x75, 0x5e, 0x2d, 0xb8, 0x65,
+  0x09, 0x87, 0xf5, 0x75, 0x85, 0xcd, 0xe3, 0x51, 0x6b, 0x6d, 0xd0, 0xfc,
+  0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b,
+  /* y-coordinate */
+  0x00, 0xe4, 0x45, 0x33, 0xe8, 0x7f, 0xa9, 0x74, 0x64, 0xcd, 0x2b, 0x7d,
+  0xc0, 0xcd, 0x65, 0xb9, 0x27, 0xc6, 0xc6, 0x2e, 0xe7, 0x33, 0x68, 0x86,
+  0x72, 0xa2, 0x05, 0xf7, 0x4b, 0xd8, 0x2c, 0x51, 0x1b, 0x89, 0xb0, 0xb9,
+  0xb8, 0x06, 0x0d, 0xb1, 0x30, 0xf0, 0x11, 0x92, 0x9e, 0x63, 0x86, 0x8c,
+  0x57, 0xaa, 0xb5, 0x2a, 0xae, 0xec, 0xf2, 0xe1, 0xc0, 0x93, 0x62, 0xd1,
+  0x1c, 0x5d, 0x57, 0x90, 0x0a, 0x3c
+};
+
+static const uint8_t kP521PublicKey_compressed_0x02[] = {
+  0x02,
+  /* x-coordinate */
+  0x01, 0x03, 0x7e, 0x95, 0xff, 0x8e, 0x40, 0x31, 0xe0, 0xb0, 0x36, 0x1c,
+  0x58, 0xc0, 0x62, 0x61, 0x39, 0x56, 0xaa, 0x30, 0x77, 0x0c, 0xed, 0x17,
+  0x15, 0xed, 0x1b, 0x4d, 0x34, 0x29, 0x33, 0x0f, 0xac, 0x2f, 0xc5, 0xc9,
+  0x3a, 0x69, 0xf7, 0x98, 0x63, 0x3a, 0x15, 0x75, 0x5e, 0x2d, 0xb8, 0x65,
+  0x09, 0x87, 0xf5, 0x75, 0x85, 0xcd, 0xe3, 0x51, 0x6b, 0x6d, 0xd0, 0xfc,
+  0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b
+};
+
+static const uint8_t kP521PublicKey_uncompressed_0x03[] = {
   /* uncompressed */
   0x04,
   /* x-coordinate */
@@ -375,7 +367,7 @@ static const uint8_t kP521PublicKey_uncompressed[] = {
   0xe3, 0xa2, 0xa8, 0x6f, 0xf5, 0xc3
 };
 
-static const uint8_t kP521PublicKey_compressed[] = {
+static const uint8_t kP521PublicKey_compressed_0x03[] = {
   0x03,
   /* x-coordinate */
   0x01, 0x03, 0x7e, 0x95, 0xff, 0x8e, 0x40, 0x31, 0xe0, 0xb0, 0x36, 0x1c,
@@ -394,106 +386,202 @@ struct ECPublicKeyTestInput {
   size_t expected_output_key_len;
   int nid;
 } kDecodeAndEncodeInputs[] = {
-    /* Test 1: decode uncompressed |EC_KEY|, and then encode with the same |conv_form|. */
-    {
-        kP224PublicKey_uncompressed, sizeof(kP224PublicKey_uncompressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP224PublicKey_uncompressed, sizeof(kP224PublicKey_uncompressed),
-        NID_secp224r1
-    },
-    {
-        kP256PublicKey_uncompressed, sizeof(kP256PublicKey_uncompressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP256PublicKey_uncompressed, sizeof(kP256PublicKey_uncompressed),
-        NID_X9_62_prime256v1
-    },
-    {
-        kP384PublicKey_uncompressed, sizeof(kP384PublicKey_uncompressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP384PublicKey_uncompressed, sizeof(kP384PublicKey_uncompressed),
-        NID_secp384r1
-    },
-    {
-        kP521PublicKey_uncompressed, sizeof(kP521PublicKey_uncompressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP521PublicKey_uncompressed, sizeof(kP521PublicKey_uncompressed),
-        NID_secp521r1
-    },
-    /* Test 2: decode compressed |EC_KEY|, and then encode with the same |conv_form|. */
-    {
-        kP224PublicKey_compressed, sizeof(kP224PublicKey_compressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP224PublicKey_compressed, sizeof(kP224PublicKey_compressed),
-        NID_secp224r1
-    },
-    {
-        kP256PublicKey_compressed, sizeof(kP256PublicKey_compressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP256PublicKey_compressed, sizeof(kP256PublicKey_compressed),
-        NID_X9_62_prime256v1
-    },
-    {
-        kP384PublicKey_compressed, sizeof(kP384PublicKey_compressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP384PublicKey_compressed, sizeof(kP384PublicKey_compressed),
-        NID_secp384r1
-    },
-    {
-        kP521PublicKey_compressed, sizeof(kP521PublicKey_compressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP521PublicKey_compressed, sizeof(kP521PublicKey_compressed),
-        NID_secp521r1
-    },
-    /* Test 3: decode compressed |EC_KEY|, and then encode with uncompressed |conv_form|. */
-    {
-        kP224PublicKey_compressed, sizeof(kP224PublicKey_compressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP224PublicKey_uncompressed, sizeof(kP224PublicKey_uncompressed),
-        NID_secp224r1
-    },
-    {
-        kP256PublicKey_compressed, sizeof(kP256PublicKey_compressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP256PublicKey_uncompressed, sizeof(kP256PublicKey_uncompressed),
-        NID_X9_62_prime256v1
-    },
-    {
-        kP384PublicKey_compressed, sizeof(kP384PublicKey_compressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP384PublicKey_uncompressed, sizeof(kP384PublicKey_uncompressed),
-        NID_secp384r1
-    },
-    {
-        kP521PublicKey_compressed, sizeof(kP521PublicKey_compressed),
-        POINT_CONVERSION_UNCOMPRESSED,
-        kP521PublicKey_uncompressed, sizeof(kP521PublicKey_uncompressed),
-        NID_secp521r1
-    },
-    /* Test 4: decode uncompressed |EC_KEY|, and then encode with compressed |conv_form|. */
-    {
-        kP224PublicKey_uncompressed, sizeof(kP224PublicKey_uncompressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP224PublicKey_compressed, sizeof(kP224PublicKey_compressed),
-        NID_secp224r1
-    },
-    {
-        kP256PublicKey_uncompressed, sizeof(kP256PublicKey_uncompressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP256PublicKey_compressed, sizeof(kP256PublicKey_compressed),
-        NID_X9_62_prime256v1
-    },
-    {
-        kP384PublicKey_uncompressed, sizeof(kP384PublicKey_uncompressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP384PublicKey_compressed, sizeof(kP384PublicKey_compressed),
-        NID_secp384r1
-    },
-    {
-        kP521PublicKey_uncompressed, sizeof(kP521PublicKey_uncompressed),
-        POINT_CONVERSION_COMPRESSED,
-        kP521PublicKey_compressed, sizeof(kP521PublicKey_compressed),
-        NID_secp521r1
-    }
+  /* Test 1: decode uncompressed |EC_KEY|, and then encode with the same |conv_form|. */
+  {
+    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
+    NID_secp521r1
+  },
+  {
+    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
+    NID_secp521r1
+  },
+  /* Test 2: decode compressed |EC_KEY|, and then encode with the same |conv_form|. */
+  {
+    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
+    NID_secp521r1
+  },
+  {
+    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
+    NID_secp521r1
+  },
+  /* Test 3: decode compressed |EC_KEY|, and then encode with uncompressed |conv_form|. */
+  {
+    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
+    NID_secp521r1
+  },
+  {
+    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
+    NID_secp521r1
+  },
+  /* Test 4: decode uncompressed |EC_KEY|, and then encode with compressed |conv_form|. */
+  {
+    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
+    NID_secp521r1
+  },
+  {
+    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
+    NID_secp224r1
+  },
+  {
+    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
+    NID_X9_62_prime256v1
+  },
+  {
+    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
+    NID_secp384r1
+  },
+  {
+    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
+    NID_secp521r1
+  }
 };
 
 class ECPublicKeyTest : public testing::TestWithParam<ECPublicKeyTestInput> {};
@@ -539,64 +627,168 @@ TEST_P(ECPublicKeyTest, DecodeAndEncode) {
 INSTANTIATE_TEST_SUITE_P(All, ECPublicKeyTest,
                          testing::ValuesIn(kDecodeAndEncodeInputs));
 
+// The 1st byte should be |0x04| to indicate this is uncompressed ECPublicKey.
+// This test is modified from |kP224PublicKey_uncompressed_0x02|.
+static const uint8_t kP224PublicKey_wrong_uncompressed_byte[] = {
+  /* wrong uncompressed byte */
+  0x01,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* y-coordinate */
+  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
+  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
+  0xd6, 0x45, 0xa3, 0xea
+};
+
+// The last byte should be |0xea| instead of |0xe1|.
+// This test is modified from |kP224PublicKey_uncompressed_0x02|.
+static const uint8_t kP224PublicKey_uncompressed_wrong_y[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* y-coordinate */
+  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
+  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
+  0xd6, 0x45, 0xa3, 0xe1
+};
+
+// The last byte |0xe1| should not exist.
+// This test is modified from |kP224PublicKey_uncompressed_0x02|.
+static const uint8_t kP224PublicKey_uncompressed_too_long[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* y-coordinate */
+  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
+  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
+  0xd6, 0x45, 0xa3, 0xea,
+  /* extra but not needed bytes */
+  0xe1
+};
+
+// Additional one byte |0xea| should be appended to this array.
+// This test is modified from |kP224PublicKey_uncompressed_0x02|.
+static const uint8_t kP224PublicKey_uncompressed_too_short[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* y-coordinate */
+  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
+  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
+  0xd6, 0x45, 0xa3
+};
+
+// The 1st byte should be 0x02.
+// This test is modified from |kP224PublicKey_compressed_0x02|.
+static const uint8_t kP224PublicKey_wrong_compressed_byte[] = {
+  0x01,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85
+};
+
+// The last byte should be |0x85| instead of |0x87|.
+// This test is modified from |kP224PublicKey_compressed_0x02|.
+static const uint8_t kP224PublicKey_compressed_wrong_x[] = {
+  0x02,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x87
+};
+
+// Additional one byte |0x85| should be appended to this array.
+// This test is modified from |kP224PublicKey_compressed_0x02|.
+static const uint8_t kP224PublicKey_compressed_too_short[] = {
+  0x02,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78
+};
+
+// The last byte |0xe1| should not exist.
+// This test is modified from |kP224PublicKey_compressed_0x02|.
+static const uint8_t kP224PublicKey_compressed_too_long[] = {
+  0x02,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* extra but not needed bytes */
+  0xe1
+};
+
 struct InvalidECPublicKey {
   const uint8_t *input_key;
   size_t input_key_len;
   int nid;
 } kInvalidECPublicKeyInputs[] = {
-    /* Test 1: incorrect compresion representation. */
-    {
-        kP224PublicKey_wrong_compressed_byte,
-        sizeof(kP224PublicKey_wrong_compressed_byte),
-        NID_secp224r1
-    },
-    {
-        kP224PublicKey_wrong_uncompressed_byte,
-        sizeof(kP224PublicKey_wrong_uncompressed_byte),
-        NID_secp224r1
-    },
-    /* Test 2: incorrect NID. */
-    {
-        kP224PublicKey_uncompressed,
-        sizeof(kP224PublicKey_uncompressed),
-        NID_secp521r1
-    },
-    {
-        kP224PublicKey_compressed,
-        sizeof(kP224PublicKey_compressed),
-        NID_secp521r1
-    },
-    /* Test 3: bytes are too long, too short or wrong. */
-    {
-        kP224PublicKey_compressed_too_long,
-        sizeof(kP224PublicKey_compressed_too_long),
-        NID_secp224r1
-    },
-    {
-        kP224PublicKey_compressed_too_short,
-        sizeof(kP224PublicKey_compressed_too_short),
-        NID_secp224r1
-    },
-    {
-        kP224PublicKey_compressed_wrong_x,
-        sizeof(kP224PublicKey_compressed_wrong_x),
-        NID_secp224r1
-    },
-    {
-        kP224PublicKey_uncompressed_too_long,
-        sizeof(kP224PublicKey_uncompressed_too_long),
-        NID_secp224r1
-    },
-    {
-        kP224PublicKey_uncompressed_too_short,
-        sizeof(kP224PublicKey_uncompressed_too_short),
-        NID_secp224r1
-    },
-    {
-        kP224PublicKey_uncompressed_wrong_y,
-        sizeof(kP224PublicKey_uncompressed_wrong_y),
-        NID_secp224r1
-    }
+  /* Test 1: incorrect compresion representation. */
+  {
+    kP224PublicKey_wrong_compressed_byte,
+    sizeof(kP224PublicKey_wrong_compressed_byte),
+    NID_secp224r1
+  },
+  {
+    kP224PublicKey_wrong_uncompressed_byte,
+    sizeof(kP224PublicKey_wrong_uncompressed_byte),
+    NID_secp224r1
+  },
+  /* Test 2: incorrect NID. */
+  {
+    kP224PublicKey_uncompressed_0x02,
+    sizeof(kP224PublicKey_uncompressed_0x02),
+    NID_secp521r1
+  },
+  {
+    kP224PublicKey_compressed_0x02,
+    sizeof(kP224PublicKey_compressed_0x02),
+    NID_secp521r1
+  },
+  /* Test 3: bytes are too long, too short or wrong. */
+  {
+    kP224PublicKey_compressed_too_long,
+    sizeof(kP224PublicKey_compressed_too_long),
+    NID_secp224r1
+  },
+  {
+    kP224PublicKey_compressed_too_short,
+    sizeof(kP224PublicKey_compressed_too_short),
+    NID_secp224r1
+  },
+  {
+    kP224PublicKey_compressed_wrong_x,
+    sizeof(kP224PublicKey_compressed_wrong_x),
+    NID_secp224r1
+  },
+  {
+    kP224PublicKey_uncompressed_too_long,
+    sizeof(kP224PublicKey_uncompressed_too_long),
+    NID_secp224r1
+  },
+  {
+    kP224PublicKey_uncompressed_too_short,
+    sizeof(kP224PublicKey_uncompressed_too_short),
+    NID_secp224r1
+  },
+  {
+    kP224PublicKey_uncompressed_wrong_y,
+    sizeof(kP224PublicKey_uncompressed_wrong_y),
+    NID_secp224r1
+  }
 };
 
 class ECPublicKeyInvalidTest : public testing::TestWithParam<InvalidECPublicKey> {};
