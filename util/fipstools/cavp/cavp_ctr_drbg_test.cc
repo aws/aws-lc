@@ -39,7 +39,7 @@ static bool TestCTRDRBG(FileTest *t, void *arg) {
       !test_type.empty() ||
       prediction_resistance != "False" ||
       strtoul(entropy_input_len.c_str(), nullptr, 0) !=
-          CTR_DRBG_ENTROPY_LEN * 8 ||
+          CTR_DRBG_AES_256_ENTROPY_LEN * 8 ||
       nonce_len != "0") {
     return false;
   }
@@ -65,7 +65,7 @@ static bool TestCTRDRBG(FileTest *t, void *arg) {
   CTR_DRBG_init(&drbg, entropy.data(),
                 personalization_str.size() > 0 ? personalization_str.data()
                                                : nullptr,
-                personalization_str.size());
+                personalization_str.size(), CTR_DRBG_AES_256_KEY_LEN);
 
   uint64_t out_len = strtoul(returned_bits_len.c_str(), nullptr, 0);
   if (out_len == 0 || (out_len & 7) != 0) {

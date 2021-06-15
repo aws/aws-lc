@@ -58,12 +58,17 @@ int main(int argc, char **argv) {
       0x37, 0xbd, 0x70, 0x53, 0x72, 0xfc, 0xd4, 0x03, 0x79, 0x70, 0xfb,
       0x06, 0x95, 0xb1, 0x2a, 0x82, 0x48, 0xe1, 0x3e, 0xf2, 0x33, 0xfb,
       0xef, 0x29, 0x81, 0x22, 0x45, 0x40, 0x43, 0x70, 0xce, 0x0f};
-  const uint8_t kDRBGEntropy[48] =
+  const uint8_t kDRBGEntropy_128[CTR_DRBG_AES_128_ENTROPY_LEN] =
+      "DBRG Initial Entropy            ";
+  const uint8_t kDRBGEntropy2_128[CTR_DRBG_AES_128_ENTROPY_LEN] =
+      "DBRG Reseed Entropy             ";
+  const uint8_t kDRBGEntropy_256[CTR_DRBG_AES_256_ENTROPY_LEN] =
       "DBRG Initial Entropy                            ";
+  const uint8_t kDRBGEntropy2_256[CTR_DRBG_AES_256_ENTROPY_LEN] =
+      "DBRG Reseed Entropy                             ";
   const uint8_t kDRBGPersonalization[18] = "BCMPersonalization";
   const uint8_t kDRBGAD[16] = "BCM DRBG AD     ";
-  const uint8_t kDRBGEntropy2[48] =
-      "DBRG Reseed Entropy                             ";
+
 
   AES_KEY aes_key;
   uint8_t aes_iv[16];
@@ -253,22 +258,39 @@ int main(int argc, char **argv) {
   EC_KEY_free(ec_key);
 
   /* DBRG */
-  CTR_DRBG_STATE drbg;
-  printf("About to seed CTR-DRBG with ");
-  hexdump(kDRBGEntropy, sizeof(kDRBGEntropy));
-  if (!CTR_DRBG_init(&drbg, kDRBGEntropy, kDRBGPersonalization,
-                     sizeof(kDRBGPersonalization)) ||
-      !CTR_DRBG_generate(&drbg, output, sizeof(output), kDRBGAD,
+  CTR_DRBG_STATE drbg_128;
+  printf("About to seed CTR-DRBG-128 with ");
+  hexdump(kDRBGEntropy_128, sizeof(kDRBGEntropy_128));
+  if (!CTR_DRBG_init(&drbg_128, kDRBGEntropy_128, kDRBGPersonalization,
+                     sizeof(kDRBGPersonalization), CTR_DRBG_AES_128_KEY_LEN) ||
+      !CTR_DRBG_generate(&drbg_128, output, sizeof(output), kDRBGAD,
                          sizeof(kDRBGAD)) ||
-      !CTR_DRBG_reseed(&drbg, kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD)) ||
-      !CTR_DRBG_generate(&drbg, output, sizeof(output), kDRBGAD,
+      !CTR_DRBG_reseed(&drbg_128, kDRBGEntropy2_128, kDRBGAD, sizeof(kDRBGAD)) ||
+      !CTR_DRBG_generate(&drbg_128, output, sizeof(output), kDRBGAD,
                          sizeof(kDRBGAD))) {
     printf("DRBG failed\n");
     goto err;
   }
   printf("  generated ");
   hexdump(output, sizeof(output));
-  CTR_DRBG_clear(&drbg);
+  CTR_DRBG_clear(&drbg_128);
+
+  CTR_DRBG_STATE drbg_256;
+  printf("About to seed CTR-DRBG-256 with ");
+  hexdump(kDRBGEntropy_256, sizeof(kDRBGEntropy_256));
+  if (!CTR_DRBG_init(&drbg_256, kDRBGEntropy_256, kDRBGPersonalization,
+                     sizeof(kDRBGPersonalization), CTR_DRBG_AES_256_KEY_LEN) ||
+      !CTR_DRBG_generate(&drbg_256, output, sizeof(output), kDRBGAD,
+                         sizeof(kDRBGAD)) ||
+      !CTR_DRBG_reseed(&drbg_256, kDRBGEntropy2_256, kDRBGAD, sizeof(kDRBGAD)) ||
+      !CTR_DRBG_generate(&drbg_256, output, sizeof(output), kDRBGAD,
+                         sizeof(kDRBGAD))) {
+    printf("DRBG failed\n");
+    goto err;
+  }
+  printf("  generated ");
+  hexdump(output, sizeof(output));
+  CTR_DRBG_clear(&drbg_256);
 
   /* TLS KDF */
   printf("About to run TLS KDF\n");

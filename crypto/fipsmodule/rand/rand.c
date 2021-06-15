@@ -97,8 +97,9 @@ static size_t ctr_drbg_get_entropy_length(ctr_drbg_key_len_t ctr_drbg_key_len) {
   }
 }
 
-// Sometimes used to bound indexing into arrays that can have max size
-// |CTR_DRBG_MAX_AES_KEY_LEN|
+// |CTR_DRBG_AES_128_KEY_LEN| and |CTR_DRBG_AES_256_KEY_LEN| are used as
+// upper bounds for indexing into |CTR_DRBG_MAX_AES_KEY_LEN| length arrays.
+// Ensure there are no OOB events.
 OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_AES_KEY_LEN >= CTR_DRBG_AES_128_KEY_LEN,
   CTR_DRBG_MAX_KEY_LEN_is_not_max)
 OPENSSL_STATIC_ASSERT(CTR_DRBG_MAX_AES_KEY_LEN >= CTR_DRBG_AES_256_KEY_LEN,
@@ -225,7 +226,7 @@ void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
 
 struct entropy_buffer {
   // bytes contains entropy suitable for seeding a DRBG.
-  uint8_t bytes[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
+  uint8_t bytes[CTR_DRBG_MAX_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
   // bytes_valid indicates the number of bytes of |bytes| that contain valid
   // data.
   size_t bytes_valid;
@@ -284,16 +285,19 @@ static void get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
 // rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if
 // that entropy came directly from the CPU and zero otherwise.
 static void rand_get_seed(struct rand_thread_state *state,
-                          uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_used_cpu) {
+                          uint8_t seed[CTR_DRBG_MAX_ENTROPY_LEN],
+                          int *out_used_cpu,
+                          size_t entropy_len) {
   if (!state->last_block_valid) {
     int unused;
     get_seed_entropy(state->last_block, sizeof(state->last_block), &unused);
     state->last_block_valid = 1;
   }
 
-  uint8_t entropy[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
-  get_seed_entropy(entropy, sizeof(entropy), out_used_cpu);
+  uint8_t entropy[CTR_DRBG_MAX_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
+  size_t entropy_len_including_overread = entropy_len * BORINGSSL_FIPS_OVERREAD;
+
+  get_seed_entropy(entropy, entropy_len_including_overread, out_used_cpu);
 
   // See FIPS 140-2, section 4.9.2. This is the “continuous random number
   // generator test” which causes the program to randomly abort. Hopefully the
@@ -303,8 +307,11 @@ static void rand_get_seed(struct rand_thread_state *state,
     BORINGSSL_FIPS_abort();
   }
 
-  OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _)
-  for (size_t i = CRNGT_BLOCK_SIZE; i < sizeof(entropy);
+  // |entropy_len_including_overread| is one of
+  // |CTR_DRBG_AES_{128,256}_ENTROPY_LEN| * |BORINGSSL_FIPS_OVERREAD|.
+  OPENSSL_STATIC_ASSERT((CTR_DRBG_AES_128_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD) % CRNGT_BLOCK_SIZE == 0, _)
+  OPENSSL_STATIC_ASSERT((CTR_DRBG_AES_256_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD) % CRNGT_BLOCK_SIZE == 0, _)
+  for (size_t i = CRNGT_BLOCK_SIZE; i < entropy_len_including_overread;
        i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
                       CRNGT_BLOCK_SIZE) == 0) {
@@ -313,14 +320,14 @@ static void rand_get_seed(struct rand_thread_state *state,
     }
   }
   OPENSSL_memcpy(state->last_block,
-                 entropy + sizeof(entropy) - CRNGT_BLOCK_SIZE,
+                 entropy + entropy_len_including_overread - CRNGT_BLOCK_SIZE,
                  CRNGT_BLOCK_SIZE);
 
-  OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
+  OPENSSL_memcpy(seed, entropy, entropy_len);
 
   for (size_t i = 1; i < BORINGSSL_FIPS_OVERREAD; i++) {
-    for (size_t j = 0; j < CTR_DRBG_ENTROPY_LEN; j++) {
-      seed[j] ^= entropy[CTR_DRBG_ENTROPY_LEN * i + j];
+    for (size_t j = 0; j < entropy_len; j++) {
+      seed[j] ^= entropy[(entropy_len * i) + j];
     }
   }
 }

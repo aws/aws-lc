@@ -43,7 +43,7 @@ The utility in `util/fipstools/break-hash.go` can be used to corrupt the FIPS mo
 
 ## RNG design
 
-FIPS 140-2 requires that one of its PRNGs be used (which they call DRBGs). In BoringCrypto, we use CTR-DRBG with AES-256 exclusively and `RAND_bytes` (the primary interface for the rest of the system to get random data) takes its output from there.
+FIPS 140-2 requires that one of its PRNGs be used (which they call DRBGs). In BoringCrypto, we use CTR-DRBG with AES-128 or AES-256. `RAND_bytes` (the primary interface for the rest of the system to get random data) takes its output from there using the AES-256 mode of CTR-DRBG.
 
 The DRBG state is kept in a thread-local structure and is seeded from one of the following entropy sources in preference order: RDRAND (on Intel chips), `getrandom`, and `/dev/urandom`. In the case of `/dev/urandom`, in order to ensure that the system has a minimum level of entropy, BoringCrypto polls the kernel until the estimated entropy is at least 256 bits. This is a poor man's version of `getrandom` and we strongly recommend using a kernel recent enough to support the real thing.
 
