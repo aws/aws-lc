@@ -809,6 +809,7 @@ TEST_P(ECPublicKeyInvalidTest, Decode) {
   const uint8_t *inp = &input_key[0];
   // Decoding an EC point should fail and return NULL.
   ASSERT_TRUE(o2i_ECPublicKey(&ec_key, &inp, input_key_len) == nullptr);
+  ERR_clear_error();
 }
 
 INSTANTIATE_TEST_SUITE_P(All, ECPublicKeyInvalidTest,
