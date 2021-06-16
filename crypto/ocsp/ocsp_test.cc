@@ -1697,10 +1697,10 @@ TEST(OCSPTest, TestNotRequestedOCSP_SHA256) {
                        &nextupd);
 }
 
-// Test a SHA-256 OCSP response signed by the wrong responder certificate, but
-// the requested certificate was signed. (however this incorrect OCSP responder
-// certificate is a valid OCSP responder for some other case and chains to a
-// trusted root). Thus, this response is not valid for any request.
+// Test a SHA-256 OCSP response where the requested certificate was signed by
+// the OCSP responder, but signed by the wrong requested OCSP responder key
+// certificate. However, this incorrect OCSP responder certificate may be a
+// valid OCSP responder for some other case and also chains to a trusted root.
 TEST(OCSPTest, TestNotValidResponseOCSP_SHA256) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
