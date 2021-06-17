@@ -29,6 +29,7 @@
 
 #include "internal.h"
 #include "fork_detect.h"
+#include "snapsafe_detect.h"
 #include "../../internal.h"
 #include "../delocate.h"
 

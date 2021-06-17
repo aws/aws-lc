@@ -52,6 +52,11 @@ install(DIRECTORY include/openssl
         COMPONENT Development
 )
 
+if (USE_SYSGENID_PATH)
+  message(STATUS "Setting SYSGENID_PATH=${USE_SYSGENID_PATH}")
+  add_compile_definitions(SYSGENID_PATH=\"${USE_SYSGENID_PATH}\")
+endif()
+
 if(ANDROID)
   # Android-NDK CMake files reconfigure the path and so Go and Perl won't be
   # found. However, ninja will still find them in $PATH if we just name them.
