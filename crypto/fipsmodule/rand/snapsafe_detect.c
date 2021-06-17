@@ -48,7 +48,7 @@ static void init_snapsafe_detect(void) {
     return;
   }
 
-  int fd_sysgenid = open(retrieve_sysgenid_file_path(), O_RDONLY);;
+  int fd_sysgenid = open(retrieve_sysgenid_file_path(), O_RDONLY);
   if (fd_sysgenid == -1) {
     return;
   }
