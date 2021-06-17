@@ -21,6 +21,21 @@ DEFINE_BSS_GET(volatile uint32_t *, g_sysgenid_addr)
 DEFINE_BSS_GET(char *, g_sysgenid_file_path)
 DEFINE_BSS_GET(int, g_ignore_snapsafe)
 
+static char * retrieve_sysgenid_file_path(void) {
+
+  // If |sysgenid_file_path| is NULL, it means we have set the file path
+  // through |hazmat_replace_snapsafe_file_path_for_testing| for testing
+  // purposes. If NULL, use the expected SysGenID file path. This file path can
+  // be overwritten at compile-time by defining the |SYSGENID_PATH| preprocessor
+  // symbol to the desired path.
+  if (*g_sysgenid_file_path_bss_get() != NULL) {
+    return *g_sysgenid_file_path_bss_get();
+  }
+  else {
+    return SYSGENID_FILE_PATH;
+  }
+}
+
 static void init_snapsafe_detect(void) {
 
   // For testing purposes, we sometimes ignore snapsafe detection.
@@ -33,17 +48,7 @@ static void init_snapsafe_detect(void) {
     return;
   }
 
-  int fd_sysgenid = -1;
-  if (*g_sysgenid_file_path_bss_get() != NULL) {
-    // If |sysgenid_file_path| is NULL, it means we have set the file path
-    // through |hazmat_replace_snapsafe_file_path_for_testing| for testing
-    // purposes. If NULL, use the expected SysGenID file path.
-    fd_sysgenid = open(*g_sysgenid_file_path_bss_get(), O_RDONLY);
-  }
-  else {
-    fd_sysgenid = open(SYSGENID_FILE_PATH, O_RDONLY);
-  }
-
+  int fd_sysgenid = open(retrieve_sysgenid_file_path(), O_RDONLY);;
   if (fd_sysgenid == -1) {
     return;
   }
