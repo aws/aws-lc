@@ -322,7 +322,7 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[1].nid = NID_secp256k1;
   out->curves[1].oid = kOIDP256K1;
   out->curves[1].oid_len = sizeof(kOIDP256K1);
-  out->curves[1].comment = "NIST P-256 K1";
+  out->curves[1].comment = "SEC/ANSI P-256 K1";
   out->curves[1].param_len = 32;
   out->curves[1].params = kP256K1Params;
   out->curves[1].method = EC_GFp_mont_method();
