@@ -19,6 +19,7 @@ option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+option(SNAPSAFE_MUST_DEFEND "Enable if snapsafe-type uniqueness breaking events must be defended against" OFF)
 
 enable_language(C)
 
@@ -52,9 +53,13 @@ install(DIRECTORY include/openssl
         COMPONENT Development
 )
 
-if (USE_SYSGENID_PATH)
-  message(STATUS "Setting SYSGENID_PATH=${USE_SYSGENID_PATH}")
-  add_compile_definitions(SYSGENID_PATH=\"${USE_SYSGENID_PATH}\")
+if (AWSLC_USE_SYSGENID_PATH)
+  message(STATUS "Setting AWSLC_SYSGENID_PATH=${AWSLC_USE_SYSGENID_PATH}")
+  add_compile_definitions(AWSLC_SYSGENID_PATH=\"${AWSLC_USE_SYSGENID_PATH}\")
+endif()
+
+if (SNAPSAFE_MUST_DEFEND)
+  set(AWSLC_SNAPSAFE_MUST_DEFEND 1)
 endif()
 
 if(ANDROID)

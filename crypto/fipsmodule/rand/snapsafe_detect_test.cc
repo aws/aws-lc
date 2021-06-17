@@ -56,7 +56,7 @@ static int set_mocked_sysgenid_file_value(uint32_t new_sysgenid_value) {
 
 static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
 
-  int fd_sysgenid = open(SYSGENID_FILE_PATH, O_RDONLY);
+  int fd_sysgenid = open(AWSLC_SYSGENID_FILE_PATH, O_RDONLY);
   if (fd_sysgenid == -1) {
     return 0;
   }
@@ -76,25 +76,31 @@ static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
 }
 
 static int set_new_sysgenid_value(uint32_t new_sysgenid_value) {
-    if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
-        return set_sysgenid_file_value(new_sysgenid_value);
-    }
-    else {
-        return set_mocked_sysgenid_file_value(new_sysgenid_value);
-    }
+  if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
+    return set_sysgenid_file_value(new_sysgenid_value);
+  }
+  else {
+    return set_mocked_sysgenid_file_value(new_sysgenid_value);
+  }
 }
 
 static int check_snapsafe_system_support(void) {
-    struct stat buf;
-    // System should support Snapsafe if |SYSGENID_FILE_PATH| is present.
-    if (stat(SYSGENID_FILE_PATH, &buf) == 0) {
-        fprintf(stdout, "System supports Snapsafe\n");
-        return SNAPSAFE_SUPPORTED;
-    }
-    else {
-        fprintf(stdout, "System does not support Snapsafe\n");
-        return SNAPSAFE_NOT_SUPPORTED;
-    }
+  struct stat buf;
+  // System should support Snapsafe if |AWSLC_SYSGENID_FILE_PATH| is present.
+  if (stat(AWSLC_SYSGENID_FILE_PATH, &buf) == 0) {
+    fprintf(stdout, "System supports Snapsafe\n");
+    return SNAPSAFE_SUPPORTED;
+  }
+  else {
+    fprintf(stdout, "System does not support Snapsafe\n");
+    return SNAPSAFE_NOT_SUPPORTED;
+  }
+}
+
+static void maybe_cleanup_test_file(void) {
+  if (system_supports_snapsafe == SNAPSAFE_NOT_SUPPORTED) {
+    remove(SYSGENID_MOCKED_FILE_PATH);
+  }
 }
 
 TEST(SnapsafeGenerationTest, Test) {
@@ -158,6 +164,8 @@ TEST(SnapsafeGenerationTest, Test) {
     ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
     ASSERT_EQ(new_sysgenid_value, current_snapsafe_gen_num);
   }
+
+  maybe_cleanup_test_file();
 }
 
 #endif // defined(OPENSSL_LINUX)

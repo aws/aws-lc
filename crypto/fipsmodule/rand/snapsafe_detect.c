@@ -32,7 +32,7 @@ static char const * retrieve_sysgenid_file_path(void) {
     return *g_sysgenid_file_path_bss_get();
   }
   else {
-    return SYSGENID_FILE_PATH;
+    return AWSLC_SYSGENID_FILE_PATH;
   }
 }
 
@@ -71,7 +71,7 @@ static void init_snapsafe_detect(void) {
 }
 
 int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
-  fprintf(stderr, "path: %s\n", SYSGENID_FILE_PATH);
+
   // Best-effort attempt to initialise Snapsafe detection.
   CRYPTO_once(g_snapsafe_detect_once_bss_get(), init_snapsafe_detect);
 

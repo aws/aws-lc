@@ -313,6 +313,46 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 #endif
 
+// CRYPTO_snapsafe_must_defend indicates whether snapsafe-type ube's must be
+// defended against.
+OPENSSL_INLINE int CRYPTO_snapsafe_must_defend(void) {
+#if defined(AWSLC_SNAPSAFE_MUST_DEFEND)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+// CRYPTO_fork_must_defend indicates whether fork-type ube's must be defended
+// against.
+OPENSSL_INLINE int CRYPTO_fork_must_defend(void) {
+  if (rand_fork_unsafe_buffering_enabled() == 0) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
+}
+
+// must_defend_against_ube implements the logic that decides whether
+// we should enforce entropy mixing to safeguards against uniqeness breaking
+// events (ube). Currently, there are two mechanisms implemented that attempts
+// to detect such events. They are:
+//  * fork detection: attempts to detect process forks.
+//  * snapsafe detection: attempts to detect snapshot/VM resumes.
+// If a mechanism is not enabled, we check if something else has indicated that
+// the particular type of ube must be defended against.
+static int must_defend_against_ube(const uint64_t fork_generation,
+                                        int snapsafe_status) {
+  if (snapsafe_status == 0 && CRYPTO_snapsafe_must_defend() == 1) {
+    return 1;
+  }
+  if (fork_generation == 0 && CRYPTO_fork_must_defend() == 1) {
+    return 1;
+  }
+  return 0;
+}
+
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32]) {
   if (out_len == 0) {
@@ -320,6 +360,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
+
+  uint32_t snapsafe_generation = 0;
+  int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
 
   // Additional data is mixed into every CTR-DRBG call to protect, as best we
   // can, against forks & VM clones. We do not over-read this information and
@@ -332,9 +375,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       !rdrand(additional_data, sizeof(additional_data))) {
     // Without a hardware RNG to save us from address-space duplication, the OS
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
-    // and so is disabled when we have fork detection, or if the application has
-    // promised not to fork.
-    if (fork_generation != 0 || rand_fork_unsafe_buffering_enabled()) {
+    // and so is disabled when we don't need to defend against ube's.
+    if (must_defend_against_ube(fork_generation, snapsafe_status) == 0) {
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
     } else if (!have_rdrand()) {
       // No alternative so block for OS entropy.

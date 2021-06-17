@@ -12,14 +12,14 @@
 extern "C" {
 #endif
 
-#if defined(SYSGENID_PATH)
-	#define SYSGENID_FILE_PATH SYSGENID_PATH
+#if defined(AWSLC_SYSGENID_PATH)
+	#define AWSLC_SYSGENID_FILE_PATH AWSLC_SYSGENID_PATH
 #else
 	// If no user-specified path is provided at compile-time, use a default
 	// path. Path taken from https://lkml.org/lkml/2021/3/8/677. This path
 	// might change in the future, becasue the SysGenID interface is not yet
 	// stable.
-	#define SYSGENID_FILE_PATH "/dev/sysgenid"
+	#define AWSLC_SYSGENID_FILE_PATH "/dev/sysgenid"
 #endif
 
 // CRYPTO_get_snapsafe_generation returns the snapsafe generation number for the
