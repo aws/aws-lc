@@ -208,6 +208,13 @@ TEST(RandTest, Threads) {
 }
 #endif  // OPENSSL_THREADS
 
+/*
+TEST(RandTest, SysGenIDincrement) {
+
+
+}
+*/
+
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST(RandTest, RdrandABI) {
   if (!have_rdrand()) {

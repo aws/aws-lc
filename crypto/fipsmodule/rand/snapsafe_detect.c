@@ -18,7 +18,7 @@
 DEFINE_STATIC_ONCE(g_snapsafe_detect_once)
 DEFINE_STATIC_MUTEX(g_snapsafe_detect_lock)
 DEFINE_BSS_GET(volatile uint32_t *, g_sysgenid_addr)
-DEFINE_BSS_GET(char *, g_sysgenid_file_path)
+DEFINE_BSS_GET(const char *, g_sysgenid_file_path)
 DEFINE_BSS_GET(int, g_ignore_snapsafe)
 
 static char const * retrieve_sysgenid_file_path(void) {
@@ -95,8 +95,8 @@ void CRYPTO_snapsafe_detect_ignore_for_testing(void) {
   *g_ignore_snapsafe_bss_get() = 1;
 }
 
-void HAZMAT_replace_sysgenid_file_path_for_testing(char *new_sysgenid_path) {
-  printf("Replacing the default SysGenID path with the path %s\n"
+void HAZMAT_replace_sysgenid_file_path_for_testing(const char *new_sysgenid_path) {
+  fprintf(stderr, "Replacing the default SysGenID path with the path %s\n"
     "This should only happen during testing!\n",
     new_sysgenid_path);
   *g_sysgenid_file_path_bss_get() = new_sysgenid_path;

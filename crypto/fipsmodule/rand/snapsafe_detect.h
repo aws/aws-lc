@@ -44,7 +44,7 @@ OPENSSL_EXPORT void CRYPTO_snapsafe_detect_ignore_for_testing(void);
 
 // hazmat_replace_sysgenid_file_path_for_testing is an internal detail
 // used for testing purposes.
-OPENSSL_EXPORT void HAZMAT_replace_sysgenid_file_path_for_testing(char *new_sysgenid_path);
+OPENSSL_EXPORT void HAZMAT_replace_sysgenid_file_path_for_testing(const char *new_sysgenid_path);
 
 #ifdef  __cplusplus
 }
