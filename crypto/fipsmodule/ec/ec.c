@@ -317,26 +317,26 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
       EC_GFp_mont_method();
 #endif
 
-  // 1.3.132.0.10
-  static const uint8_t kOIDP256K1[] = {0x2b, 0x81, 0x04, 0x00, 0x0a};
-  out->curves[1].nid = NID_secp256k1;
-  out->curves[1].oid = kOIDP256K1;
-  out->curves[1].oid_len = sizeof(kOIDP256K1);
-  out->curves[1].comment = "SEC/ANSI P-256 K1";
-  out->curves[1].param_len = 32;
-  out->curves[1].params = kP256K1Params;
-  out->curves[1].method = EC_GFp_mont_method();
-
   // 1.2.840.10045.3.1.1
   static const uint8_t kOIDP192[] = {0x2a, 0x86, 0x48, 0xce,
                                      0x3d, 0x03, 0x01, 0x01};
-  out->curves[1].nid = NID_X9_62_prime192v1;
-  out->curves[1].oid = kOIDP192;
-  out->curves[1].oid_len = sizeof(kOIDP192);
-  out->curves[1].comment = "NIST P-192";
-  out->curves[1].param_len = 24;
-  out->curves[1].params = kP192Params;
-  out->curves[1].method = EC_GFp_mont_method();
+  out->curves[4].nid = NID_X9_62_prime192v1;
+  out->curves[4].oid = kOIDP192;
+  out->curves[4].oid_len = sizeof(kOIDP192);
+  out->curves[4].comment = "NIST P-192";
+  out->curves[4].param_len = 24;
+  out->curves[4].params = kP192Params;
+  out->curves[4].method = EC_GFp_mont_method();
+
+  // 1.3.132.0.10
+  static const uint8_t kOIDP256K1[] = {0x2b, 0x81, 0x04, 0x00, 0x0a};
+  out->curves[5].nid = NID_secp256k1;
+  out->curves[5].oid = kOIDP256K1;
+  out->curves[5].oid_len = sizeof(kOIDP256K1);
+  out->curves[5].comment = "SEC/ANSI P-256 K1";
+  out->curves[5].param_len = 32;
+  out->curves[5].params = kP256K1Params;
+  out->curves[5].method = EC_GFp_mont_method();
 }
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth) {

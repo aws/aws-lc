@@ -754,7 +754,7 @@ struct built_in_curve {
   const EC_METHOD *method;
 };
 
-#define OPENSSL_NUM_BUILT_IN_CURVES 4
+#define OPENSSL_NUM_BUILT_IN_CURVES 6
 
 struct built_in_curves {
   struct built_in_curve curves[OPENSSL_NUM_BUILT_IN_CURVES];
