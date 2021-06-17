@@ -61,6 +61,7 @@ static const unsigned kReseedInterval = 4096;
 struct rand_thread_state {
   CTR_DRBG_STATE drbg;
   uint64_t fork_generation;
+  uint32_t snapsafe_generation;
   // calls is the number of generate calls made on |drbg| since it was last
   // (re)seeded. This is bound by |kReseedInterval|.
   unsigned calls;
@@ -430,6 +431,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
     state->calls = 0;
     state->fork_generation = fork_generation;
+    state->snapsafe_generation = snapsafe_generation;
 
 #if defined(BORINGSSL_FIPS)
     if (state != &stack_state) {
@@ -447,7 +449,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
   if (state->calls >= kReseedInterval ||
-      state->fork_generation != fork_generation) {
+      state->fork_generation != fork_generation ||
+      state->snapsafe_generation != snapsafe_generation) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int used_cpu;
     rand_get_seed(state, seed, &used_cpu);
@@ -467,6 +470,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
     state->calls = 0;
     state->fork_generation = fork_generation;
+    state->snapsafe_generation = snapsafe_generation;
   } else {
 #if defined(BORINGSSL_FIPS)
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());

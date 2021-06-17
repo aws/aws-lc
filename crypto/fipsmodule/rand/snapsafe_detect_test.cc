@@ -103,7 +103,14 @@ static void maybe_cleanup_test_file(void) {
   }
 }
 
-TEST(SnapsafeGenerationTest, Test) {
+class SnapsafeGenerationTest : public testing::Test {
+  public:
+    void TearDown() override {
+      maybe_cleanup_test_file();
+    }
+};
+
+TEST_F(SnapsafeGenerationTest, SysGenIDretrieval) {
 
   // First part of this test suite generates two snapsafe generation numbers and
   // compares them. Since the generation should be stable it is expected the two
@@ -164,8 +171,6 @@ TEST(SnapsafeGenerationTest, Test) {
     ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
     ASSERT_EQ(new_sysgenid_value, current_snapsafe_gen_num);
   }
-
-  maybe_cleanup_test_file();
 }
 
 #endif // defined(OPENSSL_LINUX)
