@@ -26,7 +26,7 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 
 #define OCSP_VERIFYSTATUS_SUCCESS                   1
 #define OCSP_VERIFYSTATUS_ERROR                     0
-#define OCSP_VERIFYSTATUS_FATALERROR                1
+#define OCSP_VERIFYSTATUS_FATALERROR                -1
 
 
 static const char ca_cert[] = R"(
