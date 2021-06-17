@@ -367,9 +367,12 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   assert(rsa->mont_n != NULL);
 
   BN_BLINDING *ret = NULL;
+  
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
   uint32_t snapsafe_generation = 0;
   OPENSSL_UNUSED int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
+  (void) snapsafe_status; // In MSVC, |OPENSSL_UNUSED| is not enough.
+
   CRYPTO_MUTEX_lock_write(&rsa->lock);
 
   // Wipe the blinding cache if we detect a ube (uniqueness breaking event).
