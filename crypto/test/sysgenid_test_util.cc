@@ -1,0 +1,99 @@
+// -----------------------------------------------------------------------------
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+// -----------------------------------------------------------------------------
+
+#include "sysgenid_test_util.h"
+
+#if defined(OPENSSL_LINUX)
+
+#include "../fipsmodule/rand/snapsafe_detect.h"
+
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <unistd.h>
+
+// These values can be found here: https://lkml.org/lkml/2021/3/8/677.
+#define SYSGENID_IOCTL                  0xE4
+#define SYSGENID_TRIGGER_GEN_UPDATE     _IO(SYSGENID_IOCTL, 3)
+
+#define SYSGENID_MOCKED_FILE_PATH "./sysgenid_test_file"
+
+static int system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
+
+// |set_sysgenid_file_value| interfaces with the SysGenID device. If this is not
+// supported on the system we are running,|set_mocked_sysgenid_file_value| mocks
+// the device trough a plain file.
+
+static int set_mocked_sysgenid_file_value(uint32_t new_sysgenid_value) {
+
+  FILE *mocked_sysgenid_file_path = fopen(SYSGENID_MOCKED_FILE_PATH, "wb");
+  if (mocked_sysgenid_file_path == NULL) {
+    return 0;
+  }
+
+  if (fwrite(&new_sysgenid_value, sizeof(uint32_t), 1,
+      mocked_sysgenid_file_path) != 1) {
+    fclose(mocked_sysgenid_file_path);
+    return 0;
+  }
+
+  if(fclose(mocked_sysgenid_file_path) == EOF) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
+
+  int fd_sysgenid = open(AWSLC_SYSGENID_FILE_PATH, O_RDONLY);
+  if (fd_sysgenid == -1) {
+    return 0;
+  }
+
+  // API details can be found here: https://lkml.org/lkml/2021/3/8/677.
+  if (ioctl(fd_sysgenid, SYSGENID_TRIGGER_GEN_UPDATE,
+      new_sysgenid_value) == -1) {
+    close(fd_sysgenid);
+    return 0;
+  }
+
+  if (close(fd_sysgenid) == -1) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int set_new_sysgenid_value(uint32_t new_sysgenid_value) {
+  if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
+    return set_sysgenid_file_value(new_sysgenid_value);
+  }
+  else {
+    return set_mocked_sysgenid_file_value(new_sysgenid_value);
+  }
+}
+
+void setup_sysgenid_support(void) {
+  struct stat buf;
+  // System should support Snapsafe if |AWSLC_SYSGENID_FILE_PATH| is present.
+  if (stat(AWSLC_SYSGENID_FILE_PATH, &buf) == 0) {
+    system_supports_snapsafe = SNAPSAFE_SUPPORTED;
+  }
+  else {
+    system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
+    // Replace default SysGenID file path to point to a custom file we control.
+    HAZMAT_replace_sysgenid_file_path_for_testing(SYSGENID_MOCKED_FILE_PATH);
+  }
+}
+
+void maybe_cleanup_test_file(void) {
+  if (system_supports_snapsafe == SNAPSAFE_NOT_SUPPORTED) {
+    remove(SYSGENID_MOCKED_FILE_PATH);
+  }
+}
+
+#endif // defined(OPENSSL_LINUX)
