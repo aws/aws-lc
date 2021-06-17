@@ -118,7 +118,7 @@ TEST(SnapsafeGenerationTest, Test) {
   system_supports_snapsafe = check_snapsafe_system_support();
   if (system_supports_snapsafe == SNAPSAFE_NOT_SUPPORTED) {
     char mocked_sysgenid_file_path[] = SYSGENID_MOCKED_FILE_PATH;
-    hazmat_replace_sysgenid_file_path_for_testing(mocked_sysgenid_file_path);
+    HAZMAT_replace_sysgenid_file_path_for_testing(mocked_sysgenid_file_path);
   }
 
   // Set initial sysgenid value, such that we can call
