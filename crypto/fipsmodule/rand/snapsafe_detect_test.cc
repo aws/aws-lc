@@ -107,7 +107,7 @@ TEST(SnapsafeGenerationTest, Test) {
   // equal.
 
   int snapsafe_detection_should_be_ignored = 0; // no
-fprintf(stderr, "path: %s\n", SYSGENID_FILE_PATH);
+
   if (getenv("AWSLC_IGNORE_SNAPSAFE")) {
     snapsafe_detection_should_be_ignored = 1; // yes
     CRYPTO_snapsafe_detect_ignore_for_testing();
