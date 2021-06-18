@@ -53,15 +53,6 @@ static void maybe_disable_some_fork_detect_mechanisms(void) {
 #endif
 }
 
-static void disable_snapsafe_detection_mechanisms(void) {
-#if defined(OPNESSL_LINUX)
-  if (getenv("AWSLC_IGNORE_SNAPSAFE")) {
-    CRYPTO_snapsafe_detect_ignore_for_testing();
-  }
-#endif
-}
-
-
 // These tests are, strictly speaking, flaky, but we use large enough buffers
 // that the probability of failing when we should pass is negligible.
 
@@ -81,6 +72,13 @@ TEST(RandTest, NotObviouslyBroken) {
 
 #if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_IOS) && \
     !defined(OPENSSL_FUCHSIA) && !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+
+static void disable_snapsafe_detection_mechanisms(void) {
+#if defined(OPNESSL_LINUX)
+  CRYPTO_snapsafe_detect_ignore_for_testing();
+#endif
+}
+
 // A |sysgenid_value| value  different from 0 sets the SysGenID device with the
 // specified value.
 static bool ForkMaybeIncrementSysGenIdAndRand(bssl::Span<uint8_t> out,
