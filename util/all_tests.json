@@ -76,6 +76,12 @@
     "skip_valgrind": true
   },
   {
+    "comment": "Run snapsafe detection test suite with only fork detection disabled",
+    "cmd": ["crypto/crypto_test", "--gtest_filter=SnapsafeGenerationTest.SysGenIDincrement"],
+    "env": ["AWSLC_STANDALONE_SNAPSAFE_TEST=1", "BORINGSSL_IGNORE_MADV_WIPEONFORK=1", "BORINGSSL_IGNORE_PTHREAD_ATFORK=1"],
+    "skip_valgrind": true
+  },
+  {
     "cmd": ["decrepit/decrepit_test"],
     "skip_valgrind": true
   },

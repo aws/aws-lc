@@ -46,6 +46,10 @@ OPENSSL_EXPORT void RAND_cleanup(void);
 // It has an unusual name because the buffer is unsafe across calls to |fork|.
 // Hence, this function should never be called by libraries.
 OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);
+
+// RAND_disable_fork_unsafe_buffering reverses the effect of calling
+// |RAND_enable_fork_unsafe_buffering|.
+void RAND_disable_fork_unsafe_buffering(void);
 #endif
 
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)

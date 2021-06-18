@@ -24,9 +24,9 @@ DEFINE_BSS_GET(int, g_ignore_snapsafe)
 static char const * retrieve_sysgenid_file_path(void) {
 
   // If |sysgenid_file_path| is NULL, it means we have set the file path
-  // through |hazmat_replace_snapsafe_file_path_for_testing| for testing
-  // purposes. If NULL, use the expected SysGenID file path. This file path can
-  // be overwritten at compile-time by defining the |SYSGENID_PATH| preprocessor
+  // through |HAZMAT_overwrite_sysgenid_for_testing| for testing purposes. If
+  // |NULL|, use the expected SysGenID file path. This file path can be
+  // overwritten at compile-time by defining the |SYSGENID_PATH| preprocessor
   // symbol to the desired path.
   if (*g_sysgenid_file_path_bss_get() != NULL) {
     return *g_sysgenid_file_path_bss_get();
@@ -56,11 +56,12 @@ static void init_snapsafe_detect(void) {
   void *addr = mmap(NULL, (size_t) page_size, PROT_READ, MAP_SHARED,
             fd_sysgenid, 0);
 
-  // Can close fd now per https://man7.org/linux/man-pages/man2/mmap.2.html
-  // "After the mmap() call has returned, the file descriptor, fd, can
-  // be closed immediately without invalidating the mapping.". We have
-  // initialised Snapsafe detection without errors and |init_snapsafe_detect| is
-  // only called once. Therefore, try to close fd, but don't error if it fails.
+  // Can close |fd_sysgenid| now per
+  // https://man7.org/linux/man-pages/man2/mmap.2.html: "After the mmap() call
+  // has returned, the file descriptor, |fd_sysgenid|, can be closed immediately
+  // without invalidating the mapping.". We have initialised Snapsafe detection
+  // without errors and |init_snapsafe_detect| is only called once. Therefore,
+  // try to close |fd_sysgenid|, but don't error if it fails.
   close(fd_sysgenid);
 
   if (addr == MAP_FAILED) {
@@ -116,8 +117,9 @@ void HAZMAT_overwrite_sysgenid_for_testing(const char *new_sysgenid_path) {
     *g_sysgenid_addr_bss_get() = NULL;
   }
 
-  // Re-initialise with overwrite path. Needed because the init-once
-  // sentinel might have been tripped.
+  // Re-initialise with overwrite path. Needed because the init-once sentinel
+  // |g_snapsafe_detect_once| might have been tripped and there is no way to
+  // reset it.
   init_snapsafe_detect();
 }
 

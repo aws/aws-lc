@@ -22,6 +22,8 @@ extern "C" {
 	#define AWSLC_SYSGENID_FILE_PATH "/dev/sysgenid"
 #endif
 
+// Experimental support for Snapsafe-type ube detection.  
+//
 // CRYPTO_get_snapsafe_generation returns the snapsafe generation number for the
 // current process, or zero if not supported on the platform. The snapsafe
 // generation number is a non-zero, strictly-monotonic counter with the property
@@ -29,13 +31,14 @@ extern "C" {
 // resumed snapshot/VM, the resumed snapshot address space will observe a
 // greater value.
 //
-// We use SysGenID to detect when snapsafe can be violated. See
+// We use SysGenID to detect when snapsafe-type ube's happens. See
 // https://lkml.org/lkml/2021/3/8/677 for details about how SysGenID works.
 // We make light use of the SysGenId capabilities and only use the following
 // supported functions on the device: |open| and |mmap|.
 //
 // SysGenID is very new and the interface is not yet finalised. Therefore, we
-// we only use this as a hardening mechanism and fail open.
+// we only use this as a hardening mechanism and fail open. Hence the
+// experimental note in the beginning.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number);
 
 // CRYPTO_snapsafe_detect_ignore_for_testing is an internal detail used for

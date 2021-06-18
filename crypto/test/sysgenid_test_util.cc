@@ -87,7 +87,8 @@ void setup_sysgenid_support(void) {
   }
   else {
     system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
-    // Make sure to create the mocked file other overwriting below might fail.
+    // Make sure to create the mocked file otherwise the overwriting call below
+    // might fail.
     set_new_sysgenid_value(0);
     // Overwrite default SysGenID file path such that the mmapped file is now
     // |SYSGENID_MOCKED_FILE_PATH|, a file that we control.

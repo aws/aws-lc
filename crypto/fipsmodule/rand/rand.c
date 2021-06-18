@@ -316,6 +316,7 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 // CRYPTO_snapsafe_must_defend indicates whether snapsafe-type ube's must be
 // defended against.
+// Experimental support, so don't enforce anything yet.
 OPENSSL_INLINE int CRYPTO_snapsafe_must_defend(void) {
 #if defined(AWSLC_SNAPSAFE_MUST_DEFEND)
   return 1;
@@ -343,6 +344,7 @@ OPENSSL_INLINE int CRYPTO_fork_must_defend(void) {
 //  * snapsafe detection: attempts to detect snapshot/VM resumes.
 // If a mechanism is not enabled, we check if something else has indicated that
 // the particular type of ube must be defended against.
+// Returns 1 if must defend and 0 otherwise.
 static int must_defend_against_ube(const uint64_t fork_generation,
                                         int snapsafe_status) {
   if (snapsafe_status == 0 && CRYPTO_snapsafe_must_defend() == 1) {
@@ -366,7 +368,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
 
   // Additional data is mixed into every CTR-DRBG call to protect, as best we
-  // can, against forks & VM clones. We do not over-read this information and
+  // can, against ube's. We do not over-read this information and
   // don't reseed with it so, from the point of view of FIPS, this doesn't
   // provide “prediction resistance”. But, in practice, it does.
   uint8_t additional_data[32];
