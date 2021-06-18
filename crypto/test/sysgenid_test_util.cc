@@ -7,6 +7,8 @@
 
 #if defined(OPENSSL_LINUX)
 
+#include <stdio.h>
+
 #include "../fipsmodule/rand/snapsafe_detect.h"
 
 #include <fcntl.h>

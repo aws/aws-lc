@@ -53,13 +53,13 @@ static void maybe_disable_some_fork_detect_mechanisms(void) {
 #endif
 }
 
-static void maybe_disable_snapsafe_detection_mechanisms(void) {
 #if defined(OPENSSL_LINUX)
+static void maybe_disable_snapsafe_detection_mechanisms(void) {
   if (getenv("AWSLC_IGNORE_SNAPSAFE")) {
     CRYPTO_snapsafe_detect_ignore_for_testing();
   }
-#endif
 }
+#endif
 
 
 // These tests are, strictly speaking, flaky, but we use large enough buffers
