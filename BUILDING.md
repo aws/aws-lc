@@ -217,3 +217,16 @@ range of unit tests, as well as running valgrind and SDE tests. Building without
 produces a new target, `run_minimal_tests` in place of `run_tests`.
 
 More information on this can be found in [INCORPORATING.md](/INCORPORATING.md).
+
+# Experimental Snapsafe detection
+
+AWS-LC contains experimental support for Snapsafe-type ube detection using
+SysGenID (https://lkml.org/lkml/2021/3/8/677). The SysGenID interface is not yet
+finalised. Therefore, we only use this as a hardening mechanism and fail open.
+This behaviour is similar to how fork detection works in AWS-LC with the caveat
+we do not force mixing entropy into the DRBG state if Snapsafe detection cannot
+be initialised.
+
+There are two Snapsafe related build options:
+* `SNAPSAFE_MUST_DEFEND` Define this option to force AWS-LC to mix entropy into the internal DRBG state if Snapsafe is not supported.
+* `AWSLC_USE_SYSGENID_PATH=\"<path to SysGenID device>\"` Define this option to modify the path used when initialising the SysGenId device.
