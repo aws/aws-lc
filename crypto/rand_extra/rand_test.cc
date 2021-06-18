@@ -22,9 +22,11 @@
 #include <openssl/span.h>
 
 #include "../fipsmodule/rand/fork_detect.h"
+#include "../fipsmodule/rand/snapsafe_detect.h"
 #include "../fipsmodule/rand/internal.h"
 #include "../test/abi_test.h"
 #include "../test/test_util.h"
+#include "../test/sysgenid_test_util.h"
 
 #if defined(OPENSSL_THREADS)
 #include <array>
@@ -47,6 +49,14 @@ static void maybe_disable_some_fork_detect_mechanisms(void) {
 
   if (getenv("BORINGSSL_IGNORE_PTHREAD_ATFORK")) {
     CRYPTO_fork_detect_ignore_pthread_atfork_for_testing();
+  }
+#endif
+}
+
+static void maybe_disable_snapsafe_detection_mechanisms(void) {
+#if defined(OPENSSL_LINUX)
+  if (getenv("AWSLC_IGNORE_SNAPSAFE")) {
+    CRYPTO_snapsafe_detect_ignore_for_testing();
   }
 #endif
 }
@@ -208,12 +218,13 @@ TEST(RandTest, Threads) {
 }
 #endif  // OPENSSL_THREADS
 
-/*
+
+#if defined(OPENSSL_LINUX)
 TEST(RandTest, SysGenIDincrement) {
-
-
+  maybe_disable_snapsafe_detection_mechanisms();
 }
-*/
+#endif // defined(OPENSSL_LINUX)
+
 
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST(RandTest, RdrandABI) {

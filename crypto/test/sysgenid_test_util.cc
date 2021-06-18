@@ -70,9 +70,11 @@ static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
 
 int set_new_sysgenid_value(uint32_t new_sysgenid_value) {
   if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
+  	fprintf(stderr, "set_new_sysgenid_value use sysgenid\n");
     return set_sysgenid_file_value(new_sysgenid_value);
   }
   else {
+  	fprintf(stderr, "set_new_sysgenid_value use mocked\n");
     return set_mocked_sysgenid_file_value(new_sysgenid_value);
   }
 }

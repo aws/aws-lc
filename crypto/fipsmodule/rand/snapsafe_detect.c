@@ -48,11 +48,13 @@ static void init_snapsafe_detect(void) {
     return;
   }
 
+  fprintf(stderr, "init_snapsafe_detect sysgenid file path %s\n", retrieve_sysgenid_file_path());
   int fd_sysgenid = open(retrieve_sysgenid_file_path(), O_RDONLY);
   if (fd_sysgenid == -1) {
     return;
   }
 
+  fprintf(stderr, "init_snapsafe_detect mmap\n");
   void *addr = mmap(NULL, (size_t) page_size, PROT_READ, MAP_SHARED,
             fd_sysgenid, 0);
 
@@ -63,10 +65,12 @@ static void init_snapsafe_detect(void) {
   // only called once. Therefore, try to close fd, but don't error if it fails.
   close(fd_sysgenid);
 
+  fprintf(stderr, "init_snapsafe_detect mmap failed?\n");
   if (addr == MAP_FAILED) {
     return;
   }
 
+  fprintf(stderr, "init_snapsafe_detect set cb address\n");
   *g_sysgenid_addr_bss_get() = addr;
 }
 
@@ -100,6 +104,7 @@ void HAZMAT_replace_sysgenid_file_path_for_testing(const char *new_sysgenid_path
     "This should only happen during testing!\n",
     new_sysgenid_path);
   *g_sysgenid_file_path_bss_get() = new_sysgenid_path;
+  fprintf(stderr, "HAZMAT_replace_sysgenid_file_path_for_testing sysgenid file path %s\n", retrieve_sysgenid_file_path());
 }
 
 #else // !defined(OPENSSL_LINUX)
