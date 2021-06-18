@@ -70,11 +70,9 @@ static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
 
 int set_new_sysgenid_value(uint32_t new_sysgenid_value) {
   if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
-  	fprintf(stderr, "set_new_sysgenid_value use sysgenid\n");
     return set_sysgenid_file_value(new_sysgenid_value);
   }
   else {
-  	fprintf(stderr, "set_new_sysgenid_value use mocked\n");
     return set_mocked_sysgenid_file_value(new_sysgenid_value);
   }
 }
@@ -87,14 +85,18 @@ void setup_sysgenid_support(void) {
   }
   else {
     system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
-    // Replace default SysGenID file path to point to a custom file we control.
-    HAZMAT_replace_sysgenid_file_path_for_testing(SYSGENID_MOCKED_FILE_PATH);
+    // Make sure to create the mocked file other overwriting below might fail.
+    set_new_sysgenid_value(0);
+    // Overwrite default SysGenID file path such that the mmapped file is now
+    // |SYSGENID_MOCKED_FILE_PATH|, a file that we control.
+    HAZMAT_overwrite_sysgenid_for_testing(SYSGENID_MOCKED_FILE_PATH);
   }
 }
 
-void maybe_cleanup_test_file(void) {
+void maybe_cleanup(void) {
   if (system_supports_snapsafe == SNAPSAFE_NOT_SUPPORTED) {
     remove(SYSGENID_MOCKED_FILE_PATH);
+    HAZMAT_reset_sysgenid_for_testing();
   }
 }
 

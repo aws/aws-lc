@@ -22,8 +22,9 @@ int set_new_sysgenid_value(uint32_t new_sysgenid_value);
 // plain file.
 void setup_sysgenid_support(void);
 
-// Removes the SysGenID mock file if generated.
-void maybe_cleanup_test_file(void);
+// Maybe clean up after tests: removes the SysGenID mock file if generated, and
+// resets Snapsafe detection.
+void maybe_cleanup(void);
 
 #endif // defined(OPENSSL_LINUX)
 

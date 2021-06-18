@@ -38,13 +38,19 @@ extern "C" {
 // we only use this as a hardening mechanism and fail open.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number);
 
-// CRYPTO_snapsafe_detect_ignore_for_testing is an internal detail
-// used for testing purposes.
+// CRYPTO_snapsafe_detect_ignore_for_testing is an internal detail used for
+// testing purposes.
 OPENSSL_EXPORT void CRYPTO_snapsafe_detect_ignore_for_testing(void);
 
-// hazmat_replace_sysgenid_file_path_for_testing is an internal detail
-// used for testing purposes.
-OPENSSL_EXPORT void HAZMAT_replace_sysgenid_file_path_for_testing(const char *new_sysgenid_path);
+// Below functions are strictly for testing only!
+
+// HAZMAT_overwrite_sysgenid_for_testing is an internal detail used for testing
+// purposes. Call |HAZMAT_reset_sysgenid_for_testing| after test suite has run.
+OPENSSL_EXPORT void HAZMAT_overwrite_sysgenid_for_testing(const char *new_sysgenid_path);
+
+// HAZMAT_reset_sysgenid_for_testing is an internal detail used for testing
+// purposes.
+OPENSSL_EXPORT void HAZMAT_reset_sysgenid_for_testing(void);
 
 #ifdef  __cplusplus
 }

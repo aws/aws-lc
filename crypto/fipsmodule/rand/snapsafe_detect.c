@@ -48,13 +48,11 @@ static void init_snapsafe_detect(void) {
     return;
   }
 
-  fprintf(stderr, "init_snapsafe_detect sysgenid file path %s\n", retrieve_sysgenid_file_path());
   int fd_sysgenid = open(retrieve_sysgenid_file_path(), O_RDONLY);
   if (fd_sysgenid == -1) {
     return;
   }
 
-  fprintf(stderr, "init_snapsafe_detect mmap\n");
   void *addr = mmap(NULL, (size_t) page_size, PROT_READ, MAP_SHARED,
             fd_sysgenid, 0);
 
@@ -65,12 +63,10 @@ static void init_snapsafe_detect(void) {
   // only called once. Therefore, try to close fd, but don't error if it fails.
   close(fd_sysgenid);
 
-  fprintf(stderr, "init_snapsafe_detect mmap failed?\n");
   if (addr == MAP_FAILED) {
     return;
   }
 
-  fprintf(stderr, "init_snapsafe_detect set cb address\n");
   *g_sysgenid_addr_bss_get() = addr;
 }
 
@@ -99,12 +95,49 @@ void CRYPTO_snapsafe_detect_ignore_for_testing(void) {
   *g_ignore_snapsafe_bss_get() = 1;
 }
 
-void HAZMAT_replace_sysgenid_file_path_for_testing(const char *new_sysgenid_path) {
-  fprintf(stderr, "Replacing the default SysGenID path with the path %s\n"
+void HAZMAT_overwrite_sysgenid_for_testing(const char *new_sysgenid_path) {
+
+  // Must call |HAZMAT_reset_sysgenid_for_testing| after finishing test suite to
+  // reset back to the default SysGenID path.
+
+  fprintf(stderr, "Replacing the default SysGenID path with the path: %s.\n"
     "This should only happen during testing!\n",
     new_sysgenid_path);
+
   *g_sysgenid_file_path_bss_get() = new_sysgenid_path;
-  fprintf(stderr, "HAZMAT_replace_sysgenid_file_path_for_testing sysgenid file path %s\n", retrieve_sysgenid_file_path());
+
+  // Calling this function means we are using a mocked method to simulate
+  // the SysGenID device. Because Snapsafe detection might have been initialised
+  // previously, we might need to release the previous initialisation and
+  // reinitialise.
+  if (*g_sysgenid_addr_bss_get() != NULL) {
+    // If already initialised, remove the mapping.
+    munmap((uint32_t *) *g_sysgenid_addr_bss_get(), sysconf(_SC_PAGESIZE));
+    *g_sysgenid_addr_bss_get() = NULL;
+  }
+
+  // Re-initialise with overwrite path. Needed because the init-once
+  // sentinel might have been tripped.
+  init_snapsafe_detect();
+}
+
+void HAZMAT_reset_sysgenid_for_testing(void) {
+
+  fprintf(stderr, "Resetting back to the default SysGenID path: %s.\n"
+  "This should only happen during testing!\n",
+  AWSLC_SYSGENID_FILE_PATH);
+
+  // Reset Snapsafe using the default SysGenID path.
+  if (*g_sysgenid_addr_bss_get() != NULL) {
+    // If already initialised, remove the mapping.
+    munmap((uint32_t *) *g_sysgenid_addr_bss_get(), sysconf(_SC_PAGESIZE));
+  }
+
+  *g_sysgenid_addr_bss_get() = NULL;
+  *g_sysgenid_file_path_bss_get() = NULL;
+
+  // Re-initialise with the default path again.
+  init_snapsafe_detect();
 }
 
 #else // !defined(OPENSSL_LINUX)

@@ -18,7 +18,7 @@
 class SnapsafeGenerationTest : public testing::Test {
   public:
     void TearDown() override {
-      maybe_cleanup_test_file();
+      maybe_cleanup();
     }
 };
 
