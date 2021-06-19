@@ -18,12 +18,12 @@
 int set_new_sysgenid_value(uint32_t new_sysgenid_value);
 
 // setup_sysgenid_support determines if SysGenID is supported, and if not,
-// initialises a back up method that simulates the SysGenID device through a
-// plain file. Also handles setting an initial value (0) of the SysGenID file.
-void setup_sysgenid_support(void);
+// initialises a back up method that simulates the SysGenID device.
+// Returns 1 if successful and 0 otherwise.
+int setup_sysgenid_support(void);
 
-// Maybe clean up after tests: removes the SysGenID mock file if generated and
-// resets Snapsafe detection.
+// Maybe clean up after tests: removes any SysGenID mock artifacts and resets
+// Snapsafe detection.
 void maybe_cleanup(void);
 
 #endif // defined(OPENSSL_LINUX)

@@ -21,31 +21,14 @@
 #define SYSGENID_IOCTL                  0xE4
 #define SYSGENID_TRIGGER_GEN_UPDATE     _IO(SYSGENID_IOCTL, 3)
 
-#define SYSGENID_MOCKED_FILE_PATH "./sysgenid_test_file"
-
 static int system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
 
 // |set_sysgenid_file_value| interfaces with the SysGenID device. If this is not
-// supported on the system we are running,|set_mocked_sysgenid_file_value| mocks
-// the device trough a plain file.
+// supported on the system we are running, |set_mocked_sysgenid_value|
+// that sets the value of a mocked SysGenID device.
 
-static int set_mocked_sysgenid_file_value(uint32_t new_sysgenid_value) {
-
-  FILE *mocked_sysgenid_file_path = fopen(SYSGENID_MOCKED_FILE_PATH, "wb");
-  if (mocked_sysgenid_file_path == NULL) {
-    return 0;
-  }
-
-  if (fwrite(&new_sysgenid_value, sizeof(uint32_t), 1,
-      mocked_sysgenid_file_path) != 1) {
-    fclose(mocked_sysgenid_file_path);
-    return 0;
-  }
-
-  if(fclose(mocked_sysgenid_file_path) == EOF) {
-    return 0;
-  }
-
+static int set_mocked_sysgenid_value(uint32_t new_sysgenid_value) {
+  HAZMAT_set_overwritten_sysgenid_for_testing(new_sysgenid_value);
   return 1;
 }
 
@@ -75,30 +58,27 @@ int set_new_sysgenid_value(uint32_t new_sysgenid_value) {
     return set_sysgenid_file_value(new_sysgenid_value);
   }
   else {
-    return set_mocked_sysgenid_file_value(new_sysgenid_value);
+    return set_mocked_sysgenid_value(new_sysgenid_value);
   }
 }
 
-void setup_sysgenid_support(void) {
+int setup_sysgenid_support(void) {
   struct stat buf;
   // System should support Snapsafe if |AWSLC_SYSGENID_FILE_PATH| is present.
   if (stat(AWSLC_SYSGENID_FILE_PATH, &buf) == 0) {
     system_supports_snapsafe = SNAPSAFE_SUPPORTED;
+    return 1;
   }
   else {
     system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
-    // Make sure to create the mocked file otherwise the overwriting call below
-    // might fail.
-    set_new_sysgenid_value(0);
-    // Overwrite default SysGenID file path such that the mmapped file is now
-    // |SYSGENID_MOCKED_FILE_PATH|, a file that we control.
-    HAZMAT_overwrite_sysgenid_for_testing(SYSGENID_MOCKED_FILE_PATH);
+
+    // Overwrite the SysGenID mmapped callback to memory we control.
+    return HAZMAT_overwrite_sysgenid_for_testing();
   }
 }
 
 void maybe_cleanup(void) {
   if (system_supports_snapsafe == SNAPSAFE_NOT_SUPPORTED) {
-    remove(SYSGENID_MOCKED_FILE_PATH);
     HAZMAT_reset_sysgenid_for_testing();
   }
 }

@@ -99,7 +99,7 @@ OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
 
 // rand_fork_unsafe_buffering_enabled returns whether fork-unsafe buffering has
 // been enabled via |RAND_enable_fork_unsafe_buffering|.
-OPENSSL_EXPORT int rand_fork_unsafe_buffering_enabled(void);
+int rand_fork_unsafe_buffering_enabled(void);
 
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.

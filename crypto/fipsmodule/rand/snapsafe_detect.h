@@ -28,10 +28,9 @@ extern "C" {
 // current process, or zero if not supported on the platform. The snapsafe
 // generation number is a non-zero, strictly-monotonic counter with the property
 // that, if queried in an address space and then again in a subsequently
-// resumed snapshot/VM, the resumed snapshot address space will observe a
-// greater value.
+// resumed snapshot/VM, the resumed address space will observe a greater value.
 //
-// We use SysGenID to detect when snapsafe-type ube's happens. See
+// We use SysGenID to detect resumed snapshot/VM events. See
 // https://lkml.org/lkml/2021/3/8/677 for details about how SysGenID works.
 // We make light use of the SysGenId capabilities and only use the following
 // supported functions on the device: |open| and |mmap|.
@@ -49,11 +48,16 @@ OPENSSL_EXPORT void CRYPTO_snapsafe_detect_ignore_for_testing(void);
 
 // HAZMAT_overwrite_sysgenid_for_testing is an internal detail used for testing
 // purposes. Call |HAZMAT_reset_sysgenid_for_testing| after test suite has run.
-OPENSSL_EXPORT void HAZMAT_overwrite_sysgenid_for_testing(const char *new_sysgenid_path);
+// Returns 1 if succesfull and 0 otherwise.
+OPENSSL_EXPORT int HAZMAT_overwrite_sysgenid_for_testing(void);
 
 // HAZMAT_reset_sysgenid_for_testing is an internal detail used for testing
 // purposes.
 OPENSSL_EXPORT void HAZMAT_reset_sysgenid_for_testing(void);
+
+// HAZMAT_overwrite_sysgenid_for_testing is an internal detail used for testing
+// purposes.
+OPENSSL_EXPORT void HAZMAT_set_overwritten_sysgenid_for_testing(uint32_t val);
 
 #ifdef  __cplusplus
 }

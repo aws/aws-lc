@@ -233,7 +233,6 @@ class SnapsafeGenerationTest : public testing::Test {
   public:
     void TearDown() override {
       maybe_cleanup();
-      RAND_disable_fork_unsafe_buffering();
     }
 };
 
@@ -244,34 +243,24 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
   // In this test fixture we pretend we only have snapsafe detection. To
   // reliably test this specific path, we must run it as a standalone test,
   // otherwise the other test fixtures will likely already have initialised fork
-  // detection. Below tests should still pass with fork detection enabled so run
-  // through them anyway.
+  // detection. In addition, we must promise not to fork, through the input
+  // |--fork_unsafe_buffering|. Tests should pass though, so run through them
+  // for all test dimensions that hit this test suite.
+  
+  ASSERT_TRUE(setup_sysgenid_support());
 
-  // Opportunistically try to disable fork detection. Has no effect if detection
-  // has already been initialised.
-  // To 100% disable effects from fork protection promise not to fork. GTest
-  // doesn't run tests concurrently, so this should be safe to do without
-  // leaking into other concurrent tests. However, leakage might happen to
-  // subsequent test executions. Therefore, must call
-  // |RAND_disable_fork_unsafe_buffering| to reverse the effect.
-  maybe_disable_some_fork_detect_mechanisms();
-  RAND_enable_fork_unsafe_buffering(-1);
-
-  // For a standalone test, we require fork detection to be disabled. So, verify
-  // that. 
-  if (getenv("AWSLC_STANDALONE_SNAPSAFE_TEST")) {
-    ASSERT_FALSE(CRYPTO_get_fork_generation());
-    ASSERT_TRUE(rand_fork_unsafe_buffering_enabled());
-  }
-
-  setup_sysgenid_support();
   uint32_t snapsafe_generation = 0;
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
-  // Initial value set by |setup_sysgenid_support| is 0.
   ASSERT_EQ(snapsafe_generation, (uint32_t) 0);
 
+  // Verify setting SysGenID value works.
+  ASSERT_TRUE(set_new_sysgenid_value(1));
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
+  ASSERT_EQ(snapsafe_generation, (uint32_t) 1);
+
   // The rest is similar to the test fixture |RandTest.Fork|. Except, we make
-  // sure to increment the SysGenID value. Snapsafe is not supposed to defend
+  // sure to increment the SysGenID value in 
+  // |ForkMaybeIncrementSysGenIdAndRand|. Snapsafe is not supposed to defend
   // against forks, but we use it as standin for a snapshot/vm resume and
   // manually increment the SysGenID value.
 
@@ -284,8 +273,8 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
   // of sneaking by with a large enough buffer that we've since reseeded from
   // the OS.
   uint8_t buf1[16], buf2[16], buf3[16];
-  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, 1));
-  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, 2));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, 2));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, 3));
   RAND_bytes(buf3, sizeof(buf3));
 
   // All should be different.

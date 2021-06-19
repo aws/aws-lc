@@ -36,12 +36,6 @@ void RAND_enable_fork_unsafe_buffering(int fd) {
   g_buffering_enabled = 1;
   CRYPTO_STATIC_MUTEX_unlock_write(&g_lock);
 }
-
-void RAND_disable_fork_unsafe_buffering(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(&g_lock);
-  g_buffering_enabled = 0;
-  CRYPTO_STATIC_MUTEX_unlock_write(&g_lock);
-}
 #endif
 
 int rand_fork_unsafe_buffering_enabled(void) {
