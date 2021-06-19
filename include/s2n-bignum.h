@@ -197,6 +197,10 @@ extern void bignum_kmul_16_32  (uint64_t z[static 32], uint64_t x[static 16], ui
 // Input x[16]; output z[32]; temporary buffer t[>=24]
 extern void bignum_ksqr_16_32 (uint64_t z[static 32], uint64_t x[static 16], uint64_t t[static 24]);
 
+// Square, z := x^2
+// Input x[32]; output z[64]; temporary buffer t[>=72]
+extern void bignum_ksqr_32_64 (uint64_t z[static 64], uint64_t x[static 32], uint64_t t[static 72]);
+
 // Compare bignums, x <= y
 // Inputs x[m], y[n]; output function return
 extern uint64_t bignum_le (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);

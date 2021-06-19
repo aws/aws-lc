@@ -106,6 +106,7 @@ enum {
        TEST_BIGNUM_ISZERO,
        TEST_BIGNUM_KMUL_16_32,
        TEST_BIGNUM_KSQR_16_32,
+       TEST_BIGNUM_KSQR_32_64,
        TEST_BIGNUM_LE,
        TEST_BIGNUM_LT,
        TEST_BIGNUM_MADD,
@@ -2080,6 +2081,10 @@ int test_bignum_ksqr_16_32(void)
 { return test_bignum_ksqr_specific(32,16,"bignum_ksqr_16_32",bignum_ksqr_16_32);
 }
 
+int test_bignum_ksqr_32_64(void)
+{ return test_bignum_ksqr_specific(64,32,"bignum_ksqr_32_64",bignum_ksqr_32_64);
+}
+
 int test_bignum_le(void)
 { uint64_t t, k1, k2;
   printf("Testing bignum_le with %d cases\n",tests);
@@ -3998,6 +4003,7 @@ int test_all()
   failures += test_bignum_iszero();
   failures += test_bignum_kmul_16_32();
   failures += test_bignum_ksqr_16_32();
+  failures += test_bignum_ksqr_32_64();
   failures += test_bignum_le();
   failures += test_bignum_lt();
   failures += test_bignum_madd();
@@ -4254,7 +4260,9 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_HALF_P256:       return test_bignum_half_p256();
      case TEST_BIGNUM_HALF_P384:       return test_bignum_half_p384();
      case TEST_BIGNUM_ISZERO:          return test_bignum_iszero();
+     case TEST_BIGNUM_KMUL_16_32:      return test_bignum_kmul_16_32();
      case TEST_BIGNUM_KSQR_16_32:      return test_bignum_ksqr_16_32();
+     case TEST_BIGNUM_KSQR_32_64:      return test_bignum_ksqr_32_64();
      case TEST_BIGNUM_LE:              return test_bignum_le();
      case TEST_BIGNUM_LT:              return test_bignum_lt();
      case TEST_BIGNUM_MADD:            return test_bignum_madd();
