@@ -160,7 +160,7 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
     *chain = X509_STORE_CTX_get1_chain(ctx);
   }
 
-  end:
+end:
   X509_STORE_CTX_free(ctx);
   return ret;
 }
