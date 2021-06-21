@@ -25,7 +25,7 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
 
   // If key hash isn't SHA1 length then forget it.
   if(id->value.byKey == NULL || id->value.byKey->length != SHA_DIGEST_LENGTH) {
-    return NULL;
+      return NULL;
   }
   keyhash = id->value.byKey->data;
   // Calculate hash of each key and compare.
@@ -147,7 +147,7 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
     goto end;
   }
 
-  // Verify |X509_STORE_CTX| and return certificate chain
+  // Verify |X509_STORE_CTX| and return certificate chain.
   ret = X509_verify_cert(ctx);
   if (ret <= 0) {
     int err = X509_STORE_CTX_get_error(ctx);
@@ -243,13 +243,13 @@ static int ocsp_match_issuerid(X509 *cert, OCSP_CERTID *cid,
     return 1;
 
   }
-    // We have to match the whole stack recursively, if |cid| is NULL. This means
-    // that the issuer certificate's hash algorithm did not match with the rest of
-    // the |certId|s in the |OCSP_SINGLERESP| stack. (Issuer certificate is taken
-    // from the root of the |OCSP_SINGLERESP| stack).
-    // We'll have to find a match from the signer or responder CA certificate (both
-    // are certificates in the certificate chain) in the |OCSP_SINGLERESP| stack
-    // instead.
+  // We have to match the whole stack recursively, if |cid| is NULL. This means
+  // that the issuer certificate's hash algorithm did not match with the rest of
+  // the |certId|s in the |OCSP_SINGLERESP| stack. (Issuer certificate is taken
+  // from the root of the |OCSP_SINGLERESP| stack).
+  // We'll have to find a match from the signer or responder CA certificate (both
+  // are certificates in the certificate chain) in the |OCSP_SINGLERESP| stack
+  // instead.
   else {
     int ret;
     OCSP_CERTID *tmpid;
@@ -379,7 +379,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
   }
 
 
-  end:
+end:
   sk_X509_pop_free(chain, X509_free);
   if (bs->certs && certs) {
     sk_X509_free(untrusted);
