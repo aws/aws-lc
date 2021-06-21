@@ -56,6 +56,68 @@ set(
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/ocsp/test/openssl-ocsp/ND1.ors
+  crypto/ocsp/test/openssl-ocsp/ND2.ors
+  crypto/ocsp/test/openssl-ocsp/ND3.ors
+  crypto/ocsp/test/openssl-ocsp/ISOP_ND1.ors
+  crypto/ocsp/test/openssl-ocsp/ISOP_ND2.ors
+  crypto/ocsp/test/openssl-ocsp/ISOP_ND3.ors
+  crypto/ocsp/test/openssl-ocsp/WRID_ND1.ors
+  crypto/ocsp/test/openssl-ocsp/WRID_ND2.ors
+  crypto/ocsp/test/openssl-ocsp/WRID_ND3.ors
+  crypto/ocsp/test/openssl-ocsp/WINH_ND1.ors
+  crypto/ocsp/test/openssl-ocsp/WINH_ND2.ors
+  crypto/ocsp/test/openssl-ocsp/WINH_ND3.ors
+  crypto/ocsp/test/openssl-ocsp/WIKH_ND1.ors
+  crypto/ocsp/test/openssl-ocsp/WIKH_ND2.ors
+  crypto/ocsp/test/openssl-ocsp/WIKH_ND3.ors
+  crypto/ocsp/test/openssl-ocsp/D1.ors
+  crypto/ocsp/test/openssl-ocsp/D2.ors
+  crypto/ocsp/test/openssl-ocsp/D3.ors
+  crypto/ocsp/test/openssl-ocsp/ISOP_D1.ors
+  crypto/ocsp/test/openssl-ocsp/ISOP_D2.ors
+  crypto/ocsp/test/openssl-ocsp/ISOP_D3.ors
+  crypto/ocsp/test/openssl-ocsp/WRID_D1.ors
+  crypto/ocsp/test/openssl-ocsp/WRID_D2.ors
+  crypto/ocsp/test/openssl-ocsp/WRID_D3.ors
+  crypto/ocsp/test/openssl-ocsp/WINH_D1.ors
+  crypto/ocsp/test/openssl-ocsp/WINH_D2.ors
+  crypto/ocsp/test/openssl-ocsp/WINH_D3.ors
+  crypto/ocsp/test/openssl-ocsp/WIKH_D1.ors
+  crypto/ocsp/test/openssl-ocsp/WIKH_D2.ors
+  crypto/ocsp/test/openssl-ocsp/WIKH_D3.ors
+  crypto/ocsp/test/openssl-ocsp/WKDOSC_D1.ors
+  crypto/ocsp/test/openssl-ocsp/WKDOSC_D2.ors
+  crypto/ocsp/test/openssl-ocsp/WKDOSC_D3.ors
+  crypto/ocsp/test/openssl-ocsp/ISDOSC_D1.ors
+  crypto/ocsp/test/openssl-ocsp/ISDOSC_D2.ors
+  crypto/ocsp/test/openssl-ocsp/ISDOSC_D3.ors
+  crypto/ocsp/test/openssl-ocsp/ND1_Cross_Root.pem
+  crypto/ocsp/test/openssl-ocsp/ND1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/ND1_Issuer_ICA-Cross.pem
+  crypto/ocsp/test/openssl-ocsp/ND2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/ND3_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WKIC_ND1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/WKIC_ND2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WKIC_ND3_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WSNIC_ND1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/WSNIC_ND2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WSNIC_ND3_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/ISIC_ND1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/ISIC_ND2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/ISIC_ND3_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/D1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/D2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/D3_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WKIC_D1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/WKIC_D2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WKIC_D3_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WSNIC_D1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/WSNIC_D2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/WSNIC_D3_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/ISIC_D1_Issuer_ICA.pem
+  crypto/ocsp/test/openssl-ocsp/ISIC_D2_Issuer_Root.pem
+  crypto/ocsp/test/openssl-ocsp/ISIC_D3_Issuer_Root.pem
   crypto/pkcs8/test/empty_password.p12
   crypto/pkcs8/test/no_encryption.p12
   crypto/pkcs8/test/nss.p12
