@@ -491,6 +491,13 @@ let x86_BSR = new_definition
          ZF := (val x = 0) ,,
          UNDEFINED_VALUES[CF;OF;SF;PF;AF]) s`;;
 
+let x86_BSWAP = new_definition
+ `x86_BSWAP dest s =
+        let x:N word = read dest s in
+        let x' = word_of_bits
+                   (\i. bit (dimindex(:N) - 8 * (i DIV 8 + 1) + i MOD 8) x) in
+        (dest := x') s`;;
+
 (*** These four amount to the core operations for BT, BTC, BTR and BTS.
  *** When the first operand is a register this is the entire thing.
  *** With memory operands however, the upper part is used to offset the
@@ -1288,6 +1295,10 @@ let x86_execute = define
            64 -> x86_BSR (OPERAND64 dest s) (OPERAND64 src s)
          | 32 -> x86_BSR (OPERAND32 dest s) (OPERAND32 src s)
          | 16 -> x86_BSR (OPERAND16 dest s) (OPERAND16 src s)) s
+    | BSWAP dest ->
+        (match operand_size dest with
+           64 -> x86_BSWAP (OPERAND64 dest s)
+         | 32 -> x86_BSWAP (OPERAND32 dest s)) s
     | BT dest src ->
         (match operand_size dest with
            64 -> x86_BT (OPERAND64 dest s) (OPERAND64 src s)
@@ -2105,7 +2116,8 @@ let X86_OPERATION_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o
        SPEC_ALL)
    [x86_ADC_ALT; x86_ADCX_ALT; x86_ADOX_ALT;
-    x86_ADD_ALT; x86_AND; x86_BSF; x86_BSR; x86_BT; x86_BTC; x86_BTR; x86_BTS;
+    x86_ADD_ALT; x86_AND; x86_BSF; x86_BSR; x86_BSWAP; 
+    x86_BT; x86_BTC; x86_BTR; x86_BTS;
     x86_CALL_ALT; x86_CLC; x86_CMOV; x86_CMP_ALT; x86_DEC; x86_DIV2; x86_IMUL;
     x86_IMUL2; x86_IMUL3; x86_INC; x86_LEA; x86_LZCNT;
     x86_MOV; x86_MOVSX; x86_MOVZX;

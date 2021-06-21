@@ -243,6 +243,7 @@ let instruction_INDUCTION,instruction_RECURSION = define_type
    | AND operand operand
    | BSF operand operand
    | BSR operand operand
+   | BSWAP operand
    | BT operand operand
    | BTC operand operand
    | BTR operand operand

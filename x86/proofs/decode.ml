@@ -279,6 +279,10 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
         | (F, RepZ) -> SOME (ADOX reg rm,l)
         | _ -> NONE)
       | _ -> NONE)
+    | [0b11001:5; r:3] -> if has_pfxs pfxs then NONE else
+      let sz = op_size_W rex T in
+      let reg = rex_reg (rex_B rex) r in
+      SOME (BSWAP (%(gpr_adjust reg sz)),l)
     | [0x4:4; c:4] -> if has_pfxs pfxs then NONE else
       let sz = op_size T (rex_W rex) T in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
