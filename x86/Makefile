@@ -78,6 +78,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       generic/bignum_shl_small.o \
       generic/bignum_shr_small.o \
       generic/bignum_sub.o \
+      generic/word_bytereverse.o \
       generic/word_clz.o \
       generic/word_ctz.o \
       generic/word_negmodinv.o \

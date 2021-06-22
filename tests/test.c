@@ -164,6 +164,7 @@ enum {
        TEST_BIGNUM_TOMONT_P384,
        TEST_BIGNUM_TRIPLE_P256,
        TEST_BIGNUM_TRIPLE_P384,
+       TEST_WORD_BYTEREVERSE,
        TEST_WORD_CLZ,
        TEST_WORD_CTZ,
        TEST_WORD_NEGMODINV
@@ -340,6 +341,16 @@ uint64_t min(uint64_t x,uint64_t y)
 }
 
 #define swap(x,y) { uint64_t tmp = x; x = y; y = tmp; }
+
+uint64_t reference_wordbytereverse(uint64_t n)
+{ uint64_t n2 = ((n & 0xFF00FF00FF00FF00ull) >> 8) |
+                ((n & 0x00FF00FF00FF00FFull) << 8);
+  uint64_t n4 = ((n2 & 0xFFFF0000FFFF0000ull) >> 16) |
+                ((n2 & 0x0000FFFF0000FFFFull) << 16);
+  uint64_t n8 = ((n4 & 0xFFFFFFFF00000000ull) >> 32) |
+                ((n4 & 0x00000000FFFFFFFFull) << 32);
+  return n8;
+}
 
 uint64_t reference_wordclz(uint64_t n)
 { uint64_t m, i;
@@ -3901,18 +3912,19 @@ int test_bignum_triple_p384(void)
   return 0;
 }
 
-int test_word_negmodinv(void)
-{ uint64_t i, a, x;
-  printf("Testing word_negmodinv with %d cases\n",tests);
-  for (i = 0; i < tests; ++i)
-   { a = 2 * random64() + 1;
-     x = word_negmodinv(a);
-     if (a * x + 1 != 0)
-      { printf("### Disparity: a * word_negmodinv a + 1 = 0x%016lx * 0x%016lx + 1 = %lu\n",a,x,a*x+1);
+int test_word_bytereverse(void)
+{ uint64_t i, a, x, y;
+  printf("Testing word_bytereverse with %d cases\n",TESTS);
+  for (i = 0; i < TESTS; ++i)
+   { a = random64();
+     x = word_bytereverse(a);
+     y = reference_wordbytereverse(a);
+     if (x != y)
+      { printf("### Disparity: word_bytereverse(0x%016lx) = 0x%016lx not 0x%016lx\n",a,x,y);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: a * word_negmodinv a + 1 = 0x%016lx * 0x%016lx + 1 = %lu\n",a,x,a*x+1);
+      { printf("OK: word_bytereverse(0x%016lx) = 0x%016lx\n",a,x);
       }
     }
   printf("All OK\n");
@@ -3951,6 +3963,24 @@ int test_word_ctz(void)
       }
      else if (VERBOSE)
       { printf("OK: word_ctz(0x%016lx) = %lu\n",a,x);
+      }
+    }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_word_negmodinv(void)
+{ uint64_t i, a, x;
+  printf("Testing word_negmodinv with %d cases\n",tests);
+  for (i = 0; i < tests; ++i)
+   { a = 2 * random64() + 1;
+     x = word_negmodinv(a);
+     if (a * x + 1 != 0)
+      { printf("### Disparity: a * word_negmodinv a + 1 = 0x%016lx * 0x%016lx + 1 = %lu\n",a,x,a*x+1);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: a * word_negmodinv a + 1 = 0x%016lx * 0x%016lx + 1 = %lu\n",a,x,a*x+1);
       }
     }
   printf("All OK\n");
@@ -4061,6 +4091,7 @@ int test_all()
   failures += test_bignum_tomont_p384();
   failures += test_bignum_triple_p256();
   failures += test_bignum_triple_p384();
+  failures += test_word_bytereverse();
   failures += test_word_clz();
   failures += test_word_ctz();
   failures += test_word_negmodinv();
@@ -4155,6 +4186,7 @@ int test_allnonbmi()
   failures += test_bignum_sub();
   failures += test_bignum_sub_p256();
   failures += test_bignum_sub_p384();
+  failures += test_word_bytereverse();
   failures += test_word_clz();
   failures += test_word_ctz();
   failures += test_word_negmodinv();
@@ -4320,6 +4352,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_TOMONT_P384:     return test_bignum_tomont_p384();
      case TEST_BIGNUM_TRIPLE_P256:     return test_bignum_triple_p256();
      case TEST_BIGNUM_TRIPLE_P384:     return test_bignum_triple_p384();
+     case TEST_WORD_BYTEREVERSE:       return test_word_bytereverse();
      case TEST_WORD_CLZ:               return test_word_clz();
      case TEST_WORD_CTZ:               return test_word_ctz();
      case TEST_WORD_NEGMODINV:         return test_word_negmodinv();

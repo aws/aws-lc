@@ -84,6 +84,7 @@ OBJ = bignum_add.o \
       bignum_shl_small.o \
       bignum_shr_small.o \
       bignum_sub.o \
+      word_bytereverse.o \
       word_clz.o \
       word_ctz.o \
       word_negmodinv.o
