@@ -126,11 +126,11 @@ static bssl::UniquePtr<STACK_OF(X509)> CertChainFromPEM(const char *pem) {
 
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   for (;;) {
-    X509 *cert = PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr);
+    bssl::UniquePtr<X509> cert = bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
     if(cert == nullptr){
       break;
     }
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert))) {
+    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert.get()))) {
       return nullptr;
     }
   }
