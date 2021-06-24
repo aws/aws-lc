@@ -638,3 +638,106 @@ let BIGNUM_LDIGITIZE_TAC =
       map (fun i -> mk_var(s^string_of_int i,ty64)) (0--(length tms - 1)) in
     let abseqs = map2 (curry mk_eq) vs tms in
     SUBST_ALL_TAC th THEN MAP_EVERY ABBREV_TAC abseqs;;
+
+(* ------------------------------------------------------------------------- *)
+(* Expansion of bytes by analogy.                                            *)
+(* ------------------------------------------------------------------------- *)
+
+let BYTES_EXPAND_CONV =
+  let pth = prove
+   (`read (memory :> bytes(x,0)) s = 0 /\
+     read (memory :> bytes(x,SUC n)) s =
+        nsum(0..n) (\i. 2 EXP (8 * i) *
+             val(read(memory :> bytes8(word_add x (word i))) s))`,
+    REWRITE_TAC[READ_COMPONENT_COMPOSE; READ_BYTES] THEN
+    REWRITE_TAC[CONJUNCT1 LT; EMPTY_GSPEC; NSUM_CLAUSES] THEN
+    REWRITE_TAC[numseg; LT_SUC_LE; LE_0] THEN
+    REWRITE_TAC[READ_BYTES_1; READ_COMPONENT_COMPOSE; bytes8;
+                asword; through; read; WORD_VAL])
+  and tth = ARITH_RULE `2 EXP 0 * n = n`
+  and address_conv =
+   TRY_CONV NORMALIZE_RELATIVE_ADDRESS_CONV  THENC
+   GEN_REWRITE_CONV TRY_CONV [WORD_RULE `word_add z (word 0) = z`] in
+  (GEN_REWRITE_CONV I [CONJUNCT1 pth] ORELSEC
+   (LAND_CONV(funpow 3 RAND_CONV num_CONV) THENC
+    GEN_REWRITE_CONV I [CONJUNCT2 pth] THENC
+    EXPAND_NSUM_CONV THENC
+    DEPTH_BINOP_CONV `(+):num->num->num`
+     (BINOP2_CONV
+        (RAND_CONV NUM_MULT_CONV)
+        (RAND_CONV(LAND_CONV(RAND_CONV(RAND_CONV
+          address_conv)))) THENC
+      GEN_REWRITE_CONV TRY_CONV [tth])));;
+
+(*** Examples:
+
+BYTES_EXPAND_CONV `read (memory :> bytes (word_add x (word 42),8)) s0`;;
+
+****)
+
+let BYTES_DIGITIZE_TAC =
+  let strip_add = striplist (dest_binop `(+):num->num->num`)
+  and ty8 = `:byte` in
+  fun s tm ->
+    let th = BYTES_EXPAND_CONV tm in
+    let mts = strip_add(rand(concl th)) in
+    let tms =
+      if mts = [] then [] else map rand ((hd mts)::map rand (tl mts)) in
+    let vs =
+      map (fun i -> mk_var(s^string_of_int i,ty8)) (0--(length tms - 1)) in
+    let abseqs = map2 (curry mk_eq) vs tms in
+    SUBST_ALL_TAC th THEN MAP_EVERY ABBREV_TAC abseqs;;
+
+(*** Example:
+
+  BYTES_DIGITIZE_TAC "m_" `read(memory :> bytes(x,4)) s0`
+
+***)
+
+(* ------------------------------------------------------------------------- *)
+(* Expansion of bytelist by analogy, occasionally useful for bignums.        *)
+(* ------------------------------------------------------------------------- *)
+
+let BYTELIST_EXPAND_CONV =
+  let pth = prove
+   (`read (memory :> bytelist (x,0)) s = [] /\
+     read (memory :> bytelist (x,SUC n)) s =
+     CONS (read (memory :> bytes8 x) s)
+          (read (memory :> bytelist (word_add x (word 1),n)) s)`,
+    REWRITE_TAC[bytelist_clauses; READ_COMPONENT_COMPOSE;
+                bytes8; READ_BYTES_1; asword; read; through; WORD_VAL]) in
+  let rewr_base = GEN_REWRITE_CONV I [CONJUNCT1 pth]
+  and rewr_step = GEN_REWRITE_CONV I [CONJUNCT2 pth] in
+  let rec conv tm =
+    (rewr_base ORELSEC
+     (LAND_CONV (funpow 3 RAND_CONV num_CONV) THENC
+      rewr_step THENC
+      RAND_CONV(LAND_CONV(RAND_CONV(RAND_CONV(LAND_CONV
+        (TRY_CONV NORMALIZE_RELATIVE_ADDRESS_CONV))))) THENC
+      RAND_CONV conv)) tm in
+  conv;;
+
+(*** Examples:
+
+BYTELIST_EXPAND_CONV `read (memory :> bytelist (x,1)) s0`;;
+
+BYTELIST_EXPAND_CONV `read (memory :> bytelist (word_add x (word 7),5)) s`;;
+
+****)
+
+let BYTELIST_DIGITIZE_TAC =
+  let ty8 = `:byte` in
+  fun s tm ->
+    let th = BYTELIST_EXPAND_CONV tm in
+    let tms = dest_list(rand(concl th)) in
+    let vs =
+      map (fun i -> mk_var(s^string_of_int i,ty8)) (0--(length tms - 1)) in
+    let abseqs = map2 (curry mk_eq) vs tms in
+    SUBST_ALL_TAC th THEN MAP_EVERY ABBREV_TAC abseqs;;
+
+(*** Example:
+
+  BYTELIST_DIGITIZE_TAC
+    "b_" `read (memory :> bytelist (word_add x (word 1),42)) s`;;
+
+***)

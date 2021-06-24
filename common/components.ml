@@ -1959,6 +1959,30 @@ add_weakly_valid_component_thms
  *** handling anyway since they often need side-conditions
  ***)
 
+let READ_MEMORY_BYTESIZED_SPLIT = prove
+ (`(!x s. read (memory :> bytes64 x) s =
+          word_join (read (memory :> bytes32 (word_add x (word 4))) s)
+                    (read (memory :> bytes32 x) s)) /\
+   (!x s. read (memory :> bytes32 x) s =
+          word_join (read (memory :> bytes16 (word_add x (word 2))) s)
+                    (read (memory :> bytes16 x) s)) /\
+   (!x s. read (memory :> bytes16 x) s =
+          word_join (read (memory :> bytes8 (word_add x (word 1))) s)
+                    (read (memory :> bytes8 x) s))`,
+  REWRITE_TAC[GSYM VAL_EQ] THEN
+  SIMP_TAC[VAL_WORD_JOIN_SIMPLE; DIMINDEX_64; DIMINDEX_32;
+           DIMINDEX_16; DIMINDEX_8; ARITH] THEN
+  REWRITE_TAC[bytes64; bytes32; bytes16; bytes8] THEN
+  REWRITE_TAC[asword; through; read; READ_COMPONENT_COMPOSE] THEN
+  REWRITE_TAC[VAL_WORD; DIMINDEX_64; DIMINDEX_32; DIMINDEX_16; DIMINDEX_8] THEN
+  REWRITE_TAC[ARITH_RULE
+   `2 EXP 8 = 2 EXP (8 * 1) /\ 2 EXP 16 = 2 EXP (8 * 2) /\
+    2 EXP 32 = 2 EXP (8 * 4) /\ 2 EXP 64 = 2 EXP (8 * 8)`] THEN
+  SIMP_TAC[READ_BYTES_BOUND; MOD_LT] THEN
+  REPEAT STRIP_TAC THEN GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV)
+   [ARITH_RULE `8 = 4 + 4 /\ 4 = 2 + 2 /\ 2 = 1 + 1`] THEN
+  REWRITE_TAC[READ_BYTES_COMBINE] THEN ARITH_TAC);;
+
 (* ------------------------------------------------------------------------- *)
 (* State component corresponding to the head of a stack/list.                *)
 (* ------------------------------------------------------------------------- *)
@@ -2752,6 +2776,10 @@ let ORTHOGONAL_COMPONENTS_TAC =
        ==> orthogonal_components (bytes64 a) c) /\
       (orthogonal_components d (bytes(a,8))
        ==> orthogonal_components d (bytes64 a)) /\
+      (orthogonal_components (bytes(a,1)) c
+       ==> orthogonal_components (bytes8 a) c) /\
+      (orthogonal_components d (bytes(a,1))
+       ==> orthogonal_components d (bytes8 a)) /\
       (orthogonal_components (bytes(a,k)) c
        ==> orthogonal_components (bytelist(a,k)) c) /\
       (orthogonal_components d (bytes(a,k))
@@ -2760,7 +2788,7 @@ let ORTHOGONAL_COMPONENTS_TAC =
       ==> orthogonal_components
            (bytes(a1:int64,l1)) (bytes (a2:int64,l2)))`,
     CONJ_TAC THENL
-     [REWRITE_TAC[bytes64; bytelist; COMPONENT_COMPOSE_ASSOC] THEN
+     [REWRITE_TAC[bytes64; bytes8; bytelist; COMPONENT_COMPOSE_ASSOC] THEN
       REWRITE_TAC[ORTHOGONAL_COMPONENTS_SUB_LEFT;
                   ORTHOGONAL_COMPONENTS_SUB_RIGHT];
       DISCH_TAC THEN

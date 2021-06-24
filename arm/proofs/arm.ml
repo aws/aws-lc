@@ -143,6 +143,39 @@ let OFFSET_ADDRESS_CLAUSES = prove
 (* Basic execution of ARM instruction into sequence of state updates.        *)
 (* ------------------------------------------------------------------------- *)
 
+let WREG_EXPAND_CLAUSES = prove
+ (`W1 = X1 :> zerotop_32 /\
+   W2 = X2 :> zerotop_32 /\
+   W3 = X3 :> zerotop_32 /\
+   W4 = X4 :> zerotop_32 /\
+   W5 = X5 :> zerotop_32 /\
+   W6 = X6 :> zerotop_32 /\
+   W7 = X7 :> zerotop_32 /\
+   W8 = X8 :> zerotop_32 /\
+   W9 = X9 :> zerotop_32 /\
+   W10 = X10 :> zerotop_32 /\
+   W11 = X11 :> zerotop_32 /\
+   W12 = X12 :> zerotop_32 /\
+   W13 = X13 :> zerotop_32 /\
+   W14 = X14 :> zerotop_32 /\
+   W15 = X15 :> zerotop_32 /\
+   W16 = X16 :> zerotop_32 /\
+   W17 = X17 :> zerotop_32 /\
+   W18 = X18 :> zerotop_32 /\
+   W19 = X19 :> zerotop_32 /\
+   W20 = X20 :> zerotop_32 /\
+   W21 = X21 :> zerotop_32 /\
+   W22 = X22 :> zerotop_32 /\
+   W23 = X23 :> zerotop_32 /\
+   W24 = X24 :> zerotop_32 /\
+   W25 = X25 :> zerotop_32 /\
+   W26 = X26 :> zerotop_32 /\
+   W27 = X27 :> zerotop_32 /\
+   W28 = X28 :> zerotop_32 /\
+   W29 = X29 :> zerotop_32 /\
+   W30 = X30 :> zerotop_32`,
+  REWRITE_TAC(!component_alias_thms));;
+
 let ARM_EXEC_CONV =
   let qth = prove(`bytes64 (word_add a (word 0)) = bytes64 a`,
                   REWRITE_TAC[WORD_ADD_0])
@@ -164,7 +197,9 @@ let ARM_EXEC_CONV =
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [CONJUNCT2 SEQ_ID]) ORELSEC
    (GEN_REWRITE_CONV I ARM_OPERATION_CLAUSES THENC
     REWRITE_CONV [condition_semantics])) THENC
-  REWRITE_CONV[ARM_ZERO_REGISTER; READ_RVALUE] THENC
+  REWRITE_CONV[WREG_EXPAND_CLAUSES] THENC
+  REWRITE_CONV[READ_RVALUE; ASSIGN_ZEROTOP_32; ARM_ZERO_REGISTER;
+               READ_ZEROTOP_32; WRITE_ZEROTOP_32] THENC
   WORD_REDUCE_CONV THENC
   ONCE_DEPTH_CONV WORD_WORD_OPERATION_CONV;;
 

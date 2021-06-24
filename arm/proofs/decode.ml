@@ -75,6 +75,8 @@ let arm_lsvop = new_definition `arm_lsvop (op2:2 word)
 let arm_ldst = new_definition `arm_ldst ld x Rt =
   if x then (if ld then arm_LDR else arm_STR) (XREG' Rt)
        else (if ld then arm_LDR else arm_STR) (WREG' Rt)`;;
+let arm_ldstb = new_definition `arm_ldstb ld Rt =
+  (if ld then arm_LDRB else arm_STRB) (WREG' Rt)`;;
 let arm_ldstp = new_definition `arm_ldstp ld x Rt Rt2 =
   if x then (if ld then arm_LDP else arm_STP) (XREG' Rt) (XREG' Rt2)
        else (if ld then arm_LDP else arm_STP) (WREG' Rt) (WREG' Rt2)`;;
@@ -178,6 +180,12 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_ldst ld x Rt (XREG_SP Rn)
       (if S then Shiftreg_Offset (XREG' Rm) (if x then 3 else 2)
             else Register_Offset (XREG' Rm)))
+  | [0b001110000:9; ld; 0b0:1; imm9:9; 0b01:2; Rn:5; Rt:5] ->
+    SOME (arm_ldstb ld Rt (XREG_SP Rn) (Postimmediate_Offset (word_sx imm9)))
+  | [0b001110000:9; ld; 0b0:1; imm9:9; 0b11:2; Rn:5; Rt:5] ->
+    SOME (arm_ldstb ld Rt (XREG_SP Rn) (Preimmediate_Offset (word_sx imm9)))
+  | [0b001110010:9; ld; imm12:12; Rn:5; Rt:5] ->
+    SOME (arm_ldstb ld Rt (XREG_SP Rn) (Immediate_Offset (word_zx imm12)))
   | [x; 0b010100:6; pre; 0b1:1; ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
     SOME (arm_ldstp ld x Rt Rt2 (XREG_SP Rn)
       ((if pre then Preimmediate_Offset else Postimmediate_Offset)
@@ -427,6 +435,7 @@ let PURE_DECODE_CONV =
   and pth_lsvop = mk_pth_split arm_lsvop
   and pth_ubfmop = mk_pth arm_ubfmop
   and pth_ldst = mk_pth arm_ldst
+  and pth_ldstrb = mk_pth arm_ldstb
   and pth_ldstp = mk_pth arm_ldstp in
 
   let rec eval_prod = function
@@ -579,6 +588,7 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Comb(Comb(Comb(Comb(Const("arm_ubfmop",_),_),_),_),_),_),_) ->
     eval_nary pth_ubfmop t F
   | Comb(Comb(Comb(Const("arm_ldst",_),_),_),_) -> eval_nary pth_ldst t F
+  | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
     eval_nary pth_ldstp t F
   | Comb((Const("Condition",_) as f),a) -> eval_unary f a F CONDITION_CONV
