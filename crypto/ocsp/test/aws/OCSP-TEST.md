@@ -8,8 +8,8 @@ The files in this directory represent a cert hierarchy to test OCSP response sta
 - ca_key.pem
 
 Issuer for all of the other certs in the directory.
-Since this is a test PKI, we do an intermediate for issuing leaf cert(s).
-
+This certificate can be used to generate certificates for authorized OCSP responders designated by the CA. 
+The authorized OCSP responder may then use the generated certificate to sign OCSP responses for the specific CA.
 ## OCSP
 * ocsp_cert.pem
 * ocsp_key.pem
@@ -29,7 +29,6 @@ The leaf cert/key. OCSP responses will be generated for this cert.
 DER formatted OCSP response for the Server Cert. 
 
 ## Generating a new OCSP response for the leaf cert
-Should not be necessary, our OCSP time stamps are hardcoded to avoid tests from expiring. The current response expires in 10 years. 
 
 From the current directory:
 
