@@ -23,6 +23,8 @@ class SnapsafeGenerationTest : public testing::Test {
 };
 
 TEST_F(SnapsafeGenerationTest, SysGenIDretrieval) {
+  // This test uses the mocked SysGenID test to be able to control the SysGenID
+  // value.
   // First part of this test fixture generates two snapsafe generation numbers
   // and compares them. Since the generation should be stable it is expected the
   // two values are equal.
@@ -32,19 +34,18 @@ TEST_F(SnapsafeGenerationTest, SysGenIDretrieval) {
   // (|current_snapsafe_gen_num|). The expectation is that the two values are
   // equal.
 
-  setup_sysgenid_support();
+  setup_sysgenid_support(MUST_BE_MOCKED);
 
-  // Set SysGenID value to another value than the default.
+  // Verify setting value works.
+  uint32_t snapsafe_generation_set = 0;
   ASSERT_TRUE(set_new_sysgenid_value(1));
-
-  uint32_t first_gen_num_call = 0;
-  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&first_gen_num_call));
-  ASSERT_EQ(first_gen_num_call, (uint32_t) 1);
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation_set));
+  ASSERT_EQ(snapsafe_generation_set, (uint32_t) 1);
 
   // The snapsafe generation should be stable.
-  uint32_t second_gen_num_call = 0;
-  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&second_gen_num_call));
-  ASSERT_EQ(first_gen_num_call, second_gen_num_call);
+  uint32_t snapsafe_generation_stable = 0;
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation_stable));
+  ASSERT_EQ(snapsafe_generation_stable, snapsafe_generation_set);
 
   uint32_t new_sysgenid_value = 1;
   uint32_t current_snapsafe_gen_num = 0;

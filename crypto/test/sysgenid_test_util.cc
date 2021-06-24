@@ -22,6 +22,7 @@
 #define SYSGENID_TRIGGER_GEN_UPDATE     _IO(SYSGENID_IOCTL, 3)
 
 static int system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
+static uint32_t current_snapsafe_number = 0;
 
 // |set_sysgenid_file_value| interfaces with the SysGenID device. If this is not
 // supported on the system we are running, |set_mocked_sysgenid_value|
@@ -29,10 +30,11 @@ static int system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
 
 static int set_mocked_sysgenid_value(uint32_t new_sysgenid_value) {
   HAZMAT_set_overwritten_sysgenid_for_testing(new_sysgenid_value);
+  current_snapsafe_number = new_sysgenid_value;
   return 1;
 }
 
-static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
+static int increment_real_sysgenid_value() {
 
   int fd_sysgenid = open(AWSLC_SYSGENID_FILE_PATH, O_RDONLY);
   if (fd_sysgenid == -1) {
@@ -40,8 +42,8 @@ static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
   }
 
   // API details can be found here: https://lkml.org/lkml/2021/3/8/677.
-  if (ioctl(fd_sysgenid, SYSGENID_TRIGGER_GEN_UPDATE,
-      new_sysgenid_value) == -1) {
+  // Requesting 1 will always increment the SysGenID value by 1.
+  if (ioctl(fd_sysgenid, SYSGENID_TRIGGER_GEN_UPDATE, 1) == -1) {
     close(fd_sysgenid);
     return 0;
   }
@@ -55,17 +57,28 @@ static int set_sysgenid_file_value(uint32_t new_sysgenid_value) {
 
 int set_new_sysgenid_value(uint32_t new_sysgenid_value) {
   if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
-    return set_sysgenid_file_value(new_sysgenid_value);
+    return increment_real_sysgenid_value();
   }
   else {
     return set_mocked_sysgenid_value(new_sysgenid_value);
   }
 }
 
-int setup_sysgenid_support(void) {
+int increment_sysgenid_value(void) {
+  if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
+    return increment_real_sysgenid_value();
+  }
+  else {
+    current_snapsafe_number = current_snapsafe_number + 1;
+    return set_mocked_sysgenid_value(current_snapsafe_number);
+  }
+}
+
+int setup_sysgenid_support(int preference) {
   struct stat buf;
   // System should support Snapsafe if |AWSLC_SYSGENID_FILE_PATH| is present.
-  if (stat(AWSLC_SYSGENID_FILE_PATH, &buf) == 0) {
+  if (preference != MUST_BE_MOCKED &&
+      stat(AWSLC_SYSGENID_FILE_PATH, &buf) == 0) {
     system_supports_snapsafe = SNAPSAFE_SUPPORTED;
     return 1;
   }

@@ -79,10 +79,10 @@ static void disable_snapsafe_detection_mechanisms(void) {
 #endif
 }
 
-// A |sysgenid_value| value  different from 0 sets the SysGenID device with the
-// specified value.
+// A |should_increment| value different from 0 means that the SysGenID value
+// is incremented.
 static bool ForkMaybeIncrementSysGenIdAndRand(bssl::Span<uint8_t> out,
-  uint32_t sysgenid_value) {
+  int should_increment) {
 
   int pipefds[2];
   if (pipe(pipefds) < 0) {
@@ -103,8 +103,8 @@ static bool ForkMaybeIncrementSysGenIdAndRand(bssl::Span<uint8_t> out,
   if (child == 0) {
     // This is the child. Generate entropy and write it to the parent.
     close(pipefds[0]);
-    if (sysgenid_value > 0) {
-      if (set_new_sysgenid_value(sysgenid_value) == 0) {
+    if (should_increment > 0) {
+      if (increment_sysgenid_value() == 0) {
         return false;
       }
     }
@@ -247,16 +247,19 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
   // |--fork_unsafe_buffering|. Tests should pass though, so run through them
   // for all test dimensions that hit this test suite.
   
-  ASSERT_TRUE(setup_sysgenid_support());
+  ASSERT_TRUE(setup_sysgenid_support(PREFER_REAL_SYSGENID_DEVICE));
 
+  // The snapsafe generation should be stable.
   uint32_t snapsafe_generation = 0;
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
-  ASSERT_EQ(snapsafe_generation, (uint32_t) 0);
+  uint32_t snapsafe_generation_stable = 0;
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation_stable));
+  ASSERT_EQ(snapsafe_generation, snapsafe_generation_stable);
 
-  // Verify setting SysGenID value works.
-  ASSERT_TRUE(set_new_sysgenid_value(1));
+  // Verify that increment works.
+  ASSERT_TRUE(increment_sysgenid_value());
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
-  ASSERT_EQ(snapsafe_generation, (uint32_t) 1);
+  ASSERT_GT(snapsafe_generation, snapsafe_generation_stable);
 
   // The rest is similar to the test fixture |RandTest.Fork|. Except, we make
   // sure to increment the SysGenID value in 
@@ -273,8 +276,8 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
   // of sneaking by with a large enough buffer that we've since reseeded from
   // the OS.
   uint8_t buf1[16], buf2[16], buf3[16];
-  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, 2));
-  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, 3));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, 1));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, 1));
   RAND_bytes(buf3, sizeof(buf3));
 
   // All should be different.
