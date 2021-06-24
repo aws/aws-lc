@@ -20,8 +20,10 @@
 // Returns 1 if successful and 0 otherwise.
 int set_new_sysgenid_value(uint32_t new_sysgenid_value);
 
-// increment_sysgenid_value increments the SysGenID value by 1. 
-int increment_sysgenid_value(void);
+// increment_sysgenid_value increments the SysGenID value by 1. |increment_hint|
+// is used in the mocked framework.
+// Returns 1 if successful and 0 otherwise.
+int increment_sysgenid_value(uint32_t increment_hint);
 
 // setup_sysgenid_support determines if SysGenID is supported, and if not,
 // initialises a back up method that simulates the SysGenID device.

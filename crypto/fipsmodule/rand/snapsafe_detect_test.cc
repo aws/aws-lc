@@ -24,7 +24,8 @@ class SnapsafeGenerationTest : public testing::Test {
 
 TEST_F(SnapsafeGenerationTest, SysGenIDretrieval) {
   // This test uses the mocked SysGenID test to be able to control the SysGenID
-  // value.
+  // value. The real SysGenID device cannot be "rolled-back" and will always
+  // strictly increment.
   // First part of this test fixture generates two snapsafe generation numbers
   // and compares them. Since the generation should be stable it is expected the
   // two values are equal.

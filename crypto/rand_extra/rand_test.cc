@@ -79,10 +79,10 @@ static void disable_snapsafe_detection_mechanisms(void) {
 #endif
 }
 
-// A |should_increment| value different from 0 means that the SysGenID value
-// is incremented.
+// A |increment_hint| value different from 0 means that the SysGenID value
+// is incremented and is used as a hint in the mocked test.
 static bool ForkMaybeIncrementSysGenIdAndRand(bssl::Span<uint8_t> out,
-  int should_increment) {
+  int increment_hint) {
 
   int pipefds[2];
   if (pipe(pipefds) < 0) {
@@ -103,8 +103,8 @@ static bool ForkMaybeIncrementSysGenIdAndRand(bssl::Span<uint8_t> out,
   if (child == 0) {
     // This is the child. Generate entropy and write it to the parent.
     close(pipefds[0]);
-    if (should_increment > 0) {
-      if (increment_sysgenid_value() == 0) {
+    if (increment_hint > 0) {
+      if (increment_sysgenid_value(increment_hint) == 0) {
         return false;
       }
     }
@@ -239,6 +239,7 @@ class SnapsafeGenerationTest : public testing::Test {
 TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
 
   static const uint8_t kZeros[16] = {0};
+  uint32_t increment_hint = 0;
 
   // In this test fixture we pretend we only have snapsafe detection. To
   // reliably test this specific path, we must run it as a standalone test,
@@ -257,7 +258,8 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
   ASSERT_EQ(snapsafe_generation, snapsafe_generation_stable);
 
   // Verify that increment works.
-  ASSERT_TRUE(increment_sysgenid_value());
+  increment_hint = snapsafe_generation_stable + 1;
+  ASSERT_TRUE(increment_sysgenid_value(increment_hint));
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
   ASSERT_GT(snapsafe_generation, snapsafe_generation_stable);
 
@@ -276,8 +278,8 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
   // of sneaking by with a large enough buffer that we've since reseeded from
   // the OS.
   uint8_t buf1[16], buf2[16], buf3[16];
-  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, 1));
-  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, 1));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, increment_hint + 1));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, increment_hint + 2));
   RAND_bytes(buf3, sizeof(buf3));
 
   // All should be different.
