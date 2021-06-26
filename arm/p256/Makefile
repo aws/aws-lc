@@ -34,6 +34,7 @@ endif
 OBJ = bignum_add_p256.o \
       bignum_amontmul_p256.o \
       bignum_amontsqr_p256.o \
+      bignum_bigendian_4.o \
       bignum_cmul_p256.o \
       bignum_deamont_p256.o \
       bignum_demont_p256.o \

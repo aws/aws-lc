@@ -460,6 +460,27 @@ let BIGNUM_FROM_MEMORY_BYTES = prove
    [ASM_ARITH_TAC; MATCH_MP_TAC DIVMOD_UNIQ THEN ASM_ARITH_TAC]);;
 
 (* ------------------------------------------------------------------------- *)
+(* Passing between alternative byte component formulations.                  *)
+(* ------------------------------------------------------------------------- *)
+
+let READ_BYTES_EQ_BYTELIST = prove
+ (`!x n k s.
+        read (memory :> bytes(x,k)) s = n <=>
+        n < 256 EXP k /\
+        read (memory :> bytelist(x,k)) s = bytelist_of_num k n`,
+  REWRITE_TAC[READ_COMPONENT_COMPOSE; bytelist; through; read] THEN
+  MESON_TAC[NUM_OF_BYTELIST_OF_NUM_EQ; READ_BYTES_BOUND_ALT]);;
+
+let READ_BYTELIST_EQ_BYTES = prove
+ (`!x l k s.
+        read (memory :> bytelist(x,k)) s = l <=>
+        LENGTH l = k /\
+        read (memory :> bytes(x,k)) s = num_of_bytelist l`,
+  REWRITE_TAC[READ_COMPONENT_COMPOSE; bytelist; through; read] THEN
+  MESON_TAC[NUM_OF_BYTELIST_OF_NUM_EQ; BYTELIST_OF_NUM_OF_BYTELIST;
+            READ_BYTES_BOUND_ALT; LENGTH_BYTELIST_OF_NUM]);;
+
+(* ------------------------------------------------------------------------- *)
 (* Bignum as a state component (little-endian only of course).               *)
 (* ------------------------------------------------------------------------- *)
 

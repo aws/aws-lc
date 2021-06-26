@@ -69,6 +69,14 @@ extern void bignum_amontsqr_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 // Input x[6]; output z[6]
 extern void bignum_amontsqr_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
+// Convert 4-digit (256-bit) bignum to/from big-endian form
+// Input x[4]; output z[4]
+extern void bignum_bigendian_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Convert 6-digit (384-bit) bignum to/from big-endian form
+// Input x[6]; output z[6]
+extern void bignum_bigendian_6 (uint64_t z[static 6], uint64_t x[static 6]);
+
 // Select bitfield starting at bit n with length l <= 64
 // Inputs x[k], n, l; output function return
 extern uint64_t bignum_bitfield (uint64_t k, uint64_t *x, uint64_t n, uint64_t l);
@@ -168,6 +176,14 @@ extern uint64_t bignum_eq (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 // Test bignum for even-ness
 // Input x[k]; output function return
 extern uint64_t bignum_even (uint64_t k, uint64_t *x);
+
+// Convert 4-digit (256-bit) bignum from big-endian bytes
+// Input x[32] (bytes); output z[4]
+extern void bignum_frombytes_4 (uint64_t z[static 4], uint8_t x[static 32]);
+
+// Convert 6-digit (384-bit) bignum from big-endian bytes
+// Input x[48] (bytes); output z[6]
+extern void bignum_frombytes_6 (uint64_t z[static 6], uint8_t x[static 48]);
 
 // Compare bignums, x >= y
 // Inputs x[m], y[n]; output function return
@@ -412,6 +428,14 @@ extern void bignum_sub_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_
 // Subtract modulo p_384, z := (x - y) mod p_384
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_sub_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
+
+// Convert 4-digit (256-bit) bignum to big-endian bytes
+// Input x[4]; output z[32] (bytes)
+extern void bignum_tobytes_4 (uint8_t z[static 32], uint64_t x[static 4]);
+
+// Convert 6-digit (384-bit) bignum to big-endian bytes
+// Input x[6]; output z[48] (bytes)
+extern void bignum_tobytes_6 (uint8_t z[static 48], uint64_t x[static 6]);
 
 // Convert to Montgomery form z := (2^256 * x) mod p_256
 // Input x[4]; output z[4]

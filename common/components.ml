@@ -1605,6 +1605,11 @@ let READ_BYTES_BOUND = prove
   MATCH_MP_TAC DIGITSUM_BOUND THEN
   REWRITE_TAC[VAL_BOUND; GSYM DIMINDEX_8]);;
 
+let READ_BYTES_BOUND_ALT = prove
+ (`!pos len s. read (bytes (pos,len)) s < 256 EXP len`,
+  REWRITE_TAC[ARITH_RULE `256 = 2 EXP 8`; EXP_EXP] THEN
+  REWRITE_TAC[READ_BYTES_BOUND]);;
+
 let READ_BYTES_MOD = prove
  (`!pos len s. (read (bytes(pos,len)) s) MOD (2 EXP (8 * len)) =
                read (bytes(pos,len)) s`,

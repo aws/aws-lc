@@ -76,6 +76,8 @@ enum {
        TEST_BIGNUM_AMONTSQR_P384,
        TEST_BIGNUM_BITFIELD,
        TEST_BIGNUM_BITSIZE,
+       TEST_BIGNUM_BIGENDIAN_4,
+       TEST_BIGNUM_BIGENDIAN_6,
        TEST_BIGNUM_CLD,
        TEST_BIGNUM_CLZ,
        TEST_BIGNUM_CMADD,
@@ -99,6 +101,8 @@ enum {
        TEST_BIGNUM_EMONTREDC_8N,
        TEST_BIGNUM_EQ,
        TEST_BIGNUM_EVEN,
+       TEST_BIGNUM_FROMBYTES_4,
+       TEST_BIGNUM_FROMBYTES_6,
        TEST_BIGNUM_GE,
        TEST_BIGNUM_GT,
        TEST_BIGNUM_HALF_P256,
@@ -160,6 +164,8 @@ enum {
        TEST_BIGNUM_SUB,
        TEST_BIGNUM_SUB_P256,
        TEST_BIGNUM_SUB_P384,
+       TEST_BIGNUM_TOBYTES_4,
+       TEST_BIGNUM_TOBYTES_6,
        TEST_BIGNUM_TOMONT_P256,
        TEST_BIGNUM_TOMONT_P384,
        TEST_BIGNUM_TRIPLE_P256,
@@ -718,6 +724,22 @@ void reference_negmodinv(uint64_t k,uint64_t *x,uint64_t *a)
    }
 }
 
+void reference_bigendian(uint64_t k,uint64_t *z,uint64_t *x)
+{ uint64_t i;
+
+  for (i = 0; i < k; ++i)
+   { z[k-(i+1)] =
+     (((uint64_t) (((uint8_t *) x)[8*i])) << 56) +
+     (((uint64_t) (((uint8_t *) x)[8*i+1])) << 48) +
+     (((uint64_t) (((uint8_t *) x)[8*i+2])) << 40) +
+     (((uint64_t) (((uint8_t *) x)[8*i+3])) << 32) +
+     (((uint64_t) (((uint8_t *) x)[8*i+4])) << 24) +
+     (((uint64_t) (((uint8_t *) x)[8*i+5])) << 16) +
+     (((uint64_t) (((uint8_t *) x)[8*i+6])) << 8) +
+     (((uint64_t) (((uint8_t *) x)[8*i+7])) << 0);
+   }
+}
+
 // ****************************************************************************
 // Testing functions
 // ****************************************************************************
@@ -1085,6 +1107,58 @@ int test_bignum_amontsqr_p384(void)
                "2^-384 * ...0x%016lx^2 mod p_384 = "
                "0x%016lx...%016lx\n",
                6ul,b0[0],b4[5],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_bigendian_4(void)
+{ uint64_t t;
+  printf("Testing bignum_bigendian_4 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(4,b0);
+     reference_bigendian(4,b3,b0);
+     bignum_bigendian_4(b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "bignum_bigendian_4(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] bignum_bigendian_4(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx\n",
+               4ul,b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_bigendian_6(void)
+{ uint64_t t;
+  printf("Testing bignum_bigendian_6 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(6,b0);
+     reference_bigendian(6,b3,b0);
+     bignum_bigendian_6(b4,b0);
+     c = reference_compare(6,b3,6,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "bignum_bigendian_6(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] bignum_bigendian_6(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx\n",
+               6ul,b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1860,6 +1934,58 @@ int test_bignum_even(void)
         else printf("OK:[size %4lu] "
                "bignum_even(...0x%016lx) = %lx\n",
                k,b0[0],c1);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_frombytes_4(void)
+{ uint64_t t;
+  printf("Testing bignum_frombytes_4 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(4,b0);
+     reference_bigendian(4,b3,b0);
+     bignum_frombytes_4(b4,(uint8_t *)b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "bignum_frombytes_4(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] bignum_frombytes_4(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx\n",
+               4ul,b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_frombytes_6(void)
+{ uint64_t t;
+  printf("Testing bignum_frombytes_6 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(6,b0);
+     reference_bigendian(6,b3,b0);
+     bignum_frombytes_6(b4,(uint8_t *)b0);
+     c = reference_compare(6,b3,6,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "bignum_frombytes_6(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] bignum_frombytes_6(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx\n",
+               6ul,b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -3776,6 +3902,58 @@ int test_bignum_sub_p384(void)
   return 0;
 }
 
+int test_bignum_tobytes_4(void)
+{ uint64_t t;
+  printf("Testing bignum_tobytes_4 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(4,b0);
+     reference_bigendian(4,b3,b0);
+     bignum_tobytes_4((uint8_t *)b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "bignum_tobytes_4(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] bignum_tobytes_4(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx\n",
+               4ul,b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_tobytes_6(void)
+{ uint64_t t;
+  printf("Testing bignum_tobytes_6 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(6,b0);
+     reference_bigendian(6,b3,b0);
+     bignum_tobytes_6((uint8_t *)b4,b0);
+     c = reference_compare(6,b3,6,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "bignum_tobytes_6(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] bignum_tobytes_6(0x%016lx...%016lx) = "
+               "0x%016lx...%016lx\n",
+               6ul,b0[5],b0[0],b4[5],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_tomont_p256(void)
 { uint64_t t;
   printf("Testing bignum_tomont_p256 with %d cases\n",tests);
@@ -3987,124 +4165,133 @@ int test_word_negmodinv(void)
   return 0;
 }
 
-int test_all()
-{ int failures = 0;
+#define dotest(f) (f()==0) ? ++successes : ++failures;
 
-  failures += test_bignum_add();
-  failures += test_bignum_add_p256();
-  failures += test_bignum_add_p384();
-  failures += test_bignum_amontifier();
-  failures += test_bignum_amontmul();
-  failures += test_bignum_amontmul_p256();
-  failures += test_bignum_amontmul_p384();
-  failures += test_bignum_amontredc();
-  failures += test_bignum_amontsqr();
-  failures += test_bignum_amontsqr_p256();
-  failures += test_bignum_amontsqr_p384();
-  failures += test_bignum_bitfield();
-  failures += test_bignum_bitsize();
-  failures += test_bignum_cld();
-  failures += test_bignum_clz();
-  failures += test_bignum_cmadd();
-  failures += test_bignum_cmul();
-  failures += test_bignum_cmul_p256();
-  failures += test_bignum_cmul_p384();
-  failures += test_bignum_coprime();
-  failures += test_bignum_copy();
-  failures += test_bignum_ctd();
-  failures += test_bignum_ctz();
-  failures += test_bignum_deamont_p256();
-  failures += test_bignum_deamont_p384();
-  failures += test_bignum_demont();
-  failures += test_bignum_demont_p256();
-  failures += test_bignum_demont_p384();
-  failures += test_bignum_digit();
-  failures += test_bignum_digitsize();
-  failures += test_bignum_double_p256();
-  failures += test_bignum_double_p384();
-  failures += test_bignum_emontredc();
-  failures += test_bignum_emontredc_8n();
-  failures += test_bignum_eq();
-  failures += test_bignum_even();
-  failures += test_bignum_ge();
-  failures += test_bignum_gt();
-  failures += test_bignum_half_p256();
-  failures += test_bignum_half_p384();
-  failures += test_bignum_iszero();
-  failures += test_bignum_kmul_16_32();
-  failures += test_bignum_ksqr_16_32();
-  failures += test_bignum_ksqr_32_64();
-  failures += test_bignum_le();
-  failures += test_bignum_lt();
-  failures += test_bignum_madd();
-  failures += test_bignum_mod_n256();
-  failures += test_bignum_mod_n256_4();
-  failures += test_bignum_mod_n384();
-  failures += test_bignum_mod_n384_6();
-  failures += test_bignum_mod_p256();
-  failures += test_bignum_mod_p256_4();
-  failures += test_bignum_mod_p384();
-  failures += test_bignum_mod_p384_6();
-  failures += test_bignum_modadd();
-  failures += test_bignum_moddouble();
-  failures += test_bignum_modifier();
-  failures += test_bignum_modinv();
-  failures += test_bignum_modoptneg();
-  failures += test_bignum_modsub();
-  failures += test_bignum_montifier();
-  failures += test_bignum_montmul();
-  failures += test_bignum_montmul_p256();
-  failures += test_bignum_montmul_p384();
-  failures += test_bignum_montredc();
-  failures += test_bignum_montsqr();
-  failures += test_bignum_montsqr_p256();
-  failures += test_bignum_montsqr_p384();
-  failures += test_bignum_mul();
-  failures += test_bignum_mul_4_8();
-  failures += test_bignum_mul_6_12();
-  failures += test_bignum_mul_8_16();
-  failures += test_bignum_mux();
-  failures += test_bignum_mux16();
-  failures += test_bignum_neg_p256();
-  failures += test_bignum_neg_p384();
-  failures += test_bignum_negmodinv();
-  failures += test_bignum_nonzero();
-  failures += test_bignum_normalize();
-  failures += test_bignum_odd();
-  failures += test_bignum_of_word();
-  failures += test_bignum_optadd();
-  failures += test_bignum_optneg();
-  failures += test_bignum_optneg_p256();
-  failures += test_bignum_optneg_p384();
-  failures += test_bignum_optsub();
-  failures += test_bignum_optsubadd();
-  failures += test_bignum_pow2();
-  failures += test_bignum_shl_small();
-  failures += test_bignum_shr_small();
-  failures += test_bignum_sqr_4_8();
-  failures += test_bignum_sqr_6_12();
-  failures += test_bignum_sqr_8_16();
-  failures += test_bignum_sub();
-  failures += test_bignum_sub_p256();
-  failures += test_bignum_sub_p384();
-  failures += test_bignum_tomont_p256();
-  failures += test_bignum_tomont_p384();
-  failures += test_bignum_triple_p256();
-  failures += test_bignum_triple_p384();
-  failures += test_word_bytereverse();
-  failures += test_word_clz();
-  failures += test_word_ctz();
-  failures += test_word_negmodinv();
+int test_all()
+{ int failures = 0, successes = 0;
+
+  dotest(test_bignum_add);
+  dotest(test_bignum_add_p256);
+  dotest(test_bignum_add_p384);
+  dotest(test_bignum_amontifier);
+  dotest(test_bignum_amontmul);
+  dotest(test_bignum_amontmul_p256);
+  dotest(test_bignum_amontmul_p384);
+  dotest(test_bignum_amontredc);
+  dotest(test_bignum_amontsqr);
+  dotest(test_bignum_amontsqr_p256);
+  dotest(test_bignum_amontsqr_p384);
+  dotest(test_bignum_bigendian_4);
+  dotest(test_bignum_bigendian_6);
+  dotest(test_bignum_bitfield);
+  dotest(test_bignum_bitsize);
+  dotest(test_bignum_cld);
+  dotest(test_bignum_clz);
+  dotest(test_bignum_cmadd);
+  dotest(test_bignum_cmul);
+  dotest(test_bignum_cmul_p256);
+  dotest(test_bignum_cmul_p384);
+  dotest(test_bignum_coprime);
+  dotest(test_bignum_copy);
+  dotest(test_bignum_ctd);
+  dotest(test_bignum_ctz);
+  dotest(test_bignum_deamont_p256);
+  dotest(test_bignum_deamont_p384);
+  dotest(test_bignum_demont);
+  dotest(test_bignum_demont_p256);
+  dotest(test_bignum_demont_p384);
+  dotest(test_bignum_digit);
+  dotest(test_bignum_digitsize);
+  dotest(test_bignum_double_p256);
+  dotest(test_bignum_double_p384);
+  dotest(test_bignum_emontredc);
+  dotest(test_bignum_emontredc_8n);
+  dotest(test_bignum_eq);
+  dotest(test_bignum_even);
+  dotest(test_bignum_frombytes_4);
+  dotest(test_bignum_frombytes_6);
+  dotest(test_bignum_ge);
+  dotest(test_bignum_gt);
+  dotest(test_bignum_half_p256);
+  dotest(test_bignum_half_p384);
+  dotest(test_bignum_iszero);
+  dotest(test_bignum_kmul_16_32);
+  dotest(test_bignum_ksqr_16_32);
+  dotest(test_bignum_ksqr_32_64);
+  dotest(test_bignum_le);
+  dotest(test_bignum_lt);
+  dotest(test_bignum_madd);
+  dotest(test_bignum_mod_n256);
+  dotest(test_bignum_mod_n256_4);
+  dotest(test_bignum_mod_n384);
+  dotest(test_bignum_mod_n384_6);
+  dotest(test_bignum_mod_p256);
+  dotest(test_bignum_mod_p256_4);
+  dotest(test_bignum_mod_p384);
+  dotest(test_bignum_mod_p384_6);
+  dotest(test_bignum_modadd);
+  dotest(test_bignum_moddouble);
+  dotest(test_bignum_modifier);
+  dotest(test_bignum_modinv);
+  dotest(test_bignum_modoptneg);
+  dotest(test_bignum_modsub);
+  dotest(test_bignum_montifier);
+  dotest(test_bignum_montmul);
+  dotest(test_bignum_montmul_p256);
+  dotest(test_bignum_montmul_p384);
+  dotest(test_bignum_montredc);
+  dotest(test_bignum_montsqr);
+  dotest(test_bignum_montsqr_p256);
+  dotest(test_bignum_montsqr_p384);
+  dotest(test_bignum_mul);
+  dotest(test_bignum_mul_4_8);
+  dotest(test_bignum_mul_6_12);
+  dotest(test_bignum_mul_8_16);
+  dotest(test_bignum_mux);
+  dotest(test_bignum_mux16);
+  dotest(test_bignum_neg_p256);
+  dotest(test_bignum_neg_p384);
+  dotest(test_bignum_negmodinv);
+  dotest(test_bignum_nonzero);
+  dotest(test_bignum_normalize);
+  dotest(test_bignum_odd);
+  dotest(test_bignum_of_word);
+  dotest(test_bignum_optadd);
+  dotest(test_bignum_optneg);
+  dotest(test_bignum_optneg_p256);
+  dotest(test_bignum_optneg_p384);
+  dotest(test_bignum_optsub);
+  dotest(test_bignum_optsubadd);
+  dotest(test_bignum_pow2);
+  dotest(test_bignum_shl_small);
+  dotest(test_bignum_shr_small);
+  dotest(test_bignum_sqr_4_8);
+  dotest(test_bignum_sqr_6_12);
+  dotest(test_bignum_sqr_8_16);
+  dotest(test_bignum_sub);
+  dotest(test_bignum_sub_p256);
+  dotest(test_bignum_sub_p384);
+  dotest(test_bignum_tobytes_4);
+  dotest(test_bignum_tobytes_6);
+  dotest(test_bignum_tomont_p256);
+  dotest(test_bignum_tomont_p384);
+  dotest(test_bignum_triple_p256);
+  dotest(test_bignum_triple_p384);
+  dotest(test_word_bytereverse);
+  dotest(test_word_clz);
+  dotest(test_word_ctz);
+  dotest(test_word_negmodinv);
 
   if (failures != 0)
-   { printf("All tests run, **** %d failures ***\n",failures);
+   { printf("All tests run, **** %d failures out of %d ****\n",
+            failures,failures+successes);
      return 1;
    }
   else if (tests == 0)
    { printf("Zero tests run, *** no testing\n");
    }
   else
-   { printf("All tests run, all passed\n");
+   { printf("All %d tests run, all passed\n",successes);
      return 0;
    }
 }
@@ -4117,89 +4304,97 @@ int test_all()
 // has to be fairly old not to support these instructions.
 
 int test_allnonbmi()
-{ int failures = 0;
+{ int failures = 0, successes = 0;
 
-  failures += test_bignum_add();
-  failures += test_bignum_add_p256();
-  failures += test_bignum_amontifier();
-  failures += test_bignum_amontmul();
-  failures += test_bignum_amontredc();
-  failures += test_bignum_amontsqr();
-  failures += test_bignum_bitfield();
-  failures += test_bignum_bitsize();
-  failures += test_bignum_cld();
-  failures += test_bignum_clz();
-  failures += test_bignum_cmadd();
-  failures += test_bignum_cmul();
-  failures += test_bignum_coprime();
-  failures += test_bignum_copy();
-  failures += test_bignum_ctd();
-  failures += test_bignum_ctz();
-  failures += test_bignum_demont();
-  failures += test_bignum_digit();
-  failures += test_bignum_digitsize();
-  failures += test_bignum_double_p256();
-  failures += test_bignum_emontredc();
-  failures += test_bignum_eq();
-  failures += test_bignum_even();
-  failures += test_bignum_ge();
-  failures += test_bignum_gt();
-  failures += test_bignum_half_p256();
-  failures += test_bignum_half_p384();
-  failures += test_bignum_iszero();
-  failures += test_bignum_le();
-  failures += test_bignum_lt();
-  failures += test_bignum_madd();
-  failures += test_bignum_mod_n256_4();
-  failures += test_bignum_mod_n384_6();
-  failures += test_bignum_mod_p256_4();
-  failures += test_bignum_mod_p384_6();
-  failures += test_bignum_modadd();
-  failures += test_bignum_moddouble();
-  failures += test_bignum_modifier();
-  failures += test_bignum_modinv();
-  failures += test_bignum_modoptneg();
-  failures += test_bignum_modsub();
-  failures += test_bignum_montifier();
-  failures += test_bignum_montmul();
-  failures += test_bignum_montredc();
-  failures += test_bignum_montsqr();
-  failures += test_bignum_mul();
-  failures += test_bignum_mux();
-  failures += test_bignum_mux16();
-  failures += test_bignum_neg_p256();
-  failures += test_bignum_neg_p384();
-  failures += test_bignum_negmodinv();
-  failures += test_bignum_nonzero();
-  failures += test_bignum_normalize();
-  failures += test_bignum_odd();
-  failures += test_bignum_of_word();
-  failures += test_bignum_optadd();
-  failures += test_bignum_optneg();
-  failures += test_bignum_optneg_p256();
-  failures += test_bignum_optneg_p384();
-  failures += test_bignum_optsub();
-  failures += test_bignum_optsubadd();
-  failures += test_bignum_pow2();
-  failures += test_bignum_shl_small();
-  failures += test_bignum_shr_small();
-  failures += test_bignum_sub();
-  failures += test_bignum_sub_p256();
-  failures += test_bignum_sub_p384();
-  failures += test_word_bytereverse();
-  failures += test_word_clz();
-  failures += test_word_ctz();
-  failures += test_word_negmodinv();
+  dotest(test_bignum_add);
+  dotest(test_bignum_add_p256);
+  dotest(test_bignum_amontifier);
+  dotest(test_bignum_amontmul);
+  dotest(test_bignum_amontredc);
+  dotest(test_bignum_amontsqr);
+  dotest(test_bignum_bigendian_4);
+  dotest(test_bignum_bigendian_6);
+  dotest(test_bignum_bitfield);
+  dotest(test_bignum_bitsize);
+  dotest(test_bignum_cld);
+  dotest(test_bignum_clz);
+  dotest(test_bignum_cmadd);
+  dotest(test_bignum_cmul);
+  dotest(test_bignum_coprime);
+  dotest(test_bignum_copy);
+  dotest(test_bignum_ctd);
+  dotest(test_bignum_ctz);
+  dotest(test_bignum_demont);
+  dotest(test_bignum_digit);
+  dotest(test_bignum_digitsize);
+  dotest(test_bignum_double_p256);
+  dotest(test_bignum_emontredc);
+  dotest(test_bignum_eq);
+  dotest(test_bignum_even);
+  dotest(test_bignum_frombytes_4);
+  dotest(test_bignum_frombytes_6);
+  dotest(test_bignum_ge);
+  dotest(test_bignum_gt);
+  dotest(test_bignum_half_p256);
+  dotest(test_bignum_half_p384);
+  dotest(test_bignum_iszero);
+  dotest(test_bignum_le);
+  dotest(test_bignum_lt);
+  dotest(test_bignum_madd);
+  dotest(test_bignum_mod_n256_4);
+  dotest(test_bignum_mod_n384_6);
+  dotest(test_bignum_mod_p256_4);
+  dotest(test_bignum_mod_p384_6);
+  dotest(test_bignum_modadd);
+  dotest(test_bignum_moddouble);
+  dotest(test_bignum_modifier);
+  dotest(test_bignum_modinv);
+  dotest(test_bignum_modoptneg);
+  dotest(test_bignum_modsub);
+  dotest(test_bignum_montifier);
+  dotest(test_bignum_montmul);
+  dotest(test_bignum_montredc);
+  dotest(test_bignum_montsqr);
+  dotest(test_bignum_mul);
+  dotest(test_bignum_mux);
+  dotest(test_bignum_mux16);
+  dotest(test_bignum_neg_p256);
+  dotest(test_bignum_neg_p384);
+  dotest(test_bignum_negmodinv);
+  dotest(test_bignum_nonzero);
+  dotest(test_bignum_normalize);
+  dotest(test_bignum_odd);
+  dotest(test_bignum_of_word);
+  dotest(test_bignum_optadd);
+  dotest(test_bignum_optneg);
+  dotest(test_bignum_optneg_p256);
+  dotest(test_bignum_optneg_p384);
+  dotest(test_bignum_optsub);
+  dotest(test_bignum_optsubadd);
+  dotest(test_bignum_pow2);
+  dotest(test_bignum_shl_small);
+  dotest(test_bignum_shr_small);
+  dotest(test_bignum_sub);
+  dotest(test_bignum_sub_p256);
+  dotest(test_bignum_sub_p384);
+  dotest(test_bignum_tobytes_4);
+  dotest(test_bignum_tobytes_6);
+  dotest(test_word_bytereverse);
+  dotest(test_word_clz);
+  dotest(test_word_ctz);
+  dotest(test_word_negmodinv);
 
   if (failures != 0)
-   { printf("Partial tests run, **** %d failures ***\n",failures);
+   { printf("Partial tests (%d) run, **** %d failures ***\n",
+            successes+failures,failures);
      return 1;
    }
   else if (tests == 0)
    { printf("Zero tests run, *** no testing\n");
    }
   else
-   { printf("Partial tests run, *** no failures but some skipped\n");
+   { printf("Partial tests (%d) run, *** no failures but some skipped\n",
+            successes);
      return 0;
    }
 }
