@@ -574,7 +574,6 @@ if(BUILD_TESTING)
     lhash/lhash_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
-    ocsp/ocsp_openssl_test.cc
     pem/pem_test.cc
     pkcs7/pkcs7_test.cc
     pkcs8/pkcs8_test.cc

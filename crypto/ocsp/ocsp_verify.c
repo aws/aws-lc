@@ -152,7 +152,7 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
   if (ret <= 0) {
     int err = X509_STORE_CTX_get_error(ctx);
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_CERTIFICATE_VERIFY_ERROR);
-    ERR_add_error_data(2, "Verify error:",
+    ERR_add_error_data(2, "Verify error: ",
                        X509_verify_cert_error_string(err));
     goto end;
   }

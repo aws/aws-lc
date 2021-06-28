@@ -1302,6 +1302,51 @@ static const uint8_t ocsp_response_wrong_signer_sha256_der[] = {
     0x56, 0x4f, 0x96, 0x93, 0x32, 0x87, 0xdd, 0x19, 0xda, 0x06, 0x76, 0xea,
     0x02, 0xa6, 0x45, 0x11, 0x8e, 0x14, 0x84, 0x3d, 0xe8 };
 
+std::string GetTestData(const char *path);
+
+static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
+  size_t len;
+  if (!EVP_DecodedLength(&len, strlen(in))) {
+    fprintf(stderr, "EVP_DecodedLength failed\n");
+    return false;
+  }
+
+  out->resize(len);
+  if (!EVP_DecodeBase64(out->data(), &len, len, (const uint8_t *)in,
+                        strlen(in))) {
+    fprintf(stderr, "EVP_DecodeBase64 failed\n");
+    return false;
+  }
+  out->resize(len);
+  return true;
+}
+
+// CertFromPEM parses the given, NUL-terminated pem block and returns an |X509*|.
+static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  return bssl::UniquePtr<X509>(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}
+
+static bssl::UniquePtr<STACK_OF(X509)> CertChainFromPEM(const char *pem) {
+  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
+  if (!stack) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  for (;;) {
+    bssl::UniquePtr<X509> cert = bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+    if(cert == nullptr){
+      break;
+    }
+    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert.get()))) {
+      return nullptr;
+    }
+  }
+  return stack;
+}
+
 static bssl::UniquePtr<OCSP_RESPONSE> LoadOCSP_RESPONSE(
     bssl::Span<const uint8_t> der) {
   const uint8_t *ptr = der.data();
@@ -1711,4 +1756,140 @@ TEST(OCSPTest, TestNotValidResponseOCSP_SHA256) {
                             OCSP_VERIFYSTATUS_ERROR,
                             &basic_response,
                             &server_cert_chain);
+}
+
+
+// Translation of OpenSSL's OCSP tests
+// https://github.com/openssl/openssl/blob/OpenSSL_1_1_1-stable/test/recipes/80-test_ocsp.t
+struct OCSPTestVector{
+  std::string ocsp_response;
+  std::string cafile;
+  std::string untrusted;
+  int expected_ocsp_verify_status;
+};
+
+// Test vectors from OpenSSL OCSP's tests
+static const OCSPTestVector kTestVectors[] = {
+    // === VALID OCSP RESPONSES ===
+    {"ND1","ND1_Issuer_ICA","",1},
+    {"ND2","ND2_Issuer_Root","",1},
+    {"ND3","ND3_Issuer_Root","",1},
+    {"ND1","ND1_Cross_Root","ND1_Issuer_ICA-Cross",1},
+    {"D1","D1_Issuer_ICA","",1},
+    {"D2","D2_Issuer_Root","",1},
+    {"D3","D3_Issuer_Root","",1},
+    // === INVALID SIGNATURE on the OCSP RESPONSE ===
+    {"ISOP_ND1","ND1_Issuer_ICA","",0},
+    {"ISOP_ND2","ND2_Issuer_Root","",0},
+    {"ISOP_ND3","ND3_Issuer_Root","",0},
+    {"ISOP_D1","D1_Issuer_ICA","",0},
+    {"ISOP_D2","D2_Issuer_Root","",0},
+    {"ISOP_D3","D3_Issuer_Root","",0},
+    // === WRONG RESPONDERID in the OCSP RESPONSE ===
+    {"WRID_ND1","ND1_Issuer_ICA","",0},
+    {"WRID_ND2","ND2_Issuer_Root","",0},
+    {"WRID_ND3","ND3_Issuer_Root","",0},
+    {"WRID_D1","D1_Issuer_ICA","",0},
+    {"WRID_D2","D2_Issuer_Root","",0},
+    {"WRID_D3","D3_Issuer_Root","",0},
+    // === WRONG ISSUERNAMEHASH in the OCSP RESPONSE ===
+    {"WINH_ND1","ND1_Issuer_ICA","",0},
+    {"WINH_ND2","ND2_Issuer_Root","",0},
+    {"WINH_ND3","ND3_Issuer_Root","",0},
+    {"WINH_D1","D1_Issuer_ICA","",0},
+    {"WINH_D2","D2_Issuer_Root","",0},
+    {"WINH_D3","D3_Issuer_Root","",0},
+    // === WRONG ISSUERKEYHASH in the OCSP RESPONSE ===
+    {"WIKH_ND1","ND1_Issuer_ICA","",0},
+    {"WIKH_ND2","ND2_Issuer_Root","",0},
+    {"WIKH_ND3","ND3_Issuer_Root","",0},
+    {"WIKH_D1","D1_Issuer_ICA","",0},
+    {"WIKH_D2","D2_Issuer_Root","",0},
+    {"WIKH_D3","D3_Issuer_Root","",0},
+    // === WRONG KEY in the DELEGATED OCSP SIGNING CERTIFICATE ===
+    {"WKDOSC_D1","D1_Issuer_ICA","",0},
+    {"WKDOSC_D2","D2_Issuer_Root","",0},
+    {"WKDOSC_D3","D3_Issuer_Root","",0},
+    // === INVALID SIGNATURE on the DELEGATED OCSP SIGNING CERTIFICATE ===
+    {"ISDOSC_D1","D1_Issuer_ICA","",0},
+    {"ISDOSC_D1","D2_Issuer_Root","",0},
+    {"ISDOSC_D1","D3_Issuer_Root","",0},
+    // === WRONG SUBJECT NAME in the ISSUER CERTIFICATE ===
+    {"ND1","WSNIC_ND1_Issuer_ICA","",0},
+    {"ND2","WSNIC_ND2_Issuer_Root","",0},
+    {"ND3","WSNIC_ND3_Issuer_Root","",0},
+    {"D1","WSNIC_D1_Issuer_ICA","",0},
+    {"D2","WSNIC_D2_Issuer_Root","",0},
+    {"D3","WSNIC_D3_Issuer_Root","",0},
+    // === WRONG KEY in the ISSUER CERTIFICATE ===
+    {"ND1","WKIC_ND1_Issuer_ICA","",0},
+    {"ND2","WKIC_ND2_Issuer_Root","",0},
+    {"ND3","WKIC_ND3_Issuer_Root","",0},
+    {"D1","WKIC_D1_Issuer_ICA","",0},
+    {"D2","WKIC_D2_Issuer_Root","",0},
+    {"D3","WKIC_D3_Issuer_Root","",0},
+    // === INVALID SIGNATURE on the ISSUER CERTIFICATE ===
+    // Expect success, because we're explicitly trusting the issuer certificate.
+    // https://datatracker.ietf.org/doc/html/rfc6960#section-2.6
+    {"ND1","ISIC_ND1_Issuer_ICA","",1},
+    {"ND2","ISIC_ND2_Issuer_Root","",1},
+    {"ND3","ISIC_ND3_Issuer_Root","",1},
+    {"D1","ISIC_D1_Issuer_ICA","",1},
+    {"D2","ISIC_D2_Issuer_Root","",1},
+    {"D3","ISIC_D3_Issuer_Root","",1},
+};
+
+
+class OCSPTest : public testing::TestWithParam<OCSPTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPTest, testing::ValuesIn(kTestVectors));
+
+TEST_P(OCSPTest, VerifyOpenSSL_OCSP_response) {
+  const OCSPTestVector &t = GetParam();
+
+  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
+  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+
+  // Get OCSP response from path.
+  std::string data = GetTestData(std::string("crypto/ocsp/test/" + t.ocsp_response + ".ors").c_str());
+  data.erase(std::remove(data.begin(), data.end(), '\n'), data.end());
+  std::vector<uint8_t> input;
+  ASSERT_TRUE(DecodeBase64(&input, data.c_str()));
+
+  ocsp_response = LoadOCSP_RESPONSE(input);
+  ASSERT_TRUE(ocsp_response);
+
+  int ret = OCSP_response_status(ocsp_response.get());
+  ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ret);
+
+  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
+  ASSERT_TRUE(basic_response);
+
+  // Set up OpenSSL OCSP tests trust store parameters and cert chain.
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+  bssl::UniquePtr<X509_VERIFY_PARAM> vpm(X509_VERIFY_PARAM_new());
+  X509_VERIFY_PARAM_set_time(vpm.get(), (time_t)1355875200);
+  // Discussion for whether this flag should be on by default or not:
+  // https://github.com/openssl/openssl/issues/7871
+  ASSERT_EQ(X509_VERIFY_PARAM_set_flags(vpm.get(), X509_V_FLAG_PARTIAL_CHAIN), 1);
+
+  // Get CA root certificate from path and set up trust store.
+  bssl::UniquePtr<X509> ca_certificate(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/" + t.cafile + ".pem").c_str()).c_str()));
+  X509_STORE_add_cert(trust_store.get(),ca_certificate.get());
+  ASSERT_EQ(X509_STORE_set1_param(trust_store.get(), vpm.get()), 1);
+
+  // If untrusted cert chain isn't available, we only use CA cert as root cert.
+  if(t.untrusted.empty()){
+    server_cert_chain = CertsToStack({ca_certificate.get()});
+  }
+  else {
+    server_cert_chain = CertChainFromPEM(GetTestData(std::string("crypto/ocsp/test/" + t.untrusted + ".pem").c_str()).c_str());
+  }
+  ASSERT_TRUE(server_cert_chain);
+
+  // Does basic verification on OCSP response.
+  const int ocsp_verify_status = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
+  ASSERT_EQ(t.expected_ocsp_verify_status, ocsp_verify_status);
 }
