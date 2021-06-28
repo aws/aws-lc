@@ -334,8 +334,16 @@ extern void bignum_mul_6_12 (uint64_t z[static 12], uint64_t x[static 6], uint64
 extern void bignum_mul_8_16 (uint64_t z[static 16], uint64_t x[static 8], uint64_t y[static 8]);
 
 // Multiplex/select z := x (if p nonzero) or z := y (if p zero)
-// Inputs b, x[k], y[k]; output b, z[k]
-extern void bignum_mux (uint64_t b, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+// Inputs p, x[k], y[k]; output z[k]
+extern void bignum_mux (uint64_t p, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+
+// 256-bit multiplex/select z := x (if p nonzero) or z := y (if p zero)
+// Inputs p, x[4], y[4]; output z[4]
+extern void bignum_mux_4 (uint64_t p, uint64_t z[static 4],uint64_t x[static 4], uint64_t y[static 4]);
+
+// 384-bit multiplex/select z := x (if p nonzero) or z := y (if p zero)
+// Inputs p, x[6], y[6]; output z[6]
+extern void bignum_mux_6 (uint64_t p, uint64_t z[static 6],uint64_t x[static 6], uint64_t y[static 6]);
 
 // Select element from 16-element table, z := xs[k*i]
 // Inputs xs[16*k], i; output z[k]

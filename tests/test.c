@@ -141,6 +141,8 @@ enum {
        TEST_BIGNUM_MUL_6_12,
        TEST_BIGNUM_MUL_8_16,
        TEST_BIGNUM_MUX,
+       TEST_BIGNUM_MUX_4,
+       TEST_BIGNUM_MUX_6,
        TEST_BIGNUM_MUX16,
        TEST_BIGNUM_NEG_P256,
        TEST_BIGNUM_NEG_P384,
@@ -3174,6 +3176,68 @@ int test_bignum_mux(void)
   return 0;
 }
 
+// Test size-4 multiplexing function
+
+int test_bignum_mux_4(void)
+{ uint64_t i, n;
+  printf("Testing bignum_mux_4 with %d cases\n",TESTS);
+  int b, c;
+  for (i = 0; i < TESTS; ++i)
+   { n = 4;
+     random_bignum(n,b0);
+     random_bignum(n,b1);
+     b = rand() & 1;
+     bignum_mux_4(b,b2,b0,b1);
+     c = (b ? reference_compare(n,b2,n,b0)
+            : reference_compare(n,b2,n,b1));
+
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "if %d then ...0x%016lx else ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+               n,b,b0[0],b1[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (n == 0) printf("OK: [size %4lu]\n",n);
+        else printf("OK: [size %4lu] if %d then ...0x%016lx else ...0x%016lx =..0x%016lx\n",
+                    n,b,b0[0],b1[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+// Test size-6 multiplexing function
+
+int test_bignum_mux_6(void)
+{ uint64_t i, n;
+  printf("Testing bignum_mux_6 with %d cases\n",TESTS);
+  int b, c;
+  for (i = 0; i < TESTS; ++i)
+   { n = 6;
+     random_bignum(n,b0);
+     random_bignum(n,b1);
+     b = rand() & 1;
+     bignum_mux_6(b,b2,b0,b1);
+     c = (b ? reference_compare(n,b2,n,b0)
+            : reference_compare(n,b2,n,b1));
+
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "if %d then ...0x%016lx else ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+               n,b,b0[0],b1[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (n == 0) printf("OK: [size %4lu]\n",n);
+        else printf("OK: [size %4lu] if %d then ...0x%016lx else ...0x%016lx =..0x%016lx\n",
+                    n,b,b0[0],b1[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_mux16(void)
 { uint64_t i, k, t;
   printf("Testing bignum_mux16 with %d cases\n",tests);
@@ -4248,6 +4312,8 @@ int test_all()
   dotest(test_bignum_mul_6_12);
   dotest(test_bignum_mul_8_16);
   dotest(test_bignum_mux);
+  dotest(test_bignum_mux_4);
+  dotest(test_bignum_mux_6);
   dotest(test_bignum_mux16);
   dotest(test_bignum_neg_p256);
   dotest(test_bignum_neg_p384);
@@ -4357,6 +4423,8 @@ int test_allnonbmi()
   dotest(test_bignum_montsqr);
   dotest(test_bignum_mul);
   dotest(test_bignum_mux);
+  dotest(test_bignum_mux_4);
+  dotest(test_bignum_mux_6);
   dotest(test_bignum_mux16);
   dotest(test_bignum_neg_p256);
   dotest(test_bignum_neg_p384);
@@ -4520,6 +4588,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MUL_6_12:        return test_bignum_mul_6_12();
      case TEST_BIGNUM_MUL_8_16:        return test_bignum_mul_8_16();
      case TEST_BIGNUM_MUX:             return test_bignum_mux();
+     case TEST_BIGNUM_MUX_4:           return test_bignum_mux_4();
+     case TEST_BIGNUM_MUX_6:           return test_bignum_mux_6();
      case TEST_BIGNUM_MUX16:           return test_bignum_mux16();
      case TEST_BIGNUM_NEG_P256:        return test_bignum_neg_p256();
      case TEST_BIGNUM_NEG_P384:        return test_bignum_neg_p384();

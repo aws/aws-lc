@@ -1833,7 +1833,7 @@ let BIGNUM_KMUL_16_32_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,32) s = a * b)
-             (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; 
+             (MAYCHANGE [RIP; RSP; RDI; RSI; RAX;
                          RCX; RDX; R8; R9; R10; R11] ,,
               MAYCHANGE [memory :> bytes(z,8 * 32);
                      memory :> bytes(word_sub stackpointer (word 48),48)] ,,

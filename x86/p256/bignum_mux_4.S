@@ -14,43 +14,39 @@
  */
 
 // ----------------------------------------------------------------------------
-// Multiplex/select z := x (if p nonzero) or z := y (if p zero)
-// Inputs p, x[k], y[k]; output z[k]
+// 256-bit multiplex/select z := x (if p nonzero) or z := y (if p zero)
+// Inputs p, x[4], y[4]; output z[4]
 //
-//    extern void bignum_mux
-//     (uint64_t p, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+//    extern void bignum_mux_4
+//     (uint64_t p, uint64_t z[static 4],
+//      uint64_t x[static 4], uint64_t y[static 4]);
 //
-// It is assumed that all numbers x, y and z have the same size k digits.
+// It is assumed that all numbers x, y and z have the same size 4 digits.
 //
-// Standard x86-64 ABI: RDI = p, RSI = k, RDX = z, RCX = x, R8 = y
+// Standard x86-64 ABI: RDI = p, RSI = z, RDX = x, RCX = y
 // ----------------------------------------------------------------------------
 
-#define b rdi
-#define k rsi
-#define z rdx
-#define x rcx
-#define y r8
-#define i r9
+#define p rdi
+#define z rsi
+#define x rdx
+#define y rcx
 #define a rax
+#define b r8
 
 .intel_syntax noprefix
 
-                .globl  bignum_mux
+                .globl  bignum_mux_4
                 .text
+bignum_mux_4:
+                test    p, p
 
-bignum_mux:
-                test    k, k
-                jz      end                     // If length = 0 do nothing
-
-                xor     i, i
-                neg     b                       // CF <=> (b != 0)
-loop:
+                .set    i, 0
+                .rep    4
                 mov     a, [x+8*i]
                 mov     b, [y+8*i]
-                cmovnc  a, b                    // CF ? a : b
-                mov     [z+8*i],a
-                inc     i
-                dec     k
-                jnz     loop
-end:
+                cmovz   a, b
+                mov     [z+8*i], a
+                .set    i, (i+1)
+                .endr
+
                 ret

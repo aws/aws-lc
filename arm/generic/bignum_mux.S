@@ -15,14 +15,14 @@
 
 // ----------------------------------------------------------------------------
 // Multiplex/select z := x (if p nonzero) or z := y (if p zero)
-// Inputs b, x[k], y[k]; output b, z[k]
+// Inputs p, x[k], y[k]; output z[k]
 //
 //    extern void bignum_mux
-//     (uint64_t b, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+//     (uint64_t p, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
 //
 // It is assumed that all numbers x, y and z have the same size k digits.
 //
-// Standard ARM ABI: X0 = b, X1 = k, X2 = z, X3 = x, X4 = y
+// Standard ARM ABI: X0 = p, X1 = k, X2 = z, X3 = x, X4 = y
 // ----------------------------------------------------------------------------
 
 #define b x0

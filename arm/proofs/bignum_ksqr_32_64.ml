@@ -1463,9 +1463,9 @@ let BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = prove
   (*** All remaining accumulation of sub-results ***)
 
   BIGNUM_LDIGITIZE_TAC "l_" `read (memory :> bytes (z,8 * 16)) s161` THEN
-  BIGNUM_LDIGITIZE_TAC "m_" 
+  BIGNUM_LDIGITIZE_TAC "m_"
    `read (memory :> bytes (word_add t (word 128),8 * 32)) s161` THEN
-  BIGNUM_LDIGITIZE_TAC "h_" 
+  BIGNUM_LDIGITIZE_TAC "h_"
    `read (memory :> bytes (word_add z (word 256),8 * 32)) s161` THEN
   ARM_ACCSTEPS_TAC BIGNUM_KSQR_32_64_EXEC
    [164; 165; 169; 170; 174; 175; 179; 180; 184; 185; 189; 190;
