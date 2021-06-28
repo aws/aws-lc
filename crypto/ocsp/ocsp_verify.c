@@ -114,9 +114,9 @@ static int ocsp_setup_untrusted(OCSP_BASICRESP *bs,
       }
     }
   } else if (certs != NULL) {
-    *untrusted = certs;
+    *untrusted = sk_X509_dup(certs);
   } else {
-    *untrusted = bs->certs;
+    *untrusted = sk_X509_dup(bs->certs);
   }
   return 1;
 }
@@ -381,8 +381,6 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
 
 end:
   sk_X509_pop_free(chain, X509_free);
-  if (bs->certs && certs) {
-    sk_X509_free(untrusted);
-  }
+  sk_X509_free(untrusted);
   return ret;
 }
