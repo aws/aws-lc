@@ -48,6 +48,7 @@ OBJ = bignum_add_p384.o \
       bignum_montsqr_p384.o \
       bignum_mux_6.o \
       bignum_neg_p384.o \
+      bignum_nonzero_6.o \
       bignum_optneg_p384.o \
       bignum_sub_p384.o \
       bignum_tomont_p384.o \
