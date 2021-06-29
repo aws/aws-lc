@@ -10,6 +10,7 @@ The files in this directory represent a cert hierarchy to test OCSP response sta
 Issuer for all of the other certs in the directory.
 This certificate can be used to generate certificates for authorized OCSP responders designated by the CA. 
 The authorized OCSP responder may then use the generated certificate to sign OCSP responses for the specific CA.
+
 ## OCSP
 * ocsp_cert.pem
 * ocsp_key.pem

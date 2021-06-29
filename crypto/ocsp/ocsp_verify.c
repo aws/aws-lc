@@ -32,7 +32,7 @@ static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
   X509 *cert;
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
     cert = sk_X509_value(certs, i);
-    if (!X509_pubkey_digest(cert, EVP_sha1(), tmphash, NULL)) {
+    if (X509_pubkey_digest(cert, EVP_sha1(), tmphash, NULL)) {
       if (memcmp(keyhash, tmphash, SHA_DIGEST_LENGTH) == 0) {
         return cert;
       }
@@ -104,17 +104,19 @@ static int ocsp_setup_untrusted(OCSP_BASICRESP *bs,
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
-
-  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOCHAIN)) {
+  if (IS_OCSP_FLAG_SET(flags, OCSP_NOCHAIN)) {
+    *untrusted = NULL;
+  } else if (bs->certs && certs) {
     *untrusted = sk_X509_dup(bs->certs);
-    if (*untrusted == NULL) {
-      return -1;
-    }
     for (size_t i = 0; i < sk_X509_num(certs); i++) {
       if (!sk_X509_push(*untrusted, sk_X509_value(certs, i))) {
         return -1;
       }
     }
+  } else if (certs != NULL) {
+    *untrusted = sk_X509_dup(certs);
+  } else {
+    *untrusted = sk_X509_dup(bs->certs);
   }
   return 1;
 }
@@ -148,8 +150,10 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
   // Verify |X509_STORE_CTX| and return certificate chain.
   ret = X509_verify_cert(ctx);
   if (ret <= 0) {
-    ret = X509_STORE_CTX_get_error(ctx);
+    int err = X509_STORE_CTX_get_error(ctx);
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_CERTIFICATE_VERIFY_ERROR);
+    ERR_add_error_data(2, "Verify error: ",
+                       X509_verify_cert_error_string(err));
     goto end;
   }
   if (chain != NULL) {
@@ -322,7 +326,7 @@ static int ocsp_check_issuer(OCSP_BASICRESP *bs, STACK_OF(X509) *chain) {
 
 int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                       X509_STORE *st, unsigned long flags) {
-  if (bs == NULL || certs == NULL || st == NULL) {
+  if (bs == NULL || st == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
