@@ -365,6 +365,14 @@ extern void bignum_negmodinv (uint64_t k, uint64_t *z, uint64_t *x);
 // Input x[k]; output function return
 extern uint64_t bignum_nonzero (uint64_t k, uint64_t *x);
 
+// Test 256-bit bignum for nonzero-ness x =/= 0
+// Input x[4]; output function return
+extern uint64_t bignum_nonzero_4(uint64_t x[static 4]);
+
+// Test 384-bit bignum for nonzero-ness x =/= 0
+// Input x[6]; output function return
+extern uint64_t bignum_nonzero_6(uint64_t x[static 6]);
+
 // Normalize bignum in-place by shifting left till top bit is 1
 // Input z[k]; outputs function return (bits shifted left) and z[k]
 extern uint64_t bignum_normalize (uint64_t k, uint64_t *z);

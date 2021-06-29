@@ -148,6 +148,8 @@ enum {
        TEST_BIGNUM_NEG_P384,
        TEST_BIGNUM_NEGMODINV,
        TEST_BIGNUM_NONZERO,
+       TEST_BIGNUM_NONZERO_4,
+       TEST_BIGNUM_NONZERO_6,
        TEST_BIGNUM_NORMALIZE,
        TEST_BIGNUM_ODD,
        TEST_BIGNUM_OF_WORD,
@@ -3387,6 +3389,56 @@ int test_bignum_nonzero(void)
   return 0;
 }
 
+int test_bignum_nonzero_4(void)
+{ uint64_t t, k;
+  printf("Testing bignum_nonzero_4 with %d cases\n",TESTS);
+  uint64_t c1, c2;
+  for (t = 0; t < TESTS; ++t)
+   { k = 4;
+     if (rand() & 1) random_sparse_bignum(k,b0);
+     else random_bignum(k,b0);
+     c1 = bignum_nonzero_4(b0);
+     c2 = !reference_iszero(k,b0);
+     if (c1 != c2)
+      { printf("### Disparity: [size %4lu] 0x%016lx...0x%016lx = 0\n",
+               k,b0[3],b0[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4lu]\n",k);
+        else printf("OK: [size %4lu] 0x%016lx...0x%016lx = 0 <=> %lx\n",
+                    k,b0[3],b0[0],c1);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_nonzero_6(void)
+{ uint64_t t, k;
+  printf("Testing bignum_nonzero_6 with %d cases\n",TESTS);
+  uint64_t c1, c2;
+  for (t = 0; t < TESTS; ++t)
+   { k = 6;
+     if (rand() & 1) random_sparse_bignum(k,b0);
+     else random_bignum(k,b0);
+     c1 = bignum_nonzero_6(b0);
+     c2 = !reference_iszero(k,b0);
+     if (c1 != c2)
+      { printf("### Disparity: [size %4lu] 0x%016lx...0x%016lx = 0\n",
+               k,b0[5],b0[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4lu]\n",k);
+        else printf("OK: [size %4lu] 0x%016lx...0x%016lx = 0 <=> %lx\n",
+                    k,b0[5],b0[0],c1);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_normalize(void)
 { uint64_t t, k, r;
   printf("Testing bignum_normalize with %d cases\n",tests);
@@ -4319,6 +4371,8 @@ int test_all()
   dotest(test_bignum_neg_p384);
   dotest(test_bignum_negmodinv);
   dotest(test_bignum_nonzero);
+  dotest(test_bignum_nonzero_4);
+  dotest(test_bignum_nonzero_6);
   dotest(test_bignum_normalize);
   dotest(test_bignum_odd);
   dotest(test_bignum_of_word);
@@ -4430,6 +4484,8 @@ int test_allnonbmi()
   dotest(test_bignum_neg_p384);
   dotest(test_bignum_negmodinv);
   dotest(test_bignum_nonzero);
+  dotest(test_bignum_nonzero_4);
+  dotest(test_bignum_nonzero_6);
   dotest(test_bignum_normalize);
   dotest(test_bignum_odd);
   dotest(test_bignum_of_word);
@@ -4595,6 +4651,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_NEG_P384:        return test_bignum_neg_p384();
      case TEST_BIGNUM_NEGMODINV:       return test_bignum_negmodinv();
      case TEST_BIGNUM_NONZERO:         return test_bignum_nonzero();
+     case TEST_BIGNUM_NONZERO_4:        return test_bignum_nonzero_4();
+     case TEST_BIGNUM_NONZERO_6:       return test_bignum_nonzero_6();
      case TEST_BIGNUM_NORMALIZE:       return test_bignum_normalize();
      case TEST_BIGNUM_ODD:             return test_bignum_odd();
      case TEST_BIGNUM_OF_WORD:         return test_bignum_of_word();
