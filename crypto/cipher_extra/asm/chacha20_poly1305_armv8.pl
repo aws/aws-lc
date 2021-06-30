@@ -370,23 +370,27 @@ $code.=<<___;
 .type	chacha20_poly1305_seal,%function
 .align	6
 chacha20_poly1305_seal:
-    .cfi_startproc
-    stp	d8, d9, [sp, #-80]!
-    stp	d10, d11, [sp, #16]
-    stp	d12, d13, [sp, #32]
-    stp	d14, d15, [sp, #48]
-    stp x29, x30, [sp, #64]
-    .cfi_def_cfa_offset 64
-    .cfi_offset w30, -8
-    .cfi_offset w29, -16
-    .cfi_offset b15, -24
-    .cfi_offset b14, -32
-    .cfi_offset b13, -40
-    .cfi_offset b12, -48
-    .cfi_offset b11, -56
-    .cfi_offset b10, -64
-    .cfi_offset b9, -72
-    .cfi_offset b8, -80
+.cfi_startproc
+    stp x29, x30, [sp, #-80]!
+.cfi_def_cfa_offset 80
+.cfi_offset w30, -72
+.cfi_offset w29, -80
+    mov x29, sp
+# We probably could do .cfi_def_cfa w29, 80 at this point, but since
+# we don't actually use the frame pointer like that, it's probably not
+# worth bothering.
+    stp	d8, d9, [sp, #16]
+    stp	d10, d11, [sp, #32]
+    stp	d12, d13, [sp, #48]
+    stp	d14, d15, [sp, #64]
+.cfi_offset b15, -8
+.cfi_offset b14, -16
+.cfi_offset b13, -24
+.cfi_offset b12, -32
+.cfi_offset b11, -40
+.cfi_offset b10, -48
+.cfi_offset b9, -56
+.cfi_offset b8, -64
 
     adrp $t0, :pg_hi21:.Lchacha20_consts
     add  $t0, $t0, :lo12:.Lchacha20_consts
@@ -510,7 +514,6 @@ $code.=<<___;
     mov $S_STORE.16b, $B4.16b // Store the S key
 
     bl  .Lpoly_hash_ad_internal
-.Lseal_ad_done:
 
     mov $adp, $oup
     cmp $inl, #256
@@ -882,21 +885,32 @@ $code.=<<___;
     subs $t0, $acc0, #-5
     sbcs $t1, $acc1, $t1
     sbcs $t2, $acc2, $t2
-    csel $acc0, $t0, $acc0, eq
-    csel $acc1, $t1, $acc1, eq
-    csel $acc2, $t2, $acc2, eq
+    csel $acc0, $t0, $acc0, cs
+    csel $acc1, $t1, $acc1, cs
+    csel $acc2, $t2, $acc2, cs
 ___
     &poly_add_vec($S_STORE);
 $code.=<<___;
 
     stp  $acc0, $acc1, [$keyp]
 
-    ldp	x29, x30, [sp, #64]
-    ldp	d14, d15, [sp, #48]
-    ldp	d12, d13, [sp, #32]
-    ldp	d10, d11, [sp, #16]
-    ldp	d8, d9, [sp], #80
-	ret
+    ldp	d8, d9, [sp, #16]
+    ldp	d10, d11, [sp, #32]
+    ldp	d12, d13, [sp, #48]
+    ldp	d14, d15, [sp, #64]
+.cfi_restore b15
+.cfi_restore b14
+.cfi_restore b13
+.cfi_restore b12
+.cfi_restore b11
+.cfi_restore b10
+.cfi_restore b9
+.cfi_restore b8
+    ldp x29, x30, [sp], 80
+.cfi_restore w29
+.cfi_restore w30
+.cfi_def_cfa_offset 0
+    ret
 
 .Lseal_128:
     // On some architectures preparing 5 blocks for small buffers is wasteful
@@ -934,6 +948,8 @@ $code.=<<___;
     add $B1.4s, $B1.4s, $B_STORE.4s
     add $B2.4s, $B2.4s, $B_STORE.4s
 
+    // Only the first 32 bytes of the third block (counter = 0) are needed,
+    // so skip updating $C2 and $D2.
     add $C0.4s, $C0.4s, $C_STORE.4s
     add $C1.4s, $C1.4s, $C_STORE.4s
 
@@ -949,7 +965,7 @@ $code.=<<___;
 
     bl  .Lpoly_hash_ad_internal
     b   .Lseal_tail
-    .cfi_endproc
+.cfi_endproc
 .size chacha20_poly1305_seal,.-chacha20_poly1305_seal
 
 /////////////////////////////////
@@ -960,23 +976,27 @@ $code.=<<___;
 .type	chacha20_poly1305_open,%function
 .align	6
 chacha20_poly1305_open:
-    .cfi_startproc
-    stp	d8, d9, [sp, #-80]!
-    stp	d10, d11, [sp, #16]
-    stp	d12, d13, [sp, #32]
-    stp	d14, d15, [sp, #48]
-    stp x29, x30, [sp, #64]
-    .cfi_def_cfa_offset 64
-    .cfi_offset w30, -8
-    .cfi_offset w29, -16
-    .cfi_offset b15, -24
-    .cfi_offset b14, -32
-    .cfi_offset b13, -40
-    .cfi_offset b12, -48
-    .cfi_offset b11, -56
-    .cfi_offset b10, -64
-    .cfi_offset b9, -72
-    .cfi_offset b8, -80
+.cfi_startproc
+    stp x29, x30, [sp, #-80]!
+.cfi_def_cfa_offset 80
+.cfi_offset w30, -72
+.cfi_offset w29, -80
+    mov x29, sp
+# We probably could do .cfi_def_cfa w29, 80 at this point, but since
+# we don't actually use the frame pointer like that, it's probably not
+# worth bothering.
+    stp	d8, d9, [sp, #16]
+    stp	d10, d11, [sp, #32]
+    stp	d12, d13, [sp, #48]
+    stp	d14, d15, [sp, #64]
+.cfi_offset b15, -8
+.cfi_offset b14, -16
+.cfi_offset b13, -24
+.cfi_offset b12, -32
+.cfi_offset b11, -40
+.cfi_offset b10, -48
+.cfi_offset b9, -56
+.cfi_offset b8, -64
 
     adrp $t0, :pg_hi21:.Lchacha20_consts
     add  $t0, $t0, :lo12:.Lchacha20_consts
@@ -1484,21 +1504,32 @@ $code.=<<___;
     subs $t0, $acc0, #-5
     sbcs $t1, $acc1, $t1
     sbcs $t2, $acc2, $t2
-    csel $acc0, $t0, $acc0, eq
-    csel $acc1, $t1, $acc1, eq
-    csel $acc2, $t2, $acc2, eq
+    csel $acc0, $t0, $acc0, cs
+    csel $acc1, $t1, $acc1, cs
+    csel $acc2, $t2, $acc2, cs
 ___
     &poly_add_vec($S_STORE);
 $code.=<<___;
 
     stp  $acc0, $acc1, [$keyp]
 
-    ldp	x29, x30, [sp, #64]
-    ldp	d14, d15, [sp, #48]
-    ldp	d12, d13, [sp, #32]
-    ldp	d10, d11, [sp, #16]
-    ldp	d8, d9, [sp], #80
-	ret
+    ldp	d8, d9, [sp, #16]
+    ldp	d10, d11, [sp, #32]
+    ldp	d12, d13, [sp, #48]
+    ldp	d14, d15, [sp, #64]
+.cfi_restore b15
+.cfi_restore b14
+.cfi_restore b13
+.cfi_restore b12
+.cfi_restore b11
+.cfi_restore b10
+.cfi_restore b9
+.cfi_restore b8
+    ldp x29, x30, [sp], 80
+.cfi_restore w29
+.cfi_restore w30
+.cfi_def_cfa_offset 0
+    ret
 
 .Lopen_128:
     // On some architectures preparing 5 blocks for small buffers is wasteful
