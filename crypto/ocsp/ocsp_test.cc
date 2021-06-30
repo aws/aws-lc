@@ -141,7 +141,7 @@ static void CheckOCSP_CERTSTATUS(
   // Convert issuer certificate to |OCSP_CERTID|.
   bssl::UniquePtr<OCSP_CERTID> cert_id = bssl::UniquePtr<OCSP_CERTID>(OCSP_cert_to_id(dgst, subject, issuer));
   ASSERT_TRUE(cert_id);
-  
+
   int reason = 0;
   ASN1_GENERALIZEDTIME *revtime;
   // Checks revocation status of the response.
@@ -152,7 +152,7 @@ static void CheckOCSP_CERTSTATUS(
 // Test data below are taken from s2n's ocsp test files:
 // https://github.com/aws/s2n-tls/blob/main/tests/pems/ocsp
 // OCSP testing methods were taken from s2n's validation tests:
-// https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c∂
+// https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c
 struct OCSPTestVectorExtended {
   std::string ocsp_response;
   std::string cafile;
