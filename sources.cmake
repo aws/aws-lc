@@ -56,6 +56,16 @@ set(
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/ocsp/test/aws/ocsp_response.der
+  crypto/ocsp/test/aws/ocsp_response_ca_signed.der
+  crypto/ocsp/test/aws/ocsp_response_revoked.der
+  crypto/ocsp/test/aws/ocsp_response_wrong_signer.der
+  crypto/ocsp/test/aws/ocsp_response_sha256.der
+  crypto/ocsp/test/aws/ocsp_response_revoked_sha256.der
+  crypto/ocsp/test/aws/ocsp_response_wrong_signer_sha256.der
+  crypto/ocsp/test/aws/ca_cert.pem
+  crypto/ocsp/test/aws/server_cert.pem
+  crypto/ocsp/test/aws/server_ecdsa_cert.pem
   crypto/ocsp/test/ND1.ors
   crypto/ocsp/test/ND2.ors
   crypto/ocsp/test/ND3.ors
