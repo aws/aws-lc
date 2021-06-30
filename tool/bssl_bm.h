@@ -1,3 +1,5 @@
+#pragma once
+
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/bn.h>
@@ -15,5 +17,7 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/trust_token.h>
+#include <openssl/cipher.h>
 
-#define BM_NAMESPACE          bssl
+#define BM_NAMESPACE bssl
+#define BM_ECDSA_size(key) ECDSA_size(key)

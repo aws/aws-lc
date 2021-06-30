@@ -1,22 +1,38 @@
-#include <openssl/aead.h>
+//#include <openssl/aead.h>
+//#include <openssl/aes.h>
+//#include <openssl/bn.h>
+//#include <openssl/curve25519.h>
+//#include <openssl/crypto.h>
+//#include <openssl/digest.h>
+//#include <openssl/err.h>
+//#include <openssl/ec.h>
+//#include <openssl/ecdsa.h>
+//#include <openssl/ec_key.h>
+//#include <openssl/evp.h>
+//#include <openssl/hrss.h>
+//#include <openssl/mem.h>
+//#include <openssl/nid.h>
+//#include <openssl/rand.h>
+//#include <openssl/rsa.h>
+//#include <openssl/trust_token.h>
+
 #include <openssl/aes.h>
 #include <openssl/bn.h>
-#include <openssl/curve25519.h>
 #include <openssl/crypto.h>
-#include <openssl/digest.h>
-#include <openssl/err.h>
 #include <openssl/ec.h>
-#include <openssl/ecdsa.h>
-#include <openssl/ec_key.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/hrss.h>
-#include <openssl/mem.h>
-#include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <openssl/trust_token.h>
+#include <openssl/x509.h>
 
-#define BM_NAMESPACE          ossl
+#define BM_NAMESPACE ossl
+
+inline size_t BM_ECDSA_size(EC_KEY *key) {
+  const int key_size = ECDSA_size(key);
+  assert(key_size >= 0);
+  return (size_t) key_size;
+}
 
 // Rather than depend on headers of AWS-LC the below code is modified from
 // include/base.h, see that file for detailed comments.

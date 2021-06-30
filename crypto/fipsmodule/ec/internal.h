@@ -92,7 +92,7 @@ extern "C" {
 #define EC_MAX_WORDS ((EC_MAX_BYTES + BN_BYTES - 1) / BN_BYTES)
 
 OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
-                      bn__small_functions_not_usable)
+                      bn__small_functions_not_usable) //test
 
 
 // Scalars.

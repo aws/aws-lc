@@ -24,8 +24,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "internal.h"
+
 #if !defined(OPENSSL_BENCHMARK)
 #include "bssl_bm.h"
+#include <../crypto/ec_extra/internal.h>
+#include "../crypto/fipsmodule/ec/internal.h"
+#include "../crypto/internal.h"
+#include "../crypto/trust_token/internal.h"
 #else
 #include "ossl_bm.h"
 #endif
@@ -40,11 +46,13 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <time.h>
 #endif
 
-#include "../crypto/ec_extra/internal.h"
-#include "../crypto/fipsmodule/ec/internal.h"
-#include "../crypto/internal.h"
-#include "../crypto/trust_token/internal.h"
-#include "internal.h"
+static inline void *BM_memset(void *dst, int c, size_t n) {
+  if (n == 0) {
+    return dst;
+  }
+
+  return memset(dst, c, n);
+}
 
 // g_print_json is true if printed output is JSON formatted.
 static bool g_print_json = false;
@@ -190,7 +198,11 @@ static bool SpeedRSA(const std::string &selected) {
     {"RSA 4096", kDERRSAPrivate4096, kDERRSAPrivate4096Len},
   };
 
+#if !defined(OPENSSL_BENCHMARK)
   for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kRSAKeys); i++) {
+#else
+  for(unsigned i = 0; i < BM_ARRAY_SIZE(kRSAKeys); i++) {
+#endif
     const std::string name = kRSAKeys[i].name;
 
 //    BM_NAMESPACE::UniquePtr<RSA> key(RSA_private_key_from_bytes(kRSAKeys[i].key, kRSAKeys[i].key_len));
@@ -248,12 +260,18 @@ static bool SpeedRSA(const std::string &selected) {
           if (!verify_key) {
             return false;
           }
-          verify_key->n = BN_dup(key->n);
-          verify_key->e = BN_dup(key->e);
-          if (!verify_key->n ||
-              !verify_key->e) {
-            return false;
-          }
+//          verify_key->n = BN_dup(key->n);
+//          verify_key->e = BN_dup(key->e);
+//          if (!verify_key->n ||
+//              !verify_key->e) {
+//            return false;
+//          }
+          const BIGNUM *temp_n = NULL;
+          const BIGNUM *temp_e = NULL;
+
+          RSA_get0_key(key.get(), &temp_n, &temp_e, NULL);
+          RSA_set0_key(verify_key.get(), BN_dup(temp_n), BN_dup(temp_e), NULL);
+
           return RSA_verify(NID_sha256, fake_sha256_hash,
                             sizeof(fake_sha256_hash), sig.get(), sig_len,
                             verify_key.get());
@@ -363,9 +381,9 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
   const size_t overhead_len = EVP_AEAD_max_overhead(aead);
 
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
-  OPENSSL_memset(key.get(), 0, key_len);
+  BM_memset(key.get(), 0, key_len);
   std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
-  OPENSSL_memset(nonce.get(), 0, nonce_len);
+  BM_memset(nonce.get(), 0, nonce_len);
   std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
   // N.B. for EVP_AEAD_CTX_seal_scatter the input and output buffers may be the
   // same size. However, in the direction == evp_aead_open case we still use
@@ -375,17 +393,17 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
   std::unique_ptr<uint8_t[]> in2_storage(
       new uint8_t[chunk_len + overhead_len + kAlignment]);
   std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
-  OPENSSL_memset(ad.get(), 0, ad_len);
+  BM_memset(ad.get(), 0, ad_len);
   std::unique_ptr<uint8_t[]> tag_storage(
       new uint8_t[overhead_len + kAlignment]);
 
 
   uint8_t *const in = align(in_storage.get(), kAlignment);
-  OPENSSL_memset(in, 0, chunk_len);
+  BM_memset(in, 0, chunk_len);
   uint8_t *const out = align(out_storage.get(), kAlignment);
-  OPENSSL_memset(out, 0, chunk_len + overhead_len);
+  BM_memset(out, 0, chunk_len + overhead_len);
   uint8_t *const tag = align(tag_storage.get(), kAlignment);
-  OPENSSL_memset(tag, 0, overhead_len);
+  BM_memset(tag, 0, overhead_len);
   uint8_t *const in2 = align(in2_storage.get(), kAlignment);
 
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead, key.get(), key_len,
@@ -694,11 +712,11 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   }
 
   uint8_t signature[256];
-  if (ECDSA_size(key.get()) > sizeof(signature)) {
+  if (BM_ECDSA_size(key.get()) > sizeof(signature)) {
     return false;
   }
   uint8_t digest[20];
-  OPENSSL_memset(digest, 42, sizeof(digest));
+  BM_memset(digest, 42, sizeof(digest));
   unsigned sig_len;
 
   TimeResults results;
@@ -780,7 +798,7 @@ static bool Speed25519(const std::string &selected) {
 
   if (!TimeFunction(&results, []() -> bool {
         uint8_t out[32], in[32];
-        OPENSSL_memset(in, 0, sizeof(in));
+        BM_memset(in, 0, sizeof(in));
         X25519_public_from_private(out, in);
         return true;
       })) {
@@ -792,8 +810,8 @@ static bool Speed25519(const std::string &selected) {
 
   if (!TimeFunction(&results, []() -> bool {
         uint8_t out[32], in1[32], in2[32];
-        OPENSSL_memset(in1, 0, sizeof(in1));
-        OPENSSL_memset(in2, 0, sizeof(in2));
+        BM_memset(in1, 0, sizeof(in1));
+        BM_memset(in2, 0, sizeof(in2));
         in1[0] = 1;
         in2[0] = 9;
         return X25519(out, in1, in2) == 1;
@@ -1242,7 +1260,7 @@ static bool SpeedSelfTest(const std::string &selected) {
 }
 #endif
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {
         "-filter",
         kOptionalArgument,
