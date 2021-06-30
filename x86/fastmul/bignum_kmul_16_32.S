@@ -27,6 +27,8 @@
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y, RCX = t
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 // These parameters are kept where they come in
 
 #define z rdi
@@ -39,8 +41,7 @@
 // Often used for zero
 
 #define zero rbp
-
-// Inner loop count
+#define zeroe ebp
 
 // mulpadd i, j adds x[i] * rdx (now assumed = y[j]) into the window at i+j
 
@@ -74,13 +75,51 @@
 
 .endm
 
+// mulpade i, j adds x[i] * rdx (now assumed = y[j]) into the window at i+j
+// but re-creates the top word assuming nothing to add there
 
+.macro mulpade arg1,arg2
+.if ((\arg1 + \arg2) % 8 == 0)
+        mulx    r9, rax, [x+8*\arg1]
+        adcx    r8, rax
+        adox    r9, zero
+.elseif ((\arg1 + \arg2) % 8 == 1)
+        mulx    r10, rax, [x+8*\arg1]
+        adcx    r9, rax
+        adox    r10, zero
+.elseif ((\arg1 + \arg2) % 8 == 2)
+        mulx    r11, rax, [x+8*\arg1]
+        adcx    r10, rax
+        adox    r11, zero
+.elseif ((\arg1 + \arg2) % 8 == 3)
+        mulx    r12, rax, [x+8*\arg1]
+        adcx    r11, rax
+        adox    r12, zero
+.elseif ((\arg1 + \arg2) % 8 == 4)
+        mulx    r13, rax, [x+8*\arg1]
+        adcx    r12, rax
+        adox    r13, zero
+.elseif ((\arg1 + \arg2) % 8 == 5)
+        mulx    r14, rax, [x+8*\arg1]
+        adcx    r13, rax
+        adox    r14, zero
+.elseif ((\arg1 + \arg2) % 8 == 6)
+        mulx    r15, rax, [x+8*\arg1]
+        adcx    r14, rax
+        adox    r15, zero
+.elseif ((\arg1 + \arg2) % 8 == 7)
+        mulx    r8, rax, [x+8*\arg1]
+        adcx    r15, rax
+        adox    r8, zero
+.endif
+
+.endm
 
 // addrow i adds z[i] + x[0..7] * y[i] into the window
 
 .macro addrow arg1
         mov     rdx, [y+8*\arg1]
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 .if (\arg1 % 8 == 0)
         adox    r8, [z+8*\arg1]
@@ -104,28 +143,20 @@
 
 .if (\arg1 % 8 == 0)
         mov     [z+8*\arg1], r8
-        mov     r8, zero
 .elseif (\arg1 % 8 == 1)
         mov     [z+8*\arg1], r9
-        mov     r9, zero
 .elseif (\arg1 % 8 == 2)
         mov     [z+8*\arg1], r10
-        mov     r10, zero
 .elseif (\arg1 % 8 == 3)
         mov     [z+8*\arg1], r11
-        mov     r11, zero
 .elseif (\arg1 % 8 == 4)
         mov     [z+8*\arg1], r12
-        mov     r12, zero
 .elseif (\arg1 % 8 == 5)
         mov     [z+8*\arg1], r13
-        mov     r13, zero
 .elseif (\arg1 % 8 == 6)
         mov     [z+8*\arg1], r14
-        mov     r14, zero
 .elseif (\arg1 % 8 == 7)
         mov     [z+8*\arg1], r15
-        mov     r15, zero
 .endif
 
         mulpadd 1, \arg1
@@ -134,7 +165,7 @@
         mulpadd 4, \arg1
         mulpadd 5, \arg1
         mulpadd 6, \arg1
-        mulpadd 7, \arg1
+        mulpade 7, \arg1
 
 .if (\arg1 % 8 == 0)
         adc     r8, zero
@@ -160,7 +191,7 @@
 
 .macro addrowz
         mov     rdx, [y]
-        xor     zero, zero
+        xor     zeroe, zeroe
 
         mulx    r9, rax, [x]
         adc     [z], rax
@@ -197,7 +228,7 @@
 
 .macro adurow arg1
         mov     rdx, [y+8*\arg1]
-        xor     zero, zero
+        xor     zeroe, zeroe
 
         mulpadd 0, \arg1
 
@@ -225,47 +256,24 @@
         mulpadd 4, \arg1
         mulpadd 5, \arg1
         mulpadd 6, \arg1
+        mulpade 7, \arg1
 
 .if (\arg1 % 8 == 0)
-        mulx    r8, rax, [x+8*7]
-        adcx    r15, rax
-        adox    r8, zero
-        adcx    r8, zero
+        adc     r8, zero
 .elseif (\arg1 % 8 == 1)
-        mulx    r9, rax, [x+8*7]
-        adcx    r8, rax
-        adox    r9, zero
-        adcx    r9, zero
+        adc     r9, zero
 .elseif (\arg1 % 8 == 2)
-        mulx    r10, rax, [x+8*7]
-        adcx    r9, rax
-        adox    r10, zero
-        adcx    r10, zero
+        adc     r10, zero
 .elseif (\arg1 % 8 == 3)
-        mulx    r11, rax, [x+8*7]
-        adcx    r10, rax
-        adox    r11, zero
-        adcx    r11, zero
+        adc     r11, zero
 .elseif (\arg1 % 8 == 4)
-        mulx    r12, rax, [x+8*7]
-        adcx    r11, rax
-        adox    r12, zero
-        adcx    r12, zero
+        adc     r12, zero
 .elseif (\arg1 % 8 == 5)
-        mulx    r13, rax, [x+8*7]
-        adcx    r12, rax
-        adox    r13, zero
-        adcx    r13, zero
+        adc     r13, zero
 .elseif (\arg1 % 8 == 6)
-        mulx    r14, rax, [x+8*7]
-        adcx    r13, rax
-        adox    r14, zero
-        adcx    r14, zero
+        adc     r14, zero
 .elseif (\arg1 % 8 == 7)
-        mulx    r15, rax, [x+8*7]
-        adcx    r14, rax
-        adox    r15, zero
-        adcx    r15, zero
+        adc     r15, zero
 .endif
 
 .endm
@@ -274,7 +282,7 @@
 
 .macro adurowz
         mov     rdx, [y]
-        xor     zero, zero
+        xor     zeroe, zeroe
 
         mov     r8, [z]
         mov     r9, [z+8*1]
@@ -297,9 +305,8 @@
 
         mulx    r8, rax, [x+8*7]
         adcx    r15, rax
-        mov     eax, 0
-        adox    r8, rax
-        adcx    r8, rax
+        adox    r8, zero
+        adcx    r8, zero
 .endm
 
 // Multiply-add: z := z + x[0..7] * y
@@ -338,34 +345,26 @@
 
 .macro mulrow arg1
         mov     rdx, [y+8*\arg1]
-        xor     zero, zero
+        xor     zeroe, zeroe
 
         mulpadd 0, \arg1
 
 .if (\arg1 % 8 == 0)
         mov     [z+8*\arg1], r8
-        mov     r8, zero
 .elseif (\arg1 % 8 == 1)
         mov     [z+8*\arg1], r9
-        mov     r9, zero
 .elseif (\arg1 % 8 == 2)
         mov     [z+8*\arg1], r10
-        mov     r10, zero
 .elseif (\arg1 % 8 == 3)
         mov     [z+8*\arg1], r11
-        mov     r11, zero
 .elseif (\arg1 % 8 == 4)
         mov     [z+8*\arg1], r12
-        mov     r12, zero
 .elseif (\arg1 % 8 == 5)
         mov     [z+8*\arg1], r13
-        mov     r13, zero
 .elseif (\arg1 % 8 == 6)
         mov     [z+8*\arg1], r14
-        mov     r14, zero
 .elseif (\arg1 % 8 == 7)
         mov     [z+8*\arg1], r15
-        mov     r15, zero
 .endif
 
         mulpadd 1, \arg1
@@ -374,7 +373,7 @@
         mulpadd 4, \arg1
         mulpadd 5, \arg1
         mulpadd 6, \arg1
-        mulpadd 7, \arg1
+        mulpade 7, \arg1
 
 .if (\arg1 % 8 == 0)
         adc     r8, zero
@@ -401,7 +400,7 @@
 
 .macro mulrowz
         mov     rdx, [y]
-        xor     zero, zero
+        xor     zeroe, zeroe
 
         mulx    r9, rax, [x]
         mov     [z], rax
@@ -441,6 +440,7 @@
         mulrow  5
         mulrow  6
         mulrow  7
+
         mulrow  8
         mulrow  9
         mulrow  10
@@ -449,6 +449,7 @@
         mulrow  13
         mulrow  14
         mulrow  15
+
         mov     [z+8*16], r8
         mov     [z+8*17], r9
         mov     [z+8*18], r10
@@ -457,9 +458,8 @@
         mov     [z+8*21], r13
         mov     [z+8*22], r14
         mov     [z+8*23], r15
-.endm
 
-.intel_syntax noprefix
+.endm
 
                 .globl  bignum_kmul_16_32
                 .text
@@ -482,6 +482,7 @@ bignum_kmul_16_32:
 // Do the zeroth row as a pure product then the next as multiply-add
 
         mulrows
+
         add     z, 64
         add     x, 64
         addrows
