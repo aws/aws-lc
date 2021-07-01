@@ -167,10 +167,18 @@ OPENSSL_EXPORT const char *EC_curve_nid2nist(int nid);
 // it returns |NID_X9_62_prime256v1| for "P-256".
 OPENSSL_EXPORT int EC_curve_nist2nid(const char *name);
 
-// TODO: add comment
+// EC_curve_nid2name returns the name of the elliptic curve specified by
+// |nid|, or NULL if |nid| is not a builtin curve. For example, it returns
+// "P-256" for |NID_X9_62_prime256v1|. The function first checks the NIST curves
+// by calling the EC_curve_nid2nist function, then if |nid| is not found among
+// those, the rest of the builtin curves are checked.
 OPENSSL_EXPORT const char *EC_curve_nid2name(int nid);
 
-// TODO: add comment
+// EC_curve_name2nid returns the NID of the elliptic curve specified by the
+// name |name|, or |NID_undef| if |name| is not a recognized name. For example,
+// it returns |NID_X9_62_prime256v1| for "P-256". The function first checks
+// the NIST curves by calling the EC_curve_nist2nid function, then if |name|
+// is not found among those, the rest of the builtin curves are checked.
 OPENSSL_EXPORT int EC_curve_name2nid(const char *name);
 
 // Points on elliptic curves.
