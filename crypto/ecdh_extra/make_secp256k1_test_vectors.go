@@ -6,9 +6,9 @@
 package main
 
 import (
-	"crypto/sha256"
-	"math/big"
-	"strconv"
+  "crypto/sha256"
+  "math/big"
+  "strconv"
   "fmt"
 )
 
@@ -22,10 +22,10 @@ const numOfTests = 25
 var prng_ctr = 1
 
 func printPadded(key string, n, max *big.Int) {
-	padded := make([]byte, len(max.Bytes()))
-	b := n.Bytes()
-	copy(padded[len(padded)-len(b):], b)
-	fmt.Printf("%s = %x\n", key, padded)
+  padded := make([]byte, len(max.Bytes()))
+  b := n.Bytes()
+  copy(padded[len(padded)-len(b):], b)
+  fmt.Printf("%s = %x\n", key, padded)
 }
 
 func genRandModN(N *big.Int) *big.Int {

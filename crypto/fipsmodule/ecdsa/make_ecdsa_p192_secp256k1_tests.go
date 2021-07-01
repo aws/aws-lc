@@ -15,91 +15,92 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
-	"math/big"
-	mathrand "math/rand"
-	"hash"
-	"fmt"
-	"io"
-	"os"
+  "crypto/aes"
+  "crypto/cipher"
+  "crypto/ecdsa"
+  "crypto/elliptic"
+  "crypto/rand"
+  "crypto/sha1"
+  "crypto/sha256"
+  "crypto/sha512"
+  "math/big"
+  mathrand "math/rand"
+  "hash"
+  "fmt"
+  "io"
+  "os"
 )
 
 import "github.com/ethereum/go-ethereum/crypto/secp256k1"
 
 // START - Deterministic RNG helper functions.
 type deterministicRandom struct {
-	stream cipher.Stream
+  stream cipher.Stream
 }
 
 func newDeterministicRand() io.Reader {
-	block, err := aes.NewCipher(make([]byte, 128/8))
-	if err != nil {
-		panic(err)
-	}
-	stream := cipher.NewCTR(block, make([]byte, block.BlockSize()))
-	return &deterministicRandom{stream}
+  block, err := aes.NewCipher(make([]byte, 128/8))
+  if err != nil {
+    panic(err)
+  }
+  stream := cipher.NewCTR(block, make([]byte, block.BlockSize()))
+  return &deterministicRandom{stream}
 }
 
 func (r *deterministicRandom) Read(b []byte) (n int, err error) {
-	for i := range b {
-		b[i] = 0
-	}
-	r.stream.XORKeyStream(b, b)
-	return len(b), nil
+  for i := range b {
+    b[i] = 0
+  }
+  r.stream.XORKeyStream(b, b)
+  return len(b), nil
 }
 
 var deterministicRand io.Reader
+
 // END - Deterministic RNG helper functions.
 
 // Print big integer (hex representation) left padded with zeros
 // according to the max argument.
 func printPadded(key string, n, max *big.Int) {
-	padded := make([]byte, len(max.Bytes()))
-	b := n.Bytes()
-	copy(padded[len(padded)-len(b):], b)
-	fmt.Printf("%s = %x\n", key, padded)
+  padded := make([]byte, len(max.Bytes()))
+  b := n.Bytes()
+  copy(padded[len(padded)-len(b):], b)
+  fmt.Printf("%s = %x\n", key, padded)
 }
 
 func randNonZeroInt(max *big.Int) *big.Int {
-	for {
-		r, err := rand.Int(deterministicRand, max)
-		if err != nil {
-			panic(err)
-		}
-		if r.Sign() != 0 {
-			return r
-		}
-	}
+  for {
+    r, err := rand.Int(deterministicRand, max)
+    if err != nil {
+      panic(err)
+    }
+    if r.Sign() != 0 {
+      return r
+    }
+  }
 }
 
 // Generate a random curve point
 func randPoint(curve elliptic.Curve) (x, y *big.Int) {
-	k := randNonZeroInt(curve.Params().N)
-	return curve.ScalarBaseMult(k.Bytes())
+  k := randNonZeroInt(curve.Params().N)
+  return curve.ScalarBaseMult(k.Bytes())
 }
 
 // This function is copied from ecdsa module because
 // it is not exported by the module but we need it here.
 func hashToInt(hash []byte, c elliptic.Curve) *big.Int {
-	orderBits := c.Params().N.BitLen()
-	orderBytes := (orderBits + 7) / 8
-	if len(hash) > orderBytes {
-		hash = hash[:orderBytes]
-	}
+  orderBits := c.Params().N.BitLen()
+  orderBytes := (orderBits + 7) / 8
+  if len(hash) > orderBytes {
+    hash = hash[:orderBytes]
+  }
 
-	ret := new(big.Int).SetBytes(hash)
-	excess := len(hash)*8 - orderBits
-	if excess > 0 {
-		ret.Rsh(ret, uint(excess))
-	}
-	return ret
+  ret := new(big.Int).SetBytes(hash)
+  excess := len(hash)*8 - orderBits
+  if excess > 0 {
+    ret.Rsh(ret, uint(excess))
+  }
+  return ret
 }
 
 // Helper function needed for generating the ECDSA Sign/Verify test vectors.
@@ -232,14 +233,14 @@ func printSignTestVectors(curve elliptic.Curve, curveName string, hash hash.Hash
 var P192 *elliptic.CurveParams
 
 func initP192() {
-	// See FIPS 186-3, section D.2.2
-	P192 = &elliptic.CurveParams{Name: "P-192"}
-	P192.P, _ = new(big.Int).SetString("6277101735386680763835789423207666416083908700390324961279", 10)
-	P192.N, _ = new(big.Int).SetString("6277101735386680763835789423176059013767194773182842284081", 10)
-	P192.B, _ = new(big.Int).SetString("2455155546008943817740293915197451784769108058161191238065", 10)
-	P192.Gx, _ = new(big.Int).SetString("188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012", 16)
-	P192.Gy, _ = new(big.Int).SetString("07192b95ffc8da78631011ed6b24cdd573f977a11e794811", 16)
-	P192.BitSize = 192
+  // See FIPS 186-3, section D.2.2
+  P192 = &elliptic.CurveParams{Name: "P-192"}
+  P192.P, _ = new(big.Int).SetString("6277101735386680763835789423207666416083908700390324961279", 10)
+  P192.N, _ = new(big.Int).SetString("6277101735386680763835789423176059013767194773182842284081", 10)
+  P192.B, _ = new(big.Int).SetString("2455155546008943817740293915197451784769108058161191238065", 10)
+  P192.Gx, _ = new(big.Int).SetString("188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012", 16)
+  P192.Gy, _ = new(big.Int).SetString("07192b95ffc8da78631011ed6b24cdd573f977a11e794811", 16)
+  P192.BitSize = 192
 }
 
 func main() {
