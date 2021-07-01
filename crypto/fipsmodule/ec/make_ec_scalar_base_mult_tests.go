@@ -105,8 +105,8 @@ func main() {
 	printMultiples("P-384", elliptic.P384())
 	printMultiples("P-521", elliptic.P521())
 
-    initP192()
-    printMultiples("P-192", P192)
+  initP192()
+  printMultiples("P-192", P192)
 
-    printMultiplesSECP256K1("secp256k1")
+  printMultiplesSECP256K1("secp256k1")
 }

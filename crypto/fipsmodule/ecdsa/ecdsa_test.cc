@@ -319,6 +319,10 @@ static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
     return nullptr;
   }
 
+  if (curve_name == "P-192") {
+    return bssl::UniquePtr<EC_GROUP>(
+        EC_GROUP_new_by_curve_name(NID_X9_62_prime192v1));
+  }
   if (curve_name == "P-224") {
     return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp224r1));
   }
@@ -334,6 +338,9 @@ static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
   }
   if (curve_name == "secp160r1") {
     return NewSecp160r1Group();
+  }
+  if (curve_name == "secp256k1") {
+    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp256k1));
   }
 
   ADD_FAILURE() << "Unknown curve: " << curve_name;
