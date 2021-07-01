@@ -38,11 +38,15 @@
 #define m x2
 #define w x3
 
-#define i x4    // Outer loop counter
-#define j x5    // Inner loop counter
-#define d x6    // Home for Montgomery multiplier
+// Outer loop counter
+#define i x4
+// Inner loop counter
+#define j x5
+// Home for Montgomery multiplier
+#define d x6
 
-#define c x7   // Top carry for current window
+// Top carry for current window
+#define c x7
 
 #define h x8
 #define e x9

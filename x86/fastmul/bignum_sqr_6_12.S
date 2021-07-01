@@ -22,6 +22,8 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 // These are actually right
 
 #define z rdi
@@ -42,10 +44,10 @@
 #define d7 r14
 #define d8 r15
 #define d9 rbx
-#define d10 rbp // Care is needed: re-using the zero register
 
+// Care is needed: re-using the zero register
 
-.intel_syntax noprefix
+#define d10 rbp
 
                 .globl  bignum_sqr_6_12
                 .text

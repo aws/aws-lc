@@ -50,11 +50,14 @@
 #define mat_nm     QWORD PTR [rsp+8*2]
 #define mat_nn     QWORD PTR [rsp+8*3]
 #define t          QWORD PTR [rsp+8*4]
-#define v          QWORD PTR [rsp+8*5]       // Modular inverse
-#define m          QWORD PTR [rsp+8*6]       // We reconstruct n as m + 8*k as needed
+// Modular inverse
+#define v          QWORD PTR [rsp+8*5]
+// We reconstruct n as m + 8*k as needed
+#define m          QWORD PTR [rsp+8*6]
 #define w          QWORD PTR [rsp+8*7]
 #define z          QWORD PTR [rsp+8*8]
-#define bm         QWORD PTR [rsp+8*9]      // Original b pointer, not b the temp
+// Original b pointer, not b the temp
+#define bm         QWORD PTR [rsp+8*9]
 
 #define STACKVARSIZE (8*10)
 

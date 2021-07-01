@@ -33,7 +33,8 @@
 #define n rdx
 #define y rcx
 #define c rax
-#define d rdx   // We can re-use n for this, not needed when d appears
+// We can re-use n for this, not needed when d appears
+#define d rdx
 
 bignum_eq:
 

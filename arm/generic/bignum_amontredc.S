@@ -35,12 +35,16 @@
 #define m x4
 #define p x5
 
-#define w x6    // Negated modular inverse
-#define i x7    // Outer loop counter
-#define j x8    // Inner loop counter
-#define d x9    // Home for Montgomery multiplier
-
-#define c x14   // Top carry for current window
+// Negated modular inverse
+#define w x6
+// Outer loop counter
+#define i x7
+// Inner loop counter
+#define j x8
+// Home for Montgomery multiplier
+#define d x9
+// Top carry for current window
+#define c x14
 
 #define h x10
 #define e x11

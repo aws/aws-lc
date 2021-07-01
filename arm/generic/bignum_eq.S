@@ -29,7 +29,8 @@
 #define y x3
 #define a x4
 #define c x5
-#define d x2 //  We can re-use n for this, not needed when d appears
+//  We can re-use n for this, not needed when d appears
+#define d x2
 
 .text
 .globl bignum_eq

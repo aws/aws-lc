@@ -24,10 +24,14 @@
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 #define z rdi
 
-#define x rcx   // Temporarily moved here for initial multiply
-#define m rdx   // Likewise this is thrown away after initial multiply
+// Temporarily moved here for initial multiply
+#define x rcx
+// Likewise this is thrown away after initial multiply
+#define m rdx
 
 #define a rax
 #define c rcx
@@ -40,10 +44,9 @@
 
 #define ashort eax
 
-#define q rdx   // Multiplier again for second stage
+// Multiplier again for second stage
+#define q rdx
 
-
-.intel_syntax noprefix
         .text
         .globl  bignum_cmul_p256
 

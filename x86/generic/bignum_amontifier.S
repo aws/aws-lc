@@ -26,6 +26,8 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = t
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 #define k rdi
 #define z rsi
 
@@ -35,11 +37,12 @@
 #define t r13
 
 // Other variables
+// Matters that c is RCX as CL=lo(c) is assumed in shifts
 
 #define i rbx
 #define j rbp
 #define a rax
-#define c rcx   // Matters that this is RCX as CL=lo(c) is assumed in shifts
+#define c rcx
 #define h r11
 #define l r10
 #define b r9
@@ -54,8 +57,6 @@
 #define ishort ebx
 #define jshort ebp
 #define qshort r8d
-
-.intel_syntax noprefix
 
                 .globl  bignum_amontifier
                 .text

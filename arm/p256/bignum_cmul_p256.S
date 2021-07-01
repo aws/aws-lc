@@ -38,8 +38,9 @@
 #define a1 x10
 #define a2 x11
 
+// These are the same!
 #define a3 x12
-#define q x12   // same!
+#define q x12
 
 .text
 .globl bignum_cmul_p256

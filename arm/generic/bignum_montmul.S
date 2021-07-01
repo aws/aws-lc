@@ -32,12 +32,18 @@
 #define y x3
 #define m x4
 
-#define w x5    // Negated modular inverse
-#define c0 x6   // Top carry for k'th position
-#define c1 x7   // Additional top carry for (k+1)'th position
-#define i x8    // Outer loop counter
-#define d x9    // Home for i'th digit or Montgomery multiplier
-#define j x10   // Inner loop counter
+// Negated modular inverse
+#define w x5
+// Top carry for k'th position
+#define c0 x6
+// Additional top carry for (k+1)'th position
+#define c1 x7
+// Outer loop counter
+#define i x8
+// Home for i'th digit or Montgomery multiplier
+#define d x9
+// Inner loop counter
+#define j x10
 
 #define h x11
 #define e x12

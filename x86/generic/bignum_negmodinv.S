@@ -37,7 +37,8 @@
 
 #define k rdi
 #define z rsi
-#define x rcx           // Moved from initial location to free rdx
+// Moved from initial location to free rdx
+#define x rcx
 
 #define a rax
 #define d rdx

@@ -29,19 +29,27 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = m, R9 = p
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
+ // We copy n into r10 but it comes in in rdx originally
+
 #define k rdi
 #define z rsi
-#define n r10            // We copy x here but it comes in in rdx originally
+#define n r10
 #define x rcx
 #define m r8
 #define p r9
 
-#define a rax           // General temp, low part of product and mul input
-#define b rdx           // General temp, High part of product
-
-#define w QWORD PTR [rsp]    // Negated modular inverse
-#define j rbx           // Inner loop counter
-#define d rbp           // Home for i'th digit or Montgomery multiplier
+// General temp, low part of product and mul input
+#define a rax
+// General temp, High part of product
+#define b rdx
+// Negated modular inverse
+#define w QWORD PTR [rsp]
+// Inner loop counter
+#define j rbx
+// Home for i'th digit or Montgomery multiplier
+#define d rbp
 #define h r11
 #define e r12
 #define t r13
@@ -56,8 +64,6 @@
 #define ashort eax
 #define cshort r15d
 #define jshort ebx
-
-.intel_syntax noprefix
 
                 .globl  bignum_montredc
                 .text

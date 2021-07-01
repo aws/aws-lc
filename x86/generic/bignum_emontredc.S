@@ -33,17 +33,26 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = w, returns RAX
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
+// Argument m comes in in rdx but we copy it to r8
+
 #define k rdi
 #define z rsi
-#define m r8            // Comes in in rdx but we copy it here
+#define m r8
 #define w rcx
 
-#define a rax           // General temp, low part of product and mul input
-#define b rdx           // General temp, High part of product
-#define d rbx           // Home for i'th digit or Montgomery multiplier
+// General temp, low part of product and mul input
+#define a rax
+// General temp, High part of product
+#define b rdx
+// Home for i'th digit or Montgomery multiplier
+#define d rbx
 
-#define i r9            // Outer loop counter
-#define j r10           // Inner loop counter
+// Outer loop counter
+#define i r9
+// Inner loop counter
+#define j r10
 
 #define h r11
 #define e r12
@@ -52,8 +61,6 @@
 
 #define cshort r14d
 #define jshort r10d
-
-.intel_syntax noprefix
 
                 .globl  bignum_emontredc
                 .text

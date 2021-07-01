@@ -27,6 +27,8 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, returns RAX
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 #define k rdi
 #define z rsi
 
@@ -35,17 +37,15 @@
 #define r rax
 
 // Other variables
+// Matters that c is RCX as CL=lo(c) is assumed in shifts
 
 #define b r9
-#define c rcx   // Matters that this is RCX as CL=lo(c) is assumed in shifts
+#define c rcx
 #define d rdx
 #define i r8
 #define j r10
 
 #define dshort edx
-
-
-.intel_syntax noprefix
 
                 .globl  bignum_normalize
                 .text

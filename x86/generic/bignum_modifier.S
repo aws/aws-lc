@@ -29,6 +29,8 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = t
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 #define k rdi
 #define z rsi
 
@@ -40,11 +42,15 @@
 // Other variables
 
 #define i rbx
-#define w rbx   // Modular inverse; aliased to i, but we never use them together
+// Modular inverse; aliased to i, but we never use them together
+#define w rbx
 #define j rbp
-#define a rax   // Matters that this is RAX for special use in multiplies
-#define d rdx   // Matters that this is RDX for special use in multiplies
-#define c rcx   // Matters that this is RCX as CL=lo(c) is assumed in shifts
+// Matters that this is RAX for special use in multiplies
+#define a rax
+// Matters that this is RDX for special use in multiplies
+#define d rdx
+// Matters that this is RCX as CL=lo(c) is assumed in shifts
+#define c rcx
 #define h r11
 #define l r10
 #define b r9
@@ -59,8 +65,6 @@
 #define ishort ebx
 #define jshort ebp
 #define qshort r8d
-
-.intel_syntax noprefix
 
                 .globl  bignum_modifier
                 .text

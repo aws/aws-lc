@@ -32,10 +32,14 @@
 #define x x2
 #define m x3
 
-#define w x4    // Negated modular inverse
-#define i x5    // Outer loop counter
-#define j x6    // Inner loop counter
-#define d x7    // Home for Montgomery multiplier
+// Negated modular inverse
+#define w x4
+// Outer loop counter
+#define i x5
+// Inner loop counter
+#define j x6
+// Home for Montgomery multiplier
+#define d x7
 
 #define h x8
 #define e x9

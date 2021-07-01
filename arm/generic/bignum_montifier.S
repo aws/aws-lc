@@ -34,9 +34,10 @@
 #define t x3
 
 // Some variables
+// Modular inverse w is aliased to i, but we never use them together
 
 #define i x4
-#define w x4   // Modular inverse; aliased to i, but we never use them together
+#define w x4
 #define j x5
 #define h x6
 #define a x7

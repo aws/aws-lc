@@ -26,17 +26,24 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = y, R8 = m
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
+// We copy x to r9 but it comes in in rdx originally
+
 #define k rdi
 #define z rsi
-#define x r9            // We copy x here but it comes in in rdx originally
+#define x r9
 #define y rcx
 #define m r8
 
-#define a rax           // General temp, low part of product and mul input
-#define b rdx           // General temp, High part of product
-
-#define j rbx           // Inner loop counter
-#define d rbp           // Home for i'th digit or Montgomery multiplier
+// General temp, low part of product and mul input
+#define a rax
+// General temp, High part of product
+#define b rdx
+// Inner loop counter
+#define j rbx
+// Home for i'th digit or Montgomery multiplier
+#define d rbp
 #define h r10
 #define e r11
 #define n r12
@@ -46,9 +53,10 @@
 
 // This one variable we store on the stack as we are a register short.
 // At least it's only used once per iteration of the outer loop (k times)
-// and with a single read each time, after one initial write.
+// and with a single read each time, after one initial write. It's the
+// word-level negated modular inverse.
 
-#define w QWORD PTR [rsp]    // Negated modular inverse
+#define w QWORD PTR [rsp]
 
 // Some more intuitive names for temp regs in initial word-level negmodinv.
 
@@ -57,8 +65,6 @@
 
 #define ashort eax
 #define jshort ebx
-
-.intel_syntax noprefix
 
                 .globl  bignum_montmul
                 .text
