@@ -29,8 +29,6 @@
 #if !defined(OPENSSL_BENCHMARK)
 #include "bssl_bm.h"
 #include <../crypto/ec_extra/internal.h>
-#include "../crypto/fipsmodule/ec/internal.h"
-#include "../crypto/internal.h"
 #include "../crypto/trust_token/internal.h"
 #else
 #include "ossl_bm.h"
@@ -260,12 +258,6 @@ static bool SpeedRSA(const std::string &selected) {
           if (!verify_key) {
             return false;
           }
-//          verify_key->n = BN_dup(key->n);
-//          verify_key->e = BN_dup(key->e);
-//          if (!verify_key->n ||
-//              !verify_key->e) {
-//            return false;
-//          }
           const BIGNUM *temp_n = NULL;
           const BIGNUM *temp_e = NULL;
 
@@ -566,7 +558,6 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-//  BM_NAMESPACE::ScopedEVP_MD_CTX ctx;
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
   uint8_t scratch[16384];
 

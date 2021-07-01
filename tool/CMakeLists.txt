@@ -59,42 +59,34 @@ function(build_benchmark target_name additional_include_dir lib_crypto)
 
   string(TOUPPER ${target_name} upper_target_name)
   target_compile_options(${target_name} PUBLIC -D${upper_target_name})
-#  install(TARGETS ${target_name}
-#          EXPORT ${target_name}-targets
-#          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-#          )
 endfunction()
 
 if(AWSLC_INSTALL_DIR)
-  build_benchmark(awslc_benchmark ${AWSLC_INSTALL_DIR}/include crypto)
+  build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include crypto)
 endif()
 
 # This expects a directory which contains lib/libcrypto.a and the includes in include/openssl/*.h
 if(OPENSSL_INSTALL_DIR)
-  build_benchmark(openssl_benchmark ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
+  build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
 
   # libpthread is a linux only library
   if(NOT MSVC AND NOT ANDROID)
     # OpenSSL uses pthread_rwlock_unlock from pthread and  dlopen/close from dl
-    target_link_libraries(openssl_benchmark -DOPENSSL_BENCHMARK pthread dl)
+    target_link_libraries(ossl_bm -DOPENSSL_BENCHMARK pthread dl)
     # OpenSSL uses both anonymous structs and unions
-    target_compile_options(openssl_benchmark PUBLIC -DOPENSSL_BENCHMARK -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
+    target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
   endif()
 endif()
 
 if(BORINGSSL_INSTALL_DIR)
-  build_benchmark(boringssl_benchmark ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_INSTALL_DIR}/build/crypto/libcrypto.a)
+  build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_INSTALL_DIR}/build/crypto/libcrypto.a)
 
   # libpthread is a linux only library
   if(NOT MSVC AND NOT ANDROID)
     # BoringSSL uses pthread_rwlock_unlock from pthread
-    target_link_libraries(boringssl_benchmark pthread)
+    target_link_libraries(bssl_bm pthread)
     # BoringSSL uses both anonymous structs and unions
-    target_compile_options(boringssl_benchmark PUBLIC -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
+    target_compile_options(bssl_bm PUBLIC -Wno-gnu-anonymous-struct -Wno-nested-anon-types)
   endif()
 endif()
-#
-#install(TARGETS awslc
-#        EXPORT awslc-targets
-#        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-#        )
+
