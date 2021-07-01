@@ -65,6 +65,11 @@ set(
   crypto/ocsp/test/aws/ocsp_response_revoked_sha256.der
   crypto/ocsp/test/aws/ocsp_response_unknown_sha256.der
   crypto/ocsp/test/aws/ocsp_response_wrong_signer_sha256.der
+  crypto/ocsp/test/aws/ocsp_response_malformedrequest.der
+  crypto/ocsp/test/aws/ocsp_response_internalerror.der
+  crypto/ocsp/test/aws/ocsp_response_trylater.der
+  crypto/ocsp/test/aws/ocsp_response_sigrequired.der
+  crypto/ocsp/test/aws/ocsp_response_unauthorized.der
   crypto/ocsp/test/aws/ca_cert.pem
   crypto/ocsp/test/aws/server_cert.pem
   crypto/ocsp/test/aws/server_ecdsa_cert.pem

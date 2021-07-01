@@ -107,6 +107,9 @@ static void ExtractAndVerifyBasicOCSP(
 
   int ret = OCSP_response_status(ocsp_response.get());
   ASSERT_EQ(expected_ocsp_status, ret);
+  if(ret != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    return;
+  }
 
   *basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(*basic_response);
@@ -313,6 +316,74 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         EVP_sha256(),
         OCSP_RESPONSE_STATUS_SUCCESSFUL,
         OCSP_VERIFYSTATUS_ERROR,
+        0,
+        0
+    },
+    {
+        "ocsp_response_wrong_signer_sha256",
+        "ca_cert",
+        "server_cert",
+        EVP_sha256(),
+        OCSP_RESPONSE_STATUS_SUCCESSFUL,
+        OCSP_VERIFYSTATUS_ERROR,
+        0,
+        0
+    },
+
+    // === Invalid OCSP response requests sent back an OCSP responder ===
+    // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+    // OCSPResponseStatus: malformedRequest
+    {
+        "ocsp_response_malformedrequest",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_MALFORMEDREQUEST,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: internalError
+    {
+        "ocsp_response_internalerror",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_INTERNALERROR,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: tryLater
+    {
+        "ocsp_response_trylater",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_TRYLATER,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: sigRequired
+    {
+        "ocsp_response_sigrequired",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_SIGREQUIRED,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: unauthorized
+    {
+        "ocsp_response_unauthorized",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_UNAUTHORIZED,
+        0,
         0,
         0
     },
