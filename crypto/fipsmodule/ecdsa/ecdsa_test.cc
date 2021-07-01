@@ -292,7 +292,7 @@ static size_t BitsToBytes(size_t bits) {
 }
 
 TEST(ECDSATest, MaxSigLen) {
-  static const size_t kBits[] = {224, 256, 384, 521, 10000};
+  static const size_t kBits[] = {192, 224, 256, 384, 521, 10000};
   for (size_t bits : kBits) {
     SCOPED_TRACE(bits);
     size_t order_len = BitsToBytes(bits);
