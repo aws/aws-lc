@@ -323,8 +323,8 @@ $code.=<<___;
 
 .text
 
-.type	.Lpoly_hash_ad_internal,%function
-.align	6
+.type   .Lpoly_hash_ad_internal,%function
+.align  6
 .Lpoly_hash_ad_internal:
     .cfi_startproc
     cbnz $adl, .Lpoly_hash_intro
@@ -366,9 +366,9 @@ $code.=<<___;
 //
 // void chacha20_poly1305_seal(uint8_t *pt, uint8_t *ct, size_t len_in, uint8_t *ad, size_t len_ad, union open_data *seal_data);
 //
-.globl	chacha20_poly1305_seal
-.type	chacha20_poly1305_seal,%function
-.align	6
+.globl  chacha20_poly1305_seal
+.type   chacha20_poly1305_seal,%function
+.align  6
 chacha20_poly1305_seal:
 .cfi_startproc
     stp x29, x30, [sp, #-80]!
@@ -379,10 +379,10 @@ chacha20_poly1305_seal:
 # We probably could do .cfi_def_cfa w29, 80 at this point, but since
 # we don't actually use the frame pointer like that, it's probably not
 # worth bothering.
-    stp	d8, d9, [sp, #16]
-    stp	d10, d11, [sp, #32]
-    stp	d12, d13, [sp, #48]
-    stp	d14, d15, [sp, #64]
+    stp d8, d9, [sp, #16]
+    stp d10, d11, [sp, #32]
+    stp d12, d13, [sp, #48]
+    stp d14, d15, [sp, #64]
 .cfi_offset b15, -8
 .cfi_offset b14, -16
 .cfi_offset b13, -24
@@ -894,10 +894,10 @@ $code.=<<___;
 
     stp  $acc0, $acc1, [$keyp]
 
-    ldp	d8, d9, [sp, #16]
-    ldp	d10, d11, [sp, #32]
-    ldp	d12, d13, [sp, #48]
-    ldp	d14, d15, [sp, #64]
+    ldp d8, d9, [sp, #16]
+    ldp d10, d11, [sp, #32]
+    ldp d12, d13, [sp, #48]
+    ldp d14, d15, [sp, #64]
 .cfi_restore b15
 .cfi_restore b14
 .cfi_restore b13
