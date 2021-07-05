@@ -53,9 +53,9 @@ install(DIRECTORY include/openssl
         COMPONENT Development
 )
 
-if (AWSLC_USE_SYSGENID_PATH)
-  message(STATUS "Setting AWSLC_SYSGENID_PATH=${AWSLC_USE_SYSGENID_PATH}")
-  add_compile_definitions(AWSLC_SYSGENID_PATH=\"${AWSLC_USE_SYSGENID_PATH}\")
+if (SYSGENID_PATH)
+  message(STATUS "Setting AWSLC_SYSGENID_PATH=${SYSGENID_PATH}")
+  add_compile_definitions(AWSLC_SYSGENID_PATH=\"${SYSGENID_PATH}\")
 endif()
 
 if (SNAPSAFE_MUST_DEFEND)

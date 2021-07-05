@@ -16,7 +16,6 @@
 #include "../delocate.h"
 
 DEFINE_STATIC_ONCE(g_snapsafe_detect_once)
-DEFINE_STATIC_MUTEX(g_snapsafe_detect_lock)
 DEFINE_BSS_GET(volatile uint32_t *, g_sysgenid_addr)
 DEFINE_BSS_GET(int, g_ignore_snapsafe)
 DEFINE_BSS_GET(int, g_overwrite_sysgenid)

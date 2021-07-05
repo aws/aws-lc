@@ -22,7 +22,8 @@ extern "C" {
 	#define AWSLC_SYSGENID_FILE_PATH "/dev/sysgenid"
 #endif
 
-// Experimental support for Snapsafe-type ube detection.  
+// Experimental support for Snapsafe-type uniqueness breaking event (ube)
+// detection.
 //
 // CRYPTO_get_snapsafe_generation returns the snapsafe generation number for the
 // current process, or zero if not supported on the platform. The snapsafe
@@ -40,23 +41,28 @@ extern "C" {
 // experimental note in the beginning.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number);
 
+// Below functions are strictly for testing only!
+
 // CRYPTO_snapsafe_detect_ignore_for_testing is an internal detail used for
 // testing purposes.
 OPENSSL_EXPORT void CRYPTO_snapsafe_detect_ignore_for_testing(void);
 
-// Below functions are strictly for testing only!
-
 // HAZMAT_overwrite_sysgenid_for_testing is an internal detail used for testing
-// purposes. Call |HAZMAT_reset_sysgenid_for_testing| after test suite has run.
+// purposes. Call |HAZMAT_overwrite_sysgenid_for_testing| after test suite has
+// run. Function allocates memory and associates it with the SysGenID callback
+// pointer.
 // Returns 1 if succesfull and 0 otherwise.
 OPENSSL_EXPORT int HAZMAT_overwrite_sysgenid_for_testing(void);
 
 // HAZMAT_reset_sysgenid_for_testing is an internal detail used for testing
-// purposes.
+// purposes. Free's memory allocated in |HAZMAT_overwrite_sysgenid_for_testing|
+// and deassociates the SysGenID callback pointer.
 OPENSSL_EXPORT void HAZMAT_reset_sysgenid_for_testing(void);
 
 // HAZMAT_overwrite_sysgenid_for_testing is an internal detail used for testing
-// purposes.
+// purposes. Assigns value |val| to the memory allocated in
+// |HAZMAT_overwrite_sysgenid_for_testing|, which will be the new SysGenID
+// value.
 OPENSSL_EXPORT void HAZMAT_set_overwritten_sysgenid_for_testing(uint32_t val);
 
 #ifdef  __cplusplus

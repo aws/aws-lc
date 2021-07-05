@@ -337,20 +337,20 @@ OPENSSL_INLINE int CRYPTO_fork_must_defend(void) {
 }
 
 // must_defend_against_ube implements the logic that decides whether
-// we should enforce entropy mixing to safeguards against uniqeness breaking
-// events (ube). Currently, there are two mechanisms implemented that attempts
+// we should enforce entropy mixing to safeguard against uniqeness breaking
+// events (ube). Currently, there are two mechanisms implemented that attempt
 // to detect such events. They are:
 //  * fork detection: attempts to detect process forks.
 //  * snapsafe detection: attempts to detect snapshot/VM resumes.
-// If a mechanism is not enabled, we check if something else has indicated that
-// the particular type of ube must be defended against.
-// Returns 1 if must defend and 0 otherwise.
+// If an ube detection mechanism is not enabled, but a defense against that ube
+// MUST be enforced (as indicated by the either |CRYPTO_snapsafe_must_defend| or
+// |CRYPTO_fork_must_defend|), return 1; otherwise, return 0.
 static int must_defend_against_ube(const uint64_t fork_generation,
                                         int snapsafe_status) {
-  if (snapsafe_status == 0 && CRYPTO_snapsafe_must_defend() == 1) {
+  if (fork_generation == 0 && CRYPTO_fork_must_defend() == 1) {
     return 1;
   }
-  if (fork_generation == 0 && CRYPTO_fork_must_defend() == 1) {
+  if (snapsafe_status == 0 && CRYPTO_snapsafe_must_defend() == 1) {
     return 1;
   }
   return 0;
