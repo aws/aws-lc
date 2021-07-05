@@ -68,12 +68,11 @@ int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
     return 0;
   }
 
-  struct CRYPTO_STATIC_MUTEX *const lock = g_snapsafe_detect_lock_bss_get();
-
-  // Aquire both read and write locks for a short while.
-  CRYPTO_STATIC_MUTEX_lock_write(lock);
+  // While below is not atomic, all calls to |CRYPTO_get_snapsafe_generation|
+  // happens with an undisputed local variable |snapsafe_generation_number|.
+  // It is also the responsibility of the caller to synchronise access to
+  // |CRYPTO_get_snapsafe_generation| if needed.
   *snapsafe_generation_number = *sysgenid_addr;
-  CRYPTO_STATIC_MUTEX_unlock_write(lock);
 
   return 1;
 }
