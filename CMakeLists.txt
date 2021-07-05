@@ -34,19 +34,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-# Fail CMake build when some vulnerable gcc versions are used.
-set(VUL_GCC_VERSIONS "")
-# These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
-# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
-list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
-if(GCC)
-  foreach(vul_gcc_version ${VUL_GCC_VERSIONS})
-    if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
-      message(FATAL_ERROR "GCC ${CMAKE_C_COMPILER_VERSION} is not supported.")
-    endif()
-  endforeach()
-endif()
-
 # This is a dummy target which all other targets depend on (manually - see other
 # CMakeLists.txt files). This gives us a hook to add any targets which need to
 # run before all other targets.
@@ -171,11 +158,83 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
+macro(check_compiler file_to_test flag_to_set)
+  try_compile(
+          RESULT
+          ${CMAKE_BINARY_DIR}
+          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "-Werror"
+          OUTPUT_VARIABLE ERROR_MESSAGE)
+  if(RESULT)
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -D${flag_to_set}")
+    message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
+  else()
+    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}:")
+    message(STATUS "    ${ERROR_MESSAGE}")
+  endif()
+endmacro()
+
+macro(check_run file_to_test flag_to_set compile_flags)
+  message(STATUS "Run check_run file_to_test '${file_to_test}', "
+          "flag_to_set '${flag_to_set}', "
+          "and compile_flags '${compile_flags}'.")
+  try_run(
+          ${flag_to_set}
+          COMPILE_RESULT
+          "${CMAKE_CURRENT_BINARY_DIR}"
+          "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "${compile_flags}"
+          OUTPUT_VARIABLE COMPILE_AND_RUN_OUTPUT)
+  if (NOT COMPILE_RESULT)
+    message(WARNING "COMPILE_AND_RUN_OUTPUT ${COMPILE_AND_RUN_OUTPUT}")
+  endif()
+endmacro()
+
+# Detect if memcmp is wrongly stripped like strcmp.
+# If exists, let CMake generate a warning.
+# memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
+if (GCC)
+  # CMake try_run requires these variables must be preset.
+  # https://cmake.org/cmake/help/latest/command/try_run.html
+  set(MEMCMP_INVALID_STRIPPED "")
+  set(MEMCMP_INVALID_STRIPPED__TRYRUN_OUTPUT "")
+  if (CMAKE_BUILD_TYPE_LOWER MATCHES "release")
+    # CMAKE_C_FLAGS_RELEASE enables `-O3`.
+    check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELEASE}")
+  elseif(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo")
+    # CMAKE_C_FLAGS_RELEASE enables `-O2`.
+    check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+  endif()
+
+  if (MEMCMP_INVALID_STRIPPED)
+    message(WARNING "Currently, GCC ${CMAKE_C_COMPILER_VERSION} is not supported due to a memcmp related bug reported in "
+            "https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.\n"
+            "We strongly recommend against using the GCC ${CMAKE_C_COMPILER_VERSION} compiler.")
+  endif ()
+endif ()
+
 if(GCC OR CLANG)
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
+  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
+
+  # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
+  if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2"))
+    # GCC 4.1.2 and below do not support all of these flags or they raise false positives.
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla")
+  endif()
+
+  if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
+    # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
+  endif()
+
+  set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
   if(MSVC)
     # clang-cl sets different default warnings than clang. It also treats -Wall
     # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
@@ -197,9 +256,10 @@ if(GCC OR CLANG)
 
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
-  else()
+  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2")
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
-    # and declare that the code is trying to free a stack pointer.
+    # and declare that the code is trying to free a stack pointer. GCC 4.1.2 and lower
+    # doesn't support this flag and can't use it.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
 
@@ -231,7 +291,7 @@ if(GCC OR CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
 
-  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
+  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
