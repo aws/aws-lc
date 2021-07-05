@@ -439,27 +439,27 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 
   if (!have_rdrand()) {
     if ((!model_default_ube_detection() &&
-          !sysrand(true, kAdditionalDataLength)) ||
+        !sysrand(true, kAdditionalDataLength)) ||
         // Initialise CRNGT.
         (is_fips && !sysrand(true, 16)) ||
         !sysrand(true, kSeedLength) ||
         // Second entropy draw.
         (!model_default_ube_detection() &&
-          !sysrand(true, kAdditionalDataLength))) {
+        !sysrand(true, kAdditionalDataLength))) {
       return ret;
     }
   } else if (
       // First additional data. If fast RDRAND isn't available then a
       // non-blocking OS entropy draw will be tried.
       (!have_fast_rdrand() && !model_default_ube_detection() &&
-        !sysrand(false, kAdditionalDataLength)) ||
+      !sysrand(false, kAdditionalDataLength)) ||
       // Opportuntistic entropy draw in FIPS mode because RDRAND was used.
       // In non-FIPS mode it's just drawn from |CRYPTO_sysrand| in a blocking
       // way.
       !sysrand(!is_fips, CTR_DRBG_ENTROPY_LEN) ||
       // Second entropy draw's additional data.
       (!have_fast_rdrand() && !model_default_ube_detection() &&
-        !sysrand(false, kAdditionalDataLength))) {
+      !sysrand(false, kAdditionalDataLength))) {
     return ret;
   }
 
