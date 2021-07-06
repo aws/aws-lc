@@ -31,5 +31,4 @@ util/bot/yasm-win32.exe
 
 test_build_dir
 
-files
 .DS_Store
