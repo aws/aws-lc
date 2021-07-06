@@ -338,13 +338,15 @@ OPENSSL_INLINE int CRYPTO_fork_must_defend(void) {
 
 // must_defend_against_ube implements the logic that decides whether
 // we should enforce entropy mixing to safeguard against uniqeness breaking
-// events (ube). Currently, there are two mechanisms implemented that attempt
-// to detect such events. They are:
+// events (ube) if detection mechanisms are not available. Currently, there are
+// two detection mechanisms implemented, that attempt to detect such events.
+// They are:
 //  * fork detection: attempts to detect process forks.
 //  * snapsafe detection: attempts to detect snapshot/VM resumes.
-// If an ube detection mechanism is not enabled, but a defense against that ube
-// MUST be enforced (as indicated by the either |CRYPTO_snapsafe_must_defend| or
-// |CRYPTO_fork_must_defend|), return 1; otherwise, return 0.
+// If an ube detection mechanism is not available, but a defense against that
+// ube MUST be enforced (as indicated by the either
+// |CRYPTO_snapsafe_must_defend| or |CRYPTO_fork_must_defend|), return 1;
+// otherwise, return 0.
 static int must_defend_against_ube(const uint64_t fork_generation,
                                         int snapsafe_status) {
   if (fork_generation == 0 && CRYPTO_fork_must_defend() == 1) {
@@ -373,7 +375,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     return;
   }
 
-  uint8_t defend_against_ube = 0;
+  uint8_t ube_detected_draw_entropy = 0;
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
   uint32_t snapsafe_generation = 0;
   int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
@@ -391,12 +393,19 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
     // Without a hardware RNG to save us from address-space duplication, the OS
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
-    // and so is disabled when we don't need to defend against ube's.
+    // and so is disabled when we can rely on ube detection.
     if (must_defend_against_ube(fork_generation, snapsafe_status) == 0) {
-      defend_against_ube = 0;
+
+      // We end up here if we have ube detection enabled or if we don't want to
+      // enforce ube defenses. In this case, we want to draw entropy if we
+      // detect an ube.
+      ube_detected_draw_entropy = 1;
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
     } else {
-      defend_against_ube = 1;
+
+      // Since we draw entropy now, there is no need to draw entropy later one
+      // even if we detect an ube.
+      ube_detected_draw_entropy = 0;
       get_entropy_with_no_fast_rdrand(additional_data, sizeof(additional_data));
     }
   }
@@ -485,7 +494,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->calls = 0;
     // No need to defend against ube's at this point in time if the drbg state
     // has already been reseeded.
-    defend_against_ube = 0;
+    ube_detected_draw_entropy = 0;
   }
 
   do {
@@ -495,7 +504,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
       // If we have already reseeded or |additional_data| has been filled with
       // entropy, no need do extra work.
-      if (defend_against_ube == 1) {
+      if (ube_detected_draw_entropy == 1) {
         // Gather entropy. Instead of reseeding, enforce mixing in entropy as we
         // do for prediction resistance. This is cheaper than calling reseed.
         get_entropy_with_no_fast_rdrand(additional_data, sizeof(additional_data));
@@ -503,7 +512,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
       // From now on enforce defending against ube's. This is needed if we need
       // to reenter the loop for snapsafe.
-      defend_against_ube = 1;
+      ube_detected_draw_entropy = 1;
 
       // Update cached generation numbers. This avoids an unnecessary defense
       // next time we enter |RAND_bytes_with_additional_data|.
