@@ -174,14 +174,3 @@ TEST(CompilerTest, PointerRepresentation) {
   EXPECT_EQ(Bytes(bytes),
             Bytes(reinterpret_cast<uint8_t *>(&null), sizeof(null)));
 }
-
-TEST(CompilerTest, MemcmpInvalidStripped) {
-  // A bug of 'memcmp' is reported in gcc (9.2, 9.3, 10.1). See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
-  // AWS-LC disables the build when the gcc with reported versions is used.
-  // This test is added to help detect the bug on some gcc versions that are not reported.
-  // Below test case is equivalent to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189#c7
-  const size_t array_size = 2;
-  static const uint8_t array_0[array_size] = {0x00, 0x00};
-  uint8_t array_1[array_size] = {0x00, 0x01};
-  ASSERT_NE(0, memcmp(array_1, array_0, array_size));
-}

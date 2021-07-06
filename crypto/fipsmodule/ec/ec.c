@@ -1250,7 +1250,10 @@ int EC_METHOD_get_field_type(const EC_METHOD *meth) {
 
 void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
                                         point_conversion_form_t form) {
-  if (form != POINT_CONVERSION_UNCOMPRESSED) {
+  /* NO-OP. However, abort if consumer attempts to set a representation that is
+   * not supported. */
+  if (form != POINT_CONVERSION_UNCOMPRESSED &&
+      form != POINT_CONVERSION_COMPRESSED) {
     abort();
   }
 }
