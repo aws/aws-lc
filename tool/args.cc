@@ -79,11 +79,7 @@ void PrintUsage(const argument_t *templates) {
 
 bool GetUnsigned(unsigned *out, const std::string &arg_name,
                  unsigned default_value,
-#if !defined(OPENSSL_BENCHMARK)
-                 const std::map<std::string, std::string> &args) {
-#else
                  const args_map_t &args) {
-#endif
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     *out = default_value;
