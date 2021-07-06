@@ -39,6 +39,11 @@ extern "C" {
 // SysGenID is very new and the interface is not yet finalised. Therefore, we
 // we only use this as a hardening mechanism and fail open. Hence the
 // experimental note in the beginning.
+//
+// |CRYPTO_get_snapsafe_generation| expects exclusive write access to memory
+// pointed to by |snapsafe_generation_number parameter|. If this can not be
+// guaranteed (e.g. |snapsafe_generation_number| is a shared variable), caller
+// must synchronise access.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number);
 
 // Below functions are strictly for testing only!
