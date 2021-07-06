@@ -198,7 +198,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 15
+#define AWSLC_API_VERSION 16
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -435,7 +435,7 @@ typedef struct spake2_ctx_st SPAKE2_CTX;
 typedef struct srtp_protection_profile_st SRTP_PROTECTION_PROFILE;
 typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_ctx_st SSL_CTX;
-typedef struct ssl_ech_server_config_list_st SSL_ECH_SERVER_CONFIG_LIST;
+typedef struct ssl_ech_keys_st SSL_ECH_KEYS;
 typedef struct ssl_method_st SSL_METHOD;
 typedef struct ssl_private_key_method_st SSL_PRIVATE_KEY_METHOD;
 typedef struct ssl_quic_method_st SSL_QUIC_METHOD;
@@ -541,8 +541,39 @@ class StackAllocated {
   StackAllocated() { init(&ctx_); }
   ~StackAllocated() { cleanup(&ctx_); }
 
-  StackAllocated(const StackAllocated<T, CleanupRet, init, cleanup> &) = delete;
-  T& operator=(const StackAllocated<T, CleanupRet, init, cleanup> &) = delete;
+  StackAllocated(const StackAllocated &) = delete;
+  StackAllocated& operator=(const StackAllocated &) = delete;
+
+  T *get() { return &ctx_; }
+  const T *get() const { return &ctx_; }
+
+  T *operator->() { return &ctx_; }
+  const T *operator->() const { return &ctx_; }
+
+  void Reset() {
+    cleanup(&ctx_);
+    init(&ctx_);
+  }
+
+ private:
+  T ctx_;
+};
+
+template <typename T, typename CleanupRet, void (*init)(T *),
+          CleanupRet (*cleanup)(T *), void (*move)(T *, T *)>
+class StackAllocatedMovable {
+ public:
+  StackAllocatedMovable() { init(&ctx_); }
+  ~StackAllocatedMovable() { cleanup(&ctx_); }
+
+  StackAllocatedMovable(StackAllocatedMovable &&other) {
+    init(&ctx_);
+    move(&ctx_, &other.ctx_);
+  }
+  StackAllocatedMovable &operator=(StackAllocatedMovable &&other) {
+    move(&ctx_, &other.ctx_);
+    return *this;
+  }
 
   T *get() { return &ctx_; }
   const T *get() const { return &ctx_; }

@@ -272,55 +272,6 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
   return ret;
 }
 
-void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
-  SSL *const ssl = hs->ssl;
-  SSL_CTX *ctx = ssl->session_ctx.get();
-  if (!SSL_SESSION_is_resumable(ssl->s3->established_session.get()) ||
-      (ctx->session_cache_mode & mode) != mode) {
-    return;
-  }
-
-  // Clients never use the internal session cache.
-  int use_internal_cache = ssl->server && !(ctx->session_cache_mode &
-                                            SSL_SESS_CACHE_NO_INTERNAL_STORE);
-
-  // A client may see new sessions on abbreviated handshakes if the server
-  // decides to renew the ticket. Once the handshake is completed, it should be
-  // inserted into the cache.
-  if (ssl->s3->established_session.get() != ssl->session.get() ||
-      (!ssl->server && hs->ticket_expected)) {
-    if (use_internal_cache) {
-      SSL_CTX_add_session(ctx, ssl->s3->established_session.get());
-    }
-    if (ctx->new_session_cb != NULL) {
-      UniquePtr<SSL_SESSION> ref = UpRef(ssl->s3->established_session);
-      if (ctx->new_session_cb(ssl, ref.get())) {
-        // |new_session_cb|'s return value signals whether it took ownership.
-        ref.release();
-      }
-    }
-  }
-
-  if (use_internal_cache &&
-      !(ctx->session_cache_mode & SSL_SESS_CACHE_NO_AUTO_CLEAR)) {
-    // Automatically flush the internal session cache every 255 connections.
-    int flush_cache = 0;
-    CRYPTO_MUTEX_lock_write(&ctx->lock);
-    ctx->handshakes_since_cache_flush++;
-    if (ctx->handshakes_since_cache_flush >= 255) {
-      flush_cache = 1;
-      ctx->handshakes_since_cache_flush = 0;
-    }
-    CRYPTO_MUTEX_unlock_write(&ctx->lock);
-
-    if (flush_cache) {
-      struct OPENSSL_timeval now;
-      ssl_get_current_time(ssl, &now);
-      SSL_CTX_flush_sessions(ctx, now.tv_sec);
-    }
-  }
-}
-
 static bool cbb_add_hex(CBB *cbb, Span<const uint8_t> in) {
   static const char hextable[] = "0123456789abcdef";
   uint8_t *out;
@@ -562,6 +513,7 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       signed_cert_timestamps_enabled(false),
       channel_id_enabled(false),
       grease_enabled(false),
+      permute_extensions(false),
       allow_unknown_alpn_protos(false),
       false_start_allowed_without_alpn(false),
       handoff(false),
@@ -684,6 +636,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->custom_verify_callback = ctx->custom_verify_callback;
   ssl->config->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
+  ssl->config->permute_extensions = ctx->permute_extensions;
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
@@ -730,7 +683,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       handoff(false),
       shed_handshake_config(false),
       jdk11_workaround(false),
-      quic_use_legacy_codepoint(false) {
+      quic_use_legacy_codepoint(false),
+      permute_extensions(false) {
   assert(ssl);
 }
 
@@ -1095,11 +1049,6 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 
   if (ssl->do_handshake == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
-    return -1;
-  }
-
-  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
     return -1;
   }
 
@@ -2913,6 +2862,17 @@ void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx, int enabled) {
 
 void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled) {
   ctx->grease_enabled = !!enabled;
+}
+
+void SSL_CTX_set_permute_extensions(SSL_CTX *ctx, int enabled) {
+  ctx->permute_extensions = !!enabled;
+}
+
+void SSL_set_permute_extensions(SSL *ssl, int enabled) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->permute_extensions = !!enabled;
 }
 
 int32_t SSL_get_ticket_age_skew(const SSL *ssl) {

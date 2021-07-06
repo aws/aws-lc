@@ -843,12 +843,18 @@ type ProtocolBugs struct {
 	AlertBeforeFalseStartTest alert
 
 	// ExpectServerName, if not empty, is the hostname the client
-	// must specify in the server_name extension.
+	// must specify in the selected ClientHello's server_name extension.
 	ExpectServerName string
 
-	// ExpectClientECH causes the server to expect the peer to send an
-	// encrypted_client_hello extension containing a ClientECH structure.
+	// ExpectServerName, if not empty, is the hostname the client
+	// must specify in the ClientHelloOuter's server_name extension.
+	ExpectOuterServerName string
+
+	// ExpectClientECH causes the server to require that the client offer ECH.
 	ExpectClientECH bool
+
+	// ExpectNoClientECH causes the server to require that the client not offer ECH.
+	ExpectNoClientECH bool
 
 	// IgnoreECHConfigCipherPreferences, when true, causes the client to ignore
 	// the cipher preferences in the ECHConfig and select the most preferred ECH
@@ -927,6 +933,19 @@ type ProtocolBugs struct {
 	// success.
 	MinimalClientHelloOuter bool
 
+	// ExpectECHOuterExtensions is a list of extension IDs which the server
+	// will require to be present in ech_outer_extensions.
+	ExpectECHOuterExtensions []uint16
+
+	// ExpectECHOuterExtensions is a list of extension IDs which the server
+	// will require to be omitted in ech_outer_extensions.
+	ExpectECHUncompressedExtensions []uint16
+
+	// UseInnerSessionWithClientHelloOuter, if true, causes the server to
+	// handshake with ClientHelloOuter, but resume the session from
+	// ClientHelloInner.
+	UseInnerSessionWithClientHelloOuter bool
+
 	// RecordClientHelloInner, when non-nil, is called whenever the client
 	// generates an encrypted ClientHello. The byte strings do not include the
 	// ClientHello header.
@@ -1004,8 +1023,14 @@ type ProtocolBugs struct {
 	// ClientHello session ID, even in TLS 1.2 full handshakes.
 	EchoSessionIDInFullHandshake bool
 
+	// ExpectNoSessionID, if true, causes the server to fail the connection if
+	// the session ID field is present.
+	ExpectNoSessionID bool
+
 	// ExpectNoTLS12Session, if true, causes the server to fail the
-	// connection if either a session ID or TLS 1.2 ticket is offered.
+	// connection if the server offered a TLS 1.2 session. TLS 1.3 clients
+	// always offer session IDs for compatibility, so the session ID check
+	// checks for sessions the server issued.
 	ExpectNoTLS12Session bool
 
 	// ExpectNoTLS13PSK, if true, causes the server to fail the connection
@@ -1335,11 +1360,6 @@ type ProtocolBugs struct {
 	// client.
 	SendTicketAge time.Duration
 
-	// FailIfSessionOffered, if true, causes the server to fail any
-	// connections where the client offers a non-empty session ID or session
-	// ticket.
-	FailIfSessionOffered bool
-
 	// SendHelloRequestBeforeEveryAppDataRecord, if true, causes a
 	// HelloRequest handshake message to be sent before each application
 	// data record. This only makes sense for a server.
@@ -1657,6 +1677,10 @@ type ProtocolBugs struct {
 	// invalid Channel ID signature.
 	InvalidChannelIDSignature bool
 
+	// AlwaysNegotiateChannelID, if true, causes the server to negotiate Channel
+	// ID, even whenn the client does not offer it.
+	AlwaysNegotiateChannelID bool
+
 	// ExpectGREASE, if true, causes messages without GREASE values to be
 	// rejected. See RFC 8701.
 	ExpectGREASE bool
@@ -1789,6 +1813,10 @@ type ProtocolBugs struct {
 	// used on this connection, or zero if there are no special requirements.
 	ExpectedCompressedCert uint16
 
+	// ExpectUncompressedCert, if true, specifies that certificate compression
+	// should not be used on this connection.
+	ExpectUncompressedCert bool
+
 	// SendCertCompressionAlgID, if not zero, sets the algorithm ID that will be
 	// sent in the compressed certificate message.
 	SendCertCompressionAlgID uint16
@@ -1843,6 +1871,10 @@ type ProtocolBugs struct {
 	// CompatModeWithQUIC, if true, enables TLS 1.3 compatibility mode
 	// when running over QUIC.
 	CompatModeWithQUIC bool
+
+	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
+	// encrypting tickets.
+	EncryptSessionTicketKey *[32]byte
 }
 
 func (c *Config) serverInit() {

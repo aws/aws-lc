@@ -3557,51 +3557,146 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 // This can prevent observers from seeing cleartext information about the
 // connection, such as the server_name extension.
 //
+// By default, BoringSSL will treat the server name, session ticket, and client
+// certificate as secret, but most other parameters, such as the ALPN protocol
+// list will be treated as public and sent in the cleartext ClientHello. Other
+// APIs may be added for applications with different secrecy requirements.
+//
 // ECH support in BoringSSL is still experimental and under development.
 //
 // See https://tools.ietf.org/html/draft-ietf-tls-esni-10.
 
-// SSL_set_enable_ech_grease configures whether the client may send ECH GREASE
-// as part of this connection.
+// SSL_set_enable_ech_grease configures whether the client will send a GREASE
+// ECH extension when no supported ECHConfig is available.
 OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
 
-// SSL_ECH_SERVER_CONFIG_LIST_new returns a newly-allocated
-// |SSL_ECH_SERVER_CONFIG_LIST| or NULL on error.
-OPENSSL_EXPORT SSL_ECH_SERVER_CONFIG_LIST *SSL_ECH_SERVER_CONFIG_LIST_new(void);
+// SSL_set1_ech_config_list configures |ssl| to, as a client, offer ECH with the
+// specified configuration. |ech_config_list| should contain a serialized
+// ECHConfigList structure. It returns one on success and zero on error.
+//
+// This function returns an error if the input is malformed. If the input is
+// valid but none of the ECHConfigs implement supported parameters, it will
+// return success and proceed without ECH.
+//
+// If a supported ECHConfig is found, |ssl| will encrypt the true ClientHello
+// parameters. If the server cannot decrypt it, e.g. due to a key mismatch, ECH
+// has a recovery flow. |ssl| will handshake using the cleartext parameters,
+// including a public name in the ECHConfig. If using
+// |SSL_CTX_set_custom_verify|, callers should use |SSL_get0_ech_name_override|
+// to verify the certificate with the public name. If using the built-in
+// verifier, the |X509_STORE_CTX| will be configured automatically.
+//
+// If no other errors are found in this handshake, it will fail with
+// |SSL_R_ECH_REJECTED|. Since it didn't use the true parameters, the connection
+// cannot be used for application data. Instead, callers should handle this
+// error by calling |SSL_get0_ech_retry_configs| and retrying the connection
+// with updated ECH parameters. If the retry also fails with
+// |SSL_R_ECH_REJECTED|, the caller should report a connection failure.
+OPENSSL_EXPORT int SSL_set1_ech_config_list(SSL *ssl,
+                                            const uint8_t *ech_config_list,
+                                            size_t ech_config_list_len);
 
-// SSL_ECH_SERVER_CONFIG_LIST_up_ref increments the reference count of |list|.
-OPENSSL_EXPORT void SSL_ECH_SERVER_CONFIG_LIST_up_ref(
-    SSL_ECH_SERVER_CONFIG_LIST *list);
+// SSL_get0_ech_name_override sets |*out_name| and |*out_name_len| to point to a
+// buffer containing the ECH public name, if the server rejected ECH, or the
+// empty string otherwise.
+//
+// This function should be called during the certificate verification callback
+// (see |SSL_CTX_set_custom_verify|) if |ssl| is a client offering ECH. If
+// |*out_name_len| is non-zero, the caller should verify the certificate against
+// the result, interpreted as a DNS name, rather than the true server name. In
+// this case, the handshake will never succeed and is only used to authenticate
+// retry configs. See also |SSL_get0_ech_retry_configs|.
+OPENSSL_EXPORT void SSL_get0_ech_name_override(const SSL *ssl,
+                                               const char **out_name,
+                                               size_t *out_name_len);
 
-// SSL_ECH_SERVER_CONFIG_LIST_free releases memory associated with |list|.
-OPENSSL_EXPORT void SSL_ECH_SERVER_CONFIG_LIST_free(
-    SSL_ECH_SERVER_CONFIG_LIST *list);
+// SSL_get0_ech_retry_configs sets |*out_retry_configs| and
+// |*out_retry_configs_len| to a buffer containing a serialized ECHConfigList.
+// If the server did not provide an ECHConfigList, |*out_retry_configs_len| will
+// be zero.
+//
+// When handling an |SSL_R_ECH_REJECTED| error code as a client, callers should
+// use this function to recover from potential key mismatches. If the result is
+// non-empty, the caller should retry the connection, passing this buffer to
+// |SSL_set1_ech_config_list|. If the result is empty, the server has rolled
+// back ECH support, and the caller should retry without ECH.
+//
+// This function must only be called in response to an |SSL_R_ECH_REJECTED|
+// error code. Calling this function on |ssl|s that have not authenticated the
+// rejection handshake will assert in debug builds and otherwise return an
+// unparsable list.
+OPENSSL_EXPORT void SSL_get0_ech_retry_configs(
+    const SSL *ssl, const uint8_t **out_retry_configs,
+    size_t *out_retry_configs_len);
 
-// SSL_ECH_SERVER_CONFIG_LIST_add appends an ECHConfig in |ech_config| and its
-// corresponding private key in |private_key| to |list|. When |is_retry_config|
-// is non-zero, this config will be returned to the client on configuration
-// mismatch. It returns one on success and zero on error. See also
-// |SSL_CTX_set1_ech_server_config_list|.
+// SSL_marshal_ech_config constructs a new serialized ECHConfig. On success, it
+// sets |*out| to a newly-allocated buffer containing the result and |*out_len|
+// to the size of the buffer. The caller must call |OPENSSL_free| on |*out| to
+// release the memory. On failure, it returns zero.
+//
+// The |config_id| field is a single byte identifer for the ECHConfig. Reusing
+// config IDs is allowed, but if multiple ECHConfigs with the same config ID are
+// active at a time, server load may increase. See
+// |SSL_ECH_KEYS_has_duplicate_config_id|.
+//
+// The public key and KEM algorithm are taken from |key|. |public_name| is the
+// DNS name used to authenticate the recovery flow. |max_name_len| should be the
+// length of the longest name in the ECHConfig's anonymity set and influences
+// client padding decisions.
+OPENSSL_EXPORT int SSL_marshal_ech_config(uint8_t **out, size_t *out_len,
+                                          uint8_t config_id,
+                                          const EVP_HPKE_KEY *key,
+                                          const char *public_name,
+                                          size_t max_name_len);
+
+// SSL_ECH_KEYS_new returns a newly-allocated |SSL_ECH_KEYS| or NULL on error.
+OPENSSL_EXPORT SSL_ECH_KEYS *SSL_ECH_KEYS_new(void);
+
+// SSL_ECH_KEYS_up_ref increments the reference count of |keys|.
+OPENSSL_EXPORT void SSL_ECH_KEYS_up_ref(SSL_ECH_KEYS *keys);
+
+// SSL_ECH_KEYS_free releases memory associated with |keys|.
+OPENSSL_EXPORT void SSL_ECH_KEYS_free(SSL_ECH_KEYS *keys);
+
+// SSL_ECH_KEYS_add decodes |ech_config| as an ECHConfig and appends it with
+// |key| to |keys|. If |is_retry_config| is non-zero, this config will be
+// returned to the client on configuration mismatch. It returns one on success
+// and zero on error.
 //
 // This function should be called successively to register each ECHConfig in
 // decreasing order of preference. This configuration must be completed before
-// setting |list| on an |SSL_CTX| with |SSL_CTX_set1_ech_server_config_list|.
-// After that point, |list| is immutable; no more ECHConfig values may be added.
-OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
-    SSL_ECH_SERVER_CONFIG_LIST *list, int is_retry_config,
-    const uint8_t *ech_config, size_t ech_config_len,
-    const uint8_t *private_key, size_t private_key_len);
+// setting |keys| on an |SSL_CTX| with |SSL_CTX_set1_ech_keys|. After that
+// point, |keys| is immutable; no more ECHConfig values may be added.
+//
+// See also |SSL_CTX_set1_ech_keys|.
+OPENSSL_EXPORT int SSL_ECH_KEYS_add(SSL_ECH_KEYS *keys, int is_retry_config,
+                                    const uint8_t *ech_config,
+                                    size_t ech_config_len,
+                                    const EVP_HPKE_KEY *key);
 
-// SSL_CTX_set1_ech_server_config_list atomically sets the refcounted |list|
-// onto |ctx|, releasing the old list. |SSL| objects associated with |ctx|, as
-// servers, will use |list| to decrypt incoming encrypted ClientHello messages.
-// It returns one on success, and zero on failure.
+// SSL_ECH_KEYS_has_duplicate_config_id returns one if |keys| has duplicate
+// config IDs or zero otherwise. Duplicate config IDs still work, but may
+// increase server load due to trial decryption.
+OPENSSL_EXPORT int SSL_ECH_KEYS_has_duplicate_config_id(
+    const SSL_ECH_KEYS *keys);
+
+// SSL_ECH_KEYS_marshal_retry_configs serializes the retry configs in |keys| as
+// an ECHConfigList. On success, it sets |*out| to a newly-allocated buffer
+// containing the result and |*out_len| to the size of the buffer. The caller
+// must call |OPENSSL_free| on |*out| to release the memory. On failure, it
+// returns zero.
 //
-// If |list| does not contain any retry configs, this function will fail. Retry
-// configs are marked as such when they are added to |list| with
-// |SSL_ECH_SERVER_CONFIG_LIST_add|.
+// This output may be advertised to clients in DNS.
+OPENSSL_EXPORT int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys,
+                                                      uint8_t **out,
+                                                      size_t *out_len);
+
+// SSL_CTX_set1_ech_keys configures |ctx| to use |keys| to decrypt encrypted
+// ClientHellos. It returns one on success, and zero on failure. If |keys| does
+// not contain any retry configs, this function will fail. Retry configs are
+// marked as such when they are added to |keys| with |SSL_ECH_KEYS_add|.
 //
-// Once |list| has been passed to this function, it is immutable. Unlike most
+// Once |keys| has been passed to this function, it is immutable. Unlike most
 // |SSL_CTX| configuration functions, this function may be called even if |ctx|
 // already has associated connections on multiple threads. This may be used to
 // rotate keys in a long-lived server process.
@@ -3612,7 +3707,7 @@ OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
 // the ECHConfig and corresponding private key.
 //
 // Only the most recent fully-deployed ECHConfigs should be advertised in DNS.
-// |list| may contain a newer set if those ECHConfigs are mid-deployment. It
+// |keys| may contain a newer set if those ECHConfigs are mid-deployment. It
 // should also contain older sets, until the DNS change has rolled out and the
 // old records have expired from caches.
 //
@@ -3628,8 +3723,7 @@ OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
 // reported |SSL_CLIENT_HELLO| structure and |SSL_get_servername| function will
 // transparently reflect the inner ClientHello. Callers should select parameters
 // based on these values to correctly handle ECH as well as the recovery flow.
-OPENSSL_EXPORT int SSL_CTX_set1_ech_server_config_list(
-    SSL_CTX *ctx, SSL_ECH_SERVER_CONFIG_LIST *list);
+OPENSSL_EXPORT int SSL_CTX_set1_ech_keys(SSL_CTX *ctx, SSL_ECH_KEYS *keys);
 
 // SSL_ech_accepted returns one if |ssl| negotiated ECH and zero otherwise.
 OPENSSL_EXPORT int SSL_ech_accepted(const SSL *ssl);
@@ -4252,6 +4346,14 @@ OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
 // SSL_CTX_set_grease_enabled configures whether sockets on |ctx| should enable
 // GREASE. See RFC 8701.
 OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
+
+// SSL_CTX_set_permute_extensions configures whether sockets on |ctx| should
+// permute extensions. For now, this is only implemented for the ClientHello.
+OPENSSL_EXPORT void SSL_CTX_set_permute_extensions(SSL_CTX *ctx, int enabled);
+
+// SSL_set_permute_extensions configures whether sockets on |ssl| should
+// permute extensions. For now, this is only implemented for the ClientHello.
+OPENSSL_EXPORT void SSL_set_permute_extensions(SSL *ssl, int enabled);
 
 // SSL_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
 // record with |ssl|.
@@ -5101,10 +5203,8 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(SSL, SSL_free)
 BORINGSSL_MAKE_DELETER(SSL_CTX, SSL_CTX_free)
 BORINGSSL_MAKE_UP_REF(SSL_CTX, SSL_CTX_up_ref)
-BORINGSSL_MAKE_DELETER(SSL_ECH_SERVER_CONFIG_LIST,
-                       SSL_ECH_SERVER_CONFIG_LIST_free)
-BORINGSSL_MAKE_UP_REF(SSL_ECH_SERVER_CONFIG_LIST,
-                      SSL_ECH_SERVER_CONFIG_LIST_up_ref)
+BORINGSSL_MAKE_DELETER(SSL_ECH_KEYS, SSL_ECH_KEYS_free)
+BORINGSSL_MAKE_UP_REF(SSL_ECH_KEYS, SSL_ECH_KEYS_up_ref)
 BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 BORINGSSL_MAKE_UP_REF(SSL_SESSION, SSL_SESSION_up_ref)
 
@@ -5446,6 +5546,9 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_CLIENT_HELLO_INNER 314
 #define SSL_R_INVALID_ALPN_PROTOCOL_LIST 315
 #define SSL_R_COULD_NOT_PARSE_HINTS 316
+#define SSL_R_INVALID_ECH_PUBLIC_NAME 317
+#define SSL_R_INVALID_ECH_CONFIG_LIST 318
+#define SSL_R_ECH_REJECTED 319
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

@@ -614,15 +614,15 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
 
     {
       MutexReadLock lock(&ssl->ctx->lock);
-      hs->ech_server_config_list = UpRef(ssl->ctx->ech_server_config_list);
+      hs->ech_keys = UpRef(ssl->ctx->ech_keys);
     }
 
-    if (hs->ech_server_config_list) {
-      for (const auto &ech_config : hs->ech_server_config_list->configs) {
+    if (hs->ech_keys) {
+      for (const auto &config : hs->ech_keys->configs) {
         hs->ech_hpke_ctx.Reset();
-        if (config_id != ech_config->config_id() ||
-            !ech_config->SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id,
-                                      enc)) {
+        if (config_id != config->ech_config().config_id ||
+            !config->SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id,
+                                  enc)) {
           // Ignore the error and try another ECHConfig.
           ERR_clear_error();
           continue;
@@ -661,14 +661,17 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
         }
 
         hs->ech_config_id = config_id;
-        ssl->s3->ech_accept = true;
+        ssl->s3->ech_status = ssl_ech_accepted;
         break;
       }
     }
 
-    // If we did not accept ECH, we will send the current ECHConfigs as
-    // retry_configs in the ServerHello's encrypted extensions. Proceed with the
-    // ClientHelloOuter.
+    // If we did not accept ECH, proceed with the ClientHelloOuter. Note this
+    // could be key mismatch or ECH GREASE, so we most complete the handshake
+    // as usual, except EncryptedExtensions will contain retry configs.
+    if (ssl->s3->ech_status != ssl_ech_accepted) {
+      ssl->s3->ech_status = ssl_ech_rejected;
+    }
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -803,7 +806,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
   // It should not be possible to negotiate TLS 1.2 with ECH. The
   // ClientHelloInner decoding function rejects ClientHellos which offer TLS 1.2
   // or below.
-  assert(!ssl->s3->ech_accept);
+  assert(ssl->s3->ech_status != ssl_ech_accepted);
 
   // TODO(davidben): Also compute hints for TLS 1.2. When doing so, update the
   // check in bssl_shim.cc to test this.
@@ -1791,16 +1794,21 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->ctx->x509_method->session_clear(hs->new_session.get());
   }
 
-  if (ssl->session != NULL) {
-    ssl->s3->established_session = UpRef(ssl->session);
-  } else {
+  bool has_new_session = hs->new_session != nullptr;
+  if (has_new_session) {
+    assert(ssl->session == nullptr);
     ssl->s3->established_session = std::move(hs->new_session);
     ssl->s3->established_session->not_resumable = false;
+  } else {
+    assert(ssl->session != nullptr);
+    ssl->s3->established_session = UpRef(ssl->session);
   }
 
   hs->handshake_finalized = true;
   ssl->s3->initial_handshake_complete = true;
-  ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
+  if (has_new_session) {
+    ssl_update_cache(ssl);
+  }
 
   hs->state = state12_done;
   return ssl_hs_ok;

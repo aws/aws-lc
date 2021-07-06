@@ -75,19 +75,19 @@ if(PERL_EXECUTABLE)
     endif()
 
     add_custom_command(
-      OUTPUT ${dest}
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
-      DEPENDS
-      ${src}
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
-      WORKING_DIRECTORY .
+            OUTPUT ${dest}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
+            COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
+            DEPENDS
+            ${src}
+            ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
+            ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
+            ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
+            ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
+            ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
+            ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
+            ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
+            WORKING_DIRECTORY .
     )
   endfunction()
   perlasm(chacha/chacha-armv4.${ASM_EXT} chacha/asm/chacha-armv4.pl)
@@ -125,333 +125,333 @@ if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
 
   set(
-    CRYPTO_FIPS_OBJECTS
+          CRYPTO_FIPS_OBJECTS
 
-    fipsmodule/bcm.o
+          fipsmodule/bcm.o
   )
 endif()
 
 if(${ARCH} STREQUAL "arm")
   set(
-    CRYPTO_ARCH_SOURCES
+          CRYPTO_ARCH_SOURCES
 
-    chacha/chacha-armv4.${ASM_EXT}
-    curve25519/asm/x25519-asm-arm.S
-    poly1305/poly1305_arm_asm.S
-    test/trampoline-armv4.${ASM_EXT}
+          chacha/chacha-armv4.${ASM_EXT}
+          curve25519/asm/x25519-asm-arm.S
+          poly1305/poly1305_arm_asm.S
+          test/trampoline-armv4.${ASM_EXT}
   )
 endif()
 
 if(${ARCH} STREQUAL "aarch64")
   set(
-    CRYPTO_ARCH_SOURCES
+          CRYPTO_ARCH_SOURCES
 
-    chacha/chacha-armv8.${ASM_EXT}
-    test/trampoline-armv8.${ASM_EXT}
+          chacha/chacha-armv8.${ASM_EXT}
+          test/trampoline-armv8.${ASM_EXT}
   )
 endif()
 
 if(${ARCH} STREQUAL "ppc64le")
   set(
-    CRYPTO_ARCH_SOURCES
+          CRYPTO_ARCH_SOURCES
 
-    test/trampoline-ppc.${ASM_EXT}
+          test/trampoline-ppc.${ASM_EXT}
   )
 endif()
 
 if(${ARCH} STREQUAL "x86")
   set(
-    CRYPTO_ARCH_SOURCES
+          CRYPTO_ARCH_SOURCES
 
-    chacha/chacha-x86.${ASM_EXT}
-    test/trampoline-x86.${ASM_EXT}
+          chacha/chacha-x86.${ASM_EXT}
+          test/trampoline-x86.${ASM_EXT}
   )
 endif()
 
 if(${ARCH} STREQUAL "x86_64")
   set(
-    CRYPTO_ARCH_SOURCES
+          CRYPTO_ARCH_SOURCES
 
-    chacha/chacha-x86_64.${ASM_EXT}
-    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
-    cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-    hrss/asm/poly_rq_mul.S
-    test/trampoline-x86_64.${ASM_EXT}
+          chacha/chacha-x86_64.${ASM_EXT}
+          cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+          cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+          hrss/asm/poly_rq_mul.S
+          test/trampoline-x86_64.${ASM_EXT}
   )
 endif()
 
 if(GO_EXECUTABLE)
   add_custom_command(
-    OUTPUT err_data.c
-    COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
-    DEPENDS
-    err/err_data_generate.go
-    err/asn1.errordata
-    err/bio.errordata
-    err/bn.errordata
-    err/cipher.errordata
-    err/conf.errordata
-    err/dh.errordata
-    err/digest.errordata
-    err/dsa.errordata
-    err/ecdh.errordata
-    err/ecdsa.errordata
-    err/ec.errordata
-    err/engine.errordata
-    err/evp.errordata
-    err/hkdf.errordata
-    err/obj.errordata
-    err/pem.errordata
-    err/pkcs7.errordata
-    err/pkcs8.errordata
-    err/rsa.errordata
-    err/ssl.errordata
-    err/trust_token.errordata
-    err/x509.errordata
-    err/x509v3.errordata
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
+          OUTPUT err_data.c
+          COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
+          DEPENDS
+          err/err_data_generate.go
+          err/asn1.errordata
+          err/bio.errordata
+          err/bn.errordata
+          err/cipher.errordata
+          err/conf.errordata
+          err/dh.errordata
+          err/digest.errordata
+          err/dsa.errordata
+          err/ecdh.errordata
+          err/ecdsa.errordata
+          err/ec.errordata
+          err/engine.errordata
+          err/evp.errordata
+          err/hkdf.errordata
+          err/obj.errordata
+          err/pem.errordata
+          err/pkcs7.errordata
+          err/pkcs8.errordata
+          err/rsa.errordata
+          err/ssl.errordata
+          err/trust_token.errordata
+          err/x509.errordata
+          err/x509v3.errordata
+          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
   )
 else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
 add_library(
-  crypto
+        crypto
 
-  asn1/a_bitstr.c
-  asn1/a_bool.c
-  asn1/a_d2i_fp.c
-  asn1/a_dup.c
-  asn1/a_enum.c
-  asn1/a_gentm.c
-  asn1/a_i2d_fp.c
-  asn1/a_int.c
-  asn1/a_mbstr.c
-  asn1/a_object.c
-  asn1/a_octet.c
-  asn1/a_print.c
-  asn1/a_strnid.c
-  asn1/a_time.c
-  asn1/a_type.c
-  asn1/a_utctm.c
-  asn1/a_utf8.c
-  asn1/asn1_lib.c
-  asn1/asn1_par.c
-  asn1/asn_pack.c
-  asn1/f_enum.c
-  asn1/f_int.c
-  asn1/f_string.c
-  asn1/tasn_dec.c
-  asn1/tasn_enc.c
-  asn1/tasn_fre.c
-  asn1/tasn_new.c
-  asn1/tasn_typ.c
-  asn1/tasn_utl.c
-  asn1/time_support.c
-  base64/base64.c
-  bio/bio.c
-  bio/bio_mem.c
-  bio/connect.c
-  bio/fd.c
-  bio/file.c
-  bio/hexdump.c
-  bio/pair.c
-  bio/printf.c
-  bio/socket.c
-  bio/socket_helper.c
-  blake2/blake2.c
-  bn_extra/bn_asn1.c
-  bn_extra/convert.c
-  buf/buf.c
-  bytestring/asn1_compat.c
-  bytestring/ber.c
-  bytestring/cbb.c
-  bytestring/cbs.c
-  bytestring/unicode.c
-  chacha/chacha.c
-  cipher_extra/cipher_extra.c
-  cipher_extra/derive_key.c
-  cipher_extra/e_aesccm.c
-  cipher_extra/e_aesctrhmac.c
-  cipher_extra/e_aesgcmsiv.c
-  cipher_extra/e_chacha20poly1305.c
-  cipher_extra/e_null.c
-  cipher_extra/e_rc2.c
-  cipher_extra/e_rc4.c
-  cipher_extra/e_tls.c
-  cipher_extra/tls_cbc.c
-  cmac/cmac.c
-  conf/conf.c
-  cpu-aarch64-fuchsia.c
-  cpu-aarch64-linux.c
-  cpu-aarch64-win.c
-  cpu-arm-linux.c
-  cpu-arm.c
-  cpu-intel.c
-  cpu-ppc64le.c
-  crypto.c
-  curve25519/curve25519.c
-  curve25519/spake25519.c
-  dh_extra/params.c
-  dh_extra/dh_asn1.c
-  digest_extra/digest_extra.c
-  dsa/dsa.c
-  dsa/dsa_asn1.c
-  ecdh_extra/ecdh_extra.c
-  ecdsa_extra/ecdsa_asn1.c
-  ec_extra/ec_asn1.c
-  ec_extra/ec_derive.c
-  ec_extra/hash_to_curve.c
-  err/err.c
-  err_data.c
-  engine/engine.c
-  evp/digestsign.c
-  evp/evp.c
-  evp/evp_asn1.c
-  evp/evp_ctx.c
-  evp/p_dsa_asn1.c
-  evp/p_ec.c
-  evp/p_ec_asn1.c
-  evp/p_ed25519.c
-  evp/p_ed25519_asn1.c
-  evp/p_rsa.c
-  evp/p_rsa_asn1.c
-  evp/p_x25519.c
-  evp/p_x25519_asn1.c
-  evp/pbkdf.c
-  evp/print.c
-  evp/scrypt.c
-  evp/sign.c
-  ex_data.c
-  hkdf/hkdf.c
-  hpke/hpke.c
-  hrss/hrss.c
-  lhash/lhash.c
-  mem.c
-  obj/obj.c
-  obj/obj_xref.c
-  pem/pem_all.c
-  pem/pem_info.c
-  pem/pem_lib.c
-  pem/pem_oth.c
-  pem/pem_pk8.c
-  pem/pem_pkey.c
-  pem/pem_x509.c
-  pem/pem_xaux.c
-  pkcs7/pkcs7.c
-  pkcs7/pkcs7_x509.c
-  pkcs8/pkcs8.c
-  pkcs8/pkcs8_x509.c
-  pkcs8/p5_pbev2.c
-  poly1305/poly1305.c
-  poly1305/poly1305_arm.c
-  poly1305/poly1305_vec.c
-  pool/pool.c
-  rand_extra/deterministic.c
-  rand_extra/forkunsafe.c
-  rand_extra/fuchsia.c
-  rand_extra/passive.c
-  rand_extra/rand_extra.c
-  rand_extra/windows.c
-  rc4/rc4.c
-  refcount_c11.c
-  refcount_lock.c
-  rsa_extra/rsa_asn1.c
-  rsa_extra/rsassa_pss_asn1.c
-  rsa_extra/rsa_print.c
-  stack/stack.c
-  siphash/siphash.c
-  thread.c
-  thread_none.c
-  thread_pthread.c
-  thread_win.c
-  trust_token/pmbtoken.c
-  trust_token/trust_token.c
-  trust_token/voprf.c
-  x509/a_digest.c
-  x509/a_sign.c
-  x509/a_strex.c
-  x509/a_verify.c
-  x509/algorithm.c
-  x509/asn1_gen.c
-  x509/by_dir.c
-  x509/by_file.c
-  x509/i2d_pr.c
-  x509/rsa_pss.c
-  x509/t_crl.c
-  x509/t_req.c
-  x509/t_x509.c
-  x509/t_x509a.c
-  x509/x509.c
-  x509/x509_att.c
-  x509/x509_cmp.c
-  x509/x509_d2.c
-  x509/x509_def.c
-  x509/x509_ext.c
-  x509/x509_lu.c
-  x509/x509_obj.c
-  x509/x509_req.c
-  x509/x509_set.c
-  x509/x509_trs.c
-  x509/x509_txt.c
-  x509/x509_v3.c
-  x509/x509_vfy.c
-  x509/x509_vpm.c
-  x509/x509cset.c
-  x509/x509name.c
-  x509/x509rset.c
-  x509/x509spki.c
-  x509/x_algor.c
-  x509/x_all.c
-  x509/x_attrib.c
-  x509/x_crl.c
-  x509/x_exten.c
-  x509/x_info.c
-  x509/x_name.c
-  x509/x_pkey.c
-  x509/x_pubkey.c
-  x509/x_req.c
-  x509/x_sig.c
-  x509/x_spki.c
-  x509/x_val.c
-  x509/x_x509.c
-  x509/x_x509a.c
-  x509v3/pcy_cache.c
-  x509v3/pcy_data.c
-  x509v3/pcy_lib.c
-  x509v3/pcy_map.c
-  x509v3/pcy_node.c
-  x509v3/pcy_tree.c
-  x509v3/v3_akey.c
-  x509v3/v3_akeya.c
-  x509v3/v3_alt.c
-  x509v3/v3_bcons.c
-  x509v3/v3_bitst.c
-  x509v3/v3_conf.c
-  x509v3/v3_cpols.c
-  x509v3/v3_crld.c
-  x509v3/v3_enum.c
-  x509v3/v3_extku.c
-  x509v3/v3_genn.c
-  x509v3/v3_ia5.c
-  x509v3/v3_info.c
-  x509v3/v3_int.c
-  x509v3/v3_lib.c
-  x509v3/v3_ncons.c
-  x509v3/v3_ocsp.c
-  x509v3/v3_pci.c
-  x509v3/v3_pcia.c
-  x509v3/v3_pcons.c
-  x509v3/v3_pmaps.c
-  x509v3/v3_prn.c
-  x509v3/v3_purp.c
-  x509v3/v3_skey.c
-  x509v3/v3_utl.c
+        asn1/a_bitstr.c
+        asn1/a_bool.c
+        asn1/a_d2i_fp.c
+        asn1/a_dup.c
+        asn1/a_enum.c
+        asn1/a_gentm.c
+        asn1/a_i2d_fp.c
+        asn1/a_int.c
+        asn1/a_mbstr.c
+        asn1/a_object.c
+        asn1/a_octet.c
+        asn1/a_print.c
+        asn1/a_strnid.c
+        asn1/a_time.c
+        asn1/a_type.c
+        asn1/a_utctm.c
+        asn1/a_utf8.c
+        asn1/asn1_lib.c
+        asn1/asn1_par.c
+        asn1/asn_pack.c
+        asn1/f_enum.c
+        asn1/f_int.c
+        asn1/f_string.c
+        asn1/tasn_dec.c
+        asn1/tasn_enc.c
+        asn1/tasn_fre.c
+        asn1/tasn_new.c
+        asn1/tasn_typ.c
+        asn1/tasn_utl.c
+        asn1/time_support.c
+        base64/base64.c
+        bio/bio.c
+        bio/bio_mem.c
+        bio/connect.c
+        bio/fd.c
+        bio/file.c
+        bio/hexdump.c
+        bio/pair.c
+        bio/printf.c
+        bio/socket.c
+        bio/socket_helper.c
+        blake2/blake2.c
+        bn_extra/bn_asn1.c
+        bn_extra/convert.c
+        buf/buf.c
+        bytestring/asn1_compat.c
+        bytestring/ber.c
+        bytestring/cbb.c
+        bytestring/cbs.c
+        bytestring/unicode.c
+        chacha/chacha.c
+        cipher_extra/cipher_extra.c
+        cipher_extra/derive_key.c
+        cipher_extra/e_aesccm.c
+        cipher_extra/e_aesctrhmac.c
+        cipher_extra/e_aesgcmsiv.c
+        cipher_extra/e_chacha20poly1305.c
+        cipher_extra/e_null.c
+        cipher_extra/e_rc2.c
+        cipher_extra/e_rc4.c
+        cipher_extra/e_tls.c
+        cipher_extra/tls_cbc.c
+        cmac/cmac.c
+        conf/conf.c
+        cpu-aarch64-fuchsia.c
+        cpu-aarch64-linux.c
+        cpu-aarch64-win.c
+        cpu-arm-linux.c
+        cpu-arm.c
+        cpu-intel.c
+        cpu-ppc64le.c
+        crypto.c
+        curve25519/curve25519.c
+        curve25519/spake25519.c
+        dh_extra/params.c
+        dh_extra/dh_asn1.c
+        digest_extra/digest_extra.c
+        dsa/dsa.c
+        dsa/dsa_asn1.c
+        ecdh_extra/ecdh_extra.c
+        ecdsa_extra/ecdsa_asn1.c
+        ec_extra/ec_asn1.c
+        ec_extra/ec_derive.c
+        ec_extra/hash_to_curve.c
+        err/err.c
+        err_data.c
+        engine/engine.c
+        evp/digestsign.c
+        evp/evp.c
+        evp/evp_asn1.c
+        evp/evp_ctx.c
+        evp/p_dsa_asn1.c
+        evp/p_ec.c
+        evp/p_ec_asn1.c
+        evp/p_ed25519.c
+        evp/p_ed25519_asn1.c
+        evp/p_rsa.c
+        evp/p_rsa_asn1.c
+        evp/p_x25519.c
+        evp/p_x25519_asn1.c
+        evp/pbkdf.c
+        evp/print.c
+        evp/scrypt.c
+        evp/sign.c
+        ex_data.c
+        hkdf/hkdf.c
+        hpke/hpke.c
+        hrss/hrss.c
+        lhash/lhash.c
+        mem.c
+        obj/obj.c
+        obj/obj_xref.c
+        pem/pem_all.c
+        pem/pem_info.c
+        pem/pem_lib.c
+        pem/pem_oth.c
+        pem/pem_pk8.c
+        pem/pem_pkey.c
+        pem/pem_x509.c
+        pem/pem_xaux.c
+        pkcs7/pkcs7.c
+        pkcs7/pkcs7_x509.c
+        pkcs8/pkcs8.c
+        pkcs8/pkcs8_x509.c
+        pkcs8/p5_pbev2.c
+        poly1305/poly1305.c
+        poly1305/poly1305_arm.c
+        poly1305/poly1305_vec.c
+        pool/pool.c
+        rand_extra/deterministic.c
+        rand_extra/forkunsafe.c
+        rand_extra/fuchsia.c
+        rand_extra/passive.c
+        rand_extra/rand_extra.c
+        rand_extra/windows.c
+        rc4/rc4.c
+        refcount_c11.c
+        refcount_lock.c
+        rsa_extra/rsa_asn1.c
+        rsa_extra/rsassa_pss_asn1.c
+        rsa_extra/rsa_print.c
+        stack/stack.c
+        siphash/siphash.c
+        thread.c
+        thread_none.c
+        thread_pthread.c
+        thread_win.c
+        trust_token/pmbtoken.c
+        trust_token/trust_token.c
+        trust_token/voprf.c
+        x509/a_digest.c
+        x509/a_sign.c
+        x509/a_strex.c
+        x509/a_verify.c
+        x509/algorithm.c
+        x509/asn1_gen.c
+        x509/by_dir.c
+        x509/by_file.c
+        x509/i2d_pr.c
+        x509/rsa_pss.c
+        x509/t_crl.c
+        x509/t_req.c
+        x509/t_x509.c
+        x509/t_x509a.c
+        x509/x509.c
+        x509/x509_att.c
+        x509/x509_cmp.c
+        x509/x509_d2.c
+        x509/x509_def.c
+        x509/x509_ext.c
+        x509/x509_lu.c
+        x509/x509_obj.c
+        x509/x509_req.c
+        x509/x509_set.c
+        x509/x509_trs.c
+        x509/x509_txt.c
+        x509/x509_v3.c
+        x509/x509_vfy.c
+        x509/x509_vpm.c
+        x509/x509cset.c
+        x509/x509name.c
+        x509/x509rset.c
+        x509/x509spki.c
+        x509/x_algor.c
+        x509/x_all.c
+        x509/x_attrib.c
+        x509/x_crl.c
+        x509/x_exten.c
+        x509/x_info.c
+        x509/x_name.c
+        x509/x_pkey.c
+        x509/x_pubkey.c
+        x509/x_req.c
+        x509/x_sig.c
+        x509/x_spki.c
+        x509/x_val.c
+        x509/x_x509.c
+        x509/x_x509a.c
+        x509v3/pcy_cache.c
+        x509v3/pcy_data.c
+        x509v3/pcy_lib.c
+        x509v3/pcy_map.c
+        x509v3/pcy_node.c
+        x509v3/pcy_tree.c
+        x509v3/v3_akey.c
+        x509v3/v3_akeya.c
+        x509v3/v3_alt.c
+        x509v3/v3_bcons.c
+        x509v3/v3_bitst.c
+        x509v3/v3_conf.c
+        x509v3/v3_cpols.c
+        x509v3/v3_crld.c
+        x509v3/v3_enum.c
+        x509v3/v3_extku.c
+        x509v3/v3_genn.c
+        x509v3/v3_ia5.c
+        x509v3/v3_info.c
+        x509v3/v3_int.c
+        x509v3/v3_lib.c
+        x509v3/v3_ncons.c
+        x509v3/v3_ocsp.c
+        x509v3/v3_pci.c
+        x509v3/v3_pcia.c
+        x509v3/v3_pcons.c
+        x509v3/v3_pmaps.c
+        x509v3/v3_prn.c
+        x509v3/v3_purp.c
+        x509v3/v3_skey.c
+        x509v3/v3_utl.c
 
-  $<TARGET_OBJECTS:fipsmodule>
+        $<TARGET_OBJECTS:fipsmodule>
 
-  ${CRYPTO_ARCH_SOURCES}
-  ${CRYPTO_FIPS_OBJECTS}
+        ${CRYPTO_ARCH_SOURCES}
+        ${CRYPTO_FIPS_OBJECTS}
 )
 
 if(FIPS_SHARED)
@@ -462,15 +462,15 @@ if(FIPS_SHARED)
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
   # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
   add_custom_command(
-    TARGET crypto POST_BUILD
-    COMMAND ${GO_EXECUTABLE} run
-    ${CMAKE_CURRENT_SOURCE_DIR}/../util/fipstools/inject_hash/inject_hash.go
-    -o libcrypto.so -in-object libcrypto.so ${EXTRA_INJECT_HASH_ARGS}
-    # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-    # go_executable isn't used (as it doesn't get built), but we list this
-    # dependency anyway in case it starts working in some CMake version.
-    DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+          TARGET crypto POST_BUILD
+          COMMAND ${GO_EXECUTABLE} run
+          ${CMAKE_CURRENT_SOURCE_DIR}/../util/fipstools/inject_hash/inject_hash.go
+          -o libcrypto.so -in-object libcrypto.so ${EXTRA_INJECT_HASH_ARGS}
+          # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+          # go_executable isn't used (as it doesn't get built), but we list this
+          # dependency anyway in case it starts working in some CMake version.
+          DEPENDS ../util/fipstools/inject_hash/inject_hash.go
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 endif()
 
@@ -496,13 +496,13 @@ if(USE_CUSTOM_LIBCXX)
           EXPORT crypto-targets
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  )
+          )
   target_link_libraries(crypto libcxx)
 endif()
 
 target_include_directories(crypto SYSTEM PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-  $<INSTALL_INTERFACE:include>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+        $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
   add_subdirectory(test)
@@ -511,9 +511,9 @@ if(BUILD_TESTING)
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
   add_executable(
-    urandom_test
+          urandom_test
 
-    fipsmodule/rand/urandom_test.cc
+          fipsmodule/rand/urandom_test.cc
   )
 
   target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
@@ -522,75 +522,76 @@ if(BUILD_TESTING)
   add_dependencies(all_tests urandom_test)
 
   add_executable(
-    crypto_test
+          crypto_test
 
-    abi_self_test.cc
-    asn1/asn1_test.cc
-    base64/base64_test.cc
-    bio/bio_test.cc
-    blake2/blake2_test.cc
-    buf/buf_test.cc
-    bytestring/bytestring_test.cc
-    chacha/chacha_test.cc
-    cipher_extra/aead_test.cc
-    cipher_extra/cipher_test.cc
-    cmac/cmac_test.cc
-    compiler_test.cc
-    constant_time_test.cc
-    cpu-arm-linux_test.cc
-    crypto_test.cc
-    curve25519/ed25519_test.cc
-    curve25519/spake25519_test.cc
-    curve25519/x25519_test.cc
-    ecdh_extra/ecdh_test.cc
-    dh_extra/dh_test.cc
-    digest_extra/digest_test.cc
-    dsa/dsa_test.cc
-    err/err_test.cc
-    evp/evp_extra_test.cc
-    evp/evp_test.cc
-    evp/pbkdf_test.cc
-    evp/scrypt_test.cc
-    fipsmodule/aes/aes_test.cc
-    fipsmodule/bn/bn_test.cc
-    fipsmodule/ec/ec_test.cc
-    fipsmodule/ec/p256-nistz_test.cc
-    fipsmodule/ecdsa/ecdsa_test.cc
-    fipsmodule/md5/md5_test.cc
-    fipsmodule/modes/gcm_test.cc
-    fipsmodule/rand/ctrdrbg_test.cc
-    fipsmodule/rand/fork_detect_test.cc
-    fipsmodule/sha/sha_test.cc
-    hkdf/hkdf_test.cc
-    hpke/hpke_test.cc
-    hmac_extra/hmac_test.cc
-    hrss/hrss_test.cc
-    impl_dispatch_test.cc
-    lhash/lhash_test.cc
-    obj/obj_test.cc
-    pem/pem_test.cc
-    pkcs7/pkcs7_test.cc
-    pkcs8/pkcs8_test.cc
-    pkcs8/pkcs12_test.cc
-    poly1305/poly1305_test.cc
-    pool/pool_test.cc
-    rand_extra/rand_test.cc
-    refcount_test.cc
-    rsa_extra/rsa_test.cc
-    rsa_extra/rsassa_pss_asn1_test.cc
-    self_test.cc
-    stack/stack_test.cc
-    siphash/siphash_test.cc
-    test/file_test_gtest.cc
-    thread_test.cc
-    trust_token/trust_token_test.cc
-    x509/x509_test.cc
-    x509/x509_time_test.cc
-    x509v3/tab_test.cc
-    x509v3/v3name_test.cc
+          abi_self_test.cc
+          asn1/asn1_test.cc
+          base64/base64_test.cc
+          bio/bio_test.cc
+          blake2/blake2_test.cc
+          buf/buf_test.cc
+          bytestring/bytestring_test.cc
+          chacha/chacha_test.cc
+          cipher_extra/aead_test.cc
+          cipher_extra/cipher_test.cc
+          cmac/cmac_test.cc
+          compiler_test.cc
+          conf/conf_test.cc
+          constant_time_test.cc
+          cpu-arm-linux_test.cc
+          crypto_test.cc
+          curve25519/ed25519_test.cc
+          curve25519/spake25519_test.cc
+          curve25519/x25519_test.cc
+          ecdh_extra/ecdh_test.cc
+          dh_extra/dh_test.cc
+          digest_extra/digest_test.cc
+          dsa/dsa_test.cc
+          err/err_test.cc
+          evp/evp_extra_test.cc
+          evp/evp_test.cc
+          evp/pbkdf_test.cc
+          evp/scrypt_test.cc
+          fipsmodule/aes/aes_test.cc
+          fipsmodule/bn/bn_test.cc
+          fipsmodule/ec/ec_test.cc
+          fipsmodule/ec/p256-nistz_test.cc
+          fipsmodule/ecdsa/ecdsa_test.cc
+          fipsmodule/md5/md5_test.cc
+          fipsmodule/modes/gcm_test.cc
+          fipsmodule/rand/ctrdrbg_test.cc
+          fipsmodule/rand/fork_detect_test.cc
+          fipsmodule/sha/sha_test.cc
+          hkdf/hkdf_test.cc
+          hpke/hpke_test.cc
+          hmac_extra/hmac_test.cc
+          hrss/hrss_test.cc
+          impl_dispatch_test.cc
+          lhash/lhash_test.cc
+          obj/obj_test.cc
+          pem/pem_test.cc
+          pkcs7/pkcs7_test.cc
+          pkcs8/pkcs8_test.cc
+          pkcs8/pkcs12_test.cc
+          poly1305/poly1305_test.cc
+          pool/pool_test.cc
+          rand_extra/rand_test.cc
+          refcount_test.cc
+          rsa_extra/rsa_test.cc
+          rsa_extra/rsassa_pss_asn1_test.cc
+          self_test.cc
+          stack/stack_test.cc
+          siphash/siphash_test.cc
+          test/file_test_gtest.cc
+          thread_test.cc
+          trust_token/trust_token_test.cc
+          x509/x509_test.cc
+          x509/x509_time_test.cc
+          x509v3/tab_test.cc
+          x509v3/v3name_test.cc
 
-    $<TARGET_OBJECTS:crypto_test_data>
-    $<TARGET_OBJECTS:boringssl_gtest_main>
+          $<TARGET_OBJECTS:crypto_test_data>
+          $<TARGET_OBJECTS:boringssl_gtest_main>
   )
 
   add_dependencies(crypto_test global_target)
@@ -606,22 +607,22 @@ install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
+        )
 
 configure_file("cmake/crypto-config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
-    @ONLY)
+        "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
+        @ONLY)
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake"
-    COMPONENT Development)
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake"
+        COMPONENT Development)
 
 if (BUILD_SHARED_LIBS)
-   set (TARGET_DIR "shared")
+  set (TARGET_DIR "shared")
 else()
-   set (TARGET_DIR "static")
+  set (TARGET_DIR "static")
 endif()
 
 install(EXPORT crypto-targets
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
-    COMPONENT Development)
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
+        COMPONENT Development)

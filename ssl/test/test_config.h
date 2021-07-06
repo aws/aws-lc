@@ -44,6 +44,11 @@ struct TestConfig {
   std::vector<std::string> ech_server_keys;
   std::vector<int> ech_is_retry_config;
   bool expect_ech_accept = false;
+  std::string expect_ech_name_override;
+  bool expect_no_ech_name_override = false;
+  std::string expect_ech_retry_configs;
+  bool expect_no_ech_retry_configs = false;
+  std::string ech_config_list;
   std::string expect_certificate_types;
   bool require_any_client_certificate = false;
   std::string advertise_npn;
@@ -141,6 +146,7 @@ struct TestConfig {
   bool send_alert = false;
   bool peek_then_read = false;
   bool enable_grease = false;
+  bool permute_extensions = false;
   int max_cert_list = 0;
   std::string ticket_key;
   bool use_exporter_between_reads = false;
@@ -173,6 +179,7 @@ struct TestConfig {
   bool decline_ocsp_callback = false;
   bool fail_ocsp_callback = false;
   bool install_cert_compression_algs = false;
+  int install_one_cert_compression_alg = 0;
   bool reverify_on_resume = false;
   bool enforce_rsa_key_usage = false;
   bool is_handshaker_supported = false;
