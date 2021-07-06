@@ -87,9 +87,12 @@ When adding new functionality, adding new fuzz tests are important to provide ad
 ### Steps
 1. `NEW_FUNCTION='name_of_new_fuzzing_target'`
 2. `touch fuzz/${NEW_FUNCTION}.cc` \
-    Write fuzzing code for libfuzzer to parse in `fuzz/${NEW_FUNCTION}.cc`. 
+    Write fuzzing code for libfuzzer to parse in `fuzz/${NEW_FUNCTION}.cc`. The code in this file will be how Libfuzzer 
+   identifies how to parse any data inputs the fuzzer gives. Fuzz tests test upon random data inputs, so in most cases 
+   we write code to test on data parsing (and reserializing the data again if applicable).
 3. `mkdir fuzz/${NEW_FUNCTION}_corpus_raw` \
-   Import unit test files into the `fuzz/${NEW_FUNCTION}_corpus_raw` directory. These will be used to create our new fuzzing corpus.
+   Import any existing unit test files into the `fuzz/${NEW_FUNCTION}_corpus_raw` directory. These will be used to 
+   create our new fuzzing corpus.
 4. Add `fuzzer('name_of_new_fuzzing_target')` target in the `fuzz/CmakeLists.txt` file.
 5. Build AWS-LC with fuzzing enabled (only buildable with clang) 
    ```
