@@ -1,3 +1,6 @@
+#ifndef OPENSSL_HEADER_TOOL_OSSLBM_H
+#define OPENSSL_HEADER_TOOL_OSSLBM_H
+
 #include <openssl/aes.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
@@ -43,3 +46,5 @@ OSSL_MAKE_DELETER(EC_POINT, EC_POINT_free)
 OSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 OSSL_MAKE_DELETER(EVP_MD_CTX, EVP_MD_CTX_free)
 } // namespace ossl
+
+#endif //OPENSSL_HEADER_TOOL_OSSLBM_H

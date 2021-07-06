@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OPENSSL_HEADER_TOOL_BSSLBM_H
+#define OPENSSL_HEADER_TOOL_BSSLBM_H
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
@@ -21,3 +22,5 @@
 
 #define BM_NAMESPACE bssl
 #define BM_ECDSA_size(key) ECDSA_size(key)
+
+#endif //OPENSSL_HEADER_TOOL_BSSLBM_H
