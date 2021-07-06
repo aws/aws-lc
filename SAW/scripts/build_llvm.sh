@@ -13,4 +13,5 @@ export LLVM_COMPILER=clang
 export CC=wllvm
 export CXX=clang++
 cmake -DCMAKE_BUILD_TYPE=Rel ../../../src
-make
+NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+make -j $NUM_CPU_THREADS

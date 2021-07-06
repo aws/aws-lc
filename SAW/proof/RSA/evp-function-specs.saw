@@ -119,6 +119,7 @@ let EVP_DigestVerifyFinal_spec num = do {
   evp_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
   pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
   (rsa_ptr, n, _d, e, _p, _q) <- pointer_to_fresh_rsa_st false false false false;
+  crucible_precond {{ (integerFromBV e) % 2 == 1 }};
   points_to_evp_pkey_st pkey_ptr rsa_ptr;
   rsa_pkey_ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.RSA_PKEY_CTX");
   points_to_RSA_PKEY_CTX rsa_pkey_ctx_ptr digest_ptr;

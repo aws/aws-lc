@@ -24,6 +24,7 @@ let p_bytes = eval_size {| p_bits / 8 |};
 let p_words = eval_size {| p_bytes / 8 |};
 let salt_len = SHA_DIGEST_LENGTH;
 let salt_len_param = eval_int {{ -1 : [32] }};
+let e_words = 1;
 
 
 /*
@@ -440,6 +441,7 @@ let RSA_verify_pss_mgf1_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   (rsa_ptr, n, _d, e, _p, _q) <- pointer_to_fresh_rsa_st false false false false;
+  crucible_precond {{ (integerFromBV e) % 2 == 1 }};
   (msg, msg_ptr) <- ptr_to_fresh_readonly "msg" (llvm_array SHA_DIGEST_LENGTH i8);
   md_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
   points_to_env_md_st md_ptr;
@@ -656,6 +658,7 @@ RSA_verify_pss_mgf1_ov <- llvm_verify
   , BN_ucmp_gt_n_e_ov
   , BN_num_bits_n_bits_ov
   , BN_num_bits_e_bits_ov
+  , BN_is_odd_ov
   , sha512_block_data_order_spec
   , value_barrier_w_ov
   , ERR_put_error_ov

@@ -19,6 +19,18 @@ let BN_num_bits_spec num_bits = do {
   crucible_return (crucible_term {{ `num_bits : [32] }});
 };
 
+let BN_is_odd_spec num = do {
+  let num_bits = eval_size {| num * 64 |};
+
+  bn_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  (bn, bn_d_ptr) <- ptr_to_fresh_readonly "bn" (llvm_int num_bits);
+  points_to_bignum_st_same bn_ptr bn_d_ptr num;
+
+  crucible_execute_func [bn_ptr];
+
+  crucible_return (crucible_term {{ if (integerFromBV bn) % 2 == 1 then (1 : [32]) else 0 }});
+};
+
 bn_uadd_consttime_n_p_ov <- crucible_llvm_unsafe_assume_spec
   m
   "bn_uadd_consttime"
@@ -157,3 +169,7 @@ BN_num_bits_e_bits_ov <- llvm_verify m "BN_num_bits"
   (BN_num_bits_spec 17)
   (w4_unint_z3 []);
 
+BN_is_odd_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_is_odd"
+  (BN_is_odd_spec e_words);
