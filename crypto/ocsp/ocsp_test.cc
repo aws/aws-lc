@@ -218,7 +218,7 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         OCSP_RESPFINDSTATUS_SUCCESS,
         V_OCSP_CERTSTATUS_REVOKED
     },
-    // Test OCSP response status is revoked.
+    // Test OCSP response status is unknown.
     {
         "ocsp_response_unknown",
         "ca_cert",
@@ -258,7 +258,7 @@ static const OCSPTestVectorExtended nTestVectors[] = {
     },
 
     // === SHA256 OCSP RESPONSES ===
-    // Test valid OCSP response signed by an OCSP responder
+    // Test valid OCSP response signed by an OCSP responder.
     {
         "ocsp_response_sha256",
         "ca_cert",
@@ -269,7 +269,7 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         OCSP_RESPFINDSTATUS_SUCCESS,
         V_OCSP_CERTSTATUS_GOOD
     },
-    // Test a SHA-256 revoked OCSP response status
+    // Test a SHA-256 revoked OCSP response status.
     {
         "ocsp_response_revoked_sha256",
         "ca_cert",
@@ -280,7 +280,7 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         OCSP_RESPFINDSTATUS_SUCCESS,
         V_OCSP_CERTSTATUS_REVOKED
     },
-    // Test OCSP response status is revoked.
+    // Test a SHA-256 unknown OCSP response status.
     {
         "ocsp_response_unknown_sha256",
         "ca_cert",
@@ -309,16 +309,6 @@ static const OCSPTestVectorExtended nTestVectors[] = {
     // responder certificate is a valid OCSP responder for some other case and
     // chains to a trusted root). Thus, this response is not valid for any
     // request.
-    {
-        "ocsp_response_wrong_signer_sha256",
-        "ca_cert",
-        "server_cert",
-        EVP_sha256(),
-        OCSP_RESPONSE_STATUS_SUCCESSFUL,
-        OCSP_VERIFYSTATUS_ERROR,
-        0,
-        0
-    },
     {
         "ocsp_response_wrong_signer_sha256",
         "ca_cert",
