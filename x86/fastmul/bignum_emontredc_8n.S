@@ -90,7 +90,7 @@
 
 .macro addrow arg1
         mov     rdx, [m+8*\arg1]
-        xor     rax, rax         // Get a known flag state
+        xor     eax, eax         // Get a known flag state
 
 .if (\arg1 % 8 == 0)
         adox    r8, [zz+8*\arg1]
@@ -206,7 +206,7 @@
 
 .macro adurowa arg1
         mov     rdx, w          // Get the word-level modular inverse
-        xor     rax, rax        // Get a known flag state
+        xor     eax, eax        // Get a known flag state
 .if (\arg1 % 8 == 0)
         mulx    rax, rdx, r8
 .elseif (\arg1 % 8 == 1)
@@ -262,7 +262,7 @@
 
 .macro adurowza
         mov     rdx, w          // Get the word-level modular inverse
-        xor     rax, rax        // Get a known flag state
+        xor     eax, eax        // Get a known flag state
 
         mov     r8, [z]         // r8 = zeroth word
         mulx    rax, rdx, r8    // Compute multiplier word
@@ -359,7 +359,7 @@ bignum_emontredc_8n:
 
 // Pre-initialize the return value to 0 just in case of early exit below
 
-        xor     rax, rax
+        xor     eax, eax
 
 // Divide the input k by 8, and push k8m1 = (k/8 - 1)<<6 which is used as
 // the scaled inner loop counter / pointer adjustment repeatedly. Also push

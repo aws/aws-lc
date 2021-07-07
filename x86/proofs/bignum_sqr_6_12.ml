@@ -39,7 +39,7 @@ let bignum_sqr_6_12_mc =
   0x48; 0x8b; 0x56; 0x18;  (* MOV (% rdx) (Memop Quadword (%% (rsi,24))) *)
   0xc4; 0x62; 0x8b; 0xf6; 0x7e; 0x20;
                            (* MULX4 (% r15,% r14) (% rdx,Memop Quadword (%% (rsi,32))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0x8b; 0x56; 0x10;  (* MOV (% rdx) (Memop Quadword (%% (rsi,16))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x0e;
                            (* MULX4 (% rcx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
@@ -78,7 +78,7 @@ let bignum_sqr_6_12_mc =
                            (* ADOX (% r15) (% rbp) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
                            (* ADCX (% r15) (% rbp) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0x8b; 0x56; 0x20;  (* MOV (% rdx) (Memop Quadword (%% (rsi,32))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x0e;
                            (* MULX4 (% rcx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
@@ -123,7 +123,7 @@ let bignum_sqr_6_12_mc =
                            (* ADOX (% rbp) (% rax) *)
   0x66; 0x48; 0x0f; 0x38; 0xf6; 0xe8;
                            (* ADCX (% rbp) (% rax) *)
-  0x48; 0x31; 0xc0;        (* XOR (% rax) (% rax) *)
+  0x31; 0xc0;              (* XOR (% eax) (% eax) *)
   0x48; 0x8b; 0x16;        (* MOV (% rdx) (Memop Quadword (%% (rsi,0))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0xd2;
                            (* MULX4 (% rdx,% rax) (% rdx,% rdx) *)
@@ -217,14 +217,14 @@ let BIGNUM_SQR_6_12_EXEC = X86_MK_EXEC_RULE bignum_sqr_6_12_mc;;
 
 let BIGNUM_SQR_6_12_CORRECT = time prove
  (`!z x a pc.
-     nonoverlapping (word pc,0x223) (z,8 * 12) /\
+     nonoverlapping (word pc,0x220) (z,8 * 12) /\
      (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 12))
      ==> ensures x86
           (\s. bytes_loaded s (word pc) bignum_sqr_6_12_mc /\
                read RIP s = word(pc + 0x0a) /\
                C_ARGUMENTS [z; x] s /\
                bignum_from_memory (x,6) s = a)
-          (\s. read RIP s = word (pc + 0x218) /\
+          (\s. read RIP s = word (pc + 0x215) /\
                bignum_from_memory (z,12) s = a EXP 2)
           (MAYCHANGE [RIP; RAX; RBP; RBX; RCX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -246,8 +246,8 @@ let BIGNUM_SQR_6_12_SUBROUTINE_CORRECT = time prove
  (`!z x a pc stackpointer returnaddress.
      nonoverlapping (word_sub stackpointer (word 48),56) (z,8 * 12) /\
      ALL (nonoverlapping (word_sub stackpointer (word 48),48))
-         [(word pc,0x223); (x,8 * 6)] /\
-     nonoverlapping (word pc,0x223) (z,8 * 12) /\
+         [(word pc,0x220); (x,8 * 6)] /\
+     nonoverlapping (word pc,0x220) (z,8 * 12) /\
      (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 12))
      ==> ensures x86
           (\s. bytes_loaded s (word pc) bignum_sqr_6_12_mc /\

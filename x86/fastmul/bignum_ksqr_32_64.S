@@ -97,7 +97,7 @@ bignum_ksqr_32_64:
 // carry chain. Stash the carry suspended from the 3k position at the end of
 // the temp buffer t[4*k].
 
-        xor     rdx, rdx
+        xor     edx, edx
         .set i,  0
         .rep k
         mov     rax, [z-8*2*k+8*k+8*i]
@@ -157,7 +157,7 @@ bignum_ksqr_32_64:
 
 // Finally propagate the carry to the top quarter
 
-        xor     rax, rax
+        xor     eax, eax
         add     [t+8*3*k],rdx
         .set i,  1
         .rep k-1
@@ -179,15 +179,13 @@ bignum_ksqr_32_64:
 // Local copy of the half-length subroutine
 
 local_bignum_sqr_16_32:
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    rdx, [x]
         mulx   rax, r9, [x+0x8]
         mov    [z+0x8], r9
-        mov    r9, rbp
         mulx   rbx, r10, [x+0x10]
         adcx   r10, rax
         mov    [z+0x10], r10
-        mov    r10, rbp
         mulx   rax, r11, [x+0x18]
         adcx   r11, rbx
         mulx   rbx, r12, [x+0x20]
@@ -199,7 +197,7 @@ local_bignum_sqr_16_32:
         mulx   r8, r15, [x+0x38]
         adcx   r15, rbx
         adcx   r8, rbp
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    rdx, [x+0x8]
         mulx   rbx, rax, [x+0x10]
         adcx   r11, rax
@@ -218,17 +216,15 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r15, rax
         adox   r8, rbx
-        mov    r11, rbp
-        mulx   rbx, rax, [x+0x38]
+        mulx   r9, rax, [x+0x38]
         adcx   r8, rax
-        adox   r9, rbx
-        mov    r12, rbp
+        adox   r9, rbp
         mov    rdx, [x+0x20]
-        mulx   rbx, rax, [x+0x28]
+        mulx   r10, rax, [x+0x28]
         adcx   r9, rax
-        adox   r10, rbx
+        adox   r10, rbp
         adcx   r10, rbp
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    rdx, [x+0x10]
         mulx   rbx, rax, [x+0x18]
         adcx   r13, rax
@@ -248,16 +244,14 @@ local_bignum_sqr_16_32:
         adcx   r9, rax
         adox   r10, rbx
         mov    rdx, [x+0x30]
-        mov    r13, rbp
-        mulx   rbx, rax, [x+0x20]
+        mulx   r11, rax, [x+0x20]
         adcx   r10, rax
-        adox   r11, rbx
-        mov    r14, rbp
-        mulx   rbx, rax, [x+0x28]
+        adox   r11, rbp
+        mulx   r12, rax, [x+0x28]
         adcx   r11, rax
-        adox   r12, rbx
+        adox   r12, rbp
         adcx   r12, rbp
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    rdx, [x+0x18]
         mulx   rbx, rax, [x+0x20]
         adcx   r15, rax
@@ -276,21 +270,19 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x20]
         adcx   r11, rax
         adox   r12, rbx
-        mulx   rbx, rax, [x+0x28]
+        mulx   r13, rax, [x+0x28]
         adcx   r12, rax
-        adox   r13, rbx
-        mulx   rbx, rax, [x+0x30]
+        adox   r13, rbp
+        mulx   r14, rax, [x+0x30]
         adcx   r13, rax
-        adox   r14, rbx
+        adox   r14, rbp
         adcx   r14, rbp
-        mov    r15, rbp
         mov    rdx, [x+0x40]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r8, rax
         adox   r9, rbx
         mov    [z+0x40], r8
-        mov    r8, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r9, rax
         adox   r10, rbx
@@ -306,20 +298,19 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x28]
         adcx   r13, rax
         adox   r14, rbx
-        mulx   rbx, rax, [x+0x30]
+        mulx   r15, rax, [x+0x30]
         adcx   r14, rax
-        adox   r15, rbx
-        mulx   rbx, rax, [x+0x38]
+        adox   r15, rbp
+        mulx   r8, rax, [x+0x38]
         adcx   r15, rax
-        adox   r8, rbx
+        adox   r8, rbp
         adcx   r8, rbp
         mov    rdx, [x+0x48]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r9, rax
         adox   r10, rbx
         mov    [z+0x48], r9
-        mov    r9, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r10, rax
         adox   r11, rbx
@@ -338,17 +329,16 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r15, rax
         adox   r8, rbx
-        mulx   rbx, rax, [x+0x38]
+        mulx   r9, rax, [x+0x38]
         adcx   r8, rax
-        adox   r9, rbx
+        adox   r9, rbp
         adcx   r9, rbp
         mov    rdx, [x+0x50]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r10, rax
         adox   r11, rbx
         mov    [z+0x50], r10
-        mov    r10, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r11, rax
         adox   r12, rbx
@@ -367,17 +357,16 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r8, rax
         adox   r9, rbx
-        mulx   rbx, rax, [x+0x38]
+        mulx   r10, rax, [x+0x38]
         adcx   r9, rax
-        adox   r10, rbx
+        adox   r10, rbp
         adcx   r10, rbp
         mov    rdx, [x+0x58]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r11, rax
         adox   r12, rbx
         mov    [z+0x58], r11
-        mov    r11, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r12, rax
         adox   r13, rbx
@@ -396,17 +385,16 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r9, rax
         adox   r10, rbx
-        mulx   rbx, rax, [x+0x38]
+        mulx   r11, rax, [x+0x38]
         adcx   r10, rax
-        adox   r11, rbx
+        adox   r11, rbp
         adcx   r11, rbp
         mov    rdx, [x+0x60]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r12, rax
         adox   r13, rbx
         mov    [z+0x60], r12
-        mov    r12, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r13, rax
         adox   r14, rbx
@@ -425,17 +413,16 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r10, rax
         adox   r11, rbx
-        mulx   rbx, rax, [x+0x38]
+        mulx   r12, rax, [x+0x38]
         adcx   r11, rax
-        adox   r12, rbx
+        adox   r12, rbp
         adcx   r12, rbp
         mov    rdx, [x+0x68]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r13, rax
         adox   r14, rbx
         mov    [z+0x68], r13
-        mov    r13, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r14, rax
         adox   r15, rbx
@@ -454,17 +441,16 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r11, rax
         adox   r12, rbx
-        mulx   rbx, rax, [x+0x38]
+        mulx   r13, rax, [x+0x38]
         adcx   r12, rax
-        adox   r13, rbx
+        adox   r13, rbp
         adcx   r13, rbp
         mov    rdx, [x+0x70]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r14, rax
         adox   r15, rbx
         mov    [z+0x70], r14
-        mov    r14, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r15, rax
         adox   r8, rbx
@@ -483,17 +469,16 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r12, rax
         adox   r13, rbx
-        mulx   rbx, rax, [x+0x38]
+        mulx   r14, rax, [x+0x38]
         adcx   r13, rax
-        adox   r14, rbx
+        adox   r14, rbp
         adcx   r14, rbp
         mov    rdx, [x+0x78]
-        xor    rbp, rbp
+        xor    ebp, ebp
         mulx   rbx, rax, [x]
         adcx   r15, rax
         adox   r8, rbx
         mov    [z+0x78], r15
-        mov    r15, rbp
         mulx   rbx, rax, [x+0x8]
         adcx   r8, rax
         adox   r9, rbx
@@ -512,9 +497,9 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x30]
         adcx   r13, rax
         adox   r14, rbx
-        mulx   rbx, rax, [x+0x38]
+        mulx   r15, rax, [x+0x38]
         adcx   r14, rax
-        adox   r15, rbx
+        adox   r15, rbp
         adcx   r15, rbp
         mov    [z+0x80], r8
         mov    [z+0x88], r9
@@ -524,7 +509,7 @@ local_bignum_sqr_16_32:
         mov    [z+0xa8], r13
         mov    [z+0xb0], r14
         mov    [z+0xb8], r15
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    r9, [z+0x88]
         mov    r10, [z+0x90]
         mov    r11, [z+0x98]
@@ -532,7 +517,6 @@ local_bignum_sqr_16_32:
         mov    r13, [z+0xa8]
         mov    r14, [z+0xb0]
         mov    r15, [z+0xb8]
-        mov    r8, rbp
         mov    rdx, [x+0x40]
         mulx   rbx, rax, [x+0x48]
         adcx   r9, rax
@@ -548,19 +532,17 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x60]
         adcx   r12, rax
         adox   r13, rbx
-        mov    r9, rbp
         mulx   rbx, rax, [x+0x68]
         adcx   r13, rax
         adox   r14, rbx
-        mov    r10, rbp
         mulx   rbx, rax, [x+0x70]
         adcx   r14, rax
         adox   r15, rbx
-        mulx   rbx, rax, [x+0x78]
+        mulx   r8, rax, [x+0x78]
         adcx   r15, rax
-        adox   r8, rbx
+        adox   r8, rbp
         adcx   r8, rbp
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    rdx, [x+0x48]
         mulx   rbx, rax, [x+0x50]
         adcx   r11, rax
@@ -579,17 +561,15 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x70]
         adcx   r15, rax
         adox   r8, rbx
-        mov    r11, rbp
-        mulx   rbx, rax, [x+0x78]
+        mulx   r9, rax, [x+0x78]
         adcx   r8, rax
-        adox   r9, rbx
-        mov    r12, rbp
+        adox   r9, rbp
         mov    rdx, [x+0x60]
-        mulx   rbx, rax, [x+0x68]
+        mulx   r10, rax, [x+0x68]
         adcx   r9, rax
-        adox   r10, rbx
+        adox   r10, rbp
         adcx   r10, rbp
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    rdx, [x+0x50]
         mulx   rbx, rax, [x+0x58]
         adcx   r13, rax
@@ -609,16 +589,14 @@ local_bignum_sqr_16_32:
         adcx   r9, rax
         adox   r10, rbx
         mov    rdx, [x+0x70]
-        mov    r13, rbp
-        mulx   rbx, rax, [x+0x60]
+        mulx   r11, rax, [x+0x60]
         adcx   r10, rax
-        adox   r11, rbx
-        mov    r14, rbp
-        mulx   rbx, rax, [x+0x68]
+        adox   r11, rbp
+        mulx   r12, rax, [x+0x68]
         adcx   r11, rax
-        adox   r12, rbx
+        adox   r12, rbp
         adcx   r12, rbp
-        xor    rbp, rbp
+        xor    ebp, ebp
         mov    rdx, [x+0x58]
         mulx   rbx, rax, [x+0x60]
         adcx   r15, rax
@@ -637,14 +615,13 @@ local_bignum_sqr_16_32:
         mulx   rbx, rax, [x+0x60]
         adcx   r11, rax
         adox   r12, rbx
-        mulx   rbx, rax, [x+0x68]
+        mulx   r13, rax, [x+0x68]
         adcx   r12, rax
-        adox   r13, rbx
-        mulx   rbx, rax, [x+0x70]
+        adox   r13, rbp
+        mulx   r14, rax, [x+0x70]
         adcx   r13, rax
-        adox   r14, rbx
+        adox   r14, rbp
         adcx   r14, rbp
-        mov    r15, rbp
         mov    [z+0xc0], r8
         mov    [z+0xc8], r9
         mov    [z+0xd0], r10
@@ -652,8 +629,7 @@ local_bignum_sqr_16_32:
         mov    [z+0xe0], r12
         mov    [z+0xe8], r13
         mov    [z+0xf0], r14
-        mov    [z+0xf8], r15
-        xor    rax, rax
+        xor    ebp, ebp
         mov    rdx, [x]
         mulx   rbx, rax, rdx
         mov    [z], rax
@@ -807,8 +783,7 @@ local_bignum_sqr_16_32:
         adcx   rdx, rdx
         adox   rdx, rax
         mov    [z+0xf0], rdx
-        mov    rdx, [z+0xf8]
-        adcx   rdx, rdx
-        adox   rdx, rbx
-        mov    [z+0xf8], rdx
+        adcx   rbx, rbp
+        adox   rbx, rbp
+        mov    [z+0xf8], rbx
         ret

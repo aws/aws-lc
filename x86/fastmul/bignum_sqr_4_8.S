@@ -30,6 +30,7 @@
 // A zero register
 
 #define zero rbp
+#define zeroe ebp
 
 // Other registers
 
@@ -63,7 +64,7 @@ bignum_sqr_4_8:
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Chain in the addition of 02 + 12 + 13 to that window (no carry-out possible)
 // This gives all the "heterogeneous" terms of the squaring ready to double
@@ -85,7 +86,7 @@ bignum_sqr_4_8:
 // In principle this is otiose as CF and OF carries are absorbed at this point
 // However it seems helpful for the OOO engine to be told it's a fresh start
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Double and add to the 00 + 11 + 22 + 33 terms
 //

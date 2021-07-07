@@ -35,6 +35,7 @@
 // A zero register
 
 #define zero rbp
+#define zeroe ebp
 
 // Hm, it's so painful not being able to numerically index registers
 // Add in x[i] * rdx to the (i,i+1) position with the register window
@@ -75,7 +76,7 @@
 
 .macro addrow arg1
         mov     rdx, [y+8*\arg1]
-        xor     zero, zero
+        xor     zeroe, zeroe
 
         mulpadd \arg1, 0
 
@@ -172,7 +173,7 @@ bignum_mul_8_16:
 
 // Zero a register, which also makes sure we don't get a fake carry-in
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Do the zeroth row, which is a bit different
 // Write back the zero-zero product and then accumulate

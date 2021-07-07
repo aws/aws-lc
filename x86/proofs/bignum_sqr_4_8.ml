@@ -34,7 +34,7 @@ let bignum_sqr_4_8_mc =
   0x48; 0x8b; 0x56; 0x10;  (* MOV (% rdx) (Memop Quadword (%% (rsi,16))) *)
   0xc4; 0x62; 0x9b; 0xf6; 0x6e; 0x18;
                            (* MULX4 (% r13,% r12) (% rdx,Memop Quadword (%% (rsi,24))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x0e;
                            (* MULX4 (% rcx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc8;
@@ -60,7 +60,7 @@ let bignum_sqr_4_8_mc =
                            (* ADOX (% r13) (% rbp) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xed;
                            (* ADCX (% r13) (% rbp) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0x8b; 0x16;        (* MOV (% rdx) (Memop Quadword (%% (rsi,0))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0xd2;
                            (* MULX4 (% rdx,% rax) (% rdx,% rdx) *)
@@ -123,14 +123,14 @@ let BIGNUM_SQR_4_8_EXEC = X86_MK_EXEC_RULE bignum_sqr_4_8_mc;;
 
 let BIGNUM_SQR_4_8_CORRECT = time prove
  (`!z x a pc.
-     nonoverlapping (word pc,0x10b) (z,8 * 8) /\
+     nonoverlapping (word pc,0x109) (z,8 * 8) /\
      (x = z \/ nonoverlapping (x,8 * 4) (z,8 * 8))
      ==> ensures x86
           (\s. bytes_loaded s (word pc) bignum_sqr_4_8_mc /\
                read RIP s = word(pc + 0x05) /\
                C_ARGUMENTS [z; x] s /\
                bignum_from_memory (x,4) s = a)
-          (\s. read RIP s = word (pc + 0x105) /\
+          (\s. read RIP s = word (pc + 0x103) /\
                bignum_from_memory (z,8) s = a EXP 2)
           (MAYCHANGE [RIP; RAX; RBP; RCX; RDX;
                       R8; R9; R10; R11; R12; R13] ,,
@@ -152,8 +152,8 @@ let BIGNUM_SQR_4_8_SUBROUTINE_CORRECT = time prove
  (`!z x a pc stackpointer returnaddress.
      nonoverlapping (word_sub stackpointer (word 24),32) (z,8 * 8) /\
      ALL (nonoverlapping (word_sub stackpointer (word 24),24))
-         [(word pc,0x10b); (x,8 * 4)] /\
-     nonoverlapping (word pc,0x10b) (z,8 * 8) /\
+         [(word pc,0x109); (x,8 * 4)] /\
+     nonoverlapping (word pc,0x109) (z,8 * 8) /\
      (x = z \/ nonoverlapping (x,8 * 4) (z,8 * 8))
      ==> ensures x86
           (\s. bytes_loaded s (word pc) bignum_sqr_4_8_mc /\

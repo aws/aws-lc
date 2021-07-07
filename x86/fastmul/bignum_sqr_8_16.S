@@ -22,6 +22,8 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 // These are actually right
 
 #define z rdi
@@ -30,6 +32,7 @@
 // A zero register
 
 #define zero rbp
+#define zeroe ebp
 
 // mulpadd i, j adds rdx * x[i] into the window  at the i+j point
 
@@ -63,20 +66,58 @@
 
 .endm
 
+// mulpade i, j adds rdx * x[i] into the window at i+j
+// but re-creates the top word assuming nothing to add there
+
+.macro mulpade arg1,arg2
+.if ((\arg1 + \arg2) % 8 == 0)
+        mulx    r9, rax, [x+8*\arg1]
+        adcx    r8, rax
+        adox    r9, zero
+.elseif ((\arg1 + \arg2) % 8 == 1)
+        mulx    r10, rax, [x+8*\arg1]
+        adcx    r9, rax
+        adox    r10, zero
+.elseif ((\arg1 + \arg2) % 8 == 2)
+        mulx    r11, rax, [x+8*\arg1]
+        adcx    r10, rax
+        adox    r11, zero
+.elseif ((\arg1 + \arg2) % 8 == 3)
+        mulx    r12, rax, [x+8*\arg1]
+        adcx    r11, rax
+        adox    r12, zero
+.elseif ((\arg1 + \arg2) % 8 == 4)
+        mulx    r13, rax, [x+8*\arg1]
+        adcx    r12, rax
+        adox    r13, zero
+.elseif ((\arg1 + \arg2) % 8 == 5)
+        mulx    r14, rax, [x+8*\arg1]
+        adcx    r13, rax
+        adox    r14, zero
+.elseif ((\arg1 + \arg2) % 8 == 6)
+        mulx    r15, rax, [x+8*\arg1]
+        adcx    r14, rax
+        adox    r15, zero
+.elseif ((\arg1 + \arg2) % 8 == 7)
+        mulx    r8, rax, [x+8*\arg1]
+        adcx    r15, rax
+        adox    r8, zero
+.endif
+
+.endm
+
 .macro diagonals
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Set initial window [r8..r10] + 2 wb = 10 + 20 + 30 + 40 + 50 + 60 + 70
 
         mov     rdx, [x+8*0]
         mulx    rax, r9, [x+8*1]
         mov     [z+8*1], r9
-        mov     r9, zero
         mulx    rbx, r10, [x+8*2]
         adcx    r10, rax
         mov     [z+8*2], r10
-        mov     r10, zero
         mulx    rax, r11, [x+8*3]
         adcx    r11, rbx
         mulx    rbx, r12, [x+8*4]
@@ -91,7 +132,7 @@
 
 // Add in the next diagonal = 21 + 31 + 41 + 51 + 61 + 71 + 54
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*1]
         mulpadd 2, 1
         mov     [z+8*3], r11
@@ -100,16 +141,14 @@
         mulpadd 4, 1
         mulpadd 5, 1
         mulpadd 6, 1
-        mov     r11, zero
-        mulpadd 7, 1
-        mov     r12, zero
+        mulpade 7, 1
         mov     rdx, [x+8*4]
-        mulpadd 5, 4
+        mulpade 5, 4
         adcx    r10, zero
 
 // And the next one = 32 + 42 + 52 + 62 + 72 + 64 + 65
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*2]
         mulpadd 3, 2
         mov     [z+8*5], r13
@@ -119,15 +158,13 @@
         mulpadd 6, 2
         mulpadd 7, 2
         mov     rdx, [x+8*6]
-        mov     r13, zero
-        mulpadd 4, 6
-        mov     r14, zero
-        mulpadd 5, 6
+        mulpade 4, 6
+        mulpade 5, 6
         adcx    r12, zero
 
 // And the final one = 43 + 53 + 63 + 73 + 74 + 75 + 76
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*3]
         mulpadd 4, 3
         mov     [z+8*7], r15
@@ -137,16 +174,14 @@
         mulpadd 7, 3
         mov     rdx, [x+8*7]
         mulpadd 4, 7
-        mov     r15, zero
-        mulpadd 5, 7
-        mov     r8, zero
-        mulpadd 6, 7
+        mulpade 5, 7
+        mulpade 6, 7
         adcx    r14, zero
 
 // Double and add things; use z[1]..z[8] and thereafter the registers
 // r9..r15 which haven't been written back yet
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*0]
         mulx    rbx, rax, rdx
         mov     [z+8*0], rax
@@ -217,17 +252,15 @@
         mov     [z+8*13], r13
 
         mov     rdx, [x+8*7]
-        mulx    rbx, rdx, rdx
+        mulx    r15, rdx, rdx
         adcx    r14, r14
         adox    r14, rdx
         mov     [z+8*14], r14
-        adcx    r15, r15
-        adox    r15, rbx
+        adcx    r15, zero
+        adox    r15, zero
         mov     [z+8*15], r15
 
 .endm
-
-.intel_syntax noprefix
 
                 .globl  bignum_sqr_8_16
                 .text

@@ -32,6 +32,7 @@
 // A zero register
 
 #define zero rbp
+#define zeroe ebp
 
 // Other registers
 
@@ -74,7 +75,7 @@ bignum_sqr_6_12:
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Chain in the addition of 02 + 12 + 13 + 14 + 15 to that window
 // (no carry-out possible since we add it to the top of a product)
@@ -103,7 +104,7 @@ bignum_sqr_6_12:
 // Again zero out the flags. Actually they are already cleared but it may
 // help decouple these in the OOO engine not to wait for the chain above
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Now chain in the 04 + 23 + 24 + 25 + 35 + 45 terms
 // We are running out of registers and here our zero register is not zero!
@@ -135,7 +136,7 @@ bignum_sqr_6_12:
 
 // Again, just for a clear fresh start for the flags
 
-        xor     rax, rax
+        xor     eax, eax
 
 // Double and add to the 00 + 11 + 22 + 33 + 44 + 55 terms
 //

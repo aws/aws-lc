@@ -26,15 +26,18 @@
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = t
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 #define z rdi
 #define x rsi
 
 // A zero register
 
 #define zero rbp
+#define zeroe ebp
 
 // ------------------------------------------------------------------------
-// mulpadd i, j adds x[i] * rdx (now assumed = x[j]) into the window at i+j
+// mulpadd i, j adds rdx * x[i] into the window  at the i+j point
 // ------------------------------------------------------------------------
 
 .macro mulpadd arg1,arg2
@@ -67,6 +70,47 @@
 
 .endm
 
+// ------------------------------------------------------------------------
+// mulpade i, j adds rdx * x[i] into the window at i+j
+// but re-creates the top word assuming nothing to add there
+// ------------------------------------------------------------------------
+
+.macro mulpade arg1,arg2
+.if ((\arg1 + \arg2) % 8 == 0)
+        mulx    r9, rax, [x+8*\arg1]
+        adcx    r8, rax
+        adox    r9, zero
+.elseif ((\arg1 + \arg2) % 8 == 1)
+        mulx    r10, rax, [x+8*\arg1]
+        adcx    r9, rax
+        adox    r10, zero
+.elseif ((\arg1 + \arg2) % 8 == 2)
+        mulx    r11, rax, [x+8*\arg1]
+        adcx    r10, rax
+        adox    r11, zero
+.elseif ((\arg1 + \arg2) % 8 == 3)
+        mulx    r12, rax, [x+8*\arg1]
+        adcx    r11, rax
+        adox    r12, zero
+.elseif ((\arg1 + \arg2) % 8 == 4)
+        mulx    r13, rax, [x+8*\arg1]
+        adcx    r12, rax
+        adox    r13, zero
+.elseif ((\arg1 + \arg2) % 8 == 5)
+        mulx    r14, rax, [x+8*\arg1]
+        adcx    r13, rax
+        adox    r14, zero
+.elseif ((\arg1 + \arg2) % 8 == 6)
+        mulx    r15, rax, [x+8*\arg1]
+        adcx    r14, rax
+        adox    r15, zero
+.elseif ((\arg1 + \arg2) % 8 == 7)
+        mulx    r8, rax, [x+8*\arg1]
+        adcx    r15, rax
+        adox    r8, zero
+.endif
+
+.endm
 
 // ------------------------------------------------------------------------
 // addrow i,j adds z[i+j] + x[i..i+7] * x[j] into the window
@@ -74,7 +118,7 @@
 
 .macro addrow arg1,arg2
         mov     rdx, [x+8*\arg2]
-        xor     zero, zero      // Get a known flag state and give a zero reg
+        xor     zeroe, zeroe    // Get a known flag state and give a zero reg
 
 .if ((\arg1 + \arg2) % 8 == 0)
         adox    r8, [z+8*(\arg1+\arg2)]
@@ -98,28 +142,20 @@
 
 .if ((\arg1 + \arg2) % 8 == 0)
         mov     [z+8*(\arg1+\arg2)], r8
-        mov     r8, zero
 .elseif ((\arg1 + \arg2) % 8 == 1)
         mov     [z+8*(\arg1+\arg2)], r9
-        mov     r9, zero
 .elseif ((\arg1 + \arg2) % 8 == 2)
         mov     [z+8*(\arg1+\arg2)], r10
-        mov     r10, zero
 .elseif ((\arg1 + \arg2) % 8 == 3)
         mov     [z+8*(\arg1+\arg2)], r11
-        mov     r11, zero
 .elseif ((\arg1 + \arg2) % 8 == 4)
         mov     [z+8*(\arg1+\arg2)], r12
-        mov     r12, zero
 .elseif ((\arg1 + \arg2) % 8 == 5)
         mov     [z+8*(\arg1+\arg2)], r13
-        mov     r13, zero
 .elseif ((\arg1 + \arg2) % 8 == 6)
         mov     [z+8*(\arg1+\arg2)], r14
-        mov     r14, zero
 .elseif ((\arg1 + \arg2) % 8 == 7)
         mov     [z+8*(\arg1+\arg2)], r15
-        mov     r15, zero
 .endif
 
         mulpadd (\arg1+1), \arg2
@@ -127,8 +163,8 @@
         mulpadd (\arg1+3), \arg2
         mulpadd (\arg1+4), \arg2
         mulpadd (\arg1+5), \arg2
-        mulpadd (\arg1+6), \arg2
-        mulpadd (\arg1+7), \arg2
+        mulpade (\arg1+6), \arg2
+        mulpade (\arg1+7), \arg2
 
 .if ((\arg1 + \arg2) % 8 == 0)
         adcx    r8, zero
@@ -158,7 +194,7 @@
 
 .macro sqr arg1
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Set up the initial window
 
@@ -169,7 +205,6 @@
         mov     r13, [z+16*\arg1+8*5]
         mov     r14, [z+16*\arg1+8*6]
         mov     r15, [z+16*\arg1+8*7]
-        mov     r8, zero
 
 // Add in the first diagonal [r8..r10] + 2 wb = 10 + 20 + 30 + 40 + 50 + 60 + 70
 
@@ -180,16 +215,14 @@
         mov     [z+16*\arg1+8*2],r10
         mulpadd (\arg1+3), (\arg1+0)
         mulpadd (\arg1+4), (\arg1+0)
-        mov     r9, zero
         mulpadd (\arg1+5), (\arg1+0)
-        mov     r10, zero
         mulpadd (\arg1+6), (\arg1+0)
-        mulpadd (\arg1+7), (\arg1+0)
+        mulpade (\arg1+7), (\arg1+0)
         adcx    r8, zero
 
 // Add in the next diagonal = 21 + 31 + 41 + 51 + 61 + 71 + 54
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*\arg1+8*1]
         mulpadd (\arg1+2), (\arg1+1)
         mov     [z+16*\arg1+8*3], r11
@@ -198,16 +231,14 @@
         mulpadd (\arg1+4), (\arg1+1)
         mulpadd (\arg1+5), (\arg1+1)
         mulpadd (\arg1+6), (\arg1+1)
-        mov     r11, zero
-        mulpadd (\arg1+7), (\arg1+1)
-        mov     r12, zero
+        mulpade (\arg1+7), (\arg1+1)
         mov     rdx, [x+8*\arg1+8*4]
-        mulpadd (\arg1+5), (\arg1+4)
+        mulpade (\arg1+5), (\arg1+4)
         adcx    r10, zero
 
 // And the next one = 32 + 42 + 52 + 62 + 72 + 64 + 65
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*\arg1+8*2]
         mulpadd (\arg1+3), (\arg1+2)
         mov     [z+16*\arg1+8*5], r13
@@ -217,15 +248,13 @@
         mulpadd (\arg1+6), (\arg1+2)
         mulpadd (\arg1+7), (\arg1+2)
         mov     rdx, [x+8*\arg1+8*6]
-        mov     r13, zero
-        mulpadd (\arg1+4), (\arg1+6)
-        mov     r14, zero
-        mulpadd (\arg1+5), (\arg1+6)
+        mulpade (\arg1+4), (\arg1+6)
+        mulpade (\arg1+5), (\arg1+6)
         adcx    r12, zero
 
 // And the final one = 43 + 53 + 63 + 73 + 74 + 75 + 76
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*\arg1+8*3]
         mulpadd (\arg1+4), (\arg1+3)
         mov     [z+16*\arg1+8*7], r15
@@ -234,10 +263,9 @@
         mulpadd (\arg1+7), (\arg1+3)
         mov     rdx, [x+8*\arg1+8*7]
         mulpadd (\arg1+4), (\arg1+7)
-        mulpadd (\arg1+5), (\arg1+7)
-        mulpadd (\arg1+6), (\arg1+7)
+        mulpade (\arg1+5), (\arg1+7)
+        mulpade (\arg1+6), (\arg1+7)
         adcx    r14, zero
-        mov     r15, zero
 .endm
 
 // ------------------------------------------------------------------------
@@ -261,7 +289,6 @@
         mov     [z+8*(20+\arg1)], r12
         mov     [z+8*(21+\arg1)], r13
         mov     [z+8*(22+\arg1)], r14
-        mov     [z+8*(23+\arg1)], r15
 .endm
 
 
@@ -272,34 +299,26 @@
 
 .macro mulrow arg1,arg2
         mov     rdx, [x+8*\arg2]
-        xor     zero, zero      // Get a known flag state and give a zero reg
+        xor     zeroe, zeroe    // Get a known flag state and give a zero reg
 
         mulpadd \arg1, \arg2
 
 .if ((\arg1 + \arg2) % 8 == 0)
         mov     [z+8*(\arg1+\arg2)], r8
-        mov     r8, zero
 .elseif ((\arg1 + \arg2) % 8 == 1)
         mov     [z+8*(\arg1+\arg2)], r9
-        mov     r9, zero
 .elseif ((\arg1 + \arg2) % 8 == 2)
         mov     [z+8*(\arg1+\arg2)], r10
-        mov     r10, zero
 .elseif ((\arg1 + \arg2) % 8 == 3)
         mov     [z+8*(\arg1+\arg2)], r11
-        mov     r11, zero
 .elseif ((\arg1 + \arg2) % 8 == 4)
         mov     [z+8*(\arg1+\arg2)], r12
-        mov     r12, zero
 .elseif ((\arg1 + \arg2) % 8 == 5)
         mov     [z+8*(\arg1+\arg2)], r13
-        mov     r13, zero
 .elseif ((\arg1 + \arg2) % 8 == 6)
         mov     [z+8*(\arg1+\arg2)], r14
-        mov     r14, zero
 .elseif ((\arg1 + \arg2) % 8 == 7)
         mov     [z+8*(\arg1+\arg2)], r15
-        mov     r15, zero
 .endif
 
         mulpadd (\arg1+1), \arg2
@@ -307,8 +326,13 @@
         mulpadd (\arg1+3), \arg2
         mulpadd (\arg1+4), \arg2
         mulpadd (\arg1+5), \arg2
+.if ((\arg1 + \arg2) % 8 == 0)
+        mulpade (\arg1+6), \arg2
+.else
         mulpadd (\arg1+6), \arg2
-        mulpadd (\arg1+7), \arg2
+.endif
+
+        mulpade (\arg1+7), \arg2
 
 .if ((\arg1 + \arg2) % 8 == 0)
         adcx    r8, zero
@@ -338,18 +362,16 @@
 
 .macro sqrz
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Set initial window [r8..r10] + 2 wb = 10 + 20 + 30 + 40 + 50 + 60 + 70
 
         mov     rdx, [x+8*0]
         mulx    rax, r9, [x+8*1]
         mov     [z+8*1], r9
-        mov     r9, zero
         mulx    rbx, r10, [x+8*2]
         adcx    r10, rax
         mov     [z+8*2], r10
-        mov     r10, zero
         mulx    rax, r11, [x+8*3]
         adcx    r11, rbx
         mulx    rbx, r12, [x+8*4]
@@ -364,7 +386,7 @@
 
 // Add in the next diagonal = 21 + 31 + 41 + 51 + 61 + 71 + 54
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*1]
         mulpadd 2, 1
         mov     [z+8*3], r11
@@ -373,16 +395,14 @@
         mulpadd 4, 1
         mulpadd 5, 1
         mulpadd 6, 1
-        mov     r11, zero
-        mulpadd 7, 1
-        mov     r12, zero
+        mulpade 7, 1
         mov     rdx, [x+8*4]
-        mulpadd 5, 4
+        mulpade 5, 4
         adcx    r10, zero
 
 // And the next one = 32 + 42 + 52 + 62 + 72 + 64 + 65
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*2]
         mulpadd 3, 2
         mov     [z+8*5], r13
@@ -392,15 +412,13 @@
         mulpadd 6, 2
         mulpadd 7, 2
         mov     rdx, [x+8*6]
-        mov     r13, zero
-        mulpadd 4, 6
-        mov     r14, zero
-        mulpadd 5, 6
+        mulpade 4, 6
+        mulpade 5, 6
         adcx    r12, zero
 
 // And the final one = 43 + 53 + 63 + 73 + 74 + 75 + 76
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, [x+8*3]
         mulpadd 4, 3
         mov     [z+8*7], r15
@@ -409,10 +427,9 @@
         mulpadd 7, 3
         mov     rdx, [x+8*7]
         mulpadd 4, 7
-        mulpadd 5, 7
-        mulpadd 6, 7
+        mulpade 5, 7
+        mulpade 6, 7
         adcx    r14, zero
-        mov     r15, zero
 .endm
 
 // ------------------------------------------------------------------------
@@ -442,8 +459,6 @@
 // The actual code
 // ------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
                 .globl  bignum_ksqr_16_32
 
                 .text
@@ -466,7 +481,7 @@ bignum_ksqr_16_32:
 
 // Double and add the diagonal elements. Note that z[0] was never written above
 
-        xor     rax, rax
+        xor     zeroe, zeroe
         mov     rdx, [x+8*0]
         mulx    rbx, rax, rdx
         mov     [z+8*0], rax
@@ -477,7 +492,7 @@ bignum_ksqr_16_32:
         mov     [z+8*1], rdx
 
         .set i,  1
-.rep 15
+.rep 14
         mov     rdx, [x+8*i]
         mulx    rbx, rax, rdx
 
@@ -491,8 +506,21 @@ bignum_ksqr_16_32:
         adox    rdx, rbx
         mov     [z+8*(2*i+1)], rdx
         .set i,  (i+1)
-
 .endr
+
+        mov     rdx, [x+8*i]
+        mulx    rbx, rax, rdx
+
+        mov     rdx, [z+8*(2*i)]
+        adcx    rdx, rdx
+        adox    rdx, rax
+        mov     [z+8*(2*i)], rdx
+
+        adcx    rbx, zero
+        adox    rbx, zero
+        mov     [z+8*(2*i+1)], rbx
+        .set i,  (i+1)
+
 
 // Restore registers and return
 

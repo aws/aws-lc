@@ -30,7 +30,7 @@ let bignum_mul_8_16_mc =
   0x41; 0x56;              (* PUSH (% r14) *)
   0x41; 0x57;              (* PUSH (% r15) *)
   0x48; 0x89; 0xd1;        (* MOV (% rcx) (% rdx) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0x8b; 0x11;        (* MOV (% rdx) (Memop Quadword (%% (rcx,0))) *)
   0xc4; 0x62; 0xbb; 0xf6; 0x0e;
                            (* MULX4 (% r9,% r8) (% rdx,Memop Quadword (%% (rsi,0))) *)
@@ -66,7 +66,7 @@ let bignum_mul_8_16_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc5;
                            (* ADCX (% r8) (% rbp) *)
   0x48; 0x8b; 0x51; 0x08;  (* MOV (% rdx) (Memop Quadword (%% (rcx,8))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc8;
@@ -119,7 +119,7 @@ let bignum_mul_8_16_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xcd;
                            (* ADCX (% r9) (% rbp) *)
   0x48; 0x8b; 0x51; 0x10;  (* MOV (% rdx) (Memop Quadword (%% (rcx,16))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd0;
@@ -172,7 +172,7 @@ let bignum_mul_8_16_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd5;
                            (* ADCX (% r10) (% rbp) *)
   0x48; 0x8b; 0x51; 0x18;  (* MOV (% rdx) (Memop Quadword (%% (rcx,24))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd8;
@@ -225,7 +225,7 @@ let bignum_mul_8_16_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xdd;
                            (* ADCX (% r11) (% rbp) *)
   0x48; 0x8b; 0x51; 0x20;  (* MOV (% rdx) (Memop Quadword (%% (rcx,32))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe0;
@@ -278,7 +278,7 @@ let bignum_mul_8_16_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe5;
                            (* ADCX (% r12) (% rbp) *)
   0x48; 0x8b; 0x51; 0x28;  (* MOV (% rdx) (Memop Quadword (%% (rcx,40))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe8;
@@ -331,7 +331,7 @@ let bignum_mul_8_16_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xed;
                            (* ADCX (% r13) (% rbp) *)
   0x48; 0x8b; 0x51; 0x30;  (* MOV (% rdx) (Memop Quadword (%% (rcx,48))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf0;
@@ -384,7 +384,7 @@ let bignum_mul_8_16_mc =
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf5;
                            (* ADCX (% r14) (% rbp) *)
   0x48; 0x8b; 0x51; 0x38;  (* MOV (% rdx) (Memop Quadword (%% (rcx,56))) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf8;
@@ -461,7 +461,7 @@ let BIGNUM_MUL_8_16_EXEC = X86_MK_EXEC_RULE bignum_mul_8_16_mc;;
 
 let BIGNUM_MUL_8_16_CORRECT = time prove
  (`!z x y a b pc.
-     nonoverlapping (word pc,0x500) (z,8 * 16) /\
+     nonoverlapping (word pc,0x4f8) (z,8 * 16) /\
      nonoverlapping (x,8 * 8) (z,8 * 16) /\
      (y = z \/ nonoverlapping (y,8 * 8) (z,8 * 16))
      ==> ensures x86
@@ -470,7 +470,7 @@ let BIGNUM_MUL_8_16_CORRECT = time prove
                C_ARGUMENTS [z; x; y] s /\
                bignum_from_memory (x,8) s = a /\
                bignum_from_memory (y,8) s = b)
-          (\s. read RIP s = word (pc + 0x4f5) /\
+          (\s. read RIP s = word (pc + 0x4ed) /\
                bignum_from_memory (z,16) s = a * b)
           (MAYCHANGE [RIP; RAX; RBP; RBX; RCX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -495,8 +495,8 @@ let BIGNUM_MUL_8_16_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
      nonoverlapping (word_sub stackpointer (word 48),56) (z,8 * 16) /\
      ALL (nonoverlapping (word_sub stackpointer (word 48),48))
-         [(word pc,0x500); (x,8 * 8); (y,8 * 8)] /\
-     nonoverlapping (word pc,0x500) (z,8 * 16) /\
+         [(word pc,0x4f8); (x,8 * 8); (y,8 * 8)] /\
+     nonoverlapping (word pc,0x4f8) (z,8 * 16) /\
      nonoverlapping (x,8 * 8) (z,8 * 16) /\
      (y = z \/ nonoverlapping (y,8 * 8) (z,8 * 16))
      ==> ensures x86
