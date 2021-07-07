@@ -55,6 +55,10 @@ function(build_benchmark target_name additional_include_dir lib_crypto)
   # include directory
   target_include_directories(${target_name} PUBLIC ${additional_include_dir} ${AWSLC_INSTALL_DIR}/include/internal/tool)
   target_link_libraries(${target_name} ${lib_crypto} ${LIBRT_FLAG})
+
+  if(NOT CMAKE_BUILD_TYPE)
+    target_compile_options(${target_name} PUBLIC -DCMAKE_BUILD_TYPE)
+  endif()
 endfunction()
 
 if(AWSLC_INSTALL_DIR)
