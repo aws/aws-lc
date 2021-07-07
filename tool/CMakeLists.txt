@@ -55,14 +55,14 @@ function(build_benchmark target_name additional_include_dir lib_crypto)
   # include directory
   target_include_directories(${target_name} PUBLIC ${additional_include_dir} ${AWSLC_INSTALL_DIR}/include/internal/tool)
   target_link_libraries(${target_name} ${lib_crypto} ${LIBRT_FLAG})
-
-  if(NOT CMAKE_BUILD_TYPE)
-    target_compile_options(${target_name} PUBLIC -DCMAKE_BUILD_TYPE)
-  endif()
 endfunction()
 
 if(AWSLC_INSTALL_DIR)
   build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include crypto)
+
+  if(NOT CMAKE_BUILD_TYPE)
+    target_compile_options(awslc_bm PUBLIC -DCMAKE_BUILD_TYPE)
+  endif()
 endif()
 
 # This expects a directory which contains the includes are in include/openssl/*.h and the OpenSSL artifacts in build/
