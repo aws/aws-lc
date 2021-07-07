@@ -66,9 +66,7 @@ if(OPENSSL_INSTALL_DIR)
   build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
 
   if(NOT MSVC AND NOT ANDROID)
-    # OpenSSL uses pthread_rwlock_unlock from pthread and  dlopen/close from dl
     target_link_libraries(ossl_bm -DOPENSSL_BENCHMARK pthread dl)
-
     target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK)
   endif()
 endif()
@@ -78,7 +76,6 @@ if(BORINGSSL_INSTALL_DIR)
   build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_INSTALL_DIR}/build/crypto/libcrypto.a)
 
   if(NOT MSVC AND NOT ANDROID)
-    # BoringSSL uses pthread_rwlock_unlock from pthread
     target_link_libraries(bssl_bm pthread)
   endif()
 endif()

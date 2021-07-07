@@ -28,8 +28,6 @@
 
 #if !defined(OPENSSL_BENCHMARK)
 #include "bssl_bm.h"
-#include <../crypto/ec_extra/internal.h>
-#include "../crypto/trust_token/internal.h"
 #else
 #include "ossl_bm.h"
 #endif
@@ -196,18 +194,12 @@ static bool SpeedRSA(const std::string &selected) {
     {"RSA 4096", kDERRSAPrivate4096, kDERRSAPrivate4096Len},
   };
 
-#if !defined(OPENSSL_BENCHMARK)
-  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kRSAKeys); i++) {
-#else
   for(unsigned i = 0; i < BM_ARRAY_SIZE(kRSAKeys); i++) {
-#endif
     const std::string name = kRSAKeys[i].name;
 
-//    BM_NAMESPACE::UniquePtr<RSA> key(RSA_private_key_from_bytes(kRSAKeys[i].key, kRSAKeys[i].key_len));
-    /* d2i_RSAPrivateKey expects to be able to modify the input pointer as it parses the input data and we don't want it
-     * to modify the original *key data. Therefore create a new temp variable that points to the same data and pass
-     * in the reference to it. As a sanity check make sure input_key points to the end of the *key.
-     */
+    // d2i_RSAPrivateKey expects to be able to modify the input pointer as it parses the input data and we don't want it
+    // to modify the original |*key| data. Therefore create a new temp variable that points to the same data and pass
+    // in the reference to it. As a sanity check make sure |input_key| points to the end of the |*key|.
     const uint8_t *input_key = kRSAKeys[i].key;
     BM_NAMESPACE::UniquePtr<RSA> key(d2i_RSAPrivateKey(NULL, &input_key, (long) kRSAKeys[i].key_len));
     if (key == nullptr) {
