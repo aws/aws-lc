@@ -43,7 +43,7 @@ else()
 endif()
 
 function(build_benchmark target_name additional_include_dir lib_crypto)
-  message(${additional_include_dir})
+  message(-- Building ${target_name} benchmark using includes from ${additional_include_dir} and libcrypto from ${lib_crypto}.)
   add_executable(
           ${target_name}
           speed.cc
@@ -70,7 +70,7 @@ if(OPENSSL_INSTALL_DIR)
   build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
 
   if(NOT MSVC AND NOT ANDROID)
-    target_link_libraries(ossl_bm -DOPENSSL_BENCHMARK pthread dl)
+    target_link_libraries(ossl_bm pthread dl)
     target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK)
   endif()
 endif()
