@@ -32,8 +32,6 @@ endif
 # List of object files
 
 OBJ = bignum_add_p256.o \
-      bignum_amontmul_p256.o \
-      bignum_amontsqr_p256.o \
       bignum_bigendian_4.o \
       bignum_cmul_p256.o \
       bignum_deamont_p256.o \

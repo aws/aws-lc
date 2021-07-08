@@ -68,12 +68,8 @@ enum {
        TEST_BIGNUM_ADD_P384,
        TEST_BIGNUM_AMONTIFIER,
        TEST_BIGNUM_AMONTMUL,
-       TEST_BIGNUM_AMONTMUL_P256,
-       TEST_BIGNUM_AMONTMUL_P384,
        TEST_BIGNUM_AMONTREDC,
        TEST_BIGNUM_AMONTSQR,
-       TEST_BIGNUM_AMONTSQR_P256,
-       TEST_BIGNUM_AMONTSQR_P384,
        TEST_BIGNUM_BITFIELD,
        TEST_BIGNUM_BITSIZE,
        TEST_BIGNUM_BIGENDIAN_4,
@@ -915,70 +911,6 @@ int test_bignum_amontmul(void)
   return 0;
 }
 
-int test_bignum_amontmul_p256(void)
-{ uint64_t t;
-  printf("Testing bignum_amontmul_p256 with %d cases\n",tests);
-
-  int c;
-  for (t = 0; t < tests; ++t)
-   { random_bignum(4,b0);
-     random_bignum(4,b2);
-     reference_mod(4,b1,b2,p_256);
-     bignum_amontmul_p256(b5,b0,b1);
-     reference_mod(4,b4,b5,p_256);
-     reference_dmontmul(4,b3,b0,b1,p_256,i_256,b5);
-
-     c = reference_compare(4,b3,4,b4);
-     if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-256 * ...0x%016lx * ...%016lx  mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[0],b1[0],b4[3],b4[0],b3[3],b3[0]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-256 * ...0x%016lx * ...%016lx  mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[0],b1[0],b4[3],b4[0]);
-      }
-   }
-  printf("All OK\n");
-  return 0;
-}
-
-int test_bignum_amontmul_p384(void)
-{ uint64_t t;
-  printf("Testing bignum_amontmul_p384 with %d cases\n",tests);
-
-  int c;
-  for (t = 0; t < tests; ++t)
-   { random_bignum(6,b0);
-     random_bignum(6,b2);
-     reference_mod(6,b1,b2,p_384);
-     bignum_amontmul_p384(b5,b0,b1);
-     reference_mod(6,b4,b5,p_384);
-     reference_dmontmul(6,b3,b0,b1,p_384,i_384,b5);
-
-     c = reference_compare(6,b3,6,b4);
-     if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-384 * ...0x%016lx * ...%016lx  mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b1[0],b4[5],b4[0],b3[5],b3[0]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-384 * ...0x%016lx * ...%016lx  mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b1[0],b4[5],b4[0]);
-      }
-   }
-  printf("All OK\n");
-  return 0;
-}
-
 int test_bignum_amontredc(void)
 { uint64_t t, k, n, p, r;
   printf("Testing bignum_amontredc with %d cases\n",tests);
@@ -1054,74 +986,11 @@ int test_bignum_amontsqr(void)
   return 0;
 }
 
-int test_bignum_amontsqr_p256(void)
-{ uint64_t t;
-  printf("Testing bignum_amontsqr_p256 with %d cases\n",tests);
-
-  int c;
-  for (t = 0; t < tests; ++t)
-   { random_bignum(4,b2);
-     reference_mod(4,b0,b2,p_256);
-     bignum_amontsqr_p256(b5,b0);
-     reference_mod(4,b4,b5,p_256);
-     reference_dmontmul(4,b3,b0,b0,p_256,i_256,b5);
-
-     c = reference_compare(4,b3,4,b4);
-     if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-256 * ...0x%016lx^2 mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0],b3[3],b3[0]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-256 * ...0x%016lx^2 mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0]);
-      }
-   }
-  printf("All OK\n");
-  return 0;
-}
-
-
-int test_bignum_amontsqr_p384(void)
-{ uint64_t t;
-  printf("Testing bignum_amontsqr_p384 with %d cases\n",tests);
-
-  int c;
-  for (t = 0; t < tests; ++t)
-   { random_bignum(6,b2);
-     reference_mod(6,b0,b2,p_384);
-     bignum_amontsqr_p384(b5,b0);
-     reference_mod(6,b4,b5,p_384);
-     reference_dmontmul(6,b3,b0,b0,p_384,i_384,b5);
-
-     c = reference_compare(6,b3,6,b4);
-     if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-384 * ...0x%016lx^2 mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0],b3[5],b3[0]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-384 * ...0x%016lx^2 mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0]);
-      }
-   }
-  printf("All OK\n");
-  return 0;
-}
-
 int test_bignum_bigendian_4(void)
 { uint64_t t;
-  printf("Testing bignum_bigendian_4 with %d cases\n",TESTS);
+  printf("Testing bignum_bigendian_4 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
      reference_bigendian(4,b3,b0);
      bignum_bigendian_4(b4,b0);
@@ -1145,9 +1014,9 @@ int test_bignum_bigendian_4(void)
 
 int test_bignum_bigendian_6(void)
 { uint64_t t;
-  printf("Testing bignum_bigendian_6 with %d cases\n",TESTS);
+  printf("Testing bignum_bigendian_6 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
      reference_bigendian(6,b3,b0);
      bignum_bigendian_6(b4,b0);
@@ -1946,9 +1815,9 @@ int test_bignum_even(void)
 
 int test_bignum_frombytes_4(void)
 { uint64_t t;
-  printf("Testing bignum_frombytes_4 with %d cases\n",TESTS);
+  printf("Testing bignum_frombytes_4 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
      reference_bigendian(4,b3,b0);
      bignum_frombytes_4(b4,(uint8_t *)b0);
@@ -1972,9 +1841,9 @@ int test_bignum_frombytes_4(void)
 
 int test_bignum_frombytes_6(void)
 { uint64_t t;
-  printf("Testing bignum_frombytes_6 with %d cases\n",TESTS);
+  printf("Testing bignum_frombytes_6 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
      reference_bigendian(6,b3,b0);
      bignum_frombytes_6(b4,(uint8_t *)b0);
@@ -3182,9 +3051,9 @@ int test_bignum_mux(void)
 
 int test_bignum_mux_4(void)
 { uint64_t i, n;
-  printf("Testing bignum_mux_4 with %d cases\n",TESTS);
+  printf("Testing bignum_mux_4 with %d cases\n",tests);
   int b, c;
-  for (i = 0; i < TESTS; ++i)
+  for (i = 0; i < tests; ++i)
    { n = 4;
      random_bignum(n,b0);
      random_bignum(n,b1);
@@ -3213,9 +3082,9 @@ int test_bignum_mux_4(void)
 
 int test_bignum_mux_6(void)
 { uint64_t i, n;
-  printf("Testing bignum_mux_6 with %d cases\n",TESTS);
+  printf("Testing bignum_mux_6 with %d cases\n",tests);
   int b, c;
-  for (i = 0; i < TESTS; ++i)
+  for (i = 0; i < tests; ++i)
    { n = 6;
      random_bignum(n,b0);
      random_bignum(n,b1);
@@ -3391,9 +3260,9 @@ int test_bignum_nonzero(void)
 
 int test_bignum_nonzero_4(void)
 { uint64_t t, k;
-  printf("Testing bignum_nonzero_4 with %d cases\n",TESTS);
+  printf("Testing bignum_nonzero_4 with %d cases\n",tests);
   uint64_t c1, c2;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { k = 4;
      if (rand() & 1) random_sparse_bignum(k,b0);
      else random_bignum(k,b0);
@@ -3416,9 +3285,9 @@ int test_bignum_nonzero_4(void)
 
 int test_bignum_nonzero_6(void)
 { uint64_t t, k;
-  printf("Testing bignum_nonzero_6 with %d cases\n",TESTS);
+  printf("Testing bignum_nonzero_6 with %d cases\n",tests);
   uint64_t c1, c2;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { k = 6;
      if (rand() & 1) random_sparse_bignum(k,b0);
      else random_bignum(k,b0);
@@ -4020,9 +3889,9 @@ int test_bignum_sub_p384(void)
 
 int test_bignum_tobytes_4(void)
 { uint64_t t;
-  printf("Testing bignum_tobytes_4 with %d cases\n",TESTS);
+  printf("Testing bignum_tobytes_4 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
      reference_bigendian(4,b3,b0);
      bignum_tobytes_4((uint8_t *)b4,b0);
@@ -4046,9 +3915,9 @@ int test_bignum_tobytes_4(void)
 
 int test_bignum_tobytes_6(void)
 { uint64_t t;
-  printf("Testing bignum_tobytes_6 with %d cases\n",TESTS);
+  printf("Testing bignum_tobytes_6 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
      reference_bigendian(6,b3,b0);
      bignum_tobytes_6((uint8_t *)b4,b0);
@@ -4208,8 +4077,8 @@ int test_bignum_triple_p384(void)
 
 int test_word_bytereverse(void)
 { uint64_t i, a, x, y;
-  printf("Testing word_bytereverse with %d cases\n",TESTS);
-  for (i = 0; i < TESTS; ++i)
+  printf("Testing word_bytereverse with %d cases\n",tests);
+  for (i = 0; i < tests; ++i)
    { a = random64();
      x = word_bytereverse(a);
      y = reference_wordbytereverse(a);
@@ -4291,12 +4160,8 @@ int test_all()
   dotest(test_bignum_add_p384);
   dotest(test_bignum_amontifier);
   dotest(test_bignum_amontmul);
-  dotest(test_bignum_amontmul_p256);
-  dotest(test_bignum_amontmul_p384);
   dotest(test_bignum_amontredc);
   dotest(test_bignum_amontsqr);
-  dotest(test_bignum_amontsqr_p256);
-  dotest(test_bignum_amontsqr_p384);
   dotest(test_bignum_bigendian_4);
   dotest(test_bignum_bigendian_6);
   dotest(test_bignum_bitfield);
@@ -4575,12 +4440,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_ADD_P384:        return test_bignum_add_p384();
      case TEST_BIGNUM_AMONTIFIER:      return test_bignum_amontifier();
      case TEST_BIGNUM_AMONTMUL:        return test_bignum_amontmul();
-     case TEST_BIGNUM_AMONTMUL_P256:   return test_bignum_amontmul_p256();
-     case TEST_BIGNUM_AMONTMUL_P384:   return test_bignum_amontmul_p384();
      case TEST_BIGNUM_AMONTREDC:       return test_bignum_amontredc();
      case TEST_BIGNUM_AMONTSQR:        return test_bignum_amontsqr();
-     case TEST_BIGNUM_AMONTSQR_P256:   return test_bignum_amontsqr_p256();
-     case TEST_BIGNUM_AMONTSQR_P384:   return test_bignum_amontsqr_p384();
      case TEST_BIGNUM_BITFIELD:        return test_bignum_bitfield();
      case TEST_BIGNUM_BITSIZE:         return test_bignum_bitsize();
      case TEST_BIGNUM_CLD:             return test_bignum_cld();

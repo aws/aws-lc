@@ -45,14 +45,6 @@ extern void bignum_amontifier (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t
 // Inputs x[k], y[k], m[k]; output z[k]
 extern void bignum_amontmul (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);
 
-// Almost-Montgomery multiply, z :== (x * y / 2^256) (congruent mod p_256)
-// Inputs x[4], y[4]; output z[4]
-extern void bignum_amontmul_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
-
-// Almost-Montgomery multiply, z :== (x * y / 2^384) (congruent mod p_384)
-// Inputs x[6], y[6]; output z[6]
-extern void bignum_amontmul_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
-
 // Almost-Montgomery reduce, z :== (x' / 2^{64p}) (congruent mod m)
 // Inputs x[n], m[k], p; output z[k]
 extern void bignum_amontredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
@@ -60,14 +52,6 @@ extern void bignum_amontredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, 
 // Almost-Montgomery square, z :== (x^2 / 2^{64k}) (congruent mod m)
 // Inputs x[k], y[k]; output z[k]
 extern void bignum_amontsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
-
-// Almost-Montgomery square, z :== (x^2 / 2^256) (congruent mod p_256)
-// Input x[4]; output z[4]
-extern void bignum_amontsqr_p256 (uint64_t z[static 4], uint64_t x[static 4]);
-
-// Almost-Montgomery square, z :== (x^2 / 2^384) (congruent mod p_384)
-// Input x[6]; output z[6]
-extern void bignum_amontsqr_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Convert 4-digit (256-bit) bignum to/from big-endian form
 // Input x[4]; output z[4]
