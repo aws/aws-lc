@@ -3,6 +3,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
+sys.path.append('../')
+
 from util.env_util import EnvUtil
 
 # Used when AWS CDK defines AWS resources.
