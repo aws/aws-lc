@@ -4,3 +4,4 @@ set -exo pipefail
 # SPDX-License-Identifier: Apache-2.0
 
 echo "this is a test"
+echo "will this work?"
