@@ -5,3 +5,4 @@ set -exo pipefail
 
 echo "this is a test"
 echo "will this work?"
+echo "hopefully i does :/"
