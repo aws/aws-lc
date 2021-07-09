@@ -69,9 +69,9 @@ endif()
 if(OPENSSL_INSTALL_DIR)
   build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
 
+  target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK)
   if(NOT MSVC AND NOT ANDROID)
     target_link_libraries(ossl_bm pthread dl)
-    target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK)
   endif()
 endif()
 
