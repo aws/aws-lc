@@ -62,7 +62,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_bm-framework
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_bm-framework_latest
 
 #    - identifier: ubuntu2004_gcc7x_x86_64_fips
 #      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
