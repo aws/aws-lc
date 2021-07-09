@@ -57,7 +57,7 @@ batch:
 #        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
 
     - identifier: ubuntu2004_clang7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/linux-x86/run_bm_framework.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
