@@ -37,6 +37,10 @@ extern void bignum_add_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_add_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
 
+// Add modulo p_521, z := (x + y) mod p_521, assuming x and y reduced
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_add_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+
 // Compute "amontification" constant z :== 2^{128k} (congruent mod m)
 // Input m[k]; output z[k]; temporary buffer t[>=k]
 extern void bignum_amontifier (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t);

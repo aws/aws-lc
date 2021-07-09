@@ -66,6 +66,7 @@ enum {
        TEST_BIGNUM_ADD,
        TEST_BIGNUM_ADD_P256,
        TEST_BIGNUM_ADD_P384,
+       TEST_BIGNUM_ADD_P521,
        TEST_BIGNUM_AMONTIFIER,
        TEST_BIGNUM_AMONTMUL,
        TEST_BIGNUM_AMONTREDC,
@@ -222,7 +223,7 @@ void random_sparse_bignum(uint64_t k,uint64_t *a)
 }
 
 // ****************************************************************************
-// Constants relevant to the P-256 and P-384 functions
+// Constants relevant to the P-256, P-384 and P-521 functions
 // ****************************************************************************
 
 uint64_t p_256[4] =
@@ -271,6 +272,18 @@ uint64_t i_384[6] =
    0xfffffffcfffffffaul,
    0x0000000c00000002ul,
    0x0000001400000014ul
+ };
+
+uint64_t p_521[9] =
+ { 0xfffffffffffffffful,
+   0xfffffffffffffffful,
+   0xfffffffffffffffful,
+   0xfffffffffffffffful,
+   0xfffffffffffffffful,
+   0xfffffffffffffffful,
+   0xfffffffffffffffful,
+   0xfffffffffffffffful,
+   0x00000000000001fful
  };
 
 // ****************************************************************************
@@ -841,6 +854,42 @@ int test_bignum_add_p384(void)
                     "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
                     "...0x%016lx\n",
                     k,b0[0],b1[0],p_384[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_add_p521(void)
+{ uint64_t i, k;
+  printf("Testing bignum_add_p521 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+     random_bignum(k,b2); reference_mod(k,b1,b2,p_521);
+     bignum_add_p521(b2,b0,b1);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b1);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_521);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
+               "...0x%016lx not ...0x%016lx\n",
+               k,b0[0],b1[0],p_521[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4lu]\n",k);
+        else printf("OK: [size %4lu] "
+                    "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
+                    "...0x%016lx\n",
+                    k,b0[0],b1[0],p_521[0],b2[0]);
       }
    }
   printf("All OK\n");
@@ -4158,6 +4207,7 @@ int test_all()
   dotest(test_bignum_add);
   dotest(test_bignum_add_p256);
   dotest(test_bignum_add_p384);
+  dotest(test_bignum_add_p521);
   dotest(test_bignum_amontifier);
   dotest(test_bignum_amontmul);
   dotest(test_bignum_amontredc);
@@ -4293,6 +4343,8 @@ int test_allnonbmi()
 
   dotest(test_bignum_add);
   dotest(test_bignum_add_p256);
+  dotest(test_bignum_add_p384);
+  dotest(test_bignum_add_p521);
   dotest(test_bignum_amontifier);
   dotest(test_bignum_amontmul);
   dotest(test_bignum_amontredc);
@@ -4438,6 +4490,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_ADD:             return test_bignum_add();
      case TEST_BIGNUM_ADD_P256:        return test_bignum_add_p256();
      case TEST_BIGNUM_ADD_P384:        return test_bignum_add_p384();
+     case TEST_BIGNUM_ADD_P521:        return test_bignum_add_p521();
      case TEST_BIGNUM_AMONTIFIER:      return test_bignum_amontifier();
      case TEST_BIGNUM_AMONTMUL:        return test_bignum_amontmul();
      case TEST_BIGNUM_AMONTREDC:       return test_bignum_amontredc();

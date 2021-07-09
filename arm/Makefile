@@ -137,7 +137,8 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_optneg_p384.o \
       p384/bignum_sub_p384.o \
       p384/bignum_tomont_p384.o \
-      p384/bignum_triple_p384.o
+      p384/bignum_triple_p384.o \
+      p521/bignum_add_p521.o
 
 %.o : %.S ; cpp $< | $(GAS) -o $@ -
 
@@ -175,5 +176,6 @@ fastmul/%.correct: proofs/%.ml fastmul/%.o ; (cd ..; (echo 'loadt "arm/proofs/ba
 generic/%.correct: proofs/%.ml generic/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 p256/%.correct: proofs/%.ml p256/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 p384/%.correct: proofs/%.ml p384/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+p521/%.correct: proofs/%.ml p521/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 proofs: $(PROOFS);
