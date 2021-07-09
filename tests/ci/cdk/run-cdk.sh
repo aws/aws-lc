@@ -92,9 +92,9 @@ function create_github_ci_stack() {
   cdk deploy aws-lc-ci-* --require-approval never
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
   aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
+#  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
+#  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
+#  aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
 }
 
 function build_linux_img() {
@@ -252,13 +252,13 @@ EOF
 function export_global_variables() {
   # If these variables are not set or empty, defaults are export.
   if [[ -z "${CDK_DEPLOY_ACCOUNT+x}" || -z "${CDK_DEPLOY_ACCOUNT}" ]]; then
-    export CDK_DEPLOY_ACCOUNT='620771051181'
+    export CDK_DEPLOY_ACCOUNT='091083236541'
   fi
   if [[ -z "${CDK_DEPLOY_REGION+x}" || -z "${CDK_DEPLOY_REGION}" ]]; then
     export CDK_DEPLOY_REGION='us-west-2'
   fi
   if [[ -z "${GITHUB_REPO_OWNER+x}" || -z "${GITHUB_REPO_OWNER}" ]]; then
-    export GITHUB_REPO_OWNER='awslabs'
+    export GITHUB_REPO_OWNER='billbo-yang'
   fi
   if [[ -z "${GITHUB_SOURCE_VERSION+x}" || -z "${GITHUB_SOURCE_VERSION}" ]]; then
     export GITHUB_SOURCE_VERSION='main'
