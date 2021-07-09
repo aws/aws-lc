@@ -119,7 +119,7 @@ else()
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/win-${ARCH}/crypto/)
   endif()
 
-  if(${ASSEMBLY_SOURCE})
+  if(DEFINED ASSEMBLY_SOURCE)
     message("Copying platform assembly files from ${ASSEMBLY_SOURCE} to ${CMAKE_CURRENT_BINARY_DIR}")
     file(COPY ${ASSEMBLY_SOURCE}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
   endif()
