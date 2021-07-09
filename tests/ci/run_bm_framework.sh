@@ -4,5 +4,4 @@ set -exo pipefail
 # SPDX-License-Identifier: Apache-2.0
 
 python3 --version
-python3 -m pip --version
 pip3 --version

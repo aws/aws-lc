@@ -9,10 +9,11 @@
 #docker build -t ubuntu-16.04:gcc-5x ubuntu-16.04_gcc-5x
 #docker build -t ubuntu-18.04:gcc-7x ubuntu-18.04_gcc-7x
 #docker build -t ubuntu-18.04:clang-6x ubuntu-18.04_clang-6x
-docker build -t ubuntu-20.04:base ubuntu-20.04_base
+#docker build -t ubuntu-20.04:base ubuntu-20.04_base
+docker build -t ubuntu-20.04:bm-framework ubuntu-20.04_bm-framework
 #docker build -t ubuntu-20.04:gcc-7x ubuntu-20.04_gcc-7x
 #docker build -t ubuntu-20.04:gcc-8x ubuntu-20.04_gcc-8x
-docker build -t ubuntu-20.04:clang-7x ubuntu-20.04_clang-7x
+#docker build -t ubuntu-20.04:clang-7x ubuntu-20.04_clang-7x
 #docker build -t ubuntu-20.04:clang-8x ubuntu-20.04_clang-8x
 #docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
 #docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
