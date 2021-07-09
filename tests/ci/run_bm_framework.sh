@@ -5,3 +5,4 @@ set -exo pipefail
 
 python3 --version
 pip3 --version
+aws --version
