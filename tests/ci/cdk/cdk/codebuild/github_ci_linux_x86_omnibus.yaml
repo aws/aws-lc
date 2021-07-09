@@ -6,55 +6,55 @@ version: 0.2
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
 batch:
   build-list:
-    - identifier: pre_push_checker
-      buildspec: ./tests/ci/codebuild/linux-x86/pre-push.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
-
-    - identifier: ubuntu1604_gcc5x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-16.04_gcc-5x_latest
-        variables:
-          AWSLC_32BIT: 1
-
-    - identifier: ubuntu1804_clang6x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_clang-6x_latest
-
-    - identifier: ubuntu1804_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
-
-    - identifier: ubuntu2004_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
-
-    - identifier: ubuntu2004_gcc8x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
+#    - identifier: pre_push_checker
+#      buildspec: ./tests/ci/codebuild/linux-x86/pre-push.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
+#
+#    - identifier: ubuntu1604_gcc5x_x86
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-16.04_gcc-5x_latest
+#        variables:
+#          AWSLC_32BIT: 1
+#
+#    - identifier: ubuntu1804_clang6x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_clang-6x_latest
+#
+#    - identifier: ubuntu1804_gcc7x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
+#
+#    - identifier: ubuntu2004_gcc7x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
+#
+#    - identifier: ubuntu2004_gcc8x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
 
     - identifier: ubuntu2004_clang7x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -64,293 +64,293 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
 
-    - identifier: ubuntu2004_gcc7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
-
-    - identifier: ubuntu2004_clang7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
-        variables:
-          AWSLC_NO_ASM_FIPS: 1
-
-    - identifier: ubuntu2004_clang8x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-8x_latest
-
-    - identifier: ubuntu2004_clang9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
-
-    - identifier: ubuntu2004_clang9x_x86_64_sanitizer
-      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
-
-    - identifier: ubuntu2004_clang10x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
-
-    - identifier: centos7_gcc4x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
-        variables:
-          AWSLC_32BIT: 1
-
-    - identifier: centos7_gcc4x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
-
-    - identifier: amazonlinux2_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
-
-    - identifier: amazonlinux2_clang7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
-
-    - identifier: amazonlinux2_gcc7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
-
-    - identifier: amazonlinux2_clang7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
-        variables:
-          # AL2 Clang-7 does not support AddressSanitizer. Related ticket is linked in CryptoAlg-694.
-          # https://github.com/awslabs/aws-lc/pull/120#issuecomment-808439279
-          AWSLC_NO_ASM_FIPS: 0
-
-    - identifier: amazonlinux2_gcc7x_intel_sde_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_intel-sde.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_intel-sde_latest
-
-    - identifier: amazonlinux2_gcc7x_x86_64_valgrind
-      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_valgrind.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
-
-    - identifier: s2n_integration
-      buildspec: ./tests/ci/codebuild/linux-x86/s2n_integration.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
-
-    - identifier: fedora31_clang9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:fedora-31_clang-9x_latest
-
-    # When no SELECTCHECK env variable is undefined, formal verification is executed with a few parameters.
-    # SAW does not support thread level parallelism.
-    # Current benmarks show running quick check (using single process) can consume more than 7 GB memory. This high memory usage is normal and confirmed by Galois side.
-    # Accoridngly, BUILD_GENERAL1_LARGE (8 vCPUs, 15 GB memory) is selected for quick check, which just verfies some simple parameters.
-    # For select check (test with lots of parameters), BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is used to speed up tests by creating multiple processes.
-    - identifier: ubuntu2004_clang10x_formal_verification_quickcheck
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
-
-    # When 'SHA512_384_SELECTCHECK' is defined, SHA512-384 formal verification is executed against more parameters.
-    - identifier: ubuntu2004_clang10x_formal_verification_sha_selectcheck
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_2XLARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
-        variables:
-          SHA512_384_SELECTCHECK: 1
-
-    # When 'HMAC_SELECTCHECK' is defined, HMAC-SHA384 formal verification is executed against more parameters.
-    - identifier: ubuntu2004_clang10x_formal_verification_hmac_selectcheck
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_2XLARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
-        variables:
-          HMAC_SELECTCHECK: 1
-
-    # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_2XLARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
-        variables:
-          AES_GCM_SELECTCHECK: 1
-
-    # Build and test aws-lc without Perl/Go.
-    # aws-c-cal uses Docker images maintained in aws crt repo.
-    # https://github.com/awslabs/aws-crt-builder
-    # These Docker images do not have Go installed.
-    # https://github.com/awslabs/aws-c-cal/blob/905b0fd0ff2ca0d86c7e49b8ef4b636bac4600ea/.github/workflows/ci.yml
-    - identifier: aws_crt_al2_x64_v0_7_2_gcc_7x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-amazonlinux2-x64_gcc-7x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-al2-x64_v0.7.2_latest
-
-    - identifier: aws_crt_manylinux2014_x86_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux2014-x86_gcc-4x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux2014-x86_v0.7.2_latest
-
-    - identifier: aws_crt_manylinux2014_x64_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux2014-x64_gcc-4x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux2014-x64_v0.7.2_latest
-
-    - identifier: aws_crt_manylinux1_x86_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux1-x86_gcc-4x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux1-x86_v0.7.2_latest
-
-    - identifier: aws_crt_manylinux1_x64_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux1-x64_gcc-4x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux1-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-4x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_5x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-5x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_6x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-6x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_7x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-7x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_8x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-8x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_6x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-6x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_8x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-8x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_9x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-9x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#    - identifier: ubuntu2004_gcc7x_x86_64_fips
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
+#
+#    - identifier: ubuntu2004_clang7x_x86_64_fips
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x_latest
+#        variables:
+#          AWSLC_NO_ASM_FIPS: 1
+#
+#    - identifier: ubuntu2004_clang8x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-8x_latest
+#
+#    - identifier: ubuntu2004_clang9x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+#
+#    - identifier: ubuntu2004_clang9x_x86_64_sanitizer
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+#
+#    - identifier: ubuntu2004_clang10x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+#
+#    - identifier: centos7_gcc4x_x86
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
+#        variables:
+#          AWSLC_32BIT: 1
+#
+#    - identifier: centos7_gcc4x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
+#
+#    - identifier: amazonlinux2_gcc7x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+#
+#    - identifier: amazonlinux2_clang7x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
+#
+#    - identifier: amazonlinux2_gcc7x_x86_64_fips
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+#
+#    - identifier: amazonlinux2_clang7x_x86_64_fips
+#      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
+#        variables:
+#          # AL2 Clang-7 does not support AddressSanitizer. Related ticket is linked in CryptoAlg-694.
+#          # https://github.com/awslabs/aws-lc/pull/120#issuecomment-808439279
+#          AWSLC_NO_ASM_FIPS: 0
+#
+#    - identifier: amazonlinux2_gcc7x_intel_sde_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_intel-sde.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_intel-sde_latest
+#
+#    - identifier: amazonlinux2_gcc7x_x86_64_valgrind
+#      buildspec: ./tests/ci/codebuild/linux-x86/amazonlinux-2_gcc-7x_valgrind.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+#
+#    - identifier: s2n_integration
+#      buildspec: ./tests/ci/codebuild/linux-x86/s2n_integration.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+#
+#    - identifier: fedora31_clang9x_x86_64
+#      buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:fedora-31_clang-9x_latest
+#
+#    # When no SELECTCHECK env variable is undefined, formal verification is executed with a few parameters.
+#    # SAW does not support thread level parallelism.
+#    # Current benmarks show running quick check (using single process) can consume more than 7 GB memory. This high memory usage is normal and confirmed by Galois side.
+#    # Accoridngly, BUILD_GENERAL1_LARGE (8 vCPUs, 15 GB memory) is selected for quick check, which just verfies some simple parameters.
+#    # For select check (test with lots of parameters), BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is used to speed up tests by creating multiple processes.
+#    - identifier: ubuntu2004_clang10x_formal_verification_quickcheck
+#      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_LARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+#
+#    # When 'SHA512_384_SELECTCHECK' is defined, SHA512-384 formal verification is executed against more parameters.
+#    - identifier: ubuntu2004_clang10x_formal_verification_sha_selectcheck
+#      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_2XLARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+#        variables:
+#          SHA512_384_SELECTCHECK: 1
+#
+#    # When 'HMAC_SELECTCHECK' is defined, HMAC-SHA384 formal verification is executed against more parameters.
+#    - identifier: ubuntu2004_clang10x_formal_verification_hmac_selectcheck
+#      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_2XLARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+#        variables:
+#          HMAC_SELECTCHECK: 1
+#
+#    # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
+#    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck
+#      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: false
+#        compute-type: BUILD_GENERAL1_2XLARGE
+#        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+#        variables:
+#          AES_GCM_SELECTCHECK: 1
+#
+#    # Build and test aws-lc without Perl/Go.
+#    # aws-c-cal uses Docker images maintained in aws crt repo.
+#    # https://github.com/awslabs/aws-crt-builder
+#    # These Docker images do not have Go installed.
+#    # https://github.com/awslabs/aws-c-cal/blob/905b0fd0ff2ca0d86c7e49b8ef4b636bac4600ea/.github/workflows/ci.yml
+#    - identifier: aws_crt_al2_x64_v0_7_2_gcc_7x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-amazonlinux2-x64_gcc-7x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-al2-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_manylinux2014_x86_v0_7_2_gcc_4x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux2014-x86_gcc-4x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux2014-x86_v0.7.2_latest
+#
+#    - identifier: aws_crt_manylinux2014_x64_v0_7_2_gcc_4x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux2014-x64_gcc-4x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux2014-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_manylinux1_x86_v0_7_2_gcc_4x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux1-x86_gcc-4x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux1-x86_v0.7.2_latest
+#
+#    - identifier: aws_crt_manylinux1_x64_v0_7_2_gcc_4x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux1-x64_gcc-4x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux1-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_4x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-4x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_5x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-5x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_6x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-6x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_7x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-7x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_8x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-8x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_6x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-6x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_8x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-8x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+#
+#    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_9x
+#      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-9x.yml
+#      env:
+#        type: LINUX_CONTAINER
+#        privileged-mode: true
+#        compute-type: BUILD_GENERAL1_SMALL
+#        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
