@@ -140,7 +140,7 @@ openssl ocsp -CAfile ca_cert.pem \
 
 ### Run the server
 ```
-openssl ocsp -port 8890 -text -CA ca_cert.pem \                                                                                                                                                        
+openssl ocsp -port 8889 -text -CA ca_cert.pem \                                                                                                                                                        
       -index certs.txt \
       -rkey ocsp_key.pem \
       -rsigner ocsp_cert.pem \
@@ -152,7 +152,7 @@ openssl ocsp -port 8890 -text -CA ca_cert.pem \
 ### Run the client and save the result to file
 ```
 openssl ocsp -CAfile ca_cert.pem \                                                                                                                                                              
-      -url http://127.0.0.1:8890 \
+      -url http://127.0.0.1:8889 \
       -issuer ca_cert.pem \
       -verify_other ocsp_cert.pem \
       -sha256 -cert server_cert.pem -respout ocsp_response_sha256.der
