@@ -31,7 +31,8 @@ endif
 
 # List of object files
 
-OBJ = bignum_add_p521.o
+OBJ = bignum_add_p521.o \
+      bignum_sub_p521.o
 
 %.o : %.S ; cpp $< | $(GAS) -o $@ -
 
