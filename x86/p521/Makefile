@@ -15,7 +15,8 @@
 
 # The x86 assembly (.S) files are all written for the GNU assembler
 
-OBJ = bignum_add_p521.o
+OBJ = bignum_add_p521.o \
+      bignum_sub_p521.o
 
 %.o : %.S ; cpp $< | as -o $@ -
 

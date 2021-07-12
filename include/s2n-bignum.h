@@ -433,6 +433,10 @@ extern void bignum_sub_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_sub_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
 
+// Subtract modulo p_521, z := (x - y) mod p_521
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_sub_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+
 // Convert 4-digit (256-bit) bignum to big-endian bytes
 // Input x[4]; output z[32] (bytes)
 extern void bignum_tobytes_4 (uint8_t z[static 32], uint64_t x[static 4]);
