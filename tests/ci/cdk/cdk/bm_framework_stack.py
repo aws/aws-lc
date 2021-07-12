@@ -16,13 +16,14 @@ class BmFrameworkStack(core.Stack):
         super().__init__(scope, id, **kwargs)
 
         # create vpc for security
-        vpc = ec2.Vpc(self, 'VPC')
+        vpc = ec2.Vpc(self, id='bm_framework_vpc')
 
         # create security group with default rules
-        sec_group = ec2.SecurityGroup(self, 'Security Group',
+        sec_group = ec2.SecurityGroup(self, id='bm_framework_sg',
                                     description='temp desc.',
                                     allow_all_outbound=True,
-                                    vpc=vpc)
+                                    vpc=vpc,
+                                    security_group_name='bm_framework_sg')
 
         # We want Ubuntu 20.04 AMI for x86
         ubuntu2004 = ec2.MachineImage.generic_linux({
@@ -30,12 +31,12 @@ class BmFrameworkStack(core.Stack):
         })
 
         # commands to run on startup
-        startup_commands = 'echo hi'
+        startup_commands = 'mkdir test'
 
         # TODO: create vpc endpoint for s3 to connect to ec2s
-        x86_ubuntu2004_clang7 = ec2.Instance(self, 'bm_framework_x86_ubuntu-20.04_clang7',
+        x86_ubuntu2004_clang7 = ec2.Instance(self, id='bm_framework_x86_ubuntu-20.04_clang7',
                                              instance_type=ec2.InstanceType("c5.metal"),
                                              machine_image=ubuntu2004,
                                              vpc=vpc,
-                                             security_group = sec_group)
+                                             security_group=sec_group)
         x86_ubuntu2004_clang7.add_user_data(startup_commands)
