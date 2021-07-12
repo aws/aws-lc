@@ -5,6 +5,35 @@
 
 from util.metadata import AWS_REGION, AWS_ACCOUNT
 
+def bm_framework_policy_in_json():
+    """
+    Define an IAM policy that grants access to get EC2 information in order to start/stop instances.
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:StartInstances",
+                    "ec2:StopInstances"
+                ],
+                "Resource": [
+                    "arn:aws:ec2:*:*:instance/*"
+                ]
+            }],
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "codebuild:StartBuild",
+                    "codebuild:StopBuild",
+                    "codebuild:RetryBuild"
+                ],
+                "Resource": "arn:aws:codebuild:*:*:project/*"
+            }]
+    }
 
 def code_build_batch_policy_in_json(project_ids):
     """
