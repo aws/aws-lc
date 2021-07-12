@@ -1335,7 +1335,7 @@ bool Speed(const std::vector<std::string> &args) {
   static const size_t kLegacyADLen = kTLSADLen - 2;
 #endif
 
-#if defined(CMAKE_BUILD_TYPE)
+#if defined(CMAKE_BUILD_TYPE_DEBUG)
   printf("Benchmarking in debug mode.\n");
 #endif
 

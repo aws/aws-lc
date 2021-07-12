@@ -43,7 +43,7 @@ else()
 endif()
 
 function(build_benchmark target_name additional_include_dir lib_crypto)
-  message(-- Building ${target_name} benchmark using includes from ${additional_include_dir} and libcrypto from ${lib_crypto}.)
+  message(-- Building ${target_name} benchmark using header files from ${additional_include_dir} and libcrypto from ${lib_crypto}.)
   add_executable(
           ${target_name}
           speed.cc
@@ -61,11 +61,11 @@ if(AWSLC_INSTALL_DIR)
   build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include crypto)
 
   if(NOT CMAKE_BUILD_TYPE)
-    target_compile_options(awslc_bm PUBLIC -DCMAKE_BUILD_TYPE)
+    target_compile_options(awslc_bm PUBLIC -DCMAKE_BUILD_TYPE_DEBUG)
   endif()
 endif()
 
-# This expects a directory which contains the includes are in include/openssl/*.h and the OpenSSL artifacts in build/
+# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in build/
 if(OPENSSL_INSTALL_DIR)
   build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
 
