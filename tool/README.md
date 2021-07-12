@@ -1,8 +1,8 @@
 # Tools for AWS-LC
-In addition to the tools provided by BoringSSL, AWS-LC features enhanced benchmarking tools compatible with OpenSSL and BoringSSL in order to help facilitate 1-1 performance comparisons.
+AWS-LC features enhanced benchmarking tools compatible with OpenSSL and BoringSSL in order to help facilitate 1-1 performance comparisons.
 
 ## Benchmarking Tools
-In addition to `bssl speed`, AWS-LC will generate three additional benchmarking tools when provided with corresponding compiler flags. These tools take the same arguments as the BoringSSL speed tool does.
+When compiled, AWS-LC will generate three benchmarking tools when provided with corresponding compiler flags. These tools take the same arguments as the BoringSSL speed tool does.
 
 Additionally, the speed tool now prints a message when it is benchmarking a non-release build of AWS-LC.
 
