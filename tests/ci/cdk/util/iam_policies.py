@@ -21,7 +21,8 @@ def bm_framework_policy_in_json():
                     "ec2:DescribeInstances"
                 ],
                 "Resource": [
-                    "arn:aws:ec2:*:*:instance/*"
+                    # "arn:aws:ec2:*:*:instance/*"
+                    "*"
                 ]
             },
             {
