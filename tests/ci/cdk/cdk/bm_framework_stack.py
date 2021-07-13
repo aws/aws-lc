@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 import aws_cdk.core
-from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam
+from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
 from util.iam_policies import bm_framework_policy_in_json
@@ -9,7 +9,8 @@ from util.yml_loader import YmlLoader
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
 
-class BmFrameworkCodeBuildStack(core.Stack):
+
+class BmFrameworkStack(core.Stack):
     """Define a stack used to create a CodeBuild instance on which to execute the AWS-LC benchmarking framework"""
 
     def __init__(self,
@@ -34,12 +35,15 @@ class BmFrameworkCodeBuildStack(core.Stack):
             clone_depth=1)
 
         # Define a IAM role for this stack.
+
+        # if iam_role is still None, we assign
         code_build_batch_policy = iam.PolicyDocument.from_json(bm_framework_policy_in_json())
         inline_policies = {"code_build_batch_policy": code_build_batch_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
                         inline_policies=inline_policies)
+
 
         # Create build spec.
         placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
@@ -69,16 +73,6 @@ class BmFrameworkCodeBuildStack(core.Stack):
             "TimeoutInMins": 180
         })
 
-
-class BmFrameworkEc2Stack(core.Stack):
-    """Define a stack used to create the Ec2 instances used in the benchmarking framework"""
-    def __init__(self,
-                 scope: core.Construct,
-                 id: str,
-                 **kwargs) -> None:
-        super().__init__(scope, id, **kwargs)
-
-        # create vpc for security
         vpc = ec2.Vpc(self, id='bm_framework_vpc')
 
         # create security group with default rules
@@ -93,9 +87,6 @@ class BmFrameworkEc2Stack(core.Stack):
             "us-west-2": "ami-01773ce53581acf22"
         })
 
-        # Create a Size object for the EBS volume
-        size = aws_cdk.core.Size.gibibytes(amount=20)
-
         # Create an EBS block device volume for use by the block_device
         block_device_volume = ec2.BlockDeviceVolume(ebs_device=ec2.EbsDeviceProps(volume_size=20))
 
@@ -106,7 +97,6 @@ class BmFrameworkEc2Stack(core.Stack):
         # commands to run on startup
         startup_commands = 'mkdir test'
 
-        # TODO: create vpc endpoint for s3 to connect to ec2s
         x86_ubuntu2004_clang7 = ec2.Instance(self, id='bm_framework_x86_ubuntu-20.04_clang7',
                                              instance_type=ec2.InstanceType("c5.metal"),
                                              machine_image=ubuntu2004,
@@ -114,3 +104,17 @@ class BmFrameworkEc2Stack(core.Stack):
                                              security_group=sec_group,
                                              block_devices=[block_device])
         x86_ubuntu2004_clang7.add_user_data(startup_commands)
+
+# class BmFrameworkS3Stack(core.Stack):
+#     """Define a stack used to create the s3 buckets used in the benchmarking framework"""
+#     def __init__(self,
+#                  scope: core.Construct,
+#                  id: str,
+#                  **kwargs) -> None:
+#         super().__init__(scope, id, **kwargs)
+#
+#         production_results_s3 = s3.Bucket(self, "bm_framework_production_results",
+#                                           access_control=s3.BucketAccessControl.PUBLIC_READ,
+#                                           enforce_ssl=True)
+#
+#         # production_results_s3.grant_put()

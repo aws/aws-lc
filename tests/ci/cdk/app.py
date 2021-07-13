@@ -5,7 +5,7 @@
 
 from aws_cdk import core
 
-from cdk.bm_framework_stack import BmFrameworkCodeBuildStack, BmFrameworkEc2Stack
+from cdk.bm_framework_stack import BmFrameworkStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
@@ -42,7 +42,6 @@ WindowsDockerImageBuildStack(app, "aws-lc-docker-image-build-windows", env=env)
 # fuzz_build_spec_file = "cdk/codebuild/github_ci_fuzzing_omnibus.yaml"
 # AwsLcGitHubFuzzCIStack(app, "aws-lc-ci-fuzzing", LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, fuzz_build_spec_file, env=env)
 bm_framework_build_spec_file = "./cdk/codebuild/bm_framework_omnibus.yaml"
-BmFrameworkCodeBuildStack(app, "aws-lc-bm-framework-codebuild", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
-BmFrameworkEc2Stack(app, "aws-lc-bm-framework-ec2", env=env)
+BmFrameworkStack(app, "aws-lc-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
 
 app.synth()
