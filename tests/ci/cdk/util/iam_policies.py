@@ -17,7 +17,8 @@ def bm_framework_policy_in_json():
                 "Effect": "Allow",
                 "Action": [
                     "ec2:StartInstances",
-                    "ec2:StopInstances"
+                    "ec2:StopInstances",
+                    "ec2:DescribeInstances"
                 ],
                 "Resource": [
                     "arn:aws:ec2:*:*:instance/*"
