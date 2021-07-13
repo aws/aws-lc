@@ -9,7 +9,7 @@ from util.yml_loader import YmlLoader
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
 
-class BmFrameworkStack(core.Stack):
+class BmFrameworkCodeBuildStack(core.Stack):
     """Define a stack used to execute the AWS-LC benchmarking framework"""
 
     def __init__(self,
@@ -69,17 +69,22 @@ class BmFrameworkStack(core.Stack):
             "TimeoutInMins": 180
         })
 
-        # NOTE: ALL BELOW IS FOR EC2 INSTANCES
+class BmFrameworkEc2Stack(core.Stack):
+    def __init__(self,
+                 scope: core.Construct,
+                 id: str,
+                 **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
 
         # create vpc for security
         vpc = ec2.Vpc(self, id='bm_framework_vpc')
 
         # create security group with default rules
         sec_group = ec2.SecurityGroup(self, id='bm_framework_sg',
-                                    description='temp desc.',
-                                    allow_all_outbound=True,
-                                    vpc=vpc,
-                                    security_group_name='bm_framework_sg')
+                                      description='temp desc.',
+                                      allow_all_outbound=True,
+                                      vpc=vpc,
+                                      security_group_name='bm_framework_sg')
 
         # We want Ubuntu 20.04 AMI for x86
         ubuntu2004 = ec2.MachineImage.generic_linux({
