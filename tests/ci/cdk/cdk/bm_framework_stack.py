@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-
+import aws_cdk.core
 from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
@@ -10,7 +10,7 @@ from util.yml_loader import YmlLoader
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
 
 class BmFrameworkCodeBuildStack(core.Stack):
-    """Define a stack used to execute the AWS-LC benchmarking framework"""
+    """Define a stack used to create a CodeBuild instance on which to execute the AWS-LC benchmarking framework"""
 
     def __init__(self,
                  scope: core.Construct,
@@ -69,7 +69,9 @@ class BmFrameworkCodeBuildStack(core.Stack):
             "TimeoutInMins": 180
         })
 
+
 class BmFrameworkEc2Stack(core.Stack):
+    """Define a stack used to create the Ec2 instances used in the benchmarking framework"""
     def __init__(self,
                  scope: core.Construct,
                  id: str,
@@ -91,6 +93,16 @@ class BmFrameworkEc2Stack(core.Stack):
             "us-west-2": "ami-01773ce53581acf22"
         })
 
+        # Create a Size object for the EBS volume
+        size = aws_cdk.core.Size.gibibytes(amount=20)
+
+        # Create an EBS block device volume for use by the block_device
+        block_device_volume = ec2.BlockDeviceVolume(ebs_device=ec2.EbsDeviceProps(volume_size=20))
+
+        # Create an EBS block device for usage by the ec2 instance
+        block_device = ec2.BlockDevice(device_name="/dev/sda1",
+                                       volume=block_device_volume)
+
         # commands to run on startup
         startup_commands = 'mkdir test'
 
@@ -99,5 +111,6 @@ class BmFrameworkEc2Stack(core.Stack):
                                              instance_type=ec2.InstanceType("c5.metal"),
                                              machine_image=ubuntu2004,
                                              vpc=vpc,
-                                             security_group=sec_group)
+                                             security_group=sec_group,
+                                             block_devices=[block_device])
         x86_ubuntu2004_clang7.add_user_data(startup_commands)
