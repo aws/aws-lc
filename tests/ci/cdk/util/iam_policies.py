@@ -33,6 +33,19 @@ def bm_framework_policy_in_json():
                     "codebuild:RetryBuild"
                 ],
                 "Resource": "arn:aws:codebuild:*:*:project/*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:CreateBucket",
+                    "s3:PutObject",
+                    "s3:GetObject"
+                ],
+                "Resource": [
+                    # "arn:aws:s3:*:*:bucket/*",
+                    # "arn:aws:s3:*:*:object/*"
+                    "*"
+                ]
             }]
     }
 

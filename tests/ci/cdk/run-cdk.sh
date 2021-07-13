@@ -90,7 +90,7 @@ function create_docker_img_build_stack() {
 
 function create_github_ci_stack() {
   cdk deploy aws-lc-ci-* --require-approval never
-  cdk deploy aws-lc-bm-framework-* --require-approval never
+  cdk deploy aws-lc-bm-framework --require-approval never
 
   # After creating the framework, we want to stop the ec2 instances
   instance_id=$(aws ec2 describe-instances --filters Name="instance.group-name",Values="bm_framework_sg" --query Reservations[*].Instances[*].[InstanceId] --output text)
@@ -101,7 +101,7 @@ function create_github_ci_stack() {
 #  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
 #  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
 #  aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-bm-framework-codebuild --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-bm-framework --build-type BUILD_BATCH
 }
 
 function build_linux_img() {

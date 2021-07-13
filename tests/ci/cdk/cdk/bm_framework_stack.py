@@ -62,8 +62,6 @@ class BmFrameworkStack(core.Stack):
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
 
-        # TODO: add build type BUILD_BATCH when CFN finishes the feature release. See CryptoAlg-575.
-
         # Add 'BuildBatchConfig' property, which is not supported in CDK.
         # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
@@ -72,6 +70,8 @@ class BmFrameworkStack(core.Stack):
             "ServiceRole": role.role_arn,
             "TimeoutInMins": 180
         })
+
+        # define things needed for ec2 instance below
 
         vpc = ec2.Vpc(self, id='bm_framework_vpc')
 
@@ -102,19 +102,14 @@ class BmFrameworkStack(core.Stack):
                                              machine_image=ubuntu2004,
                                              vpc=vpc,
                                              security_group=sec_group,
-                                             block_devices=[block_device])
+                                             block_devices=[block_device],
+                                             role=role)
         x86_ubuntu2004_clang7.add_user_data(startup_commands)
 
-# class BmFrameworkS3Stack(core.Stack):
-#     """Define a stack used to create the s3 buckets used in the benchmarking framework"""
-#     def __init__(self,
-#                  scope: core.Construct,
-#                  id: str,
-#                  **kwargs) -> None:
-#         super().__init__(scope, id, **kwargs)
-#
-#         production_results_s3 = s3.Bucket(self, "bm_framework_production_results",
-#                                           access_control=s3.BucketAccessControl.PUBLIC_READ,
-#                                           enforce_ssl=True)
-#
-#         # production_results_s3.grant_put()
+        # define s3 buckets below
+
+        production_results_s3 = s3.Bucket(self, "bm_framework_production_results",
+                                          # access_control=s3.BucketAccessControl.PUBLIC_READ,
+                                          enforce_ssl=True)
+
+        production_results_s3.grant_put(role)
