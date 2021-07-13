@@ -403,7 +403,7 @@ chacha20_poly1305_seal:
     mov $acc1, #0
     mov $acc2, #0
 
-    ldr $t1, [$keyp, #56]   // The total cipher text length includes extra_len_in
+    ldr $t1, [$keyp, #56]   // The total cipher text length includes extra_in_len
     add $t1, $t1, $inl
     mov $LEN_STORE.d[0], $adl  // Store the input and aad lengths
     mov $LEN_STORE.d[1], $t1

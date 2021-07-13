@@ -160,7 +160,7 @@ _chacha20_poly1305_seal:
 	mov	x9, #0
 	mov	x10, #0
 
-	ldr	x12, [x5, #56]   // The total cipher text length includes extra_len_in
+	ldr	x12, [x5, #56]   // The total cipher text length includes extra_in_len
 	add	x12, x12, x2
 	mov	v31.d[0], x4  // Store the input and aad lengths
 	mov	v31.d[1], x12
