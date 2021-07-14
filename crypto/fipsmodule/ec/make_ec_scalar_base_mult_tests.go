@@ -77,6 +77,7 @@ func printMultiplesSECP256K1(name string) {
     fmt.Printf("\n")
   }
 }
+
 // P-192 curve is not available in the crypto/elliptic module
 // so we instantiate it her ourselves. This works because P-192
 // has the 'a' constant a = -3 as assumed by the module.
