@@ -4,7 +4,7 @@ import aws_cdk.core
 from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
-from util.iam_policies import bm_framework_policy_in_json
+from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, ec2_get_put_describe_policy_in_json
 from util.yml_loader import YmlLoader
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
@@ -35,15 +35,14 @@ class BmFrameworkStack(core.Stack):
             clone_depth=1)
 
         # Define a IAM role for this stack.
-
-        # if iam_role is still None, we assign
-        code_build_batch_policy = iam.PolicyDocument.from_json(bm_framework_policy_in_json())
-        inline_policies = {"code_build_batch_policy": code_build_batch_policy}
-        role = iam.Role(scope=self,
-                        id="{}-role".format(id),
+        code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
+        ec2_get_put_describe_policy = iam.PolicyDocument.from_json(ec2_get_put_describe_policy_in_json())
+        codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
+                                     "ec2_get_put_describe_policy": ec2_get_put_describe_policy}
+        codebuild_role = iam.Role(scope=self,
+                        id="{}-codebuild-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                        inline_policies=inline_policies)
-
+                        inline_policies=codebuild_inline_policies)
 
         # Create build spec.
         placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
@@ -55,7 +54,7 @@ class BmFrameworkStack(core.Stack):
             id=id,
             project_name=id,
             source=git_hub_source,
-            role=role,
+            role=codebuild_role,
             timeout=core.Duration.minutes(180),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
@@ -67,20 +66,28 @@ class BmFrameworkStack(core.Stack):
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
         cfn_build = project.node.default_child
         cfn_build.add_override("Properties.BuildBatchConfig", {
-            "ServiceRole": role.role_arn,
+            "ServiceRole": codebuild_role.role_arn,
             "TimeoutInMins": 180
         })
 
         # define things needed for ec2 instance below
+        S3_PROD_BUCKET = "{}-prod-bucket".format(id)
 
-        vpc = ec2.Vpc(self, id='bm_framework_vpc')
+        # create iam for ec2s
+        s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
+        ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy}
+        ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
+                            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+                            inline_policies=ec2_inline_policies)
+
+        # create vpc for ec2s
+        vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
 
         # create security group with default rules
-        sec_group = ec2.SecurityGroup(self, id='bm_framework_sg',
-                                      description='temp desc.',
+        sec_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
                                       allow_all_outbound=True,
                                       vpc=vpc,
-                                      security_group_name='bm_framework_sg')
+                                      security_group_name='bm_framework_ec2_sg')
 
         # We want Ubuntu 20.04 AMI for x86
         ubuntu2004 = ec2.MachineImage.generic_linux({
@@ -88,28 +95,27 @@ class BmFrameworkStack(core.Stack):
         })
 
         # Create an EBS block device volume for use by the block_device
-        block_device_volume = ec2.BlockDeviceVolume(ebs_device=ec2.EbsDeviceProps(volume_size=20))
+        block_device_volume = ec2.BlockDeviceVolume.ebs(volume_size=200, delete_on_termination=True)
 
         # Create an EBS block device for usage by the ec2 instance
-        block_device = ec2.BlockDevice(device_name="/dev/sda1",
-                                       volume=block_device_volume)
+        block_device = ec2.BlockDevice(device_name="/dev/sda1", volume=block_device_volume)
 
-        # commands to run on startup
-        startup_commands = 'mkdir test'
+        # commands for the ec2 to run on startup
+        startup_commands = 'cat hi > hi.txt; aws s3 mv hi.txt s3://{}'.format(S3_PROD_BUCKET)
 
-        x86_ubuntu2004_clang7 = ec2.Instance(self, id='bm_framework_x86_ubuntu-20.04_clang7',
+        x86_instance = ec2.Instance(self, id="{}-ec2-x86".format(id),
                                              instance_type=ec2.InstanceType("c5.metal"),
                                              machine_image=ubuntu2004,
                                              vpc=vpc,
                                              security_group=sec_group,
                                              block_devices=[block_device],
-                                             role=role)
-        x86_ubuntu2004_clang7.add_user_data(startup_commands)
+                                             role=ec2_role)
+        x86_instance.add_user_data(startup_commands)
+        core.Tags.of(x86_instance).add("aws-lc", "{}-ec2-x86-instance".format(id))
 
         # define s3 buckets below
-
-        production_results_s3 = s3.Bucket(self, "bm_framework_production_results",
-                                          # access_control=s3.BucketAccessControl.PUBLIC_READ,
+        production_results_s3 = s3.Bucket(self, "{}-s3-prod".format(id),
+                                          bucket_name=S3_PROD_BUCKET,
                                           enforce_ssl=True)
 
-        production_results_s3.grant_put(role)
+        production_results_s3.grant_put(ec2_role)

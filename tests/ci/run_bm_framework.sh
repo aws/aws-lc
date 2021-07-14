@@ -4,7 +4,7 @@ set -exo pipefail
 # SPDX-License-Identifier: Apache-2.0
 
 # start ec2 instances
-instance_id=$(aws ec2 describe-instances --filters Name="instance.group-name",Values="bm_framework_sg" --query Reservations[*].Instances[*].[InstanceId] --output text)
+instance_id=$(aws ec2 describe-instances --filters Name="instance.group-name",Values="bm_framework_ec2_sg" --query Reservations[*].Instances[*].[InstanceId] --output text)
 aws ec2 start-instances --instance-ids "${instance_id}"
 
 # wait until we've detected uploads to the s3 (for now just sleep 30 seconds)

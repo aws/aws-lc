@@ -93,7 +93,7 @@ function create_github_ci_stack() {
   cdk deploy aws-lc-bm-framework --require-approval never
 
   # After creating the framework, we want to stop the ec2 instances
-  instance_id=$(aws ec2 describe-instances --filters Name="instance.group-name",Values="bm_framework_sg" --query Reservations[*].Instances[*].[InstanceId] --output text)
+  instance_id=$(aws ec2 describe-instances --filters Name="instance.group-name",Values="bm_framework_ec2_sg" --query Reservations[*].Instances[*].[InstanceId] --output text)
   aws ec2 stop-instances --instance-ids "${instance_id}"
 
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
