@@ -31,6 +31,7 @@
 #include <sys/user.h>
 
 #include "fork_detect.h"
+#include "snapsafe_detect.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -238,6 +239,10 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         // valid pointer in our address space.
         const char *filename = reinterpret_cast<const char *>(
             (syscall_number == __NR_openat) ? regs.rsi : regs.rdi);
+        if (strcmp(filename, AWSLC_SYSGENID_FILE_PATH) == 0) {
+          // Ignore snapsafe-type ube detection use of the |open| system call.
+          break;
+        }
         out_trace->push_back(Event::Open(filename));
         is_opening_urandom = strcmp(filename, "/dev/urandom") == 0;
         if (is_opening_urandom && (flags & NO_URANDOM)) {
@@ -337,8 +342,18 @@ static void TestFunction() {
   RAND_bytes(&byte, sizeof(byte));
 }
 
-static bool have_fork_detection() {
-  return CRYPTO_get_fork_generation() != 0;
+static bool model_default_ube_detection(void) {
+
+  // Model fork detection.
+  uint64_t fork_status = CRYPTO_get_fork_generation();
+
+  // Model snapsafe detection. By default, we don't enforce defending against
+  // snapsafe-type ube's.
+  uint32_t snapsafe_generation = 0;
+  int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
+
+  // No-op use of |snapsafe_status| to avoid unused warnings.
+  return (fork_status != 0 && snapsafe_status < 2);
 }
 
 // TestFunctionPRNGModel is a model of how the urandom.c code will behave when
@@ -423,26 +438,28 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   const size_t kAdditionalDataLength = 32;
 
   if (!have_rdrand()) {
-    if ((!have_fork_detection() && !sysrand(true, kAdditionalDataLength)) ||
+    if ((!model_default_ube_detection() &&
+        !sysrand(true, kAdditionalDataLength)) ||
         // Initialise CRNGT.
         (is_fips && !sysrand(true, 16)) ||
         !sysrand(true, kSeedLength) ||
         // Second entropy draw.
-        (!have_fork_detection() && !sysrand(true, kAdditionalDataLength))) {
+        (!model_default_ube_detection() &&
+        !sysrand(true, kAdditionalDataLength))) {
       return ret;
     }
   } else if (
       // First additional data. If fast RDRAND isn't available then a
       // non-blocking OS entropy draw will be tried.
-      (!have_fast_rdrand() && !have_fork_detection() &&
-       !sysrand(false, kAdditionalDataLength)) ||
+      (!have_fast_rdrand() && !model_default_ube_detection() &&
+      !sysrand(false, kAdditionalDataLength)) ||
       // Opportuntistic entropy draw in FIPS mode because RDRAND was used.
       // In non-FIPS mode it's just drawn from |CRYPTO_sysrand| in a blocking
       // way.
       !sysrand(!is_fips, CTR_DRBG_ENTROPY_LEN) ||
       // Second entropy draw's additional data.
-      (!have_fast_rdrand() && !have_fork_detection() &&
-       !sysrand(false, kAdditionalDataLength))) {
+      (!have_fast_rdrand() && !model_default_ube_detection() &&
+      !sysrand(false, kAdditionalDataLength))) {
     return ret;
   }
 

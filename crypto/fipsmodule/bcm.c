@@ -91,6 +91,7 @@
 #include "modes/polyval.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
+#include "rand/snapsafe_detect.c"
 #include "rand/rand.c"
 #include "rand/urandom.c"
 #include "rsa/blinding.c"

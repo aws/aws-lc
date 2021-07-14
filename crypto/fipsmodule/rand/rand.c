@@ -29,6 +29,7 @@
 
 #include "internal.h"
 #include "fork_detect.h"
+#include "snapsafe_detect.h"
 #include "../../internal.h"
 #include "../delocate.h"
 
@@ -60,6 +61,7 @@ static const unsigned kReseedInterval = 4096;
 struct rand_thread_state {
   CTR_DRBG_STATE drbg;
   uint64_t fork_generation;
+  uint32_t snapsafe_generation;
   // calls is the number of generate calls made on |drbg| since it was last
   // (re)seeded. This is bound by |kReseedInterval|.
   unsigned calls;
@@ -312,37 +314,98 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 #endif
 
+// CRYPTO_snapsafe_must_defend indicates whether snapsafe-type ube's must be
+// defended against.
+// Experimental support, so don't enforce anything yet.
+OPENSSL_INLINE int CRYPTO_snapsafe_must_defend(void) {
+#if defined(AWSLC_SNAPSAFE_MUST_DEFEND)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+// CRYPTO_fork_must_defend indicates whether fork-type ube's must be defended
+// against.
+OPENSSL_INLINE int CRYPTO_fork_must_defend(void) {
+  if (rand_fork_unsafe_buffering_enabled() == 0) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
+}
+
+// must_defend_against_ube implements the logic that decides whether
+// we should enforce entropy mixing to safeguard against uniqeness breaking
+// events (ube) if detection mechanisms are not available. Currently, there are
+// two detection mechanisms implemented, that attempt to detect such events.
+// They are:
+//  * fork detection: attempts to detect process forks.
+//  * snapsafe detection: attempts to detect snapshot/VM resumes.
+// If a ube detection mechanism is not available, but a defense against that
+// ube MUST be enforced (as indicated by either |CRYPTO_snapsafe_must_defend| or
+// CRYPTO_fork_must_defend|), return 1; otherwise, return 0.
+static int must_defend_against_ube(const uint64_t fork_generation,
+                                        int snapsafe_status) {
+  if (fork_generation == 0 && CRYPTO_fork_must_defend() == 1) {
+    return 1;
+  }
+  if (snapsafe_status == 0 && CRYPTO_snapsafe_must_defend() == 1) {
+    return 1;
+  }
+  return 0;
+}
+
+static void get_entropy_with_no_fast_rdrand(uint8_t *buf, size_t buf_len) {
+  if (!have_rdrand()) {
+      // No alternative so block for OS entropy.
+      CRYPTO_sysrand(buf, buf_len);
+  } else if (!CRYPTO_sysrand_if_available(buf, buf_len) && !rdrand(buf, buf_len)) {
+    // RDRAND failed: block for OS entropy.
+    CRYPTO_sysrand(buf, buf_len);
+  }
+}
+
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32]) {
+
   if (out_len == 0) {
     return;
   }
 
+  uint8_t ube_detected_draw_entropy = 0;
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
+  uint32_t snapsafe_generation = 0;
+  int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
 
   // Additional data is mixed into every CTR-DRBG call to protect, as best we
-  // can, against forks & VM clones. We do not over-read this information and
+  // can, against ube's. We do not over-read this information and
   // don't reseed with it so, from the point of view of FIPS, this doesn't
   // provide “prediction resistance”. But, in practice, it does.
   uint8_t additional_data[32];
+
   // Intel chips have fast RDRAND instructions while, in other cases, RDRAND can
   // be _slower_ than a system call.
   if (!have_fast_rdrand() ||
       !rdrand(additional_data, sizeof(additional_data))) {
+
     // Without a hardware RNG to save us from address-space duplication, the OS
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
-    // and so is disabled when we have fork detection, or if the application has
-    // promised not to fork.
-    if (fork_generation != 0 || rand_fork_unsafe_buffering_enabled()) {
+    // and so is disabled when we can rely on ube detection.
+    if (must_defend_against_ube(fork_generation, snapsafe_status) == 0) {
+
+      // We end up here if we have ube detection enabled or if we don't want to
+      // enforce ube defenses. In this case, we want to draw entropy if we
+      // detect an ube.
+      ube_detected_draw_entropy = 1;
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
-    } else if (!have_rdrand()) {
-      // No alternative so block for OS entropy.
-      CRYPTO_sysrand(additional_data, sizeof(additional_data));
-    } else if (!CRYPTO_sysrand_if_available(additional_data,
-                                            sizeof(additional_data)) &&
-               !rdrand(additional_data, sizeof(additional_data))) {
-      // RDRAND failed: block for OS entropy.
-      CRYPTO_sysrand(additional_data, sizeof(additional_data));
+    } else {
+
+      // Since we draw entropy now, there is no need to draw entropy later on
+      // even if we detect an ube.
+      ube_detected_draw_entropy = 0;
+      get_entropy_with_no_fast_rdrand(additional_data, sizeof(additional_data));
     }
   }
 
@@ -354,6 +417,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   struct rand_thread_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
 
+  // Lazily initialise thread-local state.
   if (state == NULL) {
     state = OPENSSL_malloc(sizeof(struct rand_thread_state));
     if (state == NULL ||
@@ -387,6 +451,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
     state->calls = 0;
     state->fork_generation = fork_generation;
+    state->snapsafe_generation = snapsafe_generation;
 
 #if defined(BORINGSSL_FIPS)
     if (state != &stack_state) {
@@ -403,8 +468,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #endif
   }
 
-  if (state->calls >= kReseedInterval ||
-      state->fork_generation != fork_generation) {
+  if (state->calls >= kReseedInterval) {
+    // Use FIPS-compliant seed entropy for reseeding.
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int used_cpu;
     rand_get_seed(state, seed, &used_cpu);
@@ -422,41 +487,89 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
       abort();
     }
+#if defined(BORINGSSL_FIPS)
+    CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
+#endif
     state->calls = 0;
-    state->fork_generation = fork_generation;
-  } else {
+    // No need to defend against ube's at this point in time if the drbg state
+    // has already been reseeded.
+    ube_detected_draw_entropy = 0;
+  }
+
+  do {
+
+    if (state->snapsafe_generation != snapsafe_generation ||
+        state->fork_generation != fork_generation) {
+
+      // If we have already reseeded or |additional_data| has been filled with
+      // entropy, no need to do extra work.
+      if (ube_detected_draw_entropy == 1) {
+        // Gather entropy. Instead of reseeding, enforce mixing in entropy as we
+        // do for prediction resistance. This is cheaper than calling reseed.
+        get_entropy_with_no_fast_rdrand(additional_data, sizeof(additional_data));
+      }
+
+      // From now on enforce defending against ube's. This is needed if we need
+      // to reenter the loop for snapsafe.
+      ube_detected_draw_entropy = 1;
+
+      // Update cached generation numbers. This avoids an unnecessary defense
+      // next time we enter |RAND_bytes_with_additional_data|.
+      state->fork_generation = fork_generation;
+      state->snapsafe_generation = snapsafe_generation;
+    }
+
 #if defined(BORINGSSL_FIPS)
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
 #endif
-  }
 
-  int first_call = 1;
-  while (out_len > 0) {
-    size_t todo = out_len;
-    if (todo > CTR_DRBG_MAX_GENERATE_LENGTH) {
-      todo = CTR_DRBG_MAX_GENERATE_LENGTH;
+    int first_call = 1;
+    while (out_len > 0) {
+      size_t todo = out_len;
+      if (todo > CTR_DRBG_MAX_GENERATE_LENGTH) {
+        todo = CTR_DRBG_MAX_GENERATE_LENGTH;
+      }
+
+      if (!CTR_DRBG_generate(&state->drbg, out, todo, additional_data,
+                             first_call ? sizeof(additional_data) : 0)) {
+        abort();
+      }
+
+      out += todo;
+      out_len -= todo;
+      // Though we only check before entering the loop, this cannot add enough to
+      // overflow a |size_t|.
+      state->calls++;
+      first_call = 0;
     }
-
-    if (!CTR_DRBG_generate(&state->drbg, out, todo, additional_data,
-                           first_call ? sizeof(additional_data) : 0)) {
-      abort();
-    }
-
-    out += todo;
-    out_len -= todo;
-    // Though we only check before entering the loop, this cannot add enough to
-    // overflow a |size_t|.
-    state->calls++;
-    first_call = 0;
-  }
-
-  if (state == &stack_state) {
-    CTR_DRBG_clear(&state->drbg);
-  }
 
 #if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
+    CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
 #endif
+
+    // If a process forks, only the thread initiating the fork will be
+    // duplicated. Hence, other forking threads will not affect the currently
+    // executing thread and we can simply check for fork-type ube's once, before
+    // generating randomness. However, this is not true for snapsafe-type ube's,
+    // which can be caused by e.g. process-external events. For example, a VM
+    // snapshot can be taken after the first snapsafe-type ube check. To guard
+    // against such events, we perform a second snapsafe-type ube check.
+    // Why have the first check? The time window in which the snapsafe-type ube
+    // could occur between the first check and returning the randomness is very
+    // small. But, the time window between now and potentially reentering
+    // |RAND_bytes_with_additional_data|, where snapsafe could also be violated,
+    // is much bigger in size.
+    snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
+  } while (state->snapsafe_generation != snapsafe_generation);
+
+  // Unlikely, but if we use an ephemeral drbg state, it must be released. There
+  // is a tiny time window here where snapsafe-type ube's could go undetected.
+  if (state == &stack_state) {
+    // There is no need to mutex. |rand_thread_state_clear_all| simply cleanses
+    // the memory as below. Hence, if we somehow end up here with a thread-local
+    // state, there is no need to care about any races.
+    CTR_DRBG_clear(&state->drbg);
+  }
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {

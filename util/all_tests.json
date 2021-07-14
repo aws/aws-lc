@@ -76,6 +76,12 @@
     "skip_valgrind": true
   },
   {
+    "comment": "Run snapsafe detection test suite with fork detection disabled and without Intel RDRAND",
+    "cmd": ["crypto/crypto_test", "--fork_unsafe_buffering", "--gtest_filter=SnapsafeGenerationTest.SysGenIDincrement"],
+    "env": ["OPENSSL_ia32cap=~0x0000000040000000"],
+    "skip_valgrind": true
+  },
+  {
     "cmd": ["decrepit/decrepit_test"],
     "skip_valgrind": true
   },

@@ -22,9 +22,11 @@
 #include <openssl/span.h>
 
 #include "../fipsmodule/rand/fork_detect.h"
+#include "../fipsmodule/rand/snapsafe_detect.h"
 #include "../fipsmodule/rand/internal.h"
 #include "../test/abi_test.h"
 #include "../test/test_util.h"
+#include "../test/sysgenid_test_util.h"
 
 #if defined(OPENSSL_THREADS)
 #include <array>
@@ -51,7 +53,6 @@ static void maybe_disable_some_fork_detect_mechanisms(void) {
 #endif
 }
 
-
 // These tests are, strictly speaking, flaky, but we use large enough buffers
 // that the probability of failing when we should pass is negligible.
 
@@ -71,7 +72,18 @@ TEST(RandTest, NotObviouslyBroken) {
 
 #if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_IOS) && \
     !defined(OPENSSL_FUCHSIA) && !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-static bool ForkAndRand(bssl::Span<uint8_t> out) {
+
+static void disable_snapsafe_detection_mechanisms(void) {
+#if defined(OPNESSL_LINUX)
+  CRYPTO_snapsafe_detect_ignore_for_testing();
+#endif
+}
+
+// A |increment_hint| value different from 0 means that the SysGenID value
+// is incremented and is used as a hint in the mocked test.
+static bool ForkMaybeIncrementSysGenIdAndRand(bssl::Span<uint8_t> out,
+  int increment_hint) {
+
   int pipefds[2];
   if (pipe(pipefds) < 0) {
     perror("pipe");
@@ -91,6 +103,11 @@ static bool ForkAndRand(bssl::Span<uint8_t> out) {
   if (child == 0) {
     // This is the child. Generate entropy and write it to the parent.
     close(pipefds[0]);
+    if (increment_hint > 0) {
+      if (new_sysgenid_value(increment_hint) == 0) {
+        return false;
+      }
+    }
     RAND_bytes(out.data(), out.size());
     while (!out.empty()) {
       ssize_t ret = write(pipefds[1], out.data(), out.size());
@@ -144,6 +161,8 @@ TEST(RandTest, Fork) {
   static const uint8_t kZeros[16] = {0};
 
   maybe_disable_some_fork_detect_mechanisms();
+  // Only test fork detection.
+  disable_snapsafe_detection_mechanisms();
 
   // Draw a little entropy to initialize any internal PRNG buffering.
   uint8_t byte;
@@ -154,8 +173,8 @@ TEST(RandTest, Fork) {
   // of sneaking by with a large enough buffer that we've since reseeded from
   // the OS.
   uint8_t buf1[16], buf2[16], buf3[16];
-  ASSERT_TRUE(ForkAndRand(buf1));
-  ASSERT_TRUE(ForkAndRand(buf2));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, 0));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, 0));
   RAND_bytes(buf3, sizeof(buf3));
 
   // All should be different.
@@ -207,6 +226,73 @@ TEST(RandTest, Threads) {
   RunConcurrentRands(kFewerThreads);
 }
 #endif  // OPENSSL_THREADS
+
+#if defined(OPENSSL_LINUX)
+// Make sure to tidy up if we mock the SysGenID device.
+class SnapsafeGenerationTest : public testing::Test {
+  public:
+    void TearDown() override {
+      maybe_cleanup();
+    }
+};
+
+TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
+
+  static const uint8_t kZeros[16] = {0};
+  uint32_t increment_hint = 0;
+
+  // In this test fixture we pretend we only have snapsafe detection. To
+  // reliably test this specific path, we must run it as a standalone test:
+  // * no fork protection.
+  // * no rdrand (avoid prediction resistance).
+  // This ensures that drbg state randomisation can only be triggered by
+  // snapsafe-type ube detection. Even if we have not disabled fork detection or
+  // rdrand, tests should pass anyway. So run through them for all test
+  // dimensions that hit this test fixture.
+  
+  ASSERT_TRUE(setup_sysgenid_support(PREFER_REAL_SYSGENID_DEVICE));
+
+  // The snapsafe generation should be stable.
+  uint32_t snapsafe_generation = 0;
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
+  uint32_t snapsafe_generation_stable = 0;
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation_stable));
+  ASSERT_EQ(snapsafe_generation, snapsafe_generation_stable);
+
+  // Verify that increment works.
+  increment_hint = snapsafe_generation_stable + 1;
+  ASSERT_TRUE(new_sysgenid_value(increment_hint));
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
+  ASSERT_GT(snapsafe_generation, snapsafe_generation_stable);
+
+  // The rest is similar to the test fixture |RandTest.Fork|. Except, we make
+  // sure to increment the SysGenID value in 
+  // |ForkMaybeIncrementSysGenIdAndRand|. Snapsafe is not supposed to defend
+  // against forks, but we use it as standin for a snapshot/vm resume and
+  // manually increment the SysGenID value.
+
+  // Draw a little entropy to initialize any internal PRNG buffering.
+  uint8_t byte;
+  RAND_bytes(&byte, 1);
+
+  // Draw entropy in two child processes and the parent process. This test
+  // intentionally uses smaller buffers than the others, to minimize the chance
+  // of sneaking by with a large enough buffer that we've since reseeded from
+  // the OS.
+  uint8_t buf1[16], buf2[16], buf3[16];
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf1, increment_hint + 1));
+  ASSERT_TRUE(ForkMaybeIncrementSysGenIdAndRand(buf2, increment_hint + 2));
+  RAND_bytes(buf3, sizeof(buf3));
+
+  // All should be different.
+  EXPECT_NE(Bytes(buf1), Bytes(buf2));
+  EXPECT_NE(Bytes(buf2), Bytes(buf3));
+  EXPECT_NE(Bytes(buf1), Bytes(buf3));
+  EXPECT_NE(Bytes(buf1), Bytes(kZeros));
+  EXPECT_NE(Bytes(buf2), Bytes(kZeros));
+  EXPECT_NE(Bytes(buf3), Bytes(kZeros));
+}
+#endif // defined(OPENSSL_LINUX)
 
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST(RandTest, RdrandABI) {

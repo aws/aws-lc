@@ -71,6 +71,7 @@
 #include "../../internal.h"
 #include "../delocate.h"
 #include "../rand/fork_detect.h"
+#include "../rand/snapsafe_detect.h"
 
 
 int rsa_check_public_key(const RSA *rsa) {
@@ -366,11 +367,17 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   assert(rsa->mont_n != NULL);
 
   BN_BLINDING *ret = NULL;
+  
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
+  uint32_t snapsafe_generation = 0;
+  OPENSSL_UNUSED int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
+  (void) snapsafe_status; // In MSVC, |OPENSSL_UNUSED| is not enough.
+
   CRYPTO_MUTEX_lock_write(&rsa->lock);
 
-  // Wipe the blinding cache on |fork|.
-  if (rsa->blinding_fork_generation != fork_generation) {
+  // Wipe the blinding cache if we detect a ube (uniqueness breaking event).
+  if (rsa->blinding_fork_generation != fork_generation ||
+      rsa->blinding_snapsafe_generation != snapsafe_generation) {
     for (unsigned i = 0; i < rsa->num_blindings; i++) {
       // The inuse flag must be zero unless we were forked from a
       // multi-threaded process, in which case calling back into BoringSSL is
@@ -379,6 +386,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
       BN_BLINDING_invalidate(rsa->blindings[i]);
     }
     rsa->blinding_fork_generation = fork_generation;
+    rsa->blinding_snapsafe_generation = snapsafe_generation;
   }
 
   uint8_t *const free_inuse_flag =
