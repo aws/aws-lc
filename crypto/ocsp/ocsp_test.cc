@@ -107,6 +107,9 @@ static void ExtractAndVerifyBasicOCSP(
 
   int ret = OCSP_response_status(ocsp_response.get());
   ASSERT_EQ(expected_ocsp_status, ret);
+  if(ret != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    return;
+  }
 
   *basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
   ASSERT_TRUE(*basic_response);
@@ -215,6 +218,17 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         OCSP_RESPFINDSTATUS_SUCCESS,
         V_OCSP_CERTSTATUS_REVOKED
     },
+    // Test OCSP response status is unknown.
+    {
+        "ocsp_response_unknown",
+        "ca_cert",
+        "server_cert",
+        EVP_sha1(),
+        OCSP_RESPONSE_STATUS_SUCCESSFUL,
+        OCSP_VERIFYSTATUS_SUCCESS,
+        OCSP_RESPFINDSTATUS_SUCCESS,
+        V_OCSP_CERTSTATUS_UNKNOWN
+    },
     // Test OCSP response signed by the correct responder certificate, but not for
     // the requested certificate. (So this would be a completely valid response to a
     // different OCSP request for the other certificate.)
@@ -244,7 +258,7 @@ static const OCSPTestVectorExtended nTestVectors[] = {
     },
 
     // === SHA256 OCSP RESPONSES ===
-    // Test valid OCSP response signed by an OCSP responder
+    // Test valid OCSP response signed by an OCSP responder.
     {
         "ocsp_response_sha256",
         "ca_cert",
@@ -255,7 +269,7 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         OCSP_RESPFINDSTATUS_SUCCESS,
         V_OCSP_CERTSTATUS_GOOD
     },
-    // Test a SHA-256 revoked OCSP response status
+    // Test a SHA-256 revoked OCSP response status.
     {
         "ocsp_response_revoked_sha256",
         "ca_cert",
@@ -265,6 +279,17 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         OCSP_VERIFYSTATUS_SUCCESS,
         OCSP_RESPFINDSTATUS_SUCCESS,
         V_OCSP_CERTSTATUS_REVOKED
+    },
+    // Test a SHA-256 unknown OCSP response status.
+    {
+        "ocsp_response_unknown_sha256",
+        "ca_cert",
+        "server_cert",
+        EVP_sha256(),
+        OCSP_RESPONSE_STATUS_SUCCESSFUL,
+        OCSP_VERIFYSTATUS_SUCCESS,
+        OCSP_RESPFINDSTATUS_SUCCESS,
+        V_OCSP_CERTSTATUS_UNKNOWN
     },
     // Test a SHA-256 OCSP response signed by the correct responder certificate,
     // but not for the requested certificate. (So this would be a completely
@@ -291,6 +316,64 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         EVP_sha256(),
         OCSP_RESPONSE_STATUS_SUCCESSFUL,
         OCSP_VERIFYSTATUS_ERROR,
+        0,
+        0
+    },
+
+    // === Invalid OCSP response requests sent back an OCSP responder ===
+    // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+    // OCSPResponseStatus: malformedRequest
+    {
+        "ocsp_response_malformedrequest",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_MALFORMEDREQUEST,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: internalError
+    {
+        "ocsp_response_internalerror",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_INTERNALERROR,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: tryLater
+    {
+        "ocsp_response_trylater",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_TRYLATER,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: sigRequired
+    {
+        "ocsp_response_sigrequired",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_SIGREQUIRED,
+        0,
+        0,
+        0
+    },
+    // OCSPResponseStatus: unauthorized
+    {
+        "ocsp_response_unauthorized",
+        "",
+        "",
+        nullptr,
+        OCSP_RESPONSE_STATUS_UNAUTHORIZED,
+        0,
         0,
         0
     },
