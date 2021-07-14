@@ -212,6 +212,33 @@ let BIGNUM_OF_WORDLIST_APPEND = prove
   ASM_REWRITE_TAC[bignum_of_wordlist; APPEND; LENGTH; MULT_CLAUSES] THEN
   REWRITE_TAC[EXP; EXP_ADD] THEN ARITH_TAC);;
 
+let BIGNUM_OF_WORDLIST_LT = prove
+ (`!m0 m1 n0 n1.
+        bignum_of_wordlist(CONS m0 m1) < bignum_of_wordlist(CONS n0 n1) <=>
+        bignum_of_wordlist m1 < bignum_of_wordlist n1 \/
+        bignum_of_wordlist m1 = bignum_of_wordlist n1 /\ val m0 < val n0`,
+  REPEAT GEN_TAC THEN
+  REWRITE_TAC[bignum_of_wordlist] THEN ONCE_REWRITE_TAC[ADD_SYM] THEN
+  MATCH_MP_TAC LEXICOGRAPHIC_LT_64 THEN REWRITE_TAC[VAL_BOUND_64]);;
+
+let BIGNUM_OF_WORDLIST_LE = prove
+ (`!m0 m1 n0 n1.
+        bignum_of_wordlist(CONS m0 m1) <= bignum_of_wordlist(CONS n0 n1) <=>
+        bignum_of_wordlist m1 < bignum_of_wordlist n1 \/
+        bignum_of_wordlist m1 = bignum_of_wordlist n1 /\ val m0 <= val n0`,
+  REPEAT GEN_TAC THEN
+  REWRITE_TAC[bignum_of_wordlist] THEN ONCE_REWRITE_TAC[ADD_SYM] THEN
+  MATCH_MP_TAC LEXICOGRAPHIC_LE_64 THEN REWRITE_TAC[VAL_BOUND_64]);;
+
+let BIGNUM_OF_WORDLIST_EQ = prove
+ (`!m0 m1 n0 n1.
+        bignum_of_wordlist(CONS m0 m1) = bignum_of_wordlist(CONS n0 n1) <=>
+        m0 = n0 /\ bignum_of_wordlist m1 = bignum_of_wordlist n1`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[GSYM VAL_EQ] THEN
+  REWRITE_TAC[bignum_of_wordlist] THEN ONCE_REWRITE_TAC[ADD_SYM] THEN
+  ONCE_REWRITE_TAC[CONJ_SYM] THEN
+  MATCH_MP_TAC LEXICOGRAPHIC_EQ_64 THEN REWRITE_TAC[VAL_BOUND_64]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Extracting a bignum from memory.                                          *)
 (* ------------------------------------------------------------------------- *)

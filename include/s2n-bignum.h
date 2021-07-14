@@ -149,6 +149,10 @@ extern void bignum_double_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 // Input x[6]; output z[6]
 extern void bignum_double_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
+// Double modulo p_521, z := (2 * x) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_double_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+
 // Extended Montgomery reduce, returning results in input-output buffer
 // Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k]
 extern uint64_t bignum_emontredc (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w);
