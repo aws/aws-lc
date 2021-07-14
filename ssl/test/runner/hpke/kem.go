@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	rfcLabel string = "HPKE-07"
+	versionLabel string = "HPKE-v1"
 )
 
 func getKDFHash(kdfID uint16) crypto.Hash {
@@ -40,7 +40,7 @@ func getKDFHash(kdfID uint16) crypto.Hash {
 
 func labeledExtract(kdfHash crypto.Hash, salt, suiteID, label, ikm []byte) []byte {
 	var labeledIKM []byte
-	labeledIKM = append(labeledIKM, rfcLabel...)
+	labeledIKM = append(labeledIKM, versionLabel...)
 	labeledIKM = append(labeledIKM, suiteID...)
 	labeledIKM = append(labeledIKM, label...)
 	labeledIKM = append(labeledIKM, ikm...)
@@ -55,7 +55,7 @@ func labeledExpand(kdfHash crypto.Hash, prk, suiteID, label, info []byte, length
 
 	var labeledInfo []byte
 	labeledInfo = appendBigEndianUint16(labeledInfo, lengthU16)
-	labeledInfo = append(labeledInfo, rfcLabel...)
+	labeledInfo = append(labeledInfo, versionLabel...)
 	labeledInfo = append(labeledInfo, suiteID...)
 	labeledInfo = append(labeledInfo, label...)
 	labeledInfo = append(labeledInfo, info...)
@@ -69,8 +69,8 @@ func labeledExpand(kdfHash crypto.Hash, prk, suiteID, label, info []byte, length
 	return key
 }
 
-// GenerateKeyPair generates a random key pair.
-func GenerateKeyPair() (publicKey, secretKeyOut []byte, err error) {
+// GenerateKeyPairX25519 generates a random X25519 key pair.
+func GenerateKeyPairX25519() (publicKey, secretKeyOut []byte, err error) {
 	// Generate a new private key.
 	var secretKey [curve25519.ScalarSize]byte
 	_, err = rand.Read(secretKey[:])
@@ -89,10 +89,10 @@ func GenerateKeyPair() (publicKey, secretKeyOut []byte, err error) {
 // and a fixed-length encapsulation of that key |enc| that can be decapsulated
 // by the receiver with the secret key corresponding to |publicKeyR|.
 // Internally, |keygenOptional| is used to generate an ephemeral keypair. If
-// |keygenOptional| is nil, |GenerateKeyPair| will be substituted.
+// |keygenOptional| is nil, |GenerateKeyPairX25519| will be substituted.
 func x25519Encap(publicKeyR []byte, keygen GenerateKeyPairFunc) ([]byte, []byte, error) {
 	if keygen == nil {
-		keygen = GenerateKeyPair
+		keygen = GenerateKeyPairX25519
 	}
 	publicKeyEphem, secretKeyEphem, err := keygen()
 	if err != nil {
