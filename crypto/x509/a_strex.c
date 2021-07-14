@@ -68,7 +68,7 @@
 #include <openssl/obj.h>
 
 #include "charmap.h"
-#include "../asn1/asn1_locl.h"
+#include "../asn1/internal.h"
 
 /*
  * ASN1_STRING_print_ex() and X509_NAME_print_ex(). Enhanced string and name
@@ -631,7 +631,7 @@ int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str, unsigned long flag
  * in output string or a negative error code
  */
 
-int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in)
+int ASN1_STRING_to_UTF8(unsigned char **out, const ASN1_STRING *in)
 {
     ASN1_STRING stmp, *str = &stmp;
     int mbflag, type, ret;
