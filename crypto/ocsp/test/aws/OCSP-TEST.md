@@ -29,7 +29,8 @@ The leaf cert/key. OCSP responses will be generated for this cert.
 DER formatted OCSP response for the Server Cert.
 
 ## Generating a new OCSP response for the leaf cert
-Should not be necessary, our OCSP time stamps are hardcoded to avoid tests from expiring. The current response expires in 10 years.
+The current OCSP responses expire in 10 years. Our tests using these files only check if the timefield value has been 
+parsed correctly, so an update shouldn't be necessary.
 
 From the current directory:
 
