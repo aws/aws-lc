@@ -39,7 +39,7 @@ TEST_F(SnapsafeGenerationTest, SysGenIDretrieval) {
 
   // Verify setting value works.
   uint32_t snapsafe_generation_set = 0;
-  ASSERT_TRUE(set_new_sysgenid_value(1));
+  ASSERT_TRUE(new_sysgenid_value(1));
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation_set));
   ASSERT_EQ(snapsafe_generation_set, (uint32_t) 1);
 
@@ -48,7 +48,7 @@ TEST_F(SnapsafeGenerationTest, SysGenIDretrieval) {
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation_stable));
   ASSERT_EQ(snapsafe_generation_stable, snapsafe_generation_set);
 
-  uint32_t new_sysgenid_value = 1;
+  uint32_t new_sysgenid_value_hint = 1;
   uint32_t current_snapsafe_gen_num = 0;
   uint32_t test_sysgenid_values[NUMBER_OF_TEST_VALUES] = {
     0x03, // 2^0 + 2
@@ -60,10 +60,10 @@ TEST_F(SnapsafeGenerationTest, SysGenIDretrieval) {
 
   for (size_t i = 0; i < NUMBER_OF_TEST_VALUES; i++) {
     // Exercise all bytes of the 32-bit generation number.
-    new_sysgenid_value = test_sysgenid_values[i];
-    ASSERT_TRUE(set_new_sysgenid_value(new_sysgenid_value));
+    new_sysgenid_value_hint = test_sysgenid_values[i];
+    ASSERT_TRUE(new_sysgenid_value(new_sysgenid_value_hint));
     ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-    ASSERT_EQ(new_sysgenid_value, current_snapsafe_gen_num);
+    ASSERT_EQ(new_sysgenid_value_hint, current_snapsafe_gen_num);
   }
 }
 

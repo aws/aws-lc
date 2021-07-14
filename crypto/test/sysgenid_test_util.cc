@@ -23,10 +23,6 @@
 
 static int system_supports_snapsafe = SNAPSAFE_NOT_SUPPORTED;
 
-// |set_sysgenid_file_value| interfaces with the SysGenID device. If this is not
-// supported on the system we are running, |set_mocked_sysgenid_value|
-// that sets the value of a mocked SysGenID device.
-
 static int set_mocked_sysgenid_value(uint32_t new_sysgenid_value) {
   HAZMAT_set_overwritten_sysgenid_for_testing(new_sysgenid_value);
   return 1;
@@ -53,22 +49,12 @@ static int increment_real_sysgenid_value() {
   return 1;
 }
 
-int set_new_sysgenid_value(uint32_t new_sysgenid_value) {
+int new_sysgenid_value(uint32_t new_sysgenid_value_hint) {
   if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
     return increment_real_sysgenid_value();
   }
   else {
-    return set_mocked_sysgenid_value(new_sysgenid_value);
-  }
-}
-
-// Use |increment_hint| for mocked to avoid keeping a global variable.
-int increment_sysgenid_value(uint32_t increment_hint) {
-  if (system_supports_snapsafe == SNAPSAFE_SUPPORTED) {
-    return increment_real_sysgenid_value();
-  }
-  else {
-    return set_mocked_sysgenid_value(increment_hint);
+    return set_mocked_sysgenid_value(new_sysgenid_value_hint);
   }
 }
 

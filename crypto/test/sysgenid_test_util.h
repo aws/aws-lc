@@ -16,14 +16,13 @@
 #define MUST_BE_MOCKED 0
 #define PREFER_REAL_SYSGENID_DEVICE 1
 
-// set_new_sysgenid_value sets the SysGenID value to |new_sysgenid_value|.
+// new_sysgenid_value sets a new SysGenID value. The value set depends on
+// whether the real or mocked SysGenID device is used.
+// Real SysGenID device: Increment SysGenID value.
+// Mocked SysGenID device: Set the new value to the hint value passed in the
+// parameter |new_sysgenid_value_hint|.
 // Returns 1 if successful and 0 otherwise.
-int set_new_sysgenid_value(uint32_t new_sysgenid_value);
-
-// increment_sysgenid_value increments the SysGenID value by 1. |increment_hint|
-// is used in the mocked framework.
-// Returns 1 if successful and 0 otherwise.
-int increment_sysgenid_value(uint32_t increment_hint);
+int new_sysgenid_value(uint32_t new_sysgenid_value_hint);
 
 // setup_sysgenid_support determines if SysGenID is supported, and if not,
 // initialises a back up method that simulates the SysGenID device.

@@ -104,7 +104,7 @@ static bool ForkMaybeIncrementSysGenIdAndRand(bssl::Span<uint8_t> out,
     // This is the child. Generate entropy and write it to the parent.
     close(pipefds[0]);
     if (increment_hint > 0) {
-      if (increment_sysgenid_value(increment_hint) == 0) {
+      if (new_sysgenid_value(increment_hint) == 0) {
         return false;
       }
     }
@@ -242,11 +242,13 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
   uint32_t increment_hint = 0;
 
   // In this test fixture we pretend we only have snapsafe detection. To
-  // reliably test this specific path, we must run it as a standalone test,
-  // otherwise the other test fixtures will likely already have initialised fork
-  // detection. In addition, we must promise not to fork, through the input
-  // |--fork_unsafe_buffering|. Tests should pass though, so run through them
-  // for all test dimensions that hit this test suite.
+  // reliably test this specific path, we must run it as a standalone test:
+  // * no fork protection.
+  // * no rdrand (avoid prediction resistance).
+  // This ensures that drbg state randomisation can only be triggered by
+  // snapsafe-type ube detection. Even if we have not disabled fork detection or
+  // rdrand, tests should pass anyway. So run through them for all test
+  // dimensions that hit this test fixture.
   
   ASSERT_TRUE(setup_sysgenid_support(PREFER_REAL_SYSGENID_DEVICE));
 
@@ -259,7 +261,7 @@ TEST_F(SnapsafeGenerationTest, SysGenIDincrement) {
 
   // Verify that increment works.
   increment_hint = snapsafe_generation_stable + 1;
-  ASSERT_TRUE(increment_sysgenid_value(increment_hint));
+  ASSERT_TRUE(new_sysgenid_value(increment_hint));
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&snapsafe_generation));
   ASSERT_GT(snapsafe_generation, snapsafe_generation_stable);
 

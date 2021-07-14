@@ -60,12 +60,13 @@ OPENSSL_EXPORT void CRYPTO_snapsafe_detect_ignore_for_testing(void);
 OPENSSL_EXPORT int HAZMAT_overwrite_sysgenid_for_testing(void);
 
 // HAZMAT_reset_sysgenid_for_testing is an internal detail used for testing
-// purposes. Free's memory allocated in |HAZMAT_overwrite_sysgenid_for_testing|
-// and deassociates the SysGenID callback pointer.
+// purposes. It frees memory allocated in
+// |HAZMAT_overwrite_sysgenid_for_testing| and deassociates the SysGenID
+// callback pointer.
 OPENSSL_EXPORT void HAZMAT_reset_sysgenid_for_testing(void);
 
 // HAZMAT_overwrite_sysgenid_for_testing is an internal detail used for testing
-// purposes. Assigns value |val| to the memory allocated in
+// purposes. It assigns value |val| to the memory allocated in
 // |HAZMAT_overwrite_sysgenid_for_testing|, which will be the new SysGenID
 // value.
 OPENSSL_EXPORT void HAZMAT_set_overwritten_sysgenid_for_testing(uint32_t val);

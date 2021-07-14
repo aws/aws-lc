@@ -68,8 +68,8 @@ int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
   }
 
   // While below is not atomic, all calls to |CRYPTO_get_snapsafe_generation|
-  // happens with an undisputed local variable |snapsafe_generation_number|.
-  // It is also the responsibility of the caller to synchronise access to
+  // happen with an undisputed local variable |snapsafe_generation_number|. It
+  // is also the responsibility of the caller to synchronise access to
   // |CRYPTO_get_snapsafe_generation| if needed.
   *snapsafe_generation_number = *sysgenid_addr;
 

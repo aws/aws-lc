@@ -343,10 +343,9 @@ OPENSSL_INLINE int CRYPTO_fork_must_defend(void) {
 // They are:
 //  * fork detection: attempts to detect process forks.
 //  * snapsafe detection: attempts to detect snapshot/VM resumes.
-// If an ube detection mechanism is not available, but a defense against that
-// ube MUST be enforced (as indicated by the either
-// |CRYPTO_snapsafe_must_defend| or |CRYPTO_fork_must_defend|), return 1;
-// otherwise, return 0.
+// If a ube detection mechanism is not available, but a defense against that
+// ube MUST be enforced (as indicated by either |CRYPTO_snapsafe_must_defend| or
+// CRYPTO_fork_must_defend|), return 1; otherwise, return 0.
 static int must_defend_against_ube(const uint64_t fork_generation,
                                         int snapsafe_status) {
   if (fork_generation == 0 && CRYPTO_fork_must_defend() == 1) {
@@ -403,7 +402,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
     } else {
 
-      // Since we draw entropy now, there is no need to draw entropy later one
+      // Since we draw entropy now, there is no need to draw entropy later on
       // even if we detect an ube.
       ube_detected_draw_entropy = 0;
       get_entropy_with_no_fast_rdrand(additional_data, sizeof(additional_data));
@@ -503,7 +502,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
         state->fork_generation != fork_generation) {
 
       // If we have already reseeded or |additional_data| has been filled with
-      // entropy, no need do extra work.
+      // entropy, no need to do extra work.
       if (ube_detected_draw_entropy == 1) {
         // Gather entropy. Instead of reseeding, enforce mixing in entropy as we
         // do for prediction resistance. This is cheaper than calling reseed.
