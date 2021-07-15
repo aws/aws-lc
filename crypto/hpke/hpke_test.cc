@@ -12,8 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/hpke.h>
-
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -26,25 +24,20 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
+#include "internal.h"
 
 
 namespace bssl {
 namespace {
 
-const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
-    &EVP_hpke_aes_128_gcm,
-    &EVP_hpke_aes_256_gcm,
-    &EVP_hpke_chacha20_poly1305,
-};
-
-const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
-    &EVP_hpke_hkdf_sha256,
+enum class HPKEMode {
+  kBase = 0,
+  kPSK = 1,
 };
 
 // HPKETestVector corresponds to one array member in the published
@@ -57,104 +50,83 @@ class HPKETestVector {
   bool ReadFromFileTest(FileTest *t);
 
   void Verify() const {
-    const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
-    const EVP_HPKE_AEAD *aead = GetAEAD();
-    ASSERT_TRUE(aead);
-    const EVP_HPKE_KDF *kdf = GetKDF();
-    ASSERT_TRUE(kdf);
-
-    // Test the sender.
     ScopedEVP_HPKE_CTX sender_ctx;
-    uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
-    size_t enc_len;
-    ASSERT_TRUE(EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
-        sender_ctx.get(), enc, &enc_len, sizeof(enc), kem, kdf, aead,
-        public_key_r_.data(), public_key_r_.size(), info_.data(), info_.size(),
-        secret_key_e_.data(), secret_key_e_.size()));
-    EXPECT_EQ(Bytes(enc, enc_len), Bytes(public_key_e_));
-    VerifySender(sender_ctx.get());
+    ScopedEVP_HPKE_CTX receiver_ctx;
 
-    // Test the recipient.
-    ScopedEVP_HPKE_KEY base_key;
-    ASSERT_TRUE(EVP_HPKE_KEY_init(base_key.get(), kem, secret_key_r_.data(),
-                                  secret_key_r_.size()));
-    for (bool copy : {false, true}) {
-      SCOPED_TRACE(copy);
-      const EVP_HPKE_KEY *key = base_key.get();
-      ScopedEVP_HPKE_KEY key_copy;
-      if (copy) {
-        ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
-        key = key_copy.get();
-      }
+    switch (mode_) {
+      case HPKEMode::kBase:
+        ASSERT_GT(secret_key_e_.size(), 0u);
+        ASSERT_EQ(psk_.size(), 0u);
+        ASSERT_EQ(psk_id_.size(), 0u);
 
-      uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
-      size_t public_key_len;
-      ASSERT_TRUE(EVP_HPKE_KEY_public_key(key, public_key, &public_key_len,
-                                          sizeof(public_key)));
-      EXPECT_EQ(Bytes(public_key, public_key_len), Bytes(public_key_r_));
+        // Set up the sender.
+        ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519_for_test(
+            sender_ctx.get(), kdf_id_, aead_id_, public_key_r_.data(),
+            public_key_r_.size(), info_.data(), info_.size(),
+            secret_key_e_.data(), secret_key_e_.size(), public_key_e_.data(),
+            public_key_e_.size()));
 
-      uint8_t private_key[EVP_HPKE_MAX_PRIVATE_KEY_LENGTH];
-      size_t private_key_len;
-      ASSERT_TRUE(EVP_HPKE_KEY_private_key(key, private_key, &private_key_len,
-                                           sizeof(private_key)));
-      EXPECT_EQ(Bytes(private_key, private_key_len), Bytes(secret_key_r_));
+        // Set up the receiver.
+        ASSERT_TRUE(EVP_HPKE_CTX_setup_base_r_x25519(
+            receiver_ctx.get(), kdf_id_, aead_id_, public_key_e_.data(),
+            public_key_e_.size(), public_key_r_.data(), public_key_r_.size(),
+            secret_key_r_.data(), secret_key_r_.size(), info_.data(),
+            info_.size()));
+        break;
 
-      // Set up the recipient.
-      ScopedEVP_HPKE_CTX recipient_ctx;
-      ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(recipient_ctx.get(), key, kdf,
-                                               aead, enc, enc_len, info_.data(),
-                                               info_.size()));
+      case HPKEMode::kPSK:
+        ASSERT_GT(secret_key_e_.size(), 0u);
+        ASSERT_GT(psk_.size(), 0u);
+        ASSERT_GT(psk_id_.size(), 0u);
 
-      VerifyRecipient(recipient_ctx.get());
+        // Set up the sender.
+        ASSERT_TRUE(EVP_HPKE_CTX_setup_psk_s_x25519_for_test(
+            sender_ctx.get(), kdf_id_, aead_id_, public_key_r_.data(),
+            public_key_r_.size(), info_.data(), info_.size(), psk_.data(),
+            psk_.size(), psk_id_.data(), psk_id_.size(), secret_key_e_.data(),
+            secret_key_e_.size(), public_key_e_.data(), public_key_e_.size()));
+
+        // Set up the receiver.
+        ASSERT_TRUE(EVP_HPKE_CTX_setup_psk_r_x25519(
+            receiver_ctx.get(), kdf_id_, aead_id_, public_key_e_.data(),
+            public_key_e_.size(), public_key_r_.data(), public_key_r_.size(),
+            secret_key_r_.data(), secret_key_r_.size(), info_.data(),
+            info_.size(), psk_.data(), psk_.size(), psk_id_.data(),
+            psk_id_.size()));
+        break;
+      default:
+        FAIL() << "Unsupported mode";
+        return;
     }
+
+    VerifyEncryptions(sender_ctx.get(), receiver_ctx.get());
+    VerifyExports(sender_ctx.get());
+    VerifyExports(receiver_ctx.get());
   }
 
  private:
-  const EVP_HPKE_AEAD *GetAEAD() const {
-    for (const auto aead : kAllAEADs) {
-      if (EVP_HPKE_AEAD_id(aead()) == aead_id_) {
-        return aead();
-      }
-    }
-    return nullptr;
-  }
-
-  const EVP_HPKE_KDF *GetKDF() const {
-    for (const auto kdf : kAllKDFs) {
-      if (EVP_HPKE_KDF_id(kdf()) == kdf_id_) {
-        return kdf();
-      }
-    }
-    return nullptr;
-  }
-
-  void VerifySender(EVP_HPKE_CTX *ctx) const {
+  void VerifyEncryptions(EVP_HPKE_CTX *sender_ctx,
+                         EVP_HPKE_CTX *receiver_ctx) const {
     for (const Encryption &task : encryptions_) {
       std::vector<uint8_t> encrypted(task.plaintext.size() +
-                                     EVP_HPKE_CTX_max_overhead(ctx));
+                                     EVP_HPKE_CTX_max_overhead(sender_ctx));
       size_t encrypted_len;
-      ASSERT_TRUE(EVP_HPKE_CTX_seal(ctx, encrypted.data(), &encrypted_len,
-                                    encrypted.size(), task.plaintext.data(),
-                                    task.plaintext.size(), task.aad.data(),
-                                    task.aad.size()));
+      ASSERT_TRUE(EVP_HPKE_CTX_seal(
+          sender_ctx, encrypted.data(), &encrypted_len, encrypted.size(),
+          task.plaintext.data(), task.plaintext.size(), task.aad.data(),
+          task.aad.size()));
 
       ASSERT_EQ(Bytes(encrypted.data(), encrypted_len), Bytes(task.ciphertext));
-    }
-    VerifyExports(ctx);
-  }
 
-  void VerifyRecipient(EVP_HPKE_CTX *ctx) const {
-    for (const Encryption &task : encryptions_) {
       std::vector<uint8_t> decrypted(task.ciphertext.size());
       size_t decrypted_len;
-      ASSERT_TRUE(EVP_HPKE_CTX_open(ctx, decrypted.data(), &decrypted_len,
-                                    decrypted.size(), task.ciphertext.data(),
-                                    task.ciphertext.size(), task.aad.data(),
-                                    task.aad.size()));
+      ASSERT_TRUE(EVP_HPKE_CTX_open(
+          receiver_ctx, decrypted.data(), &decrypted_len, decrypted.size(),
+          task.ciphertext.data(), task.ciphertext.size(), task.aad.data(),
+          task.aad.size()));
 
       ASSERT_EQ(Bytes(decrypted.data(), decrypted_len), Bytes(task.plaintext));
     }
-    VerifyExports(ctx);
   }
 
   void VerifyExports(EVP_HPKE_CTX *ctx) const {
@@ -180,6 +152,7 @@ class HPKETestVector {
     std::vector<uint8_t> exported_value;
   };
 
+  HPKEMode mode_;
   uint16_t kdf_id_;
   uint16_t aead_id_;
   std::vector<uint8_t> context_;
@@ -190,6 +163,8 @@ class HPKETestVector {
   std::vector<uint8_t> secret_key_r_;
   std::vector<Encryption> encryptions_;
   std::vector<Export> exports_;
+  std::vector<uint8_t> psk_;     // Empty when mode is not PSK.
+  std::vector<uint8_t> psk_id_;  // Empty when mode is not PSK.
 };
 
 // Match FileTest's naming scheme for duplicated attribute names.
@@ -225,10 +200,13 @@ bool FileTestReadInt(FileTest *file_test, T *out, const std::string &key) {
 
 
 bool HPKETestVector::ReadFromFileTest(FileTest *t) {
-  uint8_t mode = 0;
-  if (!FileTestReadInt(t, &mode, "mode") ||
-      mode != 0 /* mode_base */ ||
-      !FileTestReadInt(t, &kdf_id_, "kdf_id") ||
+  uint8_t mode_tmp;
+  if (!FileTestReadInt(t, &mode_tmp, "mode")) {
+    return false;
+  }
+  mode_ = static_cast<HPKEMode>(mode_tmp);
+
+  if (!FileTestReadInt(t, &kdf_id_, "kdf_id") ||
       !FileTestReadInt(t, &aead_id_, "aead_id") ||
       !t->GetBytes(&info_, "info") ||
       !t->GetBytes(&secret_key_r_, "skRm") ||
@@ -236,6 +214,13 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
       !t->GetBytes(&secret_key_e_, "skEm") ||
       !t->GetBytes(&public_key_e_, "pkEm")) {
     return false;
+  }
+
+  if (mode_ == HPKEMode::kPSK) {
+    if (!t->GetBytes(&psk_, "psk") ||
+        !t->GetBytes(&psk_id_, "psk_id")) {
+      return false;
+    }
   }
 
   for (int i = 1; t->HasAttribute(BuildAttrName("aad", i)); i++) {
@@ -275,6 +260,11 @@ TEST(HPKETest, VerifyTestVectors) {
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
 TEST(HPKETest, RoundTrip) {
+  uint16_t kdf_ids[] = {EVP_HPKE_HKDF_SHA256, EVP_HPKE_HKDF_SHA384,
+                        EVP_HPKE_HKDF_SHA512};
+  uint16_t aead_ids[] = {EVP_HPKE_AEAD_AES_128_GCM, EVP_HPKE_AEAD_AES_256_GCM,
+                         EVP_HPKE_AEAD_CHACHA20POLY1305};
+
   const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
   const uint8_t info_b[] = {42, 42, 42};
   const uint8_t ad_a[] = {1, 2, 4, 8, 16};
@@ -282,40 +272,32 @@ TEST(HPKETest, RoundTrip) {
   Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
 
-  // Generate the recipient's keypair.
-  ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+  // Generate the receiver's keypair.
+  uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
-  size_t public_key_r_len;
-  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
-                                      &public_key_r_len, sizeof(public_key_r)));
+  X25519_keypair(public_key_r, secret_key_r);
 
-  for (const auto kdf : kAllKDFs) {
-    SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
-    for (const auto aead : kAllAEADs) {
-      SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
+  for (uint16_t kdf_id : kdf_ids) {
+    for (uint16_t aead_id : aead_ids) {
       for (const Span<const uint8_t> &info : info_values) {
-        SCOPED_TRACE(Bytes(info));
         for (const Span<const uint8_t> &ad : ad_values) {
-          SCOPED_TRACE(Bytes(ad));
           // Set up the sender.
           ScopedEVP_HPKE_CTX sender_ctx;
           uint8_t enc[X25519_PUBLIC_VALUE_LEN];
-          size_t enc_len;
-          ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
-              sender_ctx.get(), enc, &enc_len, sizeof(enc),
-              EVP_hpke_x25519_hkdf_sha256(), kdf(), aead(), public_key_r,
-              public_key_r_len, info.data(), info.size()));
+          ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519(
+              sender_ctx.get(), enc, sizeof(enc), kdf_id, aead_id, public_key_r,
+              sizeof(public_key_r), info.data(), info.size()));
 
-          // Set up the recipient.
-          ScopedEVP_HPKE_CTX recipient_ctx;
-          ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
-              recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
-              info.data(), info.size()));
+          // Set up the receiver.
+          ScopedEVP_HPKE_CTX receiver_ctx;
+          ASSERT_TRUE(EVP_HPKE_CTX_setup_base_r_x25519(
+              receiver_ctx.get(), kdf_id, aead_id, enc, sizeof(enc),
+              public_key_r, sizeof(public_key_r), secret_key_r,
+              sizeof(secret_key_r), info.data(), info.size()));
 
           const char kCleartextPayload[] = "foobar";
 
-          // Have sender encrypt message for the recipient.
+          // Have sender encrypt message for the receiver.
           std::vector<uint8_t> ciphertext(
               sizeof(kCleartextPayload) +
               EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
@@ -326,10 +308,10 @@ TEST(HPKETest, RoundTrip) {
               reinterpret_cast<const uint8_t *>(kCleartextPayload),
               sizeof(kCleartextPayload), ad.data(), ad.size()));
 
-          // Have recipient decrypt the message.
+          // Have receiver decrypt the message.
           std::vector<uint8_t> cleartext(ciphertext.size());
           size_t cleartext_len;
-          ASSERT_TRUE(EVP_HPKE_CTX_open(recipient_ctx.get(), cleartext.data(),
+          ASSERT_TRUE(EVP_HPKE_CTX_open(receiver_ctx.get(), cleartext.data(),
                                         &cleartext_len, cleartext.size(),
                                         ciphertext.data(), ciphertext_len,
                                         ad.data(), ad.size()));
@@ -353,50 +335,57 @@ TEST(HPKETest, X25519EncapSmallOrderPoint) {
       0xb1, 0xfd, 0x86, 0x62, 0x05, 0x16, 0x5f, 0x49, 0xb8,
   };
 
-  ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+  // Generate a valid keypair for the receiver.
+  uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
+  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
+  X25519_keypair(public_key_r, secret_key_r);
 
-  for (const auto kdf : kAllKDFs) {
-    SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
-    for (const auto aead : kAllAEADs) {
-      SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
-      // Set up the sender, passing in kSmallOrderPoint as |peer_public_key|.
+  uint16_t kdf_ids[] = {EVP_HPKE_HKDF_SHA256, EVP_HPKE_HKDF_SHA384,
+                        EVP_HPKE_HKDF_SHA512};
+  uint16_t aead_ids[] = {EVP_HPKE_AEAD_AES_128_GCM, EVP_HPKE_AEAD_AES_256_GCM,
+                         EVP_HPKE_AEAD_CHACHA20POLY1305};
+
+  for (uint16_t kdf_id : kdf_ids) {
+    for (uint16_t aead_id : aead_ids) {
+      // Set up the sender, passing in kSmallOrderPoint as |peer_public_value|.
       ScopedEVP_HPKE_CTX sender_ctx;
       uint8_t enc[X25519_PUBLIC_VALUE_LEN];
-      size_t enc_len;
-      ASSERT_FALSE(EVP_HPKE_CTX_setup_sender(
-          sender_ctx.get(), enc, &enc_len, sizeof(enc),
-          EVP_hpke_x25519_hkdf_sha256(), kdf(), aead(), kSmallOrderPoint,
+      ASSERT_FALSE(EVP_HPKE_CTX_setup_base_s_x25519(
+          sender_ctx.get(), enc, sizeof(enc), kdf_id, aead_id, kSmallOrderPoint,
           sizeof(kSmallOrderPoint), nullptr, 0));
 
-      // Set up the recipient, passing in kSmallOrderPoint as |enc|.
-      ScopedEVP_HPKE_CTX recipient_ctx;
-      ASSERT_FALSE(EVP_HPKE_CTX_setup_recipient(
-          recipient_ctx.get(), key.get(), kdf(), aead(), kSmallOrderPoint,
-          sizeof(kSmallOrderPoint), nullptr, 0));
+      // Set up the receiver, passing in kSmallOrderPoint as |enc|.
+      ScopedEVP_HPKE_CTX receiver_ctx;
+      ASSERT_FALSE(EVP_HPKE_CTX_setup_base_r_x25519(
+          receiver_ctx.get(), kdf_id, aead_id, kSmallOrderPoint,
+          sizeof(kSmallOrderPoint), public_key_r, sizeof(public_key_r),
+          secret_key_r, sizeof(secret_key_r), nullptr, 0));
     }
   }
 }
 
-// Test that Seal() fails when the context has been initialized as a recipient.
-TEST(HPKETest, RecipientInvalidSeal) {
+// Test that Seal() fails when the context has been initialized as a receiver.
+TEST(HPKETest, ReceiverInvalidSeal) {
   const uint8_t kMockEnc[X25519_PUBLIC_VALUE_LEN] = {0xff};
   const char kCleartextPayload[] = "foobar";
 
-  ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+  // Generate the receiver's keypair.
+  uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
+  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
+  X25519_keypair(public_key_r, secret_key_r);
 
-  // Set up the recipient.
-  ScopedEVP_HPKE_CTX recipient_ctx;
-  ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
-      recipient_ctx.get(), key.get(), EVP_hpke_hkdf_sha256(),
-      EVP_hpke_aes_128_gcm(), kMockEnc, sizeof(kMockEnc), nullptr, 0));
+  // Set up the receiver.
+  ScopedEVP_HPKE_CTX receiver_ctx;
+  ASSERT_TRUE(EVP_HPKE_CTX_setup_base_r_x25519(
+      receiver_ctx.get(), EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM,
+      kMockEnc, sizeof(kMockEnc), public_key_r, sizeof(public_key_r),
+      secret_key_r, sizeof(secret_key_r), nullptr, 0));
 
-  // Call Seal() on the recipient.
+  // Call Seal() on the receiver.
   size_t ciphertext_len;
   uint8_t ciphertext[100];
   ASSERT_FALSE(EVP_HPKE_CTX_seal(
-      recipient_ctx.get(), ciphertext, &ciphertext_len, sizeof(ciphertext),
+      receiver_ctx.get(), ciphertext, &ciphertext_len, sizeof(ciphertext),
       reinterpret_cast<const uint8_t *>(kCleartextPayload),
       sizeof(kCleartextPayload), nullptr, 0));
 }
@@ -406,7 +395,7 @@ TEST(HPKETest, SenderInvalidOpen) {
   const uint8_t kMockCiphertext[100] = {0xff};
   const size_t kMockCiphertextLen = 80;
 
-  // Generate the recipient's keypair.
+  // Generate the receiver's keypair.
   uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
   X25519_keypair(public_key_r, secret_key_r);
@@ -414,11 +403,10 @@ TEST(HPKETest, SenderInvalidOpen) {
   // Set up the sender.
   ScopedEVP_HPKE_CTX sender_ctx;
   uint8_t enc[X25519_PUBLIC_VALUE_LEN];
-  size_t enc_len;
-  ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
-      sender_ctx.get(), enc, &enc_len, sizeof(enc),
-      EVP_hpke_x25519_hkdf_sha256(), EVP_hpke_hkdf_sha256(),
-      EVP_hpke_aes_128_gcm(), public_key_r, sizeof(public_key_r), nullptr, 0));
+  ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519(
+      sender_ctx.get(), enc, sizeof(enc), EVP_HPKE_HKDF_SHA256,
+      EVP_HPKE_AEAD_AES_128_GCM, public_key_r, sizeof(public_key_r), nullptr,
+      0));
 
   // Call Open() on the sender.
   uint8_t cleartext[128];
@@ -428,78 +416,219 @@ TEST(HPKETest, SenderInvalidOpen) {
                                  kMockCiphertextLen, nullptr, 0));
 }
 
-TEST(HPKETest, SetupSenderBufferTooSmall) {
+// Test that the PSK variants of Setup functions fail when any of the PSK inputs
+// are empty.
+TEST(HPKETest, EmptyPSK) {
+  const uint8_t kMockEnc[X25519_PUBLIC_VALUE_LEN] = {0xff};
+  const std::vector<uint8_t> kPSKValues[] = {std::vector<uint8_t>(100, 0xff),
+                                             {}};
+
+  // Generate the receiver's keypair.
+  uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
+  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
+  X25519_keypair(public_key_r, secret_key_r);
+
+  // Vary the PSK and PSKID inputs for the sender and receiver, trying all four
+  // permutations of empty and nonempty inputs.
+
+  for (const auto &psk : kPSKValues) {
+    for (const auto &psk_id : kPSKValues) {
+      const bool kExpectSuccess = psk.size() > 0 && psk_id.size() > 0;
+
+      ASSERT_EQ(ERR_get_error(), 0u);
+
+      ScopedEVP_HPKE_CTX sender_ctx;
+      uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+      ASSERT_EQ(
+          EVP_HPKE_CTX_setup_psk_s_x25519(
+              sender_ctx.get(), enc, sizeof(enc), EVP_HPKE_HKDF_SHA256,
+              EVP_HPKE_AEAD_AES_128_GCM, public_key_r, sizeof(public_key_r),
+              nullptr, 0, psk.data(), psk.size(), psk_id.data(), psk_id.size()),
+          kExpectSuccess);
+
+      if (!kExpectSuccess) {
+        uint32_t err = ERR_get_error();
+        EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+        EXPECT_EQ(EVP_R_EMPTY_PSK, ERR_GET_REASON(err));
+      }
+      ERR_clear_error();
+
+      ScopedEVP_HPKE_CTX receiver_ctx;
+      ASSERT_EQ(EVP_HPKE_CTX_setup_psk_r_x25519(
+                    receiver_ctx.get(), EVP_HPKE_HKDF_SHA256,
+                    EVP_HPKE_AEAD_AES_128_GCM, kMockEnc, sizeof(kMockEnc),
+                    public_key_r, sizeof(public_key_r), secret_key_r,
+                    sizeof(secret_key_r), nullptr, 0, psk.data(), psk.size(),
+                    psk_id.data(), psk_id.size()),
+                kExpectSuccess);
+
+      if (!kExpectSuccess) {
+        uint32_t err = ERR_get_error();
+        EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+        EXPECT_EQ(EVP_R_EMPTY_PSK, ERR_GET_REASON(err));
+      }
+      ERR_clear_error();
+    }
+  }
+}
+
+TEST(HPKETest, SetupSenderWrongLengthEnc) {
   uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
   X25519_keypair(public_key_r, secret_key_r);
 
   ScopedEVP_HPKE_CTX sender_ctx;
-  uint8_t enc[X25519_PUBLIC_VALUE_LEN - 1];
-  size_t enc_len;
-  ASSERT_FALSE(EVP_HPKE_CTX_setup_sender(
-      sender_ctx.get(), enc, &enc_len, sizeof(enc),
-      EVP_hpke_x25519_hkdf_sha256(), EVP_hpke_hkdf_sha256(),
-      EVP_hpke_aes_128_gcm(), public_key_r, sizeof(public_key_r), nullptr, 0));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
-  ERR_clear_error();
+  uint8_t bogus_enc[X25519_PUBLIC_VALUE_LEN + 5];
+  {
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_base_s_x25519(
+        sender_ctx.get(), bogus_enc, sizeof(bogus_enc), EVP_HPKE_HKDF_SHA256,
+        EVP_HPKE_AEAD_AES_128_GCM, public_key_r, sizeof(public_key_r), nullptr,
+        0));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
+  {
+    const uint8_t psk[] = {1, 2, 3, 4};
+    const uint8_t psk_id[] = {1, 2, 3, 4};
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_psk_s_x25519(
+        sender_ctx.get(), bogus_enc, sizeof(bogus_enc), EVP_HPKE_HKDF_SHA256,
+        EVP_HPKE_AEAD_AES_128_GCM, public_key_r, sizeof(public_key_r), nullptr,
+        0, psk, sizeof(psk), psk_id, sizeof(psk_id)));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
 }
 
-TEST(HPKETest, SetupSenderBufferTooLarge) {
-  uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
-  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
-  X25519_keypair(public_key_r, secret_key_r);
-
-  // Too large of an output buffer is fine because the function reports the
-  // actual length.
-  ScopedEVP_HPKE_CTX sender_ctx;
-  uint8_t enc[X25519_PUBLIC_VALUE_LEN + 1];
-  size_t enc_len;
-  EXPECT_TRUE(EVP_HPKE_CTX_setup_sender(
-      sender_ctx.get(), enc, &enc_len, sizeof(enc),
-      EVP_hpke_x25519_hkdf_sha256(), EVP_hpke_hkdf_sha256(),
-      EVP_hpke_aes_128_gcm(), public_key_r, sizeof(public_key_r), nullptr, 0));
-  EXPECT_EQ(size_t{X25519_PUBLIC_VALUE_LEN}, enc_len);
-}
-
-TEST(HPKETest, SetupRecipientWrongLengthEnc) {
-  ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+TEST(HPKETest, SetupReceiverWrongLengthEnc) {
+  uint8_t private_key[X25519_PRIVATE_KEY_LEN];
+  uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
+  X25519_keypair(public_key, private_key);
 
   const uint8_t bogus_enc[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
 
-  ScopedEVP_HPKE_CTX recipient_ctx;
-  ASSERT_FALSE(EVP_HPKE_CTX_setup_recipient(
-      recipient_ctx.get(), key.get(), EVP_hpke_hkdf_sha256(),
-      EVP_hpke_aes_128_gcm(), bogus_enc, sizeof(bogus_enc), nullptr, 0));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_PEER_KEY, ERR_GET_REASON(err));
-  ERR_clear_error();
+  ScopedEVP_HPKE_CTX receiver_ctx;
+  {
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_base_r_x25519(
+        receiver_ctx.get(), EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM,
+        bogus_enc, sizeof(bogus_enc), public_key, sizeof(public_key),
+        private_key, sizeof(private_key), nullptr, 0));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_INVALID_PEER_KEY, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
+  {
+    const uint8_t psk[] = {1, 2, 3, 4};
+    const uint8_t psk_id[] = {1, 2, 3, 4};
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_psk_r_x25519(
+        receiver_ctx.get(), EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM,
+        bogus_enc, sizeof(bogus_enc), public_key, sizeof(public_key),
+        private_key, sizeof(private_key), nullptr, 0, psk, sizeof(psk), psk_id,
+        sizeof(psk_id)));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_INVALID_PEER_KEY, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
 }
 
 TEST(HPKETest, SetupSenderWrongLengthPeerPublicValue) {
   const uint8_t bogus_public_key_r[X25519_PRIVATE_KEY_LEN + 5] = {0xff};
   ScopedEVP_HPKE_CTX sender_ctx;
   uint8_t enc[X25519_PUBLIC_VALUE_LEN];
-  size_t enc_len;
-  ASSERT_FALSE(EVP_HPKE_CTX_setup_sender(
-      sender_ctx.get(), enc, &enc_len, sizeof(enc),
-      EVP_hpke_x25519_hkdf_sha256(), EVP_hpke_hkdf_sha256(),
-      EVP_hpke_aes_128_gcm(), bogus_public_key_r, sizeof(bogus_public_key_r),
-      nullptr, 0));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_PEER_KEY, ERR_GET_REASON(err));
-  ERR_clear_error();
+  {
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_base_s_x25519(
+        sender_ctx.get(), enc, sizeof(enc), EVP_HPKE_HKDF_SHA256,
+        EVP_HPKE_AEAD_AES_128_GCM, bogus_public_key_r,
+        sizeof(bogus_public_key_r), nullptr, 0));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_INVALID_PEER_KEY, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
+  {
+    const uint8_t psk[] = {1, 2, 3, 4};
+    const uint8_t psk_id[] = {1, 2, 3, 4};
+
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_psk_s_x25519(
+        sender_ctx.get(), enc, sizeof(enc), EVP_HPKE_HKDF_SHA256,
+        EVP_HPKE_AEAD_AES_128_GCM, bogus_public_key_r,
+        sizeof(bogus_public_key_r), nullptr, 0, psk, sizeof(psk), psk_id,
+        sizeof(psk_id)));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_INVALID_PEER_KEY, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
 }
 
-TEST(HPKETest, InvalidRecipientKey) {
-  const uint8_t private_key[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
-  ScopedEVP_HPKE_KEY key;
-  EXPECT_FALSE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
-                                 private_key, sizeof(private_key)));
+TEST(HPKETest, SetupReceiverWrongLengthKeys) {
+  uint8_t private_key[X25519_PRIVATE_KEY_LEN];
+  uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
+  X25519_keypair(public_key, private_key);
+
+  uint8_t unused[X25519_PRIVATE_KEY_LEN];
+  uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+  X25519_keypair(enc, unused);
+
+  const uint8_t bogus_public_key[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
+  const uint8_t bogus_private_key[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
+
+  ScopedEVP_HPKE_CTX receiver_ctx;
+  {
+    // Test base mode with |bogus_public_key|.
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_base_r_x25519(
+        receiver_ctx.get(), EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM,
+        enc, sizeof(enc), bogus_public_key, sizeof(bogus_public_key),
+        private_key, sizeof(private_key), nullptr, 0));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_DECODE_ERROR, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
+  {
+    // Test base mode with |bogus_private_key|.
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_base_r_x25519(
+        receiver_ctx.get(), EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM,
+        enc, sizeof(enc), public_key, sizeof(public_key), bogus_private_key,
+        sizeof(bogus_private_key), nullptr, 0));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_DECODE_ERROR, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
+  {
+    // Test PSK mode with |bogus_public_key|.
+    const uint8_t psk[] = {1, 2, 3, 4};
+    const uint8_t psk_id[] = {1, 2, 3, 4};
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_psk_r_x25519(
+        receiver_ctx.get(), EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM,
+        enc, sizeof(enc), bogus_public_key, sizeof(bogus_public_key),
+        private_key, sizeof(private_key), nullptr, 0, psk, sizeof(psk), psk_id,
+        sizeof(psk_id)));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_DECODE_ERROR, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
+  {
+    // Test PSK mode with |bogus_private_key|.
+    const uint8_t psk[] = {1, 2, 3, 4};
+    const uint8_t psk_id[] = {1, 2, 3, 4};
+    ASSERT_FALSE(EVP_HPKE_CTX_setup_psk_r_x25519(
+        receiver_ctx.get(), EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM,
+        enc, sizeof(enc), public_key, sizeof(public_key), bogus_private_key,
+        sizeof(bogus_private_key), nullptr, 0, psk, sizeof(psk), psk_id,
+        sizeof(psk_id)));
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+    EXPECT_EQ(EVP_R_DECODE_ERROR, ERR_GET_REASON(err));
+    ERR_clear_error();
+  }
 }
 
 TEST(HPKETest, InternalParseIntSafe) {

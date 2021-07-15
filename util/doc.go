@@ -291,10 +291,6 @@ func isPrivateSection(name string) bool {
 	return strings.HasPrefix(name, "Private functions") || strings.HasPrefix(name, "Private structures") || strings.Contains(name, "(hidden)")
 }
 
-func isCollectiveComment(line string) bool {
-	return strings.HasPrefix(line, "The ") || strings.HasPrefix(line, "These ")
-}
-
 func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 	headerPath := filepath.Join(config.BaseDirectory, path)
 
@@ -443,10 +439,12 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				// As a matter of style, comments should start
 				// with the name of the thing that they are
 				// commenting on. We make an exception here for
-				// collective comments.
+				// collective comments, which are detected by
+				// starting with “The” or “These”.
 				if len(comment) > 0 &&
 					len(name) > 0 &&
-					!isCollectiveComment(comment[0]) {
+					!strings.HasPrefix(comment[0], "The ") &&
+					!strings.HasPrefix(comment[0], "These ") {
 					subject := commentSubject(comment[0])
 					ok := subject == name
 					if l := len(subject); l > 0 && subject[l-1] == '*' {
@@ -542,9 +540,6 @@ func markupPipeWords(allDecls map[string]string, s string) template.HTML {
 }
 
 func markupFirstWord(s template.HTML) template.HTML {
-	if isCollectiveComment(string(s)) {
-		return s
-	}
 	start := 0
 again:
 	end := strings.Index(string(s[start:]), " ")

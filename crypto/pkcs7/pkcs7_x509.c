@@ -192,8 +192,7 @@ static int pkcs7_bundle_certificates_cb(CBB *out, const void *arg) {
     }
   }
 
-  // |certificates| is a implicitly-tagged SET OF.
-  return CBB_flush_asn1_set_of(&certificates) && CBB_flush(out);
+  return CBB_flush(out);
 }
 
 int PKCS7_bundle_certificates(CBB *out, const STACK_OF(X509) *certs) {
@@ -223,8 +222,7 @@ static int pkcs7_bundle_crls_cb(CBB *out, const void *arg) {
     }
   }
 
-  // |crl_data| is a implicitly-tagged SET OF.
-  return CBB_flush_asn1_set_of(&crl_data) && CBB_flush(out);
+  return CBB_flush(out);
 }
 
 int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls) {
