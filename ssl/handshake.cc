@@ -126,11 +126,10 @@ BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
-      ech_accept(false),
       ech_present(false),
       ech_is_inner_present(false),
+      ech_authenticated_reject(false),
       scts_requested(false),
-      needs_psk_binder(false),
       handshake_finalized(false),
       accept_psk_mode(false),
       cert_request(false),
@@ -147,12 +146,19 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       ticket_expected(false),
       extended_master_secret(false),
       pending_private_key_op(false),
-      grease_seeded(false),
       handback(false),
       hints_requested(false),
       cert_compression_negotiated(false),
-      apply_jdk11_workaround(false) {
+      apply_jdk11_workaround(false),
+      can_release_private_key(false),
+      channel_id_negotiated(false) {
   assert(ssl);
+
+  // Draw entropy for all GREASE values at once. This avoids calling
+  // |RAND_bytes| repeatedly and makes the values consistent within a
+  // connection. The latter is so the second ClientHello matches after
+  // HelloRetryRequest and so supported_groups and key_shares are consistent.
+  RAND_bytes(grease_seed, sizeof(grease_seed));
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
@@ -434,21 +440,25 @@ enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs,
   return ret;
 }
 
-uint16_t ssl_get_grease_value(SSL_HANDSHAKE *hs,
-                              enum ssl_grease_index_t index) {
-  // Draw entropy for all GREASE values at once. This avoids calling
-  // |RAND_bytes| repeatedly and makes the values consistent within a
-  // connection. The latter is so the second ClientHello matches after
-  // HelloRetryRequest and so supported_groups and key_shares are consistent.
-  if (!hs->grease_seeded) {
-    RAND_bytes(hs->grease_seed, sizeof(hs->grease_seed));
-    hs->grease_seeded = true;
-  }
-
+static uint16_t grease_index_to_value(const SSL_HANDSHAKE *hs,
+                                      enum ssl_grease_index_t index) {
   // This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16.
   uint16_t ret = hs->grease_seed[index];
   ret = (ret & 0xf0) | 0x0a;
   ret |= ret << 8;
+  return ret;
+}
+
+uint16_t ssl_get_grease_value(const SSL_HANDSHAKE *hs,
+                              enum ssl_grease_index_t index) {
+  uint16_t ret = grease_index_to_value(hs, index);
+  if (index == ssl_grease_extension2 &&
+      ret == grease_index_to_value(hs, ssl_grease_extension1)) {
+    // The two fake extensions must not have the same value. GREASE values are
+    // of the form 0x1a1a, 0x2a2a, 0x3a3a, etc., so XOR to generate a different
+    // one.
+    ret ^= 0x1010;
+  }
   return ret;
 }
 
@@ -682,10 +692,6 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         ssl->s3->rwstate = SSL_ERROR_WANT_X509_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
-      case ssl_hs_channel_id_lookup:
-        ssl->s3->rwstate = SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
-        hs->wait = ssl_hs_ok;
-        return -1;
       case ssl_hs_private_key_operation:
         ssl->s3->rwstate = SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
         hs->wait = ssl_hs_ok;
@@ -710,6 +716,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         return -1;
 
       case ssl_hs_early_return:
+        if (!ssl->server) {
+          // On ECH reject, the handshake should never complete.
+          assert(ssl->s3->ech_status != ssl_ech_rejected);
+        }
         *out_early_return = true;
         hs->wait = ssl_hs_ok;
         return 1;
@@ -729,6 +739,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       return -1;
     }
     if (hs->wait == ssl_hs_ok) {
+      if (!ssl->server) {
+        // On ECH reject, the handshake should never complete.
+        assert(ssl->s3->ech_status != ssl_ech_rejected);
+      }
       // The handshake has completed.
       *out_early_return = false;
       return 1;
