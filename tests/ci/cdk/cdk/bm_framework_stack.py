@@ -1,11 +1,16 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+
 import aws_cdk.core
+import subprocess
+
 from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
-from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, ec2_get_put_describe_policy_in_json
+from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, \
+    ec2_get_put_describe_policy_in_json
 from util.yml_loader import YmlLoader
+
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
 
@@ -40,9 +45,9 @@ class BmFrameworkStack(core.Stack):
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_get_put_describe_policy": ec2_get_put_describe_policy}
         codebuild_role = iam.Role(scope=self,
-                        id="{}-codebuild-role".format(id),
-                        assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                        inline_policies=codebuild_inline_policies)
+                                  id="{}-codebuild-role".format(id),
+                                  assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
+                                  inline_policies=codebuild_inline_policies)
 
         # Create build spec.
         placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
@@ -100,29 +105,6 @@ class BmFrameworkStack(core.Stack):
         # Create an EBS block device for usage by the ec2 instance
         block_device = ec2.BlockDevice(device_name="/dev/sda1", volume=block_device_volume)
 
-        # commands for the ec2 to run on startup
-        command1 = "printf '[Unit]\n" \
-                   "  Description=/etc/rc.local Compatibility\n" \
-                   "  ConditionPathExists=/etc/rc.local\n" \
-                   "[Service]\n" \
-                   "  Type=forking\n" \
-                   "  ExecStart=/etc/rc.local start\n" \
-                   "  TimeoutSec=0\n" \
-                   "  StandardOutput=tty\n" \
-                   "  RemainAfterExit=yes\n" \
-                   "  SysVStartPriority=99\n\n" \
-                   "[Install]\n" \
-                   "  WantedBy=multi-user.target'" \
-                   " | sudo tee -a /etc/systemd/system/rc-local.service"
-
-        command2 = "printf '#!/bin/bash\n" \
-                   "echo hi > hi.txt; aws s3 mv hi.txt s3://aws-lc-bm-framework-prod-bucket'" \
-                   " | sudo tee -a /etc/rc.local"
-
-        command3 = "sudo chmod +x /etc/rc.local; " \
-                   "sudo systemctl enable rc-local.service; " \
-                   "sudo systemctl start rc-local.service"
-
         x86_instance = ec2.Instance(self, id="{}-ec2-x86".format(id),
                                     instance_type=ec2.InstanceType("c5.metal"),
                                     machine_image=ubuntu2004,
@@ -130,15 +112,17 @@ class BmFrameworkStack(core.Stack):
                                     security_group=sec_group,
                                     block_devices=[block_device],
                                     role=ec2_role)
-        x86_instance.add_user_data(command1)
-        x86_instance.add_user_data(command2)
-        x86_instance.add_user_data(command3)
 
         core.Tags.of(x86_instance).add("aws-lc", "{}-ec2-x86-instance".format(id))
 
         # define s3 buckets below
-        production_results_s3 = s3.Bucket(self, "{}-s3-prod".format(id),
-                                          bucket_name=S3_PROD_BUCKET,
-                                          enforce_ssl=True)
+        sp = subprocess.Popen("aws s3api list-buckets --query Buckets[].Name --output text",
+                              shell=True, stdout=subprocess.PIPE)
+        output = sp.stdout.read().decode("utf-8")
 
-        production_results_s3.grant_put(ec2_role)
+        if S3_PROD_BUCKET not in output:
+            production_results_s3 = s3.Bucket(self, "{}-s3-prod".format(id),
+                                              bucket_name=S3_PROD_BUCKET,
+                                              enforce_ssl=True)
+
+            production_results_s3.grant_put(ec2_role)
