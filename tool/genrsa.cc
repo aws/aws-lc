@@ -21,7 +21,7 @@
 #include "internal.h"
 
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {
      "-bits", kOptionalArgument,
      "The number of bits in the modulus (default: 2048)",

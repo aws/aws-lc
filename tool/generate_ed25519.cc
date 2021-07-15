@@ -21,7 +21,7 @@
 #include "internal.h"
 
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {
         "-out-public", kRequiredArgument, "The file to write the public key to",
     },

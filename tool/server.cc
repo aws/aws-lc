@@ -25,7 +25,7 @@
 #include "transport_common.h"
 
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {
         "-accept", kRequiredArgument,
         "The port of the server to bind on; eg 45102",

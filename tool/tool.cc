@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::vector<std::string> args;
+  args_list_t args;
   for (int i = starting_arg; i < argc; i++) {
     args.push_back(argv[i]);
   }
