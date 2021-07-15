@@ -215,10 +215,10 @@ TEST(RandTest, Threads) {
 
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST(RandTest, RdrandABI) {
-  if (!have_rdrand()) {
-    fprintf(stderr, "rdrand not supported. Skipping.\n");
-    return;
-  }
+  //if (!have_rdrand()) {
+  //  fprintf(stderr, "rdrand not supported. Skipping.\n");
+  //  return;
+  //}
 
   uint8_t buf[32];
   CHECK_ABI_SEH(CRYPTO_rdrand, buf);
