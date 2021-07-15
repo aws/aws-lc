@@ -92,13 +92,6 @@ function create_github_ci_stack() {
   cdk deploy aws-lc-ci-* --require-approval never
   cdk deploy aws-lc-bm-framework --require-approval never
 
-  # Sleep 2 minutes to give ec2 time to finish 1st time setup
-  sleep 120
-
-  # After creating the framework, we want to stop the benchmarking ec2 instances to avoid excess costs
-  instance_id=$(aws ec2 describe-instances --filters Name="instance.group-name",Values="bm_framework_ec2_sg" --query Reservations[*].Instances[*].[InstanceId] --output text)
-  aws ec2 stop-instances --instance-ids "${instance_id}"
-
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
 #  aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
 #  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
