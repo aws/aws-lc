@@ -75,7 +75,7 @@ class BmFrameworkStack(core.Stack):
             "TimeoutInMins": 180
         })
 
-        # define things needed for ec2 instance below
+        # define things needed for ec2 instances below (instances themselves will be dynamically created in codebuild)
         S3_PROD_BUCKET = "{}-prod-bucket".format(id)
 
         # create iam for ec2s
@@ -89,31 +89,10 @@ class BmFrameworkStack(core.Stack):
         vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
 
         # create security group with default rules
-        sec_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
-                                      allow_all_outbound=True,
-                                      vpc=vpc,
-                                      security_group_name='bm_framework_ec2_sg')
-
-        # We want Ubuntu 20.04 AMI for x86
-        ubuntu2004 = ec2.MachineImage.generic_linux({
-            "us-west-2": "ami-01773ce53581acf22"
-        })
-
-        # Create an EBS block device volume for use by the block_device
-        block_device_volume = ec2.BlockDeviceVolume.ebs(volume_size=200, delete_on_termination=True)
-
-        # Create an EBS block device for usage by the ec2 instance
-        block_device = ec2.BlockDevice(device_name="/dev/sda1", volume=block_device_volume)
-
-        x86_instance = ec2.Instance(self, id="{}-ec2-x86".format(id),
-                                    instance_type=ec2.InstanceType("c5.metal"),
-                                    machine_image=ubuntu2004,
-                                    vpc=vpc,
-                                    security_group=sec_group,
-                                    block_devices=[block_device],
-                                    role=ec2_role)
-
-        core.Tags.of(x86_instance).add("aws-lc", "{}-ec2-x86-instance".format(id))
+        ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
+                          allow_all_outbound=True,
+                          vpc=vpc,
+                          security_group_name='bm_framework_ec2_sg')
 
         # define s3 buckets below
         sp = subprocess.Popen("aws s3api list-buckets --query Buckets[].Name --output text",
