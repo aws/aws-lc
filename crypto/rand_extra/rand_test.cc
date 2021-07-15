@@ -145,6 +145,11 @@ TEST(RandTest, Fork) {
 
   maybe_disable_some_fork_detect_mechanisms();
 
+  if (!getter_have_fast_rdrand()) {
+    fprintf(stderr, "Don't have rdrand....!\n");
+    ASSERT_TRUE(getter_have_fast_rdrand());
+  }
+
   // Draw a little entropy to initialize any internal PRNG buffering.
   uint8_t byte;
   RAND_bytes(&byte, 1);

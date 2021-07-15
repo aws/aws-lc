@@ -299,6 +299,10 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 #endif
 
+int getter_have_fast_rdrand(void) {
+  return have_fast_rdrand();
+}
+
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32]) {
   if (out_len == 0) {

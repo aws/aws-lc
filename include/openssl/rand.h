@@ -24,6 +24,7 @@ extern "C" {
 
 // Random number generation.
 
+OPENSSL_EXPORT int getter_have_fast_rdrand(void);
 
 // RAND_bytes writes |len| bytes of random data to |buf| and returns one.
 OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
