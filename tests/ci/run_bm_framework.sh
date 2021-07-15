@@ -7,8 +7,8 @@ set -exo pipefail
 instance_id=$(aws ec2 describe-instances --filters Name="instance.group-name",Values="bm_framework_ec2_sg" --query Reservations[*].Instances[*].[InstanceId] --output text)
 aws ec2 start-instances --instance-ids "${instance_id}"
 
-# wait until we've detected uploads to the s3 (for now just sleep 30 seconds)
-sleep 30
+# wait until we've detected uploads to the s3 (for now just sleep 300 seconds)
+sleep 300
 
 # stop ec2 instances
 aws ec2 stop-instances --instance-ids "${instance_id}"
