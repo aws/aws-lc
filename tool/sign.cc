@@ -22,14 +22,14 @@
 #include "internal.h"
 
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {"-key", kRequiredArgument, "The private key, in PEM format, to sign with"},
     {"-digest", kOptionalArgument, "The digest algorithm to use"},
     {"", kOptionalArgument, ""},
 };
 
-bool Sign(const std::vector<std::string> &args) {
-  std::map<std::string, std::string> args_map;
+bool Sign(const args_list_t &args) {
+  args_map_t args_map;
   if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
     PrintUsage(kArguments);
     return false;
