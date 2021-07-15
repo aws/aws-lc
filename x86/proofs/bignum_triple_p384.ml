@@ -23,26 +23,49 @@
 let bignum_triple_p384_mc = define_assert_from_elf "bignum_triple_p384_mc" "x86/p384/bignum_triple_p384.o"
 [
   0x53;                    (* PUSH (% rbx) *)
-  0xba; 0x03; 0x00; 0x00; 0x00;
-                           (* MOV (% edx) (Imm32 (word 3)) *)
-  0xc4; 0x62; 0xbb; 0xf6; 0x0e;
-                           (* MULX4 (% r9,% r8) (% rdx,Memop Quadword (%% (rsi,0))) *)
-  0xc4; 0x62; 0xfb; 0xf6; 0x56; 0x08;
-                           (* MULX4 (% r10,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
-  0x49; 0x01; 0xc1;        (* ADD (% r9) (% rax) *)
-  0xc4; 0x62; 0xfb; 0xf6; 0x5e; 0x10;
-                           (* MULX4 (% r11,% rax) (% rdx,Memop Quadword (%% (rsi,16))) *)
-  0x49; 0x11; 0xc2;        (* ADC (% r10) (% rax) *)
-  0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x18;
-                           (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,24))) *)
-  0x49; 0x11; 0xc3;        (* ADC (% r11) (% rax) *)
-  0xc4; 0xe2; 0xfb; 0xf6; 0x4e; 0x20;
-                           (* MULX4 (% rcx,% rax) (% rdx,Memop Quadword (%% (rsi,32))) *)
-  0x48; 0x11; 0xc3;        (* ADC (% rbx) (% rax) *)
-  0xc4; 0xe2; 0xcb; 0xf6; 0x56; 0x28;
-                           (* MULX4 (% rdx,% rsi) (% rdx,Memop Quadword (%% (rsi,40))) *)
-  0x48; 0x11; 0xce;        (* ADC (% rsi) (% rcx) *)
-  0x48; 0x83; 0xd2; 0x01;  (* ADC (% rdx) (Imm8 (word 1)) *)
+  0x31; 0xc0;              (* XOR (% eax) (% eax) *)
+  0x48; 0x8b; 0x16;        (* MOV (% rdx) (Memop Quadword (%% (rsi,0))) *)
+  0x49; 0x89; 0xd0;        (* MOV (% r8) (% rdx) *)
+  0x66; 0x48; 0x0f; 0x38; 0xf6; 0xd2;
+                           (* ADCX (% rdx) (% rdx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xc2;
+                           (* ADOX (% r8) (% rdx) *)
+  0x48; 0x8b; 0x56; 0x08;  (* MOV (% rdx) (Memop Quadword (%% (rsi,8))) *)
+  0x49; 0x89; 0xd1;        (* MOV (% r9) (% rdx) *)
+  0x66; 0x48; 0x0f; 0x38; 0xf6; 0xd2;
+                           (* ADCX (% rdx) (% rdx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xca;
+                           (* ADOX (% r9) (% rdx) *)
+  0x48; 0x8b; 0x56; 0x10;  (* MOV (% rdx) (Memop Quadword (%% (rsi,16))) *)
+  0x49; 0x89; 0xd2;        (* MOV (% r10) (% rdx) *)
+  0x66; 0x48; 0x0f; 0x38; 0xf6; 0xd2;
+                           (* ADCX (% rdx) (% rdx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xd2;
+                           (* ADOX (% r10) (% rdx) *)
+  0x48; 0x8b; 0x56; 0x18;  (* MOV (% rdx) (Memop Quadword (%% (rsi,24))) *)
+  0x49; 0x89; 0xd3;        (* MOV (% r11) (% rdx) *)
+  0x66; 0x48; 0x0f; 0x38; 0xf6; 0xd2;
+                           (* ADCX (% rdx) (% rdx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xda;
+                           (* ADOX (% r11) (% rdx) *)
+  0x48; 0x8b; 0x56; 0x20;  (* MOV (% rdx) (Memop Quadword (%% (rsi,32))) *)
+  0x48; 0x89; 0xd3;        (* MOV (% rbx) (% rdx) *)
+  0x66; 0x48; 0x0f; 0x38; 0xf6; 0xd2;
+                           (* ADCX (% rdx) (% rdx) *)
+  0xf3; 0x48; 0x0f; 0x38; 0xf6; 0xda;
+                           (* ADOX (% rbx) (% rdx) *)
+  0x48; 0x8b; 0x56; 0x28;  (* MOV (% rdx) (Memop Quadword (%% (rsi,40))) *)
+  0x48; 0x89; 0xd6;        (* MOV (% rsi) (% rdx) *)
+  0x66; 0x48; 0x0f; 0x38; 0xf6; 0xd2;
+                           (* ADCX (% rdx) (% rdx) *)
+  0xf3; 0x48; 0x0f; 0x38; 0xf6; 0xf2;
+                           (* ADOX (% rsi) (% rdx) *)
+  0xba; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% edx) (Imm32 (word 1)) *)
+  0x66; 0x48; 0x0f; 0x38; 0xf6; 0xd0;
+                           (* ADCX (% rdx) (% rax) *)
+  0xf3; 0x48; 0x0f; 0x38; 0xf6; 0xd0;
+                           (* ADOX (% rdx) (% rax) *)
   0x48; 0x89; 0xd1;        (* MOV (% rcx) (% rdx) *)
   0x48; 0xc1; 0xe1; 0x20;  (* SHL (% rcx) (Imm8 (word 32)) *)
   0x48; 0x89; 0xd0;        (* MOV (% rax) (% rdx) *)
@@ -58,10 +81,10 @@ let bignum_triple_p384_mc = define_assert_from_elf "bignum_triple_p384_mc" "x86/
   0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
   0xba; 0xff; 0xff; 0xff; 0xff;
                            (* MOV (% edx) (Imm32 (word 4294967295)) *)
-  0x48; 0x31; 0xc0;        (* XOR (% rax) (% rax) *)
+  0x31; 0xc0;              (* XOR (% eax) (% eax) *)
   0x48; 0x21; 0xca;        (* AND (% rdx) (% rcx) *)
   0x48; 0x29; 0xd0;        (* SUB (% rax) (% rdx) *)
-  0x48; 0x83; 0xe1; 0x01;  (* AND (% rcx) (Imm8 (word 1)) *)
+  0x48; 0xf7; 0xd9;        (* NEG (% rcx) *)
   0x49; 0x29; 0xc0;        (* SUB (% r8) (% rax) *)
   0x4c; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% r8) *)
   0x49; 0x19; 0xd1;        (* SBB (% r9) (% rdx) *)
@@ -96,13 +119,13 @@ let p384genshortredlemma = prove
 
 let BIGNUM_TRIPLE_P384_CORRECT = time prove
  (`!z x n pc.
-        nonoverlapping (word pc,0xa8) (z,8 * 6)
+        nonoverlapping (word pc,0xef) (z,8 * 6)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_triple_p384_mc /\
                   read RIP s = word(pc + 0x1) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,6) s = n)
-             (\s. read RIP s = word (pc + 0xa6) /\
+             (\s. read RIP s = word (pc + 0xed) /\
                   bignum_from_memory (z,6) s = (3 * n) MOD p_384)
              (MAYCHANGE [RIP; RSI; RAX; RCX; RDX; R8; R9; R10; R11; RBX] ,,
               MAYCHANGE SOME_FLAGS ,,
@@ -117,10 +140,10 @@ let BIGNUM_TRIPLE_P384_CORRECT = time prove
 
   (*** Input load and initial multiplication by 3 ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_TRIPLE_P384_EXEC (1--13) (1--13) THEN
+  X86_ACCSTEPS_TAC BIGNUM_TRIPLE_P384_EXEC (1--28) (1--28) THEN
   SUBGOAL_THEN
    `bignum_of_wordlist
-     [mullo_s2; sum_s4; sum_s6; sum_s8; sum_s10; sum_s12; sum_s13] =
+     [sum_s5; sum_s9; sum_s13; sum_s17; sum_s21; sum_s25; sum_s28] =
     2 EXP 384 + 3 * n`
   ASSUME_TAC THENL
    [EXPAND_TAC "n" THEN
@@ -135,7 +158,7 @@ let BIGNUM_TRIPLE_P384_CORRECT = time prove
   SUBGOAL_THEN `h < 3` ASSUME_TAC THENL
    [UNDISCH_TAC `n < 2 EXP (64 * 6)` THEN EXPAND_TAC "h" THEN ARITH_TAC;
     ALL_TAC] THEN
-  SUBGOAL_THEN `sum_s13:int64 = word(h + 1)` SUBST_ALL_TAC THENL
+  SUBGOAL_THEN `sum_s28:int64 = word(h + 1)` SUBST_ALL_TAC THENL
    [EXPAND_TAC "h" THEN REWRITE_TAC[ARITH_RULE
      `(3 * n) DIV 2 EXP 384 + 1 = (2 EXP 384 + 3 * n) DIV 2 EXP 384`] THEN
     FIRST_X_ASSUM(fun th ->
@@ -151,11 +174,11 @@ let BIGNUM_TRIPLE_P384_CORRECT = time prove
 
   (*** Computation of 3 * n - (h + 1) * p_384 ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_TRIPLE_P384_EXEC (19--24) (14--26) THEN
+  X86_ACCSTEPS_TAC BIGNUM_TRIPLE_P384_EXEC (34--39) (29--41) THEN
   MP_TAC(SPECL
-   [`word_neg(word(bitval(~carry_s24))):int64`;
+   [`word_neg(word(bitval(~carry_s39))):int64`;
     `&(bignum_of_wordlist
-        [sum_s19; sum_s20; sum_s21; sum_s22; sum_s23; sum_s24]):real`;
+        [sum_s34; sum_s35; sum_s36; sum_s37; sum_s38; sum_s39]):real`;
     `384`; `3 * n`; `(h + 1) * p_384`]
    MASK_AND_VALUE_FROM_CARRY_LT) THEN
   ASM_REWRITE_TAC[] THEN ANTS_TAC THENL
@@ -171,7 +194,7 @@ let BIGNUM_TRIPLE_P384_CORRECT = time prove
       ALL_TAC] THEN
     UNDISCH_TAC
      `bignum_of_wordlist
-      [mullo_s2; sum_s4; sum_s6; sum_s8; sum_s10; sum_s12; word (h + 1)] =
+      [sum_s5; sum_s9; sum_s13; sum_s17; sum_s21; sum_s25; word (h + 1)] =
       2 EXP 384 + 3 * n` THEN
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist; p_384] THEN
     DISCH_THEN(SUBST1_TAC o MATCH_MP (REAL_ARITH
@@ -194,7 +217,7 @@ let BIGNUM_TRIPLE_P384_CORRECT = time prove
 
   (*** Final corrective masked addition ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_TRIPLE_P384_EXEC [32;34;36;38;40;42] (27--43) THEN
+  X86_ACCSTEPS_TAC BIGNUM_TRIPLE_P384_EXEC [47;49;51;53;55;57] (42--58) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
@@ -217,7 +240,7 @@ let BIGNUM_TRIPLE_P384_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
         nonoverlapping (word_sub stackpointer (word 8),8) (x,8 * 6) /\
         nonoverlapping (z,8 * 6) (word_sub stackpointer (word 8),16) /\
-        ALL (nonoverlapping (word pc,0xa8))
+        ALL (nonoverlapping (word pc,0xef))
             [(z,8 * 6); (word_sub stackpointer (word 8),8)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_triple_p384_mc /\

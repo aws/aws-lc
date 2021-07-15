@@ -26,6 +26,11 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
+        .text
+        .globl  bignum_triple_p256
+
 #define z rdi
 #define x rsi
 
@@ -36,46 +41,50 @@
 #define d2 r10
 #define d3 r11
 
-// Multipliers (constant 3 in first stage, quotient estimate q in second)
-// and briefly h = q - 1 = the top of intermediate result, all aliased to rdx
+// Quotient estimate = top of product + 1
 
-#define m rdx
 #define q rdx
-#define h rdx
 
-// Other temporary variables
+// Other temporary variables and their short version
 
 #define a rax
 #define c rcx
 
-#define mshort edx
 #define ashort eax
-
-
-
-.intel_syntax noprefix
-        .text
-        .globl  bignum_triple_p256
+#define cshort ecx
+#define qshort edx
 
 bignum_triple_p256:
 
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
+// but immediately form the quotient estimate q = h + 1
 
-                mov     mshort, 3
-                mulx    d1, d0, [x]
-                mulx    d2, a, [x+8]
-                add     d1, a
-                mulx    d3, a, [x+16]
-                adc     d2, a
-                mulx    h, a, [x+24]
-                adc     d3, a
-                adc     h, 0
+                xor     ashort, ashort
+
+                mov     q, [x]
+                mov     d0, q
+                adcx    q, q
+                adox    d0, q
+                mov     q, [x+8]
+                mov     d1, q
+                adcx    q, q
+                adox    d1, q
+                mov     q, [x+16]
+                mov     d2, q
+                adcx    q, q
+                adox    d2, q
+                mov     q, [x+24]
+                mov     d3, q
+                adcx    q, q
+                adox    d3, q
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256 <= z - q * p_256 < p_256, so we just need
 // to subtract q * p_256 and then if that's negative, add back p_256.
 
-                inc     q
+                mov     qshort, 1
+                adcx    q, a
+                adox    q, a
 
 // Now compute the initial pre-reduced result z - p_256 * q
 // = z - (2^256 - 2^224 + 2^192 + 2^96 - 1) * q
@@ -102,7 +111,7 @@ bignum_triple_p256:
 
                 mov     ashort, 0x00000000ffffffff
                 and     a, q
-                xor     c, c
+                xor     cshort, cshort
                 sub     c, a
                 add     d0, q
                 mov     [z], d0

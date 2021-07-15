@@ -26,6 +26,10 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+        .text
+        .globl  bignum_triple_p384
+
 #define z rdi
 #define x rsi
 
@@ -40,11 +44,8 @@
 #define c rcx
 #define q rdx
 
+#define ashort eax
 #define qshort edx
-
-.intel_syntax noprefix
-        .text
-        .globl  bignum_triple_p384
 
 bignum_triple_p384:
 
@@ -58,19 +59,36 @@ bignum_triple_p384:
 // product is <= (2^64 - 1) * (p_384 - 1) and hence  h <= 2^64 - 2, meaning
 // there is no danger this addition of 1 could wrap.
 
-                mov     qshort, 3
-                mulx    d1, d0, [x]
-                mulx    d2, a, [x+8]
-                add     d1, a
-                mulx    d3,a, [x+16]
-                adc     d2, a
-                mulx    d4,a, [x+24]
-                adc     d3, a
-                mulx    c, a, [x+32]
-                adc     d4, a
-                mulx    q, d5, [x+40]
-                adc     d5, c
-                adc     q, 1
+                xor     ashort, ashort
+
+                mov     q, [x]
+                mov     d0, q
+                adcx    q, q
+                adox    d0, q
+                mov     q, [x+8]
+                mov     d1, q
+                adcx    q, q
+                adox    d1, q
+                mov     q, [x+16]
+                mov     d2, q
+                adcx    q, q
+                adox    d2, q
+                mov     q, [x+24]
+                mov     d3, q
+                adcx    q, q
+                adox    d3, q
+                mov     q, [x+32]
+                mov     d4, q
+                adcx    q, q
+                adox    d4, q
+                mov     q, [x+40]
+                mov     d5, q
+                adcx    q, q
+                adox    d5, q
+
+                mov     qshort, 1
+                adcx    q, a
+                adox    q, a
 
 // Initial subtraction of z - q * p_384, with bitmask c for the carry
 // Actually done as an addition of (z - 2^384 * h) + q * (2^384 - p_384)
@@ -97,10 +115,10 @@ bignum_triple_p384:
 // have three nonzero digits and so can avoid using another register.
 
                 mov     qshort, 0x00000000ffffffff
-                xor     a, a
+                xor     ashort, ashort
                 and     q, c
                 sub     a, q
-                and     c, 1
+                neg     c
 
                 sub     d0, a
                 mov     [z], d0
