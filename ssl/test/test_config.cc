@@ -22,7 +22,6 @@
 #include <memory>
 
 #include <openssl/base64.h>
-#include <openssl/hpke.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
@@ -59,9 +58,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-quic", &TestConfig::is_quic},
     {"-fallback-scsv", &TestConfig::fallback_scsv},
     {"-enable-ech-grease", &TestConfig::enable_ech_grease},
-    {"-expect-ech-accept", &TestConfig::expect_ech_accept},
-    {"-expect-no-ech-name-override", &TestConfig::expect_no_ech_name_override},
-    {"-expect-no-ech-retry-configs", &TestConfig::expect_no_ech_retry_configs},
     {"-require-any-client-certificate",
      &TestConfig::require_any_client_certificate},
     {"-false-start", &TestConfig::false_start},
@@ -120,7 +116,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-send-alert", &TestConfig::send_alert},
     {"-peek-then-read", &TestConfig::peek_then_read},
     {"-enable-grease", &TestConfig::enable_grease},
-    {"-permute-extensions", &TestConfig::permute_extensions},
     {"-use-exporter-between-reads", &TestConfig::use_exporter_between_reads},
     {"-retain-only-sha256-client-cert",
      &TestConfig::retain_only_sha256_client_cert},
@@ -169,7 +164,6 @@ const Flag<std::string> kStringFlags[] = {
     {"-key-file", &TestConfig::key_file},
     {"-cert-file", &TestConfig::cert_file},
     {"-expect-server-name", &TestConfig::expect_server_name},
-    {"-expect-ech-name-override", &TestConfig::expect_ech_name_override},
     {"-advertise-npn", &TestConfig::advertise_npn},
     {"-expect-next-proto", &TestConfig::expect_next_proto},
     {"-select-next-proto", &TestConfig::select_next_proto},
@@ -204,10 +198,9 @@ const Flag<std::unique_ptr<std::string>> kOptionalStringFlags[] = {
 };
 
 const Flag<std::string> kBase64Flags[] = {
-    {"-expect-ech-retry-configs", &TestConfig::expect_ech_retry_configs},
-    {"-ech-config-list", &TestConfig::ech_config_list},
     {"-expect-certificate-types", &TestConfig::expect_certificate_types},
     {"-expect-channel-id", &TestConfig::expect_channel_id},
+    {"-token-binding-params", &TestConfig::send_token_binding_params},
     {"-expect-ocsp-response", &TestConfig::expect_ocsp_response},
     {"-expect-signed-cert-timestamps",
      &TestConfig::expect_signed_cert_timestamps},
@@ -222,6 +215,7 @@ const Flag<std::string> kBase64Flags[] = {
 const Flag<int> kIntFlags[] = {
     {"-port", &TestConfig::port},
     {"-resume-count", &TestConfig::resume_count},
+    {"-expect-token-binding-param", &TestConfig::expect_token_binding_param},
     {"-min-version", &TestConfig::min_version},
     {"-max-version", &TestConfig::max_version},
     {"-expect-version", &TestConfig::expect_version},
@@ -241,9 +235,6 @@ const Flag<int> kIntFlags[] = {
     {"-read-size", &TestConfig::read_size},
     {"-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew},
     {"-quic-use-legacy-codepoint", &TestConfig::quic_use_legacy_codepoint},
-    {"-install-one-cert-compression-alg",
-     &TestConfig::install_one_cert_compression_alg},
-    {"-early-write-after-message", &TestConfig::early_write_after_message},
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
@@ -608,9 +599,6 @@ static void MessageCallback(int is_write, int version, int content_type,
       char text[16];
       snprintf(text, sizeof(text), "hs %d\n", type);
       state->msg_callback_text += text;
-      if (!is_write) {
-        state->last_message_received = type;
-      }
       return;
     }
 
@@ -705,6 +693,10 @@ static void InfoCallback(const SSL *ssl, int type, int val) {
   }
 }
 
+static void ChannelIdCallback(SSL *ssl, EVP_PKEY **out_pkey) {
+  *out_pkey = GetTestState(ssl)->channel_id.release();
+}
+
 static SSL_SESSION *GetSessionCallback(SSL *ssl, const uint8_t *data, int len,
                                        int *copy) {
   TestState *async_state = GetTestState(ssl);
@@ -776,20 +768,6 @@ static bool CheckVerifyCallback(SSL *ssl) {
       fprintf(stderr, "OCSP response not available in verify callback.\n");
       return false;
     }
-  }
-
-  const char *name_override;
-  size_t name_override_len;
-  SSL_get0_ech_name_override(ssl, &name_override, &name_override_len);
-  if (config->expect_no_ech_name_override && name_override_len != 0) {
-    fprintf(stderr, "Unexpected ECH name override.\n");
-    return false;
-  }
-  if (!config->expect_ech_name_override.empty() &&
-      config->expect_ech_name_override !=
-          std::string(name_override, name_override_len)) {
-    fprintf(stderr, "ECH name did not match expected value.\n");
-    return false;
   }
 
   if (GetTestState(ssl)->cert_verified) {
@@ -1349,17 +1327,6 @@ static const SSL_QUIC_METHOD g_quic_method = {
     SendQuicAlert,
 };
 
-static bool MaybeInstallCertCompressionAlg(
-    const TestConfig *config, SSL_CTX *ssl_ctx, uint16_t alg,
-    ssl_cert_compression_func_t compress,
-    ssl_cert_decompression_func_t decompress) {
-  if (!config->install_cert_compression_algs &&
-      config->install_one_cert_compression_alg != alg) {
-    return true;
-  }
-  return SSL_CTX_add_cert_compression_alg(ssl_ctx, alg, compress, decompress);
-}
-
 bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   bssl::UniquePtr<SSL_CTX> ssl_ctx(
       SSL_CTX_new(is_dtls ? DTLS_method() : TLS_method()));
@@ -1407,6 +1374,8 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
+  SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
+
   SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
 
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
@@ -1445,10 +1414,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (enable_grease) {
     SSL_CTX_set_grease_enabled(ssl_ctx.get(), 1);
-  }
-
-  if (permute_extensions) {
-    SSL_CTX_set_permute_extensions(ssl_ctx.get(), 1);
   }
 
   if (!expect_server_name.empty()) {
@@ -1494,65 +1459,48 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     return nullptr;
   }
 
-  // These mock compression algorithms match the corresponding ones in
-  // |addCertCompressionTests|.
-  if (!MaybeInstallCertCompressionAlg(
-          this, ssl_ctx.get(), 0xff02,
-          [](SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) -> int {
-            if (!CBB_add_u8(out, 1) || !CBB_add_u8(out, 2) ||
-                !CBB_add_u8(out, 3) || !CBB_add_u8(out, 4) ||
-                !CBB_add_bytes(out, in, in_len)) {
-              return 0;
-            }
-            return 1;
-          },
-          [](SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
-             const uint8_t *in, size_t in_len) -> int {
-            if (in_len < 4 || in[0] != 1 || in[1] != 2 || in[2] != 3 ||
-                in[3] != 4 || uncompressed_len != in_len - 4) {
-              return 0;
-            }
-            const bssl::Span<const uint8_t> uncompressed(in + 4, in_len - 4);
-            *out = CRYPTO_BUFFER_new(uncompressed.data(), uncompressed.size(),
-                                     nullptr);
-            return *out != nullptr;
-          }) ||
-      !MaybeInstallCertCompressionAlg(
-          this, ssl_ctx.get(), 0xff01,
-          [](SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) -> int {
-            if (in_len < 2 || in[0] != 0 || in[1] != 0) {
-              return 0;
-            }
-            return CBB_add_bytes(out, in + 2, in_len - 2);
-          },
-          [](SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
-             const uint8_t *in, size_t in_len) -> int {
-            if (uncompressed_len != 2 + in_len) {
-              return 0;
-            }
-            std::unique_ptr<uint8_t[]> buf(new uint8_t[2 + in_len]);
-            buf[0] = 0;
-            buf[1] = 0;
-            OPENSSL_memcpy(&buf[2], in, in_len);
-            *out = CRYPTO_BUFFER_new(buf.get(), 2 + in_len, nullptr);
-            return *out != nullptr;
-          }) ||
-      !MaybeInstallCertCompressionAlg(
-          this, ssl_ctx.get(), 0xff03,
-          [](SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) -> int {
-            uint8_t byte;
-            return RAND_bytes(&byte, 1) &&   //
-                   CBB_add_u8(out, byte) &&  //
-                   CBB_add_bytes(out, in, in_len);
-          },
-          [](SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
-             const uint8_t *in, size_t in_len) -> int {
-            if (uncompressed_len + 1 != in_len) {
-              return 0;
-            }
-            *out = CRYPTO_BUFFER_new(in + 1, in_len - 1, nullptr);
-            return *out != nullptr;
-          })) {
+  if (install_cert_compression_algs &&
+      (!SSL_CTX_add_cert_compression_alg(
+           ssl_ctx.get(), 0xff02,
+           [](SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) -> int {
+             if (!CBB_add_u8(out, 1) || !CBB_add_u8(out, 2) ||
+                 !CBB_add_u8(out, 3) || !CBB_add_u8(out, 4) ||
+                 !CBB_add_bytes(out, in, in_len)) {
+               return 0;
+             }
+             return 1;
+           },
+           [](SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
+              const uint8_t *in, size_t in_len) -> int {
+             if (in_len < 4 || in[0] != 1 || in[1] != 2 || in[2] != 3 ||
+                 in[3] != 4 || uncompressed_len != in_len - 4) {
+               return 0;
+             }
+             const bssl::Span<const uint8_t> uncompressed(in + 4, in_len - 4);
+             *out = CRYPTO_BUFFER_new(uncompressed.data(), uncompressed.size(),
+                                      nullptr);
+             return 1;
+           }) ||
+       !SSL_CTX_add_cert_compression_alg(
+           ssl_ctx.get(), 0xff01,
+           [](SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) -> int {
+             if (in_len < 2 || in[0] != 0 || in[1] != 0) {
+               return 0;
+             }
+             return CBB_add_bytes(out, in + 2, in_len - 2);
+           },
+           [](SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
+              const uint8_t *in, size_t in_len) -> int {
+             if (uncompressed_len != 2 + in_len) {
+               return 0;
+             }
+             std::unique_ptr<uint8_t[]> buf(new uint8_t[2 + in_len]);
+             buf[0] = 0;
+             buf[1] = 0;
+             OPENSSL_memcpy(&buf[2], in, in_len);
+             *out = CRYPTO_BUFFER_new(buf.get(), 2 + in_len, nullptr);
+             return 1;
+           }))) {
     fprintf(stderr, "SSL_CTX_add_cert_compression_alg failed.\n");
     abort();
   }
@@ -1746,12 +1694,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   if (enable_ech_grease) {
     SSL_set_enable_ech_grease(ssl.get(), 1);
   }
-  if (!ech_config_list.empty() &&
-      !SSL_set1_ech_config_list(
-          ssl.get(), reinterpret_cast<const uint8_t *>(ech_config_list.data()),
-          ech_config_list.size())) {
-    return nullptr;
-  }
   if (ech_server_configs.size() != ech_server_keys.size() ||
       ech_server_configs.size() != ech_is_retry_config.size()) {
     fprintf(stderr,
@@ -1760,35 +1702,43 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   if (!ech_server_configs.empty()) {
-    bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
-    if (!keys) {
+    bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+        SSL_ECH_SERVER_CONFIG_LIST_new());
+    if (!config_list) {
       return nullptr;
     }
     for (size_t i = 0; i < ech_server_configs.size(); i++) {
       const std::string &ech_config = ech_server_configs[i];
       const std::string &ech_private_key = ech_server_keys[i];
       const int is_retry_config = ech_is_retry_config[i];
-      bssl::ScopedEVP_HPKE_KEY key;
-      if (!EVP_HPKE_KEY_init(
-              key.get(), EVP_hpke_x25519_hkdf_sha256(),
-              reinterpret_cast<const uint8_t *>(ech_private_key.data()),
-              ech_private_key.size()) ||
-          !SSL_ECH_KEYS_add(
-              keys.get(), is_retry_config,
+      if (!SSL_ECH_SERVER_CONFIG_LIST_add(
+              config_list.get(), is_retry_config,
               reinterpret_cast<const uint8_t *>(ech_config.data()),
-              ech_config.size(), key.get())) {
+              ech_config.size(),
+              reinterpret_cast<const uint8_t *>(ech_private_key.data()),
+              ech_private_key.size())) {
         return nullptr;
       }
     }
-    if (!SSL_CTX_set1_ech_keys(ssl_ctx, keys.get())) {
+    if (!SSL_CTX_set1_ech_server_config_list(ssl_ctx, config_list.get())) {
       return nullptr;
     }
   }
   if (!send_channel_id.empty()) {
-    bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(send_channel_id);
-    if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
-      return nullptr;
+    SSL_set_tls_channel_id_enabled(ssl.get(), 1);
+    if (!async) {
+      // The async case will be supplied by |ChannelIdCallback|.
+      bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(send_channel_id);
+      if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
+        return nullptr;
+      }
     }
+  }
+  if (!send_token_binding_params.empty()) {
+    SSL_set_token_binding_params(
+        ssl.get(),
+        reinterpret_cast<const uint8_t *>(send_token_binding_params.data()),
+        send_token_binding_params.length());
   }
   if (!host_name.empty() &&
       !SSL_set_tlsext_host_name(ssl.get(), host_name.c_str())) {

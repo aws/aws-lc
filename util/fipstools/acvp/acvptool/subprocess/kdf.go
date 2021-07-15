@@ -22,7 +22,7 @@ import (
 )
 
 // The following structures reflect the JSON of ACVP KDF tests. See
-// https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html#name-test-vectors
+// https://usnistgov.github.io/ACVP/artifacts/acvp_sub_kdf108.html#rfc.section.3
 
 type kdfTestVectorSet struct {
 	Groups []kdfTestGroup `json:"testGroups"`

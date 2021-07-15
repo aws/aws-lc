@@ -21,7 +21,7 @@ import (
 )
 
 // The following structures reflect the JSON of ACVP hash tests. See
-// https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-test-vectors
+// https://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#test_vectors
 
 type hashTestVectorSet struct {
 	Groups []hashTestGroup `json:"testGroups"`
@@ -62,6 +62,15 @@ type hashPrimitive struct {
 	size int
 }
 
+// hash uses the subprocess to hash msg and returns the digest.
+func (h *hashPrimitive) hash(msg []byte, m Transactable) []byte {
+	result, err := m.Transact(h.algo, 1, msg)
+	if err != nil {
+		panic("hash operation failed: " + err.Error())
+	}
+	return result[0]
+}
+
 func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed hashTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
@@ -70,7 +79,7 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 
 	var ret []hashTestGroupResponse
 	// See
-	// https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-test-vectors
+	// https://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#rfc.section.3
 	// for details about the tests.
 	for _, group := range parsed.Groups {
 		response := hashTestGroupResponse{
@@ -89,14 +98,9 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 			// http://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#rfc.section.3
 			switch group.Type {
 			case "AFT":
-				result, err := m.Transact(h.algo, 1, msg)
-				if err != nil {
-					panic(h.algo + " hash operation failed: " + err.Error())
-				}
-
 				response.Tests = append(response.Tests, hashTestResponse{
 					ID:        test.ID,
-					DigestHex: hex.EncodeToString(result[0]),
+					DigestHex: hex.EncodeToString(h.hash(msg, m)),
 				})
 
 			case "MCT":
@@ -106,15 +110,20 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 
 				testResponse := hashTestResponse{ID: test.ID}
 
-				digest := msg
+				buf := make([]byte, 3*h.size)
+				var digest []byte
 				for i := 0; i < 100; i++ {
-					result, err := m.Transact(h.algo+"/MCT", 1, digest)
-					if err != nil {
-						panic(h.algo + " hash operation failed: " + err.Error())
+					copy(buf, msg)
+					copy(buf[h.size:], msg)
+					copy(buf[2*h.size:], msg)
+					for j := 0; j < 1000; j++ {
+						digest = h.hash(buf, m)
+						copy(buf, buf[h.size:])
+						copy(buf[2*h.size:], digest)
 					}
 
-					digest = result[0]
 					testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest)})
+					msg = digest
 				}
 
 				response.Tests = append(response.Tests, testResponse)

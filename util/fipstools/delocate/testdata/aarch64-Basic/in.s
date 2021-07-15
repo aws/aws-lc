@@ -43,10 +43,6 @@ foo:
 
 	bl bss_symbol_bss_get
 
-	# Regression test for a two-digit index.
-	ld1 { v1.b }[10], [x9]
-
-
 local_function:
 
 // BSS data

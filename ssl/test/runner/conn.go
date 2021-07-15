@@ -83,6 +83,9 @@ type Conn struct {
 
 	channelID *ecdsa.PublicKey
 
+	tokenBindingNegotiated bool
+	tokenBindingParam      uint8
+
 	srtpProtectionProfile uint16
 
 	clientVersion uint16
@@ -1849,6 +1852,8 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.OCSPResponse = c.ocspResponse
 		state.ServerName = c.serverName
 		state.ChannelID = c.channelID
+		state.TokenBindingNegotiated = c.tokenBindingNegotiated
+		state.TokenBindingParam = c.tokenBindingParam
 		state.SRTPProtectionProfile = c.srtpProtectionProfile
 		state.TLSUnique = c.firstFinished[:]
 		state.SCTList = c.sctList

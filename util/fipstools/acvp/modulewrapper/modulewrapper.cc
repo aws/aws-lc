@@ -502,7 +502,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "P-521"
           ],
           "hashAlg": [
-            "SHA-1",
             "SHA2-224",
             "SHA2-256",
             "SHA2-384",
@@ -858,30 +857,6 @@ static bool Hash(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   uint8_t digest[DigestLength];
   OneShotHash(args[0].data(), args[0].size(), digest);
   return write_reply({Span<const uint8_t>(digest)});
-}
-
-template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
-          size_t DigestLength>
-static bool HashMCT(const Span<const uint8_t> args[],
-                    ReplyCallback write_reply) {
-  if (args[0].size() != DigestLength) {
-    return false;
-  }
-
-  uint8_t buf[DigestLength * 3];
-  memcpy(buf, args[0].data(), DigestLength);
-  memcpy(buf + DigestLength, args[0].data(), DigestLength);
-  memcpy(buf + 2 * DigestLength, args[0].data(), DigestLength);
-
-  for (size_t i = 0; i < 1000; i++) {
-    uint8_t digest[DigestLength];
-    OneShotHash(buf, sizeof(buf), digest);
-    memmove(buf, buf + DigestLength, DigestLength * 2);
-    memcpy(buf + DigestLength * 2, digest, DigestLength);
-  }
-
-  return write_reply(
-      {Span<const uint8_t>(buf + 2 * DigestLength, DigestLength)});
 }
 
 static uint32_t GetIterations(const Span<const uint8_t> iterations_bytes) {
@@ -1506,9 +1481,7 @@ static bool ECDSAKeyVer(const Span<const uint8_t> args[], ReplyCallback write_re
 }
 
 static const EVP_MD *HashFromName(Span<const uint8_t> name) {
-  if (StringEq(name, "SHA-1")) {
-    return EVP_sha1();
-  } else if (StringEq(name, "SHA2-224")) {
+  if (StringEq(name, "SHA2-224")) {
     return EVP_sha224();
   } else if (StringEq(name, "SHA2-256")) {
     return EVP_sha256();
@@ -1885,12 +1858,6 @@ static constexpr struct {
     {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
-    {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
-    {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
-    {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
-    {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
-    {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
-    {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},

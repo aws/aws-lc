@@ -38,7 +38,7 @@ var (
 
 // Simple round-trip test for fixed inputs.
 func TestRoundTrip(t *testing.T) {
-	publicKeyR, secretKeyR, err := GenerateKeyPairX25519()
+	publicKeyR, secretKeyR, err := GenerateKeyPair()
 	if err != nil {
 		t.Errorf("failed to generate key pair: %s", err)
 		return

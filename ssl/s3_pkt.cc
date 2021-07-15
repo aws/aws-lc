@@ -112,8 +112,6 @@
 #include <limits.h>
 #include <string.h>
 
-#include <algorithm>
-
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -140,9 +138,10 @@ int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
     return -1;
   }
 
-  // TODO(davidben): Switch this logic to |size_t| and |bssl::Span|.
+  unsigned tot, n, nw;
+
   assert(ssl->s3->wnum <= INT_MAX);
-  unsigned tot = ssl->s3->wnum;
+  tot = ssl->s3->wnum;
   ssl->s3->wnum = 0;
 
   // Ensure that if we end up with a smaller value of data to write out than
@@ -160,23 +159,29 @@ int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
   const int is_early_data_write =
       !ssl->server && SSL_in_early_data(ssl) && ssl->s3->hs->can_early_write;
 
-  unsigned n = len - tot;
+  n = len - tot;
   for (;;) {
-    size_t max_send_fragment = ssl->max_send_fragment;
-    if (is_early_data_write) {
-      SSL_HANDSHAKE *hs = ssl->s3->hs.get();
-      if (hs->early_data_written >= hs->early_session->ticket_max_early_data) {
+    // max contains the maximum number of bytes that we can put into a record.
+    unsigned max = ssl->max_send_fragment;
+    if (is_early_data_write &&
+        max > ssl->session->ticket_max_early_data -
+                  ssl->s3->hs->early_data_written) {
+      max =
+          ssl->session->ticket_max_early_data - ssl->s3->hs->early_data_written;
+      if (max == 0) {
         ssl->s3->wnum = tot;
-        hs->can_early_write = false;
+        ssl->s3->hs->can_early_write = false;
         *out_needs_handshake = true;
         return -1;
       }
-      max_send_fragment = std::min(
-          max_send_fragment, size_t{hs->early_session->ticket_max_early_data -
-                                    hs->early_data_written});
     }
 
-    const size_t nw = std::min(max_send_fragment, size_t{n});
+    if (n > max) {
+      nw = max;
+    } else {
+      nw = n;
+    }
+
     int ret = do_tls_write(ssl, SSL3_RT_APPLICATION_DATA, &in[tot], nw);
     if (ret <= 0) {
       ssl->s3->wnum = tot;

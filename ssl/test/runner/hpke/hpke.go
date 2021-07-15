@@ -14,7 +14,7 @@
 
 // Package hpke implements Hybrid Public Key Encryption (HPKE).
 //
-// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-08.
+// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
 package hpke
 
 import (
@@ -30,7 +30,6 @@ import (
 
 // KEM scheme IDs.
 const (
-	P256WithHKDFSHA256   uint16 = 0x0010
 	X25519WithHKDFSHA256 uint16 = 0x0020
 )
 

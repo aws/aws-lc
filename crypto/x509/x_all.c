@@ -66,9 +66,6 @@
 #include <openssl/rsa.h>
 #include <openssl/stack.h>
 
-#include "internal.h"
-
-
 int X509_verify(X509 *x509, EVP_PKEY *pkey)
 {
     if (X509_ALGOR_cmp(x509->sig_alg, x509->cert_info->signature)) {

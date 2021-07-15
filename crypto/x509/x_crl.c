@@ -561,3 +561,7 @@ void *X509_CRL_get_meth_data(X509_CRL *crl)
 {
     return crl->meth_data;
 }
+
+IMPLEMENT_ASN1_SET_OF(X509_REVOKED)
+
+IMPLEMENT_ASN1_SET_OF(X509_CRL)

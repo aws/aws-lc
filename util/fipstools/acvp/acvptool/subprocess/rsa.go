@@ -20,7 +20,7 @@ import (
 	"fmt"
 )
 
-// See https://pages.nist.gov/ACVP/draft-celi-acvp-rsa.html#name-test-vectors
+// See https://usnistgov.github.io/ACVP/draft-celi-acvp-rsa.html#section-7.4
 // although, at the time of writing, that spec doesn't match what the NIST demo
 // server actually produces. This code matches the server.
 

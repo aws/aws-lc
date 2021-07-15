@@ -202,7 +202,7 @@ int SSL_set_srtp_profiles(SSL *ssl, const char *profiles) {
          ssl_ctx_make_profiles(profiles, &ssl->config->srtp_profiles);
 }
 
-const STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(const SSL *ssl) {
+STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *ssl) {
   if (ssl == nullptr) {
     return nullptr;
   }

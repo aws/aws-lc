@@ -60,9 +60,8 @@
 
 #include <openssl/mem.h>
 
-#include "../../internal.h"
-#include "../digest/md32_common.h"
 #include "internal.h"
+#include "../../internal.h"
 
 
 int SHA1_Init(SHA_CTX *sha) {
@@ -84,39 +83,42 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   return out;
 }
 
-#if !defined(SHA1_ASM)
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                                  size_t num);
-#endif
+#define DATA_ORDER_IS_BIG_ENDIAN
 
-void SHA1_Transform(SHA_CTX *c, const uint8_t data[SHA_CBLOCK]) {
-  sha1_block_data_order(c->h, data, 1);
-}
+#define HASH_CTX                SHA_CTX
+#define HASH_CBLOCK             64
+#define HASH_DIGEST_LENGTH      20
+#define HASH_MAKE_STRING(c, s)           \
+  do {                                   \
+    CRYPTO_store_u32_be((s), (c)->h[0]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_be((s), (c)->h[1]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_be((s), (c)->h[2]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_be((s), (c)->h[3]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_be((s), (c)->h[4]); \
+    (s) += 4;                            \
+  } while (0)
 
-int SHA1_Update(SHA_CTX *c, const void *data, size_t len) {
-  crypto_md32_update(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
-                     &c->Nh, &c->Nl, data, len);
-  return 1;
-}
-
-int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
-  crypto_md32_final(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
-                    c->Nh, c->Nl, /*is_big_endian=*/1);
-
-  CRYPTO_store_u32_be(out, c->h[0]);
-  CRYPTO_store_u32_be(out + 4, c->h[1]);
-  CRYPTO_store_u32_be(out + 8, c->h[2]);
-  CRYPTO_store_u32_be(out + 12, c->h[3]);
-  CRYPTO_store_u32_be(out + 16, c->h[4]);
-  return 1;
-}
-
+#define HASH_UPDATE SHA1_Update
+#define HASH_TRANSFORM SHA1_Transform
+#define HASH_FINAL SHA1_Final
+#define HASH_BLOCK_DATA_ORDER sha1_block_data_order
 #define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 #define Xupdate(a, ix, ia, ib, ic, id) \
   do {                                 \
     (a) = ((ia) ^ (ib) ^ (ic) ^ (id)); \
     (ix) = (a) = ROTATE((a), 1);       \
   } while (0)
+
+#if !defined(SHA1_ASM)
+static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+                                  size_t num);
+#endif
+
+#include "../digest/md32_common.h"
 
 #define K_00_19 0x5a827999UL
 #define K_20_39 0x6ed9eba1UL
@@ -338,6 +340,15 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
 }
 #endif
 
+#undef DATA_ORDER_IS_BIG_ENDIAN
+#undef HASH_CTX
+#undef HASH_CBLOCK
+#undef HASH_DIGEST_LENGTH
+#undef HASH_MAKE_STRING
+#undef HASH_UPDATE
+#undef HASH_TRANSFORM
+#undef HASH_FINAL
+#undef HASH_BLOCK_DATA_ORDER
 #undef ROTATE
 #undef Xupdate
 #undef K_00_19

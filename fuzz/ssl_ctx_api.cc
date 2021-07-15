@@ -22,7 +22,6 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/hpke.h>
 #include <openssl/rsa.h>
 #include <openssl/ssl.h>
 #include <openssl/stack.h>
@@ -493,8 +492,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_set1_sigalgs_list(ctx, sigalgs.c_str());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
-        if (keys == nullptr) {
+        bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+            SSL_ECH_SERVER_CONFIG_LIST_new());
+        if (config_list == nullptr) {
           return;
         }
         uint8_t is_retry_config;
@@ -504,15 +504,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
             !CBS_get_u16_length_prefixed(cbs, &private_key)) {
           return;
         }
-        bssl::ScopedEVP_HPKE_KEY key;
-        if (!EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
-                               CBS_data(&private_key), CBS_len(&private_key)) ||
-            !SSL_ECH_KEYS_add(keys.get(), is_retry_config,
-                              CBS_data(&ech_config), CBS_len(&ech_config),
-                              key.get()) ||
-            !SSL_CTX_set1_ech_keys(ctx, keys.get())) {
-          return;
-        }
+        SSL_ECH_SERVER_CONFIG_LIST_add(
+            config_list.get(), is_retry_config, CBS_data(&ech_config),
+            CBS_len(&ech_config), CBS_data(&private_key),
+            CBS_len(&private_key));
+        SSL_CTX_set1_ech_server_config_list(ctx, config_list.get());
       },
   };
 

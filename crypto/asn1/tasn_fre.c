@@ -61,7 +61,7 @@
 #include <openssl/asn1t.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
+#include "asn1_locl.h"
 
 /* Free up an ASN1 structure */
 

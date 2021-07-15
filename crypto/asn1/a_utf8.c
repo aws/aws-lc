@@ -59,7 +59,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
+#include "asn1_locl.h"
 
 /* UTF8 utilities */
 
