@@ -30,3 +30,5 @@ util/bot/win_toolchain.json
 util/bot/yasm-win32.exe
 
 test_build_dir
+
+.DS_Store

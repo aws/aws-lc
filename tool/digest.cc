@@ -333,7 +333,7 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
 // DigestSum acts like the coreutils *sum utilites, with the given hash
 // function.
 static bool DigestSum(const EVP_MD *md,
-                      const std::vector<std::string> &args) {
+                      const args_list_t &args) {
   bool check_mode = false;
   CheckModeArguments check_args;
   bool check_mode_args_given = false;

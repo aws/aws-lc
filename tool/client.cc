@@ -33,7 +33,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "transport_common.h"
 
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {
         "-connect", kRequiredArgument,
         "The hostname and port of the server to connect to, e.g. foo.com:443",
