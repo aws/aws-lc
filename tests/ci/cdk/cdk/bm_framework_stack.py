@@ -82,8 +82,15 @@ class BmFrameworkStack(core.Stack):
         s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
         ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy}
         ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
+                            role_name="{}-ec2-role".format(id),
                             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
-                            inline_policies=ec2_inline_policies)
+                            inline_policies=ec2_inline_policies,
+                            managed_policies=[
+                                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")
+                            ])
+        iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
+                               roles=["{}-ec2-role".format(id)],
+                               instance_profile_name="{}-ec2-profile".format(id))
 
         # create vpc for ec2s
         vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))

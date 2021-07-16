@@ -1,0 +1,25 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+schemaVersion: '2.2'
+description: aws-lc:bmFrameworkEc2Setup
+mainSteps:
+  - action: aws:runShellScript
+    name: runShellScript
+    inputs:
+      timeoutSeconds: '7200'
+      runCommand:
+        # install aws cli
+        - mkdir installs
+        - mkdir installs/awscliv2
+        - cd installs/awscliv2
+        - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        - unzip awscliv2.zip
+        - sudo ./aws/install
+        - cd ../../
+        # create bm_framework directory and checkout aws-lc
+        - mkdir bm_framework
+        - cd bm_framework
+        - echo test > test.txt
+        - aws s3 mv test.txt s3://aws-lc-bm-framework-prod-bucket
