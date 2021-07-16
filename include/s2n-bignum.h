@@ -193,6 +193,10 @@ extern void bignum_half_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 // Input x[6]; output z[6]
 extern void bignum_half_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
+// Halve modulo p_521, z := (x / 2) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_half_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+
 // Test bignum for zero-ness, x = 0
 // Input x[k]; output function return
 extern uint64_t bignum_iszero (uint64_t k, uint64_t *x);

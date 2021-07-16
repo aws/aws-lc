@@ -17,6 +17,7 @@
 
 OBJ = bignum_add_p521.o \
       bignum_double_p521.o \
+      bignum_half_p521.o \
       bignum_sub_p521.o
 
 %.o : %.S ; cpp $< | as -o $@ -

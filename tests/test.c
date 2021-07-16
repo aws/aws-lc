@@ -105,6 +105,7 @@ enum {
        TEST_BIGNUM_GT,
        TEST_BIGNUM_HALF_P256,
        TEST_BIGNUM_HALF_P384,
+       TEST_BIGNUM_HALF_P521,
        TEST_BIGNUM_ISZERO,
        TEST_BIGNUM_KMUL_16_32,
        TEST_BIGNUM_KSQR_16_32,
@@ -2078,6 +2079,40 @@ int test_bignum_half_p384(void)
                "2 * (...0x%016lx / 2) mod ....0x%016lx = "
                "...0x%016lx\n",
                k,b0[0],p_384[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_half_p521(void)
+{ uint64_t i, k;
+  printf("Testing bignum_half_p521 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+
+     bignum_half_p521(b2,b0);
+     reference_adc(k+1,b4,k,b2,k,b2,0);
+     reference_copy(k+1,b5,k,p_521);;
+     reference_mod(k+1,b6,b4,b5);
+     reference_copy(k,b3,k+1,b6);
+
+     c = reference_compare(k,b3,k,b0);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
+               "...0x%016lx not ...0x%016lx\n",
+               k,b0[0],p_521[0],b3[0],b0[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4lu]\n",k);
+        else printf("OK: [size %4lu] "
+               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
+               "...0x%016lx\n",
+               k,b0[0],p_521[0],b3[0]);
       }
    }
   printf("All OK\n");
@@ -4320,6 +4355,7 @@ int test_all()
   dotest(test_bignum_gt);
   dotest(test_bignum_half_p256);
   dotest(test_bignum_half_p384);
+  dotest(test_bignum_half_p521);
   dotest(test_bignum_iszero);
   dotest(test_bignum_kmul_16_32);
   dotest(test_bignum_ksqr_16_32);
@@ -4452,6 +4488,7 @@ int test_allnonbmi()
   dotest(test_bignum_gt);
   dotest(test_bignum_half_p256);
   dotest(test_bignum_half_p384);
+  dotest(test_bignum_half_p521);
   dotest(test_bignum_iszero);
   dotest(test_bignum_le);
   dotest(test_bignum_lt);
@@ -4604,6 +4641,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_GT:              return test_bignum_gt();
      case TEST_BIGNUM_HALF_P256:       return test_bignum_half_p256();
      case TEST_BIGNUM_HALF_P384:       return test_bignum_half_p384();
+     case TEST_BIGNUM_HALF_P521:       return test_bignum_half_p521();
      case TEST_BIGNUM_ISZERO:          return test_bignum_iszero();
      case TEST_BIGNUM_KMUL_16_32:      return test_bignum_kmul_16_32();
      case TEST_BIGNUM_KSQR_16_32:      return test_bignum_ksqr_16_32();
