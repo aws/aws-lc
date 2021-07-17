@@ -2124,7 +2124,9 @@ let X86_OPERATION_CLAUSES =
     x86_MUL2; x86_MULX4; x86_NEG; x86_NOP; x86_NOT; x86_OR;
     x86_POP_ALT; x86_PUSH_ALT; x86_RCL; x86_RCR; x86_RET; x86_ROL; x86_ROR;
     x86_SAR; x86_SBB_ALT; x86_SET; x86_SHL; x86_SHLD; x86_SHR; x86_SHRD;
-    x86_STC; x86_SUB_ALT; x86_TEST; x86_TZCNT; x86_XOR];;
+    x86_STC; x86_SUB_ALT; x86_TEST; x86_TZCNT; x86_XOR;
+    (*** 32-bit backups since the ALT forms are 64-bit only ***)
+    INST_TYPE[`:32`,`:N`] x86_ADC];;
 
 (* ------------------------------------------------------------------------- *)
 (* Getting CL out of RCX (for variable-length shifts).                       *)

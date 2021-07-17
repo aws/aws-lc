@@ -34,10 +34,6 @@
 
 #define y rcx
 
-// Fairly consistently used as a zero register
-
-#define zero rbp
-
 // Some temp registers for the last correction stage
 
 #define d rax
@@ -100,14 +96,14 @@
                 add     rdx, \d0
 // Construct [rbp;rbx;rax;-] = (2^384 - p_384) * w
 // We know the lowest word will cancel so we can re-use \d0 as a temp
-                xor     rbp, rbp
+                xor     ebp, ebp
                 mov     rax, 0xffffffff00000001
                 mulx    rax, rbx, rax
                 mov     ebx, 0x00000000ffffffff
                 mulx    rbx, \d0, rbx
                 adc     rax, \d0
                 adc     rbx, rdx
-                adc     rbp, 0
+                adc     ebp, ebp
 // Now subtract that and add 2^384 * w
                 sub     \d1, rax
                 sbb     \d2, rbx
@@ -144,6 +140,7 @@ bignum_montmul_p384:
 // Unlike later, we only need a single carry chain
 
         mov     rdx, [y+8*0]
+        xor     r15d, r15d
         mulx    r9, r8, [x+8*0]
         mulx    r10, rbx, [x+8*1]
         add     r9, rbx
@@ -155,27 +152,26 @@ bignum_montmul_p384:
         adc     r12, rbx
         mulx    r14, rbx, [x+8*5]
         adc     r13, rbx
-        adc     r14, 0
+        adc     r14, r15
 
 // Montgomery reduce the zeroth window
 
-        xor     r15, r15
         montredc r15, r14,r13,r12,r11,r10,r9,r8
 
 // Add row 1
 
-        xor     zero, zero
         mov     rdx, [y+8*1]
-        xor     r8, r8
+        xor     r8d, r8d
         mulpadd 1, [x]
         mulpadd 2, [x+8*1]
         mulpadd 3, [x+8*2]
         mulpadd 4, [x+8*3]
         mulpadd 5, [x+8*4]
-        mulpadd 6, [x+8*5]
-        adcx    r15, zero
-        adox    r8, zero
-        adcx    r8, zero
+        adox    r15, r8
+        mulx    rbx, rax, [x+8*5]
+        adc     r14, rax
+        adc     r15, rbx
+        adc     r8, r8
 
 // Montgomery reduce window 1
 
@@ -183,18 +179,18 @@ bignum_montmul_p384:
 
 // Add row 2
 
-        xor     zero, zero
         mov     rdx, [y+8*2]
-        xor     r9, r9
+        xor     r9d, r9d
         mulpadd 2, [x]
         mulpadd 3, [x+8*1]
         mulpadd 4, [x+8*2]
         mulpadd 5, [x+8*3]
         mulpadd 6, [x+8*4]
-        mulpadd 7, [x+8*5]
-        adcx    r8, zero
-        adox    r9, zero
-        adcx    r9, zero
+        adox    r8, r9
+        mulx    rbx, rax, [x+8*5]
+        adc     r15, rax
+        adc     r8, rbx
+        adc     r9, r9
 
 // Montgomery reduce window 2
 
@@ -202,18 +198,18 @@ bignum_montmul_p384:
 
 // Add row 3
 
-        xor     zero, zero
         mov     rdx, [y+8*3]
-        xor     r10, r10
+        xor     r10d, r10d
         mulpadd 3, [x]
         mulpadd 4, [x+8*1]
         mulpadd 5, [x+8*2]
         mulpadd 6, [x+8*3]
         mulpadd 7, [x+8*4]
-        mulpadd 8, [x+8*5]
-        adcx    r9, zero
-        adox    r10, zero
-        adcx    r10, zero
+        adox    r9, r10
+        mulx    rbx, rax, [x+8*5]
+        adc     r8, rax
+        adc     r9, rbx
+        adc     r10, r10
 
 // Montgomery reduce window 3
 
@@ -221,18 +217,18 @@ bignum_montmul_p384:
 
 // Add row 4
 
-        xor     zero, zero
         mov     rdx, [y+8*4]
-        xor     r11, r11
+        xor     r11d, r11d
         mulpadd 4, [x]
         mulpadd 5, [x+8*1]
         mulpadd 6, [x+8*2]
         mulpadd 7, [x+8*3]
         mulpadd 8, [x+8*4]
-        mulpadd 9, [x+8*5]
-        adcx    r10, zero
-        adox    r11, zero
-        adcx    r11, zero
+        adox    r10, r11
+        mulx    rbx, rax, [x+8*5]
+        adc     r9, rax
+        adc     r10, rbx
+        adc     r11, r11
 
 // Montgomery reduce window 4
 
@@ -240,18 +236,18 @@ bignum_montmul_p384:
 
 // Add row 5
 
-        xor     zero, zero
         mov     rdx, [y+8*5]
-        xor     r12, r12
+        xor     r12d, r12d
         mulpadd 5, [x]
         mulpadd 6, [x+8*1]
         mulpadd 7, [x+8*2]
         mulpadd 8, [x+8*3]
         mulpadd 9, [x+8*4]
-        mulpadd 10, [x+8*5]
-        adcx    r11, zero
-        adox    r12, zero
-        adcx    r12, zero
+        adox    r11, r12
+        mulx    rbx, rax, [x+8*5]
+        adc     r10, rax
+        adc     r11, rbx
+        adc     r12, r12
 
 // Montgomery reduce window 5
 
@@ -262,9 +258,9 @@ bignum_montmul_p384:
 //
 //   [r12; r13;rbp;rdx;rcx;rbx;rax] = z + (2^384 - p_384)
 
-        xor     rdx, rdx
-        xor     rbp, rbp
-        xor     r13, r13
+        xor     edx, edx
+        xor     ebp, ebp
+        xor     r13d, r13d
 
         mov     rax, 0xffffffff00000001
         add     rax, r14

@@ -39,6 +39,7 @@
 // A zero register, very often
 
 #define zero rbp
+#define zeroe ebp
 
 // Macro "mulpadd i x" adds rdx * x to the (i,i+1) position of the
 // rotating register window r15,...,r8 maintaining consistent
@@ -137,7 +138,7 @@ bignum_montsqr_p384:
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Chain in the addition of 02 + 12 + 13 + 14 + 15 to that window
 // (no carry-out possible)
@@ -151,12 +152,12 @@ bignum_montsqr_p384:
         mulpadd 6, [x+8*5]
         adcx    r15, zero
         adox    rcx, zero
-        adcx    rcx, zero
+        adc     rcx, zero
 
 // Again zero out the flags. Actually they are already cleared but it may
 // help decouple these in the OOO engine not to wait for the chain above
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Now chain in the 04 + 23 + 24 + 25 + 35 + 45 terms
 // We are running out of registers in our rotating window, so we start
@@ -183,7 +184,7 @@ bignum_montsqr_p384:
         mov     eax, 0
         adcx    rbx, rax
         adox    rbp, rax
-        adcx    rbp, rax
+        adc     rbp, rax
 
 // Just for a clear fresh start for the flags; we don't use the zero
 
@@ -255,7 +256,7 @@ bignum_montsqr_p384:
         adc     rbp, r12
         adc     rsi, r13
         mov     r8d, 0
-        adc     r8, 0
+        adc     r8, r8
 
 // We now have a pre-reduced 7-word form z = [r8; rsi;rbp;rbx;rcx;r15;r14]
 // Next, accumulate in different registers z - p_384, or more precisely

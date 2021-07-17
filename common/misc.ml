@@ -22,6 +22,14 @@ needs "Library/rstc.ml";;
 needs "Library/floor.ml";;
 
 (* ------------------------------------------------------------------------- *)
+(* One small general word lemma.                                             *)
+(* ------------------------------------------------------------------------- *)
+
+let WORD_ZX_BITVAL = prove
+ (`!b. (word_zx:M word->N word) (word(bitval b)) = word(bitval b)`,
+  REWRITE_TAC[FORALL_BOOL_THM; BITVAL_CLAUSES; WORD_ZX_0; WORD_ZX_1]);;
+
+(* ------------------------------------------------------------------------- *)
 (* Trivial but requires two distinct library files to be combined.           *)
 (* ------------------------------------------------------------------------- *)
 
@@ -849,8 +857,8 @@ let ASSEMBLER_SIMPLIFY_TAC =
     REPEAT GEN_TAC THEN ASM_CASES_TAC `b:bool` THEN
     ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN ARITH_TAC) in
   ASM_REWRITE_TAC[WORD_XOR_REFL; WORD_ADD_0; WORD_AND_REFL; WORD_OR_REFL;
-                  WORD_SUB_REFL; WORD_OR_0; WORD_ZX_0; WORD_SX_0;
-                  SUB_EQ_0; SUB_REFL; LE_REFL; LT_REFL; NOT_LE; NOT_LT] THEN
+                  WORD_ZX_BITVAL; WORD_SUB_REFL; WORD_OR_0; WORD_ZX_0; NOT_LT;
+                  WORD_SX_0; SUB_EQ_0; SUB_REFL; LE_REFL; LT_REFL; NOT_LE] THEN
   CONV_TAC(LAND_CONV
    (GEN_REWRITE_CONV ONCE_DEPTH_CONV
      [CARRY64_ADC; CARRY64_ADD; CARRY64_ADD_1;

@@ -32,6 +32,7 @@
 // Use this fairly consistently for a zero
 
 #define zero rbp
+#define zeroe ebp
 
 // Macro "mulpadd i x" adds rdx * x to the (i,i+1) position of
 // the rotating register window r15,...,r8 maintaining consistent
@@ -95,7 +96,7 @@ bignum_montsqr_p256:
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
-        xor     zero, zero
+        xor     zeroe, zeroe
 
 // Chain in the addition of 02 + 12 + 13 to that window (no carry-out possible)
 // This gives all the "heterogeneous" terms of the squaring ready to double
@@ -106,11 +107,11 @@ bignum_montsqr_p256:
         mulpadd 4, [x+8*1]
         adcx    r13, zero
         adox    r14, zero
-        adcx    r14, zero
+        adc     r14, zero
 
 // Double and add to the 00 + 11 + 22 + 33 terms
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         adcx    r9, r9
         adox    r9, r15
         mov     rdx, [x+8*1]
@@ -135,7 +136,7 @@ bignum_montsqr_p256:
 // First two waves of Montgomery reduction. Consolidate the double carries
 // in r9 and propagate up to the top in r8, which is no longer needed otherwise.
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, 0x0000000100000000
         mulpadd 1, r8
         mulpadd 2, r9
@@ -143,17 +144,17 @@ bignum_montsqr_p256:
         mulpadd 3, r8
         mulpadd 4, r9
         adcx    r13, zero
-        mov     r9, zero
+        mov     r9d, zeroe
         adox    r9, zero
         adcx    r9, zero
         add     r14, r9
         adc     r15, zero
-        mov     r8, zero
+        mov     r8d, zeroe
         adc     r8, zero
 
 // Now two more steps of Montgomery reduction, again with r8 = top carry
 
-        xor     zero, zero
+        xor     zeroe, zeroe
         mov     rdx, 0x0000000100000000
         mulpadd 3, r10
         mulpadd 4, r11
@@ -162,7 +163,7 @@ bignum_montsqr_p256:
         mulpadd 6, r11
         adcx    r15, zero
         adox    r8, zero
-        adcx    r8, zero
+        adc     r8, zero
 
 // Load [rax;r11;rbp;rdx;rcx] = 2^320 - p_256, re-using earlier numbers a bit
 // Do [rax;r11;rbp;rdx;rcx] = [r8;r15;r14;r13;r12] + (2^320 - p_256)

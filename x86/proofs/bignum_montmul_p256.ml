@@ -22,7 +22,6 @@
 
 let bignum_montmul_p256_mc =
   define_assert_from_elf "bignum_montmul_p256_mc" "x86/p256/bignum_montmul_p256.o"
-
 [
   0x53;                    (* PUSH (% rbx) *)
   0x41; 0x54;              (* PUSH (% r12) *)
@@ -30,26 +29,22 @@ let bignum_montmul_p256_mc =
   0x41; 0x56;              (* PUSH (% r14) *)
   0x41; 0x57;              (* PUSH (% r15) *)
   0x48; 0x89; 0xd1;        (* MOV (% rcx) (% rdx) *)
-  0x4d; 0x31; 0xed;        (* XOR (% r13) (% r13) *)
+  0x45; 0x31; 0xed;        (* XOR (% r13d) (% r13d) *)
   0x48; 0x8b; 0x11;        (* MOV (% rdx) (Memop Quadword (%% (rcx,0))) *)
   0xc4; 0x62; 0xbb; 0xf6; 0x0e;
                            (* MULX4 (% r9,% r8) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0xc4; 0x62; 0xe3; 0xf6; 0x56; 0x08;
                            (* MULX4 (% r10,% rbx) (% rdx,Memop Quadword (%% (rsi,8))) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xcb;
-                           (* ADCX (% r9) (% rbx) *)
+  0x49; 0x11; 0xd9;        (* ADC (% r9) (% rbx) *)
   0xc4; 0x62; 0xe3; 0xf6; 0x5e; 0x10;
                            (* MULX4 (% r11,% rbx) (% rdx,Memop Quadword (%% (rsi,16))) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd3;
-                           (* ADCX (% r10) (% rbx) *)
+  0x49; 0x11; 0xda;        (* ADC (% r10) (% rbx) *)
   0xc4; 0x62; 0xe3; 0xf6; 0x66; 0x18;
                            (* MULX4 (% r12,% rbx) (% rdx,Memop Quadword (%% (rsi,24))) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xdb;
-                           (* ADCX (% r11) (% rbx) *)
-  0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xe5;
-                           (* ADCX (% r12) (% r13) *)
+  0x49; 0x11; 0xdb;        (* ADC (% r11) (% rbx) *)
+  0x4d; 0x11; 0xec;        (* ADC (% r12) (% r13) *)
   0x48; 0x8b; 0x51; 0x08;  (* MOV (% rdx) (Memop Quadword (%% (rcx,8))) *)
-  0x4d; 0x31; 0xf6;        (* XOR (% r14) (% r14) *)
+  0x45; 0x31; 0xf6;        (* XOR (% r14d) (% r14d) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc8;
@@ -75,7 +70,7 @@ let bignum_montmul_p256_mc =
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xeb;
                            (* ADOX (% r13) (% rbx) *)
   0x4d; 0x11; 0xf5;        (* ADC (% r13) (% r14) *)
-  0x4d; 0x31; 0xff;        (* XOR (% r15) (% r15) *)
+  0x45; 0x31; 0xff;        (* XOR (% r15d) (% r15d) *)
   0x48; 0xba; 0x00; 0x00; 0x00; 0x00; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% rdx) (Imm64 (word 4294967296)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xd8;
@@ -90,8 +85,8 @@ let bignum_montmul_p256_mc =
                            (* ADCX (% r10) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xdb;
                            (* ADOX (% r11) (% rbx) *)
-  0x48; 0xba; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
-                           (* MOV (% rdx) (Imm64 (word 18446744069414584321)) *)
+  0x48; 0xf7; 0xd2;        (* NOT (% rdx) *)
+  0x48; 0x8d; 0x52; 0x02;  (* LEA (% rdx) (%% (rdx,2)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xd8;
                            (* MULX4 (% rbx,% rax) (% rdx,% r8) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd8;
@@ -108,10 +103,9 @@ let bignum_montmul_p256_mc =
                            (* ADCX (% r13) (% r15) *)
   0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xf7;
                            (* ADOX (% r14) (% r15) *)
-  0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xf7;
-                           (* ADCX (% r14) (% r15) *)
+  0x4d; 0x11; 0xfe;        (* ADC (% r14) (% r15) *)
   0x48; 0x8b; 0x51; 0x10;  (* MOV (% rdx) (Memop Quadword (%% (rcx,16))) *)
-  0x4d; 0x31; 0xc0;        (* XOR (% r8) (% r8) *)
+  0x45; 0x31; 0xc0;        (* XOR (% r8d) (% r8d) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd0;
@@ -130,20 +124,15 @@ let bignum_montmul_p256_mc =
                            (* ADCX (% r12) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xeb;
                            (* ADOX (% r13) (% rbx) *)
+  0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xf0;
+                           (* ADOX (% r14) (% r8) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x18;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,24))) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe8;
-                           (* ADCX (% r13) (% rax) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf3;
-                           (* ADOX (% r14) (% rbx) *)
-  0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xf0;
-                           (* ADCX (% r14) (% r8) *)
-  0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xf8;
-                           (* ADOX (% r15) (% r8) *)
-  0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xf8;
-                           (* ADCX (% r15) (% r8) *)
+  0x49; 0x11; 0xc5;        (* ADC (% r13) (% rax) *)
+  0x49; 0x11; 0xde;        (* ADC (% r14) (% rbx) *)
+  0x4d; 0x11; 0xc7;        (* ADC (% r15) (% r8) *)
   0x48; 0x8b; 0x51; 0x18;  (* MOV (% rdx) (Memop Quadword (%% (rcx,24))) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
+  0x45; 0x31; 0xc9;        (* XOR (% r9d) (% r9d) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,0))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd8;
@@ -162,19 +151,14 @@ let bignum_montmul_p256_mc =
                            (* ADCX (% r13) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf3;
                            (* ADOX (% r14) (% rbx) *)
+  0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xf9;
+                           (* ADOX (% r15) (% r9) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x18;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,24))) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf0;
-                           (* ADCX (% r14) (% rax) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xfb;
-                           (* ADOX (% r15) (% rbx) *)
-  0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xf9;
-                           (* ADCX (% r15) (% r9) *)
-  0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xc1;
-                           (* ADOX (% r8) (% r9) *)
-  0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xc1;
-                           (* ADCX (% r8) (% r9) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
+  0x49; 0x11; 0xc6;        (* ADC (% r14) (% rax) *)
+  0x49; 0x11; 0xdf;        (* ADC (% r15) (% rbx) *)
+  0x4d; 0x11; 0xc8;        (* ADC (% r8) (% r9) *)
+  0x45; 0x31; 0xc9;        (* XOR (% r9d) (% r9d) *)
   0x48; 0xba; 0x00; 0x00; 0x00; 0x00; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% rdx) (Imm64 (word 4294967296)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xda;
@@ -189,8 +173,8 @@ let bignum_montmul_p256_mc =
                            (* ADCX (% r12) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xeb;
                            (* ADOX (% r13) (% rbx) *)
-  0x48; 0xba; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
-                           (* MOV (% rdx) (Imm64 (word 18446744069414584321)) *)
+  0x48; 0xf7; 0xd2;        (* NOT (% rdx) *)
+  0x48; 0x8d; 0x52; 0x02;  (* LEA (% rdx) (%% (rdx,2)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xda;
                            (* MULX4 (% rbx,% rax) (% rdx,% r10) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe8;
@@ -207,23 +191,22 @@ let bignum_montmul_p256_mc =
                            (* ADCX (% r15) (% r9) *)
   0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xc1;
                            (* ADOX (% r8) (% r9) *)
-  0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xc1;
-                           (* ADCX (% r8) (% r9) *)
+  0x4d; 0x11; 0xc8;        (* ADC (% r8) (% r9) *)
   0xb9; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% ecx) (Imm32 (word 1)) *)
   0x4c; 0x01; 0xe1;        (* ADD (% rcx) (% r12) *)
-  0x48; 0x8d; 0x52; 0xff;  (* LEA (% rdx) (%% (rdx,18446744073709551615)) *)
+  0x48; 0xff; 0xca;        (* DEC (% rdx) *)
   0x4c; 0x11; 0xea;        (* ADC (% rdx) (% r13) *)
-  0x49; 0x8d; 0x59; 0xff;  (* LEA (% rbx) (%% (r9,18446744073709551615)) *)
-  0x48; 0x89; 0xd8;        (* MOV (% rax) (% rbx) *)
-  0x4c; 0x11; 0xf3;        (* ADC (% rbx) (% r14) *)
+  0x49; 0xff; 0xc9;        (* DEC (% r9) *)
+  0x4c; 0x89; 0xc8;        (* MOV (% rax) (% r9) *)
+  0x4d; 0x11; 0xf1;        (* ADC (% r9) (% r14) *)
   0x41; 0xbb; 0xfe; 0xff; 0xff; 0xff;
                            (* MOV (% r11d) (Imm32 (word 4294967294)) *)
   0x4d; 0x11; 0xfb;        (* ADC (% r11) (% r15) *)
   0x4c; 0x11; 0xc0;        (* ADC (% rax) (% r8) *)
   0x4c; 0x0f; 0x42; 0xe1;  (* CMOVB (% r12) (% rcx) *)
   0x4c; 0x0f; 0x42; 0xea;  (* CMOVB (% r13) (% rdx) *)
-  0x4c; 0x0f; 0x42; 0xf3;  (* CMOVB (% r14) (% rbx) *)
+  0x4d; 0x0f; 0x42; 0xf1;  (* CMOVB (% r14) (% r9) *)
   0x4d; 0x0f; 0x42; 0xfb;  (* CMOVB (% r15) (% r11) *)
   0x4c; 0x89; 0x27;        (* MOV (Memop Quadword (%% (rdi,0))) (% r12) *)
   0x4c; 0x89; 0x6f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r13) *)
@@ -247,14 +230,14 @@ let p_256 = new_definition `p_256 = 11579208921035624876269744694940757353008614
 
 let BIGNUM_MONTMUL_P256_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x27a) (z,8 * 4)
+        nonoverlapping (word pc,0x242) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montmul_p256_mc /\
                   read RIP s = word(pc + 0x09) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
                   bignum_from_memory (y,4) s = b)
-             (\s. read RIP s = word (pc + 0x270) /\
+             (\s. read RIP s = word (pc + 0x238) /\
                   (a * b <= 2 EXP 256 * p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 (2 EXP 256) * a * b) MOD p_256))
@@ -279,12 +262,11 @@ let BIGNUM_MONTMUL_P256_CORRECT = time prove
 
   X86_ACCSTEPS_TAC BIGNUM_MONTMUL_P256_EXEC (1--96) (1--96) THEN
   ABBREV_TAC
-   `t = bignum_of_wordlist [sum_s85; sum_s89; sum_s92; sum_s94; sum_s96]` THEN
+   `t = bignum_of_wordlist [sum_s84; sum_s89; sum_s92; sum_s94; sum_s96]` THEN
   SUBGOAL_THEN
    `t < 2 * p_256 /\ (2 EXP 256 * t == a * b) (mod p_256)`
   STRIP_ASSUME_TAC THENL
-   [RULE_ASSUM_TAC(REWRITE_RULE[VAL_WORD_BITVAL]) THEN
-    ACCUMULATOR_POP_ASSUM_LIST
+   [ACCUMULATOR_POP_ASSUM_LIST
      (STRIP_ASSUME_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     CONJ_TAC THENL
      [FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (ARITH_RULE
@@ -342,8 +324,8 @@ let BIGNUM_MONTMUL_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 40),48) /\
         ALL (nonoverlapping (word_sub stackpointer (word 40),40))
-            [(word pc,0x27a); (x,8 * 4); (y,8 * 4)] /\
-        nonoverlapping (word pc,0x27a) (z,8 * 4)
+            [(word pc,0x242); (x,8 * 4); (y,8 * 4)] /\
+        nonoverlapping (word pc,0x242) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montmul_p256_mc /\
                   read RIP s = word pc /\
@@ -373,14 +355,14 @@ let BIGNUM_MONTMUL_P256_SUBROUTINE_CORRECT = time prove
 
 let BIGNUM_AMONTMUL_P256_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x27a) (z,8 * 4)
+        nonoverlapping (word pc,0x242) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montmul_p256_mc /\
                   read RIP s = word(pc + 0x09) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
                   bignum_from_memory (y,4) s = b)
-             (\s. read RIP s = word (pc + 0x270) /\
+             (\s. read RIP s = word (pc + 0x238) /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a * b) (mod p_256))
              (MAYCHANGE [RIP; RAX; RBX; RCX; RDX;
@@ -399,12 +381,11 @@ let BIGNUM_AMONTMUL_P256_CORRECT = time prove
 
   X86_ACCSTEPS_TAC BIGNUM_MONTMUL_P256_EXEC (1--96) (1--96) THEN
   ABBREV_TAC
-   `t = bignum_of_wordlist [sum_s85; sum_s89; sum_s92; sum_s94; sum_s96]` THEN
+   `t = bignum_of_wordlist [sum_s84; sum_s89; sum_s92; sum_s94; sum_s96]` THEN
   SUBGOAL_THEN
    `t < 2 EXP 256 + p_256 /\ (2 EXP 256 * t == a * b) (mod p_256)`
   STRIP_ASSUME_TAC THENL
-   [RULE_ASSUM_TAC(REWRITE_RULE[VAL_WORD_BITVAL]) THEN
-    ACCUMULATOR_POP_ASSUM_LIST
+   [ACCUMULATOR_POP_ASSUM_LIST
      (STRIP_ASSUME_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     CONJ_TAC THENL
      [MATCH_MP_TAC(ARITH_RULE
@@ -467,8 +448,8 @@ let BIGNUM_AMONTMUL_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 40),48) /\
         ALL (nonoverlapping (word_sub stackpointer (word 40),40))
-            [(word pc,0x27a); (x,8 * 4); (y,8 * 4)] /\
-        nonoverlapping (word pc,0x27a) (z,8 * 4)
+            [(word pc,0x242); (x,8 * 4); (y,8 * 4)] /\
+        nonoverlapping (word pc,0x242) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montmul_p256_mc /\
                   read RIP s = word pc /\

@@ -91,21 +91,21 @@ bignum_montmul_p256:
 // set up initial window [r12,r11,r10,r9,r8] = y[0] * x
 // Unlike later, we only need a single carry chain
 
-        xor     r13, r13
+        xor     r13d, r13d
         mov     rdx, [y+8*0]
         mulx    r9, r8, [x+8*0]
         mulx    r10, rbx, [x+8*1]
-        adcx    r9, rbx
+        adc     r9, rbx
         mulx    r11, rbx, [x+8*2]
-        adcx    r10, rbx
+        adc     r10, rbx
         mulx    r12, rbx, [x+8*3]
-        adcx    r11, rbx
-        adcx    r12, r13
+        adc     r11, rbx
+        adc     r12, r13
 
 // Add row 1
 
         mov     rdx, [y+8*1]
-        xor     r14, r14
+        xor     r14d, r14d
         mulpadd 1, [x]
         mulpadd 2, [x+8*1]
         mulpadd 3, [x+8*2]
@@ -114,53 +114,57 @@ bignum_montmul_p256:
 
 // Montgomery reduce windows 0 and 1 together
 
-        xor     r15, r15
+        xor     r15d, r15d
         mov     rdx, 0x0000000100000000
         mulpadd 1, r8
         mulpadd 2, r9
-        mov     rdx, 0xffffffff00000001
+        not     rdx
+        lea     rdx, [rdx+2]
         mulpadd 3, r8
         mulpadd 4, r9
         adcx    r13, r15
         adox    r14, r15
-        adcx    r14, r15
+        adc     r14, r15
 
 // Add row 2
 
         mov     rdx, [y+8*2]
-        xor     r8, r8
+        xor     r8d, r8d
         mulpadd 2, [x]
         mulpadd 3, [x+8*1]
         mulpadd 4, [x+8*2]
-        mulpadd 5, [x+8*3]
-        adcx    r14, r8
-        adox    r15, r8
-        adcx    r15, r8
+        adox    r14, r8
+        mulx    rbx, rax, [x+8*3]
+        adc     r13, rax
+        adc     r14, rbx
+        adc     r15, r8
 
 // Add row 3
 
         mov     rdx, [y+8*3]
-        xor     r9, r9
+        xor     r9d, r9d
         mulpadd 3, [x]
         mulpadd 4, [x+8*1]
         mulpadd 5, [x+8*2]
-        mulpadd 6, [x+8*3]
-        adcx    r15, r9
-        adox    r8, r9
-        adcx    r8, r9
+        adox    r15, r9
+        mulx    rbx, rax, [x+8*3]
+        adc     r14, rax
+        adc     r15, rbx
+        adc     r8, r9
 
 // Montgomery reduce windows 2 and 3 together
 
-        xor     r9, r9
+        xor     r9d, r9d
         mov     rdx, 0x0000000100000000
         mulpadd 3, r10
         mulpadd 4, r11
-        mov     rdx, 0xffffffff00000001
+        not     rdx
+        lea     rdx, [rdx+2]
         mulpadd 5, r10
         mulpadd 6, r11
         adcx    r15, r9
         adox    r8, r9
-        adcx    r8, r9
+        adc     r8, r9
 
 // We now have a pre-reduced 5-word form [r8; r15;r14;r13;r12]
 // Load [rax;r11;rbx;rdx;rcx] = 2^320 - p_256, re-using earlier numbers a bit
@@ -168,11 +172,11 @@ bignum_montmul_p256:
 
         mov     ecx, 1
         add     rcx, r12
-        lea     rdx, [rdx-1]
+        dec     rdx
         adc     rdx, r13
-        lea     rbx, [r9-1]
-        mov     rax, rbx
-        adc     rbx, r14
+        dec     r9
+        mov     rax, r9
+        adc     r9, r14
         mov     r11d, 0x00000000fffffffe
         adc     r11, r15
         adc     rax, r8
@@ -183,7 +187,7 @@ bignum_montmul_p256:
 
         cmovc   r12, rcx
         cmovc   r13, rdx
-        cmovc   r14, rbx
+        cmovc   r14, r9
         cmovc   r15, r11
 
 // Write back reduced value
