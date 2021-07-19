@@ -5,6 +5,8 @@ set -exo pipefail
 
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
 
+ls
+
 # get information for ec2 instances
 vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
 sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=bm_framework_ec2_sg  --query SecurityGroups[*].GroupId --output text)"
