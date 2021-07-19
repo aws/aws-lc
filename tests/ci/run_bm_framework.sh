@@ -20,35 +20,6 @@ x86_ubuntu2004_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --co
   --placement 'AvailabilityZone=us-west-2a' \
   --query Instances[*].InstanceId --output text)"
 
-# wait until instance status is actually running to stop it
-#for i in {1..10}; do
-#  x86_ubuntu2004_status="$(aws ec2 describe-instances --instance-ids "${x86_ubuntu2004_id}" --query Reservations[*].Instances[*].State.Name --output text)"
-#  if [[ "${x86_ubuntu2004_status}" != "running" ]]; then
-#    sleep 60
-#    continue
-#  else
-#    break
-#  fi
-#  return
-#done
-#
-## stop and then start ec2 instance to prevent weird problems (may not be necessary on production but we'll see)
-#aws ec2 stop-instances --instance-ids "${x86_ubuntu2004_id}"
-#
-## wait until instance status is actually stopped to start it again
-#for i in {1..60}; do
-#  x86_ubuntu2004_status="$(aws ec2 describe-instances --instance-ids "${x86_ubuntu2004_id}" --query Reservations[*].Instances[*].State.Name --output text)"
-#  if [[ "${x86_ubuntu2004_status}" != "stopped" ]]; then
-#    sleep 60
-#    continue
-#  else
-#    break
-#  fi
-#  return
-#done
-#
-#aws ec2 start-instances --instance-ids "${x86_ubuntu2004_id}"
-
 # Give 5 minutes for the ec2 to be ready
 sleep 300
 

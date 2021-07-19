@@ -5,9 +5,9 @@
 
 from util.metadata import AWS_REGION, AWS_ACCOUNT
 
-def ec2_get_put_describe_policy_in_json():
+def ec2_bm_framework_policies_in_json():
     """
-    Define an IAM policy that for starting, stopping, and getting details of EC2 instances
+    Define an IAM policy that gives permissions for starting, stopping, and getting details of EC2 instances and their Vpcs
     :return: an IAM policy statement in json.
     """
     return {
@@ -18,7 +18,32 @@ def ec2_get_put_describe_policy_in_json():
                 "Action": [
                     "ec2:StartInstances",
                     "ec2:StopInstances",
-                    "ec2:DescribeInstances"
+                    "ec2:RunInstances",
+                    "ec2:TerminateInstances",
+                    "ec2:DescribeInstances",
+                    "ec2:DescribeVpcs"
+                ],
+                "Resource": [
+                    "*"
+                ]
+            }]
+    }
+
+def ssm_bm_framework_policies_in_json():
+    """
+    Define an IAM policy that gives permissions to creating documents and running commands.
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "iam:PassRole",
+                    "ssm:CreateDocument",
+                    "ssm:DeleteDocument",
+                    "ssm:SendCommand"
                 ],
                 "Resource": [
                     "*"

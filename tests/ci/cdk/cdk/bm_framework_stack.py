@@ -8,7 +8,7 @@ from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, \
-    ec2_get_put_describe_policy_in_json
+    ec2_bm_framework_policies_in_json, ssm_bm_framework_policies_in_json
 from util.yml_loader import YmlLoader
 
 
@@ -41,9 +41,11 @@ class BmFrameworkStack(core.Stack):
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
-        ec2_get_put_describe_policy = iam.PolicyDocument.from_json(ec2_get_put_describe_policy_in_json())
+        ec2_bm_framework_policy = iam.PolicyDocument.from_json(ec2_bm_framework_policies_in_json())
+        ssm_bm_framework_policy = iam.PolicyDocument.from_json(ssm_bm_framework_policies_in_json())
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
-                                     "ec2_get_put_describe_policy": ec2_get_put_describe_policy}
+                                     "ec2_bm_framework_policy": ec2_bm_framework_policy,
+                                     "ssm_bm_framework_policy": ssm_bm_framework_policy}
         codebuild_role = iam.Role(scope=self,
                                   id="{}-codebuild-role".format(id),
                                   assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
