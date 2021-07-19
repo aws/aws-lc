@@ -9,7 +9,8 @@ sys.path.append('../')
 from util.env_util import EnvUtil
 
 # Used when AWS CDK defines AWS resources.
-AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", "091083236541")
+AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", "307533924368")
+# AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", "091083236541")
 AWS_REGION = EnvUtil.get("CDK_DEPLOY_REGION", "us-west-2")
 
 # Used when AWS CDK defines ECR repos.

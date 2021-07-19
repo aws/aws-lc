@@ -3,7 +3,7 @@
 
 ---
 schemaVersion: '2.2'
-description: aws-lc:bmFrameworkEc2Setup
+description: aws-lc:bmFrameworkEc2Benchmark
 mainSteps:
   - action: aws:runShellScript
     name: runShellScript
@@ -11,10 +11,12 @@ mainSteps:
       timeoutSeconds: '7200'
       runCommand:
         # install aws cli
+        - sudo -i
         - mkdir installs
         - mkdir installs/awscliv2
         - cd installs/awscliv2
         - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        - apt install unzip
         - unzip awscliv2.zip
         - sudo ./aws/install
         - cd ../../

@@ -1,6 +1,5 @@
 #!/bin/bash
-set +e
-set -xo pipefail
+set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,15 +13,44 @@ subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --
 # create ec2 instances
 # ubuntu 20.04
 x86_ubuntu2004_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
-  --instance-type c5.metal --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
+  --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
   --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
   --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
   --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
   --placement 'AvailabilityZone=us-west-2a' \
   --query Instances[*].InstanceId --output text)"
 
-# Give 3 minutes for the ec2 to be ready
-sleep 180
+# wait until instance status is actually running to stop it
+#for i in {1..10}; do
+#  x86_ubuntu2004_status="$(aws ec2 describe-instances --instance-ids "${x86_ubuntu2004_id}" --query Reservations[*].Instances[*].State.Name --output text)"
+#  if [[ "${x86_ubuntu2004_status}" != "running" ]]; then
+#    sleep 60
+#    continue
+#  else
+#    break
+#  fi
+#  return
+#done
+#
+## stop and then start ec2 instance to prevent weird problems (may not be necessary on production but we'll see)
+#aws ec2 stop-instances --instance-ids "${x86_ubuntu2004_id}"
+#
+## wait until instance status is actually stopped to start it again
+#for i in {1..60}; do
+#  x86_ubuntu2004_status="$(aws ec2 describe-instances --instance-ids "${x86_ubuntu2004_id}" --query Reservations[*].Instances[*].State.Name --output text)"
+#  if [[ "${x86_ubuntu2004_status}" != "stopped" ]]; then
+#    sleep 60
+#    continue
+#  else
+#    break
+#  fi
+#  return
+#done
+#
+#aws ec2 start-instances --instance-ids "${x86_ubuntu2004_id}"
+
+# Give 5 minutes for the ec2 to be ready
+sleep 300
 
 # Create, and run ssm command
 ssm_doc_name=bm_framework_ec2_benchmark_ssm_document
@@ -34,7 +62,7 @@ aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchm
 aws ssm send-command --instance-ids "${x86_ubuntu2004_id}" --document-name "${ssm_doc_name}" > /dev/null
 
 # Give some time for the command to run
-sleep 60
+sleep 15
 
 # Delete ssm document once you're finished with it
 aws ssm delete-document --name "${ssm_doc_name}"
