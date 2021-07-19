@@ -68,10 +68,10 @@ bignum_demont:
 // This is essentially the same as word_negmodinv.
 
                 ldr     a, [m]
-                lsl     w, a, 2
+                lsl     w, a, #2
                 sub     w, a, w
-                eor     w, w, 2
-                mov     one, 1
+                eor     w, w, #2
+                mov     one, #1
                 madd    e1, a, w, one
                 mul     e2, e1, e1
                 madd    w, e1, w, w
@@ -86,9 +86,9 @@ bignum_demont:
 
                 mov     i, xzr
 iloop:
-                ldr     a, [x, i, LSL 3]
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
+                ldr     a, [x, i, lsl #3]
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     iloop
 
@@ -103,30 +103,30 @@ outerloop:
                 mul     l, d, a
                 umulh   h, d, a
                 adds    e, e, l         // Will be zero but want the carry
-                mov     j, 1
-                sub     a, k, 1
+                mov     j, #1
+                sub     a, k, #1
                 cbz     a, montend
 montloop:
-                ldr     a, [m, j, LSL 3]
-                ldr     e, [z, j, LSL 3]
+                ldr     a, [m, j, lsl #3]
+                ldr     e, [z, j, lsl #3]
                 mul     l, d, a
                 adcs    e, e, h
                 umulh   h, d, a
                 adc     h, h, xzr
                 adds    e, e, l
-                sub     l, j, 1
-                str     e, [z, l, LSL 3]
-                add     j, j, 1
+                sub     l, j, #1
+                str     e, [z, l, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, montloop
 montend:
                 adc     h, xzr, h
-                sub     l, j, 1
-                str     h, [z, l, LSL 3]
+                sub     l, j, #1
+                str     h, [z, l, lsl #3]
 
 // End of outer loop
 
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, k
                 bcc     outerloop
 
@@ -135,10 +135,10 @@ montend:
 
                 subs    j, xzr, xzr
 cmploop:
-                ldr     a, [z, j, LSL 3]
-                ldr     e, [m, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                ldr     e, [m, j, lsl #3]
                 sbcs    xzr, a, e
-                add     j, j, 1
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, cmploop
                 csetm   h, cs
@@ -147,12 +147,12 @@ cmploop:
 
                 subs    j, xzr, xzr
 corrloop:
-                ldr     a, [z, j, LSL 3]
-                ldr     e, [m, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                ldr     e, [m, j, lsl #3]
                 and     e, e, h
                 sbcs    a, a, e
-                str     a, [z, j, LSL 3]
-                add     j, j, 1
+                str     a, [z, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, corrloop
 

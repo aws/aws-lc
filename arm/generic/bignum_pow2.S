@@ -45,9 +45,9 @@ bignum_pow2:
 // Note that the ARM manual explicitly says that shift counts are taken modulo
 // the datasize, so we don't need to mask the lower 6 bits of n ourselves.
 
-                mov     w, 1
+                mov     w, #1
                 lsl     w, w, n
-                lsr     n, n, 6
+                lsr     n, n, #6
 
 // Now in a constant-time fashion set the n'th word to w and others to zero
 
@@ -55,8 +55,8 @@ bignum_pow2:
 loop:
                 cmp     i, n
                 csel    a, w, xzr, eq
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     loop
 

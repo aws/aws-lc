@@ -33,10 +33,10 @@ word_ctz:
 // to the ARM manual.
 
                 mvn     x1, x0
-                sub     x0, x0, 1
+                sub     x0, x0, #1
                 and     x0, x0, x1
                 clz     x1, x0
-                mov     x0, 64
+                mov     x0, #64
                 sub     x0, x0, x1
 
                 ret

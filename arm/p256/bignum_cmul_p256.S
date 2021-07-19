@@ -71,9 +71,9 @@ bignum_cmul_p256:
 // bignum_mod_p256_5.
 
                 subs    xzr, xzr, xzr   // set carry flag for +1
-                extr    q, h, d3, 32
+                extr    q, h, d3, #32
                 adcs    xzr, d3, q
-                lsr     q, h, 32
+                lsr     q, h, #32
                 adcs    q, h, q
 
 // It's easy to see -p_256 <= z - q * p_256 < p_256, so we just need to
@@ -87,8 +87,8 @@ bignum_cmul_p256:
 
 // First do [a2;a1] = 2^32 * q, which we use twice
 
-                lsl     a1, q, 32
-                lsr     a2, q, 32
+                lsl     a1, q, #32
+                lsr     a2, q, #32
 
 // Add that to hl, hence including the 2^224 * q part
 
@@ -115,11 +115,11 @@ bignum_cmul_p256:
 // So correct by adding masked p_256
 
                 adds    d0, d0, c
-                mov     h, 0x00000000ffffffff
+                mov     h, #0x00000000ffffffff
                 and     h, h, c
                 adcs    d1, d1, h
                 adcs    d2, d2, xzr
-                mov     h, 0xffffffff00000001
+                mov     h, #0xffffffff00000001
                 and     h, h, c
                 adc     d3, d3, h
 

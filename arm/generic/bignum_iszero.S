@@ -36,8 +36,8 @@ bignum_iszero:
                 cbz     k, end                  // if k = 0 skip the loop
 
 loop:
-                sub     k, k, 1
-                ldr     a, [x, k, LSL 3]
+                sub     k, k, #1
+                ldr     a, [x, k, lsl #3]
                 orr     c, c, a
                 cbnz    k, loop
 

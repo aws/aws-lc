@@ -103,8 +103,8 @@ bignum_modinv:
 
 // We make use of registers beyond the modifiable
 
-                stp     x19, x20, [sp, -16]!
-                stp     x21, x22, [sp, -16]!
+                stp     x19, x20, [sp, #-16]!
+                stp     x21, x22, [sp, #-16]!
 
 // If k = 0 then do nothing (this is out of scope anyway)
 
@@ -112,7 +112,7 @@ bignum_modinv:
 
 // Set up the additional two buffers m and n beyond w in temp space
 
-                lsl     i, k, 3
+                lsl     i, k, #3
                 add     m, w, i
                 add     n, m, i
 
@@ -121,13 +121,13 @@ bignum_modinv:
 
                 mov     i, xzr
 copyloop:
-                ldr     t1, [a, i, LSL 3]
-                ldr     t2, [b, i, LSL 3]
-                str     t1, [m, i, LSL 3]
-                str     t2, [n, i, LSL 3]
-                str     t2, [w, i, LSL 3]
-                str     xzr, [z, i, LSL 3]
-                add     i, i, 1
+                ldr     t1, [a, i, lsl #3]
+                ldr     t2, [b, i, lsl #3]
+                str     t1, [m, i, lsl #3]
+                str     t2, [n, i, lsl #3]
+                str     t2, [w, i, lsl #3]
+                str     xzr, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     copyloop
 
@@ -140,16 +140,16 @@ copyloop:
 // This, with the bound w <= b and z <= b, is maintained round the outer loop
 
                 ldr     t1, [w]
-                sub     t2, t1, 1
+                sub     t2, t1, #1
                 str     t2, [w]
 
 // Compute v = negated modular inverse of b mod 2^64, reusing t1 from above
 // This is used for Montgomery reduction operations each time round the loop
 
-                lsl     v, t1, 2
+                lsl     v, t1, #2
                 sub     v, t1, v
-                eor     v, v, 2
-                mov     one, 1
+                eor     v, v, #2
+                mov     one, #1
                 madd    e1, t1, v, one
                 mul     e2, e1, e1
                 madd    v, e1, v, v
@@ -162,7 +162,7 @@ copyloop:
 // Set up the outer loop count of 128 * k
 // The invariant is that m * n < 2^t at all times.
 
-                lsl     t, k, 7
+                lsl     t, k, #7
 
 // Start of the main outer loop iterated t times
 
@@ -173,8 +173,8 @@ outerloop:
 // Either both m and n fit in l digits, or m has become zero and so
 // nothing happens in the loop anyway and this makes no difference.
 
-                add     i, t, 63
-                lsr     l, i, 6
+                add     i, t, #63
+                lsr     l, i, #6
                 cmp     l, k
                 csel    l, k, l, cs
 
@@ -192,8 +192,8 @@ outerloop:
                                 // and in this case h1 and h2 are those words
                 mov     i, xzr
 toploop:
-                ldr     t1, [m, i, LSL 3]
-                ldr     t2, [n, i, LSL 3]
+                ldr     t1, [m, i, lsl #3]
+                ldr     t2, [n, i, lsl #3]
                 orr     c1, t1, t2
                 cmp     c1, xzr
                 and     c1, c2, h1
@@ -203,7 +203,7 @@ toploop:
                 csel    h1, t1, h1, ne
                 csel    h2, t2, h2, ne
                 csetm   c2, ne
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, l
                 bcc     toploop
 
@@ -236,19 +236,19 @@ toploop:
 // is simply the parity of the number of times the first condition,
 // used as the swapping criterion, fires in this loop.
 
-                mov     m_m, 1
+                mov     m_m, #1
                 mov     m_n, xzr
                 mov     n_m, xzr
-                mov     n_n, 1
+                mov     n_n, #1
 
-                mov     i, CHUNKSIZE
+                mov     i, #CHUNKSIZE
 
 innerloop:
 
 // b = (m_lo & 1ull) & (m_hi < n_hi);
 
-                and     t1, m_lo, 1
-                mov     t2, 2
+                and     t1, m_lo, #1
+                mov     t2, #2
                 subs    xzr, m_hi, n_hi
                 sbcs    xzr, t2, t1
 
@@ -277,7 +277,7 @@ innerloop:
 
 // b = (m_lo & 1ull);
 
-                ands    xzr, m_lo, 1
+                ands    xzr, m_lo, #1
 
 // if (b) { m_hi -= n_hi; m_lo -= n_lo; }
 
@@ -294,14 +294,14 @@ innerloop:
 // m_hi >>= 1; m_lo >>= 1;
 // n_m <<= 1; n_n <<= 1;
 
-                lsr     m_hi, m_hi, 1
-                lsr     m_lo, m_lo, 1
+                lsr     m_hi, m_hi, #1
+                lsr     m_lo, m_lo, #1
                 add     n_m, n_m, n_m
                 add     n_n, n_n, n_n
 
 // Next iteration
 
-                subs    i, i, 1
+                subs    i, i, #1
                 bne     innerloop
 
 // Apply the update to w and z, using addition in this case, and also take
@@ -322,8 +322,8 @@ innerloop:
 
                 mov     i, xzr
 congloop:
-                ldr     t1, [w, i, LSL 3]
-                ldr     t2, [z, i, LSL 3]
+                ldr     t1, [w, i, lsl #3]
+                ldr     t2, [z, i, lsl #3]
 
                 mul     l1, m_m, t1
                 mul     l2, m_n, t2
@@ -331,8 +331,8 @@ congloop:
                 umulh   h1, m_m, t1
                 adc     h1, h1, xzr
                 adds    l1, l1, l2
-                extr    c1, l1, c1, CHUNKSIZE
-                str     c1, [w, i, LSL 3]
+                extr    c1, l1, c1, #CHUNKSIZE
+                str     c1, [w, i, lsl #3]
                 mov     c1, l1
                 umulh   l1, m_n, t2
                 adc     h1, h1, l1
@@ -343,18 +343,18 @@ congloop:
                 umulh   h2, n_m, t1
                 adc     h2, h2, xzr
                 adds    l1, l1, l2
-                extr    c2, l1, c2, CHUNKSIZE
-                str     c2, [z, i, LSL 3]
+                extr    c2, l1, c2, #CHUNKSIZE
+                str     c2, [z, i, lsl #3]
                 mov     c2, l1
                 umulh   l1, n_n, t2
                 adc     h2, h2, l1
 
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, k
                 bcc     congloop
 
-                extr    h1, h1, c1, CHUNKSIZE
-                extr    h2, h2, c2, CHUNKSIZE
+                extr    h1, h1, c1, #CHUNKSIZE
+                extr    h2, h2, c2, #CHUNKSIZE
 
 // Do a Montgomery reduction of h1::w
 
@@ -365,34 +365,34 @@ congloop:
                 umulh   l2, c1, t2
                 adds    t1, t1, l1      // Will be zero but want the carry
 
-                mov     i, 1
-                sub     t1, k, 1
+                mov     i, #1
+                sub     t1, k, #1
                 cbz     t1, wmontend
 wmontloop:
-                ldr     t1, [b, i, LSL 3]
-                ldr     t2, [w, i, LSL 3]
+                ldr     t1, [b, i, lsl #3]
+                ldr     t2, [w, i, lsl #3]
                 mul     l1, c1, t1
                 adcs    t2, t2, l2
                 umulh   l2, c1, t1
                 adc     l2, l2, xzr
                 adds    t2, t2, l1
-                sub     l1, i, 1
-                str     t2, [w, l1, LSL 3]
-                add     i, i, 1
+                sub     l1, i, #1
+                str     t2, [w, l1, lsl #3]
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, wmontloop
 wmontend:
                 adcs    l2, l2, h1
                 adc     h1, xzr, xzr
-                sub     l1, i, 1
-                str     l2, [w, l1, LSL 3]
+                sub     l1, i, #1
+                str     l2, [w, l1, lsl #3]
 
                 subs    i, xzr, xzr
 wcmploop:
-                ldr     t1, [w, i, LSL 3]
-                ldr     t2, [b, i, LSL 3]
+                ldr     t1, [w, i, lsl #3]
+                ldr     t2, [b, i, lsl #3]
                 sbcs    xzr, t1, t2
-                add     i, i, 1
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, wcmploop
 
@@ -401,12 +401,12 @@ wcmploop:
 
                 subs    i, xzr, xzr
 wcorrloop:
-                ldr     t1, [w, i, LSL 3]
-                ldr     t2, [b, i, LSL 3]
+                ldr     t1, [w, i, lsl #3]
+                ldr     t2, [b, i, lsl #3]
                 and     t2, t2, h1
                 sbcs    t1, t1, t2
-                str     t1, [w, i, LSL 3]
-                add     i, i, 1
+                str     t1, [w, i, lsl #3]
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, wcorrloop
 
@@ -419,34 +419,34 @@ wcorrloop:
                 umulh   l2, c1, t2
                 adds    t1, t1, l1      // Will be zero but want the carry
 
-                mov     i, 1
-                sub     t1, k, 1
+                mov     i, #1
+                sub     t1, k, #1
                 cbz     t1, zmontend
 zmontloop:
-                ldr     t1, [b, i, LSL 3]
-                ldr     t2, [z, i, LSL 3]
+                ldr     t1, [b, i, lsl #3]
+                ldr     t2, [z, i, lsl #3]
                 mul     l1, c1, t1
                 adcs    t2, t2, l2
                 umulh   l2, c1, t1
                 adc     l2, l2, xzr
                 adds    t2, t2, l1
-                sub     l1, i, 1
-                str     t2, [z, l1, LSL 3]
-                add     i, i, 1
+                sub     l1, i, #1
+                str     t2, [z, l1, lsl #3]
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, zmontloop
 zmontend:
                 adcs    l2, l2, h2
                 adc     h2, xzr, xzr
-                sub     l1, i, 1
-                str     l2, [z, l1, LSL 3]
+                sub     l1, i, #1
+                str     l2, [z, l1, lsl #3]
 
                 subs    i, xzr, xzr
 zcmploop:
-                ldr     t1, [z, i, LSL 3]
-                ldr     t2, [b, i, LSL 3]
+                ldr     t1, [z, i, lsl #3]
+                ldr     t2, [b, i, lsl #3]
                 sbcs    xzr, t1, t2
-                add     i, i, 1
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, zcmploop
 
@@ -455,12 +455,12 @@ zcmploop:
 
                 subs    i, xzr, xzr
 zcorrloop:
-                ldr     t1, [z, i, LSL 3]
-                ldr     t2, [b, i, LSL 3]
+                ldr     t1, [z, i, lsl #3]
+                ldr     t2, [b, i, lsl #3]
                 and     t2, t2, h2
                 sbcs    t1, t1, t2
-                str     t1, [z, i, LSL 3]
-                add     i, i, 1
+                str     t1, [z, i, lsl #3]
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, zcorrloop
 
@@ -478,8 +478,8 @@ zcorrloop:
                 mov     c2, xzr
                 mov     i, xzr
 crossloop:
-                ldr     t1, [m, i, LSL 3]
-                ldr     t2, [n, i, LSL 3]
+                ldr     t1, [m, i, lsl #3]
+                ldr     t2, [n, i, lsl #3]
 
                 mul     l1, m_m, t1
                 mul     l2, m_n, t2
@@ -487,7 +487,7 @@ crossloop:
                 umulh   h1, m_m, t1
                 adc     h1, h1, xzr
                 subs    l1, l1, l2
-                str     l1, [m, i, LSL 3]
+                str     l1, [m, i, lsl #3]
                 umulh   l1, m_n, t2
                 sub     c1, l1, c1
                 sbcs    h1, h1, c1
@@ -499,13 +499,13 @@ crossloop:
                 umulh   h2, n_m, t1
                 adc     h2, h2, xzr
                 subs    l1, l1, l2
-                str     l1, [n, i, LSL 3]
+                str     l1, [n, i, lsl #3]
                 umulh   l1, n_n, t2
                 sub     c2, l1, c2
                 sbcs    h2, h2, c2
                 csetm   c2, cc
 
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, l
                 bcc     crossloop
 
@@ -515,22 +515,22 @@ crossloop:
 
                 ldr     l1, [m]
                 mov     i, xzr
-                sub     j, l, 1
+                sub     j, l, #1
                 cbz     j, negskip1
 
 negloop1:
-                add     t1, i, 8
+                add     t1, i, #8
                 ldr     t2, [m, t1]
-                extr    l1, t2, l1, CHUNKSIZE
+                extr    l1, t2, l1, #CHUNKSIZE
                 eor     l1, l1, c1
                 adcs    l1, l1, xzr
                 str     l1, [m, i]
                 mov     l1, t2
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, negloop1
 negskip1:
-                extr    l1, h1, l1, CHUNKSIZE
+                extr    l1, h1, l1, #CHUNKSIZE
                 eor     l1, l1, c1
                 adcs    l1, l1, xzr
                 str     l1, [m, i]
@@ -541,21 +541,21 @@ negskip1:
 
                 ldr     l1, [n]
                 mov     i, xzr
-                sub     j, l, 1
+                sub     j, l, #1
                 cbz     j, negskip2
 negloop2:
-                add     t1, i, 8
+                add     t1, i, #8
                 ldr     t2, [n, t1]
-                extr    l1, t2, l1, CHUNKSIZE
+                extr    l1, t2, l1, #CHUNKSIZE
                 eor     l1, l1, c2
                 adcs    l1, l1, xzr
                 str     l1, [n, i]
                 mov     l1, t2
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, negloop2
 negskip2:
-                extr    l1, h2, l1, CHUNKSIZE
+                extr    l1, h2, l1, #CHUNKSIZE
                 eor     l1, l1, c2
                 adcs    l1, l1, xzr
                 str     l1, [n, i]
@@ -571,13 +571,13 @@ negskip2:
                 mov     i, xzr
                 adds    xzr, c1, c1
 wfliploop:
-                ldr     t1, [b, i, LSL 3]
-                ldr     t2, [w, i, LSL 3]
+                ldr     t1, [b, i, lsl #3]
+                ldr     t2, [w, i, lsl #3]
                 and     t1, t1, c1
                 eor     t2, t2, c1
                 adcs    t1, t1, t2
-                str     t1, [w, i, LSL 3]
-                add     i, i, 1
+                str     t1, [w, i, lsl #3]
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, wfliploop
 
@@ -586,13 +586,13 @@ wfliploop:
                 mov     i, xzr
                 adds    xzr, c2, c2
 zfliploop:
-                ldr     t1, [b, i, LSL 3]
-                ldr     t2, [z, i, LSL 3]
+                ldr     t1, [b, i, lsl #3]
+                ldr     t2, [z, i, lsl #3]
                 and     t1, t1, c2
                 eor     t2, t2, c2
                 adcs    t1, t1, t2
-                str     t1, [z, i, LSL 3]
-                add     i, i, 1
+                str     t1, [z, i, lsl #3]
+                add     i, i, #1
                 sub     t1, i, k
                 cbnz    t1, zfliploop
 
@@ -602,11 +602,11 @@ zfliploop:
 // Moreover we do in fact need to maintain strictly t > 0 in the main loop,
 // or the computation of the optimized digit bound l could collapse to 0.
 
-                subs    t, t, CHUNKSIZE
+                subs    t, t, #CHUNKSIZE
                 bhi     outerloop
 
 end:
-                ldp     x21, x22, [sp], 16
-                ldp     x19, x20, [sp], 16
+                ldp     x21, x22, [sp], #16
+                ldp     x19, x20, [sp], #16
 
                 ret

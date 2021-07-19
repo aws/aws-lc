@@ -61,21 +61,21 @@ bignum_sub:
                 subs    i, xzr, xzr
                 cbz     n, xmainskip
 xmainloop:
-                ldr     a, [x, i, LSL 3]
-                ldr     d, [y, i, LSL 3]
+                ldr     a, [x, i, lsl #3]
+                ldr     d, [y, i, lsl #3]
                 sbcs    a, a, d
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
-                sub     n, n, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
+                sub     n, n, #1
                 cbnz    n, xmainloop
 xmainskip:
                 cbz     m, xtopskip
 xtoploop:
-                ldr     a, [x, i, LSL 3]
+                ldr     a, [x, i, lsl #3]
                 sbcs    a, a, xzr
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
-                sub     m, m, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
+                sub     m, m, #1
                 cbnz    m, xtoploop
 xtopskip:
                 cbnz    p, tails
@@ -90,19 +90,19 @@ ylonger:
                 subs    i, xzr, xzr
                 cbz     m, ytoploop
 ymainloop:
-                ldr     a, [x, i, LSL 3]
-                ldr     d, [y, i, LSL 3]
+                ldr     a, [x, i, lsl #3]
+                ldr     d, [y, i, lsl #3]
                 sbcs    a, a, d
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
-                sub     m, m, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
+                sub     m, m, #1
                 cbnz    m, ymainloop
 ytoploop:
-                ldr     a, [y, i, LSL 3]
+                ldr     a, [y, i, lsl #3]
                 sbcs    a, xzr, a
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
-                sub     n, n, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
+                sub     n, n, #1
                 cbnz    n, ytoploop
 ytopskip:
                 cbnz    p, tails
@@ -114,9 +114,9 @@ ytopskip:
 tails:
                 csetm   a, cc
 tailloop:
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
-                subs    p, p, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
+                subs    p, p, #1
                 bne     tailloop
                 neg     x0, a
                 ret

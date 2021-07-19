@@ -44,9 +44,9 @@ bignum_cld:
                 mov     i, xzr
                 mov     j, xzr
 loop:
-                ldr     a, [x, j, LSL 3]
-                add     j, j, 1
-                cmp     a, 0
+                ldr     a, [x, j, lsl #3]
+                add     j, j, #1
+                cmp     a, #0
                 csel    i, j, i, ne
                 cmp     j, k
                 bne     loop

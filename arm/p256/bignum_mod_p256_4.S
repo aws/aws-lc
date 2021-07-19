@@ -43,9 +43,9 @@ bignum_mod_p256_4:
 
 // Load the three nonzero words of p_256 = [n3;0;n2;n1]
 
-                mov     n0, 0xffffffffffffffff
-                mov     n1, 0x00000000ffffffff
-                mov     n3, 0xffffffff00000001
+                mov     n0, #0xffffffffffffffff
+                mov     n1, #0x00000000ffffffff
+                mov     n3, #0xffffffff00000001
 
 // Load the input number
 

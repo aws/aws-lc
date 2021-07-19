@@ -63,8 +63,8 @@ loop:
                 and     b, b, m
                 adcs    a, a, b
                 str     a, [z, i]
-                add     i, i, 8
-                sub     k, k, 1
+                add     i, i, #8
+                sub     k, k, #1
                 cbnz    k, loop
 
 // Return carry flag

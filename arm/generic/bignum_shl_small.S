@@ -61,19 +61,19 @@ bignum_shl_small:
 // Set up a mask for nonzero shift and a negated version of the shift.
 // Note that all basic word-level shifts are predictably masked to 6 bits.
 
-                ands    xzr, c, 63
+                ands    xzr, c, #63
                 csetm   m, ne
                 neg     d, c
 
 // Now the main loop
 loop:
-                ldr     t, [x, i, LSL 3]
+                ldr     t, [x, i, lsl #3]
                 lsl     a, t, c
                 orr     a, a, b
                 lsr     b, t, d
                 and     b, b, m
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, n
                 bcc     loop
 
@@ -83,15 +83,15 @@ tail:
 
                 cmp     i, p
                 bcs     end
-                str     b, [z, i, LSL 3]
+                str     b, [z, i, lsl #3]
                 mov     b, xzr
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, p
                 bcs     end
 
 tloop:
-                str     xzr, [z, i, LSL 3]
-                add     i, i, 1
+                str     xzr, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, p
                 bcc     tloop
 

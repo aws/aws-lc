@@ -38,8 +38,8 @@ bignum_double_p521:
 // We can decide whether 2 * x >= p_521 just by 2 * x >= 2^521, which
 // amounts to whether the top word is >= 256
 
-                ldr     c, [x, 64]
-                subs    xzr, c, 256
+                ldr     c, [x, #64]
+                subs    xzr, c, #256
 
 // Now if 2 * x >= p_521 we want 2 * x - p_521 = (2 * x + 1) - 2^521
 // and otherwise just 2 * x. Feed in the condition as the carry bit
@@ -47,16 +47,16 @@ bignum_double_p521:
 
                 .set    i, 0
                 .rep 4
-                ldp     l, h, [x, 8*i]
+                ldp     l, h, [x, #8*i]
                 adcs    l, l, l
                 adcs    h, h, h
-                stp     l, h, [z, 8*i]
+                stp     l, h, [z, #8*i]
                 .set    i, (i+2)
                 .endr
 
                 adc     c, c, c
-                and     c, c, 0x1FF
-                str     c, [z, 64]
+                and     c, c, #0x1FF
+                str     c, [z, #64]
 
                 ret
 

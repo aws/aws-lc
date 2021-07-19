@@ -51,20 +51,20 @@ bignum_bitfield:
 
 // Decompose the index into n = 64 * n + m, then increment n for next part
 
-                and     m, n, 63
-                lsr     n, n, 6
-                add     n, n, 1
+                and     m, n, #63
+                lsr     n, n, #6
+                add     n, n, #1
 
 // Run over the digits setting d = n'th and e = (n+1)'th
 
                 mov     i, xzr
                 mov     e, xzr
 loop:
-                ldr     a, [x, i, LSL 3]
+                ldr     a, [x, i, lsl #3]
                 cmp     i, n
                 csel    d, a, d, cc
                 csel    e, a, e, eq
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, k
                 bcc     loop
 
@@ -88,10 +88,10 @@ loop:
 
 // Now mask it down to get bitfield (n,l)
 
-                cmp     l, 64
+                cmp     l, #64
                 cset    m, cc
                 lsl     m, m, l
-                sub     m, m, 1
+                sub     m, m, #1
                 and     x0, a, m
 end:
                 ret

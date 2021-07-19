@@ -35,15 +35,15 @@
 // Writing the input as z = 2^256 * h + 2^192 * l + t = 2^192 * hl + t, our
 // intended quotient approximation is MIN ((hl + hl>>32 + 1)>>64) (2^64 - 1).
                 subs    xzr, xzr, xzr   // set carry flag for +1
-                extr    \t3, \d4, \d3, 32
+                extr    \t3, \d4, \d3, #32
                 adcs    xzr, \d3, \t3
-                lsr     \t3, \d4, 32
+                lsr     \t3, \d4, #32
                 adcs    \t3, \d4, \t3
                 csetm   \d0, cs
                 orr     \t3, \t3, \d0
 // First do [t2;t1] = 2^32 * q, which we use twice
-                lsl     \t1, \t3, 32
-                lsr     \t2, \t3, 32
+                lsl     \t1, \t3, #32
+                lsr     \t2, \t3, #32
 // Add 2^224 * q to sum
                 adds    \d3, \d3, \t1
                 adc     \d4, \d4, \t2
@@ -59,11 +59,11 @@
                 sbcs    \d4, \d4, \t3
 // Use top word as mask to correct
                 adds    \d0, \d0, \d4
-                mov     \t1, 0x00000000ffffffff
+                mov     \t1, #0x00000000ffffffff
                 and     \t1, \t1, \d4
                 adcs    \d1, \d1, \t1
                 adcs    \d2, \d2, xzr
-                mov     \t1, 0xffffffff00000001
+                mov     \t1, #0xffffffff00000001
                 and     \t1, \t1, \d4
                 adc     \d3, \d3, \t1
 .endm
@@ -84,15 +84,15 @@ bignum_tomont_p256:
 // Load the input
 
                 ldp     d0, d1, [x1]
-                ldp     d2, d3, [x1, 16]
+                ldp     d2, d3, [x1, #16]
 
 // Do an initial reduction to make sure this is < p_256, using just
 // a copy of the bignum_mod_p256 code. This is needed to set up the
 // invariant "input < p_256" for the main modular reduction steps.
 
-                mov     t0, 0xffffffffffffffff
-                mov     t1, 0x00000000ffffffff
-                mov     t3, 0xffffffff00000001
+                mov     t0, #0xffffffffffffffff
+                mov     t1, #0x00000000ffffffff
+                mov     t3, #0xffffffff00000001
                 subs    t0, d0, t0
                 sbcs    t1, d1, t1
                 sbcs    t2, d2, xzr

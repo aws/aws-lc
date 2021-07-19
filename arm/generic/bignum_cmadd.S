@@ -69,8 +69,8 @@ bignum_cmadd:
                 ldr     b, [z]
                 adds    b, b, l
                 str     b, [z]
-                mov     i, 8
-                sub     n, n, 1
+                mov     i, #8
+                sub     n, n, #1
                 cbz     n, tail
 
 // Main loop, where we always have CF + previous high part h to add in
@@ -84,8 +84,8 @@ loop:
                 adc     h, h, xzr
                 adds    b, b, l
                 str     b, [z, i]
-                add     i, i, 8
-                sub     n, n, 1
+                add     i, i, #8
+                sub     n, n, #1
                 cbnz    n, loop
 
 // Propagate the carry all the way to the end with h as extra carry word
@@ -96,15 +96,15 @@ tail:
                 adcs    b, b, h
                 str     b, [z, i]
                 mov     h, xzr
-                sub     p, p, 1
+                sub     p, p, #1
                 cbz     p, end
 
 tloop:
-                add     i, i, 8
+                add     i, i, #8
                 ldr     b, [z, i]
                 adcs    b, b, xzr
                 str     b, [z, i]
-                sub     p, p, 1
+                sub     p, p, #1
                 cbnz    p, tloop
 
 // Return the high/carry word. This gives the top word of the result provided

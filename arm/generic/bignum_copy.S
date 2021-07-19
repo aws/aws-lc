@@ -41,16 +41,16 @@ bignum_copy:
 
                 cmp     k, n
                 csel    n, k, n, cc
-                mov     i, 0
+                mov     i, #0
 
 // If min(k,n) = 0 jump to the padding stage
 
                 cbz     n, padding
 
 copyloop:
-                ldr     a, [x, i, LSL 3]
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
+                ldr     a, [x, i, lsl #3]
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, n
                 bcc     copyloop
 
@@ -58,8 +58,8 @@ padding:
                 cmp     i, k
                 bcs     end
 padloop:
-                str     xzr, [z, i, LSL 3]
-                add     i, i, 1
+                str     xzr, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     padloop
 

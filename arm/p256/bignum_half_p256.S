@@ -42,38 +42,38 @@ bignum_half_p256:
 // Load the 4 digits of x
 
                 ldp     d0, d1, [x]
-                ldp     d2, d3, [x, 16]
+                ldp     d2, d3, [x, #16]
 
 // Get a bitmask corresponding to the lowest bit of the input
 
-                and     m, d0, 1
+                and     m, d0, #1
                 neg     m, m
 
 // Do a masked addition of p_256, catching carry in a 5th word
 
-                mov     n, 0xffffffffffffffff
+                mov     n, #0xffffffffffffffff
                 and     n, n, m
                 adds    d0, d0, n
-                mov     n, 0x00000000ffffffff
+                mov     n, #0x00000000ffffffff
                 and     n, n, m
                 adcs    d1, d1, n
                 adcs    d2, d2, xzr
-                mov     n, 0xffffffff00000001
+                mov     n, #0xffffffff00000001
                 and     n, n, m
                 adcs    d3, d3, n
                 adc     d4, xzr, xzr
 
 // Now shift that sum right one place
 
-                extr    d0, d1, d0, 1
-                extr    d1, d2, d1, 1
-                extr    d2, d3, d2, 1
-                extr    d3, d4, d3, 1
+                extr    d0, d1, d0, #1
+                extr    d1, d2, d1, #1
+                extr    d2, d3, d2, #1
+                extr    d3, d4, d3, #1
 
 // Store back
 
                 stp     d0, d1, [z]
-                stp     d2, d3, [z, 16]
+                stp     d2, d3, [z, #16]
 
 // Return
 

@@ -38,16 +38,16 @@
 bignum_mux:
 
                 cbz     k, end                  // if k = 0 skip the loop
-                cmp     b, 0                    // Set condition codes b = 0
+                cmp     b, #0                    // Set condition codes b = 0
 
 // We've set cc's from b once and for all and can now re-use "b" as a temporary
 
 loop:
-                sub     k, k, 1
-                ldr     a, [x, k, LSL 3]
-                ldr     b, [y, k, LSL 3]
+                sub     k, k, #1
+                ldr     a, [x, k, lsl #3]
+                ldr     b, [y, k, lsl #3]
                 csel    a, a, b, ne
-                str     a, [z, k, LSL 3]
+                str     a, [z, k, lsl #3]
                 cbnz    k, loop
 
 end:

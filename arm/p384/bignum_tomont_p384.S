@@ -33,16 +33,16 @@
 
 .macro modstep_p384 d6,d5,d4,d3,d2,d1,d0, t1,t2,t3
 // Initial quotient approximation q = min (h + 1) (2^64 - 1)
-                adds    \d6, \d6, 1
+                adds    \d6, \d6, #1
                 csetm   \t3, cs
                 add     \d6, \d6, \t3
                 orn     \t3, xzr, \t3
-                sub     \t2, \d6, 1
+                sub     \t2, \d6, #1
                 sub     \t1, xzr, \d6
 // Correction term [d6;t2;t1;d0] = q * (2^384 - p_384)
-                lsl     \d0, \t1, 32
-                extr    \t1, \t2, \t1, 32
-                lsr     \t2, \t2, 32
+                lsl     \d0, \t1, #32
+                extr    \t1, \t2, \t1, #32
+                lsr     \t2, \t2, #32
                 adds    \d0, \d0, \d6
                 adcs    \t1, \t1, xzr
                 adcs    \t2, \t2, \d6
@@ -55,12 +55,12 @@
                 adcs    \d5, \d5, xzr
                 adc     \t3, \t3, xzr
 // Use net top of the 7-word answer in t3 for masked correction
-                mov     \t1, 0x00000000ffffffff
+                mov     \t1, #0x00000000ffffffff
                 and     \t1, \t1, \t3
                 adds    \d0, \d0, \t1
                 eor     \t1, \t1, \t3
                 adcs    \d1, \d1, \t1
-                mov     \t1, 0xfffffffffffffffe
+                mov     \t1, #0xfffffffffffffffe
                 and     \t1, \t1, \t3
                 adcs    \d2, \d2, \t1
                 adcs    \d3, \d3, \t3
@@ -92,16 +92,16 @@ bignum_tomont_p384:
 // Load the inputs
 
                 ldp     d0, d1, [x1]
-                ldp     d2, d3, [x1, 16]
-                ldp     d4, d5, [x1, 32]
+                ldp     d2, d3, [x1, #16]
+                ldp     d4, d5, [x1, #32]
 
 // Do an initial reduction to make sure this is < p_384, using just
 // a copy of the bignum_mod_p384 code. This is needed to set up the
 // invariant "input < p_384" for the main modular reduction steps.
 
-                mov     n0, 0x00000000ffffffff
-                mov     n1, 0xffffffff00000000
-                mov     n2, 0xfffffffffffffffe
+                mov     n0, #0x00000000ffffffff
+                mov     n1, #0xffffffff00000000
+                mov     n2, #0xfffffffffffffffe
                 subs    n0, d0, n0
                 sbcs    n1, d1, n1
                 sbcs    n2, d2, n2

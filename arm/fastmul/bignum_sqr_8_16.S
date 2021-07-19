@@ -43,7 +43,7 @@
         mul     \l, \t, \h
         umulh   \h, \t, \h
         cinv    \c, \c, cc
-        adds    xzr, \c, 1
+        adds    xzr, \c, #1
         eor     \l, \l, \c
         adcs    \a, \a, \l
         eor     \h, \h, \c
@@ -156,15 +156,15 @@ bignum_sqr_8_16:
 
 // Save registers
 
-                stp     x19, x20, [sp, -16]!
-                stp     x21, x22, [sp, -16]!
+                stp     x19, x20, [sp, #-16]!
+                stp     x21, x22, [sp, #-16]!
 
 // Load all the inputs first
 
                 ldp     a0, a1, [x]
-                ldp     a2, a3, [x, 16]
-                ldp     b0, b1, [x, 32]
-                ldp     b2, b3, [x, 48]
+                ldp     a2, a3, [x, #16]
+                ldp     b0, b1, [x, #32]
+                ldp     b2, b3, [x, #48]
 
 // Square the lower half with a near-clone of bignum_sqr_4_8
 
@@ -216,7 +216,7 @@ bignum_sqr_8_16:
                 adcs    x20, x20, xzr
                 adcs    x21, x21, xzr
                 adc     x10, x10, xzr
-                stp     x17, x19, [z, 16]
+                stp     x17, x19, [z, #16]
                 mul     x12, x4, x4
                 mul     x13, x5, x5
                 mul     x15, x4, x5
@@ -231,10 +231,10 @@ bignum_sqr_8_16:
                 adc     x14, x14, xzr
                 adds    x12, x12, x20
                 adcs    x11, x11, x21
-                stp     x12, x11, [z, 32]
+                stp     x12, x11, [z, #32]
                 adcs    x13, x13, x10
                 adc     x14, x14, xzr
-                stp     x13, x14, [z, 48]
+                stp     x13, x14, [z, #48]
 
 // Square the upper half with a slight variant of the previous block
 
@@ -280,13 +280,13 @@ bignum_sqr_8_16:
                 adds    x11, x11, x15
                 adcs    x13, x13, x16
                 adc     x14, x14, xzr
-                stp     x12, x11, [z, 64]
+                stp     x12, x11, [z, #64]
                 adds    x17, x17, x13
                 adcs    x19, x19, x14
                 adcs    x20, x20, xzr
                 adcs    x21, x21, xzr
                 adc     x10, x10, xzr
-                stp     x17, x19, [z, 80]
+                stp     x17, x19, [z, #80]
                 mul     x12, x8, x8
                 mul     x13, x9, x9
                 mul     x15, x8, x9
@@ -301,10 +301,10 @@ bignum_sqr_8_16:
                 adc     x14, x14, xzr
                 adds    x12, x12, x20
                 adcs    x11, x11, x21
-                stp     x12, x11, [z, 96]
+                stp     x12, x11, [z, #96]
                 adcs    x13, x13, x10
                 adc     x14, x14, xzr
-                stp     x13, x14, [z, 112]
+                stp     x13, x14, [z, #112]
 
 // Now get the cross-product in [s7,...,s0] and double it as [c,s7,...,s0]
 
@@ -322,39 +322,39 @@ bignum_sqr_8_16:
 
 // Add it back to the buffer
 
-                ldp     a0, a1, [z, 32]
+                ldp     a0, a1, [z, #32]
                 adds    s0, s0, a0
                 adcs    s1, s1, a1
-                stp     s0, s1, [z, 32]
+                stp     s0, s1, [z, #32]
 
-                ldp     a0, a1, [z, 48]
+                ldp     a0, a1, [z, #48]
                 adcs    s2, s2, a0
                 adcs    s3, s3, a1
-                stp     s2, s3, [z, 48]
+                stp     s2, s3, [z, #48]
 
-                ldp     a0, a1, [z, 64]
+                ldp     a0, a1, [z, #64]
                 adcs    s4, s4, a0
                 adcs    s5, s5, a1
-                stp     s4, s5, [z, 64]
+                stp     s4, s5, [z, #64]
 
-                ldp     a0, a1, [z, 80]
+                ldp     a0, a1, [z, #80]
                 adcs    s6, s6, a0
                 adcs    s7, s7, a1
-                stp     s6, s7, [z, 80]
+                stp     s6, s7, [z, #80]
 
-                ldp     a0, a1, [z, 96]
+                ldp     a0, a1, [z, #96]
                 adcs    a0, a0, c
                 adcs    a1, a1, xzr
-                stp     a0, a1, [z, 96]
+                stp     a0, a1, [z, #96]
 
-                ldp     a0, a1, [z, 112]
+                ldp     a0, a1, [z, #112]
                 adcs    a0, a0, xzr
                 adc     a1, a1, xzr
-                stp     a0, a1, [z, 112]
+                stp     a0, a1, [z, #112]
 
 // Restore regs and return
 
-                ldp     x21, x22, [sp], 16
-                ldp     x19, x20, [sp], 16
+                ldp     x21, x22, [sp], #16
+                ldp     x19, x20, [sp], #16
 
                 ret

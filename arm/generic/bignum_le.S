@@ -50,19 +50,19 @@ bignum_le:
 
                 cbz     m, xtest
 xmainloop:
-                ldr     a, [y, i, LSL 3]
-                ldr     d, [x, i, LSL 3]
+                ldr     a, [y, i, lsl #3]
+                ldr     d, [x, i, lsl #3]
                 sbcs    xzr, a, d
-                add     i, i, 1
-                sub     m, m, 1
+                add     i, i, #1
+                sub     m, m, #1
                 cbnz    m, xmainloop
 xtest:
                 cbz     n, xskip
 xtoploop:
-                ldr     a, [y, i, LSL 3]
+                ldr     a, [y, i, lsl #3]
                 sbcs    xzr, a, xzr
-                add     i, i, 1
-                sub     n, n, 1
+                add     i, i, #1
+                sub     n, n, #1
                 cbnz    n, xtoploop
 xskip:
                 cset    x0, cs
@@ -76,17 +76,17 @@ ylonger:
                 cbz     n, ytoploop
                 sub     m, m, n
 ymainloop:
-                ldr     a, [y, i, LSL 3]
-                ldr     d, [x, i, LSL 3]
+                ldr     a, [y, i, lsl #3]
+                ldr     d, [x, i, lsl #3]
                 sbcs    xzr, a, d
-                add     i, i, 1
-                sub     n, n, 1
+                add     i, i, #1
+                sub     n, n, #1
                 cbnz    n, ymainloop
 ytoploop:
-                ldr     a, [x, i, LSL 3]
+                ldr     a, [x, i, lsl #3]
                 sbcs    xzr, xzr, a
-                add     i, i, 1
-                sub     m, m, 1
+                add     i, i, #1
+                sub     m, m, #1
                 cbnz    m, ytoploop
 
                 cset    x0, cs

@@ -60,9 +60,9 @@
 // Let w = d0, the original word we use as offset; d0 gets recycled
 // First let [t2;t1] = 2^32 * w
 // then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)
-                lsl     \t1, \d0, 32
+                lsl     \t1, \d0, #32
                 subs    \t0, \d0, \t1
-                lsr     \t2, \d0, 32
+                lsr     \t2, \d0, #32
                 sbc     \d0, \d0, \t2
 // Hence [d4;d3;d2;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w
                 adds    \d1, \d1, \t1
@@ -95,9 +95,9 @@ bignum_montmul_p256:
 // Load in all words of both inputs
 
                 ldp     a0, a1, [x1]
-                ldp     a2, a3, [x1, 16]
+                ldp     a2, a3, [x1, #16]
                 ldp     b0, b1, [x2]
-                ldp     b2, b3, [x2, 16]
+                ldp     b2, b3, [x2, #16]
 
 // Multiply low halves with a 2x2->4 ADK multiplier as L = [s3;s2;s1;s0]
 
@@ -112,7 +112,7 @@ bignum_montmul_p256:
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
                 muldiffn t3,t2,t1, t0, a0,a1, b1,b0
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
                 adc     s3, s3, t3
@@ -127,7 +127,7 @@ bignum_montmul_p256:
                 montreds s1,s0,s3,s2,s1, t1,t2,t3
 
                 stp     s2, s3, [x0]
-                stp     s0, s1, [x0, 16]
+                stp     s0, s1, [x0, #16]
 
 // Multiply high halves with a 2x2->4 ADK multiplier as H = [s3;s2;s1;s0]
 
@@ -142,7 +142,7 @@ bignum_montmul_p256:
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
                 muldiffn t3,t2,t1, t0, a2,a3, b3,b2
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
                 adc     s3, s3, t3
@@ -152,7 +152,7 @@ bignum_montmul_p256:
                 subs    a0, a2, a0
                 sbcs    a1, a3, a1
                 sbc     a2, xzr, xzr
-                adds    xzr, a2, 1
+                adds    xzr, a2, #1
                 eor     a0, a0, a2
                 adcs    a0, a0, xzr
                 eor     a1, a1, a2
@@ -163,7 +163,7 @@ bignum_montmul_p256:
                 subs    b0, b0, b2
                 sbcs    b1, b1, b3
                 sbc     b2, xzr, xzr
-                adds    xzr, b2, 1
+                adds    xzr, b2, #1
                 eor     b0, b0, b2
                 adcs    b0, b0, xzr
                 eor     b1, b1, b2
@@ -178,7 +178,7 @@ bignum_montmul_p256:
                 ldp     t0, t3, [x0]
                 adds    t0, s0, t0
                 adcs    t3, s1, t3
-                ldp     a2, b2, [x0, 16]
+                ldp     a2, b2, [x0, #16]
                 adcs    a2, s2, a2
                 adcs    b2, s3, b2
                 adc     s4, xzr, xzr
@@ -196,7 +196,7 @@ bignum_montmul_p256:
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
                 muldiffn a1,t2,t1, a0, a0,a1, b1,b0
-                adds    xzr, a1, 1
+                adds    xzr, a1, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
                 adc     s3, s3, a1
@@ -205,7 +205,7 @@ bignum_montmul_p256:
 // as [b3;a1;a0;s3;s2;s1;s0], adding in the H + L' term once with
 // zero offset as this signed value is created
 
-                adds    xzr, b3, 1
+                adds    xzr, b3, #1
                 eor     s0, s0, b3
                 adcs    s0, s0, t0
                 eor     s1, s1, b3
@@ -252,30 +252,30 @@ bignum_montmul_p256:
 #define q s4
 #define c b0
 
-                add     q, h, 1
-                lsl     t1, q, 32
+                add     q, h, #1
+                lsl     t1, q, #32
 
                 adds    d3, d3, t1
                 adc     h, h, xzr
                 sub     t0, xzr, q
-                sub     t1, t1, 1
+                sub     t1, t1, #1
                 subs    d0, d0, t0
                 sbcs    d1, d1, t1
                 sbcs    d2, d2, xzr
                 sbcs    d3, d3, q
                 sbcs    c, h, q
                 adds    d0, d0, c
-                mov     h, 0x00000000ffffffff
+                mov     h, #0x00000000ffffffff
                 and     h, h, c
                 adcs    d1, d1, h
                 adcs    d2, d2, xzr
-                mov     h, 0xffffffff00000001
+                mov     h, #0xffffffff00000001
                 and     h, h, c
                 adc     d3, d3, h
 
 // Finally store the result
 
                 stp     d0, d1, [x0]
-                stp     d2, d3, [x0, 16]
+                stp     d2, d3, [x0, #16]
 
                 ret

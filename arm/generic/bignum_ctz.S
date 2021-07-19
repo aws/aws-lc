@@ -47,12 +47,12 @@ bignum_ctz:
 // Set the initial default to be as if we had a 1 word directly above
 
                 mov     i, k
-                mov     w, 1
+                mov     w, #1
 
 loop:
-                sub     k, k, 1
-                ldr     a, [x, k, LSL 3]
-                cmp     a, 0
+                sub     k, k, #1
+                ldr     a, [x, k, lsl #3]
+                cmp     a, #0
                 csel    i, k, i, ne
                 csel    w, a, w, ne
                 cbnz    k, loop
@@ -66,10 +66,10 @@ loop:
 // to the ARM manual.
 
                 mvn     a, w
-                sub     w, w, 1
-                add     i, i, 1
+                sub     w, w, #1
+                add     i, i, #1
                 and     w, w, a
-                lsl     i, i, 6
+                lsl     i, i, #6
                 clz     a, w
                 sub     x0, i, a
 

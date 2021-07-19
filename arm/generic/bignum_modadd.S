@@ -50,8 +50,8 @@ addloop:
                 ldr     b, [y, i]
                 adcs    a, a, b
                 str     a, [z, i]
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, addloop
                 cset    c, cs
 
@@ -63,8 +63,8 @@ cmploop:
                 ldr     a, [z, i]
                 ldr     b, [m, i]
                 sbcs    xzr, a, b
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, cmploop
                 sbcs    c, c, xzr
                 mvn     c, c
@@ -79,8 +79,8 @@ subloop:
                 and     b, b, c
                 sbcs    a, a, b
                 str     a, [z, i]
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, subloop
 
 end:

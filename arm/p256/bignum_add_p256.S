@@ -52,12 +52,12 @@ bignum_add_p256:
 
 // Now compare [d3; d2; d1; d0] with p_256
 
-                mov     l, 0xffffffffffffffff
+                mov     l, #0xffffffffffffffff
                 subs    xzr, d0, l
-                mov     l, 0x00000000ffffffff
+                mov     l, #0x00000000ffffffff
                 sbcs    xzr, d1, l
                 sbcs    xzr, d2, xzr
-                mov     l, 0xffffffff00000001
+                mov     l, #0xffffffff00000001
                 sbcs    xzr, d3, l
 
 // Now CF is set (because of inversion) if (x + y) % 2^256 >= p_256
@@ -69,11 +69,11 @@ bignum_add_p256:
 // Now correct by subtracting masked p_256
 
                 subs    d0, d0, c
-                mov     l, 0x00000000ffffffff
+                mov     l, #0x00000000ffffffff
                 and     l, l, c
                 sbcs    d1, d1, l
                 sbcs    d2, d2, xzr
-                mov     l, 0xffffffff00000001
+                mov     l, #0xffffffff00000001
                 and     l, l, c
                 sbc     d3, d3, l
 

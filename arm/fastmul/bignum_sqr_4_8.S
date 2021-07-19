@@ -69,7 +69,7 @@ bignum_sqr_4_8:
 // Load all the elements
 
         ldp     a0, a1, [x1]
-        ldp     a2, a3, [x1,16]
+        ldp     a2, a3, [x1,#16]
 
 // Do a 2x2->4 mul of the cross product, retaining in m4 + [m3,m2,m1,m0]
 
@@ -89,7 +89,7 @@ bignum_sqr_4_8:
         adds    m2, m2, l2
         adc     m3, m3, xzr
 
-        adds    xzr, c1, 1
+        adds    xzr, c1, #1
         adcs    m1, m1, l1
         adcs    m2, m2, h1
         adc     m3, m3, c1
@@ -136,7 +136,7 @@ bignum_sqr_4_8:
         adcs    m3, m3, xzr
         adc     m4, m4, xzr
 
-        stp     m0, m1, [x0, 16]
+        stp     m0, m1, [x0, #16]
 
 // Compute square of upper half as [c3,c2,c1,c0]
 
@@ -160,9 +160,9 @@ bignum_sqr_4_8:
 
         adds    c0, c0, m2
         adcs    c1, c1, m3
-        stp     c0, c1, [x0,32]
+        stp     c0, c1, [x0,#32]
         adcs    c2, c2, m4
         adc     c3, c3, xzr
-        stp     c2, c3, [x0,48]
+        stp     c2, c3, [x0,#48]
 
         ret

@@ -50,22 +50,22 @@
 #define c x4
 
 .macro accumdigit dest, i
-        ldrb    dshort, [x, 8 * \i + 7]
-        extr    \dest, d, xzr, 8
-        ldrb    dshort, [x, 8 * \i + 6]
-        extr    \dest, d, \dest, 8
-        ldrb    dshort, [x, 8 * \i + 5]
-        extr    \dest, d, \dest, 8
-        ldrb    dshort, [x, 8 * \i + 4]
-        extr    \dest, d, \dest, 8
-        ldrb    dshort, [x, 8 * \i + 3]
-        extr    \dest, d, \dest, 8
-        ldrb    dshort, [x, 8 * \i + 2]
-        extr    \dest, d, \dest, 8
-        ldrb    dshort, [x, 8 * \i + 1]
-        extr    \dest, d, \dest, 8
-        ldrb    dshort, [x, 8 * \i + 0]
-        extr    \dest, d, \dest, 8
+        ldrb    dshort, [x, #8 * \i + 7]
+        extr    \dest, d, xzr, #8
+        ldrb    dshort, [x, #8 * \i + 6]
+        extr    \dest, d, \dest, #8
+        ldrb    dshort, [x, #8 * \i + 5]
+        extr    \dest, d, \dest, #8
+        ldrb    dshort, [x, #8 * \i + 4]
+        extr    \dest, d, \dest, #8
+        ldrb    dshort, [x, #8 * \i + 3]
+        extr    \dest, d, \dest, #8
+        ldrb    dshort, [x, #8 * \i + 2]
+        extr    \dest, d, \dest, #8
+        ldrb    dshort, [x, #8 * \i + 1]
+        extr    \dest, d, \dest, #8
+        ldrb    dshort, [x, #8 * \i + 0]
+        extr    \dest, d, \dest, #8
 .endm
 
 // The reads and writes are organized in mirror-image pairs (0-3 and 1-2)
@@ -80,14 +80,14 @@ bignum_tobytes_4:
 
                 accumdigit a, 0
                 accumdigit c, 3
-                str     a, [z, 8*3]
-                str     c, [z, 8*0]
+                str     a, [z, #8*3]
+                str     c, [z, #8*0]
 
 // 1 and 2 words
 
                 accumdigit a, 1
                 accumdigit c, 2
-                str     a, [z, 8*2]
-                str     c, [z, 8*1]
+                str     a, [z, #8*2]
+                str     c, [z, #8*1]
 
                 ret

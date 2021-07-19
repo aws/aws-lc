@@ -44,7 +44,7 @@
         mul     \l, \t, \h
         umulh   \h, \t, \h
         cinv    \c, \c, cc
-        adds    xzr, \c, 1
+        adds    xzr, \c, #1
         eor     \l, \l, \c
         adcs    \a, \a, \l
         eor     \h, \h, \c
@@ -132,9 +132,9 @@
 // Optionally add the existing z contents
 
 .rep \afl
-                ldr     l, [z,24]
+                ldr     l, [z,#24]
                 adds    s0, s0, l
-                ldp     l, h, [z,32]
+                ldp     l, h, [z,#32]
                 adcs    s1, s1, l
                 adcs    s2, s2, h
                 adcs    s3, s3, xzr
@@ -157,32 +157,32 @@
 
 bignum_mul_6_12:
 
-                stp     x19, x20, [sp, -16]!
+                stp     x19, x20, [sp, #-16]!
 
 // Multiply the low halves using ADK 3x3->6
 
                 ldp     a0, a1, [x1]
                 ldp     b0, b1, [x2]
-                ldr     a2, [x1, 16]
-                ldr     b2, [x2, 16]
+                ldr     a2, [x1, #16]
+                ldr     b2, [x2, #16]
 
                 mul3    0
                 stp     s0, s1, [x0]
-                stp     s2, s3, [x0, 16]
-                stp     s4, s5, [x0, 32]
+                stp     s2, s3, [x0, #16]
+                stp     s4, s5, [x0, #32]
 
 // Multiply the high halves using ADK 3x3->6
 
-                ldp     a0, a1, [x1,24]
-                ldp     b0, b1, [x2,24]
-                ldr     a2, [x1, 40]
-                ldr     b2, [x2, 40]
+                ldp     a0, a1, [x1,#24]
+                ldp     b0, b1, [x2,#24]
+                ldr     a2, [x1, #40]
+                ldr     b2, [x2, #40]
 
                 mul3    1
 
-                stp     s0, s1, [x0, 48]
-                stp     s2, s3, [x0, 64]
-                stp     s4, s5, [x0, 80]
+                stp     s0, s1, [x0, #48]
+                stp     s2, s3, [x0, #64]
+                stp     s4, s5, [x0, #80]
 
 // Compute t,[a2,a1,a0] = x_hi - x_lo
 // and     s,[b2,b1,b0] = y_lo - y_hi
@@ -190,17 +190,17 @@ bignum_mul_6_12:
 
                 ldr     t, [x1]
                 subs    a0, a0, t
-                ldr     t, [x1,8]
+                ldr     t, [x1,#8]
                 sbcs    a1, a1, t
-                ldr     t, [x1,16]
+                ldr     t, [x1,#16]
                 sbcs    a2, a2, t
                 csetm   t, cc
 
                 ldr     s, [x2]
                 subs    b0, s, b0
-                ldr     s, [x2,8]
+                ldr     s, [x2,#8]
                 sbcs    b1, s, b1
-                ldr     s, [x2,16]
+                ldr     s, [x2,#16]
                 sbcs    b2, s, b2
                 csetm   s, cc
 
@@ -229,14 +229,14 @@ bignum_mul_6_12:
 // Now accumulate the positive mid-terms as [u5,u4,u3,u2,u1,u0]
 
                 ldp     u0, u1, [z]
-                ldp     u3, u4, [z,48]
+                ldp     u3, u4, [z,#48]
                 adds    u0, u0, u3
                 adcs    u1, u1, u4
-                ldr     u2, [z,16]
-                ldp     u5, u6, [z,64]
+                ldr     u2, [z,#16]
+                ldp     u5, u6, [z,#64]
                 adcs    u2, u2, u5
                 adcs    u3, u3, u6
-                ldp     u7, u8, [z,80]
+                ldp     u7, u8, [z,#80]
                 adcs    u4, u4, u7
                 adcs    u5, u5, u8
 
@@ -250,7 +250,7 @@ bignum_mul_6_12:
 
 // Add in the sign-adjusted complex term
 
-                adds    xzr, s, 1
+                adds    xzr, s, #1
                 eor     s0, s0, s
                 adcs    u0, s0, u0
                 eor     s1, s1, s
@@ -269,14 +269,14 @@ bignum_mul_6_12:
 
 // Store it back
 
-                str     u0, [x0,24]
-                stp     u1, u2, [x0,32]
-                stp     u3, u4, [x0,48]
-                stp     u5, u6, [x0,64]
-                stp     u7, u8, [x0,80]
+                str     u0, [x0,#24]
+                stp     u1, u2, [x0,#32]
+                stp     u3, u4, [x0,#48]
+                stp     u5, u6, [x0,#64]
+                stp     u7, u8, [x0,#80]
 
 // Restore regs and return
 
-                ldp     x19, x20, [sp], 16
+                ldp     x19, x20, [sp], #16
 
                 ret

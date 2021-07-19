@@ -69,8 +69,8 @@ bignum_cmul:
                 mul     l, c, a
                 umulh   h, c, a
                 str     l, [z]
-                add     i, i, 8
-                subs    n, n, 1
+                add     i, i, #8
+                subs    n, n, #1
                 beq     tail
 
 // Main loop (force CF = 0 at the beginning)
@@ -82,8 +82,8 @@ loop:
                 adcs    l, l, h
                 umulh   h, c, a
                 str     l, [z, i]
-                add     i, i, 8
-                sub     n, n, 1
+                add     i, i, #8
+                sub     n, n, #1
                 cbnz    n, loop
 
                 adc     h, h, xzr
@@ -92,13 +92,13 @@ tail:
                 cbz     p, end
                 str     h, [z, i]
                 mov     h, xzr
-                subs    p, p, 1
+                subs    p, p, #1
                 beq     end
 
 tloop:
-                add     i, i, 8
+                add     i, i, #8
                 str     xzr, [z, i]
-                sub     p, p, 1
+                sub     p, p, #1
                 cbnz    p, tloop
 
 // Return the high/carry word

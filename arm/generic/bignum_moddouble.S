@@ -47,15 +47,15 @@ bignum_moddouble:
                 subs    i, xzr, xzr             // i = 0 and CF = 1
 dubloop:
                 ldr     a, [x, i]
-                extr    c, a, c, 63
+                extr    c, a, c, #63
                 ldr     b, [m, i]
                 sbcs    c, c, b
                 str     c, [z, i]
                 mov     c, a
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, dubloop
-                lsr     c, c, 63
+                lsr     c, c, #63
                 sbc     c, c, xzr
 
 // Now do a corrective masked addition z := z + [c] * m
@@ -68,8 +68,8 @@ corrloop:
                 and     b, b, c
                 adcs    a, a, b
                 str     a, [z, i]
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, corrloop
 
 end:

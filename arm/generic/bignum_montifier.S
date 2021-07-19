@@ -66,9 +66,9 @@ bignum_montifier:
 
                 mov     i, xzr
 copyinloop:
-                ldr     c, [m, i, LSL 3]
-                str     c, [t, i, LSL 3]
-                add     i, i, 1
+                ldr     c, [m, i, lsl #3]
+                str     c, [t, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     copyinloop
 
@@ -78,7 +78,7 @@ copyinloop:
 // while still retaining the constant-time style.
 // The "cmp c, xzr" sets the zeroness predicate (ZF) for the entire inner loop
 
-                subs    i, k, 1
+                subs    i, k, #1
                 beq     normalized
 normloop:
                 mov     j, xzr
@@ -86,13 +86,13 @@ normloop:
                 mov     a, xzr
 shufloop:
                 mov     c, a
-                ldr     a, [t, j, LSL 3]
+                ldr     a, [t, j, lsl #3]
                 csel    c, c, a, eq
-                str     c, [t, j, LSL 3]
-                add     j, j, 1
+                str     c, [t, j, lsl #3]
+                add     j, j, #1
                 sub     d, j, k
                 cbnz    d, shufloop
-                subs    i, i, 1
+                subs    i, i, #1
                 bne     normloop
 
 // We now have the top digit nonzero, assuming the input was nonzero,
@@ -104,17 +104,17 @@ normalized:
 
                 mov     b, xzr
                 mov     i, xzr
-                ands    xzr, c, 63
+                ands    xzr, c, #63
                 csetm   l, ne
                 neg     d, c
 bitloop:
-                ldr     j, [t, i, LSL 3]
+                ldr     j, [t, i, lsl #3]
                 lsl     a, j, c
                 orr     a, a, b
                 lsr     b, j, d
                 and     b, b, l
-                str     a, [t, i, LSL 3]
-                add     i, i, 1
+                str     a, [t, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     bitloop
 
@@ -125,11 +125,11 @@ bitloop:
 // don't bother with Newton-Raphson, since this stupid simple loop doesn't
 // contribute much of the overall runtime at typical sizes.
 
-                sub     h, k, 1
-                ldr     h, [t, h, LSL 3]
-                mov     q, 1
+                sub     h, k, #1
+                ldr     h, [t, h, lsl #3]
+                mov     q, #1
                 neg     r, h
-                mov     i, 62
+                mov     i, #62
 estloop:
                 add     q, q, q
                 mov     a, h
@@ -140,7 +140,7 @@ estloop:
                 add     r, r, r
                 and     a, a, h
                 sub     r, r, a
-                subs    i, i, 1
+                subs    i, i, #1
                 bne     estloop
 
 // Strictly speaking the above loop doesn't quite give the true remainder
@@ -189,17 +189,17 @@ estloop:
                 mov     c, xzr
                 adds    i, xzr, xzr
 mulloop:
-                ldr     a, [t, i, LSL 3]
+                ldr     a, [t, i, lsl #3]
                 mul     l, q, a
                 adcs    l, l, c
                 umulh   c, q, a
-                str     l, [z, i, LSL 3]
-                add     i, i, 1
+                str     l, [z, i, lsl #3]
+                add     i, i, #1
                 sub     a, i, k
                 cbnz    a, mulloop
 
                 adc     c, c, xzr
-                mov     a, 0x4000000000000000
+                mov     a, #0x4000000000000000
                 subs    c, c, a
                 csetm   q, cs
 
@@ -207,12 +207,12 @@ mulloop:
 
                 subs    i, xzr, xzr
 remloop:
-                ldr     a, [t, i, LSL 3]
-                ldr     b, [z, i, LSL 3]
+                ldr     a, [t, i, lsl #3]
+                ldr     b, [z, i, lsl #3]
                 and     a, a, q
                 sbcs    a, a, b
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
                 sub     a, i, k
                 cbnz    a, remloop
 
@@ -222,25 +222,25 @@ remloop:
                 mov     c, xzr
                 subs    j, xzr, xzr
 dubloop1:
-                ldr     a, [z, j, LSL 3]
-                extr    c, a, c, 63
-                ldr     b, [t, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                extr    c, a, c, #63
+                ldr     b, [t, j, lsl #3]
                 sbcs    c, c, b
-                str     c, [z, j, LSL 3]
+                str     c, [z, j, lsl #3]
                 mov     c, a
-                add     j, j, 1
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, dubloop1
-                lsr     c, c, 63
+                lsr     c, c, #63
                 sbc     c, c, xzr
                 adds    j, xzr, xzr
 corrloop1:
-                ldr     a, [z, j, LSL 3]
-                ldr     b, [t, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                ldr     b, [t, j, lsl #3]
                 and     b, b, c
                 adcs    a, a, b
-                str     a, [z, j, LSL 3]
-                add     j, j, 1
+                str     a, [z, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, corrloop1
 
@@ -250,26 +250,26 @@ corrloop1:
                 mov     c, xzr
                 subs    j, xzr, xzr
 dubloop2:
-                ldr     a, [z, j, LSL 3]
-                extr    c, a, c, 63
-                ldr     b, [t, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                extr    c, a, c, #63
+                ldr     b, [t, j, lsl #3]
                 sbcs    c, c, b
-                str     c, [z, j, LSL 3]
+                str     c, [z, j, lsl #3]
                 mov     c, a
-                add     j, j, 1
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, dubloop2
-                lsr     c, c, 63
+                lsr     c, c, #63
                 sbc     c, c, xzr
                 adds    j, xzr, xzr
 corrloop2:
-                ldr     a, [z, j, LSL 3]
-                ldr     b, [t, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                ldr     b, [t, j, lsl #3]
                 and     b, b, c
                 adcs    a, a, b
-                str     a, [z, j, LSL 3]
-                str     a, [t, j, LSL 3]
-                add     j, j, 1
+                str     a, [z, j, lsl #3]
+                str     a, [t, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, corrloop2
 
@@ -300,15 +300,15 @@ modloop:
                 mov     b, xzr
                 adds    c, xzr, xzr
 cmaloop:
-                ldr     a, [z, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
                 mul     l, h, a
                 adcs    b, b, c
                 umulh   c, h, a
                 adc     c, c, xzr
                 adds    l, b, l
-                ldr     b, [t, j, LSL 3]
-                str     l, [t, j, LSL 3]
-                add     j, j, 1
+                ldr     b, [t, j, lsl #3]
+                str     l, [t, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, cmaloop
 
@@ -318,26 +318,26 @@ cmaloop:
 
                 adds    j, xzr, xzr
 oaloop:
-                ldr     a, [t, j, LSL 3]
-                ldr     b, [z, j, LSL 3]
+                ldr     a, [t, j, lsl #3]
+                ldr     b, [z, j, lsl #3]
                 and     b, b, l
                 adcs    a, a, b
-                str     a, [t, j, LSL 3]
-                add     j, j, 1
+                str     a, [t, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, oaloop
                 adc     h, h, xzr
 
-                subs    i, i, 1
+                subs    i, i, #1
                 bne     modloop
 
 // Compute the negated modular inverse w (same register as i, not used again).
 
                 ldr     a, [m]
-                lsl     w, a, 2
+                lsl     w, a, #2
                 sub     w, a, w
-                eor     w, w, 2
-                mov     l, 1
+                eor     w, w, #2
+                mov     l, #1
                 madd    c, a, w, l
                 mul     b, c, c
                 madd    w, c, w, w
@@ -357,38 +357,38 @@ oaloop:
 
                 mul     l, d, a
                 umulh   c, d, a
-                mov     j, 1
-                sub     a, k, 1
+                mov     j, #1
+                sub     a, k, #1
                 adds    xzr, b, l
                 cbz     a, amontend
 
 amontloop:
-                ldr     a, [m, j, LSL 3]
-                ldr     b, [t, j, LSL 3]
+                ldr     a, [m, j, lsl #3]
+                ldr     b, [t, j, lsl #3]
                 mul     l, d, a
                 adcs    b, b, c
                 umulh   c, d, a
                 adc     c, c, xzr
                 adds    b, b, l
-                sub     a, j, 1
-                str     b, [t, a, LSL 3]
-                add     j, j, 1
+                sub     a, j, #1
+                str     b, [t, a, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, amontloop
 amontend:
                 adcs    h, h, c
                 csetm   l, cs
-                sub     a, k, 1
-                str     h, [t, a, LSL 3]
+                sub     a, k, #1
+                str     h, [t, a, lsl #3]
 
                 subs    j, xzr, xzr
 osloop:
-                ldr     a, [t, j, LSL 3]
-                ldr     b, [m, j, LSL 3]
+                ldr     a, [t, j, lsl #3]
+                ldr     b, [m, j, lsl #3]
                 and     b, b, l
                 sbcs    a, a, b
-                str     a, [z, j, LSL 3]
-                add     j, j, 1
+                str     a, [z, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, osloop
 
@@ -406,29 +406,29 @@ montouterloop:
                 ldr     a, [m]
                 mul     l, d, a
                 umulh   c, d, a
-                mov     j, 1
-                sub     a, k, 1
+                mov     j, #1
+                sub     a, k, #1
                 adds    xzr, b, l
                 cbz     a, montend
 montloop:
-                ldr     a, [m, j, LSL 3]
-                ldr     b, [z, j, LSL 3]
+                ldr     a, [m, j, lsl #3]
+                ldr     b, [z, j, lsl #3]
                 mul     l, d, a
                 adcs    b, b, c
                 umulh   c, d, a
                 adc     c, c, xzr
                 adds    b, b, l
-                sub     a, j, 1
-                str     b, [z, a, LSL 3]
-                add     j, j, 1
+                sub     a, j, #1
+                str     b, [z, a, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, montloop
 montend:
                 adc     c, c, xzr
-                sub     a, k, 1
-                str     c, [z, a, LSL 3]
+                sub     a, k, #1
+                str     c, [z, a, lsl #3]
 
-                subs    h, h, 1
+                subs    h, h, #1
                 bne     montouterloop
 
 // Now do a comparison of z with m to set a final correction mask
@@ -436,10 +436,10 @@ montend:
 
                 subs    j, xzr, xzr
 cmploop:
-                ldr     a, [z, j, LSL 3]
-                ldr     b, [m, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                ldr     b, [m, j, lsl #3]
                 sbcs    xzr, a, b
-                add     j, j, 1
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, cmploop
                 csetm   h, cs
@@ -448,12 +448,12 @@ cmploop:
 
                 subs    j, xzr, xzr
 corrloop:
-                ldr     a, [z, j, LSL 3]
-                ldr     b, [m, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
+                ldr     b, [m, j, lsl #3]
                 and     b, b, h
                 sbcs    a, a, b
-                str     a, [z, j, LSL 3]
-                add     j, j, 1
+                str     a, [z, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, corrloop
 

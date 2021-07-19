@@ -50,8 +50,8 @@ bignum_eq:
 // Toploop for the case n > m
 
 nloop:
-                sub     n, n, 1
-                ldr     a, [y, n, LSL 3]
+                sub     n, n, #1
+                ldr     a, [y, n, lsl #3]
                 orr     c, c, a
                 cmp     m, n
                 bne     nloop
@@ -60,8 +60,8 @@ nloop:
 // Toploop for the case m > n (or n = m which enters at "mtest")
 
 mloop:
-                sub     m, m, 1
-                ldr     a, [x, m, LSL 3]
+                sub     m, m, #1
+                ldr     a, [x, m, lsl #3]
                 orr     c, c, a
                 cmp     m, n
 mtest:
@@ -73,9 +73,9 @@ mmain:
                 cbz     m, end
 
 loop:
-                sub     m, m, 1
-                ldr     a, [x, m, LSL 3]
-                ldr     d, [y, m, LSL 3]
+                sub     m, m, #1
+                ldr     a, [x, m, lsl #3]
+                ldr     d, [y, m, lsl #3]
                 eor     a, a, d
                 orr     c, c, a
                 cbnz    m, loop

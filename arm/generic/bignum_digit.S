@@ -48,10 +48,10 @@ bignum_digit:
                 mov     d, xzr
                 mov     i, xzr
 loop:
-                ldr     a, [x, i, LSL 3]
+                ldr     a, [x, i, lsl #3]
                 cmp     i, n
                 csel    d, a, d, eq
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, k
                 bcc     loop
 

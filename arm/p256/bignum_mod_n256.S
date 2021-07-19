@@ -53,9 +53,9 @@
 
 .macro movbig nn, n3, n2, n1, n0
                 movz    \nn, \n0
-                movk    \nn, \n1, lsl 16
-                movk    \nn, \n2, lsl 32
-                movk    \nn, \n3, lsl 48
+                movk    \nn, \n1, lsl #16
+                movk    \nn, \n2, lsl #32
+                movk    \nn, \n3, lsl #48
 .endm
 
 .text
@@ -65,22 +65,22 @@ bignum_mod_n256:
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 
-                cmp     k, 4
+                cmp     k, #4
                 bcc     short
 
 // Otherwise load the top 4 digits (top-down) and reduce k by 4
 
-                sub     k, k, 4
-                lsl     t0, k, 3
+                sub     k, k, #4
+                lsl     t0, k, #3
                 add     t0, t0, x
-                ldp     m2, m3, [t0, 16]
+                ldp     m2, m3, [t0, #16]
                 ldp     m0, m1, [t0]
 
 // Load the complicated three words of 2^256 - n_256 = [n3; 0; n1; n0]
 
-                movbig  n0, 0x0c46, 0x353d, 0x039c, 0xdaaf
-                movbig  n1, 0x4319, 0x0552, 0x58e8, 0x617b
-                mov     n3, 0x00000000ffffffff
+                movbig  n0, #0x0c46, #0x353d, #0x039c, #0xdaaf
+                movbig  n1, #0x4319, #0x0552, #0x58e8, #0x617b
+                mov     n3, #0x00000000ffffffff
 
 // Reduce the top 4 digits mod n_256 (a conditional subtraction of n_256)
 
@@ -102,9 +102,9 @@ loop:
 // intended quotient approximation is MIN ((h + h>>32 + 1)>>64) (2^64 - 1).
 
                 subs    xzr, xzr, xzr   // set carry flag for +1
-                extr    q, m3, m2, 32
+                extr    q, m3, m2, #32
                 adcs    xzr, m2, q
-                lsr     q, m3, 32
+                lsr     q, m3, #32
                 adcs    q, m3, q
                 csetm   t0, cs
                 orr     q, q, t0
@@ -126,8 +126,8 @@ loop:
 
 // Decrement k and load the next digit (note that d aliases to q)
 
-                sub     k, k, 1
-                ldr     d, [x, k, LSL 3]
+                sub     k, k, #1
+                ldr     d, [x, k, lsl #3]
 
 // [t4;t3;t2;t1;t0] = [m3;m2;m1;m0;d] - q * n_256
 
@@ -155,7 +155,7 @@ loop:
 
 writeback:
                 stp     m0, m1, [z]
-                stp     m2, m3, [z, 16]
+                stp     m2, m3, [z, #16]
                 ret
 
 // Short case: just copy the input with zero-padding
@@ -168,10 +168,10 @@ short:
 
                 cbz     k, writeback
                 ldr     m0, [x]
-                subs    k, k, 1
+                subs    k, k, #1
                 beq     writeback
-                ldr     m1, [x, 8]
-                subs    k, k, 1
+                ldr     m1, [x, #8]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m2, [x, 16]
+                ldr     m2, [x, #16]
                 b       writeback

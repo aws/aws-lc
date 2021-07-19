@@ -58,9 +58,9 @@
 // Let w = d0, the original word we use as offset; d0 gets recycled
 // First let [t2;t1] = 2^32 * w
 // then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)
-                lsl     \t1, \d0, 32
+                lsl     \t1, \d0, #32
                 subs    \t0, \d0, \t1
-                lsr     \t2, \d0, 32
+                lsr     \t2, \d0, #32
                 sbc     \d0, \d0, \t2
 // Hence basic [d4;d3;d2;d1] += (2^256 - 2^224 + 2^192 + 2^96) * w
                 adds    \d1, \d1, \t1
@@ -82,9 +82,9 @@
 // Let w = d0, the original word we use as offset; d0 gets recycled
 // First let [t2;t1] = 2^32 * w
 // then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)
-                lsl     \t1, \d0, 32
+                lsl     \t1, \d0, #32
                 subs    \t0, \d0, \t1
-                lsr     \t2, \d0, 32
+                lsr     \t2, \d0, #32
                 sbc     \d0, \d0, \t2
 // Hence [d4;d3;d2;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w
                 adds    \d1, \d1, \t1
@@ -118,7 +118,7 @@ bignum_montsqr_p256:
 // Load in all words of the input
 
                 ldp     a0, a1, [x1]
-                ldp     a2, a3, [x1, 16]
+                ldp     a2, a3, [x1, #16]
 
 // Square the low half, getting a result in [s3;s2;s1;s0]
 
@@ -163,7 +163,7 @@ bignum_montsqr_p256:
                 adds    c2, c2, d4
                 adc     c3, c3, xzr
 
-                adds    xzr, d3, 1
+                adds    xzr, d3, #1
                 adcs    c1, c1, d1
                 adcs    c2, c2, d2
                 adc     c3, c3, d3
@@ -239,12 +239,12 @@ bignum_montsqr_p256:
 // comparison to catch cases where the residue is >= p.
 // First set [t2;0;t1;-1] = p_256 since we use the constants twice.
 
-                mov     t1, 0x00000000ffffffff
-                mov     t2, 0xffffffff00000001
+                mov     t1, #0x00000000ffffffff
+                mov     t2, #0xffffffff00000001
 
 // Set CF (because of inversion) iff (0,p_256) <= (c,r3,r2,r1,r0)
 
-                subs    xzr, r0, -1
+                subs    xzr, r0, #-1
                 sbcs    xzr, r1, t1
                 sbcs    xzr, r2, xzr
                 sbcs    xzr, r3, t2
@@ -264,6 +264,6 @@ bignum_montsqr_p256:
 // Store things back in place
 
                 stp     r0, r1, [x0]
-                stp     r2, r3, [x0, 16]
+                stp     r2, r3, [x0, #16]
 
                 ret

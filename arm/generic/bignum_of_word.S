@@ -37,12 +37,12 @@ bignum_of_word:
                 cbz     k, end                  // if k = 0 do nothing
 
                 str     n, [z]                  // Set zeroth word to n
-                subs    k, k, 1                 // k := k - 1
+                subs    k, k, #1                 // k := k - 1
                 beq     end                     // and if that's 0, finish
 
 loop:
-                str     xzr, [z, k, LSL 3]
-                subs    k, k, 1
+                str     xzr, [z, k, lsl #3]
+                subs    k, k, #1
                 bne     loop
 
 end:

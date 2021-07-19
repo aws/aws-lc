@@ -93,7 +93,7 @@ bignum_coprime:
 
 // We make use of just a couple of additional registers
 
-                stp     x19, x20, [sp, -16]!
+                stp     x19, x20, [sp, #-16]!
 
 // Compute k = max(m,n), and if this is zero skip to the end. Note that
 // in this case x0 = m = 0 so we return the right answer of "false"
@@ -104,7 +104,7 @@ bignum_coprime:
 
 // Set up inside w two size-k buffers m and n
 
-                lsl     i, k, 3
+                lsl     i, k, #3
                 add     n, m, i
 
 // Copy the input x into the buffer m, padding with zeros as needed
@@ -112,16 +112,16 @@ bignum_coprime:
                 mov     i, xzr
                 cbz     x0, xpadloop
 xloop:
-                ldr     t1, [x1, i, LSL 3]
-                str     t1, [m, i, LSL 3]
-                add     i, i, 1
+                ldr     t1, [x1, i, lsl #3]
+                str     t1, [m, i, lsl #3]
+                add     i, i, #1
                 cmp     i, x0
                 bcc     xloop
                 cmp     i, k
                 bcs     xskip
 xpadloop:
-                str     xzr, [m, i, LSL 3]
-                add     i, i, 1
+                str     xzr, [m, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     xpadloop
 xskip:
@@ -131,16 +131,16 @@ xskip:
                 mov     i, xzr
                 cbz     x2, ypadloop
 yloop:
-                ldr     t1, [x3, i, LSL 3]
-                str     t1, [n, i, LSL 3]
-                add     i, i, 1
+                ldr     t1, [x3, i, lsl #3]
+                str     t1, [n, i, lsl #3]
+                add     i, i, #1
                 cmp     i, x2
                 bcc     yloop
                 cmp     i, k
                 bcs     yskip
 ypadloop:
-                str     xzr, [n, i, LSL 3]
-                add     i, i, 1
+                str     xzr, [n, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     ypadloop
 yskip:
@@ -149,7 +149,7 @@ yskip:
 // The invariant is that m * n < 2^t at all times.
 
                 add     t, x0, x2
-                lsl     t, t, 6
+                lsl     t, t, #6
 
 // Record for the very end the OR of the lowest words.
 // If the bottom bit is zero we know both are even so the answer is false.
@@ -163,20 +163,20 @@ yskip:
 // one or other of m and n is odd then we make sure now that n is,
 // as expected by our invariant later on.
 
-                and     t3, t3, 1
-                sub     t3, t3, 1
+                and     t3, t3, #1
+                sub     t3, t3, #1
 
                 mov     i, xzr
 swaploop:
-                ldr     t1, [m, i, LSL 3]
-                ldr     t2, [n, i, LSL 3]
+                ldr     t1, [m, i, lsl #3]
+                ldr     t2, [n, i, lsl #3]
                 eor     t4, t1, t2
                 and     t4, t4, t3
                 eor     t1, t1, t4
                 eor     t2, t2, t4
-                str     t1, [m, i, LSL 3]
-                str     t2, [n, i, LSL 3]
-                add     i, i, 1
+                str     t1, [m, i, lsl #3]
+                str     t2, [n, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     swaploop
 
@@ -188,8 +188,8 @@ outerloop:
 // Either both m and n fit in l digits, or m has become zero and so
 // nothing happens in the loop anyway and this makes no difference.
 
-                add     i, t, 63
-                lsr     l, i, 6
+                add     i, t, #63
+                lsr     l, i, #6
                 cmp     l, k
                 csel    l, k, l, cs
 
@@ -208,8 +208,8 @@ outerloop:
 
                 mov     i, xzr
 toploop:
-                ldr     t1, [m, i, LSL 3]
-                ldr     t2, [n, i, LSL 3]
+                ldr     t1, [m, i, lsl #3]
+                ldr     t2, [n, i, lsl #3]
                 orr     c1, t1, t2
                 cmp     c1, xzr
                 and     c1, c2, h1
@@ -219,7 +219,7 @@ toploop:
                 csel    h1, t1, h1, ne
                 csel    h2, t2, h2, ne
                 csetm   c2, ne
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, l
                 bcc     toploop
 
@@ -252,19 +252,19 @@ toploop:
 // is simply the parity of the number of times the first condition,
 // used as the swapping criterion, fires in this loop.
 
-                mov     m_m, 1
+                mov     m_m, #1
                 mov     m_n, xzr
                 mov     n_m, xzr
-                mov     n_n, 1
+                mov     n_n, #1
 
-                mov     i, CHUNKSIZE
+                mov     i, #CHUNKSIZE
 
 innerloop:
 
 // b = (m_lo & 1ull) & (m_hi < n_hi);
 
-                and     t1, m_lo, 1
-                mov     t2, 2
+                and     t1, m_lo, #1
+                mov     t2, #2
                 subs    xzr, m_hi, n_hi
                 sbcs    xzr, t2, t1
 
@@ -293,7 +293,7 @@ innerloop:
 
 // b = (m_lo & 1ull);
 
-                ands    xzr, m_lo, 1
+                ands    xzr, m_lo, #1
 
 // if (b) { m_hi -= n_hi; m_lo -= n_lo; }
 
@@ -310,14 +310,14 @@ innerloop:
 // m_hi >>= 1; m_lo >>= 1;
 // n_m <<= 1; n_n <<= 1;
 
-                lsr     m_hi, m_hi, 1
-                lsr     m_lo, m_lo, 1
+                lsr     m_hi, m_hi, #1
+                lsr     m_lo, m_lo, #1
                 add     n_m, n_m, n_m
                 add     n_n, n_n, n_n
 
 // Next iteration
 
-                subs    i, i, 1
+                subs    i, i, #1
                 bne     innerloop
 
 // Now actually compute the updates to m and n corresponding to that matrix,
@@ -335,8 +335,8 @@ innerloop:
                 mov     c2, xzr
                 mov     i, xzr
 crossloop:
-                ldr     t1, [m, i, LSL 3]
-                ldr     t2, [n, i, LSL 3]
+                ldr     t1, [m, i, lsl #3]
+                ldr     t2, [n, i, lsl #3]
 
                 mul     l1, m_m, t1
                 mul     l2, m_n, t2
@@ -346,7 +346,7 @@ crossloop:
                 umulh   tt, m_n, t2
                 sub     c1, tt, c1
                 subs    l1, l1, l2
-                str     l1, [m, i, LSL 3]
+                str     l1, [m, i, lsl #3]
                 sbcs    h1, h1, c1
                 csetm   c1, cc
 
@@ -358,11 +358,11 @@ crossloop:
                 umulh   tt, n_n, t2
                 sub     c2, tt, c2
                 subs    l1, l1, l2
-                str     l1, [n, i, LSL 3]
+                str     l1, [n, i, lsl #3]
                 sbcs    h2, h2, c2
                 csetm   c2, cc
 
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, l
                 bcc     crossloop
 
@@ -372,22 +372,22 @@ crossloop:
 
                 ldr     l1, [m]
                 mov     i, xzr
-                sub     j, l, 1
+                sub     j, l, #1
                 cbz     j, negskip1
 
 negloop1:
-                add     t1, i, 8
+                add     t1, i, #8
                 ldr     t2, [m, t1]
-                extr    l1, t2, l1, CHUNKSIZE
+                extr    l1, t2, l1, #CHUNKSIZE
                 eor     l1, l1, c1
                 adcs    l1, l1, xzr
                 str     l1, [m, i]
                 mov     l1, t2
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, negloop1
 negskip1:
-                extr    l1, h1, l1, CHUNKSIZE
+                extr    l1, h1, l1, #CHUNKSIZE
                 eor     l1, l1, c1
                 adcs    l1, l1, xzr
                 str     l1, [m, i]
@@ -398,21 +398,21 @@ negskip1:
 
                 ldr     l1, [n]
                 mov     i, xzr
-                sub     j, l, 1
+                sub     j, l, #1
                 cbz     j, negskip2
 negloop2:
-                add     t1, i, 8
+                add     t1, i, #8
                 ldr     t2, [n, t1]
-                extr    l1, t2, l1, CHUNKSIZE
+                extr    l1, t2, l1, #CHUNKSIZE
                 eor     l1, l1, c2
                 adcs    l1, l1, xzr
                 str     l1, [n, i]
                 mov     l1, t2
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, negloop2
 negskip2:
-                extr    l1, h2, l1, CHUNKSIZE
+                extr    l1, h2, l1, #CHUNKSIZE
                 eor     l1, l1, c2
                 adcs    l1, l1, xzr
                 str     l1, [n, i]
@@ -423,20 +423,20 @@ negskip2:
 // maintain strictly t > 0 in the main loop, or the computation of the
 // optimized digit bound l could collapse to 0.
 
-                subs    t, t, CHUNKSIZE
+                subs    t, t, #CHUNKSIZE
                 bhi     outerloop
 
 // Now compare n with 1 (OR of the XORs in t1)
 
                 ldr     t1, [n]
-                eor     t1, t1, 1
-                cmp     k, 1
+                eor     t1, t1, #1
+                cmp     k, #1
                 beq     finalcomb
-                mov     i, 1
+                mov     i, #1
 compareloop:
-                ldr     t2, [n, i, LSL 3]
+                ldr     t2, [n, i, lsl #3]
                 orr     t1, t1, t2
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, k
                 bcc     compareloop
 
@@ -448,6 +448,6 @@ finalcomb:
                 and     x0, x0, t1
 
 end:
-                ldp     x19, x20, [sp], 16
+                ldp     x19, x20, [sp], #16
 
                 ret

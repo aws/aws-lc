@@ -75,33 +75,33 @@ outerloop:
                 umulh   h, d, a
                 str     d, [z]
                 adds    xzr, e, l       // Will be zero but want the carry
-                mov     j, 1
-                sub     a, k, 1
+                mov     j, #1
+                sub     a, k, #1
                 cbz     a, montend
 montloop:
-                ldr     a, [m, j, LSL 3]
-                ldr     e, [z, j, LSL 3]
+                ldr     a, [m, j, lsl #3]
+                ldr     e, [z, j, lsl #3]
                 mul     l, d, a
                 adcs    e, e, h
                 umulh   h, d, a
                 adc     h, h, xzr
                 adds    e, e, l
-                str     e, [z, j, LSL 3]
-                add     j, j, 1
+                str     e, [z, j, lsl #3]
+                add     j, j, #1
                 sub     a, j, k
                 cbnz    a, montloop
 montend:
                 adcs    h, h, c
                 adc     c, xzr, xzr
-                ldr     a, [z, k, LSL 3]
+                ldr     a, [z, k, lsl #3]
                 adds    h, h, a
                 adc     c, c, xzr
-                str     h, [z, k, LSL 3]
+                str     h, [z, k, lsl #3]
 
 // End of outer loop
 
-                add     z, z, 8         // For simple indexing, z pointer moves
-                add     i, i, 1
+                add     z, z, #8         // For simple indexing, z pointer moves
+                add     i, i, #1
                 cmp     i, k
                 bcc     outerloop
 

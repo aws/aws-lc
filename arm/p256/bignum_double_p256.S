@@ -53,12 +53,12 @@ bignum_double_p256:
 
 // Subtract p_256 to give 2 * x - p_256 = c + [n3; n2; n1; n0]
 
-                mov     n0, 0xffffffffffffffff
+                mov     n0, #0xffffffffffffffff
                 subs    n0, d0, n0
-                mov     n1, 0x00000000ffffffff
+                mov     n1, #0x00000000ffffffff
                 sbcs    n1, d1, n1
                 sbcs    n2, d2, xzr
-                mov     n3, 0xffffffff00000001
+                mov     n3, #0xffffffff00000001
                 sbcs    n3, d3, n3
                 sbcs    c, c, xzr
 

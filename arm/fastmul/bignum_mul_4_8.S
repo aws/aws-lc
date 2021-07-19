@@ -44,7 +44,7 @@
         mul     \l, \t, \h
         umulh   \h, \t, \h
         cinv    \c, \c, cc
-        adds    xzr, \c, 1
+        adds    xzr, \c, #1
         eor     \l, \l, \c
         adcs    \a, \a, \l
         eor     \h, \h, \c
@@ -95,14 +95,14 @@
 
 bignum_mul_4_8:
 
-                stp     x19, x20, [sp, -16]!
+                stp     x19, x20, [sp, #-16]!
 
 // Load operands
 
                 ldp     a0, a1, [x1]
                 ldp     b0, b1, [x2]
-                ldp     a2, a3, [x1, 16]
-                ldp     b2, b3, [x2, 16]
+                ldp     a2, a3, [x1, #16]
+                ldp     b2, b3, [x2, #16]
 
 // First accumulate all the "simple" products as [s4,s3,s2,s1,s0]
 
@@ -145,7 +145,7 @@ bignum_mul_4_8:
                 adc     u7, u7, c
 
                 muldiffnadd u2,u1, c,h,l,t, a0,a1, b1,b0
-                str     u1, [x0, 8]
+                str     u1, [x0, #8]
                 adcs    u3, u3, c
                 adcs    u4, u4, c
                 adcs    u5, u5, c
@@ -171,12 +171,12 @@ bignum_mul_4_8:
                 adcs    u6, u6, c
                 adc     u7, u7, c
 
-                stp     u2, u3, [x0, 16]
-                stp     u4, u5, [x0, 32]
-                stp     u6, u7, [x0, 48]
+                stp     u2, u3, [x0, #16]
+                stp     u4, u5, [x0, #32]
+                stp     u6, u7, [x0, #48]
 
 // Restore regs and return
 
-                ldp     x19, x20, [sp], 16
+                ldp     x19, x20, [sp], #16
 
                 ret

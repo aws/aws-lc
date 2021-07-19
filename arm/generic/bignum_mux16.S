@@ -55,16 +55,16 @@ loop:
                 ldr     a, [x]
                 mov     j, k
         .rep 15
-                ldr     b, [x, j, LSL 3]
+                ldr     b, [x, j, lsl #3]
                 cmp     j, i
                 csel    a, b, a, eq
                 add     j, j, k
         .endr
                 str     a, [z]
 
-                add     z, z, 8
-                add     x, x, 8
-                subs    n, n, 1
+                add     z, z, #8
+                add     x, x, #8
+                subs    n, n, #1
                 bne     loop
 
 end:

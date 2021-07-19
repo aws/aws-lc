@@ -41,7 +41,7 @@ bignum_neg_p256:
 // Load the 4 digits of x
 
                 ldp     d0, d1, [x]
-                ldp     d2, d3, [x, 16]
+                ldp     d2, d3, [x, #16]
 
 // Set a bitmask p for the input being nonzero, so that we avoid doing
 // -0 = p_256 and hence maintain strict modular reduction
@@ -49,7 +49,7 @@ bignum_neg_p256:
                 orr     t, d0, d1
                 orr     p, d2, d3
                 orr     p, p, t
-                cmp     p, 0
+                cmp     p, #0
                 csetm   p, ne
 
 // Load the nontrivial words of p_256 = [n3;0;n1;-1], mask them
@@ -57,20 +57,20 @@ bignum_neg_p256:
 
                 subs    d0, p, d0
 
-                mov     t, 0x00000000ffffffff
+                mov     t, #0x00000000ffffffff
                 and     t, t, p
                 sbcs    d1, t, d1
 
                 sbcs    d2, xzr, d2
 
-                mov     t, 0xffffffff00000001
+                mov     t, #0xffffffff00000001
                 and     t, t, p
                 sbc     d3, t, d3
 
 // Write back the result
 
                 stp     d0, d1, [z]
-                stp     d2, d3, [z, 16]
+                stp     d2, d3, [z, #16]
 
 // Return
 

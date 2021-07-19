@@ -50,8 +50,8 @@ subloop:
                 ldr     b, [y, i]
                 sbcs    a, a, b
                 str     a, [z, i]
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, subloop
                 csetm   c, cc
 
@@ -65,8 +65,8 @@ addloop:
                 and     b, b, c
                 adcs    a, a, b
                 str     a, [z, i]
-                add     i, i, 8
-                sub     j, j, 1
+                add     i, i, #8
+                sub     j, j, #1
                 cbnz    j, addloop
 
 end:

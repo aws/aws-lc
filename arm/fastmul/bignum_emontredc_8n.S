@@ -45,7 +45,7 @@
         mul     \l, \t, \h
         umulh   \h, \t, \h
         cinv    \c, \c, cc
-        adds    xzr, \c, 1
+        adds    xzr, \c, #1
         eor     \l, \l, \c
         adcs    \a, \a, \l
         eor     \h, \h, \c
@@ -132,7 +132,7 @@
                 ldp     u2, u3, [z]
                 adds    c0, c0, u2
                 adcs    c1, c1, u3
-                ldp     u2, u3, [z, 16]
+                ldp     u2, u3, [z, #16]
                 adcs    c2, c2, u2
                 adcs    c3, c3, u3
                 adc     c4, xzr, xzr
@@ -198,7 +198,7 @@
                 mov     c0, u4
 
                 stp     u0, u1, [z]
-                stp     u2, u3, [z, 16]
+                stp     u2, u3, [z, #16]
 .endm
 
 // *****************************************************
@@ -207,22 +207,22 @@
 
 bignum_emontredc_8n:
 
-                stp     x19, x20, [sp, -16]!
-                stp     x21, x22, [sp, -16]!
-                stp     x23, x24, [sp, -16]!
-                stp     x25, x26, [sp, -16]!
-                stp     x27, x28, [sp, -16]!
+                stp     x19, x20, [sp, #-16]!
+                stp     x21, x22, [sp, #-16]!
+                stp     x23, x24, [sp, #-16]!
+                stp     x25, x26, [sp, #-16]!
+                stp     x27, x28, [sp, #-16]!
 
 // Set up (k/4 - 1)<<5 which is used as inner count and pointer fixup
 // ns i = k/4 as the outer loop count.
 // At this point skip everything if k/4 = 0, returning our x0 = 0 value
 
-                lsr     k4m1, x0, 2
+                lsr     k4m1, x0, #2
                 mov     i, k4m1
-                subs    c, k4m1, 1
+                subs    c, k4m1, #1
                 bcc     end
                 mov     tc, xzr
-                lsl     k4m1, c, 5
+                lsl     k4m1, c, #5
 
 // Outer loop, one digit of Montgomery reduction adding in word * m.
 // Rather than propagating the carry to the end each time, we
@@ -233,12 +233,12 @@ outerloop:
 // Load [u3;u2;u1;u0] = bottom 4 digits of the input at current window
 
                 ldp     u0, u1, [z]
-                ldp     u2, u3, [z, 16]
+                ldp     u2, u3, [z, #16]
 
 // Load the bottom 4 digits of m
 
                 ldp     b0, b1, [m]
-                ldp     b2, b3, [m, 16]
+                ldp     b2, b3, [m, #16]
 
 // Montgomery step 0
 
@@ -330,36 +330,36 @@ outerloop:
 // We don't use these ourselves again though; they stay in [a3;a2;a1;a0]
 
                 stp     a0, a1, [z]
-                stp     a2, a3, [z, 16]
+                stp     a2, a3, [z, #16]
 
 // Repeated multiply-add block to do the k/4-1 remaining 4-digit chunks
 
                 cbz     k4m1, madddone
                 mov     j, k4m1
 maddloop:
-                add     m, m, 32
-                add     z, z, 32
+                add     m, m, #32
+                add     z, z, #32
 
                 ldp     b0, b1, [m]
-                ldp     b2, b3, [m, 16]
+                ldp     b2, b3, [m, #16]
                 madd4
-                subs    j, j, 32
+                subs    j, j, #32
                 bne     maddloop
 madddone:
 
 // Add the carry out to the existing z contents, propagating the
 // top carry tc up by 32 places as we move "leftwards".
 
-                ldp     u0, u1, [z, 32]
-                ldp     u2, u3, [z, 48]
+                ldp     u0, u1, [z, #32]
+                ldp     u2, u3, [z, #48]
                 adds    xzr, tc, tc
                 adcs    u0, u0, c0
                 adcs    u1, u1, c1
                 adcs    u2, u2, c2
                 adcs    u3, u3, c3
                 csetm   tc, cs
-                stp     u0, u1, [z, 32]
-                stp     u2, u3, [z, 48]
+                stp     u0, u1, [z, #32]
+                stp     u2, u3, [z, #48]
 
 // Compensate for the repeated bumps in m and z in the inner loop
 
@@ -368,8 +368,8 @@ madddone:
 
 // Bump up z only and keep going
 
-                add     z, z, 32
-                subs    i, i, 1
+                add     z, z, #32
+                subs    i, i, #1
                 bne     outerloop
 
 // Return the top carry as 0 or 1 (it's currently a bitmask)
@@ -377,10 +377,10 @@ madddone:
                 neg     x0, tc
 
 end:
-                ldp     x27, x28, [sp], 16
-                ldp     x25, x26, [sp], 16
-                ldp     x23, x24, [sp], 16
-                ldp     x21, x22, [sp], 16
-                ldp     x19, x20, [sp], 16
+                ldp     x27, x28, [sp], #16
+                ldp     x25, x26, [sp], #16
+                ldp     x23, x24, [sp], #16
+                ldp     x21, x22, [sp], #16
+                ldp     x19, x20, [sp], #16
 
                 ret

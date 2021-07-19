@@ -44,7 +44,7 @@
         mul     \l, \t, \h
         umulh   \h, \t, \h
         cinv    \c, \c, cc
-        adds    xzr, \c, 1
+        adds    xzr, \c, #1
         eor     \l, \l, \c
         adcs    \a, \a, \l
         eor     \h, \h, \c
@@ -148,10 +148,10 @@
 // Optionally add the existing z contents
 
 .rep \afl
-                ldp     l, h, [z,32]
+                ldp     l, h, [z,#32]
                 adds    s0, s0, l
                 adcs    s1, s1, h
-                ldp     l, h, [z,48]
+                ldp     l, h, [z,#48]
                 adcs    s2, s2, l
                 adcs    s3, s3, h
                 adcs    s4, s4, xzr
@@ -200,9 +200,9 @@ bignum_mul_8_16:
 
 // Save registers
 
-                stp     x19, x20, [sp, -16]!
-                stp     x21, x22, [sp, -16]!
-                stp     x23, x24, [sp, -16]!
+                stp     x19, x20, [sp, #-16]!
+                stp     x21, x22, [sp, #-16]!
+                stp     x23, x24, [sp, #-16]!
 
 // Multiply the low halves and then the high halves using ADK 4x4->8.
 // For the second one add the top of the low part (Q1) already into
@@ -213,19 +213,19 @@ bignum_mul_8_16:
 
                 ldp     a0, a1, [x]
                 ldp     b0, b1, [y]
-                ldp     a2, a3, [x, 16]
-                ldp     b2, b3, [y, 16]
+                ldp     a2, a3, [x, #16]
+                ldp     b2, b3, [y, #16]
 
                 mul4    0
 
-                ldp     a0, a1, [x, 32]
+                ldp     a0, a1, [x, #32]
                 stp     s0, s1, [z]
-                ldp     b0, b1, [y, 32]
-                stp     s2, s3, [z, 16]
-                ldp     a2, a3, [x, 48]
-                stp     s4, s5, [z, 32]
-                ldp     b2, b3, [y, 48]
-                stp     s6, s7, [z, 48]
+                ldp     b0, b1, [y, #32]
+                stp     s2, s3, [z, #16]
+                ldp     a2, a3, [x, #48]
+                stp     s4, s5, [z, #32]
+                ldp     b2, b3, [y, #48]
+                stp     s6, s7, [z, #48]
 
                 mul4    1
 
@@ -236,22 +236,22 @@ bignum_mul_8_16:
                 ldp     l, h, [x]
                 subs    a0, a0, l
                 sbcs    a1, a1, h
-                ldp     l, h, [x, 16]
+                ldp     l, h, [x, #16]
                 sbcs    a2, a2, l
                 sbcs    a3, a3, h
                 csetm   t, cc
 
-                stp     s0, s1, [z, 64]
+                stp     s0, s1, [z, #64]
 
                 ldp     l, h, [y]
                 subs    b0, l, b0
                 sbcs    b1, h, b1
-                ldp     l, h, [y, 16]
+                ldp     l, h, [y, #16]
                 sbcs    b2, l, b2
                 sbcs    b3, h, b3
                 csetm   s, cc
 
-                stp     s2, s3, [z, 80]
+                stp     s2, s3, [z, #80]
 
                 eor     a0, a0, t
                 subs    a0, a0, t
@@ -262,7 +262,7 @@ bignum_mul_8_16:
                 eor     a3, a3, t
                 sbc     a3, a3, t
 
-                stp     s4, s5, [z, 96]
+                stp     s4, s5, [z, #96]
 
                 eor     b0, b0, s
                 subs    b0, b0, s
@@ -273,7 +273,7 @@ bignum_mul_8_16:
                 eor     b3, b3, s
                 sbc     b3, b3, s
 
-                stp     s6, s7, [z, 112]
+                stp     s6, s7, [z, #112]
 
 // Save the correct sign for the sub-product
 
@@ -286,17 +286,17 @@ bignum_mul_8_16:
 // Now accumulate the positive mid-terms as [u7,u6,u5,u4,u3.u2,u1,u0]
 
                 ldp     u0, u1, [z]
-                ldp     u4, u5, [z,64]
+                ldp     u4, u5, [z,#64]
                 adds    u0, u0, u4
                 adcs    u1, u1, u5
-                ldp     u2, u3, [z,16]
-                ldp     u6, u7, [z,80]
+                ldp     u2, u3, [z,#16]
+                ldp     u6, u7, [z,#80]
                 adcs    u2, u2, u6
                 adcs    u3, u3, u7
-                ldp     u8, u9, [z,96]
+                ldp     u8, u9, [z,#96]
                 adcs    u4, u4, u8
                 adcs    u5, u5, u9
-                ldp     u10, u11, [z,112]
+                ldp     u10, u11, [z,#112]
                 adcs    u6, u6, u10
                 adcs    u7, u7, u11
 
@@ -310,7 +310,7 @@ bignum_mul_8_16:
 
 // Add in the sign-adjusted complex term
 
-                adds    xzr, s, 1
+                adds    xzr, s, #1
                 eor     s0, s0, s
                 adcs    u0, s0, u0
                 eor     s1, s1, s
@@ -337,17 +337,17 @@ bignum_mul_8_16:
 
 // Store it back
 
-                stp     u0, u1, [z,32]
-                stp     u2, u3, [z,48]
-                stp     u4, u5, [z,64]
-                stp     u6, u7, [z,80]
-                stp     u8, u9, [z,96]
-                stp     u10, u11, [z,112]
+                stp     u0, u1, [z,#32]
+                stp     u2, u3, [z,#48]
+                stp     u4, u5, [z,#64]
+                stp     u6, u7, [z,#80]
+                stp     u8, u9, [z,#96]
+                stp     u10, u11, [z,#112]
 
 // Restore regs and return
 
-                ldp     x23, x24, [sp], 16
-                ldp     x21, x22, [sp], 16
-                ldp     x19, x20, [sp], 16
+                ldp     x23, x24, [sp], #16
+                ldp     x21, x22, [sp], #16
+                ldp     x19, x20, [sp], #16
 
                 ret

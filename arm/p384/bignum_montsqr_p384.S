@@ -60,19 +60,19 @@
 .macro          montreds d6,d5,d4,d3,d2,d1,d0, t3,t2,t1
 // Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64
 // Recycle d0 (which we know gets implicitly cancelled) to store it
-                lsl     \t1, \d0, 32
+                lsl     \t1, \d0, #32
                 add     \d0, \t1, \d0
 // Now let [t2;t1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)
 // We need to subtract 2^32 * this, and we can ignore its lower 32
 // bits since by design it will cancel anyway; we only need the w_hi
 // part to get the carry propagation going.
-                lsr     \t1, \d0, 32
+                lsr     \t1, \d0, #32
                 subs    \t1, \t1, \d0
                 sbc     \t2, \d0, xzr
 // Now select in t1 the field to subtract from d1
-                extr    \t1, \t2, \t1, 32
+                extr    \t1, \t2, \t1, #32
 // And now get the terms to subtract from d2 and d3
-                lsr     \t2, \t2, 32
+                lsr     \t2, \t2, #32
                 adds    \t2, \t2, \d0
                 adc     \t3, xzr, xzr
 // Do the subtraction of that portion
@@ -108,8 +108,8 @@ bignum_montsqr_p384:
 // Load in all words of the input
 
                 ldp     a0, a1, [x1]
-                ldp     a2, a3, [x1, 16]
-                ldp     a4, a5, [x1, 32]
+                ldp     a2, a3, [x1, #16]
+                ldp     a4, a5, [x1, #32]
 
 // Square the low half getting a result in [c5;c4;c3;c2;c1;c0]
 
@@ -154,8 +154,8 @@ bignum_montsqr_p384:
                 montreds c2,c1,c0,c5,c4,c3,c2, d1,d2,d3
 
                 stp     c3, c4, [x0]
-                stp     c5, c0, [x0, 16]
-                stp     c1, c2, [x0, 32]
+                stp     c5, c0, [x0, #16]
+                stp     c1, c2, [x0, #32]
 
 // Compute product of the cross-term with ADK 3x3->6 multiplier
 
@@ -206,7 +206,7 @@ bignum_montsqr_p384:
                 adc     s5, h2, xzr
 
                 muldiffn c,h,l, t, a0,a1, a4,a3
-                adds    xzr, c, 1
+                adds    xzr, c, #1
                 adcs    s1, s1, l
                 adcs    s2, s2, h
                 adcs    s3, s3, c
@@ -214,14 +214,14 @@ bignum_montsqr_p384:
                 adc     s5, s5, c
 
                 muldiffn c,h,l, t, a0,a2, a5,a3
-                adds    xzr, c, 1
+                adds    xzr, c, #1
                 adcs    s2, s2, l
                 adcs    s3, s3, h
                 adcs    s4, s4, c
                 adc     s5, s5, c
 
                 muldiffn c,h,l, t, a1,a2, a5,a4
-                adds    xzr, c, 1
+                adds    xzr, c, #1
                 adcs    s3, s3, l
                 adcs    s4, s4, h
                 adc     s5, s5, c
@@ -239,10 +239,10 @@ bignum_montsqr_p384:
                 ldp     a0, a1, [x0]
                 adds    s0, s0, a0
                 adcs    s1, s1, a1
-                ldp     a0, a1, [x0, 16]
+                ldp     a0, a1, [x0, #16]
                 adcs    s2, s2, a0
                 adcs    s3, s3, a1
-                ldp     a0, a1, [x0, 32]
+                ldp     a0, a1, [x0, #32]
                 adcs    s4, s4, a0
                 adcs    s5, s5, a1
                 adc     s6, s6, xzr
@@ -336,9 +336,9 @@ bignum_montsqr_p384:
 // comparison to catch cases where the residue is >= p.
 // First set [0;0;0;t3;t2;t1] = 2^384 - p_384
 
-                mov     t1, 0xffffffff00000001
-                mov     t2, 0x00000000ffffffff
-                mov     t3, 0x0000000000000001
+                mov     t1, #0xffffffff00000001
+                mov     t2, #0x00000000ffffffff
+                mov     t3, #0x0000000000000001
 
 // Let dd = [] be the 6-word intermediate result.
 // Set CF if the addition dd + (2^384 - p_384) >= 2^384, hence iff dd >= p_384.
@@ -374,7 +374,7 @@ bignum_montsqr_p384:
 // Store it back
 
                 stp     r0, r1, [x0]
-                stp     r2, r3, [x0, 16]
-                stp     r4, r5, [x0, 32]
+                stp     r2, r3, [x0, #16]
+                stp     r4, r5, [x0, #32]
 
                 ret

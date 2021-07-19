@@ -57,11 +57,11 @@ bignum_sub_p256:
 // Now correct by adding masked p_256
 
                 adds    d0, d0, c
-                mov     l, 0x00000000ffffffff
+                mov     l, #0x00000000ffffffff
                 and     l, l, c
                 adcs    d1, d1, l
                 adcs    d2, d2, xzr
-                mov     l, 0xffffffff00000001
+                mov     l, #0xffffffff00000001
                 and     l, l, c
                 adc     d3, d3, l
 

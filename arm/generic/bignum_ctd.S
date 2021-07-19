@@ -43,9 +43,9 @@ bignum_ctd:
 
                 mov     i, k
 loop:
-                sub     k, k, 1
-                ldr     a, [x, k, LSL 3]
-                cmp     a, 0
+                sub     k, k, #1
+                ldr     a, [x, k, lsl #3]
+                cmp     a, #0
                 csel    i, k, i, ne
                 cbnz    k, loop
 

@@ -45,7 +45,7 @@ bignum_optneg_p256:
 // Load the 4 digits of x
 
                 ldp     d0, d1, [x]
-                ldp     d2, d3, [x, 16]
+                ldp     d2, d3, [x, #16]
 
 // Adjust p by zeroing it if the input is zero (to avoid giving -0 = p, which
 // is not strictly reduced even though it's correct modulo p)
@@ -53,14 +53,14 @@ bignum_optneg_p256:
                 orr     n0, d0, d1
                 orr     n1, d2, d3
                 orr     n2, n0, n1
-                cmp     n2, 0
+                cmp     n2, #0
                 csel    p, xzr, p, eq
 
 // Load the three nonzero words of p_256 = [n3;0;n1;n0]
 
-                mov     n0, 0xffffffffffffffff
-                mov     n1, 0x00000000ffffffff
-                mov     n3, 0xffffffff00000001
+                mov     n0, #0xffffffffffffffff
+                mov     n1, #0x00000000ffffffff
+                mov     n3, #0xffffffff00000001
 
 // Do the subtraction, which by hypothesis does not underflow
 
@@ -71,7 +71,7 @@ bignum_optneg_p256:
 
 // Set condition code if original x is nonzero and p was nonzero
 
-                cmp     p, 0
+                cmp     p, #0
 
 // Hence multiplex and write back
 
@@ -81,7 +81,7 @@ bignum_optneg_p256:
                 csel    n3, n3, d3, ne
 
                 stp     n0, n1, [z]
-                stp     n2, n3, [z, 16]
+                stp     n2, n3, [z, #16]
 
 // Return
 

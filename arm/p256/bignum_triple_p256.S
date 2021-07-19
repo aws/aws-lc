@@ -64,30 +64,30 @@ bignum_triple_p256:
 
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 
-                lsl     d0, a0, 1
+                lsl     d0, a0, #1
                 adds    d0, d0, a0
-                extr    d1, a1, a0, 63
+                extr    d1, a1, a0, #63
                 adcs    d1, d1, a1
-                extr    d2, a2, a1, 63
+                extr    d2, a2, a1, #63
                 adcs    d2, d2, a2
-                extr    d3, a3, a2, 63
+                extr    d3, a3, a2, #63
                 adcs    d3, d3, a3
-                lsr     h, a3, 63
+                lsr     h, a3, #63
                 adc     h, h, xzr
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256 <= z - q * p_256 < p_256, so we just need
 // to subtract q * p_256 and then if that's negative, add back p_256.
 
-                add     q, h, 1
+                add     q, h, #1
 
 // Initial subtraction of z - q * p_256, with bitmask c for the carry
 
-                lsl     t1, q, 32
+                lsl     t1, q, #32
                 adds    d3, d3, t1
                 adc     h, h, xzr
                 sub     t0, xzr, q
-                sub     t1, t1, 1
+                sub     t1, t1, #1
                 subs    d0, d0, t0
                 sbcs    d1, d1, t1
                 sbcs    d2, d2, xzr
@@ -97,7 +97,7 @@ bignum_triple_p256:
 // Use the bitmask c for final masked addition of p_256.
 
                 adds    d0, d0, c
-                mov     t0, 0x00000000ffffffff
+                mov     t0, #0x00000000ffffffff
                 and     t0, t0, c
                 adcs    d1, d1, t0
                 adcs    d2, d2, xzr
@@ -107,6 +107,6 @@ bignum_triple_p256:
 // Finally store the result
 
                 stp     d0, d1, [z]
-                stp     d2, d3, [z, 16]
+                stp     d2, d3, [z, #16]
 
                 ret

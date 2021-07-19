@@ -50,25 +50,25 @@ bignum_mod_p256:
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 
-                cmp     k, 4
+                cmp     k, #4
                 bcc     short
 
 // Otherwise load the top 4 digits (top-down) and reduce k by 4
 
-                sub     k, k, 4
-                lsl     t0, k, 3
+                sub     k, k, #4
+                lsl     t0, k, #3
                 add     t0, t0, x
-                ldp     m2, m3, [t0, 16]
+                ldp     m2, m3, [t0, #16]
                 ldp     m0, m1, [t0]
 
 // Load the complicated words of p_256 = [n3;0;n1;-1]
 
-                mov     n1, 0x00000000ffffffff
-                mov     n3, 0xffffffff00000001
+                mov     n1, #0x00000000ffffffff
+                mov     n3, #0xffffffff00000001
 
 // Reduce the top 4 digits mod p_256 (a conditional subtraction of p_256)
 
-                subs    t0, m0, -1
+                subs    t0, m0, #-1
                 sbcs    t1, m1, n1
                 sbcs    t2, m2, xzr
                 sbcs    t3, m3, n3
@@ -87,24 +87,24 @@ loop:
 // [m3;m2;m1;m0;t0] |-> [m3;m2;m1;m0]; the shuffling downwards is absorbed
 // into the various ALU operations
 
-                sub     k, k, 1
-                ldr     t0, [x, k, LSL 3]
+                sub     k, k, #1
+                ldr     t0, [x, k, lsl #3]
 
 // Writing the input as z = 2^256 * h + 2^192 * l + t = 2^192 * hl + t, our
 // intended quotient approximation is MIN ((hl + hl>>32 + 1)>>64) (2^64 - 1).
 
                 subs    xzr, xzr, xzr   // set carry flag for +1
-                extr    q, m3, m2, 32
+                extr    q, m3, m2, #32
                 adcs    xzr, m2, q
-                lsr     q, m3, 32
+                lsr     q, m3, #32
                 adcs    q, m3, q
                 csetm   t1, cs
                 orr     q, q, t1
 
 // First do [t2;t1] = 2^32 * q, which we use twice
 
-                lsl     t1, q, 32
-                lsr     t2, q, 32
+                lsl     t1, q, #32
+                lsr     t2, q, #32
 
 // Add 2^224 * q to sum
 
@@ -140,7 +140,7 @@ loop:
 
 writeback:
                 stp     m0, m1, [z]
-                stp     m2, m3, [z, 16]
+                stp     m2, m3, [z, #16]
                 ret
 
 // Short case: just copy the input with zero-padding
@@ -153,10 +153,10 @@ short:
 
                 cbz     k, writeback
                 ldr     m0, [x]
-                subs    k, k, 1
+                subs    k, k, #1
                 beq     writeback
-                ldr     m1, [x, 8]
-                subs    k, k, 1
+                ldr     m1, [x, #8]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m2, [x, 16]
+                ldr     m2, [x, #16]
                 b       writeback

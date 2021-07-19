@@ -48,9 +48,9 @@ bignum_modoptneg:
                 mov     i, xzr
                 mov     a, xzr
 cmploop:
-                ldr     b, [x, i, LSL 3]
+                ldr     b, [x, i, lsl #3]
                 orr     a, a, b
-                add     i, i, 1
+                add     i, i, #1
                 cmp     i, k
                 bcc     cmploop
 
@@ -68,13 +68,13 @@ cmploop:
                 adds    xzr, p, p
 mainloop:
 
-                ldr     a, [m, i, LSL 3]
-                ldr     b, [x, i, LSL 3]
+                ldr     a, [m, i, lsl #3]
+                ldr     b, [x, i, lsl #3]
                 and     a, a, p
                 eor     b, b, p
                 adcs    a, a, b
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
                 sub     a, i, k
                 cbnz    a, mainloop
 

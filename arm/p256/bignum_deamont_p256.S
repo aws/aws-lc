@@ -40,9 +40,9 @@
 // Let w = d0, the original word we use as offset; d0 gets recycled
 // First let [t2;t1] = 2^32 * w
 // then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)
-                lsl     \t1, \d0, 32
+                lsl     \t1, \d0, #32
                 subs    \t0, \d0, \t1
-                lsr     \t2, \d0, 32
+                lsr     \t2, \d0, #32
                 sbc     \d0, \d0, \t2
 // Hence [d4;d3;d2;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w
                 adds    \d1, \d1, \t1
@@ -74,7 +74,7 @@ bignum_deamont_p256:
 // Set up an initial window with the input x and an extra leading zero
 
                 ldp     d0, d1, [x]
-                ldp     d2, d3, [x, 16]
+                ldp     d2, d3, [x, #16]
 
 // Systematically scroll left doing 1-step reductions
 
@@ -88,10 +88,10 @@ bignum_deamont_p256:
 
 // Now compare end result in [d3;d2;d1;d0] with p_256 = [w; 0; v; -1]
 
-                mov     v, 0x00000000ffffffff
-                mov     w, 0xffffffff00000001
+                mov     v, #0x00000000ffffffff
+                mov     w, #0xffffffff00000001
 
-                subs    xzr, d0, -1
+                subs    xzr, d0, #-1
                 sbcs    xzr, d1, v
                 sbcs    xzr, d2, xzr
                 sbcs    xzr, d3, w
@@ -111,6 +111,6 @@ bignum_deamont_p256:
 // Write back result
 
                 stp     d0, d1, [z]
-                stp     d2, d3, [z, 16]
+                stp     d2, d3, [z, #16]
 
                 ret

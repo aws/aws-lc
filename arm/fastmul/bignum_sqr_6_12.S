@@ -66,8 +66,8 @@ bignum_sqr_6_12:
 // Load in all words of the input
 
                 ldp     a0, a1, [x1]
-                ldp     a2, a3, [x1, 16]
-                ldp     a4, a5, [x1, 32]
+                ldp     a2, a3, [x1, #16]
+                ldp     a4, a5, [x1, #32]
 
 // Square the low half
 
@@ -97,15 +97,15 @@ bignum_sqr_6_12:
                 adc     c5, c5, xzr
 
                 adds    c1, c1, d1
-                str     c1, [x0,8]
+                str     c1, [x0,#8]
                 adcs    c2, c2, d2
-                str     c2, [x0,16]
+                str     c2, [x0,#16]
                 adcs    c3, c3, d3
-                str     c3, [x0,24]
+                str     c3, [x0,#24]
                 adcs    c4, c4, d4
-                str     c4, [x0,32]
+                str     c4, [x0,#32]
                 adc     c5, c5, xzr
-                str     c5, [x0,40]
+                str     c5, [x0,#40]
 
 // Square the high half
 
@@ -113,7 +113,7 @@ bignum_sqr_6_12:
                 mul     d2, a3, a5
                 mul     d3, a4, a5
                 mul     c0, a3, a3
-                str     c0, [x0,48]
+                str     c0, [x0,#48]
                 mul     c2, a4, a4
                 mul     c4, a5, a5
 
@@ -135,15 +135,15 @@ bignum_sqr_6_12:
                 adc     c5, c5, xzr
 
                 adds    c1, c1, d1
-                str     c1, [x0,56]
+                str     c1, [x0,#56]
                 adcs    c2, c2, d2
-                str     c2, [x0,64]
+                str     c2, [x0,#64]
                 adcs    c3, c3, d3
-                str     c3, [x0,72]
+                str     c3, [x0,#72]
                 adcs    c4, c4, d4
-                str     c4, [x0,80]
+                str     c4, [x0,#80]
                 adc     c5, c5, xzr
-                str     c5, [x0,88]
+                str     c5, [x0,#88]
 
 // Compute product of the cross-term with ADK 3x3->6 multiplier
 
@@ -194,7 +194,7 @@ bignum_sqr_6_12:
                 adc     s5, h2, xzr
 
                 muldiffn c,h,l, t, a0,a1, a4,a3
-                adds    xzr, c, 1
+                adds    xzr, c, #1
                 adcs    s1, s1, l
                 adcs    s2, s2, h
                 adcs    s3, s3, c
@@ -202,14 +202,14 @@ bignum_sqr_6_12:
                 adc     s5, s5, c
 
                 muldiffn c,h,l, t, a0,a2, a5,a3
-                adds    xzr, c, 1
+                adds    xzr, c, #1
                 adcs    s2, s2, l
                 adcs    s3, s3, h
                 adcs    s4, s4, c
                 adc     s5, s5, c
 
                 muldiffn c,h,l, t, a1,a2, a5,a4
-                adds    xzr, c, 1
+                adds    xzr, c, #1
                 adcs    s3, s3, l
                 adcs    s4, s4, h
                 adc     s5, s5, c
@@ -226,40 +226,40 @@ bignum_sqr_6_12:
 
 // Finally, add it into the term
 
-                ldr     a0, [x0, 24]
+                ldr     a0, [x0, #24]
                 adds    a0, a0, s0
-                str     a0, [x0, 24]
+                str     a0, [x0, #24]
 
-                ldr     a0, [x0, 32]
+                ldr     a0, [x0, #32]
                 adcs    a0, a0, s1
-                str     a0, [x0, 32]
+                str     a0, [x0, #32]
 
-                ldr     a0, [x0, 40]
+                ldr     a0, [x0, #40]
                 adcs    a0, a0, s2
-                str     a0, [x0, 40]
+                str     a0, [x0, #40]
 
-                ldr     a0, [x0, 48]
+                ldr     a0, [x0, #48]
                 adcs    a0, a0, s3
-                str     a0, [x0, 48]
+                str     a0, [x0, #48]
 
-                ldr     a0, [x0, 56]
+                ldr     a0, [x0, #56]
                 adcs    a0, a0, s4
-                str     a0, [x0, 56]
+                str     a0, [x0, #56]
 
-                ldr     a0, [x0, 64]
+                ldr     a0, [x0, #64]
                 adcs    a0, a0, s5
-                str     a0, [x0, 64]
+                str     a0, [x0, #64]
 
-                ldr     a0, [x0, 72]
+                ldr     a0, [x0, #72]
                 adcs    a0, a0, s6
-                str     a0, [x0, 72]
+                str     a0, [x0, #72]
 
-                ldr     a0, [x0, 80]
+                ldr     a0, [x0, #80]
                 adcs    a0, a0, xzr
-                str     a0, [x0, 80]
+                str     a0, [x0, #80]
 
-                ldr     a0, [x0, 88]
+                ldr     a0, [x0, #88]
                 adc     a0, a0, xzr
-                str     a0, [x0, 88]
+                str     a0, [x0, #88]
 
                 ret

@@ -53,8 +53,8 @@ bignum_shr_small:
                 cmp     n, p
                 bcs     nopad
 padloop:
-                sub     p, p, 1
-                str     xzr, [z, p, LSL 3]
+                sub     p, p, #1
+                str     xzr, [z, p, lsl #3]
                 cmp     n, p
                 bcc     padloop
 
@@ -62,7 +62,7 @@ padloop:
 
 nopad:
                 beq     shiftstart
-                ldr     b, [x, p, LSL 3]
+                ldr     b, [x, p, lsl #3]
 shiftstart:
 
 // Set up negated version of the shift and shift b in preparation.
@@ -70,7 +70,7 @@ shiftstart:
 
                 neg     d, c
                 lsl     b, b, d
-                ands    xzr, c, 63
+                ands    xzr, c, #63
                 csetm   m, ne
                 and     b, b, m
 
@@ -78,13 +78,13 @@ shiftstart:
 
                 cbz     p, end
 loop:
-                sub     p, p, 1
-                ldr     t, [x, p, LSL 3]
+                sub     p, p, #1
+                ldr     t, [x, p, lsl #3]
                 lsr     a, t, c
                 orr     a, a, b
                 lsl     b, t, d
                 and     b, b, m
-                str     a, [z, p, LSL 3]
+                str     a, [z, p, lsl #3]
                 cbnz    p, loop
 
 // Return top word, shifted back to be a modulus

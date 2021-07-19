@@ -52,13 +52,13 @@ word_negmodinv:
 
 // Initial magical 5-bit approximation x = (a - a<<2) xor 2
 
-                lsl     x, a, 2
+                lsl     x, a, #2
                 sub     x, a, x
-                eor     x, x, 2
+                eor     x, x, #2
 
 // Get error e = a * x + 1 for subsequent correction steps
 
-                mov     one, 1
+                mov     one, #1
                 madd    e1, a, x, one
 
 // e2 = e^2, x' = x (1 + e) is good to 10 bits

@@ -29,8 +29,8 @@ bignum_even:
 
                 cbz     x0, end                 // if k = 0, that's the return!
                 ldr     x0, [x1]
-                and     x0, x0, 1
+                and     x0, x0, #1
 
 end:
-                eor     x0, x0, 1
+                eor     x0, x0, #1
                 ret

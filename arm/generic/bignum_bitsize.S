@@ -47,12 +47,12 @@ bignum_bitsize:
 // Set the initial default to be as if we had a 11...11 word directly below
 
                 mov     i, xzr
-                mov     w, -1
+                mov     w, #-1
                 mov     j, xzr
 loop:
-                ldr     a, [x, j, LSL 3]
-                add     j, j, 1
-                cmp     a, 0
+                ldr     a, [x, j, lsl #3]
+                add     j, j, #1
+                cmp     a, #0
                 csel    i, j, i, ne
                 csel    w, a, w, ne
                 cmp     j, k
@@ -63,7 +63,7 @@ loop:
 // Note that this code does not rely on the behavior of the clz instruction
 // for zero inputs, though the ARM manual does in fact guarantee clz(0) = 64.
 
-                lsl     i, i, 6
+                lsl     i, i, #6
                 clz     a, w
                 sub     x0, i, a
 

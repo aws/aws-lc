@@ -52,9 +52,9 @@ bignum_normalize:
 // If k = 0 the whole operation is trivial. Otherwise initialize
 // shift count r and top digit c, but then if k = 1 skip the digitwise part
 
-                subs    i, k, 1
+                subs    i, k, #1
                 bcc     end
-                ldr     c, [z, i, LSL 3]
+                ldr     c, [z, i, lsl #3]
                 mov     r, xzr
                 beq     bitpart
 
@@ -70,13 +70,13 @@ normloop:
                 mov     a, xzr
 shufloop:
                 mov     c, a
-                ldr     a, [z, j, LSL 3]
+                ldr     a, [z, j, lsl #3]
                 csel    c, c, a, eq
-                str     c, [z, j, LSL 3]
-                add     j, j, 1
+                str     c, [z, j, lsl #3]
+                add     j, j, #1
                 sub     d, j, k
                 cbnz    d, shufloop
-                subs    i, i, 1
+                subs    i, i, #1
                 bne     normloop
 
 // We now have the top digit nonzero, assuming the input was nonzero,
@@ -84,23 +84,23 @@ shufloop:
 // now just count c's leading zeros and shift z bitwise that many bits.
 
 bitpart:
-                lsl     r, r, 6
+                lsl     r, r, #6
                 clz     c, c
                 add     r, r, c
 
                 mov     b, xzr
                 mov     i, xzr
-                ands    xzr, c, 63
+                ands    xzr, c, #63
                 csetm   l, ne
                 neg     d, c
 bitloop:
-                ldr     j, [z, i, LSL 3]
+                ldr     j, [z, i, lsl #3]
                 lsl     a, j, c
                 orr     a, a, b
                 lsr     b, j, d
                 and     b, b, l
-                str     a, [z, i, LSL 3]
-                add     i, i, 1
+                str     a, [z, i, lsl #3]
+                add     i, i, #1
                 cmp     i, k
                 bcc     bitloop
 
