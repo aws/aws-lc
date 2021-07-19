@@ -4,7 +4,7 @@
 import aws_cdk.core
 import subprocess
 
-from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3
+from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3, aws_logs as logs
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, \
@@ -80,6 +80,8 @@ class BmFrameworkStack(core.Stack):
         # define things needed for ec2 instances below (instances themselves will be dynamically created in codebuild)
         S3_PROD_BUCKET = "{}-prod-bucket".format(id)
 
+        CLOUDWATCH_LOGS = "{}-cw-logs".format(id)
+
         # create iam for ec2s
         s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
         ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy}
@@ -109,8 +111,12 @@ class BmFrameworkStack(core.Stack):
         output = sp.stdout.read().decode("utf-8")
 
         if S3_PROD_BUCKET not in output:
-            production_results_s3 = s3.Bucket(self, "{}-s3-prod".format(id),
+            production_results_s3 = s3.Bucket(self, S3_PROD_BUCKET,
                                               bucket_name=S3_PROD_BUCKET,
                                               enforce_ssl=True)
 
             production_results_s3.grant_put(ec2_role)
+
+        # define CloudWatch Logs groups
+        logs.LogGroup(self, CLOUDWATCH_LOGS,
+                      log_group_name=CLOUDWATCH_LOGS)

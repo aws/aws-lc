@@ -30,7 +30,10 @@ aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x
     --document-type Command \
     --document-format YAML > /dev/null
 
-aws ssm send-command --instance-ids "${x86_ubuntu2004_id}" --document-name "${ssm_doc_name}" > /dev/null
+aws ssm send-command --instance-ids "${x86_ubuntu2004_id}" \
+    --document-name "${ssm_doc_name}" \
+    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true\
+     > /dev/null
 
 # Give some time for the command to run
 sleep 15
