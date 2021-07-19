@@ -64,9 +64,9 @@
 
 .macro movbig nn, n3, n2, n1, n0
                 movz    \nn, \n0
-                movk    \nn, \n1, lsl 16
-                movk    \nn, \n2, lsl 32
-                movk    \nn, \n3, lsl 48
+                movk    \nn, \n1, lsl #16
+                movk    \nn, \n2, lsl #32
+                movk    \nn, \n3, lsl #48
 .endm
 
 .text
@@ -76,23 +76,23 @@ bignum_mod_n384:
 
 // If the input is already <= 5 words long, go to a trivial "copy" path
 
-                cmp     k, 6
+                cmp     k, #6
                 bcc     short
 
 // Otherwise load the top 6 digits (top-down) and reduce k by 6
 
-                sub     k, k, 6
-                lsl     t0, k, 3
+                sub     k, k, #6
+                lsl     t0, k, #3
                 add     t0, t0, x
-                ldp     m4, m5, [t0, 32]
-                ldp     m2, m3, [t0, 16]
+                ldp     m4, m5, [t0, #32]
+                ldp     m2, m3, [t0, #16]
                 ldp     m0, m1, [t0]
 
 // Load the complicated three words of 2^384 - n_384 = [0; 0; 0; n2; n1; n0]
 
-                movbig  n0, 0x1313, 0xe695, 0x333a, 0xd68d
-                movbig  n1, 0xa7e5, 0xf24d, 0xb74f, 0x5885
-                movbig  n2, 0x389c, 0xb27e, 0x0bc8, 0xd220
+                movbig  n0, #0x1313, #0xe695, #0x333a, #0xd68d
+                movbig  n1, #0xa7e5, #0xf24d, #0xb74f, #0x5885
+                movbig  n2, #0x389c, #0xb27e, #0x0bc8, #0xd220
 
 // Reduce the top 6 digits mod n_384 (a conditional subtraction of n_384)
 
@@ -116,7 +116,7 @@ loop:
 
 // Compute q = min (m5 + 1) (2^64 - 1)
 
-                adds    q, m5, 1
+                adds    q, m5, #1
                 csetm   t0, cs
                 orr     q, q, t0
 
@@ -135,8 +135,8 @@ loop:
 
 // Decrement k and load the next digit
 
-                sub     k, k, 1
-                ldr     d, [x, k, LSL 3]
+                sub     k, k, #1
+                ldr     d, [x, k, lsl #3]
 
 // Compensate for 2^384 * q
 
@@ -173,8 +173,8 @@ loop:
 
 writeback:
                 stp     m0, m1, [z]
-                stp     m2, m3, [z, 16]
-                stp     m4, m5, [z, 32]
+                stp     m2, m3, [z, #16]
+                stp     m4, m5, [z, #32]
 
                 ret
 
@@ -190,16 +190,16 @@ short:
 
                 cbz     k, writeback
                 ldr     m0, [x]
-                subs    k, k, 1
+                subs    k, k, #1
                 beq     writeback
-                ldr     m1, [x, 8]
-                subs    k, k, 1
+                ldr     m1, [x, #8]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m2, [x, 16]
-                subs    k, k, 1
+                ldr     m2, [x, #16]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m3, [x, 24]
-                subs    k, k, 1
+                ldr     m3, [x, #24]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m4, [x, 32]
+                ldr     m4, [x, #32]
                 b       writeback
