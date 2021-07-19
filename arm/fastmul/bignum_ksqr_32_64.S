@@ -41,8 +41,8 @@ bignum_ksqr_32_64:
 
 // Save extra registers and return address, store parameters safely
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x30, [sp, -16]!
+        stp     x19, x20, [sp, #-16]!
+        stp     x21, x30, [sp, #-16]!
 
         mov     z, x0
         mov     x, x1
@@ -54,81 +54,81 @@ bignum_ksqr_32_64:
 
 // Compute H = x_hi * y_hi in top half of buffer (size 16 x 16 -> 32)
 
-        add     x0, z, 8*2*k
-        add     x1, x, 8*k
+        add     x0, z, #8*2*k
+        add     x1, x, #8*k
         mov     x2, t
         bl      local_ksqr_16_32
 
 // Compute H' = H + L_top in place of H (it cannot overflow)
 
-        ldp     x0, x1, [z, 16*k]
-        ldp     x2, x3, [z, 16*l]
+        ldp     x0, x1, [z, #16*k]
+        ldp     x2, x3, [z, #16*l]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*k]
+        stp     x0, x1, [z, #16*k]
 
         .set    i, 1
         .rep (l-1)
-        ldp     x0, x1, [z, 16*(k+i)]
-        ldp     x2, x3, [z, 16*(l+i)]
+        ldp     x0, x1, [z, #16*(k+i)]
+        ldp     x2, x3, [z, #16*(l+i)]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*(k+i)]
+        stp     x0, x1, [z, #16*(k+i)]
         .set    i, (i+1)
         .endr
 
         .rep    (l-1)
-        ldp     x0, x1, [z, 16*(k+i)]
+        ldp     x0, x1, [z, #16*(k+i)]
         adcs    x0, x0, xzr
         adcs    x1, x1, xzr
-        stp     x0, x1, [z, 16*(k+i)]
+        stp     x0, x1, [z, #16*(k+i)]
         .set    i, (i+1)
         .endr
 
-        ldp     x0, x1, [z, 16*(k+i)]
+        ldp     x0, x1, [z, #16*(k+i)]
         adcs    x0, x0, xzr
         adc     x1, x1, xzr
-        stp     x0, x1, [z, 16*(k+i)]
+        stp     x0, x1, [z, #16*(k+i)]
 
 // Compute absolute difference [t..] = |x_lo - x_hi|
 
-        ldp     x0, x1, [x, 128]
+        ldp     x0, x1, [x, #128]
         ldp     x16, x17, [x]
         subs    x0, x0, x16
         sbcs    x1, x1, x17
 
-        ldp     x2, x3, [x, 144]
-        ldp     x16, x17, [x, 16]
+        ldp     x2, x3, [x, #144]
+        ldp     x16, x17, [x, #16]
         sbcs    x2, x2, x16
         sbcs    x3, x3, x17
 
-        ldp     x4, x5, [x, 160]
-        ldp     x16, x17, [x, 32]
+        ldp     x4, x5, [x, #160]
+        ldp     x16, x17, [x, #32]
         sbcs    x4, x4, x16
         sbcs    x5, x5, x17
 
-        ldp     x6, x7, [x, 176]
-        ldp     x16, x17, [x, 48]
+        ldp     x6, x7, [x, #176]
+        ldp     x16, x17, [x, #48]
         sbcs    x6, x6, x16
         sbcs    x7, x7, x17
 
-        ldp     x8, x9, [x, 192]
-        ldp     x16, x17, [x, 64]
+        ldp     x8, x9, [x, #192]
+        ldp     x16, x17, [x, #64]
         sbcs    x8, x8, x16
         sbcs    x9, x9, x17
 
-        ldp     x10, x11, [x, 208]
-        ldp     x16, x17, [x, 80]
+        ldp     x10, x11, [x, #208]
+        ldp     x16, x17, [x, #80]
         sbcs    x10, x10, x16
         sbcs    x11, x11, x17
 
-        ldp     x12, x13, [x, 224]
-        ldp     x16, x17, [x, 96]
+        ldp     x12, x13, [x, #224]
+        ldp     x16, x17, [x, #96]
         sbcs    x12, x12, x16
         sbcs    x13, x13, x17
 
-        ldp     x14, x15, [x, 240]
-        ldp     x16, x17, [x, 112]
+        ldp     x14, x15, [x, #240]
+        ldp     x16, x17, [x, #112]
         sbcs    x14, x14, x16
         sbcs    x15, x15, x17
 
@@ -146,78 +146,78 @@ bignum_ksqr_32_64:
         adcs    x2, x2, xzr
         eor     x3, x3, c
         adcs    x3, x3, xzr
-        stp     x2, x3, [t, 16]
+        stp     x2, x3, [t, #16]
 
         eor     x4, x4, c
         adcs    x4, x4, xzr
         eor     x5, x5, c
         adcs    x5, x5, xzr
-        stp     x4, x5, [t, 32]
+        stp     x4, x5, [t, #32]
 
         eor     x6, x6, c
         adcs    x6, x6, xzr
         eor     x7, x7, c
         adcs    x7, x7, xzr
-        stp     x6, x7, [t, 48]
+        stp     x6, x7, [t, #48]
 
         eor     x8, x8, c
         adcs    x8, x8, xzr
         eor     x9, x9, c
         adcs    x9, x9, xzr
-        stp     x8, x9, [t, 64]
+        stp     x8, x9, [t, #64]
 
         eor     x10, x10, c
         adcs    x10, x10, xzr
         eor     x11, x11, c
         adcs    x11, x11, xzr
-        stp     x10, x11, [t, 80]
+        stp     x10, x11, [t, #80]
 
         eor     x12, x12, c
         adcs    x12, x12, xzr
         eor     x13, x13, c
         adcs    x13, x13, xzr
-        stp     x12, x13, [t, 96]
+        stp     x12, x13, [t, #96]
 
         eor     x14, x14, c
         adcs    x14, x14, xzr
         eor     x15, x15, c
         adc     x15, x15, xzr
-        stp     x14, x15, [t, 112]
+        stp     x14, x15, [t, #112]
 
 // Compute M = |x_lo - x_hi|^2, size 32
 
-        add     x0, t, 8*k
+        add     x0, t, #8*k
         mov     x1, t
-        add     x2, t, 8*3*k
+        add     x2, t, #8*3*k
         bl      local_ksqr_16_32
 
 // Add the interlocking H' and L_bot terms
 // Intercept the carry at the 3k position and store it in x.
 // (Note that we no longer need the input x was pointing at.)
 
-        ldp     x0, x1, [z, 16*k]
+        ldp     x0, x1, [z, #16*k]
         ldp     x2, x3, [z]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*l]
+        stp     x0, x1, [z, #16*l]
 
         .set    i, 1
         .rep (l-1)
-        ldp     x0, x1, [z, 16*(k+i)]
-        ldp     x2, x3, [z, 16*i]
+        ldp     x0, x1, [z, #16*(k+i)]
+        ldp     x2, x3, [z, #16*i]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*(l+i)]
+        stp     x0, x1, [z, #16*(l+i)]
         .set    i, (i+1)
         .endr
 
         .set    i, 0
         .rep    l
-        ldp     x0, x1, [z, 16*(k+i)]
-        ldp     x2, x3, [z, 16*(3*l+i)]
+        ldp     x0, x1, [z, #16*(k+i)]
+        ldp     x2, x3, [z, #16*(3*l+i)]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*(k+i)]
+        stp     x0, x1, [z, #16*(k+i)]
         .set    i, (i+1)
         .endr
 
@@ -225,19 +225,19 @@ bignum_ksqr_32_64:
 
 // Subtract the mid-term cross product M
 
-        ldp     x0, x1, [z, 16*l]
-        ldp     x2, x3, [t, 16*l]
+        ldp     x0, x1, [z, #16*l]
+        ldp     x2, x3, [t, #16*l]
         subs    x0, x0, x2
         sbcs    x1, x1, x3
-        stp     x0, x1, [z, 16*l]
+        stp     x0, x1, [z, #16*l]
 
         .set    i, l+1
         .rep (k-1)
-        ldp     x0, x1, [z, 16*i]
-        ldp     x2, x3, [t, 16*i]
+        ldp     x0, x1, [z, #16*i]
+        ldp     x2, x3, [t, #16*i]
         sbcs    x0, x0, x2
         sbcs    x1, x1, x3
-        stp     x0, x1, [z, 16*i]
+        stp     x0, x1, [z, #16*i]
         .set    i, (i+1)
         .endr
 
@@ -249,29 +249,29 @@ bignum_ksqr_32_64:
 
 // Now propagate through the top quarter of the result
 
-        ldp     x0, x1, [z, 16*3*l]
+        ldp     x0, x1, [z, #16*3*l]
         adds    x0, x0, x
         adcs    x1, x1, c
-        stp     x0, x1, [z, 16*3*l]
+        stp     x0, x1, [z, #16*3*l]
 
         .set    i, 3*l+1
         .rep    (l-2)
-        ldp     x0, x1, [z, 16*i]
+        ldp     x0, x1, [z, #16*i]
         adcs    x0, x0, c
         adcs    x1, x1, c
-        stp     x0, x1, [z, 16*i]
+        stp     x0, x1, [z, #16*i]
         .set    i, (i+1)
         .endr
 
-        ldp     x0, x1, [z, 16*i]
+        ldp     x0, x1, [z, #16*i]
         adcs    x0, x0, c
         adc     x1, x1, c
-        stp     x0, x1, [z, 16*i]
+        stp     x0, x1, [z, #16*i]
 
 // Restore
 
-        ldp     x21, x30, [sp], 16
-        ldp     x19, x20, [sp], 16
+        ldp     x21, x30, [sp], #16
+        ldp     x19, x20, [sp], #16
 
         ret
 
@@ -279,28 +279,28 @@ bignum_ksqr_32_64:
 // This includes in turn a copy of bignum_sqr_8_16.
 
 local_ksqr_16_32:
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        stp     x23, x24, [sp, -16]!
-        stp     x25, x30, [sp, -16]!
+        stp     x19, x20, [sp, #-16]!
+        stp     x21, x22, [sp, #-16]!
+        stp     x23, x24, [sp, #-16]!
+        stp     x25, x30, [sp, #-16]!
         mov     x23, x0
         mov     x24, x1
         mov     x25, x2
         bl      local_sqr_8_16
         ldp     x10, x11, [x24]
-        ldp     x8, x9, [x24, 64]
+        ldp     x8, x9, [x24, #64]
         subs    x10, x10, x8
         sbcs    x11, x11, x9
-        ldp     x12, x13, [x24, 16]
-        ldp     x8, x9, [x24, 80]
+        ldp     x12, x13, [x24, #16]
+        ldp     x8, x9, [x24, #80]
         sbcs    x12, x12, x8
         sbcs    x13, x13, x9
-        ldp     x14, x15, [x24, 32]
-        ldp     x8, x9, [x24, 96]
+        ldp     x14, x15, [x24, #32]
+        ldp     x8, x9, [x24, #96]
         sbcs    x14, x14, x8
         sbcs    x15, x15, x9
-        ldp     x16, x17, [x24, 48]
-        ldp     x8, x9, [x24, 112]
+        ldp     x16, x17, [x24, #48]
+        ldp     x8, x9, [x24, #112]
         sbcs    x16, x16, x8
         sbcs    x17, x17, x9
         csetm   x19, cc
@@ -314,153 +314,153 @@ local_ksqr_16_32:
         adcs    x12, x12, xzr
         eor     x13, x13, x19
         adcs    x13, x13, xzr
-        stp     x12, x13, [x25, 16]
+        stp     x12, x13, [x25, #16]
         eor     x14, x14, x19
         adcs    x14, x14, xzr
         eor     x15, x15, x19
         adcs    x15, x15, xzr
-        stp     x14, x15, [x25, 32]
+        stp     x14, x15, [x25, #32]
         eor     x16, x16, x19
         adcs    x16, x16, xzr
         eor     x17, x17, x19
         adcs    x17, x17, xzr
-        stp     x16, x17, [x25, 48]
-        add     x0, x23, 0x80
-        add     x1, x24, 0x40
+        stp     x16, x17, [x25, #48]
+        add     x0, x23, #0x80
+        add     x1, x24, #0x40
         bl      local_sqr_8_16
-        ldp     x10, x11, [x23, 128]
-        ldp     x12, x13, [x23, 64]
+        ldp     x10, x11, [x23, #128]
+        ldp     x12, x13, [x23, #64]
         adds    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [x23, 128]
-        ldp     x10, x11, [x23, 144]
-        ldp     x12, x13, [x23, 80]
+        stp     x10, x11, [x23, #128]
+        ldp     x10, x11, [x23, #144]
+        ldp     x12, x13, [x23, #80]
         adcs    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [x23, 144]
-        ldp     x10, x11, [x23, 160]
-        ldp     x12, x13, [x23, 96]
+        stp     x10, x11, [x23, #144]
+        ldp     x10, x11, [x23, #160]
+        ldp     x12, x13, [x23, #96]
         adcs    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [x23, 160]
-        ldp     x10, x11, [x23, 176]
-        ldp     x12, x13, [x23, 112]
+        stp     x10, x11, [x23, #160]
+        ldp     x10, x11, [x23, #176]
+        ldp     x12, x13, [x23, #112]
         adcs    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [x23, 176]
-        ldp     x10, x11, [x23, 192]
+        stp     x10, x11, [x23, #176]
+        ldp     x10, x11, [x23, #192]
         adcs    x10, x10, xzr
         adcs    x11, x11, xzr
-        stp     x10, x11, [x23, 192]
-        ldp     x10, x11, [x23, 208]
+        stp     x10, x11, [x23, #192]
+        ldp     x10, x11, [x23, #208]
         adcs    x10, x10, xzr
         adcs    x11, x11, xzr
-        stp     x10, x11, [x23, 208]
-        ldp     x10, x11, [x23, 224]
+        stp     x10, x11, [x23, #208]
+        ldp     x10, x11, [x23, #224]
         adcs    x10, x10, xzr
         adcs    x11, x11, xzr
-        stp     x10, x11, [x23, 224]
-        ldp     x10, x11, [x23, 240]
+        stp     x10, x11, [x23, #224]
+        ldp     x10, x11, [x23, #240]
         adcs    x10, x10, xzr
         adcs    x11, x11, xzr
-        stp     x10, x11, [x23, 240]
-        add     x0, x25, 0x40
+        stp     x10, x11, [x23, #240]
+        add     x0, x25, #0x40
         mov     x1, x25
         bl      local_sqr_8_16
         ldp     x0, x1, [x23]
-        ldp     x16, x17, [x23, 128]
+        ldp     x16, x17, [x23, #128]
         adds    x0, x0, x16
         adcs    x1, x1, x17
-        ldp     x2, x3, [x23, 16]
-        ldp     x16, x17, [x23, 144]
+        ldp     x2, x3, [x23, #16]
+        ldp     x16, x17, [x23, #144]
         adcs    x2, x2, x16
         adcs    x3, x3, x17
-        ldp     x4, x5, [x23, 32]
-        ldp     x16, x17, [x23, 160]
+        ldp     x4, x5, [x23, #32]
+        ldp     x16, x17, [x23, #160]
         adcs    x4, x4, x16
         adcs    x5, x5, x17
-        ldp     x6, x7, [x23, 48]
-        ldp     x16, x17, [x23, 176]
+        ldp     x6, x7, [x23, #48]
+        ldp     x16, x17, [x23, #176]
         adcs    x6, x6, x16
         adcs    x7, x7, x17
-        ldp     x8, x9, [x23, 128]
-        ldp     x16, x17, [x23, 192]
+        ldp     x8, x9, [x23, #128]
+        ldp     x16, x17, [x23, #192]
         adcs    x8, x8, x16
         adcs    x9, x9, x17
-        ldp     x10, x11, [x23, 144]
-        ldp     x16, x17, [x23, 208]
+        ldp     x10, x11, [x23, #144]
+        ldp     x16, x17, [x23, #208]
         adcs    x10, x10, x16
         adcs    x11, x11, x17
-        ldp     x12, x13, [x23, 160]
-        ldp     x16, x17, [x23, 224]
+        ldp     x12, x13, [x23, #160]
+        ldp     x16, x17, [x23, #224]
         adcs    x12, x12, x16
         adcs    x13, x13, x17
-        ldp     x14, x15, [x23, 176]
-        ldp     x16, x17, [x23, 240]
+        ldp     x14, x15, [x23, #176]
+        ldp     x16, x17, [x23, #240]
         adcs    x14, x14, x16
         adcs    x15, x15, x17
         cset    x24, cs
-        ldp     x16, x17, [x25, 64]
+        ldp     x16, x17, [x25, #64]
         subs    x0, x0, x16
         sbcs    x1, x1, x17
-        stp     x0, x1, [x23, 64]
-        ldp     x16, x17, [x25, 80]
+        stp     x0, x1, [x23, #64]
+        ldp     x16, x17, [x25, #80]
         sbcs    x2, x2, x16
         sbcs    x3, x3, x17
-        stp     x2, x3, [x23, 80]
-        ldp     x16, x17, [x25, 96]
+        stp     x2, x3, [x23, #80]
+        ldp     x16, x17, [x25, #96]
         sbcs    x4, x4, x16
         sbcs    x5, x5, x17
-        stp     x4, x5, [x23, 96]
-        ldp     x16, x17, [x25, 112]
+        stp     x4, x5, [x23, #96]
+        ldp     x16, x17, [x25, #112]
         sbcs    x6, x6, x16
         sbcs    x7, x7, x17
-        stp     x6, x7, [x23, 112]
-        ldp     x16, x17, [x25, 128]
+        stp     x6, x7, [x23, #112]
+        ldp     x16, x17, [x25, #128]
         sbcs    x8, x8, x16
         sbcs    x9, x9, x17
-        stp     x8, x9, [x23, 128]
-        ldp     x16, x17, [x25, 144]
+        stp     x8, x9, [x23, #128]
+        ldp     x16, x17, [x25, #144]
         sbcs    x10, x10, x16
         sbcs    x11, x11, x17
-        stp     x10, x11, [x23, 144]
-        ldp     x16, x17, [x25, 160]
+        stp     x10, x11, [x23, #144]
+        ldp     x16, x17, [x25, #160]
         sbcs    x12, x12, x16
         sbcs    x13, x13, x17
-        stp     x12, x13, [x23, 160]
-        ldp     x16, x17, [x25, 176]
+        stp     x12, x13, [x23, #160]
+        ldp     x16, x17, [x25, #176]
         sbcs    x14, x14, x16
         sbcs    x15, x15, x17
-        stp     x14, x15, [x23, 176]
+        stp     x14, x15, [x23, #176]
         sbcs    x24, x24, xzr
         csetm   x25, cc
-        ldp     x10, x11, [x23, 192]
+        ldp     x10, x11, [x23, #192]
         adds    x10, x10, x24
         adcs    x11, x11, x25
-        stp     x10, x11, [x23, 192]
-        ldp     x10, x11, [x23, 208]
+        stp     x10, x11, [x23, #192]
+        ldp     x10, x11, [x23, #208]
         adcs    x10, x10, x25
         adcs    x11, x11, x25
-        stp     x10, x11, [x23, 208]
-        ldp     x10, x11, [x23, 224]
+        stp     x10, x11, [x23, #208]
+        ldp     x10, x11, [x23, #224]
         adcs    x10, x10, x25
         adcs    x11, x11, x25
-        stp     x10, x11, [x23, 224]
-        ldp     x10, x11, [x23, 240]
+        stp     x10, x11, [x23, #224]
+        ldp     x10, x11, [x23, #240]
         adcs    x10, x10, x25
         adcs    x11, x11, x25
-        stp     x10, x11, [x23, 240]
-        ldp     x25, x30, [sp], 16
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
+        stp     x10, x11, [x23, #240]
+        ldp     x25, x30, [sp], #16
+        ldp     x23, x24, [sp], #16
+        ldp     x21, x22, [sp], #16
+        ldp     x19, x20, [sp], #16
         ret
 
 local_sqr_8_16:
         ldp     x2, x3, [x1]
-        ldp     x4, x5, [x1, 16]
-        ldp     x6, x7, [x1, 32]
-        ldp     x8, x9, [x1, 48]
+        ldp     x4, x5, [x1, #16]
+        ldp     x6, x7, [x1, #32]
+        ldp     x8, x9, [x1, #48]
         mul     x17, x2, x4
         mul     x14, x3, x5
         umulh   x20, x2, x4
@@ -482,7 +482,7 @@ local_sqr_8_16:
         adc     x21, x21, xzr
         adds    x20, x20, x14
         adc     x21, x21, xzr
-        cmn     x11, 0x1
+        cmn     x11, #0x1
         adcs    x19, x19, x13
         adcs    x20, x20, x12
         adc     x21, x21, x11
@@ -509,7 +509,7 @@ local_sqr_8_16:
         adcs    x20, x20, xzr
         adcs    x21, x21, xzr
         adc     x10, x10, xzr
-        stp     x17, x19, [x0, 16]
+        stp     x17, x19, [x0, #16]
         mul     x12, x4, x4
         mul     x13, x5, x5
         mul     x15, x4, x5
@@ -524,10 +524,10 @@ local_sqr_8_16:
         adc     x14, x14, xzr
         adds    x12, x12, x20
         adcs    x11, x11, x21
-        stp     x12, x11, [x0, 32]
+        stp     x12, x11, [x0, #32]
         adcs    x13, x13, x10
         adc     x14, x14, xzr
-        stp     x13, x14, [x0, 48]
+        stp     x13, x14, [x0, #48]
         mul     x17, x6, x8
         mul     x14, x7, x9
         umulh   x20, x6, x8
@@ -549,7 +549,7 @@ local_sqr_8_16:
         adc     x21, x21, xzr
         adds    x20, x20, x14
         adc     x21, x21, xzr
-        cmn     x11, 0x1
+        cmn     x11, #0x1
         adcs    x19, x19, x13
         adcs    x20, x20, x12
         adc     x21, x21, x11
@@ -570,13 +570,13 @@ local_sqr_8_16:
         adds    x11, x11, x15
         adcs    x13, x13, x16
         adc     x14, x14, xzr
-        stp     x12, x11, [x0, 64]
+        stp     x12, x11, [x0, #64]
         adds    x17, x17, x13
         adcs    x19, x19, x14
         adcs    x20, x20, xzr
         adcs    x21, x21, xzr
         adc     x10, x10, xzr
-        stp     x17, x19, [x0, 80]
+        stp     x17, x19, [x0, #80]
         mul     x12, x8, x8
         mul     x13, x9, x9
         mul     x15, x8, x9
@@ -591,10 +591,10 @@ local_sqr_8_16:
         adc     x14, x14, xzr
         adds    x12, x12, x20
         adcs    x11, x11, x21
-        stp     x12, x11, [x0, 96]
+        stp     x12, x11, [x0, #96]
         adcs    x13, x13, x10
         adc     x14, x14, xzr
-        stp     x13, x14, [x0, 112]
+        stp     x13, x14, [x0, #112]
         mul     x10, x2, x6
         mul     x14, x3, x7
         mul     x15, x4, x8
@@ -626,7 +626,7 @@ local_sqr_8_16:
         mul     x21, x22, x20
         umulh   x20, x22, x20
         cinv    x19, x19, cc
-        cmn     x19, 0x1
+        cmn     x19, #0x1
         eor     x21, x21, x19
         adcs    x15, x15, x21
         eor     x20, x20, x19
@@ -640,7 +640,7 @@ local_sqr_8_16:
         mul     x21, x22, x20
         umulh   x20, x22, x20
         cinv    x19, x19, cc
-        cmn     x19, 0x1
+        cmn     x19, #0x1
         eor     x21, x21, x19
         adcs    x11, x11, x21
         eor     x20, x20, x19
@@ -658,7 +658,7 @@ local_sqr_8_16:
         mul     x21, x22, x20
         umulh   x20, x22, x20
         cinv    x19, x19, cc
-        cmn     x19, 0x1
+        cmn     x19, #0x1
         eor     x21, x21, x19
         adcs    x14, x14, x21
         eor     x20, x20, x19
@@ -673,7 +673,7 @@ local_sqr_8_16:
         mul     x21, x22, x20
         umulh   x20, x22, x20
         cinv    x19, x19, cc
-        cmn     x19, 0x1
+        cmn     x19, #0x1
         eor     x21, x21, x19
         adcs    x12, x12, x21
         eor     x20, x20, x19
@@ -690,7 +690,7 @@ local_sqr_8_16:
         mul     x21, x22, x20
         umulh   x20, x22, x20
         cinv    x19, x19, cc
-        cmn     x19, 0x1
+        cmn     x19, #0x1
         eor     x21, x21, x19
         adcs    x13, x13, x21
         eor     x20, x20, x19
@@ -706,7 +706,7 @@ local_sqr_8_16:
         mul     x21, x22, x20
         umulh   x20, x22, x20
         cinv    x19, x19, cc
-        cmn     x19, 0x1
+        cmn     x19, #0x1
         eor     x21, x21, x19
         adcs    x13, x13, x21
         eor     x20, x20, x19
@@ -723,28 +723,28 @@ local_sqr_8_16:
         adcs    x16, x16, x16
         adcs    x17, x17, x17
         adc     x19, xzr, xzr
-        ldp     x2, x3, [x0, 32]
+        ldp     x2, x3, [x0, #32]
         adds    x10, x10, x2
         adcs    x11, x11, x3
-        stp     x10, x11, [x0, 32]
-        ldp     x2, x3, [x0, 48]
+        stp     x10, x11, [x0, #32]
+        ldp     x2, x3, [x0, #48]
         adcs    x12, x12, x2
         adcs    x13, x13, x3
-        stp     x12, x13, [x0, 48]
-        ldp     x2, x3, [x0, 64]
+        stp     x12, x13, [x0, #48]
+        ldp     x2, x3, [x0, #64]
         adcs    x14, x14, x2
         adcs    x15, x15, x3
-        stp     x14, x15, [x0, 64]
-        ldp     x2, x3, [x0, 80]
+        stp     x14, x15, [x0, #64]
+        ldp     x2, x3, [x0, #80]
         adcs    x16, x16, x2
         adcs    x17, x17, x3
-        stp     x16, x17, [x0, 80]
-        ldp     x2, x3, [x0, 96]
+        stp     x16, x17, [x0, #80]
+        ldp     x2, x3, [x0, #96]
         adcs    x2, x2, x19
         adcs    x3, x3, xzr
-        stp     x2, x3, [x0, 96]
-        ldp     x2, x3, [x0, 112]
+        stp     x2, x3, [x0, #96]
+        ldp     x2, x3, [x0, #112]
         adcs    x2, x2, xzr
         adc     x3, x3, xzr
-        stp     x2, x3, [x0, 112]
+        stp     x2, x3, [x0, #112]
         ret

@@ -47,9 +47,9 @@ bignum_mod_p384_6:
 
 // Load the complicated lower three words of p_384 = [-1;-1;-1;n2;n1;n0]
 
-                mov     n0, 0x00000000ffffffff
-                mov     n1, 0xffffffff00000000
-                mov     n2, 0xfffffffffffffffe
+                mov     n0, #0x00000000ffffffff
+                mov     n1, #0xffffffff00000000
+                mov     n2, #0xfffffffffffffffe
 
 // Load the input number
 

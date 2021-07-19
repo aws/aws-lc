@@ -60,11 +60,11 @@ bignum_double_p384:
 
 // Subtract p_384 to give 2 * x - p_384 = c + [n5; n4; n3; n2; n1; n0]
 
-                mov     n0, 0x00000000ffffffff
+                mov     n0, #0x00000000ffffffff
                 subs    n0, d0, n0
-                mov     n1, 0xffffffff00000000
+                mov     n1, #0xffffffff00000000
                 sbcs    n1, d1, n1
-                mov     n2, 0xfffffffffffffffe
+                mov     n2, #0xfffffffffffffffe
                 sbcs    n2, d2, n2
                 adcs    n3, d3, xzr
                 adcs    n4, d4, xzr

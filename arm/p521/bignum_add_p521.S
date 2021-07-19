@@ -51,33 +51,33 @@ bignum_add_p521:
                 ldp     l, h, [y]
                 adcs    d0, d0, l
                 adcs    d1, d1, h
-                ldp     d2, d3, [x, 16]
-                ldp     l, h, [y, 16]
+                ldp     d2, d3, [x, #16]
+                ldp     l, h, [y, #16]
                 adcs    d2, d2, l
                 adcs    d3, d3, h
-                ldp     d4, d5, [x, 32]
-                ldp     l, h, [y, 32]
+                ldp     d4, d5, [x, #32]
+                ldp     l, h, [y, #32]
                 adcs    d4, d4, l
                 adcs    d5, d5, h
-                ldp     d6, d7, [x, 48]
-                ldp     l, h, [y, 48]
+                ldp     d6, d7, [x, #48]
+                ldp     l, h, [y, #48]
                 adcs    d6, d6, l
                 adcs    d7, d7, h
-                ldr     d8, [x, 64]
-                ldr     l, [y, 64]
+                ldr     d8, [x, #64]
+                ldr     l, [y, #64]
                 adc     d8, d8, l
 
 // Now x + y >= p_521 <=> s = x + y + 1 >= 2^521
 // Set CF <=> s = x + y + 1 >= 2^521 and make it a mask in l as well
 
-                subs    l, d8, 512
+                subs    l, d8, #512
                 csetm   l, cs
 
 // Now if CF is set (and l is all 1s), we want (x + y) - p_521 = s - 2^521
 // while otherwise we want x + y = s - 1 (from existing CF, which is nice)
 
                 sbcs    d0, d0, xzr
-                and     l, l, 512
+                and     l, l, #512
                 sbcs    d1, d1, xzr
                 sbcs    d2, d2, xzr
                 sbcs    d3, d3, xzr
@@ -90,9 +90,9 @@ bignum_add_p521:
 // Store the result
 
                 stp     d0, d1, [z]
-                stp     d2, d3, [z, 16]
-                stp     d4, d5, [z, 32]
-                stp     d6, d7, [z, 48]
-                str     d8, [z, 64]
+                stp     d2, d3, [z, #16]
+                stp     d4, d5, [z, #32]
+                stp     d6, d7, [z, #48]
+                str     d8, [z, #64]
 
                 ret

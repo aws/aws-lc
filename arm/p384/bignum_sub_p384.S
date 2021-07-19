@@ -63,12 +63,12 @@ bignum_sub_p384:
 
 // Now correct by adding masked p_384
 
-                mov     l, 0x00000000ffffffff
+                mov     l, #0x00000000ffffffff
                 and     l, l, c
                 adds    d0, d0, l
                 eor     l, l, c
                 adcs    d1, d1, l
-                mov     l, 0xfffffffffffffffe
+                mov     l, #0xfffffffffffffffe
                 and     l, l, c
                 adcs    d2, d2, l
                 adcs    d3, d3, c

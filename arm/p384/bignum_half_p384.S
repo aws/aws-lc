@@ -45,23 +45,23 @@ bignum_half_p384:
 // Load the 4 digits of x
 
                 ldp     d0, d1, [x]
-                ldp     d2, d3, [x, 16]
-                ldp     d4, d5, [x, 32]
+                ldp     d2, d3, [x, #16]
+                ldp     d4, d5, [x, #32]
 
 // Get a bitmask corresponding to the lowest bit of the input
 
-                and     m, d0, 1
+                and     m, d0, #1
                 neg     m, m
 
 // Do a masked addition of p_384, catching carry in a 7th word
 
-                mov     n, 0x00000000ffffffff
+                mov     n, #0x00000000ffffffff
                 and     n, n, m
                 adds    d0, d0, n
-                mov     n, 0xffffffff00000000
+                mov     n, #0xffffffff00000000
                 and     n, n, m
                 adcs    d1, d1, n
-                mov     n, 0xfffffffffffffffe
+                mov     n, #0xfffffffffffffffe
                 and     n, n, m
                 adcs    d2, d2, n
                 adcs    d3, d3, m
@@ -71,18 +71,18 @@ bignum_half_p384:
 
 // Now shift that sum right one place
 
-                extr    d0, d1, d0, 1
-                extr    d1, d2, d1, 1
-                extr    d2, d3, d2, 1
-                extr    d3, d4, d3, 1
-                extr    d4, d5, d4, 1
-                extr    d5, d6, d5, 1
+                extr    d0, d1, d0, #1
+                extr    d1, d2, d1, #1
+                extr    d2, d3, d2, #1
+                extr    d3, d4, d3, #1
+                extr    d4, d5, d4, #1
+                extr    d5, d6, d5, #1
 
 // Store back
 
                 stp     d0, d1, [z]
-                stp     d2, d3, [z, 16]
-                stp     d4, d5, [z, 32]
+                stp     d2, d3, [z, #16]
+                stp     d4, d5, [z, #32]
 
 // Return
 

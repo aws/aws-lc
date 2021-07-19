@@ -52,23 +52,23 @@ bignum_mod_p384:
 
 // If the input is already <= 5 words long, go to a trivial "copy" path
 
-                cmp     k, 6
+                cmp     k, #6
                 bcc     short
 
 // Otherwise load the top 6 digits (top-down) and reduce k by 6
 
-                sub     k, k, 6
-                lsl     t0, k, 3
+                sub     k, k, #6
+                lsl     t0, k, #3
                 add     t0, t0, x
-                ldp     m4, m5, [t0, 32]
-                ldp     m2, m3, [t0, 16]
+                ldp     m4, m5, [t0, #32]
+                ldp     m2, m3, [t0, #16]
                 ldp     m0, m1, [t0]
 
 // Load the complicated lower three words of p_384 = [-1;-1;-1;n2;n1;n0]
 
-                mov     n0, 0x00000000ffffffff
-                mov     n1, 0xffffffff00000000
-                mov     n2, 0xfffffffffffffffe
+                mov     n0, #0x00000000ffffffff
+                mov     n1, #0xffffffff00000000
+                mov     n2, #0xfffffffffffffffe
 
 // Reduce the top 6 digits mod p_384 (a conditional subtraction of p_384)
 
@@ -94,23 +94,23 @@ loop:
 // [m5;m4;m3;m2;m1;m0;t5] |-> [m5;m4;m3;m2;m1;m0]; the shuffling downwards is
 // absorbed into the various ALU operations
 
-                sub     k, k, 1
-                ldr     t5, [x, k, LSL 3]
+                sub     k, k, #1
+                ldr     t5, [x, k, lsl #3]
 
 // Initial quotient approximation q = min (h + 1) (2^64 - 1)
 
-                adds    m5, m5, 1
+                adds    m5, m5, #1
                 csetm   t3, cs
                 add     m5, m5, t3
                 orn     n1, xzr, t3
-                sub     t2, m5, 1
+                sub     t2, m5, #1
                 sub     t1, xzr, m5
 
 // Correction term [m5;t2;t1;t0] = q * (2^384 - p_384), using m5 as a temp
 
-                lsl     t0, t1, 32
-                extr    t1, t2, t1, 32
-                lsr     t2, t2, 32
+                lsl     t0, t1, #32
+                extr    t1, t2, t1, #32
+                lsr     t2, t2, #32
                 adds    t0, t0, m5
                 adcs    t1, t1, xzr
                 adcs    t2, t2, m5
@@ -144,8 +144,8 @@ loop:
 
 writeback:
                 stp     m0, m1, [z]
-                stp     m2, m3, [z, 16]
-                stp     m4, m5, [z, 32]
+                stp     m2, m3, [z, #16]
+                stp     m4, m5, [z, #32]
 
                 ret
 
@@ -161,17 +161,17 @@ short:
 
                 cbz     k, writeback
                 ldr     m0, [x]
-                subs    k, k, 1
+                subs    k, k, #1
                 beq     writeback
-                ldr     m1, [x, 8]
-                subs    k, k, 1
+                ldr     m1, [x, #8]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m2, [x, 16]
-                subs    k, k, 1
+                ldr     m2, [x, #16]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m3, [x, 24]
-                subs    k, k, 1
+                ldr     m3, [x, #24]
+                subs    k, k, #1
                 beq     writeback
-                ldr     m4, [x, 32]
+                ldr     m4, [x, #32]
                 b       writeback
 

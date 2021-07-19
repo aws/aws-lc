@@ -41,19 +41,19 @@
 .macro          montreds d6,d5,d4,d3,d2,d1,d0, t3,t2,t1
 // Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64
 // Recycle d0 (which we know gets implicitly cancelled) to store it
-                lsl     \t1, \d0, 32
+                lsl     \t1, \d0, #32
                 add     \d0, \t1, \d0
 // Now let [t2;t1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)
 // We need to subtract 2^32 * this, and we can ignore its lower 32
 // bits since by design it will cancel anyway; we only need the w_hi
 // part to get the carry propagation going.
-                lsr     \t1, \d0, 32
+                lsr     \t1, \d0, #32
                 subs    \t1, \t1, \d0
                 sbc     \t2, \d0, xzr
 // Now select in t1 the field to subtract from d1
-                extr    \t1, \t2, \t1, 32
+                extr    \t1, \t2, \t1, #32
 // And now get the terms to subtract from d2 and d3
-                lsr     \t2, \t2, 32
+                lsr     \t2, \t2, #32
                 adds    \t2, \t2, \d0
                 adc     \t3, xzr, xzr
 // Do the subtraction of that portion
@@ -91,8 +91,8 @@ bignum_demont_p384:
 // Set up an initial window with the input x and an extra leading zero
 
                 ldp     d0, d1, [x]
-                ldp     d2, d3, [x, 16]
-                ldp     d4, d5, [x, 32]
+                ldp     d2, d3, [x, #16]
+                ldp     d4, d5, [x, #32]
 
 // Systematically scroll left doing 1-step reductions
 
@@ -111,7 +111,7 @@ bignum_demont_p384:
 // This is already our answer with no correction needed
 
                 stp     d0, d1, [z]
-                stp     d2, d3, [z, 16]
-                stp     d4, d5, [z, 32]
+                stp     d2, d3, [z, #16]
+                stp     d4, d5, [z, #32]
 
                 ret
