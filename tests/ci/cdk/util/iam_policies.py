@@ -16,6 +16,7 @@ def ec2_bm_framework_policies_in_json():
             {
                 "Effect": "Allow",
                 "Action": [
+                    "iam:PassRole",
                     "ec2:RunInstances",
                     "ec2:TerminateInstances",
                     "ec2:DescribeInstances",
