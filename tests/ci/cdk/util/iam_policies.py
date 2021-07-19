@@ -16,8 +16,6 @@ def ec2_bm_framework_policies_in_json():
             {
                 "Effect": "Allow",
                 "Action": [
-                    "ec2:StartInstances",
-                    "ec2:StopInstances",
                     "ec2:RunInstances",
                     "ec2:TerminateInstances",
                     "ec2:DescribeInstances",
