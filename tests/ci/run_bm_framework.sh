@@ -5,8 +5,6 @@ set -exo pipefail
 
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
 
-ls
-
 # get information for ec2 instances
 vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
 sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=bm_framework_ec2_sg  --query SecurityGroups[*].GroupId --output text)"
@@ -27,7 +25,7 @@ sleep 300
 
 # Create, and run ssm command
 ssm_doc_name=bm_framework_ec2_benchmark_ssm_document
-aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
     --document-type Command \
     --document-format YAML > /dev/null
