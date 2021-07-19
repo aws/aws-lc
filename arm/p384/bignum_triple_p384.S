@@ -69,33 +69,33 @@ bignum_triple_p384:
 
 // First do the multiplication by 3, getting z = [h; d5; ...; d0]
 
-                lsl     d0, a0, 1
+                lsl     d0, a0, #1
                 adds    d0, d0, a0
-                extr    d1, a1, a0, 63
+                extr    d1, a1, a0, #63
                 adcs    d1, d1, a1
-                extr    d2, a2, a1, 63
+                extr    d2, a2, a1, #63
                 adcs    d2, d2, a2
-                extr    d3, a3, a2, 63
+                extr    d3, a3, a2, #63
                 adcs    d3, d3, a3
-                extr    d4, a4, a3, 63
+                extr    d4, a4, a3, #63
                 adcs    d4, d4, a4
-                extr    d5, a5, a4, 63
+                extr    d5, a5, a4, #63
                 adcs    d5, d5, a5
-                lsr     h, a5, 63
+                lsr     h, a5, #63
                 adc     h, h, xzr
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^384). Then -p_384 <= z - q * p_384 < p_384, so we just need
 // to subtract q * p_384 and then if that's negative, add back p_384.
 
-                add     q, h, 1
+                add     q, h, #1
 
 // Initial subtraction of z - q * p_384, with bitmask c for the carry
 // Actually done as an addition of (z - 2^384 * h) + q * (2^384 - p_384)
 // which, because q = h + 1, is exactly 2^384 + (z - q * p_384), and
 // therefore CF <=> 2^384 + (z - q * p_384) >= 2^384 <=> z >= q * p_384.
 
-                lsl     t1, q, 32
+                lsl     t1, q, #32
                 subs    t0, q, t1
                 sbc     t1, t1, xzr
 
@@ -109,12 +109,12 @@ bignum_triple_p384:
 
 // Use the bitmask c for final masked addition of p_384.
 
-                mov     t0, 0x00000000ffffffff
+                mov     t0, #0x00000000ffffffff
                 and     t0, t0, c
                 adds    d0, d0, t0
                 eor     t0, t0, c
                 adcs    d1, d1, t0
-                mov     t0, 0xfffffffffffffffe
+                mov     t0, #0xfffffffffffffffe
                 and     t0, t0, c
                 adcs    d2, d2, t0
                 adcs    d3, d3, c

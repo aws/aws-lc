@@ -58,11 +58,11 @@ bignum_add_p384:
 
 // Now compare [d5; d4; d3; d2; d1; d0] with p_384
 
-                mov     l, 0x00000000ffffffff
+                mov     l, #0x00000000ffffffff
                 subs    xzr, d0, l
-                mov     l, 0xffffffff00000000
+                mov     l, #0xffffffff00000000
                 sbcs    xzr, d1, l
-                mov     l, 0xfffffffffffffffe
+                mov     l, #0xfffffffffffffffe
                 sbcs    xzr, d2, l
                 adcs    xzr, d3, xzr
                 adcs    xzr, d4, xzr
@@ -76,12 +76,12 @@ bignum_add_p384:
 
 // Now correct by subtracting masked p_384
 
-                mov     l, 0x00000000ffffffff
+                mov     l, #0x00000000ffffffff
                 and     l, l, c
                 subs    d0, d0, l
                 eor     l, l, c
                 sbcs    d1, d1, l
-                mov     l, 0xfffffffffffffffe
+                mov     l, #0xfffffffffffffffe
                 and     l, l, c
                 sbcs    d2, d2, l
                 sbcs    d3, d3, c
