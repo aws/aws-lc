@@ -49,7 +49,10 @@ class BmFrameworkStack(core.Stack):
         codebuild_role = iam.Role(scope=self,
                                   id="{}-codebuild-role".format(id),
                                   assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                                  inline_policies=codebuild_inline_policies)
+                                  inline_policies=codebuild_inline_policies,
+                                  managed_policies=[
+                                      iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
+                                  ])
 
         # Create build spec.
         placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
@@ -90,7 +93,8 @@ class BmFrameworkStack(core.Stack):
                             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
                             inline_policies=ec2_inline_policies,
                             managed_policies=[
-                                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")
+                                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
+                                iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
                             ])
         iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
                                roles=["{}-ec2-role".format(id)],
