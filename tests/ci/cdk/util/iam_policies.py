@@ -21,7 +21,9 @@ def ec2_bm_framework_policies_in_json():
                     "ec2:RunInstances",
                     "ec2:TerminateInstances",
                     "ec2:DescribeInstances",
-                    "ec2:DescribeVpcs"
+                    "ec2:DescribeVpcs",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeSubnets"
                 ],
                 "Resource": [
                     "*"
