@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef OPENSSL_HEADER_TOOL_OSSLBM_H
 #define OPENSSL_HEADER_TOOL_OSSLBM_H
 
