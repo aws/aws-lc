@@ -36,10 +36,10 @@ bignum_nonzero_6:
 
                 ldp     a, d, [x]
                 orr     a, a, d
-                ldp     c, d, [x, 16]
+                ldp     c, d, [x, #16]
                 orr     c, c, d
                 orr     a, a, c
-                ldp     c, d, [x, 32]
+                ldp     c, d, [x, #32]
                 orr     c, c, d
                 orr     a, a, c
 

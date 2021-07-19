@@ -98,11 +98,11 @@ bignum_cmul_p384:
 //       = l + 2^128 * (h + 1) + 2^96 * (h + 1) - 2^32 * (h + 1) + (h + 1)
 //       = l + 2^128 * (h + 1) + 2^96 * h + 2^32 * ~h + (h + 1)
 
-                add     h1, h, 1
+                add     h1, h, #1
                 orn     hn, xzr, h
-                lsl     a0, hn, 32
-                extr    a1, h, hn, 32
-                lsr     a2, h, 32
+                lsl     a0, hn, #32
+                extr    a1, h, hn, #32
+                lsr     a2, h, #32
 
                 adds    a0, a0, h1
                 adcs    a1, a1, xzr
@@ -120,12 +120,12 @@ bignum_cmul_p384:
 
                 csetm   m, cc
 
-                mov     l, 0x00000000ffffffff
+                mov     l, #0x00000000ffffffff
                 and     l, l, m
                 adds    d0, d0, l
                 eor     l, l, m
                 adcs    d1, d1, l
-                mov     l, 0xfffffffffffffffe
+                mov     l, #0xfffffffffffffffe
                 and     l, l, m
                 adcs    d2, d2, l
                 adcs    d3, d3, m
