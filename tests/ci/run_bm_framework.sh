@@ -26,7 +26,6 @@ sleep 300
 # Create, and run ssm command
 ssm_doc_name=bm_framework_ec2_benchmark_ssm_document
 aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
-#aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
     --document-type Command \
     --document-format YAML > /dev/null
