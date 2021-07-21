@@ -13,11 +13,8 @@ fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 echo "Testing shared AWS-LC in FIPS debug mode."
 fips_build_and_test -DBUILD_SHARED_LIBS=1
 
-# FIPS build in release mode is disabled for GCC due to some build issues relating to '-O3'.
-if [[ "${CC}" == 'clang'*  ]]; then
-  echo "Testing shared AWS-LC in FIPS release mode."
-  fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
-fi
+echo "Testing shared AWS-LC in FIPS release mode."
+fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
 if [[  "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then
   # This dimension corresponds to boringssl CI 'linux_fips_noasm_asan'.
