@@ -25,19 +25,31 @@ sleep 120
 
 # Create, and run ssm command
 ssm_doc_name=bm_framework_ec2_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-#aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
-aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+#aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
     --document-type Command \
     --document-format YAML > /dev/null
 
-aws ssm send-command --instance-ids "${x86_ubuntu2004_id}" \
+ssm_command_id="$(aws ssm send-command --instance-ids "${x86_ubuntu2004_id}" \
     --document-name "${ssm_doc_name}" \
-    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true\
-     > /dev/null
+    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
+    --query Command.CommandId --output text)"
 
 # Give some time for the command to run
-sleep 1200
+for i in {1..30}; do
+  ssm_command_status="$(aws ssm list-commands --command-id "${ssm_command_id}" --query Commands[*].Status --output text)"
+  if [[ ${ssm_command_status} == 'Success' ]]; then
+    echo "SSM command ${ssm_command_id} finished successfully."
+    break;
+  elif [[ ${ssm_command_status} == 'Failed' ]]; then
+    echo "SSM command ${ssm_command_id} failed."
+    break;
+  else
+    echo "${i}: Continue to wait 5 min for benchmarks to finish."
+    sleep 300
+  fi
+done
 
 # Delete ssm document once you're finished with it
 aws ssm delete-document --name "${ssm_doc_name}"
