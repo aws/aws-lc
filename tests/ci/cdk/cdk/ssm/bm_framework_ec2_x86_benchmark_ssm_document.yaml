@@ -36,4 +36,5 @@ mainSteps:
         - cd build/tool
         - ./awslc_bm -timeout 3 -json > aws-lc_prod_bm.json
         - datetime=$(date) #this is a temporary replacement for commitid or PRid
-        - $exec_docker aws s3 mv build/tool/aws-lc_prod_bm.json s3://aws-lc-bm-framework-prod-bucket"/${datetime}"/aws-lc_prod_bm.json
+        - accountid=$(aws sts get-caller-identity --query Account --output text)
+        - $exec_docker aws s3 mv build/tool/aws-lc_prod_bm.json s3://"${accountid}"-aws-lc-bm-framework-prod-bucket/"${datetime}"/aws-lc_prod_bm.json

@@ -35,6 +35,7 @@ RUN set -ex && \
     unzip && \
     pip install pandas && \
     pip install numpy && \
+    pip install boto3 && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
     # The awscli is used to publish data to CloudWatch Metrics in some jobs. This requires additional IAM permission
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \

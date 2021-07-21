@@ -1,9 +1,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import aws_cdk.core
 import subprocess
+import boto3
 
+from botocore.exceptions import ClientError
 from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3, aws_logs as logs
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
@@ -81,8 +82,8 @@ class BmFrameworkStack(core.Stack):
         })
 
         # define things needed for ec2 instances below (instances themselves will be dynamically created in codebuild)
-        S3_PROD_BUCKET = "{}-prod-bucket".format(id)
-
+        userid = boto3.client('sts').get_caller_identity().get('Account')
+        S3_PROD_BUCKET = "{}-{}-prod-bucket".format(userid, id)
         CLOUDWATCH_LOGS = "{}-cw-logs".format(id)
 
         # create iam for ec2s
@@ -109,13 +110,13 @@ class BmFrameworkStack(core.Stack):
                           vpc=vpc,
                           security_group_name='bm_framework_ec2_sg')
 
-        # define s3 buckets below
-        sp = subprocess.Popen("aws s3api list-buckets --query Buckets[].Name --output text",
-                              shell=True, stdout=subprocess.PIPE)
-        output = sp.stdout.read().decode("utf-8")
-
-        if S3_PROD_BUCKET not in output:
-            production_results_s3 = s3.Bucket(self, S3_PROD_BUCKET,
+        # use boto3 to determine if a bucket with the name that we want exists, and if it doesn't, create it
+        s3_res = boto3.resource('s3')
+        prod_bucket = s3_res.Bucket(S3_PROD_BUCKET)
+        try:
+            s3_res.meta.client.head_bucket(Bucket=prod_bucket.name)
+        except ClientError:
+            production_results_s3 = s3.Bucket(self, "{}-prod-bucket".format(id),
                                               bucket_name=S3_PROD_BUCKET,
                                               enforce_ssl=True)
 
