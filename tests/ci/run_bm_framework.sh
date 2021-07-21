@@ -61,7 +61,7 @@ for i in {1..30}; do
     break;
   elif [[ ${ssm_command_status} == 'Failed' ]]; then
     echo "SSM command ${ssm_command_id} failed."
-    break;
+    exit 1
   else
     echo "${i}: Continue to wait 5 min for benchmarks to finish."
     sleep 300

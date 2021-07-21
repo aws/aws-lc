@@ -34,7 +34,7 @@ mainSteps:
         # build the repo and benchmark!
         - $exec_docker cmake -Bbuild -H. -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR=/root/bm_framework/aws-lc
         - $exec_docker ninja -C build
-        - $exec_docker cmake -Bfips_build -H. -GNinja -DFIPS=1 DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR=/root/bm_framework/aws-lc
+        - $exec_docker cmake -Bfips_build -H. -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR=/root/bm_framework/aws-lc
         - $exec_docker ninja -C fips_build
         - taskset -c 0 .build/tool/awslc_bm -timeout 3 -json > aws-lc_prod_bm.json &
         - prod_pid=$!
