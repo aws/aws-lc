@@ -3,6 +3,18 @@ set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# define cleanup script to delete created assets in case something fails or breaks
+function cleanup {
+  # Delete ssm document once you're finished with it
+  aws ssm delete-document --name "${ssm_doc_name}"
+
+  # kill ec2 instances after we're done w/ them
+  aws ec2 terminate-instances --instance-ids "${x86_ubuntu2004_id}"
+}
+
+# on an error, we want to delete the document and kill the ec2 instance
+trap cleanup ERR
+
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
 
 # get information for ec2 instances
