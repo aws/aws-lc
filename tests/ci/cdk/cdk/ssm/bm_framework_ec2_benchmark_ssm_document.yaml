@@ -36,10 +36,10 @@ mainSteps:
         - $exec_docker ninja -C build
         - $exec_docker cmake -Bfips_build -H. -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR=/root/bm_framework/aws-lc
         - $exec_docker ninja -C fips_build
-        - taskset -c 0 .build/tool/awslc_bm -timeout 3 -json > aws-lc_prod_bm.json &
+        - taskset -c 0 ./build/tool/awslc_bm -timeout 3 -json > aws-lc_prod_bm.json &
         - prod_pid=$!
-        - taskset -c 1 .fips_build/tool/awslc_bm -timeout 3 -json > aws-lc_prod_fips_bm.json &
-        - prod_fips_pid=$1
+        - taskset -c 1 ./fips_build/tool/awslc_bm -timeout 3 -json > aws-lc_prod_fips_bm.json &
+        - prod_fips_pid=$!
         # wait for the background processes to finish before moving on
         - wait "${prod_pid}"
         - wait "${prod_fips_pid}"
