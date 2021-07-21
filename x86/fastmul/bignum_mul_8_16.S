@@ -23,6 +23,8 @@
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
 // ----------------------------------------------------------------------------
 
+.intel_syntax noprefix
+
 // These are actually right
 
 #define z rdi
@@ -37,12 +39,10 @@
 #define zero rbp
 #define zeroe ebp
 
-// Hm, it's so painful not being able to numerically index registers
-// Add in x[i] * rdx to the (i,i+1) position with the register window
-// Would be nice to have conditional expressions reg[i], reg[i+1] ...
+// mulpadd i, j adds x[i] * rdx (now assumed = y[j]) into the window at i+j
 
 .macro mulpadd arg1,arg2
-        mulx    rbx, rax, [x+8*\arg2]
+        mulx    rbx, rax, [x+8*\arg1]
 .if ((\arg1 + \arg2) % 8 == 0)
         adcx    r8, rax
         adox    r9, rbx
@@ -71,6 +71,45 @@
 
 .endm
 
+// mulpade i, j adds x[i] * rdx (now assumed = y[j]) into the window at i+j
+// but re-creates the top word assuming nothing to add there
+
+.macro mulpade arg1,arg2
+.if ((\arg1 + \arg2) % 8 == 0)
+        mulx    r9, rax, [x+8*\arg1]
+        adcx    r8, rax
+        adox    r9, zero
+.elseif ((\arg1 + \arg2) % 8 == 1)
+        mulx    r10, rax, [x+8*\arg1]
+        adcx    r9, rax
+        adox    r10, zero
+.elseif ((\arg1 + \arg2) % 8 == 2)
+        mulx    r11, rax, [x+8*\arg1]
+        adcx    r10, rax
+        adox    r11, zero
+.elseif ((\arg1 + \arg2) % 8 == 3)
+        mulx    r12, rax, [x+8*\arg1]
+        adcx    r11, rax
+        adox    r12, zero
+.elseif ((\arg1 + \arg2) % 8 == 4)
+        mulx    r13, rax, [x+8*\arg1]
+        adcx    r12, rax
+        adox    r13, zero
+.elseif ((\arg1 + \arg2) % 8 == 5)
+        mulx    r14, rax, [x+8*\arg1]
+        adcx    r13, rax
+        adox    r14, zero
+.elseif ((\arg1 + \arg2) % 8 == 6)
+        mulx    r15, rax, [x+8*\arg1]
+        adcx    r14, rax
+        adox    r15, zero
+.elseif ((\arg1 + \arg2) % 8 == 7)
+        mulx    r8, rax, [x+8*\arg1]
+        adcx    r15, rax
+        adox    r8, zero
+.endif
+
+.endm
 
 // Add in the whole j'th row
 
@@ -78,7 +117,7 @@
         mov     rdx, [y+8*\arg1]
         xor     zeroe, zeroe
 
-        mulpadd \arg1, 0
+        mulpadd 0, \arg1
 
 .if (\arg1 % 8 == 0)
         mov     [z+8*\arg1],r8
@@ -98,60 +137,33 @@
         mov     [z+8*\arg1],r15
 .endif
 
-        mulpadd \arg1, 1
-        mulpadd \arg1, 2
-        mulpadd \arg1, 3
-        mulpadd \arg1, 4
-        mulpadd \arg1, 5
-        mulpadd \arg1, 6
+        mulpadd 1, \arg1
+        mulpadd 2, \arg1
+        mulpadd 3, \arg1
+        mulpadd 4, \arg1
+        mulpadd 5, \arg1
+        mulpadd 6, \arg1
+        mulpade 7, \arg1
 
 .if (\arg1 % 8 == 0)
-        mulx    r8, rax, [x+8*7]
-        adcx    r15, rax
-        adox    r8, zero
-        adcx    r8, zero
+        adc     r8, zero
 .elseif (\arg1 % 8 == 1)
-        mulx    r9, rax, [x+8*7]
-        adcx    r8, rax
-        adox    r9, zero
-        adcx    r9, zero
+        adc     r9, zero
 .elseif (\arg1 % 8 == 2)
-        mulx    r10, rax, [x+8*7]
-        adcx    r9, rax
-        adox    r10, zero
-        adcx    r10, zero
+        adc     r10, zero
 .elseif (\arg1 % 8 == 3)
-        mulx    r11, rax, [x+8*7]
-        adcx    r10, rax
-        adox    r11, zero
-        adcx    r11, zero
+        adc     r11, zero
 .elseif (\arg1 % 8 == 4)
-        mulx    r12, rax, [x+8*7]
-        adcx    r11, rax
-        adox    r12, zero
-        adcx    r12, zero
+        adc     r12, zero
 .elseif (\arg1 % 8 == 5)
-        mulx    r13, rax, [x+8*7]
-        adcx    r12, rax
-        adox    r13, zero
-        adcx    r13, zero
+        adc     r13, zero
 .elseif (\arg1 % 8 == 6)
-        mulx    r14, rax, [x+8*7]
-        adcx    r13, rax
-        adox    r14, zero
-        adcx    r14, zero
+        adc     r14, zero
 .elseif (\arg1 % 8 == 7)
-        mulx    r15, rax, [x+8*7]
-        adcx    r14, rax
-        adox    r15, zero
-        adcx    r15, zero
+        adc     r15, zero
 .endif
 
 .endm
-
-
-
-.intel_syntax noprefix
 
                 .globl  bignum_mul_8_16
                 .text
@@ -185,26 +197,26 @@ bignum_mul_8_16:
         mov     [z+8*0], r8
 
         mulx    r10, rbx, [x+8*1]
-        adcx    r9, rbx
+        adc     r9, rbx
 
         mulx    r11, rbx, [x+8*2]
-        adcx    r10, rbx
+        adc     r10, rbx
 
         mulx    r12, rbx, [x+8*3]
-        adcx    r11, rbx
+        adc     r11, rbx
 
         mulx    r13, rbx, [x+8*4]
-        adcx    r12, rbx
+        adc     r12, rbx
 
         mulx    r14, rbx, [x+8*5]
-        adcx    r13, rbx
+        adc     r13, rbx
 
         mulx    r15, rbx, [x+8*6]
-        adcx    r14, rbx
+        adc     r14, rbx
 
         mulx    r8, rbx, [x+8*7]
-        adcx    r15, rbx
-        adcx    r8, zero
+        adc     r15, rbx
+        adc     r8, zero
 
 // Now all the other rows in a uniform pattern
 
@@ -228,8 +240,6 @@ bignum_mul_8_16:
         mov     [z+8*15], r15
 
 // Real epilog
-
-
 
         pop     r15
         pop     r14
