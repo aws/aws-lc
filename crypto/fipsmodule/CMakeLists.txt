@@ -267,6 +267,7 @@ elseif(FIPS_SHARED)
   set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
   if (GCC)
     # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
+    # so we have a separate linker script for gcc.
     set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
   endif()
 
