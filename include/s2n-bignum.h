@@ -469,6 +469,10 @@ extern void bignum_triple_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 // Input x[6]; output z[6]
 extern void bignum_triple_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
+// Triple modulo p_521, z := (3 * x) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_triple_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+
 // Reverse the bytes in a single word
 // Input a; output function return
 extern uint64_t word_bytereverse (uint64_t a);

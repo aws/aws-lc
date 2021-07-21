@@ -174,6 +174,7 @@ enum {
        TEST_BIGNUM_TOMONT_P384,
        TEST_BIGNUM_TRIPLE_P256,
        TEST_BIGNUM_TRIPLE_P384,
+       TEST_BIGNUM_TRIPLE_P521,
        TEST_WORD_BYTEREVERSE,
        TEST_WORD_CLZ,
        TEST_WORD_CTZ,
@@ -4233,6 +4234,42 @@ int test_bignum_triple_p384(void)
   return 0;
 }
 
+int test_bignum_triple_p521(void)
+{ uint64_t i, k;
+  printf("Testing bignum_triple_p521 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+     bignum_triple_p521(b2,b0);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b0);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_521);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "...0x%016lx * 3 mod ....0x%016lx = "
+               "...0x%016lx not ...0x%016lx\n",
+               k,b0[0],p_521[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4lu]\n",k);
+        else printf("OK: [size %4lu] "
+                    "...0x%016lx * 3 mod ....0x%016lx = "
+                    "...0x%016lx\n",
+                    k,b0[0],p_521[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_bytereverse(void)
 { uint64_t i, a, x, y;
   printf("Testing word_bytereverse with %d cases\n",tests);
@@ -4424,6 +4461,7 @@ int test_all()
   dotest(test_bignum_tomont_p384);
   dotest(test_bignum_triple_p256);
   dotest(test_bignum_triple_p384);
+  dotest(test_bignum_triple_p521);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -4708,6 +4746,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_TOMONT_P384:     return test_bignum_tomont_p384();
      case TEST_BIGNUM_TRIPLE_P256:     return test_bignum_triple_p256();
      case TEST_BIGNUM_TRIPLE_P384:     return test_bignum_triple_p384();
+     case TEST_BIGNUM_TRIPLE_P521:     return test_bignum_triple_p521();
      case TEST_WORD_BYTEREVERSE:       return test_word_bytereverse();
      case TEST_WORD_CLZ:               return test_word_clz();
      case TEST_WORD_CTZ:               return test_word_ctz();

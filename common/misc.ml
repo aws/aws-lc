@@ -22,12 +22,32 @@ needs "Library/rstc.ml";;
 needs "Library/floor.ml";;
 
 (* ------------------------------------------------------------------------- *)
-(* One small general word lemma.                                             *)
+(* A few small general word lemmas.                                          *)
 (* ------------------------------------------------------------------------- *)
 
 let WORD_ZX_BITVAL = prove
  (`!b. (word_zx:M word->N word) (word(bitval b)) = word(bitval b)`,
   REWRITE_TAC[FORALL_BOOL_THM; BITVAL_CLAUSES; WORD_ZX_0; WORD_ZX_1]);;
+
+let WORD_AND_POW2 = prove
+ (`(!(x:N word) k.
+        word_and x (word(2 EXP k)) = word(2 EXP k * bitval(bit k x))) /\
+   (!(x:N word) k.
+        word_and (word(2 EXP k)) x = word(2 EXP k * bitval(bit k x)))`,
+  REWRITE_TAC[AND_FORALL_THM; bitval] THEN REPEAT GEN_TAC THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[MULT_CLAUSES] THEN
+  REWRITE_TAC[WORD_EQ_BITS; BIT_WORD_AND; BIT_WORD_POW2; BIT_WORD_0] THEN
+  ASM_MESON_TAC[]);;
+
+let VAL_WORD_AND_POW2 = prove
+ (`(!(x:N word) k.
+        val(word_and x (word(2 EXP k))) = 2 EXP k * bitval(bit k x)) /\
+   (!(x:N word) k.
+        val(word_and (word(2 EXP k)) x) = 2 EXP k * bitval(bit k x))`,
+  REWRITE_TAC[WORD_AND_POW2] THEN REPEAT GEN_TAC THEN
+  MATCH_MP_TAC VAL_WORD_EQ THEN REWRITE_TAC[bitval] THEN
+  COND_CASES_TAC THEN REWRITE_TAC[MULT_CLAUSES; LT_EXP; EXP_LT_0] THEN
+  CONV_TAC NUM_REDUCE_CONV THEN ASM_MESON_TAC[BIT_TRIVIAL; NOT_LE]);;
 
 (* ------------------------------------------------------------------------- *)
 (* Trivial but requires two distinct library files to be combined.           *)
