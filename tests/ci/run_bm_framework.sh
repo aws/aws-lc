@@ -24,8 +24,12 @@ x86_ubuntu2004_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --co
 sleep 120
 
 # Create, and run ssm command
+# two commands for running locally vs on codebuild
 ssm_doc_name=bm_framework_ec2_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-#aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+    --name "${ssm_doc_name}" \
+    --document-type Command \
+    --document-format YAML > /dev/null \ ||
 aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
     --document-type Command \
