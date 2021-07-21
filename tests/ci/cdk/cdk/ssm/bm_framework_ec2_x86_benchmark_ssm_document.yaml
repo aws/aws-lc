@@ -10,18 +10,30 @@ mainSteps:
     inputs:
       timeoutSeconds: '7200'
       runCommand:
-        # install aws cli
         - sudo -i
-        - mkdir installs
-        - mkdir installs/awscliv2
-        - cd installs/awscliv2
-        - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        - apt install unzip
-        - unzip awscliv2.zip
-        - sudo ./aws/install
-        - cd ../../
-        # create bm_framework directory and checkout aws-lc
+        - export DEBIAN_FRONTEND=noninteractive
+        - # create bm_framework directory and checkout aws-lc
         - mkdir bm_framework
         - cd bm_framework
-        - echo test > test.txt
-        - aws s3 mv test.txt s3://aws-lc-bm-framework-prod-bucket
+        - git clone https://github.com/awslabs/aws-lc.git
+        # install docker
+        - apt-get update
+        - apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+        - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        # need to change below depending on cpu type
+        - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        - apt-get update
+        - apt-get install -y docker-ce docker-ce-cli containerd.io
+        # build docker image and get dependencies from it
+        - cd aws-lc
+        - mkdir build
+        - docker build -t ubuntu-20.04:base tests/ci/docker_images/linux-x86/ubuntu-20.04_base/
+        - docker build -t ubuntu-20.04:clang-7x tests/ci/docker_images/linux-x86/ubuntu-20.04_clang-7x/
+        - exec_docker="docker run -v `pwd`:`pwd` -v `pwd`/build:`pwd`/build -w `pwd` -i ubuntu-20.04:clang-7x"
+        # build the repo and benchmark!
+        - $exec_docker cmake -Bbuild -H. -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR=/root/bm_framework/aws-lc
+        - $exec_docker ninja -C build
+        - cd build/tool
+        - ./awslc_bm -timeout 3 -json > aws-lc_prod_bm.json
+        - datetime=$(date) #this is a temporary replacement for commitid or PRid
+        - $exec_docker aws s3 mv build/tool/aws-lc_prod_bm.json s3://aws-lc-bm-framework-prod-bucket"/${datetime}"/aws-lc_prod_bm.json

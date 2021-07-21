@@ -21,11 +21,12 @@ x86_ubuntu2004_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --co
   --query Instances[*].InstanceId --output text)"
 
 # Give 5 minutes for the ec2 to be ready
-sleep 300
+sleep 120
 
 # Create, and run ssm command
-ssm_doc_name=bm_framework_ec2_benchmark_ssm_document
-aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+ssm_doc_name=bm_framework_ec2_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
+#aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
     --document-type Command \
     --document-format YAML > /dev/null
@@ -36,7 +37,7 @@ aws ssm send-command --instance-ids "${x86_ubuntu2004_id}" \
      > /dev/null
 
 # Give some time for the command to run
-sleep 15
+sleep 1200
 
 # Delete ssm document once you're finished with it
 aws ssm delete-document --name "${ssm_doc_name}"
