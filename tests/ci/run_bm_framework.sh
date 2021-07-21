@@ -16,6 +16,7 @@ function cleanup {
 trap cleanup ERR
 
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
+echo Account ID: "${CODEBUILD_WEBHOOK_ACTOR_ACCOUNT_ID}"
 
 # get information for ec2 instances
 vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
@@ -32,13 +33,16 @@ x86_ubuntu2004_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --co
   --placement 'AvailabilityZone=us-west-2a' \
   --query Instances[*].InstanceId --output text)"
 
-# Give 5 minutes for the ec2 to be ready
+# Give a few minutes for the ec2 to be ready
 sleep 120
 
 # Create, and run ssm command
-# two commands for running locally vs on codebuild
+# use sed to replace some placeholder values inside the document with stuff
+sed -e "s/{AWS_ACCOUNT_ID}/${CODEBUILD_WEBHOOK_ACTOR_ACCOUNT_ID}/g" \
+tests/ci/cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
+> tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml
+
 ssm_doc_name=bm_framework_ec2_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-#aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
 aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
     --document-type Command \
