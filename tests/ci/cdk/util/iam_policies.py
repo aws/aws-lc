@@ -44,7 +44,8 @@ def ssm_bm_framework_policies_in_json():
                     "iam:PassRole",
                     "ssm:CreateDocument",
                     "ssm:DeleteDocument",
-                    "ssm:SendCommand"
+                    "ssm:SendCommand",
+                    "ssm:ListCommands"
                 ],
                 "Resource": [
                     "*"
