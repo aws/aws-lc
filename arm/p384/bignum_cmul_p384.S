@@ -24,6 +24,9 @@
 // Standard ARM ABI: X0 = z, X1 = c, X2 = x
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_cmul_p384
+        .text
+
 #define z x0
 #define c x1
 #define x x2
@@ -49,8 +52,6 @@
 #define m x8
 #define l x9
 
-.text
-.globl bignum_cmul_p384
 
 bignum_cmul_p384:
 
