@@ -111,14 +111,8 @@ extern "C" {
 #define X509v3_KU_UNDEF 0xffff
 
 DEFINE_STACK_OF(X509_ALGOR)
-DECLARE_ASN1_SET_OF(X509_ALGOR)
 
 typedef STACK_OF(X509_ALGOR) X509_ALGORS;
-
-struct X509_sig_st {
-  X509_ALGOR *algor;
-  ASN1_OCTET_STRING *digest;
-} /* X509_SIG */;
 
 struct X509_name_entry_st {
   ASN1_OBJECT *object;
@@ -128,7 +122,6 @@ struct X509_name_entry_st {
 } /* X509_NAME_ENTRY */;
 
 DEFINE_STACK_OF(X509_NAME_ENTRY)
-DECLARE_ASN1_SET_OF(X509_NAME_ENTRY)
 
 // we always keep X509_NAMEs in 2 forms.
 struct X509_name_st {
@@ -151,27 +144,8 @@ struct X509_extension_st {
 typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
 
 DEFINE_STACK_OF(X509_EXTENSION)
-DECLARE_ASN1_SET_OF(X509_EXTENSION)
 
 DEFINE_STACK_OF(X509_ATTRIBUTE)
-DECLARE_ASN1_SET_OF(X509_ATTRIBUTE)
-
-
-struct X509_req_info_st {
-  ASN1_ENCODING enc;
-  ASN1_INTEGER *version;
-  X509_NAME *subject;
-  X509_PUBKEY *pubkey;
-  //  d=2 hl=2 l=  0 cons: cont: 00
-  STACK_OF(X509_ATTRIBUTE) *attributes;  // [ 0 ]
-} /* X509_REQ_INFO */;
-
-struct X509_req_st {
-  X509_REQ_INFO *req_info;
-  X509_ALGOR *sig_alg;
-  ASN1_BIT_STRING *signature;
-  CRYPTO_refcount_t references;
-} /* X509_REQ */;
 
 struct x509_cinf_st {
   ASN1_INTEGER *version;  // [ 0 ] default of v1
@@ -191,14 +165,6 @@ struct x509_cinf_st {
 // it contains details which are useful in certificate
 // stores and databases. When used this is tagged onto
 // the end of the certificate itself
-
-struct x509_cert_aux_st {
-  STACK_OF(ASN1_OBJECT) *trust;   // trusted uses
-  STACK_OF(ASN1_OBJECT) *reject;  // rejected uses
-  ASN1_UTF8STRING *alias;         // "friendly name"
-  ASN1_OCTET_STRING *keyid;       // key id of private key
-  STACK_OF(X509_ALGOR) *other;    // other unspecified info
-} /* X509_CERT_AUX */;
 
 DECLARE_STACK_OF(DIST_POINT)
 DECLARE_STACK_OF(GENERAL_NAME)
@@ -229,7 +195,6 @@ struct x509_st {
 } /* X509 */;
 
 DEFINE_STACK_OF(X509)
-DECLARE_ASN1_SET_OF(X509)
 
 // This is used for a table of trust checking functions
 
@@ -351,7 +316,6 @@ struct x509_revoked_st {
 };
 
 DEFINE_STACK_OF(X509_REVOKED)
-DECLARE_ASN1_SET_OF(X509_REVOKED)
 
 struct X509_crl_info_st {
   ASN1_INTEGER *version;
@@ -389,7 +353,6 @@ struct X509_crl_st {
 } /* X509_CRL */;
 
 DEFINE_STACK_OF(X509_CRL)
-DECLARE_ASN1_SET_OF(X509_CRL)
 
 struct private_key_st {
   int version;
@@ -453,24 +416,23 @@ extern "C" {
 // it is safe to call mutating functions is a little tricky due to various
 // internal caches.
 
-// The following constants are version numbers of X.509-related structures. Note
-// APIs typically return the numerical value of X.509 versions, which are one
-// less than the named version.
-#define X509V1_VERSION 0
-#define X509V2_VERSION 1
-#define X509V3_VERSION 2
+// X509_VERSION_* are X.509 version numbers. Note the numerical values of all
+// defined X.509 versions are one less than the named version.
+#define X509_VERSION_1 0
+#define X509_VERSION_2 1
+#define X509_VERSION_3 2
 
 // X509_get_version returns the numerical value of |x509|'s version. Callers may
-// compare the result to the |X509V*_VERSION| constants. Unknown versions are
+// compare the result to the |X509_VERSION_*| constants. Unknown versions are
 // rejected by the parser, but a manually-created |X509| object may encode
 // invalid versions. In that case, the function will return the invalid version,
 // or -1 on overflow.
 OPENSSL_EXPORT long X509_get_version(const X509 *x509);
 
 // X509_set_version sets |x509|'s version to |version|, which should be one of
-// the |X509V*_VERSION| constants. It returns one on success and zero on error.
+// the |X509V_VERSION_*| constants. It returns one on success and zero on error.
 //
-// If unsure, use |X509V3_VERSION|.
+// If unsure, use |X509_VERSION_3|.
 OPENSSL_EXPORT int X509_set_version(X509 *x509, long version);
 
 // X509_get0_serialNumber returns |x509|'s serial number.
@@ -529,13 +491,6 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
                                    const ASN1_BIT_STRING **out_issuer_uid,
                                    const ASN1_BIT_STRING **out_subject_uid);
 
-// X509_get_cert_info returns |x509|'s TBSCertificate structure. Note this
-// function is not const-correct for legacy reasons.
-//
-// This function is deprecated and may be removed in the future. It is not
-// present in OpenSSL and constrains some improvements to the library.
-OPENSSL_EXPORT X509_CINF *X509_get_cert_info(const X509 *x509);
-
 // X509_extract_key is a legacy alias to |X509_get_pubkey|. Use
 // |X509_get_pubkey| instead.
 #define X509_extract_key(x) X509_get_pubkey(x)
@@ -549,9 +504,15 @@ OPENSSL_EXPORT X509_CINF *X509_get_cert_info(const X509 *x509);
 // |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
 
-// X509_REQ_get_version returns the numerical value of |req|'s version. Callers
-// may compare the result to |X509V*_VERSION| constants. If |req| is invalid, it
-// may return another value, or -1 on overflow.
+// X509_REQ_VERSION_1 is the version constant for |X509_REQ| objects. Note no
+// other versions are defined.
+#define X509_REQ_VERSION_1 0
+
+// X509_REQ_get_version returns the numerical value of |req|'s version. This
+// will be |X509_REQ_VERSION_1| for valid certificate requests. If |req| is
+// invalid, it may return another value, or -1 on overflow.
+//
+// TODO(davidben): Enforce the version number in the parser.
 OPENSSL_EXPORT long X509_REQ_get_version(const X509_REQ *req);
 
 // X509_REQ_get_subject_name returns |req|'s subject name. Note this function is
@@ -564,9 +525,14 @@ OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 // X509_name_cmp is a legacy alias for |X509_NAME_cmp|.
 #define X509_name_cmp(a, b) X509_NAME_cmp((a), (b))
 
+#define X509_CRL_VERSION_1 0
+#define X509_CRL_VERSION_2 1
+
 // X509_CRL_get_version returns the numerical value of |crl|'s version. Callers
-// may compare the result to |X509V*_VERSION| constants. If |crl| is invalid,
-// it may return another value, or -1 on overflow.
+// may compare the result to |X509_CRL_VERSION_*| constants. If |crl| is
+// invalid, it may return another value, or -1 on overflow.
+//
+// TODO(davidben): Enforce the version number in the parser.
 OPENSSL_EXPORT long X509_CRL_get_version(const X509_CRL *crl);
 
 // X509_CRL_get0_lastUpdate returns |crl|'s lastUpdate time.
@@ -613,22 +579,6 @@ OPENSSL_EXPORT STACK_OF(X509_REVOKED) *X509_CRL_get_REVOKED(X509_CRL *crl);
 // omits it.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(
     const X509_CRL *crl);
-
-// X509_CINF_set_modified marks |cinf| as modified so that changes will be
-// reflected in serializing the structure.
-//
-// This function is deprecated and may be removed in the future. It is not
-// present in OpenSSL and constrains some improvements to the library.
-OPENSSL_EXPORT void X509_CINF_set_modified(X509_CINF *cinf);
-
-// X509_CINF_get_signature returns the signature algorithm in |cinf|. Note this
-// isn't the signature itself, but the extra copy of the signature algorithm
-// in the TBSCertificate.
-//
-// This function is deprecated and may be removed in the future. It is not
-// present in OpenSSL and constrains some improvements to the library. Use
-// |X509_get0_tbs_sigalg| instead.
-OPENSSL_EXPORT const X509_ALGOR *X509_CINF_get_signature(const X509_CINF *cinf);
 
 // X509_SIG_get0 sets |*out_alg| and |*out_digest| to non-owning pointers to
 // |sig|'s algorithm and digest fields, respectively. Either |out_alg| and
@@ -976,7 +926,6 @@ OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
 
 DECLARE_ASN1_FUNCTIONS(X509_SIG)
-DECLARE_ASN1_FUNCTIONS(X509_REQ_INFO)
 DECLARE_ASN1_FUNCTIONS(X509_REQ)
 
 DECLARE_ASN1_FUNCTIONS(X509_ATTRIBUTE)
@@ -1118,9 +1067,10 @@ OPENSSL_EXPORT int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type,
                                     void *data, unsigned char *md,
                                     unsigned int *len);
 
-OPENSSL_EXPORT int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *algor1,
-                                    ASN1_BIT_STRING *signature, void *data,
-                                    EVP_PKEY *pkey);
+OPENSSL_EXPORT int ASN1_item_verify(const ASN1_ITEM *it,
+                                    const X509_ALGOR *algor1,
+                                    const ASN1_BIT_STRING *signature,
+                                    void *data, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                   X509_ALGOR *algor2,
@@ -1181,9 +1131,9 @@ OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_get0_extensions(
 OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x509);
 
 // X509_REQ_set_version sets |req|'s version to |version|, which should be
-// |X509V1_VERSION|. It returns one on success and zero on error.
+// |X509_REQ_VERSION_1|. It returns one on success and zero on error.
 //
-// Note no versions other than |X509V1_VERSION| are defined for CSRs.
+// Note no versions other than |X509_REQ_VERSION_1| are defined for CSRs.
 OPENSSL_EXPORT int X509_REQ_set_version(X509_REQ *req, long version);
 
 // X509_REQ_set_subject_name sets |req|'s subject to a copy of |name|. It
@@ -1315,11 +1265,11 @@ OPENSSL_EXPORT int X509_REQ_add1_attr_by_txt(X509_REQ *req,
                                              int len);
 
 // X509_CRL_set_version sets |crl|'s version to |version|, which should be one
-// of the |X509V*_VERSION| constants. It returns one on success and zero on
+// of the |X509_CRL_VERSION_*| constants. It returns one on success and zero on
 // error.
 //
-// If unsure, use |X509V2_VERSION|. Note |X509V3_VERSION| is not defined for
-// CRLs.
+// If unsure, use |X509_CRL_VERSION_2|. Note that, unlike certificates, CRL
+// versions are only defined up to v2. Callers should not use |X509_VERSION_3|.
 OPENSSL_EXPORT int X509_CRL_set_version(X509_CRL *crl, long version);
 
 // X509_CRL_set_issuer_name sets |crl|'s issuer to a copy of |name|. It returns
@@ -1375,6 +1325,25 @@ OPENSSL_EXPORT int i2d_re_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
 // signature of an existing CRL. To generate CRLs, use |i2d_re_X509_CRL_tbs|
 // instead.
 OPENSSL_EXPORT int i2d_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
+
+// X509_CRL_set1_signature_algo sets |crl|'s signature algorithm to |algo| and
+// returns one on success or zero on error. It updates both the signature field
+// of the TBSCertList structure, and the signatureAlgorithm field of the CRL.
+OPENSSL_EXPORT int X509_CRL_set1_signature_algo(X509_CRL *crl,
+                                                const X509_ALGOR *algo);
+
+// X509_CRL_set1_signature_value sets |crl|'s signature to a copy of the
+// |sig_len| bytes pointed by |sig|. It returns one on success and zero on
+// error.
+//
+// Due to a specification error, X.509 CRLs store signatures in ASN.1 BIT
+// STRINGs, but signature algorithms return byte strings rather than bit
+// strings. This function creates a BIT STRING containing a whole number of
+// bytes, with the bit order matching the DER encoding. This matches the
+// encoding used by all X.509 signature algorithms.
+OPENSSL_EXPORT int X509_CRL_set1_signature_value(X509_CRL *crl,
+                                                 const uint8_t *sig,
+                                                 size_t sig_len);
 
 // X509_REVOKED_get0_serialNumber returns the serial number of the certificate
 // revoked by |revoked|.
@@ -1851,6 +1820,7 @@ BORINGSSL_MAKE_DELETER(X509_REQ, X509_REQ_free)
 BORINGSSL_MAKE_DELETER(X509_REVOKED, X509_REVOKED_free)
 BORINGSSL_MAKE_DELETER(X509_SIG, X509_SIG_free)
 BORINGSSL_MAKE_DELETER(X509_STORE, X509_STORE_free)
+BORINGSSL_MAKE_UP_REF(X509_STORE, X509_STORE_up_ref)
 BORINGSSL_MAKE_DELETER(X509_STORE_CTX, X509_STORE_CTX_free)
 BORINGSSL_MAKE_DELETER(X509_VERIFY_PARAM, X509_VERIFY_PARAM_free)
 

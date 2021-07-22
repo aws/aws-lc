@@ -22,15 +22,14 @@
 
 #include "internal.h"
 
-
-bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args,
-                            const std::vector<std::string> &args,
-                            const struct argument *templates) {
+bool ParseKeyValueArguments(args_map_t *out_args,
+                          const args_list_t &args,
+                          const argument_t *templates) {
   out_args->clear();
 
   for (size_t i = 0; i < args.size(); i++) {
     const std::string &arg = args[i];
-    const struct argument *templ = nullptr;
+    const argument_t *templ = nullptr;
     for (size_t j = 0; templates[j].name[0] != 0; j++) {
       if (strcmp(arg.c_str(), templates[j].name) == 0) {
         templ = &templates[j];
@@ -60,7 +59,7 @@ bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args,
   }
 
   for (size_t j = 0; templates[j].name[0] != 0; j++) {
-    const struct argument *templ = &templates[j];
+    const argument_t *templ = &templates[j];
     if (templ->type == kRequiredArgument &&
         out_args->find(templ->name) == out_args->end()) {
       fprintf(stderr, "Missing value for required argument: %s\n", templ->name);
@@ -71,16 +70,16 @@ bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args,
   return true;
 }
 
-void PrintUsage(const struct argument *templates) {
+void PrintUsage(const argument_t *templates) {
   for (size_t i = 0; templates[i].name[0] != 0; i++) {
-    const struct argument *templ = &templates[i];
+    const argument_t *templ = &templates[i];
     fprintf(stderr, "%s\t%s\n", templ->name, templ->description);
   }
 }
 
 bool GetUnsigned(unsigned *out, const std::string &arg_name,
                  unsigned default_value,
-                 const std::map<std::string, std::string> &args) {
+                 const args_map_t &args) {
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     *out = default_value;

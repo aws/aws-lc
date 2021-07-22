@@ -15,19 +15,15 @@
 #ifndef OPENSSL_HEADER_TOOL_INTERNAL_H
 #define OPENSSL_HEADER_TOOL_INTERNAL_H
 
+#if !defined(OPENSSL_BENCHMARK)
 #include <openssl/base.h>
+#endif
 
 #include <string>
 #include <utility>
 #include <vector>
-
-// MSVC issues warning C4702 for unreachable code in its xtree header when
-// compiling with -D_HAS_EXCEPTIONS=0. See
-// https://connect.microsoft.com/VisualStudio/feedback/details/809962
-OPENSSL_MSVC_PRAGMA(warning(push))
-OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
+#include <memory>
 #include <map>
-OPENSSL_MSVC_PRAGMA(warning(pop))
 
 struct FileCloser {
   void operator()(FILE *file) {
@@ -104,20 +100,26 @@ enum ArgumentType {
   kBooleanArgument,
 };
 
-struct argument {
+typedef struct argument_t {
   const char *name;
   ArgumentType type;
   const char *description;
-};
+} argument_t;
 
-bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args, const
-    std::vector<std::string> &args, const struct argument *templates);
+typedef std::vector<std::string> args_list_t;
+typedef std::map<std::string, std::string> args_map_t;
 
-void PrintUsage(const struct argument *templates);
+// ParseKeyValueArguments converts the list of strings |args| ["-filter", "RSA", "-Timeout", "10"] into a map in
+// |out_args| of key value pairs {"-filter": "RSA", "-Timeout": "10"}. It uses |templates| to determine what arguments
+// are option or required.
+bool ParseKeyValueArguments(args_map_t *out_args, const args_list_t &args, const argument_t *templates);
 
-bool GetUnsigned(unsigned *out, const std::string &arg_name,
-                 unsigned default_value,
-                 const std::map<std::string, std::string> &args);
+// PrintUsage prints the description from the list of templates in |templates| to stderr.
+void PrintUsage(const argument_t *templates);
+
+// GetUnsigned assigns |out| the value of |arg_name| from the map |args| if it is present. If |arg_name| is not found
+// in |args| it assigns |out| to the |default_value|.
+bool GetUnsigned(unsigned *out, const std::string &arg_name, unsigned default_value, const args_map_t &args);
 
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
 
@@ -144,5 +146,6 @@ extern const size_t kDERRSAPrivate2048Len;
 extern const uint8_t kDERRSAPrivate4096[];
 extern const size_t kDERRSAPrivate4096Len;
 
+#define BM_ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 #endif  // !OPENSSL_HEADER_TOOL_INTERNAL_H

@@ -545,6 +545,7 @@ if(BUILD_TESTING)
     cipher_extra/cipher_test.cc
     cmac/cmac_test.cc
     compiler_test.cc
+    conf/conf_test.cc
     constant_time_test.cc
     cpu-arm-linux_test.cc
     crypto_test.cc

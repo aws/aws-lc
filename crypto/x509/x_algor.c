@@ -61,7 +61,7 @@
 #include <openssl/digest.h>
 #include <openssl/obj.h>
 
-#include "../asn1/asn1_locl.h"
+#include "../asn1/internal.h"
 
 
 ASN1_SEQUENCE(X509_ALGOR) = {
@@ -76,8 +76,6 @@ ASN1_ITEM_TEMPLATE_END(X509_ALGORS)
 IMPLEMENT_ASN1_FUNCTIONS(X509_ALGOR)
 IMPLEMENT_ASN1_ENCODE_FUNCTIONS_fname(X509_ALGORS, X509_ALGORS, X509_ALGORS)
 IMPLEMENT_ASN1_DUP_FUNCTION(X509_ALGOR)
-
-IMPLEMENT_ASN1_SET_OF(X509_ALGOR)
 
 int X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *aobj, int ptype, void *pval)
 {

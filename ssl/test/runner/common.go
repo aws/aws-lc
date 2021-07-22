@@ -109,7 +109,6 @@ const (
 	extensionSignedCertificateTimestamp uint16 = 18
 	extensionPadding                    uint16 = 21
 	extensionExtendedMasterSecret       uint16 = 23
-	extensionTokenBinding               uint16 = 24
 	extensionCompressedCertAlgs         uint16 = 27
 	extensionSessionTicket              uint16 = 35
 	extensionPreSharedKey               uint16 = 41
@@ -120,7 +119,7 @@ const (
 	extensionCertificateAuthorities     uint16 = 47
 	extensionSignatureAlgorithmsCert    uint16 = 50
 	extensionKeyShare                   uint16 = 51
-	extensionQUICTransportParams        uint16 = 57    // draft-ietf-quic-tls-33 and later
+	extensionQUICTransportParams        uint16 = 57
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionApplicationSettings        uint16 = 17513 // not IANA assigned
@@ -129,7 +128,7 @@ const (
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
-	extensionEncryptedClientHello       uint16 = 0xfe09 // not IANA assigned
+	extensionEncryptedClientHello       uint16 = 0xfe0a // not IANA assigned
 	extensionECHIsInner                 uint16 = 0xda09 // not IANA assigned
 	extensionECHOuterExtensions         uint16 = 0xfd00 // not IANA assigned
 )
@@ -258,8 +257,6 @@ type ConnectionState struct {
 	VerifiedChains             [][]*x509.Certificate // verified chains built from PeerCertificates
 	OCSPResponse               []byte                // stapled OCSP response from the peer, if any
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
-	TokenBindingNegotiated     bool                  // whether Token Binding was negotiated
-	TokenBindingParam          uint8                 // the negotiated Token Binding key parameter
 	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
 	TLSUnique                  []byte                // the tls-unique channel binding
 	SCTList                    []byte                // signed certificate timestamp list
@@ -434,6 +431,10 @@ type Config struct {
 	// decreasing order of preference. If empty, the default will be used.
 	ECHCipherSuites []HPKECipherSuite
 
+	// ServerECHConfigs is the server's list of ECHConfig values with
+	// corresponding secret keys.
+	ServerECHConfigs []ServerECHConfig
+
 	// ECHOuterExtensions is the list of extensions that the client will
 	// compress with the ech_outer_extensions extension. If empty, no extensions
 	// will be compressed.
@@ -520,20 +521,6 @@ type Config struct {
 	// Channel ID. If negotiated, the client's public key is
 	// returned in the ConnectionState.
 	RequestChannelID bool
-
-	// TokenBindingParams contains a list of TokenBindingKeyParameters
-	// (draft-ietf-tokbind-protocol-16) to attempt to negotiate. If
-	// nil, Token Binding will not be negotiated.
-	TokenBindingParams []byte
-
-	// TokenBindingVersion contains the serialized ProtocolVersion to
-	// use when negotiating Token Binding.
-	TokenBindingVersion uint16
-
-	// ExpectTokenBindingParams is checked by a server that the client
-	// sent ExpectTokenBindingParams as its list of Token Binding
-	// paramters.
-	ExpectTokenBindingParams []byte
 
 	// PreSharedKey, if not nil, is the pre-shared key to use with
 	// the PSK cipher suites.
@@ -856,12 +843,18 @@ type ProtocolBugs struct {
 	AlertBeforeFalseStartTest alert
 
 	// ExpectServerName, if not empty, is the hostname the client
-	// must specify in the server_name extension.
+	// must specify in the selected ClientHello's server_name extension.
 	ExpectServerName string
 
-	// ExpectClientECH causes the server to expect the peer to send an
-	// encrypted_client_hello extension containing a ClientECH structure.
+	// ExpectServerName, if not empty, is the hostname the client
+	// must specify in the ClientHelloOuter's server_name extension.
+	ExpectOuterServerName string
+
+	// ExpectClientECH causes the server to require that the client offer ECH.
 	ExpectClientECH bool
+
+	// ExpectNoClientECH causes the server to require that the client not offer ECH.
+	ExpectNoClientECH bool
 
 	// IgnoreECHConfigCipherPreferences, when true, causes the client to ignore
 	// the cipher preferences in the ECHConfig and select the most preferred ECH
@@ -875,6 +868,10 @@ type ProtocolBugs struct {
 	// SendECHRetryConfigs, if not empty, contains the ECH server's serialized
 	// retry configs.
 	SendECHRetryConfigs []byte
+
+	// SendECHRetryConfigsInTLS12ServerHello, if true, causes the ECH server to
+	// send retry configs in the TLS 1.2 ServerHello.
+	SendECHRetryConfigsInTLS12ServerHello bool
 
 	// SendInvalidECHIsInner, if not empty, causes the client to send the
 	// specified byte string in the ech_is_inner extension.
@@ -922,6 +919,10 @@ type ProtocolBugs struct {
 	// incorrectly encrypt the second encrypted_client_hello extension.
 	CorruptSecondEncryptedClientHello bool
 
+	// CorruptSecondEncryptedClientHelloConfigID, if true, causes the client to
+	// incorrectly set the second ClientHello's ECH config ID.
+	CorruptSecondEncryptedClientHelloConfigID bool
+
 	// AllowTLS12InClientHelloInner, if true, causes the client to include
 	// TLS 1.2 and earlier in ClientHelloInner.
 	AllowTLS12InClientHelloInner bool
@@ -931,6 +932,19 @@ type ProtocolBugs struct {
 	// ClientHelloOuter fail and should only be used in tests that expect
 	// success.
 	MinimalClientHelloOuter bool
+
+	// ExpectECHOuterExtensions is a list of extension IDs which the server
+	// will require to be present in ech_outer_extensions.
+	ExpectECHOuterExtensions []uint16
+
+	// ExpectECHOuterExtensions is a list of extension IDs which the server
+	// will require to be omitted in ech_outer_extensions.
+	ExpectECHUncompressedExtensions []uint16
+
+	// UseInnerSessionWithClientHelloOuter, if true, causes the server to
+	// handshake with ClientHelloOuter, but resume the session from
+	// ClientHelloInner.
+	UseInnerSessionWithClientHelloOuter bool
 
 	// RecordClientHelloInner, when non-nil, is called whenever the client
 	// generates an encrypted ClientHello. The byte strings do not include the
@@ -1009,8 +1023,14 @@ type ProtocolBugs struct {
 	// ClientHello session ID, even in TLS 1.2 full handshakes.
 	EchoSessionIDInFullHandshake bool
 
+	// ExpectNoSessionID, if true, causes the server to fail the connection if
+	// the session ID field is present.
+	ExpectNoSessionID bool
+
 	// ExpectNoTLS12Session, if true, causes the server to fail the
-	// connection if either a session ID or TLS 1.2 ticket is offered.
+	// connection if the server offered a TLS 1.2 session. TLS 1.3 clients
+	// always offer session IDs for compatibility, so the session ID check
+	// checks for sessions the server issued.
 	ExpectNoTLS12Session bool
 
 	// ExpectNoTLS13PSK, if true, causes the server to fail the connection
@@ -1340,11 +1360,6 @@ type ProtocolBugs struct {
 	// client.
 	SendTicketAge time.Duration
 
-	// FailIfSessionOffered, if true, causes the server to fail any
-	// connections where the client offers a non-empty session ID or session
-	// ticket.
-	FailIfSessionOffered bool
-
 	// SendHelloRequestBeforeEveryAppDataRecord, if true, causes a
 	// HelloRequest handshake message to be sent before each application
 	// data record. This only makes sense for a server.
@@ -1662,8 +1677,12 @@ type ProtocolBugs struct {
 	// invalid Channel ID signature.
 	InvalidChannelIDSignature bool
 
+	// AlwaysNegotiateChannelID, if true, causes the server to negotiate Channel
+	// ID, even whenn the client does not offer it.
+	AlwaysNegotiateChannelID bool
+
 	// ExpectGREASE, if true, causes messages without GREASE values to be
-	// rejected. See draft-davidben-tls-grease-01.
+	// rejected. See RFC 8701.
 	ExpectGREASE bool
 
 	// OmitPSKsOnSecondClientHello, if true, causes the client to omit the
@@ -1794,6 +1813,10 @@ type ProtocolBugs struct {
 	// used on this connection, or zero if there are no special requirements.
 	ExpectedCompressedCert uint16
 
+	// ExpectUncompressedCert, if true, specifies that certificate compression
+	// should not be used on this connection.
+	ExpectUncompressedCert bool
+
 	// SendCertCompressionAlgID, if not zero, sets the algorithm ID that will be
 	// sent in the compressed certificate message.
 	SendCertCompressionAlgID uint16
@@ -1848,6 +1871,10 @@ type ProtocolBugs struct {
 	// CompatModeWithQUIC, if true, enables TLS 1.3 compatibility mode
 	// when running over QUIC.
 	CompatModeWithQUIC bool
+
+	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
+	// encrypting tickets.
+	EncryptSessionTicketKey *[32]byte
 }
 
 func (c *Config) serverInit() {
@@ -2293,4 +2320,13 @@ func containsGREASE(values []uint16) bool {
 		}
 	}
 	return false
+}
+
+func isAllZero(v []byte) bool {
+	for _, b := range v {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
