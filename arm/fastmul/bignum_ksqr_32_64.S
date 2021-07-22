@@ -26,6 +26,9 @@
 // Standard ARM ABI: X0 = z, X1 = x, X2 = t
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_ksqr_32_64
+        .text
+
 #define k 16
 #define l (k/2)
 
@@ -35,7 +38,6 @@
 
 #define c x16
 
-.globl bignum_ksqr_32_64
 
 bignum_ksqr_32_64:
 

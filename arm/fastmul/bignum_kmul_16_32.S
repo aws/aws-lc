@@ -27,7 +27,8 @@
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y, X3 = t
 // ----------------------------------------------------------------------------
 
-.globl bignum_kmul_16_32
+        .globl  bignum_kmul_16_32
+        .text
 
 // Subroutine-safe copies of the output, inputs and temporary buffer pointers
 
