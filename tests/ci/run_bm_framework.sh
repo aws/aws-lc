@@ -71,9 +71,3 @@ for i in {1..30}; do
     sleep 300
   fi
 done
-
-# Delete ssm document once you're finished with it
-aws ssm delete-document --name "${ssm_doc_name}"
-
-# kill ec2 instances after we're done w/ them
-aws ec2 terminate-instances --instance-ids "${x86_ubuntu2004_id}"

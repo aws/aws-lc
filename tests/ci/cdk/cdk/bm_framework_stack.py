@@ -84,7 +84,7 @@ class BmFrameworkStack(core.Stack):
         # define things needed for ec2 instances below (instances themselves will be dynamically created in codebuild)
         userid = boto3.client('sts').get_caller_identity().get('Account')
         S3_PROD_BUCKET = "{}-{}-prod-bucket".format(userid, id)
-        CLOUDWATCH_LOGS = "{}-cw-logs".format(id)
+        CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(userid, id)
 
         # create iam for ec2s
         s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
@@ -123,5 +123,5 @@ class BmFrameworkStack(core.Stack):
             production_results_s3.grant_put(ec2_role)
 
         # define CloudWatch Logs groups
-        logs.LogGroup(self, CLOUDWATCH_LOGS,
+        logs.LogGroup(self, "{}-cw-logs".format(id),
                       log_group_name=CLOUDWATCH_LOGS)
