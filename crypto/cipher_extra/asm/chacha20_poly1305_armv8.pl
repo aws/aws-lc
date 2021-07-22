@@ -309,6 +309,7 @@ ___
 
 {
 $code.=<<___;
+#include <openssl/arm_arch.h>
 .section .rodata
 
 .align 7
@@ -370,6 +371,7 @@ $code.=<<___;
 .type   chacha20_poly1305_seal,%function
 .align  6
 chacha20_poly1305_seal:
+    AARCH64_SIGN_LINK_REGISTER
 .cfi_startproc
     stp x29, x30, [sp, #-80]!
 .cfi_def_cfa_offset 80
@@ -910,6 +912,7 @@ $code.=<<___;
 .cfi_restore w29
 .cfi_restore w30
 .cfi_def_cfa_offset 0
+    AARCH64_VALIDATE_LINK_REGISTER
     ret
 
 .Lseal_128:
@@ -976,6 +979,7 @@ $code.=<<___;
 .type	chacha20_poly1305_open,%function
 .align	6
 chacha20_poly1305_open:
+    AARCH64_SIGN_LINK_REGISTER
 .cfi_startproc
     stp x29, x30, [sp, #-80]!
 .cfi_def_cfa_offset 80
@@ -1529,6 +1533,7 @@ $code.=<<___;
 .cfi_restore w29
 .cfi_restore w30
 .cfi_def_cfa_offset 0
+    AARCH64_VALIDATE_LINK_REGISTER
     ret
 
 .Lopen_128:

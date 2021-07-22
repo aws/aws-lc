@@ -12,6 +12,7 @@
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
+#include <openssl/arm_arch.h>
 .section	__TEXT,__const
 
 .align	7
@@ -127,6 +128,7 @@ Lpoly_hash_ad_ret:
 
 .align	6
 _chacha20_poly1305_seal:
+	AARCH64_SIGN_LINK_REGISTER
 .cfi_startproc
 	stp	x29, x30, [sp, #-80]!
 .cfi_def_cfa_offset	80
@@ -1304,6 +1306,7 @@ Lseal_finalize:
 .cfi_restore	w29
 .cfi_restore	w30
 .cfi_def_cfa_offset	0
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 Lseal_128:
@@ -1481,6 +1484,7 @@ Lseal_128_rounds:
 
 .align	6
 _chacha20_poly1305_open:
+	AARCH64_SIGN_LINK_REGISTER
 .cfi_startproc
 	stp	x29, x30, [sp, #-80]!
 .cfi_def_cfa_offset	80
@@ -2660,6 +2664,7 @@ Lopen_finalize:
 .cfi_restore	w29
 .cfi_restore	w30
 .cfi_def_cfa_offset	0
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 Lopen_128:

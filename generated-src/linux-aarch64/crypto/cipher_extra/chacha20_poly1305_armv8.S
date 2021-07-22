@@ -13,6 +13,7 @@
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
+#include <openssl/arm_arch.h>
 .section	.rodata
 
 .align	7
@@ -128,6 +129,7 @@
 .type	chacha20_poly1305_seal,%function
 .align	6
 chacha20_poly1305_seal:
+	AARCH64_SIGN_LINK_REGISTER
 .cfi_startproc
 	stp	x29, x30, [sp, #-80]!
 .cfi_def_cfa_offset	80
@@ -1305,6 +1307,7 @@ chacha20_poly1305_seal:
 .cfi_restore	w29
 .cfi_restore	w30
 .cfi_def_cfa_offset	0
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 .Lseal_128:
@@ -1482,6 +1485,7 @@ chacha20_poly1305_seal:
 .type	chacha20_poly1305_open,%function
 .align	6
 chacha20_poly1305_open:
+	AARCH64_SIGN_LINK_REGISTER
 .cfi_startproc
 	stp	x29, x30, [sp, #-80]!
 .cfi_def_cfa_offset	80
@@ -2661,6 +2665,7 @@ chacha20_poly1305_open:
 .cfi_restore	w29
 .cfi_restore	w30
 .cfi_def_cfa_offset	0
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 .Lopen_128:
