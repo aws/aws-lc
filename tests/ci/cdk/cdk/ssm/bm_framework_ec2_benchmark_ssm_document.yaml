@@ -26,6 +26,7 @@ mainSteps:
         - apt-get install -y docker-ce docker-ce-cli containerd.io
         # build docker image and get dependencies from it
         - cd aws-lc
+        - git checkout {COMMIT_ID}
         - mkdir build
         - mkdir fips_build
         - docker build -t ubuntu-20.04:base tests/ci/docker_images/linux-x86/ubuntu-20.04_base/

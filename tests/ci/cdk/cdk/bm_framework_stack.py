@@ -84,6 +84,7 @@ class BmFrameworkStack(core.Stack):
         # define things needed for ec2 instances below (instances themselves will be dynamically created in codebuild)
         userid = boto3.client('sts').get_caller_identity().get('Account')
         S3_PROD_BUCKET = "{}-{}-prod-bucket".format(userid, id)
+        S3_PR_BUCKET = "{}-{}-pr-bucket".format(userid, id)
         CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(userid, id)
 
         # create iam for ec2s
@@ -113,6 +114,7 @@ class BmFrameworkStack(core.Stack):
         # use boto3 to determine if a bucket with the name that we want exists, and if it doesn't, create it
         s3_res = boto3.resource('s3')
         prod_bucket = s3_res.Bucket(S3_PROD_BUCKET)
+        pr_bucket = s3_res.Bucket(S3_PR_BUCKET)
         try:
             s3_res.meta.client.head_bucket(Bucket=prod_bucket.name)
         except ClientError:
@@ -121,6 +123,15 @@ class BmFrameworkStack(core.Stack):
                                               enforce_ssl=True)
 
             production_results_s3.grant_put(ec2_role)
+
+        try:
+            s3_res.meta.client.head_bucket(Bucket=pr_bucket.name)
+        except ClientError:
+            pr_results_s3 = s3.Bucket(self, "{}-pr-bucket".format(id),
+                                      bucket_name=S3_PR_BUCKET,
+                                      enforce_ssl=True)
+
+            pr_results_s3.grant_put(ec2_role)
 
         # define CloudWatch Logs groups
         logs.LogGroup(self, "{}-cw-logs".format(id),

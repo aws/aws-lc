@@ -27,5 +27,5 @@ wait "${prod_pid}"
 wait "${prod_fips_pid}"
 
 # upload results to s3
-aws s3 mv aws-lc_prod_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc_prod_bm.json
-aws s3 mv aws-lc_prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc_prod_fips_bm.json
+aws s3 mv aws-lc_prod_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc_prod_bm.json
+aws s3 mv aws-lc_prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc_prod_fips_bm.json
