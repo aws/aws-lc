@@ -27,6 +27,10 @@
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
 // -----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_montmul_p384
+        .text
+
 #define z rdi
 #define x rsi
 
@@ -115,10 +119,7 @@
                 adc     \d7, 0
 .endm
 
-.intel_syntax noprefix
 
-                .globl  bignum_montmul_p384
-                .text
 
 bignum_montmul_p384:
 

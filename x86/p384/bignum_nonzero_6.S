@@ -22,15 +22,16 @@
 // Standard x86-64 ABI: RDI = x, returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_nonzero_6
+        .text
+
 #define x rdi
 #define a rax
 #define d rdx
 #define dshort edx
 
-.intel_syntax noprefix
 
-                .globl  bignum_nonzero_6
-                .text
 
 bignum_nonzero_6:
 

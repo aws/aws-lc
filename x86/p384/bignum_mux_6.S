@@ -26,6 +26,10 @@
 // Standard x86-64 ABI: RDI = p, RSI = z, RDX = x, RCX = y
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_mux_6
+        .text
+
 #define p rdi
 #define z rsi
 #define x rdx
@@ -33,10 +37,7 @@
 #define a rax
 #define b r8
 
-.intel_syntax noprefix
 
-                .globl  bignum_mux_6
-                .text
 bignum_mux_6:
                 test    p, p
 

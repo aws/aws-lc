@@ -23,6 +23,10 @@
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_add_p384
+        .text
+
 #define z rdi
 #define x rsi
 #define y rdx
@@ -42,9 +46,7 @@
 #define ashort esi
 #define cshort edx
 
-.intel_syntax noprefix
 
-        .globl  bignum_add_p384
 
 bignum_add_p384:
 

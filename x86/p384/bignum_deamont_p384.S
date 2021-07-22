@@ -26,6 +26,10 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_deamont_p384
+        .text
+
 #define z rdi
 #define x rsi
 
@@ -74,10 +78,7 @@
                 sbb     \d6, 0
 .endm
 
-.intel_syntax noprefix
 
-                .globl  bignum_deamont_p384
-                .text
 
 bignum_deamont_p384:
 
