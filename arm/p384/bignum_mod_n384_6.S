@@ -25,6 +25,9 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_mod_n384_6
+        .text
+
 #define z x0
 #define x x1
 
@@ -49,8 +52,6 @@
                 movk    \x, \n3, lsl #48
 .endm
 
-.text
-.globl bignum_mod_n384_6
 
 bignum_mod_n384_6:
 
