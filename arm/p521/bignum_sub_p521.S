@@ -90,3 +90,7 @@ bignum_sub_p521:
                 str     d8, [z, #64]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
