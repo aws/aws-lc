@@ -47,3 +47,7 @@ bignum_nonzero_4:
                 cset    x0, ne
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

@@ -91,3 +91,7 @@ bignum_tobytes_4:
                 str     c, [z, #8*1]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

@@ -783,3 +783,7 @@ local_mul_8_16:
         stp     x20, x21, [x0, #96]
         stp     x22, x23, [x0, #112]
         ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

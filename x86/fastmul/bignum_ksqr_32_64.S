@@ -787,3 +787,7 @@ local_bignum_sqr_16_32:
         adox   rbx, rbp
         mov    [z+0xf8], rbx
         ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

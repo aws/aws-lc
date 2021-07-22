@@ -67,3 +67,7 @@ word_negmodinv:
                 imul    rax, rdx    // rax = x * (1 + e) * ... * * (1 + e^8)
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

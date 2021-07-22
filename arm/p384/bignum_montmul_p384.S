@@ -422,3 +422,7 @@ bignum_montmul_p384:
                 ldp     x19, x20, [sp], #16
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

@@ -90,3 +90,7 @@ bignum_mod_n256_4:
         mov     [z + 24], d3
 
         ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

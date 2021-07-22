@@ -172,3 +172,7 @@ bignum_deamont_p384:
         pop     r12
 
         ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

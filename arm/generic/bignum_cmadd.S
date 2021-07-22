@@ -116,3 +116,7 @@ tloop:
 end:
                 adcs    x0, h, xzr
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

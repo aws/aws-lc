@@ -175,12 +175,12 @@ let BIGNUM_TRIPLE_P256_CORRECT = time prove
      [REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
       BOUNDER_TAC;
       ALL_TAC] THEN
-  
-    SUBGOAL_THEN 
+
+    SUBGOAL_THEN
      `&(3 * n):real =
       &(bignum_of_wordlist [sum_s5; sum_s9; sum_s13; sum_s17; word (h + 1)]) -
       &2 pow 256`
-    SUBST1_TAC THENL 
+    SUBST1_TAC THENL
      [ASM_REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN REAL_ARITH_TAC;
       ALL_TAC] THEN
 

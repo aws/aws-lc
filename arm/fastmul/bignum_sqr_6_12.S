@@ -264,3 +264,7 @@ bignum_sqr_6_12:
                 str     a0, [x0, #88]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

@@ -121,3 +121,7 @@ tailloop:
                 bne     tailloop
                 neg     x0, a
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

@@ -93,3 +93,7 @@ bignum_demont_p256:
                 stp     d2, d3, [z, #16]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

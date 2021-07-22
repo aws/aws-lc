@@ -280,3 +280,7 @@ bignum_montmul_p256:
                 stp     d2, d3, [x0, #16]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

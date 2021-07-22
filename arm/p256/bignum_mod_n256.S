@@ -176,3 +176,7 @@ short:
                 beq     writeback
                 ldr     m2, [x, #16]
                 b       writeback
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

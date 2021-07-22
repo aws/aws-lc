@@ -68,3 +68,7 @@ padloop:        mov     [z+8*i], a
                 jc      padloop
 
 end:            ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

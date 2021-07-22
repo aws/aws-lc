@@ -167,3 +167,7 @@ bignum_sqr_4_8:
         stp     c2, c3, [x0,#48]
 
         ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

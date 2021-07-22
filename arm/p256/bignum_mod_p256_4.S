@@ -74,3 +74,7 @@ bignum_mod_p256_4:
                 stp     n2, n3, [z, #16]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
