@@ -44,12 +44,12 @@ sleep 120
 # use sed to replace some placeholder values inside the document with stuff
 sed -e "s/{AWS_ACCOUNT_ID}/${AWS_ACCOUNT_ID}/g" \
   -e "s/{COMMIT_ID}/${CODEBUILD_SOURCE_VERSION}/g" \
-  cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
-  > cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml
+  tests/cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
+  > tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml
 
 ssm_doc_name=bm_framework_ec2_x86_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-#aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
-aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+#aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
+aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
     --document-type Command \
     --document-format YAML > /dev/null
