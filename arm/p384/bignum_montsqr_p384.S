@@ -379,3 +379,7 @@ bignum_montsqr_p384:
                 stp     r4, r5, [x0, #32]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

@@ -84,3 +84,7 @@ bignum_tobytes_6:
                 mov     [z+8*2], b
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

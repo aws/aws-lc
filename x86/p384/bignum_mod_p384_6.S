@@ -103,3 +103,7 @@ bignum_mod_p384_6:
         mov     [z+40], d5
 
         ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

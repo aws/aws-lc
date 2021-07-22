@@ -215,3 +215,7 @@ shortinput:
                 jz      writeback
                 mov     m4, [rdx + 32]
                 jmp     writeback
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
