@@ -5,17 +5,15 @@ set -exo pipefail
 
 # define cleanup script to delete created assets in case something fails or breaks
 function cleanup {
-  set -e
+  set +e
   # Delete ssm document once you're finished with it
   aws ssm delete-document --name "${ssm_doc_name}"
 
   # kill ec2 instances after we're done w/ them
   aws ec2 terminate-instances --instance-ids "${x86_ubuntu2004_id}"
-  set +e
 }
 
 # on an error, we want to delete the document and kill the ec2 instance
-trap cleanup ERR
 trap cleanup EXIT
 
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
@@ -44,7 +42,7 @@ sleep 120
 # use sed to replace some placeholder values inside the document with stuff
 sed -e "s/{AWS_ACCOUNT_ID}/${AWS_ACCOUNT_ID}/g" \
   -e "s/{COMMIT_ID}/${CODEBUILD_SOURCE_VERSION}/g" \
-  tests/cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
+  tests/ci/cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
   > tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml
 
 ssm_doc_name=bm_framework_ec2_x86_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
