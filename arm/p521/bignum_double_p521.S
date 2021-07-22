@@ -33,7 +33,6 @@
 #define h x3
 #define l x4
 
-
 bignum_double_p521:
 
 // We can decide whether 2 * x >= p_521 just by 2 * x >= 2^521, which
@@ -61,3 +60,6 @@ bignum_double_p521:
 
                 ret
 
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif

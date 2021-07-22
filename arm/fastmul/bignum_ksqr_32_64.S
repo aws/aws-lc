@@ -750,3 +750,7 @@ local_sqr_8_16:
         adc     x3, x3, xzr
         stp     x2, x3, [x0, #112]
         ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
