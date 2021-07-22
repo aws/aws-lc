@@ -85,3 +85,7 @@ bignum_mod_p384_6:
                 stp     n4, n5, [z, #32]
 
                 ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
