@@ -31,11 +31,9 @@
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, R8 = t, returns RAX
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
-                .globl bignum_coprime
-
-                .text
+        .intel_syntax noprefix
+        .globl  bignum_coprime
+        .text
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a bit for proxy errors
 

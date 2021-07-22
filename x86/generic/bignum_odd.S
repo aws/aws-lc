@@ -22,10 +22,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
-                .globl  bignum_odd
-                .text
+        .intel_syntax noprefix
+        .globl  bignum_odd
+        .text
 
 bignum_odd:
 

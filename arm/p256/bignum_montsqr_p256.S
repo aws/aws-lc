@@ -26,7 +26,8 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-.globl   bignum_montsqr_p256
+        .globl  bignum_montsqr_p256
+        .text
 
 // ---------------------------------------------------------------------------
 // Macro returning (c,h,l) = 3-word 1s complement (x - y) * (w - z)

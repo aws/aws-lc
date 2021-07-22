@@ -29,6 +29,9 @@
 // Standard ARM ABI: X0 = k, X1 = x, X2 = n, X3 = l, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_bitfield
+        .text
+
 #define k x0
 #define x x1
 #define n x2
@@ -40,8 +43,6 @@
 #define a x7
 #define m x8
 
-.text
-.globl bignum_bitfield
 
 bignum_bitfield:
 

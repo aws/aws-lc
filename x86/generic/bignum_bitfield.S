@@ -29,6 +29,10 @@
 // Standard x86-64 ABI: RDI = k, RSI = x, RDX = n, RCX = l, returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_bitfield
+        .text
+
 #define k rdi
 #define x rsi
 #define n rdx
@@ -42,10 +46,7 @@
 
 #define mshort r11d
 
-.intel_syntax noprefix
 
-                .globl  bignum_bitfield
-                .text
 
 bignum_bitfield:
 

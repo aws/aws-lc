@@ -27,6 +27,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = y, X4 = m
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_amontmul
+        .text
+
 #define k x0
 #define z x1
 #define x x2
@@ -64,8 +67,6 @@
 #define e4 x6
 #define e8 x7
 
-.text
-.globl bignum_amontmul
 
 bignum_amontmul:
 

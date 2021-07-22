@@ -23,6 +23,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = m
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_moddouble
+        .text
+
 #define k x0
 #define z x1
 #define x x2
@@ -33,8 +36,6 @@
 #define b x7
 #define c x8
 
-.text
-.globl bignum_moddouble
 
 bignum_moddouble:
 

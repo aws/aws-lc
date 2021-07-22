@@ -26,9 +26,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = w, returns RAX
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
-                .globl bignum_emontredc_8n
+        .intel_syntax noprefix
+        .globl  bignum_emontredc_8n
+        .text
 
 // Original input parameters are here
 

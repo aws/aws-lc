@@ -25,11 +25,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
-                .globl  bignum_of_word
-                .globl  bignum_of_word_nontrivial
-                .text
+        .intel_syntax noprefix
+        .globl  bignum_of_word
+        .text
 
 bignum_of_word:
 

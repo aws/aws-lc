@@ -23,6 +23,9 @@
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_eq
+        .text
+
 #define m x0
 #define x x1
 #define n x2
@@ -32,8 +35,6 @@
 //  We can re-use n for this, not needed when d appears
 #define d x2
 
-.text
-.globl bignum_eq
 
 bignum_eq:
 

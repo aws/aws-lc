@@ -27,7 +27,9 @@
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y, RCX = t
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_kmul_16_32
+        .text
 
 // These parameters are kept where they come in
 
@@ -461,8 +463,6 @@
 
 .endm
 
-                .globl  bignum_kmul_16_32
-                .text
 
 bignum_kmul_16_32:
 

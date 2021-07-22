@@ -33,7 +33,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = w, returns RAX
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_emontredc
+        .text
 
 // Argument m comes in in rdx but we copy it to r8
 
@@ -62,8 +64,6 @@
 #define cshort r14d
 #define jshort r10d
 
-                .globl  bignum_emontredc
-                .text
 
 bignum_emontredc:
 

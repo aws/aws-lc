@@ -24,6 +24,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = p, X3 = x, X4 = m
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_modoptneg
+        .text
+
 #define k x0
 #define z x1
 #define p x2
@@ -33,8 +36,6 @@
 #define a x6
 #define b x7
 
-.text
-.globl bignum_modoptneg
 
 bignum_modoptneg:
 

@@ -23,6 +23,9 @@
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_lt
+        .text
+
 #define m x0
 #define x x1
 #define n x2
@@ -31,8 +34,6 @@
 #define a x5
 #define d x6
 
-.text
-.globl bignum_lt
 
 bignum_lt:
 

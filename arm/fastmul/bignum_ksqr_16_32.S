@@ -26,6 +26,9 @@
 // Standard ARM ABI: X0 = z, X1 = x, X2 = t
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_ksqr_16_32
+        .text
+
 // Subroutine-safe copies of the output, inputs and temporary buffer pointers
 
 #define z x23
@@ -36,7 +39,6 @@
 
 #define s x19
 
-.globl bignum_ksqr_16_32
 
 bignum_ksqr_16_32:
 

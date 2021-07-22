@@ -26,6 +26,10 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_montsqr_p256
+        .text
+
 #define z rdi
 #define x rsi
 
@@ -68,10 +72,7 @@
 
 .endm
 
-.intel_syntax noprefix
 
-                .globl  bignum_montsqr_p256
-                .text
 
 bignum_montsqr_p256:
 

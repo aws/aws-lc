@@ -27,6 +27,9 @@
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_bitsize
+        .text
+
 #define k x0
 #define x x1
 #define i x2
@@ -34,8 +37,6 @@
 #define a x4
 #define j x5
 
-.text
-.globl bignum_bitsize
 
 bignum_bitsize:
 

@@ -27,8 +27,8 @@
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
 
-.text
-.globl word_negmodinv
+        .globl  word_negmodinv
+        .text
 
 // Use some more intuitive variable names but these in general are aliased
 // to each other so need care when interpreting. Overall we only use the

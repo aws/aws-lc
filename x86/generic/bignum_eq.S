@@ -23,10 +23,9 @@
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, returns RAX
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
-                .globl  bignum_eq
-                .text
+        .intel_syntax noprefix
+        .globl  bignum_eq
+        .text
 
 #define m rdi
 #define x rsi

@@ -27,7 +27,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, returns RAX
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_normalize
+        .text
 
 #define k rdi
 #define z rsi
@@ -47,8 +49,6 @@
 
 #define dshort edx
 
-                .globl  bignum_normalize
-                .text
 
 bignum_normalize:
 

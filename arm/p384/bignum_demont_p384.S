@@ -26,7 +26,8 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-.globl   bignum_demont_p384
+        .globl  bignum_demont_p384
+        .text
 
 // ---------------------------------------------------------------------------
 // Core one-step "short" Montgomery reduction macro. Takes input in

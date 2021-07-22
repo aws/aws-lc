@@ -28,6 +28,9 @@
 // Standard ARM ABI: X0 = p, X1 = z, X2 = m, X3 = x, X4 = n, X5 = y, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_add
+        .text
+
 #define p x0
 #define z x1
 #define m x2
@@ -38,8 +41,6 @@
 #define a x7
 #define d x8
 
-.text
-.globl bignum_add
 
 bignum_add:
 

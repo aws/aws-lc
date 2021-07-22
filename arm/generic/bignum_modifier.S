@@ -29,6 +29,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = t
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_modifier
+        .text
+
 #define k x0
 #define z x1
 #define m x2
@@ -52,8 +55,6 @@
 #define r x10
 #define q x11
 
-.text
-.globl bignum_modifier
 
 bignum_modifier:
 

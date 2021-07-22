@@ -28,6 +28,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x, X4 = m, X5 = p
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_amontredc
+        .text
+
 #define k x0
 #define z x1
 #define n x2
@@ -60,8 +63,6 @@
 #define e4 x7
 #define e8 x8
 
-.text
-.globl bignum_amontredc
 
 bignum_amontredc:
 

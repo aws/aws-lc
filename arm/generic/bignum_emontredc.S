@@ -33,6 +33,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_emontredc
+        .text
+
 #define k x0
 #define z x1
 #define m x2
@@ -53,8 +56,6 @@
 #define l x10
 #define a x11
 
-.text
-.globl bignum_emontredc
 
 bignum_emontredc:
 

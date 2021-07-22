@@ -31,6 +31,9 @@
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, X4 = t, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_coprime
+        .text
+
 #define CHUNKSIZE 58
 
 // Pervasive variables
@@ -86,8 +89,6 @@
 #define c2 x19
 #define tt x20
 
-.text
-.globl bignum_coprime
 
 bignum_coprime:
 

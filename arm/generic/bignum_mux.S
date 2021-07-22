@@ -25,6 +25,9 @@
 // Standard ARM ABI: X0 = p, X1 = k, X2 = z, X3 = x, X4 = y
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_mux
+        .text
+
 #define b x0
 #define k x1
 #define z x2
@@ -32,8 +35,6 @@
 #define y x4
 #define a x5
 
-.text
-.globl bignum_mux
 
 bignum_mux:
 

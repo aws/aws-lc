@@ -22,8 +22,8 @@
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
 
-.text
-.globl word_clz
+        .globl  word_clz
+        .text
 
 word_clz:
                 clz     x0, x0

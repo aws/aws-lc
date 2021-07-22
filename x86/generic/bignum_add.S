@@ -29,6 +29,10 @@
 // returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_add
+        .text
+
 #define p rdi
 #define z rsi
 #define m rdx
@@ -40,10 +44,7 @@
 
 #define ashort eax
 
-.intel_syntax noprefix
 
-                .globl  bignum_add
-                .text
 
 bignum_add:
 

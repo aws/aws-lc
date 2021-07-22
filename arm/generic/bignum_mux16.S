@@ -26,6 +26,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = xs, X3 = i
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_mux16
+        .text
+
 #define k x0
 #define z x1
 #define x x2
@@ -36,8 +39,6 @@
 #define j x6
 #define n x7
 
-.text
-.globl bignum_mux16
 
 bignum_mux16:
 

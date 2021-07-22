@@ -22,8 +22,8 @@
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------
 
-.text
-.globl bignum_odd
+        .globl  bignum_odd
+        .text
 
 bignum_odd:
 

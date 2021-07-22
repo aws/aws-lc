@@ -27,11 +27,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = a, RCX = b, R8 = t
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
-                .globl bignum_modinv
-
-                .text
+        .intel_syntax noprefix
+        .globl  bignum_modinv
+        .text
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a few for proxy errors
 

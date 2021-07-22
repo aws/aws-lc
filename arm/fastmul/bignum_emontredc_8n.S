@@ -26,7 +26,8 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, returns X0
 // ----------------------------------------------------------------------------
 
-.globl bignum_emontredc_8n
+        .globl  bignum_emontredc_8n
+        .text
 
 // ---------------------------------------------------------------------------
 // Macro computing (c,h,l) = 3-word 1s complement (x - y) * (w - z)

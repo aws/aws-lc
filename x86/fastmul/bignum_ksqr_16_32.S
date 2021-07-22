@@ -26,7 +26,9 @@
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = t
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_ksqr_16_32
+        .text
 
 #define z rdi
 #define x rsi
@@ -459,9 +461,7 @@
 // The actual code
 // ------------------------------------------------------------------------
 
-                .globl  bignum_ksqr_16_32
 
-                .text
 
 bignum_ksqr_16_32:
 

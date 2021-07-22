@@ -23,10 +23,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = m
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
-                .globl  bignum_moddouble
-                .text
+        .intel_syntax noprefix
+        .globl  bignum_moddouble
+        .text
 
 #define k rdi
 #define z rsi

@@ -24,16 +24,17 @@
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_digitsize
+        .text
+
 #define k rdi
 #define x rsi
 #define i rax
 #define a rcx
 #define j rdx
 
-.intel_syntax noprefix
 
-                .globl  bignum_digitsize
-                .text
 
 bignum_digitsize:
 

@@ -29,6 +29,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_negmodinv
+        .text
+
 #define k x0
 #define z x1
 #define x x2
@@ -41,9 +44,7 @@
 #define e x8
 #define i x9
 
-.text
 
-.globl bignum_negmodinv
 
 bignum_negmodinv:
 

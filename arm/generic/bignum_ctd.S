@@ -24,13 +24,14 @@
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_ctd
+        .text
+
 #define k x0
 #define x x1
 #define i x2
 #define a x3
 
-.text
-.globl bignum_ctd
 
 bignum_ctd:
 

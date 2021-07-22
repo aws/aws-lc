@@ -27,8 +27,8 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = a, X3 = b, X4 = t
 // ----------------------------------------------------------------------------
 
-.text
-.globl bignum_modinv
+        .globl  bignum_modinv
+        .text
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a few for proxy errors
 

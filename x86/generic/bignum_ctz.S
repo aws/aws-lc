@@ -28,6 +28,10 @@
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_ctz
+        .text
+
 #define k rdi
 #define x rsi
 #define i rdx
@@ -36,10 +40,7 @@
 
 #define wshort ecx
 
-.intel_syntax noprefix
 
-                .globl  bignum_ctz
-                .text
 
 bignum_ctz:
 

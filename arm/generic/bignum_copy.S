@@ -23,6 +23,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_copy
+        .text
+
 #define k x0
 #define z x1
 #define n x2
@@ -31,8 +34,6 @@
 #define i x4
 #define a x5
 
-.text
-.globl bignum_copy
 
 bignum_copy:
 

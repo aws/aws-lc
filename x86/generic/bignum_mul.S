@@ -27,6 +27,10 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_mul
+        .text
+
 // These are actually right
 
 #define p rdi
@@ -49,10 +53,7 @@
 #define a rax
 #define d rdx
 
-.intel_syntax noprefix
 
-                .globl  bignum_mul
-                .text
 
 bignum_mul:
 

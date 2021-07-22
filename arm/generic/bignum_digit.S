@@ -26,6 +26,9 @@
 // Standard ARM ABI: X0 = k, X1 = x, X2 = n, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_digit
+        .text
+
 #define k x0
 #define x x1
 #define n x2
@@ -34,8 +37,6 @@
 #define i x4
 #define a x5
 
-.text
-.globl bignum_digit
 
 bignum_digit:
 

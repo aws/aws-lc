@@ -35,8 +35,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
+        .intel_syntax noprefix
         .globl  bignum_bigendian_4
         .globl  bignum_frombytes_4
         .globl  bignum_tobytes_4

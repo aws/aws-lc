@@ -27,7 +27,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = y
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_amontsqr
+        .text
 
 // We copy x into r9 but it comes in in rdx originally
 
@@ -60,8 +62,6 @@
 #define ashort eax
 #define jshort ebx
 
-                .globl  bignum_amontsqr
-                .text
 
 bignum_amontsqr:
 

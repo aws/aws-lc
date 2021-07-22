@@ -22,8 +22,7 @@
 // Standard x86-64 ABI: RDI = a, returns RAX
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
-
+        .intel_syntax noprefix
         .globl  word_clz
         .text
 

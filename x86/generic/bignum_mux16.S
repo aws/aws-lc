@@ -26,6 +26,10 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = xs, RCX = i
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_mux16
+        .text
+
 #define k rdi
 #define z rsi
 
@@ -41,10 +45,7 @@
 #define j r9
 #define n r10
 
-.intel_syntax noprefix
 
-                .globl  bignum_mux16
-                .text
 
 bignum_mux16:
 

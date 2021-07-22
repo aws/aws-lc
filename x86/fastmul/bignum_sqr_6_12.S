@@ -22,7 +22,9 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_sqr_6_12
+        .text
 
 // These are actually right
 
@@ -50,8 +52,6 @@
 
 #define d10 rbp
 
-                .globl  bignum_sqr_6_12
-                .text
 
 bignum_sqr_6_12:
 

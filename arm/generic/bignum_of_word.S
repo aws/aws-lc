@@ -25,12 +25,13 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_of_word
+        .text
+
 #define k x0
 #define z x1
 #define n x2
 
-.text
-.globl bignum_of_word
 
 bignum_of_word:
 

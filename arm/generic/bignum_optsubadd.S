@@ -33,6 +33,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = p, X4 = y, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_optsubadd
+        .text
+
 #define k x0
 #define z x1
 #define x x2
@@ -45,8 +48,6 @@
 #define b x7
 #define i x8
 
-.text
-.globl bignum_optsubadd
 
 bignum_optsubadd:
 

@@ -23,6 +23,10 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_copy
+        .text
+
 #define k rdi
 #define z rsi
 #define n rdx
@@ -31,10 +35,7 @@
 #define i r8
 #define a rax
 
-.intel_syntax noprefix
 
-                .globl  bignum_copy
-                .text
 
 bignum_copy:
 

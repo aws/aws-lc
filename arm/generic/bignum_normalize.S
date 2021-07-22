@@ -27,6 +27,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_normalize
+        .text
+
 #define k x0
 #define z x1
 
@@ -44,8 +47,6 @@
 #define j x8
 #define l x9
 
-.text
-.globl bignum_normalize
 
 bignum_normalize:
 

@@ -30,6 +30,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = c, X3 = n, X4 = y, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_cmadd
+        .text
+
 #define p x0
 #define z x1
 #define c x2
@@ -43,8 +46,6 @@
 
 #define b x9
 
-.text
-.globl bignum_cmadd
 
 bignum_cmadd:
 

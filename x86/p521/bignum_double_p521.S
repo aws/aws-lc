@@ -23,15 +23,17 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_double_p521
+        .text
+
 #define z rdi
 #define x rsi
 
 #define a rax
 #define c rcx
 
-.intel_syntax noprefix
 
-        .globl  bignum_double_p521
 
 bignum_double_p521:
 

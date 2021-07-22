@@ -28,7 +28,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = t
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_montifier
+        .text
 
 #define k rdi
 #define z rsi
@@ -65,8 +67,6 @@
 #define jshort ebp
 #define qshort r8d
 
-                .globl  bignum_montifier
-                .text
 
 bignum_montifier:
 

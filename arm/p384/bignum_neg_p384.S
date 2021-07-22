@@ -22,6 +22,9 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_neg_p384
+        .text
+
 #define z x0
 #define x x1
 
@@ -35,8 +38,6 @@
 #define d4 x8
 #define d5 x9
 
-.text
-.globl bignum_neg_p384
 
 bignum_neg_p384:
 

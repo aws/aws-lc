@@ -24,6 +24,9 @@
 // Standard ARM ABI: X0 = z, X1 = p, X2 = x
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_optneg_p384
+        .text
+
 #define z x0
 #define p x1
 #define x x2
@@ -41,8 +44,6 @@
 #define n4 x13
 #define n5 x14
 
-.text
-.globl bignum_optneg_p384
 
 bignum_optneg_p384:
 

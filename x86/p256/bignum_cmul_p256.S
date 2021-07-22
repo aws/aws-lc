@@ -24,7 +24,9 @@
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_cmul_p256
+        .text
 
 #define z rdi
 
@@ -47,8 +49,6 @@
 // Multiplier again for second stage
 #define q rdx
 
-        .text
-        .globl  bignum_cmul_p256
 
 bignum_cmul_p256:
 

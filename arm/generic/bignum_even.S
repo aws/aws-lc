@@ -22,8 +22,8 @@
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------
 
-.text
-.globl bignum_even
+        .globl  bignum_even
+        .text
 
 bignum_even:
 

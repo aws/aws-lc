@@ -29,6 +29,10 @@
 // returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_madd
+        .text
+
 // These are actually right
 
 #define p rdi
@@ -51,10 +55,7 @@
 #define a rax
 #define d rdx
 
-.intel_syntax noprefix
 
-                .globl  bignum_madd
-                .text
 
 bignum_madd:
 

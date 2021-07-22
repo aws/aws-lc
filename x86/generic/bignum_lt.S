@@ -23,6 +23,10 @@
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_lt
+        .text
+
 #define m rdi
 #define x rsi
 #define n rdx
@@ -32,10 +36,7 @@
 
 #define ashort eax
 
-.intel_syntax noprefix
 
-                .globl  bignum_lt
-                .text
 
 bignum_lt:
 

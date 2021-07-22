@@ -26,6 +26,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = p, X3 = x, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_optneg
+        .text
+
 #define k x0
 #define z x1
 #define p x2
@@ -34,8 +37,6 @@
 #define a x4
 #define i x5
 
-.text
-.globl bignum_optneg
 
 bignum_optneg:
 

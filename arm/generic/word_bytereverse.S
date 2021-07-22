@@ -21,8 +21,8 @@
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
 
-.text
-.globl word_bytereverse
+        .globl  word_bytereverse
+        .text
 
 word_bytereverse:
 

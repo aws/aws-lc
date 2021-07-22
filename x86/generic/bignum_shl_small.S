@@ -27,6 +27,10 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = c, returns RAX
 // ----------------------------------------------------------------------------
 
+        .intel_syntax noprefix
+        .globl  bignum_shl_small
+        .text
+
 #define p rdi
 #define z rsi
 #define n rdx
@@ -43,10 +47,7 @@
 #define a r10
 #define i r11
 
-.intel_syntax noprefix
 
-                .globl  bignum_shl_small
-                .text
 
 bignum_shl_small:
 

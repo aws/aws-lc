@@ -22,7 +22,9 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_sqr_8_16
+        .text
 
 // These are actually right
 
@@ -262,8 +264,6 @@
 
 .endm
 
-                .globl  bignum_sqr_8_16
-                .text
 
 bignum_sqr_8_16:
 

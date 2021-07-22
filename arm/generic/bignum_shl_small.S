@@ -27,6 +27,9 @@
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x, X4 = c, returns X0
 // ----------------------------------------------------------------------------
 
+        .globl  bignum_shl_small
+        .text
+
 #define p x0
 #define z x1
 #define n x2
@@ -40,8 +43,6 @@
 #define t x9
 #define i x10
 
-.text
-.globl bignum_shl_small
 
 bignum_shl_small:
 

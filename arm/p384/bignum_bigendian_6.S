@@ -36,10 +36,10 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-.text
-.globl bignum_bigendian_6
-.globl bignum_frombytes_6
-.globl bignum_tobytes_6
+        .globl  bignum_bigendian_6
+        .globl  bignum_frombytes_6
+        .globl  bignum_tobytes_6
+        .text
 
 #define z x0
 #define x x1

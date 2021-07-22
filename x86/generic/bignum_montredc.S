@@ -29,7 +29,9 @@
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = m, R9 = p
 // ----------------------------------------------------------------------------
 
-.intel_syntax noprefix
+        .intel_syntax noprefix
+        .globl  bignum_montredc
+        .text
 
  // We copy n into r10 but it comes in in rdx originally
 
@@ -65,8 +67,6 @@
 #define cshort r15d
 #define jshort ebx
 
-                .globl  bignum_montredc
-                .text
 
 bignum_montredc:
 
