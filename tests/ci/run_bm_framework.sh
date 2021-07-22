@@ -5,18 +5,22 @@ set -exo pipefail
 
 # define cleanup script to delete created assets in case something fails or breaks
 function cleanup {
+  set -e
   # Delete ssm document once you're finished with it
   aws ssm delete-document --name "${ssm_doc_name}"
 
   # kill ec2 instances after we're done w/ them
   aws ec2 terminate-instances --instance-ids "${x86_ubuntu2004_id}"
+  set +e
 }
 
 # on an error, we want to delete the document and kill the ec2 instance
 trap cleanup ERR
+trap cleanup EXIT
 
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
-echo Account ID: "${CODEBUILD_WEBHOOK_ACTOR_ACCOUNT_ID}"
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+echo AWS Account ID: "${AWS_ACCOUNT_ID}"
 
 # get information for ec2 instances
 vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
@@ -38,11 +42,12 @@ sleep 120
 
 # Create, and run ssm command
 # use sed to replace some placeholder values inside the document with stuff
-sed -e "s/{AWS_ACCOUNT_ID}/${CODEBUILD_WEBHOOK_ACTOR_ACCOUNT_ID}/g" \
-cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
-> cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml
+sed -e "s/{AWS_ACCOUNT_ID}/${AWS_ACCOUNT_ID}/g" \
+  -e "s/{COMMIT_ID}/${CODEBUILD_SOURCE_VERSION}/g" \
+  cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
+  > cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml
 
-ssm_doc_name=bm_framework_ec2_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
+ssm_doc_name=bm_framework_ec2_x86_benchmark_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
 #aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
 aws ssm create-document --content file://cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml \
     --name "${ssm_doc_name}" \
