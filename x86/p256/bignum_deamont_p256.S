@@ -42,35 +42,14 @@
 #define dshort edx
 #define ushort r10d
 
-// Macro "mulpadd i x" adds rdx * x to the (i,i+1) position of
-// the rotating register window rsi,rbx,r11,r10,r9,r8 maintaining consistent
-// double-carrying using ADCX and ADOX and using rcx/rax as temps
+// Add rdx * m into a register-pair (high,low)
+// maintaining consistent double-carrying with adcx and adox,
+// using rax and rcx as temporaries
 
-.macro mulpadd arg1,arg2
-        mulx    rcx, rax, \arg2
-.if (\arg1 % 6 == 0)
-        adcx    r8, rax
-        adox    r9, rcx
-.elseif (\arg1 % 6 == 1)
-        adcx    r9, rax
-        adox    r10, rcx
-.elseif (\arg1 % 6 == 2)
-        adcx    r10, rax
-        adox    r11, rcx
-.elseif (\arg1 % 6 == 3)
-        adcx    r11, rax
-        adox    rbx, rcx
-.elseif (\arg1 % 6 == 4)
-        adcx    rbx, rax
-        adox    rsi, rcx
-.elseif (\arg1 % 6 == 5)
-        adcx    rsi, rax
-        adox    r8, rcx
-.endif
-
-.endm
-
-
+#define mulpadd(high,low,m)             \
+        mulx    rcx, rax, m;            \
+        adcx    low, rax;               \
+        adox    high, rcx
 
 bignum_deamont_p256:
 
@@ -93,11 +72,11 @@ bignum_deamont_p256:
 // Montgomery reduce windows 0 and 1 together
 
         mov     rdx, 0x0000000100000000
-        mulpadd 1, r8
-        mulpadd 2, r9
+        mulpadd (r10,r9,r8)
+        mulpadd (r11,r10,r9)
         mov     rdx, 0xffffffff00000001
-        mulpadd 3, r8
-        mulpadd 4, r9
+        mulpadd (rbx,r11,r8)
+        mulpadd (rsi,rbx,r9)
         mov     r8d, 0
         adcx    rsi, r8
 
@@ -108,11 +87,11 @@ bignum_deamont_p256:
 // Montgomery reduce windows 2 and 3 together
 
         mov     rdx, 0x0000000100000000
-        mulpadd 3, r10
-        mulpadd 4, r11
+        mulpadd (rbx,r11,r10)
+        mulpadd (rsi,rbx,r11)
         mov     rdx, 0xffffffff00000001
-        mulpadd 5, r10
-        mulpadd 6, r11
+        mulpadd (r8,rsi,r10)
+        mulpadd (r9,r8,r11)
         mov     r10d, 0
         adcx    r9, r10
 

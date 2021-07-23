@@ -36,18 +36,17 @@
 // t,h should not overlap w,z
 // ---------------------------------------------------------------------------
 
-.macro muldiffn c,h,l, t, x,y, w,z
-        subs    \t, \x, \y
-        cneg    \t, \t, cc
-        csetm   \c, cc
-        subs    \h, \w, \z
-        cneg    \h, \h, cc
-        mul     \l, \t, \h
-        umulh   \h, \t, \h
-        cinv    \c, \c, cc
-        eor     \l, \l, \c
-        eor     \h, \h, \c
-.endm
+#define muldiffn(c,h,l, t, x,y, w,z)    \
+        subs    t, x, y;                \
+        cneg    t, t, cc;               \
+        csetm   c, cc;                  \
+        subs    h, w, z;                \
+        cneg    h, h, cc;               \
+        mul     l, t, h;                \
+        umulh   h, t, h;                \
+        cinv    c, c, cc;               \
+        eor     l, l, c;                \
+        eor     h, h, c
 
 // ---------------------------------------------------------------------------
 // Core one-step "short" Montgomery reduction macro. Takes input in
@@ -57,20 +56,19 @@
 // It is fine for d4 to be the same register as d0, and it often is.
 // ---------------------------------------------------------------------------
 
-.macro          montreds d4,d3,d2,d1,d0, t2,t1,t0
-// Let w = d0, the original word we use as offset; d0 gets recycled
-// First let [t2;t1] = 2^32 * w
-// then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)
-                lsl     \t1, \d0, #32
-                subs    \t0, \d0, \t1
-                lsr     \t2, \d0, #32
-                sbc     \d0, \d0, \t2
-// Hence [d4;d3;d2;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w
-                adds    \d1, \d1, \t1
-                adcs    \d2, \d2, \t2
-                adcs    \d3, \d3, \t0
-                adc     \d4, \d0, xzr
-.endm
+#define montreds(d4,d3,d2,d1,d0, t2,t1,t0)                                  \
+/* Let w = d0, the original word we use as offset; d0 gets recycled      */ \
+/* First let [t2;t1] = 2^32 * w                                          */ \
+/* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)           */ \
+                lsl     t1, d0, #32;                                        \
+                subs    t0, d0, t1;                                         \
+                lsr     t2, d0, #32;                                        \
+                sbc     d0, d0, t2;                                         \
+/* Hence [d4;..;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w */ \
+                adds    d1, d1, t1;                                         \
+                adcs    d2, d2, t2;                                         \
+                adcs    d3, d3, t0;                                         \
+                adc     d4, d0, xzr
 
 #define a0 x3
 #define a1 x4
@@ -112,7 +110,7 @@ bignum_montmul_p256:
                 adds    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
-                muldiffn t3,t2,t1, t0, a0,a1, b1,b0
+                muldiffn (t3,t2,t1, t0, a0,a1, b1,b0)
                 adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -124,8 +122,8 @@ bignum_montmul_p256:
 // Stash the result L' temporarily in the output buffer to avoid
 // using additional registers.
 
-                montreds s0,s3,s2,s1,s0, t1,t2,t3
-                montreds s1,s0,s3,s2,s1, t1,t2,t3
+                montreds (s0,s3,s2,s1,s0, t1,t2,t3)
+                montreds (s1,s0,s3,s2,s1, t1,t2,t3)
 
                 stp     s2, s3, [x0]
                 stp     s0, s1, [x0, #16]
@@ -142,7 +140,7 @@ bignum_montmul_p256:
                 adds    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
-                muldiffn t3,t2,t1, t0, a2,a3, b3,b2
+                muldiffn (t3,t2,t1, t0, a2,a3, b3,b2)
                 adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -196,7 +194,7 @@ bignum_montmul_p256:
                 adds    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
-                muldiffn a1,t2,t1, a0, a0,a1, b1,b0
+                muldiffn (a1,t2,t1, a0, a0,a1, b1,b0)
                 adds    xzr, a1, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -230,8 +228,8 @@ bignum_montmul_p256:
 // Do two more Montgomery steps on the composed term
 // Net pre-reduct is in [b3;a1;a0;s3;s2]
 
-                montreds s0,s3,s2,s1,s0, t1,t2,t3
-                montreds s1,s0,s3,s2,s1, t1,t2,t3
+                montreds (s0,s3,s2,s1,s0, t1,t2,t3)
+                montreds (s1,s0,s3,s2,s1, t1,t2,t3)
 
                 adds    a0, a0, s0
                 adcs    a1, a1, s1

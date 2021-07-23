@@ -45,39 +45,14 @@
 #define zero rbp
 #define zeroe ebp
 
-// Macro "mulpadd i x" adds rdx * x to the (i,i+1) position of the
-// rotating register window r15,...,r8 maintaining consistent
-// double-carrying using ADCX and ADOX and using rbx/rax as temps
+// Add rdx * m into a register-pair (high,low)
+// maintaining consistent double-carrying with adcx and adox,
+// using rax and rbx as temporaries
 
-.macro mulpadd arg1,arg2
-        mulx    rbx, rax, \arg2
-.if (\arg1 % 8 == 0)
-        adcx    r8, rax
-        adox    r9, rbx
-.elseif (\arg1 % 8 == 1)
-        adcx    r9, rax
-        adox    r10, rbx
-.elseif (\arg1 % 8 == 2)
-        adcx    r10, rax
-        adox    r11, rbx
-.elseif (\arg1 % 8 == 3)
-        adcx    r11, rax
-        adox    r12, rbx
-.elseif (\arg1 % 8 == 4)
-        adcx    r12, rax
-        adox    r13, rbx
-.elseif (\arg1 % 8 == 5)
-        adcx    r13, rax
-        adox    r14, rbx
-.elseif (\arg1 % 8 == 6)
-        adcx    r14, rax
-        adox    r15, rbx
-.elseif (\arg1 % 8 == 7)
-        adcx    r15, rax
-        adox    r8, rbx
-.endif
-
-.endm
+#define mulpadd(high,low,m)             \
+        mulx    rbx, rax, m;            \
+        adcx    low, rax;               \
+        adox    high, rbx
 
 // Core one-step "short" Montgomery reduction macro. Takes input in
 // [d5;d4;d3;d2;d1;d0] and returns result in [d6;d5;d4;d3;d2;d1],
@@ -88,34 +63,32 @@
 // We want to add (2^384 - 2^128 - 2^96 + 2^32 - 1) * w
 // where w = [d0 + (d0<<32)] mod 2^64
 //
-//       montreds d6,d5,d4,d3,d2,d1,d0
+//       montreds (d6,d5,d4,d3,d2,d1,d0)
 
-.macro montreds d6,d5,d4,d3,d2,d1,d0
-// Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64
-                mov     rdx, \d0
-                shl     rdx, 32
-                add     rdx, \d0
-// Construct [rbx;d0;rax;-] = (2^384 - p_384) * w
-// We know the lowest word will cancel so we can re-use d0 as a temp, and rbx
-                mov     rax, 0xffffffff00000001
-                mulx    rax, \d0, rax
-                mov     ebx, 0x00000000ffffffff
-                mulx    \d0, rbx, rbx
-                add     rax, rbx
-                adc     \d0, rdx
-                mov     ebx, 0
-                adc     rbx, rbx
-// Now subtract that and add 2^384 * w
-                sub     \d1, rax
-                sbb     \d2, \d0
-                sbb     \d3, rbx
-                sbb     \d4, 0
-                sbb     \d5, 0
-                mov     \d6, rdx
-                sbb     \d6, 0
-.endm
-
-
+#define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
+/* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
+                mov     rdx, d0;                                        \
+                shl     rdx, 32;                                        \
+                add     rdx, d0;                                        \
+/* Construct [rbx;d0;rax;-] = (2^384 - p_384) * w            */         \
+/* We know the lowest word will cancel so we can re-use d0   */         \
+/* and rbx as temps.                                         */         \
+                mov     rax, 0xffffffff00000001;                        \
+                mulx    rax, d0, rax;                                   \
+                mov     ebx, 0x00000000ffffffff;                        \
+                mulx    d0, rbx, rbx;                                   \
+                add     rax, rbx;                                       \
+                adc     d0, rdx;                                        \
+                mov     ebx, 0;                                         \
+                adc     rbx, rbx;                                       \
+/* Now subtract that and add 2^384 * w                       */         \
+                sub     d1, rax;                                        \
+                sbb     d2, d0;                                         \
+                sbb     d3, rbx;                                        \
+                sbb     d4, 0;                                          \
+                sbb     d5, 0;                                          \
+                mov     d6, rdx;                                        \
+                sbb     d6, 0
 
 bignum_montsqr_p384:
 
@@ -146,12 +119,12 @@ bignum_montsqr_p384:
 // (no carry-out possible)
 
         mov     rdx, [x+8*2]
-        mulpadd 2,[x]
-        mulpadd 3, [x+8*1]
+        mulpadd (r11,r10,[x])
+        mulpadd (r12,r11,[x+8*1])
         mov     rdx, [x+8*1]
-        mulpadd 4, [x+8*3]
-        mulpadd 5, [x+8*4]
-        mulpadd 6, [x+8*5]
+        mulpadd (r13,r12,[x+8*3])
+        mulpadd (r14,r13,[x+8*4])
+        mulpadd (r15,r14,[x+8*5])
         adcx    r15, zero
         adox    rcx, zero
         adc     rcx, zero
@@ -167,10 +140,10 @@ bignum_montsqr_p384:
 // our result so far is in [rbp;rbx;rcx;r15;...r9]
 
         mov     rdx, [x+8*4]
-        mulpadd 4, [x]
+        mulpadd (r13,r12,[x])
         mov     rdx, [x+8*2]
-        mulpadd 5, [x+8*3]
-        mulpadd 6, [x+8*4]
+        mulpadd (r14,r13,[x+8*3])
+        mulpadd (r15,r14,[x+8*4])
         mulx    rdx, rax, [x+8*5]
         adcx    r15, rax
         adox    rcx, rdx
@@ -240,12 +213,12 @@ bignum_montsqr_p384:
 
 // Montgomery reduce the r13,...,r8 window 6 times
 
-        montreds r8,r13,r12,r11,r10,r9,r8
-        montreds r9,r8,r13,r12,r11,r10,r9
-        montreds r10,r9,r8,r13,r12,r11,r10
-        montreds r11,r10,r9,r8,r13,r12,r11
-        montreds r12,r11,r10,r9,r8,r13,r12
-        montreds r13,r12,r11,r10,r9,r8,r13
+        montreds (r8,r13,r12,r11,r10,r9,r8)
+        montreds (r9,r8,r13,r12,r11,r10,r9)
+        montreds (r10,r9,r8,r13,r12,r11,r10)
+        montreds (r11,r10,r9,r8,r13,r12,r11)
+        montreds (r12,r11,r10,r9,r8,r13,r12)
+        montreds (r13,r12,r11,r10,r9,r8,r13)
 
 // Now we can safely restore rbx before accumulating
 

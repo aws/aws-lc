@@ -39,41 +39,14 @@
 #define dshort eax
 #define ushort edx
 
-// Macro "mulpadd i x" adds rdx * x to the (i,i+1) position of
-// the rotating register window r15,...,r8 maintaining consistent
-// double-carrying using ADCX and ADOX and using rcx/rax as temps
+// Add rdx * m into a register-pair (high,low)
+// maintaining consistent double-carrying with adcx and adox,
+// using rax and rbx as temporaries
 
-.macro mulpadd arg1,arg2
-        mulx    rcx, rax, \arg2
-.if (\arg1 % 8 == 0)
-        adcx    r8, rax
-        adox    r9, rcx
-.elseif (\arg1 % 8 == 1)
-        adcx    r9, rax
-        adox    r10, rcx
-.elseif (\arg1 % 8 == 2)
-        adcx    r10, rax
-        adox    r11, rcx
-.elseif (\arg1 % 8 == 3)
-        adcx    r11, rax
-        adox    r12, rcx
-.elseif (\arg1 % 8 == 4)
-        adcx    r12, rax
-        adox    r13, rcx
-.elseif (\arg1 % 8 == 5)
-        adcx    r13, rax
-        adox    r14, rcx
-.elseif (\arg1 % 8 == 6)
-        adcx    r14, rax
-        adox    r15, rcx
-.elseif (\arg1 % 8 == 7)
-        adcx    r15, rax
-        adox    r8, rcx
-.endif
-
-.endm
-
-
+#define mulpadd(high,low,m)             \
+        mulx    rcx, rax, m;            \
+        adcx    low, rax;               \
+        adox    high, rcx
 
 bignum_tomont_p256:
 
@@ -106,21 +79,21 @@ bignum_tomont_p256:
 
         mov     rdx, 0xfffffffbffffffff
         xor     r14, r14
-        mulpadd 1, [x]
-        mulpadd 2, [x+8*1]
-        mulpadd 3, [x+8*2]
-        mulpadd 4, [x+8*3]
+        mulpadd (r10,r9,[x])
+        mulpadd (r11,r10,[x+8*1])
+        mulpadd (r12,r11,[x+8*2])
+        mulpadd (r13,r12,[x+8*3])
         adc    r13, r14
 
 // Montgomery reduce windows 0 and 1 together
 
         xor     r15, r15
         mov     rdx, 0x0000000100000000
-        mulpadd 1, r8
-        mulpadd 2, r9
+        mulpadd (r10,r9,r8)
+        mulpadd (r11,r10,r9)
         mov     rdx, 0xffffffff00000001
-        mulpadd 3, r8
-        mulpadd 4, r9
+        mulpadd (r12,r11,r8)
+        mulpadd (r13,r12,r9)
         adcx    r13, r15
         adox    r14, r15
         adcx    r14, r15
@@ -129,10 +102,10 @@ bignum_tomont_p256:
 
         mov     rdx, 0xfffffffffffffffe
         xor     r8, r8
-        mulpadd 2, [x]
-        mulpadd 3, [x+8*1]
-        mulpadd 4, [x+8*2]
-        mulpadd 5, [x+8*3]
+        mulpadd (r11,r10,[x])
+        mulpadd (r12,r11,[x+8*1])
+        mulpadd (r13,r12,[x+8*2])
+        mulpadd (r14,r13,[x+8*3])
         adcx    r14, r8
         adox    r15, r8
         adcx    r15, r8
@@ -141,10 +114,10 @@ bignum_tomont_p256:
 
         mov     rdx, 0x00000004fffffffd
         xor     r9, r9
-        mulpadd 3, [x]
-        mulpadd 4, [x+8*1]
-        mulpadd 5, [x+8*2]
-        mulpadd 6, [x+8*3]
+        mulpadd (r12,r11,[x])
+        mulpadd (r13,r12,[x+8*1])
+        mulpadd (r14,r13,[x+8*2])
+        mulpadd (r15,r14,[x+8*3])
         adcx    r15, r9
         adox    r8, r9
         adcx    r8, r9
@@ -153,11 +126,11 @@ bignum_tomont_p256:
 
         xor     r9, r9
         mov     rdx, 0x0000000100000000
-        mulpadd 3, r10
-        mulpadd 4, r11
+        mulpadd (r12,r11,r10)
+        mulpadd (r13,r12,r11)
         mov     rdx, 0xffffffff00000001
-        mulpadd 5, r10
-        mulpadd 6, r11
+        mulpadd (r14,r13,r10)
+        mulpadd (r15,r14,r11)
         adcx    r15, r9
         adox    r8, r9
         adcx    r8, r9

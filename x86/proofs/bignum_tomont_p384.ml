@@ -52,7 +52,7 @@ let bignum_tomont_p384_mc =
   0x4c; 0x89; 0xc2;        (* MOV (% rdx) (% r8) *)
   0x48; 0xc1; 0xe2; 0x20;  (* SHL (% rdx) (Imm8 (word 32)) *)
   0x4c; 0x01; 0xc2;        (* ADD (% rdx) (% r8) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0xb8; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
                            (* MOV (% rax) (Imm64 (word 18446744069414584321)) *)
   0xc4; 0xe2; 0xf3; 0xf6; 0xc0;
@@ -63,7 +63,7 @@ let bignum_tomont_p384_mc =
                            (* MULX4 (% rcx,% r8) (% rdx,% rcx) *)
   0x4c; 0x11; 0xc0;        (* ADC (% rax) (% r8) *)
   0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x48; 0x83; 0xd5; 0x00;  (* ADC (% rbp) (Imm8 (word 0)) *)
+  0x11; 0xed;              (* ADC (% ebp) (% ebp) *)
   0x49; 0x29; 0xc1;        (* SUB (% r9) (% rax) *)
   0x49; 0x19; 0xca;        (* SBB (% r10) (% rcx) *)
   0x49; 0x19; 0xeb;        (* SBB (% r11) (% rbp) *)
@@ -121,7 +121,7 @@ let bignum_tomont_p384_mc =
   0x4c; 0x89; 0xca;        (* MOV (% rdx) (% r9) *)
   0x48; 0xc1; 0xe2; 0x20;  (* SHL (% rdx) (Imm8 (word 32)) *)
   0x4c; 0x01; 0xca;        (* ADD (% rdx) (% r9) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0xb8; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
                            (* MOV (% rax) (Imm64 (word 18446744069414584321)) *)
   0xc4; 0xe2; 0xf3; 0xf6; 0xc0;
@@ -132,7 +132,7 @@ let bignum_tomont_p384_mc =
                            (* MULX4 (% rcx,% r9) (% rdx,% rcx) *)
   0x4c; 0x11; 0xc8;        (* ADC (% rax) (% r9) *)
   0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x48; 0x83; 0xd5; 0x00;  (* ADC (% rbp) (Imm8 (word 0)) *)
+  0x11; 0xed;              (* ADC (% ebp) (% ebp) *)
   0x49; 0x29; 0xc2;        (* SUB (% r10) (% rax) *)
   0x49; 0x19; 0xcb;        (* SBB (% r11) (% rcx) *)
   0x49; 0x19; 0xec;        (* SBB (% r12) (% rbp) *)
@@ -190,7 +190,7 @@ let bignum_tomont_p384_mc =
   0x4c; 0x89; 0xd2;        (* MOV (% rdx) (% r10) *)
   0x48; 0xc1; 0xe2; 0x20;  (* SHL (% rdx) (Imm8 (word 32)) *)
   0x4c; 0x01; 0xd2;        (* ADD (% rdx) (% r10) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0xb8; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
                            (* MOV (% rax) (Imm64 (word 18446744069414584321)) *)
   0xc4; 0xe2; 0xf3; 0xf6; 0xc0;
@@ -201,7 +201,7 @@ let bignum_tomont_p384_mc =
                            (* MULX4 (% rcx,% r10) (% rdx,% rcx) *)
   0x4c; 0x11; 0xd0;        (* ADC (% rax) (% r10) *)
   0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x48; 0x83; 0xd5; 0x00;  (* ADC (% rbp) (Imm8 (word 0)) *)
+  0x11; 0xed;              (* ADC (% ebp) (% ebp) *)
   0x49; 0x29; 0xc3;        (* SUB (% r11) (% rax) *)
   0x49; 0x19; 0xcc;        (* SBB (% r12) (% rcx) *)
   0x49; 0x19; 0xed;        (* SBB (% r13) (% rbp) *)
@@ -259,7 +259,7 @@ let bignum_tomont_p384_mc =
   0x4c; 0x89; 0xda;        (* MOV (% rdx) (% r11) *)
   0x48; 0xc1; 0xe2; 0x20;  (* SHL (% rdx) (Imm8 (word 32)) *)
   0x4c; 0x01; 0xda;        (* ADD (% rdx) (% r11) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0xb8; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
                            (* MOV (% rax) (Imm64 (word 18446744069414584321)) *)
   0xc4; 0xe2; 0xf3; 0xf6; 0xc0;
@@ -270,7 +270,7 @@ let bignum_tomont_p384_mc =
                            (* MULX4 (% rcx,% r11) (% rdx,% rcx) *)
   0x4c; 0x11; 0xd8;        (* ADC (% rax) (% r11) *)
   0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x48; 0x83; 0xd5; 0x00;  (* ADC (% rbp) (Imm8 (word 0)) *)
+  0x11; 0xed;              (* ADC (% ebp) (% ebp) *)
   0x49; 0x29; 0xc4;        (* SUB (% r12) (% rax) *)
   0x49; 0x19; 0xcd;        (* SBB (% r13) (% rcx) *)
   0x49; 0x19; 0xee;        (* SBB (% r14) (% rbp) *)
@@ -291,7 +291,7 @@ let bignum_tomont_p384_mc =
   0x4c; 0x89; 0xe2;        (* MOV (% rdx) (% r12) *)
   0x48; 0xc1; 0xe2; 0x20;  (* SHL (% rdx) (Imm8 (word 32)) *)
   0x4c; 0x01; 0xe2;        (* ADD (% rdx) (% r12) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0xb8; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
                            (* MOV (% rax) (Imm64 (word 18446744069414584321)) *)
   0xc4; 0xe2; 0xf3; 0xf6; 0xc0;
@@ -302,7 +302,7 @@ let bignum_tomont_p384_mc =
                            (* MULX4 (% rcx,% r12) (% rdx,% rcx) *)
   0x4c; 0x11; 0xe0;        (* ADC (% rax) (% r12) *)
   0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x48; 0x83; 0xd5; 0x00;  (* ADC (% rbp) (Imm8 (word 0)) *)
+  0x11; 0xed;              (* ADC (% ebp) (% ebp) *)
   0x49; 0x29; 0xc5;        (* SUB (% r13) (% rax) *)
   0x49; 0x19; 0xce;        (* SBB (% r14) (% rcx) *)
   0x49; 0x19; 0xef;        (* SBB (% r15) (% rbp) *)
@@ -315,7 +315,7 @@ let bignum_tomont_p384_mc =
   0x4c; 0x89; 0xea;        (* MOV (% rdx) (% r13) *)
   0x48; 0xc1; 0xe2; 0x20;  (* SHL (% rdx) (Imm8 (word 32)) *)
   0x4c; 0x01; 0xea;        (* ADD (% rdx) (% r13) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0xb8; 0x01; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
                            (* MOV (% rax) (Imm64 (word 18446744069414584321)) *)
   0xc4; 0xe2; 0xf3; 0xf6; 0xc0;
@@ -326,7 +326,7 @@ let bignum_tomont_p384_mc =
                            (* MULX4 (% rcx,% r13) (% rdx,% rcx) *)
   0x4c; 0x11; 0xe8;        (* ADC (% rax) (% r13) *)
   0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x48; 0x83; 0xd5; 0x00;  (* ADC (% rbp) (Imm8 (word 0)) *)
+  0x11; 0xed;              (* ADC (% ebp) (% ebp) *)
   0x49; 0x29; 0xc6;        (* SUB (% r14) (% rax) *)
   0x49; 0x19; 0xcf;        (* SBB (% r15) (% rcx) *)
   0x49; 0x19; 0xe8;        (* SBB (% r8) (% rbp) *)
@@ -408,13 +408,13 @@ let mmlemma = prove
 
 let BIGNUM_TOMONT_P384_CORRECT = time prove
  (`!z x a pc.
-        nonoverlapping (word pc,0x461) (z,8 * 6)
+        nonoverlapping (word pc,0x44f) (z,8 * 6)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_tomont_p384_mc /\
                   read RIP s = word(pc + 0x09) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,6) s = a)
-             (\s. read RIP s = word (pc + 0x457) /\
+             (\s. read RIP s = word (pc + 0x445) /\
                   bignum_from_memory (z,6) s = (2 EXP 384 * a) MOD p_384)
              (MAYCHANGE [RIP; RSI; RAX; RBP; RCX; RDX;
                          R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -528,8 +528,8 @@ let BIGNUM_TOMONT_P384_SUBROUTINE_CORRECT = time prove
  (`!z x a pc stackpointer returnaddress.
         nonoverlapping (z,8 * 6) (word_sub stackpointer (word 40),48) /\
         ALL (nonoverlapping (word_sub stackpointer (word 40),40))
-            [(word pc,0x461); (x,8 * 6)] /\
-        nonoverlapping (word pc,0x461) (z,8 * 6)
+            [(word pc,0x44f); (x,8 * 6)] /\
+        nonoverlapping (word pc,0x44f) (z,8 * 6)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_tomont_p384_mc /\
                   read RIP s = word pc /\

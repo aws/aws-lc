@@ -35,18 +35,17 @@
 // t,h should not overlap w,z
 // ---------------------------------------------------------------------------
 
-.macro muldiffn c,h,l, t, x,y, w,z
-        subs    \t, \x, \y
-        cneg    \t, \t, cc
-        csetm   \c, cc
-        subs    \h, \w, \z
-        cneg    \h, \h, cc
-        mul     \l, \t, \h
-        umulh   \h, \t, \h
-        cinv    \c, \c, cc
-        eor     \l, \l, \c
-        eor     \h, \h, \c
-.endm
+#define muldiffn(c,h,l, t, x,y, w,z)    \
+        subs    t, x, y;                \
+        cneg    t, t, cc;               \
+        csetm   c, cc;                  \
+        subs    h, w, z;                \
+        cneg    h, h, cc;               \
+        mul     l, t, h;                \
+        umulh   h, t, h;                \
+        cinv    c, c, cc;               \
+        eor     l, l, c;                \
+        eor     h, h, c
 
 // ---------------------------------------------------------------------------
 // Core one-step "end" Montgomery reduction macro. Takes input in
@@ -55,21 +54,20 @@
 // as t1, t2, t3, and initializing d5 from zero (hence "end").
 // ---------------------------------------------------------------------------
 
-.macro          montrede d5, d4,d3,d2,d1,d0, t2,t1,t0
-// Let w = d0, the original word we use as offset; d0 gets recycled
-// First let [t2;t1] = 2^32 * w
-// then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)
-                lsl     \t1, \d0, #32
-                subs    \t0, \d0, \t1
-                lsr     \t2, \d0, #32
-                sbc     \d0, \d0, \t2
-// Hence basic [d4;d3;d2;d1] += (2^256 - 2^224 + 2^192 + 2^96) * w
-                adds    \d1, \d1, \t1
-                adcs    \d2, \d2, \t2
-                adcs    \d3, \d3, \t0
-                adcs    \d4, \d4, \d0
-                adc     \d5, xzr, xzr
-.endm
+#define montrede(d5, d4,d3,d2,d1,d0, t2,t1,t0)                              \
+/* Let w = d0, the original word we use as offset; d0 gets recycled */      \
+/* First let [t2;t1] = 2^32 * w                                     */      \
+/* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)      */      \
+                lsl     t1, d0, #32;                                        \
+                subs    t0, d0, t1;                                         \
+                lsr     t2, d0, #32;                                        \
+                sbc     d0, d0, t2;                                         \
+/* Hence basic [d4;d3;d2;d1] += (2^256 - 2^224 + 2^192 + 2^96) * w  */      \
+                adds    d1, d1, t1;                                         \
+                adcs    d2, d2, t2;                                         \
+                adcs    d3, d3, t0;                                         \
+                adcs    d4, d4, d0;                                         \
+                adc     d5, xzr, xzr
 
 // ---------------------------------------------------------------------------
 // Core one-step "short" Montgomery reduction macro. Takes input in
@@ -79,20 +77,19 @@
 // It is fine for d4 to be the same register as d0, and it often is.
 // ---------------------------------------------------------------------------
 
-.macro          montreds d4,d3,d2,d1,d0, t2,t1,t0
-// Let w = d0, the original word we use as offset; d0 gets recycled
-// First let [t2;t1] = 2^32 * w
-// then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)
-                lsl     \t1, \d0, #32
-                subs    \t0, \d0, \t1
-                lsr     \t2, \d0, #32
-                sbc     \d0, \d0, \t2
-// Hence [d4;d3;d2;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w
-                adds    \d1, \d1, \t1
-                adcs    \d2, \d2, \t2
-                adcs    \d3, \d3, \t0
-                adc     \d4, \d0, xzr
-.endm
+#define montreds(d4,d3,d2,d1,d0, t2,t1,t0)                                  \
+/* Let w = d0, the original word we use as offset; d0 gets recycled      */ \
+/* First let [t2;t1] = 2^32 * w                                          */ \
+/* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)           */ \
+                lsl     t1, d0, #32;                                        \
+                subs    t0, d0, t1;                                         \
+                lsr     t2, d0, #32;                                        \
+                sbc     d0, d0, t2;                                         \
+/* Hence [d4;..;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w */ \
+                adds    d1, d1, t1;                                         \
+                adcs    d2, d2, t2;                                         \
+                adcs    d3, d3, t0;                                         \
+                adc     d4, d0, xzr
 
 #define a0 x2
 #define a1 x3
@@ -142,16 +139,16 @@ bignum_montsqr_p256:
 // Perform two "short" Montgomery steps on the low square
 // This shifts it to an offset compatible with middle product
 
-                montreds s0,s3,s2,s1,s0, d1,d2,d3
+                montreds (s0,s3,s2,s1,s0, d1,d2,d3)
 
-                montreds s1,s0,s3,s2,s1, d1,d2,d3
+                montreds (s1,s0,s3,s2,s1, d1,d2,d3)
 
 // Compute cross-product with ADK 2x2->4 multiplier as [c3;c2;c1;c0]
 
                 mul     c0, a0, a2
                 mul     d4, a1, a3
                 umulh   c2, a0, a2
-                muldiffn d3,d2,d1, c4, a0,a1, a3,a2
+                muldiffn (d3,d2,d1, c4, a0,a1, a3,a2)
 
                 adds    c1, c0, c2
                 adc     c2, c2, xzr
@@ -185,9 +182,9 @@ bignum_montsqr_p256:
 
 // Montgomery-reduce the combined low and middle term another twice
 
-                montrede c0,c4,c3,c2,c1,c0, d1,d2,d3
+                montrede (c0,c4,c3,c2,c1,c0, d1,d2,d3)
 
-                montrede c1,c0,c4,c3,c2,c1, d1,d2,d3
+                montrede (c1,c0,c4,c3,c2,c1, d1,d2,d3)
 
 // Our sum so far is in [c1,c0,c4,c3,c2]; choose more intuitive names
 

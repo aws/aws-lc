@@ -32,42 +32,41 @@
 // using d4 as well as t1, t2, t3 as temporaries.
 // ----------------------------------------------------------------------------
 
-.macro modstep_p256 d4, d3,d2,d1,d0, t1,t2,t3
-// Writing the input as z = 2^256 * h + 2^192 * l + t = 2^192 * hl + t, our
-// intended quotient approximation is MIN ((hl + hl>>32 + 1)>>64) (2^64 - 1).
-                subs    xzr, xzr, xzr   // set carry flag for +1
-                extr    \t3, \d4, \d3, #32
-                adcs    xzr, \d3, \t3
-                lsr     \t3, \d4, #32
-                adcs    \t3, \d4, \t3
-                csetm   \d0, cs
-                orr     \t3, \t3, \d0
-// First do [t2;t1] = 2^32 * q, which we use twice
-                lsl     \t1, \t3, #32
-                lsr     \t2, \t3, #32
-// Add 2^224 * q to sum
-                adds    \d3, \d3, \t1
-                adc     \d4, \d4, \t2
-// Accumulate [t2;t1;d0] = (2^96 - 1) * q
-                subs    \d0, xzr, \t3
-                sbcs    \t1, \t1, xzr
-                sbc     \t2, \t2, xzr
-// Subtract (2^256 + 2^192 + 2^96 - 1) * q
-                subs    \d0, xzr, \d0
-                sbcs    \d1, \d1, \t1
-                sbcs    \d2, \d2, \t2
-                sbcs    \d3, \d3, \t3
-                sbcs    \d4, \d4, \t3
-// Use top word as mask to correct
-                adds    \d0, \d0, \d4
-                mov     \t1, #0x00000000ffffffff
-                and     \t1, \t1, \d4
-                adcs    \d1, \d1, \t1
-                adcs    \d2, \d2, xzr
-                mov     \t1, #0xffffffff00000001
-                and     \t1, \t1, \d4
-                adc     \d3, \d3, \t1
-.endm
+#define modstep_p256(d4, d3,d2,d1,d0, t1,t2,t3)                             \
+/* Writing the input as z = 2^256 * h + 2^192 * l + t = 2^192 * hl + t,  */ \
+/* our quotient approximation is MIN ((hl + hl>>32 + 1)>>64) (2^64 - 1). */ \
+                subs    xzr, xzr, xzr; /* Set carry flag for +1 */          \
+                extr    t3, d4, d3, #32;                                    \
+                adcs    xzr, d3, t3;                                        \
+                lsr     t3, d4, #32;                                        \
+                adcs    t3, d4, t3;                                         \
+                csetm   d0, cs;                                             \
+                orr     t3, t3, d0;                                         \
+/* First do [t2;t1] = 2^32 * q, which we use twice                       */ \
+                lsl     t1, t3, #32;                                        \
+                lsr     t2, t3, #32;                                        \
+/* Add 2^224 * q to sum                                                  */ \
+                adds    d3, d3, t1;                                         \
+                adc     d4, d4, t2;                                         \
+/* Accumulate [t2;t1;d0] = (2^96 - 1) * q                                */ \
+                subs    d0, xzr, t3;                                        \
+                sbcs    t1, t1, xzr;                                        \
+                sbc     t2, t2, xzr;                                        \
+/* Subtract (2^256 + 2^192 + 2^96 - 1) * q                               */ \
+                subs    d0, xzr, d0;                                        \
+                sbcs    d1, d1, t1;                                         \
+                sbcs    d2, d2, t2;                                         \
+                sbcs    d3, d3, t3;                                         \
+                sbcs    d4, d4, t3;                                         \
+/* Use top word as mask to correct                                       */ \
+                adds    d0, d0, d4;                                         \
+                mov     t1, #0x00000000ffffffff;                            \
+                and     t1, t1, d4;                                         \
+                adcs    d1, d1, t1;                                         \
+                adcs    d2, d2, xzr;                                        \
+                mov     t1, #0xffffffff00000001;                            \
+                and     t1, t1, d4;                                         \
+                adc     d3, d3, t1
 
 #define d0 x2
 #define d1 x3
@@ -105,10 +104,10 @@ bignum_tomont_p256:
 
 // Successively multiply by 2^64 and reduce
 
-                modstep_p256 d3,d2,d1,d0,d4, t1,t2,t3
-                modstep_p256 d2,d1,d0,d4,d3, t1,t2,t3
-                modstep_p256 d1,d0,d4,d3,d2, t1,t2,t3
-                modstep_p256 d0,d4,d3,d2,d1, t1,t2,t3
+                modstep_p256 (d3,d2,d1,d0,d4, t1,t2,t3)
+                modstep_p256 (d2,d1,d0,d4,d3, t1,t2,t3)
+                modstep_p256 (d1,d0,d4,d3,d2, t1,t2,t3)
+                modstep_p256 (d0,d4,d3,d2,d1, t1,t2,t3)
 
 // Store the result and return
 

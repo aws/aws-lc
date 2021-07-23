@@ -40,38 +40,35 @@
 // not for the general case of Montgomery multiplication. It is fine
 // for d6 to be the same register as d0.
 //
-// Parms:  montreds d6,d5,d4,d3,d2,d1,d0
+// Parms:  montreds (d6,d5,d4,d3,d2,d1,d0)
 //
 // We want to add (2^384 - 2^128 - 2^96 + 2^32 - 1) * w
 // where w = [d0 + (d0<<32)] mod 2^64
 
-.macro montreds d6,d5,d4,d3,d2,d1,d0
-// Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64
-                mov     rdx, \d0
-                shl     rdx, 32
-                add     rdx, \d0
-// Construct [rsi;rcx;rax;-] = (2^384 - p_384) * w
-// We know the lowest word will cancel so we can re-use d0 as a temp
-                xor     rsi, rsi
-                mov     rax, 0xffffffff00000001
-                mulx    rax, rcx, rax
-                mov     ecx, 0x00000000ffffffff
-                mulx    rcx, \d0, rcx
-                adc     rax, \d0
-                adc     rcx, rdx
-                adc     rsi, 0
-// Now subtract that and add 2^384 * w
-                sub     \d1, rax
-                sbb     \d2, rcx
-                sbb     \d3, rsi
-                sbb     \d4, 0
-                sbb     \d5, 0
-                mov     \d6, rdx
-                sbb     \d6, 0
-.endm
-
-
-
+#define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
+/* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
+                mov     rdx, d0;                                        \
+                shl     rdx, 32;                                        \
+                add     rdx, d0;                                        \
+/* Construct [rsi;rcx;rax;-] = (2^384 - p_384) * w           */         \
+/* We know the lowest word will cancel so we can re-use d0   */         \
+/* as a temp.                                                */         \
+                xor     rsi, rsi;                                       \
+                mov     rax, 0xffffffff00000001;                        \
+                mulx    rax, rcx, rax;                                  \
+                mov     ecx, 0x00000000ffffffff;                        \
+                mulx    rcx, d0, rcx;                                   \
+                adc     rax, d0;                                        \
+                adc     rcx, rdx;                                       \
+                adc     rsi, 0;                                         \
+/* Now subtract that and add 2^384 * w                       */         \
+                sub     d1, rax;                                        \
+                sbb     d2, rcx;                                        \
+                sbb     d3, rsi;                                        \
+                sbb     d4, 0;                                          \
+                sbb     d5, 0;                                          \
+                mov     d6, rdx;                                        \
+                sbb     d6, 0
 
 bignum_demont_p384:
 
@@ -91,27 +88,27 @@ bignum_demont_p384:
 
 // Montgomery reduce window 0
 
-        montreds r8,r13,r12,r11,r10,r9,r8
+        montreds (r8,r13,r12,r11,r10,r9,r8)
 
 // Montgomery reduce window 1
 
-        montreds r9,r8,r13,r12,r11,r10,r9
+        montreds (r9,r8,r13,r12,r11,r10,r9)
 
 // Montgomery reduce window 2
 
-        montreds r10,r9,r8,r13,r12,r11,r10
+        montreds (r10,r9,r8,r13,r12,r11,r10)
 
 // Montgomery reduce window 3
 
-        montreds r11,r10,r9,r8,r13,r12,r11
+        montreds (r11,r10,r9,r8,r13,r12,r11)
 
 // Montgomery reduce window 4
 
-        montreds r12,r11,r10,r9,r8,r13,r12
+        montreds (r12,r11,r10,r9,r8,r13,r12)
 
 // Montgomery reduce window 5
 
-        montreds r13,r12,r11,r10,r9,r8,r13
+        montreds (r13,r12,r11,r10,r9,r8,r13)
 
 // Write back the result
 
