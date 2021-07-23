@@ -7,7 +7,7 @@ source tests/ci/common_posix_setup.sh
 echo "Testing AWS-LC in FIPS debug mode."
 fips_build_and_test
 
-# TODO(shang): investigate gcc fips static release build on aarch.
+# TODO(shang): investigate delocate transform errors when building static awslc with gcc fips release on aarch.
 if [[ ("${CC}" == 'clang'*) || ("$(uname -p)" == 'x86_64'*) ]]; then
   echo "Testing AWS-LC in FIPS release mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
