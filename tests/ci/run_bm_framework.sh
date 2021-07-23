@@ -3,6 +3,8 @@ set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# Please run from project root folder!
+
 # define cleanup script to delete created assets in case something fails or breaks
 function cleanup {
   set +e

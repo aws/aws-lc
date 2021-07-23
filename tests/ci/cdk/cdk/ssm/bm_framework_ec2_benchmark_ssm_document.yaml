@@ -32,5 +32,6 @@ mainSteps:
         - docker build -t ubuntu-20.04:base tests/ci/docker_images/linux-x86/ubuntu-20.04_base/
         - docker build -t ubuntu-20.04:clang-7x tests/ci/docker_images/linux-x86/ubuntu-20.04_clang-7x/
         # start the container and run the bm script
-        - exec_docker="docker run --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env COMMIT_ID={COMMIT_ID} -v `pwd`:`pwd` -v `pwd`/build:`pwd`/build -v `pwd`/fips_build:`pwd`/fips_build -v `pwd`/tests/ci:`pwd`/tests/ci -w `pwd` ubuntu-20.04:clang-7x"
+        - exec_docker="docker run --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env COMMIT_ID={COMMIT_ID} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04:clang-7x"
+        - chmod +x tests/ci/build_run_benchmarks.sh
         - $exec_docker ./tests/ci/build_run_benchmarks.sh
