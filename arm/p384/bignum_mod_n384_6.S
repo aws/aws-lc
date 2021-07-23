@@ -45,21 +45,19 @@
 #define d4 x12
 #define d5 x13
 
-.macro movbig x, n3, n2, n1, n0
-                movz    \x, \n0
-                movk    \x, \n1, lsl #16
-                movk    \x, \n2, lsl #32
-                movk    \x, \n3, lsl #48
-.endm
-
+#define movbig(nn,n3,n2,n1,n0)                                              \
+                movz    nn, n0;                                             \
+                movk    nn, n1, lsl #16;                                    \
+                movk    nn, n2, lsl #32;                                    \
+                movk    nn, n3, lsl #48
 
 bignum_mod_n384_6:
 
 // Load the complicated lower three words of n_384
 
-                movbig  n0, #0xecec, #0x196a, #0xccc5, #0x2973
-                movbig  n1, #0x581a, #0x0db2, #0x48b0, #0xa77a
-                movbig  n2, #0xc763, #0x4d81, #0xf437, #0x2ddf
+                movbig ( n0, #0xecec, #0x196a, #0xccc5, #0x2973)
+                movbig ( n1, #0x581a, #0x0db2, #0x48b0, #0xa77a)
+                movbig ( n2, #0xc763, #0x4d81, #0xf437, #0x2ddf)
 
 // Load the input number
 
