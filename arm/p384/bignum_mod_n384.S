@@ -65,13 +65,11 @@
 
 // Loading large constants
 
-.macro movbig nn, n3, n2, n1, n0
-                movz    \nn, \n0
-                movk    \nn, \n1, lsl #16
-                movk    \nn, \n2, lsl #32
-                movk    \nn, \n3, lsl #48
-.endm
-
+#define movbig(nn,n3,n2,n1,n0)                                              \
+                movz    nn, n0;                                             \
+                movk    nn, n1, lsl #16;                                    \
+                movk    nn, n2, lsl #32;                                    \
+                movk    nn, n3, lsl #48
 
 bignum_mod_n384:
 
@@ -91,9 +89,9 @@ bignum_mod_n384:
 
 // Load the complicated three words of 2^384 - n_384 = [0; 0; 0; n2; n1; n0]
 
-                movbig  n0, #0x1313, #0xe695, #0x333a, #0xd68d
-                movbig  n1, #0xa7e5, #0xf24d, #0xb74f, #0x5885
-                movbig  n2, #0x389c, #0xb27e, #0x0bc8, #0xd220
+                movbig ( n0, #0x1313, #0xe695, #0x333a, #0xd68d)
+                movbig ( n1, #0xa7e5, #0xf24d, #0xb74f, #0x5885)
+                movbig ( n2, #0x389c, #0xb27e, #0x0bc8, #0xd220)
 
 // Reduce the top 6 digits mod n_384 (a conditional subtraction of n_384)
 

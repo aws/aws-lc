@@ -39,33 +39,32 @@
 // where w = [d0 + (d0<<32)] mod 2^64
 // ---------------------------------------------------------------------------
 
-.macro          montreds d6,d5,d4,d3,d2,d1,d0, t3,t2,t1
-// Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64
-// Recycle d0 (which we know gets implicitly cancelled) to store it
-                lsl     \t1, \d0, #32
-                add     \d0, \t1, \d0
-// Now let [t2;t1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)
-// We need to subtract 2^32 * this, and we can ignore its lower 32
-// bits since by design it will cancel anyway; we only need the w_hi
-// part to get the carry propagation going.
-                lsr     \t1, \d0, #32
-                subs    \t1, \t1, \d0
-                sbc     \t2, \d0, xzr
-// Now select in t1 the field to subtract from d1
-                extr    \t1, \t2, \t1, #32
-// And now get the terms to subtract from d2 and d3
-                lsr     \t2, \t2, #32
-                adds    \t2, \t2, \d0
-                adc     \t3, xzr, xzr
-// Do the subtraction of that portion
-                subs    \d1, \d1, \t1
-                sbcs    \d2, \d2, \t2
-                sbcs    \d3, \d3, \t3
-                sbcs    \d4, \d4, xzr
-                sbcs    \d5, \d5, xzr
-// Now effectively add 2^384 * w by taking d0 as the input for the last sbc
-                sbc     \d6, \d0, xzr
-.endm
+#define montreds(d6,d5,d4,d3,d2,d1,d0, t3,t2,t1)                            \
+/* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64            */  \
+/* Recycle d0 (which we know gets implicitly cancelled) to store it     */  \
+                lsl     t1, d0, 32;                                         \
+                add     d0, t1, d0;                                         \
+/* Now let [t2;t1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)     */  \
+/* We need to subtract 2^32 * this, and we can ignore its lower 32      */  \
+/* bits since by design it will cancel anyway; we only need the w_hi    */  \
+/* part to get the carry propagation going.                             */  \
+                lsr     t1, d0, 32;                                         \
+                subs    t1, t1, d0;                                         \
+                sbc     t2, d0, xzr;                                        \
+/* Now select in t1 the field to subtract from d1                       */  \
+                extr    t1, t2, t1, 32;                                     \
+/* And now get the terms to subtract from d2 and d3                     */  \
+                lsr     t2, t2, 32;                                         \
+                adds    t2, t2, d0;                                         \
+                adc     t3, xzr, xzr;                                       \
+/* Do the subtraction of that portion                                   */  \
+                subs    d1, d1, t1;                                         \
+                sbcs    d2, d2, t2;                                         \
+                sbcs    d3, d3, t3;                                         \
+                sbcs    d4, d4, xzr;                                        \
+                sbcs    d5, d5, xzr;                                        \
+/* Now effectively add 2^384 * w by taking d0 as the input for last sbc */  \
+                sbc     d6, d0, xzr
 
 // Input parameters
 
@@ -97,17 +96,17 @@ bignum_deamont_p384:
 
 // Systematically scroll left doing 1-step reductions
 
-                montreds d0,d5,d4,d3,d2,d1,d0, u,v,w
+                montreds (d0,d5,d4,d3,d2,d1,d0, u,v,w)
 
-                montreds d1,d0,d5,d4,d3,d2,d1, u,v,w
+                montreds (d1,d0,d5,d4,d3,d2,d1, u,v,w)
 
-                montreds d2,d1,d0,d5,d4,d3,d2, u,v,w
+                montreds (d2,d1,d0,d5,d4,d3,d2, u,v,w)
 
-                montreds d3,d2,d1,d0,d5,d4,d3, u,v,w
+                montreds (d3,d2,d1,d0,d5,d4,d3, u,v,w)
 
-                montreds d4,d3,d2,d1,d0,d5,d4, u,v,w
+                montreds (d4,d3,d2,d1,d0,d5,d4, u,v,w)
 
-                montreds d5,d4,d3,d2,d1,d0,d5, u,v,w
+                montreds (d5,d4,d3,d2,d1,d0,d5, u,v,w)
 
 // Now compare end result in [d5;d4;d3;d2;d1;d0] = dd with p_384 by *adding*
 // 2^384 - p_384 = [0;0;0;w;v;u]. This will set CF if
