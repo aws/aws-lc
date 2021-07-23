@@ -32,42 +32,41 @@
 // using d6 as well as t1, t2, t3 as temporaries.
 // ----------------------------------------------------------------------------
 
-.macro modstep_p384 d6,d5,d4,d3,d2,d1,d0, t1,t2,t3
-// Initial quotient approximation q = min (h + 1) (2^64 - 1)
-                adds    \d6, \d6, #1
-                csetm   \t3, cs
-                add     \d6, \d6, \t3
-                orn     \t3, xzr, \t3
-                sub     \t2, \d6, #1
-                sub     \t1, xzr, \d6
-// Correction term [d6;t2;t1;d0] = q * (2^384 - p_384)
-                lsl     \d0, \t1, #32
-                extr    \t1, \t2, \t1, #32
-                lsr     \t2, \t2, #32
-                adds    \d0, \d0, \d6
-                adcs    \t1, \t1, xzr
-                adcs    \t2, \t2, \d6
-                adc     \d6, xzr, xzr
-// Addition to the initial value
-                adds    \d1, \d1, \t1
-                adcs    \d2, \d2, \t2
-                adcs    \d3, \d3, \d6
-                adcs    \d4, \d4, xzr
-                adcs    \d5, \d5, xzr
-                adc     \t3, \t3, xzr
-// Use net top of the 7-word answer in t3 for masked correction
-                mov     \t1, #0x00000000ffffffff
-                and     \t1, \t1, \t3
-                adds    \d0, \d0, \t1
-                eor     \t1, \t1, \t3
-                adcs    \d1, \d1, \t1
-                mov     \t1, #0xfffffffffffffffe
-                and     \t1, \t1, \t3
-                adcs    \d2, \d2, \t1
-                adcs    \d3, \d3, \t3
-                adcs    \d4, \d4, \t3
-                adc     \d5, \d5, \t3
-.endm
+#define modstep_p384(d6,d5,d4,d3,d2,d1,d0, t1,t2,t3)                        \
+/* Initial quotient approximation q = min (h + 1) (2^64 - 1) */             \
+                adds    d6, d6, #1;                                         \
+                csetm   t3, cs;                                             \
+                add     d6, d6, t3;                                         \
+                orn     t3, xzr, t3;                                        \
+                sub     t2, d6, #1;                                         \
+                sub     t1, xzr, d6;                                        \
+/* Correction term [d6;t2;t1;d0] = q * (2^384 - p_384) */                   \
+                lsl     d0, t1, #32;                                        \
+                extr    t1, t2, t1, #32;                                    \
+                lsr     t2, t2, #32;                                        \
+                adds    d0, d0, d6;                                         \
+                adcs    t1, t1, xzr;                                        \
+                adcs    t2, t2, d6;                                         \
+                adc     d6, xzr, xzr;                                       \
+/* Addition to the initial value */                                         \
+                adds    d1, d1, t1;                                         \
+                adcs    d2, d2, t2;                                         \
+                adcs    d3, d3, d6;                                         \
+                adcs    d4, d4, xzr;                                        \
+                adcs    d5, d5, xzr;                                        \
+                adc     t3, t3, xzr;                                        \
+/* Use net top of the 7-word answer in t3 for masked correction */          \
+                mov     t1, #0x00000000ffffffff;                            \
+                and     t1, t1, t3;                                         \
+                adds    d0, d0, t1;                                         \
+                eor     t1, t1, t3;                                         \
+                adcs    d1, d1, t1;                                         \
+                mov     t1, #0xfffffffffffffffe;                            \
+                and     t1, t1, t3;                                         \
+                adcs    d2, d2, t1;                                         \
+                adcs    d3, d3, t3;                                         \
+                adcs    d4, d4, t3;                                         \
+                adc     d5, d5, t3
 
 bignum_tomont_p384:
 
@@ -118,12 +117,12 @@ bignum_tomont_p384:
 
 // Successively multiply by 2^64 and reduce
 
-                modstep_p384 d5,d4,d3,d2,d1,d0,d6, t1,t2,t3
-                modstep_p384 d4,d3,d2,d1,d0,d6,d5, t1,t2,t3
-                modstep_p384 d3,d2,d1,d0,d6,d5,d4, t1,t2,t3
-                modstep_p384 d2,d1,d0,d6,d5,d4,d3, t1,t2,t3
-                modstep_p384 d1,d0,d6,d5,d4,d3,d2, t1,t2,t3
-                modstep_p384 d0,d6,d5,d4,d3,d2,d1, t1,t2,t3
+                modstep_p384 (d5,d4,d3,d2,d1,d0,d6, t1,t2,t3)
+                modstep_p384 (d4,d3,d2,d1,d0,d6,d5, t1,t2,t3)
+                modstep_p384 (d3,d2,d1,d0,d6,d5,d4, t1,t2,t3)
+                modstep_p384 (d2,d1,d0,d6,d5,d4,d3, t1,t2,t3)
+                modstep_p384 (d1,d0,d6,d5,d4,d3,d2, t1,t2,t3)
+                modstep_p384 (d0,d6,d5,d4,d3,d2,d1, t1,t2,t3)
 
 // Store the result and return
 
