@@ -64,7 +64,7 @@ wait "${pr_pid}"
 wait "${pr_fips_pid}"
 wait "${prod_pid}"
 wait "${prod_fips_pid}"
-wait "${ossl_pid}"
+#wait "${ossl_pid}"
 wait "${bssl_pid}"
 
 # upload results to s3
@@ -72,5 +72,11 @@ aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-buck
 aws s3 mv aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc-pr_fips_bm.json
 aws s3 mv aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc-prod_bm.json
 aws s3 mv aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc-prod_fips_bm.json
-#aws s3 mv ossl_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/ossl_bm
-aws s3 mv bssl_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/bssl_bm
+#aws s3 mv ossl_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/ossl_bm.json
+aws s3 mv bssl_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/bssl_bm.json
+
+# uplaod results to lastest folders in s3
+aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/latest/aws-lc-pr_bm.json
+aws s3 mv aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/latest/aws-lc-pr_fips_bm.json
+aws s3 mv aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/latest/aws-lc-prod_bm.json
+aws s3 mv aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/latest/aws-lc-prod_fips_bm.json
