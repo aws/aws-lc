@@ -6,6 +6,10 @@
 AWSLC_PR_ROOT=$(pwd)/aws-lc-pr
 AWSLC_PROD_ROOT=$(pwd)/aws-lc-prod
 
+# build OpenSSL
+
+# build BoringSSL
+
 # build AWSLC pr
 mkdir aws-lc-pr/build
 cmake -Baws-lc-pr/build -Haws-lc-pr -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"

@@ -17,6 +17,8 @@ mainSteps:
         - cd bm_framework
         - git clone https://github.com/billbo-yang/aws-lc.git aws-lc-pr
         - git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
+        - git clone https://boringssl.googlesource.com/boringssl
+        - git clone https://github.com/openssl/openssl.git
         # install docker
         - apt-get update
         - apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
@@ -28,6 +30,9 @@ mainSteps:
         # build docker image and get dependencies from it
         - cd aws-lc-pr
         - git checkout {COMMIT_ID}
+        - cd ../
+        - cd openssl
+        - git checkout OpenSSL_1_1_1-stable
         - cd ../
         - docker build -t ubuntu-20.04:base aws-lc-prod/tests/ci/docker_images/linux-x86/ubuntu-20.04_base/
         - docker build -t ubuntu-20.04:clang-7x aws-lc-prod/tests/ci/docker_images/linux-x86/ubuntu-20.04_clang-7x/
