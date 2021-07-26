@@ -24,7 +24,7 @@ ninja -C aws-lc-prod/build
 #build FIPS compliant version of AWSLC prod
 mkdir aws-lc-prod/fips_build
 cmake -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}"
-ninja -C aws-lc-prod/build
+ninja -C aws-lc-prod/fips_build
 
 # run the generated benchmarks and wait for them to finish
 taskset -c 0 ./aws-lc-pr/build/tool/awslc_bm -timeout 3 -json > aws-lc-pr_bm.json &
@@ -45,6 +45,6 @@ wait "${prod_fips_pid}"
 
 # upload results to s3
 aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc-pr_bm.json
-aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc-pr_fips_bm.json
+aws s3 mv aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc-pr_fips_bm.json
 aws s3 mv aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc-prod_bm.json
 aws s3 mv aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc-prod_fips_bm.json
