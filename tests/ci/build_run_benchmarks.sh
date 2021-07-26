@@ -3,16 +3,29 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # run this from the bm_framework root directory!
+OPENSSL_ROOT=$(pwd)/openssl
+BORINGSSL_ROOT=$(pwd)/boringssl
 AWSLC_PR_ROOT=$(pwd)/aws-lc-pr
 AWSLC_PROD_ROOT=$(pwd)/aws-lc-prod
 
 # build OpenSSL
+mkdir openssl/build
+(cd openssl && ./config --prefix="${OPENSSL_ROOT}"/build --openssldir="${OPENSSL_ROOT}"/build)
+make -C openssl
+make install -C openssl
 
 # build BoringSSL
+mkdir boringssl/build
+cmake -Bboringssl/build -Hboringssl -GNinja -DCMAKE_BUILD_TYPE=Release
+ninja -C boringssl/build
 
 # build AWSLC pr
 mkdir aws-lc-pr/build
-cmake -Baws-lc-pr/build -Haws-lc-pr -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"
+cmake -Baws-lc-pr/build -Haws-lc-pr -GNinja -DCMAKE_BUILD_TYPE=Release \
+  -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}" \
+  -DBORINGSSL_INSTALL_DIR="${BORINGSSL_ROOT}" \
+  #  -DOPENSSL_INSTALL_DIR="${OPENSSL_ROOT}"
+
 ninja -C aws-lc-pr/build
 
 # build FIPS compliant version of AWSLC pr
@@ -41,14 +54,23 @@ prod_pid=$!
 taskset -c 3 ./aws-lc-prod/fips_build/tool/awslc_bm -timeout 3 -json > aws-lc-prod_fips_bm.json &
 prod_fips_pid=$!
 
+#taskset -c 4 ./aws-lc-pr/build/tool/ossl_bm -timeout 3 -json > ossl_bm.json &
+#ossl_pid=$!
+taskset -c 5 ./aws-lc-pr/build/tool/bssl_bm -timeout 3 -json > bssl_bm.json &
+bssl_pid=$!
+
 # wait for benchmarks to finish
 wait "${pr_pid}"
 wait "${pr_fips_pid}"
 wait "${prod_pid}"
 wait "${prod_fips_pid}"
+wait "${ossl_pid}"
+wait "${bssl_pid}"
 
 # upload results to s3
 aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc-pr_bm.json
 aws s3 mv aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/aws-lc-pr_fips_bm.json
 aws s3 mv aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc-prod_bm.json
 aws s3 mv aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-prod-bucket/"${COMMIT_ID}"/aws-lc-prod_fips_bm.json
+#aws s3 mv ossl_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/ossl_bm
+aws s3 mv bssl_bm.json s3://"${AWS_ACCOUNT_ID}"-aws-lc-bm-framework-pr-bucket/"${COMMIT_ID}"/bssl_bm
