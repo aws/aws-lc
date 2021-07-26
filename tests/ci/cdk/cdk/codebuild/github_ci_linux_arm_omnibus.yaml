@@ -42,6 +42,14 @@ batch:
           AWS_LC_GO_TEST_TIMEOUT: 120m
           AWSLC_NO_ASM_FIPS: 1
 
+    - identifier: ubuntu2004_gcc7x_aarch_fips
+      buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
+
     - identifier: ubuntu2004_clang7x_aarch_minimal
       buildspec: ./tests/ci/codebuild/linux-aarch/run_minimal_tests.yml
       env:
@@ -109,3 +117,11 @@ batch:
           # AL2 Clang-7 does not support AddressSanitizer. Related ticket is linked in CryptoAlg-694.
           # https://github.com/awslabs/aws-lc/pull/120#issuecomment-808439279
           AWSLC_NO_ASM_FIPS: 0
+
+    - identifier: amazonlinux2_gcc7x_aarch_fips
+      buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
