@@ -4,6 +4,7 @@ set -exo pipefail
 # SPDX-License-Identifier: Apache-2.0
 
 # Please run from project root folder!
+# You'll want to set the codebuild env variables set if running locally
 
 # define cleanup script to delete created assets in case something fails or breaks
 function cleanup {

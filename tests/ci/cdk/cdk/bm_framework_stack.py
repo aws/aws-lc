@@ -133,6 +133,11 @@ class BmFrameworkStack(core.Stack):
 
             pr_results_s3.grant_put(ec2_role)
 
-        # define CloudWatch Logs groups
-        logs.LogGroup(self, "{}-cw-logs".format(id),
-                      log_group_name=CLOUDWATCH_LOGS)
+        # use boto3 to determine if a cloudwatch logs group with the name we want exists, and if it doesn't, create it
+        logs_res = boto3.resource('logs')
+        try:
+            logs_res.meta.client.describe_log_groups(logGroupNamePrefix=CLOUDWATCH_LOGS)
+        except ClientError:
+            # define CloudWatch Logs groups
+            logs.LogGroup(self, "{}-cw-logs".format(id),
+                          log_group_name=CLOUDWATCH_LOGS)
