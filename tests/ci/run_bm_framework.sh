@@ -45,9 +45,9 @@ sleep 120
 
 # Create, and run ssm command
 # use sed to replace some placeholder values inside the document with stuff
-sed -e "s/{AWS_ACCOUNT_ID}/${AWS_ACCOUNT_ID}/g" \
-  -e "s/{COMMIT_ID}/${CODEBUILD_SOURCE_VERSION}/g" \
-  -e "s/{GITHUB_REPO}/${CODEBUILD_SOURCE_REPO_URL}/g" \
+sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
+  -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
+  -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
   tests/ci/cdk/cdk/ssm/bm_framework_ec2_benchmark_ssm_document.yaml \
   > tests/ci/cdk/cdk/ssm/bm_framework_ec2_x86_benchmark_ssm_document.yaml
 
