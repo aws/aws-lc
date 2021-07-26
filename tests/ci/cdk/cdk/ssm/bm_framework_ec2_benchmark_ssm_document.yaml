@@ -16,7 +16,7 @@ mainSteps:
         - mkdir bm_framework
         - cd bm_framework
         - git clone https://github.com/billbo-yang/aws-lc.git aws-lc-pr
-        - git clone https://github.com/aws-lc/aws-lc.git aws-lc-prod
+        - git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
         # install docker
         - apt-get update
         - apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
