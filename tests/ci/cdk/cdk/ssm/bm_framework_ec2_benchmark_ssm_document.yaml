@@ -29,9 +29,9 @@ mainSteps:
         - cd aws-lc-pr
         - git checkout {COMMIT_ID}
         - cd ../
-        - docker build -t ubuntu-20.04:base tests/ci/docker_images/linux-x86/ubuntu-20.04_base/
-        - docker build -t ubuntu-20.04:clang-7x tests/ci/docker_images/linux-x86/ubuntu-20.04_clang-7x/
+        - docker build -t ubuntu-20.04:base aws-lc-prod/tests/ci/docker_images/linux-x86/ubuntu-20.04_base/
+        - docker build -t ubuntu-20.04:clang-7x aws-lc-prod/tests/ci/docker_images/linux-x86/ubuntu-20.04_clang-7x/
         # start the container and run the bm script
         - exec_docker="docker run --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env COMMIT_ID={COMMIT_ID} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04:clang-7x"
-        - chmod +x tests/ci/build_run_benchmarks.sh
+        - chmod +x aws-lc-pr/tests/ci/build_run_benchmarks.sh
         - $exec_docker ./aws-lc-pr/tests/ci/build_run_benchmarks.sh

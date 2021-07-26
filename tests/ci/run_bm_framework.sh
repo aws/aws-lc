@@ -19,9 +19,11 @@ function cleanup {
 # on an error, we want to delete the document and kill the ec2 instance
 trap cleanup EXIT
 
+# print some information for reference
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo AWS Account ID: "${AWS_ACCOUNT_ID}"
+echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
 
 # get information for ec2 instances
 vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
@@ -31,7 +33,7 @@ subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --
 # create ec2 instances
 # ubuntu 20.04
 x86_ubuntu2004_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
-  --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
+  --instance-type c5.metal --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
   --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
   --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
   --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \

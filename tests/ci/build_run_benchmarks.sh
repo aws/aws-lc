@@ -23,7 +23,7 @@ ninja -C aws-lc-prod/build
 
 #build FIPS compliant version of AWSLC prod
 mkdir aws-lc-prod/fips_build
-cmake -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR"${AWSLC_PROD_ROOT}"
+cmake -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}"
 ninja -C aws-lc-prod/build
 
 # run the generated benchmarks and wait for them to finish
