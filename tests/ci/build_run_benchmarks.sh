@@ -23,7 +23,7 @@ ninja -C boringssl/build
 mkdir aws-lc-pr/build
 cmake -Baws-lc-pr/build -Haws-lc-pr -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}" \
-  -DBORINGSSL_INSTALL_DIR="${BORINGSSL_ROOT}" \
+  -DBORINGSSL_INSTALL_DIR="${BORINGSSL_ROOT}" # \
   #  -DOPENSSL_INSTALL_DIR="${OPENSSL_ROOT}"
 
 ninja -C aws-lc-pr/build

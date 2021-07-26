@@ -15,7 +15,7 @@ mainSteps:
         - # create bm_framework directory and checkout aws-lc
         - mkdir bm_framework
         - cd bm_framework
-        - git clone https://github.com/billbo-yang/aws-lc.git aws-lc-pr
+        - git clone {GITHUB_REPO} aws-lc-pr
         - git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
         - git clone https://boringssl.googlesource.com/boringssl
         - git clone https://github.com/openssl/openssl.git
