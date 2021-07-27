@@ -11,8 +11,13 @@ mainSteps:
       timeoutSeconds: '7200'
       runCommand:
         - sudo -i
+        - apt-get -y install make
         - export DEBIAN_FRONTEND=noninteractive
-        - # create bm_framework directory and checkout aws-lc
+        - export CPU_TYPE=$(dpkg --print-architecture)
+        # if we want to disable CPU features, pass in the {OPENSSL_ia32cap} value
+        - if [ {OPENSSL_ia32cap} ]; then export OPENSSL_ia32cap={OPENSSL_ia32cap}; fi
+        - echo "${OPENSSL_ia32cap}"
+        # create bm_framework directory and checkout aws-lc
         - mkdir bm_framework
         - cd bm_framework
         - git clone {GITHUB_REPO} aws-lc-pr
@@ -24,7 +29,7 @@ mainSteps:
         - apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
         - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
         # need to change below depending on cpu type
-        - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        - echo "deb [arch="${CPU_TYPE}" signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
         - apt-get update
         - apt-get install -y docker-ce docker-ce-cli containerd.io
         # build docker image and get dependencies from it
@@ -37,6 +42,6 @@ mainSteps:
         - docker build -t ubuntu-20.04:base aws-lc-prod/tests/ci/docker_images/linux-x86/ubuntu-20.04_base/
         - docker build -t ubuntu-20.04:clang-7x aws-lc-prod/tests/ci/docker_images/linux-x86/ubuntu-20.04_clang-7x/
         # start the container and run the bm script
-        - exec_docker="docker run --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env COMMIT_ID={COMMIT_ID} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04:clang-7x"
+        - exec_docker="docker run --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env COMMIT_ID={COMMIT_ID} --env CPU_TYPE="${CPU_TYPE}" --env NOHW_TYPE={NOHW_TYPE} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04:clang-7x"
         - chmod +x aws-lc-pr/tests/ci/build_run_benchmarks.sh
         - $exec_docker ./aws-lc-pr/tests/ci/build_run_benchmarks.sh
