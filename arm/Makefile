@@ -141,6 +141,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_add_p521.o \
       p521/bignum_double_p521.o \
       p521/bignum_half_p521.o \
+      p521/bignum_mod_p521_9.o \
       p521/bignum_sub_p521.o \
       p521/bignum_triple_p521.o
 

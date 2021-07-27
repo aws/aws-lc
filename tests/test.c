@@ -121,6 +121,7 @@ enum {
        TEST_BIGNUM_MOD_P256_4,
        TEST_BIGNUM_MOD_P384,
        TEST_BIGNUM_MOD_P384_6,
+       TEST_BIGNUM_MOD_P521_9,
        TEST_BIGNUM_MODADD,
        TEST_BIGNUM_MODDOUBLE,
        TEST_BIGNUM_MODIFIER,
@@ -2565,6 +2566,45 @@ int test_bignum_mod_p384_6(void)
   return 0;
 }
 
+int test_bignum_mod_p521_9(void)
+{ uint64_t t;
+  printf("Testing bignum_mod_p521_9 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(9,b0);
+     if ((rand() & 0xF) == 0) b0[8] |= 0xFFFFFFFFFFFFFFFFull;
+     else if ((rand() & 0xF) == 0)
+      { b0[8] = p_521[8];
+        b0[7] = p_521[7];
+        b0[6] = p_521[6];
+        b0[5] = p_521[5];
+        b0[4] = p_521[4];
+        b0[3] = p_521[3];
+        b0[2] = p_521[2];
+        b0[1] = p_521[1];
+        b0[0] = (p_521[0] - 3ull) + (rand() & 7ull);
+      }
+
+     reference_mod(9,b3,b0,p_521);
+     bignum_mod_p521_9(b4,b0);
+     c = reference_compare(9,b3,9,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "0x%016lx...%016lx mod p_521 = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               9ul,b0[8],b0[0],b4[8],b4[0],b3[8],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] 0x%016lx...%016lx mod p_521 = "
+               "0x%016lx...%016lx\n",
+               9ul,b0[8],b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_modadd(void)
 { uint64_t i, k;
   printf("Testing bignum_modadd with %d cases\n",tests);
@@ -4408,6 +4448,7 @@ int test_all()
   dotest(test_bignum_mod_p256_4);
   dotest(test_bignum_mod_p384);
   dotest(test_bignum_mod_p384_6);
+  dotest(test_bignum_mod_p521_9);
   dotest(test_bignum_modadd);
   dotest(test_bignum_moddouble);
   dotest(test_bignum_modifier);
@@ -4535,6 +4576,7 @@ int test_allnonbmi()
   dotest(test_bignum_mod_n384_6);
   dotest(test_bignum_mod_p256_4);
   dotest(test_bignum_mod_p384_6);
+  dotest(test_bignum_mod_p521_9);
   dotest(test_bignum_modadd);
   dotest(test_bignum_moddouble);
   dotest(test_bignum_modifier);
@@ -4695,6 +4737,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MOD_P256_4:      return test_bignum_mod_p256_4();
      case TEST_BIGNUM_MOD_P384:        return test_bignum_mod_p384();
      case TEST_BIGNUM_MOD_P384_6:      return test_bignum_mod_p384_6();
+     case TEST_BIGNUM_MOD_P521_9:      return test_bignum_mod_p521_9();
      case TEST_BIGNUM_MODADD:          return test_bignum_modadd();
      case TEST_BIGNUM_MODDOUBLE:       return test_bignum_moddouble();
      case TEST_BIGNUM_MODIFIER:        return test_bignum_modifier();
