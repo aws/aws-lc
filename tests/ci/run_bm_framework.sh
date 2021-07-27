@@ -84,10 +84,12 @@ ssm_command_id="$(aws ssm send-command --instance-ids "${x86_id}" "${arm_id}" \
 # Give some time for the command to run
 for i in {1..30}; do
   ssm_command_status="$(aws ssm list-commands --command-id "${ssm_command_id}" --query Commands[*].Status --output text)"
-  if [[ ${ssm_command_status} == 'Success' ]]; then
+  ssm_target_count="$(aws ssm list-commands --command-id "${ssm_command_id}" --query Commands[*].TargetCount --output text)"
+  ssm_completed_count="$(aws ssm list-commands --command-id "${ssm_command_id}" --query Commands[*].CompletedCount --output text)"
+  if [[ ${ssm_command_status} == 'Success' && ${ssm_completed_count} == "${ssm_target_count}" ]]; then
     echo "SSM command ${ssm_command_id} finished successfully."
     break
-  elif [[ ${ssm_command_status} == 'Failed' ]]; then
+  elif [[ ${ssm_command_status} == 'Failed' && ${ssm_completed_count} == "${ssm_target_count}" ]]; then
     echo "SSM command ${ssm_command_id} failed."
     exit 1
   else

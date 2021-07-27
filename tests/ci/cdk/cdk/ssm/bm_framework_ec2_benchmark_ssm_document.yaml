@@ -11,9 +11,9 @@ mainSteps:
       timeoutSeconds: '7200'
       runCommand:
         - sudo -i
-        - apt-get -y install make
         - export DEBIAN_FRONTEND=noninteractive
         - export CPU_TYPE=$(dpkg --print-architecture)
+        - apt-get -y install make
         # if we want to disable CPU features, pass in the {OPENSSL_ia32cap} value
         - if [ {OPENSSL_ia32cap} ]; then export OPENSSL_ia32cap={OPENSSL_ia32cap}; fi
         - echo "${OPENSSL_ia32cap}"
