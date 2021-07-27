@@ -138,7 +138,7 @@ function(cpreprocess dest src)
 
   add_custom_command(
     OUTPUT ${dest}
-    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} $CMAKE_ASM_FLAGS -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
+    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
