@@ -9,11 +9,11 @@ RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
-    python3.8 && \
-    python3-pip && \
-    pandas && \
-    numpy && \
-    boto3 && \
+    python3.8 \
+    python3-pip \
+    pandas \
+    numpy \
+    boto3 \
     make && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
