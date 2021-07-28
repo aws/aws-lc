@@ -11,10 +11,10 @@ RUN set -ex && \
     apt-get -y --no-install-recommends install \
     python3.8 \
     python3-pip \
-    pandas \
-    numpy \
-    boto3 \
     make && \
+    pip install pandas && \
+    pip install numpy && \
+    pip install boto3 && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
