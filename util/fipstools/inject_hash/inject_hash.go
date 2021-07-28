@@ -248,9 +248,12 @@ func do(outPath, oInput string, arInput string, useSHA256 bool) error {
 		return errors.New("found two occurrences of uninitialised hash value in object file")
 	}
 
+	// Print out calculated hash value.
+	fmt.Printf("Inject_hash calculated value: %s\n", fmt.Sprintf("%x", calculated))
+
 	copy(objectBytes[offset:], calculated)
 
-	return ioutil.WriteFile(outPath, objectBytes, perm & 0777)
+	return ioutil.WriteFile(outPath, objectBytes, perm&0777)
 }
 
 func main() {
