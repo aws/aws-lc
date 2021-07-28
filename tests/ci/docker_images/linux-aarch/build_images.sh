@@ -9,6 +9,7 @@ docker build -t ubuntu-20.04-aarch:base ubuntu-20.04_base
 docker build -t ubuntu-20.04-aarch:gcc-7x ubuntu-20.04_gcc-7x
 docker build -t ubuntu-20.04-aarch:gcc-8x ubuntu-20.04_gcc-8x
 docker build -t ubuntu-20.04-aarch:clang-7x ubuntu-20.04_clang-7x
+docker build -t ubuntu-20.04-aarch:bm-framework ubuntu-20.04_bm-framework
 docker build -t ubuntu-20.04-aarch:clang-8x ubuntu-20.04_clang-8x
 docker build -t ubuntu-20.04-aarch:clang-9x ubuntu-20.04_clang-9x
 docker build -t ubuntu-20.04-aarch:clang-10x ubuntu-20.04_clang-10x

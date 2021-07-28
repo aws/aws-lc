@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu-20.04:clang-7x
+FROM ubuntu-20.04-aarch:clang-7x
 
 SHELL ["/bin/bash", "-c"]
 
