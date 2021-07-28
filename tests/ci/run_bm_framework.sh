@@ -120,7 +120,7 @@ nosha_ssm_command_id="$(aws ssm send-command --instance-ids "${x86_nosha_id}" \
   --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
   --query Command.CommandId --output text)"
 
-noavx_ssm_doc_name=bm_framework_nosha_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
+noavx_ssm_doc_name=bm_framework_noavx_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
 aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_noavx_ssm_document.yaml \
   --name "${noavx_ssm_doc_name}" \
   --document-type Command \
