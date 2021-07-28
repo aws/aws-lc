@@ -16,6 +16,10 @@ mainSteps:
         # if we want to disable CPU features, pass in the {OPENSSL_ia32cap} value
         - if [ {OPENSSL_ia32cap} ]; then export OPENSSL_ia32cap={OPENSSL_ia32cap}; fi
         - echo "${OPENSSL_ia32cap}"
+        # if we have a cpu type of x86, we want linux-x86
+        - if [ ${CPU_TYPE} == amd64 ]; then export CPU_ARCH=linux-x86; fi
+        # if we have a cpu type of arm, we want linux-aarch
+        - if [ ${CPU_TYPE} == arm64 ]; then export CPU_ARCH=linux-aarch; fi
         # create bm_framework directory and checkout aws-lc
         - mkdir bm_framework
         - cd bm_framework
@@ -38,9 +42,9 @@ mainSteps:
         - cd openssl
         - git checkout OpenSSL_1_1_1-stable
         - cd ../
-        - docker build -t ubuntu-20.04:base aws-lc-pr/tests/ci/docker_images/linux-x86/ubuntu-20.04_base/
-        - docker build -t ubuntu-20.04:clang-7x aws-lc-pr/tests/ci/docker_images/linux-x86/ubuntu-20.04_clang-7x/
-        - docker build -t ubuntu-20.04:bm-framework aws-lc-pr/tests/ci/docker_images/linux-x86/ubuntu-20.04_bm-framework/
+        - docker build -t ubuntu-20.04:base aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_base/
+        - docker build -t ubuntu-20.04:clang-7x aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_clang-7x/
+        - docker build -t ubuntu-20.04:bm-framework aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_bm-framework/
         # start the container and run the bm script
         - exec_docker="docker run --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env COMMIT_ID={COMMIT_ID} --env CPU_TYPE="${CPU_TYPE}" --env NOHW_TYPE={NOHW_TYPE} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04:bm-framework"
         - chmod +x aws-lc-pr/tests/ci/build_run_benchmarks.sh
