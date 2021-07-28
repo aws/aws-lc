@@ -25,7 +25,6 @@ cmake -Baws-lc-pr/build -Haws-lc-pr -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}" \
   -DBORINGSSL_INSTALL_DIR="${BORINGSSL_ROOT}" \
   -DOPENSSL_INSTALL_DIR="${OPENSSL_ROOT}"
-
 ninja -C aws-lc-pr/build
 
 # build FIPS compliant version of AWSLC pr
@@ -72,8 +71,6 @@ aws s3 cp aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucke
 aws s3 cp aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.json"
 aws s3 cp aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.json"
 aws s3 cp aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.json"
-aws s3 cp ossl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.json"
-aws s3 cp bssl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.json"
 
 # upload results to lastest folders in s3
 aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.json"

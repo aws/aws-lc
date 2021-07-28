@@ -50,6 +50,15 @@ sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
   tests/ci/cdk/cdk/ssm/bm_framework_ssm_document.yaml \
   >tests/ci/cdk/cdk/ssm/bm_framework_nosha_ssm_document.yaml
 
+# ~0x1000000000000000:0xC0010020 for all avx off
+sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
+  -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
+  -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
+  -e "s,{OPENSSL_ia32cap},~0x1000000000000000:0xC0010020,g" \
+  -e "s,{NOHW_TYPE},noavx,g" \
+  tests/ci/cdk/cdk/ssm/bm_framework_ssm_document.yaml \
+  >tests/ci/cdk/cdk/ssm/bm_framework_noavx_ssm_document.yaml
+
 # create ec2 instances for x86 and arm
 x86_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
   --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
@@ -69,6 +78,14 @@ arm_id="$(aws ec2 run-instances --image-id ami-018e246d8c0f39ae5 --count 1 \
 
 # create ec2 instances for x86 nosha & x86 noavx
 x86_nosha_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
+  --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
+  --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
+  --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
+  --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
+  --placement 'AvailabilityZone=us-west-2a' \
+  --query Instances[*].InstanceId --output text)"
+
+x86_noavx_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
   --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
   --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
   --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
@@ -103,8 +120,19 @@ nosha_ssm_command_id="$(aws ssm send-command --instance-ids "${x86_nosha_id}" \
   --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
   --query Command.CommandId --output text)"
 
-ssm_command_ids="${ssm_command_id} ${nosha_ssm_command_id}"
-ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name}"
+noavx_ssm_doc_name=bm_framework_nosha_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
+aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_noavx_ssm_document.yaml \
+  --name "${noavx_ssm_doc_name}" \
+  --document-type Command \
+  --document-format YAML >/dev/null
+
+noavx_ssm_command_id="$(aws ssm send-command --instance-ids "${x86_noavx_id}" \
+  --document-name "${noavx_ssm_doc_name}" \
+  --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
+  --query Command.CommandId --output text)"
+
+ssm_command_ids="${ssm_command_id} ${nosha_ssm_command_id} ${noavx_ssm_command_id}"
+ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name} ${noavx_ssm_doc_name}"
 
 # Give some time for the commands to run
 for i in {1..30}; do
