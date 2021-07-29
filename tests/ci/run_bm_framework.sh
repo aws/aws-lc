@@ -63,13 +63,33 @@ create_ec2_instances() {
 }
 
 # create ec2 instances for x86 and arm
-x86_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
-arm_id=$(create_ec2_instances "ami-018e246d8c0f39ae5" "c6g.2xlarge")
-x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "m5.2xlarge")
-x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
+x86_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.4xlarge")
+arm_id=$(create_ec2_instances "ami-018e246d8c0f39ae5" "c6g.4xlarge")
+x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "m5.4xlarge")
+x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.4xlarge")
+instance_ids="${x86_id} ${arm_id} ${x86_nosha_id} ${x86_noavx_id}"
 
 # Give a few minutes for the ec2 instances to be ready
-sleep 120
+sleep 60
+
+for i in {1..30}; do
+  ready=true
+  for id in ${instance_ids}; do
+    status=$(aws ssm describe-instance-information --filter Key="InstanceIds",Values="${id}" \
+    --query InstanceInformationList[*].PingStatus --output text)
+    if [ "${status}" != Online ]; then
+      ready=false
+    fi
+  done
+  if [ "${ready}" = true ]; then
+    break
+  fi
+  echo "Wait for instances to be able to run the SSM commands"
+
+  # if we've hit the 30 minute mark and still aren't ready, then something has gone wrong
+  if [ "${i}" = 30 ]; then exit 1; fi
+  sleep 60
+done
 
 #$1 is NOHW_TYPE, echos the doc name so we can capture the output
 create_ssm_document() {
@@ -106,7 +126,7 @@ ssm_command_ids="${x86_ssm_command_id} ${arm_ssm_command_id} ${nosha_ssm_command
 
 # Give some time for the commands to run
 for i in {1..30}; do
-  echo "${i}: Continue to wait 3 min for SSM command ${id} to finish."
+  echo "${i}: Continue to wait 3 min for SSM commands to finish."
   sleep 180
   done=true
   success=true
