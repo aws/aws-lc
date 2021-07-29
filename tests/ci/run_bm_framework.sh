@@ -91,17 +91,18 @@ ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name} ${noavx_ssm_doc_name}"
 #$1 is the document name, $2 is the instance ids
 run_ssm_command() {
   local command_id
-  command_id="$(aws ssm send-command --instance-ids "${2}" "${3}" \
+  command_id="$(aws ssm send-command --instance-ids "${2}" \
     --document-name "${1}" \
     --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
     --query Command.CommandId --output text)"
   echo "${command_id}"
 }
 
-ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${x86_id}" "${arm_id}")
+x86_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${x86_id}")
+arm_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${arm_id}")
 nosha_ssm_command_id=$(run_ssm_command "${nosha_ssm_doc_name}" "${x86_nosha_id}")
 noavx_ssm_command_id=$(run_ssm_command "${noavx_ssm_doc_name}" "${x86_noavx_id}")
-ssm_command_ids="${ssm_command_id} ${nosha_ssm_command_id} ${noavx_ssm_command_id}"
+ssm_command_ids="${x86_ssm_command_id} ${arm_ssm_command_id} ${nosha_ssm_command_id} ${noavx_ssm_command_id}"
 
 # Give some time for the commands to run
 for i in {1..30}; do
