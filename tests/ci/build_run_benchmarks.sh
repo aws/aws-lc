@@ -71,9 +71,13 @@ aws s3 cp aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucke
 aws s3 cp aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.json"
 aws s3 cp aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.json"
 aws s3 cp aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.json"
+aws s3 mv ossl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.json"
+aws s3 mv bssl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.json"
 
 # upload results to lastest folders in s3
 aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.json"
 aws s3 mv aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.json"
 aws s3 mv aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.json"
 aws s3 mv aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.json"
+aws s3 mv ossl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.json"
+aws s3 mv bssl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.json"
