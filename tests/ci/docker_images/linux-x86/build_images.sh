@@ -25,9 +25,9 @@ docker build -t amazonlinux-2:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2:gcc-7x-intel-sde amazonlinux-2_gcc-7x-intel-sde
 docker build -t amazonlinux-2:clang-7x amazonlinux-2_clang-7x
 docker build -t fedora-31:clang-9x fedora-31_clang-9x
-#
-############################################################
-## Build images defined in aws-lc-verification GitHub repo #
-############################################################
-#
-#./ubuntu-20.04_clang-10x_formal-verification/create_image.sh ubuntu-20.04:clang-10x_formal-verification
+
+###########################################################
+# Build images defined in aws-lc-verification GitHub repo #
+###########################################################
+
+./ubuntu-20.04_clang-10x_formal-verification/create_image.sh ubuntu-20.04:clang-10x_formal-verification

@@ -12,7 +12,7 @@ fi
 
 echo "Uploading docker images to ${ECS_REPO}."
 
-aws ecr get-login-password | docker login --username AWS --password-stdin https://"${ECS_REPO}"
+$(aws ecr get-login --no-include-email)
 
 # Tag images with date to help find old images, CodeBuild uses the latest tag and gets updated automatically
 tag_and_push_img 'ubuntu-16.04:gcc-5x' "${ECS_REPO}:ubuntu-16.04_gcc-5x"
