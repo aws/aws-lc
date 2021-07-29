@@ -66,18 +66,26 @@ wait "${prod_fips_pid}"
 wait "${ossl_pid}"
 wait "${bssl_pid}"
 
+# convert results from .json to .csv
+python3 aws-lc-pr/tests/ci/benchmark_framework/convert_json_to_csv.py aws-lc-pr_bm.json
+python3 aws-lc-pr/tests/ci/benchmark_framework/convert_json_to_csv.py aws-lc-pr_fips_bm.json
+python3 aws-lc-pr/tests/ci/benchmark_framework/convert_json_to_csv.py aws-lc-prod_bm.json
+python3 aws-lc-pr/tests/ci/benchmark_framework/convert_json_to_csv.py aws-lc-prod_fips_bm.json
+python3 aws-lc-pr/tests/ci/benchmark_framework/convert_json_to_csv.py ossl_bm.json
+python3 aws-lc-pr/tests/ci/benchmark_framework/convert_json_to_csv.py bssl_bm.json
+
 # upload results to s3
-aws s3 cp aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.json"
-aws s3 cp aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.json"
-aws s3 cp aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.json"
-aws s3 cp aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.json"
-aws s3 cp ossl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.json"
-aws s3 cp bssl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.json"
+aws s3 cp aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
+aws s3 cp aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
+aws s3 cp aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
+aws s3 cp aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
+aws s3 cp ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
+aws s3 cp bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
 
 # upload results to lastest folders in s3
-aws s3 mv aws-lc-pr_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.json"
-aws s3 mv aws-lc-pr_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.json"
-aws s3 mv aws-lc-prod_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.json"
-aws s3 mv aws-lc-prod_fips_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.json"
-aws s3 mv ossl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.json"
-aws s3 mv bssl_bm.json s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.json"
+aws s3 mv aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
+aws s3 mv aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
+aws s3 mv aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
+aws s3 mv aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
+aws s3 mv ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
+aws s3 mv bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
