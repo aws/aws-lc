@@ -26,7 +26,7 @@ function run_build {
 
   if [[ -x "$(command -v ninja)" ]]; then
     echo "Using Ninja build system (ninja)."
-    BUILD_COMMAND="ninja"
+    BUILD_COMMAND="ninja --verbose"
     cflags+=(-GNinja)
   elif [[ -x "$(command -v ninja-build)" ]]; then
     echo "Using Ninja build system (ninja-build)."
