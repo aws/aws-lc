@@ -249,7 +249,7 @@ func do(outPath, oInput string, arInput string, useSHA256 bool) error {
 	}
 
 	// Print out calculated hash value.
-	fmt.Printf("Inject_hash calculated value: %s\n", fmt.Sprintf("%x", calculated))
+	fmt.Printf("inject_hash.go calculated value: %s\n", fmt.Sprintf("%x", calculated))
 
 	copy(objectBytes[offset:], calculated)
 
