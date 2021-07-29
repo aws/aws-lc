@@ -37,7 +37,7 @@ function run_build {
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
-  cmake "${cflags[@]}" ../
+  cmake --trace "${cflags[@]}" ../
   $BUILD_COMMAND
   cd ../
 }
