@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-const sha_process_limit int = 20
+const sha_process_limit int = 15
 
 func main() {
 	log.Printf("Started SHA512-384 check.")

@@ -14,7 +14,7 @@ import (
 
 // Due to memory usage (each select_check takes 8GB memory) and limit of container size (largest one has 145GB memory).
 // |aes_gcm_process_limit| is needed here to limit the number of saw processes.
-const aes_gcm_process_limit int = 20
+const aes_gcm_process_limit int = 15
 
 func main() {
 	log.Printf("Started AES-GCM check.")
