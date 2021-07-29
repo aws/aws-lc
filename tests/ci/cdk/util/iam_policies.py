@@ -45,7 +45,8 @@ def ssm_bm_framework_policies_in_json():
                     "ssm:CreateDocument",
                     "ssm:DeleteDocument",
                     "ssm:SendCommand",
-                    "ssm:ListCommands"
+                    "ssm:ListCommands",
+                    "ssm:DescribeInstanceInformation"
                 ],
                 "Resource": [
                     "*"
