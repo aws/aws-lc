@@ -65,7 +65,7 @@ create_ec2_instances() {
 # create ec2 instances for x86 and arm
 x86_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
 arm_id=$(create_ec2_instances "ami-018e246d8c0f39ae5" "c6g.2xlarge")
-x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
+x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "m5.2xlarge")
 x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
 
 # Give a few minutes for the ec2 instances to be ready
