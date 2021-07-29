@@ -10,7 +10,7 @@ set -exo pipefail
 cleanup() {
   set +e
   # kill ec2 instances after we're done w/ them
-  aws ec2 terminate-instances --instance-ids "${x86_id} ${arm_id} ${x86_nosha_id}" &>/dev/null
+  aws ec2 terminate-instances --instance-ids "${x86_id}" "${arm_id}" "${x86_nosha_id}" "${x86_noavx_id}" &> /dev/null
 
   # delete the various documents that we created
   for name in ${ssm_document_names};do
@@ -32,107 +32,76 @@ vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framewor
 sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=bm_framework_ec2_sg --query SecurityGroups[*].GroupId --output text)"
 subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
 
-# use sed to replace some placeholder values inside the x86 and arm document
-sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
-  -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
-  -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
-  -e "s,{OPENSSL_ia32cap},,g" \
-  -e "s,{NOHW_TYPE},,g" \
-  tests/ci/cdk/cdk/ssm/bm_framework_ssm_document.yaml \
-  >tests/ci/cdk/cdk/ssm/bm_framework_hw_ssm_document.yaml
+#$1 is nohw type, $2 is OPENSSL_ia32cap value
+generate_ssm_document_file() {
+  # use sed to replace placeholder values inside preexisting document
+  sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
+    -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
+    -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
+    -e "s,{OPENSSL_ia32cap},$2,g" \
+    -e "s,{NOHW_TYPE},$1,g" \
+    tests/ci/cdk/cdk/ssm/bm_framework_ssm_document.yaml \
+    >tests/ci/cdk/cdk/ssm/bm_framework_"$1"_ssm_document.yaml
+}
 
-# use sed to replace some placeholder values inside the x86 nosha and noavx documents
-sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
-  -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
-  -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
-  -e "s,{OPENSSL_ia32cap},:~0x10000000,g" \
-  -e "s,{NOHW_TYPE},nosha,g" \
-  tests/ci/cdk/cdk/ssm/bm_framework_ssm_document.yaml \
-  >tests/ci/cdk/cdk/ssm/bm_framework_nosha_ssm_document.yaml
+# create the ssm documents that will be used for the various ssm commands
+generate_ssm_document_file "" ""
+generate_ssm_document_file "nosha" "~0x100000000"
+generate_ssm_document_file "noavx" "~0x1000000000000000:0xC0010020"
 
-# ~0x1000000000000000:0xC0010020 for all avx off
-sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
-  -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
-  -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
-  -e "s,{OPENSSL_ia32cap},~0x1000000000000000:0xC0010020,g" \
-  -e "s,{NOHW_TYPE},noavx,g" \
-  tests/ci/cdk/cdk/ssm/bm_framework_ssm_document.yaml \
-  >tests/ci/cdk/cdk/ssm/bm_framework_noavx_ssm_document.yaml
+#$1 for ami, $2 for instance-type, echos the instance id so we can capture the output
+create_ec2_instances() {
+  local instance_id
+  instance_id="$(aws ec2 run-instances --image-id "$1" --count 1 \
+    --instance-type "$2" --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
+    --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
+    --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
+    --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
+    --placement 'AvailabilityZone=us-west-2a' \
+    --query Instances[*].InstanceId --output text)"
+  echo "${instance_id}"
+}
 
 # create ec2 instances for x86 and arm
-x86_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
-  --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
-  --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
-  --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
-  --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
-  --placement 'AvailabilityZone=us-west-2a' \
-  --query Instances[*].InstanceId --output text)"
-
-arm_id="$(aws ec2 run-instances --image-id ami-018e246d8c0f39ae5 --count 1 \
-  --instance-type c6g.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
-  --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
-  --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-arm-instance"}]' \
-  --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
-  --placement 'AvailabilityZone=us-west-2a' \
-  --query Instances[*].InstanceId --output text)"
-
-# create ec2 instances for x86 nosha & x86 noavx
-x86_nosha_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
-  --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
-  --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
-  --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
-  --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
-  --placement 'AvailabilityZone=us-west-2a' \
-  --query Instances[*].InstanceId --output text)"
-
-x86_noavx_id="$(aws ec2 run-instances --image-id ami-01773ce53581acf22 --count 1 \
-  --instance-type c5.2xlarge --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
-  --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
-  --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
-  --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
-  --placement 'AvailabilityZone=us-west-2a' \
-  --query Instances[*].InstanceId --output text)"
+x86_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
+arm_id=$(create_ec2_instances "ami-018e246d8c0f39ae5" "c6g.2xlarge")
+x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
+x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.2xlarge")
 
 # Give a few minutes for the ec2 instances to be ready
 sleep 120
 
+#$1 is NOHW_TYPE, echos the doc name so we can capture the output
+create_ssm_document() {
+  local doc_name
+  doc_name=bm_framework_"$1"_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
+  aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_"$1"_ssm_document.yaml \
+    --name "${doc_name}" \
+    --document-type Command \
+    --document-format YAML >/dev/null
+  echo "${doc_name}"
+}
+
 # Create, and run ssm command for arm & x86
-ssm_doc_name=bm_framework_hw_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_hw_ssm_document.yaml \
-  --name "${ssm_doc_name}" \
-  --document-type Command \
-  --document-format YAML >/dev/null
-
-ssm_command_id="$(aws ssm send-command --instance-ids "${x86_id}" "${arm_id}" \
-  --document-name "${ssm_doc_name}" \
-  --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
-  --query Command.CommandId --output text)"
-
-# Create and run ssm commands for x86 nosha & x86 noavx
-nosha_ssm_doc_name=bm_framework_nosha_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_nosha_ssm_document.yaml \
-  --name "${nosha_ssm_doc_name}" \
-  --document-type Command \
-  --document-format YAML >/dev/null
-
-nosha_ssm_command_id="$(aws ssm send-command --instance-ids "${x86_nosha_id}" \
-  --document-name "${nosha_ssm_doc_name}" \
-  --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
-  --query Command.CommandId --output text)"
-
-noavx_ssm_doc_name=bm_framework_noavx_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/bm_framework_noavx_ssm_document.yaml \
-  --name "${noavx_ssm_doc_name}" \
-  --document-type Command \
-  --document-format YAML >/dev/null
-
-noavx_ssm_command_id="$(aws ssm send-command --instance-ids "${x86_noavx_id}" \
-  --document-name "${noavx_ssm_doc_name}" \
-  --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
-  --query Command.CommandId --output text)"
-
-ssm_command_ids="${ssm_command_id} ${nosha_ssm_command_id} ${noavx_ssm_command_id}"
+ssm_doc_name=$(create_ssm_document "")
+nosha_ssm_doc_name=$(create_ssm_document "nosha")
+noavx_ssm_doc_name=$(create_ssm_document "noavx")
 ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name} ${noavx_ssm_doc_name}"
+
+#$1 is the document name, $2 is the instance ids
+run_ssm_command() {
+  local command_id
+  command_id="$(aws ssm send-command --instance-ids "${2}" "${3}" \
+    --document-name "${1}" \
+    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
+    --query Command.CommandId --output text)"
+  echo "${command_id}"
+}
+
+ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${x86_id}" "${arm_id}")
+nosha_ssm_command_id=$(run_ssm_command "${nosha_ssm_doc_name}" "${x86_nosha_id}")
+noavx_ssm_command_id=$(run_ssm_command "${noavx_ssm_doc_name}" "${x86_noavx_id}")
+ssm_command_ids="${ssm_command_id} ${nosha_ssm_command_id} ${noavx_ssm_command_id}"
 
 # Give some time for the commands to run
 for i in {1..30}; do
