@@ -77,7 +77,7 @@ python3 aws-lc-pr/tests/ci/benchmark_framework/convert_json_to_csv.py bssl_bm.js
 # check for regressions!
 python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_bm.csv aws-lc-pr_bm.csv prod_vs_pr.csv
 prod_vs_pr_code="$?"
-python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_bm.csv aws-lc-pr_fips_bm.csv prod_vs_pr_fips.csv
+python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_fips_bm.csv aws-lc-pr_fips_bm.csv prod_vs_pr_fips.csv
 prod_vs_pr_fips_code="$?"
 python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py ossl_bm.csv aws-lc-pr_bm.csv ossl_vs_pr.csv
 ossl_vs_pr_code="$?"
