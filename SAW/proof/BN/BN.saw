@@ -165,7 +165,7 @@ let pointer_to_bn_mont_ctx_st num N = do {
   crucible_points_to N_d_ptr (crucible_term {{ (fromInteger `N) : [num_bits] }});
   points_to_bignum_st (crucible_field ptr "N") N_d_ptr num num {{ 0 : [32] }};
 
-  return ptr;
+  return (RR_d_ptr, ptr);
 };
 
 let {{
@@ -343,24 +343,6 @@ let BN_bn2bin_padded_spec num num_extra = do {
   crucible_execute_func [out_ptr, crucible_term {{ `bytes : [64] }}, in_ptr];
 
   crucible_points_to out_ptr (crucible_term {{ split`{each=8} in_d }});
-  crucible_return (crucible_term {{ 1 : [32] }});
-};
-
-let bn_from_montgomery_in_place_spec num = do {
-  let num_bits = eval_size {| num * 64 |};
-  let a_num = eval_size {| 2 * num |};
-  let a_num_bits = eval_size {| a_num * 64 |};
-
-  r_ptr <- crucible_alloc (llvm_int num_bits);
-  (a, a_ptr) <- ptr_to_fresh "a" (llvm_int a_num_bits);
-
-  (N_d, N_d_ptr) <- ptr_to_fresh_readonly "N_d" (llvm_int num_bits);
-  mont_ptr <- pointer_to_bn_mont_ctx_st_with_N_d num N_d_ptr N_d;
-
-  crucible_execute_func [r_ptr, (crucible_term {{ `num : [64] }}), a_ptr, (crucible_term {{ `a_num : [64] }}), mont_ptr];
-
-  crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} (((integerFromBV a) * (integerFromBV (mont_R_inv_with_N N_d))) % (integerModulusFromBV N_d)) }});
-
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 

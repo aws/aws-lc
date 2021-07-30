@@ -5,6 +5,8 @@
 
 set -ex
 
+# The following proofs use Release settings in CMake.
+
 # TODO: reenable proof on SHA-256 when resolved https://github.com/awslabs/aws-lc-verification/issues/32
 (cd proof/SHA512 && go run SHA512-384-check-entrypoint.go)
 saw proof/SHA512/verify-SHA512-512-quickcheck.saw
@@ -14,4 +16,3 @@ saw proof/AES_KW/verify-AES_KW.saw
 saw proof/AES_KW/verify-AES_KWP.saw
 saw proof/ECDSA/verify-ECDSA.saw
 saw proof/ECDH/verify-ECDH.saw
-saw proof/RSA/verify-RSA.saw

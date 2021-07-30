@@ -29,7 +29,7 @@ let {{kwp_default_iv = [0xa6, 0x59, 0x59, 0xa6] : [4][8]}};
 let AES_wrap_key_padded_spec len = do {
   let pad = eval_size {| (len+7)/8*8-len |};
   global_alloc_init "OPENSSL_ia32cap_P" {{ia32cap}};
-  
+
   key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
   key <- fresh_aes_key_st;
   points_to_aes_key_st key_ptr key;
@@ -47,7 +47,7 @@ let AES_wrap_key_padded_spec len = do {
 let AES_unwrap_key_padded_spec len = do {
   let pad = eval_size {| (len+7)/8*8-len |};
   global_alloc_init "OPENSSL_ia32cap_P" {{ia32cap}};
-  
+
   key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
   (key_low, key_high) <- fresh_aes_key_256_parts;
   points_to_inv_aes_key_st key_ptr (key_low, key_high);
@@ -68,7 +68,7 @@ let AES_unwrap_key_padded_spec len = do {
   // Similarly, the output length is only correct when unwrap succeeds.
   out_len <- crucible_fresh_var "out_len_out" (llvm_int 64);
   crucible_conditional_points_to {{unwrap_res.0}} out_len_ptr (crucible_term out_len);
-  crucible_postcond {{unwrap_res.0 ==> 
+  crucible_postcond {{unwrap_res.0 ==>
     out_len == (0 : [32]) # (join unwrap_res.1)}};
 
   crucible_return (crucible_term {{if unwrap_res.0 then (1 : [32]) else (0 : [32])}});
@@ -98,7 +98,7 @@ wrap_padded_lengths <- for (eval_list {{ ([1 .. 16]#[32]) : [17][32] }})
 let verify_wrap_padded length = do {
   print (str_concat "Verifying wrap and uwrap with padding at length=" (show length));
 
-  crucible_llvm_verify m "AES_wrap_key_padded" 
+  crucible_llvm_verify m "AES_wrap_key_padded"
     (concat
       [aes_hw_encrypt_ov, aes_hw_encrypt_in_place_ov, OPENSSL_malloc_ov]
       OPENSSL_free_nonnull_ovs
@@ -107,9 +107,9 @@ let verify_wrap_padded length = do {
     (AES_wrap_key_padded_spec length)
     (do {w4_unint_yices ["aesEncrypt"];});
 
-  crucible_llvm_verify m "AES_unwrap_key_padded" 
-    [aes_hw_decrypt_ov, aes_hw_decrypt_in_place_ov, value_barrier_w_ov] 
-    true 
+  crucible_llvm_verify m "AES_unwrap_key_padded"
+    [aes_hw_decrypt_ov, aes_hw_decrypt_in_place_ov, value_barrier_w_ov]
+    true
     (AES_unwrap_key_padded_spec length)
     (do {w4_unint_yices ["aesDecrypt"];});
 };

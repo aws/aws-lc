@@ -22,6 +22,7 @@ let EVP_PKEY_OP_PARAMGEN = eval_int {{ (1 << 9) : [64] }};
 
 
 include "memory.saw";
+include "../common/goal-rewrites.saw";
 
 
 let points_to_p384_bignum_st ptr d_ptr flags = points_to_bignum_st ptr d_ptr ec_words ec_words flags;
@@ -143,7 +144,7 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
 
   crucible_points_to (crucible_field ptr "curve_name") (crucible_term {{ `curve_name : [32] }});
 
-  order_mont_ptr <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+  (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
   crucible_points_to (crucible_field ptr "order_mont") order_mont_ptr;
 
   field_d_ptr <- crucible_alloc_readonly i384;
@@ -156,7 +157,7 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
   crucible_points_to (crucible_field ptr "field_greater_than_order") (crucible_term {{ 1 : [32] }});
   crucible_points_to_untyped (crucible_field ptr "field_minus_order") (crucible_term {{ fromInteger`{[P384_w]} (`P384_p - `P384_n) }});
 
-  mont_ptr <- pointer_to_bn_mont_ctx_st ec_words {| P384_p |};
+  (_, mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_p |};
   crucible_points_to (crucible_field ptr "mont") mont_ptr;
 
   crucible_points_to_untyped (crucible_field ptr "one") (crucible_term {{ fieldElementToBV P384_R_p }});
@@ -346,6 +347,31 @@ let ec_scalar_from_montgomery_same_spec = do {
   crucible_points_to a_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) * P384_R_n_inv) % `P384_n) }});
 };
 
+// These specs are very similar to those of ec_scalar_from_montgomery, as that
+// function directly invokes bn_from_montgomery_small. When compiled with
+// optimizations, ec_scalar_from_montgomery will be inlined away, exposing a
+// call site to bn_from_montgomery_small.
+let bn_from_montgomery_small_spec = do {
+  r_ptr <- llvm_alloc i384;
+  (a, a_ptr) <- ptr_to_fresh "a" i384;
+  let width = llvm_term {{ `ec_words : [64] }};
+  (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+
+  llvm_execute_func [r_ptr, width, a_ptr, width, order_mont_ptr];
+
+  llvm_points_to r_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) * P384_R_n_inv) % `P384_n) }});
+};
+
+let bn_from_montgomery_small_same_spec = do {
+  (a, a_ptr) <- ptr_to_fresh "a" i384;
+  let width = llvm_term {{ `ec_words : [64] }};
+  (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+
+  llvm_execute_func [a_ptr, width, a_ptr, width, order_mont_ptr];
+
+  llvm_points_to a_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) * P384_R_n_inv) % `P384_n) }});
+};
+
 let ec_scalar_add_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc i384;
@@ -369,6 +395,39 @@ let ec_scalar_add_same_l_spec = do {
   crucible_execute_func [group_ptr, a_ptr, a_ptr, b_ptr];
 
   crucible_points_to a_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) + (scalarFromBV b)) % `P384_n) }});
+};
+
+// These specs are very similar to those of ec_scalar_add, as that
+// function directly invokes bn_mod_add_words. When compiled with
+// optimizations, ec_scalar_add will be inlined away, exposing a
+// call site to bn_mod_add_words.
+let bn_mod_add_words_spec = do {
+  r_ptr <- llvm_alloc i384;
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" i384;
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" i384;
+  llvm_precond {{ (scalarFromBV a) % `P384_n == scalarFromBV a }};
+  llvm_precond {{ (scalarFromBV b) % `P384_n == scalarFromBV b }};
+  d_ptr <- llvm_alloc_readonly i384;
+  llvm_points_to d_ptr (llvm_term {{ fromInteger`{[P384_w]} `P384_n }});
+  out_ptr <- llvm_alloc (llvm_array EC_MAX_WORDS i64);
+
+  llvm_execute_func [r_ptr, a_ptr, b_ptr, d_ptr, out_ptr, llvm_term {{ `ec_words : [64] }}];
+
+  llvm_points_to r_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) + (scalarFromBV b)) % `P384_n) }});
+};
+
+let bn_mod_add_words_same_l_spec = do {
+  (a, a_ptr) <- ptr_to_fresh "a" i384;
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" i384;
+  llvm_precond {{ (scalarFromBV a) % `P384_n == scalarFromBV a }};
+  llvm_precond {{ (scalarFromBV b) % `P384_n == scalarFromBV b }};
+  d_ptr <- llvm_alloc_readonly i384;
+  llvm_points_to d_ptr (llvm_term {{ fromInteger`{[P384_w]} `P384_n }});
+  out_ptr <- llvm_alloc (llvm_array EC_MAX_WORDS i64);
+
+  llvm_execute_func [a_ptr, a_ptr, b_ptr, d_ptr, out_ptr, llvm_term {{ `ec_words : [64] }}];
+
+  llvm_points_to a_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) + (scalarFromBV b)) % `P384_n) }});
 };
 
 let ec_scalar_mul_montgomery_spec = do {
@@ -402,6 +461,70 @@ let ec_scalar_mul_montgomery_same_l_spec = do {
   crucible_points_to a_ptr (crucible_term {{ scalarToBV (((scalarFromBV a) * (scalarFromBV b) * P384_R_n_inv) % `P384_n) }});
 };
 
+// These specs are very similar to those of ec_scalar_mul_montgomery, as that
+// function directly invokes bn_mod_mul_montgomery_small. When compiled with
+// optimizations, ec_scalar_mul_montgomery will be inlined away, exposing a
+// call site to bn_mod_mul_montgomery.
+let bn_mod_mul_montgomery_small_spec = do {
+  r_ptr <- llvm_alloc i384;
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" i384;
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" i384;
+  let width = llvm_term {{ `ec_words : [64] }};
+  (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+
+  llvm_execute_func [r_ptr, a_ptr, b_ptr, width, order_mont_ptr];
+
+  llvm_points_to r_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) * (scalarFromBV b) * P384_R_n_inv) % `P384_n) }});
+};
+
+let bn_mod_mul_montgomery_small_same_r_spec = do {
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" i384;
+  (b, b_ptr) <- ptr_to_fresh "b" i384;
+  let width = llvm_term {{ `ec_words : [64] }};
+  (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+
+  llvm_execute_func [b_ptr, a_ptr, b_ptr, width, order_mont_ptr];
+
+  llvm_points_to b_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) * (scalarFromBV b) * P384_R_n_inv) % `P384_n) }});
+};
+
+let bn_mod_mul_montgomery_small_same_l_spec = do {
+  (a, a_ptr) <- ptr_to_fresh "a" i384;
+  (b, b_ptr) <- ptr_to_fresh_readonly "b" i384;
+  let width = llvm_term {{ `ec_words : [64] }};
+  (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+
+  llvm_execute_func [a_ptr, a_ptr, b_ptr, width, order_mont_ptr];
+
+  llvm_points_to a_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) * (scalarFromBV b) * P384_R_n_inv) % `P384_n) }});
+};
+
+// These specs are very similar to those of ec_scalar_to_montgomery, as that
+// function directly invokes bn_to_montgomery_small, which in turn directly
+// invokes bn_mod_mul_montgomery_small. When compiled with optimizations,
+// ec_scalar_to_montgomery and bn_to_montgomery_small will be inlined away,
+// exposing a call site to bn_mod_mul_montgomery.
+let bn_mod_mul_montgomery_small_RR_d_spec = do {
+  r_ptr <- llvm_alloc i384;
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" i384;
+  let width = llvm_term {{ `ec_words : [64] }};
+  (RR_d_ptr, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+
+  llvm_execute_func [r_ptr, a_ptr, RR_d_ptr, width, order_mont_ptr];
+
+  llvm_points_to r_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) * P384_R_n) % `P384_n) }});
+};
+
+let bn_mod_mul_montgomery_small_RR_d_same_spec = do {
+  (a, a_ptr) <- ptr_to_fresh "a" i384;
+  let width = llvm_term {{ `ec_words : [64] }};
+  (RR_d_ptr, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
+
+  llvm_execute_func [a_ptr, a_ptr, RR_d_ptr, width, order_mont_ptr];
+
+  llvm_points_to a_ptr (llvm_term {{ scalarToBV (((scalarFromBV a) * P384_R_n) % `P384_n) }});
+};
+
 let ec_simple_scalar_inv0_montgomery_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc i384;
@@ -429,6 +552,28 @@ let ec_random_nonzero_scalar_spec = do {
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
+// This spec is very similar to that of ec_random_nonzero_scalar, as that
+// function directly invokes bn_rand_range_words. When compiled with
+// optimizations, ec_random_nonzero_scalar will be inlined away, exposing a
+// call site to bn_rand_range_words.
+bn_rand_range_words_out <- llvm_declare_ghost_state "bn_rand_range_words_out";
+
+let bn_rand_range_words_spec = do {
+  out <- llvm_fresh_cryptol_var "out" {| Integer |};
+  llvm_ghost_value bn_rand_range_words_out out;
+
+  out_ptr <- llvm_alloc i384;
+  max_exclusive_ptr <- llvm_alloc_readonly i384;
+  llvm_points_to max_exclusive_ptr (llvm_term {{ fromInteger`{[P384_w]} `P384_n }});
+  additional_data <- llvm_alloc_readonly (llvm_array 32 i8);
+
+  llvm_execute_func [out_ptr, llvm_term {{ 1 : [64] }}, max_exclusive_ptr,
+                     llvm_term {{ `ec_words: [64] }}, additional_data];
+
+  llvm_points_to out_ptr (llvm_term {{ scalarToBV (out % `P384_n) }});
+  llvm_return (llvm_term {{ 1 : [32] }});
+};
+
 
 let ec_point_mul_scalar_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
@@ -445,7 +590,7 @@ let ec_point_mul_scalar_spec = do {
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
-let ec_point_mul_scalar_base_spec = do {
+let ec_GFp_mont_mul_base_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_RAW_POINT");
   (scalar, scalar_ptr) <- ptr_to_fresh_readonly "scalar" i384;
@@ -454,6 +599,14 @@ let ec_point_mul_scalar_base_spec = do {
   crucible_execute_func [group_ptr, r_ptr, scalar_ptr];
 
   points_to_EC_RAW_POINT r_ptr {{ jacobianToMontBV (ec_point_jacobian_scalar_mul (scalarFromBV scalar) P384_G_Jacobian) }};
+};
+
+// This spec is very similar to that of ec_GFp_mont_mul_base, as this
+// function directly invokes ec_GFp_mont_mul_base. When compiled with
+// optimizations, ec_point_mul_scalar_base will be inlined away, exposing a
+// call site to ec_GFp_mont_mul_base.
+let ec_point_mul_scalar_base_spec = do {
+  ec_GFp_mont_mul_base_spec;
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
@@ -474,6 +627,27 @@ let ec_point_mul_scalar_public_spec = do {
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
+// This spec is very similar to that of ec_point_mul_scalar_public, as that
+// function directly invokes ec_GFp_mont_mul_public_batch. When compiled with
+// optimizations, ec_point_mul_scalar_public will be inlined away, exposing a
+// call site to ec_GFp_mont_mul_public_batch.
+let ec_GFp_mont_mul_public_batch_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  r_ptr <- llvm_alloc (llvm_struct "struct.EC_RAW_POINT");
+  (g_scalar, g_scalar_ptr) <- ptr_to_fresh_readonly "g_scalar" i384;
+  p_ptr <- llvm_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
+  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  (p_scalar, p_scalar_ptr) <- ptr_to_fresh_readonly "p_scalar" i384;
+  llvm_precond {{ (scalarFromBV g_scalar) % `P384_n == scalarFromBV g_scalar }};
+  llvm_precond {{ (scalarFromBV p_scalar) % `P384_n == scalarFromBV p_scalar }};
+
+  llvm_execute_func [group_ptr, r_ptr, g_scalar_ptr, p_ptr, p_scalar_ptr, llvm_term {{ 1 : [64] }}];
+
+  points_to_EC_RAW_POINT r_ptr
+    {{ jacobianToMontBV (ec_point_jacobian_add (ec_point_jacobian_scalar_mul (scalarFromBV g_scalar) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (scalarFromBV p_scalar) (jacobianFromMontBV p))) }};
+  llvm_return (llvm_term {{ 1 : [32] }});
+};
+
 let ec_cmp_x_coordinate_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
@@ -484,6 +658,12 @@ let ec_cmp_x_coordinate_spec = do {
 
   crucible_return (crucible_term {{ if (fromJacobian (jacobianFromMontBV p)).x % `P384_n == (scalarFromBV r) % `P384_n then 1 : [32] else 0 }});
 };
+
+// This spec is identical to that of ec_cmp_x_coordinate, as that
+// function directly invokes ec_GFp_mont_cmp_x_coordinate. When compiled with
+// optimizations, ec_cmp_x_coordinate will be inlined away, exposing a
+// call site to ec_GFp_mont_cmp_x_coordinate.
+let ec_GFp_mont_cmp_x_coordinate_spec = ec_cmp_x_coordinate_spec;
 
 let ec_get_x_coordinate_as_scalar_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
@@ -509,6 +689,20 @@ let ec_get_x_coordinate_as_bytes_spec = do {
   crucible_points_to_untyped out_ptr (crucible_term {{ split`{each=8} (fieldElementToBV (((fromJacobian (jacobianFromMontBV p)).x) % `P384_p)) }});
   crucible_points_to out_len_ptr (crucible_term {{ `ec_bytes : [64] }});
   crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// This spec is currently a bit simplistic, as it will always return 1.
+// ec_GFp_simple_is_on_curve is used to check for fault attacks or bugs, and
+// as a result, it will never return a non-1 result unless something goes
+// unusually wrong.
+let ec_GFp_simple_is_on_curve_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  point_ptr <- llvm_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
+  _point <- points_to_fresh_EC_RAW_POINT point_ptr;
+
+  llvm_execute_func [group_ptr, point_ptr];
+
+  llvm_return (llvm_term {{ 1 : [32] }});
 };
 
 
@@ -568,10 +762,15 @@ bn_mul_mont_same_res_left_n_ov <- crucible_llvm_unsafe_assume_spec
   "bn_mul_mont"
   (bn_mul_mont_same_res_left_spec ec_words {| P384_n |});
 
+// This is needed for the proofs of bn_select_words. Clang optimizes
+// bn_select_words to use code which compares pointers from different
+// allocation blocks, which requires relaxing a validity check in Crucible.
+enable_lax_pointer_ordering;
+
 bn_select_words_true_ov <- llvm_verify
   m
   "bn_select_words"
-  [constant_time_select_w_true_ov]
+  [value_barrier_w_ov]
   true
   (bn_select_words_true_spec ec_words)
   (do {
@@ -580,7 +779,7 @@ bn_select_words_true_ov <- llvm_verify
 bn_select_words_same_res_left_true_ov <- llvm_verify
   m
   "bn_select_words"
-  [constant_time_select_w_true_ov]
+  [value_barrier_w_ov]
   true
   (bn_select_words_same_res_left_true_spec ec_words)
   (do {
@@ -589,7 +788,7 @@ bn_select_words_same_res_left_true_ov <- llvm_verify
 bn_select_words_false_ov <- llvm_verify
   m
   "bn_select_words"
-  [constant_time_select_w_false_ov]
+  [value_barrier_w_ov]
   true
   (bn_select_words_false_spec ec_words)
   (do {
@@ -598,12 +797,38 @@ bn_select_words_false_ov <- llvm_verify
 bn_select_words_same_res_left_false_ov <- llvm_verify
   m
   "bn_select_words"
-  [constant_time_select_w_false_ov]
+  [value_barrier_w_ov]
   true
   (bn_select_words_same_res_left_false_spec ec_words)
   (do {
     w4_unint_z3 [];
   });
+
+// These theorems are used to move an if-expression inside an application of
+// integerToBV in the proof for bn_reduce_once_in_place.
+bn_reduce_once_in_place_thm_1 <- prove_folding_theorem
+  {{ \(c : Bit) (x : Bit) (y1 : Bit) (y2 : Bit) ->
+     (if c then (x || y1) else (x || y2)) == (x || (if c then y1 else y2)) }};
+bn_reduce_once_in_place_thm_2 <- prove_print w4 (rewrite (add_cryptol_defs ["ecEq"] (cryptol_ss ()))
+  {{ \(c : Bit) (x : [384]) (y1 : [384]) (y2 : [384]) ->
+     (if c then (x == y1) else (x == y2)) == (x == (if c then y1 else y2)) }});
+bn_reduce_once_in_place_thm_3 <- prove_folding_theorem
+  {{ \(x : Integer) (y : [384]) (c : Bit) ->
+     (if c then integerToBV`{384} x else y) == (if c then integerToBV`{384} x else integerToBV (integerFromBV y)) }};
+bn_reduce_once_in_place_thm_4 <- prove_print
+  (do {
+    w4_unint_z3 ["integerToBV"];
+  })
+  (rewrite (cryptol_ss ())
+  {{ \(x : Integer) (y : [384]) (c : Bit) ->
+     (if c then integerToBV`{384} x else integerToBV (integerFromBV y)) == integerToBV`{384} (if c then x else integerFromBV y) }});
+
+let bn_reduce_once_in_place_thms =
+  [ bn_reduce_once_in_place_thm_1
+  , bn_reduce_once_in_place_thm_2
+  , bn_reduce_once_in_place_thm_3
+  , bn_reduce_once_in_place_thm_4
+  ];
 
 bn_reduce_once_in_place_true_ov <- crucible_llvm_unsafe_assume_spec
   m
@@ -615,6 +840,7 @@ bn_reduce_once_in_place_false_ov <- llvm_verify
   [ bn_sub_words_ov
   , bn_select_words_same_res_left_true_ov
   , bn_select_words_same_res_left_false_ov
+  , value_barrier_w_ov
   ]
   true
   (bn_reduce_once_in_place_spec false ec_words)
@@ -622,6 +848,10 @@ bn_reduce_once_in_place_false_ov <- llvm_verify
     goal_eval_unint ["integerToBV", "integerFromBV"];
     simplify (addsimp integerBV_thm empty_ss);
     simplify (addsimp ite_integerToBV_thm empty_ss);
+    hoist_ifs_in_goal;
+    simplify (addsimps minor_touchup_thms empty_ss);
+    simplify (addsimp append_slice_384_thm empty_ss);
+    simplify (addsimps bn_reduce_once_in_place_thms empty_ss);
     w4_unint_z3 ["integerToBV", "integerFromBV"];
   });
 
@@ -631,27 +861,6 @@ BN_div_ov <- crucible_llvm_unsafe_assume_spec
   "BN_div"
   (BN_div_spec (eval_size {| 2 * ec_words + 1 |}) ec_words);
 
-
-llvm_verify m "ec_group_new_from_data"
-  [ OPENSSL_malloc_ov
-  , OPENSSL_free_nonnull_bignum_st_ov
-  , OPENSSL_free_nonnull_ec_bytes_ov
-  , OPENSSL_free_null_ov
-  , OPENSSL_cleanse_ov
-  , CRYPTO_refcount_inc_ov
-  , CRYPTO_refcount_dec_and_test_zero_ov
-  , BN_div_ov
-  , BN_value_one_ov
-  , bn_add_words_ov
-  , bn_add_words_same_res_left_ov
-  , bn_sub_words_ov
-  , bn_mul_mont_p_ov
-  , bn_mul_mont_same_res_left_p_ov
-  , value_barrier_w_ov
-  ]
-  true
-  ec_group_new_from_data_spec
-  (w4_unint_yices []);
 
 EC_GROUP_new_by_curve_name_ov <- crucible_llvm_unsafe_assume_spec
   m
@@ -675,6 +884,10 @@ BN_is_zero_false_ov <- llvm_verify
   true
   BN_is_zero_false_spec
   (w4_unint_z3 []);
+bn_rand_range_words_ov <- llvm_unsafe_assume_spec
+  m
+  "bn_rand_range_words"
+  bn_rand_range_words_spec;
 
 ec_scalar_is_zero_ov <- llvm_verify
   m
@@ -731,6 +944,15 @@ ec_scalar_from_montgomery_same_ov <- crucible_llvm_unsafe_assume_spec
   "ec_scalar_from_montgomery"
   ec_scalar_from_montgomery_same_spec;
 
+bn_from_montgomery_small_ov <- llvm_unsafe_assume_spec
+  m
+  "bn_from_montgomery_small"
+  bn_from_montgomery_small_spec;
+bn_from_montgomery_small_same_ov <- llvm_unsafe_assume_spec
+  m
+  "bn_from_montgomery_small"
+  bn_from_montgomery_small_same_spec;
+
 ec_scalar_add_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_scalar_add"
@@ -740,6 +962,16 @@ ec_scalar_add_same_l_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_scalar_add"
   ec_scalar_add_same_l_spec;
+
+bn_mod_add_words_ov <- llvm_unsafe_assume_spec
+  m
+  "bn_mod_add_words"
+  bn_mod_add_words_spec;
+
+bn_mod_add_words_same_l_ov <- llvm_unsafe_assume_spec
+  m
+  "bn_mod_add_words"
+  bn_mod_add_words_same_l_spec;
 
 ec_scalar_mul_montgomery_ov <- llvm_verify
   m
@@ -774,6 +1006,61 @@ ec_scalar_mul_montgomery_same_l_ov <- llvm_verify
     w4_unint_z3 [];
   });
 
+bn_mod_mul_montgomery_small_ov <- llvm_verify
+  m
+  "bn_mod_mul_montgomery_small"
+  [bn_mul_mont_n_ov]
+  true
+  bn_mod_mul_montgomery_small_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
+bn_mod_mul_montgomery_small_same_r_ov <- llvm_verify
+  m
+  "bn_mod_mul_montgomery_small"
+  [bn_mul_mont_same_res_right_n_ov]
+  true
+  bn_mod_mul_montgomery_small_same_r_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
+bn_mod_mul_montgomery_small_same_l_ov <- llvm_verify
+  m
+  "bn_mod_mul_montgomery_small"
+  [bn_mul_mont_same_res_left_n_ov]
+  true
+  bn_mod_mul_montgomery_small_same_l_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
+bn_mod_mul_montgomery_small_RR_d_ov <- llvm_verify
+  m
+  "bn_mod_mul_montgomery_small"
+  [bn_mul_mont_n_ov]
+  true
+  bn_mod_mul_montgomery_small_RR_d_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
+bn_mod_mul_montgomery_small_RR_d_same_ov <- llvm_verify
+  m
+  "bn_mod_mul_montgomery_small"
+  [bn_mul_mont_same_res_left_n_ov]
+  true
+  bn_mod_mul_montgomery_small_RR_d_same_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
 ec_simple_scalar_inv0_montgomery_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_simple_scalar_inv0_montgomery"
@@ -795,15 +1082,30 @@ ec_point_mul_scalar_base_ov <- crucible_llvm_unsafe_assume_spec
   "ec_point_mul_scalar_base"
   ec_point_mul_scalar_base_spec;
 
+ec_GFp_mont_mul_base_ov <- llvm_unsafe_assume_spec
+  m
+  "ec_GFp_mont_mul_base"
+  ec_GFp_mont_mul_base_spec;
+
 ec_point_mul_scalar_public_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_point_mul_scalar_public"
   ec_point_mul_scalar_public_spec;
 
+ec_GFp_mont_mul_public_batch_ov <- llvm_unsafe_assume_spec
+  m
+  "ec_GFp_mont_mul_public_batch"
+  ec_GFp_mont_mul_public_batch_spec;
+
 ec_cmp_x_coordinate_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_cmp_x_coordinate"
   ec_cmp_x_coordinate_spec;
+
+ec_GFp_mont_cmp_x_coordinate_ov <- llvm_unsafe_assume_spec
+  m
+  "ec_GFp_mont_cmp_x_coordinate"
+  ec_GFp_mont_cmp_x_coordinate_spec;
 
 ec_get_x_coordinate_as_scalar_ov <- crucible_llvm_unsafe_assume_spec
   m
@@ -815,3 +1117,7 @@ ec_get_x_coordinate_as_bytes_ov <- crucible_llvm_unsafe_assume_spec
   "ec_get_x_coordinate_as_bytes"
   ec_get_x_coordinate_as_bytes_spec;
 
+ec_GFp_simple_is_on_curve_ov <- llvm_unsafe_assume_spec
+  m
+  "ec_GFp_simple_is_on_curve"
+  ec_GFp_simple_is_on_curve_spec;

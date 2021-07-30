@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
 */
@@ -12,24 +12,10 @@ enable_experimental;
 // break constant-time implementations. The functional spec is that it takes a value
 // and returns it with no side effects.
 let value_barrier_w_spec = do {
-  
+
   a <- crucible_fresh_var "a" (llvm_int 64);
   crucible_execute_func [crucible_term a];
   crucible_return (crucible_term a);
-};
-
-let constant_time_select_w_true_spec = do {
-  a <- crucible_fresh_var "a" (llvm_int 64);
-  b <- crucible_fresh_var "b" (llvm_int 64);
-  crucible_execute_func [(crucible_term {{ ~0 : [64] }}), (crucible_term a), (crucible_term b)];
-  crucible_return (crucible_term a);
-};
-
-let constant_time_select_w_false_spec = do {
-  a <- crucible_fresh_var "a" (llvm_int 64);
-  b <- crucible_fresh_var "b" (llvm_int 64);
-  crucible_execute_func [(crucible_term {{ 0 : [64] }}), (crucible_term a), (crucible_term b)];
-  crucible_return (crucible_term b);
 };
 
 
@@ -94,25 +80,6 @@ value_barrier_w_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "va
   value_barrier_w_spec
   (do {
     w4_unint_yices [];
-  });
-
-constant_time_select_w_true_ov <- llvm_verify
-  m
-  "constant_time_select_w"
-  [value_barrier_w_ov]
-  true
-  constant_time_select_w_true_spec
-  (do {
-    w4_unint_z3 [];
-  });
-constant_time_select_w_false_ov <- llvm_verify
-  m
-  "constant_time_select_w"
-  [value_barrier_w_ov]
-  true
-  constant_time_select_w_false_spec
-  (do {
-    w4_unint_z3 [];
   });
 
 

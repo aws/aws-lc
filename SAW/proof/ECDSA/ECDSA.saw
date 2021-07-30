@@ -99,6 +99,7 @@ let nondeterministic_valid_k priv_key digest = do {
   crucible_precond {{ is_num_bits_bn`{r_bits} (scalarToBV sig.r) }};
   crucible_precond {{ is_num_bits_bn`{s_bits} (scalarToBV sig.s) }};
   crucible_ghost_value ec_random_nonzero_scalar_out k;
+  crucible_ghost_value bn_rand_range_words_out      k;
   return k;
 };
 
@@ -182,18 +183,6 @@ BN_num_bits_ec_bits_ov <- llvm_verify m "BN_num_bits"
   (w4_unint_yices []);
 
 
-digest_to_scalar_ov <- llvm_verify m "digest_to_scalar"
-  [ bn_reduce_once_in_place_false_ov
-  ]
-  true
-  digest_to_scalar_spec
-  (do {
-    goal_eval_unint [];
-    simplify (addsimp append_assoc_thm empty_ss);
-    w4_unint_z3 [];
-  });
-
-
 // assume (without proving) the equivalence of point operations in affine and
 // jacobian coordinates
 jacobian_affine_0_thm <- prove_print
@@ -211,26 +200,28 @@ jacobian_affine_1_thm <- prove_print
 ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
   [ sha512_block_data_order_spec
   , ec_bignum_to_scalar_ov
-  , ec_scalar_to_montgomery_ov
-  , ec_scalar_to_montgomery_same_ov
-  , ec_scalar_from_montgomery_ov
-  , ec_scalar_from_montgomery_same_ov
-  , ec_scalar_add_ov
-  , ec_scalar_add_same_l_ov
-  , ec_scalar_mul_montgomery_ov
-  , ec_scalar_mul_montgomery_same_l_ov
-  , ec_scalar_mul_montgomery_same_r_ov
   , ec_simple_scalar_inv0_montgomery_ov
-  , ec_random_nonzero_scalar_ov
-  , ec_point_mul_scalar_base_ov
-  , ec_point_mul_scalar_public_ov
-  , ec_cmp_x_coordinate_ov
   , ec_get_x_coordinate_as_scalar_ov
-  , digest_to_scalar_ov
   , ec_scalar_is_zero_false_ov
   , BN_is_zero_false_ov
   , OPENSSL_malloc_ov
   , OPENSSL_cleanse_ov
+  , bn_rand_range_words_ov
+  , bn_sub_words_ov
+  , bn_from_montgomery_small_ov
+  , bn_from_montgomery_small_same_ov
+  , bn_mod_mul_montgomery_small_ov
+  , bn_mod_mul_montgomery_small_same_l_ov
+  , bn_mod_mul_montgomery_small_same_r_ov
+  , bn_mod_mul_montgomery_small_RR_d_ov
+  , bn_mod_mul_montgomery_small_RR_d_same_ov
+  , bn_mod_add_words_ov
+  , bn_mod_add_words_same_l_ov
+  , ec_GFp_mont_mul_base_ov
+  , ec_GFp_simple_is_on_curve_ov
+  , ec_GFp_mont_mul_public_batch_ov
+  , ec_GFp_mont_cmp_x_coordinate_ov
+  , value_barrier_w_ov
   ]
   true
   ECDSA_do_sign_spec
@@ -244,28 +235,40 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
     simplify (addsimp jacobian_affine_0_thm empty_ss);
     simplify (addsimps mod_thms empty_ss);
     goal_eval_unint ["inv0", "ec_point_affine_scalar_mul"];
+    simplify (addsimps [append_assoc_thm_1, append_assoc_thm_2, append_at_thm] empty_ss);
+    hoist_ifs_in_goal;
+    simplify (addsimps minor_touchup_thms empty_ss);
+    simplify (addsimps append_slice_384_thms empty_ss);
+    simplify (addsimps [add_negate_thm, toInteger_sub_384_thm_1] empty_ss);
+    hoist_ifs_in_goal;
+    simplify (addsimps minor_touchup_thms empty_ss);
+    simplify (addsimp fromToInteger_thm empty_ss);
+    simplify (addsimp toInteger_sub_384_thm_2 empty_ss);
+    hoist_ifs_in_goal;
+    simplify (addsimps minor_touchup_thms empty_ss);
+    simplify (addsimp eq_modulo_arith_thm empty_ss);
     w4_unint_z3 ["inv0", "ec_point_affine_scalar_mul"];
   });
 
 ECDSA_do_verify_ov <- llvm_verify m "ECDSA_do_verify"
   [ BN_is_zero_ov
   , ec_bignum_to_scalar_ov
-  , ec_scalar_to_montgomery_ov
-  , ec_scalar_to_montgomery_same_ov
-  , ec_scalar_from_montgomery_ov
-  , ec_scalar_from_montgomery_same_ov
-  , ec_scalar_add_ov
-  , ec_scalar_mul_montgomery_ov
-  , ec_scalar_mul_montgomery_same_r_ov
   , ec_simple_scalar_inv0_montgomery_ov
   , ec_scalar_is_zero_ov
-  , ec_random_nonzero_scalar_ov
-  , ec_point_mul_scalar_base_ov
-  , ec_point_mul_scalar_public_ov
-  , ec_cmp_x_coordinate_ov
   , ec_get_x_coordinate_as_scalar_ov
-  , digest_to_scalar_ov
+  , bn_reduce_once_in_place_false_ov
+  , bn_from_montgomery_small_ov
+  , bn_from_montgomery_small_same_ov
+  , bn_mod_mul_montgomery_small_ov
+  , bn_mod_mul_montgomery_small_same_r_ov
+  , bn_mod_mul_montgomery_small_RR_d_ov
+  , bn_mod_mul_montgomery_small_RR_d_same_ov
+  , bn_mod_add_words_ov
   , ERR_put_error_ov
+  , ec_GFp_mont_mul_base_ov
+  , ec_GFp_simple_is_on_curve_ov
+  , ec_GFp_mont_mul_public_batch_ov
+  , ec_GFp_mont_cmp_x_coordinate_ov
   ]
   true
   ECDSA_do_verify_spec
@@ -279,6 +282,7 @@ ECDSA_do_verify_ov <- llvm_verify m "ECDSA_do_verify"
     simplify (addsimp jacobian_affine_1_thm empty_ss);
     simplify (addsimps mod_thms empty_ss);
     goal_eval_unint ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
+    simplify (addsimp mod_2_384_thm empty_ss);
     w4_unint_z3 ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
   });
 
@@ -344,7 +348,7 @@ llvm_verify m "EVP_DigestVerifyFinal"
     , OPENSSL_cleanse_ov
     , CRYPTO_refcount_inc_ov
     , CRYPTO_refcount_dec_and_test_zero_ov
-    , memcmp_ov
+    , bcmp_ov
     , sha512_block_data_order_spec
     , BN_num_bits_r_bits_ov
     , BN_num_bits_s_bits_ov

@@ -4,7 +4,7 @@ The following table describes the RSA-PSS implementation that is verified using 
 
 | Algorithm | Variants |  API Operations | Platform   | Caveats
 | ----------| -------------| --------------- | -----------| ------------
-| RSA       | 1024, with <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal | SandyBridge+ | InputLength, NoEngine, MemCorrect, RSA_Blinding, CRYPTO_refcount_Correct, CRYPTO_MUTEX_Correct, ERR_put_error_Correct
+| RSA       | 1024, with <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal | SandyBridge+ | InputLength, NoEngine, MemCorrect, RSA_Blinding, CRYPTO_refcount_Correct, CRYPTO_MUTEX_Correct, ERR_put_error_Correct, DebugSettings
 
 The caveats associated with the RSA-PSS verification results are defined in the table below.
 
@@ -12,6 +12,7 @@ The caveats associated with the RSA-PSS verification results are defined in the 
 | --------------| ------------|
 | RSA_Blinding | Functions rsa_blinding_get, and rsa_blinding_release are are not verified, and are assumed to get and release a valid blinding factor.
 | CRYPTO_MUTEX_Correct | Functions CRYPTO_MUTEX_lock_read, CRYPTO_MUTEX_unlock_read, CRYPTO_MUTEX_lock_write, and CRYPTO_MUTEX_unlock_write are not verified, and are assumed to behave correctly. |
+| DebugSettings | The implementation is verified correct using code that is compiled using CMake's `-DCMAKE_BUILD_TYPE=Debug` settings, which does not apply certain optimizations that are used in `-DCMAKE_BUILD_TYPE=Release` settings. |
 
 The EVP_DigestSign*/EVP_DigestVerify* functions are verified to have the following properties related to RSA-PSS with SHA-384. For more detailed specifications, see [evp-function-specs.saw](evp-function-specs.saw). BLOCK_LENGTH is the block length of the hash function, in bytes. KEY_SIZE is the RSA key size, in bytes. For RSA-PSS-1024 with SHA-384, BLOCK_LENGTH is 64 and KEY_SIZE is 128.
 

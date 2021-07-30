@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/bn/div.c b/crypto/fipsmodule/bn/div.c
+index 333c7703e..a92d3a250 100644
+--- a/crypto/fipsmodule/bn/div.c
++++ b/crypto/fipsmodule/bn/div.c
+@@ -431,6 +431,7 @@ BN_ULONG bn_reduce_once(BN_ULONG *r, const BN_ULONG *a, BN_ULONG carry,
+   return carry;
+ }
+ 
++__attribute__((noinline))
+ BN_ULONG bn_reduce_once_in_place(BN_ULONG *r, BN_ULONG carry, const BN_ULONG *m,
+                                  BN_ULONG *tmp, size_t num) {
+   // See |bn_reduce_once| for why this logic works.

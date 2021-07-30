@@ -1,0 +1,88 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * Rewrite rules proofs and goal tactics. This does not
+ * contain any specifications or assumtions, thus it does
+ * not require inspection in order to trust the
+ * verification result.
+ */
+
+complement_false_thm <- prove_folding_theorem
+  {{ complement False == True }};
+complement_true_thm <- prove_folding_theorem
+  {{ complement True == False }};
+or_false_thm <- prove_folding_theorem
+  {{ \(x : Bit) -> False || x == x }};
+or_true_thm <- prove_folding_theorem
+  {{ \(x : Bit) -> True || x == True }};
+and_true_thm <- prove_folding_theorem
+  {{ \(x : Bit) -> True && x == x }};
+and_same_thm <- prove_folding_theorem
+  {{ \(x : Bit) -> x && x == x }};
+and_0_thm_1 <- prove_folding_theorem
+  {{ \(x : [64]) -> 0 && x == 0 }};
+and_0_thm_2 <- prove_folding_theorem
+  {{ \(x : [64]) -> x && 0 == 0 }};
+and_complement_0_thm_1 <- prove_folding_theorem
+  {{ \(x : [64]) -> (~0) && x == x }};
+and_complement_0_thm_2 <- prove_folding_theorem
+  {{ \(x : [64]) -> x && (~0) == x }};
+xor_0_thm <- prove_folding_theorem
+  {{ \(x : [64]) -> x ^ 0 == x }};
+xor_self_thm <- prove_folding_theorem
+  {{ \(x : [64]) -> x ^ x == 0 }};
+or_0_thm_1 <- prove_folding_theorem
+  {{ \(x : [64]) -> 0 || x == x }};
+or_0_thm_2 <- prove_folding_theorem
+  {{ \(x : [64]) -> x || 0 == x }};
+
+let minor_touchup_thms =
+  [ complement_false_thm
+  , complement_true_thm
+  , or_false_thm
+  , or_true_thm
+  , and_true_thm
+  , and_0_thm_1
+  , and_0_thm_2
+  , and_complement_0_thm_1
+  , and_complement_0_thm_2
+  , xor_0_thm
+  , xor_self_thm
+  , or_0_thm_1
+  , or_0_thm_2
+  ];
+
+let slice_0_64_320 = parse_core "\\(x : Vec 384 Bool) -> slice Bool 0 64 320 x";
+let slice_64_64_256 = parse_core "\\(x : Vec 384 Bool) -> slice Bool 64 64 256 x";
+let slice_128_64_192 = parse_core "\\(x : Vec 384 Bool) -> slice Bool 128 64 192 x";
+let slice_192_64_128 = parse_core "\\(x : Vec 384 Bool) -> slice Bool 192 64 128 x";
+let slice_256_64_64 = parse_core "\\(x : Vec 384 Bool) -> slice Bool 256 64 64 x";
+let slice_320_64_0 = parse_core "\\(x : Vec 384 Bool) -> slice Bool 320 64 0 x";
+
+append_at_slice_384_thm_1 <- prove_folding_theorem
+  {{ \(x : [48][8]) -> ((x @ (0 : [8])) # ((x @ (1 : [8])) # ((x @ (2 : [8])) # ((x @ (3 : [8])) # ((x @ (4 : [8])) # ((x @ (5 : [8])) # ((x @ (6 : [8])) # (x @ (7 : [8]))))))))) == slice_0_64_320 (join x) }};
+append_at_slice_384_thm_2 <- prove_folding_theorem
+  {{ \(x : [48][8]) -> ((x @ (8 : [8])) # ((x @ (9 : [8])) # ((x @ (10 : [8])) # ((x @ (11 : [8])) # ((x @ (12 : [8])) # ((x @ (13 : [8])) # ((x @ (14 : [8])) # (x @ (15 : [8]))))))))) == slice_64_64_256 (join x) }};
+append_at_slice_384_thm_3 <- prove_folding_theorem
+  {{ \(x : [48][8]) -> ((x @ (16 : [8])) # ((x @ (17 : [8])) # ((x @ (18 : [8])) # ((x @ (19 : [8])) # ((x @ (20 : [8])) # ((x @ (21 : [8])) # ((x @ (22 : [8])) # (x @ (23 : [8]))))))))) == slice_128_64_192 (join x) }};
+append_at_slice_384_thm_4 <- prove_folding_theorem
+  {{ \(x : [48][8]) -> ((x @ (24 : [8])) # ((x @ (25 : [8])) # ((x @ (26 : [8])) # ((x @ (27 : [8])) # ((x @ (28 : [8])) # ((x @ (29 : [8])) # ((x @ (30 : [8])) # (x @ (31 : [8]))))))))) == slice_192_64_128 (join x) }};
+append_at_slice_384_thm_5 <- prove_folding_theorem
+  {{ \(x : [48][8]) -> ((x @ (32 : [8])) # ((x @ (33 : [8])) # ((x @ (34 : [8])) # ((x @ (35 : [8])) # ((x @ (36 : [8])) # ((x @ (37 : [8])) # ((x @ (38 : [8])) # (x @ (39 : [8]))))))))) == slice_256_64_64 (join x) }};
+append_at_slice_384_thm_6 <- prove_folding_theorem
+  {{ \(x : [48][8]) -> ((x @ (40 : [8])) # ((x @ (41 : [8])) # ((x @ (42 : [8])) # ((x @ (43 : [8])) # ((x @ (44 : [8])) # ((x @ (45 : [8])) # ((x @ (46 : [8])) # (x @ (47 : [8]))))))))) == slice_320_64_0 (join x) }};
+append_slice_384_thm <- prove_folding_theorem
+  {{ \x -> (slice_0_64_320 x) # ((slice_64_64_256 x) # (((slice_128_64_192 x) # (slice_192_64_128 x)) # ((slice_256_64_64 x) # (slice_320_64_0 x)))) == x }};
+
+let append_slice_384_thms =
+  [ append_at_slice_384_thm_1
+  , append_at_slice_384_thm_2
+  , append_at_slice_384_thm_3
+  , append_at_slice_384_thm_4
+  , append_at_slice_384_thm_5
+  , append_at_slice_384_thm_6
+  , append_slice_384_thm
+  ];

@@ -31,6 +31,27 @@ let BN_is_odd_spec num = do {
   crucible_return (crucible_term {{ if (integerFromBV bn) % 2 == 1 then (1 : [32]) else 0 }});
 };
 
+// We include this spec in RSA/BN.saw rather than BN/BN.saw because the latter
+// is used to prove optimized code, but Clang will completely inline away
+// bn_from_montgomery_in_place with optimizations enabled.
+let bn_from_montgomery_in_place_spec num = do {
+  let num_bits = eval_size {| num * 64 |};
+  let a_num = eval_size {| 2 * num |};
+  let a_num_bits = eval_size {| a_num * 64 |};
+
+  r_ptr <- crucible_alloc (llvm_int num_bits);
+  (a, a_ptr) <- ptr_to_fresh "a" (llvm_int a_num_bits);
+
+  (N_d, N_d_ptr) <- ptr_to_fresh_readonly "N_d" (llvm_int num_bits);
+  mont_ptr <- pointer_to_bn_mont_ctx_st_with_N_d num N_d_ptr N_d;
+
+  crucible_execute_func [r_ptr, (crucible_term {{ `num : [64] }}), a_ptr, (crucible_term {{ `a_num : [64] }}), mont_ptr];
+
+  crucible_points_to r_ptr (crucible_term {{ integerToBV`{num_bits} (((integerFromBV a) * (integerFromBV (mont_R_inv_with_N N_d))) % (integerModulusFromBV N_d)) }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
 bn_uadd_consttime_n_p_ov <- crucible_llvm_unsafe_assume_spec
   m
   "bn_uadd_consttime"

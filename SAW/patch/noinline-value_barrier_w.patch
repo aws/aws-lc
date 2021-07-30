@@ -1,0 +1,14 @@
+diff --git a/crypto/internal.h b/crypto/internal.h
+index c57464542..967edbd5d 100644
+--- a/crypto/internal.h
++++ b/crypto/internal.h
+@@ -265,7 +265,8 @@ typedef uint32_t crypto_word_t;
+ // Note the compiler is aware that |value_barrier_w| has no side effects and
+ // always has the same output for a given input. This allows it to eliminate
+ // dead code, move computations across loops, and vectorize.
+-static inline crypto_word_t value_barrier_w(crypto_word_t a) {
++__attribute__((noinline))
++static crypto_word_t value_barrier_w(crypto_word_t a) {
+ #if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+   __asm__("" : "+r"(a) : /* no inputs */);
+ #endif

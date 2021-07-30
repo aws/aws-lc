@@ -99,9 +99,10 @@ llvm_verify m "EVP_PKEY_keygen_init"
   (w4_unint_z3 []);
 
 llvm_verify m "EVP_PKEY_keygen"
-  [ ec_random_nonzero_scalar_ov
-  , ec_point_mul_scalar_base_ov
-  , OPENSSL_malloc_ov
+  [ OPENSSL_malloc_ov
+  , bn_rand_range_words_ov
+  , ec_GFp_mont_mul_base_ov
+  , ec_GFp_simple_is_on_curve_ov
   ]
   true
   EVP_PKEY_keygen_spec

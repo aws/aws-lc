@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/cipher/e_aes.c b/crypto/fipsmodule/cipher/e_aes.c
+index 060cb210e..1eaa12847 100644
+--- a/crypto/fipsmodule/cipher/e_aes.c
++++ b/crypto/fipsmodule/cipher/e_aes.c
+@@ -325,6 +325,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
+ #define EVP_AES_GCM_CTX_PADDING 8
+ #endif
+ 
++__attribute__((noinline))
+ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
+ #if defined(__GNUC__) || defined(__clang__)
+   OPENSSL_STATIC_ASSERT(

@@ -10,6 +10,8 @@
  * verification result.
  */
 
+include "../common/helpers.saw";
+
 fieldElementBV_thm <- prove_print
   (do {
     w4_unint_z3 [];
@@ -132,11 +134,61 @@ let mont_thms =
   , mont_n_1_thm
   ];
 
-append_assoc_thm <- prove_print
-  (w4_unint_z3 [])
-  (rewrite (cryptol_ss ())
+append_assoc_thm_1 <- prove_folding_theorem
   {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) (x16 : [8]) (x17 : [8]) (x18 : [8]) (x19 : [8]) (x20 : [8]) (x21 : [8]) (x22 : [8]) (x23 : [8]) (x24 : [8]) (x25 : [8]) (x26 : [8]) (x27 : [8]) (x28 : [8]) (x29 : [8]) (x30 : [8]) (x31 : [8]) (x32 : [8]) (x33 : [8]) (x34 : [8]) (x35 : [8]) (x36 : [8]) (x37 : [8]) (x38 : [8]) (x39 : [8]) (x40 : [8]) (x41 : [8]) (x42 : [8]) (x43 : [8]) (x44 : [8]) (x45 : [8]) (x46 : [8]) (x47 : [8]) ->
       (((((((((((((((((((((((((((((((((((((((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) # x16) # x17) # x18) # x19) # x20) # x21) # x22) # x23) # x24) # x25) # x26) # x27) # x28) # x29) # x30) # x31) # x32) # x33) # x34) # x35) # x36) # x37) # x38) # x39) # x40) # x41) # x42) # x43) # x44) # x45) # x46) # x47)
       == (x0 # (x1 # (x2 # (x3 # (x4 # (x5 # (x6 # (x7 # (x8 # (x9 # (x10 # (x11 # (x12 # (x13 # (x14 # (x15 # (x16 # (x17 # (x18 # (x19 # (x20 # (x21 # (x22 # (x23 # (x24 # (x25 # (x26 # (x27 # (x28 # (x29 # (x30 # (x31 # (x32 # (x33 # (x34 # (x35 # (x36 # (x37 # (x38 # (x39 # (x40 # (x41 # (x42 # (x43 # (x44 # (x45 # (x46 # x47)))))))))))))))))))))))))))))))))))))))))))))))
-  }});
+  }};
+append_assoc_thm_2 <- prove_folding_theorem
+  {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) (x16 : [8]) (x17 : [8]) (x18 : [8]) (x19 : [8]) (x20 : [8]) (x21 : [8]) (x22 : [8]) (x23 : [8]) (x24 : [8]) (x25 : [8]) (x26 : [8]) (x27 : [8]) (x28 : [8]) (x29 : [8]) (x30 : [8]) (x31 : [8]) (x32 : [8]) (x33 : [8]) (x34 : [8]) (x35 : [8]) (x36 : [8]) (x37 : [8]) (x38 : [8]) (x39 : [8]) (x40 : [8]) (x41 : [8]) (x42 : [8]) (x43 : [8]) (x44 : [8]) (x45 : [8]) (x46 : [8]) (x47 : [8]) ->
+      (x0 # (x1 # (x2 # (x3 # (x4 # (x5 # (x6 # (x7 # (x8 # (x9 # (x10 # (x11 # (x12 # (x13 # (x14 # (x15 # ((x16 # (x17 # (x18 # (x19 # (x20 # (x21 # (x22 # (x23 # (x24 # (x25 # (x26 # (x27 # (x28 # (x29 # (x30 # x31)))))))))))))))) # ((x32 # (x33 # (x34 # (x35 # (x36 # (x37 # (x38 # (x39 # (x40 # (x41 # (x42 # (x43 # (x44 # (x45 # (x46 # x47))))))))))))))))))))))))))))))))
+      == (x0 # (x1 # (x2 # (x3 # (x4 # (x5 # (x6 # (x7 # (x8 # (x9 # (x10 # (x11 # (x12 # (x13 # (x14 # (x15 # (x16 # (x17 # (x18 # (x19 # (x20 # (x21 # (x22 # (x23 # (x24 # (x25 # (x26 # (x27 # (x28 # (x29 # (x30 # (x31 # (x32 # (x33 # (x34 # (x35 # (x36 # (x37 # (x38 # (x39 # (x40 # (x41 # (x42 # (x43 # (x44 # (x45 # (x46 # x47)))))))))))))))))))))))))))))))))))))))))))))))
+  }};
+append_at_thm <- prove_folding_theorem
+  {{ \(x : [48][8]) -> ((x @ (0 : [8])) # ((x @ (1 : [8])) # ((x @ (2 : [8])) # ((x @ (3 : [8])) # ((x @ (4 : [8])) # ((x @ (5 : [8])) # ((x @ (6 : [8])) # ((x @ (7 : [8])) # ((x @ (8 : [8])) # ((x @ (9 : [8])) # ((x @ (10 : [8])) # ((x @ (11 : [8])) # ((x @ (12 : [8])) # ((x @ (13 : [8])) # ((x @ (14 : [8])) # ((x @ (15 : [8])) # ((x @ (16 : [8])) # ((x @ (17 : [8])) # ((x @ (18 : [8])) # ((x @ (19 : [8])) # ((x @ (20 : [8])) # ((x @ (21 : [8])) # ((x @ (22 : [8])) # ((x @ (23 : [8])) # ((x @ (24 : [8])) # ((x @ (25 : [8])) # ((x @ (26 : [8])) # ((x @ (27 : [8])) # ((x @ (28 : [8])) # ((x @ (29 : [8])) # ((x @ (30 : [8])) # ((x @ (31 : [8])) # ((x @ (32 : [8])) # ((x @ (33 : [8])) # ((x @ (34 : [8])) # ((x @ (35 : [8])) # ((x @ (36 : [8])) # ((x @ (37 : [8])) # ((x @ (38 : [8])) # ((x @ (39 : [8])) # ((x @ (40 : [8])) # ((x @ (41 : [8])) # ((x @ (42 : [8])) # ((x @ (43 : [8])) # ((x @ (44 : [8])) # ((x @ (45 : [8])) # ((x @ (46 : [8])) # (x @ (47 : [8]))))))))))))))))))))))))))))))))))))))))))))))))) == join x
+  }};
 
+let
+{{
+type exp_2_384 = 2 ^^ 384
+}};
+
+mod_2_384_thm <- prove_folding_theorem
+  {{ \(x : Integer) -> ((x % `P384_n) % `exp_2_384) == (x % `P384_n) }};
+
+let
+{{
+apply : {s, t} (s -> t) -> s -> t
+apply f x = f x
+}};
+
+add_negate_thm <- prove_folding_theorem
+  {{ \(x : Integer) (y : Integer) -> (x + negate y) == (x - y) }};
+fromToInteger_thm <- prove_folding_theorem
+  {{ \(x : [384]) -> fromInteger (toInteger x) == x }};
+eq_modulo_arith_thm <- prove_folding_theorem
+  {{ \(x : Integer) (y : Integer) (z : Integer) ->
+    ((x * ((y - `P384_n) + z)) % `P384_n) == ((x * (y + z)) % `P384_n) }};
+
+let intLe = parse_core "\\(x y : Integer) -> intLe x y";
+
+toInteger_sub_8_thm_1 <- prove_folding_theorem
+  {{ \(x : [8]) ->
+    (toInteger x - 255) ==
+    (if (intLe 255 (toInteger x)) then (toInteger (x - 255)) else (apply (-) (toInteger x) 255)) }};
+toInteger_sub_8_thm_2 <- prove_folding_theorem
+  {{ \(x : [8]) ->
+    (toInteger (x - 255)) ==
+    (if (intLe 255 (toInteger x)) then (toInteger x - 255) else (apply toInteger (x - 255))) }};
+
+// These theorems are true, but every SMT solver I've tried takes a really long time to prove them.
+// It's possible to prove similar theorems on bitvectors of a smaller length (e.g., 8), as shown above.
+// The uses of `apply` are to ensure that rewriting does not go into an infinite loop.
+toInteger_sub_384_thm_1 <- assume_folding_theorem
+  {{ \(x : [384]) ->
+    (toInteger x - `P384_n) ==
+    (if (intLe `P384_n (toInteger x)) then (toInteger (x - `P384_n)) else (apply (-) (toInteger x) `P384_n)) }};
+toInteger_sub_384_thm_2 <- assume_folding_theorem
+  {{ \(x : [384]) ->
+    (toInteger (x - `P384_n)) ==
+    (if (intLe `P384_n (toInteger x)) then (toInteger x - `P384_n) else (apply toInteger (x - `P384_n))) }};

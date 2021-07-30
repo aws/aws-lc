@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/scalar.c b/crypto/fipsmodule/ec/scalar.c
+index e4ae9d7fc..870b3427c 100644
+--- a/crypto/fipsmodule/ec/scalar.c
++++ b/crypto/fipsmodule/ec/scalar.c
+@@ -37,6 +37,7 @@ int ec_scalar_equal_vartime(const EC_GROUP *group, const EC_SCALAR *a,
+                         group->order.width * sizeof(BN_ULONG)) == 0;
+ }
+ 
++__attribute__((noinline))
+ int ec_scalar_is_zero(const EC_GROUP *group, const EC_SCALAR *a) {
+   BN_ULONG mask = 0;
+   for (int i = 0; i < group->order.width; i++) {

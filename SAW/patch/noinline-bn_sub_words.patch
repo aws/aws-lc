@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/bn/asm/x86_64-gcc.c b/crypto/fipsmodule/bn/asm/x86_64-gcc.c
+index 30fff2177..7dbd7055e 100644
+--- a/crypto/fipsmodule/bn/asm/x86_64-gcc.c
++++ b/crypto/fipsmodule/bn/asm/x86_64-gcc.c
+@@ -213,6 +213,7 @@ BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+   return ret & 1;
+ }
+ 
++__attribute__((noinline))
+ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                       size_t n) {
+   BN_ULONG ret;

@@ -42,3 +42,9 @@ memcmp_ov <- crucible_llvm_unsafe_assume_spec
   "memcmp"
   (memcmp_spec sig_len);
 
+// EVP_DigestVerifyFinal requires a bcmp_ov override when it
+// defends against potential laxness in the DER parser.
+bcmp_ov <- llvm_unsafe_assume_spec
+  m
+  "bcmp"
+  (bcmp_spec sig_len);

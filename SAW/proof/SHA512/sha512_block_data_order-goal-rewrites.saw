@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
 */
@@ -49,7 +49,7 @@ let slice_0_60_4  = parse_core "\\(x : Vec 64 Bool) -> slice Bool 0 60 4 x";
 
 
 // Helper function for proving theorems
-let prove_folding_theorem t = prove_print abc (rewrite (cryptol_ss ()) t);
+let prove_folding_theorem t = prove_print z3 (rewrite (cryptol_ss ()) t);
 
 // rotate<N>_thm proves that left rotations of size N are equivalent to two
 // slices concatenated together

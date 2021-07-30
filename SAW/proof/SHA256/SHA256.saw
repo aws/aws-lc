@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
 */
@@ -235,7 +235,7 @@ let slice_30_2_0  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 30 2 0 x";
 let slice_0_30_2  = parse_core "\\(x : Vec 32 Bool) -> slice Bool 0 30 2 x";
 
 
-let prove_folding_theorem t = prove_print abc (rewrite (cryptol_ss ()) t);
+let prove_folding_theorem t = prove_print z3 (rewrite (cryptol_ss ()) t);
 
 rotate15_thm <- prove_folding_theorem {{ \x -> (bvShr17 x) || (bvShl15 x) == x <<< 15 }};
 rotate18_thm <- prove_folding_theorem {{ \x -> (bvShr14 x) || (bvShl18 x) == x <<< 18 }};

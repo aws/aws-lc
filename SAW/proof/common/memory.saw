@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
 */
@@ -85,6 +85,20 @@ let memcmp_spec count = do {
   (rhs, rhs_ptr) <- ptr_to_fresh_readonly "rhs" (llvm_array count i8);
   crucible_execute_func [lhs_ptr, rhs_ptr, (crucible_term {{ `count : [64] }})];
   crucible_return (crucible_term {{ if (join lhs) < (join rhs) then (0 - 1) : [32] else if (join lhs) == (join rhs) then 0 else 1 }});
+};
+
+// This spec is very similar to that of memcmp, as that function directly
+// invokes bcmp. When compiled with optimizations, memcmp will be inlined away,
+// exposing a call site to bcmp.
+let bcmp_spec count = do {
+  (lhs, lhs_ptr) <- ptr_to_fresh_readonly "lhs" (llvm_array count i8);
+  (rhs, rhs_ptr) <- ptr_to_fresh_readonly "rhs" (llvm_array count i8);
+
+  llvm_execute_func [lhs_ptr, rhs_ptr, (llvm_term {{ `count : [64] }})];
+
+  bcmp_res <- llvm_fresh_var "bcmp_res" i32;
+  llvm_postcond {{ bcmp_res != 0 }};
+  llvm_return (llvm_term {{ if (join lhs) == (join rhs) then 0 else bcmp_res }});
 };
 
 

@@ -26,12 +26,12 @@ include "../common/memory.saw";
 // The total input length before the call to the update function.
 let evp_cipher_update_gcm_len = 10;
 
-/* 
+/*
  * The GCM implementation has multiple phases:
  * 1) A "bulk" encryption/decryption that operates on multiples of 6 blocks, and computes
- *    AES/CTR32 and GHASH in parallel using different functional units of the CPU. 
+ *    AES/CTR32 and GHASH in parallel using different functional units of the CPU.
  * 2) An optimized AES/CTR32 implementation that processes the remaining blocks.
- * 3) An optimized GHASH implementation that processes the remaining blocks. 
+ * 3) An optimized GHASH implementation that processes the remaining blocks.
  *
  * The code below calculates the correct input lengths for each subroutine.
  */
@@ -224,11 +224,9 @@ let points_to_EVP_AES_GCM_CTX ptr ctx mres iv_set taglen = do {
 
 
 let aes_gcm_from_cipher_ctx_spec = do {
-  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_ctx_st");
   cipher_data_ptr <- crucible_alloc_readonly_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
-  crucible_points_to (crucible_field ctx_ptr "cipher_data") cipher_data_ptr;
 
-  crucible_execute_func [ctx_ptr];
+  crucible_execute_func [cipher_data_ptr];
 
   crucible_return cipher_data_ptr;
 };

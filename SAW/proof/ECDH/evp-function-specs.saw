@@ -83,6 +83,7 @@ let EVP_PKEY_paramgen_spec = do {
 let EVP_PKEY_keygen_spec = do {
   d <- crucible_fresh_cryptol_var "d" {| Integer |};
   crucible_ghost_value ec_random_nonzero_scalar_out d;
+  crucible_ghost_value bn_rand_range_words_out      d;
 
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
   points_to_evp_pkey_ctx_st_common ctx_ptr;
