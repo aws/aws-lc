@@ -4,14 +4,14 @@ import numpy as np
 import csv
 
 if len(sys.argv) != 4:
-    print("Usage: compare_results.py [file1] [file2] [output filename]")
+    print("Usage: compare_results.py [file1] [file2] [output filename]", file=sys.stderr)
     sys.exit(1)
 
 file1 = sys.argv[1]
 file2 = sys.argv[2]
 
 if not (file1.endswith(".json") or file1.endswith(".csv")) and not (file2.endswith(".json") or file2.endswith(".csv")):
-    print("Provided files must either be .json files or .csv files")
+    print("Provided files must either be .json files or .csv files", file=sys.stderr)
     sys.exit(1)
 
 # read contents of file1 into a dataframe in preparation for comparison
@@ -39,8 +39,8 @@ df2_numCalls = df2.iloc[:, 1]
 
 dfs = pd.concat([df1, df2], axis=1)
 
-# we want things that have a +10% regression
-compared = np.where(((df2_numCalls - df1_numCalls)/df1_numCalls*100 <= -10), df1.iloc[:, 0], np.nan)
+# we want things that have a +15% regression
+compared = np.where(((df2_numCalls - df1_numCalls)/df1_numCalls*100 <= -15), df1.iloc[:, 0], np.nan)
 
 compared_df = dfs.loc[dfs.iloc[:, 0].isin(compared)]
 compared_df = compared_df.dropna()
@@ -57,4 +57,5 @@ if not compared_df.empty:
     compared_df.to_csv(output_file, index=False, mode='a')
 
     # exit with an error code to denote there is a regression
+    print("Regression detected between {} and {}".format(file1, file2), file=sys.stderr)
     exit(5)
