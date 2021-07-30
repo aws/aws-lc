@@ -546,6 +546,11 @@ let x86_CLC = new_definition
  `x86_CLC s =
         (CF := F) s`;;
 
+let x86_CMC = new_definition
+ `x86_CMC s =
+        let c = read CF s in
+        (CF := ~c) s`;;
+
 let x86_CMOV = new_definition
  `x86_CMOV cc dest src s =
         (dest := (if condition_semantics cc s then read src s
@@ -1331,6 +1336,8 @@ let x86_execute = define
         x86_CALL target s
     | CLC ->
         x86_CLC s
+    | CMC ->
+        x86_CMC s
     | CMOV cc dest src ->
         (match operand_size dest with
            64 -> x86_CMOV cc (OPERAND64 dest s) (OPERAND64 src s)
@@ -2113,13 +2120,12 @@ let x86_RET_POP_RIP = prove
   REWRITE_TAC[]);;
 
 let X86_OPERATION_CLAUSES =
-  map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o
-       SPEC_ALL)
+  map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)
    [x86_ADC_ALT; x86_ADCX_ALT; x86_ADOX_ALT;
     x86_ADD_ALT; x86_AND; x86_BSF; x86_BSR; x86_BSWAP;
     x86_BT; x86_BTC; x86_BTR; x86_BTS;
-    x86_CALL_ALT; x86_CLC; x86_CMOV; x86_CMP_ALT; x86_DEC; x86_DIV2; x86_IMUL;
-    x86_IMUL2; x86_IMUL3; x86_INC; x86_LEA; x86_LZCNT;
+    x86_CALL_ALT; x86_CLC; x86_CMC; x86_CMOV; x86_CMP_ALT; x86_DEC;
+    x86_DIV2; x86_IMUL; x86_IMUL2; x86_IMUL3; x86_INC; x86_LEA; x86_LZCNT;
     x86_MOV; x86_MOVSX; x86_MOVZX;
     x86_MUL2; x86_MULX4; x86_NEG; x86_NOP; x86_NOT; x86_OR;
     x86_POP_ALT; x86_PUSH_ALT; x86_RCL; x86_RCR; x86_RET; x86_ROL; x86_ROR;

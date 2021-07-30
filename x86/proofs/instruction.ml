@@ -251,6 +251,7 @@ let instruction_INDUCTION,instruction_RECURSION = define_type
    | CALL operand
    | CALL_ABSOLUTE (64 word)
    | CLC
+   | CMC
    | CMOV condition operand operand
    | CMP operand operand
    | DEC operand

@@ -441,6 +441,8 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
   | [0b111010:6; x; 0b1:1] -> if has_pfxs pfxs then NONE else
     read_imm (if x then Byte else Quadword) l >>= \(imm,l).
     SOME (JMP imm,l)
+  | [0xf5:8] -> if has_pfxs pfxs then NONE else
+    SOME (CMC,l)
   | [0xf8:8] -> if has_pfxs pfxs then NONE else
     SOME (CLC,l)
   | [0xf9:8] -> if has_pfxs pfxs then NONE else
