@@ -32,6 +32,7 @@ endif
 # List of object files
 
 OBJ = bignum_add_p521.o \
+      bignum_cmul_p521.o \
       bignum_double_p521.o \
       bignum_half_p521.o \
       bignum_mod_p521_9.o \
