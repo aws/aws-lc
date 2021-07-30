@@ -81,6 +81,7 @@ enum {
        TEST_BIGNUM_CMUL,
        TEST_BIGNUM_CMUL_P256,
        TEST_BIGNUM_CMUL_P384,
+       TEST_BIGNUM_CMUL_P521,
        TEST_BIGNUM_COPRIME,
        TEST_BIGNUM_COPY,
        TEST_BIGNUM_CTD,
@@ -1318,6 +1319,40 @@ int test_bignum_cmul_p384(void)
                     "0x%016lx * ...0x%016lx mod ....0x%016lx = "
                     "...0x%016lx\n",
                     k,m,b0[0],p_384[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_cmul_p521(void)
+{ uint64_t i, k, m;
+  printf("Testing bignum_cmul_p521 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+     m = random64();
+     bignum_cmul_p521(b2,m,b0);
+     reference_mul(k+1,b1,1,&m,k,b0);
+     reference_copy(k+1,b3,k,p_521);
+     reference_mod(k+1,b4,b1,b3);
+     reference_copy(k,b3,k+1,b4);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "0x%016lx *  ...0x%016lx mod ....0x%016lx = "
+               "...0x%016lx not ...0x%016lx\n",
+               k,m,b0[0],p_521[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4lu]\n",k);
+        else printf("OK: [size %4lu] "
+                    "0x%016lx * ...0x%016lx mod ....0x%016lx = "
+                    "...0x%016lx\n",
+                    k,m,b0[0],p_521[0],b2[0]);
       }
    }
   printf("All OK\n");
@@ -4408,6 +4443,7 @@ int test_all()
   dotest(test_bignum_cmul);
   dotest(test_bignum_cmul_p256);
   dotest(test_bignum_cmul_p384);
+  dotest(test_bignum_cmul_p521);
   dotest(test_bignum_coprime);
   dotest(test_bignum_copy);
   dotest(test_bignum_ctd);
@@ -4699,6 +4735,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_CMUL:            return test_bignum_cmul();
      case TEST_BIGNUM_CMUL_P256:       return test_bignum_cmul_p256();
      case TEST_BIGNUM_CMUL_P384:       return test_bignum_cmul_p384();
+     case TEST_BIGNUM_CMUL_P521:       return test_bignum_cmul_p521();
      case TEST_BIGNUM_COPRIME:         return test_bignum_coprime();
      case TEST_BIGNUM_COPY:            return test_bignum_copy();
      case TEST_BIGNUM_CTD:             return test_bignum_ctd();

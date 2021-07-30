@@ -16,6 +16,7 @@
 # The x86 assembly (.S) files are all written for the GNU assembler
 
 OBJ = bignum_add_p521.o \
+      bignum_cmul_p521.o \
       bignum_double_p521.o \
       bignum_half_p521.o \
       bignum_mod_p521_9.o \

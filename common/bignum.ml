@@ -204,6 +204,14 @@ let BIGNUM_OF_WORDLIST_BOUND = prove
   ASM_REWRITE_TAC[BIGNUM_OF_WORDLIST_BOUND_LENGTH; LE_EXP] THEN
   ASM_ARITH_TAC);;
 
+let BIGNUM_FROM_WORDLIST_BOUND_GEN = prove
+ (`!l n. 64 * LENGTH l <= n ==> bignum_of_wordlist l < 2 EXP n`,
+  REPEAT STRIP_TAC THEN
+  W(MP_TAC o PART_MATCH lhand BIGNUM_OF_WORDLIST_BOUND_LENGTH o
+    lhand o snd) THEN
+  MATCH_MP_TAC(REWRITE_RULE[IMP_CONJ_ALT] LTE_TRANS) THEN
+  ASM_REWRITE_TAC[LE_EXP] THEN ARITH_TAC);;
+
 let BIGNUM_OF_WORDLIST_APPEND = prove
  (`!l1 l2. bignum_of_wordlist (APPEND l1 l2) =
            bignum_of_wordlist l1 +
@@ -238,6 +246,35 @@ let BIGNUM_OF_WORDLIST_EQ = prove
   REWRITE_TAC[bignum_of_wordlist] THEN ONCE_REWRITE_TAC[ADD_SYM] THEN
   ONCE_REWRITE_TAC[CONJ_SYM] THEN
   MATCH_MP_TAC LEXICOGRAPHIC_EQ_64 THEN REWRITE_TAC[VAL_BOUND_64]);;
+
+let BIGNUM_OF_WORDLIST_EQ_0 = prove
+ (`!l. bignum_of_wordlist l = 0 <=> ALL (\x. x = word 0) l`,
+  LIST_INDUCT_TAC THEN
+  REWRITE_TAC[ALL; bignum_of_wordlist; ADD_EQ_0; MULT_EQ_0; EXP_EQ_0] THEN
+  ASM_REWRITE_TAC[ARITH_EQ; VAL_EQ_0]);;
+
+let BIGNUM_OF_WORDLIST_EQ_MAX = prove
+ (`!l n. 64 * LENGTH l = n
+         ==> (bignum_of_wordlist l = 2 EXP n - 1 <=>
+              ALL (\x. x = word_not(word 0)) l)`,
+  GEN_TAC THEN REWRITE_TAC[FORALL_UNWIND_THM1] THEN
+  MP_TAC(SPEC `MAP word_not (l:int64 list)` BIGNUM_OF_WORDLIST_EQ_0) THEN
+  REWRITE_TAC[WORD_RULE `x = word_not(word 0) <=> word_not x = word 0`] THEN
+  REWRITE_TAC[ALL_MAP; o_DEF] THEN DISCH_THEN(SUBST1_TAC o SYM) THEN
+  MATCH_MP_TAC(ARITH_RULE `n = a + b + 1 ==> (a = n - 1 <=> b = 0)`) THEN
+  SPEC_TAC(`l:int64 list`,`l:int64 list`) THEN
+  LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[bignum_of_wordlist; MAP; LENGTH] THEN
+  ASM_REWRITE_TAC[ADD_CLAUSES; MULT_CLAUSES; EXP; EXP_ADD] THEN
+  REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; REAL_VAL_WORD_NOT; DIMINDEX_64] THEN
+  REAL_ARITH_TAC);;
+
+let BIGNUM_OF_WORDLIST_LT_MAX = prove
+ (`!l n. 64 * LENGTH l = n
+         ==> (bignum_of_wordlist l < 2 EXP n - 1 <=>
+              EX (\x. ~(x = word_not(word 0))) l)`,
+  SIMP_TAC[GSYM NOT_ALL; GSYM BIGNUM_OF_WORDLIST_EQ_MAX] THEN
+  REWRITE_TAC[ARITH_RULE `a < n - 1 <=> a < n /\ ~(a = n - 1)`] THEN
+  SIMP_TAC[LT_LE; BIGNUM_FROM_WORDLIST_BOUND_GEN; LE_REFL]);;
 
 (* ------------------------------------------------------------------------- *)
 (* Extracting a bignum from memory.                                          *)

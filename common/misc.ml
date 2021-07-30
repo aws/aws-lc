@@ -25,6 +25,14 @@ needs "Library/floor.ml";;
 (* A few small general word lemmas.                                          *)
 (* ------------------------------------------------------------------------- *)
 
+let WORD_NOT_AND = prove
+ (`!x y:N word. word_not(word_and x y) = word_or (word_not x) (word_not y)`,
+  CONV_TAC WORD_BITWISE_RULE);;
+
+let WORD_NOT_OR = prove
+ (`!x y:N word. word_not(word_or x y) = word_and (word_not x) (word_not y)`,
+  CONV_TAC WORD_BITWISE_RULE);;
+
 let WORD_ZX_BITVAL = prove
  (`!b. (word_zx:M word->N word) (word(bitval b)) = word(bitval b)`,
   REWRITE_TAC[FORALL_BOOL_THM; BITVAL_CLAUSES; WORD_ZX_0; WORD_ZX_1]);;
