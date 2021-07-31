@@ -9,12 +9,10 @@ from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, \
-    ec2_bm_framework_policies_in_json, ssm_bm_framework_policies_in_json
+    ec2_bm_framework_policies_in_json, ssm_bm_framework_policies_in_json, s3_bm_framework_policies_in_json
 from util.yml_loader import YmlLoader
 
-
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
-
 
 class BmFrameworkStack(core.Stack):
     """Define a stack used to create a CodeBuild instance on which to execute the AWS-LC benchmarking framework"""
@@ -44,9 +42,11 @@ class BmFrameworkStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
         ec2_bm_framework_policy = iam.PolicyDocument.from_json(ec2_bm_framework_policies_in_json())
         ssm_bm_framework_policy = iam.PolicyDocument.from_json(ssm_bm_framework_policies_in_json())
+        s3_bm_framework_policy = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json())
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_bm_framework_policy": ec2_bm_framework_policy,
-                                     "ssm_bm_framework_policy": ssm_bm_framework_policy}
+                                     "ssm_bm_framework_policy": ssm_bm_framework_policy,
+                                     "s3_bm_framework_policy": s3_bm_framework_policy}
         codebuild_role = iam.Role(scope=self,
                                   id="{}-codebuild-role".format(id),
                                   assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
@@ -134,9 +134,9 @@ class BmFrameworkStack(core.Stack):
             pr_results_s3.grant_put(ec2_role)
 
         # use boto3 to determine if a cloudwatch logs group with the name we want exists, and if it doesn't, create it
-        logs_res = boto3.resource('logs')
+        logs_client = boto3.client('logs')
         try:
-            logs_res.meta.client.describe_log_groups(logGroupNamePrefix=CLOUDWATCH_LOGS)
+            logs_client.describe_log_groups(logGroupNamePrefix=CLOUDWATCH_LOGS)
         except ClientError:
             # define CloudWatch Logs groups
             logs.LogGroup(self, "{}-cw-logs".format(id),

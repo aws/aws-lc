@@ -30,6 +30,24 @@ def ec2_bm_framework_policies_in_json():
             }]
     }
 
+def s3_bm_framework_policies_in_json():
+    """
+    Define an IAM policy that gives some s3 permissions needed by the EC2 instances of the benchmarking framework
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:ListBucket"
+                ],
+                "Resource": [
+                    "*"
+                ]
+            }]
+    }
+
 def ssm_bm_framework_policies_in_json():
     """
     Define an IAM policy that gives permissions to creating documents and running commands.
