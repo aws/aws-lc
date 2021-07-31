@@ -30,7 +30,7 @@ def ec2_bm_framework_policies_in_json():
             }]
     }
 
-def s3_bm_framework_policies_in_json():
+def s3_bm_framework_policies_in_json(s3_bucket_name):
     """
     Define an IAM policy that gives some s3 permissions needed by the EC2 instances of the benchmarking framework
     """
@@ -43,7 +43,7 @@ def s3_bm_framework_policies_in_json():
                     "s3:ListBucket"
                 ],
                 "Resource": [
-                    "*"
+                    "arn:aws:s3:::{}/*".format(s3_bucket_name)
                 ]
             }]
     }

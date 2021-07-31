@@ -42,11 +42,9 @@ class BmFrameworkStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
         ec2_bm_framework_policy = iam.PolicyDocument.from_json(ec2_bm_framework_policies_in_json())
         ssm_bm_framework_policy = iam.PolicyDocument.from_json(ssm_bm_framework_policies_in_json())
-        s3_bm_framework_policy = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json())
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_bm_framework_policy": ec2_bm_framework_policy,
-                                     "ssm_bm_framework_policy": ssm_bm_framework_policy,
-                                     "s3_bm_framework_policy": s3_bm_framework_policy}
+                                     "ssm_bm_framework_policy": ssm_bm_framework_policy}
         codebuild_role = iam.Role(scope=self,
                                   id="{}-codebuild-role".format(id),
                                   assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
@@ -88,8 +86,14 @@ class BmFrameworkStack(core.Stack):
         CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(userid, id)
 
         # create iam for ec2s
-        s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
-        ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy}
+        s3_read_write_policy_prod_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
+        s3_read_write_policy_pr_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PR_BUCKET))
+        s3_bm_framework_policy_prod_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PROD_BUCKET))
+        s3_bm_framework_policy_pr_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PR_BUCKET))
+        ec2_inline_policies = {"s3_read_write_policy_prod_bucket": s3_read_write_policy_prod_bucket,
+                               "s3_read_write_policy_pr_bucket": s3_read_write_policy_pr_bucket,
+                               "s3_bm_framework_policy_prod_bucket": s3_bm_framework_policy_prod_bucket,
+                               "s3_bm_framework_policy_pr_budket": s3_bm_framework_policy_pr_bucket}
         ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
                             role_name="{}-ec2-role".format(id),
                             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
