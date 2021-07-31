@@ -43,10 +43,11 @@ def s3_bm_framework_policies_in_json(s3_bucket_name):
                     "s3:ListBucket"
                 ],
                 "Resource": [
-                    "arn:aws:s3:::{}/*".format(s3_bucket_name)
+                    "arn:aws:s3:::{}".format(s3_bucket_name)
                 ]
             }]
     }
+
 
 def ssm_bm_framework_policies_in_json():
     """

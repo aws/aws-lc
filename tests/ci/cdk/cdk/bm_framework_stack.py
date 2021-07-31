@@ -93,7 +93,7 @@ class BmFrameworkStack(core.Stack):
         ec2_inline_policies = {"s3_read_write_policy_prod_bucket": s3_read_write_policy_prod_bucket,
                                "s3_read_write_policy_pr_bucket": s3_read_write_policy_pr_bucket,
                                "s3_bm_framework_policy_prod_bucket": s3_bm_framework_policy_prod_bucket,
-                               "s3_bm_framework_policy_pr_budket": s3_bm_framework_policy_pr_bucket}
+                               "s3_bm_framework_policy_pr_bucket": s3_bm_framework_policy_pr_bucket}
         ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
                             role_name="{}-ec2-role".format(id),
                             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
