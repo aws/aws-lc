@@ -10,7 +10,9 @@ set -exo pipefail
 cleanup() {
   set +e
   # kill ec2 instances after we're done w/ them
-  aws ec2 terminate-instances --instance-ids "${x86_id}" "${arm_id}" "${x86_nosha_id}" "${x86_noavx_id}" &> /dev/null
+  for id in ${instance_ids};do
+    aws ec2 terminate-instances --instance-ids "${id}"
+  done
 
   # delete the various documents that we created
   for name in ${ssm_document_names};do
@@ -68,6 +70,11 @@ arm_id=$(create_ec2_instances "ami-018e246d8c0f39ae5" "c6g.metal")
 x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "m5.metal")
 x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.metal")
 instance_ids="${x86_id} ${arm_id} ${x86_nosha_id} ${x86_noavx_id}"
+
+# if any of the ids are blank, ec2 creation failed
+if [[ -z "${x86_id}" ]] || [[ -z "${arm_id}" ]] || [[ -z "${x86_nosha}" ]] || [[ -z "${x86_noavx}" ]];  then
+  exit 1
+fi
 
 # Give a few minutes for the ec2 instances to be ready
 sleep 60
