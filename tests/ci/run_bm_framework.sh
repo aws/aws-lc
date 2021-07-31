@@ -72,7 +72,7 @@ x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.metal")
 instance_ids="${x86_id} ${arm_id} ${x86_nosha_id} ${x86_noavx_id}"
 
 # if any of the ids are blank, ec2 creation failed
-if [[ -z "${x86_id}" ]] || [[ -z "${arm_id}" ]] || [[ -z "${x86_nosha}" ]] || [[ -z "${x86_noavx}" ]];  then
+if [[ -z "${x86_id}" ]] || [[ -z "${arm_id}" ]] || [[ -z "${x86_nosha_id}" ]] || [[ -z "${x86_noavx_id}" ]];  then
   exit 1
 fi
 
