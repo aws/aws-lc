@@ -25,6 +25,12 @@ class BmFrameworkStack(core.Stack):
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
+        # Define some variables that will be commonly used
+        userid = boto3.client('sts').get_caller_identity().get('Account')
+        S3_PROD_BUCKET = "{}-{}-prod-bucket".format(userid, id)
+        S3_PR_BUCKET = "{}-{}-pr-bucket".format(userid, id)
+        CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(userid, id)
+
         # Define CodeBuild resource.
         git_hub_source = codebuild.Source.git_hub(
             owner=GITHUB_REPO_OWNER,
@@ -42,9 +48,13 @@ class BmFrameworkStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
         ec2_bm_framework_policy = iam.PolicyDocument.from_json(ec2_bm_framework_policies_in_json())
         ssm_bm_framework_policy = iam.PolicyDocument.from_json(ssm_bm_framework_policies_in_json())
+        s3_bm_framework_policy_prod_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PROD_BUCKET))
+        s3_bm_framework_policy_pr_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PR_BUCKET))
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_bm_framework_policy": ec2_bm_framework_policy,
-                                     "ssm_bm_framework_policy": ssm_bm_framework_policy}
+                                     "ssm_bm_framework_policy": ssm_bm_framework_policy,
+                                     "s3_bm_framework_policy_prod_bucket": s3_bm_framework_policy_prod_bucket,
+                                     "s3_bm_framework_policy_pr_bucket": s3_bm_framework_policy_pr_bucket}
         codebuild_role = iam.Role(scope=self,
                                   id="{}-codebuild-role".format(id),
                                   assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
@@ -79,21 +89,11 @@ class BmFrameworkStack(core.Stack):
             "TimeoutInMins": 180
         })
 
-        # define things needed for ec2 instances below (instances themselves will be dynamically created in codebuild)
-        userid = boto3.client('sts').get_caller_identity().get('Account')
-        S3_PROD_BUCKET = "{}-{}-prod-bucket".format(userid, id)
-        S3_PR_BUCKET = "{}-{}-pr-bucket".format(userid, id)
-        CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(userid, id)
-
         # create iam for ec2s
         s3_read_write_policy_prod_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
         s3_read_write_policy_pr_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PR_BUCKET))
-        s3_bm_framework_policy_prod_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PROD_BUCKET))
-        s3_bm_framework_policy_pr_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PR_BUCKET))
         ec2_inline_policies = {"s3_read_write_policy_prod_bucket": s3_read_write_policy_prod_bucket,
-                               "s3_read_write_policy_pr_bucket": s3_read_write_policy_pr_bucket,
-                               "s3_bm_framework_policy_prod_bucket": s3_bm_framework_policy_prod_bucket,
-                               "s3_bm_framework_policy_pr_bucket": s3_bm_framework_policy_pr_bucket}
+                               "s3_read_write_policy_pr_bucket": s3_read_write_policy_pr_bucket}
         ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
                             role_name="{}-ec2-role".format(id),
                             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),

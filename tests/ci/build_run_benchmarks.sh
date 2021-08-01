@@ -92,10 +92,6 @@ aws s3 cp aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr
 aws s3 cp ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
 aws s3 cp bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
 
-# delete contents of latest folders before uploading
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest" --recursive
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest" --recursive
-
 # upload results to lastest folders in s3
 aws s3 mv aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
 aws s3 mv aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
