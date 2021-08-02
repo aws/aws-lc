@@ -1,6 +1,8 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import sys
 import pandas as pd
-import numpy as np
 import csv
 
 if len(sys.argv) < 2 or len(sys.argv) > 3:
