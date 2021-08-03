@@ -492,7 +492,10 @@ endif()
 #        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/third_party/jitterentropy"
 #        )
 
-link_directories(${CMAKE_SOURCE_DIR}/third_party/jitterentropy/)
+if(JITTER_ENTROPY)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DJITTER_ENTROPY")
+  link_directories(${CMAKE_SOURCE_DIR}/third_party/jitterentropy/)
+endif()
 
 if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")

@@ -162,14 +162,43 @@ static int rdrand(uint8_t *buf, size_t len) {
 
 #if defined(BORINGSSL_FIPS)
 
+#if defined(JITTER_ENTROPY)
+# include "../third_party/jitterentropy/jitterentropy.h"
+
+  static struct rand_data *jitter_ec = NULL;
+  static int jitter_initialized = 0;
+#endif
+
 void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_used_cpu) {
+#if defined(JITTER_ENTROPY)
+  *out_used_cpu = 0;
+  if (jitter_initialized != 1) {
+    if (jent_entropy_init()) {
+      printf("Failed to initialize Jitter!\n");
+      abort();
+    }
+    jitter_ec = jent_entropy_collector_alloc(0, 0);
+    if (!jitter_ec) {
+      printf("Failed to allocate jitter entropy collector!\n");
+      abort();
+    }
+    jitter_initialized = 1;
+  }
+
+  if (jent_read_entropy(jitter_ec, (char *) out_entropy, out_entropy_len) < 0) {
+    printf("Failed to read entropy from Jitter!\n");
+    abort();
+  }
+
+#else
   *out_used_cpu = 0;
   if (have_rdrand() && rdrand(out_entropy, out_entropy_len)) {
     *out_used_cpu = 1;
   } else {
     CRYPTO_sysrand_for_seed(out_entropy, out_entropy_len);
   }
+#endif
 
 #if defined(BORINGSSL_FIPS_BREAK_CRNG)
   // This breaks the "continuous random number generator test" defined in FIPS

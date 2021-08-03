@@ -612,7 +612,9 @@ if(BUILD_TESTING)
   add_dependencies(all_tests crypto_test)
 endif()
 
-target_link_libraries(crypto jitterentropy)
+if(JITTER_ENTROPY)
+  target_link_libraries(crypto jitterentropy)
+endif()
 
 install(TARGETS crypto
         EXPORT crypto-targets
