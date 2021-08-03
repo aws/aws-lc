@@ -486,6 +486,14 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+#add_library(jitterentropy SHARED IMPORTED) # or STATIC instead of SHARED
+#set_target_properties(jitterentropy PROPERTIES
+#        IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/third_party/jitterentropy/libjitterentropy.so"
+#        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/third_party/jitterentropy"
+#        )
+
+link_directories(${CMAKE_SOURCE_DIR}/third_party/jitterentropy/)
+
 if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()

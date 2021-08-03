@@ -612,6 +612,8 @@ if(BUILD_TESTING)
   add_dependencies(all_tests crypto_test)
 endif()
 
+target_link_libraries(crypto jitterentropy)
+
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
