@@ -118,15 +118,15 @@ noavx_ssm_doc_name=$(create_ssm_document "noavx")
 ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name} ${noavx_ssm_doc_name}"
 
 # delete contents of 'latest' folders before uploading anything new to them
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
+aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
+aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
 
 #$1 is the document name, $2 is the instance ids
 run_ssm_command() {
   local command_id
   command_id="$(aws ssm send-command --instance-ids "${2}" \
     --document-name "${1}" \
-    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
+    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-ci-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
     --query Command.CommandId --output text)"
   echo "${command_id}"
 }
