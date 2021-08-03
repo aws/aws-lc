@@ -26,10 +26,9 @@ class BmFrameworkStack(core.Stack):
         super().__init__(scope, id, **kwargs)
 
         # Define some variables that will be commonly used
-        userid = boto3.client('sts').get_caller_identity().get('Account')
-        S3_PROD_BUCKET = "{}-{}-prod-bucket".format(userid, id)
-        S3_PR_BUCKET = "{}-{}-pr-bucket".format(userid, id)
-        CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(userid, id)
+        S3_PROD_BUCKET = "{}-{}-prod-bucket".format(AWS_ACCOUNT, id)
+        S3_PR_BUCKET = "{}-{}-pr-bucket".format(AWS_ACCOUNT, id)
+        CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(AWS_ACCOUNT, id)
 
         # Define CodeBuild resource.
         git_hub_source = codebuild.Source.git_hub(

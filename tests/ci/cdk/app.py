@@ -42,6 +42,6 @@ AwsLcGitHubCIStack(app, "aws-lc-ci-windows-x86", WINDOWS_X86_ECR_REPO, win_x86_b
 fuzz_build_spec_file = "cdk/codebuild/github_ci_fuzzing_omnibus.yaml"
 AwsLcGitHubFuzzCIStack(app, "aws-lc-ci-fuzzing", LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, fuzz_build_spec_file, env=env)
 bm_framework_build_spec_file = "./cdk/codebuild/bm_framework_omnibus.yaml"
-BmFrameworkStack(app, "aws-lc-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
+BmFrameworkStack(app, "aws-lc-ci-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
 
 app.synth()
