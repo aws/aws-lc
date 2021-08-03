@@ -46,6 +46,6 @@ mainSteps:
         - docker build -t ubuntu-20.04"${IMAGE_TAG_POST}":clang-7x aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_clang-7x/
         - docker build -t ubuntu-20.04"${IMAGE_TAG_POST}":bm-framework aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_bm-framework/
         # start the container and run the bm script
-        - exec_docker="docker run --env OPENSSL_ia32cap=${OPENSSL_ia32cap} --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env COMMIT_ID={COMMIT_ID} --env CPU_TYPE=${CPU_TYPE} --env NOHW_TYPE={NOHW_TYPE} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04${IMAGE_TAG_POST}:bm-framework"
+        - exec_docker="docker run --env OPENSSL_ia32cap=${OPENSSL_ia32cap} --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env PR_NUM={PR_NUM} --env COMMIT_ID={COMMIT_ID} --env CPU_TYPE=${CPU_TYPE} --env NOHW_TYPE={NOHW_TYPE} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04${IMAGE_TAG_POST}:bm-framework"
         - chmod +x aws-lc-pr/tests/ci/build_run_benchmarks.sh
         - $exec_docker ./aws-lc-pr/tests/ci/build_run_benchmarks.sh

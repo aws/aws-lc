@@ -24,6 +24,7 @@ cleanup() {
 trap cleanup EXIT
 
 # print some information for reference
+echo GitHub PR Number: "${CODEBUILD_WEBHOOK_TRIGGER}"
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo AWS Account ID: "${AWS_ACCOUNT_ID}"
@@ -38,6 +39,7 @@ subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --
 generate_ssm_document_file() {
   # use sed to replace placeholder values inside preexisting document
   sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
+    -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER},g" \
     -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
     -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
     -e "s,{OPENSSL_ia32cap},$2,g" \
@@ -116,8 +118,8 @@ noavx_ssm_doc_name=$(create_ssm_document "noavx")
 ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name} ${noavx_ssm_doc_name}"
 
 # delete contents of 'latest' folders before uploading anything new to them
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest" --recursive
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest" --recursive
+aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
+aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
 
 #$1 is the document name, $2 is the instance ids
 run_ssm_command() {
