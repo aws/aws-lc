@@ -31,9 +31,9 @@ echo AWS Account ID: "${AWS_ACCOUNT_ID}"
 echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
 
 # get information for ec2 instances
-vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-ci-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
+vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-ci-bm-framework/aws-lc-ci-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
 sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=bm_framework_ec2_sg --query SecurityGroups[*].GroupId --output text)"
-subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-ci-bm-framework/aws-lc-bm-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
+subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-ci-bm-framework/aws-lc-ci-bm-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
 
 #$1 is nohw type, $2 is OPENSSL_ia32cap value
 generate_ssm_document_file() {
@@ -59,8 +59,8 @@ create_ec2_instances() {
   instance_id="$(aws ec2 run-instances --image-id "$1" --count 1 \
     --instance-type "$2" --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
     --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
-    --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
-    --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
+    --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-ci-bm-framework-ec2-x86-instance"}]' \
+    --iam-instance-profile Name=aws-lc-ci-bm-framework-ec2-profile \
     --placement 'AvailabilityZone=us-west-2a' \
     --query Instances[*].InstanceId --output text)"
   echo "${instance_id}"
