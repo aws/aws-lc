@@ -24,9 +24,6 @@ mainSteps:
         - mkdir bm_framework
         - cd bm_framework
         - git clone {GITHUB_REPO} aws-lc-pr
-        - git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
-        - git clone https://boringssl.googlesource.com/boringssl
-        - git clone https://github.com/openssl/openssl.git
         # install docker
         - apt-get update
         - apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
@@ -35,17 +32,14 @@ mainSteps:
         - echo "deb [arch="${CPU_TYPE}" signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
         - apt-get update
         - apt-get install -y docker-ce docker-ce-cli containerd.io
-        # build docker image and get dependencies from it
+        # build docker images and get dependencies from it
         - cd aws-lc-pr
         - git checkout {COMMIT_ID}
-        - cd ../
-        - cd openssl
-        - git checkout OpenSSL_1_1_1-stable
         - cd ../
         - docker build -t ubuntu-20.04"${IMAGE_TAG_POST}":base aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_base/
         - docker build -t ubuntu-20.04"${IMAGE_TAG_POST}":clang-7x aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_clang-7x/
         - docker build -t ubuntu-20.04"${IMAGE_TAG_POST}":bm-framework aws-lc-pr/tests/ci/docker_images/"${CPU_ARCH}"/ubuntu-20.04_clang-7x-bm-framework/
         # start the container and run the bm script
-        - exec_docker="docker run --env OPENSSL_ia32cap=${OPENSSL_ia32cap} --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env PR_NUM={PR_NUM} --env COMMIT_ID={COMMIT_ID} --env CPU_TYPE=${CPU_TYPE} --env NOHW_TYPE={NOHW_TYPE} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04${IMAGE_TAG_POST}:bm-framework"
+        - exec_docker="docker run --env PR_FOLDER_NAME=aws-lc-pr --env OPENSSL_ia32cap=${OPENSSL_ia32cap} --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env PR_NUM={PR_NUM} --env COMMIT_ID={COMMIT_ID} --env CPU_TYPE=${CPU_TYPE} --env NOHW_TYPE={NOHW_TYPE} -v `pwd`:`pwd` -w `pwd` ubuntu-20.04${IMAGE_TAG_POST}:bm-framework"
         - chmod +x aws-lc-pr/tests/ci/build_run_benchmarks.sh
         - $exec_docker ./aws-lc-pr/tests/ci/build_run_benchmarks.sh

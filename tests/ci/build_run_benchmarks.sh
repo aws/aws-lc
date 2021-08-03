@@ -2,11 +2,19 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# set default value of directory name
+if [ -z "${PR_FOLDER_NAME}" ]; then export PR_FOLDER_NAME=aws-lc; fi
+
 # run this from the bm_framework root directory!
 OPENSSL_ROOT=$(pwd)/openssl
 BORINGSSL_ROOT=$(pwd)/boringssl
-AWSLC_PR_ROOT=$(pwd)/aws-lc-pr
+AWSLC_PR_ROOT=$(pwd)/"${PR_FOLDER_NAME}"
 AWSLC_PROD_ROOT=$(pwd)/aws-lc-prod
+
+# clone the various repositories we need (we already have aws-lc-pr since we need it to run this script)
+git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
+git clone https://boringssl.googlesource.com/boringssl
+git clone --branch OpenSSL_1_0_2-stable https://github.com/openssl/openssl.git
 
 # build OpenSSL
 mkdir openssl/build
