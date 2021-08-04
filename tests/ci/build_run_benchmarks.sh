@@ -28,17 +28,17 @@ cmake -Bboringssl/build -Hboringssl -GNinja -DCMAKE_BUILD_TYPE=Release
 ninja -C boringssl/build
 
 # build AWSLC pr
-mkdir aws-lc-pr/build
-cmake -Baws-lc-pr/build -Haws-lc-pr -GNinja -DCMAKE_BUILD_TYPE=Release \
+mkdir "${PR_FOLDER_NAME}"/build
+cmake -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}" \
   -DBORINGSSL_INSTALL_DIR="${BORINGSSL_ROOT}" \
   -DOPENSSL_INSTALL_DIR="${OPENSSL_ROOT}"
-ninja -C aws-lc-pr/build
+ninja -C "${PR_FOLDER_NAME}"/build
 
 # build FIPS compliant version of AWSLC pr
-mkdir aws-lc-pr/fips_build
-cmake -Baws-lc-pr/fips_build -Haws-lc-pr -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"
-ninja -C aws-lc-pr/fips_build
+mkdir "${PR_FOLDER_NAME}"/fips_build
+cmake -B"${PR_FOLDER_NAME}"/fips_build -H"${PR_FOLDER_NAME}" -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"
+ninja -C "${PR_FOLDER_NAME}"/fips_build
 
 # build AWSLC prod
 mkdir aws-lc-prod/build
