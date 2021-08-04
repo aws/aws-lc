@@ -24,20 +24,22 @@ cleanup() {
 trap cleanup EXIT
 
 # print some information for reference
+echo GitHub PR Number: "${CODEBUILD_WEBHOOK_TRIGGER}"
 echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo AWS Account ID: "${AWS_ACCOUNT_ID}"
 echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
 
 # get information for ec2 instances
-vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
+vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-ci-bm-framework/aws-lc-ci-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
 sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=bm_framework_ec2_sg --query SecurityGroups[*].GroupId --output text)"
-subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-bm-framework/aws-lc-bm-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
+subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-ci-bm-framework/aws-lc-ci-bm-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
 
 #$1 is nohw type, $2 is OPENSSL_ia32cap value
 generate_ssm_document_file() {
   # use sed to replace placeholder values inside preexisting document
   sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
+    -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER},g" \
     -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
     -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
     -e "s,{OPENSSL_ia32cap},$2,g" \
@@ -57,8 +59,8 @@ create_ec2_instances() {
   instance_id="$(aws ec2 run-instances --image-id "$1" --count 1 \
     --instance-type "$2" --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
     --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
-    --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-bm-framework-ec2-x86-instance"}]' \
-    --iam-instance-profile Name=aws-lc-bm-framework-ec2-profile \
+    --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-ci-bm-framework-ec2-x86-instance"}]' \
+    --iam-instance-profile Name=aws-lc-ci-bm-framework-ec2-profile \
     --placement 'AvailabilityZone=us-west-2a' \
     --query Instances[*].InstanceId --output text)"
   echo "${instance_id}"
@@ -116,15 +118,15 @@ noavx_ssm_doc_name=$(create_ssm_document "noavx")
 ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name} ${noavx_ssm_doc_name}"
 
 # delete contents of 'latest' folders before uploading anything new to them
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest" --recursive
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest" --recursive
+aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
+aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
 
 #$1 is the document name, $2 is the instance ids
 run_ssm_command() {
   local command_id
   command_id="$(aws ssm send-command --instance-ids "${2}" \
     --document-name "${1}" \
-    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
+    --cloud-watch-output-config CloudWatchLogGroupName="aws-lc-ci-bm-framework-cw-logs",CloudWatchOutputEnabled=true \
     --query Command.CommandId --output text)"
   echo "${command_id}"
 }

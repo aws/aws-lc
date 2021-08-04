@@ -2,11 +2,19 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# set default value of directory name
+if [ -z "${PR_FOLDER_NAME}" ]; then export PR_FOLDER_NAME=aws-lc; fi
+
 # run this from the bm_framework root directory!
 OPENSSL_ROOT=$(pwd)/openssl
 BORINGSSL_ROOT=$(pwd)/boringssl
-AWSLC_PR_ROOT=$(pwd)/aws-lc-pr
+AWSLC_PR_ROOT=$(pwd)/"${PR_FOLDER_NAME}"
 AWSLC_PROD_ROOT=$(pwd)/aws-lc-prod
+
+# clone the various repositories we need (we already have aws-lc-pr since we need it to run this script)
+git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
+git clone https://boringssl.googlesource.com/boringssl
+git clone --branch OpenSSL_1_0_2-stable https://github.com/openssl/openssl.git
 
 # build OpenSSL
 mkdir openssl/build
@@ -85,41 +93,41 @@ python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py bssl_bm.csv aw
 bssl_vs_pr_code="$?"
 
 # upload results to s3
-aws s3 cp aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
-aws s3 cp aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
-aws s3 cp aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
-aws s3 cp aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
-aws s3 cp ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
-aws s3 cp bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
+aws s3 cp aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
+aws s3 cp aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
+aws s3 cp aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
+aws s3 cp aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
+aws s3 cp ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
+aws s3 cp bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
 
 # upload results to lastest folders in s3
-aws s3 mv aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
-aws s3 mv aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
-aws s3 mv aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
-aws s3 mv aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
-aws s3 mv ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
-aws s3 mv bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
+aws s3 mv aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
+aws s3 mv aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
+aws s3 mv aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
+aws s3 mv aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
+aws s3 mv ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
+aws s3 mv bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
 
 # if any of the results gave an exit code of 5, there's a performance regression
 exit_fail=false
 if [ "${prod_vs_pr_code}" != 0 ]; then
-  aws s3 cp prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
-  aws s3 mv prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
+  aws s3 cp prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
+  aws s3 mv prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
   exit_fail=true
 fi
 if [ "${prod_vs_pr_fips_code}" != 0 ]; then
-  aws s3 cp prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
-  aws s3 mv prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
+  aws s3 cp prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
+  aws s3 mv prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
   exit_fail=true
 fi
 if [ "${ossl_vs_pr_code}" != 0 ]; then
-  aws s3 cp ossl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_vs_pr.csv"
-  aws s3 mv ossl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-ossl_vs_pr.csv"
+  aws s3 cp ossl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_vs_pr.csv"
+  aws s3 mv ossl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-ossl_vs_pr.csv"
   exit_fail=true
 fi
 if [ "${bssl_vs_pr_code}" != 0 ]; then
-  aws s3 cp bssl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_vs_pr.csv"
-  aws s3 mv bssl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-bm-framework-pr-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-bssl_vs_pr.csv"
+  aws s3 cp bssl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_vs_pr.csv"
+  aws s3 mv bssl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-bssl_vs_pr.csv"
   exit_fail=true
 fi
 

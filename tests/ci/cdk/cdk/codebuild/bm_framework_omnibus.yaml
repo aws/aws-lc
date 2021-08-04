@@ -13,4 +13,4 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_bm-framework_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x-bm-framework_latest
