@@ -135,6 +135,14 @@ nosha_ssm_command_id=$(run_ssm_command "${nosha_ssm_doc_name}" "${x86_nosha_id}"
 noavx_ssm_command_id=$(run_ssm_command "${noavx_ssm_doc_name}" "${x86_noavx_id}")
 ssm_command_ids="${x86_ssm_command_id} ${arm_ssm_command_id} ${nosha_ssm_command_id} ${noavx_ssm_command_id}"
 
+# helper function to find and return contents of file if it exists, and nothing if it doesn't
+# $1 is the commit id, $2 is the filename we want
+get_s3_contents() {
+  aws s3 ls s3://307533924368-aws-lc-bm-framework-pr-bucket/"${1}"/"${2}" && \
+  echo aws s3 cp s3://307533924368-aws-lc-bm-framework-pr-bucket/"${1}"/"${2}" - | head || \
+  echo -1
+}
+
 # Give some time for the commands to run
 for i in {1..30}; do
   echo "${i}: Continue to wait 3 min for SSM commands to finish."
@@ -163,6 +171,14 @@ for i in {1..30}; do
     # if success is still true here, then none of the commands failed
     if [ "${success}" != true ]; then
       echo "An SSM command failed!"
+
+      # if an SSM command failed, then we want to post a comment on the PR to tell us why
+      oauth=$(aws secretsmanager get-secret-value --secret-id 'aws-lc-ci-external-credential' --version-stage AWSCURRENT)
+      curl -u "billbo-yang:oauth" \
+        -X POST -H "Accept: application.vnd.github.v3+json" \
+        https://api.github.com/repos/billbo-yang/aws-lc/issues/4/comments \
+        -d '{"body":"An SSM command failed!"}'
+
       exit 1
     fi
     break
