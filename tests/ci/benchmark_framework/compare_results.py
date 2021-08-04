@@ -33,6 +33,7 @@ df1 = read_data(file1)
 df2 = read_data(file2)
 
 # only compare benchmarks that appear in both of the files
+# We need this because the speed tool at the time of writing has some tests that are disabled for OpenSSL
 # we're using .iloc[:, 0] here because we're filtering out rows where the content of the 0th index column in one df isn't in the other
 # details of .iloc can be found here: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.iloc.html
 # .shape[0] represents the number of rows in the dataframe
