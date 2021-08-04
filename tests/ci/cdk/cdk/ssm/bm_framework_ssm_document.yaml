@@ -38,7 +38,7 @@ mainSteps:
         # log into docker and get needed docker image from ecr
         - export ECR_REPO="{AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-${CPU_ARCH}"
         - docker login -u AWS -p $(aws ecr get-login-password) https://"${ECR_REPO}"
-        - docker pull "${ECS_REPO}:ubuntu-20.04_clang-7x-bm-framework_latest"
+        - docker pull "${ECR_REPO}:ubuntu-20.04_clang-7x-bm-framework_latest"
         - # start the container and run the bm script
         - exec_docker="docker run --env PR_FOLDER_NAME=aws-lc-pr --env OPENSSL_ia32cap=${OPENSSL_ia32cap} --env AWS_ACCOUNT_ID={AWS_ACCOUNT_ID} --env PR_NUM={PR_NUM} --env COMMIT_ID={COMMIT_ID} --env CPU_TYPE=${CPU_TYPE} --env NOHW_TYPE={NOHW_TYPE} -v `pwd`:`pwd` -w `pwd` ${ECR_REPO}:ubuntu-20.04_clang-7x-bm-framework_latest"
         - chmod +x aws-lc-pr/tests/ci/build_run_benchmarks.sh
