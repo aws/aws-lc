@@ -1,11 +1,10 @@
 #!/bin/bash
-set -exo pipefail
+set -xo
 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-docker -v
-if [ $? != 0 ]; then
+if ! [ -x "$(command -v docker)" ]; then
   apt-get update
   apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
