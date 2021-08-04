@@ -2,6 +2,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+set -x
+
 # set default value of directory name
 if [ -z "${PR_FOLDER_NAME}" ]; then export PR_FOLDER_NAME=aws-lc; fi
 
@@ -14,7 +16,7 @@ AWSLC_PROD_ROOT=$(pwd)/aws-lc-prod
 # clone the various repositories we need (we already have aws-lc-pr since we need it to run this script)
 git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
 git clone https://boringssl.googlesource.com/boringssl
-git clone --branch OpenSSL_1_0_2-stable https://github.com/openssl/openssl.git
+git clone --branch OpenSSL_1_1_1-stable https://github.com/openssl/openssl.git
 
 # build OpenSSL
 mkdir openssl/build
@@ -28,17 +30,17 @@ cmake -Bboringssl/build -Hboringssl -GNinja -DCMAKE_BUILD_TYPE=Release
 ninja -C boringssl/build
 
 # build AWSLC pr
-mkdir aws-lc-pr/build
-cmake -Baws-lc-pr/build -Haws-lc-pr -GNinja -DCMAKE_BUILD_TYPE=Release \
+mkdir "${PR_FOLDER_NAME}"/build
+cmake -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}" \
   -DBORINGSSL_INSTALL_DIR="${BORINGSSL_ROOT}" \
   -DOPENSSL_INSTALL_DIR="${OPENSSL_ROOT}"
-ninja -C aws-lc-pr/build
+ninja -C "${PR_FOLDER_NAME}"/build
 
 # build FIPS compliant version of AWSLC pr
-mkdir aws-lc-pr/fips_build
-cmake -Baws-lc-pr/fips_build -Haws-lc-pr -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"
-ninja -C aws-lc-pr/fips_build
+mkdir "${PR_FOLDER_NAME}"/fips_build
+cmake -B"${PR_FOLDER_NAME}"/fips_build -H"${PR_FOLDER_NAME}" -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"
+ninja -C "${PR_FOLDER_NAME}"/fips_build
 
 # build AWSLC prod
 mkdir aws-lc-prod/build

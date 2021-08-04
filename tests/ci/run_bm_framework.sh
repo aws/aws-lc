@@ -119,7 +119,7 @@ ssm_document_names="${ssm_doc_name} ${nosha_ssm_doc_name} ${noavx_ssm_doc_name}"
 
 # delete contents of 'latest' folders before uploading anything new to them
 aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
-aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}" --recursive
+aws s3 rm s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest" --recursive
 
 #$1 is the document name, $2 is the instance ids
 run_ssm_command() {
