@@ -175,12 +175,12 @@ for i in {1..30}; do
       echo "An SSM command failed!"
 
       # if an SSM command failed, then we want to post a comment on the PR to tell us why
-      oauth=$(aws secretsmanager get-secret-value --secret-id 'aws-lc-ci-external-credential' --version-stage AWSCURRENT)
-      curl -u "billbo-yang:oauth" \
+      oauth=$(aws secretsmanager get-secret-value --secret-id 'BBY-TEMP-COMMENT-PAT' --version-stage AWSCURRENT \
+      --query SecretString --output text)
+      curl -u "billbo-yang:${oauth}" \
         -X POST -H "Accept: application.vnd.github.v3+json" \
         https://api.github.com/repos/billbo-yang/aws-lc/issues/4/comments \
         -d '{"body":"An SSM command failed!"}'
-
       exit 1
     fi
     break
