@@ -182,11 +182,27 @@ for i in {1..30}; do
       pr_num="${CODEBUILD_WEBHOOK_TRIGGER}"
       pr_num=${pr_num#*/}
 
+      # download regression information files
+      regression_files=$(aws s3api list-objects --bucket "${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket" \
+      --prefix "${CODEBUILD_SOURCE_VERSION}/regressions/" --query Contents[*].Key --output text)
+
+      post_body=""
+      for filename in ${regression_files}; do
+        aws s3 cp "s3://${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${filename}" .
+
+        # get the local filename from the s3 filename
+        file=${filename#*regressions/}
+
+        post_body="${post_body}${file}\n"
+      done
+
+      post_body="Regressions detected! Here are the details...\n${post_body}"
+
       # send POST request to GitHub
       curl -u "billbo-yang:${oauth}" \
         -X POST -H "Accept: application.vnd.github.v3+json" \
         https://api.github.com/repos/billbo-yang/aws-lc/issues/"${pr_num}"/comments \
-        -d '{"body":"An SSM command failed!"}'
+        -d "{\"body\":\"${post_body}\"}"
       exit 1
     fi
     break
