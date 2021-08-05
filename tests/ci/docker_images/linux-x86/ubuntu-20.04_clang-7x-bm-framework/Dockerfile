@@ -12,9 +12,9 @@ RUN set -ex && \
     python3.8 \
     python3-pip \
     make && \
-    pip install pandas && \
-    pip install numpy && \
-    pip install boto3 && \
+    pip install pandas==1.2.5 && \
+    pip install numpy==1.21.0 && \
+    pip install boto3==1.18.11 && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \

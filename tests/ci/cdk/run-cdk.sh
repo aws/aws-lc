@@ -18,6 +18,10 @@ function delete_s3_buckets() {
     if [[ "${bucket_name}" == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
       aws s3 rm "s3://${bucket_name}" --recursive
       aws s3api delete-bucket --bucket "${bucket_name}"
+    # Delete bm-framework buckets if we're not on the team account
+    elif [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
+      aws s3 rm "s3://${bucket_name}" --recursive
+      aws s3api delete-bucket --bucket "${bucket_name}"
     fi
   done
 }
