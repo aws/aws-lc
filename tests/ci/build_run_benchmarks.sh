@@ -111,6 +111,7 @@ aws s3 mv ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket
 aws s3 mv bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
 
 # if any of the results gave an exit code of 5, there's a performance regression
+# we only want to actually fail the vote if we've detected a regression in the pr version of aws-lc and tip of main of aws-lc (for fips and non-fips)
 exit_fail=false
 if [ "${prod_vs_pr_code}" != 0 ]; then
   aws s3 cp prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
@@ -125,12 +126,10 @@ fi
 if [ "${ossl_vs_pr_code}" != 0 ]; then
   aws s3 cp ossl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_vs_pr.csv"
   aws s3 mv ossl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-ossl_vs_pr.csv"
-  exit_fail=true
 fi
 if [ "${bssl_vs_pr_code}" != 0 ]; then
   aws s3 cp bssl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_vs_pr.csv"
   aws s3 mv bssl_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-bssl_vs_pr.csv"
-  exit_fail=true
 fi
 
 if [ "${exit_fail}" = true ]; then
