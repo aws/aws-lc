@@ -37,7 +37,7 @@ my ($t0,$t1,$t2,$t3) = map("x$_",(11..14));
 my ($one, $r0, $r1) = ("x15","x16","x17");
 
 # my ($t0w) = $t0 =~ s/x/w/r;
-# The above line is substitued with the two lines below because old verions of Perl
+# The above line is substituted with the two lines below because old versions of Perl
 # don't know how to evaluate the substitution regex s/x/w/r.
 my $t0w = $t0;
 $t0w =~ s/x/w/;
