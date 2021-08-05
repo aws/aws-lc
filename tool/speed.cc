@@ -90,7 +90,7 @@ struct TimeResults {
     }
 
     printf("{\"description\": \"%s\", \"numCalls\": %u, \"microseconds\": %u",
-           description.c_str(), num_calls, us);
+           description.c_str(), num_calls/2, us);
 
     if (bytes_per_call > 0) {
       printf(", \"bytesPerCall\": %zu", bytes_per_call);
