@@ -177,9 +177,15 @@ for i in {1..30}; do
       # if an SSM command failed, then we want to post a comment on the PR to tell us why
       oauth=$(aws secretsmanager get-secret-value --secret-id 'BBY-TEMP-COMMENT-PAT' --version-stage AWSCURRENT \
       --query SecretString --output text)
+
+      # get pr number without the 'pr/' part
+      pr_num="${CODEBUILD_WEBHOOK_TRIGGER}"
+      pr_num=${pr_num#*/}
+
+      # send POST request to GitHub
       curl -u "billbo-yang:${oauth}" \
         -X POST -H "Accept: application.vnd.github.v3+json" \
-        https://api.github.com/repos/billbo-yang/aws-lc/issues/4/comments \
+        https://api.github.com/repos/billbo-yang/aws-lc/issues/"${pr_num}"/comments \
         -d '{"body":"An SSM command failed!"}'
       exit 1
     fi
