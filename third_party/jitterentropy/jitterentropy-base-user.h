@@ -181,28 +181,30 @@ static inline void jent_zfree(void *ptr, unsigned int len)
 
 static inline int jent_fips_enabled(void)
 {
-#ifdef LIBGCRYPT
-	return fips_mode();
-#elif defined(OPENSSL)
-#ifdef OPENSSL_FIPS
-	return FIPS_mode();
-#else
-	return 0;
-#endif
-#else
-#define FIPS_MODE_SWITCH_FILE "/proc/sys/crypto/fips_enabled"
-	char buf[2] = "0";
-	int fd = 0;
+  return 1;
 
-	if ((fd = open(FIPS_MODE_SWITCH_FILE, O_RDONLY)) >= 0) {
-		while (read(fd, buf, sizeof(buf)) < 0 && errno == EINTR);
-		close(fd);
-	}
-	if (buf[0] == '1')
-		return 1;
-	else
-		return 0;
-#endif
+//#ifdef LIBGCRYPT
+//	return fips_mode();
+//#elif defined(OPENSSL)
+//#ifdef OPENSSL_FIPS
+//	return FIPS_mode();
+//#else
+//	return 0;
+//#endif
+//#else
+//#define FIPS_MODE_SWITCH_FILE "/proc/sys/crypto/fips_enabled"
+//	char buf[2] = "0";
+//	int fd = 0;
+//
+//	if ((fd = open(FIPS_MODE_SWITCH_FILE, O_RDONLY)) >= 0) {
+//		while (read(fd, buf, sizeof(buf)) < 0 && errno == EINTR);
+//		close(fd);
+//	}
+//	if (buf[0] == '1')
+//		return 1;
+//	else
+//		return 0;
+//#endif
 }
 
 static inline void jent_memset_secure(void *s, size_t n)
