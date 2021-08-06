@@ -25,3 +25,6 @@ WIN_EC2_TAG_KEY = EnvUtil.get("WIN_EC2_TAG_KEY", "aws-lc")
 WIN_EC2_TAG_VALUE = EnvUtil.get("WIN_EC2_TAG_VALUE", "aws-lc-windows-docker-image-build")
 SSM_DOCUMENT_NAME = EnvUtil.get("WIN_DOCKER_BUILD_SSM_DOCUMENT", "windows-ssm-document")
 EXTERNAL_CREDENTIAL_SECRET_ARN = EnvUtil.get("EXTERNAL_CREDENTIAL_SECRET_ARN", "")
+
+# Used when AWS CDK defines resources for the benchmarking framework
+COMMENT_BOT_ARN = EnvUtil.get("COMMENT_BOT_ARN", "")

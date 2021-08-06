@@ -41,7 +41,8 @@ def s3_bm_framework_policies_in_json(s3_bucket_name):
                 "Effect": "Allow",
                 "Action": [
                     "s3:ListBucket",
-                    "s3:DeleteObject"
+                    "s3:DeleteObject",
+                    "s3:GetObject"
                 ],
                 "Resource": [
                     "arn:aws:s3:::{}".format(s3_bucket_name),
