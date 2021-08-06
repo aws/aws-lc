@@ -59,8 +59,7 @@ def main():
     compared = np.where(((df2_numCalls - df1_numCalls)/df1_numCalls*100 <= -15), df1.iloc[:, 0], np.nan)
 
     compared_df = dfs.loc[dfs.iloc[:, 0].isin(compared)]
-    compared_df = compared_df.dropna()
-    compared_df["Percentage Difference"] = ((df2_numCalls - df1_numCalls)/df1_numCalls*100)
+    compared_df["Percentage Difference"] = ((compared_df.iloc[:, 5] - compared_df.iloc[:, 1])/compared_df.iloc[:, 1]*100)
 
     # if the compared dataframe isn't empty, there are significant regressions present
     if not compared_df.empty:
