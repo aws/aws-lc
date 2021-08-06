@@ -165,19 +165,19 @@ static int rdrand(uint8_t *buf, size_t len) {
 #if defined(JITTER_ENTROPY)
 # include "../third_party/jitterentropy/jitterentropy.h"
 
-  // Jitter entropy collector structure.
-  static struct rand_data *jitter_ec = NULL;
-  static int jitter_initialized = 0;
+// Jitter entropy collector structure.
+static struct rand_data *jitter_ec = NULL;
+static int jitter_initialized = 0;
 
-  // Jitter library is not thread-safe so we have to use
-  // a lock when interacting with it.
-  DEFINE_STATIC_MUTEX(jitter_lock);
+// Jitter library is not thread-safe for an instance of rand_data
+// so we have to use a lock when interacting with it.
+DEFINE_STATIC_MUTEX(jitter_lock);
 
-  static void jitter_ec_clear(void) __attribute__((destructor));
-  static void jitter_ec_clear(void) {
-    CRYPTO_STATIC_MUTEX_lock_write(jitter_lock_bss_get());
-    jent_entropy_collector_free(jitter_ec);
-  }
+static void jitter_ec_clear(void) __attribute__((destructor));
+static void jitter_ec_clear(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(jitter_lock_bss_get());
+  jent_entropy_collector_free(jitter_ec);
+}
 #endif
 
 void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
@@ -188,24 +188,22 @@ void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
   CRYPTO_STATIC_MUTEX_lock_write(jitter_lock_bss_get());
   if (jitter_initialized != 1) {
     if (jent_entropy_init()) {
-      printf("Failed to initialize Jitter!\n");
       abort();
     }
     jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
     if (!jitter_ec) {
-      printf("Failed to allocate jitter entropy collector!\n");
       abort();
     }
     jitter_initialized = 1;
   }
 
   if (jent_read_entropy(jitter_ec, (char *) out_entropy, out_entropy_len) < 0) {
-    printf("Failed to read entropy from Jitter!\n");
     abort();
   }
   CRYPTO_STATIC_MUTEX_unlock_write(jitter_lock_bss_get());
 
 #else
+
   *out_used_cpu = 0;
   if (have_rdrand() && rdrand(out_entropy, out_entropy_len)) {
     *out_used_cpu = 1;

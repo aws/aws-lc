@@ -498,6 +498,10 @@ if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(crypto pthread)
 endif()
 
+if(JITTER_ENTROPY)
+  target_link_libraries(crypto jitterentropy)
+endif()
+
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
 if(USE_CUSTOM_LIBCXX)
@@ -610,10 +614,6 @@ if(BUILD_TESTING)
     target_link_libraries(crypto_test ws2_32)
   endif()
   add_dependencies(all_tests crypto_test)
-endif()
-
-if(JITTER_ENTROPY)
-  target_link_libraries(crypto jitterentropy)
 endif()
 
 install(TARGETS crypto

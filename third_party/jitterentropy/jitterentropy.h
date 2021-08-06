@@ -310,9 +310,14 @@ struct rand_data
 #endif
 
 /* Number of low bits of the time value that we want to consider */
+
 /* get raw entropy */
 JENT_PRIVATE_STATIC
 ssize_t jent_read_entropy(struct rand_data *ec, char *data, size_t len);
+
+JENT_PRIVATE_STATIC
+ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len);
+
 /* initialize an instance of the entropy collector */
 JENT_PRIVATE_STATIC
 struct rand_data *jent_entropy_collector_alloc(unsigned int osr,

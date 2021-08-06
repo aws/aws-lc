@@ -486,15 +486,23 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
-#add_library(jitterentropy SHARED IMPORTED) # or STATIC instead of SHARED
-#set_target_properties(jitterentropy PROPERTIES
-#        IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/third_party/jitterentropy/libjitterentropy.so"
-#        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/third_party/jitterentropy"
-#        )
-
 if(JITTER_ENTROPY)
+  if(NOT FIPS)
+    message(FATAL_ERROR "Jitter entropy can be used only in FIPS build")
+  endif()
+
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DJITTER_ENTROPY")
-  link_directories(${CMAKE_SOURCE_DIR}/third_party/jitterentropy/)
+
+  file(GLOB JITTER_SOURCES "${CMAKE_SOURCE_DIR}/third_party/jitterentropy/*.c")
+  set(JITTER_COMPILE_FLAGS "-fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -fPIC -O0 -fwrapv -Wconversion")
+  set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS ${JITTER_COMPILE_FLAGS})
+  add_library(jitterentropy STATIC "${JITTER_SOURCES}")
+
+  install(TARGETS jitterentropy
+          EXPORT crypto-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          )
 endif()
 
 if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
