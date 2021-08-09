@@ -216,6 +216,7 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     struct user_regs_struct regs;
     ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
     const auto syscall_number = regs.orig_rax;
+    static auto previous_syscall = regs.orig_rax;
 
     bool is_opening_urandom = false;
     bool is_urandom_ioctl = false;
@@ -268,7 +269,10 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
 
       case __NR_nanosleep: {
         if (urandom_fd >= 0) {
-          if (flags & URANDOM_ERROR) {
+          // We can have two or more consecutive |nanosleep| calls. This happens
+          // if |nanosleep| returns -1 during exponential backoff. The PRNG
+          // model only accounts for one |nanosleep| call. Do the same here.
+          if ((flags & URANDOM_ERROR) && (previous_syscall != __NR_nanosleep)) {
             out_trace->push_back(Event::NanoSleep());
           }
         }
@@ -285,6 +289,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         }
       }
     }
+
+    previous_syscall = syscall_number;
 
     if (inject_error) {
       // Replace the system call number with -1 to cause the kernel to ignore
