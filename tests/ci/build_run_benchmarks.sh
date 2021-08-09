@@ -102,7 +102,7 @@ aws s3 cp aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework
 aws s3 cp ossl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-ossl_bm.csv"
 aws s3 cp bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-bssl_bm.csv"
 
-# upload results to lastest folders in s3
+# upload results to latest folders in s3
 aws s3 mv aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
 aws s3 mv aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
 aws s3 mv aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
@@ -133,5 +133,8 @@ if [ "${bssl_vs_pr_code}" != 0 ]; then
 fi
 
 if [ "${exit_fail}" = true ]; then
+  # we want to also upload the metadata file that is produced when a regression detected
+  aws s3 cp metadata.txt s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/regressions/metadata.txt"
+  aws s3 mv metadata.txt s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/regressions/metadata.txt"
   exit 1
 fi

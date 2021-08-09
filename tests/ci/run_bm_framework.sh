@@ -182,21 +182,11 @@ for i in {1..30}; do
       pr_num="${CODEBUILD_WEBHOOK_TRIGGER}"
       pr_num=${pr_num#*/}
 
-      # download regression information files
-      regression_files=$(aws s3api list-objects --bucket "${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket" \
-      --prefix "${CODEBUILD_SOURCE_VERSION}/regressions/" --query Contents[*].Key --output text)
+      # get metadata from S3
+      aws s3 cp "s3://${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/regressions/metadata.txt" .
 
-      post_body=""
-      for filename in ${regression_files}; do
-        aws s3 cp "s3://${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${filename}" .
-
-        # get the local filename from the s3 filename
-        file=${filename#*regressions/}
-
-        post_body="${post_body}${file}\n"
-      done
-
-      post_body="Regressions detected! Here are the details...\n${post_body}"
+      data=$(cat metadata.txt)
+      post_body="Regressions detected!\n\n${data}"
 
       # send POST request to GitHub
       curl -u "billbo-yang:${oauth}" \

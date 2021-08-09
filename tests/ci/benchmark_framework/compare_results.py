@@ -67,9 +67,18 @@ def main():
         if not output_file.endswith(".csv"):
             output_file += ".csv"
 
+        # write dataframe to a csv file
         with open(output_file, "w") as f:
             f.write("{},,,,{},,,,\n".format(file1, file2))
         compared_df.to_csv(output_file, index=False, mode='a')
+
+        # write details of regression in human-readable format to metadata.txt
+        with open("metadata.txt", "a") as f:
+            for index, row in compared_df.iterrows():
+                f.write("Performance of {} is {}% slower in {} than {}.\n".format(
+                    row[0],
+                    abs(row['Percentage Difference']),
+                    file2, file1))
 
         # exit with an error code to denote there is a regression
         print("Regression detected between {} and {}".format(file1, file2), file=sys.stderr)
