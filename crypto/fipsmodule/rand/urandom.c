@@ -121,10 +121,13 @@ static void exponential_backoff(long *backoff) {
   while (r != 0);
 }
 
+// handle_rare_urandom_error initiates exponential backoff simultaniously
+// handling test modes and non-block modes. |backoff| holds the previous backoff
+// delay.
 static int handle_rare_urandom_error(long *backoff) {
 
   if (*g_urandom_test_mode_for_testing_bss_get() == 1) {
-    // Test mode.
+    // In test mode we want to break out of exponential backoff at some point.
     // Faults are injected during test mode that triggers exponential backoff.
     // To avoid an endless loop, count number of iterations and bail after 9
     // iterations, which is enough to cover all possible delays.
@@ -147,10 +150,29 @@ void __msan_unpoison(void *, size_t);
 #endif
 
 static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
+
   ssize_t ret;
+  long backoff = INITIAL_BACKOFF_DELAY;
+
   do {
     ret = syscall(__NR_getrandom, buf, buf_len, flags);
-  } while (ret == -1 && errno == EINTR);
+    if (ret == -1 && errno != EINTR) {
+      if ((flags & GRND_NONBLOCK) != 0) {
+        // Don't block in non-block mode except if a signal handler interrupted
+        // |getrandom|.
+        break;
+      }
+
+      // We have observed extremely rare events in which a |read| on a
+      // |urandom| fd failed with |errno| != |EINTR|. |getrandom| uses |urandom|
+      // under the covers. Assuming transitivity, |getrandom| is therefore also
+      // subject to the same rare error events.
+      if (handle_rare_urandom_error(&backoff) == 0) {
+        // This occurs only in test mode.
+        break;
+      }
+    }
+  } while (ret == -1);
 
 #if defined(OPENSSL_MSAN)
   if (ret > 0) {
@@ -422,7 +444,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
           // intermittent error that is recoverable. Therefore, backoff to allow
           // recovery and to avoid creating a tight spinning loop.
           if (handle_rare_urandom_error(&backoff) == 0) {
-            // This occurs only during test mode.
+            // This occurs only in test mode.
             break;
           }
         }

@@ -88,7 +88,6 @@ static size_t ctr_drbg_get_entropy_length(ctr_drbg_key_len_t ctr_drbg_key_len) {
   switch (ctr_drbg_key_len) {
     case CTR_DRBG_AES_128:
       return CTR_DRBG_AES_128_ENTROPY_LEN;
-      break;
     case CTR_DRBG_AES_256:
       return CTR_DRBG_AES_256_ENTROPY_LEN;
     default:
@@ -109,7 +108,6 @@ static size_t ctr_drbg_get_key_length(ctr_drbg_key_len_t ctr_drbg_key_len) {
   switch (ctr_drbg_key_len) {
     case CTR_DRBG_AES_128:
       return CTR_DRBG_AES_128_KEY_LEN;
-      break;
     case CTR_DRBG_AES_256:
       return CTR_DRBG_AES_256_KEY_LEN;
     default:
