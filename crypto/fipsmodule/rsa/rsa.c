@@ -528,8 +528,6 @@ int RSA_sign(int hash_nid, const uint8_t *digest, unsigned digest_len,
   int signed_msg_is_alloced = 0;
   size_t size_t_out_len;
 
-  usleep(1500);
-
   if (rsa->meth->sign) {
     return rsa->meth->sign(hash_nid, digest, digest_len, out, out_len, rsa);
   }
