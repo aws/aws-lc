@@ -51,6 +51,7 @@ struct Event {
     kOpen,
     kUrandomRead,
     kUrandomIoctl,
+    kNanoSleep,
     kAbort,
   };
 
@@ -92,6 +93,11 @@ struct Event {
     return e;
   }
 
+  static Event NanoSleep() {
+    Event e(Syscall::kNanoSleep);
+    return e;
+  }
+
   std::string String() const {
     char buf[256];
 
@@ -107,6 +113,9 @@ struct Event {
       case Syscall::kUrandomRead:
         snprintf(buf, sizeof(buf), "read(urandom_fd, _, %zu)", length);
         break;
+
+      case Syscall::kNanoSleep:
+        return "nanosleep(_)";
 
       case Syscall::kUrandomIoctl:
         return "ioctl(urandom_fd, RNDGETENTCNT, _)";
@@ -257,6 +266,15 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         break;
       }
 
+      case __NR_nanosleep: {
+        if (urandom_fd >= 0) {
+          if (flags & URANDOM_ERROR) {
+            out_trace->push_back(Event::NanoSleep());
+          }
+        }
+        break;
+      }
+
       case __NR_ioctl: {
         const int ioctl_fd = regs.rdi;
         if (urandom_fd >= 0 && ioctl_fd == urandom_fd &&
@@ -389,6 +407,10 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       }
       ret.push_back(Event::UrandomRead(len));
       if (flags & URANDOM_ERROR) {
+        for (size_t i = 0; i < INJECTED_URANDOM_ERROR_ITERATIONS_FOR_TESTING; i++) {
+          ret.push_back(Event::NanoSleep());
+          ret.push_back(Event::UrandomRead(len));
+        }
         ret.push_back(Event::Abort());
         return false;
       }
@@ -515,6 +537,8 @@ int main(int argc, char **argv) {
   if (getenv("BORINGSSL_IGNORE_PTHREAD_ATFORK")) {
     CRYPTO_fork_detect_ignore_pthread_atfork_for_testing();
   }
+
+  HAZMAT_set_urandom_test_mode_for_testing();
 
   return RUN_ALL_TESTS();
 }

@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #if defined(OPENSSL_LINUX)
@@ -34,6 +35,7 @@
 #include <linux/random.h>
 #include <sys/ioctl.h>
 #endif
+#include <sys/param.h>
 #include <sys/syscall.h>
 
 #if defined(OPENSSL_ANDROID)
@@ -78,6 +80,65 @@
 #include "../delocate.h"
 #include "../../internal.h"
 
+DEFINE_BSS_GET(int, g_urandom_test_mode_for_testing)
+DEFINE_BSS_GET(int, g_exponential_backoff_counter_for_testing)
+
+// One second in nanoseconds.
+#define ONE_SECOND INT64_C(1000000000)
+#define INITIAL_BACKOFF_DELAY 1
+
+// Exponential backoff. |backoff| holds the previous backoff delay. Initial
+// backoff delay is |INITIAL_BACKOFF_DELAY|. This function will be called so
+// rarely (if ever), that we keep it as a function call and don't care about
+// attempting to inline it.
+//
+// iteration          delay
+// ---------    -----------------
+//    1         10          nsec
+//    2         100         nsec
+//    3         1,000       nsec
+//    4         10,000      nsec
+//    5         100,000     nsec
+//    6         1,000,000   nsec
+//    7         10,000,000  nsec
+//    8         99,999,999  nsec
+//    9         99,999,999  nsec
+//    ...
+static void exponential_backoff(long *backoff) {
+
+  int r = 0;
+  struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0 };
+
+  // Cap backoff at 99,999,999  nsec, which is the maximum value the nanoseconds
+  // field in |timespec| can hold.
+  *backoff = MIN((*backoff) * 10, ONE_SECOND - 1);
+  // |nanosleep| can mutate |sleep_time|. Hence, we use |backoff| for state.
+  sleep_time.tv_nsec = *backoff;
+
+  do {
+      r = nanosleep(&sleep_time, &sleep_time);
+  }
+  while (r != 0);
+}
+
+static int handle_rare_urandom_error(long *backoff) {
+
+  if (*g_urandom_test_mode_for_testing_bss_get() == 1) {
+    // Test mode.
+    // Faults are injected during test mode that triggers exponential backoff.
+    // To avoid an endless loop, count number of iterations and bail after 9
+    // iterations, which is enough to cover all possible delays.
+    if (*g_exponential_backoff_counter_for_testing_bss_get() == 9) {
+      return 0;
+    }
+    *g_exponential_backoff_counter_for_testing_bss_get() += 1;
+    exponential_backoff(backoff);
+  } else {
+    exponential_backoff(backoff);
+  }
+
+  return 1;
+}
 
 #if defined(USE_NR_getrandom)
 
@@ -352,9 +413,20 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
       abort();
 #endif
     } else {
+      long backoff = INITIAL_BACKOFF_DELAY;
       do {
         r = read(*urandom_fd_bss_get(), out, len);
-      } while (r == -1 && errno == EINTR);
+        if (r == -1 && errno != EINTR) {
+          // We have observed extremely rare events in which a |read| on a
+          // |urandom| fd failed with |errno| != |EINTR|. We regard this as an
+          // intermittent error that is recoverable. Therefore, backoff to allow
+          // recovery and to avoid creating a tight spinning loop.
+          if (handle_rare_urandom_error(&backoff) == 0) {
+            // This occurs only during test mode.
+            break;
+          }
+        }
+      } while (r == -1);
     }
 
     if (r <= 0) {
@@ -400,4 +472,14 @@ int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   }
 }
 
-#endif  // OPENSSL_URANDOM
+void HAZMAT_set_urandom_test_mode_for_testing(void) {
+  *g_urandom_test_mode_for_testing_bss_get() = 1;
+}
+
+#else  // OPENSSL_URANDOM
+
+void HAZMAT_set_urandom_test_mode_for_testing(void) {
+  return;
+}
+
+#endif
