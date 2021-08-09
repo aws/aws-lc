@@ -9,7 +9,9 @@
 #include "sike_r3/sikep434r3_fips202.h"
 /*#include "utils/s2n_safety.h"
 #include "pq-crypto/s2n_pq.h"
-#include "pq-crypto/s2n_pq_random.h"*/
+#include "pq-crypto/s2n_pq_random.h"
+ delete later - line seperate
+ */
 #include "sike_r3/sikep434r3_api.h"
 #include "sike_r3/sikep434r3_fpx.h"
 #include "tls/s2n_kem.h"
