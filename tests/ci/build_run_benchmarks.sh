@@ -105,7 +105,7 @@ python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/convert_json_to_csv.py 
 # once we have csvs, we want to update the main benchmark results files with the sequential trusttoken results
 # files will be updated in place
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-pr_bm.csv aws-lc-pr_tt_bm.csv
-python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-pr_fips_bm.json aws-lc-pr_tt_fips_bm.csv
+python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-pr_fips_bm.csv aws-lc-pr_tt_fips_bm.csv
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-prod_bm.csv aws-lc-prod_tt_bm.csv
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-prod_fips_bm.csv aws-lc-prod_tt_fips_bm.csv
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py ossl_bm.csv ossl_tt_bm.csv
