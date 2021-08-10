@@ -19,25 +19,25 @@
  * Curve isogeny system "SIDHp434". Base curve: Montgomery curve By^2 = Cx^3 + Ax^2 + Cx defined over
  * GF(p434^2), where A=6, B=1, C=1 and p434 = 2^216*3^137-1 */
 
-const uint64_t p434[S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t p434[SIKE_P434_R3_NWORDS64_FIELD] = {
         0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
         0xFDC1767AE2FFFFFF, 0x7BC65C783158AEA3, 0x6CFC5FD681C52056,
         0x0002341F27177344
 };
 
-const uint64_t p434x2[S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t p434x2[SIKE_P434_R3_NWORDS64_FIELD] = {
         0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
         0xFB82ECF5C5FFFFFF, 0xF78CB8F062B15D47, 0xD9F8BFAD038A40AC,
         0x0004683E4E2EE688
 };
 
-const uint64_t p434x4[S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t p434x4[SIKE_P434_R3_NWORDS64_FIELD] = {
         0xFFFFFFFFFFFFFFFC, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
         0xF705D9EB8BFFFFFF, 0xEF1971E0C562BA8F, 0xB3F17F5A07148159,
         0x0008D07C9C5DCD11
 };
 
-const uint64_t p434p1[S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t p434p1[SIKE_P434_R3_NWORDS64_FIELD] = {
         0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
         0xFDC1767AE3000000, 0x7BC65C783158AEA3, 0x6CFC5FD681C52056,
         0x0002341F27177344
@@ -45,7 +45,7 @@ const uint64_t p434p1[S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
 
 /* Alice's generator values {XPA0 + XPA1*i, XQA0 + xQA1*i, XRA0 + XRA1*i} in GF(p434^2),
  * expressed in Montgomery representation */
-const uint64_t A_gen[6*S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t A_gen[6*SIKE_P434_R3_NWORDS64_FIELD] = {
         0x05ADF455C5C345BF, 0x91935C5CC767AC2B, 0xAFE4E879951F0257,
         0x70E792DC89FA27B1, 0xF797F526BB48C8CD, 0x2181DB6131AF621F,
         0x00000A1C08B1ECC4, /* XPA0 */
@@ -72,7 +72,7 @@ const uint64_t A_gen[6*S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
 };
 
 /* Bob's generator values {XPB0, XQB0, XRB0 + XRB1*i} in GF(p434^2), expressed in Montgomery representation */
-const uint64_t B_gen[6*S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t B_gen[6*SIKE_P434_R3_NWORDS64_FIELD] = {
         0x6E5497556EDD48A3, 0x2A61B501546F1C05, 0xEB919446D049887D,
         0x5864A4A69D450C4F, 0xB883F276A6490D2B, 0x22CC287022D5F5B9,
         0x0001BED4772E551F, /* XPB0 */
@@ -99,27 +99,27 @@ const uint64_t B_gen[6*S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
 };
 
 /* Montgomery constant Montgomery_R2 = (2^448)^2 mod p434 */
-const uint64_t Montgomery_R2[S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t Montgomery_R2[SIKE_P434_R3_NWORDS64_FIELD] = {
         0x28E55B65DCD69B30, 0xACEC7367768798C2, 0xAB27973F8311688D,
         0x175CC6AF8D6C7C0B, 0xABCD92BF2DDE347E, 0x69E16A61C7686D9A,
         0x000025A89BCDD12A
 };
 
 /* Value one in Montgomery representation */
-const uint64_t Montgomery_one[S2N_SIKE_P434_R3_NWORDS64_FIELD] = {
+const uint64_t Montgomery_one[SIKE_P434_R3_NWORDS64_FIELD] = {
         0x000000000000742C, 0x0000000000000000, 0x0000000000000000,
         0xB90FF404FC000000, 0xD801A4FB559FACD4, 0xE93254545F77410C,
         0x0000ECEEA7BD2EDA
 };
 
 /* Fixed parameters for isogeny tree computation */
-const unsigned int strat_Alice[S2N_SIKE_P434_R3_MAX_ALICE-1] = {
+const unsigned int strat_Alice[SIKE_P434_R3_MAX_ALICE-1] = {
         48, 28, 16, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 13, 7, 4,
         2, 1, 1, 2, 1, 1, 3, 2, 1, 1, 1, 1, 5, 4, 2, 1, 1, 2, 1, 1, 2, 1, 1, 1, 21, 12, 7, 4, 2, 1, 1, 2, 1, 1, 3, 2,
         1, 1, 1, 1, 5, 3, 2, 1, 1, 1, 1, 2, 1, 1, 1, 9, 5, 3, 2, 1, 1, 1, 1, 2, 1, 1, 1, 4, 2, 1, 1, 1, 2, 1, 1
 };
 
-const unsigned int strat_Bob[S2N_SIKE_P434_R3_MAX_BOB-1] = {
+const unsigned int strat_Bob[SIKE_P434_R3_MAX_BOB-1] = {
         66, 33, 17, 9, 5, 3, 2, 1, 1, 1, 1, 2, 1, 1, 1, 4, 2, 1, 1, 1, 2, 1, 1, 8, 4, 2, 1, 1, 1, 2, 1, 1, 4, 2, 1, 1,
         2, 1, 1, 16, 8, 4, 2, 1, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 32,
         16, 8, 4, 3, 1, 1, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 16, 8, 4,

@@ -35,7 +35,7 @@ void xDBLe(const point_proj_t P, point_proj_t Q, const f2elm_t *A24plus, const f
 {
     int i;
     
-    copy_words((const digit_t*)P, (digit_t*)Q, 2*2*S2N_SIKE_P434_R3_NWORDS_FIELD);
+    copy_words((const digit_t*)P, (digit_t*)Q, 2*2*SIKE_P434_R3_NWORDS_FIELD);
 
     for (i = 0; i < e; i++) {
         xDBL(Q, Q, A24plus, C24);
@@ -123,7 +123,7 @@ void xTPLe(const point_proj_t P, point_proj_t Q, const f2elm_t *A24minus, const 
 {
     int i;
         
-    copy_words((const digit_t*)P, (digit_t*)Q, 2*2*S2N_SIKE_P434_R3_NWORDS_FIELD);
+    copy_words((const digit_t*)P, (digit_t*)Q, 2*2*SIKE_P434_R3_NWORDS_FIELD);
 
     for (i = 0; i < e; i++) {
         xTPL(Q, Q, A24minus, A24plus);
@@ -284,7 +284,7 @@ static void swap_points(point_proj_t P, point_proj_t Q, const digit_t option)
 {
     unsigned int i;
 
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
         digit_t temp = option & (P->X.e[0][i] ^ Q->X.e[0][i]);
         P->X.e[0][i] = temp ^ P->X.e[0][i];
         Q->X.e[0][i] = temp ^ Q->X.e[0][i];
@@ -309,10 +309,10 @@ void LADDER3PT(const f2elm_t *xP, const f2elm_t *xQ, const f2elm_t *xPQ, const d
     digit_t mask;
     int i, nbits, swap, prevbit = 0;
 
-    if (AliceOrBob == S2N_SIKE_P434_R3_ALICE) {
-        nbits = S2N_SIKE_P434_R3_OALICE_BITS;
+    if (AliceOrBob == SIKE_P434_R3_ALICE) {
+        nbits = SIKE_P434_R3_OALICE_BITS;
     } else {
-        nbits = S2N_SIKE_P434_R3_OBOB_BITS - 1;
+        nbits = SIKE_P434_R3_OBOB_BITS - 1;
     }
 
     /* Initializing constant */
@@ -333,7 +333,7 @@ void LADDER3PT(const f2elm_t *xP, const f2elm_t *xQ, const f2elm_t *xPQ, const d
 
     /* Main loop */
     for (i = 0; i < nbits; i++) {
-        int bit = (m[i >> S2N_SIKE_P434_R3_LOG2RADIX] >> (i & (S2N_SIKE_P434_R3_RADIX-1))) & 1;
+        int bit = (m[i >> SIKE_P434_R3_LOG2RADIX] >> (i & (SIKE_P434_R3_RADIX-1))) & 1;
         swap = bit ^ prevbit;
         prevbit = bit;
         mask = 0 - (digit_t)swap;

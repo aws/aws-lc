@@ -5,7 +5,7 @@
 *********************************************************************************************/
 
 #include "sikep434r3.h"
-/*#include "pq-crypto/s2n_pq.h"*/
+/*#include "pq-crypto/pq.h"*/
 #include "sikep434r3_fp.h"
 #include "sikep434r3_fpx.h"
 #include "sikep434r3_fp_x64_asm.h"
@@ -14,8 +14,8 @@
 void mp_sub434_p2(const digit_t* a, const digit_t* b, digit_t* c)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
       mp_sub434_p2_asm(a, b, c);
       return;
   }
@@ -23,13 +23,13 @@ void mp_sub434_p2(const digit_t* a, const digit_t* b, digit_t* c)
 
   unsigned int i, borrow = 0;
 
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-      S2N_SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+      SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
   }
 
   borrow = 0;
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-      S2N_SIKE_P434_R3_ADDC(borrow, c[i], ((const digit_t*)p434x2)[i], borrow, c[i]);
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+      SIKE_P434_R3_ADDC(borrow, c[i], ((const digit_t*)p434x2)[i], borrow, c[i]);
   }
 }
 
@@ -38,8 +38,8 @@ void mp_sub434_p4(const digit_t* a, const digit_t* b, digit_t* c)
 {
 
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-    if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+    if (sikep434r3_asm_is_enabled()) {
         mp_sub434_p4_asm(a, b, c);
         return;
     }
@@ -47,13 +47,13 @@ void mp_sub434_p4(const digit_t* a, const digit_t* b, digit_t* c)
 
     unsigned int i, borrow = 0;
 
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-        S2N_SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+        SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
     }
 
     borrow = 0;
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-        S2N_SIKE_P434_R3_ADDC(borrow, c[i], ((const digit_t*)p434x4)[i], borrow, c[i]);
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+        SIKE_P434_R3_ADDC(borrow, c[i], ((const digit_t*)p434x4)[i], borrow, c[i]);
     }
 }
 
@@ -63,8 +63,8 @@ void mp_sub434_p4(const digit_t* a, const digit_t* b, digit_t* c)
 void fpadd434(const digit_t* a, const digit_t* b, digit_t* c)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
       fpadd434_asm(a, b, c);
       return;
   }
@@ -72,19 +72,19 @@ void fpadd434(const digit_t* a, const digit_t* b, digit_t* c)
   unsigned int i, carry = 0;
   digit_t mask;
 
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-      S2N_SIKE_P434_R3_ADDC(carry, a[i], b[i], carry, c[i]);
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+      SIKE_P434_R3_ADDC(carry, a[i], b[i], carry, c[i]);
   }
 
   carry = 0;
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-      S2N_SIKE_P434_R3_SUBC(carry, c[i], ((const digit_t*)p434x2)[i], carry, c[i]);
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+      SIKE_P434_R3_SUBC(carry, c[i], ((const digit_t*)p434x2)[i], carry, c[i]);
   }
   mask = 0 - (digit_t)carry;
 
   carry = 0;
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-      S2N_SIKE_P434_R3_ADDC(carry, c[i], ((const digit_t*)p434x2)[i] & mask, carry, c[i]);
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+      SIKE_P434_R3_ADDC(carry, c[i], ((const digit_t*)p434x2)[i] & mask, carry, c[i]);
   }
 }
 
@@ -94,8 +94,8 @@ void fpadd434(const digit_t* a, const digit_t* b, digit_t* c)
 void fpsub434(const digit_t* a, const digit_t* b, digit_t* c)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
       fpsub434_asm(a, b, c);
       return;
   }
@@ -104,14 +104,14 @@ void fpsub434(const digit_t* a, const digit_t* b, digit_t* c)
   unsigned int i, borrow = 0;
   digit_t mask;
 
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-      S2N_SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+      SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
   }
   mask = 0 - (digit_t)borrow;
 
   borrow = 0;
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-      S2N_SIKE_P434_R3_ADDC(borrow, c[i], ((const digit_t*)p434x2)[i] & mask, borrow, c[i]);
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+      SIKE_P434_R3_ADDC(borrow, c[i], ((const digit_t*)p434x2)[i] & mask, borrow, c[i]);
   }
 }
 
@@ -121,8 +121,8 @@ void fpneg434(digit_t* a)
 {
     unsigned int i, borrow = 0;
 
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-        S2N_SIKE_P434_R3_SUBC(borrow, ((const digit_t*)p434x2)[i], a[i], borrow, a[i]);
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+        SIKE_P434_R3_SUBC(borrow, ((const digit_t*)p434x2)[i], a[i], borrow, a[i]);
     }
 }
 
@@ -135,11 +135,11 @@ void fpdiv2_434(const digit_t* a, digit_t* c)
     digit_t mask;
 
     mask = 0 - (digit_t)(a[0] & 1); /* If a is odd compute a+p434 */
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-        S2N_SIKE_P434_R3_ADDC(carry, a[i], ((const digit_t*)p434)[i] & mask, carry, c[i]);
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+        SIKE_P434_R3_ADDC(carry, a[i], ((const digit_t*)p434)[i] & mask, carry, c[i]);
     }
 
-    mp_shiftr1(c, S2N_SIKE_P434_R3_NWORDS_FIELD);
+    mp_shiftr1(c, SIKE_P434_R3_NWORDS_FIELD);
 }
 
 /* Modular correction to reduce field element a in [0, 2*p434-1] to [0, p434-1]. */
@@ -148,14 +148,14 @@ void fpcorrection434(digit_t* a)
     unsigned int i, borrow = 0;
     digit_t mask;
 
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-        S2N_SIKE_P434_R3_SUBC(borrow, a[i], ((const digit_t*)p434)[i], borrow, a[i]);
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+        SIKE_P434_R3_SUBC(borrow, a[i], ((const digit_t*)p434)[i], borrow, a[i]);
     }
     mask = 0 - (digit_t)borrow;
 
     borrow = 0;
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
-        S2N_SIKE_P434_R3_ADDC(borrow, a[i], ((const digit_t*)p434)[i] & mask, borrow, a[i]);
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
+        SIKE_P434_R3_ADDC(borrow, a[i], ((const digit_t*)p434)[i] & mask, borrow, a[i]);
     }
 }
 
@@ -197,9 +197,9 @@ void digit_x_digit(const digit_t a, const digit_t b, digit_t* c)
 void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int nwords)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
-      S2N_SIKE_P434_R3_UNREFERENCED_PARAMETER(nwords);
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
+      SIKE_P434_R3_UNREFERENCED_PARAMETER(nwords);
       mul434_asm(a, b, c);
       return;
   }
@@ -211,9 +211,9 @@ void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int n
 
   for (i = 0; i < nwords; i++) {
       for (j = 0; j <= i; j++) {
-          S2N_SIKE_P434_R3_MUL(a[j], b[i-j], UV+1, UV[0]);
-          S2N_SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
-          S2N_SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
+          SIKE_P434_R3_MUL(a[j], b[i-j], UV+1, UV[0]);
+          SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
+          SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
           t += carry;
       }
       c[i] = v;
@@ -224,9 +224,9 @@ void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int n
 
   for (i = nwords; i < 2*nwords-1; i++) {
       for (j = i-nwords+1; j < nwords; j++) {
-          S2N_SIKE_P434_R3_MUL(a[j], b[i-j], UV+1, UV[0]);
-          S2N_SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
-          S2N_SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
+          SIKE_P434_R3_MUL(a[j], b[i-j], UV+1, UV[0]);
+          SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
+          SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
           t += carry;
       }
       c[i] = v;
@@ -244,31 +244,31 @@ void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int n
 void rdc_mont(digit_t* ma, digit_t* mc)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
       rdc434_asm(ma, mc);
       return;
   }
 #endif*/
 
-  unsigned int i, j, carry, count = S2N_SIKE_P434_R3_ZERO_WORDS;
+  unsigned int i, j, carry, count = SIKE_P434_R3_ZERO_WORDS;
   digit_t UV[2], t = 0, u = 0, v = 0;
 
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
       mc[i] = 0;
   }
 
-  for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
+  for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
       for (j = 0; j < i; j++) {
-          if (j < (i-S2N_SIKE_P434_R3_ZERO_WORDS+1)) {
-              S2N_SIKE_P434_R3_MUL(mc[j], ((const digit_t*)p434p1)[i-j], UV+1, UV[0]);
-              S2N_SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
-              S2N_SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
+          if (j < (i-SIKE_P434_R3_ZERO_WORDS+1)) {
+              SIKE_P434_R3_MUL(mc[j], ((const digit_t*)p434p1)[i-j], UV+1, UV[0]);
+              SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
+              SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
               t += carry;
           }
       }
-      S2N_SIKE_P434_R3_ADDC(0, v, ma[i], carry, v);
-      S2N_SIKE_P434_R3_ADDC(carry, u, 0, carry, u);
+      SIKE_P434_R3_ADDC(0, v, ma[i], carry, v);
+      SIKE_P434_R3_ADDC(carry, u, 0, carry, u);
       t += carry;
       mc[i] = v;
       v = u;
@@ -276,22 +276,22 @@ void rdc_mont(digit_t* ma, digit_t* mc)
       t = 0;
   }
 
-  for (i = S2N_SIKE_P434_R3_NWORDS_FIELD; i < 2*S2N_SIKE_P434_R3_NWORDS_FIELD-1; i++) {
+  for (i = SIKE_P434_R3_NWORDS_FIELD; i < 2*SIKE_P434_R3_NWORDS_FIELD-1; i++) {
       if (count > 0) {
           count -= 1;
       }
-      for (j = i-S2N_SIKE_P434_R3_NWORDS_FIELD+1; j < S2N_SIKE_P434_R3_NWORDS_FIELD; j++) {
-          if (j < (S2N_SIKE_P434_R3_NWORDS_FIELD-count)) {
-              S2N_SIKE_P434_R3_MUL(mc[j], ((const digit_t*)p434p1)[i-j], UV+1, UV[0]);
-              S2N_SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
-              S2N_SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
+      for (j = i-SIKE_P434_R3_NWORDS_FIELD+1; j < SIKE_P434_R3_NWORDS_FIELD; j++) {
+          if (j < (SIKE_P434_R3_NWORDS_FIELD-count)) {
+              SIKE_P434_R3_MUL(mc[j], ((const digit_t*)p434p1)[i-j], UV+1, UV[0]);
+              SIKE_P434_R3_ADDC(0, UV[0], v, carry, v);
+              SIKE_P434_R3_ADDC(carry, UV[1], u, carry, u);
               t += carry;
           }
       }
-      S2N_SIKE_P434_R3_ADDC(0, v, ma[i], carry, v);
-      S2N_SIKE_P434_R3_ADDC(carry, u, 0, carry, u);
+      SIKE_P434_R3_ADDC(0, v, ma[i], carry, v);
+      SIKE_P434_R3_ADDC(carry, u, 0, carry, u);
       t += carry;
-      mc[i-S2N_SIKE_P434_R3_NWORDS_FIELD] = v;
+      mc[i-SIKE_P434_R3_NWORDS_FIELD] = v;
       v = u;
       u = t;
       t = 0;
@@ -299,6 +299,6 @@ void rdc_mont(digit_t* ma, digit_t* mc)
 
   /* `carry` isn't read after this, but it's still a necessary argument to the macro */
     /* cppcheck-suppress unreadVariable */
-    S2N_SIKE_P434_R3_ADDC(0, v, ma[2*S2N_SIKE_P434_R3_NWORDS_FIELD-1], carry, v);
-    mc[S2N_SIKE_P434_R3_NWORDS_FIELD-1] = v;
+    SIKE_P434_R3_ADDC(0, v, ma[2*SIKE_P434_R3_NWORDS_FIELD-1], carry, v);
+    mc[SIKE_P434_R3_NWORDS_FIELD-1] = v;
 }

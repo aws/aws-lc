@@ -10,11 +10,12 @@
 /*#include "utils/s2n_safety.h"
 #include "pq-crypto/s2n_pq.h"
 #include "pq-crypto/s2n_pq_random.h"
- delete later - line seperate
+ delete later - line separator convert CRLF to LF
  */
+#include "../crypto/internal.h" // for constant time function
 #include "sike_r3/sikep434r3_api.h"
 #include "sike_r3/sikep434r3_fpx.h"
-#include "tls/s2n_kem.h"
+//#include "tls/s2n_kem.h"
 
 /* SIKE's key generation
  * Outputs: secret key sk (S2N_SIKE_P434_R3_SECRET_KEY_BYTES = S2N_SIKE_P434_R3_MSG_BYTES + S2N_SIKE_P434_R3_SECRETKEY_B_BYTES + S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES bytes)
@@ -105,10 +106,40 @@ int s2n_sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, 
      *
      * If c0_ and ct are equal, then decaps succeeded and we skip the overwrite and output
      * the actual shared secret: ss = H(m||ct) (dont_copy = true). */
-    bool dont_copy = s2n_constant_time_equals(c0_, ct, S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES);
-    POSIX_GUARD(s2n_constant_time_copy_or_dont(temp, sk, S2N_SIKE_P434_R3_MSG_BYTES, dont_copy));
+    //bool dont_copy = s2n_constant_time_equals(c0_, ct, S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES);
+    bool dont_copy = constant_time_eq_int(c0_, ct);
+    /*int result_eq = constant_time_eq_w(c0_, ct);
+    bool dont_copy = true;
+    if (result_eq == 0) {
+      dont_copy = false;
+    }*/
+
+    POSIX_GUARD(constant_time_copy_or_dont(temp, sk, S2N_SIKE_P434_R3_MSG_BYTES, dont_copy));
+
+
     memcpy(&temp[S2N_SIKE_P434_R3_MSG_BYTES], ct, S2N_SIKE_P434_R3_CIPHERTEXT_BYTES);
     shake256(ss, S2N_SIKE_P434_R3_SHARED_SECRET_BYTES, temp, S2N_SIKE_P434_R3_CIPHERTEXT_BYTES+S2N_SIKE_P434_R3_MSG_BYTES);
 
     return S2N_SUCCESS;
+}
+
+
+int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, uint8_t dont)
+{
+    /*S2N_PUBLIC_INPUT(dest);
+    S2N_PUBLIC_INPUT(src);
+    S2N_PUBLIC_INPUT(len);*/
+    uint8_t mask = (((0xFFFF & dont) - 1) >> 8) & 0xFF;
+
+    /* dont = 0 : mask = 0xff */
+    /* dont > 0 : mask = 0x00 */
+
+    for (uint32_t i = 0; i < len; i++) {
+        uint8_t old = dest[i];
+        uint8_t diff = (old ^ src[i]) & mask;
+        dest[i] = old ^ diff;
+    }
+
+    return 0;
+
 }

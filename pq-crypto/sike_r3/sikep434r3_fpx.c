@@ -8,7 +8,7 @@
 #include "sikep434r3.h"
 #include "sikep434r3_fp.h"
 #include "sikep434r3_fpx.h"
-/*#include "pq-crypto/s2n_pq.h"*/
+/*#include "pq-crypto/pq.h"*/
 #include "sikep434r3_fp_x64_asm.h"
 
 static void fpmul_mont(const felm_t ma, const felm_t mb, felm_t mc);
@@ -29,12 +29,12 @@ __inline static void encode_to_bytes(const digit_t* x, unsigned char* enc, int n
         int rem = nbytes % sizeof(digit_t);
 
         for (int i = 0; i < ndigits; i++) {
-            digit_t temp = S2N_SIKE_P434_R3_BSWAP_DIGIT(x[i]);
+            digit_t temp = SIKE_P434_R3_BSWAP_DIGIT(x[i]);
             memcpy(enc + (i * sizeof(digit_t)), (unsigned char *)&temp, sizeof(digit_t));
         }
 
         if (rem) {
-            digit_t ld = S2N_SIKE_P434_R3_BSWAP_DIGIT(x[ndigits]);
+            digit_t ld = SIKE_P434_R3_BSWAP_DIGIT(x[ndigits]);
             memcpy(enc + ndigits * sizeof(digit_t), (unsigned char *) &ld, rem);
         }
     } else {
@@ -49,15 +49,15 @@ void fp2_encode(const f2elm_t *x, unsigned char *enc)
     f2elm_t t;
 
     from_fp2mont(x, &t);
-    encode_to_bytes(t.e[0], enc, S2N_SIKE_P434_R3_FP2_ENCODED_BYTES / 2);
-    encode_to_bytes(t.e[1], enc + S2N_SIKE_P434_R3_FP2_ENCODED_BYTES / 2, S2N_SIKE_P434_R3_FP2_ENCODED_BYTES / 2);
+    encode_to_bytes(t.e[0], enc, SIKE_P434_R3_FP2_ENCODED_BYTES / 2);
+    encode_to_bytes(t.e[1], enc + SIKE_P434_R3_FP2_ENCODED_BYTES / 2, SIKE_P434_R3_FP2_ENCODED_BYTES / 2);
 }
 
 /* Parse byte sequence back into GF(p^2) element, and conversion to Montgomery representation */
 void fp2_decode(const unsigned char *x, f2elm_t *dec)
 {
-    decode_to_digits(x, dec->e[0], S2N_SIKE_P434_R3_FP2_ENCODED_BYTES / 2, S2N_SIKE_P434_R3_NWORDS_FIELD);
-    decode_to_digits(x + S2N_SIKE_P434_R3_FP2_ENCODED_BYTES / 2, dec->e[1], S2N_SIKE_P434_R3_FP2_ENCODED_BYTES / 2, S2N_SIKE_P434_R3_NWORDS_FIELD);
+    decode_to_digits(x, dec->e[0], SIKE_P434_R3_FP2_ENCODED_BYTES / 2, SIKE_P434_R3_NWORDS_FIELD);
+    decode_to_digits(x + SIKE_P434_R3_FP2_ENCODED_BYTES / 2, dec->e[1], SIKE_P434_R3_FP2_ENCODED_BYTES / 2, SIKE_P434_R3_NWORDS_FIELD);
     to_fp2mont(dec, dec);
 }
 
@@ -66,7 +66,7 @@ static void fpmul_mont(const felm_t ma, const felm_t mb, felm_t mc)
 {
     dfelm_t temp = {0};
 
-    mp_mul(ma, mb, temp, S2N_SIKE_P434_R3_NWORDS_FIELD);
+    mp_mul(ma, mb, temp, SIKE_P434_R3_NWORDS_FIELD);
     rdc_mont(temp, mc);
 }
 
@@ -82,7 +82,7 @@ static void to_mont(const felm_t a, felm_t mc)
  * c = ma*R^(-1) mod p = a mod p, where ma in [0, p-1]. */
 static void from_mont(const felm_t ma, felm_t c)
 {
-    digit_t one[S2N_SIKE_P434_R3_NWORDS_FIELD] = {0};
+    digit_t one[SIKE_P434_R3_NWORDS_FIELD] = {0};
     
     one[0] = 1;
     fpmul_mont(ma, one, c);
@@ -104,7 +104,7 @@ static void fpsqr_mont(const felm_t ma, felm_t mc)
 {
     dfelm_t temp = {0};
 
-    mp_mul(ma, ma, temp, S2N_SIKE_P434_R3_NWORDS_FIELD);
+    mp_mul(ma, ma, temp, SIKE_P434_R3_NWORDS_FIELD);
     rdc_mont(temp, mc);
 }
 
@@ -128,7 +128,7 @@ unsigned int mp_add(const digit_t* a, const digit_t* b, digit_t* c, const unsign
     unsigned int i, carry = 0;
         
     for (i = 0; i < nwords; i++) {                      
-        S2N_SIKE_P434_R3_ADDC(carry, a[i], b[i], carry, c[i]);
+        SIKE_P434_R3_ADDC(carry, a[i], b[i], carry, c[i]);
     }
 
     return carry;
@@ -154,19 +154,19 @@ static unsigned int mp_sub(const digit_t* a, const digit_t* b, digit_t* c, const
     unsigned int i, borrow = 0;
 
     for (i = 0; i < nwords; i++) {
-        S2N_SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
+        SIKE_P434_R3_SUBC(borrow, a[i], b[i], borrow, c[i]);
     }
 
     return borrow;
 }
 
-/* Multiprecision subtraction followed by addition with p*2^S2N_SIKE_P434_R3_MAXBITS_FIELD,
- * c = a-b+(p*2^S2N_SIKE_P434_R3_MAXBITS_FIELD) if a-b < 0, otherwise c=a-b. */
+/* Multiprecision subtraction followed by addition with p*2^SIKE_P434_R3_MAXBITS_FIELD,
+ * c = a-b+(p*2^SIKE_P434_R3_MAXBITS_FIELD) if a-b < 0, otherwise c=a-b. */
 __inline static void mp_subaddfast(const digit_t* a, const digit_t* b, digit_t* c)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
       mp_subadd434x2_asm(a, b, c);
       return;
   }
@@ -174,26 +174,26 @@ __inline static void mp_subaddfast(const digit_t* a, const digit_t* b, digit_t* 
 
   felm_t t1;
 
-  digit_t mask = 0 - (digit_t)mp_sub(a, b, c, 2*S2N_SIKE_P434_R3_NWORDS_FIELD);
-  for (int i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
+  digit_t mask = 0 - (digit_t)mp_sub(a, b, c, 2*SIKE_P434_R3_NWORDS_FIELD);
+  for (int i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
       t1[i] = ((const digit_t *) p434)[i] & mask;
   }
-  mp_addfast((digit_t*)&c[S2N_SIKE_P434_R3_NWORDS_FIELD], t1, (digit_t*)&c[S2N_SIKE_P434_R3_NWORDS_FIELD]);
+  mp_addfast((digit_t*)&c[SIKE_P434_R3_NWORDS_FIELD], t1, (digit_t*)&c[SIKE_P434_R3_NWORDS_FIELD]);
 }
 
-/* Multiprecision subtraction, c = c-a-b, where lng(a) = lng(b) = 2*S2N_SIKE_P434_R3_NWORDS_FIELD. */
+/* Multiprecision subtraction, c = c-a-b, where lng(a) = lng(b) = 2*SIKE_P434_R3_NWORDS_FIELD. */
 __inline static void mp_dblsubfast(const digit_t* a, const digit_t* b, digit_t* c)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
       mp_dblsub434x2_asm(a, b, c);
       return;
   }
 #endif */
 
-  mp_sub(c, a, c, 2*S2N_SIKE_P434_R3_NWORDS_FIELD);
-  mp_sub(c, b, c, 2*S2N_SIKE_P434_R3_NWORDS_FIELD);
+  mp_sub(c, a, c, 2*SIKE_P434_R3_NWORDS_FIELD);
+  mp_sub(c, b, c, 2*SIKE_P434_R3_NWORDS_FIELD);
 }
 
 /* GF(p^2) multiplication using Montgomery arithmetic, c = a*b in GF(p^2).
@@ -206,11 +206,11 @@ void fp2mul_mont(const f2elm_t *a, const f2elm_t *b, f2elm_t *c)
     
     mp_addfast(a->e[0], a->e[1], t1);                                 /* t1 = a0+a1 */
     mp_addfast(b->e[0], b->e[1], t2);                                 /* t2 = b0+b1 */
-    mp_mul(a->e[0], b->e[0], tt1, S2N_SIKE_P434_R3_NWORDS_FIELD);     /* tt1 = a0*b0 */
-    mp_mul(a->e[1], b->e[1], tt2, S2N_SIKE_P434_R3_NWORDS_FIELD);     /* tt2 = a1*b1 */
-    mp_mul(t1, t2, tt3, S2N_SIKE_P434_R3_NWORDS_FIELD);               /* tt3 = (a0+a1)*(b0+b1) */
+    mp_mul(a->e[0], b->e[0], tt1, SIKE_P434_R3_NWORDS_FIELD);     /* tt1 = a0*b0 */
+    mp_mul(a->e[1], b->e[1], tt2, SIKE_P434_R3_NWORDS_FIELD);     /* tt2 = a1*b1 */
+    mp_mul(t1, t2, tt3, SIKE_P434_R3_NWORDS_FIELD);               /* tt3 = (a0+a1)*(b0+b1) */
     mp_dblsubfast(tt1, tt2, tt3);                                     /* tt3 = (a0+a1)*(b0+b1) - a0*b0 - a1*b1 */
-    mp_subaddfast(tt1, tt2, tt1);                                     /* tt1 = a0*b0 - a1*b1 + p*2^S2N_SIKE_P434_R3_MAXBITS_FIELD if a0*b0 - a1*b1 < 0, else tt1 = a0*b0 - a1*b1 */
+    mp_subaddfast(tt1, tt2, tt1);                                     /* tt1 = a0*b0 - a1*b1 + p*2^SIKE_P434_R3_MAXBITS_FIELD if a0*b0 - a1*b1 < 0, else tt1 = a0*b0 - a1*b1 */
     rdc_mont(tt3, c->e[1]);                                           /* c[1] = (a0+a1)*(b0+b1) - a0*b0 - a1*b1 */
     rdc_mont(tt1, c->e[0]);                                           /* c[0] = a0*b0 - a1*b1 */
 }
@@ -408,7 +408,7 @@ void mp_shiftr1(digit_t* x, const unsigned int nwords)
     unsigned int i;
 
     for (i = 0; i < nwords-1; i++) {
-        S2N_SIKE_P434_R3_SHIFTR(x[i+1], x[i], 1, x[i], S2N_SIKE_P434_R3_RADIX);
+        SIKE_P434_R3_SHIFTR(x[i+1], x[i], 1, x[i], SIKE_P434_R3_RADIX);
     }
     x[nwords-1] >>= 1;
 }
@@ -420,7 +420,7 @@ void decode_to_digits(const unsigned char* x, digit_t* dec, int nbytes, int ndig
 
     if (is_big_endian()) {
         for (int i = 0; i < ndigits; i++) {
-            dec[i] = S2N_SIKE_P434_R3_BSWAP_DIGIT(dec[i]);
+            dec[i] = SIKE_P434_R3_BSWAP_DIGIT(dec[i]);
         }
     }
 }
@@ -429,7 +429,7 @@ void fpcopy(const felm_t a, felm_t c)
 {
     unsigned int i;
 
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
         c[i] = a[i];
     }
 }
@@ -438,7 +438,7 @@ void fpzero(felm_t a)
 {
     unsigned int i;
 
-    for (i = 0; i < S2N_SIKE_P434_R3_NWORDS_FIELD; i++) {
+    for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
         a[i] = 0;
     }
 }
@@ -458,14 +458,14 @@ void fp2sub(const f2elm_t *a, const f2elm_t *b, f2elm_t *c)
 void mp_addfast(const digit_t* a, const digit_t* b, digit_t* c)
 {
   /* Assembly code take out delete later
-#if defined(S2N_SIKE_P434_R3_ASM)
-  if (s2n_sikep434r3_asm_is_enabled()) {
+#if defined(SIKE_P434_R3_ASM)
+  if (sikep434r3_asm_is_enabled()) {
       mp_add434_asm(a, b, c);
       return;
   }
 #endif */
 
-  mp_add(a, b, c, S2N_SIKE_P434_R3_NWORDS_FIELD);
+  mp_add(a, b, c, SIKE_P434_R3_NWORDS_FIELD);
 }
 
 void mp2_add(const f2elm_t *a, const f2elm_t *b, f2elm_t *c)
