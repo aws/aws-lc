@@ -6,11 +6,13 @@
 
 #include "sikep434r3.h"
 /*#include "pq-crypto/pq_random.h"
-#include "utils/safety.h"*/
+#include "utils/safety.h"
+ update
+ */
 #include "sikep434r3_fpx.h"
 #include "sikep434r3_ec_isogeny.h"
 #include "sikep434r3_api.h"
-#include "../include/openssl/rand.h" // generate random bytes
+#include "../../include/openssl/rand.h" // generate random bytes
 
 
 /* Initialization of basis points */
@@ -29,7 +31,7 @@ static void init_basis(const digit_t *gen, f2elm_t *XP, f2elm_t *XQ, f2elm_t *XR
 int random_mod_order_B(unsigned char* random_digits)
 {
     //POSIX_GUARD_RESULT(get_random_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES));
-    POSIX_GUARD_RESULT(RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES));
+    RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES);
 
     random_digits[SIKE_P434_R3_SECRETKEY_B_BYTES-1] &= SIKE_P434_R3_MASK_BOB; /* Masking last byte */
 
