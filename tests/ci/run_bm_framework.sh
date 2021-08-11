@@ -67,10 +67,10 @@ create_ec2_instances() {
 }
 
 # create ec2 instances for x86 and arm
-x86_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.metal")
-arm_id=$(create_ec2_instances "ami-018e246d8c0f39ae5" "c6g.metal")
-x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "m5.metal")
-x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.metal")
+x86_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.4xlarge")
+arm_id=$(create_ec2_instances "ami-018e246d8c0f39ae5" "c6g.4xlarge")
+x86_nosha_id=$(create_ec2_instances "ami-01773ce53581acf22" "m5.4xlarge")
+x86_noavx_id=$(create_ec2_instances "ami-01773ce53581acf22" "c5.4xlarge")
 instance_ids="${x86_id} ${arm_id} ${x86_nosha_id} ${x86_noavx_id}"
 
 # if any of the ids are blank, ec2 creation failed
