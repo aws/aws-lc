@@ -198,6 +198,7 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
   // urandom_fd tracks the file descriptor number for /dev/urandom in the child
   // process, if it opens it.
   int urandom_fd = -1;
+  bool urandom_not_ready_was_cleared = false;
 
   for (;;) {
     // Advance the child to the next system call.
@@ -268,13 +269,27 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
       }
 
       case __NR_nanosleep: {
-        if (urandom_fd >= 0) {
-          // We can have two or more consecutive |nanosleep| calls. This happens
-          // if |nanosleep| returns -1 during exponential backoff. The PRNG
-          // model only accounts for one |nanosleep| call. Do the same here.
-          if ((flags & URANDOM_ERROR) && (previous_syscall != __NR_nanosleep)) {
-            out_trace->push_back(Event::NanoSleep());
-          }
+        // First true condition: In FIPS mode, an |ioctl| call with command
+        // |RNDGETENTCNT| is used. If this fails, a delay is injected. The
+        // failure happens when the test flag |URANDOM_NOT_READY| is set. But
+        // since this bit is cleared below we detect this event using
+        // |urandom_not_ready_was_cleared|.
+        //
+        // Second true condition: We can have two or more consecutive
+        // |nanosleep| calls. This happens if |nanosleep| returns -1. The PRNG
+        // model only accounts for one |nanosleep| call. Do the same here.
+        if (urandom_not_ready_was_cleared ||
+            ((flags & URANDOM_ERROR) && (previous_syscall != __NR_nanosleep))) {
+          out_trace->push_back(Event::NanoSleep());
+        }
+        break;
+      }
+
+      // Alias for |__NR_nanosleep| on, at least, Ubuntu 20.04.
+      case __NR_clock_nanosleep: {
+        if (urandom_not_ready_was_cleared ||
+            ((flags & URANDOM_ERROR) && (previous_syscall != __NR_nanosleep))) {
+          out_trace->push_back(Event::NanoSleep());
         }
         break;
       }
@@ -333,6 +348,7 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
       if (flags & URANDOM_NOT_READY) {
         result--;
         flags &= ~URANDOM_NOT_READY;
+        urandom_not_ready_was_cleared = true;
       }
 
       // ptrace always works with ill-defined "words", which appear to be 64-bit
@@ -399,6 +415,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       // Probe urandom for entropy.
       ret.push_back(Event::UrandomIoctl());
       if (flags & URANDOM_NOT_READY) {
+        ret.push_back(Event::NanoSleep());
         // If the first attempt doesn't report enough entropy, probe
         // repeatedly until it does, which will happen with the second attempt.
         ret.push_back(Event::UrandomIoctl());
