@@ -20,6 +20,9 @@
 
 #if defined(BORINGSSL_FIPS)
 #include <unistd.h>
+#if defined(JITTER_ENTROPY)
+# include "../third_party/jitterentropy/jitterentropy.h"
+#endif
 #endif
 
 #include <openssl/chacha.h>
@@ -73,6 +76,9 @@ struct rand_thread_state {
   // next and prev form a NULL-terminated, double-linked list of all states in
   // a process.
   struct rand_thread_state *next, *prev;
+#if defined(JITTER_ENTROPY)
+  struct rand_data *jitter_ec;
+#endif
 #endif
 };
 
@@ -91,6 +97,9 @@ static void rand_thread_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
+#if defined(JITTER_ENTROPY)
+    jent_entropy_collector_free(cur->jitter_ec);
+#endif
     CTR_DRBG_clear(&cur->drbg);
   }
   // The locks are deliberately left locked so that any threads that are still
@@ -162,45 +171,21 @@ static int rdrand(uint8_t *buf, size_t len) {
 
 #if defined(BORINGSSL_FIPS)
 
-#if defined(JITTER_ENTROPY)
-# include "../third_party/jitterentropy/jitterentropy.h"
-
-// Jitter entropy collector structure.
-static struct rand_data *jitter_ec = NULL;
-static int jitter_initialized = 0;
-
-// Jitter library is not thread-safe for an instance of rand_data
-// so we have to use a lock when interacting with it.
-DEFINE_STATIC_MUTEX(jitter_lock);
-
-static void jitter_ec_clear(void) __attribute__((destructor));
-static void jitter_ec_clear(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(jitter_lock_bss_get());
-  jent_entropy_collector_free(jitter_ec);
-}
-#endif
-
 void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_used_cpu) {
 #if defined(JITTER_ENTROPY)
-  *out_used_cpu = 0;
 
-  CRYPTO_STATIC_MUTEX_lock_write(jitter_lock_bss_get());
-  if (jitter_initialized != 1) {
-    if (jent_entropy_init()) {
-      abort();
-    }
-    jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-    if (!jitter_ec) {
-      abort();
-    }
-    jitter_initialized = 1;
-  }
-
-  if (jent_read_entropy(jitter_ec, (char *) out_entropy, out_entropy_len) < 0) {
+  struct rand_thread_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
+  if (state == NULL || state->jitter_ec == NULL) {
     abort();
   }
-  CRYPTO_STATIC_MUTEX_unlock_write(jitter_lock_bss_get());
+
+  if (jent_read_entropy(state->jitter_ec, (char *) out_entropy, out_entropy_len) < 0) {
+    abort();
+  }
+
+  *out_used_cpu = 0;
 
 #else
 
@@ -318,11 +303,13 @@ static void rand_get_seed(struct rand_thread_state *state,
 
   OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
 
+#if !defined(JITTER_ENTROPY)
   for (size_t i = 1; i < BORINGSSL_FIPS_OVERREAD; i++) {
     for (size_t j = 0; j < CTR_DRBG_ENTROPY_LEN; j++) {
       seed[j] ^= entropy[CTR_DRBG_ENTROPY_LEN * i + j];
     }
   }
+#endif
 }
 
 #else
@@ -391,6 +378,15 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       // stack.
       state = &stack_state;
     }
+
+#if defined(BORINGSSL_FIPS) && defined(JITTER_ENTROPY) \
+    // TODO: add the force fips flag
+    state->jitter_ec = NULL;
+    state->jitter_ec = jent_entropy_collector_alloc(0, 0);
+    if (!state->jitter_ec) {
+      abort();
+    }
+#endif
 
     state->last_block_valid = 0;
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];

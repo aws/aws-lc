@@ -38,8 +38,13 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
 #if defined(BORINGSSL_FIPS)
 
+// TODO[jitter]: remove if we decide to go all in with Jitter.
+#if defined(JITTER_ENTROPY)
+#define BORINGSSL_FIPS_OVERREAD 1
 // We overread from /dev/urandom or RDRAND by a factor of 10 and XOR to whiten.
+#else
 #define BORINGSSL_FIPS_OVERREAD 10
+#endif
 
 // CRYPTO_get_seed_entropy writes |out_entropy_len| bytes of entropy, suitable
 // for seeding a DRBG, to |out_entropy|. It sets |*out_used_cpu| to one if the
@@ -55,6 +60,7 @@ void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
 void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
                        int from_cpu);
 
+// TODO[jitter]: fix the comment if we decide to go all in with Jitter.
 // RAND_need_entropy is implemented outside of the FIPS module and is called
 // when the module has stopped because it has run out of entropy.
 void RAND_need_entropy(size_t bytes_needed);
