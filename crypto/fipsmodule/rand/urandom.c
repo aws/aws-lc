@@ -91,7 +91,8 @@ DEFINE_BSS_GET(int, g_exponential_backoff_counter_for_testing)
 
 // One second in nanoseconds.
 #define ONE_SECOND INT64_C(1000000000)
-#define MILLISECOND_250 INT64_C(250000000)
+// 250 milliseconds in nanoseconds.
+#define MILLISECONDS_250 INT64_C(250000000)
 #define INITIAL_BACKOFF_DELAY 1
 
 // Exponential backoff. |backoff| holds the previous backoff delay. Initial
@@ -380,7 +381,7 @@ static void wait_for_entropy(void) {
     }
 
     int r;
-    struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECOND_250 };
+    struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECONDS_250 };
 
     do {
         r = nanosleep(&sleep_time, &sleep_time);
