@@ -691,7 +691,7 @@ endif()
 if(BUILD_TESTING)
   # Add minimal googletest targets. The provided one has many side-effects, and
   # googletest has a very straightforward build.
-  add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+  add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc pq-crypto/sike_r3/sikep434r3_temp_kem.h)
   target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
   include_directories(third_party/googletest/include)
@@ -725,6 +725,7 @@ if(BUILD_TESTING)
 endif()
 
 add_subdirectory(crypto)
+add_subdirectory(pq-crypto/sike_r3) # added pq-crypto
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
