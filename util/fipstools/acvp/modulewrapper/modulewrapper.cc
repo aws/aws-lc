@@ -303,7 +303,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }],
         "tagLen": [32, 64, 96, 104, 112, 120, 128],
         "ivLen": [96],
-        "ivGen": "external"
+        "ivGen": ["external", "internal"],
+        "ivGenMode": "8.2.1"
       },
       {
         "algorithm": "ACVP-AES-GMAC",
