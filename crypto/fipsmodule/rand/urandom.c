@@ -80,6 +80,12 @@
 #include "../delocate.h"
 #include "../../internal.h"
 
+#ifndef MIN
+#define AWSLC_MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
+#else
+#define AWSLC_MIN(X,Y) MIN(X,Y)
+#endif
+
 DEFINE_BSS_GET(int, g_urandom_test_mode_for_testing)
 DEFINE_BSS_GET(int, g_exponential_backoff_counter_for_testing)
 
@@ -112,7 +118,7 @@ static void exponential_backoff(long *backoff) {
 
   // Cap backoff at 99,999,999  nsec, which is the maximum value the nanoseconds
   // field in |timespec| can hold.
-  *backoff = MIN((*backoff) * 10, ONE_SECOND - 1);
+  *backoff = AWSLC_MIN((*backoff) * 10, ONE_SECOND - 1);
   // |nanosleep| can mutate |sleep_time|. Hence, we use |backoff| for state.
   sleep_time.tv_nsec = *backoff;
 
