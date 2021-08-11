@@ -60,6 +60,6 @@ int s2n_sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, 
 /* SIKE's private constant time copy function.
  * Current work around for not being able to find a aws-lc
  * version of constant time copy function. */
-int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, uint8_t dont);
+int sike_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, bool dont);
 
 #endif  // SIKEP434R3_CONSTANTS_H

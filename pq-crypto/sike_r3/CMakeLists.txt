@@ -1,11 +1,8 @@
 cmake_minimum_required (VERSION 3.0)
 
-# set compiler
-#if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-#    set(CLANG 1)
-#elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
-#    set(GCC 1)
-#endif()
+include_directories(../../include)
+include_directories(../../crypto)
+
 
 # get all header and source files
 file(GLOB PQ_HEADERS "*.h")
