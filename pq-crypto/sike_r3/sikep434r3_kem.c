@@ -2,7 +2,7 @@
 * Supersingular Isogeny Key Encapsulation Library
 *
 * Abstract: supersingular isogeny key encapsulation (SIKE) protocol
-*********************************************************************************************/ 
+*********************************************************************************************/
 
 #include <string.h>
 #include "sikep434r3.h"
@@ -14,6 +14,7 @@
  */
 #include "../../crypto/internal.h"  // for constant time function
 #include "sikep434r3_temp_kem.h"
+#include "../../include/openssl/rand.h" // generate random bytes
 #include "sikep434r3_api.h"
 #include "sikep434r3_fpx.h"
 //#include "tls/s2n_kem.h"
@@ -23,10 +24,15 @@
  *          public key pk (S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES bytes) */
 int s2n_sike_p434_r3_crypto_kem_keypair(unsigned char *pk, unsigned char *sk)
 {
-    POSIX_ENSURE(s2n_pq_is_enabled(), S2N_ERR_PQ_DISABLED);
+    // Should not be managed by awslc pq
+    //POSIX_ENSURE(s2n_pq_is_enabled(), S2N_ERR_PQ_DISABLED);
+
+    /* Generate lower portion of secret key sk <- s||SK
+    POSIX_GUARD_RESULT(s2n_get_random_bytes(sk, S2N_SIKE_P434_R3_MSG_BYTES));
+    POSIX_GUARD(random_mod_order_B(sk + S2N_SIKE_P434_R3_MSG_BYTES)); */
 
     /* Generate lower portion of secret key sk <- s||SK */
-    POSIX_GUARD_RESULT(s2n_get_random_bytes(sk, S2N_SIKE_P434_R3_MSG_BYTES));
+    POSIX_GUARD(RAND_bytes(sk, S2N_SIKE_P434_R3_MSG_BYTES));
     POSIX_GUARD(random_mod_order_B(sk + S2N_SIKE_P434_R3_MSG_BYTES));
 
     /* Generate public key pk */
@@ -44,7 +50,7 @@ int s2n_sike_p434_r3_crypto_kem_keypair(unsigned char *pk, unsigned char *sk)
  *          ciphertext message ct (S2N_SIKE_P434_R3_CIPHERTEXT_BYTES = S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES + S2N_SIKE_P434_R3_MSG_BYTES bytes) */
 int s2n_sike_p434_r3_crypto_kem_enc(unsigned char *ct, unsigned char *ss, const unsigned char *pk)
 {
-    POSIX_ENSURE(s2n_pq_is_enabled(), S2N_ERR_PQ_DISABLED);
+    //POSIX_ENSURE(s2n_pq_is_enabled(), S2N_ERR_PQ_DISABLED);
 
     unsigned char ephemeralsk[S2N_SIKE_P434_R3_SECRETKEY_A_BYTES];
     unsigned char jinvariant[S2N_SIKE_P434_R3_FP2_ENCODED_BYTES];
@@ -52,7 +58,8 @@ int s2n_sike_p434_r3_crypto_kem_enc(unsigned char *ct, unsigned char *ss, const 
     unsigned char temp[S2N_SIKE_P434_R3_CIPHERTEXT_BYTES+S2N_SIKE_P434_R3_MSG_BYTES];
 
     /* Generate ephemeralsk <- G(m||pk) mod oA */
-    POSIX_GUARD_RESULT(s2n_get_random_bytes(temp, S2N_SIKE_P434_R3_MSG_BYTES));
+    //POSIX_GUARD_RESULT(s2n_get_random_bytes(temp, S2N_SIKE_P434_R3_MSG_BYTES));
+    POSIX_GUARD(RAND_bytes(temp, S2N_SIKE_P434_R3_MSG_BYTES));
     memcpy(&temp[S2N_SIKE_P434_R3_MSG_BYTES], pk, S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES);
     shake256(ephemeralsk, S2N_SIKE_P434_R3_SECRETKEY_A_BYTES, temp, S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES+S2N_SIKE_P434_R3_MSG_BYTES);
     ephemeralsk[S2N_SIKE_P434_R3_SECRETKEY_A_BYTES - 1] &= S2N_SIKE_P434_R3_MASK_ALICE;
@@ -78,7 +85,7 @@ int s2n_sike_p434_r3_crypto_kem_enc(unsigned char *ct, unsigned char *ss, const 
  * Outputs: shared secret ss      (S2N_SIKE_P434_R3_SHARED_SECRET_BYTES bytes) */
 int s2n_sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, const unsigned char *sk)
 {
-    POSIX_ENSURE(s2n_pq_is_enabled(), S2N_ERR_PQ_DISABLED);
+    //POSIX_ENSURE(s2n_pq_is_enabled(), S2N_ERR_PQ_DISABLED);
 
     unsigned char ephemeralsk_[S2N_SIKE_P434_R3_SECRETKEY_A_BYTES];
     unsigned char jinvariant_[S2N_SIKE_P434_R3_FP2_ENCODED_BYTES];

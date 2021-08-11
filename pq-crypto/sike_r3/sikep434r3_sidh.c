@@ -31,8 +31,8 @@ static void init_basis(const digit_t *gen, f2elm_t *XP, f2elm_t *XQ, f2elm_t *XR
 int random_mod_order_B(unsigned char* random_digits)
 {
     //POSIX_GUARD_RESULT(get_random_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES));
+    //POSIX_GUARD_RESULT() just checks that the result == S2N_SUCCESS
     RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES);
-
     random_digits[SIKE_P434_R3_SECRETKEY_B_BYTES-1] &= SIKE_P434_R3_MASK_BOB; /* Masking last byte */
 
     return 0;

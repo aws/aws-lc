@@ -19,6 +19,16 @@
 #define SIKE_P434_R3_SHARED_SECRET_BYTES 16
 
 
+// Proposed TEMP work around for POSIX_GUARD and POSIX_GUARD_RESULT:
+// Currently simplify to only two macros 1 (pass) and 0 (fail)
+#define POSIX_GUARD(result) __S2N_ENSURE((result) == S2N_SUCCESS, return S2N_FAILURE)
+
+/**
+ * REMOVE LATER
+ * Ensures `cond` is true, otherwise `action` will be performed
+ */
+#define __S2N_ENSURE( cond, action ) do {if ( !(cond) ) { action; }} while (0)
+
 
 /* SIKE kem functions:
  * key generation
