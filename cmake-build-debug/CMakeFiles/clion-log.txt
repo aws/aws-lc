@@ -1,0 +1,31 @@
+"C:\Program Files\JetBrains\CLion 2021.1.3\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - MinGW Makefiles" C:\Users\lamjyoti\workplace\aws-lc
+-- The C compiler identification is GNU 8.1.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/gcc.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- The CXX compiler identification is GNU 8.1.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/g++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Could NOT find Perl (missing: PERL_EXECUTABLE) 
+-- Go not found. Disabling some code generation and using pre-generated code in generated-src/
+-- Perl not found. Disabling some code generation and using pre-generated code in generated-src/
+-- Test stdalign_check.c passed, enabling AWS_LC_STDALIGN_AVAILABLE
+-- Test builtin_swap_check.c passed, enabling AWS_LC_BUILTIN_SWAP_SUPPORTED
+-- The ASM_NASM compiler identification is unknown
+-- Didn't find assembler
+CMake Error at crypto/CMakeLists.txt:65 (enable_language):
+  No CMAKE_ASM_NASM_COMPILER could be found.
+
+  Tell CMake where to find the compiler by setting either the environment
+  variable "ASM_NASM" or the CMake cache entry CMAKE_ASM_NASM_COMPILER to the
+  full path to the compiler, or to the compiler name if it is in the PATH.
+
+
+-- Configuring incomplete, errors occurred!
+See also "C:/Users/lamjyoti/workplace/aws-lc/cmake-build-debug/CMakeFiles/CMakeOutput.log".
+See also "C:/Users/lamjyoti/workplace/aws-lc/cmake-build-debug/CMakeFiles/CMakeError.log".
