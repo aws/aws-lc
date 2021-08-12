@@ -48,9 +48,15 @@ def main():
     df1.reset_index(drop=True, inplace=True)
     df2.reset_index(drop=True, inplace=True)
 
+    # rename df1 column labels
+    df1.columns = [str(col) + '.1' for col in df1.columns]
+    df2.columns = [str(col) + '.2' for col in df2.columns]
+
+    print(df1.columns)
+
     # 2nd column of the dataframe represents the number of calls
-    df1_numCalls = df1.iloc[:, 1]
-    df2_numCalls = df2.iloc[:, 1]
+    df1_numCalls = df1['numCalls.1']
+    df2_numCalls = df2['numCalls.2']
 
     # put both dataframes side by side for comparison
     dfs = pd.concat([df1, df2], axis=1)
@@ -59,7 +65,8 @@ def main():
     compared = np.where(((df2_numCalls - df1_numCalls)/df1_numCalls*100 <= -15), df1.iloc[:, 0], np.nan)
 
     compared_df = dfs.loc[dfs.iloc[:, 0].isin(compared)]
-    compared_df["Percentage Difference"] = ((compared_df.iloc[:, 5] - compared_df.iloc[:, 1])/compared_df.iloc[:, 1]*100)
+    compared_df["Percentage Difference"] = ((compared_df['numCalls.1'] - compared_df['numCalls.2'])
+                                            / compared_df['numCalls.1']*100)
 
     # if the compared dataframe isn't empty, there are significant regressions present
     if not compared_df.empty:
@@ -85,4 +92,5 @@ def main():
         exit(5)
 
 
-main()
+if __name__ == "__main__":
+    main()
