@@ -112,13 +112,13 @@ python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py ossl_
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py bssl_bm.csv bssl_tt_bm.csv
 
 # check for regressions!
-python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_bm.csv aws-lc-pr_bm.csv prod_vs_pr.csv
+python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_bm.csv aws-lc-pr_bm.csv prod_vs_pr.csv
 prod_vs_pr_code="$?"
-python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_fips_bm.csv aws-lc-pr_fips_bm.csv prod_vs_pr_fips.csv
+python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_fips_bm.csv aws-lc-pr_fips_bm.csv prod_vs_pr_fips.csv
 prod_vs_pr_fips_code="$?"
-python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py ossl_bm.csv aws-lc-pr_bm.csv ossl_vs_pr.csv
+python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/compare_results.py ossl_bm.csv aws-lc-pr_bm.csv ossl_vs_pr.csv
 ossl_vs_pr_code="$?"
-python3 aws-lc-pr/tests/ci/benchmark_framework/compare_results.py bssl_bm.csv aws-lc-pr_bm.csv bssl_vs_pr.csv
+python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/compare_results.py bssl_bm.csv aws-lc-pr_bm.csv bssl_vs_pr.csv
 bssl_vs_pr_code="$?"
 
 # upload results to s3
@@ -143,11 +143,13 @@ exit_fail=false
 if [ "${prod_vs_pr_code}" != 0 ]; then
   aws s3 cp prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
   aws s3 mv prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
+  python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/make_metadata.py prod_vs_pr.csv metadata.txt
   exit_fail=true
 fi
 if [ "${prod_vs_pr_fips_code}" != 0 ]; then
   aws s3 cp prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
   aws s3 mv prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
+  python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/make_metadata.py prod_vs_pr.csv metadata.txt
   exit_fail=true
 fi
 if [ "${ossl_vs_pr_code}" != 0 ]; then

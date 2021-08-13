@@ -79,22 +79,6 @@ def main():
             f.write("{},,,,{},,,,\n".format(file1, file2))
         compared_df.to_csv(output_file, index=False, mode='a')
 
-        # only write to metadata file if there's a regression, so don't include ossl and bssl
-        if not ("ossl" in file1 or "bssl" in file1) or not ("ossl" in file2 or "bssl" in file2):
-
-            # we want to differentiate between regressions in pr vs prod (fips) and pr vs prod (non-fips)
-            endstr = "mainline."
-            if "fips" in file2:
-                endstr = "mainline (FIPS)."
-
-            # write details of regression in human-readable format to metadata.txt
-            with open("metadata.txt", "a") as f:
-                for index, row in compared_df.iterrows():
-                    f.write("Performance of {} is {}% slower than {}\n".format(
-                        row[0],
-                        round(abs(row['Percentage Difference']), 2),
-                        endstr))
-
         # exit with an error code to denote there is a regression
         print("Regression detected between {} and {}".format(file1, file2), file=sys.stderr)
         exit(5)
