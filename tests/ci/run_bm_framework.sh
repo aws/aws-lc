@@ -192,10 +192,15 @@ for i in {1..30}; do
       link=$(aws s3 presign "s3://${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/regressions/metadata.txt" --expires-in 86400)
       post_body="Regressions detected.\n${data}\n\nNote: Output may be truncated, more details can be found [here](${link}) (link lasts for 24 hrs).\n"
 
+      # get repo name from CODEBUILD_SOURCE_REPO_URL
+      repo_name="${CODEBUILD_SOURCE_REPO_URL}"
+      repo_name=${repo_name#*.com/}
+      repo_name=${repo_name%/aws*}
+
       # send POST request to GitHub
-      curl -u "billbo-yang:${oauth}" \
+      curl -u "crypto-alg:${oauth}" \
         -X POST -H "Accept: application.vnd.github.v3+json" \
-        https://api.github.com/repos/billbo-yang/aws-lc/issues/"${pr_num}"/comments \
+        https://api.github.com/repos/"${repo_name}"/aws-lc/issues/"${pr_num}"/comments \
         -d "{\"body\":\"${post_body}\"}"
       exit 1
     fi
