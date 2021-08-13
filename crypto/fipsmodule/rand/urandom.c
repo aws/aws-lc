@@ -87,7 +87,6 @@
 #endif
 
 DEFINE_BSS_GET(int, g_urandom_test_mode_for_testing)
-DEFINE_BSS_GET(int, g_exponential_backoff_counter_for_testing)
 
 // One second in nanoseconds.
 #define ONE_SECOND INT64_C(1000000000)
@@ -95,24 +94,26 @@ DEFINE_BSS_GET(int, g_exponential_backoff_counter_for_testing)
 #define MILLISECONDS_250 INT64_C(250000000)
 #define INITIAL_BACKOFF_DELAY 1
 
-// Exponential backoff. |backoff| holds the previous backoff delay. Initial
-// backoff delay is |INITIAL_BACKOFF_DELAY|. This function will be called so
-// rarely (if ever), that we keep it as a function call and don't care about
-// attempting to inline it.
-//
-// iteration          delay
-// ---------    -----------------
-//    1         10          nsec
-//    2         100         nsec
-//    3         1,000       nsec
-//    4         10,000      nsec
-//    5         100,000     nsec
-//    6         1,000,000   nsec
-//    7         10,000,000  nsec
-//    8         99,999,999  nsec
-//    9         99,999,999  nsec
-//    ...
-static void exponential_backoff(long *backoff) {
+// handle_rare_urandom_error initiates exponential backoff |backoff| holds the
+// previous backoff delay. Initial backoff delay is |INITIAL_BACKOFF_DELAY|.
+// This function will be called so rarely (if ever), that we keep it as a
+// function call and don't care about attempting to inline it.
+static void handle_rare_urandom_error(long *backoff) {
+
+  // Exponential backoff.
+  //
+  // iteration          delay
+  // ---------    -----------------
+  //    1         10          nsec
+  //    2         100         nsec
+  //    3         1,000       nsec
+  //    4         10,000      nsec
+  //    5         100,000     nsec
+  //    6         1,000,000   nsec
+  //    7         10,000,000  nsec
+  //    8         99,999,999  nsec
+  //    9         99,999,999  nsec
+  //    ...
 
   int r = 0;
   struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0 };
@@ -129,28 +130,6 @@ static void exponential_backoff(long *backoff) {
   while (r != 0);
 }
 
-// handle_rare_urandom_error initiates exponential backoff simultaniously
-// handling test modes and non-block modes. |backoff| holds the previous backoff
-// delay.
-static int handle_rare_urandom_error(long *backoff) {
-
-  if (*g_urandom_test_mode_for_testing_bss_get() == 1) {
-    // In test mode we want to break out of exponential backoff at some point.
-    // Faults are injected during test mode that triggers exponential backoff.
-    // To avoid an endless loop, count number of iterations and bail after 9
-    // iterations, which is enough to cover all possible delays.
-    if (*g_exponential_backoff_counter_for_testing_bss_get() == 9) {
-      return 0;
-    }
-    *g_exponential_backoff_counter_for_testing_bss_get() += 1;
-    exponential_backoff(backoff);
-  } else {
-    exponential_backoff(backoff);
-  }
-
-  return 1;
-}
-
 #if defined(USE_NR_getrandom)
 
 #if defined(OPENSSL_MSAN)
@@ -161,13 +140,15 @@ static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
 
   ssize_t ret;
   long backoff = INITIAL_BACKOFF_DELAY;
+  size_t retry_counter = 0;
 
   do {
     ret = syscall(__NR_getrandom, buf, buf_len, flags);
-    if (ret == -1 && errno != EINTR) {
-      if ((flags & GRND_NONBLOCK) != 0) {
-        // Don't block in non-block mode except if a signal handler interrupted
-        // |getrandom|.
+    if ((ret == -1) && (errno != EINTR)) {
+      // Don't block in non-block mode except if a signal handler interrupted
+      // |getrandom|.
+      if ((flags & GRND_NONBLOCK) != 0 ||
+          (retry_counter >= MAX_BACKOFF_RETRIES)) {
         break;
       }
 
@@ -175,10 +156,8 @@ static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
       // |urandom| fd failed with |errno| != |EINTR|. |getrandom| uses |urandom|
       // under the covers. Assuming transitivity, |getrandom| is therefore also
       // subject to the same rare error events.
-      if (handle_rare_urandom_error(&backoff) == 0) {
-        // This occurs only in test mode.
-        break;
-      }
+      handle_rare_urandom_error(&backoff);
+      retry_counter = retry_counter + 1;
     }
   } while (ret == -1);
 
@@ -449,18 +428,20 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
       abort();
 #endif
     } else {
+      size_t retry_counter = 0;
       long backoff = INITIAL_BACKOFF_DELAY;
       do {
         r = read(*urandom_fd_bss_get(), out, len);
-        if (r == -1 && errno != EINTR) {
+        if ((r == -1) && (errno != EINTR)) {
+          if (retry_counter >= MAX_BACKOFF_RETRIES) {
+            break;
+          }
           // We have observed extremely rare events in which a |read| on a
           // |urandom| fd failed with |errno| != |EINTR|. We regard this as an
           // intermittent error that is recoverable. Therefore, backoff to allow
           // recovery and to avoid creating a tight spinning loop.
-          if (handle_rare_urandom_error(&backoff) == 0) {
-            // This occurs only in test mode.
-            break;
-          }
+          handle_rare_urandom_error(&backoff);
+          retry_counter = retry_counter + 1;
         }
       } while (r == -1);
     }

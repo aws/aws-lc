@@ -430,7 +430,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       }
       ret.push_back(Event::UrandomRead(len));
       if (flags & URANDOM_ERROR) {
-        for (size_t i = 0; i < INJECTED_URANDOM_ERROR_ITERATIONS_FOR_TESTING; i++) {
+        for (size_t i = 0; i < MAX_BACKOFF_RETRIES; i++) {
           ret.push_back(Event::NanoSleep());
           ret.push_back(Event::UrandomRead(len));
         }
