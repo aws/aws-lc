@@ -90,7 +90,7 @@ def main():
             # write details of regression in human-readable format to metadata.txt
             with open("metadata.txt", "a") as f:
                 for index, row in compared_df.iterrows():
-                    f.write("Performance of {} is {}% slower in {}\n".format(
+                    f.write("Performance of {} is {}% slower than {}\n".format(
                         row[0],
                         round(abs(row['Percentage Difference']), 2),
                         endstr))
