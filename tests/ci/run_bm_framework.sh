@@ -175,7 +175,7 @@ for i in {1..30}; do
       echo "An SSM command failed!"
 
       # if an SSM command failed, then we want to post a comment on the PR to tell us why
-      oauth=$(aws secretsmanager get-secret-value --secret-id 'comment-oauth' --version-stage AWSCURRENT \
+      oauth=$(aws secretsmanager get-secret-value --secret-id 'aws-lc-ci-bm-framework-comment-credential' --version-stage AWSCURRENT \
       --query SecretString --output text)
 
       # get pr number without the 'pr/' part

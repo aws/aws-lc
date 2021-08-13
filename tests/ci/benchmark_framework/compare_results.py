@@ -87,7 +87,7 @@ def main():
                 for index, row in compared_df.iterrows():
                     f.write("Performance of {} is {}% slower in {} than in mainline.\n".format(
                         row[0],
-                        round(abs(row['Percentage Difference'])),
+                        round(abs(row['Percentage Difference']), 2),
                         file2, file1))
 
         # exit with an error code to denote there is a regression

@@ -93,6 +93,10 @@ function create_docker_img_build_stack() {
 }
 
 function create_github_ci_stack() {
+  # We need to get the bm framework comment oauth arn to create the benchmark framework
+  comment_secret_arn=$(aws secretsmanager describe-secret --secret-id "${COMMENT_SECRET_NAME}" --query ARN --output text)
+  export COMMENT_BOT_ARN="${comment_secret_arn}"
+
   cdk deploy aws-lc-ci-* --require-approval never
 
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
@@ -194,6 +198,26 @@ function validate_github_access_token {
   fi
 }
 
+function validate_comment_access_token {
+  # GitHub access token for comments is required to update the comment token in the secrets manager.
+  if [[ -z "${COMMENT_ACCESS_TOKEN+x}" || -z "${COMMENT_ACCESS_TOKEN}" ]]; then
+    echo '--comment-access-token is required to update the Benchmarking Framework comment access token in Secrets Manager.'
+    exit 1
+  fi
+}
+
+function update_comment_token {
+  # First ensure that the variable we're using is set
+  validate_comment_access_token
+
+  # Once it's been verified, we want to delete then readd it to AWS Secrets Manager.
+  aws secretsmanager delete-secret --secret-id "${COMMENT_SECRET_NAME}" --force-delete-without-recovery
+  comment_secret_arn=$(aws secretsmanager create-secret --name "${COMMENT_SECRET_NAME}" --secret-string "${COMMENT_ACCESS_TOKEN}" | jq -r '.ARN')
+
+  # Export the ARN for use in the CDK.
+  export COMMENT_BOT_ARN="${comment_secret_arn}"
+}
+
 function build_docker_images() {
   # Always destroy docker build stacks (which include EC2 instance) on EXIT.
   trap destroy_docker_img_build_stack EXIT
@@ -221,6 +245,8 @@ function build_docker_images() {
 }
 
 function setup_ci() {
+  update_comment_token
+
   build_docker_images
 
   create_github_ci_stack
@@ -283,6 +309,7 @@ function export_global_variables() {
   # During CI setup, used to create secret in AWS Secrets Manager for storing external credentials.
   # After CI setup, used to delete secret from AWS Secrets Manager.
   export AWS_LC_CI_SECRET_NAME='aws-lc-ci-external-credential'
+  export COMMENT_SECRET_NAME='aws-lc-ci-bm-framework-comment-credential'
 }
 
 function main() {
@@ -311,6 +338,10 @@ function main() {
       ;;
     --github-access-token)
       export GITHUB_ACCESS_TOKEN="${2}"
+      shift
+      ;;
+    --comment-access-token)
+      export COMMENT_ACCESS_TOKEN="${2}"
       shift
       ;;
     --action)
@@ -348,6 +379,9 @@ function main() {
     ;;
   build-img)
     build_docker_images
+    ;;
+  update-comment-token)
+    update_comment_token
     ;;
   synth)
     cdk synth aws-lc-ci-*
