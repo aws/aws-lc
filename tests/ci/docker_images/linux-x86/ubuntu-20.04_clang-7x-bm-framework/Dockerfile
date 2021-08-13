@@ -11,7 +11,8 @@ RUN set -ex && \
     apt-get -y --no-install-recommends install \
     python3.8 \
     python3-pip \
-    make && \
+    make \
+    curl && \
     pip install pandas==1.2.5 && \
     pip install numpy==1.21.0 && \
     pip install boto3==1.18.11 && \
