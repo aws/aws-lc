@@ -183,10 +183,14 @@ for i in {1..30}; do
       pr_num=${pr_num#*/}
 
       # get metadata from S3
-      aws s3 cp "s3://${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/regressions/metadata.txt" .
+#      aws s3 cp "s3://${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/regressions/metadata.txt" .
 
-      data=$(cat metadata.txt)
-      post_body="Regressions detected!\n\n${data}"
+      # replace newlines in metadata.txt with literal \n
+#      sed -E ':a;N;$!ba;s/\r{0,1}\n/\\n/g' metadata.txt > metadata_temp.txt
+
+#      data=$(cat metadata_temp.txt | cut -c -3000)
+      data=$(aws s3 presign "s3://${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/regressions/metadata.txt" --expires-in 86400)
+      post_body="Regressions detected. Details can be found [here](${data}) (link lasts for 24 hrs).\n"
 
       # send POST request to GitHub
       curl -u "billbo-yang:${oauth}" \
