@@ -561,8 +561,6 @@ int main(int argc, char **argv) {
     CRYPTO_fork_detect_ignore_pthread_atfork_for_testing();
   }
 
-  HAZMAT_set_urandom_test_mode_for_testing();
-
   return RUN_ALL_TESTS();
 }
 

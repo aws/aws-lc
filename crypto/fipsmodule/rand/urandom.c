@@ -86,8 +86,6 @@
 #define AWSLC_MIN(X,Y) MIN(X,Y)
 #endif
 
-DEFINE_BSS_GET(int, g_urandom_test_mode_for_testing)
-
 // One second in nanoseconds.
 #define ONE_SECOND INT64_C(1000000000)
 // 250 milliseconds in nanoseconds.
@@ -489,14 +487,6 @@ int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   }
 }
 
-void HAZMAT_set_urandom_test_mode_for_testing(void) {
-  *g_urandom_test_mode_for_testing_bss_get() = 1;
-}
-
 #else  // OPENSSL_URANDOM
-
-void HAZMAT_set_urandom_test_mode_for_testing(void) {
-  return;
-}
 
 #endif
