@@ -141,15 +141,15 @@ aws s3 mv bssl_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket
 # we only want to actually fail the vote if we've detected a regression in the pr version of aws-lc and tip of main of aws-lc (for fips and non-fips)
 exit_fail=false
 if [ "${prod_vs_pr_code}" != 0 ]; then
+  python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/make_metadata.py prod_vs_pr.csv metadata.txt
   aws s3 cp prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
   aws s3 mv prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
-  python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/make_metadata.py prod_vs_pr.csv metadata.txt
   exit_fail=true
 fi
 if [ "${prod_vs_pr_fips_code}" != 0 ]; then
+  python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/make_metadata.py prod_vs_pr_fips.csv metadata.txt
   aws s3 cp prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
   aws s3 mv prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/regressions/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
-  python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/make_metadata.py prod_vs_pr.csv metadata.txt
   exit_fail=true
 fi
 if [ "${ossl_vs_pr_code}" != 0 ]; then
