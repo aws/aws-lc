@@ -24,6 +24,7 @@ def main():
 
     # write details of regression in human-readable format to metadata.txt
     with open(output_file, "a") as f:
+        f.write("Contents of {}.\n".format(file))
         for index, row in compared_df.iterrows():
             f.write("Performance of {} in PR is {}% slower than {}\n".format(
                 row['description.2'],
