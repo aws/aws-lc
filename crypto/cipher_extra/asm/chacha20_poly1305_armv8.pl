@@ -35,7 +35,12 @@ my ($oup,$inp,$inl,$adp,$adl,$keyp,$itr1,$itr2) = ("x0","x1","x2","x3","x4","x5"
 my ($acc0,$acc1,$acc2) = map("x$_",(8..10));
 my ($t0,$t1,$t2,$t3) = map("x$_",(11..14));
 my ($one, $r0, $r1) = ("x15","x16","x17");
-my ($t0w) = $t0 =~ s/x/w/r;
+
+# my ($t0w) = $t0 =~ s/x/w/r;
+# The above line is substituted with the two lines below because old versions of Perl
+# don't know how to evaluate the substitution regex s/x/w/r.
+my $t0w = $t0;
+$t0w =~ s/x/w/;
 
 my ($A0,$A1,$A2,$A3,$A4,$B0,$B1,$B2,$B3,$B4,$C0,$C1,$C2,$C3,$C4,$D0,$D1,$D2,$D3,$D4) = map("v$_",(0..19));
 my ($T0,$T1,$T2,$T3) = map("v$_",(20..23));

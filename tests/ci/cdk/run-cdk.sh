@@ -18,6 +18,10 @@ function delete_s3_buckets() {
     if [[ "${bucket_name}" == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
       aws s3 rm "s3://${bucket_name}" --recursive
       aws s3api delete-bucket --bucket "${bucket_name}"
+    # Delete bm-framework buckets if we're not on the team account
+    elif [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
+      aws s3 rm "s3://${bucket_name}" --recursive
+      aws s3api delete-bucket --bucket "${bucket_name}"
     fi
   done
 }
@@ -90,11 +94,13 @@ function create_docker_img_build_stack() {
 
 function create_github_ci_stack() {
   cdk deploy aws-lc-ci-* --require-approval never
+
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
   aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
 function build_linux_img() {
