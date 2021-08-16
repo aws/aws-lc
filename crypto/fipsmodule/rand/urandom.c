@@ -92,7 +92,7 @@
 #define MILLISECONDS_250 INT64_C(250000000)
 #define INITIAL_BACKOFF_DELAY 1
 
-// handle_rare_urandom_error initiates exponential backoff |backoff| holds the
+// handle_rare_urandom_error initiates exponential backoff. |backoff| holds the
 // previous backoff delay. Initial backoff delay is |INITIAL_BACKOFF_DELAY|.
 // This function will be called so rarely (if ever), that we keep it as a
 // function call and don't care about attempting to inline it.
