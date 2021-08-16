@@ -60,7 +60,8 @@ To setup or update the CI in your account you will need the following IAM permis
 To set up AWS-LC CI, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'
-./run-cdk.sh --action deploy-ci --github-access-token ${GITHUB_ACCESS_TOKEN}
+export COMMENT_ACCESS_TOKEN='xxxxx'
+./run-cdk.sh --action deploy-ci --github-access-token ${GITHUB_ACCESS_TOKEN} --comment-access-token
 ```
 
 To update AWS-LC CI, run command:
@@ -72,6 +73,12 @@ To create/udpate Docker images, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'
 ./run-cdk.sh --action build-img --github-access-token ${GITHUB_ACCESS_TOKEN}
+```
+
+To update the personal access token to be used by the benchmarking framework comment bot, run command:
+```
+export COMMENT_ACCESS_TOKEN=`xxxxx`
+./run-cdk.sh --action update-comment-token --comment-access-token ${COMMENT_ACCESS_TOKEN}
 ```
 
 To destroy AWS-LC CI resources created above, run command:

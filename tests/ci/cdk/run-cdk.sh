@@ -40,10 +40,11 @@ function delete_container_repositories() {
 }
 
 function delete_external_credential() {
-  # This deletion may take a few minutes to take effects.
+  # These deletions may take a few minutes to take effects.
   # https://docs.aws.amazon.com/cli/latest/reference/secretsmanager/delete-secret.html
   # https://aws.amazon.com/premiumsupport/knowledge-center/delete-secrets-manager-secret/
   aws secretsmanager delete-secret --secret-id "${AWS_LC_CI_SECRET_NAME}" --force-delete-without-recovery
+  aws secretsmanager delete-secret --secret-id "${COMMENT_SECRET_NAME}" --force-delete-without-recovery
 }
 
 function store_external_credential() {
@@ -276,6 +277,9 @@ Options:
                                    'destroy-ci': destroys AWS and Docker image resources used by aws-lc ci.
                                    'build-img': builds Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
+                                    'update-comment-token': updates the personal access token used by the benchmarking
+                                                            comment bot when posting a comment on a PR when it detects a
+                                                            performance regression.
                                    'diff': compares the specified stack with the deployed stack.
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
 EOF
