@@ -486,6 +486,10 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(FIPS)
+  set(JITTER_ENTROPY TRUE)
+endif()
+
 if(JITTER_ENTROPY)
   if(NOT FIPS)
     message(FATAL_ERROR "Jitter entropy can be used only in FIPS build")
