@@ -76,7 +76,11 @@ struct rand_thread_state {
   // next and prev form a NULL-terminated, double-linked list of all states in
   // a process.
   struct rand_thread_state *next, *prev;
+
 #if defined(JITTER_ENTROPY)
+  // When the entropy source is CPU Jitter then we assign an instance of Jitter
+  // to each thread. The instance is initialized/destroyed at the same time
+  // when the thread state is created/destroyed.
   struct rand_data *jitter_ec;
 #endif
 #endif
@@ -173,23 +177,22 @@ static int rdrand(uint8_t *buf, size_t len) {
 
 void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_used_cpu) {
+  *out_used_cpu = 0;
 #if defined(JITTER_ENTROPY)
-
+  // Every thread has its own Jitter instance so we fetch the one assigned
+  // to the current thread.
   struct rand_thread_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
   if (state == NULL || state->jitter_ec == NULL) {
     abort();
   }
 
-  if (jent_read_entropy(state->jitter_ec, (char *) out_entropy, out_entropy_len) < 0) {
+  // Generate the required number of bytes with Jitter.
+  if (jent_read_entropy_safe(&state->jitter_ec,
+                             (char *) out_entropy, out_entropy_len) < 0) {
     abort();
   }
-
-  *out_used_cpu = 0;
-
 #else
-
-  *out_used_cpu = 0;
   if (have_rdrand() && rdrand(out_entropy, out_entropy_len)) {
     *out_used_cpu = 1;
   } else {
@@ -379,10 +382,10 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       state = &stack_state;
     }
 
-#if defined(BORINGSSL_FIPS) && defined(JITTER_ENTROPY) \
-    // TODO: add the force fips flag
+#if defined(BORINGSSL_FIPS) && defined(JITTER_ENTROPY)
+    // Initialize the thread-local Jitter instance.
     state->jitter_ec = NULL;
-    state->jitter_ec = jent_entropy_collector_alloc(0, 0);
+    state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
     if (!state->jitter_ec) {
       abort();
     }
