@@ -26,7 +26,7 @@ def main():
     with open(output_file, "a") as f:
         for index, row in compared_df.iterrows():
             f.write("Performance of {} in PR is {}% slower than {}\n".format(
-                row[0],
+                row['description.2'],
                 round(abs(row['Percentage Difference']), 2),
                 endstr))
 
