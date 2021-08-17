@@ -1,3 +1,18 @@
+NOTE
+=======================================
+
+The source code in this directory is taken from CPU Jitter RNG library
+available at: https://github.com/smuellerDD/jitterentropy-library.
+
+The following changes were made to the original source code to integrate
+the library with AWS-LC:
+* `asm volatile` was changed to `__asm__volatile`
+* One missing function API was added to `jitterentropy.h`:
+  `ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len);`
+* Check for `AWSLC_FIPS` flag in `jitterentropy-base-user.h` was added
+
+The original README.md file starts below.
+
 Hardware RNG based on CPU timing jitter
 =======================================
 
