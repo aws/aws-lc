@@ -532,8 +532,6 @@ int RSA_sign(int hash_nid, const uint8_t *digest, unsigned digest_len,
     return rsa->meth->sign(hash_nid, digest, digest_len, out, out_len, rsa);
   }
 
-  usleep(1500);
-
   if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len,
                             &signed_msg_is_alloced, hash_nid, digest,
                             digest_len) ||
