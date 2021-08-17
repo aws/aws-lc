@@ -2,6 +2,8 @@
 * Supersingular Isogeny Key Encapsulation Library
 *
 * Abstract: supersingular isogeny key encapsulation (SIKE) protocol
+* NOTE: Currently the use of constant time functions to copy and compare has been
+* replaced with memcpy and memcmp as a work around.
 *********************************************************************************************/
 
 #include <stdio.h>
@@ -11,9 +13,8 @@
 /*#include "utils/s2n_safety.h"
 #include "pq-crypto/s2n_pq.h"
 #include "pq-crypto/s2n_pq_random.h"
- delete later - line separator convert CRLF to LF
  */
-#include "../../crypto/internal.h"  // for constant time function
+#include "../../crypto/internal.h"  // for constant time function for later implementation
 #include "sikep434r3_temp_kem.h"
 #include "../../include/openssl/rand.h" // generate random bytes
 #include "sikep434r3_api.h"
@@ -25,7 +26,6 @@
  *          public key pk (S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES bytes) */
 int s2n_sike_p434_r3_crypto_kem_keypair(unsigned char *pk, unsigned char *sk)
 {
-    // Should not be managed by awslc pq
     //POSIX_ENSURE(s2n_pq_is_enabled(), S2N_ERR_PQ_DISABLED);
 
     /* Generate lower portion of secret key sk <- s||SK

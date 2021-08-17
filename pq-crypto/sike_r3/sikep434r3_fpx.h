@@ -2,6 +2,8 @@
 * Supersingular Isogeny Key Encapsulation Library
 *
 * Abstract: core functions over GF(p) and GF(p^2)
+* Note that currently there is no need to differentiate these methods using namespace
+* as this is only the SIKE integration.
 *********************************************************************************************/
 
 #pragma once

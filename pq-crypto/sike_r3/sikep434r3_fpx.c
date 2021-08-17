@@ -2,6 +2,7 @@
 * Supersingular Isogeny Key Encapsulation Library
 *
 * Abstract: core functions over GF(p) and GF(p^2)
+* Turn off more assembly components.
 *********************************************************************************************/
 
 #include <string.h>

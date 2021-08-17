@@ -2,10 +2,10 @@
 * Supersingular Isogeny Key Encapsulation Library
 *
 * Abstract: x86_64 assembly optimized modular arithmetic for P434
+* S2N_SIKE_P434_R3_ASM is off so no need to worry about this file
 *********************************************************************************************/
 
 #pragma once
-/*S2N_SIKE_P434_R3_ASM is off so no need to worry about this file*/
 #if defined(S2N_SIKE_P434_R3_ASM)
 
 #define fpadd434_asm S2N_SIKE_P434_R3_NAMESPACE(fpadd434_asm)

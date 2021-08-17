@@ -2,6 +2,7 @@
 * Supersingular Isogeny Key Encapsulation Library
 *
 * Abstract: modular arithmetic for P434
+* Here the assembly implementations have been turned off
 *********************************************************************************************/
 
 #include "sikep434r3.h"

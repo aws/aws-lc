@@ -7,7 +7,6 @@
 #include "sikep434r3.h"
 /*#include "pq-crypto/pq_random.h"
 #include "utils/safety.h"
- update
  */
 #include "sikep434r3_fpx.h"
 #include "sikep434r3_ec_isogeny.h"

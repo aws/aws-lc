@@ -1,6 +1,9 @@
-//
-// Created by lamjyoti on 8/9/2021.
-//
+/********************************************************************************************
+* Supersingular Isogeny Key Encapsulation Library
+*
+* Abstract: Temporary work around for kem implementation.
+* This will be altered and placed in the pq-crypto directory for API implementation.
+*********************************************************************************************/
 
 #ifndef SIKEP434R3_CONSTANTS_H
 #define SIKEP434R3_CONSTANTS_H

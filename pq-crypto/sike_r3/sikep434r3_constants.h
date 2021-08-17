@@ -1,6 +1,9 @@
-//
-// Created by lamjyoti on 8/9/2021.
-//
+/********************************************************************************************
+* Supersingular Isogeny Key Encapsulation Library
+*
+* Abstract: API header file for SIKE P434 r3 constants
+* This is a temporary implementation and prone to change after API integration
+*********************************************************************************************/
 
 #ifndef SIKEP434R3_CONSTANTS_H
 #define SIKEP434R3_CONSTANTS_H
