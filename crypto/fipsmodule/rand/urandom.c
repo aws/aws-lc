@@ -113,7 +113,6 @@ static void handle_rare_urandom_error(long *backoff) {
   //    9         99,999,999  nsec
   //    ...
 
-  int r = 0;
   struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0 };
 
   // Cap backoff at 99,999,999  nsec, which is the maximum value the nanoseconds
@@ -122,10 +121,7 @@ static void handle_rare_urandom_error(long *backoff) {
   // |nanosleep| can mutate |sleep_time|. Hence, we use |backoff| for state.
   sleep_time.tv_nsec = *backoff;
 
-  do {
-      r = nanosleep(&sleep_time, &sleep_time);
-  }
-  while (r != 0);
+  nanosleep(&sleep_time, &sleep_time);
 }
 
 #if defined(USE_NR_getrandom)
@@ -357,13 +353,8 @@ static void wait_for_entropy(void) {
       break;
     }
 
-    int r;
     struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECONDS_250 };
-
-    do {
-        r = nanosleep(&sleep_time, &sleep_time);
-    }
-    while (r != 0);
+    nanosleep(&sleep_time, &sleep_time);
   }
 #endif  // BORINGSSL_FIPS && !URANDOM_BLOCKS_FOR_ENTROPY
 }
