@@ -726,6 +726,7 @@ endif()
 
 add_subdirectory(crypto)
 add_subdirectory(pq-crypto)
+add_subdirectory(sike_r3)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
