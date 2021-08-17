@@ -498,9 +498,10 @@ if(JITTER_ENTROPY)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DJITTER_ENTROPY")
 
   file(GLOB JITTER_SOURCES "${CMAKE_SOURCE_DIR}/third_party/jitterentropy/*.c")
-  set(JITTER_COMPILE_FLAGS "-fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -fPIC -O0 -fwrapv -Wconversion")
+  set(JITTER_COMPILE_FLAGS "-DAWSLC_FIPS -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -fPIC -O0 -fwrapv -Wconversion")
   set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS ${JITTER_COMPILE_FLAGS})
   add_library(jitterentropy STATIC "${JITTER_SOURCES}")
+  target_include_directories(jitterentropy PRIVATE "${CMAKE_INSTALL_INCLUDEDIR}")
 
   install(TARGETS jitterentropy
           EXPORT crypto-targets

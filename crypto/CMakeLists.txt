@@ -529,6 +529,13 @@ if(BUILD_TESTING)
     fipsmodule/rand/urandom_test.cc
   )
 
+  # When using CPU Jitter as the entropy source (only in FIPS build)
+  # urandom_test should not be performed so we pass the compilation flag
+  # and handle it in urandom_test.cc
+  if(JITTER_ENTROPY)
+    target_compile_options(urandom_test PUBLIC -DJITTER_ENTROPY)
+  endif()
+
   target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
 
   add_dependencies(urandom_test global_target)

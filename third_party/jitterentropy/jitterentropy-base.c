@@ -262,7 +262,7 @@ ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len)
  ***************************************************************************/
 
 static struct rand_data
-*jent_entropy_collector_alloc_internal(unsigned int osr,
+* jent_entropy_collector_alloc_internal(unsigned int osr,
 				       unsigned int flags)
 {
 	struct rand_data *entropy_collector;
