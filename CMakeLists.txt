@@ -728,10 +728,10 @@ add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
+  add_subdirectory(decrepit)
 endif()
 add_subdirectory(util/fipstools/cavp)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
-add_subdirectory(decrepit)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
@@ -842,7 +842,6 @@ if(BUILD_TESTING)
           run_minimal_tests
           COMMAND crypto_test
           COMMAND urandom_test
-          COMMAND decrepit_test
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
