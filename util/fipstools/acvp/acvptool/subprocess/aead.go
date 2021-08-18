@@ -89,13 +89,13 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 
 		var external_iv bool
 		switch group.IvGen {
-        case "external":
-            external_iv = true
-        case "internal":
-            external_iv = false
-        default:
-            return nil, fmt.Errorf("test group %d has unknown iv generation method %q", group.ID, group.IvGen)
-        }
+		case "external":
+		    external_iv = true
+		case "internal":
+		    external_iv = false
+		default:
+		    return nil, fmt.Errorf("test group %d has unknown iv generation method %q", group.ID, group.IvGen)
+		}
 
 		op := a.algo + "/seal"
 		if !encrypt {
