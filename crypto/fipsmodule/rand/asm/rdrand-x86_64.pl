@@ -48,9 +48,16 @@ CRYPTO_rdrand:
 .cfi_startproc
 	xorq %rax, %rax
 	rdrand $tmp1
+	test $tmp1, $tmp1 # OLD cpu's: can use all 0s in output as error signal
+	jz .Lerr
+	cmp \$-1, $tmp1 # AMD bug: check if all returned bits by RDRAND is stuck on 1
+	je .Lerr
 	# An add-with-carry of zero effectively sets %rax to the carry flag.
 	adcq %rax, %rax
 	movq $tmp1, 0($out)
+	retq
+.Lerr:
+	xorq %rax, %rax
 	retq
 .cfi_endproc
 .size CRYPTO_rdrand,.-CRYPTO_rdrand
@@ -69,7 +76,11 @@ CRYPTO_rdrand_multiple8_buf:
 	movq \$8, $tmp1
 .Lloop:
 	rdrand $tmp2
-	jnc .Lerr
+	jnc .Lerr_multiple
+	test $tmp2, $tmp2 # OLD cpu's: can use all 0s in output as error signal
+	jz .Lerr_multiple
+	cmp \$-1, $tmp2 # AMD bug: check if all returned bits by RDRAND is stuck on 1
+	je .Lerr_multiple
 	movq $tmp2, 0($out)
 	addq $tmp1, $out
 	subq $tmp1, $len
@@ -77,7 +88,7 @@ CRYPTO_rdrand_multiple8_buf:
 .Lout:
 	movq \$1, %rax
 	retq
-.Lerr:
+.Lerr_multiple:
 	xorq %rax, %rax
 	retq
 .cfi_endproc
