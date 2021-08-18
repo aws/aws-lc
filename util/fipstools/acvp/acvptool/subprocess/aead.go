@@ -35,6 +35,7 @@ type aeadTestGroup struct {
 	ID        uint64 `json:"tgId"`
 	Type      string `json:"testType"`
 	Direction string `json:"direction"`
+	IvGen     string `json:"ivGen"`
 	KeyBits   int    `json:"keyLen"`
 	TagBits   int    `json:"tagLen"`
 	Tests     []struct {
@@ -85,6 +86,16 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 		default:
 			return nil, fmt.Errorf("test group %d has unknown direction %q", group.ID, group.Direction)
 		}
+
+		var external_iv bool
+		switch group.IvGen {
+        case "external":
+            external_iv = true
+        case "internal":
+            external_iv = false
+        default:
+            return nil, fmt.Errorf("test group %d has unknown iv generation method %q", group.ID, group.IvGen)
+        }
 
 		op := a.algo + "/seal"
 		if !encrypt {
@@ -160,8 +171,13 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 
 			testResp := aeadTestResponse{ID: test.ID}
 
+            var result [][]uint8
 			if encrypt {
-				result, err := m.Transact(op, 1, uint32le(uint32(tagBytes)), key, input, nonce, aad)
+			    if external_iv {
+				    result, err = m.Transact(op, 1, uint32le(uint32(tagBytes)), key, input, nonce, aad)
+				} else {
+                    result, err = m.Transact(op, 1, uint32le(uint32(tagBytes)), key, input, nil, aad)
+				}
 				if err != nil {
 					return nil, err
 				}
@@ -181,7 +197,7 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 					testResp.TagHex = hex.EncodeToString(tag)
 				}
 			} else {
-				result, err := m.Transact(op, 2, uint32le(uint32(tagBytes)), key, append(input, tag...), nonce, aad)
+				result, err = m.Transact(op, 2, uint32le(uint32(tagBytes)), key, append(input, tag...), nonce, aad)
 				if err != nil {
 					return nil, err
 				}
