@@ -13,7 +13,7 @@
 # permissions and limitations under the License.
 #
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 2.8.12)
 
 include_directories(../include)
 include_directories(../crypto)

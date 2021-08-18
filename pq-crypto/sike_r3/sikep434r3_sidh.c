@@ -43,8 +43,10 @@ int random_mod_order_B(unsigned char* random_digits)
  *     by removing leading 0 bytes. */
 int EphemeralKeyGeneration_A(const unsigned char* PrivateKeyA, unsigned char* PublicKeyA)
 {
-    point_proj_t R, phiP = {0}, phiQ = {0}, phiR = {0}, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
-    f2elm_t _XPA, _XQA, _XRA, coeff[3], _A24plus = {0}, _C24 = {0}, _A = {0};
+    //point_proj_t R, phiP = {0}, phiQ = {0}, phiR = {0}, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
+    point_proj_t R, phiP, phiQ, phiR, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
+    //f2elm_t _XPA, _XQA, _XRA, coeff[3], _A24plus = {0}, _C24 = {0}, _A = {0};
+    f2elm_t _XPA, _XQA, _XRA, coeff[3], _A24plus, _C24, _A;
     f2elm_t *XPA=&_XPA, *XQA=&_XQA, *XRA=&_XRA, *A24plus=&_A24plus, *C24=&_C24, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_ALICE], npts = 0, ii = 0;
     digit_t SecretKeyA[SIKE_P434_R3_NWORDS_ORDER] = {0};
@@ -117,8 +119,10 @@ int EphemeralKeyGeneration_A(const unsigned char* PrivateKeyA, unsigned char* Pu
  *     by removing leading 0 bytes. */
 int EphemeralKeyGeneration_B(const unsigned char* PrivateKeyB, unsigned char* PublicKeyB)
 {
-    point_proj_t R, phiP = {0}, phiQ = {0}, phiR = {0}, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
-    f2elm_t _XPB, _XQB, _XRB, coeff[3], _A24plus = {0}, _A24minus = {0}, _A = {0};
+    //point_proj_t R, phiP = {0}, phiQ = {0}, phiR = {0}, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
+    point_proj_t R, phiP, phiQ, phiR, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
+    //f2elm_t _XPB, _XQB, _XRB, coeff[3], _A24plus = {0}, _A24minus = {0}, _A = {0};
+    f2elm_t _XPB, _XQB, _XRB, coeff[3], _A24plus, _A24minus, _A;
     f2elm_t *XPB=&_XPB, *XQB=&_XQB, *XRB=&_XRB, *A24plus=&_A24plus, *A24minus=&_A24minus, *A=&_A;
 
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_BOB], npts = 0, ii = 0;
@@ -197,7 +201,8 @@ int EphemeralSecretAgreement_A(const unsigned char* PrivateKeyA, const unsigned 
 {
     point_proj_t R, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
     f2elm_t coeff[3], PKB[3], _jinv;
-    f2elm_t _A24plus = {0}, _C24 = {0}, _A = {0};
+    //f2elm_t _A24plus = {0}, _C24 = {0}, _A = {0};
+    f2elm_t _A24plus, _C24, _A;
     f2elm_t *jinv=&_jinv, *A24plus=&_A24plus, *C24=&_C24, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_ALICE], npts = 0, ii = 0;
     digit_t SecretKeyA[SIKE_P434_R3_NWORDS_ORDER] = {0};
@@ -261,7 +266,8 @@ int EphemeralSecretAgreement_B(const unsigned char* PrivateKeyB, const unsigned 
 {
     point_proj_t R, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
     f2elm_t coeff[3], PKB[3], _jinv;
-    f2elm_t _A24plus = {0}, _A24minus = {0}, _A = {0};
+    //f2elm_t _A24plus = {0}, _A24minus = {0}, _A = {0};
+    f2elm_t _A24plus, _A24minus, _A;
     f2elm_t *jinv=&_jinv, *A24plus=&_A24plus, *A24minus=&_A24minus, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_BOB], npts = 0, ii = 0;
     digit_t SecretKeyB[SIKE_P434_R3_NWORDS_ORDER] = {0};
