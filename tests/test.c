@@ -109,6 +109,7 @@ enum {
        TEST_BIGNUM_HALF_P521,
        TEST_BIGNUM_ISZERO,
        TEST_BIGNUM_KMUL_16_32,
+       TEST_BIGNUM_KMUL_32_64,
        TEST_BIGNUM_KSQR_16_32,
        TEST_BIGNUM_KSQR_32_64,
        TEST_BIGNUM_LE,
@@ -2213,6 +2214,10 @@ int test_bignum_kmul_specific
 
 int test_bignum_kmul_16_32(void)
 { return test_bignum_kmul_specific(32,16,16,"bignum_kmul_16_32",bignum_kmul_16_32);
+}
+
+int test_bignum_kmul_32_64(void)
+{ return test_bignum_kmul_specific(64,32,32,"bignum_kmul_32_64",bignum_kmul_32_64);
 }
 
 int test_bignum_ksqr_specific
@@ -4471,6 +4476,7 @@ int test_all()
   dotest(test_bignum_half_p521);
   dotest(test_bignum_iszero);
   dotest(test_bignum_kmul_16_32);
+  dotest(test_bignum_kmul_32_64);
   dotest(test_bignum_ksqr_16_32);
   dotest(test_bignum_ksqr_32_64);
   dotest(test_bignum_le);
@@ -4761,6 +4767,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_HALF_P521:       return test_bignum_half_p521();
      case TEST_BIGNUM_ISZERO:          return test_bignum_iszero();
      case TEST_BIGNUM_KMUL_16_32:      return test_bignum_kmul_16_32();
+     case TEST_BIGNUM_KMUL_32_64:      return test_bignum_kmul_32_64();
      case TEST_BIGNUM_KSQR_16_32:      return test_bignum_ksqr_16_32();
      case TEST_BIGNUM_KSQR_32_64:      return test_bignum_ksqr_32_64();
      case TEST_BIGNUM_LE:              return test_bignum_le();

@@ -33,6 +33,7 @@ endif
 
 OBJ = bignum_emontredc_8n.o \
       bignum_kmul_16_32.o \
+      bignum_kmul_32_64.o \
       bignum_ksqr_16_32.o \
       bignum_ksqr_32_64.o \
       bignum_mul_4_8.o \

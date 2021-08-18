@@ -207,7 +207,11 @@ extern uint64_t bignum_iszero (uint64_t k, uint64_t *x);
 
 // Multiply z := x * y
 // Inputs x[16], y[16]; output z[32]; temporary buffer t[>=32]
-extern void bignum_kmul_16_32  (uint64_t z[static 32], uint64_t x[static 16], uint64_t y[static 16], uint64_t t[static 32]);
+extern void bignum_kmul_16_32 (uint64_t z[static 32], uint64_t x[static 16], uint64_t y[static 16], uint64_t t[static 32]);
+
+// Multiply z := x * y
+// Inputs x[32], y[32]; output z[64]; temporary buffer t[>=96]
+extern void bignum_kmul_32_64 (uint64_t z[static 64], uint64_t x[static 32], uint64_t y[static 32], uint64_t t[static 96]);
 
 // Square, z := x^2
 // Input x[16]; output z[32]; temporary buffer t[>=24]

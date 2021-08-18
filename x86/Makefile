@@ -17,6 +17,7 @@
 
 OBJ = fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
+      fastmul/bignum_kmul_32_64.o \
       fastmul/bignum_ksqr_16_32.o \
       fastmul/bignum_ksqr_32_64.o \
       fastmul/bignum_mul_4_8.o \
