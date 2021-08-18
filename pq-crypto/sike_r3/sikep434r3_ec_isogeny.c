@@ -201,7 +201,7 @@ void inv_3_way(f2elm_t *z1, f2elm_t *z2, f2elm_t *z3)
  * Output: the coefficient A corresponding to the curve E_A: y^2=x^3+A*x^2+x. */
 void get_A(const f2elm_t *xP, const f2elm_t *xQ, const f2elm_t *xR, f2elm_t *A)
 {
-    f2elm_t _t0, _t1, one = {{0}};
+    f2elm_t _t0, _t1, one = {{{0}}};
     f2elm_t *t0=&_t0, *t1=&_t1;
 
     
@@ -303,8 +303,8 @@ static void swap_points(point_proj_t P, point_proj_t Q, const digit_t option)
 void LADDER3PT(const f2elm_t *xP, const f2elm_t *xQ, const f2elm_t *xPQ, const digit_t* m,
         const unsigned int AliceOrBob, point_proj_t R, const f2elm_t *A)
 {
-    point_proj_t R0 = {{0}}, R2 = {{0}};
-    f2elm_t _A24 = {{0}};
+    point_proj_t R0 = {{{0}}}, R2 = {{{0}}};
+    f2elm_t _A24 = {{{0}}};
     f2elm_t *A24 = &_A24;
     digit_t mask;
     int i, nbits, swap, prevbit = 0;
