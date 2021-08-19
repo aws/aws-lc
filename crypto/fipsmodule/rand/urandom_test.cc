@@ -288,7 +288,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
       // Alias for |__NR_nanosleep| on, at least, Ubuntu 20.04.
       case __NR_clock_nanosleep: {
         if (urandom_not_ready_was_cleared ||
-            ((flags & URANDOM_ERROR) && (previous_syscall != __NR_nanosleep))) {
+            ((flags & URANDOM_ERROR) &&
+             (previous_syscall != __NR_clock_nanosleep))) {
           out_trace->push_back(Event::NanoSleep());
         }
         break;

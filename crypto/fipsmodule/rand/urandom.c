@@ -478,6 +478,4 @@ int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   }
 }
 
-#else  // OPENSSL_URANDOM
-
 #endif
