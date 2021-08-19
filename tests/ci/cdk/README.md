@@ -107,7 +107,6 @@ Starting the benchmarking framework locally still requires the user's AWS CLI to
 
 | Environment Variable      | Description            | Value                                                                         |
 |---------------------------|------------------------|-------------------------------------------------------------------------------|
-| `CODEBUILD_WEBHOOK_TRIGGER` | GitHub PR Number       | Can be any value when running locally, suggest leaving blank                  |
 | `CODEBUILD_SOURCE_VERSION`  | GitHub Commit ID       | The commit ID of the version of AWS-LC to be benchmarked                      |
 | `CODEBUILD_SOURCE_REPO_URL` | GitHub Repository Link | The link used to clone the repository which the provided commit ID belongs to |
 
