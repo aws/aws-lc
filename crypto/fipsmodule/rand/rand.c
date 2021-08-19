@@ -101,10 +101,10 @@ static void rand_thread_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
+    CTR_DRBG_clear(&cur->drbg);
 #if defined(JITTER_ENTROPY)
     jent_entropy_collector_free(cur->jitter_ec);
 #endif
-    CTR_DRBG_clear(&cur->drbg);
   }
   // The locks are deliberately left locked so that any threads that are still
   // running will hang if they try to call |RAND_bytes|.
@@ -136,6 +136,9 @@ static void rand_thread_state_free(void *state_in) {
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
   CTR_DRBG_clear(&state->drbg);
+#if defined(JITTER_ENTROPY)
+  jent_entropy_collector_free(state->jitter_ec);
+#endif
 #endif
 
   OPENSSL_free(state);
