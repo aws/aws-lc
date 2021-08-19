@@ -12,7 +12,8 @@
 #include "sikep434r3_ec_isogeny.h"
 #include "sikep434r3_api.h"
 #include "../../include/openssl/rand.h" // generate random bytes
-#include "sikep434r3_temp_kem.h"
+#include "../EVP_pq_constants.h"
+#include "../EVP_kem.h"
 
 
 /* Initialization of basis points */
