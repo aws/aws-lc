@@ -45,13 +45,13 @@ bignum_double_p521:
 // and otherwise just 2 * x. Feed in the condition as the carry bit
 // to get 2 * x + [2 * x >= p_521] then just mask it off to 521 bits.
 
-                .set    i, 0
+                .set    I, 0
                 .rep 4
-                ldp     l, h, [x, #8*i]
+                ldp     l, h, [x, #8*I]
                 adcs    l, l, l
                 adcs    h, h, h
-                stp     l, h, [z, #8*i]
-                .set    i, (i+2)
+                stp     l, h, [z, #8*I]
+                .set    I, (I+2)
                 .endr
 
                 adc     c, c, c

@@ -40,13 +40,13 @@ bignum_mux_6:
 
                 cmp     p, #0                    // Set condition codes p = 0
 
-                .set    i, 0
+                .set    I, 0
                 .rep    6
-                ldr     a, [x, #8*i]
-                ldr     p, [y, #8*i]
+                ldr     a, [x, #8*I]
+                ldr     p, [y, #8*I]
                 csel    a, a, p, ne
-                str     a, [z, #8*i]
-                .set    i, (i+1)
+                str     a, [z, #8*I]
+                .set    I, (I+1)
                 .endr
 
                 ret
