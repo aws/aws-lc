@@ -95,7 +95,7 @@ Specific implementation details can mostly be found in:
 * `cdk/bm_framework_stack.py`
 
 ### How to Use
-After the benchmarking framework is setup, there are multiple ways to start the process.
+After the benchmarking framework is set up, there are multiple ways to start the process.
 
 Note: due to the nature of how the framework works, a commit containing the relevant scripts (located inside `tests/ci/benchmark_framework/`,`tests/ci/build_run_benchmarks.sh`, and `tests/ci/run_bm_framework.sh`) is required for a successful run of the framework. If these files are not present, the benchmarking process will fail.
 
