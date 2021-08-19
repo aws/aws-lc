@@ -41,13 +41,13 @@
 bignum_mux_6:
                 test    p, p
 
-                .set    i, 0
+                .set    I, 0
                 .rep    6
-                mov     a, [x+8*i]
-                mov     b, [y+8*i]
+                mov     a, [x+8*I]
+                mov     b, [y+8*I]
                 cmovz   a, b
-                mov     [z+8*i], a
-                .set    i, (i+1)
+                mov     [z+8*I], a
+                .set    I, (I+1)
                 .endr
 
                 ret

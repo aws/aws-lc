@@ -32,7 +32,7 @@
         .globl  bignum_ksqr_32_64
         .text
 
-#define k 16
+#define K 16
 
 #define z rdi
 #define x rsi
@@ -60,109 +60,109 @@ bignum_ksqr_32_64:
 
 // Square the high half; from here on x and z are modified
 
-        lea     x,[x+8*k]               // input at x+8*k
-        lea     z,[z+8*2*k]             // result at z+8*2*k
+        lea     x,[x+8*K]               // input at x+8*K
+        lea     z,[z+8*2*K]             // result at z+8*2*K
         call    local_bignum_sqr_16_32
 
 // Form |x_lo - x_hi|, stored at t
 
-        mov     rax, [x-8*k]
+        mov     rax, [x-8*K]
         sub     rax, [x]
         mov     [t], rax
-        .set i,  1
-        .rep k-1
-        mov     rax, [x-8*k+8*i]
-        sbb     rax, [x+8*i]
-        mov     [t+8*i], rax
-        .set i,  (i+1)
+        .set I,  1
+        .rep K-1
+        mov     rax, [x-8*K+8*I]
+        sbb     rax, [x+8*I]
+        mov     [t+8*I], rax
+        .set I,  (I+1)
         .endr
 
         mov     ebx, 0
         sbb     rax, rax                // Maintain CF, set ZF for cmovs
 
-        .set i,  0
-        .rep k
-        mov     rdx, [t+8*i]
+        .set I,  0
+        .rep K
+        mov     rdx, [t+8*I]
         mov     rax, rdx
         not     rdx
         adcx    rdx, rbx
         cmovz   rdx, rax
-        mov     [t+8*i], rdx
-        .set i,  (i+1)
+        mov     [t+8*I], rdx
+        .set I,  (I+1)
         .endr
 
 // Compose the middle parts [2,1] + [1,0] + [3,2]
-// Put the low half of this at t[k] and the top half in place at z[2k]; a
+// Put the low half of this at t[K] and the top half in place at z[2*K]; a
 // fully in-place version is awkward with the otherwise beneficial double
 // carry chain. Stash the carry suspended from the 3k position at the end of
-// the temp buffer t[4*k].
+// the temp buffer t[4*K].
 
         xor     edx, edx
-        .set i,  0
-        .rep k
-        mov     rax, [z-8*2*k+8*k+8*i]
-        adcx    rax, [z-8*2*k+8*i]
-        adox    rax, [z-8*2*k+8*2*k+8*i]
-        mov     [t+8*k+8*i], rax
-        .set i,  (i+1)
+        .set I,  0
+        .rep K
+        mov     rax, [z-8*2*K+8*K+8*I]
+        adcx    rax, [z-8*2*K+8*I]
+        adox    rax, [z-8*2*K+8*2*K+8*I]
+        mov     [t+8*K+8*I], rax
+        .set I,  (I+1)
         .endr
 
-        .rep k
-        mov     rax, [z-8*2*k+8*k+8*i]
-        adcx    rax, [z-8*2*k+8*i]
-        adox    rax, [z-8*2*k+8*2*k+8*i]
-        mov     [z-8*2*k+8*k+8*i], rax
-        .set i,  (i+1)
+        .rep K
+        mov     rax, [z-8*2*K+8*K+8*I]
+        adcx    rax, [z-8*2*K+8*I]
+        adox    rax, [z-8*2*K+8*2*K+8*I]
+        mov     [z-8*2*K+8*K+8*I], rax
+        .set I,  (I+1)
         .endr
 
         adox    rdx, rdx
         adc     rdx, 0
-        mov     [t+8*4*k], rdx
+        mov     [t+8*4*K], rdx
 
-// Square the absolute difference, putting the result M at t[2k].
+// Square the absolute difference, putting the result M at t[2*K].
 // This involves another shuffle so now t' = z_orig and x' = t_orig
 // while z' points within the temp buffer to the product M itself
 
         mov     x, t
-        lea     t, [z-8*2*k]
-        lea     z, [x+8*2*k]
+        lea     t, [z-8*2*K]
+        lea     z, [x+8*2*K]
         call    local_bignum_sqr_16_32
 
 // Subtract M, pausing at the 3k position to bump down accumulated carry.
 // The carry cannot go negative since it's the top word of a value
 // of the form ... + h^2 + l^2 - (h - l)^2 >= 0
 
-        mov     rax, [x+8*k]
+        mov     rax, [x+8*K]
         sub     rax, [z]
-        mov     [t+8*k], rax
+        mov     [t+8*K], rax
 
-        .set i,  1
+        .set I,  1
 
-        .rep (k-1)
-        mov     rax, [x+8*k+8*i]
-        sbb     rax, [z+8*i]
-        mov     [t+8*k+8*i], rax
-        .set i,  (i+1)
+        .rep (K-1)
+        mov     rax, [x+8*K+8*I]
+        sbb     rax, [z+8*I]
+        mov     [t+8*K+8*I], rax
+        .set I,  (I+1)
         .endr
 
-        .rep k
-        mov     rax, [t+8*k+8*i]
-        sbb     rax, [z+8*i]
-        mov     [t+8*k+8*i], rax
-        .set i,  (i+1)
+        .rep K
+        mov     rax, [t+8*K+8*I]
+        sbb     rax, [z+8*I]
+        mov     [t+8*K+8*I], rax
+        .set I,  (I+1)
         .endr
 
-        mov     rdx, [x+8*4*k]
+        mov     rdx, [x+8*4*K]
         sbb     rdx, 0
 
 // Finally propagate the carry to the top quarter
 
         xor     eax, eax
-        add     [t+8*3*k],rdx
-        .set i,  1
-        .rep k-1
-        adc     [t+8*3*k+8*i], rax
-        .set i,  (i+1)
+        add     [t+8*3*K],rdx
+        .set I,  1
+        .rep K-1
+        adc     [t+8*3*K+8*I], rax
+        .set I,  (I+1)
         .endr
 
 // Restore registers and return

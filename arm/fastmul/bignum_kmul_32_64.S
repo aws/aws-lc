@@ -30,8 +30,8 @@
         .globl  bignum_kmul_32_64
         .text
 
-#define k 16
-#define l (k/2)
+#define K 16
+#define L (K/2)
 
 #define z x19
 #define x x20
@@ -62,9 +62,9 @@ bignum_kmul_32_64:
 
 // Compute H = x_hi * y_hi in top half of buffer (size 16 x 16 -> 32)
 
-        add     x0, z, 8*2*k
-        add     x1, x, 8*k
-        add     x2, y, 8*k
+        add     x0, z, 8*2*K
+        add     x1, x, 8*K
+        add     x2, y, 8*K
         mov     x3, t
         bl      local_kmul_16_32
 
@@ -165,7 +165,7 @@ bignum_kmul_32_64:
         adc     x15, x15, xzr
         stp     x14, x15, [t, 112]
 
-// Compute the other absolute difference [t+8*k..] = |y_hi - y_lo|
+// Compute the other absolute difference [t+8*K..] = |y_hi - y_lo|
 // Collect the combined product sign bitmask (all 1s for negative) as
 // y = sgn((x_lo - x_hi) * (y_hi - y_lo)), overwriting the y pointer.
 
@@ -217,119 +217,119 @@ bignum_kmul_32_64:
         adcs    x0, x0, xzr
         eor     x1, x1, y
         adcs    x1, x1, xzr
-        stp     x0, x1, [t, 8*k]
+        stp     x0, x1, [t, 8*K]
 
         eor     x2, x2, y
         adcs    x2, x2, xzr
         eor     x3, x3, y
         adcs    x3, x3, xzr
-        stp     x2, x3, [t, 8*k+16]
+        stp     x2, x3, [t, 8*K+16]
 
         eor     x4, x4, y
         adcs    x4, x4, xzr
         eor     x5, x5, y
         adcs    x5, x5, xzr
-        stp     x4, x5, [t, 8*k+32]
+        stp     x4, x5, [t, 8*K+32]
 
         eor     x6, x6, y
         adcs    x6, x6, xzr
         eor     x7, x7, y
         adcs    x7, x7, xzr
-        stp     x6, x7, [t, 8*k+48]
+        stp     x6, x7, [t, 8*K+48]
 
         eor     x8, x8, y
         adcs    x8, x8, xzr
         eor     x9, x9, y
         adcs    x9, x9, xzr
-        stp     x8, x9, [t, 8*k+64]
+        stp     x8, x9, [t, 8*K+64]
 
         eor     x10, x10, y
         adcs    x10, x10, xzr
         eor     x11, x11, y
         adcs    x11, x11, xzr
-        stp     x10, x11, [t, 8*k+80]
+        stp     x10, x11, [t, 8*K+80]
 
         eor     x12, x12, y
         adcs    x12, x12, xzr
         eor     x13, x13, y
         adcs    x13, x13, xzr
-        stp     x12, x13, [t, 8*k+96]
+        stp     x12, x13, [t, 8*K+96]
 
         eor     x14, x14, y
         adcs    x14, x14, xzr
         eor     x15, x15, y
         adc     x15, x15, xzr
-        stp     x14, x15, [t, 8*k+112]
+        stp     x14, x15, [t, 8*K+112]
 
         eor     y, y, x
 
 // Compute H' = H + L_top in place of H (it cannot overflow)
 
-        ldp     x0, x1, [z, 16*k]
-        ldp     x2, x3, [z, 16*l]
+        ldp     x0, x1, [z, 16*K]
+        ldp     x2, x3, [z, 16*L]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*k]
+        stp     x0, x1, [z, 16*K]
 
-        .set    i, 1
-        .rep (l-1)
-        ldp     x0, x1, [z, 16*(k+i)]
-        ldp     x2, x3, [z, 16*(l+i)]
+        .set    I, 1
+        .rep (L-1)
+        ldp     x0, x1, [z, 16*(K+I)]
+        ldp     x2, x3, [z, 16*(L+I)]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*(k+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, 16*(K+I)]
+        .set    I, (I+1)
         .endr
 
-        .rep    (l-1)
-        ldp     x0, x1, [z, 16*(k+i)]
+        .rep    (L-1)
+        ldp     x0, x1, [z, 16*(K+I)]
         adcs    x0, x0, xzr
         adcs    x1, x1, xzr
-        stp     x0, x1, [z, 16*(k+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, 16*(K+I)]
+        .set    I, (I+1)
         .endr
 
-        ldp     x0, x1, [z, 16*(k+i)]
+        ldp     x0, x1, [z, 16*(K+I)]
         adcs    x0, x0, xzr
         adc     x1, x1, xzr
-        stp     x0, x1, [z, 16*(k+i)]
+        stp     x0, x1, [z, 16*(K+I)]
 
 // Compute M = |x_lo - x_hi| * |y_hi - y_lo|, size 32
 
-        add     x0, t, 16*k
+        add     x0, t, 16*K
         mov     x1, t
-        add     x2, t, 8*k
-        add     x3, t, 8*4*k
+        add     x2, t, 8*K
+        add     x3, t, 8*4*K
         bl      local_kmul_16_32
 
 // Add the interlocking H' and L_bot terms
 // Intercept the carry at the 3k position and store it in x.
 // Again, we no longer need the input x was pointing at.
 
-        ldp     x0, x1, [z, 16*k]
+        ldp     x0, x1, [z, 16*K]
         ldp     x2, x3, [z]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*l]
+        stp     x0, x1, [z, 16*L]
 
-        .set    i, 1
-        .rep (l-1)
-        ldp     x0, x1, [z, 16*(k+i)]
-        ldp     x2, x3, [z, 16*i]
+        .set    I, 1
+        .rep (L-1)
+        ldp     x0, x1, [z, 16*(K+I)]
+        ldp     x2, x3, [z, 16*I]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*(l+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, 16*(L+I)]
+        .set    I, (I+1)
         .endr
 
-        .set    i, 0
-        .rep    l
-        ldp     x0, x1, [z, 16*(k+i)]
-        ldp     x2, x3, [z, 16*(3*l+i)]
+        .set    I, 0
+        .rep    L
+        ldp     x0, x1, [z, 16*(K+I)]
+        ldp     x2, x3, [z, 16*(3*L+I)]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*(k+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, 16*(K+I)]
+        .set    I, (I+1)
         .endr
 
         cset      x, cs
@@ -338,16 +338,16 @@ bignum_kmul_32_64:
 
         cmn     y, y
 
-        .set    i, l
-        .rep k
-        ldp     x0, x1, [z, 16*i]
-        ldp     x2, x3, [t, 8*k+16*i]
+        .set    I, L
+        .rep K
+        ldp     x0, x1, [z, 16*I]
+        ldp     x2, x3, [t, 8*K+16*I]
         eor     x2, x2, y
         adcs    x0, x0, x2
         eor     x3, x3, y
         adcs    x1, x1, x3
-        stp     x0, x1, [z, 16*i]
-        .set    i, (i+1)
+        stp     x0, x1, [z, 16*I]
+        .set    I, (I+1)
         .endr
 
 // Get the next digits effectively resulting so far starting at 3k
@@ -358,24 +358,24 @@ bignum_kmul_32_64:
 
 // Now propagate through the top quarter of the result
 
-        ldp     x0, x1, [z, 16*3*l]
+        ldp     x0, x1, [z, 16*3*L]
         adds    x0, x0, x
         adcs    x1, x1, c
-        stp     x0, x1, [z, 16*3*l]
+        stp     x0, x1, [z, 16*3*L]
 
-        .set    i, 3*l+1
-        .rep    (l-2)
-        ldp     x0, x1, [z, 16*i]
+        .set    I, 3*L+1
+        .rep    (L-2)
+        ldp     x0, x1, [z, 16*I]
         adcs    x0, x0, c
         adcs    x1, x1, c
-        stp     x0, x1, [z, 16*i]
-        .set    i, (i+1)
+        stp     x0, x1, [z, 16*I]
+        .set    I, (I+1)
         .endr
 
-        ldp     x0, x1, [z, 16*i]
+        ldp     x0, x1, [z, 16*I]
         adcs    x0, x0, c
         adc     x1, x1, c
-        stp     x0, x1, [z, 16*i]
+        stp     x0, x1, [z, 16*I]
 
 // Restore and return
 

@@ -33,7 +33,7 @@
         .globl  bignum_kmul_32_64
         .text
 
-#define k 16
+#define K 16
 
 #define z rdi
 #define x rsi
@@ -67,83 +67,83 @@ bignum_kmul_32_64:
 
 // Multiply the high halves
 
-        lea     rdi,[rdi+8*2*k-0x40]
-        lea     rsi,[rsi+8*k-0x40]
-        lea     rcx,[rcx+8*k]
+        lea     rdi,[rdi+8*2*K-0x40]
+        lea     rsi,[rsi+8*K-0x40]
+        lea     rcx,[rcx+8*K]
         call    local_bignum_kmul_16_32
 
 // Establish r8 as the t pointer and use the cell to back up z now
 
         mov     r8, [rsp]
-        sub     rdi, 8*2*k+0x40
+        sub     rdi, 8*2*K+0x40
         mov     [rsp], rdi
 
 // Form |x_lo - x_hi| starting at t
 
-        mov     rax, [(rsi-8*k-0x40)]
-        sub     rax, [(rsi-8*k-0x40)+8*k]
+        mov     rax, [(rsi-8*K-0x40)]
+        sub     rax, [(rsi-8*K-0x40)+8*K]
         mov     [r8], rax
-        .set i,  1
-        .rep k-1
-        mov     rax, [(rsi-8*k-0x40)+8*i]
-        sbb     rax, [(rsi-8*k-0x40)+8*k+8*i]
-        mov     [r8+8*i], rax
-        .set i,  (i+1)
+        .set I,  1
+        .rep K-1
+        mov     rax, [(rsi-8*K-0x40)+8*I]
+        sbb     rax, [(rsi-8*K-0x40)+8*K+8*I]
+        mov     [r8+8*I], rax
+        .set I,  (I+1)
         .endr
 
         mov     ebx, 0
         sbb     s, s          // Maintain CF, set ZF for cmovs, record sign
 
-        .set i,  0
-        .rep k
-        mov     rdx, [r8+8*i]
+        .set I,  0
+        .rep K
+        mov     rdx, [r8+8*I]
         mov     rax, rdx
         not     rdx
         cmovz   rdx, rax
         adcx    rdx, rbx
-        mov     [r8+8*i], rdx
-        .set i,  (i+1)
+        mov     [r8+8*I], rdx
+        .set I,  (I+1)
         .endr
 
-// Form |y_hi - y_lo| (note opposite order) starting at t[k]
+// Form |y_hi - y_lo| (note opposite order) starting at t[K]
 
-        mov     rax, [(rcx-8*k)+8*k]
-        sub     rax, [(rcx-8*k)]
-        mov     [r8+8*k], rax
-        .set i,  1
-        .rep k-1
-        mov     rax, [(rcx-8*k)+8*k+8*i]
-        sbb     rax, [(rcx-8*k)+8*i]
-        mov     [r8+8*k+8*i], rax
-        .set i,  (i+1)
+        mov     rax, [(rcx-8*K)+8*K]
+        sub     rax, [(rcx-8*K)]
+        mov     [r8+8*K], rax
+        .set I,  1
+        .rep K-1
+        mov     rax, [(rcx-8*K)+8*K+8*I]
+        sbb     rax, [(rcx-8*K)+8*I]
+        mov     [r8+8*K+8*I], rax
+        .set I,  (I+1)
         .endr
 
         mov     ebx, 0
         sbb     rbp, rbp                // Maintain CF, set ZF for cmovs
 
-        .set i,  0
-        .rep k
-        mov     rdx, [r8+8*k+8*i]
+        .set I,  0
+        .rep K
+        mov     rdx, [r8+8*K+8*I]
         mov     rax, rdx
         not     rdx
         cmovz   rdx, rax
         adcx    rdx, rbx
-        mov     [r8+8*k+8*i], rdx
-        .set i,  (i+1)
+        mov     [r8+8*K+8*I], rdx
+        .set I,  (I+1)
         .endr
 
-// Stash the final sign with which to add things at t[4*k]
+// Stash the final sign with which to add things at t[4*K]
 
         xor     s, rbp
-        mov     [r8+8*4*k], s
+        mov     [r8+8*4*K], s
 
-// Multiply the absolute differences, putting the result at t[2*k]
+// Multiply the absolute differences, putting the result at t[2*K]
 // This has the side-effect of putting t in the "right" register rcx
 // so after the load of z, we have both z and t pointers straight.
 
         mov     rcx, r8
-        lea     rsi, [r8+8*k]
-        lea     rdi, [r8+8*2*k]
+        lea     rsi, [r8+8*K]
+        lea     rdi, [r8+8*2*K]
         call    local_bignum_kmul_16_32
         mov     z, [rsp]
 
@@ -151,13 +151,13 @@ bignum_kmul_32_64:
 // Put the sum at t, overwriting the absolute differences we no longer need.
 
         xor     ebx, ebx
-        .set i,  0
-        .rep 2*k
-        mov     rax, [z+8*k+8*i]
-        adcx    rax, [z+8*i]
-        adox    rax, [z+8*2*k+8*i]
-        mov     [t+8*i], rax
-        .set i,  (i+1)
+        .set I,  0
+        .rep 2*K
+        mov     rax, [z+8*K+8*I]
+        adcx    rax, [z+8*I]
+        adox    rax, [z+8*2*K+8*I]
+        mov     [t+8*I], rax
+        .set I,  (I+1)
         .endr
         adox    rbx, rbx
         adc     rbx, 0
@@ -166,19 +166,19 @@ bignum_kmul_32_64:
 // We double-negate it to set CF/ZF while not spoiling its
 // actual form: note that we eventually adcx to it below.
 
-        mov     s, [t+8*4*k]
+        mov     s, [t+8*4*K]
         neg     s
         neg     s
 
-        .set i,  0
-        .rep 2*k
-        mov     rdx, [t+8*2*k+8*i]
+        .set I,  0
+        .rep 2*K
+        mov     rdx, [t+8*2*K+8*I]
         mov     rax, rdx
         not     rdx
         cmovz   rdx, rax
-        adcx    rdx, [t+8*i]
-        mov     [z+8*k+8*i], rdx
-        .set i,  (i+1)
+        adcx    rdx, [t+8*I]
+        mov     [z+8*K+8*I], rdx
+        .set I,  (I+1)
         .endr
 
 // Bump the accumulated carry. This must end up >= 0 because it's the top
@@ -189,11 +189,11 @@ bignum_kmul_32_64:
 // Finally propagate the carry to the top part
 
         xor     eax, eax
-        add     [z+8*3*k],rbx
-        .set i,  1
-        .rep k-1
-        adc     [z+8*3*k+8*i], rax
-        .set i,  (i+1)
+        add     [z+8*3*K],rbx
+        .set I,  1
+        .rep K-1
+        adc     [z+8*3*K+8*I], rax
+        .set I,  (I+1)
         .endr
 
 // Restore and return. The first pop is not needed for the ABI but

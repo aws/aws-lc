@@ -29,8 +29,8 @@
         .globl  bignum_ksqr_32_64
         .text
 
-#define k 16
-#define l (k/2)
+#define K 16
+#define L (K/2)
 
 #define z x19
 #define x x20
@@ -56,41 +56,41 @@ bignum_ksqr_32_64:
 
 // Compute H = x_hi * y_hi in top half of buffer (size 16 x 16 -> 32)
 
-        add     x0, z, #8*2*k
-        add     x1, x, #8*k
+        add     x0, z, #8*2*K
+        add     x1, x, #8*K
         mov     x2, t
         bl      local_ksqr_16_32
 
 // Compute H' = H + L_top in place of H (it cannot overflow)
 
-        ldp     x0, x1, [z, #16*k]
-        ldp     x2, x3, [z, #16*l]
+        ldp     x0, x1, [z, #16*K]
+        ldp     x2, x3, [z, #16*L]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*k]
+        stp     x0, x1, [z, #16*K]
 
-        .set    i, 1
-        .rep (l-1)
-        ldp     x0, x1, [z, #16*(k+i)]
-        ldp     x2, x3, [z, #16*(l+i)]
+        .set    I, 1
+        .rep (L-1)
+        ldp     x0, x1, [z, #16*(K+I)]
+        ldp     x2, x3, [z, #16*(L+I)]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(k+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, #16*(K+I)]
+        .set    I, (I+1)
         .endr
 
-        .rep    (l-1)
-        ldp     x0, x1, [z, #16*(k+i)]
+        .rep    (L-1)
+        ldp     x0, x1, [z, #16*(K+I)]
         adcs    x0, x0, xzr
         adcs    x1, x1, xzr
-        stp     x0, x1, [z, #16*(k+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, #16*(K+I)]
+        .set    I, (I+1)
         .endr
 
-        ldp     x0, x1, [z, #16*(k+i)]
+        ldp     x0, x1, [z, #16*(K+I)]
         adcs    x0, x0, xzr
         adc     x1, x1, xzr
-        stp     x0, x1, [z, #16*(k+i)]
+        stp     x0, x1, [z, #16*(K+I)]
 
 // Compute absolute difference [t..] = |x_lo - x_hi|
 
@@ -188,59 +188,59 @@ bignum_ksqr_32_64:
 
 // Compute M = |x_lo - x_hi|^2, size 32
 
-        add     x0, t, #8*k
+        add     x0, t, #8*K
         mov     x1, t
-        add     x2, t, #8*3*k
+        add     x2, t, #8*3*K
         bl      local_ksqr_16_32
 
 // Add the interlocking H' and L_bot terms
 // Intercept the carry at the 3k position and store it in x.
 // (Note that we no longer need the input x was pointing at.)
 
-        ldp     x0, x1, [z, #16*k]
+        ldp     x0, x1, [z, #16*K]
         ldp     x2, x3, [z]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*l]
+        stp     x0, x1, [z, #16*L]
 
-        .set    i, 1
-        .rep (l-1)
-        ldp     x0, x1, [z, #16*(k+i)]
-        ldp     x2, x3, [z, #16*i]
+        .set    I, 1
+        .rep (L-1)
+        ldp     x0, x1, [z, #16*(K+I)]
+        ldp     x2, x3, [z, #16*I]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(l+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, #16*(L+I)]
+        .set    I, (I+1)
         .endr
 
-        .set    i, 0
-        .rep    l
-        ldp     x0, x1, [z, #16*(k+i)]
-        ldp     x2, x3, [z, #16*(3*l+i)]
+        .set    I, 0
+        .rep    L
+        ldp     x0, x1, [z, #16*(K+I)]
+        ldp     x2, x3, [z, #16*(3*L+I)]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(k+i)]
-        .set    i, (i+1)
+        stp     x0, x1, [z, #16*(K+I)]
+        .set    I, (I+1)
         .endr
 
         cset      x, cs
 
 // Subtract the mid-term cross product M
 
-        ldp     x0, x1, [z, #16*l]
-        ldp     x2, x3, [t, #16*l]
+        ldp     x0, x1, [z, #16*L]
+        ldp     x2, x3, [t, #16*L]
         subs    x0, x0, x2
         sbcs    x1, x1, x3
-        stp     x0, x1, [z, #16*l]
+        stp     x0, x1, [z, #16*L]
 
-        .set    i, l+1
-        .rep (k-1)
-        ldp     x0, x1, [z, #16*i]
-        ldp     x2, x3, [t, #16*i]
+        .set    I, L+1
+        .rep (K-1)
+        ldp     x0, x1, [z, #16*I]
+        ldp     x2, x3, [t, #16*I]
         sbcs    x0, x0, x2
         sbcs    x1, x1, x3
-        stp     x0, x1, [z, #16*i]
-        .set    i, (i+1)
+        stp     x0, x1, [z, #16*I]
+        .set    I, (I+1)
         .endr
 
 // Get the next digits effectively resulting so far starting at 3k
@@ -251,24 +251,24 @@ bignum_ksqr_32_64:
 
 // Now propagate through the top quarter of the result
 
-        ldp     x0, x1, [z, #16*3*l]
+        ldp     x0, x1, [z, #16*3*L]
         adds    x0, x0, x
         adcs    x1, x1, c
-        stp     x0, x1, [z, #16*3*l]
+        stp     x0, x1, [z, #16*3*L]
 
-        .set    i, 3*l+1
-        .rep    (l-2)
-        ldp     x0, x1, [z, #16*i]
+        .set    I, 3*L+1
+        .rep    (L-2)
+        ldp     x0, x1, [z, #16*I]
         adcs    x0, x0, c
         adcs    x1, x1, c
-        stp     x0, x1, [z, #16*i]
-        .set    i, (i+1)
+        stp     x0, x1, [z, #16*I]
+        .set    I, (I+1)
         .endr
 
-        ldp     x0, x1, [z, #16*i]
+        ldp     x0, x1, [z, #16*I]
         adcs    x0, x0, c
         adc     x1, x1, c
-        stp     x0, x1, [z, #16*i]
+        stp     x0, x1, [z, #16*I]
 
 // Restore
 

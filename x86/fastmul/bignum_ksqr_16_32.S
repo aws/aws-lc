@@ -278,10 +278,10 @@
 
         sqr \arg1
 
-        .set i,  (\arg1+8)
+        .set I,  (\arg1+8)
 .rep (8-\arg1)
-        addrow \arg1, i
-        .set i,  (i+1)
+        addrow \arg1, I
+        .set I,  (I+1)
 .endr
 
         mov     [z+8*(16+\arg1)], r8
@@ -441,10 +441,10 @@
 .macro mulrows
         sqrz
 
-        .set i,  8
+        .set I,  8
 .rep 8
-        mulrow 0, i
-        .set i,  (i+1)
+        mulrow 0, I
+        .set I,  (I+1)
 .endr
 
         mov     [z+8*16], r8
@@ -491,35 +491,35 @@ bignum_ksqr_16_32:
         adox    rdx, rbx
         mov     [z+8*1], rdx
 
-        .set i,  1
+        .set I,  1
 .rep 14
-        mov     rdx, [x+8*i]
+        mov     rdx, [x+8*I]
         mulx    rbx, rax, rdx
 
-        mov     rdx, [z+8*(2*i)]
+        mov     rdx, [z+8*(2*I)]
         adcx    rdx, rdx
         adox    rdx, rax
-        mov     [z+8*(2*i)], rdx
+        mov     [z+8*(2*I)], rdx
 
-        mov     rdx, [z+8*(2*i+1)]
+        mov     rdx, [z+8*(2*I+1)]
         adcx    rdx, rdx
         adox    rdx, rbx
-        mov     [z+8*(2*i+1)], rdx
-        .set i,  (i+1)
+        mov     [z+8*(2*I+1)], rdx
+        .set I,  (I+1)
 .endr
 
-        mov     rdx, [x+8*i]
+        mov     rdx, [x+8*I]
         mulx    rbx, rax, rdx
 
-        mov     rdx, [z+8*(2*i)]
+        mov     rdx, [z+8*(2*I)]
         adcx    rdx, rdx
         adox    rdx, rax
-        mov     [z+8*(2*i)], rdx
+        mov     [z+8*(2*I)], rdx
 
         adcx    rbx, zero
         adox    rbx, zero
-        mov     [z+8*(2*i+1)], rbx
-        .set i,  (i+1)
+        mov     [z+8*(2*I+1)], rbx
+        .set I,  (I+1)
 
 
 // Restore registers and return
