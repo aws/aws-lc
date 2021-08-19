@@ -109,30 +109,30 @@ bignum_ksqr_16_32:
 // Compute H' = H + L_top in place of H (it cannot overflow)
 // First add 8-sized block then propagate carry through next 8
 
-        .set    i, 0
+        .set    I, 0
 
-        ldp     x10, x11, [z, #128+8*i]
-        ldp     x12, x13, [z, #64+8*i]
+        ldp     x10, x11, [z, #128+8*I]
+        ldp     x12, x13, [z, #64+8*I]
         adds    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [z, #128+8*i]
-        .set    i, (i+2)
+        stp     x10, x11, [z, #128+8*I]
+        .set    I, (I+2)
 
 .rep 3
-        ldp     x10, x11, [z, #128+8*i]
-        ldp     x12, x13, [z, #64+8*i]
+        ldp     x10, x11, [z, #128+8*I]
+        ldp     x12, x13, [z, #64+8*I]
         adcs    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [z, #128+8*i]
-        .set    i, (i+2)
+        stp     x10, x11, [z, #128+8*I]
+        .set    I, (I+2)
 .endr
 
 .rep 4
-        ldp     x10, x11, [z, #128+8*i]
+        ldp     x10, x11, [z, #128+8*I]
         adcs    x10, x10, xzr
         adcs    x11, x11, xzr
-        stp     x10, x11, [z, #128+8*i]
-        .set    i, (i+2)
+        stp     x10, x11, [z, #128+8*I]
+        .set    I, (I+2)
 .endr
 
 // Compute M = |x_lo - x_hi| * |y_hi - y_lo| in [t+8...], size 16
