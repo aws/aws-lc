@@ -5,13 +5,10 @@
 *********************************************************************************************/
 
 #include "sikep434r3.h"
-/*#include "pq-crypto/pq_random.h"
-#include "utils/safety.h"
- */
 #include "sikep434r3_fpx.h"
 #include "sikep434r3_ec_isogeny.h"
 #include "sikep434r3_api.h"
-#include "../../include/openssl/rand.h" // generate random bytes
+#include "../../include/openssl/rand.h"
 #include "../EVP_pq_constants.h"
 #include "../EVP_kem.h"
 

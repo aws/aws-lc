@@ -6,22 +6,12 @@
 *********************************************************************************************/
 
 #include "sikep434r3.h"
-/*#include "pq-crypto/pq.h"*/
 #include "sikep434r3_fp.h"
 #include "sikep434r3_fpx.h"
-#include "sikep434r3_fp_x64_asm.h"
 
 /* Multiprecision subtraction with correction with 2*p, c = a-b+2p. */
 void mp_sub434_p2(const digit_t* a, const digit_t* b, digit_t* c)
 {
-  /* Assembly code take out delete later
-#if defined(SIKE_P434_R3_ASM)
-  if (sikep434r3_asm_is_enabled()) {
-      mp_sub434_p2_asm(a, b, c);
-      return;
-  }
-#endif */
-
   unsigned int i, borrow = 0;
 
   for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
@@ -37,15 +27,6 @@ void mp_sub434_p2(const digit_t* a, const digit_t* b, digit_t* c)
 /* Multiprecision subtraction with correction with 4*p, c = a-b+4p. */
 void mp_sub434_p4(const digit_t* a, const digit_t* b, digit_t* c)
 {
-
-  /* Assembly code take out delete later
-#if defined(SIKE_P434_R3_ASM)
-    if (sikep434r3_asm_is_enabled()) {
-        mp_sub434_p4_asm(a, b, c);
-        return;
-    }
-#endif*/
-
     unsigned int i, borrow = 0;
 
     for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
@@ -63,13 +44,6 @@ void mp_sub434_p4(const digit_t* a, const digit_t* b, digit_t* c)
  * Output: c in [0, 2*p434-1] */
 void fpadd434(const digit_t* a, const digit_t* b, digit_t* c)
 {
-  /* Assembly code take out delete later
-#if defined(SIKE_P434_R3_ASM)
-  if (sikep434r3_asm_is_enabled()) {
-      fpadd434_asm(a, b, c);
-      return;
-  }
-#endif */
   unsigned int i, carry = 0;
   digit_t mask;
 
@@ -94,14 +68,6 @@ void fpadd434(const digit_t* a, const digit_t* b, digit_t* c)
 * Output: c in [0, 2*p434-1] */
 void fpsub434(const digit_t* a, const digit_t* b, digit_t* c)
 {
-  /* Assembly code take out delete later
-#if defined(SIKE_P434_R3_ASM)
-  if (sikep434r3_asm_is_enabled()) {
-      fpsub434_asm(a, b, c);
-      return;
-  }
-#endif*/
-
   unsigned int i, borrow = 0;
   digit_t mask;
 
@@ -197,15 +163,6 @@ void digit_x_digit(const digit_t a, const digit_t b, digit_t* c)
 /* Multiprecision comba multiply, c = a*b, where lng(a) = lng(b) = nwords. */
 void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int nwords)
 {
-  /* Assembly code take out delete later
-#if defined(SIKE_P434_R3_ASM)
-  if (sikep434r3_asm_is_enabled()) {
-      SIKE_P434_R3_UNREFERENCED_PARAMETER(nwords);
-      mul434_asm(a, b, c);
-      return;
-  }
-#endif*/
-
   unsigned int i, j;
   digit_t t = 0, u = 0, v = 0, UV[2];
   unsigned int carry;
@@ -244,14 +201,6 @@ void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int n
 * ma is assumed to be in Montgomery representation. */
 void rdc_mont(digit_t* ma, digit_t* mc)
 {
-  /* Assembly code take out delete later
-#if defined(SIKE_P434_R3_ASM)
-  if (sikep434r3_asm_is_enabled()) {
-      rdc434_asm(ma, mc);
-      return;
-  }
-#endif*/
-
   unsigned int i, j, carry, count = SIKE_P434_R3_ZERO_WORDS;
   digit_t UV[2], t = 0, u = 0, v = 0;
 
@@ -299,7 +248,6 @@ void rdc_mont(digit_t* ma, digit_t* mc)
   }
 
   /* `carry` isn't read after this, but it's still a necessary argument to the macro */
-    /* cppcheck-suppress unreadVariable */
     SIKE_P434_R3_ADDC(0, v, ma[2*SIKE_P434_R3_NWORDS_FIELD-1], carry, v);
     mc[SIKE_P434_R3_NWORDS_FIELD-1] = v;
 }

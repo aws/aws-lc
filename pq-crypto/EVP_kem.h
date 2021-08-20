@@ -30,10 +30,11 @@ typedef struct pq_kem {
     const uint16_t public_key_length;
     // stores the pq algorithm specific private key memory size
     const uint16_t private_key_length;
-    // stores the pq algorithm specific shared secret memory size
-    const uint16_t shared_secret_key_length;
     // stores the pq algorithm specific ciphertext memory size
     const uint16_t ciphertext_length;
+    // stores the pq algorithm specific shared secret memory size
+    const uint16_t shared_secret_key_length;
+
 
     /* NIST Post Quantum KEM submissions require the following API for compatibility */
     int (*generate_keypair)(OUT unsigned char *public_key, OUT unsigned char *private_key);
@@ -57,14 +58,14 @@ typedef struct pq_kem {
 
 typedef struct pq_kem_params {
     pq_kem *kem;
-    /*uint32_t *public_key;
-    uint32_t *private_key;
-    uint32_t *ciphertext;
-    uint32_t *shared_secret;*/
     unsigned char *public_key;
+    uint32_t public_key_size;
     unsigned char *private_key;
+    uint32_t private_key_size;
     unsigned char *ciphertext;
+    uint32_t ciphertext_size;
     unsigned char *shared_secret;
+    uint32_t shared_secret_size;
 } pq_kem_params;
 
 /*************************************************
@@ -171,9 +172,5 @@ int evp_sike_p434_r3_crypto_kem_enc(OUT unsigned char *ciphertext, OUT unsigned 
  * Outputs: shared secret ss    (SIKE_P434_R3_SHARED_SECRET_BYTES bytes) */
 int evp_sike_p434_r3_crypto_kem_dec(OUT unsigned char *shared_secret, IN const unsigned char *ciphertext, IN const unsigned char *private_key);
 
-/* SIKE's private constant time copy function.
- * Current work around for not being able to find a aws-lc
- * version of constant time copy function. */
-int sike_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, bool dont);
 
 #endif  // AWSLC_EVP_KEM_H

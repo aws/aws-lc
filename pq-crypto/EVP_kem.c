@@ -22,17 +22,25 @@ struct pq_kem evp_sike_p434_r3 = {
 
 const struct pq_kem_params evp_sike_kem_params = {
     .kem = &evp_sike_p434_r3,
-    .public_key = 0,
-    .private_key = 0,
-    .ciphertext = 0,
-    .shared_secret = 0,
+    .public_key = NULL,
+    .public_key_size = 0,
+    .private_key = NULL,
+    .private_key_size = 0,
+    .ciphertext = NULL,
+    .ciphertext_size = 0,
+    .shared_secret = NULL,
+    .shared_secret_size = 0,
 };
 
 int pq_kem_params_alloc(pq_kem_params *key_params) {
     key_params->public_key = malloc(key_params->kem->public_key_length);
+    key_params->public_key_size = key_params->kem->public_key_length;
     key_params->private_key = malloc(key_params->kem->private_key_length);
+    key_params->private_key_size = key_params->kem->private_key_length;
     key_params->ciphertext = malloc(key_params->kem->ciphertext_length);
+    key_params->ciphertext_size = key_params->kem->ciphertext_length;
     key_params->shared_secret = malloc(key_params->kem->shared_secret_key_length);
+    key_params->shared_secret_size = key_params->kem->shared_secret_key_length;
 
     return EVP_PQ_SUCCESS;
 }
@@ -45,17 +53,13 @@ int pq_kem_params_free(pq_kem_params *key_params) {
         free(key_params->shared_secret);
         return EVP_PQ_SUCCESS;
     }
-
-    return EVP_PQ_FAILURE;
+    return EVP_PQ_SUCCESS;
 }
 
 int EVP_kem_generate_keypair(pq_kem_params *kem_params) {
 
     // check for empty references
-    if (kem_params == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (kem_params->kem == NULL) {
+    if (kem_params == NULL || kem_params->kem == NULL) {
         return EVP_PQ_FAILURE;
     }
     pq_kem *kem = kem_params->kem;
@@ -64,36 +68,23 @@ int EVP_kem_generate_keypair(pq_kem_params *kem_params) {
     }
 
     // check public key
-    if (kem_params->public_key == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (sizeof(kem_params->public_key) != kem->public_key_length) {
+    if (kem_params->public_key == NULL || kem_params->public_key_size != kem->public_key_length) {
         return EVP_PQ_FAILURE;
     }
     //  check private key
-    if (kem_params->private_key == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (sizeof(kem_params->private_key) != kem->private_key_length) {
+    if (kem_params->private_key == NULL || kem_params->private_key_size != kem->private_key_length) {
         return EVP_PQ_FAILURE;
     }
 
     int result = kem->generate_keypair(kem_params->public_key, kem_params->private_key);
-    if (result == EVP_PQ_FAILURE) {
-        return EVP_PQ_FAILURE;
-    }
-
-    return EVP_PQ_SUCCESS;
+    return result;
 }
 
 // should the ciphertext be sent here and then saved in the kem??
 int EVP_kem_encapsulate(pq_kem_params *kem_params) {
 
     // check for empty references
-    if (kem_params == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (kem_params->kem == NULL) {
+    if (kem_params == NULL || kem_params->kem == NULL) {
         return EVP_PQ_FAILURE;
     }
     pq_kem *kem = kem_params->kem;
@@ -102,35 +93,22 @@ int EVP_kem_encapsulate(pq_kem_params *kem_params) {
     }
 
     // check public key
-    if (kem_params->public_key == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (sizeof(kem_params->public_key) != kem->public_key_length) {
+    if (kem_params->public_key == NULL || kem_params->public_key_size != kem->public_key_length) {
         return EVP_PQ_FAILURE;
     }
     // check ciphertext
-    if (kem_params->ciphertext == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (sizeof(kem_params->ciphertext) != kem->ciphertext_length) {
+    if (kem_params->ciphertext == NULL || kem_params->ciphertext_size != kem->ciphertext_length) {
         return EVP_PQ_FAILURE;
     }
 
     int result = kem->encapsulate(kem_params->ciphertext, kem_params->shared_secret, kem_params->public_key);
-    if (result == EVP_PQ_FAILURE) {
-        return EVP_PQ_FAILURE;
-    }
-
-    return EVP_PQ_SUCCESS;
+    return result;
 }
 
 int EVP_kem_decapsulate(pq_kem_params *kem_params) {
 
     // check for empty references
-    if (kem_params == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (kem_params->kem == NULL) {
+    if (kem_params == NULL || kem_params->kem == NULL) {
         return EVP_PQ_FAILURE;
     }
     pq_kem *kem = kem_params->kem;
@@ -139,25 +117,14 @@ int EVP_kem_decapsulate(pq_kem_params *kem_params) {
     }
 
     // check public key
-    if (kem_params->private_key == NULL) {
-        return EVP_PQ_FAILURE;
-    }
-    if (sizeof(kem_params->private_key) != kem->private_key_length) {
+    if (kem_params->private_key == NULL || kem_params->private_key_size != kem->private_key_length) {
         return EVP_PQ_FAILURE;
     }
     // check ciphertext
-    if (kem_params->ciphertext == NULL) {
+    if (kem_params->ciphertext == NULL || kem_params->ciphertext_size != kem->ciphertext_length) {
         return EVP_PQ_FAILURE;
     }
-    if (sizeof(kem_params->ciphertext) != kem->ciphertext_length) {
-        return EVP_PQ_FAILURE;
-    }
-
 
     int result = kem->decapsulate(kem_params->shared_secret, kem_params->ciphertext, kem_params->private_key);
-    if (result == EVP_PQ_FAILURE) {
-        return EVP_PQ_FAILURE;
-    }
-
-    return EVP_PQ_SUCCESS;
+    return result;
 }

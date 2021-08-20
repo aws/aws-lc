@@ -11,35 +11,15 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/* All sikep434r3 functions and global variables in the pq-crypto/sike_r3 directory
- * should be defined using this namespace macro to avoid symbol collisions. For example,
- * in foo.h, declare a function as follows:
- *
- * #define foo_function S2N_SIKE_P434_R3_NAMESPACE(foo_function)
- * int foo_function(int foo_argument); */
-
-/* NOTE to Jyoti: change "S2N" name convention later */
-
-/*#define s S2N_SIKE_P434_R3_NAMESPACE(s) { s2n_sike_p434_r3_##s; }*/
-/* tried:
- * #define const char* S2N_SIKE_P434_R3_NAMESPACE(const char *s) s2n_sike_p434_r3_##s;
- * where S2N_SIKE_P434_R3_NAMESPACE("foo_function")
- * */
-
 /* Endian-related functionality */
 /* Returns true if the machine is big endian */
-/*#define is_big_endian S2N_SIKE_P434_R3_NAMESPACE(is_big_endian)*/
 bool is_big_endian(void);
 
-/*#define bswap32 S2N_SIKE_P434_R3_NAMESPACE(bswap32)*/
 uint32_t bswap32(uint32_t x);
 
-/*#define bswap64 S2N_SIKE_P434_R3_NAMESPACE(bswap64)*/
 uint64_t bswap64(uint64_t x);
 
 /* Arch specific definitions */
-/*#define digit_t S2N_SIKE_P434_R3_NAMESPACE(digit_t)
-#define hdigit_t S2N_SIKE_P434_R3_NAMESPACE(hdigit_t)*/
 #if defined(_WIN64) || defined(_AMD64_) || defined(__x86_64) || defined(__x86_64__) || defined(__aarch64__) || defined(_S390X_) || defined(_ARM64_) || defined(__powerpc64__) || (defined(__riscv) && (__riscv_xlen == 64))
 #define SIKE_P434_R3_NWORDS_FIELD    7 /* Number of words of a 434-bit field element */
     #define SIKE_P434_R3_ZERO_WORDS      3 /* Number of "0" digits in the least significant part of p434 + 1 */
@@ -59,27 +39,6 @@ uint64_t bswap64(uint64_t x);
 #else
 #error -- "Unsupported ARCHITECTURE"
 #endif
-
-/* old
-#if defined(_AMD64_) || defined(__x86_64) || defined(__x86_64__) || defined(__aarch64__) || defined(_S390X_) || defined(_ARM64_) || defined(__powerpc64__) || (defined(__riscv) && (__riscv_xlen == 64))
-    #define SIKE_P434_R3_NWORDS_FIELD    7 // Number of words of a 434-bit field element
-    #define SIKE_P434_R3_ZERO_WORDS      3 // Number of "0" digits in the least significant part of p434 + 1
-    #define SIKE_P434_R3_RADIX           64
-    #define SIKE_P434_R3_LOG2RADIX       6
-    #define SIKE_P434_R3_BSWAP_DIGIT(i)  bswap64((i))
-    typedef uint64_t digit_t;
-    typedef uint32_t hdigit_t;
-#elif defined(_X86_) || defined(_ARM_) || defined(__arm__) || defined(__i386__)
-    #define SIKE_P434_R3_NWORDS_FIELD    14 // Number of words of a 434-bit field element
-    #define SIKE_P434_R3_ZERO_WORDS      6  // Number of "0" digits in the least significant part of p434 + 1
-    #define SIKE_P434_R3_RADIX           32
-    #define SIKE_P434_R3_LOG2RADIX       5
-    #define SIKE_P434_R3_BSWAP_DIGIT(i)  bswap32((i))
-    typedef uint32_t digit_t;
-    typedef uint16_t hdigit_t;
-#else
-    #error -- "Unsupported ARCHITECTURE"
-#endif */
 
 /* Basic constants */
 #define SIKE_P434_R3_NBITS_FIELD     434
@@ -108,24 +67,18 @@ uint64_t bswap64(uint64_t x);
 
 /* SIDH's basic element definitions and point representations */
 /* Datatype for representing 434-bit field elements (448-bit max.) */
-/*#define felm_t S2N_SIKE_P434_R3_NAMESPACE(felm_t)*/
 typedef digit_t felm_t[SIKE_P434_R3_NWORDS_FIELD];
 
 /* Datatype for representing double-precision 2x434-bit field elements (2x448-bit max.) */
-/*#define dfelm_t S2N_SIKE_P434_R3_NAMESPACE(dfelm_t)*/
 typedef digit_t dfelm_t[2*SIKE_P434_R3_NWORDS_FIELD];
 
 /* Datatype for representing quadratic extension field elements GF(p434^2) */
-/*#define f2elm_t S2N_SIKE_P434_R3_NAMESPACE(f2elm_t)
-#define felm_s S2N_SIKE_P434_R3_NAMESPACE(felm_s)*/
 typedef struct felm_s {
     felm_t e[2];
 } f2elm_t;
 
 /* Point representation in projective XZ Montgomery coordinates. */
-/*#define point_proj S2N_SIKE_P434_R3_NAMESPACE(point_proj)*/
 typedef struct { f2elm_t X; f2elm_t Z; } point_proj;
-/*#define point_proj_t S2N_SIKE_P434_R3_NAMESPACE(point_proj_t)*/
 typedef point_proj point_proj_t[1];
 
 /* Macro to avoid compiler warnings when detecting unreferenced parameters */
@@ -154,9 +107,6 @@ static __inline unsigned int is_digit_lessthan_ct(const digit_t x, const digit_t
 
 /* Definitions for generic C implementation */
 
-// uint128_t already defined within aws-lc
-//typedef uint64_t uint128_t[2];
-
 /* Digit multiplication */
 #define SIKE_P434_R3_MUL(multiplier, multiplicand, hi, lo)                                    \
     digit_x_digit((multiplier), (multiplicand), &(lo));
@@ -179,32 +129,22 @@ static __inline unsigned int is_digit_lessthan_ct(const digit_t x, const digit_t
     (shiftOut) = ((lowIn) >> (shift)) ^ ((highIn) << ((DigitSize) - (shift)));
 
 /* Fixed parameters for computation */
-/*#define p434 S2N_SIKE_P434_R3_NAMESPACE(p434)*/
 extern const uint64_t p434[SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define p434x2 S2N_SIKE_P434_R3_NAMESPACE(p434x2)*/
 extern const uint64_t p434x2[SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define p434x4 S2N_SIKE_P434_R3_NAMESPACE(p434x4)*/
 extern const uint64_t p434x4[SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define p434p1 S2N_SIKE_P434_R3_NAMESPACE(p434p1)*/
 extern const uint64_t p434p1[SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define A_gen S2N_SIKE_P434_R3_NAMESPACE(A_gen)*/
 extern const uint64_t A_gen[6*SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define B_gen S2N_SIKE_P434_R3_NAMESPACE(B_gen)*/
 extern const uint64_t B_gen[6*SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define Montgomery_R2 S2N_SIKE_P434_R3_NAMESPACE(Montgomery_R2)*/
 extern const uint64_t Montgomery_R2[SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define Montgomery_one S2N_SIKE_P434_R3_NAMESPACE(Montgomery_one)*/
 extern const uint64_t Montgomery_one[SIKE_P434_R3_NWORDS64_FIELD];
 
-/*#define strat_Alice S2N_SIKE_P434_R3_NAMESPACE(strat_Alice)*/
 extern const unsigned int strat_Alice[SIKE_P434_R3_MAX_ALICE-1];
 
-/*#define strat_Bob S2N_SIKE_P434_R3_NAMESPACE(strat_Bob)*/
 extern const unsigned int strat_Bob[SIKE_P434_R3_MAX_BOB-1];

@@ -10,18 +10,13 @@
 #include <string.h>
 #include "sikep434r3.h"
 #include "sikep434r3_fips202.h"
-/*#include "utils/s2n_safety.h"
-#include "pq-crypto/s2n_pq.h"
-#include "pq-crypto/s2n_pq_random.h"
- */
-#include "../../crypto/internal.h"  // for constant time function for later implementation
-//#include "sikep434r3_temp_kem.h"
+#include "../../crypto/internal.h"
+#include "../../include/openssl/mem.h"
 #include "../EVP_pq_constants.h"
 #include "../EVP_kem.h"
-#include "../../include/openssl/rand.h" // generate random bytes
+#include "../../include/openssl/rand.h"
 #include "sikep434r3_api.h"
 #include "sikep434r3_fpx.h"
-//#include "tls/s2n_kem.h"
 
 /* SIKE's key generation
  * Note: secret key is private key
@@ -119,34 +114,14 @@ int evp_sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, 
      * If c0_ and ct are equal, then decaps succeeded and we skip the overwrite and output
      * the actual shared secret: ss = H(m||ct) (dont_copy = true). */
     //bool dont_copy = s2n_constant_time_equals(c0_, ct, S2N_SIKE_P434_R3_PUBLIC_KEY_BYTES);
-    int result = memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES);
-    bool dont_copy = true;
-    if (result != 0) {
-      dont_copy = false;
+    // POSIX_GUARD(s2n_constant_time_copy_or_dont(temp, sk, S2N_SIKE_P434_R3_MSG_BYTES, dont_copy));
+    int dont_copy = CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES);
+    if (dont_copy == 0) {
+        OPENSSL_memcpy(temp, sk, SIKE_P434_R3_MSG_BYTES);
     }
-
-    POSIX_GUARD(sike_copy_or_dont(temp, sk, SIKE_P434_R3_MSG_BYTES, dont_copy));
-
 
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], ct, SIKE_P434_R3_CIPHERTEXT_BYTES);
     shake256(ss, SIKE_P434_R3_SHARED_SECRET_BYTES, temp, SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES);
 
     return EVP_PQ_SUCCESS;
-}
-
-
-/* Current work around for constant time copy function.
- *
- * */
-
-int sike_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, bool dont)
-{
-    /* if copy, then copy */
-    if (!dont) {
-        memcpy(dest, src, len);
-        return EVP_PQ_SUCCESS;
-    }
-
-    return EVP_PQ_FAILURE;
-
 }
