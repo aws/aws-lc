@@ -5,7 +5,7 @@ FROM ubuntu-20.04-aarch:base
 
 SHELL ["/bin/bash", "-c"]
 
-# gcc11 is relatively new and not readily availble, so we must fetch it from a mirror.
+# gcc11 is relatively new and not readily available, so we must fetch it from a mirror for now.
 RUN set -ex && \
     echo "deb http://ports.ubuntu.com hirsute main universe" >> /etc/apt/sources.list && \
     apt-get update && \
