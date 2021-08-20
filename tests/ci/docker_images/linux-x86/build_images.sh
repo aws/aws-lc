@@ -12,6 +12,7 @@ docker build -t ubuntu-18.04:clang-6x ubuntu-18.04_clang-6x
 docker build -t ubuntu-20.04:base ubuntu-20.04_base
 docker build -t ubuntu-20.04:gcc-7x ubuntu-20.04_gcc-7x
 docker build -t ubuntu-20.04:gcc-8x ubuntu-20.04_gcc-8x
+docker build -t ubuntu-20.04:gcc-11x ubuntu-20.04_gcc-11x
 docker build -t ubuntu-20.04:clang-7x ubuntu-20.04_clang-7x
 docker build -t ubuntu-20.04:clang-8x ubuntu-20.04_clang-8x
 docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
