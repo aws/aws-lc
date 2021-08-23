@@ -5,6 +5,75 @@
 
 from util.metadata import AWS_REGION, AWS_ACCOUNT
 
+def ec2_bm_framework_policies_in_json():
+    """
+    Define an IAM policy that gives permissions for starting, stopping, and getting details of EC2 instances and their Vpcs
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ec2:RunInstances",
+                    "ec2:TerminateInstances",
+                    "ec2:CreateTags",
+                    "ec2:DescribeInstances",
+                    "ec2:DescribeVpcs",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeSubnets"
+                ],
+                "Resource": [
+                    "*"
+                ]
+            }]
+    }
+
+def s3_bm_framework_policies_in_json(s3_bucket_name):
+    """
+    Define an IAM policy that gives some s3 permissions needed by the EC2 instances of the benchmarking framework
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:ListBucket",
+                    "s3:DeleteObject"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::{}".format(s3_bucket_name),
+                    "arn:aws:s3:::{}/*".format(s3_bucket_name)
+                ]
+            }]
+    }
+
+
+def ssm_bm_framework_policies_in_json():
+    """
+    Define an IAM policy that gives permissions to creating documents and running commands.
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "iam:PassRole",
+                    "ssm:CreateDocument",
+                    "ssm:DeleteDocument",
+                    "ssm:SendCommand",
+                    "ssm:ListCommands",
+                    "ssm:DescribeInstanceInformation"
+                ],
+                "Resource": [
+                    "*"
+                ]
+            }]
+    }
 
 def code_build_batch_policy_in_json(project_ids):
     """
