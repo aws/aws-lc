@@ -1,7 +1,7 @@
 # AWS libcrypto (AWS-LC)
 
 [![Join the chat at https://gitter.im/awslabs/aws-lc](https://badges.gitter.im/awslabs/aws-lc.svg)](https://gitter.im/awslabs/aws-lc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
+.
 AWS-LC is a general-purpose cryptographic library maintained by the AWS Cryptography
 team for AWS and their customers. It іs based on code from the Google BoringSSL project
 and the OpenSSL project.
