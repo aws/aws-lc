@@ -43,31 +43,31 @@
 // ------------------------------------------------------------------------
 
 .macro mulpadd arg1,arg2
-        mulx    rbx, rax, [x+8*\arg1]
+        mulx    rcx, rax, [x+8*\arg1]
 .if ((\arg1 + \arg2) % 8 == 0)
         adcx    r8, rax
-        adox    r9, rbx
+        adox    r9, rcx
 .elseif ((\arg1 + \arg2) % 8 == 1)
         adcx    r9, rax
-        adox    r10, rbx
+        adox    r10, rcx
 .elseif ((\arg1 + \arg2) % 8 == 2)
         adcx    r10, rax
-        adox    r11, rbx
+        adox    r11, rcx
 .elseif ((\arg1 + \arg2) % 8 == 3)
         adcx    r11, rax
-        adox    r12, rbx
+        adox    r12, rcx
 .elseif ((\arg1 + \arg2) % 8 == 4)
         adcx    r12, rax
-        adox    r13, rbx
+        adox    r13, rcx
 .elseif ((\arg1 + \arg2) % 8 == 5)
         adcx    r13, rax
-        adox    r14, rbx
+        adox    r14, rcx
 .elseif ((\arg1 + \arg2) % 8 == 6)
         adcx    r14, rax
-        adox    r15, rbx
+        adox    r15, rcx
 .elseif ((\arg1 + \arg2) % 8 == 7)
         adcx    r15, rax
-        adox    r8, rbx
+        adox    r8, rcx
 .endif
 
 .endm
@@ -371,19 +371,19 @@
         mov     rdx, [x+8*0]
         mulx    rax, r9, [x+8*1]
         mov     [z+8*1], r9
-        mulx    rbx, r10, [x+8*2]
+        mulx    rcx, r10, [x+8*2]
         adcx    r10, rax
         mov     [z+8*2], r10
         mulx    rax, r11, [x+8*3]
-        adcx    r11, rbx
-        mulx    rbx, r12, [x+8*4]
+        adcx    r11, rcx
+        mulx    rcx, r12, [x+8*4]
         adcx    r12, rax
         mulx    rax, r13, [x+8*5]
-        adcx    r13, rbx
-        mulx    rbx, r14, [x+8*6]
+        adcx    r13, rcx
+        mulx    rcx, r14, [x+8*6]
         adcx    r14, rax
         mulx    r8, r15, [x+8*7]
-        adcx    r15, rbx
+        adcx    r15, rcx
         adcx    r8, zero
 
 // Add in the next diagonal = 21 + 31 + 41 + 51 + 61 + 71 + 54
@@ -468,7 +468,6 @@ bignum_ksqr_16_32:
 // Save more registers to play with
 
         push    rbp
-        push    rbx
         push    r12
         push    r13
         push    r14
@@ -483,18 +482,18 @@ bignum_ksqr_16_32:
 
         xor     zeroe, zeroe
         mov     rdx, [x+8*0]
-        mulx    rbx, rax, rdx
+        mulx    rcx, rax, rdx
         mov     [z+8*0], rax
 
         mov     rdx, [z+8*1]
         adcx    rdx, rdx
-        adox    rdx, rbx
+        adox    rdx, rcx
         mov     [z+8*1], rdx
 
         .set I,  1
 .rep 14
         mov     rdx, [x+8*I]
-        mulx    rbx, rax, rdx
+        mulx    rcx, rax, rdx
 
         mov     rdx, [z+8*(2*I)]
         adcx    rdx, rdx
@@ -503,22 +502,22 @@ bignum_ksqr_16_32:
 
         mov     rdx, [z+8*(2*I+1)]
         adcx    rdx, rdx
-        adox    rdx, rbx
+        adox    rdx, rcx
         mov     [z+8*(2*I+1)], rdx
         .set I,  (I+1)
 .endr
 
         mov     rdx, [x+8*I]
-        mulx    rbx, rax, rdx
+        mulx    rcx, rax, rdx
 
         mov     rdx, [z+8*(2*I)]
         adcx    rdx, rdx
         adox    rdx, rax
         mov     [z+8*(2*I)], rdx
 
-        adcx    rbx, zero
-        adox    rbx, zero
-        mov     [z+8*(2*I+1)], rbx
+        adcx    rcx, zero
+        adox    rcx, zero
+        mov     [z+8*(2*I+1)], rcx
         .set I,  (I+1)
 
 
@@ -528,7 +527,6 @@ bignum_ksqr_16_32:
         pop     r14
         pop     r13
         pop     r12
-        pop     rbx
         pop     rbp
 
         ret
