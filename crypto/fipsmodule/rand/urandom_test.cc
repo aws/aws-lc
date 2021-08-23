@@ -51,6 +51,7 @@ struct Event {
     kOpen,
     kUrandomRead,
     kUrandomIoctl,
+    kNanoSleep,
     kAbort,
   };
 
@@ -92,6 +93,11 @@ struct Event {
     return e;
   }
 
+  static Event NanoSleep() {
+    Event e(Syscall::kNanoSleep);
+    return e;
+  }
+
   std::string String() const {
     char buf[256];
 
@@ -107,6 +113,9 @@ struct Event {
       case Syscall::kUrandomRead:
         snprintf(buf, sizeof(buf), "read(urandom_fd, _, %zu)", length);
         break;
+
+      case Syscall::kNanoSleep:
+        return "nanosleep(_)";
 
       case Syscall::kUrandomIoctl:
         return "ioctl(urandom_fd, RNDGETENTCNT, _)";
@@ -189,6 +198,7 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
   // urandom_fd tracks the file descriptor number for /dev/urandom in the child
   // process, if it opens it.
   int urandom_fd = -1;
+  bool urandom_not_ready_was_cleared = false;
 
   for (;;) {
     // Advance the child to the next system call.
@@ -207,6 +217,7 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     struct user_regs_struct regs;
     ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
     const auto syscall_number = regs.orig_rax;
+    static auto previous_syscall = regs.orig_rax;
 
     bool is_opening_urandom = false;
     bool is_urandom_ioctl = false;
@@ -257,6 +268,33 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         break;
       }
 
+      case __NR_nanosleep: {
+        // First true condition: In FIPS mode, an |ioctl| call with command
+        // |RNDGETENTCNT| is used. If this fails, a delay is injected. The
+        // failure happens when the test flag |URANDOM_NOT_READY| is set. But
+        // since this bit is cleared below we detect this event using
+        // |urandom_not_ready_was_cleared|.
+        //
+        // Second true condition: We can have two or more consecutive
+        // |nanosleep| calls. This happens if |nanosleep| returns -1. The PRNG
+        // model only accounts for one |nanosleep| call. Do the same here.
+        if (urandom_not_ready_was_cleared ||
+            ((flags & URANDOM_ERROR) && (previous_syscall != __NR_nanosleep))) {
+          out_trace->push_back(Event::NanoSleep());
+        }
+        break;
+      }
+
+      // Alias for |__NR_nanosleep| on, at least, Ubuntu 20.04.
+      case __NR_clock_nanosleep: {
+        if (urandom_not_ready_was_cleared ||
+            ((flags & URANDOM_ERROR) &&
+             (previous_syscall != __NR_clock_nanosleep))) {
+          out_trace->push_back(Event::NanoSleep());
+        }
+        break;
+      }
+
       case __NR_ioctl: {
         const int ioctl_fd = regs.rdi;
         if (urandom_fd >= 0 && ioctl_fd == urandom_fd &&
@@ -267,6 +305,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         }
       }
     }
+
+    previous_syscall = syscall_number;
 
     if (inject_error) {
       // Replace the system call number with -1 to cause the kernel to ignore
@@ -309,6 +349,7 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
       if (flags & URANDOM_NOT_READY) {
         result--;
         flags &= ~URANDOM_NOT_READY;
+        urandom_not_ready_was_cleared = true;
       }
 
       // ptrace always works with ill-defined "words", which appear to be 64-bit
@@ -375,6 +416,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       // Probe urandom for entropy.
       ret.push_back(Event::UrandomIoctl());
       if (flags & URANDOM_NOT_READY) {
+        ret.push_back(Event::NanoSleep());
         // If the first attempt doesn't report enough entropy, probe
         // repeatedly until it does, which will happen with the second attempt.
         ret.push_back(Event::UrandomIoctl());
@@ -389,6 +431,10 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       }
       ret.push_back(Event::UrandomRead(len));
       if (flags & URANDOM_ERROR) {
+        for (size_t i = 0; i < MAX_BACKOFF_RETRIES; i++) {
+          ret.push_back(Event::NanoSleep());
+          ret.push_back(Event::UrandomRead(len));
+        }
         ret.push_back(Event::Abort());
         return false;
       }
