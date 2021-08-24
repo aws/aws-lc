@@ -68,10 +68,15 @@ To update AWS-LC CI, run command:
 ./run-cdk.sh --action update-ci
 ```
 
-To create/udpate Docker images, run command:
+To create/udpate Linux Docker images, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'
-./run-cdk.sh --action build-img --github-access-token ${GITHUB_ACCESS_TOKEN}
+./run-cdk.sh --action build-linux-img --github-access-token ${GITHUB_ACCESS_TOKEN}
+```
+
+To create/udpate Windows Docker images, run command:
+```
+./run-cdk.sh --action build-win-img
 ```
 
 To destroy AWS-LC CI resources created above, run command:

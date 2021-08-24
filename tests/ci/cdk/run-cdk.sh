@@ -103,13 +103,13 @@ function create_github_ci_stack() {
   aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
-function build_linux_img() {
+function run_linux_img_build() {
   # https://awscli.amazonaws.com/v2/documentation/api/latest/reference/codebuild/start-build-batch.html
   build_id=$(aws codebuild start-build-batch --project-name aws-lc-docker-image-build-linux | jq -r '.buildBatch.id')
   export AWS_LC_LINUX_BUILD_BATCH_ID="${build_id}"
 }
 
-function build_windows_img() {
+function run_windows_img_build() {
   # EC2 takes several minutes to be ready for running command.
   echo "Wait 3 min for EC2 ready for SSM command execution."
   sleep 180
@@ -194,6 +194,43 @@ function validate_github_access_token {
   fi
 }
 
+function build_linux_docker_images() {
+  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
+  trap destroy_docker_img_build_stack EXIT
+
+  # Check prerequisite.
+  # One prerequisite is to provide GitHub access token so AWS CodeBuild can pull Docker images from GitHub.
+  validate_github_access_token
+
+  # Create/update aws-ecr repo.
+  cdk deploy aws-lc-ecr-linux-* --require-approval never
+
+  # Create docker image build stack.
+  create_docker_img_build_stack
+
+  echo "Activating AWS CodeBuild to build Linux aarch & x86 docker images."
+  run_linux_img_build
+
+  echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
+  # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
+  linux_docker_img_build_status_check
+}
+
+function build_win_docker_images() {
+  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
+  trap destroy_docker_img_build_stack EXIT
+
+  # Create/update aws-ecr repo.
+  cdk deploy aws-lc-ecr-windows-* --require-approval never
+
+  echo "Executing AWS SSM commands to build Windows docker images."
+  run_windows_img_build
+
+  echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
+  # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
+  win_docker_img_build_status_check
+}
+
 function build_docker_images() {
   # Always destroy docker build stacks (which include EC2 instance) on EXIT.
   trap destroy_docker_img_build_stack EXIT
@@ -209,10 +246,10 @@ function build_docker_images() {
   create_docker_img_build_stack
 
   echo "Activating AWS CodeBuild to build Linux aarch & x86 docker images."
-  build_linux_img
+  run_linux_img_build
 
   echo "Executing AWS SSM commands to build Windows docker images."
-  build_windows_img
+  run_windows_img_build
 
   echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
   # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
@@ -248,7 +285,9 @@ Options:
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
                                    'update-ci': update aws-lc ci. This only update AWS CodeBuild for GitHub CI.
                                    'destroy-ci': destroys AWS and Docker image resources used by aws-lc ci.
-                                   'build-img': builds Docker image used by aws-lc ci.
+                                   'build-linux-img': builds Linux Docker image used by aws-lc ci.
+                                                After image build, AWS resources are cleaned up.
+                                   'build-win-img': builds Windows Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
                                    'diff': compares the specified stack with the deployed stack.
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
@@ -346,8 +385,11 @@ function main() {
   destroy-ci)
     destroy_ci
     ;;
-  build-img)
-    build_docker_images
+  build-linux-img)
+    build_linux_docker_images
+    ;;
+  build-linux-img)
+    build_win_docker_images
     ;;
   synth)
     cdk synth aws-lc-ci-*
