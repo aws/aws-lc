@@ -118,7 +118,8 @@ function create_github_ci_stack() {
   aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
+  # TODO: re-enable 'aws-lc-ci-bm-framework' when it's ready.
+#  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
 function run_linux_img_build() {
