@@ -2,7 +2,7 @@ include_directories(../include)
 
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
-    if(${ARCH} STREQUAL "aarch64")
+    if(ARCH STREQUAL "aarch64")
       # The "armx" Perl scripts look for "64" in the style argument
       # in order to decide whether to generate 32- or 64-bit asm.
       if(APPLE)
@@ -10,16 +10,16 @@ if(NOT OPENSSL_NO_ASM)
       else()
         set(PERLASM_STYLE linux64)
       endif()
-    elseif(${ARCH} STREQUAL "arm")
+    elseif(ARCH STREQUAL "arm")
       if(APPLE)
         set(PERLASM_STYLE ios32)
       else()
         set(PERLASM_STYLE linux32)
       endif()
-    elseif(${ARCH} STREQUAL "ppc64le")
+    elseif(ARCH STREQUAL "ppc64le")
       set(PERLASM_STYLE linux64le)
     else()
-      if(${ARCH} STREQUAL "x86")
+      if(ARCH STREQUAL "x86")
         set(PERLASM_FLAGS "-fPIC -DOPENSSL_IA32_SSE2")
       endif()
       if(APPLE)
@@ -47,12 +47,12 @@ if(NOT OPENSSL_NO_ASM)
       endforeach()
     endif()
   else()
-    if(${ARCH} STREQUAL "aarch64")
+    if(ARCH STREQUAL "aarch64")
       set(PERLASM_STYLE win64)
       set(ASM_EXT S)
       enable_language(ASM)
     else()
-      if(${ARCH} STREQUAL "x86_64")
+      if(ARCH STREQUAL "x86_64")
         set(PERLASM_STYLE nasm)
       else()
         set(PERLASM_STYLE win32n)
@@ -70,7 +70,7 @@ endif()
 if(PERL_EXECUTABLE)
   function(perlasm dest src)
     get_filename_component(dir ${dest} DIRECTORY)
-    if ("${dir}" STREQUAL "")
+    if (dir STREQUAL "")
       set(dir ".")
     endif()
 
@@ -96,6 +96,7 @@ if(PERL_EXECUTABLE)
   perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
   perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
+  perlasm(cipher_extra/chacha20_poly1305_armv8.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_armv8.pl)
   perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
   perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
   perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
@@ -138,7 +139,7 @@ if(FIPS_DELOCATE OR FIPS_SHARED)
   )
 endif()
 
-if(${ARCH} STREQUAL "arm")
+if(ARCH STREQUAL "arm")
   set(
     CRYPTO_ARCH_SOURCES
 
@@ -149,16 +150,17 @@ if(${ARCH} STREQUAL "arm")
   )
 endif()
 
-if(${ARCH} STREQUAL "aarch64")
+if(ARCH STREQUAL "aarch64")
   set(
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv8.${ASM_EXT}
     test/trampoline-armv8.${ASM_EXT}
+    cipher_extra/chacha20_poly1305_armv8.${ASM_EXT}
   )
 endif()
 
-if(${ARCH} STREQUAL "ppc64le")
+if(ARCH STREQUAL "ppc64le")
   set(
     CRYPTO_ARCH_SOURCES
 
@@ -166,7 +168,7 @@ if(${ARCH} STREQUAL "ppc64le")
   )
 endif()
 
-if(${ARCH} STREQUAL "x86")
+if(ARCH STREQUAL "x86")
   set(
     CRYPTO_ARCH_SOURCES
 
@@ -175,7 +177,7 @@ if(${ARCH} STREQUAL "x86")
   )
 endif()
 
-if(${ARCH} STREQUAL "x86_64")
+if(ARCH STREQUAL "x86_64")
   set(
     CRYPTO_ARCH_SOURCES
 
@@ -237,6 +239,7 @@ add_library(
   asn1/a_object.c
   asn1/a_octet.c
   asn1/a_print.c
+  asn1/a_strex.c
   asn1/a_strnid.c
   asn1/a_time.c
   asn1/a_type.c
@@ -377,13 +380,13 @@ add_library(
   trust_token/voprf.c
   x509/a_digest.c
   x509/a_sign.c
-  x509/a_strex.c
   x509/a_verify.c
   x509/algorithm.c
   x509/asn1_gen.c
   x509/by_dir.c
   x509/by_file.c
   x509/i2d_pr.c
+  x509/name_print.c
   x509/rsa_pss.c
   x509/t_crl.c
   x509/t_req.c

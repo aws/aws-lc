@@ -16,6 +16,7 @@ docker build -t ubuntu-20.04:clang-7x ubuntu-20.04_clang-7x
 docker build -t ubuntu-20.04:clang-8x ubuntu-20.04_clang-8x
 docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
 docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
+docker build -t ubuntu-20.04:clang-7x-bm-framework ubuntu-20.04_clang-7x-bm-framework
 # This passes in the Dockerfile in the folder but uses the parent directory for the context so it has access to cryptofuzz_data.zip
 docker build -t ubuntu-20.04:cryptofuzz -f ubuntu-20.04_cryptofuzz/Dockerfile ../
 docker build -t centos-7:gcc-4x centos-7_gcc-4x

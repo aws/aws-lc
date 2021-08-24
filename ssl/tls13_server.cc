@@ -270,7 +270,7 @@ static enum ssl_ticket_aead_result_t select_session(
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  // Per RFC8446, section 4.2.9, servers MUST abort the handshake if the client
+  // Per RFC 8446, section 4.2.9, servers MUST abort the handshake if the client
   // sends pre_shared_key without psk_key_exchange_modes.
   CBS unused;
   if (!ssl_client_hello_get_extension(client_hello, &unused,
@@ -764,8 +764,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   assert(ssl->s3->ech_status != ssl_ech_accepted || hs->ech_is_inner_present);
   if (hs->ech_is_inner_present) {
     // Fill in the ECH confirmation signal.
-    Span<uint8_t> random_suffix =
-        random.subspan(SSL3_RANDOM_SIZE - ECH_CONFIRMATION_SIGNAL_LEN);
+    Span<uint8_t> random_suffix = random.last(ECH_CONFIRMATION_SIGNAL_LEN);
     if (!ssl_ech_accept_confirmation(hs, random_suffix, hs->transcript,
                                      server_hello)) {
       return ssl_hs_error;

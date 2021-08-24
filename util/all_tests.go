@@ -421,7 +421,7 @@ func main() {
 			}
 
 			if !(*sslTests) {
-				if strings.Contains(fmt.Sprint(test.Cmd), "ssl_test") {
+				if strings.Contains(fmt.Sprint(test.Cmd), "ssl_test") || strings.Contains(fmt.Sprint(test.Cmd), "decrepit_test") {
 					continue
 				}
 			}

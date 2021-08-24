@@ -23,4 +23,5 @@ tag_and_push_img 'ubuntu-20.04-aarch:clang-7x' "${ECS_REPO}:ubuntu-20.04_clang-7
 tag_and_push_img 'ubuntu-20.04-aarch:clang-8x' "${ECS_REPO}:ubuntu-20.04_clang-8x"
 tag_and_push_img 'ubuntu-20.04-aarch:clang-9x' "${ECS_REPO}:ubuntu-20.04_clang-9x"
 tag_and_push_img 'ubuntu-20.04-aarch:clang-10x' "${ECS_REPO}:ubuntu-20.04_clang-10x"
+tag_and_push_img 'ubuntu-20.04-aarch:clang-7x-bm-framework' "${ECS_REPO}:ubuntu-20.04_clang-7x-bm-framework"
 tag_and_push_img 'ubuntu-20.04-aarch:cryptofuzz' "${ECS_REPO}:ubuntu-20.04_cryptofuzz"

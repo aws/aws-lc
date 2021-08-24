@@ -110,6 +110,13 @@ extern "C" {
 #define X509v3_KU_DECIPHER_ONLY 0x8000
 #define X509v3_KU_UNDEF 0xffff
 
+struct X509_algor_st {
+  ASN1_OBJECT *algorithm;
+  ASN1_TYPE *parameter;
+} /* X509_ALGOR */;
+
+DECLARE_ASN1_FUNCTIONS(X509_ALGOR)
+
 DEFINE_STACK_OF(X509_ALGOR)
 
 typedef STACK_OF(X509_ALGOR) X509_ALGORS;
@@ -254,7 +261,7 @@ DEFINE_STACK_OF(X509_TRUST)
 #define XN_FLAG_SEP_MASK (0xf << 16)
 
 #define XN_FLAG_COMPAT 0  // Traditional SSLeay: use old X509_NAME_print
-#define XN_FLAG_SEP_COMMA_PLUS (1 << 16)  // RFC2253 ,+
+#define XN_FLAG_SEP_COMMA_PLUS (1 << 16)  // RFC 2253 ,+
 #define XN_FLAG_SEP_CPLUS_SPC (2 << 16)   // ,+ spaced: more readable
 #define XN_FLAG_SEP_SPLUS_SPC (3 << 16)   // ;+ spaced
 #define XN_FLAG_SEP_MULTILINE (4 << 16)   // One line per field
@@ -273,13 +280,13 @@ DEFINE_STACK_OF(X509_TRUST)
 #define XN_FLAG_SPC_EQ (1 << 23)  // Put spaces round '='
 
 // This determines if we dump fields we don't recognise:
-// RFC2253 requires this.
+// RFC 2253 requires this.
 
 #define XN_FLAG_DUMP_UNKNOWN_FIELDS (1 << 24)
 
 #define XN_FLAG_FN_ALIGN (1 << 25)  // Align field names to 20 characters
 
-// Complete set of RFC2253 flags
+// Complete set of RFC 2253 flags
 
 #define XN_FLAG_RFC2253                                             \
   (ASN1_STRFLGS_RFC2253 | XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | \
@@ -456,7 +463,7 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
 #define X509_extract_key(x) X509_get_pubkey(x)
 
 // X509_get_pathlen returns path length constraint from the basic constraints
-// extension in |x509|. (See RFC5280, section 4.2.1.9.) It returns -1 if the
+// extension in |x509|. (See RFC 5280, section 4.2.1.9.) It returns -1 if the
 // constraint is not present, or if some extension in |x509| was invalid.
 //
 // Note that decoding an |X509| object will not check for invalid extensions. To
@@ -724,7 +731,6 @@ OPENSSL_EXPORT int X509_NAME_digest(const X509_NAME *name, const EVP_MD *md,
 // copying parts of it as a normal |d2i_X509| call would do.
 OPENSSL_EXPORT X509 *X509_parse_from_buffer(CRYPTO_BUFFER *buf);
 
-#ifndef OPENSSL_NO_FP_API
 OPENSSL_EXPORT X509 *d2i_X509_fp(FILE *fp, X509 **x509);
 OPENSSL_EXPORT int i2d_X509_fp(FILE *fp, X509 *x509);
 OPENSSL_EXPORT X509_CRL *d2i_X509_CRL_fp(FILE *fp, X509_CRL **crl);
@@ -758,7 +764,6 @@ OPENSSL_EXPORT int i2d_PrivateKey_fp(FILE *fp, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey_fp(FILE *fp, EVP_PKEY **a);
 OPENSSL_EXPORT int i2d_PUBKEY_fp(FILE *fp, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY_fp(FILE *fp, EVP_PKEY **a);
-#endif
 
 OPENSSL_EXPORT X509 *d2i_X509_bio(BIO *bp, X509 **x509);
 OPENSSL_EXPORT int i2d_X509_bio(BIO *bp, X509 *x509);
@@ -860,12 +865,30 @@ OPENSSL_EXPORT int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *ne);
 OPENSSL_EXPORT int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
                                       size_t *pderlen);
 
+// X509_cmp_time compares |s| against |*t|. On success, it returns a negative
+// number if |s| <= |*t| and a positive number if |s| > |*t|. On error, it
+// returns zero. If |t| is NULL, it uses the current time instead of |*t|.
+//
+// WARNING: Unlike most comparison functions, this function returns zero on
+// error, not equality.
 OPENSSL_EXPORT int X509_cmp_time(const ASN1_TIME *s, time_t *t);
+
+// X509_cmp_current_time behaves like |X509_cmp_time| but compares |s| against
+// the current time.
 OPENSSL_EXPORT int X509_cmp_current_time(const ASN1_TIME *s);
-OPENSSL_EXPORT ASN1_TIME *X509_time_adj(ASN1_TIME *s, long adj, time_t *t);
+
+// X509_time_adj calls |X509_time_adj_ex| with |offset_day| equal to zero.
+OPENSSL_EXPORT ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec,
+                                        time_t *t);
+
+// X509_time_adj_ex behaves like |ASN1_TIME_adj|, but adds an offset to |*t|. If
+// |t| is NULL, it uses the current time instead of |*t|.
 OPENSSL_EXPORT ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day,
                                            long offset_sec, time_t *t);
-OPENSSL_EXPORT ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long adj);
+
+// X509_gmtime_adj behaves like |X509_time_adj_ex| but adds |offset_sec| to the
+// current time.
+OPENSSL_EXPORT ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec);
 
 OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
@@ -882,7 +905,15 @@ DECLARE_ASN1_FUNCTIONS(X509_VAL)
 
 DECLARE_ASN1_FUNCTIONS(X509_PUBKEY)
 
+// X509_PUBKEY_set serializes |pkey| into a newly-allocated |X509_PUBKEY|
+// structure. On success, it frees |*x|, sets |*x| to the new object, and
+// returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
+
+// X509_PUBKEY_get decodes the public key in |key| and returns an |EVP_PKEY| on
+// success, or NULL on error. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|, so callers must
+// not mutate the result.
 OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
 
 DECLARE_ASN1_FUNCTIONS(X509_SIG)
@@ -904,6 +935,8 @@ DECLARE_ASN1_FUNCTIONS(X509_NAME_ENTRY)
 
 DECLARE_ASN1_FUNCTIONS(X509_NAME)
 
+// X509_NAME_set makes a copy of |name|. On success, it frees |*xn|, sets |*xn|
+// to the copy, and returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_NAME_set(X509_NAME **xn, X509_NAME *name);
 
 DECLARE_ASN1_FUNCTIONS(X509_CINF)
@@ -1111,7 +1144,7 @@ OPENSSL_EXPORT void X509_REQ_get0_signature(const X509_REQ *req,
 // a known NID.
 OPENSSL_EXPORT int X509_REQ_get_signature_nid(const X509_REQ *req);
 
-// i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC2986)
+// i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC 2986)
 // portion of |req|. If |outp| is NULL, nothing is written. Otherwise, if
 // |*outp| is not NULL, the result is written to |*outp|, which must have enough
 // space available, and |*outp| is advanced just past the output. If |outp| is
@@ -1138,7 +1171,7 @@ OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
 
 // X509_REQ_extension_nid returns one if |nid| is a supported CSR attribute type
 // for carrying extensions and zero otherwise. The supported types are
-// |NID_ext_req| (pkcs-9-at-extensionRequest from RFC2985) and |NID_ms_ext_req|
+// |NID_ext_req| (pkcs-9-at-extensionRequest from RFC 2985) and |NID_ms_ext_req|
 // (a Microsoft szOID_CERT_EXTENSIONS variant).
 OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
 
@@ -1146,7 +1179,7 @@ OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
 // returns a newly-allocated |STACK_OF(X509_EXTENSION)| containing the result.
 // It returns NULL on error, or if |req| did not request extensions.
 //
-// This function supports both pkcs-9-at-extensionRequest from RFC2985 and the
+// This function supports both pkcs-9-at-extensionRequest from RFC 2985 and the
 // Microsoft szOID_CERT_EXTENSIONS variant.
 OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req);
 
@@ -1366,7 +1399,6 @@ OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
 
 OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
-#ifndef OPENSSL_NO_FP_API
 OPENSSL_EXPORT int X509_print_ex_fp(FILE *bp, X509 *x, unsigned long nmflag,
                                     unsigned long cflag);
 OPENSSL_EXPORT int X509_print_fp(FILE *bp, X509 *x);
@@ -1374,7 +1406,6 @@ OPENSSL_EXPORT int X509_CRL_print_fp(FILE *bp, X509_CRL *x);
 OPENSSL_EXPORT int X509_REQ_print_fp(FILE *bp, X509_REQ *req);
 OPENSSL_EXPORT int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm,
                                          int indent, unsigned long flags);
-#endif
 
 OPENSSL_EXPORT int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase);
 OPENSSL_EXPORT int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
