@@ -394,7 +394,7 @@ function main() {
   build-linux-img)
     build_linux_docker_images
     ;;
-  build-linux-img)
+  build-win-img)
     build_win_docker_images
     ;;
   synth)
