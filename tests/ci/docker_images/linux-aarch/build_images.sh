@@ -2,6 +2,11 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+####################################
+# Build images from AWS public ECR #
+# https://gallery.ecr.aws/?page=1  #
+####################################
+
 docker build -t amazonlinux-2-aarch:base amazonlinux-2_base
 docker build -t amazonlinux-2-aarch:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2-aarch:clang-7x amazonlinux-2_clang-7x

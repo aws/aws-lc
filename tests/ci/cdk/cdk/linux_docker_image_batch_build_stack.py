@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
+from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2
 
 from util.metadata import AWS_ACCOUNT, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_SOURCE_VERSION, LINUX_AARCH_ECR_REPO, \
     LINUX_X86_ECR_REPO, EXTERNAL_CREDENTIAL_SECRET_ARN
@@ -57,10 +57,14 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
                 value=github_access_token,
                 type=codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER)
 
+        # Define VPC
+        vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
+
         # Define CodeBuild project.
         project = codebuild.Project(
             scope=self,
             id=id,
+            vpc=vpc,
             project_name=id,
             source=git_hub_source,
             environment=codebuild.BuildEnvironment(
