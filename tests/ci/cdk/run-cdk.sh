@@ -76,6 +76,10 @@ function destroy_ci() {
 }
 
 function destroy_docker_img_build_stack() {
+  if [[ "${IMG_BUILD_STATUS}" == "Failed" ]]; then
+    echo "Docker images build failed. AWS resources of bulding Docker images is kept for debug."
+    exit 1
+  fi
   # Destroy all temporary resources created for all docker image build.
   cdk destroy aws-lc-docker-image-build-* --force
   # CDK stack destroy does not delete s3 bucket automatically.
@@ -159,12 +163,14 @@ function run_windows_img_build() {
 }
 
 function linux_docker_img_build_status_check() {
+  export IMG_BUILD_STATUS='Failed'
   # Every 5 min, this function checks if the linux docker image batch code build finished successfully.
   # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
   for i in {1..30}; do
     # https://docs.aws.amazon.com/cli/latest/reference/codebuild/batch-get-build-batches.html
     build_batch_status=$(aws codebuild batch-get-build-batches --ids "${AWS_LC_LINUX_BUILD_BATCH_ID}" | jq -r '.buildBatches[0].buildBatchStatus')
     if [[ ${build_batch_status} == 'SUCCEEDED' ]]; then
+      export IMG_BUILD_STATUS='Success'
       echo "Code build ${AWS_LC_LINUX_BUILD_BATCH_ID} finished successfully."
       return
     elif [[ ${build_batch_status} == 'FAILED' ]]; then
@@ -180,12 +186,14 @@ function linux_docker_img_build_status_check() {
 }
 
 function win_docker_img_build_status_check() {
+  export IMG_BUILD_STATUS='Failed'
   # Every 5 min, this function checks if the windows docker image build is finished successfully.
   # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
   for i in {1..30}; do
     # https://awscli.amazonaws.com/v2/documentation/api/latest/reference/ssm/list-commands.html
     command_run_status=$(aws ssm list-commands --command-id "${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID}" | jq -r '.Commands[0].Status')
     if [[ ${command_run_status} == 'Success' ]]; then
+      export IMG_BUILD_STATUS='Success'
       echo "SSM command ${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID} finished successfully."
       return
     elif [[ ${command_run_status} == 'Failed' ]]; then
@@ -210,7 +218,7 @@ function validate_github_access_token {
 
 function build_linux_docker_images() {
   # Always destroy docker build stacks (which include EC2 instance) on EXIT.
-#  trap destroy_docker_img_build_stack EXIT
+  trap destroy_docker_img_build_stack EXIT
 
   # Check prerequisite.
   # One prerequisite is to provide GitHub access token so AWS CodeBuild can pull Docker images from GitHub.
@@ -277,6 +285,7 @@ Options:
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
                                    'update-ci': update aws-lc ci. This only update AWS CodeBuild for GitHub CI.
                                    'destroy-ci': destroys AWS and Docker image resources used by aws-lc ci.
+                                   'destroy-img-stack': destroys AWS resources of bulding Docker images.
                                    'build-linux-img': builds Linux Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
                                    'build-win-img': builds Windows Docker image used by aws-lc ci.
@@ -314,6 +323,7 @@ function export_global_variables() {
   # During CI setup, used to create secret in AWS Secrets Manager for storing external credentials.
   # After CI setup, used to delete secret from AWS Secrets Manager.
   export AWS_LC_CI_SECRET_NAME='aws-lc-ci-external-credential'
+  export IMG_BUILD_STATUS='unknown'
 }
 
 function main() {
@@ -376,6 +386,9 @@ function main() {
     ;;
   destroy-ci)
     destroy_ci
+    ;;
+  destroy-img-stack)
+    destroy_docker_img_build_stack
     ;;
   build-linux-img)
     build_linux_docker_images
