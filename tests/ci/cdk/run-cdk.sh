@@ -84,7 +84,7 @@ function destroy_docker_img_build_stack() {
   delete_external_credential
 }
 
-function create_docker_img_build_stack() {
+function create_linux_docker_img_build_stack() {
   # Clean up build stacks if exists.
   destroy_docker_img_build_stack
   # Use SecretsManager to store GitHub personal access token.
@@ -93,7 +93,17 @@ function create_docker_img_build_stack() {
   # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
   # https://forums.aws.amazon.com/thread.jspa?messageID=952368
   # Workaround: go to AWS EIP console, release unused IP.
-  cdk deploy aws-lc-docker-image-build-* --require-approval never
+  cdk deploy aws-lc-docker-image-build-linux --require-approval never
+}
+
+function create_win_docker_img_build_stack() {
+  # Clean up build stacks if exists.
+  destroy_docker_img_build_stack
+  # Deploy aws-lc ci stacks.
+  # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
+  # https://forums.aws.amazon.com/thread.jspa?messageID=952368
+  # Workaround: go to AWS EIP console, release unused IP.
+  cdk deploy aws-lc-docker-image-build-windows --require-approval never
 }
 
 function create_github_ci_stack() {
@@ -200,7 +210,7 @@ function validate_github_access_token {
 
 function build_linux_docker_images() {
   # Always destroy docker build stacks (which include EC2 instance) on EXIT.
-  trap destroy_docker_img_build_stack EXIT
+#  trap destroy_docker_img_build_stack EXIT
 
   # Check prerequisite.
   # One prerequisite is to provide GitHub access token so AWS CodeBuild can pull Docker images from GitHub.
@@ -210,7 +220,7 @@ function build_linux_docker_images() {
   cdk deploy aws-lc-ecr-linux-* --require-approval never
 
   # Create docker image build stack.
-  create_docker_img_build_stack
+  create_linux_docker_img_build_stack
 
   echo "Activating AWS CodeBuild to build Linux aarch & x86 docker images."
   run_linux_img_build
@@ -227,42 +237,20 @@ function build_win_docker_images() {
   # Create/update aws-ecr repo.
   cdk deploy aws-lc-ecr-windows-* --require-approval never
 
-  echo "Executing AWS SSM commands to build Windows docker images."
-  run_windows_img_build
-
-  echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
-  # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
-  win_docker_img_build_status_check
-}
-
-function build_docker_images() {
-  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
-  trap destroy_docker_img_build_stack EXIT
-
-  # Check prerequisite.
-  # One prerequisite is to provide GitHub access token so AWS CodeBuild can pull Docker images from GitHub.
-  validate_github_access_token
-
-  # Create/update aws-ecr repo.
-  cdk deploy aws-lc-ecr-* --require-approval never
-
-  # Create docker image build stack.
-  create_docker_img_build_stack
-
-  echo "Activating AWS CodeBuild to build Linux aarch & x86 docker images."
-  run_linux_img_build
+  # Create aws windows build stack
+  create_win_docker_img_build_stack
 
   echo "Executing AWS SSM commands to build Windows docker images."
   run_windows_img_build
 
   echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
   # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
-  linux_docker_img_build_status_check
   win_docker_img_build_status_check
 }
 
 function setup_ci() {
-  build_docker_images
+  create_linux_docker_img_build_stack
+  create_win_docker_img_build_stack
 
   create_github_ci_stack
 }
