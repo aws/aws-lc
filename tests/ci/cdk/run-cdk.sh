@@ -62,6 +62,10 @@ function store_external_credential() {
 }
 
 function destroy_ci() {
+  if [[ "${CDK_DEPLOY_ACCOUNT}" == "620771051181" ]]; then
+    echo "destroy_ci should not be executed on team account."
+    exit 1
+  fi
   cdk destroy aws-lc-* --force
   # CDK stack destroy does not delete s3 bucket automatically.
   delete_s3_buckets
