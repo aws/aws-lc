@@ -1,10 +1,13 @@
-/********************************************************************************************
-* Supersingular Isogeny Key Encapsulation Library
-*
-* Abstract: core functions over GF(p) and GF(p^2)
-* Note that currently there is no need to differentiate these methods using namespace
-* as this is only the SIKE integration.
-*********************************************************************************************/
+// -----------------------------------------------------------------------------
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Supersingular Isogeny Key Encapsulation Library
+//
+// Abstract: core functions over GF(p) and GF(p^2)
+// Note that currently there is no need to differentiate these methods using namespace
+// as this is only the SIKE integration.
+// -----------------------------------------------------------------------------
 
 #pragma once
 

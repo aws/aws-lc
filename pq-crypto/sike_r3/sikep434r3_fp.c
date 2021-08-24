@@ -1,15 +1,18 @@
-/********************************************************************************************
-* Supersingular Isogeny Key Encapsulation Library
-*
-* Abstract: modular arithmetic for P434
-* Here the assembly implementations have been turned off
-*********************************************************************************************/
+// -----------------------------------------------------------------------------
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Supersingular Isogeny Key Encapsulation Library
+//
+// Abstract: modular arithmetic for P434
+// Here the assembly implementations have been turned off
+// -----------------------------------------------------------------------------
 
 #include "sikep434r3.h"
 #include "sikep434r3_fp.h"
 #include "sikep434r3_fpx.h"
 
-/* Multiprecision subtraction with correction with 2*p, c = a-b+2p. */
+// Multiprecision subtraction with correction with 2*p, c = a-b+2p.
 void mp_sub434_p2(const digit_t* a, const digit_t* b, digit_t* c)
 {
   unsigned int i, borrow = 0;
@@ -24,7 +27,7 @@ void mp_sub434_p2(const digit_t* a, const digit_t* b, digit_t* c)
   }
 }
 
-/* Multiprecision subtraction with correction with 4*p, c = a-b+4p. */
+// Multiprecision subtraction with correction with 4*p, c = a-b+4p.
 void mp_sub434_p4(const digit_t* a, const digit_t* b, digit_t* c)
 {
     unsigned int i, borrow = 0;
@@ -39,9 +42,9 @@ void mp_sub434_p4(const digit_t* a, const digit_t* b, digit_t* c)
     }
 }
 
-/* Modular addition, c = a+b mod p434.
- * Inputs: a, b in [0, 2*p434-1]
- * Output: c in [0, 2*p434-1] */
+// Modular addition, c = a+b mod p434.
+// Inputs: a, b in [0, 2*p434-1]
+// Output: c in [0, 2*p434-1]
 void fpadd434(const digit_t* a, const digit_t* b, digit_t* c)
 {
   unsigned int i, carry = 0;
@@ -63,9 +66,9 @@ void fpadd434(const digit_t* a, const digit_t* b, digit_t* c)
   }
 }
 
-/* Modular subtraction, c = a-b mod p434.
-* Inputs: a, b in [0, 2*p434-1]
-* Output: c in [0, 2*p434-1] */
+// Modular subtraction, c = a-b mod p434.
+// Inputs: a, b in [0, 2*p434-1]
+// Output: c in [0, 2*p434-1]
 void fpsub434(const digit_t* a, const digit_t* b, digit_t* c)
 {
   unsigned int i, borrow = 0;
@@ -82,8 +85,8 @@ void fpsub434(const digit_t* a, const digit_t* b, digit_t* c)
   }
 }
 
-/* Modular negation, a = -a mod p434.
-* Input/output: a in [0, 2*p434-1]  */
+// Modular negation, a = -a mod p434.
+// Input/output: a in [0, 2*p434-1]
 void fpneg434(digit_t* a)
 {
     unsigned int i, borrow = 0;
@@ -93,15 +96,15 @@ void fpneg434(digit_t* a)
     }
 }
 
-/* Modular division by two, c = a/2 mod p434.
- * Input : a in [0, 2*p434-1]
- * Output: c in [0, 2*p434-1] */
+// Modular division by two, c = a/2 mod p434.
+// Input : a in [0, 2*p434-1]
+// Output: c in [0, 2*p434-1]
 void fpdiv2_434(const digit_t* a, digit_t* c)
 {
     unsigned int i, carry = 0;
     digit_t mask;
 
-    mask = 0 - (digit_t)(a[0] & 1); /* If a is odd compute a+p434 */
+    mask = 0 - (digit_t)(a[0] & 1); // If a is odd compute a+p434
     for (i = 0; i < SIKE_P434_R3_NWORDS_FIELD; i++) {
         SIKE_P434_R3_ADDC(carry, a[i], ((const digit_t*)p434)[i] & mask, carry, c[i]);
     }
@@ -109,7 +112,7 @@ void fpdiv2_434(const digit_t* a, digit_t* c)
     mp_shiftr1(c, SIKE_P434_R3_NWORDS_FIELD);
 }
 
-/* Modular correction to reduce field element a in [0, 2*p434-1] to [0, p434-1]. */
+// Modular correction to reduce field element a in [0, 2*p434-1] to [0, p434-1].
 void fpcorrection434(digit_t* a)
 {
     unsigned int i, borrow = 0;
@@ -126,15 +129,15 @@ void fpcorrection434(digit_t* a)
     }
 }
 
-/* Digit multiplication, digit * digit -> 2-digit result */
+// Digit multiplication, digit * digit -> 2-digit result
 void digit_x_digit(const digit_t a, const digit_t b, digit_t* c)
 {
     register digit_t al, ah, bl, bh, temp;
     digit_t albl, albh, ahbl, ahbh, res1, res2, res3, carry;
     digit_t mask_low = (digit_t)(-1) >> (sizeof(digit_t)*4), mask_high = (digit_t)(-1) << (sizeof(digit_t)*4);
 
-    al = a & mask_low;                        /* Low part */
-    ah = a >> (sizeof(digit_t) * 4);          /* High part */
+    al = a & mask_low;                        // Low part
+    ah = a >> (sizeof(digit_t) * 4);          // High part
     bl = b & mask_low;
     bh = b >> (sizeof(digit_t) * 4);
 
@@ -142,25 +145,25 @@ void digit_x_digit(const digit_t a, const digit_t b, digit_t* c)
     albh = al*bh;
     ahbl = ah*bl;
     ahbh = ah*bh;
-    c[0] = albl & mask_low;                   /* C00 */
+    c[0] = albl & mask_low;                   // C00
 
     res1 = albl >> (sizeof(digit_t) * 4);
     res2 = ahbl & mask_low;
     res3 = albh & mask_low;  
     temp = res1 + res2 + res3;
     carry = temp >> (sizeof(digit_t) * 4);
-    c[0] ^= temp << (sizeof(digit_t) * 4);    /* C01 */
+    c[0] ^= temp << (sizeof(digit_t) * 4);    // C01
 
     res1 = ahbl >> (sizeof(digit_t) * 4);
     res2 = albh >> (sizeof(digit_t) * 4);
     res3 = ahbh & mask_low;
     temp = res1 + res2 + res3 + carry;
-    c[1] = temp & mask_low;                   /* C10 */
+    c[1] = temp & mask_low;                   // C10
     carry = temp & mask_high; 
-    c[1] ^= (ahbh & mask_high) + carry;       /* C11 */
+    c[1] ^= (ahbh & mask_high) + carry;       // C11
 }
 
-/* Multiprecision comba multiply, c = a*b, where lng(a) = lng(b) = nwords. */
+// Multiprecision comba multiply, c = a*b, where lng(a) = lng(b) = nwords.
 void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int nwords)
 {
   unsigned int i, j;
@@ -195,10 +198,10 @@ void mp_mul(const digit_t* a, const digit_t* b, digit_t* c, const unsigned int n
   c[2*nwords-1] = v;
 }
 
-/* Efficient Montgomery reduction using comba and exploiting the special form of the prime p434.
-* mc = ma*R^-1 mod p434x2, where R = 2^448.
-* If ma < 2^448*p434, the output mc is in the range [0, 2*p434-1].
-* ma is assumed to be in Montgomery representation. */
+// Efficient Montgomery reduction using comba and exploiting the special form of the prime p434.
+// mc = ma*R^-1 mod p434x2, where R = 2^448.
+// If ma < 2^448*p434, the output mc is in the range [0, 2*p434-1].
+// ma is assumed to be in Montgomery representation.
 void rdc_mont(digit_t* ma, digit_t* mc)
 {
   unsigned int i, j, carry, count = SIKE_P434_R3_ZERO_WORDS;
@@ -247,7 +250,7 @@ void rdc_mont(digit_t* ma, digit_t* mc)
       t = 0;
   }
 
-  /* `carry` isn't read after this, but it's still a necessary argument to the macro */
+  // `carry` isn't read after this, but it's still a necessary argument to the macro
     SIKE_P434_R3_ADDC(0, v, ma[2*SIKE_P434_R3_NWORDS_FIELD-1], carry, v);
     mc[SIKE_P434_R3_NWORDS_FIELD-1] = v;
 }

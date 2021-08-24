@@ -18,4 +18,4 @@ establishment by themselves. Instead they should only be used as part of a hybri
 post-quantum key exchange scheme and a classical key exchange scheme.
 
 ## SIKE (Supersingular Isogeny Key Encapsulation)
-The code in the pq-crypto/sike_r3 directory was imported from ...
+The code in the pq-crypto/sike_r3 directory was imported from [S2N](https://github.com/aws/s2n-tls/tree/main/pq-crypto).

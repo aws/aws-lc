@@ -1,15 +1,17 @@
-/********************************************************************************************
-* SHA3-derived function SHAKE
-*
-* Based on the public domain implementation in crypto_hash/keccakc512/simple/ 
-* from http://bench.cr.yp.to/supercop.html by Ronny Van Keer 
-* and the public domain "TweetFips202" implementation from https://twitter.com/tweetfips202 
-* by Gilles Van Assche, Daniel J. Bernstein, and Peter Schwabe
-*
-* See NIST Special Publication 800-185 for more information:
-* http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
-*
-*********************************************************************************************/  
+// -----------------------------------------------------------------------------
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+// SHA3-derived function SHAKE
+//
+// Based on the public domain implementation in crypto_hash/keccakc512/simple/
+// from http://bench.cr.yp.to/supercop.html by Ronny Van Keer
+// and the public domain "TweetFips202" implementation from https://twitter.com/tweetfips202
+// by Gilles Van Assche, Daniel J. Bernstein, and Peter Schwabe
+//
+// See NIST Special Publication 800-185 for more information:
+// http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
+// -----------------------------------------------------------------------------
 
 #include <stdint.h>
 #include <stddef.h>
@@ -19,15 +21,14 @@
 #define NROUNDS 24
 #define ROL(a, offset) ((a << offset) ^ (a >> (64-offset)))
 
-/*************************************************
- * Name:        load64
- *
- * Description: Load 8 bytes into uint64_t in little-endian order
- *
- * Arguments:   - const uint8_t *x: pointer to input byte array
- *
- * Returns the loaded 64-bit unsigned integer
- **************************************************/
+
+// Name: load64
+//
+// Description: Load 8 bytes into uint64_t in little-endian order
+//
+// Arguments:   - const uint8_t *x: pointer to input byte array
+//
+// Returns the loaded 64-bit unsigned integer
 static uint64_t load64(const uint8_t *x) {
     uint64_t r = 0;
     for (size_t i = 0; i < 8; ++i) {
@@ -37,14 +38,13 @@ static uint64_t load64(const uint8_t *x) {
     return r;
 }
 
-/*************************************************
- * Name:        store64
- *
- * Description: Store a 64-bit integer to a byte array in little-endian order
- *
- * Arguments:   - uint8_t *x: pointer to the output byte array
- *              - uint64_t u: input 64-bit unsigned integer
- **************************************************/
+
+// Name: store64
+//
+// Description: Store a 64-bit integer to a byte array in little-endian order
+//
+// Arguments:   - uint8_t *x: pointer to the output byte array
+//              - uint64_t u: input 64-bit unsigned integer
 static void store64(uint8_t *x, uint64_t u) {
     for (size_t i = 0; i < 8; ++i) {
         x[i] = (uint8_t) (u >> 8 * i);
@@ -87,7 +87,7 @@ static void KeccakF1600_StatePermute(uint64_t * state)
     uint64_t Ama, Ame, Ami, Amo, Amu;
     uint64_t Asa, Ase, Asi, Aso, Asu;
 
-    /* copyFromState(A, state) */
+    // copyFromState(A, state)
     Aba = state[ 0];
     Abe = state[ 1];
     Abi = state[ 2];
@@ -123,14 +123,14 @@ static void KeccakF1600_StatePermute(uint64_t * state)
         uint64_t Ema, Eme, Emi, Emo, Emu;
         uint64_t Esa, Ese, Esi, Eso, Esu;
 
-        /* prepareTheta */
+        // prepareTheta
         BCa = Aba^Aga^Aka^Ama^Asa;
         BCe = Abe^Age^Ake^Ame^Ase;
         BCi = Abi^Agi^Aki^Ami^Asi;
         BCo = Abo^Ago^Ako^Amo^Aso;
         BCu = Abu^Agu^Aku^Amu^Asu;
 
-        /* thetaRhoPiChiIotaPrepareTheta(round  , A, E) */
+        // thetaRhoPiChiIotaPrepareTheta(round  , A, E)
         Da = BCu^ROL(BCe, 1);
         De = BCa^ROL(BCi, 1);
         Di = BCe^ROL(BCo, 1);
@@ -218,14 +218,14 @@ static void KeccakF1600_StatePermute(uint64_t * state)
         Eso =   BCo ^((~BCu)&  BCa );
         Esu =   BCu ^((~BCa)&  BCe );
 
-        /* prepareTheta */
+        // prepareTheta
         BCa = Eba^Ega^Eka^Ema^Esa;
         BCe = Ebe^Ege^Eke^Eme^Ese;
         BCi = Ebi^Egi^Eki^Emi^Esi;
         BCo = Ebo^Ego^Eko^Emo^Eso;
         BCu = Ebu^Egu^Eku^Emu^Esu;
 
-        /* thetaRhoPiChiIotaPrepareTheta(round+1, E, A) */
+        // thetaRhoPiChiIotaPrepareTheta(round+1, E, A)
         Da = BCu^ROL(BCe, 1);
         De = BCa^ROL(BCi, 1);
         Di = BCe^ROL(BCo, 1);
@@ -314,7 +314,7 @@ static void KeccakF1600_StatePermute(uint64_t * state)
         Asu =   BCu ^((~BCa)&  BCe );
     }
 
-    /* copyToState(state, A) */
+    // copyToState(state, A)
     state[ 0] = Aba;
     state[ 1] = Abe;
     state[ 2] = Abi;
@@ -398,10 +398,10 @@ void shake256(unsigned char *output, unsigned long long outlen, const unsigned c
         s[i] = 0;
     }
 
-    /* Absorb input */
+    // Absorb input
     keccak_absorb(s, SHAKE256_RATE, input, inlen, 0x1F);
 
-    /* Squeeze output */
+    // Squeeze output
     keccak_squeezeblocks(output, nblocks, s, SHAKE256_RATE);
 
     output += nblocks * SHAKE256_RATE;
