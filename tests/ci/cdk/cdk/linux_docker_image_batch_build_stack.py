@@ -20,6 +20,7 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
         git_hub_source = codebuild.Source.git_hub(
             owner=GITHUB_REPO_OWNER,
             repo=GITHUB_REPO_NAME,
+            webhook=False,
             branch_or_ref=GITHUB_SOURCE_VERSION,
             clone_depth=1)
 

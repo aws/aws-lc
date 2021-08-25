@@ -63,7 +63,7 @@ To setup or update the CI in your account you will need the following IAM permis
 
 ### Command
 
-To initialize/set up AWS-LC CI, run command:
+To set up AWS-LC CI, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'
 ./run-cdk.sh --action deploy-ci --github-access-token ${GITHUB_ACCESS_TOKEN}
