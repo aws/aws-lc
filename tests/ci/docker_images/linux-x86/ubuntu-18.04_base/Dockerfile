@@ -10,6 +10,7 @@ RUN set -ex && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
     cmake \
+    python3 \
     ninja-build \
     perl \
     ca-certificates \
