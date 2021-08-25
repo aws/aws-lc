@@ -1,8 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Below tag is from https://gallery.ecr.aws/ubuntu/ubuntu
-FROM public.ecr.aws/ubuntu/ubuntu:20.04_stable
+FROM ubuntu:20.04
 
 SHELL ["/bin/bash", "-c"]
 

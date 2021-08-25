@@ -1,8 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Below tag is from https://gallery.ecr.aws/amazonlinux/amazonlinux
-FROM public.ecr.aws/amazonlinux/amazonlinux:latest
+FROM arm64v8/amazonlinux:2
 
 SHELL ["/bin/bash", "-c"]
 

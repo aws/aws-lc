@@ -2,12 +2,14 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-####################################
-# Build images from AWS public ECR #
-# https://gallery.ecr.aws/?page=1  #
-####################################
+########################################
+# Build images from AWS-LC GitHub repo #
+########################################
 
-# Image pulled from AWS public ECR https://gallery.ecr.aws/?page=1
+# Log Docker hub limit https://docs.docker.com/docker-hub/download-rate-limit/#how-can-i-check-my-current-rate
+TOKEN=$(curl "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)
+curl --head -H "Authorization: Bearer $TOKEN" https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest
+
 docker build -t ubuntu-18.04:base ubuntu-18.04_base
 docker build -t ubuntu-18.04:gcc-7x ubuntu-18.04_gcc-7x
 docker build -t ubuntu-18.04:clang-6x ubuntu-18.04_clang-6x
@@ -25,15 +27,6 @@ docker build -t amazonlinux-2:base amazonlinux-2_base
 docker build -t amazonlinux-2:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2:gcc-7x-intel-sde amazonlinux-2_gcc-7x-intel-sde
 docker build -t amazonlinux-2:clang-7x amazonlinux-2_clang-7x
-
-################################
-# Build images from Docker Hub #
-################################
-
-# Log Docker hub limit https://docs.docker.com/docker-hub/download-rate-limit/#how-can-i-check-my-current-rate
-TOKEN=$(curl "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)
-curl --head -H "Authorization: Bearer $TOKEN" https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest
-
 docker build -t ubuntu-16.04:gcc-5x ubuntu-16.04_gcc-5x
 docker build -t centos-7:gcc-4x centos-7_gcc-4x
 docker build -t fedora-31:clang-9x fedora-31_clang-9x
