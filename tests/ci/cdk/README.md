@@ -80,11 +80,6 @@ export GITHUB_ACCESS_TOKEN='xxxxx'
 ./run-cdk.sh --action build-linux-img --github-access-token ${GITHUB_ACCESS_TOKEN}
 ```
 
-To create/update Windows Docker images, run command:
-```
-./run-cdk.sh --action build-win-img
-```
-
 To destroy AWS-LC CI resources created above, run command:
 ```
 # NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
