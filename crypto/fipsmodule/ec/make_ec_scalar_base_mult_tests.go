@@ -15,9 +15,9 @@
 package main
 
 import (
-  "crypto/elliptic"
-  "fmt"
-  "math/big"
+	"crypto/elliptic"
+	"fmt"
+	"math/big"
 )
 
 import "github.com/ethereum/go-ethereum/crypto/secp256k1"
@@ -25,89 +25,89 @@ import "github.com/ethereum/go-ethereum/crypto/secp256k1"
 const numPoints = 64
 
 func printPadded(key string, n, max *big.Int) {
-  padded := make([]byte, len(max.Bytes()))
-  b := n.Bytes()
-  copy(padded[len(padded)-len(b):], b)
-  fmt.Printf("%s = %x\n", key, padded)
+	padded := make([]byte, len(max.Bytes()))
+	b := n.Bytes()
+	copy(padded[len(padded)-len(b):], b)
+	fmt.Printf("%s = %x\n", key, padded)
 }
 
 func printMultiples(name string, curve elliptic.Curve) {
-  n := new(big.Int)
-  for i := -numPoints; i <= numPoints; i++ {
-    fmt.Printf("Curve = %s\n", name)
-    n.SetInt64(int64(i))
-    if i < 0 {
-      n = n.Add(n, curve.Params().N)
-    }
-    fmt.Printf("# N = %d\n", i)
-    printPadded("N", n, curve.Params().N)
-    x, y := curve.ScalarBaseMult(n.Bytes())
-    printPadded("X", x, curve.Params().P)
-    printPadded("Y", y, curve.Params().P)
-    fmt.Printf("\n")
-  }
+	n := new(big.Int)
+	for i := -numPoints; i <= numPoints; i++ {
+		fmt.Printf("Curve = %s\n", name)
+		n.SetInt64(int64(i))
+		if i < 0 {
+			n = n.Add(n, curve.Params().N)
+		}
+		fmt.Printf("# N = %d\n", i)
+		printPadded("N", n, curve.Params().N)
+		x, y := curve.ScalarBaseMult(n.Bytes())
+		printPadded("X", x, curve.Params().P)
+		printPadded("Y", y, curve.Params().P)
+		fmt.Printf("\n")
+	}
 }
 
 // secp256k1 curve is not available in the elliptic/crypto module
 // so we use the implementation from: 
 //    github.com/ethereum/go-ethereum/crypto/secp256k1.
 func printMultiplesSECP256K1(name string) {
-    curve := secp256k1.S256()
-  n := new(big.Int)
-  for i := -numPoints; i <= numPoints; i++ {
-    fmt.Printf("Curve = %s\n", name)
-    n.SetInt64(int64(i))
-    if i < 0 {
-      n = n.Add(n, curve.Params().N)
-    }
-    fmt.Printf("# N = %d\n", i)
-    printPadded("N", n, curve.Params().N)
-    x, y := curve.ScalarBaseMult(n.Bytes())
+	curve := secp256k1.S256()
+	n := new(big.Int)
+	for i := -numPoints; i <= numPoints; i++ {
+		fmt.Printf("Curve = %s\n", name)
+		n.SetInt64(int64(i))
+		if i < 0 {
+			n = n.Add(n, curve.Params().N)
+		}
+		fmt.Printf("# N = %d\n", i)
+		printPadded("N", n, curve.Params().N)
+		x, y := curve.ScalarBaseMult(n.Bytes())
 
-        // This secp256k1 implementation of the scalar multiplication
-        // returns (nil, nil) when the scalar is 0 so we have to handle
-        // that case separately.
-        if i == 0 && x == nil && y == nil {
-        printPadded("X", new(big.Int).SetInt64(0), curve.Params().P)
-        printPadded("Y", new(big.Int).SetInt64(0), curve.Params().P)
-        } else {
-        printPadded("X", x, curve.Params().P)
-        printPadded("Y", y, curve.Params().P)
-        }
-    fmt.Printf("\n")
-  }
+		// This secp256k1 implementation of the scalar multiplication
+		// returns (nil, nil) when the scalar is 0 so we have to handle
+		// that case separately.
+		if i == 0 && x == nil && y == nil {
+				printPadded("X", new(big.Int).SetInt64(0), curve.Params().P)
+				printPadded("Y", new(big.Int).SetInt64(0), curve.Params().P)
+		} else {
+				printPadded("X", x, curve.Params().P)
+				printPadded("Y", y, curve.Params().P)
+		}
+		fmt.Printf("\n")
+	}
 }
 
 // P-192 curve is not available in the crypto/elliptic module
-// so we instantiate it her ourselves. This works because P-192
+// so we instantiate it here ourselves. This works because P-192
 // has the 'a' constant a = -3 as assumed by the module.
 var P192 *elliptic.CurveParams
 
 func initP192() {
-  // See FIPS 186-3, section D.2.2
-  P192 = &elliptic.CurveParams{Name: "P-192"}
-  P192.P, _ = new(big.Int).SetString("6277101735386680763835789423207666416083908700390324961279", 10)
-  P192.N, _ = new(big.Int).SetString("6277101735386680763835789423176059013767194773182842284081", 10)
-  P192.B, _ = new(big.Int).SetString("2455155546008943817740293915197451784769108058161191238065", 10)
-  P192.Gx, _ = new(big.Int).SetString("188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012", 16)
-  P192.Gy, _ = new(big.Int).SetString("07192b95ffc8da78631011ed6b24cdd573f977a11e794811", 16)
-  P192.BitSize = 192
+	// See FIPS 186-3, section D.2.2
+	P192 = &elliptic.CurveParams{Name: "P-192"}
+	P192.P, _ = new(big.Int).SetString("6277101735386680763835789423207666416083908700390324961279", 10)
+	P192.N, _ = new(big.Int).SetString("6277101735386680763835789423176059013767194773182842284081", 10)
+	P192.B, _ = new(big.Int).SetString("2455155546008943817740293915197451784769108058161191238065", 10)
+	P192.Gx, _ = new(big.Int).SetString("188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012", 16)
+	P192.Gy, _ = new(big.Int).SetString("07192b95ffc8da78631011ed6b24cdd573f977a11e794811", 16)
+	P192.BitSize = 192
 }
 
 func main() {
-  fmt.Printf(`# This file contains multiples of the base point for various curves. The point
+	fmt.Printf(`# This file contains multiples of the base point for various curves. The point
 # at infinity is represented as X = 0, Y = 0.
 #
 # This file is generated by make_ec_scalar_base_mult_tests.go
 
 `)
-  printMultiples("P-224", elliptic.P224())
-  printMultiples("P-256", elliptic.P256())
-  printMultiples("P-384", elliptic.P384())
-  printMultiples("P-521", elliptic.P521())
+	printMultiples("P-224", elliptic.P224())
+	printMultiples("P-256", elliptic.P256())
+	printMultiples("P-384", elliptic.P384())
+	printMultiples("P-521", elliptic.P521())
 
-  initP192()
-  printMultiples("P-192", P192)
+	initP192()
+	printMultiples("P-192", P192)
 
-  printMultiplesSECP256K1("secp256k1")
+	printMultiplesSECP256K1("secp256k1")
 }
