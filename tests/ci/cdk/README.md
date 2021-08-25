@@ -74,13 +74,13 @@ To update AWS-LC CI, run command:
 ./run-cdk.sh --action update-ci
 ```
 
-To create/udpate Linux Docker images, run command:
+To create/update Linux Docker images, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'
 ./run-cdk.sh --action build-linux-img --github-access-token ${GITHUB_ACCESS_TOKEN}
 ```
 
-To create/udpate Windows Docker images, run command:
+To create/update Windows Docker images, run command:
 ```
 ./run-cdk.sh --action build-win-img
 ```
