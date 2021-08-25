@@ -249,8 +249,6 @@ void rdc_mont(digit_t* ma, digit_t* mc)
       u = t;
       t = 0;
   }
-
-  // `carry` isn't read after this, but it's still a necessary argument to the macro
     SIKE_P434_R3_ADDC(0, v, ma[2*SIKE_P434_R3_NWORDS_FIELD-1], carry, v);
     mc[SIKE_P434_R3_NWORDS_FIELD-1] = v;
 }

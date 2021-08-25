@@ -10,7 +10,7 @@
 #define AWSLC_EVP_KEM_H
 
 #include <stdint.h>
-#include "internal.h"
+#include "sike_r3/sike_internal.h"
 
 // -----------------------------------------------------------------------------
 // Name: pq_kem
@@ -61,8 +61,8 @@ typedef struct pq_kem_params {
 // -----------------------------------------------------------------------------
 // Name: pq_kem_params_alloc
 //
-// Arguments: pointer to pq_kem and pq_key_params.
-// pq_key_params allows access to the lengths and key pointer (output param)
+// Arguments: pointer to pq_kem and pq_kem_params.
+// pq_kem_params allows access to the lengths and key pointer (output param)
 // of public key, private key, cipher text,
 // and shared secret.
 // Description: Allocates the space needed for
@@ -71,13 +71,13 @@ typedef struct pq_kem_params {
 //
 // Return EVP_PQ_SUCCESS on success, and EVP_PQ_FAILURE if it fails.
 // -----------------------------------------------------------------------------
-int pq_kem_params_alloc(pq_kem kem, pq_kem_params *key_params);
+int pq_kem_params_alloc(pq_kem *kem, pq_kem_params *kem_params);
 
 // -----------------------------------------------------------------------------
 // Name: pq_kem_params_free
 //
-// Arguments: pointer to pq_key_params.
-// pq_key_params allows access to the lenghts and key pointer (output param)
+// Arguments: pointer to pq_kem_params.
+// pq_kem_params allows access to the lenghts and key pointer (output param)
 // of public key, private key, cipher text,
 // and shared secret.
 // Description: Frees space of
@@ -86,7 +86,7 @@ int pq_kem_params_alloc(pq_kem kem, pq_kem_params *key_params);
 //
 // Return EVP_PQ_SUCCESS on success, and EVP_PQ_FAILURE if it fails
 // -----------------------------------------------------------------------------
-int pq_kem_params_free(pq_kem_params *key_params);
+int pq_kem_params_free(pq_kem_params *kem_params);
 
 // -----------------------------------------------------------------------------
 // Name: EVP_kem_generate_keypair

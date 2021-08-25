@@ -9,16 +9,18 @@
 // replaced with memcpy and memcmp as a work around.
 // -----------------------------------------------------------------------------
 
-#include <stdio.h>
 #include <string.h>
 #include "sikep434r3.h"
 #include "sikep434r3_fips202.h"
 #include "../../crypto/internal.h"
-#include "../../include/openssl/mem.h"
-#include "../internal.h"
+#include "sike_internal.h"
 #include "../../include/openssl/rand.h"
 #include "sikep434r3_api.h"
-#include "sikep434r3_fpx.h"
+
+
+// SIKE's decapsulation helper method
+// Copy src to dst, or don't copy it, in constant time
+int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, uint8_t dont);
 
 // SIKE's key generation
 // Note: secret key is private key
@@ -28,9 +30,7 @@ int sike_p434_r3_crypto_kem_keypair(unsigned char *pk, unsigned char *sk)
 {
     // Generate lower portion of secret key sk <- s||SK
     if (RAND_bytes(sk, SIKE_P434_R3_MSG_BYTES) != 1 ||
-        RAND_bytes(sk, SIKE_P434_R3_MSG_BYTES) != 1 ||
         random_mod_order_B(sk + SIKE_P434_R3_MSG_BYTES) != 1) {
-        // FAILURE
         return 0;
     }
 
@@ -40,7 +40,6 @@ int sike_p434_r3_crypto_kem_keypair(unsigned char *pk, unsigned char *sk)
     // Append public key pk to secret key sk
     memcpy(&sk[SIKE_P434_R3_MSG_BYTES + SIKE_P434_R3_SECRETKEY_B_BYTES], pk, SIKE_P434_R3_PUBLIC_KEY_BYTES);
 
-    // SUCCESS
     return 1;
 }
 
@@ -56,10 +55,7 @@ int sike_p434_r3_crypto_kem_enc(unsigned char *ct, unsigned char *ss, const unsi
     unsigned char temp[SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES];
 
     // Generate ephemeralsk <- G(m||pk) mod oA
-    if (RAND_bytes(temp, SIKE_P434_R3_MSG_BYTES) != 1) {
-        // FAILURE
-        return 0;
-    }
+    if (RAND_bytes(temp, SIKE_P434_R3_MSG_BYTES) != 1) {return 0;}
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], pk, SIKE_P434_R3_PUBLIC_KEY_BYTES);
     shake256(ephemeralsk, SIKE_P434_R3_SECRETKEY_A_BYTES, temp, SIKE_P434_R3_PUBLIC_KEY_BYTES+SIKE_P434_R3_MSG_BYTES);
     ephemeralsk[SIKE_P434_R3_SECRETKEY_A_BYTES - 1] &= SIKE_P434_R3_MASK_ALICE;
@@ -76,7 +72,6 @@ int sike_p434_r3_crypto_kem_enc(unsigned char *ct, unsigned char *ss, const unsi
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], ct, SIKE_P434_R3_CIPHERTEXT_BYTES);
     shake256(ss, SIKE_P434_R3_SHARED_SECRET_BYTES, temp, SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES);
 
-    // SUCCESS
     return 1;
 }
 
@@ -113,23 +108,16 @@ int sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, cons
     //
     // If c0_ and ct are equal, then decaps succeeded and we skip the overwrite and output
     // the actual shared secret: ss = H(m||ct) (dont_copy = true).
-    if (CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES) != 1) {
-        if (constant_time_copy_or_dont(temp, sk, SIKE_P434_R3_MSG_BYTES, false) != 1) {
-            // FAILURE
-            return 0;
-        }
-    } else {
-        constant_time_copy_or_dont(temp, sk, SIKE_P434_R3_MSG_BYTES, true);
-    }
+    int dont_copy = !(CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES));
+    constant_time_copy_or_dont(temp, sk, SIKE_P434_R3_MSG_BYTES, dont_copy);
 
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], ct, SIKE_P434_R3_CIPHERTEXT_BYTES);
     shake256(ss, SIKE_P434_R3_SHARED_SECRET_BYTES, temp, SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES);
 
-    // SUCCESS
     return 1;
 }
 
-
+// SIKE's decapsulation helper method
 // Given arrays "dest" and "src" of length "len", conditionally copy "src" to "dest"
 // The execution time of this function is independent of the values
 // stored in the arrays, and of whether the copy occurs.
@@ -150,6 +138,5 @@ int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len
         dest[i] = old ^ diff;
     }
 
-    // SUCCESS
     return 1;
 }

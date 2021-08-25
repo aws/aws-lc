@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
-#ifndef PQ_CRYPTO_INTERNAL_H
-#define PQ_CRYPTO_INTERNAL_H
+#ifndef PQ_CRYPTO_SIKE_INTERNAL_H
+#define PQ_CRYPTO_SIKE_INTERNAL_H
 
 // SIKEP434 Round 3 PQ Algorithm Constants
 #define SIKE_P434_R3_PUBLIC_KEY_BYTES 330
@@ -40,8 +40,4 @@ int sike_p434_r3_crypto_kem_enc(unsigned char *ciphertext, unsigned char *shared
 int sike_p434_r3_crypto_kem_dec(unsigned char *shared_secret, const unsigned char *ciphertext, const unsigned char *private_key);
 
 
-// Copy src to dst, or don't copy it, in constant time
-int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, uint8_t dont);
-
-
-#endif //PQ_CRYPTO_INTERNAL_H
+#endif //PQ_CRYPTO_SIKE_INTERNAL_H

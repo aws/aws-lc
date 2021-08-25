@@ -29,15 +29,9 @@ static void init_basis(const digit_t *gen, f2elm_t *XP, f2elm_t *XQ, f2elm_t *XR
 // Outputs random value in [0, 2^Floor(Log(2, oB)) - 1]
 int random_mod_order_B(unsigned char* random_digits)
 {
-    //POSIX_GUARD_RESULT(get_random_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES));
-    //POSIX_GUARD(RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES));
-    if (RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES) != 1) {
-        // FAILURE
-        return 0;
-    }
+    if (RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES) != 1) {return 0;}
     random_digits[SIKE_P434_R3_SECRETKEY_B_BYTES-1] &= SIKE_P434_R3_MASK_BOB; // Masking last byte
 
-    // SUCCESS
     return 1;
 }
 
@@ -47,9 +41,8 @@ int random_mod_order_B(unsigned char* random_digits)
 //         by removing leading 0 bytes.
 int EphemeralKeyGeneration_A(const unsigned char* PrivateKeyA, unsigned char* PublicKeyA)
 {
-    //point_proj_t R, phiP = {0}, phiQ = {0}, phiR = {0}, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
+    // Currently defined without initialization due to odd brackets error during git build
     point_proj_t R, phiP, phiQ, phiR, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
-    //f2elm_t _XPA, _XQA, _XRA, coeff[3], _A24plus = {0}, _C24 = {0}, _A = {0};
     f2elm_t _XPA, _XQA, _XRA, coeff[3], _A24plus, _C24, _A;
     f2elm_t *XPA=&_XPA, *XQA=&_XQA, *XRA=&_XRA, *A24plus=&_A24plus, *C24=&_C24, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_ALICE], npts = 0, ii = 0;
@@ -114,7 +107,6 @@ int EphemeralKeyGeneration_A(const unsigned char* PrivateKeyA, unsigned char* Pu
     fp2_encode(&phiQ->X, PublicKeyA + SIKE_P434_R3_FP2_ENCODED_BYTES);
     fp2_encode(&phiR->X, PublicKeyA + 2*SIKE_P434_R3_FP2_ENCODED_BYTES);
 
-    // SUCCESS
     return 1;
 }
 
@@ -124,9 +116,8 @@ int EphemeralKeyGeneration_A(const unsigned char* PrivateKeyA, unsigned char* Pu
 //         by removing leading 0 bytes.
 int EphemeralKeyGeneration_B(const unsigned char* PrivateKeyB, unsigned char* PublicKeyB)
 {
-    //point_proj_t R, phiP = {0}, phiQ = {0}, phiR = {0}, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
+    // Currently defined without initialization due to odd brackets error during git build
     point_proj_t R, phiP, phiQ, phiR, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
-    //f2elm_t _XPB, _XQB, _XRB, coeff[3], _A24plus = {0}, _A24minus = {0}, _A = {0};
     f2elm_t _XPB, _XQB, _XRB, coeff[3], _A24plus, _A24minus, _A;
     f2elm_t *XPB=&_XPB, *XQB=&_XQB, *XRB=&_XRB, *A24plus=&_A24plus, *A24minus=&_A24minus, *A=&_A;
 
@@ -192,7 +183,6 @@ int EphemeralKeyGeneration_B(const unsigned char* PrivateKeyB, unsigned char* Pu
     fp2_encode(&phiQ->X, PublicKeyB + SIKE_P434_R3_FP2_ENCODED_BYTES);
     fp2_encode(&phiR->X, PublicKeyB + 2*SIKE_P434_R3_FP2_ENCODED_BYTES);
 
-    // SUCCESS
     return 1;
 }
 
@@ -207,7 +197,8 @@ int EphemeralSecretAgreement_A(const unsigned char* PrivateKeyA, const unsigned 
 {
     point_proj_t R, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
     f2elm_t coeff[3], PKB[3], _jinv;
-    //f2elm_t _A24plus = {0}, _C24 = {0}, _A = {0};
+
+    // Currently defined without initialization due to odd brackets error during git build
     f2elm_t _A24plus, _C24, _A;
     f2elm_t *jinv=&_jinv, *A24plus=&_A24plus, *C24=&_C24, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_ALICE], npts = 0, ii = 0;
@@ -258,7 +249,6 @@ int EphemeralSecretAgreement_A(const unsigned char* PrivateKeyA, const unsigned 
     j_inv(A24plus, C24, jinv);
     fp2_encode(jinv, SharedSecretA); // Format shared secret
 
-    // SUCCESS
     return 1;
 }
 
@@ -273,7 +263,8 @@ int EphemeralSecretAgreement_B(const unsigned char* PrivateKeyB, const unsigned 
 {
     point_proj_t R, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
     f2elm_t coeff[3], PKB[3], _jinv;
-    //f2elm_t _A24plus = {0}, _A24minus = {0}, _A = {0};
+
+    // Currently defined without initialization due to odd brackets error during git build
     f2elm_t _A24plus, _A24minus, _A;
     f2elm_t *jinv=&_jinv, *A24plus=&_A24plus, *A24minus=&_A24minus, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_BOB], npts = 0, ii = 0;
@@ -324,6 +315,5 @@ int EphemeralSecretAgreement_B(const unsigned char* PrivateKeyB, const unsigned 
     j_inv(A, A24plus, jinv);
     fp2_encode(jinv, SharedSecretB); // Format shared secret
 
-    // SUCCESS
     return 1;
 }

@@ -131,7 +131,6 @@ const unsigned int strat_Bob[SIKE_P434_R3_MAX_BOB-1] = {
 };
 
 // Returns true if the machine is big endian
-// replace old-style
 bool is_big_endian(void) {
     uint16_t i = 1;
     uint8_t *ptr = (uint8_t *)&i;

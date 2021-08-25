@@ -23,4 +23,4 @@ file(GLOB PQ_HEADERS "*.h" "sike_r3/*.h")
 file(GLOB PQ_SRC "*.c" "sike_r3/*.c")
 
 # compile
-add_library(pq_lib ${PQ_HEADERS} ${PQ_SRC} internal.h)
+add_library(pq_lib ${PQ_HEADERS} ${PQ_SRC})
