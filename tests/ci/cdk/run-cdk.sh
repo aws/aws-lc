@@ -77,7 +77,7 @@ function destroy_ci() {
 
 function destroy_docker_img_build_stack() {
   if [[ "${IMG_BUILD_STATUS}" == "Failed" ]]; then
-    echo "Docker images build failed. AWS resources of bulding Docker images is kept for debug."
+    echo "Docker images build failed. AWS resources of building Docker images is kept for debug."
     exit 1
   fi
   # Destroy all temporary resources created for all docker image build.
@@ -286,7 +286,7 @@ Options:
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
                                    'update-ci': update aws-lc ci. This only update AWS CodeBuild for GitHub CI.
                                    'destroy-ci': destroys AWS and Docker image resources used by aws-lc ci.
-                                   'destroy-img-stack': destroys AWS resources of bulding Docker images.
+                                   'destroy-img-stack': destroys AWS resources of building Docker images.
                                    'build-linux-img': builds Linux Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
                                    'build-win-img': builds Windows Docker image used by aws-lc ci.
