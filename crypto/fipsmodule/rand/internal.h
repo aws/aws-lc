@@ -36,19 +36,6 @@ extern "C" {
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32]);
 
-#if defined(BORINGSSL_FIPS)
-
-#if defined(JITTER_ENTROPY)
-// CPU Jitter has a built-in overread mechanism that we use instead of doing it
-// ourselves.
-#define BORINGSSL_FIPS_OVERREAD 1
-#else
-// We overread from /dev/urandom or RDRAND by a factor of 10 and XOR to whiten.
-#define BORINGSSL_FIPS_OVERREAD 10
-#endif
-
-#endif  // BORINGSSL_FIPS
-
 // CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
 // system.
 void CRYPTO_sysrand(uint8_t *buf, size_t len);

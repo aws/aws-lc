@@ -181,7 +181,6 @@ static int rdrand(uint8_t *buf, size_t len) {
 static void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_used_cpu) {
   *out_used_cpu = 0;
-#if defined(JITTER_ENTROPY)
   // Every thread has its own Jitter instance so we fetch the one assigned
   // to the current thread.
   struct rand_thread_state *state =
@@ -195,95 +194,12 @@ static void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len
                              (char *) out_entropy, out_entropy_len) < 0) {
     abort();
   }
-#else
-  if (have_rdrand() && rdrand(out_entropy, out_entropy_len)) {
-    *out_used_cpu = 1;
-  } else {
-    CRYPTO_sysrand_for_seed(out_entropy, out_entropy_len);
-  }
-#endif
 
 #if defined(BORINGSSL_FIPS_BREAK_CRNG)
   // This breaks the "continuous random number generator test" defined in FIPS
   // 140-2, section 4.9.2, and implemented in |rand_get_seed|.
   OPENSSL_memset(out_entropy, 0, out_entropy_len);
 #endif
-}
-
-// In passive entropy mode, entropy is supplied from outside of the module via
-// |RAND_load_entropy| and is stored in global instance of the following
-// structure.
-
-struct entropy_buffer {
-  // bytes contains entropy suitable for seeding a DRBG.
-  uint8_t bytes[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
-  // bytes_valid indicates the number of bytes of |bytes| that contain valid
-  // data.
-  size_t bytes_valid;
-  // from_cpu is true if any of the contents of |bytes| were obtained directly
-  // from the CPU.
-  int from_cpu;
-};
-
-DEFINE_BSS_GET(struct entropy_buffer, entropy_buffer);
-DEFINE_STATIC_MUTEX(entropy_buffer_lock);
-
-static void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
-                       int from_cpu) {
-  struct entropy_buffer *const buffer = entropy_buffer_bss_get();
-
-  CRYPTO_STATIC_MUTEX_lock_write(entropy_buffer_lock_bss_get());
-  const size_t space = sizeof(buffer->bytes) - buffer->bytes_valid;
-  if (entropy_len > space) {
-    entropy_len = space;
-  }
-
-  OPENSSL_memcpy(&buffer->bytes[buffer->bytes_valid], entropy, entropy_len);
-  buffer->bytes_valid += entropy_len;
-  buffer->from_cpu |= from_cpu && (entropy_len != 0);
-  CRYPTO_STATIC_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
-}
-
-// RAND_need_entropy is called by the FIPS module when it has blocked because of
-// a lack of entropy. This signal is used as an indication to feed it more.
-static void RAND_need_entropy(size_t bytes_needed) {
-  uint8_t buf[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
-  size_t todo = sizeof(buf);
-  if (todo > bytes_needed) {
-    todo = bytes_needed;
-  }
-
-  int used_cpu;
-  CRYPTO_get_seed_entropy(buf, todo, &used_cpu);
-  RAND_load_entropy(buf, todo, used_cpu);
-}
-
-// get_seed_entropy fills |out_entropy_len| bytes of |out_entropy| from the
-// global |entropy_buffer|.
-static void get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
-                             int *out_used_cpu) {
-  struct entropy_buffer *const buffer = entropy_buffer_bss_get();
-  if (out_entropy_len > sizeof(buffer->bytes)) {
-    abort();
-  }
-
-  CRYPTO_STATIC_MUTEX_lock_write(entropy_buffer_lock_bss_get());
-  while (buffer->bytes_valid < out_entropy_len) {
-    CRYPTO_STATIC_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
-    RAND_need_entropy(out_entropy_len - buffer->bytes_valid);
-    CRYPTO_STATIC_MUTEX_lock_write(entropy_buffer_lock_bss_get());
-  }
-
-  *out_used_cpu = buffer->from_cpu;
-  OPENSSL_memcpy(out_entropy, buffer->bytes, out_entropy_len);
-  OPENSSL_memmove(buffer->bytes, &buffer->bytes[out_entropy_len],
-                  buffer->bytes_valid - out_entropy_len);
-  buffer->bytes_valid -= out_entropy_len;
-  if (buffer->bytes_valid == 0) {
-    buffer->from_cpu = 0;
-  }
-
-  CRYPTO_STATIC_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
 }
 
 // rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if
@@ -293,12 +209,12 @@ static void rand_get_seed(struct rand_thread_state *state,
                           int *out_used_cpu) {
   if (!state->last_block_valid) {
     int unused;
-    get_seed_entropy(state->last_block, sizeof(state->last_block), &unused);
+    CRYPTO_get_seed_entropy(state->last_block, sizeof(state->last_block), &unused);
     state->last_block_valid = 1;
   }
 
-  uint8_t entropy[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
-  get_seed_entropy(entropy, sizeof(entropy), out_used_cpu);
+  uint8_t entropy[CTR_DRBG_ENTROPY_LEN];
+  CRYPTO_get_seed_entropy(entropy, sizeof(entropy), out_used_cpu);
 
   // See FIPS 140-2, section 4.9.2. This is the “continuous random number
   // generator test” which causes the program to randomly abort. Hopefully the
@@ -322,14 +238,6 @@ static void rand_get_seed(struct rand_thread_state *state,
                  CRNGT_BLOCK_SIZE);
 
   OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
-
-#if !defined(JITTER_ENTROPY)
-  for (size_t i = 1; i < BORINGSSL_FIPS_OVERREAD; i++) {
-    for (size_t j = 0; j < CTR_DRBG_ENTROPY_LEN; j++) {
-      seed[j] ^= entropy[CTR_DRBG_ENTROPY_LEN * i + j];
-    }
-  }
-#endif
 }
 
 #else
