@@ -289,7 +289,7 @@ Options:
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
                                    'update-ci': update aws-lc ci. This only update AWS CodeBuild for GitHub CI.
                                    'destroy-ci': destroys AWS and Docker image resources used by aws-lc ci.
-                                   'destroy-img-stack': destroys AWS resources of building Docker images.
+                                   'destroy-img-stack': destroys AWS resources created during built of Docker images.
                                    'build-linux-img': builds Linux Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
                                    'build-win-img': builds Windows Docker image used by aws-lc ci.
