@@ -178,7 +178,7 @@ static int rdrand(uint8_t *buf, size_t len) {
 
 #if defined(BORINGSSL_FIPS)
 
-void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
+static void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_used_cpu) {
   *out_used_cpu = 0;
 #if defined(JITTER_ENTROPY)
@@ -228,7 +228,7 @@ struct entropy_buffer {
 DEFINE_BSS_GET(struct entropy_buffer, entropy_buffer);
 DEFINE_STATIC_MUTEX(entropy_buffer_lock);
 
-void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
+static void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
                        int from_cpu) {
   struct entropy_buffer *const buffer = entropy_buffer_bss_get();
 
@@ -242,6 +242,20 @@ void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
   buffer->bytes_valid += entropy_len;
   buffer->from_cpu |= from_cpu && (entropy_len != 0);
   CRYPTO_STATIC_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
+}
+
+// RAND_need_entropy is called by the FIPS module when it has blocked because of
+// a lack of entropy. This signal is used as an indication to feed it more.
+static void RAND_need_entropy(size_t bytes_needed) {
+  uint8_t buf[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
+  size_t todo = sizeof(buf);
+  if (todo > bytes_needed) {
+    todo = bytes_needed;
+  }
+
+  int used_cpu;
+  CRYPTO_get_seed_entropy(buf, todo, &used_cpu);
+  RAND_load_entropy(buf, todo, used_cpu);
 }
 
 // get_seed_entropy fills |out_entropy_len| bytes of |out_entropy| from the
