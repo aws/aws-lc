@@ -75,9 +75,9 @@ struct rand_thread_state {
   // a process.
   struct rand_thread_state *next, *prev;
 
-  // If the entropy source is CPU Jitter then we assign an instance of Jitter
-  // to each thread. The instance is initialized/destroyed at the same time
-  // when the thread state is created/destroyed.
+  // In FIPS mode the entropy source is CPU Jitter so we assign an instance
+  // of Jitter to each thread. The instance is initialized/destroyed at the same
+  // time as the thread state is created/destroyed.
   struct rand_data *jitter_ec;
 #endif
 };
@@ -171,7 +171,7 @@ static int rdrand(uint8_t *buf, size_t len) {
 
 #if defined(BORINGSSL_FIPS)
 
-static void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
+static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_used_cpu) {
   *out_used_cpu = 0;
   // Every thread has its own Jitter instance so we fetch the one assigned
@@ -202,12 +202,12 @@ static void rand_get_seed(struct rand_thread_state *state,
                           int *out_used_cpu) {
   if (!state->last_block_valid) {
     int unused;
-    CRYPTO_get_seed_entropy(state->last_block, sizeof(state->last_block), &unused);
+    CRYPTO_get_fips_seed(state->last_block, sizeof(state->last_block), &unused);
     state->last_block_valid = 1;
   }
 
   uint8_t entropy[CTR_DRBG_ENTROPY_LEN];
-  CRYPTO_get_seed_entropy(entropy, sizeof(entropy), out_used_cpu);
+  CRYPTO_get_fips_seed(entropy, sizeof(entropy), out_used_cpu);
 
   // See FIPS 140-2, section 4.9.2. This is the “continuous random number
   // generator test” which causes the program to randomly abort. Hopefully the
@@ -303,8 +303,11 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #if defined(BORINGSSL_FIPS)
     // Initialize the thread-local Jitter instance.
     state->jitter_ec = NULL;
+    // The first parameter passed to |jent_entropy_collector_alloc| function is
+    // the desired oversampling rate. Passing a 0 tells Jitter module to use
+    // the default rate (which is 3 in Jitter v3.1.0).
     state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-    if (!state->jitter_ec) {
+    if (state->jitter_ec == NULL) {
       abort();
     }
 #endif

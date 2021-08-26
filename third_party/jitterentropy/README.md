@@ -2,7 +2,8 @@ NOTE
 =======================================
 
 The source code in this directory is taken from CPU Jitter RNG library
-available at: https://github.com/smuellerDD/jitterentropy-library.
+version v3.1.0, available at:
+https://github.com/smuellerDD/jitterentropy-library.
 
 The following changes were made to the original source code to integrate
 the library with AWS-LC:
