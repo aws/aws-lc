@@ -20,9 +20,7 @@
 
 #if defined(BORINGSSL_FIPS)
 #include <unistd.h>
-#if defined(JITTER_ENTROPY)
-# include "../third_party/jitterentropy/jitterentropy.h"
-#endif
+#include "../third_party/jitterentropy/jitterentropy.h"
 #endif
 
 #include <openssl/chacha.h>
@@ -77,12 +75,10 @@ struct rand_thread_state {
   // a process.
   struct rand_thread_state *next, *prev;
 
-#if defined(JITTER_ENTROPY)
-  // When the entropy source is CPU Jitter then we assign an instance of Jitter
+  // If the entropy source is CPU Jitter then we assign an instance of Jitter
   // to each thread. The instance is initialized/destroyed at the same time
   // when the thread state is created/destroyed.
   struct rand_data *jitter_ec;
-#endif
 #endif
 };
 
@@ -102,9 +98,7 @@ static void rand_thread_state_clear_all(void) {
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
     CTR_DRBG_clear(&cur->drbg);
-#if defined(JITTER_ENTROPY)
     jent_entropy_collector_free(cur->jitter_ec);
-#endif
   }
   // The locks are deliberately left locked so that any threads that are still
   // running will hang if they try to call |RAND_bytes|.
@@ -136,9 +130,8 @@ static void rand_thread_state_free(void *state_in) {
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
   CTR_DRBG_clear(&state->drbg);
-#if defined(JITTER_ENTROPY)
+
   jent_entropy_collector_free(state->jitter_ec);
-#endif
 #endif
 
   OPENSSL_free(state);
@@ -307,7 +300,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       state = &stack_state;
     }
 
-#if defined(BORINGSSL_FIPS) && defined(JITTER_ENTROPY)
+#if defined(BORINGSSL_FIPS)
     // Initialize the thread-local Jitter instance.
     state->jitter_ec = NULL;
     state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
