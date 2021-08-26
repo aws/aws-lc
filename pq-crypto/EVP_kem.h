@@ -57,6 +57,7 @@ typedef struct pq_kem_params {
     unsigned char *shared_secret;
 } pq_kem_params;
 
+extern const struct pq_kem evp_sike_p434_r3;
 
 // -----------------------------------------------------------------------------
 // Name: pq_kem_params_alloc
@@ -69,7 +70,7 @@ typedef struct pq_kem_params {
 // public key, private key, cipher text,
 // and shared secret.
 //
-// Return EVP_PQ_SUCCESS on success, and EVP_PQ_FAILURE if it fails.
+// Return 1 on success, and 0 if it fails.
 // -----------------------------------------------------------------------------
 int pq_kem_params_alloc(pq_kem *kem, pq_kem_params *kem_params);
 
@@ -84,7 +85,7 @@ int pq_kem_params_alloc(pq_kem *kem, pq_kem_params *kem_params);
 // public key, private key, cipher text,
 // and shared secret.
 //
-// Return EVP_PQ_SUCCESS on success, and EVP_PQ_FAILURE if it fails
+// Return 1 on success, and 0 if it fails
 // -----------------------------------------------------------------------------
 int pq_kem_params_free(pq_kem_params *kem_params);
 
@@ -100,8 +101,8 @@ int pq_kem_params_free(pq_kem_params *kem_params);
 //  - unsigned char *private_key: pointer to output secret key
 // (already allocated array of bytes)
 //
-// Returns EVP_PQ_SUCCESS on successfully generating key pair,
-// returns EVP_PQ_FAILURE otherwise and on error
+// Returns 1 on successfully generating key pair,
+// returns 0 otherwise and on error
 // -----------------------------------------------------------------------------
 int EVP_kem_generate_keypair(pq_kem_params *kem_params);
 
@@ -118,8 +119,8 @@ int EVP_kem_generate_keypair(pq_kem_params *kem_params);
 // (already allocated array of bytes)
 //  - const unsigned char *public_key: pointer to input constant public key
 //
-// Returns EVP_PQ_SUCCESS on successful encapsulation,
-// return EVP_PQ_FAILURE otherwise and on error
+// Returns 1 on successful encapsulation,
+// return 0 otherwise and on error
 // -----------------------------------------------------------------------------
 int EVP_kem_encapsulate(pq_kem_params *kem_params);
 
@@ -136,8 +137,8 @@ int EVP_kem_encapsulate(pq_kem_params *kem_params);
 // (already allocated array of bytes)
 // - const unsigned char *private_key: pointer to input constant private key
 //
-// Returns EVP_PQ_SUCCESS on successful decapsulation,
-// return EVP_PQ_FAILURE otherwise and on error
+// Returns 1 on successful decapsulation,
+// return 0 otherwise and on error
 // -----------------------------------------------------------------------------
 int EVP_kem_decapsulate(pq_kem_params *kem_params);
 
