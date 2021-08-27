@@ -20,7 +20,7 @@
 
 #if defined(BORINGSSL_FIPS)
 #include <unistd.h>
-#include "../third_party/jitterentropy/jitterentropy.h"
+#include "../../../third_party/jitterentropy/jitterentropy.h"
 #endif
 
 #include <openssl/chacha.h>
