@@ -95,4 +95,4 @@ CRYPTO_rdrand_multiple8_buf:
 .size CRYPTO_rdrand_multiple8_buf,.-CRYPTO_rdrand_multiple8_buf
 ___
 
-close STDOUT or die "error closing STDOUT";	# flush
+close STDOUT or die "error closing STDOUT: $!";	# flush

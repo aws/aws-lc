@@ -146,6 +146,7 @@
 
 #include <stdlib.h>
 
+#include <initializer_list>
 #include <limits>
 #include <new>
 #include <type_traits>
@@ -693,7 +694,8 @@ class SSLTranscript {
   // InitHash initializes the handshake hash based on the PRF and contents of
   // the handshake transcript. Subsequent calls to |Update| will update the
   // rolling hash. It returns one on success and zero on failure. It is an error
-  // to call this function after the handshake buffer is released.
+  // to call this function after the handshake buffer is released. This may be
+  // called multiple times to change the hash function.
   bool InitHash(uint16_t version, const SSL_CIPHER *cipher);
 
   // UpdateForHelloRetryRequest resets the rolling hash with the
@@ -2163,6 +2165,21 @@ bool ssl_write_client_hello_without_extensions(const SSL_HANDSHAKE *hs,
 // flight. It returns true on success and false on error.
 bool ssl_add_client_hello(SSL_HANDSHAKE *hs);
 
+struct ParsedServerHello {
+  uint16_t legacy_version = 0;
+  CBS random;
+  CBS session_id;
+  uint16_t cipher_suite = 0;
+  uint8_t compression_method = 0;
+  CBS extensions;
+};
+
+// ssl_parse_server_hello parses |msg| as a ServerHello. On success, it writes
+// the result to |*out| and returns true. Otherwise, it returns false and sets
+// |*out_alert| to an alert to send to the peer.
+bool ssl_parse_server_hello(ParsedServerHello *out, uint8_t *out_alert,
+                            const SSLMessage &msg);
+
 enum ssl_cert_verify_context_t {
   ssl_cert_verify_server,
   ssl_cert_verify_client,
@@ -2204,19 +2221,25 @@ bool ssl_get_local_application_settings(const SSL_HANDSHAKE *hs,
 bool ssl_negotiate_alps(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                         const SSL_CLIENT_HELLO *client_hello);
 
-struct SSL_EXTENSION_TYPE {
+struct SSLExtension {
+  SSLExtension(uint16_t type_arg, bool allowed_arg = true)
+      : type(type_arg), allowed(allowed_arg), present(false) {
+    CBS_init(&data, nullptr, 0);
+  }
+
   uint16_t type;
-  bool *out_present;
-  CBS *out_data;
+  bool allowed;
+  bool present;
+  CBS data;
 };
 
 // ssl_parse_extensions parses a TLS extensions block out of |cbs| and advances
-// it. It writes the parsed extensions to pointers denoted by |ext_types|. On
-// success, it fills in the |out_present| and |out_data| fields and returns
-// true. Otherwise, it sets |*out_alert| to an alert to send and returns false.
-// Unknown extensions are rejected unless |ignore_unknown| is true.
+// it. It writes the parsed extensions to pointers in |extensions|. On success,
+// it fills in the |present| and |data| fields and returns true. Otherwise, it
+// sets |*out_alert| to an alert to send and returns false. Unknown extensions
+// are rejected unless |ignore_unknown| is true.
 bool ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
-                          Span<const SSL_EXTENSION_TYPE> ext_types,
+                          std::initializer_list<SSLExtension *> extensions,
                           bool ignore_unknown);
 
 // ssl_verify_peer_cert verifies the peer certificate for |hs|.
@@ -2315,7 +2338,7 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 #define TLSEXT_CHANNEL_ID_SIZE 128
 
-// From RFC4492, used in encoding the curve type in ECParameters
+// From RFC 4492, used in encoding the curve type in ECParameters
 #define NAMED_CURVE_TYPE 3
 
 struct CERT {
@@ -3304,7 +3327,7 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, CBB *out_encoded,
 bool ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out);
 bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                   const SSL_CLIENT_HELLO *client_hello);
-bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
+bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *extensions);
 
 #define tlsext_tick_md EVP_sha256
 
