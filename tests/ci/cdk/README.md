@@ -10,6 +10,12 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
 * Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 * [Connect AWS CodeBuild with GitHub](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
   * Note: This step should grant AWS CodeBuild with access to create WebHook.
+  * For team AWS account, AWS CodeBuild is connected with GitHub through GitHub OAuth.
+    * step 1: go to AWS CodeBuild console.
+    * step 2: create a CodeBuild project.
+    * step 3: change **Source provider** to **GitHub**. 
+    * step 4: click **Connect using OAuth** and **Connect to GitHub**.
+    * step 5: follow the OAuth app to grant access.
 * [Create GitHub Personal Access Token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)
   * Note: This token ONLY needs ['read:packages' permission](https://docs.github.com/en/packages/learn-github-packages/about-github-packages#authenticating-to-github-packages), and should be deleted from GitHub account after docker image build.
   * This token is needed when pulling images from 'docker.pkg.github.com'.
@@ -68,10 +74,10 @@ To update AWS-LC CI, run command:
 ./run-cdk.sh --action update-ci
 ```
 
-To create/udpate Docker images, run command:
+To create/update Linux Docker images, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'
-./run-cdk.sh --action build-img --github-access-token ${GITHUB_ACCESS_TOKEN}
+./run-cdk.sh --action build-linux-img --github-access-token ${GITHUB_ACCESS_TOKEN}
 ```
 
 To destroy AWS-LC CI resources created above, run command:
