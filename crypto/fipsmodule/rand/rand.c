@@ -319,7 +319,14 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN];
     size_t personalization_len = 0;
-#if defined(OPENSSL_URANDOM)
+#if defined(BORINGSSL_FIPS) && defined(OPENSSL_URANDOM)
+    // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
+    // completely on Jitter we add to |CTR_DRBG_init| a personalization string
+    // that we read from urandom.
+    CRYPTO_sysrand(personalization, sizeof(personalization));
+    personalization_len = sizeof(personalization);
+#elif defined(OPENSSL_URANDOM)
+    // Non-FIPS mode:
     // If we used RDRAND, also opportunistically read from the system. This
     // avoids solely relying on the hardware once the entropy pool has been
     // initialized.
@@ -356,6 +363,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int used_cpu;
     rand_get_seed(state, seed, &used_cpu);
+
+    uint8_t add_data_for_reseed[CTR_DRBG_ENTROPY_LEN];
+    size_t add_data_for_reseed_len = 0;
 #if defined(BORINGSSL_FIPS)
     // Take a read lock around accesses to |state->drbg|. This is needed to
     // avoid returning bad entropy if we race with
@@ -366,8 +376,15 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // in a hardware transaction, but, on some older versions of glibc and the
     // kernel, syscalls made with |syscall| did not abort the transaction.
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
+
+    // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
+    // completely on Jitter we add to |CTR_DRBG_reseed| additional data
+    // that we read from urandom.
+    CRYPTO_sysrand(add_data_for_reseed, sizeof(add_data_for_reseed));
+    add_data_for_reseed_len = sizeof(add_data_for_reseed);
 #endif
-    if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
+    if (!CTR_DRBG_reseed(&state->drbg, seed,
+                         add_data_for_reseed, add_data_for_reseed_len)) {
       abort();
     }
     state->calls = 0;
