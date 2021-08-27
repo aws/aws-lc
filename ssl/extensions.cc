@@ -1991,7 +1991,6 @@ static bool ext_pre_shared_key_add_clienthello(const SSL_HANDSHAKE *hs,
 
   // Fill in a placeholder zero binder of the appropriate length. It will be
   // computed and filled in later after length prefixes are computed.
-  uint8_t zero_binder[EVP_MAX_MD_SIZE] = {0};
   size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session.get()));
 
   CBB contents, identity, ticket, binders, binder;
@@ -2004,7 +2003,7 @@ static bool ext_pre_shared_key_add_clienthello(const SSL_HANDSHAKE *hs,
       !CBB_add_u32(&identity, obfuscated_ticket_age) ||
       !CBB_add_u16_length_prefixed(&contents, &binders) ||
       !CBB_add_u8_length_prefixed(&binders, &binder) ||
-      !CBB_add_bytes(&binder, zero_binder, binder_len)) {
+      !CBB_add_zeros(&binder, binder_len)) {
     return false;
   }
 
@@ -3324,14 +3323,12 @@ static const struct tls_extension *tls_extension_find(uint32_t *out_index,
 
 static bool add_padding_extension(CBB *cbb, uint16_t ext, size_t len) {
   CBB child;
-  uint8_t *ptr;
   if (!CBB_add_u16(cbb, ext) ||  //
       !CBB_add_u16_length_prefixed(cbb, &child) ||
-      !CBB_add_space(&child, &ptr, len)) {
+      !CBB_add_zeros(&child, len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }
-  OPENSSL_memset(ptr, 0, len);
   return CBB_flush(cbb);
 }
 
@@ -3719,18 +3716,10 @@ bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
   return true;
 }
 
-static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
+static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *cbs,
                                         int *out_alert) {
-  SSL *const ssl = hs->ssl;
-  // Before TLS 1.3, ServerHello extensions blocks may be omitted if empty.
-  if (CBS_len(cbs) == 0 && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
-    return true;
-  }
-
-  // Decode the extensions block and check it is valid.
-  CBS extensions;
-  if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
-      !tls1_check_duplicate_extensions(&extensions)) {
+  CBS extensions = *cbs;
+  if (!tls1_check_duplicate_extensions(&extensions)) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }
@@ -3852,7 +3841,7 @@ static bool ssl_check_serverhello_tlsext(SSL_HANDSHAKE *hs) {
   return true;
 }
 
-bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
+bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *cbs) {
   SSL *const ssl = hs->ssl;
   int alert = SSL_AD_DECODE_ERROR;
   if (!ssl_scan_serverhello_tlsext(hs, cbs, &alert)) {
