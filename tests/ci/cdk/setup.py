@@ -27,7 +27,9 @@ setuptools.setup(
         # PyYAML is a YAML parser and emitter for Python. Used to read build_spec.yaml.
         "pyyaml==5.3.1",
         # A formatter for Python code.
-        "yapf==0.30.0"
+        "yapf==0.30.0",
+        # Introduced by benchmark framework.
+        "boto3==1.18.11"
     ],
 
     python_requires=">=3.6",

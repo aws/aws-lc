@@ -2,6 +2,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# Log Docker hub limit https://docs.docker.com/docker-hub/download-rate-limit/#how-can-i-check-my-current-rate
+TOKEN=$(curl "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)
+curl --head -H "Authorization: Bearer $TOKEN" https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest
+
 docker build -t amazonlinux-2-aarch:base amazonlinux-2_base
 docker build -t amazonlinux-2-aarch:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2-aarch:clang-7x amazonlinux-2_clang-7x
