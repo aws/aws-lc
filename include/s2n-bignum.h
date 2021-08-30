@@ -441,19 +441,23 @@ extern void bignum_sqr_6_12 (uint64_t z[static 12], uint64_t x[static 6]);
 // Input x[8]; output z[16]
 extern void bignum_sqr_8_16 (uint64_t z[static 16], uint64_t x[static 8]);
 
+// Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+
 // Subtract, z := x - y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[p]
 extern uint64_t bignum_sub (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 
-// Subtract modulo p_256, z := (x - y) mod p_256
+// Subtract modulo p_256, z := (x - y) mod p_256, assuming x and y reduced
 // Inputs x[4], y[4]; output z[4]
 extern void bignum_sub_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 
-// Subtract modulo p_384, z := (x - y) mod p_384
+// Subtract modulo p_384, z := (x - y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_sub_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
 
-// Subtract modulo p_521, z := (x - y) mod p_521
+// Subtract modulo p_521, z := (x - y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_sub_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
 
