@@ -79,3 +79,13 @@ TEST(CryptoTest, FIPSCountersEVP) {
   }
 }
 #endif  // BORINGSSL_FIPS_COUNTERS
+
+#if defined(BORINGSSL_FIPS)
+TEST(CryptoTest, FIPSdownstreamPrecompilationFlag) {
+#if defined(AWSLC_FIPS)
+  ASSERT_TRUE(1);
+#else
+  ASSERT_TRUE(0);
+#endif
+}
+#endif // defined(BORINGSSL_FIPS)
