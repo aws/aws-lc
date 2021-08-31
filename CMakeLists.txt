@@ -489,6 +489,19 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(FIPS)
+  set(JITTER_ENTROPY TRUE)
+endif()
+
+if(JITTER_ENTROPY)
+  if(NOT FIPS)
+    message(FATAL_ERROR "Jitter entropy can be used only in FIPS build")
+  endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DJITTER_ENTROPY")
+  add_subdirectory(third_party/jitterentropy)
+endif()
+
 if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()
