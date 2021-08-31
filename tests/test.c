@@ -138,6 +138,7 @@ enum {
        TEST_BIGNUM_MONTSQR,
        TEST_BIGNUM_MONTSQR_P256,
        TEST_BIGNUM_MONTSQR_P384,
+       TEST_BIGNUM_MONTSQR_P521,
        TEST_BIGNUM_MUL,
        TEST_BIGNUM_MUL_4_8,
        TEST_BIGNUM_MUL_6_12,
@@ -292,6 +293,18 @@ uint64_t p_521[9] =
    0xfffffffffffffffful,
    0xfffffffffffffffful,
    0x00000000000001fful
+ };
+
+uint64_t i_521[9] =
+ { 0x0000000000000001ul,
+   0x0000000000000000ul,
+   0x0000000000000000ul,
+   0x0000000000000000ul,
+   0x0000000000000000ul,
+   0x0000000000000000ul,
+   0x0000000000000000ul,
+   0x0000000000000000ul,
+   0x0000000000000200ul
  };
 
 // ****************************************************************************
@@ -3147,6 +3160,36 @@ int test_bignum_montsqr_p384(void)
   return 0;
 }
 
+int test_bignum_montsqr_p521(void)
+{ uint64_t t;
+  printf("Testing bignum_montsqr_p521 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(9,b2);
+     reference_mod(9,b0,b2,p_521);
+     bignum_montsqr_p521(b4,b0);
+     reference_dmontmul(9,b3,b0,b0,p_521,i_521,b5);
+
+     c = reference_compare(9,b3,9,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "2^-576 * ...0x%016lx^2 mod p_521 = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               9ul,b0[0],b4[8],b4[0],b3[8],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] "
+               "2^-576 * ...0x%016lx^2 mod p_521 = "
+               "0x%016lx...%016lx\n",
+               9ul,b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_mul(void)
 { uint64_t t, j, k0, k1, k2;
   printf("Testing bignum_mul with %d cases\n",tests);
@@ -4539,6 +4582,7 @@ int test_all()
   dotest(test_bignum_montsqr);
   dotest(test_bignum_montsqr_p256);
   dotest(test_bignum_montsqr_p384);
+  dotest(test_bignum_montsqr_p521);
   dotest(test_bignum_mul);
   dotest(test_bignum_mul_4_8);
   dotest(test_bignum_mul_6_12);
@@ -4831,6 +4875,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MONTSQR:         return test_bignum_montsqr();
      case TEST_BIGNUM_MONTSQR_P256:    return test_bignum_montsqr_p256();
      case TEST_BIGNUM_MONTSQR_P384:    return test_bignum_montsqr_p384();
+     case TEST_BIGNUM_MONTSQR_P521:    return test_bignum_montsqr_p521();
      case TEST_BIGNUM_MUL:             return test_bignum_mul();
      case TEST_BIGNUM_MUL_4_8:         return test_bignum_mul_4_8();
      case TEST_BIGNUM_MUL_6_12:        return test_bignum_mul_6_12();
