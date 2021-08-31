@@ -29,7 +29,7 @@ static void init_basis(const digit_t *gen, f2elm_t *XP, f2elm_t *XQ, f2elm_t *XR
 // Outputs random value in [0, 2^Floor(Log(2, oB)) - 1]
 int random_mod_order_B(unsigned char* random_digits)
 {
-    if (RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES) != 1) {return 0;}
+    RAND_bytes(random_digits, SIKE_P434_R3_SECRETKEY_B_BYTES);
     random_digits[SIKE_P434_R3_SECRETKEY_B_BYTES-1] &= SIKE_P434_R3_MASK_BOB; // Masking last byte
 
     return 1;

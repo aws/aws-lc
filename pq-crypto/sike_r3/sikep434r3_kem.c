@@ -29,10 +29,8 @@ int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len
 int sike_p434_r3_crypto_kem_keypair(unsigned char *pk, unsigned char *sk)
 {
     // Generate lower portion of secret key sk <- s||SK
-    if (RAND_bytes(sk, SIKE_P434_R3_MSG_BYTES) != 1 ||
-        random_mod_order_B(sk + SIKE_P434_R3_MSG_BYTES) != 1) {
-        return 0;
-    }
+    RAND_bytes(sk, SIKE_P434_R3_MSG_BYTES);
+    random_mod_order_B(sk + SIKE_P434_R3_MSG_BYTES);
 
     // Generate public key pk
     EphemeralKeyGeneration_B(sk + SIKE_P434_R3_MSG_BYTES, pk);
@@ -55,7 +53,7 @@ int sike_p434_r3_crypto_kem_enc(unsigned char *ct, unsigned char *ss, const unsi
     unsigned char temp[SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES];
 
     // Generate ephemeralsk <- G(m||pk) mod oA
-    if (RAND_bytes(temp, SIKE_P434_R3_MSG_BYTES) != 1) {return 0;}
+    RAND_bytes(temp, SIKE_P434_R3_MSG_BYTES) != 1);
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], pk, SIKE_P434_R3_PUBLIC_KEY_BYTES);
     shake256(ephemeralsk, SIKE_P434_R3_SECRETKEY_A_BYTES, temp, SIKE_P434_R3_PUBLIC_KEY_BYTES+SIKE_P434_R3_MSG_BYTES);
     ephemeralsk[SIKE_P434_R3_SECRETKEY_A_BYTES - 1] &= SIKE_P434_R3_MASK_ALICE;
