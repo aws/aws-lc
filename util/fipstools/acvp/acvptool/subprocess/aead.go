@@ -60,6 +60,7 @@ type aeadTestResponse struct {
 	TagHex        string  `json:"tag,omitempty"`
 	PlaintextHex  *string `json:"pt,omitempty"`
 	Passed        *bool   `json:"testPassed,omitempty"`
+	IVHex         string  `json:"iv,omitempty"`
 }
 
 func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
@@ -190,11 +191,23 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 					ciphertextHex := hex.EncodeToString(result[0])
 					testResp.CiphertextHex = &ciphertextHex
 				} else {
-					ciphertext := result[0][:len(result[0])-tagBytes]
-					ciphertextHex := hex.EncodeToString(ciphertext)
-					testResp.CiphertextHex = &ciphertextHex
-					tag := result[0][len(result[0])-tagBytes:]
-					testResp.TagHex = hex.EncodeToString(tag)
+					if external_iv {
+					    ciphertext := result[0][:len(result[0])-tagBytes]
+					    ciphertextHex := hex.EncodeToString(ciphertext)
+					    testResp.CiphertextHex = &ciphertextHex
+					    tag := result[0][len(result[0])-tagBytes:]
+					    testResp.TagHex = hex.EncodeToString(tag)
+					} else {
+					    // internal IV length is always 12 bytes long
+					    var ivBytes int = 12
+					    ciphertext := result[0][:len(result[0])-(tagBytes+ivBytes)]
+					    ciphertextHex := hex.EncodeToString(ciphertext)
+					    testResp.CiphertextHex = &ciphertextHex
+					    tag := result[0][len(result[0])-(tagBytes+ivBytes):len(result[0])-ivBytes]
+					    testResp.TagHex = hex.EncodeToString(tag)
+					    iv := result[0][len(result[0])-ivBytes:]
+					    testResp.IVHex = hex.EncodeToString(iv)
+					}
 				}
 			} else {
 				result, err = m.Transact(op, 2, uint32le(uint32(tagBytes)), key, append(input, tag...), nonce, aad)
