@@ -19,8 +19,9 @@
 
 
 // SIKE's decapsulation helper method
-// Copy src to dst, or don't copy it, in constant time
-int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, uint8_t dont);
+// Conditional move in constant time
+void ct_cmov(uint8_t *r, const uint8_t *a, unsigned int len, int8_t selector);
+
 
 // SIKE's key generation
 // Note: secret key is private key
@@ -53,7 +54,7 @@ int sike_p434_r3_crypto_kem_enc(unsigned char *ct, unsigned char *ss, const unsi
     unsigned char temp[SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES];
 
     // Generate ephemeralsk <- G(m||pk) mod oA
-    RAND_bytes(temp, SIKE_P434_R3_MSG_BYTES) != 1);
+    RAND_bytes(temp, SIKE_P434_R3_MSG_BYTES);
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], pk, SIKE_P434_R3_PUBLIC_KEY_BYTES);
     shake256(ephemeralsk, SIKE_P434_R3_SECRETKEY_A_BYTES, temp, SIKE_P434_R3_PUBLIC_KEY_BYTES+SIKE_P434_R3_MSG_BYTES);
     ephemeralsk[SIKE_P434_R3_SECRETKEY_A_BYTES - 1] &= SIKE_P434_R3_MASK_ALICE;
@@ -106,8 +107,12 @@ int sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, cons
     //
     // If c0_ and ct are equal, then decaps succeeded and we skip the overwrite and output
     // the actual shared secret: ss = H(m||ct) (dont_copy = true).
-    int dont_copy = !(CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES));
-    constant_time_copy_or_dont(temp, sk, SIKE_P434_R3_MSG_BYTES, dont_copy);
+    //int dont_copy = !(CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES));
+    //constant_time_copy_or_dont(temp, sk, SIKE_P434_R3_MSG_BYTES, dont_copy);
+
+    // If selector = 0 then do ss = H(m||ct), else if selector = -1 load s to do ss = H(s||ct)
+    int8_t selector = CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES);
+    ct_cmov(temp, sk, SIKE_P434_R3_MSG_BYTES, selector);
 
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], ct, SIKE_P434_R3_CIPHERTEXT_BYTES);
     shake256(ss, SIKE_P434_R3_SHARED_SECRET_BYTES, temp, SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES);
@@ -115,26 +120,12 @@ int sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, cons
     return 1;
 }
 
+
 // SIKE's decapsulation helper method
-// Given arrays "dest" and "src" of length "len", conditionally copy "src" to "dest"
-// The execution time of this function is independent of the values
-// stored in the arrays, and of whether the copy occurs.
-//
-// Timing may depend on the length of the arrays, and on the location
-// of the arrays in memory (e.g. if a buffer has been paged out, this
-// will affect the timing of this function).
-int constant_time_copy_or_dont(uint8_t * dest, const uint8_t * src, uint32_t len, uint8_t dont)
-{
-    uint8_t mask = (((0xFFFF & dont) - 1) >> 8) & 0xFF;
+void ct_cmov(uint8_t *r, const uint8_t *a, unsigned int len, int8_t selector)
+{ // Conditional move in constant time.
+    // If selector = -1 then load r with a, else if selector = 0 then keep r.
 
-    // dont = 0 : mask = 0xff
-    // dont > 0 : mask = 0x00
-
-    for (uint32_t i = 0; i < len; i++) {
-        uint8_t old = dest[i];
-        uint8_t diff = (old ^ src[i]) & mask;
-        dest[i] = old ^ diff;
-    }
-
-    return 1;
+    for (unsigned int i = 0; i < len; i++)
+        r[i] ^= selector & (a[i] ^ r[i]);
 }

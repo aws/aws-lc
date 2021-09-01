@@ -27,18 +27,22 @@ int pq_kem_params_alloc(pq_kem *kem, pq_kem_params *kem_params) {
     kem_params->kem = kem;
     kem_params->public_key = OPENSSL_malloc(kem_params->kem->public_key_length);
     if (kem_params->public_key == NULL) {
+        pq_kem_params_free(kem_params);
         return 0;
     }
     kem_params->private_key = OPENSSL_malloc(kem_params->kem->private_key_length);
     if (kem_params->private_key == NULL) {
+        pq_kem_params_free(kem_params);
         return 0;
     }
     kem_params->ciphertext = OPENSSL_malloc(kem_params->kem->ciphertext_length);
     if (kem_params->ciphertext == NULL) {
+        pq_kem_params_free(kem_params);
         return 0;
     }
     kem_params->shared_secret = OPENSSL_malloc(kem_params->kem->shared_secret_key_length);
     if (kem_params->shared_secret == NULL) {
+        pq_kem_params_free(kem_params);
         return 0;
     }
 
