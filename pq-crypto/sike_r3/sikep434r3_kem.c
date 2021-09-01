@@ -102,14 +102,6 @@ int sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, cons
     EphemeralKeyGeneration_A(ephemeralsk_, c0_);
 
     // Verify ciphertext.
-    // If c0_ and ct are NOT equal, decaps failed and we overwrite the shared secret
-    // with pseudorandom noise (ss = H(s||ct)) by performing the copy (dont_copy = false).
-    //
-    // If c0_ and ct are equal, then decaps succeeded and we skip the overwrite and output
-    // the actual shared secret: ss = H(m||ct) (dont_copy = true).
-    //int dont_copy = !(CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES));
-    //constant_time_copy_or_dont(temp, sk, SIKE_P434_R3_MSG_BYTES, dont_copy);
-
     // If selector = 0 then do ss = H(m||ct), else if selector = -1 load s to do ss = H(s||ct)
     int8_t selector = CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES);
     ct_cmov(temp, sk, SIKE_P434_R3_MSG_BYTES, selector);
