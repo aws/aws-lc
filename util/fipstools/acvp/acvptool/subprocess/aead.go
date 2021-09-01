@@ -88,14 +88,17 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			return nil, fmt.Errorf("test group %d has unknown direction %q", group.ID, group.Direction)
 		}
 
-		var external_iv bool
-		switch group.IvGen {
-		case "external":
-		    external_iv = true
-		case "internal":
-		    external_iv = false
-		default:
-		    return nil, fmt.Errorf("test group %d has unknown iv generation method %q", group.ID, group.IvGen)
+		// We automatically assume the IV is given, if the IV generation method is not defined.
+		var external_iv bool = true
+		if group.IvGen != "" {
+		    switch group.IvGen {
+		    case "external":
+		        external_iv = true
+		    case "internal":
+		        external_iv = false
+		    default:
+		        return nil, fmt.Errorf("test group %d has unknown iv generation method %q", group.ID, group.IvGen)
+		    }
 		}
 
 		op := a.algo + "/seal"
