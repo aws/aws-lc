@@ -61,19 +61,19 @@
 #define montreds(d6,d5,d4,d3,d2,d1,d0, t3,t2,t1)                            \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64            */  \
 /* Recycle d0 (which we know gets implicitly cancelled) to store it     */  \
-                lsl     t1, d0, 32;                                         \
+                lsl     t1, d0, #32;                                        \
                 add     d0, t1, d0;                                         \
 /* Now let [t2;t1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)     */  \
 /* We need to subtract 2^32 * this, and we can ignore its lower 32      */  \
 /* bits since by design it will cancel anyway; we only need the w_hi    */  \
 /* part to get the carry propagation going.                             */  \
-                lsr     t1, d0, 32;                                         \
+                lsr     t1, d0, #32;                                        \
                 subs    t1, t1, d0;                                         \
                 sbc     t2, d0, xzr;                                        \
 /* Now select in t1 the field to subtract from d1                       */  \
-                extr    t1, t2, t1, 32;                                     \
+                extr    t1, t2, t1, #32;                                    \
 /* And now get the terms to subtract from d2 and d3                     */  \
-                lsr     t2, t2, 32;                                         \
+                lsr     t2, t2, #32;                                        \
                 adds    t2, t2, d0;                                         \
                 adc     t3, xzr, xzr;                                       \
 /* Do the subtraction of that portion                                   */  \
@@ -122,11 +122,11 @@ bignum_montmul_p384:
 // Load in all words of both inputs
 
                 ldp     a0, a1, [x1]
-                ldp     a2, a3, [x1, 16]
-                ldp     a4, a5, [x1, 32]
+                ldp     a2, a3, [x1, #16]
+                ldp     a4, a5, [x1, #32]
                 ldp     b0, b1, [x2]
-                ldp     b2, b3, [x2, 16]
-                ldp     b4, b5, [x2, 32]
+                ldp     b2, b3, [x2, #16]
+                ldp     b4, b5, [x2, #32]
 
 // Multiply low halves with a 3x3->6 ADK multiplier as [s5;s4;s3;s2;s1;s0]
 
@@ -152,7 +152,7 @@ bignum_montmul_p384:
                 adc     s5, s5, xzr
 
                 muldiffn (t3,t2,t1, t4, a0,a1, b1,b0)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, t3
@@ -160,14 +160,14 @@ bignum_montmul_p384:
                 adc     s5, s5, t3
 
                 muldiffn (t3,t2,t1, t4, a0,a2, b2,b0)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s2, s2, t1
                 adcs    s3, s3, t2
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
                 muldiffn (t3,t2,t1, t4, a1,a2, b2,b1)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s3, s3, t1
                 adcs    s4, s4, t2
                 adc     s5, s5, t3
@@ -185,8 +185,8 @@ bignum_montmul_p384:
                 montreds (s2,s1,s0,s5,s4,s3,s2, t1,t2,t3)
 
                 stp     s3, s4, [x0]
-                stp     s5, s0, [x0, 16]
-                stp     s1, s2, [x0, 32]
+                stp     s5, s0, [x0, #16]
+                stp     s1, s2, [x0, #32]
 
 // Multiply high halves with a 3x3->6 ADK multiplier as [s5;s4;s3;s2;s1;s0]
 
@@ -212,7 +212,7 @@ bignum_montmul_p384:
                 adc     s5, s5, xzr
 
                 muldiffn (t3,t2,t1, t4, a3,a4, b4,b3)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, t3
@@ -220,14 +220,14 @@ bignum_montmul_p384:
                 adc     s5, s5, t3
 
                 muldiffn (t3,t2,t1, t4, a3,a5, b5,b3)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s2, s2, t1
                 adcs    s3, s3, t2
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
                 muldiffn (t3,t2,t1, t4, a4,a5, b5,b4)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s3, s3, t1
                 adcs    s4, s4, t2
                 adc     s5, s5, t3
@@ -238,7 +238,7 @@ bignum_montmul_p384:
                 sbcs    a4, a4, a1
                 sbcs    a5, a5, a2
                 sbc     a0, xzr, xzr
-                adds    xzr, a0, 1
+                adds    xzr, a0, #1
                 eor     a3, a3, a0
                 adcs    a3, a3, xzr
                 eor     a4, a4, a0
@@ -253,7 +253,7 @@ bignum_montmul_p384:
                 sbcs    b2, b2, b5
                 sbc     b5, xzr, xzr
 
-                adds    xzr, b5, 1
+                adds    xzr, b5, #1
                 eor     b0, b0, b5
                 adcs    b0, b0, xzr
                 eor     b1, b1, b5
@@ -271,16 +271,16 @@ bignum_montmul_p384:
                 ldp     t1, t2, [x0]
                 adds    s0, s0, t1
                 adcs    s1, s1, t2
-                ldp     t1, t2, [x0, 16]
+                ldp     t1, t2, [x0, #16]
                 adcs    s2, s2, t1
                 adcs    s3, s3, t2
-                ldp     t1, t2, [x0, 32]
+                ldp     t1, t2, [x0, #32]
                 adcs    s4, s4, t1
                 adcs    s5, s5, t2
                 adc     s6, xzr, xzr
                 stp     s0, s1, [x0]
-                stp     s2, s3, [x0, 16]
-                stp     s4, s5, [x0, 32]
+                stp     s2, s3, [x0, #16]
+                stp     s4, s5, [x0, #32]
 
 // Multiply with yet a third 3x3 ADK for the complex mid-term
 
@@ -306,7 +306,7 @@ bignum_montmul_p384:
                 adc     s5, s5, xzr
 
                 muldiffn (t3,t2,t1, t4, a3,a4, b1,b0)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, t3
@@ -314,14 +314,14 @@ bignum_montmul_p384:
                 adc     s5, s5, t3
 
                 muldiffn (t3,t2,t1, t4, a3,a5, b2,b0)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s2, s2, t1
                 adcs    s3, s3, t2
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
                 muldiffn (t3,t2,t1, t4, a4,a5, b2,b1)
-                adds    xzr, t3, 1
+                adds    xzr, t3, #1
                 adcs    s3, s3, t1
                 adcs    s4, s4, t2
                 adc     s5, s5, t3
@@ -329,14 +329,14 @@ bignum_montmul_p384:
 // Unstash the H + L' sum to add in twice
 
                 ldp     a0, a1, [x0]
-                ldp     a2, a3, [x0, 16]
-                ldp     a4, a5, [x0, 32]
+                ldp     a2, a3, [x0, #16]
+                ldp     a4, a5, [x0, #32]
 
 // Set up a sign-modified version of the mid-product in a long accumulator
 // as [b3;b2;b1;b0;s5;s4;s3;s2;s1;s0], adding in the H + L' term once with
 // zero offset as this signed value is created
 
-                adds    xzr, b5, 1
+                adds    xzr, b5, #1
                 eor     s0, s0, b5
                 adcs    s0, s0, a0
                 eor     s1, s1, b5
@@ -381,8 +381,8 @@ bignum_montmul_p384:
 // elaborate final correction in the style of bignum_cmul_p384, just
 // a little bit simpler because we know q is small.
 
-                add     t2, b3, 1
-                lsl     t1, t2, 32
+                add     t2, b3, #1
+                lsl     t1, t2, #32
                 subs    t4, t2, t1
                 sbc     t1, t1, xzr
 
@@ -395,12 +395,12 @@ bignum_montmul_p384:
 
                 csetm   t2, cc
 
-                mov     t3, 0x00000000ffffffff
+                mov     t3, #0x00000000ffffffff
                 and     t3, t3, t2
                 adds    s3, s3, t3
                 eor     t3, t3, t2
                 adcs    s4, s4, t3
-                mov     t3, 0xfffffffffffffffe
+                mov     t3, #0xfffffffffffffffe
                 and     t3, t3, t2
                 adcs    s5, s5, t3
                 adcs    b0, b0, t2
@@ -410,14 +410,14 @@ bignum_montmul_p384:
 // Write back the result
 
                 stp     s3, s4, [x0]
-                stp     s5, b0, [x0, 16]
-                stp     b1, b2, [x0, 32]
+                stp     s5, b0, [x0, #16]
+                stp     b1, b2, [x0, #32]
 
 // Restore registers and return
 
-                ldp     x23, x24, [sp], 16
-                ldp     x21, x22, [sp], 16
-                ldp     x19, x20, [sp], 16
+                ldp     x23, x24, [sp], #16
+                ldp     x21, x22, [sp], #16
+                ldp     x19, x20, [sp], #16
 
                 ret
 
