@@ -175,12 +175,12 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 
 			testResp := aeadTestResponse{ID: test.ID}
 
-            var result [][]uint8
+			var result [][]uint8
 			if encrypt {
-			    if external_iv {
-				    result, err = m.Transact(op, 1, uint32le(uint32(tagBytes)), key, input, nonce, aad)
+				if external_iv {
+					result, err = m.Transact(op, 1, uint32le(uint32(tagBytes)), key, input, nonce, aad)
 				} else {
-                    result, err = m.Transact(op, 1, uint32le(uint32(tagBytes)), key, input, nil, aad)
+					result, err = m.Transact(op, 1, uint32le(uint32(tagBytes)), key, input, nil, aad)
 				}
 				if err != nil {
 					return nil, err
