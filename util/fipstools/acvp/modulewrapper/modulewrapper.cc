@@ -838,7 +838,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "scheme": {
           "dhEphem": {
             "kasRole": [
-              "initiator"
+              "initiator",
+              "responder"
             ]
           }
         },
