@@ -165,118 +165,118 @@ bignum_sqr_p521:
 
 // 0 * 52 = 64 * 0 + 0
 
-                and     l, a0, 0x000fffffffffffff
+                and     l, a0, #0x000fffffffffffff
                 mul     l, u, l
 
 // 1 * 52 = 64 * 0 + 52
 
-                extr    h, a1, a0, 52
-                and     h, h, 0x000fffffffffffff
+                extr    h, a1, a0, #52
+                and     h, h, #0x000fffffffffffff
                 mul     h, u, h
-                lsr     t, l, 52
+                lsr     t, l, #52
                 add     h, h, t
 
-                lsl     l, l, 12
-                extr    t, h, l, 12
+                lsl     l, l, #12
+                extr    t, h, l, #12
                 adds    s0, s0, t
 
 // 2 * 52 = 64 * 1 + 40
 
-                extr    l, a2, a1, 40
-                and     l, l, 0x000fffffffffffff
+                extr    l, a2, a1, #40
+                and     l, l, #0x000fffffffffffff
                 mul     l, u, l
-                lsr     t, h, 52
+                lsr     t, h, #52
                 add     l, l, t
 
-                lsl     h, h, 12
-                extr    t, l, h, 24
+                lsl     h, h, #12
+                extr    t, l, h, #24
                 adcs    s1, s1, t
 
 // 3 * 52 = 64 * 2 + 28
 
-                extr    h, a3, a2, 28
-                and     h, h, 0x000fffffffffffff
+                extr    h, a3, a2, #28
+                and     h, h, #0x000fffffffffffff
                 mul     h, u, h
-                lsr     t, l, 52
+                lsr     t, l, #52
                 add     h, h, t
 
-                lsl     l, l, 12
-                extr    t, h, l, 36
+                lsl     l, l, #12
+                extr    t, h, l, #36
                 adcs    s2, s2, t
 
 // 4 * 52 = 64 * 3 + 16
 
-                extr    l, b0, a3, 16
-                and     l, l, 0x000fffffffffffff
+                extr    l, b0, a3, #16
+                and     l, l, #0x000fffffffffffff
                 mul     l, u, l
-                lsr     t, h, 52
+                lsr     t, h, #52
                 add     l, l, t
 
-                lsl     h, h, 12
-                extr    t, l, h, 48
+                lsl     h, h, #12
+                extr    t, l, h, #48
                 adcs    s3, s3, t
 
 // 5 * 52 = 64 * 4 + 4
 
-                lsr     h, b0, 4
-                and     h, h, 0x000fffffffffffff
+                lsr     h, b0, #4
+                and     h, h, #0x000fffffffffffff
                 mul     h, u, h
-                lsr     t, l, 52
+                lsr     t, l, #52
                 add     h, h, t
 
-                lsl     l, l, 12
-                extr    v, h, l, 60
+                lsl     l, l, #12
+                extr    v, h, l, #60
 
 // 6 * 52 = 64 * 4 + 56
 
-                extr    l, b1, b0, 56
-                and     l, l, 0x000fffffffffffff
+                extr    l, b1, b0, #56
+                and     l, l, #0x000fffffffffffff
                 mul     l, u, l
-                lsr     t, h, 52
+                lsr     t, h, #52
                 add     l, l, t
 
-                lsl     v, v, 8
-                extr    t, l, v, 8
+                lsl     v, v, #8
+                extr    t, l, v, #8
                 adcs    s4, s4, t
 
 // 7 * 52 = 64 * 5 + 44
 
-                extr    h, b2, b1, 44
-                and     h, h, 0x000fffffffffffff
+                extr    h, b2, b1, #44
+                and     h, h, #0x000fffffffffffff
                 mul     h, u, h
-                lsr     t, l, 52
+                lsr     t, l, #52
                 add     h, h, t
 
-                lsl     l, l, 12
-                extr    t, h, l, 20
+                lsl     l, l, #12
+                extr    t, h, l, #20
                 adcs    s5, s5, t
 
 // 8 * 52 = 64 * 6 + 32
 
-                extr    l, b3, b2, 32
-                and     l, l, 0x000fffffffffffff
+                extr    l, b3, b2, #32
+                and     l, l, #0x000fffffffffffff
                 mul     l, u, l
-                lsr     t, h, 52
+                lsr     t, h, #52
                 add     l, l, t
 
-                lsl     h, h, 12
-                extr    t, l, h, 32
+                lsl     h, h, #12
+                extr    t, l, h, #32
                 adcs    s6, s6, t
 
 // 9 * 52 = 64 * 7 + 20
 
-                lsr     h, b3, 20
+                lsr     h, b3, #20
                 mul     h, u, h
-                lsr     t, l, 52
+                lsr     t, l, #52
                 add     h, h, t
 
-                lsl     l, l, 12
-                extr    t, h, l, 44
+                lsl     l, l, #12
+                extr    t, h, l, #44
                 adcs    s7, s7, t
 
 // Top word
 
-                lsr     h, h, 44
+                lsr     h, h, #44
                 adc     c, c, h
 
 // Rotate [c;s7;...;s0] before storing in the buffer.
@@ -299,7 +299,7 @@ bignum_sqr_p521:
                 extr    h, c, s7, #9
                 stp     l, h, [z, #48]
 
-                and     t, s0, 0x1FF
+                and     t, s0, #0x1FF
                 lsr     c, c, #9
                 add     t, t, c
                 str     t, [z, #64]
