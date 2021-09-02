@@ -1172,7 +1172,7 @@ let BIGNUM_SQR_P521_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
       aligned 16 stackpointer /\
       nonoverlapping (z,8 * 9) (word_sub stackpointer (word 48),48) /\
-      ALLPAIRS nonoverlapping 
+      ALLPAIRS nonoverlapping
        [(z,8 * 9); (word_sub stackpointer (word 48),48)]
        [(word pc,0x68c); (x,8 * 9)]
       ==> ensures arm

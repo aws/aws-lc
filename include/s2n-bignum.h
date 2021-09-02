@@ -137,6 +137,10 @@ extern void bignum_demont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 // Input x[6]; output z[6]
 extern void bignum_demont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
+// Convert from Montgomery form z := (x / 2^576) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_demont_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+
 // Select digit x[n]
 // Inputs x[k], n; output function return
 extern uint64_t bignum_digit (uint64_t k, uint64_t *x, uint64_t n);
