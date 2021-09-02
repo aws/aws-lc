@@ -16,11 +16,7 @@
 #include "sike_internal.h"
 #include "../../include/openssl/rand.h"
 #include "sikep434r3_api.h"
-
-
-// SIKE's decapsulation helper method
-// Conditional move in constant time
-void ct_cmov(uint8_t *r, const uint8_t *a, unsigned int len, int8_t selector);
+#include "sikep434r3_fpx.h"
 
 
 // SIKE's key generation
@@ -103,21 +99,11 @@ int sike_p434_r3_crypto_kem_dec(unsigned char *ss, const unsigned char *ct, cons
 
     // Verify ciphertext.
     // If selector = 0 then do ss = H(m||ct), else if selector = -1 load s to do ss = H(s||ct)
-    int8_t selector = CRYPTO_memcmp(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES);
+    int8_t selector = ct_compare(c0_, ct, SIKE_P434_R3_PUBLIC_KEY_BYTES);
     ct_cmov(temp, sk, SIKE_P434_R3_MSG_BYTES, selector);
 
     memcpy(&temp[SIKE_P434_R3_MSG_BYTES], ct, SIKE_P434_R3_CIPHERTEXT_BYTES);
     shake256(ss, SIKE_P434_R3_SHARED_SECRET_BYTES, temp, SIKE_P434_R3_CIPHERTEXT_BYTES+SIKE_P434_R3_MSG_BYTES);
 
     return 1;
-}
-
-
-// SIKE's decapsulation helper method
-void ct_cmov(uint8_t *r, const uint8_t *a, unsigned int len, int8_t selector)
-{ // Conditional move in constant time.
-    // If selector = -1 then load r with a, else if selector = 0 then keep r.
-
-    for (unsigned int i = 0; i < len; i++)
-        r[i] ^= selector & (a[i] ^ r[i]);
 }

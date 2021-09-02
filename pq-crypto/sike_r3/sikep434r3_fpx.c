@@ -457,3 +457,22 @@ void mp2_sub_p2(const f2elm_t *a, const f2elm_t *b, f2elm_t *c)
   mp_sub434_p2(a->e[0], b->e[0], c->e[0]);
   mp_sub434_p2(a->e[1], b->e[1], c->e[1]);
 }
+
+void ct_cmov(uint8_t *r, const uint8_t *a, unsigned int len, int8_t selector)
+{ // Conditional move in constant time.
+    // If selector = -1 then load r with a, else if selector = 0 then keep r.
+
+    for (unsigned int i = 0; i < len; i++)
+        r[i] ^= selector & (a[i] ^ r[i]);
+}
+
+int8_t ct_compare(const uint8_t *a, const uint8_t *b, unsigned int len)
+{ // Compare two byte arrays in constant time.
+    // Returns 0 if the byte arrays are equal, -1 otherwise.
+    uint8_t r = 0;
+
+    for (unsigned int i = 0; i < len; i++)
+        r |= a[i] ^ b[i];
+
+    return (int8_t)((-(int32_t)r) >> (8*sizeof(uint32_t)-1));
+}

@@ -50,3 +50,9 @@ void mp_addfast(const digit_t* a, const digit_t* b, digit_t* c);
 void mp2_add(const f2elm_t *a, const f2elm_t *b, f2elm_t *c);
 
 void mp2_sub_p2(const f2elm_t *a, const f2elm_t *b, f2elm_t *c);
+
+// Conditional move in constant time
+void ct_cmov(uint8_t *r, const uint8_t *a, unsigned int len, int8_t selector);
+
+// Compare two byte arrays in constant time
+int8_t ct_compare(const uint8_t *a, const uint8_t *b, unsigned int len);
