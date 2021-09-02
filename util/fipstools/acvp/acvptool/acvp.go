@@ -194,16 +194,6 @@ func looksLikeHeaderElement(element json.RawMessage) bool {
 	return len(headerFields.URL) > 0 || len(headerFields.Algorithm) == 0
 }
 
-func looksLikeTestHeaderElement(element json.RawMessage) bool {
-    var testheaderFields struct {
-        Version string `json:"acvVersion"`
-    }
-    if err := json.Unmarshal(element, &testheaderFields); err != nil{
-        return false
-    }
-	return len(testheaderFields.Version) > 0
-}
-
 // processFile reads a file containing vector sets, at least in the format
 // preferred by our lab, and writes the results to stdout.
 func processFile(filename string, supportedAlgos []map[string]interface{}, middle Middle) error {
@@ -223,7 +213,7 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 	}
 
 	var header json.RawMessage
-	if ( looksLikeHeaderElement(elements[0]) || looksLikeTestHeaderElement(elements[0]) ) {
+	if looksLikeHeaderElement(elements[0]) {
 		header, elements = elements[0], elements[1:]
 		if len(elements) == 0 {
 			return errors.New("JSON input is empty")
