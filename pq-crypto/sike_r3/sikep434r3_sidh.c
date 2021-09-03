@@ -41,7 +41,9 @@ int random_mod_order_B(unsigned char* random_digits)
 //         by removing leading 0 bytes.
 int EphemeralKeyGeneration_A(const unsigned char* PrivateKeyA, unsigned char* PublicKeyA)
 {
-    // Currently defined without initialization due to odd brackets error during git build
+    // TODO(awslc): Fix this: zero-initialization ({0}) of
+    //  phiP, phiQ, phiR, _A24plus, _C24, and _A temporarily
+    //  removed because of clang-7 complaining.
     point_proj_t R, phiP, phiQ, phiR, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
     f2elm_t _XPA, _XQA, _XRA, coeff[3], _A24plus, _C24, _A;
     f2elm_t *XPA=&_XPA, *XQA=&_XQA, *XRA=&_XRA, *A24plus=&_A24plus, *C24=&_C24, *A=&_A;
@@ -116,7 +118,9 @@ int EphemeralKeyGeneration_A(const unsigned char* PrivateKeyA, unsigned char* Pu
 //         by removing leading 0 bytes.
 int EphemeralKeyGeneration_B(const unsigned char* PrivateKeyB, unsigned char* PublicKeyB)
 {
-    // Currently defined without initialization due to odd brackets error during git build
+    // TODO(awslc): Fix this: zero-initialization ({0}) of
+    //  phiP, phiQ, phiR, _A24plus, _A24minus, and _A temporarily
+    //  removed because of clang-7 complaining.
     point_proj_t R, phiP, phiQ, phiR, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
     f2elm_t _XPB, _XQB, _XRB, coeff[3], _A24plus, _A24minus, _A;
     f2elm_t *XPB=&_XPB, *XQB=&_XQB, *XRB=&_XRB, *A24plus=&_A24plus, *A24minus=&_A24minus, *A=&_A;
@@ -198,7 +202,9 @@ int EphemeralSecretAgreement_A(const unsigned char* PrivateKeyA, const unsigned 
     point_proj_t R, pts[SIKE_P434_R3_MAX_INT_POINTS_ALICE];
     f2elm_t coeff[3], PKB[3], _jinv;
 
-    // Currently defined without initialization due to odd brackets error during git build
+    // TODO(awslc): Fix this: zero-initialization ({0}) of
+    //  _A24plus, _C24, and _A temporarily
+    //  removed because of clang-7 complaining.
     f2elm_t _A24plus, _C24, _A;
     f2elm_t *jinv=&_jinv, *A24plus=&_A24plus, *C24=&_C24, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_ALICE], npts = 0, ii = 0;
@@ -264,7 +270,9 @@ int EphemeralSecretAgreement_B(const unsigned char* PrivateKeyB, const unsigned 
     point_proj_t R, pts[SIKE_P434_R3_MAX_INT_POINTS_BOB];
     f2elm_t coeff[3], PKB[3], _jinv;
 
-    // Currently defined without initialization due to odd brackets error during git build
+    // TODO(awslc): Fix this: zero-initialization ({0}) of
+    //  _A24plus, _A24minus, and _A temporarily
+    //  removed because of clang-7 complaining.
     f2elm_t _A24plus, _A24minus, _A;
     f2elm_t *jinv=&_jinv, *A24plus=&_A24plus, *A24minus=&_A24minus, *A=&_A;
     unsigned int i, row, m, tree_index = 0, pts_index[SIKE_P434_R3_MAX_INT_POINTS_BOB], npts = 0, ii = 0;
