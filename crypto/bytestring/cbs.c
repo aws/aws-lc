@@ -477,12 +477,11 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
 
 // Adding warning suppression as temporary fix for gcc11 ARM build issue
 // https://github.com/awslabs/aws-lc/issues/184
-#if defined(__has_warning)
-#  if  __has_warning("-Wstringop-overflow")
-#    pragma GCC diagnostic push
-#    pragma GCC diagnostic ignored "-Wstringop-overflow"
-#  endif
-#endif
+// First two warnings are turned on to avoid incompatibilites with older compilers.
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wpragmas"
+# pragma GCC diagnostic ignored "-Wunknown-warning-option"
+# pragma GCC diagnostic ignored "-Wstringop-overflow"
 
 int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
   int is_negative;
@@ -508,11 +507,7 @@ int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
   return 1;
 }
 
-#if defined(__has_warning)
-#  if  __has_warning("-Wstringop-overflow")
-#    pragma GCC diagnostic pop
-#  endif
-#endif
+# pragma GCC diagnostic pop
 
 int CBS_get_asn1_bool(CBS *cbs, int *out) {
   CBS bytes;
