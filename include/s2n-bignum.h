@@ -125,6 +125,10 @@ extern void bignum_deamont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 // Input x[6]; output z[6]
 extern void bignum_deamont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
+// Convert from almost-Montgomery form z := (x / 2^576) mod p_521
+// Input x[9]; output z[9]
+extern void bignum_deamont_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+
 // Convert from (almost-)Montgomery form z := (x / 2^{64k}) mod m
 // Inputs x[k], m[k]; output z[k]
 extern void bignum_demont (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);

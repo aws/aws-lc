@@ -88,6 +88,7 @@ enum {
        TEST_BIGNUM_CTZ,
        TEST_BIGNUM_DEAMONT_P256,
        TEST_BIGNUM_DEAMONT_P384,
+       TEST_BIGNUM_DEAMONT_P521,
        TEST_BIGNUM_DEMONT,
        TEST_BIGNUM_DEMONT_P256,
        TEST_BIGNUM_DEMONT_P384,
@@ -1554,6 +1555,36 @@ int test_bignum_deamont_p384(void)
                "2^-384 * ...0x%016lx mod p_384 = "
                "0x%016lx...%016lx\n",
                6ul,b0[0],b4[5],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_deamont_p521(void)
+{ uint64_t t;
+  printf("Testing bignum_deamont_p521 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(9,b0);
+     bignum_deamont_p521(b4,b0);
+     reference_of_word(9,b1,1ull);
+     reference_dmontmul(9,b3,b0,b1,p_521,i_521,b5);
+
+     c = reference_compare(9,b3,9,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "2^-576 * ...0x%016lx mod p_521 = "
+               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
+               9ul,b0[0],b4[8],b4[0],b3[8],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4lu] "
+               "2^-576 * ...0x%016lx mod p_521 = "
+               "0x%016lx...%016lx\n",
+               9ul,b0[0],b4[8],b4[0]);
       }
    }
   printf("All OK\n");
@@ -4564,6 +4595,7 @@ int test_all()
   dotest(test_bignum_ctz);
   dotest(test_bignum_deamont_p256);
   dotest(test_bignum_deamont_p384);
+  dotest(test_bignum_deamont_p521);
   dotest(test_bignum_demont);
   dotest(test_bignum_demont_p256);
   dotest(test_bignum_demont_p384);
@@ -4860,6 +4892,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_CTZ:             return test_bignum_ctz();
      case TEST_BIGNUM_DEAMONT_P256:    return test_bignum_deamont_p256();
      case TEST_BIGNUM_DEAMONT_P384:    return test_bignum_deamont_p384();
+     case TEST_BIGNUM_DEAMONT_P521:    return test_bignum_deamont_p521();
      case TEST_BIGNUM_DEMONT:          return test_bignum_demont();
      case TEST_BIGNUM_DEMONT_P256:     return test_bignum_demont_p256();
      case TEST_BIGNUM_DEMONT_P384:     return test_bignum_demont_p384();
