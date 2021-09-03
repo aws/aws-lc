@@ -33,6 +33,7 @@ endif
 
 OBJ = bignum_add_p521.o \
       bignum_cmul_p521.o \
+      bignum_deamont_p521.o \
       bignum_demont_p521.o \
       bignum_double_p521.o \
       bignum_half_p521.o \
