@@ -307,6 +307,7 @@ static void swap_points(point_proj_t P, point_proj_t Q, const digit_t option)
 void LADDER3PT(const f2elm_t *xP, const f2elm_t *xQ, const f2elm_t *xPQ, const digit_t* m,
         const unsigned int AliceOrBob, point_proj_t R, const f2elm_t *A)
 {
+    // Currently defined without initialization due to odd brackets error during git build
     point_proj_t R0;
     point_proj_t R2;
     f2elm_t _A24;
