@@ -87,12 +87,12 @@ bignum_deamont_p384:
 
 // Set up an initial window [r13,r12,r11,r10,r9,r8] = x
 
-        mov     r8, [x+8*0]
-        mov     r9, [x+8*1]
-        mov     r10, [x+8*2]
-        mov     r11, [x+8*3]
-        mov     r12, [x+8*4]
-        mov     r13, [x+8*5]
+        mov     r8, [x]
+        mov     r9, [x+8]
+        mov     r10, [x+16]
+        mov     r11, [x+24]
+        mov     r12, [x+32]
+        mov     r13, [x+40]
 
 // Montgomery reduce window 0
 
@@ -158,11 +158,11 @@ bignum_deamont_p384:
 // Write back the result
 
         mov     [z], r8
-        mov     [z+8*1], r9
-        mov     [z+8*2], r10
-        mov     [z+8*3], r11
-        mov     [z+8*4], r12
-        mov     [z+8*5], r13
+        mov     [z+8], r9
+        mov     [z+16], r10
+        mov     [z+24], r11
+        mov     [z+32], r12
+        mov     [z+40], r13
 
 // Restore registers and return
 

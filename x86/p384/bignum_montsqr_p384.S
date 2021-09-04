@@ -105,11 +105,11 @@ bignum_montsqr_p384:
 // Note that we are using rcx as the first step past the rotating window
 
         mov     rdx, [x]
-        mulx    r10, r9, [x+8*1]
-        mulx    r12, r11, [x+8*3]
-        mulx    r14, r13, [x+8*5]
-        mov     rdx, [x+8*3]
-        mulx    rcx, r15, [x+8*4]
+        mulx    r10, r9, [x+8]
+        mulx    r12, r11, [x+24]
+        mulx    r14, r13, [x+40]
+        mov     rdx, [x+24]
+        mulx    rcx, r15, [x+32]
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
@@ -118,13 +118,13 @@ bignum_montsqr_p384:
 // Chain in the addition of 02 + 12 + 13 + 14 + 15 to that window
 // (no carry-out possible)
 
-        mov     rdx, [x+8*2]
+        mov     rdx, [x+16]
         mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8*1])
-        mov     rdx, [x+8*1]
-        mulpadd (r13,r12,[x+8*3])
-        mulpadd (r14,r13,[x+8*4])
-        mulpadd (r15,r14,[x+8*5])
+        mulpadd (r12,r11,[x+8])
+        mov     rdx, [x+8]
+        mulpadd (r13,r12,[x+24])
+        mulpadd (r14,r13,[x+32])
+        mulpadd (r15,r14,[x+40])
         adcx    r15, zero
         adox    rcx, zero
         adc     rcx, zero
@@ -139,21 +139,21 @@ bignum_montsqr_p384:
 // using rbx (and hence need care with using mulpadd after this). Thus
 // our result so far is in [rbp;rbx;rcx;r15;...r9]
 
-        mov     rdx, [x+8*4]
+        mov     rdx, [x+32]
         mulpadd (r13,r12,[x])
-        mov     rdx, [x+8*2]
-        mulpadd (r14,r13,[x+8*3])
-        mulpadd (r15,r14,[x+8*4])
-        mulx    rdx, rax, [x+8*5]
+        mov     rdx, [x+16]
+        mulpadd (r14,r13,[x+24])
+        mulpadd (r15,r14,[x+32])
+        mulx    rdx, rax, [x+40]
         adcx    r15, rax
         adox    rcx, rdx
 
 // First set up the last couple of spots in our window, [rbp;rbx] = 45
 // then add the last other term 35
 
-        mov     rdx, [x+8*5]
-        mulx    rbp, rbx, [x+8*4]
-        mulx    rdx, rax, [x+8*3]
+        mov     rdx, [x+40]
+        mulx    rbp, rbx, [x+32]
+        mulx    rdx, rax, [x+24]
         adcx    rcx, rax
         adox    rbx, rdx
         mov     eax, 0
@@ -174,31 +174,31 @@ bignum_montsqr_p384:
         mulx    rax, r8, [x]
         adcx    r9, r9
         adox    r9, rax
-        mov     rdx, [x+8*1]
+        mov     rdx, [x+8]
         mulx    rdx, rax, rdx
         adcx    r10, r10
         adox    r10, rax
         adcx    r11, r11
         adox    r11, rdx
-        mov     rdx, [x+8*2]
+        mov     rdx, [x+16]
         mulx    rdx, rax, rdx
         adcx    r12, r12
         adox    r12, rax
         adcx    r13, r13
         adox    r13, rdx
-        mov     rdx, [x+8*3]
+        mov     rdx, [x+24]
         mulx    rdx, rax, rdx
         adcx    r14, r14
         adox    r14, rax
         adcx    r15, r15
         adox    r15, rdx
-        mov     rdx, [x+8*4]
+        mov     rdx, [x+32]
         mulx    rdx, rax, rdx
         adcx    rcx, rcx
         adox    rcx, rax
         adcx    rbx, rbx
         adox    rbx, rdx
-        mov     rdx, [x+8*5]
+        mov     rdx, [x+40]
         mulx    rsi, rax, rdx
         adcx    rbp, rbp
         adox    rbp, rax
@@ -265,11 +265,11 @@ bignum_montsqr_p384:
 // Write back the result
 
         mov     [z], r14
-        mov     [z+8*1], r15
-        mov     [z+8*2], rcx
-        mov     [z+8*3], rbx
-        mov     [z+8*4], rbp
-        mov     [z+8*5], rsi
+        mov     [z+8], r15
+        mov     [z+16], rcx
+        mov     [z+24], rbx
+        mov     [z+32], rbp
+        mov     [z+40], rsi
 
 // Restore registers and return
 
