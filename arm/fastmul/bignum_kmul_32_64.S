@@ -62,7 +62,7 @@ bignum_kmul_32_64:
 
 // Compute H = x_hi * y_hi in top half of buffer (size 16 x 16 -> 32)
 
-        add     x0, z, #8*2*K
+        add     x0, z, #16*K
         add     x1, x, #8*K
         add     x2, y, #8*K
         mov     x3, t
@@ -299,7 +299,7 @@ bignum_kmul_32_64:
         add     x0, t, #16*K
         mov     x1, t
         add     x2, t, #8*K
-        add     x3, t, #8*4*K
+        add     x3, t, #32*K
         bl      local_kmul_16_32
 
 // Add the interlocking H' and L_bot terms

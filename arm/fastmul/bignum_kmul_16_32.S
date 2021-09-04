@@ -67,7 +67,7 @@ bignum_kmul_16_32:
 // Compute absolute difference [t..] = |x_lo - x_hi|
 // and the sign s = sgn(x_lo - x_hi) as a bitmask (all 1s for negative)
 
-        ldp     x10, x11, [x, #0]
+        ldp     x10, x11, [x]
         ldp     x8, x9, [x, #64]
         subs    x10, x10, x8
         sbcs    x11, x11, x9
@@ -116,7 +116,7 @@ bignum_kmul_16_32:
 // Compute the other absolute difference [t+8..] = |y_hi - y_lo|
 // Collect the combined product sign bitmask (all 1s for negative) in s
 
-        ldp     x10, x11, [y, #0]
+        ldp     x10, x11, [y]
         ldp     x8, x9, [y, #64]
         subs    x10, x8, x10
         sbcs    x11, x9, x11
