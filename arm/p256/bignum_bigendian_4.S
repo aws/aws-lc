@@ -64,7 +64,7 @@
         extr    dest, d, dest, #8;                                          \
         ldrb    dshort, [x, #8*i+1];                                        \
         extr    dest, d, dest, #8;                                          \
-        ldrb    dshort, [x, #8*i+0];                                        \
+        ldrb    dshort, [x, #8*i];                                        \
         extr    dest, d, dest, #8
 
 // The reads and writes are organized in mirror-image pairs (0-3 and 1-2)
@@ -79,15 +79,15 @@ bignum_tobytes_4:
 
                 accumdigit (a, 0)
                 accumdigit (c, 3)
-                str     a, [z, #8*3]
-                str     c, [z, #8*0]
+                str     a, [z, #24]
+                str     c, [z]
 
 // 1 and 2 words
 
                 accumdigit (a, 1)
                 accumdigit (c, 2)
-                str     a, [z, #8*2]
-                str     c, [z, #8*1]
+                str     a, [z, #16]
+                str     c, [z, #8]
 
                 ret
 

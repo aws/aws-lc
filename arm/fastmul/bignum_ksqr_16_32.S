@@ -61,7 +61,7 @@ bignum_ksqr_16_32:
 
 // Compute absolute difference [t..] = |x_lo - x_hi|
 
-        ldp     x10, x11, [x, #0]
+        ldp     x10, x11, [x]
         ldp     x8, x9, [x, #64]
         subs    x10, x10, x8
         sbcs    x11, x11, x9

@@ -35,6 +35,8 @@
 
 #define CHUNKSIZE 58
 
+#define COCHUNKSIZE (64-CHUNKSIZE)
+
 // These variables are so fundamental we keep them consistently in registers.
 // k actually stays where it was at the beginning, while l gets set up  later
 
@@ -43,21 +45,21 @@
 
 // These are kept on the stack since there aren't enough registers
 
-#define mat_mm     QWORD PTR [rsp+8*0]
-#define mat_mn     QWORD PTR [rsp+8*1]
-#define mat_nm     QWORD PTR [rsp+8*2]
-#define mat_nn     QWORD PTR [rsp+8*3]
-#define t          QWORD PTR [rsp+8*4]
+#define mat_mm     QWORD PTR [rsp]
+#define mat_mn     QWORD PTR [rsp+8]
+#define mat_nm     QWORD PTR [rsp+16]
+#define mat_nn     QWORD PTR [rsp+24]
+#define t          QWORD PTR [rsp+32]
 // Modular inverse
-#define v          QWORD PTR [rsp+8*5]
+#define v          QWORD PTR [rsp+40]
 // We reconstruct n as m + 8*k as needed
-#define m          QWORD PTR [rsp+8*6]
-#define w          QWORD PTR [rsp+8*7]
-#define z          QWORD PTR [rsp+8*8]
+#define m          QWORD PTR [rsp+48]
+#define w          QWORD PTR [rsp+56]
+#define z          QWORD PTR [rsp+64]
 // Original b pointer, not b the temp
-#define bm         QWORD PTR [rsp+8*9]
+#define bm         QWORD PTR [rsp+72]
 
-#define STACKVARSIZE (8*10)
+#define STACKVARSIZE 80
 
 // These get set to m/n or w/z during the cross-multiplications etc.
 // Otherwise they can be used as additional temporaries
@@ -423,8 +425,8 @@ congloop:
                 cmp     i, k
                 jc      congloop
 
-                shld    l1, c1, (64-CHUNKSIZE)
-                shld    l2, c2, (64-CHUNKSIZE)
+                shld    l1, c1, COCHUNKSIZE
+                shld    l2, c2, COCHUNKSIZE
 
 // Do a Montgomery reduction of l1::w
 

@@ -61,7 +61,7 @@ bignum_ksqr_32_64:
 // Square the high half; from here on x and z are modified
 
         lea     x,[x+8*K]               // input at x+8*K
-        lea     z,[z+8*2*K]             // result at z+8*2*K
+        lea     z,[z+16*K]             // result at z+16*K
         call    local_bignum_sqr_16_32
 
 // Form |x_lo - x_hi|, stored at t
@@ -100,32 +100,32 @@ bignum_ksqr_32_64:
         xor     edx, edx
         .set I,  0
         .rep K
-        mov     rax, [z-8*2*K+8*K+8*I]
-        adcx    rax, [z-8*2*K+8*I]
-        adox    rax, [z-8*2*K+8*2*K+8*I]
+        mov     rax, [z-16*K+8*K+8*I]
+        adcx    rax, [z-16*K+8*I]
+        adox    rax, [z-16*K+16*K+8*I]
         mov     [t+8*K+8*I], rax
         .set I,  (I+1)
         .endr
 
         .rep K
-        mov     rax, [z-8*2*K+8*K+8*I]
-        adcx    rax, [z-8*2*K+8*I]
-        adox    rax, [z-8*2*K+8*2*K+8*I]
-        mov     [z-8*2*K+8*K+8*I], rax
+        mov     rax, [z-16*K+8*K+8*I]
+        adcx    rax, [z-16*K+8*I]
+        adox    rax, [z-16*K+16*K+8*I]
+        mov     [z-16*K+8*K+8*I], rax
         .set I,  (I+1)
         .endr
 
         adox    rdx, rdx
         adc     rdx, 0
-        mov     [t+8*4*K], rdx
+        mov     [t+32*K], rdx
 
 // Square the absolute difference, putting the result M at t[2*K].
 // This involves another shuffle so now t' = z_orig and x' = t_orig
 // while z' points within the temp buffer to the product M itself
 
         mov     x, t
-        lea     t, [z-8*2*K]
-        lea     z, [x+8*2*K]
+        lea     t, [z-16*K]
+        lea     z, [x+16*K]
         call    local_bignum_sqr_16_32
 
 // Subtract M, pausing at the 3k position to bump down accumulated carry.
@@ -152,16 +152,16 @@ bignum_ksqr_32_64:
         .set I,  (I+1)
         .endr
 
-        mov     rdx, [x+8*4*K]
+        mov     rdx, [x+32*K]
         sbb     rdx, 0
 
 // Finally propagate the carry to the top quarter
 
         xor     eax, eax
-        add     [t+8*3*K],rdx
+        add     [t+24*K],rdx
         .set I,  1
         .rep K-1
-        adc     [t+8*3*K+8*I], rax
+        adc     [t+24*K+8*I], rax
         .set I,  (I+1)
         .endr
 

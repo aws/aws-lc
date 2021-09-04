@@ -267,20 +267,20 @@
         mov     r8, [z]         // r8 = zeroth word
         mulx    rax, rdx, r8    // Compute multiplier word
         mov     [z], rdx        // Store multiplier word
-        mov     r9, [z+8*1]
+        mov     r9, [z+8]
 
         mulpadda 0, 0
-        mov     r10, [z+8*2]
+        mov     r10, [z+16]
         mulpadda 1, 0
-        mov     r11, [z+8*3]
+        mov     r11, [z+24]
         mulpadda 2, 0
-        mov     r12, [z+8*4]
+        mov     r12, [z+32]
         mulpadda 3, 0
-        mov     r13, [z+8*5]
+        mov     r13, [z+40]
         mulpadda 4, 0
-        mov     r14, [z+8*6]
+        mov     r14, [z+48]
         mulpadda 5, 0
-        mov     r15, [z+8*7]
+        mov     r15, [z+56]
         mulpadda 6, 0
         mulpadda 7, 0           // r8 = 0 beforehand by construction
         adc     r8, 0

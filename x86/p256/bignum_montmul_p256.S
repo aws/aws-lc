@@ -66,24 +66,24 @@ bignum_montmul_p256:
 // Unlike later, we only need a single carry chain
 
         xor     r13d, r13d
-        mov     rdx, [y+8*0]
-        mulx    r9, r8, [x+8*0]
-        mulx    r10, rbx, [x+8*1]
+        mov     rdx, [y]
+        mulx    r9, r8, [x]
+        mulx    r10, rbx, [x+8]
         adc     r9, rbx
-        mulx    r11, rbx, [x+8*2]
+        mulx    r11, rbx, [x+16]
         adc     r10, rbx
-        mulx    r12, rbx, [x+8*3]
+        mulx    r12, rbx, [x+24]
         adc     r11, rbx
         adc     r12, r13
 
 // Add row 1
 
-        mov     rdx, [y+8*1]
+        mov     rdx, [y+8]
         xor     r14d, r14d
         mulpadd (r10,r9,[x])
-        mulpadd (r11,r10,[x+8*1])
-        mulpadd (r12,r11,[x+8*2])
-        mulpadd (r13,r12,[x+8*3])
+        mulpadd (r11,r10,[x+8])
+        mulpadd (r12,r11,[x+16])
+        mulpadd (r13,r12,[x+24])
         adc    r13, r14
 
 // Montgomery reduce windows 0 and 1 together
@@ -102,26 +102,26 @@ bignum_montmul_p256:
 
 // Add row 2
 
-        mov     rdx, [y+8*2]
+        mov     rdx, [y+16]
         xor     r8d, r8d
         mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8*1])
-        mulpadd (r13,r12,[x+8*2])
+        mulpadd (r12,r11,[x+8])
+        mulpadd (r13,r12,[x+16])
         adox    r14, r8
-        mulx    rbx, rax, [x+8*3]
+        mulx    rbx, rax, [x+24]
         adc     r13, rax
         adc     r14, rbx
         adc     r15, r8
 
 // Add row 3
 
-        mov     rdx, [y+8*3]
+        mov     rdx, [y+24]
         xor     r9d, r9d
         mulpadd (r12,r11,[x])
-        mulpadd (r13,r12,[x+8*1])
-        mulpadd (r14,r13,[x+8*2])
+        mulpadd (r13,r12,[x+8])
+        mulpadd (r14,r13,[x+16])
         adox    r15, r9
-        mulx    rbx, rax, [x+8*3]
+        mulx    rbx, rax, [x+24]
         adc     r14, rax
         adc     r15, rbx
         adc     r8, r9
@@ -166,10 +166,10 @@ bignum_montmul_p256:
 
 // Write back reduced value
 
-        mov     [z+8*0], r12
-        mov     [z+8*1], r13
-        mov     [z+8*2], r14
-        mov     [z+8*3], r15
+        mov     [z], r12
+        mov     [z+8], r13
+        mov     [z+16], r14
+        mov     [z+24], r15
 
 // Restore registers and return
 

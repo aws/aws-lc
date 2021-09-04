@@ -85,22 +85,22 @@
         mulpadd \arg1, 2
 
 .if (\arg1 % 4 == 0)
-        mulx    r8, rax, [x+8*3]
+        mulx    r8, rax, [x+24]
         adcx    r11, rax
         adox    r8, zero
         adcx    r8, zero
 .elseif (\arg1 % 4 == 1)
-        mulx    r9, rax, [x+8*3]
+        mulx    r9, rax, [x+24]
         adcx    r8, rax
         adox    r9, zero
         adcx    r9, zero
 .elseif (\arg1 % 4 == 2)
-        mulx    r10, rax, [x+8*3]
+        mulx    r10, rax, [x+24]
         adcx    r9, rax
         adox    r10, zero
         adcx    r10, zero
 .elseif (\arg1 % 4 == 3)
-        mulx    r11, rax, [x+8*3]
+        mulx    r11, rax, [x+24]
         adcx    r10, rax
         adox    r11, zero
         adcx    r11, zero
@@ -129,18 +129,18 @@ bignum_mul_4_8:
 // Write back the zero-zero product and then accumulate
 // r8,r11,r10,r9 as y[0] * x from 1..4
 
-        mov     rdx, [y+8*0]
+        mov     rdx, [y]
 
-        mulx    r9, r8, [x+8*0]
-        mov     [z+8*0], r8
+        mulx    r9, r8, [x]
+        mov     [z], r8
 
-        mulx    r10, rbx, [x+8*1]
+        mulx    r10, rbx, [x+8]
         adcx    r9, rbx
 
-        mulx    r11, rbx, [x+8*2]
+        mulx    r11, rbx, [x+16]
         adcx    r10, rbx
 
-        mulx    r8, rbx, [x+8*3]
+        mulx    r8, rbx, [x+24]
         adcx    r11, rbx
         adcx    r8, zero
 
@@ -152,10 +152,10 @@ bignum_mul_4_8:
 
 // Now write back the additional columns
 
-        mov     [z+8*4], r8
-        mov     [z+8*5], r9
-        mov     [z+8*6], r10
-        mov     [z+8*7], r11
+        mov     [z+32], r8
+        mov     [z+40], r9
+        mov     [z+48], r10
+        mov     [z+56], r11
 
 // Restore registers and return
 

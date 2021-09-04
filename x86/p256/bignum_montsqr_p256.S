@@ -63,10 +63,10 @@ bignum_montsqr_p256:
 
         mov     rdx, [x]
         mulx    r15, r8, rdx
-        mulx    r10, r9, [x+8*1]
-        mulx    r12, r11, [x+8*3]
-        mov     rdx, [x+8*2]
-        mulx    r14, r13, [x+8*3]
+        mulx    r10, r9, [x+8]
+        mulx    r12, r11, [x+24]
+        mov     rdx, [x+16]
+        mulx    r14, r13, [x+24]
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
@@ -76,9 +76,9 @@ bignum_montsqr_p256:
 // This gives all the "heterogeneous" terms of the squaring ready to double
 
         mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8*1])
-        mov     rdx, [x+8*3]
-        mulpadd (r13,r12,[x+8*1])
+        mulpadd (r12,r11,[x+8])
+        mov     rdx, [x+24]
+        mulpadd (r13,r12,[x+8])
         adcx    r13, zero
         adox    r14, zero
         adc     r14, zero
@@ -88,19 +88,19 @@ bignum_montsqr_p256:
         xor     zeroe, zeroe
         adcx    r9, r9
         adox    r9, r15
-        mov     rdx, [x+8*1]
+        mov     rdx, [x+8]
         mulx    rdx, rax, rdx
         adcx    r10, r10
         adox    r10, rax
         adcx    r11, r11
         adox    r11, rdx
-        mov     rdx, [x+8*2]
+        mov     rdx, [x+16]
         mulx    rdx, rax, rdx
         adcx    r12, r12
         adox    r12, rax
         adcx    r13, r13
         adox    r13, rdx
-        mov     rdx, [x+8*3]
+        mov     rdx, [x+24]
         mulx    r15, rax, rdx
         adcx    r14, r14
         adox    r14, rax
@@ -165,9 +165,9 @@ bignum_montsqr_p256:
 // Write back reduced value
 
         mov     [z], r12
-        mov     [z+8*1], r13
-        mov     [z+8*2], r14
-        mov     [z+8*3], r15
+        mov     [z+8], r13
+        mov     [z+16], r14
+        mov     [z+24], r15
 
 // Restore saved registers and return
 

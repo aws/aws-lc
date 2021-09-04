@@ -198,25 +198,25 @@
         mulx    r9, rax, [x]
         adc     [z], rax
 
-        mulx    r10, rax, [x+8*1]
+        mulx    r10, rax, [x+8]
         adc     r9, rax
 
-        mulx    r11, rax, [x+8*2]
+        mulx    r11, rax, [x+16]
         adc     r10, rax
 
-        mulx    r12, rax, [x+8*3]
+        mulx    r12, rax, [x+24]
         adc     r11, rax
 
-        mulx    r13, rax, [x+8*4]
+        mulx    r13, rax, [x+32]
         adc     r12, rax
 
-        mulx    r14, rax, [x+8*5]
+        mulx    r14, rax, [x+40]
         adc     r13, rax
 
-        mulx    r15, rax, [x+8*6]
+        mulx    r15, rax, [x+48]
         adc     r14, rax
 
-        mulx    r8, rax, [x+8*7]
+        mulx    r8, rax, [x+56]
         adc     r15, rax
 
         adc     r8, zero
@@ -287,25 +287,25 @@
         xor     zeroe, zeroe
 
         mov     r8, [z]
-        mov     r9, [z+8*1]
+        mov     r9, [z+8]
 
         mulpadd 0, 0
         mov     [z],r8
 
-        mov     r10, [z+8*2]
+        mov     r10, [z+16]
         mulpadd 1, 0
-        mov     r11, [z+8*3]
+        mov     r11, [z+24]
         mulpadd 2, 0
-        mov     r12, [z+8*4]
+        mov     r12, [z+32]
         mulpadd 3, 0
-        mov     r13, [z+8*5]
+        mov     r13, [z+40]
         mulpadd 4, 0
-        mov     r14, [z+8*6]
+        mov     r14, [z+48]
         mulpadd 5, 0
-        mov     r15, [z+8*7]
+        mov     r15, [z+56]
         mulpadd 6, 0
 
-        mulx    r8, rax, [x+8*7]
+        mulx    r8, rax, [x+56]
         adcx    r15, rax
         adox    r8, zero
         adcx    r8, zero
@@ -331,14 +331,14 @@
         addrow  14
         addrow  15
 
-        mov     [z+8*16], r8
-        mov     [z+8*17], r9
-        mov     [z+8*18], r10
-        mov     [z+8*19], r11
-        mov     [z+8*20], r12
-        mov     [z+8*21], r13
-        mov     [z+8*22], r14
-        mov     [z+8*23], r15
+        mov     [z+128], r8
+        mov     [z+136], r9
+        mov     [z+144], r10
+        mov     [z+152], r11
+        mov     [z+160], r12
+        mov     [z+168], r13
+        mov     [z+176], r14
+        mov     [z+184], r15
 
 .endm
 
@@ -407,25 +407,25 @@
         mulx    r9, rax, [x]
         mov     [z], rax
 
-        mulx    r10, rax, [x+8*1]
+        mulx    r10, rax, [x+8]
         adcx     r9, rax
 
-        mulx    r11, rax, [x+8*2]
+        mulx    r11, rax, [x+16]
         adcx    r10, rax
 
-        mulx    r12, rax, [x+8*3]
+        mulx    r12, rax, [x+24]
         adcx    r11, rax
 
-        mulx    r13, rax, [x+8*4]
+        mulx    r13, rax, [x+32]
         adcx    r12, rax
 
-        mulx    r14, rax, [x+8*5]
+        mulx    r14, rax, [x+40]
         adcx    r13, rax
 
-        mulx    r15, rax, [x+8*6]
+        mulx    r15, rax, [x+48]
         adcx    r14, rax
 
-        mulx    r8, rax, [x+8*7]
+        mulx    r8, rax, [x+56]
         adcx    r15, rax
 
         adc     r8, zero
@@ -452,14 +452,14 @@
         mulrow  14
         mulrow  15
 
-        mov     [z+8*16], r8
-        mov     [z+8*17], r9
-        mov     [z+8*18], r10
-        mov     [z+8*19], r11
-        mov     [z+8*20], r12
-        mov     [z+8*21], r13
-        mov     [z+8*22], r14
-        mov     [z+8*23], r15
+        mov     [z+128], r8
+        mov     [z+136], r9
+        mov     [z+144], r10
+        mov     [z+152], r11
+        mov     [z+160], r12
+        mov     [z+168], r13
+        mov     [z+176], r14
+        mov     [z+184], r15
 
 .endm
 

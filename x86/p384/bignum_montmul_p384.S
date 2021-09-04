@@ -112,18 +112,18 @@ bignum_montmul_p384:
 // set up initial window [r14,r13,r12,r11,r10,r9,r8] = y[0] * x
 // Unlike later, we only need a single carry chain
 
-        mov     rdx, [y+8*0]
+        mov     rdx, [y]
         xor     r15d, r15d
-        mulx    r9, r8, [x+8*0]
-        mulx    r10, rbx, [x+8*1]
+        mulx    r9, r8, [x]
+        mulx    r10, rbx, [x+8]
         add     r9, rbx
-        mulx    r11, rbx, [x+8*2]
+        mulx    r11, rbx, [x+16]
         adc     r10, rbx
-        mulx    r12, rbx, [x+8*3]
+        mulx    r12, rbx, [x+24]
         adc     r11, rbx
-        mulx    r13, rbx, [x+8*4]
+        mulx    r13, rbx, [x+32]
         adc     r12, rbx
-        mulx    r14, rbx, [x+8*5]
+        mulx    r14, rbx, [x+40]
         adc     r13, rbx
         adc     r14, r15
 
@@ -133,15 +133,15 @@ bignum_montmul_p384:
 
 // Add row 1
 
-        mov     rdx, [y+8*1]
+        mov     rdx, [y+8]
         xor     r8d, r8d
         mulpadd (r10,r9,[x])
-        mulpadd (r11,r10, [x+8*1])
-        mulpadd (r12,r11,[x+8*2])
-        mulpadd (r13,r12,[x+8*3])
-        mulpadd (r14,r13,[x+8*4])
+        mulpadd (r11,r10, [x+8])
+        mulpadd (r12,r11,[x+16])
+        mulpadd (r13,r12,[x+24])
+        mulpadd (r14,r13,[x+32])
         adox    r15, r8
-        mulx    rbx, rax, [x+8*5]
+        mulx    rbx, rax, [x+40]
         adc     r14, rax
         adc     r15, rbx
         adc     r8, r8
@@ -152,15 +152,15 @@ bignum_montmul_p384:
 
 // Add row 2
 
-        mov     rdx, [y+8*2]
+        mov     rdx, [y+16]
         xor     r9d, r9d
         mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8*1])
-        mulpadd (r13,r12,[x+8*2])
-        mulpadd (r14,r13,[x+8*3])
-        mulpadd (r15,r14,[x+8*4])
+        mulpadd (r12,r11,[x+8])
+        mulpadd (r13,r12,[x+16])
+        mulpadd (r14,r13,[x+24])
+        mulpadd (r15,r14,[x+32])
         adox    r8, r9
-        mulx    rbx, rax, [x+8*5]
+        mulx    rbx, rax, [x+40]
         adc     r15, rax
         adc     r8, rbx
         adc     r9, r9
@@ -171,15 +171,15 @@ bignum_montmul_p384:
 
 // Add row 3
 
-        mov     rdx, [y+8*3]
+        mov     rdx, [y+24]
         xor     r10d, r10d
         mulpadd (r12,r11,[x])
-        mulpadd (r13,r12,[x+8*1])
-        mulpadd (r14,r13,[x+8*2])
-        mulpadd (r15,r14,[x+8*3])
-        mulpadd (r8,r15,[x+8*4])
+        mulpadd (r13,r12,[x+8])
+        mulpadd (r14,r13,[x+16])
+        mulpadd (r15,r14,[x+24])
+        mulpadd (r8,r15,[x+32])
         adox    r9, r10
-        mulx    rbx, rax, [x+8*5]
+        mulx    rbx, rax, [x+40]
         adc     r8, rax
         adc     r9, rbx
         adc     r10, r10
@@ -190,15 +190,15 @@ bignum_montmul_p384:
 
 // Add row 4
 
-        mov     rdx, [y+8*4]
+        mov     rdx, [y+32]
         xor     r11d, r11d
         mulpadd (r13,r12,[x])
-        mulpadd (r14,r13,[x+8*1])
-        mulpadd (r15,r14,[x+8*2])
-        mulpadd (r8,r15,[x+8*3])
-        mulpadd (r9,r8,[x+8*4])
+        mulpadd (r14,r13,[x+8])
+        mulpadd (r15,r14,[x+16])
+        mulpadd (r8,r15,[x+24])
+        mulpadd (r9,r8,[x+32])
         adox    r10, r11
-        mulx    rbx, rax, [x+8*5]
+        mulx    rbx, rax, [x+40]
         adc     r9, rax
         adc     r10, rbx
         adc     r11, r11
@@ -209,15 +209,15 @@ bignum_montmul_p384:
 
 // Add row 5
 
-        mov     rdx, [y+8*5]
+        mov     rdx, [y+40]
         xor     r12d, r12d
         mulpadd (r14,r13,[x])
-        mulpadd (r15,r14,[x+8*1])
-        mulpadd (r8,r15,[x+8*2])
-        mulpadd (r9,r8,[x+8*3])
-        mulpadd (r10,r9,[x+8*4])
+        mulpadd (r15,r14,[x+8])
+        mulpadd (r8,r15,[x+16])
+        mulpadd (r9,r8,[x+24])
+        mulpadd (r10,r9,[x+32])
         adox    r11, r12
-        mulx    rbx, rax, [x+8*5]
+        mulx    rbx, rax, [x+40]
         adc     r10, rax
         adc     r11, rbx
         adc     r12, r12
@@ -259,11 +259,11 @@ bignum_montmul_p384:
 // Write back the result
 
         mov     [z], r14
-        mov     [z+8*1], r15
-        mov     [z+8*2], r8
-        mov     [z+8*3], r9
-        mov     [z+8*4], r10
-        mov     [z+8*5], r11
+        mov     [z+8], r15
+        mov     [z+16], r8
+        mov     [z+24], r9
+        mov     [z+32], r10
+        mov     [z+40], r11
 
 // Restore registers and return
 

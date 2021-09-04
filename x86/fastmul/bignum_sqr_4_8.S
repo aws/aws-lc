@@ -58,10 +58,10 @@ bignum_sqr_4_8:
 // Set up an initial window [d6;...d1] = [23;03;01]
 
         mov     rdx, [x]
-        mulx    d2, d1, [x+8*1]
-        mulx    d4, d3, [x+8*3]
-        mov     rdx, [x+8*2]
-        mulx    d6, d5, [x+8*3]
+        mulx    d2, d1, [x+8]
+        mulx    d4, d3, [x+24]
+        mov     rdx, [x+16]
+        mulx    d6, d5, [x+24]
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
@@ -73,11 +73,11 @@ bignum_sqr_4_8:
         mulx    rcx, rax, [x]
         adcx    d2, rax
         adox    d3, rcx
-        mulx    rcx, rax, [x+8*1]
+        mulx    rcx, rax, [x+8]
         adcx    d3, rax
         adox    d4, rcx
-        mov     rdx, [x+8*3]
-        mulx    rcx, rax, [x+8*1]
+        mov     rdx, [x+24]
+        mulx    rcx, rax, [x+8]
         adcx    d4, rax
         adox    d5, rcx
         adcx    d5, zero
@@ -102,31 +102,31 @@ bignum_sqr_4_8:
         mov     [z], rax
         adcx    d1, d1
         adox    d1, rdx
-        mov     rdx, [x+8*1]
-        mov     [z+8*1], d1
+        mov     rdx, [x+8]
+        mov     [z+8], d1
         mulx    rdx, rax, rdx
         adcx    d2, d2
         adox    d2, rax
         adcx    d3, d3
         adox    d3, rdx
-        mov     rdx, [x+8*2]
-        mov     [z+8*2], d2
+        mov     rdx, [x+16]
+        mov     [z+16], d2
         mulx    rdx, rax, rdx
         adcx    d4, d4
         adox    d4, rax
         adcx    d5, d5
         adox    d5, rdx
-        mov     rdx, [x+8*3]
-        mov     [z+8*3], d3
+        mov     rdx, [x+24]
+        mov     [z+24], d3
         mulx    rdx, rax, rdx
-        mov     [z+8*4], d4
+        mov     [z+32], d4
         adcx    d6, d6
-        mov     [z+8*5], d5
+        mov     [z+40], d5
         adox    d6, rax
-        mov     [z+8*6], d6
+        mov     [z+48], d6
         adcx    rdx, zero
         adox    rdx, zero
-        mov     [z+8*7], rdx
+        mov     [z+56], rdx
 
 // Restore saved registers and return
 

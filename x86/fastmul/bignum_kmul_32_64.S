@@ -67,7 +67,7 @@ bignum_kmul_32_64:
 
 // Multiply the high halves
 
-        lea     rdi,[rdi+8*2*K-0x40]
+        lea     rdi,[rdi+16*K-0x40]
         lea     rsi,[rsi+8*K-0x40]
         lea     rcx,[rcx+8*K]
         call    local_bignum_kmul_16_32
@@ -75,7 +75,7 @@ bignum_kmul_32_64:
 // Establish r8 as the t pointer and use the cell to back up z now
 
         mov     r8, [rsp]
-        sub     rdi, 8*2*K+0x40
+        sub     rdi, 16*K+0x40
         mov     [rsp], rdi
 
 // Form |x_lo - x_hi| starting at t
@@ -135,7 +135,7 @@ bignum_kmul_32_64:
 // Stash the final sign with which to add things at t[4*K]
 
         xor     s, rbp
-        mov     [r8+8*4*K], s
+        mov     [r8+32*K], s
 
 // Multiply the absolute differences, putting the result at t[2*K]
 // This has the side-effect of putting t in the "right" register rcx
@@ -143,7 +143,7 @@ bignum_kmul_32_64:
 
         mov     rcx, r8
         lea     rsi, [r8+8*K]
-        lea     rdi, [r8+8*2*K]
+        lea     rdi, [r8+16*K]
         call    local_bignum_kmul_16_32
         mov     z, [rsp]
 
@@ -155,7 +155,7 @@ bignum_kmul_32_64:
         .rep 2*K
         mov     rax, [z+8*K+8*I]
         adcx    rax, [z+8*I]
-        adox    rax, [z+8*2*K+8*I]
+        adox    rax, [z+16*K+8*I]
         mov     [t+8*I], rax
         .set I,  (I+1)
         .endr
@@ -166,13 +166,13 @@ bignum_kmul_32_64:
 // We double-negate it to set CF/ZF while not spoiling its
 // actual form: note that we eventually adcx to it below.
 
-        mov     s, [t+8*4*K]
+        mov     s, [t+32*K]
         neg     s
         neg     s
 
         .set I,  0
         .rep 2*K
-        mov     rdx, [t+8*2*K+8*I]
+        mov     rdx, [t+16*K+8*I]
         mov     rax, rdx
         not     rdx
         cmovz   rdx, rax
@@ -189,10 +189,10 @@ bignum_kmul_32_64:
 // Finally propagate the carry to the top part
 
         xor     eax, eax
-        add     [z+8*3*K],rbx
+        add     [z+24*K],rbx
         .set I,  1
         .rep K-1
-        adc     [z+8*3*K+8*I], rax
+        adc     [z+24*K+8*I], rax
         .set I,  (I+1)
         .endr
 

@@ -59,10 +59,10 @@ bignum_deamont_p256:
 
 // Set up an initial 4-word window [r11,r10,r9,r8] = x
 
-        mov     r8, [x+8*0]
-        mov     r9, [x+8*1]
-        mov     r10, [x+8*2]
-        mov     r11, [x+8*3]
+        mov     r8, [x]
+        mov     r9, [x+8]
+        mov     r10, [x+16]
+        mov     r11, [x+24]
 
 // Fill in two zeros to the left
 
@@ -125,10 +125,10 @@ bignum_deamont_p256:
 
 // Write back
 
-        mov     [z+8*0], rbx
-        mov     [z+8*1], rsi
-        mov     [z+8*2], r8
-        mov     [z+8*3], r9
+        mov     [z], rbx
+        mov     [z+8], rsi
+        mov     [z+16], r8
+        mov     [z+24], r9
 
 // Restore saved register and return
 

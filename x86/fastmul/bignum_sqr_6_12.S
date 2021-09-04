@@ -67,11 +67,11 @@ bignum_sqr_6_12:
 // Set up an initial window [d8;...d1] = [34;05;03;01]
 
         mov     rdx, [x]
-        mulx    d2, d1, [x+8*1]
-        mulx    d4, d3, [x+8*3]
-        mulx    d6, d5, [x+8*5]
-        mov     rdx, [x+8*3]
-        mulx    d8, d7, [x+8*4]
+        mulx    d2, d1, [x+8]
+        mulx    d4, d3, [x+24]
+        mulx    d6, d5, [x+40]
+        mov     rdx, [x+24]
+        mulx    d8, d7, [x+32]
 
 // Clear our zero register, and also initialize the flags for the carry chain
 
@@ -80,21 +80,21 @@ bignum_sqr_6_12:
 // Chain in the addition of 02 + 12 + 13 + 14 + 15 to that window
 // (no carry-out possible since we add it to the top of a product)
 
-        mov     rdx, [x+8*2]
+        mov     rdx, [x+16]
         mulx    rcx, rax, [x]
         adcx    d2, rax
         adox    d3, rcx
-        mulx    rcx, rax, [x+8*1]
+        mulx    rcx, rax, [x+8]
         adcx    d3, rax
         adox    d4, rcx
-        mov     rdx, [x+8*1]
-        mulx    rcx, rax, [x+8*3]
+        mov     rdx, [x+8]
+        mulx    rcx, rax, [x+24]
         adcx    d4, rax
         adox    d5, rcx
-        mulx    rcx, rax, [x+8*4]
+        mulx    rcx, rax, [x+32]
         adcx    d5, rax
         adox    d6, rcx
-        mulx    rcx, rax, [x+8*5]
+        mulx    rcx, rax, [x+40]
         adcx    d6, rax
         adox    d7, rcx
         adcx    d7, zero
@@ -109,26 +109,26 @@ bignum_sqr_6_12:
 // Now chain in the 04 + 23 + 24 + 25 + 35 + 45 terms
 // We are running out of registers and here our zero register is not zero!
 
-        mov     rdx, [x+8*4]
+        mov     rdx, [x+32]
         mulx    rcx, rax, [x]
         adcx    d4, rax
         adox    d5, rcx
-        mov     rdx, [x+8*2]
-        mulx    rcx, rax, [x+8*3]
+        mov     rdx, [x+16]
+        mulx    rcx, rax, [x+24]
         adcx    d5, rax
         adox    d6, rcx
-        mulx    rcx, rax, [x+8*4]
+        mulx    rcx, rax, [x+32]
         adcx    d6, rax
         adox    d7, rcx
-        mulx    rcx, rax, [x+8*5]
+        mulx    rcx, rax, [x+40]
         adcx    d7, rax
         adox    d8, rcx
-        mov     rdx, [x+8*3]
-        mulx    d9, rax, [x+8*5]
+        mov     rdx, [x+24]
+        mulx    d9, rax, [x+40]
         adcx    d8, rax
         adox    d9, zero
-        mov     rdx, [x+8*4]
-        mulx    d10, rax, [x+8*5]
+        mov     rdx, [x+32]
+        mulx    d10, rax, [x+40]
         adcx    d9, rax
         mov     eax, 0
         adox    d10, rax
@@ -151,48 +151,48 @@ bignum_sqr_6_12:
         mov     [z], rax
         adcx    d1, d1
         adox    d1, rdx
-        mov     rdx, [x+8*1]
-        mov     [z+8*1], d1
+        mov     rdx, [x+8]
+        mov     [z+8], d1
         mulx    rdx, rax, rdx
         adcx    d2, d2
         adox    d2, rax
         adcx    d3, d3
         adox    d3, rdx
-        mov     rdx, [x+8*2]
-        mov     [z+8*2], d2
+        mov     rdx, [x+16]
+        mov     [z+16], d2
         mulx    rdx, rax, rdx
         adcx    d4, d4
         adox    d4, rax
         adcx    d5, d5
         adox    d5, rdx
-        mov     rdx, [x+8*3]
-        mov     [z+8*3], d3
+        mov     rdx, [x+24]
+        mov     [z+24], d3
         mulx    rdx, rax, rdx
         adcx    d6, d6
         adox    d6, rax
         adcx    d7, d7
         adox    d7, rdx
-        mov     rdx, [x+8*4]
-        mov     [z+8*4], d4
+        mov     rdx, [x+32]
+        mov     [z+32], d4
         mulx    rdx, rax, rdx
         adcx    d8, d8
         adox    d8, rax
         adcx    d9, d9
         adox    d9, rdx
-        mov     rdx, [x+8*5]
-        mov     [z+8*5], d5
+        mov     rdx, [x+40]
+        mov     [z+40], d5
         mulx    rdx, rax, rdx
-        mov     [z+8*6], d6
+        mov     [z+48], d6
         adcx    d10, d10
-        mov     [z+8*7], d7
+        mov     [z+56], d7
         adox    d10, rax
-        mov     [z+8*8], d8
+        mov     [z+64], d8
         mov     eax, 0
-        mov     [z+8*9], d9
+        mov     [z+72], d9
         adcx    rdx, rax
-        mov     [z+8*10], d10
+        mov     [z+80], d10
         adox    rdx, rax
-        mov     [z+8*11], rdx
+        mov     [z+88], rdx
 
 // Restore saved registers and return
 

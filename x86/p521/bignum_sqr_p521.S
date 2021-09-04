@@ -38,8 +38,8 @@
 // maintaining consistent double-carrying with adcx and adox,
 // using rax and rcx as temporaries.
 
-#define mulpadd(high,low,i)             \
-        mulx    rcx, rax, [x+8*i];      \
+#define mulpadd(high,low,I)             \
+        mulx    rcx, rax, [x+I];        \
         adcx    low, rax;               \
         adox    high, rcx
 
@@ -48,8 +48,8 @@
 // using rax as a temporary, assuming high created from scratch
 // and that zero has value zero.
 
-#define mulpade(high,low,i)             \
-        mulx    high, rax, [x+8*i];     \
+#define mulpade(high,low,I)             \
+        mulx    high, rax, [x+I];       \
         adcx    low, rax;               \
         adox    high, zero
 
@@ -69,129 +69,129 @@ bignum_sqr_p521:
 
         xor     zeroe, zeroe
 
-        mov     rdx, [x+8*0]
-        mulx    rax, r9, [x+8*1]
-        mov     [z+8*1], r9
-        mulx    rcx, r10, [x+8*2]
+        mov     rdx, [x]
+        mulx    rax, r9, [x+8]
+        mov     [z+8], r9
+        mulx    rcx, r10, [x+16]
         adcx    r10, rax
-        mov     [z+8*2], r10
-        mulx    rax, r11, [x+8*3]
+        mov     [z+16], r10
+        mulx    rax, r11, [x+24]
         adcx    r11, rcx
-        mulx    rcx, r12, [x+8*4]
+        mulx    rcx, r12, [x+32]
         adcx    r12, rax
-        mulx    rax, r13, [x+8*5]
+        mulx    rax, r13, [x+40]
         adcx    r13, rcx
-        mulx    rcx, r14, [x+8*6]
+        mulx    rcx, r14, [x+48]
         adcx    r14, rax
-        mulx    r8, r15, [x+8*7]
+        mulx    r8, r15, [x+56]
         adcx    r15, rcx
         adcx    r8, zero
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*1]
-        mulpadd(r12,r11,2)
-        mov     [z+8*3], r11
-        mulpadd(r13,r12,3)
-        mov     [z+8*4], r12
-        mulpadd(r14,r13,4)
-        mulpadd(r15,r14,5)
-        mulpadd(r8,r15,6)
-        mulpade(r9,r8,7)
-        mov     rdx, [x+8*4]
-        mulpade(r10,r9,5)
+        mov     rdx, [x+8]
+        mulpadd(r12,r11,16)
+        mov     [z+24], r11
+        mulpadd(r13,r12,24)
+        mov     [z+32], r12
+        mulpadd(r14,r13,32)
+        mulpadd(r15,r14,40)
+        mulpadd(r8,r15,48)
+        mulpade(r9,r8,56)
+        mov     rdx, [x+32]
+        mulpade(r10,r9,40)
         adcx    r10, zero
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*2]
-        mulpadd(r14,r13,3)
-        mov     [z+8*5], r13
-        mulpadd(r15,r14,4)
-        mov     [z+8*6], r14
-        mulpadd(r8,r15,5)
-        mulpadd(r9,r8,6)
-        mulpadd(r10,r9,7)
-        mov     rdx, [x+8*6]
-        mulpade(r11,r10,4)
-        mulpade(r12,r11,5)
+        mov     rdx, [x+16]
+        mulpadd(r14,r13,24)
+        mov     [z+40], r13
+        mulpadd(r15,r14,32)
+        mov     [z+48], r14
+        mulpadd(r8,r15,40)
+        mulpadd(r9,r8,48)
+        mulpadd(r10,r9,56)
+        mov     rdx, [x+48]
+        mulpade(r11,r10,32)
+        mulpade(r12,r11,40)
         adcx    r12, zero
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*3]
-        mulpadd(r8,r15,4)
-        mov     [z+8*7], r15
-        mulpadd(r9,r8,5)
-        mulpadd(r10,r9,6)
-        mulpadd(r11,r10,7)
-        mov     rdx, [x+8*7]
-        mulpadd(r12,r11,4)
-        mulpade(r13,r12,5)
-        mulpade(r14,r13,6)
+        mov     rdx, [x+24]
+        mulpadd(r8,r15,32)
+        mov     [z+56], r15
+        mulpadd(r9,r8,40)
+        mulpadd(r10,r9,48)
+        mulpadd(r11,r10,56)
+        mov     rdx, [x+56]
+        mulpadd(r12,r11,32)
+        mulpade(r13,r12,40)
+        mulpade(r14,r13,48)
         adcx    r14, zero
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*0]
+        mov     rdx, [x]
         mulx    rcx, rax, rdx
-        mov     [z+8*0], rax
-        mov     rax, [z+8*1]
+        mov     [z], rax
+        mov     rax, [z+8]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+8*1], rax
+        mov     [z+8], rax
 
-        mov     rax, [z+8*2]
-        mov     rdx, [x+8*1]
+        mov     rax, [z+16]
+        mov     rdx, [x+8]
         mulx    rcx, rdx, rdx
         adcx    rax, rax
         adox    rax, rdx
-        mov     [z+8*2], rax
-        mov     rax, [z+8*3]
+        mov     [z+16], rax
+        mov     rax, [z+24]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+8*3], rax
+        mov     [z+24], rax
 
-        mov     rax, [z+8*4]
-        mov     rdx, [x+8*2]
+        mov     rax, [z+32]
+        mov     rdx, [x+16]
         mulx    rcx, rdx, rdx
         adcx    rax, rax
         adox    rax, rdx
-        mov     [z+8*4], rax
-        mov     rax, [z+8*5]
+        mov     [z+32], rax
+        mov     rax, [z+40]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+8*5], rax
+        mov     [z+40], rax
 
-        mov     rax, [z+8*6]
-        mov     rdx, [x+8*3]
+        mov     rax, [z+48]
+        mov     rdx, [x+24]
         mulx    rcx, rdx, rdx
         adcx    rax, rax
         adox    rax, rdx
-        mov     [z+8*6], rax
-        mov     rax, [z+8*7]
+        mov     [z+48], rax
+        mov     rax, [z+56]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+8*7], rax
+        mov     [z+56], rax
 
-        mov     rdx, [x+8*4]
+        mov     rdx, [x+32]
         mulx    rcx, rdx, rdx
         adcx    r8, r8
         adox    r8, rdx
         adcx    r9, r9
         adox    r9, rcx
 
-        mov     rdx, [x+8*5]
+        mov     rdx, [x+40]
         mulx    rcx, rdx, rdx
         adcx    r10, r10
         adox    r10, rdx
         adcx    r11, r11
         adox    r11, rcx
 
-        mov     rdx, [x+8*6]
+        mov     rdx, [x+48]
         mulx    rcx, rdx, rdx
         adcx    r12, r12
         adox    r12, rdx
         adcx    r13, r13
         adox    r13, rcx
 
-        mov     rdx, [x+8*7]
+        mov     rdx, [x+56]
         mulx    r15, rdx, rdx
         adcx    r14, r14
         adox    r14, rdx
@@ -204,18 +204,18 @@ bignum_sqr_p521:
 // The initial doubling add of C also clears the CF and OF flags as desired.
 // We extend the window now to the 9-element rbp,r15,r14,...,r8.
 
-        mov     rdx, [x+8*8]
+        mov     rdx, [x+64]
         mov     rbp, rdx
         imul    rbp, rbp
         add     rdx, rdx
         mulpadd(r9,r8,0)
-        mulpadd(r10,r9,1)
-        mulpadd(r11,r10,2)
-        mulpadd(r12,r11,3)
-        mulpadd(r13,r12,4)
-        mulpadd(r14,r13,5)
-        mulpadd(r15,r14,6)
-        mulx   rcx, rax, [x+8*7]
+        mulpadd(r10,r9,8)
+        mulpadd(r11,r10,16)
+        mulpadd(r12,r11,24)
+        mulpadd(r13,r12,32)
+        mulpadd(r14,r13,40)
+        mulpadd(r15,r14,48)
+        mulx   rcx, rax, [x+56]
         adcx   r15, rax
         adox   rbp, rcx
         adc    rbp, 0
@@ -240,14 +240,14 @@ bignum_sqr_p521:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adc     r8, [z+8*0]
-        adc     r9, [z+8*1]
-        adc     r10,[z+8*2]
-        adc     r11,[z+8*3]
-        adc     r12,[z+8*4]
-        adc     r13,[z+8*5]
-        adc     r14,[z+8*6]
-        adc     r15,[z+8*7]
+        adc     r8, [z]
+        adc     r9, [z+8]
+        adc     r10,[z+16]
+        adc     r11,[z+24]
+        adc     r12,[z+32]
+        adc     r13,[z+40]
+        adc     r14,[z+48]
+        adc     r15,[z+56]
         adc     rbp, ~0x1FF
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,

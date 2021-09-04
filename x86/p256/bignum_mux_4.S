@@ -41,14 +41,25 @@
 bignum_mux_4:
                 test    p, p
 
-                .set    I, 0
-                .rep    4
-                mov     a, [x+8*I]
-                mov     b, [y+8*I]
+                mov     a, [x]
+                mov     b, [y]
                 cmovz   a, b
-                mov     [z+8*I], a
-                .set    I, (I+1)
-                .endr
+                mov     [z], a
+
+                mov     a, [x+8]
+                mov     b, [y+8]
+                cmovz   a, b
+                mov     [z+8], a
+
+                mov     a, [x+16]
+                mov     b, [y+16]
+                cmovz   a, b
+                mov     [z+16], a
+
+                mov     a, [x+24]
+                mov     b, [y+24]
+                cmovz   a, b
+                mov     [z+24], a
 
                 ret
 

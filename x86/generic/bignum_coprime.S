@@ -49,14 +49,14 @@
 
 // These are kept on the stack since there aren't enough registers
 
-#define mat_mm     QWORD PTR [rsp+8*0]
-#define mat_mn     QWORD PTR [rsp+8*1]
-#define mat_nm     QWORD PTR [rsp+8*2]
-#define mat_nn     QWORD PTR [rsp+8*3]
-#define t          QWORD PTR [rsp+8*4]
-#define evenor     QWORD PTR [rsp+8*5]
+#define mat_mm     QWORD PTR [rsp]
+#define mat_mn     QWORD PTR [rsp+8]
+#define mat_nm     QWORD PTR [rsp+16]
+#define mat_nn     QWORD PTR [rsp+24]
+#define t          QWORD PTR [rsp+32]
+#define evenor     QWORD PTR [rsp+40]
 
-#define STACKVARSIZE (8*6)
+#define STACKVARSIZE 48
 
 // These are shorthands for common temporary register
 

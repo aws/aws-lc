@@ -66,12 +66,12 @@ bignum_tomont_p256:
 
         xor     r13, r13
         mov     edx, 0x0000000000000003
-        mulx    r9, r8, [x+8*0]
-        mulx    r10, rcx, [x+8*1]
+        mulx    r9, r8, [x]
+        mulx    r10, rcx, [x+8]
         adcx    r9, rcx
-        mulx    r11, rcx, [x+8*2]
+        mulx    r11, rcx, [x+16]
         adcx    r10, rcx
-        mulx    r12, rcx, [x+8*3]
+        mulx    r12, rcx, [x+24]
         adcx    r11, rcx
         adcx    r12, r13
 
@@ -80,9 +80,9 @@ bignum_tomont_p256:
         mov     rdx, 0xfffffffbffffffff
         xor     r14, r14
         mulpadd (r10,r9,[x])
-        mulpadd (r11,r10,[x+8*1])
-        mulpadd (r12,r11,[x+8*2])
-        mulpadd (r13,r12,[x+8*3])
+        mulpadd (r11,r10,[x+8])
+        mulpadd (r12,r11,[x+16])
+        mulpadd (r13,r12,[x+24])
         adc    r13, r14
 
 // Montgomery reduce windows 0 and 1 together
@@ -103,9 +103,9 @@ bignum_tomont_p256:
         mov     rdx, 0xfffffffffffffffe
         xor     r8, r8
         mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8*1])
-        mulpadd (r13,r12,[x+8*2])
-        mulpadd (r14,r13,[x+8*3])
+        mulpadd (r12,r11,[x+8])
+        mulpadd (r13,r12,[x+16])
+        mulpadd (r14,r13,[x+24])
         adcx    r14, r8
         adox    r15, r8
         adcx    r15, r8
@@ -115,9 +115,9 @@ bignum_tomont_p256:
         mov     rdx, 0x00000004fffffffd
         xor     r9, r9
         mulpadd (r12,r11,[x])
-        mulpadd (r13,r12,[x+8*1])
-        mulpadd (r14,r13,[x+8*2])
-        mulpadd (r15,r14,[x+8*3])
+        mulpadd (r13,r12,[x+8])
+        mulpadd (r14,r13,[x+16])
+        mulpadd (r15,r14,[x+24])
         adcx    r15, r9
         adox    r8, r9
         adcx    r8, r9
@@ -168,10 +168,10 @@ bignum_tomont_p256:
         sbb     r14, 0
         sbb     r15, v
 
-        mov     [z+8*0], r12
-        mov     [z+8*1], r13
-        mov     [z+8*2], r14
-        mov     [z+8*3], r15
+        mov     [z], r12
+        mov     [z+8], r13
+        mov     [z+16], r14
+        mov     [z+24], r15
 
 // Restore registers and return
 

@@ -97,32 +97,32 @@
         mulpadd \arg1, 4
 
 .if (\arg1 % 6 == 0)
-        mulx    r8, rax, [x+8*5]
+        mulx    r8, rax, [x+40]
         adcx    r13, rax
         adox    r8, zero
         adcx    r8, zero
 .elseif (\arg1 % 6 == 1)
-        mulx    r9, rax, [x+8*5]
+        mulx    r9, rax, [x+40]
         adcx    r8, rax
         adox    r9, zero
         adcx    r9, zero
 .elseif (\arg1 % 6 == 2)
-        mulx    r10, rax, [x+8*5]
+        mulx    r10, rax, [x+40]
         adcx    r9, rax
         adox    r10, zero
         adcx    r10, zero
 .elseif (\arg1 % 6 == 3)
-        mulx    r11, rax, [x+8*5]
+        mulx    r11, rax, [x+40]
         adcx    r10, rax
         adox    r11, zero
         adcx    r11, zero
 .elseif (\arg1 % 6 == 4)
-        mulx    r12, rax, [x+8*5]
+        mulx    r12, rax, [x+40]
         adcx    r11, rax
         adox    r12, zero
         adcx    r12, zero
 .elseif (\arg1 % 6 == 5)
-        mulx    r13, rax, [x+8*5]
+        mulx    r13, rax, [x+40]
         adcx    r12, rax
         adox    r13, zero
         adcx    r13, zero
@@ -153,24 +153,24 @@ bignum_mul_6_12:
 // Write back the zero-zero product and then accumulate
 // r8,r13,r12,r11,r10,r9 as y[0] * x from 1..6
 
-        mov     rdx, [y+8*0]
+        mov     rdx, [y]
 
-        mulx    r9, r8, [x+8*0]
-        mov     [z+8*0], r8
+        mulx    r9, r8, [x]
+        mov     [z], r8
 
-        mulx    r10, rbx, [x+8*1]
+        mulx    r10, rbx, [x+8]
         adcx    r9, rbx
 
-        mulx    r11, rbx, [x+8*2]
+        mulx    r11, rbx, [x+16]
         adcx    r10, rbx
 
-        mulx    r12, rbx, [x+8*3]
+        mulx    r12, rbx, [x+24]
         adcx    r11, rbx
 
-        mulx    r13, rbx, [x+8*4]
+        mulx    r13, rbx, [x+32]
         adcx    r12, rbx
 
-        mulx    r8, rbx, [x+8*5]
+        mulx    r8, rbx, [x+40]
         adcx    r13, rbx
         adcx    r8, zero
 
@@ -184,12 +184,12 @@ bignum_mul_6_12:
 
 // Now write back the additional columns
 
-        mov     [z+8*6], r8
-        mov     [z+8*7], r9
-        mov     [z+8*8], r10
-        mov     [z+8*9], r11
-        mov     [z+8*10], r12
-        mov     [z+8*11], r13
+        mov     [z+48], r8
+        mov     [z+56], r9
+        mov     [z+64], r10
+        mov     [z+72], r11
+        mov     [z+80], r12
+        mov     [z+88], r13
 
 // Restore registers and return
 

@@ -200,21 +200,21 @@
 
 // Set up the initial window
 
-        mov     r9, [z+16*\arg1+8*1]
-        mov     r10, [z+16*\arg1+8*2]
-        mov     r11, [z+16*\arg1+8*3]
-        mov     r12, [z+16*\arg1+8*4]
-        mov     r13, [z+16*\arg1+8*5]
-        mov     r14, [z+16*\arg1+8*6]
-        mov     r15, [z+16*\arg1+8*7]
+        mov     r9, [z+16*\arg1+8]
+        mov     r10, [z+16*\arg1+16]
+        mov     r11, [z+16*\arg1+24]
+        mov     r12, [z+16*\arg1+32]
+        mov     r13, [z+16*\arg1+40]
+        mov     r14, [z+16*\arg1+48]
+        mov     r15, [z+16*\arg1+56]
 
 // Add in the first diagonal [r8..r10] + 2 wb = 10 + 20 + 30 + 40 + 50 + 60 + 70
 
-        mov     rdx, [x+8*\arg1+8*0]
+        mov     rdx, [x+8*\arg1]
         mulpadd (\arg1+1), (\arg1+0)
-        mov     [z+16*\arg1+8*1],r9
+        mov     [z+16*\arg1+8],r9
         mulpadd (\arg1+2), (\arg1+0)
-        mov     [z+16*\arg1+8*2],r10
+        mov     [z+16*\arg1+16],r10
         mulpadd (\arg1+3), (\arg1+0)
         mulpadd (\arg1+4), (\arg1+0)
         mulpadd (\arg1+5), (\arg1+0)
@@ -225,31 +225,31 @@
 // Add in the next diagonal = 21 + 31 + 41 + 51 + 61 + 71 + 54
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*\arg1+8*1]
+        mov     rdx, [x+8*\arg1+8]
         mulpadd (\arg1+2), (\arg1+1)
-        mov     [z+16*\arg1+8*3], r11
+        mov     [z+16*\arg1+24], r11
         mulpadd (\arg1+3), (\arg1+1)
-        mov     [z+16*\arg1+8*4], r12
+        mov     [z+16*\arg1+32], r12
         mulpadd (\arg1+4), (\arg1+1)
         mulpadd (\arg1+5), (\arg1+1)
         mulpadd (\arg1+6), (\arg1+1)
         mulpade (\arg1+7), (\arg1+1)
-        mov     rdx, [x+8*\arg1+8*4]
+        mov     rdx, [x+8*\arg1+32]
         mulpade (\arg1+5), (\arg1+4)
         adcx    r10, zero
 
 // And the next one = 32 + 42 + 52 + 62 + 72 + 64 + 65
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*\arg1+8*2]
+        mov     rdx, [x+8*\arg1+16]
         mulpadd (\arg1+3), (\arg1+2)
-        mov     [z+16*\arg1+8*5], r13
+        mov     [z+16*\arg1+40], r13
         mulpadd (\arg1+4), (\arg1+2)
-        mov     [z+16*\arg1+8*6], r14
+        mov     [z+16*\arg1+48], r14
         mulpadd (\arg1+5), (\arg1+2)
         mulpadd (\arg1+6), (\arg1+2)
         mulpadd (\arg1+7), (\arg1+2)
-        mov     rdx, [x+8*\arg1+8*6]
+        mov     rdx, [x+8*\arg1+48]
         mulpade (\arg1+4), (\arg1+6)
         mulpade (\arg1+5), (\arg1+6)
         adcx    r12, zero
@@ -257,13 +257,13 @@
 // And the final one = 43 + 53 + 63 + 73 + 74 + 75 + 76
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*\arg1+8*3]
+        mov     rdx, [x+8*\arg1+24]
         mulpadd (\arg1+4), (\arg1+3)
-        mov     [z+16*\arg1+8*7], r15
+        mov     [z+16*\arg1+56], r15
         mulpadd (\arg1+5), (\arg1+3)
         mulpadd (\arg1+6), (\arg1+3)
         mulpadd (\arg1+7), (\arg1+3)
-        mov     rdx, [x+8*\arg1+8*7]
+        mov     rdx, [x+8*\arg1+56]
         mulpadd (\arg1+4), (\arg1+7)
         mulpade (\arg1+5), (\arg1+7)
         mulpade (\arg1+6), (\arg1+7)
@@ -368,52 +368,52 @@
 
 // Set initial window [r8..r10] + 2 wb = 10 + 20 + 30 + 40 + 50 + 60 + 70
 
-        mov     rdx, [x+8*0]
-        mulx    rax, r9, [x+8*1]
-        mov     [z+8*1], r9
-        mulx    rcx, r10, [x+8*2]
+        mov     rdx, [x]
+        mulx    rax, r9, [x+8]
+        mov     [z+8], r9
+        mulx    rcx, r10, [x+16]
         adcx    r10, rax
-        mov     [z+8*2], r10
-        mulx    rax, r11, [x+8*3]
+        mov     [z+16], r10
+        mulx    rax, r11, [x+24]
         adcx    r11, rcx
-        mulx    rcx, r12, [x+8*4]
+        mulx    rcx, r12, [x+32]
         adcx    r12, rax
-        mulx    rax, r13, [x+8*5]
+        mulx    rax, r13, [x+40]
         adcx    r13, rcx
-        mulx    rcx, r14, [x+8*6]
+        mulx    rcx, r14, [x+48]
         adcx    r14, rax
-        mulx    r8, r15, [x+8*7]
+        mulx    r8, r15, [x+56]
         adcx    r15, rcx
         adcx    r8, zero
 
 // Add in the next diagonal = 21 + 31 + 41 + 51 + 61 + 71 + 54
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*1]
+        mov     rdx, [x+8]
         mulpadd 2, 1
-        mov     [z+8*3], r11
+        mov     [z+24], r11
         mulpadd 3, 1
-        mov     [z+8*4], r12
+        mov     [z+32], r12
         mulpadd 4, 1
         mulpadd 5, 1
         mulpadd 6, 1
         mulpade 7, 1
-        mov     rdx, [x+8*4]
+        mov     rdx, [x+32]
         mulpade 5, 4
         adcx    r10, zero
 
 // And the next one = 32 + 42 + 52 + 62 + 72 + 64 + 65
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*2]
+        mov     rdx, [x+16]
         mulpadd 3, 2
-        mov     [z+8*5], r13
+        mov     [z+40], r13
         mulpadd 4, 2
-        mov     [z+8*6], r14
+        mov     [z+48], r14
         mulpadd 5, 2
         mulpadd 6, 2
         mulpadd 7, 2
-        mov     rdx, [x+8*6]
+        mov     rdx, [x+48]
         mulpade 4, 6
         mulpade 5, 6
         adcx    r12, zero
@@ -421,13 +421,13 @@
 // And the final one = 43 + 53 + 63 + 73 + 74 + 75 + 76
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*3]
+        mov     rdx, [x+24]
         mulpadd 4, 3
-        mov     [z+8*7], r15
+        mov     [z+56], r15
         mulpadd 5, 3
         mulpadd 6, 3
         mulpadd 7, 3
-        mov     rdx, [x+8*7]
+        mov     rdx, [x+56]
         mulpadd 4, 7
         mulpade 5, 7
         mulpade 6, 7
@@ -447,14 +447,14 @@
         .set I,  (I+1)
 .endr
 
-        mov     [z+8*16], r8
-        mov     [z+8*17], r9
-        mov     [z+8*18], r10
-        mov     [z+8*19], r11
-        mov     [z+8*20], r12
-        mov     [z+8*21], r13
-        mov     [z+8*22], r14
-        mov     [z+8*23], r15
+        mov     [z+128], r8
+        mov     [z+136], r9
+        mov     [z+144], r10
+        mov     [z+152], r11
+        mov     [z+160], r12
+        mov     [z+168], r13
+        mov     [z+176], r14
+        mov     [z+184], r15
 .endm
 
 // ------------------------------------------------------------------------
@@ -481,14 +481,14 @@ bignum_ksqr_16_32:
 // Double and add the diagonal elements. Note that z[0] was never written above
 
         xor     zeroe, zeroe
-        mov     rdx, [x+8*0]
+        mov     rdx, [x]
         mulx    rcx, rax, rdx
-        mov     [z+8*0], rax
+        mov     [z], rax
 
-        mov     rdx, [z+8*1]
+        mov     rdx, [z+8]
         adcx    rdx, rdx
         adox    rdx, rcx
-        mov     [z+8*1], rdx
+        mov     [z+8], rdx
 
         .set I,  1
 .rep 14

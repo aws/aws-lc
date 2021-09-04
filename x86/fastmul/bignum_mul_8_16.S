@@ -191,30 +191,30 @@ bignum_mul_8_16:
 // Write back the zero-zero product and then accumulate
 // r8,r15,r14,r13,r12,r11,r10,r9 as y[0] * x from 1..8
 
-        mov     rdx, [y+8*0]
+        mov     rdx, [y]
 
-        mulx    r9, r8, [x+8*0]
-        mov     [z+8*0], r8
+        mulx    r9, r8, [x]
+        mov     [z], r8
 
-        mulx    r10, rbx, [x+8*1]
+        mulx    r10, rbx, [x+8]
         adc     r9, rbx
 
-        mulx    r11, rbx, [x+8*2]
+        mulx    r11, rbx, [x+16]
         adc     r10, rbx
 
-        mulx    r12, rbx, [x+8*3]
+        mulx    r12, rbx, [x+24]
         adc     r11, rbx
 
-        mulx    r13, rbx, [x+8*4]
+        mulx    r13, rbx, [x+32]
         adc     r12, rbx
 
-        mulx    r14, rbx, [x+8*5]
+        mulx    r14, rbx, [x+40]
         adc     r13, rbx
 
-        mulx    r15, rbx, [x+8*6]
+        mulx    r15, rbx, [x+48]
         adc     r14, rbx
 
-        mulx    r8, rbx, [x+8*7]
+        mulx    r8, rbx, [x+56]
         adc     r15, rbx
         adc     r8, zero
 
@@ -230,14 +230,14 @@ bignum_mul_8_16:
 
 // Now write back the additional columns
 
-        mov     [z+8*8], r8
-        mov     [z+8*9], r9
-        mov     [z+8*10], r10
-        mov     [z+8*11], r11
-        mov     [z+8*12], r12
-        mov     [z+8*13], r13
-        mov     [z+8*14], r14
-        mov     [z+8*15], r15
+        mov     [z+64], r8
+        mov     [z+72], r9
+        mov     [z+80], r10
+        mov     [z+88], r11
+        mov     [z+96], r12
+        mov     [z+104], r13
+        mov     [z+112], r14
+        mov     [z+120], r15
 
 // Real epilog
 

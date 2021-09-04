@@ -38,9 +38,9 @@ bignum_nonzero_4:
 // Generate a = an OR of all the words in the bignum
 
                 mov     a, [x]
-                mov     d, [x+8*1]
-                or      a, [x+8*2]
-                or      d, [x+8*3]
+                mov     d, [x+8]
+                or      a, [x+16]
+                or      d, [x+24]
                 or      a, d
 
 // Set a standard C condition based on whether a is nonzero

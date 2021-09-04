@@ -111,16 +111,16 @@ bignum_tomont_p384:
 // Unlike later, we only need a single carry chain
 
         mov     rdx, 0xfffffffe00000001
-        mulx    r9, r8, [x+8*0]
-        mulx    r10, rcx, [x+8*1]
+        mulx    r9, r8, [x]
+        mulx    r10, rcx, [x+8]
         add     r9, rcx
-        mulx    r11, rcx, [x+8*2]
+        mulx    r11, rcx, [x+16]
         adc     r10, rcx
-        mulx    r12, rcx, [x+8*3]
+        mulx    r12, rcx, [x+24]
         adc     r11, rcx
-        mulx    r13, rcx, [x+8*4]
+        mulx    r13, rcx, [x+32]
         adc     r12, rcx
-        mulx    r14, rcx, [x+8*5]
+        mulx    r14, rcx, [x+40]
         adc     r13, rcx
         adc     r14, 0
 
@@ -135,11 +135,11 @@ bignum_tomont_p384:
         mov     rdx, 0x0000000200000000
         xor     r8, r8
         mulpadd (r10,r9,[x])
-        mulpadd (r11,r10,[x+8*1])
-        mulpadd (r12,r11,[x+8*2])
-        mulpadd (r13,r12,[x+8*3])
-        mulpadd (r14,r13,[x+8*4])
-        mulpadd (r15,r14,[x+8*5])
+        mulpadd (r11,r10,[x+8])
+        mulpadd (r12,r11,[x+16])
+        mulpadd (r13,r12,[x+24])
+        mulpadd (r14,r13,[x+32])
+        mulpadd (r15,r14,[x+40])
         adcx    r15, zero
         adox    r8, zero
         adcx    r8, zero
@@ -154,11 +154,11 @@ bignum_tomont_p384:
         mov     rdx, 0xfffffffe00000000
         xor     r9, r9
         mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8*1])
-        mulpadd (r13,r12,[x+8*2])
-        mulpadd (r14,r13,[x+8*3])
-        mulpadd (r15,r14,[x+8*4])
-        mulpadd (r8,r15,[x+8*5])
+        mulpadd (r12,r11,[x+8])
+        mulpadd (r13,r12,[x+16])
+        mulpadd (r14,r13,[x+24])
+        mulpadd (r15,r14,[x+32])
+        mulpadd (r8,r15,[x+40])
         adcx    r8, zero
         adox    r9, zero
         adcx    r9, zero
@@ -173,11 +173,11 @@ bignum_tomont_p384:
         mov     rdx, 0x0000000200000000
         xor     r10, r10
         mulpadd (r12,r11,[x])
-        mulpadd (r13,r12,[x+8*1])
-        mulpadd (r14,r13,[x+8*2])
-        mulpadd (r15,r14,[x+8*3])
-        mulpadd (r8,r15,[x+8*4])
-        mulpadd (r9,r8,[x+8*5])
+        mulpadd (r13,r12,[x+8])
+        mulpadd (r14,r13,[x+16])
+        mulpadd (r15,r14,[x+24])
+        mulpadd (r8,r15,[x+32])
+        mulpadd (r9,r8,[x+40])
         adcx    r9, zero
         adox    r10, zero
         adcx    r10, zero
@@ -191,11 +191,11 @@ bignum_tomont_p384:
 
         xor     r11, r11
         add     r12, [x]
-        adc     r13, [x+8*1]
-        adc     r14, [x+8*2]
-        adc     r15, [x+8*3]
-        adc     r8, [x+8*4]
-        adc     r9, [x+8*5]
+        adc     r13, [x+8]
+        adc     r14, [x+16]
+        adc     r15, [x+24]
+        adc     r8, [x+32]
+        adc     r9, [x+40]
         adc     r10, 0
         adc     r11, 0
 
@@ -266,11 +266,11 @@ bignum_tomont_p384:
 // Write back the result
 
         mov     [z], r14
-        mov     [z+8*1], r15
-        mov     [z+8*2], r8
-        mov     [z+8*3], r9
-        mov     [z+8*4], r10
-        mov     [z+8*5], r11
+        mov     [z+8], r15
+        mov     [z+16], r8
+        mov     [z+24], r9
+        mov     [z+32], r10
+        mov     [z+40], r11
 
 // Restore registers and return
 

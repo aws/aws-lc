@@ -59,20 +59,20 @@ bignum_tobytes_4:
 // 0 and 3 words
 
                 mov     a, [x]
-                mov     b, [x+8*3]
+                mov     b, [x+24]
                 bswap   a
                 bswap   b
-                mov     [z+8*3], a
+                mov     [z+24], a
                 mov     [z], b
 
 // 1 and 2 words
 
-                mov     a, [x+8*1]
-                mov     b, [x+8*2]
+                mov     a, [x+8]
+                mov     b, [x+16]
                 bswap   a
                 bswap   b
-                mov     [z+8*2], a
-                mov     [z+8*1], b
+                mov     [z+16], a
+                mov     [z+8], b
 
                 ret
 
