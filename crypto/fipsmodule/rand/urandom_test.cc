@@ -21,8 +21,7 @@
 #include "getrandom_fillin.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
-    defined(USE_NR_getrandom) && !defined(JITTER_ENTROPY)
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
 
 #include <linux/types.h>
 
@@ -420,13 +419,14 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
     };
   }
 
-  const size_t kSeedLength = CTR_DRBG_ENTROPY_LEN * (is_fips ? 10 : 1);
+  const size_t kSeedLength = CTR_DRBG_ENTROPY_LEN;
   const size_t kAdditionalDataLength = 32;
 
   if (!have_rdrand()) {
     if ((!have_fork_detection() && !sysrand(true, kAdditionalDataLength)) ||
-        // Initialise CRNGT.
-        (is_fips && !sysrand(true, 16)) ||
+        // Initialise CRNGT. In FIPS mode we use a blocking sysrand call for
+        // a personalization string, while in non-FIPS mode the same call is
+        // used for generating entropy for a seed.
         !sysrand(true, kSeedLength) ||
         // Second entropy draw.
         (!have_fork_detection() && !sysrand(true, kAdditionalDataLength))) {
@@ -437,10 +437,10 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       // non-blocking OS entropy draw will be tried.
       (!have_fast_rdrand() && !have_fork_detection() &&
        !sysrand(false, kAdditionalDataLength)) ||
-      // Opportuntistic entropy draw in FIPS mode because RDRAND was used.
-      // In non-FIPS mode it's just drawn from |CRYPTO_sysrand| in a blocking
-      // way.
-      !sysrand(!is_fips, CTR_DRBG_ENTROPY_LEN) ||
+      // Initialise CRNGT. In FIPS mode we use a blocking sysrand call for
+      // a personalization string, while in non-FIPS mode the same call is
+      // used for generating entropy for a seed.
+      !sysrand(true, kSeedLength) ||
       // Second entropy draw's additional data.
       (!have_fast_rdrand() && !have_fork_detection() &&
        !sysrand(false, kAdditionalDataLength))) {
@@ -448,33 +448,6 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   }
 
   return ret;
-}
-
-static void CheckInvariants(const std::vector<Event> &events) {
-  // If RDRAND is available then there should be no blocking syscalls in FIPS
-  // mode.
-#if defined(BORINGSSL_FIPS)
-  if (have_rdrand()) {
-    for (const auto &event : events) {
-      switch (event.type) {
-        case Event::Syscall::kGetRandom:
-          if ((event.flags & GRND_NONBLOCK) == 0) {
-            ADD_FAILURE() << "Blocking getrandom found with RDRAND: "
-                          << ToString(events);
-          }
-          break;
-
-        case Event::Syscall::kUrandomIoctl:
-          ADD_FAILURE() << "Urandom polling found with RDRAND: "
-                        << ToString(events);
-          break;
-
-        default:
-          break;
-      }
-    }
-  }
-#endif
 }
 
 // Tests that |TestFunctionPRNGModel| is a correct model for the code in
@@ -495,7 +468,6 @@ TEST(URandomTest, Test) {
     TRACE_FLAG(URANDOM_ERROR);
 
     const std::vector<Event> expected_trace = TestFunctionPRNGModel(flags);
-    CheckInvariants(expected_trace);
     std::vector<Event> actual_trace;
     GetTrace(&actual_trace, flags, TestFunction);
 

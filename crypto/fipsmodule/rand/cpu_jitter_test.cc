@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if defined(BORINGSSL_FIPS)
+
 #include <gtest/gtest.h>
 
 #include "../../test/test_util.h"
@@ -56,3 +58,5 @@ TEST(CPUJitterEntropyTest, Basic) {
 
   jent_entropy_collector_free(jitter_ec);
 }
+
+#endif
