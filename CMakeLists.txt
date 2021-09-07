@@ -814,6 +814,7 @@ if(BUILD_TESTING)
 endif()
 
 add_subdirectory(crypto)
+add_subdirectory(pq-crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
