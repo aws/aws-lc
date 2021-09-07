@@ -377,6 +377,10 @@ extern void bignum_neg_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 // Input x[6]; output z[6]
 extern void bignum_neg_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 
+// Negate modulo p_521, z := (-x) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_neg_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+
 // Negated modular inverse, z := (-1/x) mod 2^{64k}
 // Input x[k]; output z[k]
 extern void bignum_negmodinv (uint64_t k, uint64_t *z, uint64_t *x);

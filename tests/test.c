@@ -151,6 +151,7 @@ enum {
        TEST_BIGNUM_MUX16,
        TEST_BIGNUM_NEG_P256,
        TEST_BIGNUM_NEG_P384,
+       TEST_BIGNUM_NEG_P521,
        TEST_BIGNUM_NEGMODINV,
        TEST_BIGNUM_NONZERO,
        TEST_BIGNUM_NONZERO_4,
@@ -3515,6 +3516,39 @@ int test_bignum_neg_p384(void)
   return 0;
 }
 
+int test_bignum_neg_p521(void)
+{ uint64_t i, k;
+  printf("Testing bignum_neg_p521 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+     if ((rand() & 0x1F) == 0) reference_of_word(k,b0,0);
+
+     bignum_neg_p521(b2,b0);
+     if (reference_iszero(k,b0)) reference_copy(k,b3,k,b0);
+     else reference_sub_samelen(k,b3,p_521,b0);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4lu] "
+               "- ...0x%016lx mod ....0x%016lx = "
+               "...0x%016lx not ...0x%016lx\n",
+               k,b0[0],p_521[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4lu]\n",k);
+        else printf("OK: [size %4lu] "
+               "...0x%016lx mod ....0x%016lx = "
+               "...0x%016lx\n",
+               k,b0[0],p_521[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_negmodinv(void)
 { uint64_t t, i, k;
   printf("Testing bignum_negmodinv  with %d cases\n",tests);
@@ -4658,6 +4692,7 @@ int test_all()
   dotest(test_bignum_mux16);
   dotest(test_bignum_neg_p256);
   dotest(test_bignum_neg_p384);
+  dotest(test_bignum_neg_p521);
   dotest(test_bignum_negmodinv);
   dotest(test_bignum_nonzero);
   dotest(test_bignum_nonzero_4);
@@ -4780,6 +4815,7 @@ int test_allnonbmi()
   dotest(test_bignum_mux16);
   dotest(test_bignum_neg_p256);
   dotest(test_bignum_neg_p384);
+  dotest(test_bignum_neg_p521);
   dotest(test_bignum_negmodinv);
   dotest(test_bignum_nonzero);
   dotest(test_bignum_nonzero_4);
@@ -4953,6 +4989,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MUX16:           return test_bignum_mux16();
      case TEST_BIGNUM_NEG_P256:        return test_bignum_neg_p256();
      case TEST_BIGNUM_NEG_P384:        return test_bignum_neg_p384();
+     case TEST_BIGNUM_NEG_P521:        return test_bignum_neg_p521();
      case TEST_BIGNUM_NEGMODINV:       return test_bignum_negmodinv();
      case TEST_BIGNUM_NONZERO:         return test_bignum_nonzero();
      case TEST_BIGNUM_NONZERO_4:        return test_bignum_nonzero_4();
