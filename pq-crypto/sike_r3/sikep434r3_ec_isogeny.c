@@ -52,12 +52,12 @@ void get_4_isog(const point_proj_t P, f2elm_t *A24plus, f2elm_t *C24, f2elm_t *c
     mp2_sub_p2(&P->X, &P->Z, &coeff[1]);               // coeff[1] = X4-Z4
     mp2_add(&P->X, &P->Z, &coeff[2]);                  // coeff[2] = X4+Z4
     fp2sqr_mont(&P->Z, &coeff[0]);                     // coeff[0] = Z4^2
-    mp2_add(&coeff[0], &coeff[0], &coeff[0]);    // coeff[0] = 2*Z4^2
+    mp2_add(&coeff[0], &coeff[0], &coeff[0]);          // coeff[0] = 2*Z4^2
     fp2sqr_mont(&coeff[0], C24);                       // C24 = 4*Z4^4
-    mp2_add(&coeff[0], &coeff[0], &coeff[0]);    // coeff[0] = 4*Z4^2
-    fp2sqr_mont(&P->X, A24plus);                          // A24plus = X4^2
-    mp2_add(A24plus, A24plus, A24plus);                   // A24plus = 2*X4^2
-    fp2sqr_mont(A24plus, A24plus);                        // A24plus = 4*X4^4
+    mp2_add(&coeff[0], &coeff[0], &coeff[0]);          // coeff[0] = 4*Z4^2
+    fp2sqr_mont(&P->X, A24plus);                       // A24plus = X4^2
+    mp2_add(A24plus, A24plus, A24plus);                // A24plus = 2*X4^2
+    fp2sqr_mont(A24plus, A24plus);                     // A24plus = 4*X4^4
 }
 
 // Evaluates the isogeny at the point (X:Z) in the domain of the isogeny, given a 4-isogeny phi defined
@@ -71,7 +71,7 @@ void eval_4_isog(point_proj_t P, f2elm_t *coeff)
     
     mp2_add(&P->X, &P->Z, t0);                        // t0 = X+Z
     mp2_sub_p2(&P->X, &P->Z, t1);                     // t1 = X-Z
-    fp2mul_mont(t0, &coeff[1], &P->X);             // X = (X+Z)*coeff[1]
+    fp2mul_mont(t0, &coeff[1], &P->X);                // X = (X+Z)*coeff[1]
     fp2mul_mont(t1, &coeff[2], &P->Z);                // Z = (X-Z)*coeff[2]
     fp2mul_mont(t0, t1, t0);                          // t0 = (X+Z)*(X-Z)
     fp2mul_mont(&coeff[0], t0, t0);                   // t0 = coeff[0]*(X+Z)*(X-Z)

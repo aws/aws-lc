@@ -2,8 +2,6 @@
 // Supersingular Isogeny Key Encapsulation Library
 //
 // Abstract: modular arithmetic for P434
-// Note that currently there is no need to differentiate these methods using namespace
-// as this is only the SIKE integration.
 // -----------------------------------------------------------------------------
 
 #pragma once

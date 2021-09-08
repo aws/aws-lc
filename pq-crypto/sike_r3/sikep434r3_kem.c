@@ -2,14 +2,11 @@
 // Supersingular Isogeny Key Encapsulation Library
 //
 // Abstract: supersingular isogeny key encapsulation (SIKE) protocol
-// NOTE: Currently the use of constant time functions to copy and compare has been
-// replaced with memcpy and memcmp as a work around.
 // -----------------------------------------------------------------------------
 
 #include <string.h>
 #include "sikep434r3.h"
 #include "sikep434r3_fips202.h"
-#include "../../crypto/internal.h"
 #include "sike_internal.h"
 #include "../../include/openssl/rand.h"
 #include "sikep434r3_api.h"
