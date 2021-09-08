@@ -1,7 +1,4 @@
 // -----------------------------------------------------------------------------
-// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-//
 // Supersingular Isogeny Key Encapsulation Library
 //
 // Abstract: core functions over GF(p) and GF(p^2)

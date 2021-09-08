@@ -1,7 +1,4 @@
 // -----------------------------------------------------------------------------
-// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-//
 // Supersingular Isogeny Key Encapsulation Library
 //
 // Abstract: elliptic curve and isogeny functions
@@ -75,9 +72,9 @@ void eval_4_isog(point_proj_t P, f2elm_t *coeff)
     mp2_add(&P->X, &P->Z, t0);                        // t0 = X+Z
     mp2_sub_p2(&P->X, &P->Z, t1);                     // t1 = X-Z
     fp2mul_mont(t0, &coeff[1], &P->X);             // X = (X+Z)*coeff[1]
-    fp2mul_mont(t1, &coeff[2], &P->Z);                // Z = (X-Z)*coeff[2]
+    fp2mul_mont(t1, &coeff[2], &P->Z);             // Z = (X-Z)*coeff[2]
     fp2mul_mont(t0, t1, t0);                          // t0 = (X+Z)*(X-Z)
-    fp2mul_mont(&coeff[0], t0, t0);                   // t0 = coeff[0]*(X+Z)*(X-Z)
+    fp2mul_mont(&coeff[0], t0, t0);                // t0 = coeff[0]*(X+Z)*(X-Z)
     mp2_add(&P->X, &P->Z, t1);                        // t1 = (X-Z)*coeff[2] + (X+Z)*coeff[1]
     mp2_sub_p2(&P->X, &P->Z, &P->Z);                  // Z = (X-Z)*coeff[2] - (X+Z)*coeff[1]
     fp2sqr_mont(t1, t1);                              // t1 = [(X-Z)*coeff[2] + (X+Z)*coeff[1]]^2
@@ -142,10 +139,10 @@ void get_3_isog(const point_proj_t P, f2elm_t *A24minus, f2elm_t *A24plus, f2elm
     f2elm_t _t0, _t1, _t2, _t3, _t4;
     f2elm_t *t0=&_t0, *t1=&_t1, *t2=&_t2, *t3=&_t3, *t4=&_t4;
     
-    mp2_sub_p2(&P->X, &P->Z, &coeff[0]);               // coeff0 = X-Z
-    fp2sqr_mont(&coeff[0], t0);                        // t0 = (X-Z)^2
-    mp2_add(&P->X, &P->Z, &coeff[1]);                  // coeff1 = X+Z
-    fp2sqr_mont(&coeff[1], t1);                        // t1 = (X+Z)^2
+    mp2_sub_p2(&P->X, &P->Z, &coeff[0]);            // coeff0 = X-Z
+    fp2sqr_mont(&coeff[0], t0);                     // t0 = (X-Z)^2
+    mp2_add(&P->X, &P->Z, &coeff[1]);               // coeff1 = X+Z
+    fp2sqr_mont(&coeff[1], t1);                     // t1 = (X+Z)^2
     mp2_add(&P->X, &P->X, t3);                         // t3 = 2*X
     fp2sqr_mont(t3, t3);                               // t3 = 4*X^2
     fp2sub(t3, t0, t2);                                // t2 = 4*X^2 - (X-Z)^2
@@ -171,8 +168,8 @@ void eval_3_isog(point_proj_t Q, const f2elm_t *coeff)
 
     mp2_add(&Q->X, &Q->Z, t0);                      // t0 = X+Z
     mp2_sub_p2(&Q->X, &Q->Z, t1);                   // t1 = X-Z
-    fp2mul_mont(&coeff[0], t0, t0);                 // t0 = coeff0*(X+Z)
-    fp2mul_mont(&coeff[1], t1, t1);                 // t1 = coeff1*(X-Z)
+    fp2mul_mont(&coeff[0], t0, t0);              // t0 = coeff0*(X+Z)
+    fp2mul_mont(&coeff[1], t1, t1);              // t1 = coeff1*(X-Z)
     mp2_add(t0, t1, t2);                            // t2 = coeff0*(X+Z) + coeff1*(X-Z)
     mp2_sub_p2(t1, t0, t0);                         // t0 = coeff1*(X-Z) - coeff0*(X+Z)
     fp2sqr_mont(t2, t2);                            // t2 = [coeff0*(X+Z) + coeff1*(X-Z)]^2
