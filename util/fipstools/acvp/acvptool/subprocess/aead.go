@@ -88,7 +88,7 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			return nil, fmt.Errorf("test group %d has unknown direction %q", group.ID, group.Direction)
 		}
 
-		// We automatically assume the IV is given (external), if the IV generation method is not defined.
+		// We automatically assume the IV is given (external) if the IV generation method is not defined.
 		var external_iv bool = true
 		if group.IvGen != "" {
 		    switch group.IvGen {
