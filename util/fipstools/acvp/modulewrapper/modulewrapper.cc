@@ -1043,8 +1043,8 @@ static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
         return false;
     }
     // The 12-byte nonce is appended to the tag and is generated internally for
-    // random nonce function. Thus, the "tag" must be extended 12 bytes larger
-    // for purposes of the API.
+    // random nonce function. Thus, the "tag" must be extended by 12 bytes
+    // for the purpose of the API.
     if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(), tag_len_32 + AES_GCM_NONCE_LENGTH,
                            nullptr)) {
       LOG_ERROR("Failed to setup AES-GCM with tag length %u\n",
