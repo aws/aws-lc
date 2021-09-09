@@ -425,6 +425,10 @@ extern void bignum_optneg_p256 (uint64_t z[static 4], uint64_t p, uint64_t x[sta
 // Inputs p, x[6]; output z[6]
 extern void bignum_optneg_p384 (uint64_t z[static 6], uint64_t p, uint64_t x[static 6]);
 
+// Optionally negate modulo p_521, z := (-x) mod p_521 (if p nonzero) or z := x (if p zero), assuming x reduced
+// Inputs p, x[9]; output z[9]
+extern void bignum_optneg_p521 (uint64_t z[static 9], uint64_t p, uint64_t x[static 9]);
+
 // Optionally subtract, z := x - y (if p nonzero) or z := x (if p zero)
 // Inputs x[k], p, y[k]; outputs function return (carry-out) and z[k]
 extern uint64_t bignum_optsub (uint64_t k, uint64_t *z, uint64_t *x, uint64_t p, uint64_t *y);
