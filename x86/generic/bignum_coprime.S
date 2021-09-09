@@ -261,10 +261,6 @@ toploop:
                 shld    h1, l1, cl
                 shld    h2, l2, cl
 
-// These are not literally necessary since the regs are the same
-//               mov     m_hi, h1
-//               mov     n_hi, h2
-
 // m_lo = m[0], n_lo = n[0];
 
                 mov     rax, [m]
