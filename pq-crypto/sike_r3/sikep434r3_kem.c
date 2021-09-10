@@ -1,12 +1,7 @@
 // -----------------------------------------------------------------------------
-// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-//
 // Supersingular Isogeny Key Encapsulation Library
 //
 // Abstract: supersingular isogeny key encapsulation (SIKE) protocol
-// NOTE: Currently the use of constant time functions to copy and compare has been
-// replaced with memcpy and memcmp as a work around.
 // -----------------------------------------------------------------------------
 
 #include <string.h>

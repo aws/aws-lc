@@ -1,7 +1,4 @@
 // -----------------------------------------------------------------------------
-// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-//
 // SHA3-derived function SHAKE
 //
 // Based on the public domain implementation in crypto_hash/keccakc512/simple/
