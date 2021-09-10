@@ -18,7 +18,7 @@ cmake_minimum_required (VERSION 2.8.12)
 include_directories(../include)
 include_directories(../crypto)
 
-# get source files
+# get all header and source files
 file(GLOB PQ_HEADERS "*.h" "sike_r3/*.h")
 file(GLOB PQ_SRC "*.c" "sike_r3/*.c")
 
