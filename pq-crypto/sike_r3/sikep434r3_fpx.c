@@ -187,15 +187,15 @@ void fp2mul_mont(const f2elm_t *a, const f2elm_t *b, f2elm_t *c)
     felm_t t1, t2;
     dfelm_t tt1, tt2, tt3; 
     
-    mp_addfast(a->e[0], a->e[1], t1);                                 // t1 = a0+a1
-    mp_addfast(b->e[0], b->e[1], t2);                                 // t2 = b0+b1
-    mp_mul(a->e[0], b->e[0], tt1, SIKE_P434_R3_NWORDS_FIELD);     // tt1 = a0*b0
-    mp_mul(a->e[1], b->e[1], tt2, SIKE_P434_R3_NWORDS_FIELD);     // tt2 = a1*b1
-    mp_mul(t1, t2, tt3, SIKE_P434_R3_NWORDS_FIELD);               // tt3 = (a0+a1)*(b0+b1)
+    mp_addfast(a->e[0], a->e[1], t1);                           // t1 = a0+a1
+    mp_addfast(b->e[0], b->e[1], t2);                           // t2 = b0+b1
+    mp_mul(a->e[0], b->e[0], tt1, SIKE_P434_R3_NWORDS_FIELD);   // tt1 = a0*b0
+    mp_mul(a->e[1], b->e[1], tt2, SIKE_P434_R3_NWORDS_FIELD);   // tt2 = a1*b1
+    mp_mul(t1, t2, tt3, SIKE_P434_R3_NWORDS_FIELD);                   // tt3 = (a0+a1)*(b0+b1)
     mp_dblsubfast(tt1, tt2, tt3);                                     // tt3 = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
     mp_subaddfast(tt1, tt2, tt1);                                     // tt1 = a0*b0 - a1*b1 + p*2^SIKE_P434_R3_MAXBITS_FIELD if a0*b0 - a1*b1 < 0, else tt1 = a0*b0 - a1*b1
-    rdc_mont(tt3, c->e[1]);                                           // c[1] = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
-    rdc_mont(tt1, c->e[0]);                                           // c[0] = a0*b0 - a1*b1
+    rdc_mont(tt3, c->e[1]);                                       // c[1] = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
+    rdc_mont(tt1, c->e[0]);                                       // c[0] = a0*b0 - a1*b1
 }
 
 // Chain to compute a^(p-3)/4 using Montgomery arithmetic.
@@ -360,13 +360,13 @@ void fp2inv_mont(f2elm_t *a)
 {
     f2elm_t t1;
 
-    fpsqr_mont(a->e[0], t1.e[0]);                         // t10 = a0^2
-    fpsqr_mont(a->e[1], t1.e[1]);                         // t11 = a1^2
-    fpadd434(t1.e[0], t1.e[1], t1.e[0]);                  // t10 = a0^2+a1^2
+    fpsqr_mont(a->e[0], t1.e[0]);                   // t10 = a0^2
+    fpsqr_mont(a->e[1], t1.e[1]);                   // t11 = a1^2
+    fpadd434(t1.e[0], t1.e[1], t1.e[0]);            // t10 = a0^2+a1^2
     fpinv_mont(t1.e[0]);                                  // t10 = (a0^2+a1^2)^-1
     fpneg434(a->e[1]);                                    // a = a0-i*a1
     fpmul_mont(a->e[0], t1.e[0], a->e[0]);
-    fpmul_mont(a->e[1], t1.e[0], a->e[1]);                // a = (a0-i*a1)*(a0^2+a1^2)^-1
+    fpmul_mont(a->e[1], t1.e[0], a->e[1]);      // a = (a0-i*a1)*(a0^2+a1^2)^-1
 }
 
 // Conversion of a GF(p^2) element to Montgomery representation,
