@@ -697,7 +697,7 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
 // (1/2^2)^64 = 1/2^(2*64) = 1/2^128. A finer analysis of
 // https://eprint.iacr.org/2018/749 could lower the number of iterations, but we
 // would have to assume a tighter set of use-cases by consumers. If this number
-// of iterations turns out to be unacceptable by downstram consumers, we can
+// of iterations turns out to be unacceptable by downstream consumers, we can
 // adopt a differentiated approach catering specifically for the TLS DHE case.
 #define BN_prime_checks_for_validation 64
 
