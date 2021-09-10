@@ -25,7 +25,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-        
+
         .globl  bignum_mod_n384_6
         .text
 
@@ -51,19 +51,19 @@ bignum_mod_n384_6:
 
 // Load the input and compute x + (2^384 - n_384)
 
-        movq    $0x1313e695333ad68d, a 
-        movq    (x), d0 
-        addq    a, d0 
-        movq    $0xa7e5f24db74f5885, d1 
-        adcq    8(x), d1 
-        movq    $0x389cb27e0bc8d220, d2 
-        adcq    16(x), d2 
-        movq    24(x), d3 
-        adcq    $0, d3 
-        movq    32(x), d4 
-        adcq    $0, d4 
-        movq    40(x), d5 
-        adcq    $0, d5 
+        movq    $0x1313e695333ad68d, a
+        movq    (x), d0
+        addq    a, d0
+        movq    $0xa7e5f24db74f5885, d1
+        adcq    8(x), d1
+        movq    $0x389cb27e0bc8d220, d2
+        adcq    16(x), d2
+        movq    24(x), d3
+        adcq    $0, d3
+        movq    32(x), d4
+        adcq    $0, d4
+        movq    40(x), d5
+        adcq    $0, d5
 
 // Now CF is set iff 2^384 <= x + (2^384 - n_384), i.e. iff n_384 <= x.
 // Create a mask for the condition x < n. We now want to subtract the
@@ -71,38 +71,38 @@ bignum_mod_n384_6:
 // without using a save-restore sequence, we need some contortions.
 // Create the lowest digit (re-using a kept from above)
 
-        sbbq    c, c 
+        sbbq    c, c
         notq    c
-        andq    c, a 
+        andq    c, a
 
 // Do the first digit of addition and writeback
 
-        subq    a, d0 
-        movq    d0, (z) 
+        subq    a, d0
+        movq    d0, (z)
 
 // Preserve carry chain and do the next digit
 
-        sbbq    d0, d0 
-        movq    $0xa7e5f24db74f5885, a 
-        andq    c, a 
+        sbbq    d0, d0
+        movq    $0xa7e5f24db74f5885, a
+        andq    c, a
         negq    d0
-        sbbq    a, d1 
-        movq    d1, 8(z) 
+        sbbq    a, d1
+        movq    d1, 8(z)
 
 // Preserve carry chain once more and do remaining digits
 
-        sbbq    d0, d0 
-        movq    $0x389cb27e0bc8d220, a 
-        andq    c, a 
+        sbbq    d0, d0
+        movq    $0x389cb27e0bc8d220, a
+        andq    c, a
         negq    d0
-        sbbq    a, d2 
-        movq    d2, 16(z) 
-        sbbq    $0, d3 
-        movq    d3, 24(z) 
-        sbbq    $0, d4 
-        movq    d4, 32(z) 
-        sbbq    $0, d5 
-        movq    d5, 40(z) 
+        sbbq    a, d2
+        movq    d2, 16(z)
+        sbbq    $0, d3
+        movq    d3, 24(z)
+        sbbq    $0, d4
+        movq    d4, 32(z)
+        sbbq    $0, d5
+        movq    d5, 40(z)
 
         ret
 

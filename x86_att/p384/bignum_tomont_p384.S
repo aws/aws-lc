@@ -23,7 +23,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-        
+
         .globl  bignum_tomont_p384
         .text
 
@@ -51,7 +51,7 @@
 #define mulpadd(high,low,m)             \
         mulxq   m, %rax, %rcx ;            \
         adcxq   %rax, low ;               \
-        adoxq   %rcx, high 
+        adoxq   %rcx, high
 
 // Core one-step Montgomery reduction macro. Takes input in
 // [d7;d6;d5;d4;d3;d2;d1;d0] and returns result in [d7;d6;d5;d4;d3;d2;d1],
@@ -90,7 +90,7 @@
                 sbbq    $0, d5 ;                                          \
                 sbbq    $0, %rdx ;                                         \
                 addq    %rdx, d6 ;                                        \
-                adcq    $0, d7 
+                adcq    $0, d7
 
 bignum_tomont_p384:
 
@@ -110,39 +110,39 @@ bignum_tomont_p384:
 // set up initial window [%r14,%r13,%r12,%r11,%r10,%r9,%r8] = y[0] * x
 // Unlike later, we only need a single carry chain
 
-        movq    $0xfffffffe00000001, %rdx 
-        mulxq   (x), %r8, %r9 
-        mulxq   8(x), %rcx, %r10 
-        addq    %rcx, %r9 
-        mulxq   16(x), %rcx, %r11 
-        adcq    %rcx, %r10 
-        mulxq   24(x), %rcx, %r12 
-        adcq    %rcx, %r11 
-        mulxq   32(x), %rcx, %r13 
-        adcq    %rcx, %r12 
-        mulxq   40(x), %rcx, %r14 
-        adcq    %rcx, %r13 
-        adcq    $0, %r14 
+        movq    $0xfffffffe00000001, %rdx
+        mulxq   (x), %r8, %r9
+        mulxq   8(x), %rcx, %r10
+        addq    %rcx, %r9
+        mulxq   16(x), %rcx, %r11
+        adcq    %rcx, %r10
+        mulxq   24(x), %rcx, %r12
+        adcq    %rcx, %r11
+        mulxq   32(x), %rcx, %r13
+        adcq    %rcx, %r12
+        mulxq   40(x), %rcx, %r14
+        adcq    %rcx, %r13
+        adcq    $0, %r14
 
 // Montgomery reduce the zeroth window
 
-        xorq    %r15, %r15 
+        xorq    %r15, %r15
         montredc (%r15, %r14,%r13,%r12,%r11,%r10,%r9,%r8)
 
 // Add row 1
 
-        xorq    zero, zero 
-        movq    $0x0000000200000000, %rdx 
-        xorq    %r8, %r8 
+        xorq    zero, zero
+        movq    $0x0000000200000000, %rdx
+        xorq    %r8, %r8
         mulpadd (%r10,%r9,(x))
         mulpadd (%r11,%r10,8(x))
         mulpadd (%r12,%r11,16(x))
         mulpadd (%r13,%r12,24(x))
         mulpadd (%r14,%r13,32(x))
         mulpadd (%r15,%r14,40(x))
-        adcxq   zero, %r15 
-        adoxq   zero, %r8 
-        adcxq   zero, %r8 
+        adcxq   zero, %r15
+        adoxq   zero, %r8
+        adcxq   zero, %r8
 
 // Montgomery reduce window 1
 
@@ -150,18 +150,18 @@ bignum_tomont_p384:
 
 // Add row 2
 
-        xorq    zero, zero 
-        movq    $0xfffffffe00000000, %rdx 
-        xorq    %r9, %r9 
+        xorq    zero, zero
+        movq    $0xfffffffe00000000, %rdx
+        xorq    %r9, %r9
         mulpadd (%r11,%r10,(x))
         mulpadd (%r12,%r11,8(x))
         mulpadd (%r13,%r12,16(x))
         mulpadd (%r14,%r13,24(x))
         mulpadd (%r15,%r14,32(x))
         mulpadd (%r8,%r15,40(x))
-        adcxq   zero, %r8 
-        adoxq   zero, %r9 
-        adcxq   zero, %r9 
+        adcxq   zero, %r8
+        adoxq   zero, %r9
+        adcxq   zero, %r9
 
 // Montgomery reduce window 2
 
@@ -169,18 +169,18 @@ bignum_tomont_p384:
 
 // Add row 3
 
-        xorq    zero, zero 
-        movq    $0x0000000200000000, %rdx 
-        xorq    %r10, %r10 
+        xorq    zero, zero
+        movq    $0x0000000200000000, %rdx
+        xorq    %r10, %r10
         mulpadd (%r12,%r11,(x))
         mulpadd (%r13,%r12,8(x))
         mulpadd (%r14,%r13,16(x))
         mulpadd (%r15,%r14,24(x))
         mulpadd (%r8,%r15,32(x))
         mulpadd (%r9,%r8,40(x))
-        adcxq   zero, %r9 
-        adoxq   zero, %r10 
-        adcxq   zero, %r10 
+        adcxq   zero, %r9
+        adoxq   zero, %r10
+        adcxq   zero, %r10
 
 // Montgomery reduce window 3
 
@@ -189,15 +189,15 @@ bignum_tomont_p384:
 // Add row 4. The multiplier y[4] = 1, so we just add x to the window
 // while extending it with one more digit, initially this carry
 
-        xorq    %r11, %r11 
-        addq    (x), %r12 
-        adcq    8(x), %r13 
-        adcq    16(x), %r14 
-        adcq    24(x), %r15 
-        adcq    32(x), %r8 
-        adcq    40(x), %r9 
-        adcq    $0, %r10 
-        adcq    $0, %r11 
+        xorq    %r11, %r11
+        addq    (x), %r12
+        adcq    8(x), %r13
+        adcq    16(x), %r14
+        adcq    24(x), %r15
+        adcq    32(x), %r8
+        adcq    40(x), %r9
+        adcq    $0, %r10
+        adcq    $0, %r11
 
 // Montgomery reduce window 4
 
@@ -206,7 +206,7 @@ bignum_tomont_p384:
 // Add row 5, The multiplier y[5] = 0, so this is trivial: all we do is
 // bring down another zero digit into the window.
 
-        xorq    %r12, %r12 
+        xorq    %r12, %r12
 
 // Montgomery reduce window 5
 
@@ -221,30 +221,30 @@ bignum_tomont_p384:
 // comparison to catch cases where the residue is >= p.
 // First set [0;0;0;w;v;u] = 2^384 - p_384
 
-        movq    $0xffffffff00000001, u 
-        movl    $0x00000000ffffffff, vshort 
-        movl    $0x0000000000000001, wshort 
+        movq    $0xffffffff00000001, u
+        movl    $0x00000000ffffffff, vshort
+        movl    $0x0000000000000001, wshort
 
 // Let dd = [%r11;%r10;%r9;%r8;%r15;%r14] be the topless 6-word intermediate result.
 // Set CF if the addition dd + (2^384 - p_384) >= 2^384, hence iff dd >= p_384.
 
-        movq    %r14, d 
-        addq    u, d 
-        movq    %r15, d 
-        adcq    v, d 
-        movq    %r8, d 
-        adcq    w, d 
-        movq    %r9, d 
-        adcq    $0, d 
-        movq    %r10, d 
-        adcq    $0, d 
-        movq    %r11, d 
-        adcq    $0, d 
+        movq    %r14, d
+        addq    u, d
+        movq    %r15, d
+        adcq    v, d
+        movq    %r8, d
+        adcq    w, d
+        movq    %r9, d
+        adcq    $0, d
+        movq    %r10, d
+        adcq    $0, d
+        movq    %r11, d
+        adcq    $0, d
 
 // Now just add this new carry into the existing %r12. It's easy to see they
 // can't both be 1 by our range assumptions, so this gives us a {0,1} flag
 
-        adcq    $0, %r12 
+        adcq    $0, %r12
 
 // Now convert it into a bitmask
 
@@ -252,25 +252,25 @@ bignum_tomont_p384:
 
 // Masked addition of 2^384 - p_384, hence subtraction of p_384
 
-        andq    %r12, u 
-        andq    %r12, v 
-        andq    %r12, w 
+        andq    %r12, u
+        andq    %r12, v
+        andq    %r12, w
 
-        addq   u, %r14 
-        adcq   v, %r15 
-        adcq   w, %r8 
-        adcq   $0, %r9 
-        adcq   $0, %r10 
-        adcq   $0, %r11 
+        addq   u, %r14
+        adcq   v, %r15
+        adcq   w, %r8
+        adcq   $0, %r9
+        adcq   $0, %r10
+        adcq   $0, %r11
 
 // Write back the result
 
-        movq    %r14, (z) 
-        movq    %r15, 8(z) 
-        movq    %r8, 16(z) 
-        movq    %r9, 24(z) 
-        movq    %r10, 32(z) 
-        movq    %r11, 40(z) 
+        movq    %r14, (z)
+        movq    %r15, 8(z)
+        movq    %r8, 16(z)
+        movq    %r9, 24(z)
+        movq    %r10, 32(z)
+        movq    %r11, 40(z)
 
 // Restore registers and return
 

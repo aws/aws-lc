@@ -22,7 +22,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-        
+
         .globl  bignum_neg_p384
         .text
 
@@ -43,45 +43,45 @@ bignum_neg_p384:
 // Or together the input digits and create a bitmask q if this is nonzero, so
 // that we avoid doing -0 = p_384 and hence maintain strict modular reduction
 
-                movq    (x), n0 
-                orq     8(x), n0 
-                movq    16(x), n1 
-                orq     24(x), n1 
-                movq    32(x), n2 
-                orq     40(x), n2 
-                orq     n1, n0 
-                orq     n2, n0 
+                movq    (x), n0
+                orq     8(x), n0
+                movq    16(x), n1
+                orq     24(x), n1
+                movq    32(x), n2
+                orq     40(x), n2
+                orq     n1, n0
+                orq     n2, n0
                 negq    n0
-                sbbq    q, q 
+                sbbq    q, q
 
 // Let [q;n4;n3;n2;n1;n0] = if q then p_384 else 0
 
-                movl    $0x00000000ffffffff, n0short 
-                andq    q, n0 
-                movq    $0xffffffff00000000, n1 
-                andq    q, n1 
-                movq    $0xfffffffffffffffe, n2 
-                andq    q, n2 
-                movq    q, n3 
-                movq    q, n4 
+                movl    $0x00000000ffffffff, n0short
+                andq    q, n0
+                movq    $0xffffffff00000000, n1
+                andq    q, n1
+                movq    $0xfffffffffffffffe, n2
+                andq    q, n2
+                movq    q, n3
+                movq    q, n4
 
 // Do the subtraction
 
-                subq    (x), n0 
-                sbbq    8(x), n1 
-                sbbq    16(x), n2 
-                sbbq    24(x), n3 
-                sbbq    32(x), n4 
-                sbbq    40(x), q 
+                subq    (x), n0
+                sbbq    8(x), n1
+                sbbq    16(x), n2
+                sbbq    24(x), n3
+                sbbq    32(x), n4
+                sbbq    40(x), q
 
 // Write back
 
-                movq    n0, (z) 
-                movq    n1, 8(z) 
-                movq    n2, 16(z) 
-                movq    n3, 24(z) 
-                movq    n4, 32(z) 
-                movq    q, 40(z) 
+                movq    n0, (z)
+                movq    n1, 8(z)
+                movq    n2, 16(z)
+                movq    n3, 24(z)
+                movq    n4, 32(z)
+                movq    q, 40(z)
 
                 ret
 

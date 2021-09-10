@@ -24,7 +24,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
 // ----------------------------------------------------------------------------
 
-        
+
         .globl  bignum_cmul_p384
         .text
 
@@ -60,8 +60,8 @@ bignum_cmul_p384:
 
 // Shuffle inputs (since we want multiplier in %rdx)
 
-                movq    %rdx, x 
-                movq    %rsi, m 
+                movq    %rdx, x
+                movq    %rsi, m
 
 // Multiply, accumulating the result as 2^384 * h + [d5;d4;d3;d2;d1;d0]
 // but actually immediately producing q = h + 1, our quotient approximation,
@@ -69,18 +69,18 @@ bignum_cmul_p384:
 // product is <= (2^64 - 1) * (p_384 - 1) and hence  h <= 2^64 - 2, meaning
 // there is no danger this addition of 1 could wrap.
 
-                mulxq   (x), d0, d1 
-                mulxq   8(x), a, d2 
-                addq    a, d1 
-                mulxq   16(x), a, d3 
-                adcq    a, d2 
-                mulxq   24(x), a, d4 
-                adcq    a, d3 
-                mulxq   32(x), a, d5 
-                adcq    a, d4 
-                mulxq   40(x), a, q 
-                adcq    a, d5 
-                adcq    $1, q 
+                mulxq   (x), d0, d1
+                mulxq   8(x), a, d2
+                addq    a, d1
+                mulxq   16(x), a, d3
+                adcq    a, d2
+                mulxq   24(x), a, d4
+                adcq    a, d3
+                mulxq   32(x), a, d5
+                adcq    a, d4
+                mulxq   40(x), a, q
+                adcq    a, d5
+                adcq    $1, q
 
 // It's easy to see -p_384 <= z - q * p_384 < p_384, so we just need to
 // subtract q * p_384 and then correct if that is negative by adding p_384.
@@ -92,24 +92,24 @@ bignum_cmul_p384:
 //       = 2^384 * (h - q) + (l + q * r)
 //       = 2^384 * (-1) + (l + q * r)
 
-                xorq    c, c 
-                movq    $0xffffffff00000001, a 
-                mulxq   a, a, c 
-                adcxq   a, d0 
-                adoxq   c, d1 
-                movl    $0x00000000ffffffff, ashort 
-                mulxq   a, a, c 
-                adcxq   a, d1 
-                adoxq   c, d2 
-                adcxq   q, d2 
-                movl    $0, ashort 
-                movl    $0, cshort 
-                adoxq   a, a 
-                adcq    a, d3 
-                adcq    c, d4 
-                adcq    c, d5 
-                adcq    c, c 
-                subq    $1, c 
+                xorq    c, c
+                movq    $0xffffffff00000001, a
+                mulxq   a, a, c
+                adcxq   a, d0
+                adoxq   c, d1
+                movl    $0x00000000ffffffff, ashort
+                mulxq   a, a, c
+                adcxq   a, d1
+                adoxq   c, d2
+                adcxq   q, d2
+                movl    $0, ashort
+                movl    $0, cshort
+                adoxq   a, a
+                adcq    a, d3
+                adcq    c, d4
+                adcq    c, d5
+                adcq    c, c
+                subq    $1, c
 
 // The net c value is now the top word of the 7-word answer, hence will
 // be -1 if we need a corrective addition, 0 otherwise, usable as a mask.
@@ -117,24 +117,24 @@ bignum_cmul_p384:
 // fact done by a masked subtraction of 2^384 - p_384, so that we only
 // have three nonzero digits and so can avoid using another register.
 
-                movl    $0x00000000ffffffff, qshort 
-                xorq    a, a 
-                andq    c, q 
-                subq    q, a 
-                andq    $1, c 
+                movl    $0x00000000ffffffff, qshort
+                xorq    a, a
+                andq    c, q
+                subq    q, a
+                andq    $1, c
 
-                subq    a, d0 
-                movq    d0, (z) 
-                sbbq    q, d1 
-                movq    d1, 8(z) 
-                sbbq    c, d2 
-                movq    d2, 16(z) 
-                sbbq    $0, d3 
-                movq    d3, 24(z) 
-                sbbq    $0, d4 
-                movq    d4, 32(z) 
-                sbbq    $0, d5 
-                movq    d5, 40(z) 
+                subq    a, d0
+                movq    d0, (z)
+                sbbq    q, d1
+                movq    d1, 8(z)
+                sbbq    c, d2
+                movq    d2, 16(z)
+                sbbq    $0, d3
+                movq    d3, 24(z)
+                sbbq    $0, d4
+                movq    d4, 32(z)
+                sbbq    $0, d5
+                movq    d5, 40(z)
 
 // Return
 
