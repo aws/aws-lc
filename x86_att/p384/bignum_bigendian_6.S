@@ -35,7 +35,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-        
+
         .globl  bignum_bigendian_6
         .globl  bignum_frombytes_6
         .globl  bignum_tobytes_6
@@ -58,30 +58,30 @@ bignum_tobytes_6:
 
 // 0 and 5 words
 
-                movq    (x), a 
-                movq    40(x), b 
+                movq    (x), a
+                movq    40(x), b
                 bswapq  a
                 bswapq  b
-                movq    a, 40(z) 
-                movq    b, (z) 
+                movq    a, 40(z)
+                movq    b, (z)
 
 // 1 and 4 words
 
-                movq    8(x), a 
-                movq    32(x), b 
+                movq    8(x), a
+                movq    32(x), b
                 bswapq  a
                 bswapq  b
-                movq    a, 32(z) 
-                movq    b, 8(z) 
+                movq    a, 32(z)
+                movq    b, 8(z)
 
 // 2 and 3 words
 
-                movq    16(x), a 
-                movq    24(x), b 
+                movq    16(x), a
+                movq    24(x), b
                 bswapq  a
                 bswapq  b
-                movq    a, 24(z) 
-                movq    b, 16(z) 
+                movq    a, 24(z)
+                movq    b, 16(z)
 
                 ret
 

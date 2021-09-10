@@ -26,7 +26,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-        
+
         .globl  bignum_demont_p384
         .text
 
@@ -68,7 +68,7 @@
                 sbbq    $0, d4 ;                                          \
                 sbbq    $0, d5 ;                                          \
                 movq    %rdx, d6 ;                                        \
-                sbbq    $0, d6 
+                sbbq    $0, d6
 
 bignum_demont_p384:
 
@@ -79,12 +79,12 @@ bignum_demont_p384:
 
 // Set up an initial window [%r13,%r12,%r11,%r10,%r9,%r8] = x
 
-        movq    (x), %r8 
-        movq    8(x), %r9 
-        movq    16(x), %r10 
-        movq    24(x), %r11 
-        movq    32(x), %r12 
-        movq    40(x), %r13 
+        movq    (x), %r8
+        movq    8(x), %r9
+        movq    16(x), %r10
+        movq    24(x), %r11
+        movq    32(x), %r12
+        movq    40(x), %r13
 
 // Montgomery reduce window 0
 
@@ -112,12 +112,12 @@ bignum_demont_p384:
 
 // Write back the result
 
-        movq    %r8, (z) 
-        movq    %r9, 8(z) 
-        movq    %r10, 16(z) 
-        movq    %r11, 24(z) 
-        movq    %r12, 32(z) 
-        movq    %r13, 40(z) 
+        movq    %r8, (z)
+        movq    %r9, 8(z)
+        movq    %r10, 16(z)
+        movq    %r11, 24(z)
+        movq    %r12, 32(z)
+        movq    %r13, 40(z)
 
 // Restore registers and return
 
