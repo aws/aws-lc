@@ -15,7 +15,27 @@
 
 # These are the object files corresponding to sources for translation
 
-OBJ = p384/bignum_add_p384.o \
+OBJ = p256/bignum_add_p256.o \
+      p256/bignum_bigendian_4.o \
+      p256/bignum_cmul_p256.o \
+      p256/bignum_deamont_p256.o \
+      p256/bignum_demont_p256.o \
+      p256/bignum_double_p256.o \
+      p256/bignum_half_p256.o \
+      p256/bignum_mod_n256.o \
+      p256/bignum_mod_n256_4.o \
+      p256/bignum_mod_p256.o \
+      p256/bignum_mod_p256_4.o \
+      p256/bignum_montmul_p256.o \
+      p256/bignum_montsqr_p256.o \
+      p256/bignum_mux_4.o \
+      p256/bignum_neg_p256.o \
+      p256/bignum_nonzero_4.o \
+      p256/bignum_optneg_p256.o \
+      p256/bignum_sub_p256.o \
+      p256/bignum_tomont_p256.o \
+      p256/bignum_triple_p256.o \
+      p384/bignum_add_p384.o \
       p384/bignum_bigendian_6.o \
       p384/bignum_cmul_p384.o \
       p384/bignum_deamont_p384.o \

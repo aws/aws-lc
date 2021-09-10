@@ -14,16 +14,16 @@
  */
 
 // ----------------------------------------------------------------------------
-// 384-bit nonzeroness test, returning 1 if x is nonzero, 0 if x is zero
-// Input x[6]; output function return
+// 256-bit nonzeroness test, returning 1 if x is nonzero, 0 if x is zero
+// Input x[4]; output function return
 //
-//    extern uint64_t bignum_nonzero_6(uint64_t x[static 6]);
+//    extern uint64_t bignum_nonzero_4(uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_nonzero_6
+        .globl  bignum_nonzero_4
         .text
 
 #define x %rdi
@@ -33,7 +33,7 @@
 
 
 
-bignum_nonzero_6:
+bignum_nonzero_4:
 
 // Generate a = an OR of all the words in the bignum
 
@@ -41,8 +41,6 @@ bignum_nonzero_6:
                 movq    8(x), d
                 orq     16(x), a
                 orq     24(x), d
-                orq     32(x), a
-                orq     40(x), d
                 orq     d, a
 
 // Set a standard C condition based on whether a is nonzero

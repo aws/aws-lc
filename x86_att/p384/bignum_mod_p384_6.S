@@ -23,7 +23,7 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-        
+
         .globl  bignum_mod_p384_6
         .text
 
@@ -50,20 +50,20 @@ bignum_mod_p384_6:
 
 // Load the input and subtract p_384 from it
 
-        movq    (x), d0 
-        movl    $0x00000000ffffffff, cshort 
-        subq    c, d0 
-        movq    8(x), d1 
+        movq    (x), d0
+        movl    $0x00000000ffffffff, cshort
+        subq    c, d0
+        movq    8(x), d1
         notq    c
-        sbbq    c, d1 
-        movq    16(x), d2 
-        sbbq    $-2, d2 
-        movq    24(x), d3 
-        sbbq    $-1, d3 
-        movq    32(x), d4 
-        sbbq    $-1, d4 
-        movq    40(x), d5 
-        sbbq    $-1, d5 
+        sbbq    c, d1
+        movq    16(x), d2
+        sbbq    $-2, d2
+        movq    24(x), d3
+        sbbq    $-1, d3
+        movq    32(x), d4
+        sbbq    $-1, d4
+        movq    40(x), d5
+        sbbq    $-1, d5
 
 // Capture the top carry as a bitmask to indicate we need to add p_384 back on,
 // which we actually do in a more convenient way by subtracting r_384
@@ -72,35 +72,35 @@ bignum_mod_p384_6:
 // nonzero digits of r while maintaining d0..d5, but make the first two now.
 
         notq    c
-        sbbq    a, a 
+        sbbq    a, a
         andq    a, c // c = masked 0x00000000ffffffff
-        xorq    a, a 
+        xorq    a, a
         subq    c, a // a = masked 0xffffffff00000001
 
 // Do the first two digits of addition and writeback
 
-        subq    a, d0 
-        movq    d0, (z) 
-        sbbq    c, d1 
-        movq    d1, 8(z) 
+        subq    a, d0
+        movq    d0, (z)
+        sbbq    c, d1
+        movq    d1, 8(z)
 
 // Preserve the carry chain while creating the extra masked digit since
 // the logical operation will clear CF
 
-        sbbq    d0, d0 
+        sbbq    d0, d0
         andq    a, c // c = masked 0x0000000000000001
         negq    d0
 
 // Do the rest of the addition and writeback
 
-        sbbq    c, d2 
-        movq    d2, 16(z) 
-        sbbq    $0, d3 
-        movq    d3, 24(z) 
-        sbbq    $0, d4 
-        movq    d4, 32(z) 
-        sbbq    $0, d5 
-        movq    d5, 40(z) 
+        sbbq    c, d2
+        movq    d2, 16(z)
+        sbbq    $0, d3
+        movq    d3, 24(z)
+        sbbq    $0, d4
+        movq    d4, 32(z)
+        sbbq    $0, d5
+        movq    d5, 40(z)
 
         ret
 

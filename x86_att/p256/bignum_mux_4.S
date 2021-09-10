@@ -14,20 +14,20 @@
  */
 
 // ----------------------------------------------------------------------------
-// 384-bit multiplex/select z := x (if p nonzero) or z := y (if p zero)
-// Inputs p, x[6], y[6]; output z[6]
+// 256-bit multiplex/select z := x (if p nonzero) or z := y (if p zero)
+// Inputs p, x[4], y[4]; output z[4]
 //
-//    extern void bignum_mux_6
-//     (uint64_t p, uint64_t z[static 6],
-//      uint64_t x[static 6], uint64_t y[static 6]);
+//    extern void bignum_mux_4
+//     (uint64_t p, uint64_t z[static 4],
+//      uint64_t x[static 4], uint64_t y[static 4]);
 //
-// It is assumed that all numbers x, y and z have the same size 6 digits.
+// It is assumed that all numbers x, y and z have the same size 4 digits.
 //
 // Standard x86-64 ABI: RDI = p, RSI = z, RDX = x, RCX = y
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_mux_6
+        .globl  bignum_mux_4
         .text
 
 #define p %rdi
@@ -38,7 +38,7 @@
 #define b %r8
 
 
-bignum_mux_6:
+bignum_mux_4:
                 testq   p, p
 
                 movq    (x), a
@@ -60,16 +60,6 @@ bignum_mux_6:
                 movq    24(y), b
                 cmovzq  b, a
                 movq    a, 24(z)
-
-                movq    32(x), a
-                movq    32(y), b
-                cmovzq  b, a
-                movq    a, 32(z)
-
-                movq    40(x), a
-                movq    40(y), b
-                cmovzq  b, a
-                movq    a, 40(z)
 
                 ret
 

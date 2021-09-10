@@ -67,8 +67,12 @@ s/ bt  / btq /g
 s/ call  / callq /g
 s/ cmovae  / cmovaeq /g
 s/ cmovb  / cmovbq /g
+s/ cmovc  / cmovcq /g
 s/ cmove  / cmoveq /g
+s/ cmovnc  / cmovncq /g
 s/ cmovne  / cmovneq /g
+s/ cmovnz  / cmovnzq /g
+s/ cmovz  / cmovzq /g
 s/ cmp  / cmpq /g
 s/ dec  / decq /g
 s/ imul  / imulq /g
@@ -97,3 +101,5 @@ s/q(  .*zeroe)/l\1/
 s/q(  .*short)/l\1/
 s/q(  .*%e)/l\1/
 s/q(  .*%r[0-9]+d)/l\1/
+
+s/ +$//
