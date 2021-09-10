@@ -72,7 +72,7 @@ void eval_4_isog(point_proj_t P, f2elm_t *coeff)
     mp2_add(&P->X, &P->Z, t0);                        // t0 = X+Z
     mp2_sub_p2(&P->X, &P->Z, t1);                     // t1 = X-Z
     fp2mul_mont(t0, &coeff[1], &P->X);             // X = (X+Z)*coeff[1]
-    fp2mul_mont(t1, &coeff[2], &P->Z);             // Z = (X-Z)*coeff[2]
+    fp2mul_mont(t1, &coeff[2], &P->Z);                // Z = (X-Z)*coeff[2]
     fp2mul_mont(t0, t1, t0);                          // t0 = (X+Z)*(X-Z)
     fp2mul_mont(&coeff[0], t0, t0);                   // t0 = coeff[0]*(X+Z)*(X-Z)
     mp2_add(&P->X, &P->Z, t1);                        // t1 = (X-Z)*coeff[2] + (X+Z)*coeff[1]

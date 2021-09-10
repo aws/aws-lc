@@ -7,6 +7,7 @@
 #include <string.h>
 #include "sikep434r3.h"
 #include "sikep434r3_fips202.h"
+#include "../../crypto/internal.h"
 #include "sike_internal.h"
 #include "../../include/openssl/rand.h"
 #include "sikep434r3_api.h"

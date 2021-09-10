@@ -187,15 +187,15 @@ void fp2mul_mont(const f2elm_t *a, const f2elm_t *b, f2elm_t *c)
     felm_t t1, t2;
     dfelm_t tt1, tt2, tt3; 
     
-    mp_addfast(a->e[0], a->e[1], t1);                           // t1 = a0+a1
-    mp_addfast(b->e[0], b->e[1], t2);                           // t2 = b0+b1
-    mp_mul(a->e[0], b->e[0], tt1, SIKE_P434_R3_NWORDS_FIELD);   // tt1 = a0*b0
-    mp_mul(a->e[1], b->e[1], tt2, SIKE_P434_R3_NWORDS_FIELD);   // tt2 = a1*b1
+    mp_addfast(a->e[0], a->e[1], t1);                                 // t1 = a0+a1
+    mp_addfast(b->e[0], b->e[1], t2);                                 // t2 = b0+b1
+    mp_mul(a->e[0], b->e[0], tt1, SIKE_P434_R3_NWORDS_FIELD);     // tt1 = a0*b0
+    mp_mul(a->e[1], b->e[1], tt2, SIKE_P434_R3_NWORDS_FIELD);     // tt2 = a1*b1
     mp_mul(t1, t2, tt3, SIKE_P434_R3_NWORDS_FIELD);               // tt3 = (a0+a1)*(b0+b1)
-    mp_dblsubfast(tt1, tt2, tt3);                                 // tt3 = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
-    mp_subaddfast(tt1, tt2, tt1);                                 // tt1 = a0*b0 - a1*b1 + p*2^SIKE_P434_R3_MAXBITS_FIELD if a0*b0 - a1*b1 < 0, else tt1 = a0*b0 - a1*b1
-    rdc_mont(tt3, c->e[1]);                                   // c[1] = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
-    rdc_mont(tt1, c->e[0]);                                   // c[0] = a0*b0 - a1*b1
+    mp_dblsubfast(tt1, tt2, tt3);                                     // tt3 = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
+    mp_subaddfast(tt1, tt2, tt1);                                     // tt1 = a0*b0 - a1*b1 + p*2^SIKE_P434_R3_MAXBITS_FIELD if a0*b0 - a1*b1 < 0, else tt1 = a0*b0 - a1*b1
+    rdc_mont(tt3, c->e[1]);                                           // c[1] = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
+    rdc_mont(tt1, c->e[0]);                                           // c[0] = a0*b0 - a1*b1
 }
 
 // Chain to compute a^(p-3)/4 using Montgomery arithmetic.

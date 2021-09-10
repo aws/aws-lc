@@ -19,7 +19,8 @@ include_directories(../include)
 include_directories(../crypto)
 
 # get source files
+file(GLOB PQ_HEADERS "*.h" "sike_r3/*.h")
 file(GLOB PQ_SRC "*.c" "sike_r3/*.c")
 
 # compile
-add_library(pq-crypto ${PQ_SRC})
+add_library(pq-crypto ${PQ_HEADERS} ${PQ_SRC})
