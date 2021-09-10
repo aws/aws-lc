@@ -34,13 +34,14 @@ TEST(CPUJitterEntropyTest, Basic) {
   EXPECT_EQ(jitter_ec->osr, default_osr);
 
   const ssize_t data_len = 48;
-  char data0[data_len], data1[data_len];
+  uint8_t data0[data_len], data1[data_len];
 
   // Draw some entropy to check if it works.
-  EXPECT_EQ(jent_read_entropy(jitter_ec, data0, data_len), data_len);
+  EXPECT_EQ(jent_read_entropy(jitter_ec, (char*) data0, data_len), data_len);
 
   // Draw some entropy with the "safe" API to check if it works.
-  EXPECT_EQ(jent_read_entropy_safe(&jitter_ec, data1, data_len), data_len);
+  EXPECT_EQ(
+      jent_read_entropy_safe(&jitter_ec, (char*) data1, data_len), data_len);
 
   // Basic check that the random data is not equal.
   EXPECT_NE(Bytes(data0), Bytes(data1));
