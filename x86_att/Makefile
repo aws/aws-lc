@@ -54,7 +54,20 @@ OBJ = p256/bignum_add_p256.o \
       p384/bignum_optneg_p384.o \
       p384/bignum_sub_p384.o \
       p384/bignum_tomont_p384.o \
-      p384/bignum_triple_p384.o
+      p384/bignum_triple_p384.o \
+      p521/bignum_add_p521.o \
+      p521/bignum_cmul_p521.o \
+      p521/bignum_deamont_p521.o \
+      p521/bignum_demont_p521.o \
+      p521/bignum_double_p521.o \
+      p521/bignum_half_p521.o \
+      p521/bignum_mod_p521_9.o \
+      p521/bignum_montsqr_p521.o \
+      p521/bignum_neg_p521.o \
+      p521/bignum_optneg_p521.o \
+      p521/bignum_sqr_p521.o \
+      p521/bignum_sub_p521.o \
+      p521/bignum_triple_p521.o
 
 # The AT&T syntax source files
 
