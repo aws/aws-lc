@@ -215,8 +215,6 @@ TEST(RandTest, RdrandABI) {
     return;
   }
 
-  maybe_disable_some_fork_detect_mechanisms();
-
   uint8_t buf[32];
   CHECK_ABI_SEH(CRYPTO_rdrand, buf);
   CHECK_ABI_SEH(CRYPTO_rdrand_multiple8_buf, nullptr, 0);

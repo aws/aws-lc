@@ -34,19 +34,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-# Fail CMake build when some vulnerable gcc versions are used.
-set(VUL_GCC_VERSIONS "")
-# These versions are disabled due to a bug reported in memcmp, which means we can't trust them.
-# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189
-list(APPEND VUL_GCC_VERSIONS "9.2" "9.3" "10.1")
-if(GCC)
-  foreach(vul_gcc_version ${VUL_GCC_VERSIONS})
-    if("${vul_gcc_version}" VERSION_EQUAL CMAKE_C_COMPILER_VERSION)
-      message(FATAL_ERROR "GCC ${CMAKE_C_COMPILER_VERSION} is not supported.")
-    endif()
-  endforeach()
-endif()
-
 # This is a dummy target which all other targets depend on (manually - see other
 # CMakeLists.txt files). This gives us a hook to add any targets which need to
 # run before all other targets.
@@ -187,9 +174,51 @@ macro(check_compiler file_to_test flag_to_set)
   endif()
 endmacro()
 
+macro(check_run file_to_test flag_to_set compile_flags)
+  message(STATUS "Run check_run file_to_test '${file_to_test}', "
+          "flag_to_set '${flag_to_set}', "
+          "and compile_flags '${compile_flags}'.")
+  try_run(
+          ${flag_to_set}
+          COMPILE_RESULT
+          "${CMAKE_CURRENT_BINARY_DIR}"
+          "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "${compile_flags}"
+          OUTPUT_VARIABLE COMPILE_AND_RUN_OUTPUT)
+  if (NOT COMPILE_RESULT)
+    message(WARNING "COMPILE_AND_RUN_OUTPUT ${COMPILE_AND_RUN_OUTPUT}")
+  endif()
+endmacro()
+
+# Detect if memcmp is wrongly stripped like strcmp.
+# If exists, let CMake generate a warning.
+# memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
+if (GCC)
+  # CMake try_run requires these variables must be preset.
+  # https://cmake.org/cmake/help/latest/command/try_run.html
+  set(MEMCMP_INVALID_STRIPPED "")
+  set(MEMCMP_INVALID_STRIPPED__TRYRUN_OUTPUT "")
+  if (CMAKE_BUILD_TYPE_LOWER MATCHES "release")
+    # CMAKE_C_FLAGS_RELEASE enables `-O3`.
+    check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELEASE}")
+  elseif(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo")
+    # CMAKE_C_FLAGS_RELEASE enables `-O2`.
+    check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+  endif()
+
+  if (MEMCMP_INVALID_STRIPPED)
+    message(WARNING "Currently, GCC ${CMAKE_C_COMPILER_VERSION} is not supported due to a memcmp related bug reported in "
+            "https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.\n"
+            "We strongly recommend against using the GCC ${CMAKE_C_COMPILER_VERSION} compiler.")
+  endif ()
+endif ()
+
 if(GCC OR CLANG)
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
+  if(FIPS)
+    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
+  endif()
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -499,8 +528,7 @@ endif()
 
 function(go_executable dest package)
   set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
-  if(${CMAKE_VERSION} VERSION_LESS "3.7" OR
-     NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
+  if(CMAKE_VERSION VERSION_LESS "3.7" OR NOT CMAKE_GENERATOR STREQUAL "Ninja")
     # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
     # only works with Ninja. Query the sources at configure time. Additionally,
     # everything depends on go.mod. That affects what external packages to use.
@@ -542,7 +570,7 @@ endfunction()
 # builds.
 if(NOT OPENSSL_NO_ASM AND CMAKE_OSX_ARCHITECTURES)
   list(LENGTH CMAKE_OSX_ARCHITECTURES NUM_ARCHES)
-  if(NOT ${NUM_ARCHES} EQUAL 1)
+  if(NOT NUM_ARCHES EQUAL 1)
     message(FATAL_ERROR "Universal binaries not supported.")
   endif()
   list(GET CMAKE_OSX_ARCHITECTURES 0 CMAKE_SYSTEM_PROCESSOR)
@@ -559,7 +587,7 @@ endif()
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
-elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some
   # cases such as when building in Docker, where the host-level architecture is 64-bit
@@ -569,16 +597,16 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
   else()
     set(ARCH "x86")
   endif()
-elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86|i386|i686")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86|i386|i686")
   set(ARCH "x86")
-elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64|aarch64")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
   set(ARCH "aarch64")
-elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm*")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
   set(ARCH "arm")
-elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "mips")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "mips")
   # Just to avoid the “unknown processor” error.
   set(ARCH "generic")
-elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "ppc64le")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
@@ -589,7 +617,7 @@ if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
   add_definitions(-DOPENSSL_AARCH64_P256)
 endif()
 
-if(ANDROID AND NOT ANDROID_NDK_REVISION AND ${ARCH} STREQUAL "arm")
+if(ANDROID AND NOT ANDROID_NDK_REVISION AND ARCH STREQUAL "arm")
   # The third-party Android-NDK CMake files somehow fail to set the -march flag
   # for assembly files. Without this flag, the compiler believes that it's
   # building for ARMv5.
@@ -702,10 +730,10 @@ add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
+  add_subdirectory(decrepit)
 endif()
 add_subdirectory(util/fipstools/cavp)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
-add_subdirectory(decrepit)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
@@ -816,7 +844,6 @@ if(BUILD_TESTING)
           run_minimal_tests
           COMMAND crypto_test
           COMMAND urandom_test
-          COMMAND decrepit_test
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}

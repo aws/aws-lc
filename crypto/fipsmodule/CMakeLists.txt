@@ -1,6 +1,6 @@
 include_directories(../../include)
 
-if(${ARCH} STREQUAL "x86_64")
+if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
@@ -22,7 +22,7 @@ if(${ARCH} STREQUAL "x86_64")
   )
 endif()
 
-if(${ARCH} STREQUAL "x86")
+if(ARCH STREQUAL "x86")
   set(
     BCM_ASM_SOURCES
 
@@ -40,7 +40,7 @@ if(${ARCH} STREQUAL "x86")
   )
 endif()
 
-if(${ARCH} STREQUAL "arm")
+if(ARCH STREQUAL "arm")
   set(
     BCM_ASM_SOURCES
 
@@ -56,7 +56,7 @@ if(${ARCH} STREQUAL "arm")
   )
 endif()
 
-if(${ARCH} STREQUAL "aarch64")
+if(ARCH STREQUAL "aarch64")
   set(
     BCM_ASM_SOURCES
 
@@ -73,7 +73,7 @@ if(${ARCH} STREQUAL "aarch64")
   )
 endif()
 
-if(${ARCH} STREQUAL "ppc64le")
+if(ARCH STREQUAL "ppc64le")
   set(
     BCM_ASM_SOURCES
 
@@ -166,7 +166,7 @@ if(FIPS_DELOCATE)
     bcm.c
   )
 
-  if(${ARCH} STREQUAL "aarch64")
+  if(ARCH STREQUAL "aarch64")
     # Perlasm output on Aarch64 needs to pass through the C preprocessor before
     # it can be parsed by delocate.
     foreach(asm ${BCM_ASM_SOURCES})
@@ -205,12 +205,15 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
   set(MAYBE_INJECT_HASH_SHA256_FLAG "")
-  if (ARCH STREQUAL "aarch64")
+  # If building with OPENSSL_NO_ASM then ARCH will be "generic", but we still
+  # need to use SHA-256. Since this only matters for FIPS, we only need to
+  # worry about the Linux spelling of AArch64.
+  if (ARCH STREQUAL "aarch64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
     set(MAYBE_INJECT_HASH_SHA256_FLAG "-sha256")
   endif()
 
   go_executable(inject_hash
-	        boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
     COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> ${MAYBE_INJECT_HASH_SHA256_FLAG}
@@ -260,10 +263,17 @@ elseif(FIPS_SHARED)
   )
 
   add_dependencies(bcm_library global_target)
+  # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
+  set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
+  if (GCC)
+    # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
+    # so we have a separate linker script for gcc.
+    set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
+  endif()
 
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ${CMAKE_LINKER} -r -T ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+    COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
     DEPENDS bcm_library fips_shared.lds
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )

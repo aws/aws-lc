@@ -40,7 +40,7 @@
 #include "internal.h"
 
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {
      "-dump", kOptionalArgument,
      "Dump the key and contents of the given file to stdout",

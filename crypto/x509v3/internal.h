@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/conf.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -52,6 +54,27 @@ OPENSSL_EXPORT int x509v3_looks_like_dns_name(const unsigned char *in,
 // extensions in |x|. It returns one on success and zero if some extensions were
 // invalid.
 int x509v3_cache_extensions(X509 *x);
+
+// x509v3_a2i_ipadd decodes |ipasc| as an IPv4 or IPv6 address. IPv6 addresses
+// use colon-separated syntax while IPv4 addresses use dotted decimal syntax. If
+// it decodes an IPv4 address, it writes the result to the first four bytes of
+// |ipout| and returns four. If it decodes an IPv6 address, it writes the result
+// to all 16 bytes of |ipout| and returns 16. Otherwise, it returns zero.
+int x509v3_a2i_ipadd(unsigned char ipout[16], const char *ipasc);
+
+// A |BIT_STRING_BITNAME| is used to contain a list of bit names.
+typedef struct {
+  int bitnum;
+  const char *lname;
+  const char *sname;
+} BIT_STRING_BITNAME;
+
+// x509V3_add_value_asn1_string appends a |CONF_VALUE| with the specified name
+// and value to |*extlist|. if |*extlist| is NULL, it sets |*extlist| to a
+// newly-allocated |STACK_OF(CONF_VALUE)| first. It returns one on success and
+// zero on error.
+int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
+                                 STACK_OF(CONF_VALUE) **extlist);
 
 
 #if defined(__cplusplus)

@@ -56,6 +56,14 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
 
+    - identifier: ubuntu2004_gcc11x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-11x_latest
+
     - identifier: ubuntu2004_clang7x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:

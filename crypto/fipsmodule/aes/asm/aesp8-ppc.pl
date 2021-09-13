@@ -70,7 +70,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../../perlasm/ppc-xlate.pl" and -f $xlate) or
 die "can't locate ppc-xlate.pl";
 
-open STDOUT,"| $^X $xlate $flavour ".shift || die "can't call $xlate: $!";
+open STDOUT,"| $^X \"$xlate\" $flavour ".shift || die "can't call $xlate: $!";
 
 $FRAME=8*$SIZE_T;
 $prefix="aes_hw";
@@ -3804,4 +3804,4 @@ foreach(split("\n",$code)) {
         print $_,"\n";
 }
 
-close STDOUT or die "error closing STDOUT";
+close STDOUT or die "error closing STDOUT: $!";

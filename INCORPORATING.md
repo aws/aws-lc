@@ -49,16 +49,16 @@ versions together, there's not a lot that can be done because C doesn't have a
 module system.
 
 If you are using multiple versions in a single binary, in different shared
-objects, ensure you build BoringSSL with `-fvisibility=hidden` and do not
-export any of BoringSSL's symbols. This will prevent any collisions with other
+objects, ensure you build AWS-LC with `-fvisibility=hidden` and do not
+export any symbols. This will prevent any collisions with other
 verisons that may be included in other shared objects. Note that this requires
-that all callers of BoringSSL APIs live in the same shared object as BoringSSL.
+that all callers of AWS-LC APIs live in the same shared object as AWS-LC.
 
-If you require that BoringSSL APIs be used across shared object boundaries,
+If you require that AWS-LC APIs be used across shared object boundaries,
 continue to build with `-fvisibility=hidden` but define
-`BORINGSSL_SHARED_LIBRARY` in both BoringSSL and consumers. BoringSSL's own
+`BORINGSSL_SHARED_LIBRARY` in both AWS-LC and consumers. AWS-LC's own
 source files (but *not* consumers' source files) must also build with
-`BORINGSSL_IMPLEMENTATION` defined. This will export BoringSSL's public symbols
+`BORINGSSL_IMPLEMENTATION` defined. This will export AWS-LC's public symbols
 in the resulting shared object while hiding private symbols. However note that,
 as with a static link, this precludes dynamically linking with another version
-of BoringSSL or OpenSSL.
+of AWS-LC/BoringSSL or OpenSSL.

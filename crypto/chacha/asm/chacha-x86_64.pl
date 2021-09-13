@@ -67,7 +67,7 @@ die "can't locate x86_64-xlate.pl";
 
 $avx = 2;
 
-open OUT,"| \"$^X\" $xlate $flavour $output";
+open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 # input parameter block
@@ -2782,4 +2782,4 @@ foreach (split("\n",$code)) {
 	print $_,"\n";
 }
 
-close STDOUT or die "error closing STDOUT";
+close STDOUT or die "error closing STDOUT: $!";

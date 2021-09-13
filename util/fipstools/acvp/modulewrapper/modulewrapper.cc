@@ -58,6 +58,8 @@ namespace acvp {
 #define LOG_ERROR(...) fprintf(stderr, __VA_ARGS__)
 #endif  // OPENSSL_TRUSTY
 
+#define AES_GCM_NONCE_LENGTH 12
+
 constexpr size_t kMaxArgLength = (1 << 20);
 
 RequestBuffer::~RequestBuffer() = default;
@@ -303,7 +305,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }],
         "tagLen": [32, 64, 96, 104, 112, 120, 128],
         "ivLen": [96],
-        "ivGen": "external"
+        "ivGen": ["external", "internal"],
+        "ivGenMode": "8.2.2"
       },
       {
         "algorithm": "ACVP-AES-GMAC",
@@ -502,6 +505,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "P-521"
           ],
           "hashAlg": [
+            "SHA-1",
             "SHA2-224",
             "SHA2-256",
             "SHA2-384",
@@ -837,7 +841,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "scheme": {
           "dhEphem": {
             "kasRole": [
-              "initiator"
+              "initiator",
+              "responder"
             ]
           }
         },
@@ -857,6 +862,30 @@ static bool Hash(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   uint8_t digest[DigestLength];
   OneShotHash(args[0].data(), args[0].size(), digest);
   return write_reply({Span<const uint8_t>(digest)});
+}
+
+template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
+          size_t DigestLength>
+static bool HashMCT(const Span<const uint8_t> args[],
+                    ReplyCallback write_reply) {
+  if (args[0].size() != DigestLength) {
+    return false;
+  }
+
+  uint8_t buf[DigestLength * 3];
+  memcpy(buf, args[0].data(), DigestLength);
+  memcpy(buf + DigestLength, args[0].data(), DigestLength);
+  memcpy(buf + 2 * DigestLength, args[0].data(), DigestLength);
+
+  for (size_t i = 0; i < 1000; i++) {
+    uint8_t digest[DigestLength];
+    OneShotHash(buf, sizeof(buf), digest);
+    memmove(buf, buf + DigestLength, DigestLength * 2);
+    memcpy(buf + DigestLength * 2, digest, DigestLength);
+  }
+
+  return write_reply(
+      {Span<const uint8_t>(buf + 2 * DigestLength, DigestLength)});
 }
 
 static uint32_t GetIterations(const Span<const uint8_t> iterations_bytes) {
@@ -989,7 +1018,7 @@ static bool AES_CTR(const Span<const uint8_t> args[], ReplyCallback write_reply)
 }
 
 static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
-                        Span<const uint8_t> key) {
+                        Span<const uint8_t> key, Span<const uint8_t> nonce) {
   uint32_t tag_len_32;
   if (tag_len_span.size() != sizeof(tag_len_32)) {
     LOG_ERROR("Tag size value is %u bytes, not an uint32_t\n",
@@ -999,33 +1028,61 @@ static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
   memcpy(&tag_len_32, tag_len_span.data(), sizeof(tag_len_32));
 
   const EVP_AEAD *aead;
-  switch (key.size()) {
-    case 16:
-      aead = EVP_aead_aes_128_gcm();
-      break;
-    case 24:
-      aead = EVP_aead_aes_192_gcm();
-      break;
-    case 32:
-      aead = EVP_aead_aes_256_gcm();
-      break;
-    default:
-      LOG_ERROR("Bad AES-GCM key length %u\n", static_cast<unsigned>(key.size()));
+  if(nonce.empty()) {
+    // Internally generated IVs
+    switch (key.size()) {
+      case 16:
+        aead = EVP_aead_aes_128_gcm_randnonce();
+        break;
+      case 32:
+        aead = EVP_aead_aes_256_gcm_randnonce();
+        break;
+      default:
+        LOG_ERROR("Bad AES-GCM key length %u\n",
+                  static_cast<unsigned>(key.size()));
+        return false;
+    }
+    // The 12-byte nonce is appended to the tag and is generated internally for
+    // random nonce function. Thus, the "tag" must be extended by 12 bytes
+    // for the purpose of the API.
+    if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(), tag_len_32 + AES_GCM_NONCE_LENGTH,
+                           nullptr)) {
+      LOG_ERROR("Failed to setup AES-GCM with tag length %u\n",
+                static_cast<unsigned>(tag_len_32));
       return false;
+    }
+  } else {
+    // External IVs
+    switch (key.size()) {
+      case 16:
+        aead = EVP_aead_aes_128_gcm();
+        break;
+      case 24:
+        aead = EVP_aead_aes_192_gcm();
+        break;
+      case 32:
+        aead = EVP_aead_aes_256_gcm();
+        break;
+      default:
+        LOG_ERROR("Bad AES-GCM key length %u\n",
+                  static_cast<unsigned>(key.size()));
+        return false;
+    }
+    if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(), tag_len_32,
+                           nullptr)) {
+      LOG_ERROR("Failed to setup AES-GCM with tag length %u\n",
+                static_cast<unsigned>(tag_len_32));
+      return false;
+    }
   }
 
-  if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(), tag_len_32,
-                         nullptr)) {
-    LOG_ERROR("Failed to setup AES-GCM with tag length %u\n",
-              static_cast<unsigned>(tag_len_32));
-    return false;
-  }
+
 
   return true;
 }
 
 static bool AESCCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
-                        Span<const uint8_t> key) {
+                        Span<const uint8_t> key, Span<const uint8_t> nonce) {
   uint32_t tag_len_32;
   if (tag_len_span.size() != sizeof(tag_len_32)) {
     LOG_ERROR("Tag size value is %u bytes, not an uint32_t\n",
@@ -1056,7 +1113,7 @@ static bool AESCCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
 }
 
 template <bool (*SetupFunc)(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
-                            Span<const uint8_t> key)>
+                            Span<const uint8_t> key, Span<const uint8_t> nonce)>
 static bool AEADSeal(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   Span<const uint8_t> tag_len_span = args[0];
   Span<const uint8_t> key = args[1];
@@ -1065,7 +1122,7 @@ static bool AEADSeal(const Span<const uint8_t> args[], ReplyCallback write_reply
   Span<const uint8_t> ad = args[4];
 
   bssl::ScopedEVP_AEAD_CTX ctx;
-  if (!SetupFunc(ctx.get(), tag_len_span, key)) {
+  if (!SetupFunc(ctx.get(), tag_len_span, key, nonce)) {
     return false;
   }
 
@@ -1075,10 +1132,20 @@ static bool AEADSeal(const Span<const uint8_t> args[], ReplyCallback write_reply
   std::vector<uint8_t> out(EVP_AEAD_MAX_OVERHEAD + plaintext.size());
 
   size_t out_len;
-  if (!EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
-                         nonce.data(), nonce.size(), plaintext.data(),
-                         plaintext.size(), ad.data(), ad.size())) {
-    return false;
+  if(nonce.empty()) {
+    // The nonce parameter when using Internal IV generation must be zero-length.
+    if (!EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
+                           nullptr, 0, plaintext.data(),
+                           plaintext.size(), ad.data(), ad.size())) {
+      return false;
+    }
+  } else {
+    // External IV AEAD sealing.
+    if (!EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
+                           nonce.data(), nonce.size(), plaintext.data(),
+                           plaintext.size(), ad.data(), ad.size())) {
+      return false;
+    }
   }
 
   out.resize(out_len);
@@ -1086,7 +1153,7 @@ static bool AEADSeal(const Span<const uint8_t> args[], ReplyCallback write_reply
 }
 
 template <bool (*SetupFunc)(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
-                            Span<const uint8_t> key)>
+                            Span<const uint8_t> key, Span<const uint8_t> nonce)>
 static bool AEADOpen(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   Span<const uint8_t> tag_len_span = args[0];
   Span<const uint8_t> key = args[1];
@@ -1095,7 +1162,7 @@ static bool AEADOpen(const Span<const uint8_t> args[], ReplyCallback write_reply
   Span<const uint8_t> ad = args[4];
 
   bssl::ScopedEVP_AEAD_CTX ctx;
-  if (!SetupFunc(ctx.get(), tag_len_span, key)) {
+  if (!SetupFunc(ctx.get(), tag_len_span, key, nonce)) {
     return false;
   }
 
@@ -1481,7 +1548,9 @@ static bool ECDSAKeyVer(const Span<const uint8_t> args[], ReplyCallback write_re
 }
 
 static const EVP_MD *HashFromName(Span<const uint8_t> name) {
-  if (StringEq(name, "SHA2-224")) {
+  if (StringEq(name, "SHA-1")) {
+    return EVP_sha1();
+  } else if (StringEq(name, "SHA2-224")) {
     return EVP_sha224();
   } else if (StringEq(name, "SHA2-256")) {
     return EVP_sha256();
@@ -1858,6 +1927,12 @@ static constexpr struct {
     {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
+    {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
+    {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
+    {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
+    {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
+    {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
