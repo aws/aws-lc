@@ -25,6 +25,7 @@
 
         .globl  bignum_mul_6_12
         .text
+        .balign 4
 
 // ---------------------------------------------------------------------------
 // Macro computing [c,b,a] := [b,a] + (x - y) * (w - z), adding with carry

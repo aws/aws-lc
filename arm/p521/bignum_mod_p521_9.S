@@ -25,6 +25,7 @@
 
         .globl  bignum_mod_p521_9
         .text
+        .balign 4
 
 #define z x0
 #define x x1

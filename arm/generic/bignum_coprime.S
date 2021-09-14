@@ -33,6 +33,7 @@
 
         .globl  bignum_coprime
         .text
+        .balign 4
 
 #define CHUNKSIZE 58
 

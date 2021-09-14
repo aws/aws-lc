@@ -30,6 +30,7 @@
 
         .globl  bignum_sub
         .text
+        .balign 4
 
 #define p x0
 #define z x1

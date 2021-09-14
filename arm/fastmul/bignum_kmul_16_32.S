@@ -29,6 +29,7 @@
 
         .globl  bignum_kmul_16_32
         .text
+        .balign 4
 
 // Subroutine-safe copies of the output, inputs and temporary buffer pointers
 

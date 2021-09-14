@@ -29,6 +29,7 @@
 
         .globl  bignum_modinv
         .text
+        .balign 4
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a few for proxy errors
 

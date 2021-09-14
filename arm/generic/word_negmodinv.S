@@ -29,6 +29,7 @@
 
         .globl  word_negmodinv
         .text
+        .balign 4
 
 // Use some more intuitive variable names but these in general are aliased
 // to each other so need care when interpreting. Overall we only use the

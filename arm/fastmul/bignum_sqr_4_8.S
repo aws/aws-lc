@@ -24,6 +24,7 @@
 
         .globl  bignum_sqr_4_8
         .text
+        .balign 4
 
 // ---------------------------------------------------------------------------
 // Macro returning (c,h,l) = 3-word 1s complement (x - y) * (w - z)

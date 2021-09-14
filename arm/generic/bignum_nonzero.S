@@ -24,6 +24,7 @@
 
         .globl  bignum_nonzero
         .text
+        .balign 4
 
 #define k x0
 #define x x1

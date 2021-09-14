@@ -28,6 +28,7 @@
 
         .globl  bignum_emontredc_8n
         .text
+        .balign 4
 
 // ---------------------------------------------------------------------------
 // Macro computing (c,h,l) = 3-word 1s complement (x - y) * (w - z)

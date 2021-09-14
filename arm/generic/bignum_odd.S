@@ -24,6 +24,7 @@
 
         .globl  bignum_odd
         .text
+        .balign 4
 
 bignum_odd:
 

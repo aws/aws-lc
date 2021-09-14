@@ -25,6 +25,7 @@
 
         .globl  bignum_gt
         .text
+        .balign 4
 
 #define m x0
 #define x x1

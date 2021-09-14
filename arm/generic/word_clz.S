@@ -24,6 +24,7 @@
 
         .globl  word_clz
         .text
+        .balign 4
 
 word_clz:
                 clz     x0, x0

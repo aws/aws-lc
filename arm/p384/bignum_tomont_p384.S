@@ -25,6 +25,7 @@
 
         .globl  bignum_tomont_p384
         .text
+        .balign 4
 
 // ----------------------------------------------------------------------------
 // Core "x |-> (2^64 * x) mod p_384" macro, with x assumed to be < p_384.

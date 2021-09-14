@@ -29,6 +29,7 @@
 
         .globl  bignum_bitsize
         .text
+        .balign 4
 
 #define k x0
 #define x x1

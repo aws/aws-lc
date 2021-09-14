@@ -31,6 +31,7 @@
 
         .globl  bignum_negmodinv
         .text
+        .balign 4
 
 #define k x0
 #define z x1

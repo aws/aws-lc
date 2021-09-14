@@ -34,6 +34,7 @@
 
         .globl  bignum_cmul
         .text
+        .balign 4
 
 #define p x0
 #define z x1

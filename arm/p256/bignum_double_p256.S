@@ -25,6 +25,7 @@
 
         .globl  bignum_double_p256
         .text
+        .balign 4
 
 #define z x0
 #define x x1

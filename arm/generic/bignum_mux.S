@@ -27,6 +27,7 @@
 
         .globl  bignum_mux
         .text
+        .balign 4
 
 #define b x0
 #define k x1

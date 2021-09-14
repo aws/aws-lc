@@ -28,6 +28,7 @@
 
         .globl  bignum_mux16
         .text
+        .balign 4
 
 #define k x0
 #define z x1

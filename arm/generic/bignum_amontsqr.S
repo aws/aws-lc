@@ -29,6 +29,7 @@
 
         .globl  bignum_amontsqr
         .text
+        .balign 4
 
 #define k x0
 #define z x1

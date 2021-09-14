@@ -24,6 +24,7 @@
 
         .globl  word_ctz
         .text
+        .balign 4
 
 word_ctz:
 

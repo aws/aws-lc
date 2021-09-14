@@ -24,6 +24,7 @@
 
         .globl  bignum_even
         .text
+        .balign 4
 
 bignum_even:
 

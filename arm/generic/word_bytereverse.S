@@ -23,6 +23,7 @@
 
         .globl  word_bytereverse
         .text
+        .balign 4
 
 word_bytereverse:
 
