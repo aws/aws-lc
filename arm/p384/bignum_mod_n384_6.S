@@ -56,9 +56,9 @@ bignum_mod_n384_6:
 
 // Load the complicated lower three words of n_384
 
-                movbig ( n0, #0xecec, #0x196a, #0xccc5, #0x2973)
-                movbig ( n1, #0x581a, #0x0db2, #0x48b0, #0xa77a)
-                movbig ( n2, #0xc763, #0x4d81, #0xf437, #0x2ddf)
+                movbig( n0, #0xecec, #0x196a, #0xccc5, #0x2973)
+                movbig( n1, #0x581a, #0x0db2, #0x48b0, #0xa77a)
+                movbig( n2, #0xc763, #0x4d81, #0xf437, #0x2ddf)
 
 // Load the input number
 

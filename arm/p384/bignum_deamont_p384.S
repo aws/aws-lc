@@ -97,17 +97,17 @@ bignum_deamont_p384:
 
 // Systematically scroll left doing 1-step reductions
 
-                montreds (d0,d5,d4,d3,d2,d1,d0, u,v,w)
+                montreds(d0,d5,d4,d3,d2,d1,d0, u,v,w)
 
-                montreds (d1,d0,d5,d4,d3,d2,d1, u,v,w)
+                montreds(d1,d0,d5,d4,d3,d2,d1, u,v,w)
 
-                montreds (d2,d1,d0,d5,d4,d3,d2, u,v,w)
+                montreds(d2,d1,d0,d5,d4,d3,d2, u,v,w)
 
-                montreds (d3,d2,d1,d0,d5,d4,d3, u,v,w)
+                montreds(d3,d2,d1,d0,d5,d4,d3, u,v,w)
 
-                montreds (d4,d3,d2,d1,d0,d5,d4, u,v,w)
+                montreds(d4,d3,d2,d1,d0,d5,d4, u,v,w)
 
-                montreds (d5,d4,d3,d2,d1,d0,d5, u,v,w)
+                montreds(d5,d4,d3,d2,d1,d0,d5, u,v,w)
 
 // Now compare end result in [d5;d4;d3;d2;d1;d0] = dd with p_384 by *adding*
 // 2^384 - p_384 = [0;0;0;w;v;u]. This will set CF if
