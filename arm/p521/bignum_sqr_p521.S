@@ -24,6 +24,7 @@
 
         .globl  bignum_sqr_p521
         .text
+        .balign 4
 
 #define z x0
 #define x x1

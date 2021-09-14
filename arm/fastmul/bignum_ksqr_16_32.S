@@ -28,6 +28,7 @@
 
         .globl  bignum_ksqr_16_32
         .text
+        .balign 4
 
 // Subroutine-safe copies of the output, inputs and temporary buffer pointers
 

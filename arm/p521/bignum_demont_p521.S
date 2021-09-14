@@ -28,6 +28,7 @@
 
         .globl  bignum_demont_p521
         .text
+        .balign 4
 
 // Input parameters
 

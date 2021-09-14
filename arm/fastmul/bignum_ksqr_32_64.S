@@ -28,6 +28,7 @@
 
         .globl  bignum_ksqr_32_64
         .text
+        .balign 4
 
 #define K 16
 #define L (K/2)
