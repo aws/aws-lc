@@ -490,7 +490,6 @@ if(GCOV)
 endif()
 
 if(FIPS)
-  # In FIPS mode we use CPU Jitter as the entropy source
   add_subdirectory(third_party/jitterentropy)
 endif()
 
