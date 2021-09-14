@@ -1636,6 +1636,7 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 	if err != nil {
 		return err
 	}
+	statusChan <- statusMsg{test: test, statusType: statusShimStarted, pid: shim.cmd.Process.Pid}
 	defer shim.close()
 
 	localErr := doExchanges(test, shim, resumeCount, &transcripts)
@@ -3832,7 +3833,7 @@ func addCipherSuiteTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":UNKNOWN_CIPHER_RETURNED:",
+		expectedError: ":WRONG_CIPHER_RETURNED:",
 	})
 	testCases = append(testCases, testCase{
 		name: "ServerHelloBogusCipher-TLS13",
@@ -13277,7 +13278,7 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "ShortSessionID-TLS13",
+		name:     "Server-ShortSessionID-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
@@ -13288,13 +13289,69 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "FullSessionID-TLS13",
+		name:     "Server-FullSessionID-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
 				SendClientHelloSessionID: make([]byte, 32),
 			},
 		},
+	})
+
+	// The server should reject ClientHellos whose session IDs are too long.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Server-TooLongSessionID-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendClientHelloSessionID: make([]byte, 33),
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Server-TooLongSessionID-TLS12",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendClientHelloSessionID: make([]byte, 33),
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
+	})
+
+	// Test that the client correctly accepts or rejects short session IDs from
+	// the server. Our tests use 32 bytes by default, so the boundary condition
+	// is already covered.
+	testCases = append(testCases, testCase{
+		name: "Client-ShortSessionID",
+		config: Config{
+			MaxVersion:             VersionTLS12,
+			SessionTicketsDisabled: true,
+			Bugs: ProtocolBugs{
+				NewSessionIDLength: 1,
+			},
+		},
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		name: "Client-TooLongSessionID",
+		config: Config{
+			MaxVersion:             VersionTLS12,
+			SessionTicketsDisabled: true,
+			Bugs: ProtocolBugs{
+				NewSessionIDLength: 33,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
 	})
 
 	// Test that the client sends a fake session ID in TLS 1.3. We cover both
@@ -13827,7 +13884,7 @@ func addTLS13HandshakeTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":WRONG_VERSION_NUMBER:",
+		expectedError: ":DECODE_ERROR:",
 	})
 
 	testCases = append(testCases, testCase{
@@ -17068,6 +17125,47 @@ func addEncryptedClientHelloTests() {
 			},
 			flags: []string{
 				"-expect-server-name", "public.example",
+			},
+		})
+
+		// Test that ECH can be used with client certificates. In particular,
+		// the name override logic should not interfere with the server.
+		// Test the server can accept ECH.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ClientAuth",
+			config: Config{
+				Certificates:    []Certificate{rsaCertificate},
+				ClientECHConfig: echConfig.ECHConfig,
+			},
+			flags: []string{
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
+				"-ech-is-retry-config", "1",
+				"-expect-ech-accept",
+				"-require-any-client-certificate",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-Decline-ClientAuth",
+			config: Config{
+				Certificates:    []Certificate{rsaCertificate},
+				ClientECHConfig: echConfig.ECHConfig,
+				Bugs: ProtocolBugs{
+					ExpectECHRetryConfigs: CreateECHConfigList(echConfig1.ECHConfig.Raw),
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64FlagValue(echConfig1.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig1.Key),
+				"-ech-is-retry-config", "1",
+				"-require-any-client-certificate",
 			},
 		})
 

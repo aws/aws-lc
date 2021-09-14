@@ -62,6 +62,10 @@ function store_external_credential() {
 }
 
 function destroy_ci() {
+  if [[ "${CDK_DEPLOY_ACCOUNT}" == "620771051181" ]]; then
+    echo "destroy_ci should not be executed on team account."
+    exit 1
+  fi
   cdk destroy aws-lc-* --force
   # CDK stack destroy does not delete s3 bucket automatically.
   delete_s3_buckets
@@ -72,6 +76,10 @@ function destroy_ci() {
 }
 
 function destroy_docker_img_build_stack() {
+  if [[ "${IMG_BUILD_STATUS}" == "Failed" ]]; then
+    echo "Docker images build failed. AWS resources of building Docker images is kept for debug."
+    exit 1
+  fi
   # Destroy all temporary resources created for all docker image build.
   cdk destroy aws-lc-docker-image-build-* --force
   # CDK stack destroy does not delete s3 bucket automatically.
@@ -80,7 +88,7 @@ function destroy_docker_img_build_stack() {
   delete_external_credential
 }
 
-function create_docker_img_build_stack() {
+function create_linux_docker_img_build_stack() {
   # Clean up build stacks if exists.
   destroy_docker_img_build_stack
   # Use SecretsManager to store GitHub personal access token.
@@ -89,7 +97,17 @@ function create_docker_img_build_stack() {
   # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
   # https://forums.aws.amazon.com/thread.jspa?messageID=952368
   # Workaround: go to AWS EIP console, release unused IP.
-  cdk deploy aws-lc-docker-image-build-* --require-approval never
+  cdk deploy aws-lc-docker-image-build-linux --require-approval never
+}
+
+function create_win_docker_img_build_stack() {
+  # Clean up build stacks if exists.
+  destroy_docker_img_build_stack
+  # Deploy aws-lc ci stacks.
+  # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
+  # https://forums.aws.amazon.com/thread.jspa?messageID=952368
+  # Workaround: go to AWS EIP console, release unused IP.
+  cdk deploy aws-lc-docker-image-build-windows --require-approval never
 }
 
 function create_github_ci_stack() {
@@ -98,18 +116,20 @@ function create_github_ci_stack() {
   # Need to use aws cli to change webhook build type because CFN is not ready yet.
   aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
+  # TODO: re-enable 'aws-lc-ci-windows-x86' when CryptoAlg-826 is fixed.
+#  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
+  # TODO: re-enable 'aws-lc-ci-bm-framework' when it's ready.
+#  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
-function build_linux_img() {
+function run_linux_img_build() {
   # https://awscli.amazonaws.com/v2/documentation/api/latest/reference/codebuild/start-build-batch.html
   build_id=$(aws codebuild start-build-batch --project-name aws-lc-docker-image-build-linux | jq -r '.buildBatch.id')
   export AWS_LC_LINUX_BUILD_BATCH_ID="${build_id}"
 }
 
-function build_windows_img() {
+function run_windows_img_build() {
   # EC2 takes several minutes to be ready for running command.
   echo "Wait 3 min for EC2 ready for SSM command execution."
   sleep 180
@@ -145,12 +165,14 @@ function build_windows_img() {
 }
 
 function linux_docker_img_build_status_check() {
+  export IMG_BUILD_STATUS='Failed'
   # Every 5 min, this function checks if the linux docker image batch code build finished successfully.
   # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
   for i in {1..30}; do
     # https://docs.aws.amazon.com/cli/latest/reference/codebuild/batch-get-build-batches.html
     build_batch_status=$(aws codebuild batch-get-build-batches --ids "${AWS_LC_LINUX_BUILD_BATCH_ID}" | jq -r '.buildBatches[0].buildBatchStatus')
     if [[ ${build_batch_status} == 'SUCCEEDED' ]]; then
+      export IMG_BUILD_STATUS='Success'
       echo "Code build ${AWS_LC_LINUX_BUILD_BATCH_ID} finished successfully."
       return
     elif [[ ${build_batch_status} == 'FAILED' ]]; then
@@ -166,12 +188,14 @@ function linux_docker_img_build_status_check() {
 }
 
 function win_docker_img_build_status_check() {
+  export IMG_BUILD_STATUS='Failed'
   # Every 5 min, this function checks if the windows docker image build is finished successfully.
   # Normally, docker img build can take up to 1 hour. Here, we wait up to 30 * 5 min.
   for i in {1..30}; do
     # https://awscli.amazonaws.com/v2/documentation/api/latest/reference/ssm/list-commands.html
     command_run_status=$(aws ssm list-commands --command-id "${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID}" | jq -r '.Commands[0].Status')
     if [[ ${command_run_status} == 'Success' ]]; then
+      export IMG_BUILD_STATUS='Success'
       echo "SSM command ${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID} finished successfully."
       return
     elif [[ ${command_run_status} == 'Failed' ]]; then
@@ -194,7 +218,7 @@ function validate_github_access_token {
   fi
 }
 
-function build_docker_images() {
+function build_linux_docker_images() {
   # Always destroy docker build stacks (which include EC2 instance) on EXIT.
   trap destroy_docker_img_build_stack EXIT
 
@@ -203,25 +227,42 @@ function build_docker_images() {
   validate_github_access_token
 
   # Create/update aws-ecr repo.
-  cdk deploy aws-lc-ecr-* --require-approval never
+  cdk deploy aws-lc-ecr-linux-* --require-approval never
 
   # Create docker image build stack.
-  create_docker_img_build_stack
+  create_linux_docker_img_build_stack
 
   echo "Activating AWS CodeBuild to build Linux aarch & x86 docker images."
-  build_linux_img
-
-  echo "Executing AWS SSM commands to build Windows docker images."
-  build_windows_img
+  run_linux_img_build
 
   echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
   # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
   linux_docker_img_build_status_check
-  win_docker_img_build_status_check
+}
+
+function build_win_docker_images() {
+  echo "Windows Docker image build is disabled due to some third-party issues(CryptoAlg-826)"
+  # TODO: re-enable below code when CryptoAlg-826 is fixed.
+#  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
+#  trap destroy_docker_img_build_stack EXIT
+#
+#  # Create/update aws-ecr repo.
+#  cdk deploy aws-lc-ecr-windows-* --require-approval never
+#
+#  # Create aws windows build stack
+#  create_win_docker_img_build_stack
+#
+#  echo "Executing AWS SSM commands to build Windows docker images."
+#  run_windows_img_build
+#
+#  echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
+#  # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
+#  win_docker_img_build_status_check
 }
 
 function setup_ci() {
-  build_docker_images
+  build_linux_docker_images
+  build_win_docker_images
 
   create_github_ci_stack
 }
@@ -248,7 +289,10 @@ Options:
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
                                    'update-ci': update aws-lc ci. This only update AWS CodeBuild for GitHub CI.
                                    'destroy-ci': destroys AWS and Docker image resources used by aws-lc ci.
-                                   'build-img': builds Docker image used by aws-lc ci.
+                                   'destroy-img-stack': destroys AWS resources created during built of Docker images.
+                                   'build-linux-img': builds Linux Docker image used by aws-lc ci.
+                                                After image build, AWS resources are cleaned up.
+                                   'build-win-img': builds Windows Docker image used by aws-lc ci.
                                                 After image build, AWS resources are cleaned up.
                                    'diff': compares the specified stack with the deployed stack.
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
@@ -283,6 +327,7 @@ function export_global_variables() {
   # During CI setup, used to create secret in AWS Secrets Manager for storing external credentials.
   # After CI setup, used to delete secret from AWS Secrets Manager.
   export AWS_LC_CI_SECRET_NAME='aws-lc-ci-external-credential'
+  export IMG_BUILD_STATUS='unknown'
 }
 
 function main() {
@@ -346,8 +391,14 @@ function main() {
   destroy-ci)
     destroy_ci
     ;;
-  build-img)
-    build_docker_images
+  destroy-img-stack)
+    destroy_docker_img_build_stack
+    ;;
+  build-linux-img)
+    build_linux_docker_images
+    ;;
+  build-win-img)
+    build_win_docker_images
     ;;
   synth)
     cdk synth aws-lc-ci-*

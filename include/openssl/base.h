@@ -83,6 +83,9 @@
 extern "C" {
 #endif
 
+#if defined(BORINGSSL_FIPS)
+#define AWSLC_FIPS
+#endif
 
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
@@ -368,7 +371,6 @@ typedef struct X509_POLICY_NODE_st X509_POLICY_NODE;
 typedef struct X509_POLICY_TREE_st X509_POLICY_TREE;
 typedef struct X509_VERIFY_PARAM_st X509_VERIFY_PARAM;
 typedef struct X509_algor_st X509_ALGOR;
-typedef struct X509_crl_info_st X509_CRL_INFO;
 typedef struct X509_crl_st X509_CRL;
 typedef struct X509_extension_st X509_EXTENSION;
 typedef struct X509_info_st X509_INFO;

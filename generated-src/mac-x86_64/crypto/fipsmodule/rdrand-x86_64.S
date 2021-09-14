@@ -24,9 +24,16 @@ _CRYPTO_rdrand:
 
 	xorq	%rax,%rax
 .byte	72,15,199,242
+	testq	%rdx,%rdx
+	jz	L$err
+	cmpq	$-1,%rdx
+	je	L$err
 
 	adcq	%rax,%rax
 	movq	%rdx,0(%rdi)
+	.byte	0xf3,0xc3
+L$err:
+	xorq	%rax,%rax
 	.byte	0xf3,0xc3
 
 
@@ -46,7 +53,11 @@ _CRYPTO_rdrand_multiple8_buf:
 	movq	$8,%rdx
 L$loop:
 .byte	72,15,199,241
-	jnc	L$err
+	jnc	L$err_multiple
+	testq	%rcx,%rcx
+	jz	L$err_multiple
+	cmpq	$-1,%rcx
+	je	L$err_multiple
 	movq	%rcx,0(%rdi)
 	addq	%rdx,%rdi
 	subq	%rdx,%rsi
@@ -54,7 +65,7 @@ L$loop:
 L$out:
 	movq	$1,%rax
 	.byte	0xf3,0xc3
-L$err:
+L$err_multiple:
 	xorq	%rax,%rax
 	.byte	0xf3,0xc3
 

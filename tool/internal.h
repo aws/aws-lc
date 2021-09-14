@@ -17,6 +17,7 @@
 
 #if !defined(OPENSSL_BENCHMARK)
 #include <openssl/base.h>
+#include <openssl/span.h>
 #endif
 
 #include <string>
@@ -122,10 +123,12 @@ void PrintUsage(const argument_t *templates);
 bool GetUnsigned(unsigned *out, const std::string &arg_name, unsigned default_value, const args_map_t &args);
 
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
+bool WriteToFile(const std::string &path, bssl::Span<const uint8_t> in);
 
 bool Ciphers(const std::vector<std::string> &args);
 bool Client(const std::vector<std::string> &args);
 bool DoPKCS12(const std::vector<std::string> &args);
+bool GenerateECH(const std::vector<std::string> &args);
 bool GenerateEd25519Key(const std::vector<std::string> &args);
 bool GenerateRSAKey(const std::vector<std::string> &args);
 bool MD5Sum(const std::vector<std::string> &args);

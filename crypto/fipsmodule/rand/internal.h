@@ -40,15 +40,15 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 // system.
 void CRYPTO_sysrand(uint8_t *buf, size_t len);
 
-#if defined(OPENSSL_URANDOM)
-// CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
-// from the operating system.
-void CRYPTO_init_sysrand(void);
-
 // CRYPTO_sysrand_for_seed fills |len| bytes at |buf| with entropy from the
 // operating system. It may draw from the |GRND_RANDOM| pool on Android,
 // depending on the vendor's configuration.
 void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
+
+#if defined(OPENSSL_URANDOM)
+// CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
+// from the operating system.
+void CRYPTO_init_sysrand(void);
 
 // CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
 // operating system, or early /dev/urandom data, and returns 1, _if_ the entropy
@@ -58,10 +58,6 @@ void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
 int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len);
 #else
 OPENSSL_INLINE void CRYPTO_init_sysrand(void) {}
-
-OPENSSL_INLINE void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len) {
-  CRYPTO_sysrand(buf, len);
-}
 
 OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
   CRYPTO_sysrand(buf, len);
