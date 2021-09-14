@@ -145,12 +145,16 @@ func doTest(test invocation) error {
 	defer os.Remove(tempFile.Name())
 	defer tempFile.Close()
 
-	decompressor := bzip2.NewReader(input)
-	if _, err := io.Copy(tempFile, decompressor); err != nil {
-		return fmt.Errorf("Failed to decompress %q: %s", test.inPath, err)
+	testInputFile := test.inPath
+	if strings.HasSuffix(test.inPath, ".bz2") {
+		// Decompress the input file when it is compressed.
+		decompressor := bzip2.NewReader(input)
+		if _, err := io.Copy(tempFile, decompressor); err != nil {
+			return fmt.Errorf("Failed to decompress %q: %s", test.inPath, err)
+		}
+		testInputFile = tempFile.Name()
 	}
-
-	cmd := exec.Command(test.toolPath, "-wrapper", test.wrapperPath, "-json", tempFile.Name())
+	cmd := exec.Command(test.toolPath, "-wrapper", test.wrapperPath, "-json", testInputFile)
 	result, err := cmd.CombinedOutput()
 	if err != nil {
 		os.Stderr.Write(result)
@@ -172,14 +176,20 @@ func doTest(test invocation) error {
 	}
 	defer expected.Close()
 
-	decompressor = bzip2.NewReader(expected)
-
-	var expectedBuf bytes.Buffer
-	if _, err := io.Copy(&expectedBuf, decompressor); err != nil {
-		return fmt.Errorf("Failed to decompress %q: %s", test.expectedPath, err)
+	var expectedBytes []byte
+	if strings.HasSuffix(test.expectedPath, ".bz2") {
+		decompressor := bzip2.NewReader(expected)
+		var expectedBuf bytes.Buffer
+		if _, err := io.Copy(&expectedBuf, decompressor); err != nil {
+			return fmt.Errorf("Failed to decompress %q: %s", test.expectedPath, err)
+		}
+		expectedBytes = expectedBuf.Bytes()
+	} else {
+		// Avoid decompression if it's not compressed
+		expectedBytes, _ = ioutil.ReadFile(test.expectedPath)
 	}
 
-	if !bytes.Equal(expectedBuf.Bytes(), result) {
+	if !bytes.Equal(expectedBytes, result) {
 		if *update {
 			writeUpdate(test.expectedPath, result)
 		}
