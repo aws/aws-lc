@@ -28,6 +28,7 @@
 
         .globl  bignum_demont_p384
         .text
+        .balign 4
 
 // ---------------------------------------------------------------------------
 // Core one-step "short" Montgomery reduction macro. Takes input in

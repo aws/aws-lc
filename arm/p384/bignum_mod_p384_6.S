@@ -25,6 +25,7 @@
 
         .globl  bignum_mod_p384_6
         .text
+        .balign 4
 
 #define z x0
 #define x x1

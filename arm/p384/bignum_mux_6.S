@@ -28,6 +28,7 @@
 
         .globl  bignum_mux_6
         .text
+        .balign 4
 
 #define p x0
 #define z x1
