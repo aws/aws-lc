@@ -40,6 +40,7 @@
         .globl  bignum_frombytes_6
         .globl  bignum_tobytes_6
         .text
+        .balign 4
 
 #define z x0
 #define x x1

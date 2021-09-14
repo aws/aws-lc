@@ -26,6 +26,7 @@
 
         .globl  bignum_cmul_p384
         .text
+        .balign 4
 
 #define z x0
 #define c x1
