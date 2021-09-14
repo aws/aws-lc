@@ -54,6 +54,7 @@
 #include "../aes/internal.h"
 #include "../modes/internal.h"
 
+#if defined(AWSLC_FIPS)
 #define AESCBC_VERIFY_SERVICE_INDICATOR                                        \
   switch(key->rounds) {                                                        \
     case 9:                                                                    \
@@ -68,6 +69,10 @@
     default:                                                                   \
       break;                                                                   \
   }                                                                            \
+
+#else
+#define AESCBC_VERIFY_SERVICE_INDICATOR
+#endif
 
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,

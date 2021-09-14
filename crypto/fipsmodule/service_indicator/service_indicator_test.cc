@@ -23,6 +23,16 @@
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 
+static const uint8_t kAESKey[16] = {
+    'B','o','r','i','n','g','C','r','y','p','t','o',' ','K', 'e','y'};
+static const uint8_t kAESIV[16] = {0};
+static const uint8_t kPlaintext[64] = {
+    'B','o','r','i','n','g','C','r','y','p','t','o','M','o','d','u','l','e',
+    ' ','F','I','P','S',' ','K','A','T',' ','E','n','c','r','y','p','t','i',
+    'o','n',' ','a','n','d',' ','D','e','c','r','y','p','t','i','o','n',' ',
+    'P','l','a','i','n','t','e','x','t','!'};
+
+#if defined(AWSLC_FIPS)
 static void hex_dump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
     fprintf(stderr, "%02x", in[i]);
@@ -42,15 +52,6 @@ static int check_test(const uint8_t *expected, const uint8_t *actual,
   }
   return 1;
 }
-
-static const uint8_t kAESKey[16] = {
-    'B','o','r','i','n','g','C','r','y','p','t','o',' ','K', 'e','y'};
-static const uint8_t kAESIV[16] = {0};
-static const uint8_t kPlaintext[64] = {
-    'B','o','r','i','n','g','C','r','y','p','t','o','M','o','d','u','l','e',
-    ' ','F','I','P','S',' ','K','A','T',' ','E','n','c','r','y','p','t','i',
-    'o','n',' ','a','n','d',' ','D','e','c','r','y','p','t','i','o','n',' ',
-    'P','l','a','i','n','t','e','x','t','!'};
 
 static const uint8_t kAESCBCCiphertext[64] = {
     0x87, 0x2d, 0x98, 0xc2, 0xcc, 0x31, 0x5b, 0x41, 0xe0, 0xfa, 0x7b,
@@ -165,4 +166,33 @@ TEST(ServiceIndicatorTest, AESGCM) {
 err:
   EVP_AEAD_CTX_cleanup(&aead_ctx);
 }
+#else
+// Service indicator should not be used without FIPS turned on.
+TEST(ServiceIndicatorTest, BasicTest) {
+  // Reset and check the initial state and counter.
+  awslc_fips_service_indicator_reset_state();
+  struct fips_service_indicator_state *state = awslc_fips_service_indicator_get_state();
+  ASSERT_FALSE(state);
 
+  int counter = awslc_fips_service_indicator_get_counter();
+  ASSERT_EQ(counter, 0);
+
+  // Call a random approved service.
+  EVP_AEAD_CTX aead_ctx;
+  EVP_AEAD_CTX_zero(&aead_ctx);
+  uint8_t output[256];
+  size_t out_len;
+  EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
+                    sizeof(kAESKey), 0, nullptr);
+  EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nullptr,
+                    0, kPlaintext, sizeof(kPlaintext), nullptr, 0);
+
+  ASSERT_FALSE(awslc_fips_check_service_approved(counter, 0));
+
+  // Check state and counter after using an approved service.
+  state = awslc_fips_service_indicator_get_state();
+  ASSERT_FALSE(state);
+  counter = awslc_fips_service_indicator_get_counter();
+  ASSERT_EQ(counter, 0);
+}
+#endif // AWSLC_FIPS

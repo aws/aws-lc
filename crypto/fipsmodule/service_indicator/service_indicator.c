@@ -4,6 +4,7 @@
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
 
+#if defined(AWSLC_FIPS)
 void awslc_fips_service_indicator_init_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
@@ -73,3 +74,11 @@ int awslc_fips_check_service_approved(int prev_counter, int service_id) {
   }
   return 0;
 }
+#else
+
+int awslc_fips_service_indicator_get_counter(void) { return 0; }
+struct fips_service_indicator_state *awslc_fips_service_indicator_get_state(void) { return NULL; }
+void awslc_fips_service_indicator_reset_state(void)  { }
+int awslc_fips_check_service_approved(int prev_counter, int service_id) { return 0; }
+
+#endif // AWSLC_FIPS

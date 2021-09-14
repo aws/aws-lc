@@ -895,7 +895,7 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 
 
 // FIPS functions.
-
+#if defined(AWSLC_FIPS)
 enum fips_approved_algorithm_t {
   fips_approved_no_state        = 0,
   fips_approved_evp_aes_128_gcm = 1,
@@ -912,6 +912,10 @@ enum fips_approved_algorithm_t {
 
 void awslc_fips_service_indicator_init_state(void);
 void awslc_fips_service_indicator_update_state(int service_id);
+#else
+OPENSSL_INLINE void awslc_fips_service_indicator_init_state(void) {}
+OPENSSL_INLINE void awslc_fips_service_indicator_update_state(int service_id) {}
+#endif // AWSLC_FIPS
 
 #if defined(BORINGSSL_FIPS)
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
