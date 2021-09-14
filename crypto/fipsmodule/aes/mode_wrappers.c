@@ -54,16 +54,19 @@
 #include "../aes/internal.h"
 #include "../modes/internal.h"
 
-#define AESCBC_VERIFY_SERVICE_INDICATOR                                     \
-          switch(key->rounds) {                                             \
-            case 9:                                                         \
-            case 11:                                                        \
-            case 13:                                                        \
-              awslc_fips_service_indicator_inc_counter();                   \
-              break;                                                        \
-            default:                                                        \
-              break;                                                        \
-          }                                                                 \
+#define AESCBC_VERIFY_SERVICE_INDICATOR                                        \
+  switch(key->rounds) {                                                        \
+    case 9:                                                                    \
+      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_128_cbc);\
+      break;                                                                   \
+    case 11:                                                                   \
+      break;                                                                   \
+    case 13:                                                                   \
+      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_256_cbc);\
+      break;                                                                   \
+    default:                                                                   \
+      break;                                                                   \
+  }                                                                            \
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],

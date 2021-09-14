@@ -24,7 +24,6 @@
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
-#include "internal.h"
 
 static void hex_dump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
@@ -93,7 +92,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
     goto err;
   }
 
-  ASSERT_TRUE(awslc_fips_check_service_approved(counter));
+  ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_cbc));
   counter = awslc_fips_service_indicator_get_counter();
 
   // AES-CBC Decryption KAT
@@ -109,7 +108,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
     goto err;
   }
 
-  ASSERT_TRUE(awslc_fips_check_service_approved(counter));
+  ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_cbc));
   counter = awslc_fips_service_indicator_get_counter();
   ASSERT_EQ(counter, 2);
 
@@ -127,7 +126,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
     goto err;
   }
 
-  ASSERT_TRUE(awslc_fips_check_service_approved(counter));
+  ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_gcm));
   counter = awslc_fips_service_indicator_get_counter();
   ASSERT_EQ(counter, 3);
 

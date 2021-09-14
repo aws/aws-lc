@@ -114,15 +114,17 @@ static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
 
 // Only internal IVs are approved. If the nonce length has been set to 0,
 // that means we're using internal IV mode.
-#define AESGCM_VERIFY_SERVICE_INDICATOR                                     \
-          switch (EVP_AEAD_key_length(ctx->aead)) {                         \
-              case 16:                                                      \
-              case 32:                                                      \
-                  awslc_fips_service_indicator_inc_counter();               \
-              break;                                                        \
-                  default:                                                  \
-              break;                                                        \
-          }                                                                 \
+#define AESGCM_VERIFY_SERVICE_INDICATOR                                       \
+switch (EVP_AEAD_key_length(ctx->aead)) {                                     \
+  case 16:                                                                    \
+    awslc_fips_service_indicator_update_state(fips_approved_evp_aes_128_gcm); \
+    break;                                                                    \
+  case 32:                                                                    \
+    awslc_fips_service_indicator_update_state(fips_approved_evp_aes_256_gcm); \
+    break;                                                                    \
+  default:                                                                    \
+    break;                                                                    \
+}                                                                             \
 
 typedef struct {
   union {
