@@ -40,6 +40,6 @@ default: test;
 
 go: test; ./test 100 | grep -v OK
 
-test: test.c ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -o test test.c -L../$(ARCH) -ls2nbignum
+test: test.c ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -Wall -std=gnu99 -o test test.c -L../$(ARCH) -ls2nbignum
 
 clean: ; rm -f test

@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <time.h>
+#include <alloca.h>
 
 // Prototypes for the assembler implementations
 
@@ -240,75 +241,75 @@ void random_sparse_bignum(uint64_t k,uint64_t *a)
 // ****************************************************************************
 
 uint64_t p_256[4] =
- { 0xfffffffffffffffful,
-   0x00000000fffffffful,
-   0x0000000000000000ul,
-   0xffffffff00000001ul
+ { UINT64_C(0xffffffffffffffff),
+   UINT64_C(0x00000000ffffffff),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0xffffffff00000001)
  };
 
 uint64_t n_256[4] =
- { 0xf3b9cac2fc632551ul,
-   0xbce6faada7179e84ul,
-   0xfffffffffffffffful,
-   0xffffffff00000000ul
+ { UINT64_C(0xf3b9cac2fc632551),
+   UINT64_C(0xbce6faada7179e84),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffff00000000)
  };
 
 uint64_t i_256[4] =
- { 0x0000000000000001ul,
-   0x0000000100000000ul,
-   0x0000000000000000ul,
-   0xffffffff00000002ul
+ { UINT64_C(0x0000000000000001),
+   UINT64_C(0x0000000100000000),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0xffffffff00000002)
  };
 
 uint64_t p_384[6] =
- { 0x00000000fffffffful,
-   0xffffffff00000000ul,
-   0xfffffffffffffffeul,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful
+ { UINT64_C(0x00000000ffffffff),
+   UINT64_C(0xffffffff00000000),
+   UINT64_C(0xfffffffffffffffe),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff)
  };
 
 uint64_t n_384[6] =
- { 0xecec196accc52973ul,
-   0x581a0db248b0a77aul,
-   0xc7634d81f4372ddful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful
+ { UINT64_C(0xecec196accc52973),
+   UINT64_C(0x581a0db248b0a77a),
+   UINT64_C(0xc7634d81f4372ddf),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff)
  };
 
 uint64_t i_384[6] =
- { 0x0000000100000001ul,
-   0x0000000000000001ul,
-   0xfffffffbfffffffeul,
-   0xfffffffcfffffffaul,
-   0x0000000c00000002ul,
-   0x0000001400000014ul
+ { UINT64_C(0x0000000100000001),
+   UINT64_C(0x0000000000000001),
+   UINT64_C(0xfffffffbfffffffe),
+   UINT64_C(0xfffffffcfffffffa),
+   UINT64_C(0x0000000c00000002),
+   UINT64_C(0x0000001400000014)
  };
 
 uint64_t p_521[9] =
- { 0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0xfffffffffffffffful,
-   0x00000000000001fful
+ { UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0x00000000000001ff)
  };
 
 uint64_t i_521[9] =
- { 0x0000000000000001ul,
-   0x0000000000000000ul,
-   0x0000000000000000ul,
-   0x0000000000000000ul,
-   0x0000000000000000ul,
-   0x0000000000000000ul,
-   0x0000000000000000ul,
-   0x0000000000000000ul,
-   0x0000000000000200ul
+ { UINT64_C(0x0000000000000001),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0x0000000000000000),
+   UINT64_C(0x0000000000000200)
  };
 
 // ****************************************************************************
@@ -318,7 +319,7 @@ uint64_t i_521[9] =
 // Some functions to do carry chains and high multiplies in C
 
 #define hi32(x) ((x) >> 32)
-#define lo32(x) ((x) & 0xFFFFFFFFull)
+#define lo32(x) ((x) & UINT64_C(0xFFFFFFFF))
 
 uint64_t carryout2(uint64_t x,uint64_t y)
 { uint64_t z = x + y;
@@ -363,7 +364,7 @@ uint64_t digit(uint64_t k,uint64_t *a,uint64_t i)
 // Similarly, get fields indexed by bits
 
 uint64_t bitword(uint64_t k,uint64_t *x,uint64_t b)
-{ uint64_t bhi = b >> 6, blo = b & 63ull;
+{ uint64_t bhi = b >> 6, blo = b & UINT64_C(63);
   if (blo == 0) return digit(k,x,bhi);
   return (digit(k,x,bhi)>>blo) + (digit(k,x,bhi+1) << (64 - blo));
 }
@@ -371,7 +372,7 @@ uint64_t bitword(uint64_t k,uint64_t *x,uint64_t b)
 uint64_t bitfield(uint64_t k,uint64_t *x,uint64_t b,uint64_t l)
 { uint64_t w = bitword(k,x,b);
   if (l >= 64) return w;
-  else return bitword(k,x,b) & ((1ull << l) - 1ull);
+  else return bitword(k,x,b) & ((UINT64_C(1) << l) - UINT64_C(1));
 }
 
 // Other trivia on 64-bit unsigned words
@@ -387,12 +388,12 @@ uint64_t min(uint64_t x,uint64_t y)
 #define swap(x,y) { uint64_t tmp = x; x = y; y = tmp; }
 
 uint64_t reference_wordbytereverse(uint64_t n)
-{ uint64_t n2 = ((n & 0xFF00FF00FF00FF00ull) >> 8) |
-                ((n & 0x00FF00FF00FF00FFull) << 8);
-  uint64_t n4 = ((n2 & 0xFFFF0000FFFF0000ull) >> 16) |
-                ((n2 & 0x0000FFFF0000FFFFull) << 16);
-  uint64_t n8 = ((n4 & 0xFFFFFFFF00000000ull) >> 32) |
-                ((n4 & 0x00000000FFFFFFFFull) << 32);
+{ uint64_t n2 = ((n & UINT64_C(0xFF00FF00FF00FF00)) >> 8) |
+                ((n & UINT64_C(0x00FF00FF00FF00FF)) << 8);
+  uint64_t n4 = ((n2 & UINT64_C(0xFFFF0000FFFF0000)) >> 16) |
+                ((n2 & UINT64_C(0x0000FFFF0000FFFF)) << 16);
+  uint64_t n8 = ((n4 & UINT64_C(0xFFFFFFFF00000000)) >> 32) |
+                ((n4 & UINT64_C(0x00000000FFFFFFFF)) << 32);
   return n8;
 }
 
@@ -400,7 +401,7 @@ uint64_t reference_wordclz(uint64_t n)
 { uint64_t m, i;
   m = n;
   for (i = 0; i < 64; ++i)
-   { if (m & 0x8000000000000000ull) return i;
+   { if (m & UINT64_C(0x8000000000000000)) return i;
      m = m << 1;
    }
   return 64;
@@ -410,7 +411,7 @@ uint64_t reference_wordctz(uint64_t n)
 { uint64_t m, i;
   m = n;
   for (i = 0; i < 64; ++i)
-   { if (m & 0x1ull) return i;
+   { if (m & UINT64_C(0x1)) return i;
      m = m >> 1;
    }
   return 64;
@@ -432,7 +433,7 @@ void reference_of_word(uint64_t k,uint64_t *z,uint64_t n)
 void reference_pow2(uint64_t k,uint64_t *z,uint64_t n)
 { uint64_t i;
   for (i = 0; i < k; ++i) z[i] = 0;
-  if (n < 64*k) z[n>>6] = 1ull<<(n&63ull);
+  if (n < 64*k) z[n>>6] = UINT64_C(1)<<(n&UINT64_C(63));
 }
 
 uint64_t reference_iszero(uint64_t k,uint64_t *x)
@@ -530,14 +531,14 @@ uint64_t reference_optsub
 uint64_t reference_ctz(uint64_t k,uint64_t *x)
 { uint64_t i;
   for (i = 0; i < 64 * k; ++i)
-    if (x[i>>6] & (1ull<<(i&63))) return i;
+    if (x[i>>6] & (UINT64_C(1)<<(i&63))) return i;
   return 64*k;
 }
 
 uint64_t reference_clz(uint64_t k,uint64_t *x)
 { uint64_t i;
   for (i = 0; i < 64 * k; ++i)
-    if (x[(64*k-i-1)>>6] & (1ull<<((64*k-i-1)&63))) return i;
+    if (x[(64*k-i-1)>>6] & (UINT64_C(1)<<((64*k-i-1)&63))) return i;
   return 64*k;
 }
 
@@ -547,7 +548,7 @@ uint64_t reference_shr_samelen(uint64_t k,uint64_t *z,uint64_t *x,uint64_t cin)
   c = (cin != 0);
 
   for (i = 1; i <= k; ++i)
-   { t = x[k - i] & 1ull;
+   { t = x[k - i] & UINT64_C(1);
      z[k - i] = (x[k - i] >> 1) + (c << 63);
      c = t;
    }
@@ -669,7 +670,7 @@ void reference_gcd(uint64_t k,uint64_t *z,uint64_t *x,uint64_t *y)
 }
 
 uint64_t reference_odd(uint64_t k,uint64_t *x)
-{ return (k != 0) && (x[0] & 1ull);
+{ return (k != 0) && (x[0] & UINT64_C(1));
 }
 
 uint64_t reference_even(uint64_t k,uint64_t *x)
@@ -798,14 +799,14 @@ int test_bignum_add(void)
      c2 = reference_adc(k2,b3,k0,b0,k1,b1,0);
      c = reference_compare(k2,b2,k2,b3);
      if ((c != 0) || (c1 != c2))
-      { printf("### Disparity: [sizes %4lu := %4lu + %4lu] "
-               "...0x%016lx + ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64" + %4"PRIu64"] "
+               "...0x%016"PRIx64" + ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k0,k1,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4lu := %4lu + %4lu]\n",k2,k0,k1);
-        else printf("OK: [sizes %4lu := %4lu + %4lu] ...0x%016lx + ...0x%016lx = ...0x%016lx\n",
+      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64" + %4"PRIu64"]\n",k2,k0,k1);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64" + %4"PRIu64"] ...0x%016"PRIx64" + ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k0,k1,b0[0],b1[0],b2[0]);
       }
    }
@@ -831,17 +832,17 @@ int test_bignum_add_p256(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" + ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],b1[0],p_256[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" + ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],b1[0],p_256[0],b2[0]);
       }
    }
@@ -867,17 +868,17 @@ int test_bignum_add_p384(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" + ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],b1[0],p_384[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" + ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],b1[0],p_384[0],b2[0]);
       }
    }
@@ -903,17 +904,17 @@ int test_bignum_add_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" + ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],b1[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx + ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" + ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],b1[0],p_521[0],b2[0]);
       }
    }
@@ -935,14 +936,14 @@ int test_bignum_amontifier(void)
 
      c = reference_compare(k,b2,k,b3);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-           "bignum_amontifier(...0x%016lx) = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+           "bignum_amontifier(...0x%016"PRIx64") = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
             k,b0[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_amontifier(...0x%016lx) =..0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_amontifier(...0x%016"PRIx64") =..0x%016"PRIx64"\n",
                     k,b0[0],b1[0]);
       }
    }
@@ -970,14 +971,14 @@ int test_bignum_amontmul(void)
 
      c = reference_compare(k,b3,k,b5);
      if (c != 0)
-      { printf("### Disparity (Montgomery mul): [size %4lu]\n",k);
-        printf("### Output is ...0x%016lx\n",b5[0]);
-        printf("### Reference ...0x%016lx\n",b3[0]);
+      { printf("### Disparity (Montgomery mul): [size %4"PRIu64"]\n",k);
+        printf("### Output is ...0x%016"PRIx64"\n",b5[0]);
+        printf("### Reference ...0x%016"PRIx64"\n",b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_amontmul(...0x%016lx,...0x%016lx) wrt ...0x%016lx = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_amontmul(...0x%016"PRIx64",...0x%016"PRIx64") wrt ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k,b1[0],b2[0],b0[0],b6[0]);
       }
    }
@@ -1010,14 +1011,14 @@ int test_bignum_amontredc(void)
      reference_mod(r,b7,b3,b5);            // b7 = (2^{64p} * z) mod m
      c = ((k != 0) && reference_compare(r,b6,r,b7));
      if (c != 0)
-      { printf("### Disparity: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                n,k,b1[0],64*p,b0[0],b4[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                n,k,b1[0],64*p,b0[0],b4[0]);
       }
    }
@@ -1045,14 +1046,14 @@ int test_bignum_amontsqr(void)
 
      c = reference_compare(k,b3,k,b5);
      if (c != 0)
-      { printf("### Disparity (Montgomery sqr): [size %4lu]\n",k);
-        printf("### Output is ...0x%016lx\n",b5[0]);
-        printf("### Reference ...0x%016lx\n",b3[0]);
+      { printf("### Disparity (Montgomery sqr): [size %4"PRIu64"]\n",k);
+        printf("### Output is ...0x%016"PRIx64"\n",b5[0]);
+        printf("### Reference ...0x%016"PRIx64"\n",b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_amontsqr(...0x%016lx) wrt ...0x%016lx = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_amontsqr(...0x%016"PRIx64") wrt ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k,b1[0],b0[0],b6[0]);
       }
    }
@@ -1070,16 +1071,16 @@ int test_bignum_bigendian_4(void)
      bignum_bigendian_4(b4,b0);
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_bigendian_4(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_bigendian_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] bignum_bigendian_4(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] bignum_bigendian_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1096,16 +1097,16 @@ int test_bignum_bigendian_6(void)
      bignum_bigendian_6(b4,b0);
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_bigendian_6(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_bigendian_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] bignum_bigendian_6(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] bignum_bigendian_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1120,20 +1121,20 @@ int test_bignum_bitfield(void)
    { k = (unsigned) rand() % MAXSIZE;
      random_bignum(k,b0);
      n = random64();
-     l = random64() % 68ull;
+     l = random64() % UINT64_C(68);
      if (rand() & 3) n %= (64 * k + 1);
      if ((k > 0) && (rand() & 3) == 0) n = 64 * (k - 1) + (rand() % 130);
      c1 = bignum_bitfield(k,b0,n,l);
      c2 = bitfield(k,b0,n,l);
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_bitfield(...0x%016lx,%ld,%ld) = 0x%016lx not 0x%016lx\n",
+          "### Disparity: [size %4"PRIu64"] bignum_bitfield(...0x%016"PRIx64",%"PRIu64",%"PRIu64") = 0x%016"PRIx64" not 0x%016"PRIx64"\n",
           k,b0[0],n,l,c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_bitfield(...0x%016lx,%ld,%ld) = 0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_bitfield(...0x%016"PRIx64",%"PRIu64",%"PRIu64") = 0x%016"PRIx64"\n",
                     k,b0[0],n,l,c1);
       }
    }
@@ -1152,13 +1153,13 @@ int test_bignum_bitsize(void)
      c2 = 64 * k - reference_clz(k,b0);
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_bitsize(0x%016lx...) = %ld not %ld\n",
+          "### Disparity: [size %4"PRIu64"] bignum_bitsize(0x%016"PRIx64"...) = %"PRIu64" not %"PRIu64"\n",
           k,b0[k-1],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_bitsize(0x%016lx...) = %ld\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_bitsize(0x%016"PRIx64"...) = %"PRIu64"\n",
                     k,b0[k-1],c1);
       }
    }
@@ -1177,13 +1178,13 @@ int test_bignum_cld(void)
      c2 = reference_clz(k,b0) >> 6;
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_cld(0x%016lx...) = %ld not %ld\n",
+          "### Disparity: [size %4"PRIu64"] bignum_cld(0x%016"PRIx64"...) = %"PRIu64" not %"PRIu64"\n",
           k,b0[k-1],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_cld(0x%016lx...) = %ld\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_cld(0x%016"PRIx64"...) = %"PRIu64"\n",
                     k,b0[k-1],c1);
       }
    }
@@ -1202,13 +1203,13 @@ int test_bignum_clz(void)
      c2 = reference_clz(k,b0);
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_clz(0x%016lx...) = %ld not %ld\n",
+          "### Disparity: [size %4"PRIu64"] bignum_clz(0x%016"PRIx64"...) = %"PRIu64" not %"PRIu64"\n",
           k,b0[k-1],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_clz(0x%016lx...) = %ld\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_clz(0x%016"PRIx64"...) = %"PRIu64"\n",
                     k,b0[k-1],c1);
       }
    }
@@ -1231,14 +1232,14 @@ int test_bignum_cmadd(void)
      reference_cmadd(k2,b3,a,k1,b1);
      c = reference_compare(k2,b2,k2,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu := 1 * %4lu] "
-               "0x%016lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := 1 * %4"PRIu64"] "
+               "0x%016"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k1,a,b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k2 == 0) printf("OK: [sizes %4lu := 1 * %4lu]\n",k2,k1);
-        else printf("OK: [sizes %4lu := 1 * %4lu] 0x%016lx * ...0x%016lx = ...0x%016lx\n",
+      { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"]\n",k2,k1);
+        else printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"] 0x%016"PRIx64" * ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k1,a,b1[0],b2[0]);
       }
    }
@@ -1261,14 +1262,14 @@ int test_bignum_cmul(void)
      reference_cmul(k2,b3,a,k1,b1);
      c = reference_compare(k2,b2,k2,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu := 1 * %4lu] "
-               "0x%016lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := 1 * %4"PRIu64"] "
+               "0x%016"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k1,a,b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k2 == 0) printf("OK: [sizes %4lu := 1 * %4lu]\n",k2,k1);
-        else printf("OK: [sizes %4lu := 1 * %4lu] 0x%016lx * ...0x%016lx = ...0x%016lx\n",
+      { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"]\n",k2,k1);
+        else printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"] 0x%016"PRIx64" * ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k1,a,b1[0],b2[0]);
       }
    }
@@ -1292,17 +1293,17 @@ int test_bignum_cmul_p256(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx *  ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64" *  ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,m,b0[0],p_256[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "0x%016lx * ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,m,b0[0],p_256[0],b2[0]);
       }
    }
@@ -1326,17 +1327,17 @@ int test_bignum_cmul_p384(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx *  ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64" *  ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,m,b0[0],p_384[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "0x%016lx * ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,m,b0[0],p_384[0],b2[0]);
       }
    }
@@ -1360,17 +1361,17 @@ int test_bignum_cmul_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx *  ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64" *  ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,m,b0[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "0x%016lx * ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,m,b0[0],p_521[0],b2[0]);
       }
    }
@@ -1402,16 +1403,16 @@ int test_bignum_coprime(void)
      c1 = bignum_coprime(k0,b0,k1,b1,b7);
      c2 = reference_coprime(kmax,b4,b5);
      if (c1 != c2)
-      { printf("### Disparity: [sizes %4lu, %4lu] "
-               "coprime(...0x%016lx, ...0x%016lx) = %4lu not %4lu\n",
+      { printf("### Disparity: [sizes %4"PRIu64", %4"PRIu64"] "
+               "coprime(...0x%016"PRIx64", ...0x%016"PRIx64") = %4"PRIu64" not %4"PRIu64"\n",
                k0,k1,b0[0],b1[0],c1,c2);
         return 1;
 
       }
      else if (VERBOSE)
-      { if (kmax == 0) printf("OK: [sizes %4lu, %4lu]\n",k0, k1);
+      { if (kmax == 0) printf("OK: [sizes %4"PRIu64", %4"PRIu64"]\n",k0, k1);
         else printf
-         ("OK: [size %4lu, %4lu] coprime(...0x%016lx , ...0x%016lx) = %4lu\n",
+         ("OK: [size %4"PRIu64", %4"PRIu64"] coprime(...0x%016"PRIx64" , ...0x%016"PRIx64") = %4"PRIu64"\n",
             k0,k1,b0[0],b1[0],c1);
       }
    }
@@ -1433,19 +1434,19 @@ int test_bignum_copy(void)
      c = (k2 <= k1) ? reference_compare(k1,b0,k2,b1)
                     : reference_compare(k1,b0,k1,b1);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu := %4lu] "
-               "....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64"] "
+               "....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k1,k2,b0[0],b1[0]);
         return 1;
       }
      else if (b0[k1] != d)
-      { printf("### Disparity: [sizes %4lu := %4lu]: writes off end\n",k1,k2);
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64"]: writes off end\n",k1,k2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4lu := %4lu]\n",k1,k2);
-        else printf("OK: [sizes %4lu := %4lu] "
-                    "....0x%016lx = ...0x%016lx\n",
+      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64"]\n",k1,k2);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64"] "
+                    "....0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                k1,k2,b0[0],b1[0]);
       }
    }
@@ -1464,13 +1465,13 @@ int test_bignum_ctd(void)
      c2 = reference_ctz(k,b0) >> 6;
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_ctd(...0x%016lx) = %ld not %ld\n",
+          "### Disparity: [size %4"PRIu64"] bignum_ctd(...0x%016"PRIx64") = %"PRIu64" not %"PRIu64"\n",
           k,b0[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_ctd(...0x%016lx) = %ld\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_ctd(...0x%016"PRIx64") = %"PRIu64"\n",
                     k,b0[0],c1);
       }
    }
@@ -1489,13 +1490,13 @@ int test_bignum_ctz(void)
      c2 = reference_ctz(k,b0);
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_ctz(...0x%016lx) = %ld not %ld\n",
+          "### Disparity: [size %4"PRIu64"] bignum_ctz(...0x%016"PRIx64") = %"PRIu64" not %"PRIu64"\n",
           k,b0[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_ctz(...0x%016lx) = %ld\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_ctz(...0x%016"PRIx64") = %"PRIu64"\n",
                     k,b0[0],c1);
       }
    }
@@ -1511,22 +1512,22 @@ int test_bignum_deamont_p256(void)
   for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
      bignum_deamont_p256(b4,b0);
-     reference_of_word(4,b1,1ull);
+     reference_of_word(4,b1,UINT64_C(1));
      reference_dmontmul(4,b3,b0,b1,p_256,i_256,b5);
 
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-256 * ...0x%016lx mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-256 * ...0x%016lx mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1541,22 +1542,22 @@ int test_bignum_deamont_p384(void)
   for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
      bignum_deamont_p384(b4,b0);
-     reference_of_word(6,b1,1ull);
+     reference_of_word(6,b1,UINT64_C(1));
      reference_dmontmul(6,b3,b0,b1,p_384,i_384,b5);
 
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-384 * ...0x%016lx mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-384 * ...0x%016lx mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1571,22 +1572,22 @@ int test_bignum_deamont_p521(void)
   for (t = 0; t < tests; ++t)
    { random_bignum(9,b0);
      bignum_deamont_p521(b4,b0);
-     reference_of_word(9,b1,1ull);
+     reference_of_word(9,b1,UINT64_C(1));
      reference_dmontmul(9,b3,b0,b1,p_521,i_521,b5);
 
      c = reference_compare(9,b3,9,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-576 * ...0x%016lx mod p_521 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               9ul,b0[0],b4[8],b4[0],b3[8],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-576 * ...0x%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[0],b4[8],b4[0],b3[8],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-576 * ...0x%016lx mod p_521 = "
-               "0x%016lx...%016lx\n",
-               9ul,b0[0],b4[8],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-576 * ...0x%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[0],b4[8],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1606,20 +1607,20 @@ int test_bignum_demont(void)
      reference_negmodinv(k,b4,b0);    // b4 = m' = negmodinv(m)
      bignum_demont(k,b5,b1,b0);        // b5 = output of function
      reference_copy(k,b7,k,b1);
-     reference_of_word(k,b2,1ull);
+     reference_of_word(k,b2,UINT64_C(1));
 
      reference_dmontmul(k,b3,b1,b2,b0,b4,b8);   // b3 = "reference" Montgomery
 
      c = reference_compare(k,b3,k,b5);
      if (c != 0)
-      { printf("### Disparity (Montgomery redc): [size %4lu]\n",k);
-        printf("### Output is ...0x%016lx\n",b5[0]);
-        printf("### Reference ...0x%016lx\n",b3[0]);
+      { printf("### Disparity (Montgomery redc): [size %4"PRIu64"]\n",k);
+        printf("### Output is ...0x%016"PRIx64"\n",b5[0]);
+        printf("### Reference ...0x%016"PRIx64"\n",b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_demont(...0x%016lx) wrt ...0x%016lx = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_demont(...0x%016"PRIx64") wrt ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k,b1[0],b0[0],b5[0]);
       }
    }
@@ -1636,22 +1637,22 @@ int test_bignum_demont_p256(void)
    { random_bignum(4,b2);
      reference_mod(4,b0,b2,p_256);
      bignum_demont_p256(b4,b0);
-     reference_of_word(4,b1,1ull);
+     reference_of_word(4,b1,UINT64_C(1));
      reference_dmontmul(4,b3,b0,b1,p_256,i_256,b5);
 
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-256 * ...0x%016lx mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-256 * ...0x%016lx mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1667,22 +1668,22 @@ int test_bignum_demont_p384(void)
    { random_bignum(6,b2);
      reference_mod(6,b0,b2,p_384);
      bignum_demont_p384(b4,b0);
-     reference_of_word(6,b1,1ull);
+     reference_of_word(6,b1,UINT64_C(1));
      reference_dmontmul(6,b3,b0,b1,p_384,i_384,b5);
 
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-384 * ...0x%016lx mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-384 * ...0x%016lx mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1698,22 +1699,22 @@ int test_bignum_demont_p521(void)
    { random_bignum(9,b2);
      reference_mod(9,b0,b2,p_521);
      bignum_demont_p521(b4,b0);
-     reference_of_word(9,b1,1ull);
+     reference_of_word(9,b1,UINT64_C(1));
      reference_dmontmul(9,b3,b0,b1,p_521,i_521,b5);
 
      c = reference_compare(9,b3,9,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-576 * ...0x%016lx mod p_521 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b4[8],b4[0],b3[8],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-576 * ...0x%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[8],b4[0],b3[8],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-576 * ...0x%016lx mod p_521 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b4[8],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-576 * ...0x%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[8],b4[0]);
       }
    }
   printf("All OK\n");
@@ -1733,13 +1734,13 @@ int test_bignum_digit(void)
      c2 = digit(k,b0,n);
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_digit(...0x%016lx,%ld) = 0x%016lx not 0x%016lx\n",
+          "### Disparity: [size %4"PRIu64"] bignum_digit(...0x%016"PRIx64",%"PRIu64") = 0x%016"PRIx64" not 0x%016"PRIx64"\n",
           k,b0[0],n,c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_digit(...0x%016lx,%ld) = 0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_digit(...0x%016"PRIx64",%"PRIu64") = 0x%016"PRIx64"\n",
                     k,b0[0],n,c1);
       }
    }
@@ -1759,13 +1760,13 @@ int test_bignum_digitsize(void)
      c2 = ((64 * k + 63) - reference_clz(k,b0)) / 64;
      if (c1 != c2)
       { printf(
-          "### Disparity: [size %4lu] bignum_digitsize(0x%016lx...) = %ld not %ld\n",
+          "### Disparity: [size %4"PRIu64"] bignum_digitsize(0x%016"PRIx64"...) = %"PRIu64" not %"PRIu64"\n",
           k,b0[k-1],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_digitsize(0x%016lx...) = %ld\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_digitsize(0x%016"PRIx64"...) = %"PRIu64"\n",
                     k,b0[k-1],c1);
       }
    }
@@ -1790,17 +1791,17 @@ int test_bignum_double_p256(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * 2 mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_256[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * 2 mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p_256[0],b2[0]);
       }
    }
@@ -1825,17 +1826,17 @@ int test_bignum_double_p384(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * 2 mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_384[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * 2 mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p_384[0],b2[0]);
       }
    }
@@ -1860,17 +1861,17 @@ int test_bignum_double_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * 2 mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * 2 mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p_521[0],b2[0]);
       }
    }
@@ -1902,14 +1903,14 @@ int test_bignum_emontredc(void)
           reference_iszero(k,b1));
 
      if (!c)
-      { printf("### Disparity reducing modulo: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("### Disparity reducing modulo: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                2*k,k,b2[0],64*k,b0[0],b4[k]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                2*k,k,b2[0],64*k,b0[0],b4[0]);
       }
    }
@@ -1943,14 +1944,14 @@ int test_bignum_emontredc_8n(void)
           reference_iszero(k,b1));
 
      if (!c)
-      { printf("### Disparity reducing modulo: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("### Disparity reducing modulo: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                2*k,k,b2[0],64*k,b0[0],b4[k]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                2*k,k,b2[0],64*k,b0[0],b4[0]);
       }
    }
@@ -1977,13 +1978,13 @@ int test_bignum_eq(void)
      c1 = bignum_eq(k1,b0,k2,b1);
      c2 = (reference_compare(k1,b0,k2,b1) == 0);
      if (c1 != c2)
-      { printf("### Disparity: [sizes %4lu == %4lu] ...0x%016lx == ...0x%016lx <=> %lx not %lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" == %4"PRIu64"] ...0x%016"PRIx64" == ...0x%016"PRIx64" <=> %"PRIx64" not %"PRIx64"\n",
                k1,k2,b0[0],b1[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4lu == %4lu ]\n",k1,k2);
-        else printf("OK: [sizes %4lu == %4lu] ...0x%016lx == ...0x%016lx <=> %lx\n",
+      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" == %4"PRIu64" ]\n",k1,k2);
+        else printf("OK: [sizes %4"PRIu64" == %4"PRIu64"] ...0x%016"PRIx64" == ...0x%016"PRIx64" <=> %"PRIx64"\n",
                     k1,k2,b0[0],b1[0],c1);
       }
    }
@@ -2001,15 +2002,15 @@ int test_bignum_even(void)
      c1 = bignum_even(k,b0);
      c2 = !((k != 0) && (b0[0] & 1));
      if (c1 != c2)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_even(...0x%016lx) = %lx not %lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_even(...0x%016"PRIx64") = %"PRIx64" not %"PRIx64"\n",
                k,b0[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK:[size %4lu] "
-               "bignum_even(...0x%016lx) = %lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK:[size %4"PRIu64"] "
+               "bignum_even(...0x%016"PRIx64") = %"PRIx64"\n",
                k,b0[0],c1);
       }
    }
@@ -2027,16 +2028,16 @@ int test_bignum_frombytes_4(void)
      bignum_frombytes_4(b4,(uint8_t *)b0);
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_frombytes_4(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_frombytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] bignum_frombytes_4(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] bignum_frombytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2053,16 +2054,16 @@ int test_bignum_frombytes_6(void)
      bignum_frombytes_6(b4,(uint8_t *)b0);
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_frombytes_6(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_frombytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] bignum_frombytes_6(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] bignum_frombytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2087,13 +2088,13 @@ int test_bignum_ge(void)
      c1 = bignum_ge(k1,b0,k2,b1);
      c2 = (reference_compare(k1,b0,k2,b1) >= 0);
      if (c1 != c2)
-      { printf("### Disparity: [sizes %4lu >= %4lu] ...0x%016lx >= ...0x%016lx <=> %lx not %lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" >= %4"PRIu64"] ...0x%016"PRIx64" >= ...0x%016"PRIx64" <=> %"PRIx64" not %"PRIx64"\n",
                k1,k2,b0[0],b1[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4lu >= %4lu ]\n",k1,k2);
-        else printf("OK: [sizes %4lu >= %4lu] ...0x%016lx >= ...0x%016lx <=> %lx\n",
+      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" >= %4"PRIu64" ]\n",k1,k2);
+        else printf("OK: [sizes %4"PRIu64" >= %4"PRIu64"] ...0x%016"PRIx64" >= ...0x%016"PRIx64" <=> %"PRIx64"\n",
                     k1,k2,b0[0],b1[0],c1);
       }
    }
@@ -2119,13 +2120,13 @@ int test_bignum_gt(void)
      c1 = bignum_gt(k1,b0,k2,b1);
      c2 = (reference_compare(k1,b0,k2,b1) > 0);
      if (c1 != c2)
-      { printf("### Disparity: [sizes %4lu > %4lu] ...0x%016lx > ...0x%016lx <=> %lx not %lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" > %4"PRIu64"] ...0x%016"PRIx64" > ...0x%016"PRIx64" <=> %"PRIx64" not %"PRIx64"\n",
                k1,k2,b0[0],b1[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4lu > %4lu ]\n",k1,k2);
-        else printf("OK: [sizes %4lu > %4lu] ...0x%016lx > ...0x%016lx <=> %lx\n",
+      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" > %4"PRIu64" ]\n",k1,k2);
+        else printf("OK: [sizes %4"PRIu64" > %4"PRIu64"] ...0x%016"PRIx64" > ...0x%016"PRIx64" <=> %"PRIx64"\n",
                     k1,k2,b0[0],b1[0],c1);
       }
    }
@@ -2150,17 +2151,17 @@ int test_bignum_half_p256(void)
 
      c = reference_compare(k,b3,k,b0);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_256[0],b3[0],b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,b0[0],p_256[0],b3[0]);
       }
    }
@@ -2184,17 +2185,17 @@ int test_bignum_half_p384(void)
 
      c = reference_compare(k,b3,k,b0);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_384[0],b3[0],b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,b0[0],p_384[0],b3[0]);
       }
    }
@@ -2218,17 +2219,17 @@ int test_bignum_half_p521(void)
 
      c = reference_compare(k,b3,k,b0);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b3[0],b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "2 * (...0x%016lx / 2) mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b3[0]);
       }
    }
@@ -2246,13 +2247,13 @@ int test_bignum_iszero(void)
      c1 = bignum_iszero(k,b0);
      c2 = reference_iszero(k,b0);
      if (c1 != c2)
-      { printf("### Disparity: [size %4lu] ...0x%016lx = 0\n",
+      { printf("### Disparity: [size %4"PRIu64"] ...0x%016"PRIx64" = 0\n",
                k,b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] ...0x%016lx = 0 <=> %lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] ...0x%016"PRIx64" = 0 <=> %"PRIx64"\n",
                     k,b0[0],c1);
       }
    }
@@ -2275,15 +2276,15 @@ int test_bignum_kmul_specific
      reference_mul(p,b3,m,b0,n,b1);
      c = reference_compare(p,b2,p,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu x %4lu -> %4lu] "
-               "...0x%016lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+               "...0x%016"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                m,n,p,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (p == 0) printf("OK: [size %4lu x %4lu -> %4lu]\n",m,n,p);
-        else printf("OK: [size %4lu x %4lu -> %4lu] "
-                    "...0x%016lx * ...0x%016lx =..0x%016lx\n",
+      { if (p == 0) printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"]\n",m,n,p);
+        else printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+                    "...0x%016"PRIx64" * ...0x%016"PRIx64" =..0x%016"PRIx64"\n",
                     m,n,p,b0[0],b1[0],b2[0]);
       }
    }
@@ -2313,15 +2314,15 @@ int test_bignum_ksqr_specific
      reference_mul(p,b3,n,b0,n,b0);
      c = reference_compare(p,b2,p,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu x %4lu -> %4lu] "
-               "...0x%016lx^2  = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+               "...0x%016"PRIx64"^2  = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                n,n,p,b0[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (p == 0) printf("OK: [size %4lu x %4lu -> %4lu]\n",n,n,p);
-        else printf("OK: [size %4lu x %4lu -> %4lu] "
-                    "...0x%016lx^2 =..0x%016lx\n",
+      { if (p == 0) printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"]\n",n,n,p);
+        else printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+                    "...0x%016"PRIx64"^2 =..0x%016"PRIx64"\n",
                     n,n,p,b0[0],b2[0]);
       }
    }
@@ -2355,13 +2356,13 @@ int test_bignum_le(void)
      c1 = bignum_le(k1,b0,k2,b1);
      c2 = (reference_compare(k1,b0,k2,b1) <= 0);
      if (c1 != c2)
-      { printf("### Disparity: [sizes %4lu <= %4lu] ...0x%016lx <= ...0x%016lx <=> %lx not %lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" <= %4"PRIu64"] ...0x%016"PRIx64" <= ...0x%016"PRIx64" <=> %"PRIx64" not %"PRIx64"\n",
                k1,k2,b0[0],b1[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4lu <= %4lu ]\n",k1,k2);
-        else printf("OK: [sizes %4lu <= %4lu] ...0x%016lx <= ...0x%016lx <=> %lx\n",
+      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" <= %4"PRIu64" ]\n",k1,k2);
+        else printf("OK: [sizes %4"PRIu64" <= %4"PRIu64"] ...0x%016"PRIx64" <= ...0x%016"PRIx64" <=> %"PRIx64"\n",
                     k1,k2,b0[0],b1[0],c1);
       }
    }
@@ -2387,13 +2388,13 @@ int test_bignum_lt(void)
      c1 = bignum_lt(k1,b0,k2,b1);
      c2 = (reference_compare(k1,b0,k2,b1) < 0);
      if (c1 != c2)
-      { printf("### Disparity: [sizes %4lu < %4lu] ...0x%016lx < ...0x%016lx <=> %lx not %lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" < %4"PRIu64"] ...0x%016"PRIx64" < ...0x%016"PRIx64" <=> %"PRIx64" not %"PRIx64"\n",
                k1,k2,b0[0],b1[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4lu < %4lu ]\n",k1,k2);
-        else printf("OK: [sizes %4lu < %4lu] ...0x%016lx < ...0x%016lx <=> %lx\n",
+      { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" < %4"PRIu64" ]\n",k1,k2);
+        else printf("OK: [sizes %4"PRIu64" < %4"PRIu64"] ...0x%016"PRIx64" < ...0x%016"PRIx64" <=> %"PRIx64"\n",
                     k1,k2,b0[0],b1[0],c1);
       }
    }
@@ -2418,14 +2419,14 @@ int test_bignum_madd(void)
      reference_madd(k2,b3,k0,b0,k1,b1);
      c = reference_compare(k2,b2,k2,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu + %4lu * %4lu] "
-               "... + ...0x%016lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" + %4"PRIu64" * %4"PRIu64"] "
+               "... + ...0x%016"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k0,k1,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4lu + %4lu * %4lu]\n",k2,k0,k1);
-        else printf("OK: [sizes %4lu + %4lu * %4lu] ... + ...0x%016lx * ...0x%016lx = ...0x%016lx\n",
+      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" + %4"PRIu64" * %4"PRIu64"]\n",k2,k0,k1);
+        else printf("OK: [sizes %4"PRIu64" + %4"PRIu64" * %4"PRIu64"] ... + ...0x%016"PRIx64" * ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k0,k1,b0[0],b1[0],b2[0]);
       }
    }
@@ -2445,16 +2446,16 @@ int test_bignum_mod_n256(void)
      bignum_mod_n256(b4,k,b0);
      c = reference_compare(k,(k < 4) ? b0 : b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu -> %4lu] "
-               "0x%016lx...%016lx mod n_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               k,4ul,b0[k-1],b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64" -> %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod n_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(4),b0[k-1],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] 0x%016lx...%016lx mod n_256 = "
-               "0x%016lx...%016lx\n",
-               k,4ul,b0[k-1],b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod n_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(4),b0[k-1],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2467,28 +2468,28 @@ int test_bignum_mod_n256_4(void)
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
-     if ((rand() & 0xF) == 0) b0[3] |= 0xFFFFFFF000000000ull;
+     if ((rand() & 0xF) == 0) b0[3] |= UINT64_C(0xFFFFFFF000000000);
      else if ((rand() & 0xF) == 0)
       { b0[3] = n_256[3];
         b0[2] = n_256[2];
         b0[1] = n_256[1];
-        b0[0] = (n_256[0] - 3ull) + (rand() & 7ull);
+        b0[0] = (n_256[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
       }
 
      reference_mod(4,b3,b0,n_256);
      bignum_mod_n256_4(b4,b0);
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx...%016lx mod n_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod n_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] 0x%016lx...%016lx mod n_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod n_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2507,16 +2508,16 @@ int test_bignum_mod_n384(void)
      bignum_mod_n384(b4,k,b0);
      c = reference_compare(k,(k < 6) ? b0 : b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu -> %4lu] "
-               "0x%016lx...%016lx mod n_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               k,6ul,b0[k-1],b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64" -> %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod n_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(6),b0[k-1],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] 0x%016lx...%016lx mod n_384 = "
-               "0x%016lx...%016lx\n",
-               k,6ul,b0[k-1],b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod n_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(6),b0[k-1],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2529,30 +2530,30 @@ int test_bignum_mod_n384_6(void)
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
-     if ((rand() & 0xF) == 0) b0[5] |= 0xFFFFFFFFFFFFFFFFull;
+     if ((rand() & 0xF) == 0) b0[5] |= UINT64_C(0xFFFFFFFFFFFFFFFF);
      else if ((rand() & 0xF) == 0)
       { b0[5] = n_384[5];
         b0[4] = n_384[4];
         b0[3] = n_384[3];
         b0[2] = n_384[2];
         b0[1] = n_384[1];
-        b0[0] = (n_384[0] - 3ull) + (rand() & 7ull);
+        b0[0] = (n_384[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
       }
 
      reference_mod(6,b3,b0,n_384);
      bignum_mod_n384_6(b4,b0);
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx...%016lx mod n_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod n_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] 0x%016lx...%016lx mod n_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod n_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2571,16 +2572,16 @@ int test_bignum_mod_p256(void)
      bignum_mod_p256(b4,k,b0);
      c = reference_compare(k,(k < 4) ? b0 : b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu -> %4lu] "
-               "0x%016lx...%016lx mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               k,4ul,b0[k-1],b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64" -> %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(4),b0[k-1],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] 0x%016lx...%016lx mod p_256 = "
-               "0x%016lx...%016lx\n",
-               k,4ul,b0[k-1],b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(4),b0[k-1],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2593,28 +2594,28 @@ int test_bignum_mod_p256_4(void)
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
-     if ((rand() & 0xF) == 0) b0[3] |= 0xFFFFFFF000000000ull;
+     if ((rand() & 0xF) == 0) b0[3] |= UINT64_C(0xFFFFFFF000000000);
      else if ((rand() & 0xF) == 0)
       { b0[3] = p_256[3];
         b0[2] = p_256[2];
         b0[1] = p_256[1];
-        b0[0] = (p_256[0] - 3ull) + (rand() & 7ull);
+        b0[0] = (p_256[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
       }
 
      reference_mod(4,b3,b0,p_256);
      bignum_mod_p256_4(b4,b0);
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx...%016lx mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] 0x%016lx...%016lx mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2633,16 +2634,16 @@ int test_bignum_mod_p384(void)
      bignum_mod_p384(b4,k,b0);
      c = reference_compare(k,(k < 6) ? b0 : b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu -> %4lu] "
-               "0x%016lx...%016lx mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               k,6ul,b0[k-1],b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64" -> %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(6),b0[k-1],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] 0x%016lx...%016lx mod p_384 = "
-               "0x%016lx...%016lx\n",
-               k,6ul,b0[k-1],b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,UINT64_C(6),b0[k-1],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2655,30 +2656,30 @@ int test_bignum_mod_p384_6(void)
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
-     if ((rand() & 0xF) == 0) b0[5] |= 0xFFFFFFFFFFFFFFFFull;
+     if ((rand() & 0xF) == 0) b0[5] |= UINT64_C(0xFFFFFFFFFFFFFFFF);
      else if ((rand() & 0xF) == 0)
       { b0[5] = p_384[5];
         b0[4] = p_384[4];
         b0[3] = p_384[3];
         b0[2] = p_384[2];
         b0[1] = p_384[1];
-        b0[0] = (p_384[0] - 3ull) + (rand() & 7ull);
+        b0[0] = (p_384[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
       }
 
      reference_mod(6,b3,b0,p_384);
      bignum_mod_p384_6(b4,b0);
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx...%016lx mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] 0x%016lx...%016lx mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2691,7 +2692,7 @@ int test_bignum_mod_p521_9(void)
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(9,b0);
-     if ((rand() & 0xF) == 0) b0[8] |= 0xFFFFFFFFFFFFFFFFull;
+     if ((rand() & 0xF) == 0) b0[8] |= UINT64_C(0xFFFFFFFFFFFFFFFF);
      else if ((rand() & 0xF) == 0)
       { b0[8] = p_521[8];
         b0[7] = p_521[7];
@@ -2701,23 +2702,23 @@ int test_bignum_mod_p521_9(void)
         b0[3] = p_521[3];
         b0[2] = p_521[2];
         b0[1] = p_521[1];
-        b0[0] = (p_521[0] - 3ull) + (rand() & 7ull);
+        b0[0] = (p_521[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
       }
 
      reference_mod(9,b3,b0,p_521);
      bignum_mod_p521_9(b4,b0);
      c = reference_compare(9,b3,9,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "0x%016lx...%016lx mod p_521 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               9ul,b0[8],b0[0],b4[8],b4[0],b3[8],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0],b3[8],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] 0x%016lx...%016lx mod p_521 = "
-               "0x%016lx...%016lx\n",
-               9ul,b0[8],b0[0],b4[8],b4[0]);
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0]);
       }
    }
   printf("All OK\n");
@@ -2743,16 +2744,16 @@ int test_bignum_modadd(void)
      c = reference_compare(k,b3,k,b4);
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-         "(...0x%016lx + ...0x%016lx) mod ...0x%016lx = "
-         "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+         "(...0x%016"PRIx64" + ...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+         "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
         k,b0[0],b1[0],b2[0],b4[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        printf("OK: [size %4lu] "
-         "(...0x%016lx + ...0x%016lx) mod ...0x%016lx = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        printf("OK: [size %4"PRIu64"] "
+         "(...0x%016"PRIx64" + ...0x%016"PRIx64") mod ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
         k,b0[0],b1[0],b2[0],b4[0]);
       }
    }
@@ -2778,16 +2779,16 @@ int test_bignum_moddouble(void)
      c = reference_compare(k,b3,k,b4);
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-         "(2 * ...0x%016lx) mod ...0x%016lx = "
-         "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+         "(2 * ...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+         "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
         k,b0[0],b2[0],b4[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        printf("OK: [size %4lu] "
-         "(2 * ...0x%016lx) mod ...0x%016lx = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        printf("OK: [size %4"PRIu64"] "
+         "(2 * ...0x%016"PRIx64") mod ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
         k,b0[0],b2[0],b4[0]);
       }
    }
@@ -2807,14 +2808,14 @@ int test_bignum_modifier(void)
 
      c = reference_compare(k,b2,k,b3);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-           "bignum_modifier(...0x%016lx) = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+           "bignum_modifier(...0x%016"PRIx64") = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
             k,b0[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_modifier(...0x%016lx) =..0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_modifier(...0x%016"PRIx64") =..0x%016"PRIx64"\n",
                     k,b0[0],b2[0]);
       }
    }
@@ -2846,18 +2847,18 @@ int test_bignum_modinv(void)
 
      c = reference_compare(k,b3,k,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * modinv(...0x%016lx) mod ...0x%016lx = "
-               "....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b1[0],b1[0],b0[0],b3[0],b4[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
         else printf
-         ("OK: [size %4lu] "
-               "...0x%016lx * modinv(...0x%016lx) mod ...0x%016lx = "
-               "....0x%016lx\n",
+         ("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64"\n",
                k,b1[0],b1[0],b0[0],b3[0]);
       }
    }
@@ -2883,17 +2884,17 @@ int test_bignum_modoptneg(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],b1[0],b2[0]);
       }
    }
@@ -2921,16 +2922,16 @@ int test_bignum_modsub(void)
      c = reference_compare(k,b3,k,b4);
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-         "(...0x%016lx - ...0x%016lx) mod ...0x%016lx = "
-         "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+         "(...0x%016"PRIx64" - ...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+         "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
         k,b0[0],b1[0],b2[0],b4[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        printf("OK: [size %4lu] "
-         "(...0x%016lx - ...0x%016lx) mod ...0x%016lx = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        printf("OK: [size %4"PRIu64"] "
+         "(...0x%016"PRIx64" - ...0x%016"PRIx64") mod ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
         k,b0[0],b1[0],b2[0],b4[0]);
       }
    }
@@ -2950,14 +2951,14 @@ int test_bignum_montifier(void)
 
      c = reference_compare(k,b2,k,b3);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-           "bignum_montifier(...0x%016lx) = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+           "bignum_montifier(...0x%016"PRIx64") = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
             k,b0[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_montifier(...0x%016lx) =..0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_montifier(...0x%016"PRIx64") =..0x%016"PRIx64"\n",
                     k,b0[0],b2[0]);
       }
    }
@@ -2992,13 +2993,13 @@ int test_bignum_montmul(void)
 
      c = reference_compare(k,b3,k,b5);
      if (c != 0)
-      { printf("### Disparity (Montgomery mul): [size %4lu]\n",k);
-        printf("### Output is ...0x%016lx\n",b5[0]);
-        printf("### Reference ...0x%016lx\n",b3[0]);
+      { printf("### Disparity (Montgomery mul): [size %4"PRIu64"]\n",k);
+        printf("### Output is ...0x%016"PRIx64"\n",b5[0]);
+        printf("### Reference ...0x%016"PRIx64"\n",b3[0]);
         return 1;
       }
      else
-      { printf("OK: [size %4lu] bignum_montmul(...0x%016lx,...0x%016lx) wrt ...0x%016lx = ...0x%016lx\n",
+      { printf("OK: [size %4"PRIu64"] bignum_montmul(...0x%016"PRIx64",...0x%016"PRIx64") wrt ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k,b1[0],b2[0],b0[0],b5[0]);
       }
    }
@@ -3021,17 +3022,17 @@ int test_bignum_montmul_p256(void)
 
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-256 * ...0x%016lx * ...%016lx  mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[0],b1[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b1[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-256 * ...0x%016lx * ...%016lx  mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[0],b1[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b1[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -3054,17 +3055,17 @@ int test_bignum_montmul_p384(void)
 
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-384 * ...0x%016lx * ...%016lx  mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b1[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b1[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-384 * ...0x%016lx * ...%016lx  mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b1[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b1[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -3109,20 +3110,20 @@ int test_bignum_montredc(void)
      c = ((k != 0) && reference_compare(r,b6,r,b7));
      d = (k == 0) || reference_lt_samelen(k,b4,b0);
      if (c != 0)
-      { printf("### Disparity even reducing modulo: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("### Disparity even reducing modulo: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                n,k,b1[0],64*p,b0[0],b4[0]);
         return 1;
       }
      if (d != 1)
-      { printf("### Disparity with modular reduction: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("### Disparity with modular reduction: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                n,k,b1[0],64*p,b0[0],b4[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu -> %4lu] "
-               "...%016lx / 2^%lu mod ...%016lx = ...%016lx\n",
+      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] "
+               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
                n,k,b1[0],64*p,b0[0],b4[0]);
       }
    }
@@ -3149,14 +3150,14 @@ int test_bignum_montsqr(void)
 
      c = reference_compare(k,b3,k,b5);
      if (c != 0)
-      { printf("### Disparity (Montgomery sqr): [size %4lu]\n",k);
-        printf("### Output is ...0x%016lx\n",b5[0]);
-        printf("### Reference ...0x%016lx\n",b3[0]);
+      { printf("### Disparity (Montgomery sqr): [size %4"PRIu64"]\n",k);
+        printf("### Output is ...0x%016"PRIx64"\n",b5[0]);
+        printf("### Reference ...0x%016"PRIx64"\n",b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] bignum_montsqr(...0x%016lx) wrt ...0x%016lx = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] bignum_montsqr(...0x%016"PRIx64") wrt ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k,b1[0],b0[0],b5[0]);
       }
    }
@@ -3177,17 +3178,17 @@ int test_bignum_montsqr_p256(void)
 
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-256 * ...0x%016lx^2 mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64"^2 mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-256 * ...0x%016lx^2 mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64"^2 mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -3208,17 +3209,17 @@ int test_bignum_montsqr_p384(void)
 
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-384 * ...0x%016lx^2 mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64"^2 mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-384 * ...0x%016lx^2 mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-384 * ...0x%016"PRIx64"^2 mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -3238,17 +3239,17 @@ int test_bignum_montsqr_p521(void)
 
      c = reference_compare(9,b3,9,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^-576 * ...0x%016lx^2 mod p_521 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               9ul,b0[0],b4[8],b4[0],b3[8],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-576 * ...0x%016"PRIx64"^2 mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[0],b4[8],b4[0],b3[8],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^-576 * ...0x%016lx^2 mod p_521 = "
-               "0x%016lx...%016lx\n",
-               9ul,b0[0],b4[8],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-576 * ...0x%016"PRIx64"^2 mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[0],b4[8],b4[0]);
       }
    }
   printf("All OK\n");
@@ -3271,14 +3272,14 @@ int test_bignum_mul(void)
      reference_mul(k2,b3,k0,b0,k1,b1);
      c = reference_compare(k2,b2,k2,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu := %4lu * %4lu] "
-               "...0x%016lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64" * %4"PRIu64"] "
+               "...0x%016"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k0,k1,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4lu := %4lu * %4lu]\n",k2,k0,k1);
-        else printf("OK: [sizes %4lu := %4lu * %4lu] ...0x%016lx * ...0x%016lx = ...0x%016lx\n",
+      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64" * %4"PRIu64"]\n",k2,k0,k1);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64" * %4"PRIu64"] ...0x%016"PRIx64" * ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k0,k1,b0[0],b1[0],b2[0]);
       }
    }
@@ -3301,15 +3302,15 @@ int test_bignum_mul_specific
      reference_mul(p,b3,m,b0,n,b1);
      c = reference_compare(p,b2,p,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu x %4lu -> %4lu] "
-               "...0x%016lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+               "...0x%016"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                m,n,p,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (p == 0) printf("OK: [size %4lu x %4lu -> %4lu]\n",m,n,p);
-        else printf("OK: [size %4lu x %4lu -> %4lu] "
-                    "...0x%016lx * ...0x%016lx =..0x%016lx\n",
+      { if (p == 0) printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"]\n",m,n,p);
+        else printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+                    "...0x%016"PRIx64" * ...0x%016"PRIx64" =..0x%016"PRIx64"\n",
                     m,n,p,b0[0],b1[0],b2[0]);
       }
    }
@@ -3343,14 +3344,14 @@ int test_bignum_mux(void)
             : reference_compare(n,b2,n,b1));
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "if %d then ...0x%016lx else ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "if %d then ...0x%016"PRIx64" else ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                n,b,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (n == 0) printf("OK: [size %4lu]\n",n);
-        else printf("OK: [size %4lu] if %d then ...0x%016lx else ...0x%016lx =..0x%016lx\n",
+      { if (n == 0) printf("OK: [size %4"PRIu64"]\n",n);
+        else printf("OK: [size %4"PRIu64"] if %d then ...0x%016"PRIx64" else ...0x%016"PRIx64" =..0x%016"PRIx64"\n",
                     n,b,b0[0],b1[0],b2[0]);
       }
    }
@@ -3374,14 +3375,14 @@ int test_bignum_mux_4(void)
             : reference_compare(n,b2,n,b1));
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "if %d then ...0x%016lx else ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "if %d then ...0x%016"PRIx64" else ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                n,b,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (n == 0) printf("OK: [size %4lu]\n",n);
-        else printf("OK: [size %4lu] if %d then ...0x%016lx else ...0x%016lx =..0x%016lx\n",
+      { if (n == 0) printf("OK: [size %4"PRIu64"]\n",n);
+        else printf("OK: [size %4"PRIu64"] if %d then ...0x%016"PRIx64" else ...0x%016"PRIx64" =..0x%016"PRIx64"\n",
                     n,b,b0[0],b1[0],b2[0]);
       }
    }
@@ -3405,14 +3406,14 @@ int test_bignum_mux_6(void)
             : reference_compare(n,b2,n,b1));
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "if %d then ...0x%016lx else ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "if %d then ...0x%016"PRIx64" else ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                n,b,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (n == 0) printf("OK: [size %4lu]\n",n);
-        else printf("OK: [size %4lu] if %d then ...0x%016lx else ...0x%016lx =..0x%016lx\n",
+      { if (n == 0) printf("OK: [size %4"PRIu64"]\n",n);
+        else printf("OK: [size %4"PRIu64"] if %d then ...0x%016"PRIx64" else ...0x%016"PRIx64" =..0x%016"PRIx64"\n",
                     n,b,b0[0],b1[0],b2[0]);
       }
    }
@@ -3436,14 +3437,14 @@ int test_bignum_mux16(void)
      c = reference_compare(k,b2,k,b1);
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "element [%4lu] = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "element [%4"PRIu64"] = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,i,b2[0],b1[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] element [%4lu] = .0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] element [%4"PRIu64"] = .0x%016"PRIx64"\n",
                     k,i,b2[0]);
       }
    }
@@ -3466,17 +3467,17 @@ int test_bignum_neg_p256(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "- ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "- ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_256[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,b0[0],p_256[0],b2[0]);
       }
    }
@@ -3499,17 +3500,17 @@ int test_bignum_neg_p384(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "- ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "- ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_384[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,b0[0],p_384[0],b2[0]);
       }
    }
@@ -3532,17 +3533,17 @@ int test_bignum_neg_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "- ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "- ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b2[0]);
       }
    }
@@ -3562,15 +3563,15 @@ int test_bignum_negmodinv(void)
      reference_madd(k,b2,k,b1,k,b0);
      c = 0; for (i = 0; i < k; ++i) if (b2[i] != 0) c = 1;
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * ...0x%016lx + 1 = ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * ...0x%016"PRIx64" + 1 = ...0x%016"PRIx64"\n",
                k,b0[0],b1[0],b2[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * ...0x%016lx + 1 = ...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * ...0x%016"PRIx64" + 1 = ...0x%016"PRIx64"\n",
                     k,b0[0],b1[0],b2[0]);
       }
    }
@@ -3588,13 +3589,13 @@ int test_bignum_nonzero(void)
      c1 = bignum_nonzero(k,b0);
      c2 = !reference_iszero(k,b0);
      if (c1 != c2)
-      { printf("### Disparity: [size %4lu] ...0x%016lx = 0\n",
+      { printf("### Disparity: [size %4"PRIu64"] ...0x%016"PRIx64" = 0\n",
                k,b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] ...0x%016lx = 0 <=> %lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] ...0x%016"PRIx64" = 0 <=> %"PRIx64"\n",
                     k,b0[0],c1);
       }
    }
@@ -3613,13 +3614,13 @@ int test_bignum_nonzero_4(void)
      c1 = bignum_nonzero_4(b0);
      c2 = !reference_iszero(k,b0);
      if (c1 != c2)
-      { printf("### Disparity: [size %4lu] 0x%016lx...0x%016lx = 0\n",
+      { printf("### Disparity: [size %4"PRIu64"] 0x%016"PRIx64"...0x%016"PRIx64" = 0\n",
                k,b0[3],b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] 0x%016lx...0x%016lx = 0 <=> %lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...0x%016"PRIx64" = 0 <=> %"PRIx64"\n",
                     k,b0[3],b0[0],c1);
       }
    }
@@ -3638,13 +3639,13 @@ int test_bignum_nonzero_6(void)
      c1 = bignum_nonzero_6(b0);
      c2 = !reference_iszero(k,b0);
      if (c1 != c2)
-      { printf("### Disparity: [size %4lu] 0x%016lx...0x%016lx = 0\n",
+      { printf("### Disparity: [size %4"PRIu64"] 0x%016"PRIx64"...0x%016"PRIx64" = 0\n",
                k,b0[5],b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] 0x%016lx...0x%016lx = 0 <=> %lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...0x%016"PRIx64" = 0 <=> %"PRIx64"\n",
                     k,b0[5],b0[0],c1);
       }
    }
@@ -3665,22 +3666,22 @@ int test_bignum_normalize(void)
      reference_mul(k,b3,k,b0,k,b2);
      c = reference_compare(k,b1,k,b3);
      if (c != 0)
-      { printf("### Disparity: [size %4lu]",k);
+      { printf("### Disparity: [size %4"PRIu64"]",k);
         if (k == 0) printf("\n");
-        else printf (" normalize(0x%016lx...0x%016lx) = 0x%016lx...0x%016lx"
-                     " not 0x%016lx...0x%016lx\n",
+        else printf (" normalize(0x%016"PRIx64"...0x%016"PRIx64") = 0x%016"PRIx64"...0x%016"PRIx64""
+                     " not 0x%016"PRIx64"...0x%016"PRIx64"\n",
                      b0[k-1],b0[0],b1[k-1],b1[0],b3[k-1],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu]",k);
+      { printf("OK: [size %4"PRIu64"]",k);
         if (k == 0) printf("\n");
-        else printf (" normalize(0x%016lx...0x%016lx) = 0x%016lx...0x%016lx "
-                     "(%ld places)\n",
+        else printf (" normalize(0x%016"PRIx64"...0x%016"PRIx64") = 0x%016"PRIx64"...0x%016"PRIx64" "
+                     "(%"PRIu64" places)\n",
                      b0[k-1],b0[0],b1[k-1],b1[0],r);
       }
      if (r != reference_clz(k,b0))
-      { printf("### Disparity: [size %4lu]: %ld not %ld return value\n",
+      { printf("### Disparity: [size %4"PRIu64"]: %"PRIu64" not %"PRIu64" return value\n",
                k,r,reference_clz(k,b0));
         return 1;
       }
@@ -3700,15 +3701,15 @@ int test_bignum_odd(void)
      c1 = bignum_odd(k,b0);
      c2 = (k != 0) && (b0[0] & 1);
      if (c1 != c2)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_odd(...0x%016lx) = %lx not %lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_odd(...0x%016"PRIx64") = %"PRIx64" not %"PRIx64"\n",
                k,b0[0],c1,c2);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK:[size %4lu] "
-               "bignum_odd(...0x%016lx) = %lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK:[size %4"PRIu64"] "
+               "bignum_odd(...0x%016"PRIx64") = %"PRIx64"\n",
                k,b0[0],c1);
       }
    }
@@ -3728,15 +3729,15 @@ int test_bignum_of_word(void)
      if ((k > 0) && (b0[0] != n)) c = 1;
      for (i = 1; i < k; ++i) if (b0[i] != 0) c = 1;
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_of_word(0x%016lx) = ....0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_of_word(0x%016"PRIx64") = ....0x%016"PRIx64"\n",
                k,n,b0[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK:[size %4lu] "
-               "bignum_of_word(0x%016lx) = ....0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK:[size %4"PRIu64"] "
+               "bignum_of_word(0x%016"PRIx64") = ....0x%016"PRIx64"\n",
                k,n,b0[0]);
       }
    }
@@ -3764,21 +3765,21 @@ int test_bignum_optadd(void)
 
      c = reference_compare(k,b2,k,b3);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx + %lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" + %"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p,b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (c1 != c2)
       {
-        printf("### Disparity: [size %4lu]: ...0x%016lx + %lx * ...0x%016lx carry %lu not %lu\n",
+        printf("### Disparity: [size %4"PRIu64"]: ...0x%016"PRIx64" + %"PRIx64" * ...0x%016"PRIx64" carry %"PRIu64" not %"PRIu64"\n",
                k,b0[0],p,b1[0],c2,c1);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] ...0x%016lx + %lx * ...0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] ...0x%016"PRIx64" + %"PRIx64" * ...0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p,b1[0],b2[0]);
       }
    }
@@ -3808,21 +3809,21 @@ int test_bignum_optneg(void)
 
      c = reference_compare(k,b2,k,b3);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "(%s) ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "(%s) ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (c1 != c2)
       {
-        printf("### Disparity: [size %4lu]: (%s) ...0x%016lx carry %lu not %lu\n",
+        printf("### Disparity: [size %4"PRIu64"]: (%s) ...0x%016"PRIx64" carry %"PRIu64" not %"PRIu64"\n",
                k,(p ? "-" : "+"),b1[0],c2,c1);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] (%s) ...0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] (%s) ...0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,(p ? "-" : "+"),b1[0],b2[0]);
       }
    }
@@ -3846,17 +3847,17 @@ int test_bignum_optneg_p256(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],p_256[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],p_256[0],b2[0]);
       }
    }
@@ -3880,17 +3881,17 @@ int test_bignum_optneg_p384(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],p_384[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],p_384[0],b2[0]);
       }
    }
@@ -3914,17 +3915,17 @@ int test_bignum_optneg_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-               "%s...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
                k,(p ? "-" : "+"),b0[0],p_521[0],b2[0]);
       }
    }
@@ -3953,21 +3954,21 @@ int test_bignum_optsub(void)
      c = reference_compare(k,b2,k,b3);
 
     if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx - %lx * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" - %"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p,b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (c1 != c2)
       {
-        printf("### Disparity: [size %4lu]: ...0x%016lx - %lx * ...0x%016lx carry %lu not %lu\n",
+        printf("### Disparity: [size %4"PRIu64"]: ...0x%016"PRIx64" - %"PRIx64" * ...0x%016"PRIx64" carry %"PRIu64" not %"PRIu64"\n",
                k,b0[0],p,b1[0],c2,c1);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] ...0x%016lx - %lx * ...0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] ...0x%016"PRIx64" - %"PRIx64" * ...0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p,b1[0],b2[0]);
       }
    }
@@ -3990,28 +3991,28 @@ int test_bignum_optsubadd(void)
 
      for (i = 0; i < k; ++i) b3[i] = b0[i];
      c1 = 0;
-     if (p & (1ull<<63)) c1 = reference_sbb(k,b3,k,b3,k,b1,0);
+     if (p & (UINT64_C(1)<<63)) c1 = reference_sbb(k,b3,k,b3,k,b1,0);
      else if (p != 0) c1 = reference_adc(k,b3,k,b3,k,b1,0);
 
      c2 = bignum_optsubadd(k,b2,b0,p,b1);
 
      c = reference_compare(k,b2,k,b3);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx + sgn(%lx) * ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" + sgn(%"PRIx64") * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p,b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (c1 != c2)
       {
-        printf("### Disparity: [size %4lu]: ...0x%016lx + sgn(%lx) * ...0x%016lx carry %lu not %lu\n",
+        printf("### Disparity: [size %4"PRIu64"]: ...0x%016"PRIx64" + sgn(%"PRIx64") * ...0x%016"PRIx64" carry %"PRIu64" not %"PRIu64"\n",
                k,b0[0],p,b1[0],c2,c1);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] ...0x%016lx + sgn(%lx) * ...0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] ...0x%016"PRIx64" + sgn(%"PRIx64") * ...0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p,b1[0],b2[0]);
       }
    }
@@ -4030,19 +4031,19 @@ int test_bignum_pow2(void)
      for (i = 0; i < k; ++i) b0[i] = 42;
      bignum_pow2(k,b0,n);
      for (i = 0; i < k; ++i) b1[i] = 0;
-     if (n < 64*k) b1[n>>6] = 1ull<<(n&63ull);
+     if (n < 64*k) b1[n>>6] = UINT64_C(1)<<(n&UINT64_C(63));
      c = reference_compare(k,b0,k,b1);
 
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_pow2(0x%016lx) = ....0x%016lx not ....0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_pow2(0x%016"PRIx64") = ....0x%016"PRIx64" not ....0x%016"PRIx64"\n",
                k,n,b0[0],b1[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size    0] bignum_pow2(0x%016lx)\n",n);
-        else printf("OK: [size %4lu] "
-               "bignum_pow2(0x%016lx) = ....0x%016lx\n",
+      { if (k == 0) printf("OK: [size    0] bignum_pow2(0x%016"PRIx64")\n",n);
+        else printf("OK: [size %4"PRIu64"] "
+               "bignum_pow2(0x%016"PRIx64") = ....0x%016"PRIx64"\n",
                k,n,b0[0]);
       }
    }
@@ -4058,22 +4059,22 @@ int test_bignum_shl_small(void)
    { k1 = (unsigned) rand() % MAXSIZE;
      k2 = (unsigned) rand() % MAXSIZE;
      a = random64();
-     if (random() & 31) a &= 63ul;
+     if (rand() & 31) a &= 63ul;
      random_bignum(k1,b1);
      random_bignum(k2,b2);
      for (j = 0; j < k2; ++j) b3[j] = b2[j] + 1;
      r = bignum_shl_small(k2,b2,k1,b1,a); b2[k2] = r;
-     reference_cmul(k2+1,b3,(1ull<<(a&63ull)),(k2 < k1 ? k2 : k1),b1);
+     reference_cmul(k2+1,b3,(UINT64_C(1)<<(a&UINT64_C(63))),(k2 < k1 ? k2 : k1),b1);
      c = reference_compare(k2+1,b2,k2+1,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu := %4lu] "
-               "...0x%016lx << %2ld, = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64"] "
+               "...0x%016"PRIx64" << %2"PRIu64", = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k1,b1[0],a,b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k2 == 0) printf("OK: [sizes %4lu := %4lu]\n",k2,k1);
-        else printf("OK: [sizes %4lu := %4lu] ...0x%016lx << %2ld = ...0x%016lx\n",
+      { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64"]\n",k2,k1);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64"] ...0x%016"PRIx64" << %2"PRIu64" = ...0x%016"PRIx64"\n",
                     k2,k1,b1[0],a,b2[0]);
       }
    }
@@ -4089,27 +4090,27 @@ int test_bignum_shr_small(void)
    { k1 = (unsigned) rand() % MAXSIZE;
      k2 = (unsigned) rand() % MAXSIZE;
      a = random64();
-     if (random() & 31) a &= 63ul;
+     if (rand() & 31) a &= 63ul;
      random_bignum(k1,b1);
      random_bignum(k2,b2);
      for (j = 0; j < k2+1; ++j) b3[j] = b2[j] + 1;
 
      r = bignum_shr_small(k2,b2+1,k1,b1,a);
-     b2[0] = ((a&63ull) == 0) ? 0 : (r<<(64 - (a&63ull)));
+     b2[0] = ((a&UINT64_C(63)) == 0) ? 0 : (r<<(64 - (a&UINT64_C(63))));
 
      reference_copy(k2+1,b3+1,k1,b1); b3[0] = 0;
-     c = 0; for (j = 0; j < (a & 63ull); ++j) c = reference_shr_samelen(k2+2,b3,b3,c);
+     c = 0; for (j = 0; j < (a & UINT64_C(63)); ++j) c = reference_shr_samelen(k2+2,b3,b3,c);
 
      c = reference_compare(k2+1,b2,k2+1,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu := %4lu] "
-               "...0x%016lx >> %2ld, = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64"] "
+               "...0x%016"PRIx64" >> %2"PRIu64", = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k1,b1[0],a,b2[1],b3[1]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k2 == 0) printf("OK: [sizes %4lu := %4lu]\n",k2,k1);
-        else printf("OK: [sizes %4lu := %4lu] ...0x%016lx >> %2ld = ...0x%016lx\n",
+      { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64"]\n",k2,k1);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64"] ...0x%016"PRIx64" >> %2"PRIu64" = ...0x%016"PRIx64"\n",
                     k2,k1,b1[0],a,b2[1]);
       }
    }
@@ -4131,15 +4132,15 @@ int test_bignum_sqr_specific
      reference_mul(p,b3,n,b0,n,b0);
      c = reference_compare(p,b2,p,b3);
      if (c != 0)
-      { printf("### Disparity: [sizes %4lu x %4lu -> %4lu] "
-               "...0x%016lx^2  = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+               "...0x%016"PRIx64"^2  = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                n,n,p,b0[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (p == 0) printf("OK: [size %4lu x %4lu -> %4lu]\n",n,n,p);
-        else printf("OK: [size %4lu x %4lu -> %4lu] "
-                    "...0x%016lx^2 =..0x%016lx\n",
+      { if (p == 0) printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"]\n",n,n,p);
+        else printf("OK: [size %4"PRIu64" x %4"PRIu64" -> %4"PRIu64"] "
+                    "...0x%016"PRIx64"^2 =..0x%016"PRIx64"\n",
                     n,n,p,b0[0],b2[0]);
       }
    }
@@ -4174,17 +4175,17 @@ int test_bignum_sqr_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * 2 mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * 2 mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p_521[0],b2[0]);
       }
    }
@@ -4208,14 +4209,14 @@ int test_bignum_sub(void)
      c2 = reference_sbb(k2,b3,k0,b0,k1,b1,0);
      c = reference_compare(k2,b2,k2,b3);
      if ((c != 0) || (c1 != c2))
-      { printf("### Disparity: [sizes %4lu := %4lu - %4lu] "
-               "...0x%016lx - ...0x%016lx = ....0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64" - %4"PRIu64"] "
+               "...0x%016"PRIx64" - ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k2,k0,k1,b0[0],b1[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4lu := %4lu - %4lu]\n",k2,k0,k1);
-        else printf("OK: [sizes %4lu := %4lu - %4lu] ...0x%016lx - ...0x%016lx = ...0x%016lx\n",
+      { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64" - %4"PRIu64"]\n",k2,k0,k1);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64" - %4"PRIu64"] ...0x%016"PRIx64" - ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k0,k1,b0[0],b1[0],b2[0]);
       }
    }
@@ -4243,17 +4244,17 @@ int test_bignum_sub_p256(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx - ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" - ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],b1[0],p_256[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx - ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" - ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],b1[0],p_256[0],b2[0]);
       }
    }
@@ -4280,17 +4281,17 @@ int test_bignum_sub_p384(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx - ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" - ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],b1[0],p_384[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx - ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" - ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],b1[0],p_384[0],b2[0]);
       }
    }
@@ -4317,17 +4318,17 @@ int test_bignum_sub_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx - ...0x%016lx mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" - ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],b1[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx - ...0x%016lx mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" - ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],b1[0],p_521[0],b2[0]);
       }
    }
@@ -4345,16 +4346,16 @@ int test_bignum_tobytes_4(void)
      bignum_tobytes_4((uint8_t *)b4,b0);
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_tobytes_4(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_tobytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] bignum_tobytes_4(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[3],b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] bignum_tobytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -4371,16 +4372,16 @@ int test_bignum_tobytes_6(void)
      bignum_tobytes_6((uint8_t *)b4,b0);
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "bignum_tobytes_6(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_tobytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] bignum_tobytes_6(0x%016lx...%016lx) = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[5],b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] bignum_tobytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -4402,17 +4403,17 @@ int test_bignum_tomont_p256(void)
 
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^256 * ...0x%016lx mod p_256 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0],b3[3],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^256 * ...0x%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^256 * ...0x%016lx mod p_256 = "
-               "0x%016lx...%016lx\n",
-               4ul,b0[0],b4[3],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^256 * ...0x%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -4434,17 +4435,17 @@ int test_bignum_tomont_p384(void)
 
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "2^384 * ...0x%016lx mod p_384 = "
-               "0x%016lx...%016lx not 0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0],b3[5],b3[0]);
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^384 * ...0x%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4lu] "
-               "2^384 * ...0x%016lx mod p_384 = "
-               "0x%016lx...%016lx\n",
-               6ul,b0[0],b4[5],b4[0]);
+      { printf("OK: [size %4"PRIu64"] "
+               "2^384 * ...0x%016"PRIx64" mod p_384 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -4469,17 +4470,17 @@ int test_bignum_triple_p256(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * 3 mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_256[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * 3 mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p_256[0],b2[0]);
       }
    }
@@ -4505,17 +4506,17 @@ int test_bignum_triple_p384(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * 3 mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_384[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * 3 mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p_384[0],b2[0]);
       }
    }
@@ -4541,17 +4542,17 @@ int test_bignum_triple_p521(void)
 
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
-      { printf("### Disparity: [size %4lu] "
-               "...0x%016lx * 3 mod ....0x%016lx = "
-               "...0x%016lx not ...0x%016lx\n",
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b2[0],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { if (k == 0) printf("OK: [size %4lu]\n",k);
-        else printf("OK: [size %4lu] "
-                    "...0x%016lx * 3 mod ....0x%016lx = "
-                    "...0x%016lx\n",
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
                     k,b0[0],p_521[0],b2[0]);
       }
    }
@@ -4567,11 +4568,11 @@ int test_word_bytereverse(void)
      x = word_bytereverse(a);
      y = reference_wordbytereverse(a);
      if (x != y)
-      { printf("### Disparity: word_bytereverse(0x%016lx) = 0x%016lx not 0x%016lx\n",a,x,y);
+      { printf("### Disparity: word_bytereverse(0x%016"PRIx64") = 0x%016"PRIx64" not 0x%016"PRIx64"\n",a,x,y);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: word_bytereverse(0x%016lx) = 0x%016lx\n",a,x);
+      { printf("OK: word_bytereverse(0x%016"PRIx64") = 0x%016"PRIx64"\n",a,x);
       }
     }
   printf("All OK\n");
@@ -4586,11 +4587,11 @@ int test_word_clz(void)
      x = word_clz(a);
      y = reference_wordclz(a);
      if (x != y)
-      { printf("### Disparity: word_clz(0x%016lx) = %lu not %lu\n",a,x,y);
+      { printf("### Disparity: word_clz(0x%016"PRIx64") = %"PRIu64" not %"PRIu64"\n",a,x,y);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: word_clz(0x%016lx) = %lu\n",a,x);
+      { printf("OK: word_clz(0x%016"PRIx64") = %"PRIu64"\n",a,x);
       }
     }
   printf("All OK\n");
@@ -4605,11 +4606,11 @@ int test_word_ctz(void)
      x = word_ctz(a);
      y = reference_wordctz(a);
      if (x != y)
-      { printf("### Disparity: word_ctz(0x%016lx) = %lu not %lu\n",a,x,y);
+      { printf("### Disparity: word_ctz(0x%016"PRIx64") = %"PRIu64" not %"PRIu64"\n",a,x,y);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: word_ctz(0x%016lx) = %lu\n",a,x);
+      { printf("OK: word_ctz(0x%016"PRIx64") = %"PRIu64"\n",a,x);
       }
     }
   printf("All OK\n");
@@ -4623,11 +4624,11 @@ int test_word_negmodinv(void)
    { a = 2 * random64() + 1;
      x = word_negmodinv(a);
      if (a * x + 1 != 0)
-      { printf("### Disparity: a * word_negmodinv a + 1 = 0x%016lx * 0x%016lx + 1 = %lu\n",a,x,a*x+1);
+      { printf("### Disparity: a * word_negmodinv a + 1 = 0x%016"PRIx64" * 0x%016"PRIx64" + 1 = %"PRIu64"\n",a,x,a*x+1);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: a * word_negmodinv a + 1 = 0x%016lx * 0x%016lx + 1 = %lu\n",a,x,a*x+1);
+      { printf("OK: a * word_negmodinv a + 1 = 0x%016"PRIx64" * 0x%016"PRIx64" + 1 = %"PRIu64"\n",a,x,a*x+1);
       }
     }
   printf("All OK\n");
@@ -4772,6 +4773,7 @@ int test_all()
    }
   else if (tests == 0)
    { printf("Zero tests run, *** no testing\n");
+     return 1;
    }
   else
    { printf("All %d tests run, all passed\n",successes);
@@ -4887,6 +4889,7 @@ int test_allnonbmi()
    }
   else if (tests == 0)
    { printf("Zero tests run, *** no testing\n");
+     return 1;
    }
   else
    { printf("Partial tests (%d) run, *** no failures but some skipped\n",
