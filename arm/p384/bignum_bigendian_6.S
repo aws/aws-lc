@@ -78,22 +78,22 @@ bignum_tobytes_6:
 
 // 0 and 5 words
 
-                accumdigit (a, 0)
-                accumdigit (c, 5)
+                accumdigit(a, 0)
+                accumdigit(c, 5)
                 str     a, [z, #40]
                 str     c, [z]
 
 // 1 and 4 words
 
-                accumdigit (a, 1)
-                accumdigit (c, 4)
+                accumdigit(a, 1)
+                accumdigit(c, 4)
                 str     a, [z, #32]
                 str     c, [z, #8]
 
 // 2 and 3 words
 
-                accumdigit (a, 2)
-                accumdigit (c, 3)
+                accumdigit(a, 2)
+                accumdigit(c, 3)
                 str     a, [z, #24]
                 str     c, [z, #16]
 

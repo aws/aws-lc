@@ -34,7 +34,7 @@
 #define zero %rbp
 #define zeroe %ebp
 
-// mulpadd (high,low,i) adds %rdx * x[i] to a register-pair (high,low)
+// mulpadd(high,low,i) adds %rdx * x[i] to a register-pair (high,low)
 // maintaining consistent double-carrying with adcx and adox,
 // using %rax and %rcx as temporaries.
 
@@ -43,7 +43,7 @@
         adcxq   %rax, low ;               \
         adoxq   %rcx, high
 
-// mulpade (hight,low,i) adds %rdx * x[i] to a register-pair (high,low)
+// mulpade(hight,low,i) adds %rdx * x[i] to a register-pair (high,low)
 // maintaining consistent double-carrying with adcx and adox,
 // using %rax as a temporary, assuming high created from scratch
 // and that zero has value zero.
