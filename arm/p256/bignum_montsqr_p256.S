@@ -140,16 +140,16 @@ bignum_montsqr_p256:
 // Perform two "short" Montgomery steps on the low square
 // This shifts it to an offset compatible with middle product
 
-                montreds (s0,s3,s2,s1,s0, d1,d2,d3)
+                montreds(s0,s3,s2,s1,s0, d1,d2,d3)
 
-                montreds (s1,s0,s3,s2,s1, d1,d2,d3)
+                montreds(s1,s0,s3,s2,s1, d1,d2,d3)
 
 // Compute cross-product with ADK 2x2->4 multiplier as [c3;c2;c1;c0]
 
                 mul     c0, a0, a2
                 mul     d4, a1, a3
                 umulh   c2, a0, a2
-                muldiffn (d3,d2,d1, c4, a0,a1, a3,a2)
+                muldiffn(d3,d2,d1, c4, a0,a1, a3,a2)
 
                 adds    c1, c0, c2
                 adc     c2, c2, xzr
@@ -183,9 +183,9 @@ bignum_montsqr_p256:
 
 // Montgomery-reduce the combined low and middle term another twice
 
-                montrede (c0,c4,c3,c2,c1,c0, d1,d2,d3)
+                montrede(c0,c4,c3,c2,c1,c0, d1,d2,d3)
 
-                montrede (c1,c0,c4,c3,c2,c1, d1,d2,d3)
+                montrede(c1,c0,c4,c3,c2,c1, d1,d2,d3)
 
 // Our sum so far is in [c1,c0,c4,c3,c2]; choose more intuitive names
 

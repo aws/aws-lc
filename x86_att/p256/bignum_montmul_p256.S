@@ -80,22 +80,22 @@ bignum_montmul_p256:
 
         movq    8(y), %rdx
         xorl    %r14d, %r14d
-        mulpadd (%r10,%r9,(x))
-        mulpadd (%r11,%r10,8(x))
-        mulpadd (%r12,%r11,16(x))
-        mulpadd (%r13,%r12,24(x))
+        mulpadd(%r10,%r9,(x))
+        mulpadd(%r11,%r10,8(x))
+        mulpadd(%r12,%r11,16(x))
+        mulpadd(%r13,%r12,24(x))
         adcq   %r14, %r13
 
 // Montgomery reduce windows 0 and 1 together
 
         xorl    %r15d, %r15d
         movq    $0x0000000100000000, %rdx
-        mulpadd (%r10,%r9,%r8)
-        mulpadd (%r11,%r10,%r9)
+        mulpadd(%r10,%r9,%r8)
+        mulpadd(%r11,%r10,%r9)
         notq    %rdx
         leaq    2(%rdx), %rdx
-        mulpadd (%r12,%r11,%r8)
-        mulpadd (%r13,%r12,%r9)
+        mulpadd(%r12,%r11,%r8)
+        mulpadd(%r13,%r12,%r9)
         adcxq   %r15, %r13
         adoxq   %r15, %r14
         adcq    %r15, %r14
@@ -104,9 +104,9 @@ bignum_montmul_p256:
 
         movq    16(y), %rdx
         xorl    %r8d, %r8d
-        mulpadd (%r11,%r10,(x))
-        mulpadd (%r12,%r11,8(x))
-        mulpadd (%r13,%r12,16(x))
+        mulpadd(%r11,%r10,(x))
+        mulpadd(%r12,%r11,8(x))
+        mulpadd(%r13,%r12,16(x))
         adoxq   %r8, %r14
         mulxq   24(x), %rax, %rbx
         adcq    %rax, %r13
@@ -117,9 +117,9 @@ bignum_montmul_p256:
 
         movq    24(y), %rdx
         xorl    %r9d, %r9d
-        mulpadd (%r12,%r11,(x))
-        mulpadd (%r13,%r12,8(x))
-        mulpadd (%r14,%r13,16(x))
+        mulpadd(%r12,%r11,(x))
+        mulpadd(%r13,%r12,8(x))
+        mulpadd(%r14,%r13,16(x))
         adoxq   %r9, %r15
         mulxq   24(x), %rax, %rbx
         adcq    %rax, %r14
@@ -130,12 +130,12 @@ bignum_montmul_p256:
 
         xorl    %r9d, %r9d
         movq    $0x0000000100000000, %rdx
-        mulpadd (%r12,%r11,%r10)
-        mulpadd (%r13,%r12,%r11)
+        mulpadd(%r12,%r11,%r10)
+        mulpadd(%r13,%r12,%r11)
         notq    %rdx
         leaq    2(%rdx), %rdx
-        mulpadd (%r14,%r13,%r10)
-        mulpadd (%r15,%r14,%r11)
+        mulpadd(%r14,%r13,%r10)
+        mulpadd(%r15,%r14,%r11)
         adcxq   %r9, %r15
         adoxq   %r9, %r8
         adcq    %r9, %r8

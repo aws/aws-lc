@@ -111,7 +111,7 @@ bignum_montmul_p256:
                 adds    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
-                muldiffn (t3,t2,t1, t0, a0,a1, b1,b0)
+                muldiffn(t3,t2,t1, t0, a0,a1, b1,b0)
                 adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -123,8 +123,8 @@ bignum_montmul_p256:
 // Stash the result L' temporarily in the output buffer to avoid
 // using additional registers.
 
-                montreds (s0,s3,s2,s1,s0, t1,t2,t3)
-                montreds (s1,s0,s3,s2,s1, t1,t2,t3)
+                montreds(s0,s3,s2,s1,s0, t1,t2,t3)
+                montreds(s1,s0,s3,s2,s1, t1,t2,t3)
 
                 stp     s2, s3, [x0]
                 stp     s0, s1, [x0, #16]
@@ -141,7 +141,7 @@ bignum_montmul_p256:
                 adds    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
-                muldiffn (t3,t2,t1, t0, a2,a3, b3,b2)
+                muldiffn(t3,t2,t1, t0, a2,a3, b3,b2)
                 adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -195,7 +195,7 @@ bignum_montmul_p256:
                 adds    s1, s1, t1
                 adcs    s2, s2, t2
                 adcs    s3, s3, xzr
-                muldiffn (a1,t2,t1, a0, a0,a1, b1,b0)
+                muldiffn(a1,t2,t1, a0, a0,a1, b1,b0)
                 adds    xzr, a1, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -229,8 +229,8 @@ bignum_montmul_p256:
 // Do two more Montgomery steps on the composed term
 // Net pre-reduct is in [b3;a1;a0;s3;s2]
 
-                montreds (s0,s3,s2,s1,s0, t1,t2,t3)
-                montreds (s1,s0,s3,s2,s1, t1,t2,t3)
+                montreds(s0,s3,s2,s1,s0, t1,t2,t3)
+                montreds(s1,s0,s3,s2,s1, t1,t2,t3)
 
                 adds    a0, a0, s0
                 adcs    a1, a1, s1

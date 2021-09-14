@@ -75,10 +75,10 @@ bignum_montsqr_p256:
 // Chain in the addition of 02 + 12 + 13 to that window (no carry-out possible)
 // This gives all the "heterogeneous" terms of the squaring ready to double
 
-        mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8])
+        mulpadd(r11,r10,[x])
+        mulpadd(r12,r11,[x+8])
         mov     rdx, [x+24]
-        mulpadd (r13,r12,[x+8])
+        mulpadd(r13,r12,[x+8])
         adcx    r13, zero
         adox    r14, zero
         adc     r14, zero
@@ -112,11 +112,11 @@ bignum_montsqr_p256:
 
         xor     zeroe, zeroe
         mov     rdx, 0x0000000100000000
-        mulpadd (r10,r9,r8)
-        mulpadd (r11,r10,r9)
+        mulpadd(r10,r9,r8)
+        mulpadd(r11,r10,r9)
         mov     rdx, 0xffffffff00000001
-        mulpadd (r12,r11,r8)
-        mulpadd (r13,r12,r9)
+        mulpadd(r12,r11,r8)
+        mulpadd(r13,r12,r9)
         adcx    r13, zero
         mov     r9d, zeroe
         adox    r9, zero
@@ -130,11 +130,11 @@ bignum_montsqr_p256:
 
         xor     zeroe, zeroe
         mov     rdx, 0x0000000100000000
-        mulpadd (r12,r11,r10)
-        mulpadd (r13,r12,r11)
+        mulpadd(r12,r11,r10)
+        mulpadd(r13,r12,r11)
         mov     rdx, 0xffffffff00000001
-        mulpadd (r14,r13,r10)
-        mulpadd (r15,r14,r11)
+        mulpadd(r14,r13,r10)
+        mulpadd(r15,r14,r11)
         adcx    r15, zero
         adox    r8, zero
         adc     r8, zero

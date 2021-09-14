@@ -78,8 +78,8 @@ bignum_mod_n256:
 
 // Load the complicated three words of 2^256 - n_256 = [n3; 0; n1; n0]
 
-                movbig ( n0, #0x0c46, #0x353d, #0x039c, #0xdaaf)
-                movbig ( n1, #0x4319, #0x0552, #0x58e8, #0x617b)
+                movbig( n0, #0x0c46, #0x353d, #0x039c, #0xdaaf)
+                movbig( n1, #0x4319, #0x0552, #0x58e8, #0x617b)
                 mov     n3, #0x00000000ffffffff
 
 // Reduce the top 4 digits mod n_256 (a conditional subtraction of n_256)

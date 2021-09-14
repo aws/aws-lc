@@ -63,7 +63,7 @@
 // We want to add (2^384 - 2^128 - 2^96 + 2^32 - 1) * w
 // where w = [d0 + (d0<<32)] mod 2^64
 //
-//       montreds (d6,d5,d4,d3,d2,d1,d0)
+//       montreds(d6,d5,d4,d3,d2,d1,d0)
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
@@ -119,12 +119,12 @@ bignum_montsqr_p384:
 // (no carry-out possible)
 
         mov     rdx, [x+16]
-        mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8])
+        mulpadd(r11,r10,[x])
+        mulpadd(r12,r11,[x+8])
         mov     rdx, [x+8]
-        mulpadd (r13,r12,[x+24])
-        mulpadd (r14,r13,[x+32])
-        mulpadd (r15,r14,[x+40])
+        mulpadd(r13,r12,[x+24])
+        mulpadd(r14,r13,[x+32])
+        mulpadd(r15,r14,[x+40])
         adcx    r15, zero
         adox    rcx, zero
         adc     rcx, zero
@@ -140,10 +140,10 @@ bignum_montsqr_p384:
 // our result so far is in [rbp;rbx;rcx;r15;...r9]
 
         mov     rdx, [x+32]
-        mulpadd (r13,r12,[x])
+        mulpadd(r13,r12,[x])
         mov     rdx, [x+16]
-        mulpadd (r14,r13,[x+24])
-        mulpadd (r15,r14,[x+32])
+        mulpadd(r14,r13,[x+24])
+        mulpadd(r15,r14,[x+32])
         mulx    rdx, rax, [x+40]
         adcx    r15, rax
         adox    rcx, rdx
@@ -213,12 +213,12 @@ bignum_montsqr_p384:
 
 // Montgomery reduce the r13,...,r8 window 6 times
 
-        montreds (r8,r13,r12,r11,r10,r9,r8)
-        montreds (r9,r8,r13,r12,r11,r10,r9)
-        montreds (r10,r9,r8,r13,r12,r11,r10)
-        montreds (r11,r10,r9,r8,r13,r12,r11)
-        montreds (r12,r11,r10,r9,r8,r13,r12)
-        montreds (r13,r12,r11,r10,r9,r8,r13)
+        montreds(r8,r13,r12,r11,r10,r9,r8)
+        montreds(r9,r8,r13,r12,r11,r10,r9)
+        montreds(r10,r9,r8,r13,r12,r11,r10)
+        montreds(r11,r10,r9,r8,r13,r12,r11)
+        montreds(r12,r11,r10,r9,r8,r13,r12)
+        montreds(r13,r12,r11,r10,r9,r8,r13)
 
 // Now we can safely restore rbx before accumulating
 

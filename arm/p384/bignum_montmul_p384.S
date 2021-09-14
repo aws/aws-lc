@@ -152,7 +152,7 @@ bignum_montmul_p384:
                 adcs    s4, s4, t4
                 adc     s5, s5, xzr
 
-                muldiffn (t3,t2,t1, t4, a0,a1, b1,b0)
+                muldiffn(t3,t2,t1, t4, a0,a1, b1,b0)
                 adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -160,14 +160,14 @@ bignum_montmul_p384:
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
-                muldiffn (t3,t2,t1, t4, a0,a2, b2,b0)
+                muldiffn(t3,t2,t1, t4, a0,a2, b2,b0)
                 adds    xzr, t3, #1
                 adcs    s2, s2, t1
                 adcs    s3, s3, t2
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
-                muldiffn (t3,t2,t1, t4, a1,a2, b2,b1)
+                muldiffn(t3,t2,t1, t4, a1,a2, b2,b1)
                 adds    xzr, t3, #1
                 adcs    s3, s3, t1
                 adcs    s4, s4, t2
@@ -179,11 +179,11 @@ bignum_montmul_p384:
 // We could keep this in registers by directly adding to it in the next
 // ADK block, but if anything that seems to be slightly slower
 
-                montreds (s0,s5,s4,s3,s2,s1,s0, t1,t2,t3)
+                montreds(s0,s5,s4,s3,s2,s1,s0, t1,t2,t3)
 
-                montreds (s1,s0,s5,s4,s3,s2,s1, t1,t2,t3)
+                montreds(s1,s0,s5,s4,s3,s2,s1, t1,t2,t3)
 
-                montreds (s2,s1,s0,s5,s4,s3,s2, t1,t2,t3)
+                montreds(s2,s1,s0,s5,s4,s3,s2, t1,t2,t3)
 
                 stp     s3, s4, [x0]
                 stp     s5, s0, [x0, #16]
@@ -212,7 +212,7 @@ bignum_montmul_p384:
                 adcs    s4, s4, t4
                 adc     s5, s5, xzr
 
-                muldiffn (t3,t2,t1, t4, a3,a4, b4,b3)
+                muldiffn(t3,t2,t1, t4, a3,a4, b4,b3)
                 adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -220,14 +220,14 @@ bignum_montmul_p384:
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
-                muldiffn (t3,t2,t1, t4, a3,a5, b5,b3)
+                muldiffn(t3,t2,t1, t4, a3,a5, b5,b3)
                 adds    xzr, t3, #1
                 adcs    s2, s2, t1
                 adcs    s3, s3, t2
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
-                muldiffn (t3,t2,t1, t4, a4,a5, b5,b4)
+                muldiffn(t3,t2,t1, t4, a4,a5, b5,b4)
                 adds    xzr, t3, #1
                 adcs    s3, s3, t1
                 adcs    s4, s4, t2
@@ -306,7 +306,7 @@ bignum_montmul_p384:
                 adcs    s4, s4, t4
                 adc     s5, s5, xzr
 
-                muldiffn (t3,t2,t1, t4, a3,a4, b1,b0)
+                muldiffn(t3,t2,t1, t4, a3,a4, b1,b0)
                 adds    xzr, t3, #1
                 adcs    s1, s1, t1
                 adcs    s2, s2, t2
@@ -314,14 +314,14 @@ bignum_montmul_p384:
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
-                muldiffn (t3,t2,t1, t4, a3,a5, b2,b0)
+                muldiffn(t3,t2,t1, t4, a3,a5, b2,b0)
                 adds    xzr, t3, #1
                 adcs    s2, s2, t1
                 adcs    s3, s3, t2
                 adcs    s4, s4, t3
                 adc     s5, s5, t3
 
-                muldiffn (t3,t2,t1, t4, a4,a5, b2,b1)
+                muldiffn(t3,t2,t1, t4, a4,a5, b2,b1)
                 adds    xzr, t3, #1
                 adcs    s3, s3, t1
                 adcs    s4, s4, t2
@@ -367,9 +367,9 @@ bignum_montmul_p384:
 
 // Do three more Montgomery steps on the composed term
 
-                montreds (s0,s5,s4,s3,s2,s1,s0, t1,t2,t3)
-                montreds (s1,s0,s5,s4,s3,s2,s1, t1,t2,t3)
-                montreds (s2,s1,s0,s5,s4,s3,s2, t1,t2,t3)
+                montreds(s0,s5,s4,s3,s2,s1,s0, t1,t2,t3)
+                montreds(s1,s0,s5,s4,s3,s2,s1, t1,t2,t3)
+                montreds(s2,s1,s0,s5,s4,s3,s2, t1,t2,t3)
 
                 adds    b0, b0, s0
                 adcs    b1, b1, s1

@@ -80,22 +80,22 @@ bignum_montmul_p256:
 
         mov     rdx, [y+8]
         xor     r14d, r14d
-        mulpadd (r10,r9,[x])
-        mulpadd (r11,r10,[x+8])
-        mulpadd (r12,r11,[x+16])
-        mulpadd (r13,r12,[x+24])
+        mulpadd(r10,r9,[x])
+        mulpadd(r11,r10,[x+8])
+        mulpadd(r12,r11,[x+16])
+        mulpadd(r13,r12,[x+24])
         adc    r13, r14
 
 // Montgomery reduce windows 0 and 1 together
 
         xor     r15d, r15d
         mov     rdx, 0x0000000100000000
-        mulpadd (r10,r9,r8)
-        mulpadd (r11,r10,r9)
+        mulpadd(r10,r9,r8)
+        mulpadd(r11,r10,r9)
         not     rdx
         lea     rdx, [rdx+2]
-        mulpadd (r12,r11,r8)
-        mulpadd (r13,r12,r9)
+        mulpadd(r12,r11,r8)
+        mulpadd(r13,r12,r9)
         adcx    r13, r15
         adox    r14, r15
         adc     r14, r15
@@ -104,9 +104,9 @@ bignum_montmul_p256:
 
         mov     rdx, [y+16]
         xor     r8d, r8d
-        mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8])
-        mulpadd (r13,r12,[x+16])
+        mulpadd(r11,r10,[x])
+        mulpadd(r12,r11,[x+8])
+        mulpadd(r13,r12,[x+16])
         adox    r14, r8
         mulx    rbx, rax, [x+24]
         adc     r13, rax
@@ -117,9 +117,9 @@ bignum_montmul_p256:
 
         mov     rdx, [y+24]
         xor     r9d, r9d
-        mulpadd (r12,r11,[x])
-        mulpadd (r13,r12,[x+8])
-        mulpadd (r14,r13,[x+16])
+        mulpadd(r12,r11,[x])
+        mulpadd(r13,r12,[x+8])
+        mulpadd(r14,r13,[x+16])
         adox    r15, r9
         mulx    rbx, rax, [x+24]
         adc     r14, rax
@@ -130,12 +130,12 @@ bignum_montmul_p256:
 
         xor     r9d, r9d
         mov     rdx, 0x0000000100000000
-        mulpadd (r12,r11,r10)
-        mulpadd (r13,r12,r11)
+        mulpadd(r12,r11,r10)
+        mulpadd(r13,r12,r11)
         not     rdx
         lea     rdx, [rdx+2]
-        mulpadd (r14,r13,r10)
-        mulpadd (r15,r14,r11)
+        mulpadd(r14,r13,r10)
+        mulpadd(r15,r14,r11)
         adcx    r15, r9
         adox    r8, r9
         adc     r8, r9

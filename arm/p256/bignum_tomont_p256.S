@@ -105,10 +105,10 @@ bignum_tomont_p256:
 
 // Successively multiply by 2^64 and reduce
 
-                modstep_p256 (d3,d2,d1,d0,d4, t1,t2,t3)
-                modstep_p256 (d2,d1,d0,d4,d3, t1,t2,t3)
-                modstep_p256 (d1,d0,d4,d3,d2, t1,t2,t3)
-                modstep_p256 (d0,d4,d3,d2,d1, t1,t2,t3)
+                modstep_p256(d3,d2,d1,d0,d4, t1,t2,t3)
+                modstep_p256(d2,d1,d0,d4,d3, t1,t2,t3)
+                modstep_p256(d1,d0,d4,d3,d2, t1,t2,t3)
+                modstep_p256(d0,d4,d3,d2,d1, t1,t2,t3)
 
 // Store the result and return
 

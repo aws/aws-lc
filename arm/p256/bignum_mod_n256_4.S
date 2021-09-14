@@ -54,8 +54,8 @@ bignum_mod_n256_4:
 
 // Load the complicated three words of n_256, the other being all 1s
 
-                movbig ( n0, #0xf3b9, #0xcac2, #0xfc63, #0x2551)
-                movbig ( n1, #0xbce6, #0xfaad, #0xa717, #0x9e84)
+                movbig( n0, #0xf3b9, #0xcac2, #0xfc63, #0x2551)
+                movbig( n1, #0xbce6, #0xfaad, #0xa717, #0x9e84)
                 mov     n3, #0xffffffff00000000
 
 // Load the input number

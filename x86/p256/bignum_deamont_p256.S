@@ -72,11 +72,11 @@ bignum_deamont_p256:
 // Montgomery reduce windows 0 and 1 together
 
         mov     rdx, 0x0000000100000000
-        mulpadd (r10,r9,r8)
-        mulpadd (r11,r10,r9)
+        mulpadd(r10,r9,r8)
+        mulpadd(r11,r10,r9)
         mov     rdx, 0xffffffff00000001
-        mulpadd (rbx,r11,r8)
-        mulpadd (rsi,rbx,r9)
+        mulpadd(rbx,r11,r8)
+        mulpadd(rsi,rbx,r9)
         mov     r8d, 0
         adcx    rsi, r8
 
@@ -87,11 +87,11 @@ bignum_deamont_p256:
 // Montgomery reduce windows 2 and 3 together
 
         mov     rdx, 0x0000000100000000
-        mulpadd (rbx,r11,r10)
-        mulpadd (rsi,rbx,r11)
+        mulpadd(rbx,r11,r10)
+        mulpadd(rsi,rbx,r11)
         mov     rdx, 0xffffffff00000001
-        mulpadd (r8,rsi,r10)
-        mulpadd (r9,r8,r11)
+        mulpadd(r8,rsi,r10)
+        mulpadd(r9,r8,r11)
         mov     r10d, 0
         adcx    r9, r10
 

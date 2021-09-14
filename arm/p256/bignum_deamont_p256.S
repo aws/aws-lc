@@ -79,13 +79,13 @@ bignum_deamont_p256:
 
 // Systematically scroll left doing 1-step reductions
 
-                montreds (d0,d3,d2,d1,d0, u,v,w)
+                montreds(d0,d3,d2,d1,d0, u,v,w)
 
-                montreds (d1,d0,d3,d2,d1, u,v,w)
+                montreds(d1,d0,d3,d2,d1, u,v,w)
 
-                montreds (d2,d1,d0,d3,d2, u,v,w)
+                montreds(d2,d1,d0,d3,d2, u,v,w)
 
-                montreds (d3,d2,d1,d0,d3, u,v,w)
+                montreds(d3,d2,d1,d0,d3, u,v,w)
 
 // Now compare end result in [d3;d2;d1;d0] with p_256 = [w; 0; v; -1]
 

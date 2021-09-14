@@ -63,11 +63,11 @@ bignum_demont_p256:
 // Montgomery reduce windows 0 and 1 together
 
         movq    $0x0000000100000000, %rdx
-        mulpadd (%r10,%r9,%r8)
-        mulpadd (%r11,%r10,%r9)
+        mulpadd(%r10,%r9,%r8)
+        mulpadd(%r11,%r10,%r9)
         movq    $0xffffffff00000001, %rdx
-        mulpadd (%rbx,%r11,%r8)
-        mulpadd (%rsi,%rbx,%r9)
+        mulpadd(%rbx,%r11,%r8)
+        mulpadd(%rsi,%rbx,%r9)
         movl    $0, %r8d
         adcxq   %r8, %rsi
 
@@ -78,11 +78,11 @@ bignum_demont_p256:
 // Montgomery reduce windows 2 and 3 together
 
         movq    $0x0000000100000000, %rdx
-        mulpadd (%rbx,%r11,%r10)
-        mulpadd (%rsi,%rbx,%r11)
+        mulpadd(%rbx,%r11,%r10)
+        mulpadd(%rsi,%rbx,%r11)
         movq    $0xffffffff00000001, %rdx
-        mulpadd (%r8,%rsi,%r10)
-        mulpadd (%r9,%r8,%r11)
+        mulpadd(%r8,%rsi,%r10)
+        mulpadd(%r9,%r8,%r11)
         movl    $0, %r10d
         adcxq   %r10, %r9
 
