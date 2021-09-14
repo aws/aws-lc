@@ -639,6 +639,7 @@ typedef enum {
   OPENSSL_THREAD_LOCAL_ERR = 0,
   OPENSSL_THREAD_LOCAL_RAND,
   OPENSSL_THREAD_LOCAL_FIPS_COUNTERS,
+  AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_COUNTER,
   OPENSSL_THREAD_LOCAL_TEST,
   NUM_OPENSSL_THREAD_LOCALS,
 } thread_local_data_t;
@@ -894,6 +895,9 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 
 
 // FIPS functions.
+
+void awslc_fips_service_indicator_init_counter(void);
+void awslc_fips_service_indicator_inc_counter(void);
 
 #if defined(BORINGSSL_FIPS)
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test

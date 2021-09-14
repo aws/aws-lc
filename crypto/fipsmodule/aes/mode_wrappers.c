@@ -49,10 +49,21 @@
 #include <openssl/aes.h>
 
 #include <assert.h>
+#include <stdio.h>
 
 #include "../aes/internal.h"
 #include "../modes/internal.h"
 
+#define AESCBC_VERIFY_SERVICE_INDICATOR                                     \
+          switch(key->rounds) {                                             \
+            case 9:                                                         \
+            case 11:                                                        \
+            case 13:                                                        \
+              awslc_fips_service_indicator_inc_counter();                   \
+              break;                                                        \
+            default:                                                        \
+              break;                                                        \
+          }                                                                 \
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
@@ -92,13 +103,17 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                      const AES_KEY *key, uint8_t *ivec, const int enc) {
   if (hwaes_capable()) {
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
+    AESCBC_VERIFY_SERVICE_INDICATOR
     return;
   }
 
   if (!vpaes_capable()) {
     aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
+    AESCBC_VERIFY_SERVICE_INDICATOR
     return;
   }
+
+  AESCBC_VERIFY_SERVICE_INDICATOR
   if (enc) {
     CRYPTO_cbc128_encrypt(in, out, len, key, ivec, AES_encrypt);
   } else {

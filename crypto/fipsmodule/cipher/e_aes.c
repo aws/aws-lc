@@ -112,6 +112,18 @@ static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
 }
 #endif  // BSAES
 
+// Only internal IVs are approved. If the nonce length has been set to 0,
+// that means we're using internal IV mode.
+#define AESGCM_VERIFY_SERVICE_INDICATOR                                     \
+          switch (EVP_AEAD_key_length(ctx->aead)) {                         \
+              case 16:                                                      \
+              case 32:                                                      \
+                  awslc_fips_service_indicator_inc_counter();               \
+              break;                                                        \
+                  default:                                                  \
+              break;                                                        \
+          }                                                                 \
+
 typedef struct {
   union {
     double align;
@@ -1191,7 +1203,7 @@ static int aead_aes_gcm_seal_scatter_randnonce(
   assert(*out_tag_len + sizeof(nonce) <= max_out_tag_len);
   memcpy(out_tag + *out_tag_len, nonce, sizeof(nonce));
   *out_tag_len += sizeof(nonce);
-
+  AESGCM_VERIFY_SERVICE_INDICATOR
   return 1;
 }
 
@@ -1214,6 +1226,7 @@ static int aead_aes_gcm_open_gather_randnonce(
 
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
+  AESGCM_VERIFY_SERVICE_INDICATOR
   return aead_aes_gcm_open_gather_impl(
       gcm_ctx, out, nonce, AES_GCM_NONCE_LENGTH, in, in_len, in_tag,
       in_tag_len - AES_GCM_NONCE_LENGTH, ad, ad_len,
