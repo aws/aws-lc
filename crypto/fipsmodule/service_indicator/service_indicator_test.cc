@@ -67,7 +67,8 @@ static const uint8_t kAESCBCCiphertext[64] = {
 };
 
 TEST(ServiceIndicatorTest, BasicTest) {
-  // Check the initial state and counter.
+  // Reset and check the initial state and counter.
+  awslc_fips_service_indicator_reset_state();
   struct fips_service_indicator_state *state = awslc_fips_service_indicator_get_state();
   ASSERT_TRUE(state);
   ASSERT_EQ(state->counter,0);
@@ -96,13 +97,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 
   counter = awslc_fips_service_indicator_get_counter();
   ASSERT_EQ(counter, state->counter);
-
-  // Reset and check if state has been initialized.
-  awslc_fips_service_indicator_reset_state();
-  state = awslc_fips_service_indicator_get_state();
-  ASSERT_TRUE(state);
-  ASSERT_EQ(state->counter,0);
-  ASSERT_EQ(state->serviceID, fips_approved_no_state);
 }
 
 TEST(ServiceIndicatorTest, AESCBC) {
