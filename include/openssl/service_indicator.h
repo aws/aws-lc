@@ -8,8 +8,6 @@
 extern "C" {
 #endif
 
-//#if defined(AWSLC_FIPS)
-
 struct fips_service_indicator_state {
   int counter;
   int serviceID;
@@ -20,21 +18,9 @@ OPENSSL_EXPORT struct fips_service_indicator_state *awslc_fips_service_indicator
 OPENSSL_EXPORT void awslc_fips_service_indicator_reset_state(void);
 OPENSSL_EXPORT int awslc_fips_check_service_approved(int prev_counter, int service_id);
 
-// #else
-
-// #endif
 
 #if defined(__cplusplus)
 }  // extern C
-
-extern "C++" {
-
-BSSL_NAMESPACE_BEGIN
-
-BSSL_NAMESPACE_END
-
-}  // extern C++
-
 #endif
 
 #endif  // AWSLC_SERVICE_INDICATOR_H

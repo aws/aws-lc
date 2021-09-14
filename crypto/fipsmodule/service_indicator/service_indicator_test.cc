@@ -4,8 +4,6 @@
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
 
-#include <stdio.h>
-
 #include <gtest/gtest.h>
 
 #include <openssl/aead.h>
@@ -69,11 +67,46 @@ static const uint8_t kAESCBCCiphertext[64] = {
 };
 
 TEST(ServiceIndicatorTest, BasicTest) {
-  EVP_AEAD_CTX aead_ctx;
-  EVP_AEAD_CTX_zero(&aead_ctx);
+  // Check the initial state and counter.
+  struct fips_service_indicator_state *state = awslc_fips_service_indicator_get_state();
+  ASSERT_TRUE(state);
+  ASSERT_EQ(state->counter,0);
+  ASSERT_EQ(state->serviceID, fips_approved_no_state);
 
   int counter = awslc_fips_service_indicator_get_counter();
-  ASSERT_EQ(counter, 0);
+  ASSERT_EQ(counter, state->counter);
+
+  // Call a random approved service.
+  EVP_AEAD_CTX aead_ctx;
+  EVP_AEAD_CTX_zero(&aead_ctx);
+  uint8_t output[256];
+  size_t out_len;
+  EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
+                         sizeof(kAESKey), 0, nullptr);
+  EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nullptr,
+             0, kPlaintext, sizeof(kPlaintext), nullptr, 0);
+
+  ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_gcm));
+
+  // Check state and counter after using an approved service.
+  state = awslc_fips_service_indicator_get_state();
+  ASSERT_TRUE(state);
+  ASSERT_EQ(state->counter,1);
+  ASSERT_EQ(state->serviceID, fips_approved_evp_aes_128_gcm);
+
+  counter = awslc_fips_service_indicator_get_counter();
+  ASSERT_EQ(counter, state->counter);
+
+  // Reset and check if state has been initialized.
+  awslc_fips_service_indicator_reset_state();
+  state = awslc_fips_service_indicator_get_state();
+  ASSERT_TRUE(state);
+  ASSERT_EQ(state->counter,0);
+  ASSERT_EQ(state->serviceID, fips_approved_no_state);
+}
+
+TEST(ServiceIndicatorTest, AESCBC) {
+  int counter = awslc_fips_service_indicator_get_counter();
 
   AES_KEY aes_key;
   uint8_t aes_iv[16];
@@ -83,13 +116,13 @@ TEST(ServiceIndicatorTest, BasicTest) {
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
-    goto err;
+    return;
   }
   AES_cbc_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv,
                   AES_ENCRYPT);
   if (!check_test(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
                   "AES-CBC Encryption KAT")) {
-    goto err;
+    return;
   }
 
   ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_cbc));
@@ -99,18 +132,25 @@ TEST(ServiceIndicatorTest, BasicTest) {
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
   if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     fprintf(stderr, "AES_set_decrypt_key failed.\n");
-    goto err;
+    return;
   }
   AES_cbc_encrypt(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
                   &aes_key, aes_iv, AES_DECRYPT);
   if (!check_test(kPlaintext, output, sizeof(kPlaintext),
                   "AES-CBC Decryption KAT")) {
-    goto err;
+    return;
   }
 
   ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_cbc));
-  counter = awslc_fips_service_indicator_get_counter();
-  ASSERT_EQ(counter, 2);
+}
+
+TEST(ServiceIndicatorTest, AESGCM) {
+  EVP_AEAD_CTX aead_ctx;
+  EVP_AEAD_CTX_zero(&aead_ctx);
+
+  uint8_t output[256];
+
+  int counter = awslc_fips_service_indicator_get_counter();
 
   size_t out_len;
   if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
@@ -127,19 +167,8 @@ TEST(ServiceIndicatorTest, BasicTest) {
   }
 
   ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_gcm));
-  counter = awslc_fips_service_indicator_get_counter();
-  ASSERT_EQ(counter, 3);
 
 err:
   EVP_AEAD_CTX_cleanup(&aead_ctx);
 }
 
-// #if defined(AWSLC_FIPS)
-
-//#else
-//
-//void awslc_set_service_indicator_approved(void) {}
-//
-//void awslc_set_service_indicator_not_approved(void) {}
-//
-//#endif // defined(AWSLC_FIPS)

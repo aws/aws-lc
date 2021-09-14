@@ -639,7 +639,7 @@ typedef enum {
   OPENSSL_THREAD_LOCAL_ERR = 0,
   OPENSSL_THREAD_LOCAL_RAND,
   OPENSSL_THREAD_LOCAL_FIPS_COUNTERS,
-  AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_COUNTER,
+  AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE,
   OPENSSL_THREAD_LOCAL_TEST,
   NUM_OPENSSL_THREAD_LOCALS,
 } thread_local_data_t;
@@ -901,16 +901,16 @@ enum fips_approved_algorithm_t {
   fips_approved_evp_aes_128_gcm = 1,
   fips_approved_evp_aes_256_gcm = 2,
   fips_approved_evp_aes_128_ctr = 3,
-  fips_approved_evp_aes_256_ctr = 4,
-  fips_approved_evp_aes_128_cbc = 5,
-  fips_approved_evp_aes_256_cbc = 6,
-  fips_approved_sha512          = 9,
-  fips_approved_sha512_256      = 10,
+  fips_approved_evp_aes_192_ctr = 4,
+  fips_approved_evp_aes_256_ctr = 5,
+  fips_approved_evp_aes_128_cbc = 6,
+  fips_approved_evp_aes_192_cbc = 7,
+  fips_approved_evp_aes_256_cbc = 8,
 
-  fips_approved_algorithm_max =10,
+  fips_approved_algorithm_max = 8,
 };
 
-void awslc_fips_service_indicator_init_counter(void);
+void awslc_fips_service_indicator_init_state(void);
 void awslc_fips_service_indicator_update_state(int service_id);
 
 #if defined(BORINGSSL_FIPS)

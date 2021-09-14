@@ -60,6 +60,7 @@
       awslc_fips_service_indicator_update_state(fips_approved_evp_aes_128_cbc);\
       break;                                                                   \
     case 11:                                                                   \
+      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_192_cbc);\
       break;                                                                   \
     case 13:                                                                   \
       awslc_fips_service_indicator_update_state(fips_approved_evp_aes_256_cbc);\
@@ -67,6 +68,7 @@
     default:                                                                   \
       break;                                                                   \
   }                                                                            \
+
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
