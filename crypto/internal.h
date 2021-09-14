@@ -912,6 +912,7 @@ enum fips_approved_algorithm_t {
 
 void awslc_fips_service_indicator_init_state(void);
 void awslc_fips_service_indicator_update_state(int service_id);
+
 #else
 OPENSSL_INLINE void awslc_fips_service_indicator_init_state(void) {}
 OPENSSL_INLINE void awslc_fips_service_indicator_update_state(int service_id) {}

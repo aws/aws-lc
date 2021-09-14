@@ -25,7 +25,6 @@
 
 static const uint8_t kAESKey[16] = {
     'B','o','r','i','n','g','C','r','y','p','t','o',' ','K', 'e','y'};
-static const uint8_t kAESIV[16] = {0};
 static const uint8_t kPlaintext[64] = {
     'B','o','r','i','n','g','C','r','y','p','t','o','M','o','d','u','l','e',
     ' ','F','I','P','S',' ','K','A','T',' ','E','n','c','r','y','p','t','i',
@@ -33,6 +32,8 @@ static const uint8_t kPlaintext[64] = {
     'P','l','a','i','n','t','e','x','t','!'};
 
 #if defined(AWSLC_FIPS)
+static const uint8_t kAESIV[16] = {0};
+
 static void hex_dump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
     fprintf(stderr, "%02x", in[i]);
@@ -70,13 +71,15 @@ static const uint8_t kAESCBCCiphertext[64] = {
 TEST(ServiceIndicatorTest, BasicTest) {
   // Reset and check the initial state and counter.
   awslc_fips_service_indicator_reset_state();
-  struct fips_service_indicator_state *state = awslc_fips_service_indicator_get_state();
-  ASSERT_TRUE(state);
-  ASSERT_EQ(state->counter,0);
-  ASSERT_EQ(state->serviceID, fips_approved_no_state);
+  bssl::UniquePtr<fips_service_indicator_state> state;
+  state = bssl::UniquePtr<fips_service_indicator_state>(awslc_fips_service_indicator_get_state());
+
+  ASSERT_TRUE(state.get());
+  ASSERT_EQ(state.get()->counter,0);
+  ASSERT_EQ(state.get()->serviceID, fips_approved_no_state);
 
   int counter = awslc_fips_service_indicator_get_counter();
-  ASSERT_EQ(counter, state->counter);
+  ASSERT_EQ(counter, state.get()->counter);
 
   // Call a random approved service.
   EVP_AEAD_CTX aead_ctx;
@@ -91,13 +94,13 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_gcm));
 
   // Check state and counter after using an approved service.
-  state = awslc_fips_service_indicator_get_state();
-  ASSERT_TRUE(state);
-  ASSERT_EQ(state->counter,1);
-  ASSERT_EQ(state->serviceID, fips_approved_evp_aes_128_gcm);
+  state = bssl::UniquePtr<fips_service_indicator_state>(awslc_fips_service_indicator_get_state());
+  ASSERT_TRUE(state.get());
+  ASSERT_EQ(state.get()->counter,1);
+  ASSERT_EQ(state.get()->serviceID, fips_approved_evp_aes_128_gcm);
 
   counter = awslc_fips_service_indicator_get_counter();
-  ASSERT_EQ(counter, state->counter);
+  ASSERT_EQ(counter, state.get()->counter);
 }
 
 TEST(ServiceIndicatorTest, AESCBC) {
@@ -140,22 +143,22 @@ TEST(ServiceIndicatorTest, AESCBC) {
 }
 
 TEST(ServiceIndicatorTest, AESGCM) {
-  EVP_AEAD_CTX aead_ctx;
-  EVP_AEAD_CTX_zero(&aead_ctx);
+  bssl::ScopedEVP_AEAD_CTX aead_ctx;
+  EVP_AEAD_CTX_zero(aead_ctx.get());
 
   uint8_t output[256];
 
   int counter = awslc_fips_service_indicator_get_counter();
 
   size_t out_len;
-  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
+  if (!EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(), kAESKey,
                          sizeof(kAESKey), 0, nullptr)) {
     fprintf(stderr, "EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
     goto err;
   }
 
   // AES-GCM Encryption KAT
-  if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nullptr,
+  if (!EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output), nullptr,
                          0, kPlaintext, sizeof(kPlaintext), nullptr, 0)) {
     fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-GCM failed.\n");
     goto err;
@@ -164,15 +167,17 @@ TEST(ServiceIndicatorTest, AESGCM) {
   ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_gcm));
 
 err:
-  EVP_AEAD_CTX_cleanup(&aead_ctx);
+  EVP_AEAD_CTX_cleanup(aead_ctx.get());
 }
+
 #else
 // Service indicator should not be used without FIPS turned on.
 TEST(ServiceIndicatorTest, BasicTest) {
   // Reset and check the initial state and counter.
   awslc_fips_service_indicator_reset_state();
-  struct fips_service_indicator_state *state = awslc_fips_service_indicator_get_state();
-  ASSERT_FALSE(state);
+  bssl::UniquePtr<fips_service_indicator_state> state;
+  state = bssl::UniquePtr<fips_service_indicator_state>(awslc_fips_service_indicator_get_state());
+  ASSERT_FALSE(state.get());
 
   int counter = awslc_fips_service_indicator_get_counter();
   ASSERT_EQ(counter, 0);
@@ -190,9 +195,11 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_FALSE(awslc_fips_check_service_approved(counter, 0));
 
   // Check state and counter after using an approved service.
-  state = awslc_fips_service_indicator_get_state();
-  ASSERT_FALSE(state);
+  state = bssl::UniquePtr<fips_service_indicator_state>(awslc_fips_service_indicator_get_state());
+  ASSERT_FALSE(state.get());
   counter = awslc_fips_service_indicator_get_counter();
   ASSERT_EQ(counter, 0);
 }
 #endif // AWSLC_FIPS
+
+
