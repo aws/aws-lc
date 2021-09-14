@@ -118,12 +118,12 @@ bignum_tomont_p384:
 
 // Successively multiply by 2^64 and reduce
 
-                modstep_p384 (d5,d4,d3,d2,d1,d0,d6, t1,t2,t3)
-                modstep_p384 (d4,d3,d2,d1,d0,d6,d5, t1,t2,t3)
-                modstep_p384 (d3,d2,d1,d0,d6,d5,d4, t1,t2,t3)
-                modstep_p384 (d2,d1,d0,d6,d5,d4,d3, t1,t2,t3)
-                modstep_p384 (d1,d0,d6,d5,d4,d3,d2, t1,t2,t3)
-                modstep_p384 (d0,d6,d5,d4,d3,d2,d1, t1,t2,t3)
+                modstep_p384(d5,d4,d3,d2,d1,d0,d6, t1,t2,t3)
+                modstep_p384(d4,d3,d2,d1,d0,d6,d5, t1,t2,t3)
+                modstep_p384(d3,d2,d1,d0,d6,d5,d4, t1,t2,t3)
+                modstep_p384(d2,d1,d0,d6,d5,d4,d3, t1,t2,t3)
+                modstep_p384(d1,d0,d6,d5,d4,d3,d2, t1,t2,t3)
+                modstep_p384(d0,d6,d5,d4,d3,d2,d1, t1,t2,t3)
 
 // Store the result and return
 

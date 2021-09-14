@@ -60,7 +60,7 @@
 // We want to add (2^384 - 2^128 - 2^96 + 2^32 - 1) * w
 // where w = [d0 + (d0<<32)] mod 2^64
 //
-//       montredc (d7,d6,d5,d4,d3,d2,d1,d0)
+//       montredc(d7,d6,d5,d4,d3,d2,d1,d0)
 //
 // This particular variant, with its mix of addition and subtraction
 // at the top, is not intended to maintain a coherent carry or borrow out.
@@ -127,64 +127,64 @@ bignum_tomont_p384:
 // Montgomery reduce the zeroth window
 
         xor     r15, r15
-        montredc (r15, r14,r13,r12,r11,r10,r9,r8)
+        montredc(r15, r14,r13,r12,r11,r10,r9,r8)
 
 // Add row 1
 
         xor     zero, zero
         mov     rdx, 0x0000000200000000
         xor     r8, r8
-        mulpadd (r10,r9,[x])
-        mulpadd (r11,r10,[x+8])
-        mulpadd (r12,r11,[x+16])
-        mulpadd (r13,r12,[x+24])
-        mulpadd (r14,r13,[x+32])
-        mulpadd (r15,r14,[x+40])
+        mulpadd(r10,r9,[x])
+        mulpadd(r11,r10,[x+8])
+        mulpadd(r12,r11,[x+16])
+        mulpadd(r13,r12,[x+24])
+        mulpadd(r14,r13,[x+32])
+        mulpadd(r15,r14,[x+40])
         adcx    r15, zero
         adox    r8, zero
         adcx    r8, zero
 
 // Montgomery reduce window 1
 
-        montredc (r8, r15,r14,r13,r12,r11,r10,r9)
+        montredc(r8, r15,r14,r13,r12,r11,r10,r9)
 
 // Add row 2
 
         xor     zero, zero
         mov     rdx, 0xfffffffe00000000
         xor     r9, r9
-        mulpadd (r11,r10,[x])
-        mulpadd (r12,r11,[x+8])
-        mulpadd (r13,r12,[x+16])
-        mulpadd (r14,r13,[x+24])
-        mulpadd (r15,r14,[x+32])
-        mulpadd (r8,r15,[x+40])
+        mulpadd(r11,r10,[x])
+        mulpadd(r12,r11,[x+8])
+        mulpadd(r13,r12,[x+16])
+        mulpadd(r14,r13,[x+24])
+        mulpadd(r15,r14,[x+32])
+        mulpadd(r8,r15,[x+40])
         adcx    r8, zero
         adox    r9, zero
         adcx    r9, zero
 
 // Montgomery reduce window 2
 
-        montredc (r9, r8,r15,r14,r13,r12,r11,r10)
+        montredc(r9, r8,r15,r14,r13,r12,r11,r10)
 
 // Add row 3
 
         xor     zero, zero
         mov     rdx, 0x0000000200000000
         xor     r10, r10
-        mulpadd (r12,r11,[x])
-        mulpadd (r13,r12,[x+8])
-        mulpadd (r14,r13,[x+16])
-        mulpadd (r15,r14,[x+24])
-        mulpadd (r8,r15,[x+32])
-        mulpadd (r9,r8,[x+40])
+        mulpadd(r12,r11,[x])
+        mulpadd(r13,r12,[x+8])
+        mulpadd(r14,r13,[x+16])
+        mulpadd(r15,r14,[x+24])
+        mulpadd(r8,r15,[x+32])
+        mulpadd(r9,r8,[x+40])
         adcx    r9, zero
         adox    r10, zero
         adcx    r10, zero
 
 // Montgomery reduce window 3
 
-        montredc (r10, r9,r8,r15,r14,r13,r12,r11)
+        montredc(r10, r9,r8,r15,r14,r13,r12,r11)
 
 // Add row 4. The multiplier y[4] = 1, so we just add x to the window
 // while extending it with one more digit, initially this carry
@@ -201,7 +201,7 @@ bignum_tomont_p384:
 
 // Montgomery reduce window 4
 
-        montredc (r11, r10,r9,r8,r15,r14,r13,r12)
+        montredc(r11, r10,r9,r8,r15,r14,r13,r12)
 
 // Add row 5, The multiplier y[5] = 0, so this is trivial: all we do is
 // bring down another zero digit into the window.
@@ -210,7 +210,7 @@ bignum_tomont_p384:
 
 // Montgomery reduce window 5
 
-        montredc (r12, r11,r10,r9,r8,r15,r14,r13)
+        montredc(r12, r11,r10,r9,r8,r15,r14,r13)
 
 // We now have a pre-reduced 7-word form [r12;r11;r10;r9;r8;r15;r14]
 
