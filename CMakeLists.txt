@@ -487,15 +487,7 @@ if(GCOV)
 endif()
 
 if(FIPS)
-  set(JITTER_ENTROPY TRUE)
-endif()
-
-if(JITTER_ENTROPY)
-  if(NOT FIPS)
-    message(FATAL_ERROR "Jitter entropy can be used only in FIPS build")
-  endif()
-
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DJITTER_ENTROPY")
+  # In FIPS mode we use CPU Jitter as the entropy source
   add_subdirectory(third_party/jitterentropy)
 endif()
 

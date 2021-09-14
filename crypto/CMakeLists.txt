@@ -497,7 +497,7 @@ if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(crypto pthread)
 endif()
 
-if(JITTER_ENTROPY)
+if(FIPS)
   target_link_libraries(crypto jitterentropy)
 endif()
 
@@ -527,13 +527,6 @@ if(BUILD_TESTING)
 
     fipsmodule/rand/urandom_test.cc
   )
-
-  # When using CPU Jitter as the entropy source (only in FIPS build)
-  # urandom_test should not be performed so we pass the compilation flag
-  # and handle it in urandom_test.cc
-  if(JITTER_ENTROPY)
-    target_compile_options(urandom_test PUBLIC -DJITTER_ENTROPY)
-  endif()
 
   target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
 
@@ -617,7 +610,7 @@ if(BUILD_TESTING)
   add_dependencies(crypto_test global_target)
 
   target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
-  if(JITTER_ENTROPY)
+  if(FIPS)
     target_link_libraries(crypto_test jitterentropy)
     add_dependencies(crypto_test jitterentropy)
   endif()
