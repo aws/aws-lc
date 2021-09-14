@@ -63,7 +63,7 @@
 // We want to add (2^384 - 2^128 - 2^96 + 2^32 - 1) * w
 // where w = [d0 + (d0<<32)] mod 2^64
 //
-//       montreds (d6,d5,d4,d3,d2,d1,d0)
+//       montreds(d6,d5,d4,d3,d2,d1,d0)
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
@@ -119,12 +119,12 @@ bignum_montsqr_p384:
 // (no carry-out possible)
 
         movq    16(x), %rdx
-        mulpadd (%r11,%r10,(x))
-        mulpadd (%r12,%r11,8(x))
+        mulpadd(%r11,%r10,(x))
+        mulpadd(%r12,%r11,8(x))
         movq    8(x), %rdx
-        mulpadd (%r13,%r12,24(x))
-        mulpadd (%r14,%r13,32(x))
-        mulpadd (%r15,%r14,40(x))
+        mulpadd(%r13,%r12,24(x))
+        mulpadd(%r14,%r13,32(x))
+        mulpadd(%r15,%r14,40(x))
         adcxq   zero, %r15
         adoxq   zero, %rcx
         adcq    zero, %rcx
@@ -140,10 +140,10 @@ bignum_montsqr_p384:
 // our result so far is in [%rbp;%rbx;%rcx;%r15;...%r9]
 
         movq    32(x), %rdx
-        mulpadd (%r13,%r12,(x))
+        mulpadd(%r13,%r12,(x))
         movq    16(x), %rdx
-        mulpadd (%r14,%r13,24(x))
-        mulpadd (%r15,%r14,32(x))
+        mulpadd(%r14,%r13,24(x))
+        mulpadd(%r15,%r14,32(x))
         mulxq   40(x), %rax, %rdx
         adcxq   %rax, %r15
         adoxq   %rdx, %rcx
@@ -213,12 +213,12 @@ bignum_montsqr_p384:
 
 // Montgomery reduce the %r13,...,%r8 window 6 times
 
-        montreds (%r8,%r13,%r12,%r11,%r10,%r9,%r8)
-        montreds (%r9,%r8,%r13,%r12,%r11,%r10,%r9)
-        montreds (%r10,%r9,%r8,%r13,%r12,%r11,%r10)
-        montreds (%r11,%r10,%r9,%r8,%r13,%r12,%r11)
-        montreds (%r12,%r11,%r10,%r9,%r8,%r13,%r12)
-        montreds (%r13,%r12,%r11,%r10,%r9,%r8,%r13)
+        montreds(%r8,%r13,%r12,%r11,%r10,%r9,%r8)
+        montreds(%r9,%r8,%r13,%r12,%r11,%r10,%r9)
+        montreds(%r10,%r9,%r8,%r13,%r12,%r11,%r10)
+        montreds(%r11,%r10,%r9,%r8,%r13,%r12,%r11)
+        montreds(%r12,%r11,%r10,%r9,%r8,%r13,%r12)
+        montreds(%r13,%r12,%r11,%r10,%r9,%r8,%r13)
 
 // Now we can safely restore %rbx before accumulating
 

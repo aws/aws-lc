@@ -147,11 +147,11 @@ bignum_montsqr_p384:
 // This shifts it to an offset compatible with middle product
 // Stash the result temporarily in the output buffer (to avoid more registers)
 
-                montreds (c0,c5,c4,c3,c2,c1,c0, d1,d2,d3)
+                montreds(c0,c5,c4,c3,c2,c1,c0, d1,d2,d3)
 
-                montreds (c1,c0,c5,c4,c3,c2,c1, d1,d2,d3)
+                montreds(c1,c0,c5,c4,c3,c2,c1, d1,d2,d3)
 
-                montreds (c2,c1,c0,c5,c4,c3,c2, d1,d2,d3)
+                montreds(c2,c1,c0,c5,c4,c3,c2, d1,d2,d3)
 
                 stp     c3, c4, [x0]
                 stp     c5, c0, [x0, #16]
@@ -205,7 +205,7 @@ bignum_montsqr_p384:
                 adcs    s4, s4, h1
                 adc     s5, h2, xzr
 
-                muldiffn (c,h,l, t, a0,a1, a4,a3)
+                muldiffn(c,h,l, t, a0,a1, a4,a3)
                 adds    xzr, c, #1
                 adcs    s1, s1, l
                 adcs    s2, s2, h
@@ -213,14 +213,14 @@ bignum_montsqr_p384:
                 adcs    s4, s4, c
                 adc     s5, s5, c
 
-                muldiffn (c,h,l, t, a0,a2, a5,a3)
+                muldiffn(c,h,l, t, a0,a2, a5,a3)
                 adds    xzr, c, #1
                 adcs    s2, s2, l
                 adcs    s3, s3, h
                 adcs    s4, s4, c
                 adc     s5, s5, c
 
-                muldiffn (c,h,l, t, a1,a2, a5,a4)
+                muldiffn(c,h,l, t, a1,a2, a5,a4)
                 adds    xzr, c, #1
                 adcs    s3, s3, l
                 adcs    s4, s4, h
@@ -249,11 +249,11 @@ bignum_montsqr_p384:
 
 // Montgomery-reduce the combined low and middle term another thrice
 
-                montreds (s0,s5,s4,s3,s2,s1,s0, a0,a1,a2)
+                montreds(s0,s5,s4,s3,s2,s1,s0, a0,a1,a2)
 
-                montreds (s1,s0,s5,s4,s3,s2,s1, a0,a1,a2)
+                montreds(s1,s0,s5,s4,s3,s2,s1, a0,a1,a2)
 
-                montreds (s2,s1,s0,s5,s4,s3,s2, a0,a1,a2)
+                montreds(s2,s1,s0,s5,s4,s3,s2, a0,a1,a2)
 
                 adds    s6, s6, s0
                 adcs    s0, s1, xzr

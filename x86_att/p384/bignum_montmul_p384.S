@@ -61,7 +61,7 @@
 // We want to add (2^384 - 2^128 - 2^96 + 2^32 - 1) * w
 // where w = [d0 + (d0<<32)] mod 2^64
 //
-//       montredc (d7,d6,d5,d4,d3,d2,d1,d0)
+//       montredc(d7,d6,d5,d4,d3,d2,d1,d0)
 //
 // This particular variant, with its mix of addition and subtraction
 // at the top, is not intended to maintain a coherent carry or borrow out.
@@ -129,17 +129,17 @@ bignum_montmul_p384:
 
 // Montgomery reduce the zeroth window
 
-        montredc (%r15, %r14,%r13,%r12,%r11,%r10,%r9,%r8)
+        montredc(%r15, %r14,%r13,%r12,%r11,%r10,%r9,%r8)
 
 // Add row 1
 
         movq    8(y), %rdx
         xorl    %r8d, %r8d
-        mulpadd (%r10,%r9,(x))
-        mulpadd (%r11,%r10, 8(x))
-        mulpadd (%r12,%r11,16(x))
-        mulpadd (%r13,%r12,24(x))
-        mulpadd (%r14,%r13,32(x))
+        mulpadd(%r10,%r9,(x))
+        mulpadd(%r11,%r10, 8(x))
+        mulpadd(%r12,%r11,16(x))
+        mulpadd(%r13,%r12,24(x))
+        mulpadd(%r14,%r13,32(x))
         adoxq   %r8, %r15
         mulxq   40(x), %rax, %rbx
         adcq    %rax, %r14
@@ -148,17 +148,17 @@ bignum_montmul_p384:
 
 // Montgomery reduce window 1
 
-        montredc (%r8, %r15,%r14,%r13,%r12,%r11,%r10,%r9)
+        montredc(%r8, %r15,%r14,%r13,%r12,%r11,%r10,%r9)
 
 // Add row 2
 
         movq    16(y), %rdx
         xorl    %r9d, %r9d
-        mulpadd (%r11,%r10,(x))
-        mulpadd (%r12,%r11,8(x))
-        mulpadd (%r13,%r12,16(x))
-        mulpadd (%r14,%r13,24(x))
-        mulpadd (%r15,%r14,32(x))
+        mulpadd(%r11,%r10,(x))
+        mulpadd(%r12,%r11,8(x))
+        mulpadd(%r13,%r12,16(x))
+        mulpadd(%r14,%r13,24(x))
+        mulpadd(%r15,%r14,32(x))
         adoxq   %r9, %r8
         mulxq   40(x), %rax, %rbx
         adcq    %rax, %r15
@@ -167,17 +167,17 @@ bignum_montmul_p384:
 
 // Montgomery reduce window 2
 
-        montredc (%r9, %r8,%r15,%r14,%r13,%r12,%r11,%r10)
+        montredc(%r9, %r8,%r15,%r14,%r13,%r12,%r11,%r10)
 
 // Add row 3
 
         movq    24(y), %rdx
         xorl    %r10d, %r10d
-        mulpadd (%r12,%r11,(x))
-        mulpadd (%r13,%r12,8(x))
-        mulpadd (%r14,%r13,16(x))
-        mulpadd (%r15,%r14,24(x))
-        mulpadd (%r8,%r15,32(x))
+        mulpadd(%r12,%r11,(x))
+        mulpadd(%r13,%r12,8(x))
+        mulpadd(%r14,%r13,16(x))
+        mulpadd(%r15,%r14,24(x))
+        mulpadd(%r8,%r15,32(x))
         adoxq   %r10, %r9
         mulxq   40(x), %rax, %rbx
         adcq    %rax, %r8
@@ -186,17 +186,17 @@ bignum_montmul_p384:
 
 // Montgomery reduce window 3
 
-        montredc (%r10, %r9,%r8,%r15,%r14,%r13,%r12,%r11)
+        montredc(%r10, %r9,%r8,%r15,%r14,%r13,%r12,%r11)
 
 // Add row 4
 
         movq    32(y), %rdx
         xorl    %r11d, %r11d
-        mulpadd (%r13,%r12,(x))
-        mulpadd (%r14,%r13,8(x))
-        mulpadd (%r15,%r14,16(x))
-        mulpadd (%r8,%r15,24(x))
-        mulpadd (%r9,%r8,32(x))
+        mulpadd(%r13,%r12,(x))
+        mulpadd(%r14,%r13,8(x))
+        mulpadd(%r15,%r14,16(x))
+        mulpadd(%r8,%r15,24(x))
+        mulpadd(%r9,%r8,32(x))
         adoxq   %r11, %r10
         mulxq   40(x), %rax, %rbx
         adcq    %rax, %r9
@@ -205,17 +205,17 @@ bignum_montmul_p384:
 
 // Montgomery reduce window 4
 
-        montredc (%r11, %r10,%r9,%r8,%r15,%r14,%r13,%r12)
+        montredc(%r11, %r10,%r9,%r8,%r15,%r14,%r13,%r12)
 
 // Add row 5
 
         movq    40(y), %rdx
         xorl    %r12d, %r12d
-        mulpadd (%r14,%r13,(x))
-        mulpadd (%r15,%r14,8(x))
-        mulpadd (%r8,%r15,16(x))
-        mulpadd (%r9,%r8,24(x))
-        mulpadd (%r10,%r9,32(x))
+        mulpadd(%r14,%r13,(x))
+        mulpadd(%r15,%r14,8(x))
+        mulpadd(%r8,%r15,16(x))
+        mulpadd(%r9,%r8,24(x))
+        mulpadd(%r10,%r9,32(x))
         adoxq   %r12, %r11
         mulxq   40(x), %rax, %rbx
         adcq    %rax, %r10
@@ -224,7 +224,7 @@ bignum_montmul_p384:
 
 // Montgomery reduce window 5
 
-        montredc (%r12, %r11,%r10,%r9,%r8,%r15,%r14,%r13)
+        montredc(%r12, %r11,%r10,%r9,%r8,%r15,%r14,%r13)
 
 // We now have a pre-reduced 7-word form z = [%r12; %r11;%r10;%r9;%r8;%r15;%r14]
 // Next, accumulate in different registers z - p_384, or more precisely

@@ -48,7 +48,7 @@
 // not for the general case of Montgomery multiplication. It is fine
 // for d6 to be the same register as d0.
 //
-// Parms:  montreds (d6,d5,d4,d3,d2,d1,d0)
+// Parms:  montreds(d6,d5,d4,d3,d2,d1,d0)
 //
 // We want to add (2^384 - 2^128 - 2^96 + 2^32 - 1) * w
 // where w = [d0 + (d0<<32)] mod 2^64
@@ -96,27 +96,27 @@ bignum_deamont_p384:
 
 // Montgomery reduce window 0
 
-        montreds (%r8,%r13,%r12,%r11,%r10,%r9,%r8)
+        montreds(%r8,%r13,%r12,%r11,%r10,%r9,%r8)
 
 // Montgomery reduce window 1
 
-        montreds (%r9,%r8,%r13,%r12,%r11,%r10,%r9)
+        montreds(%r9,%r8,%r13,%r12,%r11,%r10,%r9)
 
 // Montgomery reduce window 2
 
-        montreds (%r10,%r9,%r8,%r13,%r12,%r11,%r10)
+        montreds(%r10,%r9,%r8,%r13,%r12,%r11,%r10)
 
 // Montgomery reduce window 3
 
-        montreds (%r11,%r10,%r9,%r8,%r13,%r12,%r11)
+        montreds(%r11,%r10,%r9,%r8,%r13,%r12,%r11)
 
 // Montgomery reduce window 4
 
-        montreds (%r12,%r11,%r10,%r9,%r8,%r13,%r12)
+        montreds(%r12,%r11,%r10,%r9,%r8,%r13,%r12)
 
 // Montgomery reduce window 5
 
-        montreds (%r13,%r12,%r11,%r10,%r9,%r8,%r13)
+        montreds(%r13,%r12,%r11,%r10,%r9,%r8,%r13)
 
 // Do a test addition of dd = [%r13;%r12;%r11;%r10;%r9;%r8] and
 // 2^384 - p_384 = [0;0;0;1;v;u], hence setting CF iff
