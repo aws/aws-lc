@@ -71,22 +71,22 @@ static const uint8_t kAESCBCCiphertext[64] = {
 TEST(ServiceIndicatorTest, BasicTest) {
   // Reset and check the initial state and counter.
   ASSERT_TRUE(awslc_fips_service_indicator_reset_state());
+  int approved = 0;
+
   int counter = awslc_fips_service_indicator_get_counter();
   int serviceID = awslc_fips_service_indicator_get_serviceID();
   ASSERT_EQ(counter, 0);
   ASSERT_EQ(serviceID, FIPS_APPROVED_NO_STATE);
 
   // Call an approved service.
-  EVP_AEAD_CTX aead_ctx;
-  EVP_AEAD_CTX_zero(&aead_ctx);
+  bssl::ScopedEVP_AEAD_CTX aead_ctx;
   uint8_t output[256];
   size_t out_len;
-  ASSERT_TRUE(EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
-                         sizeof(kAESKey), 0, nullptr));
-  ASSERT_TRUE(EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nullptr,
-             0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
-
-  ASSERT_TRUE(awslc_fips_check_service_approved(counter, FIPS_APPROVED_EVP_AES_128_GCM));
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
+                                kAESKey, sizeof(kAESKey), 0, nullptr));
+  IS_FIPS_APPROVED_CALL_SERVICE(approved, EVP_AEAD_CTX_seal, aead_ctx.get(),
+          output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0)
+  ASSERT_TRUE(approved);
 
   // Check state and counter after using an approved service.
   counter = awslc_fips_service_indicator_get_counter();
@@ -96,7 +96,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
 }
 
 TEST(ServiceIndicatorTest, AESCBC) {
-  int counter = awslc_fips_service_indicator_get_counter();
+  int approved = 0;
 
   AES_KEY aes_key;
   uint8_t aes_iv[16];
@@ -108,15 +108,14 @@ TEST(ServiceIndicatorTest, AESCBC) {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
     return;
   }
-  AES_cbc_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv,
-                  AES_ENCRYPT);
+
+  IS_FIPS_APPROVED_CALL_SERVICE(approved,  AES_cbc_encrypt, kPlaintext, output,
+                              sizeof(kPlaintext), &aes_key, aes_iv, AES_ENCRYPT)
   if (!check_test(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
                   "AES-CBC Encryption KAT")) {
     return;
   }
-
-  ASSERT_TRUE(awslc_fips_check_service_approved(counter, FIPS_APPROVED_EVP_AES_128_CBC));
-  counter = awslc_fips_service_indicator_get_counter();
+  ASSERT_TRUE(approved);
 
   // AES-CBC Decryption KAT
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
@@ -124,62 +123,58 @@ TEST(ServiceIndicatorTest, AESCBC) {
     fprintf(stderr, "AES_set_decrypt_key failed.\n");
     return;
   }
-  AES_cbc_encrypt(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
-                  &aes_key, aes_iv, AES_DECRYPT);
+
+  IS_FIPS_APPROVED_CALL_SERVICE(approved, AES_cbc_encrypt, kAESCBCCiphertext, output,
+                        sizeof(kAESCBCCiphertext), &aes_key, aes_iv, AES_DECRYPT)
   if (!check_test(kPlaintext, output, sizeof(kPlaintext),
                   "AES-CBC Decryption KAT")) {
     return;
   }
-
-  ASSERT_TRUE(awslc_fips_check_service_approved(counter, FIPS_APPROVED_EVP_AES_128_CBC));
+  ASSERT_TRUE(approved);
 }
 
 TEST(ServiceIndicatorTest, AESGCM) {
+  int approved = 0;
+
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
 
   uint8_t output[256];
-  int counter = awslc_fips_service_indicator_get_counter();
 
   size_t out_len;
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(), kAESKey,
-                         sizeof(kAESKey), 0, nullptr));
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
+                                kAESKey, sizeof(kAESKey), 0, nullptr));
 
   // AES-GCM Encryption KAT
-  ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output), nullptr,
-                         0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
-
-  ASSERT_TRUE(awslc_fips_check_service_approved(counter, FIPS_APPROVED_EVP_AES_128_GCM));
+  IS_FIPS_APPROVED_CALL_SERVICE(approved, EVP_AEAD_CTX_seal, aead_ctx.get(),
+      output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0)
+  ASSERT_TRUE(approved);
 }
 
 #else
 // Service indicator should not be used without FIPS turned on.
 TEST(ServiceIndicatorTest, BasicTest) {
-  // Reset and check the initial state and counter.
-  awslc_fips_service_indicator_reset_state();
-  bssl::UniquePtr<fips_service_indicator_state> state;
-  state = bssl::UniquePtr<fips_service_indicator_state>(awslc_fips_service_indicator_get_state());
-  ASSERT_FALSE(state.get());
+   // Reset and check the initial state and counter.
+  ASSERT_FALSE(awslc_fips_service_indicator_reset_state());
 
   int counter = awslc_fips_service_indicator_get_counter();
+  int serviceID = awslc_fips_service_indicator_get_serviceID();
   ASSERT_EQ(counter, 0);
+  ASSERT_EQ(serviceID, 0);
 
-  // Call a random approved service.
-  EVP_AEAD_CTX aead_ctx;
-  EVP_AEAD_CTX_zero(&aead_ctx);
+  // Call an approved service.
+  bssl::ScopedEVP_AEAD_CTX aead_ctx;
   uint8_t output[256];
   size_t out_len;
-  EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
-                    sizeof(kAESKey), 0, nullptr);
-  EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nullptr,
-                    0, kPlaintext, sizeof(kPlaintext), nullptr, 0);
-
-  ASSERT_FALSE(awslc_fips_check_service_approved(counter, 0));
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
+                                kAESKey, sizeof(kAESKey), 0, nullptr));
+  ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output), nullptr,
+                     0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
 
   // Check state and counter after using an approved service.
-  state = bssl::UniquePtr<fips_service_indicator_state>(awslc_fips_service_indicator_get_state());
-  ASSERT_FALSE(state.get());
   counter = awslc_fips_service_indicator_get_counter();
-  ASSERT_EQ(counter, 0);
+  serviceID = awslc_fips_service_indicator_get_serviceID();
+  ASSERT_EQ(counter,0);
+  ASSERT_EQ(serviceID, 0);
 }
 #endif // AWSLC_FIPS
 

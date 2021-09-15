@@ -11,8 +11,20 @@ extern "C" {
 OPENSSL_EXPORT int awslc_fips_service_indicator_get_counter(void);
 OPENSSL_EXPORT int awslc_fips_service_indicator_get_serviceID(void);
 OPENSSL_EXPORT int awslc_fips_service_indicator_reset_state(void);
-OPENSSL_EXPORT int awslc_fips_check_service_approved(int prev_counter, int service_id);
 
+#if defined(AWSLC_FIPS)
+#define IS_FIPS_APPROVED_CALL_SERVICE(approved, func, ...)                  \
+  do {                                                                      \
+    approved = 0;                                                           \
+    int counter = awslc_fips_service_indicator_get_counter();               \
+    func(__VA_ARGS__);                                                      \
+    if (awslc_fips_service_indicator_get_counter() > counter) {             \
+        approved = 1;                                                       \
+    }                                                                       \
+ }                                                                          \
+ while(0);                                                                  \
+
+#endif // AWSLC_FIPS
 
 #if defined(__cplusplus)
 }  // extern C

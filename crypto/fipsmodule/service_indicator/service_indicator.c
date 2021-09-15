@@ -43,19 +43,6 @@ int awslc_fips_service_indicator_reset_state(void) {
   return 1;
 }
 
-int awslc_fips_check_service_approved(int prev_counter, int service_id) {
-  struct fips_service_indicator_state *indicator =
-      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-  if(!indicator || service_id == FIPS_APPROVED_NO_STATE) {
-    return 0;
-  }
-
-  if(indicator->serviceID == service_id && indicator->counter > prev_counter){
-    return 1;
-  }
-  return 0;
-}
-
 int awslc_fips_service_indicator_init_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
@@ -94,6 +81,5 @@ void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t se
 int awslc_fips_service_indicator_get_counter(void) { return 0; }
 int awslc_fips_service_indicator_get_serviceID(void) { return 0; }
 int awslc_fips_service_indicator_reset_state(void)  { return 0; }
-int awslc_fips_check_service_approved(int prev_counter, int service_id) { return 0; }
 
 #endif // AWSLC_FIPS
