@@ -93,8 +93,7 @@ void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t se
 
 int awslc_fips_service_indicator_get_counter(void) { return 0; }
 int awslc_fips_service_indicator_get_serviceID(void) { return 0; }
-struct fips_service_indicator_state *awslc_fips_service_indicator_get_state(void) { return NULL; }
-void awslc_fips_service_indicator_reset_state(void)  { }
+int awslc_fips_service_indicator_reset_state(void)  { return 0; }
 int awslc_fips_check_service_approved(int prev_counter, int service_id) { return 0; }
 
 #endif // AWSLC_FIPS
