@@ -56,38 +56,22 @@
 
 #if defined(AWSLC_FIPS)
 static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
-  // hwaes_capable points to separate function definitions depending on the platform.
-  #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  if (hwaes_capable()) {
-    switch (key_rounds) {
-      case 9:
-        awslc_fips_service_indicator_update_state(
-            fips_approved_evp_aes_128_cbc);
-        break;
-      case 11:
-        awslc_fips_service_indicator_update_state(
-            fips_approved_evp_aes_192_cbc);
-        break;
-      case 13:
-        awslc_fips_service_indicator_update_state(
-            fips_approved_evp_aes_256_cbc);
-        break;
-      default:
-        break;
-    }
-    return;
-  }
-  #endif
-
+  // hwaes_capable when on in x86 uses 9, 11, 13 for key rounds.
+  // hwaes_capable when on in ARM uses 10, 12, 14 for key rounds.
+  // When compiling with different ARM specific, 9, 11, 13 are used for key rounds.
+  // TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
   switch (key_rounds) {
+    case 9:
     case 10:
       awslc_fips_service_indicator_update_state(
           fips_approved_evp_aes_128_cbc);
       break;
+    case 11:
     case 12:
       awslc_fips_service_indicator_update_state(
           fips_approved_evp_aes_192_cbc);
       break;
+    case 13:
     case 14:
       awslc_fips_service_indicator_update_state(
           fips_approved_evp_aes_256_cbc);
