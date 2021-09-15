@@ -13,20 +13,62 @@
 # permissions and limitations under the License.
 #############################################################################
 
-# If actually on an ARM8 machine, just use the GNU assmbler (as). Otherwise
+OSTYPE_RESULT=$(shell uname -s)
+ARCHTYPE_RESULT=$(shell uname -m)
+
+# Add explicit language input parameter to cpp, otherwise the use of #n for
+# numeric literals in ARM code is a problem when used inside #define macros
+# since normally that means stringization.
+#
+# Some clang-based preprocessors seem to behave differently, and get confused
+# by single-quote characters in comments, so we eliminate // comments first.
+
+ifeq ($(OSTYPE_RESULT),Darwin)
+ifeq ($(ARCHTYPE_RESULT),arm64)
+PREPROCESS=sed -e 's/\/\/.*//' | cpp -
+else
+PREPROCESS=sed -e 's/\/\/.*//' | cpp -xassembler-with-cpp -
+endif
+else
+PREPROCESS=cpp -xassembler-with-cpp -
+endif
+
+# Generally GNU-type assemblers are happy with multiple instructions on
+# a line, but we split them up anyway just in case.
+
+SPLIT=tr ';' '\n'
+
+# Name mangling for OS X, adding an underscore to external symbols.
+# This makes the functions accessible from C by their basic names.
+
+ifeq ($(OSTYPE_RESULT),Darwin)
+MANGLE=sed -e 's/bignum_/_bignum_/; s/word_/_word_/'
+else
+MANGLE=cat
+endif
+
+# If actually on an ARM8 machine, just use the assembler (as). Otherwise
 # use a cross-assembling version so that the code can still be assembled
 # and the proofs checked against the object files (though you won't be able
-# to run code without additional emulation infrastructure). The aarch64
-# cross-assembling version can be installed manually by something like:
+# to run code without additional emulation infrastructure). For the clang
+# version on OS X we just add the "-arch arm64" option. For the Linux/gcc
+# toolchain we assume the presence of the special cross-assembler. This
+# can be installed via something like:
 #
 #  sudo apt-get install binutils-aarch64-linux-gnu
 
-UNAME_RESULT=$(shell uname -p)
-
-ifeq ($(UNAME_RESULT),aarch64)
-GAS=as
+ifeq ($(ARCHTYPE_RESULT),aarch64)
+ASSEMBLE=as
 else
-GAS=aarch64-linux-gnu-as
+ifeq ($(ARCHTYPE_RESULT),arm64)
+ASSEMBLE=as
+else
+ifeq ($(OSTYPE_RESULT),Darwin)
+ASSEMBLE=as -arch arm64
+else
+ASSEMBLE=aarch64-linux-gnu-as
+endif
+endif
 endif
 
 # List of object files
@@ -153,7 +195,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_sub_p521.o \
       p521/bignum_triple_p521.o
 
-%.o : %.S ; cpp $< | $(GAS) -o $@ -
+%.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(MANGLE) | $(ASSEMBLE) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 

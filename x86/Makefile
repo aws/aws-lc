@@ -13,6 +13,46 @@
 # permissions and limitations under the License.
 #############################################################################
 
+OSTYPE_RESULT=$(shell uname -s)
+ARCHTYPE_RESULT=$(shell uname -m)
+
+# Add explicit language input parameter to cpp, otherwise the use of #n for
+# numeric literals in ARM code is a problem when used inside #define macros
+# since normally that means stringization.
+#
+# Some clang-based preprocessors seem to behave differently, and get confused
+# by single-quote characters in comments, so we eliminate // comments first.
+
+ifeq ($(OSTYPE_RESULT),Darwin)
+PREPROCESS=sed -e 's/\/\/.*//' | cpp -xassembler-with-cpp -
+else
+PREPROCESS=cpp -xassembler-with-cpp -
+endif
+
+# Generally GNU-type assemblers are happy with multiple instructions on
+# a line, but we split them up anyway just in case.
+
+SPLIT=tr ';' '\n'
+
+# Name mangling for OS X, adding an underscore to external symbols.
+# This makes the functions accessible from C by their basic names.
+
+ifeq ($(OSTYPE_RESULT),Darwin)
+MANGLE=sed -e 's/bignum_/_bignum_/; s/word_/_word_/'
+else
+MANGLE=cat
+endif
+
+# Support cross-assembling on ARM-based clang toolchain
+
+ASSEMBLE=as
+
+ifeq ($(OSTYPE_RESULT),Darwin)
+ifeq ($(ARCHTYPE_RESULT),arm64)
+ASSEMBLE=as -arch x86_64
+endif
+endif
+
 # The x86 assembly (.S) files are all written for the GNU assembler
 
 OBJ = fastmul/bignum_emontredc_8n.o \
@@ -137,7 +177,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_sub_p521.o \
       p521/bignum_triple_p521.o
 
-%.o : %.S ; cpp $< | as -o $@ -
+%.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(MANGLE) | $(ASSEMBLE) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 

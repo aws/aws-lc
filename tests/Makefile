@@ -18,6 +18,8 @@
 # If this block fails to do it automatically, replace with manual
 # setting: ARCH=x86 or ARCH=arm as appropriate
 
+ARCH=unknown_architecture
+
 UNAME_RESULT=$(shell uname -m)
 
 ifeq ($(UNAME_RESULT),x86_64)
@@ -25,6 +27,10 @@ ARCH=x86
 endif
 
 ifeq ($(UNAME_RESULT),aarch64)
+ARCH=arm
+endif
+
+ifeq ($(UNAME_RESULT),arm64)
 ARCH=arm
 endif
 
