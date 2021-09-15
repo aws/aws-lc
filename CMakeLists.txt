@@ -493,7 +493,7 @@ if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()
 
-#if(FIPS)
+if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
@@ -514,7 +514,7 @@ endif()
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
   endif()
-#endif()
+endif()
 
 if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
