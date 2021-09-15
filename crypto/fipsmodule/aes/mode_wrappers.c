@@ -56,6 +56,8 @@
 
 #if defined(AWSLC_FIPS)
 static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
+  // hwaes_capable points to separate function definitions depending on the platform.
+  #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   if (hwaes_capable()) {
     switch (key_rounds) {
       case 9:
@@ -73,23 +75,25 @@ static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
       default:
         break;
     }
-  } else {
-    switch (key_rounds) {
-      case 10:
-        awslc_fips_service_indicator_update_state(
-            fips_approved_evp_aes_128_cbc);
-        break;
-      case 12:
-        awslc_fips_service_indicator_update_state(
-            fips_approved_evp_aes_192_cbc);
-        break;
-      case 14:
-        awslc_fips_service_indicator_update_state(
-            fips_approved_evp_aes_256_cbc);
-        break;
-      default:
-        break;
-    }
+    return;
+  }
+  #endif
+
+  switch (key_rounds) {
+    case 10:
+      awslc_fips_service_indicator_update_state(
+          fips_approved_evp_aes_128_cbc);
+      break;
+    case 12:
+      awslc_fips_service_indicator_update_state(
+          fips_approved_evp_aes_192_cbc);
+      break;
+    case 14:
+      awslc_fips_service_indicator_update_state(
+          fips_approved_evp_aes_256_cbc);
+      break;
+    default:
+      break;
   }
 }
 #else
@@ -133,7 +137,9 @@ void AES_ecb_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key,
 
 void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                      const AES_KEY *key, uint8_t *ivec, const int enc) {
+  fprintf(stderr, "rounds: %d\n",key->rounds);
   if (hwaes_capable()) {
+    fprintf(stderr, "hwaes is true\n");
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
     // service indicator check.
     AES_cbc_verify_service_indicator(key->rounds);
@@ -141,6 +147,7 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   }
 
   if (!vpaes_capable()) {
+    fprintf(stderr, "!vpaes_capable() is true\n");
     aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
     // service indicator check.
     AES_cbc_verify_service_indicator(key->rounds);
@@ -152,6 +159,7 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   } else {
     CRYPTO_cbc128_decrypt(in, out, len, key, ivec, AES_decrypt);
   }
+  fprintf(stderr, "else\n");
   // service indicator check.
   AES_cbc_verify_service_indicator(key->rounds);
 }
