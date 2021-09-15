@@ -55,23 +55,45 @@
 #include "../modes/internal.h"
 
 #if defined(AWSLC_FIPS)
-#define AESCBC_VERIFY_SERVICE_INDICATOR                                        \
-  switch(key->rounds) {                                                        \
-    case 9:                                                                    \
-      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_128_cbc);\
-      break;                                                                   \
-    case 11:                                                                   \
-      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_192_cbc);\
-      break;                                                                   \
-    case 13:                                                                   \
-      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_256_cbc);\
-      break;                                                                   \
-    default:                                                                   \
-      break;                                                                   \
-  }                                                                            \
-
+static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
+  if (hwaes_capable()) {
+    switch (key_rounds) {
+      case 9:
+        awslc_fips_service_indicator_update_state(
+            fips_approved_evp_aes_128_cbc);
+        break;
+      case 11:
+        awslc_fips_service_indicator_update_state(
+            fips_approved_evp_aes_192_cbc);
+        break;
+      case 13:
+        awslc_fips_service_indicator_update_state(
+            fips_approved_evp_aes_256_cbc);
+        break;
+      default:
+        break;
+    }
+  } else {
+    switch (key_rounds) {
+      case 10:
+        awslc_fips_service_indicator_update_state(
+            fips_approved_evp_aes_128_cbc);
+        break;
+      case 12:
+        awslc_fips_service_indicator_update_state(
+            fips_approved_evp_aes_192_cbc);
+        break;
+      case 14:
+        awslc_fips_service_indicator_update_state(
+            fips_approved_evp_aes_256_cbc);
+        break;
+      default:
+        break;
+    }
+  }
+}
 #else
-#define AESCBC_VERIFY_SERVICE_INDICATOR
+OPENSSL_INLINE void AES_cbc_verify_service_indicator(unsigned key_rounds) { }
 #endif
 
 
@@ -113,22 +135,25 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                      const AES_KEY *key, uint8_t *ivec, const int enc) {
   if (hwaes_capable()) {
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
-    AESCBC_VERIFY_SERVICE_INDICATOR
+    // service indicator check.
+    AES_cbc_verify_service_indicator(key->rounds);
     return;
   }
 
   if (!vpaes_capable()) {
     aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
-    AESCBC_VERIFY_SERVICE_INDICATOR
+    // service indicator check.
+    AES_cbc_verify_service_indicator(key->rounds);
     return;
   }
 
-  AESCBC_VERIFY_SERVICE_INDICATOR
   if (enc) {
     CRYPTO_cbc128_encrypt(in, out, len, key, ivec, AES_encrypt);
   } else {
     CRYPTO_cbc128_decrypt(in, out, len, key, ivec, AES_decrypt);
   }
+  // service indicator check.
+  AES_cbc_verify_service_indicator(key->rounds);
 }
 
 void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,

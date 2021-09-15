@@ -86,10 +86,10 @@ TEST(ServiceIndicatorTest, BasicTest) {
   EVP_AEAD_CTX_zero(&aead_ctx);
   uint8_t output[256];
   size_t out_len;
-  EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
-                         sizeof(kAESKey), 0, nullptr);
-  EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nullptr,
-             0, kPlaintext, sizeof(kPlaintext), nullptr, 0);
+  ASSERT_TRUE(EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm_randnonce(), kAESKey,
+                         sizeof(kAESKey), 0, nullptr));
+  ASSERT_TRUE(EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nullptr,
+             0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
 
   ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_gcm));
 
@@ -144,30 +144,19 @@ TEST(ServiceIndicatorTest, AESCBC) {
 
 TEST(ServiceIndicatorTest, AESGCM) {
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
-  EVP_AEAD_CTX_zero(aead_ctx.get());
 
   uint8_t output[256];
-
   int counter = awslc_fips_service_indicator_get_counter();
 
   size_t out_len;
-  if (!EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(), kAESKey,
-                         sizeof(kAESKey), 0, nullptr)) {
-    fprintf(stderr, "EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
-    goto err;
-  }
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(), kAESKey,
+                         sizeof(kAESKey), 0, nullptr));
 
   // AES-GCM Encryption KAT
-  if (!EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output), nullptr,
-                         0, kPlaintext, sizeof(kPlaintext), nullptr, 0)) {
-    fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-GCM failed.\n");
-    goto err;
-  }
+  ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output), nullptr,
+                         0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
 
   ASSERT_TRUE(awslc_fips_check_service_approved(counter, fips_approved_evp_aes_128_gcm));
-
-err:
-  EVP_AEAD_CTX_cleanup(aead_ctx.get());
 }
 
 #else
