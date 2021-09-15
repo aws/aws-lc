@@ -427,7 +427,8 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
     if ((!have_fork_detection() && !sysrand(true, kAdditionalDataLength)) ||
         // Initialise CRNGT. In FIPS mode we use a blocking sysrand call for
         // a personalization string, while in non-FIPS mode the same call is
-        // used for generating entropy for a seed.
+        // used for generating entropy for a seed. Note that the length
+        // of the personalization string is the same as that of the seed.
         !sysrand(true, kSeedLength) ||
         // Second entropy draw.
         (!have_fork_detection() && !sysrand(true, kAdditionalDataLength))) {
@@ -440,7 +441,8 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
        !sysrand(false, kAdditionalDataLength)) ||
       // Initialise CRNGT. In FIPS mode we use a blocking sysrand call for
       // a personalization string, while in non-FIPS mode the same call is
-      // used for generating entropy for a seed.
+      // used for generating entropy for a seed. Note that the length
+      // of the personalization string is the same as that of the seed.
       !sysrand(true, kSeedLength) ||
       // Second entropy draw's additional data.
       (!have_fast_rdrand() && !have_fork_detection() &&

@@ -8,7 +8,7 @@
 #include "../../test/test_util.h"
 #include "../../../third_party/jitterentropy/jitterentropy.h"
 
-// Struct for Jitter entropy collector instace with constructor/desctructor.
+// Struct for Jitter entropy collector instance with constructor/desctructor.
 struct JitterEC {
   rand_data *instance;
 
