@@ -64,17 +64,17 @@ static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
     case 9:
     case 10:
       awslc_fips_service_indicator_update_state(
-          fips_approved_evp_aes_128_cbc);
+          FIPS_APPROVED_EVP_AES_128_CBC);
       break;
     case 11:
     case 12:
       awslc_fips_service_indicator_update_state(
-          fips_approved_evp_aes_192_cbc);
+          FIPS_APPROVED_EVP_AES_192_CBC);
       break;
     case 13:
     case 14:
       awslc_fips_service_indicator_update_state(
-          fips_approved_evp_aes_256_cbc);
+          FIPS_APPROVED_EVP_AES_256_CBC);
       break;
     default:
       break;

@@ -896,22 +896,28 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 
 // FIPS functions.
 #if defined(AWSLC_FIPS)
-enum fips_approved_algorithm_t {
-  fips_approved_no_state        = 0,
-  fips_approved_evp_aes_128_gcm = 1,
-  fips_approved_evp_aes_256_gcm = 2,
-  fips_approved_evp_aes_128_ctr = 3,
-  fips_approved_evp_aes_192_ctr = 4,
-  fips_approved_evp_aes_256_ctr = 5,
-  fips_approved_evp_aes_128_cbc = 6,
-  fips_approved_evp_aes_192_cbc = 7,
-  fips_approved_evp_aes_256_cbc = 8,
 
-  fips_approved_algorithm_max = 8,
+enum fips_approved_algorithm_t {
+  FIPS_APPROVED_NO_STATE        = 0,
+  FIPS_APPROVED_EVP_AES_128_GCM = 1,
+  FIPS_APPROVED_EVP_AES_256_GCM = 2,
+  FIPS_APPROVED_EVP_AES_128_CTR = 3,
+  FIPS_APPROVED_EVP_AES_192_CTR = 4,
+  FIPS_APPROVED_EVP_AES_256_CTR = 5,
+  FIPS_APPROVED_EVP_AES_128_CBC = 6,
+  FIPS_APPROVED_EVP_AES_192_CBC = 7,
+  FIPS_APPROVED_EVP_AES_256_CBC = 8,
+
+  FIPS_APPROVED_ALGORITHM_MAX = 8,
 };
 
-void awslc_fips_service_indicator_init_state(void);
-void awslc_fips_service_indicator_update_state(int service_id);
+struct fips_service_indicator_state {
+    int counter;
+    int serviceID;
+};
+
+int awslc_fips_service_indicator_init_state(void);
+void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t service_id);
 
 #else
 OPENSSL_INLINE void awslc_fips_service_indicator_init_state(void) {}

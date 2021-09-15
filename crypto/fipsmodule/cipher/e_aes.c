@@ -118,10 +118,10 @@ static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
 static void AES_gcm_verify_service_indicator(uint8_t key_length) {
   switch (key_length) {
     case 16:
-      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_128_gcm);
+      awslc_fips_service_indicator_update_state(FIPS_APPROVED_EVP_AES_128_GCM);
       break;
     case 32:
-      awslc_fips_service_indicator_update_state(fips_approved_evp_aes_256_gcm);
+      awslc_fips_service_indicator_update_state(FIPS_APPROVED_EVP_AES_256_GCM);
       break;
     default:
       break;
