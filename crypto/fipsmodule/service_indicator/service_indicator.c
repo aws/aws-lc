@@ -5,60 +5,47 @@
 #include <openssl/service_indicator.h>
 
 #if defined(AWSLC_FIPS)
-int awslc_fips_service_indicator_get_counter(void) {
+static int awslc_fips_service_indicator_init_state(void) {
+  struct fips_service_indicator_state *indicator;
+  indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
+  if (indicator == NULL || !CRYPTO_set_thread_local(
+      AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
+    return 0;
+  }
+  indicator->counter = 0;
+  indicator->service_id = FIPS_APPROVED_NO_STATE;
+  return 1;
+}
+
+uint64_t awslc_fips_service_indicator_get_counter(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-  if (!indicator) {
-    if(!awslc_fips_service_indicator_init_state()) {
-      return 0;
-    }
-    indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+  if (indicator == NULL) {
+    return 0;
   }
   return indicator->counter;
 }
 
-int awslc_fips_service_indicator_get_serviceID(void) {
+uint32_t awslc_fips_service_indicator_get_serviceID(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-  if (!indicator) {
-    if(!awslc_fips_service_indicator_init_state()) {
-      return 0;
-    }
-    indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+  if (indicator == NULL) {
+    return FIPS_APPROVED_NO_STATE;
   }
-  return indicator->serviceID;
+  return indicator->service_id;
 }
 
 int awslc_fips_service_indicator_reset_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-  if (!indicator) {
+  if (indicator == NULL) {
     if(!awslc_fips_service_indicator_init_state()) {
       return 0;
     }
     indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   }
   indicator->counter = 0;
-  indicator->serviceID = FIPS_APPROVED_NO_STATE;
-  return 1;
-}
-
-int awslc_fips_service_indicator_init_state(void) {
-  struct fips_service_indicator_state *indicator =
-      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-  if (!indicator) {
-    indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
-    if(!indicator) {
-      return 0;
-    }
-    OPENSSL_memset(indicator, 0, sizeof(struct fips_service_indicator_state));
-    if (!CRYPTO_set_thread_local(
-        AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
-      return 0;
-    }
-  }
-  indicator->counter = 0;
-  indicator->serviceID = FIPS_APPROVED_NO_STATE;
+  indicator->service_id = FIPS_APPROVED_NO_STATE;
   return 1;
 }
 
@@ -66,20 +53,24 @@ int awslc_fips_service_indicator_init_state(void) {
 void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t service_id) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-  if (!indicator) {
+  if (indicator == NULL) {
     if(!awslc_fips_service_indicator_init_state()) {
       return;
     }
     indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   }
+  indicator->service_id = service_id;
+  if(indicator->counter == UINT64_MAX) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_OVERFLOW);
+    return;
+  }
   indicator->counter++;
-  indicator->serviceID = service_id;
 }
 
 #else
 
-int awslc_fips_service_indicator_get_counter(void) { return 0; }
-int awslc_fips_service_indicator_get_serviceID(void) { return 0; }
+uint64_t awslc_fips_service_indicator_get_counter(void) { return 0; }
+uint32_t awslc_fips_service_indicator_get_serviceID(void) { return 0; }
 int awslc_fips_service_indicator_reset_state(void)  { return 0; }
 
 #endif // AWSLC_FIPS

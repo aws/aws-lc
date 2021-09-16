@@ -114,7 +114,6 @@ static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
 
 // Only internal IVs are approved. If the nonce length has been set to 0,
 // that means we're using internal IV mode.
-#if defined(AWSLC_FIPS)
 static void AES_gcm_verify_service_indicator(uint8_t key_length) {
   switch (key_length) {
     case 16:
@@ -127,9 +126,6 @@ static void AES_gcm_verify_service_indicator(uint8_t key_length) {
       break;
   }
 }
-#else
-OPENSSL_INLINE void AES_gcm_verify_service_indicator(uint8_t key_length) { }
-#endif
 
 typedef struct {
   union {

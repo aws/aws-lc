@@ -49,16 +49,14 @@
 #include <openssl/aes.h>
 
 #include <assert.h>
-#include <stdio.h>
 
 #include "../aes/internal.h"
 #include "../modes/internal.h"
 
-#if defined(AWSLC_FIPS)
 static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
   // hwaes_capable when on in x86 uses 9, 11, 13 for key rounds.
   // hwaes_capable when on in ARM uses 10, 12, 14 for key rounds.
-  // When compiling with different ARM specific, 9, 11, 13 are used for key rounds.
+  // When compiling with different ARM specific platforms, 9, 11, 13 are used for key rounds.
   // TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
   switch (key_rounds) {
     case 9:
@@ -80,10 +78,6 @@ static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
       break;
   }
 }
-#else
-OPENSSL_INLINE void AES_cbc_verify_service_indicator(unsigned key_rounds) { }
-#endif
-
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
