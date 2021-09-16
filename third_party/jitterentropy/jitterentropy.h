@@ -39,6 +39,10 @@
  * DAMAGE.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef _JITTERENTROPY_H
 #define _JITTERENTROPY_H
 
@@ -396,3 +400,7 @@ uint64_t jent_lfsr_var_stat(struct rand_data *ec, unsigned int min);
 /* -- END of statistical test function -- */
 
 #endif /* _JITTERENTROPY_H */
+
+#ifdef __cplusplus
+}
+#endif

@@ -20,7 +20,7 @@
 
 #if defined(BORINGSSL_FIPS)
 #include <unistd.h>
-#include "../third_party/jitterentropy/jitterentropy.h"
+#include "../../../third_party/jitterentropy/jitterentropy.h"
 #endif
 
 #include <openssl/chacha.h>
@@ -325,15 +325,6 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // that we read from urandom.
     CRYPTO_sysrand(personalization, sizeof(personalization));
     personalization_len = sizeof(personalization);
-#elif defined(OPENSSL_URANDOM)
-    // Non-FIPS mode:
-    // If we used RDRAND, also opportunistically read from the system. This
-    // avoids solely relying on the hardware once the entropy pool has been
-    // initialized.
-    if (used_cpu &&
-        CRYPTO_sysrand_if_available(personalization, sizeof(personalization))) {
-      personalization_len = sizeof(personalization);
-    }
 #endif
 
     if (!CTR_DRBG_init(&state->drbg, seed, personalization,
