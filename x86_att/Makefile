@@ -15,7 +15,64 @@
 
 # These are the object files corresponding to sources for translation
 
-OBJ = p256/bignum_add_p256.o \
+OBJ = generic/bignum_add.o \
+      generic/bignum_amontifier.o \
+      generic/bignum_amontmul.o \
+      generic/bignum_amontredc.o \
+      generic/bignum_amontsqr.o \
+      generic/bignum_bitfield.o \
+      generic/bignum_bitsize.o \
+      generic/bignum_cld.o \
+      generic/bignum_clz.o \
+      generic/bignum_cmadd.o \
+      generic/bignum_cmul.o \
+      generic/bignum_coprime.o \
+      generic/bignum_copy.o \
+      generic/bignum_ctd.o \
+      generic/bignum_ctz.o \
+      generic/bignum_demont.o \
+      generic/bignum_digit.o \
+      generic/bignum_digitsize.o \
+      generic/bignum_emontredc.o \
+      generic/bignum_eq.o \
+      generic/bignum_even.o \
+      generic/bignum_ge.o \
+      generic/bignum_gt.o \
+      generic/bignum_iszero.o \
+      generic/bignum_le.o \
+      generic/bignum_lt.o \
+      generic/bignum_madd.o \
+      generic/bignum_modadd.o \
+      generic/bignum_moddouble.o \
+      generic/bignum_modifier.o \
+      generic/bignum_modinv.o \
+      generic/bignum_modoptneg.o \
+      generic/bignum_modsub.o \
+      generic/bignum_montifier.o \
+      generic/bignum_montmul.o \
+      generic/bignum_montredc.o \
+      generic/bignum_montsqr.o \
+      generic/bignum_mul.o \
+      generic/bignum_mux.o \
+      generic/bignum_mux16.o \
+      generic/bignum_negmodinv.o \
+      generic/bignum_nonzero.o \
+      generic/bignum_normalize.o \
+      generic/bignum_odd.o \
+      generic/bignum_of_word.o \
+      generic/bignum_optadd.o \
+      generic/bignum_optneg.o \
+      generic/bignum_optsub.o \
+      generic/bignum_optsubadd.o \
+      generic/bignum_pow2.o \
+      generic/bignum_shl_small.o \
+      generic/bignum_shr_small.o \
+      generic/bignum_sub.o \
+      generic/word_bytereverse.o \
+      generic/word_clz.o \
+      generic/word_ctz.o \
+      generic/word_negmodinv.o \
+      p256/bignum_add_p256.o \
       p256/bignum_bigendian_4.o \
       p256/bignum_cmul_p256.o \
       p256/bignum_deamont_p256.o \

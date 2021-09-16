@@ -1,0 +1,242 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// ----------------------------------------------------------------------------
+// Montgomery square, z := (x^2 / 2^{64k}) mod m
+// Inputs x[k], y[k]; output z[k]
+//
+//    extern void bignum_montsqr
+//      (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+//
+// Does z := (x^2 / 2^{64k}) mod m, assuming x^2 <= 2^{64k} * m, which is
+// guaranteed in particular if x < m initially (the "intended" case).
+//
+// Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = y
+// ----------------------------------------------------------------------------
+
+
+        .globl  bignum_montsqr
+        .text
+
+// We copy x into %r9 but it comes in in %rdx originally
+
+#define k %rdi
+#define z %rsi
+#define x %r9
+#define m %rcx
+
+// General temp, low part of product and mul input
+#define a %rax
+// General temp, High part of product
+#define b %rdx
+// Negated modular inverse
+#define w %r8
+// Inner loop counter
+#define j %rbx
+// Home for i'th digit or Montgomery multiplier
+#define d %rbp
+#define h %r10
+#define e %r11
+#define n %r12
+#define i %r13
+#define c0 %r14
+#define c1 %r15
+
+// A temp reg in the initial word-level negmodinv.
+
+#define t2 %rdx
+
+#define ashort %eax
+#define jshort %ebx
+
+
+bignum_montsqr:
+
+// Save registers
+
+                pushq   %rbx
+                pushq   %rbp
+                pushq   %r12
+                pushq   %r13
+                pushq   %r14
+                pushq   %r15
+
+// If k = 0 the whole operation is trivial
+
+                testq   k, k
+                jz      end
+
+// Move x input into its permanent home, since we need %rdx for multiplications
+
+                movq    %rdx, x
+
+// Compute word-level negated modular inverse w for m == m[0].
+
+                movq    (m), a
+
+                movq    a, t2
+                movq    a, w
+                shlq    $2, t2
+                subq    t2, w
+                xorq    $2, w
+
+                movq    w, t2
+                imulq   a, t2
+                movl    $2, ashort
+                addq    t2, a
+                addq    $1, t2
+
+                imulq   a, w
+
+                imulq   t2, t2
+                movl    $1, ashort
+                addq    t2, a
+                imulq   a, w
+
+                imulq   t2, t2
+                movl    $1, ashort
+                addq    t2, a
+                imulq   a, w
+
+                imulq   t2, t2
+                movl    $1, ashort
+                addq    t2, a
+                imulq   a, w
+
+// Initialize the output c0::z to zero so we can then consistently add rows.
+// It would be a bit more efficient to special-case the zeroth row, but
+// this keeps the code slightly simpler.
+
+                xorq    i, i // Also initializes i for main loop
+                xorq    j, j
+zoop:
+                movq    i, (z,j,8)
+                incq    j
+                cmpq    k, j
+                jc      zoop
+
+                xorq    c0, c0
+
+// Outer loop pulling down digits d=x[i], multiplying by x and reducing
+
+outerloop:
+
+// Multiply-add loop where we always have CF + previous high part h to add in.
+// Note that in general we do need yet one more carry in this phase and hence
+// initialize c1 with the top carry.
+
+                movq    (x,i,8), d
+                xorq    j, j
+                xorq    h, h
+                xorq    c1, c1
+                movq    k, n
+
+maddloop:
+                adcq    (z,j,8), h
+                sbbq    e, e
+                movq    (x,j,8), a
+                mulq    d
+                subq    e, %rdx
+                addq    h, a
+                movq    a, (z,j,8)
+                movq    %rdx, h
+                incq    j
+                decq    n
+                jnz     maddloop
+                adcq    h, c0
+                adcq    c1, c1
+
+// Montgomery reduction loop, similar but offsetting writebacks
+
+                movq    (z), e
+                movq    w, d
+                imulq   e, d
+                movq    (m), a
+                mulq    d
+                addq    e, a // Will be zero but want the carry
+                movq    %rdx, h
+                movl    $1, jshort
+                movq    k, n
+                decq    n
+                jz      montend
+
+montloop:
+                adcq    (z,j,8), h
+                sbbq    e, e
+                movq    (m,j,8), a
+                mulq    d
+                subq    e, %rdx
+                addq    h, a
+                movq    a, -8(z,j,8)
+                movq    %rdx, h
+                incq    j
+                decq    n
+                jnz     montloop
+
+montend:
+                adcq    c0, h
+                adcq    $0, c1
+                movq    c1, c0
+                movq    h, -8(z,j,8)
+
+// End of outer loop.
+
+                incq    i
+                cmpq    k, i
+                jc      outerloop
+
+// Now do a comparison of (c0::z) with (0::m) to set a final correction mask
+// indicating that (c0::z) >= m and so we need to subtract m.
+
+                xorq    j, j
+                movq    k, n
+cmploop:
+                movq    (z,j,8), a
+                sbbq    (m,j,8), a
+                incq    j
+                decq    n
+                jnz     cmploop
+
+                sbbq    $0, c0
+                sbbq    d, d
+                notq    d
+
+// Now do a masked subtraction of m for the final reduced result.
+
+                xorq    e, e
+                xorq    j, j
+corrloop:
+                movq    (m,j,8), a
+                andq    d, a
+                negq    e
+                sbbq    a, (z,j,8)
+                sbbq    e, e
+                incq    j
+                cmpq    k, j
+                jc      corrloop
+
+end:
+                popq    %r15
+                popq    %r14
+                popq    %r13
+                popq    %r12
+                popq    %rbp
+                popq    %rbx
+
+                ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
