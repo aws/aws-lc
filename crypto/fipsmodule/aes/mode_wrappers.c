@@ -53,31 +53,33 @@
 #include "../aes/internal.h"
 #include "../modes/internal.h"
 
-static void AES_cbc_verify_service_indicator(unsigned key_rounds) {
-  // hwaes_capable when on in x86 uses 9, 11, 13 for key rounds.
-  // hwaes_capable when on in ARM uses 10, 12, 14 for key rounds.
-  // When compiling with different ARM specific platforms, 9, 11, 13 are used for key rounds.
-  // TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
-  switch (key_rounds) {
-    case 9:
-    case 10:
-      awslc_fips_service_indicator_update_state(
-          FIPS_APPROVED_EVP_AES_128_CBC);
-      break;
-    case 11:
-    case 12:
-      awslc_fips_service_indicator_update_state(
-          FIPS_APPROVED_EVP_AES_192_CBC);
-      break;
-    case 13:
-    case 14:
-      awslc_fips_service_indicator_update_state(
-          FIPS_APPROVED_EVP_AES_256_CBC);
-      break;
-    default:
-      break;
-  }
-}
+// hwaes_capable when on in x86 uses 9, 11, 13 for key rounds.
+// hwaes_capable when on in ARM uses 10, 12, 14 for key rounds.
+// When compiling with different ARM specific platforms, 9, 11, 13 are used for key rounds.
+// TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
+#define AES_verify_service_indicator(key_rounds, mode)                      \
+do {                                                                        \
+  switch (key_rounds) {                                                     \
+    case 9:                                                                 \
+    case 10:                                                                \
+      awslc_fips_service_indicator_update_state(                            \
+          FIPS_APPROVED_EVP_AES_128_##mode);                                \
+      break;                                                                \
+    case 11:                                                                \
+    case 12:                                                                \
+      awslc_fips_service_indicator_update_state(                            \
+          FIPS_APPROVED_EVP_AES_192_##mode);                                \
+      break;                                                                \
+    case 13:                                                                \
+    case 14:                                                                \
+      awslc_fips_service_indicator_update_state(                            \
+          FIPS_APPROVED_EVP_AES_256_##mode);                                \
+      break;                                                                \
+    default:                                                                \
+      break;                                                                \
+  }                                                                         \
+}                                                                           \
+while(0)                                                                    \
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
@@ -118,14 +120,14 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (hwaes_capable()) {
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
     // service indicator check.
-    AES_cbc_verify_service_indicator(key->rounds);
+    AES_verify_service_indicator(key->rounds, CBC);
     return;
   }
 
   if (!vpaes_capable()) {
     aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
     // service indicator check.
-    AES_cbc_verify_service_indicator(key->rounds);
+    AES_verify_service_indicator(key->rounds, CBC);
     return;
   }
 
@@ -135,7 +137,7 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     CRYPTO_cbc128_decrypt(in, out, len, key, ivec, AES_decrypt);
   }
   // service indicator check.
-  AES_cbc_verify_service_indicator(key->rounds);
+  AES_verify_service_indicator(key->rounds, CBC);
 }
 
 void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
