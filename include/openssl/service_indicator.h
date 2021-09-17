@@ -17,7 +17,7 @@ OPENSSL_EXPORT uint32_t awslc_fips_service_indicator_get_serviceID(void);
     (approved) = 0;                                                         \
     uint64_t counter = awslc_fips_service_indicator_get_counter();          \
     func;                                                                   \
-    if (awslc_fips_service_indicator_get_counter() > counter) {             \
+    if (awslc_fips_service_indicator_get_counter() != counter) {            \
         (approved) = 1;                                                     \
     }                                                                       \
  }                                                                          \
