@@ -244,7 +244,9 @@ batch:
           HMAC_SELECTCHECK: 1
 
     # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck
+    # This dimension only checks |evp_cipher_update_len| from 1 to 128.
+    # https://github.com/awslabs/aws-lc-verification/blob/master/SAW/proof/AES/verify-AES-GCM-selectcheck-template.txt
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_1_128
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -253,6 +255,38 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           AES_GCM_SELECTCHECK: 1
+          AES_GCM_SELECTCHECK_START: 1
+          AES_GCM_SELECTCHECK_END: 128
+
+    # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
+    # This dimension only checks |evp_cipher_update_len| from 129 to 258.
+    # https://github.com/awslabs/aws-lc-verification/blob/master/SAW/proof/AES/verify-AES-GCM-selectcheck-template.txt
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_129_258
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+        variables:
+          AES_GCM_SELECTCHECK: 1
+          AES_GCM_SELECTCHECK_START: 129
+          AES_GCM_SELECTCHECK_END: 258
+
+    # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
+    # This dimension only checks |evp_cipher_update_len| from 259 to 384.
+    # https://github.com/awslabs/aws-lc-verification/blob/master/SAW/proof/AES/verify-AES-GCM-selectcheck-template.txt
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_259_384
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
+        variables:
+          AES_GCM_SELECTCHECK: 1
+          AES_GCM_SELECTCHECK_START: 259
+          AES_GCM_SELECTCHECK_END: 384
 
     # Build and test aws-lc without Perl/Go.
     # aws-c-cal uses Docker images maintained in aws crt repo.
