@@ -80,13 +80,13 @@ bignum_kmul_32_64:
 
 // Form |x_lo - x_hi| starting at t
 
-        mov     rax, [(rsi-8*K-0x40)]
-        sub     rax, [(rsi-8*K-0x40)+8*K]
+        mov     rax, [rsi-8*K-0x40]
+        sub     rax, [rsi-8*K-0x40+8*K]
         mov     [r8], rax
         .set I,  1
         .rep K-1
-        mov     rax, [(rsi-8*K-0x40)+8*I]
-        sbb     rax, [(rsi-8*K-0x40)+8*K+8*I]
+        mov     rax, [rsi-8*K-0x40+8*I]
+        sbb     rax, [rsi-8*K-0x40+8*K+8*I]
         mov     [r8+8*I], rax
         .set I,  (I+1)
         .endr
@@ -107,13 +107,13 @@ bignum_kmul_32_64:
 
 // Form |y_hi - y_lo| (note opposite order) starting at t[K]
 
-        mov     rax, [(rcx-8*K)+8*K]
-        sub     rax, [(rcx-8*K)]
+        mov     rax, [rcx-8*K+8*K]
+        sub     rax, [rcx-8*K]
         mov     [r8+8*K], rax
         .set I,  1
         .rep K-1
-        mov     rax, [(rcx-8*K)+8*K+8*I]
-        sbb     rax, [(rcx-8*K)+8*I]
+        mov     rax, [rcx-8*K+8*K+8*I]
+        sbb     rax, [rcx-8*K+8*I]
         mov     [r8+8*K+8*I], rax
         .set I,  (I+1)
         .endr

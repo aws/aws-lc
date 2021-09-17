@@ -35,8 +35,6 @@
 
 #define CHUNKSIZE 58
 
-#define COCHUNKSIZE (64-CHUNKSIZE)
-
 // These variables are so fundamental we keep them consistently in registers.
 // k actually stays where it was at the beginning, while l gets set up  later
 
@@ -425,8 +423,8 @@ congloop:
                 cmp     i, k
                 jc      congloop
 
-                shld    l1, c1, COCHUNKSIZE
-                shld    l2, c2, COCHUNKSIZE
+                shld    l1, c1, 64-CHUNKSIZE
+                shld    l2, c2, 64-CHUNKSIZE
 
 // Do a Montgomery reduction of l1::w
 
