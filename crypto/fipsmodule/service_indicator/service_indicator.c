@@ -62,7 +62,6 @@ void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t se
   }
   indicator->service_id = service_id;
   if(indicator->counter == UINT64_MAX) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_OVERFLOW);
     indicator->counter = 0;
     return;
   }

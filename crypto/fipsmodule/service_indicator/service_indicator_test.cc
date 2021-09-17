@@ -69,14 +69,8 @@ static const uint8_t kAESCBCCiphertext[64] = {
 };
 
 TEST(ServiceIndicatorTest, BasicTest) {
-  // Reset and check the initial state and counter.
-  //ASSERT_TRUE(awslc_fips_service_indicator_reset_state());
   int approved = 0;
-
-  uint64_t counter = awslc_fips_service_indicator_get_counter();
-  uint32_t serviceID = awslc_fips_service_indicator_get_serviceID();
-  ASSERT_EQ(counter, (uint64_t)0);
-  ASSERT_EQ(serviceID, FIPS_APPROVED_NO_STATE);
+  uint32_t serviceID = 0;
 
   // Call an approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
@@ -87,11 +81,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
   IS_FIPS_APPROVED_CALL_SERVICE(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
           output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_TRUE(approved);
-
-  // Check state and counter after using an approved service.
-  counter = awslc_fips_service_indicator_get_counter();
   serviceID = awslc_fips_service_indicator_get_serviceID();
-  ASSERT_EQ(counter,(uint64_t)1);
   ASSERT_EQ(serviceID, FIPS_APPROVED_EVP_AES_128_GCM);
 }
 
