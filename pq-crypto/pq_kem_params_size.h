@@ -8,7 +8,7 @@
 //   - shared secret
 //   - ciphertext.
 // Since the KEM implementations use the same macro name for these,
-// we define the macros wih KEM specific names in this file. The values
+// we define macros wih KEM specific names in this file. The values
 // are copied from the corresponding KEM implementation.
 // -----------------------------------------------------------------------------
 #ifndef AWSLC_PQ_KEM_PARAMS_SIZE_H

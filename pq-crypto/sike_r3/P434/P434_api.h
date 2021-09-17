@@ -2,7 +2,7 @@
 * SIDH: an efficient supersingular isogeny cryptography library
 *
 * Abstract: API header file for P434
-*********************************************************************************************/  
+*********************************************************************************************/
 
 #ifndef P434_API_H
 #define P434_API_H

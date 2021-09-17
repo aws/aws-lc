@@ -13,20 +13,35 @@
 # permissions and limitations under the License.
 #
 
-cmake_minimum_required (VERSION 2.8.12)
-
-# get all source files
-file(GLOB SIKE_R3_SRCS "P434/*.c"
+file(GLOB SIKE_R3_SRCS "P434/P434.c"
                        "P434/generic/fp_generic.c"
                        "random/random.c"
                        "sha3/fips202.c")
 
 add_library(sike_r3 OBJECT ${SIKE_R3_SRCS})
 
-# TODO(awslc): set the __NIX__ or __WINDOWS__ depending on the OS (see config.h)
-target_compile_options(sike_r3 PRIVATE -D__NIX__)
+# Setting some necessary flags for SIKE (see config.h)
+# Only the generic implementation of SIKE is imported for now.
+target_compile_options(sike_r3 PRIVATE -D_GENERIC_)
 
-# TODO(awslc): set the correct target option (see config.h)
-target_compile_options(sike_r3 PRIVATE -D_AMD64_)
+if("${ARCH}" STREQUAL "x86_64")
+  target_compile_options(sike_r3 PRIVATE -D_AMD64_)
+elseif("${ARCH}" STREQUAL "x86")
+  target_compile_options(sike_r3 PRIVATE -D_X86_)
+elseif("${ARCH}" STREQUAL "aarch64")
+  target_compile_options(sike_r3 PRIVATE -D_ARM64_)
+elseif("${ARCH}" STREQUAL "arm")
+  target_compile_options(sike_r3 PRIVATE -D_ARM_)
+endif()
 
+if(UNIX)
+  target_compile_options(sike_r3 PRIVATE -D__NIX__)
+elseif(WIN32)
+  target_compile_options(sike_r3 PRIVATE -D__WINDOWS__)
+endif()
+
+# This is experimental third-party code so we avoid making any unnecessary
+# changes to it until the code becomes stable. So we ignore some warnings
+# that are not errors.
 target_compile_options(sike_r3 PRIVATE -Wno-missing-braces -Wno-unused-function)
+

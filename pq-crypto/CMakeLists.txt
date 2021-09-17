@@ -19,5 +19,17 @@ include_directories(../include)
 
 add_subdirectory(sike_r3)
 
-add_library(pq-crypto "EVP_kem.c"
+add_library(pq_crypto "pq_kem.c"
                       $<TARGET_OBJECTS:sike_r3>)
+
+add_dependencies(pq_crypto global_target)
+target_link_libraries(pq_crypto crypto)
+
+if(BUILD_TESTING)
+  add_executable(pq_crypto_test pq_kem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
+  target_link_libraries(pq_crypto_test test_support_lib boringssl_gtest crypto pq_crypto)
+  if(WIN32)
+    target_link_libraries(pq_crypto_test ws2_32)
+  endif()
+  add_dependencies(all_tests pq_crypto_test)
+endif ()

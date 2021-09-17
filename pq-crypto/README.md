@@ -7,7 +7,6 @@ Post-quantum public-key cryptographic algorithms run on a classical computer and
 classical and quantum attacks. NIST is in the process of reviewing submissions and standardizing them,
 see more info on the [NIST website](https://csrc.nist.gov/Projects/Post-Quantum-Cryptography/Post-Quantum-Cryptography-Standardization).
 
-
 ## SIKE (Supersingular Isogeny Key Encapsulation)
-The code in the pq-crypto/sike_r3 directory was moved from [S2N](https://github.com/aws/s2n-tls/tree/main/pq-crypto), 
-which imports code from [SIKE's](https://github.com/microsoft/PQCrypto-SIDH) repository.
+The code in the `pq-crypto/sike_r3` directory was copied from [SIKE's](https://github.com/microsoft/PQCrypto-SIDH) repository.
+The only change made to SIKE's code is in `random/random.c` file where SIKE's randomness generation is replaces with a call to AWS-LC `RAND_bytes` function.
