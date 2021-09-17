@@ -70,7 +70,7 @@ static const uint8_t kAESCBCCiphertext[64] = {
 
 TEST(ServiceIndicatorTest, BasicTest) {
   // Reset and check the initial state and counter.
-  ASSERT_TRUE(awslc_fips_service_indicator_reset_state());
+  //ASSERT_TRUE(awslc_fips_service_indicator_reset_state());
   int approved = 0;
 
   uint64_t counter = awslc_fips_service_indicator_get_counter();

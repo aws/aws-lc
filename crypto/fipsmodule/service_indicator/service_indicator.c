@@ -35,6 +35,7 @@ uint32_t awslc_fips_service_indicator_get_serviceID(void) {
   return indicator->service_id;
 }
 
+// Only to be used internally, it is not intended for the user to reset the state.
 int awslc_fips_service_indicator_reset_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
@@ -71,6 +72,5 @@ void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t se
 
 uint64_t awslc_fips_service_indicator_get_counter(void) { return 0; }
 uint32_t awslc_fips_service_indicator_get_serviceID(void) { return 0; }
-int awslc_fips_service_indicator_reset_state(void)  { return 0; }
 
 #endif // AWSLC_FIPS

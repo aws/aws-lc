@@ -916,9 +916,11 @@ struct fips_service_indicator_state {
   uint32_t service_id;
 };
 
+int awslc_fips_service_indicator_reset_state(void);
 void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t service_id);
 
 #else
+OPENSSL_INLINE int awslc_fips_service_indicator_reset_state(void) { return 0; }
 OPENSSL_INLINE void awslc_fips_service_indicator_update_state(int service_id) {}
 #endif // AWSLC_FIPS
 

@@ -250,6 +250,9 @@ BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 #endif  // OPENSSL_ASAN
+  if(!awslc_fips_service_indicator_reset_state()) {
+    goto err;
+  }
 
   return;
 
