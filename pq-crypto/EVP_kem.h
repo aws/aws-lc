@@ -10,7 +10,6 @@
 #define AWSLC_EVP_KEM_H
 
 #include <stdint.h>
-#include "sike_r3/sike_internal.h"
 
 // ----------------------------------------------------------------------------
 // Name: pq_kem

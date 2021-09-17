@@ -6,11 +6,10 @@
 // Abstract: Post-Quantum Algorithm API
 // -----------------------------------------------------------------------------
 
-#include <stdint.h>
-#include <stdlib.h>
 #include "EVP_kem.h"
-#include "sike_r3/sike_internal.h"
-#include "../include/openssl/mem.h"
+#include "pq_kem_params_size.h"
+#include "sike_r3/P434/P434_api.h"
+#include "openssl/mem.h"
 
 const struct pq_kem evp_sike_p434_r3 = {
         .name = "SIKEp434r3-KEM",
@@ -18,9 +17,9 @@ const struct pq_kem evp_sike_p434_r3 = {
         .private_key_length = SIKE_P434_R3_PRIVATE_KEY_BYTES,
         .shared_secret_key_length = SIKE_P434_R3_SHARED_SECRET_BYTES,
         .ciphertext_length = SIKE_P434_R3_CIPHERTEXT_BYTES,
-        .generate_keypair = &sike_p434_r3_crypto_kem_keypair,
-        .encapsulate = &sike_p434_r3_crypto_kem_enc,
-        .decapsulate = &sike_p434_r3_crypto_kem_dec,
+        .generate_keypair = &crypto_kem_keypair_SIKEp434,
+        .encapsulate = &crypto_kem_enc_SIKEp434,
+        .decapsulate = &crypto_kem_dec_SIKEp434
 };
 
 int pq_kem_params_alloc(pq_kem *kem, pq_kem_params *kem_params) {
