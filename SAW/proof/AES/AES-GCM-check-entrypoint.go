@@ -24,11 +24,13 @@ func main() {
 		utility.RunSawScript("verify-AES-GCM-quickcheck.saw")
 		return
 	}
+	selectcheck_range_start := utility.ParseSelectCheckRange("AES_GCM_SELECTCHECK_START", 1)
+	selectcheck_range_end := utility.ParseSelectCheckRange("AES_GCM_SELECTCHECK_END", 384)
 	// When 'AES_GCM_SELECTCHECK' is defined, formal verification is executed with different `evp_cipher_update_len`.
 	// Generate saw scripts based on the verification template and evp_cipher_update_len range [1, 384].
 	var wg sync.WaitGroup
 	process_count := 0
-	for i := 1; i <= 384; i++ {
+	for i := selectcheck_range_start; i <= selectcheck_range_end; i++ {
 		wg.Add(1)
 		saw_template := "verify-AES-GCM-selectcheck-template.txt"
 		placeholder_name := "TARGET_LEN_PLACEHOLDER"

@@ -23,6 +23,23 @@ func CheckError(e error) {
 	}
 }
 
+// A function to parse select check parameter range.
+// e.g. if the env var |AES_GCM_SELECTCHECK_RANGE_START| is set, this func will parse its value
+func ParseSelectCheckRange(env_var_name string, default_val int) int {
+	env_var_val := os.Getenv(env_var_name)
+	if len(env_var_val) == 0 {
+		return default_val
+	}
+	ret, err := strconv.Atoi(env_var_val)
+	if err != nil {
+		log.Fatal("Failed to convert the value(%s) of env var |%s| to integer.", env_var_val, env_var_name, err)
+	}
+	if ret < 0 {
+		log.Fatal("The value(%s) of env var |%s| cannot be negative", env_var_val, env_var_name)
+	}
+	return ret
+}
+
 // A function to create a saw script, replace `placeholder_key` with value, and then execute the script.
 func CreateAndRunSawScript(path_to_template string, placeholder_key string, value int, wg *sync.WaitGroup) {
 	log.Printf("Start creating saw script for target value %s based on template %s.", value, path_to_template)
