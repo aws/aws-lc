@@ -199,8 +199,8 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
   }
 
   // Generate the required number of bytes with Jitter.
-  if (jent_read_entropy_safe(&state->jitter_ec,
-                             (char *) out_entropy, out_entropy_len) < 0) {
+  if (jent_read_entropy_safe(&state->jitter_ec, (char *) out_entropy,
+                             out_entropy_len) != (ssize_t) out_entropy_len) {
     abort();
   }
 
@@ -249,7 +249,7 @@ static void rand_get_seed(struct rand_thread_state *state,
   OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
 }
 
-#else
+#else // BORINGSSL_FIPS
 
 // rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if
 // that entropy came directly from the CPU and zero otherwise.
@@ -262,7 +262,7 @@ static void rand_get_seed(struct rand_thread_state *state,
   *out_used_cpu = 0;
 }
 
-#endif
+#endif // BORINGSSL_FIPS
 
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32]) {
