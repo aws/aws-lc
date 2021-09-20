@@ -111,6 +111,7 @@
 
 #include <openssl/crypto.h>
 #include <openssl/ex_data.h>
+#include <openssl/service_indicator.h>
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
@@ -892,21 +893,6 @@ static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
 static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
-
-
-enum fips_approved_algorithm_t {
-  FIPS_APPROVED_NO_STATE        = 0,
-  FIPS_APPROVED_EVP_AES_128_GCM = 1,
-  FIPS_APPROVED_EVP_AES_256_GCM = 2,
-  FIPS_APPROVED_EVP_AES_128_CTR = 3,
-  FIPS_APPROVED_EVP_AES_192_CTR = 4,
-  FIPS_APPROVED_EVP_AES_256_CTR = 5,
-  FIPS_APPROVED_EVP_AES_128_CBC = 6,
-  FIPS_APPROVED_EVP_AES_192_CBC = 7,
-  FIPS_APPROVED_EVP_AES_256_CBC = 8,
-
-  FIPS_APPROVED_ALGORITHM_MAX = 8,
-};
 
 // FIPS functions.
 #if defined(AWSLC_FIPS)

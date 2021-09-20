@@ -71,6 +71,8 @@ static const uint8_t kAESCBCCiphertext[64] = {
 TEST(ServiceIndicatorTest, BasicTest) {
   int approved = 0;
   uint32_t serviceID = 0;
+  uint64_t counter = awslc_fips_service_indicator_get_counter();
+  ASSERT_EQ(sizeof(counter), (uint64_t)8);
 
   // Call an approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
@@ -170,7 +172,8 @@ TEST(ServiceIndicatorTest, BasicTest) {
   uint64_t counter = awslc_fips_service_indicator_get_counter();
   uint32_t serviceID = awslc_fips_service_indicator_get_serviceID();
   ASSERT_EQ(counter, (uint64_t)0);
-  ASSERT_EQ(serviceID, (uint32_t)0);
+  ASSERT_EQ(sizeof(counter), (uint64_t)8);
+  ASSERT_EQ(serviceID, FIPS_APPROVED_NO_STATE);
 
   // Call an approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
@@ -180,13 +183,15 @@ TEST(ServiceIndicatorTest, BasicTest) {
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
   IS_FIPS_APPROVED_CALL_SERVICE(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
          encrypt_output, &out_len, sizeof(encrypt_output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
-  ASSERT_FALSE(approved);
+  // Assume true when FIPS is not on, for easier consumer compatibility that have
+  // both FIPS and non-FIPS libraries.
+  ASSERT_TRUE(approved);
 
   // Check state and counter after using an approved service.
   counter = awslc_fips_service_indicator_get_counter();
   serviceID = awslc_fips_service_indicator_get_serviceID();
   ASSERT_EQ(counter,(uint64_t)0);
-  ASSERT_EQ(serviceID, (uint32_t)0);
+  ASSERT_EQ(serviceID, FIPS_APPROVED_NO_STATE);
 }
 #endif // AWSLC_FIPS
 

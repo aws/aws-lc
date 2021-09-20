@@ -60,12 +60,8 @@ void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t se
     }
     indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   }
-  indicator->service_id = service_id;
-  if(indicator->counter == UINT64_MAX) {
-    indicator->counter = 0;
-    return;
-  }
   indicator->counter++;
+  indicator->service_id = service_id;
 }
 
 #else
