@@ -69,6 +69,7 @@
 #include <openssl/x509v3.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
@@ -288,13 +289,15 @@ static int i2d_x509_aux_internal(X509 *a, unsigned char **pp)
         return length;
     }
 
-    tmplen = i2d_X509_CERT_AUX(a->aux, pp);
-    if (tmplen < 0) {
-        if (start != NULL)
-            *pp = start;
-        return tmplen;
+    if (a->aux != NULL) {
+        tmplen = i2d_X509_CERT_AUX(a->aux, pp);
+        if (tmplen < 0) {
+            if (start != NULL)
+                *pp = start;
+            return tmplen;
+        }
+        length += tmplen;
     }
-    length += tmplen;
 
     return length;
 }

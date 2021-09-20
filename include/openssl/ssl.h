@@ -1649,6 +1649,11 @@ OPENSSL_EXPORT int SSL_export_keying_material(
 // abbreviated handshake. It is reference-counted and immutable. Once
 // established, an |SSL_SESSION| may be shared by multiple |SSL| objects on
 // different threads and must not be modified.
+//
+// Note the TLS notion of "session" is not suitable for application-level
+// session state. It is an optional caching mechanism for the handshake. Not all
+// connections within an application-level session will reuse TLS sessions. TLS
+// sessions may be dropped by the client or ignored by the server at any time.
 
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
@@ -1703,6 +1708,19 @@ OPENSSL_EXPORT int SSL_SESSION_set_protocol_version(SSL_SESSION *session,
 
 // SSL_SESSION_get_id returns a pointer to a buffer containing |session|'s
 // session ID and sets |*out_len| to its length.
+//
+// This function should only be used for implementing a TLS session cache. TLS
+// sessions are not suitable for application-level session state, and a session
+// ID is an implementation detail of the TLS resumption handshake mechanism. Not
+// all resumption flows use session IDs, and not all connections within an
+// application-level session will reuse TLS sessions.
+//
+// To determine if resumption occurred, use |SSL_session_reused| instead.
+// Comparing session IDs will not give the right result in all cases.
+//
+// As a workaround for some broken applications, BoringSSL sometimes synthesizes
+// arbitrary session IDs for non-ID-based sessions. This behavior may be
+// removed in the future.
 OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
                                                  unsigned *out_len);
 
@@ -3569,7 +3587,7 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 //
 // ECH support in BoringSSL is still experimental and under development.
 //
-// See https://tools.ietf.org/html/draft-ietf-tls-esni-10.
+// See https://tools.ietf.org/html/draft-ietf-tls-esni-13.
 
 // SSL_set_enable_ech_grease configures whether the client will send a GREASE
 // ECH extension when no supported ECHConfig is available.
@@ -3601,12 +3619,12 @@ OPENSSL_EXPORT int SSL_set1_ech_config_list(SSL *ssl,
                                             const uint8_t *ech_config_list,
                                             size_t ech_config_list_len);
 
-// SSL_get0_ech_name_override sets |*out_name| and |*out_name_len| to point to a
-// buffer containing the ECH public name, if the server rejected ECH, or the
-// empty string otherwise.
+// SSL_get0_ech_name_override, if |ssl| is a client and the server rejected ECH,
+// sets |*out_name| and |*out_name_len| to point to a buffer containing the ECH
+// public name. Otherwise, the buffer will be empty.
 //
-// This function should be called during the certificate verification callback
-// (see |SSL_CTX_set_custom_verify|) if |ssl| is a client offering ECH. If
+// When offering ECH as a client, this function should be called during the
+// certificate verification callback (see |SSL_CTX_set_custom_verify|). If
 // |*out_name_len| is non-zero, the caller should verify the certificate against
 // the result, interpreted as a DNS name, rather than the true server name. In
 // this case, the handshake will never succeed and is only used to authenticate
@@ -4894,12 +4912,6 @@ OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
 
-// SSL_set_verify_result calls |abort| unless |result| is |X509_V_OK|.
-//
-// TODO(davidben): Remove this function once it has been removed from
-// netty-tcnative.
-OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
-
 // SSL_CTX_enable_tls_channel_id calls |SSL_CTX_set_tls_channel_id_enabled|.
 OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
 
@@ -5554,6 +5566,8 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_ECH_PUBLIC_NAME 317
 #define SSL_R_INVALID_ECH_CONFIG_LIST 318
 #define SSL_R_ECH_REJECTED 319
+#define SSL_R_OUTER_EXTENSION_NOT_FOUND 320
+#define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

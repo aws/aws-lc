@@ -1,5 +1,6 @@
 [
 {"Wrapper": "modulewrapper", "In": "vectors/ACVP-AES-CBC.bz2", "Out": "expected/ACVP-AES-CBC.bz2"},
+{"Wrapper": "testmodulewrapper", "In": "vectors/ACVP-AES-CBC-CS3.bz2", "Out": "expected/ACVP-AES-CBC-CS3.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ACVP-AES-CCM.bz2", "Out": "expected/ACVP-AES-CCM.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ACVP-AES-CTR.bz2", "Out": "expected/ACVP-AES-CTR.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ACVP-AES-ECB.bz2", "Out": "expected/ACVP-AES-ECB.bz2"},
@@ -18,6 +19,7 @@
 {"Wrapper": "modulewrapper", "In": "vectors/HMAC-SHA2-256.bz2", "Out": "expected/HMAC-SHA2-256.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/HMAC-SHA2-384.bz2", "Out": "expected/HMAC-SHA2-384.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/HMAC-SHA2-512.bz2", "Out": "expected/HMAC-SHA2-512.bz2"},
+{"Wrapper": "testmodulewrapper", "In": "vectors/hmacDRBG.bz2", "Out": "expected/hmacDRBG.bz2"},
 {"Wrapper": "testmodulewrapper", "In": "vectors/KAS-KDF.bz2", "Out": "expected/KAS-KDF.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KAS-ECC-SSC.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KAS-FFC-SSC.bz2"},
