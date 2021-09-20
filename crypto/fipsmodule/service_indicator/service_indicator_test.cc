@@ -183,8 +183,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
   IS_FIPS_APPROVED_CALL_SERVICE(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
          encrypt_output, &out_len, sizeof(encrypt_output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
-  // Assume true when FIPS is not on, for easier consumer compatibility that have
-  // both FIPS and non-FIPS libraries.
   ASSERT_TRUE(approved);
 
   // Check state and counter after using an approved service.

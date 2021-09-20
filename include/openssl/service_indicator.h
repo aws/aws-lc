@@ -41,6 +41,8 @@ OPENSSL_EXPORT uint32_t awslc_fips_service_indicator_get_serviceID(void);
  while(0)                                                                   \
 
 #else
+// Assume true when FIPS is not on, for easier consumer compatibility that have
+// both FIPS and non-FIPS libraries.
 #define IS_FIPS_APPROVED_CALL_SERVICE(approved, func)                       \
   do {                                                                      \
     (approved) = FIPS_APPROVED;                                             \
