@@ -24,13 +24,13 @@ add_library(sike_r3 OBJECT ${SIKE_R3_SRCS})
 # Only the generic implementation of SIKE is imported for now.
 target_compile_options(sike_r3 PRIVATE -D_GENERIC_)
 
-if("${ARCH}" STREQUAL "x86_64")
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
   target_compile_options(sike_r3 PRIVATE -D_AMD64_)
-elseif("${ARCH}" STREQUAL "x86")
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86|i386|i686")
   target_compile_options(sike_r3 PRIVATE -D_X86_)
-elseif("${ARCH}" STREQUAL "aarch64")
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64|aarch64")
   target_compile_options(sike_r3 PRIVATE -D_ARM64_)
-elseif("${ARCH}" STREQUAL "arm")
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm*")
   target_compile_options(sike_r3 PRIVATE -D_ARM_)
 endif()
 
