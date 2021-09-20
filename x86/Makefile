@@ -43,13 +43,23 @@ else
 MANGLE=cat
 endif
 
-# Support cross-assembling on ARM-based clang toolchain
+# If actually on an x86 machine, just use the assembler (as). Otherwise
+# use a cross-assembling version so that the code can still be assembled
+# and the proofs checked against the object files (though you won't be able
+# to run code without additional emulation infrastructure). For the clang
+# version on OS X we just add the "-arch x86_64" option. For the Linux/gcc
+# toolchain we assume the presence of the special cross-assembler. This
+# can be installed via something like:
+#
+#  sudo apt-get install binutils-x86-64-linux-gnu
 
+ifeq ($(ARCHTYPE_RESULT),x86_64)
 ASSEMBLE=as
-
+else
 ifeq ($(OSTYPE_RESULT),Darwin)
-ifeq ($(ARCHTYPE_RESULT),arm64)
 ASSEMBLE=as -arch x86_64
+else
+ASSEMBLE=x86_64-linux-gnu-as
 endif
 endif
 
