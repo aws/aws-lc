@@ -10,6 +10,12 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
 * Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 * [Connect AWS CodeBuild with GitHub](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-access-tokens.html)
   * Note: This step should grant AWS CodeBuild with access to create WebHook.
+  * For team AWS account, AWS CodeBuild is connected with GitHub through GitHub OAuth.
+    * step 1: go to AWS CodeBuild console.
+    * step 2: create a CodeBuild project.
+    * step 3: change **Source provider** to **GitHub**. 
+    * step 4: click **Connect using OAuth** and **Connect to GitHub**.
+    * step 5: follow the OAuth app to grant access.
 * [Create GitHub Personal Access Token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)
   * Note: This token ONLY needs ['read:packages' permission](https://docs.github.com/en/packages/learn-github-packages/about-github-packages#authenticating-to-github-packages), and should be deleted from GitHub account after docker image build.
   * This token is needed when pulling images from 'docker.pkg.github.com'.
@@ -68,10 +74,10 @@ To update AWS-LC CI, run command:
 ./run-cdk.sh --action update-ci
 ```
 
-To create/udpate Docker images, run command:
+To create/update Linux Docker images, run command:
 ```
 export GITHUB_ACCESS_TOKEN='xxxxx'
-./run-cdk.sh --action build-img --github-access-token ${GITHUB_ACCESS_TOKEN}
+./run-cdk.sh --action build-linux-img --github-access-token ${GITHUB_ACCESS_TOKEN}
 ```
 
 To destroy AWS-LC CI resources created above, run command:
@@ -84,6 +90,40 @@ For help, run command:
 ```
 ./run-cdk.sh --help
 ```
+
+## AWS-LC Benchmarking Framework
+
+### Framework Setup
+No special actions outside those outlined in the **CI Setup** section are required to deploy the benchmarking framework to an AWS account and GitHub repository.
+
+Specific implementation details can mostly be found in:
+* `run-cdk.sh`
+* `cdk/bm_framework_stack.py`
+
+### How to Use
+After the benchmarking framework is set up, there are multiple ways to start the process.
+
+Note: due to the nature of how the framework works, a commit containing the relevant scripts (located inside `tests/ci/benchmark_framework/`,`tests/ci/build_run_benchmarks.sh`, and `tests/ci/run_bm_framework.sh`) is required for a successful run of the framework. If these files are not present, the benchmarking process will fail.
+
+#### Start from Pull Request
+Opening, reopening, or updating a pull request in a repository in which the framework has been deployed to will start the benchmarking process automatically without any extra input needed from the user.
+
+#### Start Locally
+Starting the benchmarking framework locally still requires the user's AWS CLI to be configured for an account with the framework deployed to it. Additionally, several environment variables need to be set for the framework to work correctly.
+
+| Environment Variable      | Description            | Value                                                                         |
+|---------------------------|------------------------|-------------------------------------------------------------------------------|
+| `CODEBUILD_SOURCE_VERSION`  | GitHub Commit ID       | The commit ID of the version of AWS-LC to be benchmarked                      |
+| `CODEBUILD_SOURCE_REPO_URL` | GitHub Repository Link | The link used to clone the repository which the provided commit ID belongs to |
+
+After setting the environment variables, run `./tests/ci/run_bm_framework` from the root directory of the project to start the benchmarking process. This is the same script that is run by a CodeBuild instance that is used when the framework is started via a PR.
+
+#### Examine Output
+After it is started, the benchmarking framework will take 30-45 minutes to complete. Once finished, the benchmarking script will exit with an error if a regression was detected. If the framework was started from a PR, this will result in a failed CI vote.
+
+If necessary, logs of both the CodeBuild (if started via a pull request) and SSM Run Commands can be found in AWS CloudWatch Logs in order to help determine causes of failure. Performance and regression information can be found in S3 buckets called `<AWS ACCOUNT ID>-aws-lc-ci-bm-framework-prod-bucket` and `<AWS_ACCOUNT_ID>-aws-lc-ci-bm-framework-pr-bucket`. The former holds the performance results of the tip of main of AWS-LC and FIPS compliant AWS-LC, BoringSSL, and OpenSSL, while the latter holds performance information and results for the PR versions of AWS-LC and FIPS compliant AWS-LC. These results are in a folder labeled by the GitHub commit ID of the version of AWS-LC that is being tested.
+
+Each file output by the CI will have a prefix with some processor information in it, following the format `<processor architecture><hardware support type>-`. So for example a file labeled `amd64noavx-aws-lc-pr_bm.csv` would contain benchmarking information for the PR version of AWS-LC being run on an x86 processor without AVX support, while a file labeled `amd64-prod_vs_pr.csv` would contain a performance comparison between the tip of main of AWS-LC and the PR version of AWS-LC on an x86 processor with all hardware support enabled.
 
 ## Files
 

@@ -80,3 +80,50 @@ If both sets of tests pass, refresh the fuzzer corpora with `refresh_ssl_corpora
 cd fuzz
 ./refresh_ssl_corpora.sh /path/to/fuzzer/mode/build /path/to/non/fuzzer/mode/build
 ```
+
+## Adding New Fuzz Test Targets
+When adding new functionality, adding new fuzz tests are important to provide additional testing and verification that we are correct.
+
+### Steps
+1. `NEW_FUNCTION='name_of_new_fuzzing_target'`
+2. `touch fuzz/${NEW_FUNCTION}.cc` \
+    Write fuzzing code for libfuzzer to parse in `fuzz/${NEW_FUNCTION}.cc`. The code in this file will be how Libfuzzer 
+   identifies how to parse any data inputs the fuzzer gives. Fuzz tests test upon random data inputs, so in most cases 
+   we write code to test on data parsing (and reserializing the data again if applicable).
+3. `mkdir fuzz/${NEW_FUNCTION}_corpus_raw` \
+   Import any existing unit test files into the `fuzz/${NEW_FUNCTION}_corpus_raw` directory. These will be used to 
+   create our new fuzzing corpus.
+4. Add `fuzzer('name_of_new_fuzzing_target')` target in the `fuzz/CmakeLists.txt` file.
+5. Build AWS-LC with fuzzing enabled (only buildable with clang) 
+   ```
+   mkdir test_build_dir
+   cmake ../aws-lc -GNinja "-B`pwd`/test_build_dir" "-DCMAKE_INSTALL_PREFIX=`pwd`/test_build_dir/" \
+   -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFUZZ=1 -DASAN=1 -DBUILD_TESTING=OFF
+   ninja -C test_build_dir 
+   ``` 
+6. Run the fuzzer with our import test files by running:\
+   **Note**: 
+    * `max_len`: set for maximum test file size if needed
+    * `max_total_time`: can be adjusted to how long you'd like the fuzzer to run.
+    * `workers`: should be set accordingly to how many cpu processors are available.
+    ```  
+    mkdir fuzz/${NEW_FUNCTION}_corpus_temp
+    NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+    ./test_build_dir/fuzz/${NEW_FUNCTION} -jobs=${NUM_CPU_THREADS} -workers=${NUM_CPU_THREADS} -timeout=5 \
+    -print_final_stats=1 -max_total_time=1800 fuzz/${NEW_FUNCTION}_corpus_temp fuzz/${NEW_FUNCTION}_corpus_raw
+    ```
+7. By default, the fuzzing process will continue until `max_total_time` has been reached. When a bug is found, any 
+   crashes or sanitizer failures will be reported in the console and the particular corpus file that triggered the bug 
+   will be written into the root directory (as `crash-<sha1>`, `leak-<sha1>`, or `timeout-<sha1>`).
+   If any of these files appear, we should look into what is causing the failure.
+9. If no failures emerge, we can merge the generated corpus to minimize the amount of files, while still providing full coverage.
+    ```  
+    mkdir fuzz/${NEW_FUNCTION}_corpus
+    ./test_build_dir/fuzz/${NEW_FUNCTION} -merge=1 fuzz/${NEW_FUNCTION}_corpus fuzz/${NEW_FUNCTION}_corpus_temp
+    ```
+10. Remove original directories, files, and fuzz logs used to generate the orginal corpus. 
+    ```
+    rmdir fuzz/${NEW_FUNCTION}_corpus_temp
+    rmdir fuzz/${NEW_FUNCTION}_corpus_raw
+    rm -r fuzz-*.log
+    ```
