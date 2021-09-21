@@ -493,7 +493,7 @@ OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa,
 // output will be written to |EM|. The |mgf1Hash| argument specifies the hash
 // function for generating the mask. If NULL, |Hash| is used. The |sLen|
 // argument specifies the expected salt length in bytes.
-// If |sLen| is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as 
+// If |sLen| is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as
 // the hash length. If -2, then the salt length is maximal given the space in |EM|.
 //
 // It returns one on success or zero on error.
@@ -685,6 +685,12 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
 // RSA_print prints a textual representation of |rsa| to |bio|. It returns one
 // on success or zero otherwise.
 OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);
+
+// RSA_get0_pss_params returns NULL. In OpenSSL, this function retries RSA-PSS
+// parameters associated with |RSA| objects, but BoringSSL does not support
+// the id-RSASSA-PSS key encoding.
+OPENSSL_EXPORT const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa);
+
 
 struct rsa_meth_st {
   struct openssl_method_common_st common;
