@@ -479,7 +479,7 @@ RAND_bytes_ov <- crucible_llvm_unsafe_assume_spec
 RSA_padding_add_PKCS1_PSS_mgf1_ov <- llvm_verify
   m
   "RSA_padding_add_PKCS1_PSS_mgf1"
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   , RAND_bytes_ov
   , BN_num_bits_n_bits_ov
   , OPENSSL_malloc_ov
@@ -494,14 +494,14 @@ RSA_padding_add_PKCS1_PSS_mgf1_ov <- llvm_verify
   });
 
 EVP_DigestFinal_ex_0x34_ov <- llvm_verify m "EVP_DigestFinal_ex"
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   , OPENSSL_cleanse_ov
   ]
   true
   (EVP_DigestFinal_ex_spec false 0x34)
   (w4_unint_z3 ["processBlock_Common"]);
 EVP_DigestFinal_ex_0x68_ov <- llvm_verify m "EVP_DigestFinal_ex"
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   , OPENSSL_cleanse_ov
   ]
   true
@@ -514,7 +514,7 @@ RSA_verify_PKCS1_PSS_mgf1_ov <- llvm_verify
   "RSA_verify_PKCS1_PSS_mgf1"
   [ EVP_DigestFinal_ex_0x34_ov
   , EVP_DigestFinal_ex_0x68_ov
-  , sha512_block_data_order_spec
+  , sha512_block_data_order_ov
   , BN_num_bits_n_bits_ov
   , OPENSSL_malloc_ov
   , OPENSSL_free_nonnull_salt_ov
@@ -564,7 +564,7 @@ let RSA_sign_pss_mgf1_ovs =
   , bn_mul_mont_with_N_same_res_left_p_ov
   , bn_mul_mont_with_N_same_res_left_n_ov
   , bn_mul_mont_with_N_same_res_left_right_n_ov
-  , sha512_block_data_order_spec
+  , sha512_block_data_order_ov
   , value_barrier_w_ov
   , ERR_put_error_ov
   , CRYPTO_MUTEX_lock_read_ov
@@ -659,7 +659,7 @@ RSA_verify_pss_mgf1_ov <- llvm_verify
   , BN_num_bits_n_bits_ov
   , BN_num_bits_e_bits_ov
   , BN_is_odd_ov
-  , sha512_block_data_order_spec
+  , sha512_block_data_order_ov
   , value_barrier_w_ov
   , ERR_put_error_ov
   , CRYPTO_MUTEX_lock_read_ov
@@ -697,13 +697,13 @@ llvm_verify m "EVP_DigestVerifyInit"
   (w4_unint_z3 ["integerToBV", "integerFromBV"]);
 
 llvm_verify m "EVP_DigestSignUpdate"
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   ]
   true
   (EVP_DigestSignVerifyUpdate_spec true 127 241)
   (w4_unint_z3 ["processBlock_Common", "bn_mont_n0_with_N", "phi", "rad", "integerToBV", "integerFromBV"]);
 llvm_verify m "EVP_DigestVerifyUpdate"
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   ]
   true
   (EVP_DigestSignVerifyUpdate_spec false 127 241)
@@ -712,7 +712,7 @@ llvm_verify m "EVP_DigestVerifyUpdate"
 llvm_verify m "EVP_DigestSignFinal"
   [ RSA_sign_pss_mgf1_ov
   , BN_num_bits_n_bits_ov
-  , sha512_block_data_order_spec
+  , sha512_block_data_order_ov
   , OPENSSL_malloc_ov
   , OPENSSL_free_nonnull_ov
   , OPENSSL_free_nonnull_1_ov
@@ -730,7 +730,7 @@ llvm_verify m "EVP_DigestSignFinal"
 
 llvm_verify m "EVP_DigestVerifyFinal"
   [ RSA_verify_pss_mgf1_ov
-  , sha512_block_data_order_spec
+  , sha512_block_data_order_ov
   , OPENSSL_malloc_ov
   , OPENSSL_free_nonnull_ov
   , OPENSSL_free_nonnull_1_ov

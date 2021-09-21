@@ -9,6 +9,9 @@ import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Authenticated/AES_256_
 import "../../spec/AES/X86.cry";
 import "../../spec/AES/AES-GCM.cry";
 
+// Disable debug intrinsics to avoid https://github.com/GaloisInc/crucible/issues/778
+disable_debug_intrinsics;
+
 m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
 
 // Include helper functions

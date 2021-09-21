@@ -16,7 +16,7 @@ The following table describes the implementations that are verified using SAW. S
 
 | Algorithm | Variants |  API Operations | Platform   | Caveats
 | ----------| -------------| --------------- | -----------| ------------
-| SHA-2     | 384, 512     | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal, EVP_Digest     | SandyBridge+ | InputLength, NoEngine, MemCorrect
+| SHA-2     | 384, 512     | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal, | SandyBridge+ | NoEngine, MemCorrect
 | HMAC      | with <nobr>SHA-384</nobr> | HMAC_CTX_init, HMAC_Init_ex, HMAC_Update, HMAC_Final, HMAC | SandyBridge+ | InputLength, NoEngine, MemCorrect, InitZero
 | AES-GCM   | 256 | EVP_CipherInit_ex, EVP_EncryptUpdate, EVP_DecryptUpdate, EVP_EncryptFinal_ex, EVP_DecryptFinal_ex | SandyBridge+ | InputLength, NoEngine, MemCorrect, InitZero, AESNI_GCM_Patch, AES_GCM_FROM_CIPHER_CTX_Correct, NoInline
 | <nobr>AES-KW(P)</nobr> | 256     | AES_wrap_key, AES_unwrap_key, AES_wrap_key_padded, AES_unwrap_key_padded | SandyBridge+ | InputLength, MemCorrect, NoInline
@@ -37,9 +37,8 @@ The EVP_Digest* functions are verified to have the following properties related 
 | Function  | Preconditions |  Postconditions |
 | ---------------| -------------| --------------- |
 | EVP_DigestInit | <ul><li>The parameters are an allocated EVP_MD_CTX and a valid EVP_MD such as the value returned by EVP_sha384()</li></ul> | <ul><li>The context is valid and initialized for the desired algorithm.</li></ul> |
-| EVP_DigestUpdate | <ul><li>The context is valid and the internal buffer offset is n.</li><li>The input length is k, and the input buffer has at least k allocated bytes.</li></ul> | <ul><li>The hash state in the context has been correctly updated for each complete block as defined by the SHA-2 specification.</li><li>The first (n+k)%BLOCK_LENGTH bytes of the internal buffer are equal to the remaining input bytes, and the internal buffer offset has been updated to (n+k)%BLOCK_LENGTH.</li></ul> |
-| EVP_DigestFinal | <ul><li>The context is valid and the internal buffer offset is n.</li><li> The output buffer has at least DIGEST_LENGTH allocated bytes.</li><li> The length output pointer is either null or it points to an integer.</li></ul> | <ul><li>The output buffer holds the correct hash value as defined by the SHA-2 specification. This hash value is produced from the hash state and the remaining n bytes in the internal buffer.</li><li> If the output length pointer is non-null, it points to the value DIGEST_LENGTH.</li></ul> |
-| EVP_DigestSpec | <ul><li>The input length is k, and the input buffer has at least k allocated bytes.</li><li> The output buffer has at least DIGEST_LENGTH allocated bytes.</li><li> The length output pointer is either null or it points to an integer.</li></ul> | <ul><li>The output buffer holds the correct hash value as defined by the SHA-2 specification.</li><li> If the output length pointer is non-null, it points to the value DIGEST_LENGTH.</li></ul>
+| EVP_DigestUpdate | <ul><li>The context is valid and the internal buffer offset is a symbolic integer n.</li><li>The input length is a symbolic integer k, and the input buffer has at least k allocated bytes.</li></ul> | <ul><li>The hash state in the context has been correctly updated for each complete block as defined by the SHA-2 specification.</li><li>The first (n+k)%BLOCK_LENGTH bytes of the internal buffer are equal to the remaining input bytes, and the internal buffer offset has been updated to (n+k)%BLOCK_LENGTH.</li></ul> |
+| EVP_DigestFinal | <ul><li>The context is valid and the internal buffer offset is a symbolic integer n.</li><li> The output buffer has at least DIGEST_LENGTH allocated bytes.</li><li> The length output pointer is either null or it points to an integer.</li></ul> | <ul><li>The output buffer holds the correct hash value as defined by the SHA-2 specification. This hash value is produced from the hash state and the remaining n bytes in the internal buffer.</li><li> If the output length pointer is non-null, it points to the value DIGEST_LENGTH.</li></ul> |
 
 ### HMAC with SHA-384
 

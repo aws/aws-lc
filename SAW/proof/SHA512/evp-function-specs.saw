@@ -220,3 +220,124 @@ let EVP_Digest_spec withLength len = do {
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
+
+let EVP_DigestInit_array_spec = do {
+  // Precondition: `ctx_ptr` is a pointer to an `env_md_ctx_st` struct
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+
+  // Precondition: `type_ptr` is a pointer to a const `env_md_ctx_st` struct
+  // satisfying the `points_to_env_md_st` specification
+  type_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st type_ptr;
+
+  // Call function with `ctx_ptr` and `type_ptr`
+  crucible_execute_func [ctx_ptr, type_ptr];
+
+  // Postcondition: `ctx_ptr->digest == type_ptr` and `ctx_ptr->md_data`
+  // holds an initialized SHA512 context
+  sha512_ctx_ptr <- llvm_alloc_sym_init (llvm_struct "struct.sha512_state_st");
+  block' <- crucible_fresh_cryptol_var "block'" {| ByteArray |};
+  points_to_sha512_state_st_array sha512_ctx_ptr {{ { h = SHAInit_Array.h, block = block', n = SHAInit_Array.n, sz = SHAInit_Array.sz } }};
+  points_to_env_md_ctx_st ctx_ptr type_ptr sha512_ctx_ptr;
+
+  // Postcondition: The function returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DigestUpdate_array_spec = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: `ctx_ptr` is a pointer to an `env_md_ctx_st` struct
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+
+  // Precondition: `digest_ptr` is a pointer to a const `env_md_st` struct
+  // satisfying the `points_to_env_md_st` specification
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  // Precondition: `sha512_ctx_ptr` is a pointer to a `sha512_state_st` struct
+  // Precondition: `sha512_ctx` is a fresh Cryptol SHAState
+  // Precondition: `sha512_ctx_ptr` matches `sha512_ctx`.
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st_array "sha512_ctx";
+  crucible_precond {{ sha512_ctx.n < `SHA512_CBLOCK }};
+
+  // Precondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
+  // `sha512_ctx_ptr`.
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr;
+
+  // Precondition: `data` is a fresh array of `len` bytes, and `data_ptr`
+  // points to `data`.
+  len <- crucible_fresh_var "len" i64;
+  (data, data_ptr) <- ptr_to_fresh_array_readonly "data" len;
+
+  // Call function with `ctx_ptr`, `data_ptr`, and `len` as arguments.
+  crucible_execute_func [ctx_ptr, data_ptr, (crucible_term len)];
+
+  // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The context `sha512_ctx_ptr` points to matches the result
+  // of executing the cryptol function `SHAUpdate` on `sha512_ctx` and
+  // `data`.
+  let res = {{ SHAUpdate_Array sha512_ctx data len }};
+  block' <- crucible_fresh_cryptol_var "block'" {| ByteArray |};
+  points_to_sha512_state_st_array sha512_ctx_ptr {{ { h = res.h, block = block', n = res.n, sz = res.sz } }};
+  crucible_postcond {{ arrayRangeEq block' 0 res.block 0 `SHA512_CBLOCK }};
+
+  // Postcondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
+  // `sha512_ctx_ptr`.
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr;
+
+  // Postcondition: The function returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+let EVP_DigestFinalCommon_array_spec is_ex withLength = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: md_out_ptr is allocated and correct length, and
+  // s_ptr is null or points to an int.
+  (md_out_ptr, s_ptr) <- digestOut_pre withLength;
+
+  // Precondition: `ctx_ptr` points to an `env_md_ctx_st` struct
+  ctx_ptr <- if is_ex then do {
+    crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
+  } else do {
+    crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+  };
+
+  // Precondition: `digest_ptr` points to a const `env_md_st` struct satisfying
+  // the `digest_ptr` specification.
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  // Precondition: `sha512_ctx_ptr` is a pointer to a `sha512_state_st` struct
+  // Precondition: `sha512_ctx` is a fresh Cryptol SHAState
+  // Precondition: `sha512_ctx_ptr` matches `sha512_ctx`.
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st_array "sha512_ctx";
+  crucible_precond {{ sha512_ctx.n < `SHA512_CBLOCK }};
+
+  // Precondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
+  // `sha512_ctx_ptr`.
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr;
+
+  // Call function with `ctx_ptr`, `md_out_ptr`, and `s_ptr`
+  crucible_execute_func [ctx_ptr, md_out_ptr, s_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The data pointed to by `md_out_ptr` matches the message
+  // digest returned by the Cryptol function `SHAFinal`.  The reverses,
+  // splits, and joins transform the Cryptol function's big endian output to
+  // little endian.
+  // If length output is used, s_ptr points to correct length.
+  digestOut_post withLength md_out_ptr s_ptr
+    (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAFinal_Array sha512_ctx) }});
+
+  // Postcondition: The function returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+let EVP_DigestFinal_ex_array_spec = EVP_DigestFinalCommon_array_spec true;
+let EVP_DigestFinal_array_spec = EVP_DigestFinalCommon_array_spec false;
+

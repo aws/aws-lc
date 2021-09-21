@@ -8,7 +8,7 @@ AWS libcrypto includes many cryptographic algorithm implementations for several 
 
 | Algorithm | Variants |  API Operations | Platform   | Caveats | Tech |
 | ----------| -------------| --------------- | -----------| ------------ | --------- |
-| SHA-2     | 384, 512     | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal, EVP_Digest     | SandyBridge+ | InputLength, NoEngine, MemCorrect | [SAW](SAW/README.md) |
+| SHA-2     | 384, 512     | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal | SandyBridge+ | NoEngine, MemCorrect | [SAW](SAW/README.md) |
 | HMAC      | with <nobr>SHA-384</nobr> | HMAC_CTX_init, HMAC_Init_ex, HMAC_Update, HMAC_Final, HMAC | SandyBridge+ | InputLength, NoEngine, MemCorrect, InitZero | [SAW](SAW/README.md) |
 | AES-GCM   | 256 | EVP_CipherInit_ex, EVP_EncryptUpdate, EVP_DecryptUpdate, EVP_EncryptFinal_ex, EVP_DecryptFinal_ex | SandyBridge+ | InputLength, NoEngine, MemCorrect, InitZero, AESNI_GCM_Patch, AES_GCM_FROM_CIPHER_CTX_Correct, NoInline | [SAW](SAW/README.md) |
 | <nobr>AES-KW(P)</nobr>  | 256     | AES_wrap_key, AES_unwrap_key, AES_wrap_key_padded, AES_unwrap_key_padded | SandyBridge+ | InputLength, MemCorrect, NoInline |[SAW](SAW/README.md) |

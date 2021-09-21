@@ -5,6 +5,9 @@
 // Include SHA512 helper functions
 include "SHA512-common.saw"; 
 
+// Include rewrite rules
+include "goal-rewrites.saw";
+
 // Verify the `EVP_SHA_INIT` C function satisfies the `EVP_sha_init_spec`
 // specification
 crucible_llvm_verify m EVP_SHA_INIT [] true EVP_sha_init_spec (w4_unint_yices []);
@@ -30,21 +33,21 @@ if quick_check then do {
   // There are 3 cases to consider to ensure the proof covers all possible code
   // paths through the update function
   crucible_llvm_verify m "EVP_DigestUpdate"
-    [sha512_block_data_order_spec]
+    [sha512_block_data_order_ov]
     true
     // num=0, len=240 covers the case with one call to the block function,
     // on one block from data, and the rest of data copied in c->data
     (EVP_DigestUpdate_spec 0 240)
     (w4_unint_yices ["processBlock_Common"]);
   crucible_llvm_verify m "EVP_DigestUpdate"
-    [sha512_block_data_order_spec]
+    [sha512_block_data_order_ov]
     true
     // num=0, len=127 covers the case without any calls to the block function,
     // and data copied in c->data
     (EVP_DigestUpdate_spec 0 127)
     (w4_unint_yices ["processBlock_Common"]);
   crucible_llvm_verify m "EVP_DigestUpdate"
-    [sha512_block_data_order_spec]
+    [sha512_block_data_order_ov]
     true
     // num=127, len=241 covers the case with two calls to the block function,
     // the first one on c->data, the second one on one block from data,
@@ -58,7 +61,7 @@ if quick_check then do {
   let verify_update_at_len len = do {
     print (str_concat "Verifying EVP_DigestUpdate at len=" (show len));
     crucible_llvm_verify m "EVP_DigestUpdate"
-        [sha512_block_data_order_spec]
+        [sha512_block_data_order_ov]
         true
         (EVP_DigestUpdate_spec target_num len)
         (w4_unint_yices ["processBlock_Common"]);
@@ -86,7 +89,7 @@ if quick_check then do {
 // Verify the `EVP_DigestFinal` C function satisfies the
 // `EVP_DigestFinal_spec` specification.
 let EVP_DigestFinal_ovs =
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   , OPENSSL_free_nonnull_ov
   , OPENSSL_cleanse_ov
   ];
@@ -132,7 +135,7 @@ if quick_check then do {
 // specification
 let verify_digest_with_length withLength = do {
   crucible_llvm_verify m "EVP_Digest"
-    [ sha512_block_data_order_spec
+    [ sha512_block_data_order_ov
     , OPENSSL_malloc_ov
     , OPENSSL_free_nonnull_ov
     , OPENSSL_free_null_ov
@@ -143,3 +146,57 @@ let verify_digest_with_length withLength = do {
     (w4_unint_yices ["processBlock_Common"]);
 };
 for [false, true] verify_digest_with_length;
+
+
+// Verify the `EVP_DigestInit` C function satisfies the
+// `EVP_DigestInit_array_spec` unbounded specification.
+crucible_llvm_verify m "EVP_DigestInit"
+  [ OPENSSL_malloc_init_ov
+  , OPENSSL_free_null_ov
+  ]
+  true
+  EVP_DigestInit_array_spec
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  });
+
+// Verify the `EVP_DigestUpdate` C function satisfies the
+// `EVP_DigestUpdate_array_spec` unbounded specification.
+crucible_llvm_verify m "EVP_DigestUpdate"
+  [sha512_block_data_order_array_ov]
+  true
+  EVP_DigestUpdate_array_spec
+  (do {
+    goal_eval_unint ["processBlocks", "processBlock_Common"];
+    simplify (addsimps [processBlocks_0_1_thm] empty_ss);
+    simplify (addsimps [arrayRangeEq_arrayRangeLookup_eq_thm, arrayCopy_zero_thm] empty_ss);
+    simplify (addsimps append_ite_thms empty_ss);
+    goal_eval_unint ["processBlocks", "processBlock_Common"];
+    w4_unint_z3 ["processBlocks", "processBlock_Common"];
+  });
+
+// Verify the `EVP_DigestFinal` C function satisfies the
+// `EVP_DigestFinal_array_spec` unbounded specification.
+let verify_final_with_length withLength = do {
+  print (str_concat "Verifying EVP_DigestFinal withLength=" (show withLength));
+  enable_what4_eval;
+  crucible_llvm_verify m "EVP_DigestFinal"
+    [ sha512_block_data_order_array_ov
+    , OPENSSL_free_nonnull_ov
+    , OPENSSL_cleanse_ov
+    ]
+    true
+    (EVP_DigestFinal_array_spec true)
+    (do {
+      goal_eval_unint ["processBlock_Common"];
+      simplify (addsimps [arrayUpdate_arrayCopy_thm, arraySet_zero_thm] empty_ss);
+      simplify (addsimps [bvult_64_32_thm] empty_ss);
+      simplify (addsimps append_ite_thms empty_ss);
+      goal_eval_unint ["processBlock_Common"];
+      w4_unint_z3 ["processBlock_Common"];
+    });
+  disable_what4_eval;
+};
+for [false, true] verify_final_with_length;
+

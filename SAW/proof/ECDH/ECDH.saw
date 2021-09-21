@@ -17,6 +17,9 @@ include "../ECDSA/goal-rewrites.saw";
 let EVP_PKEY_OP_DERIVE = eval_int {{ (1 << 8) : [64] }};
 
 
+// Disable debug intrinsics to avoid https://github.com/GaloisInc/crucible/issues/778
+disable_debug_intrinsics;
+
 m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
 
 

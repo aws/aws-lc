@@ -7,6 +7,9 @@ enable_experimental;
 
 import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA256.cry";
 
+// Disable debug intrinsics to avoid https://github.com/GaloisInc/crucible/issues/778
+disable_debug_intrinsics;
+
 m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
 
 // Include helper functions

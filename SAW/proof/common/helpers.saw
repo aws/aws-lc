@@ -41,6 +41,15 @@ let ptr_to_fresh_readonly n ty = do {
   return (x, p);
 };
 
+let ptr_to_fresh_array_common is_ro n l = do {
+  p <- crucible_symbolic_alloc is_ro 1 l;
+  x <- crucible_fresh_cryptol_var n {| ByteArray |};
+  crucible_points_to_array_prefix p x l;
+  return (x, p);
+};
+let ptr_to_fresh_array = ptr_to_fresh_array_common false;
+let ptr_to_fresh_array_readonly = ptr_to_fresh_array_common true;
+
 // Given a name `n` and a value `v`, assert that the `n` has a value of `v`
 let global_points_to n v = do {
   crucible_points_to (crucible_global n) (crucible_term v);

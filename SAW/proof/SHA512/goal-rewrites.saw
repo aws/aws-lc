@@ -1,0 +1,83 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * Rewrite rules proofs and goal tactics. This does not
+ * contain any specifications or assumptions, thus it does
+ * not require inspection in order to trust the
+ * verification result.
+ */
+
+let arrayConstant = parse_core "arrayConstant (Vec 64 Bool) (Vec 8 Bool)";
+let arrayLookup = parse_core "arrayLookup (Vec 64 Bool) (Vec 8 Bool)";
+let arrayUpdate = parse_core "arrayUpdate (Vec 64 Bool) (Vec 8 Bool)";
+let arrayCopy = parse_core "arrayCopy 64 (Vec 8 Bool)";
+let arraySet = parse_core "arraySet 64 (Vec 8 Bool)";
+let arrayRangeEq = parse_core "arrayRangeEq 64 (Vec 8 Bool)";
+let arrayEq = parse_core "arrayEq (Vec 64 Bool) (Vec 8 Bool)";
+let bvEq_64 = parse_core "bvEq 64";
+
+arrayRangeEq_arrayRangeLookup_eq_thm <- prove_print
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) (unfold_term ["arrayRangeEqual_arrayRangeLookup_lemma"] {{ arrayRangeEqual_arrayRangeLookup_lemma`{128} }}));
+arrayUpdate_arrayCopy_thm <- prove_print (w4_unint_z3 []) (rewrite (cryptol_ss ())
+  {{ \a b i j n v -> arrayEq (arrayUpdate (arrayCopy a i b 0 n) (i + j) v) (arrayCopy (arrayUpdate a (i + j) v) i (arrayUpdate b j v) 0 n) }});
+
+processBlocks_0_1_thm <- prove_print (w4_unint_z3 ["processBlock_Common"]) (rewrite (cryptol_ss ())
+  {{ \h block -> (processBlocks h block 0 1) == (processBlock h block 0) }});
+
+arrayCopy_zero_thm <- prove_print
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \a i b j n -> arrayEq (if bvEq_64 0 n then a else arrayCopy a i b j n) (arrayCopy a i b j n) }});
+arraySet_zero_thm <- prove_print
+  (do {
+    goal_eval_unint [];
+    w4_unint_z3 [];
+  })
+  (rewrite (cryptol_ss ()) {{ \a i v n -> arrayEq (if bvEq_64 0 n then a else arraySet a i v n) (arraySet a i v n) }});
+
+let block_size_minus_n_width_64 = normalize_term {{ 2 * `w - `w / 4 : [64] }};
+let block_size_minus_n_width_minus_1_32 = normalize_term {{ 2 * `w - `w / 4 - 1 : [32] }};
+bvult_64_32_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \(x : [8]) -> (bvult block_size_minus_n_width_64 (1 + (0 # x))) == block_size_minus_n_width_minus_1_32 < (0 # x) }});
+
+append_ite_8_8_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \c (x : [8]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});
+append_ite_16_8_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \c (x : [16]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});
+append_ite_24_8_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \c (x : [24]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});
+append_ite_32_8_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \c (x : [32]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});
+append_ite_40_8_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \c (x : [40]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});
+append_ite_48_8_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \c (x : [48]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});
+append_ite_56_8_thm <- prove_print
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \c (x : [56]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});
+let append_ite_thms =
+  [ append_ite_8_8_thm
+  , append_ite_16_8_thm
+  , append_ite_24_8_thm
+  , append_ite_32_8_thm
+  , append_ite_40_8_thm
+  , append_ite_48_8_thm
+  , append_ite_56_8_thm
+  ];
+

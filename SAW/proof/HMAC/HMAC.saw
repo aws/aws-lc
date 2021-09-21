@@ -249,7 +249,7 @@ crucible_llvm_verify m "HMAC_CTX_init"
 let verify_HMAC_Init_ex_spec key_len = do {
   print (str_concat "Verifying HMAC_Init_ex_spec at key_len=" (show key_len));
   crucible_llvm_verify m "HMAC_Init_ex"
-    [ sha512_block_data_order_spec
+    [ sha512_block_data_order_ov
     , OPENSSL_malloc_ov
     , OPENSSL_free_nonnull_ov
     , OPENSSL_free_null_ov
@@ -282,7 +282,7 @@ if HMAC_quick_check then do {
 // specification.  There are 3 cases to consider to ensure the proof covers all
 // possible code paths through the update function.
 crucible_llvm_verify m "HMAC_Update"
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   , OPENSSL_malloc_ov
   , OPENSSL_free_nonnull_ov
   , OPENSSL_free_null_ov
@@ -294,7 +294,7 @@ crucible_llvm_verify m "HMAC_Update"
   (HMAC_Update_spec 0 240)
   (w4_unint_yices ["processBlock_Common"]);
 crucible_llvm_verify m "HMAC_Update"
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   , OPENSSL_malloc_ov
   , OPENSSL_free_nonnull_ov
   , OPENSSL_free_null_ov
@@ -306,7 +306,7 @@ crucible_llvm_verify m "HMAC_Update"
   (HMAC_Update_spec 0 127)
   (w4_unint_yices ["processBlock_Common"]);
 crucible_llvm_verify m "HMAC_Update"
-  [sha512_block_data_order_spec]
+  [sha512_block_data_order_ov]
   true
   // num=127, len=241 covers the case with two calls to the block function,
   // the first one on ctx->md_ctx->data, the second one on one block from data,
@@ -317,7 +317,7 @@ crucible_llvm_verify m "HMAC_Update"
 // Verify the `HMAC_Final` C function satisfies the `HMAC_Final_spec`
 // specification.
 let HMAC_Final_ovs =
-  [ sha512_block_data_order_spec
+  [ sha512_block_data_order_ov
   , OPENSSL_malloc_ov
   , OPENSSL_free_nonnull_ov
   , OPENSSL_free_null_ov
@@ -361,7 +361,7 @@ if HMAC_quick_check then do {
 let verify_hmac_with_length withLength = do {
   // Verify the `HMAC` C function satisfies the `HMAC_spec` specification
   crucible_llvm_verify m "HMAC"
-    [ sha512_block_data_order_spec
+    [ sha512_block_data_order_ov
     , OPENSSL_malloc_ov
     , OPENSSL_free_nonnull_ov
     , OPENSSL_free_null_ov
