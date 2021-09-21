@@ -56,7 +56,7 @@ if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_LESS "5")
   # and are enabled by default, i.e., there is no -Wno switch to turn them of
   # individually so we have to turn of all the warnings.
   target_compile_options(sike_r3 PRIVATE -Wno-error)
-else()
+elseif(NOT MSVC)
   target_compile_options(sike_r3 PRIVATE -Wno-missing-braces -Wno-unused-function)
 endif()
 
