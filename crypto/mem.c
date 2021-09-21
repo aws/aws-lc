@@ -93,15 +93,19 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 #define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
 #endif
 
+#if defined(BORINGSSL_SDALLOCX)
 // sdallocx is a sized |free| function. By passing the size (which we happen to
-// always know in BoringSSL), the malloc implementation can save work. We cannot
-// depend on |sdallocx| being available, however, so it's a weak symbol.
+// always know in BoringSSL), the malloc implementation can save work.
 //
-// This will always be safe, but will only be overridden if the malloc
-// implementation is statically linked with BoringSSL. So, if |sdallocx| is
-// provided in, say, libc.so, we still won't use it because that's dynamically
-// linked. This isn't an ideal result, but its helps in some cases.
-WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags))
+// This is guarded by BORINGSSL_SDALLOCX, rather than being a weak symbol,
+// because it can work poorly if there are two malloc implementations in the
+// address space. (Which probably isn't valid, ODR etc, but
+// https://github.com/grpc/grpc/issues/25450). In that situation, |malloc| can
+// come from one allocator but |sdallocx| from another and crashes quickly
+// result. We can't match |sdallocx| with |mallocx| because tcmalloc only
+// provides the former, so a mismatch can still happen.
+void sdallocx(void *ptr, size_t size, int flags);
+#endif
 
 // The following three functions can be defined to override default heap
 // allocation and freeing. If defined, it is the responsibility of
@@ -162,11 +166,11 @@ void OPENSSL_free(void *orig_ptr) {
 
   size_t size = *(size_t *)ptr;
   OPENSSL_cleanse(ptr, size + OPENSSL_MALLOC_PREFIX);
-  if (sdallocx) {
-    sdallocx(ptr, size + OPENSSL_MALLOC_PREFIX, 0 /* flags */);
-  } else {
-    free(ptr);
-  }
+#if defined(BORINGSSL_SDALLOCX)
+  sdallocx(ptr, size + OPENSSL_MALLOC_PREFIX, 0 /* flags */);
+#else
+  free(ptr);
+#endif
 }
 
 void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
@@ -324,22 +328,15 @@ int BIO_vsnprintf(char *buf, size_t n, const char *format, va_list args) {
 }
 
 char *OPENSSL_strndup(const char *str, size_t size) {
-  char *ret;
-  size_t alloc_size;
-
-  if (str == NULL) {
-    return NULL;
-  }
-
   size = OPENSSL_strnlen(str, size);
 
-  alloc_size = size + 1;
+  size_t alloc_size = size + 1;
   if (alloc_size < size) {
     // overflow
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  ret = OPENSSL_malloc(alloc_size);
+  char *ret = OPENSSL_malloc(alloc_size);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return NULL;

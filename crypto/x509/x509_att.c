@@ -74,12 +74,11 @@ int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x)
 int X509at_get_attr_by_NID(const STACK_OF(X509_ATTRIBUTE) *x, int nid,
                            int lastpos)
 {
-    const ASN1_OBJECT *obj;
-
-    obj = OBJ_nid2obj(nid);
-    if (obj == NULL)
-        return (-2);
-    return (X509at_get_attr_by_OBJ(x, obj, lastpos));
+    const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
+    if (obj == NULL) {
+        return -1;
+    }
+    return X509at_get_attr_by_OBJ(x, obj, lastpos);
 }
 
 int X509at_get_attr_by_OBJ(const STACK_OF(X509_ATTRIBUTE) *sk,
@@ -199,22 +198,6 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(STACK_OF(X509_ATTRIBUTE)
     ret = X509at_add1_attr(x, attr);
     X509_ATTRIBUTE_free(attr);
     return ret;
-}
-
-void *X509at_get0_data_by_OBJ(STACK_OF(X509_ATTRIBUTE) *x,
-                              ASN1_OBJECT *obj, int lastpos, int type)
-{
-    int i;
-    X509_ATTRIBUTE *at;
-    i = X509at_get_attr_by_OBJ(x, obj, lastpos);
-    if (i == -1)
-        return NULL;
-    if ((lastpos <= -2) && (X509at_get_attr_by_OBJ(x, obj, i) != -1))
-        return NULL;
-    at = X509at_get_attr(x, i);
-    if (lastpos <= -3 && (X509_ATTRIBUTE_count(at) != 1))
-        return NULL;
-    return X509_ATTRIBUTE_get0_data(at, 0, type, NULL);
 }
 
 X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_NID(X509_ATTRIBUTE **attr, int nid,
