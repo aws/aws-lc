@@ -337,7 +337,15 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   }
 
   if (key->priv_key) {
-    uint8_t data[16] = {0};
+    // In ecdsa.h, |ECDSA_do_sign| warns |data| must be the output of some hash
+    // function on the data to be signed.
+    // |data| is the output of sha256 on "hello world\n".
+    // https://pkg.go.dev/crypto/sha256
+    uint8_t data[32] = {
+        0xa9, 0x48, 0x90, 0x4f, 0x2f, 0x0f, 0x47, 0x9b, 0x8f, 0x81, 0x97, 0x69,
+        0x4b, 0x30, 0x18, 0x4b, 0x0d, 0x2e, 0xd1, 0xc1, 0xcd, 0x2a, 0x1e, 0xc0,
+        0xfb, 0x85, 0xd2, 0x99, 0xa1, 0x92, 0xa4, 0x47
+    };
     ECDSA_SIG *sig = ECDSA_do_sign(data, sizeof(data), key);
 #if defined(BORINGSSL_FIPS_BREAK_ECDSA_PWCT)
     data[0] = ~data[0];
