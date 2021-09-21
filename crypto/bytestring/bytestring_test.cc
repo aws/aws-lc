@@ -115,6 +115,28 @@ TEST(CBSTest, GetPrefixedBad) {
   EXPECT_FALSE(CBS_get_u24_length_prefixed(&data, &prefixed));
 }
 
+TEST(CBSTest, GetUntilFirst) {
+  static const uint8_t kData[] = {0, 1, 2, 3, 0, 1, 2, 3};
+  CBS data;
+  CBS_init(&data, kData, sizeof(kData));
+
+  CBS prefix;
+  EXPECT_FALSE(CBS_get_until_first(&data, &prefix, 4));
+  EXPECT_EQ(CBS_data(&data), kData);
+  EXPECT_EQ(CBS_len(&data), sizeof(kData));
+
+  ASSERT_TRUE(CBS_get_until_first(&data, &prefix, 0));
+  EXPECT_EQ(CBS_len(&prefix), 0u);
+  EXPECT_EQ(CBS_data(&data), kData);
+  EXPECT_EQ(CBS_len(&data), sizeof(kData));
+
+  ASSERT_TRUE(CBS_get_until_first(&data, &prefix, 2));
+  EXPECT_EQ(CBS_data(&prefix), kData);
+  EXPECT_EQ(CBS_len(&prefix), 2u);
+  EXPECT_EQ(CBS_data(&data), kData + 2);
+  EXPECT_EQ(CBS_len(&data), sizeof(kData) - 2);
+}
+
 TEST(CBSTest, GetASN1) {
   static const uint8_t kData1[] = {0x30, 2, 1, 2};
   static const uint8_t kData2[] = {0x30, 3, 1, 2};
@@ -322,11 +344,11 @@ TEST(CBBTest, InitUninitialized) {
 }
 
 TEST(CBBTest, Basic) {
-  static const uint8_t kExpected[] = {1,   2,    3,    4,    5,    6,   7,
-                                      8,   9,    0xa,  0xb,  0xc,  0xd, 0xe,
-                                      0xf, 0x10, 0x11, 0x12, 0x13, 0x14, 3, 2,
-                                      10,  9,    8,    7,    0x12, 0x11, 0x10,
-                                      0xf, 0xe,  0xd,  0xc,  0xb};
+  static const uint8_t kExpected[] = {
+      0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+      0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14,
+      0x03, 0x02, 0x0a, 0x09, 0x08, 0x07, 0x12, 0x11, 0x10, 0x0f,
+      0x0e, 0x0d, 0x0c, 0x0b, 0x00, 0x00, 0x00, 0x00};
   uint8_t *buf;
   size_t buf_len;
 
@@ -335,6 +357,7 @@ TEST(CBBTest, Basic) {
   cbb.Reset();
 
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(CBB_add_zeros(cbb.get(), 0));
   ASSERT_TRUE(CBB_add_u8(cbb.get(), 1));
   ASSERT_TRUE(CBB_add_u16(cbb.get(), 0x203));
   ASSERT_TRUE(CBB_add_u24(cbb.get(), 0x40506));
@@ -344,6 +367,7 @@ TEST(CBBTest, Basic) {
   ASSERT_TRUE(CBB_add_u16le(cbb.get(), 0x203));
   ASSERT_TRUE(CBB_add_u32le(cbb.get(), 0x708090a));
   ASSERT_TRUE(CBB_add_u64le(cbb.get(), 0xb0c0d0e0f101112));
+  ASSERT_TRUE(CBB_add_zeros(cbb.get(), 4));
   ASSERT_TRUE(CBB_finish(cbb.get(), &buf, &buf_len));
 
   bssl::UniquePtr<uint8_t> scoper(buf);
