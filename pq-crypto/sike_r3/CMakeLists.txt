@@ -51,5 +51,12 @@ endif()
 # This is experimental third-party code so we avoid making any unnecessary
 # changes to it until the code becomes stable. So we ignore some warnings
 # that are not errors.
-target_compile_options(sike_r3 PRIVATE -Wno-missing-braces -Wno-unused-function)
+if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_LESS "5")
+  # gcc-4.x reports false-positive warnings that are treated as errors
+  # and are enabled by default, i.e., there is no -Wno switch to turn them of
+  # individually so we have to turn of all the warnings.
+  target_compile_options(sike_r3 PRIVATE -Wno-error)
+else()
+  target_compile_options(sike_r3 PRIVATE -Wno-missing-braces -Wno-unused-function)
+endif()
 
