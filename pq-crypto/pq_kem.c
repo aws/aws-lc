@@ -10,7 +10,6 @@
 #include "pq_kem_params_size.h"
 #include "sike_r3/P434/P434_api.h"
 #include "openssl/mem.h"
-#include "../crypto/fipsmodule/delocate.h"
 
 EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void) {
   return OPENSSL_malloc(sizeof(EVP_PQ_KEM_CTX));
@@ -101,14 +100,15 @@ int EVP_PQ_KEM_decapsulate(EVP_PQ_KEM_CTX *kem_ctx) {
 }
 
 // Definitions of KEM specific EVP_PQ_KEM structs.
+const EVP_PQ_KEM EVP_PQ_KEM_sike_p434_r3 = {
+  .name = "SIKEp434r3-KEM",
 
-DEFINE_METHOD_FUNCTION(EVP_PQ_KEM, EVP_PQ_KEM_sike_p434_r3) {
-  out->name = "SIKEp434r3-KEM";
-  out->public_key_length = SIKE_P434_R3_PUBLIC_KEY_BYTES;
-  out->private_key_length = SIKE_P434_R3_PRIVATE_KEY_BYTES;
-  out->shared_secret_length = SIKE_P434_R3_SHARED_SECRET_BYTES;
-  out->ciphertext_length = SIKE_P434_R3_CIPHERTEXT_BYTES;
-  out->generate_keypair = crypto_kem_keypair_SIKEp434;
-  out->encapsulate = crypto_kem_enc_SIKEp434;
-  out->decapsulate = crypto_kem_dec_SIKEp434;
-}
+  .public_key_length    = SIKE_P434_R3_PUBLIC_KEY_BYTES,
+  .private_key_length   = SIKE_P434_R3_PRIVATE_KEY_BYTES,
+  .ciphertext_length    = SIKE_P434_R3_CIPHERTEXT_BYTES,
+  .shared_secret_length = SIKE_P434_R3_SHARED_SECRET_BYTES,
+
+  .generate_keypair = crypto_kem_keypair_SIKEp434,
+  .encapsulate      = crypto_kem_enc_SIKEp434,
+  .decapsulate      = crypto_kem_dec_SIKEp434,
+};

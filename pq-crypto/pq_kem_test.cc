@@ -13,7 +13,7 @@
 
 TEST(PQCryptoTest, Basic) {
   // Basic functional test for SIKE P434 R3
-  const EVP_PQ_KEM *sike_kem = EVP_PQ_KEM_sike_p434_r3();
+  const EVP_PQ_KEM *sike_kem = &EVP_PQ_KEM_sike_p434_r3;
   EXPECT_NE(sike_kem, nullptr);
 
   // Simulate two sides of the key exchange mechanism.

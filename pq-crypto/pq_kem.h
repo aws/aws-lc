@@ -47,7 +47,7 @@ struct pq_kem_st {
 
 typedef struct pq_kem_st EVP_PQ_KEM;
 
-OPENSSL_EXPORT const EVP_PQ_KEM *EVP_PQ_KEM_sike_p434_r3(void);
+OPENSSL_EXPORT extern const EVP_PQ_KEM EVP_PQ_KEM_sike_p434_r3;
 
 // ----------------------------------------------------------------------------
 // Name: pq_kem_ctx_st
