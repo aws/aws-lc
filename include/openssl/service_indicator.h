@@ -14,7 +14,7 @@ extern "C" {
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_get_counter(void);
 
 #if defined(AWSLC_FIPS)
-#define IS_FIPS_APPROVED_CALL_SERVICE(approved, func)                       \
+#define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)                     \
   do {                                                                      \
     (approved) = NOT_APPROVED;                                              \
     uint64_t counter = FIPS_service_indicator_get_counter();                \
@@ -28,7 +28,7 @@ OPENSSL_EXPORT uint64_t FIPS_service_indicator_get_counter(void);
 #else
 // Assume true when FIPS is not on, for easier consumer compatibility that have
 // both FIPS and non-FIPS libraries.
-#define IS_FIPS_APPROVED_CALL_SERVICE(approved, func)                       \
+#define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)                     \
   do {                                                                      \
     (approved) = APPROVED;                                                  \
     func;                                                                   \

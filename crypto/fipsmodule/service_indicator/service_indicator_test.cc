@@ -79,7 +79,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
   size_t out_len;
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
-  IS_FIPS_APPROVED_CALL_SERVICE(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
           output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_TRUE(approved);
 }
@@ -97,7 +97,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
     return;
   }
 
-  IS_FIPS_APPROVED_CALL_SERVICE(approved,AES_cbc_encrypt(kPlaintext, output,
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_cbc_encrypt(kPlaintext, output,
                               sizeof(kPlaintext), &aes_key, aes_iv, AES_ENCRYPT));
   if (!check_test(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
                   "AES-CBC Encryption KAT")) {
@@ -112,7 +112,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
     return;
   }
 
-  IS_FIPS_APPROVED_CALL_SERVICE(approved,AES_cbc_encrypt(kAESCBCCiphertext, output,
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_cbc_encrypt(kAESCBCCiphertext, output,
                         sizeof(kAESCBCCiphertext), &aes_key, aes_iv, AES_DECRYPT));
   if (!check_test(kPlaintext, output, sizeof(kPlaintext),
                   "AES-CBC Decryption KAT")) {
@@ -133,12 +133,12 @@ TEST(ServiceIndicatorTest, AESGCM) {
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
 
   // AES-GCM Encryption
-  IS_FIPS_APPROVED_CALL_SERVICE(approved,EVP_AEAD_CTX_seal(aead_ctx.get(),
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,EVP_AEAD_CTX_seal(aead_ctx.get(),
       encrypt_output, &out_len, sizeof(encrypt_output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_TRUE(approved);
   
   // AES-GCM Decryption
-  IS_FIPS_APPROVED_CALL_SERVICE(approved,EVP_AEAD_CTX_open(aead_ctx.get(),
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,EVP_AEAD_CTX_open(aead_ctx.get(),
       decrypt_output, &out2_len, sizeof(decrypt_output), nullptr, 0, encrypt_output, out_len, nullptr, 0));
   if (!check_test(kPlaintext, decrypt_output, sizeof(kPlaintext),
                   "AES-GCM Decryption for Internal IVs")) {
@@ -151,7 +151,7 @@ TEST(ServiceIndicatorTest, AESGCM) {
 // Service indicator should not be used without FIPS turned on.
 TEST(ServiceIndicatorTest, BasicTest) {
    // Reset and check the initial state and counter.
-  int approved = 0;g
+  int approved = 0;
   uint64_t counter = FIPS_service_indicator_get_counter();
   ASSERT_EQ(counter, (uint64_t)0);
   ASSERT_EQ(sizeof(counter), (uint64_t)8);
@@ -162,7 +162,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
   size_t out_len;
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
-  IS_FIPS_APPROVED_CALL_SERVICE(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
          encrypt_output, &out_len, sizeof(encrypt_output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_TRUE(approved);
 
