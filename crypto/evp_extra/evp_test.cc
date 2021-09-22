@@ -558,7 +558,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
 
 TEST(EVPTest, TestVectors) {
   KeyMap key_map;
-  FileTestGTest("crypto/evp/evp_tests.txt", [&](FileTest *t) {
+  FileTestGTest("crypto/evp_extra/evp_tests.txt", [&](FileTest *t) {
     bool result = TestEVP(t, &key_map);
     if (t->HasAttribute("Error")) {
       ASSERT_FALSE(result) << "Operation unexpectedly succeeded.";

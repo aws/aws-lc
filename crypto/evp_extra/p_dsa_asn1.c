@@ -61,7 +61,7 @@
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 
-#include "internal.h"
+#include "../fipsmodule/evp/internal.h"
 
 
 static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {

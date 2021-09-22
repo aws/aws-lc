@@ -59,7 +59,7 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 
-#include "internal.h"
+#include "../fipsmodule/evp/internal.h"
 
 
 int EVP_SignInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl) {
@@ -148,4 +148,3 @@ out:
   EVP_PKEY_CTX_free(pkctx);
   return ret;
 }
-

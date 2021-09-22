@@ -68,8 +68,8 @@
 #include <openssl/nid.h>
 
 #include "internal.h"
-#include "../fipsmodule/ec/internal.h"
-#include "../internal.h"
+#include "../ec/internal.h"
+#include "../../internal.h"
 
 
 typedef struct {

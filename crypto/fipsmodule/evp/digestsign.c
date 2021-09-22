@@ -58,7 +58,7 @@
 #include <openssl/err.h>
 
 #include "internal.h"
-#include "../fipsmodule/digest/internal.h"
+#include "../digest/internal.h"
 
 
 enum evp_sign_verify_t {

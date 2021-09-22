@@ -64,7 +64,7 @@
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
-#include "internal.h"
+#include "../fipsmodule/evp/internal.h"
 #include "../bytestring/internal.h"
 #include "../internal.h"
 

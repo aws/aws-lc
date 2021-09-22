@@ -38,7 +38,7 @@ static bool GetUint64(FileTest *t, uint64_t *out, const char *name) {
 }
 
 TEST(ScryptTest, TestVectors) {
-  FileTestGTest("crypto/evp/scrypt_tests.txt", [](FileTest *t) {
+  FileTestGTest("crypto/evp_extra/scrypt_tests.txt", [](FileTest *t) {
     std::vector<uint8_t> password, salt, key;
     uint64_t N, r, p, max_mem = 0;
     ASSERT_TRUE(t->GetBytes(&password, "Password"));

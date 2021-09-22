@@ -18,7 +18,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
+#include "../fipsmodule/evp/internal.h"
 
 
 // X25519 has no parameters to copy.

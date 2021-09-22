@@ -69,7 +69,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 // Node depends on |EVP_R_NOT_XOF_OR_INVALID_LENGTH|.
