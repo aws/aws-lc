@@ -70,8 +70,6 @@ static const uint8_t kAESCBCCiphertext[64] = {
 
 TEST(ServiceIndicatorTest, BasicTest) {
   int approved = 0;
-  uint64_t counter = FIPS_service_indicator_get_counter();
-  ASSERT_EQ(sizeof(counter), (uint64_t)8);
 
   // Call an approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
@@ -152,9 +150,9 @@ TEST(ServiceIndicatorTest, AESGCM) {
 TEST(ServiceIndicatorTest, BasicTest) {
    // Reset and check the initial state and counter.
   int approved = 0;
-  uint64_t counter = FIPS_service_indicator_get_counter();
-  ASSERT_EQ(counter, (uint64_t)0);
-  ASSERT_EQ(sizeof(counter), (uint64_t)8);
+  int before = FIPS_service_indicator_before_call();
+  ASSERT_EQ(before, 0);
+
 
   // Call an approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
@@ -164,11 +162,13 @@ TEST(ServiceIndicatorTest, BasicTest) {
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
          encrypt_output, &out_len, sizeof(encrypt_output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  // Macro should return true, to ensure FIPS/Non-FIPS compatibility.
   ASSERT_TRUE(approved);
 
-  // Check state and counter after using an approved service.
-  counter = FIPS_service_indicator_get_counter();
-  ASSERT_EQ(counter,(uint64_t)0);
+  // Actual approval check should return false during non-FIPS.
+  int after = FIPS_service_indicator_after_call();
+  ASSERT_EQ(after, 0);
+  ASSERT_FALSE(FIPS_service_indicator_check_approved(before, after));
 }
 #endif // AWSLC_FIPS
 

@@ -16,13 +16,28 @@ static int FIPS_service_indicator_init_state(void) {
   return 1;
 }
 
-uint64_t FIPS_service_indicator_get_counter(void) {
+static int FIPS_service_indicator_get_counter(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   if (indicator == NULL) {
     return 0;
   }
-  return indicator->counter;
+  return (int)indicator->counter;
+}
+
+int FIPS_service_indicator_before_call(void) {
+  return FIPS_service_indicator_get_counter();
+}
+
+int FIPS_service_indicator_after_call(void) {
+  return FIPS_service_indicator_get_counter();
+}
+
+int FIPS_service_indicator_check_approved(int before, int after) {
+  if(before != after) {
+    return 1;
+  }
+  return 0;
 }
 
 // Only to be used internally, it is not intended for the user to reset the state.
@@ -54,6 +69,8 @@ void FIPS_service_indicator_update_state(void) {
 
 #else
 
-uint64_t FIPS_service_indicator_get_counter(void) { return 0; }
+int FIPS_service_indicator_before_call(void) { return 0; }
+int FIPS_service_indicator_after_call(void) { return 0; }
+int FIPS_service_indicator_check_approved(int before, int after) { return 0; }
 
 #endif // AWSLC_FIPS

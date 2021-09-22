@@ -53,8 +53,8 @@
 #include "../aes/internal.h"
 #include "../modes/internal.h"
 
-// hwaes_capable when on in x86 uses 9, 11, 13 for key rounds.
-// hwaes_capable when on in ARM uses 10, 12, 14 for key rounds.
+// hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
+// hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
 // When compiling with different ARM specific platforms, 9, 11, 13 are used for key rounds.
 // TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
 #define AES_verify_service_indicator(key_rounds)                            \

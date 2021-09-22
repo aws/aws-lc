@@ -898,7 +898,7 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 #if defined(AWSLC_FIPS)
 
 struct fips_service_indicator_state {
-  uint64_t counter;
+  uint32_t counter;
 };
 
 int FIPS_service_indicator_reset_state(void);
