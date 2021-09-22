@@ -118,12 +118,8 @@ static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
 do {                                                                        \
   switch (key_length) {                                                     \
     case 16:                                                                \
-      awslc_fips_service_indicator_update_state(                            \
-          FIPS_APPROVED_EVP_AES_128_GCM);                                   \
-      break;                                                                \
     case 32:                                                                \
-      awslc_fips_service_indicator_update_state(                            \
-          FIPS_APPROVED_EVP_AES_256_GCM);                                   \
+      FIPS_service_indicator_update_state();                                \
       break;                                                                \
     default:                                                                \
       break;                                                                \

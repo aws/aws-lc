@@ -899,15 +899,14 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 
 struct fips_service_indicator_state {
   uint64_t counter;
-  uint32_t service_id;
 };
 
-int awslc_fips_service_indicator_reset_state(void);
-void awslc_fips_service_indicator_update_state(enum fips_approved_algorithm_t service_id);
+int FIPS_service_indicator_reset_state(void);
+void FIPS_service_indicator_update_state(void);
 
 #else
-OPENSSL_INLINE int awslc_fips_service_indicator_reset_state(void) { return 0; }
-OPENSSL_INLINE void awslc_fips_service_indicator_update_state(int service_id) {}
+OPENSSL_INLINE int FIPS_service_indicator_reset_state(void) { return 0; }
+OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 #endif // AWSLC_FIPS
 
 #if defined(BORINGSSL_FIPS)

@@ -57,23 +57,16 @@
 // hwaes_capable when on in ARM uses 10, 12, 14 for key rounds.
 // When compiling with different ARM specific platforms, 9, 11, 13 are used for key rounds.
 // TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
-#define AES_verify_service_indicator(key_rounds, mode)                      \
+#define AES_verify_service_indicator(key_rounds)                            \
 do {                                                                        \
   switch (key_rounds) {                                                     \
     case 9:                                                                 \
     case 10:                                                                \
-      awslc_fips_service_indicator_update_state(                            \
-          FIPS_APPROVED_EVP_AES_128_##mode);                                \
-      break;                                                                \
     case 11:                                                                \
     case 12:                                                                \
-      awslc_fips_service_indicator_update_state(                            \
-          FIPS_APPROVED_EVP_AES_192_##mode);                                \
-      break;                                                                \
     case 13:                                                                \
     case 14:                                                                \
-      awslc_fips_service_indicator_update_state(                            \
-          FIPS_APPROVED_EVP_AES_256_##mode);                                \
+      FIPS_service_indicator_update_state();                                \
       break;                                                                \
     default:                                                                \
       break;                                                                \
@@ -120,14 +113,14 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (hwaes_capable()) {
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
     // service indicator check.
-    AES_verify_service_indicator(key->rounds, CBC);
+    AES_verify_service_indicator(key->rounds);
     return;
   }
 
   if (!vpaes_capable()) {
     aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
     // service indicator check.
-    AES_verify_service_indicator(key->rounds, CBC);
+    AES_verify_service_indicator(key->rounds);
     return;
   }
 
@@ -137,7 +130,7 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     CRYPTO_cbc128_decrypt(in, out, len, key, ivec, AES_decrypt);
   }
   // service indicator check.
-  AES_verify_service_indicator(key->rounds, CBC);
+  AES_verify_service_indicator(key->rounds);
 }
 
 void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
