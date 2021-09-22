@@ -210,6 +210,7 @@ if(GO_EXECUTABLE)
     err/evp.errordata
     err/hkdf.errordata
     err/obj.errordata
+    err/ocsp.errordata
     err/pem.errordata
     err/pkcs7.errordata
     err/pkcs8.errordata
@@ -340,6 +341,10 @@ add_library(
   mem.c
   obj/obj.c
   obj/obj_xref.c
+  ocsp/ocsp_asn.c
+  ocsp/ocsp_client.c
+  ocsp/ocsp_lib.c
+  ocsp/ocsp_verify.c
   pem/pem_all.c
   pem/pem_info.c
   pem/pem_lib.c
@@ -580,6 +585,7 @@ if(BUILD_TESTING)
     impl_dispatch_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
+    ocsp/ocsp_test.cc
     pem/pem_test.cc
     pkcs7/pkcs7_test.cc
     pkcs8/pkcs8_test.cc

@@ -92,6 +92,7 @@ static void rand_thread_state_clear_all(void) {
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
     CTR_DRBG_clear(&cur->drbg);
+    OPENSSL_cleanse(cur->last_block, sizeof(cur->last_block));
   }
   // The locks are deliberately left locked so that any threads that are still
   // running will hang if they try to call |RAND_bytes|.
@@ -123,6 +124,7 @@ static void rand_thread_state_free(void *state_in) {
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
   CTR_DRBG_clear(&state->drbg);
+  OPENSSL_cleanse(state->last_block, sizeof(state->last_block));
 #endif
 
   OPENSSL_free(state);
