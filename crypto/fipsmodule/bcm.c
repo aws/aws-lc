@@ -59,6 +59,7 @@
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
 #include "cipher/e_des.c"
+#include "cipher/e_aesccm.c"
 #include "des/des.c"
 #include "dh/check.c"
 #include "dh/dh.c"

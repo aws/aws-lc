@@ -282,7 +282,6 @@ add_library(
   chacha/chacha.c
   cipher_extra/cipher_extra.c
   cipher_extra/derive_key.c
-  cipher_extra/e_aesccm.c
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
