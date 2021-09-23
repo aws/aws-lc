@@ -8,22 +8,22 @@
 extern "C" {
 #endif
 
-#define APPROVED                             1
-#define NOT_APPROVED                         0
+#define AWSLC_APPROVED                             1
+#define AWSLC_NOT_APPROVED                         0
 
-OPENSSL_EXPORT int FIPS_service_indicator_before_call(void);
-OPENSSL_EXPORT int FIPS_service_indicator_after_call(void);
+OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);
+OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 OPENSSL_EXPORT int FIPS_service_indicator_check_approved(int before, int after);
 
 #if defined(AWSLC_FIPS)
 #define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)                     \
   do {                                                                      \
-    (approved) = NOT_APPROVED;                                              \
+    (approved) = AWSLC_NOT_APPROVED;                                        \
     int before = FIPS_service_indicator_before_call();                      \
     func;                                                                   \
     int after = FIPS_service_indicator_after_call();                        \
     if (FIPS_service_indicator_check_approved(before, after)) {             \
-        (approved) = APPROVED;                                              \
+        (approved) = AWSLC_APPROVED;                                        \
     }                                                                       \
  }                                                                          \
  while(0)                                                                   \
@@ -33,7 +33,7 @@ OPENSSL_EXPORT int FIPS_service_indicator_check_approved(int before, int after);
 // both FIPS and non-FIPS libraries.
 #define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)                     \
   do {                                                                      \
-    (approved) = APPROVED;                                                  \
+    (approved) = AWSLC_APPROVED;                                            \
     func;                                                                   \
  }                                                                          \
  while(0)                                                                   \

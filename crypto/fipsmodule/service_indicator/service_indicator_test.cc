@@ -69,7 +69,7 @@ static const uint8_t kAESCBCCiphertext[64] = {
 };
 
 TEST(ServiceIndicatorTest, BasicTest) {
-  int approved = 0;
+  int approved = AWSLC_NOT_APPROVED;
 
   // Call an approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
@@ -83,7 +83,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
 }
 
 TEST(ServiceIndicatorTest, AESCBC) {
-  int approved = 0;
+  int approved = AWSLC_NOT_APPROVED;
   AES_KEY aes_key;
   uint8_t aes_iv[16];
   uint8_t output[256];
@@ -120,7 +120,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
 }
 
 TEST(ServiceIndicatorTest, AESGCM) {
-  int approved = 0;
+  int approved = AWSLC_NOT_APPROVED;
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
   uint8_t encrypt_output[256];
   uint8_t decrypt_output[256];
@@ -149,7 +149,7 @@ TEST(ServiceIndicatorTest, AESGCM) {
 // Service indicator should not be used without FIPS turned on.
 TEST(ServiceIndicatorTest, BasicTest) {
    // Reset and check the initial state and counter.
-  int approved = 0;
+  int approved = AWSLC_NOT_APPROVED;
   int before = FIPS_service_indicator_before_call();
   ASSERT_EQ(before, 0);
 
