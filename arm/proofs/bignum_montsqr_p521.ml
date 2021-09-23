@@ -395,11 +395,11 @@ let bignum_montsqr_p521_mc = define_assert_from_elf "bignum_montsqr_p521_mc" "ar
   0x93d02224;       (* arm_EXTR X4 X17 X16 (rvalue (word 8)) *)
   0xba150084;       (* arm_ADCS X4 X4 X21 *)
   0x8a040076;       (* arm_AND X22 X3 X4 *)
-  0x93d123e5;       (* arm_EXTR X5 XZR X17 (rvalue (word 8)) *)
+  0xd348fe25;       (* arm_LSR X5 X17 (rvalue (word 8)) *)
   0xba1400a5;       (* arm_ADCS X5 X5 X20 *)
   0x8a0502d6;       (* arm_AND X22 X22 X5 *)
   0xa9425015;       (* arm_LDP X21 X20 X0 (Immediate_Offset (iword (&32))) *)
-  0x93dffd46;       (* arm_EXTR X6 X10 XZR (rvalue (word 63)) *)
+  0xd37ff946;       (* arm_LSL X6 X10 (rvalue (word 1)) *)
   0xba1500c6;       (* arm_ADCS X6 X6 X21 *)
   0x8a0602d6;       (* arm_AND X22 X22 X6 *)
   0x93cafd67;       (* arm_EXTR X7 X11 X10 (rvalue (word 63)) *)
@@ -992,10 +992,8 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
     ((word_join:int64->int64->int128) sum_s360 sum_s359) (8,64)`;
   `m2:int64 = word_subword
     ((word_join:int64->int64->int128) sum_s361 sum_s360) (8,64)`;
-  `m3:int64 = word_subword
-    ((word_join:int64->int64->int128) (word 0) sum_s361) (8,64)`;
-  `m4:int64 = word_subword
-    ((word_join:int64->int64->int128) mullo_s243 (word 0)) (63,64)`;
+  `m3:int64 = word_ushr sum_s361 8`;
+  `m4:int64 = word_shl mullo_s243 1`;
   `m5:int64 = word_subword
     ((word_join:int64->int64->int128) sum_s290 mullo_s243) (63,64)`;
   `m6:int64 = word_subword
