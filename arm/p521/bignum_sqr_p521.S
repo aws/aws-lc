@@ -536,12 +536,12 @@ bignum_sqr_p521:
                 extr    d2, s7, s6, #8
                 adcs    d2, d2, l
                 and     t, d1, d2
-                extr    d3, xzr, s7, #8
+                lsr     d3, s7, #8
                 adcs    d3, d3, h
                 and     t, t, d3
 
                 ldp     l, h, [z, #32]
-                extr    d4, s0, xzr, #63
+                lsl     d4, s0, #1
                 adcs    d4, d4, l
                 and     t, t, d4
                 extr    d5, s1, s0, #63
