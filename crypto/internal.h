@@ -894,6 +894,8 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
+// FIPS functions.
+
 #if defined(BORINGSSL_FIPS)
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
