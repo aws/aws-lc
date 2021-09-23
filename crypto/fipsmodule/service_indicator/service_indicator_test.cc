@@ -24,9 +24,9 @@
 #include "../../test/test_util.h"
 
 static const uint8_t kAESKey[16] = {
-    'B','o','r','i','n','g','C','r','y','p','t','o',' ','K', 'e','y'};
+    'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
 static const uint8_t kPlaintext[64] = {
-    'B','o','r','i','n','g','C','r','y','p','t','o','M','o','d','u','l','e',
+    'A','W','S','-','L','C','C','r','y','p','t','o','M','o','d','u','l','e',
     ' ','F','I','P','S',' ','K','A','T',' ','E','n','c','r','y','p','t','i',
     'o','n',' ','a','n','d',' ','D','e','c','r','y','p','t','i','o','n',' ',
     'P','l','a','i','n','t','e','x','t','!'};
@@ -55,17 +55,12 @@ static int check_test(const uint8_t *expected, const uint8_t *actual,
 }
 
 static const uint8_t kAESCBCCiphertext[64] = {
-    0x87, 0x2d, 0x98, 0xc2, 0xcc, 0x31, 0x5b, 0x41, 0xe0, 0xfa, 0x7b,
-    0x0a, 0x71, 0xc0, 0x42, 0xbf, 0x4f, 0x61, 0xd0, 0x0d, 0x58, 0x8c,
-    0xf7, 0x05, 0xfb, 0x94, 0x89, 0xd3, 0xbc, 0xaa, 0x1a, 0x50, 0x45,
-    0x1f, 0xc3, 0x8c, 0xb8, 0x98, 0x86, 0xa3, 0xe3, 0x6c, 0xfc, 0xad,
-    0x3a, 0xb5, 0x59, 0x27, 0x7d, 0x21, 0x07, 0xca, 0x4c, 0x1d, 0x55,
-    0x34, 0xdd, 0x5a, 0x2d, 0xc4, 0xb4, 0xf5, 0xa8,
-#if !defined(BORINGSSL_FIPS_BREAK_AES_CBC)
-    0x35
-#else
-    0x00
-#endif
+    0xa4, 0xc1, 0x5c, 0x51, 0x2a, 0x2e, 0x2a, 0xda, 0xd9, 0x02, 0x23,
+    0xe7, 0xa9, 0x34, 0x9d, 0xd8, 0x5c, 0xb3, 0x65, 0x54, 0x72, 0xc8,
+    0x06, 0xf1, 0x36, 0xc3, 0x97, 0x73, 0x87, 0xca, 0x44, 0x99, 0x21,
+    0xb8, 0xdb, 0x93, 0x22, 0x00, 0x89, 0x7c, 0x1c, 0xea, 0x36, 0x23,
+    0x18, 0xdb, 0xc1, 0x52, 0x8c, 0x23, 0x66, 0x11, 0x0d, 0xa8, 0xe9,
+    0xb8, 0x08, 0x8b, 0xaa, 0x81, 0x47, 0x01, 0xa4, 0x4f
 };
 
 TEST(ServiceIndicatorTest, BasicTest) {
@@ -90,32 +85,20 @@ TEST(ServiceIndicatorTest, AESCBC) {
 
   // AES-CBC Encryption KAT
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
-  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
-    fprintf(stderr, "AES_set_encrypt_key failed.\n");
-    return;
-  }
-
+  ASSERT_TRUE(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_cbc_encrypt(kPlaintext, output,
                               sizeof(kPlaintext), &aes_key, aes_iv, AES_ENCRYPT));
-  if (!check_test(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
-                  "AES-CBC Encryption KAT")) {
-    return;
-  }
+  ASSERT_TRUE(check_test(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
+                  "AES-CBC Encryption KAT"));
   ASSERT_TRUE(approved);
 
   // AES-CBC Decryption KAT
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
-  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
-    fprintf(stderr, "AES_set_decrypt_key failed.\n");
-    return;
-  }
-
+  ASSERT_TRUE(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_cbc_encrypt(kAESCBCCiphertext, output,
                         sizeof(kAESCBCCiphertext), &aes_key, aes_iv, AES_DECRYPT));
-  if (!check_test(kPlaintext, output, sizeof(kPlaintext),
-                  "AES-CBC Decryption KAT")) {
-    return;
-  }
+  ASSERT_TRUE(check_test(kPlaintext, output, sizeof(kPlaintext),
+                  "AES-CBC Decryption KAT"));
   ASSERT_TRUE(approved);
 }
 
@@ -138,10 +121,8 @@ TEST(ServiceIndicatorTest, AESGCM) {
   // AES-GCM Decryption
   CALL_SERVICE_AND_CHECK_APPROVED(approved,EVP_AEAD_CTX_open(aead_ctx.get(),
       decrypt_output, &out2_len, sizeof(decrypt_output), nullptr, 0, encrypt_output, out_len, nullptr, 0));
-  if (!check_test(kPlaintext, decrypt_output, sizeof(kPlaintext),
-                  "AES-GCM Decryption for Internal IVs")) {
-    return;
-  }
+  ASSERT_TRUE(check_test(kPlaintext, decrypt_output, sizeof(kPlaintext),
+                  "AES-GCM Decryption for Internal IVs"));
   ASSERT_TRUE(approved);
 }
 
@@ -150,8 +131,8 @@ TEST(ServiceIndicatorTest, AESGCM) {
 TEST(ServiceIndicatorTest, BasicTest) {
    // Reset and check the initial state and counter.
   int approved = AWSLC_NOT_APPROVED;
-  int before = FIPS_service_indicator_before_call();
-  ASSERT_EQ(before, 0);
+  uint64_t before = FIPS_service_indicator_before_call();
+  ASSERT_EQ(before, (uint64_t)0);
 
 
   // Call an approved service.
@@ -166,8 +147,8 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_TRUE(approved);
 
   // Actual approval check should return false during non-FIPS.
-  int after = FIPS_service_indicator_after_call();
-  ASSERT_EQ(after, 0);
+  uint64_t after = FIPS_service_indicator_after_call();
+  ASSERT_EQ(after, (uint64_t)0);
   ASSERT_FALSE(FIPS_service_indicator_check_approved(before, after));
 }
 #endif // AWSLC_FIPS
