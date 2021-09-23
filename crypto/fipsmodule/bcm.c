@@ -199,7 +199,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
 
-  static const uint8_t kHMACKey[32] = {0};
+  static const uint8_t kHMACKey[64] = {0};
   unsigned result_len;
   HMAC_CTX hmac_ctx;
   HMAC_CTX_init(&hmac_ctx);
