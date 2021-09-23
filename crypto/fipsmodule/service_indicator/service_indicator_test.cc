@@ -77,6 +77,24 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_TRUE(approved);
 }
 
+TEST(ServiceIndicatorTest, NotApprovedTest) {
+  int approved = AWSLC_NOT_APPROVED;
+
+  // Call an approved service.
+  bssl::ScopedEVP_AEAD_CTX aead_ctx;
+  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  uint8_t output[256];
+  size_t out_len;
+
+  OPENSSL_memset(nonce, 0, sizeof(nonce));
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm(),
+                                kAESKey, sizeof(kAESKey), 0, nullptr));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
+          output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
+          kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  ASSERT_FALSE(approved);
+}
+
 TEST(ServiceIndicatorTest, AESCBC) {
   int approved = AWSLC_NOT_APPROVED;
   AES_KEY aes_key;
