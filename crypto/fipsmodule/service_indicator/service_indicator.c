@@ -22,7 +22,7 @@ static uint64_t FIPS_service_indicator_get_counter(void) {
   if (indicator == NULL) {
     return 0;
   }
-  return (int)indicator->counter;
+  return indicator->counter;
 }
 
 uint64_t FIPS_service_indicator_before_call(void) {
