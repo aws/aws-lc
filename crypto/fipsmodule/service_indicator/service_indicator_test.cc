@@ -80,7 +80,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
 TEST(ServiceIndicatorTest, NotApprovedTest) {
   int approved = AWSLC_NOT_APPROVED;
 
-  // Call an approved service.
+  // Call a not approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   uint8_t output[256];
