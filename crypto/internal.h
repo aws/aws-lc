@@ -894,21 +894,6 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
-// FIPS functions.
-#if defined(AWSLC_FIPS)
-
-struct fips_service_indicator_state {
-  uint64_t counter;
-};
-
-int FIPS_service_indicator_reset_state(void);
-void FIPS_service_indicator_update_state(void);
-
-#else
-OPENSSL_INLINE int FIPS_service_indicator_reset_state(void) { return 0; }
-OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
-#endif // AWSLC_FIPS
-
 #if defined(BORINGSSL_FIPS)
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current

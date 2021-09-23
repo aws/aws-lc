@@ -112,21 +112,6 @@ static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
 }
 #endif  // BSAES
 
-// Only internal IVs are approved. If the nonce length has been set to 0,
-// that means we're using internal IV mode.
-#define AES_GCM_verify_service_indicator(key_length)                        \
-do {                                                                        \
-  switch (key_length) {                                                     \
-    case 16:                                                                \
-    case 32:                                                                \
-      FIPS_service_indicator_update_state();                                \
-      break;                                                                \
-    default:                                                                \
-      break;                                                                \
-  }                                                                         \
-}                                                                           \
-while(0)                                                                    \
-
 typedef struct {
   union {
     double align;
@@ -1207,7 +1192,7 @@ static int aead_aes_gcm_seal_scatter_randnonce(
   memcpy(out_tag + *out_tag_len, nonce, sizeof(nonce));
   *out_tag_len += sizeof(nonce);
   // service indicator check.
-  AES_GCM_verify_service_indicator(EVP_AEAD_key_length(ctx->aead));
+  AEAD_verify_service_indicator(EVP_AEAD_key_length(ctx->aead));
   return 1;
 }
 
@@ -1231,7 +1216,7 @@ static int aead_aes_gcm_open_gather_randnonce(
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
   // service indicator check.
-  AES_GCM_verify_service_indicator(EVP_AEAD_key_length(ctx->aead));
+  AEAD_verify_service_indicator(EVP_AEAD_key_length(ctx->aead));
   return aead_aes_gcm_open_gather_impl(
       gcm_ctx, out, nonce, AES_GCM_NONCE_LENGTH, in, in_len, in_tag,
       in_tag_len - AES_GCM_NONCE_LENGTH, ad, ad_len,
