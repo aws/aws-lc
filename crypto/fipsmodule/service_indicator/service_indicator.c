@@ -79,3 +79,36 @@ uint64_t FIPS_service_indicator_after_call(void) { return 0; }
 int FIPS_service_indicator_check_approved(int before, int after) { return 0; }
 
 #endif // AWSLC_FIPS
+
+// hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
+// hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
+// When compiling with different ARM specific platforms, 9, 11, 13 are used for
+// key rounds.
+// TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
+void AES_verify_service_indicator(unsigned key_rounds) {
+  switch (key_rounds) {
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+    case 14:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
+// AEAD APIs work with different parameters.
+void AEAD_verify_service_indicator(size_t key_length) {
+  switch (key_length) {
+    case 16:
+    case 32:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
