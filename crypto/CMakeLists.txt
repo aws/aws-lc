@@ -282,7 +282,6 @@ add_library(
   chacha/chacha.c
   cipher_extra/cipher_extra.c
   cipher_extra/derive_key.c
-  cipher_extra/e_aesccm.c
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
@@ -291,7 +290,6 @@ add_library(
   cipher_extra/e_rc4.c
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
-  cmac/cmac.c
   conf/conf.c
   cpu-aarch64-fuchsia.c
   cpu-aarch64-linux.c
@@ -549,7 +547,6 @@ if(BUILD_TESTING)
     chacha/chacha_test.cc
     cipher_extra/aead_test.cc
     cipher_extra/cipher_test.cc
-    cmac/cmac_test.cc
     compiler_test.cc
     conf/conf_test.cc
     constant_time_test.cc
@@ -569,6 +566,7 @@ if(BUILD_TESTING)
     evp/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
+    fipsmodule/cmac/cmac_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
