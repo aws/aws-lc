@@ -93,14 +93,12 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                      const AES_KEY *key, uint8_t *ivec, const int enc) {
   if (hwaes_capable()) {
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
-    // service indicator check.
     AES_verify_service_indicator(key->rounds);
     return;
   }
 
   if (!vpaes_capable()) {
     aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
-    // service indicator check.
     AES_verify_service_indicator(key->rounds);
     return;
   }
@@ -110,7 +108,6 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   } else {
     CRYPTO_cbc128_decrypt(in, out, len, key, ivec, AES_decrypt);
   }
-  // service indicator check.
   AES_verify_service_indicator(key->rounds);
 }
 
