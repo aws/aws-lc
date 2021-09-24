@@ -1,6 +1,5 @@
-//
-// Created by Chiang, Samuel on 9/20/21.
-//
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
 #define AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
