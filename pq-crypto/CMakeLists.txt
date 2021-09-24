@@ -16,11 +16,20 @@
 cmake_minimum_required (VERSION 2.8.12)
 
 include_directories(../include)
-include_directories(../crypto)
 
-# get all header and source files
-file(GLOB PQ_HEADERS "*.h" "sike_r3/*.h")
-file(GLOB PQ_SRC "*.c" "sike_r3/*.c")
+add_subdirectory(sike_r3)
 
-# compile
-add_library(pq-crypto ${PQ_HEADERS} ${PQ_SRC})
+add_library(pq_crypto "pq_kem.c"
+                      $<TARGET_OBJECTS:sike_r3>)
+
+add_dependencies(pq_crypto global_target)
+target_link_libraries(pq_crypto crypto)
+
+if(BUILD_TESTING)
+  add_executable(pq_crypto_test pq_kem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
+  target_link_libraries(pq_crypto_test test_support_lib boringssl_gtest crypto pq_crypto)
+  if(WIN32)
+    target_link_libraries(pq_crypto_test ws2_32)
+  endif()
+  add_dependencies(all_tests pq_crypto_test)
+endif ()
