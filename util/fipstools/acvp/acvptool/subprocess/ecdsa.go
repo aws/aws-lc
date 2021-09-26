@@ -91,6 +91,8 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			ID: group.ID,
 		}
 		var sigGenPrivateKey []byte
+		var qxHex []byte
+		var qyHex []byte
 
 		for _, test := range group.Tests {
 			var testResp ecdsaTestResponse
@@ -148,8 +150,10 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 					}
 
 					sigGenPrivateKey = result[0]
-					response.QxHex = hex.EncodeToString(result[1])
-					response.QyHex = hex.EncodeToString(result[2])
+					qxHex = result[1]
+					qyHex = result[2]
+					response.QxHex = hex.EncodeToString(qxHex)
+					response.QyHex = hex.EncodeToString(qyHex)
 				}
 
 				msg, err := hex.DecodeString(test.MsgHex)
@@ -167,8 +171,19 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				if err != nil {
 					return nil, fmt.Errorf("signature generation failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				testResp.RHex = hex.EncodeToString(result[0])
-				testResp.SHex = hex.EncodeToString(result[1])
+				rHex := result[0]
+				sHex := result[1]
+				testResp.RHex = hex.EncodeToString(rHex)
+				testResp.SHex = hex.EncodeToString(sHex)
+				// Ask the subprocess to verify the generated signature for this test case.
+				ver_result, ver_err := m.Transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), msg, qxHex, qyHex, rHex, sHex)
+				if ver_err != nil {
+					return nil, fmt.Errorf("After signature generation, signature verification failed for test case %d/%d: %s", group.ID, test.ID, ver_err)
+				}
+				// result[0] should be a single byte. The value should be one in this case.
+				if !bytes.Equal(ver_result[0], []byte{01}) {
+					return nil, fmt.Errorf("After signature generation, signature verification returned unexpected result: %q for test case %d/%d.", ver_result[0], group.ID, test.ID)
+				}
 
 			case "sigVer":
 				p := e.primitives[group.HashAlgo]
