@@ -301,6 +301,13 @@ add_library(
   cpu-intel.c
   cpu-ppc64le.c
   crypto.c
+  sike/sikep434r3.c
+  sike/sikep434r3_fips202.c
+  sike/sikep434r3_fp.c
+  sike/sikep434r3_fpx.c
+  sike/sikep434r3_ec_isogeny.c
+  sike/sikep434r3_sidh.c
+  sike/sikep434r3_kem.c
   curve25519/curve25519.c
   curve25519/spake25519.c
   dh_extra/params.c

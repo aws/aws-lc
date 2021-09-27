@@ -18,11 +18,17 @@
 #include <openssl/aead.h>
 #include <openssl/base.h>
 #include <openssl/curve25519.h>
+#include <openssl/sike_internal.h>
+#include <openssl/cpucycles.h>
 #include <openssl/digest.h>
+
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+
+#define HPKE_VERSION_PQ 1
 
 
 // Hybrid Public Key Encryption.
@@ -41,11 +47,21 @@ extern "C" {
 
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
+#define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0020
+#define EVP_HPKE_KEM_X25519_SIKE_HKDF_SHA256 0x0020
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
 // |EVP_HPKE_KDF| selection.
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
+
+
+//SIKE EXPERIMENTAL
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_SIKE_hkdf_sha256(void);
+
+//x25519 + SIKE EXPERIMENTAL
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_SIKE_hkdf_sha256(void);
+
 
 // EVP_HPKE_KEM_id returns the HPKE KEM identifier for |kem|, which
 // will be one of the |EVP_HPKE_KEM_*| constants.
@@ -92,17 +108,6 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key);
 
 // EVP_HPKE_KEY_cleanup releases memory referenced by |key|.
 OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);
-
-// EVP_HPKE_KEY_new returns a newly-allocated |EVP_HPKE_KEY|, or NULL on error.
-// The caller must call |EVP_HPKE_KEY_free| on the result to release it.
-//
-// This is a convenience function for callers that need a heap-allocated
-// |EVP_HPKE_KEY|.
-OPENSSL_EXPORT EVP_HPKE_KEY *EVP_HPKE_KEY_new(void);
-
-// EVP_HPKE_KEY_free releases memory associated with |key|, which must have been
-// created with |EVP_HPKE_KEY_new|.
-OPENSSL_EXPORT void EVP_HPKE_KEY_free(EVP_HPKE_KEY *key);
 
 // EVP_HPKE_KEY_copy sets |dst| to a copy of |src|. It returns one on success
 // and zero on error. On success, the caller must call |EVP_HPKE_KEY_cleanup| to
@@ -170,17 +175,6 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_zero(EVP_HPKE_CTX *ctx);
 // been initialized with |EVP_HPKE_CTX_zero| or one of the
 // |EVP_HPKE_CTX_setup_*| functions.
 OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
-
-// EVP_HPKE_CTX_new returns a newly-allocated |EVP_HPKE_CTX|, or NULL on error.
-// The caller must call |EVP_HPKE_CTX_free| on the result to release it.
-//
-// This is a convenience function for callers that need a heap-allocated
-// |EVP_HPKE_CTX|.
-OPENSSL_EXPORT EVP_HPKE_CTX *EVP_HPKE_CTX_new(void);
-
-// EVP_HPKE_CTX_free releases memory associated with |ctx|, which must have been
-// created with |EVP_HPKE_CTX_new|.
-OPENSSL_EXPORT void EVP_HPKE_CTX_free(EVP_HPKE_CTX *ctx);
 
 // EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
 // shared secret, for all supported KEMs in this library.
@@ -316,11 +310,28 @@ struct evp_hpke_ctx_st {
   int is_sender;
 };
 
+
+
 struct evp_hpke_key_st {
   const EVP_HPKE_KEM *kem;
-  uint8_t private_key[X25519_PRIVATE_KEY_LEN];
-  uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
+
+  #if HPKE_VERSION_PQ == 0                                //classical crypto --> x25519
+        uint8_t private_key[X25519_PRIVATE_KEY_LEN];
+        uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
+  #endif
+  #if HPKE_VERSION_PQ == 1                                //post-quantum crypto --> SIKE(p434)
+        uint8_t private_key[SIKE_P434_R3_PRIVATE_KEY_BYTES];
+        uint8_t public_key[SIKE_P434_R3_PUBLIC_KEY_BYTES];
+  #endif
+  #if HPKE_VERSION_PQ == 2                                //hybrid crypto --> x25519 || SIKE(p434)
+        uint8_t private_key[X25519_PRIVATE_KEY_LEN + SIKE_P434_R3_PRIVATE_KEY_BYTES];
+        uint8_t public_key[X25519_PRIVATE_KEY_LEN + SIKE_P434_R3_PRIVATE_KEY_BYTES];
+  #endif
+
+
+  
 };
+
 
 
 #if defined(__cplusplus)
@@ -338,9 +349,6 @@ using ScopedEVP_HPKE_CTX =
 using ScopedEVP_HPKE_KEY =
     internal::StackAllocated<EVP_HPKE_KEY, void, EVP_HPKE_KEY_zero,
                              EVP_HPKE_KEY_cleanup>;
-
-BORINGSSL_MAKE_DELETER(EVP_HPKE_CTX, EVP_HPKE_CTX_free)
-BORINGSSL_MAKE_DELETER(EVP_HPKE_KEY, EVP_HPKE_KEY_free)
 
 BSSL_NAMESPACE_END
 

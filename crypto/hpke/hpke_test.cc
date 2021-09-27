@@ -23,6 +23,9 @@
 
 #include <openssl/base.h>
 #include <openssl/curve25519.h>
+
+#include <openssl/sike_internal.h>
+
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -32,7 +35,10 @@
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
+#include <openssl/cpucycles.h>
 
+#include <stdint.h>
+#include <time.h>
 
 namespace bssl {
 namespace {
@@ -57,7 +63,7 @@ class HPKETestVector {
   bool ReadFromFileTest(FileTest *t);
 
   void Verify() const {
-    const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
+    const EVP_HPKE_KEM *kem = EVP_hpke_SIKE_hkdf_sha256();
     const EVP_HPKE_AEAD *aead = GetAEAD();
     ASSERT_TRUE(aead);
     const EVP_HPKE_KDF *kdf = GetKDF();
@@ -271,10 +277,12 @@ TEST(HPKETest, VerifyTestVectors) {
   });
 }
 
+
 // The test vectors used fixed sender ephemeral keys, while HPKE itself
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
-TEST(HPKETest, RoundTrip) {
+
+TEST(HPKETest, x25519) {
   const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
   const uint8_t info_b[] = {42, 42, 42};
   const uint8_t ad_a[] = {1, 2, 4, 8, 16};
@@ -282,14 +290,26 @@ TEST(HPKETest, RoundTrip) {
   Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
 
+
+
+  // execute Bob keygen
+  // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret key??
+  //Actually it is not Alice!! But why they do not have two differnet funcitons?!?!?!
+  //In real life how is Alice getting Bob's pk??
+
+
   // Generate the recipient's keypair.
+  //Benchmarking vars
+  
   ScopedEVP_HPKE_KEY key;
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
   size_t public_key_r_len;
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
                                       &public_key_r_len, sizeof(public_key_r)));
 
+                                    
   for (const auto kdf : kAllKDFs) {
     SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
     for (const auto aead : kAllAEADs) {
@@ -298,10 +318,14 @@ TEST(HPKETest, RoundTrip) {
         SCOPED_TRACE(Bytes(info));
         for (const Span<const uint8_t> &ad : ad_values) {
           SCOPED_TRACE(Bytes(ad));
+
+
+          //Alice i
           // Set up the sender.
           ScopedEVP_HPKE_CTX sender_ctx;
           uint8_t enc[X25519_PUBLIC_VALUE_LEN];
           size_t enc_len;
+          
           ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
               sender_ctx.get(), enc, &enc_len, sizeof(enc),
               EVP_hpke_x25519_hkdf_sha256(), kdf(), aead(), public_key_r,
@@ -333,16 +357,230 @@ TEST(HPKETest, RoundTrip) {
                                         &cleartext_len, cleartext.size(),
                                         ciphertext.data(), ciphertext_len,
                                         ad.data(), ad.size()));
+/*
+          for (int i = 0; i < (int) sizeof(ciphertext); i++)
+          {
+            printf("%02x", ciphertext[i]);
+          }
+
+          printf("\n");
+          */
 
           // Verify that decrypted message matches the original.
           ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
                     Bytes(kCleartextPayload, sizeof(kCleartextPayload)));
+                    
         }
       }
     }
   }
 }
 
+
+
+// The test vectors used fixed sender ephemeral keys, while HPKE itself
+// generates new keys for each context. Test this codepath by checking we can
+// decrypt our own messages.
+TEST(HPKETest, SIKE) {
+    const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
+  const uint8_t info_b[] = {42, 42, 42};
+  const uint8_t ad_a[] = {1, 2, 4, 8, 16};
+  const uint8_t ad_b[] = {7};
+  Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
+  Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
+
+  // execute Bob keygen
+  // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret key??
+  //Actually it is not Alice!! But why they do not have two differnet funcitons?!?!?!
+  //In real life how is Alice getting Bob's pk??
+
+  // Generate the recipient's keypair.
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_SIKE_hkdf_sha256()));
+  uint8_t public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES];
+  size_t public_key_r_len;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
+                                      &public_key_r_len, sizeof(public_key_r)));
+  
+  //public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
+
+  for (const auto kdf : kAllKDFs) {
+    SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
+    for (const auto aead : kAllAEADs) {
+      SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
+      for (const Span<const uint8_t> &info : info_values) {
+        SCOPED_TRACE(Bytes(info));
+        for (const Span<const uint8_t> &ad : ad_values) {
+          SCOPED_TRACE(Bytes(ad));
+
+          // Set up the sender.
+          ScopedEVP_HPKE_CTX sender_ctx;
+          uint8_t enc[SIKE_P434_R3_CIPHERTEXT_BYTES];
+          size_t enc_len;
+          
+          ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
+              sender_ctx.get(), enc, &enc_len, sizeof(enc),
+              EVP_hpke_SIKE_hkdf_sha256(), kdf(), aead(), public_key_r,
+              public_key_r_len, info.data(), info.size()));
+
+          // Set up the recipient.
+          ScopedEVP_HPKE_CTX recipient_ctx;
+          ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
+              recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
+              info.data(), info.size()));
+
+          const char kCleartextPayload[] = "foobar";
+
+          // Have sender encrypt message for the recipient.
+          std::vector<uint8_t> ciphertext(
+              sizeof(kCleartextPayload) +
+              EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
+          size_t ciphertext_len;
+          ASSERT_TRUE(EVP_HPKE_CTX_seal(
+              sender_ctx.get(), ciphertext.data(), &ciphertext_len,
+              ciphertext.size(),
+              reinterpret_cast<const uint8_t *>(kCleartextPayload),
+              sizeof(kCleartextPayload), ad.data(), ad.size()));
+
+          // Have recipient decrypt the message.
+          std::vector<uint8_t> cleartext(ciphertext.size());
+          size_t cleartext_len;
+          ASSERT_TRUE(EVP_HPKE_CTX_open(recipient_ctx.get(), cleartext.data(),
+                                        &cleartext_len, cleartext.size(),
+                                        ciphertext.data(), ciphertext_len,
+                                        ad.data(), ad.size()));
+
+      
+         /* for (int i = 0; i < (int) sizeof(kCleartextPayload); i++)
+          {
+            printf("%02x", kCleartextPayload[i]);
+          }
+
+          printf("\n");
+
+          for (int i = 0; i < (int) sizeof(kCleartextPayload); i++)
+          {
+            printf("%02x", cleartext[i]);
+          }
+
+          printf("\n");*/
+
+          // Verify that decrypted message matches the original.
+          ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
+                    Bytes(kCleartextPayload, sizeof(kCleartextPayload)));
+                    
+        }
+      }
+    }
+  }
+}
+
+
+
+
+// The test vectors used fixed sender ephemeral keys, while HPKE itself
+// generates new keys for each context. Test this codepath by checking we can
+// decrypt our own messages.
+TEST(HPKETest, Hybrid) {
+  const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
+  const uint8_t info_b[] = {42, 42, 42};
+  const uint8_t ad_a[] = {1, 2, 4, 8, 16};
+  const uint8_t ad_b[] = {7};
+  Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
+  Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
+
+  // Generate the recipient's keypair.
+
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_SIKE_hkdf_sha256()));
+  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_PUBLIC_KEY_BYTES];
+  size_t public_key_r_len;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
+                                      &public_key_r_len, sizeof(public_key_r)));
+
+  //TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS 
+  //public_key_r[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
+  for (const auto kdf : kAllKDFs) {
+    SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
+    for (const auto aead : kAllAEADs) {
+      SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
+      for (const Span<const uint8_t> &info : info_values) {
+        SCOPED_TRACE(Bytes(info));
+        for (const Span<const uint8_t> &ad : ad_values) {
+          SCOPED_TRACE(Bytes(ad));
+
+          // Set up the sender.
+          ScopedEVP_HPKE_CTX sender_ctx;
+          uint8_t enc[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_CIPHERTEXT_BYTES];
+          size_t enc_len;
+          
+          ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
+              sender_ctx.get(), enc, &enc_len, sizeof(enc),
+              EVP_hpke_x25519_SIKE_hkdf_sha256(), kdf(), aead(), public_key_r,
+              public_key_r_len, info.data(), info.size()));
+
+              //TEST TO CHANGE BOB'S PK/CT TO SEE IF TEST FAILS
+              //enc[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_CIPHERTEXT_BYTES - 1] = 0;
+
+          // Set up the recipient.
+          ScopedEVP_HPKE_CTX recipient_ctx;
+          ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
+              recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
+              info.data(), info.size()));
+
+          const char kCleartextPayload[] = "foobar";
+
+          // Have sender encrypt message for the recipient.
+          std::vector<uint8_t> ciphertext(
+              sizeof(kCleartextPayload) +
+              EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
+          size_t ciphertext_len;
+          ASSERT_TRUE(EVP_HPKE_CTX_seal(
+              sender_ctx.get(), ciphertext.data(), &ciphertext_len,
+              ciphertext.size(),
+              reinterpret_cast<const uint8_t *>(kCleartextPayload),
+              sizeof(kCleartextPayload), ad.data(), ad.size()));
+
+          //TEST TO CHANGE THE CT FROM THE SYMMETRIC ENC TO CHECK IF TEST FAILS
+          //ciphertext[ciphertext.size() - 1]=0;
+
+          // Have recipient decrypt the message.
+          std::vector<uint8_t> cleartext(ciphertext.size());
+          size_t cleartext_len;
+          ASSERT_TRUE(EVP_HPKE_CTX_open(recipient_ctx.get(), cleartext.data(),
+                                        &cleartext_len, cleartext.size(),
+                                        ciphertext.data(), ciphertext_len,
+                                        ad.data(), ad.size()));
+
+        
+          for (int i = 0; i < (int) sizeof(ciphertext); i++)
+          {
+            printf("%02x", ciphertext[i]);
+          }
+
+          printf("\n");
+
+
+    
+          // Verify that decrypted message matches the original.
+          ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
+                    Bytes(kCleartextPayload, sizeof(kCleartextPayload)));
+                    
+                    
+        }
+      }
+    }
+  }
+  
+}
+
+
+
+
+
+
+
+/*
 // Verify that the DH operations inside Encap() and Decap() both fail when the
 // public key is on a small-order point in the curve.
 TEST(HPKETest, X25519EncapSmallOrderPoint) {
@@ -523,6 +761,6 @@ TEST(HPKETest, InternalParseIntSafe) {
 
   ASSERT_FALSE(ParseIntSafe(&u16, "65536"));
 }
-
+*/
 
 }  // namespace bssl
