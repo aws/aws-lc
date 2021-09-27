@@ -23,8 +23,8 @@ extern "C" {
 // been incremented, and the service called is otherwise not approved for FIPS.
 //
 // |FIPS_service_indicator_check_approved| is intended to take in the before and
-// after counter values. It will return 1 if the approval check was successful,
-// and 0 if otherwise.
+// after counter values. It will return |AWSLC_APPROVED| if the approval check
+// was successful, and |AWSLC_NOT_APPROVED| if otherwise.
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 OPENSSL_EXPORT int FIPS_service_indicator_check_approved(int before, int after);
@@ -32,8 +32,8 @@ OPENSSL_EXPORT int FIPS_service_indicator_check_approved(int before, int after);
 #if defined(AWSLC_FIPS)
 
 // This macro provides a bundled way to do an approval check and run the service.
-// The |approved| value passed in will change to 1 and 0 accordingly to the
-// approved state of the service ran.
+// The |approved| value passed in will change to |AWSLC_APPROVED| and
+// |AWSLC_NOT_APPROVED| accordingly to the approved state of the service ran.
 // It is highly recommended that users of the service indicator use this macro
 // when interacting with the service indicator.
 #define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
@@ -49,8 +49,8 @@ OPENSSL_EXPORT int FIPS_service_indicator_check_approved(int before, int after);
  while(0)                                                           \
 
 #else
-// Assume approved when FIPS is not on, for easier consumer compatibility that
-// have both FIPS and non-FIPS libraries.
+// Assume |AWSLC_APPROVED| when FIPS is not on, for easier consumer compatibility
+// that have both FIPS and non-FIPS libraries.
 #define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
   do {                                                              \
     (approved) = AWSLC_APPROVED;                                    \

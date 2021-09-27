@@ -22,7 +22,6 @@ void FIPS_service_indicator_update_state(void);
 // Service indicator functions are not intended for use during non-FIPS mode.
 // If these functions are run during non-FIPS mode, they will return nothing or
 // 0 accordingly.
-OPENSSL_INLINE int FIPS_service_indicator_reset_state(void) { return 0; }
 OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 
 #endif // AWSLC_FIPS
@@ -32,7 +31,6 @@ OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 // hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
 // When compiling with different ARM specific platforms, 9, 11, 13 are used for
 // key rounds.
-// TODO: narrow down when and which assembly/x86 ARM CPUs use [9,11,13] and [10,12,14]
 void AES_verify_service_indicator(unsigned key_rounds);
 
 // AEAD APIs work with different parameters. Only internal IV for AES-GCM is

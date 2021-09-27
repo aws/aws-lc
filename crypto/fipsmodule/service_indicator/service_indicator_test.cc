@@ -108,7 +108,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_EQ(return_val, 0);
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 
-  // Fail an approved service  on purpose while wrapped in an if statement.
+  // Fail an approved service on purpose while wrapped in an if statement.
   return_val = 0;
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
     if(EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, 0,
