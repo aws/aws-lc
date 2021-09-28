@@ -92,12 +92,9 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
     out = &plaintext;
   }
 
-  bool is_gcm = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
-
   bssl::ScopedEVP_CIPHER_CTX ctx1;
   // Check if EVP_CipherInit service is approved.
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
+  CALL_SERVICE_AND_CHECK_APPROVED( approved,
       ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, nullptr,
                                     nullptr, encrypt ? 1 : 0)));
   if (expect_approved) {
@@ -105,14 +102,9 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   } else {
     ASSERT_FALSE(approved);
   }
-  std::vector<uint8_t> iv(kAESIV,
-                          kAESIV + EVP_CIPHER_CTX_iv_length(ctx1.get()));
-  if (is_gcm) {
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx1.get(), EVP_CTRL_AEAD_SET_IVLEN,
-                                    iv.size(), nullptr));
-  } else {
-    ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
-  }
+  std::vector<uint8_t> iv(kAESIV,kAESIV + EVP_CIPHER_CTX_iv_length(ctx1.get()));
+  ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
+
 
   bssl::ScopedEVP_CIPHER_CTX ctx2;
   ASSERT_TRUE(EVP_CIPHER_CTX_copy(ctx2.get(), ctx1.get()));
@@ -122,9 +114,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   // output size matches the input size.
   ASSERT_EQ(in->size(), out->size());
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx, key.size()));
-  ASSERT_TRUE(
-      EVP_CipherInit_ex(ctx, nullptr, nullptr, key.data(), iv.data(), -1));
-
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx, nullptr, nullptr, key.data(), iv.data(), -1));
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx, 0));
   std::vector<uint8_t> result;
   ASSERT_TRUE(DoCipher(ctx, &result, *in, expect_approved));
