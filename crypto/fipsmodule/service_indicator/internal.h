@@ -32,6 +32,10 @@ OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 // key rounds.
 void AES_verify_service_indicator(unsigned key_rounds);
 
+// Service indicator check for AES algorithms when the context is
+// available to check against.
+void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx);
+
 // The service indicator checks use different parameters for AEAD APIs than
 // those of other AES modes. AES-GCM is approved only with an internal IV, see
 // SP 800-38D Sec 8.2.2.

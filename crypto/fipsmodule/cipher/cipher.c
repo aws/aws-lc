@@ -225,6 +225,7 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 
   ctx->buf_len = 0;
   ctx->final_used = 0;
+  AES_verify_service_indicator_with_ctx(ctx);
   return 1;
 }
 
@@ -264,6 +265,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     } else {
       *out_len = ret;
     }
+    AES_verify_service_indicator_with_ctx(ctx);
     return 1;
   }
 
@@ -275,6 +277,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
   if (ctx->buf_len == 0 && block_remainder(ctx, in_len) == 0) {
     if (ctx->cipher->cipher(ctx, out, in, in_len)) {
       *out_len = in_len;
+      AES_verify_service_indicator_with_ctx(ctx);
       return 1;
     } else {
       *out_len = 0;
@@ -289,6 +292,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
       OPENSSL_memcpy(&ctx->buf[i], in, in_len);
       ctx->buf_len += in_len;
       *out_len = 0;
+      AES_verify_service_indicator_with_ctx(ctx);
       return 1;
     } else {
       int j = bl - i;
@@ -318,6 +322,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     OPENSSL_memcpy(ctx->buf, &in[in_len], i);
   }
   ctx->buf_len = i;
+  AES_verify_service_indicator_with_ctx(ctx);
   return 1;
 }
 
@@ -332,6 +337,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
     } else {
       *out_len = ret;
     }
+    AES_verify_service_indicator_with_ctx(ctx);
     return 1;
   }
 
@@ -339,6 +345,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   assert(b <= sizeof(ctx->buf));
   if (b == 1) {
     *out_len = 0;
+    AES_verify_service_indicator_with_ctx(ctx);
     return 1;
   }
 
@@ -349,6 +356,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
       return 0;
     }
     *out_len = 0;
+    AES_verify_service_indicator_with_ctx(ctx);
     return 1;
   }
 
@@ -360,6 +368,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
 
   if (ret) {
     *out_len = b;
+    AES_verify_service_indicator_with_ctx(ctx);
   }
 
   return ret;
@@ -383,6 +392,7 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     } else {
       *out_len = r;
     }
+    AES_verify_service_indicator_with_ctx(ctx);
     return 1;
   }
 
@@ -421,6 +431,7 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     *out_len += b;
   }
 
+  AES_verify_service_indicator_with_ctx(ctx);
   return 1;
 }
 
@@ -436,6 +447,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     } else {
       *out_len = i;
     }
+    AES_verify_service_indicator_with_ctx(ctx);
     return 1;
   }
 
@@ -446,6 +458,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
       return 0;
     }
     *out_len = 0;
+    AES_verify_service_indicator_with_ctx(ctx);
     return 1;
   }
 
@@ -480,6 +493,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     *out_len = 0;
   }
 
+  AES_verify_service_indicator_with_ctx(ctx);
   return 1;
 }
 

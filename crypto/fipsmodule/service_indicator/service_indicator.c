@@ -3,6 +3,7 @@
 
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
+#include "internal.h"
 
 #if defined(AWSLC_FIPS)
 
@@ -74,6 +75,26 @@ void AES_verify_service_indicator(unsigned key_rounds) {
   }
 }
 
+void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx) {
+  switch(EVP_CIPHER_CTX_mode(ctx)) {
+    case EVP_CIPH_ECB_MODE:
+    case EVP_CIPH_CBC_MODE:
+    case EVP_CIPH_CTR_MODE:
+      break;
+    default:
+      return;
+  }
+  switch (ctx->cipher->key_len) {
+    case 16:
+    case 24:
+    case 32:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 void AEAD_verify_service_indicator(size_t key_length) {
   switch (key_length) {
     case 16:
@@ -92,6 +113,7 @@ uint64_t FIPS_service_indicator_after_call(void) { return 0; }
 int FIPS_service_indicator_check_approved(int before, int after) { return AWSLC_NOT_APPROVED; }
 
 void AES_verify_service_indicator(unsigned key_rounds) { }
+void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx) { }
 void AEAD_verify_service_indicator(size_t key_length) { }
 
 #endif // AWSLC_FIPS
