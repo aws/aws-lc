@@ -20,8 +20,7 @@ void FIPS_service_indicator_update_state(void);
 #else
 
 // Service indicator functions are not intended for use during non-FIPS mode.
-// If these functions are run during non-FIPS mode, they will return nothing or
-// 0 accordingly.
+// If these functions are run during non-FIPS mode, they will return nothing.
 OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 
 #endif // AWSLC_FIPS
@@ -33,8 +32,9 @@ OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 // key rounds.
 void AES_verify_service_indicator(unsigned key_rounds);
 
-// AEAD APIs work with different parameters. Only internal IV for AES-GCM is
-// meant to be approved.
+// The service indicator checks use different parameters for AEAD APIs than
+// those of other AES modes. AES-GCM is approved only with an internal IV
+// <SP 800-38D  and 8.2>.
 void AEAD_verify_service_indicator(size_t key_length);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

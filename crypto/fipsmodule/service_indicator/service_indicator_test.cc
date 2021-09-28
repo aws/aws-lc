@@ -66,11 +66,14 @@ static const uint8_t kAESCBCCiphertext[64] = {
 TEST(ServiceIndicatorTest, BasicTest) {
   int approved = AWSLC_NOT_APPROVED;
 
-  // Call an approved service.
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
-  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH] = {0};
+  AES_KEY aes_key;
+  uint8_t aes_iv[16];
   uint8_t output[256];
   size_t out_len;
+  int num = 0;
+
+  // Call an approved service.
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
@@ -121,11 +124,12 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 
   // Call a non-approved service.
+  memcpy(aes_iv, kAESIV, sizeof(kAESIV));
+  ASSERT_TRUE(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
-          output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
-          kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, AES_ofb128_encrypt(kPlaintext, output,
+                                   sizeof(kPlaintext), &aes_key, aes_iv, &num));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
@@ -156,11 +160,13 @@ TEST(ServiceIndicatorTest, AESCBC) {
 TEST(ServiceIndicatorTest, AESGCM) {
   int approved = AWSLC_NOT_APPROVED;
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
+  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH] = {0};
   uint8_t encrypt_output[256];
   uint8_t decrypt_output[256];
   size_t out_len;
   size_t out2_len;
 
+  // Call approved internal IV usage of AES-GCM.
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
 
@@ -173,10 +179,21 @@ TEST(ServiceIndicatorTest, AESGCM) {
   ASSERT_TRUE(check_test(kPlaintext, decrypt_output, sizeof(kPlaintext),
                   "AES-GCM Decryption for Internal IVs"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
+
+  // Call non-approved external IV usage of AES-GCM.
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm(),
+                                kAESKey, sizeof(kAESKey), 0, nullptr));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
+      encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
+          kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 #else
-// Service indicator should not be used without FIPS turned on.
+// Service indicator calls should not be used in non-FIPS builds. However, if
+// used, the macro |CALL_SERVICE_AND_CHECK_APPROVED| will return
+// |AWSLC_APPROVED|, but the direct calls to |FIPS_service_indicator_xxx|
+// will not indicate an approved state.
 TEST(ServiceIndicatorTest, BasicTest) {
    // Reset and check the initial state and counter.
   int approved = AWSLC_NOT_APPROVED;
