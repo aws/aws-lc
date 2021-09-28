@@ -33,8 +33,8 @@ OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 void AES_verify_service_indicator(unsigned key_rounds);
 
 // The service indicator checks use different parameters for AEAD APIs than
-// those of other AES modes. AES-GCM is approved only with an internal IV
-// <SP 800-38D  and 8.2>.
+// those of other AES modes. AES-GCM is approved only with an internal IV, see
+// SP 800-38D Sec 8.2.2.
 void AEAD_verify_service_indicator(size_t key_length);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
