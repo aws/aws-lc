@@ -146,6 +146,7 @@ enum {
        TEST_BIGNUM_MUL_4_8,
        TEST_BIGNUM_MUL_6_12,
        TEST_BIGNUM_MUL_8_16,
+       TEST_BIGNUM_MUL_P521,
        TEST_BIGNUM_MUX,
        TEST_BIGNUM_MUX_4,
        TEST_BIGNUM_MUX_6,
@@ -3330,6 +3331,40 @@ int test_bignum_mul_8_16(void)
 { return test_bignum_mul_specific(16,8,8,"bignum_mul_8_16",bignum_mul_8_16);
 }
 
+int test_bignum_mul_p521(void)
+{ uint64_t i, k;
+  printf("Testing bignum_mul_p521 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+     random_bignum(k,b2); reference_mod(k,b1,b2,p_521);
+     bignum_mul_p521(b2,b0,b1);
+     reference_mul(2*k,b4,k,b0,k,b1);
+     reference_copy(2*k,b3,k,p_521);
+     reference_mod(2*k,b5,b4,b3);
+     reference_copy(k,b3,2*k,b5);
+     c = reference_compare(k,b3,k,b2);
+
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],b1[0],p_521[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],b1[0],p_521[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_mux(void)
 { uint64_t i, n;
   printf("Testing bignum_mux with %d cases\n",tests);
@@ -4722,6 +4757,7 @@ int test_all()
   dotest(test_bignum_mul_4_8);
   dotest(test_bignum_mul_6_12);
   dotest(test_bignum_mul_8_16);
+  dotest(test_bignum_mul_p521);
   dotest(test_bignum_mux);
   dotest(test_bignum_mux_4);
   dotest(test_bignum_mux_6);
@@ -5023,6 +5059,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MUL_4_8:         return test_bignum_mul_4_8();
      case TEST_BIGNUM_MUL_6_12:        return test_bignum_mul_6_12();
      case TEST_BIGNUM_MUL_8_16:        return test_bignum_mul_8_16();
+     case TEST_BIGNUM_MUL_P521:        return test_bignum_mul_p521();
      case TEST_BIGNUM_MUX:             return test_bignum_mux();
      case TEST_BIGNUM_MUX_4:           return test_bignum_mux_4();
      case TEST_BIGNUM_MUX_6:           return test_bignum_mux_6();

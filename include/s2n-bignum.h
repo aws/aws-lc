@@ -353,6 +353,10 @@ extern void bignum_mul_6_12 (uint64_t z[static 12], uint64_t x[static 6], uint64
 // Inputs x[8], y[8]; output z[16]
 extern void bignum_mul_8_16 (uint64_t z[static 16], uint64_t x[static 8], uint64_t y[static 8]);
 
+// Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_mul_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+
 // Multiplex/select z := x (if p nonzero) or z := y (if p zero)
 // Inputs p, x[k], y[k]; output z[k]
 extern void bignum_mux (uint64_t p, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
