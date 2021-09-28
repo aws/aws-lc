@@ -111,6 +111,7 @@
 
 #include <openssl/crypto.h>
 #include <openssl/ex_data.h>
+#include <openssl/service_indicator.h>
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
@@ -639,6 +640,7 @@ typedef enum {
   OPENSSL_THREAD_LOCAL_ERR = 0,
   OPENSSL_THREAD_LOCAL_RAND,
   OPENSSL_THREAD_LOCAL_FIPS_COUNTERS,
+  AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE,
   OPENSSL_THREAD_LOCAL_TEST,
   NUM_OPENSSL_THREAD_LOCALS,
 } thread_local_data_t;

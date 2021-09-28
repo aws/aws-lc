@@ -52,6 +52,7 @@
 
 #include "../aes/internal.h"
 #include "../modes/internal.h"
+#include "../service_indicator/internal.h"
 
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
@@ -92,18 +93,22 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                      const AES_KEY *key, uint8_t *ivec, const int enc) {
   if (hwaes_capable()) {
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
+    AES_verify_service_indicator(key->rounds);
     return;
   }
 
   if (!vpaes_capable()) {
     aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
+    AES_verify_service_indicator(key->rounds);
     return;
   }
+
   if (enc) {
     CRYPTO_cbc128_encrypt(in, out, len, key, ivec, AES_encrypt);
   } else {
     CRYPTO_cbc128_decrypt(in, out, len, key, ivec, AES_decrypt);
   }
+  AES_verify_service_indicator(key->rounds);
 }
 
 void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
