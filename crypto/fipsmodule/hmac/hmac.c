@@ -68,6 +68,7 @@
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
+  FIPS_service_indicator_lock_state();
   HMAC_CTX ctx;
   HMAC_CTX_init(&ctx);
   if (!HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) ||
@@ -75,7 +76,11 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
       !HMAC_Final(&ctx, out, out_len)) {
     out = NULL;
   }
-
+  // Unlock service indicator state and check if HMAC functions have succeeded.
+  FIPS_service_indicator_unlock_state();
+  if(out) {
+    HMAC_verify_service_indicator(evp_md);
+  }
   HMAC_CTX_cleanup(&ctx);
   return out;
 }
@@ -113,6 +118,9 @@ void HMAC_CTX_free(HMAC_CTX *ctx) {
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
                  const EVP_MD *md, ENGINE *impl) {
+  // We have to avoid the underlying SHA services updating the indicator state,
+  // so we lock the state here.
+  FIPS_service_indicator_lock_state();
   if (md == NULL) {
     md = ctx->md;
   }
@@ -136,6 +144,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
       if (!EVP_DigestInit_ex(&ctx->md_ctx, md, impl) ||
           !EVP_DigestUpdate(&ctx->md_ctx, key, key_len) ||
           !EVP_DigestFinal_ex(&ctx->md_ctx, key_block, &key_block_len)) {
+        FIPS_service_indicator_unlock_state();
         return 0;
       }
     } else {
@@ -153,6 +162,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     }
     if (!EVP_DigestInit_ex(&ctx->i_ctx, md, impl) ||
         !EVP_DigestUpdate(&ctx->i_ctx, pad, EVP_MD_block_size(md))) {
+      FIPS_service_indicator_unlock_state();
       return 0;
     }
 
@@ -161,6 +171,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     }
     if (!EVP_DigestInit_ex(&ctx->o_ctx, md, impl) ||
         !EVP_DigestUpdate(&ctx->o_ctx, pad, EVP_MD_block_size(md))) {
+      FIPS_service_indicator_unlock_state();
       return 0;
     }
 
@@ -168,17 +179,31 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   }
 
   if (!EVP_MD_CTX_copy_ex(&ctx->md_ctx, &ctx->i_ctx)) {
+    FIPS_service_indicator_unlock_state();
     return 0;
   }
 
+  FIPS_service_indicator_unlock_state();
+  HMAC_verify_service_indicator(md);
   return 1;
 }
 
 int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
-  return EVP_DigestUpdate(&ctx->md_ctx, data, data_len);
+  // We have to avoid the underlying SHA services updating the indicator state,
+  // so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = EVP_DigestUpdate(&ctx->md_ctx, data, data_len);
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    HMAC_verify_service_indicator(ctx->md);
+  }
+  return ret;
 }
 
 int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
+  // We have to avoid the underlying SHA services updating the indicator state,
+  // so we lock the state here.
+  FIPS_service_indicator_lock_state();
   unsigned int i;
   uint8_t buf[EVP_MAX_MD_SIZE];
 
@@ -189,9 +214,12 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
       !EVP_DigestUpdate(&ctx->md_ctx, buf, i) ||
       !EVP_DigestFinal_ex(&ctx->md_ctx, out, out_len)) {
     *out_len = 0;
+    FIPS_service_indicator_unlock_state();
     return 0;
   }
 
+  FIPS_service_indicator_unlock_state();
+  HMAC_verify_service_indicator(ctx->md);
   return 1;
 }
 

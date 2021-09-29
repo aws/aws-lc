@@ -72,13 +72,19 @@ int SHA1_Init(SHA_CTX *sha) {
   sha->h[2] = 0x98badcfeUL;
   sha->h[3] = 0x10325476UL;
   sha->h[4] = 0xc3d2e1f0UL;
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
 uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   SHA_CTX ctx;
   SHA1_Init(&ctx);
   SHA1_Update(&ctx, data, len);
+
+  // Unlock service indicator state here, to let |SHA1_Final| decide if |SHA1|
+  // has succeeded or not.
+  FIPS_service_indicator_unlock_state();
   SHA1_Final(out, &ctx);
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
@@ -96,6 +102,7 @@ void SHA1_Transform(SHA_CTX *c, const uint8_t data[SHA_CBLOCK]) {
 int SHA1_Update(SHA_CTX *c, const void *data, size_t len) {
   crypto_md32_update(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
                      &c->Nh, &c->Nl, data, len);
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -108,6 +115,7 @@ int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
   CRYPTO_store_u32_be(out + 8, c->h[2]);
   CRYPTO_store_u32_be(out + 12, c->h[3]);
   CRYPTO_store_u32_be(out + 16, c->h[4]);
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
