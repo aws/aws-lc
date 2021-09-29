@@ -499,7 +499,11 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
 
 int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                size_t in_len) {
-  return ctx->cipher->cipher(ctx, out, in, in_len);
+  int ret = ctx->cipher->cipher(ctx, out, in, in_len);
+  if(ret == 1) {
+    AES_verify_service_indicator_with_ctx(ctx);
+  }
+  return ret;
 }
 
 int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,

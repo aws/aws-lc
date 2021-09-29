@@ -246,7 +246,6 @@ static int aes_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     CRYPTO_cbc128_decrypt(in, out, len, &dat->ks.ks, ctx->iv, dat->block);
   }
 
-  AES_verify_service_indicator(dat->ks.ks.rounds);
   return 1;
 }
 
@@ -265,7 +264,6 @@ static int aes_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     (*dat->block)(in + i, out + i, &dat->ks.ks);
   }
 
-  AES_verify_service_indicator(dat->ks.ks.rounds);
   return 1;
 }
 
@@ -280,8 +278,6 @@ static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     CRYPTO_ctr128_encrypt(in, out, len, &dat->ks.ks, ctx->iv, ctx->buf,
                           &ctx->num, dat->block);
   }
-
-  AES_verify_service_indicator(dat->ks.ks.rounds);
   return 1;
 }
 
@@ -812,14 +808,13 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_gcm_generic) {
 static int aes_hw_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                              const uint8_t *in, size_t len) {
   size_t bl = ctx->cipher->block_size;
-  EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
+
   if (len < bl) {
-    AES_verify_service_indicator(dat->ks.ks.rounds);
     return 1;
   }
 
   aes_hw_ecb_encrypt(in, out, len, ctx->cipher_data, ctx->encrypt);
-  AES_verify_service_indicator(dat->ks.ks.rounds);
+
   return 1;
 }
 
