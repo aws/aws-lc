@@ -21,12 +21,18 @@ extern "C" {
 // not equal, this means that the service called in between is deemed to be
 // approved. If the values are still the same, this means the counter has not
 // been incremented, and the service called is otherwise not approved for FIPS.
-//
+OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);
+OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
+
 // |FIPS_service_indicator_check_approved| is intended to take in the before and
 // after counter values. It will return |AWSLC_APPROVED| if the approval check
 // was successful, and |AWSLC_NOT_APPROVED| if otherwise.
-OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);
-OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
+//
+// Service indicator calls should not be used in non-FIPS builds. However, if
+// used, the direct check to |FIPS_service_indicator_check_approved|
+// will always indicate |AWSLC_NOT_APPROVED| during non-FIPS.
+// It is recommended to use the macro |CALL_SERVICE_AND_CHECK_APPROVED|, which
+// will always return |AWSLC_APPROVED| during non-FIPS.
 OPENSSL_EXPORT int FIPS_service_indicator_check_approved(int before, int after);
 
 #if defined(AWSLC_FIPS)

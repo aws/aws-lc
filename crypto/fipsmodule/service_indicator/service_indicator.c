@@ -118,7 +118,7 @@ int FIPS_service_indicator_check_approved(int before, int after) {
 }
 
 
-// Service indicator check functions listed below are optimized to not do  extra
+// Service indicator check functions listed below are optimized to not do extra
 // checks, when not in FIPS mode. Arguments must be cast to void to avoid
 // compiler errors.
 
