@@ -321,7 +321,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved, AES_ofb128_encrypt(kPlaintext, output,
                                    sizeof(kPlaintext), &aes_key, aes_iv, &num));
   ASSERT_TRUE(check_test(kAESOFBCiphertext, output, sizeof(kAESOFBCiphertext),
-                         "AES-OFBg Encryption KAT"));
+                         "AES-OFB Encryption KAT"));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
