@@ -317,6 +317,10 @@ extern void bignum_montmul_p256 (uint64_t z[static 4], uint64_t x[static 4], uin
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
 
+// Montgomery multiply, z := (x * y / 2^576) mod p_521
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_montmul_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+
 // Montgomery reduce, z := (x' / 2^{64p}) MOD m
 // Inputs x[n], m[k], p; output z[k]
 extern void bignum_montredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);

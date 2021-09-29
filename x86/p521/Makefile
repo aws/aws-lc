@@ -22,6 +22,7 @@ OBJ = bignum_add_p521.o \
       bignum_double_p521.o \
       bignum_half_p521.o \
       bignum_mod_p521_9.o \
+      bignum_montmul_p521.o \
       bignum_montsqr_p521.o \
       bignum_mul_p521.o \
       bignum_neg_p521.o \
