@@ -255,7 +255,6 @@ static int aes_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
 
   if (len < bl) {
-    AES_verify_service_indicator(dat->ks.ks.rounds);
     return 1;
   }
 
