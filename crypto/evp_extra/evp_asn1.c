@@ -67,7 +67,16 @@
 #include "../fipsmodule/evp/internal.h"
 #include "../bytestring/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
+const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
+  &ed25519_pkey_meth,
+  &x25519_pkey_meth,
+};
+
+const EVP_PKEY_METHOD *const *OPENSSL_non_fips_pkey_evp_methods(void) {
+  return non_fips_pkey_evp_methods;
+}
 
 static const EVP_PKEY_ASN1_METHOD *const kASN1Methods[] = {
     &rsa_asn1_meth,
@@ -77,6 +86,10 @@ static const EVP_PKEY_ASN1_METHOD *const kASN1Methods[] = {
     &ed25519_asn1_meth,
     &x25519_asn1_meth,
 };
+
+const EVP_PKEY_ASN1_METHOD *const *OPENSSL_non_fips_pkey_evp_asn1_methods(void) {
+  return kASN1Methods;
+}
 
 static int parse_key_type(CBS *cbs, int *out_type) {
   CBS oid;

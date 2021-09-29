@@ -253,6 +253,27 @@ static int pkey_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   return 1;
 }
 
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_ec_pkey_meth) {
+    out->pkey_id = EVP_PKEY_EC;
+    out->init = pkey_ec_init;
+    out->copy = pkey_ec_copy;
+    out->cleanup = pkey_ec_cleanup;
+    out->keygen = pkey_ec_keygen;
+    out->sign_init = NULL; /* sign_init */
+    out->sign = pkey_ec_sign;
+    out->sign_message = NULL; /* sign_message */
+    out->verify_init = NULL; /* verify_init */
+    out->verify = pkey_ec_verify;
+    out->verify_message = NULL; /* verify_message */
+    out->verify_recover = NULL; /* verify_recover */
+    out->encrypt = NULL; /* encrypt */
+    out->decrypt = NULL; /* decrypt */
+    out->derive = pkey_ec_derive;
+    out->paramgen = pkey_ec_paramgen;
+    out->ctrl = pkey_ec_ctrl;
+}
+
+#if 0
 const EVP_PKEY_METHOD ec_pkey_meth = {
     EVP_PKEY_EC,
     pkey_ec_init,
@@ -272,6 +293,7 @@ const EVP_PKEY_METHOD ec_pkey_meth = {
     pkey_ec_paramgen,
     pkey_ec_ctrl,
 };
+#endif
 
 int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_EC, EVP_PKEY_OP_TYPE_GEN,

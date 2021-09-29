@@ -66,10 +66,17 @@ enum evp_sign_verify_t {
   evp_verify,
 };
 
+/*
 static const struct evp_md_pctx_ops md_pctx_ops = {
   EVP_PKEY_CTX_free,
   EVP_PKEY_CTX_dup,
 };
+*/
+
+DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, EVP_MD_pctx_ops) {
+  out->free = EVP_PKEY_CTX_free;
+  out->dup = EVP_PKEY_CTX_dup;
+}
 
 static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
   return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
@@ -85,7 +92,7 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
   if (ctx->pctx == NULL) {
     return 0;
   }
-  ctx->pctx_ops = &md_pctx_ops;
+  ctx->pctx_ops = EVP_MD_pctx_ops();
 
   if (op == evp_verify) {
     if (!EVP_PKEY_verify_init(ctx->pctx)) {

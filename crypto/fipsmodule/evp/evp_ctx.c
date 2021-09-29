@@ -65,7 +65,7 @@
 #include "../../internal.h"
 #include "internal.h"
 
-
+#if 0
 static const EVP_PKEY_METHOD *const evp_methods[] = {
     &rsa_pkey_meth,
     &rsa_pss_pkey_meth,
@@ -73,11 +73,36 @@ static const EVP_PKEY_METHOD *const evp_methods[] = {
     &ed25519_pkey_meth,
     &x25519_pkey_meth,
 };
+#endif
+
+extern const EVP_PKEY_METHOD *const *OPENSSL_non_fips_pkey_evp_methods(void);
+
+// Could be local data I guess?
+DEFINE_METHOD_FUNCTION(struct fips_evp_pkey_methods, OPENSSL_fips_evp_pkey_methods) {
+  out->methods[0].method = EVP_PKEY_rsa_pkey_meth();
+  out->methods[1].method = EVP_PKEY_rsa_pss_pkey_meth();
+  out->methods[2].method = EVP_PKEY_ec_pkey_meth();
+}
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
+  const struct fips_evp_pkey_methods *const fips_methods = OPENSSL_fips_evp_pkey_methods();
+#if 0
   for (size_t i = 0; i < sizeof(evp_methods)/sizeof(EVP_PKEY_METHOD*); i++) {
     if (evp_methods[i]->pkey_id == type) {
       return evp_methods[i];
+    }
+  }
+#endif
+  for (size_t i = 0; i < FIPS_EVP_PKEY_METHODS; i++) {
+    if (fips_methods->methods[i].method->pkey_id == type) {
+      return fips_methods->methods[i].method;
+    }
+  }
+//NON_FIPS_EVP_PKEY_METHODS
+  const EVP_PKEY_METHOD *const *non_fips_pkey_evp_methods = OPENSSL_non_fips_pkey_evp_methods();
+  for (size_t i = 0; i < 2; i++) {
+    if (non_fips_pkey_evp_methods[i]->pkey_id == type) {
+      return non_fips_pkey_evp_methods[i];
     }
   }
 

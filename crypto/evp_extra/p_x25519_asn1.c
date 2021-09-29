@@ -21,6 +21,7 @@
 
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 static void x25519_free(EVP_PKEY *pkey) {

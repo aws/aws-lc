@@ -237,6 +237,7 @@ struct evp_pkey_method_st {
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 } /* EVP_PKEY_METHOD */;
 
+#if 0
 typedef struct {
   union {
     uint8_t priv[64];
@@ -255,20 +256,36 @@ typedef struct {
   uint8_t priv[32];
   char has_private;
 } X25519_KEY;
+#endif
 
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
+//extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
+//extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
 
-extern const EVP_PKEY_METHOD rsa_pkey_meth;
-extern const EVP_PKEY_METHOD rsa_pss_pkey_meth;
-extern const EVP_PKEY_METHOD ec_pkey_meth;
-extern const EVP_PKEY_METHOD ed25519_pkey_meth;
-extern const EVP_PKEY_METHOD x25519_pkey_meth;
+//extern const EVP_PKEY_METHOD rsa_pkey_meth;
+//extern const EVP_PKEY_METHOD rsa_pss_pkey_meth;
+//extern const EVP_PKEY_METHOD ec_pkey_meth;
+//extern const EVP_PKEY_METHOD ed25519_pkey_meth;
+//extern const EVP_PKEY_METHOD x25519_pkey_meth;
 
+struct fips_evp_pkey_method {
+  const EVP_PKEY_METHOD *method;
+};
+
+#define FIPS_EVP_PKEY_METHODS 3
+
+struct fips_evp_pkey_methods {
+  struct fips_evp_pkey_method methods[FIPS_EVP_PKEY_METHODS];
+};
+
+const struct fips_evp_pkey_methods *OPENSSL_fips_evp_pkey_methods(void);
+
+const EVP_PKEY_METHOD *EVP_PKEY_rsa_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_rsa_pss_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_ec_pkey_meth(void);
 
 #if defined(__cplusplus)
 }  // extern C

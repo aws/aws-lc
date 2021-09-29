@@ -659,6 +659,47 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   }
 }
 
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pkey_meth) {
+    out->pkey_id = EVP_PKEY_RSA;
+    out->init = pkey_rsa_init;
+    out->copy = pkey_rsa_copy;
+    out->cleanup = pkey_rsa_cleanup;
+    out->keygen = pkey_rsa_keygen;
+    out->sign_init = NULL; /* sign_init */
+    out->sign = pkey_rsa_sign;
+    out->sign_message = NULL; /* sign_message */
+    out->verify_init = NULL; /* verify_init */
+    out->verify = pkey_rsa_verify;
+    out->verify_message = NULL; /* verify_message */
+    out->verify_recover = pkey_rsa_verify_recover; /* verify_recover */
+    out->encrypt = pkey_rsa_encrypt; /* encrypt */
+    out->decrypt = pkey_rsa_decrypt; /* decrypt */
+    out->derive = NULL;
+    out->paramgen = NULL;
+    out->ctrl = pkey_rsa_ctrl;
+}
+
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
+    out->pkey_id = EVP_PKEY_RSA_PSS;
+    out->init = pkey_rsa_init;
+    out->copy = pkey_rsa_copy;
+    out->cleanup = pkey_rsa_cleanup;
+    out->keygen = pkey_rsa_keygen;
+    out->sign_init = pkey_pss_init; /* sign_init */
+    out->sign = pkey_rsa_sign;
+    out->sign_message = NULL; /* sign_message */
+    out->verify_init = pkey_pss_init; /* verify_init */
+    out->verify = pkey_rsa_verify;
+    out->verify_message = NULL; /* verify_message */
+    out->verify_recover = NULL; /* verify_recover */
+    out->encrypt = NULL; /* encrypt */
+    out->decrypt = NULL; /* decrypt */
+    out->derive = NULL;
+    out->paramgen = NULL;
+    out->ctrl = pkey_rsa_ctrl;
+}
+
+#if 0
 const EVP_PKEY_METHOD rsa_pkey_meth = {
     EVP_PKEY_RSA,
     pkey_rsa_init,
@@ -698,6 +739,7 @@ const EVP_PKEY_METHOD rsa_pss_pkey_meth = {
     NULL /* paramgen */,
     pkey_rsa_ctrl,
 };
+#endif
 
 int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
   /* If key type is not RSA or RSA-PSS return error */

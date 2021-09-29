@@ -197,10 +197,22 @@ int EVP_PKEY_id(const EVP_PKEY *pkey) {
   return pkey->type;
 }
 
+extern const EVP_PKEY_ASN1_METHOD *const *OPENSSL_non_fips_pkey_evp_asn1_methods(void);
+
 // evp_pkey_asn1_find returns the ASN.1 method table for the given |nid|, which
 // should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is
 // unknown.
 static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
+
+  const EVP_PKEY_ASN1_METHOD *const *non_fips_pkey_evp_asn1_methods = OPENSSL_non_fips_pkey_evp_asn1_methods();
+  for (size_t i = 0; i < 6; i++) {
+    if (non_fips_pkey_evp_asn1_methods[i]->pkey_id == nid) {
+      return non_fips_pkey_evp_asn1_methods[i];
+    }
+  }
+
+  return NULL;
+/*
   switch (nid) {
     case EVP_PKEY_RSA:
       return &rsa_asn1_meth;
@@ -217,6 +229,7 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
     default:
       return NULL;
   }
+*/
 }
 
 int EVP_PKEY_type(int nid) {
