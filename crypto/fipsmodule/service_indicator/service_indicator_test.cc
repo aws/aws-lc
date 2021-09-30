@@ -179,7 +179,7 @@ static const uint8_t kAESCTRCiphertext[64] = {
     0xe1, 0x82, 0xd4, 0x30, 0xa9, 0x16, 0x73, 0x93, 0xc3
 };
 
-static const uint8_t kAESCCMCiphertext[68] ={
+static const uint8_t kAESCCMCiphertext[68] = {
     0x7a, 0x02, 0x5d, 0x48, 0x02, 0x44, 0x78, 0x7f, 0xb4, 0x71, 0x74,
     0x7b, 0xec, 0x4d, 0x90, 0x29, 0x7b, 0xa7, 0x65, 0xbb, 0x3e, 0x80,
     0x41, 0x7e, 0xab, 0xb4, 0x58, 0x22, 0x4f, 0x86, 0xcd, 0xcc, 0xc2,
@@ -189,7 +189,7 @@ static const uint8_t kAESCCMCiphertext[68] ={
     0xa4, 0x8b
 };
 
-static const uint8_t kAESKWCiphertext[72] ={
+static const uint8_t kAESKWCiphertext[72] = {
     0x44, 0xec, 0x7d, 0x92, 0x2c, 0x9f, 0xf3, 0xe8, 0xac, 0xb1, 0xea,
     0x3d, 0x0a, 0xc7, 0x51, 0x27, 0xe8, 0x03, 0x11, 0x78, 0xe5, 0xaf,
     0x8d, 0xb1, 0x70, 0x96, 0x2e, 0xfa, 0x05, 0x48, 0x48, 0x99, 0x1a,
@@ -199,7 +199,7 @@ static const uint8_t kAESKWCiphertext[72] ={
     0x73, 0x6f, 0xbc, 0x89, 0x66, 0x9d
 };
 
-static const uint8_t kAESKWPCiphertext[72] ={
+static const uint8_t kAESKWPCiphertext[72] = {
     0x29, 0x5e, 0xb9, 0xea, 0x96, 0xa7, 0xa5, 0xca, 0xfa, 0xeb, 0xda,
     0x78, 0x13, 0xea, 0x83, 0xca, 0x41, 0xdb, 0x4d, 0x36, 0x7d, 0x39,
     0x8a, 0xd6, 0xef, 0xd3, 0xd2, 0x2d, 0x3a, 0xc8, 0x55, 0xc8, 0x73,
@@ -216,34 +216,10 @@ struct EVP_TestVector {
   bool has_iv;
   bool expect_approved;
 } nTestVectors[] = {
-  {
-      EVP_aes_128_ecb(),
-      kAESECBCiphertext,
-      64,
-      false,
-      true
-  },
-  {
-      EVP_aes_128_cbc(),
-      kAESCBCCiphertext,
-      64,
-      true,
-      true
-  },
-  {
-      EVP_aes_128_ctr(),
-      kAESCTRCiphertext,
-      64,
-      true,
-      true
-  },
-  {
-      EVP_aes_128_ofb(),
-      kAESOFBCiphertext,
-      64,
-      true,
-      false
-  }
+  { EVP_aes_128_ecb(), kAESECBCiphertext, 64, false, true },
+  { EVP_aes_128_cbc(), kAESCBCCiphertext, 64, true, true },
+  { EVP_aes_128_ctr(), kAESCTRCiphertext, 64, true, true },
+  { EVP_aes_128_ofb(), kAESOFBCiphertext, 64, true, false }
 };
 
 class EVP_ServiceIndicatorTest : public testing::TestWithParam<EVP_TestVector> {};
@@ -254,9 +230,8 @@ TEST_P(EVP_ServiceIndicatorTest, EVP_Ciphers) {
   const EVP_TestVector &t = GetParam();
 
   const EVP_CIPHER *cipher = t.cipher;
-  std::vector<uint8_t> key, plaintext;
-  key.insert(key.begin(), std::begin(kAESKey), std::end(kAESKey));
-  plaintext.insert(plaintext.begin(), std::begin(kPlaintext), std::end(kPlaintext));
+  std::vector<uint8_t> key(kAESKey, kAESKey + sizeof(kAESKey));
+  std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
   std::vector<uint8_t> ciphertext(t.expected_ciphertext, t.expected_ciphertext + t.cipher_text_length);
   TestOperation(cipher,true /* encrypt */, key, plaintext, ciphertext, t.expect_approved);
   TestOperation(cipher,false /* decrypt */, key, plaintext, ciphertext, t.expect_approved);
