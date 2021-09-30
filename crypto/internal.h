@@ -894,10 +894,6 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
-// This only works because everywhere where this header file is included, the
-// header file defining `EVP_PKEY_METHOD` is included before this header file
-//const EVP_PKEY_METHOD *const *OPENSSL_non_fips_pkey_evp_methods(void);
-
 // FIPS functions.
 
 #if defined(BORINGSSL_FIPS)

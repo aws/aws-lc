@@ -69,36 +69,15 @@
 #include "../internal.h"
 #include "internal.h"
 
-const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
-  &ed25519_pkey_meth,
-  &x25519_pkey_meth,
-};
-
-const EVP_PKEY_METHOD *const *OPENSSL_non_fips_pkey_evp_methods(void) {
-  return non_fips_pkey_evp_methods;
-}
-
-static const EVP_PKEY_ASN1_METHOD *const kASN1Methods[] = {
-    &rsa_asn1_meth,
-    &rsa_pss_asn1_meth,
-    &ec_asn1_meth,
-    &dsa_asn1_meth,
-    &ed25519_asn1_meth,
-    &x25519_asn1_meth,
-};
-
-const EVP_PKEY_ASN1_METHOD *const *OPENSSL_non_fips_pkey_evp_asn1_methods(void) {
-  return kASN1Methods;
-}
-
 static int parse_key_type(CBS *cbs, int *out_type) {
   CBS oid;
   if (!CBS_get_asn1(cbs, &oid, CBS_ASN1_OBJECT)) {
     return 0;
   }
 
-  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kASN1Methods); i++) {
-    const EVP_PKEY_ASN1_METHOD *method = kASN1Methods[i];
+  const EVP_PKEY_ASN1_METHOD *const *asn1_methods = AWSLC_non_fips_pkey_evp_asn1_methods();
+  for (unsigned i = 0; i < ASN1_EVP_PKEY_METHODS; i++) {
+    const EVP_PKEY_ASN1_METHOD *method = asn1_methods[i];
     if (CBS_len(&oid) == method->oid_len &&
         OPENSSL_memcmp(CBS_data(&oid), method->oid, method->oid_len) == 0) {
       *out_type = method->pkey_id;

@@ -322,6 +322,7 @@ add_library(
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
+  evp_extra/p_methods.c
   evp_extra/pbkdf.c
   evp_extra/print.c
   evp_extra/scrypt.c

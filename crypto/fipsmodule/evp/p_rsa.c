@@ -699,48 +699,6 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
     out->ctrl = pkey_rsa_ctrl;
 }
 
-#if 0
-const EVP_PKEY_METHOD rsa_pkey_meth = {
-    EVP_PKEY_RSA,
-    pkey_rsa_init,
-    pkey_rsa_copy,
-    pkey_rsa_cleanup,
-    pkey_rsa_keygen,
-    NULL /* sign_init */,
-    pkey_rsa_sign,
-    NULL /* sign_message */,
-    NULL /* verify_init */,
-    pkey_rsa_verify,
-    NULL /* verify_message */,
-    pkey_rsa_verify_recover,
-    pkey_rsa_encrypt,
-    pkey_rsa_decrypt,
-    NULL /* derive */,
-    NULL /* paramgen */,
-    pkey_rsa_ctrl,
-};
-
-const EVP_PKEY_METHOD rsa_pss_pkey_meth = {
-    EVP_PKEY_RSA_PSS,
-    pkey_rsa_init,
-    pkey_rsa_copy,
-    pkey_rsa_cleanup,
-    pkey_rsa_keygen,
-    pkey_pss_init,
-    pkey_rsa_sign,
-    NULL /* sign_message */,
-    pkey_pss_init,
-    pkey_rsa_verify,
-    NULL /* verify_message */,
-    NULL /* verify_recover */,
-    NULL /* encrypt */,
-    NULL /* decrypt */,
-    NULL /* derive */,
-    NULL /* paramgen */,
-    pkey_rsa_ctrl,
-};
-#endif
-
 int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
   /* If key type is not RSA or RSA-PSS return error */
   if ((ctx != NULL) && (ctx->pmeth != NULL)

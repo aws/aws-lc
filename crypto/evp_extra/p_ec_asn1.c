@@ -63,6 +63,7 @@
 #include <openssl/err.h>
 
 #include "../fipsmodule/evp/internal.h"
+#include "internal.h"
 
 
 static int eckey_pub_encode(CBB *out, const EVP_PKEY *key) {

@@ -65,44 +65,34 @@
 #include "../../internal.h"
 #include "internal.h"
 
-#if 0
-static const EVP_PKEY_METHOD *const evp_methods[] = {
-    &rsa_pkey_meth,
-    &rsa_pss_pkey_meth,
-    &ec_pkey_meth,
-    &ed25519_pkey_meth,
-    &x25519_pkey_meth,
-};
-#endif
+// Forward declaration of |AWSLC_non_fips_pkey_evp_methods| to learn return type.
+extern const EVP_PKEY_METHOD *const *AWSLC_non_fips_pkey_evp_methods(void);
 
-extern const EVP_PKEY_METHOD *const *OPENSSL_non_fips_pkey_evp_methods(void);
-
-// Could be local data I guess?
-DEFINE_METHOD_FUNCTION(struct fips_evp_pkey_methods, OPENSSL_fips_evp_pkey_methods) {
-  out->methods[0].method = EVP_PKEY_rsa_pkey_meth();
-  out->methods[1].method = EVP_PKEY_rsa_pss_pkey_meth();
-  out->methods[2].method = EVP_PKEY_ec_pkey_meth();
+DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
+  out->methods[0] = EVP_PKEY_rsa_pkey_meth();
+  out->methods[1] = EVP_PKEY_rsa_pss_pkey_meth();
+  out->methods[2] = EVP_PKEY_ec_pkey_meth();
 }
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
-  const struct fips_evp_pkey_methods *const fips_methods = OPENSSL_fips_evp_pkey_methods();
-#if 0
-  for (size_t i = 0; i < sizeof(evp_methods)/sizeof(EVP_PKEY_METHOD*); i++) {
-    if (evp_methods[i]->pkey_id == type) {
-      return evp_methods[i];
-    }
-  }
-#endif
+
+  // First try the fips public key methods. At a later stage, we might want to
+  // reorder these such that we go through the list with the most used public
+  // key method first.
+  // ATM ED25519 or x25519 in the non-fips list are likely not more popular than
+  // their RSA and EC counter parts in the fips list.
+  const struct fips_evp_pkey_methods *const fips_methods = AWSLC_fips_evp_pkey_methods();
   for (size_t i = 0; i < FIPS_EVP_PKEY_METHODS; i++) {
-    if (fips_methods->methods[i].method->pkey_id == type) {
-      return fips_methods->methods[i].method;
+    if (fips_methods->methods[i]->pkey_id == type) {
+      return fips_methods->methods[i];
     }
   }
-//NON_FIPS_EVP_PKEY_METHODS
-  const EVP_PKEY_METHOD *const *non_fips_pkey_evp_methods = OPENSSL_non_fips_pkey_evp_methods();
-  for (size_t i = 0; i < 2; i++) {
-    if (non_fips_pkey_evp_methods[i]->pkey_id == type) {
-      return non_fips_pkey_evp_methods[i];
+
+  // Can still seek non-fips validated algorithms in fips mode.
+  const EVP_PKEY_METHOD *const *non_fips_methods = AWSLC_non_fips_pkey_evp_methods();
+  for (size_t i = 0; i < NON_FIPS_EVP_PKEY_METHODS; i++) {
+    if (non_fips_methods[i]->pkey_id == type) {
+      return non_fips_methods[i];
     }
   }
 
