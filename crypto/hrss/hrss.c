@@ -852,7 +852,7 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
 void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
   // The vector version of this function seems slightly slower on AArch64, but
   // is useful on ARMv7 and x86-64.
-#if defined(HRSS_HAVE_VECTOR_UNIT) && !defined(OPENSSL_AARCH64
+#if defined(HRSS_HAVE_VECTOR_UNIT) && !defined(OPENSSL_AARCH64)
   if (vec_capable()) {
     poly3_invert_vec(out, in);
     return;
