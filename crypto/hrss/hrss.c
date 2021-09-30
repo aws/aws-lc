@@ -193,7 +193,7 @@ static inline vec_t vec_broadcast_bit(vec_t a) {
 
 #define HRSS_HAVE_VECTOR_UNIT
 // The Intel vector type |__m128i| is automatically aligned to a 16-byte
-// boundary. But, I can't find anything information about |uint16x8_t| should
+// boundary. But, I can't find any information about |uint16x8_t| should
 // necessarily be aligned to a 16-byte boundary. We verify 16-byte alignment in
 // |poly_mul_vec()|, so try to force alignment here.
 typedef uint16x8_t vec_t __attribute__ ((aligned (16)));
