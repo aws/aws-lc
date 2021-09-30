@@ -1578,8 +1578,6 @@ static bool ECDSASigGen(const Span<const uint8_t> args[], ReplyCallback write_re
   if (!evp_pkey || !EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key.get())) {
     return false;
   }
-  // Avoid double free. |evp_pkey| owns the EC_KEY* after |EVP_PKEY_set1_EC_KEY|.
-  key.release();
   std::vector<uint8_t> sig_der;
   size_t len;
   if (!EVP_DigestSignInit(ctx.get(), &pctx, hash, nullptr, evp_pkey.get()) ||
@@ -1634,8 +1632,6 @@ static bool ECDSASigVer(const Span<const uint8_t> args[], ReplyCallback write_re
   if (!evp_pkey || !EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key.get())) {
     return false;
   }
-  // Avoid double free. |evp_pkey| owns the EC_KEY pointer after |EVP_PKEY_set1_EC_KEY|.
-  key.release();
   uint8_t reply[1];
   if (!EVP_DigestVerifyInit(ctx.get(), &pctx, hash, nullptr, evp_pkey.get()) ||
       !EVP_DigestVerify(ctx.get(), der, der_len, msg.data(), msg.size())) {
@@ -1691,8 +1687,6 @@ static EVP_PKEY* AddRSAKeyToCache(bssl::UniquePtr<RSA>& rsa, unsigned bits) {
   if (!evp_pkey || !EVP_PKEY_set1_RSA(evp_pkey.get(), rsa.get())) {
     return nullptr;
   }
-  // |evp_pkey| owns the RSA* after |EVP_PKEY_set1_RSA|.
-  rsa.release();
 
   EVP_PKEY *const ret = evp_pkey.get();
   CachedRSAEVPKeys().emplace(static_cast<unsigned>(bits), std::move(evp_pkey));
@@ -1801,8 +1795,6 @@ static bool RSASigVer(const Span<const uint8_t> args[], ReplyCallback write_repl
   if (!evp_pkey || !EVP_PKEY_set1_RSA(evp_pkey.get(), key.get())) {
     return false;
   }
-  // Avoid double free. evp_pkey owns the RSA pointer after |EVP_PKEY_set1_RSA|.
-  key.release();
   uint8_t ok;
   int padding = UsePSS ? RSA_PKCS1_PSS_PADDING : RSA_PKCS1_PADDING;
   if (!EVP_DigestVerifyInit(ctx.get(), &pctx, md, nullptr, evp_pkey.get()) ||
