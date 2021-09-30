@@ -4,6 +4,7 @@
 #ifndef AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
 #define AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
 
+#include <openssl/aead.h>
 #include <openssl/service_indicator.h>
 
 #if defined(AWSLC_FIPS)
@@ -40,5 +41,8 @@ void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx);
 // those of other AES modes. AES-GCM is approved only with an internal IV, see
 // SP 800-38D Sec 8.2.2.
 void AEAD_verify_service_indicator(size_t key_length);
+
+// Only 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
+void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

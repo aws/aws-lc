@@ -106,6 +106,12 @@ void AEAD_verify_service_indicator(size_t key_length) {
   }
 }
 
+void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
+  if(EVP_AEAD_key_length(ctx->aead) == 16 && ctx->tag_len == 4) {
+    FIPS_service_indicator_update_state();
+  }
+}
+
 #else
 
 uint64_t FIPS_service_indicator_before_call(void) { return 0; }
@@ -132,6 +138,10 @@ void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx) {
 
 void AEAD_verify_service_indicator(size_t key_length) {
   (void)key_length;
+}
+
+void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
+  (void)ctx;
 }
 
 #endif // AWSLC_FIPS

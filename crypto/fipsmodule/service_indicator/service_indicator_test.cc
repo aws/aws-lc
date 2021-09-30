@@ -179,6 +179,16 @@ static const uint8_t kAESCTRCiphertext[64] = {
     0xe1, 0x82, 0xd4, 0x30, 0xa9, 0x16, 0x73, 0x93, 0xc3
 };
 
+static const uint8_t kAESCCMCiphertext[68] ={
+    0x7a, 0x02, 0x5d, 0x48, 0x02, 0x44, 0x78, 0x7f, 0xb4, 0x71, 0x74,
+    0x7b, 0xec, 0x4d, 0x90, 0x29, 0x7b, 0xa7, 0x65, 0xbb, 0x3e, 0x80,
+    0x41, 0x7e, 0xab, 0xb4, 0x58, 0x22, 0x4f, 0x86, 0xcd, 0xcc, 0xc2,
+    0x12, 0xeb, 0x36, 0x39, 0x89, 0xe3, 0x66, 0x2a, 0xbf, 0xe3, 0x6c,
+    0x95, 0x60, 0x13, 0x9e, 0x93, 0xcc, 0xb4, 0x06, 0xbe, 0xaf, 0x3f,
+    0xba, 0x13, 0x73, 0x09, 0x92, 0xd1, 0x80, 0x73, 0xb3, 0xc3, 0xa3,
+    0xa4, 0x8b
+};
+
 static const uint8_t kAESKWCiphertext[72] ={
     0x44, 0xec, 0x7d, 0x92, 0x2c, 0x9f, 0xf3, 0xe8, 0xac, 0xb1, 0xea,
     0x3d, 0x0a, 0xc7, 0x51, 0x27, 0xe8, 0x03, 0x11, 0x78, 0xe5, 0xaf,
@@ -434,6 +444,35 @@ TEST(ServiceIndicatorTest, AESGCM) {
       encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
           kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+}
+
+TEST(ServiceIndicatorTest, AESCCM) {
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::ScopedEVP_AEAD_CTX aead_ctx;
+  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  uint8_t output[256];
+  size_t out_len;
+
+  OPENSSL_memset(nonce, 0, sizeof(nonce));
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_ccm_bluetooth(),
+                                kAESKey, sizeof(kAESKey), EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
+
+  // AES-CCM Encryption
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,EVP_AEAD_CTX_seal(aead_ctx.get(),
+       output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
+       kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  ASSERT_TRUE(check_test(kAESCCMCiphertext, output, sizeof(kAESCCMCiphertext),
+                         "AES-CCM Encryption KAT"));
+  ASSERT_TRUE(approved);
+
+  // AES-CCM Decryption
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,EVP_AEAD_CTX_open(aead_ctx.get(),
+       output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
+       kAESCCMCiphertext, sizeof(kAESCCMCiphertext), nullptr, 0));
+  ASSERT_TRUE(check_test(kPlaintext, output, sizeof(kPlaintext),
+                         "AES-CCM Decryption KAT"));
+  ASSERT_TRUE(approved);
 }
 
 TEST(ServiceIndicatorTest, AESKW) {
