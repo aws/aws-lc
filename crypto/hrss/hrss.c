@@ -737,7 +737,7 @@ void HRSS_poly3_mul(struct poly3 *out, const struct poly3 *x,
   poly3_mod_phiN(out);
 }
 
-#if defined(HRSS_HAVE_VECTOR_UNIT) && !(defined(OPENSSL_AARCH64) || defined(OPENSSL_ARM))
+#if defined(HRSS_HAVE_VECTOR_UNIT) && !defined(OPENSSL_AARCH64)
 
 // poly3_vec_cswap swaps (|a_s|, |a_a|) and (|b_s|, |b_a|) if |swap| is
 // |0xff..ff|. Otherwise, |swap| must be zero.
@@ -818,11 +818,16 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
     const vec_t c_a = vec_broadcast_bit(f_a[0] & g_a[0]);
     const vec_t c_s = vec_broadcast_bit((f_s[0] ^ g_s[0]) & c_a);
 
+
+#if defined(OPENSSL_SSE2)
     // This is necessary because older versions of GCC, such as version 4.1.2,
     // do not support accessing individual elements of the __m128i type
     alignas(16) uint64_t mask_tmp[2];
     _mm_store_si128((void*) mask_tmp, mask);
     delta = constant_time_select_int(lsb_to_all(mask_tmp[0]), -delta, delta);
+#else
+    delta = constant_time_select_int(lsb_to_all(mask[0]), -delta, delta);
+#endif
     delta++;
 
     poly3_vec_cswap(f_s, f_a, g_s, g_a, mask);
@@ -847,7 +852,7 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
 void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
   // The vector version of this function seems slightly slower on AArch64, but
   // is useful on ARMv7 and x86-64.
-#if defined(HRSS_HAVE_VECTOR_UNIT) && !(defined(OPENSSL_AARCH64) || defined(OPENSSL_ARM))
+#if defined(HRSS_HAVE_VECTOR_UNIT) && !defined(OPENSSL_AARCH64
   if (vec_capable()) {
     poly3_invert_vec(out, in);
     return;
