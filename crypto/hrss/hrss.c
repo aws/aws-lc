@@ -192,7 +192,7 @@ static inline vec_t vec_broadcast_bit(vec_t a) {
     (defined(__ARM_NEON__) || defined(__ARM_NEON))
 
 #define HRSS_HAVE_VECTOR_UNIT
-typedef uint16x8_t vec_t;
+typedef uint16x8_t vec_t __attribute__ ((aligned (16)));
 
 // These functions perform the same actions as the SSE2 function of the same
 // name, above.
@@ -737,7 +737,7 @@ void HRSS_poly3_mul(struct poly3 *out, const struct poly3 *x,
   poly3_mod_phiN(out);
 }
 
-#if defined(HRSS_HAVE_VECTOR_UNIT) && !defined(OPENSSL_AARCH64)
+#if defined(HRSS_HAVE_VECTOR_UNIT) && !(defined(OPENSSL_AARCH64) || defined(OPENSSL_ARM))
 
 // poly3_vec_cswap swaps (|a_s|, |a_a|) and (|b_s|, |b_a|) if |swap| is
 // |0xff..ff|. Otherwise, |swap| must be zero.
@@ -847,7 +847,7 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
 void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
   // The vector version of this function seems slightly slower on AArch64, but
   // is useful on ARMv7 and x86-64.
-#if defined(HRSS_HAVE_VECTOR_UNIT) && !defined(OPENSSL_AARCH64)
+#if defined(HRSS_HAVE_VECTOR_UNIT) && !(defined(OPENSSL_AARCH64) || defined(OPENSSL_ARM))
   if (vec_capable()) {
     poly3_invert_vec(out, in);
     return;
