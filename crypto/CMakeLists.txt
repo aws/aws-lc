@@ -210,6 +210,7 @@ if(GO_EXECUTABLE)
     err/evp.errordata
     err/hkdf.errordata
     err/obj.errordata
+    err/ocsp.errordata
     err/pem.errordata
     err/pkcs7.errordata
     err/pkcs8.errordata
@@ -281,7 +282,6 @@ add_library(
   chacha/chacha.c
   cipher_extra/cipher_extra.c
   cipher_extra/derive_key.c
-  cipher_extra/e_aesccm.c
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
@@ -290,7 +290,6 @@ add_library(
   cipher_extra/e_rc4.c
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
-  cmac/cmac.c
   conf/conf.c
   cpu-aarch64-fuchsia.c
   cpu-aarch64-linux.c
@@ -340,6 +339,10 @@ add_library(
   mem.c
   obj/obj.c
   obj/obj_xref.c
+  ocsp/ocsp_asn.c
+  ocsp/ocsp_client.c
+  ocsp/ocsp_lib.c
+  ocsp/ocsp_verify.c
   pem/pem_all.c
   pem/pem_info.c
   pem/pem_lib.c
@@ -464,17 +467,13 @@ add_library(
 )
 
 if(FIPS_SHARED)
-  set(EXTRA_INJECT_HASH_ARGS)
-  if((${ARCH} STREQUAL "aarch64") OR ANDROID)
-    set(EXTRA_INJECT_HASH_ARGS "-sha256")
-  endif()
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
   # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
   add_custom_command(
     TARGET crypto POST_BUILD
     COMMAND ${GO_EXECUTABLE} run
     ${CMAKE_CURRENT_SOURCE_DIR}/../util/fipstools/inject_hash/inject_hash.go
-    -o libcrypto.so -in-object libcrypto.so ${EXTRA_INJECT_HASH_ARGS}
+    -o libcrypto.so -in-object libcrypto.so -sha256
     # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
     # go_executable isn't used (as it doesn't get built), but we list this
     # dependency anyway in case it starts working in some CMake version.
@@ -554,7 +553,6 @@ if(BUILD_TESTING)
     chacha/chacha_test.cc
     cipher_extra/aead_test.cc
     cipher_extra/cipher_test.cc
-    cmac/cmac_test.cc
     compiler_test.cc
     conf/conf_test.cc
     constant_time_test.cc
@@ -574,6 +572,7 @@ if(BUILD_TESTING)
     evp/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
+    fipsmodule/cmac/cmac_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
@@ -582,6 +581,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     hkdf/hkdf_test.cc
     hpke/hpke_test.cc
@@ -590,6 +590,7 @@ if(BUILD_TESTING)
     impl_dispatch_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
+    ocsp/ocsp_test.cc
     pem/pem_test.cc
     pkcs7/pkcs7_test.cc
     pkcs8/pkcs8_test.cc

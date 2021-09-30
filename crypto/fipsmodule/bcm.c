@@ -59,6 +59,8 @@
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
 #include "cipher/e_des.c"
+#include "cipher/e_aesccm.c"
+#include "cmac/cmac.c"
 #include "des/des.c"
 #include "dh/check.c"
 #include "dh/dh.c"
@@ -99,6 +101,7 @@
 #include "rsa/rsa_impl.c"
 #include "self_check/fips.c"
 #include "self_check/self_check.c"
+#include "service_indicator/service_indicator.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"
@@ -200,13 +203,8 @@ BORINGSSL_bcm_power_on_self_test(void) {
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
-#if defined(OPENSSL_AARCH64) || defined(OPENSSL_ANDROID)
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
-#else
-  uint8_t result[SHA512_DIGEST_LENGTH];
-  const EVP_MD *const kHashFunction = EVP_sha512();
-#endif
 
   static const uint8_t kHMACKey[64] = {0};
   unsigned result_len;
@@ -241,13 +239,17 @@ BORINGSSL_bcm_power_on_self_test(void) {
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
+  // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
+  // check before the integrity check itself. So we first call the self-test
+  // function and only after that we check the integrity of the module.
+  if (!boringssl_fips_self_test(BORINGSSL_bcm_text_hash, sizeof(result))) {
+    goto err;
+  }
+
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
     goto err;
   }
 
-  if (!boringssl_fips_self_test(BORINGSSL_bcm_text_hash, sizeof(result))) {
-    goto err;
-  }
 #else
   if (!BORINGSSL_self_test()) {
     goto err;

@@ -38,16 +38,16 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/curve25519/ed25519_tests.txt
-  crypto/cmac/cavp_3des_cmac_tests.txt
-  crypto/cmac/cavp_aes128_cmac_tests.txt
-  crypto/cmac/cavp_aes192_cmac_tests.txt
-  crypto/cmac/cavp_aes256_cmac_tests.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp/evp_tests.txt
   crypto/evp/scrypt_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt
   crypto/fipsmodule/bn/bn_tests.txt
   crypto/fipsmodule/bn/miller_rabin_tests.txt
+  crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt
+  crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt
+  crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
+  crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
   crypto/fipsmodule/ec/p256-nistz_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
@@ -56,6 +56,85 @@ set(
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/ocsp/test/aws/ocsp_response.der
+  crypto/ocsp/test/aws/ocsp_response_ca_signed.der
+  crypto/ocsp/test/aws/ocsp_response_revoked.der
+  crypto/ocsp/test/aws/ocsp_response_unknown.der
+  crypto/ocsp/test/aws/ocsp_response_wrong_signer.der
+  crypto/ocsp/test/aws/ocsp_response_sha256.der
+  crypto/ocsp/test/aws/ocsp_response_revoked_sha256.der
+  crypto/ocsp/test/aws/ocsp_response_unknown_sha256.der
+  crypto/ocsp/test/aws/ocsp_response_wrong_signer_sha256.der
+  crypto/ocsp/test/aws/ocsp_response_malformedrequest.der
+  crypto/ocsp/test/aws/ocsp_response_internalerror.der
+  crypto/ocsp/test/aws/ocsp_response_trylater.der
+  crypto/ocsp/test/aws/ocsp_response_sigrequired.der
+  crypto/ocsp/test/aws/ocsp_response_unauthorized.der
+  crypto/ocsp/test/aws/ca_cert.pem
+  crypto/ocsp/test/aws/server_cert.pem
+  crypto/ocsp/test/aws/server_ecdsa_cert.pem
+  crypto/ocsp/test/ND1.ors
+  crypto/ocsp/test/ND2.ors
+  crypto/ocsp/test/ND3.ors
+  crypto/ocsp/test/ISOP_ND1.ors
+  crypto/ocsp/test/ISOP_ND2.ors
+  crypto/ocsp/test/ISOP_ND3.ors
+  crypto/ocsp/test/WRID_ND1.ors
+  crypto/ocsp/test/WRID_ND2.ors
+  crypto/ocsp/test/WRID_ND3.ors
+  crypto/ocsp/test/WINH_ND1.ors
+  crypto/ocsp/test/WINH_ND2.ors
+  crypto/ocsp/test/WINH_ND3.ors
+  crypto/ocsp/test/WIKH_ND1.ors
+  crypto/ocsp/test/WIKH_ND2.ors
+  crypto/ocsp/test/WIKH_ND3.ors
+  crypto/ocsp/test/D1.ors
+  crypto/ocsp/test/D2.ors
+  crypto/ocsp/test/D3.ors
+  crypto/ocsp/test/ISOP_D1.ors
+  crypto/ocsp/test/ISOP_D2.ors
+  crypto/ocsp/test/ISOP_D3.ors
+  crypto/ocsp/test/WRID_D1.ors
+  crypto/ocsp/test/WRID_D2.ors
+  crypto/ocsp/test/WRID_D3.ors
+  crypto/ocsp/test/WINH_D1.ors
+  crypto/ocsp/test/WINH_D2.ors
+  crypto/ocsp/test/WINH_D3.ors
+  crypto/ocsp/test/WIKH_D1.ors
+  crypto/ocsp/test/WIKH_D2.ors
+  crypto/ocsp/test/WIKH_D3.ors
+  crypto/ocsp/test/WKDOSC_D1.ors
+  crypto/ocsp/test/WKDOSC_D2.ors
+  crypto/ocsp/test/WKDOSC_D3.ors
+  crypto/ocsp/test/ISDOSC_D1.ors
+  crypto/ocsp/test/ISDOSC_D2.ors
+  crypto/ocsp/test/ISDOSC_D3.ors
+  crypto/ocsp/test/ND1_Cross_Root.pem
+  crypto/ocsp/test/ND1_Issuer_ICA.pem
+  crypto/ocsp/test/ND1_Issuer_ICA-Cross.pem
+  crypto/ocsp/test/ND2_Issuer_Root.pem
+  crypto/ocsp/test/ND3_Issuer_Root.pem
+  crypto/ocsp/test/WKIC_ND1_Issuer_ICA.pem
+  crypto/ocsp/test/WKIC_ND2_Issuer_Root.pem
+  crypto/ocsp/test/WKIC_ND3_Issuer_Root.pem
+  crypto/ocsp/test/WSNIC_ND1_Issuer_ICA.pem
+  crypto/ocsp/test/WSNIC_ND2_Issuer_Root.pem
+  crypto/ocsp/test/WSNIC_ND3_Issuer_Root.pem
+  crypto/ocsp/test/ISIC_ND1_Issuer_ICA.pem
+  crypto/ocsp/test/ISIC_ND2_Issuer_Root.pem
+  crypto/ocsp/test/ISIC_ND3_Issuer_Root.pem
+  crypto/ocsp/test/D1_Issuer_ICA.pem
+  crypto/ocsp/test/D2_Issuer_Root.pem
+  crypto/ocsp/test/D3_Issuer_Root.pem
+  crypto/ocsp/test/WKIC_D1_Issuer_ICA.pem
+  crypto/ocsp/test/WKIC_D2_Issuer_Root.pem
+  crypto/ocsp/test/WKIC_D3_Issuer_Root.pem
+  crypto/ocsp/test/WSNIC_D1_Issuer_ICA.pem
+  crypto/ocsp/test/WSNIC_D2_Issuer_Root.pem
+  crypto/ocsp/test/WSNIC_D3_Issuer_Root.pem
+  crypto/ocsp/test/ISIC_D1_Issuer_ICA.pem
+  crypto/ocsp/test/ISIC_D2_Issuer_Root.pem
+  crypto/ocsp/test/ISIC_D3_Issuer_Root.pem
   crypto/pkcs8/test/empty_password.p12
   crypto/pkcs8/test/no_encryption.p12
   crypto/pkcs8/test/nss.p12

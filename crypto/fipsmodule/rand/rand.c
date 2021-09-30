@@ -49,9 +49,22 @@
 // This might be a bit of a leap of faith, esp on Windows, but there's nothing
 // that we can do about it.)
 
+// When in FIPS mode we use the CPU Jitter entropy source to seed our DRBG.  
+// This entropy source is very slow and can incur a cost anywhere between 10-60ms
+// depending on configuration and CPU.  Increasing to 2^24 will amortize the 
+// penalty over more requests.  This is the same value used in OpenSSL 3.0  
+// and meets the requirements defined in SP 800-90B for a max reseed of interval (2^48)
+//
+// CPU Jitter:  https://www.chronox.de/jent/doc/CPU-Jitter-NPTRNG.html
+// 
 // kReseedInterval is the number of generate calls made to CTR-DRBG before
 // reseeding.
+
+#if defined(BORINGSSL_FIPS)
+static const unsigned kReseedInterval = 16777216;
+#else
 static const unsigned kReseedInterval = 4096;
+#endif
 
 // CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
 // continuous random number generator test in FIPS 140-2, section 4.9.2.
@@ -98,6 +111,8 @@ static void rand_thread_state_clear_all(void) {
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
     CTR_DRBG_clear(&cur->drbg);
+    OPENSSL_cleanse(cur->last_block, sizeof(cur->last_block));
+
     jent_entropy_collector_free(cur->jitter_ec);
   }
   // The locks are deliberately left locked so that any threads that are still
@@ -130,6 +145,7 @@ static void rand_thread_state_free(void *state_in) {
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
   CTR_DRBG_clear(&state->drbg);
+  OPENSSL_cleanse(state->last_block, sizeof(state->last_block));
 
   jent_entropy_collector_free(state->jitter_ec);
 #endif
