@@ -117,16 +117,16 @@ void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
 uint64_t FIPS_service_indicator_before_call(void) { return 0; }
 uint64_t FIPS_service_indicator_after_call(void) { return 0; }
 
+
+// Service indicator check functions listed below are optimized to not do extra
+// checks, when not in FIPS mode. Arguments must be cast to void to avoid
+// compiler errors.
+
 int FIPS_service_indicator_check_approved(int before, int after) {
   (void)before;
   (void)after;
   return AWSLC_NOT_APPROVED;
 }
-
-
-// Service indicator check functions listed below are optimized to not do extra
-// checks, when not in FIPS mode. Arguments must be cast to void to avoid
-// compiler errors.
 
 void AES_verify_service_indicator(unsigned key_rounds) {
   (void)key_rounds;
