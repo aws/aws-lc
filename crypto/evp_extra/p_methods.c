@@ -13,12 +13,12 @@ static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
 };
 
 static const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
-	&rsa_asn1_meth,
-	&rsa_pss_asn1_meth,
-	&ec_asn1_meth,
-	&dsa_asn1_meth,
-	&ed25519_asn1_meth,
-	&x25519_asn1_meth,
+  &rsa_asn1_meth,
+  &rsa_pss_asn1_meth,
+  &ec_asn1_meth,
+  &dsa_asn1_meth,
+  &ed25519_asn1_meth,
+  &x25519_asn1_meth,
 };
 
 OPENSSL_STATIC_ASSERT(

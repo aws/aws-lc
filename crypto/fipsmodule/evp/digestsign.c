@@ -66,13 +66,6 @@ enum evp_sign_verify_t {
   evp_verify,
 };
 
-/*
-static const struct evp_md_pctx_ops md_pctx_ops = {
-  EVP_PKEY_CTX_free,
-  EVP_PKEY_CTX_dup,
-};
-*/
-
 DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, EVP_MD_pctx_ops) {
   out->free = EVP_PKEY_CTX_free;
   out->dup = EVP_PKEY_CTX_dup;

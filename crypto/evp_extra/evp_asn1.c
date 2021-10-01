@@ -76,7 +76,7 @@ static int parse_key_type(CBS *cbs, int *out_type) {
   }
 
   const EVP_PKEY_ASN1_METHOD *const *asn1_methods = AWSLC_non_fips_pkey_evp_asn1_methods();
-  for (unsigned i = 0; i < ASN1_EVP_PKEY_METHODS; i++) {
+  for (size_t i = 0; i < ASN1_EVP_PKEY_METHODS; i++) {
     const EVP_PKEY_ASN1_METHOD *method = asn1_methods[i];
     if (CBS_len(&oid) == method->oid_len &&
         OPENSSL_memcmp(CBS_data(&oid), method->oid, method->oid_len) == 0) {
