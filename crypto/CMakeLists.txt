@@ -127,6 +127,7 @@ else()
 
 endif()
 add_subdirectory(fipsmodule)
+add_subdirectory(pq-crypto)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
@@ -301,13 +302,14 @@ add_library(
   cpu-intel.c
   cpu-ppc64le.c
   crypto.c
+  #[[
   sike/sikep434r3.c
   sike/sikep434r3_fips202.c
   sike/sikep434r3_fp.c
   sike/sikep434r3_fpx.c
   sike/sikep434r3_ec_isogeny.c
   sike/sikep434r3_sidh.c
-  sike/sikep434r3_kem.c
+  sike/sikep434r3_kem.c]]
   curve25519/curve25519.c
   curve25519/spake25519.c
   dh_extra/params.c
@@ -539,6 +541,7 @@ if(BUILD_TESTING)
   )
 
   target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
+  target_link_libraries(crypto pq_crypto)
 
   add_dependencies(urandom_test global_target)
   add_dependencies(all_tests urandom_test)

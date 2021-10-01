@@ -19,6 +19,7 @@
 #include <openssl/base.h>
 #include <openssl/curve25519.h>
 #include <openssl/sike_internal.h>
+#include <openssl/P434_api.h>
 #include <openssl/cpucycles.h>
 #include <openssl/digest.h>
 

@@ -31,6 +31,15 @@
 #include <openssl/sha.h>
 #include <openssl/cpucycles.h>
 
+//TEMPORARY!! WILL REMOVE AND CHANGE THE CODE IF WE WORK WITH AWS-LC/pq-crypto
+//NOTE: RETURN VALUES FROM SIKE SUBROUTINES DIFFER FOR sike and pq-crypto DIRS !!!! 
+//FOR NOW CHANGE THE CHECK TO if(sike_keypair(.., ..)<0), 
+//PREVIOUS WAS if(!sike_keypair(.., ..))
+#define sike_p434_r3_crypto_kem_keypair crypto_kem_keypair_SIKEp434
+#define sike_p434_r3_crypto_kem_enc crypto_kem_enc_SIKEp434
+#define sike_p434_r3_crypto_kem_dec crypto_kem_dec_SIKEp434
+
+
 // This file implements draft-irtf-cfrg-hpke-08.
 #if HPKE_VERSION_PQ == 0
 #define MAX_SEED_LEN X25519_PRIVATE_KEY_LEN
@@ -177,6 +186,7 @@ static int SIKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
   //unsigned long long cycles1, cycles2;
   //cycles1=cpucycles();
   sike_p434_r3_crypto_kem_keypair(key->public_key, (unsigned char *) key->private_key);
+  //crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *) key->private_key);
   //cycles2=cpucycles();
   //printf("crypto_keypair %llu \n", (cycles2-cycles1));
 
@@ -295,7 +305,7 @@ static int SIKE_encap_with_seed(
 
   uint8_t ss_sike[SIKE_P434_R3_SHARED_SECRET_BYTES];
   //uint8_t ct_sike[SIKE_P434_R3_CIPHERTEXT_BYTES];
-  if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES || !sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key)) {
+  if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES || sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key)<0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
@@ -368,7 +378,7 @@ static int Hybrid_encap_with_seed(
 
   //uint8_t ct_sike[SIKE_P434_R3_CIPHERTEXT_BYTES];
   if (peer_public_key_len != X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_PUBLIC_KEY_BYTES ||
-      !sike_p434_r3_crypto_kem_enc(out_enc + X25519_PUBLIC_VALUE_LEN, x25519_SIKE_ss + X25519_SHARED_KEY_LEN, peer_public_key + X25519_PUBLIC_VALUE_LEN)) {
+      sike_p434_r3_crypto_kem_enc(out_enc + X25519_PUBLIC_VALUE_LEN, x25519_SIKE_ss + X25519_SHARED_KEY_LEN, peer_public_key + X25519_PUBLIC_VALUE_LEN)<0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
@@ -447,7 +457,7 @@ static int SIKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
   //cycles2=cpucycles();
   //printf("crypto_dec %llu \n\n\n", (cycles2-cycles1));
 
-  if (!sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key)) {
+  if (sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key)<0) {
      //printf("sike_p434_r3_crypto_kem_dec");
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
@@ -491,7 +501,7 @@ static int Hybrid_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
 
 
 
-  if (!sike_p434_r3_crypto_kem_dec(x25519_SIKE_ss + X25519_SHARED_KEY_LEN, enc + X25519_PUBLIC_VALUE_LEN, key->private_key + X25519_PRIVATE_KEY_LEN)) {
+  if (sike_p434_r3_crypto_kem_dec(x25519_SIKE_ss + X25519_SHARED_KEY_LEN, enc + X25519_PUBLIC_VALUE_LEN, key->private_key + X25519_PRIVATE_KEY_LEN)<0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
