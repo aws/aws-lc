@@ -192,7 +192,11 @@ static inline vec_t vec_broadcast_bit(vec_t a) {
     (defined(__ARM_NEON__) || defined(__ARM_NEON))
 
 #define HRSS_HAVE_VECTOR_UNIT
-typedef uint16x8_t vec_t;
+// The Intel vector type |__m128i| is automatically aligned to a 16-byte
+// boundary. But, I can't find any information about |uint16x8_t| should
+// necessarily be aligned to a 16-byte boundary. We verify 16-byte alignment in
+// |poly_mul_vec()|, so try to force alignment here.
+typedef uint16x8_t vec_t __attribute__ ((aligned (16)));
 
 // These functions perform the same actions as the SSE2 function of the same
 // name, above.
@@ -818,11 +822,17 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
     const vec_t c_a = vec_broadcast_bit(f_a[0] & g_a[0]);
     const vec_t c_s = vec_broadcast_bit((f_s[0] ^ g_s[0]) & c_a);
 
+    // SSE2 is an Intel thing. So, checking for |OPENSSL_SSE2| should avoid
+    // hitting the Arm specific path under the #else. 
+#if defined(OPENSSL_SSE2)
     // This is necessary because older versions of GCC, such as version 4.1.2,
     // do not support accessing individual elements of the __m128i type
     alignas(16) uint64_t mask_tmp[2];
     _mm_store_si128((void*) mask_tmp, mask);
     delta = constant_time_select_int(lsb_to_all(mask_tmp[0]), -delta, delta);
+#else
+    delta = constant_time_select_int(lsb_to_all(mask[0]), -delta, delta);
+#endif
     delta++;
 
     poly3_vec_cswap(f_s, f_a, g_s, g_a, mask);
