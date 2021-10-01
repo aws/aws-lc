@@ -129,6 +129,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_demont_p521.o \
       p521/bignum_double_p521.o \
       p521/bignum_half_p521.o \
+      p521/bignum_mod_n521_9.o \
       p521/bignum_mod_p521_9.o \
       p521/bignum_montmul_p521.o \
       p521/bignum_montsqr_p521.o \
