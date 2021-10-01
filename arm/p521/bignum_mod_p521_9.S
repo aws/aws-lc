@@ -56,9 +56,9 @@ bignum_mod_p521_9:
 // digits d7,...,d1 consist entirely of 1 bits, we can condense the
 // carry chain by ANDing digits together, perhaps reducing its latency.
 // This condenses only three pairs; the payoff beyond that seems limited.
+// By stuffing in 1 bits from 521 position upwards, get CF directly
 
                 subs    xzr, xzr, xzr
-
                 ldp     d0, d1, [x]
                 adcs    xzr, d0, h
                 adcs    xzr, d1, xzr
@@ -71,15 +71,11 @@ bignum_mod_p521_9:
                 ldp     d6, d7, [x, #48]
                 and     t, d6, d7
                 adcs    xzr, t, xzr
+                orr     t, d8, #~0x1FF
+                adcs    t, t, xzr
 
-                and     t, d8, #0x1FF
-                adc     t, t, xzr
-
-// Now H + L >= p_521 <=> H + L + 1 >= 2^521 <=> CF from this comparison
-
-                cmp     t, #512
-
-// Now if CF is set we want (H + L) - p_521 = (H + L + 1) - 2^521
+// Now H + L >= p_521 <=> H + L + 1 >= 2^521 <=> CF from this comparison.
+// So if CF is set we want (H + L) - p_521 = (H + L + 1) - 2^521
 // while otherwise we want just H + L. So mask H + L + CF to 521 bits.
 
                 adcs    d0, d0, h

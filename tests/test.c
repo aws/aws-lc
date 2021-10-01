@@ -4955,7 +4955,6 @@ int test_allnonbmi()
   dotest(test_bignum_madd);
   dotest(test_bignum_mod_n256_4);
   dotest(test_bignum_mod_n384_6);
-  dotest(test_bignum_mod_n521_9);
   dotest(test_bignum_mod_p256_4);
   dotest(test_bignum_mod_p384_6);
   dotest(test_bignum_mod_p521_9);

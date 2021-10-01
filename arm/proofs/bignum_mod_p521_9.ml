@@ -38,9 +38,8 @@ let bignum_mod_p521_9_mc =
   0xa9432c2a;       (* arm_LDP X10 X11 X1 (Immediate_Offset (iword (&48))) *)
   0x8a0b0143;       (* arm_AND X3 X10 X11 *)
   0xba1f007f;       (* arm_ADCS XZR X3 XZR *)
-  0x92402183;       (* arm_AND X3 X12 (rvalue (word 511)) *)
-  0x9a1f0063;       (* arm_ADC X3 X3 XZR *)
-  0xf108007f;       (* arm_CMP X3 (rvalue (word 512)) *)
+  0xb277d983;       (* arm_ORR X3 X12 (rvalue (word 18446744073709551104)) *)
+  0xba1f0063;       (* arm_ADCS X3 X3 XZR *)
   0xba020084;       (* arm_ADCS X4 X4 X2 *)
   0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
   0xba1f00c6;       (* arm_ADCS X6 X6 XZR *)
@@ -69,13 +68,13 @@ let p_521 = new_definition `p_521 = 68647976601306097149819007990813932172694353
 
 let BIGNUM_MOD_P521_9_CORRECT = time prove
  (`!z x n pc.
-      nonoverlapping (word pc,0x88) (z,8 * 9)
+      nonoverlapping (word pc,0x84) (z,8 * 9)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) bignum_mod_p521_9_mc /\
                 read PC s = word pc /\
                 C_ARGUMENTS [z; x] s /\
                 bignum_from_memory (x,9) s = n)
-           (\s. read PC s = word (pc + 0x84) /\
+           (\s. read PC s = word (pc + 0x80) /\
                 bignum_from_memory (z,9) s = n MOD p_521)
           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12] ,,
            MAYCHANGE SOME_FLAGS ,,
@@ -133,48 +132,29 @@ let BIGNUM_MOD_P521_9_CORRECT = time prove
   (*** Initial condensed comparison H + L + 1 >= 2 EXP 521  ***)
 
   ARM_ACCSTEPS_TAC BIGNUM_MOD_P521_9_EXEC
-   [5;6;9;12;15;17] (1--18) THEN
+   [5;6;9;12;15;17] (1--17) THEN
 
-  SUBGOAL_THEN `512 <= val(sum_s17:int64) <=> p_521 <= val(h:int64) + l`
-  SUBST_ALL_TAC THENL
+  SUBGOAL_THEN `carry_s17 <=> p_521 <= val(h:int64) + l` SUBST_ALL_TAC THENL
    [TRANS_TAC EQ_TRANS
-     `512 <=
-      bignum_of_wordlist[sum_s5;sum_s6;sum_s9;sum_s12;sum_s15;sum_s17] DIV
-      2 EXP (5 * 64)` THEN
-    CONJ_TAC THENL
-     [REWRITE_TAC[TOP_DEPTH_CONV num_CONV `5`; MULT_CLAUSES; ADD_CLAUSES] THEN
-      REWRITE_TAC[EXP_ADD; GSYM DIV_DIV] THEN
-      REWRITE_TAC[BIGNUM_OF_WORDLIST_DIV; BIGNUM_OF_WORDLIST_SING];
-      REWRITE_TAC[ARITH_RULE
-       `512 <= x DIV 2 EXP (5 * 64) <=> 2 EXP 329 <= x`]] THEN
-    TRANS_TAC EQ_TRANS
      `2 EXP 329 <=
       bignum_of_wordlist [n_0; n_1; word_and n_2 n_3; word_and n_4 n_5;
                           word_and n_6 n_7; word_and n_8 (word 511)] +
       val(h:int64) + 1` THEN
     CONJ_TAC THENL
-     [AP_TERM_TAC THEN REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
-      MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
-      MAP_EVERY EXISTS_TAC [`384`; `&0:real`] THEN
-      CONJ_TAC THENL
-       [REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-        BOUNDER_TAC;
-        ALL_TAC] THEN
-      CONJ_TAC THENL
-       [REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0] THEN
-        REWRITE_TAC[BIGNUM_OF_WORDLIST_SPLIT_RULE(5,1)] THEN
-        REWRITE_TAC[SYM(NUM_REDUCE_CONV `2 EXP 9 - 1`)] THEN
-        REWRITE_TAC[VAL_WORD_AND_MASK_WORD; BIGNUM_OF_WORDLIST_SING] THEN
-        MATCH_MP_TAC(ARITH_RULE
-         `x < 2 EXP 320 /\ y < 2 EXP 55
-          ==> (x + 2 EXP 320 * z MOD 2 EXP 9) + y + 1 < 2 EXP 384`) THEN
-        ASM_REWRITE_TAC[bignum_of_wordlist] THEN
-        REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN BOUNDER_TAC;
-        REWRITE_TAC[INTEGER_CLOSED]] THEN
-      EXPAND_TAC "l" THEN
+     [MATCH_MP_TAC FLAG_FROM_CARRY_LE THEN EXISTS_TAC `384` THEN
       REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-      ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
-      DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
+      ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+      SUBGOAL_THEN
+       `&(val(word_or n_8 (word 18446744073709551104):int64)):real =
+         &2 pow 9 * (&2 pow 55 - &1) + &(val(word_and n_8 (word 511)))`
+      SUBST1_TAC THENL
+       [ONCE_REWRITE_TAC[WORD_BITWISE_RULE
+         `word_or a b = word_or b (word_and a (word_not b))`] THEN
+        SIMP_TAC[VAL_WORD_OR_DISJOINT; WORD_BITWISE_RULE
+         `word_and x (word_and y (word_not x)) = word 0`] THEN
+        CONV_TAC WORD_REDUCE_CONV THEN CONV_TAC REAL_RAT_REDUCE_CONV THEN
+        REWRITE_TAC[REAL_OF_NUM_ADD];
+        DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC];
       EXPAND_TAC "l"] THEN
     REWRITE_TAC[bignum_of_wordlist] THEN
     REWRITE_TAC[SYM(NUM_REDUCE_CONV `2 EXP 9 - 1`)] THEN
@@ -203,11 +183,10 @@ let BIGNUM_MOD_P521_9_CORRECT = time prove
     ASM_ARITH_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
-  (*** The final optional subtraction of 1 and masking ***)
+  (*** The final optional addition of 1 and masking ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MOD_P521_9_EXEC (19--27) (19--33) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MOD_P521_9_EXEC (18--26) (18--32) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-
   CONV_TAC SYM_CONV THEN CONV_TAC(RAND_CONV BIGNUM_LEXPAND_CONV) THEN
   ASM_REWRITE_TAC[] THEN MATCH_MP_TAC EQUAL_FROM_CONGRUENT_MOD_MOD THEN
   MAP_EVERY EXISTS_TAC
@@ -245,7 +224,7 @@ let BIGNUM_MOD_P521_9_CORRECT = time prove
 
 let BIGNUM_MOD_P521_9_SUBROUTINE_CORRECT = time prove
  (`!z x n pc returnaddress.
-      nonoverlapping (word pc,0x88) (z,8 * 9)
+      nonoverlapping (word pc,0x84) (z,8 * 9)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) bignum_mod_p521_9_mc /\
                 read PC s = word pc /\
