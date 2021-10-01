@@ -326,9 +326,9 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   return 1;
 }
 
-static int EVP_EC_KEY_check_fips(EC_KEY *key,
-                                 uint8_t* msg,
-                                 size_t msg_len) {
+static int EVP_EC_KEY_check_fips(EC_KEY *key) {
+  uint8_t msg[16] = {0};
+  size_t msg_len = 16;
   int ret = 0;
   uint8_t* sig_der = NULL;
   EVP_PKEY* evp_pkey = EVP_PKEY_new();
@@ -348,9 +348,7 @@ static int EVP_EC_KEY_check_fips(EC_KEY *key,
     goto err;
   }
   #if defined(BORINGSSL_FIPS_BREAK_ECDSA_PWCT)
-    if (msg_len > 0) {
-      msg[0] = ~msg[0];
-    }
+    msg[0] = ~msg[0];
   #endif
   if (!EVP_DigestVerifyInit(ctx, NULL, hash, NULL, evp_pkey) ||
       !EVP_DigestVerify(ctx, sig_der, sign_len, msg, msg_len)) {
@@ -376,9 +374,7 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   }
 
   if (key->priv_key) {
-    uint8_t msg[16] = {0};
-    size_t msg_len = 16;
-    if (!EVP_EC_KEY_check_fips((EC_KEY*)key, msg, msg_len)) {
+    if (!EVP_EC_KEY_check_fips((EC_KEY*)key)) {
       OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
       return 0;
     }
