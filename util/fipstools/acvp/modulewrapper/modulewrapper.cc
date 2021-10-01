@@ -1714,22 +1714,22 @@ static bool RSAKeyGen(const Span<const uint8_t> args[], ReplyCallback write_repl
   }
   memcpy(&bits, args[0].data(), sizeof(bits));
 
-  bssl::UniquePtr<RSA> key(RSA_new());
-  if (!RSA_generate_key_fips(key.get(), bits, nullptr)) {
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  if (!RSA_generate_key_fips(rsa.get(), bits, nullptr)) {
     LOG_ERROR("RSA_generate_key_fips failed for modulus length %u.\n", bits);
     return false;
   }
 
   const BIGNUM *n, *e, *d, *p, *q;
-  RSA_get0_key(key.get(), &n, &e, &d);
-  RSA_get0_factors(key.get(), &p, &q);
+  RSA_get0_key(rsa.get(), &n, &e, &d);
+  RSA_get0_factors(rsa.get(), &p, &q);
 
   if (!write_reply({BIGNUMBytes(e), BIGNUMBytes(p), BIGNUMBytes(q),
                     BIGNUMBytes(n), BIGNUMBytes(d)})) {
     return false;
   }
 
-  if (AddRSAKeyToCache(key, bits) == nullptr) {
+  if (AddRSAKeyToCache(rsa, bits) == nullptr) {
     return false;
   }
   return true;
@@ -1760,7 +1760,6 @@ static bool RSASigGen(const Span<const uint8_t> args[], ReplyCallback write_repl
   if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr, evp_pkey) ||
       !EVP_PKEY_CTX_set_rsa_padding(pctx, padding) ||
       !EVP_DigestSign(ctx.get(), nullptr, &sig_len, msg.data(), msg.size())) {
-    LOG_ERROR("RSASIGN Failed 2: %s.\n", ERR_reason_error_string(ERR_peek_error()));
     return false;
   }
   sig.resize(sig_len);
