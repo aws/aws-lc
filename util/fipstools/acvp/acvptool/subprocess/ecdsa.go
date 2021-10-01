@@ -180,7 +180,7 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				if ver_err != nil {
 					return nil, fmt.Errorf("After signature generation, signature verification failed for test case %d/%d: %s", group.ID, test.ID, ver_err)
 				}
-				// result[0] should be a single byte. The value should be one in this case.
+				// ver_result[0] should be a single byte. The value should be one in this case.
 				if !bytes.Equal(ver_result[0], []byte{01}) {
 					return nil, fmt.Errorf("After signature generation, signature verification returned unexpected result: %q for test case %d/%d.", ver_result[0], group.ID, test.ID)
 				}
