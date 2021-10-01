@@ -14,7 +14,7 @@
  */
 
 // ----------------------------------------------------------------------------
-// Convert to Montgomery form z := (2^256 * x) mod p_256
+// Convert to Montgomery form z := (2^384 * x) mod p_384
 // Input x[6]; output z[6]
 //
 //    extern void bignum_tomont_p384
