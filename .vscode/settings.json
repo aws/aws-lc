@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "cpucycles.h": "c",
+        "curve25519.h": "c",
+        "sike_internal.h": "c"
+    }
+}

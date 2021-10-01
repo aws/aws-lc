@@ -183,12 +183,12 @@ static int SIKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
   }
 
   //OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
+  unsigned long long cycles1, cycles2;
+  cycles1=cpucycles();
   sike_p434_r3_crypto_kem_keypair(key->public_key, (unsigned char *) key->private_key);
-  //crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *) key->private_key);
-  //cycles2=cpucycles();
-  //printf("crypto_keypair %llu \n", (cycles2-cycles1));
+  crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *) key->private_key);
+  cycles2=cpucycles();
+  printf("crypto_keypair %llu \n", (cycles2-cycles1));
 
   return 1;
 }
@@ -227,11 +227,11 @@ static int x25519_generate_key(EVP_HPKE_KEY *key) {
 
 static int SIKE_generate_key(EVP_HPKE_KEY *key) {
 
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
+  unsigned long long cycles1, cycles2;
+  cycles1=cpucycles();
   sike_p434_r3_crypto_kem_keypair((unsigned char *)key->public_key , (unsigned char *)key->private_key);
-  //cycles2=cpucycles();
-  //printf("crypto_keypair %llu \n", (cycles2-cycles1));
+  cycles2=cpucycles();
+  printf("crypto_keypair %llu \n", (cycles2-cycles1));
   
   return 1;
 }
@@ -305,20 +305,21 @@ static int SIKE_encap_with_seed(
 
   uint8_t ss_sike[SIKE_P434_R3_SHARED_SECRET_BYTES];
   //uint8_t ct_sike[SIKE_P434_R3_CIPHERTEXT_BYTES];
-  if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES || sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key)<0) {
+  //if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES || sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key)<0) {
+  if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
-  //int sike_res=sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key);
-  //cycles2=cpucycles();
-  //printf("crypto_enc %llu \n", (cycles2-cycles1));
-  //if (!sike_res) {
-    //printf("sike_p434_r3_crypto_kem_enc");
-   // OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    //return 0;
- // }
+  unsigned long long cycles1, cycles2;
+  cycles1=cpucycles();
+  int sike_res=sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key);
+  cycles2=cpucycles();
+  printf("crypto_enc %llu \n", (cycles2-cycles1));
+  if (sike_res<0) {
+    printf("sike_p434_r3_crypto_kem_enc");
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
+  }
 
 
   uint8_t kem_context[2 * SIKE_P434_R3_PUBLIC_KEY_BYTES];
@@ -451,13 +452,14 @@ static int SIKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
     return 0;
   }
 
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
-  //int sike_res=sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key);
-  //cycles2=cpucycles();
-  //printf("crypto_dec %llu \n\n\n", (cycles2-cycles1));
+  unsigned long long cycles1, cycles2;
+  cycles1=cpucycles();
+  int sike_res=sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key);
+  cycles2=cpucycles();
+  printf("crypto_dec %llu \n\n\n", (cycles2-cycles1));
 
-  if (sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key)<0) {
+  //if (sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key)<0) {
+  if (sike_res<0) {
      //printf("sike_p434_r3_crypto_kem_dec");
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;

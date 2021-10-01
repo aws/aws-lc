@@ -5,7 +5,7 @@
 *********************************************************************************************/
 
 #include <string.h>
-
+#include <stdio.h>
 
 static void clear_words(void* mem, digit_t nwords)
 { // Clear digits from memory. "nwords" indicates the number of digits to be zeroed.
@@ -187,6 +187,7 @@ void fp2neg(f2elm_t a)
 
 inline void fp2add(const f2elm_t a, const f2elm_t b, f2elm_t c)           
 { // GF(p^2) addition, c = a+b in GF(p^2).
+
     fpadd(a[0], b[0], c[0]);
     fpadd(a[1], b[1], c[1]);
 }

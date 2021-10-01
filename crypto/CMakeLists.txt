@@ -302,6 +302,7 @@ add_library(
   cpu-intel.c
   cpu-ppc64le.c
   crypto.c
+  cpucycles/cpucycles.c
   #[[
   sike/sikep434r3.c
   sike/sikep434r3_fips202.c
