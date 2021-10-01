@@ -1192,7 +1192,7 @@ static int aead_aes_gcm_seal_scatter_randnonce(
   memcpy(out_tag + *out_tag_len, nonce, sizeof(nonce));
   *out_tag_len += sizeof(nonce);
   // Only internal IV for AES-GCM is approved.
-  AEAD_verify_service_indicator(EVP_AEAD_key_length(ctx->aead));
+  AEAD_GCM_verify_service_indicator(ctx);
   return 1;
 }
 
@@ -1216,7 +1216,7 @@ static int aead_aes_gcm_open_gather_randnonce(
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
   // Only internal IV for AES-GCM is approved.
-  AEAD_verify_service_indicator(EVP_AEAD_key_length(ctx->aead));
+  AEAD_GCM_verify_service_indicator(ctx);
   return aead_aes_gcm_open_gather_impl(
       gcm_ctx, out, nonce, AES_GCM_NONCE_LENGTH, in, in_len, in_tag,
       in_tag_len - AES_GCM_NONCE_LENGTH, ad, ad_len,

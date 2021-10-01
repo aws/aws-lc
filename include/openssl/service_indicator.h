@@ -30,9 +30,9 @@ OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 //
 // Service indicator calls should not be used in non-FIPS builds. However, if
 // used, the direct check to |FIPS_service_indicator_check_approved|
-// will always indicate |AWSLC_NOT_APPROVED| during non-FIPS.
-// It is recommended to use the macro |CALL_SERVICE_AND_CHECK_APPROVED|, which
-// will always return |AWSLC_APPROVED| during non-FIPS.
+// will always indicate |AWSLC_APPROVED| during non-FIPS.
+// It is recommended to use the macro |CALL_SERVICE_AND_CHECK_APPROVED| though,
+// which will also always return |AWSLC_APPROVED| during non-FIPS.
 OPENSSL_EXPORT int FIPS_service_indicator_check_approved(int before, int after);
 
 #if defined(AWSLC_FIPS)

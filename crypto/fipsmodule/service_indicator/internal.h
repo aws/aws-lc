@@ -31,18 +31,14 @@ OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 // hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
 // When compiling with different ARM specific platforms, 9, 11, 13 are used for
 // key rounds.
-void AES_verify_service_indicator(unsigned key_rounds);
-
-// Service indicator check for AES algorithms when the context is
-// available to check against.
-void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx);
+void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds);
 
 // The service indicator checks use different parameters for AEAD APIs than
 // those of other AES modes. AES-GCM is approved only with an internal IV, see
 // SP 800-38D Sec 8.2.2.
-void AEAD_verify_service_indicator(size_t key_length);
+void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
 
-// Only 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
+// AEAD service indicator check for AES-CCM.
 void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

@@ -225,7 +225,7 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 
   ctx->buf_len = 0;
   ctx->final_used = 0;
-  AES_verify_service_indicator_with_ctx(ctx);
+  AES_verify_service_indicator(ctx, 0);
   return 1;
 }
 
@@ -265,20 +265,22 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     } else {
       *out_len = ret;
     }
-    AES_verify_service_indicator_with_ctx(ctx);
-    return 1;
+    goto success;
   }
 
   if (in_len <= 0) {
     *out_len = 0;
-    return in_len == 0;
+    if(in_len == 0){
+      goto success;
+    } else{
+      return 0;
+    }
   }
 
   if (ctx->buf_len == 0 && block_remainder(ctx, in_len) == 0) {
     if (ctx->cipher->cipher(ctx, out, in, in_len)) {
       *out_len = in_len;
-      AES_verify_service_indicator_with_ctx(ctx);
-      return 1;
+      goto success;
     } else {
       *out_len = 0;
       return 0;
@@ -292,8 +294,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
       OPENSSL_memcpy(&ctx->buf[i], in, in_len);
       ctx->buf_len += in_len;
       *out_len = 0;
-      AES_verify_service_indicator_with_ctx(ctx);
-      return 1;
+      goto success;
     } else {
       int j = bl - i;
       OPENSSL_memcpy(&ctx->buf[i], in, j);
@@ -322,7 +323,9 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     OPENSSL_memcpy(ctx->buf, &in[in_len], i);
   }
   ctx->buf_len = i;
-  AES_verify_service_indicator_with_ctx(ctx);
+
+success:
+  AES_verify_service_indicator(ctx, 0);
   return 1;
 }
 
@@ -337,16 +340,14 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
     } else {
       *out_len = ret;
     }
-    AES_verify_service_indicator_with_ctx(ctx);
-    return 1;
+    goto success;
   }
 
   b = ctx->cipher->block_size;
   assert(b <= sizeof(ctx->buf));
   if (b == 1) {
     *out_len = 0;
-    AES_verify_service_indicator_with_ctx(ctx);
-    return 1;
+    goto success;
   }
 
   bl = ctx->buf_len;
@@ -356,8 +357,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
       return 0;
     }
     *out_len = 0;
-    AES_verify_service_indicator_with_ctx(ctx);
-    return 1;
+    goto success;
   }
 
   n = b - bl;
@@ -365,13 +365,14 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
     ctx->buf[i] = n;
   }
   ret = ctx->cipher->cipher(ctx, out, ctx->buf, b);
-
-  if (ret) {
-    *out_len = b;
-    AES_verify_service_indicator_with_ctx(ctx);
+  if (!ret) {
+    return ret;
   }
 
-  return ret;
+  *out_len = b;
+success:
+  AES_verify_service_indicator(ctx, 0);
+  return 1;
 }
 
 int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
@@ -392,13 +393,16 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     } else {
       *out_len = r;
     }
-    AES_verify_service_indicator_with_ctx(ctx);
-    return 1;
+    goto success;
   }
 
   if (in_len <= 0) {
     *out_len = 0;
-    return in_len == 0;
+    if(in_len == 0){
+      goto success;
+    } else{
+      return 0;
+    }
   }
 
   if (ctx->flags & EVP_CIPH_NO_PADDING) {
@@ -431,7 +435,8 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     *out_len += b;
   }
 
-  AES_verify_service_indicator_with_ctx(ctx);
+success:
+  AES_verify_service_indicator(ctx, 0);
   return 1;
 }
 
@@ -447,8 +452,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     } else {
       *out_len = i;
     }
-    AES_verify_service_indicator_with_ctx(ctx);
-    return 1;
+    goto success;
   }
 
   b = ctx->cipher->block_size;
@@ -458,8 +462,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
       return 0;
     }
     *out_len = 0;
-    AES_verify_service_indicator_with_ctx(ctx);
-    return 1;
+    goto success;
   }
 
   if (b > 1) {
@@ -493,7 +496,8 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     *out_len = 0;
   }
 
-  AES_verify_service_indicator_with_ctx(ctx);
+success:
+  AES_verify_service_indicator(ctx, 0);
   return 1;
 }
 
@@ -501,7 +505,7 @@ int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                size_t in_len) {
   int ret = ctx->cipher->cipher(ctx, out, in, in_len);
   if(ret == 1) {
-    AES_verify_service_indicator_with_ctx(ctx);
+    AES_verify_service_indicator(ctx, 0);
   }
   return ret;
 }

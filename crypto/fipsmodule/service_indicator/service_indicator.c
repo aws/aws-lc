@@ -60,43 +60,39 @@ void FIPS_service_indicator_update_state(void) {
   indicator->counter++;
 }
 
-void AES_verify_service_indicator(unsigned key_rounds) {
-  switch (key_rounds) {
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 14:
-      FIPS_service_indicator_update_state();
-      break;
-    default:
-      break;
+void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds) {
+  if(ctx != NULL) {
+    if (EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_ECB_MODE ||
+        EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_CBC_MODE ||
+        EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_CTR_MODE) {
+      switch (ctx->cipher->key_len) {
+        case 16:
+        case 24:
+        case 32:
+          FIPS_service_indicator_update_state();
+          break;
+        default:
+          break;
+      }
+    }
+  } else {
+    switch (key_rounds) {
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+      case 14:
+        FIPS_service_indicator_update_state();
+        break;
+      default:
+        break;
+    }
   }
 }
 
-void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx) {
-  switch(EVP_CIPHER_CTX_mode(ctx)) {
-    case EVP_CIPH_ECB_MODE:
-    case EVP_CIPH_CBC_MODE:
-    case EVP_CIPH_CTR_MODE:
-      break;
-    default:
-      return;
-  }
-  switch (ctx->cipher->key_len) {
-    case 16:
-    case 24:
-    case 32:
-      FIPS_service_indicator_update_state();
-      break;
-    default:
-      break;
-  }
-}
-
-void AEAD_verify_service_indicator(size_t key_length) {
-  switch (key_length) {
+void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
+  switch (EVP_AEAD_key_length(ctx->aead)) {
     case 16:
     case 32:
       FIPS_service_indicator_update_state();
@@ -107,6 +103,7 @@ void AEAD_verify_service_indicator(size_t key_length) {
 }
 
 void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
+  // Only 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
   if(EVP_AEAD_key_length(ctx->aead) == 16 && ctx->tag_len == 4) {
     FIPS_service_indicator_update_state();
   }
@@ -120,24 +117,21 @@ uint64_t FIPS_service_indicator_after_call(void) { return 0; }
 
 // Service indicator check functions listed below are optimized to not do extra
 // checks, when not in FIPS mode. Arguments must be cast to void to avoid
-// compiler errors.
+// unused warnings.
 
 int FIPS_service_indicator_check_approved(int before, int after) {
   (void)before;
   (void)after;
-  return AWSLC_NOT_APPROVED;
+  return AWSLC_APPROVED;
 }
 
-void AES_verify_service_indicator(unsigned key_rounds) {
+void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds) {
+  (void)ctx;
   (void)key_rounds;
 }
 
-void AES_verify_service_indicator_with_ctx(EVP_CIPHER_CTX *ctx) {
+void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
   (void)ctx;
-}
-
-void AEAD_verify_service_indicator(size_t key_length) {
-  (void)key_length;
 }
 
 void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {

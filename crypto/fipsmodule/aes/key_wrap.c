@@ -97,7 +97,7 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
     }
   }
 
-  AES_verify_service_indicator(key->rounds);
+  AES_verify_service_indicator(NULL, key->rounds);
   OPENSSL_memcpy(out, A, 8);
   return (int)in_len + 8;
 }
@@ -152,7 +152,7 @@ int AES_unwrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
     return -1;
   }
 
-  AES_verify_service_indicator(key->rounds);
+  AES_verify_service_indicator(NULL, key->rounds);
   return (int)in_len - 8;
 }
 
@@ -182,7 +182,7 @@ int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
     memcpy(block + 8, in, in_len);
     AES_encrypt(block, out, key);
     *out_len = AES_BLOCK_SIZE;
-    AES_verify_service_indicator(key->rounds);
+    AES_verify_service_indicator(NULL, key->rounds);
     return 1;
   }
 
@@ -198,7 +198,7 @@ int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   if (ret < 0) {
     return 0;
   }
-  AES_verify_service_indicator(key->rounds);
+  AES_verify_service_indicator(NULL, key->rounds);
   *out_len = ret;
   return 1;
 }
@@ -235,7 +235,7 @@ int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
     ok &= constant_time_is_zero_w(constant_time_ge_8(i, claimed_len) & out[i]);
   }
 
-  AES_verify_service_indicator(key->rounds);
+  AES_verify_service_indicator(NULL, key->rounds);
   *out_len = constant_time_select_w(ok, claimed_len, 0);
   return ok & 1;
 }

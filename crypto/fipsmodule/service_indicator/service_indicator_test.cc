@@ -35,12 +35,11 @@ static const uint8_t kPlaintext[64] = {
 #if defined(AWSLC_FIPS)
 static const uint8_t kAESIV[AES_BLOCK_SIZE] = {0};
 
-static bool DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
+static void DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
                      bssl::Span<const uint8_t> in, size_t chunk, bool expect_approved) {
   int approved = AWSLC_NOT_APPROVED;
   size_t max_out = in.size();
-  if ((EVP_CIPHER_CTX_flags(ctx) & EVP_CIPH_NO_PADDING) == 0 &&
-      EVP_CIPHER_CTX_encrypting(ctx)) {
+  if (EVP_CIPHER_CTX_encrypting(ctx)) {
     unsigned block_size = EVP_CIPHER_CTX_block_size(ctx);
     max_out += block_size - (max_out % block_size);
   }
@@ -54,12 +53,11 @@ static bool DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
     CALL_SERVICE_AND_CHECK_APPROVED(approved, EXPECT_TRUE(
             EVP_CipherUpdate(ctx, out->data() + total, &len, in.data(), static_cast<int>(todo))));
     if(expect_approved) {
-      EXPECT_EQ(approved, AWSLC_APPROVED);
+      ASSERT_EQ(approved, AWSLC_APPROVED);
     } else{
-      EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+      ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     }
 
-    EXPECT_GE(len, 0);
     total += static_cast<size_t>(len);
     in = in.subspan(todo);
   }
@@ -67,15 +65,13 @@ static bool DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
   CALL_SERVICE_AND_CHECK_APPROVED(approved,EXPECT_TRUE(
                     EVP_CipherFinal_ex(ctx, out->data() + total, &len)));
   if(expect_approved) {
-    EXPECT_EQ(approved, AWSLC_APPROVED);
+    ASSERT_EQ(approved, AWSLC_APPROVED);
   } else{
-    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   }
 
-  EXPECT_GE(len, 0);
   total += static_cast<size_t>(len);
   out->resize(total);
-  return true;
 }
 
 static void TestOperation(const EVP_CIPHER *cipher, bool encrypt, size_t chunk_size,
@@ -103,7 +99,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt, size_t chunk_s
   } else {
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   }
-  std::vector<uint8_t> iv(kAESIV,kAESIV + EVP_CIPHER_CTX_iv_length(ctx1.get()));
+  std::vector<uint8_t> iv( kAESIV,kAESIV + EVP_CIPHER_CTX_iv_length(ctx1.get()));
   ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
 
 
@@ -111,15 +107,14 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt, size_t chunk_s
   ASSERT_TRUE(EVP_CIPHER_CTX_copy(ctx2.get(), ctx1.get()));
   EVP_CIPHER_CTX *ctx = ctx2.get();
 
-  // The ciphers are run with no padding. For each of the ciphers we test, the
-  // output size matches the input size.
+  // For each of the ciphers we test, the output size matches the input size.
   ASSERT_EQ(in->size(), out->size());
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx, key.size()));
   ASSERT_TRUE(EVP_CipherInit_ex(ctx, nullptr, nullptr, key.data(), iv.data(), -1));
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx, 0));
   std::vector<uint8_t> result;
-  ASSERT_TRUE(DoCipher(ctx, &result, *in, chunk_size, expect_approved));
-  EXPECT_EQ(Bytes(*out), Bytes(result));
+  DoCipher(ctx, &result, *in, chunk_size, expect_approved);
+  ASSERT_EQ(Bytes(*out), Bytes(result));
 }
 
 static void hex_dump(const uint8_t *in, size_t len) {
@@ -235,8 +230,7 @@ TEST_P(EVP_ServiceIndicatorTest, EVP_Ciphers) {
   std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
   std::vector<uint8_t> ciphertext(t.expected_ciphertext, t.expected_ciphertext + t.cipher_text_length);
 
-  const std::vector<size_t> chunk_sizes = { 0, 1,  2,  5,  7,  8,  9,  15, 16,
-                                           17, 31, 32, 33, 63, 64, 65, 512};
+  const std::vector<size_t> chunk_sizes = { 0, 1, 16, 17, 33, 63, 64 };
   for (size_t chunk_size : chunk_sizes) {
     SCOPED_TRACE(chunk_size);
     TestOperation(cipher, true /* encrypt */, chunk_size, key, plaintext, ciphertext,
@@ -328,7 +322,7 @@ TEST(ServiceIndicatorTest, AESECB) {
   // AES-ECB Encryption KAT
   ASSERT_EQ(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
   // AES_ecb_encrypt encrypts (or decrypts) a single, 16 byte block from in to out.
-  for (uint32_t j = 0; j < sizeof(kPlaintext) / AES_BLOCK_SIZE; j++) {
+  for (size_t j = 0; j < sizeof(kPlaintext) / AES_BLOCK_SIZE; j++) {
     CALL_SERVICE_AND_CHECK_APPROVED(approved,
       AES_ecb_encrypt(&kPlaintext[j * AES_BLOCK_SIZE], &output[j * AES_BLOCK_SIZE], &aes_key, AES_ENCRYPT));
     ASSERT_EQ(approved, AWSLC_APPROVED);
@@ -338,7 +332,7 @@ TEST(ServiceIndicatorTest, AESECB) {
 
   // AES-ECB Decryption KAT
   ASSERT_EQ(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
-  for (uint32_t j = 0; j < sizeof(kPlaintext) / AES_BLOCK_SIZE; j++) {
+  for (size_t j = 0; j < sizeof(kPlaintext) / AES_BLOCK_SIZE; j++) {
     CALL_SERVICE_AND_CHECK_APPROVED(approved,
       AES_ecb_encrypt(&kAESECBCiphertext[j * AES_BLOCK_SIZE], &output[j * AES_BLOCK_SIZE], &aes_key, AES_DECRYPT));
     ASSERT_EQ(approved, AWSLC_APPROVED);
@@ -354,8 +348,8 @@ TEST(ServiceIndicatorTest, AESCBC) {
   uint8_t output[256];
   // AES-CBC Encryption KAT
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
-  ASSERT_EQ(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
-  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_cbc_encrypt(kPlaintext, output,
+  ASSERT_EQ(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key), 0);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, AES_cbc_encrypt(kPlaintext, output,
                               sizeof(kPlaintext), &aes_key, aes_iv, AES_ENCRYPT));
   ASSERT_TRUE(check_test(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
                          "AES-CBC Encryption KAT"));
@@ -363,8 +357,8 @@ TEST(ServiceIndicatorTest, AESCBC) {
 
   // AES-CBC Decryption KAT
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
-  ASSERT_EQ(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
-  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_cbc_encrypt(kAESCBCCiphertext, output,
+  ASSERT_EQ(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key), 0);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, AES_cbc_encrypt(kAESCBCCiphertext, output,
                         sizeof(kAESCBCCiphertext), &aes_key, aes_iv, AES_DECRYPT));
   ASSERT_TRUE(check_test(kPlaintext, output, sizeof(kPlaintext),
                          "AES-CBC Decryption KAT"));
@@ -532,7 +526,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
   // Actual approval check should return false during non-FIPS.
   uint64_t after = FIPS_service_indicator_after_call();
   ASSERT_EQ(after, (uint64_t)0);
-  ASSERT_FALSE(FIPS_service_indicator_check_approved(before, after));
+  ASSERT_TRUE(FIPS_service_indicator_check_approved(before, after));
 
 
   // Call a non-approved service.
