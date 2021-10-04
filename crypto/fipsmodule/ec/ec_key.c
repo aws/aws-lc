@@ -331,9 +331,9 @@ static int EVP_EC_KEY_check_fips(EC_KEY *key) {
   size_t msg_len = 16;
   int ret = 0;
   uint8_t* sig_der = NULL;
-  EVP_PKEY* evp_pkey = EVP_PKEY_new();
-  EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-  const EVP_MD* hash = EVP_sha256();
+  EVP_PKEY *evp_pkey = EVP_PKEY_new();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  const EVP_MD *hash = EVP_sha256();
   size_t sign_len;
   if (!evp_pkey ||
       !ctx ||
