@@ -30,6 +30,7 @@ OBJ = bignum_add_p521.o \
       bignum_optneg_p521.o \
       bignum_sqr_p521.o \
       bignum_sub_p521.o \
+      bignum_tomont_p521.o \
       bignum_triple_p521.o
 
 %.o : %.S ; cpp $< | as -o $@ -

@@ -185,6 +185,7 @@ enum {
        TEST_BIGNUM_TOBYTES_6,
        TEST_BIGNUM_TOMONT_P256,
        TEST_BIGNUM_TOMONT_P384,
+       TEST_BIGNUM_TOMONT_P521,
        TEST_BIGNUM_TRIPLE_P256,
        TEST_BIGNUM_TRIPLE_P384,
        TEST_BIGNUM_TRIPLE_P521,
@@ -4571,6 +4572,38 @@ int test_bignum_tomont_p384(void)
   return 0;
 }
 
+int test_bignum_tomont_p521(void)
+{ uint64_t t;
+  printf("Testing bignum_tomont_p521 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(9,b0);
+     reference_modpowtwo(9,b1,576,p_521);
+     reference_mul(18,b2,9,b1,9,b0);
+     reference_copy(18,b1,9,p_521);
+     reference_mod(18,b3,b2,b1);
+     bignum_tomont_p521(b4,b0);
+
+     c = reference_compare(9,b3,9,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^576 * ...0x%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[0],b4[8],b4[0],b3[8],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^576 * ...0x%016"PRIx64" mod p_521 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_triple_p256(void)
 { uint64_t i, k;
   printf("Testing bignum_triple_p256 with %d cases\n",tests);
@@ -4880,6 +4913,7 @@ int test_all()
   dotest(test_bignum_tobytes_6);
   dotest(test_bignum_tomont_p256);
   dotest(test_bignum_tomont_p384);
+  dotest(test_bignum_tomont_p521);
   dotest(test_bignum_triple_p256);
   dotest(test_bignum_triple_p384);
   dotest(test_bignum_triple_p521);
@@ -5182,6 +5216,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_SUB_P521:        return test_bignum_sub_p521();
      case TEST_BIGNUM_TOMONT_P256:     return test_bignum_tomont_p256();
      case TEST_BIGNUM_TOMONT_P384:     return test_bignum_tomont_p384();
+     case TEST_BIGNUM_TOMONT_P521:     return test_bignum_tomont_p521();
      case TEST_BIGNUM_TRIPLE_P256:     return test_bignum_triple_p256();
      case TEST_BIGNUM_TRIPLE_P384:     return test_bignum_triple_p384();
      case TEST_BIGNUM_TRIPLE_P521:     return test_bignum_triple_p521();

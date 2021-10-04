@@ -505,9 +505,13 @@ extern void bignum_tobytes_6 (uint8_t z[static 48], uint64_t x[static 6]);
 // Input x[4]; output z[4]
 extern void bignum_tomont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 
-// Convert to Montgomery form z := (2^256 * x) mod p_256
+// Convert to Montgomery form z := (2^384 * x) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_tomont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
+
+// Convert to Montgomery form z := (2^576 * x) mod p_521
+// Input x[9]; output z[9]
+extern void bignum_tomont_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 
 // Triple modulo p_256, z := (3 * x) mod p_256
 // Input x[4]; output z[4]
