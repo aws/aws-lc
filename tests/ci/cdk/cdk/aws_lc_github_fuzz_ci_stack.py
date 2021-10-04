@@ -110,10 +110,11 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
         # Add 'BuildBatchConfig' property, which is not supported in CDK.
         # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
+        # CryptoAlg-873 is created to investigate why Fuzz test starts to take more than 2 hours.
         cfn_codebuild = fuzz_codebuild.node.default_child
         cfn_codebuild.add_override("Properties.BuildBatchConfig", {
             "ServiceRole": role.role_arn,
-            "TimeoutInMins": 120
+            "TimeoutInMins": 180
         })
 
         # The EFS identifier needs to match tests/ci/common_fuzz.sh, CodeBuild defines an environment variable named
