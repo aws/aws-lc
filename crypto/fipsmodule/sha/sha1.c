@@ -72,7 +72,6 @@ int SHA1_Init(SHA_CTX *sha) {
   sha->h[2] = 0x98badcfeUL;
   sha->h[3] = 0x10325476UL;
   sha->h[4] = 0xc3d2e1f0UL;
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -99,13 +98,11 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
 
 void SHA1_Transform(SHA_CTX *c, const uint8_t data[SHA_CBLOCK]) {
   sha1_block_data_order(c->h, data, 1);
-  FIPS_service_indicator_update_state();
 }
 
 int SHA1_Update(SHA_CTX *c, const void *data, size_t len) {
   crypto_md32_update(&sha1_block_data_order, c->h, c->data, SHA_CBLOCK, &c->num,
                      &c->Nh, &c->Nl, data, len);
-  FIPS_service_indicator_update_state();
   return 1;
 }
 

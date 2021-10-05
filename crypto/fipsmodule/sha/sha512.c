@@ -86,7 +86,6 @@ int SHA384_Init(SHA512_CTX *sha) {
   sha->Nh = 0;
   sha->num = 0;
   sha->md_len = SHA384_DIGEST_LENGTH;
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -105,7 +104,6 @@ int SHA512_Init(SHA512_CTX *sha) {
   sha->Nh = 0;
   sha->num = 0;
   sha->md_len = SHA512_DIGEST_LENGTH;
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -123,7 +121,6 @@ int SHA512_256_Init(SHA512_CTX *sha) {
   sha->Nh = 0;
   sha->num = 0;
   sha->md_len = SHA512_256_DIGEST_LENGTH;
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -208,7 +205,6 @@ int SHA512_256_Final(uint8_t out[SHA512_256_DIGEST_LENGTH], SHA512_CTX *sha) {
 
 void SHA512_Transform(SHA512_CTX *c, const uint8_t block[SHA512_CBLOCK]) {
   sha512_block_data_order(c->h, block, 1);
-  FIPS_service_indicator_update_state();
 }
 
 int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
@@ -217,7 +213,6 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   const uint8_t *data = in_data;
 
   if (len == 0) {
-    FIPS_service_indicator_update_state();
     return 1;
   }
 
@@ -236,7 +231,6 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
     if (len < n) {
       OPENSSL_memcpy(p + c->num, data, len);
       c->num += (unsigned int)len;
-      FIPS_service_indicator_update_state();
       return 1;
     } else {
       OPENSSL_memcpy(p + c->num, data, n), c->num = 0;
@@ -258,7 +252,6 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
     c->num = (int)len;
   }
 
-  FIPS_service_indicator_update_state();
   return 1;
 }
 

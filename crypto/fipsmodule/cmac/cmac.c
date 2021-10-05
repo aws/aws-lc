@@ -179,8 +179,8 @@ static const uint8_t kZeroIV[AES_BLOCK_SIZE] = {0};
 
 int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
               const EVP_CIPHER *cipher, ENGINE *engine) {
-  // We have to avoid the underlying AES-CBC services updating the indicator
-  // state, so we lock the state here.
+  // We have to avoid the underlying AES-CBC |EVP_CIPHER| services updating the
+  // indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   uint8_t scratch[AES_BLOCK_SIZE];
 
@@ -205,7 +205,6 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
   ctx->block_used = 0;
 
   FIPS_service_indicator_unlock_state();
-  AES_CMAC_verify_service_indicator(ctx);
   return 1;
 }
 
@@ -215,8 +214,8 @@ int CMAC_Reset(CMAC_CTX *ctx) {
 }
 
 int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
-  // We have to avoid the underlying AES-CBC services updating the indicator
-  // state, so we lock the state here.
+  // We have to avoid the underlying AES-CBC |EVP_Cipher| services updating the
+  // indicator state, so we lock the state here.
   int ret = 0;
   FIPS_service_indicator_lock_state();
 
@@ -267,9 +266,6 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
   ret = 1;
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret) {
-    AES_CMAC_verify_service_indicator(ctx);
-  }
   return ret;
 }
 
@@ -299,8 +295,8 @@ int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
     out[i] = ctx->block[i] ^ mask[i];
   }
 
-  // We have to avoid the underlying AES-CBC services updating the indicator
-  // state, so we lock the state here.
+  // We have to avoid the underlying AES-CBC |EVP_Cipher| services updating the
+  // indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   int ret = EVP_Cipher(&ctx->cipher_ctx, out, out, block_size);
   FIPS_service_indicator_unlock_state();

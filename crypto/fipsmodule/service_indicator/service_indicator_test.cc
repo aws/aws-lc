@@ -195,12 +195,8 @@ TEST_P(EVP_MD_ServiceIndicatorTest, EVP_Ciphers) {
   unsigned digest_len;
 
   // Test the EVP_Digest interfaces for approval one by one directly.
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), digestTestVector.md.func(), nullptr)));
-  ASSERT_EQ(approved, digestTestVector.expect_approved);
-
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), digestTestVector.input, sizeof(digestTestVector.input))));
-  ASSERT_EQ(approved, digestTestVector.expect_approved);
-
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), digestTestVector.md.func(), nullptr));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), digestTestVector.input, sizeof(digestTestVector.input)));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len)));
   ASSERT_EQ(approved, digestTestVector.expect_approved);
 
@@ -220,14 +216,14 @@ struct HMACTestVector {
   // expected_digest is the expected digest.
   const uint8_t *expected_digest;
   // expected to be approved or not.
-  const bool expect_approved;
+  const int expect_approved;
 } kHMACTestVectors[] = {
-    { EVP_sha1, kPlaintext, kHMACOutput_sha1, true },
-    { EVP_sha224, kPlaintext, kHMACOutput_sha224, true },
-    { EVP_sha256, kPlaintext, kHMACOutput_sha256,true },
-    { EVP_sha384, kPlaintext, kHMACOutput_sha384,true },
-    { EVP_sha512, kPlaintext, kHMACOutput_sha512,true },
-    { EVP_sha512_256, kPlaintext, nullptr, false }
+    { EVP_sha1, kPlaintext, kHMACOutput_sha1, AWSLC_APPROVED },
+    { EVP_sha224, kPlaintext, kHMACOutput_sha224, AWSLC_APPROVED },
+    { EVP_sha256, kPlaintext, kHMACOutput_sha256, AWSLC_APPROVED },
+    { EVP_sha384, kPlaintext, kHMACOutput_sha384, AWSLC_APPROVED },
+    { EVP_sha512, kPlaintext, kHMACOutput_sha512, AWSLC_APPROVED },
+    { EVP_sha512_256, kPlaintext, nullptr, AWSLC_NOT_APPROVED }
 };
 
 class HMAC_ServiceIndicatorTest : public testing::TestWithParam<HMACTestVector> {};
@@ -235,14 +231,14 @@ class HMAC_ServiceIndicatorTest : public testing::TestWithParam<HMACTestVector> 
 INSTANTIATE_TEST_SUITE_P(All, HMAC_ServiceIndicatorTest, testing::ValuesIn(kHMACTestVectors));
 
 TEST_P(HMAC_ServiceIndicatorTest, HMACTest) {
-  const HMACTestVector &t = GetParam();
+  const HMACTestVector &hmacTestVector = GetParam();
 
   int approved = AWSLC_NOT_APPROVED;
   const uint8_t kHMACKey[64] = {0};
   std::string digest_str;
-  const EVP_MD *digest = t.func();
+  const EVP_MD *digest = hmacTestVector.func();
   std::vector<uint8_t> key(kHMACKey, kHMACKey + sizeof(kHMACKey));
-  std::vector<uint8_t> input(t.input, t.input + sizeof(t.input));
+  std::vector<uint8_t> input(hmacTestVector.input, hmacTestVector.input + sizeof(hmacTestVector.input));
 
   unsigned expected_mac_len = EVP_MD_size(digest);
   std::unique_ptr<uint8_t[]> mac(new uint8_t[expected_mac_len]);
@@ -250,34 +246,20 @@ TEST_P(HMAC_ServiceIndicatorTest, HMACTest) {
 
   // Test using HMAC_CTX for approval one by one directly.
   bssl::ScopedHMAC_CTX ctx;
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr)));
-  if (t.expect_approved) {
-    ASSERT_TRUE(approved);
-  } else {
-    ASSERT_FALSE(approved);
-  }
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC_Update(ctx.get(), t.input, input.size())));
-  if (t.expect_approved) {
-    ASSERT_TRUE(approved);
-  } else {
-    ASSERT_FALSE(approved);
-  }
+  ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
+  ASSERT_TRUE(HMAC_Update(ctx.get(), hmacTestVector.input, input.size()));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len)));
-  if (t.expect_approved) {
-    ASSERT_TRUE(check_test(t.expected_digest, mac.get(), mac_len, "HMAC KAT"));
-    ASSERT_TRUE(approved);
-  } else {
-    ASSERT_FALSE(approved);
+  ASSERT_EQ(approved, hmacTestVector.expect_approved);
+  if (hmacTestVector.expect_approved) {
+    ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.get(), mac_len, "HMAC KAT"));
   }
 
   // Test using the one-shot API for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC(digest, key.data(), key.size(), input.data(), input.size(),
                                                              mac.get(), &mac_len)));
-  if (t.expect_approved) {
-    ASSERT_TRUE(check_test(t.expected_digest, mac.get(), mac_len, "HMAC KAT"));
-    ASSERT_TRUE(approved);
-  } else {
-    ASSERT_FALSE(approved);
+  ASSERT_EQ(approved, hmacTestVector.expect_approved);
+  if (hmacTestVector.expect_approved) {
+    ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.get(), mac_len, "HMAC KAT"));
   }
 }
 
@@ -285,24 +267,16 @@ TEST(ServiceIndicatorTest, CMAC) {
   int approved = AWSLC_NOT_APPROVED;
 
   uint8_t mac[16];
+  size_t out_len;
   bssl::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
   ASSERT_TRUE(ctx);
 
-
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CMAC_Init(ctx.get(),
-                        kAESKey, sizeof(kAESKey), EVP_aes_128_cbc(), nullptr)));
+  ASSERT_TRUE(CMAC_Init(ctx.get(), kAESKey, sizeof(kAESKey), EVP_aes_128_cbc(), nullptr));
+  ASSERT_TRUE(CMAC_Reset(ctx.get()));
+  ASSERT_TRUE(CMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CMAC_Final(ctx.get(), mac, &out_len)));
   ASSERT_TRUE(approved);
-
-
-    ASSERT_TRUE(CMAC_Reset(ctx.get()));
-    CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
-    ASSERT_TRUE(approved);
-    size_t out_len;
-    CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CMAC_Final(ctx.get(), mac, &out_len)));
-    ASSERT_TRUE(approved);
-    ASSERT_TRUE(check_test(kAESCMACOutput, mac, sizeof(kAESCMACOutput),
-                           "AES-CMAC KAT"));
-
+  ASSERT_TRUE(check_test(kAESCMACOutput, mac, sizeof(kAESCMACOutput), "AES-CMAC KAT"));
 
   // Test using the one-shot API for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(AES_CMAC(mac, kAESKey, sizeof(kAESKey),

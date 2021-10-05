@@ -76,7 +76,6 @@ int SHA224_Init(SHA256_CTX *sha) {
   sha->h[6] = 0x64f98fa7UL;
   sha->h[7] = 0xbefa4fa4UL;
   sha->md_len = SHA224_DIGEST_LENGTH;
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -91,7 +90,6 @@ int SHA256_Init(SHA256_CTX *sha) {
   sha->h[6] = 0x1f83d9abUL;
   sha->h[7] = 0x5be0cd19UL;
   sha->md_len = SHA256_DIGEST_LENGTH;
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -136,13 +134,11 @@ static void sha256_block_data_order(uint32_t *state, const uint8_t *in,
 
 void SHA256_Transform(SHA256_CTX *c, const uint8_t data[SHA256_CBLOCK]) {
   sha256_block_data_order(c->h, data, 1);
-  FIPS_service_indicator_update_state();
 }
 
 int SHA256_Update(SHA256_CTX *c, const void *data, size_t len) {
   crypto_md32_update(&sha256_block_data_order, c->h, c->data, SHA256_CBLOCK,
                      &c->num, &c->Nh, &c->Nl, data, len);
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
