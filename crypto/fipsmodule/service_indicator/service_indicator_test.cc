@@ -412,16 +412,14 @@ TEST(ServiceIndicatorTest, AESCCM) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved,EVP_AEAD_CTX_seal(aead_ctx.get(),
        output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
        kPlaintext, sizeof(kPlaintext), nullptr, 0));
-  ASSERT_TRUE(check_test(kAESCCMCiphertext, output, sizeof(kAESCCMCiphertext),
-                         "AES-CCM Encryption KAT"));
+  ASSERT_TRUE(check_test(kAESCCMCiphertext, output, out_len, "AES-CCM Encryption KAT"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CCM Decryption
   CALL_SERVICE_AND_CHECK_APPROVED(approved,EVP_AEAD_CTX_open(aead_ctx.get(),
        output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
        kAESCCMCiphertext, sizeof(kAESCCMCiphertext), nullptr, 0));
-  ASSERT_TRUE(check_test(kPlaintext, output, sizeof(kPlaintext),
-                         "AES-CCM Decryption KAT"));
+  ASSERT_TRUE(check_test(kPlaintext, output, out_len, "AES-CCM Decryption KAT"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
@@ -430,21 +428,20 @@ TEST(ServiceIndicatorTest, AESKW) {
 
   AES_KEY aes_key;
   uint8_t output[256];
+  size_t outlen;
 
   // AES-KW Encryption KAT
   ASSERT_EQ(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
-  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_wrap_key(&aes_key, nullptr,
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,outlen = AES_wrap_key(&aes_key, nullptr,
                                     output, kPlaintext, sizeof(kPlaintext)));
-  ASSERT_TRUE(check_test(kAESKWCiphertext, output, sizeof(kAESKWCiphertext),
-                         "AES-KW Encryption KAT"));
+  ASSERT_TRUE(check_test(kAESKWCiphertext, output, outlen, "AES-KW Encryption KAT"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
 
   // AES-KW Decryption KAT
   ASSERT_EQ(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
-  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_unwrap_key(&aes_key, nullptr,
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,outlen = AES_unwrap_key(&aes_key, nullptr,
                                     output, kAESKWCiphertext, sizeof(kAESKWCiphertext)));
-  ASSERT_TRUE(check_test(kPlaintext, output, sizeof(kPlaintext),
-                         "AES-KW Decryption KAT"));
+  ASSERT_TRUE(check_test(kPlaintext, output, outlen, "AES-KW Decryption KAT"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
@@ -457,18 +454,16 @@ TEST(ServiceIndicatorTest, AESKWP) {
   // AES-KWP Encryption KAT
   memset(output, 0, 256);
   ASSERT_EQ(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
-  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_wrap_key_padded(&aes_key,
-              output, &outlen, sizeof(kPlaintext) + 15, kPlaintext, sizeof(kPlaintext)));
-  ASSERT_TRUE(check_test(kAESKWPCiphertext, output, sizeof(kAESKWPCiphertext),
-                         "AES-KWP Encryption KAT"));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,ASSERT_TRUE(AES_wrap_key_padded(&aes_key,
+              output, &outlen, sizeof(kPlaintext) + 15, kPlaintext, sizeof(kPlaintext))));
+  ASSERT_TRUE(check_test(kAESKWPCiphertext, output, outlen, "AES-KWP Encryption KAT"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
 
   // AES-KWP Decryption KAT
   ASSERT_EQ(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key),0);
-  CALL_SERVICE_AND_CHECK_APPROVED(approved,AES_unwrap_key_padded(&aes_key,
-             output, &outlen, sizeof(kPlaintext), kPlaintext, sizeof(kPlaintext)));
-  ASSERT_TRUE(check_test(kPlaintext, output, outlen,
-                         "AES-KW Decryption KAT"));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(AES_unwrap_key_padded(&aes_key,
+             output, &outlen, sizeof(kAESKWPCiphertext), kAESKWPCiphertext, sizeof(kAESKWPCiphertext))));
+  ASSERT_TRUE(check_test(kPlaintext, output, outlen, "AES-KWP Decryption KAT"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
