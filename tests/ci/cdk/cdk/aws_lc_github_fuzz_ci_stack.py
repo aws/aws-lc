@@ -82,7 +82,10 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
             encrypted=True,
             security_group=build_security_group,
             vpc=fuzz_vpc,
-            vpc_subnets=efs_subnet_selection
+            vpc_subnets=efs_subnet_selection,
+            performance_mode=efs.PerformanceMode.GENERAL_PURPOSE,
+            throughput_mode=efs.ThroughputMode.PROVISIONED,
+            provisioned_throughput_per_second=core.Size.mebibytes(100),
         )
 
         # Create build spec.
