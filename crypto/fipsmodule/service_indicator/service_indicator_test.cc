@@ -36,7 +36,7 @@ static const uint8_t kPlaintext[64] = {
 static const uint8_t kAESIV[AES_BLOCK_SIZE] = {0};
 
 static void DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
-                     bssl::Span<const uint8_t> in, size_t chunk, bool expect_approved) {
+                     bssl::Span<const uint8_t> in, int expect_approved) {
   int approved = AWSLC_NOT_APPROVED;
   size_t max_out = in.size();
   if (EVP_CIPHER_CTX_encrypting(ctx)) {
@@ -47,39 +47,23 @@ static void DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
 
   size_t total = 0;
   int len;
-  while (!in.empty()) {
-    size_t todo = chunk == 0 ? in.size() : std::min(in.size(), chunk);
-    // Check if EVP_CipherUpdate service is approved.
-    CALL_SERVICE_AND_CHECK_APPROVED(approved, EXPECT_TRUE(
-            EVP_CipherUpdate(ctx, out->data() + total, &len, in.data(), static_cast<int>(todo))));
-    if(expect_approved) {
-      ASSERT_EQ(approved, AWSLC_APPROVED);
-    } else{
-      ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
-    }
-
-    total += static_cast<size_t>(len);
-    in = in.subspan(todo);
-  }
-  // Check if EVP_CipherFinal service is approved.
+  EXPECT_TRUE(EVP_CipherUpdate(ctx, out->data(), &len, in.data(), in.size()));
+  total += static_cast<size_t>(len);
+  // Check if the overall service is approved by checking |EVP_CipherFinal_ex|,
+  // which should be the last part of the service.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,EXPECT_TRUE(
                     EVP_CipherFinal_ex(ctx, out->data() + total, &len)));
-  if(expect_approved) {
-    ASSERT_EQ(approved, AWSLC_APPROVED);
-  } else{
-    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
-  }
-
   total += static_cast<size_t>(len);
+  ASSERT_EQ(approved, expect_approved);
+
   out->resize(total);
 }
 
-static void TestOperation(const EVP_CIPHER *cipher, bool encrypt, size_t chunk_size,
+static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
                           const std::vector<uint8_t> &key,
                           const std::vector<uint8_t> &plaintext,
                           const std::vector<uint8_t> &ciphertext,
-                          bool expect_approved) {
-  int approved = AWSLC_NOT_APPROVED;
+                          int expect_approved) {
   const std::vector<uint8_t> *in, *out;
   if (encrypt) {
     in = &plaintext;
@@ -90,15 +74,9 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt, size_t chunk_s
   }
 
   bssl::ScopedEVP_CIPHER_CTX ctx1;
-  // Check if EVP_CipherInit service is approved.
-  CALL_SERVICE_AND_CHECK_APPROVED( approved,
-      ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, nullptr,
-                                    nullptr, encrypt ? 1 : 0)));
-  if (expect_approved) {
-    ASSERT_EQ(approved, AWSLC_APPROVED);
-  } else {
-    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
-  }
+
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, nullptr,
+                                    nullptr, encrypt ? 1 : 0));
   std::vector<uint8_t> iv( kAESIV,kAESIV + EVP_CIPHER_CTX_iv_length(ctx1.get()));
   ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
 
@@ -113,7 +91,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt, size_t chunk_s
   ASSERT_TRUE(EVP_CipherInit_ex(ctx, nullptr, nullptr, key.data(), iv.data(), -1));
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx, 0));
   std::vector<uint8_t> result;
-  DoCipher(ctx, &result, *in, chunk_size, expect_approved);
+  DoCipher(ctx, &result, *in, expect_approved);
   ASSERT_EQ(Bytes(*out), Bytes(result));
 }
 
@@ -210,12 +188,12 @@ struct EVP_TestVector {
   const uint8_t *expected_ciphertext;
   int cipher_text_length;
   bool has_iv;
-  bool expect_approved;
+  int expect_approved;
 } nTestVectors[] = {
-  { EVP_aes_128_ecb(), kAESECBCiphertext, 64, false, true },
-  { EVP_aes_128_cbc(), kAESCBCCiphertext, 64, true, true },
-  { EVP_aes_128_ctr(), kAESCTRCiphertext, 64, true, true },
-  { EVP_aes_128_ofb(), kAESOFBCiphertext, 64, true, false }
+  { EVP_aes_128_ecb(), kAESECBCiphertext, 64, false, AWSLC_APPROVED },
+  { EVP_aes_128_cbc(), kAESCBCCiphertext, 64, true, AWSLC_APPROVED },
+  { EVP_aes_128_ctr(), kAESCTRCiphertext, 64, true, AWSLC_APPROVED },
+  { EVP_aes_128_ofb(), kAESOFBCiphertext, 64, true, AWSLC_NOT_APPROVED }
 };
 
 class EVP_ServiceIndicatorTest : public testing::TestWithParam<EVP_TestVector> {};
@@ -230,14 +208,8 @@ TEST_P(EVP_ServiceIndicatorTest, EVP_Ciphers) {
   std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
   std::vector<uint8_t> ciphertext(t.expected_ciphertext, t.expected_ciphertext + t.cipher_text_length);
 
-  const std::vector<size_t> chunk_sizes = { 0, 1, 16, 17, 33, 63, 64 };
-  for (size_t chunk_size : chunk_sizes) {
-    SCOPED_TRACE(chunk_size);
-    TestOperation(cipher, true /* encrypt */, chunk_size, key, plaintext, ciphertext,
-                  t.expect_approved);
-    TestOperation(cipher, false /* decrypt */, chunk_size, key, plaintext, ciphertext,
-                  t.expect_approved);
-  }
+  TestOperation(cipher, true /* encrypt */, key, plaintext, ciphertext, t.expect_approved);
+  TestOperation(cipher, false /* decrypt */, key, plaintext, ciphertext, t.expect_approved);
 }
 
 

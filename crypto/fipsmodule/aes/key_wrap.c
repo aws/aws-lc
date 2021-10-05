@@ -235,7 +235,9 @@ int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
     ok &= constant_time_is_zero_w(constant_time_ge_8(i, claimed_len) & out[i]);
   }
 
-  AES_verify_service_indicator(NULL, key->rounds);
   *out_len = constant_time_select_w(ok, claimed_len, 0);
+  if(ok & 1){
+    AES_verify_service_indicator(NULL, key->rounds);
+  }
   return ok & 1;
 }

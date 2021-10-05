@@ -92,14 +92,16 @@ void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_
 }
 
 void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
-  switch (EVP_AEAD_key_length(ctx->aead)) {
-    case 16:
-    case 32:
-      FIPS_service_indicator_update_state();
-      break;
-    default:
-      break;
-  }
+  // Not the best way to write this, but the delocate parser for ARM/clang can't
+  // recognize || if statements, or switch statements for this.
+  // TODO: Update the delocate parser to be able to recognize a more readable
+  // version of this.
+  // We only have support for 128 bit and 256 bit keys for AES-GCM.
+   if(EVP_AEAD_key_length(ctx->aead) == 16) {
+    FIPS_service_indicator_update_state();
+   } else if(EVP_AEAD_key_length(ctx->aead) == 32) {
+    FIPS_service_indicator_update_state();
+   }
 }
 
 void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {

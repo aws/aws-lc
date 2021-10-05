@@ -34,8 +34,10 @@ OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds);
 
 // The service indicator checks use different parameters for AEAD APIs than
-// those of other AES modes. AES-GCM is approved only with an internal IV, see
-// SP 800-38D Sec 8.2.2.
+// those of other AES modes.
+
+// AEAD service indicator check for AES-GCM. AES-GCM is approved only with an
+// internal IV, see SP 800-38D Sec 8.2.2.
 void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
 
 // AEAD service indicator check for AES-CCM.
