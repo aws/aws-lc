@@ -121,24 +121,17 @@ uint64_t FIPS_service_indicator_after_call(void) { return 0; }
 // checks, when not in FIPS mode. Arguments must be cast to void to avoid
 // unused warnings.
 
-int FIPS_service_indicator_check_approved(int before, int after) {
-  (void)before;
-  (void)after;
+int FIPS_service_indicator_check_approved(OPENSSL_UNUSED int before,
+                                          OPENSSL_UNUSED int after) {
   return AWSLC_APPROVED;
 }
 
-void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds) {
-  (void)ctx;
-  (void)key_rounds;
-}
+void AES_verify_service_indicator(OPENSSL_UNUSED const EVP_CIPHER_CTX *ctx,
+                                  OPENSSL_UNUSED const unsigned key_rounds) { }
 
-void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
-  (void)ctx;
-}
+void AEAD_GCM_verify_service_indicator(OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) { }
 
-void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
-  (void)ctx;
-}
+void AEAD_CCM_verify_service_indicator(OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) { }
 
 #endif // AWSLC_FIPS
 
