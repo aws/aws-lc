@@ -149,13 +149,9 @@ int FIPS_service_indicator_check_approved(int before, int after) { return AWSLC_
 void AES_verify_service_indicator(unsigned key_rounds) { }
 void AEAD_verify_service_indicator(size_t key_length) { }
 
-OPENSSL_UNUSED void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx) {
-  (void) ctx;
-}
+void AES_CMAC_verify_service_indicator(OPENSSL_UNUSED const CMAC_CTX *ctx) { }
 
-OPENSSL_UNUSED void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
-  (void) evp_md;
-}
+void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
 
 #endif // AWSLC_FIPS
 

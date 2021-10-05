@@ -229,13 +229,9 @@ void HMAC_CTX_reset(HMAC_CTX *ctx) {
 }
 
 int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {
-  // We have to avoid the |HMAC_CTX_init| updating the indicator state, so we
-  // lock the state here.
-  FIPS_service_indicator_lock_state();
   if (key && md) {
     HMAC_CTX_init(ctx);
   }
-  FIPS_service_indicator_unlock_state();
   return HMAC_Init_ex(ctx, key, key_len, md, NULL);
 }
 
