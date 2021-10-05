@@ -1675,8 +1675,8 @@ bool MakeECHConfig(std::vector<uint8_t> *out,
       return false;
     }
   }
-  if (!CBB_add_u16(&contents, params.max_name_len) ||
-      !CBB_add_u16_length_prefixed(&contents, &child) ||
+  if (!CBB_add_u8(&contents, params.max_name_len) ||
+      !CBB_add_u8_length_prefixed(&contents, &child) ||
       !CBB_add_bytes(
           &child, reinterpret_cast<const uint8_t *>(params.public_name.data()),
           params.public_name.size()) ||
@@ -1735,9 +1735,9 @@ TEST(SSLTest, MarshalECHConfig) {
 
   static const uint8_t kECHConfig[] = {
       // version
-      0xfe, 0x0a,
+      0xfe, 0x0d,
       // length
-      0x00, 0x43,
+      0x00, 0x41,
       // contents.config_id
       0x01,
       // contents.kem_id
@@ -1749,10 +1749,10 @@ TEST(SSLTest, MarshalECHConfig) {
       // contents.cipher_suites
       0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
       // contents.maximum_name_length
-      0x00, 0x10,
+      0x10,
       // contents.public_name
-      0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
-      0x6d, 0x70, 0x6c, 0x65,
+      0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61, 0x6d,
+      0x70, 0x6c, 0x65,
       // contents.extensions
       0x00, 0x00};
   uint8_t *ech_config;
@@ -2069,20 +2069,26 @@ TEST(SSLTest, ECHPadding) {
   EXPECT_EQ(client_hello_len, client_hello_len_baseline);
   EXPECT_EQ(ech_len, ech_len_baseline);
 
-  size_t client_hello_len_129, ech_len_129;
-  ASSERT_TRUE(GetECHLength(ctx.get(), &client_hello_len_129, &ech_len_129, 128,
-                           std::string(129, 'a').c_str()));
-  // The padding calculation should not pad beyond the maximum.
-  EXPECT_GT(ech_len_129, ech_len_baseline);
+  // Name lengths above the maximum do not get named-based padding, but the
+  // overall input is padded to a multiple of 32.
+  size_t client_hello_len_baseline2, ech_len_baseline2;
+  ASSERT_TRUE(GetECHLength(ctx.get(), &client_hello_len_baseline2,
+                           &ech_len_baseline2, 128,
+                           std::string(128 + 32, 'a').c_str()));
+  EXPECT_EQ(ech_len_baseline2, ech_len_baseline + 32);
+  // The ClientHello lengths may match if we are still under the threshold for
+  // padding extension.
+  EXPECT_GE(client_hello_len_baseline2, client_hello_len_baseline);
 
-  // If the SNI exceeds the maximum name length, we apply some generic padding,
-  // so close name lengths still match.
-  for (size_t name_len : {129, 130, 131, 132}) {
+  for (size_t name_len = 128 + 1; name_len < 128 + 32; name_len++) {
     SCOPED_TRACE(name_len);
     ASSERT_TRUE(GetECHLength(ctx.get(), &client_hello_len, &ech_len, 128,
                              std::string(name_len, 'a').c_str()));
-    EXPECT_EQ(client_hello_len, client_hello_len_129);
-    EXPECT_EQ(ech_len, ech_len_129);
+    EXPECT_TRUE(ech_len == ech_len_baseline || ech_len == ech_len_baseline2)
+        << ech_len;
+    EXPECT_TRUE(client_hello_len == client_hello_len_baseline ||
+                client_hello_len == client_hello_len_baseline2)
+        << client_hello_len;
   }
 }
 
@@ -2113,44 +2119,39 @@ TEST(SSLTest, ECHPublicName) {
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span(
       "abcdefhijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-01234567899")));
 
-  // Inputs that parse as IPv4 addresses are rejected.
+  // Inputs with trailing numeric components are rejected.
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.0.0.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0177.0.0.01")));
-  EXPECT_FALSE(
-      ssl_is_valid_ech_public_name(str_to_span("0x7f.0x.0x.0x00000001")));
-  EXPECT_FALSE(
-      ssl_is_valid_ech_public_name(str_to_span("0XAB.0XCD.0XEF.0X01")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("255.255.255.255")));
-  // Out-of-bounds or overflowing components are not IP addresses.
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("256.255.255.255")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("255.0x100.255.255")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("255.255.255.0400")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.0x01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.0X01")));
+  // Leading zeros and values that overflow |uint32_t| are still rejected.
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.123456789000000000000000")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.012345678900000000000000")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.0x123456789abcdefABCDEF0")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.0x0123456789abcdefABCDEF")));
+  // Adding a non-digit or non-hex character makes it a valid DNS name again.
+  // Single-component numbers are rejected.
   EXPECT_TRUE(ssl_is_valid_ech_public_name(
-      str_to_span("255.255.255.0x100000000")));
-  // Invalid characters for the base are not IP addresses.
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("12a.0.0.1")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0xg.0.0.1")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("08.0.0.1")));
-  // Trailing components can be merged into a single component.
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.0.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("2130706433")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x7f000001")));
-  // Merged components must respect their limits.
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0xff")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0xffff")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0xffffff")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0xffffffff")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0x100")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0.0x10000")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0x1000000")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0x100000000")));
-  // Correctly handle overflow in decimal and octal.
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("037777777777")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("040000000000")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("4294967295")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("4294967296")));
+      str_to_span("example.1234567890a")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(
+      str_to_span("example.01234567890a")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(
+      str_to_span("example.0x123456789abcdefg")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0X01")));
+  // Numbers with trailing dots are rejected. (They are already rejected by the
+  // LDH label rules, but the WHATWG URL parser additionally rejects them.)
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("1.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("01.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x01.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0X01.")));
 }
 
 // When using the built-in verifier, test that |SSL_get0_ech_name_override| is

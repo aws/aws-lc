@@ -69,20 +69,26 @@
 
 int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp)
 {
-    unsigned char *p, *allocated = NULL;
-    int objsize;
+    if (a == NULL) {
+        OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
+        return -1;
+    }
 
-    if ((a == NULL) || (a->data == NULL))
-        return (0);
+    if (a->length == 0) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_OBJECT);
+        return -1;
+    }
 
-    objsize = ASN1_object_size(0, a->length, V_ASN1_OBJECT);
-    if (pp == NULL || objsize == -1)
+    int objsize = ASN1_object_size(0, a->length, V_ASN1_OBJECT);
+    if (pp == NULL || objsize == -1) {
         return objsize;
+    }
 
+    unsigned char *p, *allocated = NULL;
     if (*pp == NULL) {
         if ((p = allocated = OPENSSL_malloc(objsize)) == NULL) {
             OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-            return 0;
+            return -1;
         }
     } else {
         p = *pp;

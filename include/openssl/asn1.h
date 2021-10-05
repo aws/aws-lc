@@ -111,10 +111,6 @@ extern "C" {
 // V_ASN1_UNDEF is used in some APIs to indicate an ASN.1 element is omitted.
 #define V_ASN1_UNDEF (-1)
 
-// V_ASN1_APP_CHOOSE is used in some APIs to specify a default ASN.1 type based
-// on the context.
-#define V_ASN1_APP_CHOOSE (-2)
-
 // V_ASN1_OTHER is used in |ASN1_TYPE| to indicate a non-universal ASN.1 type.
 #define V_ASN1_OTHER (-3)
 
@@ -1121,9 +1117,11 @@ OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid,
                                                int len, const char *sn,
                                                const char *ln);
 
-// General
-// given a string, return the correct type, max is the maximum length
-OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int max);
+// ASN1_PRINTABLE_type interprets |len| bytes from |s| as a Latin-1 string. It
+// returns the first of |V_ASN1_PRINTABLESTRING|, |V_ASN1_IA5STRING|, or
+// |V_ASN1_T61STRING| that can represent every character. If |len| is negative,
+// |strlen(s)| is used instead.
+OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int len);
 
 OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 

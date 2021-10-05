@@ -170,6 +170,8 @@ TEST(ASN1Test, ASN1Type) {
       {V_ASN1_BOOLEAN, {0x01, 0x01, 0x00}},
       // OCTET_STRING { "a" }
       {V_ASN1_OCTET_STRING, {0x04, 0x01, 0x61}},
+      // OCTET_STRING { }
+      {V_ASN1_OCTET_STRING, {0x04, 0x00}},
       // BIT_STRING { `01` `00` }
       {V_ASN1_BIT_STRING, {0x03, 0x02, 0x01, 0x00}},
       // INTEGER { -1 }
@@ -833,6 +835,13 @@ TEST(ASN1Test, MBString) {
       // Given a choice of formats, we pick the smallest that fits.
       {MBSTRING_UTF8, {}, kAll, V_ASN1_PRINTABLESTRING, {}, 0},
       {MBSTRING_UTF8, {'a'}, kAll, V_ASN1_PRINTABLESTRING, {'a'}, 1},
+      {MBSTRING_UTF8,
+       {'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       kAll,
+       V_ASN1_PRINTABLESTRING,
+       {'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       14},
+      {MBSTRING_UTF8, {'*'}, kAll, V_ASN1_IA5STRING, {'*'}, 1},
       {MBSTRING_UTF8, {'\n'}, kAll, V_ASN1_IA5STRING, {'\n'}, 1},
       {MBSTRING_UTF8,
        {0xc2, 0x80 /* U+0080 */},
@@ -858,6 +867,10 @@ TEST(ASN1Test, MBString) {
        V_ASN1_UTF8STRING,
        {0xf0, 0x90, 0x80, 0x80},
        1},
+
+      // NUL is not printable. It should also not terminate iteration.
+      {MBSTRING_UTF8, {0}, kAll, V_ASN1_IA5STRING, {0}, 1},
+      {MBSTRING_UTF8, {0, 'a'}, kAll, V_ASN1_IA5STRING, {0, 'a'}, 2},
 
       // When a particular format is specified, we use it.
       {MBSTRING_UTF8,
@@ -1035,6 +1048,77 @@ TEST(ASN1Test, NegativeEnumeratedMultistring) {
   TestSerialize(str.get(), i2d_ASN1_PRINTABLE, kMinusOne);
 }
 
+TEST(ASN1Test, PrintableType) {
+  const struct {
+    std::vector<uint8_t> in;
+    int result;
+  } kTests[] = {
+      {{}, V_ASN1_PRINTABLESTRING},
+      {{'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       V_ASN1_PRINTABLESTRING},
+      {{'*'}, V_ASN1_IA5STRING},
+      {{'\0'}, V_ASN1_IA5STRING},
+      {{'\0', 'a'}, V_ASN1_IA5STRING},
+      {{0, 1, 2, 3, 125, 126, 127}, V_ASN1_IA5STRING},
+      {{0, 1, 2, 3, 125, 126, 127, 128}, V_ASN1_T61STRING},
+      {{128, 0, 1, 2, 3, 125, 126, 127}, V_ASN1_T61STRING},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.in));
+    EXPECT_EQ(t.result, ASN1_PRINTABLE_type(t.in.data(), t.in.size()));
+  }
+}
+
+// Encoding a CHOICE type with an invalid selector should fail.
+TEST(ASN1Test, InvalidChoice) {
+  bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+  ASSERT_TRUE(name);
+  // CHOICE types are initialized with an invalid selector.
+  EXPECT_EQ(-1, name->type);
+  // |name| should fail to encode.
+  EXPECT_EQ(-1, i2d_GENERAL_NAME(name.get(), nullptr));
+
+  // The error should be propagated through types containing |name|.
+  bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
+  ASSERT_TRUE(names);
+  EXPECT_TRUE(bssl::PushToStack(names.get(), std::move(name)));
+  EXPECT_EQ(-1, i2d_GENERAL_NAMES(names.get(), nullptr));
+}
+
+// Encoding NID-only |ASN1_OBJECT|s should fail.
+TEST(ASN1Test, InvalidObject) {
+  EXPECT_EQ(-1, i2d_ASN1_OBJECT(OBJ_nid2obj(NID_kx_ecdhe), nullptr));
+
+  bssl::UniquePtr<X509_ALGOR> alg(X509_ALGOR_new());
+  ASSERT_TRUE(alg);
+  ASSERT_TRUE(X509_ALGOR_set0(alg.get(), OBJ_nid2obj(NID_kx_ecdhe),
+                              V_ASN1_UNDEF, nullptr));
+  EXPECT_EQ(-1, i2d_X509_ALGOR(alg.get(), nullptr));
+}
+
+// Encoding invalid |ASN1_TYPE|s should fail. |ASN1_TYPE|s are
+// default-initialized to an invalid type.
+TEST(ASN1Test, InvalidASN1Type) {
+  bssl::UniquePtr<ASN1_TYPE> obj(ASN1_TYPE_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_ASN1_TYPE(obj.get(), nullptr));
+}
+
+// Encoding invalid MSTRING types should fail. An MSTRING is a CHOICE of
+// string-like types. They are initialized to an invalid type.
+TEST(ASN1Test, InvalidMSTRING) {
+  bssl::UniquePtr<ASN1_STRING> obj(ASN1_TIME_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_ASN1_TIME(obj.get(), nullptr));
+
+  obj.reset(DIRECTORYSTRING_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_DIRECTORYSTRING(obj.get(), nullptr));
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
@@ -1047,7 +1131,7 @@ DECLARE_ASN1_ITEM(ASN1_LINKED_LIST)
 DECLARE_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
 
 ASN1_SEQUENCE(ASN1_LINKED_LIST) = {
-  ASN1_OPT(ASN1_LINKED_LIST, next, ASN1_LINKED_LIST),
+    ASN1_OPT(ASN1_LINKED_LIST, next, ASN1_LINKED_LIST),
 } ASN1_SEQUENCE_END(ASN1_LINKED_LIST)
 
 IMPLEMENT_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
@@ -1098,15 +1182,13 @@ struct IMPLICIT_CHOICE {
   ASN1_STRING *string;
 };
 
-// clang-format off
 DECLARE_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
 
 ASN1_SEQUENCE(IMPLICIT_CHOICE) = {
-  ASN1_IMP(IMPLICIT_CHOICE, string, DIRECTORYSTRING, 0)
+    ASN1_IMP(IMPLICIT_CHOICE, string, DIRECTORYSTRING, 0),
 } ASN1_SEQUENCE_END(IMPLICIT_CHOICE)
 
 IMPLEMENT_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
-// clang-format on
 
 // Test that the ASN.1 templates reject types with implicitly-tagged CHOICE
 // types.
@@ -1129,6 +1211,52 @@ TEST(ASN1Test, ImplicitChoice) {
   static const uint8_t kInput2[] = {0x30, 0x02, 0x80, 0x00};
   ptr = kInput2;
   EXPECT_EQ(nullptr, d2i_IMPLICIT_CHOICE(nullptr, &ptr, sizeof(kInput2)));
+}
+
+struct REQUIRED_FIELD {
+  ASN1_INTEGER *value;
+  ASN1_INTEGER *value_imp;
+  ASN1_INTEGER *value_exp;
+  STACK_OF(ASN1_INTEGER) *seq;
+  STACK_OF(ASN1_INTEGER) *seq_imp;
+  STACK_OF(ASN1_INTEGER) *seq_exp;
+};
+
+DECLARE_ASN1_FUNCTIONS(REQUIRED_FIELD)
+ASN1_SEQUENCE(REQUIRED_FIELD) = {
+    ASN1_SIMPLE(REQUIRED_FIELD, value, ASN1_INTEGER),
+    ASN1_IMP(REQUIRED_FIELD, value_imp, ASN1_INTEGER, 0),
+    ASN1_EXP(REQUIRED_FIELD, value_exp, ASN1_INTEGER, 1),
+    ASN1_SEQUENCE_OF(REQUIRED_FIELD, seq, ASN1_INTEGER),
+    ASN1_IMP_SEQUENCE_OF(REQUIRED_FIELD, seq_imp, ASN1_INTEGER, 2),
+    ASN1_EXP_SEQUENCE_OF(REQUIRED_FIELD, seq_exp, ASN1_INTEGER, 3),
+} ASN1_SEQUENCE_END(REQUIRED_FIELD)
+IMPLEMENT_ASN1_FUNCTIONS(REQUIRED_FIELD)
+
+// Test that structures with missing required fields cannot be serialized. Test
+// the full combination of tagging and SEQUENCE OF.
+TEST(ASN1Test, MissingRequiredField) {
+  EXPECT_EQ(-1, i2d_REQUIRED_FIELD(nullptr, nullptr));
+
+  std::unique_ptr<REQUIRED_FIELD, decltype(&REQUIRED_FIELD_free)> obj(
+      nullptr, REQUIRED_FIELD_free);
+  for (auto field : {&REQUIRED_FIELD::value, &REQUIRED_FIELD::value_imp,
+                     &REQUIRED_FIELD::value_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
+    ASN1_INTEGER_free((*obj).*field);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
+
+  for (auto field : {&REQUIRED_FIELD::seq, &REQUIRED_FIELD::seq_imp,
+                     &REQUIRED_FIELD::seq_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
+    sk_ASN1_INTEGER_pop_free((*obj).*field, ASN1_INTEGER_free);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
 }
 
 #endif  // !WINDOWS || !SHARED_LIBRARY
