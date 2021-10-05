@@ -217,6 +217,7 @@ int CMAC_Reset(CMAC_CTX *ctx) {
 int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
   // We have to avoid the underlying AES-CBC services updating the indicator
   // state, so we lock the state here.
+  int ret = 0;
   FIPS_service_indicator_lock_state();
 
   size_t block_size = EVP_CIPHER_CTX_block_size(&ctx->cipher_ctx);
@@ -240,24 +241,21 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
     // case we don't want to process this block now because it might be the last
     // block and that block is treated specially.
     if (in_len == 0) {
-      FIPS_service_indicator_unlock_state();
-      AES_CMAC_verify_service_indicator(ctx);
-      return 1;
+      ret = 1;
+      goto end;
     }
 
     assert(ctx->block_used == block_size);
 
     if (!EVP_Cipher(&ctx->cipher_ctx, scratch, ctx->block, block_size)) {
-      FIPS_service_indicator_unlock_state();
-      return 0;
+      goto end;
     }
   }
 
   // Encrypt all but one of the remaining blocks.
   while (in_len > block_size) {
     if (!EVP_Cipher(&ctx->cipher_ctx, scratch, in, block_size)) {
-      FIPS_service_indicator_unlock_state();
-      return 0;
+      goto end;
     }
     in += block_size;
     in_len -= block_size;
@@ -266,9 +264,13 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
   OPENSSL_memcpy(ctx->block, in, in_len);
   ctx->block_used = in_len;
 
+  ret = 1;
+end:
   FIPS_service_indicator_unlock_state();
-  AES_CMAC_verify_service_indicator(ctx);
-  return 1;
+  if(ret) {
+    AES_CMAC_verify_service_indicator(ctx);
+  }
+  return ret;
 }
 
 int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
@@ -297,7 +299,11 @@ int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
     out[i] = ctx->block[i] ^ mask[i];
   }
 
+  // We have to avoid the underlying AES-CBC services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   int ret = EVP_Cipher(&ctx->cipher_ctx, out, out, block_size);
+  FIPS_service_indicator_unlock_state();
   if(ret) {
     AES_CMAC_verify_service_indicator(ctx);
   }

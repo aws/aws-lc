@@ -129,46 +129,51 @@ int SHA512_256_Init(SHA512_CTX *sha) {
 
 uint8_t *SHA384(const uint8_t *data, size_t len,
                 uint8_t out[SHA384_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA384_Init(&ctx);
-  SHA384_Update(&ctx, data, len);
-
-  // Unlock service indicator state here, to let |SHA384_Final| decide if
-  // |SHA384| has succeeded or not.
+  const int ok = SHA384_Init(&ctx) &&
+                 SHA384_Update(&ctx, data, len) &&
+                 SHA384_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  SHA384_Final(out, &ctx);
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512(const uint8_t *data, size_t len,
                 uint8_t out[SHA512_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, data, len);
-
-  // Unlock service indicator state here, to let |SHA512_Final| decide if
-  // |SHA512| has succeeded or not.
+  const int ok = SHA512_Init(&ctx) &&
+                 SHA512_Update(&ctx, data, len) &&
+                 SHA512_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  SHA512_Final(out, &ctx);
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512_256(const uint8_t *data, size_t len,
                     uint8_t out[SHA512_256_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-
   SHA512_CTX ctx;
-  SHA512_256_Init(&ctx);
-  SHA512_256_Update(&ctx, data, len);
-
-  // Unlock service indicator state here, to let |SHA512_256_Final| decide if
-  // |SHA512_256| has succeeded or not.
+  const int ok = SHA512_256_Init(&ctx) &&
+                 SHA512_256_Update(&ctx, data, len) &&
+                 SHA512_256_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  SHA512_256_Final(out, &ctx);
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
@@ -203,6 +208,7 @@ int SHA512_256_Final(uint8_t out[SHA512_256_DIGEST_LENGTH], SHA512_CTX *sha) {
 
 void SHA512_Transform(SHA512_CTX *c, const uint8_t block[SHA512_CBLOCK]) {
   sha512_block_data_order(c->h, block, 1);
+  FIPS_service_indicator_update_state();
 }
 
 int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
@@ -211,6 +217,7 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   const uint8_t *data = in_data;
 
   if (len == 0) {
+    FIPS_service_indicator_update_state();
     return 1;
   }
 

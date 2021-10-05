@@ -15,7 +15,7 @@ static int FIPS_service_indicator_init_state(void) {
       AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
     return 0;
   }
-  indicator->lock_state = 0;
+  indicator->lock_state = STATE_LOCKED;
   indicator->counter = 0;
   return 1;
 }
@@ -113,6 +113,7 @@ void AEAD_verify_service_indicator(size_t key_length) {
 }
 
 void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx) {
+  // Only 128 and 256 bit keys are approved for AES-CMAC.
   switch (ctx->cipher_ctx.key_len) {
     case 16:
     case 32:
@@ -124,6 +125,7 @@ void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx) {
 }
 
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
+  // HMAC with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   switch (evp_md->type){
     case NID_sha1:
     case NID_sha224:
@@ -147,11 +149,11 @@ int FIPS_service_indicator_check_approved(int before, int after) { return AWSLC_
 void AES_verify_service_indicator(unsigned key_rounds) { }
 void AEAD_verify_service_indicator(size_t key_length) { }
 
-void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx) {
+OPENSSL_UNUSED void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx) {
   (void) ctx;
 }
 
-void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
+OPENSSL_UNUSED void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   (void) evp_md;
 }
 

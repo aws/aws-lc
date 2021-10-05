@@ -8,6 +8,8 @@
 
 #if defined(AWSLC_FIPS)
 
+#define STATE_LOCKED       0
+
 struct fips_service_indicator_state {
   uint64_t lock_state;
   uint64_t counter;
@@ -39,12 +41,16 @@ void FIPS_service_indicator_unlock_state(void);
 #else
 
 // Service indicator functions are not intended for use during non-FIPS mode.
-// If these functions are run during non-FIPS mode, they will return nothing.
+// If these functions are run during non-FIPS mode, they will provide no
+// operations.
 OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 OPENSSL_INLINE void FIPS_service_indicator_lock_state(void) { }
 OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) { }
 
 #endif // AWSLC_FIPS
+
+// Parameters of service indicator check functions to verify against should and
+// are assumed to be not NULL.
 
 // Service indicator check for most AES algorithms.
 // hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
@@ -58,10 +64,8 @@ void AES_verify_service_indicator(unsigned key_rounds);
 // SP 800-38D Sec 8.2.2.
 void AEAD_verify_service_indicator(size_t key_length);
 
-// Only 128 and 256 bit keys are approved for AES-CMAC.
 void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx);
 
-// HMAC with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
 void HMAC_verify_service_indicator(const EVP_MD *evp_md);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
