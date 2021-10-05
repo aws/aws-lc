@@ -43,22 +43,25 @@ function put_metric {
 function run_fuzz_test {
   SHARED_CORPUS="${CORPUS_ROOT}/shared_corpus/${FUZZ_NAME}/shared_corpus"
   FUZZ_TEST_ROOT="${ALL_RUN_ROOT}/${FUZZ_NAME}"
+  LOCAL_SHARED_CORPUS_ROOT="${FUZZ_TEST_ROOT}/local_shared_corpus"
   FUZZ_TEST_CORPUS="${FUZZ_TEST_ROOT}/run_corpus"
   ARTIFACTS_FOLDER="${FUZZ_TEST_ROOT}/artifacts"
   FUZZ_RUN_LOGS="${FUZZ_TEST_ROOT}/logs"
   SUMMARY_LOG="${FUZZ_RUN_LOGS}/summary.log"
   mkdir -p "$SHARED_CORPUS" "$FUZZ_TEST_ROOT" "$FUZZ_TEST_CORPUS" "$ARTIFACTS_FOLDER" "$FUZZ_RUN_LOGS"
 
+  # To avoid having each libfuzzer thread read from the shared corpus copy it to the local CodeBuild directory one time
+  cp -r "$SHARED_CORPUS" "$LOCAL_SHARED_CORPUS_ROOT"
 
-    # Calculate starting metrics and post to CloudWatch
-  ORIGINAL_SHARED_CORPUS_FILE_COUNT=$(find "$SHARED_CORPUS" -type f | wc -l)
+  # Calculate starting metrics and post to CloudWatch
+  ORIGINAL_SHARED_CORPUS_FILE_COUNT=$(find "$LOCAL_SHARED_CORPUS_ROOT" -type f | wc -l)
   put_metric_count --metric-name SharedCorpusFileCount --value "$ORIGINAL_SHARED_CORPUS_FILE_COUNT" --dimensions "FuzzTest=$FUZZ_NAME"
 
   # Perform the actual fuzzing!
   # Step 1 run each fuzz test for the determined time. This will use the existing shared corpus (in EFS) and any files
   # checked into the GitHub corpus. This runs the fuzzer with three folders: the first folder is where new inputs will
-  # go (FUZZ_TEST_CORPUS), all other folders will be used as input (SHARED_CORPUS and SRC_CORPUS). It will write new
-  # files to the temporary run corpus.
+  # go (FUZZ_TEST_CORPUS), all other folders will be used as input ($LOCAL_SHARED_CORPUS_ROOT and SRC_CORPUS). It will
+  # write new files to the temporary run corpus.
   # https://llvm.org/docs/LibFuzzer.html#options
   #
   # Run with NUM_CPU_THREADS which will be physical cores on ARM and virtualized cores on x86 with hyper threading.
@@ -70,7 +73,7 @@ function run_fuzz_test {
   time "${FUZZ_TEST_PATH}" -print_final_stats=1 -timeout="$FUZZ_TEST_TIMEOUT" -max_total_time="$TIME_FOR_EACH_FUZZ" \
     -jobs="$NUM_CPU_THREADS" -workers="$NUM_CPU_THREADS" \
     -artifact_prefix="$ARTIFACTS_FOLDER/" \
-    "$FUZZ_TEST_CORPUS" "$SHARED_CORPUS" "$SRC_CORPUS" 2>&1 | tee "$SUMMARY_LOG"
+    "$FUZZ_TEST_CORPUS" "$LOCAL_SHARED_CORPUS_ROOT" "$SRC_CORPUS" 2>&1 | tee "$SUMMARY_LOG"
   # This gets the status of the fuzz run which determines if we want to fail the build or not, otherwise we'd get the results of tee
   if [ "${PIPESTATUS[0]}" == 1 ]; then
     FUZZ_RUN_FAILURE=1
@@ -93,7 +96,8 @@ function run_fuzz_test {
     cp -r "$FUZZ_TEST_ROOT" "$FAILURE_ROOT"
     cp "$FUZZ_TEST_PATH" "${FUZZ_TEST_FAILURE_ROOT}/${FUZZ_NAME}"
 
-    # If this fuzz run has failed the below metrics wont make a lot of sense, it could fail on the first input and publish a TestCount of 1 which makes all the metrics look weird
+    # If this fuzz run has failed the below metrics wont make a lot of sense, it could fail on the first input and
+    # publish a TestCount of 1 which makes all the metrics look weird
     echo "${FUZZ_NAME} failed, see the above output for details. For all the logs see ${FAILURE_ROOT} in EFS"
     exit 1
   else
@@ -105,7 +109,8 @@ function run_fuzz_test {
   # Step 2 merge any new files from the run corpus and GitHub src corpus into the shared corpus (EFS)
   time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_CORPUS" "$FUZZ_TEST_CORPUS" "$SRC_CORPUS"
 
-  # Calculate interesting metrics and post results to CloudWatch
+  # Calculate interesting metrics and post results to CloudWatch, this checks the shared EFS corpus after the new test
+  # run corpus has been merged in
   FINAL_SHARED_CORPUS_FILE_COUNT=$(find "$SHARED_CORPUS" -type f | wc -l)
   put_metric_count --metric-name SharedCorpusFileCount --value "$FINAL_SHARED_CORPUS_FILE_COUNT" --dimensions "FuzzTest=$FUZZ_NAME"
 
