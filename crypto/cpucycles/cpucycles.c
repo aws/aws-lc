@@ -8,8 +8,6 @@
 //UNIX
 #include <time.h>
 
-
-
 uint64_t cpucycles(void)
 { // Access system counter for benchmarking
     unsigned int hi, lo;

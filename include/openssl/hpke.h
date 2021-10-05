@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 
-#define HPKE_VERSION_PQ 1
+#define HPKE_VERSION_PQ 2
 
 
 // Hybrid Public Key Encryption.
@@ -48,8 +48,8 @@ extern "C" {
 
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
-#define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0020
-#define EVP_HPKE_KEM_X25519_SIKE_HKDF_SHA256 0x0020
+#define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0021
+#define EVP_HPKE_KEM_X25519_SIKE_HKDF_SHA256 0x0022
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
