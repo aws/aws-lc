@@ -139,12 +139,17 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     size_t block_size = EVP_MD_block_size(md);
     assert(block_size <= sizeof(key_block));
     if (block_size < key_len) {
+      // We have to avoid the underlying SHA services updating the indicator
+      // state, so we lock the state here.
+      FIPS_service_indicator_lock_state();
       // Long keys are hashed.
       if (!EVP_DigestInit_ex(&ctx->md_ctx, md, impl) ||
           !EVP_DigestUpdate(&ctx->md_ctx, key, key_len) ||
           !EVP_DigestFinal_ex(&ctx->md_ctx, key_block, &key_block_len)) {
+        FIPS_service_indicator_unlock_state();
         return 0;
       }
+      FIPS_service_indicator_unlock_state();
     } else {
       assert(key_len <= sizeof(key_block));
       OPENSSL_memcpy(key_block, key, key_len);
