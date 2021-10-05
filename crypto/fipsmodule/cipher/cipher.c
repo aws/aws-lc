@@ -269,11 +269,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 
   if (in_len <= 0) {
     *out_len = 0;
-    if(in_len == 0){
-      return 1;
-    } else{
-      return 0;
-    }
+    return in_len == 0;
   }
 
   if (ctx->buf_len == 0 && block_remainder(ctx, in_len) == 0) {
@@ -322,7 +318,6 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     OPENSSL_memcpy(ctx->buf, &in[in_len], i);
   }
   ctx->buf_len = i;
-
   return 1;
 }
 
@@ -365,13 +360,12 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
     ctx->buf[i] = n;
   }
   ret = ctx->cipher->cipher(ctx, out, ctx->buf, b);
-  if (!ret) {
-    return ret;
+  if (ret) {
+    *out_len = b;
+    AES_verify_service_indicator(ctx, 0);
   }
 
-  *out_len = b;
-  AES_verify_service_indicator(ctx, 0);
-  return 1;
+  return ret;
 }
 
 int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
