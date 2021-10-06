@@ -537,6 +537,10 @@ extern uint64_t word_clz (uint64_t a);
 // Input a; output function return
 extern uint64_t word_ctz (uint64_t a);
 
+// Return minimum of two unsigned 64-bit words
+// Inputs a, b; output function return
+ extern uint64_t word_min (uint64_t a, uint64_t b);
+
 // Single-word negated modular inverse (-1/a) mod 2^64
 // Input a; output function return
 extern uint64_t word_negmodinv (uint64_t a);

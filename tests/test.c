@@ -192,6 +192,7 @@ enum {
        TEST_WORD_BYTEREVERSE,
        TEST_WORD_CLZ,
        TEST_WORD_CTZ,
+       TEST_WORD_MIN,
        TEST_WORD_NEGMODINV
 };
 
@@ -4769,6 +4770,29 @@ int test_word_ctz(void)
   return 0;
 }
 
+int test_word_min(void)
+{ uint64_t i, a, b, x, y;
+  printf("Testing word_min with %d cases\n",TESTS);
+  for (i = 0; i < tests; ++i)
+   { a = random64();
+     b = random64();
+     if (rand() & 1) a = b + (rand() & 7);
+     if (rand() & 1) b = a + (rand() & 7);
+
+     x = word_min(a,b);
+     y = (a < b) ? a : b;;
+     if (x != y)
+      { printf("### Disparity: word_min(0x%016"PRIx64",0x%016"PRIx64") = 0x%016"PRIx64" not 0x%016"PRIx64"\n",a,b,x,y);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: word_min(0x%016"PRIx64",0x%016"PRIx64") = 0x%016"PRIx64"\n",a,b,x);
+      }
+    }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_negmodinv(void)
 { uint64_t i, a, x;
   printf("Testing word_negmodinv with %d cases\n",tests);
@@ -4920,6 +4944,7 @@ int test_all()
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
+  dotest(test_word_min);
   dotest(test_word_negmodinv);
 
   if (failures != 0)
@@ -5036,6 +5061,7 @@ int test_allnonbmi()
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
+  dotest(test_word_min);
   dotest(test_word_negmodinv);
 
   if (failures != 0)
@@ -5223,6 +5249,7 @@ int main(int argc, char *argv[])
      case TEST_WORD_BYTEREVERSE:       return test_word_bytereverse();
      case TEST_WORD_CLZ:               return test_word_clz();
      case TEST_WORD_CTZ:               return test_word_ctz();
+     case TEST_WORD_MIN:               return test_word_min();
      case TEST_WORD_NEGMODINV:         return test_word_negmodinv();
 
      default:

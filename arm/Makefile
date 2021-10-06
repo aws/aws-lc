@@ -140,6 +140,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       generic/word_bytereverse.o \
       generic/word_clz.o \
       generic/word_ctz.o \
+      generic/word_min.o \
       generic/word_negmodinv.o \
       p256/bignum_add_p256.o \
       p256/bignum_bigendian_4.o \
