@@ -314,23 +314,19 @@ add_library(
   err/err.c
   err_data.c
   engine/engine.c
-  evp/digestsign.c
-  evp/evp.c
-  evp/evp_asn1.c
-  evp/evp_ctx.c
-  evp/p_dsa_asn1.c
-  evp/p_ec.c
-  evp/p_ec_asn1.c
-  evp/p_ed25519.c
-  evp/p_ed25519_asn1.c
-  evp/p_rsa.c
-  evp/p_rsa_asn1.c
-  evp/p_x25519.c
-  evp/p_x25519_asn1.c
-  evp/pbkdf.c
-  evp/print.c
-  evp/scrypt.c
-  evp/sign.c
+  evp_extra/evp_asn1.c
+  evp_extra/p_dsa_asn1.c
+  evp_extra/p_ec_asn1.c
+  evp_extra/p_ed25519.c
+  evp_extra/p_ed25519_asn1.c
+  evp_extra/p_rsa_asn1.c
+  evp_extra/p_x25519.c
+  evp_extra/p_x25519_asn1.c
+  evp_extra/p_methods.c
+  evp_extra/pbkdf.c
+  evp_extra/print.c
+  evp_extra/scrypt.c
+  evp_extra/sign.c
   ex_data.c
   hkdf/hkdf.c
   hpke/hpke.c
@@ -556,10 +552,10 @@ if(BUILD_TESTING)
     digest_extra/digest_test.cc
     dsa/dsa_test.cc
     err/err_test.cc
-    evp/evp_extra_test.cc
-    evp/evp_test.cc
-    evp/pbkdf_test.cc
-    evp/scrypt_test.cc
+    evp_extra/evp_extra_test.cc
+    evp_extra/evp_test.cc
+    evp_extra/pbkdf_test.cc
+    evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
     fipsmodule/cmac/cmac_test.cc
