@@ -118,6 +118,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, key.data(), iv.data(), encrypt ? 1 : 0));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_Cipher(ctx1.get(), output,
                                                in->data(), in->size()));
+  ASSERT_EQ(approved, expect_approved);
   ASSERT_TRUE(check_test(out->data(), output, in->size(), "EVP_Cipher Encryption KAT"));
 }
 
