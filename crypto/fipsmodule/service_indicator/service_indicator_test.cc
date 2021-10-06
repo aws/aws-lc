@@ -35,6 +35,26 @@ static const uint8_t kPlaintext[64] = {
 #if defined(AWSLC_FIPS)
 static const uint8_t kAESIV[AES_BLOCK_SIZE] = {0};
 
+static void hex_dump(const uint8_t *in, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    fprintf(stderr, "%02x", in[i]);
+  }
+}
+
+static int check_test(const uint8_t *expected, const uint8_t *actual,
+                      size_t expected_len, const char *name) {
+  if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
+    fprintf(stderr, "%s failed.\nExpected: ", name);
+    hex_dump(expected, expected_len);
+    fprintf(stderr, "\nCalculated: ");
+    hex_dump(actual, expected_len);
+    fprintf(stderr, "\n");
+    fflush(stderr);
+    return 0;
+  }
+  return 1;
+}
+
 static void DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
                      bssl::Span<const uint8_t> in, int expect_approved) {
   int approved = AWSLC_NOT_APPROVED;
@@ -64,6 +84,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
                           const std::vector<uint8_t> &plaintext,
                           const std::vector<uint8_t> &ciphertext,
                           int expect_approved) {
+  int approved = AWSLC_NOT_APPROVED;
   const std::vector<uint8_t> *in, *out;
   if (encrypt) {
     in = &plaintext;
@@ -73,46 +94,31 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
     out = &plaintext;
   }
 
-  bssl::ScopedEVP_CIPHER_CTX ctx1;
-
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, nullptr,
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  // Test running the EVP_Cipher interfaces one by one directly, and check
+  // |EVP_CipherFinal_ex| for approval at the end.
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr,
                                     nullptr, encrypt ? 1 : 0));
-  std::vector<uint8_t> iv( kAESIV,kAESIV + EVP_CIPHER_CTX_iv_length(ctx1.get()));
-  ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
-
-
-  bssl::ScopedEVP_CIPHER_CTX ctx2;
-  ASSERT_TRUE(EVP_CIPHER_CTX_copy(ctx2.get(), ctx1.get()));
-  EVP_CIPHER_CTX *ctx = ctx2.get();
+  std::vector<uint8_t> iv( kAESIV,kAESIV + EVP_CIPHER_CTX_iv_length(ctx.get()));
+  ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx.get()));
 
   // For each of the ciphers we test, the output size matches the input size.
   ASSERT_EQ(in->size(), out->size());
-  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx, key.size()));
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx, nullptr, nullptr, key.data(), iv.data(), -1));
-  ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx, 0));
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(), iv.data(), encrypt ? 1 : 0));
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
   std::vector<uint8_t> result;
-  DoCipher(ctx, &result, *in, expect_approved);
+  DoCipher(ctx.get(), &result, *in, expect_approved);
   ASSERT_EQ(Bytes(*out), Bytes(result));
-}
 
-static void hex_dump(const uint8_t *in, size_t len) {
-  for (size_t i = 0; i < len; i++) {
-    fprintf(stderr, "%02x", in[i]);
-  }
-}
 
-static int check_test(const uint8_t *expected, const uint8_t *actual,
-                      size_t expected_len, const char *name) {
-  if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
-    fprintf(stderr, "%s failed.\nExpected: ", name);
-    hex_dump(expected, expected_len);
-    fprintf(stderr, "\nCalculated: ");
-    hex_dump(actual, expected_len);
-    fprintf(stderr, "\n");
-    fflush(stderr);
-    return 0;
-  }
-  return 1;
+  // Test using the one-shot |EVP_Cipher| function for approval.
+  bssl::ScopedEVP_CIPHER_CTX ctx1;
+  uint8_t output[256];
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, key.data(), iv.data(), encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_Cipher(ctx1.get(), output,
+                                               in->data(), in->size()));
+  ASSERT_TRUE(check_test(out->data(), output, in->size(), "EVP_Cipher Encryption KAT"));
 }
 
 // AES-OFB is not an approved service, and is only used to test we are not
