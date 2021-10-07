@@ -192,6 +192,7 @@ enum {
        TEST_WORD_BYTEREVERSE,
        TEST_WORD_CLZ,
        TEST_WORD_CTZ,
+       TEST_WORD_MAX,
        TEST_WORD_MIN,
        TEST_WORD_NEGMODINV
 };
@@ -4770,6 +4771,29 @@ int test_word_ctz(void)
   return 0;
 }
 
+int test_word_max(void)
+{ uint64_t i, a, b, x, y;
+  printf("Testing word_max with %d cases\n",TESTS);
+  for (i = 0; i < tests; ++i)
+   { a = random64();
+     b = random64();
+     if (rand() & 1) a = b + (rand() & 7);
+     if (rand() & 1) b = a + (rand() & 7);
+
+     x = word_max(a,b);
+     y = (a < b) ? b : a;;
+     if (x != y)
+      { printf("### Disparity: word_max(0x%016"PRIx64",0x%016"PRIx64") = 0x%016"PRIx64" not 0x%016"PRIx64"\n",a,b,x,y);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: word_max(0x%016"PRIx64",0x%016"PRIx64") = 0x%016"PRIx64"\n",a,b,x);
+      }
+    }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_min(void)
 { uint64_t i, a, b, x, y;
   printf("Testing word_min with %d cases\n",TESTS);
@@ -4944,6 +4968,7 @@ int test_all()
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
+  dotest(test_word_max);
   dotest(test_word_min);
   dotest(test_word_negmodinv);
 
@@ -4992,7 +5017,9 @@ int test_allnonbmi()
   dotest(test_bignum_copy);
   dotest(test_bignum_ctd);
   dotest(test_bignum_ctz);
+  dotest(test_bignum_deamont_p521);
   dotest(test_bignum_demont);
+  dotest(test_bignum_demont_p521);
   dotest(test_bignum_digit);
   dotest(test_bignum_digitsize);
   dotest(test_bignum_double_p256);
@@ -5058,24 +5085,27 @@ int test_allnonbmi()
   dotest(test_bignum_sub_p521);
   dotest(test_bignum_tobytes_4);
   dotest(test_bignum_tobytes_6);
+  dotest(test_bignum_tomont_p521);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
+  dotest(test_word_max);
   dotest(test_word_min);
   dotest(test_word_negmodinv);
 
   if (failures != 0)
-   { printf("Partial tests (%d) run, **** %d failures ***\n",
+   { printf("*** Partial tests (%d) run and **** %d failures ***\n",
             successes+failures,failures);
      return 1;
    }
   else if (tests == 0)
-   { printf("Zero tests run, *** no testing\n");
+   { printf("*** Zero tests run, *** no testing\n");
      return 1;
    }
   else
-   { printf("Partial tests (%d) run, *** no failures but some skipped\n",
+   { printf("*** Partial tests (%d) run; no failures but some skipped\n",
             successes);
+     printf("*** x86 BMI and ADX instructions needed for other functions\n");
      return 0;
    }
 }
@@ -5135,6 +5165,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_AMONTMUL:        return test_bignum_amontmul();
      case TEST_BIGNUM_AMONTREDC:       return test_bignum_amontredc();
      case TEST_BIGNUM_AMONTSQR:        return test_bignum_amontsqr();
+     case TEST_BIGNUM_BIGENDIAN_4:     return test_bignum_bigendian_4();
+     case TEST_BIGNUM_BIGENDIAN_6:     return test_bignum_bigendian_6();
      case TEST_BIGNUM_BITFIELD:        return test_bignum_bitfield();
      case TEST_BIGNUM_BITSIZE:         return test_bignum_bitsize();
      case TEST_BIGNUM_CLD:             return test_bignum_cld();
@@ -5164,6 +5196,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_EMONTREDC_8N:    return test_bignum_emontredc_8n();
      case TEST_BIGNUM_EQ:              return test_bignum_eq();
      case TEST_BIGNUM_EVEN:            return test_bignum_even();
+     case TEST_BIGNUM_FROMBYTES_4:     return test_bignum_frombytes_4();
+     case TEST_BIGNUM_FROMBYTES_6:     return test_bignum_frombytes_6();
      case TEST_BIGNUM_GE:              return test_bignum_ge();
      case TEST_BIGNUM_GT:              return test_bignum_gt();
      case TEST_BIGNUM_HALF_P256:       return test_bignum_half_p256();
@@ -5240,6 +5274,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_SUB_P256:        return test_bignum_sub_p256();
      case TEST_BIGNUM_SUB_P384:        return test_bignum_sub_p384();
      case TEST_BIGNUM_SUB_P521:        return test_bignum_sub_p521();
+     case TEST_BIGNUM_TOBYTES_4:       return test_bignum_tobytes_4();
+     case TEST_BIGNUM_TOBYTES_6:       return test_bignum_tobytes_6();
      case TEST_BIGNUM_TOMONT_P256:     return test_bignum_tomont_p256();
      case TEST_BIGNUM_TOMONT_P384:     return test_bignum_tomont_p384();
      case TEST_BIGNUM_TOMONT_P521:     return test_bignum_tomont_p521();
@@ -5249,6 +5285,7 @@ int main(int argc, char *argv[])
      case TEST_WORD_BYTEREVERSE:       return test_word_bytereverse();
      case TEST_WORD_CLZ:               return test_word_clz();
      case TEST_WORD_CTZ:               return test_word_ctz();
+     case TEST_WORD_MAX:               return test_word_max();
      case TEST_WORD_MIN:               return test_word_min();
      case TEST_WORD_NEGMODINV:         return test_word_negmodinv();
 

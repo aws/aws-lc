@@ -537,6 +537,10 @@ extern uint64_t word_clz (uint64_t a);
 // Input a; output function return
 extern uint64_t word_ctz (uint64_t a);
 
+// Return maximum of two unsigned 64-bit words
+// Inputs a, b; output function return
+ extern uint64_t word_max (uint64_t a, uint64_t b);
+
 // Return minimum of two unsigned 64-bit words
 // Inputs a, b; output function return
  extern uint64_t word_min (uint64_t a, uint64_t b);
