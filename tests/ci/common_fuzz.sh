@@ -67,7 +67,7 @@ function run_fuzz_test {
   # This could fail and we want to capture that (+e)
   set +e
   FUZZ_RUN_FAILURE=0
-  time "./${FUZZ_TEST_PATH}" -print_final_stats=1 -timeout="$FUZZ_TEST_TIMEOUT" -max_total_time="$TIME_FOR_EACH_FUZZ" \
+  time "${FUZZ_TEST_PATH}" -print_final_stats=1 -timeout="$FUZZ_TEST_TIMEOUT" -max_total_time="$TIME_FOR_EACH_FUZZ" \
     -jobs="$NUM_CPU_THREADS" -workers="$NUM_CPU_THREADS" \
     -artifact_prefix="$ARTIFACTS_FOLDER/" \
     "$FUZZ_TEST_CORPUS" "$SHARED_CORPUS" "$SRC_CORPUS" 2>&1 | tee "$SUMMARY_LOG"
@@ -86,7 +86,7 @@ function run_fuzz_test {
     if [[ "$FUZZ_NAME" == "cryptofuzz" ]]; then
       for ARTIFACT in "$ARTIFACTS_FOLDER"/*; do
         ARTIFACT_NAME=$(basename "$ARTIFACT")
-        "./${FUZZ_TEST_PATH}" --debug "$ARTIFACT" | tee "${FUZZ_RUN_LOGS}/${ARTIFACT_NAME}.log"
+        "${FUZZ_TEST_PATH}" --debug "$ARTIFACT" | tee "${FUZZ_RUN_LOGS}/${ARTIFACT_NAME}.log"
       done
     fi
 
@@ -103,7 +103,7 @@ function run_fuzz_test {
   set -e
 
   # Step 2 merge any new files from the run corpus and GitHub src corpus into the shared corpus (EFS)
-  time "./${FUZZ_TEST_PATH}" -merge=1 "$SHARED_CORPUS" "$FUZZ_TEST_CORPUS" "$SRC_CORPUS"
+  time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_CORPUS" "$FUZZ_TEST_CORPUS" "$SRC_CORPUS"
 
   # Calculate interesting metrics and post results to CloudWatch
   FINAL_SHARED_CORPUS_FILE_COUNT=$(find "$SHARED_CORPUS" -type f | wc -l)
