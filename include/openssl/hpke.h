@@ -20,6 +20,7 @@
 #include <openssl/curve25519.h>
 #include <openssl/sike_internal.h>
 #include <openssl/P434_api.h>
+#include <openssl/kyber_kem.h>
 #include <openssl/cpucycles.h>
 #include <openssl/digest.h>
 
@@ -29,7 +30,7 @@ extern "C" {
 #endif
 
 
-#define HPKE_VERSION_PQ 2
+#define HPKE_VERSION_PQ 4
 
 
 // Hybrid Public Key Encryption.
@@ -50,6 +51,7 @@ extern "C" {
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
 #define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0021
 #define EVP_HPKE_KEM_X25519_SIKE_HKDF_SHA256 0x0022
+#define EVP_HPKE_PQKEM_KYBER_HKDF_SHA256   0x0023
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
@@ -63,6 +65,13 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_SIKE_hkdf_sha256(void);
 //x25519 + SIKE EXPERIMENTAL
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_SIKE_hkdf_sha256(void);
 
+
+//Kyber EXPERIMENTAL
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_KYBER_hkdf_sha256(void);
+
+//x25519 + Kyber EXPERIMENTAL 
+
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_KYBER_hkdf_sha256(void);
 
 // EVP_HPKE_KEM_id returns the HPKE KEM identifier for |kem|, which
 // will be one of the |EVP_HPKE_KEM_*| constants.
@@ -326,7 +335,15 @@ struct evp_hpke_key_st {
   #endif
   #if HPKE_VERSION_PQ == 2                                //hybrid crypto --> x25519 || SIKE(p434)
         uint8_t private_key[X25519_PRIVATE_KEY_LEN + SIKE_P434_R3_PRIVATE_KEY_BYTES];
-        uint8_t public_key[X25519_PRIVATE_KEY_LEN + SIKE_P434_R3_PRIVATE_KEY_BYTES];
+        uint8_t public_key[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_PUBLIC_KEY_BYTES];
+  #endif
+  #if HPKE_VERSION_PQ == 3                               //kyber
+        uint8_t private_key[KYBER_SECRETKEYBYTES];
+        uint8_t public_key[KYBER_PUBLICKEYBYTES];
+  #endif
+  #if HPKE_VERSION_PQ == 4                               //kyber
+        uint8_t private_key[X25519_PRIVATE_KEY_LEN + KYBER_SECRETKEYBYTES];
+        uint8_t public_key[X25519_PUBLIC_VALUE_LEN + KYBER_PUBLICKEYBYTES];
   #endif
 
 

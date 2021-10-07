@@ -18,9 +18,10 @@ cmake_minimum_required (VERSION 2.8.12)
 include_directories(../../include)
 
 add_subdirectory(sike_r3)
+add_subdirectory(kyber_r3)
 
 add_library(pq_crypto "pq_kem.c"
-                      $<TARGET_OBJECTS:sike_r3>)
+                      $<TARGET_OBJECTS:sike_r3> $<TARGET_OBJECTS:kyber_r3>)
 
 install(TARGETS pq_crypto
         EXPORT crypto-targets
