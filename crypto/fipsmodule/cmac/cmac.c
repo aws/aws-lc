@@ -86,6 +86,7 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
   // We have to verify that all the CMAC services actually succeed before
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+  int ok = 0;
 
   const EVP_CIPHER *cipher;
   switch (key_len) {
@@ -96,17 +97,19 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
       cipher = EVP_aes_256_cbc();
       break;
     default:
-      return 0;
+      goto end;
   }
 
   size_t scratch_out_len;
   CMAC_CTX ctx;
   CMAC_CTX_init(&ctx);
-  const int ok = CMAC_Init(&ctx, key, key_len, cipher, NULL /* engine */) &&
-                 CMAC_Update(&ctx, in, in_len) &&
-                 CMAC_Final(&ctx, out, &scratch_out_len);
+  ok = CMAC_Init(&ctx, key, key_len, cipher, NULL /* engine */) &&
+       CMAC_Update(&ctx, in, in_len) &&
+       CMAC_Final(&ctx, out, &scratch_out_len);
+
+end:
+  FIPS_service_indicator_unlock_state();
   if(ok) {
-    FIPS_service_indicator_unlock_state();
     AES_CMAC_verify_service_indicator(&ctx);
   }
   CMAC_CTX_cleanup(&ctx);
@@ -182,6 +185,7 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
   // We have to avoid the underlying AES-CBC |EVP_CIPHER| services updating the
   // indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+  int ret = 0;
   uint8_t scratch[AES_BLOCK_SIZE];
 
   size_t block_size = EVP_CIPHER_block_size(cipher);
@@ -191,8 +195,7 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
       !EVP_Cipher(&ctx->cipher_ctx, scratch, kZeroIV, block_size) ||
       // Reset context again ready for first data.
       !EVP_EncryptInit_ex(&ctx->cipher_ctx, NULL, NULL, NULL, kZeroIV)) {
-    FIPS_service_indicator_unlock_state();
-    return 0;
+    goto end;
   }
 
   if (block_size == AES_BLOCK_SIZE) {
@@ -203,9 +206,11 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
     binary_field_mul_x_64(ctx->k2, ctx->k1);
   }
   ctx->block_used = 0;
+  ret = 1;
 
+end:
   FIPS_service_indicator_unlock_state();
-  return 1;
+  return ret;
 }
 
 int CMAC_Reset(CMAC_CTX *ctx) {

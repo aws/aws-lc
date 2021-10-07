@@ -15,7 +15,7 @@ static int FIPS_service_indicator_init_state(void) {
       AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
     return 0;
   }
-  indicator->lock_state = STATE_LOCKED;
+  indicator->lock_state = STATE_UNLOCKED;
   indicator->counter = 0;
   return 1;
 }
@@ -57,7 +57,7 @@ void FIPS_service_indicator_update_state(void) {
   if (indicator == NULL) {
     return;
   }
-  if(indicator->lock_state == 0) {
+  if(indicator->lock_state == STATE_UNLOCKED) {
     indicator->counter++;
   }
 }

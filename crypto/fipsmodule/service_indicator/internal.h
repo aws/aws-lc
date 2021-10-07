@@ -8,7 +8,7 @@
 
 #if defined(AWSLC_FIPS)
 
-#define STATE_LOCKED       0
+#define STATE_UNLOCKED       0
 
 struct fips_service_indicator_state {
   uint64_t lock_state;
