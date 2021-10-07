@@ -83,12 +83,6 @@ static void CMAC_CTX_cleanup(CMAC_CTX *ctx) {
 
 int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
              const uint8_t *in, size_t in_len) {
-  // We have to verify that all the CMAC services actually succeed before
-  // updating the indicator state, so we lock the state here.
-  FIPS_service_indicator_lock_state();
-  CMAC_CTX *ctx = OPENSSL_malloc(sizeof(*ctx));
-  int ok = 0;
-
   const EVP_CIPHER *cipher;
   switch (key_len) {
     case 16:
@@ -98,21 +92,25 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
       cipher = EVP_aes_256_cbc();
       break;
     default:
-      goto end;
+      return 0;
   }
 
+  // We have to verify that all the CMAC services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  
   size_t scratch_out_len;
-  CMAC_CTX_init(ctx);
-  ok = CMAC_Init(ctx, key, key_len, cipher, NULL /* engine */) &&
-       CMAC_Update(ctx, in, in_len) &&
-       CMAC_Final(ctx, out, &scratch_out_len);
+  CMAC_CTX ctx;
+  CMAC_CTX_init(&ctx);
+  const int ok = CMAC_Init(&ctx, key, key_len, cipher, NULL /* engine */) &&
+       CMAC_Update(&ctx, in, in_len) &&
+       CMAC_Final(&ctx, out, &scratch_out_len);
 
-end:
   FIPS_service_indicator_unlock_state();
   if(ok) {
-    AES_CMAC_verify_service_indicator(ctx);
+    AES_CMAC_verify_service_indicator(&ctx);
   }
-  CMAC_CTX_cleanup(ctx);
+  CMAC_CTX_cleanup(&ctx);
   return ok;
 }
 
