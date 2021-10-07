@@ -86,6 +86,7 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
   // We have to verify that all the CMAC services actually succeed before
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+  CMAC_CTX ctx;
   int ok = 0;
 
   const EVP_CIPHER *cipher;
@@ -101,7 +102,6 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
   }
 
   size_t scratch_out_len;
-  CMAC_CTX ctx;
   CMAC_CTX_init(&ctx);
   ok = CMAC_Init(&ctx, key, key_len, cipher, NULL /* engine */) &&
        CMAC_Update(&ctx, in, in_len) &&
