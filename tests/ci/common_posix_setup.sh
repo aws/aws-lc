@@ -21,7 +21,7 @@ function run_build {
   cd "$BUILD_ROOT" || exit 1
 
   if [[ "${AWSLC_32BIT}" == "1" ]]; then
-    cflags+=("-DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake")
+    cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
   fi
 
   if [[ -x "$(command -v ninja)" ]]; then
@@ -37,9 +37,9 @@ function run_build {
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
-  cmake "${cflags[@]}" ../
+  cmake "${cflags[@]}" "$SRC_ROOT"
   $BUILD_COMMAND
-  cd ../
+  cd "$SRC_ROOT"
 }
 
 function run_cmake_custom_target {
