@@ -81,6 +81,11 @@
 #include "ec/simple_mul.c"
 #include "ec/util.c"
 #include "ec/wnaf.c"
+#include "evp/digestsign.c"
+#include "evp/evp.c"
+#include "evp/evp_ctx.c"
+#include "evp/p_ec.c"
+#include "evp/p_rsa.c"
 #include "hmac/hmac.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
@@ -107,7 +112,6 @@
 #include "sha/sha256.c"
 #include "sha/sha512.c"
 #include "tls/kdf.c"
-
 
 #if defined(BORINGSSL_FIPS)
 
@@ -170,6 +174,11 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
 static void __attribute__((constructor))
 BORINGSSL_bcm_power_on_self_test(void) {
   CRYPTO_library_init();
+
+  if (jent_entropy_init()) {
+    fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
+    goto err;
+  }
 
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
