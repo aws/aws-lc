@@ -102,9 +102,10 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
   size_t scratch_out_len;
   CMAC_CTX ctx;
   CMAC_CTX_init(&ctx);
+
   const int ok = CMAC_Init(&ctx, key, key_len, cipher, NULL /* engine */) &&
-       CMAC_Update(&ctx, in, in_len) &&
-       CMAC_Final(&ctx, out, &scratch_out_len);
+                 CMAC_Update(&ctx, in, in_len) &&
+                 CMAC_Final(&ctx, out, &scratch_out_len);
 
   FIPS_service_indicator_unlock_state();
   if(ok) {
