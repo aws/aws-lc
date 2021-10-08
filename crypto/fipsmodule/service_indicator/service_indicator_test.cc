@@ -33,6 +33,11 @@ static const uint8_t kPlaintext[64] = {
     'P','l','a','i','n','t','e','x','t','!'};
 
 #if defined(AWSLC_FIPS)
+static const uint8_t kAESKey_192[24] = {
+    'A','W','S','-','L','C','C','r','y','p','t','o',' ','1', '9','2', '-','b',
+    'i','t',' ','K','e','y'
+};
+
 static const uint8_t kAESIV[AES_BLOCK_SIZE] = {0};
 
 static void hex_dump(const uint8_t *in, size_t len) {
@@ -401,6 +406,15 @@ TEST(ServiceIndicatorTest, AESGCM) {
       encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
           kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  // Call non-approved external IV usage of AES-GCM 192 bit key size. (192 is
+  // not available for internal IV.)
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_192_gcm(),
+                              kAESKey_192, sizeof(kAESKey_192), 0, nullptr));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
+      encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_192_gcm()),
+          kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESCCM) {
@@ -497,7 +511,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
   // Macro should return true, to ensure FIPS/Non-FIPS compatibility.
   ASSERT_EQ(approved, AWSLC_APPROVED);
 
-  // Actual approval check should return false during non-FIPS.
+  // Actual approval check should also return true during non-FIPS.
   uint64_t after = FIPS_service_indicator_after_call();
   ASSERT_EQ(after, (uint64_t)0);
   ASSERT_TRUE(FIPS_service_indicator_check_approved(before, after));
