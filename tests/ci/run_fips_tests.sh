@@ -19,7 +19,8 @@ fi
 echo "Testing shared AWS-LC in FIPS Debug mode."
 fips_build_and_test -DBUILD_SHARED_LIBS=1
 
-echo "Testing shared AWS-LC in FIPS Release mode."
+echo "Testing shared AWS-LC in FIPS Release mode in a different folder."
+BUILD_ROOT=$(realpath "${SRC_ROOT}/../aws-lc-external_build")
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
 echo "Testing shared AWS-LC in FIPS RelWithDebInfo mode."
