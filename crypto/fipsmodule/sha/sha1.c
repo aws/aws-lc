@@ -76,10 +76,17 @@ int SHA1_Init(SHA_CTX *sha) {
 }
 
 uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA_CTX ctx;
-  SHA1_Init(&ctx);
-  SHA1_Update(&ctx, data, len);
-  SHA1_Final(out, &ctx);
+  const int ok = SHA1_Init(&ctx) &&
+                 SHA1_Update(&ctx, data, len) &&
+                 SHA1_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
@@ -108,6 +115,7 @@ int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
   CRYPTO_store_u32_be(out + 8, c->h[2]);
   CRYPTO_store_u32_be(out + 12, c->h[3]);
   CRYPTO_store_u32_be(out + 16, c->h[4]);
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
