@@ -185,9 +185,6 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
 
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret) {
-    HMAC_verify_service_indicator(ctx->md);
-  }
   return 1;
 }
 

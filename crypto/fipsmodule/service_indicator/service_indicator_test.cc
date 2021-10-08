@@ -208,9 +208,13 @@ TEST_P(EVP_MD_ServiceIndicatorTest, EVP_Ciphers) {
   unsigned digest_len;
 
   // Test running the EVP_Digest interfaces one by one directly, and check
-  // |EVP_DigestFinal_ex| for approval at the end.
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), digestTestVector.md.func(), nullptr));
-  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), digestTestVector.input, sizeof(digestTestVector.input)));
+  // |EVP_DigestFinal_ex| for approval at the end. |EVP_DigestInit_ex| and
+  // |EVP_DigestUpdate| should not be approved, because the functions do not
+  // indicate that a service has been fully completed yet.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), digestTestVector.md.func(), nullptr)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), digestTestVector.input, sizeof(digestTestVector.input))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.data(), &digest_len)));
   ASSERT_EQ(approved, digestTestVector.expect_approved);
   ASSERT_TRUE(check_test(digestTestVector.expected_digest, digest.data(), digest_len, digestTestVector.md.name));
@@ -262,11 +266,15 @@ TEST_P(HMAC_ServiceIndicatorTest, HMACTest) {
   std::vector<uint8_t> mac(expected_mac_len);
 
   // Test running the HMAC interfaces one by one directly, and check
-  // |HMAC_Final| for approval at the end.
+  // |HMAC_Final| for approval at the end. |HMAC_Init_ex| and |HMAC_Update|
+  // should not be approved, because the functions do not indicate that a
+  // service has been fully completed yet.
   unsigned mac_len;
   bssl::ScopedHMAC_CTX ctx;
-  ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
-  ASSERT_TRUE(HMAC_Update(ctx.get(), hmacTestVector.input, sizeof(hmacTestVector.input)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC_Update(ctx.get(), hmacTestVector.input, sizeof(hmacTestVector.input))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC_Final(ctx.get(), mac.data(), &mac_len)));
   ASSERT_EQ(approved, hmacTestVector.expect_approved);
   ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
@@ -288,9 +296,13 @@ TEST(ServiceIndicatorTest, CMAC) {
   ASSERT_TRUE(ctx);
 
   // Test running the CMAC interfaces one by one directly, and check
-  // |CMAC_Final| for approval at the end.
-  ASSERT_TRUE(CMAC_Init(ctx.get(), kAESKey, sizeof(kAESKey), EVP_aes_128_cbc(), nullptr));
-  ASSERT_TRUE(CMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+  // |CMAC_Final| for approval at the end. |CMAC_Init| and |CMAC_Update|
+  // should not be approved, because the functions do not indicate that a
+  // service has been fully completed yet.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CMAC_Init(ctx.get(), kAESKey, sizeof(kAESKey), EVP_aes_128_cbc(), nullptr)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CMAC_Final(ctx.get(), mac.data(), &out_len)));
   ASSERT_EQ(approved, AWSLC_APPROVED);
   ASSERT_TRUE(check_test(kAESCMACOutput, mac.data(), sizeof(kAESCMACOutput), "AES-CMAC KAT"));
@@ -298,8 +310,7 @@ TEST(ServiceIndicatorTest, CMAC) {
   // Test using the one-shot API for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(AES_CMAC(mac.data(), kAESKey, sizeof(kAESKey),
                                                     kPlaintext, sizeof(kPlaintext))));
-  ASSERT_TRUE(check_test(kAESCMACOutput, mac.data(), sizeof(kAESCMACOutput),
-                         "AES-CMAC KAT"));
+  ASSERT_TRUE(check_test(kAESCMACOutput, mac.data(), sizeof(kAESCMACOutput), "AES-CMAC KAT"));
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
