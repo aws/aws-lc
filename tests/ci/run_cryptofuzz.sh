@@ -36,7 +36,7 @@ make "-j${NUM_CPU_THREADS}"
 
 # Common AWS-LC fuzzing setup, the cryptofuzz binary is in this folder so FUZZ_TEST_PATH=FUZZ_NAME
 FUZZ_NAME="cryptofuzz"
-FUZZ_TEST_PATH="$FUZZ_NAME"
+FUZZ_TEST_PATH="${CRYPTOFUZZ_SRC}/${FUZZ_NAME}"
 SRC_CORPUS="$CRYPTOFUZZ_SEED_CORPUS"
 
 # Perform the actual fuzzing. We want the total build time to be about an hour:
