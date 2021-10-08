@@ -94,6 +94,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       generic/bignum_cld.o \
       generic/bignum_clz.o \
       generic/bignum_cmadd.o \
+      generic/bignum_cmnegadd.o \
       generic/bignum_cmul.o \
       generic/bignum_coprime.o \
       generic/bignum_copy.o \

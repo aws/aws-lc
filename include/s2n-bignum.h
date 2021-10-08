@@ -85,6 +85,10 @@ extern uint64_t bignum_clz (uint64_t k, uint64_t *x);
 // Inputs c, y[n]; outputs function return (carry-out) and z[k]
 extern uint64_t bignum_cmadd (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);
 
+// Negated multiply-add with single-word multiplier, z := z - c * y
+// Inputs c, y[n]; outputs function return (negative carry-out) and z[k]
+extern uint64_t bignum_cmnegadd (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);
+
 // Multiply by a single word, z := c * y
 // Inputs c, y[n]; outputs function return (carry-out) and z[k]
 extern uint64_t bignum_cmul (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);

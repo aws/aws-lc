@@ -41,6 +41,7 @@ OBJ = bignum_add.o \
       bignum_cld.o \
       bignum_clz.o \
       bignum_cmadd.o \
+      bignum_cmnegadd.o \
       bignum_cmul.o \
       bignum_coprime.o \
       bignum_copy.o \

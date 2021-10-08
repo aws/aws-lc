@@ -79,6 +79,7 @@ enum {
        TEST_BIGNUM_CLD,
        TEST_BIGNUM_CLZ,
        TEST_BIGNUM_CMADD,
+       TEST_BIGNUM_CMNEGADD,
        TEST_BIGNUM_CMUL,
        TEST_BIGNUM_CMUL_P256,
        TEST_BIGNUM_CMUL_P384,
@@ -591,6 +592,14 @@ void reference_cmadd(uint64_t k,uint64_t *z,uint64_t a,uint64_t n,uint64_t *x)
 { uint64_t *temp = malloc(k * sizeof(uint64_t));
   reference_cmul(k,temp,a,n,x);
   (void) reference_adc(k,z,k,z,k,temp,0);
+  free(temp);
+}
+
+void reference_cmnegadd
+  (uint64_t k,uint64_t *z,uint64_t a,uint64_t n,uint64_t *x)
+{ uint64_t *temp = malloc(k * sizeof(uint64_t));
+  reference_cmul(k,temp,a,n,x);
+  (void) reference_sbb(k,z,k,z,k,temp,0);
   free(temp);
 }
 
@@ -1248,6 +1257,36 @@ int test_bignum_cmadd(void)
      reference_copy(k2,b3,k2,b2);
      bignum_cmadd(k2,b2,a,k1,b1);
      reference_cmadd(k2,b3,a,k1,b1);
+     c = reference_compare(k2,b2,k2,b3);
+     if (c != 0)
+      { printf("### Disparity: [sizes %4"PRIu64" := 1 * %4"PRIu64"] "
+               "0x%016"PRIx64" * ...0x%016"PRIx64" = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k2,k1,a,b1[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"]\n",k2,k1);
+        else printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"] 0x%016"PRIx64" * ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
+                    k2,k1,a,b1[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_cmnegadd(void)
+{ uint64_t t, k1, k2, a;
+  printf("Testing bignum_cmnegadd with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { k1 = (unsigned) rand() % MAXSIZE;
+     k2 = (unsigned) rand() % MAXSIZE;
+     a = random64();
+     random_bignum(k1,b1);
+     random_bignum(k2,b2);
+     bignum_copy(k2,b3,k2,b2);
+     bignum_cmnegadd(k2,b2,a,k1,b1);
+     reference_cmnegadd(k2,b3,a,k1,b1);
      c = reference_compare(k2,b2,k2,b3);
      if (c != 0)
       { printf("### Disparity: [sizes %4"PRIu64" := 1 * %4"PRIu64"] "
@@ -4855,6 +4894,7 @@ int test_all()
   dotest(test_bignum_cld);
   dotest(test_bignum_clz);
   dotest(test_bignum_cmadd);
+  dotest(test_bignum_cmnegadd);
   dotest(test_bignum_cmul);
   dotest(test_bignum_cmul_p256);
   dotest(test_bignum_cmul_p384);
@@ -5012,6 +5052,7 @@ int test_allnonbmi()
   dotest(test_bignum_cld);
   dotest(test_bignum_clz);
   dotest(test_bignum_cmadd);
+  dotest(test_bignum_cmnegadd);
   dotest(test_bignum_cmul);
   dotest(test_bignum_coprime);
   dotest(test_bignum_copy);
@@ -5172,6 +5213,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_CLD:             return test_bignum_cld();
      case TEST_BIGNUM_CLZ:             return test_bignum_clz();
      case TEST_BIGNUM_CMADD:           return test_bignum_cmadd();
+     case TEST_BIGNUM_CMNEGADD:        return test_bignum_cmnegadd();
      case TEST_BIGNUM_CMUL:            return test_bignum_cmul();
      case TEST_BIGNUM_CMUL_P256:       return test_bignum_cmul_p256();
      case TEST_BIGNUM_CMUL_P384:       return test_bignum_cmul_p384();
