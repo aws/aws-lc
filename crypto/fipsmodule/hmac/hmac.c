@@ -120,6 +120,10 @@ void HMAC_CTX_free(HMAC_CTX *ctx) {
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
                  const EVP_MD *md, ENGINE *impl) {
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
   if (md == NULL) {
     md = ctx->md;
   }
@@ -139,17 +143,12 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     size_t block_size = EVP_MD_block_size(md);
     assert(block_size <= sizeof(key_block));
     if (block_size < key_len) {
-      // We have to avoid the underlying SHA services updating the indicator
-      // state, so we lock the state here.
-      FIPS_service_indicator_lock_state();
       // Long keys are hashed.
       if (!EVP_DigestInit_ex(&ctx->md_ctx, md, impl) ||
           !EVP_DigestUpdate(&ctx->md_ctx, key, key_len) ||
           !EVP_DigestFinal_ex(&ctx->md_ctx, key_block, &key_block_len)) {
-        FIPS_service_indicator_unlock_state();
-        return 0;
+        goto end;
       }
-      FIPS_service_indicator_unlock_state();
     } else {
       assert(key_len <= sizeof(key_block));
       OPENSSL_memcpy(key_block, key, key_len);
@@ -165,7 +164,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     }
     if (!EVP_DigestInit_ex(&ctx->i_ctx, md, impl) ||
         !EVP_DigestUpdate(&ctx->i_ctx, pad, EVP_MD_block_size(md))) {
-      return 0;
+      goto end;
     }
 
     for (size_t i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {
@@ -173,16 +172,22 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     }
     if (!EVP_DigestInit_ex(&ctx->o_ctx, md, impl) ||
         !EVP_DigestUpdate(&ctx->o_ctx, pad, EVP_MD_block_size(md))) {
-      return 0;
+      goto end;
     }
 
     ctx->md = md;
   }
 
   if (!EVP_MD_CTX_copy_ex(&ctx->md_ctx, &ctx->i_ctx)) {
-    return 0;
+    goto end;
   }
+  ret = 1;
 
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    HMAC_verify_service_indicator(ctx->md);
+  }
   return 1;
 }
 

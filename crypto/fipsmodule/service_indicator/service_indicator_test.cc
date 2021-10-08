@@ -72,6 +72,11 @@ static const uint8_t kAESCMACOutput[16] = {
     0x3f, 0x88, 0x3f, 0x1a, 0xfd
 };
 
+static const uint8_t kOutput_md5[MD5_DIGEST_LENGTH] = {
+    0xc8, 0xbe, 0xdc, 0x96, 0xbe, 0xb0, 0xd6, 0x7b, 0x96, 0x7d, 0x3b,
+    0xd4, 0x24, 0x29, 0x30, 0xde
+};
+
 static const uint8_t kOutput_sha1[SHA_DIGEST_LENGTH] = {
     0x5b, 0xed, 0x47, 0xcc, 0xc8, 0x8d, 0x6a, 0xf8, 0x91, 0xc1, 0x85,
     0x84, 0xe9, 0xd1, 0x31, 0xe6, 0x3e, 0x62, 0x61, 0xd9
@@ -146,6 +151,12 @@ static const uint8_t kHMACOutput_sha512[SHA512_DIGEST_LENGTH] = {
     0x30, 0xd8, 0x45, 0x2c, 0x87, 0x44, 0x62, 0xc5, 0xe3
 };
 
+static const uint8_t kHMACOutput_sha512_256[SHA512_256_DIGEST_LENGTH] = {
+    0xaa, 0xd0, 0x57, 0x0c, 0x98, 0x45, 0x74, 0x6b, 0x39, 0x1e, 0x07,
+    0x55, 0x23, 0x08, 0xab, 0x79, 0xad, 0xe5, 0x8b, 0x48, 0xc2, 0x0c,
+    0x1a, 0x37, 0x91, 0xe4, 0x8b, 0xc0, 0x9c, 0xce, 0x2c, 0x24
+};
+
 struct MD {
   // name is the name of the digest test.
   const char* name;
@@ -175,7 +186,7 @@ struct DigestTestVector {
   // expected to be approved or not.
   const int expect_approved;
 } kDigestTestVectors[] = {
-    { md5, kPlaintext, nullptr, AWSLC_NOT_APPROVED },
+    { md5, kPlaintext, kOutput_md5, AWSLC_NOT_APPROVED },
     { sha1, kPlaintext, kOutput_sha1, AWSLC_APPROVED },
     { sha224, kPlaintext, kOutput_sha224, AWSLC_APPROVED },
     { sha256, kPlaintext, kOutput_sha256, AWSLC_APPROVED },
@@ -202,24 +213,20 @@ TEST_P(EVP_MD_ServiceIndicatorTest, EVP_Ciphers) {
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), digestTestVector.input, sizeof(digestTestVector.input)));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.data(), &digest_len)));
   ASSERT_EQ(approved, digestTestVector.expect_approved);
-  if(approved == AWSLC_APPROVED) {
-    ASSERT_TRUE(check_test(digestTestVector.expected_digest, digest.data(), digest_len, digestTestVector.md.name));
-  }
+  ASSERT_TRUE(check_test(digestTestVector.expected_digest, digest.data(), digest_len, digestTestVector.md.name));
+
 
   // Test using the one-shot |EVP_Digest| function for approval.
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_Digest(digestTestVector.input, sizeof(digestTestVector.input),
-                                               digest.data(), &digest_len, digestTestVector.md.func(), nullptr));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_Digest(digestTestVector.input, sizeof(digestTestVector.input),
+                                               digest.data(), &digest_len, digestTestVector.md.func(), nullptr)));
   ASSERT_EQ(approved, digestTestVector.expect_approved);
-  if(approved == AWSLC_APPROVED) {
-    ASSERT_TRUE(check_test(digestTestVector.expected_digest, digest.data(), digest_len, digestTestVector.md.name));
-  }
+  ASSERT_TRUE(check_test(digestTestVector.expected_digest, digest.data(), digest_len, digestTestVector.md.name));
+
 
   // Test using the one-shot API for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, digestTestVector.md.one_shot_func(digestTestVector.input, sizeof(digestTestVector.input), digest.data()));
   ASSERT_EQ(approved, digestTestVector.expect_approved);
-  if(approved == AWSLC_APPROVED) {
-    ASSERT_TRUE(check_test(digestTestVector.expected_digest, digest.data(), digestTestVector.md.length, digestTestVector.md.name));
-  }
+  ASSERT_TRUE(check_test(digestTestVector.expected_digest, digest.data(), digestTestVector.md.length, digestTestVector.md.name));
 }
 
 struct HMACTestVector {
@@ -237,7 +244,7 @@ struct HMACTestVector {
     { EVP_sha256, kPlaintext, kHMACOutput_sha256, AWSLC_APPROVED },
     { EVP_sha384, kPlaintext, kHMACOutput_sha384, AWSLC_APPROVED },
     { EVP_sha512, kPlaintext, kHMACOutput_sha512, AWSLC_APPROVED },
-    { EVP_sha512_256, kPlaintext, nullptr, AWSLC_NOT_APPROVED }
+    { EVP_sha512_256, kPlaintext, kHMACOutput_sha512_256, AWSLC_NOT_APPROVED }
 };
 
 class HMAC_ServiceIndicatorTest : public testing::TestWithParam<HMACTestVector> {};
@@ -262,17 +269,14 @@ TEST_P(HMAC_ServiceIndicatorTest, HMACTest) {
   ASSERT_TRUE(HMAC_Update(ctx.get(), hmacTestVector.input, sizeof(hmacTestVector.input)));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC_Final(ctx.get(), mac.data(), &mac_len)));
   ASSERT_EQ(approved, hmacTestVector.expect_approved);
-  if (hmacTestVector.expect_approved) {
-    ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
-  }
+  ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
+
 
   // Test using the one-shot API for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(HMAC(digest, key.data(),
                      key.size(), hmacTestVector.input, sizeof(hmacTestVector.input), mac.data(), &mac_len)));
   ASSERT_EQ(approved, hmacTestVector.expect_approved);
-  if (hmacTestVector.expect_approved) {
-    ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
-  }
+  ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
 }
 
 TEST(ServiceIndicatorTest, CMAC) {

@@ -49,8 +49,7 @@ OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) { }
 
 #endif // AWSLC_FIPS
 
-// Parameters of service indicator check functions to verify against should and
-// are assumed to be not NULL.
+// Service indicator check functions parameters are assumed to be not NULL.
 
 // Service indicator check for most AES algorithms.
 // hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
