@@ -123,7 +123,6 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   // We have to avoid the underlying SHA services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  int ret = 0;
   if (md == NULL) {
     md = ctx->md;
   }
@@ -181,7 +180,6 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   if (!EVP_MD_CTX_copy_ex(&ctx->md_ctx, &ctx->i_ctx)) {
     goto end;
   }
-  ret = 1;
 
 end:
   FIPS_service_indicator_unlock_state();
