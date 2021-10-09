@@ -194,13 +194,13 @@ static int SIKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
   }
 
   //OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
+  unsigned long long cycles1, cycles2;
+  cycles1=cpucycles();
   //sike_p434_r3_crypto_kem_keypair(key->public_key, (unsigned char *) key->private_key);
   crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *) key->private_key);
   //crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *) key->private_key);
-  //cycles2=cpucycles();
-  //printf("crypto_keypair %llu \n", (cycles2-cycles1));
+  cycles2=cpucycles();
+  printf("crypto_keypair %llu \n", (cycles2-cycles1));
 
   return 1;
 }

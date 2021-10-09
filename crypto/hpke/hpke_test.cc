@@ -42,7 +42,7 @@
 #include <time.h>
 
 #define SIZE_PLAINTEXT 10000000  // Specify Bytes to be encrypted/decrypted
-#define NUMBER_TESTS 100        // Number of tests performed
+#define NUMBER_TESTS 1     // Number of tests performed
 
 
 uint64_t cpucycles(void) {  // Access system counter for benchmarking

@@ -78,6 +78,9 @@
 #endif
 
 
+#include <openssl/cpucycles.h>
+
+
 // kPlaintext is a sample plaintext.
 static const uint8_t kPlaintext[] = "\x54\x85\x9b\x34\x2c\x49\xea\x2a";
 static const size_t kPlaintextLen = sizeof(kPlaintext) - 1;
@@ -395,6 +398,104 @@ struct RSAEncryptParam {
 
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
+#define NUMBER_TESTS 1000
+#define PLAINTEXT_SIZE 256 - 11
+
+
+TEST(RSATest, RSA) {
+  unsigned long long cycles_keygen_total = 0, cycles_encrypt_total = 0,
+                     cycles_decrypt_total = 0, cycles_protocol_total = 0;
+  unsigned long long cycles_keygen, cycles_encrypt, cycles_decrypt;
+
+  bssl::UniquePtr<RSA> key(RSA_new());
+  ASSERT_TRUE(key);
+
+  // RSA_generate_key_fips may only be used for 2048-, 3072-, and 4096-bit
+  // keys.
+  cycles_keygen = cpucycles();
+  EXPECT_TRUE(RSA_generate_key_fips(key.get(), 2048, nullptr));
+  cycles_keygen_total += cpucycles() - cycles_keygen;
+  ASSERT_TRUE(key);
+
+  EXPECT_TRUE(RSA_check_key(key.get()));
+
+  uint8_t plaintext_org[PLAINTEXT_SIZE];
+  size_t plaintext_orgLen = sizeof(plaintext_org);
+  printf("\nPlaintext Bytes     ->      %d", PLAINTEXT_SIZE);
+  printf("\nNumber Tests        ->      %d", NUMBER_TESTS);
+  for (int i = 0; i < PLAINTEXT_SIZE; i++) {
+    plaintext_org[i] = (uint8_t)((uint8_t)i % 256);
+    // printf("%02x ", (uint8_t)plaintext_org[i]);
+  }
+  uint8_t ciphertext[256];
+
+  // Test that PKCS#1 v1.5 encryption round-trips.
+  printf("\nRSA PKCS#1 v1.5 encryption\n");
+  size_t ciphertext_len = 0;
+
+  for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+    cycles_encrypt = cpucycles();
+    ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
+                            sizeof(ciphertext), plaintext_org, plaintext_orgLen,
+                            RSA_PKCS1_PADDING));
+    cycles_encrypt_total += cpucycles() - cycles_encrypt;
+    EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
+
+    uint8_t plaintext[256];
+    size_t plaintext_len = 0;
+    cycles_decrypt = cpucycles();
+    ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
+                            sizeof(plaintext), ciphertext, ciphertext_len,
+                            RSA_PKCS1_PADDING));
+    cycles_decrypt_total += cpucycles() - cycles_decrypt;
+    EXPECT_EQ(Bytes(plaintext_org, plaintext_orgLen),
+              Bytes(plaintext, plaintext_len));
+
+    for (int i = 0; i < (int)plaintext_len; i++) {
+      // printf("%02x ", plaintext[i]);
+    }
+  }
+
+  /*
+
+    // Test that OAEP encryption round-trips.
+    ciphertext_len = 0;
+    ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
+                            sizeof(ciphertext), plaintext_org, plaintext_orgLen,
+                            RSA_PKCS1_OAEP_PADDING));
+    EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
+
+    plaintext_len = 0;
+    ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
+                            sizeof(plaintext), ciphertext, ciphertext_len,
+                            RSA_PKCS1_OAEP_PADDING));
+    EXPECT_EQ(Bytes(plaintext_org, plaintext_orgLen), Bytes(plaintext,
+    plaintext_len));
+  */
+  printf("\ncycles_keygen_total         %llu CCs \n",
+         cycles_keygen_total / NUMBER_TESTS);
+  printf("cycles_encrypt_total        %llu CCs \n",
+         cycles_encrypt_total / NUMBER_TESTS);
+  printf("cycles_decrypt_total        %llu CCs \n",
+         (cycles_decrypt_total / NUMBER_TESTS));
+
+  // Print the value of the 4 functions (no overhead for array initialization,
+  // etc)
+  cycles_protocol_total = cycles_encrypt_total + cycles_decrypt_total;
+  printf("CLEAN protocol              %llu CCs \n",
+         cycles_protocol_total / NUMBER_TESTS);
+
+
+
+  printf(
+      "%% cycles_encrypt_total      %.3f %% \n",
+      ((float)(cycles_encrypt_total) / ((float)cycles_protocol_total) * 100));
+  printf("%% cycles_decrypt_total      %.3f %% \n",
+         ((float)cycles_decrypt_total) / ((float)cycles_protocol_total) * 100);
+}
+
+
+
 TEST_P(RSAEncryptTest, TestKey) {
   const auto &param = GetParam();
   bssl::UniquePtr<RSA> key(
@@ -626,8 +727,8 @@ TEST(RSATest, ASN1) {
   ERR_clear_error();
 
   // Public keys with negative moduli are invalid.
-  rsa.reset(RSA_public_key_from_bytes(kEstonianRSAKey,
-                                      sizeof(kEstonianRSAKey)));
+  rsa.reset(
+      RSA_public_key_from_bytes(kEstonianRSAKey, sizeof(kEstonianRSAKey)));
   EXPECT_FALSE(rsa);
   ERR_clear_error();
 }
@@ -911,9 +1012,9 @@ TEST(RSATest, KeygenFail) {
   // Cause RSA key generation after a prime has been generated, to test that
   // |rsa| is left alone.
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int, BN_GENCB *) -> int { return event != 3; },
-               nullptr);
+  BN_GENCB_set(
+      &cb, [](int event, int, BN_GENCB *) -> int { return event != 3; },
+      nullptr);
 
   bssl::UniquePtr<BIGNUM> e(BN_new());
   ASSERT_TRUE(e);
@@ -972,17 +1073,18 @@ TEST(RSATest, KeygenFailOnce) {
   // Cause only the first iteration of RSA key generation to fail.
   bool failed = false;
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   ADD_FAILURE() << "Callback called multiple times.";
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 return 0;
-               },
-               &failed);
+  BN_GENCB_set(
+      &cb,
+      [](int event, int n, BN_GENCB *cb_ptr) -> int {
+        bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
+        if (*failed_ptr) {
+          ADD_FAILURE() << "Callback called multiple times.";
+          return 1;
+        }
+        *failed_ptr = true;
+        return 0;
+      },
+      &failed);
 
   // Although key generation internally retries, the external behavior of
   // |BN_GENCB| is preserved.
@@ -999,20 +1101,21 @@ TEST(RSATest, KeygenInternalRetry) {
   // Simulate one internal attempt at key generation failing.
   bool failed = false;
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 // This test does not test any public API behavior. It is just
-                 // a hack to exercise the retry codepath and make sure it
-                 // works.
-                 OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
-                 return 0;
-               },
-               &failed);
+  BN_GENCB_set(
+      &cb,
+      [](int event, int n, BN_GENCB *cb_ptr) -> int {
+        bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
+        if (*failed_ptr) {
+          return 1;
+        }
+        *failed_ptr = true;
+        // This test does not test any public API behavior. It is just
+        // a hack to exercise the retry codepath and make sure it
+        // works.
+        OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
+        return 0;
+      },
+      &failed);
 
   // Key generation internally retries on RSA_R_TOO_MANY_ITERATIONS.
   bssl::UniquePtr<BIGNUM> e(BN_new());
@@ -1139,10 +1242,10 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
   constexpr size_t kSignaturesPerThread = 100;
   constexpr size_t kNumThreads = 2048;
 #endif
-  // On some platforms, the number of threads should be reduced because resources are limited.
-  // e.g. Travis CI MacOS has 2 cores and 4 GB memories.
+  // On some platforms, the number of threads should be reduced because
+  // resources are limited. e.g. Travis CI MacOS has 2 cores and 4 GB memories.
   size_t numOfThreads = kNumThreads;
-  const char* rsaThreadsLimit = getenv("RSA_TEST_THREADS_LIMIT");
+  const char *rsaThreadsLimit = getenv("RSA_TEST_THREADS_LIMIT");
   if (rsaThreadsLimit != nullptr) {
     numOfThreads = std::stoul(std::string(rsaThreadsLimit), nullptr);
   }

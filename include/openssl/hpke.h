@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 
-#define HPKE_VERSION_PQ 4
+#define HPKE_VERSION_PQ 1
 
 
 // Hybrid Public Key Encryption.
