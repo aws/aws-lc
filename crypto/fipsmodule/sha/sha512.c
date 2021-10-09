@@ -126,30 +126,51 @@ int SHA512_256_Init(SHA512_CTX *sha) {
 
 uint8_t *SHA384(const uint8_t *data, size_t len,
                 uint8_t out[SHA384_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA384_Init(&ctx);
-  SHA384_Update(&ctx, data, len);
-  SHA384_Final(out, &ctx);
+  const int ok = SHA384_Init(&ctx) &&
+                 SHA384_Update(&ctx, data, len) &&
+                 SHA384_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512(const uint8_t *data, size_t len,
                 uint8_t out[SHA512_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, data, len);
-  SHA512_Final(out, &ctx);
+  const int ok = SHA512_Init(&ctx) &&
+                 SHA512_Update(&ctx, data, len) &&
+                 SHA512_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512_256(const uint8_t *data, size_t len,
                     uint8_t out[SHA512_256_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA512_256_Init(&ctx);
-  SHA512_256_Update(&ctx, data, len);
-  SHA512_256_Final(out, &ctx);
+  const int ok = SHA512_256_Init(&ctx) &&
+                 SHA512_256_Update(&ctx, data, len) &&
+                 SHA512_256_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
@@ -274,6 +295,7 @@ static int sha512_final_impl(uint8_t *out, SHA512_CTX *sha) {
     out += 8;
   }
 
+  FIPS_service_indicator_update_state();
   return 1;
 }
 

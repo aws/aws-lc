@@ -95,20 +95,34 @@ int SHA256_Init(SHA256_CTX *sha) {
 
 uint8_t *SHA224(const uint8_t *data, size_t len,
                 uint8_t out[SHA224_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA256_CTX ctx;
-  SHA224_Init(&ctx);
-  SHA224_Update(&ctx, data, len);
-  SHA224_Final(out, &ctx);
+  const int ok = SHA224_Init(&ctx) &&
+                 SHA224_Update(&ctx, data, len) &&
+                 SHA224_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA256(const uint8_t *data, size_t len,
                 uint8_t out[SHA256_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA256_CTX ctx;
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, data, len);
-  SHA256_Final(out, &ctx);
+  const int ok = SHA256_Init(&ctx) &&
+                 SHA256_Update(&ctx, data, len) &&
+                 SHA256_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
@@ -150,6 +164,7 @@ static int sha256_final_impl(uint8_t *out, SHA256_CTX *c) {
     CRYPTO_store_u32_be(out, c->h[i]);
     out += 4;
   }
+  FIPS_service_indicator_update_state();
   return 1;
 }
 

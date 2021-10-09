@@ -95,6 +95,10 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
       return 0;
   }
 
+  // We have to verify that all the CMAC services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  
   size_t scratch_out_len;
   CMAC_CTX ctx;
   CMAC_CTX_init(&ctx);
@@ -103,6 +107,10 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
                  CMAC_Update(&ctx, in, in_len) &&
                  CMAC_Final(&ctx, out, &scratch_out_len);
 
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    AES_CMAC_verify_service_indicator(&ctx);
+  }
   CMAC_CTX_cleanup(&ctx);
   return ok;
 }
@@ -173,6 +181,10 @@ static const uint8_t kZeroIV[AES_BLOCK_SIZE] = {0};
 
 int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
               const EVP_CIPHER *cipher, ENGINE *engine) {
+  // We have to avoid the underlying AES-CBC |EVP_CIPHER| services updating the
+  // indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
   uint8_t scratch[AES_BLOCK_SIZE];
 
   size_t block_size = EVP_CIPHER_block_size(cipher);
@@ -182,7 +194,7 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
       !EVP_Cipher(&ctx->cipher_ctx, scratch, kZeroIV, block_size) ||
       // Reset context again ready for first data.
       !EVP_EncryptInit_ex(&ctx->cipher_ctx, NULL, NULL, NULL, kZeroIV)) {
-    return 0;
+    goto end;
   }
 
   if (block_size == AES_BLOCK_SIZE) {
@@ -193,8 +205,11 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
     binary_field_mul_x_64(ctx->k2, ctx->k1);
   }
   ctx->block_used = 0;
+  ret = 1;
 
-  return 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }
 
 int CMAC_Reset(CMAC_CTX *ctx) {
@@ -203,6 +218,11 @@ int CMAC_Reset(CMAC_CTX *ctx) {
 }
 
 int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
+  // We have to avoid the underlying AES-CBC |EVP_Cipher| services updating the
+  // indicator state, so we lock the state here.
+  int ret = 0;
+  FIPS_service_indicator_lock_state();
+
   size_t block_size = EVP_CIPHER_CTX_block_size(&ctx->cipher_ctx);
   assert(block_size <= AES_BLOCK_SIZE);
   uint8_t scratch[AES_BLOCK_SIZE];
@@ -224,20 +244,21 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
     // case we don't want to process this block now because it might be the last
     // block and that block is treated specially.
     if (in_len == 0) {
-      return 1;
+      ret = 1;
+      goto end;
     }
 
     assert(ctx->block_used == block_size);
 
     if (!EVP_Cipher(&ctx->cipher_ctx, scratch, ctx->block, block_size)) {
-      return 0;
+      goto end;
     }
   }
 
   // Encrypt all but one of the remaining blocks.
   while (in_len > block_size) {
     if (!EVP_Cipher(&ctx->cipher_ctx, scratch, in, block_size)) {
-      return 0;
+      goto end;
     }
     in += block_size;
     in_len -= block_size;
@@ -246,16 +267,24 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
   OPENSSL_memcpy(ctx->block, in, in_len);
   ctx->block_used = in_len;
 
-  return 1;
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }
 
 int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
+  // We have to avoid the underlying AES-CBC |EVP_Cipher| services updating the
+  // indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
   size_t block_size = EVP_CIPHER_CTX_block_size(&ctx->cipher_ctx);
   assert(block_size <= AES_BLOCK_SIZE);
 
   *out_len = block_size;
   if (out == NULL) {
-    return 1;
+    ret = 1;
+    goto end;
   }
 
   const uint8_t *mask = ctx->k1;
@@ -273,6 +302,12 @@ int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   for (unsigned i = 0; i < block_size; i++) {
     out[i] = ctx->block[i] ^ mask[i];
   }
+  ret = EVP_Cipher(&ctx->cipher_ctx, out, out, block_size);
 
-  return EVP_Cipher(&ctx->cipher_ctx, out, out, block_size);
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    AES_CMAC_verify_service_indicator(ctx);
+  }
+  return ret;
 }
