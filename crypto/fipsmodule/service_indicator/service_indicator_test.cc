@@ -537,8 +537,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
   // Call a non-approved service.
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
   ASSERT_TRUE(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm(),
-                                kAESKey, sizeof(kAESKey), 0, nullptr));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, AES_ofb128_encrypt(kPlaintext, output,
                                    sizeof(kPlaintext), &aes_key, aes_iv, &num));
   ASSERT_TRUE(check_test(kAESOFBCiphertext, output, sizeof(kAESOFBCiphertext),

@@ -73,6 +73,10 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
     return -1;
   }
 
+  // We have to avoid the underlying |AES_encrypt| service updating the
+  // indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   if (iv == NULL) {
     iv = kDefaultIV;
   }
@@ -96,7 +100,7 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
       OPENSSL_memcpy(out + 8 * i, A + 8, 8);
     }
   }
-
+  FIPS_service_indicator_unlock_state();
   AES_verify_service_indicator(NULL, key->rounds);
   OPENSSL_memcpy(out, A, 8);
   return (int)in_len + 8;
@@ -162,15 +166,20 @@ static const uint8_t kPaddingConstant[4] = {0xa6, 0x59, 0x59, 0xa6};
 
 int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
                         size_t max_out, const uint8_t *in, size_t in_len) {
+  // We have to avoid the underlying |AES_encrypt| and |AES_wrap_key| service
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   // See https://tools.ietf.org/html/rfc5649#section-4.1
   const uint32_t in_len32_be = CRYPTO_bswap4(in_len);
   const uint64_t in_len64 = in_len;
   const size_t padded_len = (in_len + 7) & ~7;
+  int ret = 0;
 
   *out_len = 0;
   if (in_len == 0 || in_len64 > 0xffffffffu || in_len + 7 < in_len ||
       padded_len + 8 < padded_len || max_out < padded_len + 8) {
-    return 0;
+    goto end;
   }
 
   uint8_t block[AES_BLOCK_SIZE];
@@ -182,25 +191,31 @@ int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
     memcpy(block + 8, in, in_len);
     AES_encrypt(block, out, key);
     *out_len = AES_BLOCK_SIZE;
-    AES_verify_service_indicator(NULL, key->rounds);
-    return 1;
+    ret = 1;
+    goto end;
   }
 
   uint8_t *padded_in = OPENSSL_malloc(padded_len);
   if (padded_in == NULL) {
-    return 0;
+    goto end;
   }
   assert(padded_len >= 8);
   memset(padded_in + padded_len - 8, 0, 8);
   memcpy(padded_in, in, in_len);
-  const int ret = AES_wrap_key(key, block, out, padded_in, padded_len);
+  const int text_len = AES_wrap_key(key, block, out, padded_in, padded_len);
   OPENSSL_free(padded_in);
-  if (ret < 0) {
-    return 0;
+  if (text_len < 0) {
+    goto end;
   }
-  AES_verify_service_indicator(NULL, key->rounds);
-  *out_len = ret;
-  return 1;
+  *out_len = text_len;
+  ret = 1;
+
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    AES_verify_service_indicator(NULL, key->rounds);
+  }
+  return ret;
 }
 
 int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
@@ -236,8 +251,9 @@ int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   }
 
   *out_len = constant_time_select_w(ok, claimed_len, 0);
-  if(ok & 1){
+  int ret = ok & 1;
+  if(ret){
     AES_verify_service_indicator(NULL, key->rounds);
   }
-  return ok & 1;
+  return ret;
 }
