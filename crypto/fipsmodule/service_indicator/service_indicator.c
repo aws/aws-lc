@@ -173,8 +173,8 @@ uint64_t FIPS_service_indicator_after_call(void) { return 0; }
 
 
 // Service indicator check functions listed below are optimized to not do extra
-// checks, when not in FIPS mode. Arguments must be cast to void to avoid
-// unused warnings.
+// checks, when not in FIPS mode. Arguments are cast with |OPENSSL_UNUSED| in an
+// attempt to avoid unused warnings.
 
 int FIPS_service_indicator_check_approved(OPENSSL_UNUSED int before,
                                           OPENSSL_UNUSED int after) {
