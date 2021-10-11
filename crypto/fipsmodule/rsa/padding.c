@@ -146,19 +146,25 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
 }
 
 static int rand_nonzero(uint8_t *out, size_t len) {
+  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
+  // functions to avoid updating the service indicator with the DRBG functions.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
   if (!RAND_bytes(out, len)) {
-    return 0;
+    goto end;
   }
 
   for (size_t i = 0; i < len; i++) {
     while (out[i] == 0) {
       if (!RAND_bytes(out + i, 1)) {
-        return 0;
+        goto end;
       }
     }
   }
-
-  return 1;
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }
 
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
@@ -272,6 +278,9 @@ int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
 
 static int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
                       size_t seed_len, const EVP_MD *md) {
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   int ret = 0;
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
@@ -309,6 +318,7 @@ static int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
   ret = 1;
 
 err:
+  FIPS_service_indicator_unlock_state();
   EVP_MD_CTX_cleanup(&ctx);
   return ret;
 }
@@ -317,6 +327,10 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
                                     const uint8_t *from, size_t from_len,
                                     const uint8_t *param, size_t param_len,
                                     const EVP_MD *md, const EVP_MD *mgf1md) {
+  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
+  // functions to avoid updating the service indicator with the DRBG functions.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
   if (md == NULL) {
     md = EVP_sha1();
   }
@@ -325,21 +339,27 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   }
 
   size_t mdlen = EVP_MD_size(md);
+  size_t emlen = to_len - 1;
+  uint8_t *dbmask = OPENSSL_malloc(emlen - mdlen);
+  if (dbmask == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    goto out;
+  }
 
   if (to_len < 2 * mdlen + 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    return 0;
+    goto out;
   }
 
-  size_t emlen = to_len - 1;
+
   if (from_len > emlen - 2 * mdlen - 1) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
-    return 0;
+    goto out;
   }
 
   if (emlen < 2 * mdlen + 1) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    return 0;
+    goto out;
   }
 
   to[0] = 0;
@@ -347,22 +367,15 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   uint8_t *db = to + mdlen + 1;
 
   if (!EVP_Digest(param, param_len, db, NULL, md, NULL)) {
-    return 0;
+    goto out;
   }
   OPENSSL_memset(db + mdlen, 0, emlen - from_len - 2 * mdlen - 1);
   db[emlen - from_len - mdlen - 1] = 0x01;
   OPENSSL_memcpy(db + emlen - from_len - mdlen, from, from_len);
   if (!RAND_bytes(seed, mdlen)) {
-    return 0;
+    goto out;
   }
 
-  uint8_t *dbmask = OPENSSL_malloc(emlen - mdlen);
-  if (dbmask == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  int ret = 0;
   if (!PKCS1_MGF1(dbmask, emlen - mdlen, seed, mdlen, mgf1md)) {
     goto out;
   }
@@ -380,6 +393,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   ret = 1;
 
 out:
+  FIPS_service_indicator_unlock_state();
   OPENSSL_free(dbmask);
   return ret;
 }
@@ -389,6 +403,9 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
                                       size_t from_len, const uint8_t *param,
                                       size_t param_len, const EVP_MD *md,
                                       const EVP_MD *mgf1md) {
+  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
+  // functions to avoid updating the service indicator with the DRBG functions.
+  FIPS_service_indicator_lock_state();
   uint8_t *db = NULL;
 
   if (md == NULL) {
@@ -467,6 +484,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
     goto err;
   }
 
+  FIPS_service_indicator_unlock_state();
   OPENSSL_memcpy(out, db + one_index, mlen);
   *out_len = mlen;
   OPENSSL_free(db);
@@ -477,6 +495,7 @@ decoding_err:
   // which kind of decoding error happened
   OPENSSL_PUT_ERROR(RSA, RSA_R_OAEP_DECODING_ERROR);
  err:
+  FIPS_service_indicator_unlock_state();
   OPENSSL_free(db);
   return 0;
 }
@@ -486,6 +505,9 @@ static const uint8_t kPSSZeroes[] = {0, 0, 0, 0, 0, 0, 0, 0};
 int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
                               const EVP_MD *Hash, const EVP_MD *mgf1Hash,
                               const uint8_t *EM, int sLen) {
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   int i;
   int ret = 0;
   int maskedDBLen, MSBits, emLen;
@@ -495,7 +517,6 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   EVP_MD_CTX ctx;
   uint8_t H_[EVP_MAX_MD_SIZE];
   EVP_MD_CTX_init(&ctx);
-
   if (mgf1Hash == NULL) {
     mgf1Hash = Hash;
   }
@@ -576,6 +597,7 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   }
 
 err:
+  FIPS_service_indicator_unlock_state();
   OPENSSL_free(DB);
   EVP_MD_CTX_cleanup(&ctx);
 
@@ -586,6 +608,9 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
                                    const unsigned char *mHash,
                                    const EVP_MD *Hash, const EVP_MD *mgf1Hash,
                                    int sLenRequested) {
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   int ret = 0;
   size_t maskedDBLen, MSBits, emLen;
   size_t hLen;
@@ -689,6 +714,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   ret = 1;
 
 err:
+  FIPS_service_indicator_unlock_state();
   OPENSSL_free(salt);
 
   return ret;

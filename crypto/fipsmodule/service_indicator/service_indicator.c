@@ -139,6 +139,43 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
+void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
+  // EC DH (P-224/P-256/P-384/P-521) private keys are approved.
+  switch(ec_key->group->curve_name){
+    case NID_secp224r1:
+    case NID_X9_62_prime256v1:
+    case NID_secp384r1:
+    case NID_secp521r1:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
+
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const int using_md5_sha1) {
+  // HMAC-MD5/HMACSHA1 (both used concurrently) is approved in TLS 1.0/1.1.
+  // HMAC-SHA256, HMAC-SHA384, HMAC-SHA512 is approved for TLS 1.2.
+  // These Key Derivation functions are to be used in the context of the TLS
+  // protocol.
+  // |using_md5_sha1| is used to differentiate if the kdf is running md5 with
+  // SHA1, and if the kdf is using MD5 or SHA1 on its own.
+  if(dgst->type == NID_sha1 && using_md5_sha1 == 1) {
+    FIPS_service_indicator_update_state();
+    return;
+  }
+  switch (dgst->type){
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 
 #else
 
@@ -152,6 +189,8 @@ void AEAD_verify_service_indicator(size_t key_length) { }
 void AES_CMAC_verify_service_indicator(OPENSSL_UNUSED const CMAC_CTX *ctx) { }
 
 void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
+
+void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst, OPENSSL_UNUSED int using_md5_sha1) { }
 
 #endif // AWSLC_FIPS
 

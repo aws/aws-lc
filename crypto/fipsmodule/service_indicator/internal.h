@@ -67,4 +67,8 @@ void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx);
 
 void HMAC_verify_service_indicator(const EVP_MD *evp_md);
 
+void ECDH_verify_service_indicator(const EC_KEY *ec_key);
+
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const int using_md5_sha1);
+
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

@@ -60,7 +60,7 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
   drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material, 32);
   OPENSSL_memcpy(drbg->counter.bytes, seed_material + 32, 16);
   drbg->reseed_counter = 1;
-
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -124,7 +124,7 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
   }
 
   drbg->reseed_counter = 1;
-
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -194,6 +194,7 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
   }
 
   drbg->reseed_counter++;
+  FIPS_service_indicator_update_state();
   return 1;
 }
 

@@ -69,7 +69,12 @@ static int tls1_P_hash(uint8_t *out, size_t out_len,
                        const uint8_t *secret, size_t secret_len,
                        const char *label, size_t label_len,
                        const uint8_t *seed1, size_t seed1_len,
-                       const uint8_t *seed2, size_t seed2_len) {
+                       const uint8_t *seed2, size_t seed2_len,
+                       int using_md5_sha1) {
+  // We have to avoid the underlying HMAC services updating the indicator state,
+  // so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   HMAC_CTX ctx, ctx_tmp, ctx_init;
   uint8_t A1[EVP_MAX_MD_SIZE];
   unsigned A1_len;
@@ -127,6 +132,10 @@ static int tls1_P_hash(uint8_t *out, size_t out_len,
   ret = 1;
 
 err:
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    TLSKDF_verify_service_indicator(md, using_md5_sha1);
+  }
   OPENSSL_cleanse(A1, sizeof(A1));
   HMAC_CTX_cleanup(&ctx);
   HMAC_CTX_cleanup(&ctx_tmp);
@@ -143,14 +152,14 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
   if (out_len == 0) {
     return 1;
   }
-
+  int using_md5_sha1 = 0;
   OPENSSL_memset(out, 0, out_len);
 
   if (digest == EVP_md5_sha1()) {
     // If using the MD5/SHA1 PRF, |secret| is partitioned between MD5 and SHA-1.
     size_t secret_half = secret_len - (secret_len / 2);
     if (!tls1_P_hash(out, out_len, EVP_md5(), secret, secret_half, label,
-                     label_len, seed1, seed1_len, seed2, seed2_len)) {
+                     label_len, seed1, seed1_len, seed2, seed2_len, using_md5_sha1)) {
       return 0;
     }
 
@@ -158,8 +167,9 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
     secret += secret_len - secret_half;
     secret_len = secret_half;
     digest = EVP_sha1();
+    using_md5_sha1 = 1;
   }
 
   return tls1_P_hash(out, out_len, digest, secret, secret_len, label, label_len,
-                     seed1, seed1_len, seed2, seed2_len);
+                     seed1, seed1_len, seed2, seed2_len, using_md5_sha1);
 }

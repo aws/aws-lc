@@ -11,21 +11,23 @@
 #include <openssl/bn.h>
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
-#include <openssl/des.h>
-#include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdh.h>
 #include <openssl/ecdsa.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
 #include <openssl/nid.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
+#include "../rand/internal.h"
+#include "../tls/internal.h"
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
@@ -155,6 +157,111 @@ static const uint8_t kHMACOutput_sha512_256[SHA512_256_DIGEST_LENGTH] = {
     0xaa, 0xd0, 0x57, 0x0c, 0x98, 0x45, 0x74, 0x6b, 0x39, 0x1e, 0x07,
     0x55, 0x23, 0x08, 0xab, 0x79, 0xad, 0xe5, 0x8b, 0x48, 0xc2, 0x0c,
     0x1a, 0x37, 0x91, 0xe4, 0x8b, 0xc0, 0x9c, 0xce, 0x2c, 0x24
+};
+
+static const uint8_t kECDHPrivateKey[] = {
+    0x83, 0x46, 0xa6, 0x0f, 0xc6, 0xf2, 0x93, 0xca, 0x5a, 0x0d, 0x2a,
+    0xf6, 0x8b, 0xa7, 0x1d, 0x1d, 0xd3, 0x89, 0xe5, 0xe4, 0x08, 0x37,
+    0x94, 0x2d, 0xf3, 0xe4, 0x3c, 0xbd
+};
+
+static const uint8_t kECDH_X[] = {
+    0x8d, 0xe2, 0xe2, 0x6a, 0xdf, 0x72, 0xc5, 0x82, 0xd6, 0x56, 0x8e,
+    0xf6, 0x38, 0xc4, 0xfd, 0x59, 0xb1, 0x8d, 0xa1, 0x71, 0xbd, 0xf5,
+    0x01, 0xf1, 0xd9, 0x29, 0xe0, 0x48
+};
+
+static const uint8_t kECDH_Y[] = {
+    0x4a, 0x68, 0xa1, 0xc2, 0xb0, 0xfb, 0x22, 0x93, 0x0d, 0x12, 0x05,
+    0x55, 0xc1, 0xec, 0xe5, 0x0e, 0xa9, 0x8d, 0xea, 0x84, 0x07, 0xf7,
+    0x1b, 0xe3, 0x6e, 0xfa, 0xc0, 0xde
+};
+
+static const uint8_t kECDH_PeerX[] = {
+    0xaf, 0x33, 0xcd, 0x06, 0x29, 0xbc, 0x7e, 0x99, 0x63, 0x20, 0xa3,
+    0xf4, 0x03, 0x68, 0xf7, 0x4d, 0xe8, 0x70, 0x4f, 0xa3, 0x7b, 0x8f,
+    0xab, 0x69, 0xab, 0xaa, 0xe2, 0x80
+};
+
+static const uint8_t kECDH_PeerY[] = {
+    0x88, 0x20, 0x92, 0xcc, 0xbb, 0xa7, 0x93, 0x0f, 0x41, 0x9a, 0x8a,
+    0x4f, 0x9b, 0xb1, 0x69, 0x78, 0xbb, 0xc3, 0x83, 0x87, 0x29, 0x99,
+    0x25, 0x59, 0xa6, 0xf2, 0xe2, 0xd7
+};
+
+static const uint8_t kECDH_Z[] = {
+    0x7d, 0x96, 0xf9, 0xa3, 0xbd, 0x3c, 0x05, 0xcf, 0x5c, 0xc3, 0x7f,
+    0xeb, 0x8b, 0x9d, 0x52, 0x09, 0xd5, 0xc2, 0x59, 0x74, 0x64, 0xde,
+    0xc3, 0xe9, 0x98, 0x37, 0x43, 0xe8
+};
+
+static const uint8_t kDRBGEntropy[48] = {
+    'B', 'C', 'M', ' ', 'K', 'n', 'o', 'w', 'n', ' ', 'A', 'n', 's',
+    'w', 'e', 'r', ' ', 'T', 'e', 's', 't', ' ', 'D', 'B', 'R', 'G',
+    ' ', 'I', 'n', 'i', 't', 'i', 'a', 'l', ' ', 'E', 'n', 't', 'r',
+    'o', 'p', 'y', ' ', ' ', ' ', ' ', ' ', ' '
+};
+
+static const uint8_t kDRBGPersonalization[18] = {
+    'B', 'C', 'M', 'P', 'e', 'r', 's', 'o', 'n', 'a', 'l', 'i', 'z',
+    'a', 't', 'i', 'o', 'n'
+};
+
+static const uint8_t kDRBGAD[16] = {
+    'B', 'C', 'M', ' ', 'D', 'R', 'B', 'G', ' ', 'K', 'A', 'T', ' ',
+    'A', 'D', ' '
+};
+
+const uint8_t kDRBGOutput[64] = {
+    0x1d, 0x63, 0xdf, 0x05, 0x51, 0x49, 0x22, 0x46, 0xcd, 0x9b, 0xc5,
+    0xbb, 0xf1, 0x5d, 0x44, 0xae, 0x13, 0x78, 0xb1, 0xe4, 0x7c, 0xf1,
+    0x96, 0x33, 0x3d, 0x60, 0xb6, 0x29, 0xd4, 0xbb, 0x6b, 0x44, 0xf9,
+    0xef, 0xd9, 0xf4, 0xa2, 0xba, 0x48, 0xea, 0x39, 0x75, 0x59, 0x32,
+    0xf7, 0x31, 0x2c, 0x98, 0x14, 0x2b, 0x49, 0xdf, 0x02, 0xb6, 0x5d,
+    0x71, 0x09, 0x50, 0xdb, 0x23, 0xdb, 0xe5, 0x22, 0x95
+};
+
+static const uint8_t kDRBGEntropy2[48] = {
+    'B', 'C', 'M', ' ', 'K', 'n', 'o', 'w', 'n', ' ', 'A', 'n', 's',
+    'w', 'e', 'r', ' ', 'T', 'e', 's', 't', ' ', 'D', 'B', 'R', 'G',
+    ' ', 'R', 'e', 's', 'e', 'e', 'd', ' ', 'E', 'n', 't', 'r', 'o',
+    'p', 'y', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+};
+
+static const uint8_t kDRBGReseedOutput[64] = {
+    0xa4, 0x77, 0x05, 0xdb, 0x14, 0x11, 0x76, 0x71, 0x42, 0x5b, 0xd8,
+    0xd7, 0xa5, 0x4f, 0x8b, 0x39, 0xf2, 0x10, 0x4a, 0x50, 0x5b, 0xa2,
+    0xc8, 0xf0, 0xbb, 0x3e, 0xa1, 0xa5, 0x90, 0x7d, 0x54, 0xd9, 0xc6,
+    0xb0, 0x96, 0xc0, 0x2b, 0x7e, 0x9b, 0xc9, 0xa1, 0xdd, 0x78, 0x2e,
+    0xd5, 0xa8, 0x66, 0x16, 0xbd, 0x18, 0x3c, 0xf2, 0xaa, 0x7a, 0x2b,
+    0x37, 0xf9, 0xab, 0x35, 0x64, 0x15, 0x01, 0x3f, 0xc4,
+};
+
+static const uint8_t kTLSSecret[32] = {
+    0xbf, 0xe4, 0xb7, 0xe0, 0x26, 0x55, 0x5f, 0x6a, 0xdf, 0x5d, 0x27,
+    0xd6, 0x89, 0x99, 0x2a, 0xd6, 0xf7, 0x65, 0x66, 0x07, 0x4b, 0x55,
+    0x5f, 0x64, 0x55, 0xcd, 0xd5, 0x77, 0xa4, 0xc7, 0x09, 0x61,
+};
+static const char kTLSLabel[] = "FIPS self test";
+static const uint8_t kTLSSeed1[16] = {
+    0x8f, 0x0d, 0xe8, 0xb6, 0x90, 0x8f, 0xb1, 0xd2,
+    0x6d, 0x51, 0xf4, 0x79, 0x18, 0x63, 0x51, 0x65,
+};
+static const uint8_t kTLSSeed2[16] = {
+    0x7d, 0x24, 0x1a, 0x9d, 0x3c, 0x59, 0xbf, 0x3c,
+    0x31, 0x1e, 0x2b, 0x21, 0x41, 0x8d, 0x32, 0x81,
+};
+
+static const uint8_t kTLSOutput_sha256[32] = {
+    0x67, 0x85, 0xde, 0x60, 0xfc, 0x0a, 0x83, 0xe9, 0xa2, 0x2a, 0xb3,
+    0xf0, 0x27, 0x0c, 0xba, 0xf7, 0xfa, 0x82, 0x3d, 0x14, 0x77, 0x1d,
+    0x86, 0x29, 0x79, 0x39, 0x77, 0x8a, 0xd5, 0x0e, 0x9d, 0x32
+};
+
+static const uint8_t kTLSOutput_mdsha1[32] = {
+    0x36, 0xa9, 0x31, 0xb0, 0x43, 0xe3, 0x64, 0x72, 0xb9, 0x47, 0x54,
+    0x0d, 0x8a, 0xfc, 0xe3, 0x5c, 0x1c, 0x15, 0x67, 0x7e, 0xa3, 0x5d,
+    0xf2, 0x3a, 0x57, 0xfd, 0x50, 0x16, 0xe1, 0xa4, 0xa6, 0x37
 };
 
 struct MD {
@@ -438,6 +545,113 @@ TEST(ServiceIndicatorTest, AESGCM) {
       encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
           kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+}
+
+TEST(ServiceIndicatorTest, ECDH) {
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<BIGNUM> priv_key(BN_bin2bn(kECDHPrivateKey, sizeof(kECDHPrivateKey), nullptr));
+  ASSERT_TRUE(priv_key);
+  bssl::UniquePtr<BIGNUM> x(BN_bin2bn(kECDH_X, sizeof(kECDH_X), nullptr));
+  ASSERT_TRUE(x);
+  bssl::UniquePtr<BIGNUM> y(BN_bin2bn(kECDH_Y, sizeof(kECDH_Y), nullptr));
+  ASSERT_TRUE(y);
+  bssl::UniquePtr<BIGNUM> peer_x(BN_bin2bn(kECDH_PeerX, sizeof(kECDH_PeerX), nullptr));
+  ASSERT_TRUE(peer_x);
+  bssl::UniquePtr<BIGNUM> peer_y(BN_bin2bn(kECDH_PeerY, sizeof(kECDH_PeerY), nullptr));
+  ASSERT_TRUE(peer_y);
+  std::vector<uint8_t> z(kECDH_Z, kECDH_Z + sizeof(kECDH_Z));
+
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+  ASSERT_TRUE(pub_key);
+  bssl::UniquePtr<EC_POINT> peer_pub_key(EC_POINT_new(group.get()));
+  ASSERT_TRUE(peer_pub_key);
+  ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group.get(), pub_key.get(),
+                                                  x.get(), y.get(), nullptr));
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), peer_pub_key.get(), peer_x.get(), peer_y.get(), nullptr));
+  ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+  ASSERT_TRUE(EC_KEY_check_key(key.get()));
+
+  // Test that |ECDH_compute_key_fips| has service indicator approval as
+  // expected.
+  uint8_t digest[SHA256_DIGEST_LENGTH];
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(ECDH_compute_key_fips(digest,
+                              sizeof(digest), peer_pub_key.get(), key.get())));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+}
+
+TEST(ServiceIndicatorTest, DRBG) {
+  int approved = AWSLC_NOT_APPROVED;
+  CTR_DRBG_STATE drbg;
+  uint8_t output[256];
+
+  // Test DRBG functions service indicator approval directly. These DRBG functions
+  // are not directly accessible for external consumers however.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_init(&drbg,
+                        kDRBGEntropy, kDRBGPersonalization, sizeof(kDRBGPersonalization))));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_generate(&drbg,
+                        output, sizeof(kDRBGOutput), kDRBGAD, sizeof(kDRBGAD))));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+  ASSERT_TRUE(check_test(kDRBGOutput, output, sizeof(kDRBGOutput),"DBRG Generate KAT"));
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_reseed(&drbg,
+                        kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD))));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_generate(&drbg,
+                        output, sizeof(kDRBGReseedOutput), kDRBGAD, sizeof(kDRBGAD))));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+  ASSERT_TRUE(check_test(kDRBGReseedOutput, output, sizeof(kDRBGReseedOutput),"DRBG Reseed KAT"));
+
+  // Test approval of |RAND_bytes|, which is the only way for the consumer to
+  // indirectly interact with the DRBG functions.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(RAND_bytes(output, sizeof(output))));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+  CTR_DRBG_clear(&drbg);
+}
+
+TEST(ServiceIndicatorTest, TLSKDF) {
+  int approved = AWSLC_NOT_APPROVED;
+
+  // Test approved usages of KDF.
+  uint8_t tls_output[sizeof(kTLSOutput_sha256)];
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            CRYPTO_tls1_prf(EVP_sha256(), tls_output, sizeof(tls_output), kTLSSecret,
+                            sizeof(kTLSSecret), kTLSLabel, sizeof(kTLSLabel),
+                            kTLSSeed1, sizeof(kTLSSeed1), kTLSSeed2,
+                            sizeof(kTLSSeed2)));
+  ASSERT_TRUE(check_test(kTLSOutput_sha256, tls_output, sizeof(kTLSOutput_sha256), "TLS KDF KAT for sha256"));
+  ASSERT_TRUE(approved);
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            CRYPTO_tls1_prf(EVP_md5_sha1(), tls_output, sizeof(tls_output), kTLSSecret,
+                            sizeof(kTLSSecret), kTLSLabel, sizeof(kTLSLabel),
+                            kTLSSeed1, sizeof(kTLSSeed1), kTLSSeed2,
+                            sizeof(kTLSSeed2)));
+  ASSERT_TRUE(check_test(kTLSOutput_mdsha1, tls_output, sizeof(kTLSOutput_mdsha1), "TLS KDF KAT for md5_sha1"));
+  ASSERT_TRUE(approved);
+
+  // Test non-approved usages of KDF.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            CRYPTO_tls1_prf(EVP_sha1(), tls_output, sizeof(tls_output), kTLSSecret,
+                            sizeof(kTLSSecret), kTLSLabel, sizeof(kTLSLabel),
+                            kTLSSeed1, sizeof(kTLSSeed1), kTLSSeed2,
+                            sizeof(kTLSSeed2)));
+  ASSERT_FALSE(approved);
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            CRYPTO_tls1_prf(EVP_md5(), tls_output, sizeof(tls_output), kTLSSecret,
+                            sizeof(kTLSSecret), kTLSLabel, sizeof(kTLSLabel),
+                            kTLSSeed1, sizeof(kTLSSeed1), kTLSSeed2,
+                            sizeof(kTLSSeed2)));
+  ASSERT_FALSE(approved);
 }
 
 #else
