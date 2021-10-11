@@ -45,7 +45,7 @@ uint64_t FIPS_service_indicator_after_call(void) {
   return FIPS_service_indicator_get_counter();
 }
 
-int FIPS_service_indicator_check_approved(int before, int after) {
+int FIPS_service_indicator_check_approved(uint64_t before, uint64_t after) {
   if(before != after) {
     return AWSLC_APPROVED;
   }
@@ -88,26 +88,29 @@ void FIPS_service_indicator_unlock_state(void) {
 }
 
 void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds) {
-  // Service indicator check for most AES algorithms.
-  // hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
-  // hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
-  // When compiling with different ARM specific platforms, 9, 11, 13 are used for
-  // key rounds.
   if(ctx != NULL) {
-    if (EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_ECB_MODE ||
-        EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_CBC_MODE ||
-        EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_CTR_MODE) {
-      switch (ctx->cipher->key_len) {
-        case 16:
-        case 24:
-        case 32:
-          FIPS_service_indicator_update_state();
-          break;
-        default:
-          break;
-      }
+    switch(EVP_CIPHER_CTX_nid(ctx)) {
+      case NID_aes_128_ecb:
+      case NID_aes_192_ecb:
+      case NID_aes_256_ecb:
+
+      case NID_aes_128_cbc:
+      case NID_aes_192_cbc:
+      case NID_aes_256_cbc:
+
+      case NID_aes_128_ctr:
+      case NID_aes_192_ctr:
+      case NID_aes_256_ctr:
+        FIPS_service_indicator_update_state();
+        break;
+      default:
+        break;
     }
   } else {
+    // hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
+    // hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
+    // When compiling with different ARM specific platforms, 9, 11, 13 are used for
+    // key rounds.
     switch (key_rounds) {
       case 9:
       case 10:
@@ -182,8 +185,8 @@ uint64_t FIPS_service_indicator_after_call(void) { return 0; }
 // checks, when not in FIPS mode. Arguments are cast with |OPENSSL_UNUSED| in an
 // attempt to avoid unused warnings.
 
-int FIPS_service_indicator_check_approved(OPENSSL_UNUSED int before,
-                                          OPENSSL_UNUSED int after) {
+int FIPS_service_indicator_check_approved(OPENSSL_UNUSED uint64_t before,
+                                          OPENSSL_UNUSED uint64_t after) {
   return AWSLC_APPROVED;
 }
 

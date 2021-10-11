@@ -322,7 +322,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
-  int n, ret;
+  int n, ret = 0;
   unsigned int i, b, bl;
 
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
@@ -332,27 +332,27 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
     } else {
       *out_len = ret;
     }
-    AES_verify_service_indicator(ctx, 0);
-    return 1;
+    ret = 1;
+    goto end;
   }
 
   b = ctx->cipher->block_size;
   assert(b <= sizeof(ctx->buf));
   if (b == 1) {
     *out_len = 0;
-    AES_verify_service_indicator(ctx, 0);
-    return 1;
+    ret = 1;
+    goto end;
   }
 
   bl = ctx->buf_len;
   if (ctx->flags & EVP_CIPH_NO_PADDING) {
     if (bl) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
-      return 0;
+      goto end;
     }
     *out_len = 0;
-    AES_verify_service_indicator(ctx, 0);
-    return 1;
+    ret = 1;
+    goto end;
   }
 
   n = b - bl;
@@ -362,9 +362,12 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   ret = ctx->cipher->cipher(ctx, out, ctx->buf, b);
   if (ret) {
     *out_len = b;
-    AES_verify_service_indicator(ctx, 0);
   }
 
+end:
+  if(ret) {
+     AES_verify_service_indicator(ctx, 0);
+  }
   return ret;
 }
 

@@ -202,12 +202,12 @@ int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   assert(padded_len >= 8);
   memset(padded_in + padded_len - 8, 0, 8);
   memcpy(padded_in, in, in_len);
-  const int text_len = AES_wrap_key(key, block, out, padded_in, padded_len);
+  const int text = AES_wrap_key(key, block, out, padded_in, padded_len);
   OPENSSL_free(padded_in);
-  if (text_len < 0) {
+  if (text < 0) {
     goto end;
   }
-  *out_len = text_len;
+  *out_len = text;
   ret = 1;
 
 end:
