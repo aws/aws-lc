@@ -88,6 +88,11 @@ void FIPS_service_indicator_unlock_state(void) {
 }
 
 void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds) {
+  // Service indicator check for most AES algorithms.
+  // hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
+  // hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
+  // When compiling with different ARM specific platforms, 9, 11, 13 are used for
+  // key rounds.
   if(ctx != NULL) {
     if (EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_ECB_MODE ||
         EVP_CIPHER_CTX_mode(ctx) == EVP_CIPH_CBC_MODE ||
@@ -119,11 +124,12 @@ void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_
 }
 
 void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
+  // We only have support for 128 bit and 256 bit keys for AES-GCM. AES-GCM is
+  // approved only with an internal IV, see SP 800-38D Sec 8.2.2.
   // Not the best way to write this, but the delocate parser for ARM/clang can't
   // recognize || if statements, or switch statements for this.
   // TODO: Update the delocate parser to be able to recognize a more readable
   // version of this.
-  // We only have support for 128 bit and 256 bit keys for AES-GCM.
    if(EVP_AEAD_key_length(ctx->aead) == 16) {
     FIPS_service_indicator_update_state();
    } else if(EVP_AEAD_key_length(ctx->aead) == 32) {

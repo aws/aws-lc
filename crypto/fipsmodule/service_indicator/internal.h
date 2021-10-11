@@ -52,21 +52,10 @@ OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) { }
 
 // Service indicator check functions parameters are assumed to be not NULL.
 
-// Service indicator check for most AES algorithms.
-// hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
-// hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
-// When compiling with different ARM specific platforms, 9, 11, 13 are used for
-// key rounds.
 void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds);
 
-// The service indicator checks use different parameters for AEAD APIs than
-// those of other AES modes.
-
-// AEAD service indicator check for AES-GCM. AES-GCM is approved only with an
-// internal IV, see SP 800-38D Sec 8.2.2.
 void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
 
-// AEAD service indicator check for AES-CCM.
 void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
 
 void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx);
