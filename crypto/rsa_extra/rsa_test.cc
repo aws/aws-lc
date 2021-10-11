@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <math.h> /* ceil */
+
 #include <openssl/rsa.h>
 
 #include <stdlib.h>
@@ -76,6 +78,7 @@
 #include <thread>
 #include <vector>
 #endif
+
 
 
 #include <openssl/cpucycles.h>
@@ -398,8 +401,9 @@ struct RSAEncryptParam {
 
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
-#define NUMBER_TESTS 1000
-#define PLAINTEXT_SIZE 256 - 11
+#define NUMBER_TESTS 10
+#define PLAINTEXT_TOTAL 10000000  // B
+
 
 
 TEST(RSATest, RSA) {
@@ -409,89 +413,136 @@ TEST(RSATest, RSA) {
 
   bssl::UniquePtr<RSA> key(RSA_new());
   ASSERT_TRUE(key);
+  for (const size_t mode : {1, 3, 4}) {
+    switch (mode) {
+      case 1:
+        printf("\nPadding Mode        ->      RSA_PKCS1_PADDING");
+        break;
+      case 3:
+        printf("\nNumber Tests        ->      RSA_NO_PADDING");
+        break;
+      case 4:
+        printf("\nNumber Tests        ->      RSA_PKCS1_OAEP_PADDING");
+        break;
 
-  // RSA_generate_key_fips may only be used for 2048-, 3072-, and 4096-bit
-  // keys.
-  cycles_keygen = cpucycles();
-  EXPECT_TRUE(RSA_generate_key_fips(key.get(), 2048, nullptr));
-  cycles_keygen_total += cpucycles() - cycles_keygen;
-  ASSERT_TRUE(key);
 
-  EXPECT_TRUE(RSA_check_key(key.get()));
+      default:
+        break;
+    }
+    printf("\nNumber Tests        ->      %d\n", NUMBER_TESTS);
+    for (const size_t bits : {2048, 3072, 4096}) {
+      for (int plaintext_length_bytes = 1000;
+           plaintext_length_bytes <= PLAINTEXT_TOTAL;
+           plaintext_length_bytes *= 10) {
+        printf("\nBytes Encrypted     ->      %d", plaintext_length_bytes);
+        cycles_keygen_total = 0;
+        cycles_encrypt_total = 0;
+        cycles_decrypt_total = 0;
+        cycles_protocol_total = 0;
+        int PLAINTEXT_SIZE;
+        switch (mode) {
+          case 1:
+            PLAINTEXT_SIZE = bits / 8 - 11;
+            break;
+          case 3:
+            PLAINTEXT_SIZE = bits / 8;
+            break;
+          case 4:
+            PLAINTEXT_SIZE = bits / 8 - 42;
+            break;
 
-  uint8_t plaintext_org[PLAINTEXT_SIZE];
-  size_t plaintext_orgLen = sizeof(plaintext_org);
-  printf("\nPlaintext Bytes     ->      %d", PLAINTEXT_SIZE);
-  printf("\nNumber Tests        ->      %d", NUMBER_TESTS);
-  for (int i = 0; i < PLAINTEXT_SIZE; i++) {
-    plaintext_org[i] = (uint8_t)((uint8_t)i % 256);
-    // printf("%02x ", (uint8_t)plaintext_org[i]);
-  }
-  uint8_t ciphertext[256];
 
-  // Test that PKCS#1 v1.5 encryption round-trips.
-  printf("\nRSA PKCS#1 v1.5 encryption\n");
-  size_t ciphertext_len = 0;
+          default:
+            PLAINTEXT_SIZE = 0;
+            break;
+        }
 
-  for (int jj = 0; jj < NUMBER_TESTS; jj++) {
-    cycles_encrypt = cpucycles();
-    ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
-                            sizeof(ciphertext), plaintext_org, plaintext_orgLen,
-                            RSA_PKCS1_PADDING));
-    cycles_encrypt_total += cpucycles() - cycles_encrypt;
-    EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
+        printf("\nPlaintext Bytes     ->      %d", PLAINTEXT_SIZE);
 
-    uint8_t plaintext[256];
-    size_t plaintext_len = 0;
-    cycles_decrypt = cpucycles();
-    ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
-                            sizeof(plaintext), ciphertext, ciphertext_len,
-                            RSA_PKCS1_PADDING));
-    cycles_decrypt_total += cpucycles() - cycles_decrypt;
-    EXPECT_EQ(Bytes(plaintext_org, plaintext_orgLen),
-              Bytes(plaintext, plaintext_len));
+        printf("\nKey Size Bytes      ->      %d", (int)bits);
 
-    for (int i = 0; i < (int)plaintext_len; i++) {
-      // printf("%02x ", plaintext[i]);
+        SCOPED_TRACE(bits);
+
+        key.reset(RSA_new());
+        ASSERT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
+        EXPECT_EQ(bits, BN_num_bits(key->n));
+
+        cycles_keygen = cpucycles();
+        EXPECT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
+        cycles_keygen_total += cpucycles() - cycles_keygen;
+        ASSERT_TRUE(key);
+
+        EXPECT_TRUE(RSA_check_key(key.get()));
+        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+          uint8_t *plaintext_org =
+              (uint8_t *)malloc(sizeof(uint8_t) * PLAINTEXT_SIZE);
+          size_t plaintext_orgLen = PLAINTEXT_SIZE;
+          // uint8_t plaintext_org[PLAINTEXT_SIZE];
+          // size_t plaintext_orgLen = sizeof(plaintext_org);
+          for (int i = 0; i < PLAINTEXT_SIZE; i++) {
+            plaintext_org[i] = (uint8_t)((uint8_t)i % 256);
+            // printf("%02x ", (uint8_t)plaintext_org[i]);
+          }
+          uint8_t *ciphertext = (uint8_t *)malloc(sizeof(uint8_t) * bits / 8);
+          // uint8_t ciphertext[2048/8];
+          size_t ciphertext_len = 0;
+
+          for (int chunks_plaintext =
+                   (int)ceil((float)plaintext_length_bytes / (float)PLAINTEXT_SIZE);
+               chunks_plaintext > 0; chunks_plaintext--) {
+            cycles_encrypt = cpucycles();
+            ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
+                                    bits / 8, plaintext_org, plaintext_orgLen,
+                                    mode));
+            cycles_encrypt_total += cpucycles() - cycles_encrypt;
+            EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
+          }
+
+
+          uint8_t *plaintext = (uint8_t *)malloc(sizeof(uint32_t) * bits / 8);
+          // uint8_t plaintext[bits/8];
+          size_t plaintext_len = 0;
+          // printf("\nRSA PKCS#1 v1.5 decryption\n");
+          for (int chunks_plaintext =
+                   (int)ceil((float)plaintext_length_bytes / (float)PLAINTEXT_SIZE);
+               chunks_plaintext > 0; chunks_plaintext--) {
+            cycles_decrypt = cpucycles();
+            ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
+                                    bits / 8, ciphertext, ciphertext_len,
+                                    mode));
+            cycles_decrypt_total += cpucycles() - cycles_decrypt;
+            EXPECT_EQ(Bytes(plaintext_org, plaintext_orgLen),
+                      Bytes(plaintext, plaintext_len));
+          }
+
+          for (int i = 0; i < (int)plaintext_len; i++) {
+            // printf("%02x ", plaintext[i]);
+          }
+
+          free(ciphertext);
+          free(plaintext);
+        }
+        printf("\ncycles_keygen_total         %llu CCs \n",
+               cycles_keygen_total / 1000000);
+        printf("cycles_encrypt_total        %llu CCs \n",
+               cycles_encrypt_total / NUMBER_TESTS / 1000000);
+        printf("cycles_decrypt_total        %llu CCs \n",
+               (cycles_decrypt_total / NUMBER_TESTS / 1000000));
+
+        // Print the value of the 4 functions (no overhead for array
+        // initialization, etc)
+        cycles_protocol_total = cycles_encrypt_total + cycles_decrypt_total;
+        printf("CLEAN protocol              %llu CCs \n",
+               cycles_protocol_total / NUMBER_TESTS / 1000000);
+        printf("%% cycles_encrypt_total      %.3f %% \n",
+               ((float)(cycles_encrypt_total) / ((float)cycles_protocol_total) *
+                100));
+        printf("%% cycles_decrypt_total      %.3f %% \n",
+               ((float)cycles_decrypt_total) / ((float)cycles_protocol_total) *
+                   100);
+      }
     }
   }
-
-  /*
-
-    // Test that OAEP encryption round-trips.
-    ciphertext_len = 0;
-    ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
-                            sizeof(ciphertext), plaintext_org, plaintext_orgLen,
-                            RSA_PKCS1_OAEP_PADDING));
-    EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
-
-    plaintext_len = 0;
-    ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
-                            sizeof(plaintext), ciphertext, ciphertext_len,
-                            RSA_PKCS1_OAEP_PADDING));
-    EXPECT_EQ(Bytes(plaintext_org, plaintext_orgLen), Bytes(plaintext,
-    plaintext_len));
-  */
-  printf("\ncycles_keygen_total         %llu CCs \n",
-         cycles_keygen_total / NUMBER_TESTS);
-  printf("cycles_encrypt_total        %llu CCs \n",
-         cycles_encrypt_total / NUMBER_TESTS);
-  printf("cycles_decrypt_total        %llu CCs \n",
-         (cycles_decrypt_total / NUMBER_TESTS));
-
-  // Print the value of the 4 functions (no overhead for array initialization,
-  // etc)
-  cycles_protocol_total = cycles_encrypt_total + cycles_decrypt_total;
-  printf("CLEAN protocol              %llu CCs \n",
-         cycles_protocol_total / NUMBER_TESTS);
-
-
-
-  printf(
-      "%% cycles_encrypt_total      %.3f %% \n",
-      ((float)(cycles_encrypt_total) / ((float)cycles_protocol_total) * 100));
-  printf("%% cycles_decrypt_total      %.3f %% \n",
-         ((float)cycles_decrypt_total) / ((float)cycles_protocol_total) * 100);
 }
 
 

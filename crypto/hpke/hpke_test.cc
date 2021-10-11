@@ -1137,6 +1137,162 @@ TEST(HPKETest, x25519_Kyber) {
 }
 
 
+#define HPKE_KDF_NAMESPACE(s) EVP_hpke_##s\_hkdf_sha256
+#define EVP_hpke_x25519_KYBER_hkdf_sha256 HPKE_KDF_NAMESPACE(s)
+
+// The test vectors used fixed sender ephemeral keys, while HPKE itself
+// generates new keys for each context. Test this codepath by checking we can
+// decrypt our own messages.
+TEST(HPKETest, HPKERoundTrip) {
+  const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
+  const uint8_t info_b[] = {42, 42, 42};
+  const uint8_t ad_a[] = {1, 2, 4, 8, 16};
+  const uint8_t ad_b[] = {7};
+  Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
+  Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
+  unsigned long long cycles_set_up_sender_total = 0,
+                     cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
+                     cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+  unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
+      cycles_open, cycles_protocol;
+
+  // execute Bob keygen
+  // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret
+  // key??
+  // Actually it is not Alice!! But why they do not have two differnet
+  // funcitons?!?!?! In real life how is Alice getting Bob's pk??
+
+  // Generate the recipient's keypair.
+  ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
+  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN + KYBER_PUBLICKEYBYTES];
+  size_t public_key_r_len;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
+                                      &public_key_r_len, sizeof(public_key_r)));
+  // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
+  for (const auto aead : kAllAEADs) {
+    SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
+    for (const auto kdf : kAllKDFs) {
+      SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
+
+      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+
+      for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
+        printf("\nPlaintext Bytes    ->   %d\n", kk);
+        cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
+        cycles_seal_total = 0, cycles_open_total = 0, cycles_protocol_total = 0;
+        uint8_t *kCleartextPayload = (uint8_t *)malloc(sizeof(uint8_t) * kk);
+        init_plaintext(kCleartextPayload, kk);
+        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+          // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
+          // public_key_r[X25519_PUBLIC_VALUE_LEN +
+          // SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
+
+          for (const Span<const uint8_t> &info : info_values) {
+            SCOPED_TRACE(Bytes(info));
+            for (const Span<const uint8_t> &ad : ad_values) {
+              // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+
+
+              cycles_protocol = cpucycles();
+
+              SCOPED_TRACE(Bytes(ad));
+
+              // Set up the sender.
+              ScopedEVP_HPKE_CTX sender_ctx;
+              uint8_t enc[KYBER_CIPHERTEXTBYTES + X25519_PUBLIC_VALUE_LEN];
+              size_t enc_len;
+              cycles_set_up_sender = cpucycles();
+  
+              ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
+                  sender_ctx.get(), enc, &enc_len, sizeof(enc),
+                  EVP_hpke_x25519_KYBER_hkdf_sha256(), kdf(), aead(), public_key_r,
+                  public_key_r_len, info.data(), info.size()));
+              cycles_set_up_sender_total += cpucycles() - cycles_set_up_sender;
+
+              // Set up the recipient.
+              ScopedEVP_HPKE_CTX recipient_ctx;
+              cycles_set_up_recipient = cpucycles();
+              ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
+                  recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
+                  info.data(), info.size()));
+              cycles_set_up_recipient_total +=
+                  cpucycles() - cycles_set_up_recipient;
+
+              // Have sender encrypt message for the recipient.
+              std::vector<uint8_t> ciphertext(
+                  kk + EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
+              size_t ciphertext_len;
+              cycles_seal = cpucycles();
+              ASSERT_TRUE(EVP_HPKE_CTX_seal(
+                  sender_ctx.get(), ciphertext.data(), &ciphertext_len,
+                  ciphertext.size(),
+                  reinterpret_cast<const uint8_t *>(kCleartextPayload), kk,
+                  ad.data(), ad.size()));
+              cycles_seal_total += cpucycles() - cycles_seal;
+
+              // Have recipient decrypt the message.
+              std::vector<uint8_t> cleartext(ciphertext.size());
+              size_t cleartext_len;
+              cycles_open = cpucycles();
+              ASSERT_TRUE(EVP_HPKE_CTX_open(
+                  recipient_ctx.get(), cleartext.data(), &cleartext_len,
+                  cleartext.size(), ciphertext.data(), ciphertext_len,
+                  ad.data(), ad.size()));
+              cycles_open_total += cpucycles() - cycles_open;
+
+              // print_text(cleartext, kk);
+
+              cycles_protocol_total += cpucycles() - cycles_protocol;
+
+             // Verify that decrypted message matches the original.
+              ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
+              Bytes(kCleartextPayload, kk));
+            }
+          }
+        }
+                printf("set_up_sender           %llu CCs \n",
+               cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
+        printf("set_up_recipient        %llu CCs \n",
+               cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
+        printf("seal                    %.2f CCs \n",
+               (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
+        printf("open                    %.2f CCs \n",
+               (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
+        //printf("others            %llu CCs \n",
+              // others_total / NUMBER_TESTS / 1000000);
+        printf("end protocol            %llu CCs \n",
+               cycles_protocol_total / NUMBER_TESTS / 1000000);
+        //Print the value of the 4 functions (no overhead for array initialization, etc)
+        clean_protocol = cycles_set_up_sender_total + cycles_set_up_recipient_total + cycles_seal_total + cycles_open_total;
+        printf("CLEAN protocol          %llu CCs \n",
+               clean_protocol / NUMBER_TESTS / 1000000);
+
+
+
+
+        printf("%% set_up_sender         %.3f %% \n",
+               ((float)(cycles_set_up_sender_total) /
+                ((float)clean_protocol) * 100));
+        printf("%% set_up_recipient      %.3f %% \n",
+               ((float)cycles_set_up_recipient_total) /
+                   ((float)clean_protocol) * 100);
+        printf(
+            "%% seal                  %.3f %% \n",
+            ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+        printf(
+            "%% open                  %.3f %% \n",
+            ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+            //printf(
+            //"%% others                  %.3f %% \n",
+            //((float)others_total) / ((float)cycles_protocol_total) * 100);
+        free(kCleartextPayload);
+      }
+    }
+  }
+}
+
+
 /*
 // Verify that the DH operations inside Encap() and Decap() both fail when the
 // public key is on a small-order point in the curve.
