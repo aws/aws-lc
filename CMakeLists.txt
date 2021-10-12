@@ -499,6 +499,15 @@ endif()
 
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
+  # DISABLE_GETAUXVAL builds the object file - bcm.o(the fips module) without
+  # the reference to `getauxval` on the Linux platforms(e.g. AL2 and Ubuntu 20.04).
+  # The `bcm.o` will be used later in another build on old Linux platforms where glibc
+  # prior to 2.16 does not have `getauxval` and `sys/auxv.h`.
+  # Warn: DISABLE_GETAUXVAL is currently only tested in the `shared` build on `x86_64`.
+  if(DISABLE_GETAUXVAL)
+    message(STATUS "NO_GETAUXVAL is enabled.")
+    add_definitions(-DNO_GETAUXVAL)
+  endif()
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
   endif()
