@@ -442,8 +442,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     } else {
       *out_len = i;
     }
-    AES_verify_service_indicator(ctx, 0);
-    return 1;
+    goto success;
   }
 
   b = ctx->cipher->block_size;
@@ -453,8 +452,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
       return 0;
     }
     *out_len = 0;
-    AES_verify_service_indicator(ctx, 0);
-    return 1;
+    goto success;
   }
 
   if (b > 1) {
@@ -488,6 +486,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     *out_len = 0;
   }
 
+success:
   AES_verify_service_indicator(ctx, 0);
   return 1;
 }
