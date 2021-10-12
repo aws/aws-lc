@@ -258,7 +258,7 @@ let BIGNUM_DEAMONT_P521_CORRECT = time prove
     REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
     ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     ASM_REWRITE_TAC[p_521] THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC;
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ALL_TAC] THEN
 
   (*** The final correction ***)

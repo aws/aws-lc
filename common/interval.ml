@@ -17,7 +17,7 @@
 (* Simple interval reasoning tools for expressions involving val/bitval.     *)
 (* ========================================================================= *)
 
-let BOUNDER_RULE =
+let PURE_BOUNDER_RULE =
   let is_add = is_binop `( + ):real->real->real`
   and is_sub = is_binop `( - ):real->real->real`
   and is_mul = is_binop `( * ):real->real->real`
@@ -28,25 +28,35 @@ let BOUNDER_RULE =
   and is_abs =
     let t = `abs:real->real` in
     fun tm -> is_comb tm && rator tm = t
+  and is_inv =
+    let t = `inv:real->real` in
+    fun tm -> is_comb tm && rator tm = t
+  and is_div = is_binop `( / ):real->real->real`
   and BIRATIONAL_RULE =
     CONV_RULE (BINOP2_CONV (LAND_CONV REAL_RAT_REDUCE_CONV)
                            (RAND_CONV REAL_RAT_REDUCE_CONV)) in
-  let rule_val = (PART_MATCH (lhand o rand) o prove)
-   (`&0:real <= &(val(w:int64)) /\ &(val w):real <= &18446744073709551615`,
-    REWRITE_TAC[REAL_POS] THEN MP_TAC(ISPEC `w:int64` VAL_BOUND) THEN
-    REWRITE_TAC[REAL_OF_NUM_LE; DIMINDEX_64] THEN ARITH_TAC)
-  and rule_bitval = (PART_MATCH (lhand o rand) o prove)
-   (`&0:real <= &(bitval b) /\ &(bitval b):real <= &1`,
-    REWRITE_TAC[REAL_OF_NUM_LE; LE_0; BITVAL_BOUND])
-  and rule_const tm = let th = SPEC tm REAL_LE_REFL in CONJ th th
+  let rule_const tm = let th = SPEC tm REAL_LE_REFL in CONJ th th
+  and rule_cconst =
+     let pth = REAL_ARITH `!x c:real. x = c ==> c <= x /\ x <= c` in
+     fun tm -> let th = REAL_RAT_REDUCE_CONV tm in
+               let tm' = rand(concl th) in
+               if is_ratconst tm' then MP (SPECL [tm;tm'] pth) th
+               else failwith "BOUNDER_RULE: unhandled term"
+  and rule_div = GEN_REWRITE_CONV I [real_div]
+  and rule_vid th = GEN_REWRITE_RULE
+                     (fun c ->BINOP2_CONV (RAND_CONV c) (LAND_CONV c))
+                     [SYM th]
   and rule_neg =
     let pth = REAL_ARITH
      `!l u x:real. l <= x /\ x <= u ==> --u <= --x /\ --x <= --l` in
     BIRATIONAL_RULE o MATCH_MP pth
   and rule_abs =
-    let pth = REAL_ARITH
-     `!l u x:real. l <= x /\ x <= u
-                   ==> &0 <= abs x /\ abs(x) <= max (abs l) (abs u)` in
+    let pth = prove
+     (`!l u x:real. l <= x /\ x <= u
+                    ==> (if real_sgn l = real_sgn u
+                         then min (abs l) (abs u) else &0) <= abs x /\
+                        abs(x) <= max (abs l) (abs u)`,
+      REWRITE_TAC[REAL_SGNS_EQ] THEN REAL_ARITH_TAC) in
     BIRATIONAL_RULE o MATCH_MP pth
   and rule_add =
     let pth = REAL_ARITH
@@ -88,40 +98,190 @@ let BOUNDER_RULE =
     let pth = prove
      (`l:real <= x /\ x <= u
        ==> !n. if EVEN n
-               then &0 <= x pow n /\ x pow n <= (max (abs l) (abs u)) pow n
+               then (if real_sgn l = real_sgn u
+                     then min (abs l) (abs u) pow n else &0) <= x pow n /\
+                    x pow n <= (max (abs l) (abs u)) pow n
                else l pow n <= x pow n /\ x pow n <= u pow n`,
       REPEAT STRIP_TAC THEN COND_CASES_TAC THEN
       ASM_SIMP_TAC[REAL_POW_LE2_ODD; GSYM NOT_EVEN] THEN
       FIRST_X_ASSUM(X_CHOOSE_THEN `m:num` SUBST1_TAC o
         REWRITE_RULE[EVEN_EXISTS]) THEN
       REWRITE_TAC[GSYM REAL_POW_POW] THEN
-      SIMP_TAC[REAL_POW_LE; REAL_LE_POW_2] THEN
-      MATCH_MP_TAC REAL_POW_LE2 THEN REWRITE_TAC[REAL_LE_POW_2] THEN
-      ASM_REWRITE_TAC[REAL_ABS_ABS; GSYM REAL_LE_SQUARE_ABS] THEN
+      ONCE_REWRITE_TAC[GSYM REAL_POW2_ABS] THEN
+      REWRITE_TAC[REAL_POW_POW] THEN
+      COND_CASES_TAC THEN REPEAT STRIP_TAC THEN
+      SIMP_TAC[REAL_POW_LE; REAL_ABS_POS] THEN
+      MATCH_MP_TAC REAL_POW_LE2 THEN TRY ASM_REAL_ARITH_TAC THEN
+      FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [REAL_SGNS_EQ]) THEN
       ASM_REAL_ARITH_TAC) in
     let rule = MATCH_MP pth
     and cass =
       CONV_RULE(RATOR_CONV (LAND_CONV NUM_EVEN_CONV) THENC
                 GEN_REWRITE_CONV I [COND_CLAUSES]) in
     fun th n -> BIRATIONAL_RULE (cass (SPEC n (rule th))) in
-  let rec bounder tm =
-    if is_ratconst tm then rule_const tm
-    else if is_neg tm then rule_neg (bounder(rand tm))
-    else if is_abs tm then rule_abs (bounder(rand tm))
-    else if is_add tm then rule_add (bounder(lhand tm)) (bounder(rand tm))
-    else if is_sub tm then rule_sub (bounder(lhand tm)) (bounder(rand tm))
-    else if is_mul tm then rule_mul (bounder(lhand tm)) (bounder(rand tm))
-    else if is_pow tm && is_numeral (rand tm) then
-        rule_pow (bounder(lhand tm)) (rand tm)
-    else try rule_val tm with Failure _ -> try rule_bitval tm
-    with Failure _ -> failwith "BOUNDER_RULE: unhandled term" in
-  bounder;;
+  let is_inequality =
+    let ineqp = map (can o term_match [])
+      [`m:num < n`; `m:num <= n`; `m:num > n`; `m:num >= n`;
+       `m:int < n`; `m:int <= n`; `m:int > n`; `m:int >= n`;
+       `m:real < n`; `m:real <= n`; `m:real > n`; `m:real >= n`] in
+    fun t -> exists (fun f -> f t) ineqp
+  and orient_inequality =
+    GEN_REWRITE_RULE TRY_CONV [GE; GT; INT_GE; INT_GT; real_ge; real_gt]
+  and is_lowerbound = fun (Comb(l,r)) -> frees l = [] && not(frees r = [])
+  and is_upperbound = fun (Comb(l,r)) -> not(frees l = []) && frees r = []
+  and canonize_lbound =
+    let weaken_rule = MATCH_MP REAL_LT_IMP_LE
+    and pth_num,pth_lint = (CONJ_PAIR o prove)
+     (`((m <= n <=> &m:real <= &n) /\
+        (m < n <=> &(m + 1):real <= &n)) /\
+       ((a <= b <=> real_of_int a <= real_of_int b) /\
+        (a < b <=> real_of_int(a + &1) <= real_of_int b))`,
+      REWRITE_TAC[INT_LT_DISCRETE; ARITH_RULE `m < n <=> m + 1 <= n`] THEN
+      REWRITE_TAC[GSYM int_le; REAL_OF_NUM_LE]) in
+    let typeswitch_conv =
+     (GEN_REWRITE_CONV I [pth_num] THENC
+     LAND_CONV(RAND_CONV NUM_REDUCE_CONV)) ORELSEC
+    (GEN_REWRITE_CONV I [pth_lint] THENC
+     LAND_CONV(RAND_CONV INT_REDUCE_CONV) THENC
+     GEN_REWRITE_CONV TOP_DEPTH_CONV
+      [int_of_num_th; int_neg_th; int_add_th; int_mul_th;
+       int_sub_th; int_pow_th; int_abs_th; int_max_th; int_min_th]) in
+    fun th ->
+      try CONV_RULE typeswitch_conv th with Failure _ ->
+      let th' = (try weaken_rule th with Failure _ -> th) in
+    CONV_RULE (LAND_CONV REAL_RAT_REDUCE_CONV) th'
+  and canonize_ubound =
+    let weaken_rule = MATCH_MP REAL_LT_IMP_LE
+    and pth_num,pth_int = (CONJ_PAIR o prove)
+     (`((m <= n <=> &m:real <= &n) /\
+        (m < n <=> &m:real <= &n - &1)) /\
+       ((a <= b <=> real_of_int a <= real_of_int b) /\
+        (a < b <=> real_of_int a <= real_of_int(b - &1)))`,
+      REWRITE_TAC[INT_LT_DISCRETE; ARITH_RULE `m < n <=> m + 1 <= n`] THEN
+      REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+      REWRITE_TAC[int_le; int_add_th; int_sub_th; int_of_num_th] THEN
+      REAL_ARITH_TAC) in
+    let typeswitch_conv =
+     (GEN_REWRITE_CONV I [pth_num] THENC
+      RAND_CONV(NUM_REDUCE_CONV THENC REAL_RAT_REDUCE_CONV)) ORELSEC
+    (GEN_REWRITE_CONV I [pth_int] THENC
+     RAND_CONV(RAND_CONV INT_REDUCE_CONV) THENC
+     GEN_REWRITE_CONV TOP_DEPTH_CONV
+      [int_of_num_th; int_neg_th; int_add_th; int_mul_th;
+       int_sub_th; int_pow_th; int_abs_th; int_max_th; int_min_th]) in
+    fun th ->
+      try CONV_RULE typeswitch_conv th with Failure _ ->
+      let th' = (try weaken_rule th with Failure _ -> th) in
+    CONV_RULE (RAND_CONV REAL_RAT_REDUCE_CONV) th'
+  and default_lowerbounds =
+    let valword_lowerbound = prove
+     (`&(n MOD 18446744073709551616):real <= &(val(word n:int64))`,
+      REWRITE_TAC[VAL_WORD; DIMINDEX_64; ARITH; REAL_LE_REFL])
+    and bitvalt_lowerbound = prove
+     (`&1:real <= &(bitval T)`,
+      REWRITE_TAC[REAL_LE_REFL; BITVAL_CLAUSES]) in
+    fun t ->
+      (try [PART_MATCH lhand bitvalt_lowerbound t] with Failure _ -> []) @
+      (try [PART_MATCH rand REAL_POS t] with Failure _ -> []) @
+      (try [let th1 = PART_MATCH rand valword_lowerbound t in
+           let th2 = CONV_RULE(LAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
+            if is_ratconst(lhand(concl th2)) then th2 else failwith ""]
+       with Failure _ -> [])
+  and default_upperbounds =
+    let modular_upperbound = prove
+     (`!m n. ~(n = 0) ==> &(m MOD n) <= &(n - 1)`,
+      REWRITE_TAC[REAL_OF_NUM_LE] THEN
+      SIMP_TAC[ARITH_RULE `~(n = 0) ==> (m <= n - 1 <=> m < n)`] THEN
+      REWRITE_TAC[MOD_LT_EQ])
+    and bitval_upperbound = prove
+     (`!b. &(bitval b):real <= &1`,
+      REWRITE_TAC[REAL_OF_NUM_LE; BITVAL_BOUND])
+    and bitvalf_upperbound = prove
+     (`&(bitval F):real <= &0`,
+      REWRITE_TAC[BITVAL_CLAUSES; REAL_LE_REFL])
+    and val_upperbound = prove
+     (`&(val(a:int64)):real <= &18446744073709551615`,
+      MP_TAC(SPEC `a:int64` VAL_BOUND_64) THEN
+      REWRITE_TAC[REAL_OF_NUM_LE; DIMINDEX_64] THEN ARITH_TAC)
+    and valword_upperbound = prove
+     (`&(val(word n:int64)) <= &n`,
+      SIMP_TAC[REAL_OF_NUM_LE; VAL_WORD_LE; LE_REFL])
+    and lmask_upperbound = prove
+     (`&(val(word_and (word n) (a:int64))):real <= &n`,
+      REWRITE_TAC[REAL_OF_NUM_LE; VAL_WORD_AND_WORD_LE])
+    and rmask_upperbound = prove
+     (`&(val(word_and (a:int64) (word n))):real <= &n`,
+      REWRITE_TAC[REAL_OF_NUM_LE; VAL_WORD_AND_WORD_LE]) in
+    fun t ->
+     (try [PART_MATCH lhand bitvalf_upperbound t] with Failure _ -> []) @
+     (try [PART_MATCH lhand bitval_upperbound t] with Failure _ -> []) @
+     (try [PART_MATCH lhand val_upperbound t] with Failure _ -> []) @
+     (try [let th1 = PART_MATCH lhand valword_upperbound t in
+           let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
+           if is_ratconst(rand(concl th2)) then th2 else failwith ""]
+      with Failure _ -> []) @
+     (try [let th1 = PART_MATCH lhand lmask_upperbound t in
+           let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
+           if is_ratconst(rand(concl th2)) then th2 else failwith ""]
+      with Failure _ -> []) @
+     (try [let th1 = PART_MATCH lhand rmask_upperbound t in
+           let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
+           if is_ratconst(rand(concl th2)) then th2 else failwith ""]
+      with Failure _ -> []) @
+     (try [let th = PART_MATCH (lhand o rand) modular_upperbound t in
+           let th' = MP th (EQT_ELIM(NUM_REDUCE_CONV(lhand(concl th)))) in
+           CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th']
+      with Failure _ -> []) in
+  fun ths ->
+    let iths = filter (is_inequality o concl) ths in
+    let oths = map orient_inequality iths in
+    let lbounds =
+      filter (is_ratconst o lhand o concl)
+             (map canonize_lbound (filter (is_lowerbound o concl) oths))
+    and ubounds =
+      filter (is_ratconst o rand o concl)
+             (map canonize_ubound (filter (is_upperbound o concl) oths)) in
+    let basic_lowerbound def t =
+      let lbs = filter ((=) t o rand o concl) lbounds @
+                (if def then default_lowerbounds t else []) in
+      hd(sort (fun s t -> rat_of_term(lhand(concl s)) >/
+                          rat_of_term(lhand(concl t))) lbs)
+    and basic_upperbound def t =
+      let ubs = filter ((=) t o lhand o concl) ubounds @
+                (if def then default_upperbounds t else []) in
+      hd(sort (fun s t -> rat_of_term(rand(concl s)) </
+                          rat_of_term(rand(concl t))) ubs) in
+    let rec bounder tm =
+      try CONJ (basic_lowerbound false tm) (basic_upperbound false tm)
+      with Failure _ ->
+        if is_ratconst tm then rule_const tm
+        else if is_neg tm then rule_neg (bounder(rand tm))
+        else if is_abs tm then rule_abs (bounder(rand tm))
+        else if is_add tm then rule_add (bounder(lhand tm)) (bounder(rand tm))
+        else if is_sub tm then rule_sub (bounder(lhand tm)) (bounder(rand tm))
+        else if is_mul tm then rule_mul (bounder(lhand tm)) (bounder(rand tm))
+        else if is_pow tm && is_numeral (rand tm) then
+            rule_pow (bounder(lhand tm)) (rand tm)
+        else if is_inv tm then rule_cconst tm
+        else if is_div tm then
+          let eth = rule_div tm in rule_vid eth (bounder(rand(concl eth)))
+        else try CONJ (basic_lowerbound true tm) (basic_upperbound true tm)
+             with Failure _ -> failwith "BOUNDER_RULE: unhandled term" in
+    bounder;;
+
+let BOUNDER_RULE ths =
+  let bounder = PURE_BOUNDER_RULE ths in
+  fun tm -> let ith = REAL_POLY_CONV tm in
+            let bth = bounder (rand(concl ith)) in
+            GEN_REWRITE_RULE
+              (fun c -> BINOP2_CONV (RAND_CONV c) (LAND_CONV c))
+              [SYM ith] bth;;
 
 (* ------------------------------------------------------------------------- *)
 (* Tactic form of bounder for some common idioms                             *)
 (* ------------------------------------------------------------------------- *)
 
-let (BOUNDER_TAC:tactic) =
+let (PURE_BOUNDER_TAC:thm list -> tactic),(BOUNDER_TAC:thm list -> tactic) =
   let pats =
     map (fun t ->
       can (term_match [] (rand(rand t))),
@@ -142,14 +302,20 @@ let (BOUNDER_TAC:tactic) =
      rand,MATCH_MP_TAC o MATCH_MP (REAL_ARITH t))
     [`l:real <= x /\ x <= r ==> a < l ==> a < x`;
      `l:real <= x /\ x <= r ==> a <= l ==> a <= x`] in
-  fun (asl,w) ->
-    let p,pfn,tac = find (fun (p,pfn,tac) -> p w) pats in
-    let t = pfn w in
-    let pth = REAL_POLY_CONV t in
-    let bth = BOUNDER_RULE(rand(concl pth)) in
-    let eth = GEN_REWRITE_RULE
-      (fun c -> BINOP2_CONV (RAND_CONV c) (LAND_CONV c)) [SYM pth] bth in
-    (tac eth THEN CONV_TAC REAL_RAT_REDUCE_CONV THEN NO_TAC) (asl,w);;
+  (fun ths ->
+    let boundrule = PURE_BOUNDER_RULE ths in
+    fun (asl,w) ->
+      let p,pfn,tac = find (fun (p,pfn,tac) -> p w) pats in
+      let t = pfn w in
+      let eth = boundrule t in
+      (tac eth THEN CONV_TAC REAL_RAT_REDUCE_CONV THEN NO_TAC) (asl,w)),
+  (fun ths ->
+    let boundrule = BOUNDER_RULE ths in
+    fun (asl,w) ->
+      let p,pfn,tac = find (fun (p,pfn,tac) -> p w) pats in
+      let t = pfn w in
+      let eth = boundrule t in
+      (tac eth THEN CONV_TAC REAL_RAT_REDUCE_CONV THEN NO_TAC) (asl,w));;
 
 (* ------------------------------------------------------------------------- *)
 (* Tool to simplify assumptions and possibly prove carries are zero.         *)
@@ -227,7 +393,7 @@ let DECARRY_RULE =
                                  REAL_POLY_CONV))
                       (simper th) in
           let etm = concl th' in
-          let lrth = time BOUNDER_RULE (rand etm) in
+          let lrth = time (BOUNDER_RULE []) (rand etm) in
           if rat_of_term(rand(rand(concl lrth))) </ num_1 then
             let ith = uncarry (CONJ th' lrth) in
             let bth = REAL_RAT_LT_CONV(lhand(concl ith)) in

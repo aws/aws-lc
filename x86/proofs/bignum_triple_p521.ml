@@ -219,7 +219,7 @@ let BIGNUM_TRIPLE_P521_CORRECT = time prove
       CONJ_TAC THENL
        [EXPAND_TAC "s" THEN
         REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist] THEN
-        BOUNDER_TAC;
+        BOUNDER_TAC[];
         REWRITE_TAC[INTEGER_CLOSED]] THEN
       CONJ_TAC THENL
        [CONJ_TAC THENL

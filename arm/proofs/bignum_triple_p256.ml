@@ -153,7 +153,7 @@ let BIGNUM_TRIPLE_P256_CORRECT = time prove
       ALL_TAC] THEN
     CONJ_TAC THENL
      [REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-      BOUNDER_TAC;
+      BOUNDER_TAC[];
       ALL_TAC] THEN
     SUBST1_TAC(SYM(ASSUME
      `bignum_of_wordlist [sum_s4; sum_s6; sum_s8; sum_s10; word h] =
@@ -186,7 +186,7 @@ let BIGNUM_TRIPLE_P256_CORRECT = time prove
    `x:real = &(3 * n) - y + z ==> &(3 * n) = x + y - z`)) THEN
   REWRITE_TAC[p_256] THEN CONJ_TAC THENL [ARITH_TAC; ALL_TAC] THEN
   REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-  CONJ_TAC THENL [BOUNDER_TAC; ALL_TAC] THEN
+  CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC] THEN
   REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; p_256; bignum_of_wordlist] THEN
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
   POP_ASSUM_LIST(K ALL_TAC) THEN

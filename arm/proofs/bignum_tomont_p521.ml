@@ -214,7 +214,7 @@ let BIGNUM_TOMONT_P521_CORRECT = time prove
          `word_and x (word_and y (word_not x)) = word 0`] THEN
         CONV_TAC WORD_REDUCE_CONV THEN CONV_TAC REAL_RAT_REDUCE_CONV THEN
         REWRITE_TAC[REAL_OF_NUM_ADD];
-        DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC];
+        DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[]];
       EXPAND_TAC "l"] THEN
     REWRITE_TAC[bignum_of_wordlist] THEN
     REWRITE_TAC[SYM(NUM_REDUCE_CONV `2 EXP 9 - 1`)] THEN

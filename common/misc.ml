@@ -57,6 +57,18 @@ let VAL_WORD_AND_POW2 = prove
   COND_CASES_TAC THEN REWRITE_TAC[MULT_CLAUSES; LT_EXP; EXP_LT_0] THEN
   CONV_TAC NUM_REDUCE_CONV THEN ASM_MESON_TAC[BIT_TRIVIAL; NOT_LE]);;
 
+let VAL_WORD_AND_LE = prove
+ (`(!x y:N word. val(word_and x y) <= val x) /\
+   (!x y:N word. val(word_and x y) <= val y)`,
+  REPEAT STRIP_TAC THEN REWRITE_TAC[val_def] THEN MATCH_MP_TAC NSUM_LE THEN
+  REWRITE_TAC[FINITE_NUMSEG_LT] THEN X_GEN_TAC `i:num` THEN
+  SIMP_TAC[IN_ELIM_THM; BIT_WORD_AND; LE_MULT_LCANCEL; LE_BITVAL]);;
+
+let VAL_WORD_AND_WORD_LE = prove
+ (`(!(x:N word) n. val(word_and x (word n)) <= n) /\
+   (!(x:N word) n. val(word_and (word n) x) <= n)`,
+  MESON_TAC[VAL_WORD_AND_LE; LE_TRANS; LE_REFL; VAL_WORD_LE]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Trivial but requires two distinct library files to be combined.           *)
 (* ------------------------------------------------------------------------- *)

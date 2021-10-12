@@ -107,7 +107,7 @@ let BIGNUM_SUB_P521_CORRECT = time prove
     MAP_EVERY EXPAND_TAC ["m"; "n"] THEN
     REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
     ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC;
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ALL_TAC] THEN
 
   (*** Further optional subtraction mod 2^521 ***)

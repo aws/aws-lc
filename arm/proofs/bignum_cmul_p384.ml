@@ -211,7 +211,7 @@ let BIGNUM_CMUL_P384_CORRECT = time prove
   ABBREV_TAC `b <=> val(c:int64) * a < (val(sum_s21:int64) + 1) * p_384` THEN
   REWRITE_TAC[p_384] THEN CONJ_TAC THENL [ARITH_TAC; ALL_TAC] THEN
   REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-  CONJ_TAC THENL [BOUNDER_TAC; ALL_TAC] THEN
+  CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC] THEN
   SUBGOAL_THEN `carry_s36 <=> ~b` SUBST_ALL_TAC THENL
    [MATCH_MP_TAC(TAUT `(p ==> ~q) /\ (~p ==> q) ==> (p <=> ~q)`) THEN
     CONJ_TAC THEN DISCH_TAC THEN
@@ -225,7 +225,7 @@ let BIGNUM_CMUL_P384_CORRECT = time prove
      [ARITH_TAC; ALL_TAC] THEN
     MATCH_MP_TAC(ARITH_RULE `s:num < e ==> s + p = e + c ==> c < p`) THEN
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist] THEN
-    BOUNDER_TAC;
+    BOUNDER_TAC[];
     ALL_TAC] THEN
   UNDISCH_TAC
    `2 EXP 384 * bitval(~b) +
