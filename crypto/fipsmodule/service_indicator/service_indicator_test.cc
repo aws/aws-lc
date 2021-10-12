@@ -592,11 +592,15 @@ TEST(ServiceIndicatorTest, DRBG) {
   CTR_DRBG_STATE drbg;
   uint8_t output[256];
 
-  // Test DRBG functions service indicator approval directly. These DRBG functions
-  // are not directly accessible for external consumers however.
+  // Test running the DRBG interfaces and check |CTR_DRBG_generate| for approval
+  // at the end since it indicates a service is being done. |CTR_DRBG_init| and
+  // |CTR_DRBG_reseed| should not be approved, because the functions do not
+  // indicate that a service has been fully completed yet.
+  // These DRBG functions are not directly accessible for external consumers
+  // however.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_init(&drbg,
                         kDRBGEntropy, kDRBGPersonalization, sizeof(kDRBGPersonalization))));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_generate(&drbg,
                         output, sizeof(kDRBGOutput), kDRBGAD, sizeof(kDRBGAD))));
   ASSERT_EQ(approved, AWSLC_APPROVED);
@@ -604,7 +608,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_reseed(&drbg,
                         kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD))));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(CTR_DRBG_generate(&drbg,
                         output, sizeof(kDRBGReseedOutput), kDRBGAD, sizeof(kDRBGAD))));
   ASSERT_EQ(approved, AWSLC_APPROVED);
