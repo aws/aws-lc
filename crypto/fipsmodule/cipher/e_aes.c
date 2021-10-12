@@ -1176,11 +1176,8 @@ static int aead_aes_gcm_seal_scatter_randnonce(
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
-  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
-  // functions to avoid updating the service indicator with the DRBG functions.
-  FIPS_service_indicator_lock_state();
+  
   RAND_bytes(nonce, sizeof(nonce));
-  FIPS_service_indicator_unlock_state();
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
   if (!aead_aes_gcm_seal_scatter_impl(gcm_ctx, out, out_tag, out_tag_len,
