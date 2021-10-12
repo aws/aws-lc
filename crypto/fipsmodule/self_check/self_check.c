@@ -47,8 +47,6 @@ int BORINGSSL_self_test(void) {
 
 #else
 
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
-
 static void hexdump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
     fprintf(stderr, "%02x", in[i]);
