@@ -389,7 +389,7 @@ err:
 
 static const size_t kModuleDigestSize = SHA256_DIGEST_LENGTH;
 
-int boringssl_fips_self_test() {
+int boringssl_fips_self_test(void) {
 
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
   static const uint8_t kAESIV[16] = {0};
