@@ -327,6 +327,10 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
 }
 
 static int EVP_EC_KEY_check_fips(EC_KEY *key) {
+  // We have to avoid the underlying |EVP_DigestSign| and |EVP_DigestVerify|
+  // services updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   uint8_t msg[16] = {0};
   size_t msg_len = 16;
   int ret = 0;
@@ -359,6 +363,10 @@ err:
   EVP_PKEY_free(evp_pkey);
   OPENSSL_free(sig_der);
   EVP_MD_CTX_free(ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ret){
+    FIPS_service_indicator_update_state();
+  }
   return ret;
 }
 
