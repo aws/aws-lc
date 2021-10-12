@@ -328,7 +328,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
     ret = ctx->cipher->cipher(ctx, out, NULL, 0);
     if (ret < 0) {
-      return 0;
+      goto end;
     } else {
       *out_len = ret;
     }
@@ -365,7 +365,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   }
 
 end:
-  if(ret) {
+  if(ret > 0) {
      AES_verify_service_indicator(ctx, 0);
   }
   return ret;
@@ -435,6 +435,9 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
   unsigned int b;
   *out_len = 0;
 
+  // |ctx->cipher->cipher| calls the static aes encryption function way under
+  // the hood instead of |EVP_Cipher|, so the service indicator does not need
+  // locking here.
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
     i = ctx->cipher->cipher(ctx, out, NULL, 0);
     if (i < 0) {

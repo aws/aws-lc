@@ -73,10 +73,6 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
     return -1;
   }
 
-  // We have to avoid the underlying |AES_encrypt| service updating the
-  // indicator state, so we lock the state here.
-  FIPS_service_indicator_lock_state();
-
   if (iv == NULL) {
     iv = kDefaultIV;
   }
@@ -100,7 +96,6 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
       OPENSSL_memcpy(out + 8 * i, A + 8, 8);
     }
   }
-  FIPS_service_indicator_unlock_state();
   AES_verify_service_indicator(NULL, key->rounds);
   OPENSSL_memcpy(out, A, 8);
   return (int)in_len + 8;
@@ -166,8 +161,8 @@ static const uint8_t kPaddingConstant[4] = {0xa6, 0x59, 0x59, 0xa6};
 
 int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
                         size_t max_out, const uint8_t *in, size_t in_len) {
-  // We have to avoid the underlying |AES_encrypt| and |AES_wrap_key| service
-  // updating the indicator state, so we lock the state here.
+  // We have to avoid the underlying |AES_wrap_key| service updating the
+  // indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
 
   // See https://tools.ietf.org/html/rfc5649#section-4.1
@@ -202,12 +197,12 @@ int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   assert(padded_len >= 8);
   memset(padded_in + padded_len - 8, 0, 8);
   memcpy(padded_in, in, in_len);
-  const int text = AES_wrap_key(key, block, out, padded_in, padded_len);
+  const int out_length = AES_wrap_key(key, block, out, padded_in, padded_len);
   OPENSSL_free(padded_in);
-  if (text < 0) {
+  if (out_length < 0) {
     goto end;
   }
-  *out_len = text;
+  *out_len = out_length;
   ret = 1;
 
 end:
@@ -252,7 +247,7 @@ int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
 
   *out_len = constant_time_select_w(ok, claimed_len, 0);
   int ret = ok & 1;
-  if(ret){
+  if(ret) {
     AES_verify_service_indicator(NULL, key->rounds);
   }
   return ret;
