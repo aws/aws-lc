@@ -1176,7 +1176,7 @@ static int aead_aes_gcm_seal_scatter_randnonce(
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
-  
+
   RAND_bytes(nonce, sizeof(nonce));
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
