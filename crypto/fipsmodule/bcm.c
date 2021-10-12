@@ -256,7 +256,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
   }
 
 #else
-  if (!boringssl_fips_self_test()) {
+  if (!BORINGSSL_self_test()) {
     goto err;
   }
 #endif  // OPENSSL_ASAN

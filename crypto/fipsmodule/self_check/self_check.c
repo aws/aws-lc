@@ -1001,4 +1001,8 @@ err:
   return ret;
 }
 
+int BORINGSSL_self_test(void) {
+  return boringssl_fips_self_test();
+}
+
 #endif  // !_MSC_VER
