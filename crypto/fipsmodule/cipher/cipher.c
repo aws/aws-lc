@@ -322,15 +322,15 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
-  int n, ret = 0;
+  int n, ret = 0, custom_ret;
   unsigned int i, b, bl;
 
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
-    ret = ctx->cipher->cipher(ctx, out, NULL, 0);
-    if (ret < 0) {
+    custom_ret = ctx->cipher->cipher(ctx, out, NULL, 0);
+    if (custom_ret < 0) {
       goto end;
     } else {
-      *out_len = ret;
+      *out_len = custom_ret;
     }
     ret = 1;
     goto end;
