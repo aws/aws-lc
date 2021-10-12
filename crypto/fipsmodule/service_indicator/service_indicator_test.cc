@@ -85,9 +85,9 @@ static void DoEncryptFinal(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
   // Check if the overall service is approved by checking |EVP_EncryptFinal_ex|
   // or |EVP_DecryptFinal_ex|, which should be the last part of the service.
   if (ctx->encrypt) {
-    CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_EncryptFinal_ex(ctx, out->data() + total, &len));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_EncryptFinal_ex(ctx, out->data() + total, &len)));
   } else {
-    CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_DecryptFinal_ex(ctx, out->data() + total, &len));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_DecryptFinal_ex(ctx, out->data() + total, &len)));
   }
   total += static_cast<size_t>(len);
   ASSERT_EQ(approved, expect_approved);

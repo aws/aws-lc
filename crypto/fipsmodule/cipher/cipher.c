@@ -325,6 +325,9 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   int n, ret = 0, custom_ret;
   unsigned int i, b, bl;
 
+  // |ctx->cipher->cipher| calls the static aes encryption function way under
+  // the hood instead of |EVP_Cipher|, so the service indicator does not need
+  // locking here.
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
     custom_ret = ctx->cipher->cipher(ctx, out, NULL, 0);
     if (custom_ret < 0) {
