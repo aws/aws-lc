@@ -190,6 +190,8 @@ void AES_CMAC_verify_service_indicator(OPENSSL_UNUSED const CMAC_CTX *ctx) { }
 
 void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
 
+void ECDH_verify_service_indicator(OPENSSL_UNUSED const EC_KEY *ec_key) { }
+
 void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst, OPENSSL_UNUSED int using_md5_sha1) { }
 
 #endif // AWSLC_FIPS
