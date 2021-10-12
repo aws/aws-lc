@@ -125,6 +125,8 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
 
 end:
   FIPS_service_indicator_unlock_state();
-  ECDH_verify_service_indicator(priv_key);
+  if(ret) {
+    ECDH_verify_service_indicator(priv_key);
+  }
   return ret;
 }

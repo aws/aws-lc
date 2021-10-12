@@ -517,6 +517,7 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   EVP_MD_CTX ctx;
   uint8_t H_[EVP_MAX_MD_SIZE];
   EVP_MD_CTX_init(&ctx);
+
   if (mgf1Hash == NULL) {
     mgf1Hash = Hash;
   }
