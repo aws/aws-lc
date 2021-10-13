@@ -471,7 +471,7 @@ const EVP_HPKE_KEM *EVP_hpke_KYBER_hkdf_sha256(void) {
       /*public_key_len=*/0,
       /*private_key_len=*/0,
       /*seed_len=*/KYBER_SECRETKEYBYTES,  // REMOVE !!!!
-      
+
       /*PQ_public_key_len=*/KYBER_PUBLICKEYBYTES,
       /*PQ_private_key_len=*/X25519_PRIVATE_KEY_LEN,
       /*PQ_ciphertext_len=*/KYBER_CIPHERTEXTBYTES,
@@ -751,38 +751,6 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
   uint8_t *shared_secret = (uint8_t *)malloc(
       sizeof(uint8_t) * kem->public_key_len + kem->PQ_shared_secret_len);
   size_t shared_secret_len;
-
-  /*
-    switch (HPKE_VERSION_PQ)
-    {
-    case 0:
-      //classical crytpo ECC
-      shared_secret=malloc(sizeof(uint8_t)*X25519_SHARED_KEY_LEN);
-
-      break;
-    case 1:
-    //PQ crypto experimental SIKE
-      shared_secret=malloc(sizeof(uint8_t)*SIKE_P434_R3_SHARED_SECRET_BYTES);
-
-      break;
-    case 2:
-    case 4:
-    //Hybrid crypto experimental ECC+SIKE
-      shared_secret=malloc(sizeof(uint8_t)*(kem->PQ_shared_secret_len +
-    kem->public_key_len));
-
-      break;
-      case 3:
-    //Hybrid crypto experimental ECC+SIKE
-      shared_secret=malloc(sizeof(uint8_t)*(KYBER_SSBYTES));
-
-      break;
-
-    default:
-    ///SHOULD ADD HERE!!!
-      break;
-    }
-    */
 
   if (!kem->encap_with_seed(kem, shared_secret, &shared_secret_len, out_enc,
                             out_enc_len, max_enc, peer_public_key,

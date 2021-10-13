@@ -14,18 +14,20 @@
 #
 
 file(GLOB SIKE_R3_SRCS "P434/P434.c"
-                       "P434/generic/fp_generic.c"
                        "random/random.c"
                        "sha3/fips202.c")
-
-add_library(sike_r3 OBJECT ${SIKE_R3_SRCS})
-
 
 
 
 # Setting some necessary flags for SIKE (see config.h)
 # Only the generic implementation of SIKE is imported for now.
-target_compile_options(sike_r3 PRIVATE -D_GENERIC_)
+# Add the _AMD64_ and _ARM64_ optimizations
+
+
+set(ARCHITECTURE "_AMD64_")
+set(USE_OPT_LEVEL "_FAST_")
+set(MULX "-D _MULX_")
+set(ADX "-D _ADX_")
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
   # If ARCH is originally detected as 64-bit, perform an additional check
@@ -33,23 +35,58 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
   # cases such as when building in Docker, where the host-level architecture is 64-bit
   # but the Docker image should result in building for a 32-bit architecture.
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    target_compile_options(sike_r3 PRIVATE -D_AMD64_)
+    set(${ARCHITECTURE} "_AMD64_")
+    set(USE_OPT_LEVEL "_FAST_")
+    set(SIKE_R3_SRCS ${SIKE_R3_SRCS} P434/AMD64/fp_x64.c P434/AMD64/fp_x64_asm.S)
   else()
-    target_compile_options(sike_r3 PRIVATE -D_X86_)
+    set(${ARCHITECTURE} "_X86_")
+    set(USE_OPT_LEVEL "_GENERIC_")
+    set(SIKE_R3_SRCS ${SIKE_R3_SRCS} P434/generic/fp_generic.c)
   endif()
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86|i386|i686")
-  target_compile_options(sike_r3 PRIVATE -D_X86_)
+  set(${ARCHITECTURE} "_X86_")
+  set(USE_OPT_LEVEL "_GENERIC_")
+  set(SIKE_R3_SRCS ${SIKE_R3_SRCS} P434/generic/fp_generic.c)
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64|aarch64")
-  target_compile_options(sike_r3 PRIVATE -D_ARM64_)
+  set(${ARCHITECTURE} "_ARM64_")
+  set(USE_OPT_LEVEL "_FAST_")
+  set(SIKE_R3_SRCS ${SIKE_R3_SRCS} P434/ARM64/fp_arm64.c P434/AMD64/fp_arm64_asm.S)
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm*")
-  target_compile_options(sike_r3 PRIVATE -D_ARM_)
+  set(${ARCHITECTURE} "_ARM_")
+  set(USE_OPT_LEVEL "_GENERIC_")
+  set(SIKE_R3_SRCS ${SIKE_R3_SRCS} P434/generic/fp_generic.c)
 endif()
 
+if(${ARCHITECTURE} STREQUAL _AMD64_)
+    if(${USE_OPT_LEVEL} STREQUAL _FAST_)
+      set(${MULX} "-D _MULX_")
+        if("${USE_MULX}" STREQUAL "FALSE")
+            set(${MULX} "")
+        else()
+            set(${ADX} "-D _ADX_") 
+            if("${USE_ADX}" STREQUAL "FALSE")
+                set(${ADX} "")
+            endif()
+        endif()
+    endif()
+endif()
+
+
+
+
+add_library(sike_r3 OBJECT ${SIKE_R3_SRCS})
+
+message(STATUS "${SIKE_R3_SRCS}")
+
+
 if(UNIX)
-  target_compile_options(sike_r3 PRIVATE -D__NIX__)
+  target_compile_options(sike_r3 PRIVATE -D ${ARCHITECTURE} -D__NIX__ -D${USE_OPT_LEVEL} ${MULX} ${ADX})
 elseif(WIN32)
   target_compile_options(sike_r3 PRIVATE -D__WINDOWS__)
 endif()
+
+
+
 
 # This is experimental third-party code so we avoid making any unnecessary
 # changes to it until the code becomes stable. So we ignore some warnings
