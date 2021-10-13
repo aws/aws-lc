@@ -8,13 +8,14 @@
 #include <openssl/aes.h>
 #include <openssl/bn.h>
 #include <openssl/cipher.h>
-#include <openssl/crypto.h>
 #include <openssl/cmac.h>
+#include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdh.h>
 #include <openssl/ecdsa.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
 #include <openssl/nid.h>
@@ -413,41 +414,41 @@ static const uint8_t kHMACOutput_sha512_256[SHA512_256_DIGEST_LENGTH] = {
     0x1a, 0x37, 0x91, 0xe4, 0x8b, 0xc0, 0x9c, 0xce, 0x2c, 0x24
 };
 
-static const uint8_t kECDHPrivateKey[] = {
-    0x83, 0x46, 0xa6, 0x0f, 0xc6, 0xf2, 0x93, 0xca, 0x5a, 0x0d, 0x2a,
-    0xf6, 0x8b, 0xa7, 0x1d, 0x1d, 0xd3, 0x89, 0xe5, 0xe4, 0x08, 0x37,
-    0x94, 0x2d, 0xf3, 0xe4, 0x3c, 0xbd
-};
-
-static const uint8_t kECDH_X[] = {
-    0x8d, 0xe2, 0xe2, 0x6a, 0xdf, 0x72, 0xc5, 0x82, 0xd6, 0x56, 0x8e,
-    0xf6, 0x38, 0xc4, 0xfd, 0x59, 0xb1, 0x8d, 0xa1, 0x71, 0xbd, 0xf5,
-    0x01, 0xf1, 0xd9, 0x29, 0xe0, 0x48
-};
-
-static const uint8_t kECDH_Y[] = {
-    0x4a, 0x68, 0xa1, 0xc2, 0xb0, 0xfb, 0x22, 0x93, 0x0d, 0x12, 0x05,
-    0x55, 0xc1, 0xec, 0xe5, 0x0e, 0xa9, 0x8d, 0xea, 0x84, 0x07, 0xf7,
-    0x1b, 0xe3, 0x6e, 0xfa, 0xc0, 0xde
-};
-
-static const uint8_t kECDH_PeerX[] = {
-    0xaf, 0x33, 0xcd, 0x06, 0x29, 0xbc, 0x7e, 0x99, 0x63, 0x20, 0xa3,
-    0xf4, 0x03, 0x68, 0xf7, 0x4d, 0xe8, 0x70, 0x4f, 0xa3, 0x7b, 0x8f,
-    0xab, 0x69, 0xab, 0xaa, 0xe2, 0x80
-};
-
-static const uint8_t kECDH_PeerY[] = {
-    0x88, 0x20, 0x92, 0xcc, 0xbb, 0xa7, 0x93, 0x0f, 0x41, 0x9a, 0x8a,
-    0x4f, 0x9b, 0xb1, 0x69, 0x78, 0xbb, 0xc3, 0x83, 0x87, 0x29, 0x99,
-    0x25, 0x59, 0xa6, 0xf2, 0xe2, 0xd7
-};
-
-static const uint8_t kECDH_Z[] = {
-    0x7d, 0x96, 0xf9, 0xa3, 0xbd, 0x3c, 0x05, 0xcf, 0x5c, 0xc3, 0x7f,
-    0xeb, 0x8b, 0x9d, 0x52, 0x09, 0xd5, 0xc2, 0x59, 0x74, 0x64, 0xde,
-    0xc3, 0xe9, 0x98, 0x37, 0x43, 0xe8
-};
+//static const uint8_t kECDHPrivateKey[] = {
+//    0x83, 0x46, 0xa6, 0x0f, 0xc6, 0xf2, 0x93, 0xca, 0x5a, 0x0d, 0x2a,
+//    0xf6, 0x8b, 0xa7, 0x1d, 0x1d, 0xd3, 0x89, 0xe5, 0xe4, 0x08, 0x37,
+//    0x94, 0x2d, 0xf3, 0xe4, 0x3c, 0xbd
+//};
+//
+//static const uint8_t kECDH_X[] = {
+//    0x8d, 0xe2, 0xe2, 0x6a, 0xdf, 0x72, 0xc5, 0x82, 0xd6, 0x56, 0x8e,
+//    0xf6, 0x38, 0xc4, 0xfd, 0x59, 0xb1, 0x8d, 0xa1, 0x71, 0xbd, 0xf5,
+//    0x01, 0xf1, 0xd9, 0x29, 0xe0, 0x48
+//};
+//
+//static const uint8_t kECDH_Y[] = {
+//    0x4a, 0x68, 0xa1, 0xc2, 0xb0, 0xfb, 0x22, 0x93, 0x0d, 0x12, 0x05,
+//    0x55, 0xc1, 0xec, 0xe5, 0x0e, 0xa9, 0x8d, 0xea, 0x84, 0x07, 0xf7,
+//    0x1b, 0xe3, 0x6e, 0xfa, 0xc0, 0xde
+//};
+//
+//static const uint8_t kECDH_PeerX[] = {
+//    0xaf, 0x33, 0xcd, 0x06, 0x29, 0xbc, 0x7e, 0x99, 0x63, 0x20, 0xa3,
+//    0xf4, 0x03, 0x68, 0xf7, 0x4d, 0xe8, 0x70, 0x4f, 0xa3, 0x7b, 0x8f,
+//    0xab, 0x69, 0xab, 0xaa, 0xe2, 0x80
+//};
+//
+//static const uint8_t kECDH_PeerY[] = {
+//    0x88, 0x20, 0x92, 0xcc, 0xbb, 0xa7, 0x93, 0x0f, 0x41, 0x9a, 0x8a,
+//    0x4f, 0x9b, 0xb1, 0x69, 0x78, 0xbb, 0xc3, 0x83, 0x87, 0x29, 0x99,
+//    0x25, 0x59, 0xa6, 0xf2, 0xe2, 0xd7
+//};
+//
+//static const uint8_t kECDH_Z[] = {
+//    0x7d, 0x96, 0xf9, 0xa3, 0xbd, 0x3c, 0x05, 0xcf, 0x5c, 0xc3, 0x7f,
+//    0xeb, 0x8b, 0x9d, 0x52, 0x09, 0xd5, 0xc2, 0x59, 0x74, 0x64, 0xde,
+//    0xc3, 0xe9, 0x98, 0x37, 0x43, 0xe8
+//};
 
 static const uint8_t kDRBGEntropy[48] = {
     'B', 'C', 'M', ' ', 'K', 'n', 'o', 'w', 'n', ' ', 'A', 'n', 's',
@@ -506,16 +507,40 @@ static const uint8_t kTLSSeed2[16] = {
     0x31, 0x1e, 0x2b, 0x21, 0x41, 0x8d, 0x32, 0x81,
 };
 
+static const uint8_t kTLSOutput_mdsha1[32] = {
+    0x36, 0xa9, 0x31, 0xb0, 0x43, 0xe3, 0x64, 0x72, 0xb9, 0x47, 0x54,
+    0x0d, 0x8a, 0xfc, 0xe3, 0x5c, 0x1c, 0x15, 0x67, 0x7e, 0xa3, 0x5d,
+    0xf2, 0x3a, 0x57, 0xfd, 0x50, 0x16, 0xe1, 0xa4, 0xa6, 0x37
+};
+
+static const uint8_t kTLSOutput_md[32] = {
+    0x79, 0xef, 0x46, 0xc4, 0x35, 0xbc, 0xe5, 0xda, 0xd3, 0x66, 0x91,
+    0xdc, 0x86, 0x09, 0x41, 0x66, 0xf2, 0x0c, 0xeb, 0xe6, 0xab, 0x5c,
+    0x58, 0xf4, 0x65, 0xce, 0x2f, 0x5f, 0x4b, 0x34, 0x1e, 0xa1
+};
+
+static const uint8_t kTLSOutput_sha1[32] = {
+    0xbb, 0x0a, 0x73, 0x52, 0xf8, 0x85, 0xd7, 0xbd, 0x12, 0x34, 0x78,
+    0x3b, 0x54, 0x4c, 0x75, 0xfe, 0xd7, 0x23, 0x6e, 0x22, 0x3f, 0x42,
+    0x34, 0x99, 0x57, 0x6b, 0x14, 0xc4, 0xc8, 0xae, 0x9f, 0x4c
+};
+
 static const uint8_t kTLSOutput_sha256[32] = {
     0x67, 0x85, 0xde, 0x60, 0xfc, 0x0a, 0x83, 0xe9, 0xa2, 0x2a, 0xb3,
     0xf0, 0x27, 0x0c, 0xba, 0xf7, 0xfa, 0x82, 0x3d, 0x14, 0x77, 0x1d,
     0x86, 0x29, 0x79, 0x39, 0x77, 0x8a, 0xd5, 0x0e, 0x9d, 0x32
 };
 
-static const uint8_t kTLSOutput_mdsha1[32] = {
-    0x36, 0xa9, 0x31, 0xb0, 0x43, 0xe3, 0x64, 0x72, 0xb9, 0x47, 0x54,
-    0x0d, 0x8a, 0xfc, 0xe3, 0x5c, 0x1c, 0x15, 0x67, 0x7e, 0xa3, 0x5d,
-    0xf2, 0x3a, 0x57, 0xfd, 0x50, 0x16, 0xe1, 0xa4, 0xa6, 0x37
+static const uint8_t kTLSOutput_sha384[32] = {
+    0x75, 0x15, 0x3f, 0x44, 0x7a, 0xfd, 0x34, 0xed, 0x2b, 0x67, 0xbc,
+    0xd8, 0x57, 0x96, 0xab, 0xff, 0xf4, 0x0c, 0x05, 0x94, 0x02, 0x23,
+    0x81, 0xbf, 0x0e, 0xd2, 0xec, 0x7c, 0xe0, 0xa7, 0xc3, 0x7d
+};
+
+static const uint8_t kTLSOutput_sha512[32] = {
+    0x68, 0xb9, 0xc8, 0x4c, 0xf5, 0x51, 0xfc, 0x7a, 0x1f, 0x6c, 0xe5,
+    0x43, 0x73, 0x80, 0x53, 0x7c, 0xae, 0x76, 0x55, 0x67, 0xe0, 0x79,
+    0xbf, 0x3a, 0x53, 0x71, 0xb7, 0x9c, 0xb5, 0x03, 0x15, 0x3f
 };
 
 struct CipherTestVector {
@@ -685,6 +710,107 @@ TEST_P(HMAC_ServiceIndicatorTest, HMACTest) {
                      key.size(), hmacTestVector.input, sizeof(hmacTestVector.input), mac.data(), &mac_len)));
   ASSERT_EQ(approved, hmacTestVector.expect_approved);
   ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
+}
+
+struct ECDHTestVector {
+  // nid is the input curve nid.
+  const int nid;
+  // md_func is the digest to test.
+  const int digest_length;
+  // expected to be approved or not.
+  const int expect_approved;
+};
+struct ECDHTestVector kECDHTestVectors[] = {
+    // Only the following NIDs for |EC_GROUP| are creatable with
+    // |EC_GROUP_new_by_curve_name|.
+    // |ECDH_compute_key_fips| fails directly when an invalid hash length is
+    // inputted.
+    { NID_secp224r1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp224r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp224r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp224r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
+
+    { NID_X9_62_prime256v1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
+
+    { NID_secp384r1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp384r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp384r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp384r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
+
+    { NID_secp521r1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp521r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp521r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp521r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
+};
+
+class ECDH_ServiceIndicatorTest : public testing::TestWithParam<ECDHTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, ECDH_ServiceIndicatorTest, testing::ValuesIn(kECDHTestVectors));
+
+TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
+  const ECDHTestVector &ecdhTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(ecdhTestVector.nid));
+  bssl::UniquePtr<EC_KEY> our_key(EC_KEY_new());
+  bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(our_key);
+  ASSERT_TRUE(peer_key);
+
+  // Generate two generic ec key pairs.
+  ASSERT_TRUE(EC_KEY_set_group(our_key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(our_key.get()));
+  ASSERT_TRUE(EC_KEY_check_key(our_key.get()));
+
+  ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(peer_key.get()));
+  ASSERT_TRUE(EC_KEY_check_key(peer_key.get()));
+
+  // Test that |ECDH_compute_key_fips| has service indicator approval as
+  // expected.
+  std::vector<uint8_t> digest(ecdhTestVector.digest_length);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(ECDH_compute_key_fips(digest.data(),
+                              digest.size(), EC_KEY_get0_public_key(peer_key.get()), our_key.get())));
+  ASSERT_EQ(approved, ecdhTestVector.expect_approved);
+}
+
+struct KDFTestVector {
+  // func is the hash function for KDF to test.
+  const EVP_MD *(*func)(void);
+  const uint8_t *expected_output;
+  const int expect_approved;
+} kKDFTestVectors[] = {
+    { EVP_md5, kTLSOutput_md, AWSLC_NOT_APPROVED },
+    { EVP_sha1, kTLSOutput_sha1, AWSLC_NOT_APPROVED },
+    { EVP_md5_sha1, kTLSOutput_mdsha1, AWSLC_APPROVED },
+    { EVP_sha256, kTLSOutput_sha256, AWSLC_APPROVED },
+    { EVP_sha384, kTLSOutput_sha384, AWSLC_APPROVED },
+    { EVP_sha512, kTLSOutput_sha512, AWSLC_APPROVED },
+};
+
+class KDF_ServiceIndicatorTest : public testing::TestWithParam<KDFTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, KDF_ServiceIndicatorTest, testing::ValuesIn(kKDFTestVectors));
+
+TEST_P(KDF_ServiceIndicatorTest, KDF) {
+  const KDFTestVector &kdfTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  std::vector<uint8_t> tls_output(32);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, CRYPTO_tls1_prf(kdfTestVector.func(), tls_output.data(), tls_output.size(),
+                                kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
+                                sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
+                                kTLSSeed2, sizeof(kTLSSeed2)));
+  ASSERT_TRUE(check_test(kdfTestVector.expected_output, tls_output.data(),
+                         tls_output.size(), "TLS KDF KAT"));
+  ASSERT_EQ(approved, kdfTestVector.expect_approved);
 }
 
 TEST(ServiceIndicatorTest, CMAC) {
@@ -1164,46 +1290,6 @@ TEST(ServiceIndicatorTest, AESKWP) {
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
-TEST(ServiceIndicatorTest, ECDH) {
-  int approved = AWSLC_NOT_APPROVED;
-
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
-  ASSERT_TRUE(group);
-  bssl::UniquePtr<BIGNUM> priv_key(BN_bin2bn(kECDHPrivateKey, sizeof(kECDHPrivateKey), nullptr));
-  ASSERT_TRUE(priv_key);
-  bssl::UniquePtr<BIGNUM> x(BN_bin2bn(kECDH_X, sizeof(kECDH_X), nullptr));
-  ASSERT_TRUE(x);
-  bssl::UniquePtr<BIGNUM> y(BN_bin2bn(kECDH_Y, sizeof(kECDH_Y), nullptr));
-  ASSERT_TRUE(y);
-  bssl::UniquePtr<BIGNUM> peer_x(BN_bin2bn(kECDH_PeerX, sizeof(kECDH_PeerX), nullptr));
-  ASSERT_TRUE(peer_x);
-  bssl::UniquePtr<BIGNUM> peer_y(BN_bin2bn(kECDH_PeerY, sizeof(kECDH_PeerY), nullptr));
-  ASSERT_TRUE(peer_y);
-  std::vector<uint8_t> z(kECDH_Z, kECDH_Z + sizeof(kECDH_Z));
-
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
-  ASSERT_TRUE(key);
-  bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
-  ASSERT_TRUE(pub_key);
-  bssl::UniquePtr<EC_POINT> peer_pub_key(EC_POINT_new(group.get()));
-  ASSERT_TRUE(peer_pub_key);
-  ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
-  ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
-  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group.get(), pub_key.get(),
-                                                  x.get(), y.get(), nullptr));
-  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
-      group.get(), peer_pub_key.get(), peer_x.get(), peer_y.get(), nullptr));
-  ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
-  ASSERT_TRUE(EC_KEY_check_key(key.get()));
-
-  // Test that |ECDH_compute_key_fips| has service indicator approval as
-  // expected.
-  uint8_t digest[SHA256_DIGEST_LENGTH];
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(ECDH_compute_key_fips(digest,
-                              sizeof(digest), peer_pub_key.get(), key.get())));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
-}
-
 TEST(ServiceIndicatorTest, DRBG) {
   int approved = AWSLC_NOT_APPROVED;
   CTR_DRBG_STATE drbg;
@@ -1236,46 +1322,6 @@ TEST(ServiceIndicatorTest, DRBG) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(RAND_bytes(output, sizeof(output))));
   ASSERT_EQ(approved, AWSLC_APPROVED);
   CTR_DRBG_clear(&drbg);
-}
-
-TEST(ServiceIndicatorTest, TLSKDF) {
-  int approved = AWSLC_NOT_APPROVED;
-
-  // Test approved usages of KDF.
-  uint8_t tls_output[sizeof(kTLSOutput_sha256)];
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CRYPTO_tls1_prf(EVP_sha256(), tls_output, sizeof(tls_output),
-                                kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
-                                sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
-                                kTLSSeed2, sizeof(kTLSSeed2)));
-  ASSERT_TRUE(check_test(kTLSOutput_sha256, tls_output,
-                         sizeof(kTLSOutput_sha256), "TLS KDF KAT for sha256"));
-  ASSERT_TRUE(approved);
-
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CRYPTO_tls1_prf(EVP_md5_sha1(), tls_output, sizeof(tls_output),
-                                kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
-                                sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
-                                kTLSSeed2, sizeof(kTLSSeed2)));
-  ASSERT_TRUE(check_test(kTLSOutput_mdsha1, tls_output,
-                         sizeof(kTLSOutput_mdsha1),
-                         "TLS KDF KAT for md5_sha1"));
-  ASSERT_TRUE(approved);
-
-  // Test non-approved usages of KDF.
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CRYPTO_tls1_prf(EVP_sha1(), tls_output, sizeof(tls_output),
-                                kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
-                                sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
-                                kTLSSeed2, sizeof(kTLSSeed2)));
-  ASSERT_FALSE(approved);
-
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CRYPTO_tls1_prf(EVP_md5(), tls_output, sizeof(tls_output),
-                                kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
-                                sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
-                                kTLSSeed2, sizeof(kTLSSeed2)));
-  ASSERT_FALSE(approved);
 }
 
 #else

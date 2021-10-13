@@ -175,7 +175,7 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
 }
 
 void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
-  // EC DH (P-224/P-256/P-384/P-521) private keys are approved.
+  // ECDH with curves P-224, P-256, P-384 and P-521 is approved.
   // Not the best way to write this, but the delocate parser for ARM/clang can't
   // recognize || if statements, or switch statements for this.
   // TODO: Update the delocate parser to be able to recognize a more readable
@@ -196,18 +196,13 @@ void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
 }
 
 
-void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const int using_md5_sha1) {
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
   // HMAC-MD5/HMACSHA1 (both used concurrently) is approved in TLS 1.0/1.1.
   // HMAC-SHA256, HMAC-SHA384, HMAC-SHA512 is approved for TLS 1.2.
   // These Key Derivation functions are to be used in the context of the TLS
   // protocol.
-  // |using_md5_sha1| is used to differentiate if the kdf is running md5 with
-  // SHA1, and if the kdf is using MD5 or SHA1 on its own.
-  if(dgst->type == NID_sha1 && using_md5_sha1 == 1) {
-    FIPS_service_indicator_update_state();
-    return;
-  }
   switch (dgst->type){
+    case NID_md5_sha1:
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
@@ -247,7 +242,7 @@ void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
 
 void ECDH_verify_service_indicator(OPENSSL_UNUSED const EC_KEY *ec_key) { }
 
-void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst, OPENSSL_UNUSED const int using_md5_sha1) { }
+void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) { }
 
 #endif // AWSLC_FIPS
 
