@@ -743,35 +743,39 @@ struct ECDSATestVector {
   const int nid;
   // md_func is the digest to test.
   const EVP_MD *(*func)(void);
-  // expected to be approved or not.
-  const int expect_approved;
+  // expected to be approved or not for signature generation.
+  const int key_check_expect_approved;
+  // expected to be approved or not for signature generation.
+  const int sig_gen_expect_approved;
+  // expected to be approved or not for signature verification.
+  const int sig_ver_expect_approved;
 };
 struct ECDSATestVector kECDSATestVectors[] = {
     // Only the following NIDs for |EC_GROUP| are creatable with
     // |EC_GROUP_new_by_curve_name|.
-    { NID_secp224r1, &EVP_sha1, AWSLC_APPROVED },
-    { NID_secp224r1, &EVP_sha224, AWSLC_APPROVED },
-    { NID_secp224r1, &EVP_sha256, AWSLC_APPROVED },
-    { NID_secp224r1, &EVP_sha384, AWSLC_APPROVED },
-    { NID_secp224r1, &EVP_sha512, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
 
-    { NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED },
-    { NID_X9_62_prime256v1, &EVP_sha224, AWSLC_APPROVED },
-    { NID_X9_62_prime256v1, &EVP_sha256, AWSLC_APPROVED },
-    { NID_X9_62_prime256v1, &EVP_sha384, AWSLC_APPROVED },
-    { NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
 
-    { NID_secp384r1, &EVP_sha1, AWSLC_APPROVED },
-    { NID_secp384r1, &EVP_sha224, AWSLC_APPROVED },
-    { NID_secp384r1, &EVP_sha256, AWSLC_APPROVED },
-    { NID_secp384r1, &EVP_sha384, AWSLC_APPROVED },
-    { NID_secp384r1, &EVP_sha512, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
 
-    { NID_secp521r1, &EVP_sha1, AWSLC_APPROVED },
-    { NID_secp521r1, &EVP_sha224, AWSLC_APPROVED },
-    { NID_secp521r1, &EVP_sha256, AWSLC_APPROVED },
-    { NID_secp521r1, &EVP_sha384, AWSLC_APPROVED },
-    { NID_secp521r1, &EVP_sha512, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
 class ECDSA_ServiceIndicatorTest : public testing::TestWithParam<ECDSATestVector> {};
@@ -785,9 +789,9 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
 
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(ecdsaTestVector.nid));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_generate_key_fips(key.get())));
-  ASSERT_EQ(approved, ecdsaTestVector.expect_approved);
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_check_fips(key.get())));
-  ASSERT_EQ(approved, ecdsaTestVector.expect_approved);
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
 }
 
 TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
@@ -822,7 +826,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
   final_output.resize(sig_len);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
               ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), final_output.data(), &sig_len)));
-  ASSERT_EQ(approved, ecdsaTestVector.expect_approved);
+  ASSERT_EQ(approved, ecdsaTestVector.sig_gen_expect_approved);
 
 
   // Test using the one-shot |EVP_DigestSign| function for approval.
@@ -834,7 +838,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
                 ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
                              kPlaintext, sizeof(kPlaintext))));
-  ASSERT_EQ(approved, ecdsaTestVector.expect_approved);
+  ASSERT_EQ(approved, ecdsaTestVector.sig_gen_expect_approved);
 }
 
 TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
@@ -862,8 +866,6 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len,
                              kPlaintext, sizeof(kPlaintext)));
   signature.resize(sig_len);
-  // ASSERT_EQ(approved, ecdsaTestVector.expect_approved);
-
 
   // Service Indicator approval checks for ECDSA signature verification.
 
@@ -877,7 +879,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(EVP_DigestVerifyFinal(
                     md_ctx.get(), signature.data(), signature.size())));
-  ASSERT_EQ(approved, ecdsaTestVector.expect_approved);
+  ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
 
   // Test using the one-shot |EVP_DigestVerify| function for approval.
   md_ctx.Reset();
@@ -887,7 +889,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
       approved, ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
                                              signature.size(), kPlaintext,
                                              sizeof(kPlaintext))));
-  ASSERT_EQ(approved, ecdsaTestVector.expect_approved);
+  ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
 }
 
 TEST(ServiceIndicatorTest, CMAC) {
