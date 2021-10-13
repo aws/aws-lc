@@ -352,6 +352,7 @@ static int aead_aes_ccm_seal_scatter(
   }
 
   *out_tag_len = ctx->tag_len;
+  AEAD_CCM_verify_service_indicator(ctx);
   return 1;
 }
 
@@ -392,6 +393,7 @@ static int aead_aes_ccm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
+  AEAD_CCM_verify_service_indicator(ctx);
   return 1;
 }
 
