@@ -129,13 +129,17 @@ endif()
 add_subdirectory(fipsmodule)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
+  set(FIPS_BCM_OBJ "fipsmodule/bcm.o")
+  if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_OPTION STREQUAL "AL2_X86_64_GCC_7_SHARED")
+    set(FIPS_BCM_OBJ "fipsmodule/bcm_o/AL2_x86_64/gcc-7/shared/bcm.o")
+  endif()
+  SET_SOURCE_FILES_PROPERTIES(${FIPS_BCM_OBJ} PROPERTIES EXTERNAL_OBJECT true)
+  SET_SOURCE_FILES_PROPERTIES(${FIPS_BCM_OBJ} PROPERTIES GENERATED true)
 
   set(
     CRYPTO_FIPS_OBJECTS
 
-    fipsmodule/bcm.o
+    ${FIPS_BCM_OBJ}
   )
 endif()
 

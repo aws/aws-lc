@@ -1,5 +1,21 @@
 include_directories(../../include)
 
+if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_OPTION STREQUAL "AL2_X86_64_GCC_7_SHARED")
+  message(STATUS "Building with FIPS_VENDOR_AFFIRM_OPTION '${FIPS_VENDOR_AFFIRM_OPTION}'.")
+  add_library(
+    fipsmodule
+
+    OBJECT
+
+    fips_shared_support.c
+  )
+
+  add_dependencies(fipsmodule global_target)
+
+  add_custom_target(bcm_o_target DEPENDS bcm_o/AL2_x86_64/gcc-7/shared/bcm.o)
+  return()
+endif()
+
 if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
