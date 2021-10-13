@@ -151,58 +151,7 @@ static int dhkem_extract_and_expand(uint16_t kem_id, const EVP_MD *hkdf_md,
                              kem_context_len);
 }
 
-
-
-static int x25519_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
-                           size_t priv_key_len) {
-  if (priv_key_len != X25519_PRIVATE_KEY_LEN) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-
-  OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
-  X25519_public_from_private(key->public_key, priv_key);
-  return 1;
-}
-
-/*
-static int SIKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
-                           size_t priv_key_len) {
-
-
-  if (priv_key_len != SIKE_P434_R3_PRIVATE_KEY_BYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-
-  //OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
-  unsigned long long cycles1, cycles2;
-  cycles1=cpucycles();
-  //sike_p434_r3_crypto_kem_keypair(key->public_key, (unsigned char *)
-key->private_key); crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char
-*) key->private_key);
-  //crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *)
-key->private_key); cycles2=cpucycles(); printf("crypto_keypair %llu \n",
-(cycles2-cycles1));
-
-  return 1;
-}
-
-static int Kyber_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
-                           size_t priv_key_len) {
-
-
-  if (priv_key_len != KYBER_SECRETKEYBYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-  crypto_kem_keypair_kyber(key->public_key, (unsigned char *) key->private_key);
-  return 1;
-}
-*/
-
-
-static int Hybrid_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
+static int HPKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                            size_t priv_key_len) {
   if (priv_key_len !=
       key->kem->private_key_len + key->kem->PQ_private_key_len) {
@@ -240,37 +189,7 @@ static int Hybrid_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
 }
 
 
-
-static int x25519_generate_key(EVP_HPKE_KEY *key) {
-  // Benchmarking vars
-  X25519_keypair(key->public_key, key->private_key);
-  return 1;
-}
-
-/*
-static int SIKE_generate_key(EVP_HPKE_KEY *key) {
-
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
-  sike_p434_r3_crypto_kem_keypair((unsigned char *)key->public_key , (unsigned
-char *)key->private_key);
-  //cycles2=cpucycles();
-  //printf("crypto_keypair %llu \n", (cycles2-cycles1));
-
-  return 1;
-}
-
-static int Kyber_generate_key(EVP_HPKE_KEY *key) {
-
-  crypto_kem_keypair_kyber((unsigned char *)key->public_key , (unsigned char
-*)key->private_key);
-
-  return 1;
-}
-*/
-
-
-static int Hybrid_generate_key(EVP_HPKE_KEY *key) {
+static int HPKE_generate_key(EVP_HPKE_KEY *key) {
   if (key->kem->id == 0x0020 || key->kem->id == 0x0022 ||
       key->kem->id == 0x0024) {
     X25519_keypair(key->public_key, key->private_key);
@@ -295,147 +214,7 @@ static int Hybrid_generate_key(EVP_HPKE_KEY *key) {
   return 1;
 }
 
-
-static int x25519_encap_with_seed(
-    const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
-    size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
-    size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *seed, size_t seed_len) {
-  if (max_enc < X25519_PUBLIC_VALUE_LEN) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-    return 0;
-  }
-  if (seed_len != X25519_PRIVATE_KEY_LEN) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-  X25519_public_from_private(out_enc, seed);
-
-  uint8_t dh[X25519_SHARED_KEY_LEN];
-  if (peer_public_key_len != X25519_PUBLIC_VALUE_LEN ||
-      !X25519(dh, seed, peer_public_key)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-  uint8_t kem_context[2 * X25519_PUBLIC_VALUE_LEN];
-  OPENSSL_memcpy(kem_context, out_enc, X25519_PUBLIC_VALUE_LEN);
-  OPENSSL_memcpy(kem_context + X25519_PUBLIC_VALUE_LEN, peer_public_key,
-                 X25519_PUBLIC_VALUE_LEN);
-  if (!dhkem_extract_and_expand(kem->id, EVP_sha256(), out_shared_secret,
-                                SHA256_DIGEST_LENGTH, dh, sizeof(dh),
-                                kem_context, sizeof(kem_context))) {
-    return 0;
-  }
-
-  *out_enc_len = X25519_PUBLIC_VALUE_LEN;
-  *out_shared_secret_len = SHA256_DIGEST_LENGTH;
-  return 1;
-}
-
-
-
-/*
-static int SIKE_encap_with_seed(
-    const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
-    size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
-    size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *seed, size_t seed_len) {
-
-  if (max_enc < SIKE_P434_R3_PUBLIC_KEY_BYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-
-    return 0;
-  }
-  if (seed_len != SIKE_P434_R3_PRIVATE_KEY_BYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-
-  uint8_t ss_sike[SIKE_P434_R3_SHARED_SECRET_BYTES];
-  //uint8_t ct_sike[SIKE_P434_R3_CIPHERTEXT_BYTES];
-  //if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES ||
-sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key)<0) { if
-(peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES) { OPENSSL_PUT_ERROR(EVP,
-EVP_R_INVALID_PEER_KEY); return 0;
-  }
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
-  int sike_res=sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key);
-  //cycles2=cpucycles();
-  //printf("crypto_enc %llu \n", (cycles2-cycles1));
-  if (sike_res<0) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-
-  uint8_t kem_context[2 * SIKE_P434_R3_PUBLIC_KEY_BYTES];
-  OPENSSL_memcpy(kem_context, out_enc, SIKE_P434_R3_PUBLIC_KEY_BYTES);
-  OPENSSL_memcpy(kem_context + SIKE_P434_R3_PUBLIC_KEY_BYTES, peer_public_key,
-                 SIKE_P434_R3_PUBLIC_KEY_BYTES);
-
-  if (!dhkem_extract_and_expand(kem->id, EVP_sha256(), out_shared_secret,
-                                SIKE_P434_R3_SHARED_SECRET_BYTES, ss_sike,
-sizeof(ss_sike), kem_context, sizeof(kem_context))) { return 0;
-  }
-
-  *out_enc_len = SIKE_P434_R3_CIPHERTEXT_BYTES;
-  *out_shared_secret_len = SIKE_P434_R3_SHARED_SECRET_BYTES;
-  return 1;
-}
-
-
-
-
-static int Kyber_encap_with_seed(
-    const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
-    size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
-    size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *seed, size_t seed_len) {
-
-
-  if (max_enc < KYBER_CIPHERTEXTBYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-    return 0;
-  }
-
-  if (seed_len != KYBER_SECRETKEYBYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-
-  uint8_t ss_kyber[KYBER_SSBYTES];
-  if (peer_public_key_len != KYBER_PUBLICKEYBYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-  int kyber_res=crypto_kem_enc_kyber(out_enc, ss_kyber, peer_public_key);
-
-  if (kyber_res<0) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-  uint8_t kem_context[2 * KYBER_PUBLICKEYBYTES];
-  OPENSSL_memcpy(kem_context, out_enc, KYBER_PUBLICKEYBYTES);
-  OPENSSL_memcpy(kem_context + KYBER_PUBLICKEYBYTES, peer_public_key,
-                 KYBER_PUBLICKEYBYTES);
-
-  if (!dhkem_extract_and_expand(kem->id, EVP_sha256(), out_shared_secret,
-                                KYBER_SSBYTES, ss_kyber, sizeof(ss_kyber),
-                                kem_context, sizeof(kem_context))) {
-    return 0;
-  }
-
-  *out_enc_len = KYBER_CIPHERTEXTBYTES;
-  *out_shared_secret_len = KYBER_SSBYTES;
-  return 1;
-}
-*/
-
-static int Hybrid_encap_with_seed(
+static int HPKE_encap_with_seed(
     const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
     size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
     size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
@@ -537,111 +316,7 @@ static int Hybrid_encap_with_seed(
   return 1;
 }
 
-
-
-static int x25519_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
-                        size_t *out_shared_secret_len, const uint8_t *enc,
-                        size_t enc_len) {
-  uint8_t dh[X25519_SHARED_KEY_LEN];
-  if (enc_len != X25519_PUBLIC_VALUE_LEN ||
-      !X25519(dh, key->private_key, enc)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-  uint8_t kem_context[2 * X25519_PUBLIC_VALUE_LEN];
-  OPENSSL_memcpy(kem_context, enc, X25519_PUBLIC_VALUE_LEN);
-  OPENSSL_memcpy(kem_context + X25519_PUBLIC_VALUE_LEN, key->public_key,
-                 X25519_PUBLIC_VALUE_LEN);
-  if (!dhkem_extract_and_expand(key->kem->id, EVP_sha256(), out_shared_secret,
-                                SHA256_DIGEST_LENGTH, dh, sizeof(dh),
-                                kem_context, sizeof(kem_context))) {
-    return 0;
-  }
-
-  *out_shared_secret_len = SHA256_DIGEST_LENGTH;
-  return 1;
-}
-
-
-
-/*
-static int SIKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
-                        size_t *out_shared_secret_len, const uint8_t *enc,
-                        size_t enc_len) {
-  uint8_t ss_sike[SIKE_P434_R3_SHARED_SECRET_BYTES];
-  if (enc_len != SIKE_P434_R3_CIPHERTEXT_BYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-  //unsigned long long cycles1, cycles2;
-  //cycles1=cpucycles();
-  int sike_res=sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key);
-  //cycles2=cpucycles();
-  //printf("crypto_dec %llu \n\n\n", (cycles2-cycles1));
-
-  //if (sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key)<0) {
-  if (sike_res<0) {
-     //printf("sike_p434_r3_crypto_kem_dec");
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-
-
-  uint8_t kem_context[2 * SIKE_P434_R3_PUBLIC_KEY_BYTES];
-  OPENSSL_memcpy(kem_context, enc, SIKE_P434_R3_PUBLIC_KEY_BYTES);
-  OPENSSL_memcpy(kem_context + SIKE_P434_R3_PUBLIC_KEY_BYTES, key->public_key,
-                 SIKE_P434_R3_PUBLIC_KEY_BYTES);
-  if (!dhkem_extract_and_expand(key->kem->id, EVP_sha256(), out_shared_secret,
-                                SIKE_P434_R3_SHARED_SECRET_BYTES, ss_sike,
-sizeof(ss_sike), kem_context, sizeof(kem_context))) { return 0;
-  }
-
-  *out_shared_secret_len = SIKE_P434_R3_SHARED_SECRET_BYTES;
-  return 1;
-}
-
-
-static int Kyber_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
-                        size_t *out_shared_secret_len, const uint8_t *enc,
-                        size_t enc_len) {
-  uint8_t ss_kyber[KYBER_SSBYTES];
-  if (enc_len != KYBER_CIPHERTEXTBYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-  int kyber_res=crypto_kem_dec_kyber(ss_kyber, enc, key->private_key);
-  //cycles2=cpucycles();
-  //printf("crypto_dec %llu \n\n\n", (cycles2-cycles1));
-
-  //if (sike_p434_r3_crypto_kem_dec(ss_sike, enc, key->private_key)<0) {
-  if (kyber_res<0) {
-     printf("kyber_r3_crypto_kem_dec");
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
-  }
-
-
-
-  uint8_t kem_context[2 * KYBER_PUBLICKEYBYTES];
-  OPENSSL_memcpy(kem_context, enc, KYBER_PUBLICKEYBYTES);
-  OPENSSL_memcpy(kem_context + KYBER_PUBLICKEYBYTES, key->public_key,
-                 KYBER_PUBLICKEYBYTES);
-  if (!dhkem_extract_and_expand(key->kem->id, EVP_sha256(), out_shared_secret,
-                                KYBER_SSBYTES, ss_kyber, sizeof(ss_kyber),
-                                kem_context, sizeof(kem_context))) {
-    return 0;
-  }
-
-  *out_shared_secret_len = KYBER_SSBYTES;
-  return 1;
-}
-*/
-
-
-static int Hybrid_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
+static int HPKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
                         size_t *out_shared_secret_len, const uint8_t *enc,
                         size_t enc_len) {
   uint8_t *hybrid_ss =
@@ -714,13 +389,12 @@ static int Hybrid_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
     */
 
   *out_shared_secret_len =
-      SHA256_DIGEST_LENGTH + SIKE_P434_R3_SHARED_SECRET_BYTES;
+      key->kem->public_key_len + key->kem->PQ_shared_secret_len;
 
   free(hybrid_ss);
   free(kem_context);
   return 1;
 }
-
 
 const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
@@ -735,15 +409,13 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
       /*PQ_ciphertext_len=*/0,
       /*PQ_shared_secret_len=*/0,
 
-      x25519_init_key,
-      x25519_generate_key,
-      x25519_encap_with_seed,
-      x25519_decap,
+      HPKE_init_key,
+      HPKE_generate_key,
+      HPKE_encap_with_seed,
+      HPKE_decap,
   };
   return &kKEM;
 }
-
-
 
 // EXPERIMENTAL SIKE
 const EVP_HPKE_KEM *EVP_hpke_SIKE_hkdf_sha256(void) {
@@ -759,10 +431,10 @@ const EVP_HPKE_KEM *EVP_hpke_SIKE_hkdf_sha256(void) {
       /*PQ_ciphertext_len=*/SIKE_P434_R3_CIPHERTEXT_BYTES,
       /*PQ_shared_secret_len=*/SIKE_P434_R3_SHARED_SECRET_BYTES,
 
-      Hybrid_init_key,
-      Hybrid_generate_key,
-      Hybrid_encap_with_seed,
-      Hybrid_decap,
+      HPKE_init_key,
+      HPKE_generate_key,
+      HPKE_encap_with_seed,
+      HPKE_decap,
   };
   return &kKEM;
 }
@@ -782,10 +454,10 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_SIKE_hkdf_sha256(void) {
       /*PQ_ciphertext_len=*/SIKE_P434_R3_CIPHERTEXT_BYTES,
       /*PQ_shared_secret_len=*/SIKE_P434_R3_SHARED_SECRET_BYTES,
 
-      Hybrid_init_key,
-      Hybrid_generate_key,
-      Hybrid_encap_with_seed,
-      Hybrid_decap,
+      HPKE_init_key,
+      HPKE_generate_key,
+      HPKE_encap_with_seed,
+      HPKE_decap,
   };
   return &kKEM;
 }
@@ -799,17 +471,16 @@ const EVP_HPKE_KEM *EVP_hpke_KYBER_hkdf_sha256(void) {
       /*public_key_len=*/0,
       /*private_key_len=*/0,
       /*seed_len=*/KYBER_SECRETKEYBYTES,  // REMOVE !!!!
+      
       /*PQ_public_key_len=*/KYBER_PUBLICKEYBYTES,
       /*PQ_private_key_len=*/X25519_PRIVATE_KEY_LEN,
-
-
       /*PQ_ciphertext_len=*/KYBER_CIPHERTEXTBYTES,
       /*PQ_shared_secret_len=*/KYBER_SSBYTES,
 
-      Hybrid_init_key,
-      Hybrid_generate_key,
-      Hybrid_encap_with_seed,
-      Hybrid_decap,
+      HPKE_init_key,
+      HPKE_generate_key,
+      HPKE_encap_with_seed,
+      HPKE_decap,
   };
   return &kKEM;
 }
@@ -828,10 +499,10 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_KYBER_hkdf_sha256(void) {
       /*PQ_ciphertext_len=*/KYBER_CIPHERTEXTBYTES,
       /*PQ_shared_secret_len=*/KYBER_SSBYTES,
 
-      Hybrid_init_key,
-      Hybrid_generate_key,
-      Hybrid_encap_with_seed,
-      Hybrid_decap,
+      HPKE_init_key,
+      HPKE_generate_key,
+      HPKE_encap_with_seed,
+      HPKE_decap,
   };
   return &kKEM;
 }
