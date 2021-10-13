@@ -73,7 +73,14 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
 
         efs_subnet_selection = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE)
 
-        # Create the EFS to store the corpus and logs
+        # Create the EFS to store the corpus and logs. EFS allows new filesystems to burst to 100 MB/s for the first 2
+        # TB of data read/written, after that the rate is limited based on the size of the filesystem. As of late
+        # 2021 our corpus is less than one GB which results in EFS limiting all reads and writes to the minimum 1 MB/s.
+        # To have the fuzzing be able to finish in a reasonable amount of time use the Provisioned capacity option.
+        # For now this uses 100 MB/s which matches the performance used for 2021. Looking at EFS metrics in late 2021
+        # during fuzz runs EFS sees 4-22 MB/s of transfers thus 100 MB/s gives lots of buffer and allows ~4-5 fuzz runs
+        # to start at the same time with no issue.
+        # https://docs.aws.amazon.com/efs/latest/ug/performance.html
         fuzz_filesystem = efs.FileSystem(
             scope=self,
             id="{}-FuzzingEFS".format(id),

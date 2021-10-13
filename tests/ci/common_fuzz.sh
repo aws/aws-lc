@@ -108,7 +108,7 @@ function run_fuzz_test {
 
   # Step 2 merge any new files from the run corpus and GitHub src corpus into the shared corpus, the first folder is
   # where to merge the new corpus (SHARED_FUZZ_TEST_CORPUS), the second two are where to read new inputs from
-  # ($LOCAL_RUN_CORPU and SRC_CORPUS).
+  # (LOCAL_RUN_CORPUS and SRC_CORPUS).
   time "${FUZZ_TEST_PATH}" -merge=1 "$SHARED_FUZZ_TEST_CORPUS" "$LOCAL_RUN_CORPUS" "$SRC_CORPUS"
 
   # Calculate interesting metrics and post results to CloudWatch, this checks the shared (EFS) corpus after the new test
