@@ -42,7 +42,145 @@
 #include <time.h>
 
 #define SIZE_PLAINTEXT 10000000  // Specify Bytes to be encrypted/decrypted
-#define NUMBER_TESTS 1     // Number of tests performed
+#define NUMBER_TESTS 1           // Number of tests performed
+
+#define SUM(x, y) (x + y)
+
+#define HPKE_KDF_NAMESPACE(s) EVP_hpke_##s##_hkdf_sha256
+
+// Kyber already exists with these names but may add here later as well to have
+// all of them at the same place
+#define SIKE_SECRETKEYBYTES \
+  374  // MSG_BYTES + SECRETKEY_B_BYTES + CRYPTO_PUBLICKEYBYTES bytes
+#define SIKE_PUBLICKEYBYTES 330
+#define SIKE_BYTES 16
+#define SIKE_CIPHERTEXTBYTES 346  // CRYPTO_PUBLICKEYBYTES + MSG_BYTES bytes
+
+
+#define x25519_SECRETKEYBYTES X25519_PUBLIC_VALUE_LEN
+#define x25519_PUBLICKEYBYTES X25519_PRIVATE_KEY_LEN
+#define x25519_BYTES X25519_SHARED_KEY_LEN
+#define x25519_CIPHERTEXTBYTES X25519_PUBLIC_VALUE_LEN
+
+#define x25519_SIKE_SECRETKEYBYTES X25519_PUBLIC_VALUE_LEN + 374
+#define x25519_SIKE_PUBLICKEYBYTES X25519_PRIVATE_KEY_LEN + 330
+#define x25519_SIKE_BYTES X25519_SHARED_KEY_LEN + 16
+#define x25519_SIKE_CIPHERTEXTBYTES X25519_PUBLIC_VALUE_LEN + 346
+
+
+#define x25519_KYBER_SECRETKEYBYTES \
+  X25519_PUBLIC_VALUE_LEN + KYBER_SECRETKEYBYTES
+#define x25519_KYBER_PUBLICKEYBYTES \
+  X25519_PRIVATE_KEY_LEN + KYBER_PUBLICKEYBYTES
+#define x25519_KYBER_BYTES X25519_SHARED_KEY_LEN + KYBER_BYTES
+#define x25519_KYBER_CIPHERTEXTBYTES \
+  X25519_PUBLIC_VALUE_LEN + KYBER_CIPHERTEXTBYTES
+
+int algorithm_secretkeybytes(int alg);
+int algorithm_secretkeybytes(int alg){
+  int keylen = 0 ;
+  switch (alg)
+  {
+  case 0:
+    return x25519_SECRETKEYBYTES;
+    break;
+    case 1:
+    return SIKE_SECRETKEYBYTES;
+    break;
+    case 2:
+    return x25519_SIKE_SECRETKEYBYTES;
+    break;
+    case 3:
+    return KYBER_SECRETKEYBYTES;
+    break;
+    case 4:
+    return x25519_KYBER_SECRETKEYBYTES;
+    break;  
+  default:
+    break;
+  }
+   return keylen;
+}
+
+int algorithm_publickeybytes(int alg);
+int algorithm_publickeybytes(int alg){
+  switch (alg)
+  {
+  case 0:
+    return x25519_PUBLICKEYBYTES;
+    break;
+    case 1:
+    return SIKE_PUBLICKEYBYTES;
+    break;
+    case 2:
+    return x25519_PUBLICKEYBYTES + SIKE_PUBLICKEYBYTES;
+    break;
+    case 3:
+    return KYBER_PUBLICKEYBYTES;
+    break;
+    case 4:
+    return x25519_KYBER_PUBLICKEYBYTES;
+    break;  
+  default:
+  return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;
+    break;
+  }
+   return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;;
+}
+int algorithm_ciphertextbytes(int alg);
+int algorithm_ciphertextbytes(int alg){
+  int keylen = 0 ;
+  switch (alg)
+  {
+  case 0:
+    return x25519_PUBLICKEYBYTES;
+    break;
+    case 1:
+    return SIKE_CIPHERTEXTBYTES;
+    break;
+    case 2:
+    return x25519_PUBLICKEYBYTES + SIKE_CIPHERTEXTBYTES;
+    break;
+    case 3:
+    return KYBER_CIPHERTEXTBYTES;
+    break;
+    case 4:
+    return x25519_PUBLICKEYBYTES + KYBER_CIPHERTEXTBYTES;
+    break;  
+  default:
+    break;
+  }
+   return keylen;
+}
+
+
+const EVP_HPKE_KEM *algorithm_kdf(int alg);
+
+
+const EVP_HPKE_KEM *algorithm_kdf(int alg){
+  switch (alg)
+  {
+  case 0:
+    return EVP_hpke_x25519_hkdf_sha256();
+    break;
+    case 1:
+    return EVP_hpke_SIKE_hkdf_sha256();
+    break;
+    case 2:
+    return EVP_hpke_x25519_SIKE_hkdf_sha256();
+    break;
+    case 3:
+    return EVP_hpke_KYBER_hkdf_sha256();
+    break;
+    case 4:
+    return EVP_hpke_x25519_KYBER_hkdf_sha256();
+    break;  
+  default:
+  return EVP_hpke_x25519_hkdf_sha256();
+    break;
+  }
+  return EVP_hpke_x25519_hkdf_sha256();
+}
 
 
 uint64_t cpucycles(void) {  // Access system counter for benchmarking
@@ -52,10 +190,34 @@ uint64_t cpucycles(void) {  // Access system counter for benchmarking
 }
 
 
-void print_info(int aead, int kdf);
+void print_info(int aead, int kdf, int alg);
 
-void print_info(int aead, int kdf) {
+void print_info(int aead, int kdf, int alg) {
   printf("\n\n-------------------------------------------------------");
+
+   printf("\nALGORITHM          ->   ");
+  switch (alg) {
+    case 0:
+      printf("x25519");
+      break;
+      case 1:
+      printf("SIKE");
+      break;
+      case 2:
+      printf("x25519 + SIKE");
+      break;
+      case 3:
+      printf("KYBER");
+      break;
+      case 4:
+      printf("x25519 + KYBER");
+      break;
+    default:
+      printf("Should never happen");
+      break;
+  }
+
+  
   printf("\nAEAD               ->   ");
   switch (aead) {
     case 0x0001:
@@ -81,7 +243,11 @@ void print_info(int aead, int kdf) {
       printf("Should never happen");
       break;
   }
-  
+
+
+ 
+
+
   printf("\n");
 }
 
@@ -355,7 +521,8 @@ TEST(HPKETest, x25519) {
   // Span<const uint8_t> ad_values[] = {{nullptr, 0}};
   unsigned long long cycles_set_up_sender_total = 0,
                      cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
-                     cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+                     cycles_open_total = 0, cycles_protocol_total = 0,
+                     clean_protocol = 0;
   unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
       cycles_open, cycles_protocol;
 
@@ -371,6 +538,11 @@ TEST(HPKETest, x25519) {
   // Benchmarking vars
 
   ScopedEVP_HPKE_KEY key;
+  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * X25519_PUBLIC_VALUE_LEN);
+  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * X25519_PRIVATE_KEY_LEN);
+
+
+
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
@@ -383,12 +555,13 @@ TEST(HPKETest, x25519) {
     for (const auto kdf : kAllKDFs) {
       SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
 
-      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), 0);
 
       for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
         printf("\nPlaintext Bytes    ->   %d\n", kk);
         cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
-        cycles_seal_total = 0, cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+        cycles_seal_total = 0, cycles_open_total = 0, cycles_protocol_total = 0,
+        clean_protocol = 0;
         uint8_t *kCleartextPayload = (uint8_t *)malloc(sizeof(uint8_t) * kk);
         init_plaintext(kCleartextPayload, kk);
         for (int jj = 0; jj < NUMBER_TESTS; jj++) {
@@ -402,17 +575,17 @@ TEST(HPKETest, x25519) {
               // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
 
               cycles_protocol = cpucycles();
-              //others = cpucycles();
+              // others = cpucycles();
               SCOPED_TRACE(Bytes(ad));
-              //others_total += cpucycles() - others;
+              // others_total += cpucycles() - others;
 
               // Alice i
               // Set up the sender.
-              //others = cpucycles();
+              // others = cpucycles();
               ScopedEVP_HPKE_CTX sender_ctx;
               uint8_t enc[X25519_PUBLIC_VALUE_LEN];
               size_t enc_len;
-              //others_total += cpucycles() - others;
+              // others_total += cpucycles() - others;
               cycles_set_up_sender = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
@@ -422,9 +595,9 @@ TEST(HPKETest, x25519) {
 
 
               // Set up the recipient.
-              //others = cpucycles();
+              // others = cpucycles();
               ScopedEVP_HPKE_CTX recipient_ctx;
-              //others_total += cpucycles() - others;
+              // others_total += cpucycles() - others;
               cycles_set_up_recipient = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                   recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
@@ -437,25 +610,25 @@ TEST(HPKETest, x25519) {
 
 
               // Have sender encrypt message for the recipient.
-              //others = cpucycles();
+              // others = cpucycles();
               std::vector<uint8_t> ciphertext(
                   kk + EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
               size_t ciphertext_len;
-              //others_total += cpucycles() - others;
+              // others_total += cpucycles() - others;
               cycles_seal = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_seal(
                   sender_ctx.get(), ciphertext.data(), &ciphertext_len,
                   ciphertext.size(),
-                  reinterpret_cast<const uint8_t *>(kCleartextPayload),
-                  kk, ad.data(), ad.size()));
+                  reinterpret_cast<const uint8_t *>(kCleartextPayload), kk,
+                  ad.data(), ad.size()));
               cycles_seal_total += cpucycles() - cycles_seal;
 
 
               // Have recipient decrypt the message.
-              //others = cpucycles();
+              // others = cpucycles();
               std::vector<uint8_t> cleartext(ciphertext.size());
               size_t cleartext_len;
-              //others_total += cpucycles() - others;
+              // others_total += cpucycles() - others;
               cycles_open = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_open(
                   recipient_ctx.get(), cleartext.data(), &cleartext_len,
@@ -482,33 +655,33 @@ TEST(HPKETest, x25519) {
                (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
         printf("open                    %.2f CCs \n",
                (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
-        //printf("others            %llu CCs \n",
-              // others_total / NUMBER_TESTS / 1000000);
+        // printf("others            %llu CCs \n",
+        // others_total / NUMBER_TESTS / 1000000);
         printf("end protocol            %llu CCs \n",
                cycles_protocol_total / NUMBER_TESTS / 1000000);
-        //Print the value of the 4 functions (no overhead for array initialization, etc)
-        clean_protocol = cycles_set_up_sender_total + cycles_set_up_recipient_total + cycles_seal_total + cycles_open_total;
+        // Print the value of the 4 functions (no overhead for array
+        // initialization, etc)
+        clean_protocol = cycles_set_up_sender_total +
+                         cycles_set_up_recipient_total + cycles_seal_total +
+                         cycles_open_total;
         printf("CLEAN protocol          %llu CCs \n",
                clean_protocol / NUMBER_TESTS / 1000000);
 
 
 
-
         printf("%% set_up_sender         %.3f %% \n",
-               ((float)(cycles_set_up_sender_total) /
-                ((float)clean_protocol) * 100));
+               ((float)(cycles_set_up_sender_total) / ((float)clean_protocol) *
+                100));
         printf("%% set_up_recipient      %.3f %% \n",
                ((float)cycles_set_up_recipient_total) /
                    ((float)clean_protocol) * 100);
-        printf(
-            "%% seal                  %.3f %% \n",
-            ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-        printf(
-            "%% open                  %.3f %% \n",
-            ((float)cycles_open_total) / ((float)clean_protocol) * 100);
-            //printf(
-            //"%% others                  %.3f %% \n",
-            //((float)others_total) / ((float)cycles_protocol_total) * 100);
+        printf("%% seal                  %.3f %% \n",
+               ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+        printf("%% open                  %.3f %% \n",
+               ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+        // printf(
+        //"%% others                  %.3f %% \n",
+        //((float)others_total) / ((float)cycles_protocol_total) * 100);
         free(kCleartextPayload);
       }
     }
@@ -529,7 +702,8 @@ TEST(HPKETest, SIKE) {
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
   unsigned long long cycles_set_up_sender_total = 0,
                      cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
-                     cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+                     cycles_open_total = 0, cycles_protocol_total = 0,
+                     clean_protocol = 0;
   unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
       cycles_open, cycles_protocol;
 
@@ -553,7 +727,7 @@ TEST(HPKETest, SIKE) {
     for (const auto kdf : kAllKDFs) {
       SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
 
-      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), 1);
 
       for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
         printf("\nPlaintext Bytes    ->   %d\n", kk);
@@ -628,7 +802,7 @@ TEST(HPKETest, SIKE) {
             }
           }
         }
-                printf("set_up_sender           %llu CCs \n",
+        printf("set_up_sender           %llu CCs \n",
                cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
         printf("set_up_recipient        %llu CCs \n",
                cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
@@ -636,33 +810,33 @@ TEST(HPKETest, SIKE) {
                (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
         printf("open                    %.2f CCs \n",
                (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
-        //printf("others            %llu CCs \n",
-              // others_total / NUMBER_TESTS / 1000000);
+        // printf("others            %llu CCs \n",
+        // others_total / NUMBER_TESTS / 1000000);
         printf("end protocol            %llu CCs \n",
                cycles_protocol_total / NUMBER_TESTS / 1000000);
-        //Print the value of the 4 functions (no overhead for array initialization, etc)
-        clean_protocol = cycles_set_up_sender_total + cycles_set_up_recipient_total + cycles_seal_total + cycles_open_total;
+        // Print the value of the 4 functions (no overhead for array
+        // initialization, etc)
+        clean_protocol = cycles_set_up_sender_total +
+                         cycles_set_up_recipient_total + cycles_seal_total +
+                         cycles_open_total;
         printf("CLEAN protocol          %llu CCs \n",
                clean_protocol / NUMBER_TESTS / 1000000);
 
 
 
-
         printf("%% set_up_sender         %.3f %% \n",
-               ((float)(cycles_set_up_sender_total) /
-                ((float)clean_protocol) * 100));
+               ((float)(cycles_set_up_sender_total) / ((float)clean_protocol) *
+                100));
         printf("%% set_up_recipient      %.3f %% \n",
                ((float)cycles_set_up_recipient_total) /
                    ((float)clean_protocol) * 100);
-        printf(
-            "%% seal                  %.3f %% \n",
-            ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-        printf(
-            "%% open                  %.3f %% \n",
-            ((float)cycles_open_total) / ((float)clean_protocol) * 100);
-            //printf(
-            //"%% others                  %.3f %% \n",
-            //((float)others_total) / ((float)cycles_protocol_total) * 100);
+        printf("%% seal                  %.3f %% \n",
+               ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+        printf("%% open                  %.3f %% \n",
+               ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+        // printf(
+        //"%% others                  %.3f %% \n",
+        //((float)others_total) / ((float)cycles_protocol_total) * 100);
         free(kCleartextPayload);
       }
     }
@@ -682,7 +856,8 @@ TEST(HPKETest, Hybrid) {
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
   unsigned long long cycles_set_up_sender_total = 0,
                      cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
-                     cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+                     cycles_open_total = 0, cycles_protocol_total = 0,
+                     clean_protocol = 0;
   unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
       cycles_open, cycles_protocol;
 
@@ -700,7 +875,7 @@ TEST(HPKETest, Hybrid) {
     for (const auto kdf : kAllKDFs) {
       SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
 
-      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), 2);
 
       for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
         printf("\nPlaintext Bytes    ->   %d\n", kk);
@@ -785,7 +960,7 @@ TEST(HPKETest, Hybrid) {
             }
           }
         }
-                        printf("set_up_sender           %llu CCs \n",
+        printf("set_up_sender           %llu CCs \n",
                cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
         printf("set_up_recipient        %llu CCs \n",
                cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
@@ -793,33 +968,33 @@ TEST(HPKETest, Hybrid) {
                (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
         printf("open                    %.2f CCs \n",
                (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
-        //printf("others            %llu CCs \n",
-              // others_total / NUMBER_TESTS / 1000000);
+        // printf("others            %llu CCs \n",
+        // others_total / NUMBER_TESTS / 1000000);
         printf("end protocol            %llu CCs \n",
                cycles_protocol_total / NUMBER_TESTS / 1000000);
-        //Print the value of the 4 functions (no overhead for array initialization, etc)
-        clean_protocol = cycles_set_up_sender_total + cycles_set_up_recipient_total + cycles_seal_total + cycles_open_total;
+        // Print the value of the 4 functions (no overhead for array
+        // initialization, etc)
+        clean_protocol = cycles_set_up_sender_total +
+                         cycles_set_up_recipient_total + cycles_seal_total +
+                         cycles_open_total;
         printf("CLEAN protocol          %llu CCs \n",
                clean_protocol / NUMBER_TESTS / 1000000);
 
 
 
-
         printf("%% set_up_sender         %.3f %% \n",
-               ((float)(cycles_set_up_sender_total) /
-                ((float)clean_protocol) * 100));
+               ((float)(cycles_set_up_sender_total) / ((float)clean_protocol) *
+                100));
         printf("%% set_up_recipient      %.3f %% \n",
                ((float)cycles_set_up_recipient_total) /
                    ((float)clean_protocol) * 100);
-        printf(
-            "%% seal                  %.3f %% \n",
-            ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-        printf(
-            "%% open                  %.3f %% \n",
-            ((float)cycles_open_total) / ((float)clean_protocol) * 100);
-            //printf(
-            //"%% others                  %.3f %% \n",
-            //((float)others_total) / ((float)cycles_protocol_total) * 100);
+        printf("%% seal                  %.3f %% \n",
+               ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+        printf("%% open                  %.3f %% \n",
+               ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+        // printf(
+        //"%% others                  %.3f %% \n",
+        //((float)others_total) / ((float)cycles_protocol_total) * 100);
         free(kCleartextPayload);
       }
     }
@@ -840,7 +1015,8 @@ TEST(HPKETest, Kyber) {
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
   unsigned long long cycles_set_up_sender_total = 0,
                      cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
-                     cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+                     cycles_open_total = 0, cycles_protocol_total = 0,
+                     clean_protocol = 0;
   unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
       cycles_open, cycles_protocol;
 
@@ -863,7 +1039,7 @@ TEST(HPKETest, Kyber) {
     for (const auto kdf : kAllKDFs) {
       SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
 
-      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), 3);
 
       for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
         printf("\nPlaintext Bytes    ->   %d\n", kk);
@@ -891,7 +1067,7 @@ TEST(HPKETest, Kyber) {
               uint8_t enc[KYBER_CIPHERTEXTBYTES];
               size_t enc_len;
               cycles_set_up_sender = cpucycles();
-  
+
               ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
                   EVP_hpke_KYBER_hkdf_sha256(), kdf(), aead(), public_key_r,
@@ -933,13 +1109,13 @@ TEST(HPKETest, Kyber) {
 
               cycles_protocol_total += cpucycles() - cycles_protocol;
 
-             // Verify that decrypted message matches the original.
+              // Verify that decrypted message matches the original.
               ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
-              Bytes(kCleartextPayload, kk));
+                        Bytes(kCleartextPayload, kk));
             }
           }
         }
-                printf("set_up_sender           %llu CCs \n",
+        printf("set_up_sender           %llu CCs \n",
                cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
         printf("set_up_recipient        %llu CCs \n",
                cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
@@ -947,40 +1123,38 @@ TEST(HPKETest, Kyber) {
                (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
         printf("open                    %.2f CCs \n",
                (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
-        //printf("others            %llu CCs \n",
-              // others_total / NUMBER_TESTS / 1000000);
+        // printf("others            %llu CCs \n",
+        // others_total / NUMBER_TESTS / 1000000);
         printf("end protocol            %llu CCs \n",
                cycles_protocol_total / NUMBER_TESTS / 1000000);
-        //Print the value of the 4 functions (no overhead for array initialization, etc)
-        clean_protocol = cycles_set_up_sender_total + cycles_set_up_recipient_total + cycles_seal_total + cycles_open_total;
+        // Print the value of the 4 functions (no overhead for array
+        // initialization, etc)
+        clean_protocol = cycles_set_up_sender_total +
+                         cycles_set_up_recipient_total + cycles_seal_total +
+                         cycles_open_total;
         printf("CLEAN protocol          %llu CCs \n",
                clean_protocol / NUMBER_TESTS / 1000000);
 
 
 
-
         printf("%% set_up_sender         %.3f %% \n",
-               ((float)(cycles_set_up_sender_total) /
-                ((float)clean_protocol) * 100));
+               ((float)(cycles_set_up_sender_total) / ((float)clean_protocol) *
+                100));
         printf("%% set_up_recipient      %.3f %% \n",
                ((float)cycles_set_up_recipient_total) /
                    ((float)clean_protocol) * 100);
-        printf(
-            "%% seal                  %.3f %% \n",
-            ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-        printf(
-            "%% open                  %.3f %% \n",
-            ((float)cycles_open_total) / ((float)clean_protocol) * 100);
-            //printf(
-            //"%% others                  %.3f %% \n",
-            //((float)others_total) / ((float)cycles_protocol_total) * 100);
+        printf("%% seal                  %.3f %% \n",
+               ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+        printf("%% open                  %.3f %% \n",
+               ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+        // printf(
+        //"%% others                  %.3f %% \n",
+        //((float)others_total) / ((float)cycles_protocol_total) * 100);
         free(kCleartextPayload);
       }
     }
   }
 }
-
-
 
 
 
@@ -996,7 +1170,8 @@ TEST(HPKETest, x25519_Kyber) {
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
   unsigned long long cycles_set_up_sender_total = 0,
                      cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
-                     cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+                     cycles_open_total = 0, cycles_protocol_total = 0,
+                     clean_protocol = 0;
   unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
       cycles_open, cycles_protocol;
 
@@ -1008,18 +1183,35 @@ TEST(HPKETest, x25519_Kyber) {
 
   // Generate the recipient's keypair.
   ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
-  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN + KYBER_PUBLICKEYBYTES];
+
+
+  key->private_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_secretkeybytes(4))));
+    key->public_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_publickeybytes(4))));
+
+
+
+  ASSERT_TRUE(
+      EVP_HPKE_KEY_generate(key.get(), algorithm_kdf(4)));
+      uint8_t *public_key_r = (uint8_t *)malloc(sizeof(uint8_t)*(algorithm_publickeybytes(4)));
+
+     
+     // int size = algorithm_publickeybytes(4);
+  //uint8_t public_key_r[size];
   size_t public_key_r_len;
+    printf("8\n");
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
-                                      &public_key_r_len, sizeof(public_key_r)));
+                                      &public_key_r_len, algorithm_publickeybytes(4)));
+
+                                    
   // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
   for (const auto aead : kAllAEADs) {
     SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
     for (const auto kdf : kAllKDFs) {
       SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
 
-      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), 4);
 
       for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
         printf("\nPlaintext Bytes    ->   %d\n", kk);
@@ -1047,11 +1239,11 @@ TEST(HPKETest, x25519_Kyber) {
               uint8_t enc[KYBER_CIPHERTEXTBYTES + X25519_PUBLIC_VALUE_LEN];
               size_t enc_len;
               cycles_set_up_sender = cpucycles();
-  
+
               ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
-                  EVP_hpke_x25519_KYBER_hkdf_sha256(), kdf(), aead(), public_key_r,
-                  public_key_r_len, info.data(), info.size()));
+                  EVP_hpke_x25519_KYBER_hkdf_sha256(), kdf(), aead(),
+                  public_key_r, public_key_r_len, info.data(), info.size()));
               cycles_set_up_sender_total += cpucycles() - cycles_set_up_sender;
 
               // Set up the recipient.
@@ -1089,13 +1281,13 @@ TEST(HPKETest, x25519_Kyber) {
 
               cycles_protocol_total += cpucycles() - cycles_protocol;
 
-             // Verify that decrypted message matches the original.
+              // Verify that decrypted message matches the original.
               ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
-              Bytes(kCleartextPayload, kk));
+                        Bytes(kCleartextPayload, kk));
             }
           }
         }
-                printf("set_up_sender           %llu CCs \n",
+        printf("set_up_sender           %llu CCs \n",
                cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
         printf("set_up_recipient        %llu CCs \n",
                cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
@@ -1103,33 +1295,33 @@ TEST(HPKETest, x25519_Kyber) {
                (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
         printf("open                    %.2f CCs \n",
                (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
-        //printf("others            %llu CCs \n",
-              // others_total / NUMBER_TESTS / 1000000);
+        // printf("others            %llu CCs \n",
+        // others_total / NUMBER_TESTS / 1000000);
         printf("end protocol            %llu CCs \n",
                cycles_protocol_total / NUMBER_TESTS / 1000000);
-        //Print the value of the 4 functions (no overhead for array initialization, etc)
-        clean_protocol = cycles_set_up_sender_total + cycles_set_up_recipient_total + cycles_seal_total + cycles_open_total;
+        // Print the value of the 4 functions (no overhead for array
+        // initialization, etc)
+        clean_protocol = cycles_set_up_sender_total +
+                         cycles_set_up_recipient_total + cycles_seal_total +
+                         cycles_open_total;
         printf("CLEAN protocol          %llu CCs \n",
                clean_protocol / NUMBER_TESTS / 1000000);
 
 
 
-
         printf("%% set_up_sender         %.3f %% \n",
-               ((float)(cycles_set_up_sender_total) /
-                ((float)clean_protocol) * 100));
+               ((float)(cycles_set_up_sender_total) / ((float)clean_protocol) *
+                100));
         printf("%% set_up_recipient      %.3f %% \n",
                ((float)cycles_set_up_recipient_total) /
                    ((float)clean_protocol) * 100);
-        printf(
-            "%% seal                  %.3f %% \n",
-            ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-        printf(
-            "%% open                  %.3f %% \n",
-            ((float)cycles_open_total) / ((float)clean_protocol) * 100);
-            //printf(
-            //"%% others                  %.3f %% \n",
-            //((float)others_total) / ((float)cycles_protocol_total) * 100);
+        printf("%% seal                  %.3f %% \n",
+               ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+        printf("%% open                  %.3f %% \n",
+               ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+        // printf(
+        //"%% others                  %.3f %% \n",
+        //((float)others_total) / ((float)cycles_protocol_total) * 100);
         free(kCleartextPayload);
       }
     }
@@ -1137,13 +1329,18 @@ TEST(HPKETest, x25519_Kyber) {
 }
 
 
-#define HPKE_KDF_NAMESPACE(s) EVP_hpke_##s\_hkdf_sha256
-#define EVP_hpke_x25519_KYBER_hkdf_sha256 HPKE_KDF_NAMESPACE(s)
+
 
 // The test vectors used fixed sender ephemeral keys, while HPKE itself
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
 TEST(HPKETest, HPKERoundTrip) {
+  // execute Bob keygen
+  // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret
+  // key??
+  // Actually it is not Alice!! But why they do not have two differnet
+  // funcitons?!?!?! In real life how is Alice getting Bob's pk??
+
   const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
   const uint8_t info_b[] = {42, 42, 42};
   const uint8_t ad_a[] = {1, 2, 4, 8, 16};
@@ -1152,143 +1349,162 @@ TEST(HPKETest, HPKERoundTrip) {
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
   unsigned long long cycles_set_up_sender_total = 0,
                      cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
-                     cycles_open_total = 0, cycles_protocol_total = 0, clean_protocol = 0;
+                     cycles_open_total = 0, cycles_protocol_total = 0,
+                     clean_protocol = 0;
   unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
       cycles_open, cycles_protocol;
 
-  // execute Bob keygen
-  // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret
-  // key??
-  // Actually it is not Alice!! But why they do not have two differnet
-  // funcitons?!?!?! In real life how is Alice getting Bob's pk??
+  for (const int algorithm :
+       {0,1,2,3,4}) {
 
-  // Generate the recipient's keypair.
-  ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
-  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN + KYBER_PUBLICKEYBYTES];
-  size_t public_key_r_len;
-  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
-                                      &public_key_r_len, sizeof(public_key_r)));
-  // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
-  for (const auto aead : kAllAEADs) {
-    SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
-    for (const auto kdf : kAllKDFs) {
-      SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
+    // Generate the recipient's keypair.
 
-      print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
-
-      for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
-        printf("\nPlaintext Bytes    ->   %d\n", kk);
-        cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
-        cycles_seal_total = 0, cycles_open_total = 0, cycles_protocol_total = 0;
-        uint8_t *kCleartextPayload = (uint8_t *)malloc(sizeof(uint8_t) * kk);
-        init_plaintext(kCleartextPayload, kk);
-        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
-          // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
-          // public_key_r[X25519_PUBLIC_VALUE_LEN +
-          // SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
-
-          for (const Span<const uint8_t> &info : info_values) {
-            SCOPED_TRACE(Bytes(info));
-            for (const Span<const uint8_t> &ad : ad_values) {
-              // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
+    ScopedEVP_HPKE_KEY key;
+    key->private_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_secretkeybytes(algorithm))));
+    key->public_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_publickeybytes(algorithm))));
 
 
-              cycles_protocol = cpucycles();
+    ASSERT_TRUE(
+        EVP_HPKE_KEY_generate(key.get(), algorithm_kdf(algorithm)));
+        uint8_t * public_key_r = (uint8_t *)malloc(sizeof(uint8_t)*algorithm_publickeybytes(algorithm));
+    size_t public_key_r_len;
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(
+        key.get(), public_key_r, &public_key_r_len, algorithm_publickeybytes(algorithm)));
+    // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
+    for (const auto aead : kAllAEADs) {
+      SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
+      for (const auto kdf : kAllKDFs) {
+        SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
 
-              SCOPED_TRACE(Bytes(ad));
+        print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), algorithm);
 
-              // Set up the sender.
-              ScopedEVP_HPKE_CTX sender_ctx;
-              uint8_t enc[KYBER_CIPHERTEXTBYTES + X25519_PUBLIC_VALUE_LEN];
-              size_t enc_len;
-              cycles_set_up_sender = cpucycles();
-  
-              ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
-                  sender_ctx.get(), enc, &enc_len, sizeof(enc),
-                  EVP_hpke_x25519_KYBER_hkdf_sha256(), kdf(), aead(), public_key_r,
-                  public_key_r_len, info.data(), info.size()));
-              cycles_set_up_sender_total += cpucycles() - cycles_set_up_sender;
+        for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
+          printf("\nPlaintext Bytes    ->   %d\n", kk);
+          cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
+          cycles_seal_total = 0, cycles_open_total = 0,
+          cycles_protocol_total = 0;
+          uint8_t *kCleartextPayload = (uint8_t *)malloc(sizeof(uint8_t) * kk);
+          init_plaintext(kCleartextPayload, kk);
+          for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+            // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
+            // public_key_r[X25519_PUBLIC_VALUE_LEN +
+            // SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
 
-              // Set up the recipient.
-              ScopedEVP_HPKE_CTX recipient_ctx;
-              cycles_set_up_recipient = cpucycles();
-              ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
-                  recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
-                  info.data(), info.size()));
-              cycles_set_up_recipient_total +=
-                  cpucycles() - cycles_set_up_recipient;
+            for (const Span<const uint8_t> &info : info_values) {
+              SCOPED_TRACE(Bytes(info));
+              for (const Span<const uint8_t> &ad : ad_values) {
+                // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
 
-              // Have sender encrypt message for the recipient.
-              std::vector<uint8_t> ciphertext(
-                  kk + EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
-              size_t ciphertext_len;
-              cycles_seal = cpucycles();
-              ASSERT_TRUE(EVP_HPKE_CTX_seal(
-                  sender_ctx.get(), ciphertext.data(), &ciphertext_len,
-                  ciphertext.size(),
-                  reinterpret_cast<const uint8_t *>(kCleartextPayload), kk,
-                  ad.data(), ad.size()));
-              cycles_seal_total += cpucycles() - cycles_seal;
 
-              // Have recipient decrypt the message.
-              std::vector<uint8_t> cleartext(ciphertext.size());
-              size_t cleartext_len;
-              cycles_open = cpucycles();
-              ASSERT_TRUE(EVP_HPKE_CTX_open(
-                  recipient_ctx.get(), cleartext.data(), &cleartext_len,
-                  cleartext.size(), ciphertext.data(), ciphertext_len,
-                  ad.data(), ad.size()));
-              cycles_open_total += cpucycles() - cycles_open;
+                cycles_protocol = cpucycles();
 
-              // print_text(cleartext, kk);
+                SCOPED_TRACE(Bytes(ad));
 
-              cycles_protocol_total += cpucycles() - cycles_protocol;
+                // Set up the sender.
+                ScopedEVP_HPKE_CTX sender_ctx;
+                uint8_t * enc = (uint8_t *)malloc(sizeof(uint8_t)*algorithm_ciphertextbytes(algorithm));
 
-             // Verify that decrypted message matches the original.
-              ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
-              Bytes(kCleartextPayload, kk));
+                //uint8_t enc[algorithm_ciphertextbytes(algorithm)];
+                size_t enc_len;
+                cycles_set_up_sender = cpucycles();
+
+                ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
+                    sender_ctx.get(), enc, &enc_len, algorithm_ciphertextbytes(algorithm),
+                    algorithm_kdf(algorithm), kdf(), aead(),
+                    public_key_r, public_key_r_len, info.data(), info.size()));
+                cycles_set_up_sender_total +=
+                    cpucycles() - cycles_set_up_sender;
+
+                // Set up the recipient.
+                ScopedEVP_HPKE_CTX recipient_ctx;
+                cycles_set_up_recipient = cpucycles();
+                ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
+                    recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
+                    info.data(), info.size()));
+                cycles_set_up_recipient_total +=
+                    cpucycles() - cycles_set_up_recipient;
+
+                // Have sender encrypt message for the recipient.
+                std::vector<uint8_t> ciphertext(
+                    kk + EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
+                size_t ciphertext_len;
+                cycles_seal = cpucycles();
+                ASSERT_TRUE(EVP_HPKE_CTX_seal(
+                    sender_ctx.get(), ciphertext.data(), &ciphertext_len,
+                    ciphertext.size(),
+                    reinterpret_cast<const uint8_t *>(kCleartextPayload), kk,
+                    ad.data(), ad.size()));
+                cycles_seal_total += cpucycles() - cycles_seal;
+
+                // Have recipient decrypt the message.
+                std::vector<uint8_t> cleartext(ciphertext.size());
+                size_t cleartext_len;
+                cycles_open = cpucycles();
+                ASSERT_TRUE(EVP_HPKE_CTX_open(
+                    recipient_ctx.get(), cleartext.data(), &cleartext_len,
+                    cleartext.size(), ciphertext.data(), ciphertext_len,
+                    ad.data(), ad.size()));
+                cycles_open_total += cpucycles() - cycles_open;
+
+                // print_text(cleartext, kk);
+
+                cycles_protocol_total += cpucycles() - cycles_protocol;
+
+                // Verify that decrypted message matches the original.
+                ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
+                          Bytes(kCleartextPayload, kk));
+
+                free(enc);          
+
+              }
             }
           }
+          printf("set_up_sender           %llu CCs \n",
+                 cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
+          printf("set_up_recipient        %llu CCs \n",
+                 cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
+          printf("seal                    %.2f CCs \n",
+                 (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
+          printf("open                    %.2f CCs \n",
+                 (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
+          // printf("others            %llu CCs \n",
+          // others_total / NUMBER_TESTS / 1000000);
+          printf("end protocol            %llu CCs \n",
+                 cycles_protocol_total / NUMBER_TESTS / 1000000);
+          // Print the value of the 4 functions (no overhead for array
+          // initialization, etc)
+          clean_protocol = cycles_set_up_sender_total +
+                           cycles_set_up_recipient_total + cycles_seal_total +
+                           cycles_open_total;
+          printf("CLEAN protocol          %llu CCs \n",
+                 clean_protocol / NUMBER_TESTS / 1000000);
+
+
+
+          printf("%% set_up_sender         %.3f %% \n",
+                 ((float)(cycles_set_up_sender_total) /
+                  ((float)clean_protocol) * 100));
+          printf("%% set_up_recipient      %.3f %% \n",
+                 ((float)cycles_set_up_recipient_total) /
+                     ((float)clean_protocol) * 100);
+          printf("%% seal                  %.3f %% \n",
+                 ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+          printf("%% open                  %.3f %% \n",
+                 ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+          // printf(
+          //"%% others                  %.3f %% \n",
+          //((float)others_total) / ((float)cycles_protocol_total) * 100);
+          free(kCleartextPayload);
         }
-                printf("set_up_sender           %llu CCs \n",
-               cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
-        printf("set_up_recipient        %llu CCs \n",
-               cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
-        printf("seal                    %.2f CCs \n",
-               (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
-        printf("open                    %.2f CCs \n",
-               (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
-        //printf("others            %llu CCs \n",
-              // others_total / NUMBER_TESTS / 1000000);
-        printf("end protocol            %llu CCs \n",
-               cycles_protocol_total / NUMBER_TESTS / 1000000);
-        //Print the value of the 4 functions (no overhead for array initialization, etc)
-        clean_protocol = cycles_set_up_sender_total + cycles_set_up_recipient_total + cycles_seal_total + cycles_open_total;
-        printf("CLEAN protocol          %llu CCs \n",
-               clean_protocol / NUMBER_TESTS / 1000000);
-
-
-
-
-        printf("%% set_up_sender         %.3f %% \n",
-               ((float)(cycles_set_up_sender_total) /
-                ((float)clean_protocol) * 100));
-        printf("%% set_up_recipient      %.3f %% \n",
-               ((float)cycles_set_up_recipient_total) /
-                   ((float)clean_protocol) * 100);
-        printf(
-            "%% seal                  %.3f %% \n",
-            ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-        printf(
-            "%% open                  %.3f %% \n",
-            ((float)cycles_open_total) / ((float)clean_protocol) * 100);
-            //printf(
-            //"%% others                  %.3f %% \n",
-            //((float)others_total) / ((float)cycles_protocol_total) * 100);
-        free(kCleartextPayload);
       }
+          
     }
+    free(key->private_key);
+    free(key->public_key);
+    
+    free(public_key_r);
   }
 }
 

@@ -23,60 +23,43 @@
 
 #include "../internal.h"
 
+#include <openssl/cpucycles.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp_errors.h>
 #include <openssl/hkdf.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <openssl/cpucycles.h>
 
-//TEMPORARY!! WILL REMOVE AND CHANGE THE CODE IF WE WORK WITH AWS-LC/pq-crypto
-//NOTE: RETURN VALUES FROM SIKE SUBROUTINES DIFFER FOR sike and pq-crypto DIRS !!!! 
-//FOR NOW CHANGE THE CHECK TO if(sike_keypair(.., ..)<0), 
-//PREVIOUS WAS if(!sike_keypair(.., ..))
+// TEMPORARY!! WILL REMOVE AND CHANGE THE CODE IF WE WORK WITH AWS-LC/pq-crypto
+// NOTE: RETURN VALUES FROM SIKE SUBROUTINES DIFFER FOR sike and pq-crypto DIRS
+// !!!! FOR NOW CHANGE THE CHECK TO if(sike_keypair(.., ..)<0), PREVIOUS WAS
+// if(!sike_keypair(.., ..))
 #define sike_p434_r3_crypto_kem_keypair crypto_kem_keypair_SIKEp434
 #define sike_p434_r3_crypto_kem_enc crypto_kem_enc_SIKEp434
 #define sike_p434_r3_crypto_kem_dec crypto_kem_dec_SIKEp434
 
 
-// This file implements draft-irtf-cfrg-hpke-08.
-#if HPKE_VERSION_PQ == 0
-#define MAX_SEED_LEN X25519_PRIVATE_KEY_LEN
-#define MAX_SHARED_SECRET_LEN SHA256_DIGEST_LENGTH
-#endif
-#if HPKE_VERSION_PQ == 1
-#define MAX_SEED_LEN SIKE_P434_R3_PRIVATE_KEY_BYTES
-#define MAX_SHARED_SECRET_LEN SIKE_P434_R3_SHARED_SECRET_BYTES
-#endif
-#if HPKE_VERSION_PQ == 2
-#define MAX_SEED_LEN X25519_PRIVATE_KEY_LEN // I dont use seed for SIKE
-#define MAX_SHARED_SECRET_LEN SHA256_DIGEST_LENGTH + SIKE_P434_R3_SHARED_SECRET_BYTES
-#endif
-#if HPKE_VERSION_PQ == 3
-#define MAX_SEED_LEN X25519_PRIVATE_KEY_LEN // I dont use seed for KYBER
-#define MAX_SHARED_SECRET_LEN KYBER_SSBYTES
-#endif
-#if HPKE_VERSION_PQ == 4
-#define MAX_SEED_LEN X25519_PRIVATE_KEY_LEN // I dont use seed for KYBER
-#define MAX_SHARED_SECRET_LEN SHA256_DIGEST_LENGTH + KYBER_SSBYTES
-#endif
 
-//can keep like that or can also change -> can make another struct for a hpke_kem_st for hybrid specific ??? 
+
+
+
+// can keep like that or can also change -> can make another struct for a
+// hpke_kem_st for hybrid specific ???
 struct evp_hpke_kem_st {
   uint16_t id;
   size_t public_key_len;
   size_t private_key_len;
-  size_t seed_len; //THIS SEED SHOULD BE REMOVED IMO
+  size_t seed_len;  // THIS SEED SHOULD BE REMOVED IMO
 
-  //ADDING ECC+SIKE EXPRTIMENTAL
+  // ADDING ECC+SIKE EXPRTIMENTAL
 
   size_t PQ_public_key_len;
   size_t PQ_private_key_len;
   size_t PQ_ciphertext_len;
   size_t PQ_shared_secret_len;
 
-  
+
   int (*init_key)(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                   size_t priv_key_len);
   int (*generate_key)(EVP_HPKE_KEY *key);
@@ -136,8 +119,7 @@ static int hpke_labeled_expand(const EVP_MD *hkdf_md, uint8_t *out_key,
                                const uint8_t *info, size_t info_len) {
   // labeledInfo = concat(I2OSP(L, 2), "HPKE-v1", suite_id, label, info)
   CBB labeled_info;
-  int ok = CBB_init(&labeled_info, 0) &&
-           CBB_add_u16(&labeled_info, out_len) &&
+  int ok = CBB_init(&labeled_info, 0) && CBB_add_u16(&labeled_info, out_len) &&
            add_label_string(&labeled_info, kHpkeVersionId) &&
            CBB_add_bytes(&labeled_info, suite_id, suite_id_len) &&
            add_label_string(&labeled_info, label) &&
@@ -183,7 +165,7 @@ static int x25519_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
   return 1;
 }
 
-
+/*
 static int SIKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                            size_t priv_key_len) {
 
@@ -196,11 +178,12 @@ static int SIKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
   //OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
   unsigned long long cycles1, cycles2;
   cycles1=cpucycles();
-  //sike_p434_r3_crypto_kem_keypair(key->public_key, (unsigned char *) key->private_key);
-  crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *) key->private_key);
-  //crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *) key->private_key);
-  cycles2=cpucycles();
-  printf("crypto_keypair %llu \n", (cycles2-cycles1));
+  //sike_p434_r3_crypto_kem_keypair(key->public_key, (unsigned char *)
+key->private_key); crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char
+*) key->private_key);
+  //crypto_kem_keypair_SIKEp434(key->public_key, (unsigned char *)
+key->private_key); cycles2=cpucycles(); printf("crypto_keypair %llu \n",
+(cycles2-cycles1));
 
   return 1;
 }
@@ -216,82 +199,100 @@ static int Kyber_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
   crypto_kem_keypair_kyber(key->public_key, (unsigned char *) key->private_key);
   return 1;
 }
-
+*/
 
 
 static int Hybrid_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                            size_t priv_key_len) {
-
-   
-  if (priv_key_len != key->kem->private_key_len + key->kem->PQ_private_key_len) {
+  if (priv_key_len !=
+      key->kem->private_key_len + key->kem->PQ_private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  //I want to change that to NOT PASSING THE SECRET KEY!!!
-  OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
-  X25519_public_from_private(key->public_key, priv_key);
 
-  //OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
-  switch(HPKE_VERSION_PQ){
-    case 2:
-          sike_p434_r3_crypto_kem_keypair(key->public_key + key->kem->public_key_len, (unsigned char *) key->private_key + key->kem->private_key_len);
-    break;
-    case 4:
-    crypto_kem_keypair_kyber(key->public_key + key->kem->public_key_len, (unsigned char *) key->private_key + key->kem->private_key_len);
-    break;
+  // I want to change that to NOT PASSING THE SECRET KEY!!!
+  if (key->kem->id == 0x0020 || key->kem->id == 0x0022 ||
+      key->kem->id == 0x0024) {
+    OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
+    X25519_public_from_private(key->public_key, priv_key);
+  }
+
+  // OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
+  switch (key->kem->id) {
+    case 0x0022:
+    case 0x0021:
+      sike_p434_r3_crypto_kem_keypair(
+          key->public_key + key->kem->public_key_len,
+          (unsigned char *)key->private_key + key->kem->private_key_len);
+      break;
+    case 0x0024:
+    case 0x0023:
+      crypto_kem_keypair_kyber(
+          key->public_key + key->kem->public_key_len,
+          (unsigned char *)key->private_key + key->kem->private_key_len);
+      break;
     default:
-    //SHOULD COMPLETE
-    break;
+      // SHOULD COMPLETE
+      break;
   }
   return 1;
 }
 
 
 
-
 static int x25519_generate_key(EVP_HPKE_KEY *key) {
-    //Benchmarking vars
+  // Benchmarking vars
   X25519_keypair(key->public_key, key->private_key);
   return 1;
 }
 
-
+/*
 static int SIKE_generate_key(EVP_HPKE_KEY *key) {
 
   //unsigned long long cycles1, cycles2;
   //cycles1=cpucycles();
-  sike_p434_r3_crypto_kem_keypair((unsigned char *)key->public_key , (unsigned char *)key->private_key);
+  sike_p434_r3_crypto_kem_keypair((unsigned char *)key->public_key , (unsigned
+char *)key->private_key);
   //cycles2=cpucycles();
   //printf("crypto_keypair %llu \n", (cycles2-cycles1));
-  
+
   return 1;
 }
 
 static int Kyber_generate_key(EVP_HPKE_KEY *key) {
 
-  crypto_kem_keypair_kyber((unsigned char *)key->public_key , (unsigned char *)key->private_key);
-  
+  crypto_kem_keypair_kyber((unsigned char *)key->public_key , (unsigned char
+*)key->private_key);
+
   return 1;
 }
-
+*/
 
 
 static int Hybrid_generate_key(EVP_HPKE_KEY *key) {
-  X25519_keypair(key->public_key, key->private_key);
-  switch(HPKE_VERSION_PQ){
-    case 2:
-          sike_p434_r3_crypto_kem_keypair((unsigned char *)key->public_key + key->kem->public_key_len, (unsigned char *) key->private_key + key->kem->private_key_len);
-    break;
-    case 4:
-          crypto_kem_keypair_kyber((unsigned char *)key->public_key + key->kem->public_key_len, (unsigned char *) key->private_key + key->kem->private_key_len);
-    break;
+  if (key->kem->id == 0x0020 || key->kem->id == 0x0022 ||
+      key->kem->id == 0x0024) {
+    X25519_keypair(key->public_key, key->private_key);
+  }
+  switch (key->kem->id) {
+    case 0x0022:
+    case 0x0021:
+      sike_p434_r3_crypto_kem_keypair(
+          (unsigned char *)key->public_key + key->kem->public_key_len,
+          (unsigned char *)key->private_key + key->kem->private_key_len);
+      break;
+    case 0x0024:
+    case 0x0023:
+      crypto_kem_keypair_kyber(
+          (unsigned char *)key->public_key + key->kem->public_key_len,
+          (unsigned char *)key->private_key + key->kem->private_key_len);
+      break;
     default:
-    //SHOULD COMPLETE
-    break;
+      // SHOULD COMPLETE
+      break;
   }
   return 1;
-
 }
 
 
@@ -334,15 +335,13 @@ static int x25519_encap_with_seed(
 
 
 
-
-
-
+/*
 static int SIKE_encap_with_seed(
     const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
     size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
     size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *seed, size_t seed_len) {
-      
+
   if (max_enc < SIKE_P434_R3_PUBLIC_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
 
@@ -355,10 +354,10 @@ static int SIKE_encap_with_seed(
 
   uint8_t ss_sike[SIKE_P434_R3_SHARED_SECRET_BYTES];
   //uint8_t ct_sike[SIKE_P434_R3_CIPHERTEXT_BYTES];
-  //if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES || sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key)<0) {
-  if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
-    return 0;
+  //if (peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES ||
+sike_p434_r3_crypto_kem_enc(out_enc, ss_sike, peer_public_key)<0) { if
+(peer_public_key_len != SIKE_P434_R3_PUBLIC_KEY_BYTES) { OPENSSL_PUT_ERROR(EVP,
+EVP_R_INVALID_PEER_KEY); return 0;
   }
   //unsigned long long cycles1, cycles2;
   //cycles1=cpucycles();
@@ -375,15 +374,14 @@ static int SIKE_encap_with_seed(
   OPENSSL_memcpy(kem_context, out_enc, SIKE_P434_R3_PUBLIC_KEY_BYTES);
   OPENSSL_memcpy(kem_context + SIKE_P434_R3_PUBLIC_KEY_BYTES, peer_public_key,
                  SIKE_P434_R3_PUBLIC_KEY_BYTES);
-  
+
   if (!dhkem_extract_and_expand(kem->id, EVP_sha256(), out_shared_secret,
-                                SIKE_P434_R3_SHARED_SECRET_BYTES, ss_sike, sizeof(ss_sike),
-                                kem_context, sizeof(kem_context))) {
-    return 0;
+                                SIKE_P434_R3_SHARED_SECRET_BYTES, ss_sike,
+sizeof(ss_sike), kem_context, sizeof(kem_context))) { return 0;
   }
-  
+
   *out_enc_len = SIKE_P434_R3_CIPHERTEXT_BYTES;
-  *out_shared_secret_len = SIKE_P434_R3_SHARED_SECRET_BYTES;   
+  *out_shared_secret_len = SIKE_P434_R3_SHARED_SECRET_BYTES;
   return 1;
 }
 
@@ -395,7 +393,7 @@ static int Kyber_encap_with_seed(
     size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
     size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *seed, size_t seed_len) {
-   
+
 
   if (max_enc < KYBER_CIPHERTEXTBYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
@@ -424,87 +422,110 @@ static int Kyber_encap_with_seed(
   OPENSSL_memcpy(kem_context, out_enc, KYBER_PUBLICKEYBYTES);
   OPENSSL_memcpy(kem_context + KYBER_PUBLICKEYBYTES, peer_public_key,
                  KYBER_PUBLICKEYBYTES);
-  
+
   if (!dhkem_extract_and_expand(kem->id, EVP_sha256(), out_shared_secret,
                                 KYBER_SSBYTES, ss_kyber, sizeof(ss_kyber),
                                 kem_context, sizeof(kem_context))) {
     return 0;
   }
-  
+
   *out_enc_len = KYBER_CIPHERTEXTBYTES;
-  *out_shared_secret_len = KYBER_SSBYTES;  
+  *out_shared_secret_len = KYBER_SSBYTES;
   return 1;
 }
-
+*/
 
 static int Hybrid_encap_with_seed(
     const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
     size_t *out_shared_secret_len, uint8_t *out_enc, size_t *out_enc_len,
     size_t max_enc, const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *seed, size_t seed_len) { 
-
+    const uint8_t *seed, size_t seed_len) {
   if (max_enc < kem->public_key_len + kem->PQ_ciphertext_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
   }
 
-  if (seed_len != kem->private_key_len) {
+  if ((kem->id == 0x0020 || kem->id == 0x0022 ||
+      kem->id == 0x0024) && seed_len != kem->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  //create the public key for ECC
-  X25519_public_from_private(out_enc, seed);
+  // create the public key for ECC
+  if (kem->id == 0x0020 || kem->id == 0x0022 ||
+      kem->id == 0x0024) {
+    X25519_public_from_private(out_enc, seed);
+  }
 
   // create the shared secret from ECC
-  uint8_t *hybrid_ss = malloc(sizeof(uint8_t)*(kem->public_key_len + kem->PQ_shared_secret_len));
-  if (peer_public_key_len != kem->public_key_len + kem->PQ_public_key_len ||
-      !X25519(hybrid_ss, seed, peer_public_key)) {
+  uint8_t *hybrid_ss = malloc(
+      sizeof(uint8_t) * (kem->public_key_len + kem->PQ_shared_secret_len));
+  if (peer_public_key_len != kem->public_key_len + kem->PQ_public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
+  if (kem->id == 0x0020 || kem->id == 0x0022 ||
+      kem->id == 0x0024) {
+    if (!X25519(hybrid_ss, seed, peer_public_key)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+      return 0;
+    }
+  }
 
-//add space for the SIKE pk's to the kem_context
-
-  uint8_t *kem_context = malloc(sizeof(uint8_t)*(2 * kem->public_key_len + 2 * kem->PQ_public_key_len));
+  // add space for the SIKE pk's to the kem_context
+//unsigned long long cycles;
+  uint8_t *kem_context = malloc(
+      sizeof(uint8_t) * (2 * kem->public_key_len + 2 * kem->PQ_public_key_len));
   OPENSSL_memcpy(kem_context, out_enc, kem->public_key_len);
   OPENSSL_memcpy(kem_context + kem->public_key_len, peer_public_key,
                  kem->public_key_len);
 
 
-  //uint8_t ct_sike[SIKE_P434_R3_CIPHERTEXT_BYTES];
+  // uint8_t ct_sike[SIKE_P434_R3_CIPHERTEXT_BYTES];
   if (peer_public_key_len != kem->public_key_len + kem->PQ_public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
 
   int enc_res = 0;
-  switch(HPKE_VERSION_PQ){
-    case 2:
-         enc_res = sike_p434_r3_crypto_kem_enc(out_enc + kem->public_key_len, hybrid_ss + kem->public_key_len, peer_public_key + kem->public_key_len);
-    break;
-    case 4:
-         enc_res = crypto_kem_enc_kyber(out_enc + kem->public_key_len, hybrid_ss + kem->public_key_len, peer_public_key + kem->public_key_len);
-    break;
+  switch (kem->id) {
+    case 0x0022:
+    case 0x0021:
+      enc_res = sike_p434_r3_crypto_kem_enc(
+          out_enc + kem->public_key_len, hybrid_ss + kem->public_key_len,
+          peer_public_key + kem->public_key_len);
+      break;
+    case 0x0024:
+    case 0x0023:
+    //cycles = cpucycles();
+      enc_res = crypto_kem_enc_kyber(out_enc + kem->public_key_len,
+                                     hybrid_ss + kem->public_key_len,
+                                     peer_public_key + kem->public_key_len);
+
+      //cycles = cpucycles() - cycles;
+      //printf("CYCLES ONLY KYBER ENCAPSULATION %llu \n ", cycles);                               
+      break;
     default:
-    //SHOULD COMPLETE
-    break;
+      // SHOULD COMPLETE
+      break;
   }
 
-  if (enc_res<0) {
+  if (enc_res < 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-  
-  OPENSSL_memcpy(kem_context + 2 * kem->public_key_len, out_enc + kem->public_key_len , kem->PQ_public_key_len);
-  OPENSSL_memcpy(kem_context + 2 * kem->public_key_len + kem->PQ_public_key_len, peer_public_key + kem->public_key_len,
-                 kem->PQ_public_key_len);
 
-               
-  
+  OPENSSL_memcpy(kem_context + 2 * kem->public_key_len,
+                 out_enc + kem->public_key_len, kem->PQ_public_key_len);
+  OPENSSL_memcpy(kem_context + 2 * kem->public_key_len + kem->PQ_public_key_len,
+                 peer_public_key + kem->public_key_len, kem->PQ_public_key_len);
+
+
+
   if (!dhkem_extract_and_expand(kem->id, EVP_sha256(), out_shared_secret,
-                                kem->public_key_len + kem->PQ_shared_secret_len, hybrid_ss, sizeof(hybrid_ss),
-                                kem_context, sizeof(kem_context))) {
+                                kem->public_key_len + kem->PQ_shared_secret_len,
+                                hybrid_ss, sizeof(hybrid_ss), kem_context,
+                                sizeof(kem_context))) {
     return 0;
   }
 
@@ -515,7 +536,6 @@ static int Hybrid_encap_with_seed(
   free(kem_context);
   return 1;
 }
-
 
 
 
@@ -545,7 +565,7 @@ static int x25519_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
 
 
 
-
+/*
 static int SIKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
                         size_t *out_shared_secret_len, const uint8_t *enc,
                         size_t enc_len) {
@@ -575,9 +595,8 @@ static int SIKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
   OPENSSL_memcpy(kem_context + SIKE_P434_R3_PUBLIC_KEY_BYTES, key->public_key,
                  SIKE_P434_R3_PUBLIC_KEY_BYTES);
   if (!dhkem_extract_and_expand(key->kem->id, EVP_sha256(), out_shared_secret,
-                                SIKE_P434_R3_SHARED_SECRET_BYTES, ss_sike, sizeof(ss_sike),
-                                kem_context, sizeof(kem_context))) {
-    return 0;
+                                SIKE_P434_R3_SHARED_SECRET_BYTES, ss_sike,
+sizeof(ss_sike), kem_context, sizeof(kem_context))) { return 0;
   }
 
   *out_shared_secret_len = SIKE_P434_R3_SHARED_SECRET_BYTES;
@@ -619,60 +638,83 @@ static int Kyber_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
   *out_shared_secret_len = KYBER_SSBYTES;
   return 1;
 }
+*/
 
 
 static int Hybrid_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
                         size_t *out_shared_secret_len, const uint8_t *enc,
                         size_t enc_len) {
+  uint8_t *hybrid_ss =
+      malloc(sizeof(uint8_t) *
+             (key->kem->public_key_len + key->kem->PQ_shared_secret_len));
 
 
-  uint8_t *hybrid_ss= malloc(sizeof(uint8_t)*(key->kem->public_key_len + key->kem->PQ_shared_secret_len));
-  if (enc_len != key->kem->public_key_len + key->kem->PQ_ciphertext_len||
-      !X25519(hybrid_ss, key->private_key, enc)) {
+  if (enc_len != key->kem->public_key_len + key->kem->PQ_ciphertext_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-  uint8_t *kem_context= malloc(sizeof(uint8_t)*(2 * key->kem->public_key_len + 2 * key->kem->PQ_public_key_len));
+  if (key->kem->id == 0x0020 || key->kem->id == 0x0022 ||
+      key->kem->id == 0x0024) {
+    if (!X25519(hybrid_ss, key->private_key, enc)) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+        return 0;
+      }
+      }
+  
+  uint8_t *kem_context =
+      malloc(sizeof(uint8_t) *
+             (2 * key->kem->public_key_len + 2 * key->kem->PQ_public_key_len));
   OPENSSL_memcpy(kem_context, enc, key->kem->public_key_len);
   OPENSSL_memcpy(kem_context + key->kem->public_key_len, key->public_key,
                  key->kem->public_key_len);
 
-  
+
   int enc_res = 0;
-  switch(HPKE_VERSION_PQ){
-    case 2:
-         enc_res = sike_p434_r3_crypto_kem_dec(hybrid_ss + key->kem->public_key_len, enc + key->kem->public_key_len, key->private_key + key->kem->private_key_len);
-    break;
-    case 4:
-          enc_res = crypto_kem_dec_kyber(hybrid_ss + key->kem->public_key_len, enc + key->kem->public_key_len, key->private_key + key->kem->private_key_len);
-    break;
+  switch (key->kem->id) {
+    case 0x0022:
+    case 0x0021:
+      enc_res = sike_p434_r3_crypto_kem_dec(
+          hybrid_ss + key->kem->public_key_len, enc + key->kem->public_key_len,
+          key->private_key + key->kem->private_key_len);
+      break;
+    case 0x0023:
+    case 0x0024:
+      enc_res = crypto_kem_dec_kyber(
+          hybrid_ss + key->kem->public_key_len, enc + key->kem->public_key_len,
+          key->private_key + key->kem->private_key_len);
+      break;
     default:
-    //SHOULD COMPLETE
-    break;
+      // SHOULD COMPLETE
+      break;
   }
 
 
-  if (enc_res<0) {
+  if (enc_res < 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
 
-  OPENSSL_memcpy(kem_context + 2 * key->kem->public_key_len, enc + key->kem->public_key_len, key->kem->PQ_public_key_len);
-  OPENSSL_memcpy(kem_context + 2 * key->kem->public_key_len + key->kem->PQ_public_key_len, key->public_key + key->kem->public_key_len,
-                 key->kem->PQ_public_key_len);
-  if (!dhkem_extract_and_expand(key->kem->id, EVP_sha256(), out_shared_secret,
-                                key->kem->public_key_len + key->kem->PQ_shared_secret_len, hybrid_ss, sizeof(hybrid_ss),
-                                kem_context, sizeof(kem_context))) {
+  OPENSSL_memcpy(kem_context + 2 * key->kem->public_key_len,
+                 enc + key->kem->public_key_len, key->kem->PQ_public_key_len);
+  OPENSSL_memcpy(
+      kem_context + 2 * key->kem->public_key_len + key->kem->PQ_public_key_len,
+      key->public_key + key->kem->public_key_len, key->kem->PQ_public_key_len);
+  if (!dhkem_extract_and_expand(
+          key->kem->id, EVP_sha256(), out_shared_secret,
+          key->kem->public_key_len + key->kem->PQ_shared_secret_len, hybrid_ss,
+          sizeof(hybrid_ss), kem_context, sizeof(kem_context))) {
     return 0;
   }
-/*
-for (int i =  0 ; i < 2* X25519_PUBLIC_VALUE_LEN + 2* SIKE_P434_R3_PUBLIC_KEY_BYTES; i++)
-  {
-    printf("SIKE_ss_receiver %x \n", (kem_context)[i]);
-  }
-  */
+  /*
+  for (int i =  0 ; i < 2* X25519_PUBLIC_VALUE_LEN + 2*
+  SIKE_P434_R3_PUBLIC_KEY_BYTES; i++)
+    {
+      printf("SIKE_ss_receiver %x \n", (kem_context)[i]);
+    }
+    */
 
-  *out_shared_secret_len = SHA256_DIGEST_LENGTH + SIKE_P434_R3_SHARED_SECRET_BYTES;
+  *out_shared_secret_len =
+      SHA256_DIGEST_LENGTH + SIKE_P434_R3_SHARED_SECRET_BYTES;
 
   free(hybrid_ss);
   free(kem_context);
@@ -685,9 +727,9 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
       /*id=*/EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
       /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
       /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
-      /*seed_len=*/X25519_PRIVATE_KEY_LEN, //REMOVE IT!!
+      /*seed_len=*/X25519_PRIVATE_KEY_LEN,  // REMOVE IT!!
 
-      //USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
+      // USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
       /*PQ_public_key_len=*/0,
       /*PQ_private_key_len=*/0,
       /*PQ_ciphertext_len=*/0,
@@ -703,37 +745,38 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
 
 
 
-//EXPERIMENTAL SIKE
+// EXPERIMENTAL SIKE
 const EVP_HPKE_KEM *EVP_hpke_SIKE_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
       /*id=*/EVP_HPKE_PQKEM_SIKE_HKDF_SHA256,
-      //USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
+      // USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
       /*public_key_len=*/0,
       /*private_key_len=*/0,
-      /*seed_len=*/SIKE_P434_R3_PRIVATE_KEY_BYTES, //REMOVE !!
+      /*seed_len=*/SIKE_P434_R3_PRIVATE_KEY_BYTES,  // REMOVE !!
 
       /*PQ_public_key_len=*/SIKE_P434_R3_PUBLIC_KEY_BYTES,
-      /*PQ_private_key_len=*/SIKE_P434_R3_PRIVATE_KEY_BYTES, 
+      /*PQ_private_key_len=*/SIKE_P434_R3_PRIVATE_KEY_BYTES,
       /*PQ_ciphertext_len=*/SIKE_P434_R3_CIPHERTEXT_BYTES,
       /*PQ_shared_secret_len=*/SIKE_P434_R3_SHARED_SECRET_BYTES,
 
-      SIKE_init_key,
-      SIKE_generate_key,
-      SIKE_encap_with_seed,
-      SIKE_decap,
+      Hybrid_init_key,
+      Hybrid_generate_key,
+      Hybrid_encap_with_seed,
+      Hybrid_decap,
   };
   return &kKEM;
 }
 
-//EXPERIMENTAL HYBRID X25519+SIKE
+// EXPERIMENTAL HYBRID X25519+SIKE
 const EVP_HPKE_KEM *EVP_hpke_x25519_SIKE_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
-      /*id=*/EVP_HPKE_KEM_X25519_SIKE_HKDF_SHA256, //not sure exactly what is that 
+      /*id=*/EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256,  // not sure exactly what is
+                                                     // that
       /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
       /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
-      /*seed_len=*/X25519_PRIVATE_KEY_LEN, //REMOVE !!
+      /*seed_len=*/X25519_PRIVATE_KEY_LEN,  // REMOVE !!
 
-      //USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
+      // USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
       /*PQ_public_key_len=*/SIKE_P434_R3_PUBLIC_KEY_BYTES,
       /*PQ_private_key_len=*/SIKE_P434_R3_PRIVATE_KEY_BYTES,
       /*PQ_ciphertext_len=*/SIKE_P434_R3_CIPHERTEXT_BYTES,
@@ -748,43 +791,43 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_SIKE_hkdf_sha256(void) {
 }
 
 
-//EXPERIMENTAL Kyber
+// EXPERIMENTAL Kyber
 const EVP_HPKE_KEM *EVP_hpke_KYBER_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
       /*id=*/EVP_HPKE_PQKEM_KYBER_HKDF_SHA256,
-      //USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
+      // USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
       /*public_key_len=*/0,
       /*private_key_len=*/0,
-      /*seed_len=*/KYBER_SECRETKEYBYTES, // REMOVE !!!!
+      /*seed_len=*/KYBER_SECRETKEYBYTES,  // REMOVE !!!!
       /*PQ_public_key_len=*/KYBER_PUBLICKEYBYTES,
       /*PQ_private_key_len=*/X25519_PRIVATE_KEY_LEN,
 
 
       /*PQ_ciphertext_len=*/KYBER_CIPHERTEXTBYTES,
       /*PQ_shared_secret_len=*/KYBER_SSBYTES,
-      
-      Kyber_init_key,
-      Kyber_generate_key,
-      Kyber_encap_with_seed,
-      Kyber_decap,
+
+      Hybrid_init_key,
+      Hybrid_generate_key,
+      Hybrid_encap_with_seed,
+      Hybrid_decap,
   };
   return &kKEM;
 }
 
-//EXPERIMENTAL Kyber
+// EXPERIMENTAL Kyber
 const EVP_HPKE_KEM *EVP_hpke_x25519_KYBER_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
-      /*id=*/EVP_HPKE_PQKEM_KYBER_HKDF_SHA256,
-      //USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
+      /*id=*/EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256,
+      // USING NEW STRUCT FOR THE KEM -> WITH 2 MORE LENGTHS OF THE KEYS
       /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
       /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
-      /*seed_len=*/X25519_PRIVATE_KEY_LEN, // REMOVE !!!!
-      
+      /*seed_len=*/X25519_PRIVATE_KEY_LEN,  // REMOVE !!!!
+
       /*PQ_public_key_len=*/KYBER_PUBLICKEYBYTES,
       /*PQ_private_key_len=*/KYBER_SECRETKEYBYTES,
       /*PQ_ciphertext_len=*/KYBER_CIPHERTEXTBYTES,
       /*PQ_shared_secret_len=*/KYBER_SSBYTES,
-      
+
       Hybrid_init_key,
       Hybrid_generate_key,
       Hybrid_encap_with_seed,
@@ -795,12 +838,10 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_KYBER_hkdf_sha256(void) {
 
 
 
-
-
 uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem) { return kem->id; }
 
 void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key) {
-  OPENSSL_memset(key, 0, sizeof(EVP_HPKE_KEY));
+  //OPENSSL_memset((void *)key->kem, 0, sizeof(EVP_HPKE_KEM));
 }
 
 void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key) {
@@ -840,18 +881,19 @@ const EVP_HPKE_KEM *EVP_HPKE_KEY_kem(const EVP_HPKE_KEY *key) {
 }
 
 int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key, uint8_t *out,
-                            size_t *out_len, size_t max_out) {
+                            size_t *out_len, size_t max_out) {              
   if (max_out < key->kem->public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
   }
-  OPENSSL_memcpy(out, key->public_key, key->kem->public_key_len + key->kem->PQ_public_key_len);
+  OPENSSL_memcpy(out, key->public_key,
+                 key->kem->public_key_len + key->kem->PQ_public_key_len);
   *out_len = key->kem->public_key_len + key->kem->PQ_public_key_len;
   return 1;
 }
 
 int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key, uint8_t *out,
-                            size_t *out_len, size_t max_out) {
+                             size_t *out_len, size_t max_out) {
   if (max_out < key->kem->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
@@ -909,8 +951,7 @@ static int hpke_build_suite_id(const EVP_HPKE_CTX *ctx,
   int ret = CBB_init_fixed(&cbb, out, HPKE_SUITE_ID_LEN) &&
             add_label_string(&cbb, "HPKE") &&
             CBB_add_u16(&cbb, EVP_HPKE_DHKEM_X25519_HKDF_SHA256) &&
-            CBB_add_u16(&cbb, ctx->kdf->id) &&
-            CBB_add_u16(&cbb, ctx->aead->id);
+            CBB_add_u16(&cbb, ctx->kdf->id) && CBB_add_u16(&cbb, ctx->aead->id);
   CBB_cleanup(&cbb);
   return ret;
 }
@@ -1011,13 +1052,14 @@ int EVP_HPKE_CTX_setup_sender(EVP_HPKE_CTX *ctx, uint8_t *out_enc,
                               const uint8_t *peer_public_key,
                               size_t peer_public_key_len, const uint8_t *info,
                               size_t info_len) {
-                               
-  uint8_t seed[MAX_SEED_LEN];
+  uint8_t *seed = (uint8_t *)malloc(sizeof(uint8_t) * kem->seed_len);
   RAND_bytes(seed, kem->seed_len);
-  
-      return EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
+
+  int ret_value = EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
       ctx, out_enc, out_enc_len, max_enc, kem, kdf, aead, peer_public_key,
       peer_public_key_len, info, info_len, seed, kem->seed_len);
+  free(seed);
+  return ret_value;
 }
 
 int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
@@ -1027,52 +1069,60 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     const uint8_t *info, size_t info_len, const uint8_t *seed,
     size_t seed_len) {
   EVP_HPKE_CTX_zero(ctx);
-  
+
   ctx->is_sender = 1;
   ctx->kdf = kdf;
   ctx->aead = aead;
 
-   uint8_t *shared_secret;
-   size_t shared_secret_len;
-  
 
-  switch (HPKE_VERSION_PQ)
-  {
-  case 0:
-    //classical crytpo ECC
-    shared_secret=malloc(sizeof(uint8_t)*X25519_SHARED_KEY_LEN);
-   
-    break;
-  case 1:
-  //PQ crypto experimental SIKE
-    shared_secret=malloc(sizeof(uint8_t)*SIKE_P434_R3_SHARED_SECRET_BYTES);
-   
-    break;
-  case 2: 
-  case 4: 
-  //Hybrid crypto experimental ECC+SIKE
-    shared_secret=malloc(sizeof(uint8_t)*(kem->PQ_shared_secret_len + kem->public_key_len));
-   
-    break;
-    case 3:
-  //Hybrid crypto experimental ECC+SIKE
-    shared_secret=malloc(sizeof(uint8_t)*(KYBER_SSBYTES));
-   
-    break;
-  
-  default:
-  ///SHOULD ADD HERE!!!
-    break;
-  }
+  // May change later to add the value of the shared secret len x25519 (or other
+  // ECC if added later ?? )
+  uint8_t *shared_secret = (uint8_t *)malloc(
+      sizeof(uint8_t) * kem->public_key_len + kem->PQ_shared_secret_len);
+  size_t shared_secret_len;
+
+  /*
+    switch (HPKE_VERSION_PQ)
+    {
+    case 0:
+      //classical crytpo ECC
+      shared_secret=malloc(sizeof(uint8_t)*X25519_SHARED_KEY_LEN);
+
+      break;
+    case 1:
+    //PQ crypto experimental SIKE
+      shared_secret=malloc(sizeof(uint8_t)*SIKE_P434_R3_SHARED_SECRET_BYTES);
+
+      break;
+    case 2:
+    case 4:
+    //Hybrid crypto experimental ECC+SIKE
+      shared_secret=malloc(sizeof(uint8_t)*(kem->PQ_shared_secret_len +
+    kem->public_key_len));
+
+      break;
+      case 3:
+    //Hybrid crypto experimental ECC+SIKE
+      shared_secret=malloc(sizeof(uint8_t)*(KYBER_SSBYTES));
+
+      break;
+
+    default:
+    ///SHOULD ADD HERE!!!
+      break;
+    }
+    */
 
   if (!kem->encap_with_seed(kem, shared_secret, &shared_secret_len, out_enc,
                             out_enc_len, max_enc, peer_public_key,
                             peer_public_key_len, seed, seed_len) ||
       !hpke_key_schedule(ctx, shared_secret, shared_secret_len, info,
-                         info_len)) {               
+                         info_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
+    free(shared_secret);
     return 0;
   }
+  free(shared_secret);
   return 1;
 }
 
@@ -1085,14 +1135,18 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
   ctx->is_sender = 0;
   ctx->kdf = kdf;
   ctx->aead = aead;
-  uint8_t shared_secret[MAX_SHARED_SECRET_LEN];
+  uint8_t *shared_secret = malloc(
+      sizeof(uint8_t) * (key->kem->public_key_len + key->kem->PQ_shared_secret_len));
+  //uint8_t shared_secret[MAX_SHARED_SECRET_LEN];
   size_t shared_secret_len;
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
-      !hpke_key_schedule(ctx, shared_secret, sizeof(shared_secret), info,
+      !hpke_key_schedule(ctx, shared_secret, (key->kem->public_key_len + key->kem->PQ_shared_secret_len), info,
                          info_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
+    free(shared_secret);
     return 0;
   }
+  free(shared_secret);
   return 1;
 }
 

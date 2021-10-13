@@ -402,7 +402,7 @@ struct RSAEncryptParam {
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
 #define NUMBER_TESTS 10
-#define PLAINTEXT_TOTAL 10000000  // B
+#define PLAINTEXT_TOTAL 100000  // B
 
 
 

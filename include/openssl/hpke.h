@@ -30,7 +30,6 @@ extern "C" {
 #endif
 
 
-#define HPKE_VERSION_PQ 1
 
 
 // Hybrid Public Key Encryption.
@@ -50,8 +49,9 @@ extern "C" {
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
 #define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0021
-#define EVP_HPKE_KEM_X25519_SIKE_HKDF_SHA256 0x0022
+#define EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 0x0022
 #define EVP_HPKE_PQKEM_KYBER_HKDF_SHA256   0x0023
+#define EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256   0x0024
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
@@ -325,27 +325,8 @@ struct evp_hpke_ctx_st {
 struct evp_hpke_key_st {
   const EVP_HPKE_KEM *kem;
 
-  #if HPKE_VERSION_PQ == 0                                //classical crypto --> x25519
-        uint8_t private_key[X25519_PRIVATE_KEY_LEN];
-        uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
-  #endif
-  #if HPKE_VERSION_PQ == 1                                //post-quantum crypto --> SIKE(p434)
-        uint8_t private_key[SIKE_P434_R3_PRIVATE_KEY_BYTES];
-        uint8_t public_key[SIKE_P434_R3_PUBLIC_KEY_BYTES];
-  #endif
-  #if HPKE_VERSION_PQ == 2                                //hybrid crypto --> x25519 || SIKE(p434)
-        uint8_t private_key[X25519_PRIVATE_KEY_LEN + SIKE_P434_R3_PRIVATE_KEY_BYTES];
-        uint8_t public_key[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_PUBLIC_KEY_BYTES];
-  #endif
-  #if HPKE_VERSION_PQ == 3                               //kyber
-        uint8_t private_key[KYBER_SECRETKEYBYTES];
-        uint8_t public_key[KYBER_PUBLICKEYBYTES];
-  #endif
-  #if HPKE_VERSION_PQ == 4                               //kyber
-        uint8_t private_key[X25519_PRIVATE_KEY_LEN + KYBER_SECRETKEYBYTES];
-        uint8_t public_key[X25519_PUBLIC_VALUE_LEN + KYBER_PUBLICKEYBYTES];
-  #endif
-
+      uint8_t *private_key;
+      uint8_t *public_key;
 
   
 };
