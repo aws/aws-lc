@@ -327,7 +327,6 @@ struct evp_hpke_key_st {
 
       uint8_t *private_key;
       uint8_t *public_key;
-
   
 };
 

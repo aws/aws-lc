@@ -9,4 +9,9 @@ see more info on the [NIST website](https://csrc.nist.gov/Projects/Post-Quantum-
 
 ## SIKE (Supersingular Isogeny Key Encapsulation)
 The code in the `pq-crypto/sike_r3` directory was copied from [SIKE's](https://github.com/microsoft/PQCrypto-SIDH) repository.
+The code in the `pq-crypto/kyber_r3` directory was copied from [Kyber's](https://pq-crystals.org/kyber/) submission files.
 The only change made to SIKE's code is in `random/random.c` file where SIKE's randomness generation is replaces with a call to AWS-LC `RAND_bytes` function.
+
+## Kyber
+The code in the `pq-crypto/kyber_r3` directory was copied from [Kyber's](https://pq-crystals.org/kyber/) submission files.
+
