@@ -768,10 +768,11 @@ TEST_P(KDF_ServiceIndicatorTest, KDF) {
 
   std::vector<uint8_t> tls_output(32);
   CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CRYPTO_tls1_prf(kdfTestVector.func(), tls_output.data(), tls_output.size(),
+      approved, ASSERT_TRUE(CRYPTO_tls1_prf(kdfTestVector.func(),
+                                tls_output.data(), tls_output.size(),
                                 kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
                                 sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
-                                kTLSSeed2, sizeof(kTLSSeed2)));
+                                kTLSSeed2, sizeof(kTLSSeed2))));
   ASSERT_TRUE(check_test(kdfTestVector.expected_output, tls_output.data(),
                          tls_output.size(), "TLS KDF KAT"));
   ASSERT_EQ(approved, kdfTestVector.expect_approved);

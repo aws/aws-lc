@@ -197,8 +197,9 @@ void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
 
 
 void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
-  // HMAC-MD5/HMACSHA1 (both used concurrently) is approved in TLS 1.0/1.1.
-  // HMAC-SHA256, HMAC-SHA384, HMAC-SHA512 is approved for TLS 1.2.
+  // HMAC-MD5/HMAC-SHA1 (both used concurrently) is approved for use in the KDF
+  // in TLS 1.0/1.1.
+  // HMAC-SHA{256, 384, 512} are approved for use in the KDF in TLS 1.2.
   // These Key Derivation functions are to be used in the context of the TLS
   // protocol.
   switch (dgst->type){
