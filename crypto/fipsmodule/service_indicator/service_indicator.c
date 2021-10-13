@@ -163,10 +163,16 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
     // Curves (P-224/P-256/P-384/P-521) with SHA-1, SHA2-224, SHA2-256, SHA2-384,
     // and SHA2-512 are approved for signature generation.
     int curve_name = EC_GROUP_get_curve_name(ctx->pctx->pkey->pkey.ec->group);
-    if(curve_name == NID_secp224r1 ||
-        curve_name == NID_X9_62_prime256v1 ||
-        curve_name == NID_secp384r1 ||
-        curve_name == NID_secp521r1) {
+    switch(curve_name) {
+        case NID_secp224r1:
+        case NID_X9_62_prime256v1:
+        case NID_secp384r1:
+        case NID_secp521r1:
+            goto check_digest;
+        default:
+          break;
+    }
+    check_digest:
       switch (ctx->digest->type) {
         case NID_sha1:
         case NID_sha224:
@@ -178,7 +184,6 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
         default:
           break;
       }
-    }
   }
 }
 
@@ -203,14 +208,20 @@ void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
           break;
       }
     }
-  } else if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_EC){
+  } else if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_EC) {
     // Curves (P-224/P-256/P-384/P-521) with SHA-1, SHA2-224, SHA2-256, SHA2-384,
     // and SHA2-512 are approved for signature verification.
     int curve_name = EC_GROUP_get_curve_name(ctx->pctx->pkey->pkey.ec->group);
-    if(curve_name == NID_secp224r1 ||
-        curve_name == NID_X9_62_prime256v1 ||
-        curve_name == NID_secp384r1 ||
-        curve_name == NID_secp521r1) {
+    switch(curve_name) {
+        case NID_secp224r1:
+        case NID_X9_62_prime256v1:
+        case NID_secp384r1:
+        case NID_secp521r1:
+            goto check_digest;
+        default:
+          break;
+    }
+    check_digest:
       switch (ctx->digest->type) {
         case NID_sha1:
         case NID_sha224:
@@ -222,7 +233,6 @@ void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
         default:
           break;
       }
-    }
   }
 }
 
