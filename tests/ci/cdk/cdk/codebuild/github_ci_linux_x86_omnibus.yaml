@@ -87,6 +87,8 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
+        variables:
+          FIPS_BCM_O_S3_OBJ: FIPS_BCM_O_S3_OBJ_PLACEHOLDER
 
     - identifier: ubuntu2004_clang7x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
@@ -155,6 +157,8 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
+        variables:
+          FIPS_BCM_O_S3_OBJ: FIPS_BCM_O_S3_OBJ_PLACEHOLDER
 
     - identifier: amazonlinux2_gcc7x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -179,6 +183,8 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+        variables:
+          FIPS_BCM_O_S3_OBJ: FIPS_BCM_O_S3_OBJ_PLACEHOLDER
 
     - identifier: amazonlinux2_gcc7x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
@@ -187,12 +193,6 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
-        # TODO: enable below automatic digest check when related build stack is ready.
-#        variables:
-#          # AL2_X86_64_GCC_7_SHARED is one FIPS_VENDOR_AFFIRM_OPTION.
-#          # The binary bcm.o is prebuilt on this platform.
-#          # |CHECK_BCM_O_DIGEST| is used to check the digest of built bcm.o.
-#          CHECK_BCM_O_DIGEST: AL2_X86_64_GCC_7_SHARED
 
     - identifier: amazonlinux2_clang7x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml

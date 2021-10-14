@@ -16,18 +16,10 @@ export CXX=g++
 source tests/ci/common_posix_setup.sh
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
 
-# Step3: copy the built bcm.o to target directory.
+# Step3: record SHA-256 digests of the bcm.o
 ABS_DIR_TO_STORE_BCM="$(pwd)/crypto/fipsmodule/bcm_o/AL2_x86_64/gcc-7/shared"
 cp ${BUILD_ROOT}/crypto/fipsmodule/bcm.o ${ABS_DIR_TO_STORE_BCM}
 cd ${ABS_DIR_TO_STORE_BCM}
-
-# Step4: record SHA-256 digests of the bcm.o
-# Check sha256sum of |bcm.o|.
-# Note: Skip this check if this is the 1st time of generating |bcm.o|.
-# |check_bcm_o_digest| is defined in |tests/ci/common_posix_setup.sh|
-check_bcm_o_digest
-# If not match is caused by source code update, update the file |bcm.o.sha256|.
-# Else, may need some investigation.
 sha256sum bcm.o > bcm.o.sha256
 # Before commit, check sha256sum of |bcm.o| again.
 check_bcm_o_digest

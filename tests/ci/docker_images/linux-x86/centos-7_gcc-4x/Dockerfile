@@ -22,7 +22,13 @@ RUN set -ex && \
     cmake \
     ninja-build \
     perl \
-    wget && \
+    wget \
+    unzip && \
+    # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install --bin-dir /usr/bin && \
+    rm -rf awscliv2.zip aws/ &&
     cd /tmp && \
     wget https://golang.org/dl/go1.14.10.linux-amd64.tar.gz && \
     tar -xvf go1.14.10.linux-amd64.tar.gz && \

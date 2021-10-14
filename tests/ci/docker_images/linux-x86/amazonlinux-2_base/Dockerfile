@@ -24,7 +24,13 @@ RUN set -ex && \
     wget \
     llvm \
     llvm-devel \
-    valgrind && \
+    valgrind \
+    unzip && \
+    # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install --bin-dir /usr/bin && \
+    rm -rf awscliv2.zip aws/ &&
     mkdir -p ${DEPENDENCIES_DIR} && \
     cd ${DEPENDENCIES_DIR} && \
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
