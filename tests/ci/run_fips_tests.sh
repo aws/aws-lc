@@ -8,8 +8,10 @@ if [[ ("$(uname -p)" == 'x86_64'*) ]]; then
   echo "Testing AWS-LC in FIPS Release and DISABLE_GETAUXVAL mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
   # Check digest of built BCM.o
-  ABS_DIR_TO_STORE_BCM="$(pwd)/crypto/fipsmodule/bcm_o/AL2_x86_64/gcc-7/shared"
-  check_bcm_o_digest
+  if [[  "${CHECK_BCM_O_DIGEST}" == "AL2_X86_64_GCC_7_SHARED" ]]; then
+    ABS_DIR_TO_STORE_BCM="$(pwd)/crypto/fipsmodule/bcm_o/AL2_x86_64/gcc-7/shared"
+    check_bcm_o_digest
+  fi
 fi
 
 echo "Testing AWS-LC in FIPS Debug mode."
