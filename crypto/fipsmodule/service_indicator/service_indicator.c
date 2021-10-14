@@ -3,6 +3,7 @@
 
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
+#include "internal.h"
 
 #if defined(AWSLC_FIPS)
 
@@ -44,7 +45,7 @@ uint64_t FIPS_service_indicator_after_call(void) {
   return FIPS_service_indicator_get_counter();
 }
 
-int FIPS_service_indicator_check_approved(int before, int after) {
+int FIPS_service_indicator_check_approved(uint64_t before, uint64_t after) {
   if(before != after) {
     return AWSLC_APPROVED;
   }
@@ -86,29 +87,63 @@ void FIPS_service_indicator_unlock_state(void) {
   indicator->lock_state--;
 }
 
-void AES_verify_service_indicator(unsigned key_rounds) {
-  switch (key_rounds) {
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 14:
-      FIPS_service_indicator_update_state();
-      break;
-    default:
-      break;
+void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds) {
+  if(ctx != NULL) {
+    switch(EVP_CIPHER_CTX_nid(ctx)) {
+      case NID_aes_128_ecb:
+      case NID_aes_192_ecb:
+      case NID_aes_256_ecb:
+
+      case NID_aes_128_cbc:
+      case NID_aes_192_cbc:
+      case NID_aes_256_cbc:
+
+      case NID_aes_128_ctr:
+      case NID_aes_192_ctr:
+      case NID_aes_256_ctr:
+        FIPS_service_indicator_update_state();
+        break;
+      default:
+        break;
+    }
+  } else {
+    // hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
+    // hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
+    // When compiling with different ARM specific platforms, 9, 11, 13 are used for
+    // key rounds.
+    switch (key_rounds) {
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+      case 14:
+        FIPS_service_indicator_update_state();
+        break;
+      default:
+        break;
+    }
   }
 }
 
-void AEAD_verify_service_indicator(size_t key_length) {
-  switch (key_length) {
-    case 16:
-    case 32:
-      FIPS_service_indicator_update_state();
-      break;
-    default:
-      break;
+void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
+  // We only have support for 128 bit and 256 bit keys for AES-GCM. AES-GCM is
+  // approved only with an internal IV, see SP 800-38D Sec 8.2.2.
+  // Not the best way to write this, but the delocate parser for ARM/clang can't
+  // recognize || if statements, or switch statements for this.
+  // TODO: Update the delocate parser to be able to recognize a more readable
+  // version of this.
+   if(EVP_AEAD_key_length(ctx->aead) == 16) {
+    FIPS_service_indicator_update_state();
+   } else if(EVP_AEAD_key_length(ctx->aead) == 32) {
+    FIPS_service_indicator_update_state();
+   }
+}
+
+void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
+  // Only 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
+  if(EVP_AEAD_key_length(ctx->aead) == 16 && ctx->tag_len == 4) {
+    FIPS_service_indicator_update_state();
   }
 }
 
@@ -139,19 +174,76 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
+void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
+  // ECDH with curves P-224, P-256, P-384 and P-521 is approved.
+  // Not the best way to write this, but the delocate parser for ARM/clang can't
+  // recognize || if statements, or switch statements for this.
+  // TODO: Update the delocate parser to be able to recognize a more readable
+  // version of this.
+  int curve = ec_key->group->curve_name;
+  if(curve == NID_secp224r1) {
+    FIPS_service_indicator_update_state();
+  }
+  else if( curve == NID_X9_62_prime256v1) {
+    FIPS_service_indicator_update_state();
+  }
+  else if(curve == NID_secp384r1) {
+    FIPS_service_indicator_update_state();
+  }
+  else if(curve == NID_secp521r1) {
+    FIPS_service_indicator_update_state();
+  }
+}
+
+
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
+  // HMAC-MD5/HMAC-SHA1 (both used concurrently) is approved for use in the KDF
+  // in TLS 1.0/1.1.
+  // HMAC-SHA{256, 384, 512} are approved for use in the KDF in TLS 1.2.
+  // These Key Derivation functions are to be used in the context of the TLS
+  // protocol.
+  switch (dgst->type){
+    case NID_md5_sha1:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 
 #else
 
 uint64_t FIPS_service_indicator_before_call(void) { return 0; }
 uint64_t FIPS_service_indicator_after_call(void) { return 0; }
-int FIPS_service_indicator_check_approved(int before, int after) { return AWSLC_NOT_APPROVED; }
 
-void AES_verify_service_indicator(unsigned key_rounds) { }
-void AEAD_verify_service_indicator(size_t key_length) { }
+
+// Service indicator check functions listed below are optimized to not do extra
+// checks, when not in FIPS mode. Arguments are cast with |OPENSSL_UNUSED| in an
+// attempt to avoid unused warnings.
+
+int FIPS_service_indicator_check_approved(OPENSSL_UNUSED uint64_t before,
+                                          OPENSSL_UNUSED uint64_t after) {
+  return AWSLC_APPROVED;
+}
+
+void AES_verify_service_indicator(OPENSSL_UNUSED const EVP_CIPHER_CTX *ctx,
+                                  OPENSSL_UNUSED const unsigned key_rounds) { }
+
+void AEAD_GCM_verify_service_indicator(OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) { }
+
+void AEAD_CCM_verify_service_indicator(OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) { }
 
 void AES_CMAC_verify_service_indicator(OPENSSL_UNUSED const CMAC_CTX *ctx) { }
 
 void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
+
+void ECDH_verify_service_indicator(OPENSSL_UNUSED const EC_KEY *ec_key) { }
+
+void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) { }
 
 #endif // AWSLC_FIPS
 
