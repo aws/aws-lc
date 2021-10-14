@@ -178,7 +178,7 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
     // SHA1 and 1024 bit keys are not approved for RSA signature generation.
-    // SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 2048, 3072, and 4096 bit keys
+    // SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 2048, 3072 and 4096 bit keys
     // are approved for signature generation.
     if (EVP_PKEY_size(ctx->pctx->pkey) == 256 ||
         EVP_PKEY_size(ctx->pctx->pkey) == 384 ||
@@ -195,36 +195,43 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
       }
     }
   } else if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_EC){
-    // Curves (P-224/P-256/P-384/P-521) with SHA2-224, SHA2-256, SHA2-384, and
+    // Not the best way to write this, but the delocate parser for ARM/clang can't
+    // recognize || if statements for this. Moving the curve check before the
+    // digest check also causes delocate parser failures.
+    // TODO: Update the delocate parser to be able to recognize a more readable
+    // version of this.
+    //
+    // SHA1 is not approved for ECDSA signature generation.
+    // Curves P-224, P-256, P-384 and P-521 with SHA2-224, SHA2-256, SHA2-384 and
     // SHA2-512 are approved for signature generation.
     int curve_name = EC_GROUP_get_curve_name(ctx->pctx->pkey->pkey.ec->group);
+    switch (ctx->digest->type) {
+        case NID_sha224:
+        case NID_sha256:
+        case NID_sha384:
+        case NID_sha512:
+          goto check_curve;
+        default:
+          return;
+   }
+   check_curve:
     switch(curve_name) {
         case NID_secp224r1:
         case NID_X9_62_prime256v1:
         case NID_secp384r1:
         case NID_secp521r1:
-            goto check_digest;
+            FIPS_service_indicator_update_state();
+            break;
         default:
-          return;
+          break;
     }
-    check_digest:
-      switch (ctx->digest->type) {
-        case NID_sha224:
-        case NID_sha256:
-        case NID_sha384:
-        case NID_sha512:
-          FIPS_service_indicator_update_state();
-          break;
-        default:
-          break;
-      }
   }
 }
 
 void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
-    // SHA-1, SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 1024, 2048, 3072, and
+    // SHA-1, SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 1024, 2048, 3072 and
     // 4096 bit keys are approved for signature verification.
     if (EVP_PKEY_size(ctx->pctx->pkey) == 128 ||
         EVP_PKEY_size(ctx->pctx->pkey) == 256 ||
@@ -243,30 +250,36 @@ void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
       }
     }
   } else if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_EC) {
-    // Curves (P-224/P-256/P-384/P-521) with SHA-1, SHA2-224, SHA2-256, SHA2-384,
+    // Not the best way to write this, but the delocate parser for ARM/clang can't
+    // recognize || if statements for this. Moving the curve check before the
+    // digest check also causes delocate parser failures.
+    // TODO: Update the delocate parser to be able to recognize a more readable
+    // version of this.
+    //
+    // Curves P-224, P-256, P-384 and P-521 with SHA-1, SHA2-224, SHA2-256, SHA2-384
     // and SHA2-512 are approved for signature verification.
     int curve_name = EC_GROUP_get_curve_name(ctx->pctx->pkey->pkey.ec->group);
-    switch(curve_name) {
-        case NID_secp224r1:
-        case NID_X9_62_prime256v1:
-        case NID_secp384r1:
-        case NID_secp521r1:
-            goto check_digest;
-        default:
-          return;
-    }
-    check_digest:
-      switch (ctx->digest->type) {
+    switch (ctx->digest->type) {
         case NID_sha1:
         case NID_sha224:
         case NID_sha256:
         case NID_sha384:
         case NID_sha512:
-          FIPS_service_indicator_update_state();
-          break;
+          goto check_curve;
+        default:
+          return;
+   }
+   check_curve:
+    switch(curve_name) {
+        case NID_secp224r1:
+        case NID_X9_62_prime256v1:
+        case NID_secp384r1:
+        case NID_secp521r1:
+            FIPS_service_indicator_update_state();
+            break;
         default:
           break;
-      }
+    }
   }
 }
 
