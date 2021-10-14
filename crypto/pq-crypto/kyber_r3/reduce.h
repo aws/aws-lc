@@ -1,16 +1,12 @@
 #ifndef REDUCE_H
 #define REDUCE_H
 
-#include <stdint.h>
 #include "params.h"
+#include <immintrin.h>
 
-#define MONT -1044 // 2^16 mod q
-#define QINV -3327 // q^-1 mod 2^16
-
-#define montgomery_reduce KYBER_NAMESPACE(montgomery_reduce)
-int16_t montgomery_reduce(int32_t a);
-
-#define barrett_reduce KYBER_NAMESPACE(barrett_reduce)
-int16_t barrett_reduce(int16_t a);
+#define reduce_avx KYBER_NAMESPACE(reduce_avx)
+void reduce_avx(__m256i *r, const __m256i *qdata);
+#define tomont_avx KYBER_NAMESPACE(tomont_avx)
+void tomont_avx(__m256i *r, const __m256i *qdata);
 
 #endif

@@ -1,6 +1,6 @@
 #include "consts.h"
-.include "fq.inc"
-.include "shuffle.inc"
+#include "fq.inc"
+#include "shuffle.inc"
 
 /*
 nttpack_avx:

@@ -1,5 +1,5 @@
 #include "consts.h"
-.include "shuffle.inc"
+#include "shuffle.inc"
 
 .macro mul rh0,rh1,rh2,rh3,zl0=15,zl1=15,zh0=2,zh1=2
 vpmullw		%ymm\zl0,%ymm\rh0,%ymm12

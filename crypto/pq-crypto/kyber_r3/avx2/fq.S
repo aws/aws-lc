@@ -1,5 +1,5 @@
 #include "consts.h"
-.include "fq.inc"
+#include "fq.inc"
 
 .text
 reduce128_avx:

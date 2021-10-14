@@ -76,7 +76,7 @@ endif()
 
 add_library(sike_r3 OBJECT ${SIKE_R3_SRCS})
 
-message(STATUS "${SIKE_R3_SRCS}")
+
 
 
 if(UNIX)

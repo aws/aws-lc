@@ -2,7 +2,8 @@
 #define KEM_H
 
 #include <stdint.h>
-#include "../../crypto/pq-crypto/kyber_r3/params.h"
+//#include "../../crypto/pq-crypto/kyber_r3/params.h"
+#include "../../crypto/pq-crypto/kyber_r3/avx2/params.h"
 
 #define CRYPTO_SECRETKEYBYTES  KYBER_SECRETKEYBYTES
 #define CRYPTO_PUBLICKEYBYTES  KYBER_PUBLICKEYBYTES

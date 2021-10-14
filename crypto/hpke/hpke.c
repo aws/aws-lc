@@ -254,7 +254,7 @@ static int HPKE_encap_with_seed(
   // add space for the SIKE pk's to the kem_context
 //unsigned long long cycles;
   uint8_t *kem_context = malloc(
-      sizeof(uint8_t) * (2 * kem->public_key_len + 2 * kem->PQ_public_key_len));
+      sizeof(uint8_t) * (2 * kem->public_key_len + kem->PQ_public_key_len + kem->PQ_ciphertext_len));
   OPENSSL_memcpy(kem_context, out_enc, kem->public_key_len);
   OPENSSL_memcpy(kem_context + kem->public_key_len, peer_public_key,
                  kem->public_key_len);
@@ -295,16 +295,16 @@ static int HPKE_encap_with_seed(
   }
 
   OPENSSL_memcpy(kem_context + 2 * kem->public_key_len,
-                 out_enc + kem->public_key_len, kem->PQ_public_key_len);
-  OPENSSL_memcpy(kem_context + 2 * kem->public_key_len + kem->PQ_public_key_len,
+                 out_enc + kem->public_key_len, kem->PQ_ciphertext_len);
+  OPENSSL_memcpy(kem_context + 2 * kem->public_key_len + kem->PQ_ciphertext_len,
                  peer_public_key + kem->public_key_len, kem->PQ_public_key_len);
 
 
 
   if (!dhkem_extract_and_expand(kem->id, EVP_sha256(), out_shared_secret,
                                 kem->public_key_len + kem->PQ_shared_secret_len,
-                                hybrid_ss, sizeof(hybrid_ss), kem_context,
-                                sizeof(kem_context))) {
+                                hybrid_ss, (kem->public_key_len + kem->PQ_shared_secret_len), kem_context,
+                                (2 * kem->public_key_len + kem->PQ_public_key_len + kem->PQ_ciphertext_len))) {
     return 0;
   }
 
@@ -338,7 +338,7 @@ static int HPKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
   
   uint8_t *kem_context =
       malloc(sizeof(uint8_t) *
-             (2 * key->kem->public_key_len + 2 * key->kem->PQ_public_key_len));
+             (2 * key->kem->public_key_len + key->kem->PQ_public_key_len + key->kem->PQ_ciphertext_len));
   OPENSSL_memcpy(kem_context, enc, key->kem->public_key_len);
   OPENSSL_memcpy(kem_context + key->kem->public_key_len, key->public_key,
                  key->kem->public_key_len);
@@ -370,14 +370,14 @@ static int HPKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
   }
 
   OPENSSL_memcpy(kem_context + 2 * key->kem->public_key_len,
-                 enc + key->kem->public_key_len, key->kem->PQ_public_key_len);
+                 enc + key->kem->public_key_len, key->kem->PQ_ciphertext_len);
   OPENSSL_memcpy(
-      kem_context + 2 * key->kem->public_key_len + key->kem->PQ_public_key_len,
+      kem_context + 2 * key->kem->public_key_len + key->kem->PQ_ciphertext_len,
       key->public_key + key->kem->public_key_len, key->kem->PQ_public_key_len);
   if (!dhkem_extract_and_expand(
           key->kem->id, EVP_sha256(), out_shared_secret,
           key->kem->public_key_len + key->kem->PQ_shared_secret_len, hybrid_ss,
-          sizeof(hybrid_ss), kem_context, sizeof(kem_context))) {
+          key->kem->public_key_len + key->kem->PQ_shared_secret_len, kem_context, (2 * key->kem->public_key_len + key->kem->PQ_public_key_len + key->kem->PQ_ciphertext_len))) {
     return 0;
   }
   /*
@@ -522,7 +522,7 @@ void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key) {
 
 int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst, const EVP_HPKE_KEY *src) {
   // For now, |EVP_HPKE_KEY| is trivially copyable.
-  OPENSSL_memcpy(dst, src, sizeof(EVP_HPKE_KEY));
+  //OPENSSL_memcpy(dst, src, sizeof(EVP_HPKE_KEY));
   return 1;
 }
 
@@ -552,8 +552,9 @@ const EVP_HPKE_KEM *EVP_HPKE_KEY_kem(const EVP_HPKE_KEY *key) {
 }
 
 int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key, uint8_t *out,
-                            size_t *out_len, size_t max_out) {              
-  if (max_out < key->kem->public_key_len) {
+                            size_t *out_len, size_t max_out) { 
+          
+  if (max_out < key->kem->public_key_len + key->kem->PQ_public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
   }

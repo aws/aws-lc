@@ -290,7 +290,7 @@ class HPKETestVector {
   bool ReadFromFileTest(FileTest *t);
 
   void Verify() const {
-    const EVP_HPKE_KEM *kem = EVP_hpke_SIKE_hkdf_sha256();
+    const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
     const EVP_HPKE_AEAD *aead = GetAEAD();
     ASSERT_TRUE(aead);
     const EVP_HPKE_KDF *kdf = GetKDF();
@@ -300,6 +300,7 @@ class HPKETestVector {
     ScopedEVP_HPKE_CTX sender_ctx;
     uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
     size_t enc_len;
+  
     ASSERT_TRUE(EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
         sender_ctx.get(), enc, &enc_len, sizeof(enc), kem, kdf, aead,
         public_key_r_.data(), public_key_r_.size(), info_.data(), info_.size(),
@@ -309,21 +310,47 @@ class HPKETestVector {
 
     // Test the recipient.
     ScopedEVP_HPKE_KEY base_key;
+    base_key->public_key = (uint8_t*)malloc(sizeof(uint8_t) *  x25519_PUBLICKEYBYTES);
+    base_key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
+
+
     ASSERT_TRUE(EVP_HPKE_KEY_init(base_key.get(), kem, secret_key_r_.data(),
                                   secret_key_r_.size()));
+
+    
+
+
     for (bool copy : {false, true}) {
+      
       SCOPED_TRACE(copy);
+      
       const EVP_HPKE_KEY *key = base_key.get();
+
+
       ScopedEVP_HPKE_KEY key_copy;
+
+      key_copy->public_key = (uint8_t*)malloc(sizeof(uint8_t) *  x25519_PUBLICKEYBYTES);
+      key_copy->private_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
+
+
+        OPENSSL_memcpy(key_copy->public_key, base_key->public_key, x25519_PUBLICKEYBYTES);
+        OPENSSL_memcpy(key_copy->private_key, base_key->private_key, x25519_SECRETKEYBYTES);
+
+
       if (copy) {
-        ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
-        key = key_copy.get();
-      }
+        //ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
+        //key = key_copy.get();
+     }
 
       uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
       size_t public_key_len;
       ASSERT_TRUE(EVP_HPKE_KEY_public_key(key, public_key, &public_key_len,
                                           sizeof(public_key)));
+
+  
+       EXPECT_EQ(Bytes(base_key->public_key, 32), Bytes(public_key_r_));
+
+
       EXPECT_EQ(Bytes(public_key, public_key_len), Bytes(public_key_r_));
 
       uint8_t private_key[EVP_HPKE_MAX_PRIVATE_KEY_LENGTH];
@@ -339,7 +366,10 @@ class HPKETestVector {
                                                info_.size()));
 
       VerifyRecipient(recipient_ctx.get());
+      
     }
+    free(base_key->public_key);
+    free(base_key->private_key);
   }
 
  private:
@@ -686,6 +716,8 @@ TEST(HPKETest, x25519) {
       }
     }
   }
+  free(key->private_key);
+  free(key->public_key);
 }
 
 
@@ -715,6 +747,11 @@ TEST(HPKETest, SIKE) {
 
   // Generate the recipient's keypair.
   ScopedEVP_HPKE_KEY key;
+
+  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * SIKE_PUBLICKEYBYTES);
+  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * SIKE_SECRETKEYBYTES);
+
+
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_SIKE_hkdf_sha256()));
   uint8_t public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES];
   size_t public_key_r_len;
@@ -841,13 +878,15 @@ TEST(HPKETest, SIKE) {
       }
     }
   }
+  free(key->private_key);
+  free(key->public_key);
 }
 
 
 // The test vectors used fixed sender ephemeral keys, while HPKE itself
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
-TEST(HPKETest, Hybrid) {
+TEST(HPKETest, x25519_SIKE) {
   const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
   const uint8_t info_b[] = {42, 42, 42};
   const uint8_t ad_a[] = {1, 2, 4, 8, 16};
@@ -864,6 +903,9 @@ TEST(HPKETest, Hybrid) {
   // Generate the recipient's keypair.
 
   ScopedEVP_HPKE_KEY key;
+  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * (X25519_PUBLIC_VALUE_LEN + SIKE_PUBLICKEYBYTES));
+  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * (X25519_PRIVATE_KEY_LEN + SIKE_SECRETKEYBYTES));
+
   ASSERT_TRUE(
       EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_SIKE_hkdf_sha256()));
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_PUBLIC_KEY_BYTES];
@@ -999,6 +1041,8 @@ TEST(HPKETest, Hybrid) {
       }
     }
   }
+  free(key->private_key);
+  free(key->public_key);
 }
 
 
@@ -1028,6 +1072,10 @@ TEST(HPKETest, Kyber) {
 
   // Generate the recipient's keypair.
   ScopedEVP_HPKE_KEY key;
+
+  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * KYBER_PUBLICKEYBYTES);
+  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * KYBER_SECRETKEYBYTES);
+
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_KYBER_hkdf_sha256()));
   uint8_t public_key_r[KYBER_PUBLICKEYBYTES];
   size_t public_key_r_len;
@@ -1154,6 +1202,8 @@ TEST(HPKETest, Kyber) {
       }
     }
   }
+  free(key->private_key);
+  free(key->public_key);
 }
 
 
@@ -1182,27 +1232,17 @@ TEST(HPKETest, x25519_Kyber) {
   // funcitons?!?!?! In real life how is Alice getting Bob's pk??
 
   // Generate the recipient's keypair.
+
   ScopedEVP_HPKE_KEY key;
 
+  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_KYBER_PUBLICKEYBYTES);
+  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_KYBER_SECRETKEYBYTES);
 
-  key->private_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_secretkeybytes(4))));
-    key->public_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_publickeybytes(4))));
-
-
-
-  ASSERT_TRUE(
-      EVP_HPKE_KEY_generate(key.get(), algorithm_kdf(4)));
-      uint8_t *public_key_r = (uint8_t *)malloc(sizeof(uint8_t)*(algorithm_publickeybytes(4)));
-
-     
-     // int size = algorithm_publickeybytes(4);
-  //uint8_t public_key_r[size];
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
+  uint8_t public_key_r[x25519_KYBER_PUBLICKEYBYTES];
   size_t public_key_r_len;
-    printf("8\n");
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
-                                      &public_key_r_len, algorithm_publickeybytes(4)));
+                                      &public_key_r_len, sizeof(public_key_r)));
 
                                     
   // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
@@ -1326,6 +1366,8 @@ TEST(HPKETest, x25519_Kyber) {
       }
     }
   }
+  free(key->private_key);
+  free(key->public_key);
 }
 
 
@@ -1355,7 +1397,7 @@ TEST(HPKETest, HPKERoundTrip) {
       cycles_open, cycles_protocol;
 
   for (const int algorithm :
-       {0,1,2,3,4}) {
+       {0, 1, 2, 3, 4}) {
 
     // Generate the recipient's keypair.
 
@@ -1509,7 +1551,7 @@ TEST(HPKETest, HPKERoundTrip) {
 }
 
 
-/*
+
 // Verify that the DH operations inside Encap() and Decap() both fail when the
 // public key is on a small-order point in the curve.
 TEST(HPKETest, X25519EncapSmallOrderPoint) {
@@ -1521,6 +1563,11 @@ TEST(HPKETest, X25519EncapSmallOrderPoint) {
   };
 
   ScopedEVP_HPKE_KEY key;
+  key->private_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+    key->public_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
+
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
   for (const auto kdf : kAllKDFs) {
@@ -1543,6 +1590,8 @@ TEST(HPKETest, X25519EncapSmallOrderPoint) {
           sizeof(kSmallOrderPoint), nullptr, 0));
     }
   }
+  free(key->private_key);
+  free(key->public_key);
 }
 
 // Test that Seal() fails when the context has been initialized as a recipient.
@@ -1551,6 +1600,12 @@ TEST(HPKETest, RecipientInvalidSeal) {
   const char kCleartextPayload[] = "foobar";
 
   ScopedEVP_HPKE_KEY key;
+
+  key->private_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+    key->public_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
+  
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
   // Set up the recipient.
@@ -1566,6 +1621,8 @@ TEST(HPKETest, RecipientInvalidSeal) {
       recipient_ctx.get(), ciphertext, &ciphertext_len, sizeof(ciphertext),
       reinterpret_cast<const uint8_t *>(kCleartextPayload),
       sizeof(kCleartextPayload), nullptr, 0));
+  free(key->private_key);
+  free(key->public_key);
 }
 
 // Test that Open() fails when the context has been initialized as a sender.
@@ -1632,6 +1689,10 @@ TEST(HPKETest, SetupSenderBufferTooLarge) {
 
 TEST(HPKETest, SetupRecipientWrongLengthEnc) {
   ScopedEVP_HPKE_KEY key;
+  key->private_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+    key->public_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
   const uint8_t bogus_enc[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
@@ -1644,6 +1705,8 @@ TEST(HPKETest, SetupRecipientWrongLengthEnc) {
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_INVALID_PEER_KEY, ERR_GET_REASON(err));
   ERR_clear_error();
+  free(key->private_key);
+  free(key->public_key);
 }
 
 TEST(HPKETest, SetupSenderWrongLengthPeerPublicValue) {
@@ -1665,8 +1728,14 @@ TEST(HPKETest, SetupSenderWrongLengthPeerPublicValue) {
 TEST(HPKETest, InvalidRecipientKey) {
   const uint8_t private_key[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
   ScopedEVP_HPKE_KEY key;
+  key->private_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+    key->public_key =
+        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
   EXPECT_FALSE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
                                  private_key, sizeof(private_key)));
+  free(key->private_key);
+  free(key->public_key);
 }
 
 TEST(HPKETest, InternalParseIntSafe) {
@@ -1690,6 +1759,5 @@ TEST(HPKETest, InternalParseIntSafe) {
 
   ASSERT_FALSE(ParseIntSafe(&u16, "65536"));
 }
-*/
 
 }  // namespace bssl

@@ -1,6 +1,6 @@
 #include "consts.h"
-.include "shuffle.inc"
-.include "fq.inc"
+#include "shuffle.inc"
+#include "fq.inc"
 
 .macro butterfly rl0,rl1,rl2,rl3,rh0,rh1,rh2,rh3,zl0=2,zl1=2,zh0=3,zh1=3
 vpsubw		%ymm\rl0,%ymm\rh0,%ymm12

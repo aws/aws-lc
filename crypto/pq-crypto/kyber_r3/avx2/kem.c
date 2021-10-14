@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "params.h"
-#include "kem.h"
+#include <openssl/kyber_kem.h>
 #include "indcpa.h"
 #include "verify.h"
 #include "symmetric.h"
@@ -21,7 +21,7 @@
 *
 * Returns 0 (success)
 **************************************************/
-int crypto_kem_keypair(uint8_t *pk,
+int crypto_kem_keypair_kyber(uint8_t *pk,
                        uint8_t *sk)
 {
   indcpa_keypair(pk, sk);
@@ -47,7 +47,7 @@ int crypto_kem_keypair(uint8_t *pk,
 *
 * Returns 0 (success)
 **************************************************/
-int crypto_kem_enc(uint8_t *ct,
+int crypto_kem_enc_kyber(uint8_t *ct,
                    uint8_t *ss,
                    const uint8_t *pk)
 {
@@ -90,7 +90,7 @@ int crypto_kem_enc(uint8_t *ct,
 *
 * On failure, ss will contain a pseudo-random value.
 **************************************************/
-int crypto_kem_dec(uint8_t *ss,
+int crypto_kem_dec_kyber(uint8_t *ss,
                    const uint8_t *ct,
                    const uint8_t *sk)
 {
