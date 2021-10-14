@@ -5,21 +5,45 @@ This folder stores the bcm.o prebuilt on AL2.
 ### Build commands
 
 ```sh
+# Step1: clone aws-lc code.
 git clone https://github.com/awslabs/aws-lc.git
 # TODO(CryptoAlg-800): when FIPS branch is ready, checkout FIPS branch, and then check HMAC SHA-1 digests of bcm.o
 cd aws-lc
 
+# Step2: build aws-lc.
 export CC=gcc
 export CXX=g++
 source tests/ci/common_posix_setup.sh
-run_build -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
-cp ./test_build_dir/crypto/fipsmodule/bcm.o ../
+fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
+
+# Step3: copy the built bcm.o to target directory.
+ABS_DIR_TO_STORE_BCM="$(pwd)/crypto/fipsmodule/bcm_o/AL2_x86_64/gcc-7/shared"
+cp ${BUILD_ROOT}/crypto/fipsmodule/bcm.o ${ABS_DIR_TO_STORE_BCM}
+cd ${ABS_DIR_TO_STORE_BCM}
+
+# Step4: record SHA-256 digests of the bcm.o
+# Check sha256sum of |bcm.o|.
+# Note: Skip this check if this is the 1st time of generating |bcm.o|.
+# |check_bcm_o_digest| is defined in |tests/ci/common_posix_setup.sh|
+check_bcm_o_digest
+# If not match is caused by source code update, update the file |bcm.o.sha256|.
+# Else, may need some investigation.
+sha256sum bcm.o > bcm.o.sha256
+# Before commit, check sha256sum of |bcm.o| again.
+check_bcm_o_digest
 ```
 
 ### Record information about the host used to build the bcm.o
 
 ```text
-$ uname -srvmpio ; lsb_release -a ; gcc --version ; cat /proc/cpuinfo
+$ sha256sum --version ; uname -srvmpio ; lsb_release -a ; gcc --version ; cat /proc/cpuinfo
+sha256sum (GNU coreutils) 8.28
+Copyright (C) 2017 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Ulrich Drepper, Scott Miller, and David Madore.
 Linux 5.4.129-63.229.amzn2.x86_64 #1 SMP Tue Jul 20 21:22:08 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
 sh: lsb_release: command not found
 gcc (GCC) 7.3.1 20180712 (Red Hat 7.3.1-13)

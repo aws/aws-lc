@@ -72,6 +72,32 @@ function fips_build_and_test {
   "${BUILD_ROOT}/util/fipstools/cavp/test_fips"
 }
 
+function ensure_file() {
+    if [ ! -f "$1" ]; then
+        echo "$1 does not exist"
+        exit 1
+    fi
+}
+
+function check_bcm_o_digest {
+  # ABS_DIR_TO_STORE_BCM is the absolute directory used to store the built bcm.o.
+  if [[ -z "${ABS_DIR_TO_STORE_BCM+x}" || -z "${ABS_DIR_TO_STORE_BCM}" ]]; then
+    echo "ABS_DIR_TO_STORE_BCM is not defined or empty."
+    exit 1
+  fi
+  # Check if bcm.o is generated.
+  PATH_TO_BUILT_BCM_O="${BUILD_ROOT}/crypto/fipsmodule/bcm.o"
+  ensure_file "${PATH_TO_BUILT_BCM_O}"
+  # Check if bcm.o is generated.
+  PATH_TO_BCM_O_DIGEST="${ABS_DIR_TO_STORE_BCM}/bcm.o.sha256"
+  ensure_file "${PATH_TO_BCM_O_DIGEST}"
+  # Copy the bcm.o to the target directory.
+  cp "${PATH_TO_BUILT_BCM_O}" "${ABS_DIR_TO_STORE_BCM}"
+  # Check the digest.
+  cd "${ABS_DIR_TO_STORE_BCM}" && (cat "${PATH_TO_BCM_O_DIGEST}" | sha256sum -c) || exit 1
+  cd "$SRC_ROOT"
+}
+
 function build_and_test_valgrind {
   run_build "$@"
   run_cmake_custom_target 'run_tests_valgrind'

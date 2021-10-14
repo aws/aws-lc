@@ -7,6 +7,9 @@ source tests/ci/common_posix_setup.sh
 if [[ ("$(uname -p)" == 'x86_64'*) ]]; then
   echo "Testing AWS-LC in FIPS Release and DISABLE_GETAUXVAL mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
+  # Check digest of built BCM.o
+  ABS_DIR_TO_STORE_BCM="$(pwd)/crypto/fipsmodule/bcm_o/AL2_x86_64/gcc-7/shared"
+  check_bcm_o_digest
 fi
 
 echo "Testing AWS-LC in FIPS Debug mode."
