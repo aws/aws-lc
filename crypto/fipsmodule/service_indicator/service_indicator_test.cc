@@ -12,20 +12,15 @@
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
-#include <openssl/ec_key.h>
 #include <openssl/ecdh.h>
-#include <openssl/ecdsa.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
-#include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/service_indicator.h>
-#include <openssl/sha.h>
 
 #include "../../test/abi_test.h"
-#include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../rand/internal.h"
 #include "../tls/internal.h"
