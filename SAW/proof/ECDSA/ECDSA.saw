@@ -288,14 +288,18 @@ ECDSA_do_verify_ov <- llvm_verify m "ECDSA_do_verify"
 
 
 llvm_verify m "EVP_DigestSignInit"
-  [ OPENSSL_malloc_ov
+  [ EVP_MD_pctx_ops_ov
+  , AWSLC_fips_evp_pkey_methods_ov
+  , OPENSSL_malloc_ov
   , CRYPTO_refcount_inc_ov
   ]
   true
   (EVP_DigestSignVerifyInit_spec true)
   (w4_unint_yices []);
 llvm_verify m "EVP_DigestVerifyInit"
-  [ OPENSSL_malloc_ov
+  [ EVP_MD_pctx_ops_ov
+  , AWSLC_fips_evp_pkey_methods_ov
+  , OPENSSL_malloc_ov
   , CRYPTO_refcount_inc_ov
   ]
   true

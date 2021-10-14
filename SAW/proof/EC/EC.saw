@@ -14,8 +14,6 @@ let EC_MAX_BYTES = 66;
 let EC_MAX_WORDS = eval_size {| ((EC_MAX_BYTES + 7) / 8) |};
 
 let NID_secp384r1 = 715;
-let NID_X9_62_id_ecPublicKey = 408;
-let EVP_PKEY_EC = NID_X9_62_id_ecPublicKey;
 let EVP_PKEY_OP_UNDEFINED = 0;
 let EVP_PKEY_OP_KEYGEN = eval_int {{ (1 << 2) : [64] }};
 let EVP_PKEY_OP_PARAMGEN = eval_int {{ (1 << 9) : [64] }};
@@ -23,9 +21,18 @@ let EVP_PKEY_OP_PARAMGEN = eval_int {{ (1 << 9) : [64] }};
 
 include "memory.saw";
 include "../common/goal-rewrites.saw";
+include "../EVP/EVP_CTX.saw";
 
 
 let points_to_p384_bignum_st ptr d_ptr flags = points_to_bignum_st ptr d_ptr ec_words ec_words flags;
+
+
+let points_to_AWSLC_fips_evp_pkey_methods = do {
+  // AWSLC_fips_evp_pkey_methods_storage global is split into 3 globals
+  crucible_points_to (crucible_global "AWSLC_fips_evp_pkey_methods_storage.0.0") (crucible_global "EVP_PKEY_rsa_pkey_meth_storage");
+  crucible_points_to (crucible_global "AWSLC_fips_evp_pkey_methods_storage.0.1") (crucible_global "EVP_PKEY_rsa_pss_pkey_meth_storage");
+  crucible_points_to (crucible_global "AWSLC_fips_evp_pkey_methods_storage.0.2") (crucible_global "EVP_PKEY_ec_pkey_meth_storage");
+};
 
 
 let points_to_ec_method_st ptr = do {
@@ -167,13 +174,19 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
 let pointer_to_fresh_ec_group_st = pointer_to_fresh_ec_group_st_with_curve_name NID_secp384r1;
 
 
-let points_to_evp_pkey_ctx_st_common ptr = do {
-  crucible_points_to (crucible_field ptr "pmeth") (crucible_global "ec_pkey_meth");
+let pointer_to_evp_pkey_method_st = do {
+  ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_method_st");
+  points_to_EVP_PKEY_ec_pkey_meth ptr;
+  return ptr;
+};
+
+let points_to_evp_pkey_ctx_st_common ptr pmeth_ptr = do {
+  crucible_points_to (crucible_field ptr "pmeth") pmeth_ptr;
   crucible_points_to (crucible_field ptr "engine") crucible_null;
 };
 
-let points_to_evp_pkey_ctx_st ptr pkey_ptr peerkey_ptr op data_ptr = do {
-  points_to_evp_pkey_ctx_st_common ptr;
+let points_to_evp_pkey_ctx_st ptr pmeth_ptr pkey_ptr peerkey_ptr op data_ptr = do {
+  points_to_evp_pkey_ctx_st_common ptr pmeth_ptr;
   crucible_points_to (crucible_field ptr "pkey") pkey_ptr;
   crucible_points_to (crucible_field ptr "peerkey") peerkey_ptr;
   crucible_points_to (crucible_field ptr "operation") (crucible_term {{ `op : [32] }});
@@ -705,6 +718,49 @@ let ec_GFp_simple_is_on_curve_spec = do {
   llvm_return (llvm_term {{ 1 : [32] }});
 };
 
+// Specification of `AWSLC_fips_evp_pkey_methods_init`, the initialization function
+// for `AWSLC_fips_evp_pkey_methods_storage`.
+let AWSLC_fips_evp_pkey_methods_init_spec = do {
+  crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_ec_pkey_meth_once";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.0";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.1";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.2";
+
+  crucible_execute_func [];
+
+  points_to_EVP_PKEY_rsa_pkey_meth (crucible_global "EVP_PKEY_rsa_pkey_meth_storage");
+  points_to_EVP_PKEY_rsa_pss_pkey_meth (crucible_global "EVP_PKEY_rsa_pss_pkey_meth_storage");
+  points_to_EVP_PKEY_ec_pkey_meth (crucible_global "EVP_PKEY_ec_pkey_meth_storage");
+  points_to_AWSLC_fips_evp_pkey_methods;
+};
+let AWSLC_fips_evp_pkey_methods_spec = do {
+  crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_ec_pkey_meth_once";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.0";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.1";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.2";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_once";
+
+  crucible_execute_func
+    [ (crucible_global "AWSLC_fips_evp_pkey_methods_once")
+    , (crucible_global "AWSLC_fips_evp_pkey_methods_init")
+    ];
+
+  points_to_EVP_PKEY_rsa_pkey_meth (crucible_global "EVP_PKEY_rsa_pkey_meth_storage");
+  points_to_EVP_PKEY_rsa_pss_pkey_meth (crucible_global "EVP_PKEY_rsa_pss_pkey_meth_storage");
+  points_to_EVP_PKEY_ec_pkey_meth (crucible_global "EVP_PKEY_ec_pkey_meth_storage");
+  points_to_AWSLC_fips_evp_pkey_methods;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Proof commands
@@ -1121,3 +1177,17 @@ ec_GFp_simple_is_on_curve_ov <- llvm_unsafe_assume_spec
   m
   "ec_GFp_simple_is_on_curve"
   ec_GFp_simple_is_on_curve_spec;
+
+llvm_verify m "AWSLC_fips_evp_pkey_methods_init"
+  [ EVP_PKEY_rsa_pkey_meth_ov
+  , EVP_PKEY_rsa_pss_pkey_meth_ov
+  , EVP_PKEY_ec_pkey_meth_ov
+  ]
+  true
+  AWSLC_fips_evp_pkey_methods_init_spec
+  (w4_unint_z3 []);
+AWSLC_fips_evp_pkey_methods_ov <- llvm_unsafe_assume_spec
+  m
+  "CRYPTO_once"
+  AWSLC_fips_evp_pkey_methods_spec;
+

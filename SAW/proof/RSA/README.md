@@ -4,7 +4,7 @@ The following table describes the RSA-PSS implementation that is verified using 
 
 | Algorithm | Variants |  API Operations | Platform   | Caveats
 | ----------| -------------| --------------- | -----------| ------------
-| RSA       | 1024, with <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal | SandyBridge+ | InputLength, NoEngine, MemCorrect, RSA_Blinding, CRYPTO_refcount_Correct, CRYPTO_MUTEX_Correct, ERR_put_error_Correct, DebugSettings
+| RSA       | 1024, with <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal | SandyBridge+ | InputLength, NoEngine, MemCorrect, RSA_Blinding, CRYPTO_refcount_Correct, CRYPTO_MUTEX_Correct, CRYPTO_once_Correct, ERR_put_error_Correct, DebugSettings
 
 The caveats associated with the RSA-PSS verification results are defined in the table below.
 

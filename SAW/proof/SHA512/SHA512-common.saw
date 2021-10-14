@@ -289,12 +289,41 @@ let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr = do {
   crucible_points_to (crucible_field ptr "pctx_ops") crucible_null;
 };
 
+let points_to_evp_md_pctx_ops ptr = do {
+  crucible_points_to (crucible_field ptr "free") (crucible_global "EVP_PKEY_CTX_free");
+  crucible_points_to (crucible_field ptr "dup") (crucible_global "EVP_PKEY_CTX_dup");
+};
+
+let pointer_to_evp_md_pctx_ops = do {
+  ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_md_pctx_ops");
+  points_to_evp_md_pctx_ops ptr;
+  return ptr;
+};
+
 // Specify the env_md_ctx_st struct with non-null pctx and pctx_ops
-let points_to_env_md_ctx_st_with_pctx ptr digest_ptr md_data_ptr pctx_ptr = do {
+let points_to_env_md_ctx_st_with_pctx ptr digest_ptr md_data_ptr pctx_ptr pctx_ops_ptr = do {
   crucible_points_to (crucible_field ptr "digest") digest_ptr;
   crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
   crucible_points_to (crucible_field ptr "pctx") pctx_ptr;
-  crucible_points_to (crucible_field ptr "pctx_ops") (crucible_global "md_pctx_ops");
+  crucible_points_to (crucible_field ptr "pctx_ops") pctx_ops_ptr;
+  //crucible_points_to (crucible_field ptr "pctx_ops") (crucible_global "md_pctx_ops");
+};
+
+// Specification of `EVP_MD_pctx_ops_init`, the initialization
+// function for `EVP_MD_pctx_ops_storage`.
+let EVP_MD_pctx_ops_init_spec = do {
+  crucible_alloc_global "EVP_MD_pctx_ops_storage";
+  crucible_execute_func [];
+  points_to_evp_md_pctx_ops (crucible_global "EVP_MD_pctx_ops_storage");
+};
+let EVP_MD_pctx_ops_spec = do {
+  crucible_alloc_global "EVP_MD_pctx_ops_storage";
+  crucible_alloc_global "EVP_MD_pctx_ops_once";
+  crucible_execute_func
+    [ (crucible_global "EVP_MD_pctx_ops_once")
+    , (crucible_global "EVP_MD_pctx_ops_init")
+    ];
+  points_to_evp_md_pctx_ops (crucible_global "EVP_MD_pctx_ops_storage");
 };
 
 // Specifications of the various EVP functions
@@ -305,6 +334,12 @@ include "evp-function-specs.saw";
 
 // Assume OpenSSL memory functions satisfy specs
 include "memory.saw";
+
+llvm_verify m "EVP_MD_pctx_ops_init" [] true EVP_MD_pctx_ops_init_spec (w4_unint_z3 []);
+EVP_MD_pctx_ops_ov <- llvm_unsafe_assume_spec
+  m
+  "CRYPTO_once"
+  EVP_MD_pctx_ops_spec;
 
 // Include rewrite rules
 include "sha512_block_data_order-goal-rewrites.saw";

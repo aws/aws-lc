@@ -1,0 +1,189 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+let NID_rsaEncryption = 6;
+let EVP_PKEY_RSA = NID_rsaEncryption;
+let NID_rsassaPss = 912;
+let EVP_PKEY_RSA_PSS = NID_rsassaPss;
+let NID_X9_62_id_ecPublicKey = 408;
+let EVP_PKEY_EC = NID_X9_62_id_ecPublicKey;
+
+
+let points_to_evp_pkey_method_st
+      ptr
+      pkey_id
+      init
+      copy
+      cleanup
+      keygen
+      sign_init
+      sign
+      sign_message
+      verify_init
+      verify
+      verify_message
+      verify_recover
+      encrypt
+      decrypt
+      derive
+      paramgen
+      ctrl = do {
+  crucible_points_to (crucible_field ptr "pkey_id") (crucible_term {{ `pkey_id : [32] }});
+  crucible_points_to (crucible_field ptr "init") init;
+  crucible_points_to (crucible_field ptr "copy") copy;
+  crucible_points_to (crucible_field ptr "cleanup") cleanup;
+  crucible_points_to (crucible_field ptr "keygen") keygen;
+  crucible_points_to (crucible_field ptr "sign_init") sign_init;
+  crucible_points_to (crucible_field ptr "sign") sign;
+  crucible_points_to (crucible_field ptr "sign_message") sign_message;
+  crucible_points_to (crucible_field ptr "verify_init") verify_init;
+  crucible_points_to (crucible_field ptr "verify") verify;
+  crucible_points_to (crucible_field ptr "verify_message") verify_message;
+  crucible_points_to (crucible_field ptr "verify_recover") verify_recover;
+  crucible_points_to (crucible_field ptr "encrypt") encrypt;
+  crucible_points_to (crucible_field ptr "decrypt") decrypt;
+  crucible_points_to (crucible_field ptr "derive") derive;
+  crucible_points_to (crucible_field ptr "paramgen") paramgen;
+  crucible_points_to (crucible_field ptr "ctrl") ctrl;
+};
+
+let points_to_EVP_PKEY_rsa_pkey_meth ptr = points_to_evp_pkey_method_st
+      ptr
+      EVP_PKEY_RSA // pkey_id
+      (crucible_global "pkey_rsa_init") // init
+      (crucible_global "pkey_rsa_copy") // copy
+      (crucible_global "pkey_rsa_cleanup") // cleanup
+      (crucible_global "pkey_rsa_keygen") // keygen
+      crucible_null // sign_init
+      (crucible_global "pkey_rsa_sign") // sign
+      crucible_null // sign_message
+      crucible_null // verify_init
+      (crucible_global "pkey_rsa_verify") // verify
+      crucible_null // verify_message
+      (crucible_global "pkey_rsa_verify_recover") // verify_recover
+      (crucible_global "pkey_rsa_encrypt") // encrypt
+      (crucible_global "pkey_rsa_decrypt") // decrypt
+      crucible_null // derive
+      crucible_null // paramgen
+      (crucible_global "pkey_rsa_ctrl") // ctrl
+      ;
+
+let points_to_EVP_PKEY_rsa_pss_pkey_meth ptr = points_to_evp_pkey_method_st
+      ptr
+      EVP_PKEY_RSA_PSS // pkey_id
+      (crucible_global "pkey_rsa_init") // init
+      (crucible_global "pkey_rsa_copy") // copy
+      (crucible_global "pkey_rsa_cleanup") // cleanup
+      (crucible_global "pkey_rsa_keygen") // keygen
+      (crucible_global "pkey_pss_init") // sign_init
+      (crucible_global "pkey_rsa_sign") // sign
+      crucible_null // sign_message
+      (crucible_global "pkey_pss_init") // verify_init
+      (crucible_global "pkey_rsa_verify") // verify
+      crucible_null // verify_message
+      crucible_null // verify_recover
+      crucible_null // encrypt
+      crucible_null // decrypt
+      crucible_null // derive
+      crucible_null // paramgen
+      (crucible_global "pkey_rsa_ctrl") // ctrl
+      ;
+
+let points_to_EVP_PKEY_ec_pkey_meth ptr = points_to_evp_pkey_method_st
+      ptr
+      EVP_PKEY_EC // pkey_id
+      (crucible_global "pkey_ec_init") // init
+      (crucible_global "pkey_ec_copy") // copy
+      (crucible_global "pkey_ec_cleanup") // cleanup
+      (crucible_global "pkey_ec_keygen") // keygen
+      crucible_null // sign_init
+      (crucible_global "pkey_ec_sign") // sign
+      crucible_null // sign_message
+      crucible_null // verify_init
+      (crucible_global "pkey_ec_verify") // verify
+      crucible_null // verify_message
+      crucible_null // verify_recover
+      crucible_null // encrypt
+      crucible_null // decrypt
+      (crucible_global "pkey_ec_derive") // derive
+      (crucible_global "pkey_ec_paramgen") // paramgen
+      (crucible_global "pkey_ec_ctrl") // ctrl
+      ;
+
+
+// Specification of `EVP_PKEY_rsa_pkey_meth_init`, the initialization
+// function for `EVP_PKEY_rsa_pkey_meth_storage`.
+let EVP_PKEY_rsa_pkey_meth_init_spec = do {
+  crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_storage";
+  crucible_execute_func [];
+  points_to_EVP_PKEY_rsa_pkey_meth (crucible_global "EVP_PKEY_rsa_pkey_meth_storage");
+};
+let EVP_PKEY_rsa_pkey_meth_spec = do {
+  crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_once";
+  crucible_execute_func
+    [ (crucible_global "EVP_PKEY_rsa_pkey_meth_once")
+    , (crucible_global "EVP_PKEY_rsa_pkey_meth_init")
+    ];
+  points_to_EVP_PKEY_rsa_pkey_meth (crucible_global "EVP_PKEY_rsa_pkey_meth_storage");
+};
+
+// Specification of `EVP_PKEY_rsa_pss_pkey_meth_init`, the initialization
+// function for `EVP_PKEY_rsa_pss_pkey_meth_storage`.
+let EVP_PKEY_rsa_pss_pkey_meth_init_spec = do {
+  crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
+  crucible_execute_func [];
+  points_to_EVP_PKEY_rsa_pss_pkey_meth (crucible_global "EVP_PKEY_rsa_pss_pkey_meth_storage");
+};
+let EVP_PKEY_rsa_pss_pkey_meth_spec = do {
+  crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_once";
+  crucible_execute_func
+    [ (crucible_global "EVP_PKEY_rsa_pss_pkey_meth_once")
+    , (crucible_global "EVP_PKEY_rsa_pss_pkey_meth_init")
+    ];
+  points_to_EVP_PKEY_rsa_pss_pkey_meth (crucible_global "EVP_PKEY_rsa_pss_pkey_meth_storage");
+};
+
+// Specification of `EVP_PKEY_ec_pkey_meth_init`, the initialization function
+// for `EVP_PKEY_ec_pkey_meth_storage`.
+let EVP_PKEY_ec_pkey_meth_init_spec = do {
+  crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
+  crucible_execute_func [];
+  points_to_EVP_PKEY_ec_pkey_meth (crucible_global "EVP_PKEY_ec_pkey_meth_storage");
+};
+let EVP_PKEY_ec_pkey_meth_spec = do {
+  crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_ec_pkey_meth_once";
+  crucible_execute_func
+    [ (crucible_global "EVP_PKEY_ec_pkey_meth_once")
+    , (crucible_global "EVP_PKEY_ec_pkey_meth_init")
+    ];
+  points_to_EVP_PKEY_ec_pkey_meth (crucible_global "EVP_PKEY_ec_pkey_meth_storage");
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+llvm_verify m "EVP_PKEY_rsa_pkey_meth_init" [] true EVP_PKEY_rsa_pkey_meth_init_spec (w4_unint_z3 []);
+EVP_PKEY_rsa_pkey_meth_ov <- llvm_unsafe_assume_spec
+  m
+  "CRYPTO_once"
+  EVP_PKEY_rsa_pkey_meth_spec;
+
+llvm_verify m "EVP_PKEY_rsa_pss_pkey_meth_init" [] true EVP_PKEY_rsa_pss_pkey_meth_init_spec (w4_unint_z3 []);
+EVP_PKEY_rsa_pss_pkey_meth_ov <- llvm_unsafe_assume_spec
+  m
+  "CRYPTO_once"
+  EVP_PKEY_rsa_pss_pkey_meth_spec;
+
+llvm_verify m "EVP_PKEY_ec_pkey_meth_init" [] true EVP_PKEY_ec_pkey_meth_init_spec (w4_unint_z3 []);
+EVP_PKEY_ec_pkey_meth_ov <- llvm_unsafe_assume_spec
+  m
+  "CRYPTO_once"
+  EVP_PKEY_ec_pkey_meth_spec;
+

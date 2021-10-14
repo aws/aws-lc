@@ -32,10 +32,11 @@ include "../EC/EC.saw";
 
 let ptr_to_new_evp_pkey_ctx_st pkey_ptr = do {
   ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_ctx_st");
+  points_to_EVP_PKEY_ec_pkey_meth (crucible_global "EVP_PKEY_ec_pkey_meth_storage");
   ec_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.EC_PKEY_CTX");
   crucible_points_to (crucible_field ec_pkey_ctx_ptr "md") crucible_null;
   crucible_points_to (crucible_field ec_pkey_ctx_ptr "gen_group") crucible_null;
-  points_to_evp_pkey_ctx_st ptr pkey_ptr crucible_null EVP_PKEY_OP_UNDEFINED ec_pkey_ctx_ptr;
+  points_to_evp_pkey_ctx_st ptr (crucible_global "EVP_PKEY_ec_pkey_meth_storage") pkey_ptr crucible_null EVP_PKEY_OP_UNDEFINED ec_pkey_ctx_ptr;
   return ptr;
 };
 
@@ -60,13 +61,15 @@ jacobian_affine_2_thm <- prove_print
 
 
 llvm_verify m "EVP_PKEY_CTX_new_id"
-  [ OPENSSL_malloc_ov
+  [ AWSLC_fips_evp_pkey_methods_ov
+  , OPENSSL_malloc_ov
   ]
   true
   EVP_PKEY_CTX_new_id_spec
   (w4_unint_z3 []);
 llvm_verify m "EVP_PKEY_CTX_new"
-  [ OPENSSL_malloc_ov
+  [ AWSLC_fips_evp_pkey_methods_ov
+  , OPENSSL_malloc_ov
   , CRYPTO_refcount_inc_ov
   ]
   true
