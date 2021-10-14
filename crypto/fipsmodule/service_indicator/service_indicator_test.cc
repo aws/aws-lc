@@ -703,13 +703,25 @@ struct RSATestVector {
   // key_size is the input rsa key size.
   const int key_size;
   // md_func is the digest to test.
-  const EVP_MD *(*func)(void);
+  const EVP_MD *(*func)();
   // expected to be approved or not for signature generation.
   const int sig_gen_expect_approved;
   // expected to be approved or not for signature verification.
   const int sig_ver_expect_approved;
 };
 struct RSATestVector kRSATestVectors[] = {
+    // RSA test cases that not be approved in any case.
+    { 512, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 512, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1024, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 2048, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 4096, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+
     { 1024, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
@@ -852,7 +864,7 @@ struct ECDSATestVector {
   // nid is the input curve nid.
   const int nid;
   // md_func is the digest to test.
-  const EVP_MD *(*func)(void);
+  const EVP_MD *(*func)();
   // expected to be approved or not for signature generation.
   const int key_check_expect_approved;
   // expected to be approved or not for signature generation.
