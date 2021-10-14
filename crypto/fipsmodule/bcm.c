@@ -208,6 +208,13 @@ BORINGSSL_bcm_power_on_self_test(void) {
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
+  // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
+  // check before the integrity check itself. So we first call the self-test
+  // before we calculate the hash of the module.
+  if (!boringssl_fips_self_test()) {
+    goto err;
+  }
+
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
 
@@ -243,13 +250,6 @@ BORINGSSL_bcm_power_on_self_test(void) {
   HMAC_CTX_cleanup(&hmac_ctx);
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
-
-  // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
-  // check before the integrity check itself. So we first call the self-test
-  // function and only after that we check the integrity of the module.
-  if (!boringssl_fips_self_test(BORINGSSL_bcm_text_hash, sizeof(result))) {
-    goto err;
-  }
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
     goto err;
