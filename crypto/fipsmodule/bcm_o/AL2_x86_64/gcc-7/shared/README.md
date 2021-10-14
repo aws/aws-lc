@@ -18,7 +18,7 @@ ABS_PATH_TO_BCM_O="${BUILD_ROOT}/crypto/fipsmodule/bcm.o"
 check_bcm_o_digest
 
 # Step 4: if digest check failed, run below command to update.
-udpate_bcm_o_digest
+update_bcm_o_digest
 ```
 
 ### Record information about the host used to build the bcm.o

@@ -103,7 +103,7 @@ function check_bcm_o_digest {
   cd "$SRC_ROOT"
 }
 
-function udpate_bcm_o_digest {
+function update_bcm_o_digest {
   # Validate
   perform_bcm_o_digest_related_check
   # Check the digest.
