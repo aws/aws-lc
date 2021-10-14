@@ -69,6 +69,26 @@ let VAL_WORD_AND_WORD_LE = prove
    (!(x:N word) n. val(word_and (word n) x) <= n)`,
   MESON_TAC[VAL_WORD_AND_LE; LE_TRANS; LE_REFL; VAL_WORD_LE]);;
 
+let WORD_JOIN_NOT = prove
+ (`!v w. dimindex(:P) <= dimindex(:M) + dimindex(:N)
+         ==> (word_join:(M)word->(N)word->(P)word) (word_not v) (word_not w) =
+             word_not(word_join v w)`,
+  REPEAT STRIP_TAC THEN REWRITE_TAC[WORD_EQ_BITS_ALT] THEN
+  SIMP_TAC[BIT_WORD_JOIN; BIT_WORD_NOT; COND_SWAP] THEN
+  REPEAT STRIP_TAC THEN COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  ONCE_REWRITE_TAC[BIT_GUARD] THEN EQ_TAC THEN SIMP_TAC[] THEN
+  ASM_ARITH_TAC);;
+
+let WORD_SUBWORD_NOT = prove
+ (`!(x:M word) pos len.
+        dimindex(:N) <= len /\ pos + len <= dimindex(:M)
+        ==> word_subword (word_not x) (pos,len):N word =
+            word_not (word_subword x (pos,len))`,
+  REWRITE_TAC[WORD_EQ_BITS_ALT; BIT_WORD_SUBWORD; BIT_WORD_NOT] THEN
+  SIMP_TAC[ARITH_RULE `i < MIN m n <=> i < m /\ i < n`] THEN
+  REPEAT STRIP_TAC THEN EQ_TAC THEN SIMP_TAC[DE_MORGAN_THM] THEN
+  STRIP_TAC THEN ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC);;
+
 (* ------------------------------------------------------------------------- *)
 (* Trivial but requires two distinct library files to be combined.           *)
 (* ------------------------------------------------------------------------- *)
@@ -594,6 +614,130 @@ let ACCUMULATE_MUL = prove
         val(word_zx (word(val x * val y):(128)word):int64) =
         val x * val y`,
   REWRITE_TAC[GSYM DIMINDEX_64; ACCUMULATE_MUL_GEN]);;
+
+(* ------------------------------------------------------------------------- *)
+(* Variants to express in real-number terms with error bounds.               *)
+(* ------------------------------------------------------------------------- *)
+
+let APPROXIMATE_WORD_USHR = prove
+ (`!(dest:int64) a n.
+        dest = word_ushr a n
+        ==> ?b e. dest = b /\
+                  &0 <= e /\ e <= &1 - inv(&2 pow n) /\
+                  &(val b) = &(val a) / &2 pow n - e`,
+  REPEAT STRIP_TAC THEN
+  REWRITE_TAC[RIGHT_EXISTS_AND_THM; UNWIND_THM1] THEN
+  ASM_REWRITE_TAC[VAL_WORD_USHR] THEN
+  REWRITE_TAC[UNWIND_THM1; REAL_ARITH
+   `&0 <= e /\ e <= u /\ x:real = y - e <=>
+    y - x = e /\ x <= y /\ y <= x + u`] THEN
+  SIMP_TAC[REAL_LE_RDIV_EQ; REAL_LE_LDIV_EQ; REAL_LT_POW2] THEN
+  REWRITE_TAC[REAL_FIELD
+   `(x + &1 - inv(&2 pow n)) * (&2 pow n) = (x + &1) * &2 pow n - &1`] THEN
+  MATCH_MP_TAC(REAL_ARITH
+   `&0 <= y - x * e /\ (y - x * e) + &1 <= e
+    ==> x * e <= y /\ y <= (x + &1) * e - &1`) THEN
+  REWRITE_TAC[GSYM REAL_OF_NUM_MOD; REAL_OF_NUM_POW] THEN
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0] THEN
+  REWRITE_TAC[ARITH_RULE `n + 1 <= m <=> n < m`] THEN
+  REWRITE_TAC[MOD_LT_EQ; EXP_EQ_0; ARITH_EQ]);;
+
+let APPROXIMATE_WORD_SHL = prove
+ (`!(dest:int64) a n.
+        dest = word_shl a n
+        ==> &2 pow n * &(val a):real < &2 pow 64
+            ==> ?c. dest = c /\
+                    &(val c):real = &2 pow n * &(val a)`,
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[UNWIND_THM1] THEN
+  REWRITE_TAC[VAL_WORD_SHL; REAL_OF_NUM_CLAUSES; DIMINDEX_64] THEN
+  ASM_SIMP_TAC[MOD_LT]);;
+
+let APPROXIMATE_WORD_ADD = prove
+ (`!(dest:int64) a b.
+        dest = word_add a b
+        ==> &(val a) + &(val b):real < &2 pow 64
+            ==> ?c. dest = c /\
+                    &(val c):real = &(val a) + &(val b)`,
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[UNWIND_THM1] THEN
+  REWRITE_TAC[VAL_WORD_ADD; REAL_OF_NUM_CLAUSES; DIMINDEX_64] THEN
+  ASM_SIMP_TAC[MOD_LT]);;
+
+let APPROXIMATE_WORD_SUB = prove
+ (`!(dest:int64) a b.
+        dest = word_sub a b
+        ==> &0 <= &(val a) - &(val b)
+            ==> ?c. dest = c /\
+                    &(val c) = &(val a) - &(val b)`,
+  REWRITE_TAC[REAL_SUB_LE; REAL_EQ_SUB_LADD; REAL_OF_NUM_CLAUSES] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[UNWIND_THM1] THEN
+  ASM_REWRITE_TAC[VAL_WORD_SUB_CASES] THEN ASM_ARITH_TAC);;
+
+let APPROXIMATE_WORD_MUL = prove
+ (`!(dest:int64) (a:int64) (b:int64).
+        dest = word(0 + val a * val b)
+        ==> &(val a) * &(val b):real < &2 pow 64
+            ==> ?c. dest = c /\
+                    &(val c):real = &(val a) * &(val b)`,
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES; UNWIND_THM1] THEN
+  ASM_SIMP_TAC[VAL_WORD_EQ; DIMINDEX_64]);;
+
+let APPROXIMATE_WORD_MADD = prove
+ (`!(dest:int64) (a:int64) (b:int64) (c:int64).
+        dest = word(val a + val b * val c)
+        ==> &(val a) + &(val b) * &(val c):real < &2 pow 64
+            ==> ?d. dest = d /\
+                    &(val d):real = &(val a) + &(val b) * &(val c)`,
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[UNWIND_THM1] THEN
+  ASM_SIMP_TAC[VAL_WORD_EQ; DIMINDEX_64]);;
+
+let APPROXIMATE_WORD_MNEG = prove
+ (`!(dest:int64) (a:int64) (b:int64).
+        dest = iword(&0 - ival a * ival b)
+        ==> &0 < &(val a) * &(val b):real /\
+            &(val a) * &(val b):real <= &2 pow 64
+            ==> ?c. dest = c /\
+                    &(val c):real = &2 pow 64 - &(val a) * &(val b)`,
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+  REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[UNWIND_THM1] THEN
+  REWRITE_TAC[INT_SUB_LZERO; REAL_EQ_SUB_LADD] THEN
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[GSYM INT_EQ_SUB_LADD] THEN
+  MATCH_MP_TAC INT_CONG_IMP_EQ THEN
+  EXISTS_TAC `(&2:int) pow 64` THEN CONJ_TAC THENL
+   [W(MP_TAC o C SPEC VAL_BOUND_64 o
+      rand o rand o lhand o rand o lhand o snd) THEN
+    POP_ASSUM_LIST(MP_TAC o end_itlist CONJ) THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN INT_ARITH_TAC;
+    REWRITE_TAC[INTEGER_RULE
+     `(x:int == n - y) (mod n) <=> (x == --y) (mod n)`] THEN
+    REWRITE_TAC[REWRITE_RULE[GSYM INT_REM_EQ; DIMINDEX_64]
+                (INST_TYPE [`:64`,`:N`] VAL_IWORD_CONG); GSYM INT_REM_EQ] THEN
+    REWRITE_TAC[INT_REM_EQ] THEN MATCH_MP_TAC(INTEGER_RULE
+     `(a:int == a') (mod n) /\ (b == b') (mod n)
+      ==> (--(a * b) == --(a' * b')) (mod n)`) THEN
+    REWRITE_TAC[REWRITE_RULE[DIMINDEX_64]
+     (INST_TYPE [`:64`,`:N`]IVAL_VAL_CONG)]]);;
+
+let APPROXIMATE_WORD_IWORD = prove
+ (`!(dest:int64) x x'.
+        dest = iword x
+        ==> &0 <= x' /\ x' < &2 pow 64 /\ (x == x') (mod (&2 pow 64))
+            ==> ?c. dest = c /\
+                    &(val c) = real_of_int x'`,
+  REWRITE_TAC[UNWIND_THM1; GSYM INT_REM_EQ] THEN REPEAT STRIP_TAC THEN
+  ASM_REWRITE_TAC[GSYM int_of_num_th; GSYM int_eq] THEN
+  MATCH_MP_TAC INT_CONG_IMP_EQ THEN EXISTS_TAC `(&2:int) pow 64` THEN
+  REWRITE_TAC[GSYM INT_REM_EQ; GSYM DIMINDEX_64] THEN
+  REWRITE_TAC[REWRITE_RULE[GSYM INT_REM_EQ] VAL_IWORD_CONG] THEN
+  ASM_REWRITE_TAC[DIMINDEX_64] THEN MATCH_MP_TAC(INT_ARITH
+   `&0 <= x /\ x < e /\ &0 <= y /\ y < e ==> abs(x - y:int) < e`) THEN
+  ASM_REWRITE_TAC[INT_POS] THEN
+  REWRITE_TAC[INT_OF_NUM_CLAUSES; VAL_BOUND_64]);;
 
 (* ------------------------------------------------------------------------- *)
 (* Some lemmas to get a flag out of a carry setting                          *)

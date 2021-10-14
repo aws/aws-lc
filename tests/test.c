@@ -195,7 +195,8 @@ enum {
        TEST_WORD_CTZ,
        TEST_WORD_MAX,
        TEST_WORD_MIN,
-       TEST_WORD_NEGMODINV
+       TEST_WORD_NEGMODINV,
+       TEST_WORD_RECIP
 };
 
 // ***************************************************************************
@@ -2932,8 +2933,8 @@ int test_bignum_modinv(void)
      while (!reference_coprime(k,b1,b0));
 
      // Make sure to check the degnerate a = 1 and b = 1 cases occasionally
-     if ((rand() & 0xFF) < 3) reference_of_word(k,b0,1ul);
-     if ((rand() & 0xFF) < 3) reference_of_word(k,b1,1ul);
+     if ((rand() & 0xFF) < 3) reference_of_word(k,b0,UINT64_C(1));
+     if ((rand() & 0xFF) < 3) reference_of_word(k,b1,UINT64_C(1));
 
      bignum_modinv(k,b2,b1,b0,b7);        // s with a * s == 1 (mod b)
      reference_mul(2 * k,b4,k,b1,k,b2);    // b4 = a * s
@@ -4220,7 +4221,7 @@ int test_bignum_shl_small(void)
    { k1 = (unsigned) rand() % MAXSIZE;
      k2 = (unsigned) rand() % MAXSIZE;
      a = random64();
-     if (rand() & 31) a &= 63ul;
+     if (rand() & 31) a &= UINT64_C(63);
      random_bignum(k1,b1);
      random_bignum(k2,b2);
      for (j = 0; j < k2; ++j) b3[j] = b2[j] + 1;
@@ -4251,7 +4252,7 @@ int test_bignum_shr_small(void)
    { k1 = (unsigned) rand() % MAXSIZE;
      k2 = (unsigned) rand() % MAXSIZE;
      a = random64();
-     if (rand() & 31) a &= 63ul;
+     if (rand() & 31) a &= UINT64_C(63);
      random_bignum(k1,b1);
      random_bignum(k2,b2);
      for (j = 0; j < k2+1; ++j) b3[j] = b2[j] + 1;
@@ -4812,7 +4813,7 @@ int test_word_ctz(void)
 
 int test_word_max(void)
 { uint64_t i, a, b, x, y;
-  printf("Testing word_max with %d cases\n",TESTS);
+  printf("Testing word_max with %d cases\n",tests);
   for (i = 0; i < tests; ++i)
    { a = random64();
      b = random64();
@@ -4835,7 +4836,7 @@ int test_word_max(void)
 
 int test_word_min(void)
 { uint64_t i, a, b, x, y;
-  printf("Testing word_min with %d cases\n",TESTS);
+  printf("Testing word_min with %d cases\n",tests);
   for (i = 0; i < tests; ++i)
    { a = random64();
      b = random64();
@@ -4868,6 +4869,31 @@ int test_word_negmodinv(void)
       }
      else if (VERBOSE)
       { printf("OK: a * word_negmodinv a + 1 = 0x%016"PRIx64" * 0x%016"PRIx64" + 1 = %"PRIu64"\n",a,x,a*x+1);
+      }
+    }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_word_recip(void)
+{ uint64_t i, a, x;
+  printf("Testing word_recip with %d cases\n",tests);
+  for (i = 0; i < tests; ++i)
+   { a = random64() | (UINT64_C(1)<<63);
+     x = word_recip(a);
+
+     b0[2] = UINT64_C(1), b0[1] = b0[0] = UINT64_C(0);
+     bignum_of_word(3,b1,a);
+     reference_divmod(3,b3,b2,b0,b1);
+     if (a == (UINT64_C(1)<<63)) b3[1] = UINT64_C(1), b3[0] = ~UINT64_C(0);
+
+     if (!((b3[0] == x) && b3[1] == UINT64_C(1)))
+      { printf("### Disparity: word_recip(%"PRIu64") = %"PRIu64" not %"PRIu64"\n",
+               a,x,b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: word_recip(%"PRIu64") = %"PRIu64"\n",a,b3[0]);
       }
     }
   printf("All OK\n");
@@ -5011,6 +5037,7 @@ int test_all()
   dotest(test_word_max);
   dotest(test_word_min);
   dotest(test_word_negmodinv);
+  dotest(test_word_recip);
 
   if (failures != 0)
    { printf("All tests run, **** %d failures out of %d ****\n",
@@ -5133,6 +5160,7 @@ int test_allnonbmi()
   dotest(test_word_max);
   dotest(test_word_min);
   dotest(test_word_negmodinv);
+  dotest(test_word_recip);
 
   if (failures != 0)
    { printf("*** Partial tests (%d) run and **** %d failures ***\n",
@@ -5330,6 +5358,7 @@ int main(int argc, char *argv[])
      case TEST_WORD_MAX:               return test_word_max();
      case TEST_WORD_MIN:               return test_word_min();
      case TEST_WORD_NEGMODINV:         return test_word_negmodinv();
+     case TEST_WORD_RECIP:             return test_word_recip();
 
      default:
         printf("### Unknown function to test: %d\n",WHAT);

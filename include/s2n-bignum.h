@@ -552,3 +552,7 @@ extern uint64_t word_ctz (uint64_t a);
 // Single-word negated modular inverse (-1/a) mod 2^64
 // Input a; output function return
 extern uint64_t word_negmodinv (uint64_t a);
+
+// Single-word reciprocal, 2^64 + ret = ceil(2^128/a) - 1 if MSB of "a" is set
+// Input a; output function return
+extern uint64_t word_recip (uint64_t a);

@@ -144,6 +144,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       generic/word_max.o \
       generic/word_min.o \
       generic/word_negmodinv.o \
+      generic/word_recip.o \
       p256/bignum_add_p256.o \
       p256/bignum_bigendian_4.o \
       p256/bignum_cmul_p256.o \
