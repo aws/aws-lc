@@ -519,21 +519,18 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
-  # Perform some validation when FIPS_VENDOR_AFFIRM_OPTION is enabled.
+  # Perform some validation when FIPS_VENDOR_AFFIRM_BCM_O_PATH is provided.
   # Warn:
   # aws-lc FIPS validation only covers AL2 and Ubuntu 20.04.
-  # FIPS_VENDOR_AFFIRM_OPTION is provided to use aws-lc FIPS on some old Linux platforms.
-  if(FIPS_VENDOR_AFFIRM_OPTION)
-    if(FIPS_VENDOR_AFFIRM_OPTION STREQUAL "AL2_X86_64_GCC_7_SHARED")
-      if(NOT BUILD_SHARED_LIBS)
-        message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_OPTION '${FIPS_VENDOR_AFFIRM_OPTION}' expects BUILD_SHARED_LIBS=1.")
-      endif()
-      if(NOT GCC)
-        message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_OPTION '${FIPS_VENDOR_AFFIRM_OPTION}' expects GCC compiler.")
-      endif()
-    else()
-      message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_OPTION ${FIPS_VENDOR_AFFIRM_OPTION} is not supported.")
+  # FIPS_VENDOR_AFFIRM_BCM_O_PATH is to provide prebuilt bcm.o on some old Linux platforms.
+  if(FIPS_VENDOR_AFFIRM_BCM_O_PATH)
+    if(NOT BUILD_SHARED_LIBS)
+      message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_BCM_O_PATH currently only supports build with BUILD_SHARED_LIBS=1.")
     endif()
+    if(NOT GCC)
+      message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_BCM_O_PATH currently only supports build with GCC compiler.")
+    endif()
+    message(STATUS "FIPS_VENDOR_AFFIRM_BCM_O_PATH ${FIPS_VENDOR_AFFIRM_BCM_O_PATH} is provided.")
   endif()
   if(FIPS_SHARED)
     # The Android CMake files set -ffunction-sections and -fdata-sections,

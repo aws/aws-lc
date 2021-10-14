@@ -1,7 +1,7 @@
 include_directories(../../include)
 
-if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_OPTION STREQUAL "AL2_X86_64_GCC_7_SHARED")
-  message(STATUS "Building with FIPS_VENDOR_AFFIRM_OPTION '${FIPS_VENDOR_AFFIRM_OPTION}'.")
+if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_BCM_O_PATH)
+  message(STATUS "Building with FIPS_VENDOR_AFFIRM_BCM_O_PATH '${FIPS_VENDOR_AFFIRM_BCM_O_PATH}'.")
   add_library(
     fipsmodule
 
@@ -12,7 +12,7 @@ if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_OPTION STREQUAL "AL2_X86_64_GCC_7_SHARED")
 
   add_dependencies(fipsmodule global_target)
 
-  add_custom_target(bcm_o_target DEPENDS bcm_o/AL2_x86_64/gcc-7/shared/bcm.o)
+  add_custom_target(bcm_o_target DEPENDS ${FIPS_VENDOR_AFFIRM_BCM_O_PATH})
   return()
 endif()
 

@@ -47,7 +47,10 @@ class AwsLcGitHubCIStack(core.Stack):
                         inline_policies=inline_policies)
 
         # Create build spec.
-        placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
+        placeholder_map = {
+            "ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name),
+            "FIPS_BCM_O_S3_OBJ_PLACEHOLDER": "s3://{}/bcm.o".format(AWS_LC_CI_S3_BUCKET_NAME)
+        }
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.

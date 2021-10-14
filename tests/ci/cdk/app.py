@@ -12,9 +12,7 @@ from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
 from cdk.windows_docker_image_build_stack import WindowsDockerImageBuildStack
 from cdk.ecr_stack import EcrStack
-from util.metadata import AWS_ACCOUNT, AWS_REGION, AWS_LC_CI_S3_BUCKET_NAME, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, \
-    WINDOWS_X86_ECR_REPO
-from aws_cdk import aws_s3 as s3
+from util.metadata import AWS_ACCOUNT, AWS_REGION, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO
 
 # Initialize app.
 app = core.App()
@@ -37,7 +35,7 @@ LinuxDockerImageBatchBuildStack(app, "aws-lc-docker-image-build-linux", env=env)
 # # Windows Docker images are created by running commands in Windows EC2 instance.
 # WindowsDockerImageBuildStack(app, "aws-lc-docker-image-build-windows", env=env)
 
-# Define AWS stacks shared by x86 and aarch.
+# Define a stack to include AWS resources needed by this CI.
 AwsLcCISharedStack(app, "aws-lc-ci-shared")
 
 # Define CodeBuild Batch job for testing code.
