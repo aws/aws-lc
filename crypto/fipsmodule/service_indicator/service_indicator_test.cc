@@ -678,10 +678,14 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
 
  // RSA_generate_key_fips may only be used for 2048-, 3072-, and 4096-bit
  // keys.
- ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), 512, nullptr));
- ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), 1024, nullptr));
- ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), 3071, nullptr));
- ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), 4097, nullptr));
+ for (const size_t bits : {512, 1024, 3071, 4097}) {
+   SCOPED_TRACE(bits);
+
+   rsa.reset(RSA_new());
+   CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), bits, nullptr)));
+   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+ }
 
  // Test that we can generate keys of the supported lengths:
  for (const size_t bits : {2048, 3072, 4096}) {
@@ -689,7 +693,7 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
 
    rsa.reset(RSA_new());
    CALL_SERVICE_AND_CHECK_APPROVED(approved,
-               ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), bits, nullptr)));
+             ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), bits, nullptr)));
    ASSERT_EQ(approved, AWSLC_APPROVED);
    ASSERT_EQ(bits, BN_num_bits(rsa->n));
  }
@@ -705,7 +709,7 @@ struct RSATestVector {
   // expected to be approved or not for signature verification.
   const int sig_ver_expect_approved;
 };
-struct RSATestVector kRSASigGenTestVectors[] = {
+struct RSATestVector kRSATestVectors[] = {
     { 1024, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
@@ -731,7 +735,7 @@ struct RSATestVector kRSASigGenTestVectors[] = {
 
 class RSA_ServiceIndicatorTest : public testing::TestWithParam<RSATestVector> {};
 
-INSTANTIATE_TEST_SUITE_P(All, RSA_ServiceIndicatorTest, testing::ValuesIn(kRSASigGenTestVectors));
+INSTANTIATE_TEST_SUITE_P(All, RSA_ServiceIndicatorTest, testing::ValuesIn(kRSATestVectors));
 
 TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   const RSATestVector &rsaTestVector = GetParam();
@@ -752,20 +756,26 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
-  // |EVP_DigestSignFinal| for approval at the end.
+  // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
+  // |EVP_DigestSignUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
   std::vector<uint8_t> final_output;
   size_t sig_len;
-  ASSERT_TRUE(EVP_DigestSignInit(
-      md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext)));
-  // Determine the size of the signature. This case of |EVP_DigestSignFinal|
-  // should not return an approval check because no crypto is being done.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Determine the size of the signature. The first call of |EVP_DigestSignFinal|
+  // should not return an approval check because no crypto is being done when
+  // |nullptr| is inputted in the |*out_sig| field.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len)));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   final_output.resize(sig_len);
-  // Actual service indicator crypto approval.
-  CALL_SERVICE_AND_CHECK_APPROVED( approved,
+  // The second call performs the actual operation.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
             ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), final_output.data(), &sig_len)));
   ASSERT_EQ(approved, rsaTestVector.sig_gen_expect_approved);
 
@@ -773,7 +783,9 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   // Test using the one-shot |EVP_DigestSign| function for approval.
   md_ctx.Reset();
   std::vector<uint8_t> oneshot_output(sig_len);
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
                                  kPlaintext, sizeof(kPlaintext))));
@@ -810,17 +822,25 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   // Service Indicator approval checks for RSA signature verification.
 
   // Test running the EVP_DigestVerify interfaces one by one directly, and check
-  // |EVP_DigestVerifyFinal| for approval at the end.
+  // |EVP_DigestVerifyFinal| for approval at the end. |EVP_DigestVerifyInit|,
+  // |EVP_DigestVerifyUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
   md_ctx.Reset();
-  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
           ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature.data(), signature.size())));
   ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
 
   // Test using the one-shot |EVP_DigestVerify| function for approval.
   md_ctx.Reset();
-  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
           ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
                                              signature.size(), kPlaintext,
@@ -902,18 +922,25 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
   EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get());
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
-  // |EVP_DigestSignFinal| for approval at the end.
+  // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
+  // |EVP_DigestSignUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
   std::vector<uint8_t> final_output;
   size_t sig_len;
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(),
-                                 nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext)));
-  // Determine the size of the signature. This case of |EVP_DigestSignFinal|
-  // should not return an approval check because no crypto is being done.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-              ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len)));
+        ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Determine the size of the signature. The first call of |EVP_DigestSignFinal|
+  // should not return an approval check because no crypto is being done when
+  // |nullptr| is inputted in the |*out_sig| field.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len)));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   final_output.resize(sig_len);
+  // The second call performs the actual operation.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
               ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), final_output.data(), &sig_len)));
   ASSERT_EQ(approved, ecdsaTestVector.sig_gen_expect_approved);
@@ -922,7 +949,9 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
   // Test using the one-shot |EVP_DigestSign| function for approval.
   md_ctx.Reset();
   std::vector<uint8_t> oneshot_output;
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len));
   oneshot_output.resize(sig_len);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
@@ -960,21 +989,25 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
   // Service Indicator approval checks for ECDSA signature verification.
 
   // Test running the EVP_DigestVerify interfaces one by one directly, and check
-  // |EVP_DigestVerifyFinal| for approval at the end.
+  // |EVP_DigestVerifyFinal| for approval at the end. |EVP_DigestVerifyInit|,
+  // |EVP_DigestVerifyUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
   md_ctx.Reset();
-  ASSERT_TRUE(EVP_DigestVerifyInit(
-      md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get()));
-  ASSERT_TRUE(
-      EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext)));
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, ASSERT_TRUE(EVP_DigestVerifyFinal(
-                    md_ctx.get(), signature.data(), signature.size())));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature.data(), signature.size())));
   ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
 
   // Test using the one-shot |EVP_DigestVerify| function for approval.
   md_ctx.Reset();
-  ASSERT_TRUE(EVP_DigestVerifyInit(
-      md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
                                              signature.size(), kPlaintext,

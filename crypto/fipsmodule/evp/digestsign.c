@@ -234,6 +234,8 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
     goto end;
   }
 
+  // This is executed when |uses_prehash| is not true, which is the case for
+  // Ed25519.
   ret = ctx->pctx->pmeth->sign_message(ctx->pctx, out_sig, out_sig_len, data,
                                         data_len);
 end:
@@ -262,6 +264,8 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
     goto end;
   }
 
+  // This is executed when |uses_prehash| is not true, which is the case for
+  // Ed25519.
   ret = ctx->pctx->pmeth->verify_message(ctx->pctx, sig, sig_len, data, len);
 
 end:
