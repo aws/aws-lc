@@ -66,4 +66,8 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx);
 
 void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx);
 
+void ECDH_verify_service_indicator(const EC_KEY *ec_key);
+
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst);
+
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

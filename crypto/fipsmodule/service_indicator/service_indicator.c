@@ -270,6 +270,47 @@ void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
   }
 }
 
+void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
+  // ECDH with curves P-224, P-256, P-384 and P-521 is approved.
+  // Not the best way to write this, but the delocate parser for ARM/clang can't
+  // recognize || if statements, or switch statements for this.
+  // TODO: Update the delocate parser to be able to recognize a more readable
+  // version of this.
+  int curve = ec_key->group->curve_name;
+  if(curve == NID_secp224r1) {
+    FIPS_service_indicator_update_state();
+  }
+  else if( curve == NID_X9_62_prime256v1) {
+    FIPS_service_indicator_update_state();
+  }
+  else if(curve == NID_secp384r1) {
+    FIPS_service_indicator_update_state();
+  }
+  else if(curve == NID_secp521r1) {
+    FIPS_service_indicator_update_state();
+  }
+}
+
+
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
+  // HMAC-MD5/HMAC-SHA1 (both used concurrently) is approved for use in the KDF
+  // in TLS 1.0/1.1.
+  // HMAC-SHA{256, 384, 512} are approved for use in the KDF in TLS 1.2.
+  // These Key Derivation functions are to be used in the context of the TLS
+  // protocol.
+  switch (dgst->type){
+    case NID_md5_sha1:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
+
 #else
 
 uint64_t FIPS_service_indicator_before_call(void) { return 0; }
@@ -296,9 +337,15 @@ void AES_CMAC_verify_service_indicator(OPENSSL_UNUSED const CMAC_CTX *ctx) { }
 
 void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
 
+<<<<<<< HEAD
 void DigestSign_verify_service_indicator(OPENSSL_UNUSED const EVP_MD_CTX *ctx) { }
 
 void DigestVerify_verify_service_indicator(OPENSSL_UNUSED const EVP_MD_CTX *ctx) { }
+=======
+void ECDH_verify_service_indicator(OPENSSL_UNUSED const EC_KEY *ec_key) { }
+
+void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) { }
+>>>>>>> upstream/main
 
 #endif // AWSLC_FIPS
 
