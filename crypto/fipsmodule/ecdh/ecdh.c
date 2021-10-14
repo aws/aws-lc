@@ -79,15 +79,19 @@
 
 int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
                           const EC_KEY *priv_key) {
+  // Lock state here to avoid underlying |SHA*| functions updating the service
+  // indicator state unintentionally.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
   if (priv_key->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
-    return 0;
+    goto end;
   }
   const EC_SCALAR *const priv = &priv_key->priv_key->scalar;
   const EC_GROUP *const group = EC_KEY_get0_group(priv_key);
   if (EC_GROUP_cmp(group, pub_key->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
+    goto end;
   }
 
   EC_RAW_POINT shared_point;
@@ -97,7 +101,7 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
       !ec_get_x_coordinate_as_bytes(group, buf, &buflen, sizeof(buf),
                                     &shared_point)) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
-    return 0;
+    goto end;
   }
 
   switch (out_len) {
@@ -115,8 +119,14 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
       break;
     default:
       OPENSSL_PUT_ERROR(ECDH, ECDH_R_UNKNOWN_DIGEST_LENGTH);
-      return 0;
+      goto end;
   }
+  ret = 1;
 
-  return 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    ECDH_verify_service_indicator(priv_key);
+  }
+  return ret;
 }
