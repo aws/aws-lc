@@ -350,15 +350,13 @@ void AES_CMAC_verify_service_indicator(OPENSSL_UNUSED const CMAC_CTX *ctx) { }
 
 void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
 
-<<<<<<< HEAD
 void DigestSign_verify_service_indicator(OPENSSL_UNUSED const EVP_MD_CTX *ctx) { }
 
 void DigestVerify_verify_service_indicator(OPENSSL_UNUSED const EVP_MD_CTX *ctx) { }
-=======
+
 void ECDH_verify_service_indicator(OPENSSL_UNUSED const EC_KEY *ec_key) { }
 
 void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) { }
->>>>>>> upstream/main
 
 #endif // AWSLC_FIPS
 
