@@ -705,7 +705,8 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   // not be approved because they do not indicate an entire service has been
   // done.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
-  EVP_PKEY *pkey = nullptr;
+  EVP_PKEY *raw = nullptr;
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
   ASSERT_TRUE(ctx);
   // Test unapproved key sizes of RSA.
   for(const size_t bits : {512, 1024, 3071, 4095}) {
@@ -713,8 +714,11 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
     CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey)));
+        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+    // Prevent memory leakage.
+    pkey.reset(raw);
+    raw = nullptr;
   }
   // Test approved key sizes of RSA.
   for(const size_t bits : {2048, 3072, 4096}) {
@@ -722,8 +726,11 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
     CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey)));
+        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
     ASSERT_EQ(approved, AWSLC_APPROVED);
+    // Prevent memory leakage.
+    pkey.reset(raw);
+    raw = nullptr;
   }
 }
 
@@ -951,11 +958,14 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
   // not be approved because they do not indicate an entire service has been
   // done.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
-  EVP_PKEY *pkey = nullptr;
+  EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(ctx);
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), ecdsaTestVector.nid));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+  // Prevent memory leakage.
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  raw = nullptr;
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
 }
 
