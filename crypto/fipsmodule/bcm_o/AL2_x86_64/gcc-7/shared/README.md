@@ -1,9 +1,9 @@
-### Build bcm.o commands
+### Generate bcm.o commands
 
 ```sh
-# Step1: clone aws-lc code.
-git clone https://github.com/awslabs/aws-lc.git
-# TODO(CryptoAlg-800): when FIPS branch is ready, checkout FIPS branch, and then check SHA digests of bcm.o
+# TODO(CryptoAlg-800): add reference to the README can tell AWS-LC FIPS Security-Policy doc.
+# Step 1: get aws-lc code based on AWS-LC FIPS Security-Policy doc.
+# Change the directory.
 cd aws-lc
 
 # Step2: build aws-lc.
@@ -12,13 +12,8 @@ export CXX=g++
 source tests/ci/common_posix_setup.sh
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
 
-# Step3: record digest of the bcm.o
-DIR_OF_BCM_DIGEST="$(pwd)/crypto/fipsmodule/bcm_o/AL2_x86_64/gcc-7/shared"
+# Step3: the bcm.o is generated under |ABS_PATH_TO_BCM_O|
 ABS_PATH_TO_BCM_O="${BUILD_ROOT}/crypto/fipsmodule/bcm.o"
-check_bcm_o_digest
-
-# Step 4: if digest check failed, run below command to update.
-update_bcm_o_digest
 ```
 
 ### Record information about the host used to build the bcm.o

@@ -79,38 +79,6 @@ function ensure_file() {
     fi
 }
 
-function perform_bcm_o_digest_related_check {
-  if [[ -z "${ABS_PATH_TO_BCM_O+x}" || -z "${ABS_PATH_TO_BCM_O}" ]]; then
-    echo "ABS_PATH_TO_BCM_O is not defined or empty."
-    exit 1
-  fi
-  if [[ -z "${DIR_OF_BCM_DIGEST+x}" || -z "${DIR_OF_BCM_DIGEST}" ]]; then
-    echo "DIR_OF_BCM_DIGEST is not defined or empty."
-    exit 1
-  fi
-  # Check if bcm.o exists.
-  ensure_file "${ABS_PATH_TO_BCM_O}"
-}
-
-function check_bcm_o_digest {
-  # Validate
-  perform_bcm_o_digest_related_check
-  # Copy the bcm.o to the target directory.
-  cp "${ABS_PATH_TO_BCM_O}" "${DIR_OF_BCM_DIGEST}"
-  # Check the digest.
-  ensure_file "${DIR_OF_BCM_DIGEST}/bcm.o.sha256"
-  cd "${DIR_OF_BCM_DIGEST}" && (cat "${DIR_OF_BCM_DIGEST}/bcm.o.sha256" | sha256sum -c) || exit 1
-  cd "$SRC_ROOT"
-}
-
-function update_bcm_o_digest {
-  # Validate
-  perform_bcm_o_digest_related_check
-  # Update the digest.
-  cd "${DIR_OF_BCM_DIGEST}" && (sha256sum bcm.o > bcm.o.sha256)
-  cd "$SRC_ROOT"
-}
-
 function build_and_test_valgrind {
   run_build "$@"
   run_cmake_custom_target 'run_tests_valgrind'
