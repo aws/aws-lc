@@ -142,10 +142,10 @@ static int pkey_ec_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
 
 static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                           size_t *keylen) {
-  int ret;
-  size_t outlen;
   const EC_POINT *pubkey = NULL;
   EC_KEY *eckey;
+  uint8_t buf[EC_MAX_BYTES];
+  size_t buflen = sizeof(buf);
 
   if (!ctx->pkey || !ctx->peerkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_KEYS_NOT_SET);
@@ -162,16 +162,19 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   }
   pubkey = EC_KEY_get0_public_key(ctx->peerkey->pkey.ec);
 
-  // NB: unlike PKCS#3 DH, if *outlen is less than maximum size this is
-  // not an error, the result is truncated.
+  // NB: unlike PKCS#3 DH, if the returned buflen is less than
+  // the requested size in *keylen, this is not an error;
+  // the result is truncated.
 
-  outlen = *keylen;
-
-  ret = ECDH_compute_key(key, outlen, pubkey, eckey, 0);
-  if (ret < 0) {
-    return 0;
+  if (!ECDH_compute_shared_secret(buf, &buflen, pubkey, eckey)) {
+      return 0;
   }
-  *keylen = ret;
+
+  if (buflen < *keylen) {
+      *keylen = buflen;
+  }
+  OPENSSL_memcpy(key, buf, *keylen);
+
   return 1;
 }
 

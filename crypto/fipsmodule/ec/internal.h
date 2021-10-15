@@ -81,6 +81,13 @@
 extern "C" {
 #endif
 
+// ECDH_compute_key calculates the shared key between |pub_key| and |priv_key|.
+// This function is called internally by |ECDH_compute_key| and |ECDH_compute_key_fips|.
+// The shared secret is returned in |buf|, the value stored in |buflen| on entry is expected
+// to be EC_MAX_BYTES or the number of bytes of the field element of the underlying curve.
+// On exit, |buflen| is set to the actual number of bytes of the shared secret.
+int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub_key,
+                               const EC_KEY *priv_key);
 
 // EC internals.
 
