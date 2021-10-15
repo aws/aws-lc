@@ -51,7 +51,7 @@
 
 // When in FIPS mode we use the CPU Jitter entropy source to seed our DRBG.  
 // This entropy source is very slow and can incur a cost anywhere between 10-60ms
-// depending on configuration and CPU.  Increasing to 2^40 will amortize the 
+// depending on configuration and CPU.  Increasing to 2^32 will amortize the 
 // penalty over more requests.  This meets the requirements defined in SP 800-90B
 // for a max reseed of interval (2^48)
 //
@@ -61,7 +61,7 @@
 // reseeding.
 
 #if defined(BORINGSSL_FIPS)
-static const unsigned kReseedInterval = 1099511627776;  //2^40
+static const unsigned kReseedInterval = 4294967295;  //2^32
 #else
 static const unsigned kReseedInterval = 4096;
 #endif
