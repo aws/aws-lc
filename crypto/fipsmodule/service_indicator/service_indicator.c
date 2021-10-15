@@ -179,8 +179,8 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
    // the state here.
    FIPS_service_indicator_lock_state();
    int ret = 0;
-   if(pkey->type == EVP_PKEY_RSA ||
-      pkey->type== EVP_PKEY_RSA_PSS) {
+   if(pkey->type == EVP_PKEY_RSA || pkey->type== EVP_PKEY_RSA_PSS) {
+     //  2048, 3072 and 4096 bit keys are approved for RSA key generation.
      if (RSA_check_fips(pkey->pkey.rsa)) {
        switch (EVP_PKEY_size(pkey)) {
          case 256:
@@ -193,6 +193,8 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
        }
     }
   } else if(pkey->type == EVP_PKEY_EC) {
+    // Curves P-224, P-256, P-384 and P-521 keys are approved for EC key
+    // generation.
      if (EC_KEY_check_fips(pkey->pkey.ec)) {
        int curve_name = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
        switch (curve_name) {

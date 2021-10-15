@@ -700,9 +700,9 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
    ASSERT_EQ(bits, BN_num_bits(rsa->n));
  }
 
-  // Test running the EVP_PKEY_derive interfaces one by one directly, and check
+  // Test running the EVP_PKEY_keygen interfaces one by one directly, and check
   // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
-  // not be approved because they do not indicate an entire service has been
+  // not be approved because it does not indicate an entire service has been
   // done.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
   EVP_PKEY *raw = nullptr;
@@ -711,10 +711,12 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   // Test unapproved key sizes of RSA.
   for(const size_t bits : {512, 1024, 3071, 4095}) {
     SCOPED_TRACE(bits);
-    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
-    CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     // Prevent memory leakage.
     pkey.reset(raw);
@@ -723,10 +725,12 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   // Test approved key sizes of RSA.
   for(const size_t bits : {2048, 3072, 4096}) {
     SCOPED_TRACE(bits);
-    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
-    CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
     ASSERT_EQ(approved, AWSLC_APPROVED);
     // Prevent memory leakage.
     pkey.reset(raw);
@@ -745,7 +749,7 @@ struct RSATestVector {
   const int sig_ver_expect_approved;
 };
 struct RSATestVector kRSATestVectors[] = {
-    // RSA test cases that not be approved in any case.
+    // RSA test cases that are not approved in any case.
     { 512, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 512, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 1024, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
