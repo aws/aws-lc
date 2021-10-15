@@ -51,9 +51,9 @@
 
 // When in FIPS mode we use the CPU Jitter entropy source to seed our DRBG.  
 // This entropy source is very slow and can incur a cost anywhere between 10-60ms
-// depending on configuration and CPU.  Increasing to 2^24 will amortize the 
-// penalty over more requests.  This is the same value used in OpenSSL 3.0  
-// and meets the requirements defined in SP 800-90B for a max reseed of interval (2^48)
+// depending on configuration and CPU.  Increasing to 2^40 will amortize the 
+// penalty over more requests.  This meets the requirements defined in SP 800-90B
+// for a max reseed of interval (2^48)
 //
 // CPU Jitter:  https://www.chronox.de/jent/doc/CPU-Jitter-NPTRNG.html
 // 
@@ -61,7 +61,7 @@
 // reseeding.
 
 #if defined(BORINGSSL_FIPS)
-static const unsigned kReseedInterval = 16777216;
+static const unsigned kReseedInterval = 1099511627776;  //2^40
 #else
 static const unsigned kReseedInterval = 4096;
 #endif
