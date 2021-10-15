@@ -10,11 +10,11 @@ the support is limited:
   * Only `bcm.o` prebuilt on `AL2 x86_64(gcc 7.3)` was used in the tests.
 
 ### Usage:
-* Launch AWS-LC FIPS test hosts.
+* Launch AWS-LC FIPS test host.
 
-CPU|OS|EC2 AMI|Kernal Version|Instance Type|Compiler|
------------- | -------------| -------------|-------------|-------------|-------------
-Intel Xeon Platinum 8275CL|AL2|ami-0aeeebd8d2ab47354|Linux5.4.129-62.227.amzn2.x86_64|c5.metal|gcc 7.3.1
+CPU|OS|EC2 AMI|Kernal Version|Instance Type|
+------------ | -------------| -------------|-------------|-------------
+Intel Xeon Platinum 8275CL|AL2|ami-0aeeebd8d2ab47354|Linux5.4.129-62.227.amzn2.x86_64|c5.metal
 * Install build dependencies.
 ```sh
 set -ex && \
