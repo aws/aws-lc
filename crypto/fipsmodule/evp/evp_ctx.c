@@ -443,33 +443,44 @@ int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
 }
 
 int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
+  // We have to avoid potential underlying services updating the indicator state,
+  // so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return 0;
+    goto end;
   }
   if (ctx->operation != EVP_PKEY_OP_KEYGEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
-    return 0;
+    goto end;
   }
 
   if (!out_pkey) {
-    return 0;
+    goto end;
   }
 
   if (!*out_pkey) {
     *out_pkey = EVP_PKEY_new();
     if (!*out_pkey) {
       OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
-      return 0;
+      goto end;
     }
   }
 
   if (!ctx->pmeth->keygen(ctx, *out_pkey)) {
     EVP_PKEY_free(*out_pkey);
     *out_pkey = NULL;
-    return 0;
+    goto end;
   }
-  return 1;
+
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    EVP_PKEY_keygen_verify_service_indicator(*out_pkey);
+  }
+  return ret;
 }
 
 int EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx) {
