@@ -155,7 +155,12 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
     return 0;
   }
 
+  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
+  // functions to avoid updating the service indicator with the DRBG functions.
+  FIPS_service_indicator_lock_state();
   RAND_bytes((uint8_t *)rnd->d, words * sizeof(BN_ULONG));
+  FIPS_service_indicator_unlock_state();
+
   rnd->d[words - 1] &= mask;
   if (top != BN_RAND_TOP_ANY) {
     if (top == BN_RAND_TOP_TWO && bits > 1) {
@@ -249,13 +254,18 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
   // appendices B.4.2 and B.5.2. When called in those contexts, |max_exclusive|
   // is n and |min_inclusive| is one.
 
+  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
+  // functions to avoid updating the service indicator with the DRBG functions.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
+
   // Compute the bit length of |max_exclusive| (step 1), in terms of a number of
   // |words| worth of entropy to fill and a mask of bits to clear in the top
   // word.
   size_t words;
   BN_ULONG mask;
   if (!bn_range_to_mask(&words, &mask, min_inclusive, max_exclusive, len)) {
-    return 0;
+    goto end;
   }
 
   // Fill any unused words with zero.
@@ -265,7 +275,7 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
   do {
     if (!--count) {
       OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
-      return 0;
+      goto end;
     }
 
     // Steps 4 and 5. Use |words| and |mask| together to obtain a string of N
@@ -277,7 +287,12 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
     // If out >= max_exclusive or out < min_inclusive, retry. This implements
     // the equivalent of steps 6 and 7 without leaking the value of |out|.
   } while (!bn_in_range_words(out, min_inclusive, max_exclusive, words));
-  return 1;
+
+  ret = 1;
+
+end:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }
 
 int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
@@ -296,12 +311,17 @@ int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
 
 int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
                          const BIGNUM *max_exclusive) {
+  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
+  // functions to avoid updating the service indicator with the DRBG functions.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
+
   size_t words;
   BN_ULONG mask;
   if (!bn_range_to_mask(&words, &mask, min_inclusive, max_exclusive->d,
                         max_exclusive->width) ||
       !bn_wexpand(r, words)) {
-    return 0;
+    goto end;
   }
 
   assert(words > 0);
@@ -309,7 +329,7 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
   // The range must be large enough for bit tricks to fix invalid values.
   if (words == 1 && min_inclusive > mask >> 1) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
-    return 0;
+    goto end;
   }
 
   // Select a uniform random number with num_bits(max_exclusive) bits.
@@ -329,7 +349,11 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
 
   r->neg = 0;
   r->width = words;
-  return 1;
+  ret = 1;
+
+end:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }
 
 int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
