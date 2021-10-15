@@ -127,7 +127,7 @@ def code_build_fuzz_policy_in_json():
 
 def s3_read_policy_in_json(s3_bucket_name):
     """
-    Define an IAM policy statement for reading to S3 bucket.
+    Define an IAM policy statement for reading from S3 bucket.
     :return: an IAM policy statement in json.
     """
     return {

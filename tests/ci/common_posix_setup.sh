@@ -106,7 +106,7 @@ function check_bcm_o_digest {
 function update_bcm_o_digest {
   # Validate
   perform_bcm_o_digest_related_check
-  # Check the digest.
+  # Update the digest.
   cd "${DIR_OF_BCM_DIGEST}" && (sha256sum bcm.o > bcm.o.sha256)
   cd "$SRC_ROOT"
 }
