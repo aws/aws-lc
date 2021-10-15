@@ -174,6 +174,45 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
+void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
+   // We do a call to |EC_KEY_check_fips|, which is approved, so we have to lock
+   // the state here.
+   FIPS_service_indicator_lock_state();
+   int ret = 0;
+   if(pkey->type == EVP_PKEY_RSA ||
+      pkey->type== EVP_PKEY_RSA_PSS) {
+     if (RSA_check_fips(pkey->pkey.rsa)) {
+       switch (EVP_PKEY_size(pkey)) {
+         case 256:
+         case 384:
+         case 512:
+           ret = 1;
+           break;
+         default:
+           break;
+       }
+    }
+  } else if(pkey->type == EVP_PKEY_EC) {
+     if (EC_KEY_check_fips(pkey->pkey.ec)) {
+       int curve_name = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
+       switch (curve_name) {
+         case NID_secp224r1:
+         case NID_X9_62_prime256v1:
+         case NID_secp384r1:
+         case NID_secp521r1:
+           ret = 1;
+           break;
+         default:
+           break;
+       }
+     }
+   }
+   FIPS_service_indicator_unlock_state();
+   if(ret) {
+     FIPS_service_indicator_update_state();
+   }
+}
+
 void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
@@ -349,6 +388,8 @@ void AEAD_CCM_verify_service_indicator(OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) {
 void AES_CMAC_verify_service_indicator(OPENSSL_UNUSED const CMAC_CTX *ctx) { }
 
 void HMAC_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *evp_md) { }
+
+void EVP_PKEY_keygen_verify_service_indicator(OPENSSL_UNUSED const EVP_PKEY *pkey) { }
 
 void DigestSign_verify_service_indicator(OPENSSL_UNUSED const EVP_MD_CTX *ctx) { }
 

@@ -62,6 +62,8 @@ void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx);
 
 void HMAC_verify_service_indicator(const EVP_MD *evp_md);
 
+void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey);
+
 void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx);
 
 void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx);

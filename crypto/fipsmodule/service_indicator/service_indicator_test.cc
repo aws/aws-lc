@@ -671,14 +671,16 @@ TEST_P(HMAC_ServiceIndicatorTest, HMACTest) {
   ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
 }
 
+// RSA tests are not parameterized with the |kRSATestVectors| as key
+// generation for RSA is time consuming.
 TEST(ServiceIndicatorTest, RSAKeyGen) {
  int approved = AWSLC_NOT_APPROVED;
  bssl::UniquePtr<RSA> rsa(RSA_new());
  ASSERT_TRUE(rsa);
 
- // RSA_generate_key_fips may only be used for 2048-, 3072-, and 4096-bit
+ // |RSA_generate_key_fips| may only be used for 2048-, 3072-, and 4096-bit
  // keys.
- for (const size_t bits : {512, 1024, 3071, 4097}) {
+ for (const size_t bits : {512, 1024, 3071, 4095}) {
    SCOPED_TRACE(bits);
 
    rsa.reset(RSA_new());
@@ -697,6 +699,32 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
    ASSERT_EQ(approved, AWSLC_APPROVED);
    ASSERT_EQ(bits, BN_num_bits(rsa->n));
  }
+
+  // Test running the EVP_PKEY_derive interfaces one by one directly, and check
+  // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
+  // not be approved because they do not indicate an entire service has been
+  // done.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  EVP_PKEY *pkey = nullptr;
+  ASSERT_TRUE(ctx);
+  // Test unapproved key sizes of RSA.
+  for(const size_t bits : {512, 1024, 3071, 4095}) {
+    SCOPED_TRACE(bits);
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey)));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  }
+  // Test approved key sizes of RSA.
+  for(const size_t bits : {2048, 3072, 4096}) {
+    SCOPED_TRACE(bits);
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey)));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+  }
 }
 
 struct RSATestVector {
@@ -909,10 +937,25 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
 
   int approved = AWSLC_NOT_APPROVED;
 
+  // Test service indicator approval for |EC_KEY_generate_key_fips| and
+  // |EC_KEY_check_fips|.
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(ecdsaTestVector.nid));
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_generate_key_fips(key.get())));
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_check_fips(key.get())));
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
+
+
+  // Test running the EVP_PKEY_derive interfaces one by one directly, and check
+  // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
+  // not be approved because they do not indicate an entire service has been
+  // done.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  EVP_PKEY *pkey = nullptr;
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), ecdsaTestVector.nid));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey)));
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
 }
 

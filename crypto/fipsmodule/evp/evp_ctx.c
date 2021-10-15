@@ -469,6 +469,8 @@ int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
     *out_pkey = NULL;
     return 0;
   }
+
+  EVP_PKEY_keygen_verify_service_indicator(*out_pkey);
   return 1;
 }
 
