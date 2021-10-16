@@ -12,20 +12,15 @@
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
-#include <openssl/ec_key.h>
 #include <openssl/ecdh.h>
-#include <openssl/ecdsa.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
-#include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/service_indicator.h>
-#include <openssl/sha.h>
 
 #include "../../test/abi_test.h"
-#include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../rand/internal.h"
 #include "../tls/internal.h"
@@ -674,6 +669,419 @@ TEST_P(HMAC_ServiceIndicatorTest, HMACTest) {
                      key.size(), hmacTestVector.input, sizeof(hmacTestVector.input), mac.data(), &mac_len)));
   ASSERT_EQ(approved, hmacTestVector.expect_approved);
   ASSERT_TRUE(check_test(hmacTestVector.expected_digest, mac.data(), mac_len, "HMAC KAT"));
+}
+
+// RSA tests are not parameterized with the |kRSATestVectors| as key
+// generation for RSA is time consuming.
+TEST(ServiceIndicatorTest, RSAKeyGen) {
+ int approved = AWSLC_NOT_APPROVED;
+ bssl::UniquePtr<RSA> rsa(RSA_new());
+ ASSERT_TRUE(rsa);
+
+ // |RSA_generate_key_fips| may only be used for 2048-, 3072-, and 4096-bit
+ // keys.
+ for (const size_t bits : {512, 1024, 3071, 4095}) {
+   SCOPED_TRACE(bits);
+
+   rsa.reset(RSA_new());
+   CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), bits, nullptr)));
+   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+ }
+
+ // Test that we can generate keys of the supported lengths:
+ for (const size_t bits : {2048, 3072, 4096}) {
+   SCOPED_TRACE(bits);
+
+   rsa.reset(RSA_new());
+   CALL_SERVICE_AND_CHECK_APPROVED(approved,
+             ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), bits, nullptr)));
+   ASSERT_EQ(approved, AWSLC_APPROVED);
+   ASSERT_EQ(bits, BN_num_bits(rsa->n));
+ }
+
+  // Test running the EVP_PKEY_keygen interfaces one by one directly, and check
+  // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
+  // not be approved because it does not indicate an entire service has been
+  // done.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  EVP_PKEY *raw = nullptr;
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ASSERT_TRUE(ctx);
+  // Test unapproved key sizes of RSA.
+  for(const size_t bits : {512, 1024, 3071, 4095}) {
+    SCOPED_TRACE(bits);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+    // Prevent memory leakage.
+    pkey.reset(raw);
+    raw = nullptr;
+  }
+  // Test approved key sizes of RSA.
+  for(const size_t bits : {2048, 3072, 4096}) {
+    SCOPED_TRACE(bits);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+    // Prevent memory leakage.
+    pkey.reset(raw);
+    raw = nullptr;
+  }
+}
+
+struct RSATestVector {
+  // key_size is the input rsa key size.
+  const int key_size;
+  // md_func is the digest to test.
+  const EVP_MD *(*func)();
+  // expected to be approved or not for signature generation.
+  const int sig_gen_expect_approved;
+  // expected to be approved or not for signature verification.
+  const int sig_ver_expect_approved;
+};
+struct RSATestVector kRSATestVectors[] = {
+    // RSA test cases that are not approved in any case.
+    { 512, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 512, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1024, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 2048, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 4096, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+
+    { 1024, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+
+    { 2048, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 3072, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 4096, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED },
+};
+
+class RSA_ServiceIndicatorTest : public testing::TestWithParam<RSATestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, RSA_ServiceIndicatorTest, testing::ValuesIn(kRSATestVectors));
+
+TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
+  const RSATestVector &rsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(rsa);
+  BN_set_word(e.get(), RSA_F4);
+
+  // Generate a generic rsa key.
+  RSA_generate_key_ex(rsa.get(), rsaTestVector.key_size, e.get(),
+                      nullptr);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+
+  // Test running the EVP_DigestSign interfaces one by one directly, and check
+  // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
+  // |EVP_DigestSignUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
+  std::vector<uint8_t> final_output;
+  size_t sig_len;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Determine the size of the signature. The first call of |EVP_DigestSignFinal|
+  // should not return an approval check because no crypto is being done when
+  // |nullptr| is inputted in the |*out_sig| field.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  final_output.resize(sig_len);
+  // The second call performs the actual operation.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), final_output.data(), &sig_len)));
+  ASSERT_EQ(approved, rsaTestVector.sig_gen_expect_approved);
+
+
+  // Test using the one-shot |EVP_DigestSign| function for approval.
+  md_ctx.Reset();
+  std::vector<uint8_t> oneshot_output(sig_len);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
+                                 kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, rsaTestVector.sig_gen_expect_approved);
+}
+
+TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
+  const RSATestVector &rsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(rsa);
+  BN_set_word(e.get(), RSA_F4);
+
+  // Generate RSA signatures for RSA verification.
+  RSA_generate_key_ex(rsa.get(), rsaTestVector.key_size, e.get(),
+                      nullptr);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+
+  std::vector<uint8_t> signature;
+  size_t sig_len;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, nullptr, 0));
+  signature.resize(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len,
+                             kPlaintext, sizeof(kPlaintext)));
+  signature.resize(sig_len);
+
+  // Service Indicator approval checks for RSA signature verification.
+
+  // Test running the EVP_DigestVerify interfaces one by one directly, and check
+  // |EVP_DigestVerifyFinal| for approval at the end. |EVP_DigestVerifyInit|,
+  // |EVP_DigestVerifyUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
+  md_ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature.data(), signature.size())));
+  ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
+
+  // Test using the one-shot |EVP_DigestVerify| function for approval.
+  md_ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
+                                             signature.size(), kPlaintext,
+                                             sizeof(kPlaintext))));
+  ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
+}
+
+struct ECDSATestVector {
+  // nid is the input curve nid.
+  const int nid;
+  // md_func is the digest to test.
+  const EVP_MD *(*func)();
+  // expected to be approved or not for signature generation.
+  const int key_check_expect_approved;
+  // expected to be approved or not for signature generation.
+  const int sig_gen_expect_approved;
+  // expected to be approved or not for signature verification.
+  const int sig_ver_expect_approved;
+};
+struct ECDSATestVector kECDSATestVectors[] = {
+    // Only the following NIDs for |EC_GROUP| are creatable with
+    // |EC_GROUP_new_by_curve_name|.
+    { NID_secp224r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp224r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { NID_secp384r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp384r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { NID_secp521r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+    { NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+};
+
+class ECDSA_ServiceIndicatorTest : public testing::TestWithParam<ECDSATestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, ECDSA_ServiceIndicatorTest, testing::ValuesIn(kECDSATestVectors));
+
+TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
+  const ECDSATestVector &ecdsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  // Test service indicator approval for |EC_KEY_generate_key_fips| and
+  // |EC_KEY_check_fips|.
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(ecdsaTestVector.nid));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_generate_key_fips(key.get())));
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_check_fips(key.get())));
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
+
+
+  // Test running the EVP_PKEY_derive interfaces one by one directly, and check
+  // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
+  // not be approved because they do not indicate an entire service has been
+  // done.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), ecdsaTestVector.nid));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+  // Prevent memory leakage.
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  raw = nullptr;
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
+}
+
+TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
+  const ECDSATestVector &ecdsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name(ecdsaTestVector.nid));
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(eckey);
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+
+  // Generate a generic ec key.
+  EC_KEY_generate_key(eckey.get());
+  EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get());
+
+  // Test running the EVP_DigestSign interfaces one by one directly, and check
+  // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
+  // |EVP_DigestSignUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
+  std::vector<uint8_t> final_output;
+  size_t sig_len;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Determine the size of the signature. The first call of |EVP_DigestSignFinal|
+  // should not return an approval check because no crypto is being done when
+  // |nullptr| is inputted in the |*out_sig| field.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  final_output.resize(sig_len);
+  // The second call performs the actual operation.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+              ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), final_output.data(), &sig_len)));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_gen_expect_approved);
+
+
+  // Test using the one-shot |EVP_DigestSign| function for approval.
+  md_ctx.Reset();
+  std::vector<uint8_t> oneshot_output;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len));
+  oneshot_output.resize(sig_len);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
+                             kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_gen_expect_approved);
+}
+
+TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
+  const ECDSATestVector &ecdsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name(ecdsaTestVector.nid));
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(eckey);
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+
+  // Generate ECDSA signatures for ECDSA verification.
+  EC_KEY_generate_key(eckey.get());
+  EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get());
+  std::vector<uint8_t> signature;
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(),
+                                 nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len));
+  signature.resize(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len,
+                             kPlaintext, sizeof(kPlaintext)));
+  signature.resize(sig_len);
+
+  // Service Indicator approval checks for ECDSA signature verification.
+
+  // Test running the EVP_DigestVerify interfaces one by one directly, and check
+  // |EVP_DigestVerifyFinal| for approval at the end. |EVP_DigestVerifyInit|,
+  // |EVP_DigestVerifyUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
+  md_ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature.data(), signature.size())));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
+
+  // Test using the one-shot |EVP_DigestVerify| function for approval.
+  md_ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, ecdsaTestVector.func(), nullptr, pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
+                                             signature.size(), kPlaintext,
+                                             sizeof(kPlaintext))));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
 }
 
 struct ECDHTestVector {

@@ -1,0 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      # To use this build spec file, CMake environment variable CC and CXX compiler should be pre-defined.
+      - if [[ -z "${CC+x}" || -z "${CC}" ]]; then echo "CC is not defined." && exit 1; else ${CC} --version && echo "Found CC."; fi
+      - if [[ -z "${CXX+x}" || -z "${CXX}" ]]; then echo "CXX is not defined." && exit 1; else ${CXX} --version && echo "Found CXX."; fi
+      - if [[ -z "${FIPS_BCM_O_S3_OBJ+x}" || -z "${FIPS_BCM_O_S3_OBJ}" ]]; then echo "FIPS_BCM_O_S3_OBJ is not defined." && exit 1; fi
+  build:
+    commands:
+      - export ABS_PATH_TO_BCM_O="$(pwd)/bcm.o"
+      - aws s3 cp ${FIPS_BCM_O_S3_OBJ} ${ABS_PATH_TO_BCM_O}
+      - ./tests/ci/run_fips_vendor_affirm.sh

@@ -8,6 +8,7 @@ from util.env_util import EnvUtil
 # Used when AWS CDK defines AWS resources.
 AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", "620771051181")
 AWS_REGION = EnvUtil.get("CDK_DEPLOY_REGION", "us-west-2")
+AWS_LC_CI_S3_BUCKET_NAME=EnvUtil.get("AWS_LC_CI_S3_BUCKET_NAME", "aws-lc-ci-s3-{}".format(AWS_ACCOUNT))
 
 # Used when AWS CDK defines ECR repos.
 LINUX_AARCH_ECR_REPO = EnvUtil.get("ECR_LINUX_AARCH_REPO_NAME", "aws-lc-docker-images-linux-aarch")
