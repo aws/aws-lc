@@ -175,6 +175,8 @@ let bignum_of_wordlist = define
   bignum_of_wordlist (CONS (h:int64) t) =
      val h + 2 EXP 64 * bignum_of_wordlist t`;;
 
+bounder_prenorm_thms := union [bignum_of_wordlist] (!bounder_prenorm_thms);;
+
 let BIGNUM_OF_WORDLIST_DIV = prove
  (`!w ws. bignum_of_wordlist (CONS w ws) DIV 2 EXP 64 = bignum_of_wordlist ws`,
   REPEAT GEN_TAC THEN REWRITE_TAC[bignum_of_wordlist] THEN
@@ -275,6 +277,28 @@ let BIGNUM_OF_WORDLIST_LT_MAX = prove
   SIMP_TAC[GSYM NOT_ALL; GSYM BIGNUM_OF_WORDLIST_EQ_MAX] THEN
   REWRITE_TAC[ARITH_RULE `a < n - 1 <=> a < n /\ ~(a = n - 1)`] THEN
   SIMP_TAC[LT_LE; BIGNUM_FROM_WORDLIST_BOUND_GEN; LE_REFL]);;
+
+let BIGNUM_OF_WORDLIST_DIV_CONV =
+  let pth = prove
+   (`64 <= n
+     ==> bignum_of_wordlist (CONS w ws) DIV 2 EXP n =
+         bignum_of_wordlist ws DIV 2 EXP (n - 64)`,
+    REWRITE_TAC[ARITH_RULE `64 <= n <=> n = 64 + (n - 64)`] THEN
+    DISCH_THEN(fun th ->
+     GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [th]) THEN
+    REWRITE_TAC[EXP_ADD; GSYM DIV_DIV; BIGNUM_OF_WORDLIST_DIV]) in
+  let rule = PART_MATCH (lhand o rand) pth in
+  let rec conv tm =
+    try let th1 = rule tm in
+        let th2 = MP th1 (EQT_ELIM(NUM_LE_CONV(lhand(concl th1)))) in
+        let th3 = CONV_RULE(funpow 3 RAND_CONV NUM_SUB_CONV) th2 in
+        CONV_RULE(RAND_CONV conv) th3
+    with Failure _ -> REFL tm in
+  let patok = can (term_match [] `bignum_of_wordlist l DIV 2 EXP n`) in
+  (conv o check patok) THENC
+  GEN_REWRITE_CONV (TRY_CONV o LAND_CONV)
+   [BIGNUM_OF_WORDLIST_SING; CONJUNCT1 bignum_of_wordlist] THENC
+  GEN_REWRITE_CONV TRY_CONV [DIV_0; ARITH_RULE `n DIV 2 EXP 0 = n`];;
 
 (* ------------------------------------------------------------------------- *)
 (* Extracting a bignum from memory.                                          *)

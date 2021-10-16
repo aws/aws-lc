@@ -145,9 +145,7 @@ let BIGNUM_CMUL_P384_CORRECT = time prove
    `bignum_of_wordlist
      [mullo_s4; sum_s16; sum_s17; sum_s18; sum_s19; sum_s20; sum_s21] =
     val(c:int64) * a`)) THEN
-  REWRITE_TAC[ARITH_RULE `384 = 64 + 64 + 64 + 64 + 64 + 64`] THEN
-  SIMP_TAC[EXP_ADD; GSYM DIV_DIV; EXP_EQ_0; ARITH_EQ] THEN
-  REWRITE_TAC[BIGNUM_OF_WORDLIST_DIV; BIGNUM_OF_WORDLIST_SING] THEN
+  CONV_TAC(ONCE_DEPTH_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
   ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
 
   (*** The initial reduction computation ***)

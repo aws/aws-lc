@@ -278,44 +278,54 @@ let BOUNDER_RULE ths =
               [SYM ith] bth;;
 
 (* ------------------------------------------------------------------------- *)
-(* Tactic form of bounder for some common idioms                             *)
+(* Tactic form of bounder.                                                   *)
 (* ------------------------------------------------------------------------- *)
 
+let bounder_prenorm_thms = ref ([]: thm list);;
+
+let SHARPEN_INEQ_TAC =
+  let pth = prove
+   (`(integer x /\ integer y) /\ x < y + &1 ==> x <= y`,
+    SIMP_TAC[IMP_CONJ; REAL_LT_INTEGERS; INTEGER_CLOSED] THEN
+    REAL_ARITH_TAC) in
+  TRY(MATCH_MP_TAC pth THEN CONJ_TAC THENL
+       [CONJ_TAC THEN REAL_INTEGER_TAC; ALL_TAC]);;
+
 let (PURE_BOUNDER_TAC:thm list -> tactic),(BOUNDER_TAC:thm list -> tactic) =
-  let pats =
-    map (fun t ->
-      can (term_match [] (rand(rand t))),
-      (rand o lhand),MATCH_MP_TAC o MATCH_MP (REAL_ARITH t))
-    [`l:real <= x /\ x <= r ==> a <= l /\ r <= b ==> a <= x /\ x <= b`;
-     `l:real <= x /\ x <= r ==> a <= l /\ r < b ==> a <= x /\ x < b`;
-     `l:real <= x /\ x <= r ==> a < l /\ r <= b ==> a < x /\ x <= b`;
-     `l:real <= x /\ x <= r ==> a < l /\ r < b ==> a < x /\ x < b`;
-     `l:real <= x /\ x <= r ==> abs(l) <= a /\ abs(r) <= a ==> abs(x) <= a`;
-     `l:real <= x /\ x <= r ==> abs(l) < a /\ abs(r) < a ==> abs(x) < a`] @
-    map (fun t ->
-     (fun tm -> can (term_match [] (rand(rand t))) tm && frees(rand tm) = []),
-     lhand,MATCH_MP_TAC o MATCH_MP (REAL_ARITH t))
-    [`l:real <= x /\ x <= r ==> r < a ==> x < a`;
-     `l:real <= x /\ x <= r ==> r <= a ==> x <= a`] @
-    map (fun t ->
-     (fun tm -> can (term_match [] (rand(rand t))) tm && frees(lhand tm) = []),
-     rand,MATCH_MP_TAC o MATCH_MP (REAL_ARITH t))
-    [`l:real <= x /\ x <= r ==> a < l ==> a < x`;
-     `l:real <= x /\ x <= r ==> a <= l ==> a <= x`] in
-  (fun ths ->
-    let boundrule = PURE_BOUNDER_RULE ths in
-    fun (asl,w) ->
-      let p,pfn,tac = find (fun (p,pfn,tac) -> p w) pats in
-      let t = pfn w in
-      let eth = boundrule t in
-      (tac eth THEN CONV_TAC REAL_RAT_REDUCE_CONV THEN NO_TAC) (asl,w)),
-  (fun ths ->
-    let boundrule = BOUNDER_RULE ths in
-    fun (asl,w) ->
-      let p,pfn,tac = find (fun (p,pfn,tac) -> p w) pats in
-      let t = pfn w in
-      let eth = boundrule t in
-      (tac eth THEN CONV_TAC REAL_RAT_REDUCE_CONV THEN NO_TAC) (asl,w));;
+  let STANDARDIZE_INEQ_CONV =
+    (fun g -> GEN_REWRITE_CONV TOP_DEPTH_CONV(!bounder_prenorm_thms) g) THENC
+    GEN_REWRITE_CONV TRY_CONV [GE; GT; INT_GE; INT_GT; real_ge; real_gt] THENC
+    GEN_REWRITE_CONV TRY_CONV
+     [GSYM REAL_OF_NUM_LT; GSYM REAL_OF_NUM_LE; int_lt; int_le] THENC
+    GEN_REWRITE_CONV TOP_DEPTH_CONV
+     [GSYM REAL_OF_NUM_CLAUSES;
+      int_abs_th; int_add_th; int_max_th; int_min_th; int_mul_th;
+      int_neg_th; int_of_num_th; int_pow_th; int_sgn_th; int_sub_th] THENC
+    GEN_REWRITE_CONV I [GSYM REAL_SUB_LE; GSYM REAL_SUB_LT]
+  and SHARPEN_INEQ_0_TAC =
+    let pth = prove
+     (`integer x /\ &0 < x + &1 ==> &0 <= x`,
+      SIMP_TAC[IMP_CONJ; REAL_LT_INTEGERS; INTEGER_CLOSED] THEN
+      REAL_ARITH_TAC) in
+    TRY(MATCH_MP_TAC pth THEN CONJ_TAC THENL [REAL_INTEGER_TAC; ALL_TAC])
+  and BASIC_BOUNDER_TAC =
+    let patok_le = can (term_match [] `&0:real <= x`)
+    and patok_lt = can (term_match [] `&0:real < x`)
+    and rule_le =
+      MATCH_MP(REAL_ARITH `l:real <= x /\ x <= u ==> &0 <= l ==> &0 <= x`)
+    and rule_lt =
+      MATCH_MP(REAL_ARITH `l:real <= x /\ x <= u ==> &0 < l ==> &0 < x`) in
+    fun boundrule (ths:thm list) (asl,w as gl) ->
+      if patok_le w then MATCH_MP_TAC (rule_le(boundrule ths (rand w))) gl
+      else if patok_lt w then MATCH_MP_TAC (rule_lt(boundrule ths (rand w))) gl
+      else failwith "BASIC_BOUNDER_TAC: Not expected form" in
+  let GEN_BOUNDER_TAC baserule ths =
+    REPEAT CONJ_TAC THEN
+    CONV_TAC STANDARDIZE_INEQ_CONV THEN
+    SHARPEN_INEQ_0_TAC THEN
+    BASIC_BOUNDER_TAC baserule ths THEN
+    CONV_TAC REAL_RAT_REDUCE_CONV THEN NO_TAC in
+  GEN_BOUNDER_TAC PURE_BOUNDER_RULE,GEN_BOUNDER_TAC BOUNDER_RULE;;
 
 (* ------------------------------------------------------------------------- *)
 (* Tool to simplify assumptions and possibly prove carries are zero.         *)
