@@ -158,6 +158,9 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
     int ret;
     uint8_t md[EVP_MAX_MD_SIZE];
     unsigned int mdlen;
+    // We have to avoid the underlying SHA services updating the indicator
+    // state, so we lock the state here.
+    FIPS_service_indicator_lock_state();
 
     EVP_MD_CTX_init(&tmp_ctx);
     ret = EVP_MD_CTX_copy_ex(&tmp_ctx, ctx) &&
@@ -165,8 +168,15 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
           EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, md, mdlen);
     EVP_MD_CTX_cleanup(&tmp_ctx);
 
+    FIPS_service_indicator_unlock_state();
+    if(ret > 0) {
+      DigestSign_verify_service_indicator(ctx);
+    }
     return ret;
   } else {
+    // This only determines the size of the signature. This case of
+    // |EVP_DigestSignFinal| should not return an approval check because no
+    // crypto is being done.
     size_t s = EVP_MD_size(ctx->digest);
     return EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, NULL, s);
   }
@@ -178,6 +188,9 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
 
   EVP_MD_CTX tmp_ctx;
   int ret;
@@ -190,42 +203,75 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
         EVP_PKEY_verify(ctx->pctx, sig, sig_len, md, mdlen);
   EVP_MD_CTX_cleanup(&tmp_ctx);
 
+  FIPS_service_indicator_unlock_state();
+  if(ret > 0) {
+    DigestVerify_verify_service_indicator(ctx);
+  }
   return ret;
 }
 
 int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
                    const uint8_t *data, size_t data_len) {
+  // We have to avoid the underlying |EVP_DigestSignFinal| services updating
+  // the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
+
   if (uses_prehash(ctx, evp_sign)) {
     // If |out_sig| is NULL, the caller is only querying the maximum output
     // length. |data| should only be incorporated in the final call.
     if (out_sig != NULL &&
         !EVP_DigestSignUpdate(ctx, data, data_len)) {
-      return 0;
+      goto end;
     }
 
-    return EVP_DigestSignFinal(ctx, out_sig, out_sig_len);
+    ret = EVP_DigestSignFinal(ctx, out_sig, out_sig_len);
+    goto end;
   }
 
   if (ctx->pctx->pmeth->sign_message == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return 0;
+    goto end;
   }
 
-  return ctx->pctx->pmeth->sign_message(ctx->pctx, out_sig, out_sig_len, data,
+  // This is executed when |uses_prehash| is not true, which is the case for
+  // Ed25519.
+  ret = ctx->pctx->pmeth->sign_message(ctx->pctx, out_sig, out_sig_len, data,
                                         data_len);
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret > 0) {
+    DigestSign_verify_service_indicator(ctx);
+  }
+  return ret;
 }
 
 int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
                      const uint8_t *data, size_t len) {
+  // We have to avoid the underlying |EVP_DigestSignFinal| services updating
+  // the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
+
   if (uses_prehash(ctx, evp_verify)) {
-    return EVP_DigestVerifyUpdate(ctx, data, len) &&
-           EVP_DigestVerifyFinal(ctx, sig, sig_len);
+    ret = EVP_DigestVerifyUpdate(ctx, data, len) &&
+          EVP_DigestVerifyFinal(ctx, sig, sig_len);
+    goto end;
   }
 
   if (ctx->pctx->pmeth->verify_message == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return 0;
+    goto end;
   }
 
-  return ctx->pctx->pmeth->verify_message(ctx->pctx, sig, sig_len, data, len);
+  // This is executed when |uses_prehash| is not true, which is the case for
+  // Ed25519.
+  ret = ctx->pctx->pmeth->verify_message(ctx->pctx, sig, sig_len, data, len);
+
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret > 0) {
+    DigestVerify_verify_service_indicator(ctx);
+  }
+  return ret;
 }

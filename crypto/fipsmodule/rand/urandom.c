@@ -45,7 +45,8 @@
 #include <sys/system_properties.h>
 #endif
 
-#if !defined(OPENSSL_ANDROID)
+// NO_GETAUXVAL is used to disable the reference to 'getauxval'.
+#if !defined(OPENSSL_ANDROID) && !defined(NO_GETAUXVAL)
 #define OPENSSL_HAS_GETAUXVAL
 #endif
 // glibc prior to 2.16 does not have getauxval and sys/auxv.h. Android has some

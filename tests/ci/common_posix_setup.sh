@@ -72,6 +72,13 @@ function fips_build_and_test {
   "${BUILD_ROOT}/util/fipstools/cavp/test_fips"
 }
 
+function ensure_file() {
+    if [ ! -f "$1" ]; then
+        echo "$1 does not exist"
+        exit 1
+    fi
+}
+
 function build_and_test_valgrind {
   run_build "$@"
   run_cmake_custom_target 'run_tests_valgrind'
