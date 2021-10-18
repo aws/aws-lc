@@ -15,6 +15,10 @@
 
 set(CFLAGS ${CFLAGS} -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wredundant-decls -Wshadow -Wpointer-arith -mavx2 -mbmi2 -mpopcnt -maes -march=native -mtune=native -O3 -fomit-frame-pointer)
 
+
+
+
+
 file(GLOB KYBER_R3_SRCS 
 "avx2/keccak4x/KeccakP-1600-times4-SIMD256.c"
                        "avx2/keccak4x/KeccakP-1600-unrolling.macros"
@@ -42,11 +46,11 @@ file(GLOB KYBER_R3_SRCS
 add_library(kyber_r3 OBJECT ${KYBER_R3_SRCS})
 
 
-message(STATUS "${KYBER_R3_SRCS}")
+#message(STATUS "${KYBER_R3_SRCS}")
 
 # Setting some necessary flags for KYBER (see config.h)
 # Only the generic implementation of KYBER is imported for now.
-target_compile_options(kyber_r3 PRIVATE -mavx2 -D_X86_)
+target_compile_options(kyber_r3 PRIVATE -mavx2 -D_AMD64_)
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
   # If ARCH is originally detected as 64-bit, perform an additional check

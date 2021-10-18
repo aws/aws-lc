@@ -431,10 +431,11 @@ TEST(RSATest, RSA) {
     }
     printf("\nNumber Tests        ->      %d\n", NUMBER_TESTS);
     for (const size_t bits : {2048, 3072, 4096}) {
-      for (int plaintext_length_bytes = 1000;
+      for (int plaintext_length_bytes = 100;
            plaintext_length_bytes <= PLAINTEXT_TOTAL;
            plaintext_length_bytes *= 10) {
-        printf("\nBytes Encrypted     ->      %d", plaintext_length_bytes);
+        
+        
         cycles_keygen_total = 0;
         cycles_encrypt_total = 0;
         cycles_decrypt_total = 0;
@@ -456,6 +457,10 @@ TEST(RSATest, RSA) {
             PLAINTEXT_SIZE = 0;
             break;
         }
+        if(plaintext_length_bytes==100){
+          plaintext_length_bytes=PLAINTEXT_SIZE;
+        }
+        printf("\nBytes Encrypted     ->      %d", plaintext_length_bytes);
 
         printf("\nPlaintext Bytes     ->      %d", PLAINTEXT_SIZE);
 
@@ -522,24 +527,27 @@ TEST(RSATest, RSA) {
           free(ciphertext);
           free(plaintext);
         }
-        printf("\ncycles_keygen_total         %llu CCs \n",
-               cycles_keygen_total / 1000000);
-        printf("cycles_encrypt_total        %llu CCs \n",
-               cycles_encrypt_total / NUMBER_TESTS / 1000000);
-        printf("cycles_decrypt_total        %llu CCs \n",
-               (cycles_decrypt_total / NUMBER_TESTS / 1000000));
+        printf("\ncycles_keygen_total         %llu CCs x10^3\n",
+               cycles_keygen_total / 1000 );
+        printf("cycles_encrypt_total        %llu CCs  x10^3\n",
+               cycles_encrypt_total / NUMBER_TESTS / 1000);
+        printf("cycles_decrypt_total        %llu CCs  x10^3\n",
+               (cycles_decrypt_total / NUMBER_TESTS / 1000));
 
         // Print the value of the 4 functions (no overhead for array
         // initialization, etc)
         cycles_protocol_total = cycles_encrypt_total + cycles_decrypt_total;
-        printf("CLEAN protocol              %llu CCs \n",
-               cycles_protocol_total / NUMBER_TESTS / 1000000);
+        printf("CLEAN protocol              %llu CCs x10^3\n",
+               cycles_protocol_total / NUMBER_TESTS / 1000);
         printf("%% cycles_encrypt_total      %.3f %% \n",
                ((float)(cycles_encrypt_total) / ((float)cycles_protocol_total) *
                 100));
         printf("%% cycles_decrypt_total      %.3f %% \n",
                ((float)cycles_decrypt_total) / ((float)cycles_protocol_total) *
                    100);
+        if(plaintext_length_bytes==PLAINTEXT_SIZE){
+          plaintext_length_bytes=100;
+        }
       }
     }
   }

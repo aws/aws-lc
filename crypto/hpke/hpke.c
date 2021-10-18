@@ -141,6 +141,7 @@ static int dhkem_extract_and_expand(uint16_t kem_id, const EVP_MD *hkdf_md,
                                     const uint8_t *kem_context,
                                     size_t kem_context_len) {
   // concat("KEM", I2OSP(kem_id, 2))
+  printf("dhkem_extract_and_expand kem_id %d \n", kem_id & 0xff);
   uint8_t suite_id[5] = {'K', 'E', 'M', kem_id >> 8, kem_id & 0xff};
   uint8_t prk[EVP_MAX_MD_SIZE];
   size_t prk_len;
@@ -153,6 +154,8 @@ static int dhkem_extract_and_expand(uint16_t kem_id, const EVP_MD *hkdf_md,
 
 static int HPKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                            size_t priv_key_len) {
+
+
   if (priv_key_len !=
       key->kem->private_key_len + key->kem->PQ_private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);

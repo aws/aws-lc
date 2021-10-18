@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <math.h>
+
 #include <openssl/cpucycles.h>
 #include <openssl/hpke.h>
 
@@ -41,10 +43,10 @@
 #include <stdint.h>
 #include <time.h>
 
-#define SIZE_PLAINTEXT 10000000  // Specify Bytes to be encrypted/decrypted
-#define NUMBER_TESTS 1           // Number of tests performed
+#define SIZE_PLAINTEXT 100000  // Specify Bytes to be encrypted/decrypted
+#define NUMBER_TESTS 1000        // Number of tests performed
 
-#define SUM(x, y) (x + y)
+
 
 #define HPKE_KDF_NAMESPACE(s) EVP_hpke_##s##_hkdf_sha256
 
@@ -77,107 +79,104 @@
   X25519_PUBLIC_VALUE_LEN + KYBER_CIPHERTEXTBYTES
 
 int algorithm_secretkeybytes(int alg);
-int algorithm_secretkeybytes(int alg){
-  int keylen = 0 ;
-  switch (alg)
-  {
-  case 0:
-    return x25519_SECRETKEYBYTES;
-    break;
+int algorithm_secretkeybytes(int alg) {
+  int keylen = 0;
+  switch (alg) {
+    case 0:
+      return x25519_SECRETKEYBYTES;
+      break;
     case 1:
-    return SIKE_SECRETKEYBYTES;
-    break;
+      return SIKE_SECRETKEYBYTES;
+      break;
     case 2:
-    return x25519_SIKE_SECRETKEYBYTES;
-    break;
+      return x25519_SIKE_SECRETKEYBYTES;
+      break;
     case 3:
-    return KYBER_SECRETKEYBYTES;
-    break;
+      return KYBER_SECRETKEYBYTES;
+      break;
     case 4:
-    return x25519_KYBER_SECRETKEYBYTES;
-    break;  
-  default:
-    break;
+      return x25519_KYBER_SECRETKEYBYTES;
+      break;
+    default:
+      break;
   }
-   return keylen;
+  return keylen;
 }
 
 int algorithm_publickeybytes(int alg);
-int algorithm_publickeybytes(int alg){
-  switch (alg)
-  {
-  case 0:
-    return x25519_PUBLICKEYBYTES;
-    break;
+int algorithm_publickeybytes(int alg) {
+  switch (alg) {
+    case 0:
+      return x25519_PUBLICKEYBYTES;
+      break;
     case 1:
-    return SIKE_PUBLICKEYBYTES;
-    break;
+      return SIKE_PUBLICKEYBYTES;
+      break;
     case 2:
-    return x25519_PUBLICKEYBYTES + SIKE_PUBLICKEYBYTES;
-    break;
+      return x25519_PUBLICKEYBYTES + SIKE_PUBLICKEYBYTES;
+      break;
     case 3:
-    return KYBER_PUBLICKEYBYTES;
-    break;
+      return KYBER_PUBLICKEYBYTES;
+      break;
     case 4:
-    return x25519_KYBER_PUBLICKEYBYTES;
-    break;  
-  default:
-  return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;
-    break;
+      return x25519_KYBER_PUBLICKEYBYTES;
+      break;
+    default:
+      return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;
+      break;
   }
-   return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;;
+  return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;
+  ;
 }
 int algorithm_ciphertextbytes(int alg);
-int algorithm_ciphertextbytes(int alg){
-  int keylen = 0 ;
-  switch (alg)
-  {
-  case 0:
-    return x25519_PUBLICKEYBYTES;
-    break;
+int algorithm_ciphertextbytes(int alg) {
+  int keylen = 0;
+  switch (alg) {
+    case 0:
+      return x25519_PUBLICKEYBYTES;
+      break;
     case 1:
-    return SIKE_CIPHERTEXTBYTES;
-    break;
+      return SIKE_CIPHERTEXTBYTES;
+      break;
     case 2:
-    return x25519_PUBLICKEYBYTES + SIKE_CIPHERTEXTBYTES;
-    break;
+      return x25519_PUBLICKEYBYTES + SIKE_CIPHERTEXTBYTES;
+      break;
     case 3:
-    return KYBER_CIPHERTEXTBYTES;
-    break;
+      return KYBER_CIPHERTEXTBYTES;
+      break;
     case 4:
-    return x25519_PUBLICKEYBYTES + KYBER_CIPHERTEXTBYTES;
-    break;  
-  default:
-    break;
+      return x25519_PUBLICKEYBYTES + KYBER_CIPHERTEXTBYTES;
+      break;
+    default:
+      break;
   }
-   return keylen;
+  return keylen;
 }
 
 
 const EVP_HPKE_KEM *algorithm_kdf(int alg);
 
 
-const EVP_HPKE_KEM *algorithm_kdf(int alg){
-  switch (alg)
-  {
-  case 0:
-    return EVP_hpke_x25519_hkdf_sha256();
-    break;
+const EVP_HPKE_KEM *algorithm_kdf(int alg) {
+  switch (alg) {
+    case 0:
+      return EVP_hpke_x25519_hkdf_sha256();
+      break;
     case 1:
-    return EVP_hpke_SIKE_hkdf_sha256();
-    break;
+      return EVP_hpke_SIKE_hkdf_sha256();
+      break;
     case 2:
-    return EVP_hpke_x25519_SIKE_hkdf_sha256();
-    break;
+      return EVP_hpke_x25519_SIKE_hkdf_sha256();
+      break;
     case 3:
-    return EVP_hpke_KYBER_hkdf_sha256();
-    break;
+      return EVP_hpke_KYBER_hkdf_sha256();
+      break;
     case 4:
-    return EVP_hpke_x25519_KYBER_hkdf_sha256();
-    break;  
-  default:
-  return EVP_hpke_x25519_hkdf_sha256();
-    break;
+      return EVP_hpke_x25519_KYBER_hkdf_sha256();
+      break;
+    default:
+      return EVP_hpke_x25519_hkdf_sha256();
+      break;
   }
   return EVP_hpke_x25519_hkdf_sha256();
 }
@@ -195,21 +194,21 @@ void print_info(int aead, int kdf, int alg);
 void print_info(int aead, int kdf, int alg) {
   printf("\n\n-------------------------------------------------------");
 
-   printf("\nALGORITHM          ->   ");
+  printf("\nALGORITHM          ->   ");
   switch (alg) {
     case 0:
       printf("x25519");
       break;
-      case 1:
+    case 1:
       printf("SIKE");
       break;
-      case 2:
+    case 2:
       printf("x25519 + SIKE");
       break;
-      case 3:
+    case 3:
       printf("KYBER");
       break;
-      case 4:
+    case 4:
       printf("x25519 + KYBER");
       break;
     default:
@@ -217,7 +216,7 @@ void print_info(int aead, int kdf, int alg) {
       break;
   }
 
-  
+
   printf("\nAEAD               ->   ");
   switch (aead) {
     case 0x0001:
@@ -244,8 +243,6 @@ void print_info(int aead, int kdf, int alg) {
       break;
   }
 
-
- 
 
 
   printf("\n");
@@ -300,7 +297,7 @@ class HPKETestVector {
     ScopedEVP_HPKE_CTX sender_ctx;
     uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
     size_t enc_len;
-  
+
     ASSERT_TRUE(EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
         sender_ctx.get(), enc, &enc_len, sizeof(enc), kem, kdf, aead,
         public_key_r_.data(), public_key_r_.size(), info_.data(), info_.size(),
@@ -310,45 +307,49 @@ class HPKETestVector {
 
     // Test the recipient.
     ScopedEVP_HPKE_KEY base_key;
-    base_key->public_key = (uint8_t*)malloc(sizeof(uint8_t) *  x25519_PUBLICKEYBYTES);
-    base_key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
+    base_key->public_key =
+        (uint8_t *)malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES);
+    base_key->private_key =
+        (uint8_t *)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
 
 
     ASSERT_TRUE(EVP_HPKE_KEY_init(base_key.get(), kem, secret_key_r_.data(),
                                   secret_key_r_.size()));
 
-    
 
 
     for (bool copy : {false, true}) {
-      
       SCOPED_TRACE(copy);
-      
+
       const EVP_HPKE_KEY *key = base_key.get();
 
 
       ScopedEVP_HPKE_KEY key_copy;
 
-      key_copy->public_key = (uint8_t*)malloc(sizeof(uint8_t) *  x25519_PUBLICKEYBYTES);
-      key_copy->private_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
+      key_copy->public_key =
+          (uint8_t *)malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES);
+      key_copy->private_key =
+          (uint8_t *)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
 
 
-        OPENSSL_memcpy(key_copy->public_key, base_key->public_key, x25519_PUBLICKEYBYTES);
-        OPENSSL_memcpy(key_copy->private_key, base_key->private_key, x25519_SECRETKEYBYTES);
+      OPENSSL_memcpy(key_copy->public_key, base_key->public_key,
+                     x25519_PUBLICKEYBYTES);
+      OPENSSL_memcpy(key_copy->private_key, base_key->private_key,
+                     x25519_SECRETKEYBYTES);
 
 
       if (copy) {
-        //ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
-        //key = key_copy.get();
-     }
+        // ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
+        // key = key_copy.get();
+      }
 
       uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
       size_t public_key_len;
       ASSERT_TRUE(EVP_HPKE_KEY_public_key(key, public_key, &public_key_len,
                                           sizeof(public_key)));
 
-  
-       EXPECT_EQ(Bytes(base_key->public_key, 32), Bytes(public_key_r_));
+
+      EXPECT_EQ(Bytes(base_key->public_key, 32), Bytes(public_key_r_));
 
 
       EXPECT_EQ(Bytes(public_key, public_key_len), Bytes(public_key_r_));
@@ -366,7 +367,6 @@ class HPKETestVector {
                                                info_.size()));
 
       VerifyRecipient(recipient_ctx.get());
-      
     }
     free(base_key->public_key);
     free(base_key->private_key);
@@ -568,8 +568,10 @@ TEST(HPKETest, x25519) {
   // Benchmarking vars
 
   ScopedEVP_HPKE_KEY key;
-  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * X25519_PUBLIC_VALUE_LEN);
-  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * X25519_PRIVATE_KEY_LEN);
+  key->public_key =
+      (uint8_t *)malloc(sizeof(uint8_t) * X25519_PUBLIC_VALUE_LEN);
+  key->private_key =
+      (uint8_t *)malloc(sizeof(uint8_t) * X25519_PRIVATE_KEY_LEN);
 
 
 
@@ -748,8 +750,8 @@ TEST(HPKETest, SIKE) {
   // Generate the recipient's keypair.
   ScopedEVP_HPKE_KEY key;
 
-  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * SIKE_PUBLICKEYBYTES);
-  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * SIKE_SECRETKEYBYTES);
+  key->public_key = (uint8_t *)malloc(sizeof(uint8_t) * SIKE_PUBLICKEYBYTES);
+  key->private_key = (uint8_t *)malloc(sizeof(uint8_t) * SIKE_SECRETKEYBYTES);
 
 
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_SIKE_hkdf_sha256()));
@@ -903,8 +905,10 @@ TEST(HPKETest, x25519_SIKE) {
   // Generate the recipient's keypair.
 
   ScopedEVP_HPKE_KEY key;
-  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * (X25519_PUBLIC_VALUE_LEN + SIKE_PUBLICKEYBYTES));
-  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * (X25519_PRIVATE_KEY_LEN + SIKE_SECRETKEYBYTES));
+  key->public_key = (uint8_t *)malloc(
+      sizeof(uint8_t) * (X25519_PUBLIC_VALUE_LEN + SIKE_PUBLICKEYBYTES));
+  key->private_key = (uint8_t *)malloc(
+      sizeof(uint8_t) * (X25519_PRIVATE_KEY_LEN + SIKE_SECRETKEYBYTES));
 
   ASSERT_TRUE(
       EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_SIKE_hkdf_sha256()));
@@ -1073,8 +1077,8 @@ TEST(HPKETest, Kyber) {
   // Generate the recipient's keypair.
   ScopedEVP_HPKE_KEY key;
 
-  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * KYBER_PUBLICKEYBYTES);
-  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * KYBER_SECRETKEYBYTES);
+  key->public_key = (uint8_t *)malloc(sizeof(uint8_t) * KYBER_PUBLICKEYBYTES);
+  key->private_key = (uint8_t *)malloc(sizeof(uint8_t) * KYBER_SECRETKEYBYTES);
 
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_KYBER_hkdf_sha256()));
   uint8_t public_key_r[KYBER_PUBLICKEYBYTES];
@@ -1235,16 +1239,19 @@ TEST(HPKETest, x25519_Kyber) {
 
   ScopedEVP_HPKE_KEY key;
 
-  key->public_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_KYBER_PUBLICKEYBYTES);
-  key->private_key = (uint8_t*)malloc(sizeof(uint8_t) * x25519_KYBER_SECRETKEYBYTES);
+  key->public_key =
+      (uint8_t *)malloc(sizeof(uint8_t) * x25519_KYBER_PUBLICKEYBYTES);
+  key->private_key =
+      (uint8_t *)malloc(sizeof(uint8_t) * x25519_KYBER_SECRETKEYBYTES);
 
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
+  ASSERT_TRUE(
+      EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
   uint8_t public_key_r[x25519_KYBER_PUBLICKEYBYTES];
   size_t public_key_r_len;
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
                                       &public_key_r_len, sizeof(public_key_r)));
 
-                                    
+
   // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
   for (const auto aead : kAllAEADs) {
     SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
@@ -1370,6 +1377,110 @@ TEST(HPKETest, x25519_Kyber) {
   free(key->public_key);
 }
 
+float mean(unsigned long long array[], int n);
+float median(unsigned long long array[], int n);
+
+float mean(unsigned long long array[], int n) {
+  int i;
+  unsigned long long sum = 0;
+  for (i = 0; i < n; i++)
+    sum = sum + array[i];
+  return ((float)sum / (float)n);
+}
+
+void sort_array(unsigned long long arr[], int n);
+void sort_array(unsigned long long arr[], int n) {
+  unsigned long long temp;
+  int i, j;
+  for (i = n - 1; i >= 0; i--)
+    for (j = 0; j < i; j++)
+      if (arr[j] >= arr[j + 1]) {
+        temp = arr[j];
+        arr[j] = arr[j + 1];
+        arr[j + 1] = temp;
+      }
+}
+
+float median(unsigned long long array[], int n) {
+  sort_array(array, n);
+  if (n % 2 == 0)
+    return ((float)array[n / 2] + (float)array[n / 2 - 1]) / 2;
+  else
+    return (float)array[n / 2];
+}
+
+double standarddeviation(unsigned long long array[], int n);
+double standarddeviation(unsigned long long array[], int n) {
+  int j;
+  double max[NUMBER_TESTS], sum, variance, this_mean;
+
+  this_mean = mean(array, n);
+  sum = 0;
+  for (j = 0; j < n; j++) {
+    max[j] = pow((array[j] - this_mean), 2);
+    sum += max[j];
+  }
+  variance = sum / (j - 1);
+  return sqrt(variance);
+}
+
+void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
+               int quartiles_positions[4]);
+void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
+               int quartiles_positions[4]) {
+  sort_array(arr, n);
+  double Q1 = n / 4.0;
+  double Q2 = (2 * n) / 4.0;
+  double Q3 = (3 * n) / 4.0;
+
+  int R1 = n / 4;
+  int R2 = (n * 2) / 4;
+  int R3 = (n * 3) / 4;
+
+  if ((Q1 - R1) == 0) {
+    printf("First quartiles (Q1): %lld\n", arr[R1 - 1]);
+    quartiles[0] = arr[R1 - 1];
+    quartiles_positions[0] = R1 - 1;
+  } else {
+    float q1;
+    q1 = arr[R1 - 1] + (Q1 - R1) * ((arr[R1] - arr[R1 - 1]));
+    printf("First quartiles (Q1): %.2f\n", q1);
+    quartiles[0] = q1;
+    quartiles_positions[0] = R1;
+  }
+  if ((Q2 - R2) == 0) {
+    printf("Second quartiles (Q2): %lld\n", arr[R2 - 1]);
+    quartiles[0] = arr[R2 - 1];
+    quartiles_positions[1] = R2 - 1;
+  } else {
+    float q2;
+    q2 = arr[R2 - 1] + (Q2 - R2) * ((arr[R2] - arr[R2 - 1]));
+    printf("Second quartiles (Q2): %.2f\n", q2);
+    quartiles[1] = q2;
+    quartiles_positions[1] = R2;
+  }
+  if ((Q3 - R3) == 0) {
+    printf("Third quartiles (Q3): %lld\n", arr[R3 - 1]);
+    quartiles[0] = arr[R3 - 1];
+    quartiles_positions[2] = R3 - 1;
+  } else {
+    float q3;
+    q3 = arr[R3 - 1] + (Q3 - R3) * ((arr[R3] - arr[R3 - 1]));
+    printf("Third quartiles (Q3): %.2f\n", q3);
+    quartiles[2] = q3;
+    quartiles_positions[2] = R3;
+  }
+  printf("Forth quartiles (Q4): %lld\n", arr[n - 1]);
+  quartiles[3] = arr[n - 1];
+}
+float analyze(unsigned long long arr_cycles[], int quartile1_positions, int quartile2_positions);
+float analyze(unsigned long long arr_cycles[], int quartile1_positions, int quartile2_positions){
+  unsigned long long mean = 0;
+  for(int i = quartile1_positions; i <= quartile2_positions ; i++){
+    mean += arr_cycles[i];
+  }
+  return ((float)mean)/(float)(quartile2_positions-quartile1_positions+1);
+}
 
 
 
@@ -1395,25 +1506,27 @@ TEST(HPKETest, HPKERoundTrip) {
                      clean_protocol = 0;
   unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
       cycles_open, cycles_protocol;
+  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS],
+      arr_cycles_setup_recipient[NUMBER_TESTS], arr_cycles_seal[NUMBER_TESTS],
+      arr_cycles_open[NUMBER_TESTS];
 
-  for (const int algorithm :
-       {0, 1, 2, 3, 4}) {
-
+  for (const int algorithm : {0, 1, 2, 3, 4}) {
     // Generate the recipient's keypair.
 
     ScopedEVP_HPKE_KEY key;
-    key->private_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_secretkeybytes(algorithm))));
-    key->public_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * (algorithm_publickeybytes(algorithm))));
+    key->private_key = (uint8_t *)(malloc(
+        sizeof(uint8_t) * (algorithm_secretkeybytes(algorithm))));
+    key->public_key = (uint8_t *)(malloc(
+        sizeof(uint8_t) * (algorithm_publickeybytes(algorithm))));
 
 
-    ASSERT_TRUE(
-        EVP_HPKE_KEY_generate(key.get(), algorithm_kdf(algorithm)));
-        uint8_t * public_key_r = (uint8_t *)malloc(sizeof(uint8_t)*algorithm_publickeybytes(algorithm));
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), algorithm_kdf(algorithm)));
+    uint8_t *public_key_r = (uint8_t *)malloc(
+        sizeof(uint8_t) * algorithm_publickeybytes(algorithm));
     size_t public_key_r_len;
-    ASSERT_TRUE(EVP_HPKE_KEY_public_key(
-        key.get(), public_key_r, &public_key_r_len, algorithm_publickeybytes(algorithm)));
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
+                                        &public_key_r_len,
+                                        algorithm_publickeybytes(algorithm)));
     // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
     for (const auto aead : kAllAEADs) {
       SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
@@ -1422,7 +1535,16 @@ TEST(HPKETest, HPKERoundTrip) {
 
         print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), algorithm);
 
-        for (int kk = 1000; kk <= SIZE_PLAINTEXT; kk *= 10) {
+        for (int kk = 10; kk <= SIZE_PLAINTEXT; kk *= 10) {
+          if (kk == 10) {
+            kk = 214;
+          }
+          if (kk == 2140) {
+            kk = 342;
+          }
+          if (kk == 3420) {
+            kk = 470;
+          }
           printf("\nPlaintext Bytes    ->   %d\n", kk);
           cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
           cycles_seal_total = 0, cycles_open_total = 0,
@@ -1446,18 +1568,21 @@ TEST(HPKETest, HPKERoundTrip) {
 
                 // Set up the sender.
                 ScopedEVP_HPKE_CTX sender_ctx;
-                uint8_t * enc = (uint8_t *)malloc(sizeof(uint8_t)*algorithm_ciphertextbytes(algorithm));
+                uint8_t *enc = (uint8_t *)malloc(
+                    sizeof(uint8_t) * algorithm_ciphertextbytes(algorithm));
 
-                //uint8_t enc[algorithm_ciphertextbytes(algorithm)];
+                // uint8_t enc[algorithm_ciphertextbytes(algorithm)];
                 size_t enc_len;
                 cycles_set_up_sender = cpucycles();
 
                 ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
-                    sender_ctx.get(), enc, &enc_len, algorithm_ciphertextbytes(algorithm),
-                    algorithm_kdf(algorithm), kdf(), aead(),
-                    public_key_r, public_key_r_len, info.data(), info.size()));
-                cycles_set_up_sender_total +=
+                    sender_ctx.get(), enc, &enc_len,
+                    algorithm_ciphertextbytes(algorithm),
+                    algorithm_kdf(algorithm), kdf(), aead(), public_key_r,
+                    public_key_r_len, info.data(), info.size()));
+                arr_cycles_setup_sender[jj] =
                     cpucycles() - cycles_set_up_sender;
+                cycles_set_up_sender_total += arr_cycles_setup_sender[jj];
 
                 // Set up the recipient.
                 ScopedEVP_HPKE_CTX recipient_ctx;
@@ -1465,8 +1590,9 @@ TEST(HPKETest, HPKERoundTrip) {
                 ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                     recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                     info.data(), info.size()));
-                cycles_set_up_recipient_total +=
+                arr_cycles_setup_recipient[jj] =
                     cpucycles() - cycles_set_up_recipient;
+                cycles_set_up_recipient_total += arr_cycles_setup_recipient[jj];
 
                 // Have sender encrypt message for the recipient.
                 std::vector<uint8_t> ciphertext(
@@ -1478,7 +1604,8 @@ TEST(HPKETest, HPKERoundTrip) {
                     ciphertext.size(),
                     reinterpret_cast<const uint8_t *>(kCleartextPayload), kk,
                     ad.data(), ad.size()));
-                cycles_seal_total += cpucycles() - cycles_seal;
+                arr_cycles_seal[jj] = cpucycles() - cycles_seal;
+                cycles_seal_total += arr_cycles_seal[jj];
 
                 // Have recipient decrypt the message.
                 std::vector<uint8_t> cleartext(ciphertext.size());
@@ -1488,7 +1615,8 @@ TEST(HPKETest, HPKERoundTrip) {
                     recipient_ctx.get(), cleartext.data(), &cleartext_len,
                     cleartext.size(), ciphertext.data(), ciphertext_len,
                     ad.data(), ad.size()));
-                cycles_open_total += cpucycles() - cycles_open;
+                arr_cycles_open[jj] = cpucycles() - cycles_open;
+                cycles_open_total += arr_cycles_open[jj];
 
                 // print_text(cleartext, kk);
 
@@ -1498,30 +1626,31 @@ TEST(HPKETest, HPKERoundTrip) {
                 ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
                           Bytes(kCleartextPayload, kk));
 
-                free(enc);          
-
+                free(enc);
               }
             }
           }
-          printf("set_up_sender           %llu CCs \n",
-                 cycles_set_up_sender_total / NUMBER_TESTS / 1000000);
-          printf("set_up_recipient        %llu CCs \n",
-                 cycles_set_up_recipient_total / NUMBER_TESTS / 1000000);
-          printf("seal                    %.2f CCs \n",
-                 (float)(cycles_seal_total / NUMBER_TESTS) / 1000000.0);
-          printf("open                    %.2f CCs \n",
-                 (float)(cycles_open_total / NUMBER_TESTS) / 1000000.0);
+
+          
+          printf("set_up_sender           %llu CCs x10^3\n",
+                 cycles_set_up_sender_total / NUMBER_TESTS / 1000);
+          printf("set_up_recipient        %llu CCs x10^3\n",
+                 cycles_set_up_recipient_total / NUMBER_TESTS / 1000);
+          printf("seal                    %.2f CCs x10^3\n",
+                 (float)(cycles_seal_total / NUMBER_TESTS) / 1000.0);
+          printf("open                    %.2f CCs x10^3\n",
+                 (float)(cycles_open_total / NUMBER_TESTS) / 1000.0);
           // printf("others            %llu CCs \n",
           // others_total / NUMBER_TESTS / 1000000);
-          printf("end protocol            %llu CCs \n",
-                 cycles_protocol_total / NUMBER_TESTS / 1000000);
+          // printf("end protocol            %llu CCs x10^3\n",
+          // cycles_protocol_total / NUMBER_TESTS / 1000);
           // Print the value of the 4 functions (no overhead for array
           // initialization, etc)
           clean_protocol = cycles_set_up_sender_total +
                            cycles_set_up_recipient_total + cycles_seal_total +
                            cycles_open_total;
-          printf("CLEAN protocol          %llu CCs \n",
-                 clean_protocol / NUMBER_TESTS / 1000000);
+          printf("CLEAN protocol          %llu CCs x10^3\n",
+                 clean_protocol / NUMBER_TESTS / 1000);
 
 
 
@@ -1538,14 +1667,27 @@ TEST(HPKETest, HPKERoundTrip) {
           // printf(
           //"%% others                  %.3f %% \n",
           //((float)others_total) / ((float)cycles_protocol_total) * 100);
+          
+
+          float quartiles[4] = {0};
+          int quartiles_positions[4] = {0};
+          calculate_quartiles(arr_cycles_setup_sender, NUMBER_TESTS, quartiles, quartiles_positions);
+          float mean_cycles_seal = analyze(arr_cycles_setup_sender, quartiles_positions[0], quartiles_positions[2]);
+          printf("mean_cycles_setup_sender                  %.3f \n",mean_cycles_seal);
+
+
           free(kCleartextPayload);
+
+
+          if (kk == 470) {
+            kk = 100;
+          }
         }
       }
-          
     }
     free(key->private_key);
     free(key->public_key);
-    
+
     free(public_key_r);
   }
 }
@@ -1564,9 +1706,9 @@ TEST(HPKETest, X25519EncapSmallOrderPoint) {
 
   ScopedEVP_HPKE_KEY key;
   key->private_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
-    key->public_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+  key->public_key =
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
 
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
@@ -1602,10 +1744,10 @@ TEST(HPKETest, RecipientInvalidSeal) {
   ScopedEVP_HPKE_KEY key;
 
   key->private_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
-    key->public_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
-  
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+  key->public_key =
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
+
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
   // Set up the recipient.
@@ -1690,9 +1832,9 @@ TEST(HPKETest, SetupSenderBufferTooLarge) {
 TEST(HPKETest, SetupRecipientWrongLengthEnc) {
   ScopedEVP_HPKE_KEY key;
   key->private_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
-    key->public_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+  key->public_key =
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
   const uint8_t bogus_enc[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
@@ -1729,9 +1871,9 @@ TEST(HPKETest, InvalidRecipientKey) {
   const uint8_t private_key[X25519_PUBLIC_VALUE_LEN + 5] = {0xff};
   ScopedEVP_HPKE_KEY key;
   key->private_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
-    key->public_key =
-        (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES));
+  key->public_key =
+      (uint8_t *)(malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES));
   EXPECT_FALSE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
                                  private_key, sizeof(private_key)));
   free(key->private_key);
