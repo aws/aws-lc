@@ -155,6 +155,7 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   eckey = ctx->pkey->pkey.ec;
 
   if (!key) {
+    // This only outputs the expected |keylen| and does no actual crypto.
     const EC_GROUP *group;
     group = EC_KEY_get0_group(eckey);
     *keylen = (EC_GROUP_get_degree(group) + 7) / 8;
@@ -175,6 +176,10 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   }
   OPENSSL_memcpy(key, buf, *keylen);
 
+  // Insert service indicator check here because the pointer address cannot be
+  // referenced from the higher level function |EVP_PKEY_derive|. |EC_KEY| is
+  // is the only possible key that can do derivations.
+  ECDH_verify_service_indicator(eckey);
   return 1;
 }
 
