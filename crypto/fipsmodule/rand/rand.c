@@ -61,7 +61,7 @@
 // reseeding.
 
 #if defined(BORINGSSL_FIPS)
-static const unsigned kReseedInterval = 4294967295;  //2^32
+static const unsigned kReseedInterval = 4294967295; // 2^32 - 1, unsigned max value
 #else
 static const unsigned kReseedInterval = 4096;
 #endif
