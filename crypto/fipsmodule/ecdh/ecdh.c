@@ -103,6 +103,10 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 
 int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
                           const EC_KEY *priv_key) {
+  // Lock state here to avoid underlying |SHA*| functions updating the service
+  // indicator state unintentionally.
+  FIPS_service_indicator_lock_state();
+
   uint8_t buf[EC_MAX_BYTES];
   size_t buflen = sizeof(buf);
   int ret = 0;
@@ -110,10 +114,6 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
   if (!ECDH_compute_shared_secret(buf, &buflen, pub_key, priv_key)) {
     goto end;
   }
-
-  // Lock state here to avoid underlying |SHA*| functions updating the service
-  // indicator state unintentionally.
-  FIPS_service_indicator_lock_state();
 
   switch (out_len) {
     case SHA224_DIGEST_LENGTH:
