@@ -554,9 +554,9 @@ struct AEADTestVector {
     // context.
     {  "Generic AES-GCM 128-bit key external iv test", EVP_aead_aes_128_gcm(),
         kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_NOT_APPROVED, false },
-    {  "Generic AES-GCM 128-bit key external iv test", EVP_aead_aes_192_gcm(),
+    {  "Generic AES-GCM 192-bit key external iv test", EVP_aead_aes_192_gcm(),
         kAESKey_192, 24, kAESGCMCiphertext_192, 64, AWSLC_NOT_APPROVED, false },
-    {  "Generic AES-GCM 128-bit key external iv test", EVP_aead_aes_256_gcm(),
+    {  "Generic AES-GCM 256-bit key external iv test", EVP_aead_aes_256_gcm(),
         kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_NOT_APPROVED, false },
     // External IV usage of AEAD AES-GCM APIs specific for TLS is approved.
     {  "TLS1.2 AES-GCM 128-bit key external iv test", EVP_aead_aes_128_gcm_tls12(),
