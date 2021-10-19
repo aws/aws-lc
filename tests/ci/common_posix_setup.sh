@@ -21,7 +21,7 @@ function run_build {
   cd "$BUILD_ROOT" || exit 1
 
   if [[ "${AWSLC_32BIT}" == "1" ]]; then
-    cflags+=("-DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake")
+    cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
   fi
 
   if [[ -x "$(command -v ninja)" ]]; then
@@ -37,9 +37,9 @@ function run_build {
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
-  cmake "${cflags[@]}" ../
+  cmake "${cflags[@]}" "$SRC_ROOT"
   $BUILD_COMMAND
-  cd ../
+  cd "$SRC_ROOT"
 }
 
 function run_cmake_custom_target {
@@ -65,11 +65,18 @@ function fips_build_and_test {
       break
     fi
   done
-  module_status=$(./test_build_dir/tool/bssl isfips)
+  module_status=$("${BUILD_ROOT}/tool/bssl" isfips)
   [[ "${expect_fips_mode}" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
   # Run tests.
   run_cmake_custom_target 'run_tests'
-  ./test_build_dir/util/fipstools/cavp/test_fips
+  "${BUILD_ROOT}/util/fipstools/cavp/test_fips"
+}
+
+function ensure_file() {
+    if [ ! -f "$1" ]; then
+        echo "$1 does not exist"
+        exit 1
+    fi
 }
 
 function build_and_test_valgrind {

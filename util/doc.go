@@ -291,6 +291,10 @@ func isPrivateSection(name string) bool {
 	return strings.HasPrefix(name, "Private functions") || strings.HasPrefix(name, "Private structures") || strings.Contains(name, "(hidden)")
 }
 
+func isCollectiveComment(line string) bool {
+	return strings.HasPrefix(line, "The ") || strings.HasPrefix(line, "These ")
+}
+
 func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 	headerPath := filepath.Join(config.BaseDirectory, path)
 
@@ -439,12 +443,10 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				// As a matter of style, comments should start
 				// with the name of the thing that they are
 				// commenting on. We make an exception here for
-				// collective comments, which are detected by
-				// starting with “The” or “These”.
+				// collective comments.
 				if len(comment) > 0 &&
 					len(name) > 0 &&
-					!strings.HasPrefix(comment[0], "The ") &&
-					!strings.HasPrefix(comment[0], "These ") {
+					!isCollectiveComment(comment[0]) {
 					subject := commentSubject(comment[0])
 					ok := subject == name
 					if l := len(subject); l > 0 && subject[l-1] == '*' {
@@ -540,6 +542,9 @@ func markupPipeWords(allDecls map[string]string, s string) template.HTML {
 }
 
 func markupFirstWord(s template.HTML) template.HTML {
+	if isCollectiveComment(string(s)) {
+		return s
+	}
 	start := 0
 again:
 	end := strings.Index(string(s[start:]), " ")
@@ -560,6 +565,28 @@ again:
 	return s
 }
 
+var rfcRegexp = regexp.MustCompile("RFC ([0-9]+)")
+
+func markupRFC(html template.HTML) template.HTML {
+	s := string(html)
+	matches := rfcRegexp.FindAllStringSubmatchIndex(s, -1)
+	if len(matches) == 0 {
+		return html
+	}
+
+	var b strings.Builder
+	var idx int
+	for _, match := range matches {
+		start, end := match[0], match[1]
+		number := s[match[2]:match[3]]
+		b.WriteString(s[idx:start])
+		fmt.Fprintf(&b, "<a href=\"https://www.rfc-editor.org/rfc/rfc%s.html\">%s</a>", number, s[start:end])
+		idx = end
+	}
+	b.WriteString(s[idx:])
+	return template.HTML(b.String())
+}
+
 func newlinesToBR(html template.HTML) template.HTML {
 	s := string(html)
 	if !strings.Contains(s, "\n") {
@@ -578,6 +605,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 		"firstSentence":   firstSentence,
 		"markupPipeWords": func(s string) template.HTML { return markupPipeWords(allDecls, s) },
 		"markupFirstWord": markupFirstWord,
+		"markupRFC":       markupRFC,
 		"newlinesToBR":    newlinesToBR,
 	})
 	headerTmpl, err := headerTmpl.Parse(`<!DOCTYPE html>
@@ -620,7 +648,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
         {{range .Decls}}
           <div class="decl" {{if .Anchor}}id="{{.Anchor}}"{{end}}>
           {{range .Comment}}
-            <p>{{. | markupPipeWords | newlinesToBR | markupFirstWord}}</p>
+            <p>{{. | markupPipeWords | newlinesToBR | markupFirstWord | markupRFC}}</p>
           {{end}}
           <pre>{{.Decl}}</pre>
           </div>

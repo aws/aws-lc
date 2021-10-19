@@ -31,6 +31,11 @@
 
 #if defined(OPENSSL_LINUX)
 #if defined(BORINGSSL_FIPS)
+#if !defined(AWS_LC_URANDOM_U32)
+  // On old Linux OS: unknown type name '__u32' when include <linux/random.h>.
+  // If '__u32' is predefined, redefine will cause compiler error.
+  typedef unsigned int __u32;
+#endif
 #include <linux/random.h>
 #include <sys/ioctl.h>
 #endif
@@ -40,7 +45,8 @@
 #include <sys/system_properties.h>
 #endif
 
-#if !defined(OPENSSL_ANDROID)
+// NO_GETAUXVAL is used to disable the reference to 'getauxval'.
+#if !defined(OPENSSL_ANDROID) && !defined(NO_GETAUXVAL)
 #define OPENSSL_HAS_GETAUXVAL
 #endif
 // glibc prior to 2.16 does not have getauxval and sys/auxv.h. Android has some
@@ -367,6 +373,10 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   return 1;
 }
 
+void CRYPTO_init_sysrand(void) {
+  CRYPTO_once(rand_once_bss_get(), init_once);
+}
+
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/0)) {
@@ -375,18 +385,12 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   }
 }
 
-void CRYPTO_init_sysrand(void) {
-  CRYPTO_once(rand_once_bss_get(), init_once);
-}
-
-#if defined(BORINGSSL_FIPS)
 void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
   if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/1)) {
     perror("entropy fill failed");
     abort();
   }
 }
-#endif  // BORINGSSL_FIPS
 
 int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   if (fill_with_entropy(out, requested, /*block=*/0, /*seed=*/0)) {

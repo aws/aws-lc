@@ -66,6 +66,7 @@
  * Laboratories. */
 
 #include <openssl/ec_key.h>
+#include <openssl/evp.h>
 
 #include <string.h>
 
@@ -325,6 +326,50 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   return 1;
 }
 
+static int EVP_EC_KEY_check_fips(EC_KEY *key) {
+  // We have to avoid the underlying |EVP_DigestSign| and |EVP_DigestVerify|
+  // services updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
+  uint8_t msg[16] = {0};
+  size_t msg_len = 16;
+  int ret = 0;
+  uint8_t* sig_der = NULL;
+  EVP_PKEY *evp_pkey = EVP_PKEY_new();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  const EVP_MD *hash = EVP_sha256();
+  size_t sign_len;
+  if (!evp_pkey ||
+      !ctx ||
+      !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
+      !EVP_DigestSignInit(ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestSign(ctx, NULL, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  sig_der = OPENSSL_malloc(sign_len);
+  if (!sig_der ||
+      !EVP_DigestSign(ctx, sig_der, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  #if defined(BORINGSSL_FIPS_BREAK_ECDSA_PWCT)
+    msg[0] = ~msg[0];
+  #endif
+  if (!EVP_DigestVerifyInit(ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestVerify(ctx, sig_der, sign_len, msg, msg_len)) {
+    goto err;
+  }
+  ret = 1;
+err:
+  EVP_PKEY_free(evp_pkey);
+  OPENSSL_free(sig_der);
+  EVP_MD_CTX_free(ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ret){
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
+}
+
 int EC_KEY_check_fips(const EC_KEY *key) {
   if (EC_KEY_is_opaque(key)) {
     // Opaque keys can't be checked.
@@ -337,20 +382,11 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   }
 
   if (key->priv_key) {
-    uint8_t data[16] = {0};
-    ECDSA_SIG *sig = ECDSA_do_sign(data, sizeof(data), key);
-#if defined(BORINGSSL_FIPS_BREAK_ECDSA_PWCT)
-    data[0] = ~data[0];
-#endif
-    int ok = sig != NULL &&
-             ECDSA_do_verify(data, sizeof(data), sig, key);
-    ECDSA_SIG_free(sig);
-    if (!ok) {
+    if (!EVP_EC_KEY_check_fips((EC_KEY*)key)) {
       OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
       return 0;
     }
   }
-
   return 1;
 }
 
@@ -439,10 +475,16 @@ int EC_KEY_generate_key(EC_KEY *key) {
 }
 
 int EC_KEY_generate_key_fips(EC_KEY *eckey) {
+  // We have to verify both |EC_KEY_generate_key| and |EC_KEY_check_fips| both
+  // succeed before updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   if (EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey)) {
+    FIPS_service_indicator_unlock_state();
+    FIPS_service_indicator_update_state();
     return 1;
   }
 
+  FIPS_service_indicator_unlock_state();
   EC_POINT_free(eckey->pub_key);
   ec_wrapped_scalar_free(eckey->priv_key);
   eckey->pub_key = NULL;

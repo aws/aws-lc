@@ -41,7 +41,6 @@ struct TestState {
   // packeted_bio is the packeted BIO which simulates read timeouts.
   BIO *packeted_bio = nullptr;
   std::unique_ptr<MockQuicTransport> quic_transport;
-  bssl::UniquePtr<EVP_PKEY> channel_id;
   bool cert_ready = false;
   bssl::UniquePtr<SSL_SESSION> session;
   bssl::UniquePtr<SSL_SESSION> pending_session;
@@ -68,6 +67,7 @@ struct TestState {
   bool cert_verified = false;
   int explicit_renegotiates = 0;
   std::function<bool(const SSL_CLIENT_HELLO*)> get_handshake_hints_cb;
+  int last_message_received = -1;
 };
 
 bool SetTestState(SSL *ssl, std::unique_ptr<TestState> state);
