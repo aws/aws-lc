@@ -166,7 +166,8 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   // NB: unlike PKCS#3 DH, if the returned buflen is less than
   // the requested size in *keylen, this is not an error;
   // the result is truncated.
-
+  // Note: This is an internal function which will not update
+  // the service indicator.
   if (!ECDH_compute_shared_secret(buf, &buflen, pubkey, eckey)) {
       return 0;
   }

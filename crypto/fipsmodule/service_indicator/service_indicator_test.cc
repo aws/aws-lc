@@ -961,7 +961,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
 
 
-  // Test running the EVP_PKEY_derive interfaces one by one directly, and check
+  // Test running the EVP_PKEY_keygen interfaces one by one directly, and check
   // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
   // not be approved because they do not indicate an entire service has been
   // done.
@@ -1851,5 +1851,3 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 #endif // AWSLC_FIPS
-
-
