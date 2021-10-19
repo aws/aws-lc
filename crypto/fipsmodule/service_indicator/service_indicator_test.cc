@@ -508,6 +508,100 @@ static const uint8_t kTLSOutput_sha512[32] = {
     0xbf, 0x3a, 0x53, 0x71, 0xb7, 0x9c, 0xb5, 0x03, 0x15, 0x3f
 };
 
+static const uint8_t kAESGCMCiphertext_128[64] = {
+    0x38, 0x71, 0xcb, 0x61, 0x70, 0x60, 0x13, 0x8b, 0x2f, 0x91, 0x09,
+    0x7f, 0x83, 0x20, 0x0f, 0x1f, 0x71, 0xe2, 0x47, 0x46, 0x6f, 0x5f,
+    0xa8, 0xad, 0xa8, 0xfc, 0x0a, 0xfd, 0x36, 0x65, 0x84, 0x90, 0x28,
+    0x2b, 0xcb, 0x4f, 0x68, 0xae, 0x09, 0xba, 0xae, 0xdd, 0xdb, 0x91,
+    0xcc, 0x38, 0xb3, 0xad, 0x10, 0x84, 0xb8, 0x45, 0x36, 0xf3, 0x96,
+    0xb4, 0xef, 0xba, 0xda, 0x10, 0xf8, 0x8b, 0xf3, 0xda
+};
+
+static const uint8_t kAESGCMCiphertext_192[64] = {
+    0x05, 0x63, 0x6e, 0xe4, 0xd1, 0x9f, 0xd0, 0x91, 0x18, 0xc9, 0xf8,
+    0xfd, 0xc2, 0x62, 0x09, 0x05, 0x91, 0xb4, 0x92, 0x66, 0x18, 0xe7,
+    0x93, 0x6a, 0xc7, 0xde, 0x81, 0x36, 0x93, 0x79, 0x45, 0x34, 0xc0,
+    0x6d, 0x14, 0x94, 0x93, 0x39, 0x2b, 0x7f, 0x4f, 0x10, 0x1c, 0xa5,
+    0xfe, 0x3b, 0x37, 0xd7, 0x0a, 0x98, 0xd7, 0xb5, 0xe0, 0xdc, 0xe4,
+    0x9f, 0x36, 0x40, 0xad, 0x03, 0xbf, 0x53, 0xe0, 0x7c
+};
+
+static const uint8_t kAESGCMCiphertext_256[64] = {
+    0x92, 0x5f, 0xae, 0x84, 0xe7, 0x40, 0xfa, 0x1e, 0xaf, 0x8f, 0x97,
+    0x0e, 0x8e, 0xdd, 0x6a, 0x94, 0x22, 0xee, 0x4f, 0x70, 0x66, 0xbf,
+    0xb1, 0x99, 0x05, 0xbd, 0xd0, 0xd7, 0x91, 0x54, 0xaf, 0xe1, 0x52,
+    0xc9, 0x4e, 0x55, 0xa5, 0x23, 0x62, 0x8b, 0x23, 0x40, 0x90, 0x56,
+    0xe0, 0x68, 0x63, 0xe5, 0x7e, 0x5b, 0xbe, 0x96, 0x7b, 0xc4, 0x16,
+    0xf9, 0xbe, 0x18, 0x06, 0x79, 0x8f, 0x99, 0x35, 0xe3
+};
+
+struct AEADTestVector {
+  const EVP_AEAD *cipher;
+  const uint8_t *key;
+  const int key_length;
+  const uint8_t *expected_ciphertext;
+  const int cipher_text_length;
+  const int expect_approved;
+} nAEADTestVectors[] = {
+    // Internal IV usage of AES-GCM is approved.
+    { EVP_aead_aes_128_gcm_randnonce(), kAESKey, 16, nullptr, 0, AWSLC_APPROVED },
+    { EVP_aead_aes_256_gcm_randnonce(), kAESKey_256, 32, nullptr, 0, AWSLC_APPROVED },
+    // External IV usage of AES-GCM is not approved unless used within a TLS
+    // context.
+    { EVP_aead_aes_128_gcm(), kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_NOT_APPROVED },
+    { EVP_aead_aes_192_gcm(), kAESKey_192, 24, kAESGCMCiphertext_192, 64, AWSLC_NOT_APPROVED },
+    { EVP_aead_aes_256_gcm(), kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_NOT_APPROVED },
+    // External IV usage of AEAD AES-GCM APIs specific for TLS is approved.
+    { EVP_aead_aes_128_gcm_tls12(), kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_APPROVED },
+    { EVP_aead_aes_256_gcm_tls12(), kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_APPROVED },
+    { EVP_aead_aes_128_gcm_tls13(), kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_APPROVED },
+    { EVP_aead_aes_256_gcm_tls13(), kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_APPROVED },
+    // 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
+    { EVP_aead_aes_128_ccm_bluetooth(), kAESKey, 16, kAESCCMCiphertext, 64, AWSLC_APPROVED },
+};
+
+class AEAD_ServiceIndicatorTest : public testing::TestWithParam<AEADTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, AEAD_ServiceIndicatorTest, testing::ValuesIn(nAEADTestVectors));
+
+TEST_P(AEAD_ServiceIndicatorTest, EVP_AEAD) {
+  const AEADTestVector &aeadTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::ScopedEVP_AEAD_CTX aead_ctx;
+  std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
+  std::vector<uint8_t> nonce(EVP_AEAD_MAX_NONCE_LENGTH, 0);
+  std::vector<uint8_t> encrypt_output(256);
+  std::vector<uint8_t> decrypt_output(256);
+  size_t out_len;
+
+  // Test running the EVP_AEAD_CTX interfaces one by one directly, and check
+  // |EVP_AEAD_CTX_seal| and |EVP_AEAD_CTX_open| for approval at the end.
+  // |EVP_AEAD_CTX_init| should not be approved because the function does not
+  // indicate that a service has been fully completed yet.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), aeadTestVector.cipher,
+                                aeadTestVector.key, aeadTestVector.key_length, 0, nullptr)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(),
+      encrypt_output.data(), &out_len, encrypt_output.size(), nonce.data(), EVP_AEAD_nonce_length(aeadTestVector.cipher),
+      plaintext.data(), plaintext.size(), nullptr, 0)));
+  ASSERT_EQ(approved, aeadTestVector.expect_approved);
+  encrypt_output.resize(out_len);
+  if(aeadTestVector.expected_ciphertext) {
+      ASSERT_TRUE(check_test(aeadTestVector.expected_ciphertext, encrypt_output.data(),
+                           aeadTestVector.cipher_text_length, "AES-GCM Encryption"));
+  }
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_open(aead_ctx.get(),
+      decrypt_output.data(), &out_len, decrypt_output.size(), nonce.data(), EVP_AEAD_nonce_length(aeadTestVector.cipher),
+      encrypt_output.data(), out_len, nullptr, 0)));
+  ASSERT_EQ(approved, aeadTestVector.expect_approved);
+  decrypt_output.resize(out_len);
+  ASSERT_TRUE(check_test(plaintext.data(), decrypt_output.data(), plaintext.size(),
+                  "AES-GCM Decryption"));
+}
+
 struct CipherTestVector {
   const EVP_CIPHER *cipher;
   const uint8_t *key;
@@ -1612,99 +1706,6 @@ TEST(ServiceIndicatorTest, AESCFB) {
   ASSERT_TRUE(check_test(kPlaintext, output, sizeof(kPlaintext),
                          "AES-CFB Decryption KAT"));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
-}
-
-TEST(ServiceIndicatorTest, AESGCM) {
-  int approved = AWSLC_NOT_APPROVED;
-  bssl::ScopedEVP_AEAD_CTX aead_ctx;
-  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH] = {0};
-  uint8_t encrypt_output[256];
-  uint8_t decrypt_output[256];
-  size_t out_len;
-  size_t out2_len;
-
-  // Approved usages.
-
-  // Call approved internal IV usage of AES-GCM 128 bit kye size.
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
-                                kAESKey, sizeof(kAESKey), 0, nullptr));
-
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(),
-      encrypt_output, &out_len, sizeof(encrypt_output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
-
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_open(aead_ctx.get(),
-      decrypt_output, &out2_len, sizeof(decrypt_output), nullptr, 0, encrypt_output, out_len, nullptr, 0)));
-  ASSERT_TRUE(check_test(kPlaintext, decrypt_output, sizeof(kPlaintext),
-                  "AES-GCM Decryption for Internal IVs"));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
-
-  // Call approved internal IV usage of AES-GCM 256 bit kye size.
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_256_gcm_randnonce(),
-                                kAESKey_256, sizeof(kAESKey_256), 0, nullptr));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(),
-      encrypt_output, &out_len, sizeof(encrypt_output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
-
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_open(aead_ctx.get(),
-      decrypt_output, &out2_len, sizeof(decrypt_output), nullptr, 0, encrypt_output, out_len, nullptr, 0)));
-  ASSERT_TRUE(check_test(kPlaintext, decrypt_output, sizeof(kPlaintext),
-                  "AES-GCM Decryption for Internal IVs"));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
-
-  // Non-approved usages
-
-  // Call non-approved external IV usage of AES-GCM 128 bit key size.
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm(),
-                                kAESKey, sizeof(kAESKey), 0, nullptr));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(),
-      encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
-          kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
-
-  // Call non-approved external IV usage of AES-GCM 192 bit key size. (192 is
-  // not available for internal IV.)
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_192_gcm(),
-                              kAESKey_192, sizeof(kAESKey_192), 0, nullptr));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(),
-      encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_192_gcm()),
-          kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
-
-  // Call non-approved external IV usage of AES-GCM 256 bit key size.
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_256_gcm(),
-                              kAESKey_256, sizeof(kAESKey_256), 0, nullptr));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(),
-      encrypt_output, &out_len, sizeof(encrypt_output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_256_gcm()),
-          kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
-}
-
-TEST(ServiceIndicatorTest, AESCCM) {
-  int approved = AWSLC_NOT_APPROVED;
-
-  bssl::ScopedEVP_AEAD_CTX aead_ctx;
-  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
-  uint8_t output[256];
-  size_t out_len;
-
-  OPENSSL_memset(nonce, 0, sizeof(nonce));
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_ccm_bluetooth(),
-                                kAESKey, sizeof(kAESKey), EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
-
-  // AES-CCM Encryption
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(),
-       output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
-       kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-  ASSERT_TRUE(check_test(kAESCCMCiphertext, output, out_len, "AES-CCM Encryption KAT"));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
-
-  // AES-CCM Decryption
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_open(aead_ctx.get(),
-       output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
-       kAESCCMCiphertext, sizeof(kAESCCMCiphertext), nullptr, 0)));
-  ASSERT_TRUE(check_test(kPlaintext, output, out_len, "AES-CCM Decryption KAT"));
-  ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESKW) {
