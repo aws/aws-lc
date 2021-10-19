@@ -536,28 +536,40 @@ static const uint8_t kAESGCMCiphertext_256[64] = {
 };
 
 struct AEADTestVector {
+  const char* name;
   const EVP_AEAD *cipher;
   const uint8_t *key;
   const int key_length;
   const uint8_t *expected_ciphertext;
   const int cipher_text_length;
   const int expect_approved;
+  const bool test_repeat_nonce;
 } nAEADTestVectors[] = {
     // Internal IV usage of AES-GCM is approved.
-    { EVP_aead_aes_128_gcm_randnonce(), kAESKey, 16, nullptr, 0, AWSLC_APPROVED },
-    { EVP_aead_aes_256_gcm_randnonce(), kAESKey_256, 32, nullptr, 0, AWSLC_APPROVED },
+    { "AES-GCM 128-bit key internal iv test", EVP_aead_aes_128_gcm_randnonce(),
+        kAESKey, 16, nullptr, 0, AWSLC_APPROVED, false },
+    { "AES-GCM 256-bit key internal iv test", EVP_aead_aes_256_gcm_randnonce(),
+        kAESKey_256, 32, nullptr, 0, AWSLC_APPROVED, false },
     // External IV usage of AES-GCM is not approved unless used within a TLS
     // context.
-    { EVP_aead_aes_128_gcm(), kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_NOT_APPROVED },
-    { EVP_aead_aes_192_gcm(), kAESKey_192, 24, kAESGCMCiphertext_192, 64, AWSLC_NOT_APPROVED },
-    { EVP_aead_aes_256_gcm(), kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_NOT_APPROVED },
+    {  "Generic AES-GCM 128-bit key external iv test", EVP_aead_aes_128_gcm(),
+        kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_NOT_APPROVED, false },
+    {  "Generic AES-GCM 128-bit key external iv test", EVP_aead_aes_192_gcm(),
+        kAESKey_192, 24, kAESGCMCiphertext_192, 64, AWSLC_NOT_APPROVED, false },
+    {  "Generic AES-GCM 128-bit key external iv test", EVP_aead_aes_256_gcm(),
+        kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_NOT_APPROVED, false },
     // External IV usage of AEAD AES-GCM APIs specific for TLS is approved.
-    { EVP_aead_aes_128_gcm_tls12(), kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_APPROVED },
-    { EVP_aead_aes_256_gcm_tls12(), kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_APPROVED },
-    { EVP_aead_aes_128_gcm_tls13(), kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_APPROVED },
-    { EVP_aead_aes_256_gcm_tls13(), kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_APPROVED },
+    {  "TLS1.2 AES-GCM 128-bit key external iv test", EVP_aead_aes_128_gcm_tls12(),
+        kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_APPROVED, true },
+    {  "TLS1.2 AES-GCM 256-bit key external iv test", EVP_aead_aes_256_gcm_tls12(),
+        kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_APPROVED, true },
+    {  "TLS1.3 AES-GCM 128-bit key external iv test", EVP_aead_aes_128_gcm_tls13(),
+        kAESKey, 16, kAESGCMCiphertext_128, 64, AWSLC_APPROVED, true },
+    {  "TLS1.3 AES-GCM 256-bit key external iv test", EVP_aead_aes_256_gcm_tls13(),
+        kAESKey_256, 32, kAESGCMCiphertext_256, 64, AWSLC_APPROVED, true },
     // 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
-    { EVP_aead_aes_128_ccm_bluetooth(), kAESKey, 16, kAESCCMCiphertext, 64, AWSLC_APPROVED },
+    {  "AES-CCM 128-bit key test", EVP_aead_aes_128_ccm_bluetooth(),
+        kAESKey, 16, kAESCCMCiphertext, 64, AWSLC_APPROVED, false },
 };
 
 class AEAD_ServiceIndicatorTest : public testing::TestWithParam<AEADTestVector> {};
@@ -590,7 +602,7 @@ TEST_P(AEAD_ServiceIndicatorTest, EVP_AEAD) {
   encrypt_output.resize(out_len);
   if(aeadTestVector.expected_ciphertext) {
       ASSERT_TRUE(check_test(aeadTestVector.expected_ciphertext, encrypt_output.data(),
-                           aeadTestVector.cipher_text_length, "AES-GCM Encryption"));
+                           aeadTestVector.cipher_text_length, aeadTestVector.name));
   }
 
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_AEAD_CTX_open(aead_ctx.get(),
@@ -599,7 +611,16 @@ TEST_P(AEAD_ServiceIndicatorTest, EVP_AEAD) {
   ASSERT_EQ(approved, aeadTestVector.expect_approved);
   decrypt_output.resize(out_len);
   ASSERT_TRUE(check_test(plaintext.data(), decrypt_output.data(), plaintext.size(),
-                  "AES-GCM Decryption"));
+                  aeadTestVector.name));
+
+  // Second call when encrypting using the same nonce for AES-GCM TLS specific
+  // functions should fail and return |AWSLC_NOT_APPROVED|.
+  if(aeadTestVector.test_repeat_nonce) {
+    CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_FALSE(EVP_AEAD_CTX_seal(aead_ctx.get(),
+         encrypt_output.data(), &out_len, encrypt_output.size(), nonce.data(), EVP_AEAD_nonce_length(aeadTestVector.cipher),
+         kPlaintext, sizeof(kPlaintext), nullptr, 0)));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  }
 }
 
 struct CipherTestVector {
