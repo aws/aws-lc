@@ -23,7 +23,7 @@
 
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
-#include "../bn/internal.h"
+#include "../ec/internal.h"
 #include "../rand/internal.h"
 #include "../tls/internal.h"
 
