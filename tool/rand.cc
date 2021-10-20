@@ -24,7 +24,7 @@
 #include "internal.h"
 
 
-static const struct argument kArguments[] = {
+static const argument_t kArguments[] = {
     {
      "-hex", kBooleanArgument,
      "Hex encoded output."

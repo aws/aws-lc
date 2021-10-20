@@ -126,30 +126,51 @@ int SHA512_256_Init(SHA512_CTX *sha) {
 
 uint8_t *SHA384(const uint8_t *data, size_t len,
                 uint8_t out[SHA384_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA384_Init(&ctx);
-  SHA384_Update(&ctx, data, len);
-  SHA384_Final(out, &ctx);
+  const int ok = SHA384_Init(&ctx) &&
+                 SHA384_Update(&ctx, data, len) &&
+                 SHA384_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512(const uint8_t *data, size_t len,
                 uint8_t out[SHA512_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, data, len);
-  SHA512_Final(out, &ctx);
+  const int ok = SHA512_Init(&ctx) &&
+                 SHA512_Update(&ctx, data, len) &&
+                 SHA512_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512_256(const uint8_t *data, size_t len,
                     uint8_t out[SHA512_256_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA512_256_Init(&ctx);
-  SHA512_256_Update(&ctx, data, len);
-  SHA512_256_Final(out, &ctx);
+  const int ok = SHA512_256_Init(&ctx) &&
+                 SHA512_256_Update(&ctx, data, len) &&
+                 SHA512_256_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
@@ -162,7 +183,7 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 
 int SHA384_Final(uint8_t out[SHA384_DIGEST_LENGTH], SHA512_CTX *sha) {
   // |SHA384_Init| sets |sha->md_len| to |SHA384_DIGEST_LENGTH|, so this has a
-  // |smaller output.
+  // smaller output.
   assert(sha->md_len == SHA384_DIGEST_LENGTH);
   return sha512_final_impl(out, sha);
 }
@@ -237,7 +258,7 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
 int SHA512_Final(uint8_t out[SHA512_DIGEST_LENGTH], SHA512_CTX *sha) {
   // Ideally we would assert |sha->md_len| is |SHA512_DIGEST_LENGTH| to match
   // the size hint, but calling code often pairs |SHA384_Init| with
-  // |SHA512_Final| and expects |sha->md_len| to carry the over.
+  // |SHA512_Final| and expects |sha->md_len| to carry the size over.
   //
   // TODO(davidben): Add an assert and fix code to match them up.
   return sha512_final_impl(out, sha);
@@ -270,11 +291,11 @@ static int sha512_final_impl(uint8_t *out, SHA512_CTX *sha) {
   assert(sha->md_len % 8 == 0);
   const size_t out_words = sha->md_len / 8;
   for (size_t i = 0; i < out_words; i++) {
-    const uint64_t t = CRYPTO_bswap8(sha->h[i]);
-    memcpy(out, &t, sizeof(t));
-    out += sizeof(t);
+    CRYPTO_store_u64_be(out, sha->h[i]);
+    out += 8;
   }
 
+  FIPS_service_indicator_update_state();
   return 1;
 }
 

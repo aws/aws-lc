@@ -128,20 +128,18 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
             }
         }
 
-        /* Per RFC5280, section 4.1.2.8, these fields require v2 or v3. */
+        /* Per RFC 5280, section 4.1.2.8, these fields require v2 or v3. */
         if (version == 0 && (ret->cert_info->issuerUID != NULL ||
                              ret->cert_info->subjectUID != NULL)) {
             OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_FOR_VERSION);
             return 0;
         }
 
-        /* Per RFC5280, section 4.1.2.9, extensions require v3. */
-        /* Check disabled. TODO re-enable in April 2021.
-           https://crbug.com/boringssl/375
+        /* Per RFC 5280, section 4.1.2.9, extensions require v3. */
         if (version != 2 && ret->cert_info->extensions != NULL) {
             OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_FOR_VERSION);
             return 0;
-        }*/
+        }
 
         break;
     }

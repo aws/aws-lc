@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include <openssl/cpu.h>
+#include "../service_indicator/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

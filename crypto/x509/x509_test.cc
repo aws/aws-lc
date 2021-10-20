@@ -19,12 +19,14 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/nid.h>
 #include <openssl/pem.h>
 #include <openssl/pool.h>
 #include <openssl/x509.h>
@@ -33,9 +35,6 @@
 #include "../internal.h"
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
-#include "openssl/asn1.h"
-#include "openssl/base.h"
-#include "openssl/nid.h"
 
 
 std::string GetTestData(const char *path);
@@ -1133,12 +1132,15 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
   return stack;
 }
 
-static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
-                  const std::vector<X509 *> &intermediates,
-                  const std::vector<X509_CRL *> &crls, unsigned long flags,
-                  bool use_additional_untrusted,
-                  std::function<void(X509_VERIFY_PARAM *)> configure_callback,
-                  int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
+static const time_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
+
+static int Verify(
+    X509 *leaf, const std::vector<X509 *> &roots,
+    const std::vector<X509 *> &intermediates,
+    const std::vector<X509_CRL *> &crls, unsigned long flags,
+    bool use_additional_untrusted,
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback,
+    int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -1171,19 +1173,14 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   X509_STORE_CTX_trusted_stack(ctx.get(), roots_stack.get());
   X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
 
-  X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new();
-  if (param == nullptr) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
-  X509_VERIFY_PARAM_set_time(param, 1474934400 /* Sep 27th, 2016 */);
-  X509_VERIFY_PARAM_set_depth(param, 16);
+  X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
+  X509_VERIFY_PARAM_set_time(param, kReferenceTime);
   if (configure_callback) {
     configure_callback(param);
   }
   if (flags) {
     X509_VERIFY_PARAM_set_flags(param, flags);
   }
-  X509_STORE_CTX_set0_param(ctx.get(), param);
 
   ERR_clear_error();
   if (X509_verify_cert(ctx.get()) != 1) {
@@ -1193,14 +1190,15 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   return X509_V_OK;
 }
 
-static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
-                   const std::vector<X509 *> &intermediates,
-                   const std::vector<X509_CRL *> &crls,
-                   unsigned long flags = 0) {
-  const int r1 =
-      Verify(leaf, roots, intermediates, crls, flags, false, nullptr);
+static int Verify(
+    X509 *leaf, const std::vector<X509 *> &roots,
+    const std::vector<X509 *> &intermediates,
+    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr) {
+  const int r1 = Verify(leaf, roots, intermediates, crls, flags, false,
+                        configure_callback);
   const int r2 =
-      Verify(leaf, roots, intermediates, crls, flags, true, nullptr);
+      Verify(leaf, roots, intermediates, crls, flags, true, configure_callback);
 
   if (r1 != r2) {
     fprintf(stderr,
@@ -1214,6 +1212,15 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
 }
 
 TEST(X509Test, TestVerify) {
+  //  cross_signing_root
+  //         |
+  //   root_cross_signed    root
+  //              \         /
+  //             intermediate
+  //                |     |
+  //              leaf  leaf_no_key_usage
+  //                      |
+  //                    forgery
   bssl::UniquePtr<X509> cross_signing_root(CertFromPEM(kCrossSigningRootPEM));
   bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
   bssl::UniquePtr<X509> root_cross_signed(CertFromPEM(kRootCrossSignedPEM));
@@ -1233,41 +1240,77 @@ TEST(X509Test, TestVerify) {
   ASSERT_TRUE(forgery);
   ASSERT_TRUE(leaf_no_key_usage);
 
-  std::vector<X509*> empty;
-  std::vector<X509_CRL*> empty_crls;
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-            Verify(leaf.get(), empty, empty, empty_crls));
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-            Verify(leaf.get(), empty, {intermediate.get()}, empty_crls));
+  // Most of these tests work with or without |X509_V_FLAG_TRUSTED_FIRST|,
+  // though in different ways.
+  for (bool trusted_first : {true, false}) {
+    SCOPED_TRACE(trusted_first);
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback;
+    if (!trusted_first) {
+      // Note we need the callback to clear the flag. Setting |flags| to zero
+      // only skips setting new flags.
+      configure_callback = [&](X509_VERIFY_PARAM *param) {
+        X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
+      };
+    }
 
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {root.get()}, {intermediate.get()}, empty_crls));
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {cross_signing_root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {cross_signing_root.get(), root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
+    // No trust anchors configured.
+    ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+              Verify(leaf.get(), /*roots=*/{}, /*intermediates=*/{},
+                     /*crls=*/{}, /*flags=*/0, configure_callback));
+    ASSERT_EQ(
+        X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+        Verify(leaf.get(), /*roots=*/{}, {intermediate.get()}, /*crls=*/{},
+               /*flags=*/0, configure_callback));
 
-  /* This is the “altchains” test – we remove the cross-signing CA but include
-   * the cross-sign in the intermediates. */
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-            Verify(leaf.get(), {root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls,
-                   X509_V_FLAG_NO_ALT_CHAINS));
-  ASSERT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(forgery.get(), {intermediate_self_signed.get()},
-                   {leaf_no_key_usage.get()}, empty_crls));
+    // Each chain works individually.
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                /*crls=*/{}, /*flags=*/0, configure_callback));
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {cross_signing_root.get()},
+                                {intermediate.get(), root_cross_signed.get()},
+                                /*crls=*/{}, /*flags=*/0, configure_callback));
 
-  /* Test that one cannot skip Basic Constraints checking with a contorted set
-   * of roots and intermediates. This is a regression test for CVE-2015-1793. */
-  ASSERT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(forgery.get(),
-                   {intermediate_self_signed.get(), root_cross_signed.get()},
-                   {leaf_no_key_usage.get(), intermediate.get()}, empty_crls));
+    // When both roots are available, we pick one or the other.
+    ASSERT_EQ(X509_V_OK,
+              Verify(leaf.get(), {cross_signing_root.get(), root.get()},
+                     {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
+                     /*flags=*/0, configure_callback));
+
+    // This is the “altchains” test – we remove the cross-signing CA but include
+    // the cross-sign in the intermediates. With |trusted_first|, we
+    // preferentially stop path-building at |intermediate|. Without
+    // |trusted_first|, the "altchains" logic repairs it.
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                                {intermediate.get(), root_cross_signed.get()},
+                                /*crls=*/{}, /*flags=*/0, configure_callback));
+
+    // If |X509_V_FLAG_NO_ALT_CHAINS| is set and |trusted_first| is disabled, we
+    // get stuck on |root_cross_signed|. If either feature is enabled, we can
+    // build the path.
+    //
+    // This test exists to confirm our current behavior, but these modes are
+    // just workarounds for not having an actual path-building verifier. If we
+    // fix it, this test can be removed.
+    ASSERT_EQ(trusted_first ? X509_V_OK
+                            : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+              Verify(leaf.get(), {root.get()},
+                     {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
+                     /*flags=*/X509_V_FLAG_NO_ALT_CHAINS, configure_callback));
+
+    // |forgery| is signed by |leaf_no_key_usage|, but is rejected because the
+    // leaf is not a CA.
+    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+              Verify(forgery.get(), {intermediate_self_signed.get()},
+                     {leaf_no_key_usage.get()}, /*crls=*/{}, /*flags=*/0,
+                     configure_callback));
+
+    // Test that one cannot skip Basic Constraints checking with a contorted set
+    // of roots and intermediates. This is a regression test for CVE-2015-1793.
+    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+              Verify(forgery.get(),
+                     {intermediate_self_signed.get(), root_cross_signed.get()},
+                     {leaf_no_key_usage.get(), intermediate.get()}, /*crls=*/{},
+                     /*flags=*/0, configure_callback));
+  }
 }
 
 static const char kHostname[] = "example.com";
@@ -1518,6 +1561,223 @@ TEST(X509Test, ManyNamesAndConstraints) {
                               {many_constraints.get()}, {}));
 }
 
+static bssl::UniquePtr<GENERAL_NAME> MakeGeneralName(int type,
+                                                     const std::string &value) {
+  if (type != GEN_EMAIL && type != GEN_DNS && type != GEN_URI) {
+    // This function only supports the IA5String types.
+    return nullptr;
+  }
+  bssl::UniquePtr<ASN1_IA5STRING> str(ASN1_IA5STRING_new());
+  bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+  if (!str || !name ||
+      !ASN1_STRING_set(str.get(), value.data(), value.size())) {
+    return nullptr;
+  }
+
+  name->type = type;
+  name->d.ia5 = str.release();
+  return name;
+}
+
+static bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
+                                          const char *subject, EVP_PKEY *key,
+                                          bool is_ca) {
+  bssl::UniquePtr<X509> cert(X509_new());
+  if (!cert ||  //
+      !X509_set_version(cert.get(), X509_VERSION_3) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_issuer_name(cert.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>(issuer), -1, -1, 0) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_subject_name(cert.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>(subject), -1, -1, 0) ||
+      !X509_set_pubkey(cert.get(), key) ||
+      !ASN1_TIME_adj(X509_getm_notBefore(cert.get()), kReferenceTime, -1, 0) ||
+      !ASN1_TIME_adj(X509_getm_notAfter(cert.get()), kReferenceTime, 1, 0)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<BASIC_CONSTRAINTS> bc(BASIC_CONSTRAINTS_new());
+  if (!bc) {
+    return nullptr;
+  }
+  bc->ca = is_ca ? 0xff : 0x00;
+  if (!X509_add1_ext_i2d(cert.get(), NID_basic_constraints, bc.get(),
+                         /*crit=*/1, /*flags=*/0)) {
+    return nullptr;
+  }
+  return cert;
+}
+
+TEST(X509Test, NameConstraints) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  const struct {
+    int type;
+    std::string name;
+    std::string constraint;
+    int result;
+  } kTests[] = {
+      // Empty string matches everything.
+      {GEN_DNS, "foo.example.com", "", X509_V_OK},
+      // Name constraints match the entire subtree.
+      {GEN_DNS, "foo.example.com", "example.com", X509_V_OK},
+      {GEN_DNS, "foo.example.com", "EXAMPLE.COM", X509_V_OK},
+      {GEN_DNS, "foo.example.com", "xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_DNS, "foo.example.com", "unrelated.much.longer.name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      // A leading dot means at least one component must be added.
+      {GEN_DNS, "foo.example.com", ".example.com", X509_V_OK},
+      {GEN_DNS, "foo.example.com", "foo.example.com", X509_V_OK},
+      {GEN_DNS, "foo.example.com", ".foo.example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_DNS, "foo.example.com", ".xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_DNS, "foo.example.com", ".unrelated.much.longer.name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      // NUL bytes, if not rejected, should not confuse the matching logic.
+      {GEN_DNS, std::string({'a', '\0', 'a'}), std::string({'a', '\0', 'b'}),
+       X509_V_ERR_PERMITTED_VIOLATION},
+
+      // Names must be emails.
+      {GEN_EMAIL, "not-an-email.example", "not-an-email.example",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // A leading dot matches all local names and all subdomains
+      {GEN_EMAIL, "foo@bar.example.com", ".example.com", X509_V_OK},
+      {GEN_EMAIL, "foo@bar.example.com", ".EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@bar.example.com", ".bar.example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      // Without a leading dot, the host must match exactly.
+      {GEN_EMAIL, "foo@example.com", "example.com", X509_V_OK},
+      {GEN_EMAIL, "foo@example.com", "EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@bar.example.com", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      // If the constraint specifies a mailbox, it specifies the whole thing.
+      // The halves are compared insensitively.
+      {GEN_EMAIL, "foo@example.com", "foo@example.com", X509_V_OK},
+      {GEN_EMAIL, "foo@example.com", "foo@EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@example.com", "FOO@example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_EMAIL, "foo@example.com", "bar@example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      // OpenSSL ignores a stray leading @.
+      {GEN_EMAIL, "foo@example.com", "@example.com", X509_V_OK},
+      {GEN_EMAIL, "foo@example.com", "@EXAMPLE.COM", X509_V_OK},
+      {GEN_EMAIL, "foo@bar.example.com", "@example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+
+      // Basic syntax check.
+      {GEN_URI, "not-a-url", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo:not-a-url", "not-a-url",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo:/not-a-url", "not-a-url",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo:///not-a-url", "not-a-url",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://:not-a-url", "not-a-url",
+       X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      {GEN_URI, "foo://", "not-a-url", X509_V_ERR_UNSUPPORTED_NAME_SYNTAX},
+      // Hosts are an exact match.
+      {GEN_URI, "foo://example.com", "example.com", X509_V_OK},
+      {GEN_URI, "foo://example.com:443", "example.com", X509_V_OK},
+      {GEN_URI, "foo://example.com/whatever", "example.com", X509_V_OK},
+      {GEN_URI, "foo://bar.example.com", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com:443", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com/whatever", "example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com", "xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com:443", "xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com/whatever", "xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com", "some-other-name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com:443", "some-other-name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com/whatever", "some-other-name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      // A leading dot allows components to be added.
+      {GEN_URI, "foo://example.com", ".example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com:443", ".example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com/whatever", ".example.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://bar.example.com", ".example.com", X509_V_OK},
+      {GEN_URI, "foo://bar.example.com:443", ".example.com", X509_V_OK},
+      {GEN_URI, "foo://bar.example.com/whatever", ".example.com", X509_V_OK},
+      {GEN_URI, "foo://example.com", ".some-other-name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com:443", ".some-other-name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com/whatever", ".some-other-name.example",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com", ".xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com:443", ".xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+      {GEN_URI, "foo://example.com/whatever", ".xample.com",
+       X509_V_ERR_PERMITTED_VIOLATION},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.type);
+    SCOPED_TRACE(t.name);
+    SCOPED_TRACE(t.constraint);
+
+    bssl::UniquePtr<GENERAL_NAME> name = MakeGeneralName(t.type, t.name);
+    ASSERT_TRUE(name);
+    bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
+    ASSERT_TRUE(names);
+    ASSERT_TRUE(bssl::PushToStack(names.get(), std::move(name)));
+
+    bssl::UniquePtr<NAME_CONSTRAINTS> nc(NAME_CONSTRAINTS_new());
+    ASSERT_TRUE(nc);
+    nc->permittedSubtrees = sk_GENERAL_SUBTREE_new_null();
+    ASSERT_TRUE(nc->permittedSubtrees);
+    bssl::UniquePtr<GENERAL_SUBTREE> subtree(GENERAL_SUBTREE_new());
+    ASSERT_TRUE(subtree);
+    GENERAL_NAME_free(subtree->base);
+    subtree->base = MakeGeneralName(t.type, t.constraint).release();
+    ASSERT_TRUE(subtree->base);
+    ASSERT_TRUE(bssl::PushToStack(nc->permittedSubtrees, std::move(subtree)));
+
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+    ASSERT_TRUE(root);
+    ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
+                                  /*crit=*/1, /*flags=*/0));
+    ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+    bssl::UniquePtr<X509> leaf =
+        MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(leaf);
+    ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_subject_alt_name, names.get(),
+                                  /*crit=*/0, /*flags=*/0));
+    ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+    int ret = Verify(leaf.get(), {root.get()}, {}, {}, 0);
+    EXPECT_EQ(t.result, ret) << X509_verify_cert_error_string(ret);
+  }
+}
+
+TEST(X509Test, PrintGeneralName) {
+  // TODO(https://crbug.com/boringssl/430): Add more tests. Also fix the
+  // external projects that use this to extract the SAN list and unexport.
+  bssl::UniquePtr<GENERAL_NAME> gen = MakeGeneralName(GEN_DNS, "example.com");
+  ASSERT_TRUE(gen);
+  bssl::UniquePtr<STACK_OF(CONF_VALUE)> values(
+      i2v_GENERAL_NAME(nullptr, gen.get(), nullptr));
+  ASSERT_TRUE(values);
+  ASSERT_EQ(1u, sk_CONF_VALUE_num(values.get()));
+  const CONF_VALUE *value = sk_CONF_VALUE_value(values.get(), 0);
+  EXPECT_STREQ(value->name, "DNS");
+  EXPECT_STREQ(value->value, "example.com");
+}
+
 TEST(X509Test, TestPSS) {
   bssl::UniquePtr<X509> cert(CertFromPEM(kExamplePSSCert));
   ASSERT_TRUE(cert);
@@ -1684,7 +1944,7 @@ TEST(X509Test, RSASignManual) {
     if (new_cert) {
       cert.reset(X509_new());
       // Fill in some fields for the certificate arbitrarily.
-      EXPECT_TRUE(X509_set_version(cert.get(), X509V3_VERSION));
+      EXPECT_TRUE(X509_set_version(cert.get(), X509_VERSION_3));
       EXPECT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
       EXPECT_TRUE(X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0));
       EXPECT_TRUE(
@@ -1835,7 +2095,8 @@ TEST(X509Test, TestFromBufferModified) {
 
   ASSERT_EQ(static_cast<long>(data_len), i2d_X509(root.get(), nullptr));
 
-  X509_CINF_set_modified(root->cert_info);
+  // Re-encode the TBSCertificate.
+  i2d_re_X509_tbs(root.get(), nullptr);
 
   ASSERT_NE(static_cast<long>(data_len), i2d_X509(root.get(), nullptr));
 }
@@ -2020,65 +2281,6 @@ TEST(X509Test, X509NameSet) {
   // Check that the correct entries get incremented when inserting new entry.
   EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 1)), 1);
   EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 2)), 2);
-}
-
-TEST(X509Test, StringDecoding) {
-  static const struct {
-    std::vector<uint8_t> in;
-    int type;
-    const char *expected;
-  } kTests[] = {
-      // Non-minimal, two-byte UTF-8.
-      {{0xc0, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Non-minimal, three-byte UTF-8.
-      {{0xe0, 0x80, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Non-minimal, four-byte UTF-8.
-      {{0xf0, 0x80, 0x80, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Truncated, four-byte UTF-8.
-      {{0xf0, 0x80, 0x80}, V_ASN1_UTF8STRING, nullptr},
-      // Low-surrogate value.
-      {{0xed, 0xa0, 0x80}, V_ASN1_UTF8STRING, nullptr},
-      // High-surrogate value.
-      {{0xed, 0xb0, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Initial BOMs should be rejected from UCS-2 and UCS-4.
-      {{0xfe, 0xff, 0, 88}, V_ASN1_BMPSTRING, nullptr},
-      {{0, 0, 0xfe, 0xff, 0, 0, 0, 88}, V_ASN1_UNIVERSALSTRING, nullptr},
-      // Otherwise, BOMs should pass through.
-      {{0, 88, 0xfe, 0xff}, V_ASN1_BMPSTRING, "X\xef\xbb\xbf"},
-      {{0, 0, 0, 88, 0, 0, 0xfe, 0xff}, V_ASN1_UNIVERSALSTRING,
-       "X\xef\xbb\xbf"},
-      // The maximum code-point should pass though.
-      {{0, 16, 0xff, 0xfd}, V_ASN1_UNIVERSALSTRING, "\xf4\x8f\xbf\xbd"},
-      // Values outside the Unicode space should not.
-      {{0, 17, 0, 0}, V_ASN1_UNIVERSALSTRING, nullptr},
-      // Non-characters should be rejected.
-      {{0, 1, 0xff, 0xff}, V_ASN1_UNIVERSALSTRING, nullptr},
-      {{0, 1, 0xff, 0xfe}, V_ASN1_UNIVERSALSTRING, nullptr},
-      {{0, 0, 0xfd, 0xd5}, V_ASN1_UNIVERSALSTRING, nullptr},
-      // BMPString is UCS-2, not UTF-16, so surrogate pairs are invalid.
-      {{0xd8, 0, 0xdc, 1}, V_ASN1_BMPSTRING, nullptr},
-  };
-
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTests); i++) {
-    SCOPED_TRACE(i);
-    const auto& test = kTests[i];
-    ASN1_STRING s;
-    s.type = test.type;
-    s.data = const_cast<uint8_t*>(test.in.data());
-    s.length = test.in.size();
-
-    uint8_t *utf8;
-    const int utf8_len = ASN1_STRING_to_UTF8(&utf8, &s);
-    EXPECT_EQ(utf8_len < 0, test.expected == nullptr);
-    if (utf8_len >= 0) {
-      if (test.expected != nullptr) {
-        EXPECT_EQ(Bytes(test.expected), Bytes(utf8, utf8_len));
-      }
-      OPENSSL_free(utf8);
-    } else {
-      ERR_clear_error();
-    }
-  }
 }
 
 TEST(X509Test, NoBasicConstraintsCertSign) {
@@ -2661,11 +2863,6 @@ xAcCIHweeRRqIYPwenRoeV8UmZpotPHLnhVe5h8yUmFedckU
 -----END CERTIFICATE-----
 )";
 
-/*
-
-Test cases disabled. TODO re-enable in April 2021.
-https://crbug.com/boringssl/375
-
 // kV1WithExtensionsPEM is an X.509v1 certificate with extensions.
 static const char kV1WithExtensionsPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -2697,7 +2894,6 @@ BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
 BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=
 -----END CERTIFICATE-----
 )";
-*/
 
 // kV1WithIssuerUniqueIDPEM is an X.509v1 certificate with an issuerUniqueID.
 static const char kV1WithIssuerUniqueIDPEM[] = R"(
@@ -2739,10 +2935,8 @@ TEST(X509Test, InvalidVersion) {
   EXPECT_FALSE(CertFromPEM(kNegativeVersionPEM));
   EXPECT_FALSE(CertFromPEM(kFutureVersionPEM));
   EXPECT_FALSE(CertFromPEM(kOverflowVersionPEM));
-  // Test cases disabled. TODO re-enable in April 2021.
-  // https://crbug.com/boringssl/375
-  //EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
-  //EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
+  EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
+  EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithIssuerUniqueIDPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithSubjectUniqueIDPEM));
 }
@@ -3162,7 +3356,7 @@ TEST(X509Test, X509AlgorExtract) {
 
 // Test the various |X509_ATTRIBUTE| creation functions.
 TEST(X509Test, Attribute) {
-  // The friendlyName attribute has a BMPString value. See RFC2985,
+  // The friendlyName attribute has a BMPString value. See RFC 2985,
   // section 5.5.1.
   static const uint8_t kTest1[] = {0x26, 0x03};  // U+2603 SNOWMAN
   static const uint8_t kTest1UTF8[] = {0xe2, 0x98, 0x83};
@@ -3240,4 +3434,86 @@ TEST(X509Test, Attribute) {
   ASSERT_TRUE(
       X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, str.get(), -1));
   check_attribute(attr.get(), /*has_test2=*/false);
+}
+
+// Test that, by default, |X509_V_FLAG_TRUSTED_FIRST| is set, which means we'll
+// skip over server-sent expired intermediates when there is a local trust
+// anchor that works better.
+TEST(X509Test, TrustedFirst) {
+  // Generate the following certificates:
+  //
+  //                     Root 2 (in store, expired)
+  //                       |
+  // Root 1 (in store)   Root 1 (cross-sign)
+  //          \           /
+  //          Intermediate
+  //                |
+  //               Leaf
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<X509> root2 =
+      MakeTestCert("Root 2", "Root 2", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root2);
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(root2.get()), kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/-1));
+  ASSERT_TRUE(X509_sign(root2.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> root1 =
+      MakeTestCert("Root 1", "Root 1", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root1);
+  ASSERT_TRUE(X509_sign(root1.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> root1_cross =
+      MakeTestCert("Root 2", "Root 1", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root1_cross);
+  ASSERT_TRUE(X509_sign(root1_cross.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root 1", "Intermediate", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  // As a control, confirm that |leaf| -> |intermediate| -> |root1| is valid,
+  // but the path through |root1_cross| is expired.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root1.get()}, {intermediate.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_HAS_EXPIRED,
+            Verify(leaf.get(), {root2.get()},
+                   {intermediate.get(), root1_cross.get()}, {}));
+
+  // By default, we should find the |leaf| -> |intermediate| -> |root2| chain,
+  // skipping |root1_cross|.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root1.get(), root2.get()},
+                              {intermediate.get(), root1_cross.get()}, {}));
+
+  // When |X509_V_FLAG_TRUSTED_FIRST| is disabled, we get stuck on the expired
+  // intermediate. Note we need the callback to clear the flag. Setting |flags|
+  // to zero only skips setting new flags.
+  //
+  // This test exists to confirm our current behavior, but these modes are just
+  // workarounds for not having an actual path-building verifier. If we fix it,
+  // this test can be removed.
+  EXPECT_EQ(X509_V_ERR_CERT_HAS_EXPIRED,
+            Verify(leaf.get(), {root1.get(), root2.get()},
+                   {intermediate.get(), root1_cross.get()}, {}, /*flags=*/0,
+                   [&](X509_VERIFY_PARAM *param) {
+                     X509_VERIFY_PARAM_clear_flags(param,
+                                                   X509_V_FLAG_TRUSTED_FIRST);
+                   }));
+
+  // Even when |X509_V_FLAG_TRUSTED_FIRST| is disabled, if |root2| is not
+  // trusted, the alt chains logic recovers the path.
+  EXPECT_EQ(
+      X509_V_OK,
+      Verify(leaf.get(), {root1.get()}, {intermediate.get(), root1_cross.get()},
+             {}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+               X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
+             }));
 }
