@@ -1226,7 +1226,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
 
 
-  // Test running the EVP_PKEY_derive interfaces one by one directly, and check
+  // Test running the EVP_PKEY_keygen interfaces one by one directly, and check
   // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
   // not be approved because they do not indicate an entire service has been
   // done.
@@ -1257,7 +1257,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
 
   // Generate a generic ec key.
   EC_KEY_generate_key(eckey.get());
-  EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
   // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
@@ -1313,7 +1313,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
 
   // Generate ECDSA signatures for ECDSA verification.
   EC_KEY_generate_key(eckey.get());
-  EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
   std::vector<uint8_t> signature;
   size_t sig_len = 0;
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(),
@@ -1418,6 +1418,32 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(ECDH_compute_key_fips(digest.data(),
                               digest.size(), EC_KEY_get0_public_key(peer_key.get()), our_key.get())));
   ASSERT_EQ(approved, ecdhTestVector.expect_approved);
+
+  // Test running the EVP_PKEY_derive interfaces one by one directly, and check
+  // |EVP_PKEY_derive| for approval at the end. |EVP_PKEY_derive_init|,
+  // |EVP_PKEY_derive_set_peer| should not be approved because they do not indicate
+  // an entire service has been done.
+  std::vector<uint8_t> derive_output;
+  size_t out_len = 0;
+  bssl::UniquePtr<EVP_PKEY> our_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(our_pkey.get(), our_key.get()));
+  bssl::UniquePtr<EVP_PKEY_CTX> our_ctx(EVP_PKEY_CTX_new(our_pkey.get(), nullptr));
+  bssl::UniquePtr<EVP_PKEY> peer_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(peer_pkey.get(), peer_key.get()));
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_derive_init(our_ctx.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_derive_set_peer(our_ctx.get(), peer_pkey.get())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Determine the size of the output key. The first call of |EVP_PKEY_derive|
+  // should not return an approval check because no crypto is being done when
+  // |nullptr| is inputted in the |*key| field
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_derive(our_ctx.get(), nullptr, &out_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  derive_output.resize(out_len);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_derive(our_ctx.get(), derive_output.data(), &out_len)));
+  derive_output.resize(out_len);
+  ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
 struct KDFTestVector {
@@ -2018,5 +2044,3 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 #endif // AWSLC_FIPS
-
-

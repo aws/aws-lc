@@ -81,24 +81,11 @@ int ECDH_compute_key(void *out, size_t out_len, const EC_POINT *pub_key,
                      const EC_KEY *priv_key,
                      void *(*kdf)(const void *in, size_t inlen, void *out,
                                   size_t *out_len)) {
-  if (priv_key->priv_key == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
-    return -1;
-  }
-  const EC_SCALAR *const priv = &priv_key->priv_key->scalar;
-  const EC_GROUP *const group = EC_KEY_get0_group(priv_key);
-  if (EC_GROUP_cmp(group, pub_key->group, NULL) != 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return -1;
-  }
 
-  EC_RAW_POINT shared_point;
   uint8_t buf[EC_MAX_BYTES];
-  size_t buf_len;
-  if (!ec_point_mul_scalar(group, &shared_point, &pub_key->raw, priv) ||
-      !ec_get_x_coordinate_as_bytes(group, buf, &buf_len, sizeof(buf),
-                                    &shared_point)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
+  size_t buf_len = sizeof(buf);
+
+  if (!ECDH_compute_shared_secret(buf, &buf_len, pub_key, priv_key)) {
     return -1;
   }
 
