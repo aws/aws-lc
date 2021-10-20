@@ -23,7 +23,7 @@
 
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
-#include "../ec/internal.h"
+#include "../bn/internal.h"
 #include "../rand/internal.h"
 #include "../tls/internal.h"
 
@@ -89,8 +89,11 @@ static DH *self_test_dh() {
       TOBN(0x00000001, 0x91173f2a),
   };
 
-  bn_set_static_words(priv, kFFDHE2048PrivateKeyData,
-                      OPENSSL_ARRAY_SIZE(kFFDHE2048PrivateKeyData));
+  priv->d = (BN_ULONG *)kFFDHE2048PrivateKeyData;
+  priv->width = OPENSSL_ARRAY_SIZE(kFFDHE2048PrivateKeyData);
+  priv->dmax = OPENSSL_ARRAY_SIZE(kFFDHE2048PrivateKeyData);
+  priv->neg = 0;
+  priv->flags |= BN_FLG_STATIC_DATA;
 
   if (!DH_set0_key(dh, nullptr, priv)) {
     goto err;
@@ -1864,8 +1867,12 @@ TEST(ServiceIndicatorTest, FFDH) {
   // |DH_compute_key_padded| should be a non-approved service.
   bssl::UniquePtr<BIGNUM> ffdhe2048_value(BN_new());
   bssl::UniquePtr<DH> dh(self_test_dh());
-  bn_set_static_words(ffdhe2048_value.get(), kFFDHE2048PublicValueData,
-                      OPENSSL_ARRAY_SIZE(kFFDHE2048PublicValueData));
+  ffdhe2048_value.get()->d = (BN_ULONG *)kFFDHE2048PublicValueData;
+  ffdhe2048_value.get()->width = OPENSSL_ARRAY_SIZE(kFFDHE2048PublicValueData);
+  ffdhe2048_value.get()->dmax = OPENSSL_ARRAY_SIZE(kFFDHE2048PublicValueData);
+  ffdhe2048_value.get()->neg = 0;
+  ffdhe2048_value.get()->flags |= BN_FLG_STATIC_DATA;
+
   uint8_t dh_out[sizeof(kDHOutput)];
   ASSERT_EQ(DH_size(dh.get()), static_cast<int>(sizeof(dh_out)));
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
