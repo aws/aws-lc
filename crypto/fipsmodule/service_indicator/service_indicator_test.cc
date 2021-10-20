@@ -1193,7 +1193,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigGen) {
 
   // Generate a generic ec key.
   EC_KEY_generate_key(eckey.get());
-  EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
   // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
@@ -1249,7 +1249,7 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
 
   // Generate ECDSA signatures for ECDSA verification.
   EC_KEY_generate_key(eckey.get());
-  EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
   std::vector<uint8_t> signature;
   size_t sig_len = 0;
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, ecdsaTestVector.func(),
@@ -1362,10 +1362,10 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   std::vector<uint8_t> derive_output;
   size_t out_len = 0;
   bssl::UniquePtr<EVP_PKEY> our_pkey(EVP_PKEY_new());
-  EVP_PKEY_set1_EC_KEY(our_pkey.get(), our_key.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(our_pkey.get(), our_key.get()));
   bssl::UniquePtr<EVP_PKEY_CTX> our_ctx(EVP_PKEY_CTX_new(our_pkey.get(), nullptr));
   bssl::UniquePtr<EVP_PKEY> peer_pkey(EVP_PKEY_new());
-  EVP_PKEY_set1_EC_KEY(peer_pkey.get(), peer_key.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(peer_pkey.get(), peer_key.get()));
 
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_derive_init(our_ctx.get())));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
