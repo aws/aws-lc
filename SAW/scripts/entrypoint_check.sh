@@ -23,6 +23,10 @@ apply_patch "noinline-bn_mod_add_words"
 apply_patch "noinline-bn_reduce_once_in_place"
 apply_patch "noinline-bn_sub_words"
 apply_patch "noinline-ec_scalar_is_zero"
+apply_patch "noinline-ec_point_mul_scalar"
+apply_patch "noinline-ec_point_mul_scalar_base"
+apply_patch "noinline-ec_get_x_coordinate_as_bytes"
+apply_patch "noinline-ec_get_x_coordinate_as_scalar"
 apply_patch "noinline-value_barrier_w"
 
 # ...next, check the proofs using CMake's Release settings...

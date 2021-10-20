@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/ec.c b/crypto/fipsmodule/ec/ec.c
+index 37e8cbb13..28ef61bf9 100644
+--- a/crypto/fipsmodule/ec/ec.c
++++ b/crypto/fipsmodule/ec/ec.c
+@@ -1159,6 +1159,7 @@ int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
+   return group->meth->cmp_x_coordinate(group, p, r);
+ }
+ 
++__attribute__((noinline))
+ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                                   const EC_RAW_POINT *p) {
+   uint8_t bytes[EC_MAX_BYTES];

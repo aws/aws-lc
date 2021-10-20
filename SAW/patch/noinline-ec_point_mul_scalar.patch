@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/ec.c b/crypto/fipsmodule/ec/ec.c
+index 37e8cbb13..2d7cd4244 100644
+--- a/crypto/fipsmodule/ec/ec.c
++++ b/crypto/fipsmodule/ec/ec.c
+@@ -1040,6 +1040,7 @@ int ec_point_mul_scalar_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                                        num);
+ }
+ 
++__attribute__((noinline))
+ int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
+                         const EC_RAW_POINT *p, const EC_SCALAR *scalar) {
+   if (p == NULL || scalar == NULL) {
