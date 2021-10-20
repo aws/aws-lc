@@ -948,6 +948,8 @@ struct RSATestVector {
   const int key_size;
   // md_func is the digest to test.
   const EVP_MD *(*func)();
+  // whether to use pss testing or not.
+  const bool use_pss;
   // expected to be approved or not for signature generation.
   const int sig_gen_expect_approved;
   // expected to be approved or not for signature verification.
@@ -955,38 +957,57 @@ struct RSATestVector {
 };
 struct RSATestVector kRSATestVectors[] = {
     // RSA test cases that are not approved in any case.
-    { 512, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 512, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 1024, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 1536, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 1536, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 2048, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 4096, &EVP_md5, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 512, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 512, &EVP_sha256, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1024, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 2048, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_md5, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 4096, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 
-    { 1024, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
-    { 1024, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
-    { 1024, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    // RSA test cases that are approved.
+    { 1024, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha256, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
 
-    { 2048, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
-    { 2048, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 2048, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 2048, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 2048, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
-    { 3072, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
-    { 3072, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 3072, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 3072, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 3072, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
-    { 4096, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
-    { 4096, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 4096, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 4096, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED },
-    { 4096, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
 class RSA_ServiceIndicatorTest : public testing::TestWithParam<RSATestVector> {};
@@ -1002,14 +1023,24 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pctx;
   ASSERT_TRUE(pkey);
   ASSERT_TRUE(rsa);
   BN_set_word(e.get(), RSA_F4);
 
   // Generate a generic rsa key.
-  RSA_generate_key_ex(rsa.get(), rsaTestVector.key_size, e.get(),
-                      nullptr);
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  if(rsaTestVector.use_pss) {
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+  } else {
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  }
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsaTestVector.key_size));
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  pkey.reset(raw);
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
   // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
@@ -1018,8 +1049,13 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   std::vector<uint8_t> final_output;
   size_t sig_len;
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, rsaTestVector.func(), nullptr, pkey.get())));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  if(rsaTestVector.use_pss) {
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  }
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
@@ -1040,8 +1076,13 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   md_ctx.Reset();
   std::vector<uint8_t> oneshot_output(sig_len);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, rsaTestVector.func(), nullptr, pkey.get())));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  if(rsaTestVector.use_pss) {
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  }
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
                                  kPlaintext, sizeof(kPlaintext))));
@@ -1057,18 +1098,31 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_PKEY_CTX *pctx;
   ASSERT_TRUE(pkey);
   ASSERT_TRUE(rsa);
   BN_set_word(e.get(), RSA_F4);
 
-  // Generate RSA signatures for RSA verification.
-  RSA_generate_key_ex(rsa.get(), rsaTestVector.key_size, e.get(),
-                      nullptr);
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+  // Generate a generic rsa key.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  if(rsaTestVector.use_pss) {
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+  } else {
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  }
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsaTestVector.key_size));
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  pkey.reset(raw);
 
   std::vector<uint8_t> signature;
   size_t sig_len;
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, rsaTestVector.func(), nullptr, pkey.get()));
+  if(rsaTestVector.use_pss) {
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING));
+  }
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, nullptr, 0));
   signature.resize(sig_len);
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len,
@@ -1083,8 +1137,13 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   // an entire service has been done.
   md_ctx.Reset();
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, rsaTestVector.func(), nullptr, pkey.get())));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  if(rsaTestVector.use_pss) {
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  }
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
           ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
@@ -1095,8 +1154,13 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   // Test using the one-shot |EVP_DigestVerify| function for approval.
   md_ctx.Reset();
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, rsaTestVector.func(), nullptr, pkey.get())));
+          ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, rsaTestVector.func(), nullptr, pkey.get())));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  if(rsaTestVector.use_pss) {
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+          ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  }
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
           ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
                                              signature.size(), kPlaintext,
