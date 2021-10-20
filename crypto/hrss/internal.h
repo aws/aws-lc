@@ -41,16 +41,29 @@ OPENSSL_EXPORT void HRSS_poly3_mul(struct poly3 *out, const struct poly3 *x,
 OPENSSL_EXPORT void HRSS_poly3_invert(struct poly3 *out,
                                       const struct poly3 *in);
 
+// Disable AVX2 optimisation for HRSS because of memory over read.
+// |a| parameter passed in is of size |N+3| = 1408. But the ASM code reads
+// past this e.g. https://github.com/awslabs/aws-lc/blob/52de7a54c5971419bd465eb6d52e3ecd2a8a11fd/crypto/hrss/asm/poly_rq_mul.S#L743
+#define DISABLE_HRSS_X86_64_AVX2
+
 // On x86-64, we can use the AVX2 code from [HRSS]. (The authors have given
 // explicit permission for this and signed a CLA.) However it's 57KB of object
 // code, so it's not used if |OPENSSL_SMALL| is defined.
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
-    defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX)
+    defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX) && \
+    !defined(DISABLE_HRSS_X86_64_AVX2)
 #define POLY_RQ_MUL_ASM
+// POLY_MUL_RQ_SCRATCH_SPACE is the number of bytes of scratch space needed
+// by the assembly function poly_Rq_mul.
+#define POLY_MUL_RQ_SCRATCH_SPACE (6144 + 6144 + 12288 + 512 + 9408 + 32)
+
 // poly_Rq_mul is defined in assembly. Inputs and outputs must be 16-byte-
 // aligned.
-extern void poly_Rq_mul(uint16_t r[N + 3], const uint16_t a[N + 3],
-                        const uint16_t b[N + 3]);
+extern void poly_Rq_mul(
+    uint16_t r[N + 3], const uint16_t a[N + 3], const uint16_t b[N + 3],
+    // The following should be `scratch[POLY_MUL_RQ_SCRATCH_SPACE]` but
+    // GCC 11.1 has a bug with unions that breaks that.
+    uint8_t scratch[]);
 #endif
 
 

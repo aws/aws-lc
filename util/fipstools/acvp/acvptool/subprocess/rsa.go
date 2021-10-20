@@ -20,7 +20,7 @@ import (
 	"fmt"
 )
 
-// See https://usnistgov.github.io/ACVP/draft-celi-acvp-rsa.html#section-7.4
+// See https://pages.nist.gov/ACVP/draft-celi-acvp-rsa.html#name-test-vectors
 // although, at the time of writing, that spec doesn't match what the NIST demo
 // server actually produces. This code matches the server.
 
@@ -178,6 +178,7 @@ func processSigGen(vectorSet []byte, m Transactable) (interface{}, error) {
 		}
 
 		operation := "RSA/sigGen/" + group.Hash + "/" + group.SigType
+		ver_operation := "RSA/sigVer/" + group.Hash + "/" + group.SigType
 
 		for _, test := range group.Tests {
 			msg, err := hex.DecodeString(test.MessageHex)
@@ -190,16 +191,28 @@ func processSigGen(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, err
 			}
 
+			n := results[0]
+			e := results[1]
+			sig := results[2]
+
 			if len(response.N) == 0 {
-				response.N = hex.EncodeToString(results[0])
-				response.E = hex.EncodeToString(results[1])
-			} else if response.N != hex.EncodeToString(results[0]) {
+				response.N = hex.EncodeToString(n)
+				response.E = hex.EncodeToString(e)
+			} else if response.N != hex.EncodeToString(n) {
 				return nil, fmt.Errorf("module wrapper returned different RSA keys for the same SigGen configuration")
 			}
 
+			// Ask the subprocess to verify the generated signature for this test case.
+			ver_results, ver_err := m.Transact(ver_operation, 1, n, e, msg, sig)
+			if ver_err != nil {
+				return nil, ver_err
+			}
+			if len(ver_results[0]) != 1 || ver_results[0][0] != 1 {
+				return nil, fmt.Errorf("module wrapper returned RSA Sig cannot be verified for test case %d/%d.", group.ID, test.ID)
+			}
 			response.Tests = append(response.Tests, rsaSigGenTestResponse{
 				ID:  test.ID,
-				Sig: hex.EncodeToString(results[2]),
+				Sig: hex.EncodeToString(sig),
 			})
 		}
 

@@ -111,6 +111,7 @@
 
 #include <openssl/crypto.h>
 #include <openssl/ex_data.h>
+#include <openssl/service_indicator.h>
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
@@ -212,6 +213,9 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_SSE2
 #endif
 
+
+// Pointer utility functions.
+
 // buffers_alias returns one if |a| and |b| alias and zero otherwise.
 static inline int buffers_alias(const uint8_t *a, size_t a_len,
                                 const uint8_t *b, size_t b_len) {
@@ -222,6 +226,23 @@ static inline int buffers_alias(const uint8_t *a, size_t a_len,
   uintptr_t a_u = (uintptr_t)a;
   uintptr_t b_u = (uintptr_t)b;
   return a_u + a_len > b_u && b_u + b_len > a_u;
+}
+
+// align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
+// power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
+// space.
+static inline void *align_pointer(void *ptr, size_t alignment) {
+  // |alignment| must be a power of two.
+  assert(alignment != 0 && (alignment & (alignment - 1)) == 0);
+  // Instead of aligning |ptr| as a |uintptr_t| and casting back, compute the
+  // offset and advance in pointer space. C guarantees that casting from pointer
+  // to |uintptr_t| and back gives the same pointer, but general
+  // integer-to-pointer conversions are implementation-defined. GCC does define
+  // it in the useful way, but this makes fewer assumptions.
+  uintptr_t offset = (0u - (uintptr_t)ptr) & (alignment - 1);
+  ptr = (char *)ptr + offset;
+  assert(((uintptr_t)ptr & (alignment - 1)) == 0);
+  return ptr;
 }
 
 
@@ -475,8 +496,9 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 // Reference counting.
 
 // Automatically enable C11 atomics if implemented.
-#if !defined(OPENSSL_C11_ATOMIC) && !defined(__STDC_NO_ATOMICS__) && \
-    defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
+    !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
+    __STDC_VERSION__ >= 201112L
 #define OPENSSL_C11_ATOMIC
 #endif
 
@@ -618,6 +640,7 @@ typedef enum {
   OPENSSL_THREAD_LOCAL_ERR = 0,
   OPENSSL_THREAD_LOCAL_RAND,
   OPENSSL_THREAD_LOCAL_FIPS_COUNTERS,
+  AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE,
   OPENSSL_THREAD_LOCAL_TEST,
   NUM_OPENSSL_THREAD_LOCALS,
 } thread_local_data_t;
@@ -882,12 +905,8 @@ void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
 #endif
 
 // boringssl_fips_self_test runs the FIPS KAT-based self tests. It returns one
-// on success and zero on error. The argument is the integrity hash of the FIPS
-// module and may be used to check and write flag files to suppress duplicate
-// self-tests. If |module_hash_len| is zero then no flag file will be checked
-// nor written and tests will always be run.
-int boringssl_fips_self_test(const uint8_t *module_hash,
-                             size_t module_hash_len);
+// on success and zero on error.
+int boringssl_fips_self_test(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 void boringssl_fips_inc_counter(enum fips_counter_t counter);
