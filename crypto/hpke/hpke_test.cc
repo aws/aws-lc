@@ -285,6 +285,7 @@ class HPKETestVector {
   ~HPKETestVector() = default;
 
   bool ReadFromFileTest(FileTest *t);
+  bool ReadFromFileTest_psk(FileTest *t);
 
   void Verify() const {
     const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
@@ -372,6 +373,94 @@ class HPKETestVector {
     free(base_key->private_key);
   }
 
+  
+    void Verify_PSK() const {
+    const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
+    const EVP_HPKE_AEAD *aead = GetAEAD();
+    ASSERT_TRUE(aead);
+    const EVP_HPKE_KDF *kdf = GetKDF();
+    ASSERT_TRUE(kdf);
+
+    // Test the sender.
+    ScopedEVP_HPKE_CTX sender_ctx;
+    uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
+    size_t enc_len;
+
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_sender_PSK(
+        sender_ctx.get(), enc, &enc_len, sizeof(enc), kem, kdf, aead,
+        public_key_r_.data(), public_key_r_.size(), info_.data(), info_.size(),
+        secret_key_e_.data(), secret_key_e_.size(), psk_.data(), psk_.size(), psk_id_.data(), psk_id_.size()));
+    EXPECT_EQ(Bytes(enc, enc_len), Bytes(public_key_e_));
+    VerifySender(sender_ctx.get());
+
+    // Test the recipient.
+    ScopedEVP_HPKE_KEY base_key;
+    base_key->public_key =
+        (uint8_t *)malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES);
+    base_key->private_key =
+        (uint8_t *)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
+
+
+    ASSERT_TRUE(EVP_HPKE_KEY_init(base_key.get(), kem, secret_key_r_.data(),
+                                  secret_key_r_.size()));
+
+
+
+    for (bool copy : {false, true}) {
+      SCOPED_TRACE(copy);
+
+      const EVP_HPKE_KEY *key = base_key.get();
+
+
+      ScopedEVP_HPKE_KEY key_copy;
+
+      key_copy->public_key =
+          (uint8_t *)malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES);
+      key_copy->private_key =
+          (uint8_t *)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
+
+
+      OPENSSL_memcpy(key_copy->public_key, base_key->public_key,
+                     x25519_PUBLICKEYBYTES);
+      OPENSSL_memcpy(key_copy->private_key, base_key->private_key,
+                     x25519_SECRETKEYBYTES);
+
+
+      if (copy) {
+        // ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
+        // key = key_copy.get();
+      }
+
+      uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+      size_t public_key_len;
+      ASSERT_TRUE(EVP_HPKE_KEY_public_key(key, public_key, &public_key_len,
+                                          sizeof(public_key)));
+
+
+      EXPECT_EQ(Bytes(base_key->public_key, 32), Bytes(public_key_r_));
+
+
+      EXPECT_EQ(Bytes(public_key, public_key_len), Bytes(public_key_r_));
+
+      uint8_t private_key[EVP_HPKE_MAX_PRIVATE_KEY_LENGTH];
+      size_t private_key_len;
+      ASSERT_TRUE(EVP_HPKE_KEY_private_key(key, private_key, &private_key_len,
+                                           sizeof(private_key)));
+      EXPECT_EQ(Bytes(private_key, private_key_len), Bytes(secret_key_r_));
+
+      // Set up the recipient.
+      ScopedEVP_HPKE_CTX recipient_ctx;
+      ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient_PSK(recipient_ctx.get(), key, kdf,
+                                               aead, enc, enc_len, info_.data(),
+                                               info_.size(), psk_.data(), psk_.size(), psk_id_.data(), psk_id_.size()));
+
+      VerifyRecipient(recipient_ctx.get());
+    }
+    
+    free(base_key->public_key);
+    free(base_key->private_key);
+  }
+
  private:
   const EVP_HPKE_AEAD *GetAEAD() const {
     for (const auto aead : kAllAEADs) {
@@ -444,6 +533,7 @@ class HPKETestVector {
   };
 
   uint16_t kdf_id_;
+  uint16_t kem_id_;
   uint16_t aead_id_;
   std::vector<uint8_t> context_;
   std::vector<uint8_t> info_;
@@ -451,6 +541,8 @@ class HPKETestVector {
   std::vector<uint8_t> secret_key_e_;
   std::vector<uint8_t> public_key_r_;
   std::vector<uint8_t> secret_key_r_;
+  std::vector<uint8_t> psk_;
+  std::vector<uint8_t> psk_id_;
   std::vector<Encryption> encryptions_;
   std::vector<Export> exports_;
 };
@@ -492,9 +584,10 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
   if (!FileTestReadInt(t, &mode, "mode") || mode != 0 /* mode_base */ ||
       !FileTestReadInt(t, &kdf_id_, "kdf_id") ||
       !FileTestReadInt(t, &aead_id_, "aead_id") ||
-      !t->GetBytes(&info_, "info") || !t->GetBytes(&secret_key_r_, "skRm") ||
-      !t->GetBytes(&public_key_r_, "pkRm") ||
+      !t->GetBytes(&info_, "info") || 
+      !t->GetBytes(&secret_key_r_, "skRm") ||
       !t->GetBytes(&secret_key_e_, "skEm") ||
+      !t->GetBytes(&public_key_r_, "pkRm") ||
       !t->GetBytes(&public_key_e_, "pkEm")) {
     return false;
   }
@@ -532,6 +625,53 @@ TEST(HPKETest, VerifyTestVectors) {
   });
 }
 
+
+
+bool HPKETestVector::ReadFromFileTest_psk(FileTest *t) {
+  uint8_t mode = 1;
+  if (!FileTestReadInt(t, &mode, "mode") || mode != 1 /* mode_psk */ ||
+      !FileTestReadInt(t, &kdf_id_, "kdf_id") ||
+      !FileTestReadInt(t, &aead_id_, "aead_id") ||
+      !t->GetBytes(&info_, "info") || 
+      !t->GetBytes(&psk_, "psk") ||
+      !t->GetBytes(&psk_id_, "psk_id") ||
+      !t->GetBytes(&secret_key_r_, "skRm") ||
+      !t->GetBytes(&public_key_r_, "pkRm") ||
+      !t->GetBytes(&secret_key_e_, "skEm") ||
+      !t->GetBytes(&public_key_e_, "pkEm")) {
+    return false;
+  }
+
+  for (int i = 1; t->HasAttribute(BuildAttrName("aad", i)); i++) {
+    Encryption encryption;
+    if (!t->GetBytes(&encryption.aad, BuildAttrName("aad", i)) ||
+        !t->GetBytes(&encryption.ciphertext, BuildAttrName("ciphertext", i)) ||
+        !t->GetBytes(&encryption.plaintext, BuildAttrName("plaintext", i))) {
+      return false;
+    }
+    encryptions_.push_back(std::move(encryption));
+  }
+
+  for (int i = 1; t->HasAttribute(BuildAttrName("exporter_context", i)); i++) {
+    Export exp;
+    if (!t->GetBytes(&exp.exporter_context,
+                     BuildAttrName("exporter_context", i)) ||
+        !FileTestReadInt(t, &exp.export_length, BuildAttrName("L", i)) ||
+        !t->GetBytes(&exp.exported_value, BuildAttrName("exported_value", i))) {
+      return false;
+    }
+    exports_.push_back(std::move(exp));
+  }
+  return true;
+}
+
+TEST(HPKETest, VerifyTestVectorsPSK) {
+  FileTestGTest("crypto/hpke/hpke_test_vectors_psk.txt", [](FileTest *t) {
+    HPKETestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest_psk(t));
+    test_vec.Verify_PSK();
+  });
+}
 
 
 // The test vectors used fixed sender ephemeral keys, while HPKE itself

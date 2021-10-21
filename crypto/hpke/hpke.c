@@ -31,7 +31,7 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
-#define HPKE_MODE 0
+#define HPKE_MODE 1
 
 // TEMPORARY!! WILL REMOVE AND CHANGE THE CODE IF WE WORK WITH AWS-LC/pq-crypto
 // NOTE: RETURN VALUES FROM SIKE SUBROUTINES DIFFER FOR sike and pq-crypto DIRS
@@ -634,18 +634,18 @@ static int hpke_build_suite_id(const EVP_HPKE_CTX *ctx,
   return ret;
 }
 
-#define default_psk ""
-#define default_psk_id ""
+#define default_psk NULL
+#define default_psk_id NULL
 #define HPKE_MODE_BASE 0
 #define HPKE_MODE_PSK 1
+#define HPKE_PSK_LEN 64
 
 
 
 static int hpke_key_schedule(uint8_t mode, EVP_HPKE_CTX *ctx,
                              const uint8_t *shared_secret,
                              size_t shared_secret_len, const uint8_t *info,
-                             size_t info_len, const uint8_t *psk,
-                              size_t psk_len, const uint8_t *psk_id) {
+                             size_t info_len, const uint8_t *psk, size_t psk_len, const uint8_t *psk_id, size_t psk_id_len) {
   // INSERT THE CHECK HERE; MAY TAKE IT OUT AS A DIFFERENT FUNCTION LATER
   if ((!(psk == NULL) && (psk_id == NULL)) || (psk == NULL && (!(psk_id == NULL)))){
             OPENSSL_PUT_ERROR(EVP, EVP_R_INCONSISTENT_PSK_INPUTS);
@@ -683,8 +683,7 @@ static int hpke_key_schedule(uint8_t mode, EVP_HPKE_CTX *ctx,
   uint8_t psk_id_hash[EVP_MAX_MD_SIZE];
   size_t psk_id_hash_len;
   if (!hpke_labeled_extract(hkdf_md, psk_id_hash, &psk_id_hash_len, NULL, 0,
-                            suite_id, sizeof(suite_id), "psk_id_hash", psk_id,
-                            psk_len)) {
+                            suite_id, sizeof(suite_id), "psk_id_hash", psk_id, psk_id_len )) {
     return 0;
   }
 
@@ -702,7 +701,7 @@ static int hpke_key_schedule(uint8_t mode, EVP_HPKE_CTX *ctx,
   size_t context_len;
   CBB context_cbb;
   if (!CBB_init_fixed(&context_cbb, context, sizeof(context)) ||
-      !CBB_add_u8(&context_cbb, HPKE_MODE_BASE) ||
+      !CBB_add_u8(&context_cbb, mode) ||
       !CBB_add_bytes(&context_cbb, psk_id_hash, psk_id_hash_len) ||
       !CBB_add_bytes(&context_cbb, info_hash, info_hash_len) ||
       !CBB_finish(&context_cbb, NULL, &context_len)) {
@@ -806,32 +805,72 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
 
   // STARTING IMPLEMENTATION OF THE PSK
   // SHOULD BE MODIFIED !!!!!
-  uint8_t *psk = NULL;
-  uint8_t *psk_id = NULL;
-  size_t psk_len = 0;
-  if (HPKE_MODE == HPKE_MODE_PSK) {
-    psk = (uint8_t *)malloc(sizeof(int) * 32);
-    psk_id = (uint8_t *)malloc(sizeof(int) * 32);
-    psk_len = 32;
-    for (int i = 0; i < 32; i++) {
-      psk[i] = i;
-      psk_id[i] = 0;
-    }
-  }
+  uint8_t *psk = default_psk;
+  uint8_t *psk_id = default_psk_id;
+  
 
   if (!kem->encap_with_seed(kem, shared_secret, &shared_secret_len, out_enc,
                             out_enc_len, max_enc, peer_public_key,
                             peer_public_key_len, seed, seed_len) ||
-      !hpke_key_schedule(HPKE_MODE, ctx, shared_secret, shared_secret_len, info,
-                         info_len, psk, psk_len, psk_id)) {
+      !hpke_key_schedule(HPKE_MODE_BASE, ctx, shared_secret, shared_secret_len, info,
+                         info_len, psk, 0, psk_id, 0)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
     return 0;
   }
   free(shared_secret);
-  if (HPKE_MODE == HPKE_MODE_PSK) {
-    free(psk);
+
+
+  return 1;
+}
+
+
+
+int EVP_HPKE_CTX_setup_sender_PSK(
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len, const uint8_t *seed,
+    size_t seed_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
+  EVP_HPKE_CTX_zero(ctx);
+
+  ctx->is_sender = 1;
+  ctx->kdf = kdf;
+  ctx->aead = aead;
+
+
+  // May change later to add the value of the shared secret len x25519 (or other
+  // ECC if added later ?? )
+  uint8_t *shared_secret = (uint8_t *)malloc(
+      sizeof(uint8_t) * kem->public_key_len + kem->PQ_shared_secret_len);
+  size_t shared_secret_len;
+
+
+
+  // STARTING IMPLEMENTATION OF THE PSK
+  // SHOULD BE MODIFIED !!!!!
+
+  if (!kem->encap_with_seed(kem, shared_secret, &shared_secret_len, out_enc,
+                            out_enc_len, max_enc, peer_public_key,
+                            peer_public_key_len, seed, seed_len) ||
+      !hpke_key_schedule(HPKE_MODE_PSK, ctx, shared_secret, shared_secret_len, info,
+                         info_len, psk, psk_len, psk_id, psk_id_len)) {
+    EVP_HPKE_CTX_cleanup(ctx);
+    free(shared_secret);
+    return 0;
   }
+/*
+  for (int i = 0; i < (int) *out_enc_len; i++)
+  {
+    printf("enc %x  ", out_enc[i]);
+  }
+  for (int i = 0; i < (int) shared_secret_len; i++)
+  {
+    printf("ss %x  ",  shared_secret[i]);
+  }
+  */
+ 
+  free(shared_secret);
 
   return 1;
 }
@@ -854,32 +893,51 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
 
   // STARTING IMPLEMENTATION OF THE PSK
   // SHOULD BE MODIFIED !!!!!
-  uint8_t *psk = NULL;
-  uint8_t *psk_id = NULL;
-  size_t psk_len = 0;
-  if (HPKE_MODE == HPKE_MODE_PSK) {
-    psk = (uint8_t *)malloc(sizeof(int) * 32);
-    psk_id = (uint8_t *)malloc(sizeof(int) * 32);
-    psk_len = 32;
-    for (int i = 0; i < 32; i++) {
-      psk[i] = i;
-      psk_id[i] = 0;
-    }
-  }
-
-
+  uint8_t *psk = default_psk;
+  uint8_t *psk_id = default_psk_id;
+  
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
       !hpke_key_schedule(
-          HPKE_MODE, ctx, shared_secret,
+          HPKE_MODE_BASE, ctx, shared_secret,
           (key->kem->public_key_len + key->kem->PQ_shared_secret_len), info,
-          info_len, psk, psk_len, psk_id)) {
+          info_len, psk, 0, psk_id, 0)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
     return 0;
   }
-  if (HPKE_MODE == HPKE_MODE_PSK) {
-    free(psk);
+  free(shared_secret);
+  return 1;
+}
+
+
+int EVP_HPKE_CTX_setup_recipient_PSK(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
+                                 const EVP_HPKE_KDF *kdf,
+                                 const EVP_HPKE_AEAD *aead, const uint8_t *enc,
+                                 size_t enc_len, const uint8_t *info,
+                                 size_t info_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
+  EVP_HPKE_CTX_zero(ctx);
+  ctx->is_sender = 0;
+  ctx->kdf = kdf;
+  ctx->aead = aead;
+  uint8_t *shared_secret =
+      malloc(sizeof(uint8_t) *
+             (key->kem->public_key_len + key->kem->PQ_shared_secret_len));
+  // uint8_t shared_secret[MAX_SHARED_SECRET_LEN];
+  size_t shared_secret_len;
+
+
+
+
+  if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
+      !hpke_key_schedule(
+          HPKE_MODE_PSK, ctx, shared_secret,
+          (key->kem->public_key_len + key->kem->PQ_shared_secret_len), info,
+          info_len, psk, psk_len, psk_id, psk_id_len)) {
+    EVP_HPKE_CTX_cleanup(ctx);
+    free(shared_secret);
+    return 0;
   }
+
   free(shared_secret);
   return 1;
 }
