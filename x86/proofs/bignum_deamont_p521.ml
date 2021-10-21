@@ -158,7 +158,6 @@ let BIGNUM_DEAMONT_P521_CORRECT = time prove
   (*** The actual computations of h and l ***)
 
   X86_STEPS_TAC BIGNUM_DEAMONT_P521_EXEC (1--20) THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[DIMINDEX_64; NUM_MOD_CONV `55 MOD 64`]) THEN
   MAP_EVERY ABBREV_TAC
    [`d0:int64 =
        word_subword ((word_join:int64->int64->int128) x_1 x_0) (55,64)`;

@@ -728,7 +728,6 @@ let BIGNUM_SQR_P521_CORRECT = time prove
   (*** Rotation of the high portion ***)
 
   ARM_STEPS_TAC BIGNUM_SQR_P521_EXEC (145--160) THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[DIMINDEX_64; NUM_MOD_CONV `9 MOD 64`]) THEN
   ABBREV_TAC
    `htop:int64 =
     word_add (word_and sum_s80 (word 511)) (word_ushr sum_s144 9)` THEN
@@ -917,8 +916,6 @@ let BIGNUM_SQR_P521_CORRECT = time prove
 
   ARM_ACCSTEPS_TAC BIGNUM_SQR_P521_EXEC
    [364; 366; 369; 372; 376; 379; 383; 386; 391] (362--391) THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[DIMINDEX_64;
-    NUM_REDUCE_CONV `8 MOD 64`; NUM_REDUCE_CONV `63 MOD 64`]) THEN
   MAP_EVERY ABBREV_TAC
   [`m0:int64 = word_subword
     ((word_join:int64->int64->int128) sum_s359 sum_s358) (8,64)`;

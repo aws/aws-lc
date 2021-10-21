@@ -200,8 +200,7 @@ let ARM_EXEC_CONV =
   REWRITE_CONV[WREG_EXPAND_CLAUSES] THENC
   REWRITE_CONV[READ_RVALUE; ASSIGN_ZEROTOP_32; ARM_ZERO_REGISTER;
                READ_ZEROTOP_32; WRITE_ZEROTOP_32] THENC
-  WORD_REDUCE_CONV THENC
-  ONCE_DEPTH_CONV WORD_WORD_OPERATION_CONV;;
+  DEPTH_CONV(WORD_NUM_RED_CONV ORELSEC WORD_WORD_OPERATION_CONV);;
 
 (* ------------------------------------------------------------------------- *)
 (* Additional proof support for SP restriction to "aligned 16".              *)

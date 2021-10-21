@@ -684,7 +684,6 @@ let BIGNUM_MUL_P521_CORRECT = prove
   (*** Now simulate the rotation part ***)
 
   X86_STEPS_TAC BIGNUM_MUL_P521_EXEC (272--283) THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[DIMINDEX_64]) THEN
 
   (*** Break up into high and low parts ***)
 

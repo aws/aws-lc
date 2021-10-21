@@ -1310,10 +1310,9 @@ let BIGNUM_COPRIME_CORRECT = prove
       ALL_TAC] THEN
     SUBGOAL_THEN `c < 64` ASSUME_TAC THENL
      [ASM_REWRITE_TAC[LT_LE]; ALL_TAC] THEN
-    SUBGOAL_THEN `word_xor (word (64 - 1 - c)) (word 63):int64 = word c`
+    SUBGOAL_THEN `word_xor (word (63 - c)) (word 63):int64 = word c`
     SUBST1_TAC THENL
-     [CONV_TAC NUM_REDUCE_CONV THEN
-      ASM_REWRITE_TAC[WORD_SUB; ARITH_RULE `i <= 63 <=> i < 64`] THEN
+     [ASM_REWRITE_TAC[WORD_SUB; ARITH_RULE `i <= 63 <=> i < 64`] THEN
       REWRITE_TAC[WORD_BITWISE_RULE
        `word_xor a b:int64 = c <=> a = word_xor b c`] THEN
       SUBST1_TAC(ARITH_RULE `63 = 2 EXP 6 - 1`) THEN

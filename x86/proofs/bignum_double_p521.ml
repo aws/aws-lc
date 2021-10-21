@@ -92,10 +92,9 @@ let BIGNUM_DOUBLE_P521_CORRECT = time prove
 
   (*** Confirm the initial bit selection as the right condition ***)
 
-  SUBGOAL_THEN `bit (8 MOD dimindex(:64)) (n_8:int64) <=> p_521 <= 2 * n`
+  SUBGOAL_THEN `bit 8 (n_8:int64) <=> p_521 <= 2 * n`
   SUBST_ALL_TAC THENL
-   [REWRITE_TAC[DIMINDEX_64] THEN CONV_TAC NUM_REDUCE_CONV THEN
-    REWRITE_TAC[BIT_VAL_MOD] THEN
+   [REWRITE_TAC[BIT_VAL_MOD] THEN
     SUBGOAL_THEN `val(n_8:int64) = n DIV 2 EXP 512`
     SUBST1_TAC THENL
      [EXPAND_TAC "n" THEN

@@ -805,7 +805,6 @@ let BIGNUM_MONTMUL_P521_CORRECT = prove
     72; 73; 74; 80; 85; 87; 88; 89; 90; 91; 97; 102; 104; 105; 106;
     107; 113; 118; 120; 121; 122; 123]
    (1--133) THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[DIMINDEX_64; NUM_MOD_CONV `55 MOD 64`]) THEN
   ABBREV_TAC
    `l = bignum_of_wordlist
          [sum_s120; sum_s121; sum_s122; sum_s123; word_shl mullo_s5 9;
@@ -1096,7 +1095,6 @@ let BIGNUM_MONTMUL_P521_CORRECT = prove
   ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P521_EXEC
    [448; 449; 450; 451; 455; 457; 459; 461]
    (448--463) THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[DIMINDEX_64; NUM_MOD_CONV `55 MOD 64`]) THEN
   ABBREV_TAC
    `newtop:int64 =
     word_add (word_add (word_ushr sum_s435 55) sum_s274)

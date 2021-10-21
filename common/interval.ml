@@ -581,7 +581,7 @@ let ACCUMULATEX_ARITH_TAC =
    (`!(s:S) Xnn (x:int64) (y:int64).
        read Xnn s :int64 =
        word_zx (word_ushr (word (val x * val y):int128)
-               (dimindex (:64)))
+               64)
         ==> ?(h:int64) (l:int64).
                (&2 pow 64 * &(val h) + &(val l):real = &(val x) * &(val y) /\
                 read Xnn s = h) /\
@@ -594,12 +594,12 @@ let ACCUMULATEX_ARITH_TAC =
                (&2 pow 64 * &(val h) + &(val l):real = &(val x) * &(val y) /\
                 read Xnn s = l) /\
                word_zx (word_ushr (word (val x * val y):int128)
-                       (dimindex (:64))) = h`,
+                       64) = h`,
     REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN MESON_TAC[ACCUMULATE_MUL])
   and pth_mul_hi2 = prove
    (`!(s:S) Xnn (x:int64) (y:int64).
         read Xnn s :int64 =
-        word((val x * val y) DIV 2 EXP dimindex(:64))
+        word((val x * val y) DIV 2 EXP 64)
         ==> ?(h:int64) (l:int64).
                (&2 pow 64 * &(val h) + &(val l):real = &(val x) * &(val y) /\
                 read Xnn s = h) /\
@@ -607,7 +607,7 @@ let ACCUMULATEX_ARITH_TAC =
                 word(val x * val y) = l)`,
     REPEAT GEN_TAC THEN REWRITE_TAC[ADD_CLAUSES] THEN
     GEN_REWRITE_TAC (RAND_CONV o TOP_DEPTH_CONV) [WORD_MUL; WORD_VAL] THEN
-    REWRITE_TAC[WORD_MULTIPLICATION_LOHI] THEN
+    REWRITE_TAC[WORD_MULTIPLICATION_LOHI_64] THEN
     REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN MESON_TAC[ACCUMULATE_MUL])
   and pth_mul_lo2 = prove
    (`!(s:S) Xnn (x:int64) (y:int64).
@@ -615,10 +615,10 @@ let ACCUMULATEX_ARITH_TAC =
         ==> ?(h:int64) (l:int64).
                (&2 pow 64 * &(val h) + &(val l):real = &(val x) * &(val y) /\
                 read Xnn s = l) /\
-               (word((val x * val y) DIV 2 EXP dimindex(:64)) = h /\
+               (word((val x * val y) DIV 2 EXP 64) = h /\
                 word(val x * val y) = l)`,
     REWRITE_TAC[ADD_CLAUSES; WORD_MUL; WORD_VAL] THEN
-    REWRITE_TAC[WORD_MULTIPLICATION_LOHI] THEN
+    REWRITE_TAC[WORD_MULTIPLICATION_LOHI_64] THEN
     REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN MESON_TAC[ACCUMULATE_MUL])
   and pth_ushr = prove
    (`!(s:S) Xnn (x:int64) k.
@@ -630,23 +630,22 @@ let ACCUMULATEX_ARITH_TAC =
                        read Xnn s = h) /\
                       word_shl x (64 - k) = l /\
                       word_subword (word_join x (word 0:int64):int128)
-                                   (k MOD dimindex (:64),
-                                    dimindex (:64)) = l`,
+                                   (k,64) = l`,
     REPEAT STRIP_TAC THEN EXISTS_TAC `read (Xnn:(S,int64)component) s` THEN
     ONCE_REWRITE_TAC[CONJ_SYM] THEN
-    ASM_REWRITE_TAC[UNWIND_THM1; GSYM CONJ_ASSOC] THEN
-    ASM_SIMP_TAC[DIMINDEX_64; MOD_LT; WORD_SUBWORD_JOIN_AS_SHL; LT_IMP_LE] THEN
-    REWRITE_TAC[GSYM VAL_EQ; VAL_WORD_USHR; VAL_WORD_SHL; DIMINDEX_64] THEN
-    REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN MATCH_MP_TAC(MESON[DIVISION_SIMP]
+    ASM_REWRITE_TAC[UNWIND_THM1; GSYM CONJ_ASSOC] THEN CONJ_TAC THENL
+     [ASM_MESON_TAC[WORD_SUBWORD_JOIN_AS_SHL; DIMINDEX_64; LT_IMP_LE];
+      REWRITE_TAC[REAL_OF_NUM_CLAUSES; VAL_WORD_SHL; VAL_WORD_USHR]] THEN
+    MATCH_MP_TAC(MESON[DIVISION_SIMP] 
      `x = n * y DIV n ==> x + y MOD n = y`) THEN
-    AP_TERM_TAC THEN
+    REWRITE_TAC[DIMINDEX_64] THEN AP_TERM_TAC THEN
     SUBGOAL_THEN `2 EXP 64 = 2 EXP (64 - k) * 2 EXP k` SUBST1_TAC THENL
      [REWRITE_TAC[GSYM EXP_ADD] THEN AP_TERM_TAC THEN ASM_ARITH_TAC;
       SIMP_TAC[DIV_MULT2; EXP_EQ_0; ARITH_EQ]]) in
   let pth_extr = prove
    (`!(s:S) Xnn (x:int64) k.
           read Xnn s = word_subword (word_join (word 0:int64) x :int128)
-                                    (k MOD dimindex (:64),dimindex (:64))
+                                    (k,64)
           ==> k < 64
               ==> ?(h:int64) (l:int64).
                       (&2 pow 64 * &(val h) + &(val l):real =
@@ -654,16 +653,15 @@ let ACCUMULATEX_ARITH_TAC =
                        read Xnn s = h) /\
                       word_shl x (64 - k) = l /\
                       word_subword (word_join x (word 0:int64):int128)
-                                   (k MOD dimindex (:64),
-                                    dimindex (:64)) = l`,
+                                   (k,64) = l`,
     REPEAT GEN_TAC THEN REWRITE_TAC[IMP_IMP] THEN STRIP_TAC THEN
     MATCH_MP_TAC(REWRITE_RULE[IMP_IMP] pth_ushr) THEN
-    ASM_SIMP_TAC[DIMINDEX_64; MOD_LT; WORD_SUBWORD_JOIN_AS_USHR; LT_IMP_LE])
+    ASM_REWRITE_TAC[GSYM WORD_SUBWORD_JOIN_AS_USHR; DIMINDEX_64])
   and pth_mul_hil = prove
    (`!(s:S) Xnn n (y:int64).
         read Xnn s :int64 =
         word_zx (word_ushr (word (NUMERAL n * val y):int128)
-                (dimindex (:64)))
+                64)
         ==> NUMERAL n < 2 EXP 64
             ==> ?(h:int64) (l:int64).
                    (&2 pow 64 * &(val h) + &(val l):real =
@@ -685,7 +683,7 @@ let ACCUMULATEX_ARITH_TAC =
                     &(NUMERAL n) * &(val y) /\
                     read Xnn s = l) /\
                    word_zx (word_ushr (word (NUMERAL n * val y):int128)
-                           (dimindex (:64))) = h`,
+                           64) = h`,
     REPEAT STRIP_TAC THEN
     MP_TAC(ISPECL [`s:S`; `Xnn:(S,int64)component`;
                    `word(NUMERAL n):int64`; `y:int64`]
@@ -696,7 +694,7 @@ let ACCUMULATEX_ARITH_TAC =
    (`!(s:S) Xnn (x:int64) n.
         read Xnn s :int64 =
         word_zx (word_ushr (word (val x * NUMERAL n):int128)
-                (dimindex (:64)))
+                64)
         ==> NUMERAL n < 2 EXP 64
             ==> ?(h:int64) (l:int64).
                    (&2 pow 64 * &(val h) + &(val l):real =
@@ -718,7 +716,7 @@ let ACCUMULATEX_ARITH_TAC =
                     &(val x) * &(NUMERAL n) /\
                     read Xnn s = l) /\
                    word_zx (word_ushr (word (val x * NUMERAL n):int128)
-                           (dimindex (:64))) = h`,
+                           64) = h`,
     REPEAT STRIP_TAC THEN
     MP_TAC(ISPECL [`s:S`; `Xnn:(S,int64)component`;
                    `x:int64`; `word(NUMERAL n):int64`]
@@ -728,7 +726,7 @@ let ACCUMULATEX_ARITH_TAC =
   and pth_mul_hil2 = prove
    (`!(s:S) Xnn n (y:int64).
         read Xnn s :int64 =
-        word((NUMERAL n * val y) DIV 2 EXP dimindex(:64))
+        word((NUMERAL n * val y) DIV 2 EXP 64)
         ==> NUMERAL n < 2 EXP 64
             ==> ?(h:int64) (l:int64).
                      (&2 pow 64 * &(val h) + &(val l):real =
@@ -750,10 +748,10 @@ let ACCUMULATEX_ARITH_TAC =
                      (&2 pow 64 * &(val h) + &(val l):real =
                       &(NUMERAL n) * &(val y) /\
                       read Xnn s = l) /\
-                     (word((NUMERAL n * val y) DIV 2 EXP dimindex(:64)) = h /\
+                     (word((NUMERAL n * val y) DIV 2 EXP 64) = h /\
                       word(NUMERAL n * val y) = l /\
                       word((val(word(NUMERAL n):int64) * val y)
-                           DIV 2 EXP dimindex(:64)) = h /\
+                           DIV 2 EXP 64) = h /\
                       word(val(word(NUMERAL n):int64) * val y) = l)`,
     REPEAT STRIP_TAC THEN
     MP_TAC(ISPECL [`s:S`; `Xnn:(S,int64)component`;
@@ -764,7 +762,7 @@ let ACCUMULATEX_ARITH_TAC =
   and pth_mul_hir2 = prove
    (`!(s:S) Xnn (x:int64) n.
         read Xnn s :int64 =
-        word((val x * NUMERAL n) DIV 2 EXP dimindex(:64))
+        word((val x * NUMERAL n) DIV 2 EXP 64)
         ==> NUMERAL n < 2 EXP 64
             ==> ?(h:int64) (l:int64).
                      (&2 pow 64 * &(val h) + &(val l):real =
@@ -786,10 +784,10 @@ let ACCUMULATEX_ARITH_TAC =
                     (&2 pow 64 * &(val h) + &(val l):real =
                      &(val x) * &(NUMERAL n) /\
                      read Xnn s = l) /\
-                    (word((val x * NUMERAL n) DIV 2 EXP dimindex(:64)) = h /\
+                    (word((val x * NUMERAL n) DIV 2 EXP 64) = h /\
                      word(val x * NUMERAL n) = l /\
                      word((val x * val(word(NUMERAL n):int64)) DIV
-                          2 EXP dimindex(:64)) = h /\
+                          2 EXP 64) = h /\
                      word(val x * val(word(NUMERAL n):int64)) = l)`,
     REPEAT STRIP_TAC THEN
     MP_TAC(ISPECL [`s:S`; `Xnn:(S,int64)component`;

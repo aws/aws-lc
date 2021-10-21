@@ -90,6 +90,17 @@ let WORD_SUBWORD_NOT = prove
   STRIP_TAC THEN ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC);;
 
 (* ------------------------------------------------------------------------- *)
+(* Combined word and number and a few other things reduction.                *)
+(* ------------------------------------------------------------------------- *)
+
+let WORD_NUM_RED_CONV =
+  WORD_RED_CONV ORELSEC
+  NUM_RED_CONV ORELSEC
+  INT_RED_CONV ORELSEC
+  DIMINDEX_CONV ORELSEC
+  GEN_REWRITE_CONV I [BITVAL_CLAUSES];;
+
+(* ------------------------------------------------------------------------- *)
 (* Trivial but requires two distinct library files to be combined.           *)
 (* ------------------------------------------------------------------------- *)
 
@@ -610,7 +621,7 @@ let ACCUMULATE_MUL = prove
  (`!(x:int64) (y:int64).
         2 EXP 64 *
         val(word_zx (word_ushr
-         (word(val x * val y):(128)word) (dimindex(:64))):int64) +
+         (word(val x * val y):(128)word) 64):int64) +
         val(word_zx (word(val x * val y):(128)word):int64) =
         val x * val y`,
   REWRITE_TAC[GSYM DIMINDEX_64; ACCUMULATE_MUL_GEN]);;
@@ -955,6 +966,13 @@ let WORD_MULTIPLICATION_LOHI = prove
   REWRITE_TAC[MOD_MOD_EXP_MIN; ARITH_RULE `MIN (2 * n) n = n`; DIV_MOD;
               GSYM EXP_ADD; GSYM MULT_2; ARITH_RULE `MIN n n = n`]);;
 
+let WORD_MULTIPLICATION_LOHI_64 = prove
+ (`!(x:int64) (y:int64).
+        word_mul x y = word_zx(word(val x * val y):int128) /\
+        word((val x * val y) DIV 2 EXP 64):int64 =
+        word_zx (word_ushr (word(val x * val y):int128) 64)`,
+  REWRITE_TAC[GSYM DIMINDEX_64; WORD_MULTIPLICATION_LOHI]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Prove non-triviality |- ?y x1 ... xn. t[x1,...,xn] = y                    *)
 (* Used for non-vacuity of transitions even with undefined variables.        *)
@@ -1056,7 +1074,8 @@ let ASSEMBLER_SIMPLIFY_TAC =
     GEN_REWRITE_CONV ONCE_DEPTH_CONV
      [WORD_RULE `word_sub x (word_add x y):int64 = word_neg y`;
       pth] THENC
-    GEN_REWRITE_CONV ONCE_DEPTH_CONV [SYM(NUM_REDUCE_CONV `2 EXP 64`)]));;
+    GEN_REWRITE_CONV ONCE_DEPTH_CONV [SYM(NUM_REDUCE_CONV `2 EXP 64`)])) THEN
+  ASM (GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV)) [];;
 
 (* ------------------------------------------------------------------------- *)
 (* Not much commonality to all the ISAs but we do have a uniform             *)
