@@ -14,6 +14,7 @@
 
 #include <math.h>
 
+#include "aux_functions.h"
 #include <openssl/cpucycles.h>
 #include <openssl/hpke.h>
 
@@ -39,238 +40,25 @@
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
-
+#include <fstream> 
 #include <stdint.h>
 #include <time.h>
 
 #define SIZE_PLAINTEXT 100000  // Specify Bytes to be encrypted/decrypted
-#define NUMBER_TESTS 1000        // Number of tests performed
+#define NUMBER_TESTS 1000     // Number of tests performed
 
+using namespace std;
 
 
 #define HPKE_KDF_NAMESPACE(s) EVP_hpke_##s##_hkdf_sha256
-
 // Kyber already exists with these names but may add here later as well to have
 // all of them at the same place
-#define SIKE_SECRETKEYBYTES \
-  374  // MSG_BYTES + SECRETKEY_B_BYTES + CRYPTO_PUBLICKEYBYTES bytes
-#define SIKE_PUBLICKEYBYTES 330
-#define SIKE_BYTES 16
-#define SIKE_CIPHERTEXTBYTES 346  // CRYPTO_PUBLICKEYBYTES + MSG_BYTES bytes
-
-
-#define x25519_SECRETKEYBYTES X25519_PUBLIC_VALUE_LEN
-#define x25519_PUBLICKEYBYTES X25519_PRIVATE_KEY_LEN
-#define x25519_BYTES X25519_SHARED_KEY_LEN
-#define x25519_CIPHERTEXTBYTES X25519_PUBLIC_VALUE_LEN
-
-#define x25519_SIKE_SECRETKEYBYTES X25519_PUBLIC_VALUE_LEN + 374
-#define x25519_SIKE_PUBLICKEYBYTES X25519_PRIVATE_KEY_LEN + 330
-#define x25519_SIKE_BYTES X25519_SHARED_KEY_LEN + 16
-#define x25519_SIKE_CIPHERTEXTBYTES X25519_PUBLIC_VALUE_LEN + 346
-
-
-#define x25519_KYBER_SECRETKEYBYTES \
-  X25519_PUBLIC_VALUE_LEN + KYBER_SECRETKEYBYTES
-#define x25519_KYBER_PUBLICKEYBYTES \
-  X25519_PRIVATE_KEY_LEN + KYBER_PUBLICKEYBYTES
-#define x25519_KYBER_BYTES X25519_SHARED_KEY_LEN + KYBER_BYTES
-#define x25519_KYBER_CIPHERTEXTBYTES \
-  X25519_PUBLIC_VALUE_LEN + KYBER_CIPHERTEXTBYTES
-
-int algorithm_secretkeybytes(int alg);
-int algorithm_secretkeybytes(int alg) {
-  int keylen = 0;
-  switch (alg) {
-    case 0:
-      return x25519_SECRETKEYBYTES;
-      break;
-    case 1:
-      return SIKE_SECRETKEYBYTES;
-      break;
-    case 2:
-      return x25519_SIKE_SECRETKEYBYTES;
-      break;
-    case 3:
-      return KYBER_SECRETKEYBYTES;
-      break;
-    case 4:
-      return x25519_KYBER_SECRETKEYBYTES;
-      break;
-    default:
-      break;
-  }
-  return keylen;
-}
-
-int algorithm_publickeybytes(int alg);
-int algorithm_publickeybytes(int alg) {
-  switch (alg) {
-    case 0:
-      return x25519_PUBLICKEYBYTES;
-      break;
-    case 1:
-      return SIKE_PUBLICKEYBYTES;
-      break;
-    case 2:
-      return x25519_PUBLICKEYBYTES + SIKE_PUBLICKEYBYTES;
-      break;
-    case 3:
-      return KYBER_PUBLICKEYBYTES;
-      break;
-    case 4:
-      return x25519_KYBER_PUBLICKEYBYTES;
-      break;
-    default:
-      return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;
-      break;
-  }
-  return x25519_PUBLICKEYBYTES + KYBER_PUBLICKEYBYTES;
-  ;
-}
-int algorithm_ciphertextbytes(int alg);
-int algorithm_ciphertextbytes(int alg) {
-  int keylen = 0;
-  switch (alg) {
-    case 0:
-      return x25519_PUBLICKEYBYTES;
-      break;
-    case 1:
-      return SIKE_CIPHERTEXTBYTES;
-      break;
-    case 2:
-      return x25519_PUBLICKEYBYTES + SIKE_CIPHERTEXTBYTES;
-      break;
-    case 3:
-      return KYBER_CIPHERTEXTBYTES;
-      break;
-    case 4:
-      return x25519_PUBLICKEYBYTES + KYBER_CIPHERTEXTBYTES;
-      break;
-    default:
-      break;
-  }
-  return keylen;
-}
-
-
-const EVP_HPKE_KEM *algorithm_kdf(int alg);
-
-
-const EVP_HPKE_KEM *algorithm_kdf(int alg) {
-  switch (alg) {
-    case 0:
-      return EVP_hpke_x25519_hkdf_sha256();
-      break;
-    case 1:
-      return EVP_hpke_SIKE_hkdf_sha256();
-      break;
-    case 2:
-      return EVP_hpke_x25519_SIKE_hkdf_sha256();
-      break;
-    case 3:
-      return EVP_hpke_KYBER_hkdf_sha256();
-      break;
-    case 4:
-      return EVP_hpke_x25519_KYBER_hkdf_sha256();
-      break;
-    default:
-      return EVP_hpke_x25519_hkdf_sha256();
-      break;
-  }
-  return EVP_hpke_x25519_hkdf_sha256();
-}
-
-
-uint64_t cpucycles(void) {  // Access system counter for benchmarking
-  unsigned int hi, lo;
-  __asm volatile("rdtsc\n\t" : "=a"(lo), "=d"(hi));
-  return ((int64_t)lo) | (((int64_t)hi) << 32);
-}
-
-
-void print_info(int aead, int kdf, int alg);
-
-void print_info(int aead, int kdf, int alg) {
-  printf("\n\n-------------------------------------------------------");
-
-  printf("\nALGORITHM          ->   ");
-  switch (alg) {
-    case 0:
-      printf("x25519");
-      break;
-    case 1:
-      printf("SIKE");
-      break;
-    case 2:
-      printf("x25519 + SIKE");
-      break;
-    case 3:
-      printf("KYBER");
-      break;
-    case 4:
-      printf("x25519 + KYBER");
-      break;
-    default:
-      printf("Should never happen");
-      break;
-  }
-
-
-  printf("\nAEAD               ->   ");
-  switch (aead) {
-    case 0x0001:
-      printf("EVP_HPKE_AES_128_GCM");
-      break;
-    case 0x0002:
-      printf("EVP_HPKE_AES_256_GCM");
-      break;
-    case 0x0003:
-      printf("EVP_HPKE_CHACHA20_POLY1305");
-      break;
-    default:
-      printf("Should never happen");
-      break;
-  }
-
-  printf("\nKDF                ->   ");
-  switch (kdf) {
-    case 0x0001:
-      printf("EVP_HPKE_HKDF_SHA256");
-      break;
-    default:
-      printf("Should never happen");
-      break;
-  }
-
-
-
-  printf("\n");
-}
-
-void init_plaintext(uint8_t *plaintext, int size);
-void init_plaintext(uint8_t *plaintext, int size) {
-  for (int i = 0; i < size; i++) {
-    plaintext[i] = (uint8_t)((uint8_t)i % 256);
-    // printf("%02x", (uint8_t)plaintext[i]);
-  }
-}
-
-void print_text(std::vector<uint8_t> cleartext, int cleartext_len);
-void print_text(std::vector<uint8_t> cleartext, int cleartext_len) {
-  for (int i = 0; i < cleartext_len; i++) {
-    printf("%02x ", cleartext.at(i));
-  }
-  printf("\n");
-}
 
 namespace bssl {
 namespace {
 
 const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
     &EVP_hpke_aes_128_gcm,
-    &EVP_hpke_aes_256_gcm,
-    &EVP_hpke_chacha20_poly1305,
 };
 
 const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
@@ -1578,48 +1366,48 @@ void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
   int R3 = (n * 3) / 4;
 
   if ((Q1 - R1) == 0) {
-    printf("First quartiles (Q1): %lld\n", arr[R1 - 1]);
+    //printf("First quartiles (Q1): %lld\n", arr[R1 - 1]);
     quartiles[0] = arr[R1 - 1];
     quartiles_positions[0] = R1 - 1;
   } else {
     float q1;
     q1 = arr[R1 - 1] + (Q1 - R1) * ((arr[R1] - arr[R1 - 1]));
-    printf("First quartiles (Q1): %.2f\n", q1);
+    //printf("First quartiles (Q1): %.2f\n", q1);
     quartiles[0] = q1;
     quartiles_positions[0] = R1;
   }
   if ((Q2 - R2) == 0) {
-    printf("Second quartiles (Q2): %lld\n", arr[R2 - 1]);
-    quartiles[0] = arr[R2 - 1];
+    //printf("Second quartiles (Q2): %lld\n", arr[R2 - 1]);
+    quartiles[1] = arr[R2 - 1];
     quartiles_positions[1] = R2 - 1;
   } else {
     float q2;
     q2 = arr[R2 - 1] + (Q2 - R2) * ((arr[R2] - arr[R2 - 1]));
-    printf("Second quartiles (Q2): %.2f\n", q2);
+    //printf("Second quartiles (Q2): %.2f\n", q2);
     quartiles[1] = q2;
     quartiles_positions[1] = R2;
   }
   if ((Q3 - R3) == 0) {
-    printf("Third quartiles (Q3): %lld\n", arr[R3 - 1]);
-    quartiles[0] = arr[R3 - 1];
+    //printf("Third quartiles (Q3): %lld\n", arr[R3 - 1]);
+    quartiles[2] = arr[R3 - 1];
     quartiles_positions[2] = R3 - 1;
   } else {
     float q3;
     q3 = arr[R3 - 1] + (Q3 - R3) * ((arr[R3] - arr[R3 - 1]));
-    printf("Third quartiles (Q3): %.2f\n", q3);
-    quartiles[2] = q3;
+    //printf("Third quartiles (Q3): %.2f\n", q3);
+    quartiles[3] = q3;
     quartiles_positions[2] = R3;
   }
-  printf("Forth quartiles (Q4): %lld\n", arr[n - 1]);
+  //printf("Forth quartiles (Q4): %lld\n", arr[n - 1]);
   quartiles[3] = arr[n - 1];
 }
 float analyze(unsigned long long arr_cycles[], int quartile1_positions, int quartile2_positions);
 float analyze(unsigned long long arr_cycles[], int quartile1_positions, int quartile2_positions){
   unsigned long long mean = 0;
-  for(int i = quartile1_positions; i <= quartile2_positions ; i++){
+  for(int i = quartile1_positions; i < quartile2_positions ; i++){
     mean += arr_cycles[i];
   }
-  return ((float)mean)/(float)(quartile2_positions-quartile1_positions+1);
+  return ((float)mean)/(float)(quartile2_positions-quartile1_positions);
 }
 
 
@@ -1638,19 +1426,27 @@ TEST(HPKETest, HPKERoundTrip) {
   const uint8_t info_b[] = {42, 42, 42};
   const uint8_t ad_a[] = {1, 2, 4, 8, 16};
   const uint8_t ad_b[] = {7};
+  const int number_sets=9; //info_values_len * ad_values_len
   Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
-  unsigned long long cycles_set_up_sender_total = 0,
+  float cycles_set_up_sender_total = 0,
                      cycles_set_up_recipient_total = 0, cycles_seal_total = 0,
-                     cycles_open_total = 0, cycles_protocol_total = 0,
-                     clean_protocol = 0;
-  unsigned long long cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
-      cycles_open, cycles_protocol;
-  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS],
-      arr_cycles_setup_recipient[NUMBER_TESTS], arr_cycles_seal[NUMBER_TESTS],
-      arr_cycles_open[NUMBER_TESTS];
+                     cycles_open_total = 0, clean_protocol = 0;
+  unsigned long long cycles_keygen=0, cycles_set_up_sender, cycles_set_up_recipient, cycles_seal,
+      cycles_open;
+  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS*number_sets],
+      arr_cycles_setup_recipient[NUMBER_TESTS*number_sets], arr_cycles_seal[NUMBER_TESTS*number_sets],
+      arr_cycles_open[NUMBER_TESTS*number_sets];
+
+       float quartiles[4] = {0};
+      int quartiles_positions[4] = {0};
+      int counter_loops = 0;
+     std::ofstream MyFile("HPKE_results_22.txt");
+
+
 
   for (const int algorithm : {0, 1, 2, 3, 4}) {
+   
     // Generate the recipient's keypair.
 
     ScopedEVP_HPKE_KEY key;
@@ -1659,21 +1455,28 @@ TEST(HPKETest, HPKERoundTrip) {
     key->public_key = (uint8_t *)(malloc(
         sizeof(uint8_t) * (algorithm_publickeybytes(algorithm))));
 
-
+     cycles_keygen = cpucycles();
     ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), algorithm_kdf(algorithm)));
     uint8_t *public_key_r = (uint8_t *)malloc(
         sizeof(uint8_t) * algorithm_publickeybytes(algorithm));
+        cycles_keygen = cpucycles() - cycles_keygen;
     size_t public_key_r_len;
+   
     ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
                                         &public_key_r_len,
                                         algorithm_publickeybytes(algorithm)));
+    
+    
+               
     // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
     for (const auto aead : kAllAEADs) {
       SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
       for (const auto kdf : kAllKDFs) {
         SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
 
-        print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), algorithm);
+       // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), algorithm);
+        print_info_file(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()), algorithm, MyFile);
+
 
         for (int kk = 10; kk <= SIZE_PLAINTEXT; kk *= 10) {
           if (kk == 10) {
@@ -1685,13 +1488,15 @@ TEST(HPKETest, HPKERoundTrip) {
           if (kk == 3420) {
             kk = 470;
           }
+          MyFile << "\nPlaintext Bytes    ->   " <<  kk << endl;
           printf("\nPlaintext Bytes    ->   %d\n", kk);
-          cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
-          cycles_seal_total = 0, cycles_open_total = 0,
-          cycles_protocol_total = 0;
+
+          MyFile << "cycles_keygen           " <<  fixed<<setprecision(0) << (cycles_keygen /1000) << "   CCs x10^3\n";  
           uint8_t *kCleartextPayload = (uint8_t *)malloc(sizeof(uint8_t) * kk);
           init_plaintext(kCleartextPayload, kk);
+          
           for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+            counter_loops=0;
             // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
             // public_key_r[X25519_PUBLIC_VALUE_LEN +
             // SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
@@ -1700,10 +1505,7 @@ TEST(HPKETest, HPKERoundTrip) {
               SCOPED_TRACE(Bytes(info));
               for (const Span<const uint8_t> &ad : ad_values) {
                 // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
-
-
-                cycles_protocol = cpucycles();
-
+                //printf("POSITION %d\n\n", jj*number_sets + counter_loops);
                 SCOPED_TRACE(Bytes(ad));
 
                 // Set up the sender.
@@ -1720,9 +1522,10 @@ TEST(HPKETest, HPKERoundTrip) {
                     algorithm_ciphertextbytes(algorithm),
                     algorithm_kdf(algorithm), kdf(), aead(), public_key_r,
                     public_key_r_len, info.data(), info.size()));
-                arr_cycles_setup_sender[jj] =
+                arr_cycles_setup_sender[jj*number_sets +counter_loops] =
                     cpucycles() - cycles_set_up_sender;
-                cycles_set_up_sender_total += arr_cycles_setup_sender[jj];
+                    //printf("CYCLES %lld\n", arr_cycles_setup_sender[jj*number_sets +counter_loops]);
+                
 
                 // Set up the recipient.
                 ScopedEVP_HPKE_CTX recipient_ctx;
@@ -1730,9 +1533,8 @@ TEST(HPKETest, HPKERoundTrip) {
                 ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                     recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                     info.data(), info.size()));
-                arr_cycles_setup_recipient[jj] =
+                arr_cycles_setup_recipient[jj*number_sets +counter_loops] =
                     cpucycles() - cycles_set_up_recipient;
-                cycles_set_up_recipient_total += arr_cycles_setup_recipient[jj];
 
                 // Have sender encrypt message for the recipient.
                 std::vector<uint8_t> ciphertext(
@@ -1744,8 +1546,7 @@ TEST(HPKETest, HPKERoundTrip) {
                     ciphertext.size(),
                     reinterpret_cast<const uint8_t *>(kCleartextPayload), kk,
                     ad.data(), ad.size()));
-                arr_cycles_seal[jj] = cpucycles() - cycles_seal;
-                cycles_seal_total += arr_cycles_seal[jj];
+                arr_cycles_seal[jj*number_sets +counter_loops] = cpucycles() - cycles_seal;
 
                 // Have recipient decrypt the message.
                 std::vector<uint8_t> cleartext(ciphertext.size());
@@ -1755,65 +1556,81 @@ TEST(HPKETest, HPKERoundTrip) {
                     recipient_ctx.get(), cleartext.data(), &cleartext_len,
                     cleartext.size(), ciphertext.data(), ciphertext_len,
                     ad.data(), ad.size()));
-                arr_cycles_open[jj] = cpucycles() - cycles_open;
-                cycles_open_total += arr_cycles_open[jj];
+                arr_cycles_open[jj*number_sets +counter_loops] = cpucycles() - cycles_open;
+
 
                 // print_text(cleartext, kk);
-
-                cycles_protocol_total += cpucycles() - cycles_protocol;
 
                 // Verify that decrypted message matches the original.
                 ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
                           Bytes(kCleartextPayload, kk));
 
                 free(enc);
+                counter_loops++;
               }
             }
           }
 
-          
-          printf("set_up_sender           %llu CCs x10^3\n",
-                 cycles_set_up_sender_total / NUMBER_TESTS / 1000);
-          printf("set_up_recipient        %llu CCs x10^3\n",
-                 cycles_set_up_recipient_total / NUMBER_TESTS / 1000);
-          printf("seal                    %.2f CCs x10^3\n",
-                 (float)(cycles_seal_total / NUMBER_TESTS) / 1000.0);
-          printf("open                    %.2f CCs x10^3\n",
-                 (float)(cycles_open_total / NUMBER_TESTS) / 1000.0);
+         
+
+          calculate_quartiles(arr_cycles_setup_sender, (NUMBER_TESTS*number_sets), quartiles, quartiles_positions);
+          cycles_set_up_sender_total = analyze(arr_cycles_setup_sender, quartiles_positions[0], quartiles_positions[2]);
+
+          calculate_quartiles(arr_cycles_setup_recipient, (NUMBER_TESTS*number_sets), quartiles, quartiles_positions);
+          cycles_set_up_recipient_total = analyze(arr_cycles_setup_recipient, quartiles_positions[0], quartiles_positions[2]);
+
+          calculate_quartiles(arr_cycles_seal, (NUMBER_TESTS*number_sets), quartiles, quartiles_positions);
+          cycles_seal_total = analyze(arr_cycles_seal, quartiles_positions[0], quartiles_positions[2]);
+
+          calculate_quartiles(arr_cycles_open, (NUMBER_TESTS*number_sets), quartiles, quartiles_positions);
+          cycles_open_total = analyze(arr_cycles_open, quartiles_positions[0], quartiles_positions[2]);
+
+
+          MyFile << "set_up_sender           " <<  fixed<<setprecision(0) << cycles_set_up_sender_total / 1000 << "   CCs x10^3\n";
+          //printf("set_up_sender           %.0f CCs x10^3\n",cycles_set_up_sender_total / 1000);
+
+
+          MyFile << "set_up_recipient        " <<  fixed<<setprecision(0) << cycles_set_up_recipient_total / 1000 << "   CCs x10^3\n";
+          //printf("set_up_recipient        %.0f CCs x10^3\n", cycles_set_up_recipient_total  / 1000);
+
+
+          MyFile << "seal                    " <<  fixed<<setprecision(2) << (float)(cycles_seal_total / 1000.0) << "  CCs x10^3\n";
+          //printf("seal                    %.2f CCs x10^3\n", (float)(cycles_seal_total) / 1000.0);
+
+          MyFile << "open                    " <<  fixed<<setprecision(2) << (float)(cycles_open_total / 1000.0) << "  CCs x10^3\n";
+          //printf("open                    %.2f CCs x10^3\n", (float)(cycles_open_total) / 1000.0);
+
           // printf("others            %llu CCs \n",
           // others_total / NUMBER_TESTS / 1000000);
           // printf("end protocol            %llu CCs x10^3\n",
           // cycles_protocol_total / NUMBER_TESTS / 1000);
           // Print the value of the 4 functions (no overhead for array
           // initialization, etc)
+    
           clean_protocol = cycles_set_up_sender_total +
                            cycles_set_up_recipient_total + cycles_seal_total +
                            cycles_open_total;
-          printf("CLEAN protocol          %llu CCs x10^3\n",
-                 clean_protocol / NUMBER_TESTS / 1000);
+
+          MyFile << "CLEAN protocol          " <<  fixed<<setprecision(0)  << clean_protocol / 1000 << "   CCs x10^3\n";
+          //printf("CLEAN protocol          %.0f CCs x10^3\n", clean_protocol / 1000);
 
 
+          MyFile << "% set_up_sender         " <<  fixed<<setprecision(3) << ((float)(cycles_set_up_sender_total) /((float)clean_protocol) * 100) << " % \n" ;
+          //printf("%% set_up_sender         %.3f %% \n", ((float)(cycles_set_up_sender_total) /((float)clean_protocol) * 100));
 
-          printf("%% set_up_sender         %.3f %% \n",
-                 ((float)(cycles_set_up_sender_total) /
-                  ((float)clean_protocol) * 100));
-          printf("%% set_up_recipient      %.3f %% \n",
-                 ((float)cycles_set_up_recipient_total) /
-                     ((float)clean_protocol) * 100);
-          printf("%% seal                  %.3f %% \n",
-                 ((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-          printf("%% open                  %.3f %% \n",
-                 ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+          MyFile << "% set_up_recipient      " << fixed<<setprecision(3) << ((float)cycles_set_up_recipient_total) /((float)clean_protocol) * 100 << " % \n";
+          //printf("%% set_up_recipient      %.3f %% \n",((float)cycles_set_up_recipient_total) / ((float)clean_protocol) * 100);
+
+          MyFile << "% seal                  " <<  fixed<<setprecision(3) <<((float)cycles_seal_total) / ((float)clean_protocol) * 100 << "  % \n" ;
+          //printf("%% seal                  %.3f %% \n",((float)cycles_seal_total) / ((float)clean_protocol) * 100);
+
+          MyFile << "% open                  " <<  fixed<<setprecision(3) <<((float)cycles_open_total) / ((float)clean_protocol) * 100 << "  % \n";
+          //printf("%% open                  %.3f %% \n", ((float)cycles_open_total) / ((float)clean_protocol) * 100);
+
           // printf(
           //"%% others                  %.3f %% \n",
           //((float)others_total) / ((float)cycles_protocol_total) * 100);
-          
-
-          float quartiles[4] = {0};
-          int quartiles_positions[4] = {0};
-          calculate_quartiles(arr_cycles_setup_sender, NUMBER_TESTS, quartiles, quartiles_positions);
-          float mean_cycles_seal = analyze(arr_cycles_setup_sender, quartiles_positions[0], quartiles_positions[2]);
-          printf("mean_cycles_setup_sender                  %.3f \n",mean_cycles_seal);
+        
 
 
           free(kCleartextPayload);
@@ -1830,6 +1647,8 @@ TEST(HPKETest, HPKERoundTrip) {
 
     free(public_key_r);
   }
+  
+  MyFile.close();
 }
 
 

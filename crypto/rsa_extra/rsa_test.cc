@@ -401,7 +401,7 @@ struct RSAEncryptParam {
 
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
-#define NUMBER_TESTS 10
+#define NUMBER_TESTS 100
 #define PLAINTEXT_TOTAL 100000  // B
 
 
@@ -413,7 +413,7 @@ TEST(RSATest, RSA) {
 
   bssl::UniquePtr<RSA> key(RSA_new());
   ASSERT_TRUE(key);
-  for (const size_t mode : {1, 3, 4}) {
+  for (const size_t mode : {4}) {
     switch (mode) {
       case 1:
         printf("\nPadding Mode        ->      RSA_PKCS1_PADDING");

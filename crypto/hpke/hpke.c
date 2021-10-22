@@ -252,7 +252,7 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
   }
 
   // add space for the SIKE pk's to the kem_context
-  // unsigned long long cycles;
+   //unsigned long long cycles;
   uint8_t *kem_context = malloc(sizeof(uint8_t) * (2 * kem->public_key_len +
                                                    kem->PQ_public_key_len +
                                                    kem->PQ_ciphertext_len));
@@ -271,19 +271,22 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
   switch (kem->id) {
     case 0x0022:
     case 0x0021:
+    //cycles = cpucycles();
       enc_res = sike_p434_r3_crypto_kem_enc(
           out_enc + kem->public_key_len, hybrid_ss + kem->public_key_len,
           peer_public_key + kem->public_key_len);
+          //cycles = cpucycles() - cycles;
+      //printf("CYCLES ONLY SIKE ENCAPSULATION %llu \n ", cycles);
       break;
     case 0x0024:
     case 0x0023:
-      // cycles = cpucycles();
+       //cycles = cpucycles();                   
       enc_res = crypto_kem_enc_kyber(out_enc + kem->public_key_len,
                                      hybrid_ss + kem->public_key_len,
                                      peer_public_key + kem->public_key_len);
 
-      // cycles = cpucycles() - cycles;
-      // printf("CYCLES ONLY KYBER ENCAPSULATION %llu \n ", cycles);
+        //cycles = cpucycles() - cycles;
+       //printf("CYCLES ONLY KYBER ENCAPSULATION %llu \n ", cycles);
       break;
     default:
       // SHOULD COMPLETE
@@ -845,11 +848,6 @@ int EVP_HPKE_CTX_setup_sender_PSK(
       sizeof(uint8_t) * kem->public_key_len + kem->PQ_shared_secret_len);
   size_t shared_secret_len;
 
-
-
-  // STARTING IMPLEMENTATION OF THE PSK
-  // SHOULD BE MODIFIED !!!!!
-
   if (!kem->encap_with_seed(kem, shared_secret, &shared_secret_len, out_enc,
                             out_enc_len, max_enc, peer_public_key,
                             peer_public_key_len, seed, seed_len) ||
@@ -869,7 +867,7 @@ int EVP_HPKE_CTX_setup_sender_PSK(
     printf("ss %x  ",  shared_secret[i]);
   }
   */
- 
+
   free(shared_secret);
 
   return 1;

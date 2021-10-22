@@ -345,6 +345,7 @@ add_library(
   evp/sign.c
   ex_data.c
   hkdf/hkdf.c
+  hpke/aux_functions.cc
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
