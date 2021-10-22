@@ -688,7 +688,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 
     idx = d >> 1;
 
-    // Select the point to add, in constant-time.
+    // Select the point to add, in constant time.
     fiat_p384_select_point(tmp, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
 
     // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
