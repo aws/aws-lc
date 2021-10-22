@@ -466,6 +466,10 @@ struct ec_method_st {
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
 
+  // WARNING: It is not guaranteed that implementations of the below listed
+  // functions perform input parameter validation. Therefore, the parameters
+  // passed to the functions must not be NULL.
+
   // point_get_affine_coordinates sets |*x| and |*y| to the affine coordinates
   // of |p|. Either |x| or |y| may be NULL to omit it. It returns one on success
   // and zero if |p| is the point at infinity.

@@ -256,7 +256,7 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
   fiat_p384_limb_t z1nz = fiat_p384_nz(z1);
   fiat_p384_limb_t z2nz = fiat_p384_nz(z2);
 
-  // z1z1 = z1z1 = z1**2
+  // z1z1 = z1**2
   fiat_p384_felem z1z1;
   fiat_p384_square(z1z1, z1);
 
@@ -522,7 +522,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 // See the analysis at the bottom of this file.
 //
 // Moreover, the order in which the digits of the scalar are processed in
-// |ec_GFp_nistp384_point_mul_base| is different than in ECCKiila project, to
+// |ec_GFp_nistp384_point_mul_base| is different from the ECCKiila project, to
 // ensure that the least significant digit is processed last which together with
 // the window size 7 guarantees constant-time execution of the function.
 //
@@ -616,7 +616,7 @@ static void fiat_p384_select_point_affine(fiat_p384_felem out[2],
 // The precomputed (on-the-fly) table |p_pre_comp| holds 64 odd multiples of P:
 //     [2i + 1]P for i in [0, 63].
 // Computing the negation of a point P = (x, y) is relatively easy -P = (x, -y).
-// So we may assume that instead of the above mentioned 64, we have 128 points:
+// So we may assume that instead of the above-mentioned 64, we have 128 points:
 //     [\pm 1]P, [\pm 3]P, [\pm 5]P, ..., [\pm 127]P.
 //
 // The 384-bit scalar is recoded (regular-wNAF encoding) into 55 signed digits
@@ -632,7 +632,7 @@ static void fiat_p384_select_point_affine(fiat_p384_felem out[2],
 //        corresponding to the most significant digit s_54 of the scalar.
 //     2. For digits s_i starting from s_53 down to s_0:
 //     3.   Double the accumulator 7 times. (note that doubling a point [a]P
-//          five times results in [2^7*a]P).
+//          seven times results in [2^7*a]P).
 //     4.   Read from |p_pre_comp| the point corresponding to abs(s_i),
 //          negate it if s_i is negative, and add it to the accumulator.
 //
@@ -641,7 +641,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                                       const EC_RAW_POINT *p,
                                       const EC_SCALAR *scalar) {
 
-  fiat_p384_felem res[3], tmp[3], ftmp;
+  fiat_p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
 
   // Table of multiples of P:  [2i + 1]P for i in [0, 63].
   fiat_p384_felem p_pre_comp[P384_MUL_TABLE_SIZE][3];
@@ -744,7 +744,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 // each of length 7 bits, as explained in the |fiat_p384_mul_scalar_rwnaf|
 // function. Namely,
 //     scalar' = s_0 + s_1*2^7 + s_2*2^14 + ... + s_54*2^378,
-// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm 127]. Note that for an odd
 // scalar we have that scalar = scalar', while in the case of an even
 // scalar we have that scalar = scalar' - 1.
 //
@@ -765,16 +765,16 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 // a digit s_i is negative, we read the point corresponding to the abs(s_i) and
 // negate it before adding it to the sum).
 // The remaining three groups (1), (2), and (3), correspond to the multiples
-// of G from the sub-tables multiplied additionally by 2^5, 2^10, and 2^15,
+// of G from the sub-tables multiplied additionally by 2^7, 2^14, and 2^21,
 // respectively. Therefore, for these groups we may read the appropriate points
-// from the table, double them 5, 10, or 15 times, respectively, and add them
+// from the table, double them 7, 14, or 21 times, respectively, and add them
 // to the final result.
 //
-// To minimize the number of required doublings we process the digits of the
-// scalar from left to right. In other words, the algorithm is:
+// To minimize the number of required doubling operations we process the digits
+// of the scalar from left to right. In other words, the algorithm is:
 //   1. Read the points corresponding to the group (3) digits from the table
 //      and add them to an accumulator.
-//   2. Double the accumulator 5 times.
+//   2. Double the accumulator 7 times.
 //   3. Repeat steps 1. and 2. for groups (2) and (1),
 //      and perform step 1. for group (0).
 //   4. If the scalar is even subtract G from the accumulator.
@@ -891,7 +891,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
                                              const EC_RAW_POINT *p,
                                              const EC_SCALAR *p_scalar) {
 
-  fiat_p384_felem res[3] = {{0}, {0}, {0}}, two_p[3], ftmp;
+  fiat_p384_felem res[3] = {{0}, {0}, {0}}, two_p[3] = {{0}, {0}, {0}}, ftmp;
 
   // Table of multiples of P:  [2i + 1]P for i in [0, 15].
   fiat_p384_felem p_pre_comp[P384_MUL_PUB_TABLE_SIZE][3];
@@ -918,7 +918,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
   ec_compute_wNAF(group, p_wnaf, p_scalar, 384, P384_MUL_PUB_WSIZE);
   ec_compute_wNAF(group, g_wnaf, g_scalar, 384, P384_MUL_WSIZE);
 
-  // In the beginning res is set to point-at-infinity so we set the flag.
+  // In the beginning res is set to point-at-infinity, so we set the flag.
   int16_t res_is_inf = 1;
   int16_t d, is_neg, idx;
 
@@ -936,14 +936,14 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
       idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
 
       if (res_is_inf) {
-        // If |res| is point-at-infinity there is not to add the new point,
+        // If |res| is point-at-infinity there is no need to add the new point,
         // we can simply copy it.
         fiat_p384_copy(res[0], p_pre_comp[idx][0]);
         fiat_p384_copy(res[1], p_pre_comp[idx][1]);
         fiat_p384_copy(res[2], p_pre_comp[idx][2]);
         res_is_inf = 0;
       } else {
-        // Otherwise add to the accumulator either the point at position idx
+        // Otherwise, add to the accumulator either the point at position idx
         // in the table or its negation.
         if (is_neg) {
           fiat_p384_opp(ftmp, p_pre_comp[idx][1]);
@@ -964,14 +964,14 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
       idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
 
       if (res_is_inf) {
-        // If |res| is point-at-infinity there is not to add the new point,
+        // If |res| is point-at-infinity there is no need to add the new point,
         // we can simply copy it.
         fiat_p384_copy(res[0], fiat_p384_g_pre_comp[0][idx][0]);
         fiat_p384_copy(res[1], fiat_p384_g_pre_comp[0][idx][1]);
         fiat_p384_copy(res[2], fiat_p384_one);
         res_is_inf = 0;
       } else {
-        // Otherwise add to the accumulator either the point at position idx
+        // Otherwise, add to the accumulator either the point at position idx
         // in the table or its negation.
         if (is_neg) {
           fiat_p384_opp(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
@@ -1052,8 +1052,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 // i := 0
 // j := 0
 // while (k > 2^w):
-//   window := (b_{j+w}, ..., b_j)   # (w+1)-bit window in k where the
-//                                   # least significant bit is b_j
+//   window := (b_{j+w}, ..., b_j)   # (w+1)-bit window in k where
+//                                   # the least significant bit is b_j
 //   t_i := window - 2^w
 //   k := k - t_i
 //   k := k / 2^w          # k >> w
@@ -1192,7 +1192,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 //   P-384: ...01110011; w = 2, 3, 7    are okay
 //   P-256: ...01010001; w = 2, 3, 5, 7 are okay
 //
-// This analysis resulted in chosing w = 7 in fiat_p384_mul_scalar_rwnaf().
+// This analysis resulted in choosing w = 7 in fiat_p384_mul_scalar_rwnaf().
 //
 //
 // CAN DOUBLING OCCUR IN RIGHT-TO-LEFT ALGORITHMS OR COMB ALGORITHMS?
