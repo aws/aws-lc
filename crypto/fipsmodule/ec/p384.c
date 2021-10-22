@@ -256,20 +256,20 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
   fiat_p384_limb_t z1nz = fiat_p384_nz(z1);
   fiat_p384_limb_t z2nz = fiat_p384_nz(z2);
 
-  // z1z1 = z1^2
+  // z1z1 = z1**2
   fiat_p384_felem z1z1;
   fiat_p384_square(z1z1, z1);
 
   fiat_p384_felem u1, s1, two_z1z2;
   if (!mixed) {
-    // z2z2 = z2^2
+    // z2z2 = z2**2
     fiat_p384_felem z2z2;
     fiat_p384_square(z2z2, z2);
 
     // u1 = x1*z2z2
     fiat_p384_mul(u1, x1, z2z2);
 
-    // two_z1z2 = (z1 + z2)^2 - (z1z1 + z2z2) = 2z1z2
+    // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
     fiat_p384_add(two_z1z2, z1, z2);
     fiat_p384_square(two_z1z2, two_z1z2);
     fiat_p384_sub(two_z1z2, two_z1z2, z1z1);
@@ -326,7 +326,7 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
     return;
   }
 
-  // I = (2h)^2
+  // I = (2h)**2
   fiat_p384_felem i;
   fiat_p384_add(i, h, h);
   fiat_p384_square(i, i);
@@ -339,7 +339,7 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
   fiat_p384_felem v;
   fiat_p384_mul(v, u1, i);
 
-  // x_out = r^2 - J - 2V
+  // x_out = r**2 - J - 2V
   fiat_p384_square(x_out, r);
   fiat_p384_sub(x_out, x_out, j);
   fiat_p384_sub(x_out, x_out, v);
@@ -581,7 +581,7 @@ static void fiat_p384_mul_scalar_rwnaf(int16_t *out, const unsigned char *in) {
 }
 
 // fiat_p384_select_point selects the |idx|-th projective point from the given
-// precomputed table and copies it to |out| in constant-time.
+// precomputed table and copies it to |out| in constant time.
 static void fiat_p384_select_point(fiat_p384_felem out[3],
                                    size_t idx,
                                    fiat_p384_felem table[][3],
@@ -770,8 +770,8 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 // from the table, double them 7, 14, or 21 times, respectively, and add them
 // to the final result.
 //
-// To minimize the number of required doubling we process the digits of the
-// scalar from left to right. In other words, the algorithm is:
+// To minimize the number of required doubling operations we process the digits
+// of the scalar from left to right. In other words, the algorithm is:
 //   1. Read the points corresponding to the group (3) digits from the table
 //      and add them to an accumulator.
 //   2. Double the accumulator 7 times.
@@ -815,7 +815,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
 
       int16_t idx = d >> 1;
 
-      // Select the point to add, in constant-time.
+      // Select the point to add, in constant time.
       fiat_p384_select_point_affine(tmp, idx, fiat_p384_g_pre_comp[j / 4],
                                     P384_MUL_TABLE_SIZE);
 
@@ -1052,7 +1052,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 // i := 0
 // j := 0
 // while (k > 2^w):
-//   window := (b_{j+w}, ..., b_j)   # (w+1)-bit window in k where the
+//   window := (b_{j+w}, ..., b_j)   # (w+1)-bit window in k where
 //                                   # the least significant bit is b_j
 //   t_i := window - 2^w
 //   k := k - t_i
