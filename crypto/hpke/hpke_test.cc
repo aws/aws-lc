@@ -44,7 +44,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#define SIZE_PLAINTEXT 100000  // Specify Bytes to be encrypted/decrypted
+#define SIZE_PLAINTEXT 1000  // Specify Bytes to be encrypted/decrypted
 #define NUMBER_TESTS 1000     // Number of tests performed
 
 using namespace std;
@@ -1415,7 +1415,7 @@ float analyze(unsigned long long arr_cycles[], int quartile1_positions, int quar
 // The test vectors used fixed sender ephemeral keys, while HPKE itself
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
-TEST(HPKETest, HPKERoundTrip) {
+TEST(HPKETest, HPKERoundTripBenchmark) {
   // execute Bob keygen
   // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret
   // key??
@@ -1441,7 +1441,7 @@ TEST(HPKETest, HPKERoundTrip) {
        float quartiles[4] = {0};
       int quartiles_positions[4] = {0};
       int counter_loops = 0;
-     std::ofstream MyFile("HPKE_results_22.txt");
+     std::ofstream MyFile("HPKE_results.txt");
 
 
 

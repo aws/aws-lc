@@ -80,8 +80,12 @@
 #endif
 
 
+using namespace std;
+
+
 
 #include <openssl/cpucycles.h>
+#include <fstream>
 
 
 // kPlaintext is a sample plaintext.
@@ -401,35 +405,37 @@ struct RSAEncryptParam {
 
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
-#define NUMBER_TESTS 100
-#define PLAINTEXT_TOTAL 100000  // B
+#define NUMBER_TESTS 10
+#define PLAINTEXT_TOTAL 1000  // B
 
 
 
-TEST(RSATest, RSA) {
+TEST(RSATest, RSABenchmark) {
   unsigned long long cycles_keygen_total = 0, cycles_encrypt_total = 0,
                      cycles_decrypt_total = 0, cycles_protocol_total = 0;
   unsigned long long cycles_keygen, cycles_encrypt, cycles_decrypt;
+  
+  std::ofstream MyFile("RSA_results.txt");
 
   bssl::UniquePtr<RSA> key(RSA_new());
   ASSERT_TRUE(key);
-  for (const size_t mode : {4}) {
+  for (const size_t mode : {1, 3, 4}) {
     switch (mode) {
       case 1:
-        printf("\nPadding Mode        ->      RSA_PKCS1_PADDING");
+        MyFile << ("\nPadding Mode        ->      RSA_PKCS1_PADDING");
         break;
       case 3:
-        printf("\nNumber Tests        ->      RSA_NO_PADDING");
+        MyFile << ("\nNumber Tests        ->      RSA_NO_PADDING");
         break;
       case 4:
-        printf("\nNumber Tests        ->      RSA_PKCS1_OAEP_PADDING");
+        MyFile << ("\nNumber Tests        ->      RSA_PKCS1_OAEP_PADDING");
         break;
 
 
       default:
         break;
     }
-    printf("\nNumber Tests        ->      %d\n", NUMBER_TESTS);
+    MyFile << "\nNumber Tests        ->      "<< NUMBER_TESTS << "\n";
     for (const size_t bits : {2048, 3072, 4096}) {
       for (int plaintext_length_bytes = 100;
            plaintext_length_bytes <= PLAINTEXT_TOTAL;
@@ -460,11 +466,11 @@ TEST(RSATest, RSA) {
         if(plaintext_length_bytes==100){
           plaintext_length_bytes=PLAINTEXT_SIZE;
         }
-        printf("\nBytes Encrypted     ->      %d", plaintext_length_bytes);
+        MyFile << "\nBytes Encrypted     ->      " << plaintext_length_bytes;
 
-        printf("\nPlaintext Bytes     ->      %d", PLAINTEXT_SIZE);
+        MyFile << "\nPlaintext Bytes     ->      " << PLAINTEXT_SIZE;
 
-        printf("\nKey Size Bytes      ->      %d", (int)bits);
+        MyFile << "\nKey Size Bytes      ->      " << (int)bits;
 
         SCOPED_TRACE(bits);
 
@@ -527,30 +533,25 @@ TEST(RSATest, RSA) {
           free(ciphertext);
           free(plaintext);
         }
-        printf("\ncycles_keygen_total         %llu CCs x10^3\n",
-               cycles_keygen_total / 1000 );
-        printf("cycles_encrypt_total        %llu CCs  x10^3\n",
-               cycles_encrypt_total / NUMBER_TESTS / 1000);
-        printf("cycles_decrypt_total        %llu CCs  x10^3\n",
-               (cycles_decrypt_total / NUMBER_TESTS / 1000));
+        MyFile << "\ncycles_keygen_total         " << cycles_keygen_total / 1000 << " CCs x10^3\n";
+        MyFile << "cycles_encrypt_total        " << cycles_encrypt_total / NUMBER_TESTS / 1000 << " CCs x10^3\n";
+        MyFile << "cycles_decrypt_total        " << cycles_decrypt_total / NUMBER_TESTS / 1000 << " CCs x10^3\n";
 
         // Print the value of the 4 functions (no overhead for array
         // initialization, etc)
         cycles_protocol_total = cycles_encrypt_total + cycles_decrypt_total;
-        printf("CLEAN protocol              %llu CCs x10^3\n",
-               cycles_protocol_total / NUMBER_TESTS / 1000);
-        printf("%% cycles_encrypt_total      %.3f %% \n",
-               ((float)(cycles_encrypt_total) / ((float)cycles_protocol_total) *
-                100));
-        printf("%% cycles_decrypt_total      %.3f %% \n",
-               ((float)cycles_decrypt_total) / ((float)cycles_protocol_total) *
-                   100);
+
+        MyFile << "CLEAN protocol              "<< cycles_protocol_total / NUMBER_TESTS / 1000 << " CCs x10^3\n";
+
+        MyFile << "% cycles_encrypt_total      " << ((float)(cycles_encrypt_total) / ((float)cycles_protocol_total) * 100) << " %\n";
+        MyFile << "% cycles_decrypt_total      " << ((float)cycles_decrypt_total) / ((float)cycles_protocol_total) * 100 << " %\n";
         if(plaintext_length_bytes==PLAINTEXT_SIZE){
           plaintext_length_bytes=100;
         }
       }
     }
   }
+  MyFile.close();
 }
 
 
