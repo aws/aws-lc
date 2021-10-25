@@ -651,7 +651,7 @@ bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
   assert(get_ech_aead(aead_id) != NULL);
   return EVP_HPKE_CTX_setup_recipient(
       ctx, key_.get(), EVP_hpke_hkdf_sha256(), get_ech_aead(aead_id), enc.data(),
-      enc.size(), CBB_data(info_cbb.get()), CBB_len(info_cbb.get()));
+      enc.size(), CBB_data(info_cbb.get()), CBB_len(info_cbb.get()), NULL, 0, NULL, 0);
 }
 
 bool ssl_is_valid_ech_config_list(Span<const uint8_t> ech_config_list) {

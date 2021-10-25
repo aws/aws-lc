@@ -218,7 +218,7 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len);
 
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_PSK(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
@@ -238,7 +238,7 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_PSK(
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
     EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
     const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
-    const uint8_t *info, size_t info_len);
+    const uint8_t *info, size_t info_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len);
 
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient_PSK(
     EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,

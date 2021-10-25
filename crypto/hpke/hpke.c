@@ -780,7 +780,7 @@ int EVP_HPKE_CTX_setup_sender(EVP_HPKE_CTX *ctx, uint8_t *out_enc,
 
   int ret_value = EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
       ctx, out_enc, out_enc_len, max_enc, kem, kdf, aead, peer_public_key,
-      peer_public_key_len, info, info_len, seed, kem->seed_len);
+      peer_public_key_len, info, info_len, seed, kem->seed_len, NULL, 0, NULL, 0);
   free(seed);
   return ret_value;
 }
@@ -790,7 +790,7 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len, const uint8_t *seed,
-    size_t seed_len) {
+    size_t seed_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
   EVP_HPKE_CTX_zero(ctx);
 
   ctx->is_sender = 1;
@@ -808,15 +808,18 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
 
   // STARTING IMPLEMENTATION OF THE PSK
   // SHOULD BE MODIFIED !!!!!
-  uint8_t *psk = default_psk;
-  uint8_t *psk_id = default_psk_id;
-  
+  //uint8_t *psk = default_psk;
+  //uint8_t *psk_id = default_psk_id;
+  int mode = HPKE_MODE_BASE;
+  if(psk_len!= 0){
+    mode = HPKE_MODE_PSK;
+  }
 
   if (!kem->encap_with_seed(kem, shared_secret, &shared_secret_len, out_enc,
                             out_enc_len, max_enc, peer_public_key,
                             peer_public_key_len, seed, seed_len) ||
-      !hpke_key_schedule(HPKE_MODE_BASE, ctx, shared_secret, shared_secret_len, info,
-                         info_len, psk, 0, psk_id, 0)) {
+      !hpke_key_schedule(mode, ctx, shared_secret, shared_secret_len, info,
+                         info_len, psk, psk_len, psk_id, psk_id_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
     return 0;
@@ -877,7 +880,7 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
                                  const EVP_HPKE_KDF *kdf,
                                  const EVP_HPKE_AEAD *aead, const uint8_t *enc,
                                  size_t enc_len, const uint8_t *info,
-                                 size_t info_len) {
+                                 size_t info_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
   EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
   ctx->kdf = kdf;
@@ -891,14 +894,19 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
 
   // STARTING IMPLEMENTATION OF THE PSK
   // SHOULD BE MODIFIED !!!!!
-  uint8_t *psk = default_psk;
-  uint8_t *psk_id = default_psk_id;
+  //uint8_t *psk = default_psk;
+  //uint8_t *psk_id = default_psk_id;
+  //uint8_t *psk_id = default_psk_id;
+  int mode = HPKE_MODE_BASE;
+  if(psk_len!= 0){
+    mode = HPKE_MODE_PSK;
+  }
   
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
       !hpke_key_schedule(
-          HPKE_MODE_BASE, ctx, shared_secret,
+          mode, ctx, shared_secret,
           (key->kem->public_key_len + key->kem->PQ_shared_secret_len), info,
-          info_len, psk, 0, psk_id, 0)) {
+          info_len, psk, psk_len, psk_id, psk_id_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
     return 0;
