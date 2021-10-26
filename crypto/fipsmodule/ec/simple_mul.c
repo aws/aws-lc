@@ -33,9 +33,9 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   ec_GFp_simple_point_copy(&precomp[1], p);
   for (size_t j = 2; j < OPENSSL_ARRAY_SIZE(precomp); j++) {
     if (j & 1) {
-        group->meth->add(group, &precomp[j], &precomp[1], &precomp[j - 1]);
+      ec_GFp_mont_add(group, &precomp[j], &precomp[1], &precomp[j - 1]);
     } else {
-        group->meth->dbl(group, &precomp[j], &precomp[j / 2]);
+      ec_GFp_mont_dbl(group, &precomp[j], &precomp[j / 2]);
     }
   }
 
@@ -44,7 +44,7 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   int r_is_at_infinity = 1;
   for (unsigned i = bits - 1; i < bits; i--) {
     if (!r_is_at_infinity) {
-        group->meth->dbl(group, r, r);
+      ec_GFp_mont_dbl(group, r, r);
     }
     if (i % 5 == 0) {
       // Compute the next window value.
@@ -67,7 +67,7 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
         ec_GFp_simple_point_copy(r, &tmp);
         r_is_at_infinity = 0;
       } else {
-          group->meth->add(group, r, r, &tmp);
+        ec_GFp_mont_add(group, r, r, &tmp);
       }
     }
   }
