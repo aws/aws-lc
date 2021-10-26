@@ -6,7 +6,6 @@
 from aws_cdk import core
 
 from cdk.bm_framework_stack import BmFrameworkStack
-from cdk.aws_lc_ci_shared_stack import AwsLcCISharedStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
@@ -34,9 +33,6 @@ LinuxDockerImageBatchBuildStack(app, "aws-lc-docker-image-build-linux", env=env)
 # # AWS CodeBuild cannot build Windows Docker images because DIND (Docker In Docker) is not supported on Windows.
 # # Windows Docker images are created by running commands in Windows EC2 instance.
 # WindowsDockerImageBuildStack(app, "aws-lc-docker-image-build-windows", env=env)
-
-# Define a stack to include AWS resources needed by this CI.
-AwsLcCISharedStack(app, "aws-lc-ci-shared")
 
 # Define CodeBuild Batch job for testing code.
 x86_build_spec_file = "./cdk/codebuild/github_ci_linux_x86_omnibus.yaml"
