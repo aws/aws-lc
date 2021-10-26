@@ -371,6 +371,10 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
     return 0;
   }
 
+  // We have to avoid the underlying |EVP_Digest| services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   int ret = 0;
   const size_t dh_len = DH_size(dh);
   uint8_t *shared_bytes = OPENSSL_malloc(dh_len);
@@ -392,6 +396,7 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
   ret = 1;
 
  err:
+  FIPS_service_indicator_unlock_state();
   OPENSSL_free(shared_bytes);
   return ret;
 }
