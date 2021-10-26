@@ -231,7 +231,7 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
   int r_is_at_infinity = 1;
   for (size_t k = wNAF_len - 1; k < wNAF_len; k--) {
     if (!r_is_at_infinity) {
-      group->meth->dbl(group, r, r);
+      ec_GFp_mont_dbl(group, r, r);
     }
 
     if (g_scalar != NULL && g_wNAF[k] != 0) {
@@ -240,7 +240,7 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
         ec_GFp_simple_point_copy(r, &tmp);
         r_is_at_infinity = 0;
       } else {
-        group->meth->add(group, r, r, &tmp);
+        ec_GFp_mont_add(group, r, r, &tmp);
       }
     }
 
@@ -251,7 +251,7 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
           ec_GFp_simple_point_copy(r, &tmp);
           r_is_at_infinity = 0;
         } else {
-        group->meth->add(group, r, r, &tmp);
+          ec_GFp_mont_add(group, r, r, &tmp);
         }
       }
     }
