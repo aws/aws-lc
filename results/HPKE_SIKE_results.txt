@@ -1,0 +1,18 @@
+
+
+-------------------------------------------------------
+ALGORITHM          ->   SIKE
+AEAD               ->   EVP_HPKE_AES_128_GCM
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+
+-------------------------------------------------------
+ALGORITHM          ->   SIKE
+AEAD               ->   EVP_HPKE_AES_256_GCM
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+
+-------------------------------------------------------
+ALGORITHM          ->   SIKE
+AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
+KDF                ->   EVP_HPKE_HKDF_SHA256

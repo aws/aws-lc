@@ -293,3 +293,113 @@ void print_text(std::vector<uint8_t> cleartext, int cleartext_len) {
   }
   printf("\n");
 }
+
+
+
+//STATISTICS AUX 
+
+
+
+float mean(unsigned long long array[], int n) {
+  int i;
+  unsigned long long sum = 0;
+  for (i = 0; i < n; i++)
+    sum = sum + array[i];
+  return ((float)sum / (float)n);
+}
+
+
+void sort_array(unsigned long long arr[], int n) {
+  unsigned long long temp;
+  int i, j;
+  for (i = n - 1; i >= 0; i--)
+    for (j = 0; j < i; j++)
+      if (arr[j] >= arr[j + 1]) {
+        temp = arr[j];
+        arr[j] = arr[j + 1];
+        arr[j + 1] = temp;
+      }
+}
+
+float median(unsigned long long array[], int n) {
+  sort_array(array, n);
+  if (n % 2 == 0)
+    return ((float)array[n / 2] + (float)array[n / 2 - 1]) / 2;
+  else
+    return (float)array[n / 2];
+}
+
+
+double standarddeviation(unsigned long long array[], const int n) {
+  int j;
+  double *max = (double*)malloc(sizeof(double)*n);
+  double  sum, variance, this_mean;
+
+  this_mean = mean(array, n);
+  sum = 0;
+  for (j = 0; j < n; j++) {
+    max[j] = pow((array[j] - this_mean), 2);
+    sum += max[j];
+  }
+  variance = sum / (j - 1);
+  free(max);
+  return sqrt(variance);
+}
+
+
+void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
+                         int quartiles_positions[4]) {
+  sort_array(arr, n);
+  double Q1 = n / 4.0;
+  double Q2 = (2 * n) / 4.0;
+  double Q3 = (3 * n) / 4.0;
+
+  int R1 = n / 4;
+  int R2 = (n * 2) / 4;
+  int R3 = (n * 3) / 4;
+
+  if ((Q1 - R1) == 0) {
+    // printf("First quartiles (Q1): %lld\n", arr[R1 - 1]);
+    quartiles[0] = arr[R1 - 1];
+    quartiles_positions[0] = R1 - 1;
+  } else {
+    float q1;
+    q1 = arr[R1 - 1] + (Q1 - R1) * ((arr[R1] - arr[R1 - 1]));
+    // printf("First quartiles (Q1): %.2f\n", q1);
+    quartiles[0] = q1;
+    quartiles_positions[0] = R1;
+  }
+  if ((Q2 - R2) == 0) {
+    // printf("Second quartiles (Q2): %lld\n", arr[R2 - 1]);
+    quartiles[1] = arr[R2 - 1];
+    quartiles_positions[1] = R2 - 1;
+  } else {
+    float q2;
+    q2 = arr[R2 - 1] + (Q2 - R2) * ((arr[R2] - arr[R2 - 1]));
+    // printf("Second quartiles (Q2): %.2f\n", q2);
+    quartiles[1] = q2;
+    quartiles_positions[1] = R2;
+  }
+  if ((Q3 - R3) == 0) {
+    // printf("Third quartiles (Q3): %lld\n", arr[R3 - 1]);
+    quartiles[2] = arr[R3 - 1];
+    quartiles_positions[2] = R3 - 1;
+  } else {
+    float q3;
+    q3 = arr[R3 - 1] + (Q3 - R3) * ((arr[R3] - arr[R3 - 1]));
+    // printf("Third quartiles (Q3): %.2f\n", q3);
+    quartiles[3] = q3;
+    quartiles_positions[2] = R3;
+  }
+  // printf("Forth quartiles (Q4): %lld\n", arr[n - 1]);
+  quartiles[3] = arr[n - 1];
+}
+
+float analyze(unsigned long long arr_cycles[], int quartile1_positions,
+              int quartile2_positions) {
+  unsigned long long mean = 0;
+  for (int i = quartile1_positions; i < quartile2_positions; i++) {
+    mean += arr_cycles[i];
+  }
+  return ((float)mean) / (float)(quartile2_positions - quartile1_positions);
+}

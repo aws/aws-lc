@@ -31,6 +31,8 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
+#define MAX_SHARED_SECRET_LEN SHA256_DIGEST_LENGTH
+
 #define HPKE_MODE 1
 
 // TEMPORARY!! WILL REMOVE AND CHANGE THE CODE IF WE WORK WITH AWS-LC/pq-crypto
@@ -307,7 +309,7 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
 
   if (!dhkem_extract_and_expand(
           kem->id, EVP_sha256(), out_shared_secret,
-          kem->public_key_len + kem->PQ_shared_secret_len, hybrid_ss,
+          SHA256_DIGEST_LENGTH, hybrid_ss,
           (kem->public_key_len + kem->PQ_shared_secret_len), kem_context,
           (2 * kem->public_key_len + kem->PQ_public_key_len +
            kem->PQ_ciphertext_len))) {
@@ -315,7 +317,7 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
   }
 
   *out_enc_len = kem->public_key_len + kem->PQ_ciphertext_len;
-  *out_shared_secret_len = kem->public_key_len + kem->PQ_shared_secret_len;
+  *out_shared_secret_len = SHA256_DIGEST_LENGTH;
 
   free(hybrid_ss);
   free(kem_context);
@@ -383,7 +385,7 @@ static int HPKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
       key->public_key + key->kem->public_key_len, key->kem->PQ_public_key_len);
   if (!dhkem_extract_and_expand(
           key->kem->id, EVP_sha256(), out_shared_secret,
-          key->kem->public_key_len + key->kem->PQ_shared_secret_len, hybrid_ss,
+          SHA256_DIGEST_LENGTH, hybrid_ss,
           key->kem->public_key_len + key->kem->PQ_shared_secret_len,
           kem_context,
           (2 * key->kem->public_key_len + key->kem->PQ_public_key_len +
@@ -399,7 +401,7 @@ static int HPKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
     */
 
   *out_shared_secret_len =
-      key->kem->public_key_len + key->kem->PQ_shared_secret_len;
+      SHA256_DIGEST_LENGTH;
 
   free(hybrid_ss);
   free(kem_context);
@@ -724,6 +726,7 @@ static int hpke_key_schedule(uint8_t mode, EVP_HPKE_CTX *ctx,
   */
 
 
+  //secret is s form the figures
   if (!hpke_labeled_extract(hkdf_md, secret, &secret_len, shared_secret,
                             shared_secret_len, suite_id, sizeof(suite_id),
                             "secret", psk, psk_len)) {
@@ -800,8 +803,8 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
 
   // May change later to add the value of the shared secret len x25519 (or other
   // ECC if added later ?? )
-  uint8_t *shared_secret = (uint8_t *)malloc(
-      sizeof(uint8_t) * kem->public_key_len + kem->PQ_shared_secret_len);
+  uint8_t *shared_secret =
+  (uint8_t *)malloc(sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
   size_t shared_secret_len;
 
 
@@ -886,8 +889,7 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
   ctx->kdf = kdf;
   ctx->aead = aead;
   uint8_t *shared_secret =
-      malloc(sizeof(uint8_t) *
-             (key->kem->public_key_len + key->kem->PQ_shared_secret_len));
+      malloc(sizeof(uint8_t) *SHA256_DIGEST_LENGTH);
   // uint8_t shared_secret[MAX_SHARED_SECRET_LEN];
   size_t shared_secret_len;
 
@@ -905,7 +907,7 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
       !hpke_key_schedule(
           mode, ctx, shared_secret,
-          (key->kem->public_key_len + key->kem->PQ_shared_secret_len), info,
+          shared_secret_len, info,
           info_len, psk, psk_len, psk_id, psk_id_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
@@ -937,7 +939,7 @@ int EVP_HPKE_CTX_setup_recipient_PSK(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
       !hpke_key_schedule(
           HPKE_MODE_PSK, ctx, shared_secret,
-          (key->kem->public_key_len + key->kem->PQ_shared_secret_len), info,
+          shared_secret_len, info,
           info_len, psk, psk_len, psk_id, psk_id_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);

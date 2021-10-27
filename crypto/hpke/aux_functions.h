@@ -71,3 +71,13 @@ void print_info(int aead, int kdf, int alg);
 void print_info_file(int aead, int kdf, int alg, std::ofstream& MyFile);
 void init_plaintext(uint8_t *plaintext, int size);
 void print_text(std::vector<uint8_t> cleartext, int cleartext_len);
+
+
+float mean(unsigned long long array[], int n);
+float median(unsigned long long array[], int n);
+void sort_array(unsigned long long arr[], int n);
+double standarddeviation(unsigned long long array[], const int n);
+void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
+                         int quartiles_positions[4]);
+float analyze(unsigned long long arr_cycles[], int quartile1_positions,
+                         int quartile2_positions);
