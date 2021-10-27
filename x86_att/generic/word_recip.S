@@ -24,7 +24,7 @@
 // The result is x' = ceil(2^128 / a) - 1, which except for the single
 // special case a = 2^63 is the same thing as x' = floor(2^128 / a).
 //
-// Standard x86 ABI: RDI = a, returns RAX
+// Standard x86-64 ABI: RDI = a, returns RAX
 // ----------------------------------------------------------------------------
 
 

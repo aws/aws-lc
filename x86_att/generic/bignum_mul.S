@@ -21,8 +21,8 @@
 //     (uint64_t k, uint64_t *z,
 //      uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 //
-// Does the "z := x * y" operation where x is m digits, y is n, result z is p.
-// Truncates the result in general unless p >= m + n
+// Does the "z := x * y" operation where x is m digits, y is n, result z is k.
+// Truncates the result in general unless k >= m + n
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y
 // ----------------------------------------------------------------------------

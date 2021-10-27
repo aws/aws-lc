@@ -90,7 +90,7 @@ bignum_deamont_p521:
 // this is just "if s >= p_521 then s - p_521 else s". First get
 // CF <=> s >= p_521, creating the digits [h,l] to add for the l part.
 
-                adds    xzr, u, 1
+                adds    xzr, u, #1
                 lsl     l, c, #9
                 adcs    xzr, d7, l
                 orr     d8, d8, #~0x1FF

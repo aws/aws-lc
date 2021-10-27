@@ -50,24 +50,6 @@
 #define a x3
 #define c x4
 
-#define accumdigit(dest,i)                                                  \
-        ldrb    dshort, [x, #8*i+7];                                        \
-        extr    dest, d, xzr, #8;                                           \
-        ldrb    dshort, [x, #8*i+6];                                        \
-        extr    dest, d, dest, #8;                                          \
-        ldrb    dshort, [x, #8*i+5];                                        \
-        extr    dest, d, dest, #8;                                          \
-        ldrb    dshort, [x, #8*i+4];                                        \
-        extr    dest, d, dest, #8;                                          \
-        ldrb    dshort, [x, #8*i+3];                                        \
-        extr    dest, d, dest, #8;                                          \
-        ldrb    dshort, [x, #8*i+2];                                        \
-        extr    dest, d, dest, #8;                                          \
-        ldrb    dshort, [x, #8*i+1];                                        \
-        extr    dest, d, dest, #8;                                          \
-        ldrb    dshort, [x, #8*i];                                        \
-        extr    dest, d, dest, #8
-
 // The reads and writes are organized in mirror-image pairs (0-3 and 1-2)
 // to allow x and z to point to the same buffer without using more
 // intermediate registers.
@@ -78,15 +60,79 @@ bignum_tobytes_4:
 
 // 0 and 3 words
 
-                accumdigit(a, 0)
-                accumdigit(c, 3)
+                ldrb    dshort, [x, #7]
+                extr    a, d, xzr, #8
+                ldrb    dshort, [x, #6]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #5]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #4]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #3]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #2]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #1]
+                extr    a, d, a, #8
+                ldrb    dshort, [x]
+                extr    a, d, a, #8
+
+                ldrb    dshort, [x, #31]
+                extr    c, d, xzr, #8
+                ldrb    dshort, [x, #30]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #29]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #28]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #27]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #26]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #25]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #24]
+                extr    c, d, c, #8
+
                 str     a, [z, #24]
                 str     c, [z]
 
 // 1 and 2 words
 
-                accumdigit(a, 1)
-                accumdigit(c, 2)
+                ldrb    dshort, [x, #15]
+                extr    a, d, xzr, #8
+                ldrb    dshort, [x, #14]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #13]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #12]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #11]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #10]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #9]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #8]
+                extr    a, d, a, #8
+
+                ldrb    dshort, [x, #23]
+                extr    c, d, xzr, #8
+                ldrb    dshort, [x, #22]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #21]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #20]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #19]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #18]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #17]
+                extr    c, d, c, #8
+                ldrb    dshort, [x, #16]
+                extr    c, d, c, #8
+
                 str     a, [z, #16]
                 str     c, [z, #8]
 
