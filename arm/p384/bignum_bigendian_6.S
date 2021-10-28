@@ -23,22 +23,22 @@
 // The same function is given two other prototypes whose names reflect the
 // treatment of one or other argument as a byte array rather than word array:
 //
-//    extern void bignum_frombytes_6
+//    extern void bignum_frombebytes_6
 //     (uint64_t z[static 6], uint8_t x[static 48]);
 //
-//    extern void bignum_tobytes_6
+//    extern void bignum_tobebytes_6
 //     (uint8_t z[static 48], uint64_t x[static 6]);
 //
 // The implementation works by loading in bytes and storing in words (i.e.
-// stylistically it is "frombytes"); in the more common little-endian
+// stylistically it is "frombebytes"); in the more common little-endian
 // usage of ARM, this is just byte reversal.
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
         .globl  bignum_bigendian_6
-        .globl  bignum_frombytes_6
-        .globl  bignum_tobytes_6
+        .globl  bignum_frombebytes_6
+        .globl  bignum_tobebytes_6
         .text
         .balign 4
 
@@ -55,8 +55,8 @@
 // intermediate registers.
 
 bignum_bigendian_6:
-bignum_frombytes_6:
-bignum_tobytes_6:
+bignum_frombebytes_6:
+bignum_tobebytes_6:
 
 // 0 and 5 words
 

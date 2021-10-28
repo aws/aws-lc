@@ -38,6 +38,7 @@ OBJ = bignum_add_p384.o \
       bignum_demont_p384.o \
       bignum_double_p384.o \
       bignum_half_p384.o \
+      bignum_littleendian_6.o \
       bignum_mod_n384.o \
       bignum_mod_n384_6.o \
       bignum_mod_p384.o \

@@ -16,7 +16,7 @@
 (* ========================================================================= *)
 (* Big-endian transformation (byte reversal in this little-endian model).    *)
 (* There are three different correctness variants corresponding to the three *)
-(* aliases with different types (bigendian, frombytes and tobytes).          *)
+(* aliases with different types (bigendian, frombebytes and tobebytes).      *)
 (* ========================================================================= *)
 
 (**** print_literal_from_elf "arm/p384/bignum_bigendian_6.o";;
@@ -133,10 +133,10 @@ let bignum_bigendian_6_mc =
 let BIGNUM_BIGENDIAN_6_EXEC = ARM_MK_EXEC_RULE bignum_bigendian_6_mc;;
 
 (* ------------------------------------------------------------------------- *)
-(* Proof as a "frombytes" function.                                          *)
+(* Proof as a "frombebytes" function.                                        *)
 (* ------------------------------------------------------------------------- *)
 
-let BIGNUM_FROMBYTES_6_CORRECT = time prove
+let BIGNUM_FROMBEBYTES_6_CORRECT = time prove
  (`!z x l pc.
       nonoverlapping (word pc,0x19c) (z,8 * 6) /\
       (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 6))
@@ -167,7 +167,7 @@ let BIGNUM_FROMBYTES_6_CORRECT = time prove
   REWRITE_TAC[DIMINDEX_128; DIMINDEX_64; DIMINDEX_32; DIMINDEX_8] THEN
   CONV_TAC NUM_REDUCE_CONV THEN ARITH_TAC);;
 
-let BIGNUM_FROMBYTES_6_SUBROUTINE_CORRECT = time prove
+let BIGNUM_FROMBEBYTES_6_SUBROUTINE_CORRECT = time prove
  (`!z x l pc returnaddress.
       nonoverlapping (word pc,0x19c) (z,8 * 6) /\
       (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 6))
@@ -182,13 +182,13 @@ let BIGNUM_FROMBYTES_6_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [PC; X2; X3; X4] ,,
            MAYCHANGE [memory :> bignum(z,6)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_BIGENDIAN_6_EXEC
-    BIGNUM_FROMBYTES_6_CORRECT);;
+    BIGNUM_FROMBEBYTES_6_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
-(* As a "tobytes" function.                                                  *)
+(* As a "tobebytes" function.                                                *)
 (* ------------------------------------------------------------------------- *)
 
-let BIGNUM_TOBYTES_6_CORRECT = time prove
+let BIGNUM_TOBEBYTES_6_CORRECT = time prove
  (`!z x n pc.
       nonoverlapping (word pc,0x19c) (z,8 * 6) /\
       (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 6))
@@ -207,13 +207,13 @@ let BIGNUM_TOBYTES_6_CORRECT = time prove
   ONCE_REWRITE_TAC[READ_BYTES_EQ_BYTELIST; READ_BYTELIST_EQ_BYTES] THEN
   REWRITE_TAC[LENGTH_REVERSE; LENGTH_BYTELIST_OF_NUM] THEN
   MP_TAC(ISPECL [`z:int64`; `x:int64`; `bytelist_of_num 48 n`; `pc:num`]
-        BIGNUM_FROMBYTES_6_CORRECT) THEN
+        BIGNUM_FROMBEBYTES_6_CORRECT) THEN
   ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
   CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
   MATCH_MP_TAC(REWRITE_RULE[IMP_CONJ] ENSURES_PRECONDITION_THM) THEN
   SIMP_TAC[]);;
 
-let BIGNUM_TOBYTES_6_SUBROUTINE_CORRECT = time prove
+let BIGNUM_TOBEBYTES_6_SUBROUTINE_CORRECT = time prove
  (`!z x n pc returnaddress.
       nonoverlapping (word pc,0x19c) (z,8 * 6) /\
       (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 6))
@@ -229,7 +229,7 @@ let BIGNUM_TOBYTES_6_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [PC; X2; X3; X4] ,,
            MAYCHANGE [memory :> bignum(z,6)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_BIGENDIAN_6_EXEC
-    BIGNUM_TOBYTES_6_CORRECT);;
+    BIGNUM_TOBEBYTES_6_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
 (* As a bignum-to-bignum operation.                                          *)
@@ -255,7 +255,7 @@ let BIGNUM_BIGENDIAN_6_CORRECT = time prove
   REWRITE_TAC[READ_BYTES_EQ_BYTELIST] THEN
   CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
   MP_TAC(ISPECL [`z:int64`; `x:int64`; `bytelist_of_num 48 n`; `pc:num`]
-        BIGNUM_FROMBYTES_6_CORRECT) THEN
+        BIGNUM_FROMBEBYTES_6_CORRECT) THEN
   ASM_REWRITE_TAC[] THEN
   MATCH_MP_TAC(REWRITE_RULE[IMP_CONJ] ENSURES_PRECONDITION_THM) THEN
   SIMP_TAC[]);;

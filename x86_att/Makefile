@@ -94,6 +94,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p256/bignum_demont_p256.o \
       p256/bignum_double_p256.o \
       p256/bignum_half_p256.o \
+      p256/bignum_littleendian_4.o \
       p256/bignum_mod_n256.o \
       p256/bignum_mod_n256_4.o \
       p256/bignum_mod_p256.o \
@@ -114,6 +115,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_demont_p384.o \
       p384/bignum_double_p384.o \
       p384/bignum_half_p384.o \
+      p384/bignum_littleendian_6.o \
       p384/bignum_mod_n384.o \
       p384/bignum_mod_n384_6.o \
       p384/bignum_mod_p384.o \

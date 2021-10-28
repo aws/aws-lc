@@ -187,11 +187,19 @@ extern uint64_t bignum_even (uint64_t k, uint64_t *x);
 
 // Convert 4-digit (256-bit) bignum from big-endian bytes
 // Input x[32] (bytes); output z[4]
-extern void bignum_frombytes_4 (uint64_t z[static 4], uint8_t x[static 32]);
+extern void bignum_frombebytes_4 (uint64_t z[static 4], uint8_t x[static 32]);
 
 // Convert 6-digit (384-bit) bignum from big-endian bytes
 // Input x[48] (bytes); output z[6]
-extern void bignum_frombytes_6 (uint64_t z[static 6], uint8_t x[static 48]);
+extern void bignum_frombebytes_6 (uint64_t z[static 6], uint8_t x[static 48]);
+
+// Convert 4-digit (256-bit) bignum from little-endian bytes
+// Input x[32] (bytes); output z[4]
+extern void bignum_fromlebytes_4 (uint64_t z[static 4], uint8_t x[static 32]);
+
+// Convert 6-digit (384-bit) bignum from little-endian bytes
+// Input x[48] (bytes); output z[6]
+extern void bignum_fromlebytes_6 (uint64_t z[static 6], uint8_t x[static 48]);
 
 // Compare bignums, x >= y
 // Inputs x[m], y[n]; output function return
@@ -236,6 +244,14 @@ extern void bignum_ksqr_32_64 (uint64_t z[static 64], uint64_t x[static 32], uin
 // Compare bignums, x <= y
 // Inputs x[m], y[n]; output function return
 extern uint64_t bignum_le (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+
+// Convert 4-digit (256-bit) bignum to/from little-endian form
+// Input x[4]; output z[4]
+extern void bignum_littleendian_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Convert 6-digit (384-bit) bignum to/from little-endian form
+// Input x[6]; output z[6]
+extern void bignum_littleendian_6 (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Compare bignums, x < y
 // Inputs x[m], y[n]; output function return
@@ -499,11 +515,19 @@ extern void bignum_sub_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_
 
 // Convert 4-digit (256-bit) bignum to big-endian bytes
 // Input x[4]; output z[32] (bytes)
-extern void bignum_tobytes_4 (uint8_t z[static 32], uint64_t x[static 4]);
+extern void bignum_tobebytes_4 (uint8_t z[static 32], uint64_t x[static 4]);
 
 // Convert 6-digit (384-bit) bignum to big-endian bytes
 // Input x[6]; output z[48] (bytes)
-extern void bignum_tobytes_6 (uint8_t z[static 48], uint64_t x[static 6]);
+extern void bignum_tobebytes_6 (uint8_t z[static 48], uint64_t x[static 6]);
+
+// Convert 4-digit (256-bit) bignum to little-endian bytes
+// Input x[4]; output z[32] (bytes)
+extern void bignum_tolebytes_4 (uint8_t z[static 32], uint64_t x[static 4]);
+
+// Convert 6-digit (384-bit) bignum to little-endian bytes
+// Input x[6]; output z[48] (bytes)
+extern void bignum_tolebytes_6 (uint8_t z[static 48], uint64_t x[static 6]);
 
 // Convert to Montgomery form z := (2^256 * x) mod p_256
 // Input x[4]; output z[4]

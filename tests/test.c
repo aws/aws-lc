@@ -104,8 +104,10 @@ enum {
        TEST_BIGNUM_EMONTREDC_8N,
        TEST_BIGNUM_EQ,
        TEST_BIGNUM_EVEN,
-       TEST_BIGNUM_FROMBYTES_4,
-       TEST_BIGNUM_FROMBYTES_6,
+       TEST_BIGNUM_FROMBEBYTES_4,
+       TEST_BIGNUM_FROMBEBYTES_6,
+       TEST_BIGNUM_FROMLEBYTES_4,
+       TEST_BIGNUM_FROMLEBYTES_6,
        TEST_BIGNUM_GE,
        TEST_BIGNUM_GT,
        TEST_BIGNUM_HALF_P256,
@@ -117,6 +119,8 @@ enum {
        TEST_BIGNUM_KSQR_16_32,
        TEST_BIGNUM_KSQR_32_64,
        TEST_BIGNUM_LE,
+       TEST_BIGNUM_LITTLEENDIAN_4,
+       TEST_BIGNUM_LITTLEENDIAN_6,
        TEST_BIGNUM_LT,
        TEST_BIGNUM_MADD,
        TEST_BIGNUM_MOD_N256,
@@ -182,8 +186,10 @@ enum {
        TEST_BIGNUM_SUB_P256,
        TEST_BIGNUM_SUB_P384,
        TEST_BIGNUM_SUB_P521,
-       TEST_BIGNUM_TOBYTES_4,
-       TEST_BIGNUM_TOBYTES_6,
+       TEST_BIGNUM_TOBEBYTES_4,
+       TEST_BIGNUM_TOBEBYTES_6,
+       TEST_BIGNUM_TOLEBYTES_4,
+       TEST_BIGNUM_TOLEBYTES_6,
        TEST_BIGNUM_TOMONT_P256,
        TEST_BIGNUM_TOMONT_P384,
        TEST_BIGNUM_TOMONT_P521,
@@ -804,6 +810,22 @@ void reference_bigendian(uint64_t k,uint64_t *z,uint64_t *x)
      (((uint64_t) (((uint8_t *) x)[8*i+5])) << 16) +
      (((uint64_t) (((uint8_t *) x)[8*i+6])) << 8) +
      (((uint64_t) (((uint8_t *) x)[8*i+7])) << 0);
+   }
+}
+
+void reference_littleendian(uint64_t k,uint64_t *z,uint64_t *x)
+{ uint64_t i;
+
+  for (i = 0; i < k; ++i)
+   { z[i] =
+     (((uint64_t) (((uint8_t *) x)[8*i+7])) << 56) +
+     (((uint64_t) (((uint8_t *) x)[8*i+6])) << 48) +
+     (((uint64_t) (((uint8_t *) x)[8*i+5])) << 40) +
+     (((uint64_t) (((uint8_t *) x)[8*i+4])) << 32) +
+     (((uint64_t) (((uint8_t *) x)[8*i+3])) << 24) +
+     (((uint64_t) (((uint8_t *) x)[8*i+2])) << 16) +
+     (((uint64_t) (((uint8_t *) x)[8*i+1])) << 8) +
+     (((uint64_t) (((uint8_t *) x)[8*i])) << 0);
    }
 }
 
@@ -2076,24 +2098,24 @@ int test_bignum_even(void)
   return 0;
 }
 
-int test_bignum_frombytes_4(void)
+int test_bignum_frombebytes_4(void)
 { uint64_t t;
-  printf("Testing bignum_frombytes_4 with %d cases\n",tests);
+  printf("Testing bignum_frombebytes_4 with %d cases\n",tests);
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
      reference_bigendian(4,b3,b0);
-     bignum_frombytes_4(b4,(uint8_t *)b0);
+     bignum_frombebytes_4(b4,(uint8_t *)b0);
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
-               "bignum_frombytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "bignum_frombebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64"] bignum_frombytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+      { printf("OK: [size %4"PRIu64"] bignum_frombebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
@@ -2102,24 +2124,76 @@ int test_bignum_frombytes_4(void)
   return 0;
 }
 
-int test_bignum_frombytes_6(void)
+int test_bignum_frombebytes_6(void)
 { uint64_t t;
-  printf("Testing bignum_frombytes_6 with %d cases\n",tests);
+  printf("Testing bignum_frombebytes_6 with %d cases\n",tests);
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
      reference_bigendian(6,b3,b0);
-     bignum_frombytes_6(b4,(uint8_t *)b0);
+     bignum_frombebytes_6(b4,(uint8_t *)b0);
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
-               "bignum_frombytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "bignum_frombebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64"] bignum_frombytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+      { printf("OK: [size %4"PRIu64"] bignum_frombebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_fromlebytes_4(void)
+{ uint64_t t;
+  printf("Testing bignum_fromlebytes_4 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     reference_littleendian(4,b3,b0);
+     bignum_fromlebytes_4(b4,(uint8_t *)b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_fromlebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_fromlebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_fromlebytes_6(void)
+{ uint64_t t;
+  printf("Testing bignum_fromlebytes_6 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(6,b0);
+     reference_littleendian(6,b3,b0);
+     bignum_fromlebytes_6(b4,(uint8_t *)b0);
+     c = reference_compare(6,b3,6,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_fromlebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_fromlebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
@@ -2422,6 +2496,58 @@ int test_bignum_le(void)
       { if (k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" <= %4"PRIu64" ]\n",k1,k2);
         else printf("OK: [sizes %4"PRIu64" <= %4"PRIu64"] ...0x%016"PRIx64" <= ...0x%016"PRIx64" <=> %"PRIx64"\n",
                     k1,k2,b0[0],b1[0],c1);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_littleendian_4(void)
+{ uint64_t t;
+  printf("Testing bignum_littleendian_4 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     reference_littleendian(4,b3,b0);
+     bignum_littleendian_4(b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_littleendian_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_littleendian_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_littleendian_6(void)
+{ uint64_t t;
+  printf("Testing bignum_littleendian_6 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(6,b0);
+     reference_littleendian(6,b3,b0);
+     bignum_littleendian_6(b4,b0);
+     c = reference_compare(6,b3,6,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_littleendian_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_littleendian_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
    }
   printf("All OK\n");
@@ -4498,24 +4624,24 @@ int test_bignum_sub_p521(void)
   return 0;
 }
 
-int test_bignum_tobytes_4(void)
+int test_bignum_tobebytes_4(void)
 { uint64_t t;
-  printf("Testing bignum_tobytes_4 with %d cases\n",tests);
+  printf("Testing bignum_tobebytes_4 with %d cases\n",tests);
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(4,b0);
      reference_bigendian(4,b3,b0);
-     bignum_tobytes_4((uint8_t *)b4,b0);
+     bignum_tobebytes_4((uint8_t *)b4,b0);
      c = reference_compare(4,b3,4,b4);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
-               "bignum_tobytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "bignum_tobebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64"] bignum_tobytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+      { printf("OK: [size %4"PRIu64"] bignum_tobebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
@@ -4524,24 +4650,76 @@ int test_bignum_tobytes_4(void)
   return 0;
 }
 
-int test_bignum_tobytes_6(void)
+int test_bignum_tobebytes_6(void)
 { uint64_t t;
-  printf("Testing bignum_tobytes_6 with %d cases\n",tests);
+  printf("Testing bignum_tobebytes_6 with %d cases\n",tests);
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(6,b0);
      reference_bigendian(6,b3,b0);
-     bignum_tobytes_6((uint8_t *)b4,b0);
+     bignum_tobebytes_6((uint8_t *)b4,b0);
      c = reference_compare(6,b3,6,b4);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
-               "bignum_tobytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "bignum_tobebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
         return 1;
       }
      else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64"] bignum_tobytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+      { printf("OK: [size %4"PRIu64"] bignum_tobebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_tolebytes_4(void)
+{ uint64_t t;
+  printf("Testing bignum_tolebytes_4 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     reference_littleendian(4,b3,b0);
+     bignum_tolebytes_4((uint8_t *)b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_tolebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_tolebytes_4(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_tolebytes_6(void)
+{ uint64_t t;
+  printf("Testing bignum_tolebytes_6 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(6,b0);
+     reference_littleendian(6,b3,b0);
+     bignum_tolebytes_6((uint8_t *)b4,b0);
+     c = reference_compare(6,b3,6,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_tolebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(6),b0[5],b0[0],b4[5],b4[0],b3[5],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_tolebytes_6(0x%016"PRIx64"...%016"PRIx64") = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(6),b0[5],b0[0],b4[5],b4[0]);
       }
@@ -4945,8 +5123,10 @@ int test_all()
   dotest(test_bignum_emontredc_8n);
   dotest(test_bignum_eq);
   dotest(test_bignum_even);
-  dotest(test_bignum_frombytes_4);
-  dotest(test_bignum_frombytes_6);
+  dotest(test_bignum_frombebytes_4);
+  dotest(test_bignum_frombebytes_6);
+  dotest(test_bignum_fromlebytes_4);
+  dotest(test_bignum_fromlebytes_6);
   dotest(test_bignum_ge);
   dotest(test_bignum_gt);
   dotest(test_bignum_half_p256);
@@ -4958,6 +5138,8 @@ int test_all()
   dotest(test_bignum_ksqr_16_32);
   dotest(test_bignum_ksqr_32_64);
   dotest(test_bignum_le);
+  dotest(test_bignum_littleendian_4);
+  dotest(test_bignum_littleendian_6);
   dotest(test_bignum_lt);
   dotest(test_bignum_madd);
   dotest(test_bignum_mod_n256);
@@ -5023,8 +5205,10 @@ int test_all()
   dotest(test_bignum_sub_p256);
   dotest(test_bignum_sub_p384);
   dotest(test_bignum_sub_p521);
-  dotest(test_bignum_tobytes_4);
-  dotest(test_bignum_tobytes_6);
+  dotest(test_bignum_tobebytes_4);
+  dotest(test_bignum_tobebytes_6);
+  dotest(test_bignum_tolebytes_4);
+  dotest(test_bignum_tolebytes_6);
   dotest(test_bignum_tomont_p256);
   dotest(test_bignum_tomont_p384);
   dotest(test_bignum_tomont_p521);
@@ -5096,8 +5280,10 @@ int test_allnonbmi()
   dotest(test_bignum_emontredc);
   dotest(test_bignum_eq);
   dotest(test_bignum_even);
-  dotest(test_bignum_frombytes_4);
-  dotest(test_bignum_frombytes_6);
+  dotest(test_bignum_frombebytes_4);
+  dotest(test_bignum_frombebytes_6);
+  dotest(test_bignum_fromlebytes_4);
+  dotest(test_bignum_fromlebytes_6);
   dotest(test_bignum_ge);
   dotest(test_bignum_gt);
   dotest(test_bignum_half_p256);
@@ -5105,6 +5291,8 @@ int test_allnonbmi()
   dotest(test_bignum_half_p521);
   dotest(test_bignum_iszero);
   dotest(test_bignum_le);
+  dotest(test_bignum_littleendian_4);
+  dotest(test_bignum_littleendian_6);
   dotest(test_bignum_lt);
   dotest(test_bignum_madd);
   dotest(test_bignum_mod_n256_4);
@@ -5151,8 +5339,10 @@ int test_allnonbmi()
   dotest(test_bignum_sub_p256);
   dotest(test_bignum_sub_p384);
   dotest(test_bignum_sub_p521);
-  dotest(test_bignum_tobytes_4);
-  dotest(test_bignum_tobytes_6);
+  dotest(test_bignum_tobebytes_4);
+  dotest(test_bignum_tobebytes_6);
+  dotest(test_bignum_tolebytes_4);
+  dotest(test_bignum_tolebytes_6);
   dotest(test_bignum_tomont_p521);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
@@ -5266,8 +5456,10 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_EMONTREDC_8N:    return test_bignum_emontredc_8n();
      case TEST_BIGNUM_EQ:              return test_bignum_eq();
      case TEST_BIGNUM_EVEN:            return test_bignum_even();
-     case TEST_BIGNUM_FROMBYTES_4:     return test_bignum_frombytes_4();
-     case TEST_BIGNUM_FROMBYTES_6:     return test_bignum_frombytes_6();
+     case TEST_BIGNUM_FROMBEBYTES_4:   return test_bignum_frombebytes_4();
+     case TEST_BIGNUM_FROMBEBYTES_6:   return test_bignum_frombebytes_6();
+     case TEST_BIGNUM_FROMLEBYTES_4:   return test_bignum_fromlebytes_4();
+     case TEST_BIGNUM_FROMLEBYTES_6:   return test_bignum_fromlebytes_6();
      case TEST_BIGNUM_GE:              return test_bignum_ge();
      case TEST_BIGNUM_GT:              return test_bignum_gt();
      case TEST_BIGNUM_HALF_P256:       return test_bignum_half_p256();
@@ -5279,6 +5471,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_KSQR_16_32:      return test_bignum_ksqr_16_32();
      case TEST_BIGNUM_KSQR_32_64:      return test_bignum_ksqr_32_64();
      case TEST_BIGNUM_LE:              return test_bignum_le();
+     case TEST_BIGNUM_LITTLEENDIAN_4:  return test_bignum_littleendian_4();
+     case TEST_BIGNUM_LITTLEENDIAN_6:  return test_bignum_littleendian_6();
      case TEST_BIGNUM_LT:              return test_bignum_lt();
      case TEST_BIGNUM_MADD:            return test_bignum_madd();
      case TEST_BIGNUM_MOD_N256:        return test_bignum_mod_n256();
@@ -5344,8 +5538,10 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_SUB_P256:        return test_bignum_sub_p256();
      case TEST_BIGNUM_SUB_P384:        return test_bignum_sub_p384();
      case TEST_BIGNUM_SUB_P521:        return test_bignum_sub_p521();
-     case TEST_BIGNUM_TOBYTES_4:       return test_bignum_tobytes_4();
-     case TEST_BIGNUM_TOBYTES_6:       return test_bignum_tobytes_6();
+     case TEST_BIGNUM_TOBEBYTES_4:     return test_bignum_tobebytes_4();
+     case TEST_BIGNUM_TOBEBYTES_6:     return test_bignum_tobebytes_6();
+     case TEST_BIGNUM_TOLEBYTES_4:     return test_bignum_tolebytes_4();
+     case TEST_BIGNUM_TOLEBYTES_6:     return test_bignum_tolebytes_6();
      case TEST_BIGNUM_TOMONT_P256:     return test_bignum_tomont_p256();
      case TEST_BIGNUM_TOMONT_P384:     return test_bignum_tomont_p384();
      case TEST_BIGNUM_TOMONT_P521:     return test_bignum_tomont_p521();

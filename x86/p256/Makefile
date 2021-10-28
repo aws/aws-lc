@@ -22,6 +22,7 @@ OBJ = bignum_add_p256.o \
       bignum_demont_p256.o \
       bignum_double_p256.o \
       bignum_half_p256.o \
+      bignum_littleendian_4.o \
       bignum_mod_n256.o \
       bignum_mod_n256_4.o \
       bignum_mod_p256.o \
