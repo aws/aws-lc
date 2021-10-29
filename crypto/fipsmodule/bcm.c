@@ -59,6 +59,8 @@
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
 #include "cipher/e_des.c"
+#include "cipher/e_aesccm.c"
+#include "cmac/cmac.c"
 #include "des/des.c"
 #include "dh/check.c"
 #include "dh/dh.c"
@@ -74,11 +76,17 @@
 #include "ec/p224-64.c"
 #include "ec/p256.c"
 #include "ec/p256-nistz.c"
+#include "ec/p384.c"
 #include "ec/scalar.c"
 #include "ec/simple.c"
 #include "ec/simple_mul.c"
 #include "ec/util.c"
 #include "ec/wnaf.c"
+#include "evp/digestsign.c"
+#include "evp/evp.c"
+#include "evp/evp_ctx.c"
+#include "evp/p_ec.c"
+#include "evp/p_rsa.c"
 #include "hmac/hmac.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
@@ -99,12 +107,12 @@
 #include "rsa/rsa_impl.c"
 #include "self_check/fips.c"
 #include "self_check/self_check.c"
+#include "service_indicator/service_indicator.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"
 #include "sha/sha512.c"
 #include "tls/kdf.c"
-
 
 #if defined(BORINGSSL_FIPS)
 
@@ -168,6 +176,11 @@ static void __attribute__((constructor))
 BORINGSSL_bcm_power_on_self_test(void) {
   CRYPTO_library_init();
 
+  if (jent_entropy_init()) {
+    fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
+    goto err;
+  }
+
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
   // .text section, which triggers the global-buffer overflow detection.
@@ -196,13 +209,15 @@ BORINGSSL_bcm_power_on_self_test(void) {
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
-#if defined(OPENSSL_AARCH64) || defined(OPENSSL_ANDROID)
+  // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
+  // check before the integrity check itself. So we first call the self-test
+  // before we calculate the hash of the module.
+  if (!boringssl_fips_self_test()) {
+    goto err;
+  }
+
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
-#else
-  uint8_t result[SHA512_DIGEST_LENGTH];
-  const EVP_MD *const kHashFunction = EVP_sha512();
-#endif
 
   static const uint8_t kHMACKey[64] = {0};
   unsigned result_len;
@@ -241,9 +256,6 @@ BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
-  if (!boringssl_fips_self_test(BORINGSSL_bcm_text_hash, sizeof(result))) {
-    goto err;
-  }
 #else
   if (!BORINGSSL_self_test()) {
     goto err;

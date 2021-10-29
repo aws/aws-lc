@@ -140,8 +140,14 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
                     const char *label, size_t label_len,
                     const uint8_t *seed1, size_t seed1_len,
                     const uint8_t *seed2, size_t seed2_len) {
+  // We have to avoid the underlying HMAC services updating the indicator state,
+  // so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
+  const EVP_MD *original_digest = digest;
   if (out_len == 0) {
-    return 1;
+    ret = 1;
+    goto end;
   }
 
   OPENSSL_memset(out, 0, out_len);
@@ -151,7 +157,7 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
     size_t secret_half = secret_len - (secret_len / 2);
     if (!tls1_P_hash(out, out_len, EVP_md5(), secret, secret_half, label,
                      label_len, seed1, seed1_len, seed2, seed2_len)) {
-      return 0;
+      goto end;
     }
 
     // Note that, if |secret_len| is odd, the two halves share a byte.
@@ -160,6 +166,12 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
     digest = EVP_sha1();
   }
 
-  return tls1_P_hash(out, out_len, digest, secret, secret_len, label, label_len,
+  ret = tls1_P_hash(out, out_len, digest, secret, secret_len, label, label_len,
                      seed1, seed1_len, seed2, seed2_len);
+end:
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    TLSKDF_verify_service_indicator(original_digest);
+  }
+  return ret;
 }

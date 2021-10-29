@@ -81,6 +81,13 @@
 extern "C" {
 #endif
 
+// ECDH_compute_shared_secret calculates the shared key between |pub_key| and |priv_key|.
+// This function is called internally by |ECDH_compute_key| and |ECDH_compute_key_fips|.
+// The shared secret is returned in |buf|, the value stored in |buflen| on entry is expected
+// to be EC_MAX_BYTES or the number of bytes of the field element of the underlying curve.
+// On exit, |buflen| is set to the actual number of bytes of the shared secret.
+int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub_key,
+                               const EC_KEY *priv_key);
 
 // EC internals.
 
@@ -466,6 +473,10 @@ struct ec_method_st {
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
 
+  // WARNING: It is not guaranteed that implementations of the below listed
+  // functions perform input parameter validation. Therefore, the parameters
+  // passed to the functions must not be NULL.
+
   // point_get_affine_coordinates sets |*x| and |*y| to the affine coordinates
   // of |p|. Either |x| or |y| may be NULL to omit it. It returns one on success
   // and zero if |p| is the point at infinity.
@@ -708,6 +719,7 @@ void ec_GFp_nistp_recode_scalar_bits(crypto_word_t *sign, crypto_word_t *digit,
 
 const EC_METHOD *EC_GFp_nistp224_method(void);
 const EC_METHOD *EC_GFp_nistp256_method(void);
+const EC_METHOD *EC_GFp_nistp384_method(void);
 
 // EC_GFp_nistz256_method is a GFp method using montgomery multiplication, with
 // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.

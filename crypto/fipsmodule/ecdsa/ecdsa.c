@@ -309,6 +309,9 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
+  // We have to avoid the underlying |SHA512_Final| services updating the
+  // indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   const BIGNUM *order = EC_GROUP_get0_order(group);
   const EC_SCALAR *priv_key = &eckey->priv_key->scalar;
 
@@ -323,6 +326,7 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   SHA512_Update(&sha, digest, digest_len);
   SHA512_Final(additional_data, &sha);
 
+  FIPS_service_indicator_unlock_state();
   for (;;) {
     EC_SCALAR k;
     if (!ec_random_nonzero_scalar(group, &k, additional_data)) {

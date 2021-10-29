@@ -489,12 +489,25 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(FIPS)
+  add_subdirectory(third_party/jitterentropy)
+endif()
+
 if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()
 
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
+  # DISABLE_GETAUXVAL builds the object file - bcm.o(the fips module) without
+  # the reference to `getauxval` on the Linux platforms(e.g. AL2 and Ubuntu 20.04).
+  # The `bcm.o` will be used later in another build on old Linux platforms where glibc
+  # prior to 2.16 does not have `getauxval` and `sys/auxv.h`.
+  # Warn: DISABLE_GETAUXVAL is currently only tested in the `shared` build on `x86_64`.
+  if(DISABLE_GETAUXVAL)
+    message(STATUS "NO_GETAUXVAL is enabled.")
+    add_definitions(-DNO_GETAUXVAL)
+  endif()
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
   endif()
@@ -505,6 +518,19 @@ if(FIPS)
     else()
       set(FIPS_DELOCATE "1")
     endif()
+  endif()
+  # Perform some validation when FIPS_VENDOR_AFFIRM_BCM_O_PATH is provided.
+  # Warn:
+  # aws-lc FIPS validation only covers AL2 and Ubuntu 20.04.
+  # FIPS_VENDOR_AFFIRM_BCM_O_PATH is to provide prebuilt bcm.o on some old Linux platforms.
+  if(FIPS_VENDOR_AFFIRM_BCM_O_PATH)
+    if(NOT BUILD_SHARED_LIBS)
+      message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_BCM_O_PATH currently only supports build with BUILD_SHARED_LIBS=1.")
+    endif()
+    if(NOT GCC)
+      message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_BCM_O_PATH currently only supports build with GCC compiler.")
+    endif()
+    message(STATUS "FIPS_VENDOR_AFFIRM_BCM_O_PATH ${FIPS_VENDOR_AFFIRM_BCM_O_PATH} is provided.")
   endif()
   if(FIPS_SHARED)
     # The Android CMake files set -ffunction-sections and -fdata-sections,
