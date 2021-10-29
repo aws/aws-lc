@@ -482,6 +482,10 @@ extern uint64_t bignum_shl_small (uint64_t k, uint64_t *z, uint64_t n, uint64_t 
 extern uint64_t bignum_shr_small (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t c);
 
 // Square, z := x^2
+// Input x[n]; output z[k]
+extern void bignum_sqr (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
+
+// Square, z := x^2
 // Input x[4]; output z[8]
 extern void bignum_sqr_4_8 (uint64_t z[static 8], uint64_t x[static 4]);
 

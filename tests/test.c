@@ -178,6 +178,7 @@ enum {
        TEST_BIGNUM_POW2,
        TEST_BIGNUM_SHL_SMALL,
        TEST_BIGNUM_SHR_SMALL,
+       TEST_BIGNUM_SQR,
        TEST_BIGNUM_SQR_4_8,
        TEST_BIGNUM_SQR_6_12,
        TEST_BIGNUM_SQR_8_16,
@@ -4406,6 +4407,36 @@ int test_bignum_shr_small(void)
   return 0;
 }
 
+int test_bignum_sqr(void)
+{ uint64_t t, j, k0, k2;
+  printf("Testing bignum_sqr with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { k0 = (unsigned) rand() % MAXSIZE;
+     k2 = (unsigned) rand() % MAXSIZE;
+     random_bignum(k0,b0);
+     random_bignum(k2,b2);
+     for (j = 0; j < k2; ++j) b3[j] = b2[j];
+     bignum_sqr(k2,b2,k0,b0);
+     reference_mul(k2,b3,k0,b0,k0,b0);
+     c = reference_compare(k2,b2,k2,b3);
+     if (c != 0)
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64"^2] "
+               "...0x%016"PRIx64" ^ 2 = ....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k2,k0,b0[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k0 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64"^2]\n",k2,k0);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64"^2] ...0x%016"PRIx64" ^ 2 = ...0x%016"PRIx64"\n",
+                    k2,k0,b0[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+
 int test_bignum_sqr_specific
   (uint64_t p,uint64_t n, char *name,
    void (*f)(uint64_t *,uint64_t *))
@@ -5197,6 +5228,7 @@ int test_all()
   dotest(test_bignum_pow2);
   dotest(test_bignum_shl_small);
   dotest(test_bignum_shr_small);
+  dotest(test_bignum_sqr);
   dotest(test_bignum_sqr_4_8);
   dotest(test_bignum_sqr_6_12);
   dotest(test_bignum_sqr_8_16);
@@ -5335,6 +5367,7 @@ int test_allnonbmi()
   dotest(test_bignum_pow2);
   dotest(test_bignum_shl_small);
   dotest(test_bignum_shr_small);
+  dotest(test_bignum_sqr);
   dotest(test_bignum_sub);
   dotest(test_bignum_sub_p256);
   dotest(test_bignum_sub_p384);
@@ -5530,6 +5563,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_POW2:            return test_bignum_pow2();
      case TEST_BIGNUM_SHL_SMALL:       return test_bignum_shl_small();
      case TEST_BIGNUM_SHR_SMALL:       return test_bignum_shr_small();
+     case TEST_BIGNUM_SQR:             return test_bignum_sqr();
      case TEST_BIGNUM_SQR_4_8:         return test_bignum_sqr_4_8();
      case TEST_BIGNUM_SQR_6_12:        return test_bignum_sqr_6_12();
      case TEST_BIGNUM_SQR_8_16:        return test_bignum_sqr_8_16();
