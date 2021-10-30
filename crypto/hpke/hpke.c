@@ -33,25 +33,27 @@
 
 #define MAX_SHARED_SECRET_LEN SHA256_DIGEST_LENGTH
 
-#define HPKE_MODE 1
 
-// TEMPORARY!! WILL REMOVE AND CHANGE THE CODE IF WE WORK WITH AWS-LC/pq-crypto
-// NOTE: RETURN VALUES FROM SIKE SUBROUTINES DIFFER FOR sike and pq-crypto DIRS
-// !!!! FOR NOW CHANGE THE CHECK TO if(sike_keypair(.., ..)<0), PREVIOUS WAS
-// if(!sike_keypair(.., ..))
-#define sike_p434_r3_crypto_kem_keypair crypto_kem_keypair_SIKEp434
-#define sike_p434_r3_crypto_kem_enc crypto_kem_enc_SIKEp434
-#define sike_p434_r3_crypto_kem_dec crypto_kem_dec_SIKEp434
+typedef int (*pq_crypto_keygen)(unsigned char *, unsigned char *);
+typedef int (*pq_crypto_enc)(unsigned char *, unsigned char *, const unsigned char *);
+typedef int (*pq_crypto_dec)(unsigned char *, const unsigned char *,
+                             const unsigned char *);
+pq_crypto_keygen pq_keygen[] = {&crypto_kem_keypair_SIKEp434,
+                                &crypto_kem_keypair_kyber, NULL};
+pq_crypto_enc pq_enc[] = {&crypto_kem_enc_SIKEp434, &crypto_kem_enc_kyber, NULL};
+pq_crypto_dec pq_dec[] = {&crypto_kem_dec_SIKEp434, &crypto_kem_dec_kyber, NULL};
 
 
-
-// can keep like that or can also change -> can make another struct for a
-// hpke_kem_st for hybrid specific ???
 struct evp_hpke_kem_st {
+  //NOTE!!!:
+  //Change the id -> if id(mod3)==2 -> ECC Only
+  //                 id id(mod3)==0 -> including SIKE
+  //                 id id(mod3)==1 -> including Kyber
   uint16_t id;
   size_t public_key_len;
   size_t private_key_len;
   size_t seed_len;  // THIS SEED SHOULD BE REMOVED IMO
+  //size_t share_secret_len;  // ADD IN CASE OTHER ECC SCHEMES ARE ALSO INTEGRATED
 
   // ADDING ECC+SIKE EXPRTIMENTAL
 
@@ -153,6 +155,7 @@ static int dhkem_extract_and_expand(uint16_t kem_id, const EVP_MD *hkdf_md,
                              kem_context_len);
 }
 
+
 static int HPKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                          size_t priv_key_len) {
   if (priv_key_len !=
@@ -163,56 +166,36 @@ static int HPKE_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
 
 
   // I want to change that to NOT PASSING THE SECRET KEY!!!
-  if (key->kem->id == 0x0020 || key->kem->id == 0x0022 ||
-      key->kem->id == 0x0024) {
+  if (key->kem->id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 || 
+  key->kem->id == EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 ||
+   key->kem->id == EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256) {
     OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
     X25519_public_from_private(key->public_key, priv_key);
   }
-
-  // OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
-  switch (key->kem->id) {
-    case 0x0022:
-    case 0x0021:
-      sike_p434_r3_crypto_kem_keypair(
-          key->public_key + key->kem->public_key_len,
+  if (key->kem->id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256){
+    // OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
+      pq_keygen[key->kem->id % SUPPORTED_PQ_ALGORITHMS](
+          (unsigned char *)key->public_key + key->kem->public_key_len,
           (unsigned char *)key->private_key + key->kem->private_key_len);
-      break;
-    case 0x0024:
-    case 0x0023:
-      crypto_kem_keypair_kyber(
-          key->public_key + key->kem->public_key_len,
-          (unsigned char *)key->private_key + key->kem->private_key_len);
-      break;
-    default:
-      // SHOULD COMPLETE
-      break;
   }
+
+  
   return 1;
 }
 
 
 static int HPKE_generate_key(EVP_HPKE_KEY *key) {
-  if (key->kem->id == 0x0020 || key->kem->id == 0x0022 ||
-      key->kem->id == 0x0024) {
+  if (key->kem->id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 || 
+  key->kem->id == EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 ||
+   key->kem->id == EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256) {
     X25519_keypair(key->public_key, key->private_key);
   }
-  switch (key->kem->id) {
-    case 0x0022:
-    case 0x0021:
-      sike_p434_r3_crypto_kem_keypair(
-          (unsigned char *)key->public_key + key->kem->public_key_len,
-          (unsigned char *)key->private_key + key->kem->private_key_len);
-      break;
-    case 0x0024:
-    case 0x0023:
-      crypto_kem_keypair_kyber(
-          (unsigned char *)key->public_key + key->kem->public_key_len,
-          (unsigned char *)key->private_key + key->kem->private_key_len);
-      break;
-    default:
-      // SHOULD COMPLETE
-      break;
-  }
+if (key->kem->id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256){
+  pq_keygen[(key->kem->id) % SUPPORTED_PQ_ALGORITHMS](
+      (unsigned char *)key->public_key + key->kem->public_key_len,
+      (unsigned char *)key->private_key + key->kem->private_key_len);
+}
+
   return 1;
 }
 
@@ -228,14 +211,18 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
     return 0;
   }
 
-  if ((kem->id == 0x0020 || kem->id == 0x0022 || kem->id == 0x0024) &&
+  if ((kem->id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 || 
+  kem->id == EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 ||
+  kem->id == EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256) &&
       seed_len != kem->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
   // create the public key for ECC
-  if (kem->id == 0x0020 || kem->id == 0x0022 || kem->id == 0x0024) {
+  if (kem->id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 || 
+  kem->id == EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 ||
+   kem->id == EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256) {
     X25519_public_from_private(out_enc, seed);
   }
 
@@ -246,7 +233,9 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-  if (kem->id == 0x0020 || kem->id == 0x0022 || kem->id == 0x0024) {
+  if (kem->id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 || 
+  kem->id == EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 ||
+  kem->id == EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256) {
     if (!X25519(hybrid_ss, seed, peer_public_key)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
       return 0;
@@ -254,7 +243,7 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
   }
 
   // add space for the SIKE pk's to the kem_context
-   //unsigned long long cycles;
+  // unsigned long long cycles;
   uint8_t *kem_context = malloc(sizeof(uint8_t) * (2 * kem->public_key_len +
                                                    kem->PQ_public_key_len +
                                                    kem->PQ_ciphertext_len));
@@ -268,37 +257,21 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-
+if (kem->id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256){
   int enc_res = 0;
-  switch (kem->id) {
-    case 0x0022:
-    case 0x0021:
-    //cycles = cpucycles();
-      enc_res = sike_p434_r3_crypto_kem_enc(
+
+      // cycles = cpucycles();
+      enc_res = pq_enc[kem->id % SUPPORTED_PQ_ALGORITHMS](
           out_enc + kem->public_key_len, hybrid_ss + kem->public_key_len,
           peer_public_key + kem->public_key_len);
-          //cycles = cpucycles() - cycles;
-      //printf("CYCLES ONLY SIKE ENCAPSULATION %llu \n ", cycles);
-      break;
-    case 0x0024:
-    case 0x0023:
-       //cycles = cpucycles();                   
-      enc_res = crypto_kem_enc_kyber(out_enc + kem->public_key_len,
-                                     hybrid_ss + kem->public_key_len,
-                                     peer_public_key + kem->public_key_len);
-
-        //cycles = cpucycles() - cycles;
-       //printf("CYCLES ONLY KYBER ENCAPSULATION %llu \n ", cycles);
-      break;
-    default:
-      // SHOULD COMPLETE
-      break;
-  }
+      // cycles = cpucycles() - cycles;
+      // printf("CYCLES ONLY SIKE ENCAPSULATION %llu \n ", cycles);
 
   if (enc_res < 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
+}
 
   OPENSSL_memcpy(kem_context + 2 * kem->public_key_len,
                  out_enc + kem->public_key_len, kem->PQ_ciphertext_len);
@@ -308,9 +281,9 @@ static int HPKE_encap_with_seed(const EVP_HPKE_KEM *kem,
 
 
   if (!dhkem_extract_and_expand(
-          kem->id, EVP_sha256(), out_shared_secret,
-          SHA256_DIGEST_LENGTH, hybrid_ss,
-          (kem->public_key_len + kem->PQ_shared_secret_len), kem_context,
+          kem->id, EVP_sha256(), out_shared_secret, SHA256_DIGEST_LENGTH,
+          hybrid_ss, (kem->public_key_len + kem->PQ_shared_secret_len),
+          kem_context,
           (2 * kem->public_key_len + kem->PQ_public_key_len +
            kem->PQ_ciphertext_len))) {
     return 0;
@@ -336,8 +309,9 @@ static int HPKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-  if (key->kem->id == 0x0020 || key->kem->id == 0x0022 ||
-      key->kem->id == 0x0024) {
+  if (key->kem->id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 || 
+  key->kem->id == EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 ||
+   key->kem->id == EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256) {
     if (!X25519(hybrid_ss, key->private_key, enc)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
       return 0;
@@ -352,56 +326,30 @@ static int HPKE_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
   OPENSSL_memcpy(kem_context + key->kem->public_key_len, key->public_key,
                  key->kem->public_key_len);
 
-
+if (key->kem->id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256){
   int enc_res = 0;
-  switch (key->kem->id) {
-    case 0x0022:
-    case 0x0021:
-      enc_res = sike_p434_r3_crypto_kem_dec(
+      enc_res = pq_dec[key->kem->id % SUPPORTED_PQ_ALGORITHMS](
           hybrid_ss + key->kem->public_key_len, enc + key->kem->public_key_len,
           key->private_key + key->kem->private_key_len);
-      break;
-    case 0x0023:
-    case 0x0024:
-      enc_res = crypto_kem_dec_kyber(
-          hybrid_ss + key->kem->public_key_len, enc + key->kem->public_key_len,
-          key->private_key + key->kem->private_key_len);
-      break;
-    default:
-      // SHOULD COMPLETE
-      break;
-  }
-
-
   if (enc_res < 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-
+}
   OPENSSL_memcpy(kem_context + 2 * key->kem->public_key_len,
                  enc + key->kem->public_key_len, key->kem->PQ_ciphertext_len);
   OPENSSL_memcpy(
       kem_context + 2 * key->kem->public_key_len + key->kem->PQ_ciphertext_len,
       key->public_key + key->kem->public_key_len, key->kem->PQ_public_key_len);
   if (!dhkem_extract_and_expand(
-          key->kem->id, EVP_sha256(), out_shared_secret,
-          SHA256_DIGEST_LENGTH, hybrid_ss,
-          key->kem->public_key_len + key->kem->PQ_shared_secret_len,
+          key->kem->id, EVP_sha256(), out_shared_secret, SHA256_DIGEST_LENGTH,
+          hybrid_ss, key->kem->public_key_len + key->kem->PQ_shared_secret_len,
           kem_context,
           (2 * key->kem->public_key_len + key->kem->PQ_public_key_len +
            key->kem->PQ_ciphertext_len))) {
     return 0;
   }
-  /*
-  for (int i =  0 ; i < 2* X25519_PUBLIC_VALUE_LEN + 2*
-  SIKE_P434_R3_PUBLIC_KEY_BYTES; i++)
-    {
-      printf("SIKE_ss_receiver %x \n", (kem_context)[i]);
-    }
-    */
-
-  *out_shared_secret_len =
-      SHA256_DIGEST_LENGTH;
+  *out_shared_secret_len = SHA256_DIGEST_LENGTH;
 
   free(hybrid_ss);
   free(kem_context);
@@ -650,16 +598,19 @@ static int hpke_build_suite_id(const EVP_HPKE_CTX *ctx,
 static int hpke_key_schedule(uint8_t mode, EVP_HPKE_CTX *ctx,
                              const uint8_t *shared_secret,
                              size_t shared_secret_len, const uint8_t *info,
-                             size_t info_len, const uint8_t *psk, size_t psk_len, const uint8_t *psk_id, size_t psk_id_len) {
+                             size_t info_len, const uint8_t *psk,
+                             size_t psk_len, const uint8_t *psk_id,
+                             size_t psk_id_len) {
   // INSERT THE CHECK HERE; MAY TAKE IT OUT AS A DIFFERENT FUNCTION LATER
-  if ((!(psk == NULL) && (psk_id == NULL)) || (psk == NULL && (!(psk_id == NULL)))){
-            OPENSSL_PUT_ERROR(EVP, EVP_R_INCONSISTENT_PSK_INPUTS);
-            printf("raise Exception(Inconsistent PSK inputs)\n");
+  if ((!(psk == NULL) && (psk_id == NULL)) ||
+      (psk == NULL && (!(psk_id == NULL)))) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INCONSISTENT_PSK_INPUTS);
+    printf("raise Exception(Inconsistent PSK inputs)\n");
   }
-  if(mode == HPKE_MODE_BASE && psk != NULL ){
+  if (mode == HPKE_MODE_BASE && psk != NULL) {
     printf("raise Exception(PSK input provided when not needed)\n");
   }
-  if(mode == HPKE_MODE_PSK && psk == NULL ){
+  if (mode == HPKE_MODE_PSK && psk == NULL) {
     printf("raise Exception(Missing required PSK input)\n");
   }
 
@@ -688,7 +639,8 @@ static int hpke_key_schedule(uint8_t mode, EVP_HPKE_CTX *ctx,
   uint8_t psk_id_hash[EVP_MAX_MD_SIZE];
   size_t psk_id_hash_len;
   if (!hpke_labeled_extract(hkdf_md, psk_id_hash, &psk_id_hash_len, NULL, 0,
-                            suite_id, sizeof(suite_id), "psk_id_hash", psk_id, psk_id_len )) {
+                            suite_id, sizeof(suite_id), "psk_id_hash", psk_id,
+                            psk_id_len)) {
     return 0;
   }
 
@@ -726,7 +678,7 @@ static int hpke_key_schedule(uint8_t mode, EVP_HPKE_CTX *ctx,
   */
 
 
-  //secret is s form the figures
+  // secret is s form the figures
   if (!hpke_labeled_extract(hkdf_md, secret, &secret_len, shared_secret,
                             shared_secret_len, suite_id, sizeof(suite_id),
                             "secret", psk, psk_len)) {
@@ -783,7 +735,8 @@ int EVP_HPKE_CTX_setup_sender(EVP_HPKE_CTX *ctx, uint8_t *out_enc,
 
   int ret_value = EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
       ctx, out_enc, out_enc_len, max_enc, kem, kdf, aead, peer_public_key,
-      peer_public_key_len, info, info_len, seed, kem->seed_len, NULL, 0, NULL, 0);
+      peer_public_key_len, info, info_len, seed, kem->seed_len, NULL, 0, NULL,
+      0);
   free(seed);
   return ret_value;
 }
@@ -792,8 +745,9 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *info, size_t info_len, const uint8_t *seed,
-    size_t seed_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len,
+    const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
+    size_t psk_id_len) {
   EVP_HPKE_CTX_zero(ctx);
 
   ctx->is_sender = 1;
@@ -804,17 +758,17 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
   // May change later to add the value of the shared secret len x25519 (or other
   // ECC if added later ?? )
   uint8_t *shared_secret =
-  (uint8_t *)malloc(sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+      (uint8_t *)malloc(sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
   size_t shared_secret_len;
 
 
 
   // STARTING IMPLEMENTATION OF THE PSK
   // SHOULD BE MODIFIED !!!!!
-  //uint8_t *psk = default_psk;
-  //uint8_t *psk_id = default_psk_id;
+  // uint8_t *psk = default_psk;
+  // uint8_t *psk_id = default_psk_id;
   int mode = HPKE_MODE_BASE;
-  if(psk_len!= 0){
+  if (psk_len != 0) {
     mode = HPKE_MODE_PSK;
   }
 
@@ -839,8 +793,9 @@ int EVP_HPKE_CTX_setup_sender_PSK(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *info, size_t info_len, const uint8_t *seed,
-    size_t seed_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len,
+    const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
+    size_t psk_id_len) {
   EVP_HPKE_CTX_zero(ctx);
 
   ctx->is_sender = 1;
@@ -857,22 +812,22 @@ int EVP_HPKE_CTX_setup_sender_PSK(
   if (!kem->encap_with_seed(kem, shared_secret, &shared_secret_len, out_enc,
                             out_enc_len, max_enc, peer_public_key,
                             peer_public_key_len, seed, seed_len) ||
-      !hpke_key_schedule(HPKE_MODE_PSK, ctx, shared_secret, shared_secret_len, info,
-                         info_len, psk, psk_len, psk_id, psk_id_len)) {
+      !hpke_key_schedule(HPKE_MODE_PSK, ctx, shared_secret, shared_secret_len,
+                         info, info_len, psk, psk_len, psk_id, psk_id_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
     return 0;
   }
-/*
-  for (int i = 0; i < (int) *out_enc_len; i++)
-  {
-    printf("enc %x  ", out_enc[i]);
-  }
-  for (int i = 0; i < (int) shared_secret_len; i++)
-  {
-    printf("ss %x  ",  shared_secret[i]);
-  }
-  */
+  /*
+    for (int i = 0; i < (int) *out_enc_len; i++)
+    {
+      printf("enc %x  ", out_enc[i]);
+    }
+    for (int i = 0; i < (int) shared_secret_len; i++)
+    {
+      printf("ss %x  ",  shared_secret[i]);
+    }
+    */
 
   free(shared_secret);
 
@@ -883,32 +838,31 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
                                  const EVP_HPKE_KDF *kdf,
                                  const EVP_HPKE_AEAD *aead, const uint8_t *enc,
                                  size_t enc_len, const uint8_t *info,
-                                 size_t info_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
+                                 size_t info_len, const uint8_t *psk,
+                                 size_t psk_len, const uint8_t *psk_id,
+                                 size_t psk_id_len) {
   EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
   ctx->kdf = kdf;
   ctx->aead = aead;
-  uint8_t *shared_secret =
-      malloc(sizeof(uint8_t) *SHA256_DIGEST_LENGTH);
+  uint8_t *shared_secret = malloc(sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
   // uint8_t shared_secret[MAX_SHARED_SECRET_LEN];
   size_t shared_secret_len;
 
 
   // STARTING IMPLEMENTATION OF THE PSK
   // SHOULD BE MODIFIED !!!!!
-  //uint8_t *psk = default_psk;
-  //uint8_t *psk_id = default_psk_id;
-  //uint8_t *psk_id = default_psk_id;
+  // uint8_t *psk = default_psk;
+  // uint8_t *psk_id = default_psk_id;
+  // uint8_t *psk_id = default_psk_id;
   int mode = HPKE_MODE_BASE;
-  if(psk_len!= 0){
+  if (psk_len != 0) {
     mode = HPKE_MODE_PSK;
   }
-  
+
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
-      !hpke_key_schedule(
-          mode, ctx, shared_secret,
-          shared_secret_len, info,
-          info_len, psk, psk_len, psk_id, psk_id_len)) {
+      !hpke_key_schedule(mode, ctx, shared_secret, shared_secret_len, info,
+                         info_len, psk, psk_len, psk_id, psk_id_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
     return 0;
@@ -919,10 +873,12 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
 
 
 int EVP_HPKE_CTX_setup_recipient_PSK(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
-                                 const EVP_HPKE_KDF *kdf,
-                                 const EVP_HPKE_AEAD *aead, const uint8_t *enc,
-                                 size_t enc_len, const uint8_t *info,
-                                 size_t info_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len) {
+                                     const EVP_HPKE_KDF *kdf,
+                                     const EVP_HPKE_AEAD *aead,
+                                     const uint8_t *enc, size_t enc_len,
+                                     const uint8_t *info, size_t info_len,
+                                     const uint8_t *psk, size_t psk_len,
+                                     const uint8_t *psk_id, size_t psk_id_len) {
   EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
   ctx->kdf = kdf;
@@ -935,12 +891,9 @@ int EVP_HPKE_CTX_setup_recipient_PSK(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
 
 
 
-
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
-      !hpke_key_schedule(
-          HPKE_MODE_PSK, ctx, shared_secret,
-          shared_secret_len, info,
-          info_len, psk, psk_len, psk_id, psk_id_len)) {
+      !hpke_key_schedule(HPKE_MODE_PSK, ctx, shared_secret, shared_secret_len,
+                         info, info_len, psk, psk_len, psk_id, psk_id_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     free(shared_secret);
     return 0;

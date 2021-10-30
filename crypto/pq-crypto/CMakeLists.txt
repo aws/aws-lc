@@ -20,6 +20,7 @@ include_directories(../../include)
 add_subdirectory(sike_r3)
 
 
+
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some

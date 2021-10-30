@@ -46,12 +46,13 @@ extern "C" {
 // represented by |EVP_HPKE_KEM|, |EVP_HPKE_KDF|, and |EVP_HPKE_AEAD| types,
 // respectively.
 
+#define SUPPORTED_PQ_ALGORITHMS 2
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
-#define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0021
-#define EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 0x0022
+#define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0022
+#define EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 0x0024
 #define EVP_HPKE_PQKEM_KYBER_HKDF_SHA256   0x0023
-#define EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256   0x0024
+#define EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256   0x0025
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
