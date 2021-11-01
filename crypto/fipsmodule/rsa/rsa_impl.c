@@ -1404,6 +1404,10 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
             BN_set_word(e, RSA_F4) &&
             RSA_generate_key_ex_maybe_fips(rsa, bits, e, cb, /*check_fips=*/1);
   BN_free(e);
+  if(ret) {
+    // Approved key size check step is already done at start of function.
+    FIPS_service_indicator_update_state();
+  }
   return ret;
 }
 

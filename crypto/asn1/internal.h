@@ -62,6 +62,7 @@
 #include <time.h>
 
 #include <openssl/asn1.h>
+#include <openssl/asn1t.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -105,6 +106,25 @@ struct asn1_object_st {
   const unsigned char *data; /* data remains const after init */
   int flags;                 /* Should we free this one */
 };
+
+ASN1_OBJECT *ASN1_OBJECT_new(void);
+
+// ASN1_ENCODING structure: this is used to save the received
+// encoding of an ASN1 type. This is useful to get round
+// problems with invalid encodings which can break signatures.
+typedef struct ASN1_ENCODING_st {
+  unsigned char *enc;  // DER encoding
+  long len;            // Length of encoding
+  int modified;        // set to 1 if 'enc' is invalid
+  // alias_only is zero if |enc| owns the buffer that it points to
+  // (although |enc| may still be NULL). If one, |enc| points into a
+  // buffer that is owned elsewhere.
+  unsigned alias_only : 1;
+  // alias_only_on_next_parse is one iff the next parsing operation
+  // should avoid taking a copy of the input and rather set
+  // |alias_only|.
+  unsigned alias_only_on_next_parse : 1;
+} ASN1_ENCODING;
 
 int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
 int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d);
@@ -174,6 +194,27 @@ const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
 /* asn1_is_printable returns one if |value| is a valid Unicode codepoint for an
  * ASN.1 PrintableString, and zero otherwise. */
 int asn1_is_printable(uint32_t value);
+
+/* asn1_bit_string_length returns the number of bytes in |str| and sets
+ * |*out_padding_bits| to the number of padding bits.
+ *
+ * This function should be used instead of |ASN1_STRING_length| to correctly
+ * handle the non-|ASN1_STRING_FLAG_BITS_LEFT| case. */
+int asn1_bit_string_length(const ASN1_BIT_STRING *str,
+                           uint8_t *out_padding_bits);
+
+typedef struct {
+  int nid;
+  long minsize;
+  long maxsize;
+  unsigned long mask;
+  unsigned long flags;
+} ASN1_STRING_TABLE;
+
+/* asn1_get_string_table_for_testing sets |*out_ptr| and |*out_len| to the table
+ * of built-in |ASN1_STRING_TABLE| values. It is exported for testing. */
+OPENSSL_EXPORT void asn1_get_string_table_for_testing(
+    const ASN1_STRING_TABLE **out_ptr, size_t *out_len);
 
 
 #if defined(__cplusplus)

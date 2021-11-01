@@ -129,13 +129,17 @@ endif()
 add_subdirectory(fipsmodule)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
+  set(FIPS_BCM_OBJ "fipsmodule/bcm.o")
+  if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_BCM_O_PATH)
+    set(FIPS_BCM_OBJ "${FIPS_VENDOR_AFFIRM_BCM_O_PATH}")
+  endif()
+  SET_SOURCE_FILES_PROPERTIES(${FIPS_BCM_OBJ} PROPERTIES EXTERNAL_OBJECT true)
+  SET_SOURCE_FILES_PROPERTIES(${FIPS_BCM_OBJ} PROPERTIES GENERATED true)
 
   set(
     CRYPTO_FIPS_OBJECTS
 
-    fipsmodule/bcm.o
+    ${FIPS_BCM_OBJ}
   )
 endif()
 
@@ -249,7 +253,6 @@ add_library(
   asn1/asn1_lib.c
   asn1/asn1_par.c
   asn1/asn_pack.c
-  asn1/f_enum.c
   asn1/f_int.c
   asn1/f_string.c
   asn1/tasn_dec.c
@@ -282,7 +285,6 @@ add_library(
   chacha/chacha.c
   cipher_extra/cipher_extra.c
   cipher_extra/derive_key.c
-  cipher_extra/e_aesccm.c
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
@@ -291,7 +293,6 @@ add_library(
   cipher_extra/e_rc4.c
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
-  cmac/cmac.c
   conf/conf.c
   cpu-aarch64-fuchsia.c
   cpu-aarch64-linux.c
@@ -316,23 +317,19 @@ add_library(
   err/err.c
   err_data.c
   engine/engine.c
-  evp/digestsign.c
-  evp/evp.c
-  evp/evp_asn1.c
-  evp/evp_ctx.c
-  evp/p_dsa_asn1.c
-  evp/p_ec.c
-  evp/p_ec_asn1.c
-  evp/p_ed25519.c
-  evp/p_ed25519_asn1.c
-  evp/p_rsa.c
-  evp/p_rsa_asn1.c
-  evp/p_x25519.c
-  evp/p_x25519_asn1.c
-  evp/pbkdf.c
-  evp/print.c
-  evp/scrypt.c
-  evp/sign.c
+  evp_extra/evp_asn1.c
+  evp_extra/p_dsa_asn1.c
+  evp_extra/p_ec_asn1.c
+  evp_extra/p_ed25519.c
+  evp_extra/p_ed25519_asn1.c
+  evp_extra/p_rsa_asn1.c
+  evp_extra/p_x25519.c
+  evp_extra/p_x25519_asn1.c
+  evp_extra/p_methods.c
+  evp_extra/pbkdf.c
+  evp_extra/print.c
+  evp_extra/scrypt.c
+  evp_extra/sign.c
   ex_data.c
   hkdf/hkdf.c
   hpke/hpke.c
@@ -365,7 +362,6 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/forkunsafe.c
   rand_extra/fuchsia.c
-  rand_extra/passive.c
   rand_extra/rand_extra.c
   rand_extra/windows.c
   rc4/rc4.c
@@ -470,22 +466,18 @@ add_library(
 )
 
 if(FIPS_SHARED)
-  set(EXTRA_INJECT_HASH_ARGS)
-  if((${ARCH} STREQUAL "aarch64") OR ANDROID)
-    set(EXTRA_INJECT_HASH_ARGS "-sha256")
-  endif()
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
   # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
   add_custom_command(
     TARGET crypto POST_BUILD
     COMMAND ${GO_EXECUTABLE} run
-    ${CMAKE_CURRENT_SOURCE_DIR}/../util/fipstools/inject_hash/inject_hash.go
-    -o libcrypto.so -in-object libcrypto.so ${EXTRA_INJECT_HASH_ARGS}
+    ${CMAKE_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+    -o ${CMAKE_CURRENT_BINARY_DIR}/libcrypto.so -in-object ${CMAKE_CURRENT_BINARY_DIR}/libcrypto.so -sha256
     # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
     # go_executable isn't used (as it doesn't get built), but we list this
     # dependency anyway in case it starts working in some CMake version.
     DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
 endif()
 
@@ -502,6 +494,10 @@ if(WIN32)
 endif()
 if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(crypto pthread)
+endif()
+
+if(FIPS)
+  target_link_libraries(crypto jitterentropy)
 endif()
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
@@ -531,6 +527,13 @@ if(BUILD_TESTING)
     fipsmodule/rand/urandom_test.cc
   )
 
+  # When using CPU Jitter as the entropy source (only in FIPS build)
+  # urandom_test should not be performed so we pass the compilation flag
+  # and handle it in urandom_test.cc
+  if(JITTER_ENTROPY)
+    target_compile_options(urandom_test PUBLIC -DJITTER_ENTROPY)
+  endif()
+
   target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
 
   add_dependencies(urandom_test global_target)
@@ -549,7 +552,6 @@ if(BUILD_TESTING)
     chacha/chacha_test.cc
     cipher_extra/aead_test.cc
     cipher_extra/cipher_test.cc
-    cmac/cmac_test.cc
     compiler_test.cc
     conf/conf_test.cc
     constant_time_test.cc
@@ -563,19 +565,22 @@ if(BUILD_TESTING)
     digest_extra/digest_test.cc
     dsa/dsa_test.cc
     err/err_test.cc
-    evp/evp_extra_test.cc
-    evp/evp_test.cc
-    evp/pbkdf_test.cc
-    evp/scrypt_test.cc
+    evp_extra/evp_extra_test.cc
+    evp_extra/evp_test.cc
+    evp_extra/pbkdf_test.cc
+    evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
+    fipsmodule/cmac/cmac_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
+    fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     hkdf/hkdf_test.cc
     hpke/hpke_test.cc
@@ -613,6 +618,10 @@ if(BUILD_TESTING)
   add_dependencies(crypto_test global_target)
 
   target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
+  if(FIPS)
+    target_link_libraries(crypto_test jitterentropy)
+    add_dependencies(crypto_test jitterentropy)
+  endif()
   if(WIN32)
     target_link_libraries(crypto_test ws2_32)
   endif()

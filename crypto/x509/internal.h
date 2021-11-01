@@ -63,6 +63,8 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
+#include "../asn1/internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -70,10 +72,12 @@ extern "C" {
 
 /* Internal structures. */
 
-struct X509_val_st {
+typedef struct X509_val_st {
   ASN1_TIME *notBefore;
   ASN1_TIME *notAfter;
-} /* X509_VAL */;
+} X509_VAL;
+
+DECLARE_ASN1_FUNCTIONS(X509_VAL)
 
 struct X509_pubkey_st {
   X509_ALGOR *algor;
@@ -353,6 +357,8 @@ struct x509_store_ctx_st {
 
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
+
+ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
 
 
 /* RSA-PSS functions. */
