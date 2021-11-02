@@ -19,8 +19,14 @@ endif()
 if(ANDROID)
   # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
-  string( REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
-  string( REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" )
+  string(FIND ${CMAKE_CXX_FLAGS} "noexecstack" CXX_EXTRA_WA)
+  string(FIND ${CMAKE_C_FLAGS} "noexecstack" C_EXTRA_WA)
+  if(NOT ${CXX_EXTRA_WA} EQUAL '-1')
+    string( REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
+  endif()
+  if(NOT ${C_EXTRA_WA} EQUAL '-1')
+    string( REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" )
+  endif()
 endif()
 
 if(ARCH STREQUAL "x86_64")
@@ -159,9 +165,11 @@ function(cpreprocess dest src)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
-  # CMAKE inserts "\" before whitespaces in arguments, which the command line does not recognize when using
+  # CMAKE inserts "\" before whitespaces in arguments, which the Android command line does not recognize when using
   # |add_custom_command|. Replacing the whitespaces with ";" fixes this.
-  string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+  if(ANDROID)
+    string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+  endif()
   add_custom_command(
     OUTPUT ${dest}
     COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
