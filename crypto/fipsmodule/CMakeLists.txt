@@ -165,11 +165,7 @@ function(cpreprocess dest src)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
-  # CMAKE inserts "\" before whitespaces in arguments, which the Android command line does not recognize when using
-  # |add_custom_command|. Replacing the whitespaces with ";" fixes this.
-  if(ANDROID)
-    string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
-  endif()
+  string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
   add_custom_command(
     OUTPUT ${dest}
     COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
