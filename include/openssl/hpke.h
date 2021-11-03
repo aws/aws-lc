@@ -15,20 +15,19 @@
 #ifndef OPENSSL_HEADER_CRYPTO_HPKE_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_HPKE_INTERNAL_H
 
+#include <openssl/P434_api.h>
 #include <openssl/aead.h>
 #include <openssl/base.h>
-#include <openssl/curve25519.h>
-#include <openssl/sike_internal.h>
-#include <openssl/P434_api.h>
-#include <openssl/kyber_kem.h>
 #include <openssl/cpucycles.h>
+#include <openssl/curve25519.h>
 #include <openssl/digest.h>
+#include <openssl/kyber_kem.h>
+#include <openssl/sike_internal.h>
 
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
 
 
 
@@ -49,10 +48,10 @@ extern "C" {
 #define SUPPORTED_PQ_ALGORITHMS 2
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
-#define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256   0x0022
+#define EVP_HPKE_PQKEM_SIKE_HKDF_SHA256 0x0022
 #define EVP_HPKE_HKEM_X25519_SIKE_HKDF_SHA256 0x0024
-#define EVP_HPKE_PQKEM_KYBER_HKDF_SHA256   0x0023
-#define EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256   0x0025
+#define EVP_HPKE_PQKEM_KYBER_HKDF_SHA256 0x0023
+#define EVP_HPKE_HKEM_X25519_KYBER_HKDF_SHA256 0x0025
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
@@ -60,17 +59,17 @@ extern "C" {
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
 
 
-//SIKE EXPERIMENTAL
+// SIKE EXPERIMENTAL
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_SIKE_hkdf_sha256(void);
 
-//x25519 + SIKE EXPERIMENTAL
+// x25519 + SIKE EXPERIMENTAL
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_SIKE_hkdf_sha256(void);
 
 
-//Kyber EXPERIMENTAL
+// Kyber EXPERIMENTAL
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_KYBER_hkdf_sha256(void);
 
-//x25519 + Kyber EXPERIMENTAL 
+// x25519 + Kyber EXPERIMENTAL
 
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_KYBER_hkdf_sha256(void);
 
@@ -219,14 +218,9 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len);
-
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_PSK(
-    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
-    const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
-    const uint8_t *peer_public_key, size_t peer_public_key_len,
-    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len, 
-    uint8_t const *psk, size_t psk_len, const uint8_t* psk_id, size_t psk_id_len);
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len,
+    const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
+    size_t psk_id_len);
 
 // EVP_HPKE_CTX_setup_recipient implements the SetupBaseR HPKE operation. It
 // decapsulates the shared secret in |enc| with |key| and sets up |ctx| as a
@@ -239,14 +233,8 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_PSK(
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
     EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
     const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
-    const uint8_t *info, size_t info_len, const uint8_t * psk, size_t psk_len, const uint8_t * psk_id, size_t psk_id_len);
-
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient_PSK(
-    EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
-    const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
-    const uint8_t *info, size_t info_len, const uint8_t *psk, 
-    size_t psk_len, const uint8_t *psk_id, size_t psk_id_len);
-
+    const uint8_t *info, size_t info_len, const uint8_t *psk, size_t psk_len,
+    const uint8_t *psk_id, size_t psk_id_len);
 
 // Using an HPKE context.
 //
@@ -334,17 +322,13 @@ struct evp_hpke_ctx_st {
   int is_sender;
 };
 
-
-
+// HPKE KEY struct including pointers to the public and private keys
+//#Section 6.2 in DesignDoc
 struct evp_hpke_key_st {
   const EVP_HPKE_KEM *kem;
-
-      uint8_t *private_key;
-      uint8_t *public_key;
-  
+  uint8_t *private_key;
+  uint8_t *public_key;
 };
-
-
 
 #if defined(__cplusplus)
 }  // extern C
