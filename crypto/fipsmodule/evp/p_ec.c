@@ -142,10 +142,10 @@ static int pkey_ec_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
 
 static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                           size_t *keylen) {
-  int ret;
-  size_t outlen;
   const EC_POINT *pubkey = NULL;
   EC_KEY *eckey;
+  uint8_t buf[EC_MAX_BYTES];
+  size_t buflen = sizeof(buf);
 
   if (!ctx->pkey || !ctx->peerkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_KEYS_NOT_SET);
@@ -155,6 +155,7 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   eckey = ctx->pkey->pkey.ec;
 
   if (!key) {
+    // This only outputs the expected |keylen| and does no actual crypto.
     const EC_GROUP *group;
     group = EC_KEY_get0_group(eckey);
     *keylen = (EC_GROUP_get_degree(group) + 7) / 8;
@@ -162,16 +163,24 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   }
   pubkey = EC_KEY_get0_public_key(ctx->peerkey->pkey.ec);
 
-  // NB: unlike PKCS#3 DH, if *outlen is less than maximum size this is
-  // not an error, the result is truncated.
-
-  outlen = *keylen;
-
-  ret = ECDH_compute_key(key, outlen, pubkey, eckey, 0);
-  if (ret < 0) {
-    return 0;
+  // NB: unlike PKCS#3 DH, if the returned buflen is less than
+  // the requested size in *keylen, this is not an error;
+  // the result is truncated.
+  // Note: This is an internal function which will not update
+  // the service indicator.
+  if (!ECDH_compute_shared_secret(buf, &buflen, pubkey, eckey)) {
+      return 0;
   }
-  *keylen = ret;
+
+  if (buflen < *keylen) {
+      *keylen = buflen;
+  }
+  OPENSSL_memcpy(key, buf, *keylen);
+
+  // Insert service indicator check here because the pointer address cannot be
+  // referenced from the higher level function |EVP_PKEY_derive|. |EC_KEY| is
+  // is the only possible key that can do derivations.
+  ECDH_verify_service_indicator(eckey);
   return 1;
 }
 
