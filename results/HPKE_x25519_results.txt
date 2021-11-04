@@ -6,28 +6,28 @@ AEAD               ->   EVP_HPKE_AES_128_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   100
-cycles_keygen           215   CCs x10^3
-set_up_sender           162.244   CCs x10^3, M 157.562 CCs x10^3, SD 11455.653
-set_up_recipient        109.927   CCs x10^3, M 110.106 CCs x10^3, SD 2144.982
-seal                      0.666   CCs x10^3, M 0.550 CCs x10^3, SD 264.184
-open                      0.446   CCs x10^3, M 0.389 CCs x10^3, SD 123.140
-TOTAL protocol          273   CCs x10^3
-% set_up_sender         59.369 % 
-% set_up_recipient      40.225 % 
-% seal                  0.243  % 
-% open                  0.163  % 
+cycles_keygen           149   CCs x10^3
+set_up_sender           160   CCs x10^3
+set_up_recipient        105   CCs x10^3
+seal                      1   CCs x10^3
+open                      1   CCs x10^3
+TOTAL protocol          266   CCs x10^3
+% set_up_sender         59.966 % 
+% set_up_recipient      39.449 % 
+% seal                  0.392  % 
+% open                  0.193  % 
 
 Plaintext Bytes    ->   1000
-cycles_keygen           215   CCs x10^3
-set_up_sender           177.135   CCs x10^3, M 169.201 CCs x10^3, SD 27559.544
-set_up_recipient        108.972   CCs x10^3, M 108.861 CCs x10^3, SD 6486.022
-seal                      2.180   CCs x10^3, M 1.634 CCs x10^3, SD 1419.353
-open                      1.161   CCs x10^3, M 1.057 CCs x10^3, SD 476.034
-TOTAL protocol          289   CCs x10^3
-% set_up_sender         61.198 % 
-% set_up_recipient      37.648 % 
-% seal                  0.753  % 
-% open                  0.401  % 
+cycles_keygen           149   CCs x10^3
+set_up_sender           156   CCs x10^3
+set_up_recipient        104   CCs x10^3
+seal                      1   CCs x10^3
+open                      1   CCs x10^3
+TOTAL protocol          262   CCs x10^3
+% set_up_sender         59.291 % 
+% set_up_recipient      39.803 % 
+% seal                  0.570  % 
+% open                  0.336  % 
 
 
 -------------------------------------------------------
@@ -36,28 +36,28 @@ AEAD               ->   EVP_HPKE_AES_256_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   100
-cycles_keygen           215   CCs x10^3
-set_up_sender           166.379   CCs x10^3, M 165.395 CCs x10^3, SD 15074.538
-set_up_recipient        105.868   CCs x10^3, M 104.840 CCs x10^3, SD 4472.064
-seal                      0.983   CCs x10^3, M 1.035 CCs x10^3, SD 439.714
-open                      0.700   CCs x10^3, M 0.611 CCs x10^3, SD 314.912
-TOTAL protocol          273   CCs x10^3
-% set_up_sender         60.738 % 
-% set_up_recipient      38.648 % 
-% seal                  0.359  % 
-% open                  0.255  % 
+cycles_keygen           149   CCs x10^3
+set_up_sender           156   CCs x10^3
+set_up_recipient        103   CCs x10^3
+seal                      1   CCs x10^3
+open                      0   CCs x10^3
+TOTAL protocol          260   CCs x10^3
+% set_up_sender         60.014 % 
+% set_up_recipient      39.576 % 
+% seal                  0.241  % 
+% open                  0.169  % 
 
 Plaintext Bytes    ->   1000
-cycles_keygen           215   CCs x10^3
-set_up_sender           166.742   CCs x10^3, M 159.000 CCs x10^3, SD 23140.209
-set_up_recipient        111.649   CCs x10^3, M 103.817 CCs x10^3, SD 13680.476
-seal                      1.360   CCs x10^3, M 1.157 CCs x10^3, SD 380.422
-open                      0.985   CCs x10^3, M 0.911 CCs x10^3, SD 153.086
-TOTAL protocol          280   CCs x10^3
-% set_up_sender         59.395 % 
-% set_up_recipient      39.770 % 
-% seal                  0.484  % 
-% open                  0.351  % 
+cycles_keygen           149   CCs x10^3
+set_up_sender           150   CCs x10^3
+set_up_recipient        103   CCs x10^3
+seal                      1   CCs x10^3
+open                      1   CCs x10^3
+TOTAL protocol          255   CCs x10^3
+% set_up_sender         58.961 % 
+% set_up_recipient      40.229 % 
+% seal                  0.463  % 
+% open                  0.347  % 
 
 
 -------------------------------------------------------
@@ -66,25 +66,25 @@ AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   100
-cycles_keygen           215   CCs x10^3
-set_up_sender           157.038   CCs x10^3, M 154.399 CCs x10^3, SD 9191.449
-set_up_recipient        103.348   CCs x10^3, M 103.006 CCs x10^3, SD 906.692
-seal                      1.148   CCs x10^3, M 0.953 CCs x10^3, SD 605.873
-open                      0.575   CCs x10^3, M 0.502 CCs x10^3, SD 203.775
-TOTAL protocol          262   CCs x10^3
-% set_up_sender         59.914 % 
-% set_up_recipient      39.429 % 
-% seal                  0.438  % 
-% open                  0.219  % 
+cycles_keygen           149   CCs x10^3
+set_up_sender           210   CCs x10^3
+set_up_recipient        123   CCs x10^3
+seal                      3   CCs x10^3
+open                      1   CCs x10^3
+TOTAL protocol          336   CCs x10^3
+% set_up_sender         62.211 % 
+% set_up_recipient      36.610 % 
+% seal                  0.770  % 
+% open                  0.409  % 
 
 Plaintext Bytes    ->   1000
-cycles_keygen           215   CCs x10^3
-set_up_sender           163.376   CCs x10^3, M 154.071 CCs x10^3, SD 21240.721
-set_up_recipient        104.403   CCs x10^3, M 103.404 CCs x10^3, SD 2896.612
-seal                      2.366   CCs x10^3, M 2.381 CCs x10^3, SD 421.174
-open                      1.722   CCs x10^3, M 1.781 CCs x10^3, SD 259.735
-TOTAL protocol          271   CCs x10^3
-% set_up_sender         60.094 % 
-% set_up_recipient      38.402 % 
-% seal                  0.870  % 
-% open                  0.633  % 
+cycles_keygen           149   CCs x10^3
+set_up_sender           145   CCs x10^3
+set_up_recipient        102   CCs x10^3
+seal                      1   CCs x10^3
+open                      1   CCs x10^3
+TOTAL protocol          250   CCs x10^3
+% set_up_sender         58.044 % 
+% set_up_recipient      40.852 % 
+% seal                  0.568  % 
+% open                  0.535  % 
