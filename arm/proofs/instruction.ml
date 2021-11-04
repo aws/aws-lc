@@ -256,6 +256,32 @@ add_component_alias_thms
   W24; W25; W26; W27; W28; W29; W30];;
 
 (* ------------------------------------------------------------------------- *)
+(* Shifted register operands. The ROR one is only encodable for some logical *)
+(* operations, not arithmetic ones, and the shift itself is an immediate     *)
+(* that has to be < the word size in the 32-bit operand case. All that is    *)
+(* deferred to the decoder. The lvalue form is likewise not actually meant   *)
+(* to be used, and for simplicity is the same as the core register.          *)
+(* ------------------------------------------------------------------------- *)
+
+let regshift_INDUCT,regshift_RECURSION = define_type
+  "regshift = LSL | LSR | ASR | ROR";;
+
+let regshift_operation = define
+ `regshift_operation LSL = word_shl /\
+  regshift_operation LSR = word_ushr /\
+  regshift_operation ASR = word_ishr /\
+  regshift_operation ROR = word_ror`;;
+
+let Shiftedreg_DEF = define
+ `Shiftedreg reg sty sam =
+        component((\s. regshift_operation sty (read reg s) sam),write reg)`;;
+
+let SHIFTEDREG_TRIVIAL = prove
+ (`!reg:(armstate,N word)component. Shiftedreg reg LSL 0 = reg`,
+  REWRITE_TAC[COMPONENT_EQ; read; write; Shiftedreg_DEF;
+              regshift_operation; WORD_SHL_ZERO; ETA_AX]);;
+
+(* ------------------------------------------------------------------------- *)
 (* The main SIMD register parts                                              *)
 (* ------------------------------------------------------------------------- *)
 

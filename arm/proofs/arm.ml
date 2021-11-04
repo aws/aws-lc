@@ -144,7 +144,8 @@ let OFFSET_ADDRESS_CLAUSES = prove
 (* ------------------------------------------------------------------------- *)
 
 let WREG_EXPAND_CLAUSES = prove
- (`W1 = X1 :> zerotop_32 /\
+ (`W0 = X0 :> zerotop_32 /\
+   W1 = X1 :> zerotop_32 /\
    W2 = X2 :> zerotop_32 /\
    W3 = X3 :> zerotop_32 /\
    W4 = X4 :> zerotop_32 /\
@@ -176,6 +177,13 @@ let WREG_EXPAND_CLAUSES = prove
    W30 = X30 :> zerotop_32`,
   REWRITE_TAC(!component_alias_thms));;
 
+let READ_SHIFTEDREG_CLAUSES = prove
+ (`read (Shiftedreg Rn LSL n) s = word_shl (read Rn s) n /\
+   read (Shiftedreg Rn LSR n) s = word_ushr (read Rn s) n /\
+   read (Shiftedreg Rn ASR n) s = word_ishr (read Rn s) n /\
+   read (Shiftedreg Rn ROR n) s = word_ror (read Rn s) n`,
+  REWRITE_TAC[Shiftedreg_DEF; read; regshift_operation; ETA_AX]);;
+
 let ARM_EXEC_CONV =
   let qth = prove(`bytes64 (word_add a (word 0)) = bytes64 a`,
                   REWRITE_TAC[WORD_ADD_0])
@@ -199,7 +207,8 @@ let ARM_EXEC_CONV =
     REWRITE_CONV [condition_semantics])) THENC
   REWRITE_CONV[WREG_EXPAND_CLAUSES] THENC
   REWRITE_CONV[READ_RVALUE; ASSIGN_ZEROTOP_32; ARM_ZERO_REGISTER;
-               READ_ZEROTOP_32; WRITE_ZEROTOP_32] THENC
+               READ_ZEROTOP_32; WRITE_ZEROTOP_32;
+               READ_SHIFTEDREG_CLAUSES] THENC
   DEPTH_CONV(WORD_NUM_RED_CONV ORELSEC WORD_WORD_OPERATION_CONV);;
 
 (* ------------------------------------------------------------------------- *)

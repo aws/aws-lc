@@ -91,6 +91,14 @@ let decode_bitmask = new_definition `!N immr imms.
     SOME (word_of_bits {i | (i + val immr) MOD size <= S})
   else NONE`;;
 
+let decode_shift = new_definition
+ `decode_shift (sty:2 word) =
+    bitmatch sty with
+      [0b00:2] -> LSL
+    | [0b01:2] -> LSR
+    | [0b10:2] -> ASR
+    | [0b11:2] -> ROR`;;
+
 let arm_ubfmop = new_definition `arm_ubfmop sf Rd Rn N immr imms =
   if sf then
     if N then
@@ -117,9 +125,15 @@ let decode = new_definition `!w:int32. decode w =
     SOME (if sf
       then arm_addop op S (XREG' Rd) (XREG_SP Rn) (rvalue (word val))
       else arm_addop op S (WREG' Rd) (WREG_SP Rn) (rvalue (word val)))
-  | [sf; op; S; 0b01011000:8; Rm:5; 0:6; Rn:5; Rd:5] ->
-    SOME (if sf then arm_addop op S (XREG' Rd) (XREG' Rn) (XREG' Rm)
-                else arm_addop op S (WREG' Rd) (WREG' Rn) (WREG' Rm))
+  | [sf; op; S; 0b01011:5; sty:2; 0:1; Rm:5; sam:6; Rn:5; Rd:5] ->
+    if sty = word 0b11 then NONE
+    else if sf then
+       SOME(arm_addop op S (XREG' Rd) (XREG' Rn)
+                           (Shiftedreg (XREG' Rm) (decode_shift sty) (val sam)))
+    else if val sam < 32 then
+       SOME(arm_addop op S (WREG' Rd) (WREG' Rn)
+                           (Shiftedreg (WREG' Rm) (decode_shift sty) (val sam)))
+    else NONE
   | [sf; opc:2; 0b100100:6; N; immr:6; imms:6; Rn:5; Rd:5] ->
     if sf then
       decode_bitmask N immr imms >>= \imm.
@@ -139,9 +153,14 @@ let decode = new_definition `!w:int32. decode w =
     SOME ((if sf
       then arm_csop op o2 (XREG' Rd) (XREG' Rn) (XREG' Rm)
       else arm_csop op o2 (WREG' Rd) (WREG' Rn) (WREG' Rm)) (Condition cond))
-  | [sf; opc:2; 0b0101000:7; N; Rm:5; 0:6; Rn:5; Rd:5] ->
-    if sf then arm_logop opc N (XREG' Rd) (XREG' Rn) (XREG' Rm)
-          else arm_logop opc N (WREG' Rd) (WREG' Rn) (WREG' Rm)
+  | [sf; opc:2; 0b01010:5; sty:2; N; Rm:5; sam:6; Rn:5; Rd:5] ->
+    if sf then
+       arm_logop opc N (XREG' Rd) (XREG' Rn)
+                       (Shiftedreg (XREG' Rm) (decode_shift sty) (val sam))
+    else if val sam < 32 then
+       arm_logop opc N (WREG' Rd) (WREG' Rn)
+                       (Shiftedreg (WREG' Rm) (decode_shift sty) (val sam))
+    else NONE
   | [sf; opc:2; 0b100101:6; hw:2; imm16:16; Rd:5] ->
     if sf then arm_movop opc (XREG' Rd) imm16 (val hw * 16)
           else if val hw >= 2 then NONE else
@@ -350,9 +369,16 @@ let DECODE_BITMASK_CONV =
       .(Num.int_of_num (dest_numeral imms))
   | _ -> failwith "DECODE_BITMASK_CONV";;
 
+let DECODE_SHIFT_CONV =
+  GEN_REWRITE_CONV I [decode_shift] THENC
+  BITMATCH_SEQ_CONV;;
+
 let dest_component = function
 | Tyapp("component", [A; B]) -> A, B
 | _ -> failwith "dest_component";;
+
+let OPERAND_ALIAS_CONV =
+  GEN_REWRITE_CONV ONCE_DEPTH_CONV [SHIFTEDREG_TRIVIAL];;
 
 let ALIAS_CONV =
   let self = ref NO_CONV in
@@ -383,7 +409,7 @@ let ALIAS_CONV =
     [`arm_MOVZ (Rd:(armstate,N word)component) (word imm) 0`,MOVZ_CONV]
     net in
   self := ONCE_DEPTH_CONV (REWRITES_CONV net);
-  ALIAS_CONV;;
+  OPERAND_ALIAS_CONV THENC ALIAS_CONV;;
 
 let PURE_DECODE_CONV =
   let constructors =
@@ -396,7 +422,7 @@ let PURE_DECODE_CONV =
       conjuncts o lhand o snd o dest_forall o concl in
     ["T";"F";",";"NONE";"SOME";"int_of_num"] @
     ["XZR";"WZR";"SP";"WSP";"rvalue";"word";"iword"] @
-    constructors_of offset_INDUCT @
+    constructors_of offset_INDUCT @ ["Shiftedreg"] @
     map (fun n -> "X"^string_of_int n) (0--30) @
     map (fun n -> "W"^string_of_int n) (0--30) @
     map (fst o dest_const o fst o strip_comb o lhs o concl)
@@ -592,6 +618,7 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
     eval_nary pth_ldstp t F
   | Comb((Const("Condition",_) as f),a) -> eval_unary f a F CONDITION_CONV
+  | Comb((Const("decode_shift",_) as f),a) -> eval_unary f a F DECODE_SHIFT_CONV
   | Comb(Comb(Comb(Const("decode_bitmask",_),_),_),_) ->
     eval_opt t F DECODE_BITMASK_CONV
   | Comb((Const("word_zx",_) as f),a) -> eval_unary f a F WORD_ZX_CONV
