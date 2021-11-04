@@ -81,3 +81,16 @@ void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
                          int quartiles_positions[4]);
 float analyze(unsigned long long arr_cycles[], int quartile1_positions,
                          int quartile2_positions);
+float analyze_statistics(uint8_t mode, unsigned long long arr_cycles[], int n, std::ofstream& MyFile);
+void analyze_percentage(unsigned long long cycles_set_up_sender_total,
+                        unsigned long long cycles_set_up_recipient_total,
+                        unsigned long long cycles_seal_total,
+                        unsigned long long cycles_open_total,
+                        unsigned long long clean_protocol,
+                        std::ofstream &MyFile);
+void analyze_protocol(uint8_t mode,
+unsigned long long *arr_cycles_setup_sender, 
+unsigned long long *arr_cycles_setup_recipient, 
+unsigned long long *arr_cycles_seal, 
+unsigned long long *arr_cycles_open, 
+int n,std::ofstream &MyFile);

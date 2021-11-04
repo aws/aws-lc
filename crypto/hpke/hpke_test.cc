@@ -24,10 +24,9 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-
 #include <openssl/base.h>
-#include <openssl/curve25519.h>
 
+#include <openssl/curve25519.h>
 #include <openssl/sike_internal.h>
 
 #include <openssl/digest.h>
@@ -44,23 +43,21 @@
 #include <time.h>
 #include <fstream>
 
-#define SIZE_PLAINTEXT 1000  // Specify Bytes to be encrypted/decrypted
+//Define the HPKE upper bound for plaintext size encrypted for the testing and benchmarking functions
+//x25519, SIKE, x25519_SIKE, Kyber, x25519_Kyber and HPKERoundTripBenchmark use these value
+#define SIZE_PLAINTEXT 1000  // In Bytes
+
+//Define the number of tests to perform
 #define NUMBER_TESTS 10
 
+//Define the HPKE mode by the underlying cryptographic primitives
 #define x25519_ALGORITHM 0
 #define SIKE_ALGORITHM 1
 #define x25519_SIKE_ALGORITHM 2
 #define Kyber_ALGORITHM 3
 #define x25519_Kyber_ALGORITHM 4
 
-// Number of tests performed
-
 using namespace std;
-
-
-#define HPKE_KDF_NAMESPACE(s) EVP_hpke_##s##_hkdf_sha256
-// Kyber already exists with these names but may add here later as well to have
-// all of them at the same place
 
 namespace bssl {
 namespace {
@@ -75,8 +72,11 @@ const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
     &EVP_hpke_hkdf_sha256,
 };
 
-// HPKETestVector corresponds to one array member in the published
-// test-vectors.json.
+  // HPKETestVector corresponds to one array member in the published
+  // test-vectors.json.
+  //HPKETestVector add data for the psk and psk_id and pass to the setup functions 
+  // Update the hpke_test_vectors.txt including the PSK mode tests from test-vectors.json
+  //#Section 6.6.1 in DesignDoc
 class HPKETestVector {
  public:
   explicit HPKETestVector() = default;
@@ -96,35 +96,31 @@ class HPKETestVector {
     uint8_t enc[EVP_HPKE_MAX_ENC_LENGTH];
     size_t enc_len;
 
+    //Pass the psk and psk_id along woth their lengths to the EVP_HPKE_CTX_setup_sender_with_seed_for_testing
     ASSERT_TRUE(EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
         sender_ctx.get(), enc, &enc_len, sizeof(enc), kem, kdf, aead,
         public_key_r_.data(), public_key_r_.size(), info_.data(), info_.size(),
         secret_key_e_.data(), secret_key_e_.size(), psk_.data(), psk_.size(),
         psk_id_.data(), psk_id_.size()));
 
-
-
     EXPECT_EQ(Bytes(enc, enc_len), Bytes(public_key_e_));
     VerifySender(sender_ctx.get());
 
     // Test the recipient.
+    //Allocate memory for the public and private keys inside the new HPKE_KEY structure design 
     ScopedEVP_HPKE_KEY base_key;
     base_key->public_key =
         (uint8_t *)malloc(sizeof(uint8_t) * x25519_PUBLICKEYBYTES);
     base_key->private_key =
         (uint8_t *)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
 
-
     ASSERT_TRUE(EVP_HPKE_KEY_init(base_key.get(), kem, secret_key_r_.data(),
                                   secret_key_r_.size()));
-
-
 
     for (bool copy : {false, true}) {
       SCOPED_TRACE(copy);
 
       const EVP_HPKE_KEY *key = base_key.get();
-
 
       ScopedEVP_HPKE_KEY key_copy;
 
@@ -133,16 +129,14 @@ class HPKETestVector {
       key_copy->private_key =
           (uint8_t *)malloc(sizeof(uint8_t) * x25519_SECRETKEYBYTES);
 
-
       OPENSSL_memcpy(key_copy->public_key, base_key->public_key,
                      x25519_PUBLICKEYBYTES);
       OPENSSL_memcpy(key_copy->private_key, base_key->private_key,
                      x25519_SECRETKEYBYTES);
 
-
       if (copy) {
-        // ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
-        // key = key_copy.get();
+        ASSERT_TRUE(EVP_HPKE_KEY_copy(key_copy.get(), base_key.get()));
+        key = key_copy.get();
       }
 
       uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
@@ -150,9 +144,7 @@ class HPKETestVector {
       ASSERT_TRUE(EVP_HPKE_KEY_public_key(key, public_key, &public_key_len,
                                           sizeof(public_key)));
 
-
       EXPECT_EQ(Bytes(base_key->public_key, 32), Bytes(public_key_r_));
-
 
       EXPECT_EQ(Bytes(public_key, public_key_len), Bytes(public_key_r_));
 
@@ -163,6 +155,7 @@ class HPKETestVector {
       EXPECT_EQ(Bytes(private_key, private_key_len), Bytes(secret_key_r_));
 
       // Set up the recipient.
+      //Pass the psk and psk_id along woth their lengths to the EVP_HPKE_CTX_setup_recipient
       ScopedEVP_HPKE_CTX recipient_ctx;
       ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
           recipient_ctx.get(), key, kdf, aead, enc, enc_len, info_.data(),
@@ -171,6 +164,7 @@ class HPKETestVector {
 
       VerifyRecipient(recipient_ctx.get());
     }
+
     free(base_key->public_key);
     free(base_key->private_key);
   }
@@ -255,10 +249,14 @@ class HPKETestVector {
   std::vector<uint8_t> secret_key_e_;
   std::vector<uint8_t> public_key_r_;
   std::vector<uint8_t> secret_key_r_;
-  std::vector<uint8_t> psk_;
-  std::vector<uint8_t> psk_id_;
   std::vector<Encryption> encryptions_;
   std::vector<Export> exports_;
+  
+  //Add variable psk_ and psk_id_ for for the psk read form the hpke_test_vector.txt file
+  //#Section 6.4 in DesignDoc
+  std::vector<uint8_t> psk_;
+  std::vector<uint8_t> psk_id_;
+  
 };
 
 // Match FileTest's naming scheme for duplicated attribute names.
@@ -292,7 +290,8 @@ bool FileTestReadInt(FileTest *file_test, T *out, const std::string &key) {
   return file_test->GetAttribute(&s, key) && ParseIntSafe(out, s);
 }
 
-
+  //Read variable psk_ and psk_id_ form the hpke_test_vector.txt file when HPKE PSK operation mode
+  //#Section 6.4 in DesignDoc
 bool HPKETestVector::ReadFromFileTest(FileTest *t) {
   uint8_t mode = 0;
 
@@ -305,6 +304,7 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
       !t->GetBytes(&public_key_e_, "pkEm")) {
     return false;
   }
+
   if (mode == 1) {
     if (!t->GetBytes(&psk_, "psk") || !t->GetBytes(&psk_id_, "psk_id")) {
       return false;
@@ -344,6 +344,9 @@ TEST(HPKETest, VerifyTestVectors) {
   });
 }
 
+//0 for short 1 for detiled
+#define ANALYZE_RESULTS_MODE 0
+
 // The test vectors used fixed sender ephemeral keys, while HPKE itself
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
@@ -355,12 +358,12 @@ TEST(HPKETest, x25519) {
   const uint8_t ad_b[] = {7};
   Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
-  // Span<const uint8_t> info_values[] = {{nullptr, 0}};
-  // Span<const uint8_t> ad_values[] = {{nullptr, 0}};
 
-  const int number_sets = 9;  // info_values_len * ad_values_len
-  float cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
-        cycles_seal_total = 0, cycles_open_total = 0, clean_protocol = 0;
+  //Add varable for the number of different info and ad values
+  //since nested loops number sets is info_values #elements * ad_values #elements
+  const int number_sets =  9;
+
+  //Add varables for the clock cycles
   unsigned long long cycles_keygen = 0, cycles_set_up_sender,
                      cycles_set_up_recipient, cycles_seal, cycles_open;
   unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
@@ -368,32 +371,24 @@ TEST(HPKETest, x25519) {
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
 
-  float quartiles[4] = {0};
-  int quartiles_positions[4] = {0};
+
   int counter_loops = 0;
+
+  //Create or open the output file
   std::ofstream MyFile("../results/HPKE_x25519_results.txt");
 
-
-  // execute Bob keygen
-  // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret
-  // key??
-  // Actually it is not Alice!! But why they do not have two differnet
-  // funcitons?!?!?! In real life how is Alice getting Bob's pk??
-
-
   // Generate the recipient's keypair.
-  // Benchmarking vars
-
   ScopedEVP_HPKE_KEY key;
   key->public_key =
       (uint8_t *)malloc(sizeof(uint8_t) * X25519_PUBLIC_VALUE_LEN);
   key->private_key =
       (uint8_t *)malloc(sizeof(uint8_t) * X25519_PRIVATE_KEY_LEN);
 
-
+  //Measure the clock cycles for EVP_HPKE_KEY_generate funciton
   cycles_keygen = cpucycles();
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
   cycles_keygen = cpucycles() - cycles_keygen;
+
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
   size_t public_key_r_len;
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
@@ -407,77 +402,71 @@ TEST(HPKETest, x25519) {
       print_info_file(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()),
                       x25519_ALGORITHM, MyFile);
 
-      for (int pt_size = 10000; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
+      for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
-        // printf("\nPlaintext Bytes    ->   %d\n", pt_size);
 
         MyFile << "cycles_keygen           " << fixed << setprecision(0)
                << (cycles_keygen / 1000) << "   CCs x10^3\n";
+        
+        //Reset the value of clock cycles counters with new plaintext length HPKE
+       
 
-        cycles_set_up_sender_total = 0, cycles_set_up_recipient_total = 0,
-        cycles_seal_total = 0, cycles_open_total = 0, clean_protocol = 0;
+        //Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
             (uint8_t *)malloc(sizeof(uint8_t) * pt_size);
+
+        //Initialize with some readable value
         init_plaintext(kCleartextPayload, pt_size);
-        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+
+        //Run NUMBER_TESTS tests with all defined info_values and ad_values
+        for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
+
           counter_loops = 0;
-          // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
-          // public_key_r[X25519_PUBLIC_VALUE_LEN +
-          // SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
 
           for (const Span<const uint8_t> &info : info_values) {
             SCOPED_TRACE(Bytes(info));
             for (const Span<const uint8_t> &ad : ad_values) {
-              // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
 
-              // others = cpucycles();
               SCOPED_TRACE(Bytes(ad));
-              // others_total += cpucycles() - others;
+              
 
-              // Alice i
               // Set up the sender.
-              // others = cpucycles();
               ScopedEVP_HPKE_CTX sender_ctx;
               uint8_t enc[X25519_PUBLIC_VALUE_LEN];
               size_t enc_len;
-              // others_total += cpucycles() - others;
+          
               cycles_set_up_sender = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
                   EVP_hpke_x25519_hkdf_sha256(), kdf(), aead(), public_key_r,
                   public_key_r_len, info.data(), info.size()));
-              arr_cycles_setup_sender[jj * number_sets + counter_loops] =
+              arr_cycles_setup_sender[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_sender;
 
 
               // Set up the recipient.
-              // others = cpucycles();
               ScopedEVP_HPKE_CTX recipient_ctx;
-              // others_total += cpucycles() - others;
+        
               cycles_set_up_recipient = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                   recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                   info.data(), info.size(), NULL, 0, NULL, 0));
-              arr_cycles_setup_recipient[jj * number_sets + counter_loops] =
+              arr_cycles_setup_recipient[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_recipient;
 
 
-              // const char kCleartextPayload[] = "foobar";
-
-
               // Have sender encrypt message for the recipient.
-              // others = cpucycles();
               std::vector<uint8_t> ciphertext(
                   pt_size + EVP_HPKE_CTX_max_overhead(sender_ctx.get()));
               size_t ciphertext_len;
-              // others_total += cpucycles() - others;
+
               cycles_seal = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_seal(
                   sender_ctx.get(), ciphertext.data(), &ciphertext_len,
                   ciphertext.size(),
                   reinterpret_cast<const uint8_t *>(kCleartextPayload), pt_size,
                   ad.data(), ad.size()));
-              arr_cycles_seal[jj * number_sets + counter_loops] =
+              arr_cycles_seal[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_seal;
 
 
@@ -485,17 +474,14 @@ TEST(HPKETest, x25519) {
               // others = cpucycles();
               std::vector<uint8_t> cleartext(ciphertext.size());
               size_t cleartext_len;
-              // others_total += cpucycles() - others;
+              
               cycles_open = cpucycles();
               ASSERT_TRUE(EVP_HPKE_CTX_open(
                   recipient_ctx.get(), cleartext.data(), &cleartext_len,
                   cleartext.size(), ciphertext.data(), ciphertext_len,
                   ad.data(), ad.size()));
-              arr_cycles_open[jj * number_sets + counter_loops] =
+              arr_cycles_open[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_open;
-
-
-              // print_text(cleartext, pt_size);
 
               // Verify that decrypted message matches the original.
               ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
@@ -505,106 +491,7 @@ TEST(HPKETest, x25519) {
             }
           }
         }
-
-
-
-        calculate_quartiles(arr_cycles_setup_sender,
-                            (NUMBER_TESTS * number_sets), quartiles,
-                            quartiles_positions);
-        cycles_set_up_sender_total =
-            analyze(arr_cycles_setup_sender, quartiles_positions[0],
-                    quartiles_positions[2]);
-
-        calculate_quartiles(arr_cycles_setup_recipient,
-                            (NUMBER_TESTS * number_sets), quartiles,
-                            quartiles_positions);
-        cycles_set_up_recipient_total =
-            analyze(arr_cycles_setup_recipient, quartiles_positions[0],
-                    quartiles_positions[2]);
-
-        calculate_quartiles(arr_cycles_seal, (NUMBER_TESTS * number_sets),
-                            quartiles, quartiles_positions);
-        cycles_seal_total = analyze(arr_cycles_seal, quartiles_positions[0],
-                                    quartiles_positions[2]);
-
-        calculate_quartiles(arr_cycles_open, (NUMBER_TESTS * number_sets),
-                            quartiles, quartiles_positions);
-        cycles_open_total = analyze(arr_cycles_open, quartiles_positions[0],
-                                    quartiles_positions[2]);
-
-
-        MyFile << "set_up_sender           " << fixed << setprecision(0)
-               << cycles_set_up_sender_total / 1000 << "   CCs x10^3\n";
-        // printf("set_up_sender           %.0f CCs
-        // x10^3\n",cycles_set_up_sender_total / 1000);
-
-
-        MyFile << "set_up_recipient        " << fixed << setprecision(0)
-               << cycles_set_up_recipient_total / 1000 << "   CCs x10^3\n";
-        // printf("set_up_recipient        %.0f CCs x10^3\n",
-        // cycles_set_up_recipient_total  / 1000);
-
-
-        MyFile << "seal                    " << fixed << setprecision(2)
-               << (float)(cycles_seal_total / 1000.0) << "  CCs x10^3\n";
-        // printf("seal                    %.2f CCs x10^3\n",
-        // (float)(cycles_seal_total) / 1000.0);
-
-        MyFile << "open                    " << fixed << setprecision(2)
-               << (float)(cycles_open_total / 1000.0) << "  CCs x10^3\n";
-        // printf("open                    %.2f CCs x10^3\n",
-        // (float)(cycles_open_total) / 1000.0);
-
-        // printf("others            %llu CCs \n",
-        // others_total / NUMBER_TESTS / 1000000);
-        // printf("end protocol            %llu CCs x10^3\n",
-        // cycles_protocol_total / NUMBER_TESTS / 1000);
-        // Print the value of the 4 functions (no overhead for array
-        // initialization, etc)
-
-        clean_protocol = cycles_set_up_sender_total +
-                         cycles_set_up_recipient_total + cycles_seal_total +
-                         cycles_open_total;
-
-        MyFile << "CLEAN protocol          " << fixed << setprecision(0)
-               << clean_protocol / 1000 << "   CCs x10^3\n";
-        // printf("CLEAN protocol          %.0f CCs x10^3\n", clean_protocol /
-        // 1000);
-
-
-        MyFile << "% set_up_sender         " << fixed << setprecision(3)
-               << ((float)(cycles_set_up_sender_total) /
-                   ((float)clean_protocol) * 100)
-               << " % \n";
-        // printf("%% set_up_sender         %.3f %% \n",
-        // ((float)(cycles_set_up_sender_total) /((float)clean_protocol) *
-        // 100));
-
-        MyFile << "% set_up_recipient      " << fixed << setprecision(3)
-               << ((float)cycles_set_up_recipient_total) /
-                      ((float)clean_protocol) * 100
-               << " % \n";
-        // printf("%% set_up_recipient      %.3f %%
-        // \n",((float)cycles_set_up_recipient_total) / ((float)clean_protocol)
-        // * 100);
-
-        MyFile << "% seal                  " << fixed << setprecision(3)
-               << ((float)cycles_seal_total) / ((float)clean_protocol) * 100
-               << "  % \n";
-        // printf("%% seal                  %.3f %%
-        // \n",((float)cycles_seal_total) / ((float)clean_protocol) * 100);
-
-        MyFile << "% open                  " << fixed << setprecision(3)
-               << ((float)cycles_open_total) / ((float)clean_protocol) * 100
-               << "  % \n";
-        // printf("%% open                  %.3f %% \n",
-        // ((float)cycles_open_total) / ((float)clean_protocol) * 100);
-
-        // printf(
-        //"%% others                  %.3f %% \n",
-        //((float)others_total) / ((float)cycles_protocol_total) * 100);
-
-
+        analyze_protocol(1, arr_cycles_setup_sender, arr_cycles_setup_recipient, arr_cycles_seal, arr_cycles_open, NUMBER_TESTS * number_sets, MyFile);
 
         free(kCleartextPayload);
       }
@@ -673,7 +560,7 @@ TEST(HPKETest, SIKE) {
       print_info_file(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()),
                       SIKE_ALGORITHM, MyFile);
 
-      for (int pt_size = 10000; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
+      for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
         // printf("\nPlaintext Bytes    ->   %d\n", pt_size);
 
@@ -686,7 +573,7 @@ TEST(HPKETest, SIKE) {
         uint8_t *kCleartextPayload =
             (uint8_t *)malloc(sizeof(uint8_t) * pt_size);
         init_plaintext(kCleartextPayload, pt_size);
-        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+        for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
           counter_loops = 0;
           // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
           // public_key_r[X25519_PUBLIC_VALUE_LEN +
@@ -708,7 +595,7 @@ TEST(HPKETest, SIKE) {
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
                   EVP_hpke_SIKE_hkdf_sha256(), kdf(), aead(), public_key_r,
                   public_key_r_len, info.data(), info.size()));
-              arr_cycles_setup_sender[jj * number_sets + counter_loops] =
+              arr_cycles_setup_sender[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_sender;
 
               // Set up the recipient.
@@ -717,7 +604,7 @@ TEST(HPKETest, SIKE) {
               ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                   recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                   info.data(), info.size(), NULL, 0, NULL, 0));
-              arr_cycles_setup_recipient[jj * number_sets + counter_loops] =
+              arr_cycles_setup_recipient[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_recipient;
 
               // Have sender encrypt message for the recipient.
@@ -730,7 +617,7 @@ TEST(HPKETest, SIKE) {
                   ciphertext.size(),
                   reinterpret_cast<const uint8_t *>(kCleartextPayload), pt_size,
                   ad.data(), ad.size()));
-              arr_cycles_seal[jj * number_sets + counter_loops] =
+              arr_cycles_seal[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_seal;
 
               // Have recipient decrypt the message.
@@ -741,7 +628,7 @@ TEST(HPKETest, SIKE) {
                   recipient_ctx.get(), cleartext.data(), &cleartext_len,
                   cleartext.size(), ciphertext.data(), ciphertext_len,
                   ad.data(), ad.size()));
-              arr_cycles_open[jj * number_sets + counter_loops] =
+              arr_cycles_open[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_open;
 
               // print_text(cleartext, pt_size);
@@ -913,7 +800,7 @@ TEST(HPKETest, x25519_SIKE) {
       print_info_file(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()),
                       x25519_SIKE_ALGORITHM, MyFile);
 
-      for (int pt_size = 10000; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
+      for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
         // printf("\nPlaintext Bytes    ->   %d\n", pt_size);
 
@@ -925,7 +812,7 @@ TEST(HPKETest, x25519_SIKE) {
         uint8_t *kCleartextPayload =
             (uint8_t *)malloc(sizeof(uint8_t) * pt_size);
         init_plaintext(kCleartextPayload, pt_size);
-        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+        for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
           counter_loops = 0;
           // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
           // public_key_r[X25519_PUBLIC_VALUE_LEN +
@@ -950,7 +837,7 @@ TEST(HPKETest, x25519_SIKE) {
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
                   EVP_hpke_x25519_SIKE_hkdf_sha256(), kdf(), aead(),
                   public_key_r, public_key_r_len, info.data(), info.size()));
-              arr_cycles_setup_sender[jj * number_sets + counter_loops] =
+              arr_cycles_setup_sender[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_sender;
               // TEST TO CHANGE BOB'S PK/CT TO SEE IF TEST FAILS
               // enc[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_CIPHERTEXT_BYTES -
@@ -962,7 +849,7 @@ TEST(HPKETest, x25519_SIKE) {
               ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                   recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                   info.data(), info.size(), NULL, 0, NULL, 0));
-              arr_cycles_setup_recipient[jj * number_sets + counter_loops] =
+              arr_cycles_setup_recipient[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_recipient;
 
 
@@ -977,7 +864,7 @@ TEST(HPKETest, x25519_SIKE) {
                   ciphertext.size(),
                   reinterpret_cast<const uint8_t *>(kCleartextPayload), pt_size,
                   ad.data(), ad.size()));
-              arr_cycles_seal[jj * number_sets + counter_loops] =
+              arr_cycles_seal[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_seal;
 
               // TEST TO CHANGE THE CT FROM THE SYMMETRIC ENC TO CHECK IF TEST
@@ -993,7 +880,7 @@ TEST(HPKETest, x25519_SIKE) {
                   cleartext.size(), ciphertext.data(), ciphertext_len,
                   ad.data(), ad.size()));
 
-              arr_cycles_open[jj * number_sets + counter_loops] =
+              arr_cycles_open[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_open;
 
               // print_text(cleartext, SIZE_PLAINTEXT);
@@ -1173,7 +1060,7 @@ TEST(HPKETest, Kyber) {
       print_info_file(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()),
                       Kyber_ALGORITHM, MyFile);
 
-      for (int pt_size = 10000; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
+      for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
         // printf("\nPlaintext Bytes    ->   %d\n", pt_size);
 
@@ -1185,7 +1072,7 @@ TEST(HPKETest, Kyber) {
         uint8_t *kCleartextPayload =
             (uint8_t *)malloc(sizeof(uint8_t) * pt_size);
         init_plaintext(kCleartextPayload, pt_size);
-        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+        for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
           counter_loops = 0;
           // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
           // public_key_r[X25519_PUBLIC_VALUE_LEN +
@@ -1208,7 +1095,7 @@ TEST(HPKETest, Kyber) {
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
                   EVP_hpke_KYBER_hkdf_sha256(), kdf(), aead(), public_key_r,
                   public_key_r_len, info.data(), info.size()));
-              arr_cycles_setup_sender[jj * number_sets + counter_loops] =
+              arr_cycles_setup_sender[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_sender;
 
               // Set up the recipient.
@@ -1217,7 +1104,7 @@ TEST(HPKETest, Kyber) {
               ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                   recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                   info.data(), info.size(), NULL, 0, NULL, 0));
-              arr_cycles_setup_recipient[jj * number_sets + counter_loops] =
+              arr_cycles_setup_recipient[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_recipient;
 
               // Have sender encrypt message for the recipient.
@@ -1230,7 +1117,7 @@ TEST(HPKETest, Kyber) {
                   ciphertext.size(),
                   reinterpret_cast<const uint8_t *>(kCleartextPayload), pt_size,
                   ad.data(), ad.size()));
-              arr_cycles_seal[jj * number_sets + counter_loops] =
+              arr_cycles_seal[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_seal;
 
               // Have recipient decrypt the message.
@@ -1241,7 +1128,7 @@ TEST(HPKETest, Kyber) {
                   recipient_ctx.get(), cleartext.data(), &cleartext_len,
                   cleartext.size(), ciphertext.data(), ciphertext_len,
                   ad.data(), ad.size()));
-              arr_cycles_open[jj * number_sets + counter_loops] =
+              arr_cycles_open[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_open;
 
               // print_text(cleartext, pt_size);
@@ -1428,7 +1315,7 @@ TEST(HPKETest, x25519_Kyber) {
       print_info_file(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()),
                       x25519_Kyber_ALGORITHM, MyFile);
 
-      for (int pt_size = 10000; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
+      for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
         // printf("\nPlaintext Bytes    ->   %d\n", pt_size);
 
@@ -1439,7 +1326,7 @@ TEST(HPKETest, x25519_Kyber) {
 
 
         init_plaintext(kCleartextPayload, pt_size);
-        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+        for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
           counter_loops = 0;
           // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
           // public_key_r[X25519_PUBLIC_VALUE_LEN +
@@ -1462,7 +1349,7 @@ TEST(HPKETest, x25519_Kyber) {
                   sender_ctx.get(), enc, &enc_len, sizeof(enc),
                   EVP_hpke_x25519_KYBER_hkdf_sha256(), kdf(), aead(),
                   public_key_r, public_key_r_len, info.data(), info.size()));
-              arr_cycles_setup_sender[jj * number_sets + counter_loops] =
+              arr_cycles_setup_sender[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_sender;
 
               // Set up the recipient.
@@ -1471,7 +1358,7 @@ TEST(HPKETest, x25519_Kyber) {
               ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                   recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                   info.data(), info.size(), NULL, 0, NULL, 0));
-              arr_cycles_setup_recipient[jj * number_sets + counter_loops] =
+              arr_cycles_setup_recipient[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_set_up_recipient;
 
               // Have sender encrypt message for the recipient.
@@ -1484,7 +1371,7 @@ TEST(HPKETest, x25519_Kyber) {
                   ciphertext.size(),
                   reinterpret_cast<const uint8_t *>(kCleartextPayload), pt_size,
                   ad.data(), ad.size()));
-              arr_cycles_seal[jj * number_sets + counter_loops] =
+              arr_cycles_seal[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_seal;
 
               // Have recipient decrypt the message.
@@ -1495,7 +1382,7 @@ TEST(HPKETest, x25519_Kyber) {
                   recipient_ctx.get(), cleartext.data(), &cleartext_len,
                   cleartext.size(), ciphertext.data(), ciphertext_len,
                   ad.data(), ad.size()));
-              arr_cycles_open[jj * number_sets + counter_loops] =
+              arr_cycles_open[curr_test * number_sets + counter_loops] =
                   cpucycles() - cycles_open;
 
               // print_text(cleartext, pt_size);
@@ -1669,7 +1556,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
               (uint8_t *)malloc(sizeof(uint8_t) * pt_size);
           init_plaintext(kCleartextPayload, pt_size);
 
-          for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+          for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
             counter_loops = 0;
             // TEST TO CHANGE ALICE'S PK TO SEE IF TEST FAILS
             // public_key_r[X25519_PUBLIC_VALUE_LEN +
@@ -1679,7 +1566,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
               SCOPED_TRACE(Bytes(info));
               for (const Span<const uint8_t> &ad : ad_values) {
                 // print_info(EVP_HPKE_AEAD_id(aead()), EVP_HPKE_KDF_id(kdf()));
-                // printf("POSITION %d\n\n", jj*number_sets + counter_loops);
+                // printf("POSITION %d\n\n", curr_test*number_sets + counter_loops);
                 SCOPED_TRACE(Bytes(ad));
 
                 // Set up the sender.
@@ -1696,10 +1583,10 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
                     algorithm_ciphertextbytes(algorithm),
                     algorithm_kdf(algorithm), kdf(), aead(), public_key_r,
                     public_key_r_len, info.data(), info.size()));
-                arr_cycles_setup_sender[jj * number_sets + counter_loops] =
+                arr_cycles_setup_sender[curr_test * number_sets + counter_loops] =
                     cpucycles() - cycles_set_up_sender;
                 // printf("CYCLES %lld\n",
-                // arr_cycles_setup_sender[jj*number_sets +counter_loops]);
+                // arr_cycles_setup_sender[curr_test*number_sets +counter_loops]);
 
 
                 // Set up the recipient.
@@ -1708,7 +1595,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
                 ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
                     recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
                     info.data(), info.size(), NULL, 0, NULL, 0));
-                arr_cycles_setup_recipient[jj * number_sets + counter_loops] =
+                arr_cycles_setup_recipient[curr_test * number_sets + counter_loops] =
                     cpucycles() - cycles_set_up_recipient;
 
                 // Have sender encrypt message for the recipient.
@@ -1721,7 +1608,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
                     ciphertext.size(),
                     reinterpret_cast<const uint8_t *>(kCleartextPayload),
                     pt_size, ad.data(), ad.size()));
-                arr_cycles_seal[jj * number_sets + counter_loops] =
+                arr_cycles_seal[curr_test * number_sets + counter_loops] =
                     cpucycles() - cycles_seal;
 
                 // Have recipient decrypt the message.
@@ -1732,7 +1619,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
                     recipient_ctx.get(), cleartext.data(), &cleartext_len,
                     cleartext.size(), ciphertext.data(), ciphertext_len,
                     ad.data(), ad.size()));
-                arr_cycles_open[jj * number_sets + counter_loops] =
+                arr_cycles_open[curr_test * number_sets + counter_loops] =
                     cpucycles() - cycles_open;
 
 

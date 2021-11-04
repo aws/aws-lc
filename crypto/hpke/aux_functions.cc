@@ -15,9 +15,9 @@
 
 #include <math.h>
 
-#include "aux_functions.h"
 #include <openssl/cpucycles.h>
 #include <openssl/hpke.h>
+#include "aux_functions.h"
 
 #include <cstdint>
 #include <limits>
@@ -41,9 +41,9 @@
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
-#include <fstream> 
 #include <stdint.h>
 #include <time.h>
+#include <fstream>
 
 using namespace std;
 
@@ -125,10 +125,6 @@ int algorithm_ciphertextbytes(int alg) {
   return keylen;
 }
 
-
-
-
-
 const EVP_HPKE_KEM *algorithm_kdf(int alg) {
   switch (alg) {
     case 0:
@@ -152,7 +148,6 @@ const EVP_HPKE_KEM *algorithm_kdf(int alg) {
   }
   return EVP_hpke_x25519_hkdf_sha256();
 }
-
 
 uint64_t cpucycles(void) {  // Access system counter for benchmarking
   unsigned int hi, lo;
@@ -220,12 +215,11 @@ void print_info(int aead, int kdf, int alg) {
 
 
 
+void print_info_file(int aead, int kdf, int alg, std::ofstream &MyFile) {
+  MyFile << "\n\n-------------------------------------------------------"
+         << endl;
 
-void print_info_file(int aead, int kdf, int alg, std::ofstream& MyFile) {
-
-  MyFile << "\n\n-------------------------------------------------------" << endl;
-
-   MyFile << "ALGORITHM          ->   ";
+  MyFile << "ALGORITHM          ->   ";
   switch (alg) {
     case 0:
       MyFile << ("x25519");
@@ -249,7 +243,7 @@ void print_info_file(int aead, int kdf, int alg, std::ofstream& MyFile) {
 
 
   MyFile << ("\nAEAD               ->   ");
- 
+
   switch (aead) {
     case 0x0001:
       MyFile << ("EVP_HPKE_AES_128_GCM");
@@ -279,7 +273,6 @@ void print_info_file(int aead, int kdf, int alg, std::ofstream& MyFile) {
 }
 
 
-
 void init_plaintext(uint8_t *plaintext, int size) {
   for (int i = 0; i < size; i++) {
     plaintext[i] = (uint8_t)((uint8_t)i % 256);
@@ -296,9 +289,7 @@ void print_text(std::vector<uint8_t> cleartext, int cleartext_len) {
 
 
 
-//STATISTICS AUX 
-
-
+// STATISTICS AUX
 
 float mean(unsigned long long array[], int n) {
   int i;
@@ -322,7 +313,6 @@ void sort_array(unsigned long long arr[], int n) {
 }
 
 float median(unsigned long long array[], int n) {
-  sort_array(array, n);
   if (n % 2 == 0)
     return ((float)array[n / 2] + (float)array[n / 2 - 1]) / 2;
   else
@@ -332,8 +322,8 @@ float median(unsigned long long array[], int n) {
 
 double standarddeviation(unsigned long long array[], const int n) {
   int j;
-  double *max = (double*)malloc(sizeof(double)*n);
-  double  sum, variance, this_mean;
+  double *max = (double *)malloc(sizeof(double) * n);
+  double sum, variance, this_mean;
 
   this_mean = mean(array, n);
   sum = 0;
@@ -402,4 +392,94 @@ float analyze(unsigned long long arr_cycles[], int quartile1_positions,
     mean += arr_cycles[i];
   }
   return ((float)mean) / (float)(quartile2_positions - quartile1_positions);
+}
+
+
+
+
+void analyze_protocol(uint8_t mode,
+unsigned long long *arr_cycles_setup_sender, 
+unsigned long long *arr_cycles_setup_recipient, 
+unsigned long long *arr_cycles_seal, 
+unsigned long long *arr_cycles_open, 
+int n,std::ofstream &MyFile){
+
+        //Analyze setup_sender clock cycles
+        MyFile << "set_up_sender           ";
+        unsigned long long cycles_set_up_sender_total = analyze_statistics(mode, arr_cycles_setup_sender, n, MyFile);
+
+        //Analyze setup_recipient clock cycles
+        MyFile << "set_up_recipient        ";
+        unsigned long long cycles_set_up_recipient_total = analyze_statistics(mode,arr_cycles_setup_recipient,  n, MyFile);
+
+        //Analyze seal clock cycles
+        MyFile << "seal                      ";
+        unsigned long long cycles_seal_total = analyze_statistics(mode,arr_cycles_seal,  n, MyFile);
+
+        //Analyze open clock cycles
+        MyFile << "open                      ";
+        unsigned long long cycles_open_total = analyze_statistics(mode,arr_cycles_open,  n, MyFile);
+
+        //Analyze total protocol clock cycles
+        unsigned long long clean_protocol = cycles_set_up_sender_total +
+                         cycles_set_up_recipient_total + cycles_seal_total +
+                         cycles_open_total;
+        MyFile << "TOTAL protocol          " << fixed << setprecision(0)
+               << clean_protocol / 1000 << "   CCs x10^3\n";
+               
+        //Analyze % of clock cycles per HPKE function
+        analyze_percentage(cycles_set_up_sender_total, cycles_set_up_recipient_total, cycles_seal_total, cycles_open_total, clean_protocol, MyFile);
+
+}
+
+
+float analyze_statistics(uint8_t mode, unsigned long long arr_cycles[], int n,
+                 std::ofstream &MyFile) {
+  sort_array(arr_cycles, n);
+
+  int start_index = n / 4;
+  int number_elements = n / 4 * 2;
+
+  // Consider only central 50% of the data -> eliminate quartile I and IV
+  float mean_val = mean(arr_cycles + start_index, number_elements);
+  if (mode == 1) {
+    MyFile << fixed << setprecision(0) << mean_val / 1000 << "   CCs x10^3, ";
+
+    MyFile << "M " << fixed << setprecision(0)
+           << median(arr_cycles + start_index, number_elements) / 1000
+           << " CCs x10^3, ";
+
+    MyFile << "SD " << fixed << setprecision(0)
+           << standarddeviation(arr_cycles + start_index, number_elements)
+           << "\n";
+  } else {
+    MyFile << fixed << setprecision(0) << mean_val / 1000 << "   CCs x10^3\n";
+  }
+
+  return mean_val;
+}
+
+void analyze_percentage(unsigned long long cycles_set_up_sender_total,
+                        unsigned long long cycles_set_up_recipient_total,
+                        unsigned long long cycles_seal_total,
+                        unsigned long long cycles_open_total,
+                        unsigned long long clean_protocol,
+                        std::ofstream &MyFile) {
+  MyFile << "% set_up_sender         " << fixed << setprecision(3)
+         << ((float)(cycles_set_up_sender_total) / ((float)clean_protocol) *
+             100)
+         << " % \n";
+
+  MyFile << "% set_up_recipient      " << fixed << setprecision(3)
+         << ((float)cycles_set_up_recipient_total) / ((float)clean_protocol) *
+                100
+         << " % \n";
+
+  MyFile << "% seal                  " << fixed << setprecision(3)
+         << ((float)cycles_seal_total) / ((float)clean_protocol) * 100
+         << "  % \n";
+
+  MyFile << "% open                  " << fixed << setprecision(3)
+         << ((float)cycles_open_total) / ((float)clean_protocol) * 100
+         << "  % \n";
 }

@@ -48,11 +48,10 @@ pq_crypto_enc pq_enc[] = {&crypto_kem_enc_SIKEp434, &crypto_kem_enc_kyber,
 pq_crypto_dec pq_dec[] = {&crypto_kem_dec_SIKEp434, &crypto_kem_dec_kyber,
                           NULL};
 
-
-struct evp_hpke_kem_st {
-  
   //Modify the fields adding ECC and PQ parameter lengths 
   //#Section 6.1 in DesignDoc
+struct evp_hpke_kem_st {
+  
   uint16_t id;
   size_t ECC_public_key_len;
   size_t ECC_private_key_len;

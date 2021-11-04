@@ -6,52 +6,52 @@ AEAD               ->   EVP_HPKE_AES_128_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           89   CCs x10^3
-set_up_sender           213   CCs x10^3
-set_up_recipient        140   CCs x10^3
-seal                    1.29  CCs x10^3
-open                    0.96  CCs x10^3
-CLEAN protocol          356   CCs x10^3
-% set_up_sender         59.878 % 
-% set_up_recipient      39.488 % 
-% seal                  0.363  % 
+cycles_keygen           71   CCs x10^3
+set_up_sender           198   CCs x10^3
+set_up_recipient        134   CCs x10^3
+seal                    0.99  CCs x10^3
+open                    0.78  CCs x10^3
+CLEAN protocol          334   CCs x10^3
+% set_up_sender         59.315 % 
+% set_up_recipient      40.154 % 
+% seal                  0.296  % 
+% open                  0.235  % 
+
+
+-------------------------------------------------------
+ALGORITHM          ->   x25519
+AEAD               ->   EVP_HPKE_AES_256_GCM
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+Plaintext Bytes    ->   214
+cycles_keygen           71   CCs x10^3
+set_up_sender           209   CCs x10^3
+set_up_recipient        139   CCs x10^3
+seal                    1.03  CCs x10^3
+open                    0.95  CCs x10^3
+CLEAN protocol          350   CCs x10^3
+% set_up_sender         59.754 % 
+% set_up_recipient      39.680 % 
+% seal                  0.295  % 
 % open                  0.270  % 
 
 
 -------------------------------------------------------
 ALGORITHM          ->   x25519
-AEAD               ->   EVP_HPKE_AES_256_GCM
-KDF                ->   EVP_HPKE_HKDF_SHA256
-
-Plaintext Bytes    ->   214
-cycles_keygen           89   CCs x10^3
-set_up_sender           218   CCs x10^3
-set_up_recipient        148   CCs x10^3
-seal                    1.51  CCs x10^3
-open                    1.02  CCs x10^3
-CLEAN protocol          369   CCs x10^3
-% set_up_sender         59.193 % 
-% set_up_recipient      40.123 % 
-% seal                  0.409  % 
-% open                  0.275  % 
-
-
--------------------------------------------------------
-ALGORITHM          ->   x25519
 AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           89   CCs x10^3
-set_up_sender           213   CCs x10^3
-set_up_recipient        148   CCs x10^3
-seal                    1.53  CCs x10^3
-open                    1.13  CCs x10^3
-CLEAN protocol          364   CCs x10^3
-% set_up_sender         58.684 % 
-% set_up_recipient      40.584 % 
-% seal                  0.421  % 
-% open                  0.310  % 
+cycles_keygen           71   CCs x10^3
+set_up_sender           301   CCs x10^3
+set_up_recipient        204   CCs x10^3
+seal                    2.24  CCs x10^3
+open                    1.50  CCs x10^3
+CLEAN protocol          508   CCs x10^3
+% set_up_sender         59.212 % 
+% set_up_recipient      40.053 % 
+% seal                  0.440  % 
+% open                  0.295  % 
 
 
 -------------------------------------------------------
@@ -60,16 +60,16 @@ AEAD               ->   EVP_HPKE_AES_128_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           4849   CCs x10^3
-set_up_sender           7648   CCs x10^3
-set_up_recipient        8151   CCs x10^3
-seal                    6.18  CCs x10^3
-open                    3.68  CCs x10^3
-CLEAN protocol          15809   CCs x10^3
-% set_up_sender         48.378 % 
-% set_up_recipient      51.560 % 
-% seal                  0.039  % 
-% open                  0.023  % 
+cycles_keygen           8403   CCs x10^3
+set_up_sender           8603   CCs x10^3
+set_up_recipient        9120   CCs x10^3
+seal                    6.06  CCs x10^3
+open                    4.33  CCs x10^3
+CLEAN protocol          17733   CCs x10^3
+% set_up_sender         48.512 % 
+% set_up_recipient      51.430 % 
+% seal                  0.034  % 
+% open                  0.024  % 
 
 
 -------------------------------------------------------
@@ -78,88 +78,88 @@ AEAD               ->   EVP_HPKE_AES_256_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           4849   CCs x10^3
-set_up_sender           7341   CCs x10^3
-set_up_recipient        7855   CCs x10^3
-seal                    4.35  CCs x10^3
-open                    2.60  CCs x10^3
-CLEAN protocol          15203   CCs x10^3
-% set_up_sender         48.289 % 
-% set_up_recipient      51.665 % 
+cycles_keygen           8403   CCs x10^3
+set_up_sender           7788   CCs x10^3
+set_up_recipient        8247   CCs x10^3
+seal                    4.34  CCs x10^3
+open                    3.36  CCs x10^3
+CLEAN protocol          16043   CCs x10^3
+% set_up_sender         48.544 % 
+% set_up_recipient      51.408 % 
+% seal                  0.027  % 
+% open                  0.021  % 
+
+
+-------------------------------------------------------
+ALGORITHM          ->   SIKE
+AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+Plaintext Bytes    ->   214
+cycles_keygen           8403   CCs x10^3
+set_up_sender           8163   CCs x10^3
+set_up_recipient        8629   CCs x10^3
+seal                    4.94  CCs x10^3
+open                    2.95  CCs x10^3
+CLEAN protocol          16799   CCs x10^3
+% set_up_sender         48.589 % 
+% set_up_recipient      51.364 % 
 % seal                  0.029  % 
-% open                  0.017  % 
-
-
--------------------------------------------------------
-ALGORITHM          ->   SIKE
-AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
-KDF                ->   EVP_HPKE_HKDF_SHA256
-
-Plaintext Bytes    ->   214
-cycles_keygen           4849   CCs x10^3
-set_up_sender           7100   CCs x10^3
-set_up_recipient        7526   CCs x10^3
-seal                    3.74  CCs x10^3
-open                    2.03  CCs x10^3
-CLEAN protocol          14632   CCs x10^3
-% set_up_sender         48.524 % 
-% set_up_recipient      51.436 % 
-% seal                  0.026  % 
-% open                  0.014  % 
-
-
--------------------------------------------------------
-ALGORITHM          ->   x25519 + SIKE
-AEAD               ->   EVP_HPKE_AES_128_GCM
-KDF                ->   EVP_HPKE_HKDF_SHA256
-
-Plaintext Bytes    ->   214
-cycles_keygen           4313   CCs x10^3
-set_up_sender           7636   CCs x10^3
-set_up_recipient        8039   CCs x10^3
-seal                    4.65  CCs x10^3
-open                    2.69  CCs x10^3
-CLEAN protocol          15682   CCs x10^3
-% set_up_sender         48.691 % 
-% set_up_recipient      51.262 % 
-% seal                  0.030  % 
-% open                  0.017  % 
-
-
--------------------------------------------------------
-ALGORITHM          ->   x25519 + SIKE
-AEAD               ->   EVP_HPKE_AES_256_GCM
-KDF                ->   EVP_HPKE_HKDF_SHA256
-
-Plaintext Bytes    ->   214
-cycles_keygen           4313   CCs x10^3
-set_up_sender           8133   CCs x10^3
-set_up_recipient        8623   CCs x10^3
-seal                    5.26  CCs x10^3
-open                    3.06  CCs x10^3
-CLEAN protocol          16764   CCs x10^3
-% set_up_sender         48.514 % 
-% set_up_recipient      51.437 % 
-% seal                  0.031  % 
 % open                  0.018  % 
 
 
 -------------------------------------------------------
 ALGORITHM          ->   x25519 + SIKE
+AEAD               ->   EVP_HPKE_AES_128_GCM
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+Plaintext Bytes    ->   214
+cycles_keygen           4579   CCs x10^3
+set_up_sender           7164   CCs x10^3
+set_up_recipient        7601   CCs x10^3
+seal                    2.34  CCs x10^3
+open                    1.94  CCs x10^3
+CLEAN protocol          14770   CCs x10^3
+% set_up_sender         48.506 % 
+% set_up_recipient      51.465 % 
+% seal                  0.016  % 
+% open                  0.013  % 
+
+
+-------------------------------------------------------
+ALGORITHM          ->   x25519 + SIKE
+AEAD               ->   EVP_HPKE_AES_256_GCM
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+Plaintext Bytes    ->   214
+cycles_keygen           4579   CCs x10^3
+set_up_sender           8600   CCs x10^3
+set_up_recipient        9473   CCs x10^3
+seal                    6.67  CCs x10^3
+open                    5.12  CCs x10^3
+CLEAN protocol          18085   CCs x10^3
+% set_up_sender         47.554 % 
+% set_up_recipient      52.381 % 
+% seal                  0.037  % 
+% open                  0.028  % 
+
+
+-------------------------------------------------------
+ALGORITHM          ->   x25519 + SIKE
 AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           4313   CCs x10^3
-set_up_sender           7454   CCs x10^3
-set_up_recipient        7833   CCs x10^3
-seal                    4.69  CCs x10^3
-open                    2.34  CCs x10^3
-CLEAN protocol          15294   CCs x10^3
-% set_up_sender         48.739 % 
-% set_up_recipient      51.215 % 
-% seal                  0.031  % 
-% open                  0.015  % 
+cycles_keygen           4579   CCs x10^3
+set_up_sender           8267   CCs x10^3
+set_up_recipient        8719   CCs x10^3
+seal                    5.90  CCs x10^3
+open                    3.36  CCs x10^3
+CLEAN protocol          16995   CCs x10^3
+% set_up_sender         48.641 % 
+% set_up_recipient      51.305 % 
+% seal                  0.035  % 
+% open                  0.020  % 
 
 
 -------------------------------------------------------
@@ -168,16 +168,16 @@ AEAD               ->   EVP_HPKE_AES_128_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           123   CCs x10^3
-set_up_sender           90   CCs x10^3
-set_up_recipient        68   CCs x10^3
-seal                    0.62  CCs x10^3
-open                    0.50  CCs x10^3
-CLEAN protocol          158   CCs x10^3
-% set_up_sender         56.517 % 
-% set_up_recipient      42.771 % 
-% seal                  0.394  % 
-% open                  0.317  % 
+cycles_keygen           75   CCs x10^3
+set_up_sender           118   CCs x10^3
+set_up_recipient        84   CCs x10^3
+seal                    1.00  CCs x10^3
+open                    0.81  CCs x10^3
+CLEAN protocol          204   CCs x10^3
+% set_up_sender         57.921 % 
+% set_up_recipient      41.195 % 
+% seal                  0.489  % 
+% open                  0.395  % 
 
 
 -------------------------------------------------------
@@ -186,16 +186,16 @@ AEAD               ->   EVP_HPKE_AES_256_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           123   CCs x10^3
-set_up_sender           89   CCs x10^3
-set_up_recipient        68   CCs x10^3
-seal                    0.69  CCs x10^3
-open                    0.58  CCs x10^3
-CLEAN protocol          158   CCs x10^3
-% set_up_sender         56.212 % 
-% set_up_recipient      42.986 % 
-% seal                  0.435  % 
-% open                  0.367  % 
+cycles_keygen           75   CCs x10^3
+set_up_sender           107   CCs x10^3
+set_up_recipient        80   CCs x10^3
+seal                    0.93  CCs x10^3
+open                    0.87  CCs x10^3
+CLEAN protocol          189   CCs x10^3
+% set_up_sender         56.608 % 
+% set_up_recipient      42.444 % 
+% seal                  0.489  % 
+% open                  0.459  % 
 
 
 -------------------------------------------------------
@@ -204,16 +204,16 @@ AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           123   CCs x10^3
-set_up_sender           91   CCs x10^3
-set_up_recipient        69   CCs x10^3
-seal                    0.86  CCs x10^3
-open                    0.70  CCs x10^3
-CLEAN protocol          162   CCs x10^3
-% set_up_sender         56.449 % 
-% set_up_recipient      42.591 % 
+cycles_keygen           75   CCs x10^3
+set_up_sender           103   CCs x10^3
+set_up_recipient        76   CCs x10^3
+seal                    0.95  CCs x10^3
+open                    0.73  CCs x10^3
+CLEAN protocol          180   CCs x10^3
+% set_up_sender         57.014 % 
+% set_up_recipient      42.050 % 
 % seal                  0.529  % 
-% open                  0.432  % 
+% open                  0.407  % 
 
 
 -------------------------------------------------------
@@ -222,16 +222,16 @@ AEAD               ->   EVP_HPKE_AES_128_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           127   CCs x10^3
-set_up_sender           254   CCs x10^3
-set_up_recipient        180   CCs x10^3
-seal                    0.70  CCs x10^3
-open                    0.59  CCs x10^3
-CLEAN protocol          435   CCs x10^3
-% set_up_sender         58.416 % 
-% set_up_recipient      41.286 % 
-% seal                  0.162  % 
-% open                  0.136  % 
+cycles_keygen           233   CCs x10^3
+set_up_sender           275   CCs x10^3
+set_up_recipient        185   CCs x10^3
+seal                    0.74  CCs x10^3
+open                    0.69  CCs x10^3
+CLEAN protocol          462   CCs x10^3
+% set_up_sender         59.551 % 
+% set_up_recipient      40.139 % 
+% seal                  0.161  % 
+% open                  0.148  % 
 
 
 -------------------------------------------------------
@@ -240,16 +240,16 @@ AEAD               ->   EVP_HPKE_AES_256_GCM
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           127   CCs x10^3
-set_up_sender           258   CCs x10^3
-set_up_recipient        181   CCs x10^3
-seal                    0.80  CCs x10^3
-open                    0.66  CCs x10^3
-CLEAN protocol          440   CCs x10^3
-% set_up_sender         58.517 % 
-% set_up_recipient      41.150 % 
-% seal                  0.183  % 
-% open                  0.151  % 
+cycles_keygen           233   CCs x10^3
+set_up_sender           284   CCs x10^3
+set_up_recipient        193   CCs x10^3
+seal                    1.03  CCs x10^3
+open                    0.87  CCs x10^3
+CLEAN protocol          479   CCs x10^3
+% set_up_sender         59.371 % 
+% set_up_recipient      40.231 % 
+% seal                  0.215  % 
+% open                  0.182  % 
 
 
 -------------------------------------------------------
@@ -258,13 +258,13 @@ AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
 KDF                ->   EVP_HPKE_HKDF_SHA256
 
 Plaintext Bytes    ->   214
-cycles_keygen           127   CCs x10^3
-set_up_sender           249   CCs x10^3
-set_up_recipient        176   CCs x10^3
-seal                    0.91  CCs x10^3
-open                    0.70  CCs x10^3
-CLEAN protocol          427   CCs x10^3
-% set_up_sender         58.437 % 
-% set_up_recipient      41.185 % 
-% seal                  0.214  % 
-% open                  0.164  % 
+cycles_keygen           233   CCs x10^3
+set_up_sender           262   CCs x10^3
+set_up_recipient        180   CCs x10^3
+seal                    1.12  CCs x10^3
+open                    0.78  CCs x10^3
+CLEAN protocol          443   CCs x10^3
+% set_up_sender         59.010 % 
+% set_up_recipient      40.563 % 
+% seal                  0.252  % 
+% open                  0.175  % 
