@@ -70,6 +70,7 @@ OBJ = bignum_add.o \
       bignum_montredc.o \
       bignum_montsqr.o \
       bignum_mul.o \
+      bignum_muladd10.o \
       bignum_mux.o \
       bignum_mux16.o \
       bignum_negmodinv.o \

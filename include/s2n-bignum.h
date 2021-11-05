@@ -385,6 +385,10 @@ extern void bignum_mul_8_16 (uint64_t z[static 16], uint64_t x[static 8], uint64
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_mul_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
 
+// Multiply bignum by 10 and add word: z := 10 * z + d
+// Inputs z[k], d; outputs function return (carry) and z[k]
+extern uint64_t bignum_muladd10 (uint64_t k, uint64_t *z, uint64_t d);
+
 // Multiplex/select z := x (if p nonzero) or z := y (if p zero)
 // Inputs p, x[k], y[k]; output z[k]
 extern void bignum_mux (uint64_t p, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);

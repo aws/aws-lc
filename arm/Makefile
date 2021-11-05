@@ -123,6 +123,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       generic/bignum_montredc.o \
       generic/bignum_montsqr.o \
       generic/bignum_mul.o \
+      generic/bignum_muladd10.o \
       generic/bignum_mux.o \
       generic/bignum_mux16.o \
       generic/bignum_negmodinv.o \

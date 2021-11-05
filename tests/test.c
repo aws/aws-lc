@@ -154,6 +154,7 @@ enum {
        TEST_BIGNUM_MUL_6_12,
        TEST_BIGNUM_MUL_8_16,
        TEST_BIGNUM_MUL_P521,
+       TEST_BIGNUM_MULADD10,
        TEST_BIGNUM_MUX,
        TEST_BIGNUM_MUX_4,
        TEST_BIGNUM_MUX_6,
@@ -3619,6 +3620,44 @@ int test_bignum_mul_p521(void)
   return 0;
 }
 
+int test_bignum_muladd10(void)
+{ uint64_t t, k, r, d, j, s;
+  printf("Testing bignum_muladd10 with %d cases\n",tests);
+  for (t = 0; t < tests; ++t)
+   { k = (unsigned) rand() % MAXSIZE;
+     random_bignum(k,b0);
+     d = random64();
+     bignum_copy(k,b4,k,b0);
+     bignum_of_word(k+1,b3,d);
+     reference_cmadd(k+1,b3,10,k,b0);
+     r = bignum_muladd10(k,b4,d);
+     j = (k == 0) ? 0 : k - 1;
+     s = b3[k];
+     if (reference_compare(k,b3,k,b4) != 0)
+      { printf("### Disparity in product: [size %4"PRIu64"] "
+               "10 * 0x%016"PRIx64"...%016"PRIx64" + %"PRIu64" = "
+               "0x%016"PRIx64"...%016"PRIx64" carry %"PRIu64" not 0x%016"PRIx64"...%016"PRIx64" carry %"PRIu64"\n",
+               k,b0[j],b0[0],d,b4[j],b4[0],r,b3[j],b3[0],s);
+        return 1;
+      }
+     else if (r != s)
+      { printf("### Disparity in carry: [size %4"PRIu64"] "
+               "10 * 0x%016"PRIx64"...%016"PRIx64" + %"PRIu64" = "
+               "%"PRIu64" not %"PRIu64"\n",
+               k,b0[j],b0[0],d,r,b2[0]);
+        return 1;
+     }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 10 * 0x%016"PRIx64"...%016"PRIx64" + %"PRIu64" = "
+               "0x%016"PRIx64"...%016"PRIx64", carry %"PRIu64"\n",
+               k,b0[j],b0[0],d,b4[j],b4[0],r);
+      }
+   }
+
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_mux(void)
 { uint64_t i, n;
   printf("Testing bignum_mux with %d cases\n",tests);
@@ -5204,6 +5243,7 @@ int test_all()
   dotest(test_bignum_mul_6_12);
   dotest(test_bignum_mul_8_16);
   dotest(test_bignum_mul_p521);
+  dotest(test_bignum_muladd10);
   dotest(test_bignum_mux);
   dotest(test_bignum_mux_4);
   dotest(test_bignum_mux_6);
@@ -5343,6 +5383,7 @@ int test_allnonbmi()
   dotest(test_bignum_montredc);
   dotest(test_bignum_montsqr);
   dotest(test_bignum_mul);
+  dotest(test_bignum_muladd10);
   dotest(test_bignum_mux);
   dotest(test_bignum_mux_4);
   dotest(test_bignum_mux_6);
@@ -5539,6 +5580,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MUL_6_12:        return test_bignum_mul_6_12();
      case TEST_BIGNUM_MUL_8_16:        return test_bignum_mul_8_16();
      case TEST_BIGNUM_MUL_P521:        return test_bignum_mul_p521();
+     case TEST_BIGNUM_MULADD10:        return test_bignum_muladd10();
      case TEST_BIGNUM_MUX:             return test_bignum_mux();
      case TEST_BIGNUM_MUX_4:           return test_bignum_mux_4();
      case TEST_BIGNUM_MUX_6:           return test_bignum_mux_6();

@@ -1,0 +1,74 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// ----------------------------------------------------------------------------
+// Multiply bignum by 10 and add word: z := 10 * z + d
+// Inputs z[k], d; outputs function return (carry) and z[k]
+//
+//    extern uint64_t bignum_mul10 (uint64_t k, uint64_t *z, uint64_t d);
+//
+// Although typically the input d < 10, this is not actually required.
+//
+// Standard x86-64 ABI: RDI = k, RSI = z, RDX = d, returns RAX
+// ----------------------------------------------------------------------------
+
+        .intel_syntax noprefix
+        .globl  bignum_muladd10
+        .text
+
+#define k rdi
+#define z rsi
+#define d rcx
+
+#define a rax
+#define l rax
+
+#define h rdx
+#define i r8
+#define ten r9
+#define tenshort r9d
+
+bignum_muladd10:
+
+// Move carry input to permanent home, and if k = 0 skip the main loop
+
+                mov     d, rdx
+                test    k, k
+                jz      end
+
+// Simple loop
+
+                xor     i, i
+                mov     tenshort, 10
+loop:
+                mov     a, [z+8*i]
+                mul     ten
+                add     l, d
+                mov     [z+8*i], l
+                adc     h, 0
+                mov     d, h
+                inc     i
+                cmp     i, k
+                jc      loop
+
+// Return the final carry
+
+end:
+                mov     rax, d
+                ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
