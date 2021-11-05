@@ -369,11 +369,13 @@ TEST(HPKETest, x25519) {
   //Add varables for the clock cycles
   unsigned long long cycles_keygen = 0, cycles_set_up_sender,
                      cycles_set_up_recipient, cycles_seal, cycles_open;
+
+  //Declare vectors of NUMBER_TESTS * number_set positions
+  //For each iteration of the tests measure and collect the results of the different info_values and ad_values sets
   unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
       arr_cycles_setup_recipient[NUMBER_TESTS * number_sets],
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
-
 
   int counter_loops = 0;
 
@@ -388,6 +390,7 @@ TEST(HPKETest, x25519) {
       (uint8_t *)malloc(sizeof(uint8_t) * X25519_PRIVATE_KEY_LEN);
 
   //Measure the clock cycles for EVP_HPKE_KEY_generate funciton
+  //It is performed only once (static keys for Recipient)
   cycles_keygen = cpucycles();
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
   cycles_keygen = cpucycles() - cycles_keygen;

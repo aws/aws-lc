@@ -385,18 +385,6 @@ void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
   quartiles[3] = arr[n - 1];
 }
 
-float analyze(unsigned long long arr_cycles[], int quartile1_positions,
-              int quartile2_positions) {
-  unsigned long long mean = 0;
-  for (int i = quartile1_positions; i < quartile2_positions; i++) {
-    mean += arr_cycles[i];
-  }
-  return ((float)mean) / (float)(quartile2_positions - quartile1_positions);
-}
-
-
-
-
 void analyze_protocol(uint8_t mode,
 unsigned long long *arr_cycles_setup_sender, 
 unsigned long long *arr_cycles_setup_recipient, 
