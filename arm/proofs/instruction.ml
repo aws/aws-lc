@@ -615,7 +615,7 @@ let arm_ADC = define
     \s. let m = read Rm s
         and n = read Rn s
         and c = bitval(read CF s) in
-        let d = word_add (word_add m n) (word c) in
+        let d:N word = word_add (word_add m n) (word c) in
         (Rd := d) s`;;
 
 let arm_ADCS = define
@@ -623,7 +623,7 @@ let arm_ADCS = define
     \s. let m = read Rm s
         and n = read Rn s
         and c = bitval(read CF s) in
-        let d = word_add (word_add m n) (word c) in
+        let d:N word = word_add (word_add m n) (word c) in
         (Rd := d ,,
          NF := (ival d < &0) ,,
          ZF := (val d = 0) ,,
@@ -634,14 +634,14 @@ let arm_ADD = define
  `arm_ADD Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_add m n in
+        let d:N word = word_add m n in
         (Rd := d) s`;;
 
 let arm_ADDS = define
  `arm_ADDS Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_add m n in
+        let d:N word = word_add m n in
         (Rd := d ,,
          NF := (ival d < &0) ,,
          ZF := (val d = 0) ,,
@@ -652,19 +652,26 @@ let arm_AND = define
  `arm_AND Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_and m n in
+        let d:N word = word_and m n in
         (Rd := d) s`;;
 
 let arm_ANDS = define
  `arm_ANDS Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_and m n in
+        let d:N word = word_and m n in
         (Rd := d ,,
          NF := (ival d < &0) ,,
          ZF := (val d = 0) ,,
          CF := F ,,
          VF := F) s`;;
+
+let arm_ASRV = define
+ `arm_ASRV Rd Rm Rn =
+    \s. let m = read Rm s
+        and n = read Rn s in
+        let d:N word = word_jshr m n in
+        (Rd := d) s`;;
 
 (*** For unconditional branch the offset is encoded as a 26-bit word   ***)
 (*** This is turned into a 28-bit word when multiplied by 4, then sx   ***)
@@ -673,6 +680,24 @@ let arm_ANDS = define
 let arm_B = define
  `arm_B (off:28 word) =
     \s. (PC := word_add (word_sub (read PC s) (word 4)) (word_sx off)) s`;;
+
+let arm_BIC = define
+ `arm_BIC Rd Rm Rn =
+    \s. let m = read Rm s
+        and n = read Rn s in
+        let d:N word = word_and m (word_not n) in
+        (Rd := d) s`;;
+
+let arm_BICS = define
+ `arm_BICS Rd Rm Rn =
+    \s. let m = read Rm s
+        and n = read Rn s in
+        let d:N word = word_and m (word_not n) in
+        (Rd := d ,,
+         NF := (ival d < &0) ,,
+         ZF := (val d = 0) ,,
+         CF := F ,,
+         VF := F) s`;;
 
 (*** As with x86, we have relative and absolute versions of branch & link ***)
 (*** The absolute one gives a natural way of handling linker-insertions.  ***)
@@ -743,48 +768,41 @@ let arm_EON = define
  `arm_EON Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_xor m (word_not n) in
+        let d:N word = word_xor m (word_not n) in
         (Rd := d) s`;;
 
 let arm_EOR = define
  `arm_EOR Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_xor m n in
+        let d:N word = word_xor m n in
         (Rd := d) s`;;
 
-(*** We force the shift count to be of the same word type; in practice
- *** it would be fine to use 6-bit immediates for 64-bit main values,
- *** which is all we currently use
+(*** The lsb argument is forced modulo the wordsize here, but that should
+ *** happen implicitly from the size of the immediate when using the decoder.
  ***)
 
 let arm_EXTR = define
  `arm_EXTR Rd Rn Rm lsb =
     \s. let n:N word = read Rn s
         and m:N word = read Rm s
-        and l = val(read lsb s:N word) MOD dimindex(:N) in
+        and l = lsb MOD dimindex(:N) in
         let concat:(N tybit0)word = word_join n m in
         let d:N word = word_subword concat (l,dimindex(:N)) in
         (Rd := d) s`;;
-
-(*** Note that the shift behaviours in the LSLV and LSRV docs
- *** exactly match the word_jshl and word_jushr with a masking;
- *** the English text about "remainder on dividing" is ambiguous
- *** but it's quite explicitly treated as unsigned in pseudocode
- ***)
 
 let arm_LSLV = define
  `arm_LSLV Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_jshl m n in
+        let d:N word = word_jshl m n in
         (Rd := d) s`;;
 
 let arm_LSRV = define
  `arm_LSRV Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_jushr m n in
+        let d:N word = word_jushr m n in
         (Rd := d) s`;;
 
 let arm_MADD = define
@@ -819,14 +837,14 @@ let arm_ORN = define
  `arm_ORN Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_or m (word_not n) in
+        let d:N word = word_or m (word_not n) in
         (Rd := d) s`;;
 
 let arm_ORR = define
  `arm_ORR Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_or m n in
+        let d:N word = word_or m n in
         (Rd := d) s`;;
 
 (*** The default RET uses X30. ***)
@@ -834,6 +852,13 @@ let arm_ORR = define
 let arm_RET = define
  `arm_RET Rn =
     \s. (PC := read Rn s) s`;;
+
+let arm_RORV = define
+ `arm_RORV Rd Rm Rn =
+    \s. let m = read Rm s
+        and n = read Rn s in
+        let d:N word = word_jror m n in
+        (Rd := d) s`;;
 
 (*** Note that the carry flag is inverted for subtractions ***)
 (*** Flag set means no borrow, flag clear means borrow.    ***)
@@ -844,7 +869,7 @@ let arm_SBC = define
     \s. let m = read Rm s
         and n = read Rn s
         and c = bitval(~read CF s) in
-        let d = word_sub m (word_add n (word c)) in
+        let d:N word = word_sub m (word_add n (word c)) in
         (Rd := d) s`;;
 
 let arm_SBCS = define
@@ -852,7 +877,7 @@ let arm_SBCS = define
     \s. let m = read Rm s
         and n = read Rn s
         and c = bitval(~read CF s) in
-        let d = word_sub m (word_add n (word c)) in
+        let d:N word = word_sub m (word_add n (word c)) in
         (Rd := d ,,
          NF := (ival d < &0) ,,
          ZF := (val d = 0) ,,
@@ -863,19 +888,27 @@ let arm_SUB = define
  `arm_SUB Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_sub m n in
+        let d:N word = word_sub m n in
         (Rd := d) s`;;
 
 let arm_SUBS = define
  `arm_SUBS Rd Rm Rn =
     \s. let m = read Rm s
         and n = read Rn s in
-        let d = word_sub m n in
+        let d:N word = word_sub m n in
         (Rd := d ,,
          NF := (ival d < &0) ,,
          ZF := (val d = 0) ,,
          CF := (&(val m) - &(val n):int = &(val d)) ,,
          VF := ~(ival m - ival n = ival d)) s`;;
+
+let arm_UBFM = define
+ `arm_UBFM Rd Rn immr imms =
+    \s. let x:N word = read Rn (s:armstate) in
+        let y:N word =
+          if imms >= immr then word_subword x (immr,(imms-immr)+1)
+          else word_shl (word_subword x (0,imms+1)) (dimindex(:N) - immr) in
+        (Rd := y) s`;;
 
 let arm_UMULH = define
  `arm_UMULH Rd Rn Rm =
@@ -1018,6 +1051,9 @@ let arm_BLE = define `arm_BLE = arm_Bcond Condition_LE`;;
 let arm_BAL = define `arm_BAL = arm_Bcond Condition_AL`;;
 let arm_BNV = define `arm_BNV = arm_Bcond Condition_NV`;;
 
+let arm_CINC = define
+ `arm_CINC Rd Rn cc = arm_CSINC Rd Rn Rn (invert_condition cc)`;;
+
 let arm_CINV = define
  `arm_CINV Rd Rn cc = arm_CSINV Rd Rn Rn (invert_condition cc)`;;
 
@@ -1033,22 +1069,12 @@ let arm_CSET = define
 let arm_CSETM = define
   `arm_CSETM Rd cc = arm_CSINV Rd ZR ZR (invert_condition cc)`;;
 
-(*** ARM actually aliases most/all immediate shifts LSL LSR to UBFM.
- *** But in our setting it seems much simpler to use LSLV and LSRV directly.
- *** I assume the semantics must be the same, though I didn't trace
- *** through the instances of UBFM.
- ***)
-
-let arm_LSL = define
- `arm_LSL Rd Rm Rn = arm_LSLV Rd Rm Rn`;;
-
-let arm_LSR = define
- `arm_LSR Rd Rm Rn = arm_LSRV Rd Rm Rn`;;
-
 let arm_MOV = define `arm_MOV Rd Rm = arm_ORR Rd ZR Rm`;;
 
 let arm_MNEG = define `arm_MNEG Rd Rn Rm = arm_MSUB Rd Rn Rm ZR`;;
 let arm_MUL = define `arm_MUL Rd Rn Rm = arm_MADD Rd Rn Rm ZR`;;
+
+let arm_MVN = define `arm_MVN Rd Rm = arm_ORN Rd ZR Rm`;;
 
 let arm_NEG = define `arm_NEG Rd Rm = arm_SUB Rd ZR Rm`;;
 let arm_NEGS = define `arm_NEGS Rd Rm = arm_SUBS Rd ZR Rm`;;
@@ -1064,27 +1090,73 @@ let ARM_INSTRUCTION_ALIASES =
  [arm_BEQ; arm_BNE; arm_BCS; arm_BHS; arm_BCC;
   arm_BLO; arm_BMI; arm_BPL; arm_BVS; arm_BVC;
   arm_BHI; arm_BLS; arm_BGE; arm_BLT; arm_BGT;
-  arm_BLE; arm_BAL; arm_BNV; arm_CMN; arm_CMP;
-  arm_CINV; arm_CNEG; arm_CSET; arm_CSETM;
-  arm_LSL; arm_LSR; arm_MOV; arm_MNEG; arm_MUL;
-  arm_NEG; arm_NEGS; arm_NGC; arm_NGCS; arm_ROR;
-  arm_TST];;
+  arm_BLE; arm_BAL; arm_BNV; arm_CINC; arm_CINV; 
+  arm_CNEG; arm_CMN; arm_CMP;arm_CSET; arm_CSETM; 
+  arm_MOV; arm_MNEG; arm_MUL; arm_MVN; arm_NEG; 
+  arm_NEGS; arm_NGC; arm_NGCS; arm_ROR; arm_TST];;
+
+(* ------------------------------------------------------------------------- *)
+(* These two are treated by ARM as aliases, but since they are such          *)
+(* natural top-level operations we define them a priori then prove           *)
+(* they are equivalent to their UBFM instances given some sideconditions.    *)
+(* The decoder will return them directly instead of expanding to UBFM.       *)
+(*                                                                           *)
+(* Note that you can't actually encode a left shift by zero bits; it         *)
+(* is instead interpreted as a right shift by zero bits. However the alias   *)
+(* arm_LSL with a zero shift does in fact mean the same thing anyway.        *)
+(* ------------------------------------------------------------------------- *)
+
+let arm_LSL = define
+ `arm_LSL Rd Rn imm =
+        \s. let x:N word = read Rn (s:armstate) in
+            let y = word_shl x imm in
+            (Rd := y) s`;;
+
+let arm_LSR = define
+ `arm_LSR Rd Rn imm =
+       \s. let x:N word = read Rn (s:armstate) in
+           let y = word_ushr x imm in
+           (Rd := y) s`;;
+
+let arm_LSL_ALIAS = prove
+ (`immr < dimindex(:N) /\ imms + 1 = immr
+   ==> arm_UBFM (Rd:(armstate,N word)component) Rn immr imms =
+       arm_LSL Rd Rn (dimindex(:N) - immr)`,
+  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC (SUBST1_TAC o SYM)) THEN
+  GEN_REWRITE_TAC I [FUN_EQ_THM] THEN
+  X_GEN_TAC `s:armstate` THEN ASM_REWRITE_TAC[arm_LSL; arm_UBFM] THEN
+  LET_TAC THEN CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN REWRITE_TAC[ARITH_RULE `~(s >= s + 1)`] THEN
+  ASM_SIMP_TAC[MOD_CASES; DIMINDEX_GE_1; ARITH_RULE `1 <= n ==> n - d < 2 * n`;
+               ARITH_RULE `1 <= n ==> (n - d < n <=> ~(d = 0))`] THEN
+  SIMP_TAC[COND_SWAP; SUB_0; SUB_REFL; GE] THEN
+  ASM_CASES_TAC `imm = 0` THEN
+  ASM_SIMP_TAC[LE_0; SUB_0; SUB_ADD; DIMINDEX_GE_1; GSYM WORD_ZX_SUBWORD;
+               WORD_ZX_TRIVIAL; WORD_SHL_ZERO] THEN
+  ASM_SIMP_TAC[ARITH_RULE `d < n ==> ~(n - d <= n - 1 - d)`] THEN
+  ASM_SIMP_TAC[ARITH_RULE `d:num < n ==> n - (n - d) = d`] THEN
+  ASM_SIMP_TAC[ARITH_RULE `d < n ==> n - 1 - d + 1 = n - d`] THEN
+  MATCH_MP_TAC WORD_SHL_SUBWORD THEN ARITH_TAC);;
+
+let arm_LSR_ALIAS = prove
+ (`immr < dimindex(:N) /\ imms = dimindex(:N) - 1
+   ==> arm_UBFM (Rd:(armstate,N word)component) Rn immr imms =
+       arm_LSR Rd Rn immr`,
+  REPEAT STRIP_TAC THEN GEN_REWRITE_TAC I [FUN_EQ_THM] THEN
+  X_GEN_TAC `s:armstate` THEN ASM_REWRITE_TAC[arm_LSR; arm_UBFM] THEN
+  LET_TAC THEN CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN
+  ASM_SIMP_TAC[ARITH_RULE `d < n ==> n - 1 >= d`] THEN
+  ASM_SIMP_TAC[ARITH_RULE `d < n ==> n - 1 - d + 1 = n - d`] THEN
+  REWRITE_TAC[WORD_USHR_AS_SUBWORD]);;
 
 (* ------------------------------------------------------------------------- *)
 (* The ROR alias does amount to the same thing as the word_ror operation.    *)
 (* ------------------------------------------------------------------------- *)
 
-(**** We wire in 64-bit words here, but it would work with the shift
- **** being a 6-bit immediate as well
- ****)
-
 let arm_ROR_ALT = prove
  (`arm_ROR Rd Rs lsb =
-    \s:armstate.
-          let n:64 word = read Rs s
-          and l:64 word = read lsb s in
-          let d = word_ror n (val l) in
-          (Rd := d) s`,
+    \s:armstate. (Rd := word_ror (read Rs s) lsb) s`,
   GEN_REWRITE_TAC I [FUN_EQ_THM] THEN X_GEN_TAC `s:armstate` THEN
   REWRITE_TAC[arm_ROR; arm_EXTR] THEN
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
@@ -1256,14 +1328,19 @@ let arm_MOVK_ALT =
 
 let ARM_OPERATION_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)
-      [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADDS_ALT;
-       arm_AND; arm_ANDS; arm_B; arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
+      [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADDS_ALT; arm_AND; arm_ANDS;
+       arm_ASRV; arm_B; arm_BIC; arm_BICS; arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
        arm_CBNZ_ALT; arm_CBZ_ALT; arm_CLZ; arm_CSEL; arm_CSINC;
-       arm_CSINV; arm_CSNEG; arm_EON; arm_EOR; arm_EXTR; arm_LSLV;
-       arm_LSRV; arm_MOVK_ALT; arm_MOVN; arm_MOVZ;
-       arm_MADD; arm_MSUB; arm_ORN;
-       arm_ORR; arm_RET; arm_SBC; arm_SBCS_ALT;
-       arm_SUB; arm_SUBS_ALT; arm_UMULH];;
+       arm_CSINV; arm_CSNEG; arm_EON; arm_EOR; arm_EXTR;
+       arm_LSL; arm_LSLV; arm_LSR; arm_LSRV;
+       arm_MADD; arm_MOVK_ALT; arm_MOVN; arm_MOVZ;
+       arm_MSUB; arm_ORN; arm_ORR; arm_RET; arm_RORV; arm_SBC; arm_SBCS_ALT;
+       arm_SUB; arm_SUBS_ALT; arm_UBFM; arm_UMULH;
+    (*** 32-bit backups since the ALT forms are 64-bit only ***)
+       INST_TYPE[`:32`,`:N`] arm_ADCS;
+       INST_TYPE[`:32`,`:N`] arm_ADDS;
+       INST_TYPE[`:32`,`:N`] arm_SBCS;
+       INST_TYPE[`:32`,`:N`] arm_SUBS];;
 
 let ARM_LOAD_STORE_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)

@@ -22,14 +22,13 @@ let WREG_SP = new_definition `WREG_SP n = XREG_SP n :> zerotop_32`;;
 let XREG' = new_definition `XREG' (n:5 word) = XREG (val n)`;;
 let WREG' = new_definition `WREG' (n:5 word) = WREG (val n)`;;
 
-let arm_bitop = new_definition `arm_bitop (opc:2 word):
-    (armstate,N word)component->(armstate,N word)component->
-    (armstate,N word)component->armstate->armstate->bool =
+let arm_logop = new_definition `arm_logop (opc:2 word) N
+    (Rd:(armstate,N word)component) Rn Rm =
   bitmatch opc with
-  | [0:2] -> arm_AND
-  | [1:2] -> arm_ORR
-  | [2:2] -> arm_EOR
-  | [3:2] -> arm_ANDS`;;
+  | [0:2] -> SOME ((if N then arm_BIC else arm_AND) Rd Rn Rm)
+  | [1:2] -> SOME ((if N then arm_ORN else arm_ORR) Rd Rn Rm)
+  | [2:2] -> SOME ((if N then arm_EON else arm_EOR) Rd Rn Rm)
+  | [3:2] -> SOME ((if N then arm_BICS else arm_ANDS) Rd Rn Rm)`;;
 
 let arm_adcop = new_definition `arm_adcop op S:
     (armstate,N word)component->(armstate,N word)component->
@@ -42,14 +41,6 @@ let arm_addop = new_definition `arm_addop op S:
     (armstate,N word)component->armstate->armstate->bool =
   if op then if S then arm_SUBS else arm_SUB
         else if S then arm_ADDS else arm_ADD`;;
-
-let arm_logop = new_definition `arm_logop (opc:2 word) N
-    (Rd:(armstate,N word)component) Rn Rm =
-  bitmatch opc with
-  | [0:2] -> if N then NONE else SOME (arm_AND Rd Rn Rm)
-  | [1:2] -> SOME ((if N then arm_ORN else arm_ORR) Rd Rn Rm)
-  | [2:2] -> SOME ((if N then arm_EON else arm_EOR) Rd Rn Rm)
-  | [3:2] -> if N then NONE else SOME (arm_ANDS Rd Rn Rm)`;;
 
 let arm_movop = new_definition `arm_movop (opc:2 word)
     (Rd:(armstate,N word)component) imm pos =
@@ -70,7 +61,8 @@ let arm_lsvop = new_definition `arm_lsvop (op2:2 word)
   bitmatch op2 with
   | [0:2] -> SOME (arm_LSLV Rd Rn Rm)
   | [1:2] -> SOME (arm_LSRV Rd Rn Rm)
-  | _ -> NONE`;;
+  | [2:2] -> SOME (arm_ASRV Rd Rn Rm)
+  | [3:2] -> SOME (arm_RORV Rd Rn Rm)`;;
 
 let arm_ldst = new_definition `arm_ldst ld x Rt =
   if x then (if ld then arm_LDR else arm_STR) (XREG' Rt)
@@ -99,22 +91,6 @@ let decode_shift = new_definition
     | [0b10:2] -> ASR
     | [0b11:2] -> ROR`;;
 
-let arm_ubfmop = new_definition `arm_ubfmop sf Rd Rn N immr imms =
-  if sf then
-    if N then
-      if imms = 63 then
-        SOME (arm_LSR (XREG' Rd) (XREG' Rn) (rvalue (word immr)))
-      else if imms + 1 = immr then
-        SOME (arm_LSL (XREG' Rd) (XREG' Rn) (rvalue (word (63 - imms))))
-      else NONE // general UBFM
-    else NONE
-  else if N \/ immr >= 32 \/ imms >= 32 then NONE else
-    if imms = 31 then
-      SOME (arm_LSR (WREG' Rd) (WREG' Rn) (rvalue (word immr)))
-    else if imms + 1 = immr then
-      SOME (arm_LSL (WREG' Rd) (WREG' Rn) (rvalue (word (31 - imms))))
-    else NONE // general UBFM`;;
-
 let decode = new_definition `!w:int32. decode w =
   bitmatch w:int32 with
   | [sf; op; S; 0b11010000:8; Rm:5; 0:6; Rn:5; Rd:5] ->
@@ -123,8 +99,10 @@ let decode = new_definition `!w:int32. decode w =
   | [sf; op; S; 0b100010:6; sh; imm12:12; Rn:5; Rd:5] ->
     let val = if sh then val imm12 * 2 EXP 12 else val imm12 in
     SOME (if sf
-      then arm_addop op S (XREG' Rd) (XREG_SP Rn) (rvalue (word val))
-      else arm_addop op S (WREG' Rd) (WREG_SP Rn) (rvalue (word val)))
+      then arm_addop op S (if S then XREG' Rd else XREG_SP Rd)
+                          (XREG_SP Rn) (rvalue (word val))
+      else arm_addop op S (if S then WREG' Rd else WREG_SP Rd)
+                          (WREG_SP Rn) (rvalue (word val)))
   | [sf; op; S; 0b01011:5; sty:2; 0:1; Rm:5; sam:6; Rn:5; Rd:5] ->
     if sty = word 0b11 then NONE
     else if sf then
@@ -137,10 +115,14 @@ let decode = new_definition `!w:int32. decode w =
   | [sf; opc:2; 0b100100:6; N; immr:6; imms:6; Rn:5; Rd:5] ->
     if sf then
       decode_bitmask N immr imms >>= \imm.
-      SOME (arm_bitop opc (XREG' Rd) (XREG' Rn) (rvalue imm))
+      arm_logop opc F
+       (if opc = word 3 then XREG' Rd else XREG_SP Rd)
+       (XREG' Rn) (rvalue imm)
     else if N then NONE else
       decode_bitmask N immr imms >>= \imm.
-      SOME (arm_bitop opc (WREG' Rd) (WREG' Rn) (rvalue imm))
+      arm_logop opc F
+       (if opc = word 3 then WREG' Rd else WREG_SP Rd)
+       (WREG' Rn) (rvalue imm)
   | [op; 0b00101:5; imm26:26] ->
     SOME ((if op then arm_BL else arm_B) (word (val imm26 * 4)))
   | [0b01010100:8; imm19:19; 0:1; cond:4] ->
@@ -166,16 +148,18 @@ let decode = new_definition `!w:int32. decode w =
           else if val hw >= 2 then NONE else
                arm_movop opc (WREG' Rd) imm16 (val hw * 16)
   | [sf; 0b00100111:8; N; 0:1; Rm:5; imms:6; Rn:5; Rd:5] ->
-    if sf then
-      SOME (arm_EXTR (XREG' Rd) (XREG' Rn) (XREG' Rm) (rvalue (word_zx imms)))
-    else if val imms < 32 then
-      SOME (arm_EXTR (WREG' Rd) (WREG' Rn) (WREG' Rm) (rvalue (word_zx imms)))
-    else NONE
+    if ~(sf <=> N) then NONE
+    else if sf then SOME (arm_EXTR (XREG' Rd) (XREG' Rn) (XREG' Rm) (val imms))
+    else if val imms >= 32 then NONE
+    else SOME (arm_EXTR (WREG' Rd) (WREG' Rn) (WREG' Rm) (val imms))
   | [sf; 0b0011010110:10; Rm:5; 0b0010:4; op2:2; Rn:5; Rd:5] ->
     if sf then arm_lsvop op2 (XREG' Rd) (XREG' Rn) (XREG' Rm)
           else arm_lsvop op2 (WREG' Rd) (WREG' Rn) (WREG' Rm)
   | [sf; 0b10100110:8; N; immr:6; imms:6; Rn:5; Rd:5] ->
-    arm_ubfmop sf Rd Rn N (val immr) (val imms)
+    if ~(sf <=> N) then NONE
+    else if sf then SOME (arm_UBFM (XREG' Rd) (XREG' Rn) (val immr) (val imms))
+    else if val immr >= 32 \/ val imms >= 32 then NONE
+    else SOME (arm_UBFM (WREG' Rd) (WREG' Rn) (val immr) (val imms))
   | [sf; 0b101101011000000000100:21; Rn:5; Rd:5] ->
     SOME (if sf then arm_CLZ (XREG' Rd) (XREG' Rn)
           else arm_CLZ (WREG' Rd) (WREG' Rn))
@@ -402,11 +386,21 @@ let ALIAS_CONV =
     else specialize th (fun th ->
       net_of_conv (lhs (concl th)) (REWR_CONV th)) in
   let net = itlist (f o SYM o SPEC_ALL) ARM_INSTRUCTION_ALIASES net in
+  let arith_sideconv = DEPTH_CONV(DIMINDEX_CONV ORELSEC NUM_RED_CONV) in
   let MOVZ_CONV =
     (fun th -> MP th (EQT_ELIM (NUM_LT_CONV (lhand (concl th))))) o
-    PART_MATCH (lhs o rand) (GSYM arm_MOVZ_ALT) in
+    PART_MATCH (lhs o rand) (GSYM arm_MOVZ_ALT)
+  and LSR_CONV =
+    (fun th -> MP th (EQT_ELIM(arith_sideconv(lhand(concl th))))) o
+    PART_MATCH (lhs o rand) arm_LSR_ALIAS
+  and LSL_CONV =
+    (fun th -> MP th (EQT_ELIM (arith_sideconv(lhand(concl th))))) o
+    PART_MATCH (lhs o rand) arm_LSL_ALIAS THENC
+    RAND_CONV arith_sideconv in
   let net = itlist (uncurry net_of_conv)
-    [`arm_MOVZ (Rd:(armstate,N word)component) (word imm) 0`,MOVZ_CONV]
+    [`arm_MOVZ (Rd:(armstate,N word)component) (word imm) 0`,MOVZ_CONV;
+     `arm_UBFM (Rd:(armstate,N word)component) Rn immr imms`,
+     (LSR_CONV ORELSEC LSL_CONV)]
     net in
   self := ONCE_DEPTH_CONV (REWRITES_CONV net);
   OPERAND_ALIAS_CONV THENC ALIAS_CONV;;
@@ -426,8 +420,7 @@ let PURE_DECODE_CONV =
     map (fun n -> "X"^string_of_int n) (0--30) @
     map (fun n -> "W"^string_of_int n) (0--30) @
     map (fst o dest_const o fst o strip_comb o lhs o concl)
-      (CONDITION_CLAUSES @ ARM_OPERATION_CLAUSES @ ARM_LOAD_STORE_CLAUSES) @
-    ["arm_LSL";"arm_LSR"] in
+        (CONDITION_CLAUSES @ ARM_OPERATION_CLAUSES @ ARM_LOAD_STORE_CLAUSES) in
 
   let genvar =
     let gcounter = ref 0 in
@@ -452,14 +445,12 @@ let PURE_DECODE_CONV =
   and pth_cond_F = (UNDISCH o prove)
    (`p = F ==> (if p then a else b:A) = b`,
     DISCH_THEN SUBST1_TAC THEN REWRITE_TAC [])
-  and pth_bitop = mk_pth_split arm_bitop
   and pth_adcop = mk_pth_split arm_adcop
   and pth_addop = mk_pth_split arm_addop
   and pth_logop = mk_pth_split arm_logop
   and pth_movop = mk_pth_split arm_movop
   and pth_csop = mk_pth_split arm_csop
   and pth_lsvop = mk_pth_split arm_lsvop
-  and pth_ubfmop = mk_pth arm_ubfmop
   and pth_ldst = mk_pth arm_ldst
   and pth_ldstrb = mk_pth arm_ldstb
   and pth_ldstp = mk_pth arm_ldstp in
@@ -590,9 +581,6 @@ let PURE_DECODE_CONV =
   | Comb((Const("WREG'",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("XREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("WREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
-  | Comb(Const("arm_bitop",_),_) ->
-    eval_nary (pth_bitop (dest_word_ty (snd (dest_component
-      (fst (dest_fun_ty (type_of t))))))) t F
   | Comb(Comb(Const("arm_adcop",_),_),_) ->
     eval_nary (pth_adcop (dest_word_ty (snd (dest_component
       (fst (dest_fun_ty (type_of t))))))) t F
@@ -611,8 +599,6 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Comb(Comb(Const("arm_lsvop",_),_),rd),_),_) ->
     let N = dest_word_ty (snd (dest_component (type_of rd))) in
     eval_nary (pth_lsvop N) t F
-  | Comb(Comb(Comb(Comb(Comb(Comb(Const("arm_ubfmop",_),_),_),_),_),_),_) ->
-    eval_nary pth_ubfmop t F
   | Comb(Comb(Comb(Const("arm_ldst",_),_),_),_) -> eval_nary pth_ldst t F
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
@@ -627,13 +613,16 @@ let PURE_DECODE_CONV =
   | Comb(Const("@",_),_) -> raise (Invalid_argument "ARB")
   | Const("ARB",_) -> raise (Invalid_argument "ARB")
   | Comb(Comb((Const("=",_) as f),a),b) -> eval_binary f a b F
-    (if type_of a = `:num` then NUM_RED_CONV else
-     if can dest_word_ty (type_of a) then WORD_RED_CONV else
+    (if type_of a = bool_ty then GEN_REWRITE_CONV I [EQ_CLAUSES]
+     else if type_of a = `:num` then NUM_RED_CONV
+     else if can dest_word_ty (type_of a) then WORD_RED_CONV else
      raise (Invalid_argument "unknown = type"))
+  | Comb((Const("~",_) as f),a) ->
+    eval_unary f a F (GEN_REWRITE_CONV I [NOT_CLAUSES])
   | Comb(Comb((Const("/\\",_) as f),a),b) ->
-    eval_binary f a b F (REWRITE_CONV [])
+    eval_binary f a b F (GEN_REWRITE_CONV I [AND_CLAUSES])
   | Comb(Comb((Const("\\/",_) as f),a),b) ->
-    eval_binary f a b F (REWRITE_CONV [])
+    eval_binary f a b F (GEN_REWRITE_CONV I [OR_CLAUSES])
   | Comb(Comb((Const(">=",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("<",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("*",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
@@ -644,7 +633,6 @@ let PURE_DECODE_CONV =
     eval_binary f a b F INT_RED_CONV
   | Comb((Const("val",_) as f),a) -> eval_unary f a F WORD_RED_CONV
   | Comb((Const("ival",_) as f),a) -> eval_unary f a F WORD_RED_CONV
-  (* | Comb((Const("iword",_) as f),a) -> eval_unary f a F WORD_RED_CONV *)
   | Comb(f,a) when (match f with
     | Comb(Const("GABS",_),_) -> true
     | Abs(_,_) -> true
