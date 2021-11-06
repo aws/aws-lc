@@ -57,17 +57,21 @@
 #include <math.h> /* ceil */
 
 #include <openssl/rsa.h>
+#include <fstream>
+#include <iostream>
+#include "aux_functions.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 #include <gtest/gtest.h>
-
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
+#include <openssl/cpucycles.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
+#include <fstream>
 
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/rsa/internal.h"
@@ -79,13 +83,7 @@
 #include <vector>
 #endif
 
-
 using namespace std;
-
-
-
-#include <openssl/cpucycles.h>
-#include <fstream>
 
 
 // kPlaintext is a sample plaintext.
@@ -405,149 +403,114 @@ struct RSAEncryptParam {
 
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
-#define NUMBER_TESTS 10
-#define PLAINTEXT_TOTAL 1000  // B
 
+#define NUMBER_TESTS 100000
+#define PLAINTEXT_TOTAL 10000000  // B
+
+// Define the analyze mode for the RSA functions
+// ANALYZE_RESULTS_MODE == 0 for summarized analysis of the data
+// ANALYZE_RESULTS_MODE == 1 for detailed analysis of the data
+#define ANALYZE_RESULTS_MODE 0
 
 
 TEST(RSATest, RSABenchmark) {
-  unsigned long long cycles_keygen_total = 0, cycles_encrypt_total = 0,
-                     cycles_decrypt_total = 0, cycles_protocol_total = 0;
+  unsigned long long arr_cycles_keygen_total[NUMBER_TESTS] = {0},
+                     arr_cycles_encrypt_total[NUMBER_TESTS] = {0},
+                     arr_cycles_decrypt_total[NUMBER_TESTS] = {0};
+
   unsigned long long cycles_keygen, cycles_encrypt, cycles_decrypt;
-  
-  std::ofstream MyFile("RSA_results.txt");
+
+  std::ofstream MyFile("../results/RSA_results.txt");
 
   bssl::UniquePtr<RSA> key(RSA_new());
   ASSERT_TRUE(key);
-  for (const size_t mode : {1, 3, 4}) {
-    switch (mode) {
-      case 1:
-        MyFile << ("\nPadding Mode        ->      RSA_PKCS1_PADDING");
-        break;
-      case 3:
-        MyFile << ("\nNumber Tests        ->      RSA_NO_PADDING");
-        break;
-      case 4:
-        MyFile << ("\nNumber Tests        ->      RSA_PKCS1_OAEP_PADDING");
-        break;
+  for (const size_t mode :
+       {RSA_PKCS1_PADDING, RSA_NO_PADDING, RSA_PKCS1_OAEP_PADDING}) {
+    print_padding_mode_RSA((int)mode, MyFile, NUMBER_TESTS);
 
-
-      default:
-        break;
-    }
-    MyFile << "\nNumber Tests        ->      "<< NUMBER_TESTS << "\n";
     for (const size_t bits : {2048, 3072, 4096}) {
       for (int plaintext_length_bytes = 100;
            plaintext_length_bytes <= PLAINTEXT_TOTAL;
            plaintext_length_bytes *= 10) {
-        
-        
-        cycles_keygen_total = 0;
-        cycles_encrypt_total = 0;
-        cycles_decrypt_total = 0;
-        cycles_protocol_total = 0;
-        int PLAINTEXT_SIZE;
-        switch (mode) {
-          case 1:
-            PLAINTEXT_SIZE = bits / 8 - 11;
-            break;
-          case 3:
-            PLAINTEXT_SIZE = bits / 8;
-            break;
-          case 4:
-            PLAINTEXT_SIZE = bits / 8 - 42;
-            break;
 
+        // Maximum length of the plaintext (chunks) depending on the RSA keys
+        // and the padding mode
+        int pt_max_len_chunk;
 
-          default:
-            PLAINTEXT_SIZE = 0;
-            break;
-        }
-        if(plaintext_length_bytes==100){
-          plaintext_length_bytes=PLAINTEXT_SIZE;
-        }
-        MyFile << "\nBytes Encrypted     ->      " << plaintext_length_bytes;
-
-        MyFile << "\nPlaintext Bytes     ->      " << PLAINTEXT_SIZE;
-
-        MyFile << "\nKey Size Bytes      ->      " << (int)bits;
+        // Check the length of the pt and the chunks
+        check_pt_chunks_RSA(mode, &pt_max_len_chunk, &plaintext_length_bytes,
+                            bits, MyFile);
 
         SCOPED_TRACE(bits);
 
-        key.reset(RSA_new());
-        ASSERT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
-        EXPECT_EQ(bits, BN_num_bits(key->n));
+        for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
+          arr_cycles_keygen_total[curr_test] = 0;
+          arr_cycles_encrypt_total[curr_test] = 0,
+          arr_cycles_decrypt_total[curr_test] = 0;
 
-        cycles_keygen = cpucycles();
-        EXPECT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
-        cycles_keygen_total += cpucycles() - cycles_keygen;
-        ASSERT_TRUE(key);
+          key.reset(RSA_new());
+          ASSERT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
+          EXPECT_EQ(bits, BN_num_bits(key->n));
 
-        EXPECT_TRUE(RSA_check_key(key.get()));
-        for (int jj = 0; jj < NUMBER_TESTS; jj++) {
+          cycles_keygen = cpucycles();
+          EXPECT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
+          arr_cycles_keygen_total[curr_test] = cpucycles() - cycles_keygen;
+          ASSERT_TRUE(key);
+
+          EXPECT_TRUE(RSA_check_key(key.get()));
+
+
+          // For simpliciy we create one chunk and encrypt/decript the same one
+          // multiple times (instead of creating too long PT, chunk it and
+          // encrypt/decrypt the chunks)
           uint8_t *plaintext_org =
-              (uint8_t *)malloc(sizeof(uint8_t) * PLAINTEXT_SIZE);
-          size_t plaintext_orgLen = PLAINTEXT_SIZE;
-          // uint8_t plaintext_org[PLAINTEXT_SIZE];
-          // size_t plaintext_orgLen = sizeof(plaintext_org);
-          for (int i = 0; i < PLAINTEXT_SIZE; i++) {
+              (uint8_t *)malloc(sizeof(uint8_t) * pt_max_len_chunk);
+          size_t plaintext_orgLen = pt_max_len_chunk;
+
+          // Initialze the PT with some readable value
+          for (int i = 0; i < pt_max_len_chunk; i++) {
             plaintext_org[i] = (uint8_t)((uint8_t)i % 256);
-            // printf("%02x ", (uint8_t)plaintext_org[i]);
           }
+
           uint8_t *ciphertext = (uint8_t *)malloc(sizeof(uint8_t) * bits / 8);
-          // uint8_t ciphertext[2048/8];
           size_t ciphertext_len = 0;
 
-          for (int chunks_plaintext =
-                   (int)ceil((float)plaintext_length_bytes / (float)PLAINTEXT_SIZE);
+          // Encrypt the chucks (actually the same chunk as menay times as the
+          // number of chunks)
+          for (int chunks_plaintext = (int)ceil((float)plaintext_length_bytes /
+                                                (float)pt_max_len_chunk);
                chunks_plaintext > 0; chunks_plaintext--) {
             cycles_encrypt = cpucycles();
             ASSERT_TRUE(RSA_encrypt(key.get(), &ciphertext_len, ciphertext,
                                     bits / 8, plaintext_org, plaintext_orgLen,
                                     mode));
-            cycles_encrypt_total += cpucycles() - cycles_encrypt;
+            arr_cycles_encrypt_total[curr_test] += cpucycles() - cycles_encrypt;
             EXPECT_EQ(RSA_size(key.get()), ciphertext_len);
           }
 
-
           uint8_t *plaintext = (uint8_t *)malloc(sizeof(uint32_t) * bits / 8);
-          // uint8_t plaintext[bits/8];
           size_t plaintext_len = 0;
-          // printf("\nRSA PKCS#1 v1.5 decryption\n");
-          for (int chunks_plaintext =
-                   (int)ceil((float)plaintext_length_bytes / (float)PLAINTEXT_SIZE);
+
+          // Decrypt the chucks (actually the same chunk as menay times as the
+          // number of chunks)
+          for (int chunks_plaintext = (int)ceil((float)plaintext_length_bytes /
+                                                (float)pt_max_len_chunk);
                chunks_plaintext > 0; chunks_plaintext--) {
             cycles_decrypt = cpucycles();
             ASSERT_TRUE(RSA_decrypt(key.get(), &plaintext_len, plaintext,
                                     bits / 8, ciphertext, ciphertext_len,
                                     mode));
-            cycles_decrypt_total += cpucycles() - cycles_decrypt;
+            arr_cycles_decrypt_total[curr_test] += cpucycles() - cycles_decrypt;
             EXPECT_EQ(Bytes(plaintext_org, plaintext_orgLen),
                       Bytes(plaintext, plaintext_len));
-          }
-
-          for (int i = 0; i < (int)plaintext_len; i++) {
-            // printf("%02x ", plaintext[i]);
           }
 
           free(ciphertext);
           free(plaintext);
         }
-        MyFile << "\ncycles_keygen_total         " << cycles_keygen_total / 1000 << " CCs x10^3\n";
-        MyFile << "cycles_encrypt_total        " << cycles_encrypt_total / NUMBER_TESTS / 1000 << " CCs x10^3\n";
-        MyFile << "cycles_decrypt_total        " << cycles_decrypt_total / NUMBER_TESTS / 1000 << " CCs x10^3\n";
-
-        // Print the value of the 4 functions (no overhead for array
-        // initialization, etc)
-        cycles_protocol_total = cycles_encrypt_total + cycles_decrypt_total;
-
-        MyFile << "CLEAN protocol              "<< cycles_protocol_total / NUMBER_TESTS / 1000 << " CCs x10^3\n";
-
-        MyFile << "% cycles_encrypt_total      " << ((float)(cycles_encrypt_total) / ((float)cycles_protocol_total) * 100) << " %\n";
-        MyFile << "% cycles_decrypt_total      " << ((float)cycles_decrypt_total) / ((float)cycles_protocol_total) * 100 << " %\n";
-        if(plaintext_length_bytes==PLAINTEXT_SIZE){
-          plaintext_length_bytes=100;
-        }
+        analyze_protocol_RSA(ANALYZE_RESULTS_MODE, arr_cycles_keygen_total,
+                             arr_cycles_encrypt_total, arr_cycles_decrypt_total,
+                             NUMBER_TESTS, MyFile);
       }
     }
   }

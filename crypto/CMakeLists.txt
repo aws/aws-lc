@@ -377,6 +377,7 @@ add_library(
   rsa_extra/rsa_asn1.c
   rsa_extra/rsassa_pss_asn1.c
   rsa_extra/rsa_print.c
+  rsa_extra/aux_functions.cc
   stack/stack.c
   siphash/siphash.c
   thread.c

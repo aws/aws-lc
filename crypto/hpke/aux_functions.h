@@ -58,6 +58,21 @@
   X25519_PUBLIC_VALUE_LEN + KYBER_CIPHERTEXTBYTES
 
 
+#define STARTING_PT_VALUE 10
+
+
+#define RSA_PKCS1_PADDING_MAX_PT_RSA2048 245
+#define RSA_NO_PADDING_MAX_PT_RSA2048 256
+#define RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA2048 214
+
+#define RSA_PKCS1_PADDING_MAX_PT_RSA3072 373
+#define RSA_NO_PADDING_MAX_PT_RSA3072 384
+#define RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA3072 342
+
+#define RSA_PKCS1_PADDING_MAX_PT_RSA4096 501
+#define RSA_NO_PADDING_MAX_PT_RSA4096 512
+#define RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA4096 470
+
 
 using namespace std;
 
@@ -92,3 +107,6 @@ void analyze_protocol(uint8_t mode, unsigned long long *arr_cycles_setup_sender,
                       unsigned long long *arr_cycles_seal,
                       unsigned long long *arr_cycles_open, int n,
                       std::ofstream &MyFile);
+
+
+void check_RSA_pt_lengths(int *pt_size);

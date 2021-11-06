@@ -385,44 +385,47 @@ void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
   quartiles[3] = arr[n - 1];
 }
 
-void analyze_protocol(uint8_t mode,
-unsigned long long *arr_cycles_setup_sender, 
-unsigned long long *arr_cycles_setup_recipient, 
-unsigned long long *arr_cycles_seal, 
-unsigned long long *arr_cycles_open, 
-int n,std::ofstream &MyFile){
+void analyze_protocol(uint8_t mode, unsigned long long *arr_cycles_setup_sender,
+                      unsigned long long *arr_cycles_setup_recipient,
+                      unsigned long long *arr_cycles_seal,
+                      unsigned long long *arr_cycles_open, int n,
+                      std::ofstream &MyFile) {
+  // Analyze setup_sender clock cycles
+  MyFile << "set_up_sender           ";
+  unsigned long long cycles_set_up_sender_total =
+      analyze_statistics(mode, arr_cycles_setup_sender, n, MyFile);
 
-        //Analyze setup_sender clock cycles
-        MyFile << "set_up_sender           ";
-        unsigned long long cycles_set_up_sender_total = analyze_statistics(mode, arr_cycles_setup_sender, n, MyFile);
+  // Analyze setup_recipient clock cycles
+  MyFile << "set_up_recipient        ";
+  unsigned long long cycles_set_up_recipient_total =
+      analyze_statistics(mode, arr_cycles_setup_recipient, n, MyFile);
 
-        //Analyze setup_recipient clock cycles
-        MyFile << "set_up_recipient        ";
-        unsigned long long cycles_set_up_recipient_total = analyze_statistics(mode,arr_cycles_setup_recipient,  n, MyFile);
+  // Analyze seal clock cycles
+  MyFile << "seal                      ";
+  unsigned long long cycles_seal_total =
+      analyze_statistics(mode, arr_cycles_seal, n, MyFile);
 
-        //Analyze seal clock cycles
-        MyFile << "seal                      ";
-        unsigned long long cycles_seal_total = analyze_statistics(mode,arr_cycles_seal,  n, MyFile);
+  // Analyze open clock cycles
+  MyFile << "open                      ";
+  unsigned long long cycles_open_total =
+      analyze_statistics(mode, arr_cycles_open, n, MyFile);
 
-        //Analyze open clock cycles
-        MyFile << "open                      ";
-        unsigned long long cycles_open_total = analyze_statistics(mode,arr_cycles_open,  n, MyFile);
+  // Analyze total protocol clock cycles
+  unsigned long long clean_protocol = cycles_set_up_sender_total +
+                                      cycles_set_up_recipient_total +
+                                      cycles_seal_total + cycles_open_total;
+  MyFile << "TOTAL protocol          " << fixed << setprecision(0)
+         << clean_protocol / 1000 << "   CCs x10^3\n";
 
-        //Analyze total protocol clock cycles
-        unsigned long long clean_protocol = cycles_set_up_sender_total +
-                         cycles_set_up_recipient_total + cycles_seal_total +
-                         cycles_open_total;
-        MyFile << "TOTAL protocol          " << fixed << setprecision(0)
-               << clean_protocol / 1000 << "   CCs x10^3\n";
-               
-        //Analyze % of clock cycles per HPKE function
-        analyze_percentage(cycles_set_up_sender_total, cycles_set_up_recipient_total, cycles_seal_total, cycles_open_total, clean_protocol, MyFile);
-
+  // Analyze % of clock cycles per HPKE function
+  analyze_percentage(cycles_set_up_sender_total, cycles_set_up_recipient_total,
+                     cycles_seal_total, cycles_open_total, clean_protocol,
+                     MyFile);
 }
 
 
 float analyze_statistics(uint8_t mode, unsigned long long arr_cycles[], int n,
-                 std::ofstream &MyFile) {
+                         std::ofstream &MyFile) {
   sort_array(arr_cycles, n);
 
   int start_index = n / 4;
@@ -470,4 +473,52 @@ void analyze_percentage(unsigned long long cycles_set_up_sender_total,
   MyFile << "% open                  " << fixed << setprecision(3)
          << ((float)cycles_open_total) / ((float)clean_protocol) * 100
          << "  % \n";
+}
+
+
+
+void check_RSA_pt_lengths(int *pt_size) {
+  switch (*pt_size) {
+    case STARTING_PT_VALUE:
+      *pt_size = RSA_PKCS1_PADDING_MAX_PT_RSA2048;
+      break;
+    case (RSA_PKCS1_PADDING_MAX_PT_RSA2048 * 10):
+      *pt_size = RSA_NO_PADDING_MAX_PT_RSA2048;
+      break;
+    case RSA_NO_PADDING_MAX_PT_RSA2048 * 10:
+      *pt_size = RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA2048;
+      break;
+
+    case RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA2048 * 10:
+      *pt_size = RSA_PKCS1_PADDING_MAX_PT_RSA3072;
+      break;
+
+    case RSA_PKCS1_PADDING_MAX_PT_RSA3072 * 10:
+      *pt_size = RSA_NO_PADDING_MAX_PT_RSA3072;
+      break;
+
+    case RSA_NO_PADDING_MAX_PT_RSA3072 * 10:
+      *pt_size = RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA3072;
+      break;
+
+    case RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA3072 * 10:
+      *pt_size = RSA_PKCS1_PADDING_MAX_PT_RSA4096;
+      break;
+
+    case RSA_PKCS1_PADDING_MAX_PT_RSA4096 * 10:
+      *pt_size = RSA_NO_PADDING_MAX_PT_RSA4096;
+      break;
+
+    case RSA_NO_PADDING_MAX_PT_RSA4096 * 10:
+      *pt_size = RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA4096;
+      break;
+
+    case RSA_PKCS1_OAEP_PADDING_MAX_PT_RSA4096 * 10:
+      *pt_size = 1000;
+      break;
+
+    default:
+      // Just keep the same value
+      break;
+  }
 }
