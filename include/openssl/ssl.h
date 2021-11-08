@@ -4584,6 +4584,7 @@ OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
 //
 // |ctx| is used to create an empty |SSL|
 //
+// TODO: revisit |size_t| vs |long| for |in_length|. d2i_SSL_SESSION uses long.
 OPENSSL_EXPORT SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in,
                             size_t in_length);
 
@@ -4592,6 +4593,8 @@ OPENSSL_EXPORT SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in,
 // On failure, it returns -1. If |out| is NULL, no bytes are written and only the
 // length is returned.
 //
+// TODO: follow ssl_serialize_handoff to rename this?
+// What this API currently does seems different from its semantics.
 OPENSSL_EXPORT int i2d_SSL(SSL *in, uint8_t **out);
 
 // Allocate space for SSL crypto material

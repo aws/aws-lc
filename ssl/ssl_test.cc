@@ -77,6 +77,13 @@ struct VersionParam {
   const char name[8];
 };
 
+static void printa(const uint8_t *ticket_key, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    printf("%02x", ticket_key[i]);
+  }
+  printf("\n");
+}
+
 static const size_t kTicketKeyLen = 48;
 
 static const VersionParam kAllVersions[] = {
@@ -809,6 +816,10 @@ static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
   return true;
 }
 
+TEST(SSLTest, SSLEncodingAndDecoding) {
+  // TODO: refer SSLTest, SessionEncoding
+}
+
 TEST(SSLTest, SessionEncoding) {
   for (const char *input_b64 : {
            kOpenSSLSession,
@@ -834,6 +845,7 @@ TEST(SSLTest, SessionEncoding) {
     ASSERT_TRUE(SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len))
         << "SSL_SESSION_to_bytes failed";
     encoded.reset(encoded_raw);
+    printa(encoded.get(), encoded_len);
     EXPECT_EQ(Bytes(encoded.get(), encoded_len), Bytes(input))
         << "SSL_SESSION_to_bytes did not round-trip";
 
@@ -2579,6 +2591,54 @@ TEST_P(SSLVersionTest, SequenceNumber) {
   // incremented.
   EXPECT_EQ(client_write_seq + 1, SSL_get_write_sequence(client_.get()));
   EXPECT_EQ(server_read_seq + 1, SSL_get_read_sequence(server_.get()));
+}
+
+TEST_P(SSLVersionTest, SSLEncodingAndDecoding) {
+  // d2i/i2d_SSL currently only supports TLS 1.1 and 1.2.
+  if (!((version() == TLS1_1_VERSION) || (version() == TLS1_2_VERSION))) {
+    // TODO: Add tests for unsupported TLS version.
+    return;
+  }
+  // Define a function shows the two SSL connection can exchange data.
+  auto exchange_data = [](SSL* writer, SSL* reader, uint8_t data) {
+    uint8_t data_byte = data;
+    ASSERT_EQ(SSL_write(writer, &data_byte, 1), 1);
+    ASSERT_EQ(SSL_read(reader, &data_byte, 1), 1);
+    ASSERT_EQ(data_byte, data);
+  };
+  // Complete the handshake.
+  ASSERT_TRUE(Connect());
+  ASSERT_EQ(SSL_in_init(server_.get()), 0);
+  ASSERT_EQ(SSL_in_init(client_.get()), 0);
+  // After the handshake, performs some data exchange.
+  exchange_data(server_.get(), client_.get(), 42);
+  exchange_data(client_.get(), server_.get(), 43);
+  // Encoding SSL to bytes.
+  SSL_alloc_crypto_mat(server_.get());
+  int ssl_bytes_len = i2d_SSL(server_.get(), nullptr);
+  ASSERT_TRUE(ssl_bytes_len > 0)
+      << "i2d_SSL failed. Error code: "
+      << ERR_reason_error_string(ERR_get_error());
+  bssl::UniquePtr<uint8_t> ssl_bytes_ptr;
+  ssl_bytes_ptr.reset((uint8_t *)OPENSSL_malloc(ssl_bytes_len));
+  uint8_t *ssl_bytes = ssl_bytes_ptr.get();
+  printa(ssl_bytes, ssl_bytes_len);
+  ssl_bytes_len = i2d_SSL(server_.get(), &ssl_bytes);
+  ASSERT_TRUE(ssl_bytes_len > 0)
+      << "i2d_SSL failed. Error code: "
+      << ERR_reason_error_string(ERR_get_error());
+  // Decoding SSL bytes.
+  const uint8_t *ssl_bytes2 = ssl_bytes;
+  printa(ssl_bytes2, ssl_bytes_len);
+//  SSL *server2_ = d2i_SSL(nullptr, server_ctx_.get(), &ssl_bytes2, (size_t)ssl_bytes_len);
+//  ASSERT_TRUE(server2_)
+//      << "d2i_SSL failed. Error code: "
+//      << ERR_reason_error_string(ERR_get_error());
+//  bssl::UniquePtr<SSL> server2(server2_);
+//  // After the decoding, performs some data exchange using |server2|.
+//  exchange_data(server2.get(), client_.get(), 42);
+//  exchange_data(client_.get(), server2.get(), 43);
+//  ASSERT_EQ(SSL_get_error(server_.get(), 0), SSL_ERROR_ZERO_RETURN);
 }
 
 TEST_P(SSLVersionTest, OneSidedShutdown) {
