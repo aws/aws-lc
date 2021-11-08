@@ -47,7 +47,7 @@ import (
 	"time"
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
-	"amazon.com/aws_lc/util/testresult"
+	"boringssl.googlesource.com/boringssl/util/testresult"
 )
 
 var (

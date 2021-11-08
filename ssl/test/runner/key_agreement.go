@@ -17,7 +17,7 @@ import (
 	"io"
 	"math/big"
 
-	"amazon.com/aws_lc/ssl/test/runner/hrss"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/hrss"
 	"golang.org/x/crypto/curve25519"
 )
 
