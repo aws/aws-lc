@@ -197,6 +197,7 @@ struct TestConfig {
   bool wait_for_debugger = false;
   std::string quic_early_data_context;
   int early_write_after_message = 0;
+  bool i2d2i_ssl = false;
 
   int argc;
   char **argv;

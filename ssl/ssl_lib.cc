@@ -3066,3 +3066,20 @@ int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg) {
   ctx->legacy_ocsp_callback_arg = arg;
   return 1;
 }
+
+int SSL_alloc_crypto_mat(SSL *ssl) {
+  // This function should be called only once
+  if (ssl->cm)
+  {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  if (!(ssl->cm= new SSL_CRYPTO_MAT()))
+  {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  return 1;
+}

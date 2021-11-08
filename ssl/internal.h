@@ -2605,6 +2605,22 @@ enum ssl_shutdown_t {
   ssl_shutdown_error = 2,
 };
 
+#define TLS_SEQ_NUM_SIZE 8
+struct SSL_CRYPTO_MAT {
+  uint8_t read_key[EVP_MAX_KEY_LENGTH] = {0};
+  uint8_t write_key[EVP_MAX_KEY_LENGTH] = {0};
+  uint8_t read_iv[EVP_MAX_IV_LENGTH] = {0};
+  uint8_t write_iv[EVP_MAX_IV_LENGTH] = {0};
+  size_t read_key_length = 0;
+  size_t write_key_length = 0;
+  size_t read_iv_length = 0;
+  size_t write_iv_length = 0;
+};
+
+void ssl_save_session_cm(SSL_CRYPTO_MAT *cm, bool dir,
+                         const unsigned char *key, size_t key_len,
+                         const unsigned char *iv, size_t iv_len);
+
 enum ssl_ech_status_t {
   // ssl_ech_none indicates ECH was not offered, or we have not gotten far
   // enough in the handshake to determine the status.
@@ -2621,8 +2637,8 @@ struct SSL3_STATE {
   SSL3_STATE();
   ~SSL3_STATE();
 
-  uint8_t read_sequence[8] = {0};
-  uint8_t write_sequence[8] = {0};
+  uint8_t read_sequence[TLS_SEQ_NUM_SIZE] = {0};
+  uint8_t write_sequence[TLS_SEQ_NUM_SIZE] = {0};
 
   uint8_t server_random[SSL3_RANDOM_SIZE] = {0};
   uint8_t client_random[SSL3_RANDOM_SIZE] = {0};
@@ -3732,6 +3748,10 @@ struct ssl_st {
 
   bssl::SSL3_STATE *s3 = nullptr;   // TLS variables
   bssl::DTLS1_STATE *d1 = nullptr;  // DTLS variables
+
+  // Crypto material for SSL connection [de]serialization
+  // @see i2d_SSL(), d2i_SSL()
+  bssl::SSL_CRYPTO_MAT *cm = nullptr;
 
   // callback that allows applications to peek at protocol messages
   void (*msg_callback)(int write_p, int version, int content_type,

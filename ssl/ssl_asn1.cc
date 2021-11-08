@@ -894,3 +894,304 @@ SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,
   }
   return ret.release();
 }
+
+// Serialized SSL data version for forward compatibility
+#define SSL_SERIAL_VERSION 1
+
+//  Parse serialized SSL connection binary
+//
+//  @details This function attempts to recover serialized SSL connection from
+//  binary. It restores session key, IV and sequence number for both read and
+//  write directions. Restored data is saved to given SSL handler.
+//
+//  An SSL object is serialized as the following ASN.1 structure:
+//  SSL ::= SEQUENCE {
+//      ssl_serial_ver UINT64       -- version of the SSL serialization format
+//      rwstate        UINT64       -- R/W state of SSL implementation
+//      read_key       OCTET STRING -- connection read key
+//      write_key      OCTET STRING -- connection write key
+//      read_iv        OCTET STRING -- connection read IV
+//      write_iv       OCTET STRING -- connection write IV
+//      read_seq       OCTET STRING -- connection read sequence number
+//      write_seq      OCTET STRING -- connection write sequence number
+//  }
+//
+//  Note that serialized SSL_SESSION is always prepended to the serialized SSL
+//
+//  @returns
+//    0 if an error occur
+//    1 if SSL is succesfully restored
+//
+static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
+  CBS ssl_cbs;
+  uint64_t ssl_serial_ver;
+  uint64_t rwstate;
+
+  CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq;
+  // Read version string from buffer
+  if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
+    !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
+    return 0;
+  }
+  // At the moment we're simply asserting the version is correct. However
+  // future updates could use SSL serial version to figure out what data
+  // was actually serialized and act accordingly.
+  assert(ssl_serial_ver <= SSL_SERIAL_VERSION);
+
+  if (
+//    FIXME add hash of SSL_CTX
+    !CBS_get_asn1_uint64(&ssl_cbs, &rwstate) ||
+    !CBS_get_asn1(&ssl_cbs, &read_key, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&read_key) > EVP_MAX_KEY_LENGTH ||
+    !CBS_get_asn1(&ssl_cbs, &write_key, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&write_key) > EVP_MAX_KEY_LENGTH ||
+    !CBS_get_asn1(&ssl_cbs, &read_iv, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&read_iv) > EVP_MAX_IV_LENGTH ||
+    !CBS_get_asn1(&ssl_cbs, &write_iv, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&write_iv) > EVP_MAX_IV_LENGTH ||
+    !CBS_get_asn1(&ssl_cbs, &read_seq, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
+    !CBS_get_asn1(&ssl_cbs, &write_seq, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  // FIXME check hash of SSL_CTX
+  if (!SSL_alloc_crypto_mat(ssl))
+    return 0;
+
+  // Initialize SSL struct
+  ssl->s3->rwstate = rwstate;
+  OPENSSL_memcpy(ssl->cm->read_key, CBS_data(&read_key), CBS_len(&read_key));
+  ssl->cm->read_key_length = CBS_len(&read_key);
+  OPENSSL_memcpy(ssl->cm->write_key, CBS_data(&write_key), CBS_len(&write_key));
+  ssl->cm->write_key_length = CBS_len(&write_key);
+
+  OPENSSL_memcpy(ssl->cm->read_iv, CBS_data(&read_iv), CBS_len(&read_iv));
+  ssl->cm->read_iv_length = CBS_len(&read_iv);
+  OPENSSL_memcpy(ssl->cm->write_iv, CBS_data(&write_iv), CBS_len(&write_iv));
+  ssl->cm->write_iv_length = CBS_len(&write_iv);
+
+  SSL_set_accept_state(ssl);
+  SSL_SESSION *sess= ssl->s3->established_session.get();
+  ssl->version = sess->ssl_version;
+  // Indicate we've done handshake
+  ssl->s3->hs->handshake_finalized = true;
+
+  // Setup rd/wr cipher contexts
+  // FIXME: This code might be not safe for TLS 1.3 due to stateful AEAD ciphers.
+  // Once restored the state might be lost and thus get out of sync with
+  // client:
+  // https://github.com/awslabs/aws-lc/blob/main/crypto/fipsmodule/cipher/e_aes.c#L1400-L1406
+  // he test should run connection for a while to hit the issue:
+  // https://github.com/awslabs/aws-lc/blob/main/crypto/fipsmodule/cipher/e_aes.c#L1409
+  {
+    Span<const uint8_t> key, iv;
+    // Write context
+    key = MakeConstSpan(ssl->cm->write_key, ssl->cm->write_key_length);
+    iv = MakeConstSpan(ssl->cm->write_iv, ssl->cm->write_iv_length);
+
+    UniquePtr<SSLAEADContext> aead_wr_ctx =
+        SSLAEADContext::Create(evp_aead_seal, ssl->version, /*is_dtls =*/false,
+                               sess->cipher, key, /*mac_secret*/{},
+                               iv);
+    if (!aead_wr_ctx.get()) {
+      goto err;
+    }
+    ssl->method->set_write_state(ssl, ssl_encryption_application,
+                                 std::move(aead_wr_ctx),
+                                 /*secret_for_quic =*/{});
+    // Read context
+    key = MakeConstSpan(ssl->cm->read_key, ssl->cm->read_key_length);
+    iv = MakeConstSpan(ssl->cm->read_iv, ssl->cm->read_iv_length);
+
+    UniquePtr<SSLAEADContext> aead_rd_ctx =
+        SSLAEADContext::Create(evp_aead_open, ssl->version, /*is_dtls =*/false,
+                               sess->cipher, key, /*mac_secret =*/{},
+                               iv);
+    if (!aead_rd_ctx.get()) {
+      goto err;
+    }
+    ssl->method->set_read_state(ssl, ssl_encryption_application,
+                                 std::move(aead_rd_ctx),
+                                 /*secret_for_quic =*/{});
+  }
+  // Initialization above will reset sequences to 0
+  OPENSSL_memcpy(ssl->s3->read_sequence, CBS_data(&read_seq), TLS_SEQ_NUM_SIZE);
+  OPENSSL_memcpy(ssl->s3->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
+  return 1;
+
+err:
+  return 0;
+}
+
+
+SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
+  CBS cbs;
+  if (in_length < 0) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return NULL;
+  }
+
+  SSL *ssl = SSL_new(ctx);
+  if (!ssl) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  CBS_init(&cbs, *in, in_length);
+  // First restore SSL_SESSION
+  ssl->s3->established_session = SSL_SESSION_parse(&cbs, &ssl_crypto_x509_method,
+                                                   NULL /* no buffer pool */);
+  if (!ssl->s3->established_session) {
+    goto err;
+  }
+  // Restore SSL part
+  if (!SSL_parse(ssl, &cbs, ctx)) {
+    goto err;
+  }
+
+  if (out) {
+    SSL_free(*out);
+    *out = ssl;
+  }
+  *in = CBS_data(&cbs);
+  return ssl;
+
+err:
+  if (ssl && ssl->s3->established_session) {
+    SSL_SESSION_free(ssl->s3->established_session.get());
+    ssl->s3->established_session= nullptr;
+  }
+  if (ssl) {
+    if (ssl->cm) {
+      OPENSSL_memset(ssl->cm, 0, sizeof(SSL_CRYPTO_MAT));
+      Delete(ssl->cm);
+    }
+    SSL_free(ssl);
+  }
+  return NULL;
+}
+
+//  Serialize essential parts of SSL
+//
+//  @param in   SSL struct to serialize
+//  @param cbb  Byte string builder to write to
+//
+//  @details  This function saves essential parts of SSL handler of an
+//  established SSL conneciton:
+//    (*) ssl->cm, crypto material to resume the connection: each of session key, IV
+//        and sequence for both read and write directions.
+//    (*) ssl->rwstate - state of the SSL state machine
+//    (*) ssl->read_sequence/write_sequence - SSL's read and write sequences
+//  @see SSL_parse
+//
+//  @returns
+//    0   An error occur
+//    1   Ok
+//
+static int SSL_to_bytes(const SSL *in, CBB *cbb) {
+  CBB ssl;
+
+  if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
+    !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
+//    FIXME add hash of SSL_CTX
+    !CBB_add_asn1_uint64(&ssl, (uint64_t)in->s3->rwstate) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->read_key,
+                               in->cm->read_key_length) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->write_key,
+                               in->cm->write_key_length) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->read_iv,
+                               in->cm->read_iv_length) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->write_iv,
+                               in->cm->write_iv_length) ||
+    !CBB_add_asn1_octet_string(&ssl, in->s3->read_sequence, TLS_SEQ_NUM_SIZE) ||
+    !CBB_add_asn1_octet_string(&ssl, in->s3->write_sequence, TLS_SEQ_NUM_SIZE)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  return CBB_flush(cbb);
+}
+
+int i2d_SSL(SSL *in, uint8_t **out_data)
+{
+  ScopedCBB cbb;
+  size_t out_len;
+  uint8_t *out;
+  // An SSL connection can't be serialized by current implementation under some conditions
+  // 1) It's a DTLS connection
+  // 2) Crypto material wasn't saved upon making the connection
+  // 3) Its SSL_SESSION isn't serializable
+  // 4) Handshake hasn't finished yet
+  // 5) FIXME SSL is of TLS 1.3 version
+  if (SSL_is_dtls(in) ||                // (1)
+      !in->cm ||                        // (2)
+      !in->s3 ||
+      in->s3->established_session.get()->not_resumable ||    // (3)
+      SSL_in_init(in) ||                // (4)
+      in->version == TLS1_3_VERSION) {  // (5)
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  // Serialize SSL_SESSION first
+  if (!CBB_init(cbb.get(), 1024) ||
+      !ssl_session_serialize(in->s3->established_session.get(), cbb.get())) {
+    return 0;
+  }
+  // Serialize rd/wr keys/iv, seq numbers to restore alive connection
+  if (!SSL_to_bytes(in, cbb.get())) {
+    return 0;
+  }
+
+  if (!CBB_finish(cbb.get(), &out, &out_len)) {
+    return 0;
+  }
+
+  if (out_len > INT_MAX) {
+    OPENSSL_free(out);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return -1;
+  }
+
+  if (out_data) {
+    OPENSSL_memcpy(*out_data, out, out_len);
+    *out_data += out_len;
+  }
+  OPENSSL_free(out);
+  return out_len;
+}
+
+
+//  Save generated SSL session's crypto material to allow [de]serialization of
+//  SSL connection later.
+//
+//  @param cm       CRYPTO_MAT struct to save crypto material to
+//  @param dir      direction of encryption: 1 - decrypt, 0 = encrypt
+//  @param key      encryption key
+//  @param key_len  key length
+//  @param iv       IV
+//  @param iv_len   IV length
+//
+void bssl::ssl_save_session_cm(bssl::SSL_CRYPTO_MAT *cm, bool dir,
+                               const unsigned char *key, size_t key_len,
+                               const unsigned char *iv, size_t iv_len)
+{
+  uint8_t *save_key, *save_iv;
+  size_t *save_key_len, *save_iv_len;
+  if (dir) {
+    save_key= cm->read_key;
+    save_iv= cm->read_iv;
+    save_key_len= &cm->read_key_length;
+    save_iv_len= &cm->read_iv_length;
+  } else {
+    save_key= cm->write_key;
+    save_iv= cm->write_iv;
+    save_key_len= &cm->write_key_length;
+    save_iv_len= &cm->write_iv_length;
+  }
+  OPENSSL_memcpy(save_key, key, key_len);
+  OPENSSL_memcpy(save_iv, iv, iv_len);
+  *save_key_len= key_len;
+  *save_iv_len= iv_len;
+}

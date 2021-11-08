@@ -4570,12 +4570,33 @@ OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
 // number of bytes consumed on success and NULL on failure. The caller takes
 // ownership of the new session and must call |SSL_SESSION_free| when done.
 //
-// If |a| is non-NULL, |*a| is released and set the new |SSL_SESSION|.
+// If |a| is non-NULL, |*a| is released and set to the new |SSL_SESSION|.
 //
 // Use |SSL_SESSION_from_bytes| instead.
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
                                             long length);
+// d2i_SSL parses a serialized SSL struct from the |in_length| bytes pointed
+// to by |*in|. It returns the new |SSL| and advances |*in| by the
+// number of bytes consumed on success and NULL on failure. The caller takes
+// ownership of the new session and must call |SSL_free| when done.
+//
+// If |out| is non-NULL, |*out| is released and set to the new |SSL|.
+//
+// |ctx| is used to create an empty |SSL|
+//
+OPENSSL_EXPORT SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in,
+                            size_t in_length);
 
+// i2d_SSL serializes |in| to the bytes pointed to by |*out|. On success,
+// it returns the number of bytes written and advances |*out| by that many bytes.
+// On failure, it returns -1. If |out| is NULL, no bytes are written and only the
+// length is returned.
+//
+OPENSSL_EXPORT int i2d_SSL(SSL *in, uint8_t **out);
+
+// Allocate space for SSL crypto material
+OPENSSL_EXPORT int SSL_alloc_crypto_mat(SSL *ssl);
+//
 // i2d_SSL_SESSION_bio serializes |session| and writes the result to |bio|. It
 // returns the number of bytes written on success and <= 0 on error.
 OPENSSL_EXPORT int i2d_SSL_SESSION_bio(BIO *bio, const SSL_SESSION *session);
