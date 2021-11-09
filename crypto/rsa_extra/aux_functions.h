@@ -31,7 +31,6 @@ float analyze_statistics_RSA(uint8_t mode, unsigned long long arr_cycles[],
                              int n, std::ofstream &MyFile);
 
 void analyze_protocol_RSA(uint8_t mode,
-                          unsigned long long *arr_cycles_keygen_total,
                           unsigned long long *arr_cycles_encrypt_total,
                           unsigned long long *arr_cycles_decrypt_total, int n,
                           std::ofstream &MyFile);

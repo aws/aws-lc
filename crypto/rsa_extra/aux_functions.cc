@@ -190,12 +190,9 @@ void check_pt_chunks_RSA(int mode, int *pt_max_len_chunk,
 
 
 void analyze_protocol_RSA(uint8_t mode,
-                          unsigned long long *arr_cycles_keygen_total,
                           unsigned long long *arr_cycles_encrypt_total,
                           unsigned long long *arr_cycles_decrypt_total, int n,
                           std::ofstream &MyFile) {
-  MyFile << "cycles_keygen_total         ";
-  analyze_statistics_RSA(mode, arr_cycles_keygen_total, n, MyFile);
 
   MyFile << "cycles_encrypt_total        ";
   unsigned long long cycles_encrypt_total =
@@ -257,5 +254,5 @@ void analyze_percentage_RSA(unsigned long long cycles_encrypt,
 
   MyFile << "% decrypt                   " << fixed << setprecision(3)
          << ((float)cycles_decrypt) / ((float)clean_protocol) * 100
-         << " % \n\n";
+         << " % \n";
 }

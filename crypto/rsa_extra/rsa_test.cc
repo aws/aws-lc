@@ -414,8 +414,7 @@ class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
 
 TEST(RSATest, RSABenchmark) {
-  unsigned long long arr_cycles_keygen_total[NUMBER_TESTS] = {0},
-                     arr_cycles_encrypt_total[NUMBER_TESTS] = {0},
+  unsigned long long arr_cycles_encrypt_total[NUMBER_TESTS] = {0},
                      arr_cycles_decrypt_total[NUMBER_TESTS] = {0};
 
   unsigned long long cycles_keygen, cycles_encrypt, cycles_decrypt;
@@ -433,8 +432,7 @@ TEST(RSATest, RSABenchmark) {
       for (int plaintext_length_bytes = 100;
            plaintext_length_bytes <= PLAINTEXT_TOTAL;
            plaintext_length_bytes *= 10) {
-          printf("-");
-
+    
         // Maximum length of the plaintext (chunks) depending on the RSA keys
         // and the padding mode
         int pt_max_len_chunk;
@@ -445,22 +443,23 @@ TEST(RSATest, RSABenchmark) {
 
         SCOPED_TRACE(bits);
 
+        key.reset(RSA_new());
+        ASSERT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
+        EXPECT_EQ(bits, BN_num_bits(key->n));
+
+        cycles_keygen = cpucycles();
+        EXPECT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
+        cycles_keygen = cpucycles() - cycles_keygen;
+        ASSERT_TRUE(key);
+
+        EXPECT_TRUE(RSA_check_key(key.get()));
+
         for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
-          arr_cycles_keygen_total[curr_test] = 0;
           arr_cycles_encrypt_total[curr_test] = 0,
           arr_cycles_decrypt_total[curr_test] = 0;
 
-          key.reset(RSA_new());
-          ASSERT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
-          EXPECT_EQ(bits, BN_num_bits(key->n));
-
-          cycles_keygen = cpucycles();
-          EXPECT_TRUE(RSA_generate_key_fips(key.get(), bits, nullptr));
-          arr_cycles_keygen_total[curr_test] = cpucycles() - cycles_keygen;
-          ASSERT_TRUE(key);
-
-          EXPECT_TRUE(RSA_check_key(key.get()));
-
+          //Take the keygen out ot the loop since RSA key gen is too slow!
+          MyFile << "cycles_keygen_total         " << cycles_keygen <<endl;
 
           // For simpliciy we create one chunk and encrypt/decript the same one
           // multiple times (instead of creating too long PT, chunk it and
@@ -510,16 +509,15 @@ TEST(RSATest, RSABenchmark) {
           free(ciphertext);
           free(plaintext);
         }
-        analyze_protocol_RSA(ANALYZE_RESULTS_MODE, arr_cycles_keygen_total,
+        analyze_protocol_RSA(ANALYZE_RESULTS_MODE,
                              arr_cycles_encrypt_total, arr_cycles_decrypt_total,
                              NUMBER_TESTS, MyFile);
+        MyFile << endl;
       }
     }
   }
   MyFile.close();
 }
-
-
 
 TEST_P(RSAEncryptTest, TestKey) {
   const auto &param = GetParam();
