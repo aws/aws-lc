@@ -387,11 +387,7 @@ err:
   return NULL;
 }
 
-#if defined(OPENSSL_ANDROID)
-#define MODULE_DIGEST_SIZE SHA256_DIGEST_LENGTH
-#else
-#define MODULE_DIGEST_SIZE SHA512_DIGEST_LENGTH
-#endif
+static const size_t kModuleDigestSize = SHA256_DIGEST_LENGTH;
 
 int boringssl_fips_self_test(void) {
 
