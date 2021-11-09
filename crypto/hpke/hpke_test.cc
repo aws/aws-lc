@@ -421,7 +421,7 @@ TEST(HPKETest, x25519) {
                       X25519_ALGORITHM_ID, MyFile);
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
-        MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
+        MyFile << "\nPlaintext_Bytes    ->   " << pt_size << endl;
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -587,7 +587,7 @@ TEST(HPKETest, SIKE) {
                       SIKE_ALGORITHM_ID, MyFile);
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
-        MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
+        MyFile << "\nPlaintext_Bytes    ->   " << pt_size << endl;
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -752,7 +752,7 @@ TEST(HPKETest, x25519_SIKE) {
                       X25519_SIKE_ALGORITHM_ID, MyFile);
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
-        MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
+        MyFile << "\nPlaintext_Bytes    ->   " << pt_size << endl;
     
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -915,7 +915,7 @@ TEST(HPKETest, Kyber) {
                       KYBER_ALGORITHM_ID, MyFile);
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
-        MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
+        MyFile << "\nPlaintext_Bytes    ->   " << pt_size << endl;
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -1086,7 +1086,7 @@ TEST(HPKETest, x25519_Kyber) {
                       X25519_KYBER_ALGORITHM_ID, MyFile);
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
-        MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
+        MyFile << "\nPlaintext_Bytes    ->   " << pt_size << endl;
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -1263,7 +1263,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
           // comparison
           check_RSA_pt_lengths(&pt_size);
 
-          MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
+          MyFile << "\nPlaintext_Bytes    ->   " << pt_size << endl;
 
           // Allocate dynamically the memory for the plaintext
           uint8_t *kCleartextPayload =

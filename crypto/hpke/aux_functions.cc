@@ -228,13 +228,13 @@ void print_info_file(int aead, int kdf, int alg, std::ofstream &MyFile) {
       MyFile << ("SIKE");
       break;
     case 2:
-      MyFile << ("x25519 + SIKE");
+      MyFile << ("x25519_SIKE");
       break;
     case 3:
       MyFile << ("KYBER");
       break;
     case 4:
-      MyFile << ("x25519 + KYBER");
+      MyFile << ("x25519_KYBER");
       break;
     default:
       MyFile << ("Should never happen");
@@ -391,7 +391,7 @@ void analyze_protocol(uint8_t mode, unsigned long long *arr_cycles_keygen, unsig
                       unsigned long long *arr_cycles_open, int n,
                       std::ofstream &MyFile) {
 
-MyFile << "keygen                   ";
+  MyFile << "keygen                   ";
  
       analyze_statistics(mode, arr_cycles_keygen, n, MyFile);         
   // Analyze setup_sender clock cycles
@@ -418,8 +418,8 @@ MyFile << "keygen                   ";
   unsigned long long clean_protocol = cycles_set_up_sender_total +
                                       cycles_set_up_recipient_total +
                                       cycles_seal_total + cycles_open_total;
-  MyFile << "TOTAL protocol          " << fixed << setprecision(0)
-         << clean_protocol / 1000 << "   CCs x10^3\n";
+  MyFile << "TOTAL_protocol          " << fixed << setprecision(0)
+         << clean_protocol / 1000 << " [CCs_x10^3]\n";
 
   // Analyze % of clock cycles per HPKE function
   analyze_percentage(cycles_set_up_sender_total, cycles_set_up_recipient_total,
@@ -438,17 +438,17 @@ float analyze_statistics(uint8_t mode, unsigned long long arr_cycles[], int n,
   // Consider only central 50% of the data -> eliminate quartile I and IV
   float mean_val = mean(arr_cycles + start_index, number_elements);
   if (mode == 1) {
-    MyFile << fixed << setprecision(0) << mean_val / 1000 << "   CCs x10^3, ";
+    MyFile << fixed << setprecision(0) << mean_val / 1000 << " [CCs_x10^3], ";
 
     MyFile << "M " << fixed << setprecision(0)
            << median(arr_cycles + start_index, number_elements) / 1000
-           << " CCs x10^3, ";
+           << " [CCs_x10^3], ";
 
     MyFile << "SD " << fixed << setprecision(0)
            << standarddeviation(arr_cycles + start_index, number_elements)
            << "\n";
   } else {
-    MyFile << fixed << setprecision(0) << mean_val / 1000 << "   CCs x10^3\n";
+    MyFile << fixed << setprecision(0) << mean_val / 1000 << " [CCs_x10^3]\n";
   }
 
   return mean_val;
@@ -460,23 +460,23 @@ void analyze_percentage(unsigned long long cycles_set_up_sender_total,
                         unsigned long long cycles_open_total,
                         unsigned long long clean_protocol,
                         std::ofstream &MyFile) {
-  MyFile << "% set_up_sender         " << fixed << setprecision(3)
+  MyFile << "%_set_up_sender         " << fixed << setprecision(3)
          << ((float)(cycles_set_up_sender_total) / ((float)clean_protocol) *
              100)
-         << " % \n";
+         << " [%] \n";
 
-  MyFile << "% set_up_recipient      " << fixed << setprecision(3)
+  MyFile << "%_set_up_recipient      " << fixed << setprecision(3)
          << ((float)cycles_set_up_recipient_total) / ((float)clean_protocol) *
                 100
-         << " % \n";
+         << " [%] \n";
 
-  MyFile << "% seal                  " << fixed << setprecision(3)
+  MyFile << "%_seal                  " << fixed << setprecision(3)
          << ((float)cycles_seal_total) / ((float)clean_protocol) * 100
-         << "  % \n";
+         << " [%] \n";
 
-  MyFile << "% open                  " << fixed << setprecision(3)
+  MyFile << "%_open                  " << fixed << setprecision(3)
          << ((float)cycles_open_total) / ((float)clean_protocol) * 100
-         << "  % \n";
+         << " [%] \n";
 }
 
 

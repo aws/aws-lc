@@ -454,12 +454,12 @@ TEST(RSATest, RSABenchmark) {
 
         EXPECT_TRUE(RSA_check_key(key.get()));
 
+        //Take the keygen out ot the loop since RSA key gen is too slow!
+        MyFile << "cycles_keygen_total         "  << fixed << setprecision(0) << cycles_keygen / 1000 << " [CCs_x10^3]\n";
+
         for (int curr_test = 0; curr_test < NUMBER_TESTS; curr_test++) {
           arr_cycles_encrypt_total[curr_test] = 0,
           arr_cycles_decrypt_total[curr_test] = 0;
-
-          //Take the keygen out ot the loop since RSA key gen is too slow!
-          MyFile << "cycles_keygen_total         " << cycles_keygen <<endl;
 
           // For simpliciy we create one chunk and encrypt/decript the same one
           // multiple times (instead of creating too long PT, chunk it and

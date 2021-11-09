@@ -34,20 +34,20 @@ using namespace std;
 void print_padding_mode_RSA(int mode, std::ofstream &MyFile, int n) {
   switch (mode) {
     case RSA_PKCS1_PADDING:
-      MyFile << ("Padding Mode        ->      RSA_PKCS1_PADDING\n");
+      MyFile << ("Padding_Mode        ->      RSA_PKCS1_PADDING\n");
       break;
     case RSA_NO_PADDING:
-      MyFile << ("Number Tests        ->      RSA_NO_PADDING\n");
+      MyFile << ("Number_Tests        ->      RSA_NO_PADDING\n");
       break;
     case RSA_PKCS1_OAEP_PADDING:
-      MyFile << ("Number Tests        ->      RSA_PKCS1_OAEP_PADDING\n");
+      MyFile << ("Number_Tests        ->      RSA_PKCS1_OAEP_PADDING\n");
       break;
 
 
     default:
       break;
   }
-  MyFile << "Number Tests        ->      " << n << "\n\n";
+  MyFile << "Number_Tests        ->      " << n << "\n\n";
 }
 
 
@@ -181,11 +181,11 @@ void check_pt_chunks_RSA(int mode, int *pt_max_len_chunk,
     *plaintext_length_bytes = 1000;
   }
 
-  MyFile << "Bytes Encrypted     ->      " << *plaintext_length_bytes << "\n";
+  MyFile << "Bytes_Encrypted     ->      " << *plaintext_length_bytes << "\n";
 
-  MyFile << "Plaintext Bytes     ->      " << *pt_max_len_chunk << "\n";
+  MyFile << "Plaintext_Bytes     ->      " << *pt_max_len_chunk << "\n";
 
-  MyFile << "Key Size Bytes      ->      " << (int)bits << "\n\n";
+  MyFile << "Key_Size_Bytes      ->      " << (int)bits << "\n\n";
 }
 
 
@@ -207,8 +207,8 @@ void analyze_protocol_RSA(uint8_t mode,
   unsigned long long cycles_protocol_total =
       cycles_encrypt_total + cycles_decrypt_total;
 
-  MyFile << "TOTAL protocol              " << fixed << setprecision(0)
-         << cycles_protocol_total / 1000 << "   CCs x10^3\n";
+  MyFile << "TOTAL_protocol              " << fixed << setprecision(0)
+         << cycles_protocol_total / 1000 << " [CCs_x10^3]\n";
 
 
   analyze_percentage_RSA(cycles_encrypt_total, cycles_decrypt_total,
@@ -227,17 +227,17 @@ float analyze_statistics_RSA(uint8_t mode, unsigned long long arr_cycles[],
   float mean_val = mean_RSA(arr_cycles + start_index, number_elements);
 
   if (mode == 1) {
-    MyFile << fixed << setprecision(0) << mean_val / 1000 << "    CCs x10^3"
+    MyFile << fixed << setprecision(0) << mean_val / 1000 << " CCs_x10^3"
            << ", ";
     MyFile << "M " << fixed << setprecision(0)
            << median_RSA(arr_cycles + start_index, number_elements) / 1000
-           << " CCs x10^3, ";
+           << " [CCs_x10^3], ";
 
     MyFile << "SD " << fixed << setprecision(0)
            << standarddeviation_RSA(arr_cycles + start_index, number_elements)
            << "\n";
   } else {
-    MyFile << fixed << setprecision(0) << mean_val / 1000 << "    CCs x10^3"
+    MyFile << fixed << setprecision(0) << mean_val / 1000 << " [CCs_x10^3]"
            << "\n";
   }
   return mean_val;
@@ -248,11 +248,11 @@ void analyze_percentage_RSA(unsigned long long cycles_encrypt,
                             unsigned long long cycles_decrypt,
                             unsigned long long clean_protocol,
                             std::ofstream &MyFile) {
-  MyFile << "% encrypt                   " << fixed << setprecision(3)
+  MyFile << "%_encrypt                   " << fixed << setprecision(3)
          << ((float)(cycles_encrypt) / ((float)clean_protocol) * 100)
-         << " % \n";
+         << " [%] \n";
 
-  MyFile << "% decrypt                   " << fixed << setprecision(3)
+  MyFile << "%_decrypt                   " << fixed << setprecision(3)
          << ((float)cycles_decrypt) / ((float)clean_protocol) * 100
-         << " % \n";
+         << " [%] \n";
 }
