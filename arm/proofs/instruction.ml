@@ -1090,9 +1090,9 @@ let ARM_INSTRUCTION_ALIASES =
  [arm_BEQ; arm_BNE; arm_BCS; arm_BHS; arm_BCC;
   arm_BLO; arm_BMI; arm_BPL; arm_BVS; arm_BVC;
   arm_BHI; arm_BLS; arm_BGE; arm_BLT; arm_BGT;
-  arm_BLE; arm_BAL; arm_BNV; arm_CINC; arm_CINV; 
-  arm_CNEG; arm_CMN; arm_CMP;arm_CSET; arm_CSETM; 
-  arm_MOV; arm_MNEG; arm_MUL; arm_MVN; arm_NEG; 
+  arm_BLE; arm_BAL; arm_BNV; arm_CINC; arm_CINV;
+  arm_CNEG; arm_CMN; arm_CMP;arm_CSET; arm_CSETM;
+  arm_MOV; arm_MNEG; arm_MUL; arm_MVN; arm_NEG;
   arm_NEGS; arm_NGC; arm_NGCS; arm_ROR; arm_TST];;
 
 (* ------------------------------------------------------------------------- *)

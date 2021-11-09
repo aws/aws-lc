@@ -97,6 +97,7 @@ enum {
        TEST_BIGNUM_DEMONT_P521,
        TEST_BIGNUM_DIGIT,
        TEST_BIGNUM_DIGITSIZE,
+       TEST_BIGNUM_DIVMOD10,
        TEST_BIGNUM_DOUBLE_P256,
        TEST_BIGNUM_DOUBLE_P384,
        TEST_BIGNUM_DOUBLE_P521,
@@ -1855,6 +1856,45 @@ int test_bignum_digitsize(void)
   printf("All OK\n");
   return 0;
 }
+
+int test_bignum_divmod10(void)
+{ uint64_t t, k, r, d, j, s;
+  printf("Testing bignum_divmod10 with %d cases\n",tests);
+  d = 10;
+  for (t = 0; t < tests; ++t)
+   { k = (unsigned) rand() % MAXSIZE;
+     random_bignum(k,b0);
+     reference_copy(k,b4,k,b0);
+     reference_of_word(k,b1,d);
+     reference_divmod(k,b3,b2,b0,b1);
+     r = bignum_divmod10(k,b4);
+     s = (k == 0) ? 0 : b2[0];
+     j = (k == 0) ? 0 : k - 1;
+    if (reference_compare(k,b3,k,b4) != 0)
+      { printf("### Disparity in quotient: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" div %"PRIu64" = "
+               "0x%016"PRIx64"...%016"PRIx64" rem %"PRIu64" not 0x%016"PRIx64"...%016"PRIx64" rem %"PRIu64"\n",
+               k,b0[j],b0[0],d,b4[j],b4[0],r,b3[j],b3[0],s);
+        return 1;
+      }
+     else if (r != s)
+      { printf("### Disparity in modulus: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod %"PRIu64" = "
+               "%"PRIu64" not %"PRIu64"\n",
+               k,b0[j],b0[0],d,r,b2[0]);
+        return 1;
+     }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" div %"PRIu64" = "
+               "0x%016"PRIx64"...%016"PRIx64", remainder %"PRIu64"\n",
+               k,b0[j],b0[0],d,b4[j],b4[0],r);
+      }
+   }
+
+  printf("All OK\n");
+  return 0;
+}
+
 
 int test_bignum_double_p256(void)
 { uint64_t i, k;
@@ -5186,6 +5226,7 @@ int test_all()
   dotest(test_bignum_demont_p521);
   dotest(test_bignum_digit);
   dotest(test_bignum_digitsize);
+  dotest(test_bignum_divmod10);
   dotest(test_bignum_double_p256);
   dotest(test_bignum_double_p384);
   dotest(test_bignum_double_p521);
@@ -5346,6 +5387,7 @@ int test_allnonbmi()
   dotest(test_bignum_demont_p521);
   dotest(test_bignum_digit);
   dotest(test_bignum_digitsize);
+  dotest(test_bignum_divmod10);
   dotest(test_bignum_double_p256);
   dotest(test_bignum_double_p384);
   dotest(test_bignum_double_p521);
@@ -5523,6 +5565,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_DEMONT_P521:     return test_bignum_demont_p521();
      case TEST_BIGNUM_DIGIT:           return test_bignum_digit();
      case TEST_BIGNUM_DIGITSIZE:       return test_bignum_digitsize();
+     case TEST_BIGNUM_DIVMOD10 :       return test_bignum_divmod10();
      case TEST_BIGNUM_DOUBLE_P256:     return test_bignum_double_p256();
      case TEST_BIGNUM_DOUBLE_P384:     return test_bignum_double_p384();
      case TEST_BIGNUM_DOUBLE_P521:     return test_bignum_double_p521();

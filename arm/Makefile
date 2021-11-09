@@ -103,6 +103,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       generic/bignum_demont.o \
       generic/bignum_digit.o \
       generic/bignum_digitsize.o \
+      generic/bignum_divmod10.o \
       generic/bignum_emontredc.o \
       generic/bignum_eq.o \
       generic/bignum_even.o \

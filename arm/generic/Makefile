@@ -50,6 +50,7 @@ OBJ = bignum_add.o \
       bignum_demont.o \
       bignum_digit.o \
       bignum_digitsize.o \
+      bignum_divmod10.o \
       bignum_emontredc.o \
       bignum_eq.o \
       bignum_even.o \
