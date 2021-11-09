@@ -385,11 +385,15 @@ void calculate_quartiles(unsigned long long arr[], int n, float quartiles[4],
   quartiles[3] = arr[n - 1];
 }
 
-void analyze_protocol(uint8_t mode, unsigned long long *arr_cycles_setup_sender,
+void analyze_protocol(uint8_t mode, unsigned long long *arr_cycles_keygen, unsigned long long *arr_cycles_setup_sender,
                       unsigned long long *arr_cycles_setup_recipient,
                       unsigned long long *arr_cycles_seal,
                       unsigned long long *arr_cycles_open, int n,
                       std::ofstream &MyFile) {
+
+MyFile << "keygen                   ";
+ 
+      analyze_statistics(mode, arr_cycles_keygen, n, MyFile);         
   // Analyze setup_sender clock cycles
   MyFile << "set_up_sender           ";
   unsigned long long cycles_set_up_sender_total =

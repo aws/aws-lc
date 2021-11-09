@@ -404,8 +404,8 @@ struct RSAEncryptParam {
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
 
-#define NUMBER_TESTS 100000
-#define PLAINTEXT_TOTAL 10000000  // B
+#define NUMBER_TESTS 1000
+#define PLAINTEXT_TOTAL 1000000  // B
 
 // Define the analyze mode for the RSA functions
 // ANALYZE_RESULTS_MODE == 0 for summarized analysis of the data
@@ -429,9 +429,11 @@ TEST(RSATest, RSABenchmark) {
     print_padding_mode_RSA((int)mode, MyFile, NUMBER_TESTS);
 
     for (const size_t bits : {2048, 3072, 4096}) {
+      
       for (int plaintext_length_bytes = 100;
            plaintext_length_bytes <= PLAINTEXT_TOTAL;
            plaintext_length_bytes *= 10) {
+          printf("-");
 
         // Maximum length of the plaintext (chunks) depending on the RSA keys
         // and the padding mode
@@ -491,7 +493,7 @@ TEST(RSATest, RSABenchmark) {
           uint8_t *plaintext = (uint8_t *)malloc(sizeof(uint32_t) * bits / 8);
           size_t plaintext_len = 0;
 
-          // Decrypt the chucks (actually the same chunk as menay times as the
+          // Decrypt the chucks (actually the same chunk as many times as the
           // number of chunks)
           for (int chunks_plaintext = (int)ceil((float)plaintext_length_bytes /
                                                 (float)pt_max_len_chunk);

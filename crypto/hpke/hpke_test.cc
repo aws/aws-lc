@@ -46,10 +46,10 @@
 // Define the HPKE upper bound for plaintext size encrypted for the testing and
 // benchmarking functions x25519, SIKE, x25519_SIKE, Kyber, x25519_Kyber and
 // HPKERoundTripBenchmark use these value
-#define SIZE_PLAINTEXT 10000000  // In Bytes
+#define SIZE_PLAINTEXT 1000000  // In Bytes
 
 // Define the number of tests to perform
-#define NUMBER_TESTS 100000
+#define NUMBER_TESTS 10000
 
 // Define the HPKE mode by the underlying cryptographic primitives
 #define X25519_ALGORITHM_ID 0
@@ -379,7 +379,7 @@ TEST(HPKETest, x25519) {
   // Declare vectors of NUMBER_TESTS * number_set positions
   // For each iteration of the tests measure and collect the results of the
   // different info_values and ad_values sets
-  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
+  unsigned long long arr_cycles_keygen[NUMBER_TESTS * number_sets], arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
       arr_cycles_setup_recipient[NUMBER_TESTS * number_sets],
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
@@ -398,9 +398,14 @@ TEST(HPKETest, x25519) {
 
   // Measure the clock cycles for EVP_HPKE_KEY_generate funciton
   // It is performed only once (static keys for Recipient)
-  cycles_keygen = cpucycles();
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
-  cycles_keygen = cpucycles() - cycles_keygen;
+  //Simulate generating the keys NUMBER_TESTS * number_sets times to compare to rest of the functions
+  //In general not necesary since these keys are static (recipient)
+  for (size_t i = 0; i < NUMBER_TESTS * number_sets; i++)
+  {
+    cycles_keygen = cpucycles();
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+    arr_cycles_keygen[i] = cpucycles() - cycles_keygen;
+  }
 
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
   size_t public_key_r_len;
@@ -417,9 +422,6 @@ TEST(HPKETest, x25519) {
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
-
-        MyFile << "cycles_keygen           " << fixed << setprecision(0)
-               << (cycles_keygen / 1000) << "   CCs x10^3\n";
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -504,7 +506,7 @@ TEST(HPKETest, x25519) {
           }
         }
         // Pass the collected samples to the analysis functions
-        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_setup_sender,
+        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_keygen, arr_cycles_setup_sender,
                          arr_cycles_setup_recipient, arr_cycles_seal,
                          arr_cycles_open, NUMBER_TESTS * number_sets, MyFile);
 
@@ -544,7 +546,7 @@ TEST(HPKETest, SIKE) {
   // Declare vectors of NUMBER_TESTS * number_set positions
   // For each iteration of the tests measure and collect the results of the
   // different info_values and ad_values sets
-  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
+  unsigned long long arr_cycles_keygen[NUMBER_TESTS * number_sets], arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
       arr_cycles_setup_recipient[NUMBER_TESTS * number_sets],
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
@@ -562,9 +564,14 @@ TEST(HPKETest, SIKE) {
 
   // Measure the clock cycles for EVP_HPKE_KEY_generate funciton
   // It is performed only once (static keys for Recipient)
-  cycles_keygen = cpucycles();
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_SIKE_hkdf_sha256()));
-  cycles_keygen = cpucycles() - cycles_keygen;
+  //Simulate generating the keys NUMBER_TESTS * number_sets times to compare to rest of the functions
+  //In general not necesary since these keys are static (recipient)
+  for (size_t i = 0; i < NUMBER_TESTS * number_sets; i++)
+  {
+      cycles_keygen = cpucycles();
+      ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_SIKE_hkdf_sha256()));
+    arr_cycles_keygen[i] = cpucycles() - cycles_keygen;
+  }
 
   uint8_t public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES];
   size_t public_key_r_len;
@@ -581,8 +588,6 @@ TEST(HPKETest, SIKE) {
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
-        MyFile << "cycles_keygen           " << fixed << setprecision(0)
-               << (cycles_keygen / 1000) << "   CCs x10^3\n";
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -665,7 +670,7 @@ TEST(HPKETest, SIKE) {
           }
         }
 
-        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_setup_sender,
+        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_keygen, arr_cycles_setup_sender,
                          arr_cycles_setup_recipient, arr_cycles_seal,
                          arr_cycles_open, NUMBER_TESTS * number_sets, MyFile);
 
@@ -704,7 +709,7 @@ TEST(HPKETest, x25519_SIKE) {
   // Declare vectors of NUMBER_TESTS * number_set positions
   // For each iteration of the tests measure and collect the results of the
   // different info_values and ad_values sets
-  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
+  unsigned long long arr_cycles_keygen[NUMBER_TESTS * number_sets], arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
       arr_cycles_setup_recipient[NUMBER_TESTS * number_sets],
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
@@ -723,11 +728,16 @@ TEST(HPKETest, x25519_SIKE) {
 
   // Measure the clock cycles for EVP_HPKE_KEY_generate funciton
   // It is performed only once (static keys for Recipient)
-  cycles_keygen = cpucycles();
-  ASSERT_TRUE(
+  //Simulate generating the keys NUMBER_TESTS * number_sets times to compare to rest of the functions
+  //In general not necesary since these keys are static (recipient)
+  for (size_t i = 0; i < NUMBER_TESTS * number_sets; i++)
+  {
+    cycles_keygen = cpucycles();
+    ASSERT_TRUE(
       EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_SIKE_hkdf_sha256()));
-  cycles_keygen = cpucycles() - cycles_keygen;
-
+    arr_cycles_keygen[i] = cpucycles() - cycles_keygen;
+  }
+  
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN + SIKE_P434_R3_PUBLIC_KEY_BYTES];
   size_t public_key_r_len;
 
@@ -743,9 +753,7 @@ TEST(HPKETest, x25519_SIKE) {
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
-        MyFile << "cycles_keygen           " << fixed << setprecision(0)
-               << (cycles_keygen / 1000) << "   CCs x10^3\n";
-
+    
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
             (uint8_t *)malloc(sizeof(uint8_t) * pt_size);
@@ -826,7 +834,7 @@ TEST(HPKETest, x25519_SIKE) {
             }
           }
         }
-        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_setup_sender,
+        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_keygen, arr_cycles_setup_sender,
                          arr_cycles_setup_recipient, arr_cycles_seal,
                          arr_cycles_open, NUMBER_TESTS * number_sets, MyFile);
 
@@ -866,7 +874,7 @@ TEST(HPKETest, Kyber) {
   // Declare vectors of NUMBER_TESTS * number_set positions
   // For each iteration of the tests measure and collect the results of the
   // different info_values and ad_values sets
-  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
+  unsigned long long arr_cycles_keygen[NUMBER_TESTS * number_sets],arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
       arr_cycles_setup_recipient[NUMBER_TESTS * number_sets],
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
@@ -875,11 +883,6 @@ TEST(HPKETest, Kyber) {
 
   // Create or open the output file
   std::ofstream MyFile("../results/HPKE_Kyber_results.txt");
-  // execute Bob keygen
-  // pk_B, sk_B << sk_b isn't it so strange that Alice generates Bob's secret
-  // key??
-  // Actually it is not Alice!! But why they do not have two differnet
-  // funcitons?!?!?! In real life how is Alice getting Bob's pk??
 
   // Generate the recipient's keypair.
   ScopedEVP_HPKE_KEY key;
@@ -889,9 +892,14 @@ TEST(HPKETest, Kyber) {
 
   // Measure the clock cycles for EVP_HPKE_KEY_generate funciton
   // It is performed only once (static keys for Recipient)
-  cycles_keygen = cpucycles();
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_KYBER_hkdf_sha256()));
-  cycles_keygen = cpucycles() - cycles_keygen;
+  //Simulate generating the keys NUMBER_TESTS * number_sets times to compare to rest of the functions
+  //In general not necesary since these keys are static (recipient)
+  for (size_t i = 0; i < NUMBER_TESTS * number_sets; i++)
+  {
+    cycles_keygen = cpucycles();
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_KYBER_hkdf_sha256()));
+    arr_cycles_keygen[i] = cpucycles() - cycles_keygen;
+  }
 
   uint8_t public_key_r[KYBER_PUBLICKEYBYTES];
   size_t public_key_r_len;
@@ -908,8 +916,6 @@ TEST(HPKETest, Kyber) {
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
-        MyFile << "cycles_keygen           " << fixed << setprecision(0)
-               << (cycles_keygen / 1000) << "   CCs x10^3\n";
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -995,7 +1001,7 @@ TEST(HPKETest, Kyber) {
             }
           }
         }
-        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_setup_sender,
+        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_keygen, arr_cycles_setup_sender,
                          arr_cycles_setup_recipient, arr_cycles_seal,
                          arr_cycles_open, NUMBER_TESTS * number_sets, MyFile);
 
@@ -1035,7 +1041,7 @@ TEST(HPKETest, x25519_Kyber) {
   // Declare vectors of NUMBER_TESTS * number_set positions
   // For each iteration of the tests measure and collect the results of the
   // different info_values and ad_values sets
-  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
+  unsigned long long arr_cycles_keygen[NUMBER_TESTS * number_sets], arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
       arr_cycles_setup_recipient[NUMBER_TESTS * number_sets],
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
@@ -1055,10 +1061,14 @@ TEST(HPKETest, x25519_Kyber) {
 
   // Measure the clock cycles for EVP_HPKE_KEY_generate funciton
   // It is performed only once (static keys for Recipient)
-  cycles_keygen = cpucycles();
-  ASSERT_TRUE(
-      EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
-  cycles_keygen = cpucycles() - cycles_keygen;
+  //Simulate generating the keys NUMBER_TESTS * number_sets times to compare to rest of the functions
+  //In general not necesary since these keys are static (recipient)
+  for (size_t i = 0; i < NUMBER_TESTS * number_sets; i++)
+  {
+    cycles_keygen = cpucycles();
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_KYBER_hkdf_sha256()));
+    arr_cycles_keygen[i] = cpucycles() - cycles_keygen;
+  }
 
   uint8_t public_key_r[x25519_KYBER_PUBLICKEYBYTES];
   size_t public_key_r_len;
@@ -1077,8 +1087,6 @@ TEST(HPKETest, x25519_Kyber) {
 
       for (int pt_size = 100; pt_size <= SIZE_PLAINTEXT; pt_size *= 10) {
         MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
-        MyFile << "cycles_keygen           " << fixed << setprecision(0)
-               << (cycles_keygen / 1000) << "   CCs x10^3\n";
 
         // Allocate dynamically the memory for the plaintext
         uint8_t *kCleartextPayload =
@@ -1159,7 +1167,7 @@ TEST(HPKETest, x25519_Kyber) {
             }
           }
         }
-        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_setup_sender,
+        analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_keygen, arr_cycles_setup_sender,
                          arr_cycles_setup_recipient, arr_cycles_seal,
                          arr_cycles_open, NUMBER_TESTS * number_sets, MyFile);
 
@@ -1178,16 +1186,17 @@ TEST(HPKETest, x25519_Kyber) {
 // decrypt our own messages.
 TEST(HPKETest, HPKERoundTripBenchmark) {
   const uint8_t info_a[] = {1, 1, 2, 3, 5, 8};
-  const uint8_t info_b[] = {42, 42, 42};
+  //const uint8_t info_b[] = {42, 42, 42};
   const uint8_t ad_a[] = {1, 2, 4, 8, 16};
-  const uint8_t ad_b[] = {7};
-  Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
-  Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
-
+  //const uint8_t ad_b[] = {7};
+  //Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
+  //Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
+  Span<const uint8_t> info_values[] = {info_a};
+  Span<const uint8_t> ad_values[] = {ad_a};
   // Add varable for the number of different info and ad values
   // since nested loops number sets is info_values #elements * ad_values
   // #elements
-  const int number_sets = 9;
+  const int number_sets = 1;
 
   // Add varables for the clock cycles
   unsigned long long cycles_keygen = 0, cycles_set_up_sender,
@@ -1196,7 +1205,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
   // Declare vectors of NUMBER_TESTS * number_set positions
   // For each iteration of the tests measure and collect the results of the
   // different info_values and ad_values sets
-  unsigned long long arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
+  unsigned long long arr_cycles_keygen[NUMBER_TESTS * number_sets] ,arr_cycles_setup_sender[NUMBER_TESTS * number_sets],
       arr_cycles_setup_recipient[NUMBER_TESTS * number_sets],
       arr_cycles_seal[NUMBER_TESTS * number_sets],
       arr_cycles_open[NUMBER_TESTS * number_sets];
@@ -1220,16 +1229,23 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
 
     // Measure the clock cycles for EVP_HPKE_KEY_generate funciton
     // It is performed only once (static keys for Recipient)
+    //Simulate generating the keys NUMBER_TESTS * number_sets times to compare to rest of the functions
+    //In general not necesary since these keys are static (recipient)
+    for (size_t i = 0; i < NUMBER_TESTS * number_sets; i++)
+    {
     cycles_keygen = cpucycles();
     ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), algorithm_kdf(algorithm)));
+    arr_cycles_keygen[i] = cpucycles() - cycles_keygen;
+    
+    }
     uint8_t *public_key_r = (uint8_t *)malloc(
         sizeof(uint8_t) * algorithm_publickeybytes(algorithm));
-    cycles_keygen = cpucycles() - cycles_keygen;
-
     size_t public_key_r_len;
     ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
                                         &public_key_r_len,
                                         algorithm_publickeybytes(algorithm)));
+
+    
     // public_key_r[SIKE_P434_R3_PUBLIC_KEY_BYTES-1]=0;
     for (const auto aead : kAllAEADs) {
       SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
@@ -1248,8 +1264,6 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
           check_RSA_pt_lengths(&pt_size);
 
           MyFile << "\nPlaintext Bytes    ->   " << pt_size << endl;
-          MyFile << "cycles_keygen           " << fixed << setprecision(0)
-                 << (cycles_keygen / 1000) << "   CCs x10^3\n";
 
           // Allocate dynamically the memory for the plaintext
           uint8_t *kCleartextPayload =
@@ -1334,7 +1348,7 @@ TEST(HPKETest, HPKERoundTripBenchmark) {
               }
             }
           }
-          analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_setup_sender,
+          analyze_protocol(ANALYZE_RESULTS_MODE, arr_cycles_keygen, arr_cycles_setup_sender,
                            arr_cycles_setup_recipient, arr_cycles_seal,
                            arr_cycles_open, NUMBER_TESTS * number_sets, MyFile);
 
