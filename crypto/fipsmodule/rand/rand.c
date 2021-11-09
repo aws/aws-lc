@@ -333,7 +333,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     int used_cpu;
     rand_get_seed(state, seed, &used_cpu);
 
-    uint8_t personalization[CTR_DRBG_ENTROPY_LEN];
+    uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_URANDOM)
     // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
