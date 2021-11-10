@@ -3075,11 +3075,15 @@ int SSL_alloc_crypto_mat(SSL *ssl) {
     return 0;
   }
 
-  if (!(ssl->cm= new SSL_CRYPTO_MAT()))
+  void *ptr = OPENSSL_malloc(sizeof(SSL_CRYPTO_MAT));
+
+  if (!ptr)
   {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+
+  ssl->cm = (SSL_CRYPTO_MAT *)ptr;
 
   return 1;
 }
