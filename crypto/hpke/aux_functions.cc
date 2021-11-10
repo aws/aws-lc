@@ -418,7 +418,7 @@ void analyze_protocol(uint8_t mode, unsigned long long *arr_cycles_keygen, unsig
   unsigned long long clean_protocol = cycles_set_up_sender_total +
                                       cycles_set_up_recipient_total +
                                       cycles_seal_total + cycles_open_total;
-  MyFile << "TOTAL_protocol          " << fixed << setprecision(0)
+  MyFile << "TOTAL_protocol          " << fixed << setprecision(2)
          << clean_protocol / 1000 << " [CCs_x10^3]\n";
 
   // Analyze % of clock cycles per HPKE function
@@ -438,17 +438,17 @@ float analyze_statistics(uint8_t mode, unsigned long long arr_cycles[], int n,
   // Consider only central 50% of the data -> eliminate quartile I and IV
   float mean_val = mean(arr_cycles + start_index, number_elements);
   if (mode == 1) {
-    MyFile << fixed << setprecision(0) << mean_val / 1000 << " [CCs_x10^3], ";
+    MyFile << fixed << setprecision(2) << mean_val / 1000 << " [CCs_x10^3], ";
 
-    MyFile << "M " << fixed << setprecision(0)
+    MyFile << "M " << fixed << setprecision(2)
            << median(arr_cycles + start_index, number_elements) / 1000
            << " [CCs_x10^3], ";
 
-    MyFile << "SD " << fixed << setprecision(0)
+    MyFile << "SD " << fixed << setprecision(2)
            << standarddeviation(arr_cycles + start_index, number_elements)
            << "\n";
   } else {
-    MyFile << fixed << setprecision(0) << mean_val / 1000 << " [CCs_x10^3]\n";
+    MyFile << fixed << setprecision(2) << mean_val / 1000 << " [CCs_x10^3]\n";
   }
 
   return mean_val;

@@ -49,7 +49,6 @@ add_library(kyber_r3 OBJECT ${KYBER_R3_SRCS})
 #message(STATUS "${KYBER_R3_SRCS}")
 
 # Setting some necessary flags for KYBER (see config.h)
-# Only the generic implementation of KYBER is imported for now.
 target_compile_options(kyber_r3 PRIVATE -mavx2 -D_AMD64_)
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|amd64|AMD64")
