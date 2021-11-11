@@ -687,7 +687,6 @@ let PURE_DECODE_CONV =
       INST [n,`n:int`] decode_encode_BL
     | _ -> g [w,`w:int32`])
   | _ -> failwith "PURE_DECODE_CONV";;
-PURE_DECODE_CONV `decode (word 0xa9bf57f4)`;;
 
 let DECODE_CONV tm =
   let th = PURE_DECODE_CONV tm in

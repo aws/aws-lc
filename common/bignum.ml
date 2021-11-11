@@ -161,6 +161,38 @@ let BIGDIGIT_LOWDIGITS = prove
     TRANS_TAC LTE_TRANS `2 EXP (64 * i)` THEN
     REWRITE_TAC[MOD_LT_EQ; EXP_EQ_0; ARITH_EQ; LE_EXP] THEN ASM_ARITH_TAC]);;
 
+let BIGDIGIT_DIV = prove
+ (`!a i e.
+     e <= 64
+     ==> bigdigit (a DIV 2 EXP e) i =
+         2 EXP (64 - e) * bigdigit a (i + 1) MOD 2 EXP e +
+         bigdigit a i DIV 2 EXP e`,
+  REPEAT STRIP_TAC THEN REWRITE_TAC[bigdigit] THEN
+  REWRITE_TAC[ONCE_REWRITE_RULE[MULT_SYM] DIV_DIV] THEN
+  REWRITE_TAC[GSYM DIV_DIV; EXP_ADD; ARITH_RULE
+   `64 * (i + 1) = 64 * i + 64`] THEN
+  SPEC_TAC(`a DIV 2 EXP (64 * i)`,`a:num`) THEN GEN_TAC THEN
+  ASM_SIMP_TAC[MOD_MOD_EXP_MIN; ARITH_RULE `e <= 64 ==> MIN 64 e = e`] THEN
+  GEN_REWRITE_TAC (funpow 3 LAND_CONV)
+   [ARITH_RULE `a = 2 EXP 64 * a DIV 2 EXP 64 + a MOD 2 EXP 64`] THEN
+  MP_TAC(ARITH_RULE `a MOD 2 EXP 64 < 2 EXP 64`) THEN REPEAT STRIP_TAC THEN
+  ASM_SIMP_TAC[DIV_MOD_DISJOINT_BITS; DISJOINT_BITS_CLAUSES] THEN
+  BINOP_TAC THENL [ALL_TAC; ASM_MESON_TAC[MOD_LT; DIV_LE; LET_TRANS]] THEN
+  REWRITE_TAC[DIV_MOD; MOD_MULT2;
+              ARITH_RULE `e * 2 EXP 64 = 2 EXP 64 * e`] THEN
+  ASM_SIMP_TAC[MULT_DIV; DIVIDES_EXP_LE_IMP; DIV_EXP; ARITH_EQ]);;
+
+let WORD_BIGDIGIT_DIV = prove
+ (`!a i e.
+        e <= 64
+        ==> word(bigdigit (a DIV 2 EXP e) i):int64 =
+            word_subword ((word_join:int64->int64->int128)
+                          (word (bigdigit a (i + 1))) (word (bigdigit a i)))
+                         (e,64)`,
+  SIMP_TAC[GSYM VAL_EQ; VAL_WORD_BIGDIGIT; VAL_WORD_SUBWORD_JOIN_64;
+           DIMINDEX_64; ARITH_LE; ARITH_LT] THEN
+  REWRITE_TAC[BIGDIGIT_DIV]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Mapping little-endian list to bignum, handy for intermediate results      *)
 (* kept in registers.                                                        *)
@@ -497,6 +529,35 @@ let BIGNUM_FROM_MEMORY_OFFSET_EQ_HIGHDIGITS = prove
         highdigits a (j + 1)`,
   REPEAT GEN_TAC THEN
   GEN_REWRITE_TAC LAND_CONV [BIGNUM_FROM_MEMORY_EQ_HIGHDIGITS] THEN
+  REWRITE_TAC[WORD_RULE
+   `word_add (word_add x (word (8 * i))) (word 8) =
+    word_add x (word(8 * (i + 1)))`]);;
+
+let BIGNUM_FROM_MEMORY_EQ_HIGHDIGITS_ALT = prove
+ (`!x n a i s.
+      bignum_from_memory(x,n) s = highdigits a i <=>
+      (if n = 0 then a < 2 EXP (64 * i) else
+       read(memory :> bytes64 x) s = word(bigdigit a i)) /\
+      bignum_from_memory(word_add x (word 8),n - 1) s = highdigits a (i + 1)`,
+  REPEAT GEN_TAC THEN
+  GEN_REWRITE_TAC LAND_CONV [BIGNUM_FROM_MEMORY_EQ_HIGHDIGITS] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[SUB_0; BIGNUM_FROM_MEMORY_TRIVIAL] THEN
+  REWRITE_TAC[MESON[] `(p <=> p /\ a = b) <=> p ==> b = a`] THEN
+  REWRITE_TAC[HIGHDIGITS_EQ_0] THEN
+  MATCH_MP_TAC(REWRITE_RULE[IMP_CONJ_ALT] LTE_TRANS) THEN
+  REWRITE_TAC[LE_EXP] THEN ARITH_TAC);;
+
+let BIGNUM_FROM_MEMORY_OFFSET_EQ_HIGHDIGITS_ALT = prove
+ (`!x n a i j s.
+        bignum_from_memory(word_add x (word (8 * i)),n) s = highdigits a j <=>
+        (if n = 0 then a < 2 EXP (64 * j) else
+         read(memory :> bytes64(word_add x (word(8 * i)))) s =
+         word(bigdigit a j)) /\
+        bignum_from_memory(word_add x (word (8 * (i + 1))),n - 1) s =
+        highdigits a (j + 1)`,
+  REPEAT GEN_TAC THEN
+  GEN_REWRITE_TAC LAND_CONV [BIGNUM_FROM_MEMORY_EQ_HIGHDIGITS_ALT] THEN
   REWRITE_TAC[WORD_RULE
    `word_add (word_add x (word (8 * i))) (word 8) =
     word_add x (word(8 * (i + 1)))`]);;
