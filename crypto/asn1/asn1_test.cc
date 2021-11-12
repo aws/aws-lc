@@ -266,7 +266,7 @@ TEST(ASN1Test, UnusedBooleanBits) {
   EXPECT_FALSE(val->value.ptr);
 }
 
-TEST(ASN1Test, ASN1ObjectReuse) {
+TEST(ASN1Test, ParseASN1Object) {
   // 1.2.840.113554.4.1.72585.2, an arbitrary unknown OID.
   static const uint8_t kOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
                                  0x04, 0x01, 0x84, 0xb7, 0x09, 0x02};
@@ -277,16 +277,48 @@ TEST(ASN1Test, ASN1ObjectReuse) {
   // OBJECT_IDENTIFIER { 1.3.101.112 }
   static const uint8_t kDER[] = {0x06, 0x03, 0x2b, 0x65, 0x70};
   const uint8_t *ptr = kDER;
+  // Parse an |ASN1_OBJECT| with object reuse.
   EXPECT_TRUE(d2i_ASN1_OBJECT(&obj, &ptr, sizeof(kDER)));
   EXPECT_EQ(NID_ED25519, OBJ_obj2nid(obj));
   ASN1_OBJECT_free(obj);
 
-  // Repeat the test, this time overriding a static |ASN1_OBJECT|.
+  // Repeat the test, this time overriding a static |ASN1_OBJECT|. It should
+  // detect this and construct a new one.
   obj = OBJ_nid2obj(NID_rsaEncryption);
   ptr = kDER;
   EXPECT_TRUE(d2i_ASN1_OBJECT(&obj, &ptr, sizeof(kDER)));
   EXPECT_EQ(NID_ED25519, OBJ_obj2nid(obj));
   ASN1_OBJECT_free(obj);
+
+  const std::vector<uint8_t> kInvalidObjects[] = {
+      // No tag header.
+      {},
+      // No length.
+      {0x06},
+      // Truncated contents.
+      {0x06, 0x01},
+      // An OID may not be empty.
+      {0x06, 0x00},
+      // The last byte may not be a continuation byte (high bit set).
+      {0x06, 0x03, 0x2b, 0x65, 0xf0},
+      // Each component must be minimally-encoded.
+      {0x06, 0x03, 0x2b, 0x65, 0x80, 0x70},
+      {0x06, 0x03, 0x80, 0x2b, 0x65, 0x70},
+      // Wrong tag number.
+      {0x01, 0x03, 0x2b, 0x65, 0x70},
+      // Wrong tag class.
+      {0x86, 0x03, 0x2b, 0x65, 0x70},
+      // Element is constructed.
+      {0x26, 0x03, 0x2b, 0x65, 0x70},
+  };
+  for (const auto &invalid : kInvalidObjects) {
+    SCOPED_TRACE(Bytes(invalid));
+    ptr = invalid.data();
+    obj = d2i_ASN1_OBJECT(nullptr, &ptr, invalid.size());
+    EXPECT_FALSE(obj);
+    ASN1_OBJECT_free(obj);
+    ERR_clear_error();
+  }
 }
 
 TEST(ASN1Test, BitString) {
@@ -337,11 +369,10 @@ TEST(ASN1Test, BitString) {
       // Leading byte too high
       {0x03, 0x02, 0x08, 0x00},
       {0x03, 0x02, 0xff, 0x00},
-      // TODO(https://crbug.com/boringssl/354): Reject these inputs.
       // Empty bit strings must have a zero leading byte.
-      // {0x03, 0x01, 0x01},
+      {0x03, 0x01, 0x01},
       // Unused bits must all be zero.
-      // {0x03, 0x02, 0x06, 0xc1 /* 0b11000001 */},
+      {0x03, 0x02, 0x06, 0xc1 /* 0b11000001 */},
   };
   for (const auto &test : kInvalidInputs) {
     SCOPED_TRACE(Bytes(test));
@@ -1678,6 +1709,11 @@ TEST(ASN1, GetObject) {
   int tag_class;
   EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
                                   sizeof(kTruncated)));
+
+  static const uint8_t kIndefinite[] = {0x30, 0x80, 0x00, 0x00};
+  ptr = kIndefinite;
+  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
+                                  sizeof(kIndefinite)));
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
