@@ -80,6 +80,7 @@ enum {
        TEST_BIGNUM_CLZ,
        TEST_BIGNUM_CMADD,
        TEST_BIGNUM_CMNEGADD,
+       TEST_BIGNUM_CMOD,
        TEST_BIGNUM_CMUL,
        TEST_BIGNUM_CMUL_P256,
        TEST_BIGNUM_CMUL_P384,
@@ -1324,6 +1325,35 @@ int test_bignum_cmnegadd(void)
       { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"]\n",k2,k1);
         else printf("OK: [sizes %4"PRIu64" := 1 * %4"PRIu64"] 0x%016"PRIx64" * ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k1,a,b1[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_cmod(void)
+{ uint64_t t, k, r, j, m;
+  printf("Testing bignum_cmod with %d cases\n",TESTS);
+  for (t = 0; t < TESTS; ++t)
+   { k = (unsigned) rand() % MAXSIZE;
+     random_bignum(k,b0);
+     m = random64();
+     if (m == 0) m += (1ull<<(rand() % 64));
+     r = bignum_cmod(k,b0,m);
+     bignum_copy(k+2,b1,k,b0);
+     bignum_of_word(k+2,b2,m);
+     reference_divmod(k+2,b4,b3,b1,b2); // b3 = x mod m
+
+     j = (k == 0) ? 0 : k-1;
+     if (r != b3[0])
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod %"PRIu64" = %"PRIu64" not %"PRIu64"\n",
+               k,b0[j],b0[0],m,r,b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod %"PRIu64" = %"PRIu64"\n",
+               k,b0[j],b0[0],m,r);
       }
    }
   printf("All OK\n");
@@ -5209,6 +5239,7 @@ int test_all()
   dotest(test_bignum_clz);
   dotest(test_bignum_cmadd);
   dotest(test_bignum_cmnegadd);
+  dotest(test_bignum_cmod);
   dotest(test_bignum_cmul);
   dotest(test_bignum_cmul_p256);
   dotest(test_bignum_cmul_p384);
@@ -5377,6 +5408,7 @@ int test_allnonbmi()
   dotest(test_bignum_clz);
   dotest(test_bignum_cmadd);
   dotest(test_bignum_cmnegadd);
+  dotest(test_bignum_cmod);
   dotest(test_bignum_cmul);
   dotest(test_bignum_coprime);
   dotest(test_bignum_copy);
@@ -5548,6 +5580,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_CLZ:             return test_bignum_clz();
      case TEST_BIGNUM_CMADD:           return test_bignum_cmadd();
      case TEST_BIGNUM_CMNEGADD:        return test_bignum_cmnegadd();
+     case TEST_BIGNUM_CMOD:            return test_bignum_cmod();
      case TEST_BIGNUM_CMUL:            return test_bignum_cmul();
      case TEST_BIGNUM_CMUL_P256:       return test_bignum_cmul_p256();
      case TEST_BIGNUM_CMUL_P384:       return test_bignum_cmul_p384();

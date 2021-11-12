@@ -26,6 +26,7 @@ OBJ = bignum_add.o \
       bignum_clz.o \
       bignum_cmadd.o \
       bignum_cmnegadd.o \
+      bignum_cmod.o \
       bignum_cmul.o \
       bignum_coprime.o \
       bignum_copy.o \

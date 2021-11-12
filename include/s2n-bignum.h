@@ -89,6 +89,10 @@ extern uint64_t bignum_cmadd (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, u
 // Inputs c, y[n]; outputs function return (negative carry-out) and z[k]
 extern uint64_t bignum_cmnegadd (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);
 
+// Find modulus of bignum w.r.t. single nonzero word m, returning x mod m
+// Input x[k], m; output function return
+extern uint64_t bignum_cmod (uint64_t k, uint64_t *x, uint64_t m);
+
 // Multiply by a single word, z := c * y
 // Inputs c, y[n]; outputs function return (carry-out) and z[k]
 extern uint64_t bignum_cmul (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);
