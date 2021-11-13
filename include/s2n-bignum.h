@@ -73,6 +73,14 @@ extern uint64_t bignum_bitfield (uint64_t k, uint64_t *x, uint64_t n, uint64_t l
 // Input x[k]; output function return
 extern uint64_t bignum_bitsize (uint64_t k, uint64_t *x);
 
+// Divide by a single (nonzero) word, z := x / m and return x mod m
+// Inputs x[n], m; outputs function return (remainder) and z[k]
+extern uint64_t bignum_cdiv (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t m);
+
+// Divide by a single word, z := x / m when known to be exact
+// Inputs x[n], m; output z[k]
+extern void bignum_cdiv_exact (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t m);
+
 // Count leading zero digits (64-bit words)
 // Input x[k]; output function return
 extern uint64_t bignum_cld (uint64_t k, uint64_t *x);

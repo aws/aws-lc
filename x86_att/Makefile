@@ -33,6 +33,8 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       generic/bignum_amontsqr.o \
       generic/bignum_bitfield.o \
       generic/bignum_bitsize.o \
+      generic/bignum_cdiv.o \
+      generic/bignum_cdiv_exact.o \
       generic/bignum_cld.o \
       generic/bignum_clz.o \
       generic/bignum_cmadd.o \

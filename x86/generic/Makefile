@@ -22,6 +22,8 @@ OBJ = bignum_add.o \
       bignum_amontsqr.o \
       bignum_bitfield.o \
       bignum_bitsize.o \
+      bignum_cdiv.o \
+      bignum_cdiv_exact.o \
       bignum_cld.o \
       bignum_clz.o \
       bignum_cmadd.o \

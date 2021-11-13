@@ -76,6 +76,8 @@ enum {
        TEST_BIGNUM_BITSIZE,
        TEST_BIGNUM_BIGENDIAN_4,
        TEST_BIGNUM_BIGENDIAN_6,
+       TEST_BIGNUM_CDIV,
+       TEST_BIGNUM_CDIV_EXACT,
        TEST_BIGNUM_CLD,
        TEST_BIGNUM_CLZ,
        TEST_BIGNUM_CMADD,
@@ -1221,6 +1223,90 @@ int test_bignum_bitsize(void)
   return 0;
 }
 
+int test_bignum_cdiv(void)
+{ uint64_t t, j1, j2, k1, k2, k, m, r, s;
+  printf("Testing bignum_cdiv with %d cases\n",tests);
+  for (t = 0; t < tests; ++t)
+   { k1 = (unsigned) rand() % MAXSIZE;
+     k2 = (unsigned) rand() % MAXSIZE;
+     m = random64(); if (m == 0) m = (rand() & 31) + 1;
+     random_bignum(k1,b1);
+     k = max(k1,k2);
+     bignum_copy(k,b3,k1,b1);
+     bignum_of_word(k,b4,m);
+     reference_divmod(k,b5,b6,b3,b4);
+     reference_copy(k2,b3,k,b5);
+     s = (k == 0) ? 0 : b6[0];
+     r = bignum_cdiv(k2,b4,k1,b1,m);
+     j1 = (k1 == 0) ? 0 : k1-1;
+     j2 = (k2 == 0) ? 0 : k2-1;
+     if (reference_compare(k2,b3,k2,b4) != 0)
+      { printf("### Disparity in quotient: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" div %"PRIu64" = "
+               "0x%016"PRIx64"...%016"PRIx64" rem %"PRIu64" not 0x%016"PRIx64"...%016"PRIx64" rem %"PRIu64"\n",
+               k2,b1[j1],b1[0],m,b4[j2],b4[0],r,b3[j2],b3[0],s);
+        return 1;
+      }
+     if (r != s)
+      { printf("### Disparity in modulus: [sizes %4"PRIu64" := %4"PRIu64" / 1] "
+               "0x%016"PRIx64"...%016"PRIx64" mod %"PRIu64" = "
+               "%"PRIu64" not %"PRIu64"\n",
+               k2,k1,b1[j1],b1[0],m,r,s);
+        return 1;
+     }
+     else if (VERBOSE)
+      { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64" / 1]\n",k2,k1);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64" / 1]  0x%016"PRIx64"...0x%016"PRIx64" / 0x%016"PRIx64" = "
+                    "0x%016"PRIx64"...0x%016"PRIx64" rem %"PRIu64"\n",
+                    k2,k1,b1[j1],b1[0],m,b4[j2],b4[0],r);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_cdiv_exact(void)
+{ uint64_t t, j1, j2, k1, k2, k, m;
+  printf("Testing bignum_cdiv_exact with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { k1 = (unsigned) rand() % MAXSIZE;
+     k2 = (unsigned) rand() % MAXSIZE;
+     m = random64(); if (m == 0) m = (rand() & 31) + 1;
+     random_bignum(k2,b2);
+     if (k1 >= 2)
+      { random_bignum(k1-1,b3);
+        reference_cmul(k1,b1,m,k1-1,b3);
+      }
+     else if (k1 == 1)
+      { b1[0] = random64();
+        b1[0] -= b1[0] % m;
+      }
+     bignum_cdiv_exact(k2,b2,k1,b1,m);
+     k = max(k1,k2);
+     bignum_copy(k,b3,k1,b1);
+     bignum_of_word(k,b4,m);
+     reference_divmod(k,b5,b6,b3,b4);
+     reference_copy(k2,b3,k,b5);
+     c = reference_compare(k2,b2,k2,b3);
+     j1 = (k1 == 0) ? 0 : k1-1;
+     j2 = (k2 == 0) ? 0 : k2-1;
+     if (c != 0)
+      { printf("### Disparity: [sizes %4"PRIu64" := %4"PRIu64" / 1] "
+               "0x%016"PRIx64"...0x%016"PRIx64" / 0x%016"PRIx64" = 0x%016"PRIx64"....0x%016"PRIx64" not 0x%016"PRIx64"...0x%016"PRIx64"\n",
+               k2,k1,b1[j1],b1[0],m,b2[j2],b2[0],b3[j2],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k2 == 0) printf("OK: [sizes %4"PRIu64" := %4"PRIu64" / 1]\n",k2,k1);
+        else printf("OK: [sizes %4"PRIu64" := %4"PRIu64" / 1]  0x%016"PRIx64"...0x%016"PRIx64" / 0x%016"PRIx64" =  0x%016"PRIx64"...0x%016"PRIx64"\n",
+                    k2,k1,b1[j1],b1[0],m,b2[j2],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_cld(void)
 { uint64_t t, k;
   printf("Testing bignum_cld with %d cases\n",tests);
@@ -1333,8 +1419,8 @@ int test_bignum_cmnegadd(void)
 
 int test_bignum_cmod(void)
 { uint64_t t, k, r, j, m;
-  printf("Testing bignum_cmod with %d cases\n",TESTS);
-  for (t = 0; t < TESTS; ++t)
+  printf("Testing bignum_cmod with %d cases\n",tests);
+  for (t = 0; t < tests; ++t)
    { k = (unsigned) rand() % MAXSIZE;
      random_bignum(k,b0);
      m = random64();
@@ -5235,6 +5321,8 @@ int test_all()
   dotest(test_bignum_bigendian_6);
   dotest(test_bignum_bitfield);
   dotest(test_bignum_bitsize);
+  dotest(test_bignum_cdiv);
+  dotest(test_bignum_cdiv_exact);
   dotest(test_bignum_cld);
   dotest(test_bignum_clz);
   dotest(test_bignum_cmadd);
@@ -5404,6 +5492,8 @@ int test_allnonbmi()
   dotest(test_bignum_bigendian_6);
   dotest(test_bignum_bitfield);
   dotest(test_bignum_bitsize);
+  dotest(test_bignum_cdiv);
+  dotest(test_bignum_cdiv_exact);
   dotest(test_bignum_cld);
   dotest(test_bignum_clz);
   dotest(test_bignum_cmadd);
@@ -5576,6 +5666,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_BIGENDIAN_6:     return test_bignum_bigendian_6();
      case TEST_BIGNUM_BITFIELD:        return test_bignum_bitfield();
      case TEST_BIGNUM_BITSIZE:         return test_bignum_bitsize();
+     case TEST_BIGNUM_CDIV:            return test_bignum_cdiv();
+     case TEST_BIGNUM_CDIV_EXACT:      return test_bignum_cdiv_exact();
      case TEST_BIGNUM_CLD:             return test_bignum_cld();
      case TEST_BIGNUM_CLZ:             return test_bignum_clz();
      case TEST_BIGNUM_CMADD:           return test_bignum_cmadd();
