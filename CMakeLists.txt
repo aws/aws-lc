@@ -701,7 +701,7 @@ if(USE_CUSTOM_LIBCXX)
   )
   set_target_properties(libcxxabi PROPERTIES COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough")
   # libc++abi depends on libc++ internal headers.
-  set_property(TARGET libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/util/bot/libcxx/src")
+  set_property(TARGET libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
 
   add_library(libcxx ${LIBCXX_SOURCES})
   if(ASAN OR MSAN OR TSAN)
