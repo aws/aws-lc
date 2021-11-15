@@ -16,6 +16,19 @@ if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_BCM_O_PATH)
   return()
 endif()
 
+if(ANDROID)
+  # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
+  # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
+  string(FIND ${CMAKE_CXX_FLAGS} "noexecstack" CXX_EXTRA_WA)
+  string(FIND ${CMAKE_C_FLAGS} "noexecstack" C_EXTRA_WA)
+  if(NOT ${CXX_EXTRA_WA} EQUAL '-1')
+    string( REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
+  endif()
+  if(NOT ${C_EXTRA_WA} EQUAL '-1')
+    string( REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" )
+  endif()
+endif()
+
 if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
@@ -152,9 +165,10 @@ function(cpreprocess dest src)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
+  string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
   add_custom_command(
     OUTPUT ${dest}
-    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} $CMAKE_ASM_FLAGS -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
+    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
