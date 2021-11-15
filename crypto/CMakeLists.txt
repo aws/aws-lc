@@ -497,7 +497,7 @@ if(NOT WIN32 AND NOT ANDROID)
 endif()
 
 if(FIPS)
-    target_link_libraries(crypto PRIVATE jitterentropy)
+  target_link_libraries(crypto PRIVATE jitterentropy)
 endif()
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
