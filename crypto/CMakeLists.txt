@@ -490,14 +490,14 @@ endif()
 SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
 
 if(WIN32)
-  target_link_libraries(crypto ws2_32)
+  target_link_libraries(crypto PUBLIC ws2_32)
 endif()
 if(NOT WIN32 AND NOT ANDROID)
-  target_link_libraries(crypto pthread)
+  target_link_libraries(crypto PUBLIC pthread)
 endif()
 
 if(FIPS)
-  target_link_libraries(crypto jitterentropy)
+  target_link_libraries(crypto PRIVATE jitterentropy)
 endif()
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
@@ -508,7 +508,7 @@ if(USE_CUSTOM_LIBCXX)
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-  target_link_libraries(crypto libcxx)
+  target_link_libraries(crypto PUBLIC libcxx)
 endif()
 
 target_include_directories(crypto SYSTEM PUBLIC
