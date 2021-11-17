@@ -1044,9 +1044,10 @@ SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
   CBS seq;
   if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
       (CBS_len(&cbs) != 0)) {
+    // TODO: check if OPENSSL_PUT_ERROR is needed. The internal CBS may provide error.
     // TODO: investigate more why sometimes SSL prefix is not needed.
     // e.g. ERR_R_MALLOC_FAILURE. because some error is generic?
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BYTES);
+    // OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BYTES);
     goto err;
   }
   // First restore SSL_SESSION
@@ -1152,7 +1153,7 @@ int i2d_SSL(SSL *in, uint8_t **out_data)
     return 0;
   }
   // Serialize rd/wr keys/iv, seq numbers to restore alive connection
-  if (!SSL_to_bytes(in, cbb.get())) {
+  if (!SSL_to_bytes(in, &seq)) {
     return 0;
   }
 
