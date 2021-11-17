@@ -1041,14 +1041,22 @@ SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
   }
 
   CBS_init(&cbs, *in, in_length);
+  CBS seq;
+  if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
+      (CBS_len(&cbs) != 0)) {
+    // TODO: investigate more why sometimes SSL prefix is not needed.
+    // e.g. ERR_R_MALLOC_FAILURE. because some error is generic?
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BYTES);
+    goto err;
+  }
   // First restore SSL_SESSION
-  ssl->s3->established_session = SSL_SESSION_parse(&cbs, &ssl_crypto_x509_method,
+  ssl->s3->established_session = SSL_SESSION_parse(&seq, &ssl_crypto_x509_method,
                                                    NULL /* no buffer pool */);
   if (!ssl->s3->established_session) {
     goto err;
   }
   // Restore SSL part
-  if (!SSL_parse(ssl, &cbs, ctx)) {
+  if (!SSL_parse(ssl, &seq, ctx)) {
     goto err;
   }
 
@@ -1056,6 +1064,8 @@ SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
     SSL_free(*out);
     *out = ssl;
   }
+  // TODO: check why the data needs to be reassign
+  //  instead of checking CBS_len(&cbs) == 0.
   *in = CBS_data(&cbs);
   return ssl;
 
@@ -1135,8 +1145,10 @@ int i2d_SSL(SSL *in, uint8_t **out_data)
     return 0;
   }
   // Serialize SSL_SESSION first
+  CBB seq;
   if (!CBB_init(cbb.get(), 1024) ||
-      !ssl_session_serialize(in->s3->established_session.get(), cbb.get())) {
+      !CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE) ||
+      !ssl_session_serialize(in->s3->established_session.get(), &seq)) {
     return 0;
   }
   // Serialize rd/wr keys/iv, seq numbers to restore alive connection
