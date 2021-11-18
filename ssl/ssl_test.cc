@@ -2549,10 +2549,10 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
 
 // Functions used by SSL encode/decode tests.
 // TODO: support more data exchange by using |uint8_t *data|
-static void VerifyExchangeData(SSL* writer, SSL* reader, uint8_t data) {
+static void VerifyExchangeData(SSL* from, SSL* to, uint8_t data) {
   uint8_t data_byte = data;
-  ASSERT_EQ(SSL_write(writer, &data_byte, 1), 1);
-  ASSERT_EQ(SSL_read(reader, &data_byte, 1), 1);
+  ASSERT_EQ(SSL_write(from, &data_byte, 1), 1);
+  ASSERT_EQ(SSL_read(to, &data_byte, 1), 1);
   ASSERT_EQ(data_byte, data);
 }
 
@@ -2680,21 +2680,85 @@ TEST_P(SSLVersionTest, SSLEncodeBasicReadWrite) {
   if (!testSSLEncode(version())) {
     return;
   }
+
   // Complete the handshake.
   ASSERT_TRUE(Connect());
   ASSERT_EQ(SSL_in_init(server_.get()), 0);
   ASSERT_EQ(SSL_in_init(client_.get()), 0);
+
   // After the handshake, performs some data exchange.
   VerifyExchangeData(server_.get(), client_.get(), 42);
   VerifyExchangeData(client_.get(), server_.get(), 43);
-  // Transfer SSL.
+
+  // Transfer SSL. |server_| is freed when transfer finished.
   bssl::UniquePtr<SSL> server2;
   TransferSSL(&server_, server_ctx_.get(), &server2);
+
   // After transfer, performs some data exchange using |server2|.
   VerifyExchangeData(server2.get(), client_.get(), 42);
   VerifyExchangeData(client_.get(), server2.get(), 43);
   // TODO: add a test to check error code
   // e.g. ASSERT_EQ(SSL_get_error(server2.get(), 0), SSL_ERROR_ZERO_RETURN);
+}
+
+// Test the change of read and write sequence numbers of the decoded SSL after exchange data.
+TEST_P(SSLVersionTest, SSLEncodeSequenceNumber) {
+  // Check if SSL transfer is supported given the TLS version.
+  if (!testSSLEncode(version())) {
+    return;
+  }
+
+  ASSERT_TRUE(Connect());
+
+  // Drain any post-handshake messages to ensure there are no unread records
+  // on either end.
+  ASSERT_TRUE(FlushNewSessionTickets(client_.get(), server_.get()));
+
+  uint64_t client_read_seq = SSL_get_read_sequence(client_.get());
+  uint64_t client_write_seq = SSL_get_write_sequence(client_.get());
+  uint64_t server_read_seq = SSL_get_read_sequence(server_.get());
+  uint64_t server_write_seq = SSL_get_write_sequence(server_.get());
+
+  // The next record to be written should equal the next to be received.
+  EXPECT_EQ(client_write_seq, server_read_seq);
+  EXPECT_EQ(server_write_seq, client_read_seq);
+
+  // Send a record from client to server.
+  uint8_t byte = 0;
+  EXPECT_EQ(SSL_write(client_.get(), &byte, 1), 1);
+  EXPECT_EQ(SSL_read(server_.get(), &byte, 1), 1);
+
+  // The client write and server read sequence numbers should have
+  // incremented.
+  EXPECT_EQ(client_write_seq + 1, SSL_get_write_sequence(client_.get()));
+  EXPECT_EQ(server_read_seq + 1, SSL_get_read_sequence(server_.get()));
+
+  // TODO: move below to SSLVersionTest.SequenceNumber.
+  // Transfer SSL. |server_| is freed when transfer finished.
+  bssl::UniquePtr<SSL> server2;
+  TransferSSL(&server_, server_ctx_.get(), &server2);
+
+  // The |server_| and |server2| should have the same read and write sequence.
+  uint64_t server2_read_seq = SSL_get_read_sequence(server2.get());
+  uint64_t server2_write_seq = SSL_get_write_sequence(server2.get());
+  EXPECT_EQ(server_read_seq + 1, server2_read_seq);
+  EXPECT_EQ(server_write_seq, server2_write_seq);
+
+  // Send a record from client to server.
+  VerifyExchangeData(client_.get(), server2.get(), 0);
+  EXPECT_EQ(client_write_seq + 2, SSL_get_write_sequence(client_.get()));
+  EXPECT_EQ(client_read_seq, SSL_get_read_sequence(client_.get()));
+  EXPECT_EQ(server2_write_seq, SSL_get_write_sequence(server2.get()));
+  EXPECT_EQ(server2_read_seq + 1, SSL_get_read_sequence(server2.get()));
+
+  // Send a record from server to client.
+  VerifyExchangeData(server2.get(), client_.get(), 0);
+  EXPECT_EQ(client_write_seq + 2, SSL_get_write_sequence(client_.get()));
+  EXPECT_EQ(client_read_seq + 1, SSL_get_read_sequence(client_.get()));
+  EXPECT_EQ(server2_write_seq + 1, SSL_get_write_sequence(server2.get()));
+  EXPECT_EQ(server2_read_seq + 1, SSL_get_read_sequence(server2.get()));
+
+  // TODO: check if more tests are needed on sequence of read and write.
 }
 
 TEST_P(SSLVersionTest, OneSidedShutdown) {
