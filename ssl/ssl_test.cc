@@ -2675,7 +2675,7 @@ TEST_P(SSLVersionTest, SequenceNumber) {
   EXPECT_EQ(server_read_seq + 1, SSL_get_read_sequence(server_.get()));
 }
 
-// Test basic read and write using the SSL decoded from encoded bytes.
+// Test basic read and write using the transferred SSL.
 TEST_P(SSLVersionTest, SSLEncodeBasicReadWrite) {
   if (!testSSLEncode(version())) {
     return;
@@ -2690,7 +2690,8 @@ TEST_P(SSLVersionTest, SSLEncodeBasicReadWrite) {
   VerifyExchangeData(server_.get(), client_.get(), 42);
   VerifyExchangeData(client_.get(), server_.get(), 43);
 
-  // Transfer SSL. |server_| is freed when transfer finished.
+  // Transfer SSL.
+  // |server_| state is transferred to |server2|. |server_| is freed after the transfer.
   bssl::UniquePtr<SSL> server2;
   TransferSSL(&server_, server_ctx_.get(), &server2);
 
@@ -2701,7 +2702,8 @@ TEST_P(SSLVersionTest, SSLEncodeBasicReadWrite) {
   // e.g. ASSERT_EQ(SSL_get_error(server2.get(), 0), SSL_ERROR_ZERO_RETURN);
 }
 
-// Test the change of read and write sequence numbers of the decoded SSL after exchange data.
+// Test the change of read and write sequence numbers of the transferred SSL after exchange data.
+// The call of |SSL_write| and |SSL_read| increment the sequence numbers.
 TEST_P(SSLVersionTest, SSLEncodeSequenceNumber) {
   // Check if SSL transfer is supported given the TLS version.
   if (!testSSLEncode(version())) {
@@ -2734,7 +2736,8 @@ TEST_P(SSLVersionTest, SSLEncodeSequenceNumber) {
   EXPECT_EQ(server_read_seq + 1, SSL_get_read_sequence(server_.get()));
 
   // TODO: move below to SSLVersionTest.SequenceNumber.
-  // Transfer SSL. |server_| is freed when transfer finished.
+  // Transfer SSL.
+  // |server_| state is transferred to |server2|. |server_| is freed after the transfer.
   bssl::UniquePtr<SSL> server2;
   TransferSSL(&server_, server_ctx_.get(), &server2);
 
@@ -2759,6 +2762,41 @@ TEST_P(SSLVersionTest, SSLEncodeSequenceNumber) {
   EXPECT_EQ(server2_read_seq + 1, SSL_get_read_sequence(server2.get()));
 
   // TODO: check if more tests are needed on sequence of read and write.
+}
+
+// Test the shutdown behavior of the transferred SSL after exchange data.
+// The states(write_shutdown and read_shutdown) tell if close_notify is sent and received.
+TEST_P(SSLVersionTest, SSLEncodeOneSidedShutdown) {
+  // Check if SSL transfer is supported given the TLS version.
+  if (!testSSLEncode(version())) {
+    return;
+  }
+  ASSERT_TRUE(Connect());
+
+  // Shut down half the connection. |SSL_shutdown| will return 0 to signal only
+  // one side has shut down.
+  ASSERT_EQ(SSL_shutdown(client_.get()), 0);
+
+  // Transfer SSL.
+  // |server_| state is transferred to |server2|. |server_| is freed after the transfer.
+  bssl::UniquePtr<SSL> server2;
+  TransferSSL(&server_, server_ctx_.get(), &server2);
+
+  // Reading from the server should consume the EOF.
+  uint8_t byte;
+  ASSERT_EQ(SSL_read(server2.get(), &byte, 1), 0);
+  ASSERT_EQ(SSL_get_error(server2.get(), 0), SSL_ERROR_ZERO_RETURN);
+
+  // However, the server may continue to write data and then shut down the
+  // connection.
+  byte = 42;
+  ASSERT_EQ(SSL_write(server2.get(), &byte, 1), 1);
+  ASSERT_EQ(SSL_read(client_.get(), &byte, 1), 1);
+  ASSERT_EQ(byte, 42);
+
+  // The server may then shutdown the connection.
+  EXPECT_EQ(SSL_shutdown(server2.get()), 1);
+  EXPECT_EQ(SSL_shutdown(client_.get()), 1);
 }
 
 TEST_P(SSLVersionTest, OneSidedShutdown) {
