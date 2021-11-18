@@ -7,6 +7,10 @@
 
 #if defined(AWSLC_FIPS)
 
+const char* FIPS_version_string(void) {
+  return OPENSSL_VERSION_TEXT " FIPS";
+}
+
 // Should only be called once per thread. Only called when initializing the state
 // in |FIPS_service_indicator_before_call|.
 static int FIPS_service_indicator_init_state(void) {
@@ -367,7 +371,12 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
 }
 
 
+
 #else
+
+const char* fips_version_string(void) {
+  return OPENSSL_VERSION_TEXT;
+}
 
 uint64_t FIPS_service_indicator_before_call(void) { return 0; }
 uint64_t FIPS_service_indicator_after_call(void) { return 0; }
