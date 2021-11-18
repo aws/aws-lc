@@ -4,6 +4,8 @@
 #ifndef AWSLC_HEADER_SERVICE_INDICATOR_H
 #define AWSLC_HEADER_SERVICE_INDICATOR_H
 
+#include <openssl/base.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
