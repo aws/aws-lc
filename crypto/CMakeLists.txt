@@ -335,6 +335,19 @@ add_library(
   hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
+  kyber/kem_kyber_512.c
+  kyber/p_kyber.c
+  kyber/p_kyber512_asn1.c
+  kyber/pqcrystals-kyber_kyber512_ref/cbd.c
+  kyber/pqcrystals-kyber_kyber512_ref/fips202.c
+  kyber/pqcrystals-kyber_kyber512_ref/indcpa.c
+  kyber/pqcrystals-kyber_kyber512_ref/kem.c
+  kyber/pqcrystals-kyber_kyber512_ref/ntt.c
+  kyber/pqcrystals-kyber_kyber512_ref/poly.c
+  kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
+  kyber/pqcrystals-kyber_kyber512_ref/reduce.c
+  kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
+  kyber/pqcrystals-kyber_kyber512_ref/verify.c
   lhash/lhash.c
   mem.c
   obj/obj.c

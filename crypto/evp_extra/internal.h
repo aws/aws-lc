@@ -22,12 +22,21 @@ typedef struct {
   char has_private;
 } X25519_KEY;
 
+#define KYBER512_PUBLICKEY_BYTES 800
+#define KYBER512_SECRETKEY_BYTES 1632
+typedef struct {
+  uint8_t pub[KYBER512_PUBLICKEY_BYTES];
+  uint8_t priv[KYBER512_SECRETKEY_BYTES];
+  uint8_t has_private;
+} KYBER_512_KEY;
+
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth;
 
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
