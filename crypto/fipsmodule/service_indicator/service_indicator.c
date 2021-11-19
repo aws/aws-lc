@@ -5,11 +5,11 @@
 #include <openssl/service_indicator.h>
 #include "internal.h"
 
-#if defined(AWSLC_FIPS)
-
-const char* openssl_version_string(void) {
-  return OPENSSL_VERSION_TEXT " FIPS";
+const char* awslc_version_string(void) {
+  return AWSLC_VERSION_STRING;
 }
+
+#if defined(AWSLC_FIPS)
 
 // Should only be called once per thread. Only called when initializing the state
 // in |FIPS_service_indicator_before_call|.
@@ -372,10 +372,6 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
 
 
 #else
-
-const char* openssl_version_string(void) {
-  return OPENSSL_VERSION_TEXT;
-}
 
 uint64_t FIPS_service_indicator_before_call(void) { return 0; }
 uint64_t FIPS_service_indicator_after_call(void) { return 0; }

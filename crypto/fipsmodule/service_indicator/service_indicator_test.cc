@@ -2009,8 +2009,8 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Verifies that the openssl_version_string is as expected.
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the OpenSSL version number is modified
-TEST(ServiceIndicatorTest, OpenSSLVersionString) {
-  ASSERT_STREQ(openssl_version_string(), "OpenSSL 1.1.1 (compatible; BoringSSL) FIPS");
+TEST(ServiceIndicatorTest, AWSLCVersionString) {
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 0.0.2");
 }
 
 #else
@@ -2054,7 +2054,7 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Verifies that the openssl_version_string is as expected.
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the OpenSSL version number is modified
-TEST(ServiceIndicatorTest, OpenSSLVersionString) {
-  ASSERT_STREQ(openssl_version_string(), "OpenSSL 1.1.1 (compatible; BoringSSL)");
+TEST(ServiceIndicatorTest, AWSLCVersionString) {
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 0.0.2");
 }
 #endif // AWSLC_FIPS
