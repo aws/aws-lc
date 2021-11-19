@@ -1,0 +1,90 @@
+
+
+-------------------------------------------------------
+ALGORITHM          ->   x25519_KYBER
+AEAD               ->   EVP_HPKE_AES_128_GCM
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+Plaintext_Bytes    ->   100
+keygen                   96.97 [CCs_x10^3]
+set_up_sender           238.44 [CCs_x10^3]
+set_up_recipient        166.97 [CCs_x10^3]
+seal                      0.62 [CCs_x10^3]
+open                      0.46 [CCs_x10^3]
+TOTAL_protocol          406 [CCs_x10^3]
+%_set_up_sender         58.659 [%] 
+%_set_up_recipient      41.075 [%] 
+%_seal                  0.152 [%] 
+%_open                  0.114 [%] 
+
+Plaintext_Bytes    ->   1000
+keygen                   96.97 [CCs_x10^3]
+set_up_sender           233.45 [CCs_x10^3]
+set_up_recipient        164.58 [CCs_x10^3]
+seal                      1.02 [CCs_x10^3]
+open                      0.85 [CCs_x10^3]
+TOTAL_protocol          399 [CCs_x10^3]
+%_set_up_sender         58.378 [%] 
+%_set_up_recipient      41.155 [%] 
+%_seal                  0.254 [%] 
+%_open                  0.213 [%] 
+
+
+-------------------------------------------------------
+ALGORITHM          ->   x25519_KYBER
+AEAD               ->   EVP_HPKE_AES_256_GCM
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+Plaintext_Bytes    ->   100
+keygen                   96.97 [CCs_x10^3]
+set_up_sender           229.45 [CCs_x10^3]
+set_up_recipient        162.07 [CCs_x10^3]
+seal                      0.57 [CCs_x10^3]
+open                      0.46 [CCs_x10^3]
+TOTAL_protocol          392 [CCs_x10^3]
+%_set_up_sender         58.452 [%] 
+%_set_up_recipient      41.286 [%] 
+%_seal                  0.146 [%] 
+%_open                  0.116 [%] 
+
+Plaintext_Bytes    ->   1000
+keygen                   96.97 [CCs_x10^3]
+set_up_sender           224.09 [CCs_x10^3]
+set_up_recipient        158.04 [CCs_x10^3]
+seal                      1.12 [CCs_x10^3]
+open                      0.97 [CCs_x10^3]
+TOTAL_protocol          384 [CCs_x10^3]
+%_set_up_sender         58.322 [%] 
+%_set_up_recipient      41.133 [%] 
+%_seal                  0.292 [%] 
+%_open                  0.253 [%] 
+
+
+-------------------------------------------------------
+ALGORITHM          ->   x25519_KYBER
+AEAD               ->   EVP_HPKE_CHACHA20_POLY1305
+KDF                ->   EVP_HPKE_HKDF_SHA256
+
+Plaintext_Bytes    ->   100
+keygen                   96.97 [CCs_x10^3]
+set_up_sender           222.95 [CCs_x10^3]
+set_up_recipient        157.56 [CCs_x10^3]
+seal                      0.55 [CCs_x10^3]
+open                      0.50 [CCs_x10^3]
+TOTAL_protocol          381 [CCs_x10^3]
+%_set_up_sender         58.431 [%] 
+%_set_up_recipient      41.293 [%] 
+%_seal                  0.145 [%] 
+%_open                  0.131 [%] 
+
+Plaintext_Bytes    ->   1000
+keygen                   96.97 [CCs_x10^3]
+set_up_sender           217.29 [CCs_x10^3]
+set_up_recipient        153.46 [CCs_x10^3]
+seal                      1.59 [CCs_x10^3]
+open                      1.52 [CCs_x10^3]
+TOTAL_protocol          373 [CCs_x10^3]
+%_set_up_sender         58.122 [%] 
+%_set_up_recipient      41.048 [%] 
+%_seal                  0.425 [%] 
+%_open                  0.406 [%] 

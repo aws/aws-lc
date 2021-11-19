@@ -1,0 +1,108 @@
+Padding_Mode        ->      RSA_PKCS1_PADDING
+Number_Tests        ->      100
+
+Bytes_Encrypted     ->      245
+Plaintext_Bytes     ->      245
+Key_Size_Bytes      ->      2048
+
+cycles_keygen_total         1666086 [CCs_x10^3]
+cycles_encrypt_total        264 [CCs_x10^3]
+cycles_decrypt_total        7889 [CCs_x10^3]
+TOTAL_protocol              8152 [CCs_x10^3]
+%_encrypt                   3.232 [%] 
+%_decrypt                   96.768 [%] 
+
+Bytes_Encrypted     ->      373
+Plaintext_Bytes     ->      373
+Key_Size_Bytes      ->      3072
+
+cycles_keygen_total         702004 [CCs_x10^3]
+cycles_encrypt_total        272 [CCs_x10^3]
+cycles_decrypt_total        12837 [CCs_x10^3]
+TOTAL_protocol              13109 [CCs_x10^3]
+%_encrypt                   2.076 [%] 
+%_decrypt                   97.924 [%] 
+
+Bytes_Encrypted     ->      501
+Plaintext_Bytes     ->      501
+Key_Size_Bytes      ->      4096
+
+cycles_keygen_total         6528495 [CCs_x10^3]
+cycles_encrypt_total        467 [CCs_x10^3]
+cycles_decrypt_total        28111 [CCs_x10^3]
+TOTAL_protocol              28577 [CCs_x10^3]
+%_encrypt                   1.633 [%] 
+%_decrypt                   98.367 [%] 
+
+Number_Tests        ->      RSA_NO_PADDING
+Number_Tests        ->      100
+
+Bytes_Encrypted     ->      256
+Plaintext_Bytes     ->      256
+Key_Size_Bytes      ->      2048
+
+cycles_keygen_total         420935 [CCs_x10^3]
+cycles_encrypt_total        115 [CCs_x10^3]
+cycles_decrypt_total        4293 [CCs_x10^3]
+TOTAL_protocol              4408 [CCs_x10^3]
+%_encrypt                   2.614 [%] 
+%_decrypt                   97.386 [%] 
+
+Bytes_Encrypted     ->      384
+Plaintext_Bytes     ->      384
+Key_Size_Bytes      ->      3072
+
+cycles_keygen_total         1744542 [CCs_x10^3]
+cycles_encrypt_total        262 [CCs_x10^3]
+cycles_decrypt_total        14768 [CCs_x10^3]
+TOTAL_protocol              15030 [CCs_x10^3]
+%_encrypt                   1.743 [%] 
+%_decrypt                   98.257 [%] 
+
+Bytes_Encrypted     ->      512
+Plaintext_Bytes     ->      512
+Key_Size_Bytes      ->      4096
+
+cycles_keygen_total         3277211 [CCs_x10^3]
+cycles_encrypt_total        342 [CCs_x10^3]
+cycles_decrypt_total        25845 [CCs_x10^3]
+TOTAL_protocol              26186 [CCs_x10^3]
+%_encrypt                   1.306 [%] 
+%_decrypt                   98.694 [%] 
+
+Number_Tests        ->      RSA_PKCS1_OAEP_PADDING
+Number_Tests        ->      100
+
+Bytes_Encrypted     ->      214
+Plaintext_Bytes     ->      214
+Key_Size_Bytes      ->      2048
+
+cycles_keygen_total         559160 [CCs_x10^3]
+cycles_encrypt_total        150 [CCs_x10^3]
+cycles_decrypt_total        3865 [CCs_x10^3]
+TOTAL_protocol              4015 [CCs_x10^3]
+%_encrypt                   3.729 [%] 
+%_decrypt                   96.271 [%] 
+
+Bytes_Encrypted     ->      342
+Plaintext_Bytes     ->      342
+Key_Size_Bytes      ->      3072
+
+cycles_keygen_total         1533407 [CCs_x10^3]
+cycles_encrypt_total        317 [CCs_x10^3]
+cycles_decrypt_total        13443 [CCs_x10^3]
+TOTAL_protocol              13760 [CCs_x10^3]
+%_encrypt                   2.303 [%] 
+%_decrypt                   97.697 [%] 
+
+Bytes_Encrypted     ->      470
+Plaintext_Bytes     ->      470
+Key_Size_Bytes      ->      4096
+
+cycles_keygen_total         7872559 [CCs_x10^3]
+cycles_encrypt_total        411 [CCs_x10^3]
+cycles_decrypt_total        25227 [CCs_x10^3]
+TOTAL_protocol              25638 [CCs_x10^3]
+%_encrypt                   1.605 [%] 
+%_decrypt                   98.395 [%] 
+

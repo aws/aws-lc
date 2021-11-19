@@ -46,10 +46,10 @@
 // Define the HPKE upper bound for plaintext size encrypted for the testing and
 // benchmarking functions x25519, SIKE, x25519_SIKE, Kyber, x25519_Kyber and
 // HPKERoundTripBenchmark use these value
-#define SIZE_PLAINTEXT 1000000  // In Bytes
+#define SIZE_PLAINTEXT 1000  // In Bytes
 
 // Define the number of tests to perform
-#define NUMBER_TESTS 10000
+#define NUMBER_TESTS 100
 
 // Define the HPKE mode by the underlying cryptographic primitives
 #define X25519_ALGORITHM_ID 0

@@ -404,8 +404,8 @@ struct RSAEncryptParam {
 class RSAEncryptTest : public testing::TestWithParam<RSAEncryptParam> {};
 
 
-#define NUMBER_TESTS 1000
-#define PLAINTEXT_TOTAL 1000000  // B
+#define NUMBER_TESTS 100
+#define PLAINTEXT_TOTAL 1000  // B
 
 // Define the analyze mode for the RSA functions
 // ANALYZE_RESULTS_MODE == 0 for summarized analysis of the data
