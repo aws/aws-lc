@@ -441,6 +441,9 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   OPENSSL_memcpy(r->X.words, p_st->point.p.X, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Y.words, p_st->point.p.Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, p_st->point.p.Z, P256_LIMBS * sizeof(BN_ULONG));
+
+  OPENSSL_align_free_internal(t_st);
+  OPENSSL_align_free_internal(p_st);
 }
 
 static int ecp_nistz256_get_affine(const EC_GROUP *group,
