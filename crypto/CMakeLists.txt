@@ -193,6 +193,12 @@ if(ARCH STREQUAL "x86_64")
   )
 endif()
 
+if (BUILD_TESTING)
+  set(RANDOMBYTES_SOURCES test/deterministic_randombytes.c)
+else()
+  set(RANDOMBYTES_SOURCES rand_extra/randombytes.c)
+endif()
+
 if(GO_EXECUTABLE)
   add_custom_command(
     OUTPUT err_data.c
@@ -321,12 +327,26 @@ add_library(
   evp_extra/p_methods.c
   evp_extra/pbkdf.c
   evp_extra/print.c
+  evp_extra/pq_kem.c
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
   hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
+  kyber/kem_kyber_512.c
+  kyber/p_kyber.c
+  kyber/p_kyber512_asn1.c
+  kyber/pqcrystals-kyber_kyber512_ref/cbd.c
+  kyber/pqcrystals-kyber_kyber512_ref/fips202.c
+  kyber/pqcrystals-kyber_kyber512_ref/indcpa.c
+  kyber/pqcrystals-kyber_kyber512_ref/kem.c
+  kyber/pqcrystals-kyber_kyber512_ref/ntt.c
+  kyber/pqcrystals-kyber_kyber512_ref/poly.c
+  kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
+  kyber/pqcrystals-kyber_kyber512_ref/reduce.c
+  kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
+  kyber/pqcrystals-kyber_kyber512_ref/verify.c
   lhash/lhash.c
   mem.c
   obj/obj.c
@@ -454,6 +474,7 @@ add_library(
 
   $<TARGET_OBJECTS:fipsmodule>
 
+  ${RANDOMBYTES_SOURCES}
   ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
@@ -560,6 +581,8 @@ if(BUILD_TESTING)
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
     evp_extra/pbkdf_test.cc
+    evp_extra/pq_kem_kat_tests_kyber512.cc
+    evp_extra/pq_kem_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
@@ -580,6 +603,7 @@ if(BUILD_TESTING)
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
     impl_dispatch_test.cc
+    kyber/p_kyber_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
@@ -606,6 +630,8 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
+
+    ${RANDOMBYTES_SOURCES}
   )
 
   add_dependencies(crypto_test global_target)
