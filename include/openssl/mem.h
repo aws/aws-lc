@@ -164,6 +164,20 @@ OPENSSL_EXPORT void CRYPTO_free(void *ptr, const char *file, int line);
 // allocations on free, but we define |OPENSSL_clear_free| for compatibility.
 OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 
+// Internal functions. Do not take a dependency on these.
+
+// Internal function.
+// Similar to |OPENSSL_malloc| but also aligns the resulting pointer to a
+// |alignment| boundary. |alignment| must be a power of 2 with a maximum value
+// of 128. Memory must be free'd using |OPENSSL_align_free_internal|.
+OPENSSL_EXPORT void * OPENSSL_malloc_align_internal(size_t size, size_t alignment);
+
+// Internal function.
+// OPENSSL_free does nothing if |aligned_ptr| is NULL. Otherwise it zeros out the
+// memory allocated at |aligned_ptr| and frees it. Must only be used on memory
+// allocated by |OPENSSL_malloc_align_internal|.
+OPENSSL_EXPORT void OPENSSL_align_free_internal(void *aligned_ptr);
+
 
 #if defined(__cplusplus)
 }  // extern C

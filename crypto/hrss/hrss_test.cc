@@ -466,19 +466,24 @@ TEST(HRSS, ABI) {
   uint8_t kCanary[256];
   OPENSSL_STATIC_ASSERT(sizeof(kCanary) % 32 == 0, needed_for_alignment)
   memset(kCanary, 42, sizeof(kCanary));
-  alignas(32) uint8_t
-      scratch[sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE + sizeof(kCanary)];
-  OPENSSL_memcpy(scratch, kCanary, sizeof(kCanary));
-  OPENSSL_memcpy(scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE, kCanary,
+
+  struct aligned_scratch {
+    uint8_t scratch[sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE + sizeof(kCanary)];
+  };
+
+  struct aligned_scratch *aligned_scratch_st = (struct aligned_scratch *) OPENSSL_malloc_align_internal(sizeof(struct aligned_scratch), 32);
+  OPENSSL_memcpy(aligned_scratch_st->scratch, kCanary, sizeof(kCanary));
+  OPENSSL_memcpy(aligned_scratch_st->scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE, kCanary,
                  sizeof(kCanary));
 
   // The function should not touch more than |POLY_MUL_RQ_SCRATCH_SPACE| bytes
-  // of |scratch|.
-  CHECK_ABI(poly_Rq_mul, r, a, b, &scratch[sizeof(kCanary)]);
+  // of |aligned_scratch_st->scratch|.
+  CHECK_ABI(poly_Rq_mul, r, a, b, &aligned_scratch_st->scratch[sizeof(kCanary)]);
 
-  EXPECT_EQ(Bytes(scratch, sizeof(kCanary)), Bytes(kCanary));
-  EXPECT_EQ(Bytes(scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE,
+  EXPECT_EQ(Bytes(aligned_scratch_st->scratch, sizeof(kCanary)), Bytes(kCanary));
+  EXPECT_EQ(Bytes(aligned_scratch_st->scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE,
                   sizeof(kCanary)),
             Bytes(kCanary));
+  OPENSSL_align_free_internal(aligned_scratch_st);
 }
 #endif  // POLY_RQ_MUL_ASM && SUPPORTS_ABI_TEST

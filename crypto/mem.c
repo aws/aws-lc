@@ -75,6 +75,11 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 OPENSSL_STATIC_ASSERT(OPENSSL_MALLOC_PREFIX >= sizeof(size_t),
                       size_t_too_large)
 
+typedef uint8_t align_offset_t;
+#define ALIGN_OFFSET_SIZE sizeof(align_offset_t)
+OPENSSL_STATIC_ASSERT(sizeof(align_offset_t) >= 1,
+                      align_offset_t_is_too_small)
+
 #if defined(OPENSSL_ASAN)
 void __asan_poison_memory_region(const volatile void *addr, size_t size);
 void __asan_unpoison_memory_region(const volatile void *addr, size_t size);
@@ -165,6 +170,36 @@ void *OPENSSL_malloc(size_t size) {
   return ((uint8_t *)ptr) + OPENSSL_MALLOC_PREFIX;
 }
 
+void *OPENSSL_malloc_align_internal(size_t size, size_t alignment) {
+
+  // Only support up to 128-byte alignment.
+  // |align_pointer| further requires |alignment| to be a power of 2.
+  if (alignment > 128) {
+    return NULL;
+  }
+
+  // Memory is organised as follows
+  // +--------+----------------+-------------+---------------+
+  // | poison | offset padding | offset size | memory region |
+  // +--------+----------------+-------------+---------------+
+  // poison: added by |OPENSSL_malloc|.
+  // offset padding: offset bytes to align memory at |alignment| boundary.
+  // offset size: number of offset bytes needed, plus |ALIGN_OFFSET_SIZE|.
+  // memory region: |aligned_ptr| points to this region of size |size|.
+
+  uint8_t prefix_size = ALIGN_OFFSET_SIZE + (alignment - 1);
+  void *ptr = OPENSSL_malloc(prefix_size + size);
+  if (!ptr) {
+    return NULL;
+  }
+
+  void *aligned_ptr = align_pointer(ptr, alignment);
+
+  *((align_offset_t *)aligned_ptr - 1) = (align_offset_t)((uintptr_t)aligned_ptr - (uintptr_t)ptr);
+
+  return aligned_ptr;
+}
+
 void OPENSSL_free(void *orig_ptr) {
   if (orig_ptr == NULL) {
     return;
@@ -185,6 +220,22 @@ void OPENSSL_free(void *orig_ptr) {
   } else {
     free(ptr);
   }
+}
+
+void OPENSSL_align_free_internal(void *aligned_ptr) {
+
+  if (orig_ptr == NULL) {
+    return;
+  }
+
+  align_offset_t align_offset = *((align_offset_t *)aligned_ptr - 1);
+  if (align_offset > 128) {
+    // Something is fatally wrong. Max value of offset is 128, so just abort.
+    abort();
+  }
+
+  void *orig_ptr = (void *)((uint8_t *)aligned_ptr - align_offset);
+  OPENSSL_free(orig_ptr);
 }
 
 void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
