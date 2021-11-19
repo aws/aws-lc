@@ -344,8 +344,8 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
 }
 
 // |ECDSA_sign| uses ASN1/CBB functionality, so it was previously placed in
-// evp_extra/ecdsa_asn1.c. It's now moved within the FIPS boundary for FIPS
-// compliance.
+// crypto/evp_extra/ecdsa_asn1.c. It's now moved within the FIPS boundary for
+// FIPS compliance.
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, const EC_KEY *eckey) {
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
@@ -380,8 +380,8 @@ err:
 }
 
 // |ECDSA_verify| uses ASN1/CBB functionality, so it was previously placed in
-// evp_extra/ecdsa_asn1.c. It's now moved within the FIPS boundary for FIPS
-// compliance.
+// crypto/evp_extra/ecdsa_asn1.c. It's now moved within the FIPS boundary for
+// FIPS compliance.
 int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
                  const uint8_t *sig, size_t sig_len, const EC_KEY *eckey) {
   ECDSA_SIG *s;
