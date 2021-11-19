@@ -371,7 +371,6 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
 }
 
 
-
 #else
 
 const char* openssl_version_string(void) {
