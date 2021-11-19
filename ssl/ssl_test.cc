@@ -74,7 +74,16 @@ namespace {
 struct VersionParam {
   uint16_t version;
   enum { is_tls, is_dtls } ssl_method;
-  const char name[8];
+  // This field is used to generate custom test name suffixes 
+  // based on the test parameters.
+  const char name[20];
+  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to another SSL.
+  // After transfer, the encoded SSL is freed. The decoded one is used to exchange data.
+  // This flag is to replay existing tests with the transferred SSL.
+  // If false, the tests use the original server SSL.
+  // If true, the tests are replayed with the transferred server SSL.
+  // Note: SSL transfer works with TLS 1.2 after handshake finished.
+  bool transfer_ssl;
 };
 
 static void printa(const uint8_t *ticket_key, size_t len) {
@@ -86,13 +95,17 @@ static void printa(const uint8_t *ticket_key, size_t len) {
 
 static const size_t kTicketKeyLen = 48;
 
+// If true, after handshake finished, the test uses the transferred SSL.
+static const bool TRANSFER_SSL = true;
+
 static const VersionParam kAllVersions[] = {
-    {TLS1_VERSION, VersionParam::is_tls, "TLS1"},
-    {TLS1_1_VERSION, VersionParam::is_tls, "TLS1_1"},
-    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2"},
-    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3"},
-    {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1"},
-    {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2"},
+    {TLS1_VERSION, VersionParam::is_tls, "TLS1", !TRANSFER_SSL},
+    {TLS1_1_VERSION, VersionParam::is_tls, "TLS1_1", !TRANSFER_SSL},
+    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2", !TRANSFER_SSL},
+    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3", !TRANSFER_SSL},
+    {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1", !TRANSFER_SSL},
+    {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2", !TRANSFER_SSL},
+    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2_SSL_TRANSFER", TRANSFER_SSL},
 };
 
 struct ExpectedCipher {
@@ -481,6 +494,99 @@ static bool CipherListsEqual(SSL_CTX *ctx,
   }
 
   return true;
+}
+
+// Functions used by SSL encode/decode tests.
+// TODO: support more data exchange by using |uint8_t *data|
+static void VerifyExchangeData(SSL* from, SSL* to, uint8_t data) {
+  uint8_t data_byte = data;
+  ASSERT_EQ(SSL_write(from, &data_byte, 1), 1);
+  ASSERT_EQ(SSL_read(to, &data_byte, 1), 1);
+  ASSERT_EQ(data_byte, data);
+}
+
+static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
+  // Encoding SSL to bytes.
+  int len = i2d_SSL(in, nullptr);
+  ASSERT_GT(len, 0)
+      << "i2d_SSL failed. Error code: "
+      << ERR_reason_error_string(ERR_get_error());
+  bssl::UniquePtr<uint8_t> encoded;
+  encoded.reset((uint8_t *)OPENSSL_malloc(len));
+  uint8_t *ptr = encoded.get();
+  len = i2d_SSL(in, &ptr);
+  ASSERT_GT(len, 0)
+      << "i2d_SSL failed. Error code: "
+      << ERR_reason_error_string(ERR_get_error());
+  ASSERT_EQ(ptr, encoded.get() + len)
+        << "i2d_SSL did not advance ptr correctly";
+  // Decoding SSL from the bytes.
+  const uint8_t *ptr2 = encoded.get();
+  printa(encoded.get(), len);
+  SSL *server2_ = d2i_SSL(nullptr, in_ctx, &ptr2, (size_t)len);
+  ASSERT_TRUE(server2_)
+      << "d2i_SSL failed. Error code: "
+      << ERR_reason_error_string(ERR_get_error());
+  out->reset(server2_);
+}
+
+static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
+  // Fetch the bio.
+  BIO *rbio = SSL_get_rbio(from->get());
+  ASSERT_TRUE(rbio)
+      << "rbio is not set"
+      << ERR_reason_error_string(ERR_get_error());
+  BIO *wbio = SSL_get_wbio(from->get());
+  ASSERT_TRUE(wbio)
+      << "wbio is not set"
+      << ERR_reason_error_string(ERR_get_error());
+  // Move the bio.
+  SSL_set_bio(to, rbio, wbio);
+  // Release |rbio| and |wbio| of |server_|.
+  // SSL_set_bio(server2_, rbio, wbio) increments the references of bio.
+  // There is no function to decrease the references.
+  // TODO: test half read and write hold by SSL.
+  SSL *from_ssl = from->release();
+  from_ssl->rbio.release();
+  from_ssl->wbio.release();
+  // TODO: add a test to check error code?
+  // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
+  SSL_free(from_ssl);
+}
+
+static bool testSSLEncode(uint16_t version) {
+ // d2i/i2d_SSL currently only supports TLS 1.1 and 1.2.
+  // TODO: fix TLS1_1_VERSION and then enable below.
+//  if (!((version() == TLS1_1_VERSION) || (version() == TLS1_2_VERSION))) {
+//    // TODO: Add tests for unsupported TLS version.
+//    return;
+//  }
+//  To enable TLS 1.1, the mac_secret may not be empty.
+//  Current encode and decode are not symmetric on mac_secret for TLS 1.1
+//  UniquePtr<SSLAEADContext> aead_wr_ctx =
+//        SSLAEADContext::Create(evp_aead_seal, ssl->version, /*is_dtls =*/false,
+//                               sess->cipher, key, /*mac_secret*/{},
+//                               iv);
+// TODO: Add tests for unsupported TLS version.
+  return version == TLS1_2_VERSION;
+}
+
+// TransferSSL performs SSL transfer by
+// 1. Encode the SSL of |in| into bytes.
+// 2. Decode the bytes into a new SSL.
+// 3. Free the SSL of |in|.
+// 4. If |out| is not nullptr, |out| will hold the decoded SSL.
+//    Else, |in| will get reset to hold the decoded SSL.
+static void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
+  bssl::UniquePtr<SSL> decoded_ssl;
+  EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl);
+  // Transfer the bio.
+  TransferBIOs(in, decoded_ssl.get());
+  if (out == nullptr) {
+    in->reset(decoded_ssl.release());
+  } else {
+    out->reset(decoded_ssl.release());
+  }
 }
 
 TEST(GrowableArrayTest, Resize) {
@@ -2529,9 +2635,22 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
   }
 
   bool Connect(const ClientConfig &config = ClientConfig()) {
-    return ConnectClientAndServer(&client_, &server_, client_ctx_.get(),
+    bool connected = ConnectClientAndServer(&client_, &server_, client_ctx_.get(),
                                   server_ctx_.get(), config,
                                   shed_handshake_config_);
+    if (connected) {
+      // TODO: add more tests on middle states. this transfer only tests the initial state of SSL.
+      TransferServerSSL();
+    }
+    return connected;
+  }
+
+  void TransferServerSSL() {
+    if (!GetParam().transfer_ssl) {
+      return;
+    }
+    // |server_| is reset to hold the transferred SSL.
+    TransferSSL(&server_, server_ctx_.get(), nullptr);
   }
 
   uint16_t version() const { return GetParam().version; }
@@ -2546,89 +2665,6 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
   bssl::UniquePtr<X509> cert_;
   bssl::UniquePtr<EVP_PKEY> key_;
 };
-
-// Functions used by SSL encode/decode tests.
-// TODO: support more data exchange by using |uint8_t *data|
-static void VerifyExchangeData(SSL* from, SSL* to, uint8_t data) {
-  uint8_t data_byte = data;
-  ASSERT_EQ(SSL_write(from, &data_byte, 1), 1);
-  ASSERT_EQ(SSL_read(to, &data_byte, 1), 1);
-  ASSERT_EQ(data_byte, data);
-}
-
-static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
-  // Encoding SSL to bytes.
-  int len = i2d_SSL(in, nullptr);
-  ASSERT_GT(len, 0)
-      << "i2d_SSL failed. Error code: "
-      << ERR_reason_error_string(ERR_get_error());
-  bssl::UniquePtr<uint8_t> encoded;
-  encoded.reset((uint8_t *)OPENSSL_malloc(len));
-  uint8_t *ptr = encoded.get();
-  len = i2d_SSL(in, &ptr);
-  ASSERT_GT(len, 0)
-      << "i2d_SSL failed. Error code: "
-      << ERR_reason_error_string(ERR_get_error());
-  ASSERT_EQ(ptr, encoded.get() + len)
-        << "i2d_SSL did not advance ptr correctly";
-  // Decoding SSL from the bytes.
-  const uint8_t *ptr2 = encoded.get();
-  printa(encoded.get(), len);
-  SSL *server2_ = d2i_SSL(nullptr, in_ctx, &ptr2, (size_t)len);
-  ASSERT_TRUE(server2_)
-      << "d2i_SSL failed. Error code: "
-      << ERR_reason_error_string(ERR_get_error());
-  out->reset(server2_);
-}
-
-static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
-  // Fetch the bio.
-  BIO *rbio = SSL_get_rbio(from->get());
-  ASSERT_TRUE(rbio)
-      << "rbio is not set"
-      << ERR_reason_error_string(ERR_get_error());
-  BIO *wbio = SSL_get_wbio(from->get());
-  ASSERT_TRUE(wbio)
-      << "wbio is not set"
-      << ERR_reason_error_string(ERR_get_error());
-  // Move the bio.
-  SSL_set_bio(to, rbio, wbio);
-  // Release |rbio| and |wbio| of |server_|.
-  // SSL_set_bio(server2_, rbio, wbio) increments the references of bio.
-  // There is no function to decrease the references.
-  // TODO: test half read and write hold by SSL.
-  SSL *from_ssl = from->release();
-  from_ssl->rbio.release();
-  from_ssl->wbio.release();
-  // TODO: add a test to check error code?
-  // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
-  SSL_free(from_ssl);
-}
-
-static bool testSSLEncode(uint16_t version) {
- // d2i/i2d_SSL currently only supports TLS 1.1 and 1.2.
-  // TODO: fix TLS1_1_VERSION and then enable below.
-//  if (!((version() == TLS1_1_VERSION) || (version() == TLS1_2_VERSION))) {
-//    // TODO: Add tests for unsupported TLS version.
-//    return;
-//  }
-//  To enable TLS 1.1, the mac_secret may not be empty.
-//  Current encode and decode are not symmetric on mac_secret for TLS 1.1
-//  UniquePtr<SSLAEADContext> aead_wr_ctx =
-//        SSLAEADContext::Create(evp_aead_seal, ssl->version, /*is_dtls =*/false,
-//                               sess->cipher, key, /*mac_secret*/{},
-//                               iv);
-// TODO: Add tests for unsupported TLS version.
-  return version == TLS1_2_VERSION;
-}
-
-static void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
-  SSL *server2_ = nullptr;
-  EncodeAndDecodeSSL(in->get(), in_ctx, out);
-  bssl::UniquePtr<SSL> server2(server2_);
-  // Transfer the bio.
-  TransferBIOs(in, out->get());
-}
 
 INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
                          testing::ValuesIn(kAllVersions),
