@@ -26,7 +26,7 @@ extern "C" {
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 
-OPENSSL_EXPORT const char* FIPS_version_string(void);
+OPENSSL_EXPORT const char* openssl_version_string(void);
 
 // |FIPS_service_indicator_check_approved| is intended to take in the before and
 // after counter values. It will return |AWSLC_APPROVED| if the approval check

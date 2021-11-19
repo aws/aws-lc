@@ -7,7 +7,7 @@
 
 #if defined(AWSLC_FIPS)
 
-const char* FIPS_version_string(void) {
+const char* openssl_version_string(void) {
   return OPENSSL_VERSION_TEXT " FIPS";
 }
 
@@ -374,7 +374,7 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
 
 #else
 
-const char* fips_version_string(void) {
+const char* openssl_version_string(void) {
   return OPENSSL_VERSION_TEXT;
 }
 
