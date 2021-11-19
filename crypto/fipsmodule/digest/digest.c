@@ -60,10 +60,12 @@
 #include <string.h>
 
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/mem.h>
 
 #include "internal.h"
 #include "../../internal.h"
+#include "../evp/internal.h"
 
 
 int EVP_MD_type(const EVP_MD *md) { return md->type; }
@@ -97,7 +99,9 @@ int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx) {
   OPENSSL_free(ctx->md_data);
 
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
-  if (ctx->pctx_ops) {
+  // pctx should be freed by the user of EVP_MD_CTX if
+  // |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX| is set.
+  if (ctx->pctx_ops && !(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
     ctx->pctx_ops->free(ctx->pctx);
   }
 

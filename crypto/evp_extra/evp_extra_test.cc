@@ -1123,6 +1123,79 @@ TEST(EVPExtraTest, Ed25519Keygen) {
                                reinterpret_cast<const uint8_t *>("hello"), 5));
 }
 
+// Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| works with a
+// a special use case of not using the one-shot |EVP_DigestSignInit| or
+// |EVP_DigestVerifyInit| to initialize the |EVP_PKEY_CTX| context. The context
+// data can be manually constructed using other context setting functions.
+// |EVP_MD_CTX_set_pkey_ctx| was added to support this use case.
+TEST(EVPExtraTest, PKEY_CTX_manual) {
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), EVP_sha256()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kMsg, sizeof(kMsg)));
+
+  bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(pctx);
+
+  // Manual construction for signing.
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), EVP_sha256()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+  // Determine the size of the signature.
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len));
+
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len));
+  sig.resize(sig_len);
+
+  // Manual construction for verification.
+  ASSERT_TRUE(EVP_PKEY_verify_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), EVP_sha256()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+
+  ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len));
+
+
+  // Test the behavior with EC Keys.
+  ctx.Reset();
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), EVP_sha256()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kMsg, sizeof(kMsg)));
+
+  // Generate generic |EC_KEY|.
+  pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  ASSERT_TRUE(eckey);
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+  EC_KEY_generate_key(eckey.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx_ec(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+
+  // Manual construction for signing.
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx_ec.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx_ec.get(), EVP_sha256()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx_ec.get());
+
+  // Determine the size of the signature.
+  sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len));
+
+  sig.resize(sig_len);
+  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len));
+  sig.resize(sig_len);
+
+  // Manual construction for verification.
+  ASSERT_TRUE(EVP_PKEY_verify_init(pctx_ec.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx_ec.get(), EVP_sha256()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx_ec.get());
+
+  ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len));
+}
+
 struct RsassaPssParamsMatchTestInput {
   const uint8_t *der;
   size_t der_len;

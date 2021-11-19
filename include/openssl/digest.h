@@ -300,6 +300,11 @@ OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
 // EVP_MD_nid calls |EVP_MD_type|.
 OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 
+// |EVP_MD_CTX_set_pkey_ctx| sets a |EVP_PKEY_CTX| value to |EVP_MD_CTX|'s
+// |EVP_PKEY_CTX|. This function was deprecated from OpenSSL in BoringSSL, but
+// was brought back to AWS-LC to support manual construction of the
+// |EVP_PKEY_CTX|, which is used in s2n-tls.
+OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx);
 
 struct evp_md_pctx_ops;
 
@@ -317,6 +322,11 @@ struct env_md_ctx_st {
   // pctx_ops, if not NULL, points to a vtable that contains functions to
   // manipulate |pctx|.
   const struct evp_md_pctx_ops *pctx_ops;
+
+  // flags, only used to set flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let
+  // |*pctx| refrain from being freed when |*pctx| was set externally with
+  // |EVP_MD_CTX_set_pkey_ctx|.
+  unsigned long flags;
 } /* EVP_MD_CTX */;
 
 
