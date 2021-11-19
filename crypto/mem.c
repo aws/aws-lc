@@ -174,7 +174,9 @@ void *OPENSSL_malloc_align_internal(size_t size, size_t alignment) {
 
   // Only support up to 128-byte alignment.
   // |align_pointer| further requires |alignment| to be a power of 2.
-  if (alignment > 128) {
+  if ((alignment == 0) &&
+      (alignment > 128) &&
+      ((alignment & (alignment -1)) != 0)) {
     return NULL;
   }
 
@@ -224,13 +226,13 @@ void OPENSSL_free(void *orig_ptr) {
 
 void OPENSSL_align_free_internal(void *aligned_ptr) {
 
-  if (orig_ptr == NULL) {
+  if (aligned_ptr == NULL) {
     return;
   }
 
   align_offset_t align_offset = *((align_offset_t *)aligned_ptr - 1);
   if (align_offset > 128) {
-    // Something is fatally wrong. Max value of offset is 128, so just abort.
+    // Something is fatally wrong: max value of offset is 128, so just abort.
     abort();
   }
 
