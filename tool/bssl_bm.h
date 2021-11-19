@@ -6,6 +6,7 @@
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
+#include <openssl/base64.h>
 #include <openssl/bn.h>
 #include <openssl/curve25519.h>
 #include <openssl/crypto.h>
