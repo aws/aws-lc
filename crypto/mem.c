@@ -174,9 +174,9 @@ void *OPENSSL_malloc_align_internal(size_t size, size_t alignment) {
 
   // Only support up to 128-byte alignment.
   // |align_pointer| further requires |alignment| to be a power of 2.
-  if ((alignment == 0) &&
-      (alignment > 128) &&
-      ((alignment & (alignment -1)) != 0)) {
+  if ((alignment == 0) ||
+      (alignment > 128) ||
+      ((alignment & (alignment - 1)) != 0)) {
     return NULL;
   }
 
