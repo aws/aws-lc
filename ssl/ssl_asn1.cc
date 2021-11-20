@@ -898,6 +898,37 @@ SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,
 // Serialized SSL data version for forward compatibility
 #define SSL_SERIAL_VERSION 1
 
+// Inspired by |psk_identity| encode and decode.
+// Below is copied from |SSL_SESSION_parse_string|. Only error code is changed.
+// TODO: unitfy |SSL_SESSION_parse_string| and |SSL_parse_string|.
+// SSL_parse_string gets an optional ASN.1 OCTET STRING explicitly
+// tagged with |tag| from |cbs| and saves it in |*out|. If the element was not
+// found, it sets |*out| to NULL. It returns one on success, whether or not the
+// element was found, and zero on decode error.
+static int SSL_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
+  CBS value;
+  int present;
+  if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    return 0;
+  }
+  if (present) {
+    if (CBS_contains_zero_byte(&value)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+      return 0;
+    }
+    char *raw = nullptr;
+    if (!CBS_strdup(&value, &raw)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+    out->reset(raw);
+  } else {
+    out->reset();
+  }
+  return 1;
+}
+
 //  Parse serialized SSL connection binary
 //
 //  @details This function attempts to recover serialized SSL connection from
@@ -906,18 +937,19 @@ SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,
 //
 //  An SSL object is serialized as the following ASN.1 structure:
 //  SSL ::= SEQUENCE {
-//      ssl_serial_ver UINT64       -- version of the SSL serialization format
-//      rwstate        UINT64       -- R/W state of SSL implementation
-//      read_key       OCTET STRING -- connection read key
-//      write_key      OCTET STRING -- connection write key
-//      read_iv        OCTET STRING -- connection read IV
-//      write_iv       OCTET STRING -- connection write IV
-//      read_seq       OCTET STRING -- connection read sequence number
-//      write_seq      OCTET STRING -- connection write sequence number
-//      sheded         BOOLEAN      -- indicate if the config is sheded. The config may not exist
-//                                     since the configuration 
-//                                     may be shed after the handshake completes.
-//                                     TODO: check corner cases to see if config should be encoded.
+//      ssl_serial_ver UINT64                        -- version of the SSL serialization format
+//      rwstate        UINT64                        -- R/W state of SSL implementation
+//      read_key       OCTET STRING                  -- connection read key
+//      write_key      OCTET STRING                  -- connection write key
+//      read_iv        OCTET STRING                  -- connection read IV
+//      write_iv       OCTET STRING                  -- connection write IV
+//      read_seq       OCTET STRING                  -- connection read sequence number
+//      write_seq      OCTET STRING                  -- connection write sequence number
+//      sheded         BOOLEAN                       -- indicate if the config is sheded. The config may not exist
+//                                                      since the configuration 
+//                                                      may be shed after the handshake completes.
+//                                                      TODO: check corner cases to see if config should be encoded.
+//      hostname       [1] OCTET STRING OPTIONAL     -- hostname set in SSL.
 //  }
 //
 //  Note that serialized SSL_SESSION is always prepended to the serialized SSL
@@ -931,7 +963,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   uint64_t ssl_serial_ver;
   uint64_t rwstate;
 
-  CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq;
+  CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq, host_name;
   int sheded = 0;
   // Read version string from buffer
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
@@ -945,6 +977,8 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
   if (
 //    FIXME add hash of SSL_CTX
+// TODO: check if CBS_ASN1_OCTETSTRING is tag and it's a right usage in this case.
+// This TODO is actually a part of SSL DER struct revisit.
     !CBS_get_asn1_uint64(&ssl_cbs, &rwstate) ||
     !CBS_get_asn1(&ssl_cbs, &read_key, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&read_key) > EVP_MAX_KEY_LENGTH ||
@@ -988,6 +1022,10 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   ssl->version = sess->ssl_version;
   // Indicate we've done handshake
   ssl->s3->hs->handshake_finalized = true;
+
+  if (!SSL_parse_string(&ssl_cbs, &(ssl->s3->hostname), kHostNameTag)) {
+    return 0;
+  }
 
   // Setup rd/wr cipher contexts
   // FIXME: This code might be not safe for TLS 1.3 due to stateful AEAD ciphers.
@@ -1132,8 +1170,20 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
     !CBB_add_asn1_octet_string(&ssl, in->s3->read_sequence, TLS_SEQ_NUM_SIZE) ||
     !CBB_add_asn1_octet_string(&ssl, in->s3->write_sequence, TLS_SEQ_NUM_SIZE) ||
     !CBB_add_asn1_bool(&ssl, sheded)) {
+    // TODO: check if below put is valid.
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
+  }
+  // TODO: in->hostname also has hostname due to history reasons.
+  if (in->s3->hostname) {
+    CBB ssl_child;
+    if (!CBB_add_asn1(&ssl, &ssl_child, kHostNameTag) ||
+        !CBB_add_asn1_octet_string(&ssl_child,
+                                   (const uint8_t *)(in->s3->hostname.get()),
+                                   strlen(in->s3->hostname.get()))) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
   }
   return CBB_flush(cbb);
 }
