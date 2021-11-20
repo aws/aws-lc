@@ -914,6 +914,10 @@ SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,
 //      write_iv       OCTET STRING -- connection write IV
 //      read_seq       OCTET STRING -- connection read sequence number
 //      write_seq      OCTET STRING -- connection write sequence number
+//      sheded         BOOLEAN      -- indicate if the config is sheded. The config may not exist
+//                                     since the configuration 
+//                                     may be shed after the handshake completes.
+//                                     TODO: check corner cases to see if config should be encoded.
 //  }
 //
 //  Note that serialized SSL_SESSION is always prepended to the serialized SSL
@@ -928,6 +932,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   uint64_t rwstate;
 
   CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq;
+  int sheded = 0;
   // Read version string from buffer
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
     !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
@@ -952,9 +957,14 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     !CBS_get_asn1(&ssl_cbs, &read_seq, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
     !CBS_get_asn1(&ssl_cbs, &write_seq, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE) {
+    CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE ||
+    !CBS_get_asn1_bool(&ssl_cbs, &sheded)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
+  }
+
+  if (sheded) {
+    Delete(ssl->config.release());
   }
 
   // FIXME check hash of SSL_CTX
@@ -1105,6 +1115,8 @@ err:
 static int SSL_to_bytes(const SSL *in, CBB *cbb) {
   CBB ssl;
 
+  int sheded = !in->config;
+
   if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
     !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
 //    FIXME add hash of SSL_CTX
@@ -1118,7 +1130,8 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
     !CBB_add_asn1_octet_string(&ssl, in->cm->write_iv,
                                in->cm->write_iv_length) ||
     !CBB_add_asn1_octet_string(&ssl, in->s3->read_sequence, TLS_SEQ_NUM_SIZE) ||
-    !CBB_add_asn1_octet_string(&ssl, in->s3->write_sequence, TLS_SEQ_NUM_SIZE)) {
+    !CBB_add_asn1_octet_string(&ssl, in->s3->write_sequence, TLS_SEQ_NUM_SIZE) ||
+    !CBB_add_asn1_bool(&ssl, sheded)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
