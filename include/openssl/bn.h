@@ -690,15 +690,9 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
 
 // BN_prime_checks_for_validation can be used as the |checks| argument to the
 // primarily testing functions when validating an externally-supplied candidate
-// prime. It gives a false positive rate of at most 2^{-128}. The worst case
+// prime. It gives a false positive rate of at most 2^{-128}. (The worst case
 // false positive rate for a single iteration is 1/4 per
-// https://eprint.iacr.org/2018/749. Hence, we perform 64 iterations, which
-// gives the above stated false positive rate
-// (1/2^2)^64 = 1/2^(2*64) = 1/2^128. A finer analysis of
-// https://eprint.iacr.org/2018/749 could lower the number of iterations, but we
-// would have to assume a tighter set of use-cases by consumers. If this number
-// of iterations turns out to be unacceptable by downstream consumers, we can
-// adopt a differentiated approach catering specifically for the TLS DHE case.
+// https://eprint.iacr.org/2018/749. (1/4)^64 = 2^{-128}.)
 #define BN_prime_checks_for_validation 64
 
 // BN_prime_checks_for_generation can be used as the |checks| argument to the

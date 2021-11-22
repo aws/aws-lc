@@ -33,6 +33,7 @@ if(BUILD_TESTING)
     blowfish/blowfish_test.cc
     cast/cast_test.cc
     cfb/cfb_test.cc
+    evp/evp_test.cc
     ripemd/ripemd_test.cc
     xts/xts_test.cc
 

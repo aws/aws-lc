@@ -30,6 +30,11 @@
 #include <openssl/x509v3.h>
 
 #include "../test/test_util.h"
+#include "internal.h"
+
+#if defined(OPENSSL_THREADS)
+#include <thread>
+#endif
 
 
 // kTag128 is an ASN.1 structure with a universal tag with number 128.
@@ -98,9 +103,15 @@ TEST(ASN1Test, IntegerSetting) {
   }
 }
 
-template <typename T>
-void TestSerialize(T obj, int (*i2d_func)(T a, uint8_t **pp),
+// |obj| and |i2d_func| require different template parameters because C++ may
+// deduce, say, |ASN1_STRING*| via |obj| and |const ASN1_STRING*| via
+// |i2d_func|. Template argument deduction then fails. The language is not able
+// to resolve this by observing that |const ASN1_STRING*| works for both.
+template <typename T, typename U>
+void TestSerialize(T obj, int (*i2d_func)(U a, uint8_t **pp),
                    bssl::Span<const uint8_t> expected) {
+  static_assert(std::is_convertible<T, U>::value,
+                "incompatible parameter to i2d_func");
   // Test the allocating version first. It is easiest to debug.
   uint8_t *ptr = nullptr;
   int len = i2d_func(obj, &ptr);
@@ -127,15 +138,49 @@ TEST(ASN1Test, SerializeObject) {
   TestSerialize(obj, i2d_ASN1_OBJECT, kDER);
 }
 
-TEST(ASN1Test, SerializeBoolean) {
+TEST(ASN1Test, Boolean) {
   static const uint8_t kTrue[] = {0x01, 0x01, 0xff};
   TestSerialize(0xff, i2d_ASN1_BOOLEAN, kTrue);
   // Other constants are also correctly encoded as TRUE.
   TestSerialize(1, i2d_ASN1_BOOLEAN, kTrue);
   TestSerialize(0x100, i2d_ASN1_BOOLEAN, kTrue);
 
+  const uint8_t *ptr = kTrue;
+  EXPECT_EQ(0xff, d2i_ASN1_BOOLEAN(nullptr, &ptr, sizeof(kTrue)));
+  EXPECT_EQ(ptr, kTrue + sizeof(kTrue));
+
   static const uint8_t kFalse[] = {0x01, 0x01, 0x00};
   TestSerialize(0x00, i2d_ASN1_BOOLEAN, kFalse);
+
+  ptr = kFalse;
+  EXPECT_EQ(0, d2i_ASN1_BOOLEAN(nullptr, &ptr, sizeof(kFalse)));
+  EXPECT_EQ(ptr, kFalse + sizeof(kFalse));
+
+  const std::vector<uint8_t> kInvalidBooleans[] = {
+      // No tag header.
+      {},
+      // No length.
+      {0x01},
+      // Truncated contents.
+      {0x01, 0x01},
+      // Contents too short or too long.
+      {0x01, 0x00},
+      {0x01, 0x02, 0x00, 0x00},
+      // Wrong tag number.
+      {0x02, 0x01, 0x00},
+      // Wrong tag class.
+      {0x81, 0x01, 0x00},
+      // Element is constructed.
+      {0x21, 0x01, 0x00},
+      // TODO(https://crbug.com/boringssl/354): Reject non-DER encodings of TRUE
+      // and test this.
+  };
+  for (const auto &invalid : kInvalidBooleans) {
+    SCOPED_TRACE(Bytes(invalid));
+    ptr = invalid.data();
+    EXPECT_EQ(-1, d2i_ASN1_BOOLEAN(nullptr, &ptr, invalid.size()));
+    ERR_clear_error();
+  }
 }
 
 // The templates go through a different codepath, so test them separately.
@@ -170,6 +215,8 @@ TEST(ASN1Test, ASN1Type) {
       {V_ASN1_BOOLEAN, {0x01, 0x01, 0x00}},
       // OCTET_STRING { "a" }
       {V_ASN1_OCTET_STRING, {0x04, 0x01, 0x61}},
+      // OCTET_STRING { }
+      {V_ASN1_OCTET_STRING, {0x04, 0x00}},
       // BIT_STRING { `01` `00` }
       {V_ASN1_BIT_STRING, {0x03, 0x02, 0x01, 0x00}},
       // INTEGER { -1 }
@@ -833,6 +880,13 @@ TEST(ASN1Test, MBString) {
       // Given a choice of formats, we pick the smallest that fits.
       {MBSTRING_UTF8, {}, kAll, V_ASN1_PRINTABLESTRING, {}, 0},
       {MBSTRING_UTF8, {'a'}, kAll, V_ASN1_PRINTABLESTRING, {'a'}, 1},
+      {MBSTRING_UTF8,
+       {'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       kAll,
+       V_ASN1_PRINTABLESTRING,
+       {'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       14},
+      {MBSTRING_UTF8, {'*'}, kAll, V_ASN1_IA5STRING, {'*'}, 1},
       {MBSTRING_UTF8, {'\n'}, kAll, V_ASN1_IA5STRING, {'\n'}, 1},
       {MBSTRING_UTF8,
        {0xc2, 0x80 /* U+0080 */},
@@ -858,6 +912,10 @@ TEST(ASN1Test, MBString) {
        V_ASN1_UTF8STRING,
        {0xf0, 0x90, 0x80, 0x80},
        1},
+
+      // NUL is not printable. It should also not terminate iteration.
+      {MBSTRING_UTF8, {0}, kAll, V_ASN1_IA5STRING, {0}, 1},
+      {MBSTRING_UTF8, {0, 'a'}, kAll, V_ASN1_IA5STRING, {0, 'a'}, 2},
 
       // When a particular format is specified, we use it.
       {MBSTRING_UTF8,
@@ -1023,6 +1081,216 @@ TEST(ASN1Test, MBString) {
   }
 }
 
+TEST(ASN1Test, StringByNID) {
+  // |ASN1_mbstring_*| tests above test most of the interactions with |inform|,
+  // so all tests below use UTF-8.
+  const struct {
+    int nid;
+    std::string in;
+    int expected_type;
+    std::string expected;
+  } kTests[] = {
+      // Although DirectoryString and PKCS9String allow many types of strings,
+      // we prefer UTF8String.
+      {NID_commonName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_commonName, "\xe2\x98\x83", V_ASN1_UTF8STRING, "\xe2\x98\x83"},
+      {NID_localityName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_stateOrProvinceName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_organizationName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_organizationalUnitName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_pkcs9_unstructuredName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_pkcs9_challengePassword, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_pkcs9_unstructuredAddress, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_givenName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_givenName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_givenName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_surname, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_initials, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_name, "abc", V_ASN1_UTF8STRING, "abc"},
+
+      // Some attribute types use a particular string type.
+      {NID_countryName, "US", V_ASN1_PRINTABLESTRING, "US"},
+      {NID_pkcs9_emailAddress, "example@example.com", V_ASN1_IA5STRING,
+       "example@example.com"},
+      {NID_serialNumber, "1234", V_ASN1_PRINTABLESTRING, "1234"},
+      {NID_friendlyName, "abc", V_ASN1_BMPSTRING,
+       std::string({'\0', 'a', '\0', 'b', '\0', 'c'})},
+      {NID_dnQualifier, "US", V_ASN1_PRINTABLESTRING, "US"},
+      {NID_domainComponent, "com", V_ASN1_IA5STRING, "com"},
+      {NID_ms_csp_name, "abc", V_ASN1_BMPSTRING,
+       std::string({'\0', 'a', '\0', 'b', '\0', 'c'})},
+
+      // Unknown NIDs default to UTF8String.
+      {NID_rsaEncryption, "abc", V_ASN1_UTF8STRING, "abc"},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.nid);
+    SCOPED_TRACE(t.in);
+
+    // Test allocating a new object.
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+        nullptr, reinterpret_cast<const uint8_t *>(t.in.data()), t.in.size(),
+        MBSTRING_UTF8, t.nid));
+    ASSERT_TRUE(str);
+    EXPECT_EQ(t.expected_type, ASN1_STRING_type(str.get()));
+    EXPECT_EQ(Bytes(t.expected), Bytes(ASN1_STRING_get0_data(str.get()),
+                                       ASN1_STRING_length(str.get())));
+
+    // Test writing into an existing object.
+    str.reset(ASN1_STRING_new());
+    ASSERT_TRUE(str);
+    ASN1_STRING *old_str = str.get();
+    ASSERT_TRUE(ASN1_STRING_set_by_NID(
+        &old_str, reinterpret_cast<const uint8_t *>(t.in.data()), t.in.size(),
+        MBSTRING_UTF8, t.nid));
+    ASSERT_EQ(old_str, str.get());
+    EXPECT_EQ(t.expected_type, ASN1_STRING_type(str.get()));
+    EXPECT_EQ(Bytes(t.expected), Bytes(ASN1_STRING_get0_data(str.get()),
+                                       ASN1_STRING_length(str.get())));
+  }
+
+  const struct {
+    int nid;
+    std::string in;
+  } kInvalidTests[] = {
+      // DirectoryString forbids empty inputs.
+      {NID_commonName, ""},
+      {NID_localityName, ""},
+      {NID_stateOrProvinceName, ""},
+      {NID_organizationName, ""},
+      {NID_organizationalUnitName, ""},
+      {NID_pkcs9_unstructuredName, ""},
+      {NID_pkcs9_challengePassword, ""},
+      {NID_pkcs9_unstructuredAddress, ""},
+      {NID_givenName, ""},
+      {NID_givenName, ""},
+      {NID_givenName, ""},
+      {NID_surname, ""},
+      {NID_initials, ""},
+      {NID_name, ""},
+
+      // Test upper bounds from RFC 5280.
+      {NID_name, std::string(32769, 'a')},
+      {NID_commonName, std::string(65, 'a')},
+      {NID_localityName, std::string(129, 'a')},
+      {NID_stateOrProvinceName, std::string(129, 'a')},
+      {NID_organizationName, std::string(65, 'a')},
+      {NID_organizationalUnitName, std::string(65, 'a')},
+      {NID_pkcs9_emailAddress, std::string(256, 'a')},
+      {NID_serialNumber, std::string(65, 'a')},
+
+      // X520countryName must be exactly two characters.
+      {NID_countryName, "A"},
+      {NID_countryName, "AAA"},
+
+      // Some string types cannot represent all codepoints.
+      {NID_countryName, "\xe2\x98\x83"},
+      {NID_pkcs9_emailAddress, "\xe2\x98\x83"},
+      {NID_serialNumber, "\xe2\x98\x83"},
+      {NID_dnQualifier, "\xe2\x98\x83"},
+      {NID_domainComponent, "\xe2\x98\x83"},
+  };
+  for (const auto &t : kInvalidTests) {
+    SCOPED_TRACE(t.nid);
+    SCOPED_TRACE(t.in);
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+        nullptr, reinterpret_cast<const uint8_t *>(t.in.data()), t.in.size(),
+        MBSTRING_UTF8, t.nid));
+    EXPECT_FALSE(str);
+    ERR_clear_error();
+  }
+}
+
+TEST(ASN1Test, StringByCustomNID) {
+  // This test affects library-global state. We rely on nothing else in the test
+  // suite using these OIDs.
+  int nid1 = OBJ_create("1.2.840.113554.4.1.72585.1000", "custom OID 1000",
+                        "custom OID 1000");
+  ASSERT_NE(NID_undef, nid1);
+  int nid2 = OBJ_create("1.2.840.113554.4.1.72585.1001", "custom OID 1001",
+                        "custom OID 1001");
+  ASSERT_NE(NID_undef, nid2);
+
+  // Values registered in the string table should be picked up.
+  ASSERT_TRUE(ASN1_STRING_TABLE_add(nid1, 5, 10, V_ASN1_PRINTABLESTRING,
+                                    STABLE_NO_MASK));
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+      nullptr, reinterpret_cast<const uint8_t *>("12345"), 5, MBSTRING_UTF8,
+      nid1));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(V_ASN1_PRINTABLESTRING, ASN1_STRING_type(str.get()));
+  EXPECT_EQ(Bytes("12345"), Bytes(ASN1_STRING_get0_data(str.get()),
+                                  ASN1_STRING_length(str.get())));
+
+  // Minimum and maximum lengths are enforced.
+  str.reset(ASN1_STRING_set_by_NID(
+      nullptr, reinterpret_cast<const uint8_t *>("1234"), 4, MBSTRING_UTF8,
+      nid1));
+  EXPECT_FALSE(str);
+  ERR_clear_error();
+  str.reset(ASN1_STRING_set_by_NID(
+      nullptr, reinterpret_cast<const uint8_t *>("12345678901"), 11,
+      MBSTRING_UTF8, nid1));
+  EXPECT_FALSE(str);
+  ERR_clear_error();
+
+  // Without |STABLE_NO_MASK|, we always pick UTF8String. -1 means there is no
+  // length limit.
+  ASSERT_TRUE(ASN1_STRING_TABLE_add(nid2, -1, -1, DIRSTRING_TYPE, 0));
+  str.reset(ASN1_STRING_set_by_NID(nullptr,
+                                   reinterpret_cast<const uint8_t *>("12345"),
+                                   5, MBSTRING_UTF8, nid2));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(V_ASN1_UTF8STRING, ASN1_STRING_type(str.get()));
+  EXPECT_EQ(Bytes("12345"), Bytes(ASN1_STRING_get0_data(str.get()),
+                                  ASN1_STRING_length(str.get())));
+
+  // Overriding existing entries, built-in or custom, is an error.
+  EXPECT_FALSE(
+      ASN1_STRING_TABLE_add(NID_countryName, -1, -1, DIRSTRING_TYPE, 0));
+  EXPECT_FALSE(ASN1_STRING_TABLE_add(nid1, -1, -1, DIRSTRING_TYPE, 0));
+}
+
+#if defined(OPENSSL_THREADS)
+TEST(ASN1Test, StringByCustomNIDThreads) {
+  // This test affects library-global state. We rely on nothing else in the test
+  // suite using these OIDs.
+  int nid1 = OBJ_create("1.2.840.113554.4.1.72585.1002", "custom OID 1002",
+                        "custom OID 1002");
+  ASSERT_NE(NID_undef, nid1);
+  int nid2 = OBJ_create("1.2.840.113554.4.1.72585.1003", "custom OID 1003",
+                        "custom OID 1003");
+  ASSERT_NE(NID_undef, nid2);
+
+  std::vector<std::thread> threads;
+  threads.emplace_back([&] {
+    ASSERT_TRUE(ASN1_STRING_TABLE_add(nid1, 5, 10, V_ASN1_PRINTABLESTRING,
+                                      STABLE_NO_MASK));
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+        nullptr, reinterpret_cast<const uint8_t *>("12345"), 5, MBSTRING_UTF8,
+        nid1));
+    ASSERT_TRUE(str);
+    EXPECT_EQ(V_ASN1_PRINTABLESTRING, ASN1_STRING_type(str.get()));
+    EXPECT_EQ(Bytes("12345"), Bytes(ASN1_STRING_get0_data(str.get()),
+                                    ASN1_STRING_length(str.get())));
+  });
+  threads.emplace_back([&] {
+    ASSERT_TRUE(ASN1_STRING_TABLE_add(nid2, 5, 10, V_ASN1_PRINTABLESTRING,
+                                      STABLE_NO_MASK));
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+        nullptr, reinterpret_cast<const uint8_t *>("12345"), 5, MBSTRING_UTF8,
+        nid2));
+    ASSERT_TRUE(str);
+    EXPECT_EQ(V_ASN1_PRINTABLESTRING, ASN1_STRING_type(str.get()));
+    EXPECT_EQ(Bytes("12345"), Bytes(ASN1_STRING_get0_data(str.get()),
+                                    ASN1_STRING_length(str.get())));
+  });
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+#endif  // OPENSSL_THREADS
+
 // Test that multi-string types correctly encode negative ENUMERATED.
 // Multi-string types cannot contain INTEGER, so we only test ENUMERATED.
 TEST(ASN1Test, NegativeEnumeratedMultistring) {
@@ -1033,6 +1301,383 @@ TEST(ASN1Test, NegativeEnumeratedMultistring) {
       d2i_ASN1_PRINTABLE(nullptr, &p, sizeof(kMinusOne)));
   ASSERT_TRUE(str);
   TestSerialize(str.get(), i2d_ASN1_PRINTABLE, kMinusOne);
+}
+
+TEST(ASN1Test, PrintableType) {
+  const struct {
+    std::vector<uint8_t> in;
+    int result;
+  } kTests[] = {
+      {{}, V_ASN1_PRINTABLESTRING},
+      {{'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       V_ASN1_PRINTABLESTRING},
+      {{'*'}, V_ASN1_IA5STRING},
+      {{'\0'}, V_ASN1_IA5STRING},
+      {{'\0', 'a'}, V_ASN1_IA5STRING},
+      {{0, 1, 2, 3, 125, 126, 127}, V_ASN1_IA5STRING},
+      {{0, 1, 2, 3, 125, 126, 127, 128}, V_ASN1_T61STRING},
+      {{128, 0, 1, 2, 3, 125, 126, 127}, V_ASN1_T61STRING},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.in));
+    EXPECT_EQ(t.result, ASN1_PRINTABLE_type(t.in.data(), t.in.size()));
+  }
+}
+
+// Encoding a CHOICE type with an invalid selector should fail.
+TEST(ASN1Test, InvalidChoice) {
+  bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+  ASSERT_TRUE(name);
+  // CHOICE types are initialized with an invalid selector.
+  EXPECT_EQ(-1, name->type);
+  // |name| should fail to encode.
+  EXPECT_EQ(-1, i2d_GENERAL_NAME(name.get(), nullptr));
+
+  // The error should be propagated through types containing |name|.
+  bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
+  ASSERT_TRUE(names);
+  EXPECT_TRUE(bssl::PushToStack(names.get(), std::move(name)));
+  EXPECT_EQ(-1, i2d_GENERAL_NAMES(names.get(), nullptr));
+}
+
+// Encoding NID-only |ASN1_OBJECT|s should fail.
+TEST(ASN1Test, InvalidObject) {
+  EXPECT_EQ(-1, i2d_ASN1_OBJECT(OBJ_nid2obj(NID_kx_ecdhe), nullptr));
+
+  bssl::UniquePtr<X509_ALGOR> alg(X509_ALGOR_new());
+  ASSERT_TRUE(alg);
+  ASSERT_TRUE(X509_ALGOR_set0(alg.get(), OBJ_nid2obj(NID_kx_ecdhe),
+                              V_ASN1_UNDEF, nullptr));
+  EXPECT_EQ(-1, i2d_X509_ALGOR(alg.get(), nullptr));
+}
+
+// Encoding invalid |ASN1_TYPE|s should fail. |ASN1_TYPE|s are
+// default-initialized to an invalid type.
+TEST(ASN1Test, InvalidASN1Type) {
+  bssl::UniquePtr<ASN1_TYPE> obj(ASN1_TYPE_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_ASN1_TYPE(obj.get(), nullptr));
+}
+
+// Encoding invalid MSTRING types should fail. An MSTRING is a CHOICE of
+// string-like types. They are initialized to an invalid type.
+TEST(ASN1Test, InvalidMSTRING) {
+  bssl::UniquePtr<ASN1_STRING> obj(ASN1_TIME_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_ASN1_TIME(obj.get(), nullptr));
+
+  obj.reset(DIRECTORYSTRING_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_DIRECTORYSTRING(obj.get(), nullptr));
+}
+
+TEST(ASN1Test, StringTableSorted) {
+  const ASN1_STRING_TABLE *table;
+  size_t table_len;
+  asn1_get_string_table_for_testing(&table, &table_len);
+  for (size_t i = 1; i < table_len; i++) {
+    EXPECT_LT(table[i-1].nid, table[i].nid);
+  }
+}
+
+TEST(ASN1Test, Null) {
+  // An |ASN1_NULL| is an opaque, non-null pointer. It is an arbitrary signaling
+  // value and does not need to be freed. (If the pointer is null, this is an
+  // omitted OPTIONAL NULL.)
+  EXPECT_NE(nullptr, ASN1_NULL_new());
+
+  // It is safe to free either the non-null pointer or the null one.
+  ASN1_NULL_free(ASN1_NULL_new());
+  ASN1_NULL_free(nullptr);
+
+  // A NULL may be decoded.
+  static const uint8_t kNull[] = {0x05, 0x00};
+  const uint8_t *ptr = kNull;
+  EXPECT_NE(nullptr, d2i_ASN1_NULL(nullptr, &ptr, sizeof(kNull)));
+  EXPECT_EQ(ptr, kNull + sizeof(kNull));
+
+  // It may also be re-encoded.
+  uint8_t *enc = nullptr;
+  int enc_len = i2d_ASN1_NULL(ASN1_NULL_new(), &enc);
+  ASSERT_GE(enc_len, 0);
+  EXPECT_EQ(Bytes(kNull), Bytes(enc, enc_len));
+  OPENSSL_free(enc);
+  enc = nullptr;
+
+  // Although the standalone representation of NULL is a non-null pointer, the
+  // |ASN1_TYPE| representation is a null pointer.
+  ptr = kNull;
+  bssl::UniquePtr<ASN1_TYPE> null_type(
+      d2i_ASN1_TYPE(nullptr, &ptr, sizeof(kNull)));
+  ASSERT_TRUE(null_type);
+  EXPECT_EQ(ptr, kNull + sizeof(kNull));
+  EXPECT_EQ(V_ASN1_NULL, ASN1_TYPE_get(null_type.get()));
+  EXPECT_EQ(nullptr, null_type->value.ptr);
+}
+
+TEST(ASN1Test, Pack) {
+  bssl::UniquePtr<BASIC_CONSTRAINTS> val(BASIC_CONSTRAINTS_new());
+  ASSERT_TRUE(val);
+  val->ca = 0;
+
+  // Test all three calling conventions.
+  static const uint8_t kExpected[] = {0x30, 0x00};
+  bssl::UniquePtr<ASN1_STRING> str(
+      ASN1_item_pack(val.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS), nullptr));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(
+      Bytes(ASN1_STRING_get0_data(str.get()), ASN1_STRING_length(str.get())),
+      Bytes(kExpected));
+
+  ASN1_STRING *raw = nullptr;
+  str.reset(ASN1_item_pack(val.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS), &raw));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(raw, str.get());
+  EXPECT_EQ(
+      Bytes(ASN1_STRING_get0_data(str.get()), ASN1_STRING_length(str.get())),
+      Bytes(kExpected));
+
+  str.reset(ASN1_STRING_new());
+  ASSERT_TRUE(str);
+  raw = str.get();
+  EXPECT_TRUE(
+      ASN1_item_pack(val.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS), &raw));
+  EXPECT_EQ(raw, str.get());
+  EXPECT_EQ(
+      Bytes(ASN1_STRING_get0_data(str.get()), ASN1_STRING_length(str.get())),
+      Bytes(kExpected));
+}
+
+TEST(ASN1Test, Unpack) {
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_new());
+  ASSERT_TRUE(str);
+
+  static const uint8_t kValid[] = {0x30, 0x00};
+  ASSERT_TRUE(
+      ASN1_STRING_set(str.get(), kValid, sizeof(kValid)));
+  bssl::UniquePtr<BASIC_CONSTRAINTS> val(static_cast<BASIC_CONSTRAINTS *>(
+      ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
+  ASSERT_TRUE(val);
+  EXPECT_EQ(val->ca, 0);
+  EXPECT_EQ(val->pathlen, nullptr);
+
+  static const uint8_t kInvalid[] = {0x31, 0x00};
+  ASSERT_TRUE(ASN1_STRING_set(str.get(), kInvalid, sizeof(kInvalid)));
+  val.reset(static_cast<BASIC_CONSTRAINTS *>(
+      ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
+  EXPECT_FALSE(val);
+
+  static const uint8_t kTraiilingData[] = {0x30, 0x00, 0x00};
+  ASSERT_TRUE(
+      ASN1_STRING_set(str.get(), kTraiilingData, sizeof(kTraiilingData)));
+  val.reset(static_cast<BASIC_CONSTRAINTS *>(
+      ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
+  EXPECT_FALSE(val);
+}
+
+TEST(ASN1Test, StringCmp) {
+  struct Input {
+    int type;
+    std::vector<uint8_t> data;
+    int flags;
+    bool equals_previous;
+  };
+  // kInputs is a list of |ASN1_STRING| parameters, in sorted order. The input
+  // should be sorted by bit length, then data, then type.
+  const Input kInputs[] = {
+      {V_ASN1_BIT_STRING, {}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_BIT_STRING, {}, 0, true},
+      // When |ASN1_STRING_FLAG_BITS_LEFT| is unset, BIT STRINGs implicitly
+      // drop trailing zeros.
+      {V_ASN1_BIT_STRING, {0x00, 0x00, 0x00, 0x00}, 0, true},
+
+      {V_ASN1_OCTET_STRING, {}, 0, false},
+      {V_ASN1_UTF8STRING, {}, 0, false},
+
+      // BIT STRINGs with padding bits (i.e. not part of the actual value) are
+      // shorter and thus sort earlier:
+      // 1-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 7, false},
+      {V_ASN1_BIT_STRING, {0x80}, ASN1_STRING_FLAG_BITS_LEFT | 7, false},
+      // 2-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 6, false},
+      {V_ASN1_BIT_STRING, {0xc0}, ASN1_STRING_FLAG_BITS_LEFT | 6, false},
+      // 3-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 5, false},
+      {V_ASN1_BIT_STRING, {0xe0}, ASN1_STRING_FLAG_BITS_LEFT | 5, false},
+      // 4-bit inputs.
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 4, false},
+      {V_ASN1_BIT_STRING, {0xf0}, 0, true},        // 4 trailing zeros dropped.
+      {V_ASN1_BIT_STRING, {0xf0, 0x00}, 0, true},  // 12 trailing zeros dropped.
+      // 5-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 3, false},
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 3, false},
+      {V_ASN1_BIT_STRING, {0xf8}, ASN1_STRING_FLAG_BITS_LEFT | 3, false},
+      // 6-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 2, false},
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 2, false},
+      {V_ASN1_BIT_STRING, {0xfc}, ASN1_STRING_FLAG_BITS_LEFT | 2, false},
+      // 7-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 1, false},
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 1, false},
+      {V_ASN1_BIT_STRING, {0xfe}, ASN1_STRING_FLAG_BITS_LEFT | 1, false},
+
+      // 8-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x00}, 0, false},
+      {V_ASN1_UTF8STRING, {0x00}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0x80}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x80}, 0, false},
+      {V_ASN1_UTF8STRING, {0x80}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0xff}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_BIT_STRING, {0xff}, 0, true},  // No trailing zeros to drop.
+      {V_ASN1_OCTET_STRING, {0xff}, 0, false},
+      {V_ASN1_UTF8STRING, {0xff}, 0, false},
+
+      // Bytes are compared lexicographically.
+      {V_ASN1_BIT_STRING, {0x00, 0x00}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x00, 0x00}, 0, false},
+      {V_ASN1_UTF8STRING, {0x00, 0x00}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0x00, 0xff}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x00, 0xff}, 0, false},
+      {V_ASN1_UTF8STRING, {0x00, 0xff}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0xff, 0x00}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0xff, 0x00}, 0, false},
+      {V_ASN1_UTF8STRING, {0xff, 0x00}, 0, false},
+  };
+  std::vector<bssl::UniquePtr<ASN1_STRING>> strs;
+  strs.reserve(OPENSSL_ARRAY_SIZE(kInputs));
+  for (const auto &input : kInputs) {
+    strs.emplace_back(ASN1_STRING_type_new(input.type));
+    ASSERT_TRUE(strs.back());
+    ASSERT_TRUE(ASN1_STRING_set(strs.back().get(), input.data.data(),
+                                input.data.size()));
+    strs.back()->flags = input.flags;
+  }
+
+  for (size_t i = 0; i < strs.size(); i++) {
+    SCOPED_TRACE(i);
+    bool expect_equal = true;
+    for (size_t j = i; j < strs.size(); j++) {
+      SCOPED_TRACE(j);
+      if (j > i && !kInputs[j].equals_previous) {
+        expect_equal = false;
+      }
+
+      const int cmp_i_j = ASN1_STRING_cmp(strs[i].get(), strs[j].get());
+      const int cmp_j_i = ASN1_STRING_cmp(strs[j].get(), strs[i].get());
+      if (expect_equal) {
+        EXPECT_EQ(cmp_i_j, 0);
+        EXPECT_EQ(cmp_j_i, 0);
+      } else if (i < j) {
+        EXPECT_LT(cmp_i_j, 0);
+        EXPECT_GT(cmp_j_i, 0);
+      } else {
+        EXPECT_GT(cmp_i_j, 0);
+        EXPECT_LT(cmp_j_i, 0);
+      }
+    }
+  }
+}
+
+TEST(ASN1Test, PrintASN1Object) {
+  const struct {
+    std::vector<uint8_t> in;
+    const char *expected;
+  } kDataTests[] = {
+      // Known OIDs print as the name.
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01}, "rsaEncryption"},
+
+      // Unknown OIDs print in decimal.
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x00},
+       "1.2.840.113554.4.1.72585.0"},
+
+      // Inputs which cannot be parsed as OIDs print as "<INVALID>".
+      {{0xff}, "<INVALID>"},
+
+      // The function has an internal 80-byte buffer. Test inputs at that
+      // boundary. First, 78 characters.
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+        0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+       "1.2.840.113554.4.1.72585.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0."
+       "0.0.0.1"},
+      // 79 characters.
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+        0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a},
+       "1.2.840.113554.4.1.72585.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0."
+       "0.0.0.10"},
+      // 80 characters.
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+        0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64},
+       "1.2.840.113554.4.1.72585.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0."
+       "0.0.0.100"},
+      // 81 characters.
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+        0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x87, 0x68},
+       "1.2.840.113554.4.1.72585.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0."
+       "0.0.0.1000"},
+      // 82 characters.
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+        0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xce, 0x10},
+       "1.2.840.113554.4.1.72585.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0."
+       "0.0.0.10000"},
+  };
+  for (const auto &t : kDataTests) {
+    SCOPED_TRACE(Bytes(t.in));
+    bssl::UniquePtr<ASN1_OBJECT> obj(ASN1_OBJECT_create(
+        NID_undef, t.in.data(), t.in.size(), /*sn=*/nullptr, /*ln=*/nullptr));
+    ASSERT_TRUE(obj);
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+
+    int len = i2a_ASN1_OBJECT(bio.get(), obj.get());
+    EXPECT_EQ(len, static_cast<int>(strlen(t.expected)));
+
+    const uint8_t *bio_data;
+    size_t bio_len;
+    BIO_mem_contents(bio.get(), &bio_data, &bio_len);
+    EXPECT_EQ(t.expected,
+              std::string(reinterpret_cast<const char *>(bio_data), bio_len));
+  }
+
+  // Test writing NULL.
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  int len = i2a_ASN1_OBJECT(bio.get(), nullptr);
+  EXPECT_EQ(len, 4);
+  const uint8_t *bio_data;
+  size_t bio_len;
+  BIO_mem_contents(bio.get(), &bio_data, &bio_len);
+  EXPECT_EQ("NULL",
+            std::string(reinterpret_cast<const char *>(bio_data), bio_len));
+}
+
+TEST(ASN1, GetObject) {
+  // The header is valid, but there are not enough bytes for the length.
+  static const uint8_t kTruncated[] = {0x30, 0x01};
+  const uint8_t *ptr = kTruncated;
+  long length;
+  int tag;
+  int tag_class;
+  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
+                                  sizeof(kTruncated)));
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
@@ -1047,7 +1692,7 @@ DECLARE_ASN1_ITEM(ASN1_LINKED_LIST)
 DECLARE_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
 
 ASN1_SEQUENCE(ASN1_LINKED_LIST) = {
-  ASN1_OPT(ASN1_LINKED_LIST, next, ASN1_LINKED_LIST),
+    ASN1_OPT(ASN1_LINKED_LIST, next, ASN1_LINKED_LIST),
 } ASN1_SEQUENCE_END(ASN1_LINKED_LIST)
 
 IMPLEMENT_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
@@ -1098,15 +1743,13 @@ struct IMPLICIT_CHOICE {
   ASN1_STRING *string;
 };
 
-// clang-format off
 DECLARE_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
 
 ASN1_SEQUENCE(IMPLICIT_CHOICE) = {
-  ASN1_IMP(IMPLICIT_CHOICE, string, DIRECTORYSTRING, 0)
+    ASN1_IMP(IMPLICIT_CHOICE, string, DIRECTORYSTRING, 0),
 } ASN1_SEQUENCE_END(IMPLICIT_CHOICE)
 
 IMPLEMENT_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
-// clang-format on
 
 // Test that the ASN.1 templates reject types with implicitly-tagged CHOICE
 // types.
@@ -1129,6 +1772,66 @@ TEST(ASN1Test, ImplicitChoice) {
   static const uint8_t kInput2[] = {0x30, 0x02, 0x80, 0x00};
   ptr = kInput2;
   EXPECT_EQ(nullptr, d2i_IMPLICIT_CHOICE(nullptr, &ptr, sizeof(kInput2)));
+}
+
+struct REQUIRED_FIELD {
+  ASN1_INTEGER *value;
+  ASN1_INTEGER *value_imp;
+  ASN1_INTEGER *value_exp;
+  STACK_OF(ASN1_INTEGER) *seq;
+  STACK_OF(ASN1_INTEGER) *seq_imp;
+  STACK_OF(ASN1_INTEGER) *seq_exp;
+  ASN1_NULL *null;
+  ASN1_NULL *null_imp;
+  ASN1_NULL *null_exp;
+};
+
+DECLARE_ASN1_FUNCTIONS(REQUIRED_FIELD)
+ASN1_SEQUENCE(REQUIRED_FIELD) = {
+    ASN1_SIMPLE(REQUIRED_FIELD, value, ASN1_INTEGER),
+    ASN1_IMP(REQUIRED_FIELD, value_imp, ASN1_INTEGER, 0),
+    ASN1_EXP(REQUIRED_FIELD, value_exp, ASN1_INTEGER, 1),
+    ASN1_SEQUENCE_OF(REQUIRED_FIELD, seq, ASN1_INTEGER),
+    ASN1_IMP_SEQUENCE_OF(REQUIRED_FIELD, seq_imp, ASN1_INTEGER, 2),
+    ASN1_EXP_SEQUENCE_OF(REQUIRED_FIELD, seq_exp, ASN1_INTEGER, 3),
+    ASN1_SIMPLE(REQUIRED_FIELD, null, ASN1_NULL),
+    ASN1_IMP(REQUIRED_FIELD, null_imp, ASN1_NULL, 4),
+    ASN1_EXP(REQUIRED_FIELD, null_exp, ASN1_NULL, 5),
+} ASN1_SEQUENCE_END(REQUIRED_FIELD)
+IMPLEMENT_ASN1_FUNCTIONS(REQUIRED_FIELD)
+
+// Test that structures with missing required fields cannot be serialized. Test
+// the full combination of tagging and SEQUENCE OF.
+TEST(ASN1Test, MissingRequiredField) {
+  EXPECT_EQ(-1, i2d_REQUIRED_FIELD(nullptr, nullptr));
+
+  std::unique_ptr<REQUIRED_FIELD, decltype(&REQUIRED_FIELD_free)> obj(
+      nullptr, REQUIRED_FIELD_free);
+  for (auto field : {&REQUIRED_FIELD::value, &REQUIRED_FIELD::value_imp,
+                     &REQUIRED_FIELD::value_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
+    ASN1_INTEGER_free((*obj).*field);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
+
+  for (auto field : {&REQUIRED_FIELD::seq, &REQUIRED_FIELD::seq_imp,
+                     &REQUIRED_FIELD::seq_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
+    sk_ASN1_INTEGER_pop_free((*obj).*field, ASN1_INTEGER_free);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
+
+  for (auto field : {&REQUIRED_FIELD::null, &REQUIRED_FIELD::null_imp,
+                     &REQUIRED_FIELD::null_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
 }
 
 #endif  // !WINDOWS || !SHARED_LIBRARY
