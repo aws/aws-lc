@@ -2006,9 +2006,9 @@ TEST(ServiceIndicatorTest, DRBG) {
   CTR_DRBG_clear(&drbg);
 }
 
-// Verifies that the openssl_version_string is as expected.
+// Verifies that the awslc_version_string is as expected.
 // Since this is running in FIPS mode it should end in FIPS
-// Update this when the OpenSSL version number is modified
+// Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
   ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 0.0.2");
 }
@@ -2051,9 +2051,9 @@ TEST(ServiceIndicatorTest, BasicTest) {
   ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
-// Verifies that the openssl_version_string is as expected.
+// Verifies that the awslc_version_string is as expected.
 // Since this is not running in FIPS mode it shouldn't end in FIPS
-// Update this when the OpenSSL version number is modified
+// Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
   ASSERT_STREQ(awslc_version_string(), "AWS-LC 0.0.2");
 }
