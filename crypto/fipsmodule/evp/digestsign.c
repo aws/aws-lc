@@ -276,9 +276,8 @@ end:
   return ret;
 }
 
-void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx)
-{
-    // pctx could be null, so we have to deal with the cleanup job here.
+void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx) {
+    // |pctx| could be null, so we have to deal with the cleanup job here.
     if (!(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
       EVP_PKEY_CTX_free(ctx->pctx);
     }
@@ -287,10 +286,10 @@ void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx)
     ctx->pctx_ops = EVP_MD_pctx_ops();
 
     if (pctx != NULL) {
-      // make sure pctx is not freed when destroying EVP_MD_CTX
+      // make sure |pctx| is not freed when destroying |EVP_MD_CTX|
       ctx->flags |= EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
     } else {
-      // if pctx is null, we remove the flag.
+      // if |pctx| is null, we remove the flag.
       ctx->flags &= ~EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
     }
 }

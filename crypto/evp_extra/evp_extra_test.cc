@@ -1123,12 +1123,13 @@ TEST(EVPExtraTest, Ed25519Keygen) {
                                reinterpret_cast<const uint8_t *>("hello"), 5));
 }
 
-// Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| works with a
+// Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| work with a
 // a special use case of not using the one-shot |EVP_DigestSignInit| or
 // |EVP_DigestVerifyInit| to initialize the |EVP_PKEY_CTX| context. The context
 // data can be manually constructed using other context setting functions.
 // |EVP_MD_CTX_set_pkey_ctx| was added to support this use case.
 TEST(EVPExtraTest, PKEY_CTX_manual) {
+  // Test the behavior with RSA Keys.
   bssl::ScopedEVP_MD_CTX ctx;
   ASSERT_TRUE(EVP_DigestInit(ctx.get(), EVP_sha256()));
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kMsg, sizeof(kMsg)));
