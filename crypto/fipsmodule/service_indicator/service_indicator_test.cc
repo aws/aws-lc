@@ -2006,6 +2006,13 @@ TEST(ServiceIndicatorTest, DRBG) {
   CTR_DRBG_clear(&drbg);
 }
 
+// Verifies that the awslc_version_string is as expected.
+// Since this is running in FIPS mode it should end in FIPS
+// Update this when the AWS-LC version number is modified
+TEST(ServiceIndicatorTest, AWSLCVersionString) {
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 0.0.2");
+}
+
 #else
 // Service indicator calls should not be used in non-FIPS builds. However, if
 // used, the macro |CALL_SERVICE_AND_CHECK_APPROVED| will return
@@ -2042,5 +2049,12 @@ TEST(ServiceIndicatorTest, BasicTest) {
           output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
           kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_EQ(approved, AWSLC_APPROVED);
+}
+
+// Verifies that the awslc_version_string is as expected.
+// Since this is not running in FIPS mode it shouldn't end in FIPS
+// Update this when the AWS-LC version number is modified
+TEST(ServiceIndicatorTest, AWSLCVersionString) {
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 0.0.2");
 }
 #endif // AWSLC_FIPS

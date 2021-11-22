@@ -203,6 +203,11 @@ extern "C" {
 
 #define AWSLC_API_VERSION 16
 
+// In order to keep track of any changes to AWLC we introduce a string that tracks with the public Github
+// release version at https://github.com/awslabs/aws-lc
+
+#define AWSLC_VERSION_NUMBER_STRING "0.0.2"
+
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(OPENSSL_WINDOWS)

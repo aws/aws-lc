@@ -26,6 +26,8 @@ extern "C" {
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 
+OPENSSL_EXPORT const char* awslc_version_string(void);
+
 // |FIPS_service_indicator_check_approved| is intended to take in the before and
 // after counter values. It will return |AWSLC_APPROVED| if the approval check
 // was successful, and |AWSLC_NOT_APPROVED| if otherwise.
@@ -38,6 +40,7 @@ OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 OPENSSL_EXPORT int FIPS_service_indicator_check_approved(uint64_t before, uint64_t after);
 
 #if defined(AWSLC_FIPS)
+#define AWSLC_MODE_STRING "AWS-LC FIPS "
 
 // This macro provides a bundled way to do an approval check and run the service.
 // The |approved| value passed in will change to |AWSLC_APPROVED| and
@@ -57,6 +60,9 @@ OPENSSL_EXPORT int FIPS_service_indicator_check_approved(uint64_t before, uint64
  while(0)                                                           \
 
 #else
+
+#define AWSLC_MODE_STRING "AWS-LC "
+
 // Assume |AWSLC_APPROVED| when FIPS is not on, for easier consumer compatibility
 // that have both FIPS and non-FIPS libraries.
 #define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
@@ -67,6 +73,8 @@ OPENSSL_EXPORT int FIPS_service_indicator_check_approved(uint64_t before, uint64
  while(0)                                                           \
 
 #endif // AWSLC_FIPS
+
+#define AWSLC_VERSION_STRING AWSLC_MODE_STRING AWSLC_VERSION_NUMBER_STRING
 
 #if defined(__cplusplus)
 }  // extern C
