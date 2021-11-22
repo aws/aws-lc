@@ -5,6 +5,10 @@
 #include <openssl/service_indicator.h>
 #include "internal.h"
 
+const char* awslc_version_string(void) {
+  return AWSLC_VERSION_STRING;
+}
+
 #if defined(AWSLC_FIPS)
 
 // Should only be called once per thread. Only called when initializing the state
