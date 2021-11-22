@@ -2755,9 +2755,20 @@ TEST(X509Test, InvalidExtensions) {
             .c_str());
     ASSERT_TRUE(invalid_leaf);
 
+    bssl::UniquePtr<X509> trailing_leaf = CertFromPEM(
+        GetTestData((std::string("crypto/x509/test/trailing_data_leaf_") +
+                     ext + ".pem")
+                        .c_str())
+            .c_str());
+    ASSERT_TRUE(trailing_leaf);
+
     EXPECT_EQ(
         X509_V_ERR_INVALID_EXTENSION,
         Verify(invalid_leaf.get(), {root.get()}, {intermediate.get()}, {}));
+
+    EXPECT_EQ(
+        X509_V_ERR_INVALID_EXTENSION,
+        Verify(trailing_leaf.get(), {root.get()}, {intermediate.get()}, {}));
 
     // If the invalid extension is on an intermediate or root,
     // |X509_verify_cert| notices by way of being unable to build a path to
@@ -3487,4 +3498,74 @@ TEST(X509Test, TrustedFirst) {
              {}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
                X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
              }));
+}
+
+// kConstructedBitString is an X.509 certificate where the signature is encoded
+// as a BER constructed BIT STRING. Note that, while OpenSSL's parser accepts
+// this input, it interprets the value incorrectly.
+static const char kConstructedBitString[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBJTCBxqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
+DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
+DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMQMA4w
+DAYDVR0TBAUwAwEB/zAKBggqhkjOPQQDAiNOAyQAMEYCIQCp0iIX5s30KXjihR4g
+KnJpd3seqGlVRqCVgrD0KGYDJgA1QAIhAKkx0vR82QU0NtHDD11KX/LuQF2T+2nX
+oeKp5LKAbMVi
+-----END CERTIFICATE-----
+)";
+
+// kConstructedOctetString is an X.509 certificate where an extension is encoded
+// as a BER constructed OCTET STRING.
+static const char kConstructedOctetString[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBJDCByqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
+DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
+DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMUMBIw
+EAYDVR0TJAkEAzADAQQCAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKF
+HiAqcml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh
+4qnksoBsxWI=
+-----END CERTIFICATE-----
+)";
+
+// kIndefiniteLength is an X.509 certificate where the outermost SEQUENCE uses
+// BER indefinite-length encoding.
+static const char kIndefiniteLength[] = R"(
+-----BEGIN CERTIFICATE-----
+MIAwgcagAwIBAgICBNIwCgYIKoZIzj0EAwIwDzENMAsGA1UEAxMEVGVzdDAgFw0w
+MDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsGA1UEAxMEVGVzdDBZ
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWXa7epHg1G
++92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsGjEDAOMAwG
+A1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKFHiAqcml3
+ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh4qnksoBs
+xWIAAA==
+-----END CERTIFICATE-----
+)";
+
+// kNonZeroPadding is an X.09 certificate where the BIT STRING signature field
+// has non-zero padding values.
+static const char kNonZeroPadding[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB0DCCAXagAwIBAgIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC
+QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp
+dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ
+BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l
+dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni
+v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa
+HPUdfvGULUvPciLBo1AwTjAdBgNVHQ4EFgQUq4TSrKuV8IJOFngHVVdf5CaNgtEw
+HwYDVR0jBBgwFoAUq4TSrKuV8IJOFngHVVdf5CaNgtEwDAYDVR0TBAUwAwEB/zAJ
+BgcqhkjOPQQBA0kBMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
+BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQB
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, BER) {
+  // Constructed strings are forbidden in DER.
+  EXPECT_FALSE(CertFromPEM(kConstructedBitString));
+  EXPECT_FALSE(CertFromPEM(kConstructedOctetString));
+  // Indefinite lengths are forbidden in DER.
+  EXPECT_FALSE(CertFromPEM(kIndefiniteLength));
+  // Padding bits in BIT STRINGs must be zero in BER.
+  EXPECT_FALSE(CertFromPEM(kNonZeroPadding));
 }
