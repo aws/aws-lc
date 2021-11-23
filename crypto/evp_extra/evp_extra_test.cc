@@ -1159,7 +1159,6 @@ TEST(EVPExtraTest, PKEY_CTX_manual) {
 
   ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len));
 
-
   // Test the behavior with EC Keys.
   ctx.Reset();
   ASSERT_TRUE(EVP_DigestInit(ctx.get(), EVP_sha256()));
@@ -1174,12 +1173,12 @@ TEST(EVPExtraTest, PKEY_CTX_manual) {
   ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
   EC_KEY_generate_key(eckey.get());
   ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
-  bssl::UniquePtr<EVP_PKEY_CTX> pctx_ec(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  pctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
 
   // Manual construction for signing.
-  ASSERT_TRUE(EVP_PKEY_sign_init(pctx_ec.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx_ec.get(), EVP_sha256()));
-  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx_ec.get());
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), EVP_sha256()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
 
   // Determine the size of the signature.
   sig_len = 0;
@@ -1190,11 +1189,37 @@ TEST(EVPExtraTest, PKEY_CTX_manual) {
   sig.resize(sig_len);
 
   // Manual construction for verification.
-  ASSERT_TRUE(EVP_PKEY_verify_init(pctx_ec.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx_ec.get(), EVP_sha256()));
-  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx_ec.get());
+  ASSERT_TRUE(EVP_PKEY_verify_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), EVP_sha256()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
 
   ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len));
+
+  // Test clean up behavior after using |EVP_MD_CTX_set_pkey_ctx|. The
+  // externally set |pctx| should not be inadvertently freed.
+  ASSERT_TRUE(ctx.get()->md_data);
+  ASSERT_TRUE(ctx.get()->pctx);
+  ASSERT_TRUE(pctx.get());
+  // Clean up here.
+  ASSERT_TRUE(EVP_MD_CTX_cleanup(ctx.get()));
+  ASSERT_TRUE(ctx.get());
+  ASSERT_FALSE(ctx.get()->md_data);
+  ASSERT_FALSE(ctx.get()->pctx);
+  ASSERT_TRUE(pctx.get());
+
+  // Test assigning a NULL |pctx| with |EVP_MD_CTX_set_pkey_ctx|.
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  bssl::UniquePtr<EVP_PKEY_CTX> null_pctx(nullptr);
+  ASSERT_FALSE(null_pctx.get());
+  // Assign a non-NULL pctx first.
+  EVP_MD_CTX_set_pkey_ctx(md_ctx.get(), pctx.get());
+  ASSERT_TRUE(md_ctx.get()->pctx);
+  // Set again with NUll |pctx|.
+  EVP_MD_CTX_set_pkey_ctx(md_ctx.get(), null_pctx.get());
+  ASSERT_FALSE(md_ctx.get()->pctx);
+  ASSERT_FALSE(null_pctx.get());
+  // Check that clean up works.
+  ASSERT_TRUE(EVP_MD_CTX_cleanup(md_ctx.get()));
 }
 
 struct RsassaPssParamsMatchTestInput {

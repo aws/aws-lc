@@ -99,7 +99,8 @@ int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx) {
 
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
   // |pctx| should be freed by the user of |EVP_MD_CTX| if
-  // |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX| is set.
+  // |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX| is set. Everything other than the external
+  // |pctx| that |ctx->pctx| was pointing to is cleaned up when the flag is set.
   if (ctx->pctx_ops && !(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
     ctx->pctx_ops->free(ctx->pctx);
   }

@@ -1168,6 +1168,61 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
 }
 
+// Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| are approved with
+// manually constructing using the context setting functions.
+TEST_P(RSA_ServiceIndicatorTest, ManualRSASignVerify) {
+  const RSATestVector &rsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), rsaTestVector.func()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+
+  // Generate a generic rsa key.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx;
+  if(rsaTestVector.use_pss) {
+    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+  } else {
+    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  }
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(pctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(pctx.get(), rsaTestVector.key_size));
+  ASSERT_TRUE(EVP_PKEY_keygen(pctx.get(), &raw));
+  pkey.reset(raw);
+  ASSERT_TRUE(pkey);
+
+  // Manual construction for signing.
+  pctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+  // Determine the size of the signature.
+  size_t sig_len = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len)));
+  ASSERT_EQ(approved, rsaTestVector.sig_gen_expect_approved);
+  sig.resize(sig_len);
+
+  // Manual construction for verification.
+  ASSERT_TRUE(EVP_PKEY_verify_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
+  ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
+}
+
 struct ECDSATestVector {
   // nid is the input curve nid.
   const int nid;
@@ -1350,6 +1405,57 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
       approved, ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
                                              signature.size(), kPlaintext,
                                              sizeof(kPlaintext))));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
+}
+
+// Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| are approved with
+// manually constructing using the context setting functions.
+TEST_P(ECDSA_ServiceIndicatorTest, ManualECDSASignVerify) {
+  const ECDSATestVector &ecdsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), ecdsaTestVector.func()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name(ecdsaTestVector.nid));
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(eckey);
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+
+  // Generate a generic ec key.
+  EC_KEY_generate_key(eckey.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
+
+  // Manual construction for signing.
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), ecdsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+  // Determine the size of the signature.
+  size_t sig_len = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len)));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_gen_expect_approved);
+  sig.resize(sig_len);
+
+  // Manual construction for verification.
+  ASSERT_TRUE(EVP_PKEY_verify_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), ecdsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
   ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
 }
 
