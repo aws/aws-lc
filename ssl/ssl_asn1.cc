@@ -1082,11 +1082,12 @@ err:
 
 
 SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
-  CBS cbs;
-  if (in_length < 0) {
+  if ((ctx == NULL) || (in == NULL) ||  (in_length == 0)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return NULL;
   }
+
+  CBS cbs;
 
   SSL *ssl = SSL_new(ctx);
   if (!ssl) {
@@ -1196,6 +1197,9 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
 
 int i2d_SSL(SSL *in, uint8_t **out_data)
 {
+  if (in == NULL) {
+    return 0;
+  }
   ScopedCBB cbb;
   size_t out_len;
   uint8_t *out;

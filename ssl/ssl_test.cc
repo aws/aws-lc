@@ -4889,7 +4889,8 @@ TEST_P(TicketAEADMethodTest, Resume) {
   ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
                                          server_ctx.get(), retry_count,
                                          failure_mode, nullptr);
-  if (transfer_ssl) {
+  // Only transfer when the code is to test SSL transfer and the connection is finished successuflly.
+  if (transfer_ssl && server) {
     // |server| is reset to hold the transferred SSL.
     TransferSSL(&server, server_ctx.get(), nullptr);
   }
