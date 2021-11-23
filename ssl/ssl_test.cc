@@ -4816,6 +4816,8 @@ static void ConnectClientAndServerWithTicketMethod(
   bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
   ASSERT_TRUE(client);
   ASSERT_TRUE(server);
+  // TODO: add flag to call SSL_alloc_crypto_mat when needed.
+  SSL_alloc_crypto_mat(server.get());
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
