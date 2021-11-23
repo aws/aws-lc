@@ -580,6 +580,9 @@ static bool testSSLEncode(uint16_t version) {
 static void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
   bssl::UniquePtr<SSL> decoded_ssl;
   EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl);
+  if (!decoded_ssl) {
+    return;
+  }
   // Transfer the bio.
   TransferBIOs(in, decoded_ssl.get());
   if (out == nullptr) {
@@ -4845,7 +4848,7 @@ static void ConnectClientAndServerWithTicketMethod(
 }
 
 using TicketAEADMethodParam =
-    testing::tuple<uint16_t, unsigned, ssl_test_ticket_aead_failure_mode>;
+    testing::tuple<uint16_t, unsigned, ssl_test_ticket_aead_failure_mode, bool>;
 
 class TicketAEADMethodTest
     : public ::testing::TestWithParam<TicketAEADMethodParam> {};
@@ -4861,6 +4864,11 @@ TEST_P(TicketAEADMethodTest, Resume) {
   const unsigned retry_count = testing::get<1>(GetParam());
   const ssl_test_ticket_aead_failure_mode failure_mode =
       testing::get<2>(GetParam());
+  const bool transfer_ssl = testing::get<3>(GetParam());
+  if (transfer_ssl && (version == TLS1_3_VERSION)) {
+    // TODO: remove this condition when TLS1_3 is supported by SSL encode/decode.
+    return;
+  }
 
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
@@ -4879,6 +4887,10 @@ TEST_P(TicketAEADMethodTest, Resume) {
   ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
                                          server_ctx.get(), retry_count,
                                          failure_mode, nullptr);
+  if (transfer_ssl) {
+    // |server| is reset to hold the transferred SSL.
+    TransferSSL(&server, server_ctx.get(), nullptr);
+  }
   switch (failure_mode) {
     case ssl_test_ticket_aead_ok:
     case ssl_test_ticket_aead_open_hard_fail:
@@ -4947,6 +4959,9 @@ std::string TicketAEADMethodParamToString(
       ret += "OpenHardFail";
       break;
   }
+  if (std::get<3>(params.param)) {
+    ret += "_SSLTransfer";
+  }
   return ret;
 }
 
@@ -4957,7 +4972,8 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(ssl_test_ticket_aead_ok,
                                      ssl_test_ticket_aead_seal_fail,
                                      ssl_test_ticket_aead_open_soft_fail,
-                                     ssl_test_ticket_aead_open_hard_fail)),
+                                     ssl_test_ticket_aead_open_hard_fail),
+                     testing::Values(TRANSFER_SSL, !TRANSFER_SSL)),
     TicketAEADMethodParamToString);
 
 TEST(SSLTest, SelectNextProto) {

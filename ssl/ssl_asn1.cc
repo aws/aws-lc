@@ -963,7 +963,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   uint64_t ssl_serial_ver;
   uint64_t rwstate;
 
-  CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq, host_name;
+  CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq;
   int sheded = 0;
   // Read version string from buffer
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
