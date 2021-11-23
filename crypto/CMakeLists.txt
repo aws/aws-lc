@@ -588,6 +588,7 @@ if(BUILD_TESTING)
     hrss/hrss_test.cc
     impl_dispatch_test.cc
     lhash/lhash_test.cc
+    mem_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
     pem/pem_test.cc
