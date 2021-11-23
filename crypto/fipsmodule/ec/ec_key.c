@@ -390,13 +390,16 @@ int EC_KEY_check_fips(const EC_KEY *key) {
     BIGNUM *x = BN_new();
     BIGNUM *y = BN_new();
     int ret = 1;
-    if (key->pub_key->group->meth->felem_to_bytes == 0 ||
-        !ec_felem_to_bignum(key->pub_key->group, x, &key->pub_key->raw.X) ||
-        !ec_felem_to_bignum(key->pub_key->group, y, &key->pub_key->raw.Y) ||
-        BN_is_negative(x) ||
-        BN_is_negative(y) ||
-        BN_cmp(x, &key->pub_key->group->field) >= 0 ||
-        BN_cmp(y, &key->pub_key->group->field) >= 0) {
+    if (key->pub_key->group->meth->felem_to_bytes == NULL) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+      ret = 0;
+    } else if (!ec_felem_to_bignum(key->pub_key->group, x, &key->pub_key->raw.X) ||
+               !ec_felem_to_bignum(key->pub_key->group, y, &key->pub_key->raw.Y)) {
+      // Error already written to error queue by |bn_wexpand|.
+      ret = 0;
+    } else if (BN_is_negative(x) || BN_is_negative(y) ||
+               BN_cmp(x, &key->pub_key->group->field) >= 0 ||
+               BN_cmp(y, &key->pub_key->group->field) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
       ret = 0;
     }
