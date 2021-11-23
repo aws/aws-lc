@@ -188,7 +188,7 @@ void *OPENSSL_malloc_align_internal(size_t size, size_t alignment) {
   // offset size: number of offset bytes needed, plus |ALIGN_OFFSET_SIZE|.
   // memory region: |aligned_ptr| points to this region of size |size|.
 
-  uint8_t prefix_size = ALIGN_OFFSET_SIZE + (alignment - 1);
+  size_t prefix_size = ALIGN_OFFSET_SIZE + (alignment - 1);
   void *ptr = OPENSSL_malloc(prefix_size + size);
   if (!ptr) {
     return NULL;
