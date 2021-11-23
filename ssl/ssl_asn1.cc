@@ -949,6 +949,8 @@ static int SSL_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
 //                                                      since the configuration 
 //                                                      may be shed after the handshake completes.
 //                                                      TODO: check corner cases to see if config should be encoded.
+//      session_reused BOOLEAN                       -- data from ssl->s3->session_reused
+//                                                      TODO: move session_reused when encode s3 state.
 //      hostname       [1] OCTET STRING OPTIONAL     -- hostname set in SSL.
 //  }
 //
@@ -965,6 +967,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
   CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq;
   int sheded = 0;
+  int session_reused = 0;
   // Read version string from buffer
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
     !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
@@ -992,7 +995,8 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
     !CBS_get_asn1(&ssl_cbs, &write_seq, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE ||
-    !CBS_get_asn1_bool(&ssl_cbs, &sheded)) {
+    !CBS_get_asn1_bool(&ssl_cbs, &sheded) ||
+    !CBS_get_asn1_bool(&ssl_cbs, &session_reused)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -1028,6 +1032,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   // uint16_t ssl_protocol_version(const SSL *ssl) {
   // assert(ssl->s3->have_version);
   ssl->s3->have_version = true;
+  ssl->s3->session_reused = (session_reused == 1);
 
   if (!SSL_parse_string(&ssl_cbs, &(ssl->s3->hostname), kHostNameTag)) {
     return 0;
@@ -1161,6 +1166,10 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
   CBB ssl;
 
   int sheded = !in->config;
+  int session_reused = 0;
+  if (in->s3->session_reused) {
+    session_reused = 1;
+  }
 
   if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
     !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
@@ -1176,7 +1185,8 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
                                in->cm->write_iv_length) ||
     !CBB_add_asn1_octet_string(&ssl, in->s3->read_sequence, TLS_SEQ_NUM_SIZE) ||
     !CBB_add_asn1_octet_string(&ssl, in->s3->write_sequence, TLS_SEQ_NUM_SIZE) ||
-    !CBB_add_asn1_bool(&ssl, sheded)) {
+    !CBB_add_asn1_bool(&ssl, sheded) ||
+    !CBB_add_asn1_bool(&ssl, session_reused)) {
     // TODO: check if below put is valid.
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
