@@ -285,8 +285,8 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
   ecp_nistz256_point_add(r, r, &h_st->h);
 
-  OPENSSL_align_free_internal(table_st);
-  OPENSSL_align_free_internal(h_st);
+  OPENSSL_free_align_internal(table_st);
+  OPENSSL_free_align_internal(h_st);
 }
 
 typedef union {
@@ -332,7 +332,7 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   OPENSSL_memcpy(r->Y.words, out_st->h.Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, out_st->h.Z, P256_LIMBS * sizeof(BN_ULONG));
 
-  OPENSSL_align_free_internal(out_st);
+  OPENSSL_free_align_internal(out_st);
 }
 
 static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
@@ -377,8 +377,8 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
   OPENSSL_memcpy(r->Y.words, p_st->point.p.Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, p_st->point.p.Z, P256_LIMBS * sizeof(BN_ULONG));
 
-  OPENSSL_align_free_internal(t_st);
-  OPENSSL_align_free_internal(p_st);
+  OPENSSL_free_align_internal(t_st);
+  OPENSSL_free_align_internal(p_st);
 }
 
 static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
@@ -442,8 +442,8 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   OPENSSL_memcpy(r->Y.words, p_st->point.p.Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, p_st->point.p.Z, P256_LIMBS * sizeof(BN_ULONG));
 
-  OPENSSL_align_free_internal(t_st);
-  OPENSSL_align_free_internal(p_st);
+  OPENSSL_free_align_internal(t_st);
+  OPENSSL_free_align_internal(p_st);
 }
 
 static int ecp_nistz256_get_affine(const EC_GROUP *group,

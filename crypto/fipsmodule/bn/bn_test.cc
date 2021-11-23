@@ -2824,6 +2824,6 @@ TEST_F(BNTest, RSAZABI) {
   CHECK_ABI(rsaz_1024_gather5_avx2, aligned_vars_st->rsaz1, aligned_vars_st->table, 7);
   CHECK_ABI(rsaz_1024_red2norm_avx2, norm, aligned_vars_st->rsaz1);
 
-  OPENSSL_align_free_internal(aligned_vars_st);
+  OPENSSL_free_align_internal(aligned_vars_st);
 }
 #endif   // RSAZ_ENABLED && SUPPORTS_ABI_TEST

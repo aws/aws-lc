@@ -484,6 +484,6 @@ TEST(HRSS, ABI) {
   EXPECT_EQ(Bytes(aligned_scratch_st->scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE,
                   sizeof(kCanary)),
             Bytes(kCanary));
-  OPENSSL_align_free_internal(aligned_scratch_st);
+  OPENSSL_free_align_internal(aligned_scratch_st);
 }
 #endif  // POLY_RQ_MUL_ASM && SUPPORTS_ABI_TEST

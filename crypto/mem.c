@@ -77,8 +77,7 @@ OPENSSL_STATIC_ASSERT(OPENSSL_MALLOC_PREFIX >= sizeof(size_t),
 
 typedef uint8_t align_offset_t;
 #define ALIGN_OFFSET_SIZE sizeof(align_offset_t)
-OPENSSL_STATIC_ASSERT(sizeof(align_offset_t) >= 1,
-                      align_offset_t_is_too_small)
+OPENSSL_STATIC_ASSERT(sizeof(align_offset_t) >= 1, align_offset_t_is_too_small)
 
 #if defined(OPENSSL_ASAN)
 void __asan_poison_memory_region(const volatile void *addr, size_t size);
@@ -224,7 +223,7 @@ void OPENSSL_free(void *orig_ptr) {
   }
 }
 
-void OPENSSL_align_free_internal(void *aligned_ptr) {
+void OPENSSL_free_align_internal(void *aligned_ptr) {
 
   if (aligned_ptr == NULL) {
     return;

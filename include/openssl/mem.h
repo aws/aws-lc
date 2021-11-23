@@ -166,6 +166,12 @@ OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 
 // Internal functions. Do not take a dependency on these.
 
+// Use these functions to heap-allocate memory that is aligned to some specified
+// boundary. We prefer letting the compiler handle this through e.g. |alignas|.
+// However, some ancient compilers e.g. (gcc 4.1.2) incorrectly handles such
+// align request.
+// TODO: remove and revert associated changes when ancient compilers are gone.
+
 // Internal function.
 // Similar to |OPENSSL_malloc| but also aligns the resulting pointer to a
 // |alignment|-boundary. |alignment| must be a power of 2 with a maximum value
@@ -177,7 +183,7 @@ OPENSSL_EXPORT void * OPENSSL_malloc_align_internal(size_t size, size_t alignmen
 // OPENSSL_free does nothing if |aligned_ptr| is NULL. Otherwise it zeros out
 // the memory allocated at |aligned_ptr| and frees it. Must only be used on
 // a pointer returned by |OPENSSL_malloc_align_internal|.
-OPENSSL_EXPORT void OPENSSL_align_free_internal(void *aligned_ptr);
+OPENSSL_EXPORT void OPENSSL_free_align_internal(void *aligned_ptr);
 
 
 #if defined(__cplusplus)

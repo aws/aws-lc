@@ -74,7 +74,7 @@ TEST(P256_NistzTest, SelectW5) {
   P256_POINT val;
   CHECK_ABI(ecp_nistz256_select_w5, &val, table_st->table, 7);
 
-  OPENSSL_align_free_internal(table_st);
+  OPENSSL_free_align_internal(table_st);
 }
 
 TEST(P256_NistzTest, SelectW7) {
@@ -111,7 +111,7 @@ TEST(P256_NistzTest, SelectW7) {
   P256_POINT_AFFINE val;
   CHECK_ABI(ecp_nistz256_select_w7, &val, table_st->table, 42);
 
-  OPENSSL_align_free_internal(table_st);
+  OPENSSL_free_align_internal(table_st);
 }
 
 TEST(P256_NistzTest, BEEU) {
