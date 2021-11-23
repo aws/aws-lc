@@ -4586,6 +4586,8 @@ OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
 //
 // TODO: revisit |size_t| vs |long| for |in_length|. d2i_SSL_SESSION uses long.
 // TODO: add a field to tell how many times of this SSL is transferred.
+//
+// Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in,
                             size_t in_length);
 
@@ -4596,6 +4598,8 @@ OPENSSL_EXPORT SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in,
 //
 // TODO: follow ssl_serialize_handoff to rename this?
 // What this API currently does seems different from its semantics.
+//
+// Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT int i2d_SSL(SSL *in, uint8_t **out);
 
 // Allocate space for SSL crypto material
