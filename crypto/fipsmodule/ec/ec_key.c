@@ -371,7 +371,6 @@ err:
 }
 
 int EC_KEY_check_fips(const EC_KEY *key) {
-  BIGNUM *x, *y;
   if (EC_KEY_is_opaque(key)) {
     // Opaque keys can't be checked.
     OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
@@ -388,8 +387,9 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   // Note: The check for x and y being negative seems superfluous since
   // ec_felem_to_bignum() calls BN_bin2bn() which sets the `neg` flag to 0.
   if(ec_felem_equal(key->pub_key->group, &key->pub_key->group->one, &key->pub_key->raw.Z)) {
-    x = BN_new();
-    y = BN_new();
+    BIGNUM *x = BN_new();
+    BIGNUM *y = BN_new();
+    int ret = 1;
     if (key->pub_key->group->meth->felem_to_bytes == 0 ||
         !ec_felem_to_bignum(key->pub_key->group, x, &key->pub_key->raw.X) ||
         !ec_felem_to_bignum(key->pub_key->group, y, &key->pub_key->raw.Y) ||
@@ -398,7 +398,12 @@ int EC_KEY_check_fips(const EC_KEY *key) {
         BN_cmp(x, &key->pub_key->group->field) >= 0 ||
         BN_cmp(y, &key->pub_key->group->field) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-      return 0;
+      ret = 0;
+    }
+    BN_free(x);
+    BN_free(y);
+    if (ret == 0) {
+      return ret;
     }
   }
 
