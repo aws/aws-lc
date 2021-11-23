@@ -371,6 +371,7 @@ err:
 }
 
 int EC_KEY_check_fips(const EC_KEY *key) {
+  BIGNUM *x, *y;
   if (EC_KEY_is_opaque(key)) {
     // Opaque keys can't be checked.
     OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
@@ -379,6 +380,26 @@ int EC_KEY_check_fips(const EC_KEY *key) {
 
   if (!EC_KEY_check_key(key)) {
     return 0;
+  }
+
+  // Check that the coordinates are within the range [0,p-1], when the (raw)
+  // point is affine; i.e. Z=1.
+  // This is the case when validating a received public key.
+  // Note: The check for x and y being negative seems superfluous since
+  // ec_felem_to_bignum() calls BN_bin2bn() which sets the `neg` flag to 0.
+  if(ec_felem_equal(key->pub_key->group, &key->pub_key->group->one, &key->pub_key->raw.Z)) {
+    x = BN_new();
+    y = BN_new();
+    if (key->pub_key->group->meth->felem_to_bytes == 0 ||
+        !ec_felem_to_bignum(key->pub_key->group, x, &key->pub_key->raw.X) ||
+        !ec_felem_to_bignum(key->pub_key->group, y, &key->pub_key->raw.Y) ||
+        BN_is_negative(x) ||
+        BN_is_negative(y) ||
+        BN_cmp(x, &key->pub_key->group->field) >= 0 ||
+        BN_cmp(y, &key->pub_key->group->field) >= 0) {
+      OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
+      return 0;
+    }
   }
 
   if (key->priv_key) {
