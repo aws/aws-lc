@@ -10,12 +10,13 @@
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
-#include <openssl/digest.h>
 #include <openssl/dh.h>
+#include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ecdh.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -410,6 +411,11 @@ const uint8_t kDHOutput[2048 / 8] = {
     0xc8, 0xe4, 0x5e, 0xb8
 };
 
+static const uint8_t kOutput_md4[MD4_DIGEST_LENGTH] = {
+    0xab, 0x6b, 0xda, 0x84, 0xc0, 0x6b, 0xd0, 0x1d, 0x19, 0xc0, 0x08,
+    0x11, 0x07, 0x8d, 0xce, 0x0e
+};
+
 static const uint8_t kOutput_md5[MD5_DIGEST_LENGTH] = {
     0xe9, 0x70, 0xa2, 0xf7, 0x9c, 0x55, 0x57, 0xac, 0x4e, 0x7f, 0x6b,
     0xbc, 0xa3, 0xb9, 0xb7, 0xdb
@@ -759,6 +765,7 @@ struct MD {
   uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *);
 };
 
+static const MD md4 = { "KAT for MD4", MD4_DIGEST_LENGTH, &EVP_md4, &MD4 };
 static const MD md5 = { "KAT for MD5", MD5_DIGEST_LENGTH, &EVP_md5, &MD5 };
 static const MD sha1 = { "KAT for SHA1", SHA_DIGEST_LENGTH, &EVP_sha1, &SHA1 };
 static const MD sha224 = { "KAT for SHA224", SHA224_DIGEST_LENGTH, &EVP_sha224, &SHA224 };
@@ -775,6 +782,7 @@ struct DigestTestVector {
   // expected to be approved or not.
   const int expect_approved;
 } kDigestTestVectors[] = {
+    { md4, kOutput_md4, AWSLC_NOT_APPROVED },
     { md5, kOutput_md5, AWSLC_NOT_APPROVED },
     { sha1, kOutput_sha1, AWSLC_APPROVED },
     { sha224, kOutput_sha224, AWSLC_APPROVED },
@@ -1586,6 +1594,16 @@ TEST(ServiceIndicatorTest, SHA) {
 
   std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
   std::vector<uint8_t> digest;
+
+  digest.resize(MD4_DIGEST_LENGTH);
+  MD4_CTX md4_ctx;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD4_Init(&md4_ctx)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD4_Update(&md4_ctx, plaintext.data(), plaintext.size())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD4_Final(digest.data(), &md4_ctx)));
+  ASSERT_TRUE(check_test(kOutput_md4, digest.data(), sizeof(kOutput_md4), "MD4 Hash KAT"));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 
   digest.resize(MD5_DIGEST_LENGTH);
   MD5_CTX md5_ctx;
