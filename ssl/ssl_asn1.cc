@@ -1022,6 +1022,11 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   ssl->version = sess->ssl_version;
   // Indicate we've done handshake
   ssl->s3->hs->handshake_finalized = true;
+  // have_version is true if the connection's final version is known. Otherwise
+  // the version has not been negotiated yet.
+  // uint16_t ssl_protocol_version(const SSL *ssl) {
+  // assert(ssl->s3->have_version);
+  ssl->s3->have_version = true;
 
   if (!SSL_parse_string(&ssl_cbs, &(ssl->s3->hostname), kHostNameTag)) {
     return 0;
