@@ -20,15 +20,15 @@ if(WIN32)
   target_link_libraries(bssl_shim ws2_32)
 endif()
 
-add_executable(
-  ssl_conn_transfer
+# add_executable(
+#   ssl_conn_transfer
 
-  ssl_conn_transfer.c
-)
+#   ssl_conn_transfer.c
+# )
 
-add_dependencies(ssl_conn_transfer global_target)
+# add_dependencies(ssl_conn_transfer global_target)
 
-target_link_libraries(ssl_conn_transfer ssl crypto)
+# target_link_libraries(ssl_conn_transfer ssl crypto)
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   add_executable(
