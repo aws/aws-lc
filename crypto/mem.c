@@ -171,8 +171,9 @@ void *OPENSSL_malloc(size_t size) {
 
 void *OPENSSL_malloc_align_internal(size_t size, size_t alignment) {
 
-  // Only support up to 128-byte alignment.
-  // |align_pointer| further requires |alignment| to be a power of 2.
+  // Only support up to 128-byte alignment. Current limit imposed by the type
+  // |align_offset_t|. |align_pointer| further requires |alignment| to be a
+  // power of 2.
   if ((alignment == 0) ||
       (alignment > 128) ||
       ((alignment & (alignment - 1)) != 0)) {
@@ -194,7 +195,10 @@ void *OPENSSL_malloc_align_internal(size_t size, size_t alignment) {
     return NULL;
   }
 
-  void *aligned_ptr = align_pointer(ptr, alignment);
+  // Advance pointer to make sure there is space to store the offset size.
+  // We have allocated an additional |prefix_size| amount of bytes, so there is
+  // enough space (|alignment|-1) for offset padding.
+  void *aligned_ptr = align_pointer((char *)ptr + 1, alignment);
 
   *((align_offset_t *)aligned_ptr - 1) = (align_offset_t)((uintptr_t)aligned_ptr - (uintptr_t)ptr);
 
