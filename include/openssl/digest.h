@@ -303,20 +303,19 @@ OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 // This function was deprecated from OpenSSL in BoringSSL, but was brought back
 // to AWS-LC.
 //
-// If |pctx| is not NULL, |EVP_MD_CTX_set_pkey_ctx| sets |ctx|'s |EVP_PKEY_CTX|
-// reference to |pctx|. The |EVP_PKEY_CTX| object |pctx| needs to have been
-// initialised before associating it with |ctx|. The hash functions associated
-// to |ctx| and |pctx| must be equal. Once |EVP_MD_CTX_set_pkey_ctx| is called,
-// the callee is responsible for freeing |pctx|. Calling |EVP_MD_CTX_cleanup|
-// will not free |pctx|.
+// |EVP_MD_CTX_set_pkey_ctx| sets |ctx|'s |EVP_PKEY_CTX| reference to |pctx|.
+// The |EVP_PKEY_CTX| object |pctx| needs to have been initialised before
+// associating it with |ctx|. The hash functions associated to |ctx| and |pctx|
+// must be equal. Once |EVP_MD_CTX_set_pkey_ctx| is called, the callee is
+// responsible for freeing |pctx|. Calling |EVP_MD_CTX_cleanup| will not free
+// |pctx|.
 //
-// The callee is responsible for the memory associated to |ctx|'s |EVP_PKEY_CTX|
-// reference, until |EVP_MD_CTX_set_pkey_ctx| is called with |pctx| equal to
-// NULL.
+// The caller is responsible for the memory associated to |ctx|'s |EVP_PKEY_CTX|
+// reference, until |EVP_MD_CTX_set_pkey_ctx| is called again with |pctx| = NULL.
 //
 // |EVP_MD_CTX_set_pkey_ctx| will overwrite any |EVP_PKEY_CTX| object associated
-// to |ctx| if it was associated through a previous |EVP_MD_CTX_set_pkey_ctx|
-// call |ctx|.
+// to |ctx|. If it was associated through a previous |EVP_MD_CTX_set_pkey_ctx|
+// call, it will be freed first.
 OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx);
 
 struct evp_md_pctx_ops;

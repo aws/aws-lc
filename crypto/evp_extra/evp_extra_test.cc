@@ -1220,6 +1220,10 @@ TEST(EVPExtraTest, PKEY_CTX_manual) {
   ASSERT_FALSE(null_pctx.get());
   // Check that clean up works.
   ASSERT_TRUE(EVP_MD_CTX_cleanup(md_ctx.get()));
+  ASSERT_TRUE(ctx.get());
+  ASSERT_FALSE(ctx.get()->md_data);
+  ASSERT_FALSE(ctx.get()->pctx);
+  ASSERT_TRUE(pctx.get());
 }
 
 struct RsassaPssParamsMatchTestInput {
