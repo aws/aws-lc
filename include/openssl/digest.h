@@ -306,15 +306,16 @@ OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 // |EVP_MD_CTX_set_pkey_ctx| sets |ctx|'s |EVP_PKEY_CTX| reference to |pctx|.
 // The |EVP_PKEY_CTX| object |pctx| needs to have been initialised before
 // associating it with |ctx|. The hash functions associated to |ctx| and |pctx|
-// must be equal. Once |EVP_MD_CTX_set_pkey_ctx| is called, the callee is
+// must be equal. Once |EVP_MD_CTX_set_pkey_ctx| is called, the caller is
 // responsible for freeing |pctx|. Calling |EVP_MD_CTX_cleanup| will not free
 // |pctx|.
 //
 // The caller is responsible for the memory associated to |ctx|'s |EVP_PKEY_CTX|
-// reference, until |EVP_MD_CTX_set_pkey_ctx| is called again with |pctx| = NULL.
+// reference (the passed in |pctx| parameter), until |EVP_MD_CTX_set_pkey_ctx|
+// is called again with |pctx| = NULL.
 //
 // |EVP_MD_CTX_set_pkey_ctx| will overwrite any |EVP_PKEY_CTX| object associated
-// to |ctx|. If it was associated through a previous |EVP_MD_CTX_set_pkey_ctx|
+// to |ctx|. If it was not associated through a previous |EVP_MD_CTX_set_pkey_ctx|
 // call, it will be freed first.
 OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx);
 
