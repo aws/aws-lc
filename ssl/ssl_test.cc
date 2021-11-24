@@ -568,17 +568,17 @@ static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
       << "wbio is not set"
       << ERR_reason_error_string(ERR_get_error());
   // Move the bio.
+  // Increase ref count of |rbio|.
+  // |SSL_set_bio(to, rbio, wbio)| only increments the references of |rbio| by 1 when |rbio == wbio|.
+  // But |SSL_free| decreases the reference of |rbio| and |wbio|.
+  if (rbio == wbio) {
+    BIO_up_ref(rbio);
+  }
   SSL_set_bio(to, rbio, wbio);
-  // Release |rbio| and |wbio| of |server_|.
-  // SSL_set_bio(server2_, rbio, wbio) increments the references of bio.
-  // There is no function to decrease the references.
   // TODO: test half read and write hold by SSL.
-  SSL *from_ssl = from->release();
-  from_ssl->rbio.release();
-  from_ssl->wbio.release();
   // TODO: add a test to check error code?
   // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
-  SSL_free(from_ssl);
+  SSL_free(from->release());
 }
 
 static bool testSSLEncode(uint16_t version) {
