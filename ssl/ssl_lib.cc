@@ -694,6 +694,14 @@ SSL_CONFIG::~SSL_CONFIG() {
   }
 }
 
+SSL_CRYPTO_MAT::SSL_CRYPTO_MAT() {
+}
+
+SSL_CRYPTO_MAT::~SSL_CRYPTO_MAT() {
+  // TODO: revisit SSL_CRYPTO_MAT malloc(MakeUnique) and free when its fields are changed.
+  // Currently, the fields are static allocated in the struct.
+}
+
 void SSL_free(SSL *ssl) {
   Delete(ssl);
 }
@@ -3075,15 +3083,10 @@ int SSL_alloc_crypto_mat(SSL *ssl) {
     return 0;
   }
 
-  void *ptr = OPENSSL_malloc(sizeof(SSL_CRYPTO_MAT));
-
-  if (!ptr)
-  {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  ssl->cm = MakeUnique<bssl::SSL_CRYPTO_MAT>();
+  if (!(ssl->cm)) {
     return 0;
   }
-
-  ssl->cm = (SSL_CRYPTO_MAT *)ptr;
 
   return 1;
 }

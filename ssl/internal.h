@@ -180,6 +180,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 BSSL_NAMESPACE_BEGIN
 
 struct SSL_CONFIG;
+struct SSL_CRYPTO_MAT;
 struct SSL_HANDSHAKE;
 struct SSL_PROTOCOL_METHOD;
 struct SSL_X509_METHOD;
@@ -2608,6 +2609,11 @@ enum ssl_shutdown_t {
 
 #define TLS_SEQ_NUM_SIZE 8
 struct SSL_CRYPTO_MAT {
+  static constexpr bool kAllowUniquePtr = true;
+
+  SSL_CRYPTO_MAT();
+  ~SSL_CRYPTO_MAT();
+
   uint8_t read_key[EVP_MAX_KEY_LENGTH] = {0};
   uint8_t write_key[EVP_MAX_KEY_LENGTH] = {0};
   uint8_t read_iv[EVP_MAX_IV_LENGTH] = {0};
@@ -3749,7 +3755,7 @@ struct ssl_st {
 
   // Crypto material for SSL connection [de]serialization
   // @see i2d_SSL(), d2i_SSL()
-  bssl::SSL_CRYPTO_MAT *cm = nullptr;
+  bssl::UniquePtr<bssl::SSL_CRYPTO_MAT> cm;
 
   // callback that allows applications to peek at protocol messages
   void (*msg_callback)(int write_p, int version, int content_type,

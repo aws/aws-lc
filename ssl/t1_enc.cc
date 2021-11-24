@@ -251,7 +251,7 @@ bool tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
   }
 
   if (ssl->cm) {
-    ssl_save_session_cm(ssl->cm,
+    ssl_save_session_cm(ssl->cm.get(),
                         (direction == (ssl->server ? evp_aead_open : evp_aead_seal)),
                         key.data(), key.size(), iv.data(), iv.size());
   }

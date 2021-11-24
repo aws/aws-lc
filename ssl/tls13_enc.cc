@@ -199,7 +199,7 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
                                           SSL_is_dtls(ssl), session->cipher,
                                           key, Span<const uint8_t>(), iv);
     if (ssl->cm) {
-      ssl_save_session_cm(ssl->cm,
+      ssl_save_session_cm(ssl->cm.get(),
                           (direction == (ssl->server ? evp_aead_open : evp_aead_seal)),
                           key.data(), key.size(), iv.data(), iv.size());
     }

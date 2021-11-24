@@ -1145,10 +1145,10 @@ err:
     ssl->s3->established_session= nullptr;
   }
   if (ssl) {
-    if (ssl->cm) {
-      OPENSSL_memset(ssl->cm, 0, sizeof(SSL_CRYPTO_MAT));
-      Delete(ssl->cm);
-    }
+    // if (ssl->cm) {
+    //   OPENSSL_memset(ssl->cm, 0, sizeof(SSL_CRYPTO_MAT));
+    //   Delete(ssl->cm);
+    // }
     SSL_free(ssl);
   }
   return NULL;
