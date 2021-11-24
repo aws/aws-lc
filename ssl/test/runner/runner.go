@@ -1953,51 +1953,51 @@ NextTest:
 	return splitHandshakeTests, nil
 }
 
-func addSSLi2d2iTests() {
-	i2d2iSSLTests := []testCase{
-		{
-			name: "basicI2d2iSSL",
-			testType: serverTest,
-			config: Config{
-				MaxVersion:   VersionTLS12,
-			},
-			shouldFail:         false,
-			flags: []string{"-i2d2i-ssl"},
-		},
-		{
-			name: "basicI2d2iSSL_TLS13",
-			testType: serverTest,
-			config: Config{
-				MaxVersion:   VersionTLS13,
-			},
-			shouldFail:         false,
-			flags: []string{"-i2d2i-ssl"},
-		},
-		{
-			name: "basicI2d2iSSL-keyNoUpdate",
-			testType: serverTest,
-			config: Config{
-				MinVersion:   VersionTLS13,
-			},
-			shouldFail:         false,
-			flags: []string{"-i2d2i-ssl"},
-			sendKeyUpdates:   1,
-			keyUpdateRequest: keyUpdateNotRequested,
-		},
-		{
-			name: "basicI2d2iSSL-keyUpdate",
-			testType: serverTest,
-			config: Config{
-				MinVersion:   VersionTLS13,
-			},
-			shouldFail:         false,
-			flags: []string{"-i2d2i-ssl"},
-			sendKeyUpdates:   1,
-			keyUpdateRequest: keyUpdateRequested,
-		},
-        }
-	testCases = append(testCases, i2d2iSSLTests...)
-}
+// func addSSLi2d2iTests() {
+// 	i2d2iSSLTests := []testCase{
+// 		{
+// 			name: "basicI2d2iSSL",
+// 			testType: serverTest,
+// 			config: Config{
+// 				MaxVersion:   VersionTLS12,
+// 			},
+// 			shouldFail:         false,
+// 			flags: []string{"-i2d2i-ssl"},
+// 		},
+// 		{
+// 			name: "basicI2d2iSSL_TLS13",
+// 			testType: serverTest,
+// 			config: Config{
+// 				MaxVersion:   VersionTLS13,
+// 			},
+// 			shouldFail:         false,
+// 			flags: []string{"-i2d2i-ssl"},
+// 		},
+// 		{
+// 			name: "basicI2d2iSSL-keyNoUpdate",
+// 			testType: serverTest,
+// 			config: Config{
+// 				MinVersion:   VersionTLS13,
+// 			},
+// 			shouldFail:         false,
+// 			flags: []string{"-i2d2i-ssl"},
+// 			sendKeyUpdates:   1,
+// 			keyUpdateRequest: keyUpdateNotRequested,
+// 		},
+// 		{
+// 			name: "basicI2d2iSSL-keyUpdate",
+// 			testType: serverTest,
+// 			config: Config{
+// 				MinVersion:   VersionTLS13,
+// 			},
+// 			shouldFail:         false,
+// 			flags: []string{"-i2d2i-ssl"},
+// 			sendKeyUpdates:   1,
+// 			keyUpdateRequest: keyUpdateRequested,
+// 		},
+//         }
+// 	testCases = append(testCases, i2d2iSSLTests...)
+// }
 
 func addBasicTests() {
 	basicTests := []testCase{
@@ -19232,7 +19232,7 @@ func main() {
 	addDelegatedCredentialTests()
 	addEncryptedClientHelloTests()
 	addHintMismatchTests()
-	addSSLi2d2iTests()
+	// addSSLi2d2iTests()
 
 	toAppend, err := convertToSplitHandshakeTests(testCases)
 	if err != nil {
