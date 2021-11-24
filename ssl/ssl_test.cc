@@ -86,6 +86,16 @@ struct VersionParam {
   bool transfer_ssl;
 };
 
+struct SSLTestParam {
+  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to another SSL.
+  // After transfer, the encoded SSL is freed. The decoded one is used to exchange data.
+  // This flag is to replay existing tests with the transferred SSL.
+  // If false, the tests use the original server SSL.
+  // If true, the tests are replayed with the transferred server SSL.
+  // Note: SSL transfer works with TLS 1.2 after handshake finished.
+  bool transfer_ssl;
+};
+
 static void printa(const uint8_t *ticket_key, size_t len) {
   for (size_t i = 0; i < len; i++) {
     printf("%02x", ticket_key[i]);
@@ -107,6 +117,23 @@ static const VersionParam kAllVersions[] = {
     {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2", !TRANSFER_SSL},
     {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2_SSL_TRANSFER", TRANSFER_SSL},
 };
+
+static const SSLTestParam kSSLTestParams[] = {
+    {!TRANSFER_SSL},
+    {TRANSFER_SSL},
+};
+
+class SSLTest : public testing::TestWithParam<SSLTestParam> {};
+
+INSTANTIATE_TEST_SUITE_P(SSLTests, SSLTest,
+                         testing::ValuesIn(kSSLTestParams),
+                         [](const testing::TestParamInfo<SSLTestParam> &i) {
+                           if (i.param.transfer_ssl) {
+                             return "SSL_Transfer";
+                           } else {
+                             return "NO_SSL_Transfer";
+                           }
+                         });
 
 struct ExpectedCipher {
   unsigned long id;
@@ -7638,7 +7665,7 @@ TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
   EXPECT_EQ(Bytes(SessionIDOf(client.get())), Bytes(SessionIDOf(server.get())));
 }
 
-TEST(SSLTest, WriteWhileExplicitRenegotiate) {
+TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(ctx);
 
@@ -7651,6 +7678,11 @@ TEST(SSLTest, WriteWhileExplicitRenegotiate) {
   ASSERT_TRUE(CreateClientAndServer(&client, &server, ctx.get(), ctx.get()));
   SSL_set_renegotiate_mode(client.get(), ssl_renegotiate_explicit);
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  if (GetParam().transfer_ssl) {
+    // |server| is reset to hold the transferred SSL.
+    TransferSSL(&server, ctx.get(), nullptr);
+  }
 
   static const uint8_t kInput[] = {'h', 'e', 'l', 'l', 'o'};
 

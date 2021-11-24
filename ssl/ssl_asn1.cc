@@ -945,6 +945,8 @@ static int SSL_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
 //      write_iv       OCTET STRING                  -- connection write IV
 //      read_seq       OCTET STRING                  -- connection read sequence number
 //      write_seq      OCTET STRING                  -- connection write sequence number
+//      server_random  OCTET STRING                  -- data from ssl->s3->server_random
+//      client_random  OCTET STRING                  -- data from ssl->s3->client_random
 //      sheded         BOOLEAN                       -- indicate if the config is sheded. The config may not exist
 //                                                      since the configuration 
 //                                                      may be shed after the handshake completes.
@@ -966,6 +968,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   uint64_t rwstate;
 
   CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq;
+  CBS server_random, client_random;
   int sheded = 0;
   int session_reused = 0;
   // Read version string from buffer
@@ -995,6 +998,10 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
     !CBS_get_asn1(&ssl_cbs, &write_seq, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE ||
+    !CBS_get_asn1(&ssl_cbs, &server_random, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&server_random) != SSL3_RANDOM_SIZE ||
+    !CBS_get_asn1(&ssl_cbs, &client_random, CBS_ASN1_OCTETSTRING) ||
+    CBS_len(&client_random) != SSL3_RANDOM_SIZE ||
     !CBS_get_asn1_bool(&ssl_cbs, &sheded) ||
     !CBS_get_asn1_bool(&ssl_cbs, &session_reused)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1026,6 +1033,8 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   ssl->version = sess->ssl_version;
   // Indicate we've done handshake
   ssl->s3->hs->handshake_finalized = true;
+  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random), CBS_len(&server_random));
+  OPENSSL_memcpy(ssl->s3->client_random, CBS_data(&client_random), CBS_len(&client_random));
   // TODO: check how to serialize internal field state.
   // have_version is true if the connection's final version is known. Otherwise
   // the version has not been negotiated yet.
@@ -1183,8 +1192,12 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
                                in->cm->read_iv_length) ||
     !CBB_add_asn1_octet_string(&ssl, in->cm->write_iv,
                                in->cm->write_iv_length) ||
+    // TODO: read_sequence bytes may not equal to TLS_SEQ_NUM_SIZE.
+    // Revisit this asn1 by checking SSL_SESSION sid_ctx field encode and decode.
     !CBB_add_asn1_octet_string(&ssl, in->s3->read_sequence, TLS_SEQ_NUM_SIZE) ||
     !CBB_add_asn1_octet_string(&ssl, in->s3->write_sequence, TLS_SEQ_NUM_SIZE) ||
+    !CBB_add_asn1_octet_string(&ssl, in->s3->server_random, SSL3_RANDOM_SIZE) ||
+    !CBB_add_asn1_octet_string(&ssl, in->s3->client_random, SSL3_RANDOM_SIZE) ||
     !CBB_add_asn1_bool(&ssl, sheded) ||
     !CBB_add_asn1_bool(&ssl, session_reused)) {
     // TODO: check if below put is valid.
