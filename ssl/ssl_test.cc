@@ -96,12 +96,12 @@ struct SSLTestParam {
   bool transfer_ssl;
 };
 
-static void printa(const uint8_t *ticket_key, size_t len) {
-  for (size_t i = 0; i < len; i++) {
-    printf("%02x", ticket_key[i]);
-  }
-  printf("\n");
-}
+// static void printa(const uint8_t *ticket_key, size_t len) {
+//   for (size_t i = 0; i < len; i++) {
+//     printf("%02x", ticket_key[i]);
+//   }
+//   printf("\n");
+// }
 
 static const size_t kTicketKeyLen = 48;
 
@@ -549,7 +549,7 @@ static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *o
         << "i2d_SSL did not advance ptr correctly";
   // Decoding SSL from the bytes.
   const uint8_t *ptr2 = encoded.get();
-  printa(encoded.get(), len);
+  // printa(encoded.get(), len);
   SSL *server2_ = d2i_SSL(nullptr, in_ctx, &ptr2, (size_t)len);
   ASSERT_TRUE(server2_)
       << "d2i_SSL failed. Error code: "
@@ -977,7 +977,7 @@ TEST(SSLTest, SessionEncoding) {
     ASSERT_TRUE(SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len))
         << "SSL_SESSION_to_bytes failed";
     encoded.reset(encoded_raw);
-    printa(encoded.get(), encoded_len);
+    // printa(encoded.get(), encoded_len);
     EXPECT_EQ(Bytes(encoded.get(), encoded_len), Bytes(input))
         << "SSL_SESSION_to_bytes did not round-trip";
 

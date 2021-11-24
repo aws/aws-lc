@@ -16,7 +16,7 @@ NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
 
 function run_build {
   local cflags=("$@")
-#  rm -rf "$BUILD_ROOT"
+ rm -rf "$BUILD_ROOT"
   mkdir -p "$BUILD_ROOT"
   cd "$BUILD_ROOT" || exit 1
 
