@@ -277,17 +277,6 @@ end:
 }
 
 void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx) {
-    // Associating a |pctx| with a different hash function to |ctx| is not allowed for RSA.
-    if ((pctx != NULL) && (pctx->pmeth != NULL)
-       && (pctx->pmeth->pkey_id == EVP_PKEY_RSA || pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS)) {
-      const EVP_MD *pctx_md;
-      if(EVP_PKEY_CTX_get_signature_md(pctx, &pctx_md) &&
-          (EVP_MD_CTX_md(ctx)->type != pctx_md->type)) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-        return;
-      }
-   }
-
     // |pctx| could be null, so we have to deal with the cleanup job here.
     if (!(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
       EVP_PKEY_CTX_free(ctx->pctx);
