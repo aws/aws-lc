@@ -1057,13 +1057,13 @@ static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
     // External IVs
     switch (key.size()) {
       case 16:
-        aead = EVP_aead_aes_128_gcm_tls13();
+        aead = EVP_aead_aes_128_gcm_tls12();
         break;
       case 24:
         aead = EVP_aead_aes_192_gcm();
         break;
       case 32:
-        aead = EVP_aead_aes_256_gcm_tls13();
+        aead = EVP_aead_aes_256_gcm_tls12();
         break;
       default:
         LOG_ERROR("Bad AES-GCM key length %u\n",
