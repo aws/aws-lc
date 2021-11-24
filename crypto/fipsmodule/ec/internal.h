@@ -473,6 +473,10 @@ struct ec_method_st {
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
 
+  // WARNING: It is not guaranteed that implementations of the below listed
+  // functions perform input parameter validation. Therefore, the parameters
+  // passed to the functions must not be NULL.
+
   // point_get_affine_coordinates sets |*x| and |*y| to the affine coordinates
   // of |p|. Either |x| or |y| may be NULL to omit it. It returns one on success
   // and zero if |p| is the point at infinity.
@@ -715,6 +719,7 @@ void ec_GFp_nistp_recode_scalar_bits(crypto_word_t *sign, crypto_word_t *digit,
 
 const EC_METHOD *EC_GFp_nistp224_method(void);
 const EC_METHOD *EC_GFp_nistp256_method(void);
+const EC_METHOD *EC_GFp_nistp384_method(void);
 
 // EC_GFp_nistz256_method is a GFp method using montgomery multiplication, with
 // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.

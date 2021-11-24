@@ -1649,6 +1649,11 @@ OPENSSL_EXPORT int SSL_export_keying_material(
 // abbreviated handshake. It is reference-counted and immutable. Once
 // established, an |SSL_SESSION| may be shared by multiple |SSL| objects on
 // different threads and must not be modified.
+//
+// Note the TLS notion of "session" is not suitable for application-level
+// session state. It is an optional caching mechanism for the handshake. Not all
+// connections within an application-level session will reuse TLS sessions. TLS
+// sessions may be dropped by the client or ignored by the server at any time.
 
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
@@ -1703,6 +1708,19 @@ OPENSSL_EXPORT int SSL_SESSION_set_protocol_version(SSL_SESSION *session,
 
 // SSL_SESSION_get_id returns a pointer to a buffer containing |session|'s
 // session ID and sets |*out_len| to its length.
+//
+// This function should only be used for implementing a TLS session cache. TLS
+// sessions are not suitable for application-level session state, and a session
+// ID is an implementation detail of the TLS resumption handshake mechanism. Not
+// all resumption flows use session IDs, and not all connections within an
+// application-level session will reuse TLS sessions.
+//
+// To determine if resumption occurred, use |SSL_session_reused| instead.
+// Comparing session IDs will not give the right result in all cases.
+//
+// As a workaround for some broken applications, BoringSSL sometimes synthesizes
+// arbitrary session IDs for non-ID-based sessions. This behavior may be
+// removed in the future.
 OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
                                                  unsigned *out_len);
 
@@ -3569,7 +3587,7 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 //
 // ECH support in BoringSSL is still experimental and under development.
 //
-// See https://tools.ietf.org/html/draft-ietf-tls-esni-10.
+// See https://tools.ietf.org/html/draft-ietf-tls-esni-13.
 
 // SSL_set_enable_ech_grease configures whether the client will send a GREASE
 // ECH extension when no supported ECHConfig is available.
@@ -3601,12 +3619,12 @@ OPENSSL_EXPORT int SSL_set1_ech_config_list(SSL *ssl,
                                             const uint8_t *ech_config_list,
                                             size_t ech_config_list_len);
 
-// SSL_get0_ech_name_override sets |*out_name| and |*out_name_len| to point to a
-// buffer containing the ECH public name, if the server rejected ECH, or the
-// empty string otherwise.
+// SSL_get0_ech_name_override, if |ssl| is a client and the server rejected ECH,
+// sets |*out_name| and |*out_name_len| to point to a buffer containing the ECH
+// public name. Otherwise, the buffer will be empty.
 //
-// This function should be called during the certificate verification callback
-// (see |SSL_CTX_set_custom_verify|) if |ssl| is a client offering ECH. If
+// When offering ECH as a client, this function should be called during the
+// certificate verification callback (see |SSL_CTX_set_custom_verify|). If
 // |*out_name_len| is non-zero, the caller should verify the certificate against
 // the result, interpreted as a DNS name, rather than the true server name. In
 // this case, the handshake will never succeed and is only used to authenticate
@@ -3868,6 +3886,10 @@ OPENSSL_EXPORT uint64_t SSL_get_read_sequence(const SSL *ssl);
 // record in the current epoch. In DTLS, it includes the epoch number in the
 // two most significant bytes.
 OPENSSL_EXPORT uint64_t SSL_get_write_sequence(const SSL *ssl);
+
+// SSL_CTX_set_record_protocol_version returns whether |version| is zero.
+OPENSSL_EXPORT int SSL_CTX_set_record_protocol_version(SSL_CTX *ctx,
+                                                       int version);
 
 
 // Handshake hints.
@@ -4140,7 +4162,7 @@ OPENSSL_EXPORT int SSL_set_max_send_fragment(SSL *ssl,
 // callbacks that are called very early on during the server handshake. At this
 // point, much of the SSL* hasn't been filled out and only the ClientHello can
 // be depended on.
-typedef struct ssl_early_callback_ctx {
+struct ssl_early_callback_ctx {
   SSL *ssl;
   const uint8_t *client_hello;
   size_t client_hello_len;
@@ -4155,7 +4177,7 @@ typedef struct ssl_early_callback_ctx {
   size_t compression_methods_len;
   const uint8_t *extensions;
   size_t extensions_len;
-} SSL_CLIENT_HELLO;
+} /* SSL_CLIENT_HELLO */;
 
 // ssl_select_cert_result_t enumerates the possible results from selecting a
 // certificate with |select_certificate_cb|.
@@ -4557,20 +4579,13 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *ssl, int idx, int *psign,
 // SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START.
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
 
-// i2d_SSL_SESSION serializes |in| to the bytes pointed to by |*pp|. On success,
-// it returns the number of bytes written and advances |*pp| by that many bytes.
-// On failure, it returns -1. If |pp| is NULL, no bytes are written and only the
-// length is returned.
+// i2d_SSL_SESSION serializes |in|, as described in |i2d_SAMPLE|.
 //
 // Use |SSL_SESSION_to_bytes| instead.
 OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
 
 // d2i_SSL_SESSION parses a serialized session from the |length| bytes pointed
-// to by |*pp|. It returns the new |SSL_SESSION| and advances |*pp| by the
-// number of bytes consumed on success and NULL on failure. The caller takes
-// ownership of the new session and must call |SSL_SESSION_free| when done.
-//
-// If |a| is non-NULL, |*a| is released and set to the new |SSL_SESSION|.
+// to by |*pp|, as described in |d2i_SAMPLE|.
 //
 // Use |SSL_SESSION_from_bytes| instead.
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
@@ -4922,12 +4937,6 @@ OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 // library.
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
-
-// SSL_set_verify_result calls |abort| unless |result| is |X509_V_OK|.
-//
-// TODO(davidben): Remove this function once it has been removed from
-// netty-tcnative.
-OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
 
 // SSL_CTX_enable_tls_channel_id calls |SSL_CTX_set_tls_channel_id_enabled|.
 OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
@@ -5583,6 +5592,8 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_ECH_PUBLIC_NAME 317
 #define SSL_R_INVALID_ECH_CONFIG_LIST 318
 #define SSL_R_ECH_REJECTED 319
+#define SSL_R_OUTER_EXTENSION_NOT_FOUND 320
+#define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

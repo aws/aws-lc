@@ -216,7 +216,7 @@ endif ()
 if(GCC OR CLANG)
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS)
+  if(FIPS AND NOT APPLE)
     check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
   endif()
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
@@ -672,6 +672,7 @@ if(USE_CUSTOM_LIBCXX)
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -nostdlib++")
   include_directories(
     SYSTEM
+    util/bot/libcxx-config
     ${LLVM_PROJECT_HOME}/libcxx/include
     ${LLVM_PROJECT_HOME}/libcxxabi/include
   )
@@ -699,6 +700,8 @@ if(USE_CUSTOM_LIBCXX)
     -D_LIBCPP_ENABLE_CXX17_REMOVED_UNEXPECTED_FUNCTIONS
   )
   set_target_properties(libcxxabi PROPERTIES COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough")
+  # libc++abi depends on libc++ internal headers.
+  set_property(TARGET libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
 
   add_library(libcxx ${LIBCXX_SOURCES})
   if(ASAN OR MSAN OR TSAN)

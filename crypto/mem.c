@@ -93,19 +93,15 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 #define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
 #endif
 
-#if defined(BORINGSSL_SDALLOCX)
 // sdallocx is a sized |free| function. By passing the size (which we happen to
-// always know in BoringSSL), the malloc implementation can save work.
+// always know in BoringSSL), the malloc implementation can save work. We cannot
+// depend on |sdallocx| being available, however, so it's a weak symbol.
 //
-// This is guarded by BORINGSSL_SDALLOCX, rather than being a weak symbol,
-// because it can work poorly if there are two malloc implementations in the
-// address space. (Which probably isn't valid, ODR etc, but
-// https://github.com/grpc/grpc/issues/25450). In that situation, |malloc| can
-// come from one allocator but |sdallocx| from another and crashes quickly
-// result. We can't match |sdallocx| with |mallocx| because tcmalloc only
-// provides the former, so a mismatch can still happen.
-void sdallocx(void *ptr, size_t size, int flags);
-#endif
+// This will always be safe, but will only be overridden if the malloc
+// implementation is statically linked with BoringSSL. So, if |sdallocx| is
+// provided in, say, libc.so, we still won't use it because that's dynamically
+// linked. This isn't an ideal result, but its helps in some cases.
+WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags));
 
 // The following three functions can be defined to override default heap
 // allocation and freeing. If defined, it is the responsibility of
@@ -129,6 +125,16 @@ WEAK_SYMBOL_FUNC(void*, OPENSSL_memory_alloc, (size_t size))
 WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr))
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr))
 
+// kBoringSSLBinaryTag is a distinctive byte sequence to identify binaries that
+// are linking in BoringSSL and, roughly, what version they are using.
+static const uint8_t kBoringSSLBinaryTag[18] = {
+    // 16 bytes of magic tag.
+    0x8c, 0x62, 0x20, 0x0b, 0xd2, 0xa0, 0x72, 0x58,
+    0x44, 0xa8, 0x96, 0x69, 0xad, 0x55, 0x7e, 0xec,
+    // Current source iteration. Incremented ~monthly.
+    1, 0,
+};
+
 void *OPENSSL_malloc(size_t size) {
   if (OPENSSL_memory_alloc != NULL) {
     assert(OPENSSL_memory_free != NULL);
@@ -137,6 +143,14 @@ void *OPENSSL_malloc(size_t size) {
   }
 
   if (size + OPENSSL_MALLOC_PREFIX < size) {
+    // |OPENSSL_malloc| is a central function in BoringSSL thus a reference to
+    // |kBoringSSLBinaryTag| is created here so that the tag isn't discarded by
+    // the linker. The following is sufficient to stop GCC, Clang, and MSVC
+    // optimising away the reference at the time of writing. Since this
+    // probably results in an actual memory reference, it is put in this very
+    // rare code path.
+    uint8_t unused = *(volatile uint8_t *)kBoringSSLBinaryTag;
+    (void) unused;
     return NULL;
   }
 
@@ -166,11 +180,11 @@ void OPENSSL_free(void *orig_ptr) {
 
   size_t size = *(size_t *)ptr;
   OPENSSL_cleanse(ptr, size + OPENSSL_MALLOC_PREFIX);
-#if defined(BORINGSSL_SDALLOCX)
-  sdallocx(ptr, size + OPENSSL_MALLOC_PREFIX, 0 /* flags */);
-#else
-  free(ptr);
-#endif
+  if (sdallocx) {
+    sdallocx(ptr, size + OPENSSL_MALLOC_PREFIX, 0 /* flags */);
+  } else {
+    free(ptr);
+  }
 }
 
 void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
@@ -384,3 +398,13 @@ void *OPENSSL_memdup(const void *data, size_t size) {
   OPENSSL_memcpy(ret, data, size);
   return ret;
 }
+
+void *CRYPTO_malloc(size_t size, const char *file, int line) {
+  return OPENSSL_malloc(size);
+}
+
+void *CRYPTO_realloc(void *ptr, size_t new_size, const char *file, int line) {
+  return OPENSSL_realloc(ptr, new_size);
+}
+
+void CRYPTO_free(void *ptr, const char *file, int line) { OPENSSL_free(ptr); }
