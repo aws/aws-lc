@@ -82,7 +82,7 @@ struct VersionParam {
   // This flag is to replay existing tests with the transferred SSL.
   // If false, the tests use the original server SSL.
   // If true, the tests are replayed with the transferred server SSL.
-  // Note: SSL transfer works with TLS 1.2 after handshake finished.
+  // Note: SSL transfer works only with TLS 1.2 after handshake finished.
   bool transfer_ssl;
 };
 
@@ -92,16 +92,9 @@ struct SSLTestParam {
   // This flag is to replay existing tests with the transferred SSL.
   // If false, the tests use the original server SSL.
   // If true, the tests are replayed with the transferred server SSL.
-  // Note: SSL transfer works with TLS 1.2 after handshake finished.
+  // Note: SSL transfer works only with TLS 1.2 after handshake finished.
   bool transfer_ssl;
 };
-
-// static void printa(const uint8_t *ticket_key, size_t len) {
-//   for (size_t i = 0; i < len; i++) {
-//     printf("%02x", ticket_key[i]);
-//   }
-//   printf("\n");
-// }
 
 static const size_t kTicketKeyLen = 48;
 
@@ -549,7 +542,6 @@ static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *o
         << "i2d_SSL did not advance ptr correctly";
   // Decoding SSL from the bytes.
   const uint8_t *ptr2 = encoded.get();
-  // printa(encoded.get(), len);
   SSL *server2_ = d2i_SSL(nullptr, in_ctx, &ptr2, (size_t)len);
   ASSERT_TRUE(server2_)
       << "d2i_SSL failed. Error code: "
@@ -977,7 +969,6 @@ TEST(SSLTest, SessionEncoding) {
     ASSERT_TRUE(SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len))
         << "SSL_SESSION_to_bytes failed";
     encoded.reset(encoded_raw);
-    // printa(encoded.get(), encoded_len);
     EXPECT_EQ(Bytes(encoded.get(), encoded_len), Bytes(input))
         << "SSL_SESSION_to_bytes did not round-trip";
 
@@ -2767,103 +2758,6 @@ TEST_P(SSLVersionTest, SSLEncodeBasicReadWrite) {
   VerifyExchangeData(client_.get(), server2.get(), 43);
   // TODO: add a test to check error code
   // e.g. ASSERT_EQ(SSL_get_error(server2.get(), 0), SSL_ERROR_ZERO_RETURN);
-}
-
-// Test the change of read and write sequence numbers of the transferred SSL after exchange data.
-// The call of |SSL_write| and |SSL_read| increment the sequence numbers.
-TEST_P(SSLVersionTest, SSLEncodeSequenceNumber) {
-  // Check if SSL transfer is supported given the TLS version.
-  if (!testSSLEncode(version())) {
-    return;
-  }
-
-  ASSERT_TRUE(Connect());
-
-  // Drain any post-handshake messages to ensure there are no unread records
-  // on either end.
-  ASSERT_TRUE(FlushNewSessionTickets(client_.get(), server_.get()));
-
-  uint64_t client_read_seq = SSL_get_read_sequence(client_.get());
-  uint64_t client_write_seq = SSL_get_write_sequence(client_.get());
-  uint64_t server_read_seq = SSL_get_read_sequence(server_.get());
-  uint64_t server_write_seq = SSL_get_write_sequence(server_.get());
-
-  // The next record to be written should equal the next to be received.
-  EXPECT_EQ(client_write_seq, server_read_seq);
-  EXPECT_EQ(server_write_seq, client_read_seq);
-
-  // Send a record from client to server.
-  uint8_t byte = 0;
-  EXPECT_EQ(SSL_write(client_.get(), &byte, 1), 1);
-  EXPECT_EQ(SSL_read(server_.get(), &byte, 1), 1);
-
-  // The client write and server read sequence numbers should have
-  // incremented.
-  EXPECT_EQ(client_write_seq + 1, SSL_get_write_sequence(client_.get()));
-  EXPECT_EQ(server_read_seq + 1, SSL_get_read_sequence(server_.get()));
-
-  // TODO: move below to SSLVersionTest.SequenceNumber.
-  // Transfer SSL.
-  // |server_| state is transferred to |server2|. |server_| is freed after the transfer.
-  bssl::UniquePtr<SSL> server2;
-  TransferSSL(&server_, server_ctx_.get(), &server2);
-
-  // The |server_| and |server2| should have the same read and write sequence.
-  uint64_t server2_read_seq = SSL_get_read_sequence(server2.get());
-  uint64_t server2_write_seq = SSL_get_write_sequence(server2.get());
-  EXPECT_EQ(server_read_seq + 1, server2_read_seq);
-  EXPECT_EQ(server_write_seq, server2_write_seq);
-
-  // Send a record from client to server.
-  VerifyExchangeData(client_.get(), server2.get(), 0);
-  EXPECT_EQ(client_write_seq + 2, SSL_get_write_sequence(client_.get()));
-  EXPECT_EQ(client_read_seq, SSL_get_read_sequence(client_.get()));
-  EXPECT_EQ(server2_write_seq, SSL_get_write_sequence(server2.get()));
-  EXPECT_EQ(server2_read_seq + 1, SSL_get_read_sequence(server2.get()));
-
-  // Send a record from server to client.
-  VerifyExchangeData(server2.get(), client_.get(), 0);
-  EXPECT_EQ(client_write_seq + 2, SSL_get_write_sequence(client_.get()));
-  EXPECT_EQ(client_read_seq + 1, SSL_get_read_sequence(client_.get()));
-  EXPECT_EQ(server2_write_seq + 1, SSL_get_write_sequence(server2.get()));
-  EXPECT_EQ(server2_read_seq + 1, SSL_get_read_sequence(server2.get()));
-
-  // TODO: check if more tests are needed on sequence of read and write.
-}
-
-// Test the shutdown behavior of the transferred SSL after exchange data.
-// The states(write_shutdown and read_shutdown) tell if close_notify is sent and received.
-TEST_P(SSLVersionTest, SSLEncodeOneSidedShutdown) {
-  // Check if SSL transfer is supported given the TLS version.
-  if (!testSSLEncode(version())) {
-    return;
-  }
-  ASSERT_TRUE(Connect());
-
-  // Shut down half the connection. |SSL_shutdown| will return 0 to signal only
-  // one side has shut down.
-  ASSERT_EQ(SSL_shutdown(client_.get()), 0);
-
-  // Transfer SSL.
-  // |server_| state is transferred to |server2|. |server_| is freed after the transfer.
-  bssl::UniquePtr<SSL> server2;
-  TransferSSL(&server_, server_ctx_.get(), &server2);
-
-  // Reading from the server should consume the EOF.
-  uint8_t byte;
-  ASSERT_EQ(SSL_read(server2.get(), &byte, 1), 0);
-  ASSERT_EQ(SSL_get_error(server2.get(), 0), SSL_ERROR_ZERO_RETURN);
-
-  // However, the server may continue to write data and then shut down the
-  // connection.
-  byte = 42;
-  ASSERT_EQ(SSL_write(server2.get(), &byte, 1), 1);
-  ASSERT_EQ(SSL_read(client_.get(), &byte, 1), 1);
-  ASSERT_EQ(byte, 42);
-
-  // The server may then shutdown the connection.
-  EXPECT_EQ(SSL_shutdown(server2.get()), 1);
-  EXPECT_EQ(SSL_shutdown(client_.get()), 1);
 }
 
 TEST_P(SSLVersionTest, OneSidedShutdown) {
