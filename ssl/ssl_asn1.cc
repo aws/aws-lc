@@ -1214,6 +1214,7 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
+    CBB_flush(&ssl);
   }
   return CBB_flush(cbb);
 }
