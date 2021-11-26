@@ -1101,7 +1101,7 @@ SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
     return NULL;
   }
 
-  CBS cbs;
+  CBS cbs, seq;
 
   SSL *ssl = SSL_new(ctx);
   if (!ssl) {
@@ -1110,7 +1110,6 @@ SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
   }
 
   CBS_init(&cbs, *in, in_length);
-  CBS seq;
   if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
       (CBS_len(&cbs) != 0)) {
     // TODO: check if OPENSSL_PUT_ERROR is needed. The internal CBS may provide error.
