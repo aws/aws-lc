@@ -222,7 +222,7 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
 void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
-    // Hash digest used in the private key should be of the same kind.
+    // Hash digest used in the private key should be of the same type.
     const EVP_MD *pctx_md;
     if(EVP_PKEY_CTX_get_signature_md(ctx->pctx, &pctx_md) &&
         (EVP_MD_CTX_md(ctx)->type != pctx_md->type)) {
@@ -282,7 +282,7 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
 void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
-    // Hash digest used in the private key should be of the same kind.
+    // Hash digest used in the private key should be of the same type.
     const EVP_MD *pctx_md;
     if(EVP_PKEY_CTX_get_signature_md(ctx->pctx, &pctx_md) &&
         (EVP_MD_CTX_md(ctx)->type != pctx_md->type)) {
