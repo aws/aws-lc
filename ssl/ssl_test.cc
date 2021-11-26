@@ -517,14 +517,6 @@ static bool CipherListsEqual(SSL_CTX *ctx,
 }
 
 // Functions used by SSL encode/decode tests.
-// TODO: support more data exchange by using |uint8_t *data|
-static void VerifyExchangeData(SSL* from, SSL* to, uint8_t data) {
-  uint8_t data_byte = data;
-  ASSERT_EQ(SSL_write(from, &data_byte, 1), 1);
-  ASSERT_EQ(SSL_read(to, &data_byte, 1), 1);
-  ASSERT_EQ(data_byte, data);
-}
-
 static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
   // Encoding SSL to bytes.
   int len = i2d_SSL(in, nullptr);
@@ -571,23 +563,6 @@ static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
   // TODO: add a test to check error code?
   // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
   SSL_free(from->release());
-}
-
-static bool testSSLEncode(uint16_t version) {
- // d2i/i2d_SSL currently only supports TLS 1.1 and 1.2.
-  // TODO: fix TLS1_1_VERSION and then enable below.
-//  if (!((version() == TLS1_1_VERSION) || (version() == TLS1_2_VERSION))) {
-//    // TODO: Add tests for unsupported TLS version.
-//    return;
-//  }
-//  To enable TLS 1.1, the mac_secret may not be empty.
-//  Current encode and decode are not symmetric on mac_secret for TLS 1.1
-//  UniquePtr<SSLAEADContext> aead_wr_ctx =
-//        SSLAEADContext::Create(evp_aead_seal, ssl->version, /*is_dtls =*/false,
-//                               sess->cipher, key, /*mac_secret*/{},
-//                               iv);
-// TODO: Add tests for unsupported TLS version.
-  return version == TLS1_2_VERSION;
 }
 
 // TransferSSL performs SSL transfer by
@@ -2731,33 +2706,6 @@ TEST_P(SSLVersionTest, SequenceNumber) {
   // incremented.
   EXPECT_EQ(client_write_seq + 1, SSL_get_write_sequence(client_.get()));
   EXPECT_EQ(server_read_seq + 1, SSL_get_read_sequence(server_.get()));
-}
-
-// Test basic read and write using the transferred SSL.
-TEST_P(SSLVersionTest, SSLEncodeBasicReadWrite) {
-  if (!testSSLEncode(version())) {
-    return;
-  }
-
-  // Complete the handshake.
-  ASSERT_TRUE(Connect());
-  ASSERT_EQ(SSL_in_init(server_.get()), 0);
-  ASSERT_EQ(SSL_in_init(client_.get()), 0);
-
-  // After the handshake, performs some data exchange.
-  VerifyExchangeData(server_.get(), client_.get(), 42);
-  VerifyExchangeData(client_.get(), server_.get(), 43);
-
-  // Transfer SSL.
-  // |server_| state is transferred to |server2|. |server_| is freed after the transfer.
-  bssl::UniquePtr<SSL> server2;
-  TransferSSL(&server_, server_ctx_.get(), &server2);
-
-  // After transfer, performs some data exchange using |server2|.
-  VerifyExchangeData(server2.get(), client_.get(), 42);
-  VerifyExchangeData(client_.get(), server2.get(), 43);
-  // TODO: add a test to check error code
-  // e.g. ASSERT_EQ(SSL_get_error(server2.get(), 0), SSL_ERROR_ZERO_RETURN);
 }
 
 TEST_P(SSLVersionTest, OneSidedShutdown) {
