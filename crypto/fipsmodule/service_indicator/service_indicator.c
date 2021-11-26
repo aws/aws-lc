@@ -222,6 +222,12 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
 void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
+    // Hash digest used in the private key should be of the same kind.
+    const EVP_MD *pctx_md;
+    if(EVP_PKEY_CTX_get_signature_md(ctx->pctx, &pctx_md) &&
+        (EVP_MD_CTX_md(ctx)->type != pctx_md->type)) {
+      return;
+    }
     // SHA1 and 1024 bit keys are not approved for RSA signature generation.
     // SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 2048, 3072 and 4096 bit keys
     // are approved for signature generation.
@@ -276,6 +282,12 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
 void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
+    // Hash digest used in the private key should be of the same kind.
+    const EVP_MD *pctx_md;
+    if(EVP_PKEY_CTX_get_signature_md(ctx->pctx, &pctx_md) &&
+        (EVP_MD_CTX_md(ctx)->type != pctx_md->type)) {
+      return;
+    }
     // SHA-1, SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 1024, 2048, 3072 and
     // 4096 bit keys are approved for signature verification.
     if (EVP_PKEY_size(ctx->pctx->pkey) == 128 ||
