@@ -3075,17 +3075,21 @@ int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg) {
   return 1;
 }
 
-int SSL_alloc_crypto_mat(SSL *ssl) {
-  // This function should be called only once
-  if (ssl->cm)
-  {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  ssl->cm = MakeUnique<bssl::SSL_CRYPTO_MAT>();
-  if (!(ssl->cm)) {
-    return 0;
+int SSL_set_encode_mode(SSL *ssl, int on) {
+  if (on) {
+    // This function should be called only once
+    if (ssl->cm) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
+    ssl->cm = MakeUnique<bssl::SSL_CRYPTO_MAT>();
+    if (!(ssl->cm)) {
+      return 0;
+    }
+  } else {
+    if (ssl->cm) {
+      Delete(ssl->cm.release());
+    }
   }
 
   return 1;

@@ -2320,6 +2320,63 @@ OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
 // the given TLS curve id, or NULL if the curve is unknown.
 OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 
+// TODO: move below to c++ header section and create awslc namespace?
+// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+//
+// SSL transfer across processes after handshake finished:
+//
+// 1. Process ONE indicates the |SSL| may be encoded later
+// after handshake finished by calling |SSL_set_encode_mode|, 
+// which records some intermediate states in the |SSL|.
+// 2. Before termination, the process ONE encodes the |SSL| by calling
+// |SSL_to_bytes|.
+// 3. Another process allocates new |SSL| and then resumes the states by
+// calling |SSL_from_bytes|.
+//
+// WARNING: Currently only works with TLS 1.2 after handshake finished.
+// WARNING: Currently only supports |SSL| as server.
+// WARNING: The serialisation formats are not yet stable: version skew may be
+//     fatal.
+// WARNING: The encoded data contains sensitive key material and must be
+//     protected.
+// WARNING: Some calls on the final |SSL| will not work. 
+//          TODO: give examples when found.
+// TODO: check if some callback functions get involved.
+//
+// Initial implementation of SSL transfer is made by Evgeny Potemkin.
+
+// SSL_set_encode_mode indicates the |SSL| may be encoded later
+// after handshake finished. Some fields of |SSL| will be allocated 
+// to keep some intermediate states. It returns a ONE on success 
+// and ZERO on error.
+//
+// It is recommended to be called right after |SSL_new|.
+//
+// Initial implementation of this API is made by Evgeny Potemkin.
+OPENSSL_EXPORT int SSL_set_encode_mode(SSL *ssl, int on);
+
+// SSL_to_bytes serializes |in| into a newly allocated buffer and sets
+// |*out_data| to that buffer and |*out_len| to its length. The caller takes
+// ownership of the buffer and must call |OPENSSL_free| when done. It returns
+// one on success and zero on error.
+//
+// WARNING: |SSL_set_encode_mode| must be enabled so some SSL 
+// states(e.g. crypto material) can be hold and then encoded.
+//
+// WARNING: Currently only works with TLS 1.2 after handshake finished.
+// WARNING: Currently only supports |SSL| as server.
+//
+// TODO: should the API be more specific on handshake finished?
+//
+// Initial implementation of this API is made by Evgeny Potemkin.
+OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len);
+
+// SSL_from_bytes parses |in_len| bytes from |in| as an SSL. It
+// returns a newly-allocated |SSL| on success or NULL on error.
+// The |SSL| is marked with handshake finished.
+//
+// Initial implementation of this API is made by Evgeny Potemkin.
+OPENSSL_EXPORT SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx);
 
 // Certificate verification.
 //
@@ -4591,33 +4648,6 @@ OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
                                             long length);
 
-// d2i_SSL parses a serialized SSL struct from the |in_length| bytes pointed
-// to by |*in|. It returns the new |SSL| and advances |*in| by the
-// number of bytes consumed on success and NULL on failure. The caller takes
-// ownership of the new session and must call |SSL_free| when done.
-//
-// If |out| is non-NULL, |*out| is released and set to the new |SSL|.
-//
-// |ctx| is used to create an empty |SSL|
-//
-// Initial implementation of this API is made by Evgeny Potemkin.
-OPENSSL_EXPORT SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in,
-                            size_t in_length);
-
-// i2d_SSL serializes |in| to the bytes pointed to by |*out|. On success,
-// it returns the number of bytes written and advances |*out| by that many bytes.
-// On failure, it returns -1. If |out| is NULL, no bytes are written and only the
-// length is returned.
-//
-// TODO: follow ssl_serialize_handoff to rename this?
-// What this API currently does seems different from its semantics.
-//
-// Initial implementation of this API is made by Evgeny Potemkin.
-OPENSSL_EXPORT int i2d_SSL(SSL *in, uint8_t **out);
-
-// Allocate space for SSL crypto material
-OPENSSL_EXPORT int SSL_alloc_crypto_mat(SSL *ssl);
-
 // i2d_SSL_SESSION_bio serializes |session| and writes the result to |bio|. It
 // returns the number of bytes written on success and <= 0 on error.
 OPENSSL_EXPORT int i2d_SSL_SESSION_bio(BIO *bio, const SSL_SESSION *session);
@@ -5361,7 +5391,6 @@ OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 OPENSSL_EXPORT bool SSL_get_traffic_secrets(
     const SSL *ssl, Span<const uint8_t> *out_read_traffic_secret,
     Span<const uint8_t> *out_write_traffic_secret);
-
 
 BSSL_NAMESPACE_END
 

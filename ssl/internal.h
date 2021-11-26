@@ -3753,10 +3753,6 @@ struct ssl_st {
   bssl::SSL3_STATE *s3 = nullptr;   // TLS variables
   bssl::DTLS1_STATE *d1 = nullptr;  // DTLS variables
 
-  // Crypto material for SSL connection [de]serialization
-  // @see i2d_SSL(), d2i_SSL()
-  bssl::UniquePtr<bssl::SSL_CRYPTO_MAT> cm;
-
   // callback that allows applications to peek at protocol messages
   void (*msg_callback)(int write_p, int version, int content_type,
                        const void *buf, size_t len, SSL *ssl,
@@ -3809,6 +3805,9 @@ struct ssl_st {
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
+
+  // Crypto material for SSL connection [de]serialization.
+  bssl::UniquePtr<bssl::SSL_CRYPTO_MAT> cm;
 };
 
 struct ssl_session_st {

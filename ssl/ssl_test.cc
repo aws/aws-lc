@@ -517,26 +517,21 @@ static bool CipherListsEqual(SSL_CTX *ctx,
 }
 
 // Functions used by SSL encode/decode tests.
-static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
+static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out) {
   // Encoding SSL to bytes.
-  int len = i2d_SSL(in, nullptr);
-  ASSERT_GT(len, 0)
-      << "i2d_SSL failed. Error code: "
-      << ERR_reason_error_string(ERR_get_error());
+  size_t encoded_len;
   bssl::UniquePtr<uint8_t> encoded;
-  encoded.reset((uint8_t *)OPENSSL_malloc(len));
-  uint8_t *ptr = encoded.get();
-  len = i2d_SSL(in, &ptr);
-  ASSERT_GT(len, 0)
-      << "i2d_SSL failed. Error code: "
+  uint8_t *encoded_raw;
+  ASSERT_TRUE(SSL_to_bytes(in, &encoded_raw, &encoded_len));
+  ASSERT_TRUE(encoded_len)
+      << "SSL_to_bytes failed. Error code: "
       << ERR_reason_error_string(ERR_get_error());
-  ASSERT_EQ(ptr, encoded.get() + len)
-        << "i2d_SSL did not advance ptr correctly";
+  encoded.reset(encoded_raw);
   // Decoding SSL from the bytes.
   const uint8_t *ptr2 = encoded.get();
-  SSL *server2_ = d2i_SSL(nullptr, in_ctx, &ptr2, (size_t)len);
+  SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
   ASSERT_TRUE(server2_)
-      << "d2i_SSL failed. Error code: "
+      << "SSL_from_bytes failed. Error code: "
       << ERR_reason_error_string(ERR_get_error());
   out->reset(server2_);
 }
@@ -1591,7 +1586,9 @@ static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
   }
   // TODO: replace this alloc with flag. e.g SSL_set_handoff_mode
   // Add new test parameter on this condition.
-  SSL_alloc_crypto_mat(server.get());
+  if (!SSL_set_encode_mode(server.get(), 1)) {
+    return false;
+  }
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
@@ -4695,8 +4692,8 @@ static void ConnectClientAndServerWithTicketMethod(
   bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
   ASSERT_TRUE(client);
   ASSERT_TRUE(server);
-  // TODO: add flag to call SSL_alloc_crypto_mat when needed.
-  SSL_alloc_crypto_mat(server.get());
+  // TODO: add flag to call SSL_set_encode_mode when needed.
+  ASSERT_TRUE(SSL_set_encode_mode(server.get(), 1));
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 

@@ -1157,30 +1157,31 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
           return false;
         }
 
-        if (config->i2d2i_ssl)
-        {
-          // Serialize and recover SSL on each read/write cycle
-          uint8_t *ssl_out, *ssl_in;
-          int len = i2d_SSL(ssl, &ssl_out);
-          if (!len) {
-            fprintf(stderr, "failed to serialize SSL\n");
-            return false;
-          }
-          ssl_in = ssl_out;
-          SSL *new_ssl = d2i_SSL(NULL, session_ctx, (const uint8_t **)&ssl_in,
-                                len);
-          if (!new_ssl) {
-            fprintf(stderr, "failed to de-serialize SSL\n");
-            return false;
-          }
-          // Init new SSL from the old one
-          SSL_set_fd(new_ssl, SSL_get_fd(ssl));
-          SetTestConfig(new_ssl, GetTestConfig(ssl));
-          std::unique_ptr<TestState> state(GetTestState(ssl));
-          SetTestState(new_ssl, std::move(state));
-          ssl= new_ssl;
-          OPENSSL_free(ssl_out);
-        }
+        // TODO: enable below when work on runner test.
+        // if (config->i2d2i_ssl)
+        // {
+        //   // Serialize and recover SSL on each read/write cycle
+        //   uint8_t *ssl_out, *ssl_in;
+        //   int len = i2d_SSL(ssl, &ssl_out);
+        //   if (!len) {
+        //     fprintf(stderr, "failed to serialize SSL\n");
+        //     return false;
+        //   }
+        //   ssl_in = ssl_out;
+        //   SSL *new_ssl = d2i_SSL(NULL, session_ctx, (const uint8_t **)&ssl_in,
+        //                         len);
+        //   if (!new_ssl) {
+        //     fprintf(stderr, "failed to de-serialize SSL\n");
+        //     return false;
+        //   }
+        //   // Init new SSL from the old one
+        //   SSL_set_fd(new_ssl, SSL_get_fd(ssl));
+        //   SetTestConfig(new_ssl, GetTestConfig(ssl));
+        //   std::unique_ptr<TestState> state(GetTestState(ssl));
+        //   SetTestState(new_ssl, std::move(state));
+        //   ssl= new_ssl;
+        //   OPENSSL_free(ssl_out);
+        // }
       }
     }
   }

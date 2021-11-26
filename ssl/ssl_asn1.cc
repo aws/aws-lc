@@ -1013,7 +1013,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   }
 
   // FIXME check hash of SSL_CTX
-  if (!SSL_alloc_crypto_mat(ssl))
+  if (!SSL_set_encode_mode(ssl, 1))
     return 0;
 
   // Initialize SSL struct
@@ -1095,62 +1095,44 @@ err:
 }
 
 
-SSL *d2i_SSL(SSL **out, SSL_CTX *ctx, const uint8_t **in, size_t in_length) {
-  if ((ctx == NULL) || (in == NULL) ||  (in_length == 0)) {
+SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
+  if (!in || !in_len || !ctx) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return NULL;
   }
 
-  CBS cbs, seq;
-
   SSL *ssl = SSL_new(ctx);
-  if (!ssl) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
+  if (ssl == NULL) {
+    return NULL;
   }
+  UniquePtr<SSL> ret(ssl);
 
-  CBS_init(&cbs, *in, in_length);
+  CBS cbs, seq;
+  CBS_init(&cbs, in, in_len);
   if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
       (CBS_len(&cbs) != 0)) {
     // TODO: check if OPENSSL_PUT_ERROR is needed. The internal CBS may provide error.
     // TODO: investigate more why sometimes SSL prefix is not needed.
     // e.g. ERR_R_MALLOC_FAILURE. because some error is generic?
-    // OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BYTES);
-    goto err;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    return NULL;
   }
+
   // First restore SSL_SESSION
-  ssl->s3->established_session = SSL_SESSION_parse(&seq, &ssl_crypto_x509_method,
-                                                   NULL /* no buffer pool */);
-  if (!ssl->s3->established_session) {
-    goto err;
+  // TODO: revisit session parse.
+  UniquePtr<SSL_SESSION> session =
+      SSL_SESSION_parse(&seq, &ssl_crypto_x509_method, NULL /* no buffer pool */);
+  if (!session) {
+    return NULL;
   }
+  ssl->s3->established_session.reset(session.release());
+
   // Restore SSL part
   if (!SSL_parse(ssl, &seq, ctx)) {
-    goto err;
+    return NULL;
   }
 
-  if (out) {
-    SSL_free(*out);
-    *out = ssl;
-  }
-  // TODO: check why the data needs to be reassign
-  //  instead of checking CBS_len(&cbs) == 0.
-  *in = CBS_data(&cbs);
-  return ssl;
-
-err:
-  if (ssl && ssl->s3->established_session) {
-    SSL_SESSION_free(ssl->s3->established_session.get());
-    ssl->s3->established_session= nullptr;
-  }
-  if (ssl) {
-    // if (ssl->cm) {
-    //   OPENSSL_memset(ssl->cm, 0, sizeof(SSL_CRYPTO_MAT));
-    //   Delete(ssl->cm);
-    // }
-    SSL_free(ssl);
-  }
-  return NULL;
+  return ret.release();
 }
 
 //  Serialize essential parts of SSL
@@ -1170,7 +1152,7 @@ err:
 //    0   An error occur
 //    1   Ok
 //
-static int SSL_to_bytes(const SSL *in, CBB *cbb) {
+static int SSL_NON_SESSION_to_bytes(const SSL *in, CBB *cbb) {
   CBB ssl;
 
   int sheded = !in->config;
@@ -1218,14 +1200,12 @@ static int SSL_to_bytes(const SSL *in, CBB *cbb) {
   return CBB_flush(cbb);
 }
 
-int i2d_SSL(SSL *in, uint8_t **out_data)
+int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len)
 {
   if (in == NULL) {
     return 0;
   }
   ScopedCBB cbb;
-  size_t out_len;
-  uint8_t *out;
   // An SSL connection can't be serialized by current implementation under some conditions
   // 1) It's a DTLS connection
   // 2) Crypto material wasn't saved upon making the connection
@@ -1249,28 +1229,12 @@ int i2d_SSL(SSL *in, uint8_t **out_data)
     return 0;
   }
   // Serialize rd/wr keys/iv, seq numbers to restore alive connection
-  if (!SSL_to_bytes(in, &seq)) {
+  if (!SSL_NON_SESSION_to_bytes(in, &seq)) {
     return 0;
   }
 
-  if (!CBB_finish(cbb.get(), &out, &out_len)) {
-    return 0;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_free(out);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return -1;
-  }
-
-  if (out_data) {
-    OPENSSL_memcpy(*out_data, out, out_len);
-    *out_data += out_len;
-  }
-  OPENSSL_free(out);
-  return out_len;
+  return CBB_finish(cbb.get(), out_data, out_len);
 }
-
 
 //  Save generated SSL session's crypto material to allow [de]serialization of
 //  SSL connection later.

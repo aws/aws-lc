@@ -198,11 +198,12 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     traffic_aead = SSLAEADContext::Create(direction, session->ssl_version,
                                           SSL_is_dtls(ssl), session->cipher,
                                           key, Span<const uint8_t>(), iv);
-    if (ssl->cm) {
-      ssl_save_session_cm(ssl->cm.get(),
-                          (direction == (ssl->server ? evp_aead_open : evp_aead_seal)),
-                          key.data(), key.size(), iv.data(), iv.size());
-    }
+    // TODO: enable below code when TLS 1.3 is supported by SSL transfer.
+    // if (ssl->cm) {
+    //   ssl_save_session_cm(ssl->cm.get(),
+    //                       (direction == (ssl->server ? evp_aead_open : evp_aead_seal)),
+    //                       key.data(), key.size(), iv.data(), iv.size());
+    // }
   }
 
   if (!traffic_aead) {
