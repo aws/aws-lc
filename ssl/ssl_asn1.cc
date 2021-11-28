@@ -203,6 +203,13 @@ static const unsigned kLocalALPSTag =
 static const unsigned kPeerALPSTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 30;
 
+static void printa(const uint8_t *ticket_key, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    printf("%02x", ticket_key[i]);
+  }
+  printf("\n");
+}
+
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
                                      int for_ticket) {
   if (in == NULL || in->cipher == NULL) {
@@ -434,20 +441,20 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   return CBB_flush(cbb);
 }
 
-// SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING explicitly
+// parse_optional_string gets an optional ASN.1 OCTET STRING explicitly
 // tagged with |tag| from |cbs| and saves it in |*out|. If the element was not
 // found, it sets |*out| to NULL. It returns one on success, whether or not the
 // element was found, and zero on decode error.
-static int SSL_SESSION_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
+static int parse_optional_string(CBS *cbs, UniquePtr<char> *out, unsigned tag, int reason) {
   CBS value;
   int present;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, reason);
     return 0;
   }
   if (present) {
     if (CBS_contains_zero_byte(&value)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+      OPENSSL_PUT_ERROR(SSL, reason);
       return 0;
     }
     char *raw = nullptr;
@@ -460,6 +467,10 @@ static int SSL_SESSION_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag
     out->reset();
   }
   return 1;
+}
+
+static int SSL_SESSION_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
+  return parse_optional_string(cbs, out, tag, SSL_R_INVALID_SSL_SESSION);
 }
 
 // SSL_SESSION_parse_octet_string gets an optional ASN.1 OCTET STRING explicitly
@@ -895,39 +906,141 @@ SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,
   return ret.release();
 }
 
-// Serialized SSL data version for forward compatibility
-#define SSL_SERIAL_VERSION 1
+// SSL3_STATE serialization.
 
-// Inspired by |psk_identity| encode and decode.
-// Below is copied from |SSL_SESSION_parse_string|. Only error code is changed.
-// TODO: unitfy |SSL_SESSION_parse_string| and |SSL_parse_string|.
-// SSL_parse_string gets an optional ASN.1 OCTET STRING explicitly
-// tagged with |tag| from |cbs| and saves it in |*out|. If the element was not
-// found, it sets |*out| to NULL. It returns one on success, whether or not the
-// element was found, and zero on decode error.
-static int SSL_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
-  CBS value;
-  int present;
-  if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+static const unsigned kS3Version = 1;
+
+static const unsigned kS3EstablishedSessionTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const unsigned kS3SessionReusedTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
+static const unsigned kS3HostNameTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
+
+// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+// These SSL3_STATE serialization functions are developed to support SSL transfer.
+
+// ssl3_state_to_bytes serializes |in| to bytes stored in |cbb|.
+// It returns one on success and zero on failure.
+//
+// An SSL3_STATE is serialized as the following ASN.1 structure:
+//
+// SSL3State ::= SEQUENCE {
+//    version                           INTEGER (1),  -- SSL3_STATE structure version
+//    readSequence                      OCTET STRING,
+//    writeSequence                     OCTET STRING,
+//    serverRandom                      OCTET STRING,
+//    clientRandom                      OCTET STRING,
+//    rwstate                           INTEGER,
+//    establishedSession                [0] SEQUENCE OPTIONAL,
+//    sessionReused                     [1] BOOLEAN OPTIONAL,
+//    hostName                          [2] OCTET STRING OPTIONAL,
+// }
+static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
+  if (in == NULL || cbb == NULL) {
     return 0;
   }
-  if (present) {
-    if (CBS_contains_zero_byte(&value)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
-      return 0;
-    }
-    char *raw = nullptr;
-    if (!CBS_strdup(&value, &raw)) {
+
+  CBB s3, child;
+  if (!CBB_add_asn1(cbb, &s3, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&s3, kS3Version) ||
+      !CBB_add_asn1_octet_string(&s3, in->read_sequence, TLS_SEQ_NUM_SIZE) ||
+      !CBB_add_asn1_octet_string(&s3, in->write_sequence, TLS_SEQ_NUM_SIZE) ||
+      !CBB_add_asn1_octet_string(&s3, in->server_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_asn1_octet_string(&s3, in->client_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_asn1_int64(&s3, in->rwstate)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  if (in->established_session != nullptr) {
+    if (!CBB_add_asn1(&s3, &child, kS3EstablishedSessionTag) ||
+        !ssl_session_serialize(in->established_session.get(), &child)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
-    out->reset(raw);
+  }
+
+  if (in->session_reused) {
+    if (!CBB_add_asn1(&s3, &child, kS3SessionReusedTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  if (in->hostname != nullptr) {
+    if (!CBB_add_asn1(&s3, &child, kS3HostNameTag) ||
+        !CBB_add_asn1_octet_string(&child,
+                                   (const uint8_t *)(in->hostname.get()),
+                                   strlen(in->hostname.get()))) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  return CBB_flush(cbb);
+}
+
+static int SSL3_STATE_parse_session(CBS *cbs, UniquePtr<SSL_SESSION> *out, const SSL_CTX *ctx) {
+  CBS value;
+  int present;
+  if (!CBS_get_optional_asn1(cbs, &value, &present, kS3EstablishedSessionTag)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    return 0;
+  }
+  if (present) {
+    UniquePtr<SSL_SESSION> ptr =
+      SSL_SESSION_parse(&value, ctx->x509_method, ctx->pool);
+    if (!ptr) {
+      return 0;
+    }
+    out->reset(ptr.release());
   } else {
     out->reset();
   }
   return 1;
 }
+
+static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) {
+  if (out == NULL || cbs == NULL || ctx == NULL) {
+    return 0;
+  }
+
+  CBS s3, read_seq, write_seq, server_random, client_random;
+  int session_reused;
+  uint64_t version;
+  int64_t rwstate;
+  if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&s3, &version) ||
+      version != kS3Version ||
+      !CBS_get_asn1(&s3, &read_seq, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
+      !CBS_get_asn1(&s3, &write_seq, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE ||
+      !CBS_get_asn1(&s3, &server_random, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(&server_random) != SSL3_RANDOM_SIZE ||
+      !CBS_get_asn1(&s3, &client_random, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(&client_random) != SSL3_RANDOM_SIZE ||
+      !CBS_get_asn1_int64(&s3, &rwstate) ||
+      !SSL3_STATE_parse_session(&s3, &(out->established_session), ctx) ||
+      !CBS_get_optional_asn1_bool(&s3, &session_reused, kS3SessionReusedTag, 0 /* default to false */) ||
+      !parse_optional_string(&s3, &(out->hostname), kS3HostNameTag, SSL_R_INVALID_SSL3_STATE) ||
+      CBS_len(&s3) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    return 0;
+  }
+  OPENSSL_memcpy(out->read_sequence, CBS_data(&read_seq), TLS_SEQ_NUM_SIZE);
+  OPENSSL_memcpy(out->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
+  OPENSSL_memcpy(out->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(out->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
+  out->rwstate = rwstate;
+  out->session_reused = !!session_reused;
+  return 1;
+}
+
+// Serialized SSL data version for forward compatibility
+#define SSL_SERIAL_VERSION 1
 
 //  Parse serialized SSL connection binary
 //
@@ -938,22 +1051,15 @@ static int SSL_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
 //  An SSL object is serialized as the following ASN.1 structure:
 //  SSL ::= SEQUENCE {
 //      ssl_serial_ver UINT64                        -- version of the SSL serialization format
-//      rwstate        UINT64                        -- R/W state of SSL implementation
+//      version        UINT64
 //      read_key       OCTET STRING                  -- connection read key
 //      write_key      OCTET STRING                  -- connection write key
 //      read_iv        OCTET STRING                  -- connection read IV
 //      write_iv       OCTET STRING                  -- connection write IV
-//      read_seq       OCTET STRING                  -- connection read sequence number
-//      write_seq      OCTET STRING                  -- connection write sequence number
-//      server_random  OCTET STRING                  -- data from ssl->s3->server_random
-//      client_random  OCTET STRING                  -- data from ssl->s3->client_random
 //      sheded         BOOLEAN                       -- indicate if the config is sheded. The config may not exist
 //                                                      since the configuration 
 //                                                      may be shed after the handshake completes.
-//                                                      TODO: check corner cases to see if config should be encoded.
-//      session_reused BOOLEAN                       -- data from ssl->s3->session_reused
-//                                                      TODO: move session_reused when encode s3 state.
-//      hostname       [1] OCTET STRING OPTIONAL     -- hostname set in SSL.
+//      s3             SEQUENCE
 //  }
 //
 //  Note that serialized SSL_SESSION is always prepended to the serialized SSL
@@ -962,18 +1068,42 @@ static int SSL_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
 //    0 if an error occur
 //    1 if SSL is succesfully restored
 //
+static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
+  CBB ssl;
+
+  int sheded = !in->config;
+
+  if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
+    !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
+    //    FIXME add hash of SSL_CTX
+    !CBB_add_asn1_uint64(&ssl, in->version) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->read_key,
+                               in->cm->read_key_length) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->write_key,
+                               in->cm->write_key_length) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->read_iv,
+                               in->cm->read_iv_length) ||
+    !CBB_add_asn1_octet_string(&ssl, in->cm->write_iv,
+                               in->cm->write_iv_length) ||
+    !CBB_add_asn1_bool(&ssl, sheded) ||
+    !SSL3_STATE_to_bytes(in->s3, &ssl)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  return CBB_flush(cbb);
+}
+
 static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs;
-  uint64_t ssl_serial_ver;
-  uint64_t rwstate;
+  uint64_t ssl_serial_ver, version;
 
-  CBS read_key, write_key, read_iv, write_iv, read_seq, write_seq;
-  CBS server_random, client_random;
+  CBS read_key, write_key, read_iv, write_iv;
   int sheded = 0;
-  int session_reused = 0;
   // Read version string from buffer
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
-    !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
+      CBS_len(cbs) != 0 ||
+      !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
   }
   // At the moment we're simply asserting the version is correct. However
@@ -981,11 +1111,9 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   // was actually serialized and act accordingly.
   assert(ssl_serial_ver <= SSL_SERIAL_VERSION);
 
-  if (
-//    FIXME add hash of SSL_CTX
-// TODO: check if CBS_ASN1_OCTETSTRING is tag and it's a right usage in this case.
-// This TODO is actually a part of SSL DER struct revisit.
-    !CBS_get_asn1_uint64(&ssl_cbs, &rwstate) ||
+  //    FIXME add hash of SSL_CTX
+  // This TODO is actually a part of SSL DER struct revisit.
+  if (!CBS_get_asn1_uint64(&ssl_cbs, &version) ||
     !CBS_get_asn1(&ssl_cbs, &read_key, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&read_key) > EVP_MAX_KEY_LENGTH ||
     !CBS_get_asn1(&ssl_cbs, &write_key, CBS_ASN1_OCTETSTRING) ||
@@ -994,17 +1122,42 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     CBS_len(&read_iv) > EVP_MAX_IV_LENGTH ||
     !CBS_get_asn1(&ssl_cbs, &write_iv, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&write_iv) > EVP_MAX_IV_LENGTH ||
-    !CBS_get_asn1(&ssl_cbs, &read_seq, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
-    !CBS_get_asn1(&ssl_cbs, &write_seq, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE ||
-    !CBS_get_asn1(&ssl_cbs, &server_random, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&server_random) != SSL3_RANDOM_SIZE ||
-    !CBS_get_asn1(&ssl_cbs, &client_random, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&client_random) != SSL3_RANDOM_SIZE ||
-    !CBS_get_asn1_bool(&ssl_cbs, &sheded) ||
-    !CBS_get_asn1_bool(&ssl_cbs, &session_reused)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    !CBS_get_asn1_bool(&ssl_cbs, &sheded)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    return 0;
+  }
+
+  ssl->version = version;
+
+  // TODO: make s3 as optional tag.
+  // This is called separately to avoid overriding error code.
+  if (!SSL3_STATE_from_bytes(ssl->s3, &ssl_cbs, ssl->ctx.get())) {
+    return 0;
+  }
+
+  // TODO: remove below copy when investigated why set_read_state reset read_sequence to zero.
+  uint8_t read_sequence[TLS_SEQ_NUM_SIZE] = {0};
+  uint8_t write_sequence[TLS_SEQ_NUM_SIZE] = {0};
+  uint8_t server_random[SSL3_RANDOM_SIZE] = {0};
+  uint8_t client_random[SSL3_RANDOM_SIZE] = {0};
+  OPENSSL_memcpy(read_sequence, ssl->s3->read_sequence, TLS_SEQ_NUM_SIZE);
+  OPENSSL_memcpy(write_sequence, ssl->s3->write_sequence, TLS_SEQ_NUM_SIZE);
+  OPENSSL_memcpy(server_random, ssl->s3->server_random, SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(client_random, ssl->s3->client_random, SSL3_RANDOM_SIZE);
+
+  // Indicate we've done handshake
+  ssl->s3->hs->handshake_finalized = true;
+  // TODO: check how to serialize internal field state.
+  // have_version is true if the connection's final version is known. Otherwise
+  // the version has not been negotiated yet.
+  // uint16_t ssl_protocol_version(const SSL *ssl) {
+  // assert(ssl->s3->have_version);
+  ssl->s3->have_version = true;
+
+  SSL_SESSION *session = ssl->s3->established_session.get();
+
+  if (CBS_len(&ssl_cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
   }
 
@@ -1017,7 +1170,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     return 0;
 
   // Initialize SSL struct
-  ssl->s3->rwstate = rwstate;
   OPENSSL_memcpy(ssl->cm->read_key, CBS_data(&read_key), CBS_len(&read_key));
   ssl->cm->read_key_length = CBS_len(&read_key);
   OPENSSL_memcpy(ssl->cm->write_key, CBS_data(&write_key), CBS_len(&write_key));
@@ -1028,25 +1180,9 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   OPENSSL_memcpy(ssl->cm->write_iv, CBS_data(&write_iv), CBS_len(&write_iv));
   ssl->cm->write_iv_length = CBS_len(&write_iv);
 
+  // TODO: encode the state of ssl instead of calling SSL_set_accept_state below.
   SSL_set_accept_state(ssl);
-  SSL_SESSION *sess= ssl->s3->established_session.get();
-  ssl->version = sess->ssl_version;
-  // Indicate we've done handshake
-  ssl->s3->hs->handshake_finalized = true;
-  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random), CBS_len(&server_random));
-  OPENSSL_memcpy(ssl->s3->client_random, CBS_data(&client_random), CBS_len(&client_random));
-  // TODO: check how to serialize internal field state.
-  // have_version is true if the connection's final version is known. Otherwise
-  // the version has not been negotiated yet.
-  // uint16_t ssl_protocol_version(const SSL *ssl) {
-  // assert(ssl->s3->have_version);
-  ssl->s3->have_version = true;
-  ssl->s3->session_reused = (session_reused == 1);
-
-  if (!SSL_parse_string(&ssl_cbs, &(ssl->s3->hostname), kHostNameTag)) {
-    return 0;
-  }
-
+  
   // Setup rd/wr cipher contexts
   // FIXME: This code might be not safe for TLS 1.3 due to stateful AEAD ciphers.
   // Once restored the state might be lost and thus get out of sync with
@@ -1062,10 +1198,10 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
     UniquePtr<SSLAEADContext> aead_wr_ctx =
         SSLAEADContext::Create(evp_aead_seal, ssl->version, /*is_dtls =*/false,
-                               sess->cipher, key, /*mac_secret*/{},
+                               session->cipher, key, /*mac_secret*/{},
                                iv);
-    if (!aead_wr_ctx.get()) {
-      goto err;
+    if (!aead_wr_ctx) {
+      return 0;
     }
     ssl->method->set_write_state(ssl, ssl_encryption_application,
                                  std::move(aead_wr_ctx),
@@ -1076,26 +1212,24 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
     UniquePtr<SSLAEADContext> aead_rd_ctx =
         SSLAEADContext::Create(evp_aead_open, ssl->version, /*is_dtls =*/false,
-                               sess->cipher, key, /*mac_secret =*/{},
+                               session->cipher, key, /*mac_secret =*/{},
                                iv);
-    if (!aead_rd_ctx.get()) {
-      goto err;
+    if (!aead_rd_ctx) {
+      return 0;
     }
+    // TODO: investigate why set_read_state reset read_sequence to zero.
     ssl->method->set_read_state(ssl, ssl_encryption_application,
                                  std::move(aead_rd_ctx),
                                  /*secret_for_quic =*/{});
   }
-  // Initialization above will reset sequences to 0
-  OPENSSL_memcpy(ssl->s3->read_sequence, CBS_data(&read_seq), TLS_SEQ_NUM_SIZE);
-  OPENSSL_memcpy(ssl->s3->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
+  // TODO: remove below copy when investigated why set_read_state reset read_sequence to zero.
+  OPENSSL_memcpy(ssl->s3->read_sequence, read_sequence, TLS_SEQ_NUM_SIZE);
+  OPENSSL_memcpy(ssl->s3->write_sequence, write_sequence, TLS_SEQ_NUM_SIZE);
   return 1;
-
-err:
-  return 0;
 }
 
-
 SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
+  printa(in, in_len);
   if (!in || !in_len || !ctx) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return NULL;
@@ -1111,125 +1245,46 @@ SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
   CBS_init(&cbs, in, in_len);
   if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
       (CBS_len(&cbs) != 0)) {
-    // TODO: check if OPENSSL_PUT_ERROR is needed. The internal CBS may provide error.
-    // TODO: investigate more why sometimes SSL prefix is not needed.
-    // e.g. ERR_R_MALLOC_FAILURE. because some error is generic?
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return NULL;
   }
 
-  // First restore SSL_SESSION
-  // TODO: revisit session parse.
-  UniquePtr<SSL_SESSION> session =
-      SSL_SESSION_parse(&seq, &ssl_crypto_x509_method, NULL /* no buffer pool */);
-  if (!session) {
-    return NULL;
-  }
-  ssl->s3->established_session.reset(session.release());
-
   // Restore SSL part
-  if (!SSL_parse(ssl, &seq, ctx)) {
+  if (!SSL_parse(ret.get(), &seq, ctx)) {
     return NULL;
   }
 
   return ret.release();
 }
 
-//  Serialize essential parts of SSL
-//
-//  @param in   SSL struct to serialize
-//  @param cbb  Byte string builder to write to
-//
-//  @details  This function saves essential parts of SSL handler of an
-//  established SSL conneciton:
-//    (*) ssl->cm, crypto material to resume the connection: each of session key, IV
-//        and sequence for both read and write directions.
-//    (*) ssl->rwstate - state of the SSL state machine
-//    (*) ssl->read_sequence/write_sequence - SSL's read and write sequences
-//  @see SSL_parse
-//
-//  @returns
-//    0   An error occur
-//    1   Ok
-//
-static int SSL_NON_SESSION_to_bytes(const SSL *in, CBB *cbb) {
-  CBB ssl;
-
-  int sheded = !in->config;
-  int session_reused = 0;
-  if (in->s3->session_reused) {
-    session_reused = 1;
-  }
-
-  if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
-    !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
-//    FIXME add hash of SSL_CTX
-    !CBB_add_asn1_uint64(&ssl, (uint64_t)in->s3->rwstate) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->read_key,
-                               in->cm->read_key_length) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->write_key,
-                               in->cm->write_key_length) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->read_iv,
-                               in->cm->read_iv_length) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->write_iv,
-                               in->cm->write_iv_length) ||
-    // TODO: read_sequence bytes may not equal to TLS_SEQ_NUM_SIZE.
-    // Revisit this asn1 by checking SSL_SESSION sid_ctx field encode and decode.
-    !CBB_add_asn1_octet_string(&ssl, in->s3->read_sequence, TLS_SEQ_NUM_SIZE) ||
-    !CBB_add_asn1_octet_string(&ssl, in->s3->write_sequence, TLS_SEQ_NUM_SIZE) ||
-    !CBB_add_asn1_octet_string(&ssl, in->s3->server_random, SSL3_RANDOM_SIZE) ||
-    !CBB_add_asn1_octet_string(&ssl, in->s3->client_random, SSL3_RANDOM_SIZE) ||
-    !CBB_add_asn1_bool(&ssl, sheded) ||
-    !CBB_add_asn1_bool(&ssl, session_reused)) {
-    // TODO: check if below put is valid.
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  // TODO: in->hostname also has hostname due to history reasons.
-  if (in->s3->hostname) {
-    CBB ssl_child;
-    if (!CBB_add_asn1(&ssl, &ssl_child, kHostNameTag) ||
-        !CBB_add_asn1_octet_string(&ssl_child,
-                                   (const uint8_t *)(in->s3->hostname.get()),
-                                   strlen(in->s3->hostname.get()))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-    CBB_flush(&ssl);
-  }
-  return CBB_flush(cbb);
-}
-
-int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len)
-{
+int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   if (in == NULL) {
     return 0;
   }
+
   ScopedCBB cbb;
   // An SSL connection can't be serialized by current implementation under some conditions
   // 1) It's a DTLS connection
   // 2) Crypto material wasn't saved upon making the connection
   // 3) Its SSL_SESSION isn't serializable
   // 4) Handshake hasn't finished yet
-  // 5) FIXME SSL is of TLS 1.3 version
+  // 5) SSL is not of TLS 1.2 version
+  //    TODO: support TLS 1.3 and TLS 1.1.
   if (SSL_is_dtls(in) ||                // (1)
       !in->cm ||                        // (2)
       !in->s3 ||
+      // TODO: check if this should be addressed by calling |SSL_SESSION_to_bytes|.
       in->s3->established_session.get()->not_resumable ||    // (3)
       SSL_in_init(in) ||                // (4)
-      in->version == TLS1_3_VERSION) {  // (5)
+      in->version != TLS1_2_VERSION) {  // (5)
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
-  // Serialize SSL_SESSION first
+
   CBB seq;
   if (!CBB_init(cbb.get(), 1024) ||
       !CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE) ||
-      !ssl_session_serialize(in->s3->established_session.get(), &seq)) {
-    return 0;
-  }
-  // Serialize rd/wr keys/iv, seq numbers to restore alive connection
-  if (!SSL_NON_SESSION_to_bytes(in, &seq)) {
+      !SSL_to_bytes_full(in, &seq)) {
     return 0;
   }
 

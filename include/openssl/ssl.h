@@ -2320,18 +2320,21 @@ OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
 // the given TLS curve id, or NULL if the curve is unknown.
 OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 
-// TODO: move below to c++ header section and create awslc namespace?
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 //
 // SSL transfer across processes after handshake finished:
 //
-// 1. Process ONE indicates the |SSL| may be encoded later
+// SSL transfer allows the TLS connection to be used in a different
+// process (or on a different machine). This only applies to servers.
+// 1. The process 1 indicates the |SSL| may be encoded later
 // after handshake finished by calling |SSL_set_encode_mode|, 
 // which records some intermediate states in the |SSL|.
-// 2. Before termination, the process ONE encodes the |SSL| by calling
+// 2. Before termination, the process 1 encodes the |SSL| by calling
 // |SSL_to_bytes|.
 // 3. Another process allocates new |SSL| and then resumes the states by
 // calling |SSL_from_bytes|.
+//
+// Initial implementation of SSL transfer is made by Evgeny Potemkin.
 //
 // WARNING: Currently only works with TLS 1.2 after handshake finished.
 // WARNING: Currently only supports |SSL| as server.
@@ -2342,8 +2345,6 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // WARNING: Some calls on the final |SSL| will not work. 
 //          TODO: give examples when found.
 // TODO: check if some callback functions get involved.
-//
-// Initial implementation of SSL transfer is made by Evgeny Potemkin.
 
 // SSL_set_encode_mode indicates the |SSL| may be encoded later
 // after handshake finished. Some fields of |SSL| will be allocated 
@@ -5658,5 +5659,6 @@ BSSL_NAMESPACE_END
 
 #define SSL_R_INVALID_SSL 9001
 #define SSL_R_INVALID_SSL_CONFIG 9002
+#define SSL_R_INVALID_SSL3_STATE 9003
 
 #endif  // OPENSSL_HEADER_SSL_H
