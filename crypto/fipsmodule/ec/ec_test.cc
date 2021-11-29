@@ -1574,6 +1574,53 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
       BN_bin2bn(bytes.data(), bytes.size(), nullptr));
 }
 
+TEST(ECTest, LargeXCoordinateVectors) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+
+  FileTestGTest("crypto/fipsmodule/ec/large_x_coordinate_points.txt",
+                [&](FileTest *t) {
+    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+    ASSERT_TRUE(x);
+    bssl::UniquePtr<BIGNUM> xpp = GetBIGNUM(t, "XplusP");
+    ASSERT_TRUE(xpp);
+    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+    ASSERT_TRUE(y);
+    //bool is_infinity = BN_is_zero(x.get()) && BN_is_zero(y.get());
+
+    bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+    ASSERT_TRUE(key);
+    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+    ASSERT_TRUE(pub_key);
+    ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+                    group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+    ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+    ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+
+    // Now replace the x-coordinate with the larger one.
+    // ec_bignum_to_felem(group.get(), &key.get()->pub_key->raw.X, xpp.get())
+    // generates an error COORDINATES_OUT_OF_RANGE:/Users/nebeid/workplace/git-code/aws-lc/crypto/fipsmodule/ec/felem.c:33:
+    uint8_t bytes[EC_MAX_BYTES];
+    size_t len = BN_num_bytes(&group.get()->field);
+    ASSERT_TRUE(len);
+    ASSERT_TRUE(BN_bn2bin_padded(bytes, len, xpp.get()));
+
+    OPENSSL_memset(bytes, 0, EC_MAX_BYTES);
+    EC_FELEM *felem_out = &key.get()->pub_key->raw.X;
+    //uint8_t *bytes_in = bytes.data();
+    for (size_t i = 0; i < len; i++) {
+        felem_out->bytes[i] = bytes[len - 1 - i];
+    }
+    ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+  // ASSERT_TRUE(ec_GFp_simple_felem_from_bytes(group.get(), &key.get()->pub_key->raw.X, bytes.data(), len ));
+  // generates error: DECODE_ERROR:/Users/nebeid/workplace/git-code/aws-lc/crypto/fipsmodule/ec/simple.c:352
+//BN_copy(key.get()->pub_key->raw.X, xpp.get());
+  });
+}
+
 TEST(ECTest, ScalarBaseMultVectors) {
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
   ASSERT_TRUE(ctx);

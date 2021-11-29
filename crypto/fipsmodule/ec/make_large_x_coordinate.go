@@ -48,7 +48,7 @@ func makeCompressedPoint(curve elliptic.Curve, x *big.Int) (x_out, y_out *big.In
 
 func printPoints(name string, curve elliptic.Curve) {
 	x := new(big.Int)
-	for i := 0; i <= num_Points; i++ {
+	for i := 1; i <= num_Points; i++ {
 		x.SetInt64(int64(i))
 		x_o, y_o := makeCompressedPoint(curve, x)
 		if x_o != nil {
