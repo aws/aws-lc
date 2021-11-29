@@ -2801,6 +2801,7 @@ TEST_F(BNTest, RSAZABI) {
   };
 
   struct aligned_vars *aligned_vars_st = (struct aligned_vars *) OPENSSL_malloc_align_internal(sizeof(struct aligned_vars), 64);
+  ASSERT_TRUE(aligned_vars_st);
   OPENSSL_memset(aligned_vars_st->table, 0, 32 * 18);
   BN_ULONG norm[16], n_norm[16];
 

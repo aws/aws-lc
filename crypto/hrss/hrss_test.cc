@@ -472,6 +472,7 @@ TEST(HRSS, ABI) {
   };
 
   struct aligned_scratch *aligned_scratch_st = (struct aligned_scratch *) OPENSSL_malloc_align_internal(sizeof(struct aligned_scratch), 32);
+  ASSERT_TRUE(aligned_scratch_st);
   OPENSSL_memcpy(aligned_scratch_st->scratch, kCanary, sizeof(kCanary));
   OPENSSL_memcpy(aligned_scratch_st->scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE, kCanary,
                  sizeof(kCanary));

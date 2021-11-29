@@ -209,6 +209,9 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   // add no more than 63 bytes of overhead. Thus, |table| should require
   // ~1599 ((96 * 16) + 63) bytes of stack space.
   struct p256_point_16_table *table_st = OPENSSL_malloc_align_internal(sizeof(struct p256_point_16_table), 64);
+  if (table_st == NULL) {
+    exit(EXIT_FAILURE);
+  }
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, p_scalar->bytes, 32);
   p_str[32] = 0;
@@ -240,6 +243,9 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
   BN_ULONG tmp[P256_LIMBS];
   struct p256_point *h_st = OPENSSL_malloc_align_internal(sizeof(struct p256_point), 32);
+  if (h_st == NULL) {
+    exit(EXIT_FAILURE);
+  }
   size_t index = 255;
   crypto_word_t wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
@@ -325,6 +331,9 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                                    const EC_SCALAR *scalar) {
 
   struct p256_point *out_st = OPENSSL_malloc_align_internal(sizeof(struct p256_point), 32);
+  if (out_st == NULL) {
+    exit(EXIT_FAILURE);
+  }
   ecp_nistz256_windowed_mul(group, &out_st->h, p, scalar);
 
   assert(group->field.width == P256_LIMBS);
@@ -339,7 +348,13 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
                                         const EC_SCALAR *scalar) {
 
   struct p256_point_union_t_workaround *t_st = OPENSSL_malloc_align_internal(sizeof(struct p256_point_union_t_workaround), 32);
+  if (t_st == NULL) {
+    exit(EXIT_FAILURE);
+  }
   struct p256_point_union_t_workaround *p_st = OPENSSL_malloc_align_internal(sizeof(struct p256_point_union_t_workaround), 32);
+  if (p_st == NULL) {
+    exit(EXIT_FAILURE);
+  }
 
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, scalar->bytes, 32);
@@ -389,7 +404,13 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   assert(p_ != NULL && p_scalar != NULL && g_scalar != NULL);
 
   struct p256_point_union_t_workaround *t_st = OPENSSL_malloc_align_internal(sizeof(struct p256_point_union_t_workaround), 32);
+  if (t_st == NULL) {
+    exit(EXIT_FAILURE);
+  }
   struct p256_point_union_t_workaround *p_st = OPENSSL_malloc_align_internal(sizeof(struct p256_point_union_t_workaround), 32);
+  if (p_st == NULL) {
+    exit(EXIT_FAILURE);
+  }
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, g_scalar->bytes, 32);
   p_str[32] = 0;

@@ -22,7 +22,6 @@ TEST(MemTest, AlignedHeapAllocation) {
 
   do {
       for (size_t memory_size = 1; memory_size <= 2*power_of_two; memory_size++) {
-        fprintf(stderr, "memory_size = %zu\n", memory_size);
         void *aligned_memory = OPENSSL_malloc_align_internal(memory_size, power_of_two);
         ASSERT_TRUE(aligned_memory);
         ASSERT_TRUE(verify_memory_alignment(aligned_memory, power_of_two));
