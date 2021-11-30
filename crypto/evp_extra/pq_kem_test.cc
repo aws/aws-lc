@@ -5,7 +5,7 @@
 #include "openssl/mem.h"
 
 
-TEST(Kyber512Test, Basic) {
+TEST(PQKEMTest, Kyber512_Basic) {
   // Basic functional test for KYBER512
   const EVP_PQ_KEM *kyber_kem = &EVP_PQ_KEM_kyber512;
   EXPECT_NE(kyber_kem, nullptr);
