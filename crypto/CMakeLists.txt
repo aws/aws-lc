@@ -329,6 +329,7 @@ add_library(
   evp_extra/p_methods.c
   evp_extra/pbkdf.c
   evp_extra/print.c
+  evp_extra/pq_kem.c
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
