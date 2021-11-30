@@ -32,6 +32,8 @@ struct pq_kem_st {
 
 typedef struct pq_kem_st EVP_PQ_KEM;
 
+OPENSSL_EXPORT extern const EVP_PQ_KEM EVP_PQ_KEM_kyber512;
+
 struct pq_kem_ctx_st {
   const EVP_PQ_KEM *kem;
   uint8_t *public_key;
