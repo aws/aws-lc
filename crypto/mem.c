@@ -186,7 +186,7 @@ void *OPENSSL_malloc_align_internal(size_t size, size_t alignment) {
   // +--------+----------------+-------------+---------------+
   // poison: added by |OPENSSL_malloc|.
   // offset padding: offset bytes to align memory at |alignment| boundary.
-  // offset size: number of offset bytes needed, plus |ALIGN_OFFSET_SIZE|.
+  // offset size: number of offset bytes needed including |ALIGN_OFFSET_SIZE|.
   // memory region: |aligned_ptr| points to this region of size |size|.
 
   size_t prefix_size = ALIGN_OFFSET_SIZE + (alignment - 1);

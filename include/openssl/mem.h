@@ -180,9 +180,9 @@ OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 OPENSSL_EXPORT void * OPENSSL_malloc_align_internal(size_t size, size_t alignment);
 
 // Internal function.
-// OPENSSL_free does nothing if |aligned_ptr| is NULL. Otherwise it zeros out
-// the memory allocated at |aligned_ptr| and frees it. Must only be used on
-// a pointer returned by |OPENSSL_malloc_align_internal|.
+// OPENSSL_free_align_internal does nothing if |aligned_ptr| is NULL. Otherwise
+// it zeros out the memory allocated at |aligned_ptr| and frees it. Must only be
+// used on a pointer returned by |OPENSSL_malloc_align_internal|.
 OPENSSL_EXPORT void OPENSSL_free_align_internal(void *aligned_ptr);
 
 

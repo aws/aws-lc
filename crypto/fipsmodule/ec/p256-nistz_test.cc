@@ -81,11 +81,11 @@ TEST(P256_NistzTest, SelectW5) {
 TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
 
-  struct p256_point_affine_16_table {
+  struct p256_point_affine_64_table {
     P256_POINT_AFFINE table[64];
   };
 
-  struct p256_point_affine_16_table *table_st = (struct p256_point_affine_16_table *) OPENSSL_malloc_align_internal(sizeof(struct p256_point_affine_16_table), 64);
+  struct p256_point_affine_64_table *table_st = (struct p256_point_affine_64_table *) OPENSSL_malloc_align_internal(sizeof(struct p256_point_affine_64_table), 64);
   ASSERT_TRUE(table_st);
   for (size_t i = 0; i < 64; i++) {
     OPENSSL_memset(table_st->table[i].X, 2 * i, sizeof(table_st->table[i].X));
