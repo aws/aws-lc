@@ -1594,36 +1594,52 @@ TEST(ECTest, LargeXCoordinateVectors) {
     ASSERT_TRUE(key);
     bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
     ASSERT_TRUE(pub_key);
+    size_t len = BN_num_bytes(&group.get()->field);
     ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
-    // ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
-    //                group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+                    group.get(), pub_key.get(), x.get(), y.get(), nullptr));
     // Converts the coordinates to Montgomery form (noticed when testing P-256 only).
     // Instead set the coordinates directly.
     // This fails EC_KEY_check_fips because EC_POINT_is_on_curve() uses Montgomery
     // arithmetic and fails the check.
-    size_t len = BN_num_bytes(&group.get()->field);
-    OPENSSL_memcpy(pub_key.get()->raw.X.bytes, (const uint8_t *)x.get()->d, len);
-    OPENSSL_memcpy(pub_key.get()->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
-    OPENSSL_memset(pub_key.get()->raw.Z.bytes, 0, len);
-    pub_key.get()->raw.Z.bytes[0] = 1;
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
     ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+    if (group.get()->curve_name == NID_secp224r1)
+    {
+      OPENSSL_memcpy(pub_key.get()->raw.X.bytes, (const uint8_t *)x.get()->d, len);
+      OPENSSL_memcpy(pub_key.get()->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
+      OPENSSL_memset(pub_key.get()->raw.Z.bytes, 0, len);
+      OPENSSL_memset(pub_key.get()->raw.Z.bytes, 0, len);
+      pub_key.get()->raw.Z.bytes[0] = 1;
+      ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+      ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+    }
 
     // Now replace the x-coordinate with the larger one.
     // ec_bignum_to_felem(group.get(), &key.get()->pub_key->raw.X, xpp.get())
     // generates an error COORDINATES_OUT_OF_RANGE:/Users/nebeid/workplace/git-code/aws-lc/crypto/fipsmodule/ec/felem.c:33:
+    OPENSSL_memcpy(pub_key.get()->raw.X.bytes, (const uint8_t *)xpp.get()->d, len);
+    ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+
+#if 0
     uint8_t bytes[EC_MAX_BYTES];
     EC_FELEM *felem_out = &key.get()->pub_key->raw.X;
     ASSERT_TRUE(len);
     OPENSSL_memset(bytes, 0, EC_MAX_BYTES);
     OPENSSL_memset(felem_out->bytes, 0, sizeof(EC_FELEM));
     ASSERT_TRUE(BN_bn2bin_padded(bytes, len, xpp.get()));
-
-    //uint8_t *bytes_in = bytes.data();
     for (size_t i = 0; i < len; i++) {
         felem_out->bytes[i] = bytes[len - 1 - i];
     }
-    ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+#endif
+    ASSERT_FALSE(EC_KEY_check_fips(key.get()));
+    if (group.get()->curve_name == NID_secp224r1) {
+      EXPECT_EQ(EC_R_COORDINATES_OUT_OF_RANGE,
+                ERR_GET_REASON(ERR_peek_last_error()));
+    } else {
+      EXPECT_EQ(EC_R_POINT_IS_NOT_ON_CURVE,
+                ERR_GET_REASON(ERR_peek_last_error()));
+    }
   // ASSERT_TRUE(ec_GFp_simple_felem_from_bytes(group.get(), &key.get()->pub_key->raw.X, bytes.data(), len ));
   // generates error: DECODE_ERROR:/Users/nebeid/workplace/git-code/aws-lc/crypto/fipsmodule/ec/simple.c:352
 //BN_copy(key.get()->pub_key->raw.X, xpp.get());
