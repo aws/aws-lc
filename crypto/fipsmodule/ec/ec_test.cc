@@ -1605,11 +1605,12 @@ TEST(ECTest, LargeXCoordinateVectors) {
     // generates an error COORDINATES_OUT_OF_RANGE:/Users/nebeid/workplace/git-code/aws-lc/crypto/fipsmodule/ec/felem.c:33:
     uint8_t bytes[EC_MAX_BYTES];
     size_t len = BN_num_bytes(&group.get()->field);
+    EC_FELEM *felem_out = &key.get()->pub_key->raw.X;
     ASSERT_TRUE(len);
+    OPENSSL_memset(bytes, 0, EC_MAX_BYTES);
+    OPENSSL_memset(felem_out->bytes, 0, sizeof(EC_FELEM));
     ASSERT_TRUE(BN_bn2bin_padded(bytes, len, xpp.get()));
 
-    OPENSSL_memset(bytes, 0, EC_MAX_BYTES);
-    EC_FELEM *felem_out = &key.get()->pub_key->raw.X;
     //uint8_t *bytes_in = bytes.data();
     for (size_t i = 0; i < len; i++) {
         felem_out->bytes[i] = bytes[len - 1 - i];
