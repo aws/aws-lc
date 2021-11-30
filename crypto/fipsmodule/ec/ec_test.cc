@@ -1595,8 +1595,17 @@ TEST(ECTest, LargeXCoordinateVectors) {
     bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
     ASSERT_TRUE(pub_key);
     ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
-    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
-                    group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+    // ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+    //                group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+    // Converts the coordinates to Montgomery form (noticed when testing P-256 only).
+    // Instead set the coordinates directly.
+    // This fails EC_KEY_check_fips because EC_POINT_is_on_curve() uses Montgomery
+    // arithmetic and fails the check.
+    size_t len = BN_num_bytes(&group.get()->field);
+    OPENSSL_memcpy(pub_key.get()->raw.X.bytes, (const uint8_t *)x.get()->d, len);
+    OPENSSL_memcpy(pub_key.get()->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
+    OPENSSL_memset(pub_key.get()->raw.Z.bytes, 0, len);
+    pub_key.get()->raw.Z.bytes[0] = 1;
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
     ASSERT_TRUE(EC_KEY_check_fips(key.get()));
 
@@ -1604,7 +1613,6 @@ TEST(ECTest, LargeXCoordinateVectors) {
     // ec_bignum_to_felem(group.get(), &key.get()->pub_key->raw.X, xpp.get())
     // generates an error COORDINATES_OUT_OF_RANGE:/Users/nebeid/workplace/git-code/aws-lc/crypto/fipsmodule/ec/felem.c:33:
     uint8_t bytes[EC_MAX_BYTES];
-    size_t len = BN_num_bytes(&group.get()->field);
     EC_FELEM *felem_out = &key.get()->pub_key->raw.X;
     ASSERT_TRUE(len);
     OPENSSL_memset(bytes, 0, EC_MAX_BYTES);
