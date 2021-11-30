@@ -24,21 +24,12 @@ func printPadded(key string, n, max *big.Int) {
 	fmt.Printf("%s = %x\n", key, padded)
 }
 
-func makeCompressedPoint(curve elliptic.Curve, x *big.Int) (x_out, y_out *big.Int) {
+func makeCompressedPoint(curve elliptic.Curve, x *big.Int, y_bit uint8) (x_out, y_out *big.Int) {
 	byteLen := (curve.Params().BitSize + 7) / 8
 	compressed := make([]byte, 1+byteLen)
 	x.FillBytes(compressed[1:])
-	// Try with y least significant bit = 0
-	compressed[0] = 2
+	compressed[0] = 2 + byte(y_bit)
 	x_out, y_out = elliptic.UnmarshalCompressed(curve, compressed)
-	//x_lg = x + curve.Params().P
-	if x_out != nil {
-		return x_out, y_out
-	}
-	// Try with y least significant bit = 1
-	compressed[0] = 3
-	x_out, y_out = elliptic.UnmarshalCompressed(curve, compressed)
-	//x_lg = x + curve.Params().P
 	if x_out != nil {
 		return x_out, y_out
 	}
@@ -48,17 +39,20 @@ func makeCompressedPoint(curve elliptic.Curve, x *big.Int) (x_out, y_out *big.In
 
 func printPoints(name string, curve elliptic.Curve) {
 	x := new(big.Int)
+	y_b := uint8(0)
 	for i := 1; i <= num_Points; i++ {
 		x.SetInt64(int64(i))
-		x_o, y_o := makeCompressedPoint(curve, x)
-		if x_o != nil {
-			fmt.Printf("Curve = %s\n", name)
-			fmt.Printf("# x = %d\n", i)
-			printPadded("X", x_o, curve.Params().P)
-			x_o = x_o.Add(x_o,curve.Params().P)
-			printPadded("XplusP", x_o, curve.Params().P)
-			printPadded("Y", y_o, curve.Params().P)
-			fmt.Printf("\n")
+		for y_b = 0; y_b <= 1; y_b++ {
+			x_o, y_o := makeCompressedPoint(curve, x, y_b)
+			if x_o != nil {
+				fmt.Printf("Curve = %s\n", name)
+				fmt.Printf("# x = %d\n", i)
+				printPadded("X", x_o, curve.Params().P)
+				x_o = x_o.Add(x_o, curve.Params().P)
+				printPadded("XplusP", x_o, curve.Params().P)
+				printPadded("Y", y_o, curve.Params().P)
+				fmt.Printf("\n")
+			}
 		}
 	}
 }
