@@ -346,6 +346,7 @@ add_library(
   kyber/pqcrystals-kyber_kyber512_ref/ntt.c
   kyber/pqcrystals-kyber_kyber512_ref/poly.c
   kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
+  kyber/pqcrystals-kyber_kyber512_ref/randombytes.c
   kyber/pqcrystals-kyber_kyber512_ref/reduce.c
   kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
   kyber/pqcrystals-kyber_kyber512_ref/verify.c

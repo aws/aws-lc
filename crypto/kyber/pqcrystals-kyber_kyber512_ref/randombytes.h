@@ -1,11 +1,17 @@
 #ifndef RANDOMBYTES_H
 #define RANDOMBYTES_H
 
-#include "openssl/rand.h"
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
-inline int randombytes(unsigned char* random_array, unsigned long long nbytes)
-{
-  return RAND_bytes(random_array, nbytes);
+#include <stddef.h>
+#include <stdint.h>
+
+int randombytes(uint8_t *random_array, size_t num_bytes);
+
+#if defined(__cplusplus)
 }
+#endif
 
 #endif

@@ -1,6 +1,10 @@
 #ifndef _PQ_KEM_H_
 #define _PQ_KEM_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include "openssl/base.h"
 
@@ -32,7 +36,7 @@ struct pq_kem_st {
 
 typedef struct pq_kem_st EVP_PQ_KEM;
 
-OPENSSL_EXPORT extern const EVP_PQ_KEM EVP_PQ_KEM_kyber512;
+extern const EVP_PQ_KEM EVP_PQ_KEM_kyber512;
 
 struct pq_kem_ctx_st {
   const EVP_PQ_KEM *kem;
@@ -44,17 +48,20 @@ struct pq_kem_ctx_st {
 
 typedef struct pq_kem_ctx_st EVP_PQ_KEM_CTX;
 
-OPENSSL_EXPORT EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void);
+EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void);
 
-OPENSSL_EXPORT int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx,
-                                       const EVP_PQ_KEM *kem);
+int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx, const EVP_PQ_KEM *kem);
 
-OPENSSL_EXPORT void EVP_PQ_KEM_CTX_free(EVP_PQ_KEM_CTX *kem_ctx);
+void EVP_PQ_KEM_CTX_free(EVP_PQ_KEM_CTX *kem_ctx);
 
-OPENSSL_EXPORT int EVP_PQ_KEM_generate_keypair(EVP_PQ_KEM_CTX *kem_params);
+int EVP_PQ_KEM_generate_keypair(EVP_PQ_KEM_CTX *kem_params);
 
-OPENSSL_EXPORT int EVP_PQ_KEM_encapsulate(EVP_PQ_KEM_CTX *kem_params);
+int EVP_PQ_KEM_encapsulate(EVP_PQ_KEM_CTX *kem_params);
 
-OPENSSL_EXPORT int EVP_PQ_KEM_decapsulate(EVP_PQ_KEM_CTX *kem_params);
+int EVP_PQ_KEM_decapsulate(EVP_PQ_KEM_CTX *kem_params);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
