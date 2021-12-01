@@ -162,7 +162,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-expect-hrr", &TestConfig::expect_hrr},
     {"-expect-no-hrr", &TestConfig::expect_no_hrr},
     {"-wait-for-debugger", &TestConfig::wait_for_debugger},
-    {"-i2d2i-ssl", &TestConfig::i2d2i_ssl},
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -245,6 +244,7 @@ const Flag<int> kIntFlags[] = {
     {"-install-one-cert-compression-alg",
      &TestConfig::install_one_cert_compression_alg},
     {"-early-write-after-message", &TestConfig::early_write_after_message},
+    {"-ssl_transfer", &TestConfig::ssl_transfer},
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

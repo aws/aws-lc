@@ -876,6 +876,71 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   return true;
 }
 
+// Functions used by SSL encode/decode tests.
+static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out) {
+  // Encoding SSL to bytes.
+  size_t encoded_len;
+  bssl::UniquePtr<uint8_t> encoded;
+  uint8_t *encoded_raw;
+  if (!SSL_to_bytes(in, &encoded_raw, &encoded_len)) {
+    fprintf(stderr, "SSL_to_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    return false;
+  }
+  encoded.reset(encoded_raw);
+  // Decoding SSL from the bytes.
+  const uint8_t *ptr2 = encoded.get();
+  SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
+  if (server2_ == nullptr) {
+    fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    return false;
+  }
+  out->reset(server2_);
+  return true;
+}
+
+static bool TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
+  // Fetch the rfd.
+  int rfd = SSL_get_rfd(from->get());
+  if (rfd == -1) {
+    fprintf(stderr, "SSL_get_rfd failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    return false;
+  }
+  int wfd = SSL_get_wfd(from->get());
+  if (wfd == -1) {
+    fprintf(stderr, "SSL_get_wfd failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    return false;
+  }
+  if (!SSL_set_rfd(from->get(), rfd) || !SSL_set_wfd(from->get(), wfd)) {
+    fprintf(stderr, "SSL set fd failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    return false;
+  }
+  SSL_free(from->release());
+  return true;
+}
+
+// TransferSSL performs SSL transfer by
+// 1. Encode the SSL of |in| into bytes.
+// 2. Decode the bytes into a new SSL.
+// 3. Free the SSL of |in|.
+// 4. If |out| is not nullptr, |out| will hold the decoded SSL.
+//    Else, |in| will get reset to hold the decoded SSL.
+static bool TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
+  bssl::UniquePtr<SSL> decoded_ssl;
+  if (!EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl)){
+    return false;
+  }
+  // Transfer the bio.
+  if (!TransferBIOs(in, decoded_ssl.get())){
+    return false;
+  }
+  if (out == nullptr) {
+    in->reset(decoded_ssl.release());
+  } else {
+    out->reset(decoded_ssl.release());
+  }
+  return true;
+}
+
 static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
                        bssl::UniquePtr<SSL> *ssl_uniqueptr,
                        const TestConfig *config, bool is_resume, bool is_retry,
@@ -904,6 +969,15 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return SSL_do_handshake(ssl);
       });
     } while (RetryAsync(ssl, ret));
+
+    if (config->ssl_transfer == 1) {
+      if (SSL_is_server(ssl) && !SSL_is_dtls(ssl) && SSL_version(ssl) == TLS1_2_VERSION) {
+        if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {
+          fprintf(stderr, "Aha transferred!!!\n");
+          return false;
+        }
+      }
+    }
 
     if (config->forbid_renegotiation_after_handshake) {
       SSL_set_renegotiate_mode(ssl, ssl_renegotiate_never);
