@@ -129,3 +129,19 @@ TEST(Kyber512Test, EVP_PKEY_new_raw) {
   EVP_PKEY_free(new_public);
   EVP_PKEY_free(new_private);
 }
+
+TEST(Kyber512Test, EVP_PKEY_size) {
+  EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
+  ASSERT_NE(kyber_pkey_ctx, nullptr);
+
+  EVP_PKEY *kyber_pkey = EVP_PKEY_new();
+  ASSERT_NE(kyber_pkey, nullptr);
+
+  EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
+
+  EXPECT_EQ(KYBER512_PUBLICKEY_BYTES + KYBER512_SECRETKEY_BYTES, EVP_PKEY_size(kyber_pkey));
+  EXPECT_EQ(8*(KYBER512_PUBLICKEY_BYTES + KYBER512_SECRETKEY_BYTES), EVP_PKEY_bits(kyber_pkey));
+
+  EVP_PKEY_CTX_free(kyber_pkey_ctx);
+}
