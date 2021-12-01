@@ -1583,6 +1583,9 @@ static bool HasSuffix(const char *str, const char *suffix) {
   return strcmp(str + str_len - suffix_len, suffix) == 0;
 }
 
+// Test for out-of-range coordinates in public-key validation in
+// |EC_KEY_check_fips|, which can only be exercised for P-224 when the
+// coordinates in the raw point are not in Montgomery representation.
 TEST(ECTest, LargeXCoordinateVectors) {
   int line;
   const char *file;
@@ -1618,10 +1621,8 @@ TEST(ECTest, LargeXCoordinateVectors) {
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in big-endian byte order.
-    //OPENSSL_memcpy(pub_key.get()->raw.X.bytes, (const uint8_t *)x.get()->d, len);
     OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes, (const uint8_t *)x.get()->d, len);
     OPENSSL_memcpy(key.get()->pub_key->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
-    OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
     OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
     key.get()->pub_key->raw.Z.bytes[0] = 1;
     // As mentioned, for P-224, setting the raw point directly with the coordinates
