@@ -250,13 +250,6 @@ bool tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
     return false;
   }
 
-  if (ssl->cm) {
-    ssl_save_session_cm(ssl->cm.get(),
-                        (direction == (ssl->server ? evp_aead_open : evp_aead_seal)),
-                        key.data(), key.size(), iv.data(), iv.size());
-  }
-
-
   if (direction == evp_aead_open) {
     return ssl->method->set_read_state(ssl, ssl_encryption_application,
                                        std::move(aead_ctx),

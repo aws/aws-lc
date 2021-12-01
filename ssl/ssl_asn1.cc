@@ -203,13 +203,6 @@ static const unsigned kLocalALPSTag =
 static const unsigned kPeerALPSTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 30;
 
-static void printa(const uint8_t *ticket_key, size_t len) {
-  for (size_t i = 0; i < len; i++) {
-    printf("%02x", ticket_key[i]);
-  }
-  printf("\n");
-}
-
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
                                      int for_ticket) {
   if (in == NULL || in->cipher == NULL) {
@@ -1073,18 +1066,26 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
 
   int sheded = !in->config;
 
+  size_t write_iv_len = 0;
+  const uint8_t *write_iv = nullptr;
+  if (SSL_CIPHER_is_block_cipher(in->s3->aead_write_ctx->cipher()) &&
+      !in->s3->aead_write_ctx->GetIV(&write_iv, &write_iv_len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  size_t read_iv_len = 0;
+  const uint8_t *read_iv = nullptr;
+  if (SSL_CIPHER_is_block_cipher(in->s3->aead_read_ctx->cipher()) &&
+      !in->s3->aead_read_ctx->GetIV(&read_iv, &read_iv_len)) {
+      return 0;
+  }
+
   if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
     !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
     //    FIXME add hash of SSL_CTX
     !CBB_add_asn1_uint64(&ssl, in->version) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->read_key,
-                               in->cm->read_key_length) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->write_key,
-                               in->cm->write_key_length) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->read_iv,
-                               in->cm->read_iv_length) ||
-    !CBB_add_asn1_octet_string(&ssl, in->cm->write_iv,
-                               in->cm->write_iv_length) ||
+    !CBB_add_asn1_octet_string(&ssl, read_iv, read_iv_len) ||
+    !CBB_add_asn1_octet_string(&ssl, write_iv, write_iv_len) ||
     !CBB_add_asn1_bool(&ssl, sheded) ||
     !SSL3_STATE_to_bytes(in->s3, &ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -1097,7 +1098,8 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs;
   uint64_t ssl_serial_ver, version;
 
-  CBS read_key, write_key, read_iv, write_iv;
+  // CBS read_key, write_key, read_iv, write_iv;
+  CBS read_iv, write_iv;
   int sheded = 0;
   // Read version string from buffer
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
@@ -1114,10 +1116,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   //    FIXME add hash of SSL_CTX
   // This TODO is actually a part of SSL DER struct revisit.
   if (!CBS_get_asn1_uint64(&ssl_cbs, &version) ||
-    !CBS_get_asn1(&ssl_cbs, &read_key, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&read_key) > EVP_MAX_KEY_LENGTH ||
-    !CBS_get_asn1(&ssl_cbs, &write_key, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&write_key) > EVP_MAX_KEY_LENGTH ||
     !CBS_get_asn1(&ssl_cbs, &read_iv, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&read_iv) > EVP_MAX_IV_LENGTH ||
     !CBS_get_asn1(&ssl_cbs, &write_iv, CBS_ASN1_OCTETSTRING) ||
@@ -1138,12 +1136,8 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   // TODO: remove below copy when investigated why set_read_state reset read_sequence to zero.
   uint8_t read_sequence[TLS_SEQ_NUM_SIZE] = {0};
   uint8_t write_sequence[TLS_SEQ_NUM_SIZE] = {0};
-  uint8_t server_random[SSL3_RANDOM_SIZE] = {0};
-  uint8_t client_random[SSL3_RANDOM_SIZE] = {0};
   OPENSSL_memcpy(read_sequence, ssl->s3->read_sequence, TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(write_sequence, ssl->s3->write_sequence, TLS_SEQ_NUM_SIZE);
-  OPENSSL_memcpy(server_random, ssl->s3->server_random, SSL3_RANDOM_SIZE);
-  OPENSSL_memcpy(client_random, ssl->s3->client_random, SSL3_RANDOM_SIZE);
 
   // Indicate we've done handshake
   ssl->s3->hs->handshake_finalized = true;
@@ -1166,62 +1160,25 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   }
 
   // FIXME check hash of SSL_CTX
-  if (!SSL_set_encode_mode(ssl, 1))
+  if (!SSL_set_encode_mode(ssl, 1)) {
     return 0;
-
-  // Initialize SSL struct
-  OPENSSL_memcpy(ssl->cm->read_key, CBS_data(&read_key), CBS_len(&read_key));
-  ssl->cm->read_key_length = CBS_len(&read_key);
-  OPENSSL_memcpy(ssl->cm->write_key, CBS_data(&write_key), CBS_len(&write_key));
-  ssl->cm->write_key_length = CBS_len(&write_key);
-
-  OPENSSL_memcpy(ssl->cm->read_iv, CBS_data(&read_iv), CBS_len(&read_iv));
-  ssl->cm->read_iv_length = CBS_len(&read_iv);
-  OPENSSL_memcpy(ssl->cm->write_iv, CBS_data(&write_iv), CBS_len(&write_iv));
-  ssl->cm->write_iv_length = CBS_len(&write_iv);
+  }
 
   // TODO: encode the state of ssl instead of calling SSL_set_accept_state below.
   SSL_set_accept_state(ssl);
-  
-  // Setup rd/wr cipher contexts
-  // FIXME: This code might be not safe for TLS 1.3 due to stateful AEAD ciphers.
-  // Once restored the state might be lost and thus get out of sync with
-  // client:
-  // https://github.com/awslabs/aws-lc/blob/main/crypto/fipsmodule/cipher/e_aes.c#L1400-L1406
-  // he test should run connection for a while to hit the issue:
-  // https://github.com/awslabs/aws-lc/blob/main/crypto/fipsmodule/cipher/e_aes.c#L1409
-  {
-    Span<const uint8_t> key, iv;
-    // Write context
-    key = MakeConstSpan(ssl->cm->write_key, ssl->cm->write_key_length);
-    iv = MakeConstSpan(ssl->cm->write_iv, ssl->cm->write_iv_length);
 
-    UniquePtr<SSLAEADContext> aead_wr_ctx =
-        SSLAEADContext::Create(evp_aead_seal, ssl->version, /*is_dtls =*/false,
-                               session->cipher, key, /*mac_secret*/{},
-                               iv);
-    if (!aead_wr_ctx) {
-      return 0;
-    }
-    ssl->method->set_write_state(ssl, ssl_encryption_application,
-                                 std::move(aead_wr_ctx),
-                                 /*secret_for_quic =*/{});
-    // Read context
-    key = MakeConstSpan(ssl->cm->read_key, ssl->cm->read_key_length);
-    iv = MakeConstSpan(ssl->cm->read_iv, ssl->cm->read_iv_length);
-
-    UniquePtr<SSLAEADContext> aead_rd_ctx =
-        SSLAEADContext::Create(evp_aead_open, ssl->version, /*is_dtls =*/false,
-                               session->cipher, key, /*mac_secret =*/{},
-                               iv);
-    if (!aead_rd_ctx) {
-      return 0;
-    }
-    // TODO: investigate why set_read_state reset read_sequence to zero.
-    ssl->method->set_read_state(ssl, ssl_encryption_application,
-                                 std::move(aead_rd_ctx),
-                                 /*secret_for_quic =*/{});
+  // TODO: revisit iv. it seems the iv is always empty based on
+  // the impl of |SSL_serialize_handback|, which only fetch IV when it's TLS 1.
+  Array<uint8_t> key_block1, key_block2;
+  // Span<const uint8_t> w_iv = MakeConstSpan(CBS_data(&write_iv), CBS_len(&write_iv));
+  if (!tls1_configure_aead(ssl, evp_aead_seal, &key_block1, session, {})) {
+    return 0;
   }
+  // Span<const uint8_t> r_iv = MakeConstSpan(CBS_data(&read_iv), CBS_len(&read_iv));
+  if (!tls1_configure_aead(ssl, evp_aead_open, &key_block2, session, {})) {
+    return 0;
+  }
+
   // TODO: remove below copy when investigated why set_read_state reset read_sequence to zero.
   OPENSSL_memcpy(ssl->s3->read_sequence, read_sequence, TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(ssl->s3->write_sequence, write_sequence, TLS_SEQ_NUM_SIZE);
@@ -1229,7 +1186,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 }
 
 SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
-  printa(in, in_len);
   if (!in || !in_len || !ctx) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return NULL;
