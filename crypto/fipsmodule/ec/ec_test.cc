@@ -1574,6 +1574,99 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
       BN_bin2bn(bytes.data(), bytes.size(), nullptr));
 }
 
+static bool HasSuffix(const char *str, const char *suffix) {
+  size_t suffix_len = strlen(suffix);
+  size_t str_len = strlen(str);
+  if (str_len < suffix_len) {
+    return false;
+  }
+  return strcmp(str + str_len - suffix_len, suffix) == 0;
+}
+
+// Test for out-of-range coordinates in public-key validation in
+// |EC_KEY_check_fips|, which can only be exercised for P-224 when the
+// coordinates in the raw point are not in Montgomery representation.
+TEST(ECTest, LargeXCoordinateVectors) {
+  int line;
+  const char *file;
+
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+
+  FileTestGTest("crypto/fipsmodule/ec/large_x_coordinate_points.txt",
+                [&](FileTest *t) {
+    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+    ASSERT_TRUE(x);
+    bssl::UniquePtr<BIGNUM> xpp = GetBIGNUM(t, "XplusP");
+    ASSERT_TRUE(xpp);
+    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+    ASSERT_TRUE(y);
+    bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+    ASSERT_TRUE(key);
+    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+    ASSERT_TRUE(pub_key);
+
+    size_t len = BN_num_bytes(&group.get()->field); // Modulus byte-length
+    ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+    // The following call converts the point to Montgomery form for P-256, 384 and 521.
+    // For P-224, when the functions from simple.c are used, i.e. when
+    // group->meth = EC_GFp_nistp224_method, the coordinate representation is not changed.
+    // This is determined based on compile flags in ec.c that are also used below.
+    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+                    group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+    ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+    ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+
+    // Set the raw point directly with the BIGNUM coordinates.
+    // Note that both are in big-endian byte order.
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes, (const uint8_t *)x.get()->d, len);
+    OPENSSL_memcpy(key.get()->pub_key->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
+    OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
+    key.get()->pub_key->raw.Z.bytes[0] = 1;
+    // As mentioned, for P-224, setting the raw point directly with the coordinates
+    // still passes |EC_KEY_check_fips|.
+    // For P-256, 384 and 521, the failure is due to that the coordinates are
+    // not in Montgomery representation, hence the checks fail earlier in
+    // |EC_KEY_check_key| in the point-on-the-curve calculations, which use
+    // Montgomery arithmetic.
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    if (group.get()->curve_name == NID_secp224r1)
+    {
+      ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+    } else {
+#endif
+      ASSERT_FALSE(EC_KEY_check_fips(key.get()));
+      EXPECT_EQ(EC_R_POINT_IS_NOT_ON_CURVE,
+                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
+      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_key
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    }
+#endif
+    // Now replace the x-coordinate with the larger one, x+p.
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes, (const uint8_t *)xpp.get()->d, len);
+    ASSERT_FALSE(EC_KEY_check_fips(key.get()));
+
+    // |EC_KEY_check_fips| check on coordinate range can only be exercised for P-224
+    // when the coordinates in the raw point are not in Montgomery representation.
+    // For the other curves, they fail for the same reason as above.
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    if (group.get()->curve_name == NID_secp224r1) {
+      EXPECT_EQ(EC_R_COORDINATES_OUT_OF_RANGE,
+                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
+      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_fips
+    } else {
+#endif
+      EXPECT_EQ(EC_R_POINT_IS_NOT_ON_CURVE,
+                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
+      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_key
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    }
+#endif
+  });
+}
+
 TEST(ECTest, ScalarBaseMultVectors) {
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
   ASSERT_TRUE(ctx);
