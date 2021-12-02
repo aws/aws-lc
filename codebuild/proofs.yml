@@ -1,0 +1,16 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - apt install ocaml
+      - cd ${CODEBUILD_SRC_DIR_hol_light}
+      - make
+  build:
+    commands:
+      - CORE_COUNT=$(nproc --all)
+      - cd ${CODEBUILD_SRC_DIR}/x86
+      - HOLDIR=${CODEBUILD_SRC_DIR_hol_light} make -j ${CORE_COUNT} proofs
+      - echo "TODO: Actually check the proofs"
+      - cd ${CODEBUILD_SRC_DIR}/arm
+      - HOLDIR=${CODEBUILD_SRC_DIR_hol_light} make -j ${CORE_COUNT} proofs
+      - echo "TODO: Actually check the proofs"
