@@ -898,23 +898,45 @@ static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out)
   return true;
 }
 
+// MoveBIOs moves the |BIO|s of |src| to |dst|.  It is used for handoff.
+static void MoveBIOs(SSL *dest, SSL *src) {
+  BIO *rbio = SSL_get_rbio(src);
+  BIO_up_ref(rbio);
+  SSL_set0_rbio(dest, rbio);
+
+  BIO *wbio = SSL_get_wbio(src);
+  BIO_up_ref(wbio);
+  SSL_set0_wbio(dest, wbio);
+
+  SSL_set0_rbio(src, nullptr);
+  SSL_set0_wbio(src, nullptr);
+}
+
 static bool TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
-  // Fetch the rfd.
-  int rfd = SSL_get_rfd(from->get());
-  if (rfd == -1) {
-    fprintf(stderr, "SSL_get_rfd failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
-    return false;
-  }
-  int wfd = SSL_get_wfd(from->get());
-  if (wfd == -1) {
-    fprintf(stderr, "SSL_get_wfd failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
-    return false;
-  }
-  if (!SSL_set_rfd(from->get(), rfd) || !SSL_set_wfd(from->get(), wfd)) {
-    fprintf(stderr, "SSL set fd failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
-    return false;
-  }
-  SSL_free(from->release());
+  MoveBIOs(to, from->get());
+  // // Fetch the bio.
+  // BIO *rbio = SSL_get_rbio(from->get());
+  // if (!rbio) {
+  //   fprintf(stderr, "SSL_get_rbio failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+  //   return false;
+  // }
+  // BIO *wbio = SSL_get_wbio(from->get());
+  // if (!wbio) {
+  //   fprintf(stderr, "SSL_get_wbio failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+  //   return false;
+  // }
+  // // Move the bio.
+  // // Increase ref count of |rbio|.
+  // // |SSL_set_bio(to, rbio, wbio)| only increments the references of |rbio| by 1 when |rbio == wbio|.
+  // // But |SSL_free| decreases the reference of |rbio| and |wbio|.
+  // if (rbio == wbio) {
+  //   BIO_up_ref(rbio);
+  // }
+  // SSL_set_bio(to, rbio, wbio);
+  // // TODO: test half read and write hold by SSL.
+  // // TODO: add a test to check error code?
+  // // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
+  // // SSL_free(from->release());
   return true;
 }
 
@@ -933,11 +955,24 @@ static bool TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniqueP
   if (!TransferBIOs(in, decoded_ssl.get())){
     return false;
   }
+  if (!SetTestConfig(decoded_ssl.get(), GetTestConfig(in->get()))) {
+    return false;
+  }
+  std::unique_ptr<TestState> state(GetTestState(in->get()));
+  if (!SetTestState(decoded_ssl.get(), std::move(state))) {
+    return false;
+  }
+  std::unique_ptr<TestState> tmp1;
+  if (!SetTestState(in->get(), std::move(tmp1)) || !SetTestConfig(in->get(), nullptr)) {
+    return false;
+  }
+  SSL_free(in->release());
   if (out == nullptr) {
     in->reset(decoded_ssl.release());
   } else {
     out->reset(decoded_ssl.release());
   }
+  // fprintf(stderr, "TransferSSL complete!\n");
   return true;
 }
 
@@ -979,6 +1014,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
           fprintf(stderr, "Aha failed transferred!!!\n");
           return false;
         }
+        ssl = ssl_uniqueptr->get();
       }
     }
 
