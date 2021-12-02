@@ -194,9 +194,9 @@ if(ARCH STREQUAL "x86_64")
 endif()
 
 if (BUILD_TESTING)
-  set(RANDOMBYTES_SOURCES rand_extra/randombytes.c)
-else()
   set(RANDOMBYTES_SOURCES test/deterministic_randombytes.c)
+else()
+  set(RANDOMBYTES_SOURCES rand_extra/randombytes.c)
 endif()
 
 if(GO_EXECUTABLE)

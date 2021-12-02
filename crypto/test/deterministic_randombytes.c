@@ -1,7 +1,8 @@
-#include <string.h>
+#include <assert.h>
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/randombytes.h>
+#include <string.h>
 
 typedef struct {
   uint8_t key[32];
@@ -65,6 +66,7 @@ static void AES256_CTR_DRBG_Update(uint8_t *key,
 
 void randombytes_init(const uint8_t *seed, size_t num_bytes)
 {
+  assert(num_bytes == 48);
   uint8_t seed_material[48];
 
   memcpy(seed_material, seed, 48);
