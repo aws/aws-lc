@@ -200,9 +200,8 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   // A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
   // add no more than 63 bytes of overhead. Thus, |table| should require
   // ~1599 ((96 * 16) + 63) bytes of stack space.
-  char table_buffer[64 + (sizeof(P256_POINT) * 16)];
+  stack_align_type table_buffer[64 + (sizeof(P256_POINT) * 16)];
   P256_POINT *aligned_table = (P256_POINT *) align_pointer(table_buffer, 64);
-  //alignas(64) P256_POINT table[16];
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, p_scalar->bytes, 32);
   p_str[32] = 0;
@@ -233,8 +232,7 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   ecp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
 
   BN_ULONG tmp[P256_LIMBS];
-  //alignas(32) P256_POINT h;
-  char buffer_h[32 + sizeof(P256_POINT)];
+  stack_align_type buffer_h[32 + sizeof(P256_POINT)];
   P256_POINT *aligned_h = (P256_POINT *) align_pointer(buffer_h, 32); 
   size_t index = 255;
   crypto_word_t wvalue = p_str[(index - 1) / 8];
@@ -312,8 +310,7 @@ static crypto_word_t calc_wvalue(size_t *index, const uint8_t p_str[33]) {
 static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                                    const EC_RAW_POINT *p,
                                    const EC_SCALAR *scalar) {
-  //alignas(32) P256_POINT out;
-  char buffer_out[32 + sizeof(P256_POINT)];
+  stack_align_type buffer_out[32 + sizeof(P256_POINT)];
   P256_POINT *aligned_out = (P256_POINT *) align_pointer(buffer_out, 32);
   ecp_nistz256_windowed_mul(group, aligned_out, p, scalar);
 
@@ -325,10 +322,9 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 
 static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
                                         const EC_SCALAR *scalar) {
-  //alignas(32) p256_point_union_t t, p;
-  char buffer_t[32 + sizeof(p256_point_union_t)];
+  stack_align_type buffer_t[32 + sizeof(p256_point_union_t)];
   p256_point_union_t *aligned_t = (p256_point_union_t *) align_pointer(buffer_t, 32);
-  char buffer_p[32 + sizeof(p256_point_union_t)];
+  stack_align_type buffer_p[32 + sizeof(p256_point_union_t)];
   p256_point_union_t *aligned_p = (p256_point_union_t *) align_pointer(buffer_p, 32);
 
   uint8_t p_str[33];
@@ -375,10 +371,9 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
                                            const EC_SCALAR *p_scalar) {
   assert(p_ != NULL && p_scalar != NULL && g_scalar != NULL);
 
-  //alignas(32) p256_point_union_t t, p;
-  char buffer_t[32 + sizeof(p256_point_union_t)];
+  stack_align_type buffer_t[32 + sizeof(p256_point_union_t)];
   p256_point_union_t *aligned_t = (p256_point_union_t *) align_pointer(buffer_t, 32);
-  char buffer_p[32 + sizeof(p256_point_union_t)];
+  stack_align_type buffer_p[32 + sizeof(p256_point_union_t)];
   p256_point_union_t *aligned_p = (p256_point_union_t *) align_pointer(buffer_p, 32);
 
   uint8_t p_str[33];

@@ -467,7 +467,7 @@ TEST(HRSS, ABI) {
   OPENSSL_STATIC_ASSERT(sizeof(kCanary) % 32 == 0, needed_for_alignment)
   memset(kCanary, 42, sizeof(kCanary));
 
-  char buffer_scratch[32 + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE + sizeof(kCanary)];
+  stack_align_type buffer_scratch[32 + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE + sizeof(kCanary)];
   uint8_t *aligned_scratch = (uint8_t *) align_pointer(buffer_scratch, 32);
 
   OPENSSL_memcpy(aligned_scratch, kCanary, sizeof(kCanary));

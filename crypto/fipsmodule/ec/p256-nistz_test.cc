@@ -41,7 +41,7 @@
 
 TEST(P256_NistzTest, SelectW5) {
   // Fill a table with some garbage input.  
-  char buffer_table[64 + (sizeof(P256_POINT) * 16)];
+  stack_align_type buffer_table[64 + (sizeof(P256_POINT) * 16)];
   P256_POINT *aligned_table = (P256_POINT *) align_pointer(buffer_table, 64);
 
   for (size_t i = 0; i < 16; i++) {
@@ -73,7 +73,7 @@ TEST(P256_NistzTest, SelectW5) {
 
 TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
-  char buffer_table[64 + (sizeof(P256_POINT_AFFINE) * 64)];
+  stack_align_type buffer_table[64 + (sizeof(P256_POINT_AFFINE) * 64)];
   P256_POINT_AFFINE *aligned_table = (P256_POINT_AFFINE *) align_pointer(buffer_table, 64);
 
   for (size_t i = 0; i < 64; i++) {

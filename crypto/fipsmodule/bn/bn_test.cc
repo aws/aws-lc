@@ -2792,13 +2792,11 @@ TEST_F(BNTest, RSAZABI) {
     return;
   }
 
-  //alignas(64) BN_ULONG table[32 * 18] = {0};
-  //alignas(64) BN_ULONG rsaz1[40], rsaz2[40], rsaz3[40], n_rsaz[40];
-  char buffer_table[64 + (sizeof(BN_ULONG) * (32*18))] = {0};
-  char buffer_rsaz1[64 + (sizeof(BN_ULONG) * 40)];
-  char buffer_rsaz2[64 + (sizeof(BN_ULONG) * 40)];
-  char buffer_rsaz3[64 + (sizeof(BN_ULONG) * 40)];
-  char buffer_n_rsaz[64 + (sizeof(BN_ULONG) * 40)];
+  stack_align_type buffer_table[64 + (sizeof(BN_ULONG) * (32*18))] = {0};
+  stack_align_type buffer_rsaz1[64 + (sizeof(BN_ULONG) * 40)];
+  stack_align_type buffer_rsaz2[64 + (sizeof(BN_ULONG) * 40)];
+  stack_align_type buffer_rsaz3[64 + (sizeof(BN_ULONG) * 40)];
+  stack_align_type buffer_n_rsaz[64 + (sizeof(BN_ULONG) * 40)];
 
   BN_ULONG *aligned_table = (BN_ULONG *) align_pointer(buffer_table, 64);
   BN_ULONG *aligned_rsaz1 = (BN_ULONG *) align_pointer(buffer_rsaz1, 64);
