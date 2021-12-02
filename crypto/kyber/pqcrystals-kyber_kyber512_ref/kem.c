@@ -1,11 +1,11 @@
+#include "kem.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "params.h"
-#include "kem.h"
 #include "indcpa.h"
-#include "verify.h"
+#include "openssl/randombytes.h"
+#include "params.h"
 #include "symmetric.h"
-#include "randombytes.h"
+#include "verify.h"
 
 /*************************************************
 * Name:        crypto_kem_keypair

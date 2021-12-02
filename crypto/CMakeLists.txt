@@ -193,6 +193,12 @@ if(ARCH STREQUAL "x86_64")
   )
 endif()
 
+if (BUILD_TESTING)
+  set(RANDOMBYTES_SOURCES rand_extra/randombytes.c)
+else()
+  set(RANDOMBYTES_SOURCES test/deterministic_randombytes.c)
+endif()
+
 if(GO_EXECUTABLE)
   add_custom_command(
     OUTPUT err_data.c
@@ -346,7 +352,6 @@ add_library(
   kyber/pqcrystals-kyber_kyber512_ref/ntt.c
   kyber/pqcrystals-kyber_kyber512_ref/poly.c
   kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
-  kyber/pqcrystals-kyber_kyber512_ref/randombytes.c
   kyber/pqcrystals-kyber_kyber512_ref/reduce.c
   kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
   kyber/pqcrystals-kyber_kyber512_ref/verify.c
@@ -477,6 +482,7 @@ add_library(
 
   $<TARGET_OBJECTS:fipsmodule>
 
+  ${RANDOMBYTES_SOURCES}
   ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
@@ -631,6 +637,8 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
+
+    ${RANDOMBYTES_SOURCES}
   )
 
   add_dependencies(crypto_test global_target)

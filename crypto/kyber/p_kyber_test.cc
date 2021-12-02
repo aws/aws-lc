@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
+#include <openssl/base.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/mem.h>
 
 #include "../crypto/evp_extra/internal.h"
 #include "../internal.h"
-#include "openssl/base.h"
-#include "openssl/evp.h"
 
 TEST(Kyber512Test, EVP_PKEY_keygen) {
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);

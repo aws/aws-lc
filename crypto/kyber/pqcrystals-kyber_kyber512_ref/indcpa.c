@@ -1,12 +1,12 @@
+#include "indcpa.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "params.h"
-#include "indcpa.h"
-#include "polyvec.h"
-#include "poly.h"
 #include "ntt.h"
+#include "openssl/randombytes.h"
+#include "params.h"
+#include "poly.h"
+#include "polyvec.h"
 #include "symmetric.h"
-#include "randombytes.h"
 
 /*************************************************
 * Name:        pack_pk
