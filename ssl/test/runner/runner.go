@@ -77,6 +77,7 @@ var (
 	shimConfigFile     = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
 	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
+	onlySslTransfer    = flag.Bool("only-ssl-transfer", true, "If true, only run SSL transfer tests.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -703,6 +704,9 @@ type testCase struct {
 	// skipVersionNameCheck, if true, will skip the consistency check between
 	// test name and the versions.
 	skipVersionNameCheck bool
+	// skipSSLTransfer, if true, will skip the generation of a SSL transfer
+	// copy of the test.
+	skipSSLTransfer bool
 }
 
 var testCases []testCase
@@ -1951,6 +1955,86 @@ NextTest:
 	}
 
 	return splitHandshakeTests, nil
+}
+
+func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, err error) {
+	// TODO: check if below is needed by ssl transfer.
+	// var stdout bytes.Buffer
+	// shim := exec.Command(*shimPath, "-is-handshaker-supported")
+	// shim.Stdout = &stdout
+	// if err := shim.Run(); err != nil {
+	// 	return nil, err
+	// }
+
+	// switch strings.TrimSpace(string(stdout.Bytes())) {
+	// case "No":
+	// 	return
+	// case "Yes":
+	// 	break
+	// default:
+	// 	return nil, fmt.Errorf("unknown output from shim: %q", stdout.Bytes())
+	// }
+
+	// TODO: learn allowHintMismatchPattern design purpose.
+	// var allowHintMismatchPattern []string
+	// if len(*allowHintMismatch) > 0 {
+	// 	allowHintMismatchPattern = strings.Split(*allowHintMismatch, ";")
+	// }
+
+// NextTest:
+	for _, test := range tests {
+		if test.protocol != tls ||
+			test.testType != serverTest ||
+			test.name != "ServerSkipCertificateVerify" ||
+			strings.Contains(test.name, "DelegatedCredentials") ||
+			strings.Contains(test.name, "ECH-Server") ||
+			test.skipSSLTransfer {
+			continue
+		}
+
+		// for _, flag := range test.flags {
+		// 	if flag == "-implicit-handshake" {
+		// 		continue NextTest
+		// 	}
+		// }
+
+		stTest := test
+		stTest.name += "-SSL_Transfer"
+		stTest.flags = make([]string, len(test.flags), len(test.flags)+3)
+		copy(stTest.flags, test.flags)
+		// shTest.flags = append(shTest.flags, "-handoff", "-handshaker-path", *handshakerPath)
+		stTest.flags = append(stTest.flags, "-ssl_transfer", "1")
+
+		sslTransferTests = append(sslTransferTests, stTest)
+	}
+
+	// for _, test := range tests {
+	// 	if test.protocol == dtls ||
+	// 		test.testType != serverTest {
+	// 		continue
+	// 	}
+
+	// 	var matched bool
+	// 	if len(allowHintMismatchPattern) > 0 {
+	// 		matched, err = match(allowHintMismatchPattern, nil, test.name)
+	// 		if err != nil {
+	// 			return nil, fmt.Errorf("error matching pattern: %s", err)
+	// 		}
+	// 	}
+
+	// 	shTest := test
+	// 	shTest.name += "-Hints"
+	// 	shTest.flags = make([]string, len(test.flags), len(test.flags)+3)
+	// 	copy(shTest.flags, test.flags)
+	// 	shTest.flags = append(shTest.flags, "-handshake-hints", "-handshaker-path", *handshakerPath)
+	// 	if matched {
+	// 		shTest.flags = append(shTest.flags, "-allow-hint-mismatch")
+	// 	}
+
+	// 	splitHandshakeTests = append(splitHandshakeTests, shTest)
+	// }
+
+	return sslTransferTests, nil
 }
 
 // func addSSLi2d2iTests() {
@@ -19189,57 +19273,67 @@ func main() {
 	}
 
 	addBasicTests()
-	addCipherSuiteTests()
-	addBadECDSASignatureTests()
-	addCBCPaddingTests()
-	addCBCSplittingTests()
-	addClientAuthTests()
-	addDDoSCallbackTests()
-	addVersionNegotiationTests()
-	addMinimumVersionTests()
-	addExtensionTests()
-	addResumptionVersionTests()
-	addExtendedMasterSecretTests()
-	addRenegotiationTests()
-	addDTLSReplayTests()
-	addSignatureAlgorithmTests()
-	addDTLSRetransmitTests()
-	addExportKeyingMaterialTests()
-	addExportTrafficSecretsTests()
-	addTLSUniqueTests()
-	addCustomExtensionTests()
-	addRSAClientKeyExchangeTests()
-	addCurveTests()
-	addSessionTicketTests()
-	addTLS13RecordTests()
-	addAllStateMachineCoverageTests()
-	addChangeCipherSpecTests()
-	addEndOfFlightTests()
-	addWrongMessageTypeTests()
-	addTrailingMessageDataTests()
-	addTLS13HandshakeTests()
-	addTLS13CipherPreferenceTests()
-	addPeekTests()
-	addRecordVersionTests()
-	addCertificateTests()
-	addRetainOnlySHA256ClientCertTests()
-	addECDSAKeyUsageTests()
-	addRSAKeyUsageTests()
-	addExtraHandshakeTests()
-	addOmitExtensionsTests()
-	addCertCompressionTests()
-	addJDK11WorkaroundTests()
-	addDelegatedCredentialTests()
-	addEncryptedClientHelloTests()
-	addHintMismatchTests()
+	// addCipherSuiteTests()
+	// addBadECDSASignatureTests()
+	// addCBCPaddingTests()
+	// addCBCSplittingTests()
+	// addClientAuthTests()
+	// addDDoSCallbackTests()
+	// addVersionNegotiationTests()
+	// addMinimumVersionTests()
+	// addExtensionTests()
+	// addResumptionVersionTests()
+	// addExtendedMasterSecretTests()
+	// addRenegotiationTests()
+	// addDTLSReplayTests()
+	// addSignatureAlgorithmTests()
+	// addDTLSRetransmitTests()
+	// addExportKeyingMaterialTests()
+	// addExportTrafficSecretsTests()
+	// addTLSUniqueTests()
+	// addCustomExtensionTests()
+	// addRSAClientKeyExchangeTests()
+	// addCurveTests()
+	// addSessionTicketTests()
+	// addTLS13RecordTests()
+	// addAllStateMachineCoverageTests()
+	// addChangeCipherSpecTests()
+	// addEndOfFlightTests()
+	// addWrongMessageTypeTests()
+	// addTrailingMessageDataTests()
+	// addTLS13HandshakeTests()
+	// addTLS13CipherPreferenceTests()
+	// addPeekTests()
+	// addRecordVersionTests()
+	// addCertificateTests()
+	// addRetainOnlySHA256ClientCertTests()
+	// addECDSAKeyUsageTests()
+	// addRSAKeyUsageTests()
+	// addExtraHandshakeTests()
+	// addOmitExtensionsTests()
+	// addCertCompressionTests()
+	// addJDK11WorkaroundTests()
+	// addDelegatedCredentialTests()
+	// addEncryptedClientHelloTests()
+	// addHintMismatchTests()
 	// addSSLi2d2iTests()
 
-	toAppend, err := convertToSplitHandshakeTests(testCases)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error making split handshake tests: %s", err)
-		os.Exit(1)
+	// TODO: remove onlySslTransfer.
+	if *onlySslTransfer {
+		sslTransferTests, err := convertToSSLTransferTests(testCases)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error making SSL transfer tests: %s", err)
+			os.Exit(1)
+		}
+		testCases = sslTransferTests
+	} else {
+		toAppend, err := convertToSplitHandshakeTests(testCases)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error making split handshake tests: %s", err)
+			os.Exit(1)
+		}
+		testCases = append(testCases, toAppend...)
 	}
-	testCases = append(testCases, toAppend...)
 
 	checkTests()
 

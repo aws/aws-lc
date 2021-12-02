@@ -971,9 +971,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     } while (RetryAsync(ssl, ret));
 
     if (config->ssl_transfer == 1) {
-      if (SSL_is_server(ssl) && !SSL_is_dtls(ssl) && SSL_version(ssl) == TLS1_2_VERSION) {
+      if (SSL_is_server(ssl) && 
+          !SSL_is_dtls(ssl) && 
+          SSL_version(ssl) == TLS1_2_VERSION &&
+          !SSL_in_init(ssl)) {
         if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {
-          fprintf(stderr, "Aha transferred!!!\n");
+          fprintf(stderr, "Aha failed transferred!!!\n");
           return false;
         }
       }
