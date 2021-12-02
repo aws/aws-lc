@@ -205,16 +205,19 @@ typedef union union_array_type {
   ASSERT_TRUE(aligned_##type##_##power_of_two##_##memory_size); \
   ASSERT_TRUE(verify_memory_alignment(aligned_##type##_##power_of_two##_##memory_size, power_of_two));
 
-TEST(AlignmentTest, StackBufferManualAlignment) {
+// Macro lists produced with the following Python script:
+//  MACRO_NAME = 'CHECK_STACK_ALIGNMENT'
+//  type_names = ['uint8_t', 'char', 'struct_array_st', 'union_array_type']
+//  power_of_twos = [1, 2, 4, 8, 16, 32, 64]
+//  for type_name in type_names:
+//    for power_of_two in power_of_twos:
+//      for memory_size in range(1, power_of_two):
+//        print '{}({}, {}, {})'.format(MACRO_NAME, type_name, power_of_two, memory_size)
 
-  // Produced with the following Python script:
-  //  MACRO_NAME = 'CHECK_STACK_ALIGNMENT'
-  //  type_names = ['uint8_t', 'char', 'struct_array_st', 'union_array_type']
-  //  power_of_twos = [1, 2, 4, 8, 16, 32, 64]
-  //  for type_name in type_names:
-  //    for power_of_two in power_of_twos:
-  //      for memory_size in range(1, power_of_two):
-  //        print '{}({}, {}, {})'.format(MACRO_NAME, type_name, power_of_two, memory_size)
+// Windows doesn't like the big virtual functions produced. So, split this into
+// several test fixtures.
+
+TEST(AlignmentTest, StackBufferManualAlignmentTypes1) {
 
   CHECK_STACK_ALIGNMENT(uint8_t, 2, 1)
   CHECK_STACK_ALIGNMENT(uint8_t, 4, 1)
@@ -456,6 +459,11 @@ TEST(AlignmentTest, StackBufferManualAlignment) {
   CHECK_STACK_ALIGNMENT(char, 64, 61)
   CHECK_STACK_ALIGNMENT(char, 64, 62)
   CHECK_STACK_ALIGNMENT(char, 64, 63)
+
+}
+
+TEST(AlignmentTest, StackBufferManualAlignmentTypes2) {
+
   CHECK_STACK_ALIGNMENT(struct_array_st, 2, 1)
   CHECK_STACK_ALIGNMENT(struct_array_st, 4, 1)
   CHECK_STACK_ALIGNMENT(struct_array_st, 4, 2)
