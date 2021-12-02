@@ -269,20 +269,52 @@ elseif(FIPS_SHARED)
   )
 
   add_dependencies(bcm_library global_target)
-  # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
-  set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
-  if (GCC)
-    # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
-    # so we have a separate linker script for gcc.
-    set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
-  endif()
 
-  add_custom_command(
-    OUTPUT bcm.o
-    COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
-    DEPENDS bcm_library fips_shared.lds
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  )
+	if (APPLE)
+		# The linker on macOS doesn't have the ability to process linker scripts,
+		# so we build the FIPS module differently than on Linux. Similarly to
+		# what OpenSSL does we produce two object files: fips_macos_{start, end}.o
+		# that contain only the markers for the start and end of __text and __const
+		# sections. The module is then produced by linking the files specified in
+		# the following order: fips_macos_start.o bcm.o fips_macos_end.o. This will
+		# generate the output object file where all the code in the __text section
+		# and all the read-only data in the __const section are between the
+		# respective start and end markers.
+  	add_custom_command(
+  	  OUTPUT fips_macos_start.o
+			COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_START -o fips_macos_start.o
+  	)
+  	add_custom_command(
+  	  OUTPUT fips_macos_end.o
+			COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_END -o fips_macos_end.o
+  	)
+
+  	add_custom_command(
+  	  OUTPUT bcm.o
+  	  COMMAND ${CMAKE_LINKER} -r fips_macos_start.o -force_load $<TARGET_FILE:bcm_library> fips_macos_end.o -keep_private_externs -o bcm.o
+  	  DEPENDS bcm_library fips_macos_start.o fips_macos_end.o
+  	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  	)
+
+	else()
+		# Linux is the only OS other than macOS on which we build FIPS.
+
+		# fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
+  	set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
+  	if (GCC)
+  	  # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
+  	  # so we have a separate linker script for gcc.
+  	  set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
+  	endif()
+
+  	add_custom_command(
+  	  OUTPUT bcm.o
+  	  COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+  	  DEPENDS bcm_library fips_shared.lds
+  	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  	)
+	endif()
+
 
   add_custom_target(bcm_o_target DEPENDS bcm.o)
 else()
