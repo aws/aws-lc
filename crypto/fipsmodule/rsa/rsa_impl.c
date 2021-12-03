@@ -1380,6 +1380,11 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
 
 out:
   RSA_free(tmp);
+#if defined(BORINGSSL_FIPS)
+  if (ret == 0) {
+    BORINGSSL_FIPS_abort();
+  }
+#endif
   return ret;
 }
 
