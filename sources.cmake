@@ -49,6 +49,7 @@ set(
   crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
+  crypto/fipsmodule/ec/large_x_coordinate_points.txt
   crypto/fipsmodule/ec/p256-nistz_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt

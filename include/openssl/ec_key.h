@@ -161,14 +161,18 @@ OPENSSL_EXPORT point_conversion_form_t EC_KEY_get_conv_form(const EC_KEY *key);
 OPENSSL_EXPORT void EC_KEY_set_conv_form(EC_KEY *key,
                                          point_conversion_form_t cform);
 
-// EC_KEY_check_key performs several checks on |key| (possibly including an
-// expensive check that the public key is in the primary subgroup). It returns
-// one if all checks pass and zero otherwise. If it returns zero then detail
-// about the problem can be found on the error stack.
+// EC_KEY_check_key performs several checks on |key| including, if the
+// private is present, an expensive check that the public key
+// corresponds to it. It returns one if all checks pass and zero
+// otherwise. If it returns zero then detail about the problem can be
+// found on the error stack.
 OPENSSL_EXPORT int EC_KEY_check_key(const EC_KEY *key);
 
 // EC_KEY_check_fips performs a signing pairwise consistency test (FIPS 140-2
-// 4.9.2). It returns one if it passes and zero otherwise.
+// 4.9.2). If the public key contains an affine point, it also checks that its
+// coordinates are in the range [0, p-1]. That is in addition to the checks
+// performed by EC_KEY_check_key.
+// It returns one if it passes and zero otherwise.
 OPENSSL_EXPORT int EC_KEY_check_fips(const EC_KEY *key);
 
 // EC_KEY_set_public_key_affine_coordinates sets the public key in |key| to

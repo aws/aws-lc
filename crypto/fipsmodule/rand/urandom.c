@@ -64,8 +64,8 @@
 #endif
 #endif  // OPENSSL_LINUX
 
-#if defined(OPENSSL_MACOS)
-#include <sys/random.h>
+#if defined(OPENSSL_APPLE)
+#include <CommonCrypto/CommonRandom.h>
 #endif
 
 #if defined(OPENSSL_FREEBSD)
@@ -182,13 +182,11 @@ static void init_once(void) {
   }
 #endif  // USE_NR_getrandom
 
-#if defined(OPENSSL_MACOS)
-  // getentropy is available in macOS 10.12 and up. iOS 10 and up may also
-  // support it, but the header is missing. See https://crbug.com/boringssl/287.
-  if (__builtin_available(macos 10.12, *)) {
-    *urandom_fd_bss_get() = kHaveGetrandom;
-    return;
-  }
+#if defined(OPENSSL_APPLE)
+  // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
+  // function provided by Apple rather than /dev/urandom or |getentropy|
+  // function which is available on MacOS but not on iOS.
+  return;
 #endif
 
 #if defined(FREEBSD_GETRANDOM)
@@ -276,11 +274,14 @@ static void wait_for_entropy(void) {
     return;
   }
 
-#if defined(BORINGSSL_FIPS) && !defined(URANDOM_BLOCKS_FOR_ENTROPY)
+#if defined(BORINGSSL_FIPS) && !defined(URANDOM_BLOCKS_FOR_ENTROPY) && \
+    !defined(OPENSSL_APPLE) // On MacOS and iOS we don't use /dev/urandom.
+
   // In FIPS mode on platforms where urandom doesn't block at startup, we ensure
   // that the kernel has sufficient entropy before continuing. This is
   // automatically handled by getrandom, which requires that the entropy pool
   // has been initialised, but for urandom we have to poll.
+
   for (;;) {
     int entropy_bits;
     if (ioctl(fd, RNDGETENTCNT, &entropy_bits)) {
@@ -311,6 +312,17 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
     return 1;
   }
 
+#if defined(OPENSSL_APPLE)
+  // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
+  // rather than |getentropy| and /dev/urandom.
+  if (CCRandomGenerateBytes(out, len) == kCCSuccess) {
+    return 1;
+  } else {
+    fprintf(stderr, "CCRandomGenerateBytes failed.\n");
+    abort();
+  }
+#endif
+
 #if defined(USE_NR_getrandom) || defined(FREEBSD_GETRANDOM)
   int getrandom_flags = 0;
   if (!block) {
@@ -340,19 +352,6 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
       r = boringssl_getrandom(out, len, getrandom_flags);
 #elif defined(FREEBSD_GETRANDOM)
       r = getrandom(out, len, getrandom_flags);
-#elif defined(OPENSSL_MACOS)
-      if (__builtin_available(macos 10.12, *)) {
-        // |getentropy| can only request 256 bytes at a time.
-        size_t todo = len <= 256 ? len : 256;
-        if (getentropy(out, todo) != 0) {
-          r = -1;
-        } else {
-          r = (ssize_t)todo;
-        }
-      } else {
-        fprintf(stderr, "urandom fd corrupt.\n");
-        abort();
-      }
 #else  // USE_NR_getrandom
       fprintf(stderr, "urandom fd corrupt.\n");
       abort();

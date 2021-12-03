@@ -4,14 +4,17 @@
 version: 0.2
 
 phases:
+  install:
+    commands:
+      # Start Docker daemon.
+      # https://docs.aws.amazon.com/codebuild/latest/userguide/sample-docker-custom-image.html
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
   pre_build:
     commands:
-      # To use this build spec file, CMake environment variable CC and CXX compiler should be pre-defined.
-      - if [[ -z "${CC+x}" || -z "${CC}" ]]; then echo "CC is not defined." && exit 1; else ${CC} --version && echo "Found CC."; fi
-      - if [[ -z "${CXX+x}" || -z "${CXX}" ]]; then echo "CXX is not defined." && exit 1; else ${CXX} --version && echo "Found CXX."; fi
-      - if [[ -z "${FIPS_BCM_O_S3_OBJ+x}" || -z "${FIPS_BCM_O_S3_OBJ}" ]]; then echo "FIPS_BCM_O_S3_OBJ is not defined." && exit 1; fi
+      - aws --version
+      - echo $AWS_DEFAULT_REGION
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
   build:
     commands:
-      - export ABS_PATH_TO_BCM_O="$(pwd)/bcm.o"
-      - aws s3 cp ${FIPS_BCM_O_S3_OBJ} ${ABS_PATH_TO_BCM_O}
       - ./tests/ci/run_fips_vendor_affirm.sh
