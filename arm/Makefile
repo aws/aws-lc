@@ -209,7 +209,8 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_sqr_p521.o \
       p521/bignum_sub_p521.o \
       p521/bignum_tomont_p521.o \
-      p521/bignum_triple_p521.o
+      p521/bignum_triple_p521.o \
+      secp256k1/bignum_sub_p256k1.o
 
 %.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(MANGLE) | $(ASSEMBLE) -o $@ -
 
@@ -248,5 +249,6 @@ generic/%.correct: proofs/%.ml generic/%.o ; (cd ..; (echo 'loadt "arm/proofs/ba
 p256/%.correct: proofs/%.ml p256/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 p384/%.correct: proofs/%.ml p384/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 p521/%.correct: proofs/%.ml p521/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 proofs: $(PROOFS);

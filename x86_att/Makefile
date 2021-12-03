@@ -151,7 +151,8 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_sqr_p521.o \
       p521/bignum_sub_p521.o \
       p521/bignum_tomont_p521.o \
-      p521/bignum_triple_p521.o
+      p521/bignum_triple_p521.o \
+      secp256k1/bignum_sub_p256k1.o
 
 # The AT&T syntax source files
 
@@ -168,6 +169,7 @@ generic/%.S :: ../x86/generic/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (c
 p256/%.S :: ../x86/p256/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
 p384/%.S :: ../x86/p384/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
 p521/%.S :: ../x86/p521/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
+secp256k1/%.S :: ../x86/secp256k1/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
 
 clean:; rm -f */*.o
 

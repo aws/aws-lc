@@ -810,6 +810,22 @@ let ACCUMULATEX_ARITH_TAC =
     MATCH_MP_TAC MONO_FORALL THEN GEN_TAC THEN
     REWRITE_TAC[WORD_ADD] THEN
     REWRITE_TAC[GSYM WORD_ADD_ASSOC; ADD_ASSOC])
+  and pth_sbc_r0 = prove
+   (`!(s:S) Xnn (x:int64) b.
+        read Xnn s = word_sub x (word(bitval b))
+        ==> ?c z. (--(&2 pow 64) * &(bitval c) + &(val z):real =
+                   &(val x) - &(bitval b) /\
+                   read Xnn s = z) /\
+                  (val x < 0 + bitval b <=> c) /\
+                  (val x < bitval b <=> c) /\
+                  (bitval b + 0 <= val x <=> ~c) /\
+                  (bitval b <= val x <=> ~c)`,
+    MP_TAC pth_sbc THEN
+    REPLICATE_TAC 3 (MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
+    DISCH_THEN(MP_TAC o SPEC `word 0:int64`) THEN
+    MATCH_MP_TAC MONO_FORALL THEN GEN_TAC THEN
+    REWRITE_TAC[WORD_ADD_0; VAL_WORD_0; ADD_CLAUSES] THEN
+    REWRITE_TAC[REAL_SUB_RZERO; CONJ_ACI])
   and pth_adc_c0 = prove
    (`!(s:S) Xnn (x:int64) y.
         read Xnn s = word_add (word_add x y) (word 0)
@@ -919,6 +935,7 @@ let ACCUMULATEX_ARITH_TAC =
               try MATCH_MP pth_add_r0 th with Failure _ ->
               try MATCH_MP pth_sbc th with Failure _ ->
               try MATCH_MP pth_sbc_rn th with Failure _ ->
+              try MATCH_MP pth_sbc_r0 th with Failure _ ->
               try MATCH_MP pth_add th with Failure _ ->
               try MATCH_MP pth_sub th with Failure _ ->
               failwith "No matching accum theorem" in

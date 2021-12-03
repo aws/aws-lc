@@ -529,6 +529,10 @@ extern uint64_t bignum_sub (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, ui
 // Inputs x[4], y[4]; output z[4]
 extern void bignum_sub_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 
+// Subtract modulo p_256k1, z := (x - y) mod p_256k1, assuming x and y reduced
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_sub_p256k1 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+
 // Subtract modulo p_384, z := (x - y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_sub_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
