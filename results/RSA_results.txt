@@ -5,34 +5,34 @@ Bytes_Encrypted     ->      245
 Plaintext_Bytes     ->      245
 Key_Size_Bytes      ->      2048
 
-cycles_keygen_total         1666086 [CCs_x10^3]
-cycles_encrypt_total        264 [CCs_x10^3]
-cycles_decrypt_total        7889 [CCs_x10^3]
-TOTAL_protocol              8152 [CCs_x10^3]
-%_encrypt                   3.232 [%] 
-%_decrypt                   96.768 [%] 
+cycles_keygen_total         206248 [CCs_x10^3]
+cycles_encrypt_total        40 [CCs_x10^3]
+cycles_decrypt_total        1146 [CCs_x10^3]
+TOTAL_protocol              1185 [CCs_x10^3]
+%_encrypt                   3.360 [%] 
+%_decrypt                   96.640 [%] 
 
 Bytes_Encrypted     ->      373
 Plaintext_Bytes     ->      373
 Key_Size_Bytes      ->      3072
 
-cycles_keygen_total         702004 [CCs_x10^3]
-cycles_encrypt_total        272 [CCs_x10^3]
-cycles_decrypt_total        12837 [CCs_x10^3]
-TOTAL_protocol              13109 [CCs_x10^3]
-%_encrypt                   2.076 [%] 
-%_decrypt                   97.924 [%] 
+cycles_keygen_total         469527 [CCs_x10^3]
+cycles_encrypt_total        82 [CCs_x10^3]
+cycles_decrypt_total        3557 [CCs_x10^3]
+TOTAL_protocol              3638 [CCs_x10^3]
+%_encrypt                   2.259 [%] 
+%_decrypt                   97.741 [%] 
 
 Bytes_Encrypted     ->      501
 Plaintext_Bytes     ->      501
 Key_Size_Bytes      ->      4096
 
-cycles_keygen_total         6528495 [CCs_x10^3]
-cycles_encrypt_total        467 [CCs_x10^3]
-cycles_decrypt_total        28111 [CCs_x10^3]
-TOTAL_protocol              28577 [CCs_x10^3]
-%_encrypt                   1.633 [%] 
-%_decrypt                   98.367 [%] 
+cycles_keygen_total         824544 [CCs_x10^3]
+cycles_encrypt_total        193 [CCs_x10^3]
+cycles_decrypt_total        12003 [CCs_x10^3]
+TOTAL_protocol              12195 [CCs_x10^3]
+%_encrypt                   1.580 [%] 
+%_decrypt                   98.420 [%] 
 
 Number_Tests        ->      RSA_NO_PADDING
 Number_Tests        ->      100
@@ -41,34 +41,34 @@ Bytes_Encrypted     ->      256
 Plaintext_Bytes     ->      256
 Key_Size_Bytes      ->      2048
 
-cycles_keygen_total         420935 [CCs_x10^3]
-cycles_encrypt_total        115 [CCs_x10^3]
-cycles_decrypt_total        4293 [CCs_x10^3]
-TOTAL_protocol              4408 [CCs_x10^3]
-%_encrypt                   2.614 [%] 
-%_decrypt                   97.386 [%] 
+cycles_keygen_total         313050 [CCs_x10^3]
+cycles_encrypt_total        44 [CCs_x10^3]
+cycles_decrypt_total        1602 [CCs_x10^3]
+TOTAL_protocol              1646 [CCs_x10^3]
+%_encrypt                   2.683 [%] 
+%_decrypt                   97.317 [%] 
 
 Bytes_Encrypted     ->      384
 Plaintext_Bytes     ->      384
 Key_Size_Bytes      ->      3072
 
-cycles_keygen_total         1744542 [CCs_x10^3]
-cycles_encrypt_total        262 [CCs_x10^3]
-cycles_decrypt_total        14768 [CCs_x10^3]
-TOTAL_protocol              15030 [CCs_x10^3]
-%_encrypt                   1.743 [%] 
-%_decrypt                   98.257 [%] 
+cycles_keygen_total         1085722 [CCs_x10^3]
+cycles_encrypt_total        74 [CCs_x10^3]
+cycles_decrypt_total        3884 [CCs_x10^3]
+TOTAL_protocol              3958 [CCs_x10^3]
+%_encrypt                   1.871 [%] 
+%_decrypt                   98.129 [%] 
 
 Bytes_Encrypted     ->      512
 Plaintext_Bytes     ->      512
 Key_Size_Bytes      ->      4096
 
-cycles_keygen_total         3277211 [CCs_x10^3]
-cycles_encrypt_total        342 [CCs_x10^3]
-cycles_decrypt_total        25845 [CCs_x10^3]
-TOTAL_protocol              26186 [CCs_x10^3]
-%_encrypt                   1.306 [%] 
-%_decrypt                   98.694 [%] 
+cycles_keygen_total         1746155 [CCs_x10^3]
+cycles_encrypt_total        131 [CCs_x10^3]
+cycles_decrypt_total        9299 [CCs_x10^3]
+TOTAL_protocol              9430 [CCs_x10^3]
+%_encrypt                   1.390 [%] 
+%_decrypt                   98.610 [%] 
 
 Number_Tests        ->      RSA_PKCS1_OAEP_PADDING
 Number_Tests        ->      100
@@ -77,32 +77,32 @@ Bytes_Encrypted     ->      214
 Plaintext_Bytes     ->      214
 Key_Size_Bytes      ->      2048
 
-cycles_keygen_total         559160 [CCs_x10^3]
-cycles_encrypt_total        150 [CCs_x10^3]
-cycles_decrypt_total        3865 [CCs_x10^3]
-TOTAL_protocol              4015 [CCs_x10^3]
-%_encrypt                   3.729 [%] 
-%_decrypt                   96.271 [%] 
+cycles_keygen_total         189924 [CCs_x10^3]
+cycles_encrypt_total        54 [CCs_x10^3]
+cycles_decrypt_total        1338 [CCs_x10^3]
+TOTAL_protocol              1391 [CCs_x10^3]
+%_encrypt                   3.846 [%] 
+%_decrypt                   96.154 [%] 
 
 Bytes_Encrypted     ->      342
 Plaintext_Bytes     ->      342
 Key_Size_Bytes      ->      3072
 
-cycles_keygen_total         1533407 [CCs_x10^3]
-cycles_encrypt_total        317 [CCs_x10^3]
-cycles_decrypt_total        13443 [CCs_x10^3]
-TOTAL_protocol              13760 [CCs_x10^3]
-%_encrypt                   2.303 [%] 
-%_decrypt                   97.697 [%] 
+cycles_keygen_total         697995 [CCs_x10^3]
+cycles_encrypt_total        96 [CCs_x10^3]
+cycles_decrypt_total        4020 [CCs_x10^3]
+TOTAL_protocol              4115 [CCs_x10^3]
+%_encrypt                   2.339 [%] 
+%_decrypt                   97.661 [%] 
 
 Bytes_Encrypted     ->      470
 Plaintext_Bytes     ->      470
 Key_Size_Bytes      ->      4096
 
-cycles_keygen_total         7872559 [CCs_x10^3]
-cycles_encrypt_total        411 [CCs_x10^3]
-cycles_decrypt_total        25227 [CCs_x10^3]
-TOTAL_protocol              25638 [CCs_x10^3]
-%_encrypt                   1.605 [%] 
-%_decrypt                   98.395 [%] 
+cycles_keygen_total         713792 [CCs_x10^3]
+cycles_encrypt_total        149 [CCs_x10^3]
+cycles_decrypt_total        8781 [CCs_x10^3]
+TOTAL_protocol              8930 [CCs_x10^3]
+%_encrypt                   1.670 [%] 
+%_decrypt                   98.330 [%] 
 
