@@ -1009,6 +1009,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       if (SSL_is_server(ssl) && 
           !SSL_is_dtls(ssl) && 
           SSL_version(ssl) == TLS1_2_VERSION &&
+          !ssl->s3->established_session.get()->not_resumable &&
           !SSL_in_init(ssl)) {
         if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {
           fprintf(stderr, "Aha failed transferred!!!\n");
