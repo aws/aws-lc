@@ -1,12 +1,12 @@
+# Build spec for both x86 and arm builds
 version: 0.2
 
 phases:
   build:
     commands:
-       - if [[ `uname -p` == 'x86_64' ]]; then ARCH=x86; else ARCH=arm; fi
-      - cd ${CODEBUILD_SRC_DIR}/${ARCH}
+      - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - make
       - cd ${CODEBUILD_SRC_DIR}/tests
       - make
       - ./test 100
-      - echo "TODO: Actually check the test results"
+      - echo "TODO Actually check the test results"
