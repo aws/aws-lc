@@ -639,6 +639,7 @@ TEST(RSATest, BadExponent) {
   ERR_clear_error();
 }
 
+#if !defined(BORINGSSL_FIPS)
 // Attempting to generate an excessively small key should fail.
 TEST(RSATest, GenerateSmallKey) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -652,6 +653,20 @@ TEST(RSATest, GenerateSmallKey) {
   EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
   EXPECT_EQ(RSA_R_KEY_SIZE_TOO_SMALL, ERR_GET_REASON(err));
 }
+#else
+// Attempting to generate an excessively small key should fail.
+// In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
+TEST(RSADeathTest, GenerateSmallKeyDeath) {
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+
+  ASSERT_DEATH(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr), "");
+}
+
+#endif
 
 // Attempting to generate an funny RSA key length should round down.
 TEST(RSATest, RoundKeyLengths) {
@@ -904,6 +919,7 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_sub(rsa->iqmp, rsa->iqmp, rsa->p));
 }
 
+#if !defined(BORINGSSL_FIPS)
 TEST(RSATest, KeygenFail) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
@@ -991,6 +1007,98 @@ TEST(RSATest, KeygenFailOnce) {
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
   EXPECT_FALSE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
 }
+
+#else
+// In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
+TEST(RSADeathTest, KeygenFail) {
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+
+  // Cause RSA key generation after a prime has been generated, to test that
+  // |rsa| is left alone.
+  BN_GENCB cb;
+  BN_GENCB_set(&cb,
+               [](int event, int, BN_GENCB *) -> int { return event != 3; },
+               nullptr);
+
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+
+  // Key generation should fail.
+  ASSERT_DEATH(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
+
+  // Failed key generations do not leave garbage in |rsa|.
+  EXPECT_FALSE(rsa->n);
+  EXPECT_FALSE(rsa->e);
+  EXPECT_FALSE(rsa->d);
+  EXPECT_FALSE(rsa->p);
+  EXPECT_FALSE(rsa->q);
+  EXPECT_FALSE(rsa->dmp1);
+  EXPECT_FALSE(rsa->dmq1);
+  EXPECT_FALSE(rsa->iqmp);
+  EXPECT_FALSE(rsa->mont_n);
+  EXPECT_FALSE(rsa->mont_p);
+  EXPECT_FALSE(rsa->mont_q);
+  EXPECT_FALSE(rsa->d_fixed);
+  EXPECT_FALSE(rsa->dmp1_fixed);
+  EXPECT_FALSE(rsa->dmq1_fixed);
+  EXPECT_FALSE(rsa->inv_small_mod_large_mont);
+  EXPECT_FALSE(rsa->private_key_frozen);
+
+  // Failed key generations leave the previous contents alone.
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
+  uint8_t *der;
+  size_t der_len;
+  ASSERT_TRUE(RSA_private_key_to_bytes(&der, &der_len, rsa.get()));
+  bssl::UniquePtr<uint8_t> delete_der(der);
+
+  ASSERT_DEATH(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
+
+  uint8_t *der2;
+  size_t der2_len;
+  ASSERT_TRUE(RSA_private_key_to_bytes(&der2, &der2_len, rsa.get()));
+  bssl::UniquePtr<uint8_t> delete_der2(der2);
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
+
+  // Generating a key over an existing key works, despite any cached state.
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
+  EXPECT_TRUE(RSA_check_key(rsa.get()));
+  uint8_t *der3;
+  size_t der3_len;
+  ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));
+  bssl::UniquePtr<uint8_t> delete_der3(der3);
+  EXPECT_NE(Bytes(der, der_len), Bytes(der3, der3_len));
+}
+
+TEST(RSADeathTest, KeygenFailOnce) {
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+
+  // Cause only the first iteration of RSA key generation to fail.
+  bool failed = false;
+  BN_GENCB cb;
+  BN_GENCB_set(&cb,
+               [](int event, int n, BN_GENCB *cb_ptr) -> int {
+                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
+                 if (*failed_ptr) {
+                   ADD_FAILURE() << "Callback called multiple times.";
+                   return 1;
+                 }
+                 *failed_ptr = true;
+                 return 0;
+               },
+               &failed);
+
+  // Although key generation internally retries, the external behavior of
+  // |BN_GENCB| is preserved.
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+  ASSERT_DEATH(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
+}
+
+#endif
 
 TEST(RSATest, KeygenInternalRetry) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
