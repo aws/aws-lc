@@ -639,7 +639,7 @@ TEST(RSATest, BadExponent) {
   ERR_clear_error();
 }
 
-#if !defined(BORINGSSL_FIPS)
+#if !defined(AWSLC_FIPS)
 // Attempting to generate an excessively small key should fail.
 TEST(RSATest, GenerateSmallKey) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -656,7 +656,7 @@ TEST(RSATest, GenerateSmallKey) {
 #else
 // Attempting to generate an excessively small key should fail.
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
-TEST(RSADeathTest, GenerateSmallKeyDeath) {
+TEST(RSADeathTest, GenerateSmallKeyAndDie) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
   bssl::UniquePtr<BIGNUM> e(BN_new());
@@ -919,7 +919,7 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_sub(rsa->iqmp, rsa->iqmp, rsa->p));
 }
 
-#if !defined(BORINGSSL_FIPS)
+#if !defined(AWSLC_FIPS)
 TEST(RSATest, KeygenFail) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
@@ -1010,7 +1010,7 @@ TEST(RSATest, KeygenFailOnce) {
 
 #else
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
-TEST(RSADeathTest, KeygenFail) {
+TEST(RSADeathTest, KeygenFailAndDie) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
 
@@ -1071,7 +1071,7 @@ TEST(RSADeathTest, KeygenFail) {
   EXPECT_NE(Bytes(der, der_len), Bytes(der3, der3_len));
 }
 
-TEST(RSADeathTest, KeygenFailOnce) {
+TEST(RSADeathTest, KeygenFailOnceAndDie) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
 
