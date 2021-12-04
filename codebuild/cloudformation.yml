@@ -49,11 +49,38 @@ Resources:
         ImagePullCredentialsType: "CODEBUILD"
         PrivilegedMode: false
         Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: x86
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       TimeoutInMinutes: 60
       QueuedTimeoutInMinutes: 480
       EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
       BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+            - Type: ACTOR_ACCOUNT_ID
+              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
+              ExcludeMatchedPattern: false
       LogsConfig: 
         CloudWatchLogs: 
           Status: "ENABLED"
@@ -81,15 +108,42 @@ Resources:
         Type: "NO_CACHE"
       Environment: 
         ComputeType: "BUILD_GENERAL1_LARGE"
-        Image: "aws/codebuild/standard:4.0"
+        Image: "aws/codebuild/amazonlinux2-aarch64-standard:2.0"
         ImagePullCredentialsType: "CODEBUILD"
         PrivilegedMode: false
         Type: "ARM_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: arm
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       TimeoutInMinutes: 60
       QueuedTimeoutInMinutes: 480
       EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
       BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+            - Type: ACTOR_ACCOUNT_ID
+              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
+              ExcludeMatchedPattern: false
       LogsConfig: 
         CloudWatchLogs: 
           Status: "ENABLED"
@@ -128,10 +182,33 @@ Resources:
         PrivilegedMode: false
         Type: "LINUX_CONTAINER"
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 300
       QueuedTimeoutInMinutes: 480
       EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
       BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+            - Type: ACTOR_ACCOUNT_ID
+              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
+              ExcludeMatchedPattern: false
       LogsConfig: 
         CloudWatchLogs: 
           Status: "ENABLED"
@@ -162,7 +239,8 @@ Resources:
             {
               "Effect": "Allow",
               "Resource": [
-                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${ProjectName}"
+                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${ProjectName}",
+                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${ProjectName}-*"
               ],
               "Action": [
                 "codebuild:StartBuild",
@@ -186,7 +264,9 @@ Resources:
               "Effect": "Allow",
               "Resource": [
                 "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}",
-                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}:*"
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}:*",
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*",
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*:*"
               ],
               "Action": [
                 "logs:CreateLogGroup",

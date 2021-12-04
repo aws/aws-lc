@@ -239,7 +239,7 @@ clean:; rm -f libs2nbignum.a */*.o */*.correct
 # in your home directory, and do "make" inside the subdirectory hol-light,
 # then the following HOLDIR setting should be right:
 
-HOLDIR=$(HOME)/hol-light
+HOLDIR?=$(HOME)/hol-light
 HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
 
 PROOFS = $(OBJ:.o=.correct)
