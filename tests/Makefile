@@ -18,6 +18,8 @@
 # If this block fails to do it automatically, replace with manual
 # setting: ARCH=x86 or ARCH=arm as appropriate
 
+.PHONY: clean ctCheck
+
 ARCH=unknown_architecture
 
 UNAME_RESULT=$(shell uname -m)
@@ -42,10 +44,17 @@ endif
 # The "go" target runs it with 100 tests per function and filters
 # most of the "good result" output to leave the summary and errors
 
-default: test;
+default: test ctCheck;
 
 go: test; ./test 100 | grep -v OK
 
 test: test.c ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -Wall -std=gnu99 -o test test.c -L../$(ARCH) -ls2nbignum
 
-clean: ; rm -f test
+clean: ;
+	rm -f test
+	rm -f ctCheck
+
+ctCheck:
+	rm -f ctCheck
+	for f in `find ../$(ARCH)/p* -name '*.o'`; do trimmed=`echo $$f | tr -d .`; objdump -d $$f | cut -f3 -s | awk "{print \"$$trimmed: \" \$$1}" | grep -v -f ../non_ct_functions.txt |  grep -v -f ../$(ARCH)/allowed_asm >> ctCheck && echo FAIL >> ctCheck; done || true
+	! grep FAIL ctCheck
