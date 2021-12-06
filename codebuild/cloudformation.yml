@@ -151,7 +151,7 @@ Resources:
           Status: "DISABLED"
           EncryptionDisabled: false
 
-  CodeBuildProjectProofs:
+  CodeBuildProjectX86Proofs:
     Type: "AWS::CodeBuild::Project"
     Properties:
       Name: !Sub ${ProjectName}-proofs
@@ -181,6 +181,79 @@ Resources:
         ImagePullCredentialsType: "CODEBUILD"
         PrivilegedMode: false
         Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: x86
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 300
+      QueuedTimeoutInMinutes: 480
+      EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+      BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+            - Type: ACTOR_ACCOUNT_ID
+              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
+              ExcludeMatchedPattern: false
+      LogsConfig: 
+        CloudWatchLogs: 
+          Status: "ENABLED"
+        S3Logs: 
+          Status: "DISABLED"
+          EncryptionDisabled: false
+
+  CodeBuildProjectArmProofs:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub ${ProjectName}-proofs
+      Description: !Ref ProjectDescription
+      Source:
+        Location: !Ref SourceLocation
+        BuildSpec: codebuild/proofs.yml
+        GitCloneDepth: 1
+        GitSubmodulesConfig: 
+          FetchSubmodules: true
+        InsecureSsl: false
+        ReportBuildStatus: true
+        Type: "GITHUB"
+      SecondarySources:
+        - 
+          Type: "GITHUB"
+          Location: https://github.com/jrh13/hol-light
+          ReportBuildStatus: false
+          SourceIdentifier: hol_light
+      Artifacts: 
+        Type: "NO_ARTIFACTS"
+      Cache: 
+        Type: "NO_CACHE"
+      Environment: 
+        ComputeType: "BUILD_GENERAL1_2XLARGE"
+        Image: "aws/codebuild/standard:4.0"
+        ImagePullCredentialsType: "CODEBUILD"
+        PrivilegedMode: false
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: arm
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       TimeoutInMinutes: 300
       QueuedTimeoutInMinutes: 480
