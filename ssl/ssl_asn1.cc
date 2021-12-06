@@ -479,6 +479,20 @@ static bool SSL_SESSION_parse_octet_string(CBS *cbs, Array<uint8_t> *out,
   return out->CopyFrom(value);
 }
 
+// SSL3_STATE_parse_octet_string is duplicate of |SSL_SESSION_parse_octet_string|.
+// SSL3_STATE_parse_octet_string gets an optional ASN.1 OCTET STRING explicitly
+// tagged with |tag| from |cbs| and stows it in |*out|. It returns one on
+// success, whether or not the element was found, and zero on decode error.
+static bool SSL3_STATE_parse_octet_string(CBS *cbs, Array<uint8_t> *out,
+                                           unsigned tag) {
+  CBS value;
+  if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    return false;
+  }
+  return out->CopyFrom(value);
+}
+
 static int SSL_SESSION_parse_crypto_buffer(CBS *cbs,
                                            UniquePtr<CRYPTO_BUFFER> *out,
                                            unsigned tag,
@@ -909,6 +923,8 @@ static const unsigned kS3SessionReusedTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 static const unsigned kS3HostNameTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
+static const unsigned kS3ALPNSelectedTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL transfer.
@@ -928,6 +944,7 @@ static const unsigned kS3HostNameTag =
 //    establishedSession                [0] SEQUENCE OPTIONAL,
 //    sessionReused                     [1] BOOLEAN OPTIONAL,
 //    hostName                          [2] OCTET STRING OPTIONAL,
+//    alpnSelected                      [3] OCTET STRING OPTIONAL,
 // }
 static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -967,6 +984,15 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
         !CBB_add_asn1_octet_string(&child,
                                    (const uint8_t *)(in->hostname.get()),
                                    strlen(in->hostname.get()))) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  if (!in->alpn_selected.empty()) {
+    if (!CBB_add_asn1(&s3, &child, kS3ALPNSelectedTag) ||
+        !CBB_add_asn1_octet_string(&child, in->alpn_selected.data(),
+                                   in->alpn_selected.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -1019,6 +1045,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       !SSL3_STATE_parse_session(&s3, &(out->established_session), ctx) ||
       !CBS_get_optional_asn1_bool(&s3, &session_reused, kS3SessionReusedTag, 0 /* default to false */) ||
       !parse_optional_string(&s3, &(out->hostname), kS3HostNameTag, SSL_R_INVALID_SSL3_STATE) ||
+      !SSL3_STATE_parse_octet_string(&s3, &(out->alpn_selected), kS3ALPNSelectedTag) ||
       CBS_len(&s3) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
     return 0;
