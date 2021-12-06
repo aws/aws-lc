@@ -1065,21 +1065,31 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl;
 
   int sheded = !in->config;
+  #if defined(SSL_DEBUG)
+      fprintf(stderr, "SSL_to_bytes_full start!\n");
+  #endif
 
   size_t write_iv_len = 0;
   const uint8_t *write_iv = nullptr;
-  if (SSL_CIPHER_is_block_cipher(in->s3->aead_write_ctx->cipher()) &&
-      !in->s3->aead_write_ctx->GetIV(&write_iv, &write_iv_len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
+  // if (SSL_CIPHER_is_block_cipher(in->s3->aead_write_ctx->cipher()) &&
+  //     !in->s3->aead_write_ctx->GetIV(&write_iv, &write_iv_len)) {
+  //   return 0;
+  // }
+
+  #if defined(SSL_DEBUG)
+      fprintf(stderr, "SSL_to_bytes_full 1!\n");
+  #endif
 
   size_t read_iv_len = 0;
   const uint8_t *read_iv = nullptr;
-  if (SSL_CIPHER_is_block_cipher(in->s3->aead_read_ctx->cipher()) &&
-      !in->s3->aead_read_ctx->GetIV(&read_iv, &read_iv_len)) {
-      return 0;
-  }
+  // if (SSL_CIPHER_is_block_cipher(in->s3->aead_read_ctx->cipher()) &&
+  //     !in->s3->aead_read_ctx->GetIV(&read_iv, &read_iv_len)) {
+  //     return 0;
+  // }
+
+  #if defined(SSL_DEBUG)
+      fprintf(stderr, "SSL_to_bytes_full 2!\n");
+  #endif
 
   if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
     !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
@@ -1093,6 +1103,10 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+
+  #if defined(SSL_DEBUG)
+      fprintf(stderr, "SSL_to_bytes_full end!\n");
+  #endif
 
   return CBB_flush(cbb);
 }
