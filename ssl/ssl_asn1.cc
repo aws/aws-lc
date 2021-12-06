@@ -1073,6 +1073,7 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+
   size_t read_iv_len = 0;
   const uint8_t *read_iv = nullptr;
   if (SSL_CIPHER_is_block_cipher(in->s3->aead_read_ctx->cipher()) &&
@@ -1084,6 +1085,7 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
     //    FIXME add hash of SSL_CTX
     !CBB_add_asn1_uint64(&ssl, in->version) ||
+    !CBB_add_asn1_uint64(&ssl, in->max_send_fragment) ||
     !CBB_add_asn1_octet_string(&ssl, read_iv, read_iv_len) ||
     !CBB_add_asn1_octet_string(&ssl, write_iv, write_iv_len) ||
     !CBB_add_asn1_bool(&ssl, sheded) ||
@@ -1091,12 +1093,13 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+
   return CBB_flush(cbb);
 }
 
 static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs;
-  uint64_t ssl_serial_ver, version;
+  uint64_t ssl_serial_ver, version, max_send_fragment;
 
   // CBS read_key, write_key, read_iv, write_iv;
   CBS read_iv, write_iv;
@@ -1116,6 +1119,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   //    FIXME add hash of SSL_CTX
   // This TODO is actually a part of SSL DER struct revisit.
   if (!CBS_get_asn1_uint64(&ssl_cbs, &version) ||
+    !CBS_get_asn1_uint64(&ssl_cbs, &max_send_fragment) ||
     !CBS_get_asn1(&ssl_cbs, &read_iv, CBS_ASN1_OCTETSTRING) ||
     CBS_len(&read_iv) > EVP_MAX_IV_LENGTH ||
     !CBS_get_asn1(&ssl_cbs, &write_iv, CBS_ASN1_OCTETSTRING) ||
@@ -1126,6 +1130,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   }
 
   ssl->version = version;
+  ssl->max_send_fragment = max_send_fragment;
 
   // TODO: make s3 as optional tag.
   // This is called separately to avoid overriding error code.
@@ -1214,9 +1219,12 @@ SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
 }
 
 int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
+  // int count = 0;
+  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
   if (in == NULL) {
     return 0;
   }
+  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
 
   ScopedCBB cbb;
   // An SSL connection can't be serialized by current implementation under some conditions
@@ -1227,15 +1235,19 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   // 5) SSL is not of TLS 1.2 version
   //    TODO: support TLS 1.3 and TLS 1.1.
   if (SSL_is_dtls(in) ||                // (1)
-      !in->cm ||                        // (2)
+      // !in->cm ||                        // (2)
       !in->s3 ||
       // TODO: check if this should be addressed by calling |SSL_SESSION_to_bytes|.
       in->s3->established_session.get()->not_resumable ||    // (3)
       SSL_in_init(in) ||                // (4)
       in->version != TLS1_2_VERSION) {  // (5)
+    fprintf( stderr, "in->s3->established_session.get()->not_resumable %d\n", in->s3->established_session.get()->not_resumable);
+    fprintf( stderr, "SSL_in_init(in) %d\n", SSL_in_init(in));
+    // fprintf( stderr, "!in->cm %d\n", !in->cm);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
+  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
 
   CBB seq;
   if (!CBB_init(cbb.get(), 1024) ||
@@ -1243,6 +1255,7 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
       !SSL_to_bytes_full(in, &seq)) {
     return 0;
   }
+  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
 
   return CBB_finish(cbb.get(), out_data, out_len);
 }
