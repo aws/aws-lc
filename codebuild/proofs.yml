@@ -11,13 +11,8 @@ phases:
   build:
     commands:
       - CORE_COUNT=$(nproc --all)
-      - cd ${CODEBUILD_SRC_DIR}/x86
-      - echo HOLDIR=${CODEBUILD_SRC_DIR_hol_light} make -j ${CORE_COUNT} proofs
+      - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
-      - make -j ${CORE_COUNT} proofs
-      - cat p521/bignum_tomont_p521.correct
-      - echo "TODO Actually check the proofs"
-      - cd ${CODEBUILD_SRC_DIR}/arm
       - make -j ${CORE_COUNT} proofs
       - cat p521/bignum_tomont_p521.correct
       - echo "TODO Actually check the proofs"
