@@ -19,12 +19,50 @@
 
 #include <sys/auxv.h>
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
+#include <inttypes.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <openssl/arm_arch.h>
 
 #include "internal.h"
 
 
 extern uint32_t OPENSSL_armcap_P;
+
+// handle_cpu_env applies the value from |in| to the CPUID values in |out[0]|
+// and |out[1]|. See the comment in |OPENSSL_cpuid_setup| about this.
+static void handle_cpu_env(uint32_t *out, const char *in) {
+  const int invert = in[0] == '~';
+  const int or = in[0] == '|';
+  const int skip_first_byte = invert || or;
+  const int hex = in[skip_first_byte] == '0' && in[skip_first_byte+1] == 'x';
+
+  int sscanf_result;
+  uint32_t v;
+  if (hex) {
+    sscanf_result = sscanf(in + invert + 2, "%" PRIx32, &v);
+  } else {
+    sscanf_result = sscanf(in + invert, "%" PRIu32, &v);
+  }
+
+  if (!sscanf_result) {
+    return;
+  }
+
+  if (invert) {
+    out[0] &= ~v;
+  } else if (or) {
+    out[0] |= v;
+  } else {
+    out[0] = v;
+  }
+}
 
 void OPENSSL_cpuid_setup(void) {
   unsigned long hwcap = getauxval(AT_HWCAP);
@@ -57,6 +95,13 @@ void OPENSSL_cpuid_setup(void) {
   if (hwcap & kSHA256) {
     OPENSSL_armcap_P |= ARMV8_SHA256;
   }
+
+  const char *env;
+  env = getenv("OPENSSL_armcap_P");
+  if (env == NULL) {
+    return;
+  }
+  handle_cpu_env(&OPENSSL_armcap_P, env);
 }
 
 #endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP
