@@ -96,12 +96,20 @@ void OPENSSL_cpuid_setup(void) {
     OPENSSL_armcap_P |= ARMV8_SHA256;
   }
 
+  // OPENSSL_armcap_P is a 32-bit, unsigned value which may start with "0x" to
+  // indicate a hex value. Prior to the 32-bit value, a '~' or '|' may be given.
+  //
+  // If the '~' prefix is present:
+  //   the value is inverted and ANDed with the probed CPUID result
+  // If the '|' prefix is present:
+  //   the value is ORed with the probed CPUID result
+  // Otherwise:
+  //   the value is taken as the result of the CPUID
   const char *env;
   env = getenv("OPENSSL_armcap_P");
-  if (env == NULL) {
-    return;
+  if (env != NULL) {
+    handle_cpu_env(&OPENSSL_armcap_P, env);
   }
-  handle_cpu_env(&OPENSSL_armcap_P, env);
 }
 
 #endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP
