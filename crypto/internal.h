@@ -898,10 +898,13 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 // FIPS functions.
 
 #if defined(BORINGSSL_FIPS)
+#define MAX_PCT_ATTEMPTS  5
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+#else
+#define MAX_PCT_ATTEMPTS  1
 #endif
 
 // boringssl_fips_self_test runs the FIPS KAT-based self tests. It returns one

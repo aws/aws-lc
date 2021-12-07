@@ -1107,6 +1107,114 @@ TEST(ECTest, BrainpoolP256r1) {
   EXPECT_EQ(0, BN_cmp(y.get(), qy.get()));
 }
 
+#if !defined(AWSLC_FIPS)
+TEST(ECTest, SmallGroupOrder) {
+  // Make a P-224 key and corrupt the group order to be small in order to fail
+  // |EC_KEY_generate_key|.
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  bssl::UniquePtr<EC_GROUP> group_org(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group_org);
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_new());
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_new());
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_new());
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> order(BN_new());
+  ASSERT_TRUE(order);
+  ASSERT_TRUE(BN_copy(order.get(), EC_GROUP_get0_order(group_org.get())));
+  ASSERT_TRUE(EC_GROUP_get_curve_GFp(group_org.get(),
+                                     p.get(), a.get(), b.get(), ctx.get()));
+
+  // Set a new group with p, a, b
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  // The generator has to be created using the new group so they match when calling
+  // |EC_GROUP_set_generator|
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  // Get the original group's generator's coordinates.
+  bssl::UniquePtr<BIGNUM> gx(BN_new());
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_new());
+  ASSERT_TRUE(gy);
+  EXPECT_TRUE(EC_POINT_get_affine_coordinates_GFp(
+      group_org.get(), EC_GROUP_get0_generator(group_org.get()), gx.get(), gy.get(), ctx.get()));
+  // Set the coordinates of the new generator.
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+  // Create a key2 with the new group and make the order value 7
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
+  BN_clear(&key2.get()->group->order);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
+  ASSERT_FALSE(EC_KEY_generate_key_fips(key2.get()));
+}
+#else
+TEST(ECDeathTest, SmallGroupOrderAndDie) {
+  // Make a P-224 key and corrupt the group order to be small in order to fail
+  // |EC_KEY_generate_key|.
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  bssl::UniquePtr<EC_GROUP> group_org(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group_org);
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_new());
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_new());
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_new());
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> order(BN_new());
+  ASSERT_TRUE(order);
+  ASSERT_TRUE(BN_copy(order.get(), EC_GROUP_get0_order(group_org.get())));
+  ASSERT_TRUE(EC_GROUP_get_curve_GFp(group_org.get(),
+                                     p.get(), a.get(), b.get(), ctx.get()));
+
+  // Set a new group with p, a, b
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  // The generator has to be created using the new group so they match when calling
+  // |EC_GROUP_set_generator|
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  // Get the original group's generator's coordinates.
+  bssl::UniquePtr<BIGNUM> gx(BN_new());
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_new());
+  ASSERT_TRUE(gy);
+  EXPECT_TRUE(EC_POINT_get_affine_coordinates_GFp(
+      group_org.get(), EC_GROUP_get0_generator(group_org.get()), gx.get(), gy.get(), ctx.get()));
+  // Set the coordinates of the new generator.
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+  // Create a key2 with the new group and make the order value 7
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
+  BN_clear(&key2.get()->group->order);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
+  ASSERT_DEATH(EC_KEY_generate_key_fips(key2.get()), "");
+}
+#endif
+
 class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {
  public:
   const EC_GROUP *group() const { return group_.get(); }
