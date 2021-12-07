@@ -1108,7 +1108,7 @@ TEST(ECTest, BrainpoolP256r1) {
 }
 
 #if !defined(AWSLC_FIPS)
-TEST(ECTest, SmallGroup) {
+TEST(ECTest, SmallGroupOrder) {
   // Make a P-224 key and corrupt the group order to be small in order to fail
   // |EC_KEY_generate_key|.
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp224r1));
@@ -1161,7 +1161,7 @@ TEST(ECTest, SmallGroup) {
   ASSERT_FALSE(EC_KEY_generate_key_fips(key2.get()));
 }
 #else
-TEST(ECDeathTest, SmallGroupAndDie) {
+TEST(ECDeathTest, SmallGroupOrderAndDie) {
   // Make a P-224 key and corrupt the group order to be small in order to fail
   // |EC_KEY_generate_key|.
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp224r1));
