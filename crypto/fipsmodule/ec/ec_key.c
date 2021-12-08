@@ -513,7 +513,7 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
     ret = EC_KEY_generate_key(eckey);
     ret &= EC_KEY_check_fips(eckey);
     num_attempts++;
-  } while (ret == 0 && num_attempts < MAX_KEYGEN_ATTEMPTS);
+  } while (ret == 0 && num_attempts < MAX_EC_KEYGEN_ATTEMPTS);
 
   FIPS_service_indicator_unlock_state();
   if (ret) {
