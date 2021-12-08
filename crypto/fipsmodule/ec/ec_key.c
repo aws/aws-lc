@@ -513,21 +513,20 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
     ret = EC_KEY_generate_key(eckey);
     ret &= EC_KEY_check_fips(eckey);
     num_attempts++;
-  } while (ret == 0 && num_attempts < MAX_PCT_ATTEMPTS);
+  } while (ret == 0 && num_attempts < MAX_KEYGEN_ATTEMPTS);
 
+  FIPS_service_indicator_unlock_state();
   if (ret) {
-    FIPS_service_indicator_unlock_state();
     FIPS_service_indicator_update_state();
     return 1;
   }
 
-  FIPS_service_indicator_unlock_state();
   EC_POINT_free(eckey->pub_key);
   ec_wrapped_scalar_free(eckey->priv_key);
   eckey->pub_key = NULL;
   eckey->priv_key = NULL;
 
-#if defined(BORINGSSL_FIPS)
+#if defined(AWSLC_FIPS)
   BORINGSSL_FIPS_abort();
 #else
   return 0;
