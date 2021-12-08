@@ -88,6 +88,7 @@ function run_fuzz_test {
 
     if [[ "$FUZZ_NAME" == "cryptofuzz" ]]; then
       for ARTIFACT in "$LOCAL_ARTIFACTS_FOLDER"/*; do
+        base64 $ARTIFACT
         ARTIFACT_NAME=$(basename "$ARTIFACT")
         "${FUZZ_TEST_PATH}" --debug "$ARTIFACT" | tee "${LOCAL_FUZZ_RUN_LOGS}/${ARTIFACT_NAME}.log"
       done
