@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-set -e
+set -ex
 
 mkdir -p build/llvm/crypto build/x86/crypto
 cp build_src/llvm/crypto/crypto_test build/llvm/crypto/crypto_test

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 // A utility function to terminate this program when err exists.
@@ -97,4 +98,13 @@ func Wait(process_count *int, limit int, wg *sync.WaitGroup) {
 	} else {
 		*process_count = (*process_count) + 1
 	}
+}
+
+func SystemMemory() uint64 {
+	info := &syscall.Sysinfo_t{}
+	err := syscall.Sysinfo(info)
+	if err != nil {
+		return 0
+	}
+	return uint64(info.Totalram) * uint64(info.Unit)
 }

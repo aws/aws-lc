@@ -8,13 +8,13 @@ package main
 import (
 	utility "aws-lc-verification/proof/common"
 	"log"
+	"math"
 	"os"
 	"sync"
 )
 
-// Due to memory usage (each select_check takes 8GB memory) and limit of container size (largest one has 145GB memory).
-// |aes_gcm_process_limit| is needed here to limit the number of saw processes.
-const aes_gcm_process_limit int = 15
+// The AES GCM proofs use approximately 7 gb of memory each, round up to 8 gb for headroom
+const memory_used_per_test uint64 = 8e9
 
 func main() {
 	log.Printf("Started AES-GCM check.")
@@ -30,12 +30,16 @@ func main() {
 	// Generate saw scripts based on the verification template and evp_cipher_update_len range [1, 384].
 	var wg sync.WaitGroup
 	process_count := 0
+
+	total_memory := utility.SystemMemory()
+	num_parallel_process := int(math.Floor((float64(total_memory) / float64(memory_used_per_test))))
+	log.Printf("System has %d bytes of memory, running %d jobs in parallel", total_memory, num_parallel_process)
 	for i := selectcheck_range_start; i <= selectcheck_range_end; i++ {
 		wg.Add(1)
 		saw_template := "verify-AES-GCM-selectcheck-template.txt"
 		placeholder_name := "TARGET_LEN_PLACEHOLDER"
 		go utility.CreateAndRunSawScript(saw_template, placeholder_name, i, &wg)
-		utility.Wait(&process_count, aes_gcm_process_limit, &wg)
+		utility.Wait(&process_count, num_parallel_process, &wg)
 	}
 
 	wg.Wait()

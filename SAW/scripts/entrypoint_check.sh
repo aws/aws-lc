@@ -3,7 +3,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-set -e
+set -ex
 
 PATH=/lc/bin:/go/bin:$PATH
 PATCH=$(realpath ./patch)
