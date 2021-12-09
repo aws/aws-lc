@@ -1,14 +1,7 @@
-#include <stdlib.h>
-#include <string.h>
-
-#include <string>
 #include <vector>
-
 #include <gtest/gtest.h>
-
 #include <openssl/randombytes.h>
 #include <openssl/pq_kem.h>
-
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "./internal.h"
@@ -24,7 +17,6 @@ static void RunTest(FileTest *t)
   ASSERT_TRUE(t->GetBytes(&ct, "ct"));
   ASSERT_TRUE(t->GetBytes(&ss, "ss"));
 
-  //Seed the DRNG
   randombytes_init(seed.data(), 48);
 
   const EVP_PQ_KEM *kyber_kem = &EVP_PQ_KEM_kyber512;
@@ -47,6 +39,7 @@ static void RunTest(FileTest *t)
   ASSERT_TRUE(EVP_PQ_KEM_decapsulate(ctx));
   EXPECT_EQ(Bytes(ss),
             Bytes(ctx->shared_secret, kyber_kem->shared_secret_length));
+  EVP_PQ_KEM_CTX_free(ctx);
 }
 
 TEST(Kyber512Test, KAT_tests) {

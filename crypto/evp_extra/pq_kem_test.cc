@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "openssl/mem.h"
 #include "openssl/pq_kem.h"
 #include "../crypto/test/test_util.h"
-#include "openssl/mem.h"
 
 
 TEST(PQKEMTest, Kyber512_Basic) {
