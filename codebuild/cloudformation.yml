@@ -154,7 +154,7 @@ Resources:
   CodeBuildProjectX86Proofs:
     Type: "AWS::CodeBuild::Project"
     Properties:
-      Name: !Sub ${ProjectName}-proofs
+      Name: !Sub ${ProjectName}-x86-proofs
       Description: !Ref ProjectDescription
       Source:
         Location: !Ref SourceLocation
@@ -223,7 +223,7 @@ Resources:
   CodeBuildProjectArmProofs:
     Type: "AWS::CodeBuild::Project"
     Properties:
-      Name: !Sub ${ProjectName}-proofs
+      Name: !Sub ${ProjectName}-arm-proofs
       Description: !Ref ProjectDescription
       Source:
         Location: !Ref SourceLocation
