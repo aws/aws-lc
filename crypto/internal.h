@@ -936,14 +936,16 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 
 // FIPS functions.
 
-#if defined(BORINGSSL_FIPS)
-#define MAX_PCT_ATTEMPTS  5
+#define MAX_RSA_KEYGEN_ATTEMPTS  4
+
+#if defined(AWSLC_FIPS)
+#define MAX_EC_KEYGEN_ATTEMPTS  4
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
 #else
-#define MAX_PCT_ATTEMPTS  1
+#define MAX_EC_KEYGEN_ATTEMPTS  1
 #endif
 
 // boringssl_fips_self_test runs the FIPS KAT-based self tests. It returns one
