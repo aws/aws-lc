@@ -925,6 +925,10 @@ static const unsigned kS3HostNameTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 static const unsigned kS3ALPNSelectedTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
+static const unsigned kS3AlertDispatchTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 4;
+static const unsigned kS3WpendPendingTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL transfer.
@@ -940,11 +944,15 @@ static const unsigned kS3ALPNSelectedTag =
 //    writeSequence                     OCTET STRING,
 //    serverRandom                      OCTET STRING,
 //    clientRandom                      OCTET STRING,
+//    sendAlert                         OCTET STRING,
 //    rwstate                           INTEGER,
 //    establishedSession                [0] SEQUENCE OPTIONAL,
 //    sessionReused                     [1] BOOLEAN OPTIONAL,
 //    hostName                          [2] OCTET STRING OPTIONAL,
 //    alpnSelected                      [3] OCTET STRING OPTIONAL,
+//    alertDispatch                     [4] BOOLEAN OPTIONAL,
+//    wpendPending                      [5] BOOLEAN OPTIONAL,
+
 // }
 static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -958,10 +966,16 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
       !CBB_add_asn1_octet_string(&s3, in->write_sequence, TLS_SEQ_NUM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->server_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->client_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_asn1_octet_string(&s3, in->send_alert, SSL3_SEND_ALERT_SIZE) ||
       !CBB_add_asn1_int64(&s3, in->rwstate)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+
+  #if defined(SSL_DEBUG)
+    const bssl::SSLBuffer *buf = &(in->write_buffer);
+    fprintf( stderr, "SSL3_STATE_to_bytes buf %d\n", buf->empty());
+  #endif
 
   if (in->established_session != nullptr) {
     if (!CBB_add_asn1(&s3, &child, kS3EstablishedSessionTag) ||
@@ -998,6 +1012,22 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
     }
   }
 
+  if (in->alert_dispatch) {
+    if (!CBB_add_asn1(&s3, &child, kS3AlertDispatchTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  if (in->wpend_pending) {
+    if (!CBB_add_asn1(&s3, &child, kS3WpendPendingTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
   return CBB_flush(cbb);
 }
 
@@ -1026,8 +1056,8 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
     return 0;
   }
 
-  CBS s3, read_seq, write_seq, server_random, client_random;
-  int session_reused;
+  CBS s3, read_seq, write_seq, server_random, client_random, send_alert;
+  int session_reused, alert_dispatch, wpend_pending;
   uint64_t version;
   int64_t rwstate;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
@@ -1041,11 +1071,15 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       CBS_len(&server_random) != SSL3_RANDOM_SIZE ||
       !CBS_get_asn1(&s3, &client_random, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&client_random) != SSL3_RANDOM_SIZE ||
+      !CBS_get_asn1(&s3, &send_alert, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(&send_alert) != SSL3_SEND_ALERT_SIZE ||
       !CBS_get_asn1_int64(&s3, &rwstate) ||
       !SSL3_STATE_parse_session(&s3, &(out->established_session), ctx) ||
       !CBS_get_optional_asn1_bool(&s3, &session_reused, kS3SessionReusedTag, 0 /* default to false */) ||
       !parse_optional_string(&s3, &(out->hostname), kS3HostNameTag, SSL_R_INVALID_SSL3_STATE) ||
       !SSL3_STATE_parse_octet_string(&s3, &(out->alpn_selected), kS3ALPNSelectedTag) ||
+      !CBS_get_optional_asn1_bool(&s3, &alert_dispatch, kS3AlertDispatchTag, 0 /* default to false */) ||
+      !CBS_get_optional_asn1_bool(&s3, &wpend_pending, kS3WpendPendingTag, 0 /* default to false */) ||
       CBS_len(&s3) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
     return 0;
@@ -1054,13 +1088,21 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   OPENSSL_memcpy(out->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(out->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
   OPENSSL_memcpy(out->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
+  OPENSSL_memcpy(out->send_alert, CBS_data(&send_alert), SSL3_SEND_ALERT_SIZE);
   out->rwstate = rwstate;
   out->session_reused = !!session_reused;
+  out->alert_dispatch = !!alert_dispatch;
+  out->wpend_pending = !!wpend_pending;
   return 1;
 }
 
+// SSL serialization.
+
 // Serialized SSL data version for forward compatibility
 #define SSL_SERIAL_VERSION 1
+
+static const unsigned kSSLQuietShutdownTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
 //  Parse serialized SSL connection binary
 //
@@ -1078,8 +1120,9 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
 //      write_iv       OCTET STRING                  -- connection write IV
 //      sheded         BOOLEAN                       -- indicate if the config is sheded. The config may not exist
 //                                                      since the configuration 
-//                                                      may be shed after the handshake completes.
+//                                                      may be shed after the handshake completes
 //      s3             SEQUENCE
+//      quietShutdown  [1] BOOLEAN OPTIONAL,
 //  }
 //
 //  Note that serialized SSL_SESSION is always prepended to the serialized SSL
@@ -1089,7 +1132,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
 //    1 if SSL is succesfully restored
 //
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
-  CBB ssl;
+  CBB ssl, child;
 
   int sheded = !in->config;
   #if defined(SSL_DEBUG)
@@ -1131,6 +1174,14 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     return 0;
   }
 
+  if (in->quiet_shutdown) {
+    if (!CBB_add_asn1(&ssl, &child, kSSLQuietShutdownTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
   #if defined(SSL_DEBUG)
       fprintf(stderr, "SSL_to_bytes_full end!\n");
   #endif
@@ -1141,6 +1192,7 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
 static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs;
   uint64_t ssl_serial_ver, version, max_send_fragment;
+  int quiet_shutdown;
 
   // CBS read_key, write_key, read_iv, write_iv;
   CBS read_iv, write_iv;
@@ -1178,6 +1230,11 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   if (!SSL3_STATE_from_bytes(ssl->s3, &ssl_cbs, ssl->ctx.get())) {
     return 0;
   }
+
+  if (!CBS_get_optional_asn1_bool(&ssl_cbs, &quiet_shutdown, kSSLQuietShutdownTag, 0 /* default to false */)) {
+    return 0;
+  }
+  ssl->quiet_shutdown = !!quiet_shutdown;
 
   // TODO: remove below copy when investigated why set_read_state reset read_sequence to zero.
   uint8_t read_sequence[TLS_SEQ_NUM_SIZE] = {0};
