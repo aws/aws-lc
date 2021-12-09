@@ -1329,7 +1329,8 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
   int ret = 0;
 
   // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
-  // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
+  // so we run the FIPS algorithm |MAX_RSA_KEYGEN_ATTEMPTS| times,
+  // bringing it down to 2^-80 when it's equal to 4. We
   // should just adjust the retry limit, but FIPS 186-4 prescribes that value
   // and thus results in unnecessary complexity.
   int failures = 0;
@@ -1342,20 +1343,23 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
     }
 
     if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
-      break;
+      if (check_fips && !RSA_check_fips(tmp)) {
+        failures++;
+      } else {
+        break;
+      }
     }
 
     err = ERR_peek_error();
     RSA_free(tmp);
     tmp = NULL;
-    failures++;
 
     // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
     // failure in |BN_GENCB_call| is still fatal.
-  } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
+  } while (failures < MAX_RSA_KEYGEN_ATTEMPTS && ERR_GET_LIB(err) == ERR_LIB_RSA &&
            ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
 
-  if (tmp == NULL || (check_fips && !RSA_check_fips(tmp))) {
+  if (tmp == NULL) {
     goto out;
   }
 
@@ -1380,7 +1384,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
 
 out:
   RSA_free(tmp);
-#if defined(BORINGSSL_FIPS)
+#if defined(AWSLC_FIPS)
   if (ret == 0) {
     BORINGSSL_FIPS_abort();
   }
