@@ -78,10 +78,6 @@ HIDDEN uint32_t OPENSSL_armcap_P =
 
 #else
 HIDDEN uint32_t OPENSSL_armcap_P = 0;
-
-uint32_t *OPENSSL_get_armcap_pointer_for_test(void) {
-  return &OPENSSL_armcap_P;
-}
 #endif
 
 #endif

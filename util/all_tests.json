@@ -13,6 +13,16 @@
     "skip_valgrind": true
   },
   {
+    "cmd": ["crypto/crypto_test"],
+    "env": ["OPENSSL_armcap=0x0"],
+    "skip_sde": true
+  },
+  {
+    "cmd": ["crypto/crypto_test"],
+    "env": ["OPENSSL_armcap=0x1"],
+    "skip_sde": true
+  },
+  {
     "cmd": ["crypto/urandom_test"],
     "skip_valgrind": true
   },
