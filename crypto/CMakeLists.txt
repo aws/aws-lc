@@ -590,6 +590,7 @@ if(BUILD_TESTING)
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
     evp_extra/pbkdf_test.cc
+    evp_extra/pq_kem_kat_tests_kyber512.cc
     evp_extra/pq_kem_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc

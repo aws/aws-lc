@@ -1,5 +1,6 @@
 #include "openssl/pq_kem.h"
 #include "openssl/mem.h"
+#include "../kyber/kem_kyber.h"
 
 EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void) {
   return OPENSSL_malloc(sizeof(EVP_PQ_KEM_CTX));
@@ -89,7 +90,6 @@ int EVP_PQ_KEM_decapsulate(EVP_PQ_KEM_CTX *kem_ctx) {
   return (ret == 0 ? 1 : 0);
 }
 
-#include "../kyber/kem_kyber.h"
 const EVP_PQ_KEM EVP_PQ_KEM_kyber512 = {
     .name = "KYBER512-KEM",
 
