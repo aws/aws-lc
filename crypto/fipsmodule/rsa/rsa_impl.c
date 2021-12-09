@@ -1366,7 +1366,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
       }
     }
     num_attempts++;
-  } while ((num_attempts < MAX_KEYGEN_ATTEMPTS) && (tmp == NULL));
+  } while ((tmp == NULL) && (num_attempts < MAX_KEYGEN_ATTEMPTS));
 
   if (tmp == NULL) {
     goto out;
