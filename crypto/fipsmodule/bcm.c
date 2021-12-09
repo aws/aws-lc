@@ -30,6 +30,15 @@
 
 #include "../internal.h"
 
+#include "cpucap/cpucap.c"
+#include "cpucap/cpu-aarch64-fuchsia.c"
+#include "cpucap/cpu-aarch64-linux.c"
+#include "cpucap/cpu-aarch64-win.c"
+#include "cpucap/cpu-arm-linux.c"
+#include "cpucap/cpu-arm.c"
+#include "cpucap/cpu-intel.c"
+#include "cpucap/cpu-ppc64le.c"
+
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"
@@ -113,14 +122,6 @@
 #include "sha/sha256.c"
 #include "sha/sha512.c"
 #include "tls/kdf.c"
-#include "cpucap/cpu-aarch64-fuchsia.c"
-#include "cpucap/cpu-aarch64-linux.c"
-#include "cpucap/cpu-aarch64-win.c"
-#include "cpucap/cpu-arm-linux.c"
-#include "cpucap/cpu-arm.c"
-#include "cpucap/cpu-intel.c"
-#include "cpucap/cpu-ppc64le.c"
-#include "cpucap/cpucap.c"
 
 
 #if defined(BORINGSSL_FIPS)

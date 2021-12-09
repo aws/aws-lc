@@ -75,7 +75,6 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
-
 // OPENSSL_cpuid runs the cpuid instruction. |leaf| is passed in as EAX and ECX
 // is set to zero. It writes EAX, EBX, ECX, and EDX to |*out_eax| through
 // |*out_edx|.

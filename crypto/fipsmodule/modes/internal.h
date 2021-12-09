@@ -255,7 +255,7 @@ void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                      size_t len);
 
 OPENSSL_INLINE char gcm_ssse3_capable(void) {
-  return (OPENSSL_ia32cap_get()[1] & (1 << (41 - 32))) != 0;
+  return (OPENSSL_ia32cap_P[1] & (1 << (41 - 32))) != 0;
 }
 
 // |gcm_gmult_ssse3| and |gcm_ghash_ssse3| require |Htable| to be
