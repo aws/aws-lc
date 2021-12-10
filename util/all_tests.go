@@ -96,10 +96,13 @@ var sdeCPUs = []string{
 	"tgl", // Tiger Lake
 }
 
-var armCPUs = []string{
-	"none",   // No support for any ARM extensions.
-	"neon",   // Support for NEON.
-	"crypto", // Support for NEON and crypto extensions.
+func targetArchMatchesRuntime(target string) bool {
+	if (target == "") ||
+	   (target == "x86" && runtime.GOARCH == "amd64") ||
+		 (target == "arm" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")) {
+		return true
+	}
+	return false
 }
 
 func valgrindOf(dbAttach bool, supps []string, path string, args ...string) *exec.Cmd {
@@ -406,6 +409,11 @@ func main() {
 	go func() {
 		for _, baseTest := range testCases {
 			test := test{Test: baseTest}
+
+			if !targetArchMatchesRuntime(test.TargetArch) {
+				continue
+			}
+
 			if *useValgrind {
 				if test.SkipValgrind {
 					continue
