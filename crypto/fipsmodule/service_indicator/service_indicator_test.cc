@@ -10,12 +10,13 @@
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
-#include <openssl/digest.h>
 #include <openssl/dh.h>
+#include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ecdh.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -410,6 +411,11 @@ const uint8_t kDHOutput[2048 / 8] = {
     0xc8, 0xe4, 0x5e, 0xb8
 };
 
+static const uint8_t kOutput_md4[MD4_DIGEST_LENGTH] = {
+    0xab, 0x6b, 0xda, 0x84, 0xc0, 0x6b, 0xd0, 0x1d, 0x19, 0xc0, 0x08,
+    0x11, 0x07, 0x8d, 0xce, 0x0e
+};
+
 static const uint8_t kOutput_md5[MD5_DIGEST_LENGTH] = {
     0xe9, 0x70, 0xa2, 0xf7, 0x9c, 0x55, 0x57, 0xac, 0x4e, 0x7f, 0x6b,
     0xbc, 0xa3, 0xb9, 0xb7, 0xdb
@@ -759,6 +765,7 @@ struct MD {
   uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *);
 };
 
+static const MD md4 = { "KAT for MD4", MD4_DIGEST_LENGTH, &EVP_md4, &MD4 };
 static const MD md5 = { "KAT for MD5", MD5_DIGEST_LENGTH, &EVP_md5, &MD5 };
 static const MD sha1 = { "KAT for SHA1", SHA_DIGEST_LENGTH, &EVP_sha1, &SHA1 };
 static const MD sha224 = { "KAT for SHA224", SHA224_DIGEST_LENGTH, &EVP_sha224, &SHA224 };
@@ -775,6 +782,7 @@ struct DigestTestVector {
   // expected to be approved or not.
   const int expect_approved;
 } kDigestTestVectors[] = {
+    { md4, kOutput_md4, AWSLC_NOT_APPROVED },
     { md5, kOutput_md5, AWSLC_NOT_APPROVED },
     { sha1, kOutput_sha1, AWSLC_APPROVED },
     { sha224, kOutput_sha224, AWSLC_APPROVED },
@@ -1168,6 +1176,61 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
 }
 
+// Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| are approved with
+// manually constructing using the context setting functions.
+TEST_P(RSA_ServiceIndicatorTest, ManualRSASignVerify) {
+  const RSATestVector &rsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), rsaTestVector.func()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+
+  // Generate a generic rsa key.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx;
+  if(rsaTestVector.use_pss) {
+    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+  } else {
+    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  }
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(pctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(pctx.get(), rsaTestVector.key_size));
+  ASSERT_TRUE(EVP_PKEY_keygen(pctx.get(), &raw));
+  pkey.reset(raw);
+  ASSERT_TRUE(pkey);
+
+  // Manual construction for signing.
+  pctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+  // Determine the size of the signature.
+  size_t sig_len = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len)));
+  ASSERT_EQ(approved, rsaTestVector.sig_gen_expect_approved);
+  sig.resize(sig_len);
+
+  // Manual construction for verification.
+  ASSERT_TRUE(EVP_PKEY_verify_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
+  ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
+}
+
 struct ECDSATestVector {
   // nid is the input curve nid.
   const int nid;
@@ -1350,6 +1413,57 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSASigVer) {
       approved, ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
                                              signature.size(), kPlaintext,
                                              sizeof(kPlaintext))));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
+}
+
+// Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| are approved with
+// manually constructing using the context setting functions.
+TEST_P(ECDSA_ServiceIndicatorTest, ManualECDSASignVerify) {
+  const ECDSATestVector &ecdsaTestVector = GetParam();
+
+  int approved = AWSLC_NOT_APPROVED;
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), ecdsaTestVector.func()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name(ecdsaTestVector.nid));
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(eckey);
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+
+  // Generate a generic ec key.
+  EC_KEY_generate_key(eckey.get());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
+
+  // Manual construction for signing.
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), ecdsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+  // Determine the size of the signature.
+  size_t sig_len = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len)));
+  ASSERT_EQ(approved, ecdsaTestVector.sig_gen_expect_approved);
+  sig.resize(sig_len);
+
+  // Manual construction for verification.
+  ASSERT_TRUE(EVP_PKEY_verify_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), ecdsaTestVector.func()));
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+            ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
   ASSERT_EQ(approved, ecdsaTestVector.sig_ver_expect_approved);
 }
 
@@ -1586,6 +1700,16 @@ TEST(ServiceIndicatorTest, SHA) {
 
   std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
   std::vector<uint8_t> digest;
+
+  digest.resize(MD4_DIGEST_LENGTH);
+  MD4_CTX md4_ctx;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD4_Init(&md4_ctx)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD4_Update(&md4_ctx, plaintext.data(), plaintext.size())));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD4_Final(digest.data(), &md4_ctx)));
+  ASSERT_TRUE(check_test(kOutput_md4, digest.data(), sizeof(kOutput_md4), "MD4 Hash KAT"));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 
   digest.resize(MD5_DIGEST_LENGTH);
   MD5_CTX md5_ctx;
@@ -2006,6 +2130,13 @@ TEST(ServiceIndicatorTest, DRBG) {
   CTR_DRBG_clear(&drbg);
 }
 
+// Verifies that the awslc_version_string is as expected.
+// Since this is running in FIPS mode it should end in FIPS
+// Update this when the AWS-LC version number is modified
+TEST(ServiceIndicatorTest, AWSLCVersionString) {
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 0.0.2");
+}
+
 #else
 // Service indicator calls should not be used in non-FIPS builds. However, if
 // used, the macro |CALL_SERVICE_AND_CHECK_APPROVED| will return
@@ -2042,5 +2173,12 @@ TEST(ServiceIndicatorTest, BasicTest) {
           output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
           kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_EQ(approved, AWSLC_APPROVED);
+}
+
+// Verifies that the awslc_version_string is as expected.
+// Since this is not running in FIPS mode it shouldn't end in FIPS
+// Update this when the AWS-LC version number is modified
+TEST(ServiceIndicatorTest, AWSLCVersionString) {
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 0.0.2");
 }
 #endif // AWSLC_FIPS

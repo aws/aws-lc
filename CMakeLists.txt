@@ -672,6 +672,7 @@ if(USE_CUSTOM_LIBCXX)
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -nostdlib++")
   include_directories(
     SYSTEM
+    util/bot/libcxx-config
     ${LLVM_PROJECT_HOME}/libcxx/include
     ${LLVM_PROJECT_HOME}/libcxxabi/include
   )
@@ -699,6 +700,8 @@ if(USE_CUSTOM_LIBCXX)
     -D_LIBCPP_ENABLE_CXX17_REMOVED_UNEXPECTED_FUNCTIONS
   )
   set_target_properties(libcxxabi PROPERTIES COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough")
+  # libc++abi depends on libc++ internal headers.
+  set_property(TARGET libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
 
   add_library(libcxx ${LIBCXX_SOURCES})
   if(ASAN OR MSAN OR TSAN)
