@@ -49,12 +49,7 @@ var (
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
 	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
-	simulateARMCPUs = flag.Bool("simulate-arm-cpus", simulateARMCPUsDefault(), "If true, runs tests simulating different ARM CPUs.")
 )
-
-func simulateARMCPUsDefault() bool {
-	return (runtime.GOOS == "linux" || runtime.GOOS == "android") && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")
-}
 
 type test struct {
 	testconfig.Test
@@ -101,10 +96,13 @@ var sdeCPUs = []string{
 	"tgl", // Tiger Lake
 }
 
-var armCPUs = []string{
-	"none",   // No support for any ARM extensions.
-	"neon",   // Support for NEON.
-	"crypto", // Support for NEON and crypto extensions.
+func targetArchMatchesRuntime(target string) bool {
+	if (target == "") ||
+	   (target == "x86" && runtime.GOARCH == "amd64") ||
+		 (target == "arm" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")) {
+		return true
+	}
+	return false
 }
 
 func valgrindOf(dbAttach bool, supps []string, path string, args ...string) *exec.Cmd {
@@ -160,9 +158,6 @@ var (
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := path.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
-	if *simulateARMCPUs && test.cpu != "" {
-		args = append(args, "--cpu="+test.cpu)
-	}
 	if *useSDE {
 		// SDE is neither compatible with the unwind tester nor automatically
 		// detected.
@@ -414,6 +409,11 @@ func main() {
 	go func() {
 		for _, baseTest := range testCases {
 			test := test{Test: baseTest}
+
+			if !targetArchMatchesRuntime(test.TargetArch) {
+				continue
+			}
+
 			if *useValgrind {
 				if test.SkipValgrind {
 					continue
@@ -433,15 +433,6 @@ func main() {
 				// SDE generates plenty of tasks and gets slower
 				// with additional sharding.
 				for _, cpu := range sdeCPUs {
-					testForCPU := test
-					testForCPU.cpu = cpu
-					tests <- testForCPU
-				}
-			} else if *simulateARMCPUs {
-				// This mode is run instead of the default path,
-				// so also include the native flow.
-				tests <- test
-				for _, cpu := range armCPUs {
 					testForCPU := test
 					testForCPU.cpu = cpu
 					tests <- testForCPU
