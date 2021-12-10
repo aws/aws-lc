@@ -2809,7 +2809,7 @@ struct SSL3_STATE {
   uint8_t previous_server_finished_len = 0;
   uint8_t previous_server_finished[12] = {0};
 
-  uint8_t send_alert[2] = {0};
+  uint8_t send_alert[SSL3_SEND_ALERT_SIZE] = {0};
 
   // established_session is the session established by the connection. This
   // session is only filled upon the completion of the handshake and is
@@ -2839,7 +2839,7 @@ struct SSL3_STATE {
   //     If |channel_id_valid| is true, then this contains the
   //     verified Channel ID from the client: a P256 point, (x,y), where
   //     each are big-endian values.
-  uint8_t channel_id[64] = {0};
+  uint8_t channel_id[SSL3_CHANNEL_ID_SIZE] = {0};
 
   // Contains the QUIC transport params received by the peer.
   Array<uint8_t> peer_quic_transport_params;

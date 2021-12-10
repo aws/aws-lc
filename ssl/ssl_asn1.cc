@@ -493,6 +493,24 @@ static bool SSL3_STATE_parse_octet_string(CBS *cbs, Array<uint8_t> *out,
   return out->CopyFrom(value);
 }
 
+static bool SSL3_STATE_get_optional_octet_string(CBS *cbs, void *dst, unsigned tag, size_t target_len) {
+  int present;
+  CBS value;
+  if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    return false;
+  }
+  if (!present) {
+    return true;
+  }
+  size_t data_len = CBS_len(&value);
+  if (target_len > 0 && data_len != target_len) {
+    return false;
+  }
+  OPENSSL_memcpy(dst, CBS_data(&value), data_len);
+  return true;
+}
+
 static int SSL_SESSION_parse_crypto_buffer(CBS *cbs,
                                            UniquePtr<CRYPTO_BUFFER> *out,
                                            unsigned tag,
@@ -929,6 +947,12 @@ static const unsigned kS3AlertDispatchTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 4;
 static const unsigned kS3WpendPendingTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
+static const unsigned kS3NextProtoNegotiatedTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 6;
+static const unsigned kS3ChannelIdValidTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 7;
+static const unsigned kS3ChannelIdTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 8;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL transfer.
@@ -952,7 +976,9 @@ static const unsigned kS3WpendPendingTag =
 //    alpnSelected                      [3] OCTET STRING OPTIONAL,
 //    alertDispatch                     [4] BOOLEAN OPTIONAL,
 //    wpendPending                      [5] BOOLEAN OPTIONAL,
-
+//    nextProtoNegotiated               [6] BOOLEAN OPTIONAL,
+//    channelIdValid                    [7] BOOLEAN OPTIONAL,
+//    channelId                         [8] OCTET STRING OPTIONAL,
 // }
 static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -1028,6 +1054,28 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
     }
   }
 
+  if (!in->next_proto_negotiated.empty()) {
+    if (!CBB_add_asn1(&s3, &child, kS3NextProtoNegotiatedTag) ||
+        !CBB_add_asn1_octet_string(&child, in->next_proto_negotiated.data(),
+                                   in->next_proto_negotiated.size())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  if (in->channel_id_valid) {
+    if (!CBB_add_asn1(&s3, &child, kS3ChannelIdValidTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+    if (!CBB_add_asn1(&s3, &child, kS3ChannelIdTag) ||
+        !CBB_add_asn1_octet_string(&child, in->channel_id, SSL3_CHANNEL_ID_SIZE)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
   return CBB_flush(cbb);
 }
 
@@ -1057,7 +1105,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   }
 
   CBS s3, read_seq, write_seq, server_random, client_random, send_alert;
-  int session_reused, alert_dispatch, wpend_pending;
+  int session_reused, alert_dispatch, wpend_pending, channel_id_valid;
   uint64_t version;
   int64_t rwstate;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
@@ -1080,6 +1128,9 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       !SSL3_STATE_parse_octet_string(&s3, &(out->alpn_selected), kS3ALPNSelectedTag) ||
       !CBS_get_optional_asn1_bool(&s3, &alert_dispatch, kS3AlertDispatchTag, 0 /* default to false */) ||
       !CBS_get_optional_asn1_bool(&s3, &wpend_pending, kS3WpendPendingTag, 0 /* default to false */) ||
+      !SSL3_STATE_parse_octet_string(&s3, &(out->next_proto_negotiated), kS3NextProtoNegotiatedTag) ||
+      !CBS_get_optional_asn1_bool(&s3, &channel_id_valid, kS3ChannelIdValidTag, 0 /* default to false */) ||
+      !SSL3_STATE_get_optional_octet_string(&s3, out->channel_id, kS3ChannelIdTag, SSL3_CHANNEL_ID_SIZE) ||
       CBS_len(&s3) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
     return 0;
@@ -1093,6 +1144,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->session_reused = !!session_reused;
   out->alert_dispatch = !!alert_dispatch;
   out->wpend_pending = !!wpend_pending;
+  out->channel_id_valid = !!channel_id_valid;
   return 1;
 }
 
