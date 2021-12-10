@@ -30,8 +30,6 @@
 
 #include <openssl/arm_arch.h>
 
-#include "internal.h"
-
 
 extern uint32_t OPENSSL_armcap_P;
 
@@ -106,7 +104,7 @@ void OPENSSL_cpuid_setup(void) {
   // Otherwise:
   //   the value is taken as the result of the CPUID
   const char *env;
-  env = getenv("OPENSSL_armcap_P");
+  env = getenv("OPENSSL_armcap");
   if (env != NULL) {
     handle_cpu_env(&OPENSSL_armcap_P, env);
   }

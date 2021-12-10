@@ -1,4 +1,5 @@
-/* Copyright (c) 2016, Google Inc.
+/* Copyright (c) 2018, Google Inc.
+ * Copyright (c) 2020, Arm Ltd.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,25 +15,25 @@
 
 #include <openssl/cpu.h>
 
-#if defined(OPENSSL_PPC64LE)
+#if defined(OPENSSL_AARCH64) && defined(OPENSSL_WINDOWS) && \
+    !defined(OPENSSL_STATIC_ARMCAP)
 
-#include <sys/auxv.h>
+#include <windows.h>
 
-#include "internal.h"
+#include <openssl/arm_arch.h>
 
-
-#if !defined(PPC_FEATURE2_HAS_VCRYPTO)
-// PPC_FEATURE2_HAS_VCRYPTO was taken from section 4.1.2.3 of the “OpenPOWER
-// ABI for Linux Supplement”.
-#define PPC_FEATURE2_HAS_VCRYPTO 0x02000000
-#endif
-
+extern uint32_t OPENSSL_armcap_P;
 void OPENSSL_cpuid_setup(void) {
-  OPENSSL_ppc64le_hwcap2 = getauxval(AT_HWCAP2);
+  // We do not need to check for the presence of NEON, as Armv8-A always has it
+  OPENSSL_armcap_P |= ARMV7_NEON;
+
+  if (IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE)) {
+    // These are all covered by one call in Windows
+    OPENSSL_armcap_P |= ARMV8_AES;
+    OPENSSL_armcap_P |= ARMV8_PMULL;
+    OPENSSL_armcap_P |= ARMV8_SHA1;
+    OPENSSL_armcap_P |= ARMV8_SHA256;
+  }
 }
 
-int CRYPTO_is_PPC64LE_vcrypto_capable(void) {
-  return (OPENSSL_ppc64le_hwcap2 & PPC_FEATURE2_HAS_VCRYPTO) != 0;
-}
-
-#endif  // OPENSSL_PPC64LE
+#endif
