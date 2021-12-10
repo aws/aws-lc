@@ -970,6 +970,7 @@ static const unsigned kS3ChannelIdTag =
 //    clientRandom                      OCTET STRING,
 //    sendAlert                         OCTET STRING,
 //    rwstate                           INTEGER,
+//    earlyDataReason                   INTEGER,
 //    establishedSession                [0] SEQUENCE OPTIONAL,
 //    sessionReused                     [1] BOOLEAN OPTIONAL,
 //    hostName                          [2] OCTET STRING OPTIONAL,
@@ -993,7 +994,8 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
       !CBB_add_asn1_octet_string(&s3, in->server_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->client_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->send_alert, SSL3_SEND_ALERT_SIZE) ||
-      !CBB_add_asn1_int64(&s3, in->rwstate)) {
+      !CBB_add_asn1_int64(&s3, in->rwstate) ||
+      !CBB_add_asn1_int64(&s3, in->early_data_reason)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -1106,7 +1108,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
 
   CBS s3, read_seq, write_seq, server_random, client_random, send_alert;
   int session_reused, alert_dispatch, wpend_pending, channel_id_valid;
-  uint64_t version;
+  uint64_t version, early_data_reason;
   int64_t rwstate;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&s3, &version) ||
@@ -1122,6 +1124,8 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       !CBS_get_asn1(&s3, &send_alert, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&send_alert) != SSL3_SEND_ALERT_SIZE ||
       !CBS_get_asn1_int64(&s3, &rwstate) ||
+      !CBS_get_asn1_uint64(&s3, &early_data_reason) ||
+      early_data_reason > ssl_early_data_reason_max_value ||
       !SSL3_STATE_parse_session(&s3, &(out->established_session), ctx) ||
       !CBS_get_optional_asn1_bool(&s3, &session_reused, kS3SessionReusedTag, 0 /* default to false */) ||
       !parse_optional_string(&s3, &(out->hostname), kS3HostNameTag, SSL_R_INVALID_SSL3_STATE) ||
@@ -1140,6 +1144,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   OPENSSL_memcpy(out->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
   OPENSSL_memcpy(out->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
   OPENSSL_memcpy(out->send_alert, CBS_data(&send_alert), SSL3_SEND_ALERT_SIZE);
+  out->early_data_reason = static_cast<ssl_early_data_reason_t>(early_data_reason);
   out->rwstate = rwstate;
   out->session_reused = !!session_reused;
   out->alert_dispatch = !!alert_dispatch;
