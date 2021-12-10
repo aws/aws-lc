@@ -139,6 +139,8 @@
  * OTHERWISE.
  */
 
+// #define SSL_DEBUG
+
 #ifndef OPENSSL_HEADER_SSL_H
 #define OPENSSL_HEADER_SSL_H
 

@@ -1818,6 +1818,9 @@ enum ssl_hs_wait_t ssl_server_handshake(SSL_HANDSHAKE *hs) {
     enum ssl_hs_wait_t ret = ssl_hs_error;
     enum tls12_server_hs_state_t state =
         static_cast<enum tls12_server_hs_state_t>(hs->state);
+    #if defined(SSL_DEBUG)
+      fprintf( stderr, "ssl_server_handshake state %s\n", ssl_server_handshake_state(hs));
+    #endif
     switch (state) {
       case state12_start_accept:
         ret = do_start_accept(hs);

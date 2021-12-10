@@ -972,7 +972,6 @@ static bool TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniqueP
   } else {
     out->reset(decoded_ssl.release());
   }
-  // fprintf(stderr, "TransferSSL complete!\n");
   return true;
 }
 
@@ -1006,13 +1005,14 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     } while (RetryAsync(ssl, ret));
 
     if (config->ssl_transfer == 1) {
-      if (SSL_is_server(ssl) && 
+      if (ssl && SSL_is_server(ssl) && 
           !SSL_is_dtls(ssl) && 
           SSL_version(ssl) == TLS1_2_VERSION &&
-          !ssl->s3->established_session.get()->not_resumable &&
-          !SSL_in_init(ssl)) {
+          ssl->s3 && 
+          !SSL_in_init(ssl) &&
+          !ssl->s3->established_session.get()->not_resumable) {
         if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {
-          fprintf(stderr, "Aha failed transferred!!!\n");
+          fprintf(stderr, "TransferSSL failed.\n");
           return false;
         }
         ssl = ssl_uniqueptr->get();
@@ -1450,6 +1450,9 @@ int main(int argc, char **argv) {
 
   bssl::UniquePtr<SSL_SESSION> session;
   for (int i = 0; i < initial_config.resume_count + 1; i++) {
+    #if defined(SSL_DEBUG)
+      fprintf(stderr, "bssl shim %d.\n", i);
+    #endif
     bool is_resume = i > 0;
     TestConfig *config = is_resume ? &resume_config : &initial_config;
     ssl_ctx = config->SetupCtx(ssl_ctx.get());
