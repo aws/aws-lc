@@ -70,7 +70,8 @@ static void do_library_init(void) __attribute__ ((constructor));
 static void OPENSSL_CDECL do_library_init(void) {
  // WARNING: this function may only configure the capability variables. See the
  // note above about the linker bug.
-#if defined(NEED_CPUID)
+ // In the FIPS build the module itself has to call |OPENSSL_cpuid_setup|.
+#if defined(NEED_CPUID) && !defined(BORINGSSL_FIPS)
   OPENSSL_cpuid_setup();
 #endif
 }

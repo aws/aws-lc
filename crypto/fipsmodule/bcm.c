@@ -184,7 +184,8 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
 
 static void __attribute__((constructor))
 BORINGSSL_bcm_power_on_self_test(void) {
-  CRYPTO_library_init();
+
+  OPENSSL_cpuid_setup();
 
   if (jent_entropy_init()) {
     fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
