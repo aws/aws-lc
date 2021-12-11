@@ -1043,11 +1043,18 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   } else {
     ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
   }
-  EVP_PKEY *raw = nullptr;
+  EVP_PKEY *raw = EVP_PKEY_new();
+  ASSERT_TRUE(raw);
   ASSERT_TRUE(ctx);
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsaTestVector.key_size));
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  //ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), rsaTestVector.key_size, e.get(), NULL));
+  if(rsaTestVector.use_pss) {
+    ASSERT_TRUE(EVP_PKEY_assign(raw, EVP_PKEY_RSA_PSS, rsa.get()));
+  } else {
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(raw, rsa.get()));
+  }
   pkey.reset(raw);
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
