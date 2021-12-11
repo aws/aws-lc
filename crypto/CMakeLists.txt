@@ -295,13 +295,6 @@ add_library(
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
   conf/conf.c
-  cpu-aarch64-fuchsia.c
-  cpu-aarch64-linux.c
-  cpu-aarch64-win.c
-  cpu-arm-linux.c
-  cpu-arm.c
-  cpu-intel.c
-  cpu-ppc64le.c
   crypto.c
   curve25519/curve25519.c
   curve25519/spake25519.c
@@ -556,7 +549,6 @@ if(BUILD_TESTING)
     compiler_test.cc
     conf/conf_test.cc
     constant_time_test.cc
-    cpu-arm-linux_test.cc
     crypto_test.cc
     curve25519/ed25519_test.cc
     curve25519/spake25519_test.cc
@@ -583,6 +575,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/fork_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
+    fipsmodule/cpucap/cpu-arm-linux_test.cc
     hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc

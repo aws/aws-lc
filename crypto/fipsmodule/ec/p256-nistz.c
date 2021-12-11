@@ -556,7 +556,7 @@ static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
                                                  EC_SCALAR *out,
                                                  const EC_SCALAR *in) {
 #if defined(OPENSSL_X86_64)
-  if ((OPENSSL_ia32cap_get()[1] & (1 << 28)) == 0) {
+  if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
     // No AVX support; fallback to generic code.
     return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
   }

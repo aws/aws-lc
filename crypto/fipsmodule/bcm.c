@@ -30,6 +30,15 @@
 
 #include "../internal.h"
 
+#include "cpucap/cpucap.c"
+#include "cpucap/cpu-aarch64-fuchsia.c"
+#include "cpucap/cpu-aarch64-linux.c"
+#include "cpucap/cpu-aarch64-win.c"
+#include "cpucap/cpu-arm-linux.c"
+#include "cpucap/cpu-arm.c"
+#include "cpucap/cpu-intel.c"
+#include "cpucap/cpu-ppc64le.c"
+
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"
@@ -113,6 +122,7 @@
 #include "sha/sha512.c"
 #include "tls/kdf.c"
 
+
 #if defined(BORINGSSL_FIPS)
 
 #if !defined(OPENSSL_ASAN)
@@ -173,7 +183,8 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
 
 static void __attribute__((constructor))
 BORINGSSL_bcm_power_on_self_test(void) {
-  CRYPTO_library_init();
+
+  OPENSSL_cpuid_setup();
 
   if (jent_entropy_init()) {
     fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
