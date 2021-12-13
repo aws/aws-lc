@@ -9,6 +9,14 @@ const char* awslc_version_string(void) {
   return AWSLC_VERSION_STRING;
 }
 
+int is_fips_build(void) {
+#if defined(AWSLC_FIPS)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 #if defined(AWSLC_FIPS)
 
 // Should only be called once per thread. Only called when initializing the state

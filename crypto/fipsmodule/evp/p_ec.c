@@ -237,12 +237,12 @@ static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     group = EC_KEY_get0_group(ctx->pkey->pkey.ec);
   }
   EC_KEY *ec = EC_KEY_new();
-  // In FIPS build, |RSA_generate_key_fips| updates the service indicator so lock it here
+  // In FIPS build, |EC_KEY_generate_key_fips| updates the service indicator so lock it here
   FIPS_service_indicator_lock_state();
   if (ec == NULL ||
       !EC_KEY_set_group(ec, group) ||
-      (!FIPS_mode() && !EC_KEY_generate_key(ec)) ||
-      ( FIPS_mode() && !EC_KEY_generate_key_fips(ec))) {
+      (!is_fips_build() && !EC_KEY_generate_key(ec)) ||
+      ( is_fips_build() && !EC_KEY_generate_key_fips(ec))) {
     EC_KEY_free(ec);
     ret = 0;
     goto end;
