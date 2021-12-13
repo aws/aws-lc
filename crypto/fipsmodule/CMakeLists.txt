@@ -1,5 +1,34 @@
 include_directories(../../include)
 
+if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_BCM_O_PATH)
+  message(STATUS "Building with FIPS_VENDOR_AFFIRM_BCM_O_PATH '${FIPS_VENDOR_AFFIRM_BCM_O_PATH}'.")
+  add_library(
+    fipsmodule
+
+    OBJECT
+
+    fips_shared_support.c
+  )
+
+  add_dependencies(fipsmodule global_target)
+
+  add_custom_target(bcm_o_target DEPENDS ${FIPS_VENDOR_AFFIRM_BCM_O_PATH})
+  return()
+endif()
+
+if(ANDROID)
+  # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
+  # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
+  string(FIND ${CMAKE_CXX_FLAGS} "noexecstack" CXX_EXTRA_WA)
+  string(FIND ${CMAKE_C_FLAGS} "noexecstack" C_EXTRA_WA)
+  if(NOT ${CXX_EXTRA_WA} EQUAL '-1')
+    string( REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
+  endif()
+  if(NOT ${C_EXTRA_WA} EQUAL '-1')
+    string( REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" )
+  endif()
+endif()
+
 if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
@@ -136,9 +165,10 @@ function(cpreprocess dest src)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
+  string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
   add_custom_command(
     OUTPUT ${dest}
-    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} $CMAKE_ASM_FLAGS -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
+    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
@@ -204,19 +234,11 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
-  set(MAYBE_INJECT_HASH_SHA256_FLAG "")
-  # If building with OPENSSL_NO_ASM then ARCH will be "generic", but we still
-  # need to use SHA-256. Since this only matters for FIPS, we only need to
-  # worry about the Linux spelling of AArch64.
-  if (ARCH STREQUAL "aarch64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-    set(MAYBE_INJECT_HASH_SHA256_FLAG "-sha256")
-  endif()
-
   go_executable(inject_hash
                 boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> ${MAYBE_INJECT_HASH_SHA256_FLAG}
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> -sha256
     DEPENDS bcm_hashunset inject_hash
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )

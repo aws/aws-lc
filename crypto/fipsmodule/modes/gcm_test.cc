@@ -152,7 +152,7 @@ TEST(GCMTest, ABI) {
     }
 
 #if defined(GHASH_ASM_X86_64)
-    if (((OPENSSL_ia32cap_get()[1] >> 22) & 0x41) == 0x41) {  // AVX+MOVBE
+    if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) {  // AVX+MOVBE
       CHECK_ABI_SEH(gcm_init_avx, Htable, kH);
       CHECK_ABI_SEH(gcm_gmult_avx, X, Htable);
       for (size_t blocks : kBlockCounts) {

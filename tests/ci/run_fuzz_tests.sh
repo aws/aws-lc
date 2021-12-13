@@ -9,15 +9,14 @@ source tests/ci/common_fuzz.sh
 run_build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFUZZ=1 -DASAN=1 -DBUILD_TESTING=OFF
 # After loading everything any undefined variables should fail the build
 set -u
-# We want our CI to take about an hour:
-# ~2 minutes to build AWS-LC
-# ~50 minutes (3000 seconds) for all fuzzing
-# ~2 minutes for merging files
-# ~3 minutes for cleanup
-TOTAL_FUZZ_TEST_TIME=3000
+# We want our CI to take about 45 minutes:
+# 2 minutes to build AWS-LC
+# 38 minutes (2280 seconds) for all fuzzing
+# 5 minutes for cleanup and merging files
+TOTAL_FUZZ_TEST_TIME=2280
 FUZZ_TEST_TIMEOUT=5
 
-FUZZ_TESTS=$(find test_build_dir/fuzz -type f -executable)
+FUZZ_TESTS=$(find "${BUILD_ROOT}/fuzz" -type f -executable)
 NUM_FUZZ_TESTS=$(echo "$FUZZ_TESTS" | wc -l)
 TIME_FOR_EACH_FUZZ=$((TOTAL_FUZZ_TEST_TIME/NUM_FUZZ_TESTS))
 

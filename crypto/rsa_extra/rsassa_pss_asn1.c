@@ -204,6 +204,7 @@ static int parse_trailer_field(CBS *cbs, RSA_INTEGER **rsa_int) {
   if (CBS_get_asn1_int64(cbs, &value) && CBS_len(cbs) == 0) {
     if (value != 1) {
       // If present, trailerField field MUST be 1.
+      OPENSSL_PUT_ERROR(RSA, EVP_R_INVALID_PSS_TRAILER_FIELD);
       return 0;
     }
     *rsa_int = create_RSA_INTEGER(value);
@@ -218,6 +219,7 @@ static int parse_salt_length(CBS *cbs, RSA_INTEGER **rsa_int) {
   if (CBS_get_asn1_int64(cbs, &value) && CBS_len(cbs) == 0) {
     if (value < 0) {
       // If present, salt length field MUST be non-negative.
+      OPENSSL_PUT_ERROR(RSA, EVP_R_INVALID_PSS_SALT_LEN);
       return 0;
     }
     *rsa_int = create_RSA_INTEGER(value);

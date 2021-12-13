@@ -126,30 +126,51 @@ int SHA512_256_Init(SHA512_CTX *sha) {
 
 uint8_t *SHA384(const uint8_t *data, size_t len,
                 uint8_t out[SHA384_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA384_Init(&ctx);
-  SHA384_Update(&ctx, data, len);
-  SHA384_Final(out, &ctx);
+  const int ok = SHA384_Init(&ctx) &&
+                 SHA384_Update(&ctx, data, len) &&
+                 SHA384_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512(const uint8_t *data, size_t len,
                 uint8_t out[SHA512_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, data, len);
-  SHA512_Final(out, &ctx);
+  const int ok = SHA512_Init(&ctx) &&
+                 SHA512_Update(&ctx, data, len) &&
+                 SHA512_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 uint8_t *SHA512_256(const uint8_t *data, size_t len,
                     uint8_t out[SHA512_256_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  SHA512_256_Init(&ctx);
-  SHA512_256_Update(&ctx, data, len);
-  SHA512_256_Final(out, &ctx);
+  const int ok = SHA512_256_Init(&ctx) &&
+                 SHA512_256_Update(&ctx, data, len) &&
+                 SHA512_256_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
@@ -274,6 +295,7 @@ static int sha512_final_impl(uint8_t *out, SHA512_CTX *sha) {
     out += 8;
   }
 
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -321,42 +343,16 @@ static const uint64_t K512[80] = {
     UINT64_C(0x5fcb6fab3ad6faec), UINT64_C(0x6c44198c4a475817),
 };
 
-#if defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM)
-#if defined(__x86_64) || defined(__x86_64__)
-#define ROTR(a, n)                                              \
-  ({                                                            \
-    uint64_t ret;                                               \
-    __asm__("rorq %1, %0" : "=r"(ret) : "J"(n), "0"(a) : "cc"); \
-    ret;                                                        \
-  })
-#elif(defined(_ARCH_PPC) && defined(__64BIT__)) || defined(_ARCH_PPC64)
-#define ROTR(a, n)                                             \
-  ({                                                           \
-    uint64_t ret;                                              \
-    __asm__("rotrdi %0, %1, %2" : "=r"(ret) : "r"(a), "K"(n)); \
-    ret;                                                       \
-  })
-#elif defined(__aarch64__)
-#define ROTR(a, n)                                          \
-  ({                                                        \
-    uint64_t ret;                                           \
-    __asm__("ror %0, %1, %2" : "=r"(ret) : "r"(a), "I"(n)); \
-    ret;                                                    \
-  })
-#endif
-#elif defined(_MSC_VER) && defined(_WIN64)
-#pragma intrinsic(_rotr64)
-#define ROTR(a, n) _rotr64((a), n)
-#endif
-
-#ifndef ROTR
-#define ROTR(x, s) (((x) >> s) | (x) << (64 - s))
-#endif
-
-#define Sigma0(x) (ROTR((x), 28) ^ ROTR((x), 34) ^ ROTR((x), 39))
-#define Sigma1(x) (ROTR((x), 14) ^ ROTR((x), 18) ^ ROTR((x), 41))
-#define sigma0(x) (ROTR((x), 1) ^ ROTR((x), 8) ^ ((x) >> 7))
-#define sigma1(x) (ROTR((x), 19) ^ ROTR((x), 61) ^ ((x) >> 6))
+#define Sigma0(x)                                        \
+  (CRYPTO_rotr_u64((x), 28) ^ CRYPTO_rotr_u64((x), 34) ^ \
+   CRYPTO_rotr_u64((x), 39))
+#define Sigma1(x)                                        \
+  (CRYPTO_rotr_u64((x), 14) ^ CRYPTO_rotr_u64((x), 18) ^ \
+   CRYPTO_rotr_u64((x), 41))
+#define sigma0(x) \
+  (CRYPTO_rotr_u64((x), 1) ^ CRYPTO_rotr_u64((x), 8) ^ ((x) >> 7))
+#define sigma1(x) \
+  (CRYPTO_rotr_u64((x), 19) ^ CRYPTO_rotr_u64((x), 61) ^ ((x) >> 6))
 
 #define Ch(x, y, z) (((x) & (y)) ^ ((~(x)) & (z)))
 #define Maj(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
@@ -524,7 +520,6 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 
 #endif  // !SHA512_ASM
 
-#undef ROTR
 #undef Sigma0
 #undef Sigma1
 #undef sigma0

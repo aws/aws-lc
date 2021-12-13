@@ -66,6 +66,7 @@
  * Laboratories. */
 
 #include <openssl/ec_key.h>
+#include <openssl/evp.h>
 
 #include <string.h>
 
@@ -325,6 +326,50 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   return 1;
 }
 
+static int EVP_EC_KEY_check_fips(EC_KEY *key) {
+  // We have to avoid the underlying |EVP_DigestSign| and |EVP_DigestVerify|
+  // services updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
+  uint8_t msg[16] = {0};
+  size_t msg_len = 16;
+  int ret = 0;
+  uint8_t* sig_der = NULL;
+  EVP_PKEY *evp_pkey = EVP_PKEY_new();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  const EVP_MD *hash = EVP_sha256();
+  size_t sign_len;
+  if (!evp_pkey ||
+      !ctx ||
+      !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
+      !EVP_DigestSignInit(ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestSign(ctx, NULL, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  sig_der = OPENSSL_malloc(sign_len);
+  if (!sig_der ||
+      !EVP_DigestSign(ctx, sig_der, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  #if defined(BORINGSSL_FIPS_BREAK_ECDSA_PWCT)
+    msg[0] = ~msg[0];
+  #endif
+  if (!EVP_DigestVerifyInit(ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestVerify(ctx, sig_der, sign_len, msg, msg_len)) {
+    goto err;
+  }
+  ret = 1;
+err:
+  EVP_PKEY_free(evp_pkey);
+  OPENSSL_free(sig_der);
+  EVP_MD_CTX_free(ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ret){
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
+}
+
 int EC_KEY_check_fips(const EC_KEY *key) {
   if (EC_KEY_is_opaque(key)) {
     // Opaque keys can't be checked.
@@ -336,21 +381,41 @@ int EC_KEY_check_fips(const EC_KEY *key) {
     return 0;
   }
 
+  // Check that the coordinates are within the range [0,p-1], when the (raw)
+  // point is affine; i.e. Z=1.
+  // This is the case when validating a received public key.
+  // Note: The check for x and y being negative seems superfluous since
+  // ec_felem_to_bignum() calls BN_bin2bn() which sets the `neg` flag to 0.
+  if(ec_felem_equal(key->pub_key->group, &key->pub_key->group->one, &key->pub_key->raw.Z)) {
+    BIGNUM *x = BN_new();
+    BIGNUM *y = BN_new();
+    int ret = 1;
+    if (key->pub_key->group->meth->felem_to_bytes == NULL) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+      ret = 0;
+    } else if (!ec_felem_to_bignum(key->pub_key->group, x, &key->pub_key->raw.X) ||
+               !ec_felem_to_bignum(key->pub_key->group, y, &key->pub_key->raw.Y)) {
+      // Error already written to error queue by |bn_wexpand|.
+      ret = 0;
+    } else if (BN_is_negative(x) || BN_is_negative(y) ||
+               BN_cmp(x, &key->pub_key->group->field) >= 0 ||
+               BN_cmp(y, &key->pub_key->group->field) >= 0) {
+      OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
+      ret = 0;
+    }
+    BN_free(x);
+    BN_free(y);
+    if (ret == 0) {
+      return ret;
+    }
+  }
+
   if (key->priv_key) {
-    uint8_t data[16] = {0};
-    ECDSA_SIG *sig = ECDSA_do_sign(data, sizeof(data), key);
-#if defined(BORINGSSL_FIPS_BREAK_ECDSA_PWCT)
-    data[0] = ~data[0];
-#endif
-    int ok = sig != NULL &&
-             ECDSA_do_verify(data, sizeof(data), sig, key);
-    ECDSA_SIG_free(sig);
-    if (!ok) {
+    if (!EVP_EC_KEY_check_fips((EC_KEY*)key)) {
       OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
       return 0;
     }
   }
-
   return 1;
 }
 
@@ -439,7 +504,20 @@ int EC_KEY_generate_key(EC_KEY *key) {
 }
 
 int EC_KEY_generate_key_fips(EC_KEY *eckey) {
-  if (EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey)) {
+  int ret = 0;
+  int num_attempts = 0;
+  // We have to verify both |EC_KEY_generate_key| and |EC_KEY_check_fips| both
+  // succeed before updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  do {
+    ret = EC_KEY_generate_key(eckey);
+    ret &= EC_KEY_check_fips(eckey);
+    num_attempts++;
+  } while ((ret == 0) && (num_attempts < MAX_KEYGEN_ATTEMPTS));
+
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
     return 1;
   }
 
@@ -447,7 +525,12 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   ec_wrapped_scalar_free(eckey->priv_key);
   eckey->pub_key = NULL;
   eckey->priv_key = NULL;
+
+#if defined(AWSLC_FIPS)
+  BORINGSSL_FIPS_abort();
+#else
   return 0;
+#endif
 }
 
 int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,

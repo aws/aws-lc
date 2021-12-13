@@ -1107,6 +1107,114 @@ TEST(ECTest, BrainpoolP256r1) {
   EXPECT_EQ(0, BN_cmp(y.get(), qy.get()));
 }
 
+#if !defined(AWSLC_FIPS)
+TEST(ECTest, SmallGroupOrder) {
+  // Make a P-224 key and corrupt the group order to be small in order to fail
+  // |EC_KEY_generate_key|.
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  bssl::UniquePtr<EC_GROUP> group_org(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group_org);
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_new());
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_new());
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_new());
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> order(BN_new());
+  ASSERT_TRUE(order);
+  ASSERT_TRUE(BN_copy(order.get(), EC_GROUP_get0_order(group_org.get())));
+  ASSERT_TRUE(EC_GROUP_get_curve_GFp(group_org.get(),
+                                     p.get(), a.get(), b.get(), ctx.get()));
+
+  // Set a new group with p, a, b
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  // The generator has to be created using the new group so they match when calling
+  // |EC_GROUP_set_generator|
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  // Get the original group's generator's coordinates.
+  bssl::UniquePtr<BIGNUM> gx(BN_new());
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_new());
+  ASSERT_TRUE(gy);
+  EXPECT_TRUE(EC_POINT_get_affine_coordinates_GFp(
+      group_org.get(), EC_GROUP_get0_generator(group_org.get()), gx.get(), gy.get(), ctx.get()));
+  // Set the coordinates of the new generator.
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+  // Create a key2 with the new group and make the order value 7
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
+  BN_clear(&key2.get()->group->order);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
+  ASSERT_FALSE(EC_KEY_generate_key_fips(key2.get()));
+}
+#else
+TEST(ECDeathTest, SmallGroupOrderAndDie) {
+  // Make a P-224 key and corrupt the group order to be small in order to fail
+  // |EC_KEY_generate_key|.
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  bssl::UniquePtr<EC_GROUP> group_org(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group_org);
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_new());
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_new());
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_new());
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> order(BN_new());
+  ASSERT_TRUE(order);
+  ASSERT_TRUE(BN_copy(order.get(), EC_GROUP_get0_order(group_org.get())));
+  ASSERT_TRUE(EC_GROUP_get_curve_GFp(group_org.get(),
+                                     p.get(), a.get(), b.get(), ctx.get()));
+
+  // Set a new group with p, a, b
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  // The generator has to be created using the new group so they match when calling
+  // |EC_GROUP_set_generator|
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  // Get the original group's generator's coordinates.
+  bssl::UniquePtr<BIGNUM> gx(BN_new());
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_new());
+  ASSERT_TRUE(gy);
+  EXPECT_TRUE(EC_POINT_get_affine_coordinates_GFp(
+      group_org.get(), EC_GROUP_get0_generator(group_org.get()), gx.get(), gy.get(), ctx.get()));
+  // Set the coordinates of the new generator.
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+  // Create a key2 with the new group and make the order value 7
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
+  BN_clear(&key2.get()->group->order);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
+  ASSERT_DEATH(EC_KEY_generate_key_fips(key2.get()), "");
+}
+#endif
+
 class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {
  public:
   const EC_GROUP *group() const { return group_.get(); }
@@ -1572,6 +1680,99 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
 
   return bssl::UniquePtr<BIGNUM>(
       BN_bin2bn(bytes.data(), bytes.size(), nullptr));
+}
+
+static bool HasSuffix(const char *str, const char *suffix) {
+  size_t suffix_len = strlen(suffix);
+  size_t str_len = strlen(str);
+  if (str_len < suffix_len) {
+    return false;
+  }
+  return strcmp(str + str_len - suffix_len, suffix) == 0;
+}
+
+// Test for out-of-range coordinates in public-key validation in
+// |EC_KEY_check_fips|, which can only be exercised for P-224 when the
+// coordinates in the raw point are not in Montgomery representation.
+TEST(ECTest, LargeXCoordinateVectors) {
+  int line;
+  const char *file;
+
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+
+  FileTestGTest("crypto/fipsmodule/ec/large_x_coordinate_points.txt",
+                [&](FileTest *t) {
+    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+    ASSERT_TRUE(x);
+    bssl::UniquePtr<BIGNUM> xpp = GetBIGNUM(t, "XplusP");
+    ASSERT_TRUE(xpp);
+    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+    ASSERT_TRUE(y);
+    bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+    ASSERT_TRUE(key);
+    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+    ASSERT_TRUE(pub_key);
+
+    size_t len = BN_num_bytes(&group.get()->field); // Modulus byte-length
+    ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+    // The following call converts the point to Montgomery form for P-256, 384 and 521.
+    // For P-224, when the functions from simple.c are used, i.e. when
+    // group->meth = EC_GFp_nistp224_method, the coordinate representation is not changed.
+    // This is determined based on compile flags in ec.c that are also used below.
+    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+                    group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+    ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+    ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+
+    // Set the raw point directly with the BIGNUM coordinates.
+    // Note that both are in big-endian byte order.
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes, (const uint8_t *)x.get()->d, len);
+    OPENSSL_memcpy(key.get()->pub_key->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
+    OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
+    key.get()->pub_key->raw.Z.bytes[0] = 1;
+    // As mentioned, for P-224, setting the raw point directly with the coordinates
+    // still passes |EC_KEY_check_fips|.
+    // For P-256, 384 and 521, the failure is due to that the coordinates are
+    // not in Montgomery representation, hence the checks fail earlier in
+    // |EC_KEY_check_key| in the point-on-the-curve calculations, which use
+    // Montgomery arithmetic.
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    if (group.get()->curve_name == NID_secp224r1)
+    {
+      ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+    } else {
+#endif
+      ASSERT_FALSE(EC_KEY_check_fips(key.get()));
+      EXPECT_EQ(EC_R_POINT_IS_NOT_ON_CURVE,
+                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
+      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_key
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    }
+#endif
+    // Now replace the x-coordinate with the larger one, x+p.
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes, (const uint8_t *)xpp.get()->d, len);
+    ASSERT_FALSE(EC_KEY_check_fips(key.get()));
+
+    // |EC_KEY_check_fips| check on coordinate range can only be exercised for P-224
+    // when the coordinates in the raw point are not in Montgomery representation.
+    // For the other curves, they fail for the same reason as above.
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    if (group.get()->curve_name == NID_secp224r1) {
+      EXPECT_EQ(EC_R_COORDINATES_OUT_OF_RANGE,
+                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
+      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_fips
+    } else {
+#endif
+      EXPECT_EQ(EC_R_POINT_IS_NOT_ON_CURVE,
+                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
+      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_key
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    }
+#endif
+  });
 }
 
 TEST(ECTest, ScalarBaseMultVectors) {

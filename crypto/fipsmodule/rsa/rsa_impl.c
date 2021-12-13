@@ -1262,12 +1262,14 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     // values for d.
   } while (BN_cmp(rsa->d, pow2_prime_bits) <= 0);
 
+  assert(BN_num_bits(pm1) == (unsigned)prime_bits);
+  assert(BN_num_bits(qm1) == (unsigned)prime_bits);
   if (// Calculate n.
       !bn_mul_consttime(rsa->n, rsa->p, rsa->q, ctx) ||
       // Calculate d mod (p-1).
-      !bn_div_consttime(NULL, rsa->dmp1, rsa->d, pm1, ctx) ||
+      !bn_div_consttime(NULL, rsa->dmp1, rsa->d, pm1, prime_bits, ctx) ||
       // Calculate d mod (q-1)
-      !bn_div_consttime(NULL, rsa->dmq1, rsa->d, qm1, ctx)) {
+      !bn_div_consttime(NULL, rsa->dmq1, rsa->d, qm1, prime_bits, ctx)) {
     goto bn_err;
   }
   bn_set_minimal_width(rsa->n);
@@ -1325,35 +1327,48 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
   RSA *tmp = NULL;
   uint32_t err;
   int ret = 0;
+  int failures;
+  int num_attempts = 0;
 
+  do {
   // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
   // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
   // should just adjust the retry limit, but FIPS 186-4 prescribes that value
   // and thus results in unnecessary complexity.
-  int failures = 0;
-  do {
-    ERR_clear_error();
-    // Generate into scratch space, to avoid leaving partial work on failure.
-    tmp = RSA_new();
-    if (tmp == NULL) {
-      goto out;
+  failures = 0;
+    do {
+      ERR_clear_error();
+      // Generate into scratch space, to avoid leaving partial work on failure.
+      tmp = RSA_new();
+      if (tmp == NULL) {
+        goto out;
+      }
+
+      if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
+        break;
+      }
+
+      err = ERR_peek_error();
+      RSA_free(tmp);
+      tmp = NULL;
+      failures++;
+
+      // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
+      // failure in |BN_GENCB_call| is still fatal.
+    } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
+             ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
+
+    // Perform PCT test in the case of FIPS
+    if (tmp) {
+      if (check_fips && !RSA_check_fips(tmp)) {
+        RSA_free(tmp);
+        tmp = NULL;
+      }
     }
+    num_attempts++;
+  } while ((tmp == NULL) && (num_attempts < MAX_KEYGEN_ATTEMPTS));
 
-    if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
-      break;
-    }
-
-    err = ERR_peek_error();
-    RSA_free(tmp);
-    tmp = NULL;
-    failures++;
-
-    // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
-    // failure in |BN_GENCB_call| is still fatal.
-  } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
-           ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
-
-  if (tmp == NULL || (check_fips && !RSA_check_fips(tmp))) {
+  if (tmp == NULL) {
     goto out;
   }
 
@@ -1378,6 +1393,11 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
 
 out:
   RSA_free(tmp);
+#if defined(AWSLC_FIPS)
+  if (ret == 0) {
+    BORINGSSL_FIPS_abort();
+  }
+#endif
   return ret;
 }
 
@@ -1402,6 +1422,10 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
             BN_set_word(e, RSA_F4) &&
             RSA_generate_key_ex_maybe_fips(rsa, bits, e, cb, /*check_fips=*/1);
   BN_free(e);
+  if(ret) {
+    // Approved key size check step is already done at start of function.
+    FIPS_service_indicator_update_state();
+  }
   return ret;
 }
 
