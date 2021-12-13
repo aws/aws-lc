@@ -179,8 +179,6 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
 }
 
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
-  // // We do a call to |EC_KEY_check_fips|, which is approved, so we have to lock
-  // // the state here.
    int ret = 0;
    if(pkey->type == EVP_PKEY_RSA || pkey->type== EVP_PKEY_RSA_PSS) {
      //  2048, 3072 and 4096 bit keys are approved for RSA key generation.
