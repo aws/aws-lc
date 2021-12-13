@@ -191,27 +191,27 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
    if(pkey->type == EVP_PKEY_RSA || pkey->type== EVP_PKEY_RSA_PSS) {
      //  2048, 3072 and 4096 bit keys are approved for RSA key generation.
      switch (EVP_PKEY_size(pkey)) {
-     case 256:
-     case 384:
-     case 512:
-       ret = 1;
-       break;
-     default:
-       break;
+       case 256:
+       case 384:
+       case 512:
+         ret = 1;
+         break;
+       default:
+         break;
      }
   } else if(pkey->type == EVP_PKEY_EC) {
-    // Curves P-224, P-256, P-384 and P-521 keys are approved for EC key
-    // generation.
+      // Curves P-224, P-256, P-384 and P-521 keys are approved for EC key
+      // generation.
      int curve_name = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
      switch (curve_name) {
-     case NID_secp224r1:
-     case NID_X9_62_prime256v1:
-     case NID_secp384r1:
-     case NID_secp521r1:
-       ret = 1;
-       break;
-     default:
-       break;
+       case NID_secp224r1:
+       case NID_X9_62_prime256v1:
+       case NID_secp384r1:
+       case NID_secp521r1:
+         ret = 1;
+         break;
+       default:
+         break;
      }
    }
    if(ret) {

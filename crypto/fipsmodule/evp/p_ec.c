@@ -226,7 +226,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
 }
 
 static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
-  int ret;
+  int ret = 0;
   EC_PKEY_CTX *dctx = ctx->data;
   const EC_GROUP *group = dctx->gen_group;
   if (group == NULL) {
@@ -244,7 +244,6 @@ static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
       (!is_fips_build() && !EC_KEY_generate_key(ec)) ||
       ( is_fips_build() && !EC_KEY_generate_key_fips(ec))) {
     EC_KEY_free(ec);
-    ret = 0;
     goto end;
   }
 
