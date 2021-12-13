@@ -17,8 +17,8 @@ else
 fi
 
 if [[ ("$(uname -p)" == 'x86_64'*) ]]; then
-  echo "Testing AWS-LC in FIPS Release and DISABLE_GETAUXVAL mode."
-  fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
+  echo "Testing AWS-LC in FIPS RelWithDebInfo and DISABLE_GETAUXVAL mode."
+  fips_build_and_test -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
 fi
 
 echo "Testing shared AWS-LC in FIPS Debug mode in a different folder."
