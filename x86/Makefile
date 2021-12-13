@@ -243,4 +243,7 @@ p384/%.correct: proofs/%.ml p384/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml"
 p521/%.correct: proofs/%.ml p521/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
-proofs: $(PROOFS);
+run_proofs: $(PROOFS);
+
+proofs: run_proofs
+	[ `grep SUBROUTINE_CORRECT proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct | wc -l` ]
