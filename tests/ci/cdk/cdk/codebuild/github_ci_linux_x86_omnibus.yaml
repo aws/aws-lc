@@ -268,7 +268,7 @@ batch:
     # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
     # Each dimension only checks |evp_cipher_update_len| from AES_GCM_SELECTCHECK_START to AES_GCM_SELECTCHECK_END.
     # https://github.com/awslabs/aws-lc-verification/blob/master/SAW/proof/AES/verify-AES-GCM-selectcheck-template.txt
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_1_150
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_1_172
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -278,9 +278,9 @@ batch:
         variables:
           AES_GCM_SELECTCHECK: 1
           AES_GCM_SELECTCHECK_START: 1
-          AES_GCM_SELECTCHECK_END: 150
+          AES_GCM_SELECTCHECK_END: 172
 
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_151_283
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_173_300
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -289,10 +289,10 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           AES_GCM_SELECTCHECK: 1
-          AES_GCM_SELECTCHECK_START: 151
-          AES_GCM_SELECTCHECK_END: 283
+          AES_GCM_SELECTCHECK_START: 173
+          AES_GCM_SELECTCHECK_END: 300
 
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_284_344
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_301_346
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -301,10 +301,10 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           AES_GCM_SELECTCHECK: 1
-          AES_GCM_SELECTCHECK_START: 284
-          AES_GCM_SELECTCHECK_END: 344
+          AES_GCM_SELECTCHECK_START: 301
+          AES_GCM_SELECTCHECK_END: 346
 
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_345_384
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_347_384
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -313,7 +313,7 @@ batch:
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           AES_GCM_SELECTCHECK: 1
-          AES_GCM_SELECTCHECK_START: 345
+          AES_GCM_SELECTCHECK_START: 347
           AES_GCM_SELECTCHECK_END: 384
 
     # Build and test aws-lc without Perl/Go.
