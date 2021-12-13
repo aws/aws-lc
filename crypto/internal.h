@@ -220,6 +220,10 @@ static inline int buffers_alias(const uint8_t *a, size_t a_len,
   return a_u + a_len > b_u && b_u + b_len > a_u;
 }
 
+typedef uint8_t stack_align_type;
+OPENSSL_STATIC_ASSERT(sizeof(stack_align_type) == 1,
+                      stack_align_type_is_not_8_bits_long)
+
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
 // power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
 // space.
