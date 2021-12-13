@@ -37,7 +37,7 @@ cd aws-lc
 export CC=gcc
 export CXX=g++
 source tests/ci/common_posix_setup.sh
-fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
+fips_build_and_test -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
 
 # Step3: the bcm.o is generated under |ABS_PATH_TO_BCM_O|
 ABS_PATH_TO_BCM_O="${BUILD_ROOT}/crypto/fipsmodule/bcm.o"
@@ -52,5 +52,5 @@ cd aws-lc
 
 # Step2: build aws-lc with prebuilt bcm.o.
 source tests/ci/common_posix_setup.sh
-fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1 -DFIPS_VENDOR_AFFIRM_BCM_O_PATH=${PATH_TO_BCM_O}`.
+fips_build_and_test -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFIPS=1 -DBUILD_SHARED_LIBS=1 -DFIPS_VENDOR_AFFIRM_BCM_O_PATH=${PATH_TO_BCM_O}`.
 ```
