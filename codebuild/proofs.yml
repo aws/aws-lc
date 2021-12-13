@@ -15,4 +15,3 @@ phases:
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
       - make -j ${CORE_COUNT} proofs
       - cat p521/bignum_tomont_p521.correct
-      - echo "TODO Actually check the proofs"
