@@ -64,6 +64,7 @@ static int tests = TESTS;
 enum {
        TEST_ALL,
        TEST_ALL_APPLICABLE,
+       TEST_KNOWN_VALUES,
        TEST_BIGNUM_ADD,
        TEST_BIGNUM_ADD_P256,
        TEST_BIGNUM_ADD_P384,
@@ -5364,9 +5365,37 @@ int test_word_recip(void)
   return 0;
 }
 
+#define ASSIGN6(x,n0,n1,n2,n3,n4,n5) x[0] = UINT64_C(n0), x[1] = UINT64_C(n1), x[2] = UINT64_C(n2), x[3] = UINT64_C(n3), x[4] = UINT64_C(n4), x[5] = UINT64_C(n5)
+
+#define ASSIGN1(x,n) x[0] = UINT64_C(n)
+
+#define CHECK6(x,n0,n1,n2,n3,n4,n5) \
+  if ((x[0] != UINT64_C(n0)) || (x[1] != UINT64_C(n1)) || (x[2] != UINT64_C(n2)) || (x[3] != UINT64_C(n3)) || (x[4] != UINT64_C(n4)) || (x[5] != UINT64_C(n5))) \
+  { printf("Failed known value test\n"); ++failures; } else { ++successes; }
+
+#define CHECK1(x,n) \
+  if (x[0] != UINT64_C(n)) \
+  { printf("Failed known value test\n"); ++failures; } else { ++successes; }
+
+int test_known_values(void)
+{ int failures = 0, successes = 0;
+  printf("Testing known value cases\n");
+
+#include "known_value_tests_p384.h"
+
+  if (failures != 0)
+    { printf ("Failed %d known value tests, passed %d\n",failures,successes);
+      return failures;
+    }
+  else
+    { printf("Successfully passed %d known value tests\n",successes);
+      return 0;
+    }
+}
+
 #define dotest(f) (f()==0) ? ++successes : ++failures;
 
-int test_all()
+int test_all(void)
 { int failures = 0, successes = 0;
 
   dotest(test_bignum_add);
@@ -5515,6 +5544,8 @@ int test_all()
   dotest(test_word_min);
   dotest(test_word_negmodinv);
   dotest(test_word_recip);
+
+  failures += test_known_values();
 
   if (failures != 0)
    { printf("All tests run, **** %d failures out of %d ****\n",
@@ -5701,12 +5732,19 @@ int all_applicable(void)
 
 // If there is a single command line argument then interpret it
 // as the number of tests, which otherwise defaults to TESTS
+// Zero is interpreted as the default TESTS but for *all* tests
+// including known value tests.
 
 int main(int argc, char *argv[])
 { if (argc == 2)
     tests = atoi(argv[1]);
   else
     tests = TESTS;
+
+  if (tests == 0)
+   { tests = TESTS;
+     return test_all();
+   }
 
    switch(WHAT)
    { case TEST_ALL:                    return test_all();
@@ -5715,6 +5753,8 @@ int main(int argc, char *argv[])
                                          return test_all();
                                        else
                                          return test_allnonbmi();
+
+     case TEST_KNOWN_VALUES:           return test_known_values();
 
      case TEST_BIGNUM_ADD:             return test_bignum_add();
      case TEST_BIGNUM_ADD_P256:        return test_bignum_add_p256();

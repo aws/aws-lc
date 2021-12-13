@@ -43,12 +43,18 @@ endif
 #
 # The "go" target runs it with 100 tests per function and filters
 # most of the "good result" output to leave the summary and errors
+#
+# "complete" runs all tests regardless of architecture including
+# the known value tests, doing no filtering of output and giving a
+# return code.
 
 default: test ctCheck;
 
 go: test; ./test 100 | grep -v OK
 
-test: test.c ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -Wall -std=gnu99 -o test test.c -L../$(ARCH) -ls2nbignum
+complete: test; ./test 0
+
+test: test.c known_value_tests_p384.h ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -Wall -std=gnu99 -o test test.c -L../$(ARCH) -ls2nbignum
 
 clean: ;
 	rm -f test
