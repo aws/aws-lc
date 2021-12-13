@@ -50,7 +50,7 @@ OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) { }
 
 #endif // AWSLC_FIPS
 
-// is_fips_build() is similar to |FIPS_mode| but returns 1 including the case
+// is_fips_build is similar to |FIPS_mode| but returns 1 including in the case
 // of #if defined(OPENSSL_ASAN)
 int is_fips_build(void);
 
