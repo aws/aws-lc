@@ -202,6 +202,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_sub_p521.o \
       p521/bignum_tomont_p521.o \
       p521/bignum_triple_p521.o \
+      secp256k1/bignum_add_p256k1.o \
       secp256k1/bignum_sub_p256k1.o
 
 %.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(MANGLE) | $(ASSEMBLE) -o $@ -

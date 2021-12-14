@@ -31,7 +31,8 @@ endif
 
 # List of object files
 
-OBJ = bignum_sub_p256k1.o
+OBJ = bignum_add_p256k1.o \
+      bignum_sub_p256k1.o
 
 %.o : %.S ; cpp $< | $(GAS) -o $@ -
 
