@@ -20,7 +20,8 @@ int is_fips_build(void) {
 #if defined(AWSLC_FIPS)
 
 // Should only be called once per thread. Only called when initializing the state
-// in |FIPS_service_indicator_before_call|.
+// in |FIPS_service_indicator_before_call| (external call) or
+// in |FIPS_service_indicator_update_state| (internal call within every approved service).
 static int FIPS_service_indicator_init_state(void) {
   struct fips_service_indicator_state *indicator;
   indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
