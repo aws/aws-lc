@@ -68,6 +68,13 @@ void FIPS_service_indicator_update_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   if (indicator == NULL) {
+    // FIPS 140-3 requires that the module should provide the service indicator for approved
+    // services irrespective of whether the user queries it or not.
+    // Hence, it is not enough to initialise the counter lazily in the external call
+    // |FIPS_service_indicator_before_call|.
+    // Since this function is always called in the approved services,
+    // the counter will be initialised here if needed.
+    FIPS_service_indicator_init_state();
     return;
   }
   if(indicator->lock_state == STATE_UNLOCKED) {
