@@ -929,7 +929,7 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
     CALL_SERVICE_AND_CHECK_APPROVED(approved,
-            ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+            ASSERT_FALSE(EVP_PKEY_keygen(ctx.get(), &raw)));
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     // Prevent memory leakage.
     pkey.reset(raw);
@@ -1026,8 +1026,7 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   const RSATestVector &rsaTestVector = GetParam();
 
   int approved = AWSLC_NOT_APPROVED;
-
-  bssl::UniquePtr<RSA> rsa(RSA_new());
+  RSA *rsa = RSA_new();
   bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
@@ -1037,18 +1036,12 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   BN_set_word(e.get(), RSA_F4);
 
   // Generate a generic rsa key.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ASSERT_TRUE(RSA_generate_key_ex(rsa, rsaTestVector.key_size, e.get(), nullptr));
   if(rsaTestVector.use_pss) {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
   } else {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa));
   }
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsaTestVector.key_size));
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
   // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
@@ -1102,7 +1095,7 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
 
   int approved = AWSLC_NOT_APPROVED;
 
-  bssl::UniquePtr<RSA> rsa(RSA_new());
+  RSA *rsa = RSA_new();
   bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
@@ -1112,18 +1105,12 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   BN_set_word(e.get(), RSA_F4);
 
   // Generate a generic rsa key.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ASSERT_TRUE(RSA_generate_key_ex(rsa, rsaTestVector.key_size, e.get(), nullptr));
   if(rsaTestVector.use_pss) {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
   } else {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa));
   }
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsaTestVector.key_size));
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
 
   std::vector<uint8_t> signature;
   size_t sig_len;
@@ -1187,24 +1174,21 @@ TEST_P(RSA_ServiceIndicatorTest, ManualRSASignVerify) {
   ASSERT_TRUE(EVP_DigestInit(ctx.get(), rsaTestVector.func()));
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
 
-  // Generate a generic rsa key.
+  RSA *rsa = RSA_new();
+  bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  bssl::UniquePtr<EVP_PKEY_CTX> pctx;
+  BN_set_word(e.get(), RSA_F4);
+
+  // Generate a generic rsa key.
+  ASSERT_TRUE(RSA_generate_key_ex(rsa, rsaTestVector.key_size, e.get(), nullptr));
   if(rsaTestVector.use_pss) {
-    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
   } else {
-    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa));
   }
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(pctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(pctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(pctx.get(), rsaTestVector.key_size));
-  ASSERT_TRUE(EVP_PKEY_keygen(pctx.get(), &raw));
-  pkey.reset(raw);
-  ASSERT_TRUE(pkey);
 
   // Manual construction for signing.
-  pctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
   ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
   ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
   EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());

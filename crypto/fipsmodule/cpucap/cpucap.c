@@ -5,9 +5,9 @@
 ------------------------------------------------------------------------------------
 */
 
-// The content of this file was copied from crypto/crypto.c to this file
+// The contents of this file were copied from crypto/crypto.c to this file
 // as part of the change that moves the CPU capability logic inside the FIPS
-// module to satisfy with FIPS requirements.
+// module to satisfy the FIPS requirements.
 
 #include <openssl/cpu.h>
 
