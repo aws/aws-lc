@@ -50,6 +50,10 @@ OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) { }
 
 #endif // AWSLC_FIPS
 
+// is_fips_build is similar to |FIPS_mode| but returns 1 including in the case
+// of #if defined(OPENSSL_ASAN)
+int is_fips_build(void);
+
 // Service indicator check functions parameters are assumed to be not NULL.
 
 void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds);

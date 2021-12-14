@@ -42,7 +42,7 @@
         // (X86 || X86_64 || ARM || AARCH64 || PPC64LE)
 
 #if defined(BORINGSSL_FIPS)
-// In FIPS mode, the power-on self-test function calls |CRYPTO_library_init|
+// In FIPS mode, the power-on self-test function calls |OPENSSL_cpuid_setup|
 // because we have to ensure that CPUID detection occurs first.
 #define BORINGSSL_NO_STATIC_INITIALIZER
 #endif
