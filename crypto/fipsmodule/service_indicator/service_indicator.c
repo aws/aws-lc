@@ -9,6 +9,14 @@ const char* awslc_version_string(void) {
   return AWSLC_VERSION_STRING;
 }
 
+int is_fips_build(void) {
+#if defined(AWSLC_FIPS)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 #if defined(AWSLC_FIPS)
 
 // Should only be called once per thread. Only called when initializing the state
@@ -179,41 +187,33 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
 }
 
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
-   // We do a call to |EC_KEY_check_fips|, which is approved, so we have to lock
-   // the state here.
-   FIPS_service_indicator_lock_state();
    int ret = 0;
    if(pkey->type == EVP_PKEY_RSA || pkey->type== EVP_PKEY_RSA_PSS) {
      //  2048, 3072 and 4096 bit keys are approved for RSA key generation.
-     if (RSA_check_fips(pkey->pkey.rsa)) {
-       switch (EVP_PKEY_size(pkey)) {
-         case 256:
-         case 384:
-         case 512:
-           ret = 1;
-           break;
-         default:
-           break;
-       }
-    }
+     switch (EVP_PKEY_size(pkey)) {
+       case 256:
+       case 384:
+       case 512:
+         ret = 1;
+         break;
+       default:
+         break;
+     }
   } else if(pkey->type == EVP_PKEY_EC) {
-    // Curves P-224, P-256, P-384 and P-521 keys are approved for EC key
-    // generation.
-     if (EC_KEY_check_fips(pkey->pkey.ec)) {
-       int curve_name = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
-       switch (curve_name) {
-         case NID_secp224r1:
-         case NID_X9_62_prime256v1:
-         case NID_secp384r1:
-         case NID_secp521r1:
-           ret = 1;
-           break;
-         default:
-           break;
-       }
+      // Curves P-224, P-256, P-384 and P-521 keys are approved for EC key
+      // generation.
+     int curve_name = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
+     switch (curve_name) {
+       case NID_secp224r1:
+       case NID_X9_62_prime256v1:
+       case NID_secp384r1:
+       case NID_secp521r1:
+         ret = 1;
+         break;
+       default:
+         break;
      }
    }
-   FIPS_service_indicator_unlock_state();
    if(ret) {
      FIPS_service_indicator_update_state();
    }
@@ -420,6 +420,3 @@ void ECDH_verify_service_indicator(OPENSSL_UNUSED const EC_KEY *ec_key) { }
 void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) { }
 
 #endif // AWSLC_FIPS
-
-
-
