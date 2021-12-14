@@ -125,6 +125,26 @@ def code_build_fuzz_policy_in_json():
         ]
     }
 
+def s3_read_policy_in_json(s3_bucket_name):
+    """
+    Define an IAM policy statement for reading from S3 bucket.
+    :return: an IAM policy statement in json.
+    """
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:Get*"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::{}/*".format(s3_bucket_name)
+                ]
+            }
+        ]
+    }
+
 def s3_read_write_policy_in_json(s3_bucket_name):
     """
     Define an IAM policy statement for reading and writing to S3 bucket.
@@ -194,36 +214,6 @@ def ecr_power_user_policy_in_json(ecr_repo_names):
                     "ecr:UploadLayerPart",
                     "ecr:CompleteLayerUpload",
                     "ecr:PutImage"
-                ],
-                "Resource": ecr_arns
-            }
-        ]
-    }
-
-def ecr_read_image_policy_in_json(ecr_repo_names):
-    """
-    Define an AWS-LC specific IAM policy statement to pull custom docker images.
-    :return: an IAM policy statement in json.
-    """
-    ecr_arns = []
-    for ecr_repo_name in ecr_repo_names:
-        ecr_arns.append(ecr_repo_arn(ecr_repo_name))
-    return {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "ecr:GetAuthorizationToken"
-                ],
-                "Resource": "*"
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:BatchGetImage",
-                    "ecr:BatchCheckLayerAvailability"
                 ],
                 "Resource": ecr_arns
             }
