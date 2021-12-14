@@ -43,7 +43,7 @@ struct pq_kem_st {
 
 typedef struct pq_kem_st EVP_PQ_KEM;
 
-extern const EVP_PQ_KEM EVP_PQ_KEM_kyber512;
+OPENSSL_EXPORT extern const EVP_PQ_KEM EVP_PQ_KEM_kyber512;
 
 /*
    Name: pq_kem_ctx_st
@@ -67,7 +67,7 @@ typedef struct pq_kem_ctx_st EVP_PQ_KEM_CTX;
 
    Description: Creates a new EVP_PQ_KEM_CTX.
 */
-EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void);
+OPENSSL_EXPORT EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void);
 
 /*
    Name: EVP_PQ_KEM_init
@@ -78,7 +78,7 @@ EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void);
   
    Returns 1 on success, 0 on failure.
 */
-int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx, const EVP_PQ_KEM *kem);
+OPENSSL_EXPORT int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx, const EVP_PQ_KEM *kem);
 
 /*
    Name: EVP_PQ_KEM_CTX_free
@@ -88,7 +88,7 @@ int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx, const EVP_PQ_KEM *kem);
    Description: Cleanses and frees the memory of public key, private key,
                 cipher text, and shared secret.
 */
-void EVP_PQ_KEM_CTX_free(EVP_PQ_KEM_CTX *kem_ctx);
+OPENSSL_EXPORT void EVP_PQ_KEM_CTX_free(EVP_PQ_KEM_CTX *kem_ctx);
 
 /*
    Name: EVP_PQ_KEM_generate_keypair
@@ -97,7 +97,7 @@ void EVP_PQ_KEM_CTX_free(EVP_PQ_KEM_CTX *kem_ctx);
   
    Returns 1 on success, 0 on failure.
 */
-int EVP_PQ_KEM_generate_keypair(EVP_PQ_KEM_CTX *kem_params);
+OPENSSL_EXPORT int EVP_PQ_KEM_generate_keypair(EVP_PQ_KEM_CTX *kem_params);
 
 /*
    Name: EVP_PQ_KEM_encapsulate
@@ -107,7 +107,7 @@ int EVP_PQ_KEM_generate_keypair(EVP_PQ_KEM_CTX *kem_params);
   
    Returns 1 on success, 0 on failure.
 */
-int EVP_PQ_KEM_encapsulate(EVP_PQ_KEM_CTX *kem_params);
+OPENSSL_EXPORT int EVP_PQ_KEM_encapsulate(EVP_PQ_KEM_CTX *kem_params);
 
 /*
    Name: EVP_PQ_KEM_decapsulate
@@ -117,7 +117,7 @@ int EVP_PQ_KEM_encapsulate(EVP_PQ_KEM_CTX *kem_params);
   
    Returns 1 on success, 0 on failure.
 */
-int EVP_PQ_KEM_decapsulate(EVP_PQ_KEM_CTX *kem_params);
+OPENSSL_EXPORT int EVP_PQ_KEM_decapsulate(EVP_PQ_KEM_CTX *kem_params);
 
 #ifdef __cplusplus
 }
