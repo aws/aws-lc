@@ -1616,10 +1616,24 @@ TEST(ServiceIndicatorTest, BasicTest) {
   uint8_t output[256];
   size_t out_len;
   int num = 0;
+  int counter_before, counter_after;
 
-  // Call an approved service.
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
+  // Because the service indicator gets initialised in |FIPS_service_indicator_update_state|, which
+  // is called by all approved services, the self_test run at the beginning would have updated it
+  // more than once. The following test ensures that it's not zero and that it gets updated by calling
+  // an approved service without calling |FIPS_service_indicator_before_call| first, which can init the counter,
+  // but instead calling |FIPS_service_indicator_after_call|
+  // This test also ensures that the counter gets incremented once, i.e. it was locked through the internal calls.
+  counter_before = FIPS_service_indicator_after_call();
+  ASSERT_NE(counter_before, 0);
+  EVP_AEAD_CTX_seal(aead_ctx.get(),
+                    output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0);
+  counter_after = FIPS_service_indicator_after_call();
+  ASSERT_EQ(counter_after, counter_before+1);
+
+  // Call an approved service.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
           output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_EQ(approved, AWSLC_APPROVED);

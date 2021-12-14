@@ -20,12 +20,14 @@ int is_fips_build(void) {
 #if defined(AWSLC_FIPS)
 
 // Should only be called once per thread. Only called when initializing the state
-// in |FIPS_service_indicator_before_call|.
+// in |FIPS_service_indicator_before_call| (external call) or
+// in |FIPS_service_indicator_update_state| (internal call within every approved service).
 static int FIPS_service_indicator_init_state(void) {
   struct fips_service_indicator_state *indicator;
   indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
   if (indicator == NULL || !CRYPTO_set_thread_local(
       AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   indicator->lock_state = STATE_UNLOCKED;
@@ -68,8 +70,19 @@ void FIPS_service_indicator_update_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   if (indicator == NULL) {
-    return;
+    // FIPS 140-3 requires that the module should provide the service indicator for approved
+    // services irrespective of whether the user queries it or not.
+    // Hence, it is not enough to initialise the counter lazily in the external call
+    // |FIPS_service_indicator_before_call|.
+    // Since this function is always called in the approved services,
+    // the counter will be initialised here if needed.
+    FIPS_service_indicator_init_state();
+    indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+    if (indicator == NULL) {
+      return;
+    }
   }
+
   if(indicator->lock_state == STATE_UNLOCKED) {
     indicator->counter++;
   }
