@@ -3,8 +3,8 @@
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
 from util.ecr_util import ecr_arn
-from util.iam_policies import code_build_batch_policy_in_json, s3_read_policy_in_json
-from util.metadata import AWS_ACCOUNT, AWS_REGION, AWS_LC_CI_S3_BUCKET_NAME, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+from util.iam_policies import code_build_batch_policy_in_json
+from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.yml_loader import YmlLoader
 
 
@@ -36,21 +36,14 @@ class AwsLcGitHubCIStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(
             code_build_batch_policy_in_json([id])
         )
-        s3_read_policy = iam.PolicyDocument.from_json(s3_read_policy_in_json(AWS_LC_CI_S3_BUCKET_NAME))
-        inline_policies = {
-            "code_build_batch_policy": code_build_batch_policy,
-            "s3_read_policy": s3_read_policy
-        }
+        inline_policies = {"code_build_batch_policy": code_build_batch_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
                         inline_policies=inline_policies)
 
         # Create build spec.
-        placeholder_map = {
-            "ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name),
-            "FIPS_BCM_O_S3_OBJ_PLACEHOLDER": "s3://{}/bcm.o".format(AWS_LC_CI_S3_BUCKET_NAME)
-        }
+        placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
         build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
