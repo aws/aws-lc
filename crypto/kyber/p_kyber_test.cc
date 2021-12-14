@@ -53,6 +53,7 @@ TEST(Kyber512Test, EVP_PKEY_keygen) {
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
   OPENSSL_free(buf);
 
+  EVP_PKEY_free(kyber_pkey);
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
@@ -81,6 +82,8 @@ TEST(Kyber512Test, EVP_PKEY_cmp) {
   EXPECT_EQ(1, EVP_PKEY_cmp(kyber_pkey1, kyber_pkey1));
   EXPECT_EQ(1, EVP_PKEY_cmp(kyber_pkey2, kyber_pkey2));
 
+  EVP_PKEY_free(kyber_pkey1);
+  EVP_PKEY_free(kyber_pkey2);
   EVP_PKEY_CTX_free(kyber_pkey_ctx1);
   EVP_PKEY_CTX_free(kyber_pkey_ctx2);
 }
@@ -143,5 +146,6 @@ TEST(Kyber512Test, EVP_PKEY_size) {
   EXPECT_EQ(KYBER512_PUBLICKEY_BYTES + KYBER512_SECRETKEY_BYTES, EVP_PKEY_size(kyber_pkey));
   EXPECT_EQ(8*(KYBER512_PUBLICKEY_BYTES + KYBER512_SECRETKEY_BYTES), EVP_PKEY_bits(kyber_pkey));
 
+  EVP_PKEY_free(kyber_pkey);
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
