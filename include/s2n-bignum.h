@@ -525,6 +525,10 @@ extern void bignum_sqr_6_12 (uint64_t z[static 12], uint64_t x[static 6]);
 // Input x[8]; output z[16]
 extern void bignum_sqr_8_16 (uint64_t z[static 16], uint64_t x[static 8]);
 
+// Square modulo p_256k1, z := (x^2) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_sqr_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
 extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);

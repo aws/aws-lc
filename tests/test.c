@@ -190,6 +190,7 @@ enum {
        TEST_BIGNUM_SQR_4_8,
        TEST_BIGNUM_SQR_6_12,
        TEST_BIGNUM_SQR_8_16,
+       TEST_BIGNUM_SQR_P256K1,
        TEST_BIGNUM_SQR_P521,
        TEST_BIGNUM_SUB,
        TEST_BIGNUM_SUB_P256,
@@ -4770,6 +4771,39 @@ int test_bignum_sqr_8_16(void)
 { return test_bignum_sqr_specific(16,8,"bignum_sqr_8_16",bignum_sqr_8_16);
 }
 
+int test_bignum_sqr_p256k1(void)
+{ uint64_t i, k;
+  printf("Testing bignum_sqr_p256k1 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b0);
+     bignum_sqr_p256k1(b2,b0);
+     reference_mul(2*k,b4,k,b0,k,b0);
+     reference_copy(2*k,b3,k,p_256k1);
+     reference_mod(2*k,b5,b4,b3);
+     reference_copy(k,b3,2*k,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" ^ 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_256k1[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" ^ 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],p_256k1[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_sqr_p521(void)
 { uint64_t i, k;
   printf("Testing bignum_sqr_p521 with %d cases\n",tests);
@@ -4786,7 +4820,7 @@ int test_bignum_sqr_p521(void)
      c = reference_compare(k,b3,k,b2);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
-               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" ^ 2 mod ....0x%016"PRIx64" = "
                "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b2[0],b3[0]);
         return 1;
@@ -4794,7 +4828,7 @@ int test_bignum_sqr_p521(void)
      else if (VERBOSE)
       { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
         else printf("OK: [size %4"PRIu64"] "
-                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64" ^ 2 mod ....0x%016"PRIx64" = "
                     "...0x%016"PRIx64"\n",
                     k,b0[0],p_521[0],b2[0]);
       }
@@ -5595,6 +5629,7 @@ int test_all(void)
   dotest(test_bignum_sqr_4_8);
   dotest(test_bignum_sqr_6_12);
   dotest(test_bignum_sqr_8_16);
+  dotest(test_bignum_sqr_p256k1);
   dotest(test_bignum_sqr_p521);
   dotest(test_bignum_sub);
   dotest(test_bignum_sub_p256);
@@ -5956,6 +5991,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_SQR_4_8:         return test_bignum_sqr_4_8();
      case TEST_BIGNUM_SQR_6_12:        return test_bignum_sqr_6_12();
      case TEST_BIGNUM_SQR_8_16:        return test_bignum_sqr_8_16();
+     case TEST_BIGNUM_SQR_P256K1:      return test_bignum_sqr_p256k1();
      case TEST_BIGNUM_SQR_P521:        return test_bignum_sqr_p521();
      case TEST_BIGNUM_SUB:             return test_bignum_sub();
      case TEST_BIGNUM_SUB_P256:        return test_bignum_sub_p256();

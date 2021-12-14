@@ -17,6 +17,7 @@
 
 OBJ = bignum_add_p256k1.o \
       bignum_mul_p256k1.o \
+      bignum_sqr_p256k1.o \
       bignum_sub_p256k1.o
 
 %.o : %.S ; cpp $< | as -o $@ -
