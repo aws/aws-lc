@@ -26,6 +26,7 @@ static int FIPS_service_indicator_init_state(void) {
   indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
   if (indicator == NULL || !CRYPTO_set_thread_local(
       AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   indicator->lock_state = STATE_UNLOCKED;
@@ -75,8 +76,12 @@ void FIPS_service_indicator_update_state(void) {
     // Since this function is always called in the approved services,
     // the counter will be initialised here if needed.
     FIPS_service_indicator_init_state();
-    return;
+    indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+    if (indicator == NULL) {
+      return;
+    }
   }
+
   if(indicator->lock_state == STATE_UNLOCKED) {
     indicator->counter++;
   }
