@@ -49,6 +49,27 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
+
+  # Copy the s2n-bignum assembly files to the binary dir.
+  file(
+    COPY
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_add_p384.S
+    DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+  )
+
+  # We add s2n-bignum files to a separate list because they need
+  # to go through C preprocessor in case of a static build.
+  set(
+    BCM_ASM_SOURCES_S2N_BIGNUM
+
+    bignum_add_p384.S
+  )
+
+  if(NOT FIPS_DELOCATE)
+    # If we don't have to use the delocate script then s2n-bignum files
+    # are simply added to BCM_ASM_SOURCES.
+    list(APPEND BCM_ASM_SOURCES ${BCM_ASM_SOURCES_S2N_BIGNUM})
+  endif()
 endif()
 
 if(ARCH STREQUAL "x86")
@@ -86,6 +107,13 @@ if(ARCH STREQUAL "arm")
 endif()
 
 if(ARCH STREQUAL "aarch64")
+
+  file(
+    COPY
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_add_p384.S
+    DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+  )
+
   set(
     BCM_ASM_SOURCES
 
@@ -99,6 +127,8 @@ if(ARCH STREQUAL "aarch64")
     sha256-armv8.${ASM_EXT}
     sha512-armv8.${ASM_EXT}
     vpaes-armv8.${ASM_EXT}
+
+    bignum_add_p384.S
   )
 endif()
 
@@ -197,11 +227,19 @@ if(FIPS_DELOCATE)
   )
 
   if(ARCH STREQUAL "aarch64")
-    # Perlasm output on Aarch64 needs to pass through the C preprocessor before
-    # it can be parsed by delocate.
+    # Perlasm output on Aarch64 needs to pass through the C preprocessor
+    # before it can be parsed by delocate.
     foreach(asm ${BCM_ASM_SOURCES})
       cpreprocess(${asm}.s ${asm})
       list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.s")
+    endforeach()
+  elseif(ARCH STREQUAL "x86_64")
+    # s2n-bignum assembly files need to pass through the C preprocessor
+    # before they can be parsed by delocate.
+    set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
+    foreach(asm ${BCM_ASM_SOURCES_S2N_BIGNUM})
+      cpreprocess(${asm}.S ${asm})
+      list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.S")
     endforeach()
   else()
     # No preprocessing is required on other platforms.

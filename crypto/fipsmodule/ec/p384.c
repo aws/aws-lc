@@ -24,6 +24,39 @@
 #include "../../../third_party/fiat/p384_32.h"
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
+#if defined(OPENSSL_X86_64)
+// On x86_64 platforms we have to check if bmi2 and adx instructions
+// are available because s2n-bignum relies on them.
+/* extern uint64_t OPENSSL_ia32cap_P[4]; */
+static uint8_t use_s2n_bignum(void) {
+  return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) != 0) && // bmi2
+         ((OPENSSL_ia32cap_P[2] & (1u << 19)) != 0);   // adx
+}
+#else
+// On aarch64 platforms we always use s2n-bignum,
+// provided OPENSSL_NO_ASM flag is not set.
+static uint8_t use_s2n_bignum(void) {
+  return 1;
+}
+#endif
+
+#else
+static uint8_t use_s2n_bignum(void) {
+  return 0;
+}
+#endif
+
+#define p384_fadd(out, in0, in1)    \
+  if (use_s2n_bignum()) {           \
+    bignum_add_p384(out, in0, in1); \
+  } else {                          \
+    fiat_p384_add(out, in0, in1);   \
+  }
+
 #if defined(BORINGSSL_NISTP384_64BIT)
 #define FIAT_P384_NLIMBS 6
 typedef uint64_t fiat_p384_limb_t;
@@ -206,33 +239,33 @@ static void fiat_p384_point_double(fiat_p384_felem x_out, fiat_p384_felem y_out,
 
   // alpha = 3*(x-delta)*(x+delta)
   fiat_p384_sub(ftmp, x_in, delta);
-  fiat_p384_add(ftmp2, x_in, delta);
+  p384_fadd(ftmp2, x_in, delta);
 
-  fiat_p384_add(tmptmp, ftmp2, ftmp2);
-  fiat_p384_add(ftmp2, ftmp2, tmptmp);
+  p384_fadd(tmptmp, ftmp2, ftmp2);
+  p384_fadd(ftmp2, ftmp2, tmptmp);
   fiat_p384_mul(alpha, ftmp, ftmp2);
 
   // x' = alpha^2 - 8*beta
   fiat_p384_square(x_out, alpha);
-  fiat_p384_add(fourbeta, beta, beta);
-  fiat_p384_add(fourbeta, fourbeta, fourbeta);
-  fiat_p384_add(tmptmp, fourbeta, fourbeta);
+  p384_fadd(fourbeta, beta, beta);
+  p384_fadd(fourbeta, fourbeta, fourbeta);
+  p384_fadd(tmptmp, fourbeta, fourbeta);
   fiat_p384_sub(x_out, x_out, tmptmp);
 
   // z' = (y + z)^2 - gamma - delta
   // The following calculation differs from that in p256.c:
   // An add is replaced with a sub in order to save 5 cmovznz.
-  fiat_p384_add(ftmp, y_in, z_in);
+  p384_fadd(ftmp, y_in, z_in);
   fiat_p384_square(z_out, ftmp);
   fiat_p384_sub(z_out, z_out, gamma);
   fiat_p384_sub(z_out, z_out, delta);
 
   // y' = alpha*(4*beta - x') - 8*gamma^2
   fiat_p384_sub(y_out, fourbeta, x_out);
-  fiat_p384_add(gamma, gamma, gamma);
+  p384_fadd(gamma, gamma, gamma);
   fiat_p384_square(gamma, gamma);
   fiat_p384_mul(y_out, alpha, y_out);
-  fiat_p384_add(gamma, gamma, gamma);
+  p384_fadd(gamma, gamma, gamma);
   fiat_p384_sub(y_out, y_out, gamma);
 }
 
@@ -270,7 +303,7 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
     fiat_p384_mul(u1, x1, z2z2);
 
     // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
-    fiat_p384_add(two_z1z2, z1, z2);
+    p384_fadd(two_z1z2, z1, z2);
     fiat_p384_square(two_z1z2, two_z1z2);
     fiat_p384_sub(two_z1z2, two_z1z2, z1z1);
     fiat_p384_sub(two_z1z2, two_z1z2, z2z2);
@@ -284,7 +317,7 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
     // u1 = x1*z2z2
     fiat_p384_copy(u1, x1);
     // two_z1z2 = 2z1z2
-    fiat_p384_add(two_z1z2, z1, z1);
+    p384_fadd(two_z1z2, z1, z1);
     // s1 = y1 * z2**3
     fiat_p384_copy(s1, y1);
   }
@@ -313,7 +346,7 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
   // r = (s2 - s1)*2
   fiat_p384_felem r;
   fiat_p384_sub(r, s2, s1);
-  fiat_p384_add(r, r, r);
+  p384_fadd(r, r, r);
 
   fiat_p384_limb_t yneq = fiat_p384_nz(r);
 
@@ -328,7 +361,7 @@ static void fiat_p384_point_add(fiat_p384_felem x3, fiat_p384_felem y3,
 
   // I = (2h)**2
   fiat_p384_felem i;
-  fiat_p384_add(i, h, h);
+  p384_fadd(i, h, h);
   fiat_p384_square(i, i);
 
   // J = h * I
