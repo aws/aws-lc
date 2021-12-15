@@ -172,7 +172,7 @@ bignum_mul_p256k1:
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [u7,u6,u5,u4] and l = [u3,u2,u1,u0]
 // and this is == 4294968273 * h + l (mod p_256k1)
-// Some of the word products are done straightforwardly using mul + umulh 
+// Some of the word products are done straightforwardly using mul + umulh
 // while others are broken down in a more complicated way as
 // (2^32 + 977) * (2^32 * h + l) = 2^64 * h + 2^32 * (d * h + l) + d * l
 

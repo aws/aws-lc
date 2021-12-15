@@ -16,9 +16,13 @@
 # The x86 assembly (.S) files are all written for the GNU assembler
 
 OBJ = bignum_add_p256k1.o \
+      bignum_cmul_p256k1.o \
+      bignum_double_p256k1.o \
+      bignum_half_p256k1.o \
       bignum_mul_p256k1.o \
       bignum_sqr_p256k1.o \
-      bignum_sub_p256k1.o
+      bignum_sub_p256k1.o \
+      bignum_triple_p256k1.o
 
 %.o : %.S ; cpp $< | as -o $@ -
 
