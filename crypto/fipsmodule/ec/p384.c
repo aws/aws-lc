@@ -27,35 +27,24 @@
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#define TRY_USING_S2N_BIGNUM
 
 #if defined(OPENSSL_X86_64)
 // On x86_64 platforms we have to check if bmi2 and adx instructions
 // are available because s2n-bignum relies on them.
 /* extern uint64_t OPENSSL_ia32cap_P[4]; */
-static uint8_t use_s2n_bignum(void) {
+static inline uint8_t use_s2n_bignum(void) {
   return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) != 0) && // bmi2
          ((OPENSSL_ia32cap_P[2] & (1u << 19)) != 0);   // adx
 }
-#else
-// On aarch64 platforms we always use s2n-bignum,
-// provided OPENSSL_NO_ASM flag is not set.
-static uint8_t use_s2n_bignum(void) {
-  return 1;
-}
+#endif
 #endif
 
+#if defined(TRY_USING_S2N_BIGNUM)
+#define p384_fadd(out, in0, in1) bignum_add_p384(out, in0, in1)
 #else
-static uint8_t use_s2n_bignum(void) {
-  return 0;
-}
+#define p384_fadd(out, in0, in1) fiat_p384_add(out, in0, in1)
 #endif
-
-#define p384_fadd(out, in0, in1)    \
-  if (use_s2n_bignum()) {           \
-    bignum_add_p384(out, in0, in1); \
-  } else {                          \
-    fiat_p384_add(out, in0, in1);   \
-  }
 
 #if defined(BORINGSSL_NISTP384_64BIT)
 #define FIAT_P384_NLIMBS 6
