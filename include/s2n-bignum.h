@@ -113,6 +113,10 @@ extern uint64_t bignum_cmul (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, ui
 // Inputs c, x[4]; output z[4]
 extern void bignum_cmul_p256 (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
 
+// Multiply by a single word modulo p_256k1, z := (c * x) mod p_256k1, assuming x reduced
+// Inputs c, x[4]; output z[4]
+extern void bignum_cmul_p256k1 (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
+
 // Multiply by a single word modulo p_384, z := (c * x) mod p_384, assuming x reduced
 // Inputs c, x[6]; output z[6]
 extern void bignum_cmul_p384 (uint64_t z[static 6], uint64_t c, uint64_t x[static 6]);
@@ -181,6 +185,10 @@ extern uint64_t bignum_divmod10 (uint64_t k, uint64_t *z);
 // Input x[4]; output z[4]
 extern void bignum_double_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Double modulo p_256k1, z := (2 * x) mod p_256k1, assuming x reduced
+// Input x[4]; output z[4]
+extern void bignum_double_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Double modulo p_384, z := (2 * x) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
 extern void bignum_double_p384 (uint64_t z[static 6], uint64_t x[static 6]);
@@ -232,6 +240,10 @@ extern uint64_t bignum_gt (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 // Halve modulo p_256, z := (x / 2) mod p_256, assuming x reduced
 // Input x[4]; output z[4]
 extern void bignum_half_p256 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Halve modulo p_256k1, z := (x / 2) mod p_256k1, assuming x reduced
+// Input x[4]; output z[4]
+extern void bignum_half_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Halve modulo p_384, z := (x / 2) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
@@ -401,6 +413,10 @@ extern void bignum_mul_6_12 (uint64_t z[static 12], uint64_t x[static 6], uint64
 // Inputs x[8], y[8]; output z[16]
 extern void bignum_mul_8_16 (uint64_t z[static 16], uint64_t x[static 8], uint64_t y[static 8]);
 
+// Multiply modulo p_256k1, z := (x * y) mod p_256k1
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_mul_p256k1 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+
 // Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_mul_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
@@ -521,6 +537,10 @@ extern void bignum_sqr_6_12 (uint64_t z[static 12], uint64_t x[static 6]);
 // Input x[8]; output z[16]
 extern void bignum_sqr_8_16 (uint64_t z[static 16], uint64_t x[static 8]);
 
+// Square modulo p_256k1, z := (x^2) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_sqr_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
 extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
@@ -576,6 +596,10 @@ extern void bignum_tomont_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 // Triple modulo p_256, z := (3 * x) mod p_256
 // Input x[4]; output z[4]
 extern void bignum_triple_p256 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Triple modulo p_256k1, z := (3 * x) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_triple_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Triple modulo p_384, z := (3 * x) mod p_384
 // Input x[6]; output z[6]
