@@ -43,9 +43,11 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
 #endif
 
 // todo(dkostic): add comment about the macros
-#define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
-#define p384_felem_sub(out, in0, in1) bignum_sub_p384(out, in0, in1)
-#define p384_felem_opp(out, in0)      bignum_neg_p384(out, in0)
+#define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
+#define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
+#define p384_felem_opp(out, in0)        bignum_neg_p384(out, in0)
+#define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, in0)
+#define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, in0)
 
 // todo(dkostic): add comment about bmi2 and adx
 #define p384_felem_mul(out, in0, in1) \
@@ -67,13 +69,15 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
 #else // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
 
 // todo(dkostic): add comment about the macros
-#define p384_felem_add(out, in0, in1)  fiat_p384_add(out, in0, in1)
-#define p384_felem_sub(out, in0, in1)  fiat_p384_sub(out, in0, in1)
-#define p384_felem_opp(out, in0)       fiat_p384_sub(out, in0)
-#define p384_felem_mul(out, in0, in1)  fiat_p384_mul(out, in0, in1)
-#define p384_felem_sqr(out, in0)       fiat_p384_square(out, in0)
-#define p384_felem_to_mont(out, in0)   fiat_p384_to_montgomery(out, in0)
-#define p384_felem_from_mont(out, in0) fiat_p384_from_montgomery(out, in0)
+#define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
+#define p384_felem_sub(out, in0, in1)   fiat_p384_sub(out, in0, in1)
+#define p384_felem_opp(out, in0)        fiat_p384_sub(out, in0)
+#define p384_felem_mul(out, in0, in1)   fiat_p384_mul(out, in0, in1)
+#define p384_felem_sqr(out, in0)        fiat_p384_square(out, in0)
+#define p384_felem_to_mont(out, in0)    fiat_p384_to_montgomery(out, in0)
+#define p384_felem_from_mont(out, in0)  fiat_p384_from_montgomery(out, in0)
+#define p384_felem_to_bytes(out, in0)   fiat_p384_to_bytes(out, in0)
+#define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
 #endif // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
 
@@ -113,7 +117,7 @@ static void fiat_p384_cmovznz(fiat_p384_limb_t out[FIAT_P384_NLIMBS],
 }
 
 static void fiat_p384_from_generic(fiat_p384_felem out, const EC_FELEM *in) {
-  fiat_p384_from_bytes(out, in->bytes);
+  p384_felem_from_bytes(out, in->bytes);
 }
 
 static void fiat_p384_to_generic(EC_FELEM *out, const fiat_p384_felem in) {
@@ -121,8 +125,8 @@ static void fiat_p384_to_generic(EC_FELEM *out, const fiat_p384_felem in) {
   // zero when rounding up to |BN_ULONG|s.
   OPENSSL_STATIC_ASSERT(
       384 / 8 == sizeof(BN_ULONG) * ((384 + BN_BITS2 - 1) / BN_BITS2),
-      fiat_p384_to_bytes_leaves_bytes_uninitialized);
-  fiat_p384_to_bytes(out->bytes, in);
+      p384_felem_to_bytes_leaves_bytes_uninitialized);
+  p384_felem_to_bytes(out->bytes, in);
 }
 
 // fiat_p384_inv_square calculates |out| = |in|^{-2}
@@ -524,7 +528,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   p384_felem_mul(Z2_mont, Z2_mont, Z2_mont);
 
   fiat_p384_felem r_Z2;
-  fiat_p384_from_bytes(r_Z2, r->bytes);  // r < order < p, so this is valid.
+  p384_felem_from_bytes(r_Z2, r->bytes);  // r < order < p, so this is valid.
   p384_felem_mul(r_Z2, r_Z2, Z2_mont);
 
   fiat_p384_felem X;

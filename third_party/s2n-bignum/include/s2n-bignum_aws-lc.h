@@ -49,13 +49,13 @@ extern void bignum_tomont_p384 (uint64_t z[static 6], const uint64_t x[static 6]
 /* // Inputs p, x[6], y[6]; output z[6] */
 /* extern void bignum_mux_6 (uint64_t p, uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]); */
 
-/* // Convert 6-digit (384-bit) bignum from big-endian form */
-/* // Input x[6]; output z[6] */
-/* extern void bignum_frombytes_6 (uint64_t z[static 6], const uint8_t x[static 48]); */
+// Convert 6-digit (384-bit) bignum from big-endian form
+// Input x[6]; output z[6]
+extern void bignum_fromlebytes_6 (uint64_t z[static 6], const uint8_t x[static 48]);
 
-/* // Convert 6-digit (384-bit) bignum to big-endian form */
-/* // Input x[6]; output z[6] */
-/* extern void bignum_tobytes_6 (uint8_t z[static 48], const uint64_t x[static 6]); */
+// Convert 6-digit (384-bit) bignum to big-endian form
+// Input x[6]; output z[6]
+extern void bignum_tolebytes_6 (uint8_t z[static 48], const uint64_t x[static 6]);
 
 /* // 384-bit nonzeroness test, returning 1 if x is nonzero, 0 if x is zero */
 /* // Input x[6]; output function return */

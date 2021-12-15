@@ -43,6 +43,8 @@ OPENSSL_UNUSED static void fiat_p384_divstep(uint64_t* out1, uint64_t out2[7], u
 OPENSSL_UNUSED static void fiat_p384_divstep_precomp(uint64_t out1[6]);
 OPENSSL_UNUSED static void fiat_p384_add(uint64_t out1[6], const uint64_t arg1[6], const uint64_t arg2[6]);
 OPENSSL_UNUSED static void fiat_p384_sub(uint64_t out1[6], const uint64_t arg1[6], const uint64_t arg2[6]);
+OPENSSL_UNUSED static void fiat_p384_to_bytes(uint8_t out1[48], const uint64_t arg1[6]);
+OPENSSL_UNUSED static void fiat_p384_from_bytes(uint64_t out1[6], const uint8_t arg1[48]);
 /*
  * The function fiat_p384_addcarryx_u64 is an addition with carry.
  * Postconditions:
