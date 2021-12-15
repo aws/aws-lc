@@ -21,9 +21,9 @@
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_add_p384 (uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 
-/* // Convert from Montgomery form z := (x / 2^384) mod p_384, assuming x reduced */
-/* // Input x[6]; output z[6] */
-/* extern void bignum_demont_p384 (uint64_t z[static 6], const uint64_t x[static 6]); */
+// Convert from Montgomery form z := (x / 2^384) mod p_384, assuming x reduced
+// Input x[6]; output z[6]
+extern void bignum_demont_p384 (uint64_t z[static 6], const uint64_t x[static 6]);
 
 // Montgomery multiply, z := (x * y / 2^384) mod p_384 
 // /* // Inputs x[6], y[6]; output z[6]
@@ -41,9 +41,9 @@ extern void bignum_neg_p384 (uint64_t z[static 6], const uint64_t x[static 6]);
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_sub_p384 (uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]); 
 
-/* // Convert to Montgomery form z := (2^384 * x) mod p_384 */
-/* // Input x[6]; output z[6] */
-/* extern void bignum_tomont_p384 (uint64_t z[static 6], const uint64_t x[static 6]); */
+// Convert to Montgomery form z := (2^384 * x) mod p_384 */
+// Input x[6]; output z[6] */
+extern void bignum_tomont_p384 (uint64_t z[static 6], const uint64_t x[static 6]);
 
 /* // 384-bit multiplex/select z := x (if p nonzero) or z := y (if p zero) */
 /* // Inputs p, x[6], y[6]; output z[6] */

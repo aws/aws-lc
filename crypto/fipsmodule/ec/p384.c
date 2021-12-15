@@ -32,7 +32,6 @@
 #if defined(OPENSSL_X86_64)
 // On x86_64 platforms we have to check if bmi2 and adx instructions
 // are available because s2n-bignum relies on them.
-/* extern uint64_t OPENSSL_ia32cap_P[4]; */
 static inline uint8_t use_s2n_bignum(void) {
   return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) != 0) && // bmi2
          ((OPENSSL_ia32cap_P[2] & (1u << 19)) != 0);   // adx
@@ -58,12 +57,22 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
   if (use_s2n_bignum()) bignum_montsqr_p384(out, in0); \
   else fiat_p384_square(out, in0);
 
+#define p384_ftomont(out, in0) \
+  if (use_s2n_bignum()) bignum_tomont_p384(out, in0); \
+  else fiat_p384_to_montgomery(out, in0);
+
+#define p384_ffrommont(out, in0) \
+  if (use_s2n_bignum()) bignum_demont_p384(out, in0); \
+  else fiat_p384_from_montgomery(out, in0);
+
 #else
 #define p384_fadd(out, in0, in1) fiat_p384_add(out, in0, in1)
 #define p384_fsub(out, in0, in1) fiat_p384_sub(out, in0, in1)
 #define p384_fopp(out, in0)      fiat_p384_sub(out, in0)
 #define p384_fmul(out, in0, in1) fiat_p384_mul(out, in0, in1)
 #define p384_fsqr(out, in0)      fiat_p384_square(out, in0)
+#define p384_ftomont(out, in0)   fiat_p384_to_montgomery(out, in0)
+#define p384_ffrommont(out, in0) fiat_p384_from_montgomery(out, in0)
 #endif
 
 #if defined(BORINGSSL_NISTP384_64BIT)
@@ -474,7 +483,7 @@ static void ec_GFp_nistp384_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *
   EC_FELEM felem_tmp;
   fiat_p384_felem tmp;
   fiat_p384_from_generic(tmp, in);
-  fiat_p384_from_montgomery(tmp, tmp);
+  p384_ffrommont(tmp, tmp);
   fiat_p384_to_generic(&felem_tmp, tmp);
 
   // Convert to a big-endian byte array.
@@ -493,7 +502,7 @@ static int ec_GFp_nistp384_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM
     return 0;
   }
   fiat_p384_from_generic(tmp, &felem_tmp);
-  fiat_p384_to_montgomery(tmp, tmp);
+  p384_ftomont(tmp, tmp);
   fiat_p384_to_generic(out, tmp);
   return 1;
 }
@@ -518,7 +527,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 
   fiat_p384_felem X;
   fiat_p384_from_generic(X, &p->X);
-  fiat_p384_from_montgomery(X, X);
+  p384_ffrommont(X, X);
 
   if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
     return 1;
