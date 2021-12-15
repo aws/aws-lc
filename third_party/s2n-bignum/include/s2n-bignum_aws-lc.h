@@ -33,9 +33,9 @@ extern void bignum_montmul_p384 (uint64_t z[static 6], const uint64_t x[static 6
 // Input x[6]; output z[6]
 extern void bignum_montsqr_p384 (uint64_t z[static 6], const uint64_t x[static 6]);
 
-/* // Negate modulo p_384, z := (-x) mod p_384, assuming x reduced */
-/* // Input x[6]; output z[6] */
-/* extern void bignum_neg_p384 (uint64_t z[static 6], const uint64_t x[static 6]); */
+// Negate modulo p_384, z := (-x) mod p_384, assuming x reduced
+// Input x[6]; output z[6]
+extern void bignum_neg_p384 (uint64_t z[static 6], const uint64_t x[static 6]);
 
 // Subtract modulo p_384, z := (x - y) mod p_384
 // Inputs x[6], y[6]; output z[6]

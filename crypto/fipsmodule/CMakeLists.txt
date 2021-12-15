@@ -55,6 +55,7 @@ if(ARCH STREQUAL "x86_64")
     COPY
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_add_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_sub_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_neg_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_montmul_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_montsqr_p384.S
     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
@@ -67,6 +68,7 @@ if(ARCH STREQUAL "x86_64")
 
     bignum_add_p384.S
     bignum_sub_p384.S
+    bignum_neg_p384.S
     bignum_montmul_p384.S
     bignum_montsqr_p384.S
   )
@@ -118,6 +120,7 @@ if(ARCH STREQUAL "aarch64")
     COPY
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_add_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_sub_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_neg_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_montmul_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_montsqr_p384.S
     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
@@ -139,6 +142,7 @@ if(ARCH STREQUAL "aarch64")
 
     bignum_add_p384.S
     bignum_sub_p384.S
+    bignum_neg_p384.S
     bignum_montmul_p384.S
     bignum_montsqr_p384.S
   )

@@ -47,6 +47,7 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
 #if defined(TRY_USING_S2N_BIGNUM)
 #define p384_fadd(out, in0, in1) bignum_add_p384(out, in0, in1)
 #define p384_fsub(out, in0, in1) bignum_sub_p384(out, in0, in1)
+#define p384_fopp(out, in0)      bignum_neg_p384(out, in0)
 
 // todo(dkostc): add comment
 #define p384_fmul(out, in0, in1) \
@@ -60,6 +61,7 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
 #else
 #define p384_fadd(out, in0, in1) fiat_p384_add(out, in0, in1)
 #define p384_fsub(out, in0, in1) fiat_p384_sub(out, in0, in1)
+#define p384_fopp(out, in0)      fiat_p384_sub(out, in0)
 #define p384_fmul(out, in0, in1) fiat_p384_mul(out, in0, in1)
 #define p384_fsqr(out, in0)      fiat_p384_square(out, in0)
 #endif
@@ -732,7 +734,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
     fiat_p384_select_point(tmp, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
 
     // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-    fiat_p384_opp(ftmp, tmp[1]);
+    p384_fopp(ftmp, tmp[1]);
     // Conditionally select y or -y depending on the sign of the digit |d|.
     fiat_p384_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
 
@@ -745,7 +747,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   // Conditionally subtract P if the scalar is even, in constant-time.
   // First, compute |tmp| = |res| + (-P).
   fiat_p384_copy(tmp[0], p_pre_comp[0][0]);
-  fiat_p384_opp(tmp[1], p_pre_comp[0][1]);
+  p384_fopp(tmp[1], p_pre_comp[0][1]);
   fiat_p384_copy(tmp[2], p_pre_comp[0][2]);
   fiat_p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
                       0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
@@ -860,7 +862,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
                                     P384_MUL_TABLE_SIZE);
 
       // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-      fiat_p384_opp(ftmp, tmp[1]);
+      p384_fopp(ftmp, tmp[1]);
       // Conditionally select y or -y depending on the sign of the digit |d|.
       fiat_p384_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
 
@@ -878,7 +880,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
   // Conditionally subtract G if the scalar is even, in constant-time.
   // First, compute |tmp| = |res| + (-G).
   fiat_p384_copy(tmp[0], fiat_p384_g_pre_comp[0][0][0]);
-  fiat_p384_opp(tmp[1], fiat_p384_g_pre_comp[0][0][1]);
+  p384_fopp(tmp[1], fiat_p384_g_pre_comp[0][0][1]);
   fiat_p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
                       1 /* mixed */, tmp[0], tmp[1], fiat_p384_one);
 
@@ -986,7 +988,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
         // Otherwise, add to the accumulator either the point at position idx
         // in the table or its negation.
         if (is_neg) {
-          fiat_p384_opp(ftmp, p_pre_comp[idx][1]);
+          p384_fopp(ftmp, p_pre_comp[idx][1]);
         } else {
           fiat_p384_copy(ftmp, p_pre_comp[idx][1]);
         }
@@ -1014,7 +1016,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
         // Otherwise, add to the accumulator either the point at position idx
         // in the table or its negation.
         if (is_neg) {
-          fiat_p384_opp(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
+          p384_fopp(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
         } else {
           fiat_p384_copy(ftmp, fiat_p384_g_pre_comp[0][idx][1]);
         }
