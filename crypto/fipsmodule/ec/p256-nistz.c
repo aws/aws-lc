@@ -200,7 +200,8 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   // A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
   // add no more than 63 bytes of overhead. Thus, |table| should require
   // ~1599 ((96 * 16) + 63) bytes of stack space.
-  alignas(64) P256_POINT table[16];
+  stack_align_type table_buffer[64 + (sizeof(P256_POINT) * 16)];
+  P256_POINT *aligned_table = (P256_POINT *) align_pointer(table_buffer, 64);
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, p_scalar->bytes, 32);
   p_str[32] = 0;
@@ -208,7 +209,7 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   // table[0] is implicitly (0,0,0) (the point at infinity), therefore it is
   // not stored. All other values are actually stored with an offset of -1 in
   // table.
-  P256_POINT *row = table;
+  P256_POINT *row = aligned_table;
   assert(group->field.width == P256_LIMBS);
   OPENSSL_memcpy(row[1 - 1].X, p->X.words, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(row[1 - 1].Y, p->Y.words, P256_LIMBS * sizeof(BN_ULONG));
@@ -231,12 +232,13 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   ecp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
 
   BN_ULONG tmp[P256_LIMBS];
-  alignas(32) P256_POINT h;
+  stack_align_type buffer_h[32 + sizeof(P256_POINT)];
+  P256_POINT *aligned_h = (P256_POINT *) align_pointer(buffer_h, 32); 
   size_t index = 255;
   crypto_word_t wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
-  ecp_nistz256_select_w5(r, table, booth_recode_w5(wvalue) >> 1);
+  ecp_nistz256_select_w5(r, aligned_table, booth_recode_w5(wvalue) >> 1);
 
   while (index >= 5) {
     if (index != 255) {
@@ -247,12 +249,12 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
       wvalue = booth_recode_w5(wvalue);
 
-      ecp_nistz256_select_w5(&h, table, wvalue >> 1);
+      ecp_nistz256_select_w5(aligned_h, aligned_table, wvalue >> 1);
 
-      ecp_nistz256_neg(tmp, h.Y);
-      copy_conditional(h.Y, tmp, (wvalue & 1));
+      ecp_nistz256_neg(tmp, aligned_h->Y);
+      copy_conditional(aligned_h->Y, tmp, (wvalue & 1));
 
-      ecp_nistz256_point_add(r, r, &h);
+      ecp_nistz256_point_add(r, r, aligned_h);
     }
 
     index -= kWindowSize;
@@ -270,12 +272,12 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
   wvalue = booth_recode_w5(wvalue);
 
-  ecp_nistz256_select_w5(&h, table, wvalue >> 1);
+  ecp_nistz256_select_w5(aligned_h, aligned_table, wvalue >> 1);
 
-  ecp_nistz256_neg(tmp, h.Y);
-  copy_conditional(h.Y, tmp, wvalue & 1);
+  ecp_nistz256_neg(tmp, aligned_h->Y);
+  copy_conditional(aligned_h->Y, tmp, wvalue & 1);
 
-  ecp_nistz256_point_add(r, r, &h);
+  ecp_nistz256_point_add(r, r, aligned_h);
 }
 
 typedef union {
@@ -308,18 +310,22 @@ static crypto_word_t calc_wvalue(size_t *index, const uint8_t p_str[33]) {
 static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                                    const EC_RAW_POINT *p,
                                    const EC_SCALAR *scalar) {
-  alignas(32) P256_POINT out;
-  ecp_nistz256_windowed_mul(group, &out, p, scalar);
+  stack_align_type buffer_out[32 + sizeof(P256_POINT)];
+  P256_POINT *aligned_out = (P256_POINT *) align_pointer(buffer_out, 32);
+  ecp_nistz256_windowed_mul(group, aligned_out, p, scalar);
 
   assert(group->field.width == P256_LIMBS);
-  OPENSSL_memcpy(r->X.words, out.X, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Y.words, out.Y, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Z.words, out.Z, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->X.words, aligned_out->X, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Y.words, aligned_out->Y, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Z.words, aligned_out->Z, P256_LIMBS * sizeof(BN_ULONG));
 }
 
 static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
                                         const EC_SCALAR *scalar) {
-  alignas(32) p256_point_union_t t, p;
+  stack_align_type buffer_t[32 + sizeof(p256_point_union_t)];
+  p256_point_union_t *aligned_t = (p256_point_union_t *) align_pointer(buffer_t, 32);
+  stack_align_type buffer_p[32 + sizeof(p256_point_union_t)];
+  p256_point_union_t *aligned_p = (p256_point_union_t *) align_pointer(buffer_p, 32);
 
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, scalar->bytes, 32);
@@ -329,33 +335,33 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
   size_t index = 0;
   crypto_word_t wvalue = calc_first_wvalue(&index, p_str);
 
-  ecp_nistz256_select_w7(&p.a, ecp_nistz256_precomputed[0], wvalue >> 1);
-  ecp_nistz256_neg(p.p.Z, p.p.Y);
-  copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
+  ecp_nistz256_select_w7(&aligned_p->a, ecp_nistz256_precomputed[0], wvalue >> 1);
+  ecp_nistz256_neg(aligned_p->p.Z, aligned_p->p.Y);
+  copy_conditional(aligned_p->p.Y, aligned_p->p.Z, wvalue & 1);
 
   // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
   // is infinity and |ONE| otherwise. |p| was computed from the table, so it
   // is infinity iff |wvalue >> 1| is zero.
-  OPENSSL_memset(p.p.Z, 0, sizeof(p.p.Z));
-  copy_conditional(p.p.Z, ONE, is_not_zero(wvalue >> 1));
+  OPENSSL_memset(aligned_p->p.Z, 0, sizeof(aligned_p->p.Z));
+  copy_conditional(aligned_p->p.Z, ONE, is_not_zero(wvalue >> 1));
 
   for (int i = 1; i < 37; i++) {
     wvalue = calc_wvalue(&index, p_str);
 
-    ecp_nistz256_select_w7(&t.a, ecp_nistz256_precomputed[i], wvalue >> 1);
+    ecp_nistz256_select_w7(&aligned_t->a, ecp_nistz256_precomputed[i], wvalue >> 1);
 
-    ecp_nistz256_neg(t.p.Z, t.a.Y);
-    copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
+    ecp_nistz256_neg(aligned_t->p.Z, aligned_t->a.Y);
+    copy_conditional(aligned_t->a.Y, aligned_t->p.Z, wvalue & 1);
 
     // Note |ecp_nistz256_point_add_affine| does not work if |p.p| and |t.a|
     // are the same non-infinity point.
-    ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+    ecp_nistz256_point_add_affine(&aligned_p->p, &aligned_p->p, &aligned_t->a);
   }
 
   assert(group->field.width == P256_LIMBS);
-  OPENSSL_memcpy(r->X.words, p.p.X, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Y.words, p.p.Y, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Z.words, p.p.Z, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->X.words, aligned_p->p.X, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Y.words, aligned_p->p.Y, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Z.words, aligned_p->p.Z, P256_LIMBS * sizeof(BN_ULONG));
 }
 
 static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
@@ -365,7 +371,11 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
                                            const EC_SCALAR *p_scalar) {
   assert(p_ != NULL && p_scalar != NULL && g_scalar != NULL);
 
-  alignas(32) p256_point_union_t t, p;
+  stack_align_type buffer_t[32 + sizeof(p256_point_union_t)];
+  p256_point_union_t *aligned_t = (p256_point_union_t *) align_pointer(buffer_t, 32);
+  stack_align_type buffer_p[32 + sizeof(p256_point_union_t)];
+  p256_point_union_t *aligned_p = (p256_point_union_t *) align_pointer(buffer_p, 32);
+
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, g_scalar->bytes, 32);
   p_str[32] = 0;
@@ -378,16 +388,16 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   // is infinity and |ONE| otherwise. |p| was computed from the table, so it
   // is infinity iff |wvalue >> 1| is zero.
   if ((wvalue >> 1) != 0) {
-    OPENSSL_memcpy(&p.a, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1],
-                   sizeof(p.a));
-    OPENSSL_memcpy(&p.p.Z, ONE, sizeof(p.p.Z));
+    OPENSSL_memcpy(&aligned_p->a, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1],
+                   sizeof(aligned_p->a));
+    OPENSSL_memcpy(&aligned_p->p.Z, ONE, sizeof(aligned_p->p.Z));
   } else {
-    OPENSSL_memset(&p.a, 0, sizeof(p.a));
-    OPENSSL_memset(p.p.Z, 0, sizeof(p.p.Z));
+    OPENSSL_memset(&aligned_p->a, 0, sizeof(aligned_p->a));
+    OPENSSL_memset(aligned_p->p.Z, 0, sizeof(aligned_p->p.Z));
   }
 
   if ((wvalue & 1) == 1) {
-    ecp_nistz256_neg(p.p.Y, p.p.Y);
+    ecp_nistz256_neg(aligned_p->p.Y, aligned_p->p.Y);
   }
 
   for (int i = 1; i < 37; i++) {
@@ -397,26 +407,26 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
       continue;
     }
 
-    OPENSSL_memcpy(&t.a, &ecp_nistz256_precomputed[i][(wvalue >> 1) - 1],
-                   sizeof(p.a));
+    OPENSSL_memcpy(&aligned_t->a, &ecp_nistz256_precomputed[i][(wvalue >> 1) - 1],
+                   sizeof(aligned_p->a));
 
     if ((wvalue & 1) == 1) {
-      ecp_nistz256_neg(t.a.Y, t.a.Y);
+      ecp_nistz256_neg(aligned_t->a.Y, aligned_t->a.Y);
     }
 
     // Note |ecp_nistz256_point_add_affine| does not work if |p.p| and |t.a|
     // are the same non-infinity point, so it is important that we compute the
     // |g_scalar| term before the |p_scalar| term.
-    ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+    ecp_nistz256_point_add_affine(&aligned_p->p, &aligned_p->p, &aligned_t->a);
   }
 
-  ecp_nistz256_windowed_mul(group, &t.p, p_, p_scalar);
-  ecp_nistz256_point_add(&p.p, &p.p, &t.p);
+  ecp_nistz256_windowed_mul(group, &aligned_t->p, p_, p_scalar);
+  ecp_nistz256_point_add(&aligned_p->p, &aligned_p->p, &aligned_t->p);
 
   assert(group->field.width == P256_LIMBS);
-  OPENSSL_memcpy(r->X.words, p.p.X, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Y.words, p.p.Y, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Z.words, p.p.Z, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->X.words, aligned_p->p.X, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Y.words, aligned_p->p.Y, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Z.words, aligned_p->p.Z, P256_LIMBS * sizeof(BN_ULONG));
 }
 
 static int ecp_nistz256_get_affine(const EC_GROUP *group,
@@ -556,7 +566,7 @@ static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
                                                  EC_SCALAR *out,
                                                  const EC_SCALAR *in) {
 #if defined(OPENSSL_X86_64)
-  if ((OPENSSL_ia32cap_get()[1] & (1 << 28)) == 0) {
+  if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
     // No AVX support; fallback to generic code.
     return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
   }

@@ -159,14 +159,6 @@ extern "C" {
 void OPENSSL_cpuid_setup(void);
 #endif
 
-#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
-    !defined(OPENSSL_STATIC_ARMCAP)
-// OPENSSL_get_armcap_pointer_for_test returns a pointer to |OPENSSL_armcap_P|
-// for unit tests. Any modifications to the value must be made after
-// |CRYPTO_library_init| but before any other function call in BoringSSL.
-OPENSSL_EXPORT uint32_t *OPENSSL_get_armcap_pointer_for_test(void);
-#endif
-
 
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
@@ -227,6 +219,10 @@ static inline int buffers_alias(const uint8_t *a, size_t a_len,
   uintptr_t b_u = (uintptr_t)b;
   return a_u + a_len > b_u && b_u + b_len > a_u;
 }
+
+typedef uint8_t stack_align_type;
+OPENSSL_STATIC_ASSERT(sizeof(stack_align_type) == 1,
+                      stack_align_type_is_not_8_bits_long)
 
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
 // power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
@@ -895,13 +891,55 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 }
 
 
+// Bit rotation functions.
+//
+// Note these functions use |(-shift) & 31|, etc., because shifting by the bit
+// width is undefined. Both Clang and GCC recognize this pattern as a rotation,
+// but MSVC does not. Instead, we call MSVC's built-in functions.
+
+static inline uint32_t CRYPTO_rotl_u32(uint32_t value, int shift) {
+#if defined(_MSC_VER)
+  return _rotl(value, shift);
+#else
+  return (value << shift) | (value >> ((-shift) & 31));
+#endif
+}
+
+static inline uint32_t CRYPTO_rotr_u32(uint32_t value, int shift) {
+#if defined(_MSC_VER)
+  return _rotr(value, shift);
+#else
+  return (value >> shift) | (value << ((-shift) & 31));
+#endif
+}
+
+static inline uint64_t CRYPTO_rotl_u64(uint64_t value, int shift) {
+#if defined(_MSC_VER)
+  return _rotl64(value, shift);
+#else
+  return (value << shift) | (value >> ((-shift) & 63));
+#endif
+}
+
+static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
+#if defined(_MSC_VER)
+  return _rotr64(value, shift);
+#else
+  return (value >> shift) | (value << ((-shift) & 63));
+#endif
+}
+
+
 // FIPS functions.
 
-#if defined(BORINGSSL_FIPS)
+#if defined(AWSLC_FIPS)
+#define MAX_KEYGEN_ATTEMPTS  5
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+#else
+#define MAX_KEYGEN_ATTEMPTS  1
 #endif
 
 // boringssl_fips_self_test runs the FIPS KAT-based self tests. It returns one

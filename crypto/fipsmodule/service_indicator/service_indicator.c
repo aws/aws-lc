@@ -5,15 +5,29 @@
 #include <openssl/service_indicator.h>
 #include "internal.h"
 
+const char* awslc_version_string(void) {
+  return AWSLC_VERSION_STRING;
+}
+
+int is_fips_build(void) {
+#if defined(AWSLC_FIPS)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 #if defined(AWSLC_FIPS)
 
 // Should only be called once per thread. Only called when initializing the state
-// in |FIPS_service_indicator_before_call|.
+// in |FIPS_service_indicator_before_call| (external call) or
+// in |FIPS_service_indicator_update_state| (internal call within every approved service).
 static int FIPS_service_indicator_init_state(void) {
   struct fips_service_indicator_state *indicator;
   indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
   if (indicator == NULL || !CRYPTO_set_thread_local(
       AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   indicator->lock_state = STATE_UNLOCKED;
@@ -56,8 +70,19 @@ void FIPS_service_indicator_update_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   if (indicator == NULL) {
-    return;
+    // FIPS 140-3 requires that the module should provide the service indicator for approved
+    // services irrespective of whether the user queries it or not.
+    // Hence, it is not enough to initialise the counter lazily in the external call
+    // |FIPS_service_indicator_before_call|.
+    // Since this function is always called in the approved services,
+    // the counter will be initialised here if needed.
+    FIPS_service_indicator_init_state();
+    indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+    if (indicator == NULL) {
+      return;
+    }
   }
+
   if(indicator->lock_state == STATE_UNLOCKED) {
     indicator->counter++;
   }
@@ -175,41 +200,33 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
 }
 
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
-   // We do a call to |EC_KEY_check_fips|, which is approved, so we have to lock
-   // the state here.
-   FIPS_service_indicator_lock_state();
    int ret = 0;
    if(pkey->type == EVP_PKEY_RSA || pkey->type== EVP_PKEY_RSA_PSS) {
      //  2048, 3072 and 4096 bit keys are approved for RSA key generation.
-     if (RSA_check_fips(pkey->pkey.rsa)) {
-       switch (EVP_PKEY_size(pkey)) {
-         case 256:
-         case 384:
-         case 512:
-           ret = 1;
-           break;
-         default:
-           break;
-       }
-    }
+     switch (EVP_PKEY_size(pkey)) {
+       case 256:
+       case 384:
+       case 512:
+         ret = 1;
+         break;
+       default:
+         break;
+     }
   } else if(pkey->type == EVP_PKEY_EC) {
-    // Curves P-224, P-256, P-384 and P-521 keys are approved for EC key
-    // generation.
-     if (EC_KEY_check_fips(pkey->pkey.ec)) {
-       int curve_name = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
-       switch (curve_name) {
-         case NID_secp224r1:
-         case NID_X9_62_prime256v1:
-         case NID_secp384r1:
-         case NID_secp521r1:
-           ret = 1;
-           break;
-         default:
-           break;
-       }
+      // Curves P-224, P-256, P-384 and P-521 keys are approved for EC key
+      // generation.
+     int curve_name = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
+     switch (curve_name) {
+       case NID_secp224r1:
+       case NID_X9_62_prime256v1:
+       case NID_secp384r1:
+       case NID_secp521r1:
+         ret = 1;
+         break;
+       default:
+         break;
      }
    }
-   FIPS_service_indicator_unlock_state();
    if(ret) {
      FIPS_service_indicator_update_state();
    }
@@ -218,6 +235,12 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
 void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
+    // Hash digest used in the private key should be of the same type.
+    const EVP_MD *pctx_md;
+    if(EVP_PKEY_CTX_get_signature_md(ctx->pctx, &pctx_md) &&
+        (EVP_MD_CTX_md(ctx)->type != pctx_md->type)) {
+      return;
+    }
     // SHA1 and 1024 bit keys are not approved for RSA signature generation.
     // SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 2048, 3072 and 4096 bit keys
     // are approved for signature generation.
@@ -272,6 +295,12 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
 void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
   if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA ||
       ctx->pctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
+    // Hash digest used in the private key should be of the same type.
+    const EVP_MD *pctx_md;
+    if(EVP_PKEY_CTX_get_signature_md(ctx->pctx, &pctx_md) &&
+        (EVP_MD_CTX_md(ctx)->type != pctx_md->type)) {
+      return;
+    }
     // SHA-1, SHA2-224, SHA2-256, SHA2-384, SHA2-512 with 1024, 2048, 3072 and
     // 4096 bit keys are approved for signature verification.
     if (EVP_PKEY_size(ctx->pctx->pkey) == 128 ||
@@ -404,6 +433,3 @@ void ECDH_verify_service_indicator(OPENSSL_UNUSED const EC_KEY *ec_key) { }
 void TLSKDF_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) { }
 
 #endif // AWSLC_FIPS
-
-
-

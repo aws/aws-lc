@@ -55,6 +55,7 @@ namespace acvp {
 #if defined(OPENSSL_TRUSTY)
 #include <trusty_log.h>
 #define LOG_ERROR(...) TLOGE(__VA_ARGS__)
+#define TLOG_TAG "modulewrapper"
 #else
 #define LOG_ERROR(...) fprintf(stderr, __VA_ARGS__)
 #endif  // OPENSSL_TRUSTY
@@ -1056,13 +1057,13 @@ static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
     // External IVs
     switch (key.size()) {
       case 16:
-        aead = EVP_aead_aes_128_gcm();
+        aead = EVP_aead_aes_128_gcm_tls12();
         break;
       case 24:
         aead = EVP_aead_aes_192_gcm();
         break;
       case 32:
-        aead = EVP_aead_aes_256_gcm();
+        aead = EVP_aead_aes_256_gcm_tls12();
         break;
       default:
         LOG_ERROR("Bad AES-GCM key length %u\n",

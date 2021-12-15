@@ -32,6 +32,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
@@ -1137,9 +1138,8 @@ static const time_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
 static int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
     const std::vector<X509 *> &intermediates,
-    const std::vector<X509_CRL *> &crls, unsigned long flags,
-    bool use_additional_untrusted,
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback,
+    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr,
     int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
@@ -1159,14 +1159,8 @@ static int Verify(
     return X509_V_ERR_UNSPECIFIED;
   }
 
-  if (use_additional_untrusted) {
-    X509_STORE_set0_additional_untrusted(store.get(),
-                                         intermediates_stack.get());
-  }
-
-  if (!X509_STORE_CTX_init(
-          ctx.get(), store.get(), leaf,
-          use_additional_untrusted ? nullptr : intermediates_stack.get())) {
+  if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf,
+                           intermediates_stack.get())) {
     return X509_V_ERR_UNSPECIFIED;
   }
 
@@ -1188,27 +1182,6 @@ static int Verify(
   }
 
   return X509_V_OK;
-}
-
-static int Verify(
-    X509 *leaf, const std::vector<X509 *> &roots,
-    const std::vector<X509 *> &intermediates,
-    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr) {
-  const int r1 = Verify(leaf, roots, intermediates, crls, flags, false,
-                        configure_callback);
-  const int r2 =
-      Verify(leaf, roots, intermediates, crls, flags, true, configure_callback);
-
-  if (r1 != r2) {
-    fprintf(stderr,
-            "Verify with, and without, use_additional_untrusted gave different "
-            "results: %d vs %d.\n",
-            r1, r2);
-    return false;
-  }
-
-  return r1;
 }
 
 TEST(X509Test, TestVerify) {
@@ -1351,7 +1324,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
     // The correct value should work.
     ASSERT_EQ(X509_V_OK,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_TRUE(test.func(param, test.correct_value,
                                              test.correct_value_len));
@@ -1359,7 +1332,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
     // The wrong value should trigger a verification error.
     ASSERT_EQ(test.mismatch_error,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_TRUE(test.func(param, test.incorrect_value,
                                              test.incorrect_value_len));
@@ -1368,7 +1341,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
     // Passing zero as the length, unlike OpenSSL, should trigger an error and
     // should cause verification to fail.
     ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_FALSE(test.func(param, test.correct_value, 0));
                      }));
@@ -1376,7 +1349,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
     // Passing an empty value should be an error when setting and should cause
     // verification to fail.
     ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_FALSE(test.func(param, nullptr, 0));
                      }));
@@ -1384,7 +1357,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
     // Passing a value with embedded NULs should also be an error and should
     // also cause verification to fail.
     ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_FALSE(test.func(param, "a", 2));
                      }));
@@ -1394,14 +1367,14 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
   // The correct value should still work.
   ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
-                              false, [](X509_VERIFY_PARAM *param) {
+                              [](X509_VERIFY_PARAM *param) {
                                 ASSERT_TRUE(X509_VERIFY_PARAM_set1_ip(
                                     param, kIP, sizeof(kIP)));
                               }));
 
   // Incorrect values should still fail.
   ASSERT_EQ(X509_V_ERR_IP_ADDRESS_MISMATCH,
-            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                    [](X509_VERIFY_PARAM *param) {
                      ASSERT_TRUE(X509_VERIFY_PARAM_set1_ip(param, kWrongIP,
                                                            sizeof(kWrongIP)));
@@ -1410,14 +1383,14 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
   // Zero length values should trigger an error when setting and cause
   // verification to always fail.
   ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                    [](X509_VERIFY_PARAM *param) {
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, kIP, 0));
                    }));
 
   // ... and so should NULL values.
   ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                    [](X509_VERIFY_PARAM *param) {
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, nullptr, 0));
                    }));
@@ -2535,11 +2508,10 @@ TEST(X509Test, CommonNameFallback) {
   ASSERT_TRUE(with_ip);
 
   auto verify_cert = [&](X509 *leaf, unsigned flags, const char *host) {
-    return Verify(
-        leaf, {root.get()}, {}, {}, 0, false, [&](X509_VERIFY_PARAM *param) {
-          ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
-          X509_VERIFY_PARAM_set_hostflags(param, flags);
-        });
+    return Verify(leaf, {root.get()}, {}, {}, 0, [&](X509_VERIFY_PARAM *param) {
+      ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
+      X509_VERIFY_PARAM_set_hostflags(param, flags);
+    });
   };
 
   // By default, the common name is ignored if the SAN list is present but
@@ -2652,7 +2624,7 @@ TEST(X509Test, CommonNameAndNameConstraints) {
 
   auto verify_cert = [&](X509 *leaf, unsigned flags, const char *host) {
     return Verify(
-        leaf, {root.get()}, {intermediate.get()}, {}, 0, false,
+        leaf, {root.get()}, {intermediate.get()}, {}, 0,
         [&](X509_VERIFY_PARAM *param) {
           ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
           X509_VERIFY_PARAM_set_hostflags(param, flags);
@@ -2673,12 +2645,12 @@ TEST(X509Test, CommonNameAndNameConstraints) {
   // separately call |X509_check_host|.
   EXPECT_EQ(X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
             Verify(not_permitted.get(), {root.get()}, {intermediate.get()}, {},
-                   0 /* no flags */, false, nullptr));
+                   0 /* no flags */, nullptr));
 
   // If the leaf certificate has SANs, the common name fallback is always
   // disabled, so the name constraints do not apply.
   EXPECT_EQ(X509_V_OK, Verify(not_permitted_with_sans.get(), {root.get()},
-                              {intermediate.get()}, {}, 0, false, nullptr));
+                              {intermediate.get()}, {}, 0, nullptr));
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(not_permitted_with_sans.get(), 0 /* no flags */,
                         kCommonNameNotPermittedWithSANs));
@@ -2686,7 +2658,7 @@ TEST(X509Test, CommonNameAndNameConstraints) {
   // If the common name does not look like a DNS name, we apply neither name
   // constraints nor common name fallback.
   EXPECT_EQ(X509_V_OK, Verify(not_dns.get(), {root.get()}, {intermediate.get()},
-                              {}, 0, false, nullptr));
+                              {}, 0, nullptr));
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(not_dns.get(), 0 /* no flags */, kCommonNameNotDNS));
 }
@@ -2710,8 +2682,7 @@ TEST(X509Test, ServerGatedCryptoEKUs) {
 
   auto verify_cert = [&root](X509 *leaf) {
     return Verify(leaf, {root.get()}, /*intermediates=*/{}, /*crls=*/{},
-                  /*flags=*/0, /*use_additional_untrusted=*/false,
-                  [&](X509_VERIFY_PARAM *param) {
+                  /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
                     ASSERT_TRUE(X509_VERIFY_PARAM_set_purpose(
                         param, X509_PURPOSE_SSL_SERVER));
                   });
@@ -2784,9 +2755,20 @@ TEST(X509Test, InvalidExtensions) {
             .c_str());
     ASSERT_TRUE(invalid_leaf);
 
+    bssl::UniquePtr<X509> trailing_leaf = CertFromPEM(
+        GetTestData((std::string("crypto/x509/test/trailing_data_leaf_") +
+                     ext + ".pem")
+                        .c_str())
+            .c_str());
+    ASSERT_TRUE(trailing_leaf);
+
     EXPECT_EQ(
         X509_V_ERR_INVALID_EXTENSION,
         Verify(invalid_leaf.get(), {root.get()}, {intermediate.get()}, {}));
+
+    EXPECT_EQ(
+        X509_V_ERR_INVALID_EXTENSION,
+        Verify(trailing_leaf.get(), {root.get()}, {intermediate.get()}, {}));
 
     // If the invalid extension is on an intermediate or root,
     // |X509_verify_cert| notices by way of being unable to build a path to
@@ -3516,4 +3498,74 @@ TEST(X509Test, TrustedFirst) {
              {}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
                X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
              }));
+}
+
+// kConstructedBitString is an X.509 certificate where the signature is encoded
+// as a BER constructed BIT STRING. Note that, while OpenSSL's parser accepts
+// this input, it interprets the value incorrectly.
+static const char kConstructedBitString[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBJTCBxqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
+DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
+DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMQMA4w
+DAYDVR0TBAUwAwEB/zAKBggqhkjOPQQDAiNOAyQAMEYCIQCp0iIX5s30KXjihR4g
+KnJpd3seqGlVRqCVgrD0KGYDJgA1QAIhAKkx0vR82QU0NtHDD11KX/LuQF2T+2nX
+oeKp5LKAbMVi
+-----END CERTIFICATE-----
+)";
+
+// kConstructedOctetString is an X.509 certificate where an extension is encoded
+// as a BER constructed OCTET STRING.
+static const char kConstructedOctetString[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBJDCByqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
+DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
+DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMUMBIw
+EAYDVR0TJAkEAzADAQQCAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKF
+HiAqcml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh
+4qnksoBsxWI=
+-----END CERTIFICATE-----
+)";
+
+// kIndefiniteLength is an X.509 certificate where the outermost SEQUENCE uses
+// BER indefinite-length encoding.
+static const char kIndefiniteLength[] = R"(
+-----BEGIN CERTIFICATE-----
+MIAwgcagAwIBAgICBNIwCgYIKoZIzj0EAwIwDzENMAsGA1UEAxMEVGVzdDAgFw0w
+MDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsGA1UEAxMEVGVzdDBZ
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWXa7epHg1G
++92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsGjEDAOMAwG
+A1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKFHiAqcml3
+ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh4qnksoBs
+xWIAAA==
+-----END CERTIFICATE-----
+)";
+
+// kNonZeroPadding is an X.09 certificate where the BIT STRING signature field
+// has non-zero padding values.
+static const char kNonZeroPadding[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB0DCCAXagAwIBAgIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC
+QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp
+dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ
+BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l
+dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni
+v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa
+HPUdfvGULUvPciLBo1AwTjAdBgNVHQ4EFgQUq4TSrKuV8IJOFngHVVdf5CaNgtEw
+HwYDVR0jBBgwFoAUq4TSrKuV8IJOFngHVVdf5CaNgtEwDAYDVR0TBAUwAwEB/zAJ
+BgcqhkjOPQQBA0kBMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
+BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQB
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, BER) {
+  // Constructed strings are forbidden in DER.
+  EXPECT_FALSE(CertFromPEM(kConstructedBitString));
+  EXPECT_FALSE(CertFromPEM(kConstructedOctetString));
+  // Indefinite lengths are forbidden in DER.
+  EXPECT_FALSE(CertFromPEM(kIndefiniteLength));
+  // Padding bits in BIT STRINGs must be zero in BER.
+  EXPECT_FALSE(CertFromPEM(kNonZeroPadding));
 }

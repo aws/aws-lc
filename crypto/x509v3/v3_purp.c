@@ -64,10 +64,10 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/thread.h>
-#include <openssl/x509_vfy.h>
 #include <openssl/x509v3.h>
 
 #include "../internal.h"
+#include "../x509/internal.h"
 #include "internal.h"
 
 #define V1_ROOT (EXFLAG_V1|EXFLAG_SS)
