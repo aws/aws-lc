@@ -24,10 +24,25 @@
 #include "../../../third_party/fiat/p384_32.h"
 #endif
 
+#if defined(BORINGSSL_NISTP384_64BIT)
+#define FIAT_P384_NLIMBS 6
+typedef uint64_t fiat_p384_limb_t;
+typedef uint64_t fiat_p384_felem[FIAT_P384_NLIMBS];
+static const fiat_p384_felem fiat_p384_one = {0xffffffff00000001, 0xffffffff,
+                                              0x1, 0x0, 0x0, 0x0};
+#else  // 64BIT; else 32BIT
+#define FIAT_P384_NLIMBS 12
+typedef uint32_t fiat_p384_limb_t;
+typedef uint32_t fiat_p384_felem[FIAT_P384_NLIMBS];
+static const fiat_p384_felem fiat_p384_one = {
+    0x1, 0xffffffff, 0xffffffff, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+#endif  // 64BIT
+
+
+// todo(dkostic): add comment about s2n-bignum
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_WINDOWS) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
-// todo(dkostic): add comment about s2n-bignum
 
 #if defined(OPENSSL_X86_64)
 // On x86_64 platforms we have to check if bmi2 and adx instructions
@@ -63,7 +78,7 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
   else fiat_p384_to_montgomery(out, in0);
 
 #define p384_felem_from_mont(out, in0) \
-  if (use_s2n_bignum()) bignum_demont_p384(out, in0); \
+  if (use_s2n_bignum()) bignum_deamont_p384(out, in0); \
   else fiat_p384_from_montgomery(out, in0);
 
 #else // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
@@ -80,20 +95,6 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
 #define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
 #endif // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
-
-#if defined(BORINGSSL_NISTP384_64BIT)
-#define FIAT_P384_NLIMBS 6
-typedef uint64_t fiat_p384_limb_t;
-typedef uint64_t fiat_p384_felem[FIAT_P384_NLIMBS];
-static const fiat_p384_felem fiat_p384_one = {0xffffffff00000001, 0xffffffff,
-                                              0x1, 0x0, 0x0, 0x0};
-#else  // 64BIT; else 32BIT
-#define FIAT_P384_NLIMBS 12
-typedef uint32_t fiat_p384_limb_t;
-typedef uint32_t fiat_p384_felem[FIAT_P384_NLIMBS];
-static const fiat_p384_felem fiat_p384_one = {
-    0x1, 0xffffffff, 0xffffffff, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
-#endif  // 64BIT
 
 static fiat_p384_limb_t fiat_p384_nz(
     const fiat_p384_limb_t in1[FIAT_P384_NLIMBS]) {
