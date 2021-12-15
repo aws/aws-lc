@@ -60,6 +60,7 @@ if(ARCH STREQUAL "x86_64")
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_deamont_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_montmul_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_montsqr_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_nonzero_6.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_littleendian_6.S
     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
   )
@@ -76,6 +77,7 @@ if(ARCH STREQUAL "x86_64")
     bignum_deamont_p384.S
     bignum_montmul_p384.S
     bignum_montsqr_p384.S
+    bignum_nonzero_6.S
     bignum_littleendian_6.S
   )
 
@@ -131,6 +133,7 @@ if(ARCH STREQUAL "aarch64")
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_deamont_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_montmul_p384.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_montsqr_p384.S
+    ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_nonzero_6.S
     ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_littleendian_6.S
     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
   )
@@ -156,6 +159,7 @@ if(ARCH STREQUAL "aarch64")
     bignum_deamont_p384.S
     bignum_montmul_p384.S
     bignum_montsqr_p384.S
+    bignum_nonzero_6.S
     bignum_littleendian_6.S
   )
 endif()

@@ -81,6 +81,11 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
   if (use_s2n_bignum()) bignum_deamont_p384(out, in0); \
   else fiat_p384_from_montgomery(out, in0);
 
+static fiat_p384_limb_t fiat_p384_nz(
+    const fiat_p384_limb_t in1[FIAT_P384_NLIMBS]) {
+  return bignum_nonzero_6(in1);
+}
+
 #else // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
 
 // todo(dkostic): add comment about the macros
@@ -94,14 +99,13 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
 #define p384_felem_to_bytes(out, in0)   fiat_p384_to_bytes(out, in0)
 #define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
-#endif // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
-
 static fiat_p384_limb_t fiat_p384_nz(
     const fiat_p384_limb_t in1[FIAT_P384_NLIMBS]) {
   fiat_p384_limb_t ret;
   fiat_p384_nonzero(&ret, in1);
   return ret;
 }
+#endif // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
 
 static void fiat_p384_copy(fiat_p384_limb_t out[FIAT_P384_NLIMBS],
                            const fiat_p384_limb_t in1[FIAT_P384_NLIMBS]) {
