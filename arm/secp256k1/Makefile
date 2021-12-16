@@ -33,6 +33,8 @@ endif
 
 OBJ = bignum_add_p256k1.o \
       bignum_cmul_p256k1.o \
+      bignum_deamont_p256k1.o \
+      bignum_demont_p256k1.o \
       bignum_double_p256k1.o \
       bignum_half_p256k1.o \
       bignum_mod_n256k1_4.o \
@@ -42,6 +44,7 @@ OBJ = bignum_add_p256k1.o \
       bignum_optneg_p256k1.o \
       bignum_sqr_p256k1.o \
       bignum_sub_p256k1.o \
+      bignum_tomont_p256k1.o \
       bignum_triple_p256k1.o
 
 %.o : %.S ; cpp $< | $(GAS) -o $@ -

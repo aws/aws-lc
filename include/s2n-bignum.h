@@ -145,6 +145,10 @@ extern uint64_t bignum_ctz (uint64_t k, uint64_t *x);
 // Input x[4]; output z[4]
 extern void bignum_deamont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Convert from almost-Montgomery form, z := (x / 2^256) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_deamont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_deamont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
@@ -160,6 +164,10 @@ extern void bignum_demont (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 // Convert from Montgomery form z := (x / 2^256) mod p_256, assuming x reduced
 // Input x[4]; output z[4]
 extern void bignum_demont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Convert from Montgomery form z := (x / 2^256) mod p_256k1, assuming x reduced
+// Input x[4]; output z[4]
+extern void bignum_demont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Convert from Montgomery form z := (x / 2^384) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
@@ -600,6 +608,10 @@ extern void bignum_tolebytes_6 (uint8_t z[static 48], uint64_t x[static 6]);
 // Convert to Montgomery form z := (2^256 * x) mod p_256
 // Input x[4]; output z[4]
 extern void bignum_tomont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Convert to Montgomery form z := (2^256 * x) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_tomont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Convert to Montgomery form z := (2^384 * x) mod p_384
 // Input x[6]; output z[6]
