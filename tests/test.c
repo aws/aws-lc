@@ -134,11 +134,13 @@ enum {
        TEST_BIGNUM_MADD,
        TEST_BIGNUM_MOD_N256,
        TEST_BIGNUM_MOD_N256_4,
+       TEST_BIGNUM_MOD_N256K1_4,
        TEST_BIGNUM_MOD_N384,
        TEST_BIGNUM_MOD_N384_6,
        TEST_BIGNUM_MOD_N521_9,
        TEST_BIGNUM_MOD_P256,
        TEST_BIGNUM_MOD_P256_4,
+       TEST_BIGNUM_MOD_P256K1_4,
        TEST_BIGNUM_MOD_P384,
        TEST_BIGNUM_MOD_P384_6,
        TEST_BIGNUM_MOD_P521_9,
@@ -3010,6 +3012,40 @@ int test_bignum_mod_n256_4(void)
   return 0;
 }
 
+int test_bignum_mod_n256k1_4(void)
+{ uint64_t t;
+  printf("Testing bignum_mod_n256k1_4 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     if ((rand() & 0xF) == 0) b0[3] |= UINT64_C(0xFFFFFFF000000000);
+     else if ((rand() & 0xF) == 0)
+      { b0[3] = n_256k1[3];
+        b0[2] = n_256k1[2];
+        b0[1] = n_256k1[1];
+        b0[0] = (n_256k1[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
+      }
+
+     reference_mod(4,b3,b0,n_256k1);
+     bignum_mod_n256k1_4(b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod n_256k1 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod n_256k1 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_mod_n384(void)
 { uint64_t t, k;
   printf("Testing bignum_mod_n384 with %d cases\n",tests);
@@ -3167,6 +3203,40 @@ int test_bignum_mod_p256_4(void)
       }
      else if (VERBOSE)
       { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_256 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_mod_p256k1_4(void)
+{ uint64_t t;
+  printf("Testing bignum_mod_p256k1_4 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     if ((rand() & 0xF) == 0) b0[3] |= UINT64_C(0xFFFFFFF000000000);
+     else if ((rand() & 0xF) == 0)
+      { b0[3] = p_256k1[3];
+        b0[2] = p_256k1[2];
+        b0[1] = p_256k1[1];
+        b0[0] = (p_256k1[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
+      }
+
+     reference_mod(4,b3,b0,p_256k1);
+     bignum_mod_p256k1_4(b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod p_256k1 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_256k1 = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
@@ -5785,11 +5855,13 @@ int test_all(void)
   dotest(test_bignum_madd);
   dotest(test_bignum_mod_n256);
   dotest(test_bignum_mod_n256_4);
+  dotest(test_bignum_mod_n256k1_4);
   dotest(test_bignum_mod_n384);
   dotest(test_bignum_mod_n384_6);
   dotest(test_bignum_mod_n521_9);
   dotest(test_bignum_mod_p256);
   dotest(test_bignum_mod_p256_4);
+  dotest(test_bignum_mod_p256k1_4);
   dotest(test_bignum_mod_p384);
   dotest(test_bignum_mod_p384_6);
   dotest(test_bignum_mod_p521_9);
@@ -5954,8 +6026,10 @@ int test_allnonbmi()
   dotest(test_bignum_lt);
   dotest(test_bignum_madd);
   dotest(test_bignum_mod_n256_4);
+  dotest(test_bignum_mod_n256k1_4);
   dotest(test_bignum_mod_n384_6);
   dotest(test_bignum_mod_p256_4);
+  dotest(test_bignum_mod_p256k1_4);
   dotest(test_bignum_mod_p384_6);
   dotest(test_bignum_mod_p521_9);
   dotest(test_bignum_modadd);
@@ -6157,11 +6231,13 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MADD:            return test_bignum_madd();
      case TEST_BIGNUM_MOD_N256:        return test_bignum_mod_n256();
      case TEST_BIGNUM_MOD_N256_4:      return test_bignum_mod_n256_4();
+     case TEST_BIGNUM_MOD_N256K1_4:    return test_bignum_mod_n256k1_4();
      case TEST_BIGNUM_MOD_N384:        return test_bignum_mod_n384();
      case TEST_BIGNUM_MOD_N384_6:      return test_bignum_mod_n384_6();
      case TEST_BIGNUM_MOD_N521_9:      return test_bignum_mod_n521_9();
      case TEST_BIGNUM_MOD_P256:        return test_bignum_mod_p256();
      case TEST_BIGNUM_MOD_P256_4:      return test_bignum_mod_p256_4();
+     case TEST_BIGNUM_MOD_P256K1_4:    return test_bignum_mod_p256k1_4();
      case TEST_BIGNUM_MOD_P384:        return test_bignum_mod_p384();
      case TEST_BIGNUM_MOD_P384_6:      return test_bignum_mod_p384_6();
      case TEST_BIGNUM_MOD_P521_9:      return test_bignum_mod_p521_9();

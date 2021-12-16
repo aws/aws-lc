@@ -19,6 +19,8 @@ OBJ = bignum_add_p256k1.o \
       bignum_cmul_p256k1.o \
       bignum_double_p256k1.o \
       bignum_half_p256k1.o \
+      bignum_mod_n256k1_4.o \
+      bignum_mod_p256k1_4.o \
       bignum_mul_p256k1.o \
       bignum_neg_p256k1.o \
       bignum_optneg_p256k1.o \

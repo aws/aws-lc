@@ -301,6 +301,10 @@ extern void bignum_mod_n256 (uint64_t z[static 4], uint64_t k, uint64_t *x);
 // Input x[4]; output z[4]
 extern void bignum_mod_n256_4 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Reduce modulo group order, z := x mod n_256k1
+// Input x[4]; output z[4]
+extern void bignum_mod_n256k1_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Reduce modulo group order, z := x mod n_384
 // Input x[k]; output z[6]
 extern void bignum_mod_n384 (uint64_t z[static 6], uint64_t k, uint64_t *x);
@@ -320,6 +324,10 @@ extern void bignum_mod_p256 (uint64_t z[static 4], uint64_t k, uint64_t *x);
 // Reduce modulo field characteristic, z := x mod p_256
 // Input x[4]; output z[4]
 extern void bignum_mod_p256_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Reduce modulo field characteristic, z := x mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_mod_p256k1_4 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Reduce modulo field characteristic, z := x mod p_384
 // Input x[k]; output z[6]
