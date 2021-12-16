@@ -80,17 +80,6 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
 
-    - identifier: ubuntu2004_gcc7x_x86_64_fips_vendor_affirm
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_vendor_affirm.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: aws/codebuild/standard:4.0
-        variables:
-          FIPS_OE_IMAGE: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
-          OLD_LINUX_IMAGE: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
-
     - identifier: ubuntu2004_clang7x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
       env:
@@ -151,6 +140,14 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
 
+    - identifier: centos7_gcc4x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
+
     - identifier: amazonlinux2_gcc7x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
@@ -166,17 +163,6 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
-
-    - identifier: amazonlinux2_gcc7x_x86_64_fips_vendor_affirm
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_vendor_affirm.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: aws/codebuild/standard:4.0
-        variables:
-          FIPS_OE_IMAGE: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
-          OLD_LINUX_IMAGE: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
 
     - identifier: amazonlinux2_gcc7x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
