@@ -364,6 +364,7 @@ elseif(FIPS_SHARED)
     bcm.c
 
     ${BCM_ASM_SOURCES}
+    ${BCM_ASM_SOURCES_S2N_BIGNUM}
   )
 
   add_dependencies(bcm_library global_target)
@@ -393,6 +394,7 @@ else()
     fips_shared_support.c
 
     ${BCM_ASM_SOURCES}
+    ${BCM_ASM_SOURCES_S2N_BIGNUM}
   )
 
   add_dependencies(fipsmodule global_target)
