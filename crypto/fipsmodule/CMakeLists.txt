@@ -1,21 +1,5 @@
 include_directories(../../include)
 
-if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_BCM_O_PATH)
-  message(STATUS "Building with FIPS_VENDOR_AFFIRM_BCM_O_PATH '${FIPS_VENDOR_AFFIRM_BCM_O_PATH}'.")
-  add_library(
-    fipsmodule
-
-    OBJECT
-
-    fips_shared_support.c
-  )
-
-  add_dependencies(fipsmodule global_target)
-
-  add_custom_target(bcm_o_target DEPENDS ${FIPS_VENDOR_AFFIRM_BCM_O_PATH})
-  return()
-endif()
-
 if(ANDROID)
   # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
