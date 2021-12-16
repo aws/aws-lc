@@ -1760,6 +1760,7 @@ static bool RSASigGen(const Span<const uint8_t> args[], ReplyCallback write_repl
   int padding = UsePSS ? RSA_PKCS1_PSS_PADDING : RSA_PKCS1_PADDING;
   if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr, evp_pkey) ||
       !EVP_PKEY_CTX_set_rsa_padding(pctx, padding) ||
+      (UsePSS && !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, RSA_PSS_SALTLEN_DIGEST)) ||
       !EVP_DigestSign(ctx.get(), nullptr, &sig_len, msg.data(), msg.size())) {
     return false;
   }
@@ -1799,6 +1800,7 @@ static bool RSASigVer(const Span<const uint8_t> args[], ReplyCallback write_repl
   int padding = UsePSS ? RSA_PKCS1_PSS_PADDING : RSA_PKCS1_PADDING;
   if (!EVP_DigestVerifyInit(ctx.get(), &pctx, md, nullptr, evp_pkey.get()) ||
       !EVP_PKEY_CTX_set_rsa_padding(pctx, padding) ||
+      (UsePSS && !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, RSA_PSS_SALTLEN_DIGEST)) ||
       !EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg.data(), msg.size())) {
     ok = 0;
   } else {
