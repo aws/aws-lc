@@ -39,32 +39,44 @@ static const fiat_p384_felem fiat_p384_one = {
 #endif  // 64BIT
 
 
-// todo(dkostic): add comment about s2n-bignum
+// We have two implementations of the field arithmetic for P-384 curve:
+//   - Fiat-crypto
+//   - s2n-bignum
+// Both Fiat-crypto and s2n-bignum implementations are formally verified.
+// Fiat-crypto implementation is fully portable C code, while s2n-bignum
+// implements the operations in assembly for x86_64 and aarch64 platforms.
+// All the P-384 field operations supported by Fiat-crypto are supported
+// by s2n-bignum as well, so s2n-bignum can be used as a drop-in replacement
+// when appropriate. To do that we define macros for the functions.
+// For example, field addition macro is either defined as
+//   #define p384_felem_add(out, in0, in1) fiat_p384_add(out, in0, in1)
+// when Fiat-crypto is used, or as:
+//   #define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
+// when s2n-bignum is used.
+//
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_WINDOWS) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
 #if defined(OPENSSL_X86_64)
-// On x86_64 platforms we have to check if bmi2 and adx instructions
-// are available because s2n-bignum relies on them.
+// On x86_64 platforms s2n-bignum uses bmi2 and adx instruction sets
+// for some of the functions so we have to check if they are available.
 static inline uint8_t use_s2n_bignum(void) {
   return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) != 0) && // bmi2
          ((OPENSSL_ia32cap_P[2] & (1u << 19)) != 0);   // adx
 }
 #else
-// On aarch64 we can always use s2n-bignum,
-// provided that OPENSSL_NO_ASM is not defined.
+// On aarch64 platforms we can always use s2n-bignum.
 static inline uint8_t use_s2n_bignum(void) { return 1; }
 #endif
 
-// todo(dkostic): add comment about the macros
 #define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
 #define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
 #define p384_felem_opp(out, in0)        bignum_neg_p384(out, in0)
 #define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, in0)
 #define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, in0)
 
-// todo(dkostic): add comment about bmi2 and adx
+// The following four functions need bmi2 and adx support.
 #define p384_felem_mul(out, in0, in1) \
   if (use_s2n_bignum()) bignum_montmul_p384(out, in0, in1); \
   else fiat_p384_mul(out, in0, in1);
@@ -88,7 +100,7 @@ static fiat_p384_limb_t fiat_p384_nz(
 
 #else // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
 
-// todo(dkostic): add comment about the macros
+// Fiat-crypto implementation of field arithmetic
 #define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
 #define p384_felem_sub(out, in0, in1)   fiat_p384_sub(out, in0, in1)
 #define p384_felem_opp(out, in0)        fiat_p384_opp(out, in0)
