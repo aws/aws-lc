@@ -91,7 +91,7 @@ static fiat_p384_limb_t fiat_p384_nz(
 // todo(dkostic): add comment about the macros
 #define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
 #define p384_felem_sub(out, in0, in1)   fiat_p384_sub(out, in0, in1)
-#define p384_felem_opp(out, in0)        fiat_p384_sub(out, in0)
+#define p384_felem_opp(out, in0)        fiat_p384_opp(out, in0)
 #define p384_felem_mul(out, in0, in1)   fiat_p384_mul(out, in0, in1)
 #define p384_felem_sqr(out, in0)        fiat_p384_square(out, in0)
 #define p384_felem_to_mont(out, in0)    fiat_p384_to_montgomery(out, in0)
