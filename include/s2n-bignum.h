@@ -301,6 +301,10 @@ extern void bignum_mod_n256 (uint64_t z[static 4], uint64_t k, uint64_t *x);
 // Input x[4]; output z[4]
 extern void bignum_mod_n256_4 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Reduce modulo group order, z := x mod n_256k1
+// Input x[4]; output z[4]
+extern void bignum_mod_n256k1_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Reduce modulo group order, z := x mod n_384
 // Input x[k]; output z[6]
 extern void bignum_mod_n384 (uint64_t z[static 6], uint64_t k, uint64_t *x);
@@ -320,6 +324,10 @@ extern void bignum_mod_p256 (uint64_t z[static 4], uint64_t k, uint64_t *x);
 // Reduce modulo field characteristic, z := x mod p_256
 // Input x[4]; output z[4]
 extern void bignum_mod_p256_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Reduce modulo field characteristic, z := x mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_mod_p256k1_4 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Reduce modulo field characteristic, z := x mod p_384
 // Input x[k]; output z[6]
@@ -445,6 +453,10 @@ extern void bignum_mux16 (uint64_t k, uint64_t *z, uint64_t *xs, uint64_t i);
 // Input x[4]; output z[4]
 extern void bignum_neg_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Negate modulo p_256k1, z := (-x) mod p_256k1, assuming x reduced
+// Input x[4]; output z[4]
+extern void bignum_neg_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Negate modulo p_384, z := (-x) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
 extern void bignum_neg_p384 (uint64_t z[static 6], uint64_t x[static 6]);
@@ -492,6 +504,10 @@ extern uint64_t bignum_optneg (uint64_t k, uint64_t *z, uint64_t p, uint64_t *x)
 // Optionally negate modulo p_256, z := (-x) mod p_256 (if p nonzero) or z := x (if p zero), assuming x reduced
 // Inputs p, x[4]; output z[4]
 extern void bignum_optneg_p256 (uint64_t z[static 4], uint64_t p, uint64_t x[static 4]);
+
+// Optionally negate modulo p_256k1, z := (-x) mod p_256k1 (if p nonzero) or z := x (if p zero), assuming x reduced
+// Inputs p, x[4]; output z[4]
+extern void bignum_optneg_p256k1 (uint64_t z[static 4], uint64_t p, uint64_t x[static 4]);
 
 // Optionally negate modulo p_384, z := (-x) mod p_384 (if p nonzero) or z := x (if p zero), assuming x reduced
 // Inputs p, x[6]; output z[6]
