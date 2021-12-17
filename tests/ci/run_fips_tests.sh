@@ -16,7 +16,7 @@ if [[ "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then
     # See the comment in run_posix_santizers.sh for more context. ASAN on Arm has a huge performance impact on ssl_test
     # which causes it to take over 2 hours to complete.
     echo "Building with Clang and testing AWS-LC in FIPS RelWithDebInfo mode with address sanitizer only running crypto_test"
-    run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
+    run_build -DFIPS=1 -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
     go run util/all_tests.go -build-dir "$BUILD_ROOT"
   fi
 else
