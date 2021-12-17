@@ -59,8 +59,8 @@ extern void bignum_amontmul (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, 
 extern void bignum_amontredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
 
 /*  Almost-Montgomery square, z :== (x^2 / 2^{64k}) (congruent mod m) */
-/*  Inputs x[k], y[k]; output z[k] */
-extern void bignum_amontsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+/*  Inputs x[k], m[k]; output z[k] */
+extern void bignum_amontsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 
 /*  Convert 4-digit (256-bit) bignum to/from big-endian form */
 /*  Input x[4]; output z[4] */
@@ -90,7 +90,7 @@ extern void bignum_cdiv_exact (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x,
 /*  Input x[k]; output function return */
 extern uint64_t bignum_cld (uint64_t k, uint64_t *x);
 
-/*  Connt leading zero bits */
+/*  Count leading zero bits */
 /*  Input x[k]; output function return */
 extern uint64_t bignum_clz (uint64_t k, uint64_t *x);
 
@@ -403,8 +403,8 @@ extern void bignum_montmul_p521 (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
 extern void bignum_montredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
 
 /*  Montgomery square, z := (x^2 / 2^{64k}) mod m */
-/*  Inputs x[k], y[k]; output z[k] */
-extern void bignum_montsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+/*  Inputs x[k], m[k]; output z[k] */
+extern void bignum_montsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 
 /*  Montgomery square, z := (x^2 / 2^256) mod p_256 */
 /*  Input x[4]; output z[4] */

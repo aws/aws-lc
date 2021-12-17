@@ -14,7 +14,7 @@
  */
 
 // ----------------------------------------------------------------------------
-// Connt leading zero bits
+// Count leading zero bits
 // Input x[k]; output function return
 //
 //    extern uint64_t bignum_clz (uint64_t k, uint64_t *x);
