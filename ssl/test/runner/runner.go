@@ -19128,7 +19128,7 @@ func filterTests(inputTests []testCase, startIndex int, endIndex int) []testCase
 	if (len(inputTests) == 0) || ((startIndex < 0) && (endIndex < 0)) {
 		return inputTests
 	}
-	var fitleredTestCases []testCase
+	var filteredTestCases []testCase
 	if startIndex < 0 {
 		// Default to the start index of |inputTests|.
 		startIndex = 0
@@ -19139,13 +19139,13 @@ func filterTests(inputTests []testCase, startIndex int, endIndex int) []testCase
 	}
 	for i, t := range inputTests {
 		if (i >= startIndex) && (i <= endIndex) {
-			fitleredTestCases = append(fitleredTestCases, t)
+			filteredTestCases = append(filteredTestCases, t)
 		}
 	}
-	if len(fitleredTestCases) == 0 {
-		panic(fmt.Sprintf("fitleredTestCases is empty. startIndex: %d, endIndex: %d.", startIndex, endIndex))
+	if len(filteredTestCases) == 0 {
+		panic(fmt.Sprintf("filteredTestCases is empty. startIndex: %d, endIndex: %d.", startIndex, endIndex))
 	}
-	return fitleredTestCases
+	return filteredTestCases
 }
 
 func main() {

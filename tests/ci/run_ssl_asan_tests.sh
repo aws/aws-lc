@@ -6,7 +6,7 @@ set -exo pipefail
 # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
 # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331
 # To reduce the total time, these tests will be executed in diff CodeBuild dimensions.
-# Env var |AWS_LC_RUNNER_START_INDEX| and |AWS_LC_RUNNER_END_INDEX| will be used with this script to split runner tests.
+# Env var |AWS_LC_SSL_RUNNER_START_INDEX| and |AWS_LC_SSL_RUNNER_END_INDEX| will be used with this script to split runner tests.
 source tests/ci/common_posix_setup.sh
 
 build_type=Release
