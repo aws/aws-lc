@@ -40,7 +40,6 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
