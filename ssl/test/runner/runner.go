@@ -40,6 +40,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -77,6 +78,8 @@ var (
 	shimConfigFile     = flag.String("shim-config", "", "A config file to use to configure the tests for this shim.")
 	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
+	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
+	testCaseEndIndex   = flag.Int("test-case-end-index", -1, "If non-negative, test case is filtered in if the index in |testCases| <= test-case-end-index.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -19118,6 +19121,30 @@ func checkTests() {
 	}
 }
 
+func filterTests(inputTests []testCase, startIndex int, endIndex int) []testCase {
+	if (len(inputTests) == 0) || ((startIndex < 0) && (endIndex < 0)) {
+		return inputTests
+	}
+	var fitleredTestCases []testCase
+	if startIndex < 0 {
+		// Default to the start index of |inputTests|.
+		startIndex = 0
+	}
+	if endIndex < 0 {
+		// Default to the end index of |inputTests|.
+		endIndex = len(inputTests) - 1
+	}
+	for i, t := range inputTests {
+		if (i >= startIndex) && (i <= endIndex) {
+			fitleredTestCases = append(fitleredTestCases, t)
+		}
+	}
+	if len(fitleredTestCases) == 0 {
+		panic(fmt.Sprintf("fitleredTestCases is empty. startIndex: %d, endIndex: %d.", startIndex, endIndex))
+	}
+	return fitleredTestCases
+}
+
 func main() {
 	flag.Parse()
 	*resourceDir = path.Clean(*resourceDir)
@@ -19193,6 +19220,8 @@ func main() {
 		os.Exit(1)
 	}
 	testCases = append(testCases, toAppend...)
+
+	testCases = filterTests(testCases, *testCaseStartIndex, *testCaseEndIndex)
 
 	checkTests()
 
