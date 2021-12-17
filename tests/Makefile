@@ -13,6 +13,8 @@
 # permissions and limitations under the License.
 #############################################################################
 
+.PHONY: clean ctCheck
+
 # Set ARCH to "x86" or "arm" as appropriate; this is literally the
 # directory name in which the libs2nbignum.a file should be found.
 # If this block fails to do it automatically, replace with manual
