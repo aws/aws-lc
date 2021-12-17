@@ -106,7 +106,7 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
         variables:
-          AWS_LC_RUNNER_END_INDEX: 3000
+          AWS_LC_RUNNER_END_INDEX: 3500
 
     - identifier: ubuntu2004_clang9x_ssl_asan_2
       buildspec: ./tests/ci/codebuild/linux-aarch/run_ssl_asan_tests.yml
@@ -116,8 +116,8 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
         variables:
-          AWS_LC_RUNNER_START_INDEX: 3001
-          AWS_LC_RUNNER_END_INDEX: 5000
+          AWS_LC_RUNNER_START_INDEX: 3501
+          AWS_LC_RUNNER_END_INDEX: 5500
 
     - identifier: ubuntu2004_clang9x_ssl_asan_3
       buildspec: ./tests/ci/codebuild/linux-aarch/run_ssl_asan_tests.yml
@@ -127,7 +127,7 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
         variables:
-          AWS_LC_RUNNER_START_INDEX: 5001
+          AWS_LC_RUNNER_START_INDEX: 5501
           AWS_LC_RUNNER_END_INDEX: 7000
 
     - identifier: ubuntu2004_clang9x_ssl_asan_4
