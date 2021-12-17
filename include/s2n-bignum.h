@@ -58,8 +58,8 @@ extern void bignum_amontmul (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, 
 extern void bignum_amontredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
 
 // Almost-Montgomery square, z :== (x^2 / 2^{64k}) (congruent mod m)
-// Inputs x[k], y[k]; output z[k]
-extern void bignum_amontsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+// Inputs x[k], m[k]; output z[k]
+extern void bignum_amontsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 
 // Convert 4-digit (256-bit) bignum to/from big-endian form
 // Input x[4]; output z[4]
@@ -89,7 +89,7 @@ extern void bignum_cdiv_exact (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x,
 // Input x[k]; output function return
 extern uint64_t bignum_cld (uint64_t k, uint64_t *x);
 
-// Connt leading zero bits
+// Count leading zero bits
 // Input x[k]; output function return
 extern uint64_t bignum_clz (uint64_t k, uint64_t *x);
 
@@ -145,6 +145,10 @@ extern uint64_t bignum_ctz (uint64_t k, uint64_t *x);
 // Input x[4]; output z[4]
 extern void bignum_deamont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Convert from almost-Montgomery form, z := (x / 2^256) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_deamont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_deamont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
@@ -160,6 +164,10 @@ extern void bignum_demont (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 // Convert from Montgomery form z := (x / 2^256) mod p_256, assuming x reduced
 // Input x[4]; output z[4]
 extern void bignum_demont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Convert from Montgomery form z := (x / 2^256) mod p_256k1, assuming x reduced
+// Input x[4]; output z[4]
+extern void bignum_demont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Convert from Montgomery form z := (x / 2^384) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
@@ -377,6 +385,10 @@ extern void bignum_montmul (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, u
 // Inputs x[4], y[4]; output z[4]
 extern void bignum_montmul_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 
+// Montgomery multiply, z := (x * y / 2^256) mod p_256k1
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_montmul_p256k1 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+
 // Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
@@ -390,12 +402,16 @@ extern void bignum_montmul_p521 (uint64_t z[static 9], uint64_t x[static 9], uin
 extern void bignum_montredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
 
 // Montgomery square, z := (x^2 / 2^{64k}) mod m
-// Inputs x[k], y[k]; output z[k]
-extern void bignum_montsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+// Inputs x[k], m[k]; output z[k]
+extern void bignum_montsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 
 // Montgomery square, z := (x^2 / 2^256) mod p_256
 // Input x[4]; output z[4]
 extern void bignum_montsqr_p256 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Montgomery square, z := (x^2 / 2^256) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_montsqr_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Montgomery square, z := (x^2 / 2^384) mod p_384
 // Input x[6]; output z[6]
@@ -601,6 +617,10 @@ extern void bignum_tolebytes_6 (uint8_t z[static 48], uint64_t x[static 6]);
 // Input x[4]; output z[4]
 extern void bignum_tomont_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Convert to Montgomery form z := (2^256 * x) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_tomont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Convert to Montgomery form z := (2^384 * x) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_tomont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
@@ -639,11 +659,11 @@ extern uint64_t word_ctz (uint64_t a);
 
 // Return maximum of two unsigned 64-bit words
 // Inputs a, b; output function return
- extern uint64_t word_max (uint64_t a, uint64_t b);
+extern uint64_t word_max (uint64_t a, uint64_t b);
 
 // Return minimum of two unsigned 64-bit words
 // Inputs a, b; output function return
- extern uint64_t word_min (uint64_t a, uint64_t b);
+extern uint64_t word_min (uint64_t a, uint64_t b);
 
 // Single-word negated modular inverse (-1/a) mod 2^64
 // Input a; output function return
