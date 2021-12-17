@@ -806,14 +806,20 @@ if(BUILD_TESTING)
 
     if(BUILD_LIBSSL)
       add_custom_target(
-          run_tests
-          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR}
+          run_ssl_runner_tests
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                     ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER}
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-          DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
+          DEPENDS bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
+          run_tests
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${CMAKE_BINARY_DIR}
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(

@@ -13,6 +13,7 @@ build_type=Release
 cflags=("-DCMAKE_BUILD_TYPE=${build_type}")
 
 if [ $(dpkg --print-architecture) == "arm64" ]; then
-  echo "Testing AWS-LC in ${build_type} mode with address sanitizer."
-  build_and_test -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+  echo "Executing AWS-LC SSL runner tests in ${build_type} mode with address sanitizer."
+  run_build -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+  run_cmake_custom_target 'run_ssl_runner_tests'
 fi
