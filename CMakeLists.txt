@@ -756,6 +756,12 @@ endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
+  if(DEFINED ENV{AWS_LC_RUNNER_START_INDEX})
+    set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index $ENV{AWS_LC_RUNNER_START_INDEX}")
+  endif()
+  if(DEFINED ENV{AWS_LC_RUNNER_END_INDEX})
+    set(AWS_LC_SSL_RUNNER_INDEX_FILTER "${AWS_LC_SSL_RUNNER_INDEX_FILTER} -test-case-end-index $ENV{AWS_LC_RUNNER_END_INDEX}")
+  endif()
 endif()
 
 # Define GO_TEST_TIMEOUT based on env variable.
@@ -805,7 +811,7 @@ if(BUILD_TESTING)
                   ${CMAKE_BINARY_DIR}
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER}
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
