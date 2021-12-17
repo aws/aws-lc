@@ -3,8 +3,8 @@ set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# BoringSSL has 7k+ ssl runner tests, and the total number of tests keep increasing.
-# When ASAN enabled, the tests take more than 1 hour to finish. See https://github.com/google/sanitizers/issues/1331
+# BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
+# When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331
 # To reduce the total time, these tests will be executed in diff CodeBuild dimensions.
 # Env var |AWS_LC_RUNNER_START_INDEX| and |AWS_LC_RUNNER_END_INDEX| will be used with this script to split runner tests.
 source tests/ci/common_posix_setup.sh

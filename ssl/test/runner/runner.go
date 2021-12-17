@@ -19120,6 +19120,10 @@ func checkTests() {
 	}
 }
 
+// filterTests filters |inputTests| given the index range [|startIndex|, |endIndex|].
+// When |startIndex| is negative, the default value |0| is used.
+// When |endIndex| is negative, the default value |len(inputTests) - 1| is used.
+// |inputTests| and the final filtered test cases cannot be empty.
 func filterTests(inputTests []testCase, startIndex int, endIndex int) []testCase {
 	if (len(inputTests) == 0) || ((startIndex < 0) && (endIndex < 0)) {
 		return inputTests

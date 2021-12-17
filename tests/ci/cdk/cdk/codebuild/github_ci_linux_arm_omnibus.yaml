@@ -90,6 +90,13 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
 
+    # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
+    # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331
+    # To reduce the total time, these tests will be executed in below CodeBuild dimensions:
+    #   1. ubuntu2004_clang9x_ssl_asan_1
+    #   2. ubuntu2004_clang9x_ssl_asan_2
+    #   3. ubuntu2004_clang9x_ssl_asan_3
+    # Env var |AWS_LC_RUNNER_START_INDEX| and |AWS_LC_RUNNER_END_INDEX| are used to filter the runner tests.
     - identifier: ubuntu2004_clang9x_ssl_asan_1
       buildspec: ./tests/ci/codebuild/linux-aarch/run_ssl_asan_tests.yml
       env:
