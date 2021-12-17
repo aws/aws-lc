@@ -4,6 +4,7 @@
 : adds$
 : b$
 : and$
+: bic$
 : cinv$
 : cmn$
 : cmp$
@@ -18,6 +19,7 @@
 : ldrb$
 : lsl$
 : lsr$
+: madd$
 : mov$
 : movk$
 : mul$
@@ -34,5 +36,6 @@
 : str$
 : sub$
 : subs$
+: tst$
 : umulh$
 : $
