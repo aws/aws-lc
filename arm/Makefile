@@ -218,6 +218,8 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       secp256k1/bignum_half_p256k1.o \
       secp256k1/bignum_mod_n256k1_4.o \
       secp256k1/bignum_mod_p256k1_4.o \
+      secp256k1/bignum_montmul_p256k1.o \
+      secp256k1/bignum_montsqr_p256k1.o \
       secp256k1/bignum_mul_p256k1.o \
       secp256k1/bignum_neg_p256k1.o \
       secp256k1/bignum_optneg_p256k1.o \

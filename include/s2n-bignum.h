@@ -385,6 +385,10 @@ extern void bignum_montmul (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, u
 // Inputs x[4], y[4]; output z[4]
 extern void bignum_montmul_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 
+// Montgomery multiply, z := (x * y / 2^256) mod p_256k1
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_montmul_p256k1 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+
 // Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
@@ -404,6 +408,10 @@ extern void bignum_montsqr (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
 // Montgomery square, z := (x^2 / 2^256) mod p_256
 // Input x[4]; output z[4]
 extern void bignum_montsqr_p256 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Montgomery square, z := (x^2 / 2^256) mod p_256k1
+// Input x[4]; output z[4]
+extern void bignum_montsqr_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Montgomery square, z := (x^2 / 2^384) mod p_384
 // Input x[6]; output z[6]
@@ -651,11 +659,11 @@ extern uint64_t word_ctz (uint64_t a);
 
 // Return maximum of two unsigned 64-bit words
 // Inputs a, b; output function return
- extern uint64_t word_max (uint64_t a, uint64_t b);
+extern uint64_t word_max (uint64_t a, uint64_t b);
 
 // Return minimum of two unsigned 64-bit words
 // Inputs a, b; output function return
- extern uint64_t word_min (uint64_t a, uint64_t b);
+extern uint64_t word_min (uint64_t a, uint64_t b);
 
 // Single-word negated modular inverse (-1/a) mod 2^64
 // Input a; output function return
