@@ -41,12 +41,12 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result[16], const BN_ULONG base_norm[16],
                             BN_ULONG storage_words[MOD_EXP_CTIME_STORAGE_LEN]);
 
 OPENSSL_INLINE int rsaz_avx2_capable(void) {
-  const uint32_t *cap = OPENSSL_ia32cap_get();
+  const uint32_t *cap = OPENSSL_ia32cap_P;
   return (cap[2] & (1 << 5)) != 0;  // AVX2
 }
 
 OPENSSL_INLINE int rsaz_avx2_preferred(void) {
-  const uint32_t *cap = OPENSSL_ia32cap_get();
+  const uint32_t *cap = OPENSSL_ia32cap_P;
   static const uint32_t kBMI2AndADX = (1 << 8) | (1 << 19);
   if ((cap[2] & kBMI2AndADX) == kBMI2AndADX) {
     // If BMI2 and ADX are available, x86_64-mont5.pl is faster.

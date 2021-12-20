@@ -18,9 +18,6 @@
 
 #include <sys/auxv.h>
 
-#include "internal.h"
-
-
 #if !defined(PPC_FEATURE2_HAS_VCRYPTO)
 // PPC_FEATURE2_HAS_VCRYPTO was taken from section 4.1.2.3 of the “OpenPOWER
 // ABI for Linux Supplement”.

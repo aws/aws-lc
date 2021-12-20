@@ -2792,8 +2792,18 @@ TEST_F(BNTest, RSAZABI) {
     return;
   }
 
-  alignas(64) BN_ULONG table[32 * 18] = {0};
-  alignas(64) BN_ULONG rsaz1[40], rsaz2[40], rsaz3[40], n_rsaz[40];
+  stack_align_type buffer_table[64 + (sizeof(BN_ULONG) * (32*18))] = {0};
+  stack_align_type buffer_rsaz1[64 + (sizeof(BN_ULONG) * 40)];
+  stack_align_type buffer_rsaz2[64 + (sizeof(BN_ULONG) * 40)];
+  stack_align_type buffer_rsaz3[64 + (sizeof(BN_ULONG) * 40)];
+  stack_align_type buffer_n_rsaz[64 + (sizeof(BN_ULONG) * 40)];
+
+  BN_ULONG *aligned_table = (BN_ULONG *) align_pointer(buffer_table, 64);
+  BN_ULONG *aligned_rsaz1 = (BN_ULONG *) align_pointer(buffer_rsaz1, 64);
+  BN_ULONG *aligned_rsaz2 = (BN_ULONG *) align_pointer(buffer_rsaz2, 64);
+  BN_ULONG *aligned_rsaz3 = (BN_ULONG *) align_pointer(buffer_rsaz3, 64);
+  BN_ULONG *aligned_n_rsaz = (BN_ULONG *) align_pointer(buffer_n_rsaz, 64);
+
   BN_ULONG norm[16], n_norm[16];
 
   OPENSSL_memset(norm, 0x42, sizeof(norm));
@@ -2807,13 +2817,13 @@ TEST_F(BNTest, RSAZABI) {
   ASSERT_TRUE(mont);
   const BN_ULONG k = mont->n0[0];
 
-  CHECK_ABI(rsaz_1024_norm2red_avx2, rsaz1, norm);
-  CHECK_ABI(rsaz_1024_norm2red_avx2, n_rsaz, n_norm);
-  CHECK_ABI(rsaz_1024_sqr_avx2, rsaz2, rsaz1, n_rsaz, k, 1);
-  CHECK_ABI(rsaz_1024_sqr_avx2, rsaz3, rsaz2, n_rsaz, k, 4);
-  CHECK_ABI(rsaz_1024_mul_avx2, rsaz3, rsaz1, rsaz2, n_rsaz, k);
-  CHECK_ABI(rsaz_1024_scatter5_avx2, table, rsaz3, 7);
-  CHECK_ABI(rsaz_1024_gather5_avx2, rsaz1, table, 7);
-  CHECK_ABI(rsaz_1024_red2norm_avx2, norm, rsaz1);
+  CHECK_ABI(rsaz_1024_norm2red_avx2, aligned_rsaz1, norm);
+  CHECK_ABI(rsaz_1024_norm2red_avx2, aligned_n_rsaz, n_norm);
+  CHECK_ABI(rsaz_1024_sqr_avx2, aligned_rsaz2, aligned_rsaz1, aligned_n_rsaz, k, 1);
+  CHECK_ABI(rsaz_1024_sqr_avx2, aligned_rsaz3, aligned_rsaz2, aligned_n_rsaz, k, 4);
+  CHECK_ABI(rsaz_1024_mul_avx2, aligned_rsaz3, aligned_rsaz1, aligned_rsaz2, aligned_n_rsaz, k);
+  CHECK_ABI(rsaz_1024_scatter5_avx2, aligned_table, aligned_rsaz3, 7);
+  CHECK_ABI(rsaz_1024_gather5_avx2, aligned_rsaz1, aligned_table, 7);
+  CHECK_ABI(rsaz_1024_red2norm_avx2, norm, aligned_rsaz1);
 }
 #endif   // RSAZ_ENABLED && SUPPORTS_ABI_TEST
