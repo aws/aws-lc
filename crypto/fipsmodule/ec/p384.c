@@ -98,7 +98,7 @@ static fiat_p384_limb_t fiat_p384_nz(
   return bignum_nonzero_6(in1);
 }
 
-#else // !NO_ASM && !WINDOWS && (X86_64 || AARCH64)
+#else // !NO_ASM && LINUX && (X86_64 || AARCH64)
 
 // Fiat-crypto implementation of field arithmetic
 #define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
@@ -133,11 +133,11 @@ static void fiat_p384_cmovznz(fiat_p384_limb_t out[FIAT_P384_NLIMBS],
   fiat_p384_selectznz(out, !!t, z, nz);
 }
 
-static void fiat_p384_from_generic(fiat_p384_felem out, const EC_FELEM *in) {
+static void p384_from_generic(fiat_p384_felem out, const EC_FELEM *in) {
   p384_felem_from_bytes(out, in->bytes);
 }
 
-static void fiat_p384_to_generic(EC_FELEM *out, const fiat_p384_felem in) {
+static void p384_to_generic(EC_FELEM *out, const fiat_p384_felem in) {
   // This works because 384 is a multiple of 64, so there are no excess bytes to
   // zero when rounding up to |BN_ULONG|s.
   OPENSSL_STATIC_ASSERT(
@@ -146,7 +146,7 @@ static void fiat_p384_to_generic(EC_FELEM *out, const fiat_p384_felem in) {
   p384_felem_to_bytes(out->bytes, in);
 }
 
-// fiat_p384_inv_square calculates |out| = |in|^{-2}
+// p384_inv_square calculates |out| = |in|^{-2}
 //
 // Based on Fermat's Little Theorem:
 //   a^p = a (mod p)
@@ -156,8 +156,8 @@ static void fiat_p384_to_generic(EC_FELEM *out, const fiat_p384_felem in) {
 // Hexadecimal representation of p − 3:
 // p-3 = ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe
 //       ffffffff 00000000 00000000 fffffffc
-static void fiat_p384_inv_square(fiat_p384_felem out,
-                                 const fiat_p384_felem in) {
+static void p384_inv_square(fiat_p384_felem out,
+                            const fiat_p384_felem in) {
   // This implements the addition chain described in
   // https://briansmith.org/ecc-inversion-addition-chains-01#p384_field_inversion
   // The side comments show the value of the exponent:
@@ -448,23 +448,23 @@ static int ec_GFp_nistp384_point_get_affine_coordinates(
   }
 
   fiat_p384_felem z1, z2;
-  fiat_p384_from_generic(z1, &point->Z);
-  fiat_p384_inv_square(z2, z1);
+  p384_from_generic(z1, &point->Z);
+  p384_inv_square(z2, z1);
 
   if (x_out != NULL) {
     fiat_p384_felem x;
-    fiat_p384_from_generic(x, &point->X);
+    p384_from_generic(x, &point->X);
     p384_felem_mul(x, x, z2);
-    fiat_p384_to_generic(x_out, x);
+    p384_to_generic(x_out, x);
   }
 
   if (y_out != NULL) {
     fiat_p384_felem y;
-    fiat_p384_from_generic(y, &point->Y);
+    p384_from_generic(y, &point->Y);
     p384_felem_sqr(z2, z2);  // z^-4
     p384_felem_mul(y, y, z1);   // y * z
     p384_felem_mul(y, y, z2);   // y * z^-3
-    fiat_p384_to_generic(y_out, y);
+    p384_to_generic(y_out, y);
   }
 
   return 1;
@@ -473,28 +473,28 @@ static int ec_GFp_nistp384_point_get_affine_coordinates(
 static void ec_GFp_nistp384_add(const EC_GROUP *group, EC_RAW_POINT *r,
                                 const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
   fiat_p384_felem x1, y1, z1, x2, y2, z2;
-  fiat_p384_from_generic(x1, &a->X);
-  fiat_p384_from_generic(y1, &a->Y);
-  fiat_p384_from_generic(z1, &a->Z);
-  fiat_p384_from_generic(x2, &b->X);
-  fiat_p384_from_generic(y2, &b->Y);
-  fiat_p384_from_generic(z2, &b->Z);
+  p384_from_generic(x1, &a->X);
+  p384_from_generic(y1, &a->Y);
+  p384_from_generic(z1, &a->Z);
+  p384_from_generic(x2, &b->X);
+  p384_from_generic(y2, &b->Y);
+  p384_from_generic(z2, &b->Z);
   fiat_p384_point_add(x1, y1, z1, x1, y1, z1, 0 /* both Jacobian */, x2, y2, z2);
-  fiat_p384_to_generic(&r->X, x1);
-  fiat_p384_to_generic(&r->Y, y1);
-  fiat_p384_to_generic(&r->Z, z1);
+  p384_to_generic(&r->X, x1);
+  p384_to_generic(&r->Y, y1);
+  p384_to_generic(&r->Z, z1);
 }
 
 static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
                                 const EC_RAW_POINT *a) {
   fiat_p384_felem x, y, z;
-  fiat_p384_from_generic(x, &a->X);
-  fiat_p384_from_generic(y, &a->Y);
-  fiat_p384_from_generic(z, &a->Z);
+  p384_from_generic(x, &a->X);
+  p384_from_generic(y, &a->Y);
+  p384_from_generic(z, &a->Z);
   fiat_p384_point_double(x, y, z, x, y, z);
-  fiat_p384_to_generic(&r->X, x);
-  fiat_p384_to_generic(&r->Y, y);
-  fiat_p384_to_generic(&r->Z, z);
+  p384_to_generic(&r->X, x);
+  p384_to_generic(&r->Y, y);
+  p384_to_generic(&r->Z, z);
 }
 
 // The calls to from/to_generic are needed for the case
@@ -505,9 +505,9 @@ static void ec_GFp_nistp384_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *
   size_t len = BN_num_bytes(&group->field);
   EC_FELEM felem_tmp;
   fiat_p384_felem tmp;
-  fiat_p384_from_generic(tmp, in);
+  p384_from_generic(tmp, in);
   p384_felem_from_mont(tmp, tmp);
-  fiat_p384_to_generic(&felem_tmp, tmp);
+  p384_to_generic(&felem_tmp, tmp);
 
   // Convert to a big-endian byte array.
   for (size_t i = 0; i < len; i++) {
@@ -524,9 +524,9 @@ static int ec_GFp_nistp384_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM
   if (!ec_GFp_simple_felem_from_bytes(group, &felem_tmp, in, len)) {
     return 0;
   }
-  fiat_p384_from_generic(tmp, &felem_tmp);
+  p384_from_generic(tmp, &felem_tmp);
   p384_felem_to_mont(tmp, tmp);
-  fiat_p384_to_generic(out, tmp);
+  p384_to_generic(out, tmp);
   return 1;
 }
 
@@ -541,7 +541,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   // r*Z^2. Note that X and Z are represented in Montgomery form, while r is
   // not.
   fiat_p384_felem Z2_mont;
-  fiat_p384_from_generic(Z2_mont, &p->Z);
+  p384_from_generic(Z2_mont, &p->Z);
   p384_felem_mul(Z2_mont, Z2_mont, Z2_mont);
 
   fiat_p384_felem r_Z2;
@@ -549,7 +549,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   p384_felem_mul(r_Z2, r_Z2, Z2_mont);
 
   fiat_p384_felem X;
-  fiat_p384_from_generic(X, &p->X);
+  p384_from_generic(X, &p->X);
   p384_felem_from_mont(X, X);
 
   if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
@@ -567,7 +567,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
     // We can ignore the carry because: r + group_order < p < 2^384.
     EC_FELEM tmp;
     bn_add_words(tmp.words, r->words, group->order.d, group->order.width);
-    fiat_p384_from_generic(r_Z2, &tmp);
+    p384_from_generic(r_Z2, &tmp);
     p384_felem_mul(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
       return 1;
@@ -721,9 +721,9 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   fiat_p384_felem p_pre_comp[P384_MUL_TABLE_SIZE][3];
 
   // Set the first point in the table to P.
-  fiat_p384_from_generic(p_pre_comp[0][0], &p->X);
-  fiat_p384_from_generic(p_pre_comp[0][1], &p->Y);
-  fiat_p384_from_generic(p_pre_comp[0][2], &p->Z);
+  p384_from_generic(p_pre_comp[0][0], &p->X);
+  p384_from_generic(p_pre_comp[0][1], &p->Y);
+  p384_from_generic(p_pre_comp[0][2], &p->Z);
 
   // Compute tmp = [2]P.
   fiat_p384_point_double(tmp[0], tmp[1], tmp[2],
@@ -790,9 +790,9 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   fiat_p384_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
 
   // Copy the result to the output.
-  fiat_p384_to_generic(&r->X, res[0]);
-  fiat_p384_to_generic(&r->Y, res[1]);
-  fiat_p384_to_generic(&r->Z, res[2]);
+  p384_to_generic(&r->X, res[0]);
+  p384_to_generic(&r->Y, res[1]);
+  p384_to_generic(&r->Z, res[2]);
 }
 
 // Include the precomputed table for the based point scalar multiplication.
@@ -834,7 +834,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 //          corresponding sub-table lookup    |  {  T0,   T1, ...,   T12,   T13}
 //
 // The group (0) digits correspond precisely to the multiples of G that are
-// held in the 20 precomputed sub-tables, so we may simply read the appropriate
+// held in the 14 precomputed sub-tables, so we may simply read the appropriate
 // points from the sub-tables and sum them all up (negating if needed, i.e., if
 // a digit s_i is negative, we read the point corresponding to the abs(s_i) and
 // negate it before adding it to the sum).
@@ -922,9 +922,9 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
   fiat_p384_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
 
   // Copy the result to the output.
-  fiat_p384_to_generic(&r->X, res[0]);
-  fiat_p384_to_generic(&r->Y, res[1]);
-  fiat_p384_to_generic(&r->Z, res[2]);
+  p384_to_generic(&r->X, res[0]);
+  p384_to_generic(&r->Y, res[1]);
+  p384_to_generic(&r->Z, res[2]);
 }
 
 // Computes [g_scalar]G + [p_scalar]P, where G is the base point of the P-384
@@ -971,9 +971,9 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
   fiat_p384_felem p_pre_comp[P384_MUL_PUB_TABLE_SIZE][3];
 
   // Set the first point in the table to P.
-  fiat_p384_from_generic(p_pre_comp[0][0], &p->X);
-  fiat_p384_from_generic(p_pre_comp[0][1], &p->Y);
-  fiat_p384_from_generic(p_pre_comp[0][2], &p->Z);
+  p384_from_generic(p_pre_comp[0][0], &p->X);
+  p384_from_generic(p_pre_comp[0][1], &p->Y);
+  p384_from_generic(p_pre_comp[0][2], &p->Z);
 
   // Compute two_p = [2]P.
   fiat_p384_point_double(two_p[0], two_p[1], two_p[2],
@@ -1067,9 +1067,9 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
   }
 
   // Copy the result to the output.
-  fiat_p384_to_generic(&r->X, res[0]);
-  fiat_p384_to_generic(&r->Y, res[1]);
-  fiat_p384_to_generic(&r->Z, res[2]);
+  p384_to_generic(&r->X, res[0]);
+  p384_to_generic(&r->Y, res[1]);
+  p384_to_generic(&r->Z, res[2]);
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {

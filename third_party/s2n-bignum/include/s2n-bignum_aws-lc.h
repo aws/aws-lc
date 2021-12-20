@@ -45,11 +45,11 @@ extern void bignum_sub_p384 (uint64_t z[static 6], const uint64_t x[static 6], c
 // Input x[6]; output z[6] */
 extern void bignum_tomont_p384 (uint64_t z[static 6], const uint64_t x[static 6]);
 
-// Convert 6-digit (384-bit) bignum from big-endian form
+// Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
 extern void bignum_fromlebytes_6 (uint64_t z[static 6], const uint8_t x[static 48]);
 
-// Convert 6-digit (384-bit) bignum to big-endian form
+// Convert 6-digit (384-bit) bignum to little-endian form
 // Input x[6]; output z[6]
 extern void bignum_tolebytes_6 (uint8_t z[static 48], const uint64_t x[static 6]);
 

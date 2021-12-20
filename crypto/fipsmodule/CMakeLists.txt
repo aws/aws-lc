@@ -34,44 +34,8 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont.${ASM_EXT}
   )
 
-  if (UNIX AND NOT APPLE)
-    # Copy the s2n-bignum assembly files to the binary dir.
-    file(
-      COPY
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_add_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_sub_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_neg_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_tomont_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_deamont_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_montmul_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_montsqr_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_nonzero_6.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384/bignum_littleendian_6.S
-      DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-    )
-
-    # We add s2n-bignum files to a separate list because they need
-    # to go through C preprocessor in case of a static build.
-    set(
-      BCM_ASM_SOURCES_S2N_BIGNUM
-
-      bignum_add_p384.S
-      bignum_sub_p384.S
-      bignum_neg_p384.S
-      bignum_tomont_p384.S
-      bignum_deamont_p384.S
-      bignum_montmul_p384.S
-      bignum_montsqr_p384.S
-      bignum_nonzero_6.S
-      bignum_littleendian_6.S
-    )
-  endif()
-
-  if(NOT FIPS_DELOCATE)
-    # If we don't have to use the delocate script then s2n-bignum files
-    # are simply added to BCM_ASM_SOURCES.
-    list(APPEND BCM_ASM_SOURCES ${BCM_ASM_SOURCES_S2N_BIGNUM})
-  endif()
+  # Set the source directory for s2n-bignum assembly files
+  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384)
 endif()
 
 if(ARCH STREQUAL "x86")
@@ -125,38 +89,8 @@ if(ARCH STREQUAL "aarch64")
     vpaes-armv8.${ASM_EXT}
   )
 
-  if (UNIX AND NOT APPLE)
-    # Copy the s2n-bignum assembly files to the binary dir.
-    file(
-      COPY
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_add_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_sub_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_neg_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_tomont_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_deamont_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_montmul_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_montsqr_p384.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_nonzero_6.S
-      ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384/bignum_littleendian_6.S
-      DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-    )
-
-    # We add s2n-bignum files to a separate list because they need
-    # to go through C preprocessor in case of a static build.
-    set(
-      BCM_ASM_SOURCES_S2N_BIGNUM
-
-      bignum_add_p384.S
-      bignum_sub_p384.S
-      bignum_neg_p384.S
-      bignum_tomont_p384.S
-      bignum_deamont_p384.S
-      bignum_montmul_p384.S
-      bignum_montsqr_p384.S
-      bignum_nonzero_6.S
-      bignum_littleendian_6.S
-    )
-  endif()
+  # Set the source directory for s2n-bignum assembly files
+  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384)
 endif()
 
 if(ARCH STREQUAL "ppc64le")
@@ -216,6 +150,36 @@ if(PERL_EXECUTABLE)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 endif()
 
+# s2n-bignum files can be compiled on Unix platforms only (except Apple)
+if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE)
+  # We add s2n-bignum files to a separate list because they need
+  # to go through C preprocessor in case of the static build.
+  set(
+    S2N_BIGNUM_ASM_SOURCES
+
+    bignum_add_p384.S
+    bignum_sub_p384.S
+    bignum_neg_p384.S
+    bignum_tomont_p384.S
+    bignum_deamont_p384.S
+    bignum_montmul_p384.S
+    bignum_montsqr_p384.S
+    bignum_nonzero_6.S
+    bignum_littleendian_6.S
+  )
+
+  # Copy s2n-bignum files to the current binary dir
+  foreach(f ${S2N_BIGNUM_ASM_SOURCES})
+    file(COPY ${S2N_BIGNUM_DIR}/${f} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  endforeach()
+
+  if(NOT FIPS_DELOCATE)
+    # If we don't have to use the delocate script then s2n-bignum files
+    # are simply added to BCM_ASM_SOURCES.
+    list(APPEND BCM_ASM_SOURCES ${S2N_BIGNUM_ASM_SOURCES})
+  endif()
+endif()
+
 function(cpreprocess dest src)
   set(TARGET "")
   if(CMAKE_ASM_COMPILER_TARGET)
@@ -265,10 +229,10 @@ if(FIPS_DELOCATE)
     set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
   endif()
 
-  if(BCM_ASM_SOURCES_S2N_BIGNUM)
+  if(S2N_BIGNUM_ASM_SOURCES)
     # s2n-bignum assembly files need to pass through the C preprocessor
     # before they can be parsed by delocate.
-    foreach(asm ${BCM_ASM_SOURCES_S2N_BIGNUM})
+    foreach(asm ${S2N_BIGNUM_ASM_SOURCES})
       cpreprocess(${asm}.S ${asm})
       list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.S")
     endforeach()
@@ -348,7 +312,6 @@ elseif(FIPS_SHARED)
     bcm.c
 
     ${BCM_ASM_SOURCES}
-    ${BCM_ASM_SOURCES_S2N_BIGNUM}
   )
 
   add_dependencies(bcm_library global_target)
@@ -378,7 +341,6 @@ else()
     fips_shared_support.c
 
     ${BCM_ASM_SOURCES}
-    ${BCM_ASM_SOURCES_S2N_BIGNUM}
   )
 
   add_dependencies(fipsmodule global_target)
