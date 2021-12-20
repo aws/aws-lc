@@ -694,14 +694,6 @@ SSL_CONFIG::~SSL_CONFIG() {
   }
 }
 
-SSL_CRYPTO_MAT::SSL_CRYPTO_MAT() {
-}
-
-SSL_CRYPTO_MAT::~SSL_CRYPTO_MAT() {
-  // TODO: revisit SSL_CRYPTO_MAT malloc(MakeUnique) and free when its fields are changed.
-  // Currently, the fields are static allocated in the struct.
-}
-
 void SSL_free(SSL *ssl) {
   Delete(ssl);
 }
@@ -3072,25 +3064,5 @@ int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
 
 int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg) {
   ctx->legacy_ocsp_callback_arg = arg;
-  return 1;
-}
-
-int SSL_set_encode_mode(SSL *ssl, int on) {
-  if (on) {
-    // This function should be called only once
-    if (ssl->cm) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
-    ssl->cm = MakeUnique<bssl::SSL_CRYPTO_MAT>();
-    if (!(ssl->cm)) {
-      return 0;
-    }
-  } else {
-    if (ssl->cm) {
-      Delete(ssl->cm.release());
-    }
-  }
-
   return 1;
 }

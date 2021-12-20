@@ -1909,6 +1909,7 @@ NextTest:
 			test.testType != serverTest ||
 			strings.Contains(test.name, "DelegatedCredentials") ||
 			strings.Contains(test.name, "ECH-Server") ||
+			strings.Contains(test.name, "ECH-Server") ||
 			test.skipSplitHandshake {
 			continue
 		}
@@ -1981,13 +1982,13 @@ func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, e
 	// 	allowHintMismatchPattern = strings.Split(*allowHintMismatch, ";")
 	// }
 
-// NextTest:
+	// NextTest:
 	for _, test := range tests {
 		if test.protocol != tls ||
 			test.testType != serverTest ||
 			// test.name != "EarlyDataEnabled-Server-NegotiateTLS12" ||
-			strings.Contains(test.name, "DelegatedCredentials") ||
-			strings.Contains(test.name, "ECH-Server") ||
+			// strings.Contains(test.name, "DelegatedCredentials") ||
+			// strings.Contains(test.name, "ECH-Server") ||
 			test.skipSSLTransfer {
 			continue
 		}
@@ -19318,22 +19319,19 @@ func main() {
 	addHintMismatchTests()
 	// addSSLi2d2iTests()
 
-	// TODO: remove onlySslTransfer.
-	if *onlySslTransfer {
-		sslTransferTests, err := convertToSSLTransferTests(testCases)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error making SSL transfer tests: %s", err)
-			os.Exit(1)
-		}
-		testCases = sslTransferTests
-	} else {
-		toAppend, err := convertToSplitHandshakeTests(testCases)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error making split handshake tests: %s", err)
-			os.Exit(1)
-		}
-		testCases = append(testCases, toAppend...)
+	sslTransferTests, err := convertToSSLTransferTests(testCases)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error making SSL transfer tests: %s", err)
+		os.Exit(1)
 	}
+	testCases = append(testCases, sslTransferTests...)
+
+	toAppend, err := convertToSplitHandshakeTests(testCases)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error making split handshake tests: %s", err)
+		os.Exit(1)
+	}
+	testCases = append(testCases, toAppend...)
 
 	checkTests()
 

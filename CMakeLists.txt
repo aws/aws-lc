@@ -801,6 +801,8 @@ if(BUILD_TESTING)
     if(BUILD_LIBSSL)
       add_custom_target(
           run_tests
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${CMAKE_BINARY_DIR}
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                     ${HANDSHAKER_ARGS} ${RUNNER_ARGS}

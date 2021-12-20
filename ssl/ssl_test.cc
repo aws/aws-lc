@@ -1584,11 +1584,6 @@ static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
   if (!client || !server) {
     return false;
   }
-  // TODO: replace this alloc with flag. e.g SSL_set_handoff_mode
-  // Add new test parameter on this condition.
-  if (!SSL_set_encode_mode(server.get(), 1)) {
-    return false;
-  }
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
@@ -4692,8 +4687,6 @@ static void ConnectClientAndServerWithTicketMethod(
   bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
   ASSERT_TRUE(client);
   ASSERT_TRUE(server);
-  // TODO: add flag to call SSL_set_encode_mode when needed.
-  ASSERT_TRUE(SSL_set_encode_mode(server.get(), 1));
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 

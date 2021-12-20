@@ -180,7 +180,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 BSSL_NAMESPACE_BEGIN
 
 struct SSL_CONFIG;
-struct SSL_CRYPTO_MAT;
 struct SSL_HANDSHAKE;
 struct SSL_PROTOCOL_METHOD;
 struct SSL_X509_METHOD;
@@ -2608,25 +2607,6 @@ enum ssl_shutdown_t {
 };
 
 #define TLS_SEQ_NUM_SIZE 8
-struct SSL_CRYPTO_MAT {
-  static constexpr bool kAllowUniquePtr = true;
-
-  SSL_CRYPTO_MAT();
-  ~SSL_CRYPTO_MAT();
-
-  uint8_t read_key[EVP_MAX_KEY_LENGTH] = {0};
-  uint8_t write_key[EVP_MAX_KEY_LENGTH] = {0};
-  uint8_t read_iv[EVP_MAX_IV_LENGTH] = {0};
-  uint8_t write_iv[EVP_MAX_IV_LENGTH] = {0};
-  size_t read_key_length = 0;
-  size_t write_key_length = 0;
-  size_t read_iv_length = 0;
-  size_t write_iv_length = 0;
-};
-
-void ssl_save_session_cm(SSL_CRYPTO_MAT *cm, bool dir,
-                         const unsigned char *key, size_t key_len,
-                         const unsigned char *iv, size_t iv_len);
 
 enum ssl_ech_status_t {
   // ssl_ech_none indicates ECH was not offered, or we have not gotten far
@@ -3805,9 +3785,6 @@ struct ssl_st {
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
-
-  // Crypto material for SSL connection [de]serialization.
-  bssl::UniquePtr<bssl::SSL_CRYPTO_MAT> cm;
 };
 
 struct ssl_session_st {

@@ -1319,11 +1319,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     Delete(ssl->config.release());
   }
 
-  // FIXME check hash of SSL_CTX
-  if (!SSL_set_encode_mode(ssl, 1)) {
-    return 0;
-  }
-
   // TODO: encode the state of ssl instead of calling SSL_set_accept_state below.
   SSL_set_accept_state(ssl);
 
@@ -1413,37 +1408,4 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   // fprintf( stderr, "SSL_to_bytes %d\n", count++);
 
   return CBB_finish(cbb.get(), out_data, out_len);
-}
-
-//  Save generated SSL session's crypto material to allow [de]serialization of
-//  SSL connection later.
-//
-//  @param cm       CRYPTO_MAT struct to save crypto material to
-//  @param dir      direction of encryption: 1 - decrypt, 0 = encrypt
-//  @param key      encryption key
-//  @param key_len  key length
-//  @param iv       IV
-//  @param iv_len   IV length
-//
-void bssl::ssl_save_session_cm(bssl::SSL_CRYPTO_MAT *cm, bool dir,
-                               const unsigned char *key, size_t key_len,
-                               const unsigned char *iv, size_t iv_len)
-{
-  uint8_t *save_key, *save_iv;
-  size_t *save_key_len, *save_iv_len;
-  if (dir) {
-    save_key= cm->read_key;
-    save_iv= cm->read_iv;
-    save_key_len= &cm->read_key_length;
-    save_iv_len= &cm->read_iv_length;
-  } else {
-    save_key= cm->write_key;
-    save_iv= cm->write_iv;
-    save_key_len= &cm->write_key_length;
-    save_iv_len= &cm->write_iv_length;
-  }
-  OPENSSL_memcpy(save_key, key, key_len);
-  OPENSSL_memcpy(save_iv, iv, iv_len);
-  *save_key_len= key_len;
-  *save_iv_len= iv_len;
 }

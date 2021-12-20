@@ -2328,13 +2328,9 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 //
 // SSL transfer allows the TLS connection to be used in a different
 // process (or on a different machine). This only applies to servers.
-// 1. The process 1 indicates the |SSL| may be encoded later
-// after handshake finished by calling |SSL_set_encode_mode|, 
-// which records some intermediate states in the |SSL|.
-// 2. Before termination, the process 1 encodes the |SSL| by calling
+// 1. Before termination, the process 1 encodes the |SSL| by calling
 // |SSL_to_bytes|.
-// 3. Another process allocates new |SSL| and then resumes the states by
-// calling |SSL_from_bytes|.
+// 2. Another process resumes the states by calling |SSL_from_bytes|.
 //
 // Initial implementation of SSL transfer is made by Evgeny Potemkin.
 //
@@ -2348,23 +2344,10 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 //          TODO: give examples when found.
 // TODO: check if some callback functions get involved.
 
-// SSL_set_encode_mode indicates the |SSL| may be encoded later
-// after handshake finished. Some fields of |SSL| will be allocated 
-// to keep some intermediate states. It returns a ONE on success 
-// and ZERO on error.
-//
-// It is recommended to be called right after |SSL_new|.
-//
-// Initial implementation of this API is made by Evgeny Potemkin.
-OPENSSL_EXPORT int SSL_set_encode_mode(SSL *ssl, int on);
-
 // SSL_to_bytes serializes |in| into a newly allocated buffer and sets
 // |*out_data| to that buffer and |*out_len| to its length. The caller takes
 // ownership of the buffer and must call |OPENSSL_free| when done. It returns
 // one on success and zero on error.
-//
-// WARNING: |SSL_set_encode_mode| must be enabled so some SSL 
-// states(e.g. crypto material) can be hold and then encoded.
 //
 // WARNING: Currently only works with TLS 1.2 after handshake finished.
 // WARNING: Currently only supports |SSL| as server.

@@ -194,7 +194,6 @@ server(int proxy)
                 printf("server> accepted connection\n");
                 ssl = SSL_new(ctx);
                 SSL_set_fd(ssl, clientsock);
-                SSL_set_encode_mode(ssl, 1);
 
                 if (SSL_accept(ssl) <=0 )
                 {
