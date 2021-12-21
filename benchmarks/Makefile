@@ -13,6 +13,8 @@
 # permissions and limitations under the License.
 #############################################################################
 
+.PHONY: clean go
+
 # Set ARCH to "x86" or "arm" as appropriate; this is literally the
 # directory name in which the libs2nbignum.a file should be found.
 # If this block fails to do it automatically, replace with manual
@@ -36,7 +38,7 @@ endif
 
 # Benchmarking progfram
 
-benchmark: benchmark.c ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -o benchmark benchmark.c -L../$(ARCH) -ls2nbignum -lm
+benchmark: benchmark.c ../include/s2n-bignum.h ../$(ARCH)/libs2nbignum.a; gcc -O3 -o benchmark benchmark.c -L../$(ARCH) -ls2nbignum -lm
 
 go: benchmark ; ./benchmark
 
