@@ -220,11 +220,24 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       secp256k1/bignum_tomont_p256k1.o \
       secp256k1/bignum_triple_p256k1.o
 
+.PHONY: bmi clean clobber
+
 %.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(MANGLE) | $(ASSEMBLE) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
 clean:; rm -f libs2nbignum.a */*.o */*.correct
+
+# Dynamically regenerate or destroy the files recording which functions
+# use BMI and/or ADX instructions in the x86 versions. These won't run
+# on some older x86 machines
+
+yesbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' && grep '\.globl' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/.globl//; s/ *//g' | sort >yesbmi_functions
+nonbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' || grep '\.globl' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/.globl//; s/ *//g' | sort >nonbmi_functions
+
+bmi: yesbmi_functions nonbmi_functions ; [`cat ???bmi_functions | sort | uniq | wc -l` -eq `grep '^extern' ../include/s2n-bignum.h | wc -l` ]
+
+clobber: clean ; rm -f yesbmi_functions nonbmi_functions
 
 # Proof-related parts
 #
@@ -261,5 +274,4 @@ secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; (cd ..; (echo 'loadt "x86/proof
 
 run_proofs: $(PROOFS);
 
-proofs: run_proofs
-	[ `grep SUBROUTINE_CORRECT proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct | wc -l` ]
+proofs: run_proofs ; [ `grep SUBROUTINE_CORRECT proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct | wc -l` ]
