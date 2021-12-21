@@ -497,6 +497,10 @@ if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()
 
+if(FIPS AND NOT BUILD_SHARED_LIBS)
+  message(FATAL_ERROR "Building AWS-LC for FIPS only supports the shared build, you must pass in '-DBUILD_SHARED_LIBS=TRUE'")
+endif()
+
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
