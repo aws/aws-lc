@@ -411,8 +411,9 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
 
   if (config->expect_version != 0 &&
       SSL_version(ssl) != int{config->expect_version}) {
+    uint16_t actual_version = static_cast<uint16_t>(SSL_version(ssl));
     fprintf(stderr, "want version %04x, got %04x\n", config->expect_version,
-            static_cast<uint16_t>(SSL_version(ssl)));
+            actual_version);
     return false;
   }
 
