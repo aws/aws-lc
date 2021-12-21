@@ -598,7 +598,6 @@ if(BUILD_TESTING)
     x509/x509_test.cc
     x509/x509_time_test.cc
     x509v3/tab_test.cc
-    x509v3/v3name_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
@@ -620,8 +619,7 @@ endif()
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 configure_file("cmake/crypto-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
