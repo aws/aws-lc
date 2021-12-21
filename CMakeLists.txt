@@ -270,7 +270,7 @@ if(GCC OR CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
   endif()
 
-  if(CMAKE_COMPILER_IS_GNUCXX)
+  if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "5")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wformat-signedness")
   endif()
 
