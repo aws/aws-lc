@@ -1,21 +1,5 @@
 include_directories(../../include)
 
-if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_BCM_O_PATH)
-  message(STATUS "Building with FIPS_VENDOR_AFFIRM_BCM_O_PATH '${FIPS_VENDOR_AFFIRM_BCM_O_PATH}'.")
-  add_library(
-    fipsmodule
-
-    OBJECT
-
-    fips_shared_support.c
-  )
-
-  add_dependencies(fipsmodule global_target)
-
-  add_custom_target(bcm_o_target DEPENDS ${FIPS_VENDOR_AFFIRM_BCM_O_PATH})
-  return()
-endif()
-
 if(ANDROID)
   # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
@@ -49,6 +33,9 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
+
+  # Set the source directory for s2n-bignum assembly files
+  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384)
 endif()
 
 if(ARCH STREQUAL "x86")
@@ -86,6 +73,7 @@ if(ARCH STREQUAL "arm")
 endif()
 
 if(ARCH STREQUAL "aarch64")
+
   set(
     BCM_ASM_SOURCES
 
@@ -100,6 +88,9 @@ if(ARCH STREQUAL "aarch64")
     sha512-armv8.${ASM_EXT}
     vpaes-armv8.${ASM_EXT}
   )
+
+  # Set the source directory for s2n-bignum assembly files
+  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384)
 endif()
 
 if(ARCH STREQUAL "ppc64le")
@@ -159,6 +150,36 @@ if(PERL_EXECUTABLE)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 endif()
 
+# s2n-bignum files can be compiled on Unix platforms only (except Apple)
+if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE)
+  # We add s2n-bignum files to a separate list because they need
+  # to go through C preprocessor in case of the static build.
+  set(
+    S2N_BIGNUM_ASM_SOURCES
+
+    bignum_add_p384.S
+    bignum_sub_p384.S
+    bignum_neg_p384.S
+    bignum_tomont_p384.S
+    bignum_deamont_p384.S
+    bignum_montmul_p384.S
+    bignum_montsqr_p384.S
+    bignum_nonzero_6.S
+    bignum_littleendian_6.S
+  )
+
+  # Copy s2n-bignum files to the current binary dir
+  foreach(f ${S2N_BIGNUM_ASM_SOURCES})
+    file(COPY ${S2N_BIGNUM_DIR}/${f} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  endforeach()
+
+  if(NOT FIPS_DELOCATE)
+    # If we don't have to use the delocate script then s2n-bignum files
+    # are simply added to BCM_ASM_SOURCES.
+    list(APPEND BCM_ASM_SOURCES ${S2N_BIGNUM_ASM_SOURCES})
+  endif()
+endif()
+
 function(cpreprocess dest src)
   set(TARGET "")
   if(CMAKE_ASM_COMPILER_TARGET)
@@ -197,8 +218,8 @@ if(FIPS_DELOCATE)
   )
 
   if(ARCH STREQUAL "aarch64")
-    # Perlasm output on Aarch64 needs to pass through the C preprocessor before
-    # it can be parsed by delocate.
+    # Perlasm output on Aarch64 needs to pass through the C preprocessor
+    # before it can be parsed by delocate.
     foreach(asm ${BCM_ASM_SOURCES})
       cpreprocess(${asm}.s ${asm})
       list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.s")
@@ -206,6 +227,15 @@ if(FIPS_DELOCATE)
   else()
     # No preprocessing is required on other platforms.
     set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
+  endif()
+
+  if(S2N_BIGNUM_ASM_SOURCES)
+    # s2n-bignum assembly files need to pass through the C preprocessor
+    # before they can be parsed by delocate.
+    foreach(asm ${S2N_BIGNUM_ASM_SOURCES})
+      cpreprocess(${asm}.S ${asm})
+      list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.S")
+    endforeach()
   endif()
 
   add_dependencies(bcm_c_generated_asm global_target)

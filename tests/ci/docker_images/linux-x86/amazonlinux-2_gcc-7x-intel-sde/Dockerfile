@@ -18,14 +18,14 @@ RUN set -ex && \
     # Based on Interl SDE README, SELinux should be turned off to allow pin to work.
     libselinux-utils \
     wget \
-    bzip2 \
+    xz \
     tar && \
     # Install Intel® Software Development Emulator
     # This emulator is needed when running BoringSSL/AWS-LC code under Intel's SDE for each supported chip (like ice lake).
     # https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html#system-configuration
-    wget https://software.intel.com/content/dam/develop/external/us/en/documents/downloads/sde-external-8.59.0-2020-10-05-lin.tar.bz2 && \
-    tar -xvjf sde-external-8.59.0-2020-10-05-lin.tar.bz2 && \
-    cd sde-external-8.59.0-2020-10-05-lin \
+    wget https://downloadmirror.intel.com/684899/sde-external-9.0.0-2021-11-07-lin.tar.xz && \
+    tar -xf sde-external-9.0.0-2021-11-07-lin.tar.xz && \
+    rm sde-external-9.0.0-2021-11-07-lin.tar.xz && \
     yum clean packages && \
     yum clean metadata && \
     yum clean all && \
@@ -34,5 +34,5 @@ RUN set -ex && \
 
 ENV CC=gcc
 ENV CXX=g++
-ENV SDEROOT=/sde-external-8.59.0-2020-10-05-lin
+ENV SDEROOT=/sde-external-9.0.0-2021-11-07-lin
 ENV PATH="$SDEROOT:$PATH"

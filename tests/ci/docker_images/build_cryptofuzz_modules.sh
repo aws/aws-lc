@@ -44,7 +44,7 @@ export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_CRYPTOPP"
 env LIBCRYPTOPP_A_PATH `realpath libcryptopp.a`
 env CRYPTOPP_INCLUDE_PATH `realpath .`
 cd "${CRYPTOFUZZ_SRC}/modules/cryptopp/"
-make
+make -j$(nproc)
 
 # Extract the seed corpus, docker layers are already compressed so this won't use any more space and save time when running
 cd "$FUZZ_ROOT"
@@ -61,3 +61,7 @@ env CRYPTOFUZZ_SRC "$CRYPTOFUZZ_SRC"
 # Cryptofuzz builds its modules into $CRYPTOFUZZ_SRC/modules that includes everything it needs, deleting the module source
 # code saves a substantial amount of space in the docker image
 rm -rf "$MODULES_ROOT"
+
+# Prebuild the required libcpu_features to save time
+cd "$CRYPTOFUZZ_SRC"
+make third_party/cpu_features/build/libcpu_features.a

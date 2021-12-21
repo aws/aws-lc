@@ -41,6 +41,7 @@ RUN set -ex && \
     mkdir -p ${DEPENDENCIES_DIR} && \
     cd ${DEPENDENCIES_DIR} && \
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
+    cd llvm-project && rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)") && \
     cd /tmp && \
     wget https://dl.google.com/go/go1.15.2.linux-arm64.tar.gz && \
     tar -xvf go1.15.2.linux-arm64.tar.gz && \
