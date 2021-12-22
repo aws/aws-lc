@@ -79,17 +79,21 @@
 
 int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub_key,
                                const EC_KEY *priv_key) {
-  int ret = 0;
   if (priv_key->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
-    goto err;
+    return 0;
   }
   const EC_SCALAR *const priv = &priv_key->priv_key->scalar;
   const EC_GROUP *const group = EC_KEY_get0_group(priv_key);
   if (EC_GROUP_cmp(group, pub_key->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    goto err;
+    return 0;
   }
+
+  // Lock state here to avoid the underlying |EC_KEY_check_fips| function
+  // updating the service indicator state unintentionally.
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
 
 #if defined(AWSLC_FIPS)
   // |EC_KEY_check_fips| is not an expensive operation on an external
@@ -118,12 +122,12 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 
   ret = 1;
 end:
+  FIPS_service_indicator_unlock_state();
 #if defined(AWSLC_FIPS)
   if (key_pub_key != NULL) {
     EC_KEY_free(key_pub_key);
   }
 #endif
-err:
   return ret;
 }
 
