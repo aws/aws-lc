@@ -227,7 +227,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes, (const uint8_t *)xpp.get()->d, len);
     ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
                                     EC_KEY_get0_public_key(peer_key.get()), priv_key.get());
-    if (!awslc_fips() && (group.get()->curve_name == NID_secp224r1)) {
+    if (!awslc_fips() && has_uint128_and_not_small() && (group.get()->curve_name == NID_secp224r1)) {
       ASSERT_TRUE(ret);
     } else {
       ASSERT_FALSE(ret);
