@@ -95,6 +95,10 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
   // |EC_KEY_check_fips| is not an expensive operation on an external
   // public key.
   key_pub_key = EC_KEY_new();
+  if (key_pub_key == NULL) {
+    goto end;
+  }
+
   if (!EC_KEY_set_group(key_pub_key, group) ||
       !EC_KEY_set_public_key(key_pub_key, pub_key) ||
       !EC_KEY_check_fips(key_pub_key)) {
