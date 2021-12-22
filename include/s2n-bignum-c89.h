@@ -429,6 +429,7 @@ extern void bignum_mul (uint64_t k, uint64_t *z, uint64_t m, uint64_t *x, uint64
 /*  Multiply z := x * y */
 /*  Inputs x[4], y[4]; output z[8] */
 extern void bignum_mul_4_8 (uint64_t z[8], uint64_t x[4], uint64_t y[4]);
+extern void bignum_mul_4_8_alt (uint64_t z[8], uint64_t x[4], uint64_t y[4]);
 
 /*  Multiply z := x * y */
 /*  Inputs x[6], y[6]; output z[12] */
@@ -561,6 +562,7 @@ extern void bignum_sqr (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
 /*  Square, z := x^2 */
 /*  Input x[4]; output z[8] */
 extern void bignum_sqr_4_8 (uint64_t z[8], uint64_t x[4]);
+extern void bignum_sqr_4_8_alt (uint64_t z[8], uint64_t x[4]);
 
 /*  Square, z := x^2 */
 /*  Input x[6]; output z[12] */
