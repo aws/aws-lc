@@ -1271,7 +1271,13 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_check_fips(key.get())));
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
-
+  // Remove reference to private key in generated key and see if
+  // |EC_KEY_check_fips| still returns approval for keys with only public keys
+  // available.
+  bssl::UniquePtr<EC_KEY> key_only_public(EC_KEY_new_by_curve_name(ecdsaTestVector.nid));
+  ASSERT_TRUE(EC_KEY_set_public_key(key_only_public.get(), EC_KEY_get0_public_key(key.get())));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_check_fips(key_only_public.get())));
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
 
   // Test running the EVP_PKEY_keygen interfaces one by one directly, and check
   // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
