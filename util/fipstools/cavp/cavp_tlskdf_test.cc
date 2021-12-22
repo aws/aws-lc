@@ -21,9 +21,9 @@
 #include <errno.h>
 
 #include <openssl/digest.h>
+#include <openssl/tls_kdf.h>
 
 #include "cavp_test_util.h"
-#include "../crypto/fipsmodule/tls/internal.h"
 #include "../crypto/test/file_test.h"
 #include "../crypto/test/test_util.h"
 

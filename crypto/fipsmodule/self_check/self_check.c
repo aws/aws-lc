@@ -29,12 +29,12 @@
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
+#include <openssl/tls_kdf.h>
 
 #include "../../internal.h"
 #include "../ec/internal.h"
 #include "../ecdsa/internal.h"
 #include "../rand/internal.h"
-#include "../tls/internal.h"
 
 
 // MSVC wants to put a NUL byte at the end of non-char arrays and so cannot

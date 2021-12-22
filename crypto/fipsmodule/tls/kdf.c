@@ -55,8 +55,8 @@
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
+#include <openssl/tls_kdf.h>
 
-#include "internal.h"
 #include "../../internal.h"
 
 

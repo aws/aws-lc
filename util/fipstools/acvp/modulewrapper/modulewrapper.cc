@@ -42,10 +42,10 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
+#include <openssl/tls_kdf.h>
 
 #include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
-#include "../../../../crypto/fipsmodule/tls/internal.h"
 #include "modulewrapper.h"
 
 
