@@ -1728,7 +1728,7 @@ TEST(ECTest, LargeXCoordinateVectors) {
     ASSERT_TRUE(EC_KEY_check_fips(key.get()));
 
     // Set the raw point directly with the BIGNUM coordinates.
-    // Note that both are in big-endian byte order.
+    // Note that both are in little-endian byte order.
     OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes, (const uint8_t *)x.get()->d, len);
     OPENSSL_memcpy(key.get()->pub_key->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
     OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);

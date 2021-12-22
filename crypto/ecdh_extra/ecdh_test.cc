@@ -30,6 +30,8 @@
 #include <openssl/nid.h>
 #include <openssl/sha.h>
 
+#include "../fipsmodule/ec/internal.h"
+
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
@@ -126,6 +128,82 @@ TEST(ECDHTest, TestVectors) {
   });
 }
 
+// The following test is adapted from ECTest.LargeXCoordinateVectors
+TEST(ECDHTest, InvalidPubKeyLargeCoord) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+
+  FileTestGTest("crypto/fipsmodule/ec/large_x_coordinate_points.txt",
+                [&](FileTest *t) {
+    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+    ASSERT_TRUE(x);
+    bssl::UniquePtr<BIGNUM> xpp = GetBIGNUM(t, "XplusP");
+    ASSERT_TRUE(xpp);
+    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+    ASSERT_TRUE(y);
+    bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
+    ASSERT_TRUE(peer_key);
+    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+    ASSERT_TRUE(pub_key);
+    bssl::UniquePtr<EC_KEY> priv_key(EC_KEY_new());
+    // Own private key
+    ASSERT_TRUE(priv_key);
+    ASSERT_TRUE(EC_KEY_set_group(priv_key.get(), group.get()));
+    // Generate a generic ec key.
+    EC_KEY_generate_key(priv_key.get());
+
+    size_t len = BN_num_bytes(&group.get()->field); // Modulus byte-length
+    std::vector<uint8_t> shared_key((group.get()->curve_name == NID_secp521r1)?
+                                    SHA512_DIGEST_LENGTH : len);
+
+    ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group.get()));
+    // The following call converts the point to Montgomery form for P-256, 384 and 521.
+    // For P-224, when the functions from simple.c are used, i.e. when
+    // group->meth = EC_GFp_nistp224_method, the coordinate representation is not changed.
+    // This is determined based on compile flags in ec.c that are also used below.
+    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+                    group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+    ASSERT_TRUE(EC_KEY_set_public_key(peer_key.get(), pub_key.get()));
+    //ASSERT_TRUE(EC_KEY_check_fips(peer_key.get()));
+    ASSERT_TRUE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                      EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+
+    // Set the raw point directly with the BIGNUM coordinates.
+    // Note that both are in little-endian byte order.
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes, (const uint8_t *)x.get()->d, len);
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
+    OPENSSL_memset(peer_key.get()->pub_key->raw.Z.bytes, 0, len);
+    peer_key.get()->pub_key->raw.Z.bytes[0] = 1;
+    // As mentioned, for P-224, setting the raw point directly with the coordinates
+    // still passes |EC_KEY_check_fips|.
+    // For P-256, 384 and 521, the failure is due to that the coordinates are
+    // not in Montgomery representation, and, hence, fail |EC_KEY_check_fips|.
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    if (group.get()->curve_name == NID_secp224r1)
+    {
+      ASSERT_TRUE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                        EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+    } else {
+#endif
+      ASSERT_FALSE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                        EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+       EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+                ERR_GET_REASON(ERR_peek_last_error()));
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+    }
+#endif
+
+    // Now replace the x-coordinate with the larger one, x+p;
+    // ECDH fails |EC_KEY_check_fips| in all curves.
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes, (const uint8_t *)xpp.get()->d, len);
+    ASSERT_FALSE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                       EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+    EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+              ERR_GET_REASON(ERR_peek_last_error()));
+  });
+}
 
 static void RunWycheproofTest(FileTest *t) {
   t->IgnoreInstruction("encoding");
