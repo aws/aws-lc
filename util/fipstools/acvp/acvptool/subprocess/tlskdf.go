@@ -46,6 +46,7 @@ type tlsKDFTest struct {
 	ServerHelloRandomHex string `json:"serverHelloRandom"`
 	ClientRandomHex      string `json:"clientRandom"`
 	ServerRandomHex      string `json:"serverRandom"`
+	SessionHashHex       string `json:"sessionHash""`
 }
 
 type tlsKDFTestGroupResponse struct {
@@ -141,19 +142,33 @@ func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 				return nil, err
 			}
 
+			sessionHash, err := hex.DecodeString(test.SessionHashHex)
+			if err != nil {
+				return nil, err
+			}
+
 			const (
 				masterSecretLength = 48
 				masterSecretLabel  = "master secret"
+				extendedLabel      = "extended master secret"
 				keyBlockLabel      = "key expansion"
 			)
 
 			var outLenBytes [4]byte
 			binary.LittleEndian.PutUint32(outLenBytes[:], uint32(masterSecretLength))
-			result, err := m.Transact(method, 1, outLenBytes[:], pms, []byte(masterSecretLabel), clientHelloRandom, serverHelloRandom)
+			var result [][]byte
+			switch k.algo {
+			case "kdf-components":
+				result, err = m.Transact(method, 1, outLenBytes[:], pms, []byte(masterSecretLabel), clientHelloRandom, serverHelloRandom)
+
+			case "TLS-v1.2":
+				result, err = m.Transact(method, 1, outLenBytes[:], pms, []byte(extendedLabel), sessionHash, nil)
+			default:
+				return nil, fmt.Errorf("unknown algorithm %q", k.algo)
+			}
 			if err != nil {
 				return nil, err
 			}
-
 			binary.LittleEndian.PutUint32(outLenBytes[:], uint32(group.KeyBlockBits/8))
 			// TLS 1.0, 1.1, and 1.2 use a different order for the client and server
 			// randoms when computing the key block.
