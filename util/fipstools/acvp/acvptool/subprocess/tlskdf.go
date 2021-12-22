@@ -59,7 +59,9 @@ type tlsKDFTestResponse struct {
 	KeyBlockHex     string `json:"keyBlock"`
 }
 
-type tlsKDF struct{}
+type tlsKDF struct {
+	algo string
+}
 
 func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed tlsKDFVectorSet
@@ -75,13 +77,22 @@ func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 		}
 
 		var tlsVer string
-		switch group.TLSVersion {
-		case "v1.0/1.1":
-			tlsVer = "1.0"
-		case "v1.2":
+		switch k.algo {
+		case "kdf-components":
+			// For legacy test vector support kdf-components supports TLS 1.0, 1.1, and 1.2 tests
+			switch group.TLSVersion {
+			case "v1.0/1.1":
+				tlsVer = "1.0"
+			case "v1.2":
+				tlsVer = "1.2"
+			default:
+				return nil, fmt.Errorf("unknown TLS version %q", group.TLSVersion)
+			}
+		case "TLS-v1.2":
+			// Newer TLS-v1.2 only supports 1.2 as the name implies
 			tlsVer = "1.2"
 		default:
-			return nil, fmt.Errorf("unknown TLS version %q", group.TLSVersion)
+			return nil, fmt.Errorf("unknown algorithm %q", k.algo)
 		}
 
 		hashIsTLS10 := false

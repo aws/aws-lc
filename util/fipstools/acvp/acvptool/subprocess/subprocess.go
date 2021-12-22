@@ -100,8 +100,9 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"KAS-KDF":          &hkdf{},
 		"CMAC-AES":         &keyedMACPrimitive{"CMAC-AES"},
 		"RSA":              &rsa{},
-		"kdf-components":   &tlsKDF{},
-		"KAS-ECC-SSC":      &kas{},
+		"kdf-components":   &tlsKDF{"kdf-components"},
+		"TLS-v1.2":         &tlsKDF{"TLS-v1.2"},
+        "KAS-ECC-SSC":      &kas{},
 		"KAS-FFC-SSC":      &kasDH{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
