@@ -36,7 +36,6 @@
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
 
-
 static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
   std::string curve_name;
   if (!t->GetAttribute(&curve_name, key)) {
@@ -128,6 +127,22 @@ TEST(ECDHTest, TestVectors) {
   });
 }
 
+static int has_uint128_and_not_small() {
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+static int awslc_fips() {
+#if defined(AWSLC_FIPS)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 // The following test is adapted from ECTest.LargeXCoordinateVectors
 TEST(ECDHTest, InvalidPubKeyLargeCoord) {
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
@@ -135,6 +150,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
 
   FileTestGTest("crypto/fipsmodule/ec/large_x_coordinate_points.txt",
                 [&](FileTest *t) {
+    int ret;
     bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
     ASSERT_TRUE(group);
     bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
@@ -162,13 +178,16 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     // The following call converts the point to Montgomery form for P-256, 384 and 521.
     // For P-224, when the functions from simple.c are used, i.e. when
     // group->meth = EC_GFp_nistp224_method, the coordinate representation is not changed.
-    // This is determined based on compile flags in ec.c that are also used below.
+    // This is determined based on compile flags in ec.c that are also used below
+    // in has_uint128_and_not_small().
     ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
-                    group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+                  group.get(), pub_key.get(), x.get(), y.get(), nullptr));
     ASSERT_TRUE(EC_KEY_set_public_key(peer_key.get(), pub_key.get()));
-    //ASSERT_TRUE(EC_KEY_check_fips(peer_key.get()));
     ASSERT_TRUE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
                                       EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+    // Ensure the pointers were not affected.
+    ASSERT_TRUE(peer_key.get());
+    ASSERT_TRUE(pub_key.get());
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
@@ -177,31 +196,53 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     OPENSSL_memset(peer_key.get()->pub_key->raw.Z.bytes, 0, len);
     peer_key.get()->pub_key->raw.Z.bytes[0] = 1;
     // As mentioned, for P-224, setting the raw point directly with the coordinates
-    // still passes |EC_KEY_check_fips|.
+    // still passes |EC_KEY_check_fips| and the rest of the computation.
     // For P-256, 384 and 521, the failure is due to that the coordinates are
-    // not in Montgomery representation, and, hence, fail |EC_KEY_check_fips|.
-#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
-    if (group.get()->curve_name == NID_secp224r1)
+    // not in Montgomery representation, and, hence, fail |EC_KEY_check_fips|, if in FIPS build;
+    // or the shared secret computation, otherwise.
+    ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                EC_KEY_get0_public_key(peer_key.get()), priv_key.get());
+    if (has_uint128_and_not_small() && (group.get()->curve_name == NID_secp224r1))
     {
-      ASSERT_TRUE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                        EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+      ASSERT_TRUE(ret);
     } else {
-#endif
-      ASSERT_FALSE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                        EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
-       EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-                ERR_GET_REASON(ERR_peek_last_error()));
-#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
+      ASSERT_FALSE(ret);
+      if (awslc_fips()) {
+        // Fails in |EC_KEY_check_fips|.
+        EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+                  ERR_GET_REASON(ERR_peek_last_error()));
+      } else {
+        // Fails in the actual shared secret computation.
+        EXPECT_EQ(ECDH_R_POINT_ARITHMETIC_FAILURE,
+                  ERR_GET_REASON(ERR_peek_last_error()));
+      }
     }
-#endif
+    ASSERT_TRUE(peer_key.get());
+    ASSERT_TRUE(pub_key.get());
 
     // Now replace the x-coordinate with the larger one, x+p;
-    // ECDH fails |EC_KEY_check_fips| in all curves.
+    // ECDH fails |EC_KEY_check_fips| or in the actual shared secret computation
+    // in all curves (except for P-224 in non-FIPS build).
+    // TODO: Do we want to widen the check the non-FIPS builds?.
     OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes, (const uint8_t *)xpp.get()->d, len);
-    ASSERT_FALSE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                       EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
-    EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-              ERR_GET_REASON(ERR_peek_last_error()));
+    ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                    EC_KEY_get0_public_key(peer_key.get()), priv_key.get());
+    if (!awslc_fips() && (group.get()->curve_name == NID_secp224r1)) {
+      ASSERT_TRUE(ret);
+    } else {
+      ASSERT_FALSE(ret);
+      if (awslc_fips()) {
+        // Fails in |EC_KEY_check_fips|.
+        EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+                  ERR_GET_REASON(ERR_peek_last_error()));
+      } else {
+        // Fails in the actual shared secret computation.
+        EXPECT_EQ(ECDH_R_POINT_ARITHMETIC_FAILURE,
+                  ERR_GET_REASON(ERR_peek_last_error()));
+      }
+      ASSERT_TRUE(peer_key.get());
+      ASSERT_TRUE(pub_key.get());
+    }
   });
 }
 
