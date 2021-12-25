@@ -44,34 +44,29 @@
 
 // Macro for the key "multiply and add to (c,h,l)" step
 
-#define combadd(c,h,l,I,J)                      \
-        movq    8*I(x), %rax ;                   \
-        mulq     8*J(y);              \
+#define combadd(c,h,l,numa,numb)                \
+        movq    numa, %rax ;                      \
+        mulq     numb;                 \
         addq    %rax, l ;                         \
         adcq    %rdx, h ;                         \
         adcq    $0, c
 
-// A minutely shorter form for the very first term where c = 0 initially
+// A minutely shorter form for when c = 0 initially
 
-#define combadz(c,h,l,I,J)                      \
-        movq    8*I(x), %rax ;                   \
-        mulq     8*J(y);              \
+#define combadz(c,h,l,numa,numb)                \
+        movq    numa, %rax ;                      \
+        mulq     numb;                 \
         addq    %rax, l ;                         \
         adcq    %rdx, h ;                         \
         adcq    c, c
 
-// A short form for the very last term where we don't expect a top carry
+// A short form where we don't expect a top carry
 
-#define combads(c,h,l,I,J)                      \
-        movq    8*I(x), %rax ;                   \
-        mulq     8*J(y);              \
+#define combads(h,l,numa,numb)                  \
+        movq    numa, %rax ;                      \
+        mulq     numb;                 \
         addq    %rax, l ;                         \
         adcq    %rdx, h
-
-// Stash the result
-
-#define stash(c,h,l,I)                          \
-        movq    l, 8*I(z)
 
 bignum_mul_4_8_alt:
 
@@ -90,52 +85,52 @@ bignum_mul_4_8_alt:
 
 // Result term 1
 
-       xorq    t2, t2
-       combadz(t2,t1,t0,0,1)
-       combadd(t2,t1,t0,1,0)
-       stash(t2,t1,t0,1)
+        xorq    t2, t2
+        combads(t1,t0,(x),8(y))
+        combadz(t2,t1,t0,8(x),(y))
+        movq    t0, 8(z)
 
 // Result term 2
 
         xorq    t0, t0
-        combadd(t0,t2,t1,0,2)
-        combadd(t0,t2,t1,1,1)
-        combadd(t0,t2,t1,2,0)
-        stash(t0,t2,t1,2)
+        combadz(t0,t2,t1,(x),16(y))
+        combadd(t0,t2,t1,8(x),8(y))
+        combadd(t0,t2,t1,16(x),(y))
+        movq    t1, 16(z)
 
 // Result term 3
 
         xorq    t1, t1
-        combadd(t1,t0,t2,0,3)
-        combadd(t1,t0,t2,1,2)
-        combadd(t1,t0,t2,2,1)
-        combadd(t1,t0,t2,3,0)
-        stash(t1,t0,t2,3)
+        combadz(t1,t0,t2,(x),24(y))
+        combadd(t1,t0,t2,8(x),16(y))
+        combadd(t1,t0,t2,16(x),8(y))
+        combadd(t1,t0,t2,24(x),(y))
+        movq    t2, 24(z)
 
 // Result term 4
 
         xorq    t2, t2
-        combadd(t2,t1,t0,1,3)
-        combadd(t2,t1,t0,2,2)
-        combadd(t2,t1,t0,3,1)
-        stash(t2,t1,t0,4)
+        combadz(t2,t1,t0,8(x),24(y))
+        combadd(t2,t1,t0,16(x),16(y))
+        combadd(t2,t1,t0,24(x),8(y))
+        movq    t0, 32(z)
 
 // Result term 5
 
         xorq    t0, t0
-        combadd(t0,t2,t1,2,3)
-        combadd(t0,t2,t1,3,2)
-        stash(t0,t2,t1,5)
+        combadz(t0,t2,t1,16(x),24(y))
+        combadd(t0,t2,t1,24(x),16(y))
+        movq    t1, 40(z)
 
 // Result term 6
 
         xorq    t1, t1
-        combads(t1,t0,t2,3,3)
-        stash(t1,t0,t2,6)
+        combads(t0,t2,24(x),24(y))
+        movq    t2, 48(z)
 
 // Result term 7
 
-        stash(t2,t1,t0,7)
+        movq    t0, 56(z)
 
 // Return
 

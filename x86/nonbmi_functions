@@ -19,6 +19,7 @@ bignum_cmadd
 bignum_cmnegadd
 bignum_cmod
 bignum_cmul
+bignum_cmul_p256k1_alt
 bignum_coprime
 bignum_copy
 bignum_ctd
@@ -69,10 +70,13 @@ bignum_modoptneg
 bignum_modsub
 bignum_montifier
 bignum_montmul
+bignum_montmul_p256k1_alt
 bignum_montredc
 bignum_montsqr
+bignum_montsqr_p256k1_alt
 bignum_mul
 bignum_mul_4_8_alt
+bignum_mul_p256k1_alt
 bignum_muladd10
 bignum_mux
 bignum_mux16
@@ -102,6 +106,7 @@ bignum_shl_small
 bignum_shr_small
 bignum_sqr
 bignum_sqr_4_8_alt
+bignum_sqr_p256k1_alt
 bignum_sub
 bignum_sub_p256
 bignum_sub_p256k1
@@ -111,7 +116,9 @@ bignum_tobebytes_4
 bignum_tobebytes_6
 bignum_tolebytes_4
 bignum_tolebytes_6
+bignum_tomont_p256k1_alt
 bignum_tomont_p521
+bignum_triple_p256k1_alt
 word_bytereverse
 word_clz
 word_ctz

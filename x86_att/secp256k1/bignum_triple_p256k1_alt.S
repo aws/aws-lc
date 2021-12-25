@@ -17,92 +17,99 @@
 // Triple modulo p_256k1, z := (3 * x) mod p_256k1
 // Input x[4]; output z[4]
 //
-//    extern void bignum_triple_p256k1
+//    extern void bignum_triple_p256k1_alt
 //      (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // The input x can be any 4-digit bignum, not necessarily reduced modulo
 // p_256k1, and the result is always fully reduced, z = (3 * x) mod p_256k1.
 //
-// Standard ARM ABI: X0 = z, X1 = x
+// Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_triple_p256k1
+
         .globl  bignum_triple_p256k1_alt
         .text
-        .balign 4
 
-#define z x0
-#define x x1
+#define z %rdi
+#define x %rsi
 
-#define d0 x2
-#define d1 x3
-#define d2 x4
-#define d3 x5
-#define h x6
+// Main digits of intermediate results
 
-// Slightly offset aliases for the d_i for readability.
+#define d0 %r8
+#define d1 %r9
+#define d2 %r10
+#define d3 %r11
 
-#define a0 x3
-#define a1 x4
-#define a2 x5
-#define a3 x6
+// Quotient estimate = top of product + 1
 
-// More aliases for the same thing at different stages
+#define d %rdx
+#define h %rdx
+#define q %rdx
 
-#define m x6
+// Other temporary variables and their short version
 
-// Other temporary variables
+#define a %rax
+#define c %rcx
 
-#define c x7
+#define ashort %eax
+#define qshort %edx
 
-bignum_triple_p256k1:
 bignum_triple_p256k1_alt:
 
-// Load the inputs
-
-                ldp     a0, a1, [x]
-                ldp     a2, a3, [x, #16]
-
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
+// but immediately form the quotient estimate q = h + 1
 
-                adds    d0, a0, a0, lsl #1
-                extr    d1, a1, a0, #63
-                adcs    d1, d1, a1
-                extr    d2, a2, a1, #63
-                adcs    d2, d2, a2
-                extr    d3, a3, a2, #63
-                adcs    d3, d3, a3
-                lsr     h, a3, #63
-                adc     h, h, xzr
+                movq    $3, c
+
+                movq    (x), a
+                mulq    c
+                movq    a, d0
+                movq    d, d1
+
+                movq    8(x), a
+                xorq    d2, d2
+                mulq    c
+                addq    a, d1
+                adcq    d, d2
+
+                movq    16(x), a
+                mulq    c
+                addq    a, d2
+                adcq    $0, d
+
+                movq    24(x), a
+                movq    d, d3
+                mulq    c
+                addq    a, d3
+                adcq    $1, h
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256k1 <= z - q * p_256k1 < p_256k1.
-
-                mov     c, #977
-                orr     c, c, #0x100000000
-                madd    m, h, c, c
-
 // Initial subtraction of z - q * p_256k1, actually by adding q * 4294968273.
 
-                adds    d0, d0, m
-                adcs    d1, d1, xzr
-                adcs    d2, d2, xzr
-                adcs    d3, d3, xzr
+                movq    $4294968273, c
+                xorq    a, a
+                imulq   c, q
+                addq    q, d0
+                adcq    a, d1
+                adcq    a, d2
+                adcq    a, d3
 
 // With z = 2^256 * h + l, the underlying result z' is actually
 // (2^256 * h + l) - q * (2^256 - 4294968273) = (l + q * 4294968273) - 2^256
 // so carry-clear <=> z' is negative. Correct by subtracting in that case.
+// In any case, write final result to z as we go.
 
-                csel    c, c, xzr, cc
-                subs    d0, d0, c
-                sbcs    d1, d1, xzr
-                sbcs    d2, d2, xzr
-                sbc     d3, d3, xzr
+                cmovcq  a, c
 
-// Finally store the result
-
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+                subq    c, d0
+                movq    d0, (z)
+                sbbq    a, d1
+                movq    d1, 8(z)
+                sbbq    a, d2
+                movq    d2, 16(z)
+                sbbq    a, d3
+                movq    d3, 24(z)
 
                 ret
 
