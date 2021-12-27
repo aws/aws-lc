@@ -111,8 +111,9 @@ static int kyber512_bits(const EVP_PKEY *pkey) {
 
 const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {
     EVP_PKEY_KYBER512,
-    {},
-    0,
+    //1.3.6.1.4.1.2.267.8 = Kyber KEM Round-3
+    {0x06, 0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x02, 0x82, 0x0B, 0x08},
+    11,
     NULL,
     NULL,
     kyber512_pub_cmp,
