@@ -17,7 +17,8 @@ static void RunTest(FileTest *t)
   ASSERT_TRUE(t->GetBytes(&ct, "ct"));
   ASSERT_TRUE(t->GetBytes(&ss, "ss"));
 
-  randombytes_init(seed.data(), 48);
+  use_deterministic_randombytes_for_testing();
+  randombytes_init_for_testing(seed.data());
 
   const EVP_PQ_KEM *kyber_kem = &EVP_PQ_KEM_kyber512;
   EXPECT_NE(kyber_kem, nullptr);

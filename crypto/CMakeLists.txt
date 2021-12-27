@@ -193,19 +193,6 @@ if(ARCH STREQUAL "x86_64")
   )
 endif()
 
-if (BUILD_TESTING)
-  set(RANDOMBYTES_SOURCES test/deterministic_randombytes.c)
-else()
-  set(RANDOMBYTES_SOURCES rand_extra/randombytes.c)
-endif()
-
-if (FIPS)
-  # The KAT tests require a deterministic RBG, which isn't there in FIPS regardless of test mode
-  set(KEM_KAT_TEST_SOURCES )
-else()
-  set(KEM_KAT_TEST_SOURCES evp_extra/pq_kem_kat_tests_kyber512.cc)
-endif()
-
 if(GO_EXECUTABLE)
   add_custom_command(
     OUTPUT err_data.c
@@ -383,6 +370,7 @@ add_library(
   rand_extra/forkunsafe.c
   rand_extra/fuchsia.c
   rand_extra/rand_extra.c
+  rand_extra/randombytes.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c
@@ -481,7 +469,6 @@ add_library(
 
   $<TARGET_OBJECTS:fipsmodule>
 
-  ${RANDOMBYTES_SOURCES}
   ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
@@ -588,6 +575,7 @@ if(BUILD_TESTING)
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
     evp_extra/pbkdf_test.cc
+    evp_extra/pq_kem_kat_tests_kyber512.cc
     evp_extra/pq_kem_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
@@ -637,8 +625,6 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
 
-    ${RANDOMBYTES_SOURCES}
-    ${KEM_KAT_TEST_SOURCES}
   )
 
   add_dependencies(crypto_test global_target)

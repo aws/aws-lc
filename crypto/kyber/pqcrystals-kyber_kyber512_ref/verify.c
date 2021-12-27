@@ -21,7 +21,13 @@ int verify(const uint8_t *a, const uint8_t *b, size_t len)
   for(i=0;i<len;i++)
     r |= a[i] ^ b[i];
 
-  return (-(uint64_t)r) >> 63;
+  /*
+   * The original logic: return (-(uint64_t)r) >> 63;
+   * It's been modified to preserve constant time and the intended logic, but
+   * avoids the compiler warning (which turns to an error on in MSVC) for
+   * performing a negation on an unsigned value.
+   */
+  return (-(int16_t)((uint16_t)r & 0x7FFF)) >> 15;
 }
 
 /*************************************************

@@ -7,8 +7,11 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include <openssl/base.h>
 
-void randombytes_init(const uint8_t *seed, size_t num_bytes);
+OPENSSL_EXPORT void use_deterministic_randombytes_for_testing(void);
+
+OPENSSL_EXPORT void randombytes_init_for_testing(const uint8_t *seed);
 
 int randombytes(uint8_t *random_array, size_t num_bytes);
 
