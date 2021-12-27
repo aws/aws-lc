@@ -533,7 +533,7 @@ if(BUILD_TESTING)
   add_dependencies(all_tests urandom_test)
 
   add_executable(
-    crypto_test
+    crypto_test.so
 
     abi_self_test.cc
     asn1/asn1_test.cc
@@ -608,17 +608,17 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
 
-  add_dependencies(crypto_test global_target)
+  add_dependencies(crypto_test.so global_target)
 
-  target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
+  target_link_libraries(crypto_test.so test_support_lib boringssl_gtest crypto)
   if(FIPS)
-    target_link_libraries(crypto_test jitterentropy)
-    add_dependencies(crypto_test jitterentropy)
+    target_link_libraries(crypto_test.so jitterentropy)
+    add_dependencies(crypto_test.so jitterentropy)
   endif()
   if(WIN32)
-    target_link_libraries(crypto_test ws2_32)
+    target_link_libraries(crypto_test.so ws2_32)
   endif()
-  add_dependencies(all_tests crypto_test)
+  add_dependencies(all_tests crypto_test.so)
 endif()
 
 install(TARGETS crypto
