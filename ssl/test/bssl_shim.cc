@@ -898,7 +898,7 @@ static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out)
   return true;
 }
 
-// MoveBIOs moves the |BIO|s of |src| to |dst|.  It is used for handoff.
+// MoveBIOs moves the |BIO|s of |src| to |dst|. It is used for SSL transfer.
 static void MoveBIOs(SSL *dest, SSL *src) {
   BIO *rbio = SSL_get_rbio(src);
   BIO_up_ref(rbio);
@@ -912,61 +912,32 @@ static void MoveBIOs(SSL *dest, SSL *src) {
   SSL_set0_wbio(src, nullptr);
 }
 
-static bool TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
-  MoveBIOs(to, from->get());
-  // // Fetch the bio.
-  // BIO *rbio = SSL_get_rbio(from->get());
-  // if (!rbio) {
-  //   fprintf(stderr, "SSL_get_rbio failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
-  //   return false;
-  // }
-  // BIO *wbio = SSL_get_wbio(from->get());
-  // if (!wbio) {
-  //   fprintf(stderr, "SSL_get_wbio failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
-  //   return false;
-  // }
-  // // Move the bio.
-  // // Increase ref count of |rbio|.
-  // // |SSL_set_bio(to, rbio, wbio)| only increments the references of |rbio| by 1 when |rbio == wbio|.
-  // // But |SSL_free| decreases the reference of |rbio| and |wbio|.
-  // if (rbio == wbio) {
-  //   BIO_up_ref(rbio);
-  // }
-  // SSL_set_bio(to, rbio, wbio);
-  // // TODO: test half read and write hold by SSL.
-  // // TODO: add a test to check error code?
-  // // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
-  // // SSL_free(from->release());
-  return true;
-}
-
-// TransferSSL performs SSL transfer by
-// 1. Encode the SSL of |in| into bytes.
-// 2. Decode the bytes into a new SSL.
-// 3. Free the SSL of |in|.
-// 4. If |out| is not nullptr, |out| will hold the decoded SSL.
-//    Else, |in| will get reset to hold the decoded SSL.
 static bool TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
+  // Encode the SSL |in| into bytes.
+  // Decode the bytes into a new SSL.
   bssl::UniquePtr<SSL> decoded_ssl;
   if (!EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl)){
     return false;
   }
-  // Transfer the bio.
-  if (!TransferBIOs(in, decoded_ssl.get())){
-    return false;
-  }
+  // Move the bio.
+  MoveBIOs(decoded_ssl.get(), in->get());
   if (!SetTestConfig(decoded_ssl.get(), GetTestConfig(in->get()))) {
     return false;
   }
+  // Move the test state.
   std::unique_ptr<TestState> state(GetTestState(in->get()));
   if (!SetTestState(decoded_ssl.get(), std::move(state))) {
     return false;
   }
+  // Unset the test state of |in|.
   std::unique_ptr<TestState> tmp1;
   if (!SetTestState(in->get(), std::move(tmp1)) || !SetTestConfig(in->get(), nullptr)) {
     return false;
   }
+  // Free the SSL of |in|.
   SSL_free(in->release());
+  // If |out| is not nullptr, |out| will hold the decoded SSL.
+  // Else, |in| will get reset to hold the decoded SSL.
   if (out == nullptr) {
     in->reset(decoded_ssl.release());
   } else {
@@ -1005,16 +976,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     } while (RetryAsync(ssl, ret));
 
     if (config->ssl_transfer == 1) {
-      if (ssl && SSL_is_server(ssl) && 
-          !SSL_is_dtls(ssl) && 
-          SSL_version(ssl) == TLS1_2_VERSION &&
-          ssl->s3 && 
-          !SSL_in_init(ssl) &&
-          !ssl->s3->established_session.get()->not_resumable) {
-        if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {
-          fprintf(stderr, "TransferSSL failed.\n");
-          return false;
-        }
+      if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {
+        return false;
         ssl = ssl_uniqueptr->get();
       }
     }
@@ -1266,7 +1229,6 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         for (int i = 0; i < n; i++) {
           buf[i] ^= 0xff;
         }
-
         if (WriteAll(ssl, buf.get(), n) < 0) {
           return false;
         }

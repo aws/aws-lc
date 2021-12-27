@@ -1881,6 +1881,8 @@ func bigFromHex(hex string) *big.Int {
 	return ret
 }
 
+const SSL_TRANSFER_SUFFIX = "-SSL_Transfer"
+
 func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testCase, err error) {
 	var stdout bytes.Buffer
 	shim := exec.Command(*shimPath, "-is-handshaker-supported")
@@ -1909,7 +1911,9 @@ NextTest:
 			test.testType != serverTest ||
 			strings.Contains(test.name, "DelegatedCredentials") ||
 			strings.Contains(test.name, "ECH-Server") ||
-			strings.Contains(test.name, "ECH-Server") ||
+			// Both handoff and ssl transfer tests are converted from
+			// existing tests. Skip the test to avoid duplicate conversion.
+			strings.Contains(test.name, SSL_TRANSFER_SUFFIX) ||
 			test.skipSplitHandshake {
 			continue
 		}
@@ -1959,81 +1963,22 @@ NextTest:
 }
 
 func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, err error) {
-	// TODO: check if below is needed by ssl transfer.
-	// var stdout bytes.Buffer
-	// shim := exec.Command(*shimPath, "-is-handshaker-supported")
-	// shim.Stdout = &stdout
-	// if err := shim.Run(); err != nil {
-	// 	return nil, err
-	// }
-
-	// switch strings.TrimSpace(string(stdout.Bytes())) {
-	// case "No":
-	// 	return
-	// case "Yes":
-	// 	break
-	// default:
-	// 	return nil, fmt.Errorf("unknown output from shim: %q", stdout.Bytes())
-	// }
-
-	// TODO: learn allowHintMismatchPattern design purpose.
-	// var allowHintMismatchPattern []string
-	// if len(*allowHintMismatch) > 0 {
-	// 	allowHintMismatchPattern = strings.Split(*allowHintMismatch, ";")
-	// }
-
-	// NextTest:
 	for _, test := range tests {
 		if test.protocol != tls ||
 			test.testType != serverTest ||
 			// test.name != "EarlyDataEnabled-Server-NegotiateTLS12" ||
-			// strings.Contains(test.name, "DelegatedCredentials") ||
-			// strings.Contains(test.name, "ECH-Server") ||
 			test.skipSSLTransfer {
 			continue
 		}
 
-		// for _, flag := range test.flags {
-		// 	if flag == "-implicit-handshake" {
-		// 		continue NextTest
-		// 	}
-		// }
-
 		stTest := test
-		stTest.name += "-SSL_Transfer"
+		stTest.name += SSL_TRANSFER_SUFFIX
 		stTest.flags = make([]string, len(test.flags), len(test.flags)+3)
 		copy(stTest.flags, test.flags)
-		// shTest.flags = append(shTest.flags, "-handoff", "-handshaker-path", *handshakerPath)
 		stTest.flags = append(stTest.flags, "-ssl_transfer", "1")
 
 		sslTransferTests = append(sslTransferTests, stTest)
 	}
-
-	// for _, test := range tests {
-	// 	if test.protocol == dtls ||
-	// 		test.testType != serverTest {
-	// 		continue
-	// 	}
-
-	// 	var matched bool
-	// 	if len(allowHintMismatchPattern) > 0 {
-	// 		matched, err = match(allowHintMismatchPattern, nil, test.name)
-	// 		if err != nil {
-	// 			return nil, fmt.Errorf("error matching pattern: %s", err)
-	// 		}
-	// 	}
-
-	// 	shTest := test
-	// 	shTest.name += "-Hints"
-	// 	shTest.flags = make([]string, len(test.flags), len(test.flags)+3)
-	// 	copy(shTest.flags, test.flags)
-	// 	shTest.flags = append(shTest.flags, "-handshake-hints", "-handshaker-path", *handshakerPath)
-	// 	if matched {
-	// 		shTest.flags = append(shTest.flags, "-allow-hint-mismatch")
-	// 	}
-
-	// 	splitHandshakeTests = append(splitHandshakeTests, shTest)
-	// }
 
 	return sslTransferTests, nil
 }

@@ -1198,10 +1198,6 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
 
   size_t write_iv_len = 0;
   const uint8_t *write_iv = nullptr;
-  // if (SSL_CIPHER_is_block_cipher(in->s3->aead_write_ctx->cipher()) &&
-  //     !in->s3->aead_write_ctx->GetIV(&write_iv, &write_iv_len)) {
-  //   return 0;
-  // }
 
   #if defined(SSL_DEBUG)
       fprintf(stderr, "SSL_to_bytes_full 1!\n");
@@ -1209,10 +1205,6 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
 
   size_t read_iv_len = 0;
   const uint8_t *read_iv = nullptr;
-  // if (SSL_CIPHER_is_block_cipher(in->s3->aead_read_ctx->cipher()) &&
-  //     !in->s3->aead_read_ctx->GetIV(&read_iv, &read_iv_len)) {
-  //     return 0;
-  // }
 
   #if defined(SSL_DEBUG)
       fprintf(stderr, "SSL_to_bytes_full 2!\n");
@@ -1251,7 +1243,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   uint64_t ssl_serial_ver, version, max_send_fragment;
   int quiet_shutdown;
 
-  // CBS read_key, write_key, read_iv, write_iv;
   CBS read_iv, write_iv;
   int sheded = 0;
   // Read version string from buffer
@@ -1369,35 +1360,29 @@ SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
 }
 
 int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
-  // int count = 0;
-  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
   if (in == NULL) {
     return 0;
   }
-  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
 
   ScopedCBB cbb;
   // An SSL connection can't be serialized by current implementation under some conditions
-  // 1) It's a DTLS connection
-  // 2) Crypto material wasn't saved upon making the connection
-  // 3) Its SSL_SESSION isn't serializable
-  // 4) Handshake hasn't finished yet
-  // 5) SSL is not of TLS 1.2 version
+  // 0) It's server SSL.
+  // 1) It's a DTLS connection.
+  // 2) Its SSL_SESSION isn't serializable.
+  // 3) Handshake hasn't finished yet.
+  // 4) SSL is not of TLS 1.2 version.
   //    TODO: support TLS 1.3 and TLS 1.1.
-  if (SSL_is_dtls(in) ||                // (1)
-      // !in->cm ||                        // (2)
+  if (!SSL_is_server(in) ||             // (0)
+      SSL_is_dtls(in) ||                // (1)
       !in->s3 ||
+      !in->s3->established_session ||   // (2)
       // TODO: check if this should be addressed by calling |SSL_SESSION_to_bytes|.
-      in->s3->established_session.get()->not_resumable ||    // (3)
-      SSL_in_init(in) ||                // (4)
-      in->version != TLS1_2_VERSION) {  // (5)
-    fprintf( stderr, "in->s3->established_session.get()->not_resumable %d\n", in->s3->established_session.get()->not_resumable);
-    fprintf( stderr, "SSL_in_init(in) %d\n", SSL_in_init(in));
-    // fprintf( stderr, "!in->cm %d\n", !in->cm);
+      in->s3->established_session.get()->not_resumable ||
+      SSL_in_init(in) ||                // (3)
+      in->version != TLS1_2_VERSION) {  // (4)
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
-  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
 
   CBB seq;
   if (!CBB_init(cbb.get(), 1024) ||
@@ -1405,7 +1390,6 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
       !SSL_to_bytes_full(in, &seq)) {
     return 0;
   }
-  // fprintf( stderr, "SSL_to_bytes %d\n", count++);
 
   return CBB_finish(cbb.get(), out_data, out_len);
 }

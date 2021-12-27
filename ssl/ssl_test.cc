@@ -2628,7 +2628,6 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
                                   server_ctx_.get(), config,
                                   shed_handshake_config_);
     if (connected) {
-      // TODO: add more tests on middle states. this transfer only tests the initial state of SSL.
       TransferServerSSL();
     }
     return connected;

@@ -2324,13 +2324,15 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 //
-// SSL transfer across processes after handshake finished:
+// |SSL_to_bytes| and |SSL_from_bytes| are developed to support SSL transfer
+// across processes after handshake finished. Accordingly, |SSL_to_bytes| does
+// not encode all fields of |SSL|.
 //
 // SSL transfer allows the TLS connection to be used in a different
 // process (or on a different machine). This only applies to servers.
 // 1. Before termination, the process 1 encodes the |SSL| by calling
 // |SSL_to_bytes|.
-// 2. Another process resumes the states by calling |SSL_from_bytes|.
+// 2. Another process resumes the |SSL| by calling |SSL_from_bytes|.
 //
 // Initial implementation of SSL transfer is made by Evgeny Potemkin.
 //
@@ -2340,9 +2342,6 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 //     fatal.
 // WARNING: The encoded data contains sensitive key material and must be
 //     protected.
-// WARNING: Some calls on the final |SSL| will not work. 
-//          TODO: give examples when found.
-// TODO: check if some callback functions get involved.
 
 // SSL_to_bytes serializes |in| into a newly allocated buffer and sets
 // |*out_data| to that buffer and |*out_len| to its length. The caller takes
@@ -2351,8 +2350,6 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 //
 // WARNING: Currently only works with TLS 1.2 after handshake finished.
 // WARNING: Currently only supports |SSL| as server.
-//
-// TODO: should the API be more specific on handshake finished?
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len);
@@ -5377,6 +5374,7 @@ OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 OPENSSL_EXPORT bool SSL_get_traffic_secrets(
     const SSL *ssl, Span<const uint8_t> *out_read_traffic_secret,
     Span<const uint8_t> *out_write_traffic_secret);
+
 
 BSSL_NAMESPACE_END
 

@@ -2618,6 +2618,9 @@ enum ssl_ech_status_t {
   ssl_ech_rejected,
 };
 
+#define SSL3_SEND_ALERT_SIZE 2
+#define SSL3_CHANNEL_ID_SIZE 64
+
 struct SSL3_STATE {
   static constexpr bool kAllowUniquePtr = true;
 
