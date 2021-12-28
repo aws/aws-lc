@@ -13,7 +13,7 @@ if [ $(dpkg --print-architecture) == "arm64" ]; then
   # Details: https://github.com/google/boringssl/blob/master/BUILDING.md
   # The blackbox tests (run `go test` under `ssl/test/runner`) take 30 minutes to complete on ARM when ASAN clang flag enabled.
   # But the blackbox tests take less than 2 minutes to complete on other test dimensions -- X86 ASAN and ARM (when ASAN disabled).
-  # Instead of running the two sets tests, only the former test is executed here.
+  # Instead of running the two sets tests, only the former test is executed here. ssl runner tests are covered by |run_ssl_asan_tests.sh|.
   # https://github.com/google/sanitizers/issues/1331
   echo "Building AWS-LC in ${build_type} mode with address sanitizer, and running only non ssl test."
   run_build -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"

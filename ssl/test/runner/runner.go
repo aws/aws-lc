@@ -80,6 +80,8 @@ var (
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 	onlySslTransfer    = flag.Bool("only-ssl-transfer", true, "If true, only run SSL transfer tests.")
 	sslTransferConfig  = flag.String("ssl-transfer-config-file", "", "A config file to use to tell if the test should be converted for SSL transfer.")
+	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
+	testCaseEndIndex   = flag.Int("test-case-end-index", -1, "If non-negative, test case is filtered in if the index in |testCases| <= test-case-end-index.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -19212,6 +19214,34 @@ func checkTests() {
 	}
 }
 
+// filterTests filters |inputTests| given the index range [|startIndex|, |endIndex|].
+// When |startIndex| is negative, the default value |0| is used.
+// When |endIndex| is negative, the default value |len(inputTests) - 1| is used.
+// |inputTests| and the final filtered test cases cannot be empty.
+func filterTests(inputTests []testCase, startIndex int, endIndex int) []testCase {
+	if (len(inputTests) == 0) || ((startIndex < 0) && (endIndex < 0)) {
+		return inputTests
+	}
+	var filteredTestCases []testCase
+	if startIndex < 0 {
+		// Default to the start index of |inputTests|.
+		startIndex = 0
+	}
+	if endIndex < 0 {
+		// Default to the end index of |inputTests|.
+		endIndex = len(inputTests) - 1
+	}
+	for i, t := range inputTests {
+		if (i >= startIndex) && (i <= endIndex) {
+			filteredTestCases = append(filteredTestCases, t)
+		}
+	}
+	if len(filteredTestCases) == 0 {
+		panic(fmt.Sprintf("filteredTestCases is empty. startIndex: %d, endIndex: %d.", startIndex, endIndex))
+	}
+	return filteredTestCases
+}
+
 var sslTransferHelper *ssl_transfer.TestHelper
 
 func main() {
@@ -19301,6 +19331,8 @@ func main() {
 		}
 		testCases = append(testCases, sslTransferTests...)
 	}
+
+	testCases = filterTests(testCases, *testCaseStartIndex, *testCaseEndIndex)
 
 	checkTests()
 

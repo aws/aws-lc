@@ -497,6 +497,10 @@ if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()
 
+if(FIPS AND NOT BUILD_SHARED_LIBS)
+  message(FATAL_ERROR "Building AWS-LC for FIPS only supports the shared build, you must pass in '-DBUILD_SHARED_LIBS=TRUE'")
+endif()
+
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
@@ -757,6 +761,12 @@ endif()
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
   set(SSL_TRANSFER_ARGS "-ssl-transfer-config-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
+  if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
+    set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
+  endif()
+  if(DEFINED ENV{AWS_LC_SSL_RUNNER_END_INDEX})
+    set(AWS_LC_SSL_RUNNER_INDEX_FILTER "${AWS_LC_SSL_RUNNER_INDEX_FILTER}" "-test-case-end-index" $ENV{AWS_LC_SSL_RUNNER_END_INDEX})
+  endif()
 endif()
 
 # Define GO_TEST_TIMEOUT based on env variable.
@@ -801,12 +811,20 @@ if(BUILD_TESTING)
 
     if(BUILD_LIBSSL)
       add_custom_target(
-          run_tests
+          run_ssl_runner_tests
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${SSL_TRANSFER_ARGS}
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-          DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
+          DEPENDS bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
+          run_tests
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${CMAKE_BINARY_DIR}
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(
