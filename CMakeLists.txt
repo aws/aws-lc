@@ -497,17 +497,12 @@ if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
 endif()
 
+if(FIPS AND NOT BUILD_SHARED_LIBS)
+  message(FATAL_ERROR "Building AWS-LC for FIPS only supports the shared build, you must pass in '-DBUILD_SHARED_LIBS=TRUE'")
+endif()
+
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
-  # DISABLE_GETAUXVAL builds the object file - bcm.o(the fips module) without
-  # the reference to `getauxval` on the Linux platforms(e.g. AL2 and Ubuntu 20.04).
-  # The `bcm.o` will be used later in another build on old Linux platforms where glibc
-  # prior to 2.16 does not have `getauxval` and `sys/auxv.h`.
-  # Warn: DISABLE_GETAUXVAL is currently only tested in the `shared` build on `x86_64`.
-  if(DISABLE_GETAUXVAL)
-    message(STATUS "NO_GETAUXVAL is enabled.")
-    add_definitions(-DNO_GETAUXVAL)
-  endif()
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
   endif()
@@ -518,19 +513,6 @@ if(FIPS)
     else()
       set(FIPS_DELOCATE "1")
     endif()
-  endif()
-  # Perform some validation when FIPS_VENDOR_AFFIRM_BCM_O_PATH is provided.
-  # Warn:
-  # aws-lc FIPS validation only covers AL2 and Ubuntu 20.04.
-  # FIPS_VENDOR_AFFIRM_BCM_O_PATH is to provide prebuilt bcm.o on some old Linux platforms.
-  if(FIPS_VENDOR_AFFIRM_BCM_O_PATH)
-    if(NOT BUILD_SHARED_LIBS)
-      message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_BCM_O_PATH currently only supports build with BUILD_SHARED_LIBS=1.")
-    endif()
-    if(NOT GCC)
-      message(FATAL_ERROR "FIPS_VENDOR_AFFIRM_BCM_O_PATH currently only supports build with GCC compiler.")
-    endif()
-    message(STATUS "FIPS_VENDOR_AFFIRM_BCM_O_PATH ${FIPS_VENDOR_AFFIRM_BCM_O_PATH} is provided.")
   endif()
   if(FIPS_SHARED)
     # The Android CMake files set -ffunction-sections and -fdata-sections,
@@ -779,6 +761,12 @@ endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
+  if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
+    set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
+  endif()
+  if(DEFINED ENV{AWS_LC_SSL_RUNNER_END_INDEX})
+    set(AWS_LC_SSL_RUNNER_INDEX_FILTER "${AWS_LC_SSL_RUNNER_INDEX_FILTER}" "-test-case-end-index" $ENV{AWS_LC_SSL_RUNNER_END_INDEX})
+  endif()
 endif()
 
 # Define GO_TEST_TIMEOUT based on env variable.
@@ -823,14 +811,20 @@ if(BUILD_TESTING)
 
     if(BUILD_LIBSSL)
       add_custom_target(
+          run_ssl_runner_tests
+          COMMAND cd ssl/test/runner &&
+                  ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER}
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          DEPENDS bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${CMAKE_BINARY_DIR}
-          COMMAND cd ssl/test/runner &&
-                  ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-          DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
+          DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(

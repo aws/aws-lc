@@ -1331,11 +1331,13 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
   int num_attempts = 0;
 
   do {
-  // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
-  // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
-  // should just adjust the retry limit, but FIPS 186-4 prescribes that value
-  // and thus results in unnecessary complexity.
-  failures = 0;
+    // The inner do-while loop can be considered as one invocation of RSA
+    // key generation:
+    // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
+    // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
+    // should just adjust the retry limit, but FIPS 186-4 prescribes that value
+    // and thus results in unnecessary complexity.
+    failures = 0;
     do {
       ERR_clear_error();
       // Generate into scratch space, to avoid leaving partial work on failure.
