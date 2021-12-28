@@ -883,7 +883,7 @@ static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out)
   bssl::UniquePtr<uint8_t> encoded;
   uint8_t *encoded_raw;
   if (!SSL_to_bytes(in, &encoded_raw, &encoded_len)) {
-    // fprintf(stderr, "SSL_to_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    fprintf(stderr, "SSL_to_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_peek_last_error()));
     return false;
   }
   encoded.reset(encoded_raw);
@@ -891,7 +891,7 @@ static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out)
   const uint8_t *ptr2 = encoded.get();
   SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
   if (server2_ == nullptr) {
-    // fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_peek_last_error()));
     return false;
   }
   out->reset(server2_);
@@ -946,20 +946,23 @@ static bool TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniqueP
   return true;
 }
 
-// Check if |ssl| can be transferred using |SSL_to_bytes|.
-static bool CanBeTransferred(SSL *ssl) {
-  if (!ssl) {
-    return false;
-  }
+// Check if |in| can be encoded using |SSL_to_bytes|.
+static bool CanBeEncoded(SSL *in) {
+  // |SSL_to_bytes| may generate new error code.
+  // |ERR_set_mark| and |ERR_pop_to_mark| are used to clean the error states.
+  int marked = ERR_set_mark();
+  // Encoding SSL to bytes.
   size_t encoded_len;
   bssl::UniquePtr<uint8_t> encoded;
   uint8_t *encoded_raw;
-  if (SSL_to_bytes(ssl, &encoded_raw, &encoded_len)) {
-    return true;
+  bool ret = SSL_to_bytes(in, &encoded_raw, &encoded_len);
+  if (ret) {
+    encoded.reset(encoded_raw);
   }
-  // The error code should be checked to exclude
-  // unknown cases that can cause the failure of |SSL_to_bytes|.
-  return ERR_get_error() != ERR_R_INTERNAL_ERROR;
+  if (marked) {
+    ERR_pop_to_mark();
+  }
+  return ret;
 }
 
 static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
@@ -991,15 +994,24 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       });
     } while (RetryAsync(ssl, ret));
 
-    if (config->check_ssl_transfer == 1 && CanBeTransferred(ssl)) {
-      fprintf(stdout, "sxeqs\n");
+    if (config->check_ssl_transfer == 1 && CanBeEncoded(ssl)) {
+      // Below message is to inform runner.go that this test case can
+      // be converted to test SSL transfer.
+      // In the converted test, |CanBeEncoded| should be called again
+      // before |TransferSSL| because each test case may perform
+      // multiple connections. Not all connections can
+      // be encoded(identified by |CanBeEncoded| check).
+      fprintf(stderr, "Eligible for testing SSL transfer.\n");
     }
 
-    if (config->ssl_transfer == 1) {
+    if (config->ssl_transfer == 1 && CanBeEncoded(ssl)) {
+      // Below message is to inform runner.go that this test case 
+      // is going to test SSL transfer.
+      fprintf(stderr, "SSL transfer is going to be test.\n");
       if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {
         return false;
-        ssl = ssl_uniqueptr->get();
       }
+      ssl = ssl_uniqueptr->get();
     }
 
     if (config->forbid_renegotiation_after_handshake) {

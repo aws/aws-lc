@@ -1374,13 +1374,17 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   //    TODO: support TLS 1.3 and TLS 1.1.
   if (!SSL_is_server(in) ||             // (0)
       SSL_is_dtls(in) ||                // (1)
-      !in->s3 ||
-      !in->s3->established_session ||   // (2)
-      // TODO: check if this should be addressed by calling |SSL_SESSION_to_bytes|.
+      !in->s3 ||                        // (2)
+      !in->s3->established_session ||
       in->s3->established_session.get()->not_resumable ||
       SSL_in_init(in) ||                // (3)
       in->version != TLS1_2_VERSION) {  // (4)
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    // fprintf( stderr, "!SSL_is_server(in) %d\n", !SSL_is_server(in));
+    // fprintf( stderr, "SSL_is_dtls(in) %d\n", SSL_is_dtls(in));
+    // fprintf( stderr, "SSL_in_init(in) %d\n", SSL_in_init(in));
+    // fprintf( stderr, "in->version %x\n", in->version);
+    // fprintf( stderr, "in->s3->established_session.get()->not_resumable %d\n", in->s3->established_session.get()->not_resumable);
     return 0;
   }
 
