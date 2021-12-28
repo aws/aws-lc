@@ -244,7 +244,8 @@ const Flag<int> kIntFlags[] = {
     {"-install-one-cert-compression-alg",
      &TestConfig::install_one_cert_compression_alg},
     {"-early-write-after-message", &TestConfig::early_write_after_message},
-    {"-ssl_transfer", &TestConfig::ssl_transfer},
+    {"-check-ssl-transfer", &TestConfig::check_ssl_transfer},
+    {"-ssl-transfer", &TestConfig::ssl_transfer},
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

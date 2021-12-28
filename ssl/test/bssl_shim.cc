@@ -883,7 +883,7 @@ static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out)
   bssl::UniquePtr<uint8_t> encoded;
   uint8_t *encoded_raw;
   if (!SSL_to_bytes(in, &encoded_raw, &encoded_len)) {
-    fprintf(stderr, "SSL_to_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    // fprintf(stderr, "SSL_to_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
     return false;
   }
   encoded.reset(encoded_raw);
@@ -891,7 +891,7 @@ static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out)
   const uint8_t *ptr2 = encoded.get();
   SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
   if (server2_ == nullptr) {
-    fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
+    // fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_get_error()));
     return false;
   }
   out->reset(server2_);
@@ -946,6 +946,22 @@ static bool TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniqueP
   return true;
 }
 
+// Check if |ssl| can be transferred using |SSL_to_bytes|.
+static bool CanBeTransferred(SSL *ssl) {
+  if (!ssl) {
+    return false;
+  }
+  size_t encoded_len;
+  bssl::UniquePtr<uint8_t> encoded;
+  uint8_t *encoded_raw;
+  if (SSL_to_bytes(ssl, &encoded_raw, &encoded_len)) {
+    return true;
+  }
+  // The error code should be checked to exclude
+  // unknown cases that can cause the failure of |SSL_to_bytes|.
+  return ERR_get_error() != ERR_R_INTERNAL_ERROR;
+}
+
 static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
                        bssl::UniquePtr<SSL> *ssl_uniqueptr,
                        const TestConfig *config, bool is_resume, bool is_retry,
@@ -974,6 +990,10 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return SSL_do_handshake(ssl);
       });
     } while (RetryAsync(ssl, ret));
+
+    if (config->check_ssl_transfer == 1 && CanBeTransferred(ssl)) {
+      fprintf(stdout, "sxeqs\n");
+    }
 
     if (config->ssl_transfer == 1) {
       if (!TransferSSL(ssl_uniqueptr, session_ctx, nullptr)) {

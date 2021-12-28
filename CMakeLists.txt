@@ -756,6 +756,7 @@ endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-config-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
 endif()
 
 # Define GO_TEST_TIMEOUT based on env variable.
@@ -801,11 +802,9 @@ if(BUILD_TESTING)
     if(BUILD_LIBSSL)
       add_custom_target(
           run_tests
-          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR}
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${SSL_TRANSFER_ARGS}
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})

@@ -47,6 +47,7 @@ import (
 	"time"
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/ssl_transfer"
 	"boringssl.googlesource.com/boringssl/util/testresult"
 )
 
@@ -78,6 +79,7 @@ var (
 	includeDisabled    = flag.Bool("include-disabled", false, "If true, also runs disabled tests.")
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 	onlySslTransfer    = flag.Bool("only-ssl-transfer", true, "If true, only run SSL transfer tests.")
+	sslTransferConfig  = flag.String("ssl-transfer-config-file", "", "A config file to use to tell if the test should be converted for SSL transfer.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -1672,6 +1674,13 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 	stdout := strings.Replace(shim.stdout.String(), "\r\n", "\n", -1)
 	stderr := strings.Replace(shim.stderr.String(), "\r\n", "\n", -1)
 
+	// bssl_shim generates error msg "SSL can be transferred"
+	ssl_transfer_msg := "sxeqs\n"
+	if strings.Contains(stdout, ssl_transfer_msg) {
+		sslTransferHelper.AddNewCase(test.name)
+		stdout = strings.Replace(stdout, ssl_transfer_msg, "", -1)
+	}
+
 	// Work around an NDK / Android bug. The NDK r16 sometimes generates
 	// binaries with the DF_1_PIE, which the runtime linker on Android N
 	// complains about. The next NDK revision should work around this but,
@@ -1963,21 +1972,30 @@ NextTest:
 }
 
 func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, err error) {
-	for _, test := range tests {
+	// No conversion is peformed when sslTransferHelper is not initialized.
+	if sslTransferHelper == nil {
+		return sslTransferTests, nil
+	}
+	for i, test := range tests {
 		if test.protocol != tls ||
-			test.testType != serverTest ||
-			// test.name != "EarlyDataEnabled-Server-NegotiateTLS12" ||
-			test.skipSSLTransfer {
+			test.testType != serverTest {
 			continue
 		}
 
 		stTest := test
-		stTest.name += SSL_TRANSFER_SUFFIX
-		stTest.flags = make([]string, len(test.flags), len(test.flags)+3)
-		copy(stTest.flags, test.flags)
-		stTest.flags = append(stTest.flags, "-ssl_transfer", "1")
-
-		sslTransferTests = append(sslTransferTests, stTest)
+		if sslTransferHelper.CanBeTransfer(stTest.name) {
+			stTest.name += SSL_TRANSFER_SUFFIX
+			stTest.flags = make([]string, len(test.flags), len(test.flags)+2)
+			copy(stTest.flags, test.flags)
+			stTest.flags = append(stTest.flags, "-ssl-transfer", "1")
+			sslTransferTests = append(sslTransferTests, stTest)
+		} else {
+			newFlags := make([]string, len(test.flags), len(test.flags)+2)
+			copy(newFlags, test.flags)
+			newFlags = append(newFlags, "-check-ssl-transfer", "1")
+			test.flags = newFlags
+			tests[i] = test
+		}
 	}
 
 	return sslTransferTests, nil
@@ -19194,6 +19212,8 @@ func checkTests() {
 	}
 }
 
+var sslTransferHelper *ssl_transfer.TestHelper
+
 func main() {
 	flag.Parse()
 	*resourceDir = path.Clean(*resourceDir)
@@ -19264,19 +19284,23 @@ func main() {
 	addHintMismatchTests()
 	// addSSLi2d2iTests()
 
-	sslTransferTests, err := convertToSSLTransferTests(testCases)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error making SSL transfer tests: %s", err)
-		os.Exit(1)
-	}
-	testCases = append(testCases, sslTransferTests...)
-
 	toAppend, err := convertToSplitHandshakeTests(testCases)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error making split handshake tests: %s", err)
 		os.Exit(1)
 	}
 	testCases = append(testCases, toAppend...)
+
+	if len(*sslTransferConfig) > 0 {
+		// Init ssl transfer helper.
+		sslTransferHelper = ssl_transfer.NewTestHelper(*sslTransferConfig)
+		sslTransferTests, err := convertToSSLTransferTests(testCases)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error making SSL transfer tests: %s", err)
+			os.Exit(1)
+		}
+		testCases = append(testCases, sslTransferTests...)
+	}
 
 	checkTests()
 
@@ -19368,5 +19392,9 @@ func main() {
 
 	if !testOutput.HasUnexpectedResults() {
 		os.Exit(1)
+	}
+
+	if sslTransferHelper != nil {
+		sslTransferHelper.CheckTestCases()
 	}
 }

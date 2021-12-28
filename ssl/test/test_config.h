@@ -197,9 +197,10 @@ struct TestConfig {
   bool wait_for_debugger = false;
   std::string quic_early_data_context;
   int early_write_after_message = 0;
+  // When check_ssl_transfer is 1, bssl checks if the ssl can be transferred.
+  int check_ssl_transfer = 0;
   // when ssl_transfer is 0, no transfer will happen.
   // when ssl_transfer is 1, transfer will happen if the ssl is server.
-  // when ssl_transfer is 2, transfer will happen if the ssl is client.
   int ssl_transfer = 0;
 
   int argc;
