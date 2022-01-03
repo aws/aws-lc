@@ -1159,7 +1159,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
 #define SSL_SERIAL_VERSION 1
 
 static const unsigned kSSLQuietShutdownTag = 
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
 
 //  Parse serialized SSL connection binary
 //
@@ -1171,15 +1171,11 @@ static const unsigned kSSLQuietShutdownTag =
 //  SSL ::= SEQUENCE {
 //      ssl_serial_ver UINT64                        -- version of the SSL serialization format
 //      version        UINT64
-//      read_key       OCTET STRING                  -- connection read key
-//      write_key      OCTET STRING                  -- connection write key
-//      read_iv        OCTET STRING                  -- connection read IV
-//      write_iv       OCTET STRING                  -- connection write IV
 //      sheded         BOOLEAN                       -- indicate if the config is sheded. The config may not exist
 //                                                      since the configuration 
 //                                                      may be shed after the handshake completes
 //      s3             SEQUENCE
-//      quietShutdown  [1] BOOLEAN OPTIONAL,
+//      quietShutdown  [0] BOOLEAN OPTIONAL,
 //  }
 //
 //  Note that serialized SSL_SESSION is always prepended to the serialized SSL
@@ -1191,32 +1187,14 @@ static const unsigned kSSLQuietShutdownTag =
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl, child;
 
+  // TODO: check how to handle config.
   int sheded = !in->config;
-  #if defined(SSL_DEBUG)
-      fprintf(stderr, "SSL_to_bytes_full start!\n");
-  #endif
-
-  size_t write_iv_len = 0;
-  const uint8_t *write_iv = nullptr;
-
-  #if defined(SSL_DEBUG)
-      fprintf(stderr, "SSL_to_bytes_full 1!\n");
-  #endif
-
-  size_t read_iv_len = 0;
-  const uint8_t *read_iv = nullptr;
-
-  #if defined(SSL_DEBUG)
-      fprintf(stderr, "SSL_to_bytes_full 2!\n");
-  #endif
 
   if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
     !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
     //    FIXME add hash of SSL_CTX
     !CBB_add_asn1_uint64(&ssl, in->version) ||
     !CBB_add_asn1_uint64(&ssl, in->max_send_fragment) ||
-    !CBB_add_asn1_octet_string(&ssl, read_iv, read_iv_len) ||
-    !CBB_add_asn1_octet_string(&ssl, write_iv, write_iv_len) ||
     !CBB_add_asn1_bool(&ssl, sheded) ||
     !SSL3_STATE_to_bytes(in->s3, &ssl)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -1231,10 +1209,6 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     }
   }
 
-  #if defined(SSL_DEBUG)
-      fprintf(stderr, "SSL_to_bytes_full end!\n");
-  #endif
-
   return CBB_flush(cbb);
 }
 
@@ -1243,7 +1217,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   uint64_t ssl_serial_ver, version, max_send_fragment;
   int quiet_shutdown;
 
-  CBS read_iv, write_iv;
   int sheded = 0;
   // Read version string from buffer
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
@@ -1261,10 +1234,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   // This TODO is actually a part of SSL DER struct revisit.
   if (!CBS_get_asn1_uint64(&ssl_cbs, &version) ||
     !CBS_get_asn1_uint64(&ssl_cbs, &max_send_fragment) ||
-    !CBS_get_asn1(&ssl_cbs, &read_iv, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&read_iv) > EVP_MAX_IV_LENGTH ||
-    !CBS_get_asn1(&ssl_cbs, &write_iv, CBS_ASN1_OCTETSTRING) ||
-    CBS_len(&write_iv) > EVP_MAX_IV_LENGTH ||
     !CBS_get_asn1_bool(&ssl_cbs, &sheded)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
@@ -1273,7 +1242,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   ssl->version = version;
   ssl->max_send_fragment = max_send_fragment;
 
-  // TODO: make s3 as optional tag.
   // This is called separately to avoid overriding error code.
   if (!SSL3_STATE_from_bytes(ssl->s3, &ssl_cbs, ssl->ctx.get())) {
     return 0;
@@ -1333,7 +1301,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
 SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
   if (!in || !in_len || !ctx) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return NULL;
   }
 
@@ -1361,6 +1329,7 @@ SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
 
 int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   if (in == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 
@@ -1377,6 +1346,7 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
       !in->s3 ||                        // (2)
       !in->s3->established_session ||
       in->s3->established_session.get()->not_resumable ||
+      // TODO: Check in->s3->rwstate.
       SSL_in_init(in) ||                // (3)
       in->version != TLS1_2_VERSION) {  // (4)
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

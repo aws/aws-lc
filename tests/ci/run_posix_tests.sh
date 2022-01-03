@@ -10,7 +10,7 @@ source tests/ci/common_posix_setup.sh
 
 # echo "Testing AWS-LC in debug mode."
 run_build
-run_cmake_custom_target 'run_ssl_runner_tests'
+run_cmake_custom_target 'run_tests'
 chmod a+rw /home/ubuntu/bryce-shang/aws-lc/ssl/test/runner/ssl_transfer/test_case_names.txt
 # ./test_build_dir/ssl/ssl_test 
 # ./test_build_dir/ssl/ssl_test --gtest_filter=WithVersion/SSLVersionTest.OneSidedShutdown/TLS1_2_SSL_TRANSFER

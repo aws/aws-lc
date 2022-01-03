@@ -2325,8 +2325,7 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 //
 // |SSL_to_bytes| and |SSL_from_bytes| are developed to support SSL transfer
-// across processes after handshake finished. Accordingly, |SSL_to_bytes| does
-// not encode all fields of |SSL|.
+// across processes after handshake finished.
 //
 // SSL transfer allows the TLS connection to be used in a different
 // process (or on a different machine). This only applies to servers.
@@ -2349,7 +2348,9 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // one on success and zero on error.
 //
 // WARNING: Currently only works with TLS 1.2 after handshake finished.
+// WARNING: |SSL_to_bytes| only applies to servers.
 // WARNING: Currently only supports |SSL| as server.
+// WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len);
