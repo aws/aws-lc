@@ -23,6 +23,16 @@
 // banner at the top of the corresponding assembly (.S) file, and
 // for the last word in what properties it satisfies see the spec in the
 // formal proof (the .ml file in the architecture-specific directory).
+//
+// For some functions there are additional variants with names ending in
+// "_alt". These have the same core mathematical functionality as their
+// non-"alt" versions, but can be better suited to some microarchitectures:
+//
+//      - On x86, the "_alt" forms avoid BMI and ADX instruction set
+//        extensions, so will run on any x86_64 machine, even older ones
+//
+//      - On ARM, the "_alt" forms target machines with higher multiplier
+//        throughput, generally offering higher performance there.
 // ----------------------------------------------------------------------------
 
 // Add, z := x + y
