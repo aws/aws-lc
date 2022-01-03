@@ -4,7 +4,8 @@ phases:
   build:
     commands:
       - chmod +x ./AWSLCAndroidTestRunner/gradlew
-      - ./AWSLCAndroidTestRunner/gradlew assembleDebug
+      - cd AWSLCAndroidTestRunner
+      - ./gradlew assembleDebug
 artifacts:
   files:
      - './AWSLCAndroidTestRunner/app/build/outputs/**/*.apk'
