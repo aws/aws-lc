@@ -32,7 +32,7 @@ extern "C" {
 #define HWAES_ECB
 
 OPENSSL_INLINE int hwaes_capable(void) {
-  return (OPENSSL_ia32cap_get()[1] & (1 << (57 - 32))) != 0;
+  return (OPENSSL_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 }
 
 #define VPAES
@@ -41,7 +41,7 @@ OPENSSL_INLINE int hwaes_capable(void) {
 #endif
 #define VPAES_CBC
 OPENSSL_INLINE int vpaes_capable(void) {
-  return (OPENSSL_ia32cap_get()[1] & (1 << (41 - 32))) != 0;
+  return (OPENSSL_ia32cap_P[1] & (1 << (41 - 32))) != 0;
 }
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)

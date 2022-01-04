@@ -65,6 +65,10 @@
 extern "C" {
 #endif
 
+// Flag so |md_ctx->pctx| is not freed up in |EVP_MD_CTX_cleanup|. Only intended
+// for internal use when |*pctx| was set externally with
+// |EVP_MD_CTX_set_pkey_ctx|.
+#define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX   0x0400
 
 struct evp_pkey_asn1_method_st {
   int pkey_id;

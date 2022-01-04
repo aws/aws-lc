@@ -504,21 +504,33 @@ int EC_KEY_generate_key(EC_KEY *key) {
 }
 
 int EC_KEY_generate_key_fips(EC_KEY *eckey) {
+  int ret = 0;
+  int num_attempts = 0;
   // We have to verify both |EC_KEY_generate_key| and |EC_KEY_check_fips| both
   // succeed before updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  if (EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey)) {
-    FIPS_service_indicator_unlock_state();
+  do {
+    ret = EC_KEY_generate_key(eckey);
+    ret &= EC_KEY_check_fips(eckey);
+    num_attempts++;
+  } while ((ret == 0) && (num_attempts < MAX_KEYGEN_ATTEMPTS));
+
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
     FIPS_service_indicator_update_state();
     return 1;
   }
 
-  FIPS_service_indicator_unlock_state();
   EC_POINT_free(eckey->pub_key);
   ec_wrapped_scalar_free(eckey->priv_key);
   eckey->pub_key = NULL;
   eckey->priv_key = NULL;
+
+#if defined(AWSLC_FIPS)
+  BORINGSSL_FIPS_abort();
+#else
   return 0;
+#endif
 }
 
 int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,

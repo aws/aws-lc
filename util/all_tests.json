@@ -13,6 +13,16 @@
     "skip_valgrind": true
   },
   {
+    "cmd": ["crypto/crypto_test"],
+    "env": ["OPENSSL_armcap=0x0"],
+    "target_arch": "arm"
+  },
+  {
+    "cmd": ["crypto/crypto_test"],
+    "env": ["OPENSSL_armcap=0x1"],
+    "target_arch": "arm"
+  },
+  {
     "cmd": ["crypto/urandom_test"],
     "skip_valgrind": true
   },
@@ -20,31 +30,36 @@
     "comment": "Without RDRAND",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x4000000000000000"],
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "target_arch": "x86"
   },
   {
     "comment": "Potentially with RDRAND, but not Intel",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x0000000040000000"],
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "target_arch": "x86"
   },
   {
     "comment": "Potentially with RDRAND, and forced to Intel",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=|0x0000000040000000"],
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "target_arch": "x86"
   },
   {
     "comment": "No RDRAND and without fork detection",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x4000000000000000", "BORINGSSL_IGNORE_MADV_WIPEONFORK=1", "BORINGSSL_IGNORE_PTHREAD_ATFORK=1"],
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "target_arch": "x86"
   },
   {
     "comment": "Potentially with RDRAND, but not Intel, and without fork detection",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x0000000040000000", "BORINGSSL_IGNORE_MADV_WIPEONFORK=1", "BORINGSSL_IGNORE_PTHREAD_ATFORK=1"],
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "target_arch": "x86"
   },
   {
     "comment": "Run RAND test suite without fork detection",

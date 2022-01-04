@@ -16,10 +16,9 @@
 #define OPENSSL_HEADER_CRYPTO_CPU_ARM_LINUX_H
 
 #include <openssl/base.h>
+#include "../../internal.h"
 
 #include <string.h>
-
-#include "internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
