@@ -246,3 +246,113 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
   HMAC_CTX_init(dest);
   return HMAC_CTX_copy_ex(dest, src);
 }
+
+// Do I need to check return values in cleanup?
+// Can I use the output parameter as scratch in final?
+#define AWSLC_IMPLEMENT_HMAC_FNS(HMAC_NAME, HMAC_CTX, MD_NAME, MD_CTX_NAME,    \
+                                 HMAC_LEN, BLOCK_SIZE)                         \
+  OPENSSL_EXPORT void HMAC_NAME##_cleanup(HMAC_CTX *ctx) {                     \
+    MD_NAME##_Init(&ctx->md_ctx);                                              \
+    MD_NAME##_Init(&ctx->i_ctx);                                               \
+    MD_NAME##_Init(&ctx->o_ctx);                                               \
+    ctx->initialized = 0;                                                      \
+  }                                                                            \
+                                                                               \
+  OPENSSL_EXPORT int HMAC_NAME##_Update(HMAC_CTX *ctx, const uint8_t *data,    \
+                                        size_t data_len) {                     \
+    assert(ctx->initialized);                                                  \
+    return MD_NAME##_Update(&ctx->md_ctx, data, data_len);                     \
+  }                                                                            \
+                                                                               \
+  OPENSSL_EXPORT int HMAC_NAME##_Final(HMAC_CTX *ctx, uint8_t out[HMAC_LEN]) { \
+    assert(ctx->initialized);                                                  \
+    if (!MD_NAME##_Final(out, &ctx->md_ctx)) {                                 \
+      return 0;                                                                \
+    }                                                                          \
+    OPENSSL_memcpy(&ctx->md_ctx, &ctx->o_ctx, sizeof(MD_CTX_NAME));            \
+    if (!MD_NAME##_Update(&ctx->md_ctx, out, HMAC_LEN)) {                      \
+      return 0;                                                                \
+    }                                                                          \
+    return MD_NAME##_Final(out, &ctx->md_ctx);                                 \
+  }                                                                            \
+                                                                               \
+  OPENSSL_EXPORT int HMAC_NAME##_Init(HMAC_CTX *ctx, const void *key,          \
+                                      size_t key_len) {                        \
+    if (key != NULL || ctx->initialized != 1) {                                \
+      uint8_t pad[BLOCK_SIZE] = {0};                                           \
+      uint8_t key_block[BLOCK_SIZE] = {0};                                     \
+      if (BLOCK_SIZE < key_len) {                                              \
+        if (!MD_NAME##_Init(&ctx->md_ctx) ||                                   \
+            !MD_NAME##_Update(&ctx->md_ctx, key, key_len) ||                   \
+            !MD_NAME##_Final(key_block, &ctx->md_ctx)) {                       \
+          return 0;                                                            \
+        }                                                                      \
+      } else {                                                                 \
+        OPENSSL_memcpy(key_block, key, key_len);                               \
+      }                                                                        \
+      for (size_t i = 0; i < BLOCK_SIZE; i++) {                                \
+        pad[i] = 0x36 ^ key_block[i];                                          \
+      }                                                                        \
+      if (!MD_NAME##_Init(&ctx->i_ctx) ||                                      \
+          !MD_NAME##_Update(&ctx->i_ctx, pad, BLOCK_SIZE)) {                   \
+        return 0;                                                              \
+      }                                                                        \
+      for (size_t i = 0; i < BLOCK_SIZE; i++) {                                \
+        pad[i] = 0x5c ^ key_block[i];                                          \
+      }                                                                        \
+      if (!MD_NAME##_Init(&ctx->o_ctx) ||                                      \
+          !MD_NAME##_Update(&ctx->o_ctx, pad, BLOCK_SIZE)) {                   \
+        return 0;                                                              \
+      }                                                                        \
+      ctx->initialized = 1;                                                    \
+    }                                                                          \
+    OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(MD_CTX_NAME));            \
+    return 1;                                                                  \
+  }                                                                            \
+  OPENSSL_EXPORT int HMAC_NAME(const void *key, size_t key_len,                \
+                               const uint8_t *data, size_t data_len,           \
+                               uint8_t out[HMAC_LEN]) {                        \
+    HMAC_CTX ctx = {0};                                                        \
+    int result;                                                                \
+    result = HMAC_NAME##_Init(&ctx, key, key_len) &&                           \
+             HMAC_NAME##_Update(&ctx, data, data_len) &&                       \
+             HMAC_NAME##_Final(&ctx, out);                                     \
+    HMAC_NAME##_cleanup(&ctx);                                                 \
+    if (result) {                                                              \
+      return 1;                                                                \
+    } else {                                                                   \
+      return 0;                                                                \
+    }                                                                          \
+  }
+
+#ifndef OPENSSL_NO_MD4
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_MD4, HMAC_MD4_CTX, MD4, MD4_CTX,
+                         MD4_DIGEST_LENGTH, MD4_CBLOCK)
+#endif
+#ifndef OPENSSL_NO_MD5
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_MD5, HMAC_MD5_CTX, MD5, MD5_CTX,
+                         MD5_DIGEST_LENGTH, MD5_CBLOCK)
+#endif
+#ifndef OPENSSL_NO_SHA
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA1, HMAC_SHA1_CTX, SHA1, SHA_CTX,
+                         SHA_DIGEST_LENGTH, SHA_CBLOCK)
+#endif
+#ifndef OPENSSL_NO_SHA256
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA224, HMAC_SHA256_CTX, SHA224, SHA256_CTX,
+                         SHA224_DIGEST_LENGTH, SHA224_CBLOCK)
+
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA256, HMAC_SHA256_CTX, SHA256, SHA256_CTX,
+                         SHA256_DIGEST_LENGTH, SHA256_CBLOCK)
+#endif
+#ifndef OPENSSL_NO_SHA512
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA384, HMAC_SHA512_CTX, SHA384, SHA512_CTX,
+                         SHA384_DIGEST_LENGTH, SHA384_CBLOCK)
+
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA512, HMAC_SHA512_CTX, SHA512, SHA512_CTX,
+                         SHA512_DIGEST_LENGTH, SHA512_CBLOCK)
+#endif
+#ifndef OPENSSL_NO_RIPEMD
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, RIPEMD160,
+                         RIPEMD160_CTX, RIPEMD160_DIGEST_LENGTH,
+                         RIPEMD160_CBLOCK)
+#endif

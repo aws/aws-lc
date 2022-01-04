@@ -596,6 +596,191 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
   return true;
 }
 
+static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
+                           size_t chunk_len) {
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
+  uint8_t scratch[16384];
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  if (!HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */)) {
+    fprintf(stderr, "Failed to create HMAC_CTX.\n");
+  }
+  name += ChunkLenSuffix(chunk_len);
+  TimeResults results;
+  if (!TimeFunction(&results, [&ctx, md, chunk_len, &scratch]() -> bool {
+        uint8_t digest[EVP_MAX_MD_SIZE];
+        unsigned int md_len;
+
+        return HMAC_Init_ex(ctx.get(), NULL, 0, NULL, NULL) &&
+               HMAC_Update(ctx.get(), scratch, chunk_len) &&
+               HMAC_Final(ctx.get(), digest, &md_len);
+      })) {
+    fprintf(stderr, "HMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedHmac(const EVP_MD *md, const std::string &name,
+                      const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedHmacChunk(md, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
+                           size_t chunk_len) {
+  uint8_t scratch[16384];
+  const size_t key_len = EVP_MD_size(md);
+  uint8_t key[EVP_MAX_MD_SIZE] = {0};
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  name += ChunkLenSuffix(chunk_len);
+  TimeResults results;
+  if (!TimeFunction(&results, [key, key_len, md, chunk_len, &scratch]() -> bool {
+
+        uint8_t digest[EVP_MAX_MD_SIZE];
+        unsigned int md_len;
+
+        return HMAC(md, key, 0, scratch, chunk_len, digest, &md_len)  != nullptr;
+      })) {
+    fprintf(stderr, "HMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
+                      const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedHmacChunkOneShot(md, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+#define HMAC_IN_PLACE(CAMEL_MD_NAME, HMAC_NAME, HMAC_CTX, KEY_LEN)         \
+  static bool SpeedHmac##CAMEL_MD_NAME##InPlaceChunk(size_t chunk_len) {   \
+    std::string name = "In-place " #HMAC_NAME;                             \
+    HMAC_CTX ctx;                                                          \
+    uint8_t key[KEY_LEN] = {0};                                            \
+    uint8_t scratch[16384];                                                \
+                                                                           \
+    if (chunk_len > sizeof(scratch)) {                                     \
+      return false;                                                        \
+    }                                                                      \
+                                                                           \
+    if (!HMAC_NAME##_Init(&ctx, key, KEY_LEN)) {                           \
+      fprintf(stderr, "Failed to create " #HMAC_CTX ".\n");                \
+    }                                                                      \
+    name += ChunkLenSuffix(chunk_len);                                     \
+    TimeResults results;                                                   \
+    if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {    \
+          uint8_t digest[EVP_MAX_MD_SIZE];                                 \
+                                                                           \
+          return HMAC_NAME##_Init(&ctx, NULL, 0) == 1 &&                   \
+                 HMAC_NAME##_Update(&ctx, scratch, chunk_len) == 1 &&      \
+                 HMAC_NAME##_Final(&ctx, digest) == 1;                     \
+        })) {                                                              \
+      fprintf(stderr, #HMAC_NAME "_Final failed.\n");                      \
+      ERR_print_errors_fp(stderr);                                         \
+      return false;                                                        \
+    }                                                                      \
+                                                                           \
+    results.PrintWithBytes(name, chunk_len);                               \
+    return true;                                                           \
+  }                                                                        \
+  static bool SpeedHmac##CAMEL_MD_NAME##HmacInPlace(                       \
+      const std::string &selected) {                                       \
+    const std::string name = #HMAC_NAME;                                   \
+    if (!selected.empty() && name.find(selected) == std::string::npos) {   \
+      return true;                                                         \
+    }                                                                      \
+                                                                           \
+    for (size_t chunk_len : g_chunk_lengths) {                             \
+      if (!SpeedHmac##CAMEL_MD_NAME##InPlaceChunk(chunk_len)) {            \
+        return false;                                                      \
+      }                                                                    \
+    }                                                                      \
+                                                                           \
+    return true;                                                           \
+  }                                                                        \
+  static bool SpeedHmac##CAMEL_MD_NAME##InPlaceChunkOneShot(               \
+      size_t chunk_len) {                                                  \
+    std::string name = "In-place " #HMAC_NAME "-OneShot";                  \
+    uint8_t key[KEY_LEN] = {0};                                            \
+    uint8_t scratch[16384];                                                \
+                                                                           \
+    if (chunk_len > sizeof(scratch)) {                                     \
+      return false;                                                        \
+    }                                                                      \
+                                                                           \
+    name += ChunkLenSuffix(chunk_len);                                     \
+    TimeResults results;                                                   \
+    if (!TimeFunction(&results, [key, chunk_len, &scratch]() -> bool {     \
+          uint8_t digest[EVP_MAX_MD_SIZE];                                 \
+                                                                           \
+          return HMAC_NAME(key, KEY_LEN, scratch, chunk_len, digest) == 1; \
+        })) {                                                              \
+      fprintf(stderr, #HMAC_NAME "_Final failed.\n");                      \
+      ERR_print_errors_fp(stderr);                                         \
+      return false;                                                        \
+    }                                                                      \
+                                                                           \
+    results.PrintWithBytes(name, chunk_len);                               \
+    return true;                                                           \
+  }                                                                        \
+  static bool SpeedHmac##CAMEL_MD_NAME##HmacInPlaceOneShot(                \
+      const std::string &selected) {                                       \
+    const std::string name = #HMAC_NAME;                                   \
+    if (!selected.empty() && name.find(selected) == std::string::npos) {   \
+      return true;                                                         \
+    }                                                                      \
+                                                                           \
+    for (size_t chunk_len : g_chunk_lengths) {                             \
+      if (!SpeedHmac##CAMEL_MD_NAME##InPlaceChunkOneShot(chunk_len)) {     \
+        return false;                                                      \
+      }                                                                    \
+    }                                                                      \
+                                                                           \
+    return true;                                                           \
+  }
+
+HMAC_IN_PLACE(Md5, HMAC_MD5, HMAC_MD5_CTX, 16)
+HMAC_IN_PLACE(Sha1, HMAC_SHA1, HMAC_SHA1_CTX, 20)
+HMAC_IN_PLACE(Sha256, HMAC_SHA256, HMAC_SHA256_CTX, 32)
+HMAC_IN_PLACE(Sha384, HMAC_SHA384, HMAC_SHA512_CTX, 48)
+HMAC_IN_PLACE(Sha512, HMAC_SHA512, HMAC_SHA512_CTX, 64)
+
 static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
   uint8_t scratch[16384];
 
@@ -1398,6 +1583,26 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
      !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+     !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
+     !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
+     !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
+     !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
+     !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+     !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+     !SpeedHmacMd5HmacInPlace(selected) ||
+     !SpeedHmacSha1HmacInPlace(selected) ||
+     !SpeedHmacSha256HmacInPlace(selected) ||
+     !SpeedHmacSha384HmacInPlace(selected) ||
+     !SpeedHmacSha512HmacInPlace(selected) ||
+     !SpeedHmacMd5HmacInPlaceOneShot(selected) ||
+     !SpeedHmacSha1HmacInPlaceOneShot(selected) ||
+     !SpeedHmacSha256HmacInPlaceOneShot(selected) ||
+     !SpeedHmacSha384HmacInPlaceOneShot(selected) ||
+     !SpeedHmacSha512HmacInPlaceOneShot(selected) ||
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||

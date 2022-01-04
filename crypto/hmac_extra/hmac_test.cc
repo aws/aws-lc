@@ -67,6 +67,55 @@
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
 
+typedef int (*HmacInplaceOneShot)(void *, size_t, uint8_t *, size_t, uint8_t *);
+typedef int (*HmacInPlaceInit)(void *, void *, size_t);
+typedef int (*HmacInPlaceUpdate)(void *, uint8_t *, size_t);
+typedef int (*HmacInPlaceFinal)(void *, uint8_t *);
+typedef struct in_place_methods_st InPlaceMethods;
+
+struct in_place_methods_st {
+  const EVP_MD *evp_md;
+  size_t ctxSize;
+  HmacInplaceOneShot oneShot;
+  HmacInPlaceInit init;
+  HmacInPlaceUpdate update;
+  HmacInPlaceFinal digest; // Not named final to avoid keywords
+};
+
+#define DEFINE_IN_PLACE_METHODS(HMAC_NAME, CTX_NAME, EVP_MD_FN) \
+  {                                                             \
+    .evp_md = EVP_MD_FN(),                                      \
+    .ctxSize = sizeof(CTX_NAME),                                \
+    .oneShot = (HmacInplaceOneShot)(HMAC_NAME),                 \
+    .init = (HmacInPlaceInit)(HMAC_NAME##_Init),                \
+    .update = (HmacInPlaceUpdate)(HMAC_NAME##_Update),          \
+    .digest = (HmacInPlaceFinal)(HMAC_NAME##_Final)             \
+  }
+
+static InPlaceMethods kInPlaceMethods[] = {
+  DEFINE_IN_PLACE_METHODS(HMAC_MD5, HMAC_MD5_CTX, EVP_md5),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA1, HMAC_SHA1_CTX, EVP_sha1),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA224, HMAC_SHA256_CTX, EVP_sha224),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA256, HMAC_SHA256_CTX, EVP_sha256),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA384, HMAC_SHA512_CTX, EVP_sha384),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA512, HMAC_SHA512_CTX, EVP_sha512),
+  {
+    .evp_md = nullptr,
+    .ctxSize = 0,
+    .oneShot = nullptr,
+    .init = nullptr,
+    .update = nullptr,
+    .digest = nullptr
+  }
+};
+
+static const InPlaceMethods *GetInPlaceMethods(const EVP_MD * evp_md) {
+  InPlaceMethods *result = kInPlaceMethods;
+  while (result->evp_md != evp_md && result->evp_md != nullptr) {
+    result++;
+  }
+  return result;
+}
 
 static const EVP_MD *GetDigest(const std::string &name) {
   if (name == "MD5") {
@@ -91,6 +140,8 @@ TEST(HMACTest, TestVectors) {
     ASSERT_TRUE(t->GetAttribute(&digest_str, "HMAC"));
     const EVP_MD *digest = GetDigest(digest_str);
     ASSERT_TRUE(digest) << "Unknown digest: " << digest_str;
+    const InPlaceMethods *inPlace = GetInPlaceMethods(digest);
+    ASSERT_TRUE(inPlace->evp_md) << "Unknown in place method: " << digest_str;
 
     std::vector<uint8_t> key, input, output;
     ASSERT_TRUE(t->GetBytes(&key, "Key"));
@@ -105,6 +156,11 @@ TEST(HMACTest, TestVectors) {
     ASSERT_TRUE(HMAC(digest, key.data(), key.size(), input.data(), input.size(),
                      mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
+    EXPECT_EQ(inPlace->oneShot(key.data(), key.size(), input.data(), input.size(), mac.get()), 1);
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
 
     // Test using HMAC_CTX.
     bssl::ScopedHMAC_CTX ctx;
@@ -113,12 +169,16 @@ TEST(HMACTest, TestVectors) {
     ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
 
     // Test that an HMAC_CTX may be reset with the same key.
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr));
     ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
 
     // Test feeding the input in byte by byte.
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
@@ -127,6 +187,32 @@ TEST(HMACTest, TestVectors) {
     }
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
+    // Test using in place functions
+    std::unique_ptr<uint8_t[]> inplace_ctx(new uint8_t[inPlace->ctxSize]);
+    OPENSSL_memset(inplace_ctx.get(), 0, inPlace->ctxSize);
+    EXPECT_EQ(inPlace->init((void*) inplace_ctx.get(), key.data(), key.size()), 1);
+    EXPECT_EQ(inPlace->update((void*) inplace_ctx.get(), input.data(), input.size()), 1);
+    EXPECT_EQ(inPlace->digest((void *)inplace_ctx.get(), mac.get()), 1);
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Test that an in place context may be reset with the same key.
+    EXPECT_EQ(inPlace->init((void*) inplace_ctx.get(), nullptr, 0), 1);
+    EXPECT_EQ(inPlace->update((void*) inplace_ctx.get(), input.data(), input.size()), 1);
+    EXPECT_EQ(inPlace->digest((void *)inplace_ctx.get(), mac.get()), 1);
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
+    // Test feeding the input in byte by byte.
+    EXPECT_EQ(inPlace->init((void *)inplace_ctx.get(), nullptr, 0), 1);
+    for (size_t i = 0; i < input.size(); i++) {
+      EXPECT_EQ(inPlace->update((void*) inplace_ctx.get(), &input[i], 1), 1);
+    }
+    EXPECT_EQ(inPlace->digest((void *)inplace_ctx.get(), mac.get()), 1);
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
   });
 }
 
@@ -154,6 +240,12 @@ static void RunWycheproofTest(const char *path, const EVP_MD *md) {
                      &out_len));
     // Wycheproof tests truncate the tags down to |tagSize|.
     ASSERT_LE(tag.size(), out_len);
+    EXPECT_EQ(Bytes(out, tag.size()), Bytes(tag));
+    OPENSSL_memset(out, 0, EVP_MAX_MD_SIZE);  // Clear the prior correct answer
+
+    const InPlaceMethods *inPlace = GetInPlaceMethods(md);
+    ASSERT_TRUE(inPlace->evp_md) << "Unknown in place method for file: " << path;
+    EXPECT_EQ(inPlace->oneShot(key.data(), key.size(), msg.data(), msg.size(), out), 1);
     EXPECT_EQ(Bytes(out, tag.size()), Bytes(tag));
   });
 }
