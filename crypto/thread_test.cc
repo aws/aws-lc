@@ -56,7 +56,7 @@ TEST(ThreadTest, Once) {
 
 #if !defined(OPENSSL_MACOS)
 // The |InitZeros| test is excluded from the macOS FIPS build.
-// The three macros defined following in |crypto/internal.h|:
+// The following three macros are defined in |crypto/internal.h|:
 //   #define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
 //   #define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
 //   #define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL, 0}
