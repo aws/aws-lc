@@ -1175,6 +1175,7 @@ static const unsigned kSSLQuietShutdownTag =
 //                                                      since the configuration 
 //                                                      may be shed after the handshake completes
 //      s3             SEQUENCE
+//      mode           UINT64
 //      quietShutdown  [0] BOOLEAN OPTIONAL,
 //  }
 //
@@ -1196,7 +1197,8 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     !CBB_add_asn1_uint64(&ssl, in->version) ||
     !CBB_add_asn1_uint64(&ssl, in->max_send_fragment) ||
     !CBB_add_asn1_bool(&ssl, sheded) ||
-    !SSL3_STATE_to_bytes(in->s3, &ssl)) {
+    !SSL3_STATE_to_bytes(in->s3, &ssl) ||
+    !CBB_add_asn1_uint64(&ssl, in->mode)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -1214,7 +1216,7 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
 
 static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs;
-  uint64_t ssl_serial_ver, version, max_send_fragment;
+  uint64_t ssl_serial_ver, version, max_send_fragment, mode;
   int quiet_shutdown;
 
   int sheded = 0;
@@ -1246,6 +1248,12 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   if (!SSL3_STATE_from_bytes(ssl->s3, &ssl_cbs, ssl->ctx.get())) {
     return 0;
   }
+
+  if (!CBS_get_asn1_uint64(&ssl_cbs, &mode)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    return 0;
+  }
+  ssl->mode = mode;
 
   if (!CBS_get_optional_asn1_bool(&ssl_cbs, &quiet_shutdown, kSSLQuietShutdownTag, 0 /* default to false */)) {
     return 0;
@@ -1337,18 +1345,20 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   // An SSL connection can't be serialized by current implementation under some conditions
   // 0) It's server SSL.
   // 1) It's a DTLS connection.
-  // 2) Its SSL_SESSION isn't serializable.
-  // 3) Handshake hasn't finished yet.
-  // 4) SSL is not of TLS 1.2 version.
+  // 2) It uses QUIC
+  // 3) Its SSL_SESSION isn't serializable.
+  // 4) Handshake hasn't finished yet.
+  // 5) SSL is not of TLS 1.2 version.
   //    TODO: support TLS 1.3 and TLS 1.1.
   if (!SSL_is_server(in) ||             // (0)
       SSL_is_dtls(in) ||                // (1)
-      !in->s3 ||                        // (2)
+      ssl->quic_method != nullptr ||    // (2)
+      !in->s3 ||                        // (3)
       !in->s3->established_session ||
       in->s3->established_session.get()->not_resumable ||
       // TODO: Check in->s3->rwstate.
-      SSL_in_init(in) ||                // (3)
-      in->version != TLS1_2_VERSION) {  // (4)
+      SSL_in_init(in) ||                // (4)
+      in->version != TLS1_2_VERSION) {  // (5)
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     // fprintf( stderr, "!SSL_is_server(in) %d\n", !SSL_is_server(in));
     // fprintf( stderr, "SSL_is_dtls(in) %d\n", SSL_is_dtls(in));
@@ -1357,6 +1367,8 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
     // fprintf( stderr, "in->s3->established_session.get()->not_resumable %d\n", in->s3->established_session.get()->not_resumable);
     return 0;
   }
+
+  // TODO: add ssl shutdown check?
 
   CBB seq;
   if (!CBB_init(cbb.get(), 1024) ||
