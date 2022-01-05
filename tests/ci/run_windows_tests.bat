@@ -10,7 +10,8 @@ call %1 x64 || goto error
 SET
 call :build_and_test Release "" || goto error
 
-@rem Windows has no concept of Linux's rpath so it can't find the built dlls from CMake, add them to our path to work around this
+@rem Windows has no equivalent of Linux's rpath so it can't find the built dlls from CMake. We also don't want to install our
+@rem tests or copy them around so Windows can find it in the same directory. Instead just put the dll's location onto the path
 set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
 
