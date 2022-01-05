@@ -5,11 +5,14 @@ set BUILD_DIR=%SRC_ROOT%\test_build_dir
 
 @rem %1 contains the path to the setup batch file for the version of of visual studio that was passed in from the build spec file.
 @rem x64 comes from the architecture options https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
-call %1 x64 || goto error
+set MSVC_PATH=%1
+call %MSVC_PATH% x64 || goto error
 SET
 
 @rem Run the same builds as run_posix_tests.sh
-call :build_and_test Debug "" || goto error
+@rem check which version of MSVC we're building with: remove 14.0 from the path to the compiler and check if it matches the
+@rem original string. MSVC 14 has an issue with a missing DLL that causes teh debug build to fail to start
+if x%MSVC_PATH:14.0=%==x%MSVC_PATH% call :build_and_test Debug "" || goto error
 call :build_and_test Release "" || goto error
 call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
 call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
