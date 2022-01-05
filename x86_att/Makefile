@@ -156,6 +156,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_triple_p521.o \
       secp256k1/bignum_add_p256k1.o \
       secp256k1/bignum_cmul_p256k1.o \
+      secp256k1/bignum_cmul_p256k1_alt.o \
       secp256k1/bignum_deamont_p256k1.o \
       secp256k1/bignum_demont_p256k1.o \
       secp256k1/bignum_double_p256k1.o \
@@ -163,14 +164,20 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       secp256k1/bignum_mod_n256k1_4.o \
       secp256k1/bignum_mod_p256k1_4.o \
       secp256k1/bignum_montmul_p256k1.o \
+      secp256k1/bignum_montmul_p256k1_alt.o \
       secp256k1/bignum_montsqr_p256k1.o \
+      secp256k1/bignum_montsqr_p256k1_alt.o \
       secp256k1/bignum_mul_p256k1.o \
+      secp256k1/bignum_mul_p256k1_alt.o \
       secp256k1/bignum_neg_p256k1.o \
       secp256k1/bignum_optneg_p256k1.o \
       secp256k1/bignum_sqr_p256k1.o \
+      secp256k1/bignum_sqr_p256k1_alt.o \
       secp256k1/bignum_sub_p256k1.o \
       secp256k1/bignum_tomont_p256k1.o \
-      secp256k1/bignum_triple_p256k1.o
+      secp256k1/bignum_tomont_p256k1_alt.o \
+      secp256k1/bignum_triple_p256k1.o \
+      secp256k1/bignum_triple_p256k1_alt.o
 
 # The AT&T syntax source files
 

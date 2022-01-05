@@ -23,6 +23,16 @@
  * banner at the top of the corresponding assembly (.S) file, and
  * for the last word in what properties it satisfies see the spec in the
  * formal proof (the .ml file in the architecture-specific directory).
+ *
+ * For some functions there are additional variants with names ending in
+ * "_alt". These have the same core mathematical functionality as their
+ * non-"alt" versions, but can be better suited to some microarchitectures:
+ *
+ *      - On x86, the "_alt" forms avoid BMI and ADX instruction set
+ *        extensions, so will run on any x86_64 machine, even older ones
+ *
+ *      - On ARM, the "_alt" forms target machines with higher multiplier
+ *        throughput, generally offering higher performance there.
  * ----------------------------------------------------------------------------
  */
 
@@ -117,6 +127,7 @@ extern void bignum_cmul_p256 (uint64_t z[4], uint64_t c, uint64_t x[4]);
 /*  Multiply by a single word modulo p_256k1, z := (c * x) mod p_256k1, assuming x reduced */
 /*  Inputs c, x[4]; output z[4] */
 extern void bignum_cmul_p256k1 (uint64_t z[4], uint64_t c, uint64_t x[4]);
+extern void bignum_cmul_p256k1_alt (uint64_t z[4], uint64_t c, uint64_t x[4]);
 
 /*  Multiply by a single word modulo p_384, z := (c * x) mod p_384, assuming x reduced */
 /*  Inputs c, x[6]; output z[6] */
@@ -389,6 +400,7 @@ extern void bignum_montmul_p256 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
 /*  Montgomery multiply, z := (x * y / 2^256) mod p_256k1 */
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_montmul_p256k1 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+extern void bignum_montmul_p256k1_alt (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
 
 /*  Montgomery multiply, z := (x * y / 2^384) mod p_384 */
 /*  Inputs x[6], y[6]; output z[6] */
@@ -413,6 +425,7 @@ extern void bignum_montsqr_p256 (uint64_t z[4], uint64_t x[4]);
 /*  Montgomery square, z := (x^2 / 2^256) mod p_256k1 */
 /*  Input x[4]; output z[4] */
 extern void bignum_montsqr_p256k1 (uint64_t z[4], uint64_t x[4]);
+extern void bignum_montsqr_p256k1_alt (uint64_t z[4], uint64_t x[4]);
 
 /*  Montgomery square, z := (x^2 / 2^384) mod p_384 */
 /*  Input x[6]; output z[6] */
@@ -442,6 +455,7 @@ extern void bignum_mul_8_16 (uint64_t z[16], uint64_t x[8], uint64_t y[8]);
 /*  Multiply modulo p_256k1, z := (x * y) mod p_256k1 */
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_mul_p256k1 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+extern void bignum_mul_p256k1_alt (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
 
 /*  Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced */
 /*  Inputs x[9], y[9]; output z[9] */
@@ -575,6 +589,7 @@ extern void bignum_sqr_8_16 (uint64_t z[16], uint64_t x[8]);
 /*  Square modulo p_256k1, z := (x^2) mod p_256k1 */
 /*  Input x[4]; output z[4] */
 extern void bignum_sqr_p256k1 (uint64_t z[4], uint64_t x[4]);
+extern void bignum_sqr_p256k1_alt (uint64_t z[4], uint64_t x[4]);
 
 /*  Square modulo p_521, z := (x^2) mod p_521, assuming x reduced */
 /*  Input x[9]; output z[9] */
@@ -623,6 +638,7 @@ extern void bignum_tomont_p256 (uint64_t z[4], uint64_t x[4]);
 /*  Convert to Montgomery form z := (2^256 * x) mod p_256k1 */
 /*  Input x[4]; output z[4] */
 extern void bignum_tomont_p256k1 (uint64_t z[4], uint64_t x[4]);
+extern void bignum_tomont_p256k1_alt (uint64_t z[4], uint64_t x[4]);
 
 /*  Convert to Montgomery form z := (2^384 * x) mod p_384 */
 /*  Input x[6]; output z[6] */
@@ -639,6 +655,7 @@ extern void bignum_triple_p256 (uint64_t z[4], uint64_t x[4]);
 /*  Triple modulo p_256k1, z := (3 * x) mod p_256k1 */
 /*  Input x[4]; output z[4] */
 extern void bignum_triple_p256k1 (uint64_t z[4], uint64_t x[4]);
+extern void bignum_triple_p256k1_alt (uint64_t z[4], uint64_t x[4]);
 
 /*  Triple modulo p_384, z := (3 * x) mod p_384 */
 /*  Input x[6]; output z[6] */

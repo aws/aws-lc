@@ -17,6 +17,7 @@
 
 OBJ = bignum_add_p256k1.o \
       bignum_cmul_p256k1.o \
+      bignum_cmul_p256k1_alt.o \
       bignum_deamont_p256k1.o \
       bignum_demont_p256k1.o \
       bignum_double_p256k1.o \
@@ -24,14 +25,20 @@ OBJ = bignum_add_p256k1.o \
       bignum_mod_n256k1_4.o \
       bignum_mod_p256k1_4.o \
       bignum_montmul_p256k1.o \
+      bignum_montmul_p256k1_alt.o \
       bignum_montsqr_p256k1.o \
+      bignum_montsqr_p256k1_alt.o \
       bignum_mul_p256k1.o \
+      bignum_mul_p256k1_alt.o \
       bignum_neg_p256k1.o \
       bignum_optneg_p256k1.o \
       bignum_sqr_p256k1.o \
+      bignum_sqr_p256k1_alt.o \
       bignum_sub_p256k1.o \
       bignum_tomont_p256k1.o \
-      bignum_triple_p256k1.o
+      bignum_tomont_p256k1_alt.o \
+      bignum_triple_p256k1.o \
+      bignum_triple_p256k1_alt.o
 
 %.o : %.S ; cpp $< | as -o $@ -
 
