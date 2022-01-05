@@ -37,7 +37,10 @@ extern const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth;
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
 extern const EVP_PKEY_METHOD kyber512_pkey_meth;
+<<<<<<< HEAD
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
+=======
+>>>>>>> 6a306f050 (Add PQCrystals-Kyber512, Remove SIKE, relocate pq_kem interface. (#343))
 
 // Returns a reference to the list |non_fips_pkey_evp_methods|. The list has
 // size |NON_FIPS_EVP_PKEY_METHODS|.

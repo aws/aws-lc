@@ -353,12 +353,13 @@ add_library(
   evp_extra/p_x25519_asn1.c
   evp_extra/p_methods.c
   evp_extra/print.c
+  evp_extra/pq_kem.c
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
-  kyber/kem_kyber512.c
+  kyber/kem_kyber_512.c
   kyber/p_kyber.c
   kyber/p_kyber512_asn1.c
   kyber/pqcrystals-kyber_kyber512_ref/cbd.c
@@ -670,7 +671,13 @@ if(BUILD_TESTING)
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
+<<<<<<< HEAD
     evp_extra/pq_kem_kat_tests_kyber512.cc
+=======
+    evp_extra/pbkdf_test.cc
+    evp_extra/pq_kem_kat_tests_kyber512.cc
+    evp_extra/pq_kem_test.cc
+>>>>>>> 6a306f050 (Add PQCrystals-Kyber512, Remove SIKE, relocate pq_kem interface. (#343))
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc

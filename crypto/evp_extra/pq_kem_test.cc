@@ -1,20 +1,14 @@
-// -----------------------------------------------------------------------------
-// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-// -----------------------------------------------------------------------------
-
-
 #include <gtest/gtest.h>
 
-#include "pq_kem.h"
-#include "../crypto/test/test_util.h"
 #include "openssl/mem.h"
+#include "openssl/pq_kem.h"
+#include "../crypto/test/test_util.h"
 
 
-TEST(PQCryptoTest, Basic) {
-  // Basic functional test for SIKE P434 R3
-  const EVP_PQ_KEM *sike_kem = &EVP_PQ_KEM_sike_p434_r3;
-  EXPECT_NE(sike_kem, nullptr);
+TEST(PQKEMTest, Kyber512_Basic) {
+  // Basic functional test for KYBER512
+  const EVP_PQ_KEM *kyber_kem = &EVP_PQ_KEM_kyber512;
+  EXPECT_NE(kyber_kem, nullptr);
 
   // Simulate two sides of the key exchange mechanism.
   EVP_PQ_KEM_CTX *ctxA = EVP_PQ_KEM_CTX_new();
@@ -22,8 +16,8 @@ TEST(PQCryptoTest, Basic) {
   EXPECT_NE(ctxA, nullptr);
   EXPECT_NE(ctxB, nullptr);
 
-  ASSERT_TRUE(EVP_PQ_KEM_CTX_init(ctxA, sike_kem));
-  ASSERT_TRUE(EVP_PQ_KEM_CTX_init(ctxB, sike_kem));
+  ASSERT_TRUE(EVP_PQ_KEM_CTX_init(ctxA, kyber_kem));
+  ASSERT_TRUE(EVP_PQ_KEM_CTX_init(ctxB, kyber_kem));
 
   // Alice generates the key pair.
   ASSERT_TRUE(EVP_PQ_KEM_generate_keypair(ctxA));

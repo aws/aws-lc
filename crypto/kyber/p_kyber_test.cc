@@ -102,9 +102,9 @@ TEST(Kyber512Test, NewKeyFromBytes) {
 
   // New raw public key
   EVP_PKEY *new_public = EVP_PKEY_new_raw_public_key(EVP_PKEY_KYBER512,
-                                                     NULL,
-                                                     kyber512Key->pub,
-                                                     KYBER512_PUBLIC_KEY_BYTES);
+                                                   NULL,
+                                                   kyber512Key->pub,
+                                                   KYBER512_PUBLIC_KEY_BYTES);
   ASSERT_NE(new_public, nullptr);
 
   uint8_t *buf = nullptr;
@@ -119,9 +119,9 @@ TEST(Kyber512Test, NewKeyFromBytes) {
 
   // New raw private key
   EVP_PKEY *new_private = EVP_PKEY_new_raw_private_key(EVP_PKEY_KYBER512,
-                                                       NULL,
-                                                       kyber512Key->priv,
-                                                       KYBER512_SECRET_KEY_BYTES);
+                                                     NULL,
+                                                     kyber512Key->priv,
+                                                     KYBER512_SECRET_KEY_BYTES);
   ASSERT_NE(new_private, nullptr);
   const KYBER512_KEY *newKyber512Key = (KYBER512_KEY *)(new_private->pkey.ptr);
   EXPECT_EQ(0, OPENSSL_memcmp(kyber512Key->priv, newKyber512Key->priv, KYBER512_SECRET_KEY_BYTES));
@@ -168,9 +168,9 @@ TEST(Kyber512Test, KEMOperations) {
 
   EVP_PKEY_CTX *kyber_pkey_ctx_bob = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   EVP_PKEY *kyber_pkey_bob = EVP_PKEY_new_raw_public_key(EVP_PKEY_KYBER512,
-                                                         NULL,
-                                                         kyber_key_alice->pub, /* this method performs a memcpy internally */
-                                                         KYBER512_PUBLIC_KEY_BYTES);
+                                                       NULL,
+                                                       kyber_key_alice->pub, /* this method performs a memcpy internally */
+                                                       KYBER512_PUBLIC_KEY_BYTES);
   kyber_pkey_ctx_bob->pkey = kyber_pkey_bob;
 
   // Bob generates a shared secret and encapsulates it.
@@ -213,7 +213,7 @@ TEST(Kyber512Test, KEMSizeChecks) {
   EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
   EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
 
-  ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, NULL, &ciphertext_len, NULL, &shared_secret_len));
+  SSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, NULL, &ciphertext_len, NULL, &shared_secret_len));
   EXPECT_EQ(shared_secret_len, (size_t)KYBER512_SHARED_SECRET_BYTES);
   EXPECT_EQ(ciphertext_len, (size_t)KYBER512_CIPHERTEXT_BYTES);
 
@@ -229,7 +229,7 @@ TEST(Kyber512Test, KEMSizeChecks) {
   // encapsulate -- ciphertext_len too small, shared_secret_len ok.
   ciphertext_len -= 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
-  
+
   // encapsulate -- ciphertext_len ok, shared_secret_len too small.
   ciphertext_len += 1;
   shared_secret_len -= 1;

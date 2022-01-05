@@ -212,7 +212,11 @@ void indcpa_keypair(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   uint8_t nonce = 0;
   polyvec a[KYBER_K], e, pkpv, skpv;
 
+<<<<<<< HEAD
   pq_custom_randombytes(buf, KYBER_SYMBYTES);
+=======
+  randombytes(buf, KYBER_SYMBYTES);
+>>>>>>> 6a306f050 (Add PQCrystals-Kyber512, Remove SIKE, relocate pq_kem interface. (#343))
   hash_g(buf, buf, KYBER_SYMBYTES);
 
   gen_a(a, publicseed);

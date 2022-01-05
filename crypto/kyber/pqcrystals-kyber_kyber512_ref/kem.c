@@ -6,6 +6,9 @@
 #include "symmetric.h"
 #include "verify.h"
 #include "../../rand_extra/pq_custom_randombytes.h"
+#include "params.h"
+#include "symmetric.h"
+#include "verify.h"
 
 /*************************************************
 * Name:        crypto_kem_keypair

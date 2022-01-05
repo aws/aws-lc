@@ -10,6 +10,7 @@
 /* Don't change parameters below this line */
 #if   (KYBER_K == 2)
 #ifdef KYBER_90S
+<<<<<<< HEAD
 #define KYBER_VARIANT(s) pqcrystals_kyber512_90s_ref_##s
 #else
 #define KYBER_VARIANT(s) pqcrystals_kyber512_ref_##s
@@ -25,6 +26,23 @@
 #define KYBER_VARIANT(s) pqcrystals_kyber1024_90s_ref_##s
 #else
 #define KYBER_VARIANT(s) pqcrystals_kyber1024_ref_##s
+=======
+#define KYBER_NAMESPACE(s) pqcrystals_kyber512_90s_ref_##s
+#else
+#define KYBER_NAMESPACE(s) pqcrystals_kyber512_ref_##s
+#endif
+#elif (KYBER_K == 3)
+#ifdef KYBER_90S
+#define KYBER_NAMESPACE(s) pqcrystals_kyber768_90s_ref_##s
+#else
+#define KYBER_NAMESPACE(s) pqcrystals_kyber768_ref_##s
+#endif
+#elif (KYBER_K == 4)
+#ifdef KYBER_90S
+#define KYBER_NAMESPACE(s) pqcrystals_kyber1024_90s_ref_##s
+#else
+#define KYBER_NAMESPACE(s) pqcrystals_kyber1024_ref_##s
+>>>>>>> 6a306f050 (Add PQCrystals-Kyber512, Remove SIKE, relocate pq_kem interface. (#343))
 #endif
 #else
 #error "KYBER_K must be in {2,3,4}"
@@ -35,7 +53,6 @@
 #else
 #define KYBER_NAMESPACE(s) KYBER_VARIANT(s)
 #endif
-
 
 #define KYBER_N 256
 #define KYBER_Q 3329

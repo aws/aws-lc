@@ -14,6 +14,7 @@
 #define pqcrystals_kyber512_ref_CIPHERTEXTBYTES pqcrystals_kyber512_CIPHERTEXTBYTES
 #define pqcrystals_kyber512_ref_BYTES pqcrystals_kyber512_BYTES
 
+
 #ifdef BORINGSSL_PREFIX
 #define pqcrystals_kyber512_ref_keypair BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, pqcrystals_kyber512_ref_keypair)
 #define pqcrystals_kyber512_ref_enc BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, pqcrystals_kyber512_ref_enc)
@@ -28,6 +29,7 @@ int pqcrystals_kyber512_ref_dec(uint8_t *ss, const uint8_t *ct, const uint8_t *s
 #define pqcrystals_kyber512_90s_ref_PUBLICKEYBYTES pqcrystals_kyber512_PUBLICKEYBYTES
 #define pqcrystals_kyber512_90s_ref_CIPHERTEXTBYTES pqcrystals_kyber512_CIPHERTEXTBYTES
 #define pqcrystals_kyber512_90s_ref_BYTES pqcrystals_kyber512_BYTES
+
 
 #ifdef BORINGSSL_PREFIX
 #define pqcrystals_kyber512_90s_ref_keypair BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, pqcrystals_kyber512_90s_ref_keypair)

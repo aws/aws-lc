@@ -1,15 +1,6 @@
-// -----------------------------------------------------------------------------
-// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-//
-// KEM Library
-// Abstract: Post-Quantum Algorithm API
-// -----------------------------------------------------------------------------
-
-#include "pq_kem.h"
-#include "pq_kem_params_size.h"
-#include "sike_r3/P434/P434_api.h"
+#include "openssl/pq_kem.h"
 #include "openssl/mem.h"
+#include "../kyber/kem_kyber.h"
 
 EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void) {
   return OPENSSL_malloc(sizeof(EVP_PQ_KEM_CTX));
@@ -46,7 +37,7 @@ void EVP_PQ_KEM_CTX_free(EVP_PQ_KEM_CTX *kem_ctx) {
     OPENSSL_free(kem_ctx);
   }
 }
-#include <stdio.h>
+
 int EVP_PQ_KEM_generate_keypair(EVP_PQ_KEM_CTX *kem_ctx) {
 
   if (kem_ctx == NULL ||
@@ -99,16 +90,15 @@ int EVP_PQ_KEM_decapsulate(EVP_PQ_KEM_CTX *kem_ctx) {
   return (ret == 0 ? 1 : 0);
 }
 
-// Definitions of KEM specific EVP_PQ_KEM structs.
-const EVP_PQ_KEM EVP_PQ_KEM_sike_p434_r3 = {
-  .name = "SIKEp434r3-KEM",
+const EVP_PQ_KEM EVP_PQ_KEM_kyber512 = {
+    .name = "KYBER512-KEM",
 
-  .public_key_length    = SIKE_P434_R3_PUBLIC_KEY_BYTES,
-  .private_key_length   = SIKE_P434_R3_PRIVATE_KEY_BYTES,
-  .ciphertext_length    = SIKE_P434_R3_CIPHERTEXT_BYTES,
-  .shared_secret_length = SIKE_P434_R3_SHARED_SECRET_BYTES,
+    .public_key_length    = KYBER512_PUBLIC_KEY_BYTES,
+    .private_key_length   = KYBER512_SECRET_KEY_BYTES,
+    .ciphertext_length    = KYBER512_CIPHERTEXT_BYTES,
+    .shared_secret_length = KYBER512_BYTES,
 
-  .generate_keypair = crypto_kem_keypair_SIKEp434,
-  .encapsulate      = crypto_kem_enc_SIKEp434,
-  .decapsulate      = crypto_kem_dec_SIKEp434,
+    .generate_keypair = kyber_512_keypair,
+    .encapsulate      = kyber_512_enc,
+    .decapsulate      = kyber_512_dec,
 };
