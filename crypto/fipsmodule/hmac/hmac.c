@@ -287,29 +287,30 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
                                                                                \
   OPENSSL_EXPORT int HMAC_NAME##_Init(HMAC_CTX *ctx, const void *key,          \
                                       size_t key_len) {                        \
+    assert(BLOCK_SIZE % 8 == 0);                                               \
     FIPS_service_indicator_lock_state();                                       \
     int result = 0;                                                            \
     if (key != NULL || ctx->initialized != 1) {                                \
-      uint8_t pad[BLOCK_SIZE] = {0};                                           \
-      uint8_t key_block[BLOCK_SIZE] = {0};                                     \
+      uint64_t pad[BLOCK_SIZE / 8] = {0};                                      \
+      uint64_t key_block[BLOCK_SIZE / 8] = {0};                                \
       if (BLOCK_SIZE < key_len) {                                              \
         if (!MD_NAME##_Init(&ctx->md_ctx) ||                                   \
             !MD_NAME##_Update(&ctx->md_ctx, key, key_len) ||                   \
-            !MD_NAME##_Final(key_block, &ctx->md_ctx)) {                       \
+            !MD_NAME##_Final((uint8_t *) key_block, &ctx->md_ctx)) {           \
           goto end;                                                            \
         }                                                                      \
       } else {                                                                 \
         OPENSSL_memcpy(key_block, key, key_len);                               \
       }                                                                        \
-      for (size_t i = 0; i < BLOCK_SIZE; i++) {                                \
-        pad[i] = 0x36 ^ key_block[i];                                          \
+      for (size_t i = 0; i < BLOCK_SIZE / 8; i++) {                            \
+        pad[i] = 0x3636363636363636 ^ key_block[i];                            \
       }                                                                        \
       if (!MD_NAME##_Init(&ctx->i_ctx) ||                                      \
           !MD_NAME##_Update(&ctx->i_ctx, pad, BLOCK_SIZE)) {                   \
         goto end;                                                              \
       }                                                                        \
-      for (size_t i = 0; i < BLOCK_SIZE; i++) {                                \
-        pad[i] = 0x5c ^ key_block[i];                                          \
+      for (size_t i = 0; i < BLOCK_SIZE / 8; i++) {                            \
+        pad[i] = 0x5c5c5c5c5c5c5c5c ^ key_block[i];                            \
       }                                                                        \
       if (!MD_NAME##_Init(&ctx->o_ctx) ||                                      \
           !MD_NAME##_Update(&ctx->o_ctx, pad, BLOCK_SIZE)) {                   \
