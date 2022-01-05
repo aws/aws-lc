@@ -1,5 +1,6 @@
 @echo on
-set BUILD_DIR=%CODEBUILD_SRC_DIR%\test_build_dir
+set SRC_ROOT=%cd%
+set BUILD_DIR=%SRC_ROOT%\test_build_dir
 set INSTALL_DIR=%BUILD_DIR%\install
 
 
@@ -8,6 +9,11 @@ set INSTALL_DIR=%BUILD_DIR%\install
 call %1 x64 || goto error
 SET
 call :build_and_test Release "" || goto error
+
+@rem Windows has no concept of Linux's rpath so it can't find the built dlls from CMake, add them to our path to work around this
+set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
+call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
+
 
 @rem call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
 @rem The NO_ASM fails due to some missing 'dummy_chacha20_poly1305_asm'
@@ -32,13 +38,13 @@ exit /b 0
 :build
 @echo on
 @echo  LOG: %date%-%time% %1 %2 build started with cmake generation started
-cd %CODEBUILD_SRC_DIR%
+cd %SRC_ROOT%
 rmdir /s /q %BUILD_DIR%
 mkdir %BUILD_DIR%
 mkdir %INSTALL_DIR%
 cd %BUILD_DIR%
 
-cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 -DCMAKE_INSTALL_PREFIX="%INSTALL_DIR%" -DCMAKE_PREFIX_PATH="%INSTALL_DIR%" %CODEBUILD_SRC_DIR% || goto error
+cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 -DCMAKE_INSTALL_PREFIX="%INSTALL_DIR%" -DCMAKE_PREFIX_PATH="%INSTALL_DIR%" %SRC_ROOT% || goto error
 
 @echo  LOG: %date%-%time% %1 %2 cmake generation complete, starting build
 ninja || goto error
@@ -55,6 +61,4 @@ exit /b %errorlevel%
 
 :error
 echo Failed with error #%errorlevel%.
-type CMakeFiles\CMakeOutput.log
-type CMakeFiles\CMakeError.log
 exit /b 1
