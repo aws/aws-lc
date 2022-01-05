@@ -249,12 +249,11 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
 
 // Do I need to check return values in cleanup?
 // Can I use the output parameter as scratch in final?
+// Do I need to clear out params on failure?
 #define AWSLC_IMPLEMENT_HMAC_FNS(HMAC_NAME, HMAC_CTX, MD_NAME, MD_CTX_NAME,    \
-                                 HMAC_LEN, BLOCK_SIZE)                         \
+                                 HMAC_LEN, BLOCK_SIZE, EVP_MD)                 \
   OPENSSL_EXPORT void HMAC_NAME##_cleanup(HMAC_CTX *ctx) {                     \
-    MD_NAME##_Init(&ctx->md_ctx);                                              \
-    MD_NAME##_Init(&ctx->i_ctx);                                               \
-    MD_NAME##_Init(&ctx->o_ctx);                                               \
+    OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));                                    \
     ctx->initialized = 0;                                                      \
   }                                                                            \
                                                                                \
@@ -266,18 +265,30 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
                                                                                \
   OPENSSL_EXPORT int HMAC_NAME##_Final(HMAC_CTX *ctx, uint8_t out[HMAC_LEN]) { \
     assert(ctx->initialized);                                                  \
+    FIPS_service_indicator_lock_state();                                       \
+    int result = 0;                                                            \
     if (!MD_NAME##_Final(out, &ctx->md_ctx)) {                                 \
-      return 0;                                                                \
+      goto end;                                                                \
     }                                                                          \
     OPENSSL_memcpy(&ctx->md_ctx, &ctx->o_ctx, sizeof(MD_CTX_NAME));            \
     if (!MD_NAME##_Update(&ctx->md_ctx, out, HMAC_LEN)) {                      \
+      goto end;                                                                \
+    }                                                                          \
+    result = MD_NAME##_Final(out, &ctx->md_ctx);                               \
+  end:                                                                         \
+    FIPS_service_indicator_unlock_state();                                     \
+    if (result) {                                                              \
+      HMAC_verify_service_indicator(EVP_MD);                                   \
+      return 1;                                                                \
+    } else {                                                                   \
       return 0;                                                                \
     }                                                                          \
-    return MD_NAME##_Final(out, &ctx->md_ctx);                                 \
   }                                                                            \
                                                                                \
   OPENSSL_EXPORT int HMAC_NAME##_Init(HMAC_CTX *ctx, const void *key,          \
                                       size_t key_len) {                        \
+    FIPS_service_indicator_lock_state();                                       \
+    int result = 0;                                                            \
     if (key != NULL || ctx->initialized != 1) {                                \
       uint8_t pad[BLOCK_SIZE] = {0};                                           \
       uint8_t key_block[BLOCK_SIZE] = {0};                                     \
@@ -285,7 +296,7 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
         if (!MD_NAME##_Init(&ctx->md_ctx) ||                                   \
             !MD_NAME##_Update(&ctx->md_ctx, key, key_len) ||                   \
             !MD_NAME##_Final(key_block, &ctx->md_ctx)) {                       \
-          return 0;                                                            \
+          goto end;                                                            \
         }                                                                      \
       } else {                                                                 \
         OPENSSL_memcpy(key_block, key, key_len);                               \
@@ -295,30 +306,36 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
       }                                                                        \
       if (!MD_NAME##_Init(&ctx->i_ctx) ||                                      \
           !MD_NAME##_Update(&ctx->i_ctx, pad, BLOCK_SIZE)) {                   \
-        return 0;                                                              \
+        goto end;                                                              \
       }                                                                        \
       for (size_t i = 0; i < BLOCK_SIZE; i++) {                                \
         pad[i] = 0x5c ^ key_block[i];                                          \
       }                                                                        \
       if (!MD_NAME##_Init(&ctx->o_ctx) ||                                      \
           !MD_NAME##_Update(&ctx->o_ctx, pad, BLOCK_SIZE)) {                   \
-        return 0;                                                              \
+        goto end;                                                              \
       }                                                                        \
       ctx->initialized = 1;                                                    \
     }                                                                          \
     OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(MD_CTX_NAME));            \
-    return 1;                                                                  \
+    result = 1;                                                                \
+  end:                                                                         \
+    FIPS_service_indicator_unlock_state();                                     \
+    return result;                                                             \
   }                                                                            \
   OPENSSL_EXPORT int HMAC_NAME(const void *key, size_t key_len,                \
                                const uint8_t *data, size_t data_len,           \
                                uint8_t out[HMAC_LEN]) {                        \
+    FIPS_service_indicator_lock_state();                                       \
     HMAC_CTX ctx = {0};                                                        \
     int result;                                                                \
     result = HMAC_NAME##_Init(&ctx, key, key_len) &&                           \
              HMAC_NAME##_Update(&ctx, data, data_len) &&                       \
              HMAC_NAME##_Final(&ctx, out);                                     \
+    FIPS_service_indicator_unlock_state();                                     \
     HMAC_NAME##_cleanup(&ctx);                                                 \
     if (result) {                                                              \
+      HMAC_verify_service_indicator(EVP_MD);                                   \
       return 1;                                                                \
     } else {                                                                   \
       return 0;                                                                \
@@ -327,32 +344,32 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
 
 #ifndef OPENSSL_NO_MD4
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_MD4, HMAC_MD4_CTX, MD4, MD4_CTX,
-                         MD4_DIGEST_LENGTH, MD4_CBLOCK)
+                         MD4_DIGEST_LENGTH, MD4_CBLOCK, EVP_md4())
 #endif
 #ifndef OPENSSL_NO_MD5
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_MD5, HMAC_MD5_CTX, MD5, MD5_CTX,
-                         MD5_DIGEST_LENGTH, MD5_CBLOCK)
+                         MD5_DIGEST_LENGTH, MD5_CBLOCK, EVP_md5())
 #endif
 #ifndef OPENSSL_NO_SHA
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA1, HMAC_SHA1_CTX, SHA1, SHA_CTX,
-                         SHA_DIGEST_LENGTH, SHA_CBLOCK)
+                         SHA_DIGEST_LENGTH, SHA_CBLOCK, EVP_sha1())
 #endif
 #ifndef OPENSSL_NO_SHA256
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA224, HMAC_SHA256_CTX, SHA224, SHA256_CTX,
-                         SHA224_DIGEST_LENGTH, SHA224_CBLOCK)
+                         SHA224_DIGEST_LENGTH, SHA224_CBLOCK, EVP_sha224())
 
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA256, HMAC_SHA256_CTX, SHA256, SHA256_CTX,
-                         SHA256_DIGEST_LENGTH, SHA256_CBLOCK)
+                         SHA256_DIGEST_LENGTH, SHA256_CBLOCK, EVP_sha256())
 #endif
 #ifndef OPENSSL_NO_SHA512
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA384, HMAC_SHA512_CTX, SHA384, SHA512_CTX,
-                         SHA384_DIGEST_LENGTH, SHA384_CBLOCK)
+                         SHA384_DIGEST_LENGTH, SHA384_CBLOCK, EVP_sha384())
 
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA512, HMAC_SHA512_CTX, SHA512, SHA512_CTX,
-                         SHA512_DIGEST_LENGTH, SHA512_CBLOCK)
+                         SHA512_DIGEST_LENGTH, SHA512_CBLOCK, EVP_sha512())
 #endif
 #ifndef OPENSSL_NO_RIPEMD
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, RIPEMD160,
                          RIPEMD160_CTX, RIPEMD160_DIGEST_LENGTH,
-                         RIPEMD160_CBLOCK)
+                         RIPEMD160_CBLOCK, EVP_ripemd160())
 #endif
