@@ -745,7 +745,6 @@ if(BUILD_LIBSSL)
 endif()
 add_subdirectory(util/fipstools/cavp)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
-add_subdirectory(pq-crypto)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
