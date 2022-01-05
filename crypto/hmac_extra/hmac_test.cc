@@ -71,7 +71,6 @@ typedef int (*HmacInplaceOneShot)(void *, size_t, uint8_t *, size_t, uint8_t *);
 typedef int (*HmacInPlaceInit)(void *, void *, size_t);
 typedef int (*HmacInPlaceUpdate)(void *, uint8_t *, size_t);
 typedef int (*HmacInPlaceFinal)(void *, uint8_t *);
-typedef struct in_place_methods_st InPlaceMethods;
 
 struct in_place_methods_st {
   const EVP_MD *evp_md;

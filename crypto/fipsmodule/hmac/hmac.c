@@ -64,34 +64,92 @@
 
 #include "../../internal.h"
 
+typedef int (*HmacInplaceOneShot)(const void *, size_t, const uint8_t *, size_t, uint8_t *);
+typedef int (*HmacInPlaceInit)(void *, const void *, size_t);
+typedef int (*HmacInPlaceUpdate)(void *,const uint8_t *, size_t);
+typedef int (*HmacInPlaceFinal)(void *, uint8_t *);
+typedef void (*HmacInPlaceCleanup)(void *);
+typedef struct in_place_methods_st InPlaceMethods;
+
+struct in_place_methods_st {
+  int md_nid;
+  size_t ctxSize;
+  HmacInplaceOneShot oneShot;
+  HmacInPlaceInit init;
+  HmacInPlaceUpdate update;
+  HmacInPlaceFinal digest;  // Not named final to avoid keywords
+  HmacInPlaceCleanup cleanup;
+};
+
+#define DEFINE_IN_PLACE_METHODS(HMAC_NAME, CTX_NAME, EVP_MD_NID)\
+  {                                                             \
+    .md_nid = EVP_MD_NID,                                       \
+    .ctxSize = sizeof(CTX_NAME),                                \
+    .oneShot = (HmacInplaceOneShot)(HMAC_NAME),                 \
+    .init = (HmacInPlaceInit)(HMAC_NAME##_Init),                \
+    .update = (HmacInPlaceUpdate)(HMAC_NAME##_Update),          \
+    .digest = (HmacInPlaceFinal)(HMAC_NAME##_Final),            \
+    .cleanup = (HmacInPlaceCleanup)(HMAC_NAME##_cleanup)        \
+  }
+
+static InPlaceMethods kInPlaceMethods[] = {
+#ifndef OPENSSL_NO_MD4
+    DEFINE_IN_PLACE_METHODS(HMAC_MD4, HMAC_MD4_CTX, NID_md4),
+#endif
+#ifndef OPENSSL_NO_MD5
+    DEFINE_IN_PLACE_METHODS(HMAC_MD5, HMAC_MD5_CTX, NID_md5),
+#endif
+#ifndef OPENSSL_NO_SHA
+    DEFINE_IN_PLACE_METHODS(HMAC_SHA1, HMAC_SHA1_CTX, NID_sha1),
+#endif
+#ifndef OPENSSL_NO_SHA256
+    DEFINE_IN_PLACE_METHODS(HMAC_SHA224, HMAC_SHA256_CTX, NID_sha224),
+    DEFINE_IN_PLACE_METHODS(HMAC_SHA256, HMAC_SHA256_CTX, NID_sha256),
+#endif
+#ifndef OPENSSL_NO_SHA512
+    DEFINE_IN_PLACE_METHODS(HMAC_SHA384, HMAC_SHA512_CTX, NID_sha384),
+    DEFINE_IN_PLACE_METHODS(HMAC_SHA512, HMAC_SHA512_CTX, NID_sha512),
+#endif
+#ifndef OPENSSL_NO_RIPEMD
+    DEFINE_IN_PLACE_METHODS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, NID_ripe160),
+#endif
+    {.md_nid = 0,
+     .ctxSize = 0,
+     .oneShot = NULL,
+     .init = NULL,
+     .update = NULL,
+     .digest = NULL,
+     .cleanup = NULL}};
+
+static const InPlaceMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
+  InPlaceMethods *result = kInPlaceMethods;
+  while (result->md_nid != evp_md->type && result->md_nid != 0) {
+    result++;
+  }
+  return result;
+}
+
 
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
-  // We have to verify that all the HMAC services actually succeed before
-  // updating the indicator state, so we lock the state here.
-  FIPS_service_indicator_lock_state();
-  HMAC_CTX ctx;
-  HMAC_CTX_init(&ctx);
-  if (!HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) ||
-      !HMAC_Update(&ctx, data, data_len) ||
-      !HMAC_Final(&ctx, out, out_len)) {
-    out = NULL;
+  const InPlaceMethods* inPlace = GetInPlaceMethods(evp_md);
+  if (inPlace->md_nid == 0) {
+    // This indicates that we do not support this digest
+    return NULL;
   }
-  // Unlock service indicator state and check if HMAC functions have succeeded.
-  FIPS_service_indicator_unlock_state();
-  if(out) {
-    HMAC_verify_service_indicator(evp_md);
+  if (inPlace->oneShot(key, key_len, data, data_len, out)) {
+    if (out_len) {
+      *out_len = EVP_MD_size(evp_md);
+    }
+    return out;
+  } else {
+    return NULL;
   }
-  HMAC_CTX_cleanup(&ctx);
-  return out;
 }
 
 void HMAC_CTX_init(HMAC_CTX *ctx) {
-  ctx->md = NULL;
-  EVP_MD_CTX_init(&ctx->i_ctx);
-  EVP_MD_CTX_init(&ctx->o_ctx);
-  EVP_MD_CTX_init(&ctx->md_ctx);
+  OPENSSL_memset(ctx, 0, sizeof(HMAC_CTX));
 }
 
 HMAC_CTX *HMAC_CTX_new(void) {
@@ -103,9 +161,11 @@ HMAC_CTX *HMAC_CTX_new(void) {
 }
 
 void HMAC_CTX_cleanup(HMAC_CTX *ctx) {
-  EVP_MD_CTX_cleanup(&ctx->i_ctx);
-  EVP_MD_CTX_cleanup(&ctx->o_ctx);
-  EVP_MD_CTX_cleanup(&ctx->md_ctx);
+  if (ctx->methods) {
+    ctx->methods->cleanup(ctx->ctx);
+    OPENSSL_free(ctx->ctx);
+    ctx->ctx = NULL;
+  }
   OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
 }
 
@@ -120,99 +180,50 @@ void HMAC_CTX_free(HMAC_CTX *ctx) {
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
                  const EVP_MD *md, ENGINE *impl) {
-  // We have to avoid the underlying SHA services updating the indicator
-  // state, so we lock the state here.
-  FIPS_service_indicator_lock_state();
-  int ret = 0;
-  if (md == NULL) {
-    md = ctx->md;
+  // TODO: Figure out how we want to handle engines in this case.
+  assert(impl == NULL);
+
+  // We need to clean up our old configuration first
+  if (md && ctx->md && ctx->md != md) {
+    HMAC_CTX_cleanup(ctx);
   }
-
-  // If either |key| is non-NULL or |md| has changed, initialize with a new key
-  // rather than rewinding the previous one.
-  //
-  // TODO(davidben,eroman): Passing the previous |md| with a NULL |key| is
-  // ambiguous between using the empty key and reusing the previous key. There
-  // exist callers which intend the latter, but the former is an awkward edge
-  // case. Fix to API to avoid this.
-  if (md != ctx->md || key != NULL) {
-    uint8_t pad[EVP_MAX_MD_BLOCK_SIZE];
-    uint8_t key_block[EVP_MAX_MD_BLOCK_SIZE];
-    unsigned key_block_len;
-
-    size_t block_size = EVP_MD_block_size(md);
-    assert(block_size <= sizeof(key_block));
-    if (block_size < key_len) {
-      // Long keys are hashed.
-      if (!EVP_DigestInit_ex(&ctx->md_ctx, md, impl) ||
-          !EVP_DigestUpdate(&ctx->md_ctx, key, key_len) ||
-          !EVP_DigestFinal_ex(&ctx->md_ctx, key_block, &key_block_len)) {
-        goto end;
-      }
-    } else {
-      assert(key_len <= sizeof(key_block));
-      OPENSSL_memcpy(key_block, key, key_len);
-      key_block_len = (unsigned)key_len;
+  // There is nothing left to clean, do we need to allocate a new contet?
+  if (md && ctx->md != md) {
+    ctx->methods = GetInPlaceMethods(md);
+    if (ctx->methods->md_nid == 0) {
+      // Unsupported md
+      ctx->methods = NULL;
+      return 0;
     }
-    // Keys are then padded with zeros.
-    if (key_block_len != EVP_MAX_MD_BLOCK_SIZE) {
-      OPENSSL_memset(&key_block[key_block_len], 0, sizeof(key_block) - key_block_len);
+    ctx->ctx = OPENSSL_malloc(ctx->methods->ctxSize);
+    if (ctx->ctx == NULL) {
+      // Allocation problem
+      ctx->methods = NULL;
+      return 0;
     }
-
-    for (size_t i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {
-      pad[i] = 0x36 ^ key_block[i];
-    }
-    if (!EVP_DigestInit_ex(&ctx->i_ctx, md, impl) ||
-        !EVP_DigestUpdate(&ctx->i_ctx, pad, EVP_MD_block_size(md))) {
-      goto end;
-    }
-
-    for (size_t i = 0; i < EVP_MAX_MD_BLOCK_SIZE; i++) {
-      pad[i] = 0x5c ^ key_block[i];
-    }
-    if (!EVP_DigestInit_ex(&ctx->o_ctx, md, impl) ||
-        !EVP_DigestUpdate(&ctx->o_ctx, pad, EVP_MD_block_size(md))) {
-      goto end;
-    }
-
+    OPENSSL_memset(ctx->ctx, 0, ctx->methods->ctxSize);
     ctx->md = md;
   }
-
-  if (!EVP_MD_CTX_copy_ex(&ctx->md_ctx, &ctx->i_ctx)) {
-    goto end;
-  }
-  ret = 1;
-
-end:
-  FIPS_service_indicator_unlock_state();
-  return ret;
+  // At this point we know we have valid methods and a context allocated.
+  return ctx->methods->init(ctx->ctx, key, key_len);
 }
 
 int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
-  return EVP_DigestUpdate(&ctx->md_ctx, data, data_len);
+  if (ctx->methods == NULL) {
+    return 0;
+  }
+  return ctx->methods->update(ctx->ctx, data, data_len);
 }
 
 int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
-  // We have to avoid the underlying SHA services updating the indicator state,
-  // so we lock the state here.
-  FIPS_service_indicator_lock_state();
-  unsigned int i;
-  uint8_t buf[EVP_MAX_MD_SIZE];
-
-  // TODO(davidben): The only thing that can officially fail here is
-  // |EVP_MD_CTX_copy_ex|, but even that should be impossible in this case.
-  if (!EVP_DigestFinal_ex(&ctx->md_ctx, buf, &i) ||
-      !EVP_MD_CTX_copy_ex(&ctx->md_ctx, &ctx->o_ctx) ||
-      !EVP_DigestUpdate(&ctx->md_ctx, buf, i) ||
-      !EVP_DigestFinal_ex(&ctx->md_ctx, out, out_len)) {
-    *out_len = 0;
-    FIPS_service_indicator_unlock_state();
+  if (ctx->methods == NULL) {
     return 0;
   }
-
-  FIPS_service_indicator_unlock_state();
-  HMAC_verify_service_indicator(ctx->md);
-  return 1;
+  int result = ctx->methods->digest(ctx->ctx, out);
+  if (result && out_len) {
+    *out_len = EVP_MD_size(ctx->md);
+  }
+  return result;
 }
 
 size_t HMAC_size(const HMAC_CTX *ctx) {
@@ -220,19 +231,19 @@ size_t HMAC_size(const HMAC_CTX *ctx) {
 }
 
 int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src) {
-  if (!EVP_MD_CTX_copy_ex(&dest->i_ctx, &src->i_ctx) ||
-      !EVP_MD_CTX_copy_ex(&dest->o_ctx, &src->o_ctx) ||
-      !EVP_MD_CTX_copy_ex(&dest->md_ctx, &src->md_ctx)) {
+  HMAC_CTX_cleanup(dest);
+  dest->md = src->md;
+  dest->methods = src->methods;
+  dest->ctx = OPENSSL_memdup(src->ctx, dest->methods->ctxSize);
+  if (dest->ctx == NULL) {
     return 0;
   }
-
-  dest->md = src->md;
   return 1;
 }
 
 void HMAC_CTX_reset(HMAC_CTX *ctx) {
   HMAC_CTX_cleanup(ctx);
-  HMAC_CTX_init(ctx);
+  // Cleanup intrinsicly inits to all zeros which is valid
 }
 
 int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {

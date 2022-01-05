@@ -168,12 +168,12 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 
 
 // Private functions
+typedef struct in_place_methods_st InPlaceMethods;
 
 struct hmac_ctx_st {
   const EVP_MD *md;
-  EVP_MD_CTX md_ctx;
-  EVP_MD_CTX i_ctx;
-  EVP_MD_CTX o_ctx;
+  const InPlaceMethods* methods;
+  void* ctx;
 } /* HMAC_CTX */;
 
 
