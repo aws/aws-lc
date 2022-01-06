@@ -9,5 +9,6 @@ phases:
 artifacts:
   files:
      - './AWSLCAndroidTestRunner/app/build/outputs/**/*.apk'
+     - './AWSLCAndroidTestRunner/app/build/outputs/**/**/*.apk'
   discard-paths: yes
 
