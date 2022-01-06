@@ -407,8 +407,6 @@ if(FUZZ)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,fuzzer-no-link -fsanitize-coverage=edge,indirect-calls")
 endif()
 
-add_definitions(-DBORINGSSL_IMPLEMENTATION)
-
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
   # Enable position-independent code globally. This is needed because
@@ -705,6 +703,10 @@ if(BUILD_TESTING)
   # Add minimal googletest targets. The provided one has many side-effects, and
   # googletest has a very straightforward build.
   add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+  if(BUILD_SHARED_LIBS)
+    # This is needed for the Windows build to correctly annotate GTest's API with __declspec(dllexport)
+    target_compile_options(boringssl_gtest PRIVATE -DGTEST_CREATE_SHARED_LIBRARY=1)
+  endif()
   target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
   include_directories(third_party/googletest/include)
