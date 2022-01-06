@@ -186,17 +186,16 @@ struct hmac_ctx_st {
     uint8_t initialized;                                      \
   };
 
-#define AWSLC_DECLARE_HMAC_FNS(HMAC_NAME, HMAC_CTX, HMAC_LEN)                  \
-  OPENSSL_EXPORT int HMAC_NAME(const void *key, size_t key_len,                \
-                               const uint8_t *data, size_t data_len,           \
-                               uint8_t out[HMAC_LEN]);                         \
-  OPENSSL_EXPORT int HMAC_NAME##_Init(                     \
-      HMAC_CTX * ctx, const void *key, size_t key_len);                        \
-  OPENSSL_EXPORT void HMAC_NAME##_cleanup(HMAC_CTX * ctx); \
-  OPENSSL_EXPORT int HMAC_NAME##_Update(                   \
-      HMAC_CTX * ctx, const uint8_t *data, size_t data_len);                   \
-  OPENSSL_EXPORT int HMAC_NAME##_Final(                    \
-      HMAC_CTX * ctx, uint8_t out[HMAC_LEN]);
+#define AWSLC_DECLARE_HMAC_FNS(HMAC_NAME, HMAC_CTX, HMAC_LEN)               \
+  OPENSSL_EXPORT int HMAC_NAME(const void *key, size_t key_len,             \
+                               const uint8_t *data, size_t data_len,        \
+                               uint8_t out[HMAC_LEN]);                      \
+  OPENSSL_EXPORT int HMAC_NAME##_Init(HMAC_CTX *ctx, const void *key,       \
+                                      size_t key_len);                      \
+  OPENSSL_EXPORT void HMAC_NAME##_cleanup(HMAC_CTX *ctx);                   \
+  OPENSSL_EXPORT int HMAC_NAME##_Update(HMAC_CTX *ctx, const uint8_t *data, \
+                                        size_t data_len);                   \
+  OPENSSL_EXPORT int HMAC_NAME##_Final(HMAC_CTX *ctx, uint8_t out[HMAC_LEN]);
 
 // Every use of AWSLC_DECLARE_HMAC_CTX also requires a typedef in base.h
 #ifndef OPENSSL_NO_MD4
