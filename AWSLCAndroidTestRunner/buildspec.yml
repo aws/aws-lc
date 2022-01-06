@@ -6,9 +6,10 @@ phases:
       - chmod +x ./AWSLCAndroidTestRunner/gradlew
       - cd AWSLCAndroidTestRunner
       - ./gradlew assembleDebug
+      - ls app/build/outputs/apk
 artifacts:
   files:
      - './AWSLCAndroidTestRunner/app/build/outputs/**/*.apk'
-     - './AWSLCAndroidTestRunner/app/build/outputs/**/**/*.apk'
+     - './AWSLCAndroidTestRunner/app/build/outputs/androidTest/**/*.apk'
   discard-paths: yes
 
