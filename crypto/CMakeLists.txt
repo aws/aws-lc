@@ -511,6 +511,13 @@ target_include_directories(crypto SYSTEM PUBLIC
 if(BUILD_TESTING)
   add_subdirectory(test)
 
+  # compiles an so executable file for testing in our Android app CI.
+  if(ANDROIDTESTRUNNER)
+    set(CRYPTO_TEST_EXEC crypto_test.so)
+  else()
+    set(CRYPTO_TEST_EXEC crypto_test)
+  endif()
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
@@ -533,7 +540,7 @@ if(BUILD_TESTING)
   add_dependencies(all_tests urandom_test)
 
   add_executable(
-    crypto_test.so
+    ${CRYPTO_TEST_EXEC}
 
     abi_self_test.cc
     asn1/asn1_test.cc
@@ -608,17 +615,17 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
 
-  add_dependencies(crypto_test.so global_target)
+  add_dependencies(${CRYPTO_TEST_EXEC} global_target)
 
-  target_link_libraries(crypto_test.so test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
   if(FIPS)
-    target_link_libraries(crypto_test.so jitterentropy)
-    add_dependencies(crypto_test.so jitterentropy)
+    target_link_libraries(${CRYPTO_TEST_EXEC} jitterentropy)
+    add_dependencies(${CRYPTO_TEST_EXEC} jitterentropy)
   endif()
   if(WIN32)
-    target_link_libraries(crypto_test.so ws2_32)
+    target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()
-  add_dependencies(all_tests crypto_test.so)
+  add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
 endif()
 
 install(TARGETS crypto
