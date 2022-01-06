@@ -179,6 +179,7 @@ if(FIPS_DELOCATE)
 
     bcm.c
   )
+  target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION)
 
   if(ARCH STREQUAL "aarch64")
     # Perlasm output on Aarch64 needs to pass through the C preprocessor before
@@ -212,6 +213,7 @@ if(FIPS_DELOCATE)
 
     bcm-delocated.S
   )
+  target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_hashunset global_target)
 
@@ -239,6 +241,7 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 
@@ -255,6 +258,7 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 
@@ -267,6 +271,7 @@ elseif(FIPS_SHARED)
 
     ${BCM_ASM_SOURCES}
   )
+  target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_library global_target)
   # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
@@ -296,6 +301,7 @@ else()
 
     ${BCM_ASM_SOURCES}
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 endif()

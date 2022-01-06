@@ -21,6 +21,7 @@ add_library(
   x509/x509_decrepit.c
   xts/xts.c
 )
+target_compile_definitions(decrepit PRIVATE BORINGSSL_IMPLEMENTATION)
 
 add_dependencies(decrepit global_target)
 
