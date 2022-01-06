@@ -9,10 +9,17 @@ cmake_minimum_required(VERSION 3.4.1)
 set(path_to_awslc "${CMAKE_CURRENT_LIST_DIR}/../../../../..")
 get_filename_component(path_to_awslc ${path_to_awslc} ABSOLUTE)
 
+# This is required in order to append /lib/cmake to each element in CMAKE_PREFIX_PATH
+# set(AWS_MODULE_DIR "/${CMAKE_INSTALL_LIBDIR}/cmake")
+# string(REPLACE ";" "${AWS_MODULE_DIR};" AWS_MODULE_PATH "${CMAKE_PREFIX_PATH}${AWS_MODULE_DIR}")
+# # Append that generated list to the module search path
+# list(APPEND CMAKE_MODULE_PATH ${AWS_MODULE_PATH})
+
 list(APPEND CMAKE_MODULE_PATH "${path_to_awslc}/cmake")
 # Although we generate our own tests, the generated crypto_test_data object file is needed for the android tests.
 set(BUILD_TESTING ON)
 set(BUILD_SHARED_LIBS OFF)
+set(ANDROIDTESTRUNNER ON)
 add_subdirectory(${path_to_awslc} ${CMAKE_CURRENT_BINARY_DIR}/aws-lc)
 
 # gtest needs to be recompiled with the same flags as the current toolchain to avoid unrecognized symbols.
