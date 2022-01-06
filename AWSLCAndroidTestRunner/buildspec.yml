@@ -6,6 +6,7 @@ phases:
       - chmod +x ./AWSLCAndroidTestRunner/gradlew
       - cd AWSLCAndroidTestRunner
       - ./gradlew assembleDebug
+      - ./gradlew assembleAndroidTest
       - ls app/build/outputs/apk
 artifacts:
   files:
