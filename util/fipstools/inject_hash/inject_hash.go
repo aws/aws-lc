@@ -179,18 +179,18 @@ func doMacOS(objectBytes []byte) ([]byte, []byte, error) {
 	}
 
 	// Find the __text and, optionally, __const sections.
+	// They are both in __TEXT segment and are unique.
 	var textSection, rodataSection *macho.Section
 	var textSectionIndex, rodataSectionIndex int
 	for i, section := range object.Sections {
-
-    if section.Seg == "__TEXT" && section.Name == "__text" {
+		if section.Seg == "__TEXT" && section.Name == "__text" {
 			textSection = section
 			textSectionIndex = i + 1
-    }
-    if section.Seg == "__TEXT" && section.Name == "__const" {
+		}
+		if section.Seg == "__TEXT" && section.Name == "__const" {
 			rodataSection = section
 			rodataSectionIndex = i + 1
-    }
+		}
 	}
 
 	if textSection == nil {
@@ -312,9 +312,9 @@ func do(outPath, oInput string, arInput string, useSHA256 bool, macOS bool) erro
 			return fmt.Errorf("-in-archive and -in-object are mutually exclusive")
 		}
 
-    if macOS {
-      return fmt.Errorf("only shared libraries can be handled on macOS")
-    }
+		if macOS {
+			return fmt.Errorf("only shared libraries can be handled on macOS")
+		}
 
 		fi, err := os.Stat(arInput)
 		if err != nil {
@@ -411,7 +411,7 @@ func main() {
 	oInput := flag.String("in-object", "", "Path to a .o file")
 	outPath := flag.String("o", "", "Path to output object")
 	sha256 := flag.Bool("sha256", false, "Whether to use SHA-256 over SHA-512. This must match what the compiled module expects.")
-  macOS := flag.Bool("macos", false, "Whether the FIPS module is built for macOS or not.")
+	macOS := flag.Bool("macos", false, "Whether the FIPS module is built for macOS or not.")
 
 	flag.Parse()
 

@@ -459,10 +459,8 @@ if(FIPS_SHARED)
   # hash value. For now we support the FIPS build only on Linux and macOS.
 
   if (APPLE)
-    set(SHARED_LIB_NAME "libcrypto.dylib")
     set(INJECT_HASH_MACOS_FLAG "-macos")
   else()
-    set(SHARED_LIB_NAME "libcrypto.so")
     set(INJECT_HASH_MACOS_FLAG "")
   endif()
 
@@ -470,7 +468,8 @@ if(FIPS_SHARED)
     TARGET crypto POST_BUILD
     COMMAND ${GO_EXECUTABLE} run
     ${CMAKE_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-    -o ${CMAKE_CURRENT_BINARY_DIR}/${SHARED_LIB_NAME} -in-object ${CMAKE_CURRENT_BINARY_DIR}/${SHARED_LIB_NAME} -sha256 ${INJECT_HASH_MACOS_FLAG}
+    -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+    -sha256 ${INJECT_HASH_MACOS_FLAG}
     # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
     # go_executable isn't used (as it doesn't get built), but we list this
     # dependency anyway in case it starts working in some CMake version.

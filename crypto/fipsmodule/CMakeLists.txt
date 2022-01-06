@@ -329,10 +329,12 @@ elseif(FIPS_SHARED)
     add_custom_command(
       OUTPUT fips_macos_start.o
       COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_START -o fips_macos_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c
     )
     add_custom_command(
       OUTPUT fips_macos_end.o
       COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_END -o fips_macos_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c
     )
 
     add_custom_command(
@@ -345,20 +347,20 @@ elseif(FIPS_SHARED)
    else()
     # Linux is the only OS other than macOS on which we build FIPS.
 
-		# fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
-  	set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
-  	if (GCC)
-  	  # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
-  	  # so we have a separate linker script for gcc.
-  	  set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
-  	endif()
+    # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
+    set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
+    if (GCC)
+      # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
+      # so we have a separate linker script for gcc.
+      set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
+    endif()
 
-  	add_custom_command(
-  	  OUTPUT bcm.o
-  	  COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
-  	  DEPENDS bcm_library fips_shared.lds
-  	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  	)
+    add_custom_command(
+      OUTPUT bcm.o
+      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   endif()
 
 
