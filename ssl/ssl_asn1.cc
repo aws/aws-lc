@@ -1335,21 +1335,24 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   // 2) It uses QUIC
   // 3) Its SSL_SESSION isn't serializable.
   // 4) Handshake hasn't finished yet.
-  // 5) SSL is not of TLS 1.2 version.
+  // 5) TLS version is not supported(currently, only TLS 1.2 is supported).
   // 6) Write is in clean state(|SSL_write| should finish the |in| write, no pending writes).
+  // 7) ssl is not shutdown or has shutdown error.
   //    TODO: support TLS 1.3 and TLS 1.1.
-  if (!SSL_is_server(in) ||             // (0)
-      SSL_is_dtls(in) ||                // (1)
-      in->quic_method != nullptr ||     // (2)
-      !in->s3 ||                        // (3)
+  if (!SSL_is_server(in) ||                                     // (0)
+      SSL_is_dtls(in) ||                                        // (1)
+      in->quic_method != nullptr ||                             // (2)
+      !in->s3 ||                                                // (3)
       !in->s3->established_session ||
       in->s3->established_session.get()->not_resumable ||
       // TODO: Check in->s3->rwstate.
-      SSL_in_init(in) ||                // (4)
-      in->version != TLS1_2_VERSION ||  // (5)
-      in->s3->wnum != 0 ||              // (6)
-      in->s3->wpend_pending) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      SSL_in_init(in) ||                                        // (4)
+      in->version != TLS1_2_VERSION ||                          // (5)
+      in->s3->wnum != 0 ||                                      // (6)
+      in->s3->wpend_pending ||
+      in->s3->read_shutdown != ssl_shutdown_none ||             // (7)
+      in->s3->write_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     // fprintf( stderr, "!SSL_is_server(in) %d\n", !SSL_is_server(in));
     // fprintf( stderr, "SSL_is_dtls(in) %d\n", SSL_is_dtls(in));
     // fprintf( stderr, "SSL_in_init(in) %d\n", SSL_in_init(in));
