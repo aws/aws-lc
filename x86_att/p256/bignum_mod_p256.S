@@ -70,7 +70,7 @@ bignum_mod_p256:
 
                 movq    %rdx, x
 
-// Load non-trivial digits [n3; 0; n1; -1] = p_256 abd do a conditional
+// Load non-trivial digits [n3; 0; n1; -1] = p_256 and do a conditional
 // subtraction to reduce the four starting digits [m3;m2;m1;m0] modulo p_256
 
                 subq    $-1, m0

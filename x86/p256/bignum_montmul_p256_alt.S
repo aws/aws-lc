@@ -164,8 +164,8 @@ bignum_montmul_p256_alt:
         adc     r8, r9
 
 // We now have a pre-reduced 5-word form [r8; r15;r14;r13;r12]
-// Load [rax;r11;rbx;rdx;rcx] = 2^320 - p_256, re-using earlier numbers a bit
-// Do [rax;r11;rbx;rdx;rcx] = [r8;r15;r14;r13;r12] + (2^320 - p_256)
+// Load [rax;r11;r9;rbx;rcx] = 2^320 - p_256, re-using earlier numbers a bit
+// Do [rax;r11;r9;rbx;rcx] = [r8;r15;r14;r13;r12] + (2^320 - p_256)
 
         mov     ecx, 1
         add     rcx, r12

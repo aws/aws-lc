@@ -164,7 +164,7 @@ innerend:
         cmpq    p, k
         jc      outerloop
 
-// Rextore registers and return
+// Restore registers and return
 
 end:
         popq    %r15
