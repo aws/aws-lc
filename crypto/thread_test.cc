@@ -54,6 +54,26 @@ TEST(ThreadTest, Once) {
   EXPECT_EQ(1u, g_once_init_called);
 }
 
+#if !defined(OPENSSL_MACOS)
+// The |InitZeros| test is excluded from the macOS FIPS build.
+// The following three macros are defined in |crypto/internal.h|:
+//   #define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
+//   #define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
+//   #define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL, 0}
+// On Linux, the above macros all resolve to a zero (or an array of zeroes).
+// On macOS, the macros are prefixed with a "signature". For example,
+// |PTHREAD_ONCE_INIT| is defined in |pthread.h| as:
+//   #define PTHREAD_ONCE_INIT {_PTHREAD_ONCE_SIG_init, {0}}
+// where, |pthread_impl.h| defines:
+//   #define _PTHREAD_ONCE_SIG_init	0x30B1BCBA
+// Therefore, on macOS, |CRYPTO_ONCE_INIT| and the other two macros don't
+// resolve to a zero and the |InitZeros| test fails.
+//
+// Rather than making the test work on macOS by handling the "signature",
+// we disable it because the file |pthread_impl.h| that contains the macro
+// in question has the following note:
+//   /* This whole header file will disappear, so don't depend on it... */
+
 static CRYPTO_once_t once_init_value = CRYPTO_ONCE_INIT;
 static CRYPTO_once_t once_bss;
 
@@ -77,6 +97,7 @@ TEST(ThreadTest, InitZeros) {
         Bytes((uint8_t *)&ex_data_class_value, sizeof(ex_data_class_value)));
   }
 }
+#endif
 
 static int g_test_thread_ok = 0;
 static unsigned g_destructor_called_count = 0;
