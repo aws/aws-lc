@@ -943,14 +943,12 @@ static const unsigned kS3HostNameTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 static const unsigned kS3ALPNSelectedTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
-static const unsigned kS3AlertDispatchTag = 
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 4;
 static const unsigned kS3NextProtoNegotiatedTag = 
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 4;
 static const unsigned kS3ChannelIdValidTag = 
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 6;
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
 static const unsigned kS3ChannelIdTag = 
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 7;
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 6;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL transfer.
@@ -973,10 +971,9 @@ static const unsigned kS3ChannelIdTag =
 //    sessionReused                     [1] BOOLEAN OPTIONAL,
 //    hostName                          [2] OCTET STRING OPTIONAL,
 //    alpnSelected                      [3] OCTET STRING OPTIONAL,
-//    alertDispatch                     [4] BOOLEAN OPTIONAL,
-//    nextProtoNegotiated               [5] BOOLEAN OPTIONAL,
-//    channelIdValid                    [6] BOOLEAN OPTIONAL,
-//    channelId                         [7] OCTET STRING OPTIONAL,
+//    nextProtoNegotiated               [4] BOOLEAN OPTIONAL,
+//    channelIdValid                    [5] BOOLEAN OPTIONAL,
+//    channelId                         [6] OCTET STRING OPTIONAL,
 // }
 static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -1037,14 +1034,6 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
     }
   }
 
-  if (in->alert_dispatch) {
-    if (!CBB_add_asn1(&s3, &child, kS3AlertDispatchTag) ||
-        !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-  }
-
   if (!in->next_proto_negotiated.empty()) {
     if (!CBB_add_asn1(&s3, &child, kS3NextProtoNegotiatedTag) ||
         !CBB_add_asn1_octet_string(&child, in->next_proto_negotiated.data(),
@@ -1096,7 +1085,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   }
 
   CBS s3, read_seq, write_seq, server_random, client_random, send_alert;
-  int session_reused, alert_dispatch, channel_id_valid;
+  int session_reused, channel_id_valid;
   uint64_t version, early_data_reason;
   int64_t rwstate;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
@@ -1119,7 +1108,6 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       !CBS_get_optional_asn1_bool(&s3, &session_reused, kS3SessionReusedTag, 0 /* default to false */) ||
       !parse_optional_string(&s3, &(out->hostname), kS3HostNameTag, SSL_R_INVALID_SSL3_STATE) ||
       !SSL3_STATE_parse_octet_string(&s3, &(out->alpn_selected), kS3ALPNSelectedTag) ||
-      !CBS_get_optional_asn1_bool(&s3, &alert_dispatch, kS3AlertDispatchTag, 0 /* default to false */) ||
       !SSL3_STATE_parse_octet_string(&s3, &(out->next_proto_negotiated), kS3NextProtoNegotiatedTag) ||
       !CBS_get_optional_asn1_bool(&s3, &channel_id_valid, kS3ChannelIdValidTag, 0 /* default to false */) ||
       !SSL3_STATE_get_optional_octet_string(&s3, out->channel_id, kS3ChannelIdTag, SSL3_CHANNEL_ID_SIZE) ||
@@ -1135,7 +1123,6 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->early_data_reason = static_cast<ssl_early_data_reason_t>(early_data_reason);
   out->rwstate = rwstate;
   out->session_reused = !!session_reused;
-  out->alert_dispatch = !!alert_dispatch;
   out->channel_id_valid = !!channel_id_valid;
   return 1;
 }
