@@ -973,6 +973,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   SSL *ssl = ssl_uniqueptr->get();
   SSL_CTX *session_ctx = SSL_get_SSL_CTX(ssl);
   TestState *test_state = GetTestState(ssl);
+  uint8_t tls_unique_before_transfer[16];
+  size_t tls_unique_len_before_transfer;
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
@@ -1005,6 +1007,19 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     }
 
     if (config->ssl_transfer == 1 && CanBeEncoded(ssl)) {
+      if (config->tls_unique) {
+        if (!SSL_get_tls_unique(ssl, tls_unique_before_transfer,
+          &tls_unique_len_before_transfer,
+          sizeof(tls_unique_before_transfer))) {
+          fprintf(stderr, "failed to get tls-unique before ssl transfer\n");
+          return false;
+        }
+        if (tls_unique_len_before_transfer != 12) {
+          fprintf(stderr, "expected 12 bytes of tls-unique but got %u",
+            static_cast<unsigned>(tls_unique_len_before_transfer));
+          return false;
+        }
+      }
       // Below message is to inform runner.go that this test case 
       // is going to test SSL transfer.
       fprintf(stderr, "SSL transfer is going to be test.\n");
@@ -1131,6 +1146,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     if (tls_unique_len != 12) {
       fprintf(stderr, "expected 12 bytes of tls-unique but got %u",
               static_cast<unsigned>(tls_unique_len));
+      return false;
+    }
+
+    if (tls_unique_len_before_transfer == 12 &&
+      !OPENSSL_memcmp(tls_unique, tls_unique_before_transfer, 12)) {
+      fprintf(stderr, "tls_unique_before_transfer is different from tls_unique.");
       return false;
     }
 

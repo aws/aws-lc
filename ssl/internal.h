@@ -2620,6 +2620,7 @@ enum ssl_ech_status_t {
 
 #define SSL3_SEND_ALERT_SIZE 2
 #define SSL3_CHANNEL_ID_SIZE 64
+#define PREV_FINISHED_MAX_SIZE 12
 
 struct SSL3_STATE {
   static constexpr bool kAllowUniquePtr = true;
@@ -2787,10 +2788,10 @@ struct SSL3_STATE {
   uint8_t exporter_secret_len = 0;
 
   // Connection binding to prevent renegotiation attacks
-  uint8_t previous_client_finished[12] = {0};
+  uint8_t previous_client_finished[PREV_FINISHED_MAX_SIZE] = {0};
   uint8_t previous_client_finished_len = 0;
   uint8_t previous_server_finished_len = 0;
-  uint8_t previous_server_finished[12] = {0};
+  uint8_t previous_server_finished[PREV_FINISHED_MAX_SIZE] = {0};
 
   uint8_t send_alert[SSL3_SEND_ALERT_SIZE] = {0};
 
