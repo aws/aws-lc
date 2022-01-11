@@ -1145,6 +1145,9 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->channel_id_valid = !!channel_id_valid;
   out->previous_client_finished_len = previous_client_finished_len;
   out->previous_server_finished_len = previous_server_finished_len;
+  // Below comment is copied from |SSL_do_handshake|.
+  // Destroy the handshake object if the handshake has completely finished.
+  out->hs.reset();
   return 1;
 }
 
@@ -1261,8 +1264,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   OPENSSL_memcpy(read_sequence, ssl->s3->read_sequence, TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(write_sequence, ssl->s3->write_sequence, TLS_SEQ_NUM_SIZE);
 
-  // Indicate we've done handshake
-  ssl->s3->hs->handshake_finalized = true;
   // TODO: check how to serialize internal field state.
   // have_version is true if the connection's final version is known. Otherwise
   // the version has not been negotiated yet.
