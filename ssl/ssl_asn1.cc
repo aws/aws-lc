@@ -1146,6 +1146,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->previous_client_finished_len = previous_client_finished_len;
   out->previous_server_finished_len = previous_server_finished_len;
   out->v2_hello_done = true;
+  out->initial_handshake_complete = true;
   // Below comment is copied from |SSL_do_handshake|.
   // Destroy the handshake object if the handshake has completely finished.
   out->hs.reset();
