@@ -971,6 +971,7 @@ static const unsigned kS3ChannelIdTag =
 //    previousClientFinishedLen         INTEGER,
 //    previousServerFinished            OCTET STRING,
 //    previousServerFinishedLen         INTEGER,
+//    emptyRecordCount                  INTEGER,
 //    warningAlertCount                 INTEGER,
 //    establishedSession                [0] SEQUENCE OPTIONAL,
 //    sessionReused                     [1] BOOLEAN OPTIONAL,
@@ -999,6 +1000,7 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
       !CBB_add_asn1_uint64(&s3, in->previous_client_finished_len) ||
       !CBB_add_asn1_octet_string(&s3, in->previous_server_finished, PREV_FINISHED_MAX_SIZE) ||
       !CBB_add_asn1_uint64(&s3, in->previous_server_finished_len) ||
+      !CBB_add_asn1_uint64(&s3, in->empty_record_count) ||
       !CBB_add_asn1_uint64(&s3, in->warning_alert_count)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -1098,7 +1100,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   CBS previous_client_finished, previous_server_finished;
   int session_reused, channel_id_valid;
   uint64_t version, early_data_reason, previous_client_finished_len, previous_server_finished_len;
-  uint64_t warning_alert_count;
+  uint64_t empty_record_count, warning_alert_count;
   int64_t rwstate;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&s3, &version) ||
@@ -1124,6 +1126,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       CBS_len(&previous_server_finished) != PREV_FINISHED_MAX_SIZE ||
       !CBS_get_asn1_uint64(&s3, &previous_server_finished_len) ||
       previous_server_finished_len > PREV_FINISHED_MAX_SIZE ||
+      !CBS_get_asn1_uint64(&s3, &empty_record_count) ||
       !CBS_get_asn1_uint64(&s3, &warning_alert_count) ||
       !SSL3_STATE_parse_session(&s3, &(out->established_session), ctx) ||
       !CBS_get_optional_asn1_bool(&s3, &session_reused, kS3SessionReusedTag, 0 /* default to false */) ||
@@ -1151,6 +1154,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->previous_server_finished_len = previous_server_finished_len;
   out->v2_hello_done = true;
   out->initial_handshake_complete = true;
+  out->empty_record_count = empty_record_count;
   out->warning_alert_count = warning_alert_count;
   // Below comment is copied from |SSL_do_handshake|.
   // Destroy the handshake object if the handshake has completely finished.
