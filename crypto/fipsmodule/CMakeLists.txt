@@ -216,6 +216,7 @@ if(FIPS_DELOCATE)
 
     bcm.c
   )
+  target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION)
 
   if(ARCH STREQUAL "aarch64")
     # Perlasm output on Aarch64 needs to pass through the C preprocessor
@@ -258,6 +259,7 @@ if(FIPS_DELOCATE)
 
     bcm-delocated.S
   )
+  target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_hashunset global_target)
 
@@ -285,6 +287,7 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 
@@ -301,6 +304,7 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 
@@ -313,22 +317,57 @@ elseif(FIPS_SHARED)
 
     ${BCM_ASM_SOURCES}
   )
+  target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_library global_target)
-  # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
-  set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
-  if (GCC)
-    # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
-    # so we have a separate linker script for gcc.
-    set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
+
+  if (APPLE)
+    # The linker on macOS doesn't have the ability to process linker scripts,
+    # so we build the FIPS module differently than on Linux. Similarly to
+    # what OpenSSL does we produce two object files: fips_macos_{start, end}.o
+    # that contain only the markers for the start and end of __text and __const
+    # sections. The module is then produced by linking the files specified in
+    # the following order: fips_macos_start.o bcm.o fips_macos_end.o. This will
+    # generate the output object file where all the code in the __text section
+    # and all the read-only data in the __const section are between the
+    # respective start and end markers.
+    add_custom_command(
+      OUTPUT fips_macos_start.o
+      COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_START -o fips_macos_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c
+    )
+    add_custom_command(
+      OUTPUT fips_macos_end.o
+      COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_END -o fips_macos_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c
+    )
+
+    add_custom_command(
+      OUTPUT bcm.o
+      COMMAND ${CMAKE_LINKER} -r fips_macos_start.o -force_load $<TARGET_FILE:bcm_library> fips_macos_end.o -keep_private_externs -o bcm.o
+      DEPENDS bcm_library fips_macos_start.o fips_macos_end.o
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+
+   else()
+    # Linux is the only OS other than macOS on which we build FIPS.
+
+    # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
+    set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
+    if (GCC)
+      # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
+      # so we have a separate linker script for gcc.
+      set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
+    endif()
+
+    add_custom_command(
+      OUTPUT bcm.o
+      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   endif()
 
-  add_custom_command(
-    OUTPUT bcm.o
-    COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
-    DEPENDS bcm_library fips_shared.lds
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  )
 
   add_custom_target(bcm_o_target DEPENDS bcm.o)
 else()
@@ -342,6 +381,7 @@ else()
 
     ${BCM_ASM_SOURCES}
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 endif()

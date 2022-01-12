@@ -385,8 +385,10 @@ if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.9.99") OR
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
 endif()
 
-# pthread_rwlock_t requires a feature flag.
-if(NOT WIN32)
+# pthread_rwlock_t on Linux requires a feature flag. However, it should not be
+# set on Apple platforms, where it instead disables APIs we use. See compat(5)
+# and sys/cdefs.h.
+if(NOT WIN32 AND NOT APPLE)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=700")
 endif()
 
@@ -410,8 +412,6 @@ if(FUZZ)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,fuzzer-no-link -fsanitize-coverage=edge,indirect-calls")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,fuzzer-no-link -fsanitize-coverage=edge,indirect-calls")
 endif()
-
-add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
 if(BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)
@@ -499,6 +499,10 @@ endif()
 
 if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
   message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
+endif()
+
+if(FIPS AND NOT BUILD_SHARED_LIBS)
+  message(FATAL_ERROR "Building AWS-LC for FIPS only supports the shared build, you must pass in '-DBUILD_SHARED_LIBS=TRUE'")
 endif()
 
 if(FIPS)
@@ -705,6 +709,10 @@ if(BUILD_TESTING)
   # Add minimal googletest targets. The provided one has many side-effects, and
   # googletest has a very straightforward build.
   add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+  if(BUILD_SHARED_LIBS)
+    # This is needed for the Windows build to correctly annotate GTest's API with __declspec(dllexport)
+    target_compile_options(boringssl_gtest PRIVATE -DGTEST_CREATE_SHARED_LIBRARY=1)
+  endif()
   target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
   include_directories(third_party/googletest/include)
