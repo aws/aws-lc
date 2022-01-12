@@ -12,11 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-<<<<<<< HEAD
-#include "../crypto/fipsmodule/cpucap/cpu-arm-linux.h"
-=======
-#include "../crypto/cpu_arm_linux.h"
->>>>>>> 0354b79d70ba9c8fdfd59a7a9cda1f02758688a5
+#include "../crypto/fipsmodule/cpucap/cpu_arm_linux.h"
 
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
