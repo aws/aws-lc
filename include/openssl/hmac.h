@@ -170,13 +170,6 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 // Private functions
 typedef struct in_place_methods_st InPlaceMethods;
 
-struct hmac_ctx_st {
-  const EVP_MD *md;
-  const InPlaceMethods* methods;
-  void* ctx;
-} /* HMAC_CTX */;
-
-
 // Fast no-allocation HMAC implementations
 #define AWSLC_DECLARE_HMAC_CTX(HMAC_STRUCT_NAME, MD_CTX_NAME) \
   struct HMAC_STRUCT_NAME {                                   \
@@ -228,6 +221,35 @@ AWSLC_DECLARE_HMAC_FNS(HMAC_SHA512, HMAC_SHA512_CTX, SHA512_DIGEST_LENGTH)
 AWSLC_DECLARE_HMAC_CTX(hmac_ripemd160_state_st, RIPEMD160_CTX)
 AWSLC_DECLARE_HMAC_FNS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, RIPEMD160_DIGEST_LENGTH)
 #endif
+
+// We use a union to ensure that enough space is allocated and never actually bother with the named members.
+union hmac_ctx_union {
+#ifndef OPENSSL_NO_MD4
+  HMAC_MD4_CTX md4;
+#endif
+#ifndef OPENSSL_NO_MD5
+  HMAC_MD5_CTX md5;
+#endif
+#ifndef OPENSSL_NO_SHA
+  HMAC_SHA1_CTX sha1;
+#endif
+#ifndef OPENSSL_NO_SHA256
+  HMAC_SHA256_CTX sha256;
+#endif
+#ifndef OPENSSL_NO_SHA512
+  HMAC_SHA512_CTX sha512;
+#endif
+#ifndef OPENSSL_NO_RIPEMD
+  HMAC_RIPEMD160_CTX ripemd160;
+#endif
+};
+
+struct hmac_ctx_st {
+  const EVP_MD *md;
+  const InPlaceMethods *methods;
+  union hmac_ctx_union ctx;
+} /* HMAC_CTX */;
+
 
 #if defined(__cplusplus)
 }  // extern C

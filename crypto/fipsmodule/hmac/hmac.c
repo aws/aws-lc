@@ -161,11 +161,7 @@ HMAC_CTX *HMAC_CTX_new(void) {
 }
 
 void HMAC_CTX_cleanup(HMAC_CTX *ctx) {
-  if (ctx->methods) {
-    ctx->methods->cleanup(ctx->ctx);
-    OPENSSL_free(ctx->ctx);
-    ctx->ctx = NULL;
-  }
+  // All of the contexts are flat and can simply be zeroed
   OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
 }
 
@@ -183,10 +179,6 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   // TODO: Figure out how we want to handle engines in this case.
   assert(impl == NULL);
 
-  // We need to clean up our old configuration first
-  if (md && ctx->md && ctx->md != md) {
-    HMAC_CTX_cleanup(ctx);
-  }
   // There is nothing left to clean, do we need to allocate a new contet?
   if (md && ctx->md != md) {
     ctx->methods = GetInPlaceMethods(md);
@@ -195,31 +187,27 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
       ctx->methods = NULL;
       return 0;
     }
-    ctx->ctx = OPENSSL_malloc(ctx->methods->ctxSize);
-    if (ctx->ctx == NULL) {
-      // Allocation problem
-      ctx->methods = NULL;
-      return 0;
-    }
-    OPENSSL_memset(ctx->ctx, 0, ctx->methods->ctxSize);
+
+    OPENSSL_memset(&ctx->ctx, 0, sizeof(ctx->ctx));
+    assert(ctx->methods->ctxSize > sizeof(ctx->ctx));
     ctx->md = md;
   }
   // At this point we know we have valid methods and a context allocated.
-  return ctx->methods->init(ctx->ctx, key, key_len);
+  return ctx->methods->init(&ctx->ctx, key, key_len);
 }
 
 int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
   if (ctx->methods == NULL) {
     return 0;
   }
-  return ctx->methods->update(ctx->ctx, data, data_len);
+  return ctx->methods->update(&ctx->ctx, data, data_len);
 }
 
 int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
   if (ctx->methods == NULL) {
     return 0;
   }
-  int result = ctx->methods->digest(ctx->ctx, out);
+  int result = ctx->methods->digest(&ctx->ctx, out);
   if (result && out_len) {
     *out_len = EVP_MD_size(ctx->md);
   }
@@ -231,13 +219,7 @@ size_t HMAC_size(const HMAC_CTX *ctx) {
 }
 
 int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src) {
-  HMAC_CTX_cleanup(dest);
-  dest->md = src->md;
-  dest->methods = src->methods;
-  dest->ctx = OPENSSL_memdup(src->ctx, dest->methods->ctxSize);
-  if (dest->ctx == NULL) {
-    return 0;
-  }
+  OPENSSL_memcpy(dest, src, sizeof(HMAC_CTX));
   return 1;
 }
 
