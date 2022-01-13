@@ -613,7 +613,7 @@ static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
   }
   name += ChunkLenSuffix(chunk_len);
   TimeResults results;
-  if (!TimeFunction(&results, [&ctx, md, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
@@ -662,7 +662,7 @@ static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
-        return HMAC(md, key, 0, scratch, chunk_len, digest, &md_len)  != nullptr;
+        return HMAC(md, key, key_len, scratch, chunk_len, digest, &md_len)  != nullptr;
       })) {
     fprintf(stderr, "HMAC_Final failed.\n");
     ERR_print_errors_fp(stderr);

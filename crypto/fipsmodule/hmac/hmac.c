@@ -323,7 +323,7 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
                                const uint8_t *data, size_t data_len,           \
                                uint8_t out[HMAC_LEN]) {                        \
     FIPS_service_indicator_lock_state();                                       \
-    HMAC_CTX ctx = {0};                                                        \
+    HMAC_CTX ctx = {.initialized = 0};                                         \
     int result;                                                                \
     result = HMAC_NAME##_Init(&ctx, key, key_len) &&                           \
              HMAC_NAME##_Update(&ctx, data, data_len) &&                       \
