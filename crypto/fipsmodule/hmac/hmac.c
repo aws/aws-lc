@@ -243,8 +243,6 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
   return HMAC_CTX_copy_ex(dest, src);
 }
 
-// Do I need to check return values in cleanup?
-// Can I use the output parameter as scratch in final?
 // Do I need to clear out params on failure?
 #define AWSLC_IMPLEMENT_HMAC_FNS(HMAC_NAME, HMAC_CTX, MD_NAME, MD_CTX_NAME,    \
                                  HMAC_LEN, BLOCK_SIZE, EVP_MD)                 \
@@ -263,11 +261,12 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
     assert(ctx->initialized);                                                  \
     FIPS_service_indicator_lock_state();                                       \
     int result = 0;                                                            \
-    if (!MD_NAME##_Final(out, &ctx->md_ctx)) {                                 \
+    uint8_t tmp[HMAC_LEN];                                                     \
+    if (!MD_NAME##_Final(tmp, &ctx->md_ctx)) {                                 \
       goto end;                                                                \
     }                                                                          \
     OPENSSL_memcpy(&ctx->md_ctx, &ctx->o_ctx, sizeof(MD_CTX_NAME));            \
-    if (!MD_NAME##_Update(&ctx->md_ctx, out, HMAC_LEN)) {                      \
+    if (!MD_NAME##_Update(&ctx->md_ctx, tmp, HMAC_LEN)) {                      \
       goto end;                                                                \
     }                                                                          \
     result = MD_NAME##_Final(out, &ctx->md_ctx);                               \
