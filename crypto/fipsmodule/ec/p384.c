@@ -506,7 +506,7 @@ static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
 // when BORINGSSL_HAS_UINT128 is undefined, i.e. p384_32.h fiat code is used;
 // while OPENSSL_64_BIT is defined, i.e. BN_ULONG is uint64_t
 static void ec_GFp_nistp384_mont_felem_to_bytes(
-  const EC_GROUP *group,uint8_t *out, size_t *out_len, const EC_FELEM *in) {
+  const EC_GROUP *group, uint8_t *out, size_t *out_len, const EC_FELEM *in) {
 
   size_t len = BN_num_bytes(&group->field);
   EC_FELEM felem_tmp;
@@ -661,12 +661,12 @@ static void p384_felem_mul_scalar_rwnaf(int16_t *out, const unsigned char *in) {
   out[54] = window;
 }
 
-// fiat_p384_select_point selects the |idx|-th projective point from the given
+// p384_select_point selects the |idx|-th projective point from the given
 // precomputed table and copies it to |out| in constant time.
-static void fiat_p384_select_point(p384_felem out[3],
-                                   size_t idx,
-                                   p384_felem table[][3],
-                                   size_t table_size) {
+static void p384_select_point(p384_felem out[3],
+                              size_t idx,
+                              p384_felem table[][3],
+                              size_t table_size) {
   OPENSSL_memset(out, 0, sizeof(p384_felem) * 3);
   for (size_t i = 0; i < table_size; i++) {
     p384_limb_t mismatch = i ^ idx;
@@ -676,12 +676,12 @@ static void fiat_p384_select_point(p384_felem out[3],
   }
 }
 
-// fiat_p384_select_point_affine selects the |idx|-th affine point from
+// p384_select_point_affine selects the |idx|-th affine point from
 // the given precomputed table and copies it to |out| in constant-time.
-static void fiat_p384_select_point_affine(p384_felem out[2],
-                                          size_t idx,
-                                          const p384_felem table[][2],
-                                          size_t table_size) {
+static void p384_select_point_affine(p384_felem out[2],
+                                     size_t idx,
+                                     const p384_felem table[][2],
+                                     size_t table_size) {
   OPENSSL_memset(out, 0, sizeof(p384_felem) * 2);
   for (size_t i = 0; i < table_size; i++) {
     p384_limb_t mismatch = i ^ idx;
@@ -754,7 +754,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   // the most significant digit of the recoded scalar (note that this digit
   // can't be negative).
   int16_t idx = rnaf[54] >> 1;
-  fiat_p384_select_point(res, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
+  p384_select_point(res, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
 
   // Process the remaining digits of the scalar.
   for (size_t i = 53; i < 54; i--) {
@@ -772,7 +772,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
     idx = d >> 1;
 
     // Select the point to add, in constant time.
-    fiat_p384_select_point(tmp, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
+    p384_select_point(tmp, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
 
     // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
     p384_felem_opp(ftmp, tmp[1]);
@@ -900,7 +900,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
       int16_t idx = d >> 1;
 
       // Select the point to add, in constant time.
-      fiat_p384_select_point_affine(tmp, idx, p384_g_pre_comp[j / 4],
+      p384_select_point_affine(tmp, idx, p384_g_pre_comp[j / 4],
                                     P384_MUL_TABLE_SIZE);
 
       // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
@@ -944,7 +944,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
 // with w = 7 for g_scalar and w = 5 for p_scalar.
 // For the base point G product we use the first sub-table of the precomputed
 // table |p384_g_pre_comp| from p384_table.h file, while for P we generate
-// |p_pre_comp| table on-the-fly. The tables hold the first 64 odd multiples
+// |p_pre_comp| on-the-fly. The tables hold the first 64 odd multiples
 // of G or P:
 //     g_pre_comp = {[1]G, [3]G, ..., [31]G},
 //     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
