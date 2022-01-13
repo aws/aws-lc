@@ -70,7 +70,7 @@ typedef int (*HmacInPlaceUpdate)(void *,const uint8_t *, size_t);
 typedef int (*HmacInPlaceFinal)(void *, uint8_t *);
 typedef void (*HmacInPlaceCleanup)(void *);
 
-typedef struct in_place_methods_st {
+struct in_place_methods_st {
   int md_nid;
   size_t ctxSize;
   HmacInplaceOneShot oneShot;
@@ -78,7 +78,7 @@ typedef struct in_place_methods_st {
   HmacInPlaceUpdate update;
   HmacInPlaceFinal digest;  // Not named final to avoid keywords
   HmacInPlaceCleanup cleanup;
-} InPlaceMethods;
+};
 
 // Must be more than the maximum number of HMAC implementations
 #define HMAC_IN_PLACE_METHOD_MAX 9
