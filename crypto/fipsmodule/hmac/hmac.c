@@ -69,9 +69,8 @@ typedef int (*HmacInPlaceInit)(void *, const void *, size_t);
 typedef int (*HmacInPlaceUpdate)(void *,const uint8_t *, size_t);
 typedef int (*HmacInPlaceFinal)(void *, uint8_t *);
 typedef void (*HmacInPlaceCleanup)(void *);
-typedef struct in_place_methods_st InPlaceMethods;
 
-struct in_place_methods_st {
+typedef struct in_place_methods_st {
   int md_nid;
   size_t ctxSize;
   HmacInplaceOneShot oneShot;
@@ -79,50 +78,54 @@ struct in_place_methods_st {
   HmacInPlaceUpdate update;
   HmacInPlaceFinal digest;  // Not named final to avoid keywords
   HmacInPlaceCleanup cleanup;
+} InPlaceMethods;
+
+// Must be more than the maximum number of HMAC implementations
+#define HMAC_IN_PLACE_METHOD_MAX 9
+
+struct in_place_method_array_st {
+  InPlaceMethods methods[HMAC_IN_PLACE_METHOD_MAX];
 };
 
-#define DEFINE_IN_PLACE_METHODS(HMAC_NAME, CTX_NAME, EVP_MD_NID)\
-  {                                                             \
-    .md_nid = EVP_MD_NID,                                       \
-    .ctxSize = sizeof(CTX_NAME),                                \
-    .oneShot = (HmacInplaceOneShot)(HMAC_NAME),                 \
-    .init = (HmacInPlaceInit)(HMAC_NAME##_Init),                \
-    .update = (HmacInPlaceUpdate)(HMAC_NAME##_Update),          \
-    .digest = (HmacInPlaceFinal)(HMAC_NAME##_Final),            \
-    .cleanup = (HmacInPlaceCleanup)(HMAC_NAME##_cleanup)        \
+#define DEFINE_IN_PLACE_METHODS(HMAC_NAME, CTX_NAME, EVP_MD_NID)           \
+  {                                                                        \
+    out->methods[idx].md_nid = EVP_MD_NID;                                 \
+    out->methods[idx].ctxSize = sizeof(CTX_NAME);                          \
+    out->methods[idx].oneShot = (HmacInplaceOneShot)(HMAC_NAME);           \
+    out->methods[idx].init = (HmacInPlaceInit)(HMAC_NAME##_Init);          \
+    out->methods[idx].update = (HmacInPlaceUpdate)(HMAC_NAME##_Update);    \
+    out->methods[idx].digest = (HmacInPlaceFinal)(HMAC_NAME##_Final);      \
+    out->methods[idx].cleanup = (HmacInPlaceCleanup)(HMAC_NAME##_cleanup); \
+    idx++;                                                                 \
   }
 
-static InPlaceMethods kInPlaceMethods[] = {
+DEFINE_LOCAL_DATA(struct in_place_method_array_st, AWSLC_hmac_in_place_methods) {
+  OPENSSL_memset((void*) out->methods, 0, sizeof(out->methods));
+  int idx = 0;
 #ifndef OPENSSL_NO_MD4
-    DEFINE_IN_PLACE_METHODS(HMAC_MD4, HMAC_MD4_CTX, NID_md4),
+  DEFINE_IN_PLACE_METHODS(HMAC_MD4, HMAC_MD4_CTX, NID_md4);
 #endif
 #ifndef OPENSSL_NO_MD5
-    DEFINE_IN_PLACE_METHODS(HMAC_MD5, HMAC_MD5_CTX, NID_md5),
+  DEFINE_IN_PLACE_METHODS(HMAC_MD5, HMAC_MD5_CTX, NID_md5);
 #endif
 #ifndef OPENSSL_NO_SHA
-    DEFINE_IN_PLACE_METHODS(HMAC_SHA1, HMAC_SHA1_CTX, NID_sha1),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA1, HMAC_SHA1_CTX, NID_sha1);
 #endif
 #ifndef OPENSSL_NO_SHA256
-    DEFINE_IN_PLACE_METHODS(HMAC_SHA224, HMAC_SHA256_CTX, NID_sha224),
-    DEFINE_IN_PLACE_METHODS(HMAC_SHA256, HMAC_SHA256_CTX, NID_sha256),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA224, HMAC_SHA256_CTX, NID_sha224);
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA256, HMAC_SHA256_CTX, NID_sha256);
 #endif
 #ifndef OPENSSL_NO_SHA512
-    DEFINE_IN_PLACE_METHODS(HMAC_SHA384, HMAC_SHA512_CTX, NID_sha384),
-    DEFINE_IN_PLACE_METHODS(HMAC_SHA512, HMAC_SHA512_CTX, NID_sha512),
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA384, HMAC_SHA512_CTX, NID_sha384);
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA512, HMAC_SHA512_CTX, NID_sha512);
 #endif
 #ifndef OPENSSL_NO_RIPEMD
-    DEFINE_IN_PLACE_METHODS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, NID_ripe160),
+  DEFINE_IN_PLACE_METHODS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, NID_ripe160);
 #endif
-    {.md_nid = 0,
-     .ctxSize = 0,
-     .oneShot = NULL,
-     .init = NULL,
-     .update = NULL,
-     .digest = NULL,
-     .cleanup = NULL}};
+}
 
 static const InPlaceMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
-  InPlaceMethods *result = kInPlaceMethods;
+  const InPlaceMethods *result = AWSLC_hmac_in_place_methods()->methods;
   while (result->md_nid != evp_md->type && result->md_nid != 0) {
     result++;
   }
