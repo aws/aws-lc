@@ -83,12 +83,12 @@ struct in_place_methods_st {
 
 #define DEFINE_IN_PLACE_METHODS(HMAC_NAME, CTX_NAME, EVP_MD_FN) \
   {                                                             \
-    .evp_md = EVP_MD_FN(),                                      \
-    .ctxSize = sizeof(CTX_NAME),                                \
-    .oneShot = (HmacInplaceOneShot)(HMAC_NAME),                 \
-    .init = (HmacInPlaceInit)(HMAC_NAME##_Init),                \
-    .update = (HmacInPlaceUpdate)(HMAC_NAME##_Update),          \
-    .digest = (HmacInPlaceFinal)(HMAC_NAME##_Final)             \
+    EVP_MD_FN(),                                                \
+    sizeof(CTX_NAME),                                           \
+    (HmacInplaceOneShot)(HMAC_NAME),                            \
+    (HmacInPlaceInit)(HMAC_NAME##_Init),                        \
+    (HmacInPlaceUpdate)(HMAC_NAME##_Update),                    \
+    (HmacInPlaceFinal)(HMAC_NAME##_Final)                       \
   }
 
 static InPlaceMethods kInPlaceMethods[] = {
