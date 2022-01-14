@@ -168,88 +168,37 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 
 
 // Private functions
-typedef struct in_place_methods_st InPlaceMethods;
-
-// Fast no-allocation HMAC implementations
-#define AWSLC_DECLARE_HMAC_CTX(HMAC_STRUCT_NAME, MD_CTX_NAME) \
-  struct HMAC_STRUCT_NAME {                                   \
-    MD_CTX_NAME md_ctx;                                       \
-    MD_CTX_NAME i_ctx;                                        \
-    MD_CTX_NAME o_ctx;                                        \
-    uint8_t initialized;                                      \
-  };
-
-#define AWSLC_DECLARE_HMAC_FNS(HMAC_NAME, HMAC_CTX, HMAC_LEN)               \
-  OPENSSL_EXPORT int HMAC_NAME(const void *key, size_t key_len,             \
-                               const uint8_t *data, size_t data_len,        \
-                               uint8_t out[HMAC_LEN]);                      \
-  OPENSSL_EXPORT int HMAC_NAME##_Init(HMAC_CTX *ctx, const void *key,       \
-                                      size_t key_len);                      \
-  OPENSSL_EXPORT void HMAC_NAME##_cleanup(HMAC_CTX *ctx);                   \
-  OPENSSL_EXPORT int HMAC_NAME##_Update(HMAC_CTX *ctx, const uint8_t *data, \
-                                        size_t data_len);                   \
-  OPENSSL_EXPORT int HMAC_NAME##_Final(HMAC_CTX *ctx, uint8_t out[HMAC_LEN]);
-
-// Every use of AWSLC_DECLARE_HMAC_CTX also requires a typedef in base.h
-#ifndef OPENSSL_NO_MD4
-AWSLC_DECLARE_HMAC_CTX(hmac_md4_state_st, MD4_CTX)
-AWSLC_DECLARE_HMAC_FNS(HMAC_MD4, HMAC_MD4_CTX, MD4_DIGEST_LENGTH)
-#endif
-#ifndef OPENSSL_NO_MD5
-AWSLC_DECLARE_HMAC_CTX(hmac_md5_state_st, MD5_CTX)
-AWSLC_DECLARE_HMAC_FNS(HMAC_MD5, HMAC_MD5_CTX, MD5_DIGEST_LENGTH)
-#endif
-#ifndef OPENSSL_NO_SHA
-AWSLC_DECLARE_HMAC_CTX(hmac_sha1_state_st, SHA_CTX)
-AWSLC_DECLARE_HMAC_FNS(HMAC_SHA1, HMAC_SHA1_CTX, SHA_DIGEST_LENGTH)
-#endif
-#ifndef OPENSSL_NO_SHA256
-// Uses the same state as SHA256
-AWSLC_DECLARE_HMAC_FNS(HMAC_SHA224, HMAC_SHA256_CTX, SHA224_DIGEST_LENGTH)
-
-AWSLC_DECLARE_HMAC_CTX(hmac_sha256_state_st, SHA256_CTX)
-AWSLC_DECLARE_HMAC_FNS(HMAC_SHA256, HMAC_SHA256_CTX, SHA256_DIGEST_LENGTH)
-#endif
-#ifndef OPENSSL_NO_SHA512
-// Uses the same state as SHA512
-AWSLC_DECLARE_HMAC_FNS(HMAC_SHA384, HMAC_SHA512_CTX, SHA384_DIGEST_LENGTH)
-AWSLC_DECLARE_HMAC_FNS(HMAC_SHA512_256, HMAC_SHA512_CTX, SHA512_256_DIGEST_LENGTH)
-
-
-AWSLC_DECLARE_HMAC_CTX(hmac_sha512_state_st, SHA512_CTX)
-AWSLC_DECLARE_HMAC_FNS(HMAC_SHA512, HMAC_SHA512_CTX, SHA512_DIGEST_LENGTH)
-#endif
-#ifndef OPENSSL_NO_RIPEMD
-AWSLC_DECLARE_HMAC_CTX(hmac_ripemd160_state_st, RIPEMD160_CTX)
-AWSLC_DECLARE_HMAC_FNS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, RIPEMD160_DIGEST_LENGTH)
-#endif
+typedef struct hmac_methods_st HmacMethods;
 
 // We use a union to ensure that enough space is allocated and never actually bother with the named members.
-union hmac_ctx_union {
+union md_ctx_union {
 #ifndef OPENSSL_NO_MD4
-  HMAC_MD4_CTX md4;
+  MD4_CTX md4;
 #endif
 #ifndef OPENSSL_NO_MD5
-  HMAC_MD5_CTX md5;
+  MD5_CTX md5;
 #endif
 #ifndef OPENSSL_NO_SHA
-  HMAC_SHA1_CTX sha1;
+  SHA_CTX sha1;
 #endif
 #ifndef OPENSSL_NO_SHA256
-  HMAC_SHA256_CTX sha256;
+  SHA256_CTX sha256;
 #endif
 #ifndef OPENSSL_NO_SHA512
-  HMAC_SHA512_CTX sha512;
+  SHA512_CTX sha512;
 #endif
 #ifndef OPENSSL_NO_RIPEMD
-  HMAC_RIPEMD160_CTX ripemd160;
+  RIPEMD160_CTX ripemd160;
 #endif
 };
 
 struct hmac_ctx_st {
   const EVP_MD *md;
-  const InPlaceMethods *methods;
-  union hmac_ctx_union ctx;
+  const HmacMethods *methods;
+  union md_ctx_union md_ctx;
+  union md_ctx_union i_ctx;
+  union md_ctx_union o_ctx;
+  uint8_t initialized;
 } /* HMAC_CTX */;
 
 

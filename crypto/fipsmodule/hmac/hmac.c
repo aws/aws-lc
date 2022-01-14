@@ -64,89 +64,81 @@
 
 #include "../../internal.h"
 
-typedef int (*HmacInplaceOneShot)(const void *, size_t, const uint8_t *, size_t, uint8_t *);
-typedef int (*HmacInPlaceInit)(void *, const void *, size_t);
-typedef int (*HmacInPlaceUpdate)(void *,const uint8_t *, size_t);
-typedef int (*HmacInPlaceFinal)(void *, uint8_t *);
-typedef void (*HmacInPlaceCleanup)(void *);
+typedef int (*HashInit)(void *);
+typedef int (*HashUpdate)(void *, const void*, size_t);
+typedef int (*HashFinal)(uint8_t *, void*);
 
-struct in_place_methods_st {
-  int md_nid;
-  size_t ctxSize;
-  HmacInplaceOneShot oneShot;
-  HmacInPlaceInit init;
-  HmacInPlaceUpdate update;
-  HmacInPlaceFinal digest;  // Not named final to avoid keywords
-  HmacInPlaceCleanup cleanup;
+struct hmac_methods_st {
+  const EVP_MD* evp_md;
+  HashInit init;
+  HashUpdate update;
+  HashFinal digest; // Not named final to avoid keywords
 };
 
 // Must be more than the maximum number of HMAC implementations
-#define HMAC_IN_PLACE_METHOD_MAX 9
+#define HMAC_METHOD_MAX 9
 
-struct in_place_method_array_st {
-  InPlaceMethods methods[HMAC_IN_PLACE_METHOD_MAX];
+struct hmac_method_array_st {
+  HmacMethods methods[HMAC_METHOD_MAX];
 };
 
-#define DEFINE_IN_PLACE_METHODS(HMAC_NAME, CTX_NAME, EVP_MD_NID)           \
-  {                                                                        \
-    out->methods[idx].md_nid = EVP_MD_NID;                                 \
-    out->methods[idx].ctxSize = sizeof(CTX_NAME);                          \
-    out->methods[idx].oneShot = (HmacInplaceOneShot)(HMAC_NAME);           \
-    out->methods[idx].init = (HmacInPlaceInit)(HMAC_NAME##_Init);          \
-    out->methods[idx].update = (HmacInPlaceUpdate)(HMAC_NAME##_Update);    \
-    out->methods[idx].digest = (HmacInPlaceFinal)(HMAC_NAME##_Final);      \
-    out->methods[idx].cleanup = (HmacInPlaceCleanup)(HMAC_NAME##_cleanup); \
-    idx++;                                                                 \
-    assert(idx < HMAC_IN_PLACE_METHOD_MAX - 1);                            \
+#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)               \
+  {                                                              \
+    out->methods[idx].evp_md = EVP_MD;                           \
+    out->methods[idx].init = (HashInit)(HASH_NAME##_Init);       \
+    out->methods[idx].update = (HashUpdate)(HASH_NAME##_Update); \
+    out->methods[idx].digest = (HashFinal)(HASH_NAME##_Final);   \
+    idx++;                                                       \
+    assert(idx < HMAC_METHOD_MAX - 1);                           \
   }
 
-DEFINE_LOCAL_DATA(struct in_place_method_array_st, AWSLC_hmac_in_place_methods) {
+DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   OPENSSL_memset((void*) out->methods, 0, sizeof(out->methods));
   int idx = 0;
 #ifndef OPENSSL_NO_MD4
-  DEFINE_IN_PLACE_METHODS(HMAC_MD4, HMAC_MD4_CTX, NID_md4);
+  DEFINE_IN_PLACE_METHODS(EVP_md4(), MD4);
 #endif
 #ifndef OPENSSL_NO_MD5
-  DEFINE_IN_PLACE_METHODS(HMAC_MD5, HMAC_MD5_CTX, NID_md5);
+  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
 #endif
 #ifndef OPENSSL_NO_SHA
-  DEFINE_IN_PLACE_METHODS(HMAC_SHA1, HMAC_SHA1_CTX, NID_sha1);
+  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
 #endif
 #ifndef OPENSSL_NO_SHA256
-  DEFINE_IN_PLACE_METHODS(HMAC_SHA224, HMAC_SHA256_CTX, NID_sha224);
-  DEFINE_IN_PLACE_METHODS(HMAC_SHA256, HMAC_SHA256_CTX, NID_sha256);
+  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
+  DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
 #endif
 #ifndef OPENSSL_NO_SHA512
-  DEFINE_IN_PLACE_METHODS(HMAC_SHA384, HMAC_SHA512_CTX, NID_sha384);
-  DEFINE_IN_PLACE_METHODS(HMAC_SHA512, HMAC_SHA512_CTX, NID_sha512);
-  DEFINE_IN_PLACE_METHODS(HMAC_SHA512_256, HMAC_SHA512_CTX, NID_sha512_256);
+  DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
+  DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
+  DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
 #endif
 #ifndef OPENSSL_NO_RIPEMD
-  DEFINE_IN_PLACE_METHODS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, NID_ripe160);
+  DEFINE_IN_PLACE_METHODS(EVP_ripe160(), RIPEMD160);
 #endif
 }
 
-static const InPlaceMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
-  const InPlaceMethods *result = AWSLC_hmac_in_place_methods()->methods;
-  while (result->md_nid != evp_md->type && result->md_nid != 0) {
+static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
+  const HmacMethods *result = AWSLC_hmac_in_place_methods()->methods;
+  while (result->evp_md != evp_md && result->evp_md != NULL) {
     result++;
   }
   return result;
 }
 
-
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
-  const InPlaceMethods* inPlace = GetInPlaceMethods(evp_md);
-  if (inPlace->md_nid == 0) {
-    // This indicates that we do not support this digest
-    return NULL;
-  }
-  if (inPlace->oneShot(key, key_len, data, data_len, out)) {
-    if (out_len) {
-      *out_len = EVP_MD_size(evp_md);
-    }
+  FIPS_service_indicator_lock_state();
+  HMAC_CTX ctx = {.initialized = 0};
+  int result;
+  result = HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) &&
+           HMAC_Update(&ctx, data, data_len) &&
+           HMAC_Final(&ctx, out, out_len);
+  FIPS_service_indicator_unlock_state();
+  HMAC_CTX_cleanup(&ctx);
+  if (result) {
+    HMAC_verify_service_indicator(evp_md);
     return out;
   } else {
     return NULL;
@@ -184,39 +176,92 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   // TODO: Figure out how we want to handle engines in this case.
   assert(impl == NULL);
 
-  // There is nothing left to clean, do we need to allocate a new contet?
   if (md && ctx->md != md) {
     ctx->methods = GetInPlaceMethods(md);
-    if (ctx->methods->md_nid == 0) {
+    if (ctx->methods->evp_md == NULL) {
       // Unsupported md
       ctx->methods = NULL;
       return 0;
     }
 
-    OPENSSL_memset(&ctx->ctx, 0, sizeof(ctx->ctx));
-    assert(ctx->methods->ctxSize <= sizeof(ctx->ctx));
     ctx->md = md;
   }
   // At this point we know we have valid methods and a context allocated.
-  return ctx->methods->init(&ctx->ctx, key, key_len);
+  size_t block_size = EVP_MD_block_size(ctx->md);
+  assert(block_size % 8 == 0);
+  assert(block_size <= EVP_MAX_MD_BLOCK_SIZE);
+
+  FIPS_service_indicator_lock_state();
+  int result = 0;
+  if (key != NULL || ctx->initialized != 1) {
+    uint64_t pad[EVP_MAX_MD_BLOCK_SIZE] = {0};
+    uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE] = {0};
+    if (block_size < key_len) {
+      if (!ctx->methods->init(&ctx->md_ctx) ||
+          !ctx->methods->update(&ctx->md_ctx, key, key_len) ||
+          !ctx->methods->digest((uint8_t *) key_block, &ctx->md_ctx)) {
+        goto end;
+      }
+    } else {
+      OPENSSL_memcpy(key_block, key, key_len);
+    }
+    for (size_t i = 0; i < block_size / 8; i++) {
+      pad[i] = 0x3636363636363636 ^ key_block[i];
+    }
+    if (!ctx->methods->init(&ctx->i_ctx) ||
+        !ctx->methods->update(&ctx->i_ctx, pad, block_size)) {
+      goto end;
+    }
+    for (size_t i = 0; i < block_size / 8; i++) {
+      pad[i] = 0x5c5c5c5c5c5c5c5c ^ key_block[i];
+    }
+    if (!ctx->methods->init(&ctx->o_ctx) ||
+        !ctx->methods->update(&ctx->o_ctx, pad, block_size)) {
+      goto end;
+    }
+    ctx->initialized = 1;
+  }
+  OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
+  result = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  return result;
 }
 
 int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
-  if (ctx->methods == NULL) {
+  if (ctx->methods == NULL || ctx->initialized != 1) {
     return 0;
   }
-  return ctx->methods->update(&ctx->ctx, data, data_len);
+  return ctx->methods->update(&ctx->md_ctx, data, data_len);
 }
 
 int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
-  if (ctx->methods == NULL) {
+  if (ctx->methods == NULL || ctx->initialized != 1) {
     return 0;
   }
-  int result = ctx->methods->digest(&ctx->ctx, out);
-  if (result && out_len) {
-    *out_len = EVP_MD_size(ctx->md);
+  FIPS_service_indicator_lock_state();
+  int result = 0;
+  int hmac_len = EVP_MD_size(ctx->md);
+  uint8_t tmp[EVP_MAX_MD_SIZE];
+  if (!ctx->methods->digest(tmp, &ctx->md_ctx)) {
+    goto end;
   }
-  return result;
+  OPENSSL_memcpy(&ctx->md_ctx, &ctx->o_ctx, sizeof(ctx->o_ctx));
+  if (!ctx->methods->update(&ctx->md_ctx, tmp, hmac_len)) {
+    goto end;
+  }
+  result = ctx->methods->digest(out, &ctx->md_ctx);
+end:
+  FIPS_service_indicator_unlock_state();
+  if (result) {
+    HMAC_verify_service_indicator(ctx->md);
+    if (out_len) {
+      *out_len = hmac_len;
+    }
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 size_t HMAC_size(const HMAC_CTX *ctx) {
@@ -244,132 +289,3 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
   HMAC_CTX_init(dest);
   return HMAC_CTX_copy_ex(dest, src);
 }
-
-// Do I need to clear out params on failure?
-#define AWSLC_IMPLEMENT_HMAC_FNS(HMAC_NAME, HMAC_CTX, MD_NAME, MD_CTX_NAME,    \
-                                 HMAC_LEN, BLOCK_SIZE, EVP_MD)                 \
-  OPENSSL_EXPORT void HMAC_NAME##_cleanup(HMAC_CTX *ctx) {                     \
-    OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));                                    \
-    ctx->initialized = 0;                                                      \
-  }                                                                            \
-                                                                               \
-  OPENSSL_EXPORT int HMAC_NAME##_Update(HMAC_CTX *ctx, const uint8_t *data,    \
-                                        size_t data_len) {                     \
-    assert(ctx->initialized);                                                  \
-    return MD_NAME##_Update(&ctx->md_ctx, data, data_len);                     \
-  }                                                                            \
-                                                                               \
-  OPENSSL_EXPORT int HMAC_NAME##_Final(HMAC_CTX *ctx, uint8_t out[HMAC_LEN]) { \
-    assert(ctx->initialized);                                                  \
-    FIPS_service_indicator_lock_state();                                       \
-    int result = 0;                                                            \
-    uint8_t tmp[HMAC_LEN];                                                     \
-    if (!MD_NAME##_Final(tmp, &ctx->md_ctx)) {                                 \
-      goto end;                                                                \
-    }                                                                          \
-    OPENSSL_memcpy(&ctx->md_ctx, &ctx->o_ctx, sizeof(MD_CTX_NAME));            \
-    if (!MD_NAME##_Update(&ctx->md_ctx, tmp, HMAC_LEN)) {                      \
-      goto end;                                                                \
-    }                                                                          \
-    result = MD_NAME##_Final(out, &ctx->md_ctx);                               \
-  end:                                                                         \
-    FIPS_service_indicator_unlock_state();                                     \
-    if (result) {                                                              \
-      HMAC_verify_service_indicator(EVP_MD);                                   \
-      return 1;                                                                \
-    } else {                                                                   \
-      return 0;                                                                \
-    }                                                                          \
-  }                                                                            \
-                                                                               \
-  OPENSSL_EXPORT int HMAC_NAME##_Init(HMAC_CTX *ctx, const void *key,          \
-                                      size_t key_len) {                        \
-    assert(BLOCK_SIZE % 8 == 0);                                               \
-    FIPS_service_indicator_lock_state();                                       \
-    int result = 0;                                                            \
-    if (key != NULL || ctx->initialized != 1) {                                \
-      uint64_t pad[BLOCK_SIZE / 8] = {0};                                      \
-      uint64_t key_block[BLOCK_SIZE / 8] = {0};                                \
-      if (BLOCK_SIZE < key_len) {                                              \
-        if (!MD_NAME##_Init(&ctx->md_ctx) ||                                   \
-            !MD_NAME##_Update(&ctx->md_ctx, key, key_len) ||                   \
-            !MD_NAME##_Final((uint8_t *) key_block, &ctx->md_ctx)) {           \
-          goto end;                                                            \
-        }                                                                      \
-      } else {                                                                 \
-        OPENSSL_memcpy(key_block, key, key_len);                               \
-      }                                                                        \
-      for (size_t i = 0; i < BLOCK_SIZE / 8; i++) {                            \
-        pad[i] = 0x3636363636363636 ^ key_block[i];                            \
-      }                                                                        \
-      if (!MD_NAME##_Init(&ctx->i_ctx) ||                                      \
-          !MD_NAME##_Update(&ctx->i_ctx, pad, BLOCK_SIZE)) {                   \
-        goto end;                                                              \
-      }                                                                        \
-      for (size_t i = 0; i < BLOCK_SIZE / 8; i++) {                            \
-        pad[i] = 0x5c5c5c5c5c5c5c5c ^ key_block[i];                            \
-      }                                                                        \
-      if (!MD_NAME##_Init(&ctx->o_ctx) ||                                      \
-          !MD_NAME##_Update(&ctx->o_ctx, pad, BLOCK_SIZE)) {                   \
-        goto end;                                                              \
-      }                                                                        \
-      ctx->initialized = 1;                                                    \
-    }                                                                          \
-    OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(MD_CTX_NAME));            \
-    result = 1;                                                                \
-  end:                                                                         \
-    FIPS_service_indicator_unlock_state();                                     \
-    return result;                                                             \
-  }                                                                            \
-  OPENSSL_EXPORT int HMAC_NAME(const void *key, size_t key_len,                \
-                               const uint8_t *data, size_t data_len,           \
-                               uint8_t out[HMAC_LEN]) {                        \
-    FIPS_service_indicator_lock_state();                                       \
-    HMAC_CTX ctx = {.initialized = 0};                                         \
-    int result;                                                                \
-    result = HMAC_NAME##_Init(&ctx, key, key_len) &&                           \
-             HMAC_NAME##_Update(&ctx, data, data_len) &&                       \
-             HMAC_NAME##_Final(&ctx, out);                                     \
-    FIPS_service_indicator_unlock_state();                                     \
-    HMAC_NAME##_cleanup(&ctx);                                                 \
-    if (result) {                                                              \
-      HMAC_verify_service_indicator(EVP_MD);                                   \
-      return 1;                                                                \
-    } else {                                                                   \
-      return 0;                                                                \
-    }                                                                          \
-  }
-
-#ifndef OPENSSL_NO_MD4
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_MD4, HMAC_MD4_CTX, MD4, MD4_CTX,
-                         MD4_DIGEST_LENGTH, MD4_CBLOCK, EVP_md4())
-#endif
-#ifndef OPENSSL_NO_MD5
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_MD5, HMAC_MD5_CTX, MD5, MD5_CTX,
-                         MD5_DIGEST_LENGTH, MD5_CBLOCK, EVP_md5())
-#endif
-#ifndef OPENSSL_NO_SHA
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA1, HMAC_SHA1_CTX, SHA1, SHA_CTX,
-                         SHA_DIGEST_LENGTH, SHA_CBLOCK, EVP_sha1())
-#endif
-#ifndef OPENSSL_NO_SHA256
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA224, HMAC_SHA256_CTX, SHA224, SHA256_CTX,
-                         SHA224_DIGEST_LENGTH, SHA224_CBLOCK, EVP_sha224())
-
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA256, HMAC_SHA256_CTX, SHA256, SHA256_CTX,
-                         SHA256_DIGEST_LENGTH, SHA256_CBLOCK, EVP_sha256())
-#endif
-#ifndef OPENSSL_NO_SHA512
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA384, HMAC_SHA512_CTX, SHA384, SHA512_CTX,
-                         SHA384_DIGEST_LENGTH, SHA384_CBLOCK, EVP_sha384())
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA512_256, HMAC_SHA512_CTX, SHA512_256, SHA512_CTX,
-                         SHA512_256_DIGEST_LENGTH, SHA512_CBLOCK, EVP_sha512_256())
-
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA512, HMAC_SHA512_CTX, SHA512, SHA512_CTX,
-                         SHA512_DIGEST_LENGTH, SHA512_CBLOCK, EVP_sha512())
-#endif
-#ifndef OPENSSL_NO_RIPEMD
-AWSLC_IMPLEMENT_HMAC_FNS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, RIPEMD160,
-                         RIPEMD160_CTX, RIPEMD160_DIGEST_LENGTH,
-                         RIPEMD160_CBLOCK, EVP_ripemd160())
-#endif
