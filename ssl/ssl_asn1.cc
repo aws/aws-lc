@@ -949,7 +949,7 @@ static const unsigned kS3ChannelIdValidTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
 static const unsigned kS3ChannelIdTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 6;
-static const unsigned kS3SendConnectionBinding = 
+static const unsigned kS3SendConnectionBindingTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 7;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
@@ -1009,11 +1009,6 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
     return 0;
   }
 
-  #if defined(SSL_DEBUG)
-    const bssl::SSLBuffer *buf = &(in->write_buffer);
-    fprintf( stderr, "SSL3_STATE_to_bytes buf %d\n", buf->empty());
-  #endif
-
   if (in->established_session != nullptr) {
     if (!CBB_add_asn1(&s3, &child, kS3EstablishedSessionTag) ||
         !ssl_session_serialize(in->established_session.get(), &child)) {
@@ -1072,7 +1067,7 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
   }
 
   if (in->send_connection_binding) {
-    if (!CBB_add_asn1(&s3, &child, kS3SendConnectionBinding) ||
+    if (!CBB_add_asn1(&s3, &child, kS3SendConnectionBindingTag) ||
         !CBB_add_asn1_bool(&child, true)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
@@ -1146,7 +1141,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       !SSL3_STATE_parse_octet_string(&s3, &(out->next_proto_negotiated), kS3NextProtoNegotiatedTag) ||
       !CBS_get_optional_asn1_bool(&s3, &channel_id_valid, kS3ChannelIdValidTag, 0 /* default to false */) ||
       !SSL3_STATE_get_optional_octet_string(&s3, out->channel_id, kS3ChannelIdTag, SSL3_CHANNEL_ID_SIZE) ||
-      !CBS_get_optional_asn1_bool(&s3, &send_connection_binding, kS3SendConnectionBinding, 0 /* default to false */) ||
+      !CBS_get_optional_asn1_bool(&s3, &send_connection_binding, kS3SendConnectionBindingTag, 0 /* default to false */) ||
       CBS_len(&s3) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
     return 0;
@@ -1363,14 +1358,14 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
 
   ScopedCBB cbb;
   // An SSL connection can't be serialized by current implementation under some conditions
-  // 0) It's server SSL.
+  // 0) It's not server SSL.
   // 1) It's a DTLS connection.
   // 2) It uses QUIC
   // 3) Its SSL_SESSION isn't serializable.
   // 4) Handshake hasn't finished yet.
   // 5) TLS version is not supported(currently, only TLS 1.2 is supported).
-  // 6) Write is in clean state(|SSL_write| should finish the |in| write, no pending writes).
-  // 7) ssl is not shutdown or has shutdown error.
+  // 6) Write is not in clean state(|SSL_write| should finish the |in| write, no pending writes).
+  // 7) ssl shutdown state is not ssl_shutdown_none.
   //    TODO: support TLS 1.3 and TLS 1.1.
   if (!SSL_is_server(in) ||                                     // (0)
       SSL_is_dtls(in) ||                                        // (1)
