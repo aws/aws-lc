@@ -23,6 +23,11 @@
     "target_arch": "arm"
   },
   {
+    "cmd": ["crypto/crypto_test"],
+    "env": ["OPENSSL_armcap=0x3D"],
+    "target_arch": "arm"
+  },
+  {
     "cmd": ["crypto/urandom_test"],
     "skip_valgrind": true
   },

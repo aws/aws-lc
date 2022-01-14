@@ -217,4 +217,7 @@
 
 #endif  // __ARMEL__ || _M_ARM || __AARCH64EL__ || _M_ARM64
 
+// Assigning a error value higher than those known in linux system library
+#define CPU_R_UNSUPPORTED_HW_CAPABILITY  200
+
 #endif  // OPENSSL_HEADER_ARM_ARCH_H
