@@ -67,6 +67,7 @@
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
 
+
 static const EVP_MD *GetDigest(const std::string &name) {
   if (name == "MD5") {
     return EVP_md5();
@@ -115,14 +116,12 @@ TEST(HMACTest, TestVectors) {
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
 
-
     // Test that an HMAC_CTX may be reset with the same key.
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr));
     ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
-
 
     // Test feeding the input in byte by byte.
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
@@ -131,7 +130,6 @@ TEST(HMACTest, TestVectors) {
     }
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
-    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
   });
 }
 

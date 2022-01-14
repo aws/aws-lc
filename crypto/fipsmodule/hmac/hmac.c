@@ -75,7 +75,7 @@ struct hmac_methods_st {
   HashFinal digest; // Not named final to avoid keywords
 };
 
-// Must be more than the maximum number of HMAC implementations
+// The maximum number of HMAC implementations
 #define HMAC_METHOD_MAX 9
 
 struct hmac_method_array_st {
@@ -89,7 +89,7 @@ struct hmac_method_array_st {
     out->methods[idx].update = (HashUpdate)(HASH_NAME##_Update); \
     out->methods[idx].digest = (HashFinal)(HASH_NAME##_Final);   \
     idx++;                                                       \
-    assert(idx < HMAC_METHOD_MAX - 1);                           \
+    assert(idx < HMAC_METHOD_MAX);                               \
   }
 
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
@@ -119,11 +119,13 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
 }
 
 static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
-  const HmacMethods *result = AWSLC_hmac_in_place_methods()->methods;
-  while (result->evp_md != evp_md && result->evp_md != NULL) {
-    result++;
+  const HmacMethods *methods = AWSLC_hmac_in_place_methods()->methods;
+  for (size_t idx = 0; idx < HMAC_METHOD_MAX; idx++) {
+    if (methods[idx].evp_md == evp_md) {
+      return &methods[idx];
+    }
   }
-  return result;
+  return NULL;
 }
 
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
@@ -178,16 +180,18 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
 
   if (md && ctx->md != md) {
     ctx->methods = GetInPlaceMethods(md);
-    if (ctx->methods->evp_md == NULL) {
+    if (ctx->methods == NULL) {
       // Unsupported md
-      ctx->methods = NULL;
       return 0;
     }
-
     ctx->md = md;
+  } else if (ctx->initialized != 1) {
+    return 0;
   }
+
   // At this point we know we have valid methods and a context allocated.
-  size_t block_size = EVP_MD_block_size(ctx->md);
+  const HmacMethods *methods = ctx->methods;
+  size_t block_size = EVP_MD_block_size(methods->evp_md);
   assert(block_size % 8 == 0);
   assert(block_size <= EVP_MAX_MD_BLOCK_SIZE);
 
@@ -197,9 +201,9 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     uint64_t pad[EVP_MAX_MD_BLOCK_SIZE] = {0};
     uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE] = {0};
     if (block_size < key_len) {
-      if (!ctx->methods->init(&ctx->md_ctx) ||
-          !ctx->methods->update(&ctx->md_ctx, key, key_len) ||
-          !ctx->methods->digest((uint8_t *) key_block, &ctx->md_ctx)) {
+      if (!methods->init(&ctx->md_ctx) ||
+          !methods->update(&ctx->md_ctx, key, key_len) ||
+          !methods->digest((uint8_t *) key_block, &ctx->md_ctx)) {
         goto end;
       }
     } else {
@@ -208,15 +212,15 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     for (size_t i = 0; i < block_size / 8; i++) {
       pad[i] = 0x3636363636363636 ^ key_block[i];
     }
-    if (!ctx->methods->init(&ctx->i_ctx) ||
-        !ctx->methods->update(&ctx->i_ctx, pad, block_size)) {
+    if (!methods->init(&ctx->i_ctx) ||
+        !methods->update(&ctx->i_ctx, pad, block_size)) {
       goto end;
     }
     for (size_t i = 0; i < block_size / 8; i++) {
       pad[i] = 0x5c5c5c5c5c5c5c5c ^ key_block[i];
     }
-    if (!ctx->methods->init(&ctx->o_ctx) ||
-        !ctx->methods->update(&ctx->o_ctx, pad, block_size)) {
+    if (!methods->init(&ctx->o_ctx) ||
+        !methods->update(&ctx->o_ctx, pad, block_size)) {
       goto end;
     }
     ctx->initialized = 1;
@@ -229,32 +233,35 @@ end:
 }
 
 int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
-  if (ctx->methods == NULL || ctx->initialized != 1) {
+  const HmacMethods *methods = ctx->methods;
+  if (methods == NULL || ctx->initialized != 1) {
     return 0;
   }
-  return ctx->methods->update(&ctx->md_ctx, data, data_len);
+  return methods->update(&ctx->md_ctx, data, data_len);
 }
 
 int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
-  if (ctx->methods == NULL || ctx->initialized != 1) {
+  const HmacMethods *methods = ctx->methods;
+  if (methods == NULL || ctx->initialized != 1) {
     return 0;
   }
   FIPS_service_indicator_lock_state();
   int result = 0;
-  int hmac_len = EVP_MD_size(ctx->md);
+  const EVP_MD *evp_md = ctx->md;
+  int hmac_len = EVP_MD_size(evp_md);
   uint8_t tmp[EVP_MAX_MD_SIZE];
-  if (!ctx->methods->digest(tmp, &ctx->md_ctx)) {
+  if (!methods->digest(tmp, &ctx->md_ctx)) {
     goto end;
   }
   OPENSSL_memcpy(&ctx->md_ctx, &ctx->o_ctx, sizeof(ctx->o_ctx));
   if (!ctx->methods->update(&ctx->md_ctx, tmp, hmac_len)) {
     goto end;
   }
-  result = ctx->methods->digest(out, &ctx->md_ctx);
+  result = methods->digest(out, &ctx->md_ctx);
 end:
   FIPS_service_indicator_unlock_state();
   if (result) {
-    HMAC_verify_service_indicator(ctx->md);
+    HMAC_verify_service_indicator(evp_md);
     if (out_len) {
       *out_len = hmac_len;
     }
