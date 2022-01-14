@@ -110,7 +110,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
 #define p384_felem_to_bytes(out, in0)   fiat_p384_to_bytes(out, in0)
 #define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
-static p384_limb_t p384_felem_nz( const p384_limb_t in1[P384_NLIMBS]) {
+static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   p384_limb_t ret;
   fiat_p384_nonzero(&ret, in1);
   return ret;
