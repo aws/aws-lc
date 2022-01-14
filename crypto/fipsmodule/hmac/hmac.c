@@ -192,7 +192,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     }
 
     OPENSSL_memset(&ctx->ctx, 0, sizeof(ctx->ctx));
-    assert(ctx->methods->ctxSize > sizeof(ctx->ctx));
+    assert(ctx->methods->ctxSize >= sizeof(ctx->ctx));
     ctx->md = md;
   }
   // At this point we know we have valid methods and a context allocated.
