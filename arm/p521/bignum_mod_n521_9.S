@@ -113,7 +113,7 @@ bignum_mod_n521_9:
 
 // We already know r < n_521, but if it actually went negative then
 // we need to add back n_521 again. Recycle q as a bitmask for r < n_521,
-// and just subtract r_521 and mask rather than literally addding 2^521.
+// and just subtract r_521 and mask rather than literally adding 2^521.
 // This also gets rid of the bit-stuffing above.
 
                 csetm   q, cc

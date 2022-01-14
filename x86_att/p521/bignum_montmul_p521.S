@@ -347,7 +347,7 @@ bignum_montmul_p521:
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
 // in which case the lower 521 bits are already right. Otherwise if
-// CF is clear, we want to subtract 1. Hence suntract the complement
+// CF is clear, we want to subtract 1. Hence subtract the complement
 // of the carry flag then mask the top word, which scrubs the
 // padding in either case.
 
