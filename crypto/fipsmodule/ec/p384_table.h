@@ -28,7 +28,7 @@
 // The windows size is chosen based on analysis analogous to the one in
 // |ec_GFp_nistp_recode_scalar_bits| function in |util.c| file.
 #if defined(BORINGSSL_NISTP384_64BIT)
-static const fiat_p384_felem fiat_p384_g_pre_comp[14][64][2] = {
+static const p384_felem p384_g_pre_comp[14][64][2] = {
     {{{0x3dd0756649c0b528, 0x20e378e2a0d6ce38, 0x879c3afc541b4d6e,
        0x6454868459a30eff, 0x812ff723614ede2b, 0x4d3aadc2299e1513},
       {0x23043dad4b03a4fe, 0xa1bfa8bf7bb4a9ac, 0x8bade7562e83b050,
@@ -3614,7 +3614,7 @@ static const fiat_p384_felem fiat_p384_g_pre_comp[14][64][2] = {
       {0x11c2fe3661211331, 0xa73d8ed58b978268, 0x123dc0155eff3d1b,
        0x9037038c2ef09d17, 0xe7303e05dbf682cf, 0xa098c659f99a62d3}}}};
 #else
-static const fiat_p384_felem fiat_p384_g_pre_comp[14][64][2] = {
+static const p384_felem p384_g_pre_comp[14][64][2] = {
     {{{0x49c0b528, 0x3dd07566, 0xa0d6ce38, 0x20e378e2, 0x541b4d6e, 0x879c3afc,
        0x59a30eff, 0x64548684, 0x614ede2b, 0x812ff723, 0x299e1513, 0x4d3aadc2},
       {0x4b03a4fe, 0x23043dad, 0x7bb4a9ac, 0xa1bfa8bf, 0x2e83b050, 0x8bade756,
