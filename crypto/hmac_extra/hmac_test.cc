@@ -99,12 +99,12 @@ static InPlaceMethods kInPlaceMethods[] = {
   DEFINE_IN_PLACE_METHODS(HMAC_SHA384, HMAC_SHA512_CTX, EVP_sha384),
   DEFINE_IN_PLACE_METHODS(HMAC_SHA512, HMAC_SHA512_CTX, EVP_sha512),
   {
-    .evp_md = nullptr,
-    .ctxSize = 0,
-    .oneShot = nullptr,
-    .init = nullptr,
-    .update = nullptr,
-    .digest = nullptr
+    nullptr,
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr
   }
 };
 
