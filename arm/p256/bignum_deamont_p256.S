@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_deamont_p256
+        .globl  bignum_deamont_p256_alt
         .text
         .balign 4
 
@@ -71,6 +72,7 @@
 #define w x8
 
 bignum_deamont_p256:
+bignum_deamont_p256_alt:
 
 // Set up an initial window with the input x and an extra leading zero
 
