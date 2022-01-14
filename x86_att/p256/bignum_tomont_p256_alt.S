@@ -14,37 +14,29 @@
  */
 
 // ----------------------------------------------------------------------------
-// Montgomery multiply, z := (x * y / 2^256) mod p_256
-// Inputs x[4], y[4]; output z[4]
+// Convert to Montgomery form z := (2^256 * x) mod p_256
+// Input x[4]; output z[4]
 //
-//    extern void bignum_montmul_p256_alt
-//     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+//    extern void bignum_tomont_p256_alt
+//     (uint64_t z[static 4], uint64_t x[static 4]);
 //
-// Does z := (2^{-256} * x * y) mod p_256, assuming that the inputs x and y
-// satisfy x * y <= 2^256 * p_256 (in particular this is true if we are in
-// the "usual" case x < p_256 and y < p_256).
-//
-// Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_montmul_p256_alt
+        .globl  bignum_tomont_p256_alt
         .text
 
 #define z %rdi
 #define x %rsi
 
-// We move the y argument here so we can use %rdx for multipliers
-
-#define y %rcx
-
-// Add %rbx * m into a register-pair (high,low) maintaining consistent
+// Add %rcx * m into a register-pair (high,low) maintaining consistent
 // carry-catching with carry (negated, as bitmask) and using %rax and %rdx
 // as temporaries
 
 #define mulpadd(carry,high,low,m)       \
         movq    m, %rax ;                 \
-        mulq    %rbx;                    \
+        mulq    %rcx;                    \
         subq    carry, %rdx ;             \
         addq    %rax, low ;               \
         adcq    %rdx, high ;              \
@@ -54,7 +46,7 @@
 
 #define mulpadi(carry,high,low,m)       \
         movq    m, %rax ;                 \
-        mulq    %rbx;                    \
+        mulq    %rcx;                    \
         addq    %rax, low ;               \
         adcq    %rdx, high ;              \
         sbbq    carry, carry
@@ -63,56 +55,51 @@
 
 #define mulpade(carry,high,low,m)       \
         movq    m, %rax ;                 \
-        mulq    %rbx;                    \
+        mulq    %rcx;                    \
         subq    carry, %rdx ;             \
         addq    %rax, low ;               \
         adcq    %rdx, high
 
-bignum_montmul_p256_alt:
+bignum_tomont_p256_alt:
 
 // Save more registers to play with
 
-        pushq   %rbx
         pushq   %r12
         pushq   %r13
         pushq   %r14
         pushq   %r15
 
-// Copy y into a safe register to start with
-
-        movq    %rdx, y
-
 // Do row 0 computation, which is a bit different:
 // set up initial window [%r12,%r11,%r10,%r9,%r8] = y[0] * x
 // Unlike later, we only need a single carry chain
 
-        movq    (y), %rbx
+        movl    $0x0000000000000003, %ecx
         movq    (x), %rax
-        mulq    %rbx
+        mulq    %rcx
         movq    %rax, %r8
         movq    %rdx, %r9
 
         movq    8(x), %rax
-        mulq    %rbx
+        mulq    %rcx
         xorl    %r10d, %r10d
         addq    %rax, %r9
         adcq    %rdx, %r10
 
         movq    16(x), %rax
-        mulq    %rbx
+        mulq    %rcx
         xorl    %r11d, %r11d
         addq    %rax, %r10
         adcq    %rdx, %r11
 
         movq    24(x), %rax
-        mulq    %rbx
+        mulq    %rcx
         xorl    %r12d, %r12d
         addq    %rax, %r11
         adcq    %rdx, %r12
 
 // Add row 1
 
-        movq    8(y), %rbx
+        movq    $0xfffffffbffffffff, %rcx
         xorl    %r13d, %r13d
         mulpadi(%r14,%r10,%r9,(x))
         mulpadd(%r14,%r11,%r10,8(x))
@@ -122,18 +109,18 @@ bignum_montmul_p256_alt:
 // Montgomery reduce windows 0 and 1 together
 
         xorl    %r14d, %r14d
-        movq    $0x0000000100000000, %rbx
+        movq    $0x0000000100000000, %rcx
         mulpadi(%r15,%r10,%r9,%r8)
         mulpadd(%r15,%r11,%r10,%r9)
-        notq    %rbx
-        leaq    2(%rbx), %rbx
+        notq    %rcx
+        leaq    2(%rcx), %rcx
         mulpadd(%r15,%r12,%r11,%r8)
         mulpade(%r15,%r13,%r12,%r9)
         adcq    %r14, %r14
 
 // Add row 2
 
-        movq    16(y), %rbx
+        movq    $0xfffffffffffffffe, %rcx
         xorl    %r15d, %r15d
         mulpadi(%r8,%r11,%r10,(x))
         mulpadd(%r8,%r12,%r11,8(x))
@@ -143,7 +130,7 @@ bignum_montmul_p256_alt:
 
 // Add row 3
 
-        movq    24(y), %rbx
+        movq    $0x00000004fffffffd, %rcx
         xorl    %r8d, %r8d
         mulpadi(%r9,%r12,%r11,(x))
         mulpadd(%r9,%r13,%r12,8(x))
@@ -153,25 +140,25 @@ bignum_montmul_p256_alt:
 
 // Montgomery reduce windows 2 and 3 together
 
-        xorl    %r9d, %r9d
-        movq    $0x0000000100000000, %rbx
-        mulpadi(%rcx,%r12,%r11,%r10)
-        mulpadd(%rcx,%r13,%r12,%r11)
-        notq    %rbx
-        leaq    2(%rbx), %rbx
-        mulpadd(%rcx,%r14,%r13,%r10)
-        mulpade(%rcx,%r15,%r14,%r11)
-        adcq    %r9, %r8
+        movq    $0x0000000100000000, %rcx
+        mulpadi(%r9,%r12,%r11,%r10)
+        mulpadd(%r9,%r13,%r12,%r11)
+        notq    %rcx
+        leaq    2(%rcx), %rcx
+        mulpadd(%r9,%r14,%r13,%r10)
+        mulpadd(%r9,%r15,%r14,%r11)
+        subq    %r9, %r8
 
 // We now have a pre-reduced 5-word form [%r8; %r15;%r14;%r13;%r12]
-// Load [%rax;%r11;%r9;%rbx;%rcx] = 2^320 - p_256, re-using earlier numbers a bit
-// Do [%rax;%r11;%r9;%rbx;%rcx] = [%r8;%r15;%r14;%r13;%r12] + (2^320 - p_256)
+// Load [%rax;%r11;%r9;%rcx;%rdx] = 2^320 - p_256, re-using earlier numbers a bit
+// Do [%rax;%r11;%r9;%rcx;%rdx] = [%r8;%r15;%r14;%r13;%r12] + (2^320 - p_256)
 
-        movl    $1, %ecx
-        addq    %r12, %rcx
-        decq    %rbx
-        adcq    %r13, %rbx
-        decq    %r9
+        xorl    %edx, %edx
+        leaq    -1(%rdx), %r9
+        incq    %rdx
+        addq    %r12, %rdx
+        decq    %rcx
+        adcq    %r13, %rcx
         movq    %r9, %rax
         adcq    %r14, %r9
         movl    $0x00000000fffffffe, %r11d
@@ -182,8 +169,8 @@ bignum_montmul_p256_alt:
 // where r is the pre-reduced form. So conditionally select the
 // output accordingly.
 
-        cmovcq  %rcx, %r12
-        cmovcq  %rbx, %r13
+        cmovcq  %rdx, %r12
+        cmovcq  %rcx, %r13
         cmovcq  %r9, %r14
         cmovcq  %r11, %r15
 
@@ -200,7 +187,6 @@ bignum_montmul_p256_alt:
         popq    %r14
         popq    %r13
         popq    %r12
-        popq    %rbx
 
         ret
 

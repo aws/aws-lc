@@ -164,7 +164,7 @@ innerend:
         cmp     k, p
         jc      outerloop
 
-// Rextore registers and return
+// Restore registers and return
 
 end:
         pop     r15

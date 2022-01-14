@@ -18,14 +18,19 @@
 OBJ = bignum_add_p256.o \
       bignum_bigendian_4.o \
       bignum_cmul_p256.o \
+      bignum_cmul_p256_alt.o \
       bignum_deamont_p256.o \
+      bignum_deamont_p256_alt.o \
       bignum_demont_p256.o \
+      bignum_demont_p256_alt.o \
       bignum_double_p256.o \
       bignum_half_p256.o \
       bignum_littleendian_4.o \
       bignum_mod_n256.o \
+      bignum_mod_n256_alt.o \
       bignum_mod_n256_4.o \
       bignum_mod_p256.o \
+      bignum_mod_p256_alt.o \
       bignum_mod_p256_4.o \
       bignum_montmul_p256.o \
       bignum_montmul_p256_alt.o \
@@ -37,7 +42,9 @@ OBJ = bignum_add_p256.o \
       bignum_optneg_p256.o \
       bignum_sub_p256.o \
       bignum_tomont_p256.o \
-      bignum_triple_p256.o
+      bignum_tomont_p256_alt.o \
+      bignum_triple_p256.o \
+      bignum_triple_p256_alt.o
 
 %.o : %.S ; cpp $< | as -o $@ -
 

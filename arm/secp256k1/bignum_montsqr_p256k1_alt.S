@@ -143,7 +143,7 @@ bignum_montsqr_p256k1_alt:
 
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [u7,u6,u5,u4] and l = [u3,u2,u1,u0']. We actually precomputed
-// the Montgomery multiplier in u0, but otherwwise continue with
+// the Montgomery multiplier in u0, but otherwise continue with
 // 4 iterations of Montgomery reduction, rotating [u3;u2;u1;u0]
 
                 umulh   l, u0, c

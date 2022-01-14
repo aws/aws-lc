@@ -43,7 +43,7 @@
         adcxq   %rax, low ;               \
         adoxq   %rcx, high
 
-// mulpade(hight,low,i) adds %rdx * x[i] to a register-pair (high,low)
+// mulpade(high,low,i) adds %rdx * x[i] to a register-pair (high,low)
 // maintaining consistent double-carrying with adcx and adox,
 // using %rax as a temporary, assuming high created from scratch
 // and that zero has value zero.
@@ -252,7 +252,7 @@ bignum_sqr_p521:
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
 // in which case the lower 521 bits are already right. Otherwise if
-// CF is clear, we want to subtract 1. Hence suntract the complement
+// CF is clear, we want to subtract 1. Hence subtract the complement
 // of the carry flag then mask the top word, which scrubs the
 // padding in either case. Write digits back as they are created.
 

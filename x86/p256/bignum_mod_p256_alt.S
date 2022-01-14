@@ -17,14 +17,14 @@
 // Reduce modulo field characteristic, z := x mod p_256
 // Input x[k]; output z[4]
 //
-//    extern void bignum_mod_p256
+//    extern void bignum_mod_p256_alt
 //     (uint64_t z[static 4], uint64_t k, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = z, RSI = k, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_mod_p256
+        .globl  bignum_mod_p256_alt
         .text
 
 #define z rdi
@@ -38,15 +38,17 @@
 #define d r12
 
 #define n0 rax
+
 #define n1 rbx
+#define q rbx
+
 #define n3 rdx
-#define q rdx
 
 #define n0short eax
 #define n1short ebx
 
 
-bignum_mod_p256:
+bignum_mod_p256_alt:
 
 // Save extra registers
 
@@ -104,8 +106,8 @@ loop:
                 mov     q, m3
                 shr     q, 32
 
-                xor     n1, n1
-                sub     n1, 1
+                xor     n3, n3
+                sub     n3, 1
 
                 adc     n0, m2
                 adc     q, m3
@@ -120,17 +122,19 @@ loop:
 // = z - (2^256 - 2^224 + 2^192 + 2^96 - 1) * q
 // = z - 2^192 * 0xffffffff00000001 * q - 2^64 * 0x0000000100000000 * q + q
 
+                mov     rax, 0x0000000100000000
+                mul     q
                 add     d, q
-                mov     n0, 0x0000000100000000
-                mulx    n1, n0, n0
-                sbb     n0, 0
-                sbb     n1, 0
-                sub     m0, n0
-                sbb     m1, n1
-                mov     n0, 0xffffffff00000001
-                mulx    n1, n0, n0
-                sbb     m2, n0
-                sbb     m3, n1
+                sbb     rax, 0
+                sbb     rdx, 0
+                sub     m0, rax
+                sbb     m1, rdx
+                sbb     m2, 0
+                sbb     m3, 0
+                mov     rax, 0xffffffff00000001
+                mul     q
+                sub     m2, rax
+                sbb     m3, rdx
 
 // Now our top word m3 is either zero or all 1s, and we use this to discriminate
 // whether a correction is needed because our result is negative, as a bitmask

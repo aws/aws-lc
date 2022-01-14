@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_n256
+        .globl  bignum_mod_n256_alt
         .text
         .balign 4
 
@@ -62,6 +63,7 @@
                 movk    nn, n3, lsl #48
 
 bignum_mod_n256:
+bignum_mod_n256_alt:
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 

@@ -14,37 +14,29 @@
  */
 
 // ----------------------------------------------------------------------------
-// Montgomery multiply, z := (x * y / 2^256) mod p_256
-// Inputs x[4], y[4]; output z[4]
+// Convert to Montgomery form z := (2^256 * x) mod p_256
+// Input x[4]; output z[4]
 //
-//    extern void bignum_montmul_p256_alt
-//     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+//    extern void bignum_tomont_p256_alt
+//     (uint64_t z[static 4], uint64_t x[static 4]);
 //
-// Does z := (2^{-256} * x * y) mod p_256, assuming that the inputs x and y
-// satisfy x * y <= 2^256 * p_256 (in particular this is true if we are in
-// the "usual" case x < p_256 and y < p_256).
-//
-// Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_montmul_p256_alt
+        .globl  bignum_tomont_p256_alt
         .text
 
 #define z rdi
 #define x rsi
 
-// We move the y argument here so we can use rdx for multipliers
-
-#define y rcx
-
-// Add rbx * m into a register-pair (high,low) maintaining consistent
+// Add rcx * m into a register-pair (high,low) maintaining consistent
 // carry-catching with carry (negated, as bitmask) and using rax and rdx
 // as temporaries
 
 #define mulpadd(carry,high,low,m)       \
         mov     rax, m;                 \
-        mul     rbx;                    \
+        mul     rcx;                    \
         sub     rdx, carry;             \
         add     low, rax;               \
         adc     high, rdx;              \
@@ -54,7 +46,7 @@
 
 #define mulpadi(carry,high,low,m)       \
         mov     rax, m;                 \
-        mul     rbx;                    \
+        mul     rcx;                    \
         add     low, rax;               \
         adc     high, rdx;              \
         sbb     carry, carry
@@ -63,56 +55,51 @@
 
 #define mulpade(carry,high,low,m)       \
         mov     rax, m;                 \
-        mul     rbx;                    \
+        mul     rcx;                    \
         sub     rdx, carry;             \
         add     low, rax;               \
         adc     high, rdx
 
-bignum_montmul_p256_alt:
+bignum_tomont_p256_alt:
 
 // Save more registers to play with
 
-        push    rbx
         push    r12
         push    r13
         push    r14
         push    r15
 
-// Copy y into a safe register to start with
-
-        mov     y, rdx
-
 // Do row 0 computation, which is a bit different:
 // set up initial window [r12,r11,r10,r9,r8] = y[0] * x
 // Unlike later, we only need a single carry chain
 
-        mov     rbx, [y]
+        mov     ecx, 0x0000000000000003
         mov     rax, [x]
-        mul     rbx
+        mul     rcx
         mov     r8, rax
         mov     r9, rdx
 
         mov     rax, [x+8]
-        mul     rbx
+        mul     rcx
         xor     r10d, r10d
         add     r9, rax
         adc     r10, rdx
 
         mov     rax, [x+16]
-        mul     rbx
+        mul     rcx
         xor     r11d, r11d
         add     r10, rax
         adc     r11, rdx
 
         mov     rax, [x+24]
-        mul     rbx
+        mul     rcx
         xor     r12d, r12d
         add     r11, rax
         adc     r12, rdx
 
 // Add row 1
 
-        mov     rbx, [y+8]
+        mov     rcx, 0xfffffffbffffffff
         xor     r13d, r13d
         mulpadi(r14,r10,r9,[x])
         mulpadd(r14,r11,r10,[x+8])
@@ -122,18 +109,18 @@ bignum_montmul_p256_alt:
 // Montgomery reduce windows 0 and 1 together
 
         xor     r14d, r14d
-        mov     rbx, 0x0000000100000000
+        mov     rcx, 0x0000000100000000
         mulpadi(r15,r10,r9,r8)
         mulpadd(r15,r11,r10,r9)
-        not     rbx
-        lea     rbx, [rbx+2]
+        not     rcx
+        lea     rcx, [rcx+2]
         mulpadd(r15,r12,r11,r8)
         mulpade(r15,r13,r12,r9)
         adc     r14, r14
 
 // Add row 2
 
-        mov     rbx, [y+16]
+        mov     rcx, 0xfffffffffffffffe
         xor     r15d, r15d
         mulpadi(r8,r11,r10,[x])
         mulpadd(r8,r12,r11,[x+8])
@@ -143,7 +130,7 @@ bignum_montmul_p256_alt:
 
 // Add row 3
 
-        mov     rbx, [y+24]
+        mov     rcx, 0x00000004fffffffd
         xor     r8d, r8d
         mulpadi(r9,r12,r11,[x])
         mulpadd(r9,r13,r12,[x+8])
@@ -153,25 +140,25 @@ bignum_montmul_p256_alt:
 
 // Montgomery reduce windows 2 and 3 together
 
-        xor     r9d, r9d
-        mov     rbx, 0x0000000100000000
-        mulpadi(rcx,r12,r11,r10)
-        mulpadd(rcx,r13,r12,r11)
-        not     rbx
-        lea     rbx, [rbx+2]
-        mulpadd(rcx,r14,r13,r10)
-        mulpade(rcx,r15,r14,r11)
-        adc     r8, r9
+        mov     rcx, 0x0000000100000000
+        mulpadi(r9,r12,r11,r10)
+        mulpadd(r9,r13,r12,r11)
+        not     rcx
+        lea     rcx, [rcx+2]
+        mulpadd(r9,r14,r13,r10)
+        mulpadd(r9,r15,r14,r11)
+        sub     r8, r9
 
 // We now have a pre-reduced 5-word form [r8; r15;r14;r13;r12]
-// Load [rax;r11;r9;rbx;rcx] = 2^320 - p_256, re-using earlier numbers a bit
-// Do [rax;r11;r9;rbx;rcx] = [r8;r15;r14;r13;r12] + (2^320 - p_256)
+// Load [rax;r11;r9;rcx;rdx] = 2^320 - p_256, re-using earlier numbers a bit
+// Do [rax;r11;r9;rcx;rdx] = [r8;r15;r14;r13;r12] + (2^320 - p_256)
 
-        mov     ecx, 1
-        add     rcx, r12
-        dec     rbx
-        adc     rbx, r13
-        dec     r9
+        xor     edx, edx
+        lea     r9, [rdx-1]
+        inc     rdx
+        add     rdx, r12
+        dec     rcx
+        adc     rcx, r13
         mov     rax, r9
         adc     r9, r14
         mov     r11d, 0x00000000fffffffe
@@ -182,8 +169,8 @@ bignum_montmul_p256_alt:
 // where r is the pre-reduced form. So conditionally select the
 // output accordingly.
 
-        cmovc   r12, rcx
-        cmovc   r13, rbx
+        cmovc   r12, rdx
+        cmovc   r13, rcx
         cmovc   r14, r9
         cmovc   r15, r11
 
@@ -200,7 +187,6 @@ bignum_montmul_p256_alt:
         pop     r14
         pop     r13
         pop     r12
-        pop     rbx
 
         ret
 

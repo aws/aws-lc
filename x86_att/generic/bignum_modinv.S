@@ -548,7 +548,7 @@ zcorrloop:
                 cmpq    k, i
                 jc      zcorrloop
 
-// Now actually c ompute the updates to m and n corresponding to the matrix,
+// Now actually compute the updates to m and n corresponding to the matrix,
 // and correct the signs if they have gone negative. First we compute the
 // (k+1)-sized updates with the following invariant (here h1 and h2 are in
 // fact carry bitmasks, either 0 or -1):

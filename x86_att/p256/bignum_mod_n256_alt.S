@@ -14,17 +14,19 @@
  */
 
 // ----------------------------------------------------------------------------
-// Reduce modulo field characteristic, z := x mod p_256
+// Reduce modulo group order, z := x mod n_256
 // Input x[k]; output z[4]
 //
-//    extern void bignum_mod_p256
+//    extern void bignum_mod_n256_alt
 //     (uint64_t z[static 4], uint64_t k, uint64_t *x);
+//
+// Reduction is modulo the group order of the NIST curve P-256.
 //
 // Standard x86-64 ABI: RDI = z, RSI = k, RDX = x
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_mod_p256
+        .globl  bignum_mod_n256_alt
         .text
 
 #define z %rdi
@@ -40,13 +42,14 @@
 #define n0 %rax
 #define n1 %rbx
 #define n3 %rdx
-#define q %rdx
+
+#define q %rbx
 
 #define n0short %eax
-#define n1short %ebx
+#define n3short %edx
 
 
-bignum_mod_p256:
+bignum_mod_n256_alt:
 
 // Save extra registers
 
@@ -70,24 +73,25 @@ bignum_mod_p256:
 
                 movq    %rdx, x
 
-// Load non-trivial digits [n3; 0; n1; -1] = p_256 and do a conditional
-// subtraction to reduce the four starting digits [m3;m2;m1;m0] modulo p_256
+// Reduce the top 4 digits mod n_256 (a conditional subtraction of n_256)
 
-                subq    $-1, m0
-                movl    $0x00000000ffffffff, n1short
-                sbbq    n1, m1
-                movq    $0xffffffff00000001, n3
-                sbbq    $0, m2
-                sbbq    n3, m3
+                movq    $0x0c46353d039cdaaf, n0
+                movq    $0x4319055258e8617b, n1
+                movl    $0x00000000ffffffff, n3short
 
-                sbbq    n0, n0
-
-                andq    n0, n1
-                andq    n0, n3
                 addq    n0, m0
                 adcq    n1, m1
                 adcq    $0, m2
                 adcq    n3, m3
+                sbbq    d, d
+                notq    d
+                andq    d, n0
+                andq    d, n1
+                andq    d, n3
+                subq    n0, m0
+                sbbq    n1, m1
+                sbbq    $0, m2
+                sbbq    n3, m3
 
 // Now do (k-4) iterations of 5->4 word modular reduction
 
@@ -104,8 +108,8 @@ loop:
                 movq    m3, q
                 shrq    $32, q
 
-                xorq    n1, n1
-                subq    $1, n1
+                xorq    %rdx, %rdx
+                subq    $1, %rdx
 
                 adcq    m2, n0
                 adcq    m3, q
@@ -116,36 +120,47 @@ loop:
 
                 movq    -8(x,k,8), d
 
-// Now compute the initial pre-reduced [m3;m2;m1;m0;d] = m - p_256 * q
-// = z - (2^256 - 2^224 + 2^192 + 2^96 - 1) * q
-// = z - 2^192 * 0xffffffff00000001 * q - 2^64 * 0x0000000100000000 * q + q
+// Now form [m3;m2;m1;m0;d] = m - q * n_256
 
-                addq    q, d
-                movq    $0x0000000100000000, n0
-                mulxq   n0, n0, n1
-                sbbq    $0, n0
-                sbbq    $0, n1
-                subq    n0, m0
-                sbbq    n1, m1
-                movq    $0xffffffff00000001, n0
-                mulxq   n0, n0, n1
-                sbbq    n0, m2
-                sbbq    n1, m3
+                subq    q, m3
 
-// Now our top word m3 is either zero or all 1s, and we use this to discriminate
-// whether a correction is needed because our result is negative, as a bitmask
-// Do a masked addition of p_256
-
-                movl    $0x00000000ffffffff, n0short
-                andq    m3, n0
-                xorq    n1, n1
-                subq    n0, n1
-                addq    m3, d
-                adcq    n0, m0
+                movq    $0x0c46353d039cdaaf, %rax
+                mulq    q
+                addq    %rax, d
+                adcq    %rdx, m0
                 adcq    $0, m1
-                adcq    n1, m2
+                adcq    $0, m2
+                adcq    $0, m3
 
-// Shuffle registers up and loop
+                movq    $0x4319055258e8617b, %rax
+                mulq    q
+                addq    %rax, m0
+                adcq    %rdx, m1
+                adcq    $0, m2
+                adcq    $0, m3
+
+                movq    $0x00000000ffffffff, %rax
+                mulq    q
+                addq    %rax, m2
+                adcq    %rdx, m3
+
+// Now our top word m3 is either zero or all 1s. Use it for a masked
+// addition of n_256, which we can do by a *subtraction* of
+// 2^256 - n_256 from our portion
+
+                movq    $0x0c46353d039cdaaf, n0
+                andq    m3, n0
+                movq    $0x4319055258e8617b, n1
+                andq    m3, n1
+                movl    $0x00000000ffffffff, n3short
+                andq    m3, n3
+
+                subq    n0, d
+                sbbq    n1, m0
+                sbbq    $0, m1
+                sbbq    n3, m2
+
+// Now shuffle registers up and loop
 
                 movq    m2, m3
                 movq    m1, m2
