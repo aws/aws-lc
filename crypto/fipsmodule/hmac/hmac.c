@@ -97,6 +97,7 @@ struct in_place_method_array_st {
     out->methods[idx].digest = (HmacInPlaceFinal)(HMAC_NAME##_Final);      \
     out->methods[idx].cleanup = (HmacInPlaceCleanup)(HMAC_NAME##_cleanup); \
     idx++;                                                                 \
+    assert(idx < HMAC_IN_PLACE_METHOD_MAX - 1);                            \
   }
 
 DEFINE_LOCAL_DATA(struct in_place_method_array_st, AWSLC_hmac_in_place_methods) {
@@ -118,6 +119,7 @@ DEFINE_LOCAL_DATA(struct in_place_method_array_st, AWSLC_hmac_in_place_methods) 
 #ifndef OPENSSL_NO_SHA512
   DEFINE_IN_PLACE_METHODS(HMAC_SHA384, HMAC_SHA512_CTX, NID_sha384);
   DEFINE_IN_PLACE_METHODS(HMAC_SHA512, HMAC_SHA512_CTX, NID_sha512);
+  DEFINE_IN_PLACE_METHODS(HMAC_SHA512_256, HMAC_SHA512_CTX, NID_sha512_256);
 #endif
 #ifndef OPENSSL_NO_RIPEMD
   DEFINE_IN_PLACE_METHODS(HMAC_RIPEMD160, HMAC_RIPEMD160_CTX, NID_ripe160);
@@ -360,6 +362,8 @@ AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA256, HMAC_SHA256_CTX, SHA256, SHA256_CTX,
 #ifndef OPENSSL_NO_SHA512
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA384, HMAC_SHA512_CTX, SHA384, SHA512_CTX,
                          SHA384_DIGEST_LENGTH, SHA384_CBLOCK, EVP_sha384())
+AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA512_256, HMAC_SHA512_CTX, SHA512_256, SHA512_CTX,
+                         SHA512_256_DIGEST_LENGTH, SHA512_CBLOCK, EVP_sha512_256())
 
 AWSLC_IMPLEMENT_HMAC_FNS(HMAC_SHA512, HMAC_SHA512_CTX, SHA512, SHA512_CTX,
                          SHA512_DIGEST_LENGTH, SHA512_CBLOCK, EVP_sha512())
