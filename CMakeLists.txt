@@ -760,7 +760,7 @@ endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
-  set(SSL_TRANSFER_ARGS "-ssl-transfer-config-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
     set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
   endif()

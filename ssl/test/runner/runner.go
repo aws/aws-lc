@@ -80,7 +80,7 @@ var (
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 	// Added by aws-lc
 	onlySslTransfer    = flag.Bool("only-ssl-transfer", true, "If true, only run SSL transfer tests.")
-	sslTransferConfig  = flag.String("ssl-transfer-config-file", "", "A config file to use to tell if the test should be converted for SSL transfer.")
+	sslTransferConfig  = flag.String("ssl-transfer-test-file", "", "A path to file which includes the test names that can be converted for SSL transfer.")
 	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
 	testCaseEndIndex   = flag.Int("test-case-end-index", -1, "If non-negative, test case is filtered in if the index in |testCases| <= test-case-end-index.")
 )
