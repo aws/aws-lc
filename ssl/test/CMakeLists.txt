@@ -20,17 +20,6 @@ if(WIN32)
   target_link_libraries(bssl_shim ws2_32)
 endif()
 
-# TODO: reenable below test or delete after testing the decoded SSL in runner.
-# add_executable(
-#   ssl_conn_transfer
-
-#   ssl_conn_transfer.c
-# )
-
-# add_dependencies(ssl_conn_transfer global_target)
-
-# target_link_libraries(ssl_conn_transfer ssl crypto)
-
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   add_executable(
     handshaker

@@ -709,9 +709,6 @@ type testCase struct {
 	// skipVersionNameCheck, if true, will skip the consistency check between
 	// test name and the versions.
 	skipVersionNameCheck bool
-	// skipSSLTransfer, if true, will skip the generation of a SSL transfer
-	// copy of the test.
-	skipSSLTransfer bool
 }
 
 var testCases []testCase
@@ -1986,9 +1983,10 @@ func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, e
 	}
 	for i, test := range tests {
 		if test.protocol != tls ||
-		   strings.HasSuffix(test.name, "-Split") ||
-		   strings.HasSuffix(test.name, "-Hints") ||
-		    // test.name != "ServerSkipCertificateVerify" ||
+			// Skip tests of handshake splits.
+			strings.HasSuffix(test.name, "-Split") ||
+			strings.HasSuffix(test.name, "-Hints") ||
+			// Skip tests when using bssl_shim as SSL client.
 			test.testType != serverTest {
 			continue
 		}
@@ -1998,6 +1996,7 @@ func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, e
 			stTest.name += SSL_TRANSFER_SUFFIX
 			stTest.flags = make([]string, len(test.flags), len(test.flags)+2)
 			copy(stTest.flags, test.flags)
+			// Append |ssl-transfer| to let bssl_shim perform SSL transfer.
 			stTest.flags = append(stTest.flags, "-ssl-transfer", "1")
 			sslTransferTests = append(sslTransferTests, stTest)
 		} else {
@@ -2007,58 +2006,11 @@ func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, e
 			newFlags = append(newFlags, "-check-ssl-transfer", "1")
 			test.flags = newFlags
 			tests[i] = test
-			// sslTransferTests = append(sslTransferTests, tests[i])
 		}
 	}
 
 	return sslTransferTests, nil
 }
-
-// func addSSLi2d2iTests() {
-// 	i2d2iSSLTests := []testCase{
-// 		{
-// 			name: "basicI2d2iSSL",
-// 			testType: serverTest,
-// 			config: Config{
-// 				MaxVersion:   VersionTLS12,
-// 			},
-// 			shouldFail:         false,
-// 			flags: []string{"-i2d2i-ssl"},
-// 		},
-// 		{
-// 			name: "basicI2d2iSSL_TLS13",
-// 			testType: serverTest,
-// 			config: Config{
-// 				MaxVersion:   VersionTLS13,
-// 			},
-// 			shouldFail:         false,
-// 			flags: []string{"-i2d2i-ssl"},
-// 		},
-// 		{
-// 			name: "basicI2d2iSSL-keyNoUpdate",
-// 			testType: serverTest,
-// 			config: Config{
-// 				MinVersion:   VersionTLS13,
-// 			},
-// 			shouldFail:         false,
-// 			flags: []string{"-i2d2i-ssl"},
-// 			sendKeyUpdates:   1,
-// 			keyUpdateRequest: keyUpdateNotRequested,
-// 		},
-// 		{
-// 			name: "basicI2d2iSSL-keyUpdate",
-// 			testType: serverTest,
-// 			config: Config{
-// 				MinVersion:   VersionTLS13,
-// 			},
-// 			shouldFail:         false,
-// 			flags: []string{"-i2d2i-ssl"},
-// 			sendKeyUpdates:   1,
-// 			keyUpdateRequest: keyUpdateRequested,
-// 		},
-//         }
-// 	testCases = append(testCases, i2d2iSSLTests...)
-// }
 
 func addBasicTests() {
 	basicTests := []testCase{
@@ -19243,9 +19195,6 @@ func filterTests(inputTests []testCase, startIndex int, endIndex int) []testCase
 		endIndex = len(inputTests) - 1
 	}
 	for i, t := range inputTests {
-		// if t.name != "SupportTicketsWithSessionID-SSL_Transfer" {
-		// 	continue
-		// }
 		if (i >= startIndex) && (i <= endIndex) {
 			filteredTestCases = append(filteredTestCases, t)
 		}
@@ -19326,7 +19275,6 @@ func main() {
 	addDelegatedCredentialTests()
 	addEncryptedClientHelloTests()
 	addHintMismatchTests()
-	// addSSLi2d2iTests()
 
 	toAppend, err := convertToSplitHandshakeTests(testCases)
 	if err != nil {
@@ -19344,7 +19292,6 @@ func main() {
 			os.Exit(1)
 		}
 		testCases = append(testCases, sslTransferTests...)
-		// testCases = sslTransferTests
 	}
 
 	testCases = filterTests(testCases, *testCaseStartIndex, *testCaseEndIndex)
