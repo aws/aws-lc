@@ -53,7 +53,7 @@ static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
   // unknown |advice| values.
   if (madvise(addr, (size_t)page_size, -1) == 0 ||
       madvise(addr, (size_t)page_size, MADV_WIPEONFORK) != 0) {
-    munmap(addr, (size_t)page_size);
+    // The mapping |addr| points to is unmapped by caller.
     return 0;
   }
 
@@ -143,6 +143,7 @@ static void init_fork_detect(void) {
 cleanup:
   if (res == 0 && addr != MAP_FAILED) {
     munmap(addr, (size_t)page_size);
+    addr = NULL;
   }
 }
 
