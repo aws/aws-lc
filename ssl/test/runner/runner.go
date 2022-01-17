@@ -19388,7 +19388,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if sslTransferHelper != nil {
+	if (sslTransferHelper != nil) &&
+		// Skip test file content check when the tests are filtered.
+		(*testCaseStartIndex < 0) &&
+		(*testCaseEndIndex < 0) {
 		sslTransferHelper.RefreshTestFileContent()
 	}
 }
