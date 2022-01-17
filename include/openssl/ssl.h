@@ -139,8 +139,6 @@
  * OTHERWISE.
  */
 
-// #define SSL_DEBUG
-
 #ifndef OPENSSL_HEADER_SSL_H
 #define OPENSSL_HEADER_SSL_H
 
@@ -2348,7 +2346,6 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // one on success and zero on error.
 //
 // WARNING: Currently only works with TLS 1.2 after handshake finished.
-// WARNING: |SSL_to_bytes| only applies to servers.
 // WARNING: Currently only supports |SSL| as server.
 // WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded.
 //

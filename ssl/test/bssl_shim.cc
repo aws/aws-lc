@@ -1465,9 +1465,6 @@ int main(int argc, char **argv) {
 
   bssl::UniquePtr<SSL_SESSION> session;
   for (int i = 0; i < initial_config.resume_count + 1; i++) {
-    #if defined(SSL_DEBUG)
-      fprintf(stderr, "bssl shim %d.\n", i);
-    #endif
     bool is_resume = i > 0;
     TestConfig *config = is_resume ? &resume_config : &initial_config;
     ssl_ctx = config->SetupCtx(ssl_ctx.get());

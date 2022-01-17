@@ -2606,8 +2606,6 @@ enum ssl_shutdown_t {
   ssl_shutdown_error = 2,
 };
 
-#define TLS_SEQ_NUM_SIZE 8
-
 enum ssl_ech_status_t {
   // ssl_ech_none indicates ECH was not offered, or we have not gotten far
   // enough in the handshake to determine the status.
@@ -2619,6 +2617,7 @@ enum ssl_ech_status_t {
 };
 
 #define SSL3_SEND_ALERT_SIZE 2
+#define TLS_SEQ_NUM_SIZE 8
 #define SSL3_CHANNEL_ID_SIZE 64
 #define PREV_FINISHED_MAX_SIZE 12
 
