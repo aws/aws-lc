@@ -466,34 +466,32 @@ static int SSL_SESSION_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag
   return parse_optional_string(cbs, out, tag, SSL_R_INVALID_SSL_SESSION);
 }
 
-// SSL_SESSION_parse_octet_string gets an optional ASN.1 OCTET STRING explicitly
+// parse_octet_string gets an optional ASN.1 OCTET STRING explicitly
 // tagged with |tag| from |cbs| and stows it in |*out|. It returns one on
 // success, whether or not the element was found, and zero on decode error.
+static bool parse_octet_string(CBS *cbs, Array<uint8_t> *out,
+                               unsigned tag, int reason) {
+  CBS value;
+  if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag)) {
+    OPENSSL_PUT_ERROR(SSL, reason);
+    return false;
+  }
+  return out->CopyFrom(value);
+}
+
 static bool SSL_SESSION_parse_octet_string(CBS *cbs, Array<uint8_t> *out,
                                            unsigned tag) {
-  CBS value;
-  if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-    return false;
-  }
-  return out->CopyFrom(value);
+  return parse_octet_string(cbs, out, tag, SSL_R_INVALID_SSL_SESSION);
 }
 
-// SSL3_STATE_parse_octet_string is duplicate of |SSL_SESSION_parse_octet_string|.
-// SSL3_STATE_parse_octet_string gets an optional ASN.1 OCTET STRING explicitly
-// tagged with |tag| from |cbs| and stows it in |*out|. It returns one on
-// success, whether or not the element was found, and zero on decode error.
 static bool SSL3_STATE_parse_octet_string(CBS *cbs, Array<uint8_t> *out,
-                                           unsigned tag) {
-  CBS value;
-  if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
-    return false;
-  }
-  return out->CopyFrom(value);
+                                          unsigned tag) {
+  return parse_octet_string(cbs, out, tag, SSL_R_INVALID_SSL3_STATE);
 }
 
-static bool SSL3_STATE_get_optional_octet_string(CBS *cbs, void *dst, unsigned tag, size_t target_len) {
+static bool SSL3_STATE_get_optional_octet_string(CBS *cbs, void *dst,
+                                                 unsigned tag,
+                                                 size_t target_len) {
   int present;
   CBS value;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
@@ -1167,6 +1165,9 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   // Below comment is copied from |SSL_do_handshake|.
   // Destroy the handshake object if the handshake has completely finished.
   out->hs.reset();
+  // have_version is true if the connection's final version is known. Otherwise
+  // the version has not been negotiated yet.
+  out->have_version = true;
   return 1;
 }
 
@@ -1178,30 +1179,23 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
 static const unsigned kSSLQuietShutdownTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
 
-//  Parse serialized SSL connection binary
+// Parse serialized SSL connection binary
 //
-//  @details This function attempts to recover serialized SSL connection from
-//  binary. It restores session key, IV and sequence number for both read and
-//  write directions. Restored data is saved to given SSL handler.
+// SSL_to_bytes_full serializes |in| to bytes stored in |cbb|.
+// It returns one on success and zero on failure.
 //
-//  An SSL object is serialized as the following ASN.1 structure:
-//  SSL ::= SEQUENCE {
-//      ssl_serial_ver UINT64                        -- version of the SSL serialization format
-//      version        UINT64
-//      sheded         BOOLEAN                       -- indicate if the config is sheded. The config may not exist
-//                                                      since the configuration 
-//                                                      may be shed after the handshake completes
-//      s3             SEQUENCE
-//      mode           UINT64
-//      quietShutdown  [0] BOOLEAN OPTIONAL,
-//  }
+// An SSL is serialized as the following ASN.1 structure:
 //
-//  Note that serialized SSL_SESSION is always prepended to the serialized SSL
-//
-//  @returns
-//    0 if an error occur
-//    1 if SSL is succesfully restored
-//
+// SSL ::= SEQUENCE {
+//     sslSerialVer   UINT64   -- version of the SSL serialization format
+//     version        UINT64
+//     sheded         BOOLEAN  -- indicate if the config is sheded. The 
+//                                config may not exist since the configuration
+//                                may be shed after the handshake completes.
+//     s3             SSL3State
+//     mode           UINT64
+//     quietShutdown  [0] BOOLEAN OPTIONAL
+// }
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl, child;
 
@@ -1235,9 +1229,8 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs;
   uint64_t ssl_serial_ver, version, max_send_fragment, mode;
   int quiet_shutdown;
-
   int sheded = 0;
-  // Read version string from buffer
+
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
       CBS_len(cbs) != 0 ||
       !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
@@ -1283,13 +1276,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   OPENSSL_memcpy(read_sequence, ssl->s3->read_sequence, TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(write_sequence, ssl->s3->write_sequence, TLS_SEQ_NUM_SIZE);
 
-  // TODO: check how to serialize internal field state.
-  // have_version is true if the connection's final version is known. Otherwise
-  // the version has not been negotiated yet.
-  // uint16_t ssl_protocol_version(const SSL *ssl) {
-  // assert(ssl->s3->have_version);
-  ssl->s3->have_version = true;
-
   SSL_SESSION *session = ssl->s3->established_session.get();
 
   if (CBS_len(&ssl_cbs) != 0) {
@@ -1299,19 +1285,18 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
   if (sheded) {
     Delete(ssl->config.release());
+  } else {
+    // TODO: add config encode and decode.
   }
 
-  // TODO: encode the state of ssl instead of calling SSL_set_accept_state below.
   SSL_set_accept_state(ssl);
 
   // TODO: revisit iv. it seems the iv is always empty based on
   // the impl of |SSL_serialize_handback|, which only fetch IV when it's TLS 1.
   Array<uint8_t> key_block1, key_block2;
-  // Span<const uint8_t> w_iv = MakeConstSpan(CBS_data(&write_iv), CBS_len(&write_iv));
   if (!tls1_configure_aead(ssl, evp_aead_seal, &key_block1, session, {})) {
     return 0;
   }
-  // Span<const uint8_t> r_iv = MakeConstSpan(CBS_data(&read_iv), CBS_len(&read_iv));
   if (!tls1_configure_aead(ssl, evp_aead_open, &key_block2, session, {})) {
     return 0;
   }
@@ -1381,15 +1366,8 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
       in->s3->read_shutdown != ssl_shutdown_none ||             // (7)
       in->s3->write_shutdown != ssl_shutdown_none) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    // fprintf( stderr, "!SSL_is_server(in) %d\n", !SSL_is_server(in));
-    // fprintf( stderr, "SSL_is_dtls(in) %d\n", SSL_is_dtls(in));
-    // fprintf( stderr, "SSL_in_init(in) %d\n", SSL_in_init(in));
-    // fprintf( stderr, "in->version %x\n", in->version);
-    // fprintf( stderr, "in->s3->established_session.get()->not_resumable %d\n", in->s3->established_session.get()->not_resumable);
     return 0;
   }
-
-  // TODO: add ssl shutdown check?
 
   CBB seq;
   if (!CBB_init(cbb.get(), 1024) ||
