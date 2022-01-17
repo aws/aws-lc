@@ -974,7 +974,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   SSL_CTX *session_ctx = SSL_get_SSL_CTX(ssl);
   TestState *test_state = GetTestState(ssl);
   uint8_t tls_unique_before_transfer[16];
-  size_t tls_unique_len_before_transfer;
+  size_t tls_unique_len_before_transfer = 0;
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
