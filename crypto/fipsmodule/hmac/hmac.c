@@ -72,7 +72,7 @@ struct hmac_methods_st {
   const EVP_MD* evp_md;
   HashInit init;
   HashUpdate update;
-  HashFinal digest; // Not named final to avoid keywords
+  HashFinal finalize; // Not named final to avoid keywords
 };
 
 // The maximum number of HMAC implementations
@@ -87,9 +87,9 @@ struct hmac_method_array_st {
     out->methods[idx].evp_md = EVP_MD;                           \
     out->methods[idx].init = (HashInit)(HASH_NAME##_Init);       \
     out->methods[idx].update = (HashUpdate)(HASH_NAME##_Update); \
-    out->methods[idx].digest = (HashFinal)(HASH_NAME##_Final);   \
+    out->methods[idx].finalize = (HashFinal)(HASH_NAME##_Final); \
     idx++;                                                       \
-    assert(idx < HMAC_METHOD_MAX);                               \
+    assert(idx <= HMAC_METHOD_MAX);                              \
   }
 
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
@@ -131,9 +131,18 @@ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   HMAC_CTX ctx = {.initialized = 0};
   int result;
+  // If out is NULL, the digest is placed in a static array.
+  // Note: passing a NULL value for out to use the static array is not thread safe.
+  static uint8_t fallback_output[EVP_MAX_MD_SIZE] = {0};
+  if (out == NULL) {
+    out = fallback_output;
+  }
+
   result = HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) &&
            HMAC_Update(&ctx, data, data_len) &&
            HMAC_Final(&ctx, out, out_len);
@@ -143,6 +152,7 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
     HMAC_verify_service_indicator(evp_md);
     return out;
   } else {
+    OPENSSL_cleanse(out, EVP_MD_size(evp_md));
     return NULL;
   }
 }
@@ -195,15 +205,26 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   assert(block_size % 8 == 0);
   assert(block_size <= EVP_MAX_MD_BLOCK_SIZE);
 
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   int result = 0;
+
+  // If either |key| is non-NULL or |md| has changed, initialize with a new key
+  // rather than rewinding the previous one.
+  //
+  // TODO(davidben,eroman): Passing the previous |md| with a NULL |key| is
+  // ambiguous between using the empty key and reusing the previous key. There
+  // exist callers which intend the latter, but the former is an awkward edge
+  // case. Fix to API to avoid this.
   if (key != NULL || ctx->initialized != 1) {
-    uint64_t pad[EVP_MAX_MD_BLOCK_SIZE] = {0};
-    uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE] = {0};
+    uint64_t pad[EVP_MAX_MD_BLOCK_SIZE / 8] = {0};
+    uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE / 8] = {0};
     if (block_size < key_len) {
+      // Long keys are hashed.
       if (!methods->init(&ctx->md_ctx) ||
           !methods->update(&ctx->md_ctx, key, key_len) ||
-          !methods->digest((uint8_t *) key_block, &ctx->md_ctx)) {
+          !methods->finalize((uint8_t *) key_block, &ctx->md_ctx)) {
         goto end;
       }
     } else {
@@ -245,19 +266,21 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
   if (methods == NULL || ctx->initialized != 1) {
     return 0;
   }
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   int result = 0;
   const EVP_MD *evp_md = ctx->md;
   int hmac_len = EVP_MD_size(evp_md);
   uint8_t tmp[EVP_MAX_MD_SIZE];
-  if (!methods->digest(tmp, &ctx->md_ctx)) {
+  if (!methods->finalize(tmp, &ctx->md_ctx)) {
     goto end;
   }
   OPENSSL_memcpy(&ctx->md_ctx, &ctx->o_ctx, sizeof(ctx->o_ctx));
   if (!ctx->methods->update(&ctx->md_ctx, tmp, hmac_len)) {
     goto end;
   }
-  result = methods->digest(out, &ctx->md_ctx);
+  result = methods->finalize(out, &ctx->md_ctx);
 end:
   FIPS_service_indicator_unlock_state();
   if (result) {
@@ -267,6 +290,9 @@ end:
     }
     return 1;
   } else {
+    if (out_len) {
+      *out_len = 0;
+    }
     return 0;
   }
 }
