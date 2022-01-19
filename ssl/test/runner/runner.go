@@ -15302,6 +15302,55 @@ func addPeekTests() {
 	})
 }
 
+// addServerPeekTests is created based on |addPeekTests| to test |SSL_peek|.
+// For SSL transfer(encode/decode), this tests are converted to test the serialization of
+// |ssl->s3->read_buffer| and |ssl->s3->pending_app_data|.
+// Below is the difference between |addPeekTests| and |addServerPeekTests|.
+// 1. addServerPeekTests uses bssl_shim as server.
+// 2. The MaxVersion is set to TLS 1.2. The default one seems TLS 1.3.
+func addServerPeekTests() {
+	// Test SSL_peek works, including on empty records.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Peek-Basic-Server",
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		sendEmptyRecords: 1,
+		flags: []string{"-peek-then-read"},
+	})
+
+	// Test SSL_peek can drive the initial handshake.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Peek-ImplicitHandshake-Server",
+		config: Config{
+			MinVersion: VersionTLS11,
+			MaxVersion: VersionTLS12,
+		},
+		flags: []string{
+			"-peek-then-read",
+			"-implicit-handshake",
+		},
+	})
+
+	// Test SSL_peek can discover a close_notify.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Peek-Shutdown-Server",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				ExpectCloseNotify: true,
+			},
+		},
+		flags: []string{
+			"-peek-then-read",
+			"-check-close-notify",
+		},
+	})
+}
+
 func addRecordVersionTests() {
 	for _, ver := range tlsVersions {
 		// Test that the record version is enforced.
@@ -19263,6 +19312,7 @@ func main() {
 	addTLS13HandshakeTests()
 	addTLS13CipherPreferenceTests()
 	addPeekTests()
+	addServerPeekTests()
 	addRecordVersionTests()
 	addCertificateTests()
 	addRetainOnlySHA256ClientCertTests()

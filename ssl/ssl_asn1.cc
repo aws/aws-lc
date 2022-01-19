@@ -949,8 +949,10 @@ static const unsigned kS3ChannelIdTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 6;
 static const unsigned kS3SendConnectionBindingTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 7;
-static const unsigned kS3PendingAppDataSizeTag = 
+static const unsigned kS3PendingAppDataTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 8;
+static const unsigned kS3ReadBufferTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 9;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL transfer.
@@ -983,14 +985,22 @@ static const unsigned kS3PendingAppDataSizeTag =
 //    channelIdValid                    [5] BOOLEAN OPTIONAL,
 //    channelId                         [6] OCTET STRING OPTIONAL,
 //    sendConnectionBinding             [7] BOOLEAN OPTIONAL,
-//    pendingAppDataSize                [8] INTEGER OPTIONAL,
+//    pendingAppData                    [8] SEQUENCE OPTIONAL,
+//                                          -- see Span ASN1.
+//    readBuffer                        [9] SEQUENCE OPTIONAL,
+//                                          -- see ASN1 struct in the comment of |DoSerialization|.
 // }
-static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
+//
+// Span ::= SEQUENCE {
+//    offset                           INTEGER,
+//    size                             INTEGER,
+// }
+static int SSL3_STATE_to_bytes(SSL3_STATE *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
     return 0;
   }
 
-  CBB s3, child;
+  CBB s3, child, child2;
   if (!CBB_add_asn1(cbb, &s3, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&s3, kS3Version) ||
       !CBB_add_asn1_octet_string(&s3, in->read_sequence, TLS_SEQ_NUM_SIZE) ||
@@ -1076,13 +1086,27 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
   }
 
   if (!in->pending_app_data.empty()) {
-    if (!CBB_add_asn1(&s3, &child, kS3PendingAppDataSizeTag) ||
-        !CBB_add_asn1_uint64(&child, in->pending_app_data.size())) {
+    // This should never happen because pending_app_data is just a span and points to read_buffer.
+    if (!in->read_buffer.buf_ptr() || in->read_buffer.buf_ptr() > in->pending_app_data.data()) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      return 0;
+    }
+    uint64_t offset = in->pending_app_data.data() - in->read_buffer.buf_ptr();
+    if (!CBB_add_asn1(&s3, &child, kS3PendingAppDataTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_SEQUENCE) ||
+        !CBB_add_asn1_uint64(&child2, offset) ||
+        !CBB_add_asn1_uint64(&child2, in->pending_app_data.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
 
+  if (in->read_buffer.buf_size() > 0) {
+    if (!CBB_add_asn1(&s3, &child, kS3ReadBufferTag) ||
+        !in->read_buffer.DoSerialization(&child)) {
+      return 0;
+    }
+  }
   return CBB_flush(cbb);
 }
 
@@ -1111,12 +1135,13 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
     return 0;
   }
 
-  CBS s3, read_seq, write_seq, server_random, client_random, send_alert;
+  CBS s3, read_seq, write_seq, server_random, client_random, send_alert, pending_app_data, read_buffer;
   CBS previous_client_finished, previous_server_finished;
   int session_reused, channel_id_valid, send_connection_binding;
   uint64_t version, early_data_reason, previous_client_finished_len, previous_server_finished_len;
-  uint64_t empty_record_count, warning_alert_count, pending_app_data_size;
+  uint64_t empty_record_count, warning_alert_count;
   int64_t rwstate;
+  int pending_app_data_present, read_buffer_present;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&s3, &version) ||
       version != kS3Version ||
@@ -1151,10 +1176,34 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       !CBS_get_optional_asn1_bool(&s3, &channel_id_valid, kS3ChannelIdValidTag, 0 /* default to false */) ||
       !SSL3_STATE_get_optional_octet_string(&s3, out->channel_id, kS3ChannelIdTag, SSL3_CHANNEL_ID_SIZE) ||
       !CBS_get_optional_asn1_bool(&s3, &send_connection_binding, kS3SendConnectionBindingTag, 0 /* default to false */) ||
-      !CBS_get_optional_asn1_uint64(&s3, &pending_app_data_size, kS3PendingAppDataSizeTag, 0 /* default to 0 */) ||
+      !CBS_get_optional_asn1(&s3, &pending_app_data, &pending_app_data_present, kS3PendingAppDataTag) ||
+      !CBS_get_optional_asn1(&s3, &read_buffer, &read_buffer_present, kS3ReadBufferTag) ||
       CBS_len(&s3) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
     return 0;
+  }
+  if (read_buffer_present && !out->read_buffer.DoDeserialization(&read_buffer)) {
+    return 0;
+  }
+  // If |pending_app_data_size| is not zero, it needs to point to |read_buffer|.
+  if (pending_app_data_present) {
+    if (!read_buffer_present) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      return 0;
+    }
+    CBS app_seq; 
+    uint64_t pending_app_data_offset, pending_app_data_size;
+    if (!CBS_get_asn1(&pending_app_data, &app_seq, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&app_seq, &pending_app_data_offset) ||
+      !CBS_get_asn1_uint64(&app_seq, &pending_app_data_size)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      return 0;
+    }
+    if (pending_app_data_size > out->read_buffer.buf_size()) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      return 0;
+    }
+    out->pending_app_data = MakeSpan(out->read_buffer.buf_ptr() + pending_app_data_offset, pending_app_data_size);
   }
   OPENSSL_memcpy(out->read_sequence, CBS_data(&read_seq), TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(out->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
@@ -1174,10 +1223,6 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->empty_record_count = empty_record_count;
   out->warning_alert_count = warning_alert_count;
   out->send_connection_binding = !!send_connection_binding;
-  // If |pending_app_data_size| is not zero, it needs to point to |read_buffer|.
-  if (pending_app_data_size > 0) {
-    // TODO: point to |read_buffer|.
-  }
   // Below comment is copied from |SSL_do_handshake|.
   // Destroy the handshake object if the handshake has completely finished.
   out->hs.reset();
@@ -1382,6 +1427,7 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
       in->s3->read_shutdown != ssl_shutdown_none ||             // (7)
       in->s3->write_shutdown != ssl_shutdown_none) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    // fprintf(stderr, "version %x.\n", in->version);
     return 0;
   }
 

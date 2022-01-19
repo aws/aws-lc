@@ -1218,10 +1218,12 @@ class SSLBuffer {
   SSLBuffer(const SSLBuffer &) = delete;
   SSLBuffer &operator=(const SSLBuffer &) = delete;
 
+  uint8_t *buf_ptr() { return buf_; }
   uint8_t *data() { return buf_ + offset_; }
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
   size_t cap() const { return cap_; }
+  size_t buf_size() const { return buf_size_ == 0 ? SSL3_RT_HEADER_LENGTH : buf_size_; }
 
   Span<uint8_t> span() { return MakeSpan(data(), size()); }
 
@@ -1251,6 +1253,12 @@ class SSLBuffer {
   // is now empty, it releases memory used by it.
   void DiscardConsumed();
 
+  // DoSerialization writes all fields into |cbb|.
+  bool DoSerialization(CBB *cbb);
+
+  // DoDeserialization recovers the states encoded via |DoSerialization|.
+  bool DoDeserialization(CBS *in);
+
  private:
   // buf_ is the memory allocated for this buffer.
   uint8_t *buf_ = nullptr;
@@ -1265,6 +1273,8 @@ class SSLBuffer {
   // buf_allocated_ is true if |buf_| points to allocated data and must be freed
   // or false if it points into |inline_buf_|.
   bool buf_allocated_ = false;
+  // buf_size_ is how much memory allocated for |buf_|. This is needed by |DoSerialization|.
+  size_t buf_size_ = 0;
 };
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
