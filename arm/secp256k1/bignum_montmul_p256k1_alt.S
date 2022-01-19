@@ -44,22 +44,21 @@
 #define b2 x9
 #define b3 x10
 
-#define h x11
-#define l x12
+#define l x11
 
-#define u0 x13
-#define u1 x14
-#define u2 x15
-#define u3 x16
+#define u0 x12
+#define u1 x13
+#define u2 x14
+#define u3 x15
+#define u4 x16
 
 #define c x17
 
 // These alias to the input arguments when no longer needed
 
-#define u4 a0
-#define u5 a1
-#define u6 a2
-#define u7 a3
+#define u5 a0
+#define u6 a1
+#define u7 a2
 
 #define w x1
 #define t x2
@@ -113,27 +112,23 @@ bignum_montmul_p256k1_alt:
 // Row 1 = [u5;...;u0] = [a1;a0] * [b3;...;b0]
 
                 mul     l, a1, b0
-                umulh   h, a1, b0
                 adds    u1, u1, l
-
-                adcs    u2, u2, h
                 mul     l, a1, b1
-                umulh   h, a1, b1
-                adc     h, h, xzr
-                adds    u2, u2, l
-
-                adcs    u3, u3, h
+                adcs    u2, u2, l
                 mul     l, a1, b2
-                umulh   h, a1, b2
-                adc     h, h, xzr
-                adds    u3, u3, l
-
-                adcs    u4, u4, h
+                adcs    u3, u3, l
                 mul     l, a1, b3
-                umulh   h, a1, b3
-                adc     h, h, xzr
-                adds    u4, u4, l
-                adc     u5, h, xzr
+                adcs    u4, u4, l
+                umulh   u5, a1, b3
+                adc     u5, u5, xzr
+
+                umulh   l, a1, b0
+                adds    u2, u2, l
+                umulh   l, a1, b1
+                adcs    u3, u3, l
+                umulh   l, a1, b2
+                adcs    u4, u4, l
+                adc     u5, u5, xzr
 
 // Montgomery stage 0; use t to record the suspended carry
 
@@ -144,29 +139,25 @@ bignum_montmul_p256k1_alt:
 // Row 2 = [u6;...;u0] = [a2;a1;a0] * [b3;...;b0]
 
                 mul     l, a2, b0
-                umulh   h, a2, b0
                 adds    u2, u2, l
-
-                adcs    u3, u3, h
                 mul     l, a2, b1
-                umulh   h, a2, b1
-                adc     h, h, xzr
-                adds    u3, u3, l
+                adcs    u3, u3, l
+                mul     l, a2, b2
+                adcs    u4, u4, l
+                mul     l, a2, b3
+                adcs    u5, u5, l
+                umulh   u6, a2, b3
+                adc     u6, u6, xzr
 
                 mul     u1, w, u1
 
-                adcs    u4, u4, h
-                mul     l, a2, b2
-                umulh   h, a2, b2
-                adc     h, h, xzr
-                adds    u4, u4, l
-
-                adcs    u5, u5, h
-                mul     l, a2, b3
-                umulh   h, a2, b3
-                adc     h, h, xzr
-                adds    u5, u5, l
-                adc     u6, h, xzr
+                umulh   l, a2, b0
+                adds    u3, u3, l
+                umulh   l, a2, b1
+                adcs    u4, u4, l
+                umulh   l, a2, b2
+                adcs    u5, u5, l
+                adc     u6, u6, xzr
 
 // Montgomery stage 1
 
@@ -178,29 +169,25 @@ bignum_montmul_p256k1_alt:
 // Row 3 = [u7;...;u0] = [a3;...a0] * [b3;...;b0]
 
                 mul     l, a3, b0
-                umulh   h, a3, b0
                 adds    u3, u3, l
-
-                adcs    u4, u4, h
                 mul     l, a3, b1
-                umulh   h, a3, b1
-                adc     h, h, xzr
-                adds    u4, u4, l
+                adcs    u4, u4, l
+                mul     l, a3, b2
+                adcs    u5, u5, l
+                mul     l, a3, b3
+                adcs    u6, u6, l
+                umulh   u7, a3, b3
+                adc     u7, u7, xzr
 
                 mul     u2, w, u2
 
-                adcs    u5, u5, h
-                mul     l, a3, b2
-                umulh   h, a3, b2
-                adc     h, h, xzr
-                adds    u5, u5, l
-
-                adcs    u6, u6, h
-                mul     l, a3, b3
-                umulh   h, a3, b3
-                adc     h, h, xzr
-                adds    u6, u6, l
-                adc     u7, h, xzr
+                umulh   l, a3, b0
+                adds    u4, u4, l
+                umulh   l, a3, b1
+                adcs    u5, u5, l
+                umulh   l, a3, b2
+                adcs    u6, u6, l
+                adc     u7, u7, xzr
 
 // Montgomery stages 2 and 3 (no longer using t to link the carries).
 
