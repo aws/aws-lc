@@ -949,6 +949,8 @@ static const unsigned kS3ChannelIdTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 6;
 static const unsigned kS3SendConnectionBindingTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 7;
+static const unsigned kS3PendingAppDataSizeTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 8;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL transfer.
@@ -981,6 +983,7 @@ static const unsigned kS3SendConnectionBindingTag =
 //    channelIdValid                    [5] BOOLEAN OPTIONAL,
 //    channelId                         [6] OCTET STRING OPTIONAL,
 //    sendConnectionBinding             [7] BOOLEAN OPTIONAL,
+//    pendingAppDataSize                [8] INTEGER OPTIONAL,
 // }
 static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -1072,6 +1075,14 @@ static int SSL3_STATE_to_bytes(const SSL3_STATE *in, CBB *cbb) {
     }
   }
 
+  if (!in->pending_app_data.empty()) {
+    if (!CBB_add_asn1(&s3, &child, kS3PendingAppDataSizeTag) ||
+        !CBB_add_asn1_uint64(&child, in->pending_app_data.size())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
   return CBB_flush(cbb);
 }
 
@@ -1104,7 +1115,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   CBS previous_client_finished, previous_server_finished;
   int session_reused, channel_id_valid, send_connection_binding;
   uint64_t version, early_data_reason, previous_client_finished_len, previous_server_finished_len;
-  uint64_t empty_record_count, warning_alert_count;
+  uint64_t empty_record_count, warning_alert_count, pending_app_data_size;
   int64_t rwstate;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&s3, &version) ||
@@ -1140,6 +1151,7 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
       !CBS_get_optional_asn1_bool(&s3, &channel_id_valid, kS3ChannelIdValidTag, 0 /* default to false */) ||
       !SSL3_STATE_get_optional_octet_string(&s3, out->channel_id, kS3ChannelIdTag, SSL3_CHANNEL_ID_SIZE) ||
       !CBS_get_optional_asn1_bool(&s3, &send_connection_binding, kS3SendConnectionBindingTag, 0 /* default to false */) ||
+      !CBS_get_optional_asn1_uint64(&s3, &pending_app_data_size, kS3PendingAppDataSizeTag, 0 /* default to 0 */) ||
       CBS_len(&s3) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
     return 0;
@@ -1162,6 +1174,10 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->empty_record_count = empty_record_count;
   out->warning_alert_count = warning_alert_count;
   out->send_connection_binding = !!send_connection_binding;
+  // If |pending_app_data_size| is not zero, it needs to point to |read_buffer|.
+  if (pending_app_data_size > 0) {
+    // TODO: point to |read_buffer|.
+  }
   // Below comment is copied from |SSL_do_handshake|.
   // Destroy the handshake object if the handshake has completely finished.
   out->hs.reset();
