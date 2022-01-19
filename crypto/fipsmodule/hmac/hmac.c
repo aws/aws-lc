@@ -78,18 +78,56 @@ struct hmac_methods_st {
 // The maximum number of HMAC implementations
 #define HMAC_METHOD_MAX 9
 
+// We need trampolines from the generic void* methods we use to the properly typed underlying methods.
+#define MD_TRAMPOLINES(HASH_NAME, CTX_NAME)                                 \
+  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *);                         \
+  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *, const void *, size_t); \
+  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);             \
+  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *ctx) {                     \
+    return HASH_NAME##_Init((CTX_NAME *)ctx);                               \
+  }                                                                         \
+  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *ctx, const void *key,    \
+                                             size_t key_len) {              \
+    return HASH_NAME##_Update((void *)ctx, key, key_len);                   \
+  }                                                                         \
+  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *out, void *ctx) {      \
+    return HASH_NAME##_Final(out, (CTX_NAME *)ctx);                         \
+  }
+
+#ifndef OPENSSL_NO_MD4
+MD_TRAMPOLINES(MD4, MD4_CTX);
+#endif
+#ifndef OPENSSL_NO_MD5
+MD_TRAMPOLINES(MD5, MD5_CTX);
+#endif
+#ifndef OPENSSL_NO_SHA
+MD_TRAMPOLINES(SHA1, SHA_CTX);
+#endif
+#ifndef OPENSSL_NO_SHA256
+MD_TRAMPOLINES(SHA224, SHA256_CTX);
+MD_TRAMPOLINES(SHA256, SHA256_CTX);
+#endif
+#ifndef OPENSSL_NO_SHA512
+MD_TRAMPOLINES(SHA384, SHA512_CTX);
+MD_TRAMPOLINES(SHA512, SHA512_CTX);
+MD_TRAMPOLINES(SHA512_256, SHA512_CTX);
+#endif
+#ifndef OPENSSL_NO_RIPEMD
+MD_TRAMPOLINES(RIPEMD160, RIPEMD160_CTX);
+#endif
+
 struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
 };
 
-#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)               \
-  {                                                              \
-    out->methods[idx].evp_md = EVP_MD;                           \
-    out->methods[idx].init = (HashInit)(HASH_NAME##_Init);       \
-    out->methods[idx].update = (HashUpdate)(HASH_NAME##_Update); \
-    out->methods[idx].finalize = (HashFinal)(HASH_NAME##_Final); \
-    idx++;                                                       \
-    assert(idx <= HMAC_METHOD_MAX);                              \
+#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)                      \
+  {                                                                     \
+    out->methods[idx].evp_md = EVP_MD;                                  \
+    out->methods[idx].init = AWS_LC_TRAMPOLINE_##HASH_NAME##_Init;      \
+    out->methods[idx].update = AWS_LC_TRAMPOLINE_##HASH_NAME##_Update;  \
+    out->methods[idx].finalize = AWS_LC_TRAMPOLINE_##HASH_NAME##_Final; \
+    idx++;                                                              \
+    assert(idx <= HMAC_METHOD_MAX);                                     \
   }
 
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
@@ -281,6 +319,7 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
     goto end;
   }
   result = methods->finalize(out, &ctx->md_ctx);
+  OPENSSL_cleanse(&ctx->md_ctx, sizeof(ctx->md_ctx));
 end:
   FIPS_service_indicator_unlock_state();
   if (result) {
