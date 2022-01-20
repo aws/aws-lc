@@ -83,6 +83,7 @@ bignum_montsqr_p256_alt
 bignum_montsqr_p256k1_alt
 bignum_mul
 bignum_mul_4_8_alt
+bignum_mul_6_12_alt
 bignum_mul_p256k1_alt
 bignum_muladd10
 bignum_mux

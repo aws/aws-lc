@@ -454,6 +454,7 @@ extern void bignum_mul_4_8_alt (uint64_t z[8], uint64_t x[4], uint64_t y[4]);
 /*  Multiply z := x * y */
 /*  Inputs x[6], y[6]; output z[12] */
 extern void bignum_mul_6_12 (uint64_t z[12], uint64_t x[6], uint64_t y[6]);
+extern void bignum_mul_6_12_alt (uint64_t z[12], uint64_t x[6], uint64_t y[6]);
 
 /*  Multiply z := x * y */
 /*  Inputs x[8], y[8]; output z[16] */

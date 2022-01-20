@@ -23,6 +23,7 @@ OBJ = bignum_emontredc_8n.o \
       bignum_mul_4_8.o \
       bignum_mul_4_8_alt.o \
       bignum_mul_6_12.o \
+      bignum_mul_6_12_alt.o \
       bignum_mul_8_16.o \
       bignum_sqr_4_8.o \
       bignum_sqr_4_8_alt.o \

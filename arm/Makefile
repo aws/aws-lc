@@ -81,6 +81,7 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_mul_4_8.o \
       fastmul/bignum_mul_4_8_alt.o \
       fastmul/bignum_mul_6_12.o \
+      fastmul/bignum_mul_6_12_alt.o \
       fastmul/bignum_mul_8_16.o \
       fastmul/bignum_sqr_4_8.o \
       fastmul/bignum_sqr_4_8_alt.o \
