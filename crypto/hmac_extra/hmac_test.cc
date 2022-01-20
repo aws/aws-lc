@@ -69,7 +69,9 @@
 
 
 static const EVP_MD *GetDigest(const std::string &name) {
-  if (name == "MD5") {
+  if (name == "MD4") {
+    return EVP_md4();
+  } else if (name == "MD5") {
     return EVP_md5();
   } else if (name == "SHA1") {
     return EVP_sha1();
@@ -81,6 +83,8 @@ static const EVP_MD *GetDigest(const std::string &name) {
     return EVP_sha384();
   } else if (name == "SHA512") {
     return EVP_sha512();
+  } else if (name == "SHA512/256") {
+    return EVP_sha512_256();
   }
   return nullptr;
 }
@@ -129,6 +133,21 @@ TEST(HMACTest, TestVectors) {
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
+    // Test that an HMAC_CTX may be reset with the same key and an null md
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Some callers will call init multiple times and we need to ensure that doesn't break anything
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
 
     // Test feeding the input in byte by byte.
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));

@@ -180,7 +180,7 @@ struct hmac_ctx_st {
   union md_ctx_union md_ctx;
   union md_ctx_union i_ctx;
   union md_ctx_union o_ctx;
-  int8_t initialized;
+  int8_t state;
 } /* HMAC_CTX */;
 
 
