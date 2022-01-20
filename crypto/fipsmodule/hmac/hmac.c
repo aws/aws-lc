@@ -79,49 +79,50 @@ struct hmac_methods_st {
 #define HMAC_METHOD_MAX 9
 
 // We need trampolines from the generic void* methods we use to the properly typed underlying methods.
-#define MD_TRAMPOLINES(HASH_NAME, CTX_NAME)                                 \
-  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *);                         \
-  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *, const void *, size_t); \
-  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);             \
-  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *ctx) {                     \
-    return HASH_NAME##_Init((CTX_NAME *)ctx);                               \
-  }                                                                         \
-  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *ctx, const void *key,    \
-                                             size_t key_len) {              \
-    return HASH_NAME##_Update((void *)ctx, key, key_len);                   \
-  }                                                                         \
-  int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *out, void *ctx) {      \
-    return HASH_NAME##_Final(out, (CTX_NAME *)ctx);                         \
-  }
+// Without these methods some control flow integrity checks will fail because the function pointer types
+// do not exactly match the destination functions. (Namely function pointers use void* pointers for the contexts)
+// while the destination functions have specific pointer types for the relevant contexts.
+//
+// This also includes hash-specific static assertions as they can be added.
+#define MD_TRAMPOLINES_EXPLICIT(HASH_NAME, CTX_PREFIX)                        \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *);                    \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *, const void *,     \
+                                                    size_t);                  \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);        \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *ctx) {                \
+    return HASH_NAME##_Init((CTX_PREFIX##_CTX *)ctx);                         \
+  }                                                                           \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(                          \
+      void *ctx, const void *key, size_t key_len) {                           \
+    return HASH_NAME##_Update((CTX_PREFIX##_CTX *)ctx, key, key_len);         \
+  }                                                                           \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *out, void *ctx) { \
+    return HASH_NAME##_Final(out, (CTX_PREFIX##_CTX *)ctx);                   \
+  }                                                                           \
+  OPENSSL_STATIC_ASSERT(CTX_PREFIX##_CBLOCK % 8 == 0,                         \
+                        HASH_NAME##_has_blocksize_not_divisible_by_eight_t)   \
+  OPENSSL_STATIC_ASSERT(CTX_PREFIX##_CBLOCK <= EVP_MAX_MD_BLOCK_SIZE,         \
+                        HASH_NAME##_has_overlarge_blocksize_t)                \
+  OPENSSL_STATIC_ASSERT(                                                      \
+      sizeof(CTX_PREFIX##_CTX) <= sizeof(union md_ctx_union),                 \
+      HASH_NAME##_has_overlarge_context_t)
 
-#ifndef OPENSSL_NO_MD4
-MD_TRAMPOLINES(MD4, MD4_CTX);
-#endif
-#ifndef OPENSSL_NO_MD5
-MD_TRAMPOLINES(MD5, MD5_CTX);
-#endif
-#ifndef OPENSSL_NO_SHA
-MD_TRAMPOLINES(SHA1, SHA_CTX);
-#endif
-#ifndef OPENSSL_NO_SHA256
-MD_TRAMPOLINES(SHA224, SHA256_CTX);
-MD_TRAMPOLINES(SHA256, SHA256_CTX);
-#endif
-#ifndef OPENSSL_NO_SHA512
-MD_TRAMPOLINES(SHA384, SHA512_CTX);
-MD_TRAMPOLINES(SHA512, SHA512_CTX);
-MD_TRAMPOLINES(SHA512_256, SHA512_CTX);
-#endif
-#ifndef OPENSSL_NO_RIPEMD
-MD_TRAMPOLINES(RIPEMD160, RIPEMD160_CTX);
-#endif
+#define MD_TRAMPOLINES(HASH_NAME) MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_NAME)
+
+MD_TRAMPOLINES(MD4);
+MD_TRAMPOLINES(MD5);
+MD_TRAMPOLINES_EXPLICIT(SHA1, SHA);
+MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256);
+MD_TRAMPOLINES(SHA256);
+MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512);
+MD_TRAMPOLINES(SHA512);
+MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512);
 
 struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
 };
 
-#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)                      \
-  {                                                                     \
+#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)  {                   \
     out->methods[idx].evp_md = EVP_MD;                                  \
     out->methods[idx].init = AWS_LC_TRAMPOLINE_##HASH_NAME##_Init;      \
     out->methods[idx].update = AWS_LC_TRAMPOLINE_##HASH_NAME##_Update;  \
@@ -133,29 +134,19 @@ struct hmac_method_array_st {
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   OPENSSL_memset((void*) out->methods, 0, sizeof(out->methods));
   int idx = 0;
-#ifndef OPENSSL_NO_MD4
   DEFINE_IN_PLACE_METHODS(EVP_md4(), MD4);
-#endif
-#ifndef OPENSSL_NO_MD5
   DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
-#endif
-#ifndef OPENSSL_NO_SHA
   DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
-#endif
-#ifndef OPENSSL_NO_SHA256
   DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
   DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
-#endif
-#ifndef OPENSSL_NO_SHA512
   DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
   DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
   DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
-#endif
-#ifndef OPENSSL_NO_RIPEMD
-  DEFINE_IN_PLACE_METHODS(EVP_ripe160(), RIPEMD160);
-#endif
 }
 
+OPENSSL_STATIC_ASSERT(sizeof(((struct hmac_method_array_st *)NULL)->methods) <=
+                      HMAC_METHOD_MAX * sizeof(struct hmac_methods_st),
+                      hmac_methods_to_short_for_loop_limits_t)
 static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
   const HmacMethods *methods = AWSLC_hmac_in_place_methods()->methods;
   for (size_t idx = 0; idx < HMAC_METHOD_MAX; idx++) {
@@ -223,9 +214,15 @@ void HMAC_CTX_free(HMAC_CTX *ctx) {
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
                  const EVP_MD *md, ENGINE *impl) {
-  // TODO: Figure out how we want to handle engines in this case.
   assert(impl == NULL);
 
+  // ctx->initialized has 4 possible states (Pre/Post conditions)
+  // 0: Uninitialized.
+  // 1: Initialized with an md and key (all fields of ctx are ready for use and non-null)
+  // other: Invalid state and likely a result of using unitialized memory. Treated the same as 0.
+  //
+  // While we are within this method we allow these other possible states:
+  // -1: We have md and methods assigned but the key needs to be set up
   if (md && ctx->md != md) {
     ctx->methods = GetInPlaceMethods(md);
     if (ctx->methods == NULL) {
@@ -233,7 +230,9 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
       return 0;
     }
     ctx->md = md;
+    ctx->initialized = -1; // We need to rekey so initialized != 1
   } else if (ctx->initialized != 1) {
+    // We are not initialized but have not been provided with an md to initialize ourselves with.
     return 0;
   }
 
@@ -248,7 +247,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   FIPS_service_indicator_lock_state();
   int result = 0;
 
-  // If either |key| is non-NULL or |md| has changed, initialize with a new key
+  // If either |key| is non-NULL or |md| has changed (indicated by initialized != 1), initialize with a new key
   // rather than rewinding the previous one.
   //
   // TODO(davidben,eroman): Passing the previous |md| with a NULL |key| is
@@ -266,6 +265,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
         goto end;
       }
     } else {
+      assert(key_len <= sizeof(key_block));
       OPENSSL_memcpy(key_block, key, key_len);
     }
     for (size_t i = 0; i < block_size / 8; i++) {

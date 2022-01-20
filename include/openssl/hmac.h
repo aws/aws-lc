@@ -70,11 +70,6 @@
 #include <openssl/md5.h>
 #endif
 
-#ifdef OPENSSL_NO_RIPEMD
-#include <openssl/ripemd.h>
-#endif
-
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -172,24 +167,11 @@ typedef struct hmac_methods_st HmacMethods;
 
 // We use a union to ensure that enough space is allocated and never actually bother with the named members.
 union md_ctx_union {
-#ifndef OPENSSL_NO_MD4
   MD4_CTX md4;
-#endif
-#ifndef OPENSSL_NO_MD5
   MD5_CTX md5;
-#endif
-#ifndef OPENSSL_NO_SHA
   SHA_CTX sha1;
-#endif
-#ifndef OPENSSL_NO_SHA256
   SHA256_CTX sha256;
-#endif
-#ifndef OPENSSL_NO_SHA512
   SHA512_CTX sha512;
-#endif
-#ifndef OPENSSL_NO_RIPEMD
-  RIPEMD160_CTX ripemd160;
-#endif
 };
 
 struct hmac_ctx_st {
@@ -198,7 +180,7 @@ struct hmac_ctx_st {
   union md_ctx_union md_ctx;
   union md_ctx_union i_ctx;
   union md_ctx_union o_ctx;
-  uint8_t initialized;
+  int8_t initialized;
 } /* HMAC_CTX */;
 
 

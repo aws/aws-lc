@@ -18,7 +18,6 @@
 #if !defined(OPENSSL_BENCHMARK)
 #include <openssl/base.h>
 #include <openssl/span.h>
-#include <openssl/hmac.h>
 #endif
 
 #include <string>
