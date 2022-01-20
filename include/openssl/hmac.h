@@ -61,14 +61,8 @@
 
 #include <openssl/digest.h>
 #include <openssl/sha.h>
-
-#ifndef OPENSSL_NO_MD4
 #include <openssl/md4.h>
-#endif
-
-#ifndef OPENSSL_NO_MD5
 #include <openssl/md5.h>
-#endif
 
 #if defined(__cplusplus)
 extern "C" {
