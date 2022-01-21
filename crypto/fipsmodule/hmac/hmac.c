@@ -167,6 +167,8 @@ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
 // other: Invalid state and likely a result of using unitialized memory. Treated the same as 0.
 //
 // While we are within HMAC methods we allow for the state value and actual state of the context to diverge.
+
+// HMAC_STATE_UNINITIALIZED *MUST* remain `0` so that callers can do `HMAC_CTX ctx = {0};` to get a usable context.
 #define HMAC_STATE_UNINITIALIZED 0
 #define HMAC_STATE_INIT_NO_DATA 1
 #define HMAC_STATE_IN_PROGRESS 2
