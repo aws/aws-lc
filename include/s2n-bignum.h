@@ -588,6 +588,7 @@ extern void bignum_sqr_4_8_alt (uint64_t z[static 8], uint64_t x[static 4]);
 // Square, z := x^2
 // Input x[6]; output z[12]
 extern void bignum_sqr_6_12 (uint64_t z[static 12], uint64_t x[static 6]);
+extern void bignum_sqr_6_12_alt (uint64_t z[static 12], uint64_t x[static 6]);
 
 // Square, z := x^2
 // Input x[8]; output z[16]
