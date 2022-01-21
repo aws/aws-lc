@@ -124,12 +124,6 @@ Input = "My test data"
 Key = "12345"
 Output = 7dbe8c764c068e3bcd6e6b0fbcd5e6fc197b15bb
 
-# Additional HMAC tests for previously untested algorithms
-HMAC = MD4
-Input = "My test data"
-Key =
-Output = 834db93e2e16a7c9dde195c898a3f519
-
 HMAC = SHA512/256
 Input = "My test data"
 Key =
@@ -139,8 +133,3 @@ HMAC = SHA512/256
 Input = "My test data"
 Key = "123456"
 Output = 2ed564c398a4fab30a1c4e071fd0f5b3c8a548d2e75ec3237ca5334071a63f40
-
-HMAC = MD4
-Input = "My test data"
-Key = "12345"
-Output = 40c052d6a772d64c85d4683862d16855

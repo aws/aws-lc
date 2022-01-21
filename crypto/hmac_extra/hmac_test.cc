@@ -69,9 +69,7 @@
 
 
 static const EVP_MD *GetDigest(const std::string &name) {
-  if (name == "MD4") {
-    return EVP_md4();
-  } else if (name == "MD5") {
+  if (name == "MD5") {
     return EVP_md5();
   } else if (name == "SHA1") {
     return EVP_sha1();
@@ -110,13 +108,6 @@ TEST(HMACTest, TestVectors) {
                      mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
-
-    // Test using the one-shot API and md == NULL (static buffer)
-    mac_len = EVP_MAX_MD_SIZE;
-    const uint8_t *static_buff =
-        HMAC(digest, key.data(), key.size(), input.data(), input.size(),
-             NULL, &mac_len);
-    EXPECT_EQ(Bytes(output), Bytes(static_buff, mac_len));
 
     // Test using HMAC_CTX.
     bssl::ScopedHMAC_CTX ctx;

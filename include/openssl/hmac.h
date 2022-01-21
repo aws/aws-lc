@@ -61,7 +61,6 @@
 
 #include <openssl/digest.h>
 #include <openssl/sha.h>
-#include <openssl/md4.h>
 #include <openssl/md5.h>
 
 #if defined(__cplusplus)
@@ -161,7 +160,6 @@ typedef struct hmac_methods_st HmacMethods;
 
 // We use a union to ensure that enough space is allocated and never actually bother with the named members.
 union md_ctx_union {
-  MD4_CTX md4;
   MD5_CTX md5;
   SHA_CTX sha1;
   SHA256_CTX sha256;

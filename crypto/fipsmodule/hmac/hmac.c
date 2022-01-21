@@ -75,9 +75,6 @@ struct hmac_methods_st {
   HashFinal finalize; // Not named final to avoid keywords
 };
 
-// The maximum number of HMAC implementations
-#define HMAC_METHOD_MAX 9
-
 // We need trampolines from the generic void* methods we use to the properly typed underlying methods.
 // Without these methods some control flow integrity checks will fail because the function pointer types
 // do not exactly match the destination functions. (Namely function pointers use void* pointers for the contexts)
@@ -109,7 +106,9 @@ struct hmac_methods_st {
 
 #define MD_TRAMPOLINES(HASH_NAME) MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_NAME)
 
-MD_TRAMPOLINES(MD4);
+// The maximum number of HMAC implementations
+#define HMAC_METHOD_MAX 7
+
 MD_TRAMPOLINES(MD5);
 MD_TRAMPOLINES_EXPLICIT(SHA1, SHA);
 MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256);
@@ -134,22 +133,21 @@ struct hmac_method_array_st {
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   OPENSSL_memset((void*) out->methods, 0, sizeof(out->methods));
   int idx = 0;
-  DEFINE_IN_PLACE_METHODS(EVP_md4(), MD4);
-  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
-  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
-  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
+  // Since we search these linearly it helps (just a bit) to put the most common ones first.
+  // This isn't based on hard metrics and will not make a significant different on performance.
   DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
+  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
   DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
   DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
+  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
+  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
   DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
 }
 
-OPENSSL_STATIC_ASSERT(sizeof(((struct hmac_method_array_st *)NULL)->methods) <=
-                      HMAC_METHOD_MAX * sizeof(struct hmac_methods_st),
-                      hmac_methods_to_short_for_loop_limits_t)
 static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
-  const HmacMethods *methods = AWSLC_hmac_in_place_methods()->methods;
-  for (size_t idx = 0; idx < HMAC_METHOD_MAX; idx++) {
+  const struct hmac_method_array_st *method_array = AWSLC_hmac_in_place_methods();
+  const HmacMethods *methods = method_array->methods;
+  for (size_t idx = 0; idx < sizeof(method_array->methods) / sizeof(struct hmac_methods_st); idx++) {
     if (methods[idx].evp_md == evp_md) {
       return &methods[idx];
     }
@@ -157,25 +155,49 @@ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
   return NULL;
 }
 
+// ctx->state has the following possible states
+// (Pre/Post conditions):
+// HMAC_STATE_UNINITIALIZED: Uninitialized.
+// HMAC_STATE_INIT_NO_DATA: Initialized with an md and key. No data processed.
+//    This means that if init is called but nothing changes, we don't need to reset our state.
+// HMAC_STATE_IN_PROGRESS: Initialized with an md and key. Data processed.
+//    This means that if init is called we do need to reset state.
+// HMAC_STATE_READY_NEEDS_INIT: Identical to state 1 but API contract requires that Init be called prior to use.
+//    This is an optimization because we can leave the context in a state ready for use after completion.
+// other: Invalid state and likely a result of using unitialized memory. Treated the same as 0.
+//
+// While we are within HMAC methods we allow for the state value and actual state of the context to diverge.
+#define HMAC_STATE_UNINITIALIZED 0
+#define HMAC_STATE_INIT_NO_DATA 1
+#define HMAC_STATE_IN_PROGRESS 2
+#define HMAC_STATE_READY_NEEDS_INIT 3
+
+// Indicates that a context has the md and methods configured and is ready to use
+#define hmac_ctx_is_initialized(ctx) ((HMAC_STATE_INIT_NO_DATA == (ctx)->state || HMAC_STATE_IN_PROGRESS == (ctx)->state))
+
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
+
+  // While returned new contexts are fully zeroed (and that is what we encourage our callers to do),
+  // we know enough about its inner workings to know that setting the state field to HMAC_STATE_UNINITIALIZED
+  // is sufficient for HMAC_Init_ex to get everything into a properly working state.
+  // So this is yet another micro-optimization of only setting a single byte rather than many
+  // (which will just be overwritten in a moment).
+  HMAC_CTX ctx = {.state = HMAC_STATE_UNINITIALIZED};
+  int result;
+
   // We have to avoid the underlying SHA services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  HMAC_CTX ctx = {.state = 0};
-  int result;
-  // If out is NULL, the digest is placed in a static array.
-  // Note: passing a NULL value for out to use the static array is not thread safe.
-  static uint8_t fallback_output[EVP_MAX_MD_SIZE] = {0};
-  if (out == NULL) {
-    out = fallback_output;
-  }
 
   result = HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) &&
            HMAC_Update(&ctx, data, data_len) &&
            HMAC_Final(&ctx, out, out_len);
+
   FIPS_service_indicator_unlock_state();
+
+  // Regardless of our success we need to zeroize our working state.
   HMAC_CTX_cleanup(&ctx);
   if (result) {
     HMAC_verify_service_indicator(evp_md);
@@ -211,26 +233,6 @@ void HMAC_CTX_free(HMAC_CTX *ctx) {
   HMAC_CTX_cleanup(ctx);
   OPENSSL_free(ctx);
 }
-
-// ctx->state has the following possible states
-// (Pre/Post conditions):
-// HMAC_STATE_UNINITIALIZED: Uninitialized.
-// HMAC_STATE_INIT_NO_DATA: Initialized with an md and key. No data processed.
-//    This means that if init is called but nothing changes, we don't need to reset our state.
-// HMAC_STATE_IN_PROGRESS: Initialized with an md and key. Data processed.
-//    This means that if init is called we do need to reset state.
-// HMAC_STATE_READY_NEEDS_INIT: Identical to state 1 but API contract requires that Init be called prior to use.
-//    This is an optimization because we can leave the context in a state ready for use after completion.
-// other: Invalid state and likely a result of using unitialized memory. Treated the same as 0.
-//
-// While we are within HMAC methods we allow for the state value and actual state of the context to diverge.
-#define HMAC_STATE_UNINITIALIZED 0
-#define HMAC_STATE_INIT_NO_DATA 1
-#define HMAC_STATE_IN_PROGRESS 2
-#define HMAC_STATE_READY_NEEDS_INIT 3
-
-// Indicates that a context has the md and methods configured and is ready to use
-#define hmac_ctx_is_initialized(ctx) ((HMAC_STATE_INIT_NO_DATA == (ctx)->state || HMAC_STATE_IN_PROGRESS == (ctx)->state))
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
                  const EVP_MD *md, ENGINE *impl) {
@@ -313,6 +315,10 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   result = 1;
 end:
   FIPS_service_indicator_unlock_state();
+  if (result != 1) {
+    // We're in some error state, so return our context to a known and well defined zero state.
+    HMAC_CTX_cleanup(ctx);
+  }
   return result;
 }
 
