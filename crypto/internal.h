@@ -976,15 +976,6 @@ OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
 // Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
 // bits in XCR0, so it is not necessary to check those.
 extern uint32_t OPENSSL_ia32cap_P[4];
-
-#if defined(BORINGSSL_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
-const uint32_t *OPENSSL_ia32cap_get(void);
-#else
-OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
-  return OPENSSL_ia32cap_P;
-}
-#endif
-
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
