@@ -2966,7 +2966,6 @@ struct ALPSConfig {
   Array<uint8_t> settings;
 };
 
-// TODO: implement SSL_CONFIG encode and decode. This state is unique to a particular |SSL|!
 // SSL_CONFIG contains configuration bits that can be shed after the handshake
 // completes.  Objects of this type are not shared; they are unique to a
 // particular |SSL|.

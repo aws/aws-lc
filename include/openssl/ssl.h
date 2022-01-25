@@ -2359,6 +2359,7 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_l
 //
 // WARNING: Remember set |ssl->rbio| and |ssl->wbio| before using |ssl|.
 // WARNING: Remember set callback functions and |ex_data| back if needed.
+// WARNING: To ensure behavior unchange, |ctx| setting should be the same.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx);

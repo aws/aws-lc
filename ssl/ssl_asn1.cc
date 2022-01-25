@@ -1241,6 +1241,90 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   return 1;
 }
 
+// SSL_CONFIG serialization.
+
+static const unsigned kSSLConfigVersion = 1;
+
+static const unsigned kSSLConfigOcspStaplingEnabledTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
+
+static const unsigned kSSLConfigJdk11WorkaroundTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
+
+// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+// These SSL_CONFIG serialization functions are developed to support SSL transfer.
+// Most fields of SSL_CONFIG are not used after handshake completes.
+// It only encodes some fields needed by SSL_*_getter functions.
+
+// SSL_CONFIG_to_bytes serializes |in| to bytes stored in |cbb|.
+// It returns one on success and zero on failure.
+//
+// An SSL_CONFIG is serialized as the following ASN.1 structure:
+//
+// SSL_CONFIG ::= SEQUENCE {
+//    version                           INTEGER (1),  -- SSL_CONFIG structure version
+//    confMaxVersion                    INTEGER,
+//    confMinVersion                    INTEGER,
+//    ocspStaplingEnabled               [0] BOOLEAN OPTIONAL,
+//    jdk11Workaround                   [1] BOOLEAN OPTIONAL
+// }
+static int SSL_CONFIG_to_bytes(SSL_CONFIG *in, CBB *cbb) {
+  if (in == NULL || cbb == NULL) {
+    return 0;
+  }
+
+  CBB config, child;
+  if (!CBB_add_asn1(cbb, &config, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&config, kSSLConfigVersion) ||
+      !CBB_add_asn1_uint64(&config, in->conf_max_version) ||
+      !CBB_add_asn1_uint64(&config, in->conf_min_version)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  if (in->ocsp_stapling_enabled) {
+    if (!CBB_add_asn1(&config, &child, kSSLConfigOcspStaplingEnabledTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+  if (in->jdk11_workaround) {
+    if (!CBB_add_asn1(&config, &child, kSSLConfigJdk11WorkaroundTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+  return CBB_flush(cbb);
+}
+
+static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
+  CBS config;
+  int ocsp_stapling_enabled, jdk11_workaround;
+  uint64_t version, conf_max_version, conf_min_version;
+  if (!CBS_get_asn1(cbs, &config, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&config, &version) ||
+      version != kSSLConfigVersion ||
+      !CBS_get_asn1_uint64(&config, &conf_max_version) ||
+      !CBS_get_asn1_uint64(&config, &conf_min_version) ||
+      !CBS_get_optional_asn1_bool(&config, &ocsp_stapling_enabled, kSSLConfigOcspStaplingEnabledTag, 0 /* default to false */) ||
+      !CBS_get_optional_asn1_bool(&config, &jdk11_workaround, kSSLConfigJdk11WorkaroundTag, 0 /* default to false */) ||
+      CBS_len(&config) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_CONFIG);
+    return 0;
+  }
+  out->conf_max_version = conf_max_version;
+  out->conf_min_version = conf_min_version;
+  out->ocsp_stapling_enabled = !!ocsp_stapling_enabled;
+  out->jdk11_workaround = !!jdk11_workaround;
+  // handoff will always be the normal state(false) after handshake completes.
+  out->handoff = false;
+  // shed_handshake_config will always be false if config can be encoded(not sheded).
+  out->shed_handshake_config = false;
+  return 1;
+}
+
 // SSL serialization.
 
 // Serialized SSL data version for forward compatibility
@@ -1248,6 +1332,8 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
 
 static const unsigned kSSLQuietShutdownTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const unsigned kSSLConfigTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
 // Parse serialized SSL connection binary
 //
@@ -1259,25 +1345,19 @@ static const unsigned kSSLQuietShutdownTag =
 // SSL ::= SEQUENCE {
 //     sslSerialVer   UINT64   -- version of the SSL serialization format
 //     version        UINT64
-//     sheded         BOOLEAN  -- indicate if the config is sheded. The 
-//                                config may not exist since the configuration
-//                                may be shed after the handshake completes.
 //     s3             SSL3State
 //     mode           UINT64
 //     quietShutdown  [0] BOOLEAN OPTIONAL
+//     config         [1] SEQUENCE OPTIONAL
 // }
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl, child;
-
-  // TODO: check how to handle config.
-  int sheded = !in->config;
 
   if (!CBB_add_asn1(cbb, &ssl, CBS_ASN1_SEQUENCE) ||
     !CBB_add_asn1_uint64(&ssl, SSL_SERIAL_VERSION) ||
     //    FIXME add hash of SSL_CTX
     !CBB_add_asn1_uint64(&ssl, in->version) ||
     !CBB_add_asn1_uint64(&ssl, in->max_send_fragment) ||
-    !CBB_add_asn1_bool(&ssl, sheded) ||
     !SSL3_STATE_to_bytes(in->s3, &ssl) ||
     !CBB_add_asn1_uint64(&ssl, in->mode)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -1292,14 +1372,22 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     }
   }
 
+  if (in->config) {
+    if (!CBB_add_asn1(&ssl, &child, kSSLConfigTag) ||
+        !SSL_CONFIG_to_bytes(in->config.get(), &child)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
   return CBB_flush(cbb);
 }
 
 static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
-  CBS ssl_cbs;
+  CBS ssl_cbs, ssl_config;
   uint64_t ssl_serial_ver, version, max_send_fragment, mode;
   int quiet_shutdown;
-  int sheded = 0;
+  int ssl_config_present = 0;
 
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
       CBS_len(cbs) != 0 ||
@@ -1315,8 +1403,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   //    FIXME add hash of SSL_CTX
   // This TODO is actually a part of SSL DER struct revisit.
   if (!CBS_get_asn1_uint64(&ssl_cbs, &version) ||
-    !CBS_get_asn1_uint64(&ssl_cbs, &max_send_fragment) ||
-    !CBS_get_asn1_bool(&ssl_cbs, &sheded)) {
+    !CBS_get_asn1_uint64(&ssl_cbs, &max_send_fragment)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
   }
@@ -1336,19 +1423,27 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   ssl->mode = mode;
 
   if (!CBS_get_optional_asn1_bool(&ssl_cbs, &quiet_shutdown, kSSLQuietShutdownTag, 0 /* default to false */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
   }
   ssl->quiet_shutdown = !!quiet_shutdown;
 
-  if (CBS_len(&ssl_cbs) != 0) {
+  if (!CBS_get_optional_asn1(&ssl_cbs, &ssl_config, &ssl_config_present, kSSLConfigTag)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
   }
 
-  if (sheded) {
-    Delete(ssl->config.release());
+  if (ssl_config_present) {
+    if (!SSL_CONFIG_from_bytes(ssl->config.get(), &ssl_config)) {
+      return 0;
+    }
   } else {
-    // TODO: add config encode and decode.
+    ssl->config.reset();
+  }
+
+  if (CBS_len(&ssl_cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    return 0;
   }
 
   return 1;
