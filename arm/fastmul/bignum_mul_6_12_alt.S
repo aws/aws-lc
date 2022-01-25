@@ -31,7 +31,7 @@
 #define x x1
 #define y x2
 
-// These are repeated mod 2 as we load paris of inputs
+// These are repeated mod 2 as we load pairs of inputs
 
 #define a0 x3
 #define a1 x4

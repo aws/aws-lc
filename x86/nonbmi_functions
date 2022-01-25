@@ -77,10 +77,12 @@ bignum_montifier
 bignum_montmul
 bignum_montmul_p256_alt
 bignum_montmul_p256k1_alt
+bignum_montmul_p384_alt
 bignum_montredc
 bignum_montsqr
 bignum_montsqr_p256_alt
 bignum_montsqr_p256k1_alt
+bignum_montsqr_p384_alt
 bignum_mul
 bignum_mul_4_8_alt
 bignum_mul_6_12_alt

@@ -33,6 +33,7 @@
 : imul$
 : imulq$
 : inc$
+: incq$
 : jmp$
 : lea$
 : leaq$
