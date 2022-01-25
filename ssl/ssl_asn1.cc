@@ -1130,11 +1130,10 @@ static int SSL3_STATE_parse_session(CBS *cbs, UniquePtr<SSL_SESSION> *out, const
   return 1;
 }
 
-static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) {
-  if (out == NULL || cbs == NULL || ctx == NULL) {
-    return 0;
-  }
-
+// SSL3_STATE_from_bytes recovers SSL3_STATE from |cbs|.
+// |ssl| is used because |tls1_configure_aead| is used to recover |aead_read_ctx| and |aead_write_ctx|.
+static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
+  SSL3_STATE *out = ssl->s3;
   CBS s3, read_seq, write_seq, server_random, client_random, send_alert, pending_app_data, read_buffer;
   CBS previous_client_finished, previous_server_finished;
   int session_reused, channel_id_valid, send_connection_binding;
@@ -1205,10 +1204,26 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
     }
     out->pending_app_data = MakeSpan(out->read_buffer.buf_ptr() + pending_app_data_offset, pending_app_data_size);
   }
-  OPENSSL_memcpy(out->read_sequence, CBS_data(&read_seq), TLS_SEQ_NUM_SIZE);
-  OPENSSL_memcpy(out->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
+  // Initialize some states before call |tls1_configure_aead|.
+  // Below comment is copied from |SSL_do_handshake|.
+  // Destroy the handshake object if the handshake has completely finished.
+  out->hs.reset();
+  // have_version is true if the connection's final version is known. Otherwise
+  // the version has not been negotiated yet.
+  out->have_version = true;
   OPENSSL_memcpy(out->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
   OPENSSL_memcpy(out->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
+  SSL_SESSION *session = out->established_session.get();
+  // the impl of |SSL_serialize_handback|, which only fetch IV when it's TLS 1.
+  Array<uint8_t> key_block1, key_block2;
+  if (!tls1_configure_aead(ssl, evp_aead_seal, &key_block1, session, {})) {
+    return 0;
+  }
+  if (!tls1_configure_aead(ssl, evp_aead_open, &key_block2, session, {})) {
+    return 0;
+  }
+  OPENSSL_memcpy(out->read_sequence, CBS_data(&read_seq), TLS_SEQ_NUM_SIZE);
+  OPENSSL_memcpy(out->write_sequence, CBS_data(&write_seq), TLS_SEQ_NUM_SIZE);
   OPENSSL_memcpy(out->send_alert, CBS_data(&send_alert), SSL3_SEND_ALERT_SIZE);
   OPENSSL_memcpy(out->previous_client_finished, CBS_data(&previous_client_finished), PREV_FINISHED_MAX_SIZE);
   OPENSSL_memcpy(out->previous_server_finished, CBS_data(&previous_server_finished), PREV_FINISHED_MAX_SIZE);
@@ -1223,12 +1238,6 @@ static int SSL3_STATE_from_bytes(SSL3_STATE *out, CBS *cbs, const SSL_CTX *ctx) 
   out->empty_record_count = empty_record_count;
   out->warning_alert_count = warning_alert_count;
   out->send_connection_binding = !!send_connection_binding;
-  // Below comment is copied from |SSL_do_handshake|.
-  // Destroy the handshake object if the handshake has completely finished.
-  out->hs.reset();
-  // have_version is true if the connection's final version is known. Otherwise
-  // the version has not been negotiated yet.
-  out->have_version = true;
   return 1;
 }
 
@@ -1314,9 +1323,9 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
   ssl->version = version;
   ssl->max_send_fragment = max_send_fragment;
-
+  SSL_set_accept_state(ssl);
   // This is called separately to avoid overriding error code.
-  if (!SSL3_STATE_from_bytes(ssl->s3, &ssl_cbs, ssl->ctx.get())) {
+  if (!SSL3_STATE_from_bytes(ssl, &ssl_cbs, ssl->ctx.get())) {
     return 0;
   }
 
@@ -1331,14 +1340,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   }
   ssl->quiet_shutdown = !!quiet_shutdown;
 
-  // TODO: remove below copy when investigated why set_read_state reset read_sequence to zero.
-  uint8_t read_sequence[TLS_SEQ_NUM_SIZE] = {0};
-  uint8_t write_sequence[TLS_SEQ_NUM_SIZE] = {0};
-  OPENSSL_memcpy(read_sequence, ssl->s3->read_sequence, TLS_SEQ_NUM_SIZE);
-  OPENSSL_memcpy(write_sequence, ssl->s3->write_sequence, TLS_SEQ_NUM_SIZE);
-
-  SSL_SESSION *session = ssl->s3->established_session.get();
-
   if (CBS_len(&ssl_cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
@@ -1350,21 +1351,6 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     // TODO: add config encode and decode.
   }
 
-  SSL_set_accept_state(ssl);
-
-  // TODO: revisit iv. it seems the iv is always empty based on
-  // the impl of |SSL_serialize_handback|, which only fetch IV when it's TLS 1.
-  Array<uint8_t> key_block1, key_block2;
-  if (!tls1_configure_aead(ssl, evp_aead_seal, &key_block1, session, {})) {
-    return 0;
-  }
-  if (!tls1_configure_aead(ssl, evp_aead_open, &key_block2, session, {})) {
-    return 0;
-  }
-
-  // TODO: remove below copy when investigated why set_read_state reset read_sequence to zero.
-  OPENSSL_memcpy(ssl->s3->read_sequence, read_sequence, TLS_SEQ_NUM_SIZE);
-  OPENSSL_memcpy(ssl->s3->write_sequence, write_sequence, TLS_SEQ_NUM_SIZE);
   return 1;
 }
 
