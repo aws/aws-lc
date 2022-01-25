@@ -2347,7 +2347,7 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 //
 // WARNING: Currently only works with TLS 1.2 after handshake finished.
 // WARNING: Currently only supports |SSL| as server.
-// WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded.
+// WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded. Remember set |ex_data| back after decode.
 // WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
@@ -2358,6 +2358,7 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_l
 // The |SSL| is marked with handshake finished.
 //
 // WARNING: Remember set |ssl->rbio| and |ssl->wbio| before using |ssl|.
+// WARNING: Remember set callback functions and |ex_data| back if needed.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx);
