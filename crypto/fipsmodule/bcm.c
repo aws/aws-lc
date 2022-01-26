@@ -86,6 +86,7 @@
 #include "ec/p256.c"
 #include "ec/p256-nistz.c"
 #include "ec/p384.c"
+#include "ec/p521.c"
 #include "ec/scalar.c"
 #include "ec/simple.c"
 #include "ec/simple_mul.c"
