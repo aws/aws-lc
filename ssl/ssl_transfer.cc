@@ -375,6 +375,9 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   out->early_data_reason = static_cast<ssl_early_data_reason_t>(early_data_reason);
   out->rwstate = rwstate;
   out->session_reused = !!session_reused;
+  if (out->session_reused) {
+    ssl->session = UpRef(out->established_session);
+  }
   out->channel_id_valid = !!channel_id_valid;
   out->previous_client_finished_len = previous_client_finished_len;
   out->previous_server_finished_len = previous_server_finished_len;
