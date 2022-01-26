@@ -39,28 +39,6 @@ function delete_container_repositories() {
   fi
 }
 
-function delete_external_credential() {
-  # This deletion may take a few minutes to take effects.
-  # https://docs.aws.amazon.com/cli/latest/reference/secretsmanager/delete-secret.html
-  # https://aws.amazon.com/premiumsupport/knowledge-center/delete-secrets-manager-secret/
-  aws secretsmanager delete-secret --secret-id "${AWS_LC_CI_SECRET_NAME}" --force-delete-without-recovery
-}
-
-function store_external_credential() {
-  # Always delete the secret to avoid resource name conflicts.
-  delete_external_credential
-  # When creating secret with the same name repeatedly,
-  # below error may occur because the deletion may take a few minutes to take effects.
-  # "You can't create this secret because a secret with this name is already scheduled for deletion."
-  # To avoid that, sleep 1 min
-  sleep 60
-  # https://docs.aws.amazon.com/cli/latest/reference/secretsmanager/create-secret.html
-  key_value="{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"${GITHUB_ACCESS_TOKEN}\"}"
-  secret_arn=$(aws secretsmanager create-secret --name "${AWS_LC_CI_SECRET_NAME}" --secret-string "${key_value}" | jq -r '.ARN')
-  # Export this variable so CDK can create related IAM policy on this ARN.
-  export EXTERNAL_CREDENTIAL_SECRET_ARN="${secret_arn}"
-}
-
 function destroy_ci() {
   if [[ "${CDK_DEPLOY_ACCOUNT}" == "620771051181" ]]; then
     echo "destroy_ci should not be executed on team account."
@@ -71,8 +49,6 @@ function destroy_ci() {
   delete_s3_buckets
   # CDK stack destroy does not delete ecr automatically.
   delete_container_repositories
-  # Delete the secret from Secrets Manager.
-  delete_external_credential
 }
 
 function destroy_docker_img_build_stack() {
@@ -84,15 +60,11 @@ function destroy_docker_img_build_stack() {
   cdk destroy aws-lc-docker-image-build-* --force
   # CDK stack destroy does not delete s3 bucket automatically.
   delete_s3_buckets
-  # Delete the secret from Secrets Manager.
-  delete_external_credential
 }
 
 function create_linux_docker_img_build_stack() {
   # Clean up build stacks if exists.
   destroy_docker_img_build_stack
-  # Use SecretsManager to store GitHub personal access token.
-  store_external_credential
   # Deploy aws-lc ci stacks.
   # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
   # https://forums.aws.amazon.com/thread.jspa?messageID=952368
@@ -210,21 +182,9 @@ function win_docker_img_build_status_check() {
   exit 1
 }
 
-function validate_github_access_token {
-  # GitHub access token is only needed when building Docker images.
-  if [[ -z "${GITHUB_ACCESS_TOKEN+x}" || -z "${GITHUB_ACCESS_TOKEN}" ]]; then
-    echo '--github-access-token is required for aws-lc ci setup.'
-    exit 1
-  fi
-}
-
 function build_linux_docker_images() {
   # Always destroy docker build stacks (which include EC2 instance) on EXIT.
   trap destroy_docker_img_build_stack EXIT
-
-  # Check prerequisite.
-  # One prerequisite is to provide GitHub access token so AWS CodeBuild can pull Docker images from GitHub.
-  validate_github_access_token
 
   # Create/update aws-ecr repo.
   cdk deploy aws-lc-ecr-linux-* --require-approval never
@@ -283,8 +243,6 @@ Options:
     --aws-region                 AWS region for AWS resources creation. Default to 'us-west-2'.
     --github-repo-owner          GitHub repository owner. Default to 'awslabs'.
     --github-source-version      GitHub source version. Default to 'main'.
-    --github-access-token        GitHub personal access token. Currently, only 'read:package' permission is needed.
-                                 Only required for ci setup.
     --action                     Required. The value can be
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
                                    'update-ci': update aws-lc ci. This only update AWS CodeBuild for GitHub CI.
@@ -324,9 +282,6 @@ function export_global_variables() {
   export WIN_EC2_TAG_KEY='aws-lc'
   export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
   export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
-  # During CI setup, used to create secret in AWS Secrets Manager for storing external credentials.
-  # After CI setup, used to delete secret from AWS Secrets Manager.
-  export AWS_LC_CI_SECRET_NAME='aws-lc-ci-external-credential'
   export IMG_BUILD_STATUS='unknown'
 }
 
@@ -352,10 +307,6 @@ function main() {
       ;;
     --github-source-version)
       export GITHUB_SOURCE_VERSION="${2}"
-      shift
-      ;;
-    --github-access-token)
-      export GITHUB_ACCESS_TOKEN="${2}"
       shift
       ;;
     --action)
