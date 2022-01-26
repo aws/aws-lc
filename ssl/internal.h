@@ -1223,7 +1223,7 @@ class SSLBuffer {
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
   size_t cap() const { return cap_; }
-  size_t buf_size() const { return buf_size_ == 0 ? SSL3_RT_HEADER_LENGTH : buf_size_; }
+  size_t buf_size() const { return buf_size_; }
 
   Span<uint8_t> span() { return MakeSpan(data(), size()); }
 

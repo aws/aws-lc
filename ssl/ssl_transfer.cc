@@ -164,7 +164,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, CBB *cbb) {
     return 0;
   }
 
-  if (in->established_session != nullptr) {
+  if (in->established_session) {
     if (!CBB_add_asn1(&s3, &child, kS3EstablishedSessionTag) ||
         !ssl_session_serialize(in->established_session.get(), &child)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -180,7 +180,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, CBB *cbb) {
     }
   }
 
-  if (in->hostname != nullptr) {
+  if (in->hostname) {
     if (!CBB_add_asn1(&s3, &child, kS3HostNameTag) ||
         !CBB_add_asn1_octet_string(&child,
                                    (const uint8_t *)(in->hostname.get()),
@@ -245,7 +245,8 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, CBB *cbb) {
     }
   }
 
-  if (in->read_buffer.buf_size() > 0) {
+  if (!in->pending_app_data.empty() ||
+      !in->read_buffer.empty()) {
     if (!CBB_add_asn1(&s3, &child, kS3ReadBufferTag) ||
         !in->read_buffer.DoSerialization(&child)) {
       return 0;
