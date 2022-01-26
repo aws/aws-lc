@@ -23,15 +23,6 @@ typedef signed char fiat_p384_int1;
 #error "This code only works on a two's complement system"
 #endif
 
-#if !defined(FIAT_P384_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
-static __inline__ uint32_t fiat_p384_value_barrier_u32(uint32_t a) {
-  __asm__("" : "+r"(a) : /* no inputs */);
-  return a;
-}
-#else
-#  define fiat_p384_value_barrier_u32(x) (x)
-#endif
-
 // TODO: if we regenerate the Fiat-crypto files with only the needed functions, no need for these declarations.
 OPENSSL_UNUSED static void fiat_p384_opp(uint32_t out1[6], const uint32_t arg1[6]);
 OPENSSL_UNUSED static void fiat_p384_set_one(uint32_t out1[6]);

@@ -26,15 +26,6 @@ __extension__ typedef __uint128_t fiat_p384_uint128;
 #error "This code only works on a two's complement system"
 #endif
 
-#if !defined(FIAT_P384_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
-static __inline__ uint64_t fiat_p384_value_barrier_u64(uint64_t a) {
-  __asm__("" : "+r"(a) : /* no inputs */);
-  return a;
-}
-#else
-#  define fiat_p384_value_barrier_u64(x) (x)
-#endif
-
 OPENSSL_UNUSED static void fiat_p384_opp(uint64_t out1[6], const uint64_t arg1[6]);
 OPENSSL_UNUSED static void fiat_p384_set_one(uint64_t out1[6]);
 OPENSSL_UNUSED static void fiat_p384_msat(uint64_t out1[7]);
