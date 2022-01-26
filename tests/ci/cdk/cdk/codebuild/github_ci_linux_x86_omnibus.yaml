@@ -303,110 +303,66 @@ batch:
           AES_GCM_SELECTCHECK_END: 384
 
     # Build and test aws-lc without Perl/Go.
-    # aws-c-cal uses Docker images maintained in aws crt repo.
-    # https://github.com/awslabs/aws-crt-builder
-    # These Docker images do not have Go installed.
-    # https://github.com/awslabs/aws-c-cal/blob/905b0fd0ff2ca0d86c7e49b8ef4b636bac4600ea/.github/workflows/ci.yml
-    - identifier: aws_crt_al2_x64_v0_7_2_gcc_7x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-amazonlinux2-x64_gcc-7x.yml
+    - identifier: amazonlinux2_gcc7x_x86_64_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-al2-x64_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
 
-    - identifier: aws_crt_manylinux2014_x86_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux2014-x86_gcc-4x.yml
+    - identifier: centos7_gcc4x_x86_64_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux2014-x86_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:centos-7_gcc-4x_latest
 
-    - identifier: aws_crt_manylinux2014_x64_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux2014-x64_gcc-4x.yml
+    - identifier: ubuntu1604_gcc5x_x86_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux2014-x64_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-16.04_gcc-5x_latest
 
-    - identifier: aws_crt_manylinux1_x86_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux1-x86_gcc-4x.yml
+    - identifier: ubuntu2004_gcc7x_x86_64_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux1-x86_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-7x_latest
 
-    - identifier: aws_crt_manylinux1_x64_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-manylinux1-x64_gcc-4x.yml
+    - identifier: ubuntu2004_gcc8x_x86_64_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-manylinux1-x64_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
 
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_4x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-4x.yml
+    - identifier: ubuntu1804_clang6x_x86_64_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_clang-6x_latest
 
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_5x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-5x.yml
+    - identifier: ubuntu2004_clang8x_x86_64_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-8x_latest
 
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_6x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-6x.yml
+    - identifier: ubuntu2004_clang9x_x86_64_minimal
+      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_7x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-7x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_gcc_8x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_gcc-8x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_6x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-6x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_8x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-8x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
-
-    - identifier: aws_crt_ubuntu_16_x64_v0_7_2_clang_9x
-      buildspec: ./tests/ci/codebuild/linux-x86/minimal_tests/aws-crt-ubuntu-16-x64_clang-9x.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:aws-crt-ubuntu-16-x64_v0.7.2_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest

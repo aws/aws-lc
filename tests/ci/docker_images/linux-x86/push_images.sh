@@ -33,9 +33,3 @@ tag_and_push_img 'amazonlinux-2:gcc-7x' "${ECS_REPO}:amazonlinux-2_gcc-7x"
 tag_and_push_img 'amazonlinux-2:clang-7x' "${ECS_REPO}:amazonlinux-2_clang-7x"
 tag_and_push_img 'amazonlinux-2:gcc-7x-intel-sde' "${ECS_REPO}:amazonlinux-2_gcc-7x_intel-sde"
 tag_and_push_img 'fedora-31:clang-9x' "${ECS_REPO}:fedora-31_clang-9x"
-
-#################################
-# Push images used by aws-c-cal #
-#################################
-source ./aws-crt/aws-crt-common.sh
-push_aws_crt_docker_img
