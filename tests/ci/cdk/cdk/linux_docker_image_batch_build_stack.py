@@ -4,9 +4,8 @@
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2
 
 from util.metadata import AWS_ACCOUNT, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_SOURCE_VERSION, LINUX_AARCH_ECR_REPO, \
-    LINUX_X86_ECR_REPO, EXTERNAL_CREDENTIAL_SECRET_ARN
-from util.iam_policies import code_build_batch_policy_in_json, ecr_power_user_policy_in_json, \
-    aws_secrets_manager_get_secret_policy_in_json
+    LINUX_X86_ECR_REPO
+from util.iam_policies import code_build_batch_policy_in_json, ecr_power_user_policy_in_json
 from util.yml_loader import YmlLoader
 
 
@@ -30,12 +29,6 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
         ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json(ecr_repo_names))
         inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                            "ecr_power_user_policy": ecr_power_user_policy}
-        # GitHub access token is only needed during CI setup.
-        # The token is used to pull Docker images hosted in 'docker.pkg.github.com'.
-        if EXTERNAL_CREDENTIAL_SECRET_ARN:
-            secrets_manager_get_secret_policy = iam.PolicyDocument.from_json(
-                aws_secrets_manager_get_secret_policy_in_json(EXTERNAL_CREDENTIAL_SECRET_ARN))
-            inline_policies["secrets_manager_get_secret_policy"] = secrets_manager_get_secret_policy
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
@@ -51,12 +44,6 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
             "AWS_ECR_REPO_AARCH": codebuild.BuildEnvironmentVariable(value=LINUX_AARCH_ECR_REPO),
             "GITHUB_REPO_OWNER": codebuild.BuildEnvironmentVariable(value=GITHUB_REPO_OWNER),
         }
-        if EXTERNAL_CREDENTIAL_SECRET_ARN:
-            # See secrets-manager https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
-            github_access_token = "{}:GITHUB_PERSONAL_ACCESS_TOKEN".format(EXTERNAL_CREDENTIAL_SECRET_ARN)
-            environment_variables["GITHUB_READ_PKG_ACCESS_TOKEN"] = codebuild.BuildEnvironmentVariable(
-                value=github_access_token,
-                type=codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER)
 
         # Define VPC
         vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
