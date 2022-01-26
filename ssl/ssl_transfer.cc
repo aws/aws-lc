@@ -491,6 +491,7 @@ static const unsigned kSSLConfigTag =
 //     version        UINT64
 //     s3             SSL3State
 //     mode           UINT64
+//     options        UINT64
 //     quietShutdown  [0] BOOLEAN OPTIONAL
 //     config         [1] SEQUENCE OPTIONAL
 // }
@@ -503,7 +504,8 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     !CBB_add_asn1_uint64(&ssl, in->version) ||
     !CBB_add_asn1_uint64(&ssl, in->max_send_fragment) ||
     !SSL3_STATE_to_bytes(in->s3, &ssl) ||
-    !CBB_add_asn1_uint64(&ssl, in->mode)) {
+    !CBB_add_asn1_uint64(&ssl, in->mode) ||
+    !CBB_add_asn1_uint64(&ssl, in->options)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -529,7 +531,7 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
 
 static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs, ssl_config;
-  uint64_t ssl_serial_ver, version, max_send_fragment, mode;
+  uint64_t ssl_serial_ver, version, max_send_fragment, mode, options;
   int quiet_shutdown;
   int ssl_config_present = 0;
 
@@ -560,11 +562,13 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     return 0;
   }
 
-  if (!CBS_get_asn1_uint64(&ssl_cbs, &mode)) {
+  if (!CBS_get_asn1_uint64(&ssl_cbs, &mode) ||
+      !CBS_get_asn1_uint64(&ssl_cbs, &options)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
     return 0;
   }
   ssl->mode = mode;
+  ssl->options = options;
 
   if (!CBS_get_optional_asn1_bool(&ssl_cbs, &quiet_shutdown, kSSLQuietShutdownTag, 0 /* default to false */)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
