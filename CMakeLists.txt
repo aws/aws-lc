@@ -877,15 +877,6 @@ if(BUILD_TESTING)
   endif()
 endif()
 
-# Copy awslc-config.cmake to build artifacts.
-configure_file("cmake/awslc-config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
-    @ONLY)
-
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake/"
-    COMPONENT Development)
-
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
