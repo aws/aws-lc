@@ -130,14 +130,19 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_add_p384.o \
       p384/bignum_bigendian_6.o \
       p384/bignum_cmul_p384.o \
+      p384/bignum_cmul_p384_alt.o \
       p384/bignum_deamont_p384.o \
+      p384/bignum_deamont_p384_alt.o \
       p384/bignum_demont_p384.o \
+      p384/bignum_demont_p384_alt.o \
       p384/bignum_double_p384.o \
       p384/bignum_half_p384.o \
       p384/bignum_littleendian_6.o \
+      p384/bignum_mod_n384_alt.o \
       p384/bignum_mod_n384.o \
       p384/bignum_mod_n384_6.o \
       p384/bignum_mod_p384.o \
+      p384/bignum_mod_p384_alt.o \
       p384/bignum_mod_p384_6.o \
       p384/bignum_montmul_p384.o \
       p384/bignum_montmul_p384_alt.o \
@@ -149,7 +154,9 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_optneg_p384.o \
       p384/bignum_sub_p384.o \
       p384/bignum_tomont_p384.o \
+      p384/bignum_tomont_p384_alt.o \
       p384/bignum_triple_p384.o \
+      p384/bignum_triple_p384_alt.o \
       p521/bignum_add_p521.o \
       p521/bignum_cmul_p521.o \
       p521/bignum_deamont_p521.o \

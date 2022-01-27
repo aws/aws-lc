@@ -18,14 +18,19 @@
 OBJ = bignum_add_p384.o \
       bignum_bigendian_6.o \
       bignum_cmul_p384.o \
+      bignum_cmul_p384_alt.o \
       bignum_deamont_p384.o \
+      bignum_deamont_p384_alt.o \
       bignum_demont_p384.o \
+      bignum_demont_p384_alt.o \
       bignum_double_p384.o \
       bignum_half_p384.o \
       bignum_littleendian_6.o \
       bignum_mod_n384.o \
+      bignum_mod_n384_alt.o \
       bignum_mod_n384_6.o \
       bignum_mod_p384.o \
+      bignum_mod_p384_alt.o \
       bignum_mod_p384_6.o \
       bignum_montmul_p384.o \
       bignum_montmul_p384_alt.o \
@@ -37,7 +42,9 @@ OBJ = bignum_add_p384.o \
       bignum_optneg_p384.o \
       bignum_sub_p384.o \
       bignum_tomont_p384.o \
-      bignum_triple_p384.o
+      bignum_tomont_p384_alt.o \
+      bignum_triple_p384.o \
+      bignum_triple_p384_alt.o
 
 %.o : %.S ; cpp $< | as -o $@ -
 
