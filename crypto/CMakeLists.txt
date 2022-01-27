@@ -647,5 +647,5 @@ endif()
 
 install(EXPORT crypto-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
-    NAMESPACE LibCrypto::
+    NAMESPACE AWS::
     COMPONENT Development)
