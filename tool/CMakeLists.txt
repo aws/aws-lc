@@ -25,6 +25,8 @@ target_include_directories(bssl PUBLIC ${AWSLC_INSTALL_DIR}/include ${AWSLC_INST
 
 add_dependencies(bssl global_target)
 
+target_link_libraries(bssl decrepit)
+
 if(WIN32)
   target_link_libraries(bssl ws2_32)
 endif()
@@ -84,4 +86,3 @@ if(BORINGSSL_INSTALL_DIR)
     target_link_libraries(bssl_bm pthread)
   endif()
 endif()
-

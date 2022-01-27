@@ -553,6 +553,118 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
+static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+
+  std::vector<uint8_t> key(key_len, 5);
+  std::vector<uint8_t> iv(iv_len, 9);
+  std::vector<uint8_t> in, out;
+
+  BM_NAMESPACE::ScopedEVP_CIPHER_CTX ctx;
+  // Benchmark initialisation and encryption
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data()) ||
+              !EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                 in.size())) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and encrypt",
+                           in_len);
+  }
+
+  // Benchmark encryption only
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                            iv.data())) {
+      fprintf(stderr, "Failed to initialise EVP_CIPHER_CTX for AES-XTS "
+              "encryption.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          return EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                   in.size());
+        })) {
+      fprintf(stderr, "AES-256-XTS Encryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " encrypt", in_len);
+  }
+
+  // Benchmark initialisation and decryption
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data()) ||
+              !EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                 in.size())) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "AES-256-XTS initialisation or decryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and decrypt",
+                           in_len);
+  }
+
+  // Benchmark decryption only
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                            iv.data())) {
+      fprintf(stderr, "Failed to initialise EVP_CIPHER_CTX for AES-XTS"
+              "decryption.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          return EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                   in.size());
+        })) {
+      fprintf(stderr, "AES-256-XTS Decryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " decrypt", in_len);
+  }
+
+  return true;
+}
+
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
@@ -1391,6 +1503,7 @@ bool Speed(const std::vector<std::string> &args) {
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
+     !SpeedAES256XTS("AES-256-XTS", selected) ||
      !SpeedHash(EVP_md4(), "MD4", selected) ||
      !SpeedHash(EVP_md5(), "MD5", selected) ||
      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
