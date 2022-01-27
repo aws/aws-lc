@@ -6,7 +6,7 @@
 */
 
 // Implementation of P-521 that uses Fiat-crypto for the field arithmetic
-// found in third_party/fiat, similarly to p256.c and p521.c
+// found in third_party/fiat, similarly to p256.c and p384.c
 
 #include <openssl/bn.h>
 #include <openssl/ec.h>
@@ -17,7 +17,7 @@
 #include "../delocate.h"
 #include "internal.h"
 
-#if defined(BORINGSSL_HAS_UINT128)
+#if 0//defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP521_64BIT 1
 #include "../../../third_party/fiat/p521_64.h"
 #else
@@ -121,16 +121,17 @@ static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
 }
 
 static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
+  // |p521_felem_to_bytes| function will write the result to the first 66 bytes
+  // of |out| which is exactly how many bytes are needed to represent a 521-bit
+  // element. However, EC_FELEM is a union of uint8_t array and BN_ULONG array.
+  // The number of BN_ULONGs to represent a 521-bit value is 9 and 17, when
+  // BN_ULONG is 64-bit and 32-bit, respectively. Nine 64-bit BN_ULONGs
+  // translate to 72 bytes, which means that we have to make sure that the
+  // extra 6 bytes are zeroed out. To avoid confusion over 32 vs. 64 bit
+  // systems and Fiat's vs. ours representation we zero out the whole element.
+  OPENSSL_memset((uint8_t*)out->words, 0, sizeof(out->words));
+  // Convert the element to bytes.
   p521_felem_to_bytes(out->bytes, in);
-  // Number of bytes required to represent a 521-bit field element is 66,
-  // but the number of uint64's required is 9 which translates to 72 bytes.
-  // Therefore, before returning the field element we have to make sure
-  // the 6 excess bytes and the last byte of the actual element are properly
-  // cleaned (zeroed out or masked).
-  out->bytes[65] &= 0x1;
-  for (int i = 66; i < 72; i++) {
-    out->bytes[i] = 0;
-  }
 }
 
 // Finite field inversion using Fermat Little Theorem.
