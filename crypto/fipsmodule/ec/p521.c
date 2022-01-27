@@ -17,7 +17,7 @@
 #include "../delocate.h"
 #include "internal.h"
 
-#if 0//defined(BORINGSSL_HAS_UINT128)
+#if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP521_64BIT 1
 #include "../../../third_party/fiat/p521_64.h"
 #else
