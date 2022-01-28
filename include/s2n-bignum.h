@@ -132,6 +132,7 @@ extern void bignum_cmul_p256k1_alt (uint64_t z[static 4], uint64_t c, uint64_t x
 // Multiply by a single word modulo p_384, z := (c * x) mod p_384, assuming x reduced
 // Inputs c, x[6]; output z[6]
 extern void bignum_cmul_p384 (uint64_t z[static 6], uint64_t c, uint64_t x[static 6]);
+extern void bignum_cmul_p384_alt (uint64_t z[static 6], uint64_t c, uint64_t x[static 6]);
 
 // Multiply by a single word modulo p_521, z := (c * x) mod p_521, assuming x reduced
 // Inputs c, x[9]; output z[9]
@@ -165,6 +166,7 @@ extern void bignum_deamont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 // Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_deamont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
+extern void bignum_deamont_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Convert from almost-Montgomery form z := (x / 2^576) mod p_521
 // Input x[9]; output z[9]
@@ -186,6 +188,7 @@ extern void bignum_demont_p256k1 (uint64_t z[static 4], uint64_t x[static 4]);
 // Convert from Montgomery form z := (x / 2^384) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
 extern void bignum_demont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
+extern void bignum_demont_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Convert from Montgomery form z := (x / 2^576) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
@@ -331,6 +334,7 @@ extern void bignum_mod_n256k1_4 (uint64_t z[static 4], uint64_t x[static 4]);
 // Reduce modulo group order, z := x mod n_384
 // Input x[k]; output z[6]
 extern void bignum_mod_n384 (uint64_t z[static 6], uint64_t k, uint64_t *x);
+extern void bignum_mod_n384_alt (uint64_t z[static 6], uint64_t k, uint64_t *x);
 
 // Reduce modulo group order, z := x mod n_384
 // Input x[6]; output z[6]
@@ -356,6 +360,7 @@ extern void bignum_mod_p256k1_4 (uint64_t z[static 4], uint64_t x[static 4]);
 // Reduce modulo field characteristic, z := x mod p_384
 // Input x[k]; output z[6]
 extern void bignum_mod_p384 (uint64_t z[static 6], uint64_t k, uint64_t *x);
+extern void bignum_mod_p384_alt (uint64_t z[static 6], uint64_t k, uint64_t *x);
 
 // Reduce modulo field characteristic, z := x mod p_384
 // Input x[6]; output z[6]
@@ -410,6 +415,7 @@ extern void bignum_montmul_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4
 // Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
+extern void bignum_montmul_p384_alt (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
 
 // Montgomery multiply, z := (x * y / 2^576) mod p_521
 // Inputs x[9], y[9]; output z[9]
@@ -436,6 +442,7 @@ extern void bignum_montsqr_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4
 // Montgomery square, z := (x^2 / 2^384) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_montsqr_p384 (uint64_t z[static 6], uint64_t x[static 6]);
+extern void bignum_montsqr_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Montgomery square, z := (x^2 / 2^576) mod p_521
 // Input x[9]; output z[9]
@@ -453,6 +460,7 @@ extern void bignum_mul_4_8_alt (uint64_t z[static 8], uint64_t x[static 4], uint
 // Multiply z := x * y
 // Inputs x[6], y[6]; output z[12]
 extern void bignum_mul_6_12 (uint64_t z[static 12], uint64_t x[static 6], uint64_t y[static 6]);
+extern void bignum_mul_6_12_alt (uint64_t z[static 12], uint64_t x[static 6], uint64_t y[static 6]);
 
 // Multiply z := x * y
 // Inputs x[8], y[8]; output z[16]
@@ -587,6 +595,7 @@ extern void bignum_sqr_4_8_alt (uint64_t z[static 8], uint64_t x[static 4]);
 // Square, z := x^2
 // Input x[6]; output z[12]
 extern void bignum_sqr_6_12 (uint64_t z[static 12], uint64_t x[static 6]);
+extern void bignum_sqr_6_12_alt (uint64_t z[static 12], uint64_t x[static 6]);
 
 // Square, z := x^2
 // Input x[8]; output z[16]
@@ -650,6 +659,7 @@ extern void bignum_tomont_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4]
 // Convert to Montgomery form z := (2^384 * x) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_tomont_p384 (uint64_t z[static 6], uint64_t x[static 6]);
+extern void bignum_tomont_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Convert to Montgomery form z := (2^576 * x) mod p_521
 // Input x[9]; output z[9]
@@ -668,6 +678,7 @@ extern void bignum_triple_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4]
 // Triple modulo p_384, z := (3 * x) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_triple_p384 (uint64_t z[static 6], uint64_t x[static 6]);
+extern void bignum_triple_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 
 // Triple modulo p_521, z := (3 * x) mod p_521, assuming x reduced
 // Input x[9]; output z[9]

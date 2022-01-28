@@ -81,10 +81,12 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_mul_4_8.o \
       fastmul/bignum_mul_4_8_alt.o \
       fastmul/bignum_mul_6_12.o \
+      fastmul/bignum_mul_6_12_alt.o \
       fastmul/bignum_mul_8_16.o \
       fastmul/bignum_sqr_4_8.o \
       fastmul/bignum_sqr_4_8_alt.o \
       fastmul/bignum_sqr_6_12.o \
+      fastmul/bignum_sqr_6_12_alt.o \
       fastmul/bignum_sqr_8_16.o \
       generic/bignum_add.o \
       generic/bignum_amontifier.o \
@@ -189,7 +191,9 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_mod_p384.o \
       p384/bignum_mod_p384_6.o \
       p384/bignum_montmul_p384.o \
+      p384/bignum_montmul_p384_alt.o \
       p384/bignum_montsqr_p384.o \
+      p384/bignum_montsqr_p384_alt.o \
       p384/bignum_mux_6.o \
       p384/bignum_neg_p384.o \
       p384/bignum_nonzero_6.o \

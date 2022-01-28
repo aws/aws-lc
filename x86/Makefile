@@ -73,10 +73,12 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_mul_4_8.o \
       fastmul/bignum_mul_4_8_alt.o \
       fastmul/bignum_mul_6_12.o \
+      fastmul/bignum_mul_6_12_alt.o \
       fastmul/bignum_mul_8_16.o \
       fastmul/bignum_sqr_4_8.o \
       fastmul/bignum_sqr_4_8_alt.o \
       fastmul/bignum_sqr_6_12.o \
+      fastmul/bignum_sqr_6_12_alt.o \
       fastmul/bignum_sqr_8_16.o \
       generic/bignum_add.o \
       generic/bignum_amontifier.o \
@@ -178,24 +180,33 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_add_p384.o \
       p384/bignum_bigendian_6.o \
       p384/bignum_cmul_p384.o \
+      p384/bignum_cmul_p384_alt.o \
       p384/bignum_deamont_p384.o \
+      p384/bignum_deamont_p384_alt.o \
       p384/bignum_demont_p384.o \
+      p384/bignum_demont_p384_alt.o \
       p384/bignum_double_p384.o \
       p384/bignum_half_p384.o \
       p384/bignum_littleendian_6.o \
       p384/bignum_mod_n384.o \
+      p384/bignum_mod_n384_alt.o \
       p384/bignum_mod_n384_6.o \
       p384/bignum_mod_p384.o \
+      p384/bignum_mod_p384_alt.o \
       p384/bignum_mod_p384_6.o \
       p384/bignum_montmul_p384.o \
+      p384/bignum_montmul_p384_alt.o \
       p384/bignum_montsqr_p384.o \
+      p384/bignum_montsqr_p384_alt.o \
       p384/bignum_mux_6.o \
       p384/bignum_neg_p384.o \
       p384/bignum_nonzero_6.o \
       p384/bignum_optneg_p384.o \
       p384/bignum_sub_p384.o \
       p384/bignum_tomont_p384.o \
+      p384/bignum_tomont_p384_alt.o \
       p384/bignum_triple_p384.o \
+      p384/bignum_triple_p384_alt.o \
       p521/bignum_add_p521.o \
       p521/bignum_cmul_p521.o \
       p521/bignum_deamont_p521.o \
