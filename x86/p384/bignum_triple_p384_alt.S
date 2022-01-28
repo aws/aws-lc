@@ -17,7 +17,7 @@
 // Triple modulo p_384, z := (3 * x) mod p_384
 // Input x[6]; output z[6]
 //
-//    extern void bignum_triple_p384
+//    extern void bignum_triple_p384_alt
 //     (uint64_t z[static 6], uint64_t x[static 6]);
 //
 // The input x can be any 6-digit bignum, not necessarily reduced modulo p_384,
@@ -27,7 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_triple_p384
+        .globl  bignum_triple_p384_alt
         .text
 
 #define z rdi
@@ -42,12 +42,15 @@
 
 #define a rax
 #define c rcx
-#define q rdx
+#define q rcx
+#define d rdx
 
 #define ashort eax
-#define qshort edx
+#define cshort ecx
+#define qshort ecx
+#define dshort edx
 
-bignum_triple_p384:
+bignum_triple_p384_alt:
 
 // We seem to need (just!) one extra register, which we need to save and restore
 
@@ -57,56 +60,63 @@ bignum_triple_p384:
 // but actually immediately producing q = h + 1, our quotient approximation,
 // by adding 1 to it.
 
-                xor     ashort, ashort
+                mov     cshort, 3
 
-                mov     q, [x]
-                mov     d0, q
-                adcx    q, q
-                adox    d0, q
-                mov     q, [x+8]
-                mov     d1, q
-                adcx    q, q
-                adox    d1, q
-                mov     q, [x+16]
-                mov     d2, q
-                adcx    q, q
-                adox    d2, q
-                mov     q, [x+24]
-                mov     d3, q
-                adcx    q, q
-                adox    d3, q
-                mov     q, [x+32]
-                mov     d4, q
-                adcx    q, q
-                adox    d4, q
-                mov     q, [x+40]
-                mov     d5, q
-                adcx    q, q
-                adox    d5, q
+                mov     a, [x]
+                mul     c
+                mov     d0, a
+                mov     d1, d
+
+                mov     a, [x+8]
+                xor     d2, d2
+                mul     c
+                add     d1, a
+                adc     d2, d
+
+                mov     a, [x+16]
+                xor     d3, d3
+                mul     c
+                add     d2, a
+                adc     d3, d
+
+                mov     a, [x+24]
+                xor     d4, d4
+                mul     c
+                add     d3, a
+                adc     d4, d
+
+                mov     a, [x+32]
+                mul     c
+                add     d4, a
+                adc     d, 0
+
+                mov     a, [x+40]
+                mov     d5, d
+                mul     c
+                add     d5, a
 
                 mov     qshort, 1
-                adcx    q, a
-                adox    q, a
+                adc     q, d
 
 // Initial subtraction of z - q * p_384, with bitmask c for the carry
 // Actually done as an addition of (z - 2^384 * h) + q * (2^384 - p_384)
 // which, because q = h + 1, is exactly 2^384 + (z - q * p_384), and
 // therefore CF <=> 2^384 + (z - q * p_384) >= 2^384 <=> z >= q * p_384.
 
-                mov     c, q
-                shl     c, 32
+                mov     d, q
+                shl     d, 32
                 mov     a, q
-                sub     a, c
-                sbb     c, 0
+                sub     a, d
+                sbb     d, 0
 
                 add     d0, a
-                adc     d1, c
+                adc     d1, d
                 adc     d2, q
                 adc     d3, 0
                 adc     d4, 0
                 adc     d5, 0
-                sbb     c, c
-                not     c
+                sbb     d, d
+                not     d
 
 // Now use that mask for a masked addition of p_384, which again is in
 // fact done by a masked subtraction of 2^384 - p_384, so that we only
@@ -114,15 +124,15 @@ bignum_triple_p384:
 
                 mov     qshort, 0x00000000ffffffff
                 xor     ashort, ashort
-                and     q, c
+                and     q, d
                 sub     a, q
-                neg     c
+                neg     d
 
                 sub     d0, a
                 mov     [z], d0
                 sbb     d1, q
                 mov     [z+8], d1
-                sbb     d2, c
+                sbb     d2, d
                 mov     [z+16], d2
                 sbb     d3, 0
                 mov     [z+24], d3
