@@ -578,7 +578,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/fork_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
-    fipsmodule/cpucap/cpu-arm-linux_test.cc
+    fipsmodule/cpucap/cpu_arm_linux_test.cc
     hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
@@ -606,7 +606,6 @@ if(BUILD_TESTING)
     x509/x509_test.cc
     x509/x509_time_test.cc
     x509v3/tab_test.cc
-    x509v3/v3name_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
@@ -628,8 +627,7 @@ endif()
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 configure_file("cmake/crypto-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"

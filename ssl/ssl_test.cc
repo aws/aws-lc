@@ -39,6 +39,7 @@
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -1498,6 +1499,8 @@ static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
 struct ClientConfig {
   SSL_SESSION *session = nullptr;
   std::string servername;
+  std::string verify_hostname;
+  unsigned hostflags = 0;
   bool early_data = false;
 };
 
@@ -1519,6 +1522,12 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   if (!config.servername.empty() &&
       !SSL_set_tlsext_host_name(client.get(), config.servername.c_str())) {
     return false;
+  }
+  if (!config.verify_hostname.empty()) {
+    if (!SSL_set1_host(client.get(), config.verify_hostname.c_str())) {
+      return false;
+    }
+    SSL_set_hostflags(client.get(), config.hostflags);
   }
 
   SSL_set_shed_handshake_config(client.get(), shed_handshake_config);
@@ -4685,7 +4694,7 @@ std::string TicketAEADMethodParamToString(
     }
   }
   char retry_count[256];
-  snprintf(retry_count, sizeof(retry_count), "%d", std::get<1>(params.param));
+  snprintf(retry_count, sizeof(retry_count), "%u", std::get<1>(params.param));
   ret += "_";
   ret += retry_count;
   ret += "Retries_";
@@ -4966,23 +4975,43 @@ TEST_P(SSLVersionTest, SSLPending) {
 
   ASSERT_TRUE(Connect());
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(5, SSL_write(server_.get(), "hello", 5));
   ASSERT_EQ(5, SSL_write(server_.get(), "world", 5));
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
   char buf[10];
   ASSERT_EQ(1, SSL_peek(client_.get(), buf, 1));
   EXPECT_EQ(5, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(1, SSL_read(client_.get(), buf, 1));
   EXPECT_EQ(4, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(4, SSL_read(client_.get(), buf, 10));
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  if (is_dtls()) {
+    // In DTLS, the two records would have been read as a single datagram and
+    // buffered inside |client_|. Thus, |SSL_has_pending| should return true.
+    //
+    // This test is slightly unrealistic. It relies on |ConnectClientAndServer|
+    // using a |BIO| pair, which does not preserve datagram boundaries. Reading
+    // 1 byte, then 4 bytes, from the first record also relies on
+    // https://crbug.com/boringssl/65. But it does test the codepaths. When
+    // fixing either of these bugs, this test may need to be redone.
+    EXPECT_EQ(1, SSL_has_pending(client_.get()));
+  } else {
+    // In TLS, we do not overread, so |SSL_has_pending| should report no data is
+    // buffered.
+    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+  }
 
   ASSERT_EQ(2, SSL_read(client_.get(), buf, 2));
   EXPECT_EQ(3, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
@@ -7979,6 +8008,108 @@ TEST(SSLTest, PermuteExtensions) {
       }
       EXPECT_TRUE(passed) << "Extensions were not permuted";
     }
+  }
+}
+
+TEST(SSLTest, HostMatching) {
+  static const char kCertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB9jCCAZ2gAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjApMRAw
+DgYDVQQKEwdBY21lIENvMRUwEwYDVQQDEwxleGFtcGxlMy5jb20wHhcNMjExMjA2
+MjA1NjU2WhcNMjIxMjA2MjA1NjU2WjApMRAwDgYDVQQKEwdBY21lIENvMRUwEwYD
+VQQDEwxleGFtcGxlMy5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS7l2VO
+Bl2TjVm9WfGk24+hMbVFUNB+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaW
+ULDDaoeDl1M0t4Hmo4GmMIGjMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggr
+BgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTTJWurcc1t+VPQBko3
+Gsw6cbcWSTBMBgNVHREERTBDggxleGFtcGxlMS5jb22CDGV4YW1wbGUyLmNvbYIP
+YSouZXhhbXBsZTQuY29tgg4qLmV4YW1wbGU1LmNvbYcEAQIDBDAKBggqhkjOPQQD
+AgNHADBEAiAAv0ljHJGrgyzZDkG6XvNZ5ewxRfnXcZuD0Y7E4giCZgIgNK1qjilu
+5DyVbfKeeJhOCtGxqE1dWLXyJBnoRomSYBY=
+-----END CERTIFICATE-----
+)";
+  bssl::UniquePtr<X509> cert(CertFromPEM(kCertPEM));
+  ASSERT_TRUE(cert);
+  static const char kCertNoSANsPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBqzCCAVGgAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjArMRIw
+EAYDVQQKEwlBY21lIENvIDIxFTATBgNVBAMTDGV4YW1wbGUzLmNvbTAeFw0yMTEy
+MDYyMDU2NTZaFw0yMjEyMDYyMDU2NTZaMCsxEjAQBgNVBAoTCUFjbWUgQ28gMjEV
+MBMGA1UEAxMMZXhhbXBsZTMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+u5dlTgZdk41ZvVnxpNuPoTG1RVDQfkVR1mwrxbzWQKFoiCds9+ESxiJ8mbwmfMSw
+L7LmllCww2qHg5dTNLeB5qNXMFUwDgYDVR0PAQH/BAQDAgKEMBMGA1UdJQQMMAoG
+CCsGAQUFBwMBMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFNMla6txzW35U9AG
+SjcazDpxtxZJMAoGCCqGSM49BAMCA0gAMEUCIG3YWGWtpVhbcGV7wFKQwTfmvwHW
+pw4qCFZlool4hCwsAiEA+2fc6NfSbNpFEtQkDOMJW2ANiScAVEmImNqPfb2klz4=
+-----END CERTIFICATE-----
+)";
+  bssl::UniquePtr<X509> cert_no_sans(CertFromPEM(kCertNoSANsPEM));
+  ASSERT_TRUE(cert_no_sans);
+
+  static const char kKeyPEM[] = R"(
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghsaSZhUzZAcQlLyJ
+MDuy7WPdyqNsAX9rmEP650LF/q2hRANCAAS7l2VOBl2TjVm9WfGk24+hMbVFUNB+
+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaWULDDaoeDl1M0t4Hm
+-----END PRIVATE KEY-----
+)";
+  bssl::UniquePtr<EVP_PKEY> key(KeyFromPEM(kKeyPEM));
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx.get()),
+                                  cert.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx.get()),
+                                  cert_no_sans.get()));
+  SSL_CTX_set_verify(client_ctx.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+
+  struct TestCase {
+    X509 *cert;
+    std::string hostname;
+    unsigned flags;
+    bool should_match;
+  };
+  std::vector<TestCase> kTests = {
+      // These two names are present as SANs in the certificate.
+      {cert.get(), "example1.com", 0, true},
+      {cert.get(), "example2.com", 0, true},
+      // This is the CN of the certificate, but that shouldn't matter if a SAN
+      // extension is present.
+      {cert.get(), "example3.com", 0, false},
+      // If the SAN is not present, we, for now, look for DNS names in the CN.
+      {cert_no_sans.get(), "example3.com", 0, true},
+      // ... but this can be turned off.
+      {cert_no_sans.get(), "example3.com", X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
+       false},
+      // a*.example4.com is a SAN, but is invalid.
+      {cert.get(), "abc.example4.com", 0, false},
+      // *.example5.com is a SAN in the certificate, which is a normal and valid
+      // wildcard.
+      {cert.get(), "abc.example5.com", 0, true},
+      // This name is not present.
+      {cert.get(), "notexample1.com", 0, false},
+      // The IPv4 address 1.2.3.4 is a SAN, but that shouldn't match against a
+      // hostname that happens to be its textual representation.
+      {cert.get(), "1.2.3.4", 0, false},
+  };
+
+  for (const TestCase &test : kTests) {
+    SCOPED_TRACE(test.hostname);
+
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), test.cert));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+    ClientConfig config;
+    bssl::UniquePtr<SSL> client, server;
+    config.verify_hostname = test.hostname;
+    config.hostflags = test.flags;
+    EXPECT_EQ(test.should_match,
+              ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), config));
   }
 }
 
