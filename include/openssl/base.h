@@ -203,9 +203,10 @@ extern "C" {
 
 #define AWSLC_API_VERSION 16
 
-// In order to keep track of any changes to AWLC we introduce a string that tracks with the public Github
-// release version at https://github.com/awslabs/aws-lc
-
+// This string tracks the most current production release version on Github
+// https://github.com/awslabs/aws-lc/releases.
+// When bumping the encoded version, also update the test fixture:
+// ServiceIndicatorTest.AWSLCVersionString, which assumes the previous value.
 #define AWSLC_VERSION_NUMBER_STRING "0.0.3"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
