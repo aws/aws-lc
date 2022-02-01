@@ -54,7 +54,7 @@
 #include <openssl/cipher.h>
 
 #include "../crypto/fipsmodule/modes/internal.h"
-
+#include "../crypto/fipsmodule/aes/internal.h"
 
 typedef struct xts128_context {
   AES_KEY *key1, *key2;
@@ -193,10 +193,27 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       !xctx->xts.key2 ||
       !out ||
       !in ||
-      len < AES_BLOCK_SIZE ||
-      !CRYPTO_xts128_encrypt(&xctx->xts, ctx->iv, in, out, len, ctx->encrypt)) {
+      len < AES_BLOCK_SIZE) {
     return 0;
   }
+#if defined(HWAES_XTS)
+  if (hwaes_capable()) {
+    if (ctx->encrypt) {
+      aes_hw_xts_encrypt(in, out, len, xctx->xts.key1, xctx->xts.key2,
+        ctx->iv);
+    } else {
+      aes_hw_xts_decrypt(in, out, len, xctx->xts.key1, xctx->xts.key2,
+        ctx->iv);
+    }
+  } else {
+#endif
+    if (!CRYPTO_xts128_encrypt(&xctx->xts, ctx->iv, in, out, len, ctx->encrypt)) {
+      return 0;
+    }
+#if defined(HWAES_XTS)
+  }
+#endif
+
   return 1;
 }
 

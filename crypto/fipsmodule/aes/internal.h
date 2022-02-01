@@ -47,6 +47,7 @@ OPENSSL_INLINE int vpaes_capable(void) {
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #define HWAES
+#define HWAES_XTS
 
 OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_ARMv8_AES_capable(); }
 
@@ -135,6 +136,14 @@ void aes_hw_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                         const AES_KEY *key, const int enc);
 #endif  // HWAES_ECB
 
+#if defined(HWAES_XTS)
+void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                  const uint8_t iv[16]);
+void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                  const uint8_t iv[16]);
+#endif  //HWAES_XTS
 
 #if defined(BSAES)
 // Note |bsaes_cbc_encrypt| requires |enc| to be zero.
