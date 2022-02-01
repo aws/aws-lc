@@ -33,8 +33,6 @@ bool ssl_transfer_supported(const SSL *in) {
       in->quic_method != nullptr ||                             // (2)
       !in->s3 ||                                                // (3)
       !in->s3->established_session ||
-      in->s3->established_session.get()->not_resumable ||
-      // TODO: Check in->s3->rwstate.
       SSL_in_init(in) ||                                        // (4)
       in->version != TLS1_2_VERSION ||                          // (5)
       in->s3->wnum != 0 ||                                      // (6)
@@ -139,6 +137,8 @@ static const unsigned kS3PendingAppDataTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 8;
 static const unsigned kS3ReadBufferTag = 
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 9;
+static const unsigned kS3NotResumableTag = 
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 10;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL transfer.
@@ -175,6 +175,7 @@ static const unsigned kS3ReadBufferTag =
 //                                          -- see Span ASN1.
 //    readBuffer                        [9] SEQUENCE OPTIONAL,
 //                                          -- see ASN1 struct in the comment of |DoSerialization|.
+//    notResumable                      [10] BOOLEAN OPTIONAL,
 // }
 //
 // Span ::= SEQUENCE {
@@ -206,12 +207,10 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, CBB *cbb) {
     return 0;
   }
 
-  if (in->established_session) {
-    if (!CBB_add_asn1(&s3, &child, kS3EstablishedSessionTag) ||
-        !ssl_session_serialize(in->established_session.get(), &child)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
+  if (!CBB_add_asn1(&s3, &child, kS3EstablishedSessionTag) ||
+      !ssl_session_serialize(in->established_session.get(), &child)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
   if (in->session_reused) {
@@ -294,6 +293,15 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, CBB *cbb) {
       return 0;
     }
   }
+  // serialization of |not_resumable| is not added in |ssl_session_serialize|
+  // because the function is used to serialize a session for resumption.
+  if (in->established_session.get()->not_resumable) {
+    if (!CBB_add_asn1(&s3, &child, kS3NotResumableTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
   return CBB_flush(cbb);
 }
 
@@ -323,7 +331,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   SSL3_STATE *out = ssl->s3;
   CBS s3, read_seq, write_seq, server_random, client_random, send_alert, pending_app_data, read_buffer;
   CBS previous_client_finished, previous_server_finished;
-  int session_reused, channel_id_valid, send_connection_binding;
+  int session_reused, channel_id_valid, send_connection_binding, not_resumable;
   uint64_t version, early_data_reason, previous_client_finished_len, previous_server_finished_len;
   uint64_t empty_record_count, warning_alert_count;
   int64_t rwstate;
@@ -364,6 +372,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
       !CBS_get_optional_asn1_bool(&s3, &send_connection_binding, kS3SendConnectionBindingTag, 0 /* default to false */) ||
       !CBS_get_optional_asn1(&s3, &pending_app_data, &pending_app_data_present, kS3PendingAppDataTag) ||
       !CBS_get_optional_asn1(&s3, &read_buffer, &read_buffer_present, kS3ReadBufferTag) ||
+      !CBS_get_optional_asn1_bool(&s3, &not_resumable, kS3NotResumableTag, 0 /* default to false */) ||
       CBS_len(&s3) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
     return 0;
@@ -428,6 +437,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   out->empty_record_count = empty_record_count;
   out->warning_alert_count = warning_alert_count;
   out->send_connection_binding = !!send_connection_binding;
+  out->established_session.get()->not_resumable = !!not_resumable;
   return 1;
 }
 
