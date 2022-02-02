@@ -205,8 +205,10 @@ extern "C" {
 
 // This string tracks the most current production release version on Github
 // https://github.com/awslabs/aws-lc/releases.
-// When bumping the encoded version, also update the test fixture:
-// ServiceIndicatorTest.AWSLCVersionString, which assumes the previous value.
+// When bumping the encoded version number, also update the test fixture:
+// ServiceIndicatorTest.AWSLCVersionString
+// Note: there are two versions of this test. Only one test is compiled
+// depending on FIPS mode.
 #define AWSLC_VERSION_NUMBER_STRING "0.0.3"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
