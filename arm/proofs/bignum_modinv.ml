@@ -25,8 +25,8 @@ let bignum_modinv_mc =
 [
   0xa9bf53f3;       (* arm_STP X19 X20 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xa9bf5bf5;       (* arm_STP X21 X22 SP (Preimmediate_Offset (iword (-- &16))) *)
-  0xb40027c0;       (* arm_CBZ X0 (word 1272) *)
-  0xd37df00a;       (* arm_LSL X10 X0 (rvalue (word 3)) *)
+  0xb40026a0;       (* arm_CBZ X0 (word 1236) *)
+  0xd37df00a;       (* arm_LSL X10 X0 3 *)
   0x8b0a0095;       (* arm_ADD X21 X4 X10 *)
   0x8b0a02b6;       (* arm_ADD X22 X21 X10 *)
   0xaa1f03ea;       (* arm_MOV X10 XZR *)
@@ -42,7 +42,7 @@ let bignum_modinv_mc =
   0xf940008b;       (* arm_LDR X11 X4 (Immediate_Offset (word 0)) *)
   0xd100056c;       (* arm_SUB X12 X11 (rvalue (word 1)) *)
   0xf900008c;       (* arm_STR X12 X4 (Immediate_Offset (word 0)) *)
-  0xd37ef574;       (* arm_LSL X20 X11 (rvalue (word 2)) *)
+  0xd37ef574;       (* arm_LSL X20 X11 2 *)
   0xcb140174;       (* arm_SUB X20 X11 X20 *)
   0xd27f0294;       (* arm_EOR X20 X20 (rvalue (word 2)) *)
   0xd280002c;       (* arm_MOV X12 (rvalue (word 1)) *)
@@ -54,9 +54,9 @@ let bignum_modinv_mc =
   0x9b0c7d8b;       (* arm_MUL X11 X12 X12 *)
   0x9b145194;       (* arm_MADD X20 X12 X20 X20 *)
   0x9b145174;       (* arm_MADD X20 X11 X20 X20 *)
-  0xd379e002;       (* arm_LSL X2 X0 (rvalue (word 7)) *)
+  0xd379e002;       (* arm_LSL X2 X0 7 *)
   0x9100fc4a;       (* arm_ADD X10 X2 (rvalue (word 63)) *)
-  0xd346fd45;       (* arm_LSR X5 X10 (rvalue (word 6)) *)
+  0xd346fd45;       (* arm_LSR X5 X10 6 *)
   0xeb0000bf;       (* arm_CMP X5 X0 *)
   0x9a852005;       (* arm_CSEL X5 X0 X5 Condition_CS *)
   0xaa1f03ed;       (* arm_MOV X13 XZR *)
@@ -82,12 +82,12 @@ let bignum_modinv_mc =
   0xaa0e01ab;       (* arm_ORR X11 X13 X14 *)
   0xdac0116c;       (* arm_CLZ X12 X11 *)
   0xeb0c03f1;       (* arm_NEGS X17 X12 *)
-  0x9acc21ad;       (* arm_LSL X13 X13 X12 *)
+  0x9acc21ad;       (* arm_LSLV X13 X13 X12 *)
   0x9a9f11ef;       (* arm_CSEL X15 X15 XZR Condition_NE *)
-  0x9acc21ce;       (* arm_LSL X14 X14 X12 *)
+  0x9acc21ce;       (* arm_LSLV X14 X14 X12 *)
   0x9a9f1210;       (* arm_CSEL X16 X16 XZR Condition_NE *)
-  0x9ad125ef;       (* arm_LSR X15 X15 X17 *)
-  0x9ad12610;       (* arm_LSR X16 X16 X17 *)
+  0x9ad125ef;       (* arm_LSRV X15 X15 X17 *)
+  0x9ad12610;       (* arm_LSRV X16 X16 X17 *)
   0xaa0f01ad;       (* arm_ORR X13 X13 X15 *)
   0xaa1001ce;       (* arm_ORR X14 X14 X16 *)
   0xf94002af;       (* arm_LDR X15 X21 (Immediate_Offset (word 0)) *)
@@ -97,37 +97,28 @@ let bignum_modinv_mc =
   0xaa1f03e8;       (* arm_MOV X8 XZR *)
   0xd2800029;       (* arm_MOV X9 (rvalue (word 1)) *)
   0xd280074a;       (* arm_MOV X10 (rvalue (word 58)) *)
-  0x924001eb;       (* arm_AND X11 X15 (rvalue (word 1)) *)
-  0xd280004c;       (* arm_MOV X12 (rvalue (word 2)) *)
-  0xeb0e01bf;       (* arm_CMP X13 X14 *)
-  0xfa0b019f;       (* arm_SBCS XZR X12 X11 *)
-  0x8b0800d1;       (* arm_ADD X17 X6 X8 *)
-  0x8b0900f3;       (* arm_ADD X19 X7 X9 *)
-  0xaa0d03eb;       (* arm_MOV X11 X13 *)
-  0x9a8d01cd;       (* arm_CSEL X13 X14 X13 Condition_EQ *)
-  0x9a8e016e;       (* arm_CSEL X14 X11 X14 Condition_EQ *)
-  0xaa0f03eb;       (* arm_MOV X11 X15 *)
-  0x9a8f020f;       (* arm_CSEL X15 X16 X15 Condition_EQ *)
-  0x9a900170;       (* arm_CSEL X16 X11 X16 Condition_EQ *)
-  0xaa0603eb;       (* arm_MOV X11 X6 *)
-  0x9a860106;       (* arm_CSEL X6 X8 X6 Condition_EQ *)
-  0x9a880168;       (* arm_CSEL X8 X11 X8 Condition_EQ *)
-  0xaa0703eb;       (* arm_MOV X11 X7 *)
-  0x9a870127;       (* arm_CSEL X7 X9 X7 Condition_EQ *)
-  0x9a890169;       (* arm_CSEL X9 X11 X9 Condition_EQ *)
   0xf24001ff;       (* arm_TST X15 (rvalue (word 1)) *)
-  0xcb0e01ab;       (* arm_SUB X11 X13 X14 *)
-  0x9a8d116d;       (* arm_CSEL X13 X11 X13 Condition_NE *)
-  0xcb1001eb;       (* arm_SUB X11 X15 X16 *)
-  0x9a8f116f;       (* arm_CSEL X15 X11 X15 Condition_NE *)
-  0x9a861226;       (* arm_CSEL X6 X17 X6 Condition_NE *)
-  0x9a871267;       (* arm_CSEL X7 X19 X7 Condition_NE *)
-  0xd341fdad;       (* arm_LSR X13 X13 (rvalue (word 1)) *)
-  0xd341fdef;       (* arm_LSR X15 X15 (rvalue (word 1)) *)
+  0x9a9f11cb;       (* arm_CSEL X11 X14 XZR Condition_NE *)
+  0x9a9f120c;       (* arm_CSEL X12 X16 XZR Condition_NE *)
+  0x9a9f1111;       (* arm_CSEL X17 X8 XZR Condition_NE *)
+  0x9a9f1133;       (* arm_CSEL X19 X9 XZR Condition_NE *)
+  0xeb0b01ab;       (* arm_SUBS X11 X13 X11 *)
+  0xcb0c01ec;       (* arm_SUB X12 X15 X12 *)
+  0xda8b256b;       (* arm_CNEG X11 X11 Condition_CC *)
+  0xda8c258c;       (* arm_CNEG X12 X12 Condition_CC *)
+  0x9a8d21ce;       (* arm_CSEL X14 X14 X13 Condition_CS *)
+  0x9a8f2210;       (* arm_CSEL X16 X16 X15 Condition_CS *)
+  0x9a862108;       (* arm_CSEL X8 X8 X6 Condition_CS *)
+  0x9a872129;       (* arm_CSEL X9 X9 X7 Condition_CS *)
+  0xf27f019f;       (* arm_TST X12 (rvalue (word 2)) *)
+  0x8b1100c6;       (* arm_ADD X6 X6 X17 *)
+  0x8b1300e7;       (* arm_ADD X7 X7 X19 *)
+  0xd341fd6d;       (* arm_LSR X13 X11 1 *)
+  0xd341fd8f;       (* arm_LSR X15 X12 1 *)
   0x8b080108;       (* arm_ADD X8 X8 X8 *)
   0x8b090129;       (* arm_ADD X9 X9 X9 *)
-  0xf100054a;       (* arm_SUBS X10 X10 (rvalue (word 1)) *)
-  0x54fffc41;       (* arm_BNE (word 2097032) *)
+  0xd100054a;       (* arm_SUB X10 X10 (rvalue (word 1)) *)
+  0xb5fffd8a;       (* arm_CBNZ X10 (word 2097072) *)
   0xaa1f03ed;       (* arm_MOV X13 XZR *)
   0xaa1f03ee;       (* arm_MOV X14 XZR *)
   0xaa1f03f1;       (* arm_MOV X17 XZR *)
@@ -141,7 +132,7 @@ let bignum_modinv_mc =
   0x9bcb7ccd;       (* arm_UMULH X13 X6 X11 *)
   0x9a1f01ad;       (* arm_ADC X13 X13 XZR *)
   0xab1001ef;       (* arm_ADDS X15 X15 X16 *)
-  0x93d1e9f1;       (* arm_EXTR X17 X15 X17 (rvalue (word 58)) *)
+  0x93d1e9f1;       (* arm_EXTR X17 X15 X17 58 *)
   0xf82a7891;       (* arm_STR X17 X4 (Shiftreg_Offset X10 3) *)
   0xaa0f03f1;       (* arm_MOV X17 X15 *)
   0x9bcc7cef;       (* arm_UMULH X15 X7 X12 *)
@@ -152,7 +143,7 @@ let bignum_modinv_mc =
   0x9bcb7d0e;       (* arm_UMULH X14 X8 X11 *)
   0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
   0xab1001ef;       (* arm_ADDS X15 X15 X16 *)
-  0x93d3e9f3;       (* arm_EXTR X19 X15 X19 (rvalue (word 58)) *)
+  0x93d3e9f3;       (* arm_EXTR X19 X15 X19 58 *)
   0xf82a7833;       (* arm_STR X19 X1 (Shiftreg_Offset X10 3) *)
   0xaa0f03f3;       (* arm_MOV X19 X15 *)
   0x9bcc7d2f;       (* arm_UMULH X15 X9 X12 *)
@@ -160,8 +151,8 @@ let bignum_modinv_mc =
   0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
   0xeb00015f;       (* arm_CMP X10 X0 *)
   0x54fffcc3;       (* arm_BCC (word 2097048) *)
-  0x93d1e9ad;       (* arm_EXTR X13 X13 X17 (rvalue (word 58)) *)
-  0x93d3e9ce;       (* arm_EXTR X14 X14 X19 (rvalue (word 58)) *)
+  0x93d1e9ad;       (* arm_EXTR X13 X13 X17 58 *)
+  0x93d3e9ce;       (* arm_EXTR X14 X14 X19 58 *)
   0xf940008b;       (* arm_LDR X11 X4 (Immediate_Offset (word 0)) *)
   0x9b147d71;       (* arm_MUL X17 X11 X20 *)
   0xf940006c;       (* arm_LDR X12 X3 (Immediate_Offset (word 0)) *)
@@ -287,7 +278,7 @@ let bignum_modinv_mc =
   0xb4000166;       (* arm_CBZ X6 (word 44) *)
   0x9100214b;       (* arm_ADD X11 X10 (rvalue (word 8)) *)
   0xf86b6aac;       (* arm_LDR X12 X21 (Register_Offset X11) *)
-  0x93cfe98f;       (* arm_EXTR X15 X12 X15 (rvalue (word 58)) *)
+  0x93cfe98f;       (* arm_EXTR X15 X12 X15 58 *)
   0xca1101ef;       (* arm_EOR X15 X15 X17 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a6aaf;       (* arm_STR X15 X21 (Register_Offset X10) *)
@@ -295,7 +286,7 @@ let bignum_modinv_mc =
   0x9100214a;       (* arm_ADD X10 X10 (rvalue (word 8)) *)
   0xd10004c6;       (* arm_SUB X6 X6 (rvalue (word 1)) *)
   0xb5fffee6;       (* arm_CBNZ X6 (word 2097116) *)
-  0x93cfe9af;       (* arm_EXTR X15 X13 X15 (rvalue (word 58)) *)
+  0x93cfe9af;       (* arm_EXTR X15 X13 X15 58 *)
   0xca1101ef;       (* arm_EOR X15 X15 X17 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a6aaf;       (* arm_STR X15 X21 (Register_Offset X10) *)
@@ -306,7 +297,7 @@ let bignum_modinv_mc =
   0xb4000166;       (* arm_CBZ X6 (word 44) *)
   0x9100214b;       (* arm_ADD X11 X10 (rvalue (word 8)) *)
   0xf86b6acc;       (* arm_LDR X12 X22 (Register_Offset X11) *)
-  0x93cfe98f;       (* arm_EXTR X15 X12 X15 (rvalue (word 58)) *)
+  0x93cfe98f;       (* arm_EXTR X15 X12 X15 58 *)
   0xca1301ef;       (* arm_EOR X15 X15 X19 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a6acf;       (* arm_STR X15 X22 (Register_Offset X10) *)
@@ -314,7 +305,7 @@ let bignum_modinv_mc =
   0x9100214a;       (* arm_ADD X10 X10 (rvalue (word 8)) *)
   0xd10004c6;       (* arm_SUB X6 X6 (rvalue (word 1)) *)
   0xb5fffee6;       (* arm_CBNZ X6 (word 2097116) *)
-  0x93cfe9cf;       (* arm_EXTR X15 X14 X15 (rvalue (word 58)) *)
+  0x93cfe9cf;       (* arm_EXTR X15 X14 X15 58 *)
   0xca1301ef;       (* arm_EOR X15 X15 X19 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a6acf;       (* arm_STR X15 X22 (Register_Offset X10) *)
@@ -329,7 +320,7 @@ let bignum_modinv_mc =
   0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
   0xcb00014b;       (* arm_SUB X11 X10 X0 *)
   0xb5ffff0b;       (* arm_CBNZ X11 (word 2097120) *)
-  0xaa3303f3;       (* arm_ORN X19 XZR X19 *)
+  0xaa3303f3;       (* arm_MVN X19 X19 *)
   0xaa1f03ea;       (* arm_MOV X10 XZR *)
   0xab13027f;       (* arm_CMN X19 X19 *)
   0xf86a786b;       (* arm_LDR X11 X3 (Shiftreg_Offset X10 3) *)
@@ -342,7 +333,7 @@ let bignum_modinv_mc =
   0xcb00014b;       (* arm_SUB X11 X10 X0 *)
   0xb5ffff0b;       (* arm_CBNZ X11 (word 2097120) *)
   0xf100e842;       (* arm_SUBS X2 X2 (rvalue (word 58)) *)
-  0x54ffdc28;       (* arm_BHI (word 2096004) *)
+  0x54ffdd48;       (* arm_BHI (word 2096040) *)
   0xa8c15bf5;       (* arm_LDP X21 X22 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c153f3;       (* arm_LDP X19 X20 SP (Postimmediate_Offset (iword (&16))) *)
   0xd65f03c0        (* arm_RET X30 *)
@@ -394,12 +385,20 @@ let lemma58 = prove
    `m divides e EXP 2 ==> (e * (e * x + y) + z == e * y + z) (mod m)`) THEN
   REWRITE_TAC[EXP_EXP] THEN MATCH_MP_TAC DIVIDES_EXP_LE_IMP THEN ARITH_TAC);;
 
+let lemmabit1 = prove
+ (`!x:int64. val(word_and x (word 2)) = 0 <=> EVEN(val(word_ushr x 1))`,
+  GEN_TAC THEN SUBST1_TAC(SYM(NUM_REDUCE_CONV `2 EXP 1`)) THEN
+  REWRITE_TAC[WORD_AND_POW2; GSYM NOT_ODD; GSYM BIT_LSB] THEN
+  REWRITE_TAC[BIT_WORD_USHR; ADD_CLAUSES; bitval] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  CONV_TAC(DEPTH_CONV(NUM_RED_CONV ORELSEC WORD_RED_CONV)));;
+
 let BIGNUM_MODINV_CORRECT = prove
  (`!k z x a y b w pc.
         nonoverlapping (w,8 * 3 * val k) (z,8 * val k) /\
         ALLPAIRS nonoverlapping
          [(w,8 * 3 * val k); (z,8 * val k)]
-         [(word pc,0x50c); (x,8 * val k); (y,8 * val k)] /\
+         [(word pc,0x4e8); (x,8 * val k); (y,8 * val k)] /\
         val k < 2 EXP 57
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_modinv_mc /\
@@ -407,7 +406,7 @@ let BIGNUM_MODINV_CORRECT = prove
                   C_ARGUMENTS [k;z;x;y;w] s /\
                   bignum_from_memory(x,val k) s = a /\
                   bignum_from_memory(y,val k) s = b)
-             (\s. read PC s = word(pc + 0x500) /\
+             (\s. read PC s = word(pc + 0x4dc) /\
                   (coprime(a,b) /\ ODD b /\ ~(b = 1)
                    ==> bignum_from_memory(z,val k) s < b /\
                        (a * bignum_from_memory(z,val k) s == 1) (mod b)))
@@ -585,7 +584,7 @@ let BIGNUM_MODINV_CORRECT = prove
   SUBGOAL_THEN `64 <= t /\ t <= 128 * k` STRIP_ASSUME_TAC THENL
    [EXPAND_TAC "t" THEN UNDISCH_TAC `~(k = 0)` THEN ARITH_TAC; ALL_TAC] THEN
 
-  ENSURES_WHILE_PUP_TAC `(t + 57) DIV 58` `pc + 0x80` `pc + 0x4fc`
+  ENSURES_WHILE_PUP_TAC `(t + 57) DIV 58` `pc + 0x80` `pc + 0x4d8`
     `\i s. (read X0 s = word k /\
             read X1 s = zz /\
             read X3 s = y /\
@@ -915,70 +914,70 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Now set up the somewhat intricate inner loop invariant ***)
 
-  ENSURES_WHILE_PUP_TAC `58` `pc + 0x128` `pc + 0x1a0`
-   `\i s. (read X0 s = word k /\
-           read X1 s = zz /\
-           read X2 s = word t /\
-           read X3 s = y /\
-           read X4 s = ww /\
-           read X5 s = word l /\
-           read X21 s = mm /\
-           read X22 s = nn /\
-           read X20 s = word v /\
-           bignum_from_memory (y,k) s = b /\
-           bignum_from_memory (ww,k) s = w /\
-           bignum_from_memory (zz,k) s = z /\
-           bignum_from_memory (mm,l) s = m /\
-           bignum_from_memory (nn,l) s = n /\
-           bignum_from_memory (mm,k) s = m0 /\
-           bignum_from_memory (nn,k) s = n0 /\
-           read X10 s = word(58 - i) /\
-           val(read X6 s) + val(read X7 s) <= 2 EXP i /\
-           val(read X8 s) + val(read X9 s) <= 2 EXP i /\
-           (ODD b
-           ==> ODD(val(read X16 s)) /\
-               gcd(&(val(read X6 s)) * &m - &(val(read X7 s)) * &n:int,
-                   &(val(read X8 s)) * &m - &(val(read X9 s)) * &n) =
-               &2 pow i * gcd(&m,&n) /\
-               ?q. (--(&1) pow q *
-                    (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n):int ==
-                    &2 pow i * &(val(read X15 s))) (mod (&2 pow 64)) /\
-                   (--(--(&1) pow q) *
-                    (&(val(read X8 s)) * &m - &(val(read X9 s)) * &n):int ==
-                    &2 pow i * &(val(read X16 s))) (mod (&2 pow 64)) /\
-                   let m' = --(&1) pow q *
-                            (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n)
-                   and n' = --(--(&1) pow q) *
-                            (&(val(read X8 s)) * &m - &(val(read X9 s)) * &n)
-                   and m_hi = val(read X13 s)
-                   and n_hi = val(read X14 s)
-                   and m_lo = val(read X15 s)
-                   and n_lo = val(read X16 s) in
-                   --(lowerr i) <= &m_hi - m' / &2 zpow (base + &i) /\
-                   &m_hi - m' / &2 zpow (base + &i) <= upperr i /\
-                   --(lowerr i) <= &n_hi - n' / &2 zpow (base + &i) /\
-                   &n_hi - n' / &2 zpow (base + &i) <= upperr i /\
-                   (min (&m) (&n) < &2 zpow base * &2 pow 5
-                    ==> abs(m') * abs(n') <= &2 pow i * &m * &n /\
-                        (i <= 57
-                         ==> &0 <= m' /\ &0 <= n' /\
-                             (m_hi < n_hi /\
-                              m_hi < 2 EXP 5 /\
-                              2 EXP 63 <= 2 EXP i * (n_hi + 31) /\
-                              &m_hi <= m' / &2 zpow (base + &i) /\
-                              m' / &2 zpow (base + &i) <= &m_hi + &1 \/
-                              n_hi < m_hi /\
-                              n_hi < 2 EXP 5 /\
-                              2 EXP 63 <= 2 EXP i * (m_hi + 31) /\
-                              n' / &2 zpow (base + &i) <= &n_hi + &1))) /\
-                   (&0 <= m' /\ &0 <= n' /\
-                    min m' n' <= &2 pow i * min (&m) (&n) /\
-                    m' * n' <= &2 pow i * &m * &n \/
-                    m' < &0 /\ &0 <= n' /\ m_hi < 16 /\
-                    &n_hi < min (&m) (&n) / &2 zpow base + &16 \/
-                    n' < &0 /\ &0 <= m' /\ n_hi < 16 /\
-                    &m_hi < min (&m) (&n) / &2 zpow base + &16))) /\
-          (read ZF s <=> i = 58)` THEN
+  ENSURES_WHILE_UP_TAC `58` `pc + 0x12c` `pc + 0x17c`
+   `\i s. read X0 s = word k /\
+          read X1 s = zz /\
+          read X2 s = word t /\
+          read X3 s = y /\
+          read X4 s = ww /\
+          read X5 s = word l /\
+          read X21 s = mm /\
+          read X22 s = nn /\
+          read X20 s = word v /\
+          bignum_from_memory (y,k) s = b /\
+          bignum_from_memory (ww,k) s = w /\
+          bignum_from_memory (zz,k) s = z /\
+          bignum_from_memory (mm,l) s = m /\
+          bignum_from_memory (nn,l) s = n /\
+          bignum_from_memory (mm,k) s = m0 /\
+          bignum_from_memory (nn,k) s = n0 /\
+          read X10 s = word(58 - i) /\
+          val(read X6 s) + val(read X7 s) <= 2 EXP i /\
+          val(read X8 s) + val(read X9 s) <= 2 EXP i /\
+          (read ZF s <=> EVEN(val(read X15 s))) /\
+          (ODD b
+          ==> ODD(val(read X16 s)) /\
+              gcd(&(val(read X6 s)) * &m - &(val(read X7 s)) * &n:int,
+                  &(val(read X8 s)) * &m - &(val(read X9 s)) * &n) =
+              &2 pow i * gcd(&m,&n) /\
+              ?q. (--(&1) pow q *
+                   (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n):int ==
+                   &2 pow i * &(val(read X15 s))) (mod (&2 pow 64)) /\
+                  (--(--(&1) pow q) *
+                   (&(val(read X8 s)) * &m - &(val(read X9 s)) * &n):int ==
+                   &2 pow i * &(val(read X16 s))) (mod (&2 pow 64)) /\
+                  let m' = --(&1) pow q *
+                           (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n)
+                  and n' = --(--(&1) pow q) *
+                           (&(val(read X8 s)) * &m - &(val(read X9 s)) * &n)
+                  and m_hi = val(read X13 s)
+                  and n_hi = val(read X14 s)
+                  and m_lo = val(read X15 s)
+                  and n_lo = val(read X16 s) in
+                  --(lowerr i) <= &m_hi - m' / &2 zpow (base + &i) /\
+                  &m_hi - m' / &2 zpow (base + &i) <= upperr i /\
+                  --(lowerr i) <= &n_hi - n' / &2 zpow (base + &i) /\
+                  &n_hi - n' / &2 zpow (base + &i) <= upperr i /\
+                  (min (&m) (&n) < &2 zpow base * &2 pow 5
+                   ==> abs(m') * abs(n') <= &2 pow i * &m * &n /\
+                       (i <= 57
+                        ==> &0 <= m' /\ &0 <= n' /\
+                            (m_hi < n_hi /\
+                             m_hi < 2 EXP 5 /\
+                             2 EXP 63 <= 2 EXP i * (n_hi + 31) /\
+                             &m_hi <= m' / &2 zpow (base + &i) /\
+                             m' / &2 zpow (base + &i) <= &m_hi + &1 \/
+                             n_hi < m_hi /\
+                             n_hi < 2 EXP 5 /\
+                             2 EXP 63 <= 2 EXP i * (m_hi + 31) /\
+                             n' / &2 zpow (base + &i) <= &n_hi + &1))) /\
+                  (&0 <= m' /\ &0 <= n' /\
+                   min m' n' <= &2 pow i * min (&m) (&n) /\
+                   m' * n' <= &2 pow i * &m * &n \/
+                   m' < &0 /\ &0 <= n' /\ m_hi < 16 /\
+                   &n_hi < min (&m) (&n) / &2 zpow base + &16 \/
+                   n' < &0 /\ &0 <= m' /\ n_hi < 16 /\
+                   &m_hi < min (&m) (&n) / &2 zpow base + &16))` THEN
   CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN REPEAT CONJ_TAC THENL
    [ARITH_TAC;
 
@@ -997,11 +996,16 @@ let BIGNUM_MODINV_CORRECT = prove
       GEN_REWRITE_TAC (LAND_CONV o BINOP_CONV)
        [BIGNUM_FROM_MEMORY_EQ_HIGHDIGITS] THEN
       ASM_REWRITE_TAC[] THEN STRIP_TAC] THEN
-    ARM_STEPS_TAC BIGNUM_MODINV_EXEC (1--20) THEN
+    ARM_STEPS_TAC BIGNUM_MODINV_EXEC (1--21) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[SUB_0; VAL_WORD_0; VAL_WORD_1] THEN
     REWRITE_TAC[WORD_SUB_LZERO; WORD_NEG_EQ_0; VAL_EQ_0] THEN
     REPLICATE_TAC 2 (CONJ_TAC THENL [ARITH_TAC; ALL_TAC]) THEN
+    CONJ_TAC THENL
+     [REWRITE_TAC[EVEN_VAL_WORD; WORD_AND_1_BITVAL] THEN
+      REWRITE_TAC[WORD_BITVAL_EQ_0; BIT_LSB; NOT_ODD] THEN
+      REWRITE_TAC[VAL_WORD_BIGDIGIT];
+      ALL_TAC] THEN
     SUBGOAL_THEN
      `word (bigdigit m0 0):int64 = word(m MOD 2 EXP 64) /\
       word (bigdigit n0 0):int64 = word(n MOD 2 EXP 64)`
@@ -1305,33 +1309,20 @@ let BIGNUM_MODINV_CORRECT = prove
      [`m_m:num`; `m_n:num`; `n_m:num`; `n_n:num`;
       `m_hi:num`; `n_hi:num`; `m_lo:num`; `n_lo:num`] THEN
 
-    ARM_STEPS_TAC BIGNUM_MODINV_EXEC (1--30) THEN
+    ARM_STEPS_TAC BIGNUM_MODINV_EXEC (1--20) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
 
-    DISCARD_STATE_TAC "s30" THEN
+    DISCARD_STATE_TAC "s20" THEN
 
     MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN CONJ_TAC THENL
      [REWRITE_TAC[ARITH_RULE `n - (i + 1) = n - i - 1`] THEN
       GEN_REWRITE_TAC RAND_CONV [WORD_SUB] THEN
       ASM_SIMP_TAC[ARITH_RULE `i < 58 ==> 1 <= 58 - i`];
       DISCH_THEN SUBST1_TAC] THEN
-    REWRITE_TAC[CONJ_ASSOC] THEN CONJ_TAC THENL
-     [REWRITE_TAC[GSYM CONJ_ASSOC];
-      VAL_INT64_TAC `58 - (i + 1)` THEN
-      ASM_REWRITE_TAC[] THEN SIMPLE_ARITH_TAC] THEN
 
-    SUBGOAL_THEN
-     `val(word_sub (word 2)
-                   (word_add (word_and (word m_lo) (word 1))
-                             (word (bitval (m_hi < n_hi)))):int64) = 0 <=>
-      m_hi < n_hi /\ ODD m_lo`
-    SUBST1_TAC THENL
-     [POP_ASSUM_LIST(K ALL_TAC) THEN
-      REWRITE_TAC[WORD_AND_1; BIT_LSB_WORD; bitval] THEN
-      REPEAT(COND_CASES_TAC THEN ASM_REWRITE_TAC[]) THEN
-      CONV_TAC WORD_REDUCE_CONV THEN CONV_TAC NUM_REDUCE_CONV;
-      ALL_TAC] THEN
-    REWRITE_TAC[WORD_AND_1_BITVAL; VAL_WORD_BITVAL; BITVAL_EQ_0] THEN
+    REWRITE_TAC[lemmabit1; NOT_EVEN] THEN
+    REWRITE_TAC[MESON[VAL_WORD_0; LE_0; NOT_LT]
+     `val(if p then x else word 0) <= a <=> ~(a < val x /\ p)`] THEN
 
     SUBGOAL_THEN
      `val(word(n_m + n_m):int64) = n_m + n_m /\
@@ -1352,9 +1343,9 @@ let BIGNUM_MODINV_CORRECT = prove
       ALL_TAC] THEN
 
     ASM_CASES_TAC `m_hi < n_hi /\ ODD m_lo` THEN
-    ASM_REWRITE_TAC[BIT_LSB_WORD] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[GSYM WORD_ADD] THEN
-    REWRITE_TAC[VAL_WORD_USHR; EXP_1] THEN
+    ASM_REWRITE_TAC[WORD_NEG_SUB] THEN
+    TRY COND_CASES_TAC THEN ASM_REWRITE_TAC[GSYM WORD_ADD] THEN
+    ASM_REWRITE_TAC[VAL_WORD_USHR; EXP_1; ADD_CLAUSES; WORD_SUB_0] THEN
     REPLICATE_TAC 2 (CONJ_TAC THENL
      [REWRITE_TAC[EXP_ADD] THEN MAP_EVERY UNDISCH_TAC
        [`m_m + m_n <= 2 EXP i`; `n_m + n_n <= 2 EXP i`] THEN
@@ -2029,7 +2020,9 @@ let BIGNUM_MODINV_CORRECT = prove
     RULE_ASSUM_TAC(REWRITE_RULE[TAUT `~p /\ ~q ==> r <=> p \/ q \/ r`]) THEN
     REWRITE_TAC[TAUT `~p /\ ~q ==> r <=> p \/ q \/ r`] THEN
     ARM_STEPS_TAC BIGNUM_MODINV_EXEC [1] THEN
-    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+    SIMP_TAC[VAL_WORD_EQ; DIMINDEX_64; ARITH_RULE `58 - i < 2 EXP 64`] THEN
+    ASM_REWRITE_TAC[SUB_EQ_0; NOT_LE];
 
     ALL_TAC] THEN
 
@@ -2051,7 +2044,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   GLOBALIZE_PRECONDITION_TAC THEN ASM_REWRITE_TAC[] THEN
 
-  ENSURES_SEQUENCE_TAC `pc + 0x1a4`
+  ENSURES_SEQUENCE_TAC `pc + 0x180`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -2270,7 +2263,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
  (*** Congruence cross-multiplication and shift-by-6 "congloop" ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x22c`
+  ENSURES_SEQUENCE_TAC `pc + 0x208`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -2294,7 +2287,7 @@ let BIGNUM_MODINV_CORRECT = prove
         2 EXP (64 * k) * val(read X14 s) + bignum_from_memory (zz,k) s =
         2 EXP 6 * (n_m * w + n_n * z)` THEN
   CONJ_TAC THENL
-   [ENSURES_WHILE_UP_TAC `k:num` `pc + 0x1b8` `pc + 0x21c`
+   [ENSURES_WHILE_UP_TAC `k:num` `pc + 0x194` `pc + 0x1f8`
      `\i s. read X0 s = word k /\
             read X1 s = zz /\
             read X2 s = word t /\
@@ -2427,7 +2420,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The first Montgomery operation ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x2d8`
+  ENSURES_SEQUENCE_TAC `pc + 0x2b4`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -2467,7 +2460,7 @@ let BIGNUM_MODINV_CORRECT = prove
       REWRITE_TAC[VAL_WORD; DIMINDEX_64; MOD_MOD_REFL];
       ALL_TAC] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x24c`
+    ENSURES_SEQUENCE_TAC `pc + 0x228`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -2532,7 +2525,7 @@ let BIGNUM_MODINV_CORRECT = prove
     GLOBALIZE_PRECONDITION_TAC THEN
     FIRST_X_ASSUM(X_CHOOSE_THEN `r0:num` STRIP_ASSUME_TAC) THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x280`
+    ENSURES_SEQUENCE_TAC `pc + 0x25c`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -2575,7 +2568,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
       VAL_INT64_TAC `k - 1` THEN
 
-      ENSURES_WHILE_AUP_TAC `1` `k:num` `pc + 0x250` `pc + 0x278`
+      ENSURES_WHILE_AUP_TAC `1` `k:num` `pc + 0x22c` `pc + 0x254`
        `\i s. read X0 s = word k /\
               read X1 s = zz /\
               read X2 s = word t /\
@@ -2679,7 +2672,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
    (*** The final digit write ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x290`
+    ENSURES_SEQUENCE_TAC `pc + 0x26c`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -2744,7 +2737,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** Comparison operation "wcmploop" ***)
 
-    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x294` `pc + 0x2a4`
+    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x270` `pc + 0x280`
      `\i s. read X0 s = word k /\
             read X1 s = zz /\
             read X2 s = word t /\
@@ -2799,7 +2792,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     ABBREV_TAC `cg <=> b <= 2 EXP (64 * k) * bitval cf + w2` THEN
 
-    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x2b8` `pc + 0x2d0`
+    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x294` `pc + 0x2ac`
      `\i s. read X0 s = word k /\
             read X1 s = zz /\
             read X2 s = word t /\
@@ -2956,7 +2949,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The second Montgomery operation ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x384`
+  ENSURES_SEQUENCE_TAC `pc + 0x360`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -2997,7 +2990,7 @@ let BIGNUM_MODINV_CORRECT = prove
       REWRITE_TAC[VAL_WORD; DIMINDEX_64; MOD_MOD_REFL];
       ALL_TAC] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x2f8`
+    ENSURES_SEQUENCE_TAC `pc + 0x2d4`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -3063,7 +3056,7 @@ let BIGNUM_MODINV_CORRECT = prove
     GLOBALIZE_PRECONDITION_TAC THEN
     FIRST_X_ASSUM(X_CHOOSE_THEN `r0:num` STRIP_ASSUME_TAC) THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x32c`
+    ENSURES_SEQUENCE_TAC `pc + 0x308`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -3107,7 +3100,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
       VAL_INT64_TAC `k - 1` THEN
 
-      ENSURES_WHILE_AUP_TAC `1` `k:num` `pc + 0x2fc` `pc + 0x324`
+      ENSURES_WHILE_AUP_TAC `1` `k:num` `pc + 0x2d8` `pc + 0x300`
        `\i s. read X0 s = word k /\
               read X1 s = zz /\
               read X2 s = word t /\
@@ -3212,7 +3205,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
    (*** The final digit write ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x33c`
+    ENSURES_SEQUENCE_TAC `pc + 0x318`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -3278,7 +3271,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** Comparison operation "zcmploop" ***)
 
-    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x340` `pc + 0x350`
+    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x31c` `pc + 0x32c`
      `\i s. read X0 s = word k /\
             read X1 s = zz /\
             read X2 s = word t /\
@@ -3334,7 +3327,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     ABBREV_TAC `cg <=> b <= 2 EXP (64 * k) * bitval cf + z2` THEN
 
-    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x364` `pc + 0x37c`
+    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x340` `pc + 0x358`
      `\i s. read X0 s = word k /\
             read X1 s = zz /\
             read X2 s = word t /\
@@ -3504,7 +3497,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The cross-multiplications loop updating m and n ***)
 
-  ENSURES_WHILE_UP_TAC `l:num` `pc + 0x398` `pc + 0x3fc`
+  ENSURES_WHILE_UP_TAC `l:num` `pc + 0x374` `pc + 0x3d8`
    `\i s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -3623,7 +3616,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Clean sign flag for m' (back to integers for now) ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x404`
+  ENSURES_SEQUENCE_TAC `pc + 0x3e0`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -3696,7 +3689,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Optional right shift and negation of m, negloop1 ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x450`
+  ENSURES_SEQUENCE_TAC `pc + 0x42c`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -3729,7 +3722,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** Attempt to make a unified break at negskip1 to handle l = 1 ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x440`
+    ENSURES_SEQUENCE_TAC `pc + 0x41c`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -3783,7 +3776,7 @@ let BIGNUM_MODINV_CORRECT = prove
         REWRITE_TAC[BITVAL_CLAUSES; ADD_CLAUSES];
         ALL_TAC] THEN
 
-      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x418` `pc + 0x43c`
+      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x3f4` `pc + 0x418`
        `\i s. read X0 s = word k /\
               read X1 s = zz /\
               read X2 s = word t /\
@@ -4059,7 +4052,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Clean sign flag for n' (back to integers for now) ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x450`
+  ENSURES_SEQUENCE_TAC `pc + 0x42c`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -4129,7 +4122,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Optional right shift and negation of n, negloop2 ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x49c`
+  ENSURES_SEQUENCE_TAC `pc + 0x478`
    `\s. read X0 s = word k /\
         read X1 s = zz /\
         read X2 s = word t /\
@@ -4160,7 +4153,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** Attempt to make a unified break at negskip2 to handle l = 1 ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x48c`
+    ENSURES_SEQUENCE_TAC `pc + 0x468`
      `\s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -4212,7 +4205,7 @@ let BIGNUM_MODINV_CORRECT = prove
         REWRITE_TAC[BITVAL_CLAUSES; ADD_CLAUSES];
         ALL_TAC] THEN
 
-      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x464` `pc + 0x488`
+      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x440` `pc + 0x464`
        `\i s. read X0 s = word k /\
               read X1 s = zz /\
               read X2 s = word t /\
@@ -4485,7 +4478,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The first optional modular negation "wfliploop" ***)
 
-  ENSURES_WHILE_UP_TAC `k:num` `pc + 0x4a4` `pc + 0x4c0`
+  ENSURES_WHILE_UP_TAC `k:num` `pc + 0x480` `pc + 0x49c`
    `\i s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -4550,7 +4543,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The second optional modular negation "zfliploop" ***)
 
-  ENSURES_WHILE_UP_TAC `k:num` `pc + 0x4d4` `pc + 0x4f0`
+  ENSURES_WHILE_UP_TAC `k:num` `pc + 0x4b0` `pc + 0x4cc`
    `\i s. read X0 s = word k /\
           read X1 s = zz /\
           read X2 s = word t /\
@@ -4845,7 +4838,7 @@ let BIGNUM_MODINV_SUBROUTINE_CORRECT = prove
         ALLPAIRS nonoverlapping
          [(w,8 * 3 * val k); (z,8 * val k);
           (word_sub stackpointer (word 32),32)]
-         [(word pc,0x50c); (x,8 * val k); (y,8 * val k)] /\
+         [(word pc,0x4e8); (x,8 * val k); (y,8 * val k)] /\
         val k < 2 EXP 57
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_modinv_mc /\

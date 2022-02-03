@@ -285,72 +285,64 @@ toploop:
                 mov     n_nshort, 1
                 mov     ishort, CHUNKSIZE
 
+// Stash more variables over the inner loop to free up regs
+
+                mov     mat_mn, k
+                mov     mat_nm, l
+                mov     mat_mm, p1
+                mov     mat_nn, p2
+
+// Conceptually in the inner loop we follow these steps:
+//
+// * If m_lo is odd and m_hi < n_hi, then swap the four pairs
+//    (m_hi,n_hi); (m_lo,n_lo); (m_m,n_m); (m_n,n_n)
+//
+// * Now, if m_lo is odd (old or new, doesn't matter as initial n_lo is odd)
+//    m_hi := m_hi - n_hi, m_lo := m_lo - n_lo
+//    m_m  := m_m + n_m, m_n := m_n + n_n
+//
+// * Halve and double them
+//     m_hi := m_hi / 2, m_lo := m_lo / 2
+//     n_m := n_m * 2, n_n := n_n * 2
+//
+// The actual computation computes updates before actually swapping and
+// then corrects as needed.
+
 innerloop:
 
-// Not quite the same: the value b is in the flags as a NZ condition
-//
-// b = (m_lo & 1ull) & (m_hi < n_hi);
-
-                mov     rax, m_hi
-                sub     rax, n_hi
-                sbb     rax, rax
-                and     rax, 1
-                test    rax, m_lo
-
-// if (b) { swap(m_hi,n_hi); swap(m_lo,n_lo); }
-
-                mov     rax, m_hi
-                cmovnz  m_hi, n_hi
-                cmovnz  n_hi, rax
-
-                mov     rax, m_lo
-                cmovnz  m_lo, n_lo
-                cmovnz  n_lo, rax
-
-// if (b) { swap(m_m,n_m); swap(m_n,n_n); }
-
-                mov     rax, m_m
-                cmovnz  m_m, n_m
-                cmovnz  n_m, rax
-
-                mov     rax, m_n
-                cmovnz  m_n, n_n
-                cmovnz  n_n, rax
-
-// This time actually put the condition in RBX as a mask
-//
-// b = (m_lo & 1ull);
-
-                mov     rbx, m_lo
-                and     rbx, 1
-                neg     rbx
-
-// if (b) { m_hi -= n_hi; m_lo -= n_lo; }
-
                 mov     rax, n_hi
-                and     rax, rbx
-                sub     m_hi, rax
-                mov     rax, n_lo
-                and     rax, rbx
-                sub     m_lo, rax
+                mov     k, n_lo
+                mov     l, n_m
+                mov     p2, n_n
+                mov     rbx, 1
+                neg     k
+                and     rbx, m_lo
+                cmovz   rax, rbx
+                cmovz   k, rbx
+                cmovz   l, rbx
+                cmovz   p2, rbx
+                mov     rbx, m_hi
 
-// if (b) { m_m += n_m; m_n += n_n; }
+                add     k, m_lo
+                mov     p1, k
+                neg     k
+                sub     rbx, rax
 
-                mov     rax, n_m
-                and     rax, rbx
-                add     m_m, rax
+                cmovc   n_hi, m_hi
+                cmovc   n_lo, m_lo
+                cmovc   n_m, m_m
+                cmovc   n_n, m_n
+                cmovnc  k, p1
+                mov     m_hi, rbx
+                not     rbx
+                inc     rbx
+                cmovc   m_hi, rbx
 
-                mov     rax, n_n
-                and     rax, rbx
-                add     m_n, rax
-
-// m_hi >>= 1; m_lo >>= 1;
-
+                mov     m_lo, k
+                add     m_m, l
+                add     m_n, p2
                 shr     m_hi, 1
                 shr     m_lo, 1
-
-// n_m <<= 1; n_n <<= 1;
-
                 lea     n_m, [n_m+n_m]
                 lea     n_n, [n_n+n_n]
 
@@ -358,6 +350,13 @@ innerloop:
 
                 dec     i
                 jnz     innerloop
+
+// Unstash the temporary variables
+
+                mov     k,mat_mn
+                mov     l,mat_nm
+                mov     p1,mat_mm
+                mov     p2,mat_nn
 
 // Put the matrix entries in memory since we're out of registers
 // We pull them out repeatedly in the next loop
