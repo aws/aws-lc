@@ -187,6 +187,7 @@ enum {
        TEST_BIGNUM_MUL_6_12,
        TEST_BIGNUM_MUL_6_12_ALT,
        TEST_BIGNUM_MUL_8_16,
+       TEST_BIGNUM_MUL_8_16_ALT,
        TEST_BIGNUM_MUL_P256K1,
        TEST_BIGNUM_MUL_P256K1_ALT,
        TEST_BIGNUM_MUL_P521,
@@ -223,6 +224,7 @@ enum {
        TEST_BIGNUM_SQR_6_12,
        TEST_BIGNUM_SQR_6_12_ALT,
        TEST_BIGNUM_SQR_8_16,
+       TEST_BIGNUM_SQR_8_16_ALT,
        TEST_BIGNUM_SQR_P256K1,
        TEST_BIGNUM_SQR_P256K1_ALT,
        TEST_BIGNUM_SQR_P521,
@@ -4670,6 +4672,10 @@ int test_bignum_mul_8_16(void)
 { return test_bignum_mul_specific(16,8,8,"bignum_mul_8_16",bignum_mul_8_16);
 }
 
+int test_bignum_mul_8_16_alt(void)
+{ return test_bignum_mul_specific(16,8,8,"bignum_mul_8_16_alt",bignum_mul_8_16_alt);
+}
+
 int test_bignum_mul_p256k1(void)
 { uint64_t i, k;
   printf("Testing bignum_mul_p256k1 with %d cases\n",tests);
@@ -5743,6 +5749,10 @@ int test_bignum_sqr_6_12_alt(void)
 
 int test_bignum_sqr_8_16(void)
 { return test_bignum_sqr_specific(16,8,"bignum_sqr_8_16",bignum_sqr_8_16);
+}
+
+int test_bignum_sqr_8_16_alt(void)
+{ return test_bignum_sqr_specific(16,8,"bignum_sqr_8_16_alt",bignum_sqr_8_16_alt);
 }
 
 int test_bignum_sqr_p256k1(void)
@@ -6905,6 +6915,7 @@ int test_all(void)
   dotest(test_bignum_mul_6_12);
   dotest(test_bignum_mul_6_12_alt);
   dotest(test_bignum_mul_8_16);
+  dotest(test_bignum_mul_8_16_alt);
   dotest(test_bignum_mul_p256k1);
   dotest(test_bignum_mul_p256k1_alt);
   dotest(test_bignum_mul_p521);
@@ -6941,6 +6952,7 @@ int test_all(void)
   dotest(test_bignum_sqr_6_12);
   dotest(test_bignum_sqr_6_12_alt);
   dotest(test_bignum_sqr_8_16);
+  dotest(test_bignum_sqr_8_16_alt);
   dotest(test_bignum_sqr_p256k1);
   dotest(test_bignum_sqr_p256k1_alt);
   dotest(test_bignum_sqr_p521);
@@ -7095,6 +7107,7 @@ int test_allnonbmi()
   dotest(test_bignum_mul);
   dotest(test_bignum_mul_4_8_alt);
   dotest(test_bignum_mul_6_12_alt);
+  dotest(test_bignum_mul_8_16_alt);
   dotest(test_bignum_mul_p256k1_alt);
   dotest(test_bignum_muladd10);
   dotest(test_bignum_mux);
@@ -7126,6 +7139,7 @@ int test_allnonbmi()
   dotest(test_bignum_sqr);
   dotest(test_bignum_sqr_4_8_alt);
   dotest(test_bignum_sqr_6_12_alt);
+  dotest(test_bignum_sqr_8_16_alt);
   dotest(test_bignum_sqr_p256k1_alt);
   dotest(test_bignum_sub);
   dotest(test_bignum_sub_p256);
@@ -7346,6 +7360,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MUL_6_12:           return test_bignum_mul_6_12();
      case TEST_BIGNUM_MUL_6_12_ALT:       return test_bignum_mul_6_12_alt();
      case TEST_BIGNUM_MUL_8_16:           return test_bignum_mul_8_16();
+     case TEST_BIGNUM_MUL_8_16_ALT:       return test_bignum_mul_8_16_alt();
      case TEST_BIGNUM_MUL_P256K1:         return test_bignum_mul_p256k1();
      case TEST_BIGNUM_MUL_P256K1_ALT:     return test_bignum_mul_p256k1_alt();
      case TEST_BIGNUM_MUL_P521:           return test_bignum_mul_p521();
@@ -7382,6 +7397,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_SQR_6_12:           return test_bignum_sqr_6_12();
      case TEST_BIGNUM_SQR_6_12_ALT:       return test_bignum_sqr_6_12_alt();
      case TEST_BIGNUM_SQR_8_16:           return test_bignum_sqr_8_16();
+     case TEST_BIGNUM_SQR_8_16_ALT:       return test_bignum_sqr_8_16_alt();
      case TEST_BIGNUM_SQR_P256K1:         return test_bignum_sqr_p256k1();
      case TEST_BIGNUM_SQR_P256K1_ALT:     return test_bignum_sqr_p256k1_alt();
      case TEST_BIGNUM_SQR_P521:           return test_bignum_sqr_p521();

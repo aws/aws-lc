@@ -91,6 +91,7 @@ bignum_montsqr_p384_alt
 bignum_mul
 bignum_mul_4_8_alt
 bignum_mul_6_12_alt
+bignum_mul_8_16_alt
 bignum_mul_p256k1_alt
 bignum_muladd10
 bignum_mux
@@ -122,6 +123,7 @@ bignum_shr_small
 bignum_sqr
 bignum_sqr_4_8_alt
 bignum_sqr_6_12_alt
+bignum_sqr_8_16_alt
 bignum_sqr_p256k1_alt
 bignum_sub
 bignum_sub_p256
