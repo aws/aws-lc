@@ -22,5 +22,5 @@ if [[ "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then
 fi
 
 echo "Testing shared AWS-LC in FIPS Debug mode in a different folder."
-BUILD_ROOT=$(realpath "${SRC_ROOT}/../aws-lc-external_build")
+BUILD_ROOT=$(mktemp -d)
 fips_build_and_test -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1
