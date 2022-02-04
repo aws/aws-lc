@@ -1700,8 +1700,9 @@ static int has_uint128_and_not_small() {
 }
 
 // Test for out-of-range coordinates in public-key validation in
-// |EC_KEY_check_fips|. For P-224 and P521 the test can only be exercised
-// when the coordinates in the raw point are not in Montgomery representation.
+// |EC_KEY_check_fips|. This test can only be exercised when the coordinates 
+// in the raw point are not in Montgomery representation, which is the case 
+// for P-224 in some builds (see below) and for P-521.
 TEST(ECTest, LargeXCoordinateVectors) {
   int line;
   const char *file;

@@ -233,7 +233,9 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     // Now replace the x-coordinate with the larger one, x+p;
     // ECDH fails |EC_KEY_check_fips| or in the actual shared secret computation
     // in all curves (except for P-224 and P-521 in non-FIPS build).
-    // TODO: Do we want to widen the check for the non-FIPS builds?
+    // TODO: Do we want to change the code to apply the FIPS check to non-FIPS
+    // builds, or we can allow the coordinates to be larger than the modulus
+    // as long as they're correct?
     OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes,
                    (const uint8_t *)xpp.get()->d, len);
     ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),

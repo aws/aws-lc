@@ -132,10 +132,12 @@ static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
   fiat_p384_selectznz(out, !!t, z, nz);
 }
 
+// NOTE: the input and output are in little-endian representation.
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
   p384_felem_from_bytes(out, in->bytes);
 }
 
+// NOTE: the input and output are in little-endian representation.
 static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
   // This works because 384 is a multiple of 64, so there are no excess bytes to
   // zero when rounding up to |BN_ULONG|s.
@@ -762,14 +764,14 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 
   // Process the remaining digits of the scalar.
   for (size_t i = P384_MUL_NWINDOWS - 2; i < P384_MUL_NWINDOWS - 1; i--) {
-    // Double |res| 5 times in each iteration.
+    // Double |res| 7 times in each iteration.
     for (size_t j = 0; j < P384_MUL_WSIZE; j++) {
       p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
     }
 
     int16_t d = rnaf[i];
     // is_neg = (d < 0) ? 1 : 0
-    int16_t is_neg = (d >> 7) & 1;
+    int16_t is_neg = (d >> 15) & 1;
     // d = abs(d)
     d = (d ^ -is_neg) + is_neg;
 

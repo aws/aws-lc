@@ -116,10 +116,12 @@ static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
   fiat_secp521r1_selectznz(out, !!t, z, nz);
 }
 
+// NOTE: the input and output are in little-endian representation.
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
   p521_felem_from_bytes(out, in->bytes);
 }
 
+// NOTE: the input and output are in little-endian representation.
 static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
   // |p521_felem_to_bytes| function will write the result to the first 66 bytes
   // of |out| which is exactly how many bytes are needed to represent a 521-bit
@@ -139,8 +141,8 @@ static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
 //   https://arxiv.org/abs/2007.11481
 static void p521_felem_inv(p521_felem output, const p521_felem t1) {
     /* temporary variables */
-    p521_felem acc, t128, t16, t2, t256, t32, t4;
-    p521_felem t512, t516, t518, t519, t64, t8;
+    p521_felem acc, t2, t4, t8, t16, t32, t64;
+    p521_felem t128, t256, t512, t516, t518, t519;
 
     p521_felem_sqr(acc, t1);
     p521_felem_mul(t2, acc, t1);
@@ -530,12 +532,12 @@ static void p521_felem_mul_scalar_rwnaf(int16_t *out, const unsigned char *in) {
   out[P521_MUL_NWINDOWS - 1] = window;
 }
 
-// fiat_p521_select_point selects the |idx|-th projective point from the given
+// p521_select_point selects the |idx|-th projective point from the given
 // precomputed table and copies it to |out| in constant time.
-static void fiat_p521_select_point(p521_felem out[3],
-                                   size_t idx,
-                                   p521_felem table[][3],
-                                   size_t table_size) {
+static void p521_select_point(p521_felem out[3],
+                              size_t idx,
+                              p521_felem table[][3],
+                              size_t table_size) {
   OPENSSL_memset(out, 0, sizeof(p521_felem) * 3);
   for (size_t i = 0; i < table_size; i++) {
     p521_limb_t mismatch = i ^ idx;
@@ -545,12 +547,12 @@ static void fiat_p521_select_point(p521_felem out[3],
   }
 }
 
-// fiat_p521_select_point_affine selects the |idx|-th affine point from
+// p521_select_point_affine selects the |idx|-th affine point from
 // the given precomputed table and copies it to |out| in constant-time.
-static void fiat_p521_select_point_affine(p521_felem out[2],
-                                          size_t idx,
-                                          const p521_felem table[][2],
-                                          size_t table_size) {
+static void p521_select_point_affine(p521_felem out[2],
+                                     size_t idx,
+                                     const p521_felem table[][2],
+                                     size_t table_size) {
   OPENSSL_memset(out, 0, sizeof(p521_felem) * 2);
   for (size_t i = 0; i < table_size; i++) {
     p521_limb_t mismatch = i ^ idx;
@@ -623,7 +625,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   // the most significant digit of the recoded scalar (note that this digit
   // can't be negative).
   int16_t idx = rnaf[P521_MUL_NWINDOWS - 1] >> 1;
-  fiat_p521_select_point(res, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
+  p521_select_point(res, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
 
   // Process the remaining digits of the scalar.
   for (size_t i = P521_MUL_NWINDOWS - 2; i < P521_MUL_NWINDOWS - 1; i--) {
@@ -641,7 +643,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
     idx = d >> 1;
 
     // Select the point to add, in constant time.
-    fiat_p521_select_point(tmp, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
+    p521_select_point(tmp, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
 
     // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
     p521_felem_opp(ftmp, tmp[1]);
@@ -653,10 +655,6 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                    0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
 
   }
-
-  p521_to_generic(&r->X, res[0]);
-  p521_to_generic(&r->Y, res[1]);
-  p521_to_generic(&r->Z, res[2]);
 
   // Conditionally subtract P if the scalar is even, in constant-time.
   // First, compute |tmp| = |res| + (-P).
@@ -773,8 +771,8 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
       int16_t idx = d >> 1;
 
       // Select the point to add, in constant time.
-      fiat_p521_select_point_affine(tmp, idx, p521_g_pre_comp[j / 4],
-                                    P521_MUL_TABLE_SIZE);
+      p521_select_point_affine(tmp, idx, p521_g_pre_comp[j / 4],
+                               P521_MUL_TABLE_SIZE);
 
       // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
       p521_felem_opp(ftmp, tmp[1]);

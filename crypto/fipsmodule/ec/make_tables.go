@@ -303,7 +303,7 @@ static const p521_felem p521_g_pre_comp[19][64][2] = `
 	// P-521 Fiat-crypto implementation for 32-bit systems represents a field
 	// element by an array of digits where digits have bit-size as listed below.
 	var bitSizes = [...]uint {28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 27}
-  if err := writeTables(f, curve, tables, true, 4, writeU32Custom, bitSizes[:]); err != nil {
+	if err := writeTables(f, curve, tables, true, 4, writeU32Custom, bitSizes[:]); err != nil {
 		return err
 	}
 	if _, err := f.WriteString(";\n#endif\n"); err != nil {
@@ -349,8 +349,8 @@ func makeOddMultiples(curve elliptic.Curve, n, shift int) [][2]*big.Int {
 	x2, y2 := curve.Double(x, y)
 
 	for i := 1; i < n; i++ {
-	  x, y := curve.Add(ret[i-1][0], ret[i-1][1], x2, y2)
-	  ret[i] =[2]*big.Int{x, y}
+		x, y := curve.Add(ret[i-1][0], ret[i-1][1], x2, y2)
+		ret[i] =[2]*big.Int{x, y}
 	}
 
 	return ret
@@ -413,7 +413,7 @@ func bigIntToU64s(curve elliptic.Curve, n *big.Int) []uint64 {
 }
 
 // Convert big int to an array of 58-bit digits.
-// This is needed for P-521 Fiat-crypto implementation.
+// This is needed for P-521 Fiat-crypto implementation in third_party/fiat/p521_64.h.
 func bigIntToU58s(curve elliptic.Curve, n *big.Int) []uint64 {
 	words := (curve.Params().BitSize + 57) / 58
 	ret := make([]uint64, words)
@@ -428,13 +428,13 @@ func bigIntToU58s(curve elliptic.Curve, n *big.Int) []uint64 {
 
 // Convert big int to an array of digits where each digit
 // has bit-size as specified in the input bitSizes array
-// This is needed for P-521 Fiat-crypto implementation.
+// This is needed for P-521 Fiat-crypto implementation in third_party/fiat/p521_32.h.
 func bigIntToUCustom(curve elliptic.Curve, n *big.Int, bitSizes []uint) []uint64 {
 	words := len(bitSizes)
 	ret := make([]uint64, words)
 	tmp := new(big.Int).Set(n)
-  for i, bits := range bitSizes {
-    mask := big.NewInt((1 << bits) - 1)
+	for i, bits := range bitSizes {
+		mask := big.NewInt((1 << bits) - 1)
 		ret[i] = new(big.Int).And(tmp, mask).Uint64()
 		tmp.Rsh(tmp, bits)
 	}
