@@ -1,0 +1,23 @@
+name: macOS CI
+
+# Workflow syntax.
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+on:
+  pull_request:
+    branches:
+      - 'main'
+      - 'fips-*'
+
+env:
+  PACKAGE_NAME: aws-lc
+
+jobs:
+  macOS:
+    runs-on: macos-11 # latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build ${{ env.PACKAGE_NAME }}
+      run: |
+        ./tests/ci/run_posix_tests.sh
+
+# TODO(add fips build)

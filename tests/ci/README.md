@@ -65,12 +65,7 @@ CodeBuild|clang 9.0.1|aarch64|Ubuntu 20.04
 CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04
 CodeBuild|clang 10.0.0|aarch64|Ubuntu 20.04
 CodeBuild|Visual Studio 2015|x86-64|Windows Server 10
-~~Travis~~|~~Xcode 11*~~|~~x86-64~~|~~macOS 10.14~~
-
-(macOS CI dimension is currently disabled)
-
-\* Apple Xcode 11 supplies what Apple calls clang 11 which is equivalent to llvm
-clang 8.0.0
+GitHub Workflow|AppleClang 13.0.0|x86-64|macOS 11
 
 ### Sanitizer tests
 Runs all tests with:
