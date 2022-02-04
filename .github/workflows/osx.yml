@@ -19,3 +19,5 @@ jobs:
     - name: Build ${{ env.PACKAGE_NAME }}
       run: |
         ./tests/ci/run_posix_tests.sh
+
+# TODO(add fips build)
