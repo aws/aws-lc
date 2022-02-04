@@ -10,6 +10,8 @@ on:
 
 env:
   PACKAGE_NAME: aws-lc
+  # Used to enable ASAN test dimension.
+  AWSLC_NO_ASM_FIPS: 1
 
 jobs:
   macOS:
