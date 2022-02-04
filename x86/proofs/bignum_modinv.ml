@@ -31,8 +31,8 @@ let bignum_modinv_mc =
   0x41; 0x57;              (* PUSH (% r15) *)
   0x48; 0x83; 0xec; 0x50;  (* SUB (% rsp) (Imm8 (word 80)) *)
   0x48; 0x85; 0xff;        (* TEST (% rdi) (% rdi) *)
-  0x0f; 0x84; 0x1d; 0x05; 0x00; 0x00;
-                           (* JE (Imm32 (word 1309)) *)
+  0x0f; 0x84; 0x3b; 0x05; 0x00; 0x00;
+                           (* JE (Imm32 (word 1339)) *)
   0x48; 0x89; 0x74; 0x24; 0x40;
                            (* MOV (Memop Quadword (%% (rsp,64))) (% rsi) *)
   0x4c; 0x89; 0x44; 0x24; 0x38;
@@ -142,44 +142,55 @@ let bignum_modinv_mc =
                            (* MOV (% edx) (Imm32 (word 1)) *)
   0x41; 0xb9; 0x3a; 0x00; 0x00; 0x00;
                            (* MOV (% r9d) (Imm32 (word 58)) *)
-  0x4c; 0x89; 0xe0;        (* MOV (% rax) (% r12) *)
-  0x48; 0x29; 0xe8;        (* SUB (% rax) (% rbp) *)
-  0x48; 0x19; 0xc0;        (* SBB (% rax) (% rax) *)
-  0x48; 0x83; 0xe0; 0x01;  (* AND (% rax) (Imm8 (word 1)) *)
-  0x4c; 0x85; 0xf0;        (* TEST (% rax) (% r14) *)
-  0x4c; 0x89; 0xe0;        (* MOV (% rax) (% r12) *)
-  0x4c; 0x0f; 0x45; 0xe5;  (* CMOVNE (% r12) (% rbp) *)
-  0x48; 0x0f; 0x45; 0xe8;  (* CMOVNE (% rbp) (% rax) *)
-  0x4c; 0x89; 0xf0;        (* MOV (% rax) (% r14) *)
-  0x4c; 0x0f; 0x45; 0xf6;  (* CMOVNE (% r14) (% rsi) *)
-  0x48; 0x0f; 0x45; 0xf0;  (* CMOVNE (% rsi) (% rax) *)
-  0x4c; 0x89; 0xd0;        (* MOV (% rax) (% r10) *)
-  0x4c; 0x0f; 0x45; 0xd1;  (* CMOVNE (% r10) (% rcx) *)
-  0x48; 0x0f; 0x45; 0xc8;  (* CMOVNE (% rcx) (% rax) *)
-  0x4c; 0x89; 0xd8;        (* MOV (% rax) (% r11) *)
-  0x4c; 0x0f; 0x45; 0xda;  (* CMOVNE (% r11) (% rdx) *)
-  0x48; 0x0f; 0x45; 0xd0;  (* CMOVNE (% rdx) (% rax) *)
-  0x4c; 0x89; 0xf3;        (* MOV (% rbx) (% r14) *)
-  0x48; 0x83; 0xe3; 0x01;  (* AND (% rbx) (Imm8 (word 1)) *)
-  0x48; 0xf7; 0xdb;        (* NEG (% rbx) *)
+  0x48; 0x89; 0x7c; 0x24; 0x08;
+                           (* MOV (Memop Quadword (%% (rsp,8))) (% rdi) *)
+  0x4c; 0x89; 0x6c; 0x24; 0x10;
+                           (* MOV (Memop Quadword (%% (rsp,16))) (% r13) *)
+  0x4c; 0x89; 0x04; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r8) *)
+  0x4c; 0x89; 0x7c; 0x24; 0x18;
+                           (* MOV (Memop Quadword (%% (rsp,24))) (% r15) *)
   0x48; 0x89; 0xe8;        (* MOV (% rax) (% rbp) *)
-  0x48; 0x21; 0xd8;        (* AND (% rax) (% rbx) *)
-  0x49; 0x29; 0xc4;        (* SUB (% r12) (% rax) *)
-  0x48; 0x89; 0xf0;        (* MOV (% rax) (% rsi) *)
-  0x48; 0x21; 0xd8;        (* AND (% rax) (% rbx) *)
-  0x49; 0x29; 0xc6;        (* SUB (% r14) (% rax) *)
-  0x48; 0x89; 0xc8;        (* MOV (% rax) (% rcx) *)
-  0x48; 0x21; 0xd8;        (* AND (% rax) (% rbx) *)
-  0x49; 0x01; 0xc2;        (* ADD (% r10) (% rax) *)
-  0x48; 0x89; 0xd0;        (* MOV (% rax) (% rdx) *)
-  0x48; 0x21; 0xd8;        (* AND (% rax) (% rbx) *)
-  0x49; 0x01; 0xc3;        (* ADD (% r11) (% rax) *)
+  0x48; 0x89; 0xf7;        (* MOV (% rdi) (% rsi) *)
+  0x49; 0x89; 0xcd;        (* MOV (% r13) (% rcx) *)
+  0x49; 0x89; 0xd7;        (* MOV (% r15) (% rdx) *)
+  0x48; 0xc7; 0xc3; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% rbx) (Imm32 (word 1)) *)
+  0x48; 0xf7; 0xdf;        (* NEG (% rdi) *)
+  0x4c; 0x21; 0xf3;        (* AND (% rbx) (% r14) *)
+  0x48; 0x0f; 0x44; 0xc3;  (* CMOVE (% rax) (% rbx) *)
+  0x48; 0x0f; 0x44; 0xfb;  (* CMOVE (% rdi) (% rbx) *)
+  0x4c; 0x0f; 0x44; 0xeb;  (* CMOVE (% r13) (% rbx) *)
+  0x4c; 0x0f; 0x44; 0xfb;  (* CMOVE (% r15) (% rbx) *)
+  0x4c; 0x89; 0xe3;        (* MOV (% rbx) (% r12) *)
+  0x4c; 0x01; 0xf7;        (* ADD (% rdi) (% r14) *)
+  0x49; 0x89; 0xf8;        (* MOV (% r8) (% rdi) *)
+  0x48; 0xf7; 0xdf;        (* NEG (% rdi) *)
+  0x48; 0x29; 0xc3;        (* SUB (% rbx) (% rax) *)
+  0x49; 0x0f; 0x42; 0xec;  (* CMOVB (% rbp) (% r12) *)
+  0x49; 0x0f; 0x42; 0xf6;  (* CMOVB (% rsi) (% r14) *)
+  0x49; 0x0f; 0x42; 0xca;  (* CMOVB (% rcx) (% r10) *)
+  0x49; 0x0f; 0x42; 0xd3;  (* CMOVB (% rdx) (% r11) *)
+  0x49; 0x0f; 0x43; 0xf8;  (* CMOVAE (% rdi) (% r8) *)
+  0x49; 0x89; 0xdc;        (* MOV (% r12) (% rbx) *)
+  0x48; 0xf7; 0xd3;        (* NOT (% rbx) *)
+  0x48; 0xff; 0xc3;        (* INC (% rbx) *)
+  0x4c; 0x0f; 0x42; 0xe3;  (* CMOVB (% r12) (% rbx) *)
+  0x49; 0x89; 0xfe;        (* MOV (% r14) (% rdi) *)
+  0x4d; 0x01; 0xea;        (* ADD (% r10) (% r13) *)
+  0x4d; 0x01; 0xfb;        (* ADD (% r11) (% r15) *)
   0x49; 0xd1; 0xec;        (* SHR (% r12) (Imm8 (word 1)) *)
   0x49; 0xd1; 0xee;        (* SHR (% r14) (Imm8 (word 1)) *)
   0x48; 0x8d; 0x0c; 0x09;  (* LEA (% rcx) (%%% (rcx,0,rcx)) *)
   0x48; 0x8d; 0x14; 0x12;  (* LEA (% rdx) (%%% (rdx,0,rdx)) *)
   0x49; 0xff; 0xc9;        (* DEC (% r9) *)
-  0x75; 0x83;              (* JNE (Imm8 (word 131)) *)
+  0x75; 0x8b;              (* JNE (Imm8 (word 139)) *)
+  0x48; 0x8b; 0x7c; 0x24; 0x08;
+                           (* MOV (% rdi) (Memop Quadword (%% (rsp,8))) *)
+  0x4c; 0x8b; 0x6c; 0x24; 0x10;
+                           (* MOV (% r13) (Memop Quadword (%% (rsp,16))) *)
+  0x4c; 0x8b; 0x04; 0x24;  (* MOV (% r8) (Memop Quadword (%% (rsp,0))) *)
+  0x4c; 0x8b; 0x7c; 0x24; 0x18;
+                           (* MOV (% r15) (Memop Quadword (%% (rsp,24))) *)
   0x4c; 0x89; 0x14; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r10) *)
   0x4c; 0x89; 0x5c; 0x24; 0x08;
                            (* MOV (Memop Quadword (%% (rsp,8))) (% r11) *)
@@ -458,8 +469,8 @@ let bignum_modinv_mc =
   0x72; 0xc3;              (* JB (Imm8 (word 195)) *)
   0x48; 0x83; 0x6c; 0x24; 0x20; 0x3a;
                            (* SUB (Memop Quadword (%% (rsp,32))) (Imm8 (word 58)) *)
-  0x0f; 0x87; 0x9a; 0xfb; 0xff; 0xff;
-                           (* JA (Imm32 (word 4294966170)) *)
+  0x0f; 0x87; 0x7c; 0xfb; 0xff; 0xff;
+                           (* JA (Imm32 (word 4294966140)) *)
   0x48; 0x83; 0xc4; 0x50;  (* ADD (% rsp) (Imm8 (word 80)) *)
   0x41; 0x5f;              (* POP (% r15) *)
   0x41; 0x5e;              (* POP (% r14) *)
@@ -520,10 +531,10 @@ let BIGNUM_MODINV_CORRECT = prove
  (`!k z x a y b w pc stackpointer.
         nonoverlapping (w,8 * 3 * val k) (z,8 * val k) /\
         ALL (nonoverlapping (stackpointer,80))
-            [(word pc,0x543); (x,8 * val k); (y,8 * val k)] /\
+            [(word pc,0x561); (x,8 * val k); (y,8 * val k)] /\
         ALLPAIRS nonoverlapping
          [(w,8 * 3 * val k); (z,8 * val k)]
-         [(word pc,0x543); (stackpointer,80);
+         [(word pc,0x561); (stackpointer,80);
           (x,8 * val k); (y,8 * val k)] /\
         val k < 2 EXP 57
         ==> ensures x86
@@ -533,7 +544,7 @@ let BIGNUM_MODINV_CORRECT = prove
                   C_ARGUMENTS [k;z;x;y;w] s /\
                   bignum_from_memory(x,val k) s = a /\
                   bignum_from_memory(y,val k) s = b)
-             (\s. read RIP s = word(pc + 0x534) /\
+             (\s. read RIP s = word(pc + 0x552) /\
                   (coprime(a,b) /\ ODD b /\ ~(b = 1)
                    ==> bignum_from_memory(z,val k) s < b /\
                        (a * bignum_from_memory(z,val k) s == 1) (mod b)))
@@ -721,7 +732,7 @@ let BIGNUM_MODINV_CORRECT = prove
   SUBGOAL_THEN `64 <= t /\ t <= 128 * k` STRIP_ASSUME_TAC THENL
    [EXPAND_TAC "t" THEN UNDISCH_TAC `~(k = 0)` THEN ARITH_TAC; ALL_TAC] THEN
 
-  ENSURES_WHILE_PUP_TAC `(t + 57) DIV 58` `pc + 0xce` `pc + 0x52e`
+  ENSURES_WHILE_PUP_TAC `(t + 57) DIV 58` `pc + 0xce` `pc + 0x54c`
     `\i s. (read RSP s = stackpointer /\
             read RDI s = word k /\
             bignum_from_memory (y,k) s = b /\
@@ -1057,10 +1068,16 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Now set up the somewhat intricate inner loop invariant ***)
 
-  ENSURES_WHILE_PUP_TAC `58` `pc + 0x170` `pc + 0x1eb`
+  ENSURES_WHILE_PUP_TAC `58` `pc + 0x183` `pc + 0x1f6`
    `\i s. (read RSP s = stackpointer /\
-           read RDI s = word k /\
-           read R13 s = word l /\
+           read (memory :> bytes64 stackpointer) s =
+           mm /\
+           read (memory :> bytes64(word_add stackpointer (word 8))) s =
+           word k /\
+           read (memory :> bytes64(word_add stackpointer (word 16))) s =
+           word l /\
+           read (memory :> bytes64(word_add stackpointer (word 24))) s =
+           nn /\
            bignum_from_memory (y,k) s = b /\
            read (memory :> bytes64(word_add stackpointer (word 32))) s =
            word t /\
@@ -1141,7 +1158,7 @@ let BIGNUM_MODINV_CORRECT = prove
       GEN_REWRITE_TAC (LAND_CONV o BINOP_CONV)
        [BIGNUM_FROM_MEMORY_EQ_HIGHDIGITS] THEN
       ASM_REWRITE_TAC[] THEN STRIP_TAC] THEN
-    X86_STEPS_TAC BIGNUM_MODINV_EXEC (1--17) THEN
+    X86_STEPS_TAC BIGNUM_MODINV_EXEC (1--21) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[SUB_0; VAL_WORD_0; VAL_WORD_1] THEN
     REWRITE_TAC[WORD_SUB_LZERO; WORD_NEG_EQ_0; VAL_EQ_0] THEN
@@ -1432,10 +1449,10 @@ let BIGNUM_MODINV_CORRECT = prove
      [`m_m:num`; `m_n:num`; `n_m:num`; `n_n:num`;
       `m_hi:num`; `n_hi:num`; `m_lo:num`; `n_lo:num`] THEN
 
-    X86_STEPS_TAC BIGNUM_MODINV_EXEC (1--37) THEN
+    X86_STEPS_TAC BIGNUM_MODINV_EXEC (1--33) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
 
-    DISCARD_STATE_TAC "s37" THEN
+    DISCARD_STATE_TAC "s33" THEN
 
     MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN CONJ_TAC THENL
      [REWRITE_TAC[ARITH_RULE `n - (i + 1) = n - i - 1`] THEN
@@ -1447,26 +1464,14 @@ let BIGNUM_MODINV_CORRECT = prove
       VAL_INT64_TAC `58 - (i + 1)` THEN
       ASM_REWRITE_TAC[] THEN SIMPLE_ARITH_TAC] THEN
 
-    SUBGOAL_THEN
-     `~(val(word_and (word_and (word_neg (word (bitval (m_hi < n_hi))))
-                               (word 1))
-                     (word m_lo):int64) = 0) <=>
-      m_hi < n_hi /\ ODD m_lo`
-    SUBST1_TAC THENL
-     [POP_ASSUM_LIST(K ALL_TAC) THEN
-      ONCE_REWRITE_TAC[WORD_BITWISE_RULE
-       `word_and (word_and x y) z = word_and y (word_and x z)`] THEN
-      REWRITE_TAC[WORD_AND_1; BIT_LSB_WORD; BIT_WORD_AND; ODD_BITVAL;
-                  BIT_WORD_NEG_CLAUSES; DIMINDEX_64] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN
-      COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
-      CONV_TAC WORD_REDUCE_CONV THEN CONV_TAC NUM_REDUCE_CONV;
-      ALL_TAC] THEN
-
+    REWRITE_TAC[WORD_AND_1_BITVAL; BIT_LSB_WORD; VAL_WORD_BITVAL;
+                BITVAL_EQ_0; COND_SWAP] THEN
+    SIMP_TAC[BITVAL_CLAUSES] THEN
+    REWRITE_TAC[WORD_RULE `word_add (word_not x) (word 1) = word_neg x`] THEN
+    REWRITE_TAC[MESON[VAL_WORD_0; CONJUNCT1 LT]
+     `a < val(if p then x else word 0) <=> a < val x /\ p`] THEN
     REWRITE_TAC[WORD_RULE
      `word_add x (word(1 * val x)) = word_add x x`] THEN
-
-    REWRITE_TAC[WORD_AND_1_BITVAL; VAL_WORD_BITVAL; BITVAL_EQ_0] THEN
 
     SUBGOAL_THEN
      `val(word(n_m + n_m):int64) = n_m + n_m /\
@@ -1490,9 +1495,14 @@ let BIGNUM_MODINV_CORRECT = prove
       ALL_TAC] THEN
 
     ASM_CASES_TAC `m_hi < n_hi /\ ODD m_lo` THEN
-    ASM_REWRITE_TAC[BIT_LSB_WORD; WORD_AND_MASK] THEN
-
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[GSYM WORD_ADD] THEN
+    ASM_REWRITE_TAC[BIT_LSB_WORD; WORD_AND_MASK; WORD_NEG_SUB] THEN
+    ASM_REWRITE_TAC[GSYM NOT_LT] THENL
+     [ASM_REWRITE_TAC[NOT_LT];
+      COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+      ASM_REWRITE_TAC[NOT_LT]] THEN
+    ASM_REWRITE_TAC[GSYM WORD_ADD; VAL_WORD_0; LE_0; ADD_CLAUSES] THEN
+    REWRITE_TAC[WORD_NEG_SUB; WORD_RULE
+     `word_add (word_neg x) y = word_sub y x`] THEN
     ASM_REWRITE_TAC[VAL_WORD_USHR; EXP_1; ADD_CLAUSES; WORD_SUB_0] THEN
     REPLICATE_TAC 2 (CONJ_TAC THENL
      [REWRITE_TAC[EXP_ADD] THEN MAP_EVERY UNDISCH_TAC
@@ -2189,7 +2199,7 @@ let BIGNUM_MODINV_CORRECT = prove
     `n':int = &n_m * &m - &n_n * &n`] THEN
   GLOBALIZE_PRECONDITION_TAC THEN ASM_REWRITE_TAC[] THEN
 
-  ENSURES_SEQUENCE_TAC `pc + 0x200`
+  ENSURES_SEQUENCE_TAC `pc + 0x21e`
    `\s. read RSP s = stackpointer /\
         read RDI s = word k /\
         read R13 s = word l /\
@@ -2228,7 +2238,7 @@ let BIGNUM_MODINV_CORRECT = prove
     REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
     RULE_ASSUM_TAC(REWRITE_RULE[TAUT `~p /\ ~q ==> r <=> p \/ q \/ r`]) THEN
     REWRITE_TAC[TAUT `~p /\ ~q ==> r <=> p \/ q \/ r`] THEN
-    X86_STEPS_TAC BIGNUM_MODINV_EXEC (1--5) THEN
+    X86_STEPS_TAC BIGNUM_MODINV_EXEC (1--9) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     DISCH_THEN(fun th -> FIRST_X_ASSUM(MP_TAC o C MATCH_MP th)) THEN
     REPEAT(DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
@@ -2413,7 +2423,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Congruence cross-multiplication and shift-by-6 "congloop" ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x290`
+  ENSURES_SEQUENCE_TAC `pc + 0x2ae`
    `\s. read RSP s = stackpointer /\
         read RDI s = word k /\
         read R13 s = word l /\
@@ -2443,7 +2453,7 @@ let BIGNUM_MODINV_CORRECT = prove
         2 EXP (64 * k) * val(read RSI s) + bignum_from_memory (zz,k) s =
         2 EXP 6 * (n_m * w + n_n * z)` THEN
   CONJ_TAC THENL
-   [ENSURES_WHILE_UP_TAC `k:num` `pc + 0x219` `pc + 0x281`
+   [ENSURES_WHILE_UP_TAC `k:num` `pc + 0x237` `pc + 0x29f`
      `\i s. read RSP s = stackpointer /\
             read RDI s = word k /\
             read R13 s = word l /\
@@ -2582,7 +2592,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The first Montgomery operation ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x333`
+  ENSURES_SEQUENCE_TAC `pc + 0x351`
    `\s. read RSP s = stackpointer /\
         read RDI s = word k /\
         read R13 s = word l /\
@@ -2628,7 +2638,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** The prelude of the Montgomery reduction ***)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x2b9`
+    ENSURES_SEQUENCE_TAC `pc + 0x2d7`
      `\s. read RSP s = stackpointer /\
           read RDI s = word k /\
           read R13 s = word l /\
@@ -2703,7 +2713,7 @@ let BIGNUM_MODINV_CORRECT = prove
     GLOBALIZE_PRECONDITION_TAC THEN
     FIRST_X_ASSUM(X_CHOOSE_THEN `r0:num` STRIP_ASSUME_TAC) THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x2df`
+    ENSURES_SEQUENCE_TAC `pc + 0x2fd`
      `\s. read RSP s = stackpointer /\
           read RDI s = word k /\
           read R13 s = word l /\
@@ -2752,7 +2762,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
       VAL_INT64_TAC `k - 1` THEN
 
-      ENSURES_WHILE_PAUP_TAC `1` `k:num` `pc + 0x2bb` `pc + 0x2dd`
+      ENSURES_WHILE_PAUP_TAC `1` `k:num` `pc + 0x2d9` `pc + 0x2fb`
        `\i s.
          (read RSP s = stackpointer /\
           read RDI s = word k /\
@@ -2880,7 +2890,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
    (*** The final digit write ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x2ed`
+    ENSURES_SEQUENCE_TAC `pc + 0x30b`
      `\s. read RSP s = stackpointer /\
           read RDI s = word k /\
           read R13 s = word l /\
@@ -2954,7 +2964,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** Comparison operation "wcmploop" ***)
 
-    ENSURES_WHILE_PUP_TAC `k:num` `pc + 0x2f3` `pc + 0x301`
+    ENSURES_WHILE_PUP_TAC `k:num` `pc + 0x311` `pc + 0x31f`
      `\i s.
          (read RSP s = stackpointer /\
           read RDI s = word k /\
@@ -3029,7 +3039,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     ABBREV_TAC `cg <=> b <= 2 EXP (64 * k) * bitval cf + w2` THEN
 
-    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x313` `pc + 0x32e`
+    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x331` `pc + 0x34c`
      `\i s. read RSP s = stackpointer /\
             read RDI s = word k /\
             read R13 s = word l /\
@@ -3191,7 +3201,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The second Montgomery operation ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x3d6`
+  ENSURES_SEQUENCE_TAC `pc + 0x3f4`
    `\s. read RSP s = stackpointer /\
         read RDI s = word k /\
         read R13 s = word l /\
@@ -3237,7 +3247,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** The prelude of the Montgomery reduction ***)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x35c`
+    ENSURES_SEQUENCE_TAC `pc + 0x37a`
      `\s. read RSP s = stackpointer /\
           read RDI s = word k /\
           read R13 s = word l /\
@@ -3313,7 +3323,7 @@ let BIGNUM_MODINV_CORRECT = prove
     GLOBALIZE_PRECONDITION_TAC THEN
     FIRST_X_ASSUM(X_CHOOSE_THEN `r0:num` STRIP_ASSUME_TAC) THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x382`
+    ENSURES_SEQUENCE_TAC `pc + 0x3a0`
      `\s. read RSP s = stackpointer /\
           read RDI s = word k /\
           read R13 s = word l /\
@@ -3363,7 +3373,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
       VAL_INT64_TAC `k - 1` THEN
 
-      ENSURES_WHILE_PAUP_TAC `1` `k:num` `pc + 0x35e` `pc + 0x380`
+      ENSURES_WHILE_PAUP_TAC `1` `k:num` `pc + 0x37c` `pc + 0x39e`
        `\i s.
          (read RSP s = stackpointer /\
           read RDI s = word k /\
@@ -3492,7 +3502,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
    (*** The final digit write ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x390`
+    ENSURES_SEQUENCE_TAC `pc + 0x3ae`
      `\s. read RSP s = stackpointer /\
           read RDI s = word k /\
           read R13 s = word l /\
@@ -3567,7 +3577,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     (*** Comparison operation "zcmploop" ***)
 
-    ENSURES_WHILE_PUP_TAC `k:num` `pc + 0x396` `pc + 0x3a4`
+    ENSURES_WHILE_PUP_TAC `k:num` `pc + 0x3b4` `pc + 0x3c2`
      `\i s.
          (read RSP s = stackpointer /\
           read RDI s = word k /\
@@ -3643,7 +3653,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
     ABBREV_TAC `cg <=> b <= 2 EXP (64 * k) * bitval cf + z2` THEN
 
-    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x3b6` `pc + 0x3d1`
+    ENSURES_WHILE_UP_TAC `k:num` `pc + 0x3d4` `pc + 0x3ef`
      `\i s. read RSP s = stackpointer /\
             read RDI s = word k /\
             read R13 s = word l /\
@@ -3818,7 +3828,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** Cross-multiplication "crossloop" and duplex negation "optnegloop" ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x49e`
+  ENSURES_SEQUENCE_TAC `pc + 0x4bc`
    `\s. read RSP s = stackpointer /\
         read RDI s = word k /\
         read R13 s = word l /\
@@ -3856,7 +3866,7 @@ let BIGNUM_MODINV_CORRECT = prove
    [
     (*** The cross-multiplications loop updating m and n ***)
 
-    ENSURES_WHILE_UP_TAC `l:num` `pc + 0x3ee` `pc + 0x452`
+    ENSURES_WHILE_UP_TAC `l:num` `pc + 0x40c` `pc + 0x470`
      `\i s. read RSP s = stackpointer /\
             read RDI s = word k /\
             read R13 s = word l /\
@@ -4037,7 +4047,7 @@ let BIGNUM_MODINV_CORRECT = prove
       ASM_REWRITE_TAC[VAL_BOUND_64; ARITH_RULE `s + 1 <= e <=> s < e`];
       ALL_TAC] THEN
 
-    ENSURES_WHILE_UP_TAC `l:num` `pc + 0x466` `pc + 0x493`
+    ENSURES_WHILE_UP_TAC `l:num` `pc + 0x484` `pc + 0x4b1`
      `\i s. read RSP s = stackpointer /\
             read RDI s = word k /\
             read R13 s = word l /\
@@ -4218,7 +4228,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The shift-right-by-58-bits duplex loop "shiftloop" ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x4d0`
+  ENSURES_SEQUENCE_TAC `pc + 0x4ee`
    `\s. read RSP s = stackpointer /\
         read RDI s = word k /\
         read R13 s = word l /\
@@ -4261,7 +4271,7 @@ let BIGNUM_MODINV_CORRECT = prove
     ABBREV_TAC `m3 = 2 EXP (64 * l) * mh + m2` THEN
     ABBREV_TAC `n3 = 2 EXP (64 * l) * nh + n2` THEN
 
-    ENSURES_WHILE_PDOWN_TAC `l:num` `pc + 0x4a1` `pc + 0x4ce`
+    ENSURES_WHILE_PDOWN_TAC `l:num` `pc + 0x4bf` `pc + 0x4ec`
      `\i s.
         (read RSP s = stackpointer /\
          read RDI s = word k /\
@@ -4392,7 +4402,7 @@ let BIGNUM_MODINV_CORRECT = prove
 
   (*** The duplex optional modular negation "fliploop" ***)
 
-  ENSURES_WHILE_UP_TAC `k:num` `pc + 0x4eb` `pc + 0x523`
+  ENSURES_WHILE_UP_TAC `k:num` `pc + 0x509` `pc + 0x541`
    `\i s. read RSP s = stackpointer /\
           read RDI s = word k /\
           read R13 s = word l /\
@@ -4700,10 +4710,10 @@ let BIGNUM_MODINV_SUBROUTINE_CORRECT = prove
  (`!k z x a y b w pc stackpointer returnaddress.
         nonoverlapping (w,8 * 3 * val k) (z,8 * val k) /\
         ALL (nonoverlapping (word_sub stackpointer (word 128),128))
-            [(word pc,0x543); (x,8 * val k); (y,8 * val k)] /\
+            [(word pc,0x561); (x,8 * val k); (y,8 * val k)] /\
         ALLPAIRS nonoverlapping
          [(w,8 * 3 * val k); (z,8 * val k)]
-         [(word pc,0x543); (word_sub stackpointer (word 128),136);
+         [(word pc,0x561); (word_sub stackpointer (word 128),136);
           (x,8 * val k); (y,8 * val k)] /\
         val k < 2 EXP 57
         ==> ensures x86

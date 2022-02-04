@@ -26,8 +26,8 @@ let bignum_coprime_mc =
   0xa9bf53f3;       (* arm_STP X19 X20 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xeb02001f;       (* arm_CMP X0 X2 *)
   0x9a803049;       (* arm_CSEL X9 X2 X0 Condition_CC *)
-  0xb40019c9;       (* arm_CBZ X9 (word 824) *)
-  0xd37df12a;       (* arm_LSL X10 X9 (rvalue (word 3)) *)
+  0xb40018a9;       (* arm_CBZ X9 (word 788) *)
+  0xd37df12a;       (* arm_LSL X10 X9 3 *)
   0x8b0a0085;       (* arm_ADD X5 X4 X10 *)
   0xaa1f03ea;       (* arm_MOV X10 XZR *)
   0xb4000100;       (* arm_CBZ X0 (word 32) *)
@@ -56,7 +56,7 @@ let bignum_coprime_mc =
   0xeb09015f;       (* arm_CMP X10 X9 *)
   0x54ffffa3;       (* arm_BCC (word 2097140) *)
   0x8b020002;       (* arm_ADD X2 X0 X2 *)
-  0xd37ae442;       (* arm_LSL X2 X2 (rvalue (word 6)) *)
+  0xd37ae442;       (* arm_LSL X2 X2 6 *)
   0xf9400080;       (* arm_LDR X0 X4 (Immediate_Offset (word 0)) *)
   0xf94000a6;       (* arm_LDR X6 X5 (Immediate_Offset (word 0)) *)
   0xaa060000;       (* arm_ORR X0 X0 X6 *)
@@ -75,7 +75,7 @@ let bignum_coprime_mc =
   0xeb09015f;       (* arm_CMP X10 X9 *)
   0x54fffec3;       (* arm_BCC (word 2097112) *)
   0x9100fc4a;       (* arm_ADD X10 X2 (rvalue (word 63)) *)
-  0xd346fd43;       (* arm_LSR X3 X10 (rvalue (word 6)) *)
+  0xd346fd43;       (* arm_LSR X3 X10 6 *)
   0xeb09007f;       (* arm_CMP X3 X9 *)
   0x9a832123;       (* arm_CSEL X3 X9 X3 Condition_CS *)
   0xaa1f03ed;       (* arm_MOV X13 XZR *)
@@ -101,12 +101,12 @@ let bignum_coprime_mc =
   0xaa0e01ab;       (* arm_ORR X11 X13 X14 *)
   0xdac0116c;       (* arm_CLZ X12 X11 *)
   0xeb0c03f1;       (* arm_NEGS X17 X12 *)
-  0x9acc21ad;       (* arm_LSL X13 X13 X12 *)
+  0x9acc21ad;       (* arm_LSLV X13 X13 X12 *)
   0x9a9f11ef;       (* arm_CSEL X15 X15 XZR Condition_NE *)
-  0x9acc21ce;       (* arm_LSL X14 X14 X12 *)
+  0x9acc21ce;       (* arm_LSLV X14 X14 X12 *)
   0x9a9f1210;       (* arm_CSEL X16 X16 XZR Condition_NE *)
-  0x9ad125ef;       (* arm_LSR X15 X15 X17 *)
-  0x9ad12610;       (* arm_LSR X16 X16 X17 *)
+  0x9ad125ef;       (* arm_LSRV X15 X15 X17 *)
+  0x9ad12610;       (* arm_LSRV X16 X16 X17 *)
   0xaa0f01ad;       (* arm_ORR X13 X13 X15 *)
   0xaa1001ce;       (* arm_ORR X14 X14 X16 *)
   0xf940008f;       (* arm_LDR X15 X4 (Immediate_Offset (word 0)) *)
@@ -116,37 +116,28 @@ let bignum_coprime_mc =
   0xaa1f03e8;       (* arm_MOV X8 XZR *)
   0xd2800021;       (* arm_MOV X1 (rvalue (word 1)) *)
   0xd280074a;       (* arm_MOV X10 (rvalue (word 58)) *)
-  0x924001eb;       (* arm_AND X11 X15 (rvalue (word 1)) *)
-  0xd280004c;       (* arm_MOV X12 (rvalue (word 2)) *)
-  0xeb0e01bf;       (* arm_CMP X13 X14 *)
-  0xfa0b019f;       (* arm_SBCS XZR X12 X11 *)
-  0x8b0800d1;       (* arm_ADD X17 X6 X8 *)
-  0x8b0100f3;       (* arm_ADD X19 X7 X1 *)
-  0xaa0d03eb;       (* arm_MOV X11 X13 *)
-  0x9a8d01cd;       (* arm_CSEL X13 X14 X13 Condition_EQ *)
-  0x9a8e016e;       (* arm_CSEL X14 X11 X14 Condition_EQ *)
-  0xaa0f03eb;       (* arm_MOV X11 X15 *)
-  0x9a8f020f;       (* arm_CSEL X15 X16 X15 Condition_EQ *)
-  0x9a900170;       (* arm_CSEL X16 X11 X16 Condition_EQ *)
-  0xaa0603eb;       (* arm_MOV X11 X6 *)
-  0x9a860106;       (* arm_CSEL X6 X8 X6 Condition_EQ *)
-  0x9a880168;       (* arm_CSEL X8 X11 X8 Condition_EQ *)
-  0xaa0703eb;       (* arm_MOV X11 X7 *)
-  0x9a870027;       (* arm_CSEL X7 X1 X7 Condition_EQ *)
-  0x9a810161;       (* arm_CSEL X1 X11 X1 Condition_EQ *)
   0xf24001ff;       (* arm_TST X15 (rvalue (word 1)) *)
-  0xcb0e01ab;       (* arm_SUB X11 X13 X14 *)
-  0x9a8d116d;       (* arm_CSEL X13 X11 X13 Condition_NE *)
-  0xcb1001eb;       (* arm_SUB X11 X15 X16 *)
-  0x9a8f116f;       (* arm_CSEL X15 X11 X15 Condition_NE *)
-  0x9a861226;       (* arm_CSEL X6 X17 X6 Condition_NE *)
-  0x9a871267;       (* arm_CSEL X7 X19 X7 Condition_NE *)
-  0xd341fdad;       (* arm_LSR X13 X13 (rvalue (word 1)) *)
-  0xd341fdef;       (* arm_LSR X15 X15 (rvalue (word 1)) *)
+  0x9a9f11cb;       (* arm_CSEL X11 X14 XZR Condition_NE *)
+  0x9a9f120c;       (* arm_CSEL X12 X16 XZR Condition_NE *)
+  0x9a9f1111;       (* arm_CSEL X17 X8 XZR Condition_NE *)
+  0x9a9f1033;       (* arm_CSEL X19 X1 XZR Condition_NE *)
+  0xeb0b01ab;       (* arm_SUBS X11 X13 X11 *)
+  0xcb0c01ec;       (* arm_SUB X12 X15 X12 *)
+  0xda8b256b;       (* arm_CNEG X11 X11 Condition_CC *)
+  0xda8c258c;       (* arm_CNEG X12 X12 Condition_CC *)
+  0x9a8d21ce;       (* arm_CSEL X14 X14 X13 Condition_CS *)
+  0x9a8f2210;       (* arm_CSEL X16 X16 X15 Condition_CS *)
+  0x9a862108;       (* arm_CSEL X8 X8 X6 Condition_CS *)
+  0x9a872021;       (* arm_CSEL X1 X1 X7 Condition_CS *)
+  0xf27f019f;       (* arm_TST X12 (rvalue (word 2)) *)
+  0x8b1100c6;       (* arm_ADD X6 X6 X17 *)
+  0x8b1300e7;       (* arm_ADD X7 X7 X19 *)
+  0xd341fd6d;       (* arm_LSR X13 X11 1 *)
+  0xd341fd8f;       (* arm_LSR X15 X12 1 *)
   0x8b080108;       (* arm_ADD X8 X8 X8 *)
   0x8b010021;       (* arm_ADD X1 X1 X1 *)
-  0xf100054a;       (* arm_SUBS X10 X10 (rvalue (word 1)) *)
-  0x54fffc41;       (* arm_BNE (word 2097032) *)
+  0xd100054a;       (* arm_SUB X10 X10 (rvalue (word 1)) *)
+  0xb5fffd8a;       (* arm_CBNZ X10 (word 2097072) *)
   0xaa1f03ed;       (* arm_MOV X13 XZR *)
   0xaa1f03ee;       (* arm_MOV X14 XZR *)
   0xaa1f03f1;       (* arm_MOV X17 XZR *)
@@ -186,7 +177,7 @@ let bignum_coprime_mc =
   0xb4000166;       (* arm_CBZ X6 (word 44) *)
   0x9100214b;       (* arm_ADD X11 X10 (rvalue (word 8)) *)
   0xf86b688c;       (* arm_LDR X12 X4 (Register_Offset X11) *)
-  0x93cfe98f;       (* arm_EXTR X15 X12 X15 (rvalue (word 58)) *)
+  0x93cfe98f;       (* arm_EXTR X15 X12 X15 58 *)
   0xca1101ef;       (* arm_EOR X15 X15 X17 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a688f;       (* arm_STR X15 X4 (Register_Offset X10) *)
@@ -194,7 +185,7 @@ let bignum_coprime_mc =
   0x9100214a;       (* arm_ADD X10 X10 (rvalue (word 8)) *)
   0xd10004c6;       (* arm_SUB X6 X6 (rvalue (word 1)) *)
   0xb5fffee6;       (* arm_CBNZ X6 (word 2097116) *)
-  0x93cfe9af;       (* arm_EXTR X15 X13 X15 (rvalue (word 58)) *)
+  0x93cfe9af;       (* arm_EXTR X15 X13 X15 58 *)
   0xca1101ef;       (* arm_EOR X15 X15 X17 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a688f;       (* arm_STR X15 X4 (Register_Offset X10) *)
@@ -205,7 +196,7 @@ let bignum_coprime_mc =
   0xb4000166;       (* arm_CBZ X6 (word 44) *)
   0x9100214b;       (* arm_ADD X11 X10 (rvalue (word 8)) *)
   0xf86b68ac;       (* arm_LDR X12 X5 (Register_Offset X11) *)
-  0x93cfe98f;       (* arm_EXTR X15 X12 X15 (rvalue (word 58)) *)
+  0x93cfe98f;       (* arm_EXTR X15 X12 X15 58 *)
   0xca1301ef;       (* arm_EOR X15 X15 X19 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a68af;       (* arm_STR X15 X5 (Register_Offset X10) *)
@@ -213,12 +204,12 @@ let bignum_coprime_mc =
   0x9100214a;       (* arm_ADD X10 X10 (rvalue (word 8)) *)
   0xd10004c6;       (* arm_SUB X6 X6 (rvalue (word 1)) *)
   0xb5fffee6;       (* arm_CBNZ X6 (word 2097116) *)
-  0x93cfe9cf;       (* arm_EXTR X15 X14 X15 (rvalue (word 58)) *)
+  0x93cfe9cf;       (* arm_EXTR X15 X14 X15 58 *)
   0xca1301ef;       (* arm_EOR X15 X15 X19 *)
   0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
   0xf82a68af;       (* arm_STR X15 X5 (Register_Offset X10) *)
   0xf100e842;       (* arm_SUBS X2 X2 (rvalue (word 58)) *)
-  0x54ffee08;       (* arm_BHI (word 2096576) *)
+  0x54ffef28;       (* arm_BHI (word 2096612) *)
   0xf94000ab;       (* arm_LDR X11 X5 (Immediate_Offset (word 0)) *)
   0xd240016b;       (* arm_EOR X11 X11 (rvalue (word 1)) *)
   0xf100053f;       (* arm_CMP X9 (rvalue (word 1)) *)
@@ -259,10 +250,18 @@ let lemma58 = prove
    `m divides e EXP 2 ==> (e * (e * x + y) + z == e * y + z) (mod m)`) THEN
   REWRITE_TAC[EXP_EXP] THEN MATCH_MP_TAC DIVIDES_EXP_LE_IMP THEN ARITH_TAC);;
 
+let lemmabit1 = prove
+ (`!x:int64. val(word_and x (word 2)) = 0 <=> EVEN(val(word_ushr x 1))`,
+  GEN_TAC THEN SUBST1_TAC(SYM(NUM_REDUCE_CONV `2 EXP 1`)) THEN
+  REWRITE_TAC[WORD_AND_POW2; GSYM NOT_ODD; GSYM BIT_LSB] THEN
+  REWRITE_TAC[BIT_WORD_USHR; ADD_CLAUSES; bitval] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  CONV_TAC(DEPTH_CONV(NUM_RED_CONV ORELSEC WORD_RED_CONV)));;
+
 let BIGNUM_COPRIME_CORRECT = prove
  (`!m x a n y b w pc.
         ALL (nonoverlapping (w,8 * 2 * MAX (val m) (val n)))
-            [(word pc,0x34c); (x,8 * val m); (y,8 * val n)] /\
+            [(word pc,0x328); (x,8 * val m); (y,8 * val n)] /\
         val m < 2 EXP 57 /\ val n < 2 EXP 57
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_coprime_mc /\
@@ -270,7 +269,7 @@ let BIGNUM_COPRIME_CORRECT = prove
                   C_ARGUMENTS [m;x;n;y;w] s /\
                   bignum_from_memory(x,val m) s = a /\
                   bignum_from_memory(y,val n) s = b)
-             (\s. read PC s = word(pc + 0x344) /\
+             (\s. read PC s = word(pc + 0x320) /\
                   C_RETURN s = if coprime(a,b) then word 1 else word 0)
              (MAYCHANGE [PC; X0; X1; X2; X3; X5; X6; X7; X8; X9; X10; X11;
                          X12; X13; X14; X15; X16; X17; X19; X20] ,,
@@ -667,7 +666,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   (*** The setup of the main outer loop, with the final comparison to 1 ***)
 
-  ENSURES_WHILE_PUP_TAC `(t + 57) DIV 58` `pc + 0xcc` `pc + 0x30c`
+  ENSURES_WHILE_PUP_TAC `(t + 57) DIV 58` `pc + 0xcc` `pc + 0x2e8`
     `\i s. (read X0 s = word_or (word(bigdigit a 0)) (word(bigdigit b 0)) /\
             read X4 s = mm /\
             read X5 s = nn /\
@@ -706,7 +705,7 @@ let BIGNUM_COPRIME_CORRECT = prove
     REWRITE_TAC[EXP] THEN GLOBALIZE_PRECONDITION_TAC THEN
     ASM_REWRITE_TAC[] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x338`
+    ENSURES_SEQUENCE_TAC `pc + 0x314`
      `\s. read X0 s = word_or (word (bigdigit a 0)) (word (bigdigit b 0)) /\
           (read X11 s = word 0 <=> n = 1)` THEN
     CONJ_TAC THENL
@@ -740,7 +739,7 @@ let BIGNUM_COPRIME_CORRECT = prove
           ASM_CASES_TAC `n = 0` THEN ASM_REWRITE_TAC[ODD] THEN
           ASM_CASES_TAC `m = 0` THEN ASM_REWRITE_TAC[GCD_0]]]] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x318`
+    ENSURES_SEQUENCE_TAC `pc + 0x2f4`
      `\s. read X0 s = word_or (word (bigdigit a 0)) (word (bigdigit b 0)) /\
           read X5 s = nn /\
           read X9 s = word k /\
@@ -776,7 +775,7 @@ let BIGNUM_COPRIME_CORRECT = prove
       RULE_ASSUM_TAC(REWRITE_RULE[MULT_CLAUSES]) THEN ASM_SIMP_TAC[MOD_LT];
       ALL_TAC] THEN
 
-    ENSURES_WHILE_AUP_TAC `1` `k:num` `pc + 0x324` `pc + 0x330`
+    ENSURES_WHILE_AUP_TAC `1` `k:num` `pc + 0x300` `pc + 0x30c`
      `\i s. read X0 s = word_or (word (bigdigit a 0)) (word (bigdigit b 0)) /\
             read X5 s = nn /\
             read X9 s = word k /\
@@ -1073,64 +1072,64 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   (*** Now set up the somewhat intricate inner loop invariant ***)
 
-  ENSURES_WHILE_PUP_TAC `58` `pc + 0x174` `pc + 0x1ec`
-   `\i s. (read X0 s = evenor /\
-           read X4 s = mm /\
-           read X5 s = nn /\
-           read X9 s = word k /\
-           read X2 s = word t /\
-           read X3 s = word l /\
-           bignum_from_memory (mm,l) s = m /\
-           bignum_from_memory (nn,l) s = n /\
-           bignum_from_memory (mm,k) s = m0 /\
-           bignum_from_memory (nn,k) s = n0 /\
-           read X10 s = word(58 - i) /\
-           val(read X6 s) + val(read X7 s) <= 2 EXP i /\
-           val(read X8 s) + val(read X1 s) <= 2 EXP i /\
-           (ODD a \/ ODD b
-           ==> ODD(val(read X16 s)) /\
-               gcd(&(val(read X6 s)) * &m - &(val(read X7 s)) * &n:int,
-                   &(val(read X8 s)) * &m - &(val(read X1 s)) * &n) =
-               &2 pow i * gcd(&m,&n) /\
-               ?q. (--(&1) pow q *
-                    (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n):int ==
-                    &2 pow i * &(val(read X15 s))) (mod (&2 pow 64)) /\
-                   (--(--(&1) pow q) *
-                    (&(val(read X8 s)) * &m - &(val(read X1 s)) * &n):int ==
-                    &2 pow i * &(val(read X16 s))) (mod (&2 pow 64)) /\
-                   let m' = --(&1) pow q *
-                            (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n)
-                   and n' = --(--(&1) pow q) *
-                            (&(val(read X8 s)) * &m - &(val(read X1 s)) * &n)
-                   and m_hi = val(read X13 s)
-                   and n_hi = val(read X14 s)
-                   and m_lo = val(read X15 s)
-                   and n_lo = val(read X16 s) in
-                   --(lowerr i) <= &m_hi - m' / &2 zpow (base + &i) /\
-                   &m_hi - m' / &2 zpow (base + &i) <= upperr i /\
-                   --(lowerr i) <= &n_hi - n' / &2 zpow (base + &i) /\
-                   &n_hi - n' / &2 zpow (base + &i) <= upperr i /\
-                   (min (&m) (&n) < &2 zpow base * &2 pow 5
-                    ==> abs(m') * abs(n') <= &2 pow i * &m * &n /\
-                        (i <= 57
-                         ==> &0 <= m' /\ &0 <= n' /\
-                             (m_hi < n_hi /\
-                              m_hi < 2 EXP 5 /\
-                              2 EXP 63 <= 2 EXP i * (n_hi + 31) /\
-                              &m_hi <= m' / &2 zpow (base + &i) /\
-                              m' / &2 zpow (base + &i) <= &m_hi + &1 \/
-                              n_hi < m_hi /\
-                              n_hi < 2 EXP 5 /\
-                              2 EXP 63 <= 2 EXP i * (m_hi + 31) /\
-                              n' / &2 zpow (base + &i) <= &n_hi + &1))) /\
-                   (&0 <= m' /\ &0 <= n' /\
-                    min m' n' <= &2 pow i * min (&m) (&n) /\
-                    m' * n' <= &2 pow i * &m * &n \/
-                    m' < &0 /\ &0 <= n' /\ m_hi < 16 /\
-                    &n_hi < min (&m) (&n) / &2 zpow base + &16 \/
-                    n' < &0 /\ &0 <= m' /\ n_hi < 16 /\
-                    &m_hi < min (&m) (&n) / &2 zpow base + &16))) /\
-          (read ZF s <=> i = 58)` THEN
+  ENSURES_WHILE_UP_TAC `58` `pc + 0x178` `pc + 0x1c8`
+   `\i s. read X0 s = evenor /\
+          read X4 s = mm /\
+          read X5 s = nn /\
+          read X9 s = word k /\
+          read X2 s = word t /\
+          read X3 s = word l /\
+          bignum_from_memory (mm,l) s = m /\
+          bignum_from_memory (nn,l) s = n /\
+          bignum_from_memory (mm,k) s = m0 /\
+          bignum_from_memory (nn,k) s = n0 /\
+          read X10 s = word(58 - i) /\
+          val(read X6 s) + val(read X7 s) <= 2 EXP i /\
+          val(read X8 s) + val(read X1 s) <= 2 EXP i /\
+          (read ZF s <=> EVEN(val(read X15 s))) /\
+          (ODD a \/ ODD b
+          ==> ODD(val(read X16 s)) /\
+              gcd(&(val(read X6 s)) * &m - &(val(read X7 s)) * &n:int,
+                  &(val(read X8 s)) * &m - &(val(read X1 s)) * &n) =
+              &2 pow i * gcd(&m,&n) /\
+              ?q. (--(&1) pow q *
+                   (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n):int ==
+                   &2 pow i * &(val(read X15 s))) (mod (&2 pow 64)) /\
+                  (--(--(&1) pow q) *
+                   (&(val(read X8 s)) * &m - &(val(read X1 s)) * &n):int ==
+                   &2 pow i * &(val(read X16 s))) (mod (&2 pow 64)) /\
+                  let m' = --(&1) pow q *
+                           (&(val(read X6 s)) * &m - &(val(read X7 s)) * &n)
+                  and n' = --(--(&1) pow q) *
+                           (&(val(read X8 s)) * &m - &(val(read X1 s)) * &n)
+                  and m_hi = val(read X13 s)
+                  and n_hi = val(read X14 s)
+                  and m_lo = val(read X15 s)
+                  and n_lo = val(read X16 s) in
+                  --(lowerr i) <= &m_hi - m' / &2 zpow (base + &i) /\
+                  &m_hi - m' / &2 zpow (base + &i) <= upperr i /\
+                  --(lowerr i) <= &n_hi - n' / &2 zpow (base + &i) /\
+                  &n_hi - n' / &2 zpow (base + &i) <= upperr i /\
+                  (min (&m) (&n) < &2 zpow base * &2 pow 5
+                   ==> abs(m') * abs(n') <= &2 pow i * &m * &n /\
+                       (i <= 57
+                        ==> &0 <= m' /\ &0 <= n' /\
+                            (m_hi < n_hi /\
+                             m_hi < 2 EXP 5 /\
+                             2 EXP 63 <= 2 EXP i * (n_hi + 31) /\
+                             &m_hi <= m' / &2 zpow (base + &i) /\
+                             m' / &2 zpow (base + &i) <= &m_hi + &1 \/
+                             n_hi < m_hi /\
+                             n_hi < 2 EXP 5 /\
+                             2 EXP 63 <= 2 EXP i * (m_hi + 31) /\
+                             n' / &2 zpow (base + &i) <= &n_hi + &1))) /\
+                  (&0 <= m' /\ &0 <= n' /\
+                   min m' n' <= &2 pow i * min (&m) (&n) /\
+                   m' * n' <= &2 pow i * &m * &n \/
+                   m' < &0 /\ &0 <= n' /\ m_hi < 16 /\
+                   &n_hi < min (&m) (&n) / &2 zpow base + &16 \/
+                   n' < &0 /\ &0 <= m' /\ n_hi < 16 /\
+                   &m_hi < min (&m) (&n) / &2 zpow base + &16))` THEN
   CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN REPEAT CONJ_TAC THENL
    [ARITH_TAC;
 
@@ -1149,11 +1148,16 @@ let BIGNUM_COPRIME_CORRECT = prove
       GEN_REWRITE_TAC (LAND_CONV o BINOP_CONV)
        [BIGNUM_FROM_MEMORY_EQ_HIGHDIGITS] THEN
       ASM_REWRITE_TAC[] THEN STRIP_TAC] THEN
-    ARM_STEPS_TAC BIGNUM_COPRIME_EXEC (1--20) THEN
+    ARM_STEPS_TAC BIGNUM_COPRIME_EXEC (1--21) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[SUB_0; VAL_WORD_0; VAL_WORD_1] THEN
     REWRITE_TAC[WORD_SUB_LZERO; WORD_NEG_EQ_0; VAL_EQ_0] THEN
     REPLICATE_TAC 2 (CONJ_TAC THENL [ARITH_TAC; ALL_TAC]) THEN
+    CONJ_TAC THENL
+     [REWRITE_TAC[EVEN_VAL_WORD; WORD_AND_1_BITVAL] THEN
+      REWRITE_TAC[WORD_BITVAL_EQ_0; BIT_LSB; NOT_ODD] THEN
+      REWRITE_TAC[VAL_WORD_BIGDIGIT];
+      ALL_TAC] THEN
     SUBGOAL_THEN
      `word (bigdigit m0 0):int64 = word(m MOD 2 EXP 64) /\
       word (bigdigit n0 0):int64 = word(n MOD 2 EXP 64)`
@@ -1457,33 +1461,20 @@ let BIGNUM_COPRIME_CORRECT = prove
      [`m_m:num`; `m_n:num`; `n_m:num`; `n_n:num`;
       `m_hi:num`; `n_hi:num`; `m_lo:num`; `n_lo:num`] THEN
 
-    ARM_STEPS_TAC BIGNUM_COPRIME_EXEC (1--30) THEN
+    ARM_STEPS_TAC BIGNUM_COPRIME_EXEC (1--20) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
 
-    DISCARD_STATE_TAC "s30" THEN
+    DISCARD_STATE_TAC "s20" THEN
 
     MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN CONJ_TAC THENL
      [REWRITE_TAC[ARITH_RULE `n - (i + 1) = n - i - 1`] THEN
       GEN_REWRITE_TAC RAND_CONV [WORD_SUB] THEN
       ASM_SIMP_TAC[ARITH_RULE `i < 58 ==> 1 <= 58 - i`];
       DISCH_THEN SUBST1_TAC] THEN
-    REWRITE_TAC[CONJ_ASSOC] THEN CONJ_TAC THENL
-     [REWRITE_TAC[GSYM CONJ_ASSOC];
-      VAL_INT64_TAC `58 - (i + 1)` THEN
-      ASM_REWRITE_TAC[] THEN SIMPLE_ARITH_TAC] THEN
 
-    SUBGOAL_THEN
-     `val(word_sub (word 2)
-                   (word_add (word_and (word m_lo) (word 1))
-                             (word (bitval (m_hi < n_hi)))):int64) = 0 <=>
-      m_hi < n_hi /\ ODD m_lo`
-    SUBST1_TAC THENL
-     [POP_ASSUM_LIST(K ALL_TAC) THEN
-      REWRITE_TAC[WORD_AND_1; BIT_LSB_WORD; bitval] THEN
-      REPEAT(COND_CASES_TAC THEN ASM_REWRITE_TAC[]) THEN
-      CONV_TAC WORD_REDUCE_CONV THEN CONV_TAC NUM_REDUCE_CONV;
-      ALL_TAC] THEN
-    REWRITE_TAC[WORD_AND_1_BITVAL; VAL_WORD_BITVAL; BITVAL_EQ_0] THEN
+    REWRITE_TAC[lemmabit1; NOT_EVEN] THEN
+    REWRITE_TAC[MESON[VAL_WORD_0; LE_0; NOT_LT]
+     `val(if p then x else word 0) <= a <=> ~(a < val x /\ p)`] THEN
 
     SUBGOAL_THEN
      `val(word(n_m + n_m):int64) = n_m + n_m /\
@@ -1504,9 +1495,9 @@ let BIGNUM_COPRIME_CORRECT = prove
       ALL_TAC] THEN
 
     ASM_CASES_TAC `m_hi < n_hi /\ ODD m_lo` THEN
-    ASM_REWRITE_TAC[BIT_LSB_WORD] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[GSYM WORD_ADD] THEN
-    REWRITE_TAC[VAL_WORD_USHR; EXP_1] THEN
+    ASM_REWRITE_TAC[WORD_NEG_SUB] THEN
+    TRY COND_CASES_TAC THEN ASM_REWRITE_TAC[GSYM WORD_ADD] THEN
+    ASM_REWRITE_TAC[VAL_WORD_USHR; EXP_1; ADD_CLAUSES; WORD_SUB_0] THEN
     REPLICATE_TAC 2 (CONJ_TAC THENL
      [REWRITE_TAC[EXP_ADD] THEN MAP_EVERY UNDISCH_TAC
        [`m_m + m_n <= 2 EXP i`; `n_m + n_n <= 2 EXP i`] THEN
@@ -2181,7 +2172,9 @@ let BIGNUM_COPRIME_CORRECT = prove
     RULE_ASSUM_TAC(REWRITE_RULE[TAUT `~p /\ ~q ==> r <=> p \/ q \/ r`]) THEN
     REWRITE_TAC[TAUT `~p /\ ~q ==> r <=> p \/ q \/ r`] THEN
     ARM_STEPS_TAC BIGNUM_COPRIME_EXEC [1] THEN
-    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+    SIMP_TAC[VAL_WORD_EQ; DIMINDEX_64; ARITH_RULE `58 - i < 2 EXP 64`] THEN
+    ASM_REWRITE_TAC[SUB_EQ_0; NOT_LE];
 
     ALL_TAC] THEN
 
@@ -2203,7 +2196,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   GLOBALIZE_PRECONDITION_TAC THEN ASM_REWRITE_TAC[] THEN
 
-  ENSURES_SEQUENCE_TAC `pc + 0x1f0`
+  ENSURES_SEQUENCE_TAC `pc + 0x1cc`
    `\s. read X0 s = evenor /\
         read X4 s = mm /\
         read X5 s = nn /\
@@ -2416,7 +2409,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   (*** The cross-multiplications loop updating m and n ***)
 
-  ENSURES_WHILE_UP_TAC `l:num` `pc + 0x204` `pc + 0x268`
+  ENSURES_WHILE_UP_TAC `l:num` `pc + 0x1e0` `pc + 0x244`
    `\i s. read X0 s = evenor /\
           read X4 s = mm /\
           read X5 s = nn /\
@@ -2533,7 +2526,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   ABBREV_TAC `sgn1 <=> m':int < &0` THEN
 
-  ENSURES_SEQUENCE_TAC `pc + 0x270`
+  ENSURES_SEQUENCE_TAC `pc + 0x24c`
    `\s. read X0 s = evenor /\
         read X4 s = mm /\
         read X5 s = nn /\
@@ -2600,7 +2593,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   (*** Optional right shift and negation of m, negloop1 ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x2bc`
+  ENSURES_SEQUENCE_TAC `pc + 0x298`
    `\s. read X0 s = evenor /\
         read X4 s = mm /\
         read X5 s = nn /\
@@ -2627,7 +2620,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
     (*** Attempt to make a unified break at negskip1 to handle l = 1 ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x2ac`
+    ENSURES_SEQUENCE_TAC `pc + 0x288`
      `\s. read X0 s = evenor /\
           read X4 s = mm /\
           read X5 s = nn /\
@@ -2675,7 +2668,7 @@ let BIGNUM_COPRIME_CORRECT = prove
         REWRITE_TAC[BITVAL_CLAUSES; ADD_CLAUSES];
         ALL_TAC] THEN
 
-      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x284` `pc + 0x2a8`
+      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x260` `pc + 0x284`
        `\i s. read X0 s = evenor /\
               read X4 s = mm /\
               read X5 s = nn /\
@@ -2946,7 +2939,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   ABBREV_TAC `sgn2 <=> n':int < &0` THEN
 
-  ENSURES_SEQUENCE_TAC `pc + 0x2bc`
+  ENSURES_SEQUENCE_TAC `pc + 0x298`
    `\s. read X0 s = evenor /\
         read X4 s = mm /\
         read X5 s = nn /\
@@ -3010,7 +3003,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
   (*** Optional right shift and negation of n, negloop2 ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x308`
+  ENSURES_SEQUENCE_TAC `pc + 0x2e4`
    `\s. read X0 s = evenor /\
         read X4 s = mm /\
         read X5 s = nn /\
@@ -3035,7 +3028,7 @@ let BIGNUM_COPRIME_CORRECT = prove
 
     (*** Attempt to make a unified break at negskip2 to handle l = 1 ****)
 
-    ENSURES_SEQUENCE_TAC `pc + 0x2f8`
+    ENSURES_SEQUENCE_TAC `pc + 0x2d4`
      `\s. read X0 s = evenor /\
           read X4 s = mm /\
           read X5 s = nn /\
@@ -3081,7 +3074,7 @@ let BIGNUM_COPRIME_CORRECT = prove
         REWRITE_TAC[BITVAL_CLAUSES; ADD_CLAUSES];
         ALL_TAC] THEN
 
-      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x2d0` `pc + 0x2f4`
+      ENSURES_WHILE_UP_TAC `l - 1` `pc + 0x2ac` `pc + 0x2d0`
        `\i s. read X0 s = evenor /\
               read X4 s = mm /\
               read X5 s = nn /\
@@ -3430,13 +3423,13 @@ let BIGNUM_COPRIME_CORRECT = prove
 let BIGNUM_COPRIME_SUBROUTINE_CORRECT = prove
  (`!m x a n y b w pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        nonoverlapping (word pc,0x34c) (word_sub stackpointer (word 16),16) /\
+        nonoverlapping (word pc,0x328) (word_sub stackpointer (word 16),16) /\
         nonoverlapping (w,8 * 2 * MAX (val m) (val n))
                        (word_sub stackpointer (word 16),16) /\
         ALLPAIRS nonoverlapping
          [(w,8 * 2 * MAX (val m) (val n));
           (word_sub stackpointer (word 16),16)]
-         [(word pc,0x34c); (x,8 * val m); (y,8 * val n)] /\
+         [(word pc,0x328); (x,8 * val m); (y,8 * val n)] /\
         val m < 2 EXP 57 /\ val n < 2 EXP 57
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_coprime_mc /\

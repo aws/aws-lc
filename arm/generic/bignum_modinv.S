@@ -244,66 +244,64 @@ toploop:
 
                 mov     i, #CHUNKSIZE
 
-innerloop:
-
-// b = (m_lo & 1ull) & (m_hi < n_hi);
-
-                and     t1, m_lo, #1
-                mov     t2, #2
-                subs    xzr, m_hi, n_hi
-                sbcs    xzr, t2, t1
-
-// Precalculate these, since a swap makes no difference to their sum
-
-                add     c1, m_m, n_m
-                add     c2, m_n, n_n
-
-// if (b) { swap(m_hi,n_hi); swap(m_lo,n_lo); }
-
-                mov     t1, m_hi
-                csel    m_hi, n_hi, m_hi, eq
-                csel    n_hi, t1, n_hi, eq
-                mov     t1, m_lo
-                csel    m_lo, n_lo, m_lo, eq
-                csel    n_lo, t1, n_lo, eq
-
-// if (b) { swap(m_m,n_m); swap(m_n,n_n); }
-
-                mov     t1, m_m
-                csel    m_m, n_m, m_m, eq
-                csel    n_m, t1, n_m, eq
-                mov     t1, m_n
-                csel    m_n, n_n, m_n, eq
-                csel    n_n, t1, n_n, eq
-
-// b = (m_lo & 1ull);
+// Conceptually in the inner loop we follow these steps:
+//
+// * If m_lo is odd and m_hi < n_hi, then swap the four pairs
+//    (m_hi,n_hi); (m_lo,n_lo); (m_m,n_m); (m_n,n_n)
+//
+// * Now, if m_lo is odd (old or new, doesn't matter as initial n_lo is odd)
+//    m_hi := m_hi - n_hi, m_lo := m_lo - n_lo
+//    m_m  := m_m + n_m, m_n := m_n + n_n
+//
+// * Halve and double them
+//     m_hi := m_hi / 2, m_lo := m_lo / 2
+//     n_m := n_m * 2, n_n := n_n * 2
+//
+// The actual computation computes updates before actually swapping and
+// then corrects as needed. It also maintains the invariant ~ZF <=> odd(m_lo),
+// since it seems to reduce the dependent latency. Set that up first.
 
                 ands    xzr, m_lo, #1
 
-// if (b) { m_hi -= n_hi; m_lo -= n_lo; }
+innerloop:
 
-                sub     t1, m_hi, n_hi
-                csel    m_hi, t1, m_hi, ne
-                sub     t1, m_lo, n_lo
-                csel    m_lo, t1, m_lo, ne
+// At the start of the loop ~ZF <=> m_lo is odd; mask values accordingly
 
-// if (b) { m_m += n_m; m_n += n_n; }
+                csel    t1, n_hi, xzr, ne
+                csel    t2, n_lo, xzr, ne
+                csel    c1, n_m, xzr, ne
+                csel    c2, n_n, xzr, ne
 
-                csel    m_m, c1, m_m, ne
-                csel    m_n, c2, m_n, ne
+// Compute subtractive updates, which are trivial in the case even(m_lo).
+// Set the flags with the m_hi := m_hi - n_hi so we know to flip things
 
-// m_hi >>= 1; m_lo >>= 1;
-// n_m <<= 1; n_n <<= 1;
+                subs    t1, m_hi, t1
+                sub     t2, m_lo, t2
 
-                lsr     m_hi, m_hi, #1
-                lsr     m_lo, m_lo, #1
+// If the subtraction borrows, swap things appropriately, negating where
+// we've already subtracted so things are as if we actually swapped first.
+
+                cneg    t1, t1, cc
+                cneg    t2, t2, cc
+                csel    n_hi, n_hi, m_hi, cs
+                csel    n_lo, n_lo, m_lo, cs
+                csel    n_m, n_m, m_m, cs
+                csel    n_n, n_n, m_n, cs
+
+// Update and shift while setting oddness flag for next iteration
+
+                ands    xzr, t2, #2
+                add     m_m, m_m, c1
+                add     m_n, m_n, c2
+                lsr     m_hi, t1, #1
+                lsr     m_lo, t2, #1
                 add     n_m, n_m, n_m
                 add     n_n, n_n, n_n
 
-// Next iteration
+// Next iteration; don't disturb the flags since they are used at entry
 
-                subs    i, i, #1
-                bne     innerloop
+                sub     i, i, #1
+                cbnz    i, innerloop
 
 // Apply the update to w and z, using addition in this case, and also take
 // the chance to shift an additional 6 = 64-CHUNKSIZE bits to be ready for a
