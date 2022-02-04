@@ -20,4 +20,10 @@ jobs:
       run: |
         ./tests/ci/run_posix_tests.sh
 
-# TODO(add fips build)
+  macOS-FIPS:
+    runs-on: macos-11 # latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+      run: |
+        ./tests/ci/run_fips_tests.sh
