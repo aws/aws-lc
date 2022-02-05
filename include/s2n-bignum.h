@@ -420,6 +420,7 @@ extern void bignum_montmul_p384_alt (uint64_t z[static 6], uint64_t x[static 6],
 // Montgomery multiply, z := (x * y / 2^576) mod p_521
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_montmul_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+extern void bignum_montmul_p521_alt (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
 
 // Montgomery reduce, z := (x' / 2^{64p}) MOD m
 // Inputs x[n], m[k], p; output z[k]
@@ -447,6 +448,7 @@ extern void bignum_montsqr_p384_alt (uint64_t z[static 6], uint64_t x[static 6])
 // Montgomery square, z := (x^2 / 2^576) mod p_521
 // Input x[9]; output z[9]
 extern void bignum_montsqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+extern void bignum_montsqr_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
 // Multiply z := x * y
 // Inputs x[m], y[n]; output z[k]
@@ -475,6 +477,7 @@ extern void bignum_mul_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4], u
 // Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_mul_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+extern void bignum_mul_p521_alt (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
 
 // Multiply bignum by 10 and add word: z := 10 * z + d
 // Inputs z[k], d; outputs function return (carry) and z[k]
@@ -611,6 +614,7 @@ extern void bignum_sqr_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4]);
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
 extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+extern void bignum_sqr_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
 // Subtract, z := x - y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[p]

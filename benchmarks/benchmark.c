@@ -313,6 +313,8 @@ void call_bignum_montmul_p384_alt(void) repeat(bignum_montmul_p384_alt(b0,b1,b2)
 
 void call_bignum_montmul_p521(void) repeat(bignum_montmul_p521(b0,b1,b2))
 
+void call_bignum_montmul_p521_alt(void) repeat(bignum_montmul_p521_alt(b0,b1,b2))
+
 void call_bignum_montsqr_p256(void) repeat(bignum_montsqr_p256(b0,b1))
 
 void call_bignum_montsqr_p256_alt(void) repeat(bignum_montsqr_p256_alt(b0,b1))
@@ -326,6 +328,8 @@ void call_bignum_montsqr_p384(void) repeat(bignum_montsqr_p384(b0,b1))
 void call_bignum_montsqr_p384_alt(void) repeat(bignum_montsqr_p384_alt(b0,b1))
 
 void call_bignum_montsqr_p521(void) repeat(bignum_montsqr_p521(b0,b1))
+
+void call_bignum_montsqr_p521_alt(void) repeat(bignum_montsqr_p521_alt(b0,b1))
 
 void call_bignum_neg_p256(void) repeat(bignum_neg_p256(b0,b1))
 
@@ -341,11 +345,15 @@ void call_bignum_sqr_p256k1_alt(void) repeat(bignum_sqr_p256k1_alt(b0,b1))
 
 void call_bignum_sqr_p521(void) repeat(bignum_sqr_p521(b0,b1))
 
+void call_bignum_sqr_p521_alt(void) repeat(bignum_sqr_p521_alt(b0,b1))
+
 void call_bignum_mul_p256k1(void) repeat(bignum_mul_p256k1(b0,b1,b2))
 
 void call_bignum_mul_p256k1_alt(void) repeat(bignum_mul_p256k1_alt(b0,b1,b2))
 
 void call_bignum_mul_p521(void) repeat(bignum_mul_p521(b0,b1,b2))
+
+void call_bignum_mul_p521_alt(void) repeat(bignum_mul_p521_alt(b0,b1,b2))
 
 void call_bignum_mul_4_8(void) repeat(bignum_mul_4_8(b0,b1,b2))
 
@@ -767,6 +775,7 @@ int main(void)
   timingtest(bmi,"bignum_montmul_p384",call_bignum_montmul_p384);
   timingtest(all,"bignum_montmul_p384_alt",call_bignum_montmul_p384_alt);
   timingtest(bmi,"bignum_montmul_p521",call_bignum_montmul_p521);
+  timingtest(all,"bignum_montmul_p521_alt",call_bignum_montmul_p521_alt);
   timingtest(all,"bignum_montredc (32/16 -> 16)",call_bignum_montredc__32_16);
   timingtest(all,"bignum_montsqr (32 -> 32)" ,call_bignum_montsqr__32);
   timingtest(bmi,"bignum_montsqr_p256",call_bignum_montsqr_p256);
@@ -776,6 +785,7 @@ int main(void)
   timingtest(bmi,"bignum_montsqr_p384",call_bignum_montsqr_p384);
   timingtest(all,"bignum_montsqr_p384_alt",call_bignum_montsqr_p384_alt);
   timingtest(bmi,"bignum_montsqr_p521",call_bignum_montsqr_p521);
+  timingtest(all,"bignum_montsqr_p521_alt",call_bignum_montsqr_p521_alt);
   timingtest(all,"bignum_mul (4x4 -> 8)",call_bignum_mul__4_8);
   timingtest(all,"bignum_mul (6x6 -> 12)",call_bignum_mul__6_12);
   timingtest(all,"bignum_mul (8x8 -> 16)",call_bignum_mul__8_16);
@@ -790,6 +800,7 @@ int main(void)
   timingtest(bmi,"bignum_mul_p256k1",call_bignum_mul_p256k1);
   timingtest(all,"bignum_mul_p256k1_alt",call_bignum_mul_p256k1_alt);
   timingtest(bmi,"bignum_mul_p521",call_bignum_mul_p521);
+  timingtest(all,"bignum_mul_p521_alt",call_bignum_mul_p521_alt);
   timingtest(all,"bignum_muladd10 (32 -> 32)",call_bignum_muladd10__32);
   timingtest(all,"bignum_mux16 (4 -> 4)",call_bignum_mux16__4);
   timingtest(all,"bignum_mux16 (6 -> 6)",call_bignum_mux16__6);
@@ -832,6 +843,7 @@ int main(void)
   timingtest(bmi,"bignum_sqr_p256k1",call_bignum_sqr_p256k1);
   timingtest(all,"bignum_sqr_p256k1_alt",call_bignum_sqr_p256k1_alt);
   timingtest(bmi,"bignum_sqr_p521",call_bignum_sqr_p521);
+  timingtest(all,"bignum_sqr_p521_alt",call_bignum_sqr_p521_alt);
   timingtest(all,"bignum_sub (4x4->4)",call_bignum_sub__4_4);
   timingtest(all,"bignum_sub (6x6->6)",call_bignum_sub__6_6);
   timingtest(all,"bignum_sub (32x32->32)",call_bignum_sub__32_32);

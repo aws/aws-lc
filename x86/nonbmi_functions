@@ -83,16 +83,19 @@ bignum_montmul
 bignum_montmul_p256_alt
 bignum_montmul_p256k1_alt
 bignum_montmul_p384_alt
+bignum_montmul_p521_alt
 bignum_montredc
 bignum_montsqr
 bignum_montsqr_p256_alt
 bignum_montsqr_p256k1_alt
 bignum_montsqr_p384_alt
+bignum_montsqr_p521_alt
 bignum_mul
 bignum_mul_4_8_alt
 bignum_mul_6_12_alt
 bignum_mul_8_16_alt
 bignum_mul_p256k1_alt
+bignum_mul_p521_alt
 bignum_muladd10
 bignum_mux
 bignum_mux16
@@ -125,6 +128,7 @@ bignum_sqr_4_8_alt
 bignum_sqr_6_12_alt
 bignum_sqr_8_16_alt
 bignum_sqr_p256k1_alt
+bignum_sqr_p521_alt
 bignum_sub
 bignum_sub_p256
 bignum_sub_p256k1
