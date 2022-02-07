@@ -30,19 +30,26 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 std::string GetTestData(const char *path);
 
 static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
-  size_t len;
-  if (!EVP_DecodedLength(&len, strlen(in))) {
-    fprintf(stderr, "EVP_DecodedLength failed\n");
-    return false;
-  }
+  int temp_length = 0;
+  size_t total_length = 0;
+  EVP_ENCODE_CTX ctx;
+  EVP_DecodeInit(&ctx);
+  out->resize(strlen(in));
 
-  out->resize(len);
-  if (!EVP_DecodeBase64(out->data(), &len, len, (const uint8_t *)in,
-                        strlen(in))) {
-    fprintf(stderr, "EVP_DecodeBase64 failed\n");
+  int decode_update_result = EVP_DecodeUpdate(&ctx, out->data(), &temp_length, (const uint8_t *) in, strlen(in));
+  if(decode_update_result != 1 && decode_update_result != 0) {
+      fprintf(stderr, "EVP_DecodeUpdate failed\n");
+      return false;
+  }
+  total_length += temp_length;
+  temp_length = 0;
+
+  if (1 != EVP_DecodeFinal(&ctx, &out->data()[total_length], &temp_length)) {
+    fprintf(stderr, "EVP_DecodeFinal failed\n");
     return false;
   }
-  out->resize(len);
+  total_length += temp_length;
+  out->resize(total_length);
   return true;
 }
 
@@ -633,7 +640,6 @@ TEST_P(OCSPTest, VerifyOCSPResponse) {
 
   // Get OCSP response from path.
   std::string data = GetTestData(std::string("crypto/ocsp/test/" + t.ocsp_response + ".ors").c_str());
-  data.erase(std::remove(data.begin(), data.end(), '\n'), data.end());
   std::vector<uint8_t> input;
   ASSERT_TRUE(DecodeBase64(&input, data.c_str()));
 
