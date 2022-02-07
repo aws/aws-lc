@@ -132,10 +132,12 @@ static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
   fiat_p384_selectznz(out, !!t, z, nz);
 }
 
+// NOTE: the input and output are in little-endian representation.
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
   p384_felem_from_bytes(out, in->bytes);
 }
 
+// NOTE: the input and output are in little-endian representation.
 static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
   // This works because 384 is a multiple of 64, so there are no excess bytes to
   // zero when rounding up to |BN_ULONG|s.
@@ -625,8 +627,16 @@ static crypto_word_t p384_get_bit(const uint8_t *in, int i) {
 
 // Constants for scalar encoding in the scalar multiplication functions.
 #define P384_MUL_WSIZE        (7) // window size w
+// Assert the window size is 7 because the pre-computed table in |p384_table.h|
+// is generated for window size 7.
+OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 7,
+    p384_scalar_mul_window_size_is_not_equal_to_seven)
+
 #define P384_MUL_TWO_TO_WSIZE (1 << P384_MUL_WSIZE)
 #define P384_MUL_WSIZE_MASK   ((P384_MUL_TWO_TO_WSIZE << 1) - 1)
+
+// Number of |P384_MUL_WSIZE|-bit windows in a 384-bit value
+#define P384_MUL_NWINDOWS     ((384 + P384_MUL_WSIZE - 1)/P384_MUL_WSIZE) 
 
 // For the public point in |ec_GFp_nistp384_point_mul_public| function
 // we use window size w = 5 since it's faster than w = 7
@@ -646,19 +656,15 @@ static void p384_felem_mul_scalar_rwnaf(int16_t *out, const unsigned char *in) {
   int16_t window, d;
 
   window = (in[0] & P384_MUL_WSIZE_MASK) | 1;
-  for (size_t i = 0; i < 54; i++) {
+  for (size_t i = 0; i < P384_MUL_NWINDOWS - 1; i++) {
     d = (window & P384_MUL_WSIZE_MASK) - P384_MUL_TWO_TO_WSIZE;
     out[i] = d;
     window = (window - d) >> P384_MUL_WSIZE;
-    window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + 1) << 1;
-    window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + 2) << 2;
-    window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + 3) << 3;
-    window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + 4) << 4;
-    window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + 5) << 5;
-    window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + 6) << 6;
-    window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + 7) << 7;
+    for (size_t j = 1; j <= P384_MUL_WSIZE; j++) {
+      window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + j) << j;
+    }
   }
-  out[54] = window;
+  out[P384_MUL_NWINDOWS - 1] = window;
 }
 
 // p384_select_point selects the |idx|-th projective point from the given
@@ -747,25 +753,25 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   }
 
   // Recode the scalar.
-  int16_t rnaf[55] = {0};
+  int16_t rnaf[P384_MUL_NWINDOWS] = {0};
   p384_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
 
   // Initialize the accumulator |res| with the table entry corresponding to
   // the most significant digit of the recoded scalar (note that this digit
   // can't be negative).
-  int16_t idx = rnaf[54] >> 1;
+  int16_t idx = rnaf[P384_MUL_NWINDOWS - 1] >> 1;
   p384_select_point(res, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
 
   // Process the remaining digits of the scalar.
-  for (size_t i = 53; i < 54; i--) {
-    // Double |res| 5 times in each iteration.
+  for (size_t i = P384_MUL_NWINDOWS - 2; i < P384_MUL_NWINDOWS - 1; i--) {
+    // Double |res| 7 times in each iteration.
     for (size_t j = 0; j < P384_MUL_WSIZE; j++) {
       p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
     }
 
     int16_t d = rnaf[i];
     // is_neg = (d < 0) ? 1 : 0
-    int16_t is_neg = (d >> 7) & 1;
+    int16_t is_neg = (d >> 15) & 1;
     // d = abs(d)
     d = (d ^ -is_neg) + is_neg;
 
@@ -813,8 +819,8 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 // encoding.
 //
 // The |p384_g_pre_comp| table has 14 sub-tables each holding 64 points:
-//      0 :      [1]G,        [3]G,  ...,       [127]G
-//      1 : [1*2^28]G,   [3*2^28]G,  ...,  [127*2^28]G
+//      0 :       [1]G,       [3]G,  ...,       [127]G
+//      1 :  [1*2^28]G,  [3*2^28]G,  ...,  [127*2^28]G
 //                         ...
 //      i : [1*2^28i]G, [3*2^28i]G,  ..., [127*2^28i]G
 //                         ...
@@ -869,7 +875,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
                                            const EC_SCALAR *scalar) {
 
   p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
-  int16_t rnaf[55] = {0};
+  int16_t rnaf[P384_MUL_NWINDOWS] = {0};
 
   // Recode the scalar.
   p384_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
@@ -886,14 +892,14 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
     // doubling can't happen).
     // For group (3) we process digits s_51 to s_3, for group (2) s_54 to s_2,
     // group (1) s_53 to s_1, and for group (0) s_52 to s_0.
-    const size_t start_idx = 55 - i - (i == 0 ? 4 : 0);
-    for (size_t j = start_idx; j < 55; j -= 4) {
+    const size_t start_idx = P384_MUL_NWINDOWS - i - (i == 0 ? 4 : 0);
+    for (size_t j = start_idx; j < P384_MUL_NWINDOWS; j -= 4) {
       // For each digit |d| in the current group read the corresponding point
       // from the table and add it to |res|. If |d| is negative, negate
       // the point before adding it to |res|.
       int16_t d = rnaf[j];
       // is_neg = (d < 0) ? 1 : 0
-      int16_t is_neg = (d >> 7) & 1;
+      int16_t is_neg = (d >> 15) & 1;
       // d = abs(d)
       d = (d ^ -is_neg) + is_neg;
 
@@ -901,7 +907,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
 
       // Select the point to add, in constant time.
       p384_select_point_affine(tmp, idx, p384_g_pre_comp[j / 4],
-                                    P384_MUL_TABLE_SIZE);
+                               P384_MUL_TABLE_SIZE);
 
       // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
       p384_felem_opp(ftmp, tmp[1]);
@@ -944,7 +950,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
 // with w = 7 for g_scalar and w = 5 for p_scalar.
 // For the base point G product we use the first sub-table of the precomputed
 // table |p384_g_pre_comp| from p384_table.h file, while for P we generate
-// |p_pre_comp| on-the-fly. The tables hold the first 64 odd multiples
+// |p_pre_comp| table on-the-fly. The tables hold the first 64 odd multiples
 // of G or P:
 //     g_pre_comp = {[1]G, [3]G, ..., [31]G},
 //     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
@@ -988,7 +994,7 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
 
   // Compute two_p = [2]P.
   p384_point_double(two_p[0], two_p[1], two_p[2],
-                         p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
+                    p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
 
   // Generate the remaining 15 multiples of P.
   for (size_t i = 1; i < P384_MUL_PUB_TABLE_SIZE; i++) {
