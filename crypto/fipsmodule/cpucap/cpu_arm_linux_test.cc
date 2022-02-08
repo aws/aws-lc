@@ -237,24 +237,3 @@ TEST(ARMLinuxTest, CPUInfo) {
     EXPECT_EQ(t.broken_neon ? 1 : 0, crypto_cpuinfo_has_broken_neon(&sp));
   }
 }
-
-#if defined(OPENSSL_AARCH64) && defined(OPENSSL_LINUX) && \
-    !defined(OPENSSL_STATIC_ARMCAP)
-
-#include <sys/auxv.h>
-#include <openssl/arm_arch.h>
-#include <openssl/err.h>
-
-// This test is enabled only when OPENSSL_armcap environment variable
-// has bit 6 set for SHA-512
-TEST(ARMLinuxTest, DISABLED_SHA512CapTest) {
-  // The following is as in |OPENSSL_cpuid_setup|
-  unsigned long hwcap = getauxval(AT_HWCAP);
-
-  static const unsigned long kSHA512 = 1 << 21;
-  if (!(hwcap & kSHA512)) {
-    EXPECT_EQ(CPU_R_UNSUPPORTED_HW_CAPABILITY , ERR_GET_REASON(ERR_peek_last_error()));
-    ASSERT_EXIT(OPENSSL_cpuid_setup(), ::testing::ExitedWithCode(1), "");
-  }
-}
-#endif // OPENSSL_AARCH64 && OPENSSL_LINUX && ! OPENSSL_STATIC_ARMCAP
