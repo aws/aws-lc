@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_tomont_p384
+        .globl  bignum_tomont_p384_alt
         .text
         .balign 4
 
@@ -70,6 +71,7 @@
                 adc     d5, d5, t3
 
 bignum_tomont_p384:
+bignum_tomont_p384_alt:
 
 #define d0 x2
 #define d1 x3

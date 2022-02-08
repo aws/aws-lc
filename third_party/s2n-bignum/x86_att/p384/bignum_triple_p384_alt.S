@@ -17,7 +17,7 @@
 // Triple modulo p_384, z := (3 * x) mod p_384
 // Input x[6]; output z[6]
 //
-//    extern void bignum_triple_p384
+//    extern void bignum_triple_p384_alt
 //     (uint64_t z[static 6], uint64_t x[static 6]);
 //
 // The input x can be any 6-digit bignum, not necessarily reduced modulo p_384,
@@ -27,7 +27,7 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_triple_p384
+        .globl  bignum_triple_p384_alt
         .text
 
 #define z %rdi
@@ -42,12 +42,15 @@
 
 #define a %rax
 #define c %rcx
-#define q %rdx
+#define q %rcx
+#define d %rdx
 
 #define ashort %eax
-#define qshort %edx
+#define cshort %ecx
+#define qshort %ecx
+#define dshort %edx
 
-bignum_triple_p384:
+bignum_triple_p384_alt:
 
 // We seem to need (just!) one extra register, which we need to save and restore
 
@@ -57,56 +60,63 @@ bignum_triple_p384:
 // but actually immediately producing q = h + 1, our quotient approximation,
 // by adding 1 to it.
 
-                xorl    ashort, ashort
+                movl    $3, cshort
 
-                movq    (x), q
-                movq    q, d0
-                adcxq   q, q
-                adoxq   q, d0
-                movq    8(x), q
-                movq    q, d1
-                adcxq   q, q
-                adoxq   q, d1
-                movq    16(x), q
-                movq    q, d2
-                adcxq   q, q
-                adoxq   q, d2
-                movq    24(x), q
-                movq    q, d3
-                adcxq   q, q
-                adoxq   q, d3
-                movq    32(x), q
-                movq    q, d4
-                adcxq   q, q
-                adoxq   q, d4
-                movq    40(x), q
-                movq    q, d5
-                adcxq   q, q
-                adoxq   q, d5
+                movq    (x), a
+                mulq    c
+                movq    a, d0
+                movq    d, d1
+
+                movq    8(x), a
+                xorq    d2, d2
+                mulq    c
+                addq    a, d1
+                adcq    d, d2
+
+                movq    16(x), a
+                xorq    d3, d3
+                mulq    c
+                addq    a, d2
+                adcq    d, d3
+
+                movq    24(x), a
+                xorq    d4, d4
+                mulq    c
+                addq    a, d3
+                adcq    d, d4
+
+                movq    32(x), a
+                mulq    c
+                addq    a, d4
+                adcq    $0, d
+
+                movq    40(x), a
+                movq    d, d5
+                mulq    c
+                addq    a, d5
 
                 movl    $1, qshort
-                adcxq   a, q
-                adoxq   a, q
+                adcq    d, q
 
 // Initial subtraction of z - q * p_384, with bitmask c for the carry
 // Actually done as an addition of (z - 2^384 * h) + q * (2^384 - p_384)
 // which, because q = h + 1, is exactly 2^384 + (z - q * p_384), and
 // therefore CF <=> 2^384 + (z - q * p_384) >= 2^384 <=> z >= q * p_384.
 
-                movq    q, c
-                shlq    $32, c
+                movq    q, d
+                shlq    $32, d
                 movq    q, a
-                subq    c, a
-                sbbq    $0, c
+                subq    d, a
+                sbbq    $0, d
 
                 addq    a, d0
-                adcq    c, d1
+                adcq    d, d1
                 adcq    q, d2
                 adcq    $0, d3
                 adcq    $0, d4
                 adcq    $0, d5
-                sbbq    c, c
-                notq    c
+                sbbq    d, d
+                notq    d
 
 // Now use that mask for a masked addition of p_384, which again is in
 // fact done by a masked subtraction of 2^384 - p_384, so that we only
@@ -114,15 +124,15 @@ bignum_triple_p384:
 
                 movl    $0x00000000ffffffff, qshort
                 xorl    ashort, ashort
-                andq    c, q
+                andq    d, q
                 subq    q, a
-                negq    c
+                negq    d
 
                 subq    a, d0
                 movq    d0, (z)
                 sbbq    q, d1
                 movq    d1, 8(z)
-                sbbq    c, d2
+                sbbq    d, d2
                 movq    d2, 16(z)
                 sbbq    $0, d3
                 movq    d3, 24(z)
