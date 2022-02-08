@@ -1,21 +1,25 @@
 @echo on
-set BUILD_DIR=%CODEBUILD_SRC_DIR%\test_build_dir
-set INSTALL_DIR=%BUILD_DIR%\install
-
+set SRC_ROOT=%cd%
+set BUILD_DIR=%SRC_ROOT%\test_build_dir
 
 @rem %1 contains the path to the setup batch file for the version of of visual studio that was passed in from the build spec file.
 @rem x64 comes from the architecture options https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
-call %1 x64 || goto error
+set MSVC_PATH=%1
+call %MSVC_PATH% x64 || goto error
 SET
-call :build_and_test Release "" || goto error
 
-@rem call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
-@rem The NO_ASM fails due to some missing 'dummy_chacha20_poly1305_asm'
-@rem call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
-@rem The SHARED_LIBS build fails due to go not being able to write some file
-@rem call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
-@rem The debug build currently fails due to 1073741515 missing Dll call :build_and_test aws-lc Debug || goto error
-@rem call :build_and_test Debug "" || goto error
+@rem Run the same builds as run_posix_tests.sh
+@rem Check which version of MSVC we're building with: remove 14.0 from the path to the compiler and check if it matches the
+@rem original string. MSVC 14 has an issue with a missing DLL that causes the debug unit tests to fail
+if x%MSVC_PATH:14.0=%==x%MSVC_PATH% call :build_and_test Debug "" || goto error
+call :build_and_test Release "" || goto error
+call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
+call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
+
+@rem Windows has no equivalent of Linux's rpath so it can't find the built dlls from CMake. We also don't want to install our
+@rem tests or copy them around so Windows can find it in the same directory. Instead just put the dll's location onto the path
+set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
+call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
 
 goto :EOF
 
@@ -32,29 +36,25 @@ exit /b 0
 :build
 @echo on
 @echo  LOG: %date%-%time% %1 %2 build started with cmake generation started
-cd %CODEBUILD_SRC_DIR%
+cd %SRC_ROOT%
 rmdir /s /q %BUILD_DIR%
 mkdir %BUILD_DIR%
-mkdir %INSTALL_DIR%
 cd %BUILD_DIR%
 
-cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 -DCMAKE_INSTALL_PREFIX="%INSTALL_DIR%" -DCMAKE_PREFIX_PATH="%INSTALL_DIR%" %CODEBUILD_SRC_DIR% || goto error
+cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 %SRC_ROOT% || goto error
 
 @echo  LOG: %date%-%time% %1 %2 cmake generation complete, starting build
 ninja || goto error
 exit /b 0
 
-
 @rem Use the same parameters as build_and_test, this assumes the build is complete
 :test
 @echo on
 @echo  LOG: %date%-%time% %1 %2 build finished, starting tests
-ninja -C %BUILD_DIR% run_tests || goto error
+ninja run_tests || goto error
 @echo  LOG: %date%-%time% %1 %2 tests complete
 exit /b %errorlevel%
 
 :error
 echo Failed with error #%errorlevel%.
-type CMakeFiles\CMakeOutput.log
-type CMakeFiles\CMakeError.log
 exit /b 1

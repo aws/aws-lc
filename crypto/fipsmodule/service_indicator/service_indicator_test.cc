@@ -929,7 +929,7 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
     CALL_SERVICE_AND_CHECK_APPROVED(approved,
-            ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+            ASSERT_FALSE(EVP_PKEY_keygen(ctx.get(), &raw)));
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
     // Prevent memory leakage.
     pkey.reset(raw);
@@ -1026,8 +1026,7 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   const RSATestVector &rsaTestVector = GetParam();
 
   int approved = AWSLC_NOT_APPROVED;
-
-  bssl::UniquePtr<RSA> rsa(RSA_new());
+  RSA *rsa = RSA_new();
   bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
@@ -1037,18 +1036,12 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigGen) {
   BN_set_word(e.get(), RSA_F4);
 
   // Generate a generic rsa key.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ASSERT_TRUE(RSA_generate_key_ex(rsa, rsaTestVector.key_size, e.get(), nullptr));
   if(rsaTestVector.use_pss) {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
   } else {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa));
   }
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsaTestVector.key_size));
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
   // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
@@ -1102,7 +1095,7 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
 
   int approved = AWSLC_NOT_APPROVED;
 
-  bssl::UniquePtr<RSA> rsa(RSA_new());
+  RSA *rsa = RSA_new();
   bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
@@ -1112,18 +1105,12 @@ TEST_P(RSA_ServiceIndicatorTest, RSASigVer) {
   BN_set_word(e.get(), RSA_F4);
 
   // Generate a generic rsa key.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ASSERT_TRUE(RSA_generate_key_ex(rsa, rsaTestVector.key_size, e.get(), nullptr));
   if(rsaTestVector.use_pss) {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
   } else {
-    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa));
   }
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsaTestVector.key_size));
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
 
   std::vector<uint8_t> signature;
   size_t sig_len;
@@ -1187,24 +1174,21 @@ TEST_P(RSA_ServiceIndicatorTest, ManualRSASignVerify) {
   ASSERT_TRUE(EVP_DigestInit(ctx.get(), rsaTestVector.func()));
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
 
-  // Generate a generic rsa key.
+  RSA *rsa = RSA_new();
+  bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  bssl::UniquePtr<EVP_PKEY_CTX> pctx;
+  BN_set_word(e.get(), RSA_F4);
+
+  // Generate a generic rsa key.
+  ASSERT_TRUE(RSA_generate_key_ex(rsa, rsaTestVector.key_size, e.get(), nullptr));
   if(rsaTestVector.use_pss) {
-    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA_PSS, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
   } else {
-    pctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa));
   }
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(pctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(pctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(pctx.get(), rsaTestVector.key_size));
-  ASSERT_TRUE(EVP_PKEY_keygen(pctx.get(), &raw));
-  pkey.reset(raw);
-  ASSERT_TRUE(pkey);
 
   // Manual construction for signing.
-  pctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
   ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
   ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
   EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
@@ -1287,7 +1271,13 @@ TEST_P(ECDSA_ServiceIndicatorTest, ECDSAKeyCheck) {
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_check_fips(key.get())));
   ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
-
+  // Remove reference to private key in generated key and see if
+  // |EC_KEY_check_fips| still returns approval for keys with only public keys
+  // available.
+  bssl::UniquePtr<EC_KEY> key_only_public(EC_KEY_new_by_curve_name(ecdsaTestVector.nid));
+  ASSERT_TRUE(EC_KEY_set_public_key(key_only_public.get(), EC_KEY_get0_public_key(key.get())));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EC_KEY_check_fips(key_only_public.get())));
+  ASSERT_EQ(approved, ecdsaTestVector.key_check_expect_approved);
 
   // Test running the EVP_PKEY_keygen interfaces one by one directly, and check
   // |EVP_PKEY_keygen| for approval at the end. |EVP_PKEY_keygen_init| should
@@ -1632,10 +1622,24 @@ TEST(ServiceIndicatorTest, BasicTest) {
   uint8_t output[256];
   size_t out_len;
   int num = 0;
+  int counter_before, counter_after;
 
-  // Call an approved service.
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
+  // Because the service indicator gets initialised in |FIPS_service_indicator_update_state|, which
+  // is called by all approved services, the self_test run at the beginning would have updated it
+  // more than once. The following test ensures that it's not zero and that it gets updated by calling
+  // an approved service without calling |FIPS_service_indicator_before_call| first, which can init the counter,
+  // but instead calling |FIPS_service_indicator_after_call|
+  // This test also ensures that the counter gets incremented once, i.e. it was locked through the internal calls.
+  counter_before = FIPS_service_indicator_after_call();
+  ASSERT_NE(counter_before, 0);
+  EVP_AEAD_CTX_seal(aead_ctx.get(),
+                    output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0);
+  counter_after = FIPS_service_indicator_after_call();
+  ASSERT_EQ(counter_after, counter_before+1);
+
+  // Call an approved service.
   CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
           output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
   ASSERT_EQ(approved, AWSLC_APPROVED);
@@ -2134,7 +2138,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 0.0.2");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.0.1");
 }
 
 #else
@@ -2179,6 +2183,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 0.0.2");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.0.1");
 }
 #endif // AWSLC_FIPS

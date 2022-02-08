@@ -16,9 +16,6 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
     * step 3: change **Source provider** to **GitHub**. 
     * step 4: click **Connect using OAuth** and **Connect to GitHub**.
     * step 5: follow the OAuth app to grant access.
-* [Create GitHub Personal Access Token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)
-  * Note: This token ONLY needs ['read:packages' permission](https://docs.github.com/en/packages/learn-github-packages/about-github-packages#authenticating-to-github-packages), and should be deleted from GitHub account after docker image build.
-  * This token is needed when pulling images from 'docker.pkg.github.com'.
 
 ### Minimal permissions:
 
@@ -65,8 +62,7 @@ To setup or update the CI in your account you will need the following IAM permis
 
 To set up AWS-LC CI, run command:
 ```
-export GITHUB_ACCESS_TOKEN='xxxxx'
-./run-cdk.sh --action deploy-ci --github-access-token ${GITHUB_ACCESS_TOKEN}
+./run-cdk.sh --action deploy-ci
 ```
 
 To update AWS-LC CI, run command:
@@ -76,8 +72,7 @@ To update AWS-LC CI, run command:
 
 To create/update Linux Docker images, run command:
 ```
-export GITHUB_ACCESS_TOKEN='xxxxx'
-./run-cdk.sh --action build-linux-img --github-access-token ${GITHUB_ACCESS_TOKEN}
+./run-cdk.sh --action build-linux-img
 ```
 
 To destroy AWS-LC CI resources created above, run command:
@@ -220,12 +215,6 @@ command.
 #### Linux Docker image build
 
 ```bash
-# Create GitHub personal access token, which is needed when pulling Docker images from 'docker.pkg.github.com'.
-export AWS_LC_CI_SECRET_NAME='aws-lc-ci-external-credential'
-secret_arn=$(aws secretsmanager create-secret --name "${AWS_LC_CI_SECRET_NAME}" --secret-string "${GITHUB_ACCESS_TOKEN}" | jq -r '.ARN')
-# Export this variable so CDK can create related IAM policy on this ARN.
-export EXTERNAL_CREDENTIAL_SECRET_ARN="${secret_arn}"
-
 # Launch Linux Docker image CodeBuild resources.
 cdk deploy aws-lc-docker-image-build-linux --require-approval never
 

@@ -1,0 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      # To use this build spec file, CMake environment variable CC and CXX compiler should be pre-defined.
+      - if [[ -z "${CC+x}" || -z "${CC}" ]]; then echo "CC is not defined." && exit 1; else ${CC} --version && echo "Found CC."; fi
+      - if [[ -z "${CXX+x}" || -z "${CXX}" ]]; then echo "CXX is not defined." && exit 1; else ${CXX} --version && echo "Found CXX."; fi
+      # Sanitizer is very slow on ARM.
+      # https://github.com/google/sanitizers/issues/1331
+      - export AWS_LC_GO_TEST_TIMEOUT='60m'
+  build:
+    commands:
+      - ./tests/ci/run_ssl_asan_tests.sh 

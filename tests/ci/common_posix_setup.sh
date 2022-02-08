@@ -12,7 +12,15 @@ echo "$SRC_ROOT"
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
-NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+NUM_CPU_THREADS=''
+KERNEL_NAME=$(uname -s)
+if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
+  # On MacOS, /proc/cpuinfo does not exist.
+  NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
+else
+  # Assume KERNEL_NAME is Linux.
+  NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+fi
 
 function run_build {
   local cflags=("$@")
@@ -70,13 +78,6 @@ function fips_build_and_test {
   # Run tests.
   run_cmake_custom_target 'run_tests'
   "${BUILD_ROOT}/util/fipstools/cavp/test_fips"
-}
-
-function ensure_file() {
-    if [ ! -f "$1" ]; then
-        echo "$1 does not exist"
-        exit 1
-    fi
 }
 
 function build_and_test_valgrind {

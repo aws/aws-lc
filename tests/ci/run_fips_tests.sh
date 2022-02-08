@@ -9,18 +9,18 @@ fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
 if [[ "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then
-  echo "Building with Clang and testing AWS-LC in FIPS RelWithDebInfo mode with address sanitizer."
-  fips_build_and_test -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
-else
-  echo "Not building with Clang and testing AWS-LC in FIPS RelWithDebInfo mode."
-  fips_build_and_test -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
-fi
-
-if [[ ("$(uname -p)" == 'x86_64'*) ]]; then
-  echo "Testing AWS-LC in FIPS RelWithDebInfo and DISABLE_GETAUXVAL mode."
-  fips_build_and_test -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1 -DDISABLE_GETAUXVAL=1
+  if [[ ("$(uname -p)" == 'x86_64'*) ]]; then
+    echo "Building with Clang and testing AWS-LC in FIPS Release mode with address sanitizer."
+    fips_build_and_test -DASAN=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
+  else
+    # See the comment in run_posix_santizers.sh for more context. ASAN on Arm has a huge performance impact on ssl_test
+    # which causes it to take over 2 hours to complete.
+    echo "Building with Clang and testing AWS-LC in FIPS Release mode with address sanitizer only running crypto_test"
+    run_build -DFIPS=1 -DASAN=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
+    go run util/all_tests.go -build-dir "$BUILD_ROOT"
+  fi
 fi
 
 echo "Testing shared AWS-LC in FIPS Debug mode in a different folder."
-BUILD_ROOT=$(realpath "${SRC_ROOT}/../aws-lc-external_build")
+BUILD_ROOT=$(mktemp -d)
 fips_build_and_test -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1

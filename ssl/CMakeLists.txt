@@ -41,7 +41,7 @@ add_library(
   tls13_enc.cc
   tls13_server.cc
 )
-
+target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 add_dependencies(ssl global_target)
 
 target_link_libraries(ssl crypto)
@@ -93,4 +93,5 @@ endif()
 
 install(EXPORT ssl-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake/${TARGET_DIR}"
+    NAMESPACE AWS::
     COMPONENT Development)

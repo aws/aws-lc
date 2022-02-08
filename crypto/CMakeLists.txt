@@ -129,17 +129,13 @@ endif()
 add_subdirectory(fipsmodule)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
-  set(FIPS_BCM_OBJ "fipsmodule/bcm.o")
-  if(FIPS_SHARED AND FIPS_VENDOR_AFFIRM_BCM_O_PATH)
-    set(FIPS_BCM_OBJ "${FIPS_VENDOR_AFFIRM_BCM_O_PATH}")
-  endif()
-  SET_SOURCE_FILES_PROPERTIES(${FIPS_BCM_OBJ} PROPERTIES EXTERNAL_OBJECT true)
-  SET_SOURCE_FILES_PROPERTIES(${FIPS_BCM_OBJ} PROPERTIES GENERATED true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
 
   set(
     CRYPTO_FIPS_OBJECTS
 
-    ${FIPS_BCM_OBJ}
+    fipsmodule/bcm.o
   )
 endif()
 
@@ -457,15 +453,23 @@ add_library(
   ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
-
+target_compile_definitions(crypto PRIVATE BORINGSSL_IMPLEMENTATION)
 if(FIPS_SHARED)
-  # Rewrite libcrypto.so to inject the correct module hash value. This assumes
-  # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
+  # Rewrite libcrypto.so (or libcrypto.dylib) to inject the correct module
+  # hash value. For now we support the FIPS build only on Linux and macOS.
+
+  if (APPLE)
+    set(INJECT_HASH_MACOS_FLAG "-macos")
+  else()
+    set(INJECT_HASH_MACOS_FLAG "")
+  endif()
+
   add_custom_command(
     TARGET crypto POST_BUILD
     COMMAND ${GO_EXECUTABLE} run
     ${CMAKE_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-    -o ${CMAKE_CURRENT_BINARY_DIR}/libcrypto.so -in-object ${CMAKE_CURRENT_BINARY_DIR}/libcrypto.so -sha256
+    -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+    -sha256 ${INJECT_HASH_MACOS_FLAG}
     # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
     # go_executable isn't used (as it doesn't get built), but we list this
     # dependency anyway in case it starts working in some CMake version.
@@ -581,7 +585,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/fork_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
-    fipsmodule/cpucap/cpu-arm-linux_test.cc
+    fipsmodule/cpucap/cpu_arm_linux_test.cc
     hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
@@ -609,7 +613,6 @@ if(BUILD_TESTING)
     x509/x509_test.cc
     x509/x509_time_test.cc
     x509v3/tab_test.cc
-    x509v3/v3name_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
@@ -631,8 +634,7 @@ endif()
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 configure_file("cmake/crypto-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
@@ -650,4 +652,5 @@ endif()
 
 install(EXPORT crypto-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
+    NAMESPACE AWS::
     COMPONENT Development)

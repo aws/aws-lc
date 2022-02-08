@@ -226,6 +226,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
 }
 
 static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
+  int ret = 0;
   EC_PKEY_CTX *dctx = ctx->data;
   const EC_GROUP *group = dctx->gen_group;
   if (group == NULL) {
@@ -236,14 +237,21 @@ static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     group = EC_KEY_get0_group(ctx->pkey->pkey.ec);
   }
   EC_KEY *ec = EC_KEY_new();
+  // In FIPS build, |EC_KEY_generate_key_fips| updates the service indicator so lock it here
+  FIPS_service_indicator_lock_state();
   if (ec == NULL ||
       !EC_KEY_set_group(ec, group) ||
-      !EC_KEY_generate_key(ec)) {
+      (!is_fips_build() && !EC_KEY_generate_key(ec)) ||
+      ( is_fips_build() && !EC_KEY_generate_key_fips(ec))) {
     EC_KEY_free(ec);
-    return 0;
+    goto end;
   }
+
   EVP_PKEY_assign_EC_KEY(pkey, ec);
-  return 1;
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }
 
 static int pkey_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
