@@ -62,10 +62,9 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   // it can only disable an existing one.
   if (!invert && armcap && (~armcap & v))
   {
-    OPENSSL_PUT_ERROR(SYS, CPU_R_UNSUPPORTED_HW_CAPABILITY);
-    ERR_add_error_dataf("HW capability found: 0x%02x, but HW capability requested: 0x%02x",
-                        armcap, v);
-    // ERR_print_errors_fp(stderr);
+    fprintf(stderr,
+            "HW capability found: 0x%02X, but HW capability requested: 0x%02X\n",
+            armcap, v);
     exit(1);
   }
 
