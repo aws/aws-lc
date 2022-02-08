@@ -55,6 +55,9 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   if (!sscanf_result) {
     return;
   }
+
+  // Detect if the user is trying to use the environment variable to set
+  // a capability that is _not_ available on the CPU:
   // If getauxval() returned a non-zero hwcap in `armcap` (out)
   // and a bit set in the requested `v` is not set in `armcap`,
   // abort instead of crashing later.
