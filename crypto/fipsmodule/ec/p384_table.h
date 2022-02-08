@@ -27,7 +27,7 @@
 // with the difference that we use a window size of 7 instead of 5.
 // The windows size is chosen based on analysis analogous to the one in
 // |ec_GFp_nistp_recode_scalar_bits| function in |util.c| file.
-#if defined(BORINGSSL_NISTP384_64BIT)
+#if defined(P384_USE_64BIT_LIMBS_FELEM)
 static const p384_felem p384_g_pre_comp[14][64][2] = {
     {{{0x3dd0756649c0b528, 0x20e378e2a0d6ce38, 0x879c3afc541b4d6e,
        0x6454868459a30eff, 0x812ff723614ede2b, 0x4d3aadc2299e1513},

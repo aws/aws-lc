@@ -5,9 +5,6 @@
 ------------------------------------------------------------------------------------
 */
 
-// Implementation of P-384 that uses Fiat-crypto for the field arithmetic
-// found in third_party/fiat, similarly to p256.c
-
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -16,28 +13,6 @@
 #include "../bn/internal.h"
 #include "../delocate.h"
 #include "internal.h"
-
-#if defined(BORINGSSL_HAS_UINT128)
-#define BORINGSSL_NISTP384_64BIT 1
-#include "../../../third_party/fiat/p384_64.h"
-#else
-#include "../../../third_party/fiat/p384_32.h"
-#endif
-
-#if defined(BORINGSSL_NISTP384_64BIT)
-#define P384_NLIMBS (6)
-typedef uint64_t p384_limb_t;
-typedef uint64_t p384_felem[P384_NLIMBS];
-static const p384_felem p384_felem_one = {
-    0xffffffff00000001, 0xffffffff, 0x1, 0x0, 0x0, 0x0};
-#else  // 64BIT; else 32BIT
-#define P384_NLIMBS (12)
-typedef uint32_t p384_limb_t;
-typedef uint32_t p384_felem[P384_NLIMBS];
-static const p384_felem p384_felem_one = {
-    0x1, 0xffffffff, 0xffffffff, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
-#endif  // 64BIT
-
 
 // We have two implementations of the field arithmetic for P-384 curve:
 //   - Fiat-crypto
@@ -56,18 +31,60 @@ static const p384_felem p384_felem_one = {
 //
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_LINUX) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
+#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
+#  define P384_USE_S2N_BIGNUM_FIELD_ARITH 1
+#  define P384_USE_64BIT_LIMBS_FELEM 1
+
+#else
+
+#  if defined(BORINGSSL_HAS_UINT128)
+#    include "../../../third_party/fiat/p384_64.h"
+#    define P384_USE_64BIT_LIMBS_FELEM 1
+#  else
+#    include "../../../third_party/fiat/p384_32.h"
+#  endif
+
+#endif
+
+#if defined(P384_USE_64BIT_LIMBS_FELEM)
+
+#define P384_NLIMBS (6)
+typedef uint64_t p384_limb_t;
+typedef uint64_t p384_felem[P384_NLIMBS];
+static const p384_felem p384_felem_one = {
+    0xffffffff00000001, 0xffffffff, 0x1, 0x0, 0x0, 0x0};
+
+#else  // 64BIT; else 32BIT
+
+#define P384_NLIMBS (12)
+typedef uint32_t p384_limb_t;
+typedef uint32_t p384_felem[P384_NLIMBS];
+static const p384_felem p384_felem_one = {
+    0x1, 0xffffffff, 0xffffffff, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+
+#endif  // 64BIT
+
+
+#if defined(P384_USE_S2N_BIGNUM_FIELD_ARITH)
 
 #if defined(OPENSSL_X86_64)
 // On x86_64 platforms s2n-bignum uses bmi2 and adx instruction sets
-// for some of the functions so we have to check if they are available.
-static inline uint8_t use_s2n_bignum(void) {
-  return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) != 0) && // bmi2
-         ((OPENSSL_ia32cap_P[2] & (1u << 19)) != 0);   // adx
+// for some of the functions. These instructions are not supported by
+// every x86 CPU so we have to check if they are available and in case
+// they are not we fallback to slightly slower but generic implementation.
+static inline uint8_t use_s2n_bignum_alt(void) {
+  return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) == 0) || // bmi2
+         ((OPENSSL_ia32cap_P[2] & (1u << 19)) == 0);   // adx
 }
 #else
-// On aarch64 platforms we can always use s2n-bignum.
-static inline uint8_t use_s2n_bignum(void) { return 1; }
+// On aarch64 platforms s2n-bignum has two implementations of certain
+// functions. Depending on the architecture one version is faster than
+// the other. Until we find a clear way to determine in runtime which
+// implementation is faster on the CPU we are running on we stick with
+// one of the implementations.
+static inline uint8_t use_s2n_bignum_alt(void) { return 0; }
 #endif
 
 #define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
@@ -78,20 +95,20 @@ static inline uint8_t use_s2n_bignum(void) { return 1; }
 
 // The following four functions need bmi2 and adx support.
 #define p384_felem_mul(out, in0, in1) \
-  if (use_s2n_bignum()) bignum_montmul_p384(out, in0, in1); \
-  else fiat_p384_mul(out, in0, in1);
+  if (use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, in0, in1); \
+  else bignum_montmul_p384(out, in0, in1);
 
 #define p384_felem_sqr(out, in0) \
-  if (use_s2n_bignum()) bignum_montsqr_p384(out, in0); \
-  else fiat_p384_square(out, in0);
+  if (use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, in0); \
+  else bignum_montsqr_p384(out, in0);
 
 #define p384_felem_to_mont(out, in0) \
-  if (use_s2n_bignum()) bignum_tomont_p384(out, in0); \
-  else fiat_p384_to_montgomery(out, in0);
+  if (use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, in0); \
+  else bignum_tomont_p384(out, in0);
 
 #define p384_felem_from_mont(out, in0) \
-  if (use_s2n_bignum()) bignum_deamont_p384(out, in0); \
-  else fiat_p384_from_montgomery(out, in0);
+  if (use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, in0); \
+  else bignum_deamont_p384(out, in0);
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return bignum_nonzero_6(in1);
@@ -129,7 +146,10 @@ static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
                                p384_limb_t t,
                                const p384_limb_t z[P384_NLIMBS],
                                const p384_limb_t nz[P384_NLIMBS]) {
-  fiat_p384_selectznz(out, !!t, z, nz);
+  p384_limb_t mask = constant_time_is_zero_w(t);
+  for (size_t i = 0; i < P384_NLIMBS; i++) {
+    out[i] = constant_time_select_w(mask, z[i], nz[i]);
+  }
 }
 
 // NOTE: the input and output are in little-endian representation.
