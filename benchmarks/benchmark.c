@@ -568,6 +568,8 @@ void call_bignum_modinv__4(void) repeat(bignum_modinv(4,b0,b1,b2,b3))
 
 void call_bignum_modinv__6(void) repeat(bignum_modinv(6,b0,b1,b2,b3))
 
+void call_bignum_modinv__9(void) repeat(bignum_modinv(9,b0,b1,b2,b3))
+
 void call_bignum_modinv__16(void) repeat(bignum_modinv(16,b0,b1,b2,b3))
 
 void call_bignum_modsub__32(void) repeat(bignum_modsub(32,b0,b1,b2,b3))
@@ -763,6 +765,7 @@ int main(void)
   timingtest(all,"bignum_modifier (32)",call_bignum_modifier__32);
   timingtest(all,"bignum_modinv (4x4 -> 4)",call_bignum_modinv__4);
   timingtest(all,"bignum_modinv (6x6 -> 6)",call_bignum_modinv__6);
+  timingtest(all,"bignum_modinv (9x9 -> 9)",call_bignum_modinv__9);
   timingtest(all,"bignum_modinv (16x16 -> 16)",call_bignum_modinv__16);
   timingtest(all,"bignum_modoptneg (32 -> 32)",call_bignum_modoptneg__32);
   timingtest(all,"bignum_modsub (32 -> 32)" ,call_bignum_modsub__32);

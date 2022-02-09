@@ -211,11 +211,24 @@ let PURE_BOUNDER_RULE =
       REWRITE_TAC[REAL_OF_NUM_LE; VAL_WORD_AND_WORD_LE])
     and rmask_upperbound = prove
      (`&(val(word_and (a:int64) (word n))):real <= &n`,
-      REWRITE_TAC[REAL_OF_NUM_LE; VAL_WORD_AND_WORD_LE]) in
+      REWRITE_TAC[REAL_OF_NUM_LE; VAL_WORD_AND_WORD_LE])
+    and shift_upperbound = prove
+     (`&(val (word_ushr (a:int64) n)):real <= &2 pow (64 - n) - &1`,
+      REWRITE_TAC[REAL_LE_SUB_LADD; VAL_WORD_USHR] THEN
+      REWRITE_TAC[REAL_OF_NUM_CLAUSES; ARITH_RULE `x + 1 <= y <=> x < y`] THEN
+      SIMP_TAC[RDIV_LT_EQ; EXP_EQ_0; ARITH_EQ; GSYM EXP_ADD] THEN
+      TRANS_TAC LTE_TRANS `2 EXP 64` THEN REWRITE_TAC[VAL_BOUND_64] THEN
+      REWRITE_TAC[LE_EXP] THEN ARITH_TAC) in
     fun t ->
      (try [PART_MATCH lhand bitvalf_upperbound t] with Failure _ -> []) @
      (try [PART_MATCH lhand bitval_upperbound t] with Failure _ -> []) @
      (try [PART_MATCH lhand val_upperbound t] with Failure _ -> []) @
+     (try [let th1 = PART_MATCH lhand shift_upperbound t in
+           CONV_RULE(RAND_CONV
+            (LAND_CONV(RAND_CONV NUM_SUB_CONV THENC
+                       REAL_RAT_POW_CONV) THENC
+             REAL_RAT_SUB_CONV)) th1]
+      with Failure _ -> []) @
      (try [let th1 = PART_MATCH lhand valword_upperbound t in
            let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
            if is_ratconst(rand(concl th2)) then th2 else failwith ""]
