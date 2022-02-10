@@ -349,7 +349,7 @@ let (PURE_BOUNDER_TAC:thm list -> tactic),(BOUNDER_TAC:thm list -> tactic) =
  *** fact that the lhs's are variables to eliminate.
  ***)
 
-let DECARRY_RULE =
+let GEN_DECARRY_RULE =
   let simper1 = MATCH_MP (REAL_ARITH
     `&2 pow 64 * hi + lo:real = z ==> hi = (z - lo) / &2 pow 64`)
   and simper0 = MATCH_MP (REAL_ARITH
@@ -406,31 +406,34 @@ let DECARRY_RULE =
       destore2 th in
     let l,r = dest_eq(concl th') in
     if l = r then [] else [th'] in
-  let rec zonker ths =
-    match ths with
-      [] -> []
-    | th::oths ->
-          let oths' = zonker oths in
-          let th' =
-            CONV_RULE (RAND_CONV(PURE_REWRITE_CONV oths' THENC
-                                 REAL_POLY_CONV))
-                      (simper th) in
-          let etm = concl th' in
-          let lrth = time (BOUNDER_RULE []) (rand etm) in
-          if rat_of_term(rand(rand(concl lrth))) </ num_1 then
-            let ith = uncarry (CONJ th' lrth) in
-            let bth = REAL_RAT_LT_CONV(lhand(concl ith)) in
-            let th'' = MP ith (EQT_ELIM bth) in
-            th''::(restore (CONJ th th'') @ oths')
-          else if bitty(lhand etm) &&
-                  rat_of_term(lhand(lhand(concl lrth))) >/ num_0 then
-            let ith = upcarry (CONJ th' lrth) in
-            let bth = REAL_RAT_LT_CONV(lhand(concl ith)) in
-            let th'' = MP ith (EQT_ELIM bth) in
-            th''::(destore (CONJ th th'') @ oths')
-          else
-            th'::oths' in
+  fun boths ->
+    let rec zonker ths =
+      match ths with
+        [] -> []
+      | th::oths ->
+            let oths' = zonker oths in
+            let th' =
+              CONV_RULE (RAND_CONV(PURE_REWRITE_CONV oths' THENC
+                                   REAL_POLY_CONV))
+                        (simper th) in
+            let etm = concl th' in
+            let lrth = time (BOUNDER_RULE boths) (rand etm) in
+            if rat_of_term(rand(rand(concl lrth))) </ num_1 then
+              let ith = uncarry (CONJ th' lrth) in
+              let bth = REAL_RAT_LT_CONV(lhand(concl ith)) in
+              let th'' = MP ith (EQT_ELIM bth) in
+              th''::(restore (CONJ th th'') @ oths')
+            else if bitty(lhand etm) &&
+                    rat_of_term(lhand(lhand(concl lrth))) >/ num_0 then
+              let ith = upcarry (CONJ th' lrth) in
+              let bth = REAL_RAT_LT_CONV(lhand(concl ith)) in
+              let th'' = MP ith (EQT_ELIM bth) in
+              th''::(destore (CONJ th th'') @ oths')
+            else
+              th'::oths' in
   zonker;;
+
+let DECARRY_RULE = GEN_DECARRY_RULE [];;
 
 (* ------------------------------------------------------------------------- *)
 (* A dual that replaces the sum, but doesn't try to prove any bounds. The    *)

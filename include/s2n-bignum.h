@@ -137,6 +137,7 @@ extern void bignum_cmul_p384_alt (uint64_t z[static 6], uint64_t c, uint64_t x[s
 // Multiply by a single word modulo p_521, z := (c * x) mod p_521, assuming x reduced
 // Inputs c, x[9]; output z[9]
 extern void bignum_cmul_p521 (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
+extern void bignum_cmul_p521_alt (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
 
 // Test bignums for coprimality, gcd(x,y) = 1
 // Inputs x[m], y[n]; output function return; temporary buffer t[>=2*max(m,n)]
@@ -343,6 +344,7 @@ extern void bignum_mod_n384_6 (uint64_t z[static 6], uint64_t x[static 6]);
 // Reduce modulo group order, z := x mod n_521
 // Input x[9]; output z[9]
 extern void bignum_mod_n521_9 (uint64_t z[static 9], uint64_t x[static 9]);
+extern void bignum_mod_n521_9_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
 // Reduce modulo field characteristic, z := x mod p_256
 // Input x[k]; output z[4]
@@ -689,6 +691,7 @@ extern void bignum_triple_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 // Triple modulo p_521, z := (3 * x) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
 extern void bignum_triple_p521 (uint64_t z[static 9], uint64_t x[static 9]);
+extern void bignum_triple_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
 // Reverse the bytes in a single word
 // Input a; output function return

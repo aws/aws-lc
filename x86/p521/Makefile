@@ -17,11 +17,13 @@
 
 OBJ = bignum_add_p521.o \
       bignum_cmul_p521.o \
+      bignum_cmul_p521_alt.o \
       bignum_deamont_p521.o \
       bignum_demont_p521.o \
       bignum_double_p521.o \
       bignum_half_p521.o \
       bignum_mod_n521_9.o \
+      bignum_mod_n521_9_alt.o \
       bignum_mod_p521_9.o \
       bignum_montmul_p521.o \
       bignum_montmul_p521_alt.o \
@@ -35,7 +37,8 @@ OBJ = bignum_add_p521.o \
       bignum_sqr_p521_alt.o \
       bignum_sub_p521.o \
       bignum_tomont_p521.o \
-      bignum_triple_p521.o
+      bignum_triple_p521.o \
+      bignum_triple_p521_alt.o
 
 %.o : %.S ; cpp $< | as -o $@ -
 
