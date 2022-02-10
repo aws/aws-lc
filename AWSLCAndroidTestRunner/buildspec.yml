@@ -8,16 +8,16 @@ phases:
       - mkdir apk-artifacts
       - ./gradlew assembleDebug
       - ./gradlew assembleAndroidTest
-      - mv app/build/outputs/apk apk-artifacts/non-fips
-      - ls apk-artifacts
-      - ls apk-artifacts/non-fips
+      - mv app/build/outputs/apk apk-artifacts/non-fips-dbg
+      - ./gradlew clean
+      - ./gradlew assembleDebug -PRelease
+      - ./gradlew assembleAndroidTest -PRelease
+      - mv app/build/outputs/apk apk-artifacts/non-fips-rel
       - ./gradlew clean
       - ./gradlew assembleDebug -PFIPS
       - ./gradlew assembleAndroidTest -PFIPS
       - mv app/build/outputs/apk apk-artifacts/fips
       - ls apk-artifacts
-      - ls apk-artifacts/fips
-      - ls apk-artifacts/fips/androidTest
 artifacts:
   files:
      - './AWSLCAndroidTestRunner/apk-artifacts/**/**/*.apk'
