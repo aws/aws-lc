@@ -29,7 +29,7 @@ target_link_libraries(decrepit crypto ssl)
 
 if(BUILD_TESTING)
   add_executable(
-    decrepit_test
+    ${DECREPIT_TEST_EXEC}
 
     blowfish/blowfish_test.cc
     cast/cast_test.cc
@@ -41,14 +41,14 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
 
-  add_dependencies(decrepit_test global_target)
+  add_dependencies(${DECREPIT_TEST_EXEC} global_target)
 
-  target_link_libraries(decrepit_test test_support_lib boringssl_gtest decrepit
+  target_link_libraries(${DECREPIT_TEST_EXEC} test_support_lib boringssl_gtest decrepit
                         crypto)
   if(WIN32)
-    target_link_libraries(decrepit_test ws2_32)
+    target_link_libraries(${DECREPIT_TEST_EXEC} ws2_32)
   endif()
-  add_dependencies(all_tests decrepit_test)
+  add_dependencies(all_tests ${DECREPIT_TEST_EXEC})
 endif()
 
 install(TARGETS decrepit

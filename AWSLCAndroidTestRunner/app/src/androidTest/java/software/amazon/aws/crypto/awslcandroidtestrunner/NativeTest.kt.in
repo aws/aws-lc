@@ -20,10 +20,10 @@ class Test_@TEST_NAME@ {
             Context.CONTEXT_INCLUDE_CODE
         )
         val native_dir = context.getApplicationInfo().nativeLibraryDir
-        val permission: Process = Runtime.getRuntime().exec("ls ${native_dir}")
-        Log.i(tag, permission.inputStream.bufferedReader().readText())
 
-        val process: Process = Runtime.getRuntime().exec("${native_dir}/@TEST_NAME@.so")
+        // Point executable to correct library path.
+        val envp = arrayOf("LD_LIBRARY_PATH=${native_dir}:\$LD_LIBRARY_PATH")
+        val process: Process = Runtime.getRuntime().exec("${native_dir}/@TEST_NAME@.so", envp)
         val reader = BufferedReader(InputStreamReader(process.inputStream))
         var read: Int
         val buffer = CharArray(4096)

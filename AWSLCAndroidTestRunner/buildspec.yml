@@ -8,6 +8,9 @@ phases:
       - ./gradlew assembleDebug
       - ./gradlew assembleAndroidTest
       - ls app/build/outputs/apk
+      - ./gradlew clean
+      - ./gradlew assembleDebug -PFIPS
+      - ./gradlew assembleAndroidTest -PFIPS
 artifacts:
   files:
      - './AWSLCAndroidTestRunner/app/build/outputs/**/*.apk'

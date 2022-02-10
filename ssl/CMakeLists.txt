@@ -52,7 +52,7 @@ target_include_directories(ssl SYSTEM PUBLIC
 
 if(BUILD_TESTING)
   add_executable(
-    ssl_test
+    ${SSL_TEST_EXEC}
 
     span_test.cc
     ssl_test.cc
@@ -61,13 +61,13 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
 
-  add_dependencies(ssl_test global_target)
+  add_dependencies(${SSL_TEST_EXEC} global_target)
 
-  target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
+  target_link_libraries(${SSL_TEST_EXEC} test_support_lib boringssl_gtest ssl crypto)
   if(WIN32)
-    target_link_libraries(ssl_test ws2_32)
+    target_link_libraries(${SSL_TEST_EXEC} ws2_32)
   endif()
-  add_dependencies(all_tests ssl_test)
+  add_dependencies(all_tests ${SSL_TEST_EXEC})
   add_subdirectory(test)
 endif()
 

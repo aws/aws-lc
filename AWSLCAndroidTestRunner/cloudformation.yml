@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda for Pipeline Integrations.
+Parameters:
+  IntegrationType:
+    Type: String
+    AllowedValues:
+      - "Bitbucket"
+      - "GitHub"
+    Description: Enter Bitbucket or GitHub
+  IntegrationUser:
+    NoEcho: true
+    Type: String
+    MinLength: 1
+    Description: Enter Bitbucket or GitHub API username
+  IntegrationPass:
+    NoEcho: true
+    Type: String
+    MinLength: 1
+    Description: Enter Bitbucket or GitHub API password
+  PipelineName:
+    Type: String
+    MinLength: 1
+    Description: Name of CodePipeline pipeline
+  EncryptionAtRest:
+    Type: String
+    Default: "Yes"
+    AllowedValues: 
+      - "Yes"
+      - "No"
+    Description: Enable encryption at rest for SNS topic
+Conditions:
+  UseCMK: !Equals
+    - !Ref EncryptionAtRest
+    - "Yes"
+Resources:
+  SNSTopicEncryptionKey:
+    Type: AWS::KMS::Key
+    Condition: UseCMK
+    Properties:
+      Description: !Sub "CMK for SNS Topic for encryption at rest in ${AWS::StackName}"
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Enable IAM User Permissions
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          Action: kms:*
+          Resource: '*'
+        - Sid: Allow administration of the key
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/Admin'
+          Action:
+          - kms:Create*
+          - kms:Describe*
+          - kms:Enable*
+          - kms:List*
+          - kms:Put*
+          - kms:Update*
+          - kms:Revoke*
+          - kms:Disable*
+          - kms:Get*
+          - kms:Delete*
+          - kms:ScheduleKeyDeletion
+          - kms:CancelKeyDeletion
+          Resource: '*'
+        - Sid: Allow codestar
+          Effect: Allow
+          Principal:
+            Service: "codestar-notifications.amazonaws.com"
+          Action:
+            - kms:GenerateDataKey*
+            - kms:Decrypt
+          Resource: "*"
+          Condition:
+            StringEquals:
+              "kms:ViaService": !Sub 'sns.${AWS::Region}.amazonaws.com'
+  PipelineNotificationSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId:
+        Fn::If:
+        - UseCMK
+        - !Ref SNSTopicEncryptionKey
+        - !Ref AWS::NoValue
+      Subscription:
+        - Endpoint: !GetAtt PipelineNotificationFunction.Arn
+          Protocol: "lambda"
+  PipelineNotificationSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: SnsTopicPolicy
+            Effect: Allow
+            Principal:
+              Service: "codestar-notifications.amazonaws.com"
+            Action:
+              - sns:Publish
+            Resource: !Ref PipelineNotificationSNSTopic
+      Topics:
+        - !Ref PipelineNotificationSNSTopic
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - codepipeline:GetPipelineExecution
+                Resource: arn:aws:codepipeline:*:*:*
+  PipelineNotificationRule:
+    Type: 'AWS::CodeStarNotifications::NotificationRule'
+    Properties:
+      Name: !Sub 'Notification for ${PipelineName}'
+      DetailType: FULL
+      Resource: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${PipelineName}'
+      EventTypeIds:
+       - codepipeline-pipeline-pipeline-execution-failed
+       - codepipeline-pipeline-pipeline-execution-canceled
+       - codepipeline-pipeline-pipeline-execution-started
+       - codepipeline-pipeline-pipeline-execution-resumed
+       - codepipeline-pipeline-pipeline-execution-succeeded
+       - codepipeline-pipeline-pipeline-execution-superseded
+      Targets:
+        - TargetType: SNS
+          TargetAddress: !Ref PipelineNotificationSNSTopic
+
+  SnsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PipelineNotificationFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref PipelineNotificationSNSTopic
+
+  PipelineNotificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.8
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          INTEGRATION_AUTH_USER: !Ref IntegrationUser
+          INTEGRATION_AUTH_PASS: !Ref IntegrationPass
+          INTEGRATION_TYPE: !Ref IntegrationType
+
+      Code:
+        ZipFile: |
+          from __future__ import print_function
+
+          import json
+          import boto3
+          import os
+          import urllib3
+          from base64 import b64encode
+
+          codepipeline_client = boto3.client('codepipeline')
+          integration_user = os.environ['INTEGRATION_AUTH_USER']
+          integration_pass = os.environ['INTEGRATION_AUTH_PASS']
+          integration_type = os.environ['INTEGRATION_TYPE']
+          user_pass = integration_user+":"+integration_pass
+
+
+          region = os.environ['AWS_REGION']
+
+          def lambda_handler(event, context):
+            message = event['Records'][0]['Sns']['Message']
+            data = json.loads(message)
+            print (data)
+
+            #Push only notifications about Pipeline Execution State Changes
+            if data.get("detailType") != "CodePipeline Pipeline Execution State Change":
+              return()
+
+            response = codepipeline_client.get_pipeline_execution(
+              pipelineName=data['detail']['pipeline'],
+              pipelineExecutionId=data['detail']['execution-id']
+            )
+
+            print(response)
+            short_commit_od = response['pipelineExecution']['artifactRevisions'][0]['revisionId'][0:7]
+            commit_id = response['pipelineExecution']['artifactRevisions'][0]['revisionId']
+            revision_url = response['pipelineExecution']['artifactRevisions'][0]['revisionUrl']
+
+            if "FullRepositoryId=" in revision_url:
+              repo_id = revision_url.split("FullRepositoryId=")[1].split("&")[0]
+            else: #gitbub v1 integration
+              repo_id = revision_url.split("/")[3] + "/" + revision_url.split("/")[4]
+
+
+            if integration_type == "Bitbucket":
+              #Based on https://developer.atlassian.com/server/bitbucket/how-tos/updating-build-status-for-commits/
+              if data['detail']['state'].upper() in [ "SUCCEEDED" ]:
+                state = "SUCCESSFUL"
+              elif data['detail']['state'].upper() in [ "STARTED", "STOPPING", "STOPPED", "SUPERSEDED" ]:
+                state = "INPROGRESS"
+              else:
+                state = "FAILED"
+
+              url = "https://api.bitbucket.org/2.0/repositories/" + repo_id + "/commit/" + commit_id + "/statuses/build"
+
+              build_status={}
+              build_status['key'] = data['detail']['execution-id']
+              build_status['state'] = state
+              build_status['name'] = "CodePipeline: " + data['detail']['pipeline']
+              build_status['url'] = "https://" + region + ".console.aws.amazon.com/codesuite/codepipeline/pipelines/" + data['detail']['pipeline'] + "/executions/" + data['detail']['execution-id'] + "?region="+region
+
+            elif integration_type == "GitHub":
+              #Based on https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#statuses
+              if data['detail']['state'].upper() in [ "SUCCEEDED" ]:
+                state = "success"
+              elif data['detail']['state'].upper() in [ "STARTED", "STOPPING", "STOPPED", "SUPERSEDED" ]:
+                state = "pending"
+              else:
+                state = "error"
+
+              url = "https://api.github.com/repos/" + repo_id + "/statuses/" + commit_id
+
+              build_status={}
+              build_status['state'] = state
+              build_status['context'] = "CodePipeline"
+              build_status['description'] = data['detail']['pipeline']
+              build_status['target_url'] = "https://" + region + ".console.aws.amazon.com/codesuite/codepipeline/pipelines/" + data['detail']['pipeline'] + "/executions/" + data['detail']['execution-id'] + "?region="+region
+
+            else:
+              return()
+
+            encode_user_pass = b64encode(user_pass.encode()).decode()
+
+            http = urllib3.PoolManager()
+            r = http.request('POST', url,
+            headers={'Accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'Curl/0.1', 'Authorization' : 'Basic %s' %  encode_user_pass},
+            body=json.dumps(build_status).encode('utf-8')
+            )
+
+
+            print(r.data)
+            return message
+
+Outputs:
+  SnsTopicArn:
+    Value: !Ref PipelineNotificationSNSTopic

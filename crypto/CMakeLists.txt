@@ -467,14 +467,14 @@ if(FIPS_SHARED)
   add_custom_command(
     TARGET crypto POST_BUILD
     COMMAND ${GO_EXECUTABLE} run
-    ${CMAKE_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+    ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
     -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
     -sha256 ${INJECT_HASH_MACOS_FLAG}
     # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
     # go_executable isn't used (as it doesn't get built), but we list this
     # dependency anyway in case it starts working in some CMake version.
     DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
   )
 endif()
 
@@ -515,18 +515,11 @@ target_include_directories(crypto SYSTEM PUBLIC
 if(BUILD_TESTING)
   add_subdirectory(test)
 
-  # compiles an so executable file for testing in our Android app CI.
-  if(ANDROIDTESTRUNNER)
-    set(CRYPTO_TEST_EXEC crypto_test.so)
-  else()
-    set(CRYPTO_TEST_EXEC crypto_test)
-  endif()
-
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
   add_executable(
-    urandom_test
+    ${RANDOM_TEST_EXEC}
 
     fipsmodule/rand/urandom_test.cc
   )
@@ -535,13 +528,13 @@ if(BUILD_TESTING)
   # urandom_test should not be performed so we pass the compilation flag
   # and handle it in urandom_test.cc
   if(JITTER_ENTROPY)
-    target_compile_options(urandom_test PUBLIC -DJITTER_ENTROPY)
+    target_compile_options(${RANDOM_TEST_EXEC} PUBLIC -DJITTER_ENTROPY)
   endif()
 
-  target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
 
-  add_dependencies(urandom_test global_target)
-  add_dependencies(all_tests urandom_test)
+  add_dependencies(${RANDOM_TEST_EXEC} global_target)
+  add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
   add_executable(
     ${CRYPTO_TEST_EXEC}

@@ -1161,6 +1161,8 @@ TEST(ECTest, SmallGroupOrder) {
   ASSERT_FALSE(EC_KEY_generate_key_fips(key2.get()));
 }
 #else
+// AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+#if !defined(OPENSSL_ANDROID)
 TEST(ECDeathTest, SmallGroupOrderAndDie) {
   // Make a P-224 key and corrupt the group order to be small in order to fail
   // |EC_KEY_generate_key|.
@@ -1213,6 +1215,7 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
   ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
   ASSERT_DEATH(EC_KEY_generate_key_fips(key2.get()), "");
 }
+#endif
 #endif
 
 class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {
