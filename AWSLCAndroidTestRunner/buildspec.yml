@@ -5,6 +5,7 @@ phases:
     commands:
       - chmod +x ./AWSLCAndroidTestRunner/gradlew
       - cd AWSLCAndroidTestRunner
+      - mkdir apk-artifacts
       - ./gradlew assembleDebug
       - ./gradlew assembleAndroidTest
       - mv app/build/outputs/apk apk-artifacts/non-fips
