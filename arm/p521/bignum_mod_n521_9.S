@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_n521_9
+        .globl  bignum_mod_n521_9_alt
         .text
         .balign 4
 
@@ -61,6 +62,7 @@
                 movk    nn, n3, lsl #48
 
 bignum_mod_n521_9:
+bignum_mod_n521_9_alt:
 
 // Load the top digit first into d8.
 // The initial quotient estimate is q = h + 1 where x = 2^521 * h + t
