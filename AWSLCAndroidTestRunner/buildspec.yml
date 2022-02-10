@@ -8,12 +8,13 @@ phases:
       - ./gradlew assembleDebug
       - ./gradlew assembleAndroidTest
       - ls app/build/outputs/apk
+      - mv app/build/outputs/apk app/build/outputs/non-fips
       - ./gradlew clean
       - ./gradlew assembleDebug -PFIPS
       - ./gradlew assembleAndroidTest -PFIPS
+      - mv app/build/outputs/apk app/build/outputs/fips
 artifacts:
   files:
      - './AWSLCAndroidTestRunner/app/build/outputs/**/*.apk'
-     - './AWSLCAndroidTestRunner/app/build/outputs/androidTest/**/*.apk'
   discard-paths: yes
 
