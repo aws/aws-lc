@@ -6,7 +6,7 @@
 cmake_minimum_required(VERSION 3.4.1)
 
 # AWS lib
-set(path_to_awslc "${CMAKE_CURRENT_LIST_DIR}/../../../../..")
+set(path_to_awslc "${CMAKE_CURRENT_LIST_DIR}/../../../../../../../../")
 get_filename_component(path_to_awslc ${path_to_awslc} ABSOLUTE)
 
 list(APPEND CMAKE_MODULE_PATH "${path_to_awslc}")
