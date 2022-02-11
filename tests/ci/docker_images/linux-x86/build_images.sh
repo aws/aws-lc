@@ -22,7 +22,6 @@ docker build -t ubuntu-20.04:clang-8x ubuntu-20.04_clang-8x
 docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
 docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
 docker build -t ubuntu-20.04:clang-7x-bm-framework ubuntu-20.04_clang-7x-bm-framework
-docker build -t ubuntu-20.04:android ubuntu-20.04_android
 # This passes in the Dockerfile in the folder but uses the parent directory for the context so it has access to cryptofuzz_data.zip
 docker build -t ubuntu-20.04:cryptofuzz -f ubuntu-20.04_cryptofuzz/Dockerfile ../
 docker build -t amazonlinux-2:base amazonlinux-2_base

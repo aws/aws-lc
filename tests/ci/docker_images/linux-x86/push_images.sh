@@ -28,7 +28,6 @@ tag_and_push_img 'ubuntu-20.04:clang-10x_formal-verification' "${ECS_REPO}:ubunt
 tag_and_push_img 'ubuntu-20.04:gcc-7x' "${ECS_REPO}:ubuntu-20.04_gcc-7x"
 tag_and_push_img 'ubuntu-20.04:gcc-8x' "${ECS_REPO}:ubuntu-20.04_gcc-8x"
 tag_and_push_img 'ubuntu-20.04:gcc-11x' "${ECS_REPO}:ubuntu-20.04_gcc-11x"
-tag_and_push_img 'ubuntu-20.04:android' "${ECS_REPO}:ubuntu-20.04_android"
 tag_and_push_img 'centos-7:gcc-4x' "${ECS_REPO}:centos-7_gcc-4x"
 tag_and_push_img 'amazonlinux-2:gcc-7x' "${ECS_REPO}:amazonlinux-2_gcc-7x"
 tag_and_push_img 'amazonlinux-2:clang-7x' "${ECS_REPO}:amazonlinux-2_clang-7x"
