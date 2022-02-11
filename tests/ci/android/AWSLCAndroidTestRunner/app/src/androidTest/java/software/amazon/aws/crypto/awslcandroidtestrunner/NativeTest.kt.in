@@ -1,0 +1,43 @@
+package software.amazon.aws.crypto.awslcandroidtestrunner.tests
+
+import android.content.Context
+import android.util.Log
+import androidx.test.platform.app.InstrumentationRegistry.getInstrumentation
+
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Test
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.util.concurrent.TimeUnit
+
+class Test_@TEST_NAME@ {
+    @Test
+    public fun test_@TEST_NAME@() {
+        val tag = "awslc-test"
+
+        val context: Context = getInstrumentation().targetContext.createPackageContext(
+            "software.amazon.aws.crypto.awslcandroidtestrunner",
+            Context.CONTEXT_INCLUDE_CODE
+        )
+        val native_dir = context.getApplicationInfo().nativeLibraryDir
+
+        // Point executable to correct library path.
+        val envp = arrayOf("LD_LIBRARY_PATH=${native_dir}:\$LD_LIBRARY_PATH")
+        val process: Process = Runtime.getRuntime().exec("${native_dir}/@TEST_NAME@.so", envp)
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var read: Int
+        val buffer = CharArray(4096)
+        while (reader.read(buffer).also { read = it } > 0) {
+            Log.i(tag, String(buffer.copyOfRange(0, read)))
+        }
+        reader.close()
+
+        if (!process.waitFor(9000, TimeUnit.SECONDS)) {
+            process.destroy()
+            throw RuntimeException("Android @TEST_NAME@ execution timed out: $this")
+        }
+        if (process.exitValue() != 0) {
+            throw RuntimeException("Android @TEST_NAME@ execution failed with code ${process.exitValue()}: $this")
+        }
+    }
+}

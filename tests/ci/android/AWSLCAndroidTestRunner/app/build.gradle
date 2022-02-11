@@ -1,0 +1,104 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.3"
+    ndkVersion "21.0.6113669"
+
+    defaultConfig {
+        applicationId "software.amazon.aws.crypto.awslcandroidtestrunner"
+        minSdkVersion 21
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // FIPS only works with arm64 for Android.
+        if (project.hasProperty('FIPS')) {
+            externalNativeBuild {
+                cmake {
+                    arguments "-DFIPS=1 -DCMAKE_BUILD_TYPE=Release"
+                    abiFilters "arm64-v8a"
+                }
+            }
+        }
+        // non-FIPS
+        else {
+            // Release build.
+            if (project.hasProperty('Release')) {
+                externalNativeBuild {
+                    cmake {
+                        arguments "-DCMAKE_BUILD_TYPE=Release"
+                        abiFilters "armeabi-v7a", "arm64-v8a"
+                    }
+                }
+            }
+            // Debug build.
+            else {
+                externalNativeBuild {
+                    cmake {
+                        abiFilters "armeabi-v7a", "arm64-v8a"
+                    }
+                }
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.10.2"
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            if (project.hasProperty('FIPS')) {
+                outputFileName = "awslc_androidrunner_fips.apk"
+            }
+            else {
+                if (project.hasProperty('Release')) {
+                    outputFileName = "awslc_androidrunner_rel.apk"
+                }
+                else {
+                    outputFileName = "awslc_androidrunner_dbg.apk"
+                }
+            }
+        }
+    }
+
+    testVariants.all { testVariant ->
+        testVariant.outputs.all { output ->
+            if (project.hasProperty('FIPS')) {
+                outputFileName = "awslc_androidrunner_fips-androidTest.apk"
+            }
+            else {
+                if (project.hasProperty('Release')) {
+                    outputFileName = "awslc_androidrunner_rel-androidTest.apk"
+                }
+                else {
+                    outputFileName = "awslc_androidrunner_dbg-androidTest.apk"
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.2.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test:runner:1.2.0'
+    androidTestImplementation 'androidx.test:monitor:1.2.0@aar'
+}
