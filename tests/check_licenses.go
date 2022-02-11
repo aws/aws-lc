@@ -35,6 +35,7 @@ func main() {
 		"ssl",
 		"util",
 		"sources.cmake",
+		"rust/wrapper.h", // BoringSSL has not added a copyright statement to this file and checkers picks it up
 	}
 
 	// Collect all non-excluded source files into |files|
