@@ -8,6 +8,7 @@
 #include <openssl/aes.h>
 #include <openssl/base64.h>
 #include <openssl/bn.h>
+#include <openssl/cipher.h>
 #include <openssl/curve25519.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
@@ -21,8 +22,8 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/siphash.h>
 #include <openssl/trust_token.h>
-#include <openssl/cipher.h>
 
 #include <../crypto/ec_extra/internal.h>
 #include <../crypto/trust_token/internal.h>

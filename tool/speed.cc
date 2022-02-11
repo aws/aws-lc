@@ -1033,6 +1033,31 @@ static bool SpeedBase64(const std::string &selected) {
   return true;
 }
 
+#if !defined(OPENSSL_BENCHMARK)
+static bool SpeedSipHash(const std::string &selected) {
+  if (!selected.empty() && selected.find("siphash") == std::string::npos) {
+    return true;
+  }
+
+  uint64_t key[2] = {0};
+  for (size_t len : g_chunk_lengths) {
+    std::vector<uint8_t> input(len);
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          SIPHASH_24(key, input.data(), input.size());
+          return true;
+        })) {
+      fprintf(stderr, "SIPHASH_24 failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    results.PrintWithBytes("SipHash-2-4" + ChunkLenSuffix(len), len);
+  }
+
+  return true;
+}
+#endif
+
 static TRUST_TOKEN_PRETOKEN *trust_token_pretoken_dup(
     TRUST_TOKEN_PRETOKEN *in) {
   TRUST_TOKEN_PRETOKEN *out =
@@ -1388,6 +1413,7 @@ bool Speed(const std::vector<std::string> &args) {
   if (g_print_json) {
     puts("[");
   }
+
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
@@ -1431,7 +1457,8 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
-     !SpeedBase64(selected)
+     !SpeedBase64(selected) ||
+     !SpeedSipHash(selected)
 #endif
      ) {
     return false;
