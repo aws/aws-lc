@@ -17,6 +17,16 @@
 // C prototypes for s2n-bignum functions used in AWS-LC
 // ----------------------------------------------------------------------------
 
+// For some functions there are additional variants with names ending in
+// "_alt". These have the same core mathematical functionality as their
+// non-"alt" versions, but can be better suited to some microarchitectures:
+//
+//      - On x86, the "_alt" forms avoid BMI and ADX instruction set
+//        extensions, so will run on any x86_64 machine, even older ones
+//
+//      - On ARM, the "_alt" forms target machines with higher multiplier
+//        throughput, generally offering higher performance there.
+
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_add_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
