@@ -83,7 +83,11 @@ and cl = define `cl = Gpr (word 1) Lower_8`
 and dh = define `dh = Gpr (word 2) Upper_8`
 and dl = define `dl = Gpr (word 2) Lower_8`
 and bh = define `bh = Gpr (word 3) Upper_8`
-and bl = define `bl = Gpr (word 3) Lower_8`;;
+and bl = define `bl = Gpr (word 3) Lower_8`
+and spl = define `spl = Gpr (word 4) Lower_8`
+and bpl = define `bpl = Gpr (word 5) Lower_8`
+and sil = define `sil = Gpr (word 6) Lower_8`
+and dil = define `dil = Gpr (word 7) Lower_8`;;
 
 (* ------------------------------------------------------------------------- *)
 (* XMM/YMM/ZMM registers and opmask registers.                               *)

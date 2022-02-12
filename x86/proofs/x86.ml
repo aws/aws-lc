@@ -196,8 +196,13 @@ let CH = define `CH = CX :> top_8`;;
 let CL = define `CL = CX :> bottom_8`;;
 let DH = define `DH = DX :> top_8`;;
 let DL = define `DL = DX :> bottom_8`;;
+let SPL = define `SPL = SP :> bottom_8`;;
+let BPL = define `BPL = BP :> bottom_8`;;
+let SIL = define `SIL = SI :> bottom_8`;;
+let DIL = define `DIL = DI :> bottom_8`;;
 
-add_component_alias_thms [AH; AL; BH; BL; CH; CL; DH; DL];;
+add_component_alias_thms
+  [AH; AL; BH; BL; CH; CL; DH; DL; SPL; BPL; SIL; DIL];;
 
 (* ------------------------------------------------------------------------- *)
 (* Shorthands for the SIMD registers.                                        *)
@@ -1721,7 +1726,7 @@ let REGISTER_ALIASES =
   eax; ecx; edx; ebx; esp; ebp; esi; edi;
   r8d; r9d; r10d; r11d; r12d; r13d; r14d; r15d;
   ax; cx; dx; bx; sp; bp; si; di; ah;
-  al; ch; cl; dh; dl; bh; bl];;
+  al; ch; cl; dh; dl; bh; bl; spl; bpl; sil; dil];;
 
 let OPERAND_SIZE_CONV =
   let topconv = GEN_REWRITE_CONV I [operand_size]
@@ -1875,26 +1880,30 @@ let OPERAND_CLAUSES_GEN = prove
    OPERAND32 (Imm8 w8) s = rvalue(word_sx w8) /\
    OPERAND32 (Memop Doubleword bsid) s =
     memory :> bytes32 (bsid_semantics bsid s) /\
-   OPERAND16 (%ax) s = AX /\
-   OPERAND16 (%cx) s = CX /\
-   OPERAND16 (%dx) s = DX /\
-   OPERAND16 (%bx) s = BX /\
-   OPERAND16 (%sp) s = SP /\
-   OPERAND16 (%bp) s = BP /\
-   OPERAND16 (%si) s = SI /\
-   OPERAND16 (%di) s = DI /\
+   OPERAND16 (%ax) s = RAX :> bottom_32 :> bottom_16 /\
+   OPERAND16 (%cx) s = RCX :> bottom_32 :> bottom_16 /\
+   OPERAND16 (%dx) s = RDX :> bottom_32 :> bottom_16 /\
+   OPERAND16 (%bx) s = RBX :> bottom_32 :> bottom_16 /\
+   OPERAND16 (%sp) s = RSP :> bottom_32 :> bottom_16 /\
+   OPERAND16 (%bp) s = RBP :> bottom_32 :> bottom_16 /\
+   OPERAND16 (%si) s = RSI :> bottom_32 :> bottom_16 /\
+   OPERAND16 (%di) s = RDI :> bottom_32 :> bottom_16 /\
    OPERAND16 (Imm16 w16) s = rvalue w16 /\
    OPERAND16 (Imm8 w8) s = rvalue(word_sx w8) /\
    OPERAND16 (Memop Word bsid) s =
     memory :> bytes16 (bsid_semantics bsid s) /\
-   OPERAND8 (%ah) s = AH /\
-   OPERAND8 (%al) s = AL /\
-   OPERAND8 (%ch) s = CH /\
-   OPERAND8 (%cl) s = CL /\
-   OPERAND8 (%dh) s = DH /\
-   OPERAND8 (%dl) s = DL /\
-   OPERAND8 (%bh) s = BH /\
-   OPERAND8 (%bl) s = BL /\
+   OPERAND8 (%al) s = RAX :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%cl) s = RCX :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%dl) s = RDX :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%bl) s = RBX :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%spl) s = RSP :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%bpl) s = RBP :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%sil) s = RSI :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%dil) s = RDI :> bottom_32 :> bottom_16 :> bottom_8 /\
+   OPERAND8 (%ah) s = RAX :> bottom_32 :> bottom_16 :> top_8 /\
+   OPERAND8 (%ch) s = RCX :> bottom_32 :> bottom_16 :> top_8 /\
+   OPERAND8 (%dh) s = RDX :> bottom_32 :> bottom_16 :> top_8 /\
+   OPERAND8 (%bh) s = RBX :> bottom_32 :> bottom_16 :> top_8 /\
    OPERAND8 (Imm8 w8) s = rvalue w8 /\
    OPERAND8 (Memop Byte bsid) s =
     memory :> bytes8 (bsid_semantics bsid s)`,
@@ -1905,11 +1914,12 @@ let OPERAND_CLAUSES_GEN = prove
               eax; ecx; edx; ebx; esp; ebp; esi; edi;
               r8d; r9d; r10d; r11d; r12d; r13d; r14d; r15d;
               ax; cx; dx; bx; sp; bp; si; di; ah;
-              al; ch; cl; dh; dl; bh; bl;
+              al; ch; cl; dh; dl; bh; bl; spl; bpl; sil; dil;
               EAX; ECX; EDX; EBX; ESP; EBP; ESI; EDI;
               R8D; R9D; R10D; R11D; R12D; R13D; R14D; R15D;
               AX; CX; DX; BX; SP; BP; SI; DI;
-              AH; AL; BH; BL; CH; CL; DH; DL] THEN
+              AH; AL; BH; BL; CH; CL; DH; DL;
+              SPL; BPL; SIL; DIL] THEN
   REWRITE_TAC[simple_immediate; base_displacement; QWORD] THEN
   REWRITE_TAC[OPERAND64; OPERAND32; OPERAND16; OPERAND8;
               register_size; regsize; GPR64; GPR32_Z; GPR32; GPR16; GPR8] THEN
@@ -2136,20 +2146,6 @@ let X86_OPERATION_CLAUSES =
     INST_TYPE[`:32`,`:N`] x86_SBB];;
 
 (* ------------------------------------------------------------------------- *)
-(* Getting CL out of RCX (for variable-length shifts).                       *)
-(* ------------------------------------------------------------------------- *)
-
-let READ_CL_RCX = prove
- (`read CL s = word(val(read RCX s) MOD 256)`,
-  REWRITE_TAC[CL; CX; ECX; READ_COMPONENT_COMPOSE] THEN
-  REWRITE_TAC[bottom_8; bottom_16; bottom_32; bottomhalf] THEN
-  REWRITE_TAC[read; subword; VAL_WORD] THEN
-  CONV_TAC(ONCE_DEPTH_CONV DIMINDEX_CONV) THEN
-  REWRITE_TAC[EXP; DIV_1; ARITH_RULE `64 = 2 EXP 6`] THEN
-  REWRITE_TAC[MOD_MOD_EXP_MIN] THEN
-  CONV_TAC NUM_REDUCE_CONV THEN ASM_REWRITE_TAC[]);;
-
-(* ------------------------------------------------------------------------- *)
 (* Trivial reassociation and reduction of "word((pc + m) + n)"               *)
 (* ------------------------------------------------------------------------- *)
 
@@ -2234,7 +2230,7 @@ let X86_CONV execth2 ths tm =
    REWRITE_CONV[OPERAND_CLAUSES_GEN] THENC
    ONCE_DEPTH_CONV BSID_SEMANTICS_CONV THENC
    REWRITE_CONV X86_OPERATION_CLAUSES THENC
-   REWRITE_CONV[READ_RVALUE; ASSIGN_ZEROTOP_32; READ_CL_RCX;
+   REWRITE_CONV[READ_RVALUE; ASSIGN_ZEROTOP_32;
                 READ_ZEROTOP_32; WRITE_ZEROTOP_32] THENC
    DEPTH_CONV WORD_NUM_RED_CONV THENC
    REWRITE_CONV[SEQ; condition_semantics] THENC
@@ -2244,7 +2240,7 @@ let X86_CONV execth2 ths tm =
    REWRITE_CONV[ASSIGNS_THM] THENC
    GEN_REWRITE_CONV TOP_DEPTH_CONV [SEQ_PULL_THM; BETA_THM] THENC
    GEN_REWRITE_CONV TOP_DEPTH_CONV[assign; seq; UNWIND_THM1; BETA_THM] THENC
-   REWRITE_CONV[] THENC
+   REWRITE_CONV[] THENC REWRITE_CONV[WRITE_SHORT; READ_SHORT] THENC
    TOP_DEPTH_CONV COMPONENT_READ_OVER_WRITE_CONV THENC
    X86_FORCE_CONDITIONAL_CONV ths THENC
    ONCE_DEPTH_CONV

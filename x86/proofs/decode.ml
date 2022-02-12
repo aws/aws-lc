@@ -24,6 +24,12 @@ new_type_abbrev("pfxs",`:bool # rep_pfx`);;
 
 let has_pfxs = new_definition `has_pfxs pfxs <=> ~(pfxs = (F, Rep0))`;;
 
+let has_unhandled_pfxs = new_definition
+ `has_unhandled_pfxs (pfxs:pfxs) <=> ~(SND pfxs = Rep0)`;;
+
+let has_operand_override = new_definition
+  `has_operand_override (pfxs:pfxs) = FST pfxs`;;
+
 (* The operation override prefix,
    also a mandatory prefix on some instructions *)
 let pfxs_set_opo = new_definition `pfxs_set_opo (opo, rep) =
@@ -75,11 +81,11 @@ and rex_X = new_definition `rex_X rex = bit 1 (rex_num rex)`
 and rex_R = new_definition `rex_R rex = bit 2 (rex_num rex)`
 and rex_W = new_definition `rex_W rex = bit 3 (rex_num rex)`;;
 
-let regsize8 = define `regsize8 T = Upper_8 /\ regsize8 F = Lower_8`;;
-let op_size = new_definition `op_size have_rex w v =
+let regsize8 = define `regsize8 F = Upper_8 /\ regsize8 T = Lower_8`;;
+let op_size = new_definition `op_size have_rex w v pfxs =
   if ~v then regsize8 have_rex
   else if w then Full_64
-  // else if override then Lower_16
+  else if has_operand_override pfxs then Lower_16
   else Lower_32`;;
 
 let adx = define
@@ -164,12 +170,12 @@ let read_ModRM = define
      SOME((rex_reg (rex_R rex) reg,
            RM_mem (%%(Gpr (rex_reg (rex_B rex) rm) Full_64,val disp))), l))`;;
 
-let gpr_adjust = new_definition `gpr_adjust (reg:4 word) sz =
-  let reg' =
-    if sz = Upper_8 /\ val reg >= 4 then
-      if val reg < 8 then word (val reg - 4) else ARB
-    else reg in
-  Gpr reg' sz`;;
+let gpr_adjust = new_definition `!sz reg. gpr_adjust (reg:4 word) sz =
+  if sz = Upper_8 then
+    if val reg < 4 then Gpr reg Lower_8
+    else if val reg < 8 then Gpr (word (val reg - 4)) Upper_8
+    else ARB
+  else Gpr reg sz`;;
 
 let operand_of_RM = define
  `(!reg. operand_of_RM sz (RM_reg reg) = %(gpr_adjust reg sz)) /\
@@ -258,13 +264,13 @@ let decode_hi = new_definition `decode_hi x v sz (opc:3 word) rm l =
 let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
   read_byte l >>= \(b,l).
   bitmatch b with
-  | [0b00:2; opc:3; 0b0:1; d; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+  | [0b00:2; opc:3; 0b0:1; d; v] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex v pfxs in
     read_ModRM_operand rex sz l >>= \((reg,rm),l).
     let dest,src = if d then reg,rm else rm,reg in
     SOME (decode_binop (word_zx opc) dest src,l)
-  | [0b00:2; opc:3; 0b10:2; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+  | [0b00:2; opc:3; 0b10:2; v] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex v pfxs in
     read_imm (to_wordsize sz) l >>= \(imm,l).
     SOME (decode_binop (word_zx opc) (%(gpr_adjust (word 0) sz)) imm,l)
   | [0x0f:8] -> read_byte l >>= \(b,l).
@@ -272,7 +278,7 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
     | [0x38:8] -> read_byte l >>= \(b,l).
       (bitmatch b with
       | [0xf6:8] ->
-        let sz = op_size T (rex_W rex) T in
+        let sz = op_size T (rex_W rex) T pfxs in
         read_ModRM_operand rex sz l >>= \((reg,rm),l).
         (match pfxs with
         | (T, Rep0) -> SOME (ADCX reg rm,l)
@@ -280,11 +286,11 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
         | _ -> NONE)
       | _ -> NONE)
     | [0b11001:5; r:3] -> if has_pfxs pfxs then NONE else
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       let reg = rex_reg (rex_B rex) r in
       SOME (BSWAP (%(gpr_adjust reg sz)),l)
     | [0x4:4; c:4] -> if has_pfxs pfxs then NONE else
-      let sz = op_size T (rex_W rex) T in
+      let sz = op_size T (rex_W rex) T pfxs in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
       SOME (CMOV (decode_condition c) reg rm,l)
     | [0x8:4; c:4] -> if has_pfxs pfxs then NONE else
@@ -295,24 +301,24 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
       read_ModRM_operand rex sz l >>= \((_,rm),l).
       SOME (SET (decode_condition c) rm,l)
     | [0b101:3; op:2; 0b011:3] -> if has_pfxs pfxs then NONE else
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
       SOME (decode_BT op rm reg,l)
     | [0xa:4; x; 0b100:3] -> if has_pfxs pfxs then NONE else
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
       read_byte l >>= \(b,l).
       SOME ((if x then SHRD else SHLD) rm reg (Imm8 b),l)
     | [0xa:4; x; 0b101:3] -> if has_pfxs pfxs then NONE else
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
       SOME ((if x then SHRD else SHLD) rm reg (%cl),l)
     | [0xaf:8] -> if has_pfxs pfxs then NONE else
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
       SOME (IMUL reg rm,l)
     | [0xba:8] -> if has_pfxs pfxs then NONE else
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
       (bitmatch opc with
       | [1:1; op:2] ->
@@ -320,21 +326,21 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
         SOME (decode_BT op rm (Imm8 b),l)
       | _ -> NONE)
     | [0xbc:8] ->
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
       (match pfxs with
       | (F, Rep0) -> SOME (BSF reg rm,l)
       | (F, RepZ) -> SOME (TZCNT reg rm,l)
       | _ -> NONE)
     | [0xbd:8] ->
-      let sz = op_size_W rex T in
+      let sz = op_size_W rex T pfxs in
       read_ModRM_operand rex sz l >>= \((reg,rm),l).
       (match pfxs with
       | (F, Rep0) -> SOME (BSR reg rm,l)
       | (F, RepZ) -> SOME (LZCNT reg rm,l)
       | _ -> NONE)
     | [0xb:4; s; 0b11:2; v] -> if has_pfxs pfxs then NONE else
-      let sz2 = op_size_W rex T in
+      let sz2 = op_size_W rex T pfxs in
       let sz = if v then Lower_16 else regsize8 (is_some rex) in
       read_ModRM rex l >>= \((reg,rm),l).
       let op = if s then MOVSX else MOVZX in
@@ -351,40 +357,40 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
     read_imm (if x then Byte else Quadword) l >>= \(imm,l).
     SOME (PUSH imm,l)
   | [0b011010:6; x; 0b1:1] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex T in
+    let sz = op_size_W rex T pfxs in
     read_ModRM_operand rex sz l >>= \((reg,rm),l).
     read_imm (if x then Byte else Quadword) l >>= \(imm,l).
     SOME (IMUL3 reg (rm,imm),l)
   | [0x7:4; c:4] -> if has_pfxs pfxs then NONE else
     read_byte l >>= \(b,l).
     SOME (JUMP (decode_condition c) (Imm8 b),l)
-  | [0b1000000:7; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+  | [0b1000000:7; v] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex v pfxs in
     read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
     read_imm (to_wordsize sz) l >>= \(imm,l).
     SOME (decode_binop (word_zx opc) rm imm,l)
-  | [0x83:8] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex T in
+  | [0x83:8] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex T pfxs in
     read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
     read_byte l >>= \(b,l).
     SOME (decode_binop (word_zx opc) rm (Imm8 b),l)
   | [0b1000010:7; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+    let sz = op_size_W rex v pfxs in
     read_ModRM_operand rex sz l >>= \((reg,rm),l).
     SOME (TEST rm reg,l)
-  | [0b100010:6; d; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+  | [0b100010:6; d; v] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex v pfxs in
     read_ModRM_operand rex sz l >>= \((reg,rm),l).
     let dest,src = if d then reg,rm else rm,reg in
     SOME (MOV dest src,l)
   | [0x8d:8] -> if has_pfxs pfxs then NONE else
-    let sz = op_size T (rex_W rex) T in
+    let sz = op_size T (rex_W rex) T pfxs in
     read_ModRM rex l >>= \((reg,rm),l).
     (match rm with
     | RM_mem ea -> SOME (LEA (%(gpr_adjust reg sz)) ea,l)
     | _ -> NONE)
   | [0x8f:8] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex T in
+    let sz = op_size_W rex T pfxs in
     read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
     if opc = word 0 then
       SOME (POP rm,l)
@@ -392,16 +398,16 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
   | [0x90:8] -> if has_pfxs pfxs then NONE else
     SOME (NOP,l)
   | [0b1010100:7; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size T (rex_W rex) v in
+    let sz = op_size T (rex_W rex) v pfxs in
     read_imm (to_wordsize sz) l >>= \(imm,l).
     SOME (TEST (%(gpr_adjust (word 0) sz)) imm,l)
-  | [0xb:4; v; r:3] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+  | [0xb:4; v; r:3] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex v pfxs in
     read_full_imm (to_wordsize sz) l >>= \(imm,l).
     let reg = rex_reg (rex_B rex) r in
     SOME (MOV (%(gpr_adjust reg sz)) imm,l)
-  | [0b1100000:7; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+  | [0b1100000:7; v] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex v pfxs in
     read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
     if opc = word 6 then NONE else
     read_byte l >>= \(b,l).
@@ -416,7 +422,7 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
       read_byte l >>= \(b,l).
       (bitmatch b with
       | [0xf6:8] ->
-        let sz = op_size_W rex T in
+        let sz = op_size_W rex T pfxs in
         read_ModRM_operand rex sz l >>= \((reg,rm),l).
         (match pfxs with
         | (F, RepNZ) ->
@@ -424,13 +430,13 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
         | _ -> NONE)
       | _ -> NONE)
     | _ -> NONE)
-  | [0b1100011:7; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+  | [0b1100011:7; v] -> if has_unhandled_pfxs pfxs then NONE else
+    let sz = op_size_W rex v pfxs in
     read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
     read_imm (to_wordsize sz) l >>= \(imm,l).
     SOME (MOV rm imm,l)
   | [0b110100:6; x; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+    let sz = op_size_W rex v pfxs in
     read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
     if opc = word 6 then NONE else
     let src = if x then %cl else Imm8 (word 1) in
@@ -448,7 +454,7 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
   | [0xf9:8] -> if has_pfxs pfxs then NONE else
     SOME (STCF,l)
   | [0xf:4; x; 0b11:2; v] -> if has_pfxs pfxs then NONE else
-    let sz = op_size_W rex v in
+    let sz = op_size_W rex v pfxs in
     read_opcode_ModRM_operand rex sz l >>= \((opc,rm),l).
     decode_hi x v (to_wordsize sz) opc rm l
   | _ -> NONE`;;
@@ -539,6 +545,22 @@ let decode_no_prefix,read_REX_no_prefix =
       let cls = bm_analyze_clauses 8 (rand tm) @
         [bm_analyze_pat 8 `BITPAT [0x4:4; rex:4]`] in
       PROVE_DISJOINT (bm_add_pos (bm_build_tree' 8 cls tm) tm) th)));;
+
+let HAS_OPERAND_OVERRIDE_CONV =
+  let pth = prove
+   (`(has_operand_override(T,r) <=> T) /\
+     (has_operand_override(F,r) <=> F)`,
+    REWRITE_TAC[has_operand_override]) in
+  GEN_REWRITE_CONV I [pth];;
+
+let HAS_UNHANDLED_PFXS_CONV =
+  let pth = prove
+   (`(has_unhandled_pfxs(p,Rep0) <=> F) /\
+     (has_unhandled_pfxs(p,RepZ) <=> T) /\
+     (has_unhandled_pfxs(p,RepNZ) <=> T)`,
+    REWRITE_TAC[has_unhandled_pfxs] THEN
+    REWRITE_TAC[distinctness "rep_pfx"]) in
+  GEN_REWRITE_CONV I [pth];;
 
 let READ_VEXM_CONV =
   let pths = Array.init 3 (fun i ->
@@ -648,14 +670,20 @@ let REGSIZE8_CONV =
   | _ -> failwith "REGSIZE8_CONV";;
 
 let OP_SIZE_CONV =
-  let pth = bool_split (fun r -> bool_split (fun w -> bool_split (fun v ->
-    let tm = mk_comb (mk_comb (mk_comb (`op_size`, r), w), v) in
-    REWRITE_CONV [op_size; regsize8] tm))) in
-  function
-  | Comb(Comb(Comb(Const("op_size",_),r),w),v) as t ->
-    (try pth r w v
-    with Failure _ -> failwith ("OP_SIZE_CONV: " ^ string_of_term t))
-  | _ -> failwith "OP_SIZE_CONV";;
+  let pth0,pth1 = (CONJ_PAIR o prove)
+    (`(op_size F F F p = Upper_8 /\
+       op_size F T F p = Upper_8 /\
+       op_size F T T p = Full_64 /\
+       op_size T F F p = Lower_8 /\
+       op_size T T F p = Lower_8 /\
+       op_size T T T p = Full_64) /\
+      op_size r F T p =
+      (if has_operand_override p then Lower_16 else Lower_32)`,
+     REWRITE_TAC[op_size; regsize8]) in
+  GEN_REWRITE_CONV I [pth0] ORELSEC
+  (GEN_REWRITE_CONV I [pth1] THENC
+   RATOR_CONV(LAND_CONV HAS_OPERAND_OVERRIDE_CONV) THENC
+   GEN_REWRITE_CONV I [COND_CLAUSES]);;
 
 let rec OP_SIZE_W_CONV =
   let pth1 = (REWRITE_CONV [op_size_W; is_some; rex_W; rex_num] THENC
@@ -671,7 +699,9 @@ let rec OP_SIZE_W_CONV =
   | Comb(Const("op_size_W",_),Comb(Const("SOME",_),Comb(Const("word",_),n))) ->
     pth2.(Num.int_of_num (dest_numeral n))
   | Comb(Comb(Const("op_size_W",_),_),_) as tm ->
-    (RATOR_CONV OP_SIZE_W_CONV THENC OP_SIZE_CONV) tm
+    (RATOR_CONV OP_SIZE_W_CONV) tm
+  | Comb(Comb(Comb(Const("op_size_W",_),_),_),_) as tm ->
+    (RATOR_CONV(RATOR_CONV OP_SIZE_W_CONV) THENC OP_SIZE_CONV) tm
   | _ -> failwith "OP_SIZE_W_CONV";;
 
 let REX_REG_CONV =
@@ -721,7 +751,7 @@ let GPR_thms,GPR_CONV =
               r8d; r9d;r10d;r11d;r12d;r13d;r14d;r15d|]
   and c16 = [|ax;cx;dx;bx;sp;bp;si;di|]
   and u8  = [|ah;ch;dh;bh|]
-  and c8  = [|al;cl;dl;bl|] in
+  and c8  = [|al;cl;dl;bl;spl;bpl;sil;dil|] in
   flat (map (fun A ->
     let l = Array.to_list A in
     Array.iteri (fun i th -> A.(i) <- SYM th) A; l) [c64;c32;c16;u8;c8]),
@@ -1221,12 +1251,16 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
       delay_if true (rhs (concl th)) (F o TRANS th) REGSIZE8_CONV)
   | Comb((Const("is_some",_) as f),a) ->
     eval_unary f a F (REWRITE_CONV [is_some])
-  | Comb(Comb((Comb(Const("op_size",_),_) as f),w),v) ->
+  | Comb(Const("has_operand_override",_) as f,a) ->
+    eval_unary f a F HAS_OPERAND_OVERRIDE_CONV
+  | Comb(Const("has_unhandled_pfxs",_) as f,a) ->
+    eval_unary f a F HAS_UNHANDLED_PFXS_CONV
+  | Comb(Comb(Comb((Comb(Const("op_size",_),_) as f),w),v),p) ->
     evaluate w (fun th ->
-      let th = AP_THM (AP_TERM f th) v in
+      let th = AP_THM (AP_THM (AP_TERM f th) v) p in
       delay_if true (rhs (concl th)) (F o TRANS th) OP_SIZE_CONV)
-  | Comb(Comb((Const("op_size_W",_) as f),a),b) ->
-    eval_binary f a b F OP_SIZE_W_CONV
+  | Comb(Comb(Comb((Const("op_size_W",_) as f),a),b),c) ->
+    eval_ternary f a b c F OP_SIZE_W_CONV
   | Comb(Comb(Comb(Const("read_sib_displacement",_),_),_),_) ->
     eval_opt t F READ_SIB_CONV
   | Comb(Comb(Comb(Const("read_SIB",_),_),_),_) -> eval_opt t F READ_SIB_CONV
@@ -1316,8 +1350,15 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
       let th1 = MK_COMB (AP_TERM f tha, thb) in
       let tm = rhs (concl th1) in
       delay_if (is_var (lhand tm) || is_var (rand tm))
-        tm (F o TRANS th1) conv)) in
-
+        tm (F o TRANS th1) conv))
+  and eval_ternary f a b c F conv =
+    evaluate a (fun tha -> evaluate b (fun thb -> evaluate c (fun thc ->
+        let th1 = MK_COMB (AP_TERM f tha, thb) in
+        let tm = rhs (concl th1) in
+        let th2 = MK_COMB(th1,thc) in
+        let tm' = rhs (concl th2) in
+        delay_if (is_var (lhand tm) || is_var (rand tm) || is_var(rand(concl thc)))
+          tm' (F o TRANS th2) conv))) in
   let () =
     let mk_pths th =
       let f th =

@@ -851,6 +851,10 @@ let bottom_8 = define
 let top_8 = define
  `top_8:(16 word,8 word)component = tophalf`;;
 
+let READ_SUBWORD = prove
+ (`!(w:N word) pos len. read (subword(pos,len)) w = word_subword w (pos,len)`,
+  REWRITE_TAC[word_subword; subword; read]);;
+
 let STRONGLY_VALID_COMPONENT_SUBWORD = prove
  (`!pos len.
      dimindex(:M) = len /\ pos + len <= dimindex(:N)
@@ -1431,6 +1435,46 @@ let READ_WRITE_8 = prove
          read bottom_8 (write bottom_8 y s) = y`,
   SIMP_TAC[top_8; bottom_8; READ_WRITE_TOPHALF_BOTTOMHALF]);;
 
+let READ_SHORT = prove
+ (`!(r:(S,int64)component) s.
+        read (r :> bottom_32 :> bottom_16) s =
+        word(val (read r s) MOD 65536) /\
+        read (r :> bottom_32 :> bottom_16 :> bottom_8) s =
+        word(val (read r s) MOD 256) /\
+        read (r :> bottom_32 :> bottom_16 :> top_8) s =
+        word(val (read r s) DIV 256 MOD 256)`,
+  REPEAT GEN_TAC THEN
+  REWRITE_TAC[GSYM(NUM_EXP_CONV `2 EXP 8`); GSYM(NUM_EXP_CONV `2 EXP 16`)] THEN
+  REWRITE_TAC[GSYM word_subword] THEN ONCE_REWRITE_TAC[MESON[EXP; DIV_1]
+    `x MOD 2 EXP n = x DIV 2 EXP 0 MOD 2 EXP n`] THEN
+  REWRITE_TAC[GSYM word_subword; READ_COMPONENT_COMPOSE] THEN
+  REWRITE_TAC[bottom_32; bottom_16; bottom_8; top_8] THEN
+  REWRITE_TAC[bottomhalf; tophalf; READ_SUBWORD] THEN
+  ONCE_REWRITE_TAC [WORD_EQ_BITS_ALT] THEN REWRITE_TAC[BIT_WORD_SUBWORD] THEN
+  CONV_TAC(ONCE_DEPTH_CONV DIMINDEX_CONV) THEN
+  REPEAT CONJ_TAC THEN CONV_TAC EXPAND_CASES_CONV THEN
+  CONV_TAC NUM_REDUCE_CONV);;
+
+let WRITE_SHORT = prove
+ (`!(r:(S,int64)component) w b s.
+    write (r :> bottom_32 :> bottom_16) w s =
+    write r (word_join (word_subword (read r s) (16,48):48 word) w) s /\
+    write (r :> bottom_32 :> bottom_16 :> bottom_8) b s =
+    write r (word_join (word_subword (read r s) (8,56):56 word) b) s /\
+    write (r :> bottom_32 :> bottom_16 :> top_8) b s =
+    write r (word_join (word_subword (read r s) (16,48):48 word)
+                 (word_join b (word_subword (read r s) (0,8):byte):int16)) s`,
+  REPEAT STRIP_TAC THEN REWRITE_TAC[WRITE_COMPONENT_COMPOSE] THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN
+  REWRITE_TAC[bottom_8; top_8; bottom_16; bottom_32] THEN
+  REWRITE_TAC[tophalf; bottomhalf] THEN
+  ONCE_REWRITE_TAC [WORD_EQ_BITS_ALT] THEN
+  REWRITE_TAC[WRITE_SUBWORD_BITWISE; READ_SUBWORD; BIT_WORD_JOIN;
+              BIT_WORD_SUBWORD] THEN
+  CONV_TAC(ONCE_DEPTH_CONV DIMINDEX_CONV) THEN
+  REPEAT CONJ_TAC THEN CONV_TAC EXPAND_CASES_CONV THEN
+  CONV_TAC NUM_REDUCE_CONV);;
+
 (* ------------------------------------------------------------------------- *)
 (* A slightly different kind of subword corresponding to the way x86-64      *)
 (* and aarch64 treat 32-bit registers, forcing zero extension on writes.     *)
@@ -1965,15 +2009,15 @@ add_weakly_valid_component_thms
  ***)
 
 let READ_MEMORY_BYTESIZED_SPLIT = prove
- (`(!x s. read (memory :> bytes64 x) s =
-          word_join (read (memory :> bytes32 (word_add x (word 4))) s)
-                    (read (memory :> bytes32 x) s)) /\
-   (!x s. read (memory :> bytes32 x) s =
-          word_join (read (memory :> bytes16 (word_add x (word 2))) s)
-                    (read (memory :> bytes16 x) s)) /\
-   (!x s. read (memory :> bytes16 x) s =
-          word_join (read (memory :> bytes8 (word_add x (word 1))) s)
-                    (read (memory :> bytes8 x) s))`,
+ (`(!m x s. read (m :> bytes64 x) s =
+            word_join (read (m :> bytes32 (word_add x (word 4))) s)
+                      (read (m :> bytes32 x) s)) /\
+   (!m x s. read (m :> bytes32 x) s =
+            word_join (read (m :> bytes16 (word_add x (word 2))) s)
+                      (read (m :> bytes16 x) s)) /\
+   (!m x s. read (m :> bytes16 x) s =
+            word_join (read (m :> bytes8 (word_add x (word 1))) s)
+                      (read (m :> bytes8 x) s))`,
   REWRITE_TAC[GSYM VAL_EQ] THEN
   SIMP_TAC[VAL_WORD_JOIN_SIMPLE; DIMINDEX_64; DIMINDEX_32;
            DIMINDEX_16; DIMINDEX_8; ARITH] THEN
@@ -1987,6 +2031,28 @@ let READ_MEMORY_BYTESIZED_SPLIT = prove
   REPEAT STRIP_TAC THEN GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV)
    [ARITH_RULE `8 = 4 + 4 /\ 4 = 2 + 2 /\ 2 = 1 + 1`] THEN
   REWRITE_TAC[READ_BYTES_COMBINE] THEN ARITH_TAC);;
+
+let READ_MEMORY_BYTESIZED_UNSPLIT = prove
+ (`(!m x s d.
+      read (m :> bytes64 x) s = d <=>
+      read (m :> bytes32 x) s = word_subword d (0,32) /\
+      read (m :> bytes32 (word_add x (word 4))) s = word_subword d (32,32)) /\
+   (!m x s d.
+      read (m :> bytes32 x) s = d <=>
+      read (m :> bytes16 x) s = word_subword d (0,16) /\
+      read (m :> bytes16 (word_add x (word 2))) s = word_subword d (16,16)) /\
+   (!m x s d.
+      read (m :> bytes16 x) s = d <=>
+      read (m :> bytes8 x) s = word_subword d (0,8) /\
+      read (m :> bytes8 (word_add x (word 1))) s = word_subword d (8,8))`,
+  REPEAT STRIP_TAC THEN
+  GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV)
+   [READ_MEMORY_BYTESIZED_SPLIT] THEN
+  ONCE_REWRITE_TAC[WORD_EQ_BITS_ALT] THEN
+  REWRITE_TAC[BIT_WORD_JOIN; BIT_WORD_SUBWORD] THEN
+  CONV_TAC(ONCE_DEPTH_CONV DIMINDEX_CONV) THEN
+  CONV_TAC(ONCE_DEPTH_CONV EXPAND_CASES_CONV) THEN
+  CONV_TAC NUM_REDUCE_CONV THEN CONV_TAC CONJ_ACI_RULE);;
 
 (* ------------------------------------------------------------------------- *)
 (* State component corresponding to the head of a stack/list.                *)
@@ -2785,6 +2851,14 @@ let ORTHOGONAL_COMPONENTS_TAC =
        ==> orthogonal_components (bytes8 a) c) /\
       (orthogonal_components d (bytes(a,1))
        ==> orthogonal_components d (bytes8 a)) /\
+      (orthogonal_components (bytes(a,2)) c
+       ==> orthogonal_components (bytes16 a) c) /\
+      (orthogonal_components d (bytes(a,2))
+       ==> orthogonal_components d (bytes16 a)) /\
+      (orthogonal_components (bytes(a,4)) c
+       ==> orthogonal_components (bytes32 a) c) /\
+      (orthogonal_components d (bytes(a,4))
+       ==> orthogonal_components d (bytes32 a)) /\
       (orthogonal_components (bytes(a,k)) c
        ==> orthogonal_components (bytelist(a,k)) c) /\
       (orthogonal_components d (bytes(a,k))
@@ -2793,7 +2867,8 @@ let ORTHOGONAL_COMPONENTS_TAC =
       ==> orthogonal_components
            (bytes(a1:int64,l1)) (bytes (a2:int64,l2)))`,
     CONJ_TAC THENL
-     [REWRITE_TAC[bytes64; bytes8; bytelist; COMPONENT_COMPOSE_ASSOC] THEN
+     [REWRITE_TAC[bytes64; bytes32; bytes16; bytes8; bytelist;
+                  COMPONENT_COMPOSE_ASSOC] THEN
       REWRITE_TAC[ORTHOGONAL_COMPONENTS_SUB_LEFT;
                   ORTHOGONAL_COMPONENTS_SUB_RIGHT];
       DISCH_TAC THEN
