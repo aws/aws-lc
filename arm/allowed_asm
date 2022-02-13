@@ -34,6 +34,7 @@
 : sbcs$
 : stp$
 : str$
+: strb$
 : sub$
 : subs$
 : tst$

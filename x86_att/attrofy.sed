@@ -65,7 +65,9 @@ s/^([^/][^[]+)[[]([^]]+)[]]/\1\(\2\)/
 
 # Put % in front of register names
 
-s/ cl$/ %cl/
+s/ ax *$/ %ax/
+s/ ax,/ %ax,/
+s/ cl *$/ %cl/
 s/ cl,/ %cl,/
 s/([[(,.;: ])([re][abcd]x)/\1\%\2/g
 s/([[(,.;: ])([re]sp)/\1\%\2/g
@@ -126,6 +128,7 @@ s/q(  .*zeroe)/l\1/
 s/q(  .*short)/l\1/
 s/q(  .*%e)/l\1/
 s/q(  .*%r[0-9]+d)/l\1/
+s/q(  .*%ax)/w\1/
 
 # Eliminate any trailing spaces, just to be tidy
 

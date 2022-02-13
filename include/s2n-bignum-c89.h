@@ -256,6 +256,10 @@ extern void bignum_fromlebytes_4 (uint64_t z[4], uint8_t x[32]);
 /*  Input x[48] (bytes); output z[6] */
 extern void bignum_fromlebytes_6 (uint64_t z[6], uint8_t x[48]);
 
+/* Convert little-endian bytes to 9-digit 528-bit bignum      */
+/* Input x[66] (bytes); output z[9] */
+extern void bignum_fromlebytes_p521 (uint64_t z[9],uint8_t x[66]);
+
 /*  Compare bignums, x >= y */
 /*  Inputs x[m], y[n]; output function return */
 extern uint64_t bignum_ge (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
@@ -654,6 +658,10 @@ extern void bignum_tolebytes_4 (uint8_t z[32], uint64_t x[4]);
 /*  Convert 6-digit (384-bit) bignum to little-endian bytes */
 /*  Input x[6]; output z[48] (bytes) */
 extern void bignum_tolebytes_6 (uint8_t z[48], uint64_t x[6]);
+
+/* Convert 9-digit 528-bit bignum to little-endian bytes    */
+/* Input x[6]; output z[66] (bytes)                         */
+extern void bignum_tolebytes_p521 (uint8_t z[66], uint64_t x[9]);
 
 /*  Convert to Montgomery form z := (2^256 * x) mod p_256 */
 /*  Input x[4]; output z[4] */

@@ -42,6 +42,7 @@
 : movabsq$
 : movl$
 : movq$
+: movw$
 : mul$
 : mulq$
 : mulx$
