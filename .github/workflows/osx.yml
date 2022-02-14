@@ -5,8 +5,7 @@ name: macOS CI
 on:
   pull_request:
     branches:
-      - 'main'
-      - 'fips-*'
+      - '*'
 
 env:
   PACKAGE_NAME: aws-lc
