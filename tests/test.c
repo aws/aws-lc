@@ -93,6 +93,7 @@ enum {
        TEST_BIGNUM_CMUL_P384,
        TEST_BIGNUM_CMUL_P384_ALT,
        TEST_BIGNUM_CMUL_P521,
+       TEST_BIGNUM_CMUL_P521_ALT,
        TEST_BIGNUM_COPRIME,
        TEST_BIGNUM_COPY,
        TEST_BIGNUM_CTD,
@@ -125,6 +126,7 @@ enum {
        TEST_BIGNUM_FROMBEBYTES_6,
        TEST_BIGNUM_FROMLEBYTES_4,
        TEST_BIGNUM_FROMLEBYTES_6,
+       TEST_BIGNUM_FROMLEBYTES_P521,
        TEST_BIGNUM_GE,
        TEST_BIGNUM_GT,
        TEST_BIGNUM_HALF_P256,
@@ -149,6 +151,7 @@ enum {
        TEST_BIGNUM_MOD_N384_ALT,
        TEST_BIGNUM_MOD_N384_6,
        TEST_BIGNUM_MOD_N521_9,
+       TEST_BIGNUM_MOD_N521_9_ALT,
        TEST_BIGNUM_MOD_P256_ALT,
        TEST_BIGNUM_MOD_P256,
        TEST_BIGNUM_MOD_P256_4,
@@ -241,6 +244,7 @@ enum {
        TEST_BIGNUM_TOBEBYTES_6,
        TEST_BIGNUM_TOLEBYTES_4,
        TEST_BIGNUM_TOLEBYTES_6,
+       TEST_BIGNUM_TOLEBYTES_P521,
        TEST_BIGNUM_TOMONT_P256,
        TEST_BIGNUM_TOMONT_P256_ALT,
        TEST_BIGNUM_TOMONT_P256K1,
@@ -255,6 +259,7 @@ enum {
        TEST_BIGNUM_TRIPLE_P384,
        TEST_BIGNUM_TRIPLE_P384_ALT,
        TEST_BIGNUM_TRIPLE_P521,
+       TEST_BIGNUM_TRIPLE_P521_ALT,
        TEST_WORD_BYTEREVERSE,
        TEST_WORD_CLZ,
        TEST_WORD_CTZ,
@@ -908,6 +913,24 @@ void reference_littleendian(uint64_t k,uint64_t *z,uint64_t *x)
      (((uint64_t) (((uint8_t *) x)[8*i+1])) << 8) +
      (((uint64_t) (((uint8_t *) x)[8*i])) << 0);
    }
+}
+
+void reference_fromlebytes(uint64_t k,uint64_t *z,uint64_t n,uint8_t *x)
+{ uint64_t i, acc;
+
+  acc = 0; i = n;
+  while (i != 0)
+   { --i;
+     acc = (acc<<8) + (uint64_t) x[i];
+     if (i % 8 == 0) z[i/8] = acc, acc = 0;
+   }
+}
+
+void reference_tolebytes(uint64_t k,uint8_t *z,uint64_t n,uint64_t *x)
+{ uint64_t i;
+
+  for (i = 0; i < k; ++i)
+    z[i] = x[i/8] >> (8*(i%8));
 }
 
 // ****************************************************************************
@@ -1800,6 +1823,40 @@ int test_bignum_cmul_p521(void)
      random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
      m = random64();
      bignum_cmul_p521(b2,m,b0);
+     reference_mul(k+1,b1,1,&m,k,b0);
+     reference_copy(k+1,b3,k,p_521);
+     reference_mod(k+1,b4,b1,b3);
+     reference_copy(k,b3,k+1,b4);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64" *  ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,m,b0[0],p_521[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,m,b0[0],p_521[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_cmul_p521_alt(void)
+{ uint64_t i, k, m;
+  printf("Testing bignum_cmul_p521_alt with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+     m = random64();
+     bignum_cmul_p521_alt(b2,m,b0);
      reference_mul(k+1,b1,1,&m,k,b0);
      reference_copy(k+1,b3,k,p_521);
      reference_mod(k+1,b4,b1,b3);
@@ -2824,6 +2881,32 @@ int test_bignum_fromlebytes_6(void)
   return 0;
 }
 
+int test_bignum_fromlebytes_p521(void)
+{ uint64_t t;
+  printf("Testing bignum_fromlebytes_p521 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(9,b0);
+     reference_fromlebytes(9,b3,66,(uint8_t *)b0);
+     bignum_fromlebytes_p521(b4,(uint8_t *)b0);
+     c = reference_compare(9,b3,9,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_fromlebytes_p521(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0],b3[8],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_fromlebytes_p521(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_ge(void)
 { uint64_t t, k1, k2;
   printf("Testing bignum_ge with %d cases\n",tests);
@@ -3512,6 +3595,45 @@ int test_bignum_mod_n521_9(void)
 
      reference_mod(9,b3,b0,n_521);
      bignum_mod_n521_9(b4,b0);
+     c = reference_compare(9,b3,9,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod n_521 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0],b3[8],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod n_521 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_mod_n521_9_alt(void)
+{ uint64_t t;
+  printf("Testing bignum_mod_n521_9_alt with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(9,b0);
+     if ((rand() & 0xF) == 0) b0[8] |= UINT64_C(0xFFFFFFFFFFFFFFFF);
+     else if ((rand() & 0xF) == 0)
+      { b0[8] = n_521[8];
+        b0[7] = n_521[7];
+        b0[6] = n_521[6];
+        b0[5] = n_521[5];
+        b0[4] = n_521[4];
+        b0[3] = n_521[3];
+        b0[2] = n_521[2];
+        b0[1] = n_521[1];
+        b0[0] = (n_521[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
+      }
+
+     reference_mod(9,b3,b0,n_521);
+     bignum_mod_n521_9_alt(b4,b0);
      c = reference_compare(9,b3,9,b4);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
@@ -6271,6 +6393,32 @@ int test_bignum_tolebytes_6(void)
   return 0;
 }
 
+int test_bignum_tolebytes_p521(void)
+{ uint64_t t;
+  printf("Testing bignum_tolebytes_p521 with %d cases\n",TESTS);
+  int c;
+  for (t = 0; t < TESTS; ++t)
+   { random_bignum(9,b0);
+     reference_tolebytes(66,(uint8_t *)b3,9,b0);
+     bignum_tolebytes_p521((uint8_t *)b4,b0);
+     c = reference_compare(9,b3,9,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "bignum_tolebytes_p521(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0],b3[8],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] bignum_tolebytes_p521(0x%016"PRIx64"...%016"PRIx64") = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(9),b0[8],b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_tomont_p256(void)
 { uint64_t t;
   printf("Testing bignum_tomont_p256 with %d cases\n",tests);
@@ -6747,6 +6895,42 @@ int test_bignum_triple_p521(void)
   return 0;
 }
 
+int test_bignum_triple_p521_alt(void)
+{ uint64_t i, k;
+  printf("Testing bignum_triple_p521_alt with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_521);
+     bignum_triple_p521_alt(b2,b0);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b0);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_521);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_521[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],p_521[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_bytereverse(void)
 { uint64_t i, a, x, y;
   printf("Testing word_bytereverse with %d cases\n",tests);
@@ -6954,6 +7138,7 @@ int test_all(void)
   dotest(test_bignum_cmul_p384);
   dotest(test_bignum_cmul_p384_alt);
   dotest(test_bignum_cmul_p521);
+  dotest(test_bignum_cmul_p521_alt);
   dotest(test_bignum_coprime);
   dotest(test_bignum_copy);
   dotest(test_bignum_ctd);
@@ -6986,6 +7171,7 @@ int test_all(void)
   dotest(test_bignum_frombebytes_6);
   dotest(test_bignum_fromlebytes_4);
   dotest(test_bignum_fromlebytes_6);
+  dotest(test_bignum_fromlebytes_p521);
   dotest(test_bignum_ge);
   dotest(test_bignum_gt);
   dotest(test_bignum_half_p256);
@@ -7010,6 +7196,7 @@ int test_all(void)
   dotest(test_bignum_mod_n384_alt);
   dotest(test_bignum_mod_n384_6);
   dotest(test_bignum_mod_n521_9);
+  dotest(test_bignum_mod_n521_9_alt);
   dotest(test_bignum_mod_p256);
   dotest(test_bignum_mod_p256_alt);
   dotest(test_bignum_mod_p256_4);
@@ -7102,6 +7289,7 @@ int test_all(void)
   dotest(test_bignum_tobebytes_6);
   dotest(test_bignum_tolebytes_4);
   dotest(test_bignum_tolebytes_6);
+  dotest(test_bignum_tolebytes_p521);
   dotest(test_bignum_tomont_p256);
   dotest(test_bignum_tomont_p256_alt);
   dotest(test_bignum_tomont_p256k1);
@@ -7116,6 +7304,7 @@ int test_all(void)
   dotest(test_bignum_triple_p384);
   dotest(test_bignum_triple_p384_alt);
   dotest(test_bignum_triple_p521);
+  dotest(test_bignum_triple_p521_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -7175,6 +7364,7 @@ int test_allnonbmi()
   dotest(test_bignum_cmul_p256_alt);
   dotest(test_bignum_cmul_p256k1_alt);
   dotest(test_bignum_cmul_p384_alt);
+  dotest(test_bignum_cmul_p521_alt);
   dotest(test_bignum_coprime);
   dotest(test_bignum_copy);
   dotest(test_bignum_ctd);
@@ -7202,6 +7392,7 @@ int test_allnonbmi()
   dotest(test_bignum_frombebytes_6);
   dotest(test_bignum_fromlebytes_4);
   dotest(test_bignum_fromlebytes_6);
+  dotest(test_bignum_fromlebytes_p521);
   dotest(test_bignum_ge);
   dotest(test_bignum_gt);
   dotest(test_bignum_half_p256);
@@ -7219,6 +7410,7 @@ int test_allnonbmi()
   dotest(test_bignum_mod_n256k1_4);
   dotest(test_bignum_mod_n384_alt);
   dotest(test_bignum_mod_n384_6);
+  dotest(test_bignum_mod_n521_9_alt);
   dotest(test_bignum_mod_p256_alt);
   dotest(test_bignum_mod_p256_4);
   dotest(test_bignum_mod_p256k1_4);
@@ -7291,6 +7483,7 @@ int test_allnonbmi()
   dotest(test_bignum_tobebytes_6);
   dotest(test_bignum_tolebytes_4);
   dotest(test_bignum_tolebytes_6);
+  dotest(test_bignum_tolebytes_p521);
   dotest(test_bignum_tomont_p256_alt);
   dotest(test_bignum_tomont_p256k1_alt);
   dotest(test_bignum_tomont_p384_alt);
@@ -7298,6 +7491,7 @@ int test_allnonbmi()
   dotest(test_bignum_triple_p256_alt);
   dotest(test_bignum_triple_p256k1_alt);
   dotest(test_bignum_triple_p384_alt);
+  dotest(test_bignum_triple_p521_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -7407,6 +7601,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_CMUL_P384:          return test_bignum_cmul_p384();
      case TEST_BIGNUM_CMUL_P384_ALT:      return test_bignum_cmul_p384_alt();
      case TEST_BIGNUM_CMUL_P521:          return test_bignum_cmul_p521();
+     case TEST_BIGNUM_CMUL_P521_ALT:      return test_bignum_cmul_p521_alt();
      case TEST_BIGNUM_COPRIME:            return test_bignum_coprime();
      case TEST_BIGNUM_COPY:               return test_bignum_copy();
      case TEST_BIGNUM_CTD:                return test_bignum_ctd();
@@ -7439,6 +7634,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_FROMBEBYTES_6:      return test_bignum_frombebytes_6();
      case TEST_BIGNUM_FROMLEBYTES_4:      return test_bignum_fromlebytes_4();
      case TEST_BIGNUM_FROMLEBYTES_6:      return test_bignum_fromlebytes_6();
+     case TEST_BIGNUM_FROMLEBYTES_P521:   return test_bignum_fromlebytes_p521();
      case TEST_BIGNUM_GE:                 return test_bignum_ge();
      case TEST_BIGNUM_GT:                 return test_bignum_gt();
      case TEST_BIGNUM_HALF_P256:          return test_bignum_half_p256();
@@ -7463,6 +7659,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MOD_N384_ALT:       return test_bignum_mod_n384_alt();
      case TEST_BIGNUM_MOD_N384_6:         return test_bignum_mod_n384_6();
      case TEST_BIGNUM_MOD_N521_9:         return test_bignum_mod_n521_9();
+     case TEST_BIGNUM_MOD_N521_9_ALT:     return test_bignum_mod_n521_9_alt();
      case TEST_BIGNUM_MOD_P256:           return test_bignum_mod_p256();
      case TEST_BIGNUM_MOD_P256_ALT:       return test_bignum_mod_p256_alt();
      case TEST_BIGNUM_MOD_P256_4:         return test_bignum_mod_p256_4();
@@ -7555,6 +7752,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_TOBEBYTES_6:        return test_bignum_tobebytes_6();
      case TEST_BIGNUM_TOLEBYTES_4:        return test_bignum_tolebytes_4();
      case TEST_BIGNUM_TOLEBYTES_6:        return test_bignum_tolebytes_6();
+     case TEST_BIGNUM_TOLEBYTES_P521:     return test_bignum_tolebytes_p521();
      case TEST_BIGNUM_TOMONT_P256:        return test_bignum_tomont_p256();
      case TEST_BIGNUM_TOMONT_P256_ALT:    return test_bignum_tomont_p256_alt();
      case TEST_BIGNUM_TOMONT_P256K1:      return test_bignum_tomont_p256k1();
@@ -7569,6 +7767,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_TRIPLE_P384:        return test_bignum_triple_p384();
      case TEST_BIGNUM_TRIPLE_P384_ALT:    return test_bignum_triple_p384_alt();
      case TEST_BIGNUM_TRIPLE_P521:        return test_bignum_triple_p521();
+     case TEST_BIGNUM_TRIPLE_P521_ALT:    return test_bignum_triple_p521_alt();
      case TEST_WORD_BYTEREVERSE:          return test_word_bytereverse();
      case TEST_WORD_CLZ:                  return test_word_clz();
      case TEST_WORD_CTZ:                  return test_word_ctz();

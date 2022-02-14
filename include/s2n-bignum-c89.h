@@ -138,6 +138,7 @@ extern void bignum_cmul_p384_alt (uint64_t z[6], uint64_t c, uint64_t x[6]);
 /*  Multiply by a single word modulo p_521, z := (c * x) mod p_521, assuming x reduced */
 /*  Inputs c, x[9]; output z[9] */
 extern void bignum_cmul_p521 (uint64_t z[9], uint64_t c, uint64_t x[9]);
+extern void bignum_cmul_p521_alt (uint64_t z[9], uint64_t c, uint64_t x[9]);
 
 /*  Test bignums for coprimality, gcd(x,y) = 1 */
 /*  Inputs x[m], y[n]; output function return; temporary buffer t[>=2*max(m,n)] */
@@ -255,6 +256,10 @@ extern void bignum_fromlebytes_4 (uint64_t z[4], uint8_t x[32]);
 /*  Input x[48] (bytes); output z[6] */
 extern void bignum_fromlebytes_6 (uint64_t z[6], uint8_t x[48]);
 
+/* Convert little-endian bytes to 9-digit 528-bit bignum      */
+/* Input x[66] (bytes); output z[9] */
+extern void bignum_fromlebytes_p521 (uint64_t z[9],uint8_t x[66]);
+
 /*  Compare bignums, x >= y */
 /*  Inputs x[m], y[n]; output function return */
 extern uint64_t bignum_ge (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
@@ -344,6 +349,7 @@ extern void bignum_mod_n384_6 (uint64_t z[6], uint64_t x[6]);
 /*  Reduce modulo group order, z := x mod n_521 */
 /*  Input x[9]; output z[9] */
 extern void bignum_mod_n521_9 (uint64_t z[9], uint64_t x[9]);
+extern void bignum_mod_n521_9_alt (uint64_t z[9], uint64_t x[9]);
 
 /*  Reduce modulo field characteristic, z := x mod p_256 */
 /*  Input x[k]; output z[4] */
@@ -653,6 +659,10 @@ extern void bignum_tolebytes_4 (uint8_t z[32], uint64_t x[4]);
 /*  Input x[6]; output z[48] (bytes) */
 extern void bignum_tolebytes_6 (uint8_t z[48], uint64_t x[6]);
 
+/* Convert 9-digit 528-bit bignum to little-endian bytes    */
+/* Input x[6]; output z[66] (bytes)                         */
+extern void bignum_tolebytes_p521 (uint8_t z[66], uint64_t x[9]);
+
 /*  Convert to Montgomery form z := (2^256 * x) mod p_256 */
 /*  Input x[4]; output z[4] */
 extern void bignum_tomont_p256 (uint64_t z[4], uint64_t x[4]);
@@ -690,6 +700,7 @@ extern void bignum_triple_p384_alt (uint64_t z[6], uint64_t x[6]);
 /*  Triple modulo p_521, z := (3 * x) mod p_521, assuming x reduced */
 /*  Input x[9]; output z[9] */
 extern void bignum_triple_p521 (uint64_t z[9], uint64_t x[9]);
+extern void bignum_triple_p521_alt (uint64_t z[9], uint64_t x[9]);
 
 /*  Reverse the bytes in a single word */
 /*  Input a; output function return */

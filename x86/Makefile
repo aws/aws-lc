@@ -211,11 +211,14 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p384/bignum_triple_p384_alt.o \
       p521/bignum_add_p521.o \
       p521/bignum_cmul_p521.o \
+      p521/bignum_cmul_p521_alt.o \
       p521/bignum_deamont_p521.o \
       p521/bignum_demont_p521.o \
       p521/bignum_double_p521.o \
+      p521/bignum_fromlebytes_p521.o \
       p521/bignum_half_p521.o \
       p521/bignum_mod_n521_9.o \
+      p521/bignum_mod_n521_9_alt.o \
       p521/bignum_mod_p521_9.o \
       p521/bignum_montmul_p521.o \
       p521/bignum_montmul_p521_alt.o \
@@ -228,8 +231,10 @@ OBJ = fastmul/bignum_emontredc_8n.o \
       p521/bignum_sqr_p521.o \
       p521/bignum_sqr_p521_alt.o \
       p521/bignum_sub_p521.o \
+      p521/bignum_tolebytes_p521.o \
       p521/bignum_tomont_p521.o \
       p521/bignum_triple_p521.o \
+      p521/bignum_triple_p521_alt.o \
       secp256k1/bignum_add_p256k1.o \
       secp256k1/bignum_cmul_p256k1.o \
       secp256k1/bignum_cmul_p256k1_alt.o \

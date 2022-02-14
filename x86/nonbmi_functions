@@ -22,6 +22,7 @@ bignum_cmul
 bignum_cmul_p256_alt
 bignum_cmul_p256k1_alt
 bignum_cmul_p384_alt
+bignum_cmul_p521_alt
 bignum_coprime
 bignum_copy
 bignum_ctd
@@ -66,6 +67,7 @@ bignum_mod_n256_alt
 bignum_mod_n256k1_4
 bignum_mod_n384_6
 bignum_mod_n384_alt
+bignum_mod_n521_9_alt
 bignum_mod_p256_4
 bignum_mod_p256_alt
 bignum_mod_p256k1_4
@@ -145,6 +147,7 @@ bignum_tomont_p521
 bignum_triple_p256_alt
 bignum_triple_p256k1_alt
 bignum_triple_p384_alt
+bignum_triple_p521_alt
 word_bytereverse
 word_clz
 word_ctz
