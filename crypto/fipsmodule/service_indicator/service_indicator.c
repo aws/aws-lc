@@ -19,8 +19,8 @@ int is_fips_build(void) {
 
 #if defined(AWSLC_FIPS)
 
-// Should only be called once per thread. Only called when initializing the state
-// in |FIPS_service_indicator_before_call| (external call) or
+// Should only be called once per thread. Only called when initializing the
+// state in |FIPS_service_indicator_before_call| (external call) or
 // in |FIPS_service_indicator_update_state| (internal call within every approved service).
 static int FIPS_service_indicator_init_state(void) {
   struct fips_service_indicator_state *indicator;
@@ -70,10 +70,10 @@ void FIPS_service_indicator_update_state(void) {
   struct fips_service_indicator_state *indicator =
       CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
   if (indicator == NULL) {
-    // FIPS 140-3 requires that the module should provide the service indicator for approved
-    // services irrespective of whether the user queries it or not.
-    // Hence, it is not enough to initialise the counter lazily in the external call
-    // |FIPS_service_indicator_before_call|.
+    // FIPS 140-3 requires that the module should provide the service indicator
+    // for approved services irrespective of whether the user queries it or not.
+    // Hence, it is not enough to initialise the counter lazily in the external
+    // call |FIPS_service_indicator_before_call|.
     // Since this function is always called in the approved services,
     // the counter will be initialised here if needed.
     FIPS_service_indicator_init_state();
@@ -134,8 +134,8 @@ void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_
   } else {
     // hwaes_capable when enabled in x86 uses 9, 11, 13 for key rounds.
     // hwaes_capable when enabled in ARM uses 10, 12, 14 for key rounds.
-    // When compiling with different ARM specific platforms, 9, 11, 13 are used for
-    // key rounds.
+    // When compiling with different ARM specific platforms, 9, 11, 13 are used
+    // for key rounds.
     switch (key_rounds) {
       case 9:
       case 10:
@@ -259,15 +259,15 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
       }
     }
   } else if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_EC){
-    // Not the best way to write this, but the delocate parser for ARM/clang can't
-    // recognize || if statements for this. Moving the curve check before the
-    // digest check also causes delocate parser failures.
+    // Not the best way to write this, but the delocate parser for ARM/clang
+    // can't recognize || if statements for this. Moving the curve check before
+    // the digest check also causes delocate parser failures.
     // TODO: Update the delocate parser to be able to recognize a more readable
     // version of this.
     //
     // SHA1 is not approved for ECDSA signature generation.
-    // Curves P-224, P-256, P-384 and P-521 with SHA2-224, SHA2-256, SHA2-384 and
-    // SHA2-512 are approved for signature generation.
+    // Curves P-224, P-256, P-384 and P-521 with SHA2-224, SHA2-256, SHA2-384
+    // and SHA2-512 are approved for signature generation.
     int curve_name = EC_GROUP_get_curve_name(ctx->pctx->pkey->pkey.ec->group);
     switch (ctx->digest->type) {
         case NID_sha224:
@@ -320,14 +320,14 @@ void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
       }
     }
   } else if(ctx->pctx->pmeth->pkey_id == EVP_PKEY_EC) {
-    // Not the best way to write this, but the delocate parser for ARM/clang can't
-    // recognize || if statements for this. Moving the curve check before the
-    // digest check also causes delocate parser failures.
+    // Not the best way to write this, but the delocate parser for ARM/clang
+    // can't recognize || if statements for this. Moving the curve check before
+    // the digest check also causes delocate parser failures.
     // TODO: Update the delocate parser to be able to recognize a more readable
     // version of this.
     //
-    // Curves P-224, P-256, P-384 and P-521 with SHA-1, SHA2-224, SHA2-256, SHA2-384
-    // and SHA2-512 are approved for signature verification.
+    // Curves P-224, P-256, P-384 and P-521 with SHA-1, SHA2-224, SHA2-256,
+    // SHA2-384 and SHA2-512 are approved for signature verification.
     int curve_name = EC_GROUP_get_curve_name(ctx->pctx->pkey->pkey.ec->group);
     switch (ctx->digest->type) {
         case NID_sha1:
