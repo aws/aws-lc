@@ -16,5 +16,4 @@ phases:
     commands:
       - cd ./tests/ci/docker_images/linux-x86
       - ./build_images.sh
-      - ./pull_github_pkg.sh
       - ./push_images.sh $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$AWS_ECR_REPO_X86
