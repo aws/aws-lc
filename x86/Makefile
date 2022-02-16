@@ -65,7 +65,9 @@ endif
 
 # The x86 assembly (.S) files are all written for the GNU assembler
 
-OBJ = fastmul/bignum_emontredc_8n.o \
+OBJ = curve25519/bignum_mul_p25519.o \
+      curve25519/bignum_mul_p25519_alt.o \
+      fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
       fastmul/bignum_kmul_32_64.o \
       fastmul/bignum_ksqr_16_32.o \
@@ -305,6 +307,7 @@ HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
 
 PROOFS = $(OBJ:.o=.correct)
 
+curve25519/%.correct: proofs/%.ml curve25519/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 fastmul/%.correct: proofs/%.ml fastmul/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 generic/%.correct: proofs/%.ml generic/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 p256/%.correct: proofs/%.ml p256/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@

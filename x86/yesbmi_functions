@@ -27,6 +27,7 @@ bignum_montsqr_p521
 bignum_mul_4_8
 bignum_mul_6_12
 bignum_mul_8_16
+bignum_mul_p25519
 bignum_mul_p256k1
 bignum_mul_p521
 bignum_sqr_4_8

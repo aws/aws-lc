@@ -476,6 +476,11 @@ extern void bignum_mul_6_12_alt (uint64_t z[12], uint64_t x[6], uint64_t y[6]);
 extern void bignum_mul_8_16 (uint64_t z[16], uint64_t x[8], uint64_t y[8]);
 extern void bignum_mul_8_16_alt (uint64_t z[16], uint64_t x[8], uint64_t y[8]);
 
+/*  Multiply modulo p_25519, z := (x * y) mod p_25519 */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_mul_p25519 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+extern void bignum_mul_p25519_alt (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+
 /*  Multiply modulo p_256k1, z := (x * y) mod p_256k1 */
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_mul_p256k1 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
