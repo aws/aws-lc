@@ -19,6 +19,8 @@
 #include <openssl/rand.h>
 #include "internal.h"
 
+#if defined(AESNI_ASM)
+
 typedef struct {
     AES_KEY ks;
     SHA_CTX head, tail, md;
@@ -30,10 +32,6 @@ typedef struct {
 } EVP_AES_HMAC_SHA1;
 
 #define NO_PAYLOAD_LENGTH       ((size_t)-1)
-
-#if     defined(AESNI_ASM) &&     ( \
-        defined(__x86_64)       || defined(__x86_64__)  || \
-        defined(_M_AMD64)       || defined(_M_X64)      )
 
 extern unsigned int OPENSSL_ia32cap_P[];
 # define AESNI_CAPABLE   (1<<(57-32))

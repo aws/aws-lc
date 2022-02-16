@@ -69,19 +69,16 @@
 extern "C" {
 #endif
 
-// TODO: invetigate where to define AESNI_ASM
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
+// When AESNI_ASM, AES CBC stitch impl is enabled.
 # define AESNI_ASM
-
-#if defined(AESNI_ASM) && defined(OPENSSL_X86_64)
+// Below are needed by AES CBC stitch code.
 // TLS1_1_VERSION is also defined in ssl.h.
-#define TLS1_1_VERSION 0x0302
-
+# define TLS1_1_VERSION 0x0302
 # define SHA_LBLOCK 16
-
 OPENSSL_INLINE void *EVP_CIPHER_CTX_get_cipher_data(const EVP_CIPHER_CTX *ctx) {
- return ctx->cipher_data;
+  return ctx->cipher_data;
 }
-
 OPENSSL_INLINE unsigned char *EVP_CIPHER_CTX_iv_noconst(EVP_CIPHER_CTX *ctx) {
   return ctx->iv;
 }
