@@ -257,7 +257,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
             maxpad &= 255;
 
-            mask = constant_time_ge(maxpad, pad);
+            mask = constant_time_ge_8(maxpad, pad);
             ret &= mask;
             /*
              * If pad is invalid then we will fail the above test but we must
@@ -265,7 +265,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
              * we'll use the maxpad value instead of the supplied pad to make
              * sure we perform well defined pointer arithmetic.
              */
-            pad = constant_time_select(mask, pad, maxpad);
+            pad = constant_time_select_8(mask, pad, maxpad);
 
             inp_len = len - (SHA_DIGEST_LENGTH + pad + 1);
 
@@ -343,11 +343,11 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 data->u[SHA_LBLOCK - 1] |= bitlen & mask;
                 sha1_block_data_order(&key->md, data, 1);
                 mask &= 0 - ((j - inp_len - 72) >> (sizeof(j) * 8 - 1));
-                pmac->u[0] |= key->md.h0 & mask;
-                pmac->u[1] |= key->md.h1 & mask;
-                pmac->u[2] |= key->md.h2 & mask;
-                pmac->u[3] |= key->md.h3 & mask;
-                pmac->u[4] |= key->md.h4 & mask;
+                pmac->u[0] |= key->md.h[0] & mask;
+                pmac->u[1] |= key->md.h[1] & mask;
+                pmac->u[2] |= key->md.h[2] & mask;
+                pmac->u[3] |= key->md.h[3] & mask;
+                pmac->u[4] |= key->md.h[4] & mask;
                 res = 0;
             }
 
@@ -359,11 +359,11 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 data->u[SHA_LBLOCK - 1] |= bitlen & mask;
                 sha1_block_data_order(&key->md, data, 1);
                 mask &= 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
-                pmac->u[0] |= key->md.h0 & mask;
-                pmac->u[1] |= key->md.h1 & mask;
-                pmac->u[2] |= key->md.h2 & mask;
-                pmac->u[3] |= key->md.h3 & mask;
-                pmac->u[4] |= key->md.h4 & mask;
+                pmac->u[0] |= key->md.h[0] & mask;
+                pmac->u[1] |= key->md.h[1] & mask;
+                pmac->u[2] |= key->md.h[2] & mask;
+                pmac->u[3] |= key->md.h[3] & mask;
+                pmac->u[4] |= key->md.h[4] & mask;
 
                 memset(data, 0, SHA_CBLOCK);
                 j += 64;
@@ -371,11 +371,11 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             data->u[SHA_LBLOCK - 1] = bitlen;
             sha1_block_data_order(&key->md, data, 1);
             mask = 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
-            pmac->u[0] |= key->md.h0 & mask;
-            pmac->u[1] |= key->md.h1 & mask;
-            pmac->u[2] |= key->md.h2 & mask;
-            pmac->u[3] |= key->md.h3 & mask;
-            pmac->u[4] |= key->md.h4 & mask;
+            pmac->u[0] |= key->md.h[0] & mask;
+            pmac->u[1] |= key->md.h[1] & mask;
+            pmac->u[2] |= key->md.h[2] & mask;
+            pmac->u[3] |= key->md.h[3] & mask;
+            pmac->u[4] |= key->md.h[4] & mask;
 
 #  ifdef BSWAP4
             pmac->u[0] = BSWAP4(pmac->u[0]);

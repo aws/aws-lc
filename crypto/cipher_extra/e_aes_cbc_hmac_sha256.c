@@ -250,7 +250,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
             maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
             maxpad &= 255;
 
-            mask = constant_time_ge(maxpad, pad);
+            mask = constant_time_ge_8(maxpad, pad);
             ret &= mask;
             /*
              * If pad is invalid then we will fail the above test but we must
@@ -258,7 +258,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
              * we'll use the maxpad value instead of the supplied pad to make
              * sure we perform well defined pointer arithmetic.
              */
-            pad = constant_time_select(mask, pad, maxpad);
+            pad = constant_time_select_8(mask, pad, maxpad);
 
             inp_len = len - (SHA256_DIGEST_LENGTH + pad + 1);
 
