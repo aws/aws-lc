@@ -170,6 +170,10 @@ if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE)
     bignum_littleendian_6.S
   )
   if(ARCH STREQUAL "x86_64")
+    # The files below contain the alternative functions for x86_64.
+    # For AArch64, the alternative tomont/deamont functions are
+    # the same as the non-alternative ones, so they are defined
+    # in the corresponding "non-alt" files (bignum_<deamont|tomont>_p384.S)
     list(APPEND S2N_BIGNUM_ASM_SOURCES
                 bignum_tomont_p384_alt.S
                 bignum_deamont_p384_alt.S)
