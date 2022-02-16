@@ -18,9 +18,7 @@
 #include <openssl/aes.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
-#include "modes_local.h"
-#include "internal/constant_time.h"
-#include "crypto/evp.h"
+#include "internal.h"
 
 typedef struct {
     AES_KEY ks;
@@ -125,294 +123,6 @@ static void sha256_update(SHA256_CTX *c, const void *data, size_t len)
 #  undef SHA256_Update
 # endif
 # define SHA256_Update sha256_update
-
-# if !defined(OPENSSL_NO_MULTIBLOCK)
-
-typedef struct {
-    unsigned int A[8], B[8], C[8], D[8], E[8], F[8], G[8], H[8];
-} SHA256_MB_CTX;
-typedef struct {
-    const unsigned char *ptr;
-    int blocks;
-} HASH_DESC;
-
-void sha256_multi_block(SHA256_MB_CTX *, const HASH_DESC *, int);
-
-typedef struct {
-    const unsigned char *inp;
-    unsigned char *out;
-    int blocks;
-    u64 iv[2];
-} CIPH_DESC;
-
-void aesni_multi_cbc_encrypt(CIPH_DESC *, void *, int);
-
-static size_t tls1_1_multi_block_encrypt(EVP_AES_HMAC_SHA256 *key,
-                                         unsigned char *out,
-                                         const unsigned char *inp,
-                                         size_t inp_len, int n4x)
-{                               /* n4x is 1 or 2 */
-    HASH_DESC hash_d[8], edges[8];
-    CIPH_DESC ciph_d[8];
-    unsigned char storage[sizeof(SHA256_MB_CTX) + 32];
-    union {
-        u64 q[16];
-        u32 d[32];
-        u8 c[128];
-    } blocks[8];
-    SHA256_MB_CTX *ctx;
-    unsigned int frag, last, packlen, i, x4 = 4 * n4x, minblocks, processed =
-        0;
-    size_t ret = 0;
-    u8 *IVs;
-#  if defined(BSWAP8)
-    u64 seqnum;
-#  endif
-
-    /* ask for IVs in bulk */
-    if (RAND_bytes((IVs = blocks[0].c), 16 * x4) <= 0)
-        return 0;
-
-    /* align */
-    ctx = (SHA256_MB_CTX *) (storage + 32 - ((size_t)storage % 32));
-
-    frag = (unsigned int)inp_len >> (1 + n4x);
-    last = (unsigned int)inp_len + frag - (frag << (1 + n4x));
-    if (last > frag && ((last + 13 + 9) % 64) < (x4 - 1)) {
-        frag++;
-        last -= x4 - 1;
-    }
-
-    packlen = 5 + 16 + ((frag + 32 + 16) & -16);
-
-    /* populate descriptors with pointers and IVs */
-    hash_d[0].ptr = inp;
-    ciph_d[0].inp = inp;
-    /* 5+16 is place for header and explicit IV */
-    ciph_d[0].out = out + 5 + 16;
-    memcpy(ciph_d[0].out - 16, IVs, 16);
-    memcpy(ciph_d[0].iv, IVs, 16);
-    IVs += 16;
-
-    for (i = 1; i < x4; i++) {
-        ciph_d[i].inp = hash_d[i].ptr = hash_d[i - 1].ptr + frag;
-        ciph_d[i].out = ciph_d[i - 1].out + packlen;
-        memcpy(ciph_d[i].out - 16, IVs, 16);
-        memcpy(ciph_d[i].iv, IVs, 16);
-        IVs += 16;
-    }
-
-#  if defined(BSWAP8)
-    memcpy(blocks[0].c, key->md.data, 8);
-    seqnum = BSWAP8(blocks[0].q[0]);
-#  endif
-    for (i = 0; i < x4; i++) {
-        unsigned int len = (i == (x4 - 1) ? last : frag);
-#  if !defined(BSWAP8)
-        unsigned int carry, j;
-#  endif
-
-        ctx->A[i] = key->md.h[0];
-        ctx->B[i] = key->md.h[1];
-        ctx->C[i] = key->md.h[2];
-        ctx->D[i] = key->md.h[3];
-        ctx->E[i] = key->md.h[4];
-        ctx->F[i] = key->md.h[5];
-        ctx->G[i] = key->md.h[6];
-        ctx->H[i] = key->md.h[7];
-
-        /* fix seqnum */
-#  if defined(BSWAP8)
-        blocks[i].q[0] = BSWAP8(seqnum + i);
-#  else
-        for (carry = i, j = 8; j--;) {
-            blocks[i].c[j] = ((u8 *)key->md.data)[j] + carry;
-            carry = (blocks[i].c[j] - carry) >> (sizeof(carry) * 8 - 1);
-        }
-#  endif
-        blocks[i].c[8] = ((u8 *)key->md.data)[8];
-        blocks[i].c[9] = ((u8 *)key->md.data)[9];
-        blocks[i].c[10] = ((u8 *)key->md.data)[10];
-        /* fix length */
-        blocks[i].c[11] = (u8)(len >> 8);
-        blocks[i].c[12] = (u8)(len);
-
-        memcpy(blocks[i].c + 13, hash_d[i].ptr, 64 - 13);
-        hash_d[i].ptr += 64 - 13;
-        hash_d[i].blocks = (len - (64 - 13)) / 64;
-
-        edges[i].ptr = blocks[i].c;
-        edges[i].blocks = 1;
-    }
-
-    /* hash 13-byte headers and first 64-13 bytes of inputs */
-    sha256_multi_block(ctx, edges, n4x);
-    /* hash bulk inputs */
-#  define MAXCHUNKSIZE    2048
-#  if     MAXCHUNKSIZE%64
-#   error  "MAXCHUNKSIZE is not divisible by 64"
-#  elif   MAXCHUNKSIZE
-    /*
-     * goal is to minimize pressure on L1 cache by moving in shorter steps,
-     * so that hashed data is still in the cache by the time we encrypt it
-     */
-    minblocks = ((frag <= last ? frag : last) - (64 - 13)) / 64;
-    if (minblocks > MAXCHUNKSIZE / 64) {
-        for (i = 0; i < x4; i++) {
-            edges[i].ptr = hash_d[i].ptr;
-            edges[i].blocks = MAXCHUNKSIZE / 64;
-            ciph_d[i].blocks = MAXCHUNKSIZE / 16;
-        }
-        do {
-            sha256_multi_block(ctx, edges, n4x);
-            aesni_multi_cbc_encrypt(ciph_d, &key->ks, n4x);
-
-            for (i = 0; i < x4; i++) {
-                edges[i].ptr = hash_d[i].ptr += MAXCHUNKSIZE;
-                hash_d[i].blocks -= MAXCHUNKSIZE / 64;
-                edges[i].blocks = MAXCHUNKSIZE / 64;
-                ciph_d[i].inp += MAXCHUNKSIZE;
-                ciph_d[i].out += MAXCHUNKSIZE;
-                ciph_d[i].blocks = MAXCHUNKSIZE / 16;
-                memcpy(ciph_d[i].iv, ciph_d[i].out - 16, 16);
-            }
-            processed += MAXCHUNKSIZE;
-            minblocks -= MAXCHUNKSIZE / 64;
-        } while (minblocks > MAXCHUNKSIZE / 64);
-    }
-#  endif
-#  undef  MAXCHUNKSIZE
-    sha256_multi_block(ctx, hash_d, n4x);
-
-    memset(blocks, 0, sizeof(blocks));
-    for (i = 0; i < x4; i++) {
-        unsigned int len = (i == (x4 - 1) ? last : frag),
-            off = hash_d[i].blocks * 64;
-        const unsigned char *ptr = hash_d[i].ptr + off;
-
-        off = (len - processed) - (64 - 13) - off; /* remainder actually */
-        memcpy(blocks[i].c, ptr, off);
-        blocks[i].c[off] = 0x80;
-        len += 64 + 13;         /* 64 is HMAC header */
-        len *= 8;               /* convert to bits */
-        if (off < (64 - 8)) {
-#  ifdef BSWAP4
-            blocks[i].d[15] = BSWAP4(len);
-#  else
-            PUTU32(blocks[i].c + 60, len);
-#  endif
-            edges[i].blocks = 1;
-        } else {
-#  ifdef BSWAP4
-            blocks[i].d[31] = BSWAP4(len);
-#  else
-            PUTU32(blocks[i].c + 124, len);
-#  endif
-            edges[i].blocks = 2;
-        }
-        edges[i].ptr = blocks[i].c;
-    }
-
-    /* hash input tails and finalize */
-    sha256_multi_block(ctx, edges, n4x);
-
-    memset(blocks, 0, sizeof(blocks));
-    for (i = 0; i < x4; i++) {
-#  ifdef BSWAP4
-        blocks[i].d[0] = BSWAP4(ctx->A[i]);
-        ctx->A[i] = key->tail.h[0];
-        blocks[i].d[1] = BSWAP4(ctx->B[i]);
-        ctx->B[i] = key->tail.h[1];
-        blocks[i].d[2] = BSWAP4(ctx->C[i]);
-        ctx->C[i] = key->tail.h[2];
-        blocks[i].d[3] = BSWAP4(ctx->D[i]);
-        ctx->D[i] = key->tail.h[3];
-        blocks[i].d[4] = BSWAP4(ctx->E[i]);
-        ctx->E[i] = key->tail.h[4];
-        blocks[i].d[5] = BSWAP4(ctx->F[i]);
-        ctx->F[i] = key->tail.h[5];
-        blocks[i].d[6] = BSWAP4(ctx->G[i]);
-        ctx->G[i] = key->tail.h[6];
-        blocks[i].d[7] = BSWAP4(ctx->H[i]);
-        ctx->H[i] = key->tail.h[7];
-        blocks[i].c[32] = 0x80;
-        blocks[i].d[15] = BSWAP4((64 + 32) * 8);
-#  else
-        PUTU32(blocks[i].c + 0, ctx->A[i]);
-        ctx->A[i] = key->tail.h[0];
-        PUTU32(blocks[i].c + 4, ctx->B[i]);
-        ctx->B[i] = key->tail.h[1];
-        PUTU32(blocks[i].c + 8, ctx->C[i]);
-        ctx->C[i] = key->tail.h[2];
-        PUTU32(blocks[i].c + 12, ctx->D[i]);
-        ctx->D[i] = key->tail.h[3];
-        PUTU32(blocks[i].c + 16, ctx->E[i]);
-        ctx->E[i] = key->tail.h[4];
-        PUTU32(blocks[i].c + 20, ctx->F[i]);
-        ctx->F[i] = key->tail.h[5];
-        PUTU32(blocks[i].c + 24, ctx->G[i]);
-        ctx->G[i] = key->tail.h[6];
-        PUTU32(blocks[i].c + 28, ctx->H[i]);
-        ctx->H[i] = key->tail.h[7];
-        blocks[i].c[32] = 0x80;
-        PUTU32(blocks[i].c + 60, (64 + 32) * 8);
-#  endif
-        edges[i].ptr = blocks[i].c;
-        edges[i].blocks = 1;
-    }
-
-    /* finalize MACs */
-    sha256_multi_block(ctx, edges, n4x);
-
-    for (i = 0; i < x4; i++) {
-        unsigned int len = (i == (x4 - 1) ? last : frag), pad, j;
-        unsigned char *out0 = out;
-
-        memcpy(ciph_d[i].out, ciph_d[i].inp, len - processed);
-        ciph_d[i].inp = ciph_d[i].out;
-
-        out += 5 + 16 + len;
-
-        /* write MAC */
-        PUTU32(out + 0, ctx->A[i]);
-        PUTU32(out + 4, ctx->B[i]);
-        PUTU32(out + 8, ctx->C[i]);
-        PUTU32(out + 12, ctx->D[i]);
-        PUTU32(out + 16, ctx->E[i]);
-        PUTU32(out + 20, ctx->F[i]);
-        PUTU32(out + 24, ctx->G[i]);
-        PUTU32(out + 28, ctx->H[i]);
-        out += 32;
-        len += 32;
-
-        /* pad */
-        pad = 15 - len % 16;
-        for (j = 0; j <= pad; j++)
-            *(out++) = pad;
-        len += pad + 1;
-
-        ciph_d[i].blocks = (len - processed) / 16;
-        len += 16;              /* account for explicit iv */
-
-        /* arrange header */
-        out0[0] = ((u8 *)key->md.data)[8];
-        out0[1] = ((u8 *)key->md.data)[9];
-        out0[2] = ((u8 *)key->md.data)[10];
-        out0[3] = (u8)(len >> 8);
-        out0[4] = (u8)(len);
-
-        ret += len + 5;
-        inp += frag;
-    }
-
-    aesni_multi_cbc_encrypt(ciph_d, &key->ks, n4x);
-
-    OPENSSL_cleanse(blocks, sizeof(blocks));
-    OPENSSL_cleanse(ctx, sizeof(*ctx));
-
-    return ret;
-}
-# endif
 
 static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
                                         unsigned char *out,
@@ -814,114 +524,37 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                 return SHA256_DIGEST_LENGTH;
             }
         }
-# if !defined(OPENSSL_NO_MULTIBLOCK)
-    case EVP_CTRL_TLS1_1_MULTIBLOCK_MAX_BUFSIZE:
-        return (int)(5 + 16 + ((arg + 32 + 16) & -16));
-    case EVP_CTRL_TLS1_1_MULTIBLOCK_AAD:
-        {
-            EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM *param =
-                (EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM *) ptr;
-            unsigned int n4x = 1, x4;
-            unsigned int frag, last, packlen, inp_len;
-
-            if (arg < 0)
-                return -1;
-
-            if (u_arg < sizeof(EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM))
-                return -1;
-
-            inp_len = param->inp[11] << 8 | param->inp[12];
-
-            if (EVP_CIPHER_CTX_encrypting(ctx)) {
-                if ((param->inp[9] << 8 | param->inp[10]) < TLS1_1_VERSION)
-                    return -1;
-
-                if (inp_len) {
-                    if (inp_len < 4096)
-                        return 0; /* too short */
-
-                    if (inp_len >= 8192 && OPENSSL_ia32cap_P[2] & (1 << 5))
-                        n4x = 2; /* AVX2 */
-                } else if ((n4x = param->interleave / 4) && n4x <= 2)
-                    inp_len = param->len;
-                else
-                    return -1;
-
-                key->md = key->head;
-                SHA256_Update(&key->md, param->inp, 13);
-
-                x4 = 4 * n4x;
-                n4x += 1;
-
-                frag = inp_len >> n4x;
-                last = inp_len + frag - (frag << n4x);
-                if (last > frag && ((last + 13 + 9) % 64 < (x4 - 1))) {
-                    frag++;
-                    last -= x4 - 1;
-                }
-
-                packlen = 5 + 16 + ((frag + 32 + 16) & -16);
-                packlen = (packlen << n4x) - packlen;
-                packlen += 5 + 16 + ((last + 32 + 16) & -16);
-
-                param->interleave = x4;
-
-                return (int)packlen;
-            } else
-                return -1;      /* not yet */
-        }
-    case EVP_CTRL_TLS1_1_MULTIBLOCK_ENCRYPT:
-        {
-            EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM *param =
-                (EVP_CTRL_TLS1_1_MULTIBLOCK_PARAM *) ptr;
-
-            return (int)tls1_1_multi_block_encrypt(key, param->out,
-                                                   param->inp, param->len,
-                                                   param->interleave / 4);
-        }
-    case EVP_CTRL_TLS1_1_MULTIBLOCK_DECRYPT:
-# endif
     default:
         return -1;
     }
 }
 
 static EVP_CIPHER aesni_128_cbc_hmac_sha256_cipher = {
-# ifdef NID_aes_128_cbc_hmac_sha256
-    NID_aes_128_cbc_hmac_sha256,
-# else
-    NID_undef,
-# endif
-    AES_BLOCK_SIZE, 16, AES_BLOCK_SIZE,
-    EVP_CIPH_CBC_MODE | EVP_CIPH_FLAG_DEFAULT_ASN1 |
-        EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_FLAG_TLS1_1_MULTIBLOCK,
+    NID_aes_128_cbc_hmac_sha256 /* nid */,
+    AES_BLOCK_SIZE /* block size */, 
+    16 /* key len */,
+    AES_BLOCK_SIZE /* iv len */,
+    sizeof(EVP_AES_HMAC_SHA256) /* ctx_size */,
+    EVP_CIPH_CBC_MODE | EVP_CIPH_FLAG_AEAD_CIPHER /* flags */,
+    NULL /* app_data */,
     aesni_cbc_hmac_sha256_init_key,
     aesni_cbc_hmac_sha256_cipher,
-    NULL,
-    sizeof(EVP_AES_HMAC_SHA256),
-    EVP_CIPH_FLAG_DEFAULT_ASN1 ? NULL : EVP_CIPHER_set_asn1_iv,
-    EVP_CIPH_FLAG_DEFAULT_ASN1 ? NULL : EVP_CIPHER_get_asn1_iv,
-    aesni_cbc_hmac_sha256_ctrl,
-    NULL
+    NULL /* cleanup */,
+    aesni_cbc_hmac_sha256_ctrl
 };
 
 static EVP_CIPHER aesni_256_cbc_hmac_sha256_cipher = {
-# ifdef NID_aes_256_cbc_hmac_sha256
-    NID_aes_256_cbc_hmac_sha256,
-# else
-    NID_undef,
-# endif
-    AES_BLOCK_SIZE, 32, AES_BLOCK_SIZE,
-    EVP_CIPH_CBC_MODE | EVP_CIPH_FLAG_DEFAULT_ASN1 |
-        EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_FLAG_TLS1_1_MULTIBLOCK,
+    NID_aes_256_cbc_hmac_sha256 /* nid */,
+    AES_BLOCK_SIZE /* block size */, 
+    32 /* key len */,
+    AES_BLOCK_SIZE /* iv len */,
+    sizeof(EVP_AES_HMAC_SHA256) /* ctx_size */,
+    EVP_CIPH_CBC_MODE | EVP_CIPH_FLAG_AEAD_CIPHER /* flags */,
+    NULL /* app_data */,
     aesni_cbc_hmac_sha256_init_key,
     aesni_cbc_hmac_sha256_cipher,
-    NULL,
-    sizeof(EVP_AES_HMAC_SHA256),
-    EVP_CIPH_FLAG_DEFAULT_ASN1 ? NULL : EVP_CIPHER_set_asn1_iv,
-    EVP_CIPH_FLAG_DEFAULT_ASN1 ? NULL : EVP_CIPHER_get_asn1_iv,
-    aesni_cbc_hmac_sha256_ctrl,
-    NULL
+    NULL /* cleanup */,
+    aesni_cbc_hmac_sha256_ctrl
 };
 
 const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void)

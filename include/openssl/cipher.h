@@ -92,6 +92,11 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
 
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void);
+
 // EVP_enc_null returns a 'cipher' that passes plaintext through as
 // ciphertext.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
@@ -581,6 +586,14 @@ typedef struct evp_cipher_info_st {
   const EVP_CIPHER *cipher;
   unsigned char iv[EVP_MAX_IV_LENGTH];
 } EVP_CIPHER_INFO;
+
+// The following constants are used by AES-CBC stitch ctrl methods.
+// AEAD cipher deduces payload length and returns number of bytes required to
+// store MAC and eventual padding. Subsequent call to EVP_Cipher even
+// appends/verifies MAC.
+#define EVP_CTRL_AEAD_TLS1_AAD 0x16
+// RFC 5246 defines additional data to be 13 bytes in length.
+#define EVP_AEAD_TLS1_AAD_LEN 13
 
 struct evp_cipher_st {
   // type contains a NID identifing the cipher. (e.g. NID_aes_128_gcm.)

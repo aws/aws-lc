@@ -101,6 +101,8 @@ if(PERL_EXECUTABLE)
   perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_armv8.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_armv8.pl)
+  perlasm(cipher_extra/aesni-sha1-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha1-x86_64.pl)
+  perlasm(cipher_extra/aesni-sha256-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha256-x86_64.pl)
   perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
   perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
   perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
@@ -188,6 +190,9 @@ if(ARCH STREQUAL "x86_64")
     chacha/chacha-x86_64.${ASM_EXT}
     cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
     cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+    cipher_extra/aesni-sha1-x86_64.${ASM_EXT}
+    cipher_extra/aesni-sha256-x86_64.${ASM_EXT}
+    hrss/asm/poly_rq_mul.S
     test/trampoline-x86_64.${ASM_EXT}
     hrss/asm/poly_rq_mul.S
   )
@@ -288,6 +293,8 @@ add_library(
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
+  cipher_extra/e_aes_cbc_hmac_sha1.c
+  cipher_extra/e_aes_cbc_hmac_sha256.c
   cipher_extra/e_null.c
   cipher_extra/e_rc2.c
   cipher_extra/e_rc4.c
