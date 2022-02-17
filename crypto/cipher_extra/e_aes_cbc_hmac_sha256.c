@@ -35,16 +35,6 @@ typedef struct {
 
 # define NO_PAYLOAD_LENGTH       ((size_t)-1)
 
-int aesni_set_encrypt_key(const unsigned char *userKey, int bits,
-                          AES_KEY *key);
-int aesni_set_decrypt_key(const unsigned char *userKey, int bits,
-                          AES_KEY *key);
-
-void aesni_cbc_encrypt(const unsigned char *in,
-                       unsigned char *out,
-                       size_t length,
-                       const AES_KEY *key, unsigned char *ivec, int enc);
-
 int aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
                          const AES_KEY *key, unsigned char iv[16],
                          SHA256_CTX *ctx, const void *in0);
@@ -59,11 +49,11 @@ static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
     int ret;
 
     if (enc)
-        ret = aesni_set_encrypt_key(inkey,
+        ret = aes_hw_set_encrypt_key(inkey,
                                     EVP_CIPHER_CTX_key_length(ctx) * 8,
                                     &key->ks);
     else
-        ret = aesni_set_decrypt_key(inkey,
+        ret = aes_hw_set_decrypt_key(inkey,
                                     EVP_CIPHER_CTX_key_length(ctx) * 8,
                                     &key->ks);
 
@@ -186,10 +176,10 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
             for (l = len - plen - 1; plen < len; plen++)
                 out[plen] = l;
             /* encrypt HMAC|padding at once */
-            aesni_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off,
+            aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off,
                               &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx), 1);
         } else {
-            aesni_cbc_encrypt(in + aes_off, out + aes_off, len - aes_off,
+            aes_hw_cbc_encrypt(in + aes_off, out + aes_off, len - aes_off,
                               &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx), 1);
         }
     } else {
@@ -202,7 +192,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
         pmac = (void *)(((size_t)mac.c + 63) & ((size_t)0 - 64));
 
         /* decrypt HMAC|padding at once */
-        aesni_cbc_encrypt(in, out, len, &key->ks,
+        aes_hw_cbc_encrypt(in, out, len, &key->ks,
                           EVP_CIPHER_CTX_iv_noconst(ctx), 0);
 
         if (plen != NO_PAYLOAD_LENGTH) { /* "TLS" mode of operation */
