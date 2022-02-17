@@ -18,6 +18,7 @@
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include "internal.h"
+#include "../fipsmodule/aes/internal.h"
 
 #if defined(AESNI_ASM)
 
@@ -32,9 +33,6 @@ typedef struct {
 } EVP_AES_HMAC_SHA1;
 
 #define NO_PAYLOAD_LENGTH       ((size_t)-1)
-
-extern unsigned int OPENSSL_ia32cap_P[];
-# define AESNI_CAPABLE   (1<<(57-32))
 
 int aesni_set_encrypt_key(const unsigned char *userKey, int bits,
                           AES_KEY *key);
@@ -487,7 +485,7 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     }
 }
 
-static EVP_CIPHER aesni_128_cbc_hmac_sha1_cipher = {
+static const EVP_CIPHER aesni_128_cbc_hmac_sha1_cipher = {
     NID_aes_128_cbc_hmac_sha1 /* nid */,
     AES_BLOCK_SIZE /* block size */, 
     16 /* key len */,
@@ -501,7 +499,7 @@ static EVP_CIPHER aesni_128_cbc_hmac_sha1_cipher = {
     aesni_cbc_hmac_sha1_ctrl
 };
 
-static EVP_CIPHER aesni_256_cbc_hmac_sha1_cipher = {
+static const EVP_CIPHER aesni_256_cbc_hmac_sha1_cipher = {
     NID_aes_256_cbc_hmac_sha1 /* nid */,
     AES_BLOCK_SIZE /* block size */,
     32 /* key len */,
@@ -517,14 +515,12 @@ static EVP_CIPHER aesni_256_cbc_hmac_sha1_cipher = {
 
 const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void)
 {
-    return (OPENSSL_ia32cap_P[1] & AESNI_CAPABLE ?
-            &aesni_128_cbc_hmac_sha1_cipher : NULL);
+    return (hwaes_capable() ? &aesni_128_cbc_hmac_sha1_cipher : NULL);
 }
 
 const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void)
 {
-    return (OPENSSL_ia32cap_P[1] & AESNI_CAPABLE ?
-            &aesni_256_cbc_hmac_sha1_cipher : NULL);
+    return (hwaes_capable() ? &aesni_256_cbc_hmac_sha1_cipher : NULL);
 }
 #else
 const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void)
