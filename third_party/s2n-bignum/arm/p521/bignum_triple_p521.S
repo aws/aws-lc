@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_triple_p521
+        .globl  bignum_triple_p521_alt
         .text
         .balign 4
 
@@ -45,6 +46,7 @@
 
 
 bignum_triple_p521:
+bignum_triple_p521_alt:
 
 // Pick out top bit to wrap to the zero position in the doubling step
 
