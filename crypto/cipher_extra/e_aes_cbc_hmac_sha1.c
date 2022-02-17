@@ -82,11 +82,6 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
 }
 
 # define STITCHED_CALL
-# undef  STITCHED_DECRYPT_CALL
-
-# if !defined(STITCHED_CALL)
-#  define aes_off 0
-# endif
 
 void sha1_block_data_order(void *c, const void *p, size_t len);
 
@@ -215,10 +210,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 unsigned int u[SHA_LBLOCK];
                 unsigned char c[SHA_CBLOCK];
             } *data = (void *)key->md.data;
-# if defined(STITCHED_DECRYPT_CALL)
-            unsigned char tail_iv[AES_BLOCK_SIZE];
-            int stitch = 0;
-# endif
 
             if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3])
                 >= TLS1_1_VERSION) {
@@ -234,17 +225,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             } else if (len < (SHA_DIGEST_LENGTH + 1))
                 return 0;
 
-# if defined(STITCHED_DECRYPT_CALL)
-            if (len >= 1024 && ctx->key_len == 32) {
-                /* decrypt last block */
-                memcpy(tail_iv, in + len - 2 * AES_BLOCK_SIZE,
-                       AES_BLOCK_SIZE);
-                aesni_cbc_encrypt(in + len - AES_BLOCK_SIZE,
-                                  out + len - AES_BLOCK_SIZE, AES_BLOCK_SIZE,
-                                  &key->ks, tail_iv, 0);
-                stitch = 1;
-            } else
-# endif
                 /* decrypt HMAC|padding at once */
                 aesni_cbc_encrypt(in, out, len, &key->ks,
                                   EVP_CIPHER_CTX_iv_noconst(ctx), 0);
@@ -273,29 +253,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             /* calculate HMAC */
             key->md = key->head;
             SHA1_Update(&key->md, key->aux.tls_aad, plen);
-
-# if defined(STITCHED_DECRYPT_CALL)
-            if (stitch) {
-                blocks = (len - (256 + 32 + SHA_CBLOCK)) / SHA_CBLOCK;
-                aes_off = len - AES_BLOCK_SIZE - blocks * SHA_CBLOCK;
-                sha_off = SHA_CBLOCK - plen;
-
-                aesni_cbc_encrypt(in, out, aes_off, &key->ks, ctx->iv, 0);
-
-                SHA1_Update(&key->md, out, sha_off);
-                aesni256_cbc_sha1_dec(in + aes_off,
-                                      out + aes_off, blocks, &key->ks,
-                                      ctx->iv, &key->md, out + sha_off);
-
-                sha_off += blocks *= SHA_CBLOCK;
-                out += sha_off;
-                len -= sha_off;
-                inp_len -= sha_off;
-
-                key->md.Nl += (blocks << 3); /* at most 18 bits */
-                memcpy(ctx->iv, tail_iv, AES_BLOCK_SIZE);
-            }
-# endif
 
 # if 1      /* see original reference version in #else */
             len -= SHA_DIGEST_LENGTH; /* amend mac */
@@ -457,30 +414,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 # endif
             return ret;
         } else {
-# if defined(STITCHED_DECRYPT_CALL)
-            if (len >= 1024 && ctx->key_len == 32) {
-                if (sha_off %= SHA_CBLOCK)
-                    blocks = (len - 3 * SHA_CBLOCK) / SHA_CBLOCK;
-                else
-                    blocks = (len - 2 * SHA_CBLOCK) / SHA_CBLOCK;
-                aes_off = len - blocks * SHA_CBLOCK;
-
-                aesni_cbc_encrypt(in, out, aes_off, &key->ks, ctx->iv, 0);
-                SHA1_Update(&key->md, out, sha_off);
-                aesni256_cbc_sha1_dec(in + aes_off,
-                                      out + aes_off, blocks, &key->ks,
-                                      ctx->iv, &key->md, out + sha_off);
-
-                sha_off += blocks *= SHA_CBLOCK;
-                out += sha_off;
-                len -= sha_off;
-
-                key->md.Nh += blocks >> 29;
-                key->md.Nl += blocks <<= 3;
-                if (key->md.Nl < (unsigned int)blocks)
-                    key->md.Nh++;
-            } else
-# endif
                 /* decrypt HMAC|padding at once */
                 aesni_cbc_encrypt(in, out, len, &key->ks,
                                   EVP_CIPHER_CTX_iv_noconst(ctx), 0);
