@@ -15,7 +15,9 @@
 
 # These are the object files corresponding to sources for translation
 
-OBJ = fastmul/bignum_emontredc_8n.o \
+OBJ = curve25519/bignum_mul_p25519.o \
+      curve25519/bignum_mul_p25519_alt.o \
+      fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
       fastmul/bignum_kmul_32_64.o \
       fastmul/bignum_ksqr_16_32.o \
@@ -220,6 +222,7 @@ all: $(OBJ);
 
 %.o : %.S ; (cpp $< | as -o $@ -); (cd ../x86; cpp $< | as -o /tmp/original_object.o); cmp -s $@ /tmp/original_object.o
 
+curve25519/%.S :: ../x86/curve25519/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
 fastmul/%.S :: ../x86/fastmul/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
 generic/%.S :: ../x86/generic/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
 p256/%.S :: ../x86/p256/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o

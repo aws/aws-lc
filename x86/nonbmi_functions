@@ -50,6 +50,7 @@ bignum_frombebytes_4
 bignum_frombebytes_6
 bignum_fromlebytes_4
 bignum_fromlebytes_6
+bignum_fromlebytes_p521
 bignum_ge
 bignum_gt
 bignum_half_p256
@@ -96,6 +97,7 @@ bignum_mul
 bignum_mul_4_8_alt
 bignum_mul_6_12_alt
 bignum_mul_8_16_alt
+bignum_mul_p25519_alt
 bignum_mul_p256k1_alt
 bignum_mul_p521_alt
 bignum_muladd10
@@ -140,6 +142,7 @@ bignum_tobebytes_4
 bignum_tobebytes_6
 bignum_tolebytes_4
 bignum_tolebytes_6
+bignum_tolebytes_p521
 bignum_tomont_p256_alt
 bignum_tomont_p256k1_alt
 bignum_tomont_p384_alt
