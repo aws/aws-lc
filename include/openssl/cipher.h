@@ -92,11 +92,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
 
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void);
-
 // EVP_enc_null returns a 'cipher' that passes plaintext through as
 // ciphertext.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
@@ -394,6 +389,13 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // their needs). Thus this exists only to allow code to compile.
 #define EVP_CIPH_FLAG_NON_FIPS_ALLOW 0
 
+// Legacy AEAD Functions.
+
+// The following functions are imported to provide AES CBC stitch impl.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void);
 
 // Deprecated functions
 
