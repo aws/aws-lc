@@ -211,9 +211,9 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 in += AES_BLOCK_SIZE;
                 out += AES_BLOCK_SIZE;
                 len -= AES_BLOCK_SIZE;
-            } else if (len < (SHA_DIGEST_LENGTH + 1))
+            } else if (len < (SHA_DIGEST_LENGTH + 1)) {
                 return 0;
-
+            }
                 /* decrypt HMAC|padding at once */
                 aesni_cbc_encrypt(in, out, len, &key->ks,
                                   EVP_CIPHER_CTX_iv_noconst(ctx), 0);
