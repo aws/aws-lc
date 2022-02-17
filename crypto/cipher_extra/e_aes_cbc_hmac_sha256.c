@@ -78,12 +78,6 @@ static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
     return ret < 0 ? 0 : 1;
 }
 
-# define STITCHED_CALL
-
-# if !defined(STITCHED_CALL)
-#  define aes_off 0
-# endif
-
 void sha256_block_data_order(void *c, const void *p, size_t len);
 
 static void sha256_update(SHA256_CTX *c, const void *data, size_t len)
@@ -131,11 +125,9 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
     size_t plen = key->payload_length, iv = 0, /* explicit IV in TLS 1.1 and
                                                 * later */
         sha_off = 0;
-# if defined(STITCHED_CALL)
     size_t aes_off = 0, blocks;
 
     sha_off = SHA256_CBLOCK - key->md.num;
-# endif
 
     key->payload_length = NO_PAYLOAD_LENGTH;
 
@@ -152,7 +144,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
         else if (key->aux.tls_ver >= TLS1_1_VERSION)
             iv = AES_BLOCK_SIZE;
 
-# if defined(STITCHED_CALL)
         /*
          * Assembly stitch handles AVX-capable processors, but its
          * performance is not optimal on AMD Jaguar, ~40% worse, for
@@ -184,7 +175,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
         } else {
             sha_off = 0;
         }
-# endif
         sha_off += iv;
         SHA256_Update(&key->md, in + sha_off, plen - sha_off);
 

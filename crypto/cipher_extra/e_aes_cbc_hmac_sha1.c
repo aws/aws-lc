@@ -81,8 +81,6 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
     return ret < 0 ? 0 : 1;
 }
 
-# define STITCHED_CALL
-
 void sha1_block_data_order(void *c, const void *p, size_t len);
 
 static void sha1_update(SHA_CTX *c, const void *data, size_t len)
@@ -129,11 +127,9 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     size_t plen = key->payload_length, iv = 0, /* explicit IV in TLS 1.1 and
                                                 * later */
         sha_off = 0;
-# if defined(STITCHED_CALL)
     size_t aes_off = 0, blocks;
 
     sha_off = SHA_CBLOCK - key->md.num;
-# endif
 
     key->payload_length = NO_PAYLOAD_LENGTH;
 
@@ -150,7 +146,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         else if (key->aux.tls_ver >= TLS1_1_VERSION)
             iv = AES_BLOCK_SIZE;
 
-# if defined(STITCHED_CALL)
         if (plen > (sha_off + iv)
             && (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
             SHA1_Update(&key->md, in + iv, sha_off);
@@ -168,7 +163,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         } else {
             sha_off = 0;
         }
-# endif
         sha_off += iv;
         SHA1_Update(&key->md, in + sha_off, plen - sha_off);
 
