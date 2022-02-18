@@ -271,6 +271,138 @@ TEST_P(PerAEADTest, TestVector) {
   });
 }
 
+struct KnownLegacyAEAD {
+  const char name[40];
+  const EVP_CIPHER *(*func)(void);
+  const char *test_vectors;
+  uint32_t flags;
+};
+
+static const struct KnownLegacyAEAD kLegacyAEADs[] = {
+    {"AES_128_CBC_SHA1_TLS", EVP_aead_aes_128_cbc_sha1_tls,
+     "aes_128_cbc_sha1_tls_tests.txt",
+     kLimitedImplementation | RequiresADLength(11)},
+
+    {"AES_256_CBC_SHA1_TLS", EVP_aead_aes_256_cbc_sha1_tls,
+     "aes_256_cbc_sha1_tls_tests.txt",
+     kLimitedImplementation | RequiresADLength(11)},
+};
+
+class PerLegacyAEADTest : public testing::TestWithParam<KnownLegacyAEAD> {
+ public:
+  const EVP_CIPHER *legacy_aead() { return GetParam().func(); }
+};
+
+INSTANTIATE_TEST_SUITE_P(All, PerLegacyAEADTest, testing::ValuesIn(kLegacyAEADs),
+                         [](const testing::TestParamInfo<KnownLegacyAEAD> &params)
+                             -> std::string { return params.param.name; });
+
+// Tests an AEAD against a series of test vectors from a file, using the
+// FileTest format. As an example, here's a valid test case:
+//
+//   KEY: 5a19f3173586b4c42f8412f4d5a786531b3231753e9e00998aec12fda8df10e4
+//   NONCE: 978105dfce667bf4
+//   IN: 6a4583908d
+//   AD: b654574932
+//   CT: 5294265a60
+//   TAG: 1d45758621762e061368e68868e2f929
+TEST(PerLegacyAEADTest, TestVector) {
+  std::string test_vectors = "crypto/cipher_extra/test/";
+  test_vectors += GetParam().test_vectors;
+  FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> key, nonce, in, ad, ct, tag;
+    ASSERT_TRUE(t->GetBytes(&key, "KEY"));
+    ASSERT_TRUE(t->GetBytes(&nonce, "NONCE"));
+    ASSERT_TRUE(t->GetBytes(&in, "IN"));
+    ASSERT_TRUE(t->GetBytes(&ad, "AD"));
+    ASSERT_TRUE(t->GetBytes(&ct, "CT"));
+    ASSERT_TRUE(t->GetBytes(&tag, "TAG"));
+    size_t tag_len = tag.size();
+    if (t->HasAttribute("TAG_LEN")) {
+      // Legacy AEADs are MAC-then-encrypt and may include padding in the TAG
+      // field. TAG_LEN contains the actual size of the digest in that case.
+      std::string tag_len_str;
+      ASSERT_TRUE(t->GetAttribute(&tag_len_str, "TAG_LEN"));
+      tag_len = strtoul(tag_len_str.c_str(), nullptr, 10);
+      ASSERT_TRUE(tag_len);
+    }
+
+    bssl::ScopedEVP_AEAD_CTX ctx;
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+        ctx.get(), aead(), key.data(), key.size(), tag_len, evp_aead_seal));
+
+    std::vector<uint8_t> out(in.size() + EVP_AEAD_max_overhead(aead()));
+    if (!t->HasAttribute("NO_SEAL") &&
+        !(GetParam().flags & kNondeterministic)) {
+      size_t out_len;
+      ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
+                                    nonce.data(), nonce.size(), in.data(),
+                                    in.size(), ad.data(), ad.size()));
+      out.resize(out_len);
+
+      ASSERT_EQ(out.size(), ct.size() + tag.size());
+      EXPECT_EQ(Bytes(ct), Bytes(out.data(), ct.size()));
+      EXPECT_EQ(Bytes(tag), Bytes(out.data() + ct.size(), tag.size()));
+    } else {
+      out.resize(ct.size() + tag.size());
+      OPENSSL_memcpy(out.data(), ct.data(), ct.size());
+      OPENSSL_memcpy(out.data() + ct.size(), tag.data(), tag.size());
+    }
+
+    // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+    // reset after each operation.
+    ctx.Reset();
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+        ctx.get(), legacy_aead(), key.data(), key.size(), tag_len, evp_aead_open));
+
+    std::vector<uint8_t> out2(out.size());
+    size_t out2_len;
+    int ret = EVP_AEAD_CTX_open(ctx.get(), out2.data(), &out2_len, out2.size(),
+                                nonce.data(), nonce.size(), out.data(),
+                                out.size(), ad.data(), ad.size());
+    if (t->HasAttribute("FAILS")) {
+      ASSERT_FALSE(ret) << "Decrypted bad data.";
+      ERR_clear_error();
+      return;
+    }
+
+    ASSERT_TRUE(ret) << "Failed to decrypt.";
+    out2.resize(out2_len);
+    EXPECT_EQ(Bytes(in), Bytes(out2));
+
+    // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+    // reset after each operation.
+    ctx.Reset();
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+        ctx.get(), legacy_aead(), key.data(), key.size(), tag_len, evp_aead_open));
+
+    // Garbage at the end isn't ignored.
+    out.push_back(0);
+    out2.resize(out.size());
+    EXPECT_FALSE(EVP_AEAD_CTX_open(
+        ctx.get(), out2.data(), &out2_len, out2.size(), nonce.data(),
+        nonce.size(), out.data(), out.size(), ad.data(), ad.size()))
+        << "Decrypted bad data with trailing garbage.";
+    ERR_clear_error();
+
+    // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+    // reset after each operation.
+    ctx.Reset();
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+        ctx.get(), legacy_aead(), key.data(), key.size(), tag_len, evp_aead_open));
+
+    // Verify integrity is checked.
+    out[0] ^= 0x80;
+    out.resize(out.size() - 1);
+    out2.resize(out.size());
+    EXPECT_FALSE(EVP_AEAD_CTX_open(
+        ctx.get(), out2.data(), &out2_len, out2.size(), nonce.data(),
+        nonce.size(), out.data(), out.size(), ad.data(), ad.size()))
+        << "Decrypted bad data with corrupted byte.";
+    ERR_clear_error();
+  });
+}
+
 TEST_P(PerAEADTest, TestExtraInput) {
   const KnownAEAD &aead_config = GetParam();
   if (!aead()->seal_scatter_supports_extra_in) {
