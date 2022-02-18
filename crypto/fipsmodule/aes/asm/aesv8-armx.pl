@@ -1073,6 +1073,7 @@ $code.=<<___	if ($flavour =~ /64/);
 
 .align	4
 .Lxts_enc_big_size:
+   // Encrypt input size > 16 bytes
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	stp	$constnumx,$tmpinp,[sp,#-64]!
@@ -1082,11 +1083,11 @@ $code.=<<___	if ($flavour =~ /64/);
 
 	// tailcnt store the tail value of length%16.
 	and	$tailcnt,$len,#0xf
-	and	$len,$len,#-16
+	and	$len,$len,#-16      // len &= 0x1..110000, now divisible by 16
 	subs	$len,$len,#16
 	mov	$step,#16
-	b.lo	.Lxts_abort
-	csel	$step,xzr,$step,eq
+	b.lo	.Lxts_abort     // if !(len > 16): error
+	csel	$step,xzr,$step,eq  // if (len == 16): step = 0
 
 	// Firstly, encrypt the iv with key2, as the first iv of XEX.
 	ldr	$rounds,[$key2,#240]
@@ -1149,7 +1150,8 @@ $code.=<<___	if ($flavour =~ /64/);
 	vorr	$in3,$dat,$dat
 	vorr	$in2,$dat2,$dat2
 	vorr	$in4,$dat2,$dat2
-	b.lo	.Lxts_inner_enc_tail
+	b.lo	.Lxts_inner_enc_tail    // when input size % 5 = 1 or 2
+                                    // (with tail or not)
 	veor	$dat,$dat,$iv0			// before encryption, xor with iv
 	veor	$dat2,$dat2,$iv1
 
@@ -1381,6 +1383,13 @@ $code.=<<___	if ($flavour =~ /64/);
 
 
 	// If left 4 blocks, borrow the five block's processing.
+    // This means if ($len + 1 block) == 0, which is the case
+    // when input size % 5 = 4, continue processing and do
+    // another iteration in Loop5x_xts_enc which will exit from
+    // cbz	$xoffset,.Lxts_enc_tail4x.
+    // Otherwise, this is the end of the loop continue processing
+    // 0, 1, 2 or 3 blocks (with or without tail) starting at
+    // Loop5x_enc_after
 	cmn	$len,#0x10
 	b.ne	.Loop5x_enc_after
 	vorr	$iv4,$iv3,$iv3
@@ -1398,13 +1407,14 @@ $code.=<<___	if ($flavour =~ /64/);
 
 .Loop5x_enc_after:
 	add	$len,$len,#0x50
-	cbz	$len,.Lxts_enc_done
+	cbz	$len,.Lxts_enc_done         // no blocks left
 
 	add	$rounds,$rounds0,#2
 	subs	$len,$len,#0x30
-	b.lo	.Lxts_inner_enc_tail
+	b.lo	.Lxts_inner_enc_tail    // 1 or 2 blocks left
+                                    // (with tail or not)
 
-	veor	$dat0,$iv0,$in2
+	veor	$dat0,$iv0,$in2         // 3 blocks left
 	veor	$dat1,$iv1,$in3
 	veor	$dat2,$in4,$iv2
 	b	.Lxts_outer_enc_tail
