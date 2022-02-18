@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_cmul_p384
+        .globl  bignum_cmul_p384_alt
         .text
         .balign 4
 
@@ -55,6 +56,7 @@
 
 
 bignum_cmul_p384:
+bignum_cmul_p384_alt:
 
 // First do the multiply, straightforwardly, getting [h; d5; ...; d0]
 

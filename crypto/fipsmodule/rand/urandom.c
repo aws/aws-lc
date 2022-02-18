@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #if defined(OPENSSL_LINUX)
@@ -39,6 +40,7 @@
 #include <linux/random.h>
 #include <sys/ioctl.h>
 #endif
+#include <sys/param.h>
 #include <sys/syscall.h>
 
 #if defined(OPENSSL_ANDROID)
@@ -83,6 +85,49 @@
 #include "../delocate.h"
 #include "../../internal.h"
 
+#ifndef MIN
+#define AWSLC_MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
+#else
+#define AWSLC_MIN(X,Y) MIN(X,Y)
+#endif
+
+// One second in nanoseconds.
+#define ONE_SECOND INT64_C(1000000000)
+// 250 milliseconds in nanoseconds.
+#define MILLISECONDS_250 INT64_C(250000000)
+#define INITIAL_BACKOFF_DELAY 1
+
+// handle_rare_urandom_error initiates exponential backoff. |backoff| holds the
+// previous backoff delay. Initial backoff delay is |INITIAL_BACKOFF_DELAY|.
+// This function will be called so rarely (if ever), that we keep it as a
+// function call and don't care about attempting to inline it.
+static void handle_rare_urandom_error(long *backoff) {
+
+  // Exponential backoff.
+  //
+  // iteration          delay
+  // ---------    -----------------
+  //    1         10          nsec
+  //    2         100         nsec
+  //    3         1,000       nsec
+  //    4         10,000      nsec
+  //    5         100,000     nsec
+  //    6         1,000,000   nsec
+  //    7         10,000,000  nsec
+  //    8         99,999,999  nsec
+  //    9         99,999,999  nsec
+  //    ...
+
+  struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0 };
+
+  // Cap backoff at 99,999,999  nsec, which is the maximum value the nanoseconds
+  // field in |timespec| can hold.
+  *backoff = AWSLC_MIN((*backoff) * 10, ONE_SECOND - 1);
+  // |nanosleep| can mutate |sleep_time|. Hence, we use |backoff| for state.
+  sleep_time.tv_nsec = *backoff;
+
+  nanosleep(&sleep_time, &sleep_time);
+}
 
 #if defined(USE_NR_getrandom)
 
@@ -91,10 +136,29 @@ void __msan_unpoison(void *, size_t);
 #endif
 
 static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
+
   ssize_t ret;
+  long backoff = INITIAL_BACKOFF_DELAY;
+  size_t retry_counter = 0;
+
   do {
     ret = syscall(__NR_getrandom, buf, buf_len, flags);
-  } while (ret == -1 && errno == EINTR);
+    if ((ret == -1) && (errno != EINTR)) {
+      // Don't block in non-block mode except if a signal handler interrupted
+      // |getrandom|.
+      if ((flags & GRND_NONBLOCK) != 0 ||
+          (retry_counter >= MAX_BACKOFF_RETRIES)) {
+        break;
+      }
+
+      // We have observed extremely rare events in which a |read| on a
+      // |urandom| fd failed with |errno| != |EINTR|. |getrandom| uses |urandom|
+      // under the covers. Assuming transitivity, |getrandom| is therefore also
+      // subject to the same rare error events.
+      handle_rare_urandom_error(&backoff);
+      retry_counter = retry_counter + 1;
+    }
+  } while (ret == -1);
 
 #if defined(OPENSSL_MSAN)
   if (ret > 0) {
@@ -295,7 +359,8 @@ static void wait_for_entropy(void) {
       break;
     }
 
-    usleep(250000);
+    struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECONDS_250 };
+    nanosleep(&sleep_time, &sleep_time);
   }
 #endif  // BORINGSSL_FIPS && !URANDOM_BLOCKS_FOR_ENTROPY
 }
@@ -356,9 +421,22 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
       abort();
 #endif
     } else {
+      size_t retry_counter = 0;
+      long backoff = INITIAL_BACKOFF_DELAY;
       do {
         r = read(*urandom_fd_bss_get(), out, len);
-      } while (r == -1 && errno == EINTR);
+        if ((r == -1) && (errno != EINTR)) {
+          if (retry_counter >= MAX_BACKOFF_RETRIES) {
+            break;
+          }
+          // We have observed extremely rare events in which a |read| on a
+          // |urandom| fd failed with |errno| != |EINTR|. We regard this as an
+          // intermittent error that is recoverable. Therefore, backoff to allow
+          // recovery and to avoid creating a tight spinning loop.
+          handle_rare_urandom_error(&backoff);
+          retry_counter = retry_counter + 1;
+        }
+      } while (r == -1);
     }
 
     if (r <= 0) {
@@ -402,4 +480,4 @@ int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   }
 }
 
-#endif  // OPENSSL_URANDOM
+#endif // defined(OPENSSL_URANDOM)
