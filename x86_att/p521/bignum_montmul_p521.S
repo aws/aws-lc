@@ -30,6 +30,7 @@
 
 
         .globl  bignum_montmul_p521
+        .globl  _bignum_montmul_p521
         .text
 
 #define z %rdi
@@ -49,6 +50,7 @@
         adoxq   %rbx, high
 
 bignum_montmul_p521:
+_bignum_montmul_p521:
 
 // Save more registers to play with
 

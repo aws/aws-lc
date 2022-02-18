@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_tolebytes_p521
+        .globl  _bignum_tolebytes_p521
         .text
         .balign 4
 
@@ -36,6 +37,7 @@
 #define dshort w2
 
 bignum_tolebytes_p521:
+_bignum_tolebytes_p521:
 
 // word 0
 

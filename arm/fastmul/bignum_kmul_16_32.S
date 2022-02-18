@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_kmul_16_32
+        .globl  _bignum_kmul_16_32
         .text
         .balign 4
 
@@ -44,6 +45,7 @@
 #define m x19
 
 bignum_kmul_16_32:
+_bignum_kmul_16_32:
 
 // Save registers, including return address
 

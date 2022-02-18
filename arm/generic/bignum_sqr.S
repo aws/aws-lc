@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sqr
+        .globl  _bignum_sqr
         .text
         .balign 4
 
@@ -49,6 +50,7 @@
 #define ll x15
 
 bignum_sqr:
+_bignum_sqr:
 
 // If p = 0 the result is trivial and nothing needs doing
 
