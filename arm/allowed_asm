@@ -5,6 +5,8 @@
 : b$
 : and$
 : bic$
+: ccmn$
+: ccmp$
 : cinv$
 : cmn$
 : cmp$

@@ -283,35 +283,38 @@ toploop:
 innerloop:
 
 // At the start of the loop ~ZF <=> m_lo is odd; mask values accordingly
+// Set the flags for m_hi - [~ZF] * n_hi so we know to flip things.
 
                 csel    t1, n_hi, xzr, ne
                 csel    t2, n_lo, xzr, ne
                 csel    c1, n_m, xzr, ne
                 csel    c2, n_n, xzr, ne
+                ccmp    m_hi, n_hi, #0x2, ne
 
-// Compute subtractive updates, which are trivial in the case even(m_lo).
-// Set the flags with the m_hi := m_hi - n_hi so we know to flip things
+// Compute subtractive updates, trivial in the case ZF <=> even(m_lo).
 
-                subs    t1, m_hi, t1
+                sub     t1, m_hi, t1
                 sub     t2, m_lo, t2
 
 // If the subtraction borrows, swap things appropriately, negating where
 // we've already subtracted so things are as if we actually swapped first.
 
-                cneg    t1, t1, cc
-                cneg    t2, t2, cc
                 csel    n_hi, n_hi, m_hi, cs
+                cneg    t1, t1, cc
                 csel    n_lo, n_lo, m_lo, cs
+                cneg    m_lo, t2, cc
                 csel    n_m, n_m, m_m, cs
                 csel    n_n, n_n, m_n, cs
 
 // Update and shift while setting oddness flag for next iteration
+// We look at bit 1 of t2 (m_lo before possible negation), which is
+// safe because it is even.
 
                 ands    xzr, t2, #2
                 add     m_m, m_m, c1
                 add     m_n, m_n, c2
                 lsr     m_hi, t1, #1
-                lsr     m_lo, t2, #1
+                lsr     m_lo, m_lo, #1
                 add     n_m, n_m, n_m
                 add     n_n, n_n, n_n
 
