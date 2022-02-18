@@ -225,7 +225,7 @@ func writeP384Table(path string) error {
 // with the difference that we use a window size of 7 instead of 5.
 // The windows size is chosen based on analysis analogous to the one in
 // |ec_GFp_nistp_recode_scalar_bits| function in |util.c| file.
-#if defined(BORINGSSL_NISTP384_64BIT)
+#if defined(P384_USE_64BIT_LIMBS_FELEM)
 static const p384_felem p384_g_pre_comp[14][64][2] = `
 	if _, err := f.WriteString(fileHeader); err != nil {
 		return err
