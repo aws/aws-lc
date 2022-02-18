@@ -14,7 +14,7 @@
  */
 
 // ----------------------------------------------------------------------------
-// Multiply modulo p_25519, z := (x * y) mod 2^255 - 19
+// Multiply modulo p_25519, z := (x * y) mod p_25519
 // Inputs x[4], y[4]; output z[4]
 //
 //    extern void bignum_mul_p25519

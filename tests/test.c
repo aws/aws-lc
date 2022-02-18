@@ -2892,9 +2892,9 @@ int test_bignum_fromlebytes_6(void)
 
 int test_bignum_fromlebytes_p521(void)
 { uint64_t t;
-  printf("Testing bignum_fromlebytes_p521 with %d cases\n",TESTS);
+  printf("Testing bignum_fromlebytes_p521 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(9,b0);
      reference_fromlebytes(9,b3,66,(uint8_t *)b0);
      bignum_fromlebytes_p521(b4,(uint8_t *)b0);
@@ -6472,9 +6472,9 @@ int test_bignum_tolebytes_6(void)
 
 int test_bignum_tolebytes_p521(void)
 { uint64_t t;
-  printf("Testing bignum_tolebytes_p521 with %d cases\n",TESTS);
+  printf("Testing bignum_tolebytes_p521 with %d cases\n",tests);
   int c;
-  for (t = 0; t < TESTS; ++t)
+  for (t = 0; t < tests; ++t)
    { random_bignum(9,b0);
      reference_tolebytes(66,(uint8_t *)b3,9,b0);
      bignum_tolebytes_p521((uint8_t *)b4,b0);
