@@ -240,7 +240,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
             key->md = key->head;
             sha256_update(&key->md, key->aux.tls_aad, plen);
 
-# if 1      /* see original reference version in #else */
             len -= SHA256_DIGEST_LENGTH; /* amend mac */
             if (len >= (256 + SHA256_CBLOCK)) {
                 j = (len - (256 + SHA256_CBLOCK)) & (0 - SHA256_CBLOCK);
@@ -349,26 +348,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
             }
 #  endif
             len += SHA256_DIGEST_LENGTH;
-# else
-            sha256_update(&key->md, out, inp_len);
-            res = key->md.num;
-            SHA256_Final(pmac->c, &key->md);
-
-            {
-                unsigned int inp_blocks, pad_blocks;
-
-                /* but pretend as if we hashed padded payload */
-                inp_blocks =
-                    1 + ((SHA256_CBLOCK - 9 - res) >> (sizeof(res) * 8 - 1));
-                res += (unsigned int)(len - inp_len);
-                pad_blocks = res / SHA256_CBLOCK;
-                res %= SHA256_CBLOCK;
-                pad_blocks +=
-                    1 + ((SHA256_CBLOCK - 9 - res) >> (sizeof(res) * 8 - 1));
-                for (; inp_blocks < pad_blocks; inp_blocks++)
-                    sha1_block_data_order(&key->md, data, 1);
-            }
-# endif      /* pre-lucky-13 reference version of above */
             key->md = key->tail;
             sha256_update(&key->md, pmac->c, SHA256_DIGEST_LENGTH);
             SHA256_Final(pmac->c, &key->md);
@@ -376,7 +355,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
             /* verify HMAC */
             out += inp_len;
             len -= inp_len;
-# if 1      /* see original reference version in #else */
             {
                 unsigned char *p =
                     out + len - 1 - maxpad - SHA256_DIGEST_LENGTH;
@@ -399,21 +377,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
                 res = 0 - ((0 - res) >> (sizeof(res) * 8 - 1));
                 ret &= (int)~res;
             }
-# else      /* pre-lucky-13 reference version of above */
-            for (res = 0, i = 0; i < SHA256_DIGEST_LENGTH; i++)
-                res |= out[i] ^ pmac->c[i];
-            res = 0 - ((0 - res) >> (sizeof(res) * 8 - 1));
-            ret &= (int)~res;
-
-            /* verify padding */
-            pad = (pad & ~res) | (maxpad & res);
-            out = out + len - 1 - pad;
-            for (res = 0, i = 0; i < pad; i++)
-                res |= out[i] ^ pad;
-
-            res = (0 - res) >> (sizeof(res) * 8 - 1);
-            ret &= (int)~res;
-# endif
             return ret;
         } else {
             sha256_update(&key->md, out, len);
