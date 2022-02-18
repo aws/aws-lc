@@ -243,15 +243,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
             /* but pretend as if we hashed padded payload */
             bitlen = key->md.Nl + (inp_len << 3); /* at most 18 bits */
-#  ifdef BSWAP4
-            bitlen = BSWAP4(bitlen);
-#  else
-            mac.c[0] = 0;
-            mac.c[1] = (unsigned char)(bitlen >> 16);
-            mac.c[2] = (unsigned char)(bitlen >> 8);
-            mac.c[3] = (unsigned char)bitlen;
-            bitlen = mac.u[0];
-#  endif
+            bitlen = CRYPTO_bswap4(bitlen);
 
             pmac->u[0] = 0;
             pmac->u[1] = 0;
@@ -308,21 +300,11 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             pmac->u[3] |= key->md.h[3] & mask;
             pmac->u[4] |= key->md.h[4] & mask;
 
-#  ifdef BSWAP4
-            pmac->u[0] = BSWAP4(pmac->u[0]);
-            pmac->u[1] = BSWAP4(pmac->u[1]);
-            pmac->u[2] = BSWAP4(pmac->u[2]);
-            pmac->u[3] = BSWAP4(pmac->u[3]);
-            pmac->u[4] = BSWAP4(pmac->u[4]);
-#  else
-            for (i = 0; i < 5; i++) {
-                res = pmac->u[i];
-                pmac->c[4 * i + 0] = (unsigned char)(res >> 24);
-                pmac->c[4 * i + 1] = (unsigned char)(res >> 16);
-                pmac->c[4 * i + 2] = (unsigned char)(res >> 8);
-                pmac->c[4 * i + 3] = (unsigned char)res;
-            }
-#  endif
+            pmac->u[0] = CRYPTO_bswap4(pmac->u[0]);
+            pmac->u[1] = CRYPTO_bswap4(pmac->u[1]);
+            pmac->u[2] = CRYPTO_bswap4(pmac->u[2]);
+            pmac->u[3] = CRYPTO_bswap4(pmac->u[3]);
+            pmac->u[4] = CRYPTO_bswap4(pmac->u[4]);
             len += SHA_DIGEST_LENGTH;
             key->md = key->tail;
             sha1_update(&key->md, pmac->c, SHA_DIGEST_LENGTH);

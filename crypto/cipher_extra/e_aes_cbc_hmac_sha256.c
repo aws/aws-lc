@@ -252,15 +252,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
 
             /* but pretend as if we hashed padded payload */
             bitlen = key->md.Nl + (inp_len << 3); /* at most 18 bits */
-#  ifdef BSWAP4
-            bitlen = BSWAP4(bitlen);
-#  else
-            mac.c[0] = 0;
-            mac.c[1] = (unsigned char)(bitlen >> 16);
-            mac.c[2] = (unsigned char)(bitlen >> 8);
-            mac.c[3] = (unsigned char)bitlen;
-            bitlen = mac.u[0];
-#  endif
+            bitlen = CRYPTO_bswap4(bitlen);
 
             pmac->u[0] = 0;
             pmac->u[1] = 0;
@@ -329,24 +321,14 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
             pmac->u[6] |= key->md.h[6] & mask;
             pmac->u[7] |= key->md.h[7] & mask;
 
-#  ifdef BSWAP4
-            pmac->u[0] = BSWAP4(pmac->u[0]);
-            pmac->u[1] = BSWAP4(pmac->u[1]);
-            pmac->u[2] = BSWAP4(pmac->u[2]);
-            pmac->u[3] = BSWAP4(pmac->u[3]);
-            pmac->u[4] = BSWAP4(pmac->u[4]);
-            pmac->u[5] = BSWAP4(pmac->u[5]);
-            pmac->u[6] = BSWAP4(pmac->u[6]);
-            pmac->u[7] = BSWAP4(pmac->u[7]);
-#  else
-            for (i = 0; i < 8; i++) {
-                res = pmac->u[i];
-                pmac->c[4 * i + 0] = (unsigned char)(res >> 24);
-                pmac->c[4 * i + 1] = (unsigned char)(res >> 16);
-                pmac->c[4 * i + 2] = (unsigned char)(res >> 8);
-                pmac->c[4 * i + 3] = (unsigned char)res;
-            }
-#  endif
+            pmac->u[0] = CRYPTO_bswap4(pmac->u[0]);
+            pmac->u[1] = CRYPTO_bswap4(pmac->u[1]);
+            pmac->u[2] = CRYPTO_bswap4(pmac->u[2]);
+            pmac->u[3] = CRYPTO_bswap4(pmac->u[3]);
+            pmac->u[4] = CRYPTO_bswap4(pmac->u[4]);
+            pmac->u[5] = CRYPTO_bswap4(pmac->u[5]);
+            pmac->u[6] = CRYPTO_bswap4(pmac->u[6]);
+            pmac->u[7] = CRYPTO_bswap4(pmac->u[7]);
             len += SHA256_DIGEST_LENGTH;
             key->md = key->tail;
             sha256_update(&key->md, pmac->c, SHA256_DIGEST_LENGTH);
