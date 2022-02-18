@@ -998,6 +998,7 @@ $code.=<<___	if ($flavour =~ /64/);
 ${prefix}_xts_encrypt:
 ___
 $code.=<<___	if ($flavour =~ /64/);
+    AARCH64_VALID_CALL_TARGET
 	cmp	$len,#16
 	// Original input data size bigger than 16, jump to big size processing.
 	b.ne	.Lxts_enc_big_size
@@ -1684,6 +1685,7 @@ $code.=<<___	if ($flavour =~ /64/);
 ${prefix}_xts_decrypt:
 ___
 $code.=<<___	if ($flavour =~ /64/);
+    AARCH64_VALID_CALL_TARGET
 	cmp	$len,#16
 	// Original input data size bigger than 16, jump to big size processing.
 	b.ne	.Lxts_dec_big_size
