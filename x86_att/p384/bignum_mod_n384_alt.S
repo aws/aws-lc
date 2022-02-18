@@ -27,6 +27,7 @@
 
 
         .globl  bignum_mod_n384_alt
+        .globl  _bignum_mod_n384_alt
         .text
 
 #define z %rdi
@@ -52,6 +53,7 @@
 #define qshort %ebp
 
 bignum_mod_n384_alt:
+_bignum_mod_n384_alt:
 
 // Save extra registers
 

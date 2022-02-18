@@ -26,6 +26,7 @@
 
 
         .globl  bignum_optneg_p384
+        .globl  _bignum_optneg_p384
         .text
 
 #define z %rdi
@@ -42,6 +43,7 @@
 #define n0short %eax
 
 bignum_optneg_p384:
+_bignum_optneg_p384:
 
 // Adjust q by zeroing it if the input is zero (to avoid giving -0 = p_384,
 // which is not strictly reduced even though it's correct modulo p_384).

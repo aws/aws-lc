@@ -37,8 +37,11 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_bigendian_6
+        .globl  _bignum_bigendian_6
         .globl  bignum_frombebytes_6
+        .globl  _bignum_frombebytes_6
         .globl  bignum_tobebytes_6
+        .globl  _bignum_tobebytes_6
         .text
         .balign 4
 
@@ -55,8 +58,11 @@
 // intermediate registers.
 
 bignum_bigendian_6:
+_bignum_bigendian_6:
 bignum_frombebytes_6:
+_bignum_frombebytes_6:
 bignum_tobebytes_6:
+_bignum_tobebytes_6:
 
 // 0 and 5 words
 
