@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_triple_p256
+        .globl  _bignum_triple_p256
         .text
 
 #define z rdi
@@ -54,6 +55,7 @@
 #define qshort edx
 
 bignum_triple_p256:
+_bignum_triple_p256:
 
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 // but immediately form the quotient estimate q = h + 1

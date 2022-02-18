@@ -30,6 +30,7 @@
 
 
         .globl  bignum_montsqr_p521_alt
+        .globl  _bignum_montsqr_p521_alt
         .text
 
 // Input arguments
@@ -95,6 +96,7 @@
         adcq    $0, c
 
 bignum_montsqr_p521_alt:
+_bignum_montsqr_p521_alt:
 
 // Make more registers available
 

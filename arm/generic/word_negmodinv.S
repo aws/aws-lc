@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  word_negmodinv
+        .globl  _word_negmodinv
         .text
         .balign 4
 
@@ -50,6 +51,7 @@
 #define e8 x0
 
 word_negmodinv:
+_word_negmodinv:
 
 // Initial magical 5-bit approximation x = (a - a<<2) xor 2
 

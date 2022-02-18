@@ -37,8 +37,11 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_littleendian_6
+        .globl  _bignum_littleendian_6
         .globl  bignum_fromlebytes_6
+        .globl  _bignum_fromlebytes_6
         .globl  bignum_tolebytes_6
+        .globl  _bignum_tolebytes_6
         .text
         .balign 4
 
@@ -50,8 +53,11 @@
 #define a x3
 
 bignum_littleendian_6:
+_bignum_littleendian_6:
 bignum_fromlebytes_6:
+_bignum_fromlebytes_6:
 bignum_tolebytes_6:
+_bignum_tolebytes_6:
 
 // word 0
 

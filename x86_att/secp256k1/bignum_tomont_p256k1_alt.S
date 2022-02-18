@@ -25,6 +25,7 @@
 
 
         .globl  bignum_tomont_p256k1_alt
+        .globl  _bignum_tomont_p256k1_alt
         .text
 
 #define z %rdi
@@ -44,6 +45,7 @@
 #define d3 %rsi
 
 bignum_tomont_p256k1_alt:
+_bignum_tomont_p256k1_alt:
 
 // Since 2^256 == 4294968273 (mod p_256k1) we more or less just set
 // m = 4294968273 then devolve to a variant of bignum_cmul_p256k1;

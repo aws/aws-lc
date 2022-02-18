@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_shr_small
+        .globl  _bignum_shr_small
         .text
         .balign 4
 
@@ -45,6 +46,7 @@
 
 
 bignum_shr_small:
+_bignum_shr_small:
 
 // Set default carry-in word to 0
 

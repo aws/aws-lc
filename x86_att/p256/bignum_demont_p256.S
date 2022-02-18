@@ -28,6 +28,7 @@
 
 
         .globl  bignum_demont_p256
+        .globl  _bignum_demont_p256
         .text
 
 #define z %rdi
@@ -43,6 +44,7 @@
         adoxq   %rcx, high
 
 bignum_demont_p256:
+_bignum_demont_p256:
 
 // Save one more register to play with
 

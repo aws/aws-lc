@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_of_word
+        .globl  _bignum_of_word
         .text
         .balign 4
 
@@ -35,6 +36,7 @@
 
 
 bignum_of_word:
+_bignum_of_word:
 
                 cbz     k, end                  // if k = 0 do nothing
 

@@ -29,6 +29,7 @@
 
 
         .globl  bignum_modinv
+        .globl  _bignum_modinv
         .text
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a few for proxy errors
@@ -105,6 +106,7 @@
 #define n_nshort %edx
 
 bignum_modinv:
+_bignum_modinv:
 
 // Save all required registers and make room on stack for all the above vars
 

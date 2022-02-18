@@ -31,6 +31,7 @@
 
 
         .globl  bignum_modifier
+        .globl  _bignum_modifier
         .text
 
 #define k %rdi
@@ -70,6 +71,7 @@
 
 
 bignum_modifier:
+_bignum_modifier:
 
 // Save some additional registers for use, copy args out of RCX and RDX
 

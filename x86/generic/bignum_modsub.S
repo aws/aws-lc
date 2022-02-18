@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_modsub
+        .globl  _bignum_modsub
         .text
 
 #define k rdi
@@ -38,6 +39,7 @@
 #define c r11
 
 bignum_modsub:
+_bignum_modsub:
 
 // If k = 0 do nothing
 

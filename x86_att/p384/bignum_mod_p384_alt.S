@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mod_p384_alt
+        .globl  _bignum_mod_p384_alt
         .text
 
 #define z %rdi
@@ -54,6 +55,7 @@
 
 
 bignum_mod_p384_alt:
+_bignum_mod_p384_alt:
 
 // Save extra registers
 

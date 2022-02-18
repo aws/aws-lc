@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_tolebytes_p521
+        .globl  _bignum_tolebytes_p521
         .text
 
 #define z rdi
@@ -36,6 +37,7 @@
 #define a rax
 
 bignum_tolebytes_p521:
+_bignum_tolebytes_p521:
 
                 mov     a, [x]
                 mov     [z], a

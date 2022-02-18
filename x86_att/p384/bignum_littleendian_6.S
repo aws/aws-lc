@@ -36,8 +36,11 @@
 
 
         .globl  bignum_littleendian_6
+        .globl  _bignum_littleendian_6
         .globl  bignum_fromlebytes_6
+        .globl  _bignum_fromlebytes_6
         .globl  bignum_tolebytes_6
+        .globl  _bignum_tolebytes_6
         .text
 
 #define z %rdi
@@ -45,8 +48,11 @@
 #define a %rax
 
 bignum_littleendian_6:
+_bignum_littleendian_6:
 bignum_fromlebytes_6:
+_bignum_fromlebytes_6:
 bignum_tolebytes_6:
+_bignum_tolebytes_6:
 
                 movq    (x), a
                 movq    a, (z)

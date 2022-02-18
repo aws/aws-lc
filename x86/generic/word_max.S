@@ -24,12 +24,14 @@
 
         .intel_syntax noprefix
         .globl  word_max
+        .globl  _word_max
         .text
 
 #define a rdi
 #define b rsi
 
 word_max:
+_word_max:
 
         mov     rax, a
         cmp     a, b

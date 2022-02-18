@@ -24,12 +24,14 @@
 
 
         .globl  word_max
+        .globl  _word_max
         .text
 
 #define a %rdi
 #define b %rsi
 
 word_max:
+_word_max:
 
         movq    a, %rax
         cmpq    b, a

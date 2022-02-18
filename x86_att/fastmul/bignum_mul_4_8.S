@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mul_4_8
+        .globl  _bignum_mul_4_8
         .text
 
 // These are actually right
@@ -111,6 +112,7 @@
 
 
 bignum_mul_4_8:
+_bignum_mul_4_8:
 
 // Save more registers to play with
 

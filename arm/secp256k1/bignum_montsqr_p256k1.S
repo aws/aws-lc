@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montsqr_p256k1
+        .globl  _bignum_montsqr_p256k1
         .text
         .balign 4
 
@@ -50,6 +51,7 @@
 #define uu x13
 
 bignum_montsqr_p256k1:
+_bignum_montsqr_p256k1:
 
 // First just a near-clone of bignum_sqr_4_8 to get the square, using
 // different registers to collect full product without writeback.

@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_emontredc_8n
+        .globl  _bignum_emontredc_8n
         .text
         .balign 4
 
@@ -208,6 +209,7 @@
 // *****************************************************
 
 bignum_emontredc_8n:
+_bignum_emontredc_8n:
 
                 stp     x19, x20, [sp, #-16]!
                 stp     x21, x22, [sp, #-16]!

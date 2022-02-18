@@ -31,6 +31,7 @@
 
 
         .globl  bignum_madd
+        .globl  _bignum_madd
         .text
 
 // These are actually right
@@ -58,6 +59,7 @@
 
 
 bignum_madd:
+_bignum_madd:
 
 // We use too many registers, and also we need %rax:%rdx for multiplications
 

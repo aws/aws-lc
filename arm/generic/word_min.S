@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  word_min
+        .globl  _word_min
         .text
         .balign 4
 
@@ -30,6 +31,7 @@
 #define b x1
 
 word_min:
+_word_min:
 
         cmp     a, b
         csel    x0, a, b, cc

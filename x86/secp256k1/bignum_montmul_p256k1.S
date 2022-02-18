@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_montmul_p256k1
+        .globl  _bignum_montmul_p256k1
         .text
 
 // These are actually right
@@ -69,6 +70,7 @@
         adox    high, zero
 
 bignum_montmul_p256k1:
+_bignum_montmul_p256k1:
 
 // Save more registers to play with
 

@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mul_p25519
+        .globl  _bignum_mul_p25519
         .text
 
 // These are actually right
@@ -61,6 +62,7 @@
         adox    high, zero
 
 bignum_mul_p25519:
+_bignum_mul_p25519:
 
 // Save more registers to play with
 

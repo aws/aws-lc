@@ -35,6 +35,7 @@
 
 
         .globl  bignum_emontredc
+        .globl  _bignum_emontredc
         .text
 
 // Argument m comes in in %rdx but we copy it to %r8
@@ -66,6 +67,7 @@
 
 
 bignum_emontredc:
+_bignum_emontredc:
 
 // Save registers
 

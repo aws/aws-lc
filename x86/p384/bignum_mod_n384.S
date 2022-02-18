@@ -27,6 +27,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mod_n384
+        .globl  _bignum_mod_n384
         .text
 
 #define z rdi
@@ -51,6 +52,7 @@
 
 
 bignum_mod_n384:
+_bignum_mod_n384:
 
 // Save extra registers
 

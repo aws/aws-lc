@@ -28,6 +28,7 @@
 
 
         .globl  bignum_montsqr_p256
+        .globl  _bignum_montsqr_p256
         .text
 
 #define z %rdi
@@ -48,6 +49,7 @@
         adoxq   %rbx, high
 
 bignum_montsqr_p256:
+_bignum_montsqr_p256:
 
 // Save more registers to play with
 

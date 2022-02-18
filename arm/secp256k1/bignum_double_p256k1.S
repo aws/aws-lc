@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_double_p256k1
+        .globl  _bignum_double_p256k1
         .text
         .balign 4
 
@@ -38,6 +39,7 @@
 #define l x8
 
 bignum_double_p256k1:
+_bignum_double_p256k1:
 
 // Load the inputs and double top-down as z = 2^256 * c + [d3;d2;d1;d0]
 // While doing this, create an AND dd of [d3;d2;d1] to condense comparison

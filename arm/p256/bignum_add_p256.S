@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_add_p256
+        .globl  _bignum_add_p256
         .text
         .balign 4
 
@@ -39,6 +40,7 @@
 
 
 bignum_add_p256:
+_bignum_add_p256:
 
 // First just add the numbers as c + [d3; d2; d1; d0]
 

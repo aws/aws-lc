@@ -29,6 +29,7 @@
 
 
         .globl  bignum_demont
+        .globl  _bignum_demont
         .text
 
 #define k %rdi
@@ -61,6 +62,7 @@
 
 
 bignum_demont:
+_bignum_demont:
 
 // Save registers
 

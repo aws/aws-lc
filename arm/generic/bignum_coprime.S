@@ -32,6 +32,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_coprime
+        .globl  _bignum_coprime
         .text
         .balign 4
 
@@ -92,6 +93,7 @@
 
 
 bignum_coprime:
+_bignum_coprime:
 
 // We make use of just a couple of additional registers
 

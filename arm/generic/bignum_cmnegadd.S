@@ -30,6 +30,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_cmnegadd
+        .globl  _bignum_cmnegadd
         .text
         .balign 4
 
@@ -48,6 +49,7 @@
 
 
 bignum_cmnegadd:
+_bignum_cmnegadd:
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.

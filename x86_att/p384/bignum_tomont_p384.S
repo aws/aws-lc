@@ -25,6 +25,7 @@
 
 
         .globl  bignum_tomont_p384
+        .globl  _bignum_tomont_p384
         .text
 
 #define z %rdi
@@ -93,6 +94,7 @@
                 adcq    $0, d7
 
 bignum_tomont_p384:
+_bignum_tomont_p384:
 
 // We are essentially just doing a Montgomery multiplication of x and the
 // precomputed constant y = 2^768 mod p, so the code is almost the same

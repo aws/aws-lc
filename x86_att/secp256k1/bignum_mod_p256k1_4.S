@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mod_p256k1_4
+        .globl  _bignum_mod_p256k1_4
         .text
 
 #define z %rdi
@@ -40,6 +41,7 @@
 
 
 bignum_mod_p256k1_4:
+_bignum_mod_p256k1_4:
 
 // Load the inputs as [d3;d2;d1;d0] and let d be an AND of [d3;d2;d1] to
 // condense the comparison below.

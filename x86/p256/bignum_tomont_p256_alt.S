@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_tomont_p256_alt
+        .globl  _bignum_tomont_p256_alt
         .text
 
 #define z rdi
@@ -61,6 +62,7 @@
         adc     high, rdx
 
 bignum_tomont_p256_alt:
+_bignum_tomont_p256_alt:
 
 // Save more registers to play with
 

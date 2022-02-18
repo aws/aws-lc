@@ -30,6 +30,7 @@
 
 
         .globl  bignum_ctz
+        .globl  _bignum_ctz
         .text
 
 #define k %rdi
@@ -43,6 +44,7 @@
 
 
 bignum_ctz:
+_bignum_ctz:
 
 // If the bignum is zero-length, just return 0
 

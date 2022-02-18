@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_eq
+        .globl  _bignum_eq
         .text
         .balign 4
 
@@ -38,6 +39,7 @@
 
 
 bignum_eq:
+_bignum_eq:
 
 // Initialize the accumulated OR of differences to zero
 

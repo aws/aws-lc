@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_ksqr_32_64
+        .globl  _bignum_ksqr_32_64
         .text
         .balign 4
 
@@ -41,6 +42,7 @@
 
 
 bignum_ksqr_32_64:
+_bignum_ksqr_32_64:
 
 // Save extra registers and return address, store parameters safely
 

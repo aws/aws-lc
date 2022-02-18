@@ -36,8 +36,11 @@
 
         .intel_syntax noprefix
         .globl  bignum_littleendian_4
+        .globl  _bignum_littleendian_4
         .globl  bignum_fromlebytes_4
+        .globl  _bignum_fromlebytes_4
         .globl  bignum_tolebytes_4
+        .globl  _bignum_tolebytes_4
         .text
 
 #define z rdi
@@ -45,8 +48,11 @@
 #define a rax
 
 bignum_littleendian_4:
+_bignum_littleendian_4:
 bignum_fromlebytes_4:
+_bignum_fromlebytes_4:
 bignum_tolebytes_4:
+_bignum_tolebytes_4:
 
                 mov     a, [x]
                 mov     [z], a

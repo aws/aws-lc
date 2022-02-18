@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mul_4_8_alt
+        .globl  _bignum_mul_4_8_alt
         .text
 
 // These are actually right
@@ -69,6 +70,7 @@
         adcq    %rdx, h
 
 bignum_mul_4_8_alt:
+_bignum_mul_4_8_alt:
 
 // Copy y into a safe register to start with
 

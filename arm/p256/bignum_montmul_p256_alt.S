@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montmul_p256_alt
+        .globl  _bignum_montmul_p256_alt
         .text
         .balign 4
 
@@ -82,6 +83,7 @@
 #define h a3
 
 bignum_montmul_p256_alt:
+_bignum_montmul_p256_alt:
 
 // Load operands and set up row 0 = [u4;...;u0] = a0 * [b3;...;b0]
 

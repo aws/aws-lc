@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mul_p25519_alt
+        .globl  _bignum_mul_p25519_alt
         .text
 
 // These are actually right
@@ -70,6 +71,7 @@
         adc     h, rdx
 
 bignum_mul_p25519_alt:
+_bignum_mul_p25519_alt:
 
 // Save more registers to play with
 

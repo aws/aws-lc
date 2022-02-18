@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_clz
+        .globl  _bignum_clz
         .text
         .balign 4
 
@@ -40,6 +41,7 @@
 
 
 bignum_clz:
+_bignum_clz:
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 

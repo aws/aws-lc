@@ -22,10 +22,12 @@
 // ----------------------------------------------------------------------------
 
         .globl  word_bytereverse
+        .globl  _word_bytereverse
         .text
         .balign 4
 
 word_bytereverse:
+_word_bytereverse:
 
                 mov     x1, #0xFFFF0000FFFF0000
                 mov     x2, #0x0000FFFF0000FFFF

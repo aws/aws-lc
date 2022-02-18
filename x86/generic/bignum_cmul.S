@@ -34,6 +34,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_cmul
+        .globl  _bignum_cmul
         .text
 
 #define p rdi
@@ -48,6 +49,7 @@
 
 
 bignum_cmul:
+_bignum_cmul:
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output. Now we can

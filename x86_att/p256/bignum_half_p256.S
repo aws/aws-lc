@@ -25,6 +25,7 @@
 
 
         .globl  bignum_half_p256
+        .globl  _bignum_half_p256
         .text
 
 #define z %rdi
@@ -42,6 +43,7 @@
 
 
 bignum_half_p256:
+_bignum_half_p256:
 
 // Load lowest digit and get a mask for its lowest bit in d0
 

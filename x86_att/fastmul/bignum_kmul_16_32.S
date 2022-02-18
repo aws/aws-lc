@@ -29,6 +29,7 @@
 
 
         .globl  bignum_kmul_16_32
+        .globl  _bignum_kmul_16_32
         .text
 
 // These parameters are kept where they come in
@@ -465,6 +466,7 @@
 
 
 bignum_kmul_16_32:
+_bignum_kmul_16_32:
 
 // Save more registers to play with
 

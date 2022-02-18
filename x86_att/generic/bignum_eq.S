@@ -25,6 +25,7 @@
 
 
         .globl  bignum_eq
+        .globl  _bignum_eq
         .text
 
 #define m %rdi
@@ -36,6 +37,7 @@
 #define d %rdx
 
 bignum_eq:
+_bignum_eq:
 
 // Initialize the accumulated OR of differences to zero
 

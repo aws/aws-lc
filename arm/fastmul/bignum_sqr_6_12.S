@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sqr_6_12
+        .globl  _bignum_sqr_6_12
         .text
         .balign 4
 
@@ -64,6 +65,7 @@
 #define d4 x17
 
 bignum_sqr_6_12:
+_bignum_sqr_6_12:
 
 // Load in all words of the input
 

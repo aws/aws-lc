@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sqr_6_12_alt
+        .globl  _bignum_sqr_6_12_alt
         .text
         .balign 4
 
@@ -52,6 +53,7 @@
 #define u11 x20
 
 bignum_sqr_6_12_alt:
+_bignum_sqr_6_12_alt:
 
 // It's convenient to have two more registers to play with
 

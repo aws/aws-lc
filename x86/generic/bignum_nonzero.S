@@ -24,6 +24,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_nonzero
+        .globl  _bignum_nonzero
         .text
 
 #define a rax
@@ -31,6 +32,7 @@
 #define x rsi
 
 bignum_nonzero:
+_bignum_nonzero:
                 xor     a, a
                 test    k,k
                 jz      end

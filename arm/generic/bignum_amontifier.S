@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_amontifier
+        .globl  _bignum_amontifier
         .text
         .balign 4
 
@@ -53,6 +54,7 @@
 
 
 bignum_amontifier:
+_bignum_amontifier:
 
 // If k = 0 the whole operation is trivial
 

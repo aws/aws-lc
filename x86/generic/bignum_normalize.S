@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_normalize
+        .globl  _bignum_normalize
         .text
 
 #define k rdi
@@ -51,6 +52,7 @@
 
 
 bignum_normalize:
+_bignum_normalize:
 
 // Initialize shift count r = 0 and i = k - 1 but return immediately if k = 0.
 // Otherwise load top digit c, but then if k = 1 skip the digitwise part

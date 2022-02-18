@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_optneg
+        .globl  _bignum_optneg
         .text
 
 #define k rdi
@@ -42,6 +43,7 @@
 #define cshort eax
 
 bignum_optneg:
+_bignum_optneg:
 
 // If k = 0 do nothing, but need to set zero return for the carry (c = rax)
 

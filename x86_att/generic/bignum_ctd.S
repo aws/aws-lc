@@ -26,6 +26,7 @@
 
 
         .globl  bignum_ctd
+        .globl  _bignum_ctd
         .text
 
 #define k %rdi
@@ -36,6 +37,7 @@
 
 
 bignum_ctd:
+_bignum_ctd:
 
 // If the bignum is zero-length, just return 0
 

@@ -30,6 +30,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_modifier
+        .globl  _bignum_modifier
         .text
         .balign 4
 
@@ -58,6 +59,7 @@
 
 
 bignum_modifier:
+_bignum_modifier:
 
 // If k = 0 the whole operation is trivial
 

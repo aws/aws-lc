@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_le
+        .globl  _bignum_le
         .text
 
 #define m rdi
@@ -39,6 +40,7 @@
 
 
 bignum_le:
+_bignum_le:
 
 // Zero the main index counter for both branches
 

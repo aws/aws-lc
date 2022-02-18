@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_modoptneg
+        .globl  _bignum_modoptneg
         .text
         .balign 4
 
@@ -39,6 +40,7 @@
 
 
 bignum_modoptneg:
+_bignum_modoptneg:
 
 // Do nothing if k = 0
 

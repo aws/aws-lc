@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montsqr_p256
+        .globl  _bignum_montsqr_p256
         .text
         .balign 4
 
@@ -113,6 +114,7 @@
 #define s3 x1
 
 bignum_montsqr_p256:
+_bignum_montsqr_p256:
 
 // Load in all words of the input
 

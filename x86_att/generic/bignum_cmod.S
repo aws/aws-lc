@@ -26,6 +26,7 @@
 
 
         .globl  bignum_cmod
+        .globl  _bignum_cmod
         .text
 
 #define k %rdi
@@ -51,6 +52,7 @@
 #define hshort %edx
 
 bignum_cmod:
+_bignum_cmod:
 
 // Initialize l = 0 now for convenience (we eventually need to do it).
 // If the bignum is zero-length, l is already the right answer of 0

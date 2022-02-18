@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_add_p256k1
+        .globl  _bignum_add_p256k1
         .text
 
 #define z rdi
@@ -44,6 +45,7 @@
 #define c rdx
 
 bignum_add_p256k1:
+_bignum_add_p256k1:
 
 // Load and add the two inputs as 2^256 * (-c) + [d3;d2;d1;d0] = x + y
 

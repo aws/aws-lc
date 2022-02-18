@@ -30,6 +30,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_montsqr_p521
+        .globl  _bignum_montsqr_p521
         .text
 
 #define z rdi
@@ -60,6 +61,7 @@
         adox    high, zero
 
 bignum_montsqr_p521:
+_bignum_montsqr_p521:
 
 // Save more registers to play with
 

@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul_4_8_alt
+        .globl  _bignum_mul_4_8_alt
         .text
         .balign 4
 
@@ -55,6 +56,7 @@
 #define u7 a2
 
 bignum_mul_4_8_alt:
+_bignum_mul_4_8_alt:
 
 // Load operands and set up row 0 = [u4;...;u0] = a0 * [b3;...;b0]
 

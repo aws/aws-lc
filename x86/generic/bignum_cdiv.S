@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_cdiv
+        .globl  _bignum_cdiv
         .text
 
 #define k rdi
@@ -64,6 +65,7 @@
 #define r r15
 
 bignum_cdiv:
+_bignum_cdiv:
 
                 push    rbx
                 push    r12

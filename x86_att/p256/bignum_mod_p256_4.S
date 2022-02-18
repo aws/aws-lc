@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mod_p256_4
+        .globl  _bignum_mod_p256_4
         .text
 
 #define z %rdi
@@ -44,6 +45,7 @@
 
 
 bignum_mod_p256_4:
+_bignum_mod_p256_4:
 
 // Load the input and subtract to get [d3;d3;d1;d1] = x - p_256 (modulo 2^256)
 // The constants n1 and n3 in [n3; 0; n1; -1] = p_256 are saved for later

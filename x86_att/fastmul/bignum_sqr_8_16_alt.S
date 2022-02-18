@@ -24,6 +24,7 @@
 
 
         .globl  bignum_sqr_8_16_alt
+        .globl  _bignum_sqr_8_16_alt
         .text
 
 // Input arguments
@@ -100,6 +101,7 @@
         adcq    $0, c
 
 bignum_sqr_8_16_alt:
+_bignum_sqr_8_16_alt:
 
 // Result term 0
 

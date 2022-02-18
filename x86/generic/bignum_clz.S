@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_clz
+        .globl  _bignum_clz
         .text
 
 #define k rdi
@@ -41,6 +42,7 @@
 
 
 bignum_clz:
+_bignum_clz:
 
 // Initialize the index i and also prepare default return value of 0 (i = rax)
 

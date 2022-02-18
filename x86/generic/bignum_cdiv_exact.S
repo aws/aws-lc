@@ -30,6 +30,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_cdiv_exact
+        .globl  _bignum_cdiv_exact
         .text
 
 #define k rdi
@@ -60,6 +61,7 @@
 #define hshort edx
 
 bignum_cdiv_exact:
+_bignum_cdiv_exact:
 
                 push    rbx
                 push    r12

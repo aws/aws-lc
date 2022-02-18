@@ -29,9 +29,11 @@
 
         .intel_syntax noprefix
         .globl  word_negmodinv
+        .globl  _word_negmodinv
         .text
 
 word_negmodinv:
+_word_negmodinv:
 
 // Initial magical 5-bit approximation x = (a - a<<2) xor 2
 

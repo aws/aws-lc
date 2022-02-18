@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sqr_4_8
+        .globl  _bignum_sqr_4_8
         .text
         .balign 4
 
@@ -67,6 +68,7 @@
 #define l2 x14
 
 bignum_sqr_4_8:
+_bignum_sqr_4_8:
 
 // Load all the elements
 

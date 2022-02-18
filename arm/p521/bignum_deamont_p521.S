@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_deamont_p521
+        .globl  _bignum_deamont_p521
         .text
         .balign 4
 
@@ -55,6 +56,7 @@
 #define u x12
 
 bignum_deamont_p521:
+_bignum_deamont_p521:
 
 // Load all the inputs
 

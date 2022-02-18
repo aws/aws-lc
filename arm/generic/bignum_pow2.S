@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_pow2
+        .globl  _bignum_pow2
         .text
         .balign 4
 
@@ -38,6 +39,7 @@
 
 
 bignum_pow2:
+_bignum_pow2:
 
 // If k = 0 the result is trivially zero
 

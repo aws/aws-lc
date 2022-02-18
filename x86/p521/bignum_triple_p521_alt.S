@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_triple_p521_alt
+        .globl  _bignum_triple_p521_alt
         .text
 
 #define z rdi
@@ -49,6 +50,7 @@
 #define d rdx
 
 bignum_triple_p521_alt:
+_bignum_triple_p521_alt:
 
 // Save additional registers to use
 

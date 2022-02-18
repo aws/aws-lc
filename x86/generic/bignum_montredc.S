@@ -31,6 +31,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_montredc
+        .globl  _bignum_montredc
         .text
 
  // We copy n into r10 but it comes in in rdx originally
@@ -69,6 +70,7 @@
 
 
 bignum_montredc:
+_bignum_montredc:
 
 // Save registers and allocate space on stack for non-register variable w
 

@@ -27,6 +27,7 @@
 
 
         .globl  bignum_mod_n256_4
+        .globl  _bignum_mod_n256_4
         .text
 
 #define z %rdi
@@ -50,6 +51,7 @@
 #define c %rsi
 
 bignum_mod_n256_4:
+_bignum_mod_n256_4:
 
 // Load a set of registers [n3; 0; n1; n0] = 2^256 - n_256
 

@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_amontmul
+        .globl  _bignum_amontmul
         .text
         .balign 4
 
@@ -70,6 +71,7 @@
 
 
 bignum_amontmul:
+_bignum_amontmul:
 
 // If k = 0 the whole operation is trivial
 

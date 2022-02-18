@@ -27,7 +27,9 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_triple_p256
+        .globl  _bignum_triple_p256
         .globl  bignum_triple_p256_alt
+        .globl  _bignum_triple_p256_alt
         .text
         .balign 4
 
@@ -59,7 +61,9 @@
 
 
 bignum_triple_p256:
+_bignum_triple_p256:
 bignum_triple_p256_alt:
+_bignum_triple_p256_alt:
 
 // Load the inputs
 

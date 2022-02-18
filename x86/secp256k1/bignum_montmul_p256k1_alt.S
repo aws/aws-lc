@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_montmul_p256k1_alt
+        .globl  _bignum_montmul_p256k1_alt
         .text
 
 // These are actually right
@@ -71,6 +72,7 @@
         adc     h, rdx
 
 bignum_montmul_p256k1_alt:
+_bignum_montmul_p256k1_alt:
 
 // Save more registers to play with
 

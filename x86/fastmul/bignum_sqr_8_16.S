@@ -24,6 +24,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_sqr_8_16
+        .globl  _bignum_sqr_8_16
         .text
 
 // These are actually right
@@ -266,6 +267,7 @@
 
 
 bignum_sqr_8_16:
+_bignum_sqr_8_16:
 
 // Save more registers to play with
 

@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_copy
+        .globl  _bignum_copy
         .text
         .balign 4
 
@@ -37,6 +38,7 @@
 
 
 bignum_copy:
+_bignum_copy:
 
 // Replace n with min(k,n) so we are definitely safe copying those
 // Initialize the element counter to 0

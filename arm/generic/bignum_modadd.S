@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_modadd
+        .globl  _bignum_modadd
         .text
         .balign 4
 
@@ -40,6 +41,7 @@
 
 
 bignum_modadd:
+_bignum_modadd:
 
                 adds    j, k, xzr               // j = k and ZF = (k = 0)
                 beq     end                     // if k = 0 do nothing

@@ -28,6 +28,7 @@
 
 
         .globl  bignum_triple_p256_alt
+        .globl  _bignum_triple_p256_alt
         .text
 
 #define z %rdi
@@ -56,6 +57,7 @@
 #define dshort %edx
 
 bignum_triple_p256_alt:
+_bignum_triple_p256_alt:
 
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 // but immediately form the quotient estimate q = h + 1

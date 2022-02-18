@@ -24,12 +24,14 @@
 
 
         .globl  word_min
+        .globl  _word_min
         .text
 
 #define a %rdi
 #define b %rsi
 
 word_min:
+_word_min:
 
         movq    a, %rax
         cmpq    b, a

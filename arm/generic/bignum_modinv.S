@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_modinv
+        .globl  _bignum_modinv
         .text
         .balign 4
 
@@ -101,6 +102,7 @@
 #define e8 t1
 
 bignum_modinv:
+_bignum_modinv:
 
 // We make use of registers beyond the modifiable
 

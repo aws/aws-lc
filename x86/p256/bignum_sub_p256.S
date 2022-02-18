@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_sub_p256
+        .globl  _bignum_sub_p256
         .text
 
 #define z rdi
@@ -45,6 +46,7 @@
 
 
 bignum_sub_p256:
+_bignum_sub_p256:
 
 // Load and subtract the two inputs as [d3;d2;d1;d0] = x - y (modulo 2^256)
 
