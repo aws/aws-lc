@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montmul_p384_alt
+        .globl  _bignum_montmul_p384_alt
         .text
         .balign 4
 
@@ -102,6 +103,7 @@
 #define h b5 // same as b5
 
 bignum_montmul_p384_alt:
+_bignum_montmul_p384_alt:
 
 // Save more registers
 

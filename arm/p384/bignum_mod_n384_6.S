@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_n384_6
+        .globl  _bignum_mod_n384_6
         .text
         .balign 4
 
@@ -53,6 +54,7 @@
                 movk    nn, n3, lsl #48
 
 bignum_mod_n384_6:
+_bignum_mod_n384_6:
 
 // Load the complicated lower three words of n_384
 
