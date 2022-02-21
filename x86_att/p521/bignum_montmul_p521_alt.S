@@ -30,6 +30,7 @@
 
 
         .globl  bignum_montmul_p521_alt
+        .globl  _bignum_montmul_p521_alt
         .text
 
 #define z %rdi
@@ -66,6 +67,7 @@
         adcq    %rdx, h
 
 bignum_montmul_p521_alt:
+_bignum_montmul_p521_alt:
 
 // Make more registers available
 

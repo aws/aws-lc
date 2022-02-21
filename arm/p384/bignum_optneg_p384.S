@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_optneg_p384
+        .globl  _bignum_optneg_p384
         .text
         .balign 4
 
@@ -47,6 +48,7 @@
 
 
 bignum_optneg_p384:
+_bignum_optneg_p384:
 
 // Load the 6 digits of x
 

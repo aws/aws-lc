@@ -28,6 +28,7 @@
 
 
         .globl  bignum_triple_p384_alt
+        .globl  _bignum_triple_p384_alt
         .text
 
 #define z %rdi
@@ -51,6 +52,7 @@
 #define dshort %edx
 
 bignum_triple_p384_alt:
+_bignum_triple_p384_alt:
 
 // We seem to need (just!) one extra register, which we need to save and restore
 

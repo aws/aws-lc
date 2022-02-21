@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul
+        .globl  _bignum_mul
         .text
         .balign 4
 
@@ -50,6 +51,7 @@
 
 
 bignum_mul:
+_bignum_mul:
 
 // If p = 0 the result is trivial and nothing needs doing
 
