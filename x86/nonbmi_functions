@@ -131,6 +131,7 @@ bignum_sqr
 bignum_sqr_4_8_alt
 bignum_sqr_6_12_alt
 bignum_sqr_8_16_alt
+bignum_sqr_p25519_alt
 bignum_sqr_p256k1_alt
 bignum_sqr_p521_alt
 bignum_sub

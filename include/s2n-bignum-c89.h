@@ -618,6 +618,11 @@ extern void bignum_sqr_6_12_alt (uint64_t z[12], uint64_t x[6]);
 extern void bignum_sqr_8_16 (uint64_t z[16], uint64_t x[8]);
 extern void bignum_sqr_8_16_alt (uint64_t z[16], uint64_t x[8]);
 
+/*  Square modulo p_25519, z := (x^2) mod p_25519 */
+/*  Input x[4]; output z[4] */
+extern void bignum_sqr_p25519 (uint64_t z[4], uint64_t x[4]);
+extern void bignum_sqr_p25519_alt (uint64_t z[4], uint64_t x[4]);
+
 /*  Square modulo p_256k1, z := (x^2) mod p_256k1 */
 /*  Input x[4]; output z[4] */
 extern void bignum_sqr_p256k1 (uint64_t z[4], uint64_t x[4]);
