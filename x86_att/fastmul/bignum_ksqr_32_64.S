@@ -30,6 +30,7 @@
 
 
         .globl  bignum_ksqr_32_64
+        .globl  _bignum_ksqr_32_64
         .text
 
 #define K 16
@@ -39,6 +40,7 @@
 #define t %rcx
 
 bignum_ksqr_32_64:
+_bignum_ksqr_32_64:
 
 // Save callee-preserved registers once and for all at the outset
 // Later we further reshuffle the input arguments to avoid extra saves

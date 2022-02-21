@@ -24,6 +24,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_sqr_6_12_alt
+        .globl  _bignum_sqr_6_12_alt
         .text
 
 // Input arguments
@@ -100,6 +101,7 @@
         adc     c, 0
 
 bignum_sqr_6_12_alt:
+_bignum_sqr_6_12_alt:
 
 // Result term 0
 

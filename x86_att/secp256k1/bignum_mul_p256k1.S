@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mul_p256k1
+        .globl  _bignum_mul_p256k1
         .text
 
 // These are actually right
@@ -61,6 +62,7 @@
         adoxq   zero, high
 
 bignum_mul_p256k1:
+_bignum_mul_p256k1:
 
 // Save more registers to play with
 

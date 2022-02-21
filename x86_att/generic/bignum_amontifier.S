@@ -28,6 +28,7 @@
 
 
         .globl  bignum_amontifier
+        .globl  _bignum_amontifier
         .text
 
 #define k %rdi
@@ -62,6 +63,7 @@
 
 
 bignum_amontifier:
+_bignum_amontifier:
 
 // Save some additional registers for use, copy args out of RCX and RDX
 

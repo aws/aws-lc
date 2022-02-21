@@ -35,7 +35,7 @@ let armstate_INDUCT,armstate_RECURSION,armstate_COMPONENTS =
      { PC: int64;                       // One 64-bit program counter
        registers : 5 word->int64;       // 31 general-purpose registers plus SP
        simdregisters: 5 word->int128;   // 32 SIMD registers
-       flags: 4 word -> bool;           // NZCV flags
+       flags: 4 word;                   // NZCV flags
        memory: 64 word -> byte          // memory
      }";;
 
@@ -117,16 +117,17 @@ let aligned_bytes_loaded_of_append3 = prove
   METIS_TAC [aligned_bytes_loaded_append; aligned_bytes_loaded_append_left]);;
 
 (* ------------------------------------------------------------------------- *)
-(* Individual flags (the numbering is arbitrary, not in the ARM spec)        *)
+(* Individual flags. The numbering matches "nzcv" immediates, but does not   *)
+(* otherwise matter for the current model since they are used individually.  *)
 (* ------------------------------------------------------------------------- *)
 
-let NF = define `NF = flags :> element(word 0)`;;
+let NF = define `NF = flags :> bitelement 3`;;
 
-let ZF = define `ZF = flags :> element(word 1)`;;
+let ZF = define `ZF = flags :> bitelement 2`;;
 
-let CF = define `CF = flags :> element(word 2)`;;
+let CF = define `CF = flags :> bitelement 1`;;
 
-let VF = define `VF = flags :> element(word 3)`;;
+let VF = define `VF = flags :> bitelement 0`;;
 
 add_component_alias_thms [NF; ZF; CF; VF];;
 
@@ -736,6 +737,29 @@ let arm_CBZ = define
                    then word_add (word_sub (read PC s) (word 4)) (word_sx off)
                    else read PC s) s`;;
 
+let arm_CCMN = define
+ `arm_CCMN Rm Rn (nzcv:4 word) cc =
+    \s. let m = read Rm s
+        and n = read Rn s
+        and p = condition_semantics cc s in
+        let d:N word = word_add m n in
+        (NF := (if p then ival d < &0 else bit 3 nzcv) ,,
+         ZF := (if p then val d = 0 else bit 2 nzcv) ,,
+         CF := (if p then ~(val m + val n = val d) else bit 1 nzcv) ,,
+         VF := (if p then ~(ival m + ival n = ival d) else bit 0 nzcv)) s`;;
+
+let arm_CCMP = define
+ `arm_CCMP Rm Rn (nzcv:4 word) cc =
+    \s. let m = read Rm s
+        and n = read Rn s
+        and p = condition_semantics cc s in
+        let d:N word = word_sub m n in
+        (NF := (if p then ival d < &0 else bit 3 nzcv) ,,
+         ZF := (if p then val d = 0 else bit 2 nzcv) ,,
+         CF := (if p then &(val m) - &(val n):int = &(val d)
+                else bit 1 nzcv) ,,
+         VF := (if p then ~(ival m - ival n = ival d) else bit 0 nzcv)) s`;;
+
 let arm_CLZ = define
  `arm_CLZ Rd Rn =
         \s. (Rd := (word(word_clz (read Rn s:N word)):N word)) s`;;
@@ -1165,6 +1189,42 @@ let arm_ROR_ALT = prove
            DIMINDEX_NONZERO]);;
 
 (* ------------------------------------------------------------------------- *)
+(* The conditional comparison instructions expressed in another way.         *)
+(* ------------------------------------------------------------------------- *)
+
+let arm_CCMN_ALT = prove
+ (`arm_CCMN Rm Rn nzcv cc s =
+   if condition_semantics cc s then arm_CMN Rm Rn s else (flags := nzcv) s`,
+  REWRITE_TAC[arm_CCMN; arm_CMN; arm_ADDS] THEN
+  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[ARM_ZERO_REGISTER; WRITE_RVALUE; seq; assign; UNWIND_THM1] THEN
+  ABS_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  SPEC_TAC(`s:armstate`,`s:armstate`) THEN MATCH_MP_TAC armstate_INDUCT THEN
+  REWRITE_TAC[NF; ZF; CF; VF; WRITE_COMPONENT_COMPOSE] THEN
+  REWRITE_TAC[armstate_COMPONENTS] THEN
+  REPEAT GEN_TAC THEN REPEAT(AP_TERM_TAC ORELSE AP_THM_TAC) THEN
+  GEN_REWRITE_TAC I [WORD_EQ_BITS_ALT] THEN
+  REWRITE_TAC[GSYM READ_BITELEMENT; READ_WRITE_BITELEMENT_GEN; DIMINDEX_4] THEN
+  CONV_TAC EXPAND_CASES_CONV THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let arm_CCMP_ALT = prove
+ (`arm_CCMP Rm Rn nzcv cc s =
+   if condition_semantics cc s then arm_CMP Rm Rn s else (flags := nzcv) s`,
+  REWRITE_TAC[arm_CCMP; arm_CMP; arm_SUBS] THEN
+  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[ARM_ZERO_REGISTER; WRITE_RVALUE; seq; assign; UNWIND_THM1] THEN
+  ABS_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  SPEC_TAC(`s:armstate`,`s:armstate`) THEN MATCH_MP_TAC armstate_INDUCT THEN
+  REWRITE_TAC[NF; ZF; CF; VF; WRITE_COMPONENT_COMPOSE] THEN
+  REWRITE_TAC[armstate_COMPONENTS] THEN
+  REPEAT GEN_TAC THEN REPEAT(AP_TERM_TAC ORELSE AP_THM_TAC) THEN
+  GEN_REWRITE_TAC I [WORD_EQ_BITS_ALT] THEN
+  REWRITE_TAC[GSYM READ_BITELEMENT; READ_WRITE_BITELEMENT_GEN; DIMINDEX_4] THEN
+  CONV_TAC EXPAND_CASES_CONV THEN CONV_TAC NUM_REDUCE_CONV);;
+
+(* ------------------------------------------------------------------------- *)
 (* Not true aliases, but this actually reflects how the ARM manual does      *)
 (* it. I guess this inverted carry trick goes back to the System/360 if not  *)
 (* before, and was also the way to do subtraction with borrow on the 6502.   *)
@@ -1330,7 +1390,7 @@ let ARM_OPERATION_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)
       [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADDS_ALT; arm_AND; arm_ANDS;
        arm_ASRV; arm_B; arm_BIC; arm_BICS; arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
-       arm_CBNZ_ALT; arm_CBZ_ALT; arm_CLZ; arm_CSEL; arm_CSINC;
+       arm_CBNZ_ALT; arm_CBZ_ALT; arm_CCMN; arm_CCMP; arm_CLZ; arm_CSEL; arm_CSINC;
        arm_CSINV; arm_CSNEG; arm_EON; arm_EOR; arm_EXTR;
        arm_LSL; arm_LSLV; arm_LSR; arm_LSRV;
        arm_MADD; arm_MOVK_ALT; arm_MOVN; arm_MOVZ;

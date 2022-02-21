@@ -23,11 +23,13 @@
 
 
         .globl  word_bytereverse
+        .globl  _word_bytereverse
         .text
 
 // Just uses the x86 BSWAP instruction, which does the job directly
 
 word_bytereverse:
+_word_bytereverse:
 
                 movq    %rdi, %rax
                 bswapq  %rax

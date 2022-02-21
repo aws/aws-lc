@@ -24,9 +24,11 @@
 
         .intel_syntax noprefix
         .globl  word_ctz
+        .globl  _word_ctz
         .text
 
 word_ctz:
+_word_ctz:
 
 // First just do rax = bsf(a), which is right except (maybe) for zero inputs
 

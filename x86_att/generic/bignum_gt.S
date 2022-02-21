@@ -25,6 +25,7 @@
 
 
         .globl  bignum_gt
+        .globl  _bignum_gt
         .text
 
 #define m %rdi
@@ -39,6 +40,7 @@
 
 
 bignum_gt:
+_bignum_gt:
 
 // Zero the main index counter for both branches
 

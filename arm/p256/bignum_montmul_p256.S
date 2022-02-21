@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montmul_p256
+        .globl  _bignum_montmul_p256
         .text
         .balign 4
 
@@ -91,6 +92,7 @@
 #define s4 x2
 
 bignum_montmul_p256:
+_bignum_montmul_p256:
 
 // Load in all words of both inputs
 

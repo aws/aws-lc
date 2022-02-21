@@ -27,6 +27,7 @@
 
 
         .globl  bignum_mux
+        .globl  _bignum_mux
         .text
 
 #define b %rdi
@@ -40,6 +41,7 @@
 
 
 bignum_mux:
+_bignum_mux:
                 testq   k, k
                 jz      end                     // If length = 0 do nothing
 

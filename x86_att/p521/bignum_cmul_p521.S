@@ -26,6 +26,7 @@
 
 
         .globl  bignum_cmul_p521
+        .globl  _bignum_cmul_p521
         .text
 
 #define z %rdi
@@ -60,6 +61,7 @@
 #define h d9
 
 bignum_cmul_p521:
+_bignum_cmul_p521:
 
 // Save additional registers to use
 

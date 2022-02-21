@@ -25,6 +25,7 @@
 
 
         .globl  bignum_sub_p256k1
+        .globl  _bignum_sub_p256k1
         .text
 
 #define z %rdi
@@ -41,6 +42,7 @@
 #define c %rcx
 
 bignum_sub_p256k1:
+_bignum_sub_p256k1:
 
 // Zero a register first
 

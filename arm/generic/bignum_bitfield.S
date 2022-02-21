@@ -30,6 +30,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_bitfield
+        .globl  _bignum_bitfield
         .text
         .balign 4
 
@@ -46,6 +47,7 @@
 
 
 bignum_bitfield:
+_bignum_bitfield:
 
 // For length zero finish immediately (the return value in x0 is 0)
 

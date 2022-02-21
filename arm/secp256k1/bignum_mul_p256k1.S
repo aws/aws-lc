@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul_p256k1
+        .globl  _bignum_mul_p256k1
         .text
         .balign 4
 
@@ -93,6 +94,7 @@
 #define d x21
 
 bignum_mul_p256k1:
+_bignum_mul_p256k1:
 
                 stp     x19, x20, [sp, #-16]!
                 stp     x21, x22, [sp, #-16]!

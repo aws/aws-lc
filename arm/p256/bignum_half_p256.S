@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_half_p256
+        .globl  _bignum_half_p256
         .text
         .balign 4
 
@@ -40,6 +41,7 @@
 
 
 bignum_half_p256:
+_bignum_half_p256:
 
 // Load the 4 digits of x
 

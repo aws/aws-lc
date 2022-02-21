@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul_4_8
+        .globl  _bignum_mul_4_8
         .text
         .balign 4
 
@@ -96,6 +97,7 @@
 #define t x20
 
 bignum_mul_4_8:
+_bignum_mul_4_8:
 
                 stp     x19, x20, [sp, #-16]!
 

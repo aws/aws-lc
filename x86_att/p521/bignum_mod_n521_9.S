@@ -27,6 +27,7 @@
 
 
         .globl  bignum_mod_n521_9
+        .globl  _bignum_mod_n521_9
         .text
 
 #define z %rdi
@@ -48,6 +49,7 @@
 #define qshort %edx
 
 bignum_mod_n521_9:
+_bignum_mod_n521_9:
 
 // Load the top digit, putting a bit-stuffed version in output buffer.
 // The initial quotient estimate is q = h + 1 where x = 2^521 * h + t

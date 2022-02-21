@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_optneg
+        .globl  _bignum_optneg
         .text
         .balign 4
 
@@ -40,6 +41,7 @@
 
 
 bignum_optneg:
+_bignum_optneg:
 
 // if k = 0 do nothing. This also has the right top carry zero in x0
 

@@ -28,6 +28,7 @@
 
 
         .globl  bignum_ksqr_16_32
+        .globl  _bignum_ksqr_16_32
         .text
 
 #define z %rdi
@@ -464,6 +465,7 @@
 
 
 bignum_ksqr_16_32:
+_bignum_ksqr_16_32:
 
 // Save more registers to play with
 

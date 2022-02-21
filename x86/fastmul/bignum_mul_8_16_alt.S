@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mul_8_16_alt
+        .globl  _bignum_mul_8_16_alt
         .text
 
 // These are actually right
@@ -69,6 +70,7 @@
         adc     h, rdx
 
 bignum_mul_8_16_alt:
+_bignum_mul_8_16_alt:
 
 // Copy y into a safe register to start with
 

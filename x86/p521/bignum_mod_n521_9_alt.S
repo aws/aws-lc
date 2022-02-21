@@ -27,6 +27,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mod_n521_9_alt
+        .globl  _bignum_mod_n521_9_alt
         .text
 
 #define z rdi
@@ -48,6 +49,7 @@
 #define qshort edx
 
 bignum_mod_n521_9_alt:
+_bignum_mod_n521_9_alt:
 
 // Load the top digit, putting a bit-stuffed version in output buffer.
 // The initial quotient estimate is q = h + 1 where x = 2^521 * h + t

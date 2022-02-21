@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mul
+        .globl  _bignum_mul
         .text
 
 // These are actually right
@@ -56,6 +57,7 @@
 
 
 bignum_mul:
+_bignum_mul:
 
 // We use too many registers, and also we need rax:rdx for multiplications
 

@@ -28,6 +28,7 @@
 
 
         .globl  bignum_digit
+        .globl  _bignum_digit
         .text
 
 #define k %rdi
@@ -39,6 +40,7 @@
 #define a %r8
 
 bignum_digit:
+_bignum_digit:
 
 // Set the default digit to 0, and for length zero finish immediately
 

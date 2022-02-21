@@ -25,6 +25,7 @@
 
 
         .globl  bignum_tomont_p521
+        .globl  _bignum_tomont_p521
         .text
 
 #define z %rdi
@@ -47,6 +48,7 @@
 #define d7 %rsi
 
 bignum_tomont_p521:
+_bignum_tomont_p521:
 
 // Save one more register
 

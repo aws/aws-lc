@@ -25,6 +25,7 @@
 
 
         .globl  bignum_neg_p256k1
+        .globl  _bignum_neg_p256k1
         .text
 
 #define z %rdi
@@ -41,6 +42,7 @@
 #define qshort %esi
 
 bignum_neg_p256k1:
+_bignum_neg_p256k1:
 
 // Load the 4 digits of x and let q be an OR of all the digits
 

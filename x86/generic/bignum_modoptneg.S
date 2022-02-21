@@ -26,6 +26,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_modoptneg
+        .globl  _bignum_modoptneg
         .text
 
 #define k rdi
@@ -40,6 +41,7 @@
 #define i r11
 
 bignum_modoptneg:
+_bignum_modoptneg:
 
 // Do nothing if k = 0
 

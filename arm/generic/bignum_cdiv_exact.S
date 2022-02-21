@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_cdiv_exact
+        .globl  _bignum_cdiv_exact
         .text
         .balign 4
 
@@ -63,6 +64,7 @@
 #define e8 x7
 
 bignum_cdiv_exact:
+_bignum_cdiv_exact:
 
 // If k = 0 then there's nothing to be done
 

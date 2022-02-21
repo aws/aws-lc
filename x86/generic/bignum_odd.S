@@ -24,9 +24,11 @@
 
         .intel_syntax noprefix
         .globl  bignum_odd
+        .globl  _bignum_odd
         .text
 
 bignum_odd:
+_bignum_odd:
 
 // Load RAX with the lowest digit for k > 0, else 0
 

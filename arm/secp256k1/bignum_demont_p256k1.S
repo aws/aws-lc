@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_demont_p256k1
+        .globl  _bignum_demont_p256k1
         .text
         .balign 4
 
@@ -50,6 +51,7 @@
 #define c x8
 
 bignum_demont_p256k1:
+_bignum_demont_p256k1:
 
 // Load input and set up constants c = 4294968273 so p_256k1 = 2^256 - c,
 // and w the negated multiplicative inverse p_256k1 * w == -1 (mod 2^64).

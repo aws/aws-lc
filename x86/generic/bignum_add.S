@@ -31,6 +31,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_add
+        .globl  _bignum_add
         .text
 
 #define p rdi
@@ -47,6 +48,7 @@
 
 
 bignum_add:
+_bignum_add:
 
 // Zero the main index counter for both branches
 

@@ -33,6 +33,7 @@
 
 
         .globl  bignum_coprime
+        .globl  _bignum_coprime
         .text
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a bit for proxy errors
@@ -104,6 +105,7 @@
 #define arg4 %rcx
 
 bignum_coprime:
+_bignum_coprime:
 
 // Save all required registers and make room on stack for all the above vars
 

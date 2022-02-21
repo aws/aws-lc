@@ -37,8 +37,11 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_littleendian_4
+        .globl  _bignum_littleendian_4
         .globl  bignum_fromlebytes_4
+        .globl  _bignum_fromlebytes_4
         .globl  bignum_tolebytes_4
+        .globl  _bignum_tolebytes_4
         .text
         .balign 4
 
@@ -50,8 +53,11 @@
 #define a x3
 
 bignum_littleendian_4:
+_bignum_littleendian_4:
 bignum_fromlebytes_4:
+_bignum_fromlebytes_4:
 bignum_tolebytes_4:
+_bignum_tolebytes_4:
 
 // word 0
 

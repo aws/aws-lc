@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_cld
+        .globl  _bignum_cld
         .text
         .balign 4
 
@@ -36,6 +37,7 @@
 
 
 bignum_cld:
+_bignum_cld:
 
 // If the bignum is zero-length, x0 is already the right answer of k = 0
 

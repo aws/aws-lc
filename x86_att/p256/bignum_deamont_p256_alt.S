@@ -28,6 +28,7 @@
 
 
         .globl  bignum_deamont_p256_alt
+        .globl  _bignum_deamont_p256_alt
         .text
 
 #define z %rdi
@@ -81,6 +82,7 @@
         adcq    %rdx, high
 
 bignum_deamont_p256_alt:
+_bignum_deamont_p256_alt:
 
 // Set up an initial 4-word window [%r11,%r10,%r9,%r8] = x
 

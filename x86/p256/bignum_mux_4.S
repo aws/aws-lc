@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mux_4
+        .globl  _bignum_mux_4
         .text
 
 #define p rdi
@@ -39,6 +40,7 @@
 
 
 bignum_mux_4:
+_bignum_mux_4:
                 test    p, p
 
                 mov     a, [x]

@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  word_recip
+        .globl  _word_recip
         .text
         .balign 4
 
@@ -45,6 +46,7 @@
 #define h x4
 
 word_recip:
+_word_recip:
 
 // Scale the input down: b overestimates a/2^16 with b <= 2^48 and
 // x underestimates 2^64/b with b * x =~= 2^64, accurate to ~2 bits.

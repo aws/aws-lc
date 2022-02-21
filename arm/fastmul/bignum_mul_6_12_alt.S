@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul_6_12_alt
+        .globl  _bignum_mul_6_12_alt
         .text
         .balign 4
 
@@ -65,6 +66,7 @@
 #define u11 x15
 
 bignum_mul_6_12_alt:
+_bignum_mul_6_12_alt:
 
 // Save more registers
 

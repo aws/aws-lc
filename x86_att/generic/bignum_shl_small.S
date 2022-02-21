@@ -29,6 +29,7 @@
 
 
         .globl  bignum_shl_small
+        .globl  _bignum_shl_small
         .text
 
 #define p %rdi
@@ -50,6 +51,7 @@
 
 
 bignum_shl_small:
+_bignum_shl_small:
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.

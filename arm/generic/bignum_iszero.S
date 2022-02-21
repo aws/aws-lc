@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_iszero
+        .globl  _bignum_iszero
         .text
         .balign 4
 
@@ -33,6 +34,7 @@
 
 
 bignum_iszero:
+_bignum_iszero:
 
                 mov     c, xzr                  // c will be or of the digits
                 cbz     k, end                  // if k = 0 skip the loop

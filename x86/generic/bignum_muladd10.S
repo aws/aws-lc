@@ -26,6 +26,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_muladd10
+        .globl  _bignum_muladd10
         .text
 
 #define k rdi
@@ -41,6 +42,7 @@
 #define tenshort r9d
 
 bignum_muladd10:
+_bignum_muladd10:
 
 // Move carry input to permanent home, and if k = 0 skip the main loop
 

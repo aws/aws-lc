@@ -29,6 +29,7 @@
 
 
         .globl  bignum_shr_small
+        .globl  _bignum_shr_small
         .text
 
 #define p %rdi
@@ -51,6 +52,7 @@
 
 
 bignum_shr_small:
+_bignum_shr_small:
 
 // Reshuffle registers to put the shift count into CL
 

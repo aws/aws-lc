@@ -23,10 +23,12 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_odd
+        .globl  _bignum_odd
         .text
         .balign 4
 
 bignum_odd:
+_bignum_odd:
 
                 cbz     x0, end                 // if k = 0, that's the return!
                 ldr     x0, [x1]

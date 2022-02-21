@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_double_p256
+        .globl  _bignum_double_p256
         .text
         .balign 4
 
@@ -41,6 +42,7 @@
 
 
 bignum_double_p256:
+_bignum_double_p256:
 
 // Double the input number as 2 * x = c + [d3; d2; d1; d0]
 // It's worth considering doing this with extr...63 instead

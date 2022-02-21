@@ -29,6 +29,7 @@
 
 
         .globl  bignum_amontmul
+        .globl  _bignum_amontmul
         .text
 
 // We copy x into %r9 but it comes in in %rdx originally
@@ -71,6 +72,7 @@
 
 
 bignum_amontmul:
+_bignum_amontmul:
 
 // Save registers and allocate space on stack for non-register variable w
 

@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_double_p256
+        .globl  _bignum_double_p256
         .text
 
 #define z rdi
@@ -44,6 +45,7 @@
 
 
 bignum_double_p256:
+_bignum_double_p256:
 
 // Load the input and double it so that 2^256 * c + [d3;d2;d1;d0] = 2 * x
 // Could also consider using shld to decouple carries

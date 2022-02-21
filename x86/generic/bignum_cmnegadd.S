@@ -31,6 +31,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_cmnegadd
+        .globl  _bignum_cmnegadd
         .text
 
 #define p rdi
@@ -50,6 +51,7 @@
 
 
 bignum_cmnegadd:
+_bignum_cmnegadd:
 
 // Seems hard to avoid one more register
 

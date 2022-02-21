@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mux16
+        .globl  _bignum_mux16
         .text
 
 #define k rdi
@@ -48,6 +49,7 @@
 
 
 bignum_mux16:
+_bignum_mux16:
 
 
 // Copy size into decrementable counter, or skip everything if k = 0

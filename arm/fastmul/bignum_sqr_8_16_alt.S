@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sqr_8_16_alt
+        .globl  _bignum_sqr_8_16_alt
         .text
         .balign 4
 
@@ -59,6 +60,7 @@
 #define u15 x26
 
 bignum_sqr_8_16_alt:
+_bignum_sqr_8_16_alt:
 
 // It's convenient to have more registers to play with
 

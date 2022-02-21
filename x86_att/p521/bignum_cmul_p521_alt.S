@@ -26,6 +26,7 @@
 
 
         .globl  bignum_cmul_p521_alt
+        .globl  _bignum_cmul_p521_alt
         .text
 
 #define z %rdi
@@ -64,6 +65,7 @@
 #define h d9
 
 bignum_cmul_p521_alt:
+_bignum_cmul_p521_alt:
 
 // Save additional registers to use
 

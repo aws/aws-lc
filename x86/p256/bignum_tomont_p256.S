@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_tomont_p256
+        .globl  _bignum_tomont_p256
         .text
 
 #define z rdi
@@ -49,6 +50,7 @@
         adox    high, rcx
 
 bignum_tomont_p256:
+_bignum_tomont_p256:
 
 // We are essentially just doing a Montgomery multiplication of x and the
 // precomputed constant y = 2^512 mod p, so the code is almost the same

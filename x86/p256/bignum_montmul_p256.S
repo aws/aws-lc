@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_montmul_p256
+        .globl  _bignum_montmul_p256
         .text
 
 #define z rdi
@@ -48,6 +49,7 @@
         adox    high, rbx
 
 bignum_montmul_p256:
+_bignum_montmul_p256:
 
 // Save more registers to play with
 

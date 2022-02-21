@@ -56,6 +56,11 @@ let arm_csop = new_definition `arm_csop op o2:
   if op then if o2 then arm_CSNEG else arm_CSINV
         else if o2 then arm_CSINC else arm_CSEL`;;
 
+let arm_ccop = new_definition
+ `arm_ccop op (Rn:(armstate,N word)component) Rm nzcv cond =
+   if op then SOME(arm_CCMP Rn Rm nzcv cond)
+   else SOME(arm_CCMN Rn Rm nzcv cond)`;;
+
 let arm_lsvop = new_definition `arm_lsvop (op2:2 word)
     (Rd:(armstate,N word)component) Rn Rm =
   bitmatch op2 with
@@ -135,6 +140,12 @@ let decode = new_definition `!w:int32. decode w =
     SOME ((if sf
       then arm_csop op o2 (XREG' Rd) (XREG' Rn) (XREG' Rm)
       else arm_csop op o2 (WREG' Rd) (WREG' Rn) (WREG' Rm)) (Condition cond))
+  | [sf; op; 0b111010010:9; Rm:5; cond:4; 0b00:2; Rn:5; 0b0:1; nzcv:4] ->
+    if sf then arm_ccop op (XREG' Rn) (XREG' Rm) nzcv (Condition cond)
+    else arm_ccop op (WREG' Rn) (WREG' Rm) nzcv (Condition cond)
+  | [sf; op; 0b111010010:9; imm5:5; cond:4; 0b10:2; Rn:5; 0b0:1; nzcv:4] ->
+    if sf then arm_ccop op (XREG' Rn) (rvalue(word_zx imm5)) nzcv (Condition cond)
+    else arm_ccop op (WREG' Rn) (rvalue(word_zx imm5)) nzcv (Condition cond)
   | [sf; opc:2; 0b01010:5; sty:2; N; Rm:5; sam:6; Rn:5; Rd:5] ->
     if sf then
        arm_logop opc N (XREG' Rd) (XREG' Rn)
@@ -450,6 +461,7 @@ let PURE_DECODE_CONV =
   and pth_logop = mk_pth_split arm_logop
   and pth_movop = mk_pth_split arm_movop
   and pth_csop = mk_pth_split arm_csop
+  and pth_ccop = mk_pth_split arm_ccop
   and pth_lsvop = mk_pth_split arm_lsvop
   and pth_ldst = mk_pth arm_ldst
   and pth_ldstrb = mk_pth arm_ldstb
@@ -599,6 +611,9 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Comb(Comb(Const("arm_lsvop",_),_),rd),_),_) ->
     let N = dest_word_ty (snd (dest_component (type_of rd))) in
     eval_nary (pth_lsvop N) t F
+  | Comb(Comb(Comb(Comb(Comb(Const("arm_ccop",_),_),rn),_),_),_) ->
+    let N = dest_word_ty (snd (dest_component (type_of rn))) in
+    eval_nary (pth_ccop N) t F
   | Comb(Comb(Comb(Const("arm_ldst",_),_),_),_) -> eval_nary pth_ldst t F
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->

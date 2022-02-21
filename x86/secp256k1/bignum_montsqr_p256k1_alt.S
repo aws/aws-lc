@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_montsqr_p256k1_alt
+        .globl  _bignum_montsqr_p256k1_alt
         .text
 
 #define z rdi
@@ -67,6 +68,7 @@
         adc     c, 0
 
 bignum_montsqr_p256k1_alt:
+_bignum_montsqr_p256k1_alt:
 
 // Save more registers to play with
 

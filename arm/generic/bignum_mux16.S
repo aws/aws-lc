@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mux16
+        .globl  _bignum_mux16
         .text
         .balign 4
 
@@ -42,6 +43,7 @@
 
 
 bignum_mux16:
+_bignum_mux16:
 
 // Copy size into decrementable counter, skip everything if k = 0
 

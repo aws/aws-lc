@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_demont
+        .globl  _bignum_demont
         .text
         .balign 4
 
@@ -61,6 +62,7 @@
 
 
 bignum_demont:
+_bignum_demont:
 
 // If k = 0 the whole operation is trivial
 

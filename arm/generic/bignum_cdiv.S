@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_cdiv
+        .globl  _bignum_cdiv
         .text
         .balign 4
 
@@ -66,6 +67,7 @@
 #define r x14
 
 bignum_cdiv:
+_bignum_cdiv:
 
 // Effectively the same dataflow as bignum_cmod, with some basic
 // variable changes (using n for the size not k, returning r, etc.)

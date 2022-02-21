@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montsqr_p521_alt
+        .globl  _bignum_montsqr_p521_alt
         .text
         .balign 4
 
@@ -66,6 +67,7 @@
 #define u16 x29
 
 bignum_montsqr_p521_alt:
+_bignum_montsqr_p521_alt:
 
 // It's convenient to have more registers to play with
 

@@ -24,7 +24,9 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_p256
+        .globl  _bignum_mod_p256
         .globl  bignum_mod_p256_alt
+        .globl  _bignum_mod_p256_alt
         .text
         .balign 4
 
@@ -50,7 +52,9 @@
 
 
 bignum_mod_p256:
+_bignum_mod_p256:
 bignum_mod_p256_alt:
+_bignum_mod_p256_alt:
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 

@@ -30,6 +30,7 @@
 
 
         .globl  bignum_montifier
+        .globl  _bignum_montifier
         .text
 
 #define k %rdi
@@ -69,6 +70,7 @@
 
 
 bignum_montifier:
+_bignum_montifier:
 
 // Save some additional registers for use, copy args out of RCX and RDX
 

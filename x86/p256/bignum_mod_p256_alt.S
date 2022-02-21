@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mod_p256_alt
+        .globl  _bignum_mod_p256_alt
         .text
 
 #define z rdi
@@ -49,6 +50,7 @@
 
 
 bignum_mod_p256_alt:
+_bignum_mod_p256_alt:
 
 // Save extra registers
 

@@ -28,6 +28,7 @@
 
 
         .globl  bignum_sqr
+        .globl  _bignum_sqr
         .text
 
 // First three are where arguments come in, but n is moved.
@@ -59,6 +60,7 @@
 #define llshort %ebp
 
 bignum_sqr:
+_bignum_sqr:
 
 // We use too many registers, and also we need %rax:%rdx for multiplications
 

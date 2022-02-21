@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_muladd10
+        .globl  _bignum_muladd10
         .text
         .balign 4
 
@@ -39,6 +40,7 @@
 #define l x5
 
 bignum_muladd10:
+_bignum_muladd10:
 
 // If k = 0 just return the input d as the carry (out of zero digits)
 

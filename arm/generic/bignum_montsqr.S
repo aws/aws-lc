@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montsqr
+        .globl  _bignum_montsqr
         .text
         .balign 4
 
@@ -69,6 +70,7 @@
 
 
 bignum_montsqr:
+_bignum_montsqr:
 
 // If k = 0 the whole operation is trivial
 

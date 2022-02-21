@@ -23,10 +23,12 @@
 // ----------------------------------------------------------------------------
 
         .globl  word_ctz
+        .globl  _word_ctz
         .text
         .balign 4
 
 word_ctz:
+_word_ctz:
 
 // ARM doesn't have a direct word ctz instruction, so we emulate it via
 // ctz(w) = 64 - clz(~w & (w-1)). This is depending, for cases of the form

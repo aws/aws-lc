@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sub
+        .globl  _bignum_sub
         .text
         .balign 4
 
@@ -44,6 +45,7 @@
 
 
 bignum_sub:
+_bignum_sub:
 
 // First clamp the two input sizes m := min(p,m) and n := min(p,n) since
 // we'll never need words past the p'th. Can now assume m <= p and n <= p.

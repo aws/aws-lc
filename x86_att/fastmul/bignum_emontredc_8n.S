@@ -28,6 +28,7 @@
 
 
         .globl  bignum_emontredc_8n
+        .globl  _bignum_emontredc_8n
         .text
 
 // Original input parameters are here
@@ -347,6 +348,7 @@ innerend:
 // -----------------------------------------------------------------------------
 
 bignum_emontredc_8n:
+_bignum_emontredc_8n:
 
 // Save more registers to play with
 

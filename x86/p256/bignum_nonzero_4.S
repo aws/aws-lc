@@ -24,6 +24,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_nonzero_4
+        .globl  _bignum_nonzero_4
         .text
 
 #define x rdi
@@ -34,6 +35,7 @@
 
 
 bignum_nonzero_4:
+_bignum_nonzero_4:
 
 // Generate a = an OR of all the words in the bignum
 

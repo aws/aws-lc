@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_neg_p256k1
+        .globl  _bignum_neg_p256k1
         .text
         .balign 4
 
@@ -38,6 +39,7 @@
 #define c x7
 
 bignum_neg_p256k1:
+_bignum_neg_p256k1:
 
 // Load the 4 digits of x and let c be an OR of all the digits
 

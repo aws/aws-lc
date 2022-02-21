@@ -26,6 +26,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_optneg_p256k1
+        .globl  _bignum_optneg_p256k1
         .text
 
 #define z rdi
@@ -42,6 +43,7 @@
 #define qshort esi
 
 bignum_optneg_p256k1:
+_bignum_optneg_p256k1:
 
 // Load the 4 digits of x and let c be an OR of all the digits
 

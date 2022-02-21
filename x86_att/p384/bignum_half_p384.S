@@ -25,6 +25,7 @@
 
 
         .globl  bignum_half_p384
+        .globl  _bignum_half_p384
         .text
 
 #define z %rdi
@@ -44,6 +45,7 @@
 
 
 bignum_half_p384:
+_bignum_half_p384:
 
 // Load lowest digit and get a mask for its lowest bit in d3
 

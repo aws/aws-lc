@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_n256k1_4
+        .globl  _bignum_mod_n256k1_4
         .text
         .balign 4
 
@@ -51,6 +52,7 @@
                 movk    nn, n3, lsl #48
 
 bignum_mod_n256k1_4:
+_bignum_mod_n256k1_4:
 
 // Load the complicated three words of n_256k1, the other being all 1s
 

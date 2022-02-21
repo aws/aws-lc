@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_cmod
+        .globl  _bignum_cmod
         .text
         .balign 4
 
@@ -48,6 +49,7 @@
 #define q x0
 
 bignum_cmod:
+_bignum_cmod:
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 

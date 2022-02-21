@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_kmul_32_64
+        .globl  _bignum_kmul_32_64
         .text
         .balign 4
 
@@ -42,6 +43,7 @@
 #define c x16
 
 bignum_kmul_32_64:
+_bignum_kmul_32_64:
 
 // Save extra registers and return address, store parameters safely
 

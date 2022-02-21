@@ -31,6 +31,7 @@
 
 
         .globl  bignum_kmul_32_64
+        .globl  _bignum_kmul_32_64
         .text
 
 #define K 16
@@ -46,6 +47,7 @@
 #define t %rcx
 
 bignum_kmul_32_64:
+_bignum_kmul_32_64:
 
 // Save callee-saved registers and also push t onto the stack; we'll
 // use this space to back up both t and later z. Then move the y variable

@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mul_6_12
+        .globl  _bignum_mul_6_12
         .text
 
 // These are actually right
@@ -133,6 +134,7 @@
 
 
 bignum_mul_6_12:
+_bignum_mul_6_12:
 
 // Save more registers to play with
 

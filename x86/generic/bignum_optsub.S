@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_optsub
+        .globl  _bignum_optsub
         .text
 
 #define k rdi
@@ -43,6 +44,7 @@
 
 
 bignum_optsub:
+_bignum_optsub:
 
 // Initialize top carry to zero in all cases (also return value)
 

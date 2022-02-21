@@ -26,6 +26,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_cmul_p256
+        .globl  _bignum_cmul_p256
         .text
 
 #define z rdi
@@ -51,6 +52,7 @@
 
 
 bignum_cmul_p256:
+_bignum_cmul_p256:
 
 // Shuffle inputs (since we want multiplier in rdx)
 

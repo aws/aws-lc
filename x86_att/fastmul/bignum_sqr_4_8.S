@@ -24,6 +24,7 @@
 
 
         .globl  bignum_sqr_4_8
+        .globl  _bignum_sqr_4_8
         .text
 
 // These are actually right
@@ -48,6 +49,7 @@
 
 
 bignum_sqr_4_8:
+_bignum_sqr_4_8:
 
 // Save more registers to play with
 

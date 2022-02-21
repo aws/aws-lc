@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_normalize
+        .globl  _bignum_normalize
         .text
         .balign 4
 
@@ -50,6 +51,7 @@
 
 
 bignum_normalize:
+_bignum_normalize:
 
 // If k = 0 the whole operation is trivial. Otherwise initialize
 // shift count r and top digit c, but then if k = 1 skip the digitwise part

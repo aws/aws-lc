@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_le
+        .globl  _bignum_le
         .text
         .balign 4
 
@@ -37,6 +38,7 @@
 
 
 bignum_le:
+_bignum_le:
 
 // Zero the main index counter for both branches
 

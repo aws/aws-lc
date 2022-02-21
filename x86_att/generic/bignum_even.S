@@ -24,9 +24,11 @@
 
 
         .globl  bignum_even
+        .globl  _bignum_even
         .text
 
 bignum_even:
+_bignum_even:
 
 // Load RAX with the lowest digit for k > 0, else 0
 

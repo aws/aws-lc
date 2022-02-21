@@ -34,15 +34,6 @@ endif
 
 SPLIT=tr ';' '\n'
 
-# Name mangling for OS X, adding an underscore to external symbols.
-# This makes the functions accessible from C by their basic names.
-
-ifeq ($(OSTYPE_RESULT),Darwin)
-MANGLE=sed -e 's/bignum_/_bignum_/; s/word_/_word_/'
-else
-MANGLE=cat
-endif
-
 # If actually on an x86 machine, just use the assembler (as). Otherwise
 # use a cross-assembling version so that the code can still be assembled
 # and the proofs checked against the object files (though you won't be able
@@ -264,7 +255,7 @@ OBJ = curve25519/bignum_mul_p25519.o \
 
 .PHONY: bmi clean clobber
 
-%.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(MANGLE) | $(ASSEMBLE) -o $@ -
+%.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 

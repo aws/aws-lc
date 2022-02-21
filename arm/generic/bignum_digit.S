@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_digit
+        .globl  _bignum_digit
         .text
         .balign 4
 
@@ -40,6 +41,7 @@
 
 
 bignum_digit:
+_bignum_digit:
 
 // For length zero finish immediately (the return value in x0 is 0)
 

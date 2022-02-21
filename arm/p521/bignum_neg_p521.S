@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_neg_p521
+        .globl  _bignum_neg_p521
         .text
         .balign 4
 
@@ -42,6 +43,7 @@
 #define d8 x11
 
 bignum_neg_p521:
+_bignum_neg_p521:
 
 // Load the 9 digits of x and generate p = the OR of them all
 

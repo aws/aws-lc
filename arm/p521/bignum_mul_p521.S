@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul_p521
+        .globl  _bignum_mul_p521
         .text
         .balign 4
 
@@ -153,6 +154,7 @@
                 adc     s7, s7, c                                       \
 
 bignum_mul_p521:
+_bignum_mul_p521:
 
 // Save registers
 

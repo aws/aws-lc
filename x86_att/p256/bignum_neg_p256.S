@@ -24,6 +24,7 @@
 
 
         .globl  bignum_neg_p256
+        .globl  _bignum_neg_p256
         .text
 
 #define z %rdi
@@ -43,6 +44,7 @@
 #define n1short %r10d
 
 bignum_neg_p256:
+_bignum_neg_p256:
 
 // Load the input digits as [d3;d2;d1;d0] and also set a bitmask q
 // for the input being nonzero, so that we avoid doing -0 = p_256

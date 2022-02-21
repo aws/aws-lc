@@ -30,6 +30,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_negmodinv
+        .globl  _bignum_negmodinv
         .text
         .balign 4
 
@@ -48,6 +49,7 @@
 
 
 bignum_negmodinv:
+_bignum_negmodinv:
 
 // If k = 0 do nothing
 

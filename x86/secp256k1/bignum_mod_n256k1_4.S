@@ -27,6 +27,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_mod_n256k1_4
+        .globl  _bignum_mod_n256k1_4
         .text
 
 #define z rdi
@@ -48,6 +49,7 @@
 #define c rsi
 
 bignum_mod_n256k1_4:
+_bignum_mod_n256k1_4:
 
 // Load a set of registers [0; n2; n1; n0] = 2^256 - n_256k1
 

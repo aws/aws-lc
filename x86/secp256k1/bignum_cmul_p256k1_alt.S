@@ -26,6 +26,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_cmul_p256k1_alt
+        .globl  _bignum_cmul_p256k1_alt
         .text
 
 #define z rdi
@@ -50,6 +51,7 @@
 #define d3 rcx
 
 bignum_cmul_p256k1_alt:
+_bignum_cmul_p256k1_alt:
 
 // Shuffle inputs (since we want rdx for the high parts of products)
 

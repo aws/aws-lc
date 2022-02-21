@@ -28,6 +28,7 @@
 
 
         .globl  bignum_optadd
+        .globl  _bignum_optadd
         .text
 
 #define k %rdi
@@ -43,6 +44,7 @@
 
 
 bignum_optadd:
+_bignum_optadd:
 
 // Initialize top carry to zero in all cases (also return value)
 

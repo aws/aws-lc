@@ -23,10 +23,12 @@
 // ----------------------------------------------------------------------------
 
         .globl  word_clz
+        .globl  _word_clz
         .text
         .balign 4
 
 word_clz:
+_word_clz:
                 clz     x0, x0
                 ret
 

@@ -24,7 +24,9 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_tomont_p256
+        .globl  _bignum_tomont_p256
         .globl  bignum_tomont_p256_alt
+        .globl  _bignum_tomont_p256_alt
         .text
         .balign 4
 
@@ -82,7 +84,9 @@
 #define t3 x9
 
 bignum_tomont_p256:
+_bignum_tomont_p256:
 bignum_tomont_p256_alt:
+_bignum_tomont_p256_alt:
 
 // Load the input
 

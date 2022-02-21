@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_madd
+        .globl  _bignum_madd
         .text
         .balign 4
 
@@ -51,6 +52,7 @@
 
 
 bignum_madd:
+_bignum_madd:
 
 // If p = 0 the result is trivial and nothing needs doing
 // Note that fortuitously our "carry/remainder" term is still right!

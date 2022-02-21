@@ -28,6 +28,7 @@
 
 
         .globl  bignum_deamont_p521
+        .globl  _bignum_deamont_p521
         .text
 
 #define z %rdi
@@ -48,6 +49,7 @@
 #define d8 %rbp
 
 bignum_deamont_p521:
+_bignum_deamont_p521:
 
 // Save more registers to play with
 

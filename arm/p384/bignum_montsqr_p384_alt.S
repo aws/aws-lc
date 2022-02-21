@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montsqr_p384_alt
+        .globl  _bignum_montsqr_p384_alt
         .text
         .balign 4
 
@@ -90,6 +91,7 @@
 #define h x6 // same as a4
 
 bignum_montsqr_p384_alt:
+_bignum_montsqr_p384_alt:
 
 // It's convenient to have two more registers to play with
 

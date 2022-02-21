@@ -24,6 +24,7 @@
 
 
         .globl  bignum_divmod10
+        .globl  _bignum_divmod10
         .text
 
 #define k %rdi
@@ -44,6 +45,7 @@
 #define wshort %r10d
 
 bignum_divmod10:
+_bignum_divmod10:
 
 // Initialize remainder to 0 and if k = 0 return
 

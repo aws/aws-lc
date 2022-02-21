@@ -25,6 +25,7 @@
 
 
         .globl  bignum_copy
+        .globl  _bignum_copy
         .text
 
 #define k %rdi
@@ -38,6 +39,7 @@
 
 
 bignum_copy:
+_bignum_copy:
 
 // Replace RDX = n with RDX = min(k,n) so we are definitely safe copying those
 // Initialize the element counter to 0

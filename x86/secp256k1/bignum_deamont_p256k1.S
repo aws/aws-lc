@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_deamont_p256k1
+        .globl  _bignum_deamont_p256k1
         .text
 
 #define z rdi
@@ -51,6 +52,7 @@
 #define c rcx
 
 bignum_deamont_p256k1:
+_bignum_deamont_p256k1:
 
 // Set up an initial 4-word window [d3,d2,d1,d0] = x
 

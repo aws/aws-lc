@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_half_p256k1
+        .globl  _bignum_half_p256k1
         .text
         .balign 4
 
@@ -37,6 +38,7 @@
 #define c x6
 
 bignum_half_p256k1:
+_bignum_half_p256k1:
 
 // Load the 4 digits of x
 

@@ -27,9 +27,11 @@
 
         .intel_syntax noprefix
         .globl  bignum_of_word
+        .globl  _bignum_of_word
         .text
 
 bignum_of_word:
+_bignum_of_word:
 
 // If k = 0 do nothing
 

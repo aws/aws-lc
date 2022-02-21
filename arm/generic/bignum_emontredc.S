@@ -34,6 +34,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_emontredc
+        .globl  _bignum_emontredc
         .text
         .balign 4
 
@@ -59,6 +60,7 @@
 
 
 bignum_emontredc:
+_bignum_emontredc:
 
 // If k = 0 the whole operation is trivial; note we also get a return of c = 0
 

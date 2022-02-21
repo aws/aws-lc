@@ -23,10 +23,12 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_even
+        .globl  _bignum_even
         .text
         .balign 4
 
 bignum_even:
+_bignum_even:
 
                 cbz     x0, end                 // if k = 0, that's the return!
                 ldr     x0, [x1]

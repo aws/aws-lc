@@ -32,6 +32,7 @@
 
 
         .globl  bignum_cmadd
+        .globl  _bignum_cmadd
         .text
 
 #define p %rdi
@@ -51,6 +52,7 @@
 
 
 bignum_cmadd:
+_bignum_cmadd:
 
 // Seems hard to avoid one more register
 

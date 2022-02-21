@@ -28,6 +28,7 @@
 
 
         .globl  bignum_montsqr
+        .globl  _bignum_montsqr
         .text
 
 // We copy x into %r9 but it comes in in %rdx originally
@@ -63,6 +64,7 @@
 
 
 bignum_montsqr:
+_bignum_montsqr:
 
 // Save registers
 

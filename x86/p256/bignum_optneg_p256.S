@@ -26,6 +26,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_optneg_p256
+        .globl  _bignum_optneg_p256
         .text
 
 #define z rdi
@@ -40,6 +41,7 @@
 #define n1short ecx
 
 bignum_optneg_p256:
+_bignum_optneg_p256:
 
 // Adjust q by zeroing it if the input is zero (to avoid giving -0 = p_256,
 // which is not strictly reduced even though it's correct modulo p_256).

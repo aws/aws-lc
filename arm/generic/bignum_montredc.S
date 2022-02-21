@@ -30,6 +30,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montredc
+        .globl  _bignum_montredc
         .text
         .balign 4
 
@@ -67,6 +68,7 @@
 
 
 bignum_montredc:
+_bignum_montredc:
 
 // If k = 0 the whole operation is trivial
 

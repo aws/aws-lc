@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_p256_4
+        .globl  _bignum_mod_p256_4
         .text
         .balign 4
 
@@ -42,6 +43,7 @@
 
 
 bignum_mod_p256_4:
+_bignum_mod_p256_4:
 
 // Load the three nonzero words of p_256 = [n3;0;n2;n1]
 

@@ -30,6 +30,7 @@
 
 
         .globl  bignum_amontredc
+        .globl  _bignum_amontredc
         .text
 
 // We copy x into %r10 but it comes in in %rdx originally
@@ -68,6 +69,7 @@
 
 
 bignum_amontredc:
+_bignum_amontredc:
 
 // Save registers and allocate space on stack for non-register variable w
 

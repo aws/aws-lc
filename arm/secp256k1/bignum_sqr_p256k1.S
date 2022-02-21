@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sqr_p256k1
+        .globl  _bignum_sqr_p256k1
         .text
         .balign 4
 
@@ -59,6 +60,7 @@
 #define a3 u7
 
 bignum_sqr_p256k1:
+_bignum_sqr_p256k1:
 
 // First just a near-clone of bignum_sqr_4_8 to get the square, using
 // different registers to collect full product without writeback.

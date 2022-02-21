@@ -26,6 +26,7 @@
 
 
         .globl  bignum_cmul_p384_alt
+        .globl  _bignum_cmul_p384_alt
         .text
 
 #define z %rdi
@@ -57,6 +58,7 @@
 #define qshort %ecx
 
 bignum_cmul_p384_alt:
+_bignum_cmul_p384_alt:
 
 // We seem to need (just!) one extra register, which we need to save and restore
 

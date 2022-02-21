@@ -25,6 +25,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_half_p256k1
+        .globl  _bignum_half_p256k1
         .text
 
 #define z rdi
@@ -38,6 +39,7 @@
 #define c rax
 
 bignum_half_p256k1:
+_bignum_half_p256k1:
 
 // Load the 4 digits of x, and letting b be the LSB (whether it's odd)
 // construct the constant c = 4294968273 * b

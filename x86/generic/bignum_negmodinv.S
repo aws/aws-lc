@@ -31,6 +31,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_negmodinv
+        .globl  _bignum_negmodinv
         .text
 
 #define k rdi
@@ -51,6 +52,7 @@
 #define ishort r8d
 
 bignum_negmodinv:
+_bignum_negmodinv:
 
                 push    rbx
                 push    r12

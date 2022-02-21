@@ -29,6 +29,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_bitsize
+        .globl  _bignum_bitsize
         .text
 
 #define k rdi
@@ -41,6 +42,7 @@
 
 
 bignum_bitsize:
+_bignum_bitsize:
 
 // Initialize the index i and also prepare default return value of 0 (i = rax)
 

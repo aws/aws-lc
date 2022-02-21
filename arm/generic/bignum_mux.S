@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mux
+        .globl  _bignum_mux
         .text
         .balign 4
 
@@ -38,6 +39,7 @@
 
 
 bignum_mux:
+_bignum_mux:
 
                 cbz     k, end                  // if k = 0 skip the loop
                 cmp     b, #0                    // Set condition codes b = 0

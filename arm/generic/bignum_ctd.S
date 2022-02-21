@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_ctd
+        .globl  _bignum_ctd
         .text
         .balign 4
 
@@ -35,6 +36,7 @@
 
 
 bignum_ctd:
+_bignum_ctd:
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 

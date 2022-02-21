@@ -14,7 +14,7 @@
  */
 
 // ----------------------------------------------------------------------------
-// Multiply modulo p_25519, z := (x * y) mod 2^255 - 19
+// Multiply modulo p_25519, z := (x * y) mod p_25519
 // Inputs x[4], y[4]; output z[4]
 //
 //    extern void bignum_mul_p25519
@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul_p25519
+        .globl  _bignum_mul_p25519
         .text
         .balign 4
 
@@ -93,6 +94,7 @@
 #define d x21
 
 bignum_mul_p25519:
+_bignum_mul_p25519:
 
 // Save additional registers to use
 

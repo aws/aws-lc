@@ -24,6 +24,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_sqr_p521_alt
+        .globl  _bignum_sqr_p521_alt
         .text
 
 // Input arguments
@@ -89,6 +90,7 @@
         adc     c, 0
 
 bignum_sqr_p521_alt:
+_bignum_sqr_p521_alt:
 
 // Make more registers available
 

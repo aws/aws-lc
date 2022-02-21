@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_bitsize
+        .globl  _bignum_bitsize
         .text
         .balign 4
 
@@ -40,6 +41,7 @@
 
 
 bignum_bitsize:
+_bignum_bitsize:
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 

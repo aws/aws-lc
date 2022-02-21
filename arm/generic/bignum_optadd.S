@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_optadd
+        .globl  _bignum_optadd
         .text
         .balign 4
 
@@ -43,6 +44,7 @@
 
 
 bignum_optadd:
+_bignum_optadd:
 
 // if k = 0 do nothing. This is also the right top carry in X0
 

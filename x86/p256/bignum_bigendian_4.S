@@ -37,8 +37,11 @@
 
         .intel_syntax noprefix
         .globl  bignum_bigendian_4
+        .globl  _bignum_bigendian_4
         .globl  bignum_frombebytes_4
+        .globl  _bignum_frombebytes_4
         .globl  bignum_tobebytes_4
+        .globl  _bignum_tobebytes_4
         .text
 
 #define z rdi
@@ -53,8 +56,11 @@
 // without using more intermediate registers.
 
 bignum_bigendian_4:
+_bignum_bigendian_4:
 bignum_frombebytes_4:
+_bignum_frombebytes_4:
 bignum_tobebytes_4:
+_bignum_tobebytes_4:
 
 // 0 and 3 words
 

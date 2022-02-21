@@ -31,6 +31,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_bitfield
+        .globl  _bignum_bitfield
         .text
 
 #define k rdi
@@ -49,6 +50,7 @@
 
 
 bignum_bitfield:
+_bignum_bitfield:
 
 // Initialize second of digit pair to zero and if length is zero finish
 // immediately; the digit e is also the return value in RAX

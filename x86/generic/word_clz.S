@@ -24,9 +24,11 @@
 
         .intel_syntax noprefix
         .globl  word_clz
+        .globl  _word_clz
         .text
 
 word_clz:
+_word_clz:
 
 // First do rax = 63 - bsr(a), which is right except (maybe) for zero inputs
 
