@@ -24,6 +24,7 @@
 
 
         .globl  bignum_sqr_p521
+        .globl  _bignum_sqr_p521
         .text
 
 #define z %rdi
@@ -54,6 +55,7 @@
         adoxq   zero, high
 
 bignum_sqr_p521:
+_bignum_sqr_p521:
 
 // Save more registers to play with
 

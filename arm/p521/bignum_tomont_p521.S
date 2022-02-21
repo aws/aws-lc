@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_tomont_p521
+        .globl  _bignum_tomont_p521
         .text
         .balign 4
 
@@ -43,6 +44,7 @@
 #define d8 x12
 
 bignum_tomont_p521:
+_bignum_tomont_p521:
 
 // Load top digit first and get its upper bits in h so that we
 // separate out x = 2^521 * H + L with h = H. Now x mod p_521 =

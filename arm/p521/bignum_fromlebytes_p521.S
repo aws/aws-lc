@@ -26,6 +26,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_fromlebytes_p521
+        .globl  _bignum_fromlebytes_p521
         .text
         .balign 4
 
@@ -37,6 +38,7 @@
 #define a x3
 
 bignum_fromlebytes_p521:
+_bignum_fromlebytes_p521:
 
 // word 0
 

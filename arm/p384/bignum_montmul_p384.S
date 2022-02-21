@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montmul_p384
+        .globl  _bignum_montmul_p384
         .text
         .balign 4
 
@@ -113,6 +114,7 @@
 #define t4 x24
 
 bignum_montmul_p384:
+_bignum_montmul_p384:
 
 // Save some registers
 
