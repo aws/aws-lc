@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mod_p384_6
+        .globl  _bignum_mod_p384_6
         .text
 
 #define z %rdi
@@ -47,6 +48,7 @@
 
 
 bignum_mod_p384_6:
+_bignum_mod_p384_6:
 
 // Load the input and subtract p_384 from it
 

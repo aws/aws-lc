@@ -28,6 +28,7 @@
 
         .intel_syntax noprefix
         .globl  bignum_montsqr_p384
+        .globl  _bignum_montsqr_p384
         .text
 
 #define z rdi
@@ -91,6 +92,7 @@
                 sbb     d6, 0
 
 bignum_montsqr_p384:
+_bignum_montsqr_p384:
 
 // Save more registers to play with
 

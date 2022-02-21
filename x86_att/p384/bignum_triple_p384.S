@@ -28,6 +28,7 @@
 
 
         .globl  bignum_triple_p384
+        .globl  _bignum_triple_p384
         .text
 
 #define z %rdi
@@ -48,6 +49,7 @@
 #define qshort %edx
 
 bignum_triple_p384:
+_bignum_triple_p384:
 
 // We seem to need (just!) one extra register, which we need to save and restore
 

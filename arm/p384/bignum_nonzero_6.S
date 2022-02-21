@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_nonzero_6
+        .globl  _bignum_nonzero_6
         .text
         .balign 4
 
@@ -33,6 +34,7 @@
 
 
 bignum_nonzero_6:
+_bignum_nonzero_6:
 
 // Generate a = an OR of all the words in the bignum
 
