@@ -120,7 +120,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
         if (plen != len) {      /* "TLS" mode of operation */
             if (in != out)
-                memcpy(out + aes_off, in + aes_off, plen - aes_off);
+                OPENSSL_memcpy(out + aes_off, in + aes_off, plen - aes_off);
 
             /* calculate HMAC and append it to payload */
             SHA1_Final(out + plen, &key->md);
@@ -163,7 +163,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                     return 0;
 
                 /* omit explicit iv */
-                memcpy(EVP_CIPHER_CTX_iv_noconst(ctx), in, AES_BLOCK_SIZE);
+                OPENSSL_memcpy(EVP_CIPHER_CTX_iv_noconst(ctx), in, AES_BLOCK_SIZE);
 
                 in += AES_BLOCK_SIZE;
                 out += AES_BLOCK_SIZE;
@@ -257,7 +257,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 pmac->u[3] |= key->md.h[3] & mask;
                 pmac->u[4] |= key->md.h[4] & mask;
 
-                memset(data, 0, SHA_CBLOCK);
+                OPENSSL_memset(data, 0, SHA_CBLOCK);
                 j += 64;
             }
             data->u[SHA_LBLOCK - 1] = bitlen;
@@ -327,14 +327,14 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
             unsigned int i;
             unsigned char hmac_key[64];
 
-            memset(hmac_key, 0, sizeof(hmac_key));
+            OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
 
             if (arg > (int)sizeof(hmac_key)) {
                 SHA1_Init(&key->head);
                 SHA1_Update(&key->head, ptr, arg);
                 SHA1_Final(hmac_key, &key->head);
             } else {
-                memcpy(hmac_key, ptr, arg);
+                OPENSSL_memcpy(hmac_key, ptr, arg);
             }
 
             for (i = 0; i < sizeof(hmac_key); i++)
@@ -378,7 +378,7 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                                AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)
                              - len);
             } else {
-                memcpy(key->aux.tls_aad, ptr, arg);
+                OPENSSL_memcpy(key->aux.tls_aad, ptr, arg);
                 key->payload_length = arg;
 
                 return SHA_DIGEST_LENGTH;

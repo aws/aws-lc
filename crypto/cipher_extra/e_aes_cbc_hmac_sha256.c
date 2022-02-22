@@ -132,7 +132,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
 
         if (plen != len) {      /* "TLS" mode of operation */
             if (in != out)
-                memcpy(out + aes_off, in + aes_off, plen - aes_off);
+                OPENSSL_memcpy(out + aes_off, in + aes_off, plen - aes_off);
 
             /* calculate HMAC and append it to payload */
             SHA256_Final(out + plen, &key->md);
@@ -275,7 +275,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
                 pmac->u[6] |= key->md.h[6] & mask;
                 pmac->u[7] |= key->md.h[7] & mask;
 
-                memset(data, 0, SHA256_CBLOCK);
+                OPENSSL_memset(data, 0, SHA256_CBLOCK);
                 j += 64;
             }
             data->u[SHA_LBLOCK - 1] = bitlen;
@@ -349,7 +349,7 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
             unsigned int i;
             unsigned char hmac_key[64];
 
-            memset(hmac_key, 0, sizeof(hmac_key));
+            OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
 
             if (arg < 0)
                 return -1;
@@ -359,7 +359,7 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                 SHA256_Update(&key->head, ptr, arg);
                 SHA256_Final(hmac_key, &key->head);
             } else {
-                memcpy(hmac_key, ptr, arg);
+                OPENSSL_memcpy(hmac_key, ptr, arg);
             }
 
             for (i = 0; i < sizeof(hmac_key); i++)
@@ -403,7 +403,7 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                                AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)
                              - len);
             } else {
-                memcpy(key->aux.tls_aad, ptr, arg);
+                OPENSSL_memcpy(key->aux.tls_aad, ptr, arg);
                 key->payload_length = arg;
 
                 return SHA256_DIGEST_LENGTH;
