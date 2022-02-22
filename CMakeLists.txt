@@ -752,7 +752,7 @@ if(BUILD_LIBSSL)
   add_subdirectory(tool)
   add_subdirectory(decrepit)
 endif()
-add_subdirectory(util/fipstools/cavp)
+add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
