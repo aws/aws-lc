@@ -13,6 +13,9 @@
 #include <string.h>
 
 #include <openssl/evp.h>
+// TODO: check circuit of include.
+#include <openssl/cipher.h>
+#include <openssl/err.h>
 #include <openssl/objects.h>
 #include <openssl/aes.h>
 #include <openssl/sha.h>
@@ -85,21 +88,22 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
     key->payload_length = NO_PAYLOAD_LENGTH;
 
-    if (len % AES_BLOCK_SIZE)
+    if (len % AES_BLOCK_SIZE) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_1);
         return 0;
+    }
 
     if (EVP_CIPHER_CTX_encrypting(ctx)) {
-        if (plen == NO_PAYLOAD_LENGTH)
+        if (plen == NO_PAYLOAD_LENGTH) {
             plen = len;
-        else if (len !=
-                 ((plen + SHA_DIGEST_LENGTH +
-                   AES_BLOCK_SIZE) & -AES_BLOCK_SIZE))
+        } else if (len != ((plen + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
+            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_2);
             return 0;
-        else if (key->aux.tls_ver >= TLS1_1_VERSION)
+        } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
             iv = AES_BLOCK_SIZE;
+        }
 
-        if (plen > (sha_off + iv)
-            && (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
+        if (plen > (sha_off + iv) && (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
             SHA1_Update(&key->md, in + iv, sha_off);
 
             aesni_cbc_sha1_enc(in, out, blocks, &key->ks,
