@@ -14,34 +14,19 @@
  */
 
 // ----------------------------------------------------------------------------
-// Convert 6-digit (384-bit) bignum to/from little-endian form
-// Input x[6]; output z[6]
+// Convert little-endian bytes to 9-digit 528-bit bignum
 //
-//    extern void bignum_littleendian_6
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_fromlebytes_p521
+//     (uint64_t z[static 9],uint8_t x[static 66])
 //
-// The same function is given two other prototypes whose names reflect the
-// treatment of one or other argument as a byte array rather than word array:
-//
-//    extern void bignum_fromlebytes_6
-//     (uint64_t z[static 6], uint8_t x[static 48]);
-//
-//    extern void bignum_tolebytes_6
-//     (uint8_t z[static 48], uint64_t x[static 6]);
-//
-// The implementation works by loading in bytes and storing in words (i.e.
-// stylistically it is "fromlebytes"); in the more common little-endian
-// usage of ARM, this is just copying.
+// The result will be < 2^528 since it is translated from 66 bytes.
+// It is mainly intended for inputs x < p_521 < 2^521 < 2^528.
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_littleendian_6
-        .globl  _bignum_littleendian_6
-        .globl  bignum_fromlebytes_6
-        .globl  _bignum_fromlebytes_6
-        .globl  bignum_tolebytes_6
-        .globl  _bignum_tolebytes_6
+        .globl  bignum_fromlebytes_p521
+        .globl  _bignum_fromlebytes_p521
         .text
         .balign 4
 
@@ -52,12 +37,8 @@
 #define dshort w2
 #define a x3
 
-bignum_littleendian_6:
-_bignum_littleendian_6:
-bignum_fromlebytes_6:
-_bignum_fromlebytes_6:
-bignum_tolebytes_6:
-_bignum_tolebytes_6:
+bignum_fromlebytes_p521:
+_bignum_fromlebytes_p521:
 
 // word 0
 
@@ -178,6 +159,54 @@ _bignum_tolebytes_6:
                 ldrb    dshort, [x, #47]
                 extr    a, d, a, #8
                 str     a, [z, #40]
+
+// word 6
+
+                ldrb    dshort, [x, #48]
+                extr    a, d, xzr, #8
+                ldrb    dshort, [x, #49]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #50]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #51]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #52]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #53]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #54]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #55]
+                extr    a, d, a, #8
+                str     a, [z, #48]
+
+// word 7
+
+                ldrb    dshort, [x, #56]
+                extr    a, d, xzr, #8
+                ldrb    dshort, [x, #57]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #58]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #59]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #60]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #61]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #62]
+                extr    a, d, a, #8
+                ldrb    dshort, [x, #63]
+                extr    a, d, a, #8
+                str     a, [z, #56]
+
+// word 8
+
+                ldrb    dshort, [x, #64]
+                extr    a, d, xzr, #8
+                ldrb    dshort, [x, #65]
+                extr    a, d, a, #56
+                str     a, [z, #64]
 
                 ret
 

@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montmul_p521
+        .globl  _bignum_montmul_p521
         .text
         .balign 4
 
@@ -158,6 +159,7 @@
                 adc     s7, s7, c                                       \
 
 bignum_montmul_p521:
+_bignum_montmul_p521:
 
 // Save registers
 

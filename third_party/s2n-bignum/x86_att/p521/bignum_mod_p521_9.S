@@ -25,6 +25,7 @@
 
 
         .globl  bignum_mod_p521_9
+        .globl  _bignum_mod_p521_9
         .text
 
 #define z %rdi
@@ -47,6 +48,7 @@
 #define d7 %rsi
 
 bignum_mod_p521_9:
+_bignum_mod_p521_9:
 
 // Save one more register
 

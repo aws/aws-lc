@@ -28,6 +28,7 @@
 
 
         .globl  bignum_demont_p521
+        .globl  _bignum_demont_p521
         .text
 
 #define z %rdi
@@ -48,6 +49,7 @@
 #define d8 %rdx
 
 bignum_demont_p521:
+_bignum_demont_p521:
 
 // Rotate, as a 521-bit quantity, by 9*64 - 521 = 55 bits right.
 

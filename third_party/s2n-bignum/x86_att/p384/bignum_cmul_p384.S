@@ -26,6 +26,7 @@
 
 
         .globl  bignum_cmul_p384
+        .globl  _bignum_cmul_p384
         .text
 
 #define z %rdi
@@ -53,6 +54,7 @@
 
 
 bignum_cmul_p384:
+_bignum_cmul_p384:
 
 // We seem to need (just!) one extra register, which we need to save and restore
 
