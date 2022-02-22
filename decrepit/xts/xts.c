@@ -52,6 +52,7 @@
 
 #include <openssl/aes.h>
 #include <openssl/cipher.h>
+#include <openssl/err.h>
 
 #include "../crypto/fipsmodule/modes/internal.h"
 #include "../crypto/fipsmodule/aes/internal.h"
@@ -164,6 +165,27 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 
   if (key) {
     // key_len is two AES keys
+    /*
+     * Verify that the two keys are different.
+     *
+     * This addresses the vulnerability described in Rogaway's
+     * September 2004 paper:
+     *
+     *      "Efficient Instantiations of Tweakable Blockciphers and
+     *       Refinements to Modes OCB and PMAC".
+     *      (http://web.cs.ucdavis.edu/~rogaway/papers/offsets.pdf)
+     *
+     * FIPS 140-2 IG A.9 XTS-AES Key Generation Requirements states
+     * that:
+     *      "The check for Key_1 != Key_2 shall be done at any place
+     *       BEFORE using the keys in the XTS-AES algorithm to process
+     *       data with them."
+     */
+    if (OPENSSL_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_XTS_DUPLICATED_KEYS);
+      return 0;
+    }
+
     if (enc) {
       AES_set_encrypt_key(key, ctx->key_len * 4, &xctx->ks1.ks);
       xctx->xts.block1 = AES_encrypt;

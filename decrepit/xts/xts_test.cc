@@ -506,3 +506,28 @@ TEST(XTSTest, TestVectors) {
     }
   }
 }
+
+// Negative test for key1 = key2
+TEST(XTSTest, DuplicateKey) {
+
+  // The 2 halves of the key below are identical.
+  // The ciphertext is not correct which does not matter since it will fail in Init.
+  const XTSTestCase kXTSDuplicateKey = {
+    "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+    "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0",
+    "9a785634120000000000000000000000",
+    "000102030405060708090a0b0c0d0e0f10",
+    "000102030405060708090a0b0c0d0e0f10",
+  };
+
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+
+  std::vector<uint8_t> key, iv, plaintext, ciphertext;
+  ASSERT_TRUE(DecodeHex(&key, kXTSDuplicateKey.key_hex));
+  ASSERT_TRUE(DecodeHex(&iv, kXTSDuplicateKey.iv_hex));
+
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_FALSE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                 iv.data()));
+
+}
