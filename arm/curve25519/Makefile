@@ -32,7 +32,9 @@ endif
 # List of object files
 
 OBJ = bignum_mul_p25519.o \
-      bignum_mul_p25519_alt.o
+      bignum_mul_p25519_alt.o \
+      bignum_sqr_p25519.o \
+      bignum_sqr_p25519_alt.o
 
 %.o : %.S ; cpp $< | $(GAS) -o $@ -
 

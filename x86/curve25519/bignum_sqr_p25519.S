@@ -1,0 +1,177 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// ----------------------------------------------------------------------------
+// Square modulo p_25519, z := (x^2) mod p_25519
+// Input x[4]; output z[4]
+//
+//    extern void bignum_sqr_p25519
+//     (uint64_t z[static 4], uint64_t x[static 4]);
+//
+// Standard x86-64 ABI: RDI = z, RSI = x
+// ----------------------------------------------------------------------------
+
+        .intel_syntax noprefix
+        .globl  bignum_sqr_p25519
+        .globl  _bignum_sqr_p25519
+        .text
+
+#define z rdi
+#define x rsi
+
+// Use this fairly consistently for a zero
+
+#define zero rbx
+#define zeroe ebx
+
+// Add rdx * m into a register-pair (high,low)
+// maintaining consistent double-carrying with adcx and adox,
+// using rax and rcx as temporaries
+
+#define mulpadd(high,low,m)             \
+        mulx    rcx, rax, m;            \
+        adcx    low, rax;               \
+        adox    high, rcx
+
+// mulpade(high,low,m) adds rdx * m to a register-pair (high,low)
+// maintaining consistent double-carrying with adcx and adox,
+// using rax as a temporary, assuming high created from scratch
+// and that zero has value zero.
+
+#define mulpade(high,low,m)             \
+        mulx    high, rax, m;           \
+        adcx    low, rax;               \
+        adox    high, zero
+
+bignum_sqr_p25519:
+_bignum_sqr_p25519:
+
+// Save more registers to play with
+
+        push    rbx
+        push    r12
+        push    r13
+        push    r14
+        push    r15
+
+// Compute [r15;r8] = [00] which we use later, but mainly
+// set up an initial window [r14;...;r9] = [23;03;01]
+
+        mov     rdx, [x]
+        mulx    r15, r8, rdx
+        mulx    r10, r9, [x+8]
+        mulx    r12, r11, [x+24]
+        mov     rdx, [x+16]
+        mulx    r14, r13, [x+24]
+
+// Clear our zero register, and also initialize the flags for the carry chain
+
+        xor     zeroe, zeroe
+
+// Chain in the addition of 02 + 12 + 13 to that window (no carry-out possible)
+// This gives all the "heterogeneous" terms of the squaring ready to double
+
+        mulpadd(r11,r10,[x])
+        mulpadd(r12,r11,[x+8])
+        mov     rdx, [x+24]
+        mulpadd(r13,r12,[x+8])
+        adcx    r13, zero
+        adox    r14, zero
+        adc     r14, zero
+
+// Double and add to the 00 + 11 + 22 + 33 terms
+
+        xor     zeroe, zeroe
+        adcx    r9, r9
+        adox    r9, r15
+        mov     rdx, [x+8]
+        mulx    rdx, rax, rdx
+        adcx    r10, r10
+        adox    r10, rax
+        adcx    r11, r11
+        adox    r11, rdx
+        mov     rdx, [x+16]
+        mulx    rdx, rax, rdx
+        adcx    r12, r12
+        adox    r12, rax
+        adcx    r13, r13
+        adox    r13, rdx
+        mov     rdx, [x+24]
+        mulx    r15, rax, rdx
+        adcx    r14, r14
+        adox    r14, rax
+        adcx    r15, zero
+        adox    r15, zero
+
+// Now we have the full 8-digit product 2^256 * h + l where
+// h = [r15,r14,r13,r12] and l = [r11,r10,r9,r8]
+// and this is == 38 * h + l (mod p_25519)
+
+        mov     edx, 38
+        xor     zeroe, zeroe
+        mulpadd(r9,r8,r12)
+        mulpadd(r10,r9,r13)
+        mulpadd(r11,r10,r14)
+        mulpade(r12,r11,r15)
+        adcx    r12, zero
+
+// Now we have reduced to 5 digits, 2^255 * h + l = [r12,r11,r10,r9,r8]
+// Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
+
+        shld    r12, r11, 1
+        mov     rcx, 0x8000000000000000
+        mov     edx, 19
+        inc     r12
+        or      r11, rcx
+        mulx    rbx, rax, r12
+        add     r8, rax
+        adc     r9, rbx
+        adc     r10, zero
+        adc     r11, zero
+
+// Now the effective answer is 2^256 * (CF - 1) + [u3,u2,u1,u0]
+// So we correct if CF = 0 by subtracting 19, either way masking to
+// 255 bits, i.e. by effectively adding p_25519 to the "full" answer
+
+        sbb     rax, rax
+        not     rax
+        and     rax, rdx
+        sub     r8, rax
+        sbb     r9, zero
+        sbb     r10, zero
+        sbb     r11, zero
+        not     rcx
+        and     r11, rcx
+
+// Write everything back
+
+        mov     [z], r8
+        mov     [z+8], r9
+        mov     [z+16], r10
+        mov     [z+24], r11
+
+// Restore registers and return
+
+        pop     r15
+        pop     r14
+        pop     r13
+        pop     r12
+        pop     rbx
+
+        ret
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
