@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/cipher.h>
+#include <openssl/aes.h>
 
 #include <vector>
 
@@ -529,5 +530,46 @@ TEST(XTSTest, DuplicateKey) {
   bssl::ScopedEVP_CIPHER_CTX ctx;
   ASSERT_FALSE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
                                  iv.data()));
+}
+
+// Negative test for input length
+TEST(XTSTest, InputTooLong) {
+
+  // The length of the input will be (wrongly) provided as larger than
+  // XTS_MAX_BLOCKS_PER_DATA_UNIT
+  // The ciphertext does not correspond to the plaintext
+  // which does not matter since it will on length check.
+  const XTSTestCase kXTSWrongVector = {
+    "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+    "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+    "9a785634120000000000000000000000",
+    "000102030405060708090a0b0c0d0e0f10",
+    "000102030405060708090a0b0c0d0e0f10",
+  };
+
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+
+  std::vector<uint8_t> key, iv, plaintext, ciphertext;
+  ASSERT_TRUE(DecodeHex(&key, kXTSWrongVector.key_hex));
+  ASSERT_TRUE(DecodeHex(&iv, kXTSWrongVector.iv_hex));
+  ASSERT_TRUE(DecodeHex(&plaintext, kXTSWrongVector.plaintext_hex));
+  ASSERT_TRUE(DecodeHex(&ciphertext, kXTSWrongVector.ciphertext_hex));
+
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                 iv.data()));
+  int len;
+  std::vector<uint8_t> out(plaintext.size());
+  ASSERT_FALSE(
+    EVP_EncryptUpdate(ctx.get(), out.data(), &len, plaintext.data(),
+                      (XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) +1));
+
+  // Test Decryption
+  ctx.Reset();
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                 iv.data()));
+  ASSERT_FALSE(
+    EVP_DecryptUpdate(ctx.get(), out.data(), &len, ciphertext.data(),
+                      (XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) +1));
 
 }

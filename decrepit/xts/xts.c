@@ -182,7 +182,7 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
      *       data with them."
      */
     if (OPENSSL_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_XTS_DUPLICATED_KEYS);
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DUPLICATED_KEYS);
       return 0;
     }
 
@@ -218,6 +218,18 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       len < AES_BLOCK_SIZE) {
     return 0;
   }
+
+  /*
+   * Impose a limit of 2^20 blocks per data unit as specified by
+   * IEEE Std 1619-2018.  The earlier and obsolete IEEE Std 1619-2007
+   * indicated that this was a SHOULD NOT rather than a MUST NOT.
+   * NIST SP 800-38E mandates the same limit.
+   */
+  if (len > XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DATA_UNIT_IS_TOO_LARGE);
+    return 0;
+  }
+
 #if defined(HWAES_XTS)
   if (hwaes_capable()) {
     if (ctx->encrypt) {
