@@ -68,10 +68,8 @@
 #include "cipher/aead.c"
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
-#include "cipher/e_des.c"
 #include "cipher/e_aesccm.c"
 #include "cmac/cmac.c"
-#include "des/des.c"
 #include "dh/check.c"
 #include "dh/dh.c"
 #include "digest/digest.c"
@@ -218,7 +216,6 @@ BORINGSSL_bcm_power_on_self_test(void) {
 #endif
 
   assert_within(rodata_start, kPrimes, rodata_end);
-  assert_within(rodata_start, des_skb, rodata_end);
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
@@ -229,8 +226,8 @@ BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
-  uint8_t result[SHA256_DIGEST_LENGTH];
-  const EVP_MD *const kHashFunction = EVP_sha256();
+uint8_t result[SHA256_DIGEST_LENGTH];
+const EVP_MD *const kHashFunction = EVP_sha256();
 
   static const uint8_t kHMACKey[64] = {0};
   unsigned result_len;
