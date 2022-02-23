@@ -164,23 +164,23 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   }
 
   if (key) {
+    // Verify that the two keys are different.
+    //
+    // This addresses the vulnerability described in Rogaway's
+    // September 2004 paper:
+    //
+    //      "Efficient Instantiations of Tweakable Blockciphers and
+    //       Refinements to Modes OCB and PMAC".
+    //      (http://web.cs.ucdavis.edu/~rogaway/papers/offsets.pdf)
+    //
+    // FIPS 140-2 IG A.9 XTS-AES Key Generation Requirements states
+    // that:
+    //      "The check for Key_1 != Key_2 shall be done at any place
+    //       BEFORE using the keys in the XTS-AES algorithm to process
+    //       data with them."
+    //
     // key_len is two AES keys
-    /*
-     * Verify that the two keys are different.
-     *
-     * This addresses the vulnerability described in Rogaway's
-     * September 2004 paper:
-     *
-     *      "Efficient Instantiations of Tweakable Blockciphers and
-     *       Refinements to Modes OCB and PMAC".
-     *      (http://web.cs.ucdavis.edu/~rogaway/papers/offsets.pdf)
-     *
-     * FIPS 140-2 IG A.9 XTS-AES Key Generation Requirements states
-     * that:
-     *      "The check for Key_1 != Key_2 shall be done at any place
-     *       BEFORE using the keys in the XTS-AES algorithm to process
-     *       data with them."
-     */
+
     if (OPENSSL_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DUPLICATED_KEYS);
       return 0;
@@ -219,12 +219,10 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  /*
-   * Impose a limit of 2^20 blocks per data unit as specified by
-   * IEEE Std 1619-2018.  The earlier and obsolete IEEE Std 1619-2007
-   * indicated that this was a SHOULD NOT rather than a MUST NOT.
-   * NIST SP 800-38E mandates the same limit.
-   */
+  // Impose a limit of 2^20 blocks per data unit as specified by
+  // IEEE Std 1619-2018.  The earlier and obsolete IEEE Std 1619-2007
+  // indicated that this was a SHOULD NOT rather than a MUST NOT.
+  // NIST SP 800-38E mandates the same limit.
   if (len > XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DATA_UNIT_IS_TOO_LARGE);
     return 0;
