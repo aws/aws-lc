@@ -143,6 +143,25 @@ void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
                   const AES_KEY *key1, const AES_KEY *key2,
                   const uint8_t iv[16]);
+OPENSSL_EXPORT void aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
+                                      const AES_KEY *key1, const AES_KEY *key2,
+                                      const uint8_t iv[16], int enc);
+#else
+OPENSSL_INLINE void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                                       const uint8_t iv[16]) {
+  abort();
+}
+OPENSSL_INLINE void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                  const uint8_t iv[16]) {
+  abort();
+}
+OPENSSL_INLINE void aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
+                                      const AES_KEY *key1, const AES_KEY *key2,
+                                      const uint8_t iv[16], int enc) {
+  abort();
+}
 #endif  //HWAES_XTS
 
 #if defined(BSAES)

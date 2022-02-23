@@ -563,9 +563,15 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   const size_t key_len = EVP_CIPHER_key_length(cipher);
   const size_t iv_len = EVP_CIPHER_iv_length(cipher);
 
-  std::vector<uint8_t> key(key_len, 5);
+  std::vector<uint8_t> key(key_len);
   std::vector<uint8_t> iv(iv_len, 9);
   std::vector<uint8_t> in, out;
+
+  // key = key1||key2 and key1 should not equal key2
+  std::generate(key.begin(), key.end(), [] {
+    static uint8_t i = 0;
+    return i++;
+  });
 
   BM_NAMESPACE::ScopedEVP_CIPHER_CTX ctx;
   // Benchmark initialisation and encryption

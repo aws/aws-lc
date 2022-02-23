@@ -125,3 +125,15 @@ void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
   CRYPTO_cfb128_encrypt(in, out, length, key, ivec, &num_u, enc, AES_encrypt);
   *num = (int)num_u;
 }
+
+#if defined(HWAES_XTS)
+void aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
+                       const AES_KEY *key1, const AES_KEY *key2,
+                       const uint8_t iv[16], int enc) {
+  if (enc) {
+    aes_hw_xts_encrypt(in, out, length, key1, key2, iv);
+  } else {
+    aes_hw_xts_decrypt(in, out, length, key1, key2, iv);
+  }
+}
+#endif
