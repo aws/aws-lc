@@ -536,9 +536,9 @@ TEST(XTSTest, DuplicateKey) {
 TEST(XTSTest, InputTooLong) {
 
   // The length of the input will be (wrongly) provided as larger than
-  // XTS_MAX_BLOCKS_PER_DATA_UNIT
+  // XTS_MAX_BLOCKS_PER_DATA_UNIT.
   // The ciphertext does not correspond to the plaintext
-  // which does not matter since it will on length check.
+  // which does not matter since it will fail on length check.
   const XTSTestCase kXTSWrongVector = {
     "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
     "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -562,7 +562,7 @@ TEST(XTSTest, InputTooLong) {
   std::vector<uint8_t> out(plaintext.size());
   ASSERT_FALSE(
     EVP_EncryptUpdate(ctx.get(), out.data(), &len, plaintext.data(),
-                      (XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) +1));
+                      (XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) + 1));
 
   // Test Decryption
   ctx.Reset();
@@ -570,6 +570,6 @@ TEST(XTSTest, InputTooLong) {
                                  iv.data()));
   ASSERT_FALSE(
     EVP_DecryptUpdate(ctx.get(), out.data(), &len, ciphertext.data(),
-                      (XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) +1));
+                      (XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) + 1));
 
 }
