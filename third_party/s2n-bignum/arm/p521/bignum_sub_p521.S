@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_sub_p521
+        .globl  _bignum_sub_p521
         .text
         .balign 4
 
@@ -44,6 +45,7 @@
 
 
 bignum_sub_p521:
+_bignum_sub_p521:
 
 // First just subtract the numbers as [d8;d7;d6;d5;d4;d3;d2;d1;d0] = x - y
 

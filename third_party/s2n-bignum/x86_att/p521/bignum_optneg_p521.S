@@ -26,6 +26,7 @@
 
 
         .globl  bignum_optneg_p521
+        .globl  _bignum_optneg_p521
         .text
 
 #define z %rdi
@@ -40,6 +41,7 @@
 #define d4 %r11
 
 bignum_optneg_p521:
+_bignum_optneg_p521:
 
 // Load most inputs (into the limited registers) and OR all of them to get q
 

@@ -14,64 +14,58 @@
  */
 
 // ----------------------------------------------------------------------------
-// 384-bit multiplex/select z := x (if p nonzero) or z := y (if p zero)
-// Inputs p, x[6], y[6]; output z[6]
+// Convert little-endian bytes to 9-digit 528-bit bignum
 //
-//    extern void bignum_mux_6
-//     (uint64_t p, uint64_t z[static 6],
-//      uint64_t x[static 6], uint64_t y[static 6]);
+//    extern void bignum_fromlebytes_p521
+//     (uint64_t z[static 9],uint8_t x[static 66])
 //
-// It is assumed that all numbers x, y and z have the same size 6 digits.
+// The result will be < 2^528 since it is translated from 66 bytes.
+// It is mainly intended for inputs x < p_521 < 2^521 < 2^528.
 //
-// Standard x86-64 ABI: RDI = p, RSI = z, RDX = x, RCX = y
+// Since x86 is little-endian, this is just copying.
+//
+// Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_mux_6
-        .globl  _bignum_mux_6
+        .globl  bignum_fromlebytes_p521
+        .globl  _bignum_fromlebytes_p521
         .text
 
-#define p %rdi
-#define z %rsi
-#define x %rdx
-#define y %rcx
+#define z %rdi
+#define x %rsi
 #define a %rax
-#define b %r8
 
-
-bignum_mux_6:
-_bignum_mux_6:
-                testq   p, p
+bignum_fromlebytes_p521:
+_bignum_fromlebytes_p521:
 
                 movq    (x), a
-                movq    (y), b
-                cmovzq  b, a
                 movq    a, (z)
 
                 movq    8(x), a
-                movq    8(y), b
-                cmovzq  b, a
                 movq    a, 8(z)
 
                 movq    16(x), a
-                movq    16(y), b
-                cmovzq  b, a
                 movq    a, 16(z)
 
                 movq    24(x), a
-                movq    24(y), b
-                cmovzq  b, a
                 movq    a, 24(z)
 
                 movq    32(x), a
-                movq    32(y), b
-                cmovzq  b, a
                 movq    a, 32(z)
 
                 movq    40(x), a
-                movq    40(y), b
-                cmovzq  b, a
                 movq    a, 40(z)
+
+                movq    48(x), a
+                movq    a, 48(z)
+
+                movq    56(x), a
+                movq    a, 56(z)
+
+                xorl    %eax, %eax
+                movw    64(x), %ax
+                movq    a, 64(z)
 
                 ret
 

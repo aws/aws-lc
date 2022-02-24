@@ -18,15 +18,15 @@
 // x reduced
 // Inputs c, x[9]; output z[9]
 //
-//    extern void bignum_cmul_p521
+//    extern void bignum_cmul_p521_alt
 //     (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_cmul_p521
-        .globl  _bignum_cmul_p521
+        .globl  bignum_cmul_p521_alt
+        .globl  _bignum_cmul_p521_alt
         .text
 
 #define z %rdi
@@ -37,31 +37,35 @@
 
 // Likewise this is thrown away after initial multiply
 
+#define m %rsi
+
 #define c %rdx
 #define cshort %edx
 
 #define a %rax
+#define d %rdx
+
 #define dd %rax
 
-// Digits: last one aliased to the local x pointer that's no longer needed
+// Digits: last ones aliased to inputs that are no longer used then
 
-#define d0 %rsi
-#define d1 %r8
-#define d2 %r9
-#define d3 %r10
-#define d4 %r11
-#define d5 %rbx
-#define d6 %rbp
-#define d7 %r12
-#define d8 %r13
-#define d9 %rcx
+#define d0 %r8
+#define d1 %r9
+#define d2 %r10
+#define d3 %r11
+#define d4 %rbx
+#define d5 %rbp
+#define d6 %r12
+#define d7 %r13
+#define d8 %rcx
+#define d9 %rsi
 
 // Same as d9
 
 #define h d9
 
-bignum_cmul_p521:
-_bignum_cmul_p521:
+bignum_cmul_p521_alt:
+_bignum_cmul_p521_alt:
 
 // Save additional registers to use
 
@@ -70,37 +74,67 @@ _bignum_cmul_p521:
                 pushq   %r12
                 pushq   %r13
 
-// Shuffle inputs (since we want the multiplier in %rdx)
+// Shuffle inputs (since we want %rdx for the high parts of products)
 
                 movq    %rdx, x
-                movq    %rsi, c
 
 // Multiply as [d9; ...; d0] = c * x.
 
-                mulxq   (x), d0, d1
-                mulxq   8(x), a, d2
+                movq    (x), a
+                mulq    m
+                movq    a, d0
+                movq    d, d1
+
+                movq    8(x), a
+                mulq    m
+                xorq    d2, d2
                 addq    a, d1
-                mulxq   16(x), a, d3
-                adcq    a, d2
-                mulxq   24(x), a, d4
-                adcq    a, d3
-                mulxq   32(x), a, d5
-                adcq    a, d4
-                mulxq   40(x), a, d6
-                adcq    a, d5
-                mulxq   48(x), a, d7
-                adcq    a, d6
-                mulxq   56(x), a, d8
-                adcq    a, d7
-                mulxq   64(x), a, d9
-                adcq    a, d8
-                adcq    $0, d9
+                adcq    d, d2
+
+                movq    16(x), a
+                mulq    m
+                xorq    d3, d3
+                addq    a, d2
+                adcq    d, d3
+
+                movq    24(x), a
+                mulq    m
+                xorq    d4, d4
+                addq    a, d3
+                adcq    d, d4
+
+                movq    32(x), a
+                mulq    m
+                xorq    d5, d5
+                addq    a, d4
+                adcq    d, d5
+
+                movq    40(x), a
+                mulq    m
+                xorq    d6, d6
+                addq    a, d5
+                adcq    d, d6
+
+                movq    48(x), a
+                mulq    m
+                xorq    d7, d7
+                addq    a, d6
+                adcq    d, d7
+
+                movq    56(x), a
+                mulq    m
+                addq    a, d7
+                movq    64(x), a
+                movq    $0, d8
+                adcq    d, d8
+                mulq    m
+                xorq    d9, d9
+                addq    a, d8
+                adcq    d, d9
 
 // Create an AND "dd" of digits d7,...,d1, a computation we hope will
-// get nicely interleaved with the multiplication chain above.
-// From the point of view of architectural dependencies we have to
-// bunch it up here since AND destroys the flags and we overwrite the
-// register used as a stage temporary variable for the multiplications.
+// get nicely interleaved with the multiplication chain above, though
+// we can't do so directly as we are using the same register %rax.
 
                 movq    d1, dd
                 andq    d2, dd

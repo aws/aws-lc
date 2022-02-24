@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_demont_p521
+        .globl  _bignum_demont_p521
         .text
         .balign 4
 
@@ -49,6 +50,7 @@
 #define c x6
 
 bignum_demont_p521:
+_bignum_demont_p521:
 
 // Rotate, as a 521-bit quantity, by 9*64 - 521 = 55 bits right.
 
