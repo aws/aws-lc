@@ -69,9 +69,6 @@ func NewTestHelper(test_file_path string, num_of_tests int) *TestHelper {
 // CanBeTransfer tells if |test_case_name| can be converted to test SSL transfer.
 func (helper *TestHelper) CanBeTransfer(test_case_name string) bool {
 	_, ok := helper.test_case_names[test_case_name]
-	if ok {
-		helper.test_case_names[test_case_name] = EMPTY
-	}
 	return ok
 }
 
