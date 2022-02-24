@@ -25,6 +25,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_optneg_p521
+        .globl  _bignum_optneg_p521
         .text
         .balign 4
 
@@ -44,6 +45,7 @@
 #define d8 x12
 
 bignum_optneg_p521:
+_bignum_optneg_p521:
 
 // Load the 9 digits of x and generate q = the OR of them all
 

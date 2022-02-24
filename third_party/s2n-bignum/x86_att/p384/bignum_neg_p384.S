@@ -24,6 +24,7 @@
 
 
         .globl  bignum_neg_p384
+        .globl  _bignum_neg_p384
         .text
 
 #define z %rdi
@@ -39,6 +40,7 @@
 #define n0short %eax
 
 bignum_neg_p384:
+_bignum_neg_p384:
 
 // Or together the input digits and create a bitmask q if this is nonzero, so
 // that we avoid doing -0 = p_384 and hence maintain strict modular reduction
