@@ -133,11 +133,11 @@ _bignum_sqr_p25519:
         shldq   $1, %r11, %r12
         movq    $0x8000000000000000, %rcx
         movl    $19, %edx
-        incq    %r12
+        leaq    1(%r12), %rax
         orq     %rcx, %r11
-        mulxq   %r12, %rax, %rbx
+        imulq   %rdx, %rax
         addq    %rax, %r8
-        adcq    %rbx, %r9
+        adcq    zero, %r9
         adcq    zero, %r10
         adcq    zero, %r11
 

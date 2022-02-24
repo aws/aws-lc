@@ -135,10 +135,10 @@ let bignum_sqr_p25519_mc = define_assert_from_elf "bignum_sqr_p25519_mc" "x86/cu
                            (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
-  0x49; 0xff; 0xc4;        (* INC (% r12) *)
+  0x49; 0x8d; 0x44; 0x24; 0x01;
+                           (* LEA (% rax) (%% (r12,1)) *)
   0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
-  0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
-                           (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
+  0x48; 0x0f; 0xaf; 0xc2;  (* IMUL (% rax) (% rdx) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
   0x49; 0x11; 0xd9;        (* ADC (% r9) (% rbx) *)
   0x49; 0x11; 0xda;        (* ADC (% r10) (% rbx) *)
@@ -182,13 +182,13 @@ let p25519redlemma = prove
 
 let BIGNUM_SQR_P25519_CORRECT = time prove
  (`!z x n pc.
-        nonoverlapping (word pc,0x192) (z,8 * 4)
+        nonoverlapping (word pc,0x193) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_sqr_p25519_mc /\
                   read RIP s = word(pc + 0x9) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
-             (\s. read RIP s = word (pc + 0x188) /\
+             (\s. read RIP s = word (pc + 0x189) /\
                   bignum_from_memory (z,4) s = (n EXP 2) MOD p_25519)
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -250,7 +250,7 @@ let BIGNUM_SQR_P25519_CORRECT = time prove
 
   (*** Quotient estimate computation ***)
 
-  X86_STEPS_TAC BIGNUM_SQR_P25519_EXEC (57--61) THEN
+  X86_STEPS_TAC BIGNUM_SQR_P25519_EXEC (57--62) THEN
   ABBREV_TAC `t = bignum_of_wordlist
    [sum_s45; sum_s48; sum_s51; word_or sum_s54 (word 9223372036854775808)]` THEN
   SUBGOAL_THEN `&ca = &t + &2 pow 255 * (&(ca DIV 2 EXP 255) - &1)`
@@ -296,16 +296,22 @@ let BIGNUM_SQR_P25519_CORRECT = time prove
     REWRITE_TAC[CONG; ADD_SYM; MULT_SYM] THEN
     CONV_TAC MOD_DOWN_CONV THEN REFL_TAC;
     ALL_TAC] THEN
-  ABBREV_TAC `q:int64 = word_add hw (word 1)` THEN
-  SUBGOAL_THEN `&(val(q:int64)):real = &(val(hw:int64)) + &1` ASSUME_TAC THENL
-   [REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN EXPAND_TAC "q" THEN
-    ASM_SIMP_TAC[VAL_WORD_ADD; VAL_WORD_1; DIMINDEX_64; MOD_LT];
+
+  REABBREV_TAC `qm = read RAX s62` THEN
+  SUBGOAL_THEN `&(val(qm:int64)):real = &19 * (&(val(hw:int64)) + &1)`
+  ASSUME_TAC THENL
+   [EXPAND_TAC "qm" THEN
+    REWRITE_TAC[VAL_WORD_ADD; VAL_WORD_MUL; DIMINDEX_64] THEN
+    REWRITE_TAC[ REAL_OF_NUM_CLAUSES] THEN CONV_TAC MOD_DOWN_CONV THEN
+    CONV_TAC WORD_REDUCE_CONV THEN REWRITE_TAC[MULT_SYM] THEN
+    MATCH_MP_TAC MOD_LT THEN
+    UNDISCH_TAC `val(hw:int64) + 1 <= 78` THEN ARITH_TAC;
     ALL_TAC] THEN
 
   (*** The rest of the computation ***)
 
   X86_ACCSTEPS_TAC BIGNUM_SQR_P25519_EXEC
-   [62;63;64;65;66;70;71;72;73] (62--79) THEN
+   [63;64;65;66;70;71;72;73] (63--79) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
@@ -313,18 +319,6 @@ let BIGNUM_SQR_P25519_CORRECT = time prove
   ASM_REWRITE_TAC[] THEN
   CONJ_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; ALL_TAC] THEN
   CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC] THEN
-
-  (*** Punning of zero and the top of the product ***)
-
-  SUBGOAL_THEN `&(val(mulhi_s62:int64)) = &0` SUBST_ALL_TAC THENL
-   [SUBGOAL_THEN `&(val(q:int64)) <= &78` MP_TAC THENL
-     [ASM_REWRITE_TAC[] THEN ASM_REWRITE_TAC[REAL_OF_NUM_CLAUSES];
-      DISCH_THEN(fun bth ->
-        ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o
-           (fun th -> GEN_DECARRY_RULE [bth] [th]) o last)) THEN
-      SIMP_TAC[]];
-    FIRST_X_ASSUM(SUBST_ALL_TAC o MATCH_MP (REAL_ARITH
-     `&2 pow 64 * &0 + x = a ==> x = a`))] THEN
 
   (*** Comparison computation and then the rest is easy ***)
 
@@ -352,10 +346,10 @@ let BIGNUM_SQR_P25519_CORRECT = time prove
 
 let BIGNUM_SQR_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x192) (z,8 * 4) /\
+        nonoverlapping (word pc,0x193) (z,8 * 4) /\
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 40),48) /\
         ALL (nonoverlapping (word_sub stackpointer (word 40),40))
-            [(word pc,0x192); (x,8 * 4)]
+            [(word pc,0x193); (x,8 * 4)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_sqr_p25519_mc /\
                   read RIP s = word pc /\

@@ -133,11 +133,11 @@ _bignum_sqr_p25519:
         shld    r12, r11, 1
         mov     rcx, 0x8000000000000000
         mov     edx, 19
-        inc     r12
+        lea     rax, [r12+1]
         or      r11, rcx
-        mulx    rbx, rax, r12
+        imul    rax, rdx
         add     r8, rax
-        adc     r9, rbx
+        adc     r9, zero
         adc     r10, zero
         adc     r11, zero
 
