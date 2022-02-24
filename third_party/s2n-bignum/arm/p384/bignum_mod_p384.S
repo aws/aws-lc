@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_p384
+        .globl  bignum_mod_p384_alt
         .text
         .balign 4
 
@@ -51,6 +52,7 @@
 
 
 bignum_mod_p384:
+bignum_mod_p384_alt:
 
 // If the input is already <= 5 words long, go to a trivial "copy" path
 

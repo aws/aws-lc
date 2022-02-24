@@ -94,4 +94,5 @@ endif()
 
 install(EXPORT ssl-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake/${TARGET_DIR}"
+    NAMESPACE AWS::
     COMPONENT Development)

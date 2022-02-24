@@ -384,20 +384,22 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   // This is the case when validating a received public key.
   // Note: The check for x and y being negative seems superfluous since
   // ec_felem_to_bignum() calls BN_bin2bn() which sets the `neg` flag to 0.
-  if(ec_felem_equal(key->pub_key->group, &key->pub_key->group->one, &key->pub_key->raw.Z)) {
+  EC_POINT *pub_key = key->pub_key;
+  EC_GROUP *group = key->pub_key->group;
+  if(ec_felem_equal(group, &group->one, &pub_key->raw.Z)) {
     BIGNUM *x = BN_new();
     BIGNUM *y = BN_new();
     int check_ret = 1;
-    if (key->pub_key->group->meth->felem_to_bytes == NULL) {
+    if (group->meth->felem_to_bytes == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       check_ret = 0;
-    } else if (!ec_felem_to_bignum(key->pub_key->group, x, &key->pub_key->raw.X) ||
-               !ec_felem_to_bignum(key->pub_key->group, y, &key->pub_key->raw.Y)) {
+    } else if (!ec_felem_to_bignum(group, x, &pub_key->raw.X) ||
+               !ec_felem_to_bignum(group, y, &pub_key->raw.Y)) {
       // Error already written to error queue by |bn_wexpand|.
       check_ret = 0;
     } else if (BN_is_negative(x) || BN_is_negative(y) ||
-               BN_cmp(x, &key->pub_key->group->field) >= 0 ||
-               BN_cmp(y, &key->pub_key->group->field) >= 0) {
+               BN_cmp(x, &group->field) >= 0 ||
+               BN_cmp(y, &group->field) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
       check_ret = 0;
     }

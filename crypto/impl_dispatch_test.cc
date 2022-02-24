@@ -23,7 +23,6 @@
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/sha.h>
-#include <openssl/cpu.h>
 #include <openssl/mem.h>
 
 #include <gtest/gtest.h>

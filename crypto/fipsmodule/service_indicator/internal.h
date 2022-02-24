@@ -9,7 +9,7 @@
 
 #if defined(AWSLC_FIPS)
 
-#define STATE_UNLOCKED       0
+#define STATE_UNLOCKED 0
 
 struct fips_service_indicator_state {
   uint64_t lock_state;
@@ -29,13 +29,13 @@ void FIPS_service_indicator_update_state(void);
 // unintentionally. The lock is implemented as a counter, as one-shot functions
 // may call upon approved nested functions which have approved nested algorithms
 // within them as well. The counter state can only be updated when the
-// |lock_state| has a value of 0.
+// |lock_state| has a value of |STATE_UNLOCKED|.
 // For the approval checks to work correctly, whenever
 // |FIPS_service_indicator_lock_state| is called,
 // |FIPS_service_indicator_unlock_state| must be called before exiting the
 // function. This ensures that the counter is only updated when the most
 // high level function that initially locked the state first, unlocks the
-// |lock_state| back to 0.
+// |lock_state| back to |STATE_UNLOCKED|.
 void FIPS_service_indicator_lock_state(void);
 void FIPS_service_indicator_unlock_state(void);
 

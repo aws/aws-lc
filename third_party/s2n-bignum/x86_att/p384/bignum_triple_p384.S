@@ -55,9 +55,7 @@ bignum_triple_p384:
 
 // Multiply, accumulating the result as 2^384 * h + [d5;d4;d3;d2;d1;d0]
 // but actually immediately producing q = h + 1, our quotient approximation,
-// by adding 1 to it. Note that by hypothesis x is reduced mod p_384, so our
-// product is <= (2^64 - 1) * (p_384 - 1) and hence  h <= 2^64 - 2, meaning
-// there is no danger this addition of 1 could wrap.
+// by adding 1 to it.
 
                 xorl    ashort, ashort
 

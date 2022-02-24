@@ -12,7 +12,15 @@ echo "$SRC_ROOT"
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
-NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+NUM_CPU_THREADS=''
+KERNEL_NAME=$(uname -s)
+if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
+  # On MacOS, /proc/cpuinfo does not exist.
+  NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
+else
+  # Assume KERNEL_NAME is Linux.
+  NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+fi
 
 function run_build {
   local cflags=("$@")
