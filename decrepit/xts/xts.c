@@ -228,20 +228,12 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-#if defined(HWAES_XTS)
-  if (hwaes_capable()) {
-      aes_hw_xts_cipher(in, out, len, xctx->xts.key1, xctx->xts.key2,
-                         ctx->iv, ctx->encrypt);
+  if (hwaes_xts_available()) {
+    return aes_hw_xts_cipher(in, out, len, xctx->xts.key1, xctx->xts.key2,
+                             ctx->iv, ctx->encrypt);
   } else {
-#endif
-    if (!CRYPTO_xts128_encrypt(&xctx->xts, ctx->iv, in, out, len, ctx->encrypt)) {
-      return 0;
-    }
-#if defined(HWAES_XTS)
+    return CRYPTO_xts128_encrypt(&xctx->xts, ctx->iv, in, out, len, ctx->encrypt);
   }
-#endif
-
-  return 1;
 }
 
 static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {

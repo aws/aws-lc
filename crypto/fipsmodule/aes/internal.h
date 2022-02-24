@@ -50,6 +50,7 @@ OPENSSL_INLINE int vpaes_capable(void) {
 #define HWAES_XTS
 
 OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_ARMv8_AES_capable(); }
+OPENSSL_INLINE int hwaes_xts_available(void) { return CRYPTO_is_ARMv8_AES_capable(); }
 
 #if defined(OPENSSL_ARM)
 #define BSAES
@@ -143,10 +144,11 @@ void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
                   const AES_KEY *key1, const AES_KEY *key2,
                   const uint8_t iv[16]);
-OPENSSL_EXPORT void aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
+OPENSSL_EXPORT int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
                                       const AES_KEY *key1, const AES_KEY *key2,
                                       const uint8_t iv[16], int enc);
 #else
+OPENSSL_INLINE int hwaes_xts_available(void) { return 0; }
 OPENSSL_INLINE void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                   const AES_KEY *key1, const AES_KEY *key2,
                                        const uint8_t iv[16]) {
@@ -157,12 +159,12 @@ OPENSSL_INLINE void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t l
                   const uint8_t iv[16]) {
   abort();
 }
-OPENSSL_INLINE void aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
+OPENSSL_INLINE int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
                                       const AES_KEY *key1, const AES_KEY *key2,
                                       const uint8_t iv[16], int enc) {
   abort();
 }
-#endif  //HWAES_XTS
+#endif  // HWAES_XTS
 
 #if defined(BSAES)
 // Note |bsaes_cbc_encrypt| requires |enc| to be zero.
