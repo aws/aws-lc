@@ -11,6 +11,8 @@ import (
 	"sort"
 )
 
+var EMPTY struct{}
+
 // libssl runner has thousands tests. These tests can be converted to test SSL
 // transfer(encode and decode SSL) by enabling |bssl_shim| flag |-ssl-transfer|.
 // However, not all tests are eligible for the conversion due to the support
@@ -29,8 +31,9 @@ type TestHelper struct {
 	abs_test_file string
 	// A mapping which has test case name as key.
 	// The keys of |test_case_names| come from |abs_test_file|.
+	// The value is EMPTY.
 	// golang does not have set struct.
-	test_case_names map[string]bool
+	test_case_names map[string]struct{}
 	// A channel to collect test cases new test case that should be converted to
 	// test SSL transfer.
 	// A channel(instead of map) is used because the test cases are executed by 
@@ -54,10 +57,10 @@ func NewTestHelper(test_file_path string, num_of_tests int) *TestHelper {
 	defer file.Close()
 	// Construct |TestHelper|.
 	var ret = new(TestHelper)
-	ret.test_case_names = make(map[string]bool)
+	ret.test_case_names = make(map[string]struct{})
 	ret.new_test_case_chann = make(chan string, num_of_tests)
 	for _, test_case := range test_cases {
-		ret.test_case_names[test_case] = true
+		ret.test_case_names[test_case] = EMPTY
 	}
 	ret.abs_test_file = test_file_path
 	return ret
@@ -67,7 +70,7 @@ func NewTestHelper(test_file_path string, num_of_tests int) *TestHelper {
 func (helper *TestHelper) CanBeTransfer(test_case_name string) bool {
 	_, ok := helper.test_case_names[test_case_name]
 	if ok {
-		helper.test_case_names[test_case_name] = true
+		helper.test_case_names[test_case_name] = EMPTY
 	}
 	return ok
 }
@@ -78,7 +81,7 @@ func (helper *TestHelper) AddNewCase(test_case_name string) {
 }
 
 // mapToSortedArray converts the keys of |input_map| to a sorted array.
-func mapToSortedArray(input_map map[string]bool) []string {
+func mapToSortedArray(input_map map[string]struct{}) []string {
 	ret := make([]string, 0, len(input_map))
 	for k := range input_map {
 		ret = append(ret, k)
@@ -92,9 +95,9 @@ func mapToSortedArray(input_map map[string]bool) []string {
 // 2. some test cases are deleted or renamed.
 func (helper *TestHelper) RefreshTestFileContent() {
 	close(helper.new_test_case_chann)
-	tmp_map := make(map[string]bool)
+	tmp_map := make(map[string]struct{})
 	for new_test_case_name := range helper.new_test_case_chann {
-		tmp_map[new_test_case_name] = true
+		tmp_map[new_test_case_name] = EMPTY
 	}
 	new_test_cases := mapToSortedArray(tmp_map)
 	pre_test_cases := mapToSortedArray(helper.test_case_names)
