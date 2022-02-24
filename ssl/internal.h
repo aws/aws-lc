@@ -3341,6 +3341,15 @@ bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                   const SSL_CLIENT_HELLO *client_hello);
 bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *extensions);
 
+
+// SSL serialization.
+
+// ssl_transfer_supported returns true when the |in| is supported by
+// current SSL transfer scope. Specific support scope is included inside
+// the function.
+// Otherwise, it returns false.
+OPENSSL_EXPORT bool ssl_transfer_supported(const SSL *in);
+
 #define tlsext_tick_md EVP_sha256
 
 // ssl_process_ticket processes a session ticket from the client. It returns

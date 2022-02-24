@@ -10,6 +10,46 @@
 
 #include "internal.h"
 
+BSSL_NAMESPACE_BEGIN
+
+bool ssl_transfer_supported(const SSL *in) {
+  if (in == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return false;
+  }
+
+  // An SSL connection can't be serialized by current implementation under some conditions
+  // 0) It's not server SSL.
+  // 1) It's a DTLS connection.
+  // 2) It uses QUIC
+  // 3) Its SSL_SESSION isn't serializable.
+  // 4) Handshake hasn't finished yet.
+  // 5) TLS version is not supported(currently, only TLS 1.2 is supported).
+  // 6) Write is not in clean state(|SSL_write| should finish the |in| write, no pending writes).
+  // 7) ssl shutdown state is not ssl_shutdown_none.
+  //    TODO: support TLS 1.3 and TLS 1.1.
+  if (!SSL_is_server(in) ||                                     // (0)
+      SSL_is_dtls(in) ||                                        // (1)
+      in->quic_method != nullptr ||                             // (2)
+      !in->s3 ||                                                // (3)
+      !in->s3->established_session ||
+      in->s3->established_session.get()->not_resumable ||
+      // TODO: Check in->s3->rwstate.
+      SSL_in_init(in) ||                                        // (4)
+      in->version != TLS1_2_VERSION ||                          // (5)
+      in->s3->wnum != 0 ||                                      // (6)
+      in->s3->wpend_pending ||
+      in->s3->read_shutdown != ssl_shutdown_none ||             // (7)
+      in->s3->write_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return false;
+  }
+
+  return true;
+}
+
+BSSL_NAMESPACE_END
+
 using namespace bssl;
 
 // SSL3_STATE_parse_octet_string gets an optional ASN.1 OCTET STRING explicitly
@@ -631,38 +671,11 @@ SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
 }
 
 int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
-  if (in == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  if (!ssl_transfer_supported(in)) {
     return 0;
   }
 
   ScopedCBB cbb;
-  // An SSL connection can't be serialized by current implementation under some conditions
-  // 0) It's not server SSL.
-  // 1) It's a DTLS connection.
-  // 2) It uses QUIC
-  // 3) Its SSL_SESSION isn't serializable.
-  // 4) Handshake hasn't finished yet.
-  // 5) TLS version is not supported(currently, only TLS 1.2 is supported).
-  // 6) Write is not in clean state(|SSL_write| should finish the |in| write, no pending writes).
-  // 7) ssl shutdown state is not ssl_shutdown_none.
-  //    TODO: support TLS 1.3 and TLS 1.1.
-  if (!SSL_is_server(in) ||                                     // (0)
-      SSL_is_dtls(in) ||                                        // (1)
-      in->quic_method != nullptr ||                             // (2)
-      !in->s3 ||                                                // (3)
-      !in->s3->established_session ||
-      in->s3->established_session.get()->not_resumable ||
-      // TODO: Check in->s3->rwstate.
-      SSL_in_init(in) ||                                        // (4)
-      in->version != TLS1_2_VERSION ||                          // (5)
-      in->s3->wnum != 0 ||                                      // (6)
-      in->s3->wpend_pending ||
-      in->s3->read_shutdown != ssl_shutdown_none ||             // (7)
-      in->s3->write_shutdown != ssl_shutdown_none) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
 
   CBB seq;
   if (!CBB_init(cbb.get(), 1024) ||

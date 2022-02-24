@@ -247,19 +247,14 @@ static bool TransferSSL(bssl::UniquePtr<SSL> *in, bssl::UniquePtr<SSL> *out) {
   return true;
 }
 
-// Check if |in| can be encoded using |SSL_to_bytes|.
-static bool CanBeEncoded(const SSL *in) {
-  // |SSL_to_bytes| may generate new error code.
+// SSLTransferSupported is wrapper of |ssl_transfer_supported| and includes
+// some logics to clean error code that may get generated when not supported.
+static bool SSLTransferSupported(const SSL *in) {
+  // |ssl_transfer_supported| may generate new error code.
   // |ERR_set_mark| and |ERR_pop_to_mark| are used to clean the error states.
   ERR_set_mark();
-  // Encoding SSL to bytes.
-  size_t encoded_len;
-  bssl::UniquePtr<uint8_t> encoded;
-  uint8_t *encoded_raw;
   bool ret = true;
-  if (SSL_to_bytes(in, &encoded_raw, &encoded_len)) {
-    encoded.reset(encoded_raw);
-  } else {
+  if (!bssl::ssl_transfer_supported(in)) {
     ret = false;
     ERR_pop_to_mark();
   }
@@ -267,19 +262,18 @@ static bool CanBeEncoded(const SSL *in) {
 }
 
 static void CheckSSLTransfer(const TestConfig *config, const SSL *ssl) {
-  if (config->check_ssl_transfer == 1 && CanBeEncoded(ssl)) {
+  if (config->check_ssl_transfer == 1 && SSLTransferSupported(ssl)) {
     // Below message is to inform runner.go that this test case can
     // be converted to test SSL transfer.
-    // In the converted test, |CanBeEncoded| should be called again
+    // In the converted test, |SSLTransferSupported| should be called again
     // before |TransferSSL| because each test case may perform
-    // multiple connections. Not all connections can
-    // be encoded(identified by |CanBeEncoded| check).
+    // multiple connections. Not all connections can transferred.
     fprintf(stderr, "Eligible for testing SSL transfer.\n");
   }
 }
 
 static bool DoSSLTransfer(const TestConfig *config, bssl::UniquePtr<SSL> *in) {
-  if (config->ssl_transfer == 1 && CanBeEncoded(in->get())) {
+  if (config->ssl_transfer == 1 && SSLTransferSupported(in->get())) {
     // Below message is to inform runner.go that this test case 
     // is going to test SSL transfer.
     fprintf(stderr, "SSL transfer is going to be tested.\n");
@@ -1042,7 +1036,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     CheckSSLTransfer(config, ssl);
 
     // Fetch tls_unique_len_before_transfer before SSL transfer.
-    if (config->ssl_transfer == 1 && CanBeEncoded(ssl)) {
+    if (config->ssl_transfer == 1 && SSLTransferSupported(ssl)) {
       if (config->tls_unique) {
         if (!SSL_get_tls_unique(ssl, tls_unique_before_transfer,
           &tls_unique_len_before_transfer,
