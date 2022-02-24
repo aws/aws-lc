@@ -125,7 +125,7 @@ static const unsigned kS3ReadBufferTag =
 //    sessionReused                     [1] BOOLEAN OPTIONAL,
 //    hostName                          [2] OCTET STRING OPTIONAL,
 //    alpnSelected                      [3] OCTET STRING OPTIONAL,
-//    nextProtoNegotiated               [4] BOOLEAN OPTIONAL,
+//    nextProtoNegotiated               [4] OCTET STRING OPTIONAL,
 //    channelIdValid                    [5] BOOLEAN OPTIONAL,
 //    channelId                         [6] OCTET STRING OPTIONAL,
 //    sendConnectionBinding             [7] BOOLEAN OPTIONAL,
@@ -491,13 +491,14 @@ static const unsigned kSSLConfigTag =
 // An SSL is serialized as the following ASN.1 structure:
 //
 // SSL ::= SEQUENCE {
-//     sslSerialVer   UINT64   -- version of the SSL serialization format
-//     version        UINT64
-//     s3             SSL3State
-//     mode           UINT64
-//     options        UINT64
-//     quietShutdown  [0] BOOLEAN OPTIONAL
-//     config         [1] SEQUENCE OPTIONAL
+//     sslSerialVer      UINT64   -- version of the SSL serialization format
+//     version           UINT64
+//     maxSendFragement  UINT64
+//     s3                SSL3State
+//     mode              UINT64
+//     options           UINT64
+//     quietShutdown     [0] BOOLEAN OPTIONAL
+//     config            [1] SEQUENCE OPTIONAL
 // }
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl, child;

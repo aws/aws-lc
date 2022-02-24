@@ -2331,10 +2331,6 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // |SSL_to_bytes|.
 // 2. Another process resumes the |SSL| by calling |SSL_from_bytes|.
 //
-// Initial implementation of SSL transfer is made by Evgeny Potemkin.
-//
-// WARNING: Currently only works with TLS 1.2 after handshake finished.
-// WARNING: Currently only supports |SSL| as server.
 // WARNING: The serialisation formats are not yet stable: version skew may be
 //     fatal.
 // WARNING: The encoded data contains sensitive key material and must be

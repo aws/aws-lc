@@ -282,7 +282,7 @@ static bool DoSSLTransfer(const TestConfig *config, bssl::UniquePtr<SSL> *in) {
   if (config->ssl_transfer == 1 && CanBeEncoded(in->get())) {
     // Below message is to inform runner.go that this test case 
     // is going to test SSL transfer.
-    fprintf(stderr, "SSL transfer is going to be test.\n");
+    fprintf(stderr, "SSL transfer is going to be tested.\n");
     if (!TransferSSL(in, nullptr)) {
       return false;
     }
