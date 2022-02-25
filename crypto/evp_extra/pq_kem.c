@@ -1,5 +1,6 @@
 #include "openssl/pq_kem.h"
 #include "openssl/mem.h"
+#include "openssl/nid.h"
 #include "../kyber/kem_kyber.h"
 
 EVP_PQ_KEM_CTX *EVP_PQ_KEM_CTX_new(void) {
@@ -26,6 +27,21 @@ int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx, const EVP_PQ_KEM *kem) {
   }
 
   return 1;
+}
+
+OPENSSL_EXPORT int EVP_PQ_KEM_CTX_init_by_nid(EVP_PQ_KEM_CTX *kem_ctx, int nid) {
+  if (kem_ctx == NULL) {
+    return 0;
+  }
+
+  switch (nid) {
+    case NID_KYBER512:
+    case NID_SECP256R1_KYBER512:
+    case NID_X25519_KYBER512:
+      return EVP_PQ_KEM_CTX_init(kem_ctx, &EVP_PQ_KEM_kyber512);
+    default:
+      return 0;
+  }
 }
 
 void EVP_PQ_KEM_CTX_free(EVP_PQ_KEM_CTX *kem_ctx) {

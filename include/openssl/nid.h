@@ -4252,6 +4252,8 @@ extern "C" {
 #define OBJ_sha512_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 6L
 
 #define NID_KYBER512 963
+#define NID_SECP256R1_KYBER512 964
+#define NID_X25519_KYBER512 965
 
 #if defined(__cplusplus)
 } /* extern C */

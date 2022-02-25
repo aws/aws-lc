@@ -2330,6 +2330,11 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 #define SSL_CURVE_X25519 29
 #define SSL_CURVE_CECPQ2 16696
 
+// Hybrid PQ TLS 1.3 identifiers taken from
+// https://github.com/open-quantum-safe/openssl/blob/OQS-OpenSSL_1_1_1-stable/oqs-template/oqs-kem-info.md
+#define SSL_CURVE_SECP256R1_KYBER512 0x2F39
+#define SSL_CURVE_X25519_KYBER512 0x2F3A
+
 // SSL_get_curve_id returns the ID of the curve used by |ssl|'s most recently
 // completed handshake or 0 if not applicable.
 //
