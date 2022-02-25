@@ -19,6 +19,7 @@ OBJ = curve25519/bignum_mul_p25519.o \
       curve25519/bignum_mul_p25519_alt.o \
       curve25519/bignum_sqr_p25519.o \
       curve25519/bignum_sqr_p25519_alt.o \
+      curve25519/bignum_sub_p25519.o \
       fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
       fastmul/bignum_kmul_32_64.o \

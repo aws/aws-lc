@@ -201,6 +201,8 @@ void call_bignum_add_p384(void) repeat(bignum_add_p384(b0,b1,b2))
 
 void call_bignum_add_p521(void) repeat(bignum_add_p521(b0,b1,b2))
 
+void call_bignum_sub_p25519(void) repeat(bignum_sub_p25519(b0,b1,b2))
+
 void call_bignum_sub_p256(void) repeat(bignum_sub_p256(b0,b1,b2))
 
 void call_bignum_sub_p256k1(void) repeat(bignum_sub_p256k1(b0,b1,b2))
@@ -872,6 +874,7 @@ int main(void)
   timingtest(all,"bignum_sub (4x4->4)",call_bignum_sub__4_4);
   timingtest(all,"bignum_sub (6x6->6)",call_bignum_sub__6_6);
   timingtest(all,"bignum_sub (32x32->32)",call_bignum_sub__32_32);
+  timingtest(all,"bignum_sub_p25519",call_bignum_sub_p25519);
   timingtest(all,"bignum_sub_p256",call_bignum_sub_p256);
   timingtest(all,"bignum_sub_p256k1",call_bignum_sub_p256k1);
   timingtest(all,"bignum_sub_p384",call_bignum_sub_p384);

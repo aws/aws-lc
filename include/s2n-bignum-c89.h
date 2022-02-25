@@ -637,6 +637,10 @@ extern void bignum_sqr_p521_alt (uint64_t z[9], uint64_t x[9]);
 /*  Inputs x[m], y[n]; outputs function return (carry-out) and z[p] */
 extern uint64_t bignum_sub (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 
+/*  Subtract modulo p_25519, z := (x - y) mod p_25519, assuming x and y reduced */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_sub_p25519 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+
 /*  Subtract modulo p_256, z := (x - y) mod p_256, assuming x and y reduced */
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_sub_p256 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
