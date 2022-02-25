@@ -93,6 +93,8 @@ static int parse_optional_string(CBS *cbs, UniquePtr<char> *out, unsigned tag, i
   return 1;
 }
 
+// SSL3_STATE_get_optional_octet_string requires |dst| has |target_len|
+// space to store the |tag| data from the |cbs|.
 static bool SSL3_STATE_get_optional_octet_string(CBS *cbs, void *dst,
                                                  unsigned tag,
                                                  size_t target_len) {
