@@ -39,6 +39,10 @@
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[p]
 extern uint64_t bignum_add (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 
+// Add modulo p_25519, z := (x + y) mod p_25519, assuming x and y reduced
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_add_p25519 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+
 // Add modulo p_256, z := (x + y) mod p_256, assuming x and y reduced
 // Inputs x[4], y[4]; output z[4]
 extern void bignum_add_p256 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);

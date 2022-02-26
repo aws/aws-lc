@@ -1,4 +1,5 @@
 bignum_add
+bignum_add_p25519
 bignum_add_p256
 bignum_add_p256k1
 bignum_add_p384

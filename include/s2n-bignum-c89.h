@@ -44,6 +44,10 @@ extern uint64_t bignum_add (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, ui
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_add_p256 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
 
+/*  Add modulo p_25519, z := (x + y) mod p_25519, assuming x and y reduced */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_add_p25519 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+
 /*  Add modulo p_256k1, z := (x + y) mod p_256k1, assuming x and y reduced */
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_add_p256k1 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);

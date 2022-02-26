@@ -15,7 +15,8 @@
 
 # These are the object files corresponding to sources for translation
 
-OBJ = curve25519/bignum_mul_p25519.o \
+OBJ = curve25519/bignum_add_p25519.o \
+      curve25519/bignum_mul_p25519.o \
       curve25519/bignum_mul_p25519_alt.o \
       curve25519/bignum_sqr_p25519.o \
       curve25519/bignum_sqr_p25519_alt.o \
