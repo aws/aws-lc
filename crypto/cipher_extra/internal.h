@@ -173,8 +173,7 @@ OPENSSL_STATIC_ASSERT(sizeof(union chacha20_poly1305_seal_data) == 48 + 8 + 8,
 
 OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) {
 #if defined(OPENSSL_X86_64)
-  const int sse41_capable = (OPENSSL_ia32cap_P[1] & (1 << 19)) != 0;
-  return sse41_capable;
+  return CRYPTO_is_SSE4_1_capable();
 #elif defined(OPENSSL_AARCH64)
   return CRYPTO_is_NEON_capable();
 #endif

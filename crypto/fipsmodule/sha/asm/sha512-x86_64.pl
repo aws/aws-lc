@@ -126,11 +126,13 @@ die "can't locate x86_64-xlate.pl";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 #
-# TODO(davidben): Enable AVX2 code after testing by setting $avx to 2. Is it
-# necessary to disable AVX2 code when SHA Extensions code is disabled? Upstream
-# did not tie them together until after $shaext was added.
+# This file also has an AVX2 implementation, controlled by setting $avx to 2.
+# For now, we intentionally disable it. While it gives a 13-16% perf boost, the
+# CFI annotations are wrong. It allocates stack in a loop and should be
+# rewritten to avoid this.
 $avx = 1;
-$shaext=1;	### set to zero if compiling for 1.0.1
+
+$shaext = 1;
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
@@ -555,12 +557,8 @@ $code.=<<___;
 .type	sha256_block_data_order_shaext,\@function,3
 .align	64
 sha256_block_data_order_shaext:
-.Lshaext_shortcut:
 .cfi_startproc
-#ifdef BORINGSSL_DISPATCH_TEST
-.extern BORINGSSL_function_hit
-	movb \$1,BORINGSSL_function_hit+6(%rip)
-#endif
+.Lshaext_shortcut:
 ___
 $code.=<<___ if ($win64);
 	lea	`-8-5*16`(%rsp),%rsp

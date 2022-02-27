@@ -971,27 +971,10 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 // Runtime CPU feature support
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-// OPENSSL_ia32cap_P contains the Intel CPUID bits when running on an x86 or
-// x86-64 system.
-//
-//   Index 0:
-//     EDX for CPUID where EAX = 1
-//     Bit 20 is always zero
-//     Bit 28 is adjusted to reflect whether the data cache is shared between
-//       multiple logical cores
-//     Bit 30 is used to indicate an Intel CPU
-//   Index 1:
-//     ECX for CPUID where EAX = 1
-//     Bit 11 is used to indicate AMD XOP support, not SDBG
-//   Index 2:
-//     EBX for CPUID where EAX = 7
-//   Index 3:
-//     ECX for CPUID where EAX = 7
-//
-// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
-// bits in XCR0, so it is not necessary to check those.
-extern uint32_t OPENSSL_ia32cap_P[4];
-#endif
+// The CPU capacity related check functions are moved to "fipsmodule/internal.h".
+#include "fipsmodule/internal.h"
+
+#endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 

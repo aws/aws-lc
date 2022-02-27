@@ -103,7 +103,7 @@ TEST(P256_NistzTest, SelectW7) {
 
 TEST(P256_NistzTest, BEEU) {
 #if defined(OPENSSL_X86_64)
-  if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
+  if (!CRYPTO_is_AVX_capable()) {
     // No AVX support; cannot run the BEEU code.
     return;
   }
