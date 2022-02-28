@@ -28,6 +28,7 @@
 
 
         .globl  bignum_deamont_p384_alt
+        .globl  _bignum_deamont_p384_alt
         .text
 
 #define z %rdi
@@ -79,6 +80,7 @@
                 sbbq    $0, d6
 
 bignum_deamont_p384_alt:
+_bignum_deamont_p384_alt:
 
 // Save more registers to play with
 

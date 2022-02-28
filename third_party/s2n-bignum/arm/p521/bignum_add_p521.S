@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_add_p521
+        .globl  _bignum_add_p521
         .text
         .balign 4
 
@@ -44,6 +45,7 @@
 
 
 bignum_add_p521:
+_bignum_add_p521:
 
 // Force carry-in to get s = [d8;d7;d6;d5;d4;d3;d2;d1;d0] = x + y + 1.
 // We ignore the carry-out, assuming inputs are reduced so there is none.

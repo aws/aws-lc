@@ -25,6 +25,7 @@
 
 
         .globl  bignum_double_p521
+        .globl  _bignum_double_p521
         .text
 
 #define z %rdi
@@ -36,6 +37,7 @@
 
 
 bignum_double_p521:
+_bignum_double_p521:
 
 // We can decide whether 2 * x >= p_521 just by 2 * x >= 2^521, which
 // as we assume x < p_521 amounts to looking at bit 8 of the top word

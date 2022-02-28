@@ -17,7 +17,7 @@
 // Reduce modulo group order, z := x mod n_521
 // Input x[9]; output z[9]
 //
-//    extern void bignum_mod_n521_9
+//    extern void bignum_mod_n521_9_alt
 //      (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Reduction is modulo the group order of the NIST curve P-521.
@@ -26,30 +26,30 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_mod_n521_9
-        .globl  _bignum_mod_n521_9
+        .globl  bignum_mod_n521_9_alt
+        .globl  _bignum_mod_n521_9_alt
         .text
 
 #define z %rdi
 #define x %rsi
 
-#define q %rdx
+#define q %rcx
 #define a %rax
+#define d %rdx
 
 #define c %rcx
-#define d %r8
 
-#define n0 %r9
-#define n1 %r10
-#define n2 %r11
-#define n3 d
+#define n0 %r8
+#define n1 %r9
+#define n2 %r10
+#define n3 %r11
 
 #define ashort %eax
 #define cshort %ecx
 #define qshort %edx
 
-bignum_mod_n521_9:
-_bignum_mod_n521_9:
+bignum_mod_n521_9_alt:
+_bignum_mod_n521_9_alt:
 
 // Load the top digit, putting a bit-stuffed version in output buffer.
 // The initial quotient estimate is q = h + 1 where x = 2^521 * h + t
@@ -69,72 +69,81 @@ _bignum_mod_n521_9:
 // r' == r (mod 2^521) because things below bit 521 are uncorrupted. We
 // keep the top word in the register c since we at least have that one free.
 
-        movq    $0x449048e16ec79bf7, n0
-        mulxq   n0, a, c
-        adcxq   (x), a
-        movq    a, (z)
+        movq    $0x449048e16ec79bf7, %rax
+        mulq    q
+        movq    %rax, n0
+        movq    %rdx, n1
 
-        movq    $0xc44a36477663b851, n1
-        mulxq   n1, a, d
-        adcxq   8(x), a
-        adoxq   c, a
-        movq    a, 8(z)
+        movq    $0xc44a36477663b851, %rax
+        mulq    q
+        xorq    n2, n2
+        addq    %rax, n1
+        adcq    %rdx, n2
 
-        movq    $0x8033feb708f65a2f, n2
-        mulxq   n2, a, c
-        adcxq   16(x), a
-        adoxq   d, a
-        movq    a, 16(z)
+        movq    $0x8033feb708f65a2f, %rax
+        mulq    q
+        xorq    n3, n3
+        addq    %rax, n2
+        adcq    %rdx, n3
 
-        movq    $0xae79787c40d06994, a
-        mulxq   a, a, d
-        adcxq   24(x), a
-        adoxq   c, a
-        movq    a, 24(z)
+        movq    $0xae79787c40d06994, %rax
+        mulq    q
+        imulq   $5, q
+        addq    %rax, n3
+        adcq    %rdx, q
+        sbbq    %rdx, %rdx
+        negq    %rdx
 
-        movl    $5, ashort
-        mulxq   a, a, c
-        adcxq   32(x), a
-        adoxq   d, a
-        movq    a, 32(z)
+// [%rdx;q;n3;n2;n1;n0] = q * r_521
 
-        movq    c, a // a is now used for zero hereafter
-        adoxq   c, c
-        adcq    40(x), c
-        movq    c, 40(z)
-
-        movq    48(x), c
-        adcq    a, c
-        movq    c, 48(z)
-
-        movq    56(x), c
-        adcq    a, c
-        movq    c, 56(z)
-
+        xorl    %eax, %eax // %rax is used as a zero hereafter
+        addq    (x), n0
+        movq    n0, (z)
+        adcq    8(x), n1
+        movq    n1, 8(z)
+        adcq    16(x), n2
+        movq    n2, 16(z)
+        adcq    24(x), n3
+        movq    n3, 24(z)
+        adcq    32(x), q
+        movq    q, 32(z)
+        adcq    40(x), %rdx
+        movq    %rdx, 40(z)
+        movq    48(x), d
+        adcq    %rax, d
+        movq    d, 48(z)
+        movq    56(x), d
+        adcq    %rax, d
+        movq    d, 56(z)
         movq    64(z), c
-        adcq    a, c
+        adcq    %rax, c
 
 // We already know r < n_521, but if it actually went negative then
-// we need to add back n_521 again. Recycle q as a bitmask for r < n_521,
+// we need to add back n_521 again. Use d as a bitmask for r < n_521,
 // and just subtract r_521 and mask rather than literally adding 2^521.
 // This also gets rid of the bit-stuffing above.
 
         cmc
-        sbbq    q, q
-        andq    q, n0
-        andq    q, n1
-        andq    q, n2
+        sbbq    d, d
+
+        movq    $0x449048e16ec79bf7, n0
+        andq    d, n0
+        movq    $0xc44a36477663b851, n1
+        andq    d, n1
+        movq    $0x8033feb708f65a2f, n2
+        andq    d, n2
         movq    $0xae79787c40d06994, n3
-        andq    q, n3
-        andl    $5, qshort
+        andq    d, n3
+        andq    $5, d
+
         subq    n0, (z)
         sbbq    n1, 8(z)
         sbbq    n2, 16(z)
         sbbq    n3, 24(z)
-        sbbq    q, 32(z)
-        sbbq    a, 40(z)
-        sbbq    a, 48(z)
-        sbbq    a, 56(z)
+        sbbq    d, 32(z)
+        sbbq    %rax, 40(z)
+        sbbq    %rax, 48(z)
+        sbbq    %rax, 56(z)
         sbbl    ashort, cshort
         andl    $0x1FF, cshort
         movq    c, 64(z)
