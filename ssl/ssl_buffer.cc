@@ -176,6 +176,8 @@ bool SSLBuffer::DoDeserialization(CBS *cbs) {
   }
   bool buf_allocated = !!buf_allocated_int;
   if (buf_allocated) {
+    // When buf_allocated, CBS_len(&buf) should be larger than
+    // sizeof(inline_buf_). This is ensured in |EnsureCap|.
     if (CBS_len(&buf) <= sizeof(inline_buf_)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BUFFER);
       return false;
