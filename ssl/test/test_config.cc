@@ -385,6 +385,8 @@ std::vector<Flag> SortedFlags() {
                  &TestConfig::quic_early_data_context),
       IntFlag("-early-write-after-message",
               &TestConfig::early_write_after_message),
+      IntFlag("-check-ssl-transfer", &TestConfig::check_ssl_transfer),
+      IntFlag("-ssl-transfer", &TestConfig::ssl_transfer),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;

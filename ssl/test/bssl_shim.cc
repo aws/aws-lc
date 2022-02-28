@@ -173,9 +173,121 @@ class SocketCloser {
   const int sock_;
 };
 
+// Functions used by SSL encode/decode tests.
+static bool EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out) {
+  // Encoding SSL to bytes.
+  size_t encoded_len;
+  bssl::UniquePtr<uint8_t> encoded;
+  uint8_t *encoded_raw;
+  if (!SSL_to_bytes(in, &encoded_raw, &encoded_len)) {
+    fprintf(stderr, "SSL_to_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_peek_last_error()));
+    return false;
+  }
+  encoded.reset(encoded_raw);
+  // Decoding SSL from the bytes.
+  const uint8_t *ptr2 = encoded.get();
+  SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
+  if (server2_ == nullptr) {
+    fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_peek_last_error()));
+    return false;
+  }
+  out->reset(server2_);
+  return true;
+}
+
+// MoveBIOs moves the |BIO|s of |src| to |dst|. It is used for SSL transfer.
+static void MoveBIOs(SSL *dest, SSL *src) {
+  BIO *rbio = SSL_get_rbio(src);
+  BIO_up_ref(rbio);
+  SSL_set0_rbio(dest, rbio);
+
+  BIO *wbio = SSL_get_wbio(src);
+  BIO_up_ref(wbio);
+  SSL_set0_wbio(dest, wbio);
+
+  SSL_set0_rbio(src, nullptr);
+  SSL_set0_wbio(src, nullptr);
+}
+
+static bool TransferSSL(bssl::UniquePtr<SSL> *in, bssl::UniquePtr<SSL> *out) {
+  if (!in || !in->get()) {
+    return false;
+  }
+  SSL_CTX *in_ctx = SSL_get_SSL_CTX(in->get());
+  // Encode the SSL |in| into bytes.
+  // Decode the bytes into a new SSL.
+  bssl::UniquePtr<SSL> decoded_ssl;
+  if (!EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl)){
+    return false;
+  }
+  // Move the bio.
+  MoveBIOs(decoded_ssl.get(), in->get());
+  if (!SetTestConfig(decoded_ssl.get(), GetTestConfig(in->get()))) {
+    return false;
+  }
+  // Move the test state.
+  std::unique_ptr<TestState> state(GetTestState(in->get()));
+  if (!SetTestState(decoded_ssl.get(), std::move(state))) {
+    return false;
+  }
+  // Unset the test state of |in|.
+  std::unique_ptr<TestState> tmp1;
+  if (!SetTestState(in->get(), std::move(tmp1)) || !SetTestConfig(in->get(), nullptr)) {
+    return false;
+  }
+  // Free the SSL of |in|.
+  SSL_free(in->release());
+  // If |out| is not nullptr, |out| will hold the decoded SSL.
+  // Else, |in| will get reset to hold the decoded SSL.
+  if (out == nullptr) {
+    in->reset(decoded_ssl.release());
+  } else {
+    out->reset(decoded_ssl.release());
+  }
+  return true;
+}
+
+// SSLTransferSupported is wrapper of |ssl_transfer_supported| and includes
+// some logics to clean error code that may get generated when not supported.
+static bool SSLTransferSupported(const SSL *in) {
+  // |ssl_transfer_supported| may generate new error code.
+  // |ERR_set_mark| and |ERR_pop_to_mark| are used to clean the error states.
+  ERR_set_mark();
+  bool ret = true;
+  if (!bssl::ssl_transfer_supported(in)) {
+    ret = false;
+    ERR_pop_to_mark();
+  }
+  return ret;
+}
+
+static void CheckSSLTransfer(const TestConfig *config, const SSL *ssl) {
+  if (config->check_ssl_transfer == 1 && SSLTransferSupported(ssl)) {
+    // Below message is to inform runner.go that this test case can
+    // be converted to test SSL transfer.
+    // In the converted test, |SSLTransferSupported| should be called again
+    // before |TransferSSL| because each test case may perform
+    // multiple connections. Not all connections can transferred.
+    fprintf(stderr, "Eligible for testing SSL transfer.\n");
+  }
+}
+
+static bool DoSSLTransfer(const TestConfig *config, bssl::UniquePtr<SSL> *in) {
+  if (config->ssl_transfer == 1 && SSLTransferSupported(in->get())) {
+    // Below message is to inform runner.go that this test case 
+    // is going to test SSL transfer.
+    fprintf(stderr, "SSL transfer is going to be tested.\n");
+    if (!TransferSSL(in, nullptr)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // DoRead reads from |ssl|, resolving any asynchronous operations. It returns
 // the result value of the final |SSL_read| call.
-static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
+static int DoRead(bssl::UniquePtr<SSL> *in, uint8_t *out, size_t max_out) {
+  SSL *ssl = in->get();
   const TestConfig *config = GetTestConfig(ssl);
   TestState *test_state = GetTestState(ssl);
   if (test_state->quic_transport) {
@@ -208,6 +320,13 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
     }
   } while (RetryAsync(ssl, ret));
 
+  CheckSSLTransfer(config, ssl);
+
+  if (!DoSSLTransfer(config, in)) {
+    return false;
+  }
+  ssl = in->get();
+
   if (config->peek_then_read && ret > 0) {
     std::unique_ptr<uint8_t[]> buf(new uint8_t[static_cast<size_t>(ret)]);
 
@@ -218,6 +337,12 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
       fprintf(stderr, "First and second SSL_peek did not match.\n");
       return -1;
     }
+
+    // Do transfer again to test SSL_peek.
+    if (!DoSSLTransfer(config, in)) {
+      return false;
+    }
+    ssl = in->get();
 
     // SSL_read should synchronously return the same data and consume it.
     ret2 = SSL_read(ssl, buf.get(), ret);
@@ -885,6 +1010,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   SSL *ssl = ssl_uniqueptr->get();
   SSL_CTX *session_ctx = SSL_get_SSL_CTX(ssl);
   TestState *test_state = GetTestState(ssl);
+  uint8_t tls_unique_before_transfer[16];
+  size_t tls_unique_len_before_transfer = 0;
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
@@ -905,6 +1032,30 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return SSL_do_handshake(ssl);
       });
     } while (RetryAsync(ssl, ret));
+
+    CheckSSLTransfer(config, ssl);
+
+    // Fetch tls_unique_len_before_transfer before SSL transfer.
+    if (config->ssl_transfer == 1 && SSLTransferSupported(ssl)) {
+      if (config->tls_unique) {
+        if (!SSL_get_tls_unique(ssl, tls_unique_before_transfer,
+          &tls_unique_len_before_transfer,
+          sizeof(tls_unique_before_transfer))) {
+          fprintf(stderr, "failed to get tls-unique before ssl transfer\n");
+          return false;
+        }
+        if (tls_unique_len_before_transfer != 12) {
+          fprintf(stderr, "expected 12 bytes of tls-unique but got %u",
+            static_cast<unsigned>(tls_unique_len_before_transfer));
+          return false;
+        }
+      }
+    }
+
+    if (!DoSSLTransfer(config, ssl_uniqueptr)) {
+      return false;
+    }
+    ssl = ssl_uniqueptr->get();
 
     if (config->forbid_renegotiation_after_handshake) {
       SSL_set_renegotiate_mode(ssl, ssl_renegotiate_never);
@@ -1026,6 +1177,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       return false;
     }
 
+    if (tls_unique_len_before_transfer == 12 &&
+      !OPENSSL_memcmp(tls_unique, tls_unique_before_transfer, 12)) {
+      fprintf(stderr, "tls_unique_before_transfer is different from tls_unique.");
+      return false;
+    }
+
     if (WriteAll(ssl, tls_unique, tls_unique_len) < 0) {
       return false;
     }
@@ -1097,8 +1254,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
           read_size = config->read_size;
         }
         std::unique_ptr<uint8_t[]> buf(new uint8_t[read_size]);
-
-        int n = DoRead(ssl, buf.get(), read_size);
+        int n = DoRead(ssl_uniqueptr, buf.get(), read_size);
+        ssl = ssl_uniqueptr->get();
         int err = SSL_get_error(ssl, n);
         if (err == SSL_ERROR_ZERO_RETURN ||
             (n == 0 && err == SSL_ERROR_SYSCALL)) {
