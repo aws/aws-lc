@@ -1785,12 +1785,8 @@ K256:
 
 .p2align	6
 sha256_block_data_order_shaext:
+
 L$shaext_shortcut:
-
-#ifdef BORINGSSL_DISPATCH_TEST
-
-	movb	$1,_BORINGSSL_function_hit+6(%rip)
-#endif
 	leaq	K256+128(%rip),%rcx
 	movdqu	(%rdi),%xmm1
 	movdqu	16(%rdi),%xmm2

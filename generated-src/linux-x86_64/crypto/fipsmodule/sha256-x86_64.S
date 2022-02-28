@@ -1786,13 +1786,8 @@ K256:
 .type	sha256_block_data_order_shaext,@function
 .align	64
 sha256_block_data_order_shaext:
-.Lshaext_shortcut:
 .cfi_startproc	
-#ifdef BORINGSSL_DISPATCH_TEST
-.extern	BORINGSSL_function_hit
-.hidden BORINGSSL_function_hit
-	movb	$1,BORINGSSL_function_hit+6(%rip)
-#endif
+.Lshaext_shortcut:
 	leaq	K256+128(%rip),%rcx
 	movdqu	(%rdi),%xmm1
 	movdqu	16(%rdi),%xmm2

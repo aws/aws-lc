@@ -1807,12 +1807,8 @@ $L$SEH_begin_sha256_block_data_order_shaext:
 	mov	rdx,r8
 
 
-$L$shaext_shortcut:
 
-%ifdef BORINGSSL_DISPATCH_TEST
-EXTERN	BORINGSSL_function_hit
-	mov	BYTE[((BORINGSSL_function_hit+6))],1
-%endif
+$L$shaext_shortcut:
 	lea	rsp,[((-88))+rsp]
 	movaps	XMMWORD[(-8-80)+rax],xmm6
 	movaps	XMMWORD[(-8-64)+rax],xmm7
