@@ -31,7 +31,6 @@ use strict;
 
 my $flavour = shift;
 my $output  = shift;
-if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
 
 my $win64 = 0;
 $win64 = 1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);

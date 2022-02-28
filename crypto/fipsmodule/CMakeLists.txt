@@ -23,7 +23,6 @@ if(ARCH STREQUAL "x86_64")
     ghash-x86_64.${ASM_EXT}
     md5-x86_64.${ASM_EXT}
     p256-x86_64-asm.${ASM_EXT}
-    p256_beeu-x86_64-asm.${ASM_EXT}
     rdrand-x86_64.${ASM_EXT}
     rsaz-avx2.${ASM_EXT}
     sha1-x86_64.${ASM_EXT}
@@ -33,6 +32,10 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
+
+  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    list(APPEND BCM_ASM_SOURCES p256_beeu-x86_64-asm.${ASM_EXT})
+  endif()
 
   # Set the source directory for s2n-bignum assembly files
   set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384)
@@ -151,7 +154,7 @@ if(PERL_EXECUTABLE)
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple)
-if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE)
+if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
   set(

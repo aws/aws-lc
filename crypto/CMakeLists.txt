@@ -74,10 +74,14 @@ if(PERL_EXECUTABLE)
       set(dir ".")
     endif()
 
+    if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+      set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
+    endif()
+
     add_custom_command(
       OUTPUT ${dest}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
+      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${dest} ${PERLASM_FLAGS}
       DEPENDS
       ${src}
       ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
@@ -182,11 +186,14 @@ if(ARCH STREQUAL "x86_64")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-x86_64.${ASM_EXT}
-    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
     cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-    hrss/asm/poly_rq_mul.S
     test/trampoline-x86_64.${ASM_EXT}
   )
+  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    list(APPEND CRYPTO_ARCH_SOURCES
+                cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+                hrss/asm/poly_rq_mul.S)
+  endif()
 endif()
 
 if(GO_EXECUTABLE)

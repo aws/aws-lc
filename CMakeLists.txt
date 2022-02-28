@@ -190,6 +190,14 @@ macro(check_run file_to_test flag_to_set compile_flags)
   endif()
 endmacro()
 
+# Some ancient assemblers don't know about AVX instructions, which is an
+# assumption we make for some of the assembly implementations. This flag
+# can be set to handle such cases.
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
+endif()
+
 # Detect if memcmp is wrongly stripped like strcmp.
 # If exists, let CMake generate a warning.
 # memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
