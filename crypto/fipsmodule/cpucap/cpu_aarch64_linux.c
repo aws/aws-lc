@@ -29,9 +29,7 @@
 #include <string.h>
 
 #include <openssl/arm_arch.h>
-#include <openssl/err.h>
 
-OPENSSL_DECLARE_ERROR_REASON(SYS, CPU_R_UNSUPPORTED_HW_CAPABILITY);
 
 extern uint32_t OPENSSL_armcap_P;
 
