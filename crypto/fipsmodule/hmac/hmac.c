@@ -174,6 +174,10 @@ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
 #define HMAC_STATE_IN_PROGRESS 2
 #define HMAC_STATE_READY_NEEDS_INIT 3
 
+// Static assertion to ensure that no one has changed the value of HMAC_STATE_UNINITIALIZED.
+// This really must stay with a zero value.
+OPENSSL_STATIC_ASSERT(HMAC_STATE_UNINITIALIZED == 0, HMAC_STATE_UNINITIALIZED_is_not_zero_t)
+
 // Indicates that a context has the md and methods configured and is ready to use
 #define hmac_ctx_is_initialized(ctx) ((HMAC_STATE_INIT_NO_DATA == (ctx)->state || HMAC_STATE_IN_PROGRESS == (ctx)->state))
 
@@ -181,12 +185,7 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
 
-  // While returned new contexts are fully zeroed (and that is what we encourage our callers to do),
-  // we know enough about its inner workings to know that setting the state field to HMAC_STATE_UNINITIALIZED
-  // is sufficient for HMAC_Init_ex to get everything into a properly working state.
-  // So this is yet another micro-optimization of only setting a single byte rather than many
-  // (which will just be overwritten in a moment).
-  HMAC_CTX ctx = {.state = HMAC_STATE_UNINITIALIZED};
+  HMAC_CTX ctx = {0};
   int result;
 
   // We have to avoid the underlying SHA services updating the indicator
@@ -259,7 +258,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   // or the md and they key has changed.
   // (It is a misuse to just change the md so we also assume that the key changes when the md changes.)
 
-  if (md && ctx->md != md) {
+  if (md && (HMAC_STATE_UNINITIALIZED == ctx->state || ctx->md != md)) {
     // The MD has changed
     ctx->methods = GetInPlaceMethods(md);
     if (ctx->methods == NULL) {
