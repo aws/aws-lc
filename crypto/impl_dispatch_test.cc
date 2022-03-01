@@ -37,6 +37,7 @@ class ImplDispatchTest : public ::testing::Test {
     aesni_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     ssse3_ = CRYPTO_is_SSSE3_capable();
+    sha_ext_ = CRYPTO_is_SHAEXT_capable();
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
