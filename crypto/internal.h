@@ -1051,6 +1051,10 @@ OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
   return (OPENSSL_ia32cap_P[2] & (1 << 19)) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
+  return (OPENSSL_ia32cap_P[2] & (1 << 29)) != 0;
+}
+
 #endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
