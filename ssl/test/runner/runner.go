@@ -15307,7 +15307,7 @@ func addPeekTests() {
 // Below is the difference between |addPeekTests| and |addServerPeekTests|.
 // 1. addServerPeekTests uses bssl_shim as server.
 // 2. The MaxVersion is set to TLS 1.2. The default one seems TLS 1.3.
-// 3. Let Golang TLS client sends messages(len: |maxPlaintext + 1|) to repeatedly test |SSL_peek| and |SSL_read|.
+// 3. Let Golang TLS client sends messages(len: |maxPlaintext * 100 + 1|) to repeatedly test |SSL_peek| and |SSL_read|.
 func addServerPeekTests() {
 	// Test SSL_peek works, including on empty records.
 	testCases = append(testCases, testCase{
@@ -15316,7 +15316,7 @@ func addServerPeekTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 		},
-		messageLen: maxPlaintext + 1,
+		messageLen: maxPlaintext * 100 + 1,
 		sendEmptyRecords: 1,
 		flags: []string{"-peek-then-read"},
 	})
@@ -15329,7 +15329,7 @@ func addServerPeekTests() {
 			MinVersion: VersionTLS11,
 			MaxVersion: VersionTLS12,
 		},
-		messageLen: maxPlaintext + 1,
+		messageLen: maxPlaintext * 100 + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-implicit-handshake",
@@ -15346,7 +15346,7 @@ func addServerPeekTests() {
 				ExpectCloseNotify: true,
 			},
 		},
-		messageLen: maxPlaintext + 1,
+		messageLen: maxPlaintext * 100 + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-check-close-notify",
