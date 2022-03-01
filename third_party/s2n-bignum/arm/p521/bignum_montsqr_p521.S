@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montsqr_p521
+        .globl  _bignum_montsqr_p521
         .text
         .balign 4
 
@@ -73,6 +74,7 @@
 #define d8 x10
 
 bignum_montsqr_p521:
+_bignum_montsqr_p521:
 
 // Save registers
 

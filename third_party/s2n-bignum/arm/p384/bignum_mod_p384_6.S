@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mod_p384_6
+        .globl  _bignum_mod_p384_6
         .text
         .balign 4
 
@@ -46,6 +47,7 @@
 
 
 bignum_mod_p384_6:
+_bignum_mod_p384_6:
 
 // Load the complicated lower three words of p_384 = [-1;-1;-1;n2;n1;n0]
 

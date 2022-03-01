@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montmul_p521_alt
+        .globl  _bignum_montmul_p521_alt
         .text
         .balign 4
 
@@ -82,6 +83,7 @@
 #define u16 x21
 
 bignum_montmul_p521_alt:
+_bignum_montmul_p521_alt:
 
 // Save more registers
 

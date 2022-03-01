@@ -25,6 +25,9 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_cmul_p521
+        .globl  _bignum_cmul_p521
+        .globl  bignum_cmul_p521_alt
+        .globl  _bignum_cmul_p521_alt
         .text
         .balign 4
 
@@ -61,6 +64,9 @@
 #define dd x15
 
 bignum_cmul_p521:
+_bignum_cmul_p521:
+bignum_cmul_p521_alt:
+_bignum_cmul_p521_alt:
 
 // First do the multiply, getting [d9; ...; d0], and as this is done
 // accumulate an AND "dd" of digits d7,...,d1 for later use

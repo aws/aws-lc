@@ -29,6 +29,7 @@
 
 
         .globl  bignum_montmul_p384
+        .globl  _bignum_montmul_p384
         .text
 
 #define z %rdi
@@ -94,6 +95,7 @@
                 adcq    $0, d7
 
 bignum_montmul_p384:
+_bignum_montmul_p384:
 
 // Save more registers to play with
 
