@@ -123,6 +123,11 @@ extern uint64_t bignum_cmod (uint64_t k, uint64_t *x, uint64_t m);
 // Inputs c, y[n]; outputs function return (carry-out) and z[k]
 extern uint64_t bignum_cmul (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);
 
+// Multiply by a single word modulo p_25519, z := (c * x) mod p_25519, assuming x reduced
+// Inputs c, x[4]; output z[4]
+extern void bignum_cmul_p25519 (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
+extern void bignum_cmul_p25519_alt (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
+
 // Multiply by a single word modulo p_256, z := (c * x) mod p_256, assuming x reduced
 // Inputs c, x[4]; output z[4]
 extern void bignum_cmul_p256 (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);

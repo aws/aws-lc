@@ -142,10 +142,8 @@ let bignum_sqr_p25519_mc = define_assert_from_elf "bignum_sqr_p25519_mc" "x86/cu
   0x49; 0x11; 0xd9;        (* ADC (% r9) (% rbx) *)
   0x49; 0x11; 0xda;        (* ADC (% r10) (% rbx) *)
   0x49; 0x11; 0xdb;        (* ADC (% r11) (% rbx) *)
-  0x48; 0x19; 0xc0;        (* SBB (% rax) (% rax) *)
-  0x48; 0xf7; 0xd0;        (* NOT (% rax) *)
-  0x48; 0x21; 0xd0;        (* AND (% rax) (% rdx) *)
-  0x49; 0x29; 0xc0;        (* SUB (% r8) (% rax) *)
+  0x48; 0x0f; 0x42; 0xd3;  (* CMOVB (% rdx) (% rbx) *)
+  0x49; 0x29; 0xd0;        (* SUB (% r8) (% rdx) *)
   0x49; 0x19; 0xd9;        (* SBB (% r9) (% rbx) *)
   0x49; 0x19; 0xda;        (* SBB (% r10) (% rbx) *)
   0x49; 0x19; 0xdb;        (* SBB (% r11) (% rbx) *)
@@ -181,13 +179,13 @@ let p25519redlemma = prove
 
 let BIGNUM_SQR_P25519_CORRECT = time prove
  (`!z x n pc.
-        nonoverlapping (word pc,0x190) (z,8 * 4)
+        nonoverlapping (word pc,0x185) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_sqr_p25519_mc /\
                   read RIP s = word(pc + 0x9) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
-             (\s. read RIP s = word (pc + 0x180) /\
+             (\s. read RIP s = word (pc + 0x17b) /\
                   bignum_from_memory (z,4) s = (n EXP 2) MOD p_25519)
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -310,7 +308,7 @@ let BIGNUM_SQR_P25519_CORRECT = time prove
   (*** The rest of the computation ***)
 
   X86_ACCSTEPS_TAC BIGNUM_SQR_P25519_EXEC
-   [62;63;64;65;69;70;71;72] (62--77) THEN
+   [62;63;64;65;67;68;69;70] (62--75) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
@@ -345,10 +343,10 @@ let BIGNUM_SQR_P25519_CORRECT = time prove
 
 let BIGNUM_SQR_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x190) (z,8 * 4) /\
+        nonoverlapping (word pc,0x185) (z,8 * 4) /\
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 40),48) /\
         ALL (nonoverlapping (word_sub stackpointer (word 40),40))
-            [(word pc,0x190); (x,8 * 4)]
+            [(word pc,0x185); (x,8 * 4)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_sqr_p25519_mc /\
                   read RIP s = word pc /\

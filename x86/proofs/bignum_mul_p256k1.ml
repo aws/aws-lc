@@ -164,10 +164,8 @@ let bignum_mul_p256k1_mc = define_assert_from_elf "bignum_mul_p256k1_mc" "x86/se
   0x49; 0x11; 0xd9;        (* ADC (% r9) (% rbx) *)
   0x49; 0x11; 0xea;        (* ADC (% r10) (% rbp) *)
   0x49; 0x11; 0xeb;        (* ADC (% r11) (% rbp) *)
-  0x48; 0x19; 0xc0;        (* SBB (% rax) (% rax) *)
-  0x48; 0xf7; 0xd0;        (* NOT (% rax) *)
-  0x48; 0x21; 0xd0;        (* AND (% rax) (% rdx) *)
-  0x49; 0x29; 0xc0;        (* SUB (% r8) (% rax) *)
+  0x48; 0x0f; 0x42; 0xd5;  (* CMOVB (% rdx) (% rbp) *)
+  0x49; 0x29; 0xd0;        (* SUB (% r8) (% rdx) *)
   0x49; 0x19; 0xe9;        (* SBB (% r9) (% rbp) *)
   0x49; 0x19; 0xea;        (* SBB (% r10) (% rbp) *)
   0x49; 0x19; 0xeb;        (* SBB (% r11) (% rbp) *)
@@ -202,14 +200,14 @@ let p256k1redlemma = prove
 
 let BIGNUM_MUL_P256K1_CORRECT = time prove
  (`!z x y m n pc.
-        nonoverlapping (word pc,0x1c9) (z,8 * 4)
+        nonoverlapping (word pc,0x1c4) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_mul_p256k1_mc /\
                   read RIP s = word(pc + 0xa) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = m /\
                   bignum_from_memory (y,4) s = n)
-             (\s. read RIP s = word (pc + 0x1be) /\
+             (\s. read RIP s = word (pc + 0x1b9) /\
                   bignum_from_memory (z,4) s = (m * n) MOD p_256k1)
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX; RBP;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -283,7 +281,7 @@ let BIGNUM_MUL_P256K1_CORRECT = time prove
   (*** The rest of the computation ***)
 
   X86_ACCSTEPS_TAC BIGNUM_MUL_P256K1_EXEC
-   [73;74;75;76;77;81;82;83;84] (73--88) THEN
+   [73;74;75;76;77;79;80;81;82] (73--86) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
@@ -319,10 +317,10 @@ let BIGNUM_MUL_P256K1_CORRECT = time prove
 
 let BIGNUM_MUL_P256K1_SUBROUTINE_CORRECT = time prove
  (`!z x y m n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x1c9) (z,8 * 4) /\
+        nonoverlapping (word pc,0x1c4) (z,8 * 4) /\
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 48),56) /\
         ALL (nonoverlapping (word_sub stackpointer (word 48),48))
-            [(word pc,0x1c9); (x,8 * 4); (y,8 * 4)]
+            [(word pc,0x1c4); (x,8 * 4); (y,8 * 4)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_mul_p256k1_mc /\
                   read RIP s = word pc /\

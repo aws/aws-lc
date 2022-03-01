@@ -1,3 +1,4 @@
+bignum_cmul_p25519
 bignum_cmul_p256
 bignum_cmul_p256k1
 bignum_cmul_p384

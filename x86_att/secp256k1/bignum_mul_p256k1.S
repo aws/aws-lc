@@ -152,10 +152,8 @@ _bignum_mul_p256k1:
 // So we correct if CF = 0 by subtracting 4294968273, i.e. by
 // adding p_256k1 to the "full" answer
 
-        sbbq    %rax, %rax
-        notq    %rax
-        andq    %rdx, %rax
-        subq    %rax, %r8
+        cmovcq  zero, %rdx
+        subq    %rdx, %r8
         sbbq    zero, %r9
         sbbq    zero, %r10
         sbbq    zero, %r11

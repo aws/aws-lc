@@ -144,10 +144,8 @@ _bignum_sqr_p25519:
 // So we correct if CF = 0 by subtracting 19, either way masking to
 // 255 bits, i.e. by effectively adding p_25519 to the "full" answer
 
-        sbb     rax, rax
-        not     rax
-        and     rax, rdx
-        sub     r8, rax
+        cmovc   rdx, zero
+        sub     r8, rdx
         sbb     r9, zero
         sbb     r10, zero
         sbb     r11, zero

@@ -20,6 +20,7 @@ bignum_cmadd
 bignum_cmnegadd
 bignum_cmod
 bignum_cmul
+bignum_cmul_p25519_alt
 bignum_cmul_p256_alt
 bignum_cmul_p256k1_alt
 bignum_cmul_p384_alt

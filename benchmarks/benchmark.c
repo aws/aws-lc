@@ -213,6 +213,10 @@ void call_bignum_sub_p384(void) repeat(bignum_sub_p384(b0,b1,b2))
 
 void call_bignum_sub_p521(void) repeat(bignum_sub_p521(b0,b1,b2))
 
+void call_bignum_cmul_p25519(void) repeat(bignum_cmul_p25519(b0,b1[0],b2))
+
+void call_bignum_cmul_p25519_alt(void) repeat(bignum_cmul_p25519_alt(b0,b1[0],b2))
+
 void call_bignum_cmul_p256(void) repeat(bignum_cmul_p256(b0,b1[0],b2))
 
 void call_bignum_cmul_p256_alt(void) repeat(bignum_cmul_p256_alt(b0,b1[0],b2))
@@ -701,6 +705,8 @@ int main(void)
   timingtest(all,"bignum_cmul (1x4->4)",call_bignum_cmul__4_4);
   timingtest(all,"bignum_cmul (1x6->6)",call_bignum_cmul__6_6);
   timingtest(all,"bignum_cmul (1x32->32)",call_bignum_cmul__32_32);
+  timingtest(bmi,"bignum_cmul_p25519",call_bignum_cmul_p25519);
+  timingtest(all,"bignum_cmul_p25519_alt",call_bignum_cmul_p25519_alt);
   timingtest(bmi,"bignum_cmul_p256",call_bignum_cmul_p256);
   timingtest(all,"bignum_cmul_p256_alt",call_bignum_cmul_p256_alt);
   timingtest(bmi,"bignum_cmul_p256k1",call_bignum_cmul_p256k1);
