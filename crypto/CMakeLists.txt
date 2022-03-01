@@ -187,13 +187,10 @@ if(ARCH STREQUAL "x86_64")
 
     chacha/chacha-x86_64.${ASM_EXT}
     cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
     test/trampoline-x86_64.${ASM_EXT}
+    hrss/asm/poly_rq_mul.S
   )
-  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
-    list(APPEND CRYPTO_ARCH_SOURCES
-                cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
-                hrss/asm/poly_rq_mul.S)
-  endif()
 endif()
 
 if(GO_EXECUTABLE)
