@@ -193,9 +193,9 @@ endmacro()
 # Some ancient assemblers don't know about AVX instructions, which is an
 # assumption we make for some of the assembly implementations. This flag
 # can be set to handle such cases.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 endif()
 
 # Detect if memcmp is wrongly stripped like strcmp.
