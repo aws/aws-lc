@@ -1786,8 +1786,8 @@ K256:
 .type	sha256_block_data_order_shaext,@function
 .align	64
 sha256_block_data_order_shaext:
-.Lshaext_shortcut:
 .cfi_startproc	
+.Lshaext_shortcut:
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern	BORINGSSL_function_hit
 .hidden BORINGSSL_function_hit

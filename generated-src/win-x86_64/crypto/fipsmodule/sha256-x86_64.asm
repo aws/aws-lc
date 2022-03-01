@@ -1807,8 +1807,8 @@ $L$SEH_begin_sha256_block_data_order_shaext:
 	mov	rdx,r8
 
 
-$L$shaext_shortcut:
 
+$L$shaext_shortcut:
 %ifdef BORINGSSL_DISPATCH_TEST
 EXTERN	BORINGSSL_function_hit
 	mov	BYTE[((BORINGSSL_function_hit+6))],1
