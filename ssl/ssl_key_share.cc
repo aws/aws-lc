@@ -293,14 +293,15 @@ class CECPQ2KeyShare : public SSLKeyShare {
   HRSS_private_key hrss_private_key_;
 };
 
-// The hybrid key exchange implemented here uses direct concatenation (without
-// length encoding) of ec_key || pq_key. This is different from the hybrid key
-// exchange implemented in https://github.com/aws/s2n-tls. s2n-tls prepends
-// the length of each key as described in
+// The hybrid key exchange implemented here is slightly different from the
+// key exchange used for CECPQ2. PQHybridKeyShare prepends 2 bytes to indicate
+// the length of each component public key immediately before the corresponding
+// key; CECPQ2 does not do this. PQHybridKeyShare is implemented according to:
 // https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
 class PQHybridKeyShare : public SSLKeyShare {
  public:
-  PQHybridKeyShare(int nid, uint16_t group_id) : nid_(nid), group_id_(group_id) {}
+  PQHybridKeyShare(int nid, uint16_t group_id)
+      : nid_(nid), group_id_(group_id) {}
 
   uint16_t GroupID() const override { return group_id_; }
 
@@ -310,16 +311,18 @@ class PQHybridKeyShare : public SSLKeyShare {
 
     uint16_t ec_nid;
     uint16_t ec_group_id;
-    if (!GetECNID(&ec_nid) ||
-        !ssl_nid_to_group_id(&ec_group_id, ec_nid) ||
+    uint16_t ec_public_key_length;
+    if (!GetECNID(&ec_nid) || !ssl_nid_to_group_id(&ec_group_id, ec_nid) ||
+        !get_ec_public_key_length(&ec_public_key_length, ec_nid) ||
         !(ec_key_share_ = SSLKeyShare::Create(ec_group_id)) ||
-        !ec_key_share_->Offer(out)) {
+        !CBB_add_u16(out, ec_public_key_length) || !ec_key_share_->Offer(out)) {
       return false;
     }
 
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
     if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_) ||
         !EVP_PQ_KEM_generate_keypair(pq_kem_ctx_) ||
+        !CBB_add_u16(out, pq_kem_ctx_->kem->public_key_length) ||
         !CBB_add_bytes(out, pq_kem_ctx_->public_key,
                        pq_kem_ctx_->kem->public_key_length)) {
       return false;
@@ -330,6 +333,7 @@ class PQHybridKeyShare : public SSLKeyShare {
 
   bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
               uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
     assert(!pq_kem_ctx_);
     assert(!ec_key_share_);
 
@@ -339,27 +343,48 @@ class PQHybridKeyShare : public SSLKeyShare {
     Array<uint8_t> ec_secret;
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
 
-    if (!GetECNID(&ec_nid) ||
-        !ssl_nid_to_group_id(&ec_group_id, ec_nid) ||
+    if (!GetECNID(&ec_nid) || !ssl_nid_to_group_id(&ec_group_id, ec_nid) ||
         !get_ec_public_key_length(&ec_public_key_length, ec_nid) ||
-        !EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_) ||
-        peer_key.size() != ec_public_key_length + pq_kem_ctx_->kem->public_key_length) {
+        !EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_)) {
       return false;
     }
 
-    Span<const uint8_t> ec_peer_key = peer_key.first(ec_public_key_length);
+    // Verify that all lengths are correct
+    if (peer_key.size() != ec_public_key_length + pq_kem_ctx_->kem->public_key_length + (2 * sizeof(uint16_t))) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+
+    uint16_t received_ec_size, received_pq_size;
+    CBS ec_cbs, pq_cbs;
+    CBS_init(&ec_cbs, peer_key.data(), sizeof(uint16_t));
+    CBS_init(&pq_cbs, peer_key.data() + sizeof(uint16_t) + ec_public_key_length, sizeof(uint16_t));
+    if (!CBS_get_u16(&ec_cbs, &received_ec_size) ||
+        received_ec_size != ec_public_key_length ||
+        !CBS_get_u16(&pq_cbs, &received_pq_size) ||
+        received_pq_size != pq_kem_ctx_->kem->public_key_length) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+
+    Span<const uint8_t> ec_peer_key = peer_key.subspan(sizeof(uint16_t), ec_public_key_length);
     if (!(ec_key_share_ = SSLKeyShare::Create(ec_group_id)) ||
+        !CBB_add_u16(out_public_key, ec_public_key_length) ||
         !ec_key_share_->Offer(out_public_key) ||
         !ec_key_share_->Finish(&ec_secret, out_alert, ec_peer_key)) {
       *out_alert = SSL_AD_DECODE_ERROR;
       return false;
     }
 
-    OPENSSL_memcpy(pq_kem_ctx_->public_key, peer_key.data() + ec_public_key_length,
+    OPENSSL_memcpy(pq_kem_ctx_->public_key, peer_key.data() + ec_public_key_length + (2 * sizeof(uint16_t)),
                    pq_kem_ctx_->kem->public_key_length);
-    if (!EVP_PQ_KEM_encapsulate(pq_kem_ctx_) ||
-        !CBB_add_bytes(out_public_key, pq_kem_ctx_->ciphertext,
-                       pq_kem_ctx_->kem->ciphertext_length) ||
+    if (!EVP_PQ_KEM_encapsulate(pq_kem_ctx_)) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+
+    if (!CBB_add_u16(out_public_key, pq_kem_ctx_->kem->ciphertext_length) ||
+        !CBB_add_bytes(out_public_key, pq_kem_ctx_->ciphertext,pq_kem_ctx_->kem->ciphertext_length) ||
         !out_secret ||
         !out_secret->Init(ec_secret.size() + pq_kem_ctx_->kem->shared_secret_length)) {
       return false;
@@ -385,21 +410,42 @@ class PQHybridKeyShare : public SSLKeyShare {
     Array<uint8_t> ec_secret;
 
     if (!GetECNID(&ec_nid) ||
-        !get_ec_public_key_length(&ec_public_key_length, ec_nid) ||
-        peer_key.size() != ec_public_key_length + pq_kem_ctx_->kem->ciphertext_length) {
+        !get_ec_public_key_length(&ec_public_key_length, ec_nid)) {
       return false;
     }
 
-    Span<const uint8_t> ec_peer_key = peer_key.first(ec_public_key_length);
+    // Verify all lengths
+    if (peer_key.size() != ec_public_key_length + pq_kem_ctx_->kem->ciphertext_length + (2 * sizeof(uint16_t))) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+
+    uint16_t received_ec_size, received_pq_size;
+    CBS ec_cbs, pq_cbs;
+    CBS_init(&ec_cbs, peer_key.data(), sizeof(uint16_t));
+    CBS_init(&pq_cbs, peer_key.data() + sizeof(uint16_t) + ec_public_key_length, sizeof(uint16_t));
+    if (!CBS_get_u16(&ec_cbs, &received_ec_size) ||
+        received_ec_size != ec_public_key_length ||
+        !CBS_get_u16(&pq_cbs, &received_pq_size) ||
+        received_pq_size != pq_kem_ctx_->kem->ciphertext_length) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+
+    Span<const uint8_t> ec_peer_key = peer_key.subspan(sizeof(uint16_t), ec_public_key_length);
     if (!ec_key_share_->Finish(&ec_secret, out_alert, ec_peer_key)) {
       *out_alert = SSL_AD_DECODE_ERROR;
       return false;
     }
 
-    OPENSSL_memcpy(pq_kem_ctx_->ciphertext, peer_key.data() + ec_public_key_length,
+    OPENSSL_memcpy(pq_kem_ctx_->ciphertext, peer_key.data() + ec_public_key_length + (2 * sizeof(uint16_t)),
                    pq_kem_ctx_->kem->ciphertext_length);
-    if (!EVP_PQ_KEM_decapsulate(pq_kem_ctx_) ||
-        !out_secret ||
+    if (!EVP_PQ_KEM_decapsulate(pq_kem_ctx_)) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+
+    if (!out_secret ||
         !out_secret->Init(ec_secret.size() + pq_kem_ctx_->kem->shared_secret_length)) {
       return false;
     }
