@@ -30,7 +30,7 @@
 // TODO(davidben): AES-GCM-SIV assembly is not correct for Windows. It must save
 // and restore xmm6 through xmm15.
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
-    !defined(OPENSSL_WINDOWS)
+    !defined(OPENSSL_WINDOWS) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define AES_GCM_SIV_ASM
 
 // Optimised AES-GCM-SIV

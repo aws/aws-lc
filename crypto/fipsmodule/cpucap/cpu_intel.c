@@ -114,7 +114,13 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
   return (uint64_t)_xgetbv(xcr);
 #else
   uint32_t eax, edx;
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  // Some old assemblers don't support the xgetbv instruction so we emit
+  // the opcode of xgetbv directly.
+  __asm__ volatile (".byte 0x0f, 0x01, 0xd0" : "=a"(eax), "=d"(edx) : "c"(xcr));
+#else
   __asm__ volatile ("xgetbv" : "=a"(eax), "=d"(edx) : "c"(xcr));
+#endif
   return (((uint64_t)edx) << 32) | eax;
 #endif
 }
