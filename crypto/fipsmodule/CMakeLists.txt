@@ -151,7 +151,7 @@ if(PERL_EXECUTABLE)
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple)
-if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE)
+if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
   set(

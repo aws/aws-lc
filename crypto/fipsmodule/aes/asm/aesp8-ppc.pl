@@ -43,6 +43,10 @@
 # POWER9[le]	4.02/0.86	0.84	1.05
 # POWER9[be]	3.99/0.78	0.79	0.97
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $flavour = shift;
 
 if ($flavour =~ /64/) {

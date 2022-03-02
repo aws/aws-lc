@@ -93,9 +93,12 @@
 # This file was patched in BoringSSL to remove the variable-time 4-bit
 # implementation.
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $flavour = shift;
 $output  = shift;
-if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
 
 $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
@@ -111,6 +114,7 @@ die "can't locate x86_64-xlate.pl";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 $avx = 1;
+for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
@@ -831,6 +835,7 @@ ___
 } else {
 $code.=<<___;
 	jmp	.L_init_clmul
+.cfi_endproc
 .size	gcm_init_avx,.-gcm_init_avx
 ___
 }
@@ -1270,6 +1275,7 @@ ___
 } else {
 $code.=<<___;
 	jmp	.L_ghash_clmul
+.cfi_endproc
 .size	gcm_ghash_avx,.-gcm_ghash_avx
 ___
 }

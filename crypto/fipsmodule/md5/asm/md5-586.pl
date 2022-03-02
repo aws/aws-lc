@@ -5,13 +5,17 @@
 # version, non-normal is the
 # md5_block_x86(MD5_CTX *c, ULONG *X,int blocks);
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path." }
+
 $normal=0;
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../../perlasm");
 require "x86asm.pl";
 
-$output=pop;
+$output=$ARGV[1];
 open STDOUT,">$output";
 
 &asm_init($ARGV[0]);

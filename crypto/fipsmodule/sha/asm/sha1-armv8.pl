@@ -32,6 +32,9 @@
 # (**)	Keep in mind that Denver relies on binary translation, which
 #	optimizes compiler output at run-time.
 
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $flavour = shift;
 $output  = shift;
 

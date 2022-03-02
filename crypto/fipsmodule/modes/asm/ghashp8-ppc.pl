@@ -31,6 +31,10 @@
 # performance on POWER8 is 1 cycle per processed byte), and 4x
 # aggregated reduction - by 170% or 2.7x (resulting in 0.55 cpb).
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $flavour=shift;
 $output =shift;
 
