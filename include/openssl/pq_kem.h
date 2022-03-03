@@ -83,11 +83,9 @@ OPENSSL_EXPORT int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx, const EVP_PQ_KEM
 /*
    Name: EVP_PQ_KEM_CTX_init_by_nid
 
-   Description: Initializes |kem_ctx| with the kem associated with |nid|. |nid|
-                can be the name of a PQ KEM (e.g. NID_KYBER512) or a hybrid
-                key agreement scheme involving a PQ KEM (e.g.
-                NID_X25519_KYBER512). Allocates memory needed for public key,
-                private key, ciphertext, and shared secret.
+   Description: Initializes |kem_ctx| with the kem associated with |nid|
+                and allocates memory needed for public key, private key,
+                cipher text, and shared secret.
 
    Returns 1 on success, 0 on failure.
 */

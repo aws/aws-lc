@@ -327,7 +327,7 @@ class PQHybridKeyShare : public SSLKeyShare {
     }
 
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
-    if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_) ||
+    if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, pq_nid_) ||
         !EVP_PQ_KEM_generate_keypair(pq_kem_ctx_) ||
         !CBB_add_u16(out, pq_kem_ctx_->kem->public_key_length) ||
         !CBB_add_bytes(out, pq_kem_ctx_->public_key,
@@ -351,7 +351,7 @@ class PQHybridKeyShare : public SSLKeyShare {
 
     if (!ssl_nid_to_group_id(&ec_group_id, ec_nid_) ||
         !get_ec_public_key_length(&ec_public_key_length, ec_nid_) ||
-        !EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_)) {
+        !EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, pq_nid_)) {
       return false;
     }
 

@@ -36,8 +36,6 @@ int EVP_PQ_KEM_CTX_init_by_nid(EVP_PQ_KEM_CTX *kem_ctx, int nid) {
 
   switch (nid) {
     case NID_KYBER512:
-    case NID_SECP256R1_KYBER512:
-    case NID_X25519_KYBER512:
       return EVP_PQ_KEM_CTX_init(kem_ctx, &EVP_PQ_KEM_kyber512);
     default:
       return 0;
