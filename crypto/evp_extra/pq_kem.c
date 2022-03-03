@@ -29,7 +29,7 @@ int EVP_PQ_KEM_CTX_init(EVP_PQ_KEM_CTX *kem_ctx, const EVP_PQ_KEM *kem) {
   return 1;
 }
 
-OPENSSL_EXPORT int EVP_PQ_KEM_CTX_init_by_nid(EVP_PQ_KEM_CTX *kem_ctx, int nid) {
+int EVP_PQ_KEM_CTX_init_by_nid(EVP_PQ_KEM_CTX *kem_ctx, int nid) {
   if (kem_ctx == NULL) {
     return 0;
   }

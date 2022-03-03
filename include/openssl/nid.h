@@ -4255,6 +4255,8 @@ extern "C" {
 #define NID_SECP256R1_KYBER512 964
 #define NID_X25519_KYBER512 965
 
+#define NID_HRSS 966
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

@@ -301,7 +301,15 @@ class CECPQ2KeyShare : public SSLKeyShare {
 class PQHybridKeyShare : public SSLKeyShare {
  public:
   PQHybridKeyShare(int nid, uint16_t group_id)
-      : nid_(nid), group_id_(group_id) {}
+      : nid_(nid), group_id_(group_id) {
+    for (const PQGroup &pq_group : PQGroups()) {
+      if (group_id == pq_group.group_id) {
+        ec_nid_ = pq_group.ec_nid;
+        pq_nid_ = pq_group.pq_nid;
+        break;
+      }
+    }
+  }
 
   uint16_t GroupID() const override { return group_id_; }
 
@@ -309,11 +317,10 @@ class PQHybridKeyShare : public SSLKeyShare {
     assert(!pq_kem_ctx_);
     assert(!ec_key_share_);
 
-    uint16_t ec_nid;
     uint16_t ec_group_id;
     uint16_t ec_public_key_length;
-    if (!GetECNID(&ec_nid) || !ssl_nid_to_group_id(&ec_group_id, ec_nid) ||
-        !get_ec_public_key_length(&ec_public_key_length, ec_nid) ||
+    if (!ssl_nid_to_group_id(&ec_group_id, ec_nid_) ||
+        !get_ec_public_key_length(&ec_public_key_length, ec_nid_) ||
         !(ec_key_share_ = SSLKeyShare::Create(ec_group_id)) ||
         !CBB_add_u16(out, ec_public_key_length) || !ec_key_share_->Offer(out)) {
       return false;
@@ -337,24 +344,22 @@ class PQHybridKeyShare : public SSLKeyShare {
     assert(!pq_kem_ctx_);
     assert(!ec_key_share_);
 
-    uint16_t ec_nid;
     uint16_t ec_group_id;
     uint16_t ec_public_key_length;
     Array<uint8_t> ec_secret;
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
 
-    if (!GetECNID(&ec_nid) || !ssl_nid_to_group_id(&ec_group_id, ec_nid) ||
-        !get_ec_public_key_length(&ec_public_key_length, ec_nid) ||
+    if (!ssl_nid_to_group_id(&ec_group_id, ec_nid_) ||
+        !get_ec_public_key_length(&ec_public_key_length, ec_nid_) ||
         !EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_)) {
       return false;
     }
 
-    // Verify that all lengths are correct
+    // Verify all lengths
     if (peer_key.size() != ec_public_key_length + pq_kem_ctx_->kem->public_key_length + (2 * sizeof(uint16_t))) {
       *out_alert = SSL_AD_DECODE_ERROR;
       return false;
     }
-
     uint16_t received_ec_size, received_pq_size;
     CBS ec_cbs, pq_cbs;
     CBS_init(&ec_cbs, peer_key.data(), sizeof(uint16_t));
@@ -405,12 +410,10 @@ class PQHybridKeyShare : public SSLKeyShare {
     assert(pq_kem_ctx_);
     assert(ec_key_share_);
 
-    uint16_t ec_nid;
     uint16_t ec_public_key_length;
     Array<uint8_t> ec_secret;
 
-    if (!GetECNID(&ec_nid) ||
-        !get_ec_public_key_length(&ec_public_key_length, ec_nid)) {
+    if (!get_ec_public_key_length(&ec_public_key_length, ec_nid_)) {
       return false;
     }
 
@@ -419,7 +422,6 @@ class PQHybridKeyShare : public SSLKeyShare {
       *out_alert = SSL_AD_DECODE_ERROR;
       return false;
     }
-
     uint16_t received_ec_size, received_pq_size;
     CBS ec_cbs, pq_cbs;
     CBS_init(&ec_cbs, peer_key.data(), sizeof(uint16_t));
@@ -461,22 +463,11 @@ class PQHybridKeyShare : public SSLKeyShare {
 
  private:
   int nid_;
+  int ec_nid_;
+  int pq_nid_;
   uint16_t group_id_;
   UniquePtr<SSLKeyShare> ec_key_share_;
   EVP_PQ_KEM_CTX *pq_kem_ctx_;
-
-  bool GetECNID(uint16_t *out_ec_nid) const {
-    switch (group_id_) {
-      case SSL_CURVE_X25519_KYBER512:
-        *out_ec_nid = NID_X25519;
-        return true;
-      case SSL_CURVE_SECP256R1_KYBER512:
-        *out_ec_nid = NID_X9_62_prime256v1;
-        return true;
-      default:
-        return false;
-    }
-  }
 };
 
 CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
@@ -490,10 +481,20 @@ CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_SECP256R1_KYBER512, SSL_CURVE_SECP256R1_KYBER512, "P-256_Kyber512", "prime256v1_kyber512"},
 };
 
+CONSTEXPR_ARRAY PQGroup kPQGroups[] = {
+    {SSL_CURVE_X25519_KYBER512, NID_X25519_KYBER512, NID_X25519, NID_KYBER512},
+    {SSL_CURVE_SECP256R1_KYBER512, NID_SECP256R1_KYBER512, NID_X9_62_prime256v1, NID_KYBER512},
+    {SSL_CURVE_CECPQ2, NID_CECPQ2, NID_X25519, NID_HRSS},
+};
+
 }  // namespace
 
 Span<const NamedGroup> NamedGroups() {
   return MakeConstSpan(kNamedGroups, OPENSSL_ARRAY_SIZE(kNamedGroups));
+}
+
+Span<const PQGroup> PQGroups() {
+  return MakeConstSpan(kPQGroups, OPENSSL_ARRAY_SIZE(kPQGroups));
 }
 
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
