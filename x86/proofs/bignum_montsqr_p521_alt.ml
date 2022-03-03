@@ -27,9 +27,10 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x41; 0x55;              (* PUSH (% r13) *)
   0x41; 0x56;              (* PUSH (% r14) *)
   0x41; 0x57;              (* PUSH (% r15) *)
+  0x48; 0x83; 0xec; 0x48;  (* SUB (% rsp) (Imm8 (word 72)) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% rax) *)
-  0x48; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% rax) *)
+  0x48; 0x89; 0x04; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% rax) *)
   0x49; 0x89; 0xd1;        (* MOV (% r9) (% rdx) *)
   0x4d; 0x31; 0xd2;        (* XOR (% r10) (% r10) *)
   0x4d; 0x31; 0xdb;        (* XOR (% r11) (% r11) *)
@@ -41,7 +42,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xc1;        (* ADD (% r9) (% rax) *)
   0x49; 0x11; 0xd2;        (* ADC (% r10) (% rdx) *)
   0x49; 0x83; 0xd3; 0x00;  (* ADC (% r11) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
+  0x4c; 0x89; 0x4c; 0x24; 0x08;
+                           (* MOV (Memop Quadword (%% (rsp,8))) (% r9) *)
   0x4d; 0x31; 0xe4;        (* XOR (% r12) (% r12) *)
   0x48; 0x8b; 0x46; 0x08;  (* MOV (% rax) (Memop Quadword (%% (rsi,8))) *)
   0x48; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% rax) *)
@@ -56,7 +58,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xc2;        (* ADD (% r10) (% rax) *)
   0x49; 0x11; 0xd3;        (* ADC (% r11) (% rdx) *)
   0x49; 0x83; 0xd4; 0x00;  (* ADC (% r12) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
+  0x4c; 0x89; 0x54; 0x24; 0x10;
+                           (* MOV (Memop Quadword (%% (rsp,16))) (% r10) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0x66; 0x18;  (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rsi,24))) *)
   0x4d; 0x31; 0xed;        (* XOR (% r13) (% r13) *)
@@ -73,7 +76,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xdb;        (* ADD (% r11) (% rbx) *)
   0x49; 0x11; 0xcc;        (* ADC (% r12) (% rcx) *)
   0x49; 0x83; 0xd5; 0x00;  (* ADC (% r13) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x5f; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% r11) *)
+  0x4c; 0x89; 0x5c; 0x24; 0x18;
+                           (* MOV (Memop Quadword (%% (rsp,24))) (% r11) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0x66; 0x20;  (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rsi,32))) *)
   0x4d; 0x31; 0xf6;        (* XOR (% r14) (% r14) *)
@@ -95,7 +99,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
   0x49; 0x11; 0xd5;        (* ADC (% r13) (% rdx) *)
   0x49; 0x83; 0xd6; 0x00;  (* ADC (% r14) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x67; 0x20;  (* MOV (Memop Quadword (%% (rdi,32))) (% r12) *)
+  0x4c; 0x89; 0x64; 0x24; 0x20;
+                           (* MOV (Memop Quadword (%% (rsp,32))) (% r12) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0x66; 0x28;  (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rsi,40))) *)
   0x4d; 0x31; 0xff;        (* XOR (% r15) (% r15) *)
@@ -117,7 +122,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xdd;        (* ADD (% r13) (% rbx) *)
   0x49; 0x11; 0xce;        (* ADC (% r14) (% rcx) *)
   0x49; 0x83; 0xd7; 0x00;  (* ADC (% r15) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x6f; 0x28;  (* MOV (Memop Quadword (%% (rdi,40))) (% r13) *)
+  0x4c; 0x89; 0x6c; 0x24; 0x28;
+                           (* MOV (Memop Quadword (%% (rsp,40))) (% r13) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0x66; 0x30;  (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rsi,48))) *)
   0x4d; 0x31; 0xc0;        (* XOR (% r8) (% r8) *)
@@ -144,7 +150,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
   0x49; 0x11; 0xd7;        (* ADC (% r15) (% rdx) *)
   0x49; 0x83; 0xd0; 0x00;  (* ADC (% r8) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x77; 0x30;  (* MOV (Memop Quadword (%% (rdi,48))) (% r14) *)
+  0x4c; 0x89; 0x74; 0x24; 0x30;
+                           (* MOV (Memop Quadword (%% (rsp,48))) (% r14) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0x66; 0x38;  (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rsi,56))) *)
   0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
@@ -171,7 +178,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xdf;        (* ADD (% r15) (% rbx) *)
   0x49; 0x11; 0xc8;        (* ADC (% r8) (% rcx) *)
   0x49; 0x83; 0xd1; 0x00;  (* ADC (% r9) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x7f; 0x38;  (* MOV (Memop Quadword (%% (rdi,56))) (% r15) *)
+  0x4c; 0x89; 0x7c; 0x24; 0x38;
+                           (* MOV (Memop Quadword (%% (rsp,56))) (% r15) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0x66; 0x40;  (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rsi,64))) *)
   0x4d; 0x31; 0xd2;        (* XOR (% r10) (% r10) *)
@@ -203,7 +211,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
   0x49; 0x11; 0xd1;        (* ADC (% r9) (% rdx) *)
   0x49; 0x83; 0xd2; 0x00;  (* ADC (% r10) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x47; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% r8) *)
+  0x4c; 0x89; 0x44; 0x24; 0x40;
+                           (* MOV (Memop Quadword (%% (rsp,64))) (% r8) *)
   0x48; 0x8b; 0x46; 0x08;  (* MOV (% rax) (Memop Quadword (%% (rsi,8))) *)
   0x48; 0xf7; 0x66; 0x40;  (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rsi,64))) *)
   0x4d; 0x31; 0xdb;        (* XOR (% r11) (% r11) *)
@@ -337,7 +346,8 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x48; 0x8b; 0x46; 0x40;  (* MOV (% rax) (Memop Quadword (%% (rsi,64))) *)
   0x48; 0x0f; 0xaf; 0xc0;  (* IMUL (% rax) (% rax) *)
   0x4c; 0x01; 0xc0;        (* ADD (% rax) (% r8) *)
-  0x4c; 0x8b; 0x47; 0x40;  (* MOV (% r8) (Memop Quadword (%% (rdi,64))) *)
+  0x4c; 0x8b; 0x44; 0x24; 0x40;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,64))) *)
   0x4c; 0x89; 0xc2;        (* MOV (% rdx) (% r8) *)
   0x48; 0x81; 0xe2; 0xff; 0x01; 0x00; 0x00;
                            (* AND (% rdx) (Imm32 (word 511)) *)
@@ -360,14 +370,21 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x48; 0xc1; 0xe8; 0x09;  (* SHR (% rax) (Imm8 (word 9)) *)
   0x48; 0x01; 0xc2;        (* ADD (% rdx) (% rax) *)
   0xf9;                    (* STCF *)
-  0x4c; 0x13; 0x07;        (* ADC (% r8) (Memop Quadword (%% (rdi,0))) *)
-  0x4c; 0x13; 0x4f; 0x08;  (* ADC (% r9) (Memop Quadword (%% (rdi,8))) *)
-  0x4c; 0x13; 0x57; 0x10;  (* ADC (% r10) (Memop Quadword (%% (rdi,16))) *)
-  0x4c; 0x13; 0x5f; 0x18;  (* ADC (% r11) (Memop Quadword (%% (rdi,24))) *)
-  0x4c; 0x13; 0x67; 0x20;  (* ADC (% r12) (Memop Quadword (%% (rdi,32))) *)
-  0x4c; 0x13; 0x6f; 0x28;  (* ADC (% r13) (Memop Quadword (%% (rdi,40))) *)
-  0x4c; 0x13; 0x77; 0x30;  (* ADC (% r14) (Memop Quadword (%% (rdi,48))) *)
-  0x4c; 0x13; 0x7f; 0x38;  (* ADC (% r15) (Memop Quadword (%% (rdi,56))) *)
+  0x4c; 0x13; 0x04; 0x24;  (* ADC (% r8) (Memop Quadword (%% (rsp,0))) *)
+  0x4c; 0x13; 0x4c; 0x24; 0x08;
+                           (* ADC (% r9) (Memop Quadword (%% (rsp,8))) *)
+  0x4c; 0x13; 0x54; 0x24; 0x10;
+                           (* ADC (% r10) (Memop Quadword (%% (rsp,16))) *)
+  0x4c; 0x13; 0x5c; 0x24; 0x18;
+                           (* ADC (% r11) (Memop Quadword (%% (rsp,24))) *)
+  0x4c; 0x13; 0x64; 0x24; 0x20;
+                           (* ADC (% r12) (Memop Quadword (%% (rsp,32))) *)
+  0x4c; 0x13; 0x6c; 0x24; 0x28;
+                           (* ADC (% r13) (Memop Quadword (%% (rsp,40))) *)
+  0x4c; 0x13; 0x74; 0x24; 0x30;
+                           (* ADC (% r14) (Memop Quadword (%% (rsp,48))) *)
+  0x4c; 0x13; 0x7c; 0x24; 0x38;
+                           (* ADC (% r15) (Memop Quadword (%% (rsp,56))) *)
   0x48; 0x81; 0xd2; 0x00; 0xfe; 0xff; 0xff;
                            (* ADC (% rdx) (Imm32 (word 4294966784)) *)
   0xf5;                    (* CMC *)
@@ -411,6 +428,7 @@ let bignum_montsqr_p521_alt_mc = define_assert_from_elf "bignum_montsqr_p521_alt
   0x4c; 0x89; 0x7f; 0x38;  (* MOV (Memop Quadword (%% (rdi,56))) (% r15) *)
   0x48; 0xc1; 0xea; 0x37;  (* SHR (% rdx) (Imm8 (word 55)) *)
   0x48; 0x89; 0x57; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% rdx) *)
+  0x48; 0x83; 0xc4; 0x48;  (* ADD (% rsp) (Imm8 (word 72)) *)
   0x41; 0x5f;              (* POP (% r15) *)
   0x41; 0x5e;              (* POP (% r14) *)
   0x41; 0x5d;              (* POP (% r13) *)
@@ -475,24 +493,28 @@ let BIGNUM_FROM_MEMORY_LT_P521 = prove
   MESON_TAC[]);;
 
 let BIGNUM_MONTSQR_P521_ALT_CORRECT = time prove
- (`!z x n pc.
-        nonoverlapping (word pc,0x51c) (z,8 * 9) /\
-        nonoverlapping(x,8 * 9) (z,8 * 9)
+ (`!z x n pc stackpointer.
+        ALL (nonoverlapping (stackpointer,72))
+            [(word pc,0x536); (z,8 * 9); (x,8 * 9)] /\
+        nonoverlapping (z,8 * 9) (word pc,0x536)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montsqr_p521_alt_mc /\
-                  read RIP s = word(pc + 0x9) /\
+                  read RIP s = word(pc + 0xd) /\
+                  read RSP s = stackpointer /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,9) s = n)
-             (\s. read RIP s = word (pc + 0x512) /\
+             (\s. read RIP s = word (pc + 0x528) /\
                   (n < p_521
                    ==> bignum_from_memory (z,9) s =
                        (inverse_mod p_521 (2 EXP 576) * n EXP 2) MOD p_521))
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
            MAYCHANGE SOME_FLAGS ,,
-           MAYCHANGE [memory :> bignum(z,9)])`,
-  MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `n:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+           MAYCHANGE [memory :> bignum(z,9);
+                      memory :> bytes(stackpointer,72)])`,
+  MAP_EVERY X_GEN_TAC
+   [`z:int64`; `x:int64`; `n:num`; `pc:num`; `stackpointer:int64`] THEN
+  REWRITE_TAC[ALL; C_ARGUMENTS; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the n < p_521 assumption for simplicity's sake ***)
@@ -523,7 +545,7 @@ let BIGNUM_MONTSQR_P521_ALT_CORRECT = time prove
   (*** Introduce more systematic names for the high part digits ***)
 
   MAP_EVERY (fun s -> REABBREV_TAC s THEN POP_ASSUM SUBST_ALL_TAC)
-   [`h0 = read (memory :> bytes64 (word_add z (word 64))) s310`;
+   [`h0 = read (memory :> bytes64 (word_add stackpointer (word 64))) s310`;
     `h1 = read R9 s310`;
     `h2 = read R10 s310`;
     `h3 = read R11 s310`;
@@ -537,7 +559,7 @@ let BIGNUM_MONTSQR_P521_ALT_CORRECT = time prove
 
   SUBGOAL_THEN
    `2 EXP 512 * bignum_of_wordlist[h0;h1;h2;h3;h4;h5;h6;h7;h8] +
-    bignum_from_memory(z,8) s310 =
+    bignum_from_memory(stackpointer,8) s310 =
     n EXP 2`
   ASSUME_TAC THENL
    [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
@@ -714,10 +736,10 @@ let BIGNUM_MONTSQR_P521_ALT_CORRECT = time prove
 
 let BIGNUM_MONTSQR_P521_ALT_SUBROUTINE_CORRECT = prove
  (`!z x n pc stackpointer returnaddress.
-        nonoverlapping (z,8 * 9) (word_sub stackpointer (word 40),48) /\
-        ALLPAIRS nonoverlapping
-            [(z,8 * 9); (word_sub stackpointer (word 40),40)]
-            [(word pc,0x51c); (x,8 * 9)]
+        ALL (nonoverlapping (z,8 * 9))
+            [(word pc,0x536); (word_sub stackpointer (word 112),128)] /\
+        ALL (nonoverlapping (word_sub stackpointer (word 112),112))
+            [(word pc,0x536); (x,8 * 9)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_montsqr_p521_alt_mc /\
                   read RIP s = word pc /\
@@ -732,8 +754,8 @@ let BIGNUM_MONTSQR_P521_ALT_SUBROUTINE_CORRECT = prove
                        (inverse_mod p_521 (2 EXP 576) * n EXP 2) MOD p_521))
              (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
               MAYCHANGE [memory :> bytes(z,8 * 9);
-                     memory :> bytes(word_sub stackpointer (word 40),40)] ,,
+                     memory :> bytes(word_sub stackpointer (word 112),112)] ,,
               MAYCHANGE SOME_FLAGS)`,
   X86_ADD_RETURN_STACK_TAC
    BIGNUM_MONTSQR_P521_ALT_EXEC BIGNUM_MONTSQR_P521_ALT_CORRECT
-   `[RBX; R12; R13; R14; R15]` 40);;
+   `[RBX; R12; R13; R14; R15]` 112);;

@@ -47,7 +47,7 @@
 bignum_mul_p521:
 _bignum_mul_p521:
 
-// Save more registers to play with
+// Save more registers to play with and make temporary space on stack
 
         push    rbp
         push    rbx
@@ -55,18 +55,19 @@ _bignum_mul_p521:
         push    r13
         push    r14
         push    r15
+        sub     rsp, 64
 
 // Copy y into a safe register to start with
 
         mov     y, rdx
 
-// Clone of the main body of bignum_8_16, writing back the low 8 words
-// to the output buffer z and keeping the top half in r15,...,r8
+// Clone of the main body of bignum_8_16, writing back the low 8 words to
+// the temporary buffer on the stack and keeping the top half in r15,...,r8
 
         xor    ebp,ebp
         mov    rdx, [y]
         mulx   r9, r8, [x]
-        mov    [z], r8
+        mov    [rsp], r8
         mulx   r10, rbx, [x+0x8]
         adc    r9, rbx
         mulx   r11, rbx, [x+0x10]
@@ -87,7 +88,7 @@ _bignum_mul_p521:
         mulx   rbx, rax, [x]
         adcx   r9, rax
         adox   r10, rbx
-        mov    [z+0x8], r9
+        mov    [rsp+0x8], r9
         mulx   rbx, rax, [x+0x8]
         adcx   r10, rax
         adox   r11, rbx
@@ -115,7 +116,7 @@ _bignum_mul_p521:
         mulx   rbx, rax, [x]
         adcx   r10, rax
         adox   r11, rbx
-        mov    [z+0x10], r10
+        mov    [rsp+0x10], r10
         mulx   rbx, rax, [x+0x8]
         adcx   r11, rax
         adox   r12, rbx
@@ -143,7 +144,7 @@ _bignum_mul_p521:
         mulx   rbx, rax, [x]
         adcx   r11, rax
         adox   r12, rbx
-        mov    [z+0x18], r11
+        mov    [rsp+0x18], r11
         mulx   rbx, rax, [x+0x8]
         adcx   r12, rax
         adox   r13, rbx
@@ -171,7 +172,7 @@ _bignum_mul_p521:
         mulx   rbx, rax, [x]
         adcx   r12, rax
         adox   r13, rbx
-        mov    [z+0x20], r12
+        mov    [rsp+0x20], r12
         mulx   rbx, rax, [x+0x8]
         adcx   r13, rax
         adox   r14, rbx
@@ -199,7 +200,7 @@ _bignum_mul_p521:
         mulx   rbx, rax, [x]
         adcx   r13, rax
         adox   r14, rbx
-        mov    [z+0x28], r13
+        mov    [rsp+0x28], r13
         mulx   rbx, rax, [x+0x8]
         adcx   r14, rax
         adox   r15, rbx
@@ -227,7 +228,7 @@ _bignum_mul_p521:
         mulx   rbx, rax, [x]
         adcx   r14, rax
         adox   r15, rbx
-        mov    [z+0x30], r14
+        mov    [rsp+0x30], r14
         mulx   rbx, rax, [x+0x8]
         adcx   r15, rax
         adox   r8, rbx
@@ -255,7 +256,7 @@ _bignum_mul_p521:
         mulx   rbx, rax, [x]
         adcx   r15, rax
         adox   r8, rbx
-        mov    [z+0x38], r15
+        mov    [rsp+0x38], r15
         mulx   rbx, rax, [x+0x8]
         adcx   r8, rax
         adox   r9, rbx
@@ -313,7 +314,7 @@ _bignum_mul_p521:
         adc     rbp, rax
 
 // Rotate the upper portion right 9 bits since 2^512 == 2^-9 (mod p_521)
-// Let rotated result rbp,r15,r14,...,r8 be h (high) and z[0..7] be l (low)
+// Let rotated result rbp,r15,r14,...,r8 be h (high) and rsp[0..7] be l (low)
 
         mov     rax, r8
         and     rax, 0x1FF
@@ -332,14 +333,14 @@ _bignum_mul_p521:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adc     r8, [z]
-        adc     r9, [z+8]
-        adc     r10,[z+16]
-        adc     r11,[z+24]
-        adc     r12,[z+32]
-        adc     r13,[z+40]
-        adc     r14,[z+48]
-        adc     r15,[z+56]
+        adc     r8, [rsp]
+        adc     r9, [rsp+8]
+        adc     r10,[rsp+16]
+        adc     r11,[rsp+24]
+        adc     r12,[rsp+32]
+        adc     r13,[rsp+40]
+        adc     r14,[rsp+48]
+        adc     r15,[rsp+56]
         adc     rbp, ~0x1FF
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
@@ -371,6 +372,7 @@ _bignum_mul_p521:
 
 // Restore registers and return
 
+        add     rsp, 64
         pop     r15
         pop     r14
         pop     r13

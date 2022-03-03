@@ -29,12 +29,13 @@ let bignum_mul_p521_mc =
   0x41; 0x55;              (* PUSH (% r13) *)
   0x41; 0x56;              (* PUSH (% r14) *)
   0x41; 0x57;              (* PUSH (% r15) *)
+  0x48; 0x83; 0xec; 0x40;  (* SUB (% rsp) (Imm8 (word 64)) *)
   0x48; 0x89; 0xd1;        (* MOV (% rcx) (% rdx) *)
   0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0x8b; 0x11;        (* MOV (% rdx) (Memop Quadword (%% (rcx,0))) *)
   0xc4; 0x62; 0xbb; 0xf6; 0x0e;
                            (* MULX4 (% r9,% r8) (% rdx,Memop Quadword (%% (rsi,0))) *)
-  0x4c; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% r8) *)
+  0x4c; 0x89; 0x04; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r8) *)
   0xc4; 0x62; 0xe3; 0xf6; 0x56; 0x08;
                            (* MULX4 (% r10,% rbx) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x49; 0x11; 0xd9;        (* ADC (% r9) (% rbx) *)
@@ -65,7 +66,8 @@ let bignum_mul_p521_mc =
                            (* ADCX (% r9) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xd3;
                            (* ADOX (% r10) (% rbx) *)
-  0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
+  0x4c; 0x89; 0x4c; 0x24; 0x08;
+                           (* MOV (Memop Quadword (%% (rsp,8))) (% r9) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd0;
@@ -117,7 +119,8 @@ let bignum_mul_p521_mc =
                            (* ADCX (% r10) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xdb;
                            (* ADOX (% r11) (% rbx) *)
-  0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
+  0x4c; 0x89; 0x54; 0x24; 0x10;
+                           (* MOV (Memop Quadword (%% (rsp,16))) (% r10) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd8;
@@ -169,7 +172,8 @@ let bignum_mul_p521_mc =
                            (* ADCX (% r11) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xe3;
                            (* ADOX (% r12) (% rbx) *)
-  0x4c; 0x89; 0x5f; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% r11) *)
+  0x4c; 0x89; 0x5c; 0x24; 0x18;
+                           (* MOV (Memop Quadword (%% (rsp,24))) (% r11) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe0;
@@ -221,7 +225,8 @@ let bignum_mul_p521_mc =
                            (* ADCX (% r12) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xeb;
                            (* ADOX (% r13) (% rbx) *)
-  0x4c; 0x89; 0x67; 0x20;  (* MOV (Memop Quadword (%% (rdi,32))) (% r12) *)
+  0x4c; 0x89; 0x64; 0x24; 0x20;
+                           (* MOV (Memop Quadword (%% (rsp,32))) (% r12) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe8;
@@ -273,7 +278,8 @@ let bignum_mul_p521_mc =
                            (* ADCX (% r13) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf3;
                            (* ADOX (% r14) (% rbx) *)
-  0x4c; 0x89; 0x6f; 0x28;  (* MOV (Memop Quadword (%% (rdi,40))) (% r13) *)
+  0x4c; 0x89; 0x6c; 0x24; 0x28;
+                           (* MOV (Memop Quadword (%% (rsp,40))) (% r13) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf0;
@@ -325,7 +331,8 @@ let bignum_mul_p521_mc =
                            (* ADCX (% r14) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xfb;
                            (* ADOX (% r15) (% rbx) *)
-  0x4c; 0x89; 0x77; 0x30;  (* MOV (Memop Quadword (%% (rdi,48))) (% r14) *)
+  0x4c; 0x89; 0x74; 0x24; 0x30;
+                           (* MOV (Memop Quadword (%% (rsp,48))) (% r14) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf8;
@@ -377,7 +384,8 @@ let bignum_mul_p521_mc =
                            (* ADCX (% r15) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xc3;
                            (* ADOX (% r8) (% rbx) *)
-  0x4c; 0x89; 0x7f; 0x38;  (* MOV (Memop Quadword (%% (rdi,56))) (% r15) *)
+  0x4c; 0x89; 0x7c; 0x24; 0x38;
+                           (* MOV (Memop Quadword (%% (rsp,56))) (% r15) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc0;
@@ -547,14 +555,21 @@ let bignum_mul_p521_mc =
   0x48; 0xc1; 0xed; 0x09;  (* SHR (% rbp) (Imm8 (word 9)) *)
   0x48; 0x01; 0xc5;        (* ADD (% rbp) (% rax) *)
   0xf9;                    (* STCF *)
-  0x4c; 0x13; 0x07;        (* ADC (% r8) (Memop Quadword (%% (rdi,0))) *)
-  0x4c; 0x13; 0x4f; 0x08;  (* ADC (% r9) (Memop Quadword (%% (rdi,8))) *)
-  0x4c; 0x13; 0x57; 0x10;  (* ADC (% r10) (Memop Quadword (%% (rdi,16))) *)
-  0x4c; 0x13; 0x5f; 0x18;  (* ADC (% r11) (Memop Quadword (%% (rdi,24))) *)
-  0x4c; 0x13; 0x67; 0x20;  (* ADC (% r12) (Memop Quadword (%% (rdi,32))) *)
-  0x4c; 0x13; 0x6f; 0x28;  (* ADC (% r13) (Memop Quadword (%% (rdi,40))) *)
-  0x4c; 0x13; 0x77; 0x30;  (* ADC (% r14) (Memop Quadword (%% (rdi,48))) *)
-  0x4c; 0x13; 0x7f; 0x38;  (* ADC (% r15) (Memop Quadword (%% (rdi,56))) *)
+  0x4c; 0x13; 0x04; 0x24;  (* ADC (% r8) (Memop Quadword (%% (rsp,0))) *)
+  0x4c; 0x13; 0x4c; 0x24; 0x08;
+                           (* ADC (% r9) (Memop Quadword (%% (rsp,8))) *)
+  0x4c; 0x13; 0x54; 0x24; 0x10;
+                           (* ADC (% r10) (Memop Quadword (%% (rsp,16))) *)
+  0x4c; 0x13; 0x5c; 0x24; 0x18;
+                           (* ADC (% r11) (Memop Quadword (%% (rsp,24))) *)
+  0x4c; 0x13; 0x64; 0x24; 0x20;
+                           (* ADC (% r12) (Memop Quadword (%% (rsp,32))) *)
+  0x4c; 0x13; 0x6c; 0x24; 0x28;
+                           (* ADC (% r13) (Memop Quadword (%% (rsp,40))) *)
+  0x4c; 0x13; 0x74; 0x24; 0x30;
+                           (* ADC (% r14) (Memop Quadword (%% (rsp,48))) *)
+  0x4c; 0x13; 0x7c; 0x24; 0x38;
+                           (* ADC (% r15) (Memop Quadword (%% (rsp,56))) *)
   0x48; 0x81; 0xd5; 0x00; 0xfe; 0xff; 0xff;
                            (* ADC (% rbp) (Imm32 (word 4294966784)) *)
   0xf5;                    (* CMC *)
@@ -578,6 +593,7 @@ let bignum_mul_p521_mc =
   0x48; 0x81; 0xe5; 0xff; 0x01; 0x00; 0x00;
                            (* AND (% rbp) (Imm32 (word 511)) *)
   0x48; 0x89; 0x6f; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% rbp) *)
+  0x48; 0x83; 0xc4; 0x40;  (* ADD (% rsp) (Imm8 (word 64)) *)
   0x41; 0x5f;              (* POP (% r15) *)
   0x41; 0x5e;              (* POP (% r14) *)
   0x41; 0x5d;              (* POP (% r13) *)
@@ -596,23 +612,28 @@ let BIGNUM_MUL_P521_EXEC = X86_MK_EXEC_RULE bignum_mul_p521_mc;;
 let p_521 = new_definition `p_521 = 6864797660130609714981900799081393217269435300143305409394463459185543183397656052122559640661454554977296311391480858037121987999716643812574028291115057151`;;
 
 let BIGNUM_MUL_P521_CORRECT = prove
- (`!z x y a b pc.
-        ALL (nonoverlapping (z,8 * 9)) [(word pc,0x68f); (x,8 * 9); (y,8 * 9)]
+ (`!z x y a b pc stackpointer.
+        ALL (nonoverlapping (stackpointer,64))
+            [(word pc,0x6a7); (z,8 * 9); (x,8 * 9); (y,8 * 9)] /\
+        nonoverlapping (z,8 * 9) (word pc,0x6a7)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_mul_p521_mc /\
-                  read RIP s = word(pc + 0x0a) /\
+                  read RIP s = word(pc + 0x0e) /\
+                  read RSP s = stackpointer /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,9) s = a /\
                   bignum_from_memory (y,9) s = b)
-             (\s. read RIP s = word (pc + 0x684) /\
+             (\s. read RIP s = word (pc + 0x698) /\
                   (a < p_521 /\ b < p_521
                    ==> bignum_from_memory (z,9) s = (a * b) MOD p_521))
              (MAYCHANGE [RIP; RAX; RBP; RBX; RCX; RDX;
                          R8; R9; R10; R11; R12; R13; R14; R15] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 9)] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 9);
+                         memory :> bytes(stackpointer,64)] ,,
               MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
-   [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
+   [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`;
+     `pc:num`; `stackpointer:int64`] THEN
   REWRITE_TAC[ALL; C_ARGUMENTS; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
@@ -656,7 +677,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   SUBGOAL_THEN
    `2 EXP 512 * bignum_of_wordlist[h0;h1;h2;h3;h4;h5;h6;h7;h8] +
-    bignum_from_memory(z,8) s271 =
+    bignum_from_memory(stackpointer,8) s271 =
     a * b`
   ASSUME_TAC THENL
    [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
@@ -787,10 +808,10 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
 let BIGNUM_MUL_P521_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc stackpointer returnaddress.
-        nonoverlapping (z,8 * 9) (word_sub stackpointer (word 48),56) /\
-        ALLPAIRS nonoverlapping
-         [(z,8 * 9); (word_sub stackpointer (word 48),48)]
-         [(word pc,0x68f); (x,8 * 9); (y,8 * 9)]
+        ALL (nonoverlapping (z,8 * 9))
+            [(word pc,0x6a7); (word_sub stackpointer (word 112),120)] /\
+        ALL (nonoverlapping (word_sub stackpointer (word 112),112))
+            [(word pc,0x6a7); (x,8 * 9); (y,8 * 9)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_mul_p521_mc /\
                   read RIP s = word pc /\
@@ -805,8 +826,8 @@ let BIGNUM_MUL_P521_SUBROUTINE_CORRECT = prove
                    ==> bignum_from_memory (z,9) s = (a * b) MOD p_521))
              (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
               MAYCHANGE [memory :> bytes(z,8 * 9);
-                       memory :> bytes(word_sub stackpointer (word 48),48)] ,,
+                       memory :> bytes(word_sub stackpointer (word 112),112)] ,,
               MAYCHANGE SOME_FLAGS)`,
   X86_ADD_RETURN_STACK_TAC
    BIGNUM_MUL_P521_EXEC BIGNUM_MUL_P521_CORRECT
-   `[RBX; RBP; R12; R13; R14; R15]` 48);;
+   `[RBX; RBP; R12; R13; R14; R15]` 112);;

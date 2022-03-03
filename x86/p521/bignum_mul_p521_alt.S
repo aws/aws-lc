@@ -64,12 +64,13 @@
 bignum_mul_p521_alt:
 _bignum_mul_p521_alt:
 
-// Make more registers available
+// Make more registers available and make temporary space on stack
 
         push    r12
         push    r13
         push    r14
         push    r15
+        sub     rsp, 72
 
 // Copy y into a safe register to start with
 
@@ -80,13 +81,13 @@ _bignum_mul_p521_alt:
         mov y, rdx
 
 // Start doing a conventional columnwise multiplication,
-// temporarily storing the lower 9 digits to the output buffer.
+// temporarily storing the lower 9 digits to the stack.
 // Start with result term 0
 
         mov     rax, [x]
         mul     QWORD PTR [y]
 
-        mov     [z], rax
+        mov     [rsp], rax
         mov     r9, rdx
         xor     r10, r10
 
@@ -95,7 +96,7 @@ _bignum_mul_p521_alt:
         xor     r11, r11
         combads(r10,r9,[x],[y+8])
         combadz(r11,r10,r9,[x+8],[y])
-        mov     [z+8], r9
+        mov     [rsp+8], r9
 
 // Result term 2
 
@@ -103,7 +104,7 @@ _bignum_mul_p521_alt:
         combadz(r12,r11,r10,[x],[y+16])
         combadd(r12,r11,r10,[x+8],[y+8])
         combadd(r12,r11,r10,[x+16],[y])
-        mov     [z+16], r10
+        mov     [rsp+16], r10
 
 // Result term 3
 
@@ -112,7 +113,7 @@ _bignum_mul_p521_alt:
         combadd(r13,r12,r11,[x+8],[y+16])
         combadd(r13,r12,r11,[x+16],[y+8])
         combadd(r13,r12,r11,[x+24],[y])
-        mov     [z+24], r11
+        mov     [rsp+24], r11
 
 // Result term 4
 
@@ -122,7 +123,7 @@ _bignum_mul_p521_alt:
         combadd(r14,r13,r12,[x+16],[y+16])
         combadd(r14,r13,r12,[x+24],[y+8])
         combadd(r14,r13,r12,[x+32],[y])
-        mov     [z+32], r12
+        mov     [rsp+32], r12
 
 // Result term 5
 
@@ -133,7 +134,7 @@ _bignum_mul_p521_alt:
         combadd(r15,r14,r13,[x+24],[y+16])
         combadd(r15,r14,r13,[x+32],[y+8])
         combadd(r15,r14,r13,[x+40],[y])
-        mov     [z+40], r13
+        mov     [rsp+40], r13
 
 // Result term 6
 
@@ -145,7 +146,7 @@ _bignum_mul_p521_alt:
         combadd(r8,r15,r14,[x+32],[y+16])
         combadd(r8,r15,r14,[x+40],[y+8])
         combadd(r8,r15,r14,[x+48],[y])
-        mov     [z+48], r14
+        mov     [rsp+48], r14
 
 // Result term 7
 
@@ -158,7 +159,7 @@ _bignum_mul_p521_alt:
         combadd(r9,r8,r15,[x+40],[y+16])
         combadd(r9,r8,r15,[x+48],[y+8])
         combadd(r9,r8,r15,[x+56],[y])
-        mov     [z+56], r15
+        mov     [rsp+56], r15
 
 // Result term 8
 
@@ -172,7 +173,7 @@ _bignum_mul_p521_alt:
         combadd(r10,r9,r8,[x+48],[y+16])
         combadd(r10,r9,r8,[x+56],[y+8])
         combadd(r10,r9,r8,[x+64],[y])
-        mov     [z+64], r8
+        mov     [rsp+64], r8
 
 // At this point we suspend writing back results and collect them
 // in a register window. Next is result term 9
@@ -243,11 +244,11 @@ _bignum_mul_p521_alt:
         imul    rax, [y+64]
         add     rax, r8
 
-// Now the upper portion is [rax;r15;r14;r13;r12;r11;r10;r9;[z+64]].
+// Now the upper portion is [rax;r15;r14;r13;r12;r11;r10;r9;[rsp+64]].
 // Rotate the upper portion right 9 bits since 2^512 == 2^-9 (mod p_521)
-// Let rotated result rdx,r15,r14,...,r8 be h (high) and z[0..7] be l (low)
+// Let rotated result rdx,r15,r14,...,r8 be h (high) and rsp[0..7] be l (low)
 
-        mov     r8, [z+64]
+        mov     r8, [rsp+64]
         mov     rdx, r8
         and     rdx, 0x1FF
         shrd    r8, r9, 9
@@ -265,14 +266,14 @@ _bignum_mul_p521_alt:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adc     r8, [z]
-        adc     r9, [z+8]
-        adc     r10,[z+16]
-        adc     r11,[z+24]
-        adc     r12,[z+32]
-        adc     r13,[z+40]
-        adc     r14,[z+48]
-        adc     r15,[z+56]
+        adc     r8, [rsp]
+        adc     r9, [rsp+8]
+        adc     r10,[rsp+16]
+        adc     r11,[rsp+24]
+        adc     r12,[rsp+32]
+        adc     r13,[rsp+40]
+        adc     r14,[rsp+48]
+        adc     r15,[rsp+56]
         adc     rdx, ~0x1FF
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
@@ -304,6 +305,7 @@ _bignum_mul_p521_alt:
 
 // Restore registers and return
 
+        add     rsp, 72
         pop     r15
         pop     r14
         pop     r13
