@@ -2372,7 +2372,9 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_l
 
 // SSL_from_bytes parses |in_len| bytes from |in| as an SSL. It
 // returns a newly-allocated |SSL| on success or NULL on error.
-// The |SSL| is marked with handshake finished.
+// The |SSL| is marked with handshake finished. |in| and |in_len| should
+// come from |out_data| and |out_len| of |SSL_to_bytes|. In other words,
+// |SSL_from_bytes| should be used on the output of |SSL_to_bytes|.
 //
 // WARNING: Do not decode the same bytes |in| for different connections.
 //          Otherwise, the connections use the same key material.
