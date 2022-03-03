@@ -643,11 +643,6 @@ BSSL_NAMESPACE_END
 
 #endif
 
-/*
- * The maximum permitted number of cipher blocks per data unit in XTS mode.
- * Reference IEEE Std 1619-2018.
- */
-#define XTS_MAX_BLOCKS_PER_DATA_UNIT            (1<<20)
 
 #define CIPHER_R_AES_KEY_SETUP_FAILED 100
 #define CIPHER_R_BAD_DECRYPT 101

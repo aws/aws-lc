@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "../../crypto/internal.h"
+#include "../../crypto/fipsmodule/modes/internal.h"
 #include "../../crypto/test/test_util.h"
 
 
