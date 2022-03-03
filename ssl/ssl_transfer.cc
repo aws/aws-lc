@@ -14,7 +14,7 @@ BSSL_NAMESPACE_BEGIN
 
 bool ssl_transfer_supported(const SSL *in) {
   if (in == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_UNSUPPORTED);
     return false;
   }
 
@@ -39,7 +39,7 @@ bool ssl_transfer_supported(const SSL *in) {
       in->s3->wpend_pending ||
       in->s3->read_shutdown != ssl_shutdown_none ||             // (7)
       in->s3->write_shutdown != ssl_shutdown_none) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_UNSUPPORTED);
     return false;
   }
 
@@ -57,7 +57,7 @@ static bool SSL3_STATE_parse_octet_string(CBS *cbs, Array<uint8_t> *out,
                                unsigned tag) {
   CBS value;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return false;
   }
   return out->CopyFrom(value);
@@ -99,7 +99,7 @@ static bool SSL3_STATE_get_optional_octet_string(CBS *cbs, void *dst,
   int present;
   CBS value;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return false;
   }
   if (!present) {
@@ -275,7 +275,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, CBB *cbb) {
   if (!in->pending_app_data.empty()) {
     // This should never happen because pending_app_data is just a span and points to read_buffer.
     if (!in->read_buffer.buf_ptr() || in->read_buffer.buf_ptr() > in->pending_app_data.data()) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
       return 0;
     }
     uint64_t offset = in->pending_app_data.data() - in->read_buffer.buf_ptr();
@@ -311,7 +311,7 @@ static int SSL3_STATE_parse_session(CBS *cbs, UniquePtr<SSL_SESSION> *out, const
   CBS value;
   int present;
   if (!CBS_get_optional_asn1(cbs, &value, &present, kS3EstablishedSessionTag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
   if (present) {
@@ -321,10 +321,13 @@ static int SSL3_STATE_parse_session(CBS *cbs, UniquePtr<SSL_SESSION> *out, const
       return 0;
     }
     out->reset(ptr.release());
+    return 1;
   } else {
+    // session should exist because ssl transfer only supports SSL completes handshake.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     out->reset();
+    return 0;
   }
-  return 1;
 }
 
 // SSL3_STATE_from_bytes recovers SSL3_STATE from |cbs|.
@@ -367,7 +370,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
       !CBS_get_asn1_uint64(&s3, &total_renegotiations) ||
       !SSL3_STATE_parse_session(&s3, &(out->established_session), ctx) ||
       !CBS_get_optional_asn1_bool(&s3, &session_reused, kS3SessionReusedTag, 0 /* default to false */) ||
-      !parse_optional_string(&s3, &(out->hostname), kS3HostNameTag, SSL_R_INVALID_SSL3_STATE) ||
+      !parse_optional_string(&s3, &(out->hostname), kS3HostNameTag, SSL_R_SERIALIZATION_INVALID_SSL3_STATE) ||
       !SSL3_STATE_parse_octet_string(&s3, &(out->alpn_selected), kS3ALPNSelectedTag) ||
       !SSL3_STATE_parse_octet_string(&s3, &(out->next_proto_negotiated), kS3NextProtoNegotiatedTag) ||
       !CBS_get_optional_asn1_bool(&s3, &channel_id_valid, kS3ChannelIdValidTag, 0 /* default to false */) ||
@@ -377,7 +380,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
       !CBS_get_optional_asn1(&s3, &read_buffer, &read_buffer_present, kS3ReadBufferTag) ||
       !CBS_get_optional_asn1_bool(&s3, &not_resumable, kS3NotResumableTag, 0 /* default to false */) ||
       CBS_len(&s3) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
   if (read_buffer_present && !out->read_buffer.DoDeserialization(&read_buffer)) {
@@ -386,7 +389,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   // If |pending_app_data_size| is not zero, it needs to point to |read_buffer|.
   if (pending_app_data_present) {
     if (!read_buffer_present) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
       return 0;
     }
     CBS app_seq; 
@@ -394,11 +397,11 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     if (!CBS_get_asn1(&pending_app_data, &app_seq, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&app_seq, &pending_app_data_offset) ||
       !CBS_get_asn1_uint64(&app_seq, &pending_app_data_size)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
       return 0;
     }
     if (pending_app_data_size > out->read_buffer.buf_size()) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL3_STATE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
       return 0;
     }
     out->pending_app_data = MakeSpan(out->read_buffer.buf_ptr() + pending_app_data_offset, pending_app_data_size);
@@ -515,7 +518,7 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
       !CBS_get_optional_asn1_bool(&config, &ocsp_stapling_enabled, kSSLConfigOcspStaplingEnabledTag, 0 /* default to false */) ||
       !CBS_get_optional_asn1_bool(&config, &jdk11_workaround, kSSLConfigJdk11WorkaroundTag, 0 /* default to false */) ||
       CBS_len(&config) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_CONFIG);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
     return 0;
   }
   out->conf_max_version = conf_max_version;
@@ -599,7 +602,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) ||
       CBS_len(cbs) != 0 ||
       !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
   // At the moment we're simply asserting the version is correct. However
@@ -611,7 +614,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   // This TODO is actually a part of SSL DER struct revisit.
   if (!CBS_get_asn1_uint64(&ssl_cbs, &version) ||
     !CBS_get_asn1_uint64(&ssl_cbs, &max_send_fragment)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
 
@@ -625,20 +628,20 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
   if (!CBS_get_asn1_uint64(&ssl_cbs, &mode) ||
       !CBS_get_asn1_uint64(&ssl_cbs, &options)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
   ssl->mode = mode;
   ssl->options = options;
 
   if (!CBS_get_optional_asn1_bool(&ssl_cbs, &quiet_shutdown, kSSLQuietShutdownTag, 0 /* default to false */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
   ssl->quiet_shutdown = !!quiet_shutdown;
 
   if (!CBS_get_optional_asn1(&ssl_cbs, &ssl_config, &ssl_config_present, kSSLConfigTag)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
 
@@ -651,7 +654,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   }
 
   if (CBS_len(&ssl_cbs) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
 
@@ -660,7 +663,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
 SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
   if (!in || !in_len || !ctx) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_UNSUPPORTED);
     return NULL;
   }
 
@@ -674,7 +677,7 @@ SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx) {
   CBS_init(&cbs, in, in_len);
   if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
       (CBS_len(&cbs) != 0)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return NULL;
   }
 
