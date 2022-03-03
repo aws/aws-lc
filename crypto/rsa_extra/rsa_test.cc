@@ -640,6 +640,7 @@ TEST(RSATest, BadExponent) {
 }
 
 #if !defined(AWSLC_FIPS)
+
 // Attempting to generate an excessively small key should fail.
 TEST(RSATest, GenerateSmallKey) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -653,7 +654,9 @@ TEST(RSATest, GenerateSmallKey) {
   EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
   EXPECT_EQ(RSA_R_KEY_SIZE_TOO_SMALL, ERR_GET_REASON(err));
 }
-#else
+
+#elif !defined(OPENSSL_IOS) // ASSERT_DEATH is not defined for iOS.
+
 // Attempting to generate an excessively small key should fail.
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
 TEST(RSADeathTest, GenerateSmallKeyAndDie) {
@@ -920,6 +923,7 @@ TEST(RSATest, CheckKey) {
 }
 
 #if !defined(AWSLC_FIPS)
+
 TEST(RSATest, KeygenFail) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
@@ -1008,7 +1012,8 @@ TEST(RSATest, KeygenFailOnce) {
   EXPECT_FALSE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
 }
 
-#else
+#elif !defined(OPENSSL_IOS) // ASSERT_DEATH is not defined for iOS.
+
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
 TEST(RSADeathTest, KeygenFailAndDie) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -1102,6 +1107,7 @@ TEST(RSATest, KeygenFailOnceThenSucceed) {
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
 }
+
 #endif
 
 
