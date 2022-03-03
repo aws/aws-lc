@@ -2330,8 +2330,10 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 #define SSL_CURVE_X25519 29
 #define SSL_CURVE_CECPQ2 16696
 
-// Hybrid PQ TLS 1.3 identifiers taken from
-// https://github.com/open-quantum-safe/openssl/blob/OQS-OpenSSL_1_1_1-stable/oqs-template/oqs-kem-info.md
+// The kyber-based groups follow the hybrid key exchange described in
+// https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
+// The identifiers are documented at
+// https://github.com/open-quantum-safe/openssl/blob/474baededfff0b63668427dbe15841604f665949/oqs-template/oqs-kem-info.md
 #define SSL_CURVE_SECP256R1_KYBER512 0x2F3A
 #define SSL_CURVE_X25519_KYBER512 0x2F39
 
