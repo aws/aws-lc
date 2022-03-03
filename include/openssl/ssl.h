@@ -5379,6 +5379,24 @@ BSSL_NAMESPACE_END
 
 #endif
 
+// Define some reason codes from OpenSSL to ease compilation against AWS-LC.
+// None of these reason codes are actually returned by AWS-LC.
+// Code paths that condition on these codes might break. Grep for
+// |ERR_GET_REASON| and |ERR_GET_FUNC| to inspect.
+
+// Per C99 standard 6.8.4.2.1 the controlling expression in the switch statement
+// has integer type. Hence it can handle quite large offset values assuming just
+// two bytes. Just pick a somewhat large random value to prevent collisions on
+// later macro definitions from upstream.
+#define SSL_R_BACKWARDS_COMPATABILITY_OFFSET 0x5D21
+
+// See CryptoAlg-954.
+#define SSL_R_NO_PROTOCOLS_AVAILABLE (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 1)
+#define SSL_R_BAD_PROTOCOL_VERSION_NUMBER (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 2)
+#define SSL_R_UNSUPPORTED_SSL_VERSION (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 3)
+#define SSL_R_VERSION_TOO_HIGH (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 4)
+#define SSL_R_VERSION_TOO_LOW (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 5)
+
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
@@ -5634,23 +5652,5 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
 #define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
-
-// Define some reason codes from OpenSSL to ease compilation against AWS-LC.
-// None of these reason codes are actually returned by AWS-LC.
-// Code paths that condition on these codes might break. Grep for
-// |ERR_GET_REASON| and |ERR_GET_FUNC| to inspect.
-
-// Per C99 standard 6.8.4.2.1 the controlling expression in the switch statement
-// has integer type. Hence it can handle quite large offset values assuming just
-// two bytes. Just pick a somewhat large random value to prevent collisions on
-// later macro definitions from upstream.
-#define SSL_R_BACKWARDS_COMPATABILITY_OFFSET 0x5D21
-
-// See CryptoAlg-954.
-#define SSL_R_NO_PROTOCOLS_AVAILABLE (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 1)
-#define SSL_R_BAD_PROTOCOL_VERSION_NUMBER (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 2)
-#define SSL_R_UNSUPPORTED_SSL_VERSION (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 3)
-#define SSL_R_VERSION_TOO_HIGH (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 4)
-#define SSL_R_VERSION_TOO_LOW (SSL_R_BACKWARDS_COMPATABILITY_OFFSET + 5)
 
 #endif  // OPENSSL_HEADER_SSL_H
