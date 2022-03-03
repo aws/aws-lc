@@ -160,9 +160,9 @@ _bignum_sqr_p25519_alt:
         mov     dshort, 19
         mov     r12, 0x8000000000000000
         or      r11, r12
-        mul     d
+        imul    rax, d
         add     r8, rax
-        adc     r9, rdx
+        adc     r9, c
         adc     r10, c
         adc     r11, c
 

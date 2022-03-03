@@ -1,4 +1,5 @@
 bignum_add
+bignum_add_p25519
 bignum_add_p256
 bignum_add_p256k1
 bignum_add_p384
@@ -19,6 +20,7 @@ bignum_cmadd
 bignum_cmnegadd
 bignum_cmod
 bignum_cmul
+bignum_cmul_p25519_alt
 bignum_cmul_p256_alt
 bignum_cmul_p256k1_alt
 bignum_cmul_p384_alt
@@ -135,6 +137,7 @@ bignum_sqr_p25519_alt
 bignum_sqr_p256k1_alt
 bignum_sqr_p521_alt
 bignum_sub
+bignum_sub_p25519
 bignum_sub_p256
 bignum_sub_p256k1
 bignum_sub_p384

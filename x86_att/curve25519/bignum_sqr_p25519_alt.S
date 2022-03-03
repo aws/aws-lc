@@ -160,9 +160,9 @@ _bignum_sqr_p25519_alt:
         movl    $19, dshort
         movq    $0x8000000000000000, %r12
         orq     %r12, %r11
-        mulq    d
+        imulq   d, %rax
         addq    %rax, %r8
-        adcq    %rdx, %r9
+        adcq    c, %r9
         adcq    c, %r10
         adcq    c, %r11
 

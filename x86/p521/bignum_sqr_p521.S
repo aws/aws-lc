@@ -57,15 +57,16 @@
 bignum_sqr_p521:
 _bignum_sqr_p521:
 
-// Save more registers to play with
+// Save more registers to play with and make temporary space on stack
 
         push    rbp
         push    r12
         push    r13
         push    r14
         push    r15
+        sub     rsp, 64
 
-// Do a basic 8x8 squaring writing back z[0..7] but keeping the
+// Do a basic 8x8 squaring stashing in rsp[0..7] but keeping the
 // top half in the usual rotating register window r15,...,r8. Except
 // for the lack of full writeback this is the same as bignum_sqr_8_16.
 
@@ -73,10 +74,10 @@ _bignum_sqr_p521:
 
         mov     rdx, [x]
         mulx    rax, r9, [x+8]
-        mov     [z+8], r9
+        mov     [rsp+8], r9
         mulx    rcx, r10, [x+16]
         adcx    r10, rax
-        mov     [z+16], r10
+        mov     [rsp+16], r10
         mulx    rax, r11, [x+24]
         adcx    r11, rcx
         mulx    rcx, r12, [x+32]
@@ -92,9 +93,9 @@ _bignum_sqr_p521:
         xor     zeroe, zeroe
         mov     rdx, [x+8]
         mulpadd(r12,r11,16)
-        mov     [z+24], r11
+        mov     [rsp+24], r11
         mulpadd(r13,r12,24)
-        mov     [z+32], r12
+        mov     [rsp+32], r12
         mulpadd(r14,r13,32)
         mulpadd(r15,r14,40)
         mulpadd(r8,r15,48)
@@ -106,9 +107,9 @@ _bignum_sqr_p521:
         xor     zeroe, zeroe
         mov     rdx, [x+16]
         mulpadd(r14,r13,24)
-        mov     [z+40], r13
+        mov     [rsp+40], r13
         mulpadd(r15,r14,32)
-        mov     [z+48], r14
+        mov     [rsp+48], r14
         mulpadd(r8,r15,40)
         mulpadd(r9,r8,48)
         mulpadd(r10,r9,56)
@@ -120,7 +121,7 @@ _bignum_sqr_p521:
         xor     zeroe, zeroe
         mov     rdx, [x+24]
         mulpadd(r8,r15,32)
-        mov     [z+56], r15
+        mov     [rsp+56], r15
         mulpadd(r9,r8,40)
         mulpadd(r10,r9,48)
         mulpadd(r11,r10,56)
@@ -133,44 +134,44 @@ _bignum_sqr_p521:
         xor     zeroe, zeroe
         mov     rdx, [x]
         mulx    rcx, rax, rdx
-        mov     [z], rax
-        mov     rax, [z+8]
+        mov     [rsp], rax
+        mov     rax, [rsp+8]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+8], rax
+        mov     [rsp+8], rax
 
-        mov     rax, [z+16]
+        mov     rax, [rsp+16]
         mov     rdx, [x+8]
         mulx    rcx, rdx, rdx
         adcx    rax, rax
         adox    rax, rdx
-        mov     [z+16], rax
-        mov     rax, [z+24]
+        mov     [rsp+16], rax
+        mov     rax, [rsp+24]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+24], rax
+        mov     [rsp+24], rax
 
-        mov     rax, [z+32]
+        mov     rax, [rsp+32]
         mov     rdx, [x+16]
         mulx    rcx, rdx, rdx
         adcx    rax, rax
         adox    rax, rdx
-        mov     [z+32], rax
-        mov     rax, [z+40]
+        mov     [rsp+32], rax
+        mov     rax, [rsp+40]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+40], rax
+        mov     [rsp+40], rax
 
-        mov     rax, [z+48]
+        mov     rax, [rsp+48]
         mov     rdx, [x+24]
         mulx    rcx, rdx, rdx
         adcx    rax, rax
         adox    rax, rdx
-        mov     [z+48], rax
-        mov     rax, [z+56]
+        mov     [rsp+48], rax
+        mov     rax, [rsp+56]
         adcx    rax, rax
         adox    rax, rcx
-        mov     [z+56], rax
+        mov     [rsp+56], rax
 
         mov     rdx, [x+32]
         mulx    rcx, rdx, rdx
@@ -223,7 +224,7 @@ _bignum_sqr_p521:
         adc    rbp, 0
 
 // Rotate the upper portion right 9 bits since 2^512 == 2^-9 (mod p_521)
-// Let rotated result rbp,r15,r14,...,r8 be h (high) and z[0..7] be l (low)
+// Let rotated result rbp,r15,r14,...,r8 be h (high) and rsp[0..7] be l (low)
 
         mov     rax, r8
         and     rax, 0x1FF
@@ -242,14 +243,14 @@ _bignum_sqr_p521:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adc     r8, [z]
-        adc     r9, [z+8]
-        adc     r10,[z+16]
-        adc     r11,[z+24]
-        adc     r12,[z+32]
-        adc     r13,[z+40]
-        adc     r14,[z+48]
-        adc     r15,[z+56]
+        adc     r8, [rsp]
+        adc     r9, [rsp+8]
+        adc     r10,[rsp+16]
+        adc     r11,[rsp+24]
+        adc     r12,[rsp+32]
+        adc     r13,[rsp+40]
+        adc     r14,[rsp+48]
+        adc     r15,[rsp+56]
         adc     rbp, ~0x1FF
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
@@ -281,6 +282,7 @@ _bignum_sqr_p521:
 
 // Restore registers and return
 
+        add     rsp, 64
         pop     r15
         pop     r14
         pop     r13

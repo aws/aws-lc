@@ -44,6 +44,10 @@ extern uint64_t bignum_add (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, ui
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_add_p256 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
 
+/*  Add modulo p_25519, z := (x + y) mod p_25519, assuming x and y reduced */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_add_p25519 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+
 /*  Add modulo p_256k1, z := (x + y) mod p_256k1, assuming x and y reduced */
 /*  Inputs x[4], y[4]; output z[4] */
 extern void bignum_add_p256k1 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
@@ -119,6 +123,11 @@ extern uint64_t bignum_cmod (uint64_t k, uint64_t *x, uint64_t m);
 /*  Multiply by a single word, z := c * y */
 /*  Inputs c, y[n]; outputs function return (carry-out) and z[k] */
 extern uint64_t bignum_cmul (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);
+
+/*  Multiply by a single word modulo p_25519, z := (c * x) mod p_25519, assuming x reduced */
+/*  Inputs c, x[4]; output z[4] */
+extern void bignum_cmul_p25519 (uint64_t z[4], uint64_t c, uint64_t x[4]);
+extern void bignum_cmul_p25519_alt (uint64_t z[4], uint64_t c, uint64_t x[4]);
 
 /*  Multiply by a single word modulo p_256, z := (c * x) mod p_256, assuming x reduced */
 /*  Inputs c, x[4]; output z[4] */
@@ -636,6 +645,10 @@ extern void bignum_sqr_p521_alt (uint64_t z[9], uint64_t x[9]);
 /*  Subtract, z := x - y */
 /*  Inputs x[m], y[n]; outputs function return (carry-out) and z[p] */
 extern uint64_t bignum_sub (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+
+/*  Subtract modulo p_25519, z := (x - y) mod p_25519, assuming x and y reduced */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_sub_p25519 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
 
 /*  Subtract modulo p_256, z := (x - y) mod p_256, assuming x and y reduced */
 /*  Inputs x[4], y[4]; output z[4] */

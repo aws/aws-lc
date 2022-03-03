@@ -27,6 +27,7 @@ let bignum_mul_p521_alt_mc =
   0xa9bf5bf5;       (* arm_STP X21 X22 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xa9bf63f7;       (* arm_STP X23 X24 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xa9bf6bf9;       (* arm_STP X25 X26 SP (Preimmediate_Offset (iword (-- &16))) *)
+  0xd10103ff;       (* arm_SUB SP SP (rvalue (word 64)) *)
   0xa9401023;       (* arm_LDP X3 X4 X1 (Immediate_Offset (iword (&0))) *)
   0xa9401845;       (* arm_LDP X5 X6 X2 (Immediate_Offset (iword (&0))) *)
   0x9b057c6f;       (* arm_MUL X15 X3 X5 *)
@@ -97,7 +98,7 @@ let bignum_mul_p521_alt_mc =
   0xba0e0339;       (* arm_ADCS X25 X25 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e035a;       (* arm_ADC X26 X26 X14 *)
-  0xa900400f;       (* arm_STP X15 X16 X0 (Immediate_Offset (iword (&0))) *)
+  0xa90043ef;       (* arm_STP X15 X16 SP (Immediate_Offset (iword (&0))) *)
   0xa9411023;       (* arm_LDP X3 X4 X1 (Immediate_Offset (iword (&16))) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e0231;       (* arm_ADDS X17 X17 X14 *)
@@ -173,7 +174,7 @@ let bignum_mul_p521_alt_mc =
   0xba0e01ef;       (* arm_ADCS X15 X15 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e0210;       (* arm_ADC X16 X16 X14 *)
-  0xa9014c11;       (* arm_STP X17 X19 X0 (Immediate_Offset (iword (&16))) *)
+  0xa9014ff1;       (* arm_STP X17 X19 SP (Immediate_Offset (iword (&16))) *)
   0xa9421023;       (* arm_LDP X3 X4 X1 (Immediate_Offset (iword (&32))) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e0294;       (* arm_ADDS X20 X20 X14 *)
@@ -249,7 +250,7 @@ let bignum_mul_p521_alt_mc =
   0xba0e0231;       (* arm_ADCS X17 X17 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e0273;       (* arm_ADC X19 X19 X14 *)
-  0xa9025414;       (* arm_STP X20 X21 X0 (Immediate_Offset (iword (&32))) *)
+  0xa90257f4;       (* arm_STP X20 X21 SP (Immediate_Offset (iword (&32))) *)
   0xa9431023;       (* arm_LDP X3 X4 X1 (Immediate_Offset (iword (&48))) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e02d6;       (* arm_ADDS X22 X22 X14 *)
@@ -325,7 +326,7 @@ let bignum_mul_p521_alt_mc =
   0xba0e0294;       (* arm_ADCS X20 X20 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e02b5;       (* arm_ADC X21 X21 X14 *)
-  0xa9035c16;       (* arm_STP X22 X23 X0 (Immediate_Offset (iword (&48))) *)
+  0xa9035ff6;       (* arm_STP X22 X23 SP (Immediate_Offset (iword (&48))) *)
   0xf9402023;       (* arm_LDR X3 X1 (Immediate_Offset (word 64)) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e0318;       (* arm_ADDS X24 X24 X14 *)
@@ -362,22 +363,22 @@ let bignum_mul_p521_alt_mc =
   0x9bcc7c6e;       (* arm_UMULH X14 X3 X12 *)
   0x9a0e02b5;       (* arm_ADC X21 X21 X14 *)
   0xeb1f03ff;       (* arm_CMP XZR XZR *)
-  0xa9401805;       (* arm_LDP X5 X6 X0 (Immediate_Offset (iword (&0))) *)
+  0xa9401be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&0))) *)
   0x93d8272e;       (* arm_EXTR X14 X25 X24 9 *)
   0xba0e00a5;       (* arm_ADCS X5 X5 X14 *)
   0x93d9274e;       (* arm_EXTR X14 X26 X25 9 *)
   0xba0e00c6;       (* arm_ADCS X6 X6 X14 *)
-  0xa9412007;       (* arm_LDP X7 X8 X0 (Immediate_Offset (iword (&16))) *)
+  0xa94123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&16))) *)
   0x93da25ee;       (* arm_EXTR X14 X15 X26 9 *)
   0xba0e00e7;       (* arm_ADCS X7 X7 X14 *)
   0x93cf260e;       (* arm_EXTR X14 X16 X15 9 *)
   0xba0e0108;       (* arm_ADCS X8 X8 X14 *)
-  0xa9422809;       (* arm_LDP X9 X10 X0 (Immediate_Offset (iword (&32))) *)
+  0xa9422be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&32))) *)
   0x93d0262e;       (* arm_EXTR X14 X17 X16 9 *)
   0xba0e0129;       (* arm_ADCS X9 X9 X14 *)
   0x93d1266e;       (* arm_EXTR X14 X19 X17 9 *)
   0xba0e014a;       (* arm_ADCS X10 X10 X14 *)
-  0xa943300b;       (* arm_LDP X11 X12 X0 (Immediate_Offset (iword (&48))) *)
+  0xa94333eb;       (* arm_LDP X11 X12 SP (Immediate_Offset (iword (&48))) *)
   0x93d3268e;       (* arm_EXTR X14 X20 X19 9 *)
   0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
   0x93d426ae;       (* arm_EXTR X14 X21 X20 9 *)
@@ -400,6 +401,7 @@ let bignum_mul_p521_alt_mc =
   0xa9022809;       (* arm_STP X9 X10 X0 (Immediate_Offset (iword (&32))) *)
   0xa903300b;       (* arm_STP X11 X12 X0 (Immediate_Offset (iword (&48))) *)
   0xf900200d;       (* arm_STR X13 X0 (Immediate_Offset (word 64)) *)
+  0x910103ff;       (* arm_ADD SP SP (rvalue (word 64)) *)
   0xa8c16bf9;       (* arm_LDP X25 X26 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c163f7;       (* arm_LDP X23 X24 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c15bf5;       (* arm_LDP X21 X22 SP (Postimmediate_Offset (iword (&16))) *)
@@ -463,24 +465,30 @@ let BIGNUM_FROM_MEMORY_LT_P521 = prove
   MESON_TAC[]);;
 
 let BIGNUM_MUL_P521_ALT_CORRECT = prove
- (`!z x y a b pc.
-        ALL (nonoverlapping (z,8 * 9)) [(word pc,0x5f8); (x,8 * 9); (y,8 * 9)]
+ (`!z x y a b pc stackpointer.
+        aligned 16 stackpointer /\
+        ALL (nonoverlapping (stackpointer,64))
+            [(word pc,0x600); (z,8 * 9); (x,8 * 9); (y,8 * 9)] /\
+        nonoverlapping (z,8 * 9) (word pc,0x600)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_mul_p521_alt_mc /\
-                  read PC s = word(pc + 0x10) /\
+                  read PC s = word(pc + 0x14) /\
+                  read SP s = stackpointer /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,9) s = a /\
                   bignum_from_memory (y,9) s = b)
-             (\s. read PC s = word (pc + 0x5e4) /\
+             (\s. read PC s = word (pc + 0x5e8) /\
                   (a < p_521 /\ b < p_521
                    ==> bignum_from_memory (z,9) s = (a * b) MOD p_521))
              (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9;
                          X10; X11; X12; X13; X14; X15; X16; X17; X19;
                          X20; X21; X22; X23; X24; X25; X26] ,,
               MAYCHANGE SOME_FLAGS ,,
-              MAYCHANGE [memory :> bignum(z,9)])`,
+              MAYCHANGE [memory :> bignum(z,9);
+                         memory :> bytes(stackpointer,64)])`,
   MAP_EVERY X_GEN_TAC
-   [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
+   [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`;
+    `pc:num`; `stackpointer:int64`] THEN
   REWRITE_TAC[ALL; C_ARGUMENTS; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
@@ -526,7 +534,7 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
 
   SUBGOAL_THEN
    `2 EXP 512 * bignum_of_wordlist[h0;h1;h2;h3;h4;h5;h6;h7;h8] +
-    bignum_from_memory(z,8) s334 =
+    bignum_from_memory(stackpointer,8) s334 =
     a * b`
   ASSUME_TAC THENL
    [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
@@ -659,10 +667,9 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
 let BIGNUM_MUL_P521_ALT_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        nonoverlapping (z,8 * 9) (word_sub stackpointer (word 64),64) /\
-        ALLPAIRS nonoverlapping
-         [(z,8 * 9); (word_sub stackpointer (word 64),64)]
-         [(word pc,0x5f8); (x,8 * 9); (y,8 * 9)]
+        nonoverlapping (z,8 * 9) (word pc,0x600) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 128),128))
+            [(word pc,0x600); (x,8 * 9); (y,8 * 9); (z,8 * 9)]
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_mul_p521_alt_mc /\
                   read PC s = word pc /\
@@ -677,8 +684,8 @@ let BIGNUM_MUL_P521_ALT_SUBROUTINE_CORRECT = prove
              (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9;
                          X10; X11; X12; X13; X14; X15; X16; X17] ,,
               MAYCHANGE [memory :> bytes(z,8 * 9);
-                       memory :> bytes(word_sub stackpointer (word 64),64)] ,,
+                       memory :> bytes(word_sub stackpointer (word 128),128)] ,,
               MAYCHANGE SOME_FLAGS)`,
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MUL_P521_ALT_EXEC BIGNUM_MUL_P521_ALT_CORRECT
-   `[X19;X20;X21;X22;X23;X24;X25;X26]` 64);;
+   `[X19;X20;X21;X22;X23;X24;X25;X26]` 128);;

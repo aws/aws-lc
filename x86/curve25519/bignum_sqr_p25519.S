@@ -131,13 +131,12 @@ _bignum_sqr_p25519:
 // Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
 
         shld    r12, r11, 1
-        mov     rcx, 0x8000000000000000
         mov     edx, 19
-        inc     r12
-        or      r11, rcx
-        mulx    rbx, rax, r12
+        lea     rax, [r12+1]
+        bts     r11, 63
+        imul    rax, rdx
         add     r8, rax
-        adc     r9, rbx
+        adc     r9, zero
         adc     r10, zero
         adc     r11, zero
 
@@ -145,15 +144,12 @@ _bignum_sqr_p25519:
 // So we correct if CF = 0 by subtracting 19, either way masking to
 // 255 bits, i.e. by effectively adding p_25519 to the "full" answer
 
-        sbb     rax, rax
-        not     rax
-        and     rax, rdx
-        sub     r8, rax
+        cmovc   rdx, zero
+        sub     r8, rdx
         sbb     r9, zero
         sbb     r10, zero
         sbb     r11, zero
-        not     rcx
-        and     r11, rcx
+        btr     r11, 63
 
 // Write everything back
 

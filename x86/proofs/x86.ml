@@ -2119,6 +2119,69 @@ let x86_CALL_ALT = prove
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
   REWRITE_TAC[FUN_EQ_THM; seq; assign] THEN MESON_TAC[]);;
 
+(*** More alternatives that are nicer to work with ***)
+
+let x86_BTC_ALT = prove
+ (`x86_BTC dest src s =
+        let (x:N word) = read dest s and y = read src s in
+        let c = val y MOD dimindex(:N) in
+        let b = bit c x in
+        (dest := word_xor x (word_shl (word 1) c) ,,
+         CF := b ,,
+         UNDEFINED_VALUES[SF;PF;OF;AF]) s`,
+  REWRITE_TAC[x86_BTC] THEN CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  REWRITE_TAC[FUN_EQ_THM; seq; assign; UNWIND_THM1] THEN
+  X_GEN_TAC `s':x86state` THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN AP_TERM_TAC THEN
+  REWRITE_TAC[WRITE_COMPONENT_COMPOSE] THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  GEN_REWRITE_TAC I [WORD_EQ_BITS_ALT] THEN
+  REWRITE_TAC[GSYM READ_BITELEMENT; READ_WRITE_BITELEMENT_GEN] THEN
+  SIMP_TAC[READ_BITELEMENT; BIT_WORD_XOR; BIT_WORD_SHL; BIT_WORD_1] THEN
+  REWRITE_TAC[MOD_LT_EQ; DIMINDEX_NONZERO] THEN
+  REWRITE_TAC[ARITH_RULE `j <= i /\ i - j = 0 <=> i = j`] THEN
+  MESON_TAC[]);;
+
+let x86_BTR_ALT = prove
+ (`x86_BTR dest src s =
+        let (x:N word) = read dest s and y = read src s in
+        let c = val y MOD dimindex(:N) in
+        let b = bit c x in
+        (dest := word_and x (word_not(word_shl (word 1) c)) ,,
+         CF := b ,,
+         UNDEFINED_VALUES[SF;PF;OF;AF]) s`,
+  REWRITE_TAC[x86_BTR] THEN CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  REWRITE_TAC[FUN_EQ_THM; seq; assign; UNWIND_THM1] THEN
+  X_GEN_TAC `s':x86state` THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN AP_TERM_TAC THEN
+  REWRITE_TAC[WRITE_COMPONENT_COMPOSE] THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  GEN_REWRITE_TAC I [WORD_EQ_BITS_ALT] THEN
+  REWRITE_TAC[GSYM READ_BITELEMENT; READ_WRITE_BITELEMENT_GEN] THEN
+  SIMP_TAC[READ_BITELEMENT; BIT_WORD_AND; BIT_WORD_NOT;
+           BIT_WORD_SHL; BIT_WORD_1] THEN
+  REWRITE_TAC[MOD_LT_EQ; DIMINDEX_NONZERO] THEN
+  REWRITE_TAC[ARITH_RULE `j <= i /\ i - j = 0 <=> i = j`] THEN
+  MESON_TAC[]);;
+
+let x86_BTS_ALT = prove
+ (`x86_BTS dest src s =
+        let (x:N word) = read dest s and y = read src s in
+        let c = val y MOD dimindex(:N) in
+        let b = bit c x in
+        (dest := word_or x (word_shl (word 1) c) ,,
+         CF := b ,,
+         UNDEFINED_VALUES[SF;PF;OF;AF]) s`,
+  REWRITE_TAC[x86_BTS] THEN CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  REWRITE_TAC[FUN_EQ_THM; seq; assign; UNWIND_THM1] THEN
+  X_GEN_TAC `s':x86state` THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN AP_TERM_TAC THEN
+  REWRITE_TAC[WRITE_COMPONENT_COMPOSE] THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  GEN_REWRITE_TAC I [WORD_EQ_BITS_ALT] THEN
+  REWRITE_TAC[GSYM READ_BITELEMENT; READ_WRITE_BITELEMENT_GEN] THEN
+  SIMP_TAC[READ_BITELEMENT; BIT_WORD_OR; BIT_WORD_SHL; BIT_WORD_1] THEN
+  REWRITE_TAC[MOD_LT_EQ; DIMINDEX_NONZERO] THEN
+  REWRITE_TAC[ARITH_RULE `j <= i /\ i - j = 0 <=> i = j`] THEN
+  MESON_TAC[]);;
+
 (*** Just a conceptual observation, not actually used ***)
 
 let x86_RET_POP_RIP = prove
@@ -2133,7 +2196,7 @@ let X86_OPERATION_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)
    [x86_ADC_ALT; x86_ADCX_ALT; x86_ADOX_ALT;
     x86_ADD_ALT; x86_AND; x86_BSF; x86_BSR; x86_BSWAP;
-    x86_BT; x86_BTC; x86_BTR; x86_BTS;
+    x86_BT; x86_BTC_ALT; x86_BTR_ALT; x86_BTS_ALT;
     x86_CALL_ALT; x86_CLC; x86_CMC; x86_CMOV; x86_CMP_ALT; x86_DEC;
     x86_DIV2; x86_IMUL; x86_IMUL2; x86_IMUL3; x86_INC; x86_LEA; x86_LZCNT;
     x86_MOV; x86_MOVSX; x86_MOVZX;

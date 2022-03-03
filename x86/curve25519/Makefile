@@ -15,10 +15,14 @@
 
 # The x86 assembly (.S) files are all written for the GNU assembler
 
-OBJ = bignum_mul_p25519.o \
+OBJ = bignum_add_p25519.o \
+      bignum_cmul_p25519.o \
+      bignum_cmul_p25519_alt.o \
+      bignum_mul_p25519.o \
       bignum_mul_p25519_alt.o \
       bignum_sqr_p25519.o \
-      bignum_sqr_p25519_alt.o
+      bignum_sqr_p25519_alt.o \
+      bignum_sub_p25519.o
 
 %.o : %.S ; cpp $< | as -o $@ -
 
