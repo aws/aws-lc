@@ -40,6 +40,10 @@
 # 50-70% improvement for RSA4096 sign. RSA2048 sign is ~25% faster
 # on Cortex-A57 and ~60-100% faster on others.
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $flavour = shift;
 $output  = shift;
 

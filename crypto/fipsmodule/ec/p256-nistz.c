@@ -564,6 +564,11 @@ static void ecp_nistz256_inv0_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
 static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
                                                  EC_SCALAR *out,
                                                  const EC_SCALAR *in) {
+
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
+#else
+
 #if defined(OPENSSL_X86_64)
   if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
     // No AVX support; fallback to generic code.
@@ -579,6 +584,8 @@ static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
   // The result should be returned in the Montgomery domain.
   ec_scalar_to_montgomery(group, out, out);
   return 1;
+
+#endif
 }
 
 static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,

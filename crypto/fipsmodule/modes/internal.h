@@ -264,7 +264,7 @@ void gcm_gmult_ssse3(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_ssse3(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                      size_t len);
 
-#if defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define GHASH_ASM_X86_64
 void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
