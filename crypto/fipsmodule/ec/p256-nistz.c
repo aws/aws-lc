@@ -33,7 +33,7 @@
 #include "p256-nistz.h"
 
 #if !defined(OPENSSL_NO_ASM) &&  \
-    (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&    \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \
     !defined(OPENSSL_SMALL)
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
@@ -232,7 +232,7 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
   BN_ULONG tmp[P256_LIMBS];
   stack_align_type buffer_h[32 + sizeof(P256_POINT)];
-  P256_POINT *aligned_h = (P256_POINT *) align_pointer(buffer_h, 32); 
+  P256_POINT *aligned_h = (P256_POINT *) align_pointer(buffer_h, 32);
   size_t index = 255;
   crypto_word_t wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
@@ -648,5 +648,5 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
 }
 
 #endif /* !defined(OPENSSL_NO_ASM) && \
-          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
           !defined(OPENSSL_SMALL) */

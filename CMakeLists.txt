@@ -600,10 +600,6 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
-if(OPENSSL_AARCH64_P256)
-  add_definitions(-DOPENSSL_AARCH64_P256)
-endif()
-
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
@@ -630,11 +626,6 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
-endif()
-
-if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
-  # Enable p256_nistz on ARMv8 (AArch64) by default
-  add_definitions(-DOPENSSL_AARCH64_P256)
 endif()
 
 if(ANDROID AND NOT ANDROID_NDK_REVISION AND ARCH STREQUAL "arm")
