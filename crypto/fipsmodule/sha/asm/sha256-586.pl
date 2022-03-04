@@ -69,11 +69,15 @@
 #	purposes, results are best-available;
 # (***)	SHAEXT result is 4.1, strangely enough better than 64-bit one;
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../../perlasm");
 require "x86asm.pl";
 
-$output=pop;
+$output=$ARGV[1];
 open STDOUT,">$output";
 
 &asm_init($ARGV[0],$ARGV[$#ARGV] eq "386");
@@ -89,6 +93,7 @@ for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
 $avx = 1;
 
 $avx = 0 unless ($xmm);
+for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
 $shaext=$xmm;	### set to zero if compiling for 1.0.1
 

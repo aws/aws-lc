@@ -24,7 +24,8 @@
 extern "C" {
 #endif
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define RSAZ_ENABLED
 
 
