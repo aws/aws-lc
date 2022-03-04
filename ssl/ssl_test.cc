@@ -5636,6 +5636,38 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
   EXPECT_EQ(1u, server->config->supported_group_list.size());
 }
 
+TEST(SSLTest, EncodeAndDecodeKAT) {
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used to
+  // generate below bytes by adding print statement on the output of |SSL_to_bytes|
+  // in bssl_shim.cc.
+  const std::string data =
+    "308201173082011302010102020303020240003081fa020101040800000000000000010408000000"
+    "00000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb444f574e4752440104"
+    "20cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d942e99e42a604020000020100"
+    "020103040cb9b409f5129440622f87f84402010c040c1f49e2e989c66a263e9c227502010c020100"
+    "020100020100a05b3059020101020203030402cca80400043085668dcf9f0921094ebd7f91bf2a8c"
+    "60d276e4c279fd85a989402f678682324fd8098dc19d900b856d0a77e048e3ced2a104020204d2a2"
+    "0402021c20a4020400b1030101ffb20302011da206040474657374a7030101ff020108020100a003"
+    "0101ff";
+
+  std::vector<uint8_t> bytes;
+  ASSERT_TRUE(DecodeHex(&bytes, data));
+
+  // Check the bytes are decoded successfully.
+  bssl::UniquePtr<SSL> ssl(SSL_from_bytes(bytes.data(), bytes.size(), server_ctx.get()));
+  ASSERT_TRUE(ssl);
+  // Check the ssl can be encoded successfully.
+  size_t encoded_len;
+  uint8_t *encoded;
+  ASSERT_TRUE(SSL_to_bytes(ssl.get(), &encoded, &encoded_len));
+  bssl::UniquePtr<uint8_t> encoded_ptr;
+  encoded_ptr.reset(encoded);
+  // Check the encoded bytes are the same as the test input.
+  ASSERT_EQ(bytes.size(), encoded_len);
+  ASSERT_EQ(memcmp(bytes.data(), encoded, encoded_len), 0);
+}
+
 TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {
   // If there are pending handshake mesages, an |SSL_write| of zero bytes should
   // flush them.

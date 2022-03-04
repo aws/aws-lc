@@ -80,6 +80,7 @@ var (
 	repeatUntilFailure = flag.Bool("repeat-until-failure", false, "If true, the first selected test will be run repeatedly until failure.")
 	// Added by aws-lc
 	sslTransferConfig  = flag.String("ssl-transfer-test-file", "", "A path to file which includes the test names that can be converted for SSL transfer.")
+	sslFuzzSeedDir     = flag.String("ssl-fuzz-seed-dir", "", "The directory in which to write the output of |SSL_to_bytes|.")
 	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
 	testCaseEndIndex   = flag.Int("test-case-end-index", -1, "If non-negative, test case is filtered in if the index in |testCases| <= test-case-end-index.")
 )
@@ -1996,13 +1997,17 @@ func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, e
 			stTest.flags = make([]string, len(test.flags), len(test.flags)+2)
 			copy(stTest.flags, test.flags)
 			// Append |ssl-transfer| to let bssl_shim perform SSL transfer.
-			stTest.flags = append(stTest.flags, "-ssl-transfer", "1")
+			stTest.flags = append(stTest.flags, "-do-ssl-transfer")
+			// When |sslFuzzSeedDir| is specified, pass below flag to let bssl_shim dump the output of |SSL_to_bytes|.
+			if len(*sslFuzzSeedDir) != 0 {
+				stTest.flags = append(stTest.flags, "-ssl-fuzz-seed-path-prefix", *sslFuzzSeedDir + "/" + stTest.name)
+			}
 			sslTransferTests = append(sslTransferTests, stTest)
 		} else {
 			newFlags := make([]string, len(test.flags), len(test.flags)+2)
 			copy(newFlags, test.flags)
 			// Pass a flag to check if the test should be converted to test SSL transfer.
-			newFlags = append(newFlags, "-check-ssl-transfer", "1")
+			newFlags = append(newFlags, "-check-ssl-transfer")
 			test.flags = newFlags
 			tests[i] = test
 		}
@@ -15307,6 +15312,10 @@ func addPeekTests() {
 // Below is the difference between |addPeekTests| and |addServerPeekTests|.
 // 1. addServerPeekTests uses bssl_shim as server.
 // 2. The MaxVersion is set to TLS 1.2. The default one seems TLS 1.3.
+// 3. Let Golang TLS client sends messages(len: |maxPlaintext * 50 + 1|) to repeatedly test |SSL_peek| and |SSL_read|.
+//    Here, the 50 is just a magic number used to test SSL_peek with more rounds.
+//    100 was used but it caused some tcp io timeout on macOS. See below reference
+//    CryptoAlg-850?selectedConversation=8749cd07-dcec-44f1-8405-c22aad9fb306. 
 func addServerPeekTests() {
 	// Test SSL_peek works, including on empty records.
 	testCases = append(testCases, testCase{
@@ -15315,6 +15324,7 @@ func addServerPeekTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 		},
+		messageLen: maxPlaintext * 50 + 1,
 		sendEmptyRecords: 1,
 		flags: []string{"-peek-then-read"},
 	})
@@ -15327,6 +15337,7 @@ func addServerPeekTests() {
 			MinVersion: VersionTLS11,
 			MaxVersion: VersionTLS12,
 		},
+		messageLen: maxPlaintext * 50 + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-implicit-handshake",
@@ -15343,6 +15354,7 @@ func addServerPeekTests() {
 				ExpectCloseNotify: true,
 			},
 		},
+		messageLen: maxPlaintext * 50 + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-check-close-notify",

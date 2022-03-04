@@ -171,7 +171,7 @@ bool SSLBuffer::DoDeserialization(CBS *cbs) {
       !CBS_get_asn1_uint64(&seq, &cap) ||
       !CBS_get_asn1(&seq, &buf, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&seq) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BUFFER);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
   bool buf_allocated = !!buf_allocated_int;
@@ -179,7 +179,7 @@ bool SSLBuffer::DoDeserialization(CBS *cbs) {
     // When buf_allocated, CBS_len(&buf) should be larger than
     // sizeof(inline_buf_). This is ensured in |EnsureCap|.
     if (CBS_len(&buf) <= sizeof(inline_buf_)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BUFFER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
       return false;
     }
     buf_ = (uint8_t *)malloc(CBS_len(&buf));
@@ -191,7 +191,7 @@ bool SSLBuffer::DoDeserialization(CBS *cbs) {
     OPENSSL_memcpy(buf_, CBS_data(&buf), CBS_len(&buf));
   } else {
     if (CBS_len(&buf) != sizeof(inline_buf_)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_BUFFER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
       return false;
     }
     buf_size_ = 0;

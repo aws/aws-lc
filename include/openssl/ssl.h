@@ -2372,7 +2372,9 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_l
 
 // SSL_from_bytes parses |in_len| bytes from |in| as an SSL. It
 // returns a newly-allocated |SSL| on success or NULL on error.
-// The |SSL| is marked with handshake finished.
+// The |SSL| is marked with handshake finished. |in| and |in_len| should
+// come from |out_data| and |out_len| of |SSL_to_bytes|. In other words,
+// |SSL_from_bytes| should be called after |SSL_to_bytes|.
 //
 // WARNING: Do not decode the same bytes |in| for different connections.
 //          Otherwise, the connections use the same key material.
@@ -5659,6 +5661,11 @@ BSSL_NAMESPACE_END
 #define SSL_R_ECH_REJECTED 319
 #define SSL_R_OUTER_EXTENSION_NOT_FOUND 320
 #define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
+#define SSL_R_SERIALIZATION_UNSUPPORTED 500
+#define SSL_R_SERIALIZATION_INVALID_SSL 501
+#define SSL_R_SERIALIZATION_INVALID_SSL_CONFIG 502
+#define SSL_R_SERIALIZATION_INVALID_SSL3_STATE 503
+#define SSL_R_SERIALIZATION_INVALID_SSL_BUFFER 505
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
@@ -5693,10 +5700,5 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
 #define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
-
-#define SSL_R_INVALID_SSL 9001
-#define SSL_R_INVALID_SSL_CONFIG 9002
-#define SSL_R_INVALID_SSL3_STATE 9003
-#define SSL_R_INVALID_SSL_BUFFER 9004
 
 #endif  // OPENSSL_HEADER_SSL_H
