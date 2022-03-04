@@ -46,7 +46,7 @@ type tlsKDFTest struct {
 	ServerHelloRandomHex string `json:"serverHelloRandom"`
 	ClientRandomHex      string `json:"clientRandom"`
 	ServerRandomHex      string `json:"serverRandom"`
-	SessionHashHex       string `json:"sessionHash""`
+	SessionHashHex       string `json:"sessionHash"`
 }
 
 type tlsKDFTestGroupResponse struct {
