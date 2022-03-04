@@ -171,7 +171,7 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 }
 
 
-func doMacOS(objectBytes []byte) ([]byte, []byte, error) {
+func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 
 	object, err := macho.NewFile(bytes.NewReader(objectBytes))
 	if err != nil {
@@ -358,7 +358,7 @@ func do(outPath, oInput string, arInput string, useSHA256 bool, appleOS bool) er
 	var moduleText, moduleROData []byte
 	var err error
 	if appleOS == true {
-		moduleText, moduleROData, err = doMacOS(objectBytes)
+		moduleText, moduleROData, err = doAppleOS(objectBytes)
 	} else {
 		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
 	}
