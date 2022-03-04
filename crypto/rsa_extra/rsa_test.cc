@@ -578,11 +578,80 @@ TEST(RSATest, OnlyDGiven) {
   ASSERT_TRUE(BN_hex2bn(&key2->d, kD));
   key2->flags |= RSA_FLAG_NO_BLINDING;
 
+  // While keys defined only in terms of |n| and |d| must be functional, our
+  // validation logic doesn't consider them "valid".
+  EXPECT_FALSE(RSA_check_key(key2.get()));
+
   ASSERT_LE(RSA_size(key2.get()), sizeof(buf));
   EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
                        &buf_len, key2.get()));
 
   // Verify the signature with |key|. |key2| has no public exponent.
+  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                         buf_len, key.get()));
+
+  // Perform the same test case as above ("ACCP-style" key specified in terms
+  // of |d| and |n|, turn off blinding), but this time do a round trip to DER +
+  // ASN.1 first. This most closely replicates ACCP's use-case of asking AWS-LC
+  // to encode to and decode from DER. While already-parsed keys tend to be
+  // validated and used with "NULL"ness indicating absence of various RSA
+  // parameters, the actual parsing logic assumes that these NULL'd values are
+  // present and zero-valued when being un/marshalled. So, we zero them out
+  // before marshalling, and re-NULL them when parsing back from DER.
+  //
+  // Also, note that here and in the previous test we expect RSA_check_key to
+  // return false for ACCP-style keys. The current implementation does not
+  // consider ACCP-style keys to be valid. We deliberately made this decision
+  // to avoid introducing potentially dangerous modifications to key validation
+  // and generation logic. Instead, we detect ACCP-style keys only when parsing
+  // from DER and special case that.
+  //
+  // At some point in the future, we will likely want to standardize on one of
+  // of NULL/0 for indicating parameter absence, as well as fix up
+  // RSA_check_key to accurately account for all the different types of RSA
+  // keys that we support.
+  ASSERT_TRUE(BN_hex2bn(&key2->e, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->p, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->q, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->dmp1, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->dmq1, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->iqmp, "0"));
+
+  uint8_t *accpKeyDER;
+  size_t accpKeyDerLen;
+  EXPECT_TRUE(RSA_private_key_to_bytes(&accpKeyDER, &accpKeyDerLen, key2.get()));
+  EXPECT_TRUE(accpKeyDerLen > 0);
+
+  bssl::UniquePtr<RSA> accpKey(RSA_private_key_from_bytes(accpKeyDER, accpKeyDerLen));
+  OPENSSL_free(accpKeyDER);
+  EXPECT_TRUE(accpKey);
+  accpKey->flags |= RSA_FLAG_NO_BLINDING;
+
+  ASSERT_TRUE(BN_is_zero(accpKey->e));
+  ASSERT_TRUE(BN_is_zero(accpKey->p));
+  ASSERT_TRUE(BN_is_zero(accpKey->q));
+  ASSERT_TRUE(BN_is_zero(accpKey->dmp1));
+  ASSERT_TRUE(BN_is_zero(accpKey->dmq1));
+  ASSERT_TRUE(BN_is_zero(accpKey->iqmp));
+  BN_free(accpKey->e);
+  BN_free(accpKey->p);
+  BN_free(accpKey->q);
+  BN_free(accpKey->dmp1);
+  BN_free(accpKey->dmq1);
+  BN_free(accpKey->iqmp);
+  accpKey->e = NULL;
+  accpKey->p = NULL;
+  accpKey->q = NULL;
+  accpKey->dmp1 = NULL;
+  accpKey->dmq1 = NULL;
+  accpKey->iqmp = NULL;
+
+  EXPECT_FALSE(RSA_check_key(accpKey.get()));
+
+  ASSERT_LE(RSA_size(accpKey.get()), sizeof(buf));
+  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                       &buf_len, accpKey.get()));
+
   EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
                          buf_len, key.get()));
 }
