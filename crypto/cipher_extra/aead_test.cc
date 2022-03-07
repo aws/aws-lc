@@ -271,30 +271,30 @@ TEST_P(PerAEADTest, TestVector) {
   });
 }
 
-struct KnownLegacyAEAD {
+struct KnownTLSLegacyAEAD {
   const char name[40];
   const EVP_CIPHER *(*func)(void);
   const char *test_vectors;
   uint32_t flags;
 };
 
-static const struct KnownLegacyAEAD kLegacyAEADs[] = {
+static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
     {"AES_128_CBC_SHA1_TLS", EVP_aes_128_cbc_hmac_sha1,
      "aes_128_cbc_sha1_tls_tests.txt",
-     kLimitedImplementation | RequiresADLength(11)},
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     // {"AES_256_CBC_SHA1_TLS", EVP_aes_256_cbc_hmac_sha1,
     //  "aes_256_cbc_sha1_tls_tests.txt",
     //  kLimitedImplementation | RequiresADLength(11)},
 };
 
-class PerLegacyAEADTest : public testing::TestWithParam<KnownLegacyAEAD> {
+class PerTLSLegacyAEADTest : public testing::TestWithParam<KnownTLSLegacyAEAD> {
  public:
   const EVP_CIPHER *legacy_aead() { return GetParam().func(); }
 };
 
-INSTANTIATE_TEST_SUITE_P(All, PerLegacyAEADTest, testing::ValuesIn(kLegacyAEADs),
-                         [](const testing::TestParamInfo<KnownLegacyAEAD> &params)
+INSTANTIATE_TEST_SUITE_P(All, PerTLSLegacyAEADTest, testing::ValuesIn(kTLSLegacyAEADs),
+                         [](const testing::TestParamInfo<KnownTLSLegacyAEAD> &params)
                              -> std::string { return params.param.name; });
 
 // Tests an AEAD against a series of test vectors from a file, using the
@@ -306,7 +306,7 @@ INSTANTIATE_TEST_SUITE_P(All, PerLegacyAEADTest, testing::ValuesIn(kLegacyAEADs)
 //   AD: b654574932
 //   CT: 5294265a60
 //   TAG: 1d45758621762e061368e68868e2f929
-TEST_P(PerLegacyAEADTest, TestVector) {
+TEST_P(PerTLSLegacyAEADTest, TestVector) {
   std::string test_vectors = "crypto/cipher_extra/test/";
   test_vectors += GetParam().test_vectors;
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {

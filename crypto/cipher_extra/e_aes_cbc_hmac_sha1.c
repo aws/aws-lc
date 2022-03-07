@@ -63,7 +63,7 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
                                     EVP_CIPHER_CTX_key_length(ctx) * 8,
                                     &key->ks);
 
-    SHA1_Init(&key->head);      /* handy when benchmarking */
+    SHA1_Init(&key->head); /* handy when benchmarking */
     key->tail = key->head;
     key->md = key->head;
 
@@ -78,7 +78,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                       const unsigned char *in, size_t len)
 {
     EVP_AES_HMAC_SHA1 *key = data(ctx);
-    unsigned int l;
     size_t plen = key->payload_length, iv = 0, /* explicit IV in TLS 1.1 and
                                                 * later */
         sha_off = 0;
@@ -93,11 +92,15 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         return 0;
     }
 
+    // TODO: check if the TLS operation should ensure the payload <= RECORD_MAX_SIZE?
     if (EVP_CIPHER_CTX_encrypting(ctx)) {
         if (plen == NO_PAYLOAD_LENGTH) {
             plen = len;
         } else if (len != ((plen + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
-            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_2);
+            // TODO[Addressed]: why the len should include plen + sha_digest_len + aes_block_size?
+            // Looks like this is a API implicit constraint: the input len should have space of
+            // iv + plaintext + digest + padding.
+            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
             return 0;
         } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
             iv = AES_BLOCK_SIZE;
@@ -119,12 +122,14 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         } else {
             sha_off = 0;
         }
+        // TODO: why not hash the explicit iv?
         sha_off += iv;
         SHA1_Update(&key->md, in + sha_off, plen - sha_off);
 
         if (plen != len) {      /* "TLS" mode of operation */
-            if (in != out)
+            if (in != out) {
                 OPENSSL_memcpy(out + aes_off, in + aes_off, plen - aes_off);
+            }
 
             /* calculate HMAC and append it to payload */
             SHA1_Final(out + plen, &key->md);
@@ -134,8 +139,12 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
             /* pad the payload|hmac */
             plen += SHA_DIGEST_LENGTH;
-            for (l = len - plen - 1; plen < len; plen++)
+            for (unsigned int l = len - plen - 1; plen < len; plen++) {
                 out[plen] = l;
+            }
+            // TODO: investigate if |len - aes_off| includes partial of payload.
+            // In other words, if/why |aes_off| covers all bytes of payload.
+            // if not, what ensures ONLY HMAC|padding is encrytped.
             /* encrypt HMAC|padding at once */
             aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off,
                               &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx), 1);
@@ -149,6 +158,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             unsigned char c[32 + SHA_DIGEST_LENGTH];
         } mac, *pmac;
 
+        // TODO: 32 still makes sense today?
         /* arrange cache line alignment */
         pmac = (void *)(((size_t)mac.c + 31) & ((size_t)0 - 32));
 
@@ -163,8 +173,11 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
             if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3])
                 >= TLS1_1_VERSION) {
-                if (len < (AES_BLOCK_SIZE + SHA_DIGEST_LENGTH + 1))
+                // TODO: check input len >= RECORD_MAX_LENGTH + AES_BLOCK_SIZE + SHA_DIGEST_LENGTH + 256?
+                if (len < (AES_BLOCK_SIZE + SHA_DIGEST_LENGTH + 1)) {
+                    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
                     return 0;
+                }
 
                 /* omit explicit iv */
                 OPENSSL_memcpy(EVP_CIPHER_CTX_iv_noconst(ctx), in, AES_BLOCK_SIZE);
@@ -173,6 +186,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 out += AES_BLOCK_SIZE;
                 len -= AES_BLOCK_SIZE;
             } else if (len < (SHA_DIGEST_LENGTH + 1)) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
                 return 0;
             }
                 /* decrypt HMAC|padding at once */
@@ -181,7 +195,13 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
             /* figure out payload length */
             pad = out[len - 1];
+            // Below three lines of code is to get the min of maxpad.
+            // maxpad = min(len - (SHA_DIGEST_LENGTH + 1), 255);
             maxpad = len - (SHA_DIGEST_LENGTH + 1);
+            // TODO: 256 is the max padding length from RFC5652?
+            // https://datatracker.ietf.org/doc/html/rfc5652
+            // "This padding method is well defined if and only if k is less than 256."
+            // TODO: what below two lines code are doing?
             maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
             maxpad &= 255;
 
@@ -225,14 +245,19 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             pmac->u[4] = 0;
 
             for (res = key->md.num, j = 0; j < len; j++) {
+                // preprocess partial block https://en.wikipedia.org/wiki/SHA-1
+                // When j is within the payload, out[j] is kept.
+                // when j is out of the payload, out[j] is appended with 0x80 and 0 until the SHA_CBLOCK.
+                // TODO: size_t here is quite confusing.
                 size_t c = out[j];
                 mask = (j - inp_len) >> (sizeof(j) * 8 - 8);
                 c &= mask;
                 c |= 0x80 & ~mask & ~((inp_len - j) >> (sizeof(j) * 8 - 8));
                 data->c[res++] = (unsigned char)c;
 
-                if (res != SHA_CBLOCK)
+                if (res != SHA_CBLOCK) {
                     continue;
+                }
 
                 /* j is not incremented yet */
                 mask = 0 - ((inp_len + 7 - j) >> (sizeof(j) * 8 - 1));
@@ -313,6 +338,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 aes_hw_cbc_encrypt(in, out, len, &key->ks,
                                   EVP_CIPHER_CTX_iv_noconst(ctx), 0);
 
+            // TODO: why this call at the end of decryption!?
             SHA1_Update(&key->md, out, len);
         }
     }
@@ -341,13 +367,15 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                 OPENSSL_memcpy(hmac_key, ptr, arg);
             }
 
-            for (i = 0; i < sizeof(hmac_key); i++)
+            for (i = 0; i < sizeof(hmac_key); i++) {
                 hmac_key[i] ^= 0x36; /* ipad */
+            }
             SHA1_Init(&key->head);
             SHA1_Update(&key->head, hmac_key, sizeof(hmac_key));
 
-            for (i = 0; i < sizeof(hmac_key); i++)
+            for (i = 0; i < sizeof(hmac_key); i++) {
                 hmac_key[i] ^= 0x36 ^ 0x5c; /* opad */
+            }
             SHA1_Init(&key->tail);
             SHA1_Update(&key->tail, hmac_key, sizeof(hmac_key));
 
@@ -357,6 +385,12 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
         }
     case EVP_CTRL_AEAD_TLS1_AAD:
         {
+            // p is 
+            // additional_data = seq_num + content_type + protocol_version + payload_eiv_len
+            // seq_num: 8 octets long.
+            // content_type: 1 octets long.
+            // protocol_version: 2 octets long.
+            // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+
             unsigned char *p = ptr;
             unsigned int len;
 
