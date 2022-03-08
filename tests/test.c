@@ -207,6 +207,7 @@ enum {
        TEST_BIGNUM_MUX_4,
        TEST_BIGNUM_MUX_6,
        TEST_BIGNUM_MUX16,
+       TEST_BIGNUM_NEG_P25519,
        TEST_BIGNUM_NEG_P256,
        TEST_BIGNUM_NEG_P256K1,
        TEST_BIGNUM_NEG_P384,
@@ -5347,6 +5348,39 @@ int test_bignum_mux16(void)
   return 0;
 }
 
+int test_bignum_neg_p25519(void)
+{ uint64_t i, k;
+  printf("Testing bignum_neg_p25519 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_25519);
+     if ((rand() & 0x1F) == 0) reference_of_word(k,b0,0);
+
+     bignum_neg_p25519(b2,b0);
+     if (reference_iszero(k,b0)) reference_copy(k,b3,k,b0);
+     else reference_sub_samelen(k,b3,p_25519,b0);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "- ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_25519[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
+               k,b0[0],p_25519[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_neg_p256(void)
 { uint64_t i, k;
   printf("Testing bignum_neg_p256 with %d cases\n",tests);
@@ -7541,6 +7575,7 @@ int test_all(void)
   dotest(test_bignum_mux_4);
   dotest(test_bignum_mux_6);
   dotest(test_bignum_mux16);
+  dotest(test_bignum_neg_p25519);
   dotest(test_bignum_neg_p256);
   dotest(test_bignum_neg_p256k1);
   dotest(test_bignum_neg_p384);
@@ -7746,6 +7781,7 @@ int test_allnonbmi()
   dotest(test_bignum_mux_4);
   dotest(test_bignum_mux_6);
   dotest(test_bignum_mux16);
+  dotest(test_bignum_neg_p25519);
   dotest(test_bignum_neg_p256);
   dotest(test_bignum_neg_p256k1);
   dotest(test_bignum_neg_p384);
@@ -8017,6 +8053,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MUX_4:              return test_bignum_mux_4();
      case TEST_BIGNUM_MUX_6:              return test_bignum_mux_6();
      case TEST_BIGNUM_MUX16:              return test_bignum_mux16();
+     case TEST_BIGNUM_NEG_P25519:         return test_bignum_neg_p25519();
      case TEST_BIGNUM_NEG_P256:           return test_bignum_neg_p256();
      case TEST_BIGNUM_NEG_P256K1:         return test_bignum_neg_p256k1();
      case TEST_BIGNUM_NEG_P384:           return test_bignum_neg_p384();

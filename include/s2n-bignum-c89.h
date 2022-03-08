@@ -520,6 +520,10 @@ extern void bignum_mux_6 (uint64_t p, uint64_t z[6],uint64_t x[6], uint64_t y[6]
 /*  Inputs xs[16*k], i; output z[k] */
 extern void bignum_mux16 (uint64_t k, uint64_t *z, uint64_t *xs, uint64_t i);
 
+/*  Negate modulo p_25519, z := (-x) mod p_25519, assuming x reduced */
+/*  Input x[4]; output z[4] */
+extern void bignum_neg_p25519 (uint64_t z[4], uint64_t x[4]);
+
 /*  Negate modulo p_256, z := (-x) mod p_256, assuming x reduced */
 /*  Input x[4]; output z[4] */
 extern void bignum_neg_p256 (uint64_t z[4], uint64_t x[4]);

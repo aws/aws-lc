@@ -343,6 +343,8 @@ void call_bignum_montsqr_p521(void) repeat(bignum_montsqr_p521(b0,b1))
 
 void call_bignum_montsqr_p521_alt(void) repeat(bignum_montsqr_p521_alt(b0,b1))
 
+void call_bignum_neg_p25519(void) repeat(bignum_neg_p25519(b0,b1))
+
 void call_bignum_neg_p256(void) repeat(bignum_neg_p256(b0,b1))
 
 void call_bignum_neg_p256k1(void) repeat(bignum_neg_p256k1(b0,b1))
@@ -841,6 +843,7 @@ int main(void)
   timingtest(all,"bignum_mux16 (32 -> 32)",call_bignum_mux16__32);
   timingtest(all,"bignum_mux_4",call_bignum_mux_4);
   timingtest(all,"bignum_mux_6",call_bignum_mux_6);
+  timingtest(all,"bignum_neg_p25519",call_bignum_neg_p25519);
   timingtest(all,"bignum_neg_p256",call_bignum_neg_p256);
   timingtest(all,"bignum_neg_p256k1",call_bignum_neg_p256k1);
   timingtest(all,"bignum_neg_p384",call_bignum_neg_p384);
