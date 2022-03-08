@@ -122,11 +122,9 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
   ret = 1;
 end:
   FIPS_service_indicator_unlock_state();
-#if defined(AWSLC_FIPS)
   if (key_pub_key != NULL) {
     EC_KEY_free(key_pub_key);
   }
-#endif
   return ret;
 }
 
