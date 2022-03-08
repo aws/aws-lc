@@ -1162,7 +1162,7 @@ TEST(ECTest, SmallGroupOrder) {
   ASSERT_FALSE(EC_KEY_generate_key_fips(key2.get()));
 }
 
-#elif !defined(OPENSSL_IOS) // ASSERT_DEATH is not defined for iOS.
+#else
 
 TEST(ECDeathTest, SmallGroupOrderAndDie) {
   // Make a P-224 key and corrupt the group order to be small in order to fail
@@ -1214,7 +1214,7 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
   ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
   BN_clear(&key2.get()->group->order);
   ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
-  ASSERT_DEATH(EC_KEY_generate_key_fips(key2.get()), "");
+  ASSERT_DEATH_IF_SUPPORTED(EC_KEY_generate_key_fips(key2.get()), "");
 }
 
 #endif
