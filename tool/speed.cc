@@ -597,30 +597,6 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
                            in_len);
   }
 
-  // Benchmark encryption only
-  for (size_t in_len : g_chunk_lengths) {
-    in.resize(in_len);
-    out.resize(in_len);
-    std::fill(in.begin(), in.end(), 0x5a);
-    if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
-                            iv.data())) {
-      fprintf(stderr, "Failed to initialise EVP_CIPHER_CTX for AES-XTS "
-              "encryption.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-    int len;
-    TimeResults results;
-    if (!TimeFunction(&results, [&]() -> bool {
-          return EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(),
-                                   in.size());
-        })) {
-      fprintf(stderr, "AES-256-XTS Encryption failed.\n");
-      return false;
-    }
-    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " encrypt", in_len);
-  }
-
   // Benchmark initialisation and decryption
   for (size_t in_len : g_chunk_lengths) {
     in.resize(in_len);
@@ -642,30 +618,6 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
     }
     results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and decrypt",
                            in_len);
-  }
-
-  // Benchmark decryption only
-  for (size_t in_len : g_chunk_lengths) {
-    in.resize(in_len);
-    out.resize(in_len);
-    std::fill(in.begin(), in.end(), 0x5a);
-    if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
-                            iv.data())) {
-      fprintf(stderr, "Failed to initialise EVP_CIPHER_CTX for AES-XTS"
-              "decryption.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-    int len;
-    TimeResults results;
-    if (!TimeFunction(&results, [&]() -> bool {
-          return EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(),
-                                   in.size());
-        })) {
-      fprintf(stderr, "AES-256-XTS Decryption failed.\n");
-      return false;
-    }
-    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " decrypt", in_len);
   }
 
   return true;
