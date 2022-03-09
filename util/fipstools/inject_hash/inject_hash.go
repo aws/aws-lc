@@ -171,7 +171,7 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 }
 
 
-func doMacOS(objectBytes []byte) ([]byte, []byte, error) {
+func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 
 	object, err := macho.NewFile(bytes.NewReader(objectBytes))
 	if err != nil {
@@ -300,7 +300,7 @@ func doMacOS(objectBytes []byte) ([]byte, []byte, error) {
 
 
 
-func do(outPath, oInput string, arInput string, useSHA256 bool, macOS bool) error {
+func do(outPath, oInput string, arInput string, useSHA256 bool, appleOS bool) error {
 	var objectBytes []byte
 	var isStatic bool
 	var perm os.FileMode
@@ -312,8 +312,8 @@ func do(outPath, oInput string, arInput string, useSHA256 bool, macOS bool) erro
 			return fmt.Errorf("-in-archive and -in-object are mutually exclusive")
 		}
 
-		if macOS {
-			return fmt.Errorf("only shared libraries can be handled on macOS")
+		if appleOS {
+			return fmt.Errorf("only shared libraries can be handled on macOS/iOS")
 		}
 
 		fi, err := os.Stat(arInput)
@@ -357,8 +357,8 @@ func do(outPath, oInput string, arInput string, useSHA256 bool, macOS bool) erro
 
 	var moduleText, moduleROData []byte
 	var err error
-	if macOS == true {
-		moduleText, moduleROData, err = doMacOS(objectBytes)
+	if appleOS == true {
+		moduleText, moduleROData, err = doAppleOS(objectBytes)
 	} else {
 		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
 	}
@@ -411,11 +411,11 @@ func main() {
 	oInput := flag.String("in-object", "", "Path to a .o file")
 	outPath := flag.String("o", "", "Path to output object")
 	sha256 := flag.Bool("sha256", false, "Whether to use SHA-256 over SHA-512. This must match what the compiled module expects.")
-	macOS := flag.Bool("macos", false, "Whether the FIPS module is built for macOS or not.")
+	appleOS := flag.Bool("apple", false, "Whether the FIPS module is built for macOS/iOS or not.")
 
 	flag.Parse()
 
-	if err := do(*outPath, *oInput, *arInput, *sha256, *macOS); err != nil {
+	if err := do(*outPath, *oInput, *arInput, *sha256, *appleOS); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
