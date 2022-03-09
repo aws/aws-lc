@@ -486,12 +486,15 @@ if(FIPS_SHARED)
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
   # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
+  if (APPLE)
+    set(INJECT_HASH_APPLE_FLAG "-apple")
+  endif()
   add_custom_command(
     TARGET crypto POST_BUILD
     COMMAND ${GO_EXECUTABLE} run
     ${CMAKE_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
     -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-    -sha256 ${INJECT_HASH_MACOS_FLAG}
+    -sha256 ${INJECT_HASH_APPLE_FLAG}
     # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
     # go_executable isn't used (as it doesn't get built), but we list this
     # dependency anyway in case it starts working in some CMake version.
