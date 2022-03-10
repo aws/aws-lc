@@ -422,6 +422,13 @@ static const CurveTest kCurveTests[] = {
       SSL_CURVE_X25519,
     },
   },
+  {
+    "X25519_Kyber512:P-256",
+    {
+      SSL_CURVE_X25519_KYBER512,
+      SSL_CURVE_SECP256R1,
+    },
+  },
 };
 
 static const char *kBadCurvesLists[] = {
