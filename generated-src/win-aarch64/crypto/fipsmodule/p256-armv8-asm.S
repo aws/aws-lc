@@ -40,7 +40,7 @@ LordK:
 .endef
 .align	6
 ecp_nistz256_to_mont:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -56,7 +56,7 @@ ecp_nistz256_to_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -68,7 +68,7 @@ ecp_nistz256_to_mont:
 .endef
 .align	4
 ecp_nistz256_from_mont:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -84,7 +84,7 @@ ecp_nistz256_from_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -97,7 +97,7 @@ ecp_nistz256_from_mont:
 .endef
 .align	4
 ecp_nistz256_mul_mont:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -112,7 +112,7 @@ ecp_nistz256_mul_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -124,7 +124,7 @@ ecp_nistz256_mul_mont:
 .endef
 .align	4
 ecp_nistz256_sqr_mont:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -138,7 +138,7 @@ ecp_nistz256_sqr_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -150,7 +150,7 @@ ecp_nistz256_sqr_mont:
 .endef
 .align	4
 ecp_nistz256_div_by_2:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -162,7 +162,7 @@ ecp_nistz256_div_by_2:
 	bl	__ecp_nistz256_div_by_2
 
 	ldp	x29,x30,[sp],#16
-.long	0xd50323bf		//  autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -174,7 +174,7 @@ ecp_nistz256_div_by_2:
 .endef
 .align	4
 ecp_nistz256_mul_by_2:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -190,7 +190,7 @@ ecp_nistz256_mul_by_2:
 	bl	__ecp_nistz256_add_to	// ret = a+a	// 2*a
 
 	ldp	x29,x30,[sp],#16
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -202,7 +202,7 @@ ecp_nistz256_mul_by_2:
 .endef
 .align	4
 ecp_nistz256_mul_by_3:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -229,7 +229,7 @@ ecp_nistz256_mul_by_3:
 	bl	__ecp_nistz256_add_to	// ret += a	// 2*a+a=3*a
 
 	ldp	x29,x30,[sp],#16
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -242,7 +242,7 @@ ecp_nistz256_mul_by_3:
 .endef
 .align	4
 ecp_nistz256_sub:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -254,7 +254,7 @@ ecp_nistz256_sub:
 	bl	__ecp_nistz256_sub_from
 
 	ldp	x29,x30,[sp],#16
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -266,7 +266,7 @@ ecp_nistz256_sub:
 .endef
 .align	4
 ecp_nistz256_neg:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -281,7 +281,7 @@ ecp_nistz256_neg:
 	bl	__ecp_nistz256_sub_from
 
 	ldp	x29,x30,[sp],#16
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -674,7 +674,7 @@ __ecp_nistz256_div_by_2:
 .endef
 .align	5
 ecp_nistz256_point_double:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -809,7 +809,7 @@ Ldouble_shortcut:
 	ldp	x19,x20,[x29,#16]
 	ldp	x21,x22,[x29,#32]
 	ldp	x29,x30,[sp],#96
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 .globl	ecp_nistz256_point_add
@@ -819,7 +819,7 @@ Ldouble_shortcut:
 .endef
 .align	5
 ecp_nistz256_point_add:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1066,7 +1066,7 @@ Ladd_done:
 	ldp	x25,x26,[x29,#64]
 	ldp	x27,x28,[x29,#80]
 	ldp	x29,x30,[sp],#96
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 .globl	ecp_nistz256_point_add_affine
@@ -1076,7 +1076,7 @@ Ladd_done:
 .endef
 .align	5
 ecp_nistz256_point_add_affine:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1275,7 +1275,7 @@ ecp_nistz256_point_add_affine:
 	ldp	x23,x24,[x29,#48]
 	ldp	x25,x26,[x29,#64]
 	ldp	x29,x30,[sp],#80
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 ////////////////////////////////////////////////////////////////////////
@@ -1288,6 +1288,8 @@ ecp_nistz256_point_add_affine:
 .endef
 .align	4
 ecp_nistz256_ord_mul_mont:
+	AARCH64_VALID_CALL_TARGET
+	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	stp	x29,x30,[sp,#-64]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1499,6 +1501,8 @@ ecp_nistz256_ord_mul_mont:
 .endef
 .align	4
 ecp_nistz256_ord_sqr_mont:
+	AARCH64_VALID_CALL_TARGET
+	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	stp	x29,x30,[sp,#-64]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1690,7 +1694,7 @@ Loop_ord_sqr:
 .endef
 .align	4
 ecp_nistz256_select_w5:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -1767,7 +1771,7 @@ Lselect_w5_loop:
                                             ////    movdqu	v21, 16*5(x0)
 
 	ldp	x29,x30,[sp],#16
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 
@@ -1780,7 +1784,7 @@ Lselect_w5_loop:
 .endef
 .align	4
 ecp_nistz256_select_w7:
-.long	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -1843,7 +1847,7 @@ Lselect_w7_loop:
                                             ////    movdqu	v19, 16*3(x0)
 
 	ldp	x29,x30,[sp],#16
-.long	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 #endif
