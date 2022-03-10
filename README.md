@@ -14,7 +14,7 @@ AWS libcrypto includes many cryptographic algorithm implementations for several 
 | <nobr>AES-KW(P)</nobr>  | 256     | AES_wrap_key, AES_unwrap_key, AES_wrap_key_padded, AES_unwrap_key_padded | SandyBridge+ | InputLength, MemCorrect, NoInline |[SAW](SAW/README.md) |
 | Elliptic Curve Keys and Parameters | with <nobr>P-384</nobr> | EVP_PKEY_CTX_new_id, EVP_PKEY_CTX_new, EVP_PKEY_paramgen_init, EVP_PKEY_CTX_set_ec_paramgen_curve_nid, EVP_PKEY_paramgen, EVP_PKEY_keygen_init, EVP_PKEY_keygen | SandyBridge+ | NoEngine, MemCorrect, CRYPTO_refcount_Correct, CRYPTO_once_Correct |[SAW](SAW/README.md) |
 | ECDSA     | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal | SandyBridge+ | InputLength, NoEngine, MemCorrect, ECDSA_k_Valid, ECDSA_SignatureLength, CRYPTO_refcount_Correct, CRYPTO_once_Correct, ERR_put_error_Correct, NoInline |[SAW](SAW/README.md) |
-| ECDH      | with <nobr>P-384</nobr> | EVP_PKEY_derive_init, EVP_PKEY_derive | SandyBridge+ | NoEngine, CRYPTO_refcount_Correct |[SAW](SAW/README.md) |
+| ECDH      | with <nobr>P-384</nobr> | EVP_PKEY_derive_init, EVP_PKEY_derive | SandyBridge+ | MemCorrect, NoEngine, CRYPTO_refcount_Correct, PubKeyValid |[SAW](SAW/README.md) |
 
 The platforms for which code is verified are defined in the following table. In all cases, the actual verification is performed on code that is produced by Clang 10, but the verification results also apply to any compiler that produces semantically equivalent code.
 
@@ -38,6 +38,7 @@ The caveats associated with some of the verification results are defined in the 
 | CRYPTO_once_Correct | Function CRYPTO_once is not verified, and is assumed to behave correctly and initialize the *_storage global by calling the `*_init` function passed as the second argument. All `*_init` functions passed as arguments to CRYPTO_once are verified separately. |
 | ERR_put_error_Correct | Function ERR_put_error is not verified, and is assumed to behave correctly. |
 | NoInline | The implementation is verified correct assuming that certain functions are not inlined when compiled with optimizations enabled. |
+| PubKeyValid | Public key validity checks are not verified, and the code is only proved correct for the public keys that pass these checks. |
 
 ### Functions marked as `noinline`
 

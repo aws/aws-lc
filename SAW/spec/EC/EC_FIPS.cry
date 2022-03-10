@@ -1,0 +1,11 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module EC_FIPS where
+
+import Common::EC::EC_P384
+
+EC_KEY_check_fips : JacobianBVPoint -> [32]
+EC_KEY_check_fips p = undefined

@@ -177,6 +177,9 @@ let EVP_PKEY_derive_spec = do {
   out_key_len_ptr <- crucible_alloc i64;
   crucible_points_to out_key_len_ptr (crucible_term {{ `ec_bytes : [64] }});
 
+  // This spec assumes that the public key check succeeds
+  crucible_precond {{EC_KEY_check_fips peer_pub_key == 1}};
+
   crucible_execute_func [ctx_ptr, key_ptr, out_key_len_ptr];
 
   crucible_points_to key_ptr (crucible_term {{ split`{each=8} (fieldElementToBV (ECDH_derive (scalarFromBV priv_key) (fromJacobian (jacobianFromMontBV peer_pub_key)))) }});
