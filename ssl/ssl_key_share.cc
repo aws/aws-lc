@@ -300,8 +300,8 @@ class CECPQ2KeyShare : public SSLKeyShare {
 // https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
 class PQHybridKeyShare : public SSLKeyShare {
  public:
-  PQHybridKeyShare(int nid, uint16_t group_id)
-      : nid_(nid), group_id_(group_id) {
+  PQHybridKeyShare(uint16_t group_id)
+      : group_id_(group_id) {
     for (const PQGroup &pq_group : PQGroups()) {
       if (group_id == pq_group.group_id) {
         ec_nid_ = pq_group.ec_nid;
@@ -462,7 +462,6 @@ class PQHybridKeyShare : public SSLKeyShare {
   }
 
  private:
-  int nid_;
   int ec_nid_;
   int pq_nid_;
   uint16_t group_id_;
@@ -517,12 +516,10 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       return UniquePtr<SSLKeyShare>(New<CECPQ2KeyShare>());
     case SSL_CURVE_X25519_KYBER512:
       return UniquePtr<SSLKeyShare>(
-          New<PQHybridKeyShare>(NID_X25519_KYBER512,
-                                   SSL_CURVE_X25519_KYBER512));
+          New<PQHybridKeyShare>(SSL_CURVE_X25519_KYBER512));
     case SSL_CURVE_SECP256R1_KYBER512:
       return UniquePtr<SSLKeyShare>(
-          New<PQHybridKeyShare>(NID_SECP256R1_KYBER512,
-                                   SSL_CURVE_SECP256R1_KYBER512));
+          New<PQHybridKeyShare>(SSL_CURVE_SECP256R1_KYBER512));
     default:
       return nullptr;
   }

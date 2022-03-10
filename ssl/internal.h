@@ -1124,7 +1124,7 @@ struct NamedGroup {
 // NamedGroups returns all supported groups.
 Span<const NamedGroup> NamedGroups();
 
-// PQGroup and PQGroups() are smaller helpers to encapsulate and keep track of
+// PQGroup and PQGroups() are small helpers to encapsulate and keep track of
 // the component members of the hybrid named group.
 struct PQGroup {
   uint16_t group_id;
