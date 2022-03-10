@@ -814,6 +814,16 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         ]
       },
       {
+        "algorithm": "TLS-v1.2",
+        "revision": "RFC7627",
+        "mode": "KDF",
+        "hashAlg": [
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
+        ]
+      },
+      {
         "algorithm": "KAS-ECC-SSC",
         "revision": "Sp800-56Ar3",
         "scheme": {
