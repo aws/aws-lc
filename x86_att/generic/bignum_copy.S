@@ -44,32 +44,35 @@ _bignum_copy:
 // Replace RDX = n with RDX = min(k,n) so we are definitely safe copying those
 // Initialize the element counter to 0
 
-                cmpq    n, k
-                cmovcq  k, n
-                xorq    i, i
+        cmpq    n, k
+        cmovcq  k, n
+        xorq    i, i
 
 // If min(k,n) = 0 jump to the padding stage
 
-                testq   n, n
-                jz      padding
+        testq   n, n
+        jz      padding
 
-copyloop:       movq    (x,i,8), a
-                movq    a, (z,i,8)
-                incq    i
-                cmpq    n, i
-                jc      copyloop
+copyloop:
+        movq    (x,i,8), a
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    n, i
+        jc      copyloop
 
 padding:
-                cmpq    k, i
-                jnc     end
-                xorq    a, a
+        cmpq    k, i
+        jnc     end
+        xorq    a, a
 
-padloop:        movq    a, (z,i,8)
-                incq    i
-                cmpq    k, i
-                jc      padloop
+padloop:
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    k, i
+        jc      padloop
 
-end:            ret
+end:
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

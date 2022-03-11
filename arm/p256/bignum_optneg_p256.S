@@ -48,48 +48,48 @@ _bignum_optneg_p256:
 
 // Load the 4 digits of x
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
 
 // Adjust p by zeroing it if the input is zero (to avoid giving -0 = p, which
 // is not strictly reduced even though it's correct modulo p)
 
-                orr     n0, d0, d1
-                orr     n1, d2, d3
-                orr     n2, n0, n1
-                cmp     n2, #0
-                csel    p, xzr, p, eq
+        orr     n0, d0, d1
+        orr     n1, d2, d3
+        orr     n2, n0, n1
+        cmp     n2, #0
+        csel    p, xzr, p, eq
 
 // Load the three nonzero words of p_256 = [n3;0;n1;n0]
 
-                mov     n0, #0xffffffffffffffff
-                mov     n1, #0x00000000ffffffff
-                mov     n3, #0xffffffff00000001
+        mov     n0, #0xffffffffffffffff
+        mov     n1, #0x00000000ffffffff
+        mov     n3, #0xffffffff00000001
 
 // Do the subtraction, which by hypothesis does not underflow
 
-                subs    n0, n0, d0
-                sbcs    n1, n1, d1
-                sbcs    n2, xzr, d2
-                sbc     n3, n3, d3
+        subs    n0, n0, d0
+        sbcs    n1, n1, d1
+        sbcs    n2, xzr, d2
+        sbc     n3, n3, d3
 
 // Set condition code if original x is nonzero and p was nonzero
 
-                cmp     p, #0
+        cmp     p, #0
 
 // Hence multiplex and write back
 
-                csel    n0, n0, d0, ne
-                csel    n1, n1, d1, ne
-                csel    n2, n2, d2, ne
-                csel    n3, n3, d3, ne
+        csel    n0, n0, d0, ne
+        csel    n1, n1, d1, ne
+        csel    n2, n2, d2, ne
+        csel    n3, n3, d3, ne
 
-                stp     n0, n1, [z]
-                stp     n2, n3, [z, #16]
+        stp     n0, n1, [z]
+        stp     n2, n3, [z, #16]
 
 // Return
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

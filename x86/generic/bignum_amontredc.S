@@ -73,167 +73,167 @@ _bignum_amontredc:
 
 // Save registers and allocate space on stack for non-register variable w
 
-                push    rbx
-                push    rbp
-                push    r12
-                push    r13
-                push    r14
-                push    r15
-                sub     rsp, 8
+        push    rbx
+        push    rbp
+        push    r12
+        push    r13
+        push    r14
+        push    r15
+        sub     rsp, 8
 
 // If k = 0 the whole operation is trivial
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Move n input into its permanent home, since we need rdx for multiplications
 
-                mov     n, rdx
+        mov     n, rdx
 
 // Compute word-level negated modular inverse w for m == m[0].
 
-                mov     a, [m]
+        mov     a, [m]
 
-                mov     t2, a
-                mov     t1, a
-                shl     t2, 2
-                sub     t1, t2
-                xor     t1, 2
+        mov     t2, a
+        mov     t1, a
+        shl     t2, 2
+        sub     t1, t2
+        xor     t1, 2
 
-                mov     t2, t1
-                imul    t2, a
-                mov     ashort, 2
-                add     a, t2
-                add     t2, 1
+        mov     t2, t1
+        imul    t2, a
+        mov     ashort, 2
+        add     a, t2
+        add     t2, 1
 
-                imul    t1, a
+        imul    t1, a
 
-                imul    t2, t2
-                mov     ashort, 1
-                add     a, t2
-                imul    t1, a
+        imul    t2, t2
+        mov     ashort, 1
+        add     a, t2
+        imul    t1, a
 
-                imul    t2, t2
-                mov     ashort, 1
-                add     a, t2
-                imul    t1, a
+        imul    t2, t2
+        mov     ashort, 1
+        add     a, t2
+        imul    t1, a
 
-                imul    t2, t2
-                mov     ashort, 1
-                add     a, t2
-                imul    t1, a
+        imul    t2, t2
+        mov     ashort, 1
+        add     a, t2
+        imul    t1, a
 
-                mov     w, t1
+        mov     w, t1
 
 // Initialize z to the lowest k digits of the input, zero-padding if n < k.
 
-                mov     j, k
-                cmp     n, k
-                cmovc   j, n
-                xor     i, i
-                test    j, j
-                jz      padloop
+        mov     j, k
+        cmp     n, k
+        cmovc   j, n
+        xor     i, i
+        test    j, j
+        jz      padloop
 copyloop:
-                mov     a, [x+8*i]
-                mov     [z+8*i], a
-                inc     i
-                cmp     i, j
-                jc      copyloop
+        mov     a, [x+8*i]
+        mov     [z+8*i], a
+        inc     i
+        cmp     i, j
+        jc      copyloop
 
-                cmp     i, k
-                jnc     initialized
+        cmp     i, k
+        jnc     initialized
 
-                xor     j, j
+        xor     j, j
 padloop:
-                mov     [z+8*i], j
-                inc     i
-                cmp     i, k
-                jc      padloop
+        mov     [z+8*i], j
+        inc     i
+        cmp     i, k
+        jc      padloop
 
 initialized:
-                xor     c, c
+        xor     c, c
 
 // Now if p = 0 that's the end of the operation
 
-                test    p, p
-                jz      end
+        test    p, p
+        jz      end
 
 // Outer loop, just doing a standard Montgomery reduction on z
 
-                xor     i, i
+        xor     i, i
 outerloop:
-                mov     e, [z]
-                mov     d, w
-                imul    d, e
-                mov     a, [m]
-                mul     d
-                add     a, e            // Will be zero but want the carry
-                mov     h, rdx
-                mov     jshort, 1
-                mov     t, k
-                dec     t
-                jz      montend
+        mov     e, [z]
+        mov     d, w
+        imul    d, e
+        mov     a, [m]
+        mul     d
+        add     a, e            // Will be zero but want the carry
+        mov     h, rdx
+        mov     jshort, 1
+        mov     t, k
+        dec     t
+        jz      montend
 
 montloop:
-                adc     h, [z+8*j]
-                sbb     e, e
-                mov     a, [m+8*j]
-                mul     d
-                sub     rdx, e
-                add     a, h
-                mov     [z+8*j-8], a
-                mov     h, rdx
-                inc     j
-                dec     t
-                jnz     montloop
+        adc     h, [z+8*j]
+        sbb     e, e
+        mov     a, [m+8*j]
+        mul     d
+        sub     rdx, e
+        add     a, h
+        mov     [z+8*j-8], a
+        mov     h, rdx
+        inc     j
+        dec     t
+        jnz     montloop
 
 montend:
-                adc     h, c
-                mov     cshort, 0
-                adc     c, 0
+        adc     h, c
+        mov     cshort, 0
+        adc     c, 0
 
-                add     j, i
-                cmp     j, n
-                jnc     offtheend
-                mov     a, [x+8*j]
-                add     h, a
-                adc     c, 0
+        add     j, i
+        cmp     j, n
+        jnc     offtheend
+        mov     a, [x+8*j]
+        add     h, a
+        adc     c, 0
 offtheend:
-                mov     [z+8*k-8], h
+        mov     [z+8*k-8], h
 
 // End of outer loop.
 
-                inc     i
-                cmp     i, p
-                jc      outerloop
+        inc     i
+        cmp     i, p
+        jc      outerloop
 
 // Now convert carry word, which is always in {0,1}, into a mask "d"
 // and do a masked subtraction of m for the final almost-Montgomery result.
 
-                xor     d, d
-                sub     d, c
-                xor     e, e
-                xor     j, j
+        xor     d, d
+        sub     d, c
+        xor     e, e
+        xor     j, j
 corrloop:
-                mov     a, [m+8*j]
-                and     a, d
-                neg     e
-                sbb     [z+8*j], a
-                sbb     e, e
-                inc     j
-                cmp     j, k
-                jc      corrloop
+        mov     a, [m+8*j]
+        and     a, d
+        neg     e
+        sbb     [z+8*j], a
+        sbb     e, e
+        inc     j
+        cmp     j, k
+        jc      corrloop
 
 end:
-                add     rsp, 8
-                pop     r15
-                pop     r14
-                pop     r13
-                pop     r12
-                pop     rbp
-                pop     rbx
+        add     rsp, 8
+        pop     r15
+        pop     r14
+        pop     r13
+        pop     r12
+        pop     rbp
+        pop     rbx
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

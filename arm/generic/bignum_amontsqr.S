@@ -75,117 +75,117 @@ _bignum_amontsqr:
 
 // If k = 0 the whole operation is trivial
 
-                cbz     k, end
+        cbz     k, end
 
 // Compute word-level negated modular inverse w for m == m[0].
 // This is essentially the same as word_negmodinv.
 
-                ldr     a, [m]
-                lsl     w, a, #2
-                sub     w, a, w
-                eor     w, w, #2
-                mov     one, #1
-                madd    e1, a, w, one
-                mul     e2, e1, e1
-                madd    w, e1, w, w
-                mul     e4, e2, e2
-                madd    w, e2, w, w
-                mul     e8, e4, e4
-                madd    w, e4, w, w
-                madd    w, e8, w, w
+        ldr     a, [m]
+        lsl     w, a, #2
+        sub     w, a, w
+        eor     w, w, #2
+        mov     one, #1
+        madd    e1, a, w, one
+        mul     e2, e1, e1
+        madd    w, e1, w, w
+        mul     e4, e2, e2
+        madd    w, e2, w, w
+        mul     e8, e4, e4
+        madd    w, e4, w, w
+        madd    w, e8, w, w
 
 // Initialize the output c0::z to zero so we can then consistently add rows.
 // It would be a bit more efficient to special-case the zeroth row, but
 // this keeps the code slightly simpler.
 
-                mov     i, xzr
+        mov     i, xzr
 zoop:
-                str     xzr, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, k
-                bcc     zoop
-                mov     c0, xzr
+        str     xzr, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, k
+        bcc     zoop
+        mov     c0, xzr
 
 // Outer loop pulling down digits d=x[i], multiplying by x and reducing
 
-                mov     i, xzr
+        mov     i, xzr
 outerloop:
 
 // Multiply-add loop where we always have CF + previous high part h to add in
 // Note that in general we do need yet one more carry in this phase and hence
 // initialize c1 with the top carry.
 
-                ldr     d, [x, i, lsl #3]
-                mov     j, xzr
-                adds    h, xzr, xzr
+        ldr     d, [x, i, lsl #3]
+        mov     j, xzr
+        adds    h, xzr, xzr
 maddloop:
-                ldr     a, [x, j, lsl #3]
-                ldr     e, [z, j, lsl #3]
-                mul     l, d, a
-                adcs    e, e, h
-                umulh   h, d, a
-                adc     h, h, xzr
-                adds    e, e, l
-                str     e, [z, j, lsl #3]
-                add     j, j, #1
-                sub     t, j, k
-                cbnz    t, maddloop
-                adcs    c0, c0, h
-                adc     c1, xzr, xzr
+        ldr     a, [x, j, lsl #3]
+        ldr     e, [z, j, lsl #3]
+        mul     l, d, a
+        adcs    e, e, h
+        umulh   h, d, a
+        adc     h, h, xzr
+        adds    e, e, l
+        str     e, [z, j, lsl #3]
+        add     j, j, #1
+        sub     t, j, k
+        cbnz    t, maddloop
+        adcs    c0, c0, h
+        adc     c1, xzr, xzr
 
 // Montgomery reduction loop, similar but offsetting writebacks
 
-                ldr     e, [z]
-                mul     d, e, w
-                ldr     a, [m]
-                mul     l, d, a
-                umulh   h, d, a
-                adds    e, e, l         // Will be zero but want the carry
-                mov     j, #1
-                sub     t, k, #1
-                cbz     t, montend
+        ldr     e, [z]
+        mul     d, e, w
+        ldr     a, [m]
+        mul     l, d, a
+        umulh   h, d, a
+        adds    e, e, l         // Will be zero but want the carry
+        mov     j, #1
+        sub     t, k, #1
+        cbz     t, montend
 montloop:
-                ldr     a, [m, j, lsl #3]
-                ldr     e, [z, j, lsl #3]
-                mul     l, d, a
-                adcs    e, e, h
-                umulh   h, d, a
-                adc     h, h, xzr
-                adds    e, e, l
-                sub     l, j, #1
-                str     e, [z, l, lsl #3]
-                add     j, j, #1
-                sub     t, j, k
-                cbnz    t, montloop
+        ldr     a, [m, j, lsl #3]
+        ldr     e, [z, j, lsl #3]
+        mul     l, d, a
+        adcs    e, e, h
+        umulh   h, d, a
+        adc     h, h, xzr
+        adds    e, e, l
+        sub     l, j, #1
+        str     e, [z, l, lsl #3]
+        add     j, j, #1
+        sub     t, j, k
+        cbnz    t, montloop
 montend:
-                adcs    h, c0, h
-                adc     c0, c1, xzr
-                sub     l, j, #1
-                str     h, [z, l, lsl #3]
+        adcs    h, c0, h
+        adc     c0, c1, xzr
+        sub     l, j, #1
+        str     h, [z, l, lsl #3]
 
 // End of outer loop
 
-                add     i, i, #1
-                cmp     i, k
-                bcc     outerloop
+        add     i, i, #1
+        cmp     i, k
+        bcc     outerloop
 
 // Now convert carry word, which is always in {0,1}, into a mask
 // and do a masked subtraction of m for the final almost-Montgomery result.
 
-                neg     c0, c0
-                subs    j, xzr, xzr
+        neg     c0, c0
+        subs    j, xzr, xzr
 corrloop:
-                ldr     a, [z, j, lsl #3]
-                ldr     e, [m, j, lsl #3]
-                and     e, e, c0
-                sbcs    a, a, e
-                str     a, [z, j, lsl #3]
-                add     j, j, #1
-                sub     t, j, k
-                cbnz    t, corrloop
+        ldr     a, [z, j, lsl #3]
+        ldr     e, [m, j, lsl #3]
+        and     e, e, c0
+        sbcs    a, a, e
+        str     a, [z, j, lsl #3]
+        add     j, j, #1
+        sub     t, j, k
+        cbnz    t, corrloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

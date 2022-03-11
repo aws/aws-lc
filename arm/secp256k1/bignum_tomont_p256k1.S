@@ -60,53 +60,53 @@ _bignum_tomont_p256k1_alt:
 // since the multiplier 4294968273 is known to be much less than 2^64.
 // We can also re-use the initial constant m instead of re-creating it.
 
-                mov     m, #977
-                orr     m, m, #0x100000000
+        mov     m, #977
+        orr     m, m, #0x100000000
 
 // First do the multiply, straightforwardly to get [h;d3;d2;d1;d0]
 
-                ldp     a0, a1, [x]
-                ldp     a2, a3, [x, #16]
-                mul     d0, m, a0
-                mul     d1, m, a1
-                mul     d2, m, a2
-                mul     d3, m, a3
-                umulh   a0, m, a0
-                umulh   a1, m, a1
-                umulh   a2, m, a2
-                umulh   h, m, a3
-                adds    d1, d1, a0
-                adcs    d2, d2, a1
-                adcs    d3, d3, a2
-                adcs    h, h, xzr
+        ldp     a0, a1, [x]
+        ldp     a2, a3, [x, #16]
+        mul     d0, m, a0
+        mul     d1, m, a1
+        mul     d2, m, a2
+        mul     d3, m, a3
+        umulh   a0, m, a0
+        umulh   a1, m, a1
+        umulh   a2, m, a2
+        umulh   h, m, a3
+        adds    d1, d1, a0
+        adcs    d2, d2, a1
+        adcs    d3, d3, a2
+        adcs    h, h, xzr
 
 // Now the quotient estimate is q = h + 1, and then we do the reduction,
 // writing z = [d3;d2;d1;d0], as z' = (2^256 * h + z) - q * p_256k1 =
 // (2^256 * h + z) - q * (2^256 - 4294968273) = -2^256 + (z + 4294968273 * q)
 
-                add     q, h, #1
-                mul     a0, q, m
-                umulh   a1, q, m
-                adds    d0, d0, a0
-                adcs    d1, d1, a1
-                adcs    d2, d2, xzr
-                adcs    d3, d3, xzr
+        add     q, h, #1
+        mul     a0, q, m
+        umulh   a1, q, m
+        adds    d0, d0, a0
+        adcs    d1, d1, a1
+        adcs    d2, d2, xzr
+        adcs    d3, d3, xzr
 
 // Because of the implicit -2^256, CF means >= 0 so z' is the answer; ~CF
 // means z' < 0 so we add p_256k1, which in 4 digits means subtracting m.
 
-                csel    m, m, xzr, cc
-                subs    d0, d0, m
-                sbcs    d1, d1, xzr
-                sbcs    d2, d2, xzr
-                sbcs    d3, d3, xzr
+        csel    m, m, xzr, cc
+        subs    d0, d0, m
+        sbcs    d1, d1, xzr
+        sbcs    d2, d2, xzr
+        sbcs    d3, d3, xzr
 
 // Finally store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -58,52 +58,52 @@ _bignum_cmul_p25519:
 
 // Shuffle inputs (since we want multiplier in %rdx)
 
-                movq    %rdx, x
-                movq    %rsi, d
+        movq    %rdx, x
+        movq    %rsi, d
 
 // Multiply, accumulating the result as [d4;d3;d2;d1;d0]
 
-                mulxq   (x), d0, d1
-                mulxq   8(x), a, d2
-                addq    a, d1
-                mulxq   16(x), a, d3
-                adcq    a, d2
-                mulxq   24(x), d, a
-                adcq    d, d3
-                adcq    $0, a
+        mulxq   (x), d0, d1
+        mulxq   8(x), a, d2
+        addq    a, d1
+        mulxq   16(x), a, d3
+        adcq    a, d2
+        mulxq   24(x), d, a
+        adcq    d, d3
+        adcq    $0, a
 
 // Let [d4;d3;d2;d1;d0] = 2^255 * h + l, and use q = h + 1 as the initial
 // quotient estimate, which is either right or 1 too big.
 
-                shldq   $1, d3, a
-                movl    $19, cshort
-                incq    a
-                bts     $63, d3
-                mulq    c
-                xorl    zeroe, zeroe
-                addq    a, d0
-                adcq    d, d1
-                adcq    zero, d2
-                adcq    zero, d3
+        shldq   $1, d3, a
+        movl    $19, cshort
+        incq    a
+        bts     $63, d3
+        mulq    c
+        xorl    zeroe, zeroe
+        addq    a, d0
+        adcq    d, d1
+        adcq    zero, d2
+        adcq    zero, d3
 
 // Correct if CF = 0 by subtracting 19, either way masking to
 // 255 bits, i.e. by effectively adding p_25519 to the "full" answer
 
-                cmovcq  zero, c
-                subq    c, d0
-                sbbq    zero, d1
-                sbbq    zero, d2
-                sbbq    zero, d3
-                btr     $63, d3
+        cmovcq  zero, c
+        subq    c, d0
+        sbbq    zero, d1
+        sbbq    zero, d2
+        sbbq    zero, d3
+        btr     $63, d3
 
 // Write everything back
 
-                movq    d0, (z)
-                movq    d1, 8(z)
-                movq    d2, 16(z)
-                movq    d3, 24(z)
+        movq    d0, (z)
+        movq    d1, 8(z)
+        movq    d2, 16(z)
+        movq    d3, 24(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

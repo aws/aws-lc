@@ -42,47 +42,47 @@ _bignum_moddouble:
 
 // If k = 0 do nothing
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Do (_::z) = 2 * x - m and generate a mask in c for 2 * x < m
 
-                xor     c, c
-                xor     i, i
-                xor     b, b
+        xor     c, c
+        xor     i, i
+        xor     b, b
 
 dubloop:
-                mov     a, [x+8*i]
-                shrd    c, a, 63
-                neg     b
-                sbb     c, [m+8*i]
-                sbb     b, b
-                mov     [z+8*i],c
-                mov     c, a
-                inc     i
-                cmp     i, k
-                jc      dubloop
-                shr     c, 63
+        mov     a, [x+8*i]
+        shrd    c, a, 63
+        neg     b
+        sbb     c, [m+8*i]
+        sbb     b, b
+        mov     [z+8*i],c
+        mov     c, a
+        inc     i
+        cmp     i, k
+        jc      dubloop
+        shr     c, 63
 
-                add     c, b
+        add     c, b
 
 // Now do a corrective masked addition z := z + [c] * m
 
-                xor     i, i
-                xor     b, b
+        xor     i, i
+        xor     b, b
 corrloop:
-                mov     a, [m+8*i]
-                and     a, c
-                neg     b
-                adc     a, [z+8*i]
-                sbb     b, b
-                mov     [z+8*i], a
-                inc     i
-                cmp     i, k
-                jc      corrloop
+        mov     a, [m+8*i]
+        and     a, c
+        neg     b
+        adc     a, [z+8*i]
+        sbb     b, b
+        mov     [z+8*i], a
+        inc     i
+        cmp     i, k
+        jc      corrloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

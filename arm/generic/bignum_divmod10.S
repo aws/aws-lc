@@ -46,45 +46,45 @@ _bignum_divmod10:
 
 // If k = 0 then return; the return in x0 is indeed 0 mod 10 = 0
 
-                cbz     k, end
+        cbz     k, end
 
 // Straightforward top-down loop doing 10 * q + r' := 2^64 * r + d
 
-                mov     r, xzr
-                mov     w, 0x3333333333333333
-                add     s, w, 1
-                and     w, w, 0xfffffff
+        mov     r, xzr
+        mov     w, 0x3333333333333333
+        add     s, w, 1
+        and     w, w, 0xfffffff
 divloop:
-                sub     k, k, 1
-                ldr     d, [z, k, lsl #3]
+        sub     k, k, 1
+        ldr     d, [z, k, lsl #3]
 
 // First re-split and shift so 2^28 * h + l = (2^64 * r + d) / 2
 // Then (2^64 * r + d) / 10 = [(2^28 - 1) / 5] * h + (h + l) / 5
 
-                extr    h, r, d, 29
-                ubfx    l, d, 1, 28
+        extr    h, r, d, 29
+        ubfx    l, d, 1, 28
 
-                add     l, h, l
+        add     l, h, l
 
-                mul     h, h, w
-                umulh   l, l, s
-                add     q, h, l
-                str     q, [z, k, lsl #3]
+        mul     h, h, w
+        umulh   l, l, s
+        add     q, h, l
+        str     q, [z, k, lsl #3]
 
 // Generate the new remainder r = d - 10 * q
 // Since r <= 9 we only need the low part computation ignoring carries
 
-                add     q, q, q, lsl #2
-                sub     r, d, q, lsl #1
+        add     q, q, q, lsl #2
+        sub     r, d, q, lsl #1
 
-                cbnz    k, divloop
+        cbnz    k, divloop
 
 // Return the final remainder
 
-                mov     x0, r
+        mov     x0, r
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

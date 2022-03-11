@@ -47,38 +47,38 @@ _bignum_optneg:
 
 // If k = 0 do nothing, but need to set zero return for the carry (c = %rax)
 
-                xorq    c, c
-                testq   k, k
-                jz      end
+        xorq    c, c
+        testq   k, k
+        jz      end
 
 // Convert p into a strict bitmask and set initial carry-in in c
 
-                negq    p
-                sbbq    p, p
-                subq    p, c
+        negq    p
+        sbbq    p, p
+        subq    p, c
 
 // Main loop
 
-                xorq    i, i
+        xorq    i, i
 loop:
 
-                movq    (x,i,8), a
-                xorq    p, a
-                addq    c, a
-                movl    $0, cshort
-                movq    a, (z,i,8)
-                adcq    $0, c
-                incq    i
-                cmpq    k, i
-                jc      loop
+        movq    (x,i,8), a
+        xorq    p, a
+        addq    c, a
+        movl    $0, cshort
+        movq    a, (z,i,8)
+        adcq    $0, c
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 // Return carry flag, fixing up inversion for negative case
 
-                xorq    p, %rax
-                andq    $1, %rax
+        xorq    p, %rax
+        andq    $1, %rax
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

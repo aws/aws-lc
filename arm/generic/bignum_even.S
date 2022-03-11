@@ -30,13 +30,13 @@
 bignum_even:
 _bignum_even:
 
-                cbz     x0, end                 // if k = 0, that's the return!
-                ldr     x0, [x1]
-                and     x0, x0, #1
+        cbz     x0, end                 // if k = 0, that's the return!
+        ldr     x0, [x1]
+        and     x0, x0, #1
 
 end:
-                eor     x0, x0, #1
-                ret
+        eor     x0, x0, #1
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

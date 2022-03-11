@@ -56,53 +56,53 @@ _bignum_shr_small:
 
 // Reshuffle registers to put the shift count into CL
 
-                mov     x, rcx
-                mov     c, r8
+        mov     x, rcx
+        mov     c, r8
 
 // Set default carry-in word to 0, useful for other things too
 
-                xor     b, b
+        xor     b, b
 
 // First, if p > n then pad output on the left with p-n zeros
 
-                cmp     n, p
-                jnc     nopad
+        cmp     n, p
+        jnc     nopad
 padloop:
-                dec     p
-                mov     [z+8*p],b
-                cmp     n, p
-                jc      padloop
+        dec     p
+        mov     [z+8*p],b
+        cmp     n, p
+        jc      padloop
 nopad:
 
 // We now know that p <= n. If in fact p < n let carry word = x[p] instead of 0
 
-                jz      shiftstart
-                mov     b,[x+8*p]
+        jz      shiftstart
+        mov     b,[x+8*p]
 shiftstart:
-                test    p, p
-                jz      trivial
+        test    p, p
+        jz      trivial
 
 // Now the main loop
 
 loop:
-                mov     a, [x+8*p-8]
-                mov     t, a
-                shrd    a, b, cl
-                mov     [z+8*p-8],a
-                mov     b, t
-                dec     p
-                jnz     loop
+        mov     a, [x+8*p-8]
+        mov     t, a
+        shrd    a, b, cl
+        mov     [z+8*p-8],a
+        mov     b, t
+        dec     p
+        jnz     loop
 
 // Mask the carry word and return with that as RAX = b
 
 trivial:
-                mov     ashort, 1
-                shl     a, cl
-                dec     a
-                and     b, a
+        mov     ashort, 1
+        shl     a, cl
+        dec     a
+        and     b, a
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

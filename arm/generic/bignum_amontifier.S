@@ -58,19 +58,19 @@ _bignum_amontifier:
 
 // If k = 0 the whole operation is trivial
 
-                cbz     k, end
+        cbz     k, end
 
 // Copy the input m into the temporary buffer t. The temporary register
 // c matters since we want it to hold the highest digit, ready for the
 // normalization phase.
 
-                mov     i, xzr
+        mov     i, xzr
 copyinloop:
-                ldr     c, [m, i, lsl #3]
-                str     c, [t, i, lsl #3]
-                add     i, i, #1
-                cmp     i, k
-                bcc     copyinloop
+        ldr     c, [m, i, lsl #3]
+        str     c, [t, i, lsl #3]
+        add     i, i, #1
+        cmp     i, k
+        bcc     copyinloop
 
 // Do a rather stupid but constant-time digit normalization, conditionally
 // shifting left (k-1) times based on whether the top word is zero.
@@ -78,45 +78,45 @@ copyinloop:
 // while still retaining the constant-time style.
 // The "cmp c, xzr" sets the zeroness predicate (ZF) for the entire inner loop
 
-                subs    i, k, #1
-                beq     normalized
+        subs    i, k, #1
+        beq     normalized
 normloop:
-                mov     j, xzr
-                cmp     c, xzr
-                mov     a, xzr
+        mov     j, xzr
+        cmp     c, xzr
+        mov     a, xzr
 shufloop:
-                mov     c, a
-                ldr     a, [t, j, lsl #3]
-                csel    c, c, a, eq
-                str     c, [t, j, lsl #3]
-                add     j, j, #1
-                sub     d, j, k
-                cbnz    d, shufloop
-                subs    i, i, #1
-                bne     normloop
+        mov     c, a
+        ldr     a, [t, j, lsl #3]
+        csel    c, c, a, eq
+        str     c, [t, j, lsl #3]
+        add     j, j, #1
+        sub     d, j, k
+        cbnz    d, shufloop
+        subs    i, i, #1
+        bne     normloop
 
 // We now have the top digit nonzero, assuming the input was nonzero,
 // and as per the invariant of the loop above, c holds that digit. So
 // now just count c's leading zeros and shift t bitwise that many bits.
 
 normalized:
-                clz     c, c
+        clz     c, c
 
-                mov     b, xzr
-                mov     i, xzr
-                ands    xzr, c, #63
-                csetm   l, ne
-                neg     d, c
+        mov     b, xzr
+        mov     i, xzr
+        ands    xzr, c, #63
+        csetm   l, ne
+        neg     d, c
 bitloop:
-                ldr     j, [t, i, lsl #3]
-                lsl     a, j, c
-                orr     a, a, b
-                lsr     b, j, d
-                and     b, b, l
-                str     a, [t, i, lsl #3]
-                add     i, i, #1
-                cmp     i, k
-                bcc     bitloop
+        ldr     j, [t, i, lsl #3]
+        lsl     a, j, c
+        orr     a, a, b
+        lsr     b, j, d
+        and     b, b, l
+        str     a, [t, i, lsl #3]
+        add     i, i, #1
+        cmp     i, k
+        bcc     bitloop
 
 // Let h be the high word of n, which in all the in-scope cases is >= 2^63.
 // Now successively form q = 2^i div h and r = 2^i mod h as i goes from
@@ -125,23 +125,23 @@ bitloop:
 // don't bother with Newton-Raphson, since this stupid simple loop doesn't
 // contribute much of the overall runtime at typical sizes.
 
-                sub     h, k, #1
-                ldr     h, [t, h, lsl #3]
-                mov     q, #1
-                neg     r, h
-                mov     i, #62
+        sub     h, k, #1
+        ldr     h, [t, h, lsl #3]
+        mov     q, #1
+        neg     r, h
+        mov     i, #62
 estloop:
-                add     q, q, q
-                mov     a, h
-                sub     a, a, r
-                cmp     r, a    // CF <=> r >= h - r <=> 2 * r >= h
-                csetm   a, cs
-                sub     q, q, a
-                add     r, r, r
-                and     a, a, h
-                sub     r, r, a
-                subs    i, i, #1
-                bne     estloop
+        add     q, q, q
+        mov     a, h
+        sub     a, a, r
+        cmp     r, a    // CF <=> r >= h - r <=> 2 * r >= h
+        csetm   a, cs
+        sub     q, q, a
+        add     r, r, r
+        and     a, a, h
+        sub     r, r, a
+        subs    i, i, #1
+        bne     estloop
 
 // Strictly speaking the above loop doesn't quite give the true remainder
 // and quotient in the special case r = h = 2^63, so fix it up. We get
@@ -151,8 +151,8 @@ estloop:
 // specification (congruence modulo m) holds degenerately. But it seems
 // nicer to get a "true" quotient and remainder.
 
-                cmp     r, h
-                csinc   q, q, q, ne
+        cmp     r, h
+        csinc   q, q, q, ne
 
 // So now we have q and r with 2^126 = q * h + r (imagining r = 0 in the
 // fixed-up case above: note that we never actually use the computed
@@ -186,98 +186,98 @@ estloop:
 // result, not strict modular reduction (the doublings will maintain
 // the non-strict inequality).
 
-                mov     c, xzr
-                adds    i, xzr, xzr
+        mov     c, xzr
+        adds    i, xzr, xzr
 mulloop:
-                ldr     a, [t, i, lsl #3]
-                mul     l, q, a
-                adcs    l, l, c
-                umulh   c, q, a
-                str     l, [z, i, lsl #3]
-                add     i, i, #1
-                sub     a, i, k
-                cbnz    a, mulloop
+        ldr     a, [t, i, lsl #3]
+        mul     l, q, a
+        adcs    l, l, c
+        umulh   c, q, a
+        str     l, [z, i, lsl #3]
+        add     i, i, #1
+        sub     a, i, k
+        cbnz    a, mulloop
 
-                adc     c, c, xzr
-                mov     a, #0x4000000000000000
-                subs    c, c, a
-                csetm   q, cs
+        adc     c, c, xzr
+        mov     a, #0x4000000000000000
+        subs    c, c, a
+        csetm   q, cs
 
 // Now do [c] * n - d for our final answer
 
-                subs    i, xzr, xzr
+        subs    i, xzr, xzr
 remloop:
-                ldr     a, [t, i, lsl #3]
-                ldr     b, [z, i, lsl #3]
-                and     a, a, q
-                sbcs    a, a, b
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                sub     a, i, k
-                cbnz    a, remloop
+        ldr     a, [t, i, lsl #3]
+        ldr     b, [z, i, lsl #3]
+        and     a, a, q
+        sbcs    a, a, b
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        sub     a, i, k
+        cbnz    a, remloop
 
 // Now still need to do a couple of modular doublings to get us all the
 // way up to 2^{p+64} == r from the initial 2^{p+62} == r (mod n).
 
-                mov     c, xzr
-                subs    j, xzr, xzr
+        mov     c, xzr
+        subs    j, xzr, xzr
 dubloop1:
-                ldr     a, [z, j, lsl #3]
-                extr    c, a, c, #63
-                ldr     b, [t, j, lsl #3]
-                sbcs    c, c, b
-                str     c, [z, j, lsl #3]
-                mov     c, a
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, dubloop1
-                lsr     c, c, #63
-                sbc     c, c, xzr
-                adds    j, xzr, xzr
+        ldr     a, [z, j, lsl #3]
+        extr    c, a, c, #63
+        ldr     b, [t, j, lsl #3]
+        sbcs    c, c, b
+        str     c, [z, j, lsl #3]
+        mov     c, a
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, dubloop1
+        lsr     c, c, #63
+        sbc     c, c, xzr
+        adds    j, xzr, xzr
 corrloop1:
-                ldr     a, [z, j, lsl #3]
-                ldr     b, [t, j, lsl #3]
-                and     b, b, c
-                adcs    a, a, b
-                str     a, [z, j, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, corrloop1
+        ldr     a, [z, j, lsl #3]
+        ldr     b, [t, j, lsl #3]
+        and     b, b, c
+        adcs    a, a, b
+        str     a, [z, j, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, corrloop1
 
 // This is not exactly the same: we also copy output to t giving the
 // initialization t_1 = r == 2^{p+64} mod n for the main loop next.
 
-                mov     c, xzr
-                subs    j, xzr, xzr
+        mov     c, xzr
+        subs    j, xzr, xzr
 dubloop2:
-                ldr     a, [z, j, lsl #3]
-                extr    c, a, c, #63
-                ldr     b, [t, j, lsl #3]
-                sbcs    c, c, b
-                str     c, [z, j, lsl #3]
-                mov     c, a
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, dubloop2
-                lsr     c, c, #63
-                sbc     c, c, xzr
-                adds    j, xzr, xzr
+        ldr     a, [z, j, lsl #3]
+        extr    c, a, c, #63
+        ldr     b, [t, j, lsl #3]
+        sbcs    c, c, b
+        str     c, [z, j, lsl #3]
+        mov     c, a
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, dubloop2
+        lsr     c, c, #63
+        sbc     c, c, xzr
+        adds    j, xzr, xzr
 corrloop2:
-                ldr     a, [z, j, lsl #3]
-                ldr     b, [t, j, lsl #3]
-                and     b, b, c
-                adcs    a, a, b
-                str     a, [z, j, lsl #3]
-                str     a, [t, j, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, corrloop2
+        ldr     a, [z, j, lsl #3]
+        ldr     b, [t, j, lsl #3]
+        and     b, b, c
+        adcs    a, a, b
+        str     a, [z, j, lsl #3]
+        str     a, [t, j, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, corrloop2
 
 // We then successively generate (k+1)-digit values satisfying
 // t_i == 2^{p+64*i} mod n, each of which is stored in h::t. Finish
 // initialization by zeroing h initially
 
-                mov     h, xzr
+        mov     h, xzr
 
 // Then if t_i = 2^{p} * h + l
 // we have t_{i+1} == 2^64 * t_i
@@ -294,104 +294,104 @@ corrloop2:
 // This implementation makes the shift implicit by starting b with the
 // "previous" digit (initially 0) to offset things by 1.
 
-                mov     i, k
+        mov     i, k
 modloop:
-                mov     j, xzr
-                mov     b, xzr
-                adds    c, xzr, xzr
+        mov     j, xzr
+        mov     b, xzr
+        adds    c, xzr, xzr
 cmaloop:
-                ldr     a, [z, j, lsl #3]
-                mul     l, h, a
-                adcs    b, b, c
-                umulh   c, h, a
-                adc     c, c, xzr
-                adds    l, b, l
-                ldr     b, [t, j, lsl #3]
-                str     l, [t, j, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, cmaloop
+        ldr     a, [z, j, lsl #3]
+        mul     l, h, a
+        adcs    b, b, c
+        umulh   c, h, a
+        adc     c, c, xzr
+        adds    l, b, l
+        ldr     b, [t, j, lsl #3]
+        str     l, [t, j, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, cmaloop
 
-                adcs    h, b, c
+        adcs    h, b, c
 
-                csetm   l, cs
+        csetm   l, cs
 
-                adds    j, xzr, xzr
+        adds    j, xzr, xzr
 oaloop:
-                ldr     a, [t, j, lsl #3]
-                ldr     b, [z, j, lsl #3]
-                and     b, b, l
-                adcs    a, a, b
-                str     a, [t, j, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, oaloop
-                adc     h, h, xzr
+        ldr     a, [t, j, lsl #3]
+        ldr     b, [z, j, lsl #3]
+        and     b, b, l
+        adcs    a, a, b
+        str     a, [t, j, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, oaloop
+        adc     h, h, xzr
 
-                subs    i, i, #1
-                bne     modloop
+        subs    i, i, #1
+        bne     modloop
 
 // Now do one almost-Montgomery reduction w.r.t. the original m
 // which lops off one 2^64 from the congruence and, with the usual
 // almost-Montgomery correction, gets us back inside k digits for
 // the end result.
 
-                ldr     a, [m]
-                lsl     d, a, #2
-                sub     d, a, d
-                eor     d, d, #2
-                mov     l, #1
-                madd    c, a, d, l
-                mul     b, c, c
-                madd    d, c, d, d
-                mul     c, b, b
-                madd    d, b, d, d
-                mul     b, c, c
-                madd    d, c, d, d
-                madd    d, b, d, d
+        ldr     a, [m]
+        lsl     d, a, #2
+        sub     d, a, d
+        eor     d, d, #2
+        mov     l, #1
+        madd    c, a, d, l
+        mul     b, c, c
+        madd    d, c, d, d
+        mul     c, b, b
+        madd    d, b, d, d
+        mul     b, c, c
+        madd    d, c, d, d
+        madd    d, b, d, d
 
-                ldr     b, [t]
-                mul     d, b, d
+        ldr     b, [t]
+        mul     d, b, d
 
-                mul     l, d, a
-                umulh   c, d, a
-                mov     j, #1
-                sub     a, k, #1
-                adds    xzr, b, l
-                cbz     a, montend
+        mul     l, d, a
+        umulh   c, d, a
+        mov     j, #1
+        sub     a, k, #1
+        adds    xzr, b, l
+        cbz     a, montend
 
 montloop:
-                ldr     a, [m, j, lsl #3]
-                ldr     b, [t, j, lsl #3]
-                mul     l, d, a
-                adcs    b, b, c
-                umulh   c, d, a
-                adc     c, c, xzr
-                adds    b, b, l
-                sub     a, j, #1
-                str     b, [t, a, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, montloop
+        ldr     a, [m, j, lsl #3]
+        ldr     b, [t, j, lsl #3]
+        mul     l, d, a
+        adcs    b, b, c
+        umulh   c, d, a
+        adc     c, c, xzr
+        adds    b, b, l
+        sub     a, j, #1
+        str     b, [t, a, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, montloop
 montend:
-                adcs    h, h, c
-                csetm   l, cs
-                sub     a, k, #1
-                str     h, [t, a, lsl #3]
+        adcs    h, h, c
+        csetm   l, cs
+        sub     a, k, #1
+        str     h, [t, a, lsl #3]
 
-                subs    j, xzr, xzr
+        subs    j, xzr, xzr
 osloop:
-                ldr     a, [t, j, lsl #3]
-                ldr     b, [m, j, lsl #3]
-                and     b, b, l
-                sbcs    a, a, b
-                str     a, [z, j, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, osloop
+        ldr     a, [t, j, lsl #3]
+        ldr     b, [m, j, lsl #3]
+        and     b, b, l
+        sbcs    a, a, b
+        str     a, [z, j, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, osloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

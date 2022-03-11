@@ -43,38 +43,38 @@ _bignum_modsub:
 
 // If k = 0 do nothing
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Subtract z := x - y and record a mask for the carry x - y < 0
 
-                xor     c, c
-                mov     j, k
-                xor     i, i
+        xor     c, c
+        mov     j, k
+        xor     i, i
 subloop:
-                mov     a, [x+8*i]
-                sbb     a, [y+8*i]
-                mov     [z+8*i], a
-                inc     i
-                dec     j
-                jnz     subloop
-                sbb     c, c
+        mov     a, [x+8*i]
+        sbb     a, [y+8*i]
+        mov     [z+8*i], a
+        inc     i
+        dec     j
+        jnz     subloop
+        sbb     c, c
 
 // Now do a masked addition z := z + [c] * m
 
-                xor     i, i
+        xor     i, i
 addloop:
-                mov     a, [m+8*i]
-                and     a, c
-                neg     j
-                adc     [z+8*i], a
-                sbb     j, j
-                inc     i
-                cmp     i, k
-                jc      addloop
+        mov     a, [m+8*i]
+        and     a, c
+        neg     j
+        adc     [z+8*i], a
+        sbb     j, j
+        inc     i
+        cmp     i, k
+        jc      addloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

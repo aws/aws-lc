@@ -44,49 +44,49 @@ _bignum_add_p256:
 
 // First just add the numbers as c + [d3; d2; d1; d0]
 
-                ldp     d0, d1, [x]
-                ldp     l, c, [y]
-                adds    d0, d0, l
-                adcs    d1, d1, c
-                ldp     d2, d3, [x, #16]
-                ldp     l, c, [y, #16]
-                adcs    d2, d2, l
-                adcs    d3, d3, c
-                adc     c, xzr, xzr
+        ldp     d0, d1, [x]
+        ldp     l, c, [y]
+        adds    d0, d0, l
+        adcs    d1, d1, c
+        ldp     d2, d3, [x, #16]
+        ldp     l, c, [y, #16]
+        adcs    d2, d2, l
+        adcs    d3, d3, c
+        adc     c, xzr, xzr
 
 // Now compare [d3; d2; d1; d0] with p_256
 
-                mov     l, #0xffffffffffffffff
-                subs    xzr, d0, l
-                mov     l, #0x00000000ffffffff
-                sbcs    xzr, d1, l
-                sbcs    xzr, d2, xzr
-                mov     l, #0xffffffff00000001
-                sbcs    xzr, d3, l
+        mov     l, #0xffffffffffffffff
+        subs    xzr, d0, l
+        mov     l, #0x00000000ffffffff
+        sbcs    xzr, d1, l
+        sbcs    xzr, d2, xzr
+        mov     l, #0xffffffff00000001
+        sbcs    xzr, d3, l
 
 // Now CF is set (because of inversion) if (x + y) % 2^256 >= p_256
 // Thus we want to correct if either this is set or the original carry c was
 
-                adcs    c, c, xzr
-                csetm   c, ne
+        adcs    c, c, xzr
+        csetm   c, ne
 
 // Now correct by subtracting masked p_256
 
-                subs    d0, d0, c
-                mov     l, #0x00000000ffffffff
-                and     l, l, c
-                sbcs    d1, d1, l
-                sbcs    d2, d2, xzr
-                mov     l, #0xffffffff00000001
-                and     l, l, c
-                sbc     d3, d3, l
+        subs    d0, d0, c
+        mov     l, #0x00000000ffffffff
+        and     l, l, c
+        sbcs    d1, d1, l
+        sbcs    d2, d2, xzr
+        mov     l, #0xffffffff00000001
+        and     l, l, c
+        sbc     d3, d3, l
 
 // Store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

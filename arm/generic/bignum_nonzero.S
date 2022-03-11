@@ -36,20 +36,20 @@
 bignum_nonzero:
 _bignum_nonzero:
 
-                mov     c, xzr                  // c will be or of the digits
-                cbz     k, end                  // if k = 0 skip the loop
+        mov     c, xzr                  // c will be or of the digits
+        cbz     k, end                  // if k = 0 skip the loop
 
 loop:
-                sub     k, k, #1
-                ldr     a, [x, k, lsl #3]
-                orr     c, c, a
-                cbnz    k, loop
+        sub     k, k, #1
+        ldr     a, [x, k, lsl #3]
+        orr     c, c, a
+        cbnz    k, loop
 
-                cmp     c, xzr
-                cset    x0, ne
+        cmp     c, xzr
+        cset    x0, ne
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

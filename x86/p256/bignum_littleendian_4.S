@@ -54,19 +54,19 @@ _bignum_fromlebytes_4:
 bignum_tolebytes_4:
 _bignum_tolebytes_4:
 
-                mov     a, [x]
-                mov     [z], a
+        mov     a, [x]
+        mov     [z], a
 
-                mov     a, [x+8]
-                mov     [z+8], a
+        mov     a, [x+8]
+        mov     [z+8], a
 
-                mov     a, [x+16]
-                mov     [z+16], a
+        mov     a, [x+16]
+        mov     [z+16], a
 
-                mov     a, [x+24]
-                mov     [z+24], a
+        mov     a, [x+24]
+        mov     [z+24], a
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

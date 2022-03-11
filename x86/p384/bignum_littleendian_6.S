@@ -54,25 +54,25 @@ _bignum_fromlebytes_6:
 bignum_tolebytes_6:
 _bignum_tolebytes_6:
 
-                mov     a, [x]
-                mov     [z], a
+        mov     a, [x]
+        mov     [z], a
 
-                mov     a, [x+8]
-                mov     [z+8], a
+        mov     a, [x+8]
+        mov     [z+8], a
 
-                mov     a, [x+16]
-                mov     [z+16], a
+        mov     a, [x+16]
+        mov     [z+16], a
 
-                mov     a, [x+24]
-                mov     [z+24], a
+        mov     a, [x+24]
+        mov     [z+24], a
 
-                mov     a, [x+32]
-                mov     [z+32], a
+        mov     a, [x+32]
+        mov     [z+32], a
 
-                mov     a, [x+40]
-                mov     [z+40], a
+        mov     a, [x+40]
+        mov     [z+40], a
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

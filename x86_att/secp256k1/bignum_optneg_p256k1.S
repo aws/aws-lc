@@ -47,44 +47,44 @@ _bignum_optneg_p256k1:
 
 // Load the 4 digits of x and let c be an OR of all the digits
 
-                movq    (x), n0
-                movq    n0, c
-                movq    8(x), n1
-                orq     n1, c
-                movq    16(x), n2
-                orq     n2, c
-                movq    24(x), n3
-                orq     n3, c
+        movq    (x), n0
+        movq    n0, c
+        movq    8(x), n1
+        orq     n1, c
+        movq    16(x), n2
+        orq     n2, c
+        movq    24(x), n3
+        orq     n3, c
 
 // Turn q into a strict bitmask. Force it to zero if the input is zero,
 // to avoid giving -0 = p_256k1, which is not reduced though correct modulo.
 
-                cmovzq  c, q
-                negq    q
-                sbbq    q, q
+        cmovzq  c, q
+        negq    q
+        sbbq    q, q
 
 // We want z := if q then (2^256 - 4294968273) - x else x
 // which is: [if q then ~x else x] - [if q then 4294968272 else 0]
 
-                xorq    q, n0
-                xorq    q, n1
-                xorq    q, n2
-                xorq    q, n3
+        xorq    q, n0
+        xorq    q, n1
+        xorq    q, n2
+        xorq    q, n3
 
-                movq    $4294968272, c
-                andq    q, c
-                xorl    qshort, qshort
+        movq    $4294968272, c
+        andq    q, c
+        xorl    qshort, qshort
 
-                subq    c, n0
-                movq    n0, (z)
-                sbbq    q, n1
-                movq    n1, 8(z)
-                sbbq    q, n2
-                movq    n2, 16(z)
-                sbbq    q, n3
-                movq    n3, 24(z)
+        subq    c, n0
+        movq    n0, (z)
+        sbbq    q, n1
+        movq    n1, 8(z)
+        sbbq    q, n2
+        movq    n2, 16(z)
+        sbbq    q, n3
+        movq    n3, 24(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -43,34 +43,34 @@ _bignum_neg_p256k1:
 
 // Load the 4 digits of x and let c be an OR of all the digits
 
-                ldp     d0, d1, [x]
-                orr     c, d0, d1
-                ldp     d2, d3, [x, #16]
-                orr     c, c, d2
-                orr     c, c, d3
+        ldp     d0, d1, [x]
+        orr     c, d0, d1
+        ldp     d2, d3, [x, #16]
+        orr     c, c, d2
+        orr     c, c, d3
 
 // Turn q into a strict bitmask, and c a masked constant -4294968273,
 // computing it in effect as ~4294968272 = ~(2^32 + 976)
 
-                cmp     c, xzr
-                csetm   p, ne
-                mov     c, #976
-                orr     c, c, #0x100000000
-                bic     c, p, c
+        cmp     c, xzr
+        csetm   p, ne
+        mov     c, #976
+        orr     c, c, #0x100000000
+        bic     c, p, c
 
 // Now just do [2^256 - 4294968273] - x where the constant is masked
 
-                subs    d0, c, d0
-                sbcs    d1, p, d1
-                sbcs    d2, p, d2
-                sbc     d3, p, d3
+        subs    d0, c, d0
+        sbcs    d1, p, d1
+        sbcs    d2, p, d2
+        sbc     d3, p, d3
 
 // Write back result and return
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

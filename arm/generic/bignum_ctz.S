@@ -45,21 +45,21 @@ _bignum_ctz:
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 
-                cbz     k, end
+        cbz     k, end
 
 // Use w = a[i] to store nonzero words in a top-down sweep
 // Set the initial default to be as if we had a 1 word directly above
 
-                mov     i, k
-                mov     w, #1
+        mov     i, k
+        mov     w, #1
 
 loop:
-                sub     k, k, #1
-                ldr     a, [x, k, lsl #3]
-                cmp     a, #0
-                csel    i, k, i, ne
-                csel    w, a, w, ne
-                cbnz    k, loop
+        sub     k, k, #1
+        ldr     a, [x, k, lsl #3]
+        cmp     a, #0
+        csel    i, k, i, ne
+        csel    w, a, w, ne
+        cbnz    k, loop
 
 // Now w = a[i] is the lowest nonzero word, or in the zero case the
 // default of the "extra" 1 = a[k]. We now want 64*i + ctz(w).
@@ -69,16 +69,16 @@ loop:
 // ctz(....1), on the behavior clz(0) = 64, which is guaranteed according
 // to the ARM manual.
 
-                mvn     a, w
-                sub     w, w, #1
-                add     i, i, #1
-                and     w, w, a
-                lsl     i, i, #6
-                clz     a, w
-                sub     x0, i, a
+        mvn     a, w
+        sub     w, w, #1
+        add     i, i, #1
+        and     w, w, a
+        lsl     i, i, #6
+        clz     a, w
+        sub     x0, i, a
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

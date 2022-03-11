@@ -51,54 +51,54 @@ _bignum_bitfield:
 
 // For length zero finish immediately (the return value in x0 is 0)
 
-                cbz     k, end
+        cbz     k, end
 
 // Decompose the index into n = 64 * n + m, then increment n for next part
 
-                and     m, n, #63
-                lsr     n, n, #6
-                add     n, n, #1
+        and     m, n, #63
+        lsr     n, n, #6
+        add     n, n, #1
 
 // Run over the digits setting d = n'th and e = (n+1)'th
 
-                mov     i, xzr
-                mov     e, xzr
+        mov     i, xzr
+        mov     e, xzr
 loop:
-                ldr     a, [x, i, lsl #3]
-                cmp     i, n
-                csel    d, a, d, cc
-                csel    e, a, e, eq
-                add     i, i, #1
-                cmp     i, k
-                bcc     loop
+        ldr     a, [x, i, lsl #3]
+        cmp     i, n
+        csel    d, a, d, cc
+        csel    e, a, e, eq
+        add     i, i, #1
+        cmp     i, k
+        bcc     loop
 
 // Override d with 0 if we ran off the end (e will retain original 0).
 
-                cmp     i, n
-                csel    d, xzr, d, cc
+        cmp     i, n
+        csel    d, xzr, d, cc
 
 // Override e if we have m = 0 (i.e. original n was divisible by 64)
 // This is because then we want to shift it right by 64 below.
 
-                cmp     m, xzr
-                csel    e, xzr, e, eq
+        cmp     m, xzr
+        csel    e, xzr, e, eq
 
 // Combine shifted digits to get the bitfield(n,64)
 
-                lsr     d, d, m
-                neg     m, m
-                lsl     e, e, m
-                orr     a, d, e
+        lsr     d, d, m
+        neg     m, m
+        lsl     e, e, m
+        orr     a, d, e
 
 // Now mask it down to get bitfield (n,l)
 
-                cmp     l, #64
-                cset    m, cc
-                lsl     m, m, l
-                sub     m, m, #1
-                and     x0, a, m
+        cmp     l, #64
+        cset    m, cc
+        lsl     m, m, l
+        sub     m, m, #1
+        and     x0, a, m
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

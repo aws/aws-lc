@@ -52,59 +52,59 @@ _bignum_shl_small:
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.
 
-                cmp     n, p
-                csel    n, p, n, cs
+        cmp     n, p
+        csel    n, p, n, cs
 
 // Initialize counter i and "previous word" carry b to zero
 // and skip main loop if n = 0
 
-                mov     b, xzr
-                mov     i, xzr
-                cbz     n, tail
+        mov     b, xzr
+        mov     i, xzr
+        cbz     n, tail
 
 // Set up a mask for nonzero shift and a negated version of the shift.
 // Note that all basic word-level shifts are predictably masked to 6 bits.
 
-                ands    xzr, c, #63
-                csetm   m, ne
-                neg     d, c
+        ands    xzr, c, #63
+        csetm   m, ne
+        neg     d, c
 
 // Now the main loop
 loop:
-                ldr     t, [x, i, lsl #3]
-                lsl     a, t, c
-                orr     a, a, b
-                lsr     b, t, d
-                and     b, b, m
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, n
-                bcc     loop
+        ldr     t, [x, i, lsl #3]
+        lsl     a, t, c
+        orr     a, a, b
+        lsr     b, t, d
+        and     b, b, m
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, n
+        bcc     loop
 
 // If we are at the end, finish, otherwise write carry word then zeros
 
 tail:
 
-                cmp     i, p
-                bcs     end
-                str     b, [z, i, lsl #3]
-                mov     b, xzr
-                add     i, i, #1
-                cmp     i, p
-                bcs     end
+        cmp     i, p
+        bcs     end
+        str     b, [z, i, lsl #3]
+        mov     b, xzr
+        add     i, i, #1
+        cmp     i, p
+        bcs     end
 
 tloop:
-                str     xzr, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, p
-                bcc     tloop
+        str     xzr, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, p
+        bcc     tloop
 
 // Return top word
 
 end:
 
-                mov     x0, b
-                ret
+        mov     x0, b
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

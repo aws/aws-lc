@@ -43,51 +43,51 @@ _bignum_modadd:
 
 // If k = 0 do nothing
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // First just add (c::z) := x + y
 
-                xorq    c, c
-                movq    k, j
-                xorq    i, i
+        xorq    c, c
+        movq    k, j
+        xorq    i, i
 addloop:
-                movq    (x,i,8), a
-                adcq    (y,i,8), a
-                movq    a, (z,i,8)
-                incq    i
-                decq    j
-                jnz     addloop
-                adcq    $0, c
+        movq    (x,i,8), a
+        adcq    (y,i,8), a
+        movq    a, (z,i,8)
+        incq    i
+        decq    j
+        jnz     addloop
+        adcq    $0, c
 
 // Now do a comparison subtraction (c::z) - m, recording mask for (c::z) >= m
 
-                movq    k, j
-                xorq    i, i
+        movq    k, j
+        xorq    i, i
 cmploop:
-                movq    (z,i,8), a
-                sbbq    (m,i,8), a
-                incq    i
-                decq    j
-                jnz     cmploop
-                sbbq    $0, c
-                notq    c
+        movq    (z,i,8), a
+        sbbq    (m,i,8), a
+        incq    i
+        decq    j
+        jnz     cmploop
+        sbbq    $0, c
+        notq    c
 
 // Now do a masked subtraction z := z - [c] * m
 
-                xorq    i, i
+        xorq    i, i
 subloop:
-                movq    (m,i,8), a
-                andq    c, a
-                negq    j
-                sbbq    a, (z,i,8)
-                sbbq    j, j
-                incq    i
-                cmpq    k, i
-                jc      subloop
+        movq    (m,i,8), a
+        andq    c, a
+        negq    j
+        sbbq    a, (z,i,8)
+        sbbq    j, j
+        incq    i
+        cmpq    k, i
+        jc      subloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

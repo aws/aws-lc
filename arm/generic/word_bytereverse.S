@@ -29,22 +29,22 @@
 word_bytereverse:
 _word_bytereverse:
 
-                mov     x1, #0xFFFF0000FFFF0000
-                mov     x2, #0x0000FFFF0000FFFF
-                and     x1, x1, x0
-                and     x2, x2, x0
-                ror     x1, x1, #32
-                orr     x0, x1, x2
+        mov     x1, #0xFFFF0000FFFF0000
+        mov     x2, #0x0000FFFF0000FFFF
+        and     x1, x1, x0
+        and     x2, x2, x0
+        ror     x1, x1, #32
+        orr     x0, x1, x2
 
-                mov     x1, #0xFF00FF00FF00FF00
-                mov     x2, #0x00FF00FF00FF00FF
-                and     x1, x1, x0
-                and     x2, x2, x0
-                ror     x1, x1, #24
-                ror     x2, x2, #8
-                orr     x0, x1, x2
+        mov     x1, #0xFF00FF00FF00FF00
+        mov     x2, #0x00FF00FF00FF00FF
+        and     x1, x1, x0
+        and     x2, x2, x0
+        ror     x1, x1, #24
+        ror     x2, x2, #8
+        orr     x0, x1, x2
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

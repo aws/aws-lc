@@ -41,28 +41,28 @@ _bignum_ctd:
 
 // If the bignum is zero-length, just return 0
 
-                xorq    %rax, %rax
-                testq   k, k
-                jz      end
+        xorq    %rax, %rax
+        testq   k, k
+        jz      end
 
 // Record in i that the lowest nonzero word is i - 1, where i = k + 1 means
 // that the bignum was entirely zero
 
-                movq    k, i
-                incq    i
+        movq    k, i
+        incq    i
 loop:
-                movq    -8(x,k,8), a
-                testq   a, a
-                cmovneq k, i
-                decq    k
-                jnz     loop
+        movq    -8(x,k,8), a
+        testq   a, a
+        cmovneq k, i
+        decq    k
+        jnz     loop
 
 // We now want to return i - 1
 
-                decq    i
-                movq    i, %rax
+        decq    i
+        movq    i, %rax
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

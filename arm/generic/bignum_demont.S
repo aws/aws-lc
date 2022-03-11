@@ -66,102 +66,102 @@ _bignum_demont:
 
 // If k = 0 the whole operation is trivial
 
-                cbz     k, end
+        cbz     k, end
 
 // Compute word-level negated modular inverse w for m == m[0].
 // This is essentially the same as word_negmodinv.
 
-                ldr     a, [m]
-                lsl     w, a, #2
-                sub     w, a, w
-                eor     w, w, #2
-                mov     one, #1
-                madd    e1, a, w, one
-                mul     e2, e1, e1
-                madd    w, e1, w, w
-                mul     e4, e2, e2
-                madd    w, e2, w, w
-                mul     e8, e4, e4
-                madd    w, e4, w, w
-                madd    w, e8, w, w
+        ldr     a, [m]
+        lsl     w, a, #2
+        sub     w, a, w
+        eor     w, w, #2
+        mov     one, #1
+        madd    e1, a, w, one
+        mul     e2, e1, e1
+        madd    w, e1, w, w
+        mul     e4, e2, e2
+        madd    w, e2, w, w
+        mul     e8, e4, e4
+        madd    w, e4, w, w
+        madd    w, e8, w, w
 
 // Initially just copy the input to the output. It would be a little more
 // efficient but somewhat fiddlier to tweak the zeroth iteration below instead.
 
-                mov     i, xzr
+        mov     i, xzr
 iloop:
-                ldr     a, [x, i, lsl #3]
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, k
-                bcc     iloop
+        ldr     a, [x, i, lsl #3]
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, k
+        bcc     iloop
 
 // Outer loop, just doing a standard Montgomery reduction on z
 
-                mov     i, xzr
+        mov     i, xzr
 outerloop:
 
-                ldr     e, [z]
-                mul     d, e, w
-                ldr     a, [m]
-                mul     l, d, a
-                umulh   h, d, a
-                adds    e, e, l         // Will be zero but want the carry
-                mov     j, #1
-                sub     a, k, #1
-                cbz     a, montend
+        ldr     e, [z]
+        mul     d, e, w
+        ldr     a, [m]
+        mul     l, d, a
+        umulh   h, d, a
+        adds    e, e, l         // Will be zero but want the carry
+        mov     j, #1
+        sub     a, k, #1
+        cbz     a, montend
 montloop:
-                ldr     a, [m, j, lsl #3]
-                ldr     e, [z, j, lsl #3]
-                mul     l, d, a
-                adcs    e, e, h
-                umulh   h, d, a
-                adc     h, h, xzr
-                adds    e, e, l
-                sub     l, j, #1
-                str     e, [z, l, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, montloop
+        ldr     a, [m, j, lsl #3]
+        ldr     e, [z, j, lsl #3]
+        mul     l, d, a
+        adcs    e, e, h
+        umulh   h, d, a
+        adc     h, h, xzr
+        adds    e, e, l
+        sub     l, j, #1
+        str     e, [z, l, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, montloop
 montend:
-                adc     h, xzr, h
-                sub     l, j, #1
-                str     h, [z, l, lsl #3]
+        adc     h, xzr, h
+        sub     l, j, #1
+        str     h, [z, l, lsl #3]
 
 // End of outer loop
 
-                add     i, i, #1
-                cmp     i, k
-                bcc     outerloop
+        add     i, i, #1
+        cmp     i, k
+        bcc     outerloop
 
 // Now do a comparison of z with m to set a final correction mask
 // indicating that z >= m and so we need to subtract m.
 
-                subs    j, xzr, xzr
+        subs    j, xzr, xzr
 cmploop:
-                ldr     a, [z, j, lsl #3]
-                ldr     e, [m, j, lsl #3]
-                sbcs    xzr, a, e
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, cmploop
-                csetm   h, cs
+        ldr     a, [z, j, lsl #3]
+        ldr     e, [m, j, lsl #3]
+        sbcs    xzr, a, e
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, cmploop
+        csetm   h, cs
 
 // Now do a masked subtraction of m for the final reduced result.
 
-                subs    j, xzr, xzr
+        subs    j, xzr, xzr
 corrloop:
-                ldr     a, [z, j, lsl #3]
-                ldr     e, [m, j, lsl #3]
-                and     e, e, h
-                sbcs    a, a, e
-                str     a, [z, j, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, corrloop
+        ldr     a, [z, j, lsl #3]
+        ldr     e, [m, j, lsl #3]
+        and     e, e, h
+        sbcs    a, a, e
+        str     a, [z, j, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, corrloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

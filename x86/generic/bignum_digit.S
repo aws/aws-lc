@@ -44,25 +44,25 @@ _bignum_digit:
 
 // Set the default digit to 0, and for length zero finish immediately
 
-                xor     d, d
-                test    k,k
-                jz      end
+        xor     d, d
+        test    k,k
+        jz      end
 
 // Main loop: run over all the digits and take note of the n'th one
 
-                xor     i, i
+        xor     i, i
 loop:
-                mov     a, [x+8*i]
-                cmp     i, n
-                cmovz   d, a
-                inc     i
-                cmp     i, k
-                jc      loop
+        mov     a, [x+8*i]
+        cmp     i, n
+        cmovz   d, a
+        inc     i
+        cmp     i, k
+        jc      loop
 
 // Return
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

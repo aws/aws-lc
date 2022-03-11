@@ -56,60 +56,60 @@ _bignum_cmadd:
 // past the p'th term of the input to generate p-digit output.
 // Subtract p := p - min(n,p) so it holds the size of the extra tail needed
 
-                cmp     n, p
-                csel    n, p, n, cs
-                sub     p, p, n
+        cmp     n, p
+        csel    n, p, n, cs
+        sub     p, p, n
 
 // Initialize high part h = 0; if n = 0 do nothing but return that zero
 
-                adds    h, xzr, xzr
-                cbz     n, end
+        adds    h, xzr, xzr
+        cbz     n, end
 
 // Initialization of the loop: 2^64 * CF + [h,z_0'] = z_0 + c * x_0
 
-                ldr     a, [x]
-                mul     l, c, a
-                umulh   h, c, a
-                ldr     b, [z]
-                adds    b, b, l
-                str     b, [z]
-                mov     i, #8
-                sub     n, n, #1
-                cbz     n, tail
+        ldr     a, [x]
+        mul     l, c, a
+        umulh   h, c, a
+        ldr     b, [z]
+        adds    b, b, l
+        str     b, [z]
+        mov     i, #8
+        sub     n, n, #1
+        cbz     n, tail
 
 // Main loop, where we always have CF + previous high part h to add in
 
 loop:
-                ldr     a, [x, i]
-                ldr     b, [z, i]
-                mul     l, c, a
-                adcs    b, b, h
-                umulh   h, c, a
-                adc     h, h, xzr
-                adds    b, b, l
-                str     b, [z, i]
-                add     i, i, #8
-                sub     n, n, #1
-                cbnz    n, loop
+        ldr     a, [x, i]
+        ldr     b, [z, i]
+        mul     l, c, a
+        adcs    b, b, h
+        umulh   h, c, a
+        adc     h, h, xzr
+        adds    b, b, l
+        str     b, [z, i]
+        add     i, i, #8
+        sub     n, n, #1
+        cbnz    n, loop
 
 // Propagate the carry all the way to the end with h as extra carry word
 
 tail:
-                cbz     p, end
-                ldr     b, [z, i]
-                adcs    b, b, h
-                str     b, [z, i]
-                mov     h, xzr
-                sub     p, p, #1
-                cbz     p, end
+        cbz     p, end
+        ldr     b, [z, i]
+        adcs    b, b, h
+        str     b, [z, i]
+        mov     h, xzr
+        sub     p, p, #1
+        cbz     p, end
 
 tloop:
-                add     i, i, #8
-                ldr     b, [z, i]
-                adcs    b, b, xzr
-                str     b, [z, i]
-                sub     p, p, #1
-                cbnz    p, tloop
+        add     i, i, #8
+        ldr     b, [z, i]
+        adcs    b, b, xzr
+        str     b, [z, i]
+        sub     p, p, #1
+        cbnz    p, tloop
 
 // Return the high/carry word. This gives the top word of the result provided
 // n <= p and the result fits in p + 1 digits. More generally, indeed, the
@@ -117,8 +117,8 @@ tloop:
 // is not very exploitable from a C call.
 
 end:
-                adcs    x0, h, xzr
-                ret
+        adcs    x0, h, xzr
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

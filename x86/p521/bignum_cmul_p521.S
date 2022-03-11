@@ -65,36 +65,36 @@ _bignum_cmul_p521:
 
 // Save additional registers to use
 
-                push    rbx
-                push    rbp
-                push    r12
-                push    r13
+        push    rbx
+        push    rbp
+        push    r12
+        push    r13
 
 // Shuffle inputs (since we want the multiplier in rdx)
 
-                mov     x, rdx
-                mov     c, rsi
+        mov     x, rdx
+        mov     c, rsi
 
 // Multiply as [d9; ...; d0] = c * x.
 
-                mulx    d1, d0, [x]
-                mulx    d2, a, [x+8]
-                add     d1, a
-                mulx    d3, a, [x+16]
-                adc     d2, a
-                mulx    d4, a, [x+24]
-                adc     d3, a
-                mulx    d5, a, [x+32]
-                adc     d4, a
-                mulx    d6, a, [x+40]
-                adc     d5, a
-                mulx    d7, a, [x+48]
-                adc     d6, a
-                mulx    d8, a, [x+56]
-                adc     d7, a
-                mulx    d9, a, [x+64]
-                adc     d8, a
-                adc     d9, 0
+        mulx    d1, d0, [x]
+        mulx    d2, a, [x+8]
+        add     d1, a
+        mulx    d3, a, [x+16]
+        adc     d2, a
+        mulx    d4, a, [x+24]
+        adc     d3, a
+        mulx    d5, a, [x+32]
+        adc     d4, a
+        mulx    d6, a, [x+40]
+        adc     d5, a
+        mulx    d7, a, [x+48]
+        adc     d6, a
+        mulx    d8, a, [x+56]
+        adc     d7, a
+        mulx    d9, a, [x+64]
+        adc     d8, a
+        adc     d9, 0
 
 // Create an AND "dd" of digits d7,...,d1, a computation we hope will
 // get nicely interleaved with the multiplication chain above.
@@ -102,19 +102,19 @@ _bignum_cmul_p521:
 // bunch it up here since AND destroys the flags and we overwrite the
 // register used as a stage temporary variable for the multiplications.
 
-                mov     dd, d1
-                and     dd, d2
-                and     dd, d3
-                and     dd, d4
-                and     dd, d5
-                and     dd, d6
-                and     dd, d7
+        mov     dd, d1
+        and     dd, d2
+        and     dd, d3
+        and     dd, d4
+        and     dd, d5
+        and     dd, d6
+        and     dd, d7
 
 // Extract the high part h==d9 and mask off the low part l = [d8;d7;...;d0]
 // but stuff d8 with 1 bits at the left to ease a comparison below
 
-                shld    h, d8, 55
-                or      d8, ~0x1FF
+        shld    h, d8, 55
+        or      d8, ~0x1FF
 
 // Decide whether h + l >= p_521 <=> h + l + 1 >= 2^521. Since this can only
 // happen if digits d7,...d1 are all 1s, we use the AND of them "dd" to
@@ -123,46 +123,46 @@ _bignum_cmul_p521:
 // Since x was assumed reduced, h cannot be maximal, so the "lea" is safe,
 // i.e. does not carry or wrap round.
 
-                lea     c, [h+1]
-                add     c, d0
-                mov     cshort, 0
-                adc     dd, c
-                mov     a, d8
-                adc     a, c
+        lea     c, [h+1]
+        add     c, d0
+        mov     cshort, 0
+        adc     dd, c
+        mov     a, d8
+        adc     a, c
 
 // Now if CF is set we want (h + l) - p_521 = (h + l + 1) - 2^521
 // while otherwise we want just h + l. So mask h + l + CF to 521 bits.
 // This masking also gets rid of the stuffing with 1s we did above.
 // Write back the digits as they are generated.
 
-                adc     d0, h
-                mov     [z], d0
-                adc     d1, c
-                mov     [z+8], d1
-                adc     d2, c
-                mov     [z+16], d2
-                adc     d3, c
-                mov     [z+24], d3
-                adc     d4, c
-                mov     [z+32], d4
-                adc     d5, c
-                mov     [z+40], d5
-                adc     d6, c
-                mov     [z+48], d6
-                adc     d7, c
-                mov     [z+56], d7
-                adc     d8, c
-                and     d8, 0x1FF
-                mov     [z+64], d8
+        adc     d0, h
+        mov     [z], d0
+        adc     d1, c
+        mov     [z+8], d1
+        adc     d2, c
+        mov     [z+16], d2
+        adc     d3, c
+        mov     [z+24], d3
+        adc     d4, c
+        mov     [z+32], d4
+        adc     d5, c
+        mov     [z+40], d5
+        adc     d6, c
+        mov     [z+48], d6
+        adc     d7, c
+        mov     [z+56], d7
+        adc     d8, c
+        and     d8, 0x1FF
+        mov     [z+64], d8
 
 // Restore registers and return
 
-                pop     r13
-                pop     r12
-                pop     rbp
-                pop     rbx
+        pop     r13
+        pop     r12
+        pop     rbp
+        pop     rbx
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

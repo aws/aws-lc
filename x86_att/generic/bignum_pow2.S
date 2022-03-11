@@ -46,32 +46,32 @@ _bignum_pow2:
 
 // If k = 0 do nothing
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Create the index n at which to write the nonzero word and the word w itself
 // Note that the x86 manual explicitly says that shift counts are taken modulo
 // the datasize, so we don't need to mask the lower 6 bits of n ourselves.
 
-                movl    $1, wshort
-                movq    n, %rcx
-                shlq    %cl, w
-                shrq    $6, n
+        movl    $1, wshort
+        movq    n, %rcx
+        shlq    %cl, w
+        shrq    $6, n
 
 // Now in a constant-time fashion set the n'th word to w and others to zero
 
-                xorq    i, i
+        xorq    i, i
 loop:
-                xorq    a, a
-                cmpq    n, i
-                cmovzq  w, a
-                movq    a, (z,i,8)
-                incq    i
-                cmpq    k, i
-                jc      loop
+        xorq    a, a
+        cmpq    n, i
+        cmovzq  w, a
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

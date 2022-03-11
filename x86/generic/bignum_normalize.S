@@ -57,12 +57,12 @@ _bignum_normalize:
 // Initialize shift count r = 0 and i = k - 1 but return immediately if k = 0.
 // Otherwise load top digit c, but then if k = 1 skip the digitwise part
 
-                xor     r, r
-                mov     i, k
-                sub     i, 1
-                jc      end
-                mov     c, [z+8*i]
-                jz      bitpart
+        xor     r, r
+        mov     i, k
+        sub     i, 1
+        jc      end
+        mov     c, [z+8*i]
+        jz      bitpart
 
 // Do d rather stupid but constant-time digit normalization, conditionally
 // shifting left (k-1) times based on whether the top word is zero.
@@ -70,23 +70,23 @@ _bignum_normalize:
 // while still retaining the constant-time style.
 
 normloop:
-                xor     j, j
-                mov     b, k
-                mov     d, r
-                inc     r
-                neg     c
-                cmovne  r, d
-                mov     dshort, 0
+        xor     j, j
+        mov     b, k
+        mov     d, r
+        inc     r
+        neg     c
+        cmovne  r, d
+        mov     dshort, 0
 shufloop:
-                mov     c, d
-                mov     d, [z+8*j]
-                cmovc   c, d
-                mov     [z+8*j], c
-                inc     j
-                dec     b
-                jnz     shufloop
-                dec     i
-                jnz     normloop
+        mov     c, d
+        mov     d, [z+8*j]
+        cmovc   c, d
+        mov     [z+8*j], c
+        inc     j
+        dec     b
+        jnz     shufloop
+        dec     i
+        jnz     normloop
 
 // We now have the top digit nonzero, assuming the input was nonzero,
 // and as per the invariant of the loop above, c holds that digit. So
@@ -94,28 +94,28 @@ shufloop:
 // We need to patch the bsr result for the undefined case of zero input
 
 bitpart:
-                mov     dshort, 127
-                bsr     c, c
-                cmovz   c, d
-                xor     c, 63
+        mov     dshort, 127
+        bsr     c, c
+        cmovz   c, d
+        xor     c, 63
 
-                shl     r, 6
-                add     r, c
+        shl     r, 6
+        add     r, c
 
-                xor     b, b
-                xor     i, i
+        xor     b, b
+        xor     i, i
 bitloop:
-                mov     d, [z+8*i]
-                mov     j, d
-                shld    d, b, cl
-                mov     [z+8*i],d
-                mov     b, j
-                inc     i
-                cmp     i, k
-                jc      bitloop
+        mov     d, [z+8*i]
+        mov     j, d
+        shld    d, b, cl
+        mov     [z+8*i],d
+        mov     b, j
+        inc     i
+        cmp     i, k
+        jc      bitloop
 
  end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

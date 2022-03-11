@@ -42,29 +42,29 @@ _bignum_cld:
 
 // Initialize the index i and also prepare default return value of 0 (i = rax)
 
-                xor     i, i
+        xor     i, i
 
 // If the bignum is zero-length, just return k = 0
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Run over the words j = 0..i-1, and set i := j + 1 when hitting nonzero a[j]
 
-                xor     j, j
+        xor     j, j
 loop:
-                mov     a, [x+8*j]
-                inc     j
-                test    a, a
-                cmovnz  i, j
-                cmp     j, k
-                jnz     loop
+        mov     a, [x+8*j]
+        inc     j
+        test    a, a
+        cmovnz  i, j
+        cmp     j, k
+        jnz     loop
 
-                neg     rax
-                add     rax, rdi
+        neg     rax
+        add     rax, rdi
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

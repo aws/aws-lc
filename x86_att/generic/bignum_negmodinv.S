@@ -54,75 +54,75 @@
 bignum_negmodinv:
 _bignum_negmodinv:
 
-                pushq   %rbx
-                pushq   %r12
+        pushq   %rbx
+        pushq   %r12
 
 // If k = 0 do nothing (actually we could have avoiding the pushes and pops)
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Move the x pointer into its permanent home (%rdx is needed for muls)
 
-                movq    %rdx, x
+        movq    %rdx, x
 
 // Compute word-level negated modular inverse w for x[0].
 
-                movq    (x), a
+        movq    (x), a
 
-                movq    a, d
-                movq    a, w
-                shlq    $2, d
-                subq    d, w
-                xorq    $2, w
+        movq    a, d
+        movq    a, w
+        shlq    $2, d
+        subq    d, w
+        xorq    $2, w
 
-                movq    w, d
-                imulq   a, d
-                movl    $2, ashort
-                addq    d, a
-                addq    $1, d
+        movq    w, d
+        imulq   a, d
+        movl    $2, ashort
+        addq    d, a
+        addq    $1, d
 
-                imulq   a, w
+        imulq   a, w
 
-                imulq   d, d
-                movl    $1, ashort
-                addq    d, a
-                imulq   a, w
+        imulq   d, d
+        movl    $1, ashort
+        addq    d, a
+        imulq   a, w
 
-                imulq   d, d
-                movl    $1, ashort
-                addq    d, a
-                imulq   a, w
+        imulq   d, d
+        movl    $1, ashort
+        addq    d, a
+        imulq   a, w
 
-                imulq   d, d
-                movl    $1, ashort
-                addq    d, a
-                imulq   a, w
+        imulq   d, d
+        movl    $1, ashort
+        addq    d, a
+        imulq   a, w
 
 // Write that as lowest word of the output, then if k = 1 we're finished
 
-                movq    w, (z)
-                cmpq    $1, k
-                jz      end
+        movq    w, (z)
+        cmpq    $1, k
+        jz      end
 
 // Otherwise compute and write the other digits (1..k-1) of w * x + 1
 
-                movq    (x), a
-                xorq    h, h
-                mulq    w
-                addq    $1, a
-                adcq    d, h
-                movl    $1, ishort
+        movq    (x), a
+        xorq    h, h
+        mulq    w
+        addq    $1, a
+        adcq    d, h
+        movl    $1, ishort
 initloop:
-                movq    (x,i,8), a
-                mulq    w
-                addq    h, a
-                adcq    $0, d
-                movq    a, (z,i,8)
-                movq    d, h
-                incq    i
-                cmpq    k, i
-                jc      initloop
+        movq    (x,i,8), a
+        mulq    w
+        addq    h, a
+        adcq    $0, d
+        movq    a, (z,i,8)
+        movq    d, h
+        incq    i
+        cmpq    k, i
+        jc      initloop
 
 // For simpler indexing, z := z + 8 and k := k - 1 per outer iteration
 // Then we can use the same index for x and for z and effective size k.
@@ -135,48 +135,48 @@ initloop:
 // of needing the additional "finale" tail for the final iteration
 // since we do one outer loop iteration too few.
 
-                subq    $2, k
-                jz      finale
+        subq    $2, k
+        jz      finale
 
 outerloop:
-                addq    $8, z
+        addq    $8, z
 
-                movq    (z), h
-                movq    w, m
-                imulq   h, m
-                movq    m, (z)
-                movq    (x), a
-                mulq    m
-                addq    h, a
-                adcq    $0, d
-                movq    d, h
-                movl    $1, ishort
-                movq    k, t
+        movq    (z), h
+        movq    w, m
+        imulq   h, m
+        movq    m, (z)
+        movq    (x), a
+        mulq    m
+        addq    h, a
+        adcq    $0, d
+        movq    d, h
+        movl    $1, ishort
+        movq    k, t
  innerloop:
-                adcq    (z,i,8), h
-                sbbq    e, e
-                movq    (x,i,8), a
-                mulq    m
-                subq    e, d
-                addq    h, a
-                movq    a, (z,i,8)
-                movq    d, h
-                incq    i
-                decq    t
-                jnz     innerloop
+        adcq    (z,i,8), h
+        sbbq    e, e
+        movq    (x,i,8), a
+        mulq    m
+        subq    e, d
+        addq    h, a
+        movq    a, (z,i,8)
+        movq    d, h
+        incq    i
+        decq    t
+        jnz     innerloop
 
-                decq    k
-                jnz     outerloop
+        decq    k
+        jnz     outerloop
 
 finale:
-                movq    8(z), a
-                imulq   w, a
-                movq    a, 8(z)
+        movq    8(z), a
+        imulq   w, a
+        movq    a, 8(z)
 
 end:
-                popq    %r12
-                popq    %rbx
-                ret
+        popq    %r12
+        popq    %rbx
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

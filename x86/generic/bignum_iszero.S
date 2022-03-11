@@ -33,23 +33,23 @@
 
 bignum_iszero:
 _bignum_iszero:
-                xor     a, a
-                test    k,k
-                jz      end
+        xor     a, a
+        test    k,k
+        jz      end
 
 loop:
-                or      a, [x+8*k-8]
-                dec     k
-                jnz     loop
+        or      a, [x+8*k-8]
+        dec     k
+        jnz     loop
 
 // Set a standard C condition based on whether a is nonzero
 
-                neg     a
-                sbb     a, a
+        neg     a
+        sbb     a, a
 
 end:
-                inc     a
-                ret
+        inc     a
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

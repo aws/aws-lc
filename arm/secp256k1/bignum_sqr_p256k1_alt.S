@@ -61,125 +61,125 @@ _bignum_sqr_p256k1_alt:
 // and chain in the addition of 02 + 12 + 13 (no carry-out is possible).
 // This gives all the "heterogeneous" terms of the squaring ready to double
 
-                ldp     a0, a1, [x]
+        ldp     a0, a1, [x]
 
-                mul     u1, a0, a1
-                umulh   u2, a0, a1
+        mul     u1, a0, a1
+        umulh   u2, a0, a1
 
-                ldp     a2, a3, [x, #16]
+        ldp     a2, a3, [x, #16]
 
-                mul     u3, a0, a3
-                umulh   u4, a0, a3
+        mul     u3, a0, a3
+        umulh   u4, a0, a3
 
-                mul     l, a0, a2
-                umulh   h, a0, a2
-                adds    u2, u2, l
+        mul     l, a0, a2
+        umulh   h, a0, a2
+        adds    u2, u2, l
 
-                adcs    u3, u3, h
-                mul     l, a1, a2
-                umulh   h, a1, a2
-                adc     h, h, xzr
-                adds    u3, u3, l
+        adcs    u3, u3, h
+        mul     l, a1, a2
+        umulh   h, a1, a2
+        adc     h, h, xzr
+        adds    u3, u3, l
 
-                mul     u5, a2, a3
-                umulh   u6, a2, a3
+        mul     u5, a2, a3
+        umulh   u6, a2, a3
 
-                adcs    u4, u4, h
-                mul     l, a1, a3
-                umulh   h, a1, a3
-                adc     h, h, xzr
-                adds    u4, u4, l
+        adcs    u4, u4, h
+        mul     l, a1, a3
+        umulh   h, a1, a3
+        adc     h, h, xzr
+        adds    u4, u4, l
 
-                adcs    u5, u5, h
-                adc     u6, u6, xzr
+        adcs    u5, u5, h
+        adc     u6, u6, xzr
 
 // Now just double it; this simple approach seems to work better than extr
 
-                adds    u1, u1, u1
-                adcs    u2, u2, u2
-                adcs    u3, u3, u3
-                adcs    u4, u4, u4
-                adcs    u5, u5, u5
-                adcs    u6, u6, u6
-                cset    u7, cs
+        adds    u1, u1, u1
+        adcs    u2, u2, u2
+        adcs    u3, u3, u3
+        adcs    u4, u4, u4
+        adcs    u5, u5, u5
+        adcs    u6, u6, u6
+        cset    u7, cs
 
 // Add the homogeneous terms 00 + 11 + 22 + 33
 
-                umulh   l, a0, a0
-                mul     u0, a0, a0
-                adds    u1, u1, l
+        umulh   l, a0, a0
+        mul     u0, a0, a0
+        adds    u1, u1, l
 
-                mul     l, a1, a1
-                adcs    u2, u2, l
-                umulh   l, a1, a1
-                adcs    u3, u3, l
+        mul     l, a1, a1
+        adcs    u2, u2, l
+        umulh   l, a1, a1
+        adcs    u3, u3, l
 
-                mul     l, a2, a2
-                adcs    u4, u4, l
-                umulh   l, a2, a2
-                adcs    u5, u5, l
+        mul     l, a2, a2
+        adcs    u4, u4, l
+        umulh   l, a2, a2
+        adcs    u5, u5, l
 
-                mul     l, a3, a3
-                adcs    u6, u6, l
-                umulh   l, a3, a3
-                adc     u7, u7, l
+        mul     l, a3, a3
+        adcs    u6, u6, l
+        umulh   l, a3, a3
+        adc     u7, u7, l
 
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [u7,u6,u5,u4] and l = [u3,u2,u1,u0]
 // and this is == 4294968273 * h + l (mod p_256k1)
 
-                mov     c, #977
-                orr     c, c, #0x100000000
+        mov     c, #977
+        orr     c, c, #0x100000000
 
-                mul     l, c, u4
-                umulh   t, c, u4
-                adds    u0, u0, l
+        mul     l, c, u4
+        umulh   t, c, u4
+        adds    u0, u0, l
 
-                mul     l, c, u5
-                umulh   u5, c, u5
-                adcs    u1, u1, l
+        mul     l, c, u5
+        umulh   u5, c, u5
+        adcs    u1, u1, l
 
-                mul     l, c, u6
-                umulh   u6, c, u6
-                adcs    u2, u2, l
+        mul     l, c, u6
+        umulh   u6, c, u6
+        adcs    u2, u2, l
 
-                mul     l, c, u7
-                umulh   u7, c, u7
-                adcs    u3, u3, l
-                cset    u4, cs
+        mul     l, c, u7
+        umulh   u7, c, u7
+        adcs    u3, u3, l
+        cset    u4, cs
 
-                adds    u1, u1, t
-                adcs    u2, u2, u5
-                adcs    u3, u3, u6
-                adc     u4, u4, u7
+        adds    u1, u1, t
+        adcs    u2, u2, u5
+        adcs    u3, u3, u6
+        adc     u4, u4, u7
 
 // Now we have reduced to 5 digits, 2^256 * h + l = [u4,u3,u2,u1,u0]
 // Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
 
-                add     q, u4, #1
-                mul     l, c, q
-                umulh   h, c, q
-                adds    u0, u0, l
-                adcs    u1, u1, h
-                adcs    u2, u2, xzr
-                adcs    u3, u3, xzr
+        add     q, u4, #1
+        mul     l, c, q
+        umulh   h, c, q
+        adds    u0, u0, l
+        adcs    u1, u1, h
+        adcs    u2, u2, xzr
+        adcs    u3, u3, xzr
 
 // Now the effective answer is 2^256 * (CF - 1) + [u3,u2,u1,u0]
 // So we correct if CF = 0 by subtracting 4294968273, i.e. by
 // adding p_256k1 to the "full" answer
 
-                csel    c, c, xzr, cc
-                subs    u0, u0, c
-                sbcs    u1, u1, xzr
-                sbcs    u2, u2, xzr
-                sbc     u3, u3, xzr
+        csel    c, c, xzr, cc
+        subs    u0, u0, c
+        sbcs    u1, u1, xzr
+        sbcs    u2, u2, xzr
+        sbc     u3, u3, xzr
 
 // Write back and return
 
-                stp     u0, u1, [x0]
-                stp     u2, u3, [x0, #16]
+        stp     u0, u1, [x0]
+        stp     u2, u3, [x0, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -46,40 +46,40 @@ _bignum_clz:
 
 // Initialize the index i and also prepare default return value of 0 (i = %rax)
 
-                xorq    i, i
+        xorq    i, i
 
 // If the bignum is zero-length, just return 0
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Use w = a[i-1] to store nonzero words in a bottom-up sweep
 // Set the initial default to be as if we had a 11...11 word directly below
 
-                movq    $-1, w
-                xorq    j, j
+        movq    $-1, w
+        xorq    j, j
 loop:
-                movq    (x,j,8), a
-                incq    j
-                testq   a, a
-                cmovnzq j, i
-                cmovnzq a, w
-                cmpq    k, j
-                jnz     loop
+        movq    (x,j,8), a
+        incq    j
+        testq   a, a
+        cmovnzq j, i
+        cmovnzq a, w
+        cmpq    k, j
+        jnz     loop
 
 // Now w = a[i-1] is the highest nonzero word, or in the zero case the
 // default of the "extra" 11...11 = a[0-1]. We now want 64*(k - i) + clz(w) =
 // 64*(k - i) + (63 - bsr(w)). Note that this code does not rely on the
 // behavior of the bsr instruction for zero inputs, where it is undefined
 
-                subq    i, k
-                shlq    $6, k
-                bsrq    w, %rax
-                xorq    $63, %rax
-                addq    k, %rax
+        subq    i, k
+        shlq    $6, k
+        bsrq    w, %rax
+        xorq    $63, %rax
+        addq    k, %rax
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

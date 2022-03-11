@@ -44,59 +44,59 @@ _bignum_le:
 
 // Zero the main index counter for both branches
 
-                xorq    i, i
+        xorq    i, i
 
 // Speculatively form n := n - m and do case split
 
-                subq    m, n
-                jc      ylonger
+        subq    m, n
+        jc      ylonger
 
 // The case where y is longer or of the same size (n >= m)
 
-                incq    n
-                testq   m, m
-                jz      xtest
+        incq    n
+        testq   m, m
+        jz      xtest
 xmainloop:
-                movq    (y,i,8), a
-                sbbq    (x,i,8), a
-                incq    i
-                decq    m
-                jnz     xmainloop
-                jmp     xtest
+        movq    (y,i,8), a
+        sbbq    (x,i,8), a
+        incq    i
+        decq    m
+        jnz     xmainloop
+        jmp     xtest
 xtoploop:
-                movq    (y,i,8), a
-                sbbq    $0, a
-                incq    i
+        movq    (y,i,8), a
+        sbbq    $0, a
+        incq    i
 xtest:
-                decq    n
-                jnz     xtoploop
-                sbbq    a, a
-                incq    a
-                ret
+        decq    n
+        jnz     xtoploop
+        sbbq    a, a
+        incq    a
+        ret
 
 // The case where x is longer (m > n)
 
 ylonger:
-                addq    m, n
-                subq    n, m
-                testq   n, n
-                jz      ytoploop
+        addq    m, n
+        subq    n, m
+        testq   n, n
+        jz      ytoploop
 ymainloop:
-                movq    (y,i,8), a
-                sbbq    (x,i,8), a
-                incq    i
-                decq    n
-                jnz     ymainloop
+        movq    (y,i,8), a
+        sbbq    (x,i,8), a
+        incq    i
+        decq    n
+        jnz     ymainloop
 ytoploop:
-                movl    $0, ashort
-                sbbq    (x,i,8), a
-                incq    i
-                decq    m
-                jnz     ytoploop
+        movl    $0, ashort
+        sbbq    (x,i,8), a
+        incq    i
+        decq    m
+        jnz     ytoploop
 
-                sbbq    a, a
-                incq    a
-                ret
+        sbbq    a, a
+        incq    a
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -43,38 +43,38 @@
 bignum_modsub:
 _bignum_modsub:
 
-                adds    j, k, xzr               // j = k and ZF = (k = 0)
-                beq     end                     // if k = 0 do nothing
-                subs    i, xzr, xzr             // i = 0 and CF = 1
+        adds    j, k, xzr               // j = k and ZF = (k = 0)
+        beq     end                     // if k = 0 do nothing
+        subs    i, xzr, xzr             // i = 0 and CF = 1
 
 // Subtract z := x - y and record a mask for the carry x - y < 0
 
 subloop:
-                ldr     a, [x, i]
-                ldr     b, [y, i]
-                sbcs    a, a, b
-                str     a, [z, i]
-                add     i, i, #8
-                sub     j, j, #1
-                cbnz    j, subloop
-                csetm   c, cc
+        ldr     a, [x, i]
+        ldr     b, [y, i]
+        sbcs    a, a, b
+        str     a, [z, i]
+        add     i, i, #8
+        sub     j, j, #1
+        cbnz    j, subloop
+        csetm   c, cc
 
 // Now do a masked addition z := z + [c] * m
 
-                mov     j, k
-                adds    i, xzr, xzr
+        mov     j, k
+        adds    i, xzr, xzr
 addloop:
-                ldr     a, [z, i]
-                ldr     b, [m, i]
-                and     b, b, c
-                adcs    a, a, b
-                str     a, [z, i]
-                add     i, i, #8
-                sub     j, j, #1
-                cbnz    j, addloop
+        ldr     a, [z, i]
+        ldr     b, [m, i]
+        and     b, b, c
+        adcs    a, a, b
+        str     a, [z, i]
+        add     i, i, #8
+        sub     j, j, #1
+        cbnz    j, addloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

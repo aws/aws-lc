@@ -52,89 +52,89 @@ _bignum_add:
 
 // Zero the main index counter for both branches
 
-                xor     i, i
+        xor     i, i
 
 // First clamp the two input sizes m := min(p,m) and n := min(p,n) since
 // we'll never need words past the p'th. Can now assume m <= p and n <= p.
 // Then compare the modified m and n and branch accordingly
 
-                cmp     p, m
-                cmovc   m, p
-                cmp     p, n
-                cmovc   n, p
-                cmp     m, n
-                jc      ylonger
+        cmp     p, m
+        cmovc   m, p
+        cmp     p, n
+        cmovc   n, p
+        cmp     m, n
+        jc      ylonger
 
 // The case where x is longer or of the same size (p >= m >= n)
 
-                sub     p, m
-                sub     m, n
-                inc     m
-                test    n, n
-                jz      xtest
+        sub     p, m
+        sub     m, n
+        inc     m
+        test    n, n
+        jz      xtest
 xmainloop:
-                mov     a, [x+8*i]
-                adc     a, [y+8*i]
-                mov     [z+8*i],a
-                inc     i
-                dec     n
-                jnz     xmainloop
-                jmp     xtest
+        mov     a, [x+8*i]
+        adc     a, [y+8*i]
+        mov     [z+8*i],a
+        inc     i
+        dec     n
+        jnz     xmainloop
+        jmp     xtest
 xtoploop:
-                mov     a, [x+8*i]
-                adc     a, 0
-                mov     [z+8*i],a
-                inc     i
+        mov     a, [x+8*i]
+        adc     a, 0
+        mov     [z+8*i],a
+        inc     i
 xtest:
-                dec     m
-                jnz     xtoploop
-                mov     ashort, 0
-                adc     a, 0
-                test    p, p
-                jnz     tails
-                ret
+        dec     m
+        jnz     xtoploop
+        mov     ashort, 0
+        adc     a, 0
+        test    p, p
+        jnz     tails
+        ret
 
 // The case where y is longer (p >= n > m)
 
 ylonger:
 
-                sub     p, n
-                sub     n, m
-                test    m, m
-                jz      ytoploop
+        sub     p, n
+        sub     n, m
+        test    m, m
+        jz      ytoploop
 ymainloop:
-                mov     a, [x+8*i]
-                adc     a, [y+8*i]
-                mov     [z+8*i],a
-                inc     i
-                dec     m
-                jnz     ymainloop
+        mov     a, [x+8*i]
+        adc     a, [y+8*i]
+        mov     [z+8*i],a
+        inc     i
+        dec     m
+        jnz     ymainloop
 ytoploop:
-                mov     a, [y+8*i]
-                adc     a, 0
-                mov     [z+8*i],a
-                inc     i
-                dec     n
-                jnz     ytoploop
-                mov     ashort, 0
-                adc     a, 0
-                test    p, p
-                jnz     tails
-                ret
+        mov     a, [y+8*i]
+        adc     a, 0
+        mov     [z+8*i],a
+        inc     i
+        dec     n
+        jnz     ytoploop
+        mov     ashort, 0
+        adc     a, 0
+        test    p, p
+        jnz     tails
+        ret
 
 // Adding a non-trivial tail, when p > max(m,n)
 
 tails:
-                mov     [z+8*i],a
-                xor     a, a
-                jmp     tail
+        mov     [z+8*i],a
+        xor     a, a
+        jmp     tail
 tailloop:
-                mov     [z+8*i],a
+        mov     [z+8*i],a
 tail:
-                inc     i
-                dec     p
-                jnz     tailloop
-                ret
+        inc     i
+        dec     p
+        jnz     tailloop
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

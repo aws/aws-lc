@@ -54,9 +54,9 @@ _bignum_triple_p521_alt:
 
 // Save additional registers to use
 
-                push    rbx
-                push    rbp
-                push    r12
+        push    rbx
+        push    rbp
+        push    r12
 
 // Let [d8;...;d0] = x' + x + 1 where x' is a rotation left by 1 bit
 // as a 521-bit quantity. This is == 3 * x + 1 (mod p_521) and keeps
@@ -65,99 +65,99 @@ _bignum_triple_p521_alt:
 // at the bottom instead of the top, so the top two digits are a bit
 // more intricate.
 
-                mov     m, 3
-                mov     d0, [x+64]
-                shr     d0, 8
-                inc     d0
+        mov     m, 3
+        mov     d0, [x+64]
+        shr     d0, 8
+        inc     d0
 
-                mov     a, [x]
-                mul     m
-                xor     d1, d1
-                add     d0, a
-                adc     d1, d
+        mov     a, [x]
+        mul     m
+        xor     d1, d1
+        add     d0, a
+        adc     d1, d
 
-                mov     a, [x+8]
-                mul     m
-                xor     d2, d2
-                add     d1, a
-                adc     d2, d
+        mov     a, [x+8]
+        mul     m
+        xor     d2, d2
+        add     d1, a
+        adc     d2, d
 
-                mov     a, [x+16]
-                mul     m
-                xor     d3, d3
-                add     d2, a
-                adc     d3, d
+        mov     a, [x+16]
+        mul     m
+        xor     d3, d3
+        add     d2, a
+        adc     d3, d
 
-                mov     a, [x+24]
-                mul     m
-                xor     d4, d4
-                add     d3, a
-                adc     d4, d
+        mov     a, [x+24]
+        mul     m
+        xor     d4, d4
+        add     d3, a
+        adc     d4, d
 
-                mov     a, [x+32]
-                mul     m
-                xor     d5, d5
-                add     d4, a
-                adc     d5, d
+        mov     a, [x+32]
+        mul     m
+        xor     d5, d5
+        add     d4, a
+        adc     d5, d
 
-                mov     a, [x+40]
-                mul     m
-                xor     d6, d6
-                add     d5, a
-                adc     d6, d
+        mov     a, [x+40]
+        mul     m
+        xor     d6, d6
+        add     d5, a
+        adc     d6, d
 
-                mov     a, [x+48]
-                mul     m
-                mov     d7, [x+56]
-                mov     d8, [x+64]
-                add     d6, a
-                adc     d, 0
+        mov     a, [x+48]
+        mul     m
+        mov     d7, [x+56]
+        mov     d8, [x+64]
+        add     d6, a
+        adc     d, 0
 
-                mov     a, 0xFF
-                and     a, d8
-                lea     d8, [d8+2*a]
+        mov     a, 0xFF
+        and     a, d8
+        lea     d8, [d8+2*a]
 
-                xor     eax, eax
-                add     d, d7
-                adc     d8, a
-                add     d7, d7
-                adc     d8, a
-                add     d7, d
-                adc     d8, a
+        xor     eax, eax
+        add     d, d7
+        adc     d8, a
+        add     d7, d7
+        adc     d8, a
+        add     d7, d
+        adc     d8, a
 
 // Now d8 >= 2^9 <=> x' + x + 1 >= 2^521 <=> x' + x >= p_521.
 // If that is the case we want (x' + x) - p_521 = (x' + x + 1) - 2^521
 // while otherwise we want just x' + x = (x' + x + 1) - 1.
 
-                cmp     d8, 0x200
+        cmp     d8, 0x200
 
-                sbb     d0, a
-                mov     [z], d0
-                sbb     d1, a
-                mov     [z+8], d1
-                sbb     d2, a
-                mov     [z+16], d2
-                sbb     d3, a
-                mov     [z+24], d3
-                sbb     d4, a
-                mov     [z+32], d4
-                sbb     d5, a
-                mov     [z+40], d5
-                sbb     d6, a
-                mov     [z+48], d6
-                sbb     d7, a
-                mov     [z+56], d7
-                sbb     d8, a
-                and     d8, 0x1FF
-                mov     [z+64], d8
+        sbb     d0, a
+        mov     [z], d0
+        sbb     d1, a
+        mov     [z+8], d1
+        sbb     d2, a
+        mov     [z+16], d2
+        sbb     d3, a
+        mov     [z+24], d3
+        sbb     d4, a
+        mov     [z+32], d4
+        sbb     d5, a
+        mov     [z+40], d5
+        sbb     d6, a
+        mov     [z+48], d6
+        sbb     d7, a
+        mov     [z+56], d7
+        sbb     d8, a
+        and     d8, 0x1FF
+        mov     [z+64], d8
 
 // Restore registers and return
 
-                pop     r12
-                pop     rbp
-                pop     rbx
+        pop     r12
+        pop     rbp
+        pop     rbx
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

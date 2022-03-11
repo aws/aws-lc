@@ -44,46 +44,46 @@ _bignum_modoptneg:
 
 // Do nothing if k = 0
 
-                cbz     k, end
+        cbz     k, end
 
 // Make an additional check for zero input, and force p to zero in this case.
 // This can be skipped if the input is known not to be zero a priori.
 
-                mov     i, xzr
-                mov     a, xzr
+        mov     i, xzr
+        mov     a, xzr
 cmploop:
-                ldr     b, [x, i, lsl #3]
-                orr     a, a, b
-                add     i, i, #1
-                cmp     i, k
-                bcc     cmploop
+        ldr     b, [x, i, lsl #3]
+        orr     a, a, b
+        add     i, i, #1
+        cmp     i, k
+        bcc     cmploop
 
-                cmp     a, xzr
-                csel    p, p, xzr, ne
+        cmp     a, xzr
+        csel    p, p, xzr, ne
 
 // Turn the input p into a strict bitmask
 
-                cmp     p, xzr
-                csetm   p, ne
+        cmp     p, xzr
+        csetm   p, ne
 
 // Main loop
 
-                mov     i, xzr
-                adds    xzr, p, p
+        mov     i, xzr
+        adds    xzr, p, p
 mainloop:
 
-                ldr     a, [m, i, lsl #3]
-                ldr     b, [x, i, lsl #3]
-                and     a, a, p
-                eor     b, b, p
-                adcs    a, a, b
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                sub     a, i, k
-                cbnz    a, mainloop
+        ldr     a, [m, i, lsl #3]
+        ldr     b, [x, i, lsl #3]
+        and     a, a, p
+        eor     b, b, p
+        adcs    a, a, b
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        sub     a, i, k
+        cbnz    a, mainloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

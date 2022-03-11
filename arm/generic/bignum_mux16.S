@@ -47,32 +47,32 @@ _bignum_mux16:
 
 // Copy size into decrementable counter, skip everything if k = 0
 
-                adds    n, k, xzr
-                beq     end
+        adds    n, k, xzr
+        beq     end
 
 // Multiply i by k so we can compare pointer offsets directly with it
 
-                mul     i, i, k
+        mul     i, i, k
 
 loop:
 
-                ldr     a, [x]
-                mov     j, k
+        ldr     a, [x]
+        mov     j, k
         .rep 15
-                ldr     b, [x, j, lsl #3]
-                cmp     j, i
-                csel    a, b, a, eq
-                add     j, j, k
+        ldr     b, [x, j, lsl #3]
+        cmp     j, i
+        csel    a, b, a, eq
+        add     j, j, k
         .endr
-                str     a, [z]
+        str     a, [z]
 
-                add     z, z, #8
-                add     x, x, #8
-                subs    n, n, #1
-                bne     loop
+        add     z, z, #8
+        add     x, x, #8
+        subs    n, n, #1
+        bne     loop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

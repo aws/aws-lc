@@ -56,63 +56,63 @@ _bignum_shl_small:
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.
 
-                cmpq    n, p
-                cmovcq  p, n
+        cmpq    n, p
+        cmovcq  p, n
 
 // Initialize "previous word" carry b to zero and main index i also to zero.
 // Then just skip the main loop if n = 0
 
-                xorq    b, b
-                xorq    i, i
+        xorq    b, b
+        xorq    i, i
 
-                testq   n, n
-                jz      tail
+        testq   n, n
+        jz      tail
 
 // Reshuffle registers to put the shift count into CL
 
-                movq    %rcx, x
-                movq    %r8, c
+        movq    %rcx, x
+        movq    %r8, c
 
 // Now the main loop
 
 loop:
-                movq    (x,i,8), a
-                movq    a, t
-                shldq   %cl, b, a
-                movq    a, (z,i,8)
-                movq    t, b
-                incq    i
-                cmpq    n, i
-                jc      loop
+        movq    (x,i,8), a
+        movq    a, t
+        shldq   %cl, b, a
+        movq    a, (z,i,8)
+        movq    t, b
+        incq    i
+        cmpq    n, i
+        jc      loop
 
 // Shift the top word correspondingly. Using shld one more time is easier
 // than carefully producing a complementary shift with care over the zero case
 
-                xorq    a, a
-                shldq   %cl, b, a
-                movq    a, b
+        xorq    a, a
+        shldq   %cl, b, a
+        movq    a, b
 
 // If we are at the end, finish, otherwise write carry word then zeros
 
 tail:
-                cmpq    p, i
-                jnc     end
-                movq    b, (z,i,8)
-                xorq    b, b
-                incq    i
-                cmpq    p, i
-                jnc     end
+        cmpq    p, i
+        jnc     end
+        movq    b, (z,i,8)
+        xorq    b, b
+        incq    i
+        cmpq    p, i
+        jnc     end
 
 tloop:
-                movq    b, (z,i,8)
-                incq    i
-                cmpq    p, i
-                jc      tloop
+        movq    b, (z,i,8)
+        incq    i
+        cmpq    p, i
+        jc      tloop
 
 // Return, with RAX = b as the top word
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

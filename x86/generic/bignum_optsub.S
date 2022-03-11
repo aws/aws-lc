@@ -48,39 +48,39 @@ _bignum_optsub:
 
 // Initialize top carry to zero in all cases (also return value)
 
-                xor     c, c
+        xor     c, c
 
 // If k = 0 do nothing
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Convert the nonzero/zero status of p into an all-1s or all-0s mask
 
-                neg     p
-                sbb     p, p
+        neg     p
+        sbb     p, p
 
 // Now go round the loop for i=0...k-1, saving the carry in c each iteration
 
-                xor     i, i
+        xor     i, i
 loop:
-                mov     a, [x+8*i]
-                mov     b, [y+8*i]
-                and     b, p
-                neg     c
-                sbb     a, b
-                sbb     c, c
-                mov     [z+8*i], a
-                inc     i
-                cmp     i, k
-                jc      loop
+        mov     a, [x+8*i]
+        mov     b, [y+8*i]
+        and     b, p
+        neg     c
+        sbb     a, b
+        sbb     c, c
+        mov     [z+8*i], a
+        inc     i
+        cmp     i, k
+        jc      loop
 
 // Return top carry
 
-                neg     rax
+        neg     rax
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

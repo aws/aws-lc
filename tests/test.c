@@ -653,7 +653,7 @@ uint64_t reference_sub_samelen
 uint64_t reference_optsub
  (uint64_t k, uint64_t *z, uint64_t *x, uint64_t p, uint64_t *y)
 { if (p != 0) return reference_sbb(k,z,k,x,k,y,0);
-  else { bignum_copy(k,z,k,x); return 0; }
+  else { reference_copy(k,z,k,x); return 0; }
 }
 
 uint64_t reference_ctz(uint64_t k,uint64_t *x)
@@ -835,7 +835,7 @@ void reference_oddgcd(uint64_t k,uint64_t *z,uint64_t *x,uint64_t *y)
      reference_shr_samelen(k,m,m,0);
    }
 
-  bignum_copy(k,z,k,n);
+  reference_copy(k,z,k,n);
 }
 
 uint64_t reference_coprime(uint64_t k,uint64_t *x,uint64_t *y)

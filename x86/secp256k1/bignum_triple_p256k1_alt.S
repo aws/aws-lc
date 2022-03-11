@@ -61,59 +61,59 @@ _bignum_triple_p256k1_alt:
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 // but immediately form the quotient estimate q = h + 1
 
-                mov     c, 3
+        mov     c, 3
 
-                mov     a, [x]
-                mul     c
-                mov     d0, a
-                mov     d1, d
+        mov     a, [x]
+        mul     c
+        mov     d0, a
+        mov     d1, d
 
-                mov     a, [x+8]
-                xor     d2, d2
-                mul     c
-                add     d1, a
-                adc     d2, d
+        mov     a, [x+8]
+        xor     d2, d2
+        mul     c
+        add     d1, a
+        adc     d2, d
 
-                mov     a, [x+16]
-                mul     c
-                add     d2, a
-                adc     d, 0
+        mov     a, [x+16]
+        mul     c
+        add     d2, a
+        adc     d, 0
 
-                mov     a, [x+24]
-                mov     d3, d
-                mul     c
-                add     d3, a
-                adc     h, 1
+        mov     a, [x+24]
+        mov     d3, d
+        mul     c
+        add     d3, a
+        adc     h, 1
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256k1 <= z - q * p_256k1 < p_256k1.
 // Initial subtraction of z - q * p_256k1, actually by adding q * 4294968273.
 
-                mov     c, 4294968273
-                xor     a, a
-                imul    q, c
-                add     d0, q
-                adc     d1, a
-                adc     d2, a
-                adc     d3, a
+        mov     c, 4294968273
+        xor     a, a
+        imul    q, c
+        add     d0, q
+        adc     d1, a
+        adc     d2, a
+        adc     d3, a
 
 // With z = 2^256 * h + l, the underlying result z' is actually
 // (2^256 * h + l) - q * (2^256 - 4294968273) = (l + q * 4294968273) - 2^256
 // so carry-clear <=> z' is negative. Correct by subtracting in that case.
 // In any case, write final result to z as we go.
 
-                cmovc   c, a
+        cmovc   c, a
 
-                sub     d0, c
-                mov     [z], d0
-                sbb     d1, a
-                mov     [z+8], d1
-                sbb     d2, a
-                mov     [z+16],d2
-                sbb     d3, a
-                mov     [z+24],d3
+        sub     d0, c
+        mov     [z], d0
+        sbb     d1, a
+        mov     [z+8], d1
+        sbb     d2, a
+        mov     [z+16],d2
+        sbb     d3, a
+        mov     [z+24],d3
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

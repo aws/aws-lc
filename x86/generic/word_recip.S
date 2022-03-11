@@ -50,18 +50,18 @@ _word_recip:
 // Scale the input down: b overestimates a/2^16 with b <= 2^48 and
 // x underestimates 2^64/b with b * x =~= 2^64, accurate to ~2 bits.
 
-                mov     b, a
-                mov     x, 0x1FFFFFFFFFFFF
-                shr     b, 16
-                xor     x, b
-                inc     b
-                shr     x, 32
+        mov     b, a
+        mov     x, 0x1FFFFFFFFFFFF
+        shr     b, 16
+        xor     x, b
+        inc     b
+        shr     x, 32
 
 // Suppose x = 2^64/b * (1 - e). and get scaled error d = 2^64 * e
 
-                mov     d, b
-                imul    d, x
-                neg     d
+        mov     d, b
+        imul    d, x
+        neg     d
 
 // Rescale to give c = 2^15 * e (so c <= 2^13) and compute
 // e + e^2 + e^3 + e^4 = (1 + e^2) (e + e^2)
@@ -69,42 +69,42 @@ _word_recip:
 // and then x * (1 + e + e^2 + e^3 + e^4)
 // = (2^30 * x + x * (2^30 + c^2) * (2^30 * c + c^2) / 2^30) / 2^30
 
-                mov     t, d
-                shr     t, 49
-                imul    t, t
-                shr     d, 34
-                add     d, t
-                or      t, 0x40000000
-                imul    t, d
-                shr     t, 30
-                imul    t, x
-                shl     x, 30
-                add     x, t
-                shr     x, 30
+        mov     t, d
+        shr     t, 49
+        imul    t, t
+        shr     d, 34
+        add     d, t
+        or      t, 0x40000000
+        imul    t, d
+        shr     t, 30
+        imul    t, x
+        shl     x, 30
+        add     x, t
+        shr     x, 30
 
 // Now b * x =~= 2^64, accurate to ~10 bits.
 // Do a 64-bit Newton step, scaling up x by 16 bits in the process.
 
-                mov     d, b
-                imul    d, x
-                neg     d
-                shr     d, 24
-                imul    d, x
-                shl     x, 16
-                shr     d, 24
-                add     x, d
+        mov     d, b
+        imul    d, x
+        neg     d
+        shr     d, 24
+        imul    d, x
+        shl     x, 16
+        shr     d, 24
+        add     x, d
 
 // Now b * x =~= 2^80, accurate to ~20 bits.
 // Do a 64-bit Newton step, scaling up x by 31 bits in the process
 
-                mov     d, b
-                imul    d, x
-                neg     d
-                shr     d, 32
-                imul    d, x
-                shl     x, 31
-                shr     d, 17
-                add     x, d
+        mov     d, b
+        imul    d, x
+        neg     d
+        shr     d, 32
+        imul    d, x
+        shl     x, 31
+        shr     d, 17
+        add     x, d
 
 // Now a * x =~= 2^127, accurate to ~40 bits. Do a Newton step at full size.
 // Instead of literally negating the product (h,l) we complement bits in
@@ -112,31 +112,31 @@ _word_recip:
 // At the end we also shift x one more bit left, losing the known-1 top bit
 // so that a * (2^64 + x) =~= 2^128.
 
-                mov     l, a
-                mul     x
-                shrd    l, h, 60
-                mov     h, x
-                shr     h, 33
-                not     l
-                imul    l, h
-                shl     x, 1
-                shr     l, 33
-                add     x, l
+        mov     l, a
+        mul     x
+        shrd    l, h, 60
+        mov     h, x
+        shr     h, 33
+        not     l
+        imul    l, h
+        shl     x, 1
+        shr     l, 33
+        add     x, l
 
 // Test if (x' + 1) * a < 2^128 where x' = 2^64 + x, catching the special
 // case where x + 1 would wrap, corresponding to input a = 2^63.
 
-                add     x, 1
-                mov     l, a
-                sbb     x, 0
-                mul     x
-                mov     rax, x
-                add     h, a
+        add     x, 1
+        mov     l, a
+        sbb     x, 0
+        mul     x
+        mov     rax, x
+        add     h, a
 
 // Select either x or x + 1 accordingly as the final answer
 
-                sbb     rax, 0
-                ret
+        sbb     rax, 0
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

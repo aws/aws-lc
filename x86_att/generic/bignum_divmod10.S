@@ -49,47 +49,47 @@ _bignum_divmod10:
 
 // Initialize remainder to 0 and if k = 0 return
 
-                xorl    rshort, rshort
-                testq   k, k
-                jz      end
+        xorl    rshort, rshort
+        testq   k, k
+        jz      end
 
 // Straightforward top-down loop doing 10 * q + r' := 2^64 * r + d
 
-                movq    $0x3333333333333334, s
-                movl    $0x3333333, wshort
+        movq    $0x3333333333333334, s
+        movl    $0x3333333, wshort
 
 divloop:
-                movq    -8(z,k,8), d
+        movq    -8(z,k,8), d
 
 // First re-split and shift so 2^28 * h + l = (2^64 * r + d) / 2
 // Then (2^64 * r + d) / 10 = [(2^28 - 1) / 5] * h + (h + l) / 5
 
-                movq    d, l
-                shlq    $35, l
-                shldq   $35, d, r
-                shrq    $36, l
-                movq    r, h
+        movq    d, l
+        shlq    $35, l
+        shldq   $35, d, r
+        shrq    $36, l
+        movq    r, h
 
-                addq    l, r
-                mulq    s
-                imulq   w, h
-                addq    l, q
-                movq    q, -8(z,k,8)
+        addq    l, r
+        mulq    s
+        imulq   w, h
+        addq    l, q
+        movq    q, -8(z,k,8)
 
 // Generate the new remainder r = d - 10 * q
 // Since r <= 9 we only need the low part computation ignoring carries
 
-                leaq    (q,q,4), q
-                negq    q
-                leaq    (d,q,2), r
+        leaq    (q,q,4), q
+        negq    q
+        leaq    (d,q,2), r
 
-                decq    k
-                jnz     divloop
+        decq    k
+        jnz     divloop
 
 // Return %rax = r as the final remainder
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

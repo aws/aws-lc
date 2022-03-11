@@ -45,47 +45,47 @@ _bignum_modoptneg:
 
 // Do nothing if k = 0
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Make an additional check for zero input, and force p to zero in this case.
 // This can be skipped if the input is known not to be zero a priori.
 
-                xorq    i, i
-                xorq    a, a
+        xorq    i, i
+        xorq    a, a
 cmploop:
-                orq     (x,i,8), a
-                incq    i
-                cmpq    k, i
-                jc      cmploop
+        orq     (x,i,8), a
+        incq    i
+        cmpq    k, i
+        jc      cmploop
 
-                cmpq    $0, a
-                cmovzq  a, p
+        cmpq    $0, a
+        cmovzq  a, p
 
 // Turn the input p into a strict bitmask
 
-                negq    p
-                sbbq    p, p
+        negq    p
+        sbbq    p, p
 
 // Main loop
 
-                xorq    i, i
-                movq    p, c
+        xorq    i, i
+        movq    p, c
 mainloop:
-                movq    (m,i,8), a
-                andq    p, a
-                movq    (x,i,8), b
-                xorq    p, b
-                negq    c
-                adcq    b, a
-                sbbq    c, c
-                movq    a, (z,i,8)
-                incq    i
-                cmpq    k, i
-                jc      mainloop
+        movq    (m,i,8), a
+        andq    p, a
+        movq    (x,i,8), b
+        xorq    p, b
+        negq    c
+        adcq    b, a
+        sbbq    c, c
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    k, i
+        jc      mainloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

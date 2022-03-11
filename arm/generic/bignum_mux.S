@@ -41,21 +41,21 @@
 bignum_mux:
 _bignum_mux:
 
-                cbz     k, end                  // if k = 0 skip the loop
-                cmp     b, #0                    // Set condition codes b = 0
+        cbz     k, end                  // if k = 0 skip the loop
+        cmp     b, #0                    // Set condition codes b = 0
 
 // We've set cc's from b once and for all and can now re-use "b" as a temporary
 
 loop:
-                sub     k, k, #1
-                ldr     a, [x, k, lsl #3]
-                ldr     b, [y, k, lsl #3]
-                csel    a, a, b, ne
-                str     a, [z, k, lsl #3]
-                cbnz    k, loop
+        sub     k, k, #1
+        ldr     a, [x, k, lsl #3]
+        ldr     b, [y, k, lsl #3]
+        csel    a, a, b, ne
+        str     a, [z, k, lsl #3]
+        cbnz    k, loop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -67,57 +67,57 @@ _bignum_triple_p256_alt:
 
 // Load the inputs
 
-                ldp     a0, a1, [x]
-                ldp     a2, a3, [x, #16]
+        ldp     a0, a1, [x]
+        ldp     a2, a3, [x, #16]
 
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 
-                lsl     d0, a0, #1
-                adds    d0, d0, a0
-                extr    d1, a1, a0, #63
-                adcs    d1, d1, a1
-                extr    d2, a2, a1, #63
-                adcs    d2, d2, a2
-                extr    d3, a3, a2, #63
-                adcs    d3, d3, a3
-                lsr     h, a3, #63
-                adc     h, h, xzr
+        lsl     d0, a0, #1
+        adds    d0, d0, a0
+        extr    d1, a1, a0, #63
+        adcs    d1, d1, a1
+        extr    d2, a2, a1, #63
+        adcs    d2, d2, a2
+        extr    d3, a3, a2, #63
+        adcs    d3, d3, a3
+        lsr     h, a3, #63
+        adc     h, h, xzr
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256 <= z - q * p_256 < p_256, so we just need
 // to subtract q * p_256 and then if that's negative, add back p_256.
 
-                add     q, h, #1
+        add     q, h, #1
 
 // Initial subtraction of z - q * p_256, with bitmask c for the carry
 
-                lsl     t1, q, #32
-                adds    d3, d3, t1
-                adc     h, h, xzr
-                sub     t0, xzr, q
-                sub     t1, t1, #1
-                subs    d0, d0, t0
-                sbcs    d1, d1, t1
-                sbcs    d2, d2, xzr
-                sbcs    d3, d3, q
-                sbc     c, h, q
+        lsl     t1, q, #32
+        adds    d3, d3, t1
+        adc     h, h, xzr
+        sub     t0, xzr, q
+        sub     t1, t1, #1
+        subs    d0, d0, t0
+        sbcs    d1, d1, t1
+        sbcs    d2, d2, xzr
+        sbcs    d3, d3, q
+        sbc     c, h, q
 
 // Use the bitmask c for final masked addition of p_256.
 
-                adds    d0, d0, c
-                mov     t0, #0x00000000ffffffff
-                and     t0, t0, c
-                adcs    d1, d1, t0
-                adcs    d2, d2, xzr
-                neg     t1, t0
-                adc     d3, d3, t1
+        adds    d0, d0, c
+        mov     t0, #0x00000000ffffffff
+        and     t0, t0, c
+        adcs    d1, d1, t0
+        adcs    d2, d2, xzr
+        neg     t1, t0
+        adc     d3, d3, t1
 
 // Finally store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

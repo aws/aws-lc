@@ -32,14 +32,14 @@ _bignum_odd:
 
 // Load RAX with the lowest digit for k > 0, else 0
 
-                xor     rax, rax
-                test    rdi, rdi
-                cmovnz  rax, [rsi]
+        xor     rax, rax
+        test    rdi, rdi
+        cmovnz  rax, [rsi]
 
 // Now just return the LSB
 
-                and     rax, 1
-                ret
+        and     rax, 1
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

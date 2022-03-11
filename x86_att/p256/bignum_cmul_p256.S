@@ -56,70 +56,70 @@ _bignum_cmul_p256:
 
 // Shuffle inputs (since we want multiplier in %rdx)
 
-                movq    %rdx, x
-                movq    %rsi, m
+        movq    %rdx, x
+        movq    %rsi, m
 
 // Multiply, accumulating the result as 2^256 * h + [d3;d2;d1;d0]
 
-                mulxq   (x), d0, d1
-                mulxq   8(x), a, d2
-                addq    a, d1
-                mulxq   16(x), a, d3
-                adcq    a, d2
-                mulxq   24(x), a, h
-                adcq    a, d3
-                adcq    $0, h
+        mulxq   (x), d0, d1
+        mulxq   8(x), a, d2
+        addq    a, d1
+        mulxq   16(x), a, d3
+        adcq    a, d2
+        mulxq   24(x), a, h
+        adcq    a, d3
+        adcq    $0, h
 
 // Writing the product as z = 2^256 * h + 2^192 * d3 + t = 2^192 * hl + t, our
 // intended quotient approximation is (hl + hl>>32 + 1)>>64. Note that by
 // hypothesis our product is <= (2^64 - 1) * (p_256 - 1), so there is no need
 // to max this out to avoid wrapping.
 
-                movq    h, a
-                shldq   $32, d3, a
-                movq    h, q
-                shrq    $32, q
+        movq    h, a
+        shldq   $32, d3, a
+        movq    h, q
+        shrq    $32, q
 
-                xorq    c, c
-                subq    $1, c
+        xorq    c, c
+        subq    $1, c
 
-                adcq    d3, a
-                adcq    h, q
+        adcq    d3, a
+        adcq    h, q
 
 // Now compute the initial pre-reduced result z - p_256 * q
 // = z - (2^256 - 2^224 + 2^192 + 2^96 - 1) * q
 // = z - 2^192 * 0xffffffff00000001 * q - 2^64 * 0x0000000100000000 * q + q
 
-                addq    q, d0
-                movq    $0x0000000100000000, a
-                mulxq   a, a, c
-                sbbq    $0, a
-                sbbq    $0, c
-                subq    a, d1
-                sbbq    c, d2
-                movq    $0xffffffff00000001, a
-                mulxq   a, a, c
-                sbbq    a, d3
-                sbbq    c, h
+        addq    q, d0
+        movq    $0x0000000100000000, a
+        mulxq   a, a, c
+        sbbq    $0, a
+        sbbq    $0, c
+        subq    a, d1
+        sbbq    c, d2
+        movq    $0xffffffff00000001, a
+        mulxq   a, a, c
+        sbbq    a, d3
+        sbbq    c, h
 
 // Now our top word h is either zero or all 1s, and we use this to discriminate
 // whether a correction is needed because our result is negative, as a bitmask
 // Do a masked addition of p_256 and write back
 
-                movl    $0x00000000ffffffff, ashort
-                andq    h, a
-                xorq    c, c
-                subq    a, c
-                addq    h, d0
-                movq    d0, (z)
-                adcq    a, d1
-                movq    d1, 8(z)
-                adcq    $0, d2
-                movq    d2, 16(z)
-                adcq    c, d3
-                movq    d3, 24(z)
+        movl    $0x00000000ffffffff, ashort
+        andq    h, a
+        xorq    c, c
+        subq    a, c
+        addq    h, d0
+        movq    d0, (z)
+        adcq    a, d1
+        movq    d1, 8(z)
+        adcq    $0, d2
+        movq    d2, 16(z)
+        adcq    c, d3
+        movq    d3, 24(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

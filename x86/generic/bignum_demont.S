@@ -66,134 +66,134 @@ _bignum_demont:
 
 // Save registers
 
-                push    rbx
-                push    rbp
-                push    r12
+        push    rbx
+        push    rbp
+        push    r12
 
 // If k = 0 the whole operation is trivial
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Compute word-level negated modular inverse w for m == m[0].
 
-                mov     a, [m]
+        mov     a, [m]
 
-                mov     t, a
-                mov     w, a
-                shl     t, 2
-                sub     w, t
-                xor     w, 2
+        mov     t, a
+        mov     w, a
+        shl     t, 2
+        sub     w, t
+        xor     w, 2
 
-                mov     t, w
-                imul    t, a
-                mov     ashort, 2
-                add     a, t
-                add     t, 1
+        mov     t, w
+        imul    t, a
+        mov     ashort, 2
+        add     a, t
+        add     t, 1
 
-                imul    w, a
+        imul    w, a
 
-                imul    t, t
-                mov     ashort, 1
-                add     a, t
-                imul    w, a
+        imul    t, t
+        mov     ashort, 1
+        add     a, t
+        imul    w, a
 
-                imul    t, t
-                mov     ashort, 1
-                add     a, t
-                imul    w, a
+        imul    t, t
+        mov     ashort, 1
+        add     a, t
+        imul    w, a
 
-                imul    t, t
-                mov     ashort, 1
-                add     a, t
-                imul    w, a
+        imul    t, t
+        mov     ashort, 1
+        add     a, t
+        imul    w, a
 
 // Initially just copy the input to the output. It would be a little more
 // efficient but somewhat fiddlier to tweak the zeroth iteration below instead.
 // After this we never use x again and can safely recycle RDX for muls
 
-                xor     j, j
+        xor     j, j
 iloop:
-                mov     a, [x+8*j]
-                mov     [z+8*j], a
-                inc     j
-                cmp     j, k
-                jc      iloop
+        mov     a, [x+8*j]
+        mov     [z+8*j], a
+        inc     j
+        cmp     j, k
+        jc      iloop
 
 // Outer loop, just doing a standard Montgomery reduction on z
 
-                xor     i, i
+        xor     i, i
 
 outerloop:
-                mov     e, [z]
-                mov     d, w
-                imul    d, e
-                mov     a, [m]
-                mul     d
-                add     a, e            // Will be zero but want the carry
-                mov     h, rdx
-                mov     jshort, 1
-                mov     n, k
-                dec     n
-                jz      montend
+        mov     e, [z]
+        mov     d, w
+        imul    d, e
+        mov     a, [m]
+        mul     d
+        add     a, e            // Will be zero but want the carry
+        mov     h, rdx
+        mov     jshort, 1
+        mov     n, k
+        dec     n
+        jz      montend
 
 montloop:
-                adc     h, [z+8*j]
-                sbb     e, e
-                mov     a, [m+8*j]
-                mul     d
-                sub     rdx, e
-                add     a, h
-                mov     [z+8*j-8], a
-                mov     h, rdx
-                inc     j
-                dec     n
-                jnz     montloop
+        adc     h, [z+8*j]
+        sbb     e, e
+        mov     a, [m+8*j]
+        mul     d
+        sub     rdx, e
+        add     a, h
+        mov     [z+8*j-8], a
+        mov     h, rdx
+        inc     j
+        dec     n
+        jnz     montloop
 
 montend:
-                adc     h, 0
-                mov     [z+8*j-8], h
+        adc     h, 0
+        mov     [z+8*j-8], h
 
 // End of outer loop.
 
-                inc     i
-                cmp     i, k
-                jc      outerloop
+        inc     i
+        cmp     i, k
+        jc      outerloop
 
 // Now do a comparison of z with m to set a final correction mask
 // indicating that z >= m and so we need to subtract m.
 
-                xor     j, j
-                mov     n, k
+        xor     j, j
+        mov     n, k
 cmploop:
-                mov     a, [z+8*j]
-                sbb     a, [m+8*j]
-                inc     j
-                dec     n
-                jnz     cmploop
-                sbb     d, d
-                not     d
+        mov     a, [z+8*j]
+        sbb     a, [m+8*j]
+        inc     j
+        dec     n
+        jnz     cmploop
+        sbb     d, d
+        not     d
 
 // Now do a masked subtraction of m for the final reduced result.
 
-                xor     e, e
-                xor     j, j
+        xor     e, e
+        xor     j, j
 corrloop:
-                mov     a, [m+8*j]
-                and     a, d
-                neg     e
-                sbb     [z+8*j], a
-                sbb     e, e
-                inc     j
-                cmp     j, k
-                jc      corrloop
+        mov     a, [m+8*j]
+        and     a, d
+        neg     e
+        sbb     [z+8*j], a
+        sbb     e, e
+        inc     j
+        cmp     j, k
+        jc      corrloop
 
 end:
-                pop     r12
-                pop     rbp
-                pop     rbx
+        pop     r12
+        pop     rbp
+        pop     rbx
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

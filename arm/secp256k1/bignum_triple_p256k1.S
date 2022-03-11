@@ -64,51 +64,51 @@ _bignum_triple_p256k1_alt:
 
 // Load the inputs
 
-                ldp     a0, a1, [x]
-                ldp     a2, a3, [x, #16]
+        ldp     a0, a1, [x]
+        ldp     a2, a3, [x, #16]
 
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 
-                adds    d0, a0, a0, lsl #1
-                extr    d1, a1, a0, #63
-                adcs    d1, d1, a1
-                extr    d2, a2, a1, #63
-                adcs    d2, d2, a2
-                extr    d3, a3, a2, #63
-                adcs    d3, d3, a3
-                lsr     h, a3, #63
-                adc     h, h, xzr
+        adds    d0, a0, a0, lsl #1
+        extr    d1, a1, a0, #63
+        adcs    d1, d1, a1
+        extr    d2, a2, a1, #63
+        adcs    d2, d2, a2
+        extr    d3, a3, a2, #63
+        adcs    d3, d3, a3
+        lsr     h, a3, #63
+        adc     h, h, xzr
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256k1 <= z - q * p_256k1 < p_256k1.
 
-                mov     c, #977
-                orr     c, c, #0x100000000
-                madd    m, h, c, c
+        mov     c, #977
+        orr     c, c, #0x100000000
+        madd    m, h, c, c
 
 // Initial subtraction of z - q * p_256k1, actually by adding q * 4294968273.
 
-                adds    d0, d0, m
-                adcs    d1, d1, xzr
-                adcs    d2, d2, xzr
-                adcs    d3, d3, xzr
+        adds    d0, d0, m
+        adcs    d1, d1, xzr
+        adcs    d2, d2, xzr
+        adcs    d3, d3, xzr
 
 // With z = 2^256 * h + l, the underlying result z' is actually
 // (2^256 * h + l) - q * (2^256 - 4294968273) = (l + q * 4294968273) - 2^256
 // so carry-clear <=> z' is negative. Correct by subtracting in that case.
 
-                csel    c, c, xzr, cc
-                subs    d0, d0, c
-                sbcs    d1, d1, xzr
-                sbcs    d2, d2, xzr
-                sbc     d3, d3, xzr
+        csel    c, c, xzr, cc
+        subs    d0, d0, c
+        sbcs    d1, d1, xzr
+        sbcs    d2, d2, xzr
+        sbc     d3, d3, xzr
 
 // Finally store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

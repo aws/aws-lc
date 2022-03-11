@@ -42,21 +42,21 @@
 
 bignum_mux:
 _bignum_mux:
-                test    k, k
-                jz      end                     // If length = 0 do nothing
+        test    k, k
+        jz      end                     // If length = 0 do nothing
 
-                xor     i, i
-                neg     b                       // CF <=> (b != 0)
+        xor     i, i
+        neg     b                       // CF <=> (b != 0)
 loop:
-                mov     a, [x+8*i]
-                mov     b, [y+8*i]
-                cmovnc  a, b                    // CF ? a : b
-                mov     [z+8*i],a
-                inc     i
-                dec     k
-                jnz     loop
+        mov     a, [x+8*i]
+        mov     b, [y+8*i]
+        cmovnc  a, b                    // CF ? a : b
+        mov     [z+8*i],a
+        inc     i
+        dec     k
+        jnz     loop
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

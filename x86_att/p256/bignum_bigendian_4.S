@@ -64,23 +64,23 @@ _bignum_tobebytes_4:
 
 // 0 and 3 words
 
-                movq    (x), a
-                movq    24(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 24(z)
-                movq    b, (z)
+        movq    (x), a
+        movq    24(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 24(z)
+        movq    b, (z)
 
 // 1 and 2 words
 
-                movq    8(x), a
-                movq    16(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 16(z)
-                movq    b, 8(z)
+        movq    8(x), a
+        movq    16(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 16(z)
+        movq    b, 8(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

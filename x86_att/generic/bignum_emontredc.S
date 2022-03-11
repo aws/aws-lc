@@ -71,80 +71,80 @@ _bignum_emontredc:
 
 // Save registers
 
-                pushq   %rbx
-                pushq   %r12
-                pushq   %r13
-                pushq   %r14
+        pushq   %rbx
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
 
 // Initialize top carry to zero immediately to catch the k = 0 case
 
-                xorq    c, c
+        xorq    c, c
 
 // If k = 0 the whole operation is trivial
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Move m into its permanent home since we need RDX for muls
 
-                movq    %rdx, m
+        movq    %rdx, m
 
 // Launch into the outer loop
 
-                xorq    i, i
+        xorq    i, i
 outerloop:
-                movq    (z), e
-                movq    w, d
-                imulq   e, d
-                movq    (m), a
-                mulq    d
-                movq    d, (z)
-                addq    e, a // Will be zero but want the carry
-                movq    %rdx, h
-                movl    $1, jshort
-                movq    k, t
-                decq    t
-                jz      montend
+        movq    (z), e
+        movq    w, d
+        imulq   e, d
+        movq    (m), a
+        mulq    d
+        movq    d, (z)
+        addq    e, a // Will be zero but want the carry
+        movq    %rdx, h
+        movl    $1, jshort
+        movq    k, t
+        decq    t
+        jz      montend
 
 montloop:
-                adcq    (z,j,8), h
-                sbbq    e, e
-                movq    (m,j,8), a
-                mulq    d
-                subq    e, %rdx
-                addq    h, a
-                movq    a, (z,j,8)
-                movq    %rdx, h
-                incq    j
-                decq    t
-                jnz     montloop
+        adcq    (z,j,8), h
+        sbbq    e, e
+        movq    (m,j,8), a
+        mulq    d
+        subq    e, %rdx
+        addq    h, a
+        movq    a, (z,j,8)
+        movq    %rdx, h
+        incq    j
+        decq    t
+        jnz     montloop
 
 montend:
-                adcq    c, h
-                movl    $0, cshort
-                adcq    $0, c
-                movq    (z,k,8), a
-                addq    h, a
-                movq    a, (z,k,8)
-                adcq    $0, c
+        adcq    c, h
+        movl    $0, cshort
+        adcq    $0, c
+        movq    (z,k,8), a
+        addq    h, a
+        movq    a, (z,k,8)
+        adcq    $0, c
 
 // End of outer loop.
 
-                addq    $8, z // For simple indexing, z pointer moves
-                incq    i
-                cmpq    k, i
-                jc      outerloop
+        addq    $8, z // For simple indexing, z pointer moves
+        incq    i
+        cmpq    k, i
+        jc      outerloop
 
 end:
 
 // Put the top carry in the expected place, restore registers and return
 
-                movq    c, %rax
-                popq    %r14
-                popq    %r13
-                popq    %r12
-                popq    %rbx
-                ret
+        movq    c, %rax
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbx
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

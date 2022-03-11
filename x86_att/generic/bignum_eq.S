@@ -41,52 +41,52 @@ _bignum_eq:
 
 // Initialize the accumulated OR of differences to zero
 
-                xorq    c, c
+        xorq    c, c
 
 // If m >= n jump into the m > n loop at the final equality test
 // This will drop through for m = n
 
-                cmpq    n, m
-                jnc     mtest
+        cmpq    n, m
+        jnc     mtest
 
 // Toploop for the case n > m
 
 nloop:
-                decq    n
-                orq     (y,n,8), c
-                cmpq    n, m
-                jnz     nloop
-                jmp     mmain
+        decq    n
+        orq     (y,n,8), c
+        cmpq    n, m
+        jnz     nloop
+        jmp     mmain
 
 // Toploop for the case m > n (or n = m which enters at "mtest")
 
 mloop:
-                decq    m
-                orq     (x,m,8), c
-                cmpq    n, m
+        decq    m
+        orq     (x,m,8), c
+        cmpq    n, m
 mtest:
-                jnz     mloop
+        jnz     mloop
 
 // Combined main loop for the min(m,n) lower words
 
 mmain:
-                testq   m, m
-                jz      end
+        testq   m, m
+        jz      end
 
 loop:
-                movq    -8(x,m,8), d
-                xorq    -8(y,m,8), d
-                orq     d, c
-                decq    m
-                jnz     loop
+        movq    -8(x,m,8), d
+        xorq    -8(y,m,8), d
+        orq     d, c
+        decq    m
+        jnz     loop
 
 // Set a standard C condition based on whether c is nonzero
 
 end:
-                negq    c
-                sbbq    c, c
-                incq    c
-                ret
+        negq    c
+        sbbq    c, c
+        incq    c
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

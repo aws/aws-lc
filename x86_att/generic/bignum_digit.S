@@ -44,25 +44,25 @@ _bignum_digit:
 
 // Set the default digit to 0, and for length zero finish immediately
 
-                xorq    d, d
-                testq   k, k
-                jz      end
+        xorq    d, d
+        testq   k, k
+        jz      end
 
 // Main loop: run over all the digits and take note of the n'th one
 
-                xorq    i, i
+        xorq    i, i
 loop:
-                movq    (x,i,8), a
-                cmpq    n, i
-                cmovzq  a, d
-                incq    i
-                cmpq    k, i
-                jc      loop
+        movq    (x,i,8), a
+        cmpq    n, i
+        cmovzq  a, d
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 // Return
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

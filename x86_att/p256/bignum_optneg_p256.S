@@ -48,51 +48,51 @@ _bignum_optneg_p256:
 // This step is redundant if we know a priori that the input is nonzero, which
 // is the case for the y coordinate of points on the P-256 curve, for example.
 
-                movq    (x), n0
-                orq     8(x), n0
-                movq    16(x), n1
-                orq     24(x), n1
-                orq     n1, n0
-                negq    n0
-                sbbq    n0, n0
-                andq    n0, q
+        movq    (x), n0
+        orq     8(x), n0
+        movq    16(x), n1
+        orq     24(x), n1
+        orq     n1, n0
+        negq    n0
+        sbbq    n0, n0
+        andq    n0, q
 
 // Turn q into a bitmask, all 1s for q=false, all 0s for q=true
 
-                negq    q
-                sbbq    q, q
-                notq    q
+        negq    q
+        sbbq    q, q
+        notq    q
 
 // Let [n3;n2;n1;n0] = if q then p_256 else -1
 
-                movq    $0xffffffffffffffff, n0
-                movl    $0x00000000ffffffff, n1short
-                orq     q, n1
-                movq    q, n2
-                movq    $0xffffffff00000001, n3
-                orq     q, n3
+        movq    $0xffffffffffffffff, n0
+        movl    $0x00000000ffffffff, n1short
+        orq     q, n1
+        movq    q, n2
+        movq    $0xffffffff00000001, n3
+        orq     q, n3
 
 // Subtract so [n3;n2;n1;n0] = if q then p_256 - x else -1 - x
 
-                subq    (x), n0
-                sbbq    8(x), n1
-                sbbq    16(x), n2
-                sbbq    24(x), n3
+        subq    (x), n0
+        sbbq    8(x), n1
+        sbbq    16(x), n2
+        sbbq    24(x), n3
 
 // XOR the words with the bitmask, which in the case q = false has the
 // effect of restoring ~(-1 - x) = -(-1 - x) - 1 = 1 + x - 1 = x
 // and write back the digits to the output
 
-                xorq    q, n0
-                movq    n0, (z)
-                xorq    q, n1
-                movq    n1, 8(z)
-                xorq    q, n2
-                movq    n2, 16(z)
-                xorq    q, n3
-                movq    n3, 24(z)
+        xorq    q, n0
+        movq    n0, (z)
+        xorq    q, n1
+        movq    n1, 8(z)
+        xorq    q, n2
+        movq    n2, 16(z)
+        xorq    q, n3
+        movq    n3, 24(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

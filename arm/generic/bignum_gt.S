@@ -42,59 +42,59 @@ _bignum_gt:
 
 // Zero the main index counter for both branches
 
-                mov     i, xzr
+        mov     i, xzr
 
 // Speculatively form n := n - m and do case split
 
-                subs    n, n, m
-                bcc     ylonger
+        subs    n, n, m
+        bcc     ylonger
 
 // The case where y is longer or of the same size (n >= m)
 // Note that CF=1 initially by the fact that we reach this point
 
-                cbz     m, xtest
+        cbz     m, xtest
 xmainloop:
-                ldr     a, [y, i, lsl #3]
-                ldr     d, [x, i, lsl #3]
-                sbcs    xzr, a, d
-                add     i, i, #1
-                sub     m, m, #1
-                cbnz    m, xmainloop
+        ldr     a, [y, i, lsl #3]
+        ldr     d, [x, i, lsl #3]
+        sbcs    xzr, a, d
+        add     i, i, #1
+        sub     m, m, #1
+        cbnz    m, xmainloop
 xtest:
-                cbz     n, xskip
+        cbz     n, xskip
 xtoploop:
-                ldr     a, [y, i, lsl #3]
-                sbcs    xzr, a, xzr
-                add     i, i, #1
-                sub     n, n, #1
-                cbnz    n, xtoploop
+        ldr     a, [y, i, lsl #3]
+        sbcs    xzr, a, xzr
+        add     i, i, #1
+        sub     n, n, #1
+        cbnz    n, xtoploop
 xskip:
-                cset    x0, cc
-                ret
+        cset    x0, cc
+        ret
 
 // The case where x is longer (m > n)
 // The first "adds" also makes sure CF=1 initially in this branch
 
 ylonger:
-                adds    n, n, m
-                cbz     n, ytoploop
-                sub     m, m, n
+        adds    n, n, m
+        cbz     n, ytoploop
+        sub     m, m, n
 ymainloop:
-                ldr     a, [y, i, lsl #3]
-                ldr     d, [x, i, lsl #3]
-                sbcs    xzr, a, d
-                add     i, i, #1
-                sub     n, n, #1
-                cbnz    n, ymainloop
+        ldr     a, [y, i, lsl #3]
+        ldr     d, [x, i, lsl #3]
+        sbcs    xzr, a, d
+        add     i, i, #1
+        sub     n, n, #1
+        cbnz    n, ymainloop
 ytoploop:
-                ldr     a, [x, i, lsl #3]
-                sbcs    xzr, xzr, a
-                add     i, i, #1
-                sub     m, m, #1
-                cbnz    m, ytoploop
+        ldr     a, [x, i, lsl #3]
+        sbcs    xzr, xzr, a
+        add     i, i, #1
+        sub     m, m, #1
+        cbnz    m, ytoploop
 
-                cset    x0, cc
-                ret
+        cset    x0, cc
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

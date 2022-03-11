@@ -75,30 +75,30 @@ _bignum_modifier:
 
 // Save some additional registers for use, copy args out of RCX and RDX
 
-                pushq   %rbp
-                pushq   %rbx
-                pushq   %r12
-                pushq   %r13
+        pushq   %rbp
+        pushq   %rbx
+        pushq   %r12
+        pushq   %r13
 
-                movq    %rdx, m
-                movq    %rcx, t
+        movq    %rdx, m
+        movq    %rcx, t
 
 // If k = 0 the whole operation is trivial
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Copy the input m into the temporary buffer t. The temporary register
 // c matters since we want it to hold the highest digit, ready for the
 // normalization phase.
 
-                xorq    i, i
+        xorq    i, i
 copyinloop:
-                movq    (m,i,8), c
-                movq    c, (t,i,8)
-                incq    i
-                cmpq    k, i
-                jc      copyinloop
+        movq    (m,i,8), c
+        movq    c, (t,i,8)
+        incq    i
+        cmpq    k, i
+        jc      copyinloop
 
 // Do a rather stupid but constant-time digit normalization, conditionally
 // shifting left (k-1) times based on whether the top word is zero.
@@ -106,24 +106,24 @@ copyinloop:
 // while still retaining the constant-time style.
 // The "neg c" sets the zeroness predicate (~CF) for the entire inner loop
 
-                movq    k, i
-                decq    i
-                jz      normalized
+        movq    k, i
+        decq    i
+        jz      normalized
 normloop:
-                xorq    j, j
-                movq    k, h
-                negq    c
-                movl    $0, ashort
+        xorq    j, j
+        movq    k, h
+        negq    c
+        movl    $0, ashort
 shufloop:
-                movq    a, c
-                movq    (t,j,8), a
-                cmovcq  a, c
-                movq    c, (t,j,8)
-                incq    j
-                decq    h
-                jnz     shufloop
-                decq    i
-                jnz     normloop
+        movq    a, c
+        movq    (t,j,8), a
+        cmovcq  a, c
+        movq    c, (t,j,8)
+        incq    j
+        decq    h
+        jnz     shufloop
+        decq    i
+        jnz     normloop
 
 // We now have the top digit nonzero, assuming the input was nonzero,
 // and as per the invariant of the loop above, c holds that digit. So
@@ -133,20 +133,20 @@ shufloop:
 
 normalized:
 
-                bsrq    c, c
-                xorq    $63, c
+        bsrq    c, c
+        xorq    $63, c
 
-                xorq    b, b
-                xorq    i, i
+        xorq    b, b
+        xorq    i, i
 bitloop:
-                movq    (t,i,8), a
-                movq    a, j
-                shldq   %cl, b, a
-                movq    a, (t,i,8)
-                movq    j, b
-                incq    i
-                cmpq    k, i
-                jc      bitloop
+        movq    (t,i,8), a
+        movq    a, j
+        shldq   %cl, b, a
+        movq    a, (t,i,8)
+        movq    j, b
+        incq    i
+        cmpq    k, i
+        jc      bitloop
 
 // Let h be the high word of n, which in all the in-scope cases is >= 2^63.
 // Now successively form q = 2^i div h and r = 2^i mod h as i goes from
@@ -155,25 +155,25 @@ bitloop:
 // don't bother with Newton-Raphson, since this stupid simple loop doesn't
 // contribute much of the overall runtime at typical sizes.
 
-                movq    -8(t,k,8), h
-                movl    $1, qshort
-                movq    h, r
-                negq    r
-                movl    $62, ishort
+        movq    -8(t,k,8), h
+        movl    $1, qshort
+        movq    h, r
+        negq    r
+        movl    $62, ishort
 estloop:
 
-                addq    q, q
-                movq    h, a
-                subq    r, a
-                cmpq    a, r // CF <=> r < h - r <=> 2 * r < h
-                sbbq    a, a
-                notq    a       // a = bitmask(2 * r >= h)
-                subq    a, q
-                addq    r, r
-                andq    h, a
-                subq    a, r
-                decq    i
-                jnz     estloop
+        addq    q, q
+        movq    h, a
+        subq    r, a
+        cmpq    a, r // CF <=> r < h - r <=> 2 * r < h
+        sbbq    a, a
+        notq    a       // a = bitmask(2 * r >= h)
+        subq    a, q
+        addq    r, r
+        andq    h, a
+        subq    a, r
+        decq    i
+        jnz     estloop
 
 // Strictly speaking the above loop doesn't quite give the true remainder
 // and quotient in the special case r = h = 2^63, so fix it up. We get
@@ -183,9 +183,9 @@ estloop:
 // specification (congruence modulo m) holds degenerately. But it seems
 // nicer to get a "true" quotient and remainder.
 
-                incq    r
-                cmpq    r, h
-                adcq    $0, q
+        incq    r
+        cmpq    r, h
+        adcq    $0, q
 
 // So now we have q and r with 2^126 = q * h + r (imagining r = 0 in the
 // fixed-up case above: note that we never actually use the computed
@@ -219,112 +219,112 @@ estloop:
 // result, not strict modular reduction (the doublings will maintain
 // the non-strict inequality).
 
-                xorq    c, c
-                xorq    i, i
+        xorq    c, c
+        xorq    i, i
 mulloop:
-                movq    (t,i,8), a
-                mulq    q
-                addq    c, a
-                adcq    $0, d
-                movq    a, (z,i,8)
-                movq    d, c
-                incq    i
-                cmpq    k, i
-                jc      mulloop
+        movq    (t,i,8), a
+        mulq    q
+        addq    c, a
+        adcq    $0, d
+        movq    a, (z,i,8)
+        movq    d, c
+        incq    i
+        cmpq    k, i
+        jc      mulloop
 
 // Now c is the high word of the product, so subtract 2^62
 // and then turn it into a bitmask in q = h
 
-                movq    $0x4000000000000000, a
-                subq    a, c
-                sbbq    q, q
-                notq    q
+        movq    $0x4000000000000000, a
+        subq    a, c
+        sbbq    q, q
+        notq    q
 
 // Now do [c] * n - d for our final answer
 
-                xorq    c, c
-                xorq    i, i
+        xorq    c, c
+        xorq    i, i
 remloop:
-                movq    (t,i,8), a
-                andq    q, a
-                negq    c
-                sbbq    (z,i,8), a
-                sbbq    c, c
-                movq    a, (z,i,8)
-                incq    i
-                cmpq    k, i
-                jc      remloop
+        movq    (t,i,8), a
+        andq    q, a
+        negq    c
+        sbbq    (z,i,8), a
+        sbbq    c, c
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    k, i
+        jc      remloop
 
 // Now still need to do a couple of modular doublings to get us all the
 // way up to 2^{p+64} == r from initial 2^{p+62} == r (mod n).
 
-                xorq    c, c
-                xorq    j, j
-                xorq    b, b
+        xorq    c, c
+        xorq    j, j
+        xorq    b, b
 dubloop1:
-                movq    (z,j,8), a
-                shrdq   $63, a, c
-                negq    b
-                sbbq    (t,j,8), c
-                sbbq    b, b
-                movq    c, (z,j,8)
-                movq    a, c
-                incq    j
-                cmpq    k, j
-                jc      dubloop1
-                shrq    $63, c
-                addq    b, c
-                xorq    j, j
-                xorq    b, b
+        movq    (z,j,8), a
+        shrdq   $63, a, c
+        negq    b
+        sbbq    (t,j,8), c
+        sbbq    b, b
+        movq    c, (z,j,8)
+        movq    a, c
+        incq    j
+        cmpq    k, j
+        jc      dubloop1
+        shrq    $63, c
+        addq    b, c
+        xorq    j, j
+        xorq    b, b
 corrloop1:
-                movq    (t,j,8), a
-                andq    c, a
-                negq    b
-                adcq    (z,j,8), a
-                sbbq    b, b
-                movq    a, (z,j,8)
-                incq    j
-                cmpq    k, j
-                jc      corrloop1
+        movq    (t,j,8), a
+        andq    c, a
+        negq    b
+        adcq    (z,j,8), a
+        sbbq    b, b
+        movq    a, (z,j,8)
+        incq    j
+        cmpq    k, j
+        jc      corrloop1
 
 // This is not exactly the same: we also copy output to t giving the
 // initialization t_1 = r == 2^{p+64} mod n for the main loop next.
 
-                xorq    c, c
-                xorq    j, j
-                xorq    b, b
+        xorq    c, c
+        xorq    j, j
+        xorq    b, b
 dubloop2:
-                movq    (z,j,8), a
-                shrdq   $63, a, c
-                negq    b
-                sbbq    (t,j,8), c
-                sbbq    b, b
-                movq    c, (z,j,8)
-                movq    a, c
-                incq    j
-                cmpq    k, j
-                jc      dubloop2
-                shrq    $63, c
-                addq    b, c
-                xorq    j, j
-                xorq    b, b
+        movq    (z,j,8), a
+        shrdq   $63, a, c
+        negq    b
+        sbbq    (t,j,8), c
+        sbbq    b, b
+        movq    c, (z,j,8)
+        movq    a, c
+        incq    j
+        cmpq    k, j
+        jc      dubloop2
+        shrq    $63, c
+        addq    b, c
+        xorq    j, j
+        xorq    b, b
 corrloop2:
-                movq    (t,j,8), a
-                andq    c, a
-                negq    b
-                adcq    (z,j,8), a
-                sbbq    b, b
-                movq    a, (z,j,8)
-                movq    a, (t,j,8)
-                incq    j
-                cmpq    k, j
-                jc      corrloop2
+        movq    (t,j,8), a
+        andq    c, a
+        negq    b
+        adcq    (z,j,8), a
+        sbbq    b, b
+        movq    a, (z,j,8)
+        movq    a, (t,j,8)
+        incq    j
+        cmpq    k, j
+        jc      corrloop2
 
 // We then successively generate (k+1)-digit values satisfying
 // t_i == 2^{p+64*i} mod n, each of which is stored in h::t. Finish
 // initialization by zeroing h initially
 
-                xorq    h, h
+        xorq    h, h
 
 // Then if t_i = 2^{p} * h + l
 // we have t_{i+1} == 2^64 * t_i
@@ -341,121 +341,121 @@ corrloop2:
 // This implementation makes the shift implicit by starting b with the
 // "previous" digit (initially 0) to offset things by 1.
 
-                movq    k, i
+        movq    k, i
 modloop:
-                xorq    b, b
-                movq    k, n
-                xorq    j, j
-                xorq    c, c
+        xorq    b, b
+        movq    k, n
+        xorq    j, j
+        xorq    c, c
 cmaloop:
-                adcq    b, c
-                sbbq    l, l
-                movq    (z,j,8), a
-                mulq    h
-                subq    l, d
-                addq    c, a
-                movq    (t,j,8), b
-                movq    a, (t,j,8)
-                movq    d, c
-                incq    j
-                decq    n
-                jnz     cmaloop
-                adcq    c, b
-                movq    b, h
+        adcq    b, c
+        sbbq    l, l
+        movq    (z,j,8), a
+        mulq    h
+        subq    l, d
+        addq    c, a
+        movq    (t,j,8), b
+        movq    a, (t,j,8)
+        movq    d, c
+        incq    j
+        decq    n
+        jnz     cmaloop
+        adcq    c, b
+        movq    b, h
 
-                sbbq    l, l
+        sbbq    l, l
 
-                xorq    j, j
-                xorq    c, c
+        xorq    j, j
+        xorq    c, c
 oaloop:
-                movq    (t,j,8), a
-                movq    (z,j,8), b
-                andq    l, b
-                negq    c
-                adcq    b, a
-                sbbq    c, c
-                movq    a, (t,j,8)
-                incq    j
-                cmpq    k, j
-                jc      oaloop
-                subq    c, h
+        movq    (t,j,8), a
+        movq    (z,j,8), b
+        andq    l, b
+        negq    c
+        adcq    b, a
+        sbbq    c, c
+        movq    a, (t,j,8)
+        incq    j
+        cmpq    k, j
+        jc      oaloop
+        subq    c, h
 
-                decq    i
-                jnz     modloop
+        decq    i
+        jnz     modloop
 
 // Compute the negated modular inverse w (same register as i, not used again).
 
-                movq    (m), a
-                movq    a, c
-                movq    a, w
-                shlq    $2, c
-                subq    c, w
-                xorq    $2, w
-                movq    w, c
-                imulq   a, c
-                movl    $2, ashort
-                addq    c, a
-                addq    $1, c
-                imulq   a, w
-                imulq   c, c
-                movl    $1, ashort
-                addq    c, a
-                imulq   a, w
-                imulq   c, c
-                movl    $1, ashort
-                addq    c, a
-                imulq   a, w
-                imulq   c, c
-                movl    $1, ashort
-                addq    c, a
-                imulq   a, w
+        movq    (m), a
+        movq    a, c
+        movq    a, w
+        shlq    $2, c
+        subq    c, w
+        xorq    $2, w
+        movq    w, c
+        imulq   a, c
+        movl    $2, ashort
+        addq    c, a
+        addq    $1, c
+        imulq   a, w
+        imulq   c, c
+        movl    $1, ashort
+        addq    c, a
+        imulq   a, w
+        imulq   c, c
+        movl    $1, ashort
+        addq    c, a
+        imulq   a, w
+        imulq   c, c
+        movl    $1, ashort
+        addq    c, a
+        imulq   a, w
 
 // Now do one almost-Montgomery reduction w.r.t. the original m
 // which lops off one 2^64 from the congruence and, with the usual
 // almost-Montgomery correction, gets us back inside k digits
 
-                movq    (t), c
-                movq    w, b
-                imulq   c, b
+        movq    (t), c
+        movq    w, b
+        imulq   c, b
 
-                movq    (m), a
-                mulq    b
-                addq    c, a
-                movq    d, c
-                movl    $1, jshort
-                movq    k, n
-                decq    n
-                jz      amontend
+        movq    (m), a
+        mulq    b
+        addq    c, a
+        movq    d, c
+        movl    $1, jshort
+        movq    k, n
+        decq    n
+        jz      amontend
 amontloop:
-                adcq    (t,j,8), c
-                sbbq    l, l
-                movq    (m,j,8), a
-                mulq    b
-                subq    l, d
-                addq    c, a
-                movq    a, -8(t,j,8)
-                movq    d, c
-                incq    j
-                decq    n
-                jnz     amontloop
+        adcq    (t,j,8), c
+        sbbq    l, l
+        movq    (m,j,8), a
+        mulq    b
+        subq    l, d
+        addq    c, a
+        movq    a, -8(t,j,8)
+        movq    d, c
+        incq    j
+        decq    n
+        jnz     amontloop
 amontend:
-                adcq    c, h
-                sbbq    l, l
-                movq    h, -8(t,k,8)
+        adcq    c, h
+        sbbq    l, l
+        movq    h, -8(t,k,8)
 
-                xorq    j, j
-                xorq    c, c
+        xorq    j, j
+        xorq    c, c
 aosloop:
-                movq    (t,j,8), a
-                movq    (m,j,8), b
-                andq    l, b
-                negq    c
-                sbbq    b, a
-                sbbq    c, c
-                movq    a, (z,j,8)
-                incq    j
-                cmpq    k, j
-                jc      aosloop
+        movq    (t,j,8), a
+        movq    (m,j,8), b
+        andq    l, b
+        negq    c
+        sbbq    b, a
+        sbbq    c, c
+        movq    a, (z,j,8)
+        incq    j
+        cmpq    k, j
+        jc      aosloop
 
 // So far, the code (basically the same as bignum_amontifier) has produced
 // a k-digit value z == 2^{128k} (mod m), not necessarily fully reduced mod m.
@@ -463,74 +463,74 @@ aosloop:
 // we achieve full reduction mod m while lopping 2^{64k} off the congruence.
 // We recycle h as the somewhat strangely-named outer loop counter.
 
-                movq    k, h
+        movq    k, h
 
 montouterloop:
-                movq    (z), c
-                movq    w, b
-                imulq   c, b
-                movq    (m), a
-                mulq    b
-                addq    c, a
-                movq    d, c
-                movl    $1, jshort
-                movq    k, n
-                decq    n
-                jz      montend
+        movq    (z), c
+        movq    w, b
+        imulq   c, b
+        movq    (m), a
+        mulq    b
+        addq    c, a
+        movq    d, c
+        movl    $1, jshort
+        movq    k, n
+        decq    n
+        jz      montend
 montloop:
-                adcq    (z,j,8), c
-                sbbq    l, l
-                movq    (m,j,8), a
-                mulq    b
-                subq    l, d
-                addq    c, a
-                movq    a, -8(z,j,8)
-                movq    d, c
-                incq    j
-                decq    n
-                jnz     montloop
+        adcq    (z,j,8), c
+        sbbq    l, l
+        movq    (m,j,8), a
+        mulq    b
+        subq    l, d
+        addq    c, a
+        movq    a, -8(z,j,8)
+        movq    d, c
+        incq    j
+        decq    n
+        jnz     montloop
 montend:
-                adcq    $0, c
-                movq    c, -8(z,k,8)
+        adcq    $0, c
+        movq    c, -8(z,k,8)
 
-                decq    h
-                jnz     montouterloop
+        decq    h
+        jnz     montouterloop
 
 // Now do a comparison of z with m to set a final correction mask
 // indicating that z >= m and so we need to subtract m.
 
-                xorq    j, j
-                movq    k, n
+        xorq    j, j
+        movq    k, n
 cmploop:
-                movq    (z,j,8), a
-                sbbq    (m,j,8), a
-                incq    j
-                decq    n
-                jnz     cmploop
-                sbbq    d, d
-                notq    d
+        movq    (z,j,8), a
+        sbbq    (m,j,8), a
+        incq    j
+        decq    n
+        jnz     cmploop
+        sbbq    d, d
+        notq    d
 
 // Now do a masked subtraction of m for the final reduced result.
 
-                xorq    l, l
-                xorq    j, j
+        xorq    l, l
+        xorq    j, j
 corrloop:
-                movq    (m,j,8), a
-                andq    d, a
-                negq    l
-                sbbq    a, (z,j,8)
-                sbbq    l, l
-                incq    j
-                cmpq    k, j
-                jc      corrloop
+        movq    (m,j,8), a
+        andq    d, a
+        negq    l
+        sbbq    a, (z,j,8)
+        sbbq    l, l
+        incq    j
+        cmpq    k, j
+        jc      corrloop
 
 end:
-                popq    %r13
-                popq    %r12
-                popq    %rbx
-                popq    %rbp
+        popq    %r13
+        popq    %r12
+        popq    %rbx
+        popq    %rbp
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

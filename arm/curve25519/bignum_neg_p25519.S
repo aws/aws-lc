@@ -44,33 +44,33 @@ _bignum_neg_p25519:
 // Load the digits of x and compute [d3;d2;d1;d0] = (2^255 - 19) - x
 // while also computing c = the OR of the digits of x
 
-                ldp     d0, d1, [x]
-                mov     d, #-19
-                orr     c, d0, d1
-                subs    d0, d, d0
-                mov     d, #-1
-                sbcs    d1, d, d1
-                ldp     d2, d3, [x, #16]
-                orr     c, c, d2
-                sbcs    d2, d, d2
-                mov     d, #0x7FFFFFFFFFFFFFFF
-                orr     c, c, d3
-                sbc     d3, d, d3
+        ldp     d0, d1, [x]
+        mov     d, #-19
+        orr     c, d0, d1
+        subs    d0, d, d0
+        mov     d, #-1
+        sbcs    d1, d, d1
+        ldp     d2, d3, [x, #16]
+        orr     c, c, d2
+        sbcs    d2, d, d2
+        mov     d, #0x7FFFFFFFFFFFFFFF
+        orr     c, c, d3
+        sbc     d3, d, d3
 
 // If in fact c = 0 then the result is zero, otherwise the main result
 
-                cmp     c, xzr
-                csel    d0, d0, xzr, ne
-                csel    d1, d1, xzr, ne
-                csel    d2, d2, xzr, ne
-                csel    d3, d3, xzr, ne
+        cmp     c, xzr
+        csel    d0, d0, xzr, ne
+        csel    d1, d1, xzr, ne
+        csel    d2, d2, xzr, ne
+        csel    d3, d3, xzr, ne
 
 // Write back result and return
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

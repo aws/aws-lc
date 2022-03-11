@@ -46,30 +46,30 @@ _bignum_muladd10:
 
 // Move carry input to permanent home, and if k = 0 skip the main loop
 
-                mov     d, rdx
-                test    k, k
-                jz      end
+        mov     d, rdx
+        test    k, k
+        jz      end
 
 // Simple loop
 
-                xor     i, i
-                mov     tenshort, 10
+        xor     i, i
+        mov     tenshort, 10
 loop:
-                mov     a, [z+8*i]
-                mul     ten
-                add     l, d
-                mov     [z+8*i], l
-                adc     h, 0
-                mov     d, h
-                inc     i
-                cmp     i, k
-                jc      loop
+        mov     a, [z+8*i]
+        mul     ten
+        add     l, d
+        mov     [z+8*i], l
+        adc     h, 0
+        mov     d, h
+        inc     i
+        cmp     i, k
+        jc      loop
 
 // Return the final carry
 
 end:
-                mov     rax, d
-                ret
+        mov     rax, d
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

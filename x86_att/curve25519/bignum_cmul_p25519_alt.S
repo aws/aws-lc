@@ -60,64 +60,64 @@ _bignum_cmul_p25519_alt:
 
 // Shuffle inputs (since we want %rdx for the high parts of products)
 
-                movq    %rdx, x
+        movq    %rdx, x
 
 // Multiply, accumulating the result as [d4;d3;d2;d1;d0]
 
-                movq    (x), a
-                mulq    %rsi
-                movq    a, d0
-                movq    d, d1
+        movq    (x), a
+        mulq    %rsi
+        movq    a, d0
+        movq    d, d1
 
-                movq    8(x), a
-                xorq    d2, d2
-                mulq    %rsi
-                addq    a, d1
-                adcq    d, d2
+        movq    8(x), a
+        xorq    d2, d2
+        mulq    %rsi
+        addq    a, d1
+        adcq    d, d2
 
-                movq    16(x), a
-                mulq    %rsi
-                addq    a, d2
-                adcq    $0, d
+        movq    16(x), a
+        mulq    %rsi
+        addq    a, d2
+        adcq    $0, d
 
-                movq    24(x), a
-                movq    d, d3
-                mulq    %rsi
-                xorl    zeroe, zeroe
-                addq    a, d3
-                adcq    zero, d4
+        movq    24(x), a
+        movq    d, d3
+        mulq    %rsi
+        xorl    zeroe, zeroe
+        addq    a, d3
+        adcq    zero, d4
 
 // Let [d4;d3;d2;d1;d0] = 2^255 * h + l, and use q = h + 1 as the initial
 // quotient estimate, which is either right or 1 too big.
 
-                shldq   $1, d3, d4
-                movl    $19, cshort
-                leaq    1(d4), a
-                bts     $63, d3
-                mulq    c
-                addq    a, d0
-                adcq    d, d1
-                adcq    zero, d2
-                adcq    zero, d3
+        shldq   $1, d3, d4
+        movl    $19, cshort
+        leaq    1(d4), a
+        bts     $63, d3
+        mulq    c
+        addq    a, d0
+        adcq    d, d1
+        adcq    zero, d2
+        adcq    zero, d3
 
 // Correct if CF = 0 by subtracting 19, either way masking to
 // 255 bits, i.e. by effectively adding p_25519 to the "full" answer
 
-                cmovcq  zero, c
-                subq    c, d0
-                sbbq    zero, d1
-                sbbq    zero, d2
-                sbbq    zero, d3
-                btr     $63, d3
+        cmovcq  zero, c
+        subq    c, d0
+        sbbq    zero, d1
+        sbbq    zero, d2
+        sbbq    zero, d3
+        btr     $63, d3
 
 // Write everything back
 
-                movq    d0, (z)
-                movq    d1, 8(z)
-                movq    d2, 16(z)
-                movq    d3, 24(z)
+        movq    d0, (z)
+        movq    d1, 8(z)
+        movq    d2, 16(z)
+        movq    d3, 24(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

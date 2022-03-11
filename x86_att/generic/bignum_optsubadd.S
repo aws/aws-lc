@@ -56,47 +56,48 @@ _bignum_optsubadd:
 
 // Initialize top carry to zero in all cases (also return value)
 
-                xorq    c, c
+        xorq    c, c
 
 // If k = 0 do nothing
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Turn the input p into two bitmasks, m indicating to use the y input at
 // all (same register as p) and q indicating a sign-flip
 
-                movq    p, q
-                sarq    $63, q
-                negq    p
-                sbbq    m, m
+        movq    p, q
+        sarq    $63, q
+        negq    p
+        sbbq    m, m
 
 // Generate an initial carry-in for the negating case only to add 1; this
 // is because we are actually going to do complements of the words of y
 
-                movq    q, c
+        movq    q, c
 
 // Now go round the loop for i=0...k-1, saving the carry in c each iteration
 
-                xorq    i, i
+        xorq    i, i
 loop:
-                movq    (y,i,8), a
-                xorq    q, a
-                andq    m, a
-                negq    c
-                adcq    (x,i,8), a
-                sbbq    c, c
-                movq    a, (z,i,8)
-                incq    i
-                cmpq    k, i
-                jc      loop
+        movq    (y,i,8), a
+        xorq    q, a
+        andq    m, a
+        negq    c
+        adcq    (x,i,8), a
+        sbbq    c, c
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 // Return carry flag, fixing up inversion for negative case
 
-                xorq    q, %rax
-                negq    %rax
+        xorq    q, %rax
+        negq    %rax
 
-end:            ret
+end:
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

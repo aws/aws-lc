@@ -68,28 +68,28 @@
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                mov     rdx, d0;                                        \
-                shl     rdx, 32;                                        \
-                add     rdx, d0;                                        \
+        mov     rdx, d0;                                        \
+        shl     rdx, 32;                                        \
+        add     rdx, d0;                                        \
 /* Construct [rbx;d0;rax;-] = (2^384 - p_384) * w            */         \
 /* We know the lowest word will cancel so we can re-use d0   */         \
 /* and rbx as temps.                                         */         \
-                mov     rax, 0xffffffff00000001;                        \
-                mulx    rax, d0, rax;                                   \
-                mov     ebx, 0x00000000ffffffff;                        \
-                mulx    d0, rbx, rbx;                                   \
-                add     rax, rbx;                                       \
-                adc     d0, rdx;                                        \
-                mov     ebx, 0;                                         \
-                adc     rbx, rbx;                                       \
+        mov     rax, 0xffffffff00000001;                        \
+        mulx    rax, d0, rax;                                   \
+        mov     ebx, 0x00000000ffffffff;                        \
+        mulx    d0, rbx, rbx;                                   \
+        add     rax, rbx;                                       \
+        adc     d0, rdx;                                        \
+        mov     ebx, 0;                                         \
+        adc     rbx, rbx;                                       \
 /* Now subtract that and add 2^384 * w                       */         \
-                sub     d1, rax;                                        \
-                sbb     d2, d0;                                         \
-                sbb     d3, rbx;                                        \
-                sbb     d4, 0;                                          \
-                sbb     d5, 0;                                          \
-                mov     d6, rdx;                                        \
-                sbb     d6, 0
+        sub     d1, rax;                                        \
+        sbb     d2, d0;                                         \
+        sbb     d3, rbx;                                        \
+        sbb     d4, 0;                                          \
+        sbb     d5, 0;                                          \
+        mov     d6, rdx;                                        \
+        sbb     d6, 0
 
 bignum_montsqr_p384:
 _bignum_montsqr_p384:

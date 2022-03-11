@@ -35,16 +35,16 @@ _bignum_of_word:
 
 // If k = 0 do nothing
 
-                test    rdi, rdi
-                jz      end
+        test    rdi, rdi
+        jz      end
 
 bignum_of_word_nontrivial:
 
 // Write lowest word and jump to end if k = 1
 
-                mov     [rsi],rdx
-                dec     rdi
-                jz      end
+        mov     [rsi],rdx
+        dec     rdi
+        jz      end
 
 // Zero rdx and write it to all z[i] for i = k-1 down to 1
 // It's a bit more compact to iterate "high to low" like this.
@@ -52,14 +52,14 @@ bignum_of_word_nontrivial:
 // each time round the loop (which also modifies one more reg)
 // we could go "low to high" if it helps with prefetch etc.
 
-                xor     rdx, rdx
+        xor     rdx, rdx
 loop:
-                mov     [rsi+8*rdi],rdx
-                dec     rdi
-                jnz     loop
+        mov     [rsi+8*rdi],rdx
+        dec     rdi
+        jnz     loop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

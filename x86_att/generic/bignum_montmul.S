@@ -75,71 +75,71 @@ _bignum_montmul:
 
 // Save registers and allocate space on stack for non-register variable w
 
-                pushq   %rbx
-                pushq   %rbp
-                pushq   %r12
-                pushq   %r13
-                pushq   %r14
-                pushq   %r15
-                subq    $8, %rsp
+        pushq   %rbx
+        pushq   %rbp
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
+        pushq   %r15
+        subq    $8, %rsp
 
 // If k = 0 the whole operation is trivial
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Move x input into its permanent home, since we need %rdx for multiplications
 
-                movq    %rdx, x
+        movq    %rdx, x
 
 // Compute word-level negated modular inverse w for m == m[0].
 
-                movq    (m), a
+        movq    (m), a
 
-                movq    a, t2
-                movq    a, t1
-                shlq    $2, t2
-                subq    t2, t1
-                xorq    $2, t1
+        movq    a, t2
+        movq    a, t1
+        shlq    $2, t2
+        subq    t2, t1
+        xorq    $2, t1
 
-                movq    t1, t2
-                imulq   a, t2
-                movl    $2, ashort
-                addq    t2, a
-                addq    $1, t2
+        movq    t1, t2
+        imulq   a, t2
+        movl    $2, ashort
+        addq    t2, a
+        addq    $1, t2
 
-                imulq   a, t1
+        imulq   a, t1
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, t1
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, t1
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, t1
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, t1
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, t1
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, t1
 
-                movq    t1, w
+        movq    t1, w
 
 // Initialize the output c0::z to zero so we can then consistently add rows.
 // It would be a bit more efficient to special-case the zeroth row, but
 // this keeps the code slightly simpler.
 
-                xorq    i, i // Also initializes i for main loop
-                xorq    j, j
+        xorq    i, i // Also initializes i for main loop
+        xorq    j, j
 zoop:
-                movq    i, (z,j,8)
-                incq    j
-                cmpq    k, j
-                jc      zoop
+        movq    i, (z,j,8)
+        incq    j
+        cmpq    k, j
+        jc      zoop
 
-                xorq    c0, c0
+        xorq    c0, c0
 
 // Outer loop pulling down digits d=x[i], multiplying by y and reducing
 
@@ -149,106 +149,106 @@ outerloop:
 // Note that in general we do need yet one more carry in this phase and hence
 // initialize c1 with the top carry.
 
-                movq    (x,i,8), d
-                xorq    j, j
-                xorq    h, h
-                xorq    c1, c1
-                movq    k, n
+        movq    (x,i,8), d
+        xorq    j, j
+        xorq    h, h
+        xorq    c1, c1
+        movq    k, n
 
 maddloop:
-                adcq    (z,j,8), h
-                sbbq    e, e
-                movq    (y,j,8), a
-                mulq    d
-                subq    e, %rdx
-                addq    h, a
-                movq    a, (z,j,8)
-                movq    %rdx, h
-                incq    j
-                decq    n
-                jnz     maddloop
-                adcq    h, c0
-                adcq    c1, c1
+        adcq    (z,j,8), h
+        sbbq    e, e
+        movq    (y,j,8), a
+        mulq    d
+        subq    e, %rdx
+        addq    h, a
+        movq    a, (z,j,8)
+        movq    %rdx, h
+        incq    j
+        decq    n
+        jnz     maddloop
+        adcq    h, c0
+        adcq    c1, c1
 
 // Montgomery reduction loop, similar but offsetting writebacks
 
-                movq    (z), e
-                movq    w, d
-                imulq   e, d
-                movq    (m), a
-                mulq    d
-                addq    e, a // Will be zero but want the carry
-                movq    %rdx, h
-                movl    $1, jshort
-                movq    k, n
-                decq    n
-                jz      montend
+        movq    (z), e
+        movq    w, d
+        imulq   e, d
+        movq    (m), a
+        mulq    d
+        addq    e, a // Will be zero but want the carry
+        movq    %rdx, h
+        movl    $1, jshort
+        movq    k, n
+        decq    n
+        jz      montend
 
 montloop:
-                adcq    (z,j,8), h
-                sbbq    e, e
-                movq    (m,j,8), a
-                mulq    d
-                subq    e, %rdx
-                addq    h, a
-                movq    a, -8(z,j,8)
-                movq    %rdx, h
-                incq    j
-                decq    n
-                jnz     montloop
+        adcq    (z,j,8), h
+        sbbq    e, e
+        movq    (m,j,8), a
+        mulq    d
+        subq    e, %rdx
+        addq    h, a
+        movq    a, -8(z,j,8)
+        movq    %rdx, h
+        incq    j
+        decq    n
+        jnz     montloop
 
 montend:
-                adcq    c0, h
-                adcq    $0, c1
-                movq    c1, c0
-                movq    h, -8(z,j,8)
+        adcq    c0, h
+        adcq    $0, c1
+        movq    c1, c0
+        movq    h, -8(z,j,8)
 
 // End of outer loop.
 
-                incq    i
-                cmpq    k, i
-                jc      outerloop
+        incq    i
+        cmpq    k, i
+        jc      outerloop
 
 // Now do a comparison of (c0::z) with (0::m) to set a final correction mask
 // indicating that (c0::z) >= m and so we need to subtract m.
 
-                xorq    j, j
-                movq    k, n
+        xorq    j, j
+        movq    k, n
 cmploop:
-                movq    (z,j,8), a
-                sbbq    (m,j,8), a
-                incq    j
-                decq    n
-                jnz     cmploop
+        movq    (z,j,8), a
+        sbbq    (m,j,8), a
+        incq    j
+        decq    n
+        jnz     cmploop
 
-                sbbq    $0, c0
-                sbbq    d, d
-                notq    d
+        sbbq    $0, c0
+        sbbq    d, d
+        notq    d
 
 // Now do a masked subtraction of m for the final reduced result.
 
-                xorq    e, e
-                xorq    j, j
+        xorq    e, e
+        xorq    j, j
 corrloop:
-                movq    (m,j,8), a
-                andq    d, a
-                negq    e
-                sbbq    a, (z,j,8)
-                sbbq    e, e
-                incq    j
-                cmpq    k, j
-                jc      corrloop
+        movq    (m,j,8), a
+        andq    d, a
+        negq    e
+        sbbq    a, (z,j,8)
+        sbbq    e, e
+        incq    j
+        cmpq    k, j
+        jc      corrloop
 
 end:
-                addq    $8, %rsp
-                popq    %r15
-                popq    %r14
-                popq    %r13
-                popq    %r12
-                popq    %rbp
-                popq    %rbx
+        addq    $8, %rsp
+        popq    %r15
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbp
+        popq    %rbx
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

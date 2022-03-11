@@ -53,60 +53,60 @@ _bignum_tomont_p256k1_alt:
 // since the multiplier 4294968273 is known to be much less than 2^64.
 // We keep this constant in %rcx throughout as it's used repeatedly.
 
-                movq    $4294968273, c
+        movq    $4294968273, c
 
 // Multiply, accumulating the result as 2^256 * h + [d3;d2;d1;d0]
 
-                movq    (x), a
-                mulq    c
-                movq    a, d0
-                movq    d, d1
+        movq    (x), a
+        mulq    c
+        movq    a, d0
+        movq    d, d1
 
-                movq    8(x), a
-                xorq    d2, d2
-                mulq    c
-                addq    a, d1
-                adcq    d, d2
+        movq    8(x), a
+        xorq    d2, d2
+        mulq    c
+        addq    a, d1
+        adcq    d, d2
 
-                movq    16(x), a
-                mulq    c
-                addq    a, d2
-                adcq    $0, d
+        movq    16(x), a
+        mulq    c
+        addq    a, d2
+        adcq    $0, d
 
-                movq    24(x), a
-                movq    d, d3
-                mulq    c
-                addq    a, d3
-                adcq    $0, h
+        movq    24(x), a
+        movq    d, d3
+        mulq    c
+        addq    a, d3
+        adcq    $0, h
 
 // Now the quotient estimate is q = h + 1, and then we do the reduction,
 // writing z = [d3;d2;d1;d0], as z' = (2^256 * h + z) - q * p_256k1 =
 // (2^256 * h + z) - q * (2^256 - 4294968273) = -2^256 + (z + 4294968273 * q)
 
-                leaq    1(h), q
-                mulq    c
+        leaq    1(h), q
+        mulq    c
 
-                addq    %rax, d0
-                adcq    %rdx, d1
-                adcq    $0, d2
-                adcq    $0, d3
+        addq    %rax, d0
+        adcq    %rdx, d1
+        adcq    $0, d2
+        adcq    $0, d3
 
 // Because of the implicit -2^256, CF means >= 0 so z' is the answer; ~CF
 // means z' < 0 so we add p_256k1, which in 4 digits means subtracting c.
 
-                movq    $0, a
-                cmovcq  a, c
+        movq    $0, a
+        cmovcq  a, c
 
-                subq    c, d0
-                movq    d0, (z)
-                sbbq    a, d1
-                movq    d1, 8(z)
-                sbbq    a, d2
-                movq    d2, 16(z)
-                sbbq    a, d3
-                movq    d3, 24(z)
+        subq    c, d0
+        movq    d0, (z)
+        sbbq    a, d1
+        movq    d1, 8(z)
+        sbbq    a, d2
+        movq    d2, 16(z)
+        sbbq    a, d3
+        movq    d3, 24(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

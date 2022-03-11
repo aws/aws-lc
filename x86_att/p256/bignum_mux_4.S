@@ -41,29 +41,29 @@
 
 bignum_mux_4:
 _bignum_mux_4:
-                testq   p, p
+        testq   p, p
 
-                movq    (x), a
-                movq    (y), b
-                cmovzq  b, a
-                movq    a, (z)
+        movq    (x), a
+        movq    (y), b
+        cmovzq  b, a
+        movq    a, (z)
 
-                movq    8(x), a
-                movq    8(y), b
-                cmovzq  b, a
-                movq    a, 8(z)
+        movq    8(x), a
+        movq    8(y), b
+        cmovzq  b, a
+        movq    a, 8(z)
 
-                movq    16(x), a
-                movq    16(y), b
-                cmovzq  b, a
-                movq    a, 16(z)
+        movq    16(x), a
+        movq    16(y), b
+        cmovzq  b, a
+        movq    a, 16(z)
 
-                movq    24(x), a
-                movq    24(y), b
-                cmovzq  b, a
-                movq    a, 24(z)
+        movq    24(x), a
+        movq    24(y), b
+        cmovzq  b, a
+        movq    a, 24(z)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

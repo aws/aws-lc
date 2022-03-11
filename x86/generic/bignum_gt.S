@@ -44,59 +44,59 @@ _bignum_gt:
 
 // Zero the main index counter for both branches
 
-                xor     i, i
+        xor     i, i
 
 // Speculatively form n := n - m and do case split
 
-                sub     n, m
-                jc      ylonger
+        sub     n, m
+        jc      ylonger
 
 // The case where y is longer or of the same size (n >= m)
 
-                inc     n
-                test    m, m
-                jz      xtest
+        inc     n
+        test    m, m
+        jz      xtest
 xmainloop:
-                mov     a, [y+8*i]
-                sbb     a, [x+8*i]
-                inc     i
-                dec     m
-                jnz     xmainloop
-                jmp     xtest
+        mov     a, [y+8*i]
+        sbb     a, [x+8*i]
+        inc     i
+        dec     m
+        jnz     xmainloop
+        jmp     xtest
 xtoploop:
-                mov     a, [y+8*i]
-                sbb     a, 0
-                inc     i
+        mov     a, [y+8*i]
+        sbb     a, 0
+        inc     i
 xtest:
-                dec     n
-                jnz     xtoploop
-                sbb     a, a
-                neg     a
-                ret
+        dec     n
+        jnz     xtoploop
+        sbb     a, a
+        neg     a
+        ret
 
 // The case where x is longer (m > n)
 
 ylonger:
-                add     n, m
-                sub     m, n
-                test    n, n
-                jz      ytoploop
+        add     n, m
+        sub     m, n
+        test    n, n
+        jz      ytoploop
 ymainloop:
-                mov     a, [y+8*i]
-                sbb     a, [x+8*i]
-                inc     i
-                dec     n
-                jnz     ymainloop
+        mov     a, [y+8*i]
+        sbb     a, [x+8*i]
+        inc     i
+        dec     n
+        jnz     ymainloop
 ytoploop:
-                mov     ashort, 0
-                sbb     a, [x+8*i]
-                inc     i
-                dec     m
-                jnz     ytoploop
+        mov     ashort, 0
+        sbb     a, [x+8*i]
+        inc     i
+        dec     m
+        jnz     ytoploop
 
-                sbb     a, a
-                neg     a
-                ret
+        sbb     a, a
+        neg     a
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

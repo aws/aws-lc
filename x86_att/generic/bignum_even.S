@@ -32,15 +32,15 @@ _bignum_even:
 
 // Load RAX with the lowest digit for k > 0, else 0
 
-                xorq    %rax, %rax
-                testq   %rdi, %rdi
-                cmovnzq (%rsi), %rax
+        xorq    %rax, %rax
+        testq   %rdi, %rdi
+        cmovnzq (%rsi), %rax
 
 // Now just return the LSB, flipped by XORING
 
-                andq    $1, %rax
-                xorq    $1, %rax
-                ret
+        andq    $1, %rax
+        xorq    $1, %rax
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

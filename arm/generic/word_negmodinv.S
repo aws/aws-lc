@@ -55,35 +55,35 @@ _word_negmodinv:
 
 // Initial magical 5-bit approximation x = (a - a<<2) xor 2
 
-                lsl     x, a, #2
-                sub     x, a, x
-                eor     x, x, #2
+        lsl     x, a, #2
+        sub     x, a, x
+        eor     x, x, #2
 
 // Get error e = a * x + 1 for subsequent correction steps
 
-                mov     one, #1
-                madd    e1, a, x, one
+        mov     one, #1
+        madd    e1, a, x, one
 
 // e2 = e^2, x' = x (1 + e) is good to 10 bits
 
-                mul     e2, e1, e1
-                madd    x, e1, x, x
+        mul     e2, e1, e1
+        madd    x, e1, x, x
 
 // e4 = e^4, x' = x (1 + e^2) is good to 20 bits
 
-                mul     e4, e2, e2
-                madd    x, e2, x, x
+        mul     e4, e2, e2
+        madd    x, e2, x, x
 
 // e8 = e^8, x' = x (1 + e^4) is good to 40 bits
 
-                mul     e8, e4, e4
-                madd    x, e4, x, x
+        mul     e8, e4, e4
+        madd    x, e4, x, x
 
 // Final x' = x (1 + e^8) is good to the 64-bit word size
 
-                madd    x0, e8, x, x
+        madd    x0, e8, x, x
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

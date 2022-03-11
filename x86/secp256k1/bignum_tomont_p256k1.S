@@ -56,47 +56,47 @@ _bignum_tomont_p256k1:
 // since the multiplier 4294968273 is known to be much less than 2^64.
 // We keep this constant in rdx throughout as it's used repeatedly.
 
-                mov     d, 4294968273
+        mov     d, 4294968273
 
 // Multiply, accumulating the result as 2^256 * h + [d3;d2;d1;d0]
 // But immediately add 1 to h to get q = h + 1 as the quotient estimate.
 
-                mulx    d1, d0, [x]
-                mulx    d2, a, [x+8]
-                add     d1, a
-                mulx    d3, a, [x+16]
-                adc     d2, a
-                mulx    h, a, [x+24]
-                adc     d3, a
-                adc     h, 1
+        mulx    d1, d0, [x]
+        mulx    d2, a, [x+8]
+        add     d1, a
+        mulx    d3, a, [x+16]
+        adc     d2, a
+        mulx    h, a, [x+24]
+        adc     d3, a
+        adc     h, 1
 
 // Now the quotient estimate is q = h + 1, and then we do the reduction,
 // writing z = [d3;d2;d1;d0], as z' = (2^256 * h + z) - q * p_256k1 =
 // (2^256 * h + z) - q * (2^256 - 4294968273) = -2^256 + (z + 4294968273 * q)
 
-                mulx    c, a, h
+        mulx    c, a, h
 
-                add     d0, a
-                adc     d1, c
-                adc     d2, 0
-                adc     d3, 0
+        add     d0, a
+        adc     d1, c
+        adc     d2, 0
+        adc     d3, 0
 
 // Because of the implicit -2^256, CF means >= 0 so z' is the answer; ~CF
 // means z' < 0 so we add p_256k1, which in 4 digits means subtracting c.
 
-                mov     a, 0
-                cmovc   d, a
+        mov     a, 0
+        cmovc   d, a
 
-                sub     d0, d
-                mov     [z], d0
-                sbb     d1, a
-                mov     [z+8], d1
-                sbb     d2, a
-                mov     [z+16],d2
-                sbb     d3, a
-                mov     [z+24],d3
+        sub     d0, d
+        mov     [z], d0
+        sbb     d1, a
+        mov     [z+8], d1
+        sbb     d2, a
+        mov     [z+16],d2
+        sbb     d3, a
+        mov     [z+24],d3
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

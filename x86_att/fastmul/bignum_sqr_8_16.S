@@ -279,7 +279,7 @@ _bignum_sqr_8_16:
 
 // Do the multiplication
 
-         diagonals
+        diagonals
 
 // Real epilog
 

@@ -46,39 +46,39 @@ _bignum_neg_p25519:
 
 // Load the 4 digits of x and let q be an OR of all the digits
 
-                mov     n0, [x]
-                mov     q, n0
-                mov     n1, [x+8]
-                or      q, n1
-                mov     n2, [x+16]
-                or      q, n2
-                mov     n3, [x+24]
-                or      q, n3
+        mov     n0, [x]
+        mov     q, n0
+        mov     n1, [x+8]
+        or      q, n1
+        mov     n2, [x+16]
+        or      q, n2
+        mov     n3, [x+24]
+        or      q, n3
 
 // Turn q into a strict x <> 0 bitmask, and c into a masked constant [-19]
 // so that [q;q;q;c] = [2^256 - 19], masked according to nonzeroness of x
 
-                neg     q
-                sbb     q, q
-                mov     c, -19
-                and     c, q
+        neg     q
+        sbb     q, q
+        mov     c, -19
+        and     c, q
 
 // Now just do [2^256 - 19] - x and then mask to 255 bits,
 // which means in effect the required [2^255 - 19] - x
 
-                sub     c, n0
-                mov     [z], c
-                mov     c, q
-                sbb     c, n1
-                mov     [z+8], c
-                mov     c, q
-                sbb     c, n2
-                mov     [z+16], c
-                sbb     q, n3
-                btr     q, 63
-                mov     [z+24], q
+        sub     c, n0
+        mov     [z], c
+        mov     c, q
+        sbb     c, n1
+        mov     [z+8], c
+        mov     c, q
+        sbb     c, n2
+        mov     [z+16], c
+        sbb     q, n3
+        btr     q, 63
+        mov     [z+24], q
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

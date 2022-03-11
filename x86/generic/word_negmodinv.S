@@ -37,38 +37,38 @@ _word_negmodinv:
 
 // Initial magical 5-bit approximation x = (a - a<<2) xor 2
 
-                mov     rcx, rdi
-                mov     rax, rdi
-                shl     rcx, 2
-                sub     rax, rcx
-                xor     rax, 2
+        mov     rcx, rdi
+        mov     rax, rdi
+        shl     rcx, 2
+        sub     rax, rcx
+        xor     rax, 2
 
 // Now refine to 64-bit congruence
 
-                mov     rcx, rax    // rcx = x
-                imul    rcx, rdi    // rcx = a * x
-                mov     edx, 2
-                add     rdx, rcx    // rdx = 1 + e = 2 + a * x
-                add     rcx, 1      // rcx = e = a * x + 1
+        mov     rcx, rax    // rcx = x
+        imul    rcx, rdi    // rcx = a * x
+        mov     edx, 2
+        add     rdx, rcx    // rdx = 1 + e = 2 + a * x
+        add     rcx, 1      // rcx = e = a * x + 1
 
-                imul    rax, rdx    // rax = x * (1 + e)
+        imul    rax, rdx    // rax = x * (1 + e)
 
-                imul    rcx, rcx    // rcx = e^2
-                mov     edx, 1
-                add     rdx, rcx
-                imul    rax, rdx    // rax = x * (1 + e) * (1 + e^2)
+        imul    rcx, rcx    // rcx = e^2
+        mov     edx, 1
+        add     rdx, rcx
+        imul    rax, rdx    // rax = x * (1 + e) * (1 + e^2)
 
-                imul    rcx, rcx    // rcx = e^4
-                mov     edx, 1
-                add     rdx, rcx
-                imul    rax, rdx    // rax = x * (1 + e) * (1 + e^2) * (1 + e^4)
+        imul    rcx, rcx    // rcx = e^4
+        mov     edx, 1
+        add     rdx, rcx
+        imul    rax, rdx    // rax = x * (1 + e) * (1 + e^2) * (1 + e^4)
 
-                imul    rcx, rcx    // rcx = e^8
-                mov     edx, 1
-                add     rdx, rcx
-                imul    rax, rdx    // rax = x * (1 + e) * ... * * (1 + e^8)
+        imul    rcx, rcx    // rcx = e^8
+        mov     edx, 1
+        add     rdx, rcx
+        imul    rax, rdx    // rax = x * (1 + e) * ... * * (1 + e^8)
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

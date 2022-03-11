@@ -98,80 +98,80 @@ _bignum_mul_p25519:
 
 // Save additional registers to use
 
-                stp     x19, x20, [sp, #-16]!
-                stp     x21, x22, [sp, #-16]!
+        stp     x19, x20, [sp, #-16]!
+        stp     x21, x22, [sp, #-16]!
 
 // Load operands
 
-                ldp     a0, a1, [x1]
-                ldp     b0, b1, [x2]
-                ldp     a2, a3, [x1, #16]
-                ldp     b2, b3, [x2, #16]
+        ldp     a0, a1, [x1]
+        ldp     b0, b1, [x2]
+        ldp     a2, a3, [x1, #16]
+        ldp     b2, b3, [x2, #16]
 
 // First accumulate all the "simple" products as [s4,s3,s2,s1,s0]
 
-                mul     s0, a0, b0
-                mul     s1, a1, b1
-                mul     s2, a2, b2
-                mul     s3, a3, b3
+        mul     s0, a0, b0
+        mul     s1, a1, b1
+        mul     s2, a2, b2
+        mul     s3, a3, b3
 
-                umulh   m, a0, b0
-                adds    s1, s1, m
-                umulh   m, a1, b1
-                adcs    s2, s2, m
-                umulh   m, a2, b2
-                adcs    s3, s3, m
-                umulh   m, a3, b3
-                adc     s4, m, xzr
+        umulh   m, a0, b0
+        adds    s1, s1, m
+        umulh   m, a1, b1
+        adcs    s2, s2, m
+        umulh   m, a2, b2
+        adcs    s3, s3, m
+        umulh   m, a3, b3
+        adc     s4, m, xzr
 
 // Multiply by B + 1 to get [t5;t4;t3;t2;t1;t0] where t0 == s0
 
-                adds    t1, s1, s0
-                adcs    t2, s2, s1
-                adcs    t3, s3, s2
-                adcs    t4, s4, s3
-                adc     t5, xzr, s4
+        adds    t1, s1, s0
+        adcs    t2, s2, s1
+        adcs    t3, s3, s2
+        adcs    t4, s4, s3
+        adc     t5, xzr, s4
 
 // Multiply by B^2 + 1 to get [u6;u5;u4;u3;u2;u1;-]. Note that
 // u0 == t0 == s0 and u1 == t1
 
-                adds    u2, t2, t0
-                adcs    u3, t3, t1
-                adcs    u4, t4, t2
-                adcs    u5, t5, t3
-                adcs    u6, xzr, t4
-                adc     u7, xzr, t5
+        adds    u2, t2, t0
+        adcs    u3, t3, t1
+        adcs    u4, t4, t2
+        adcs    u5, t5, t3
+        adcs    u6, xzr, t4
+        adc     u7, xzr, t5
 
 // Now add in all the "complicated" terms.
 
-                muldiffnadd(u6,u5, a2,a3, b3,b2)
-                adc     u7, u7, c
+        muldiffnadd(u6,u5, a2,a3, b3,b2)
+        adc     u7, u7, c
 
-                muldiffnadd(u2,u1, a0,a1, b1,b0)
-                adcs    u3, u3, c
-                adcs    u4, u4, c
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd(u2,u1, a0,a1, b1,b0)
+        adcs    u3, u3, c
+        adcs    u4, u4, c
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
-                muldiffnadd(u5,u4, a1,a3, b3,b1)
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd(u5,u4, a1,a3, b3,b1)
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
-                muldiffnadd(u3,u2, a0,a2, b2,b0)
-                adcs    u4, u4, c
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd(u3,u2, a0,a2, b2,b0)
+        adcs    u4, u4, c
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
-                muldiffnadd(u4,u3, a0,a3, b3,b0)
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
-                muldiffnadd(u4,u3, a1,a2, b2,b1)
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd(u4,u3, a0,a3, b3,b0)
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
+        muldiffnadd(u4,u3, a1,a2, b2,b1)
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [u7,u6,u5,u4] and l = [u3,u2,u1,u0]
@@ -179,83 +179,83 @@ _bignum_mul_p25519:
 // To avoid umulh, we plug together high and low parts of each
 // product separately.
 
-                mov     c, #38
+        mov     c, #38
 
-                and     l, u4, #0xFFFFFFFF
-                lsr     h, u4, #32
-                mul     l, c, l
-                mul     h, c, h
-                adds    u0, u0, l
+        and     l, u4, #0xFFFFFFFF
+        lsr     h, u4, #32
+        mul     l, c, l
+        mul     h, c, h
+        adds    u0, u0, l
 
-                and     l, u5, #0xFFFFFFFF
-                lsr     u5, u5, #32
-                mul     l, c, l
-                mul     u5, c, u5
-                adcs    u1, u1, l
+        and     l, u5, #0xFFFFFFFF
+        lsr     u5, u5, #32
+        mul     l, c, l
+        mul     u5, c, u5
+        adcs    u1, u1, l
 
-                and     l, u6, #0xFFFFFFFF
-                lsr     u6, u6, #32
-                mul     l, c, l
-                mul     u6, c, u6
-                adcs    u2, u2, l
+        and     l, u6, #0xFFFFFFFF
+        lsr     u6, u6, #32
+        mul     l, c, l
+        mul     u6, c, u6
+        adcs    u2, u2, l
 
-                and     l, u7, #0xFFFFFFFF
-                lsr     u7, u7, #32
-                mul     l, c, l
-                mul     u7, c, u7
-                adcs    u3, u3, l
-                cset    u4, cs
+        and     l, u7, #0xFFFFFFFF
+        lsr     u7, u7, #32
+        mul     l, c, l
+        mul     u7, c, u7
+        adcs    u3, u3, l
+        cset    u4, cs
 
-                lsl     l, h, #32
-                adds    u0, u0, l
+        lsl     l, h, #32
+        adds    u0, u0, l
 
-                extr    l, u5, h, #32
-                adcs    u1, u1, l
+        extr    l, u5, h, #32
+        adcs    u1, u1, l
 
-                extr    l, u6, u5, #32
-                adcs    u2, u2, l
+        extr    l, u6, u5, #32
+        adcs    u2, u2, l
 
-                extr    l, u7, u6, #32
-                adcs    u3, u3, l
+        extr    l, u7, u6, #32
+        adcs    u3, u3, l
 
-                lsr     l, u7, #32
-                adc     u4, u4, l
+        lsr     l, u7, #32
+        adc     u4, u4, l
 
 // Now we have reduced to 5 digits, 2^255 * h + l = [u4,u3,u2,u1,u0]
 // Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
 
-                adds    xzr, u3, u3
-                orr     u3, u3, #0x8000000000000000
-                adc     q, u4, u4
-                mov     c, #19
-                madd    l, c, q, c
-                adds    u0, u0, l
-                adcs    u1, u1, xzr
-                adcs    u2, u2, xzr
-                adcs    u3, u3, xzr
+        adds    xzr, u3, u3
+        orr     u3, u3, #0x8000000000000000
+        adc     q, u4, u4
+        mov     c, #19
+        madd    l, c, q, c
+        adds    u0, u0, l
+        adcs    u1, u1, xzr
+        adcs    u2, u2, xzr
+        adcs    u3, u3, xzr
 
 // Now the effective answer is 2^256 * (CF - 1) + [u3,u2,u1,u0]
 // So we correct if CF = 0 by subtracting 19, either way masking to
 // 255 bits, i.e. by effectively adding p_25519 to the "full" answer
 
-                csel    c, c, xzr, cc
-                subs    u0, u0, c
-                sbcs    u1, u1, xzr
-                sbcs    u2, u2, xzr
-                sbc     u3, u3, xzr
-                and     u3, u3, #~0x8000000000000000
+        csel    c, c, xzr, cc
+        subs    u0, u0, c
+        sbcs    u1, u1, xzr
+        sbcs    u2, u2, xzr
+        sbc     u3, u3, xzr
+        and     u3, u3, #~0x8000000000000000
 
 // Write back result
 
-                stp     u0, u1, [x0]
-                stp     u2, u3, [x0, #16]
+        stp     u0, u1, [x0]
+        stp     u2, u3, [x0, #16]
 
 // Restore regs and return
 
-                ldp     x21, x22, [sp], #16
-                ldp     x19, x20, [sp], #16
+        ldp     x21, x22, [sp], #16
+        ldp     x19, x20, [sp], #16
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -54,16 +54,16 @@ _bignum_sqr:
 
 // If p = 0 the result is trivial and nothing needs doing
 
-                cbz     p, end
+        cbz     p, end
 
 // initialize (hh,ll) = 0
 
-                mov     ll, xzr
-                mov     hh, xzr
+        mov     ll, xzr
+        mov     hh, xzr
 
 // Iterate outer loop from k = 0 ... k = p - 1 producing result digits
 
-                mov     k, xzr
+        mov     k, xzr
 outerloop:
 
 // First let bot = MAX 0 (k + 1 - n) and top = MIN (k + 1) n
@@ -72,80 +72,80 @@ outerloop:
 // 2 * x[i] * x[k - i] for i < htop, where htop = MIN ((k+1)/2) n
 // Initialize i = bot; in fact just compute bot as i directly.
 
-                add     i, k, #1
-                lsr     htop, i, #1
-                cmp     htop, n
-                csel    htop, htop, n, cc
-                subs    i, i, n
-                csel    i, i, xzr, cs
+        add     i, k, #1
+        lsr     htop, i, #1
+        cmp     htop, n
+        csel    htop, htop, n, cc
+        subs    i, i, n
+        csel    i, i, xzr, cs
 
 // Initialize the three-part local sum (c,h,l)
 
-                mov     l, xzr
-                mov     h, xzr
-                mov     c, xzr
+        mov     l, xzr
+        mov     h, xzr
+        mov     c, xzr
 
 // If htop <= bot then main doubled part of the sum is empty
 
-                cmp     htop, i
-                bls     nosumming
+        cmp     htop, i
+        bls     nosumming
 
 // Use a moving pointer for [y] = x[k-i] for the cofactor
 
-                sub     y, k, i
-                lsl     y, y, #3
-                add     y, x, y
+        sub     y, k, i
+        lsl     y, y, #3
+        add     y, x, y
 
 // Do the main part of the sum x[i] * x[k - i] for 2 * i < k
 
 innerloop:
-                ldr     a, [x, i, lsl #3]
-                ldr     b, [y], #-8
-                mul     d, a, b
-                umulh   a, a, b
-                adds    l, l, d
-                adcs    h, h, a
-                adc     c, c, xzr
-                add     i, i, #1
-                cmp     i, htop
-                bne     innerloop
+        ldr     a, [x, i, lsl #3]
+        ldr     b, [y], #-8
+        mul     d, a, b
+        umulh   a, a, b
+        adds    l, l, d
+        adcs    h, h, a
+        adc     c, c, xzr
+        add     i, i, #1
+        cmp     i, htop
+        bne     innerloop
 
 // Now double it
 
-                adds    l, l, l
-                adcs    h, h, h
-                adc     c, c, c
+        adds    l, l, l
+        adcs    h, h, h
+        adc     c, c, c
 
 // If k is even (which means 2 * i = k) and i < n add the extra x[i]^2 term
 
 nosumming:
 
-                ands    xzr, k, #1
-                bne     innerend
-                cmp     i, n
-                bcs     innerend
+        ands    xzr, k, #1
+        bne     innerend
+        cmp     i, n
+        bcs     innerend
 
-                ldr     a, [x, i, lsl #3]
-                mul     d, a, a
-                umulh   a, a, a
-                adds    ll, ll, d
-                adcs    hh, hh, a
-                adc     c, c, xzr
+        ldr     a, [x, i, lsl #3]
+        mul     d, a, a
+        umulh   a, a, a
+        adds    ll, ll, d
+        adcs    hh, hh, a
+        adc     c, c, xzr
 
 // Now add the local sum into the global sum, store and shift
 
 innerend:
-                adds    l, l, ll
-                str     l, [z, k, lsl #3]
-                adcs    ll, h, hh
-                adc     hh, c, xzr
+        adds    l, l, ll
+        str     l, [z, k, lsl #3]
+        adcs    ll, h, hh
+        adc     hh, c, xzr
 
-                add     k, k, #1
-                cmp     k, p
-                bcc     outerloop
+        add     k, k, #1
+        cmp     k, p
+        bcc     outerloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
