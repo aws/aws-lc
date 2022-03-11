@@ -47,35 +47,35 @@ _bignum_optsub:
 
 // if k = 0 do nothing. This is also the right top carry in X0
 
-                cbz     k, end
+        cbz     k, end
 
 // Convert p into a strict bitmask (same register in fact)
 
-                cmp     p, xzr
-                csetm   m, ne
+        cmp     p, xzr
+        csetm   m, ne
 
 // Set i = 0 *and* make sure initial ~CF = 0
 
-                subs    i, xzr, xzr
+        subs    i, xzr, xzr
 
 // Main loop
 
 loop:
-                ldr     a, [x, i]
-                ldr     b, [y, i]
-                and     b, b, m
-                sbcs    a, a, b
-                str     a, [z, i]
-                add     i, i, #8
-                sub     k, k, #1
-                cbnz    k, loop
+        ldr     a, [x, i]
+        ldr     b, [y, i]
+        and     b, b, m
+        sbcs    a, a, b
+        str     a, [z, i]
+        add     i, i, #8
+        sub     k, k, #1
+        cbnz    k, loop
 
 // Return (non-inverted) carry flag
 
-                cset    x0, cc
+        cset    x0, cc
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
