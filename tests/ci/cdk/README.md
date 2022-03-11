@@ -60,7 +60,7 @@ To setup or update the CI in your account you will need the following IAM permis
 
 ### Commands
 
-Note: `GITHUB_REPO_OWNER` is to specify the GitHub repo targeted by this CI setup.
+Note: `GITHUB_REPO_OWNER` specifies the GitHub repo targeted by this CI setup.
 * https://github.com/${GITHUB_REPO_OWNER}/aws-lc.git
 
 To set up AWS-LC CI, run command:
