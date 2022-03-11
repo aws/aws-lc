@@ -69,86 +69,86 @@ _bignum_cmul_p521_alt:
 
 // Save additional registers to use
 
-                pushq   %rbx
-                pushq   %rbp
-                pushq   %r12
-                pushq   %r13
+        pushq   %rbx
+        pushq   %rbp
+        pushq   %r12
+        pushq   %r13
 
 // Shuffle inputs (since we want %rdx for the high parts of products)
 
-                movq    %rdx, x
+        movq    %rdx, x
 
 // Multiply as [d9; ...; d0] = c * x.
 
-                movq    (x), a
-                mulq    m
-                movq    a, d0
-                movq    d, d1
+        movq    (x), a
+        mulq    m
+        movq    a, d0
+        movq    d, d1
 
-                movq    8(x), a
-                mulq    m
-                xorq    d2, d2
-                addq    a, d1
-                adcq    d, d2
+        movq    8(x), a
+        mulq    m
+        xorq    d2, d2
+        addq    a, d1
+        adcq    d, d2
 
-                movq    16(x), a
-                mulq    m
-                xorq    d3, d3
-                addq    a, d2
-                adcq    d, d3
+        movq    16(x), a
+        mulq    m
+        xorq    d3, d3
+        addq    a, d2
+        adcq    d, d3
 
-                movq    24(x), a
-                mulq    m
-                xorq    d4, d4
-                addq    a, d3
-                adcq    d, d4
+        movq    24(x), a
+        mulq    m
+        xorq    d4, d4
+        addq    a, d3
+        adcq    d, d4
 
-                movq    32(x), a
-                mulq    m
-                xorq    d5, d5
-                addq    a, d4
-                adcq    d, d5
+        movq    32(x), a
+        mulq    m
+        xorq    d5, d5
+        addq    a, d4
+        adcq    d, d5
 
-                movq    40(x), a
-                mulq    m
-                xorq    d6, d6
-                addq    a, d5
-                adcq    d, d6
+        movq    40(x), a
+        mulq    m
+        xorq    d6, d6
+        addq    a, d5
+        adcq    d, d6
 
-                movq    48(x), a
-                mulq    m
-                xorq    d7, d7
-                addq    a, d6
-                adcq    d, d7
+        movq    48(x), a
+        mulq    m
+        xorq    d7, d7
+        addq    a, d6
+        adcq    d, d7
 
-                movq    56(x), a
-                mulq    m
-                addq    a, d7
-                movq    64(x), a
-                movq    $0, d8
-                adcq    d, d8
-                mulq    m
-                xorq    d9, d9
-                addq    a, d8
-                adcq    d, d9
+        movq    56(x), a
+        mulq    m
+        addq    a, d7
+        movq    64(x), a
+        movq    $0, d8
+        adcq    d, d8
+        mulq    m
+        xorq    d9, d9
+        addq    a, d8
+        adcq    d, d9
 
 // Create an AND "dd" of digits d7,...,d1, a computation we hope will
 // get nicely interleaved with the multiplication chain above, though
 // we can't do so directly as we are using the same register %rax.
 
-                movq    d1, dd
-                andq    d2, dd
-                andq    d3, dd
-                andq    d4, dd
-                andq    d5, dd
-                andq    d6, dd
-                andq    d7, dd
+        movq    d1, dd
+        andq    d2, dd
+        andq    d3, dd
+        andq    d4, dd
+        andq    d5, dd
+        andq    d6, dd
+        andq    d7, dd
 
 // Extract the high part h==d9 and mask off the low part l = [d8;d7;...;d0]
 // but stuff d8 with 1 bits at the left to ease a comparison below
 
-                shldq   $55, d8, h
-                orq     $~0x1FF, d8
+        shldq   $55, d8, h
+        orq     $~0x1FF, d8
 
 // Decide whether h + l >= p_521 <=> h + l + 1 >= 2^521. Since this can only
 // happen if digits d7,...d1 are all 1s, we use the AND of them "dd" to
@@ -157,46 +157,46 @@ _bignum_cmul_p521_alt:
 // Since x was assumed reduced, h cannot be maximal, so the "lea" is safe,
 // i.e. does not carry or wrap round.
 
-                leaq    1(h), c
-                addq    d0, c
-                movl    $0, cshort
-                adcq    c, dd
-                movq    d8, a
-                adcq    c, a
+        leaq    1(h), c
+        addq    d0, c
+        movl    $0, cshort
+        adcq    c, dd
+        movq    d8, a
+        adcq    c, a
 
 // Now if CF is set we want (h + l) - p_521 = (h + l + 1) - 2^521
 // while otherwise we want just h + l. So mask h + l + CF to 521 bits.
 // This masking also gets rid of the stuffing with 1s we did above.
 // Write back the digits as they are generated.
 
-                adcq    h, d0
-                movq    d0, (z)
-                adcq    c, d1
-                movq    d1, 8(z)
-                adcq    c, d2
-                movq    d2, 16(z)
-                adcq    c, d3
-                movq    d3, 24(z)
-                adcq    c, d4
-                movq    d4, 32(z)
-                adcq    c, d5
-                movq    d5, 40(z)
-                adcq    c, d6
-                movq    d6, 48(z)
-                adcq    c, d7
-                movq    d7, 56(z)
-                adcq    c, d8
-                andq    $0x1FF, d8
-                movq    d8, 64(z)
+        adcq    h, d0
+        movq    d0, (z)
+        adcq    c, d1
+        movq    d1, 8(z)
+        adcq    c, d2
+        movq    d2, 16(z)
+        adcq    c, d3
+        movq    d3, 24(z)
+        adcq    c, d4
+        movq    d4, 32(z)
+        adcq    c, d5
+        movq    d5, 40(z)
+        adcq    c, d6
+        movq    d6, 48(z)
+        adcq    c, d7
+        movq    d7, 56(z)
+        adcq    c, d8
+        andq    $0x1FF, d8
+        movq    d8, 64(z)
 
 // Restore registers and return
 
-                popq    %r13
-                popq    %r12
-                popq    %rbp
-                popq    %rbx
+        popq    %r13
+        popq    %r12
+        popq    %rbp
+        popq    %rbx
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

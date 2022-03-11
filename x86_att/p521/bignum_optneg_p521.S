@@ -45,59 +45,59 @@ _bignum_optneg_p521:
 
 // Load most inputs (into the limited registers) and OR all of them to get q
 
-                movq    (x), d0
-                movq    d0, q
-                movq    8(x), d1
-                orq     d1, q
-                movq    16(x), d2
-                orq     d2, q
-                movq    24(x), d3
-                orq     d3, q
-                movq    32(x), d4
-                orq     d4, q
-                orq     40(x), q
-                orq     48(x), q
-                orq     56(x), q
-                orq     64(x), q
+        movq    (x), d0
+        movq    d0, q
+        movq    8(x), d1
+        orq     d1, q
+        movq    16(x), d2
+        orq     d2, q
+        movq    24(x), d3
+        orq     d3, q
+        movq    32(x), d4
+        orq     d4, q
+        orq     40(x), q
+        orq     48(x), q
+        orq     56(x), q
+        orq     64(x), q
 
 // Turn q into a bitmask for "input is nonzero and p is nonzero", so that
 // we avoid doing -0 = p_521 and hence maintain strict modular reduction
 
-                negq    q
-                sbbq    q, q
-                testq   p, p
-                cmovzq  p, q
+        negq    q
+        sbbq    q, q
+        testq   p, p
+        cmovzq  p, q
 
 // Since p_521 is all 1s, the subtraction is just an exclusive-or with q
 // to give an optional inversion, with a slight fiddle for the top digit.
 
-                xorq    q, d0
-                movq    d0, (z)
-                xorq    q, d1
-                movq    d1, 8(z)
-                xorq    q, d2
-                movq    d2, 16(z)
-                xorq    q, d3
-                movq    d3, 24(z)
-                xorq    q, d4
-                movq    d4, 32(z)
-                movq    40(x), d0
-                xorq    q, d0
-                movq    d0, 40(z)
-                movq    48(x), d1
-                xorq    q, d1
-                movq    d1, 48(z)
-                movq    56(x), d2
-                xorq    q, d2
-                movq    d2, 56(z)
-                movq    64(x), d3
-                andq    $0x1FF, q
-                xorq    q, d3
-                movq    d3, 64(z)
+        xorq    q, d0
+        movq    d0, (z)
+        xorq    q, d1
+        movq    d1, 8(z)
+        xorq    q, d2
+        movq    d2, 16(z)
+        xorq    q, d3
+        movq    d3, 24(z)
+        xorq    q, d4
+        movq    d4, 32(z)
+        movq    40(x), d0
+        xorq    q, d0
+        movq    d0, 40(z)
+        movq    48(x), d1
+        xorq    q, d1
+        movq    d1, 48(z)
+        movq    56(x), d2
+        xorq    q, d2
+        movq    d2, 56(z)
+        movq    64(x), d3
+        andq    $0x1FF, q
+        xorq    q, d3
+        movq    d3, 64(z)
 
 // Return
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

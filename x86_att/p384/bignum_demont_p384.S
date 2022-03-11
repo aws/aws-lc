@@ -48,28 +48,28 @@
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                movq    d0, %rdx ;                                        \
-                shlq    $32, %rdx ;                                        \
-                addq    d0, %rdx ;                                        \
+        movq    d0, %rdx ;                                        \
+        shlq    $32, %rdx ;                                        \
+        addq    d0, %rdx ;                                        \
 /* Construct [%rsi;%rcx;%rax;-] = (2^384 - p_384) * w           */         \
 /* We know the lowest word will cancel so we can re-use d0   */         \
 /* as a temp.                                                */         \
-                xorq    %rsi, %rsi ;                                       \
-                movq    $0xffffffff00000001, %rax ;                        \
-                mulxq   %rax, %rcx, %rax ;                                  \
-                movl    $0x00000000ffffffff, %ecx ;                        \
-                mulxq   %rcx, d0, %rcx ;                                   \
-                adcq    d0, %rax ;                                        \
-                adcq    %rdx, %rcx ;                                       \
-                adcq    $0, %rsi ;                                         \
+        xorq    %rsi, %rsi ;                                       \
+        movq    $0xffffffff00000001, %rax ;                        \
+        mulxq   %rax, %rcx, %rax ;                                  \
+        movl    $0x00000000ffffffff, %ecx ;                        \
+        mulxq   %rcx, d0, %rcx ;                                   \
+        adcq    d0, %rax ;                                        \
+        adcq    %rdx, %rcx ;                                       \
+        adcq    $0, %rsi ;                                         \
 /* Now subtract that and add 2^384 * w                       */         \
-                subq    %rax, d1 ;                                        \
-                sbbq    %rcx, d2 ;                                        \
-                sbbq    %rsi, d3 ;                                        \
-                sbbq    $0, d4 ;                                          \
-                sbbq    $0, d5 ;                                          \
-                movq    %rdx, d6 ;                                        \
-                sbbq    $0, d6
+        subq    %rax, d1 ;                                        \
+        sbbq    %rcx, d2 ;                                        \
+        sbbq    %rsi, d3 ;                                        \
+        sbbq    $0, d4 ;                                          \
+        sbbq    $0, d5 ;                                          \
+        movq    %rdx, d6 ;                                        \
+        sbbq    $0, d6
 
 bignum_demont_p384:
 _bignum_demont_p384:
