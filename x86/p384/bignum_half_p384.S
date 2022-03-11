@@ -49,52 +49,52 @@ _bignum_half_p384:
 
 // Load lowest digit and get a mask for its lowest bit in d3
 
-                mov     a, [x]
-                mov     d3short, 1
-                and     d3, a
-                neg     d3
+        mov     a, [x]
+        mov     d3short, 1
+        and     d3, a
+        neg     d3
 
 // Create a masked version of p_384 (top 3 words = the mask itself)
 
-                mov     d0short, 0x00000000ffffffff
-                and     d0, d3
-                mov     d1, d0
-                xor     d1, d3
-                mov     d2, d3
-                add     d2, d2
-                and     d2, d3
-                mov     d4, d3
-                mov     d5, d3
+        mov     d0short, 0x00000000ffffffff
+        and     d0, d3
+        mov     d1, d0
+        xor     d1, d3
+        mov     d2, d3
+        add     d2, d2
+        and     d2, d3
+        mov     d4, d3
+        mov     d5, d3
 
 // Perform addition with masked p_384. Catch the carry in a, as a bitmask
 // for convenience though we only use its LSB below with SHRD
 
-                add     d0, a
-                adc     d1, [x+8]
-                adc     d2, [x+16]
-                adc     d3, [x+24]
-                adc     d4, [x+32]
-                adc     d5, [x+40]
-                sbb     a, a
+        add     d0, a
+        adc     d1, [x+8]
+        adc     d2, [x+16]
+        adc     d3, [x+24]
+        adc     d4, [x+32]
+        adc     d5, [x+40]
+        sbb     a, a
 
 // Shift right, pushing the carry back down, and store back
 
-                shrd    d0, d1, 1
-                mov     [z], d0
-                shrd    d1, d2, 1
-                mov     [z+8], d1
-                shrd    d2, d3, 1
-                mov     [z+16], d2
-                shrd    d3, d4, 1
-                mov     [z+24], d3
-                shrd    d4, d5, 1
-                mov     [z+32], d4
-                shrd    d5, a, 1
-                mov     [z+40], d5
+        shrd    d0, d1, 1
+        mov     [z], d0
+        shrd    d1, d2, 1
+        mov     [z+8], d1
+        shrd    d2, d3, 1
+        mov     [z+16], d2
+        shrd    d3, d4, 1
+        mov     [z+24], d3
+        shrd    d4, d5, 1
+        mov     [z+32], d4
+        shrd    d5, a, 1
+        mov     [z+40], d5
 
 // Return
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

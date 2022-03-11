@@ -70,28 +70,28 @@
 
 #define montredc(d7,d6,d5,d4,d3,d2,d1,d0)                               \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                mov     rdx, d0;                                        \
-                shl     rdx, 32;                                        \
-                add     rdx, d0;                                        \
+        mov     rdx, d0;                                        \
+        shl     rdx, 32;                                        \
+        add     rdx, d0;                                        \
 /* Construct [rbp;rcx;rax;-] = (2^384 - p_384) * w */                   \
 /* We know the lowest word will cancel so we can re-use d0 as a temp */ \
-                xor     ebp, ebp;                                       \
-                mov     rax, 0xffffffff00000001;                        \
-                mulx    rax, rcx, rax;                                  \
-                mov     ecx, 0x00000000ffffffff;                        \
-                mulx    rcx, d0, rcx;                                   \
-                adc     rax, d0;                                        \
-                adc     rcx, rdx;                                       \
-                adc     ebp, ebp;                                       \
+        xor     ebp, ebp;                                       \
+        mov     rax, 0xffffffff00000001;                        \
+        mulx    rax, rcx, rax;                                  \
+        mov     ecx, 0x00000000ffffffff;                        \
+        mulx    rcx, d0, rcx;                                   \
+        adc     rax, d0;                                        \
+        adc     rcx, rdx;                                       \
+        adc     ebp, ebp;                                       \
 /*  Now subtract that and add 2^384 * w */                              \
-                sub     d1, rax;                                        \
-                sbb     d2, rcx;                                        \
-                sbb     d3, rbp;                                        \
-                sbb     d4, 0;                                          \
-                sbb     d5, 0;                                          \
-                sbb     rdx, 0;                                         \
-                add     d6, rdx;                                        \
-                adc     d7, 0
+        sub     d1, rax;                                        \
+        sbb     d2, rcx;                                        \
+        sbb     d3, rbp;                                        \
+        sbb     d4, 0;                                          \
+        sbb     d5, 0;                                          \
+        sbb     rdx, 0;                                         \
+        add     d6, rdx;                                        \
+        adc     d7, 0
 
 bignum_tomont_p384:
 _bignum_tomont_p384:

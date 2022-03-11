@@ -87,29 +87,29 @@
 
 #define montredc(d7,d6,d5,d4,d3,d2,d1,d0)                               \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                mov     rbx, d0;                                        \
-                shl     rbx, 32;                                        \
-                add     rbx, d0;                                        \
+        mov     rbx, d0;                                        \
+        shl     rbx, 32;                                        \
+        add     rbx, d0;                                        \
 /* Construct [rcx;rdx;rax;-] = (2^384 - p_384) * w */                   \
 /* We know the lowest word will cancel so we can re-use d0 as a temp */ \
-                xor     ecx, ecx;                                       \
-                mov     rax, 0xffffffff00000001;                        \
-                mul     rbx;                                            \
-                mov     d0, rdx;                                        \
-                mov     rax, 0x00000000ffffffff;                        \
-                mul     rbx;                                            \
-                add     rax, d0;                                        \
-                adc     rdx, rbx;                                       \
-                adc     ecx, ecx;                                       \
+        xor     ecx, ecx;                                       \
+        mov     rax, 0xffffffff00000001;                        \
+        mul     rbx;                                            \
+        mov     d0, rdx;                                        \
+        mov     rax, 0x00000000ffffffff;                        \
+        mul     rbx;                                            \
+        add     rax, d0;                                        \
+        adc     rdx, rbx;                                       \
+        adc     ecx, ecx;                                       \
 /*  Now subtract that and add 2^384 * w */                              \
-                sub     d1, rax;                                        \
-                sbb     d2, rdx;                                        \
-                sbb     d3, rcx;                                        \
-                sbb     d4, 0;                                          \
-                sbb     d5, 0;                                          \
-                sbb     rbx, 0;                                         \
-                add     d6, rbx;                                        \
-                adc     d7, 0
+        sub     d1, rax;                                        \
+        sbb     d2, rdx;                                        \
+        sbb     d3, rcx;                                        \
+        sbb     d4, 0;                                          \
+        sbb     d5, 0;                                          \
+        sbb     rbx, 0;                                         \
+        add     d6, rbx;                                        \
+        adc     d7, 0
 
 bignum_tomont_p384_alt:
 _bignum_tomont_p384_alt:

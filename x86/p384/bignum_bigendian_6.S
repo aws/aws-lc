@@ -64,32 +64,32 @@ _bignum_tobebytes_6:
 
 // 0 and 5 words
 
-                mov     a, [x]
-                mov     b, [x+40]
-                bswap   a
-                bswap   b
-                mov     [z+40], a
-                mov     [z], b
+        mov     a, [x]
+        mov     b, [x+40]
+        bswap   a
+        bswap   b
+        mov     [z+40], a
+        mov     [z], b
 
 // 1 and 4 words
 
-                mov     a, [x+8]
-                mov     b, [x+32]
-                bswap   a
-                bswap   b
-                mov     [z+32], a
-                mov     [z+8], b
+        mov     a, [x+8]
+        mov     b, [x+32]
+        bswap   a
+        bswap   b
+        mov     [z+32], a
+        mov     [z+8], b
 
 // 2 and 3 words
 
-                mov     a, [x+16]
-                mov     b, [x+24]
-                bswap   a
-                bswap   b
-                mov     [z+24], a
-                mov     [z+16], b
+        mov     a, [x+16]
+        mov     b, [x+24]
+        bswap   a
+        bswap   b
+        mov     [z+24], a
+        mov     [z+16], b
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
