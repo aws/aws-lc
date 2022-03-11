@@ -616,13 +616,24 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 //   - |ec_GFp_nistp384_point_mul_base|,
 //   - |ec_GFp_nistp384_point_mul_public|,
 // is adapted from ECCKiila project (https://arxiv.org/abs/2007.11481).
-// Note that we are using a window of size 5 in the first two functions.
-// The potential issue with different window sizes is that for some sizes,
-// a scalar can be found such that a case of point doubling instead of
-// point addition happens in the scalar  multiplication. This would make
+//
+// One difference from the processing in the ECCKiila project is the order of
+// the digit processing in |ec_GFp_nistp384_point_mul_base|, where we end the
+// processing with the least significant digit to be able to apply the
+// analysis results detailed at the bottom of this file. In
+// |ec_GFp_nistp384_point_mul_base| and |ec_GFp_nistp384_point_mul|, we
+// considered using window size 7 based on that same analysis. However, the
+// table size and performance measurements were more preferable for window
+// size 5. The potential issue with different window sizes is that for some
+// sizes, a scalar can be found such that a case of point doubling instead of
+// point addition happens in the scalar multiplication. This would make
 // the multiplication non constant-time. To the best of our knowledge this
 // timing leak is not an exploitable issue because the only scalar for which
-// the leak can happen is already known by the attacker.
+// the leak can happen is already known by the attacker. This is also provided
+// that this recoding and window size are only used with ECDH and ECDSA
+// protocols. Any other use would need to be analyzed to determine whether it is
+// secure and the user should be aware of this side channel of a particular
+// scalar value.
 //
 // OpenSSL has a similar analysis for P-521 implementation:
 // https://github.com/openssl/openssl/blob/e9492d1cecf459261f1f5ac0eb03e9c631600537/crypto/ec/ecp_nistp521.c#L1318
