@@ -321,7 +321,9 @@ static void p384_point_double(p384_felem x_out,
 
   // z' = (y + z)^2 - gamma - delta
   // The following calculation differs from that in p256.c:
-  // An add is replaced with a sub in order to save 5 cmovznz.
+  // an add is replaced with a sub. This saves us 5 cmovznz operations
+  // when Fiat-crypto implementation of felem_add and felem_sub is used,
+  // and also a certain number of intructions when s2n-bignum is used.
   p384_felem_add(ftmp, y_in, z_in);
   p384_felem_sqr(z_out, ftmp);
   p384_felem_sub(z_out, z_out, gamma);
