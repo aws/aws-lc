@@ -33,6 +33,7 @@ static struct fips_service_indicator_state * FIPS_service_indicator_get(void) {
     indicator->lock_state = STATE_UNLOCKED;
     indicator->counter = 0;
     if (!CRYPTO_set_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
+      OPENSSL_free(indicator);
       OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
       return NULL;
     }

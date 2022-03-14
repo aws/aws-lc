@@ -29,6 +29,15 @@
 #include "../rand/internal.h"
 #include "../tls/internal.h"
 
+namespace awslc {
+  template <typename T>
+  class TestWithNoErrors : public testing::TestWithParam<T> {
+    void TearDown() override {
+      ASSERT_EQ(ERR_get_error(), 0u);
+    }
+  };
+}
+
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
 static const uint8_t kPlaintext[64] = {
@@ -665,11 +674,7 @@ struct AEADTestVector {
         kAESKey, 16, kAESCCMCiphertext, 64, AWSLC_APPROVED, false },
 };
 
-class AEAD_ServiceIndicatorTest : public testing::TestWithParam<AEADTestVector> {
-  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class AEAD_ServiceIndicatorTest : public awslc::TestWithNoErrors<AEADTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, AEAD_ServiceIndicatorTest, testing::ValuesIn(nAEADTestVectors));
 
@@ -744,11 +749,7 @@ struct CipherTestVector {
   { EVP_des_ede3_cbc(), kAESKey_192, 24, KTDES_EDE3_CBCCipherText, 64, false, AWSLC_NOT_APPROVED }
 };
 
-class EVP_ServiceIndicatorTest : public testing::TestWithParam<CipherTestVector> {
-  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class EVP_ServiceIndicatorTest : public awslc::TestWithNoErrors<CipherTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, EVP_ServiceIndicatorTest, testing::ValuesIn(nTestVectors));
 
@@ -802,11 +803,7 @@ struct DigestTestVector {
     { sha512_256, kOutput_sha512_256, AWSLC_APPROVED }
 };
 
-class EVP_MD_ServiceIndicatorTest : public testing::TestWithParam<DigestTestVector> {
-  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class EVP_MD_ServiceIndicatorTest : public awslc::TestWithNoErrors<DigestTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, EVP_MD_ServiceIndicatorTest, testing::ValuesIn(kDigestTestVectors));
 
@@ -861,11 +858,7 @@ struct HMACTestVector {
     { EVP_sha512_256, kHMACOutput_sha512_256, AWSLC_NOT_APPROVED }
 };
 
-class HMAC_ServiceIndicatorTest : public testing::TestWithParam<HMACTestVector> {
-  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class HMAC_ServiceIndicatorTest : public awslc::TestWithNoErrors<HMACTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, HMAC_ServiceIndicatorTest, testing::ValuesIn(kHMACTestVectors));
 
@@ -1036,10 +1029,7 @@ struct RSATestVector kRSATestVectors[] = {
     { 4096, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
-class RSA_ServiceIndicatorTest : public testing::TestWithParam<RSATestVector> {  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class RSA_ServiceIndicatorTest : public awslc::TestWithNoErrors<RSATestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, RSA_ServiceIndicatorTest, testing::ValuesIn(kRSATestVectors));
 
@@ -1276,11 +1266,7 @@ struct ECDSATestVector kECDSATestVectors[] = {
     { NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
-class ECDSA_ServiceIndicatorTest : public testing::TestWithParam<ECDSATestVector> {
-  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class ECDSA_ServiceIndicatorTest : public awslc::TestWithNoErrors<ECDSATestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, ECDSA_ServiceIndicatorTest, testing::ValuesIn(kECDSATestVectors));
 
@@ -1516,11 +1502,7 @@ struct ECDHTestVector kECDHTestVectors[] = {
     { NID_secp521r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
 };
 
-class ECDH_ServiceIndicatorTest : public testing::TestWithParam<ECDHTestVector> {
-  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class ECDH_ServiceIndicatorTest : public awslc::TestWithNoErrors<ECDHTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, ECDH_ServiceIndicatorTest, testing::ValuesIn(kECDHTestVectors));
 
@@ -1594,11 +1576,7 @@ struct KDFTestVector {
     { EVP_sha512, kTLSOutput_sha512, AWSLC_APPROVED },
 };
 
-class KDF_ServiceIndicatorTest : public testing::TestWithParam<KDFTestVector> {
-  void TearDown() override {
-      ASSERT_EQ(ERR_get_error(), 0u);
-  }
-};
+class KDF_ServiceIndicatorTest : public awslc::TestWithNoErrors<KDFTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, KDF_ServiceIndicatorTest, testing::ValuesIn(kKDFTestVectors));
 
