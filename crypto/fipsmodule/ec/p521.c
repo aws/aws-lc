@@ -804,7 +804,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 //   (1): {s_1, s_5,  s_9, ..., s_101}        |  { 2^5, 2^25, ..., 2^505}
 //   (2): {s_2, s_6, s_10, ..., s_102}        |  {2^10, 2^30, ..., 2^510}
 //   (3): {s_3, s_7, s_11, ..., s_103}        |  {2^15, 2^35, ..., 2^515}
-//        corresponding sub-table lookup      |  {  T0,   T1, ...,   T17,   T18}
+//        corresponding sub-table lookup      |  {  T0,   T1, ...,   T25,   T26}
 //
 // The group (0) digits correspond precisely to the multiples of G that are
 // held in the 27 precomputed sub-tables, so we may simply read the appropriate

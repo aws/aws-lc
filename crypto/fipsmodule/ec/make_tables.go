@@ -214,15 +214,20 @@ func writeP384Table(path string) error {
 // P-384 base point pre computation
 // --------------------------------
 //
-// The precomputed table for the base point G of P-384, |p384_g_pre_comp|,
-// consists of 20 sub-tables, each holding 16 points. A point is represented
-// by a pair of field elements (x, y).
+// Based on windows size equal to 5, the precomputed table for the base point G
+// of P-384, |p384_g_pre_comp|, consists of 20 sub-tables, each holding 16
+// points. A point is represented by a pair of field elements (x, y).
 //
 // The j-th point of the i-th sub-table is:
 //     p384_g_pre_comp[i][j] = [(2j + 1)2^{20i}]G.
 // The table is populated with such points for i in [0, 19] and j in [0, 15];
 // and used in mul_base and mul_public functions in |p384.c| for computing
 // a scalar product with the Comb method (see the functions for details).
+//
+// The table and its usage in scalar multiplications are adapted from
+// ECCKiila project (https://arxiv.org/abs/2007.11481). The table generation
+// is based on the generation method in:
+// https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
 
 #if defined(P384_USE_64BIT_LIMBS_FELEM)`
 
@@ -278,15 +283,20 @@ func writeP521Table(path string) error {
 // P-521 base point pre computation
 // --------------------------------
 //
-// The precomputed table for the base point G of P-521, |p521_g_pre_comp|,
-// consists of 27 sub-tables, each holding 16 points. A point is represented
-// by a pair of field elements (x, y).
+// Based on windows size equal to 5, the precomputed table for the base point G
+// of P-521, |p521_g_pre_comp|, consists of 27 sub-tables, each holding 16
+// points. A point is represented by a pair of field elements (x, y).
 //
 // The j-th point of the i-th sub-table is:
 //     p521_g_pre_comp[i][j] = [(2j + 1)2^{20i}]G.
 // The table is populated with such points for i in [0, 26] and j in [0, 15];
 // and used in mul_base and mul_public functions in |p521.c| for computing
 // a scalar product with the Comb method (see the functions for details).
+//
+// The table and its usage in scalar multiplications are adapted from
+// ECCKiila project (https://arxiv.org/abs/2007.11481). The table generation
+// is based on the generation method in:
+// https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
 
 #if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)`
 
