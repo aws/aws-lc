@@ -58,27 +58,30 @@ To setup or update the CI in your account you will need the following IAM permis
   * secretsmanager:DeleteSecret
   * secretsmanager:GetSecretValue
 
-### Command
+### Commands
+
+Note: `GITHUB_REPO_OWNER` specifies the GitHub repo targeted by this CI setup.
+* https://github.com/${GITHUB_REPO_OWNER}/aws-lc.git
 
 To set up AWS-LC CI, run command:
 ```
-./run-cdk.sh --action deploy-ci
+./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action deploy-ci
 ```
 
 To update AWS-LC CI, run command:
 ```
-./run-cdk.sh --action update-ci
+./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action update-ci
 ```
 
 To create/update Linux Docker images, run command:
 ```
-./run-cdk.sh --action build-linux-img
+./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action build-linux-img
 ```
 
 To destroy AWS-LC CI resources created above, run command:
 ```
 # NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
-./run-cdk.sh --action destroy-ci
+./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action destroy-ci
 ```
 
 For help, run command:
