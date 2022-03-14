@@ -12,10 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <stdio.h>
+#include <iostream>
 #include <string>
 #include <string.h>
-#include <unistd.h>
 
 #include <openssl/crypto.h>
 #include <openssl/span.h>
@@ -51,11 +50,11 @@ int main(int argc, char **argv) {
   std::unique_ptr<bssl::acvp::RequestBuffer> buffer =
       bssl::acvp::RequestBuffer::New();
   const bssl::acvp::ReplyCallback write_reply = std::bind(
-      bssl::acvp::WriteReplyToFd, STDOUT_FILENO, std::placeholders::_1);
+      bssl::acvp::WriteReplyToStream, &std::cout, std::placeholders::_1);
 
   for (;;) {
     const bssl::Span<const bssl::Span<const uint8_t>> args =
-        ParseArgsFromFd(STDIN_FILENO, buffer.get());
+        ParseArgsFromStream(&std::cin, buffer.get());
     if (args.empty()) {
       return 1;
     }
