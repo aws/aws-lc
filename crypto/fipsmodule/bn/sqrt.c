@@ -62,7 +62,8 @@
 BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
   // Compute a square root of |a| mod |p| using the Tonelli/Shanks algorithm
   // (cf. Henri Cohen, "A Course in Algebraic Computational Number Theory",
-  // algorithm 1.5.1). |p| is assumed to be a prime.
+  // algorithm 1.5.1). |p| must be prime, otherwise an error or
+  // an incorrect "result" will be returned.
 
   BIGNUM *ret = in;
   int err = 1;
@@ -360,20 +361,23 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     }
 
 
-    // find smallest  i  such that  b^(2^i) = 1
-    i = 1;
-    if (!BN_mod_sqr(t, b, p, ctx)) {
-      goto end;
+    // Find the smallest i, 0 < i < e, such that b^(2^i) = 1.
+    for (i = 1; i < e; i++) {
+        if (i == 1) {
+            if (!BN_mod_sqr(t, b, p, ctx))
+                goto end;
+
+        } else {
+            if (!BN_mod_mul(t, t, t, p, ctx))
+                goto end;
+        }
+        if (BN_is_one(t))
+            break;
     }
-    while (!BN_is_one(t)) {
-      i++;
-      if (i == e) {
+    // If not found, a is not a square or p is not prime.
+    if (i >= e) {
         OPENSSL_PUT_ERROR(BN, BN_R_NOT_A_SQUARE);
         goto end;
-      }
-      if (!BN_mod_mul(t, t, t, p, ctx)) {
-        goto end;
-      }
     }
 
 
