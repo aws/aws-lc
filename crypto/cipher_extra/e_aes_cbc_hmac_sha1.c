@@ -72,6 +72,21 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
     return ret < 0 ? 0 : 1;
 }
 
+static void printa(const uint8_t *ticket_key, size_t len) {
+//   printf("================================================ \n");
+//   for (size_t i = 0; i < len; i++) {
+//     printf("%02x", ticket_key[i]);
+//   }
+}
+
+static void printd(const uint8_t *ticket_key, size_t len) {
+//   printf("================================================ \n");
+//   for (size_t i = 0; i < len; i++) {
+//     printf("%02x", ticket_key[i]);
+//   }
+//   printf("\n");
+}
+
 void sha1_block_data_order(void *c, const void *p, size_t len);
 
 static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
@@ -97,6 +112,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         if (plen == NO_PAYLOAD_LENGTH) {
             plen = len;
         } else if (len != ((plen + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
+            printf("aloha len %zu plen %zu\n", len, plen);
             // TODO[Addressed]: why the len should include plen + sha_digest_len + aes_block_size?
             // Looks like this is a API implicit constraint: the input len should have space of
             // iv + plaintext + digest + padding.
@@ -105,6 +121,8 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
             iv = AES_BLOCK_SIZE;
         }
+
+        printf("aloha iv %zu sha_off %zu plen %zu\n", iv, sha_off, plen);
 
         if (plen > (sha_off + iv) && (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
             SHA1_Update(&key->md, in + iv, sha_off);
@@ -122,7 +140,6 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         } else {
             sha_off = 0;
         }
-        // TODO: why not hash the explicit iv?
         sha_off += iv;
         SHA1_Update(&key->md, in + sha_off, plen - sha_off);
 
@@ -142,12 +159,17 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             for (unsigned int l = len - plen - 1; plen < len; plen++) {
                 out[plen] = l;
             }
-            // TODO: investigate if |len - aes_off| includes partial of payload.
+            // TODO(DONE): investigate if |len - aes_off| includes partial of payload.
             // In other words, if/why |aes_off| covers all bytes of payload.
             // if not, what ensures ONLY HMAC|padding is encrytped.
+            // DONE: below does include some payload. This may not matter because aes is blocker cipher.
             /* encrypt HMAC|padding at once */
+            printa(EVP_CIPHER_CTX_iv_noconst(ctx), 16);
+            printa(out + aes_off, len - aes_off);
             aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off,
                               &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx), 1);
+            printa(EVP_CIPHER_CTX_iv_noconst(ctx), 16);
+            printa(out + aes_off, len - aes_off);
         } else {
             aes_hw_cbc_encrypt(in + aes_off, out + aes_off, len - aes_off,
                               &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx), 1);
@@ -189,6 +211,8 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
                 return 0;
             }
+            // TODO: in decryption, use the encrypted iv?
+            // TODO: continue: The encrypted iv is treated as normal block and decrypted with |ks|?
                 /* decrypt HMAC|padding at once */
                 aes_hw_cbc_encrypt(in, out, len, &key->ks,
                                   EVP_CIPHER_CTX_iv_noconst(ctx), 0);
@@ -207,6 +231,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
             mask = constant_time_ge_8(maxpad, pad);
             ret &= mask;
+            printf("ret is %d\n", ret);
             /*
              * If pad is invalid then we will fail the above test but we must
              * continue anyway because we are in constant time code. However,
@@ -216,15 +241,20 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             pad = constant_time_select_8(mask, pad, maxpad);
 
             inp_len = len - (SHA_DIGEST_LENGTH + pad + 1);
+            printf("aloha pad %u maxpad %u mask %zu inp_len %zu\n", pad, maxpad, mask, inp_len);
 
+            printd(key->aux.tls_aad, 13);
             key->aux.tls_aad[plen - 2] = inp_len >> 8;
             key->aux.tls_aad[plen - 1] = inp_len;
+
+            printd(key->aux.tls_aad, 13);
 
             /* calculate HMAC */
             key->md = key->head;
             SHA1_Update(&key->md, key->aux.tls_aad, plen);
 
             len -= SHA_DIGEST_LENGTH; /* amend mac */
+            // TODO: why below if special case?
             if (len >= (256 + SHA_CBLOCK)) {
                 j = (len - (256 + SHA_CBLOCK)) & (0 - SHA_CBLOCK);
                 j += SHA_CBLOCK - key->md.num;
@@ -272,14 +302,19 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 res = 0;
             }
 
-            for (i = res; i < SHA_CBLOCK; i++, j++)
+            for (i = res; i < SHA_CBLOCK; i++, j++) {
                 data->c[i] = 0;
+            }
+
+            printf("res %u bitlen %u j %zu\n", res, bitlen, j);
 
             if (res > SHA_CBLOCK - 8) {
                 mask = 0 - ((inp_len + 8 - j) >> (sizeof(j) * 8 - 1));
+                printf("mask %zu j %zu\n", mask, j);
                 data->u[SHA_LBLOCK - 1] |= bitlen & mask;
                 sha1_block_data_order(&key->md, data, 1);
                 mask &= 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
+                printf("mask2 %zu j %zu\n", mask, j);
                 pmac->u[0] |= key->md.h[0] & mask;
                 pmac->u[1] |= key->md.h[1] & mask;
                 pmac->u[2] |= key->md.h[2] & mask;
@@ -292,6 +327,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             data->u[SHA_LBLOCK - 1] = bitlen;
             sha1_block_data_order(&key->md, data, 1);
             mask = 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
+            printf("mask3 %zu j %zu\n", mask, j);
             pmac->u[0] |= key->md.h[0] & mask;
             pmac->u[1] |= key->md.h[1] & mask;
             pmac->u[2] |= key->md.h[2] & mask;
@@ -307,6 +343,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             key->md = key->tail;
             SHA1_Update(&key->md, pmac->c, SHA_DIGEST_LENGTH);
             SHA1_Final(pmac->c, &key->md);
+            printd(pmac->c, 20);
 
             /* verify HMAC */
             out += inp_len;
@@ -314,6 +351,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             {
                 unsigned char *p = out + len - 1 - maxpad - SHA_DIGEST_LENGTH;
                 size_t off = out - p;
+                printf("len %zu off %zu\n", len, off);
                 unsigned int c, cmask;
 
                 maxpad += SHA_DIGEST_LENGTH;
@@ -398,6 +436,8 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                 return -1;
 
             len = p[arg - 2] << 8 | p[arg - 1];
+            // printf("aloha EVP_CTRL_AEAD_TLS1_AAD add\n");
+            // printd(p, 13);
 
             if (EVP_CIPHER_CTX_encrypting(ctx)) {
                 key->payload_length = len;

@@ -79,6 +79,7 @@ extern "C" {
 OPENSSL_INLINE void *EVP_CIPHER_CTX_get_cipher_data(const EVP_CIPHER_CTX *ctx) {
   return ctx->cipher_data;
 }
+
 OPENSSL_INLINE unsigned char *EVP_CIPHER_CTX_iv_noconst(EVP_CIPHER_CTX *ctx) {
   return ctx->iv;
 }

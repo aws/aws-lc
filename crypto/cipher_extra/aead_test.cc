@@ -275,12 +275,14 @@ struct KnownTLSLegacyAEAD {
   const char name[40];
   const EVP_CIPHER *(*func)(void);
   const char *test_vectors;
+  bool e_iv;
   uint32_t flags;
 };
 
 static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
     {"AES_128_CBC_SHA1_TLS", EVP_aes_128_cbc_hmac_sha1,
-     "aes_128_cbc_sha1_tls_tests.txt",
+     "aes_128_cbc_sha1_tls_stitch_tests.txt",
+     true,
      kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     // {"AES_256_CBC_SHA1_TLS", EVP_aes_256_cbc_hmac_sha1,
@@ -297,18 +299,36 @@ INSTANTIATE_TEST_SUITE_P(All, PerTLSLegacyAEADTest, testing::ValuesIn(kTLSLegacy
                          [](const testing::TestParamInfo<KnownTLSLegacyAEAD> &params)
                              -> std::string { return params.param.name; });
 
-// Tests an AEAD against a series of test vectors from a file, using the
+static void set_MAC_key(EVP_CIPHER_CTX *ctx, uint8_t *key, size_t mac_key_size) {
+  // In each TLS session, only need to set EVP_CTRL_AEAD_SET_MAC_KEY once.
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY, mac_key_size, key))
+    << "EVP_CTRL_AEAD_SET_MAC_KEY failed: "
+    << ERR_reason_error_string(ERR_get_error());
+}
+
+static void set_TLS1_AAD(EVP_CIPHER_CTX *ctx, uint8_t *ad) {
+  // In each TLS session, ad should be set before each read/write operation because it includes sequence_num.
+  // Below ctrl returns hmac|pad len for encryption.
+  // For decryption, it returns digest size.
+  EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD, EVP_AEAD_TLS1_AAD_LEN, ad);
+}
+
+// |EVP_aes_128_cbc_hmac_sha1/256| tests.
+// Tests a TLS specific legacy AEAD against a series of test vectors from a file, using the
 // FileTest format. As an example, here's a valid test case:
 //
-//   KEY: 5a19f3173586b4c42f8412f4d5a786531b3231753e9e00998aec12fda8df10e4
-//   NONCE: 978105dfce667bf4
-//   IN: 6a4583908d
-//   AD: b654574932
-//   CT: 5294265a60
-//   TAG: 1d45758621762e061368e68868e2f929
+// # DIGEST: 918c0df73de553b5bdffb7365f93a430292f6eea
+// KEY: 2993a340b9b3c589c7481df3f4183aa23fd8d7efd88503f78b8ed1c8e9ba2fd6773e0d0c
+// NONCE: 302a5f47e037446f5891d77df660ed82
+// IN: 302a5f47e037446f5891d77df660ed8286d641b877
+// AD: 97b684e0fb56f97c3903020015
+// CT: 6854710b76c79c9be84b3669fc4f05b17e67a9cc14
+// TAG: 9c6998bf3b172670c5f8613f479641468bbed4c68d093940c92de4
+// TAG_LEN: 20
 TEST_P(PerTLSLegacyAEADTest, TestVector) {
   std::string test_vectors = "crypto/cipher_extra/test/";
   test_vectors += GetParam().test_vectors;
+  bool explicit_iv = GetParam().e_iv;
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     std::vector<uint8_t> key, nonce, in, ad, ct, tag;
     ASSERT_TRUE(t->GetBytes(&key, "KEY"));
@@ -326,107 +346,90 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
       tag_len = strtoul(tag_len_str.c_str(), nullptr, 10);
       ASSERT_TRUE(tag_len);
     }
+    const EVP_CIPHER *cipher = legacy_aead();
+    size_t e_iv_len = explicit_iv ? EVP_CIPHER_block_size(cipher) : 0;
 
     bssl::ScopedEVP_CIPHER_CTX ctx;
-    // ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
-    //     ctx.get(), aead(), key.data(), key.size(), tag_len, evp_aead_seal));
 
-    const EVP_CIPHER *cipher = legacy_aead();
-
-    // TODO: check other alternatively of ct.size() + tag.size().
-    std::vector<uint8_t> out(ct.size() + tag.size());
-    // The input key is Mac key + AES key
-    // TODO: change the 20 to other value after adding sha256 test.
-    size_t mac_key_size = 20;
+    std::vector<uint8_t> encrypted(ct.size() + tag.size());
+    // The |key| is Mac key + AES key + IV.
+    size_t mac_key_size = tag_len;
     const uint8_t *aes_key = key.data() + mac_key_size;
     if (!t->HasAttribute("NO_SEAL") &&
         !(GetParam().flags & kNondeterministic)) {
-      // TODO: why does this set do?
+      // Even without |EVP_CIPHER_CTX_set_padding|, |EVP_Cipher| returns error code because
+      // |EVP_aes_128_cbc_hmac_sha1/256| does not automatically pad the input.
       ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), EVP_CIPH_NO_PADDING));
-      // TODO: combine below two calls?
-      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, aes_key, nullptr));
-      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.data()));
-      ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_MAC_KEY, mac_key_size, key.data()));
-      // TODO: check the return value.
-      EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_TLS1_AAD, EVP_AEAD_TLS1_AAD_LEN, ad.data());
-      ASSERT_TRUE(EVP_Cipher(ctx.get(), out.data(), in.data(), in.size()))
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, aes_key, nonce.data()));
+      set_MAC_key(ctx.get(), key.data(), mac_key_size);
+      // |EVP_aes_128_cbc_hmac_sha1/256| encrypts a TLS record, which should have space for
+      // explicit_iv(if applicable), payload, tag(hmac and padding).
+      std::vector<uint8_t> record(in.size() + tag.size(), 0);
+      OPENSSL_memcpy(record.data(), in.data(), in.size());
+      set_TLS1_AAD(ctx.get(), ad.data());
+      ASSERT_TRUE(EVP_Cipher(ctx.get(), encrypted.data(), record.data(), record.size()))
         << "EVP_Cipher encryption failed: "
-        << ERR_GET_REASON(ERR_get_error());
-        // << ERR_reason_error_string(ERR_get_error());
-      // size_t out_len;
-      // ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
-      //                               nonce.data(), nonce.size(), in.data(),
-      //                               in.size(), ad.data(), ad.size()));
-      // out.resize(out_len);
-
-      ASSERT_EQ(out.size(), ct.size() + tag.size());
-      EXPECT_EQ(Bytes(ct), Bytes(out.data(), ct.size()));
-      EXPECT_EQ(Bytes(tag), Bytes(out.data() + ct.size(), tag.size()));
+        << ERR_reason_error_string(ERR_get_error());
+      EXPECT_EQ(Bytes(ct), Bytes(encrypted.data(), ct.size()));
+      EXPECT_EQ(Bytes(tag), Bytes(encrypted.data() + ct.size(), tag.size()));
     } else {
-      out.resize(ct.size() + tag.size());
-      OPENSSL_memcpy(out.data(), ct.data(), ct.size());
-      OPENSSL_memcpy(out.data() + ct.size(), tag.data(), tag.size());
+      encrypted.resize(ct.size() + tag.size());
+      OPENSSL_memcpy(encrypted.data(), ct.data(), ct.size());
+      OPENSSL_memcpy(encrypted.data() + ct.size(), tag.data(), tag.size());
     }
 
-    // TODO: read and change below comment.
-    // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-    // reset after each operation.
-    // ctx.get().Reset();
-    // ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
-    //     ctx.get(), legacy_aead(), key.data(), key.size(), tag_len, evp_aead_open));
-    // ASSERT_TRUE(EVP_CIPHER_CTX_reset(ctx.get()));
-    ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), EVP_CIPH_NO_PADDING));
-    ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, aes_key, nullptr));
-    ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.data()));
-    // ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_MAC_KEY, mac_key_size, key.data()));
-    // TODO: check the return value.
-    // EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_TLS1_AAD, EVP_AEAD_TLS1_AAD_LEN, ad.data());
+    // Decryption side(TLS client/server) always has a separated EVP_CIPHER_CTX.
+    bssl::ScopedEVP_CIPHER_CTX decrypt_ctx;
+    ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(decrypt_ctx.get(), EVP_CIPH_NO_PADDING));
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), cipher, nullptr, aes_key, nonce.data()));
+    set_MAC_key(decrypt_ctx.get(), key.data(), mac_key_size);
+    set_TLS1_AAD(decrypt_ctx.get(), ad.data());
     // TODO: investigate munmap_chunk(): invalid pointer.
-    // std::vector<uint8_t> out2(in.size());
-    int ret = EVP_Cipher(ctx.get(), out.data(), out.data(), out.size());
-    // size_t out2_len;
-    // int ret = EVP_AEAD_CTX_open(ctx.get(), out2.data(), &out2_len, out2.size(),
-    //                             nonce.data(), nonce.size(), out.data(),
-    //                             out.size(), ad.data(), ad.size());
+    std::vector<uint8_t> decrypted(encrypted.size());
+    int ret = EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size());
     if (t->HasAttribute("FAILS")) {
-      ASSERT_FALSE(ret <= 0) << "Decrypted bad data.";
+      ASSERT_TRUE(ret <= 0) << "Decrypted bad data.";
       ERR_clear_error();
       return;
     }
 
-    ASSERT_TRUE(ret > 0) << "Failed to decrypt.";
-    out.resize(in.size());
-    EXPECT_EQ(Bytes(in), Bytes(out));
+    // Integrity check.
+    ASSERT_EQ(ret, 1) << "EVP_Cipher integrity check failed.";
+    // Check payload data.
+    size_t payload_len = in.size() - e_iv_len;
+    std::vector<uint8_t> expect(payload_len, 0);
+    OPENSSL_memcpy(expect.data(), in.data() + e_iv_len, payload_len);
+    std::vector<uint8_t> actual(payload_len, 0);
+    OPENSSL_memcpy(actual.data(), decrypted.data() + e_iv_len, payload_len);
+    ASSERT_EQ(Bytes(expect), Bytes(actual));
+    // Integrity check after modifying some bytes of the cipher text.
+    // Some |in| only include explicit iv(if applicable) without payload.
+    if (in.size() > e_iv_len) {
+      // Modify the cipher text.
+      encrypted[EVP_CIPHER_block_size(cipher)] ^= 0x80;
+      set_TLS1_AAD(decrypt_ctx.get(), ad.data());
+      ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
+      // Expect 0 which means no error code is set.
+      ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), 0);
+      ERR_clear_error();
+      // Recover the cipher text.
+      encrypted[EVP_CIPHER_block_size(cipher)] ^= 0x80;
+    }
 
-    // // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-    // // reset after each operation.
-    // ctx.Reset();
-    // ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
-    //     ctx.get(), legacy_aead(), key.data(), key.size(), tag_len, evp_aead_open));
+    // |EVP_aes_128_cbc_hmac_sha1/256| requires the input to be the integral multiple of AES_BLOCK_SIZE.
+    encrypted.resize(encrypted.size() + 1);
+    set_TLS1_AAD(decrypt_ctx.get(), ad.data());
+    ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
+    ERR_clear_error();
 
-    // // Garbage at the end isn't ignored.
-    // out.push_back(0);
-    // out2.resize(out.size());
-    // EXPECT_FALSE(EVP_AEAD_CTX_open(
-    //     ctx.get(), out2.data(), &out2_len, out2.size(), nonce.data(),
-    //     nonce.size(), out.data(), out.size(), ad.data(), ad.size()))
-    //     << "Decrypted bad data with trailing garbage.";
-    // ERR_clear_error();
-
-    // // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-    // // reset after each operation.
-    // ctx.Reset();
-    // ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
-    //     ctx.get(), legacy_aead(), key.data(), key.size(), tag_len, evp_aead_open));
-
-    // // Verify integrity is checked.
-    // out[0] ^= 0x80;
-    // out.resize(out.size() - 1);
-    // out2.resize(out.size());
-    // EXPECT_FALSE(EVP_AEAD_CTX_open(
-    //     ctx.get(), out2.data(), &out2_len, out2.size(), nonce.data(),
-    //     nonce.size(), out.data(), out.size(), ad.data(), ad.size()))
-    //     << "Decrypted bad data with corrupted byte.";
+    // Garbage at the end isn't ignored.
+    encrypted.resize(encrypted.size() + EVP_CIPHER_block_size(cipher) - 1);
+    decrypted.resize(encrypted.size());
+    set_TLS1_AAD(decrypt_ctx.get(), ad.data());
+    ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
+    // Expect 0 which means no error code is set.
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), 0);
     ERR_clear_error();
   });
 }

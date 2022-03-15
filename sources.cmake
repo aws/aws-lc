@@ -9,6 +9,7 @@ set(
   crypto/blake2/blake2b256_tests.txt
   crypto/cipher_extra/test/aes_128_cbc_sha1_tls_implicit_iv_tests.txt
   crypto/cipher_extra/test/aes_128_cbc_sha1_tls_tests.txt
+  crypto/cipher_extra/test/aes_128_cbc_sha1_tls_stitch_tests.txt
   crypto/cipher_extra/test/aes_128_ccm_bluetooth_tests.txt
   crypto/cipher_extra/test/aes_128_ccm_bluetooth_8_tests.txt
   crypto/cipher_extra/test/aes_128_ctr_hmac_sha256.txt
