@@ -33,7 +33,8 @@
 // when s2n-bignum is used.
 //
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_LINUX) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
 #  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 #  define P521_USE_S2N_BIGNUM_FIELD_ARITH 1
