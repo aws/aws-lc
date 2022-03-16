@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 3.4.1)
 set(path_to_awslc "${CMAKE_CURRENT_LIST_DIR}/../../../../../../../../")
 get_filename_component(path_to_awslc ${path_to_awslc} ABSOLUTE)
 
-list(APPEND CMAKE_MODULE_PATH "${path_to_awslc}")
+list(APPEND CMAKE_MODULE_PATH $<TARGET_FILE:crypto>)
 set(BUILD_SHARED_LIBS ON)
 set(ANDROIDTESTRUNNER ON)
 add_subdirectory(${path_to_awslc} ${CMAKE_CURRENT_BINARY_DIR}/aws-lc)
