@@ -32,7 +32,8 @@
 //   #define p521_felem_add(out, in0, in1) bignum_add_p521(out, in0, in1)
 // when s2n-bignum is used.
 //
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_LINUX) && \
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
 
 #  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"

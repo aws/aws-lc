@@ -29,7 +29,8 @@
 //   #define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
 // when s2n-bignum is used.
 //
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_LINUX) && \
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
@@ -115,7 +116,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return bignum_nonzero_6(in1);
 }
 
-#else // !NO_ASM && LINUX && (X86_64 || AARCH64)
+#else // P384_USE_S2N_BIGNUM_FIELD_ARITH
 
 // Fiat-crypto implementation of field arithmetic
 #define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
@@ -134,7 +135,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return ret;
 }
 
-#endif // !NO_ASM && LINUX && (X86_64 || AARCH64)
+#endif // P384_USE_S2N_BIGNUM_FIELD_ARITH
 
 static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
                            const p384_limb_t in1[P384_NLIMBS]) {
