@@ -135,14 +135,6 @@ static int has_uint128_and_not_small() {
 #endif
 }
 
-static int awslc_fips() {
-#if defined(AWSLC_FIPS)
-  return 1;
-#else
-  return 0;
-#endif
-}
-
 // The following test is adapted from ECTest.LargeXCoordinateVectors
 TEST(ECDHTest, InvalidPubKeyLargeCoord) {
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
@@ -217,48 +209,25 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
       ASSERT_TRUE(ret);
     } else {
       ASSERT_FALSE(ret);
-      if (awslc_fips()) {
-        // Fails in |EC_KEY_check_fips|.
-        EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      } else {
-        // Fails in the actual shared secret computation.
-        EXPECT_EQ(ECDH_R_POINT_ARITHMETIC_FAILURE,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      }
+      // Fails in |EC_KEY_check_fips|.
+      EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+                ERR_GET_REASON(ERR_peek_last_error()));
     }
     ASSERT_TRUE(peer_key.get());
     ASSERT_TRUE(pub_key.get());
 
     // Now replace the x-coordinate with the larger one, x+p;
-    // ECDH fails |EC_KEY_check_fips| or in the actual shared secret computation
-    // in all curves (except for P-224 and P-521 in non-FIPS build).
-    // TODO: Do we want to change the code to apply the FIPS check to non-FIPS
-    // builds, or we can allow the coordinates to be larger than the modulus
-    // as long as they're correct?
     OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes,
                    (const uint8_t *)xpp.get()->d, len);
     ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
                                 EC_KEY_get0_public_key(peer_key.get()),
                                 priv_key.get());
-    if (!awslc_fips() &&
-        ((has_uint128_and_not_small() && (curve_nid == NID_secp224r1)) ||
-        (curve_nid == NID_secp521r1))) {
-      ASSERT_TRUE(ret);
-    } else {
-      ASSERT_FALSE(ret);
-      if (awslc_fips()) {
-        // Fails in |EC_KEY_check_fips|.
-        EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      } else {
-        // Fails in the actual shared secret computation.
-        EXPECT_EQ(ECDH_R_POINT_ARITHMETIC_FAILURE,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      }
-      ASSERT_TRUE(peer_key.get());
-      ASSERT_TRUE(pub_key.get());
-    }
+    ASSERT_FALSE(ret);
+    EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+              ERR_GET_REASON(ERR_peek_last_error()));
+
+    ASSERT_TRUE(peer_key.get());
+    ASSERT_TRUE(pub_key.get());
   });
 }
 
