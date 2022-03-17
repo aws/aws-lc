@@ -34,7 +34,27 @@ for FOLDER_PATH in "$SRC_ROOT"/*/ ; do
 done
 
 function run_build_and_collect_metrics {
-  common_dimensions="CMAKE_BUILD_TYPE=Release,OPENSSL_SMALL=${small},OPENSSL_NO_ASM=${no_assembly},Platform=${PLATFORM},BUILD_SHARED_LIBS=${shared_library},FIPS=${fips}"
+  if [[ "$small" == "ON" ]]; then
+    build_size="Small"
+  else
+    build_size="Large"
+  fi
+  if [[ "$no_assembly" == "ON" ]]; then
+    assembly="NoAsm"
+  else
+    assembly="Asm"
+  fi
+  if [[ "$shared_library" == "ON" ]]; then
+    linking="Shared"
+  else
+    linking="Static"
+  fi
+  if [[ "$fips" == "ON" ]]; then
+    fips_mode="FIPS"
+  else
+    fips_mode="NotFIPS"
+  fi
+  common_dimensions="Optimization=Release,BuildSize=${build_size},Assembly=${assembly},CPU=${PLATFORM},Linking=${linking},FIPS=${fips_mode}"
 
   build_start=$(date +%s)
   run_build -DCMAKE_BUILD_TYPE=Release \
