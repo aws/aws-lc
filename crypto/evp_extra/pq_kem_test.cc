@@ -2,6 +2,7 @@
 
 #include "openssl/mem.h"
 #include "openssl/pq_kem.h"
+#include "openssl/nid.h"
 #include "../crypto/test/test_util.h"
 
 
@@ -17,7 +18,7 @@ TEST(PQKEMTest, Kyber512_Basic) {
   EXPECT_NE(ctxB, nullptr);
 
   ASSERT_TRUE(EVP_PQ_KEM_CTX_init(ctxA, kyber_kem));
-  ASSERT_TRUE(EVP_PQ_KEM_CTX_init(ctxB, kyber_kem));
+  ASSERT_TRUE(EVP_PQ_KEM_CTX_init_by_nid(ctxB, NID_KYBER512));
 
   // Alice generates the key pair.
   ASSERT_TRUE(EVP_PQ_KEM_generate_keypair(ctxA));

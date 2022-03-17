@@ -1135,6 +1135,10 @@ struct PQGroup {
 
 Span<const PQGroup> PQGroups();
 
+// bool is_post_quantum_group returns True if |id| corresponds to a TLS 1.3 post-quantum
+// group. Otherwise, it returns false.
+bool is_post_quantum_group(uint16_t id);
+
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns
 // false.

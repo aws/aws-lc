@@ -204,7 +204,7 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
   return true;
 }
 
-static bool is_post_quantum_group(uint16_t id) {
+bool is_post_quantum_group(uint16_t id) {
   for (const PQGroup &pq_group : PQGroups()) {
     if (id == pq_group.group_id) {
       return true;
