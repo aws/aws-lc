@@ -128,4 +128,4 @@ Security via our
 [vulnerability reporting page](https://aws.amazon.com/security/vulnerability-reporting/).
 Please do **not** create a public GitHub issue.
 
-If you package or distribute aws-lc, or use aws-lc as part of a large multi-user service, you may be eligible for pre-notification of future aws-lc releases. Please contact aws-lc-pre-notifications@amazon.com.
+If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.
