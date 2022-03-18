@@ -9,6 +9,9 @@ source tests/ci/common_posix_setup.sh
 # In case there is a weird change over time this recorded additional information about the host to the logs.
 lscpu
 
+branch=$(echo "$CODEBUILD_WEBHOOK_TRIGGER" | cut -d '/' -f2)
+common_dimensions="Branch=${branch}"
+
 function put_metric {
   # This call to publish the metric could fail but we don't want to fail the build +e turns off exit on error
   set +e
@@ -25,12 +28,12 @@ function size {
 }
 
 SOURCE_CODE_SIZE=$(size "$SRC_ROOT")
-put_metric --metric-name FolderSize --value "$SOURCE_CODE_SIZE" --unit Bytes --dimensions "Folder=root"
+put_metric --metric-name FolderSize --value "$SOURCE_CODE_SIZE" --unit Bytes --dimensions "Folder=root,${common_dimensions}"
 
 for FOLDER_PATH in "$SRC_ROOT"/*/ ; do
     FOLDER_SIZE=$(size "$FOLDER_PATH")
     FOLDER=$(basename "$FOLDER_PATH")
-    put_metric --metric-name FolderSize --value "$FOLDER_SIZE" --unit Bytes --dimensions "Folder=${FOLDER}"
+    put_metric --metric-name FolderSize --value "$FOLDER_SIZE" --unit Bytes --dimensions "Folder=${FOLDER},${common_dimensions}"
 done
 
 function run_build_and_collect_metrics {
@@ -46,15 +49,17 @@ function run_build_and_collect_metrics {
   fi
   if [[ "$shared_library" == "ON" ]]; then
     linking="Shared"
+    lib_extension="so"
   else
     linking="Static"
+    lib_extension="a"
   fi
   if [[ "$fips" == "ON" ]]; then
     fips_mode="FIPS"
   else
     fips_mode="NotFIPS"
   fi
-  common_dimensions="Optimization=Release,BuildSize=${build_size},Assembly=${assembly},CPU=${PLATFORM},Linking=${linking},FIPS=${fips_mode}"
+  size_common_dimensions="${common_dimensions},Optimization=Release,BuildSize=${build_size},Assembly=${assembly},CPU=${PLATFORM},Linking=${linking},FIPS=${fips_mode}"
 
   build_start=$(date +%s)
   run_build -DCMAKE_BUILD_TYPE=Release \
@@ -64,18 +69,23 @@ function run_build_and_collect_metrics {
       -DFIPS="$fips"
   build_end=$(date +%s)
   build_time=$((build_end-build_start))
-  put_metric --metric-name BuildTime --value "$build_time" --unit Seconds --dimensions "$common_dimensions"
+  put_metric --metric-name BuildTime --value "$build_time" --unit Seconds --dimensions "$size_common_dimensions"
 
   test_start=$(date +%s)
   run_cmake_custom_target 'run_tests'
   test_end=$(date +%s)
   test_time=$((test_end-test_start))
-  put_metric --metric-name TestTime --value "$test_time" --unit Seconds --dimensions "$common_dimensions"
+  put_metric --metric-name TestTime --value "$test_time" --unit Seconds --dimensions "$size_common_dimensions"
 
-  libcrypto_size=$(du --bytes --apparent-size "${BUILD_ROOT}"/crypto/libcrypto.* | cut -f1)
-  libssl_size=$(du --bytes --apparent-size "${BUILD_ROOT}"/ssl/libssl.* | cut -f1)
-  put_metric --metric-name LibrarySize --value "$libcrypto_size" --unit Bytes --dimensions "Library=libcrypto,${common_dimensions}"
-  put_metric --metric-name LibrarySize --value "$libssl_size" --unit Bytes --dimensions "Library=libssl,${common_dimensions}"
+  libcrypto_size=$(du --bytes --apparent-size "${BUILD_ROOT}/crypto/libcrypto.${lib_extension}" | cut -f1)
+  libssl_size=$(du --bytes --apparent-size "${BUILD_ROOT}/ssl/libssl.${lib_extension}" | cut -f1)
+  put_metric --metric-name LibrarySize --value "$libcrypto_size" --unit Bytes --dimensions "Library=libcrypto,${size_common_dimensions}"
+  put_metric --metric-name LibrarySize --value "$libssl_size" --unit Bytes --dimensions "Library=libssl,${size_common_dimensions}"
+
+  for file_path in $(find . -type f -name "*.o"); do
+    size=$(du --bytes --apparent-size "$file_path" | cut -f1)
+    put_metric --metric-name ObjectSize --value "$size" --unit Bytes --dimensions "File=${file_path},${size_common_dimensions}"
+  done
 }
 
 fips=OFF
