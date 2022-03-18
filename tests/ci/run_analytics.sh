@@ -82,10 +82,16 @@ function run_build_and_collect_metrics {
   put_metric --metric-name LibrarySize --value "$libcrypto_size" --unit Bytes --dimensions "Library=libcrypto,${size_common_dimensions}"
   put_metric --metric-name LibrarySize --value "$libssl_size" --unit Bytes --dimensions "Library=libssl,${size_common_dimensions}"
 
+  pushd .
+  cd "$BUILD_ROOT"
   for file_path in $(find . -type f -name "*.o"); do
-    size=$(du --bytes --apparent-size "$file_path" | cut -f1)
-    put_metric --metric-name ObjectSize --value "$size" --unit Bytes --dimensions "File=${file_path},${size_common_dimensions}"
+    size=$(du --bytes --apparent-size "${BUILD_ROOT}/${file_path}" | cut -f1)
+    # Cleanup the file names ./crypto/fipsmodule/CMakeFiles/fipsmodule.dir/bcm.c.o -> crypto/fipsmodule/bcm.c.o
+    # sed has there own regex format, [[:alpha:]] matches one Alphabetic character
+    file_name=$(sed -e "s/CMakeFiles\///g" -e "s/[[:alpha:]]*\.dir\///g" <<< "$file_path" | cut -c 3-)
+    put_metric --metric-name ObjectSize --value "$size" --unit Bytes --dimensions "File=${file_name},${size_common_dimensions}"
   done
+  popd
 }
 
 fips=OFF
