@@ -95,9 +95,8 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
   FIPS_service_indicator_lock_state();
   int ret = 0;
 
-#if defined(AWSLC_FIPS)
   // |EC_KEY_check_fips| is not an expensive operation on an external
-  // public key.
+  // public key so we always perform it, even in the non-FIPS build.
   EC_KEY *key_pub_key = NULL;
   key_pub_key = EC_KEY_new();
   if (key_pub_key == NULL) {
@@ -105,12 +104,12 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
   }
 
   if (!EC_KEY_set_group(key_pub_key, group) ||
-      !EC_KEY_set_public_key(key_pub_key, pub_key) || // Creates a copy of pub_key within key_pub_key
+      // Creates a copy of pub_key within key_pub_key
+      !EC_KEY_set_public_key(key_pub_key, pub_key) ||
       !EC_KEY_check_fips(key_pub_key)) {
     OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
     goto end;
   }
-#endif
 
   EC_RAW_POINT shared_point;
   if (!ec_point_mul_scalar(group, &shared_point, &pub_key->raw, priv) ||
@@ -123,11 +122,9 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
   ret = 1;
 end:
   FIPS_service_indicator_unlock_state();
-#if defined(AWSLC_FIPS)
   if (key_pub_key != NULL) {
     EC_KEY_free(key_pub_key);
   }
-#endif
   return ret;
 }
 
