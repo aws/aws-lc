@@ -363,7 +363,14 @@ elseif(MSVC)
       "C5027" # move assignment operator was implicitly defined as deleted
       "C5045" # Compiler will insert Spectre mitigation for memory load if
               # /Qspectre switch specified
-      )
+      "C4255" # no function prototype given: converting '()' to '(void)'
+      "C4152" # non standard extension, function/data ptr conversion in expression
+              # used in bcm.c to check functions are inside the FIPS module memory region
+      "C4295" # array is too small to include a terminating null character
+      "C4701" # potentially uninitialized local
+      "C4505" # unreferenced local function has been removed
+      "C4702" # unreachable code in bcm.c power on tests
+          )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
       "C4265" # class has virtual functions, but destructor is not virtual
@@ -527,7 +534,7 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
-  if(FIPS_SHARED)
+  if(FIPS_SHARED AND ANDROID)
     # The Android CMake files set -ffunction-sections and -fdata-sections,
     # which is incompatible with FIPS_SHARED.
     set(CMAKE_C_FLAGS
@@ -793,16 +800,23 @@ endif()
 if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
+      if(MSVC)
+        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool.exe)
+        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper.exe)
+      else()
+        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool)
+        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper)
+      endif()
       add_custom_target(
         acvp_tests
-        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
+        COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
-        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
+        COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
         COMMAND cd util/fipstools/acvp/acvptool/test &&
                 ${GO_EXECUTABLE} run check_expected.go
-                -tool ${CMAKE_BINARY_DIR}/acvptool
-                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
+                -tool ${ACVP_TOOL}
+                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
                 -tests tests.json
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         DEPENDS modulewrapper

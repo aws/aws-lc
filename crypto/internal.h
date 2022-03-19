@@ -937,7 +937,11 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
+#if defined(_MSC_VER)
+__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+#else
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+#endif
 #else
 #define MAX_KEYGEN_ATTEMPTS  1
 #endif

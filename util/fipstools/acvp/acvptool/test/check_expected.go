@@ -158,7 +158,7 @@ func doTest(test invocation) error {
 	result, err := cmd.CombinedOutput()
 	if err != nil {
 		os.Stderr.Write(result)
-		return fmt.Errorf("Failed to process %q", test.inPath)
+		return fmt.Errorf("Failed to process %q: %s", test.inPath, err)
 	}
 
 	if len(test.expectedPath) == 0 {
@@ -193,8 +193,8 @@ func doTest(test invocation) error {
 		if *update {
 			writeUpdate(test.expectedPath, result)
 		}
-		return fmt.Errorf("Mismatch for %q", test.expectedPath)
-	}
+        return fmt.Errorf("Mismatch for %q", test.expectedPath)
+    }
 
 	return nil
 }

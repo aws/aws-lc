@@ -19,7 +19,7 @@
 #include <openssl/crypto.h>
 
 #include <stdlib.h>
-#if defined(BORINGSSL_FIPS)
+#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
@@ -145,6 +145,7 @@ extern const uint8_t BORINGSSL_bcm_rodata_end[];
 // bounds of the integrity check. It checks that start <= symbol < end and
 // aborts otherwise.
 static void assert_within(const void *start, const void *symbol,
+                          const char *symbolName,
                           const void *end) {
   const uintptr_t start_val = (uintptr_t) start;
   const uintptr_t symbol_val = (uintptr_t) symbol;
@@ -156,8 +157,26 @@ static void assert_within(const void *start, const void *symbol,
 
   fprintf(
       stderr,
-      "FIPS module doesn't span expected symbol. Expected %p <= %p < %p\n",
-      start, symbol, end);
+      "FIPS module doesn't span expected symbol. Symbol %s expected %p <= %p < %p\n",
+      symbolName, start, symbol, end);
+  BORINGSSL_FIPS_abort();
+}
+
+static void assert_not_within(const void *start, const void *symbol,
+                          const char *symbolName,
+                          const void *end) {
+  const uintptr_t start_val = (uintptr_t) start;
+  const uintptr_t symbol_val = (uintptr_t) symbol;
+  const uintptr_t end_val = (uintptr_t) end;
+
+  if (start_val >= symbol_val || symbol_val > end_val) {
+    return;
+  }
+
+  fprintf(
+      stderr,
+      "FIPS module spans unexpected symbol. Symbol %s expected %p < %p || %p > %p\n",
+      symbolName, symbol, start, symbol, end);
   BORINGSSL_FIPS_abort();
 }
 
@@ -178,16 +197,20 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
     perror("BoringSSL: mprotect");
   }
 }
-#else
-static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
 #endif  // !ANDROID
 
 #endif  // !ASAN
 
+#if defined(OPENSSL_WINDOWS)
+void BORINGSSL_bcm_power_on_self_test(void) {
+#else
 static void __attribute__((constructor))
 BORINGSSL_bcm_power_on_self_test(void) {
+#endif
 
+#if !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
+#endif
 
   if (jent_entropy_init()) {
     fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
@@ -200,13 +223,15 @@ BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
-  assert_within(start, AES_encrypt, end);
-  assert_within(start, RSA_sign, end);
-  assert_within(start, RAND_bytes, end);
-  assert_within(start, EC_GROUP_cmp, end);
-  assert_within(start, SHA256_Update, end);
-  assert_within(start, ECDSA_do_verify, end);
-  assert_within(start, EVP_AEAD_CTX_seal, end);
+  assert_within(start, AES_encrypt, "AES_encrypt", end);
+  assert_within(start, RSA_sign, "RSA_sign", end);
+  assert_within(start, RAND_bytes, "RAND_bytes", end);
+  assert_within(start, EC_GROUP_cmp, "EC_GROUP_cmp", end);
+  assert_within(start, SHA256_Update, "SHA256_Update", end);
+  assert_within(start, ECDSA_do_verify, "ECDSA_do_verify", end);
+  assert_within(start, EVP_AEAD_CTX_seal, "EVP_AEAD_CTX_seal", end);
+  assert_not_within(start, OPENSSL_cleanse, "OPENSSL_cleanse", end);
+  assert_not_within(start, CRYPTO_chacha_20, "CRYPTO_chacha_20", end);
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
@@ -217,10 +242,10 @@ BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *const rodata_end = BORINGSSL_bcm_text_end;
 #endif
 
-  assert_within(rodata_start, kPrimes, rodata_end);
-  assert_within(rodata_start, des_skb, rodata_end);
-  assert_within(rodata_start, kP256Params, rodata_end);
-  assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
+  assert_within(rodata_start, kPrimes, "kPrimes", rodata_end);
+  assert_within(rodata_start, des_skb, "des_skb", rodata_end);
+  assert_within(rodata_start, kP256Params, "kP256Params", rodata_end);
+  assert_within(rodata_start, kPKCS1SigPrefixes, "kPKCS1SigPrefixes", rodata_end);
 
   // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
   // check before the integrity check itself. So we first call the self-test
@@ -242,7 +267,9 @@ BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
+#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
   BORINGSSL_maybe_set_module_text_permissions(PROT_READ | PROT_EXEC);
+#endif
 #if defined(BORINGSSL_SHARED_LIBRARY)
   uint64_t length = end - start;
   HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
@@ -254,8 +281,9 @@ BORINGSSL_bcm_power_on_self_test(void) {
 #else
   HMAC_Update(&hmac_ctx, start, end - start);
 #endif
+#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
   BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
-
+#endif
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
@@ -269,7 +297,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
-#else
+#else // !defined(OPENSSL_ASAN)
   if (!BORINGSSL_self_test()) {
     goto err;
   }

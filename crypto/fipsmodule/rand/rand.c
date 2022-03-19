@@ -19,7 +19,11 @@
 #include <string.h>
 
 #if defined(BORINGSSL_FIPS)
+#if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
+#else
+#include <io.h>
+#endif
 #include "../../../third_party/jitterentropy/jitterentropy.h"
 #endif
 
@@ -103,8 +107,12 @@ DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list)
 DEFINE_STATIC_MUTEX(thread_states_list_lock)
 DEFINE_STATIC_MUTEX(state_clear_all_lock)
 
+#if defined(OPENSSL_WINDOWS)
+void rand_thread_state_clear_all(void) {
+#else
 static void rand_thread_state_clear_all(void) __attribute__((destructor));
 static void rand_thread_state_clear_all(void) {
+#endif
   CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
   CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();

@@ -299,13 +299,14 @@ if(FIPS_DELOCATE)
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target
   # so that crypto can depend on it.
   add_custom_target(bcm_o_target DEPENDS bcm.o)
-
+  # fipsmodule must stay in sync with generated_fipsmodule in crypto/CMakeLists.txt
   add_library(
     fipsmodule
 
     OBJECT
 
     fips_shared_support.c
+    fips_windows_support.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -316,32 +317,38 @@ elseif(FIPS_SHARED)
   if(NOT BUILD_SHARED_LIBS)
     error("FIPS_SHARED set but not BUILD_SHARED_LIBS")
   endif()
-
+  # fipsmodule must stay in sync with generated_fipsmodule in crypto/CMakeLists.txt
   add_library(
     fipsmodule
-
     OBJECT
-
     fips_shared_support.c
+    fips_windows_support.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 
-  add_library(
-    bcm_library
-
-    STATIC
-
-    bcm.c
-
-    ${BCM_ASM_SOURCES}
-  )
+  if(MSVC)
+    add_library(
+      bcm_library
+      OBJECT
+      bcm.c
+      ${BCM_ASM_SOURCES}
+    )
+  else()
+    add_library(
+      bcm_library
+      STATIC
+      bcm.c
+      ${BCM_ASM_SOURCES}
+    )
+  endif()
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
+  target_include_directories(bcm_library PRIVATE ../../include)
 
   add_dependencies(bcm_library global_target)
-
   if (APPLE)
+    set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
     # so we build the FIPS module differently than on Linux. Similarly to
     # what OpenSSL does we produce two object files: fips_apple_{start, end}.o
@@ -353,13 +360,13 @@ elseif(FIPS_SHARED)
     # respective start and end markers.
     add_custom_command(
       OUTPUT fips_apple_start.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c -DAWSLC_FIPS_APPLE_START -o fips_apple_start.o
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_apple_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_apple_end.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c -DAWSLC_FIPS_APPLE_END -o fips_apple_end.o
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_apple_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 
     add_custom_command(
@@ -368,10 +375,41 @@ elseif(FIPS_SHARED)
       DEPENDS bcm_library fips_apple_start.o fips_apple_end.o
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+  elseif(MSVC)
+    set(BCM_NAME bcm.lib)
+    # Like the macOS linker MSVC doesn't have the ability to process linker scripts.
+    add_custom_command(
+      OUTPUT fips_msvc_start.obj
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c &&
+      ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl $$a fips_msvc_start.obj
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl
+    )
+    add_custom_command(
+      OUTPUT fips_msvc_end.obj
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c  &&
+      ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl $$c fips_msvc_end.obj
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl
+    )
 
+    # This touches the bcm_library and ninja sees that as dirty and will rebuild bcm_library unless we copy it
+    add_custom_command(
+      OUTPUT bcm_library_fips_sections.obj
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:bcm_library> bcm_library_fips_sections.obj &&
+      ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl $$b bcm_library_fips_sections.obj
+      DEPENDS bcm_library bcm.c ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl
+    )
+
+    get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
+    set(MSVC_LIB "${MSVC_BIN}/lib.exe")
+
+    add_custom_command(
+      OUTPUT ${BCM_NAME}
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj bcm_library_fips_sections.obj fips_msvc_end.obj /OUT:${BCM_NAME}
+      DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library_fips_sections.obj
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   else()
-    # Linux is the only OS other than macOS/iOS on which we build FIPS.
-
+    set(BCM_NAME bcm.o)
     # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
     set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
     if (GCC)
@@ -381,15 +419,16 @@ elseif(FIPS_SHARED)
     endif()
 
     add_custom_command(
-      OUTPUT bcm.o
-      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+      OUTPUT ${BCM_NAME}
+      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library>
       DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   endif()
 
+  add_custom_target(bcm_o_target DEPENDS ${BCM_NAME})
+  set(BCM_NAME ${BCM_NAME} PARENT_SCOPE)
 
-  add_custom_target(bcm_o_target DEPENDS bcm.o)
 else()
   add_library(
     fipsmodule
@@ -398,6 +437,7 @@ else()
 
     bcm.c
     fips_shared_support.c
+    fips_windows_support.c
 
     ${BCM_ASM_SOURCES}
   )

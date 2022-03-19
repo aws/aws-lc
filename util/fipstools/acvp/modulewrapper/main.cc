@@ -16,6 +16,11 @@
 #include <string>
 #include <string.h>
 
+#if defined(_MSC_VER)
+#include <stdio.h>
+#include <io.h>
+#include <fcntl.h>
+#endif
 #include <openssl/crypto.h>
 #include <openssl/span.h>
 
@@ -47,6 +52,13 @@ int main(int argc, char **argv) {
     return 4;
   }
 
+#if defined(_MSC_VER)
+  if (_setmode( _fileno( stdin ), _O_BINARY ) < 0 || _setmode( _fileno( stdout ), _O_BINARY ) < 0) {
+      fprintf(stderr, "Setting binary mode to in/out failed.\n");
+      return 4;
+  }
+#endif
+  
   std::unique_ptr<bssl::acvp::RequestBuffer> buffer =
       bssl::acvp::RequestBuffer::New();
   const bssl::acvp::ReplyCallback write_reply = std::bind(
