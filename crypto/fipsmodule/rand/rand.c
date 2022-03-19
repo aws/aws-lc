@@ -167,7 +167,7 @@ OPENSSL_STATIC_ASSERT(RDRAND_MAX_RETRIES > 0, rdrand_max_retries_must_be_positiv
       if ((rdrand_func) == 1) {                                   \
         break;                                                    \
       }                                                           \
-      else if (tries == RDRAND_MAX_RETRIES - 1) {                 \
+      else if (tries >= RDRAND_MAX_RETRIES - 1) {                 \
         return fail_ret_value;                                    \
       }                                                           \
     }

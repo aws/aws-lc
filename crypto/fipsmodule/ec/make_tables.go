@@ -289,9 +289,15 @@ func writeP521Table(path string) error {
 // with the difference that we use a window size of 7 instead of 5.
 // The windows size is chosen based on analysis analogous to the one in
 // |ec_GFp_nistp_recode_scalar_bits| function in |util.c| file.
-#if defined(BORINGSSL_NISTP521_64BIT)
+#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
 static const p521_felem p521_g_pre_comp[19][64][2] = `
 	if _, err := f.WriteString(fileHeader); err != nil {
+		return err
+	}
+	if err := writeTables(f, curve, tables, true, 4, writeU64, nil); err != nil {
+		return err
+	}
+	if _, err := f.WriteString(";\n#else\n#if defined(P521_USE_64BIT_LIMBS_FELEM)\nstatic const p521_felem p521_g_pre_comp[19][64][2] = "); err != nil {
 		return err
 	}
 	if err := writeTables(f, curve, tables, true, 4, writeU58, nil); err != nil {
@@ -306,7 +312,7 @@ static const p521_felem p521_g_pre_comp[19][64][2] = `
 	if err := writeTables(f, curve, tables, true, 4, writeU32Custom, bitSizes[:]); err != nil {
 		return err
 	}
-	if _, err := f.WriteString(";\n#endif\n"); err != nil {
+	if _, err := f.WriteString(";\n#endif\n#endif\n"); err != nil {
 		return err
 	}
 
@@ -627,3 +633,4 @@ func writeTables(w io.Writer, curve elliptic.Curve, tables [][][2]*big.Int, isRo
 	}
 	return nil
 }
+

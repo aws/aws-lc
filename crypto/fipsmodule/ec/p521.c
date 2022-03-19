@@ -17,17 +17,102 @@
 #include "../delocate.h"
 #include "internal.h"
 
-#if defined(BORINGSSL_HAS_UINT128)
-#define BORINGSSL_NISTP521_64BIT 1
-#include "../../../third_party/fiat/p521_64.h"
+// We have two implementations of the field arithmetic for P-521 curve:
+//   - Fiat-crypto
+//   - s2n-bignum
+// Both Fiat-crypto and s2n-bignum implementations are formally verified.
+// Fiat-crypto implementation is fully portable C code, while s2n-bignum
+// implements the operations in assembly for x86_64 and aarch64 platforms.
+// All the P-521 field operations supported by Fiat-crypto are supported
+// by s2n-bignum as well, so s2n-bignum can be used as a drop-in replacement
+// when appropriate. To do that we define macros for the functions.
+// For example, field addition macro is either defined as
+//   #define p521_felem_add(out, in0, in1) fiat_p521_add(out, in0, in1)
+// when Fiat-crypto is used, or as:
+//   #define p521_felem_add(out, in0, in1) bignum_add_p521(out, in0, in1)
+// when s2n-bignum is used.
+//
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_LINUX) && \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+
+#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#  define P521_USE_S2N_BIGNUM_FIELD_ARITH 1
+
 #else
-#include "../../../third_party/fiat/p521_32.h"
+
+// Fiat-crypto has both 64-bit and 32-bit implementation for P-521.
+#  if defined(BORINGSSL_HAS_UINT128)
+#    include "../../../third_party/fiat/p521_64.h"
+#    define P521_USE_64BIT_LIMBS_FELEM 1
+#  else
+#    include "../../../third_party/fiat/p521_32.h"
+#  endif
+
 #endif
 
-#if defined(BORINGSSL_NISTP521_64BIT)
+#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
 
 #define P521_NLIMBS (9)
-// NOTE: Fiat-crypto represents a field element by 9 58-bit digits.
+
+typedef uint64_t p521_limb_t;
+typedef uint64_t p521_felem[P521_NLIMBS]; // field element
+
+static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
+    0x0000000000000001, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000};
+
+// The field characteristic p.
+static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0x1ff};
+
+#if defined(OPENSSL_X86_64)
+// On x86_64 platforms s2n-bignum uses bmi2 and adx instruction sets
+// for some of the functions. These instructions are not supported by
+// every x86 CPU so we have to check if they are available and in case
+// they are not we fallback to slightly slower but generic implementation.
+static inline uint8_t p521_use_s2n_bignum_alt(void) {
+  return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) == 0) || // bmi2
+         ((OPENSSL_ia32cap_P[2] & (1u << 19)) == 0);   // adx
+}
+#else
+// On aarch64 platforms s2n-bignum has two implementations of certain
+// functions. Depending on the architecture one version is faster than
+// the other. Until we find a clear way to determine in runtime which
+// implementation is faster on the CPU we are running on we stick with
+// one of the implementations.
+static inline uint8_t p521_use_s2n_bignum_alt(void) { return 0; }
+#endif
+
+// s2n-bignum implementation of field arithmetic
+#define p521_felem_add(out, in0, in1)   bignum_add_p521(out, in0, in1)
+#define p521_felem_sub(out, in0, in1)   bignum_sub_p521(out, in0, in1)
+#define p521_felem_opp(out, in0)        bignum_neg_p521(out, in0)
+#define p521_felem_to_bytes(out, in0)   bignum_tolebytes_p521(out, in0)
+#define p521_felem_from_bytes(out, in0) bignum_fromlebytes_p521(out, in0)
+
+// The following two functions need bmi2 and adx support.
+#define p521_felem_mul(out, in0, in1) \
+  if (p521_use_s2n_bignum_alt()) bignum_mul_p521_alt(out, in0, in1); \
+  else bignum_mul_p521(out, in0, in1);
+
+#define p521_felem_sqr(out, in0) \
+  if (p521_use_s2n_bignum_alt()) bignum_sqr_p521_alt(out, in0); \
+  else bignum_sqr_p521(out, in0);
+
+#else // P521_USE_S2N_BIGNUM_FIELD_ARITH
+
+#if defined(P521_USE_64BIT_LIMBS_FELEM)
+
+// In the 64-bit case Fiat-crypto represents a field element by 9 58-bit digits.
+#define P521_NLIMBS (9)
 
 typedef uint64_t p521_felem[P521_NLIMBS]; // field element
 typedef uint64_t p521_limb_t;
@@ -42,18 +127,18 @@ static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
 
 // The field characteristic p in Fiat-crypto's representation (58-bit digits).
 static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x1ffffffffffffff};
-
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x01ffffffffffffff};
 
 #else  // 64BIT; else 32BIT
 
-#define P521_NLIMBS (19)
-// NOTE: Fiat-crypto represents a field element by 19 digits with bit sizes:
+// In the 32-bit case Fiat-crypto represents a field element by 19 digits
+// with the following bit sizes:
 // [28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 27].
+#define P521_NLIMBS (19)
 
 typedef uint32_t p521_felem[P521_NLIMBS]; // field element
 typedef uint32_t p521_limb_t;
@@ -75,9 +160,6 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
     0xfffffff, 0x7ffffff, 0x7ffffff};
 #endif  // 64BIT
 
-
-// dkostic: these macro definitions will make sense once we add s2n-bignum
-// functions as in p384.c
 // Fiat-crypto implementation of field arithmetic
 #define p521_felem_add(out, in0, in1)   fiat_secp521r1_carry_add(out, in0, in1)
 #define p521_felem_sub(out, in0, in1)   fiat_secp521r1_carry_sub(out, in0, in1)
@@ -87,11 +169,17 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 #define p521_felem_to_bytes(out, in0)   fiat_secp521r1_to_bytes(out, in0)
 #define p521_felem_from_bytes(out, in0) fiat_secp521r1_from_bytes(out, in0)
 
+#endif // P521_USE_S2N_BIGNUM_FIELD_ARITH
+
 static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
   p521_limb_t is_not_zero = 0;
   for (int i = 0; i < P521_NLIMBS; i++) {
     is_not_zero |= in1[i];
   }
+
+#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
+  return is_not_zero;
+#else
   // Fiat-crypto functions may return p (the field characteristic)
   // instead of 0 in some cases, so we also check for that.
   p521_limb_t is_not_p = 0;
@@ -99,7 +187,9 @@ static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
     is_not_p |= (in1[i] ^ p521_felem_p[i]);
   }
 
-  return (is_not_zero && is_not_p);
+  return ~(constant_time_is_zero_w(is_not_p) |
+           constant_time_is_zero_w(is_not_zero));
+#endif
 }
 
 static void p521_felem_copy(p521_limb_t out[P521_NLIMBS],
@@ -113,7 +203,10 @@ static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
                                p521_limb_t t,
                                const p521_limb_t z[P521_NLIMBS],
                                const p521_limb_t nz[P521_NLIMBS]) {
-  fiat_secp521r1_selectznz(out, !!t, z, nz);
+  p521_limb_t mask = constant_time_is_zero_w(t);
+  for (size_t i = 0; i < P521_NLIMBS; i++) {
+    out[i] = constant_time_select_w(mask, z[i], nz[i]);
+  }
 }
 
 // NOTE: the input and output are in little-endian representation.
