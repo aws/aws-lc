@@ -19,8 +19,23 @@
  * DAMAGE.
  */
 
-#include "jitterentropy.h"
 #include "jitterentropy-health.h"
+
+static jent_fips_failure_cb fips_cb = NULL;
+static int jent_health_cb_switch_blocked = 0;
+
+void jent_health_cb_block_switch(void)
+{
+	jent_health_cb_switch_blocked = 1;
+}
+
+int jent_set_fips_failure_callback_internal(jent_fips_failure_cb cb)
+{
+	if (jent_health_cb_switch_blocked)
+		return -EAGAIN;
+	fips_cb = cb;
+	return 0;
+}
 
 /***************************************************************************
  * Lag Predictor Test
@@ -433,6 +448,10 @@ unsigned int jent_health_failure(struct rand_data *ec)
 	/* Test is only enabled in FIPS mode */
 	if (!ec->fips_enabled)
 		return 0;
+
+	if (fips_cb && ec->health_failure) {
+		fips_cb(ec, ec->health_failure);
+	}
 
 	return ec->health_failure;
 }
