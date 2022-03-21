@@ -285,6 +285,11 @@ static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
      true,
      kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
+    {"AES_128_CBC_SHA256_TLS", EVP_aes_128_cbc_hmac_sha256,
+     "aes_128_cbc_sha256_tls_stitch_tests.txt",
+     true,
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
     // {"AES_256_CBC_SHA1_TLS", EVP_aes_256_cbc_hmac_sha1,
     //  "aes_256_cbc_sha1_tls_tests.txt",
     //  kLimitedImplementation | RequiresADLength(11)},

@@ -14,6 +14,8 @@
 
 
 #include <openssl/evp.h>
+#include <openssl/cipher.h>
+#include <openssl/err.h>
 #include <openssl/objects.h>
 #include <openssl/aes.h>
 #include <openssl/sha.h>
@@ -83,16 +85,20 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
 
     key->payload_length = NO_PAYLOAD_LENGTH;
 
-    if (len % AES_BLOCK_SIZE)
+    if (len % AES_BLOCK_SIZE) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
         return 0;
+    }
 
     if (EVP_CIPHER_CTX_encrypting(ctx)) {
         if (plen == NO_PAYLOAD_LENGTH)
             plen = len;
         else if (len !=
                  ((plen + SHA256_DIGEST_LENGTH +
-                   AES_BLOCK_SIZE) & -AES_BLOCK_SIZE))
+                   AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
+            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
             return 0;
+        }
         else if (key->aux.tls_ver >= TLS1_1_VERSION)
             iv = AES_BLOCK_SIZE;
 
@@ -177,8 +183,10 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx,
                 >= TLS1_1_VERSION)
                 iv = AES_BLOCK_SIZE;
 
-            if (len < (iv + SHA256_DIGEST_LENGTH + 1))
+            if (len < (iv + SHA256_DIGEST_LENGTH + 1)) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
                 return 0;
+            }
 
             /* omit explicit iv */
             out += iv;
