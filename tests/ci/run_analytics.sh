@@ -12,10 +12,13 @@ lscpu
 branch=$(echo "$CODEBUILD_WEBHOOK_TRIGGER" | cut -d '/' -f2)
 common_dimensions="Branch=${branch}"
 
+commit_timestamp=$(git show -s --format=%ct)
+
 function put_metric {
   # This call to publish the metric could fail but we don't want to fail the build +e turns off exit on error
   set +e
   aws cloudwatch put-metric-data \
+    --timestamp "$commit_timestamp" \
     --namespace AWS-LC \
     "$@" || echo "Publishing metric failed, continuing with the rest of the build"
   # Turn it back on for the rest of the build
@@ -79,8 +82,8 @@ function run_build_and_collect_metrics {
 
   libcrypto_size=$(du --bytes --apparent-size "${BUILD_ROOT}/crypto/libcrypto.${lib_extension}" | cut -f1)
   libssl_size=$(du --bytes --apparent-size "${BUILD_ROOT}/ssl/libssl.${lib_extension}" | cut -f1)
-  put_metric --metric-name LibrarySize --value "$libcrypto_size" --unit Bytes --dimensions "Library=libcrypto,${size_common_dimensions}"
-  put_metric --metric-name LibrarySize --value "$libssl_size" --unit Bytes --dimensions "Library=libssl,${size_common_dimensions}"
+  put_metric --metric-name LibCryptoSize --value "$libcrypto_size" --unit Bytes --dimensions "${size_common_dimensions}"
+  put_metric --metric-name LibSSLSize --value "$libssl_size" --unit Bytes --dimensions "${size_common_dimensions}"
 
   pushd .
   cd "$BUILD_ROOT"

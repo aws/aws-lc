@@ -9,7 +9,7 @@ from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REP
 from util.yml_loader import YmlLoader
 
 
-class AwsLcGitHubAnalkyticsStack(core.Stack):
+class AwsLcGitHubAnalyticsStack(core.Stack):
     """Define a stack used to batch execute AWS-LC tests in GitHub."""
 
     def __init__(self,
