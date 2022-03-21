@@ -7,6 +7,43 @@ android {
     buildToolsVersion "29.0.3"
     ndkVersion "21.0.6113669"
 
+    def cmake_args = ''
+    def specific_abis = ''
+    def main_apk_tag = ''
+    def test_apk_tag = ''
+    // FIPS only works with arm64 for Android.
+    if (project.hasProperty('FIPS')) {
+        cmake_args += '-DFIPS=1,-DBUILD_SHARED_LIBS=1,-DCMAKE_BUILD_TYPE=Release'
+        specific_abis = 'arm64-v8a'
+        main_apk_tag += '_fips'
+        test_apk_tag += '_fips'
+    }
+    // non-FIPS
+    else {
+        // Shared build. If not set, the build is static.
+        if(project.hasProperty('Shared')) {
+            cmake_args += '-DBUILD_SHARED_LIBS=1,'
+            main_apk_tag += '_shared'
+            test_apk_tag += '_shared'
+        }
+        else {
+            main_apk_tag += '_static'
+            test_apk_tag += '_static'
+        }
+
+        // Release build. If not set, the build is in debug mode.
+        if(project.hasProperty('Release')) {
+            cmake_args += '-DCMAKE_BUILD_TYPE=Release'
+            main_apk_tag += '_rel'
+            test_apk_tag += '_rel'
+        }
+        else {
+            main_apk_tag += '_dbg'
+            test_apk_tag += '_dbg'
+        }
+        specific_abis = 'x86_64,armeabi-v7a,arm64-v8a'
+    }
+
     defaultConfig {
         applicationId "software.amazon.aws.crypto.awslcandroidtestrunner"
         minSdkVersion 21
@@ -15,26 +52,6 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        def cmake_args = ''
-        def specific_abis = ''
-        // FIPS only works with arm64 for Android.
-        if (project.hasProperty('FIPS')) {
-            cmake_args += '-DFIPS=1,-DBUILD_SHARED_LIBS=1,-DCMAKE_BUILD_TYPE=Release'
-            specific_abis = 'arm64-v8a'
-        }
-        // non-FIPS
-        else {
-            // Shared build. If not set, the build is static.
-            if(project.hasProperty('Shared')) {
-                cmake_args += '-DBUILD_SHARED_LIBS=1,'
-            }
-            // Release build. If not set, the build is in debug mode.
-            if(project.hasProperty('Release')) {
-                cmake_args += '-DCMAKE_BUILD_TYPE=Release'
-            }
-            specific_abis = 'x86_64,armeabi-v7a,arm64-v8a'
-        }
 
         externalNativeBuild {
             cmake {
@@ -53,33 +70,13 @@ android {
 
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            if (project.hasProperty('FIPS')) {
-                outputFileName = "awslc_androidrunner_fips.apk"
-            }
-            else {
-                if (project.hasProperty('Release')) {
-                    outputFileName = "awslc_androidrunner_rel.apk"
-                }
-                else {
-                    outputFileName = "awslc_androidrunner_dbg.apk"
-                }
-            }
+            outputFileName = "awslc${main_apk_tag}.apk"
         }
     }
 
     testVariants.all { testVariant ->
         testVariant.outputs.all { output ->
-            if (project.hasProperty('FIPS')) {
-                outputFileName = "awslc_androidrunner_fips-androidTest.apk"
-            }
-            else {
-                if (project.hasProperty('Release')) {
-                    outputFileName = "awslc_androidrunner_rel-androidTest.apk"
-                }
-                else {
-                    outputFileName = "awslc_androidrunner_dbg-androidTest.apk"
-                }
-            }
+            outputFileName = "awslc${test_apk_tag}-androidTest.apk"
         }
     }
 }
