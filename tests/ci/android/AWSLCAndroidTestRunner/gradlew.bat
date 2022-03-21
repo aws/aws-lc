@@ -1,4 +1,7 @@
 @if "%DEBUG%" == "" @echo off
+@rem #
+@rem # This file is auto-generated.
+@rem #
 @rem ##########################################################################
 @rem
 @rem  Gradle startup script for Windows

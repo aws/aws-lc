@@ -16,40 +16,31 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
+        def cmake_args = ''
+        def specific_abis = ''
         // FIPS only works with arm64 for Android.
         if (project.hasProperty('FIPS')) {
-            externalNativeBuild {
-                cmake {
-                    arguments "-DFIPS=1 -DCMAKE_BUILD_TYPE=Release"
-                    abiFilters "arm64-v8a"
-                }
-            }
+            cmake_args += '-DFIPS=1,-DBUILD_SHARED_LIBS=1,-DCMAKE_BUILD_TYPE=Release'
+            specific_abis = 'arm64-v8a'
         }
         // non-FIPS
         else {
-            // Release build.
-            if (project.hasProperty('Release')) {
-                externalNativeBuild {
-                    cmake {
-                        arguments "-DCMAKE_BUILD_TYPE=Release"
-                        abiFilters "x86_64", "armeabi-v7a", "arm64-v8a"
-                    }
-                }
+            // Shared build. If not set, the build is static.
+            if(project.hasProperty('Shared')) {
+                cmake_args += '-DBUILD_SHARED_LIBS=1,'
             }
-            // Debug build.
-            else {
-                externalNativeBuild {
-                    cmake {
-                        abiFilters "x86_64", "armeabi-v7a", "arm64-v8a"
-                    }
-                }
+            // Release build. If not set, the build is in debug mode.
+            if(project.hasProperty('Release')) {
+                cmake_args += '-DCMAKE_BUILD_TYPE=Release'
             }
+            specific_abis = 'x86_64,armeabi-v7a,arm64-v8a'
         }
-    }
 
-    buildTypes {
-        release {
-            minifyEnabled false
+        externalNativeBuild {
+            cmake {
+                arguments cmake_args.split(',')
+                abiFilters specific_abis.split(',')
+            }
         }
     }
 
