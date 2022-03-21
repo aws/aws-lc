@@ -20,6 +20,7 @@ import (
 var bulkCipher *string = flag.String("cipher", "", "The bulk cipher to use")
 var mac *string = flag.String("mac", "", "The hash function to use in the MAC")
 var implicitIV *bool = flag.Bool("implicit-iv", false, "If true, generate tests for a cipher using a pre-TLS-1.0 implicit IV")
+var testStitch *bool = flag.Bool("stitch", false, "If true, generate tests for |EVP_aes_128_cbc_hmac_sha1/256| cipher using stitch code.")
 
 // rc4Stream produces a deterministic stream of pseudorandom bytes. This is to
 // make this script idempotent.
@@ -121,9 +122,9 @@ func makeTestCase(length int, options options) (*testCase, error) {
 	}
 
 	eiv_len := 0
-	if !(*implicitIV) {
+	if *testStitch && !(*implicitIV) {
 		// TODO: change 16 with AES_BLOCK_SIZE
-		// Explicit IV is expected to be part of the payload.
+		// In stitch impl, Explicit IV is expected to be part of the payload.
 		eiv_len += 16
 	}
 	eiv_payload_len := eiv_len + length
@@ -134,14 +135,16 @@ func makeTestCase(length int, options options) (*testCase, error) {
 	adFull := make([]byte, 13)
 	ad := make([]byte, 13)
 	rand.fillBytes(adFull)
-	if *implicitIV {
-		// 0x0301 means TLS 1.0
-		adFull[len(adFull)-4] = 0x03
-		adFull[len(adFull)-3] = 0x01
-	} else {
-		// 0x0302 means TLS 1.1, which requires explicit IV.
-		adFull[len(adFull)-4] = 0x03
-		adFull[len(adFull)-3] = 0x02
+	if *testStitch {
+		if *implicitIV {
+			// 0x0301 means TLS 1.0
+			adFull[len(adFull)-4] = 0x03
+			adFull[len(adFull)-3] = 0x01
+		} else {
+			// 0x0302 means TLS 1.1, which requires explicit IV.
+			adFull[len(adFull)-4] = 0x03
+			adFull[len(adFull)-3] = 0x02
+		}
 	}
 	adFull[len(adFull)-2] = uint8(eiv_payload_len >> 8)
 	adFull[len(adFull)-1] = uint8(eiv_payload_len & 0xff)

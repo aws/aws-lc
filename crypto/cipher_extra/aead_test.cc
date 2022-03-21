@@ -275,24 +275,25 @@ struct KnownTLSLegacyAEAD {
   const char name[40];
   const EVP_CIPHER *(*func)(void);
   const char *test_vectors;
-  bool e_iv;
   uint32_t flags;
 };
 
 static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
     {"AES_128_CBC_SHA1_TLS", EVP_aes_128_cbc_hmac_sha1,
      "aes_128_cbc_sha1_tls_stitch_tests.txt",
-     true,
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+     {"AES_128_CBC_SHA1_TLS_IMPLICIT_IV", EVP_aes_128_cbc_hmac_sha1,
+     "aes_128_cbc_sha1_tls_stitch_implicit_iv_tests.txt",
      kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     {"AES_128_CBC_SHA256_TLS", EVP_aes_128_cbc_hmac_sha256,
      "aes_128_cbc_sha256_tls_stitch_tests.txt",
-     true,
      kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
-    // {"AES_256_CBC_SHA1_TLS", EVP_aes_256_cbc_hmac_sha1,
-    //  "aes_256_cbc_sha1_tls_tests.txt",
-    //  kLimitedImplementation | RequiresADLength(11)},
+    {"AES_128_CBC_SHA256_TLS_IMPLICIT_IV", EVP_aes_128_cbc_hmac_sha256,
+     "aes_128_cbc_sha256_tls_stitch_implicit_iv_tests.txt",
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 };
 
 class PerTLSLegacyAEADTest : public testing::TestWithParam<KnownTLSLegacyAEAD> {
@@ -333,7 +334,6 @@ static void set_TLS1_AAD(EVP_CIPHER_CTX *ctx, uint8_t *ad) {
 TEST_P(PerTLSLegacyAEADTest, TestVector) {
   std::string test_vectors = "crypto/cipher_extra/test/";
   test_vectors += GetParam().test_vectors;
-  bool explicit_iv = GetParam().e_iv;
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     std::vector<uint8_t> key, nonce, in, ad, ct, tag;
     ASSERT_TRUE(t->GetBytes(&key, "KEY"));
@@ -351,21 +351,29 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
       tag_len = strtoul(tag_len_str.c_str(), nullptr, 10);
       ASSERT_TRUE(tag_len);
     }
+    bool explicit_iv = !nonce.empty();
     const EVP_CIPHER *cipher = legacy_aead();
-    size_t e_iv_len = explicit_iv ? EVP_CIPHER_block_size(cipher) : 0;
-
+    size_t key_block_size = EVP_CIPHER_block_size(cipher);
+    size_t e_iv_len = 0;
     bssl::ScopedEVP_CIPHER_CTX ctx;
 
     std::vector<uint8_t> encrypted(ct.size() + tag.size());
     // The |key| is Mac key + AES key + IV.
     size_t mac_key_size = tag_len;
     const uint8_t *aes_key = key.data() + mac_key_size;
+    std::vector<uint8_t> iv(EVP_CIPHER_block_size(cipher));
+    if (explicit_iv) {
+      e_iv_len = key_block_size;
+      OPENSSL_memcpy(iv.data(), nonce.data(), nonce.size());
+    } else {
+      OPENSSL_memcpy(iv.data(), key.data() + mac_key_size + key_block_size, key_block_size);
+    }
     if (!t->HasAttribute("NO_SEAL") &&
         !(GetParam().flags & kNondeterministic)) {
       // Even without |EVP_CIPHER_CTX_set_padding|, |EVP_Cipher| returns error code because
       // |EVP_aes_128_cbc_hmac_sha1/256| does not automatically pad the input.
       ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), EVP_CIPH_NO_PADDING));
-      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, aes_key, nonce.data()));
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, aes_key, iv.data()));
       set_MAC_key(ctx.get(), key.data(), mac_key_size);
       // |EVP_aes_128_cbc_hmac_sha1/256| encrypts a TLS record, which should have space for
       // explicit_iv(if applicable), payload, tag(hmac and padding).
@@ -386,7 +394,7 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     // Decryption side(TLS client/server) always has a separated EVP_CIPHER_CTX.
     bssl::ScopedEVP_CIPHER_CTX decrypt_ctx;
     ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(decrypt_ctx.get(), EVP_CIPH_NO_PADDING));
-    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), cipher, nullptr, aes_key, nonce.data()));
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), cipher, nullptr, aes_key, iv.data()));
     set_MAC_key(decrypt_ctx.get(), key.data(), mac_key_size);
     set_TLS1_AAD(decrypt_ctx.get(), ad.data());
     // TODO: investigate munmap_chunk(): invalid pointer.
