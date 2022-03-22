@@ -1008,7 +1008,7 @@ OPENSSL_EXPORT int CRYPTO_is_NEON_capable_at_runtime(void);
 
 // CRYPTO_is_ARMv8_AES_capable_at_runtime returns true if the current CPU
 // supports the ARMv8 AES instruction.
-int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
+OPENSSL_EXPORT int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
 
 // CRYPTO_is_ARMv8_PMULL_capable_at_runtime returns true if the current CPU
 // supports the ARMv8 PMULL instruction.
