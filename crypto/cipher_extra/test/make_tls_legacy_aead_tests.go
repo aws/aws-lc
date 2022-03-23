@@ -171,7 +171,6 @@ func makeTestCase(length int, options options) (*testCase, error) {
 	payload := input[eiv_len:]
 	h.Write(payload)
 	digest := h.Sum(nil)
-	// digest, _ := hex.DecodeString("918c0df73de553b5bdffb7365f93a430292f6eea")
 
 	size := getKeySize(*bulkCipher)
 	if size == 0 {

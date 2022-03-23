@@ -157,7 +157,11 @@ func makeTestCase(length int, options options) (*testCase, error) {
 		}
 		ad = make([]byte, 13)
 		copy(ad, adFull)
+<<<<<<< HEAD
 		// |ad| is used in digest calculation. The |eiv_payload_len| should exclude iv length if applicable(TLS 1.1+).
+=======
+		// |ad| is used in digest calculation. The |eiv_payload_len| should include exclude iv length if applicable(TLS 1.1+).
+>>>>>>> 57bd03e5a... Generate test cases for |EVP_aes_128_cbc_hmac_sha1/256|.
 		// https://github.com/openssl/openssl/blame/ad24941228eafe59fe3807d1659585c4d98eac97/crypto/evp/e_aes_cbc_hmac_sha1.c#L814-L821
 		ad[len(ad)-2] = uint8(payload_len >> 8)
 		ad[len(ad)-1] = uint8(payload_len & 0xff)
@@ -172,7 +176,10 @@ func makeTestCase(length int, options options) (*testCase, error) {
 
 	h := hmac.New(hash.New, macKey)
 	if *testStitch {
+<<<<<<< HEAD
 		// For stitch, the digest only cover the payload(without explicit iv) and |ad| instead of |adFull|.
+=======
+>>>>>>> 57bd03e5a... Generate test cases for |EVP_aes_128_cbc_hmac_sha1/256|.
 		h.Write(ad)
 		h.Write(input[eiv_len:])
 	} else {
@@ -254,7 +261,10 @@ func makeTestCase(length int, options options) (*testCase, error) {
 	}
 	cbc.CryptBlocks(sealed, sealed)
 
+<<<<<<< HEAD
 	// For stitch, use |adFull| as output.
+=======
+>>>>>>> 57bd03e5a... Generate test cases for |EVP_aes_128_cbc_hmac_sha1/256|.
 	if *testStitch {
 		ad = adFull
 	}
