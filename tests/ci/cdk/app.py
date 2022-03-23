@@ -48,7 +48,7 @@ AwsLcGitHubFuzzCIStack(app, "aws-lc-ci-fuzzing", LINUX_X86_ECR_REPO, LINUX_AARCH
 analytics_build_spec_file = "cdk/codebuild/github_ci_analytics_omnibus.yaml"
 AwsLcGitHubAnalyticsStack(app, "aws-lc-ci-analytics", LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, analytics_build_spec_file, env=env)
 # TODO: re-enable 'aws-lc-ci-bm-framework' when it's ready.
-# bm_framework_build_spec_file = "./cdk/codebuild/bm_framework_omnibus.yaml"
-# BmFrameworkStack(app, "aws-lc-ci-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
+bm_framework_build_spec_file = "./cdk/codebuild/bm_framework_omnibus.yaml"
+BmFrameworkStack(app, "aws-lc-ci-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
 
 app.synth()
