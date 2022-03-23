@@ -193,8 +193,8 @@ func doTest(test invocation) error {
 		if *update {
 			writeUpdate(test.expectedPath, result)
 		}
-        return fmt.Errorf("Mismatch for %q", test.expectedPath)
-    }
+			return fmt.Errorf("Mismatch for %q", test.expectedPath)
+		}
 
 	return nil
 }

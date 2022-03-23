@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-    "strings"
+	"strings"
 )
 
 const line0 = "FIPS integrity test failed."
@@ -22,28 +22,28 @@ func main() {
 	cmd := exec.Command(*executable)
 	out, err := cmd.CombinedOutput()
 	if err == nil {
-	    fmt.Fprintf(os.Stderr, string(out))
+		fmt.Fprintf(os.Stderr, string(out))
 		panic("Executable did not fail as expected")
 	}
 	lines := strings.Split(string(out), "\r\n")
 	if len(lines) != 4 {
-        fmt.Fprintf(os.Stderr, string(out))
+		fmt.Fprintf(os.Stderr, string(out))
 		panic(fmt.Sprintf("Expected 4 lines in output but got %d", len(lines)))
 	}
 	num_lines := len(lines)
 	if lines[num_lines-4] != line0 {
-        fmt.Fprintf(os.Stderr, string(out))
+		fmt.Fprintf(os.Stderr, string(out))
 		panic(fmt.Sprintf("Expected \"%s\" got \"%s\"", line0, lines[0]))
 	}
 
 	if lines[num_lines-3] != line1 {
-        fmt.Fprintf(os.Stderr, string(out))
+		fmt.Fprintf(os.Stderr, string(out))
 		panic(fmt.Sprintf("Expected \"%s\" got \"%s\"", line1, lines[1]))
 	}
 	hash := strings.Split(lines[num_lines-2], " ")[1]
 
 	if len(hash) != hash_len {
-        fmt.Fprintf(os.Stderr, string(out))
+		fmt.Fprintf(os.Stderr, string(out))
 		panic(fmt.Sprintf("Hash \"%s\" is %d long, expected %d", hash, len(hash), hash_len))
 	}
 
