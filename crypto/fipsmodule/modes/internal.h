@@ -62,6 +62,9 @@
 extern "C" {
 #endif
 
+// The maximum permitted number of cipher blocks per data unit in XTS mode.
+// Reference IEEE Std 1619-2018.
+#define XTS_MAX_BLOCKS_PER_DATA_UNIT            (1<<20)
 
 // block128_f is the type of an AES block cipher implementation.
 //
