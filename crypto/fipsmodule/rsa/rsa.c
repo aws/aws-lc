@@ -615,10 +615,15 @@ int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
     goto out;
   }
 
-  // Check that no other information follows the hash value (FIPS 186-4 Section
-  // 5.5) and it matches the expected hash.
-  if (len != signed_msg_len || OPENSSL_memcmp(buf, signed_msg, len) != 0) {
+  // Check that no other information follows the hash value (FIPS 186-4 Section 5.5)
+  if (len != signed_msg_len) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
+    goto out;
+  }
+
+  // Check that the computed hash matches the expected hash
+  if (OPENSSL_memcmp(buf, signed_msg, len) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_MISMATCHED_SIGNATURE);
     goto out;
   }
 

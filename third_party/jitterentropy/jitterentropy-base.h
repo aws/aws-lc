@@ -25,7 +25,7 @@ extern "C"
 {
 #endif
 
-int jent_time_entropy_init(unsigned int enable_notime);
+int jent_time_entropy_init(unsigned int osr, unsigned int flags);
 
 #ifdef __cplusplus
 }
