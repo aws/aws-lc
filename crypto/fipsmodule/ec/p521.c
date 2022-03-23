@@ -723,7 +723,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   p521_select_point(res, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
 
   // Process the remaining digits of the scalar.
-  for (size_t i = P521_MUL_NWINDOWS - 2; i < P521_MUL_NWINDOWS - 1; i--) {
+  for (int i = P521_MUL_NWINDOWS - 2; i >= 0; i--) {
     // Double |res| 7 times in each iteration.
     for (size_t j = 0; j < P521_MUL_WSIZE; j++) {
       p521_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
@@ -841,7 +841,7 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
   p521_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
 
   // Process the 4 groups of digits starting from group (3) down to group (0).
-  for (size_t i = 3; i < 4; i--) {
+  for (int i = 3; i >= 0; i--) {
     // Double |res| 5 times in each iteration, except in the first one.
     for (size_t j = 0; i != 3 && j < P521_MUL_WSIZE; j++) {
       p521_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
@@ -854,7 +854,7 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
     // group (1) s_101 to s_1, and for group (0) s_104 to s_0.
     const size_t start_idx = ((P521_MUL_NWINDOWS - i - 1)/4)*4 + i;
 
-    for (size_t j = start_idx; j < P521_MUL_NWINDOWS; j -= 4) {
+    for (int j = start_idx; j >= 0; j -= 4) {
       // For each digit |d| in the current group read the corresponding point
       // from the table and add it to |res|. If |d| is negative, negate
       // the point before adding it to |res|.
@@ -975,7 +975,7 @@ static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
   int16_t res_is_inf = 1;
   int16_t d, is_neg, idx;
 
-  for (size_t i = 521; i < 522; i--) {
+  for (int i = 521; i >= 0; i--) {
 
     // If |res| is point-at-infinity there is no point in doubling so skip it.
     if (!res_is_inf) {
