@@ -2341,6 +2341,49 @@ OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
 // the given TLS curve id, or NULL if the curve is unknown.
 OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 
+// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+//
+// |SSL_to_bytes| and |SSL_from_bytes| are developed to support SSL transfer
+// across processes after handshake finished.
+//
+// SSL transfer allows the TLS connection to be used in a different
+// process (or on a different machine). This only applies to servers.
+// 1. Before termination, the process 1 encodes the |SSL| by calling
+// |SSL_to_bytes|.
+// 2. Another process resumes the |SSL| by calling |SSL_from_bytes|.
+//
+// WARNING: The serialisation formats are not yet stable: version skew may be
+//     fatal.
+// WARNING: The encoded data contains sensitive key material and must be
+//     protected.
+
+// SSL_to_bytes serializes |in| into a newly allocated buffer and sets
+// |*out_data| to that buffer and |*out_len| to its length. The caller takes
+// ownership of the buffer and must call |OPENSSL_free| when done. It returns
+// one on success and zero on error.
+//
+// WARNING: Currently only works with TLS 1.2 after handshake finished.
+// WARNING: Currently only supports |SSL| as server.
+// WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded. Remember set |ex_data| back after decode.
+// WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
+//
+// Initial implementation of this API is made by Evgeny Potemkin.
+OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len);
+
+// SSL_from_bytes parses |in_len| bytes from |in| as an SSL. It
+// returns a newly-allocated |SSL| on success or NULL on error.
+// The |SSL| is marked with handshake finished. |in| and |in_len| should
+// come from |out_data| and |out_len| of |SSL_to_bytes|. In other words,
+// |SSL_from_bytes| should be called after |SSL_to_bytes|.
+//
+// WARNING: Do not decode the same bytes |in| for different connections.
+//          Otherwise, the connections use the same key material.
+// WARNING: Remember set |ssl->rbio| and |ssl->wbio| before using |ssl|.
+// WARNING: Remember set callback functions and |ex_data| back if needed.
+// WARNING: To ensure behavior unchange, |ctx| setting should be the same.
+//
+// Initial implementation of this API is made by Evgeny Potemkin.
+OPENSSL_EXPORT SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx);
 
 // Certificate verification.
 //
@@ -5618,6 +5661,11 @@ BSSL_NAMESPACE_END
 #define SSL_R_ECH_REJECTED 319
 #define SSL_R_OUTER_EXTENSION_NOT_FOUND 320
 #define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
+#define SSL_R_SERIALIZATION_UNSUPPORTED 500
+#define SSL_R_SERIALIZATION_INVALID_SSL 501
+#define SSL_R_SERIALIZATION_INVALID_SSL_CONFIG 502
+#define SSL_R_SERIALIZATION_INVALID_SSL3_STATE 503
+#define SSL_R_SERIALIZATION_INVALID_SSL_BUFFER 505
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
