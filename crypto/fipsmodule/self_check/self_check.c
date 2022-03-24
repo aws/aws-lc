@@ -899,7 +899,7 @@ int boringssl_self_test_hmac_sha256(void) {
   };
   uint8_t output[EVP_MAX_MD_SIZE];
 
-  unsigned output_len;
+  unsigned output_len = 0;
   HMAC(EVP_sha256(), kInput, sizeof(kInput), kInput, sizeof(kInput), output,
        &output_len);
   return output_len == sizeof(kPlaintextHMACSHA256) &&
