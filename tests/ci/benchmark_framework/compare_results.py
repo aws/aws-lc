@@ -64,11 +64,11 @@ def main():
     dfs = pd.concat([df1, df2], axis=1)
 
     # we want things that have a +15% regression
-    compared = np.where( 100 *( 1 - df2_time*df1_numCalls/df2_numCalls/df1_time) >= 15, df1.iloc[:, 0], np.nan)
+    compared = np.where(100 * (1 - (df2_time * df1_numCalls) / (df2_numCalls * df1_time)) >= 15, df1.iloc[:, 0], np.nan)
 
     compared_df = dfs.loc[dfs.iloc[:, 0].isin(compared)]
-    compared_df["Percentage Difference"] = ( 100 *( 1 - compared_df['microseconds.2']*compared_df['numCalls.1']
-                                            /compared_df['numCalls.2']/compared_df['microseconds.1']) )
+    compared_df["Percentage Difference"] = (100 * (1 - compared_df['microseconds.2'] * compared_df['numCalls.1'])
+                                            / (compared_df['numCalls.2'] / compared_df['microseconds.1']))
 
     # if the compared dataframe isn't empty, there are significant regressions present
     if not compared_df.empty:

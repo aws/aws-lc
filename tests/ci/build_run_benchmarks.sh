@@ -18,7 +18,7 @@ cd ..
 AWSLC_PR_ROOT=$(pwd)/"${PR_FOLDER_NAME}"
 AWSLC_PROD_ROOT=$(pwd)/aws-lc-prod
 
-NUM_CPU_THREADS=$(nproc)
+source tests/ci/common_posix_setup.sh
 
 # clone the various repositories we need (we already have aws-lc-pr since we need it to run this script)
 git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
@@ -28,7 +28,9 @@ mkdir -p "${PR_FOLDER_NAME}"/build
 mkdir -p "${PR_FOLDER_NAME}"/install
 cmake -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/install \
-  -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/install
+  -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/install \
+  -DBUILD_TESTING=OFF \
+  -DBUILD_LIBSSL=OFF
 ninja -C "${PR_FOLDER_NAME}"/build
 
 # build FIPS compliant version of AWSLC pr
@@ -49,17 +51,14 @@ mkdir -p aws-lc-prod/fips_install
 cmake -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/fips_install" -DBUILD_SHARED_LIBS=TRUE -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/fips_install"
 ninja -C aws-lc-prod/fips_build
 
-# avoid cpus 0-3 since there are a lot of other things running on them
-# we have a lot of cpus to spare so we can just go from cpu 4 onwards until a better solution is found
-# run the generated benchmarks and wait for them to finish
-taskset -c 4 ./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -timeout 3 -json > aws-lc-pr_bm.json &
+./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -timeout 3 -json > aws-lc-pr_bm.json &
 pr_pid=$!
-taskset -c 5 ./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -timeout 3 -json > aws-lc-pr_fips_bm.json &
+./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -timeout 3 -json > aws-lc-pr_fips_bm.json &
 pr_fips_pid=$!
 
-taskset -c 6 ./aws-lc-prod/build/tool/awslc_bm -timeout 3 -json > aws-lc-prod_bm.json &
+./aws-lc-prod/build/tool/awslc_bm -timeout 3 -json > aws-lc-prod_bm.json &
 prod_pid=$!
-taskset -c 7 ./aws-lc-prod/fips_build/tool/awslc_bm -timeout 3 -json > aws-lc-prod_fips_bm.json &
+./aws-lc-prod/fips_build/tool/awslc_bm -timeout 3 -json > aws-lc-prod_fips_bm.json &
 prod_fips_pid=$!
 
 
@@ -69,12 +68,10 @@ wait "${pr_fips_pid}"
 wait "${prod_pid}"
 wait "${prod_fips_pid}"
 
-# once all those are done, we want to run the trusttoken benchmarks sequentially
-# (running them in parallel caused severe bias problems)
-taskset -c 4 ./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-pr_tt_bm.json
-taskset -c 5 ./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-pr_tt_fips_bm.json
-taskset -c 6 ./aws-lc-prod/build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-prod_tt_bm.json
-taskset -c 7 ./aws-lc-prod/fips_build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-prod_tt_fips_bm.json
+./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-pr_tt_bm.json
+./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-pr_tt_fips_bm.json
+./aws-lc-prod/build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-prod_tt_bm.json
+./aws-lc-prod/fips_build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-prod_tt_fips_bm.json
 
 # convert results from .json to .csv
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/convert_json_to_csv.py aws-lc-pr_bm.json
