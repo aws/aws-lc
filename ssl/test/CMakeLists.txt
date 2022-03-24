@@ -9,6 +9,7 @@ add_executable(
   mock_quic_transport.cc
   packeted_bio.cc
   settings_writer.cc
+  ssl_transfer.cc
   test_config.cc
   test_state.cc
 )
