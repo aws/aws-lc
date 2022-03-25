@@ -190,6 +190,14 @@ macro(check_run file_to_test flag_to_set compile_flags)
   endif()
 endmacro()
 
+# Some ancient assemblers don't know about AVX instructions, which is an
+# assumption we make for some of the assembly implementations. This flag
+# can be set to handle such cases.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+endif()
+
 # Detect if memcmp is wrongly stripped like strcmp.
 # If exists, let CMake generate a warning.
 # memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
@@ -280,6 +288,7 @@ if(GCC OR CLANG)
   if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     if(APPLE)
+      set(CMAKE_MACOSX_RPATH 1)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     endif()
     if(NOT BORINGSSL_ALLOW_CXX_RUNTIME)
@@ -592,10 +601,6 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
-if(OPENSSL_AARCH64_P256)
-  add_definitions(-DOPENSSL_AARCH64_P256)
-endif()
-
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
@@ -622,11 +627,6 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
-endif()
-
-if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
-  # Enable p256_nistz on ARMv8 (AArch64) by default
-  add_definitions(-DOPENSSL_AARCH64_P256)
 endif()
 
 if(ANDROID AND NOT ANDROID_NDK_REVISION AND ARCH STREQUAL "arm")
@@ -768,6 +768,7 @@ endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
     set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
   endif()
@@ -821,7 +822,7 @@ if(BUILD_TESTING)
           run_ssl_runner_tests
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER}
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})

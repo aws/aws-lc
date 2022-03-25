@@ -150,6 +150,12 @@ OPENSSL_INLINE int have_fast_rdrand(void) {
 
 #endif  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
 
+// Don't retry forever. There is no science in picking this number and can be
+// adjusted in the future if need be. We do not backoff forever, because we
+// believe that it is easier to detect failing calls than detecting infinite
+// spinning loops.
+#define MAX_BACKOFF_RETRIES 9
+OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 
 #if defined(__cplusplus)
 }  // extern C

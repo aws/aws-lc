@@ -25,6 +25,7 @@
 
 
         .globl  bignum_add_p384
+        .globl  _bignum_add_p384
         .text
 
 #define z %rdi
@@ -49,6 +50,7 @@
 
 
 bignum_add_p384:
+_bignum_add_p384:
 
 // Add the inputs as 2^384 * c + [d5;d4;d3;d2;d1;d0] = x + y
 // This could be combined with the next block using ADCX and ADOX.

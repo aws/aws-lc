@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mul_p521_alt
+        .globl  _bignum_mul_p521_alt
         .text
         .balign 4
 
@@ -77,13 +78,15 @@
 #define u16 x21
 
 bignum_mul_p521_alt:
+_bignum_mul_p521_alt:
 
-// Save more registers
+// Save more registers and make temporary space on stack
 
                 stp     x19, x20, [sp, #-16]!
                 stp     x21, x22, [sp, #-16]!
                 stp     x23, x24, [sp, #-16]!
                 stp     x25, x26, [sp, #-16]!
+                sub     sp, sp, #64
 
 // Load operands and set up row 0 = [u9;...;u0] = a0 * [b8;...;b0]
 
@@ -175,7 +178,7 @@ bignum_mul_p521_alt:
                 umulh   t, a1, b8
                 adc     u10, u10, t
 
-                stp     u0, u1, [z]
+                stp     u0, u1, [sp]
 
 // Row 2 = [u11;...;u0] = [a2;a1;a0] * [b8;...;b0]
 
@@ -261,7 +264,7 @@ bignum_mul_p521_alt:
                 umulh   t, a3, b8
                 adc     u12, u12, t
 
-                stp     u2, u3, [z, #16]
+                stp     u2, u3, [sp, #16]
 
 // Row 4 = [u13;...;u0] = [a4;a3;a2;a1;a0] * [b8;...;b0]
 
@@ -347,7 +350,7 @@ bignum_mul_p521_alt:
                 umulh   t, a5, b8
                 adc     u14, u14, t
 
-                stp     u4, u5, [z, #32]
+                stp     u4, u5, [sp, #32]
 
 // Row 6 = [u15;...;u0] = [a6;a5;a4;a3;a2;a1;a0] * [b8;...;b0]
 
@@ -433,7 +436,7 @@ bignum_mul_p521_alt:
                 umulh   t, a7, b8
                 adc     u16, u16, t
 
-                stp     u6, u7, [z, #48]
+                stp     u6, u7, [sp, #48]
 
 // Row 8 = [u16;...;u0] = [a8;a7;a6;a5;a4;a3;a2;a1;a0] * [b8;...;b0]
 
@@ -479,22 +482,22 @@ bignum_mul_p521_alt:
 // 2^521 * h + l. Form h + l + 1
 
                 subs    xzr, xzr, xzr
-                ldp     b0, b1, [z]
+                ldp     b0, b1, [sp]
                 extr    t, u9, u8, #9
                 adcs    b0, b0, t
                 extr    t, u10, u9, #9
                 adcs    b1, b1, t
-                ldp     b2, b3, [z, #16]
+                ldp     b2, b3, [sp, #16]
                 extr    t, u11, u10, #9
                 adcs    b2, b2, t
                 extr    t, u12, u11, #9
                 adcs    b3, b3, t
-                ldp     b4, b5, [z, #32]
+                ldp     b4, b5, [sp, #32]
                 extr    t, u13, u12, #9
                 adcs    b4, b4, t
                 extr    t, u14, u13, #9
                 adcs    b5, b5, t
-                ldp     b6, b7, [z, #48]
+                ldp     b6, b7, [sp, #48]
                 extr    t, u15, u14, #9
                 adcs    b6, b6, t
                 extr    t, u16, u15, #9
@@ -528,6 +531,7 @@ bignum_mul_p521_alt:
 
 // Restore registers
 
+                add     sp, sp, #64
                 ldp     x25, x26, [sp], #16
                 ldp     x23, x24, [sp], #16
                 ldp     x21, x22, [sp], #16

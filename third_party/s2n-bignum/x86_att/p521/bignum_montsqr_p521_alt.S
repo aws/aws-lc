@@ -30,6 +30,7 @@
 
 
         .globl  bignum_montsqr_p521_alt
+        .globl  _bignum_montsqr_p521_alt
         .text
 
 // Input arguments
@@ -95,23 +96,25 @@
         adcq    $0, c
 
 bignum_montsqr_p521_alt:
+_bignum_montsqr_p521_alt:
 
-// Make more registers available
+// Make more registers available and make temporary space on stack
 
         pushq   %rbx
         pushq   %r12
         pushq   %r13
         pushq   %r14
         pushq   %r15
+        subq    $72, %rsp
 
 // Start doing a conventional columnwise squaring,
-// temporarily storing the lower 9 digits to the output buffer.
+// temporarily storing the lower 9 digits on the stack.
 // Start with result term 0
 
         movq    (x), %rax
         mulq    %rax
 
-        movq    %rax, (z)
+        movq    %rax, (%rsp)
         movq    %rdx, %r9
         xorq    %r10, %r10
 
@@ -119,21 +122,21 @@ bignum_montsqr_p521_alt:
 
         xorq    %r11, %r11
         combadd2(%r11,%r10,%r9,(x),8(x))
-        movq    %r9, 8(z)
+        movq    %r9, 8(%rsp)
 
 // Result term 2
 
         xorq    %r12, %r12
         combadd1(%r12,%r11,%r10,8(x))
         combadd2(%r12,%r11,%r10,(x),16(x))
-        movq    %r10, 16(z)
+        movq    %r10, 16(%rsp)
 
 // Result term 3
 
         combaddz(%r13,%rcx,%rbx,(x),24(x))
         combadd(%r13,%rcx,%rbx,8(x),16(x))
         doubladd(%r13,%r12,%r11,%rcx,%rbx)
-        movq    %r11, 24(z)
+        movq    %r11, 24(%rsp)
 
 // Result term 4
 
@@ -141,7 +144,7 @@ bignum_montsqr_p521_alt:
         combadd(%r14,%rcx,%rbx,8(x),24(x))
         doubladd(%r14,%r13,%r12,%rcx,%rbx)
         combadd1(%r14,%r13,%r12,16(x))
-        movq    %r12, 32(z)
+        movq    %r12, 32(%rsp)
 
 // Result term 5
 
@@ -149,7 +152,7 @@ bignum_montsqr_p521_alt:
         combadd(%r15,%rcx,%rbx,8(x),32(x))
         combadd(%r15,%rcx,%rbx,16(x),24(x))
         doubladd(%r15,%r14,%r13,%rcx,%rbx)
-        movq    %r13, 40(z)
+        movq    %r13, 40(%rsp)
 
 // Result term 6
 
@@ -158,7 +161,7 @@ bignum_montsqr_p521_alt:
         combadd(%r8,%rcx,%rbx,16(x),32(x))
         doubladd(%r8,%r15,%r14,%rcx,%rbx)
         combadd1(%r8,%r15,%r14,24(x))
-        movq    %r14, 48(z)
+        movq    %r14, 48(%rsp)
 
 // Result term 7
 
@@ -167,7 +170,7 @@ bignum_montsqr_p521_alt:
         combadd(%r9,%rcx,%rbx,16(x),40(x))
         combadd(%r9,%rcx,%rbx,24(x),32(x))
         doubladd(%r9,%r8,%r15,%rcx,%rbx)
-        movq    %r15, 56(z)
+        movq    %r15, 56(%rsp)
 
 // Result term 8
 
@@ -177,7 +180,7 @@ bignum_montsqr_p521_alt:
         combadd(%r10,%rcx,%rbx,24(x),40(x))
         doubladd(%r10,%r9,%r8,%rcx,%rbx)
         combadd1(%r10,%r9,%r8,32(x))
-        movq    %r8, 64(z)
+        movq    %r8, 64(%rsp)
 
 // We now stop writing back and keep remaining results in a register window.
 // Continue with result term 9
@@ -237,11 +240,11 @@ bignum_montsqr_p521_alt:
         imulq   %rax, %rax
         addq    %r8, %rax
 
-// Now the upper portion is [%rax;%r15;%r14;%r13;%r12;%r11;%r10;%r9;[z+64]].
+// Now the upper portion is [%rax;%r15;%r14;%r13;%r12;%r11;%r10;%r9;[%rsp+64]].
 // Rotate the upper portion right 9 bits since 2^512 == 2^-9 (mod p_521)
-// Let rotated result %rdx,%r15,%r14,...,%r8 be h (high) and z[0..7] be l (low)
+// Let rotated result %rdx,%r15,%r14,...,%r8 be h (high) and %rsp[0..7] be l (low)
 
-        movq    64(z), %r8
+        movq    64(%rsp), %r8
         movq    %r8, %rdx
         andq    $0x1FF, %rdx
         shrdq   $9, %r9, %r8
@@ -259,14 +262,14 @@ bignum_montsqr_p521_alt:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adcq    (z), %r8
-        adcq    8(z), %r9
-        adcq    16(z), %r10
-        adcq    24(z), %r11
-        adcq    32(z), %r12
-        adcq    40(z), %r13
-        adcq    48(z), %r14
-        adcq    56(z), %r15
+        adcq    (%rsp), %r8
+        adcq    8(%rsp), %r9
+        adcq    16(%rsp), %r10
+        adcq    24(%rsp), %r11
+        adcq    32(%rsp), %r12
+        adcq    40(%rsp), %r13
+        adcq    48(%rsp), %r14
+        adcq    56(%rsp), %r15
         adcq    $~0x1FF, %rdx
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
@@ -316,6 +319,7 @@ bignum_montsqr_p521_alt:
 
 // Restore registers and return
 
+        addq    $72, %rsp
         popq    %r15
         popq    %r14
         popq    %r13

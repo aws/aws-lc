@@ -33,9 +33,6 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
-
-  # Set the source directory for s2n-bignum assembly files
-  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384)
 endif()
 
 if(ARCH STREQUAL "x86")
@@ -88,9 +85,6 @@ if(ARCH STREQUAL "aarch64")
     sha512-armv8.${ASM_EXT}
     vpaes-armv8.${ASM_EXT}
   )
-
-  # Set the source directory for s2n-bignum assembly files
-  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384)
 endif()
 
 if(ARCH STREQUAL "ppc64le")
@@ -150,28 +144,54 @@ if(PERL_EXECUTABLE)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 endif()
 
-# s2n-bignum files can be compiled on Unix platforms only (except Apple)
-if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE)
+# s2n-bignum files can be compiled on Unix platforms only (except Apple),
+# and on x86_64 and aarch64 systems only.
+if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
+    UNIX AND NOT APPLE AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+
+  # Set the source directory for s2n-bignum assembly files
+  if(ARCH STREQUAL "x86_64")
+    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att)
+  else()
+    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm)
+  endif()
+
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
   set(
     S2N_BIGNUM_ASM_SOURCES
 
-    bignum_add_p384.S
-    bignum_sub_p384.S
-    bignum_neg_p384.S
-    bignum_tomont_p384.S
-    bignum_deamont_p384.S
-    bignum_montmul_p384.S
-    bignum_montsqr_p384.S
-    bignum_nonzero_6.S
-    bignum_littleendian_6.S
-  )
+    ${S2N_BIGNUM_DIR}/p384/bignum_add_p384.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_sub_p384.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_neg_p384.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384_alt.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384_alt.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_nonzero_6.S
+    ${S2N_BIGNUM_DIR}/p384/bignum_littleendian_6.S
 
-  # Copy s2n-bignum files to the current binary dir
-  foreach(f ${S2N_BIGNUM_ASM_SOURCES})
-    file(COPY ${S2N_BIGNUM_DIR}/${f} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-  endforeach()
+    ${S2N_BIGNUM_DIR}/p521/bignum_add_p521.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_sub_p521.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_neg_p521.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521_alt.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521_alt.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_tolebytes_p521.S
+    ${S2N_BIGNUM_DIR}/p521/bignum_fromlebytes_p521.S
+  )
+  if(ARCH STREQUAL "x86_64")
+    # The files below contain the alternative functions for x86_64.
+    # For AArch64, the alternative tomont/deamont functions are
+    # the same as the non-alternative ones, so they are defined
+    # in the corresponding "non-alt" files (bignum_<deamont|tomont>_p384.S)
+    list(APPEND S2N_BIGNUM_ASM_SOURCES
+                ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384_alt.S
+                ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384_alt.S)
+  endif()
 
   if(NOT FIPS_DELOCATE)
     # If we don't have to use the delocate script then s2n-bignum files
@@ -324,33 +344,33 @@ elseif(FIPS_SHARED)
   if (APPLE)
     # The linker on macOS doesn't have the ability to process linker scripts,
     # so we build the FIPS module differently than on Linux. Similarly to
-    # what OpenSSL does we produce two object files: fips_macos_{start, end}.o
+    # what OpenSSL does we produce two object files: fips_apple_{start, end}.o
     # that contain only the markers for the start and end of __text and __const
     # sections. The module is then produced by linking the files specified in
-    # the following order: fips_macos_start.o bcm.o fips_macos_end.o. This will
+    # the following order: fips_apple_start.o bcm.o fips_apple_end.o. This will
     # generate the output object file where all the code in the __text section
     # and all the read-only data in the __const section are between the
     # respective start and end markers.
     add_custom_command(
-      OUTPUT fips_macos_start.o
-      COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_START -o fips_macos_start.o
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c
+      OUTPUT fips_apple_start.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c -DAWSLC_FIPS_APPLE_START -o fips_apple_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c
     )
     add_custom_command(
-      OUTPUT fips_macos_end.o
-      COMMAND ${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c -DAWSLC_FIPS_MACOS_END -o fips_macos_end.o
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_macos_support.c
+      OUTPUT fips_apple_end.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c -DAWSLC_FIPS_APPLE_END -o fips_apple_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c
     )
 
     add_custom_command(
       OUTPUT bcm.o
-      COMMAND ${CMAKE_LINKER} -r fips_macos_start.o -force_load $<TARGET_FILE:bcm_library> fips_macos_end.o -keep_private_externs -o bcm.o
-      DEPENDS bcm_library fips_macos_start.o fips_macos_end.o
+      COMMAND ${CMAKE_LINKER} -r fips_apple_start.o -force_load $<TARGET_FILE:bcm_library> fips_apple_end.o -keep_private_externs -o bcm.o
+      DEPENDS bcm_library fips_apple_start.o fips_apple_end.o
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
-   else()
-    # Linux is the only OS other than macOS on which we build FIPS.
+  else()
+    # Linux is the only OS other than macOS/iOS on which we build FIPS.
 
     # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
     set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
@@ -385,3 +405,4 @@ else()
 
   add_dependencies(fipsmodule global_target)
 endif()
+

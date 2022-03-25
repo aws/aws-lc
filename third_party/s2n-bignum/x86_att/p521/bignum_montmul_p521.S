@@ -30,6 +30,7 @@
 
 
         .globl  bignum_montmul_p521
+        .globl  _bignum_montmul_p521
         .text
 
 #define z %rdi
@@ -49,8 +50,9 @@
         adoxq   %rbx, high
 
 bignum_montmul_p521:
+_bignum_montmul_p521:
 
-// Save more registers to play with
+// Save more registers to play with and make temporary space on stack
 
         pushq   %rbp
         pushq   %rbx
@@ -58,18 +60,19 @@ bignum_montmul_p521:
         pushq   %r13
         pushq   %r14
         pushq   %r15
+        subq    $64, %rsp
 
 // Copy y into a safe register to start with
 
         movq    %rdx, y
 
 // Clone of the main body of bignum_8_16, writing back the low 8 words
-// to the output buffer z and keeping the top half in %r15,...,%r8
+// to the stack and keeping the top half in %r15,...,%r8
 
         xorl   %ebp, %ebp
         movq   (y), %rdx
         mulxq  (x), %r8, %r9
-        movq   %r8, (z)
+        movq   %r8, (%rsp)
         mulxq  0x8(x), %rbx, %r10
         adcq   %rbx, %r9
         mulxq  0x10(x), %rbx, %r11
@@ -90,7 +93,7 @@ bignum_montmul_p521:
         mulxq  (x), %rax, %rbx
         adcxq  %rax, %r9
         adoxq  %rbx, %r10
-        movq   %r9, 0x8(z)
+        movq   %r9, 0x8(%rsp)
         mulxq  0x8(x), %rax, %rbx
         adcxq  %rax, %r10
         adoxq  %rbx, %r11
@@ -118,7 +121,7 @@ bignum_montmul_p521:
         mulxq  (x), %rax, %rbx
         adcxq  %rax, %r10
         adoxq  %rbx, %r11
-        movq   %r10, 0x10(z)
+        movq   %r10, 0x10(%rsp)
         mulxq  0x8(x), %rax, %rbx
         adcxq  %rax, %r11
         adoxq  %rbx, %r12
@@ -146,7 +149,7 @@ bignum_montmul_p521:
         mulxq  (x), %rax, %rbx
         adcxq  %rax, %r11
         adoxq  %rbx, %r12
-        movq   %r11, 0x18(z)
+        movq   %r11, 0x18(%rsp)
         mulxq  0x8(x), %rax, %rbx
         adcxq  %rax, %r12
         adoxq  %rbx, %r13
@@ -174,7 +177,7 @@ bignum_montmul_p521:
         mulxq  (x), %rax, %rbx
         adcxq  %rax, %r12
         adoxq  %rbx, %r13
-        movq   %r12, 0x20(z)
+        movq   %r12, 0x20(%rsp)
         mulxq  0x8(x), %rax, %rbx
         adcxq  %rax, %r13
         adoxq  %rbx, %r14
@@ -202,7 +205,7 @@ bignum_montmul_p521:
         mulxq  (x), %rax, %rbx
         adcxq  %rax, %r13
         adoxq  %rbx, %r14
-        movq   %r13, 0x28(z)
+        movq   %r13, 0x28(%rsp)
         mulxq  0x8(x), %rax, %rbx
         adcxq  %rax, %r14
         adoxq  %rbx, %r15
@@ -230,7 +233,7 @@ bignum_montmul_p521:
         mulxq  (x), %rax, %rbx
         adcxq  %rax, %r14
         adoxq  %rbx, %r15
-        movq   %r14, 0x30(z)
+        movq   %r14, 0x30(%rsp)
         mulxq  0x8(x), %rax, %rbx
         adcxq  %rax, %r15
         adoxq  %rbx, %r8
@@ -258,7 +261,7 @@ bignum_montmul_p521:
         mulxq  (x), %rax, %rbx
         adcxq  %rax, %r15
         adoxq  %rbx, %r8
-        movq   %r15, 0x38(z)
+        movq   %r15, 0x38(%rsp)
         mulxq  0x8(x), %rax, %rbx
         adcxq  %rax, %r8
         adoxq  %rbx, %r9
@@ -316,7 +319,7 @@ bignum_montmul_p521:
         adcq    %rax, %rbp
 
 // Rotate the upper portion right 9 bits since 2^512 == 2^-9 (mod p_521)
-// Let rotated result %rbp,%r15,%r14,...,%r8 be h (high) and z[0..7] be l (low)
+// Let rotated result %rbp,%r15,%r14,...,%r8 be h (high) and %rsp[0..7] be l (low)
 
         movq    %r8, %rax
         andq    $0x1FF, %rax
@@ -335,14 +338,14 @@ bignum_montmul_p521:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adcq    (z), %r8
-        adcq    8(z), %r9
-        adcq    16(z), %r10
-        adcq    24(z), %r11
-        adcq    32(z), %r12
-        adcq    40(z), %r13
-        adcq    48(z), %r14
-        adcq    56(z), %r15
+        adcq    (%rsp), %r8
+        adcq    8(%rsp), %r9
+        adcq    16(%rsp), %r10
+        adcq    24(%rsp), %r11
+        adcq    32(%rsp), %r12
+        adcq    40(%rsp), %r13
+        adcq    48(%rsp), %r14
+        adcq    56(%rsp), %r15
         adcq    $~0x1FF, %rbp
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
@@ -392,6 +395,7 @@ bignum_montmul_p521:
 
 // Restore registers and return
 
+        addq    $64, %rsp
         popq    %r15
         popq    %r14
         popq    %r13

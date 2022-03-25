@@ -29,6 +29,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montmul_p521
+        .globl  _bignum_montmul_p521
         .text
         .balign 4
 
@@ -158,13 +159,15 @@
                 adc     s7, s7, c                                       \
 
 bignum_montmul_p521:
+_bignum_montmul_p521:
 
-// Save registers
+// Save registers and make space for the temporary buffer
 
                 stp     x19, x20, [sp, #-16]!
                 stp     x21, x22, [sp, #-16]!
                 stp     x23, x24, [sp, #-16]!
                 stp     x25, x26, [sp, #-16]!
+                sub     sp, sp, #80
 
 // Load 4-digit low parts and multiply them to get L
 
@@ -174,18 +177,18 @@ bignum_montmul_p521:
                 ldp     b2, b3, [y, #16]
                 mul4
 
-// Shift right 256 bits modulo p_521 and stash in output buffer
+// Shift right 256 bits modulo p_521 and stash in temp buffer
 
                 lsl     c, s0, #9
                 extr    s0, s1, s0, #55
                 extr    s1, s2, s1, #55
                 extr    s2, s3, s2, #55
                 lsr     s3, s3, #55
-                stp     s4, s5, [z]
-                stp     s6, s7, [z, #16]
-                stp     c, s0, [z, #32]
-                stp     s1, s2, [z, #48]
-                str     s3, [z, #64]
+                stp     s4, s5, [sp]
+                stp     s6, s7, [sp, #16]
+                stp     c, s0, [sp, #32]
+                stp     s1, s2, [sp, #48]
+                str     s3, [sp, #64]
 
 // Load 4-digit low parts and multiply them to get H
 
@@ -195,28 +198,28 @@ bignum_montmul_p521:
                 ldp     b2, b3, [y, #48]
                 mul4
 
-// Add to the existing output buffer and re-stash.
+// Add to the existing temporary buffer and re-stash.
 // This gives a result HL congruent to (2^256 * H + L) / 2^256 modulo p_521
 
-                ldp     l, h, [z]
+                ldp     l, h, [sp]
                 adds    s0, s0, l
                 adcs    s1, s1, h
-                stp     s0, s1, [z]
-                ldp     l, h, [z, #16]
+                stp     s0, s1, [sp]
+                ldp     l, h, [sp, #16]
                 adcs    s2, s2, l
                 adcs    s3, s3, h
-                stp     s2, s3, [z, #16]
-                ldp     l, h, [z, #32]
+                stp     s2, s3, [sp, #16]
+                ldp     l, h, [sp, #32]
                 adcs    s4, s4, l
                 adcs    s5, s5, h
-                stp     s4, s5, [z, #32]
-                ldp     l, h, [z, #48]
+                stp     s4, s5, [sp, #32]
+                ldp     l, h, [sp, #48]
                 adcs    s6, s6, l
                 adcs    s7, s7, h
-                stp     s6, s7, [z, #48]
-                ldr     c, [z, #64]
+                stp     s6, s7, [sp, #48]
+                ldr     c, [sp, #64]
                 adc     c, c, xzr
-                str     c, [z, #64]
+                str     c, [sp, #64]
 
 // Compute t,[a3,a2,a1,a0] = x_hi - x_lo
 // and     s,[b3,b2,b1,b0] = y_lo - y_hi
@@ -275,8 +278,8 @@ bignum_montmul_p521:
 // small c (s8 + suspended carry) to add at the 256 position here (512
 // overall). This can be added in the next block (to b0 = sum4).
 
-                ldp     a0, a1, [z]
-                ldp     a2, a3, [z, #16]
+                ldp     a0, a1, [sp]
+                ldp     a2, a3, [sp, #16]
 
                 eor     s0, s0, s
                 adds    s0, s0, a0
@@ -288,9 +291,9 @@ bignum_montmul_p521:
                 adcs    s3, s3, a3
                 eor     s4, s4, s
 
-                ldp     b0, b1, [z, #32]
-                ldp     b2, b3, [z, #48]
-                ldr     s8, [z, #64]
+                ldp     b0, b1, [sp, #32]
+                ldp     b2, b3, [sp, #48]
+                ldr     s8, [sp, #64]
 
                 adcs    s4, s4, b0
                 eor     s5, s5, s
@@ -590,6 +593,7 @@ bignum_montmul_p521:
 
 // Restore regs and return
 
+                add     sp, sp, #80
                 ldp     x25, x26, [sp], #16
                 ldp     x23, x24, [sp], #16
                 ldp     x21, x22, [sp], #16
