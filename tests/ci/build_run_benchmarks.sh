@@ -41,7 +41,7 @@ ninja -C "${PR_FOLDER_NAME}"/fips_build
 # build AWSLC prod
 mkdir -p aws-lc-prod/build
 mkdir -p aws-lc-prod/install
-cmake -Baws-lc-prod/build -Haws-lc-prod -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/install" -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/install"
+cmake -Baws-lc-prod/build -Haws-lc-prod -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/install" -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/install" -DBUILD_TESTING=OFF
 ninja -C aws-lc-prod/build
 
 #build FIPS compliant version of AWSLC prod
