@@ -24,13 +24,13 @@ source tests/ci/common_posix_setup.sh
 git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
 
 # build AWSLC pr
-mkdir -p "${PR_FOLDER_NAME}"/build
+mkdir -p "${AWSLC_PR_ROOT}"/build
 mkdir -p "${AWSLC_PR_ROOT}"/install
-cmake -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
+cmake -B"${AWSLC_PR_ROOT}"/build -H"${AWSLC_PR_ROOT}" -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/install \
   -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/install \
   -DBUILD_TESTING=OFF \
-ninja -C "${PR_FOLDER_NAME}"/build
+ninja -C "${AWSLC_PR_ROOT}"/build
 
 # build FIPS compliant version of AWSLC pr
 mkdir -p "${PR_FOLDER_NAME}"/fips_build
