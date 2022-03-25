@@ -19,6 +19,7 @@ RUN set -ex && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
     python3.8 \
+    python3.8-venv \
     python3-pip \
     openjdk-8-jdk \
     perl \
