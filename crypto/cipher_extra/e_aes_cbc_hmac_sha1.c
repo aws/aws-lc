@@ -23,7 +23,7 @@
 #include "../fipsmodule/aes/internal.h"
 #include "internal.h"
 
-#if defined(AESNI_ASM)
+#if defined(AES_CBC_HMAC_SHA_STITCH)
 
 typedef struct {
   AES_KEY ks;

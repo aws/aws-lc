@@ -23,7 +23,7 @@
 #include "../fipsmodule/aes/internal.h"
 #include "internal.h"
 
-#if defined(AESNI_ASM)
+#if defined(AES_CBC_HMAC_SHA_STITCH)
 
 typedef struct {
   AES_KEY ks;
@@ -453,4 +453,4 @@ const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void) {
 const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void) { return NULL; }
 
 const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void) { return NULL; }
-#endif /* AESNI_ASM */
+#endif /* AES_CBC_HMAC_SHA_STITCH */
