@@ -25,7 +25,7 @@ git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
 
 # build AWSLC pr
 mkdir -p "${PR_FOLDER_NAME}"/build
-mkdir -p "${PR_FOLDER_NAME}"/install
+mkdir -p "${AWSLC_PR_ROOT}"/install
 cmake -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/install \
   -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/install \
