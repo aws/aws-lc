@@ -4251,6 +4251,14 @@ extern "C" {
 #define NID_sha512_256 962
 #define OBJ_sha512_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 6L
 
+#define SN_aes_128_cbc_hmac_sha256 "AES-128-CBC-HMAC-SHA256"
+#define LN_aes_128_cbc_hmac_sha256 "aes-128-cbc-hmac-sha256"
+#define NID_aes_128_cbc_hmac_sha256 963
+
+#define SN_aes_256_cbc_hmac_sha256 "AES-256-CBC-HMAC-SHA256"
+#define LN_aes_256_cbc_hmac_sha256 "aes-256-cbc-hmac-sha256"
+#define NID_aes_256_cbc_hmac_sha256 964
+
 
 #if defined(__cplusplus)
 } /* extern C */
