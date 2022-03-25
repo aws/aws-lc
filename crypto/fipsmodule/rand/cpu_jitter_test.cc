@@ -57,8 +57,8 @@ TEST(CPUJitterEntropyTest, Basic) {
   EXPECT_NE(jitter_ec.instance, nullptr);
   EXPECT_EQ(jitter_ec.instance->osr, osr);
 
-  // Verify that the Jitter library version is v3.1.0.
-  unsigned int jitter_version = 3010000;
+  // Verify that the Jitter library version is v3.4.0.
+  unsigned int jitter_version = 3040000;
   EXPECT_EQ(jitter_version, jent_version());
 }
 

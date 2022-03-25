@@ -11149,7 +11149,8 @@ P = 9df9d6cc20b8540411af4e5357ef2b0353cb1f2ab5ffc3e246b41c32f71e951f
 
 # NotModSquare tests.
 #
-# These test vectors are such that NotModSquare is not a square modulo P.
+# These test vectors are such that NotModSquare is not a square modulo P or
+# P is not a prime number so BN_mod_sqrt function can't compute correctly.
 
 NotModSquare = 03
 P = 07
@@ -11163,6 +11164,11 @@ P = 07
 NotModSquare = 9df9d6cc20b8540411af4e5357ef2b0353cb1f2ab5ffc3e246b41c32f71e951e
 P = 9df9d6cc20b8540411af4e5357ef2b0353cb1f2ab5ffc3e246b41c32f71e951f
 
+NotModSquare = 20a7ee
+P = 460201
+
+NotModSquare = 65bebdb00a96fc814ec44b81f98b59fba3c30203928fa5214c51e0a97091645280c947b005847f239758482b9bfc45b066fde340d1fe32fc9c1bf02e1b2d0ed
+P = 9df9d6cc20b8540411af4e5357ef2b0353cb1f2ab5ffc3e246b41c32f71e951f
 
 # ModInv tests.
 #

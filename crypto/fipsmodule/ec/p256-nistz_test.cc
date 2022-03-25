@@ -34,12 +34,12 @@
 
 // Disable tests if BORINGSSL_SHARED_LIBRARY is defined. These tests need access
 // to internal functions.
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) && \
+#if !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))                 && \
     !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
 
 TEST(P256_NistzTest, SelectW5) {
-  // Fill a table with some garbage input.  
+  // Fill a table with some garbage input.
   stack_align_type buffer_table[64 + (sizeof(P256_POINT) * 16)];
   P256_POINT *aligned_table = (P256_POINT *) align_pointer(buffer_table, 64);
 
@@ -578,6 +578,6 @@ TEST(P256_NistzTest, ABI) {
   CHECK_ABI(ecp_nistz256_point_add_affine, &p, &kInfinity, &kC);
 }
 
-#endif /* !defined(OPENSSL_NO_ASM) && \
-          (defined(OPENSSL_X86_64) || (defined(OPENSSL_AARCH64_P256) && defined(OPENSSL_AARCH64))) &&  \
+#endif /* !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && \
+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
           !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY) */

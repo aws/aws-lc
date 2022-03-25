@@ -192,7 +192,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   }
 
   if (!ec_cmp_x_coordinate(group, &point, &r)) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_MISMATCHED_SIGNATURE);
     return 0;
   }
 

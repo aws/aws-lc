@@ -54,9 +54,12 @@
 #
 # Modified from upstream OpenSSL to remove the XOP code.
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $flavour = shift;
 $output  = shift;
-if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
 
 $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
@@ -65,10 +68,11 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-$avx = 2;
-
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
+
+$avx = 2;
+for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
 # input parameter block
 ($out,$inp,$len,$key,$counter)=("%rdi","%rsi","%rdx","%rcx","%r8");

@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_montsqr_p384
+        .globl  _bignum_montsqr_p384
         .text
         .balign 4
 
@@ -104,6 +105,7 @@
 #define d4 x17
 
 bignum_montsqr_p384:
+_bignum_montsqr_p384:
 
 // Load in all words of the input
 

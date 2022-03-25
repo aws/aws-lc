@@ -19,25 +19,29 @@ int is_fips_build(void) {
 
 #if defined(AWSLC_FIPS)
 
-// Should only be called once per thread. Only called when initializing the
-// state in |FIPS_service_indicator_before_call| (external call) or
-// in |FIPS_service_indicator_update_state| (internal call within every approved service).
-static int FIPS_service_indicator_init_state(void) {
-  struct fips_service_indicator_state *indicator;
-  indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
-  if (indicator == NULL || !CRYPTO_set_thread_local(
-      AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
-    return 0;
+// FIPS 140-3 requires that the module should provide the service indicator
+// for approved services irrespective of whether the user queries it or not.
+// Hence, it is lazily initialized in any call to an approved service.
+static struct fips_service_indicator_state * FIPS_service_indicator_get(void) {
+  struct fips_service_indicator_state *indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+  if (indicator == NULL) {
+    indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
+    if (indicator == NULL) {
+      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
+      return NULL;
+    }
+    indicator->lock_state = STATE_UNLOCKED;
+    indicator->counter = 0;
+    if (!CRYPTO_set_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, OPENSSL_free)) {
+      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+      return NULL;
+    }
   }
-  indicator->lock_state = STATE_UNLOCKED;
-  indicator->counter = 0;
-  return 1;
+  return indicator;
 }
 
 static uint64_t FIPS_service_indicator_get_counter(void) {
-  struct fips_service_indicator_state *indicator =
-      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+  struct fips_service_indicator_state *indicator = FIPS_service_indicator_get();
   if (indicator == NULL) {
     return 0;
   }
@@ -45,13 +49,6 @@ static uint64_t FIPS_service_indicator_get_counter(void) {
 }
 
 uint64_t FIPS_service_indicator_before_call(void) {
-  struct fips_service_indicator_state *indicator =
-      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-  if (indicator == NULL) {
-    if(!FIPS_service_indicator_init_state()) {
-      return 0;
-    }
-  }
   return FIPS_service_indicator_get_counter();
 }
 
@@ -66,50 +63,50 @@ int FIPS_service_indicator_check_approved(uint64_t before, uint64_t after) {
   return AWSLC_NOT_APPROVED;
 }
 
+// |FIPS_service_indicator_update_state|, |FIPS_service_indicator_lock_state|
+// and |FIPS_service_indicator_unlock_state| should not under/overflow in normal
+// operation. They are still checked and errors added to facilitate testing in
+// service_indicator_test.cc This should only happen if lock/unlock are called
+// in an incorrect order or multiple times in the same function.
 void FIPS_service_indicator_update_state(void) {
-  struct fips_service_indicator_state *indicator =
-      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+  struct fips_service_indicator_state *indicator = FIPS_service_indicator_get();
   if (indicator == NULL) {
-    // FIPS 140-3 requires that the module should provide the service indicator
-    // for approved services irrespective of whether the user queries it or not.
-    // Hence, it is not enough to initialise the counter lazily in the external
-    // call |FIPS_service_indicator_before_call|.
-    // Since this function is always called in the approved services,
-    // the counter will be initialised here if needed.
-    FIPS_service_indicator_init_state();
-    indicator = CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
-    if (indicator == NULL) {
-      return;
-    }
+    return;
   }
 
   if(indicator->lock_state == STATE_UNLOCKED) {
-    indicator->counter++;
+    if(indicator->counter + 1 > indicator->counter) {
+      indicator->counter++;
+    } else {
+      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+    }
   }
 }
 
 void FIPS_service_indicator_lock_state(void) {
-  struct fips_service_indicator_state *indicator =
-      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+  struct fips_service_indicator_state *indicator = FIPS_service_indicator_get();
   if (indicator == NULL) {
     return;
   }
-  // This shouldn't overflow unless |FIPS_service_indicator_unlock_state| wasn't
-  // correctly called after |FIPS_service_indicator_lock_state| in the same
-  // function.
-  indicator->lock_state++;
+
+  if (indicator->lock_state + 1 > indicator->lock_state) {
+    indicator->lock_state++;
+  } else {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+  }
 }
 
 void FIPS_service_indicator_unlock_state(void) {
-  struct fips_service_indicator_state *indicator =
-      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+  struct fips_service_indicator_state *indicator = FIPS_service_indicator_get();
   if (indicator == NULL) {
     return;
   }
-  // This shouldn't overflow unless |FIPS_service_indicator_lock_state| wasn't
-  // correctly called before |FIPS_service_indicator_unlock_state| in the same
-  // function.
-  indicator->lock_state--;
+
+  if (indicator->lock_state > 0) {
+    indicator->lock_state--;
+  } else {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+  }
 }
 
 void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds) {

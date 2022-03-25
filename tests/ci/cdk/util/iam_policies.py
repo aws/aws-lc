@@ -99,7 +99,7 @@ def code_build_batch_policy_in_json(project_ids):
         ]
     }
 
-def code_build_fuzz_policy_in_json():
+def code_build_publish_metrics_in_json():
     """
     Define an IAM policy that only grants access to publish CloudWatch metrics to the current region in the same
     namespace used in the calls to PutMetricData in tests/ci/common_fuzz.sh.
@@ -117,7 +117,8 @@ def code_build_fuzz_policy_in_json():
                             AWS_REGION
                         ],
                         "cloudwatch:namespace": [
-                            "AWS-LC-Fuzz"
+                            "AWS-LC-Fuzz",
+                            "AWS-LC"
                         ]
                     }
                 }

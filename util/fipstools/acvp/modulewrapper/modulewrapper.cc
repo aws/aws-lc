@@ -20,8 +20,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
-#include <sys/uio.h>
-#include <unistd.h>
+#include <iostream>
 #include <cstdarg>
 
 #include <openssl/aead.h>
@@ -79,33 +78,22 @@ std::unique_ptr<RequestBuffer> RequestBuffer::New() {
   return std::unique_ptr<RequestBuffer>(new RequestBufferImpl);
 }
 
-static bool ReadAll(int fd, void *in_data, size_t data_len) {
-  uint8_t *data = reinterpret_cast<uint8_t *>(in_data);
-  size_t done = 0;
+static bool ReadAll(std::istream *stream, void *in_data, size_t data_len) {
+  size_t read = stream->read(static_cast<char *>(in_data), data_len).gcount();
 
-  while (done < data_len) {
-    ssize_t r;
-    do {
-      r = read(fd, &data[done], data_len - done);
-    } while (r == -1 && errno == EINTR);
-
-    if (r <= 0) {
-      return false;
-    }
-
-    done += r;
+  if (read != data_len) {
+    return false;
   }
-
   return true;
 }
 
-Span<const Span<const uint8_t>> ParseArgsFromFd(int fd,
+Span<const Span<const uint8_t>> ParseArgsFromStream(std::istream *stream,
                                                 RequestBuffer *in_buffer) {
-  RequestBufferImpl *buffer = reinterpret_cast<RequestBufferImpl *>(in_buffer);
+  RequestBufferImpl *buffer = static_cast<RequestBufferImpl *>(in_buffer);
   uint32_t nums[1 + kMaxArgs];
   const Span<const Span<const uint8_t>> empty_span;
 
-  if (!ReadAll(fd, nums, sizeof(uint32_t) * 2)) {
+  if (!ReadAll(stream, nums, sizeof(uint32_t) * 2)) {
     return empty_span;
   }
 
@@ -120,7 +108,7 @@ Span<const Span<const uint8_t>> ParseArgsFromFd(int fd,
   }
 
   if (num_args > 1 &&
-      !ReadAll(fd, &nums[2], sizeof(uint32_t) * (num_args - 1))) {
+      !ReadAll(stream, &nums[2], sizeof(uint32_t) * (num_args - 1))) {
     return empty_span;
   }
 
@@ -153,7 +141,7 @@ Span<const Span<const uint8_t>> ParseArgsFromFd(int fd,
     buffer->buf.resize(alloced);
   }
 
-  if (!ReadAll(fd, buffer->buf.data(), need)) {
+  if (!ReadAll(stream, buffer->buf.data(), need)) {
     return empty_span;
   }
 
@@ -166,62 +154,27 @@ Span<const Span<const uint8_t>> ParseArgsFromFd(int fd,
   return Span<const Span<const uint8_t>>(buffer->args, num_args);
 }
 
-bool WriteReplyToFd(int fd, const std::vector<Span<const uint8_t>> &spans) {
+bool WriteReplyToStream(std::ostream *stream, const std::vector<Span<const uint8_t>> &spans) {
   if (spans.empty() || spans.size() > kMaxArgs) {
     abort();
   }
-
   uint32_t nums[1 + kMaxArgs];
-  iovec iovs[kMaxArgs + 1];
   nums[0] = spans.size();
-  iovs[0].iov_base = nums;
-  iovs[0].iov_len = sizeof(uint32_t) * (1 + spans.size());
-
-  size_t num_iov = 1;
   for (size_t i = 0; i < spans.size(); i++) {
     const auto &span = spans[i];
-    nums[i + 1] = span.size();
+    nums[i+1] = span.size();
+  }
+  stream->write(reinterpret_cast<const char *>(nums), sizeof(uint32_t) * (1 + spans.size()));
+
+  for (size_t i = 0; i < spans.size(); i++) {
+    const auto &span = spans[i];
     if (span.empty()) {
       continue;
     }
-
-    iovs[num_iov].iov_base = const_cast<uint8_t *>(span.data());
-    iovs[num_iov].iov_len = span.size();
-    num_iov++;
+    stream->write(reinterpret_cast<const char *>(span.data()), sizeof(uint8_t) * span.size());
   }
 
-  size_t iov_done = 0;
-  while (iov_done < num_iov) {
-    ssize_t r;
-    do {
-      r = writev(fd, &iovs[iov_done], num_iov - iov_done);
-    } while (r == -1 && errno == EINTR);
-
-    if (r <= 0) {
-      return false;
-    }
-
-    size_t written = r;
-    for (size_t i = iov_done; i < num_iov && written > 0; i++) {
-      iovec &iov = iovs[i];
-
-      size_t done = written;
-      if (done > iov.iov_len) {
-        done = iov.iov_len;
-      }
-
-      iov.iov_base = reinterpret_cast<uint8_t *>(iov.iov_base) + done;
-      iov.iov_len -= done;
-      written -= done;
-
-      if (iov.iov_len == 0) {
-        iov_done++;
-      }
-    }
-
-    assert(written == 0);
-  }
-
+  stream->flush();
   return true;
 }
 
@@ -807,6 +760,16 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
           "v1.0/1.1",
           "v1.2"
         ],
+        "hashAlg": [
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
+        ]
+      },
+      {
+        "algorithm": "TLS-v1.2",
+        "revision": "RFC7627",
+        "mode": "KDF",
         "hashAlg": [
           "SHA2-256",
           "SHA2-384",

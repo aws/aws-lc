@@ -30,6 +30,7 @@
 
 
         .globl  bignum_montmul_p521_alt
+        .globl  _bignum_montmul_p521_alt
         .text
 
 #define z %rdi
@@ -66,13 +67,15 @@
         adcq    %rdx, h
 
 bignum_montmul_p521_alt:
+_bignum_montmul_p521_alt:
 
-// Make more registers available
+// Make more registers available and make temporary space on stack
 
         pushq   %r12
         pushq   %r13
         pushq   %r14
         pushq   %r15
+        subq    $72, %rsp
 
 // Copy y into a safe register to start with
 
@@ -83,13 +86,13 @@ bignum_montmul_p521_alt:
         mov %rdx, y
 
 // Start doing a conventional columnwise multiplication,
-// temporarily storing the lower 9 digits to the output buffer.
+// temporarily storing the lower 9 digits to the stack.
 // Start with result term 0
 
         movq    (x), %rax
         mulq     (y)
 
-        movq    %rax, (z)
+        movq    %rax, (%rsp)
         movq    %rdx, %r9
         xorq    %r10, %r10
 
@@ -98,7 +101,7 @@ bignum_montmul_p521_alt:
         xorq    %r11, %r11
         combads(%r10,%r9,(x),8(y))
         combadz(%r11,%r10,%r9,8(x),(y))
-        movq    %r9, 8(z)
+        movq    %r9, 8(%rsp)
 
 // Result term 2
 
@@ -106,7 +109,7 @@ bignum_montmul_p521_alt:
         combadz(%r12,%r11,%r10,(x),16(y))
         combadd(%r12,%r11,%r10,8(x),8(y))
         combadd(%r12,%r11,%r10,16(x),(y))
-        movq    %r10, 16(z)
+        movq    %r10, 16(%rsp)
 
 // Result term 3
 
@@ -115,7 +118,7 @@ bignum_montmul_p521_alt:
         combadd(%r13,%r12,%r11,8(x),16(y))
         combadd(%r13,%r12,%r11,16(x),8(y))
         combadd(%r13,%r12,%r11,24(x),(y))
-        movq    %r11, 24(z)
+        movq    %r11, 24(%rsp)
 
 // Result term 4
 
@@ -125,7 +128,7 @@ bignum_montmul_p521_alt:
         combadd(%r14,%r13,%r12,16(x),16(y))
         combadd(%r14,%r13,%r12,24(x),8(y))
         combadd(%r14,%r13,%r12,32(x),(y))
-        movq    %r12, 32(z)
+        movq    %r12, 32(%rsp)
 
 // Result term 5
 
@@ -136,7 +139,7 @@ bignum_montmul_p521_alt:
         combadd(%r15,%r14,%r13,24(x),16(y))
         combadd(%r15,%r14,%r13,32(x),8(y))
         combadd(%r15,%r14,%r13,40(x),(y))
-        movq    %r13, 40(z)
+        movq    %r13, 40(%rsp)
 
 // Result term 6
 
@@ -148,7 +151,7 @@ bignum_montmul_p521_alt:
         combadd(%r8,%r15,%r14,32(x),16(y))
         combadd(%r8,%r15,%r14,40(x),8(y))
         combadd(%r8,%r15,%r14,48(x),(y))
-        movq    %r14, 48(z)
+        movq    %r14, 48(%rsp)
 
 // Result term 7
 
@@ -161,7 +164,7 @@ bignum_montmul_p521_alt:
         combadd(%r9,%r8,%r15,40(x),16(y))
         combadd(%r9,%r8,%r15,48(x),8(y))
         combadd(%r9,%r8,%r15,56(x),(y))
-        movq    %r15, 56(z)
+        movq    %r15, 56(%rsp)
 
 // Result term 8
 
@@ -175,7 +178,7 @@ bignum_montmul_p521_alt:
         combadd(%r10,%r9,%r8,48(x),16(y))
         combadd(%r10,%r9,%r8,56(x),8(y))
         combadd(%r10,%r9,%r8,64(x),(y))
-        movq    %r8, 64(z)
+        movq    %r8, 64(%rsp)
 
 // At this point we suspend writing back results and collect them
 // in a register window. Next is result term 9
@@ -246,11 +249,11 @@ bignum_montmul_p521_alt:
         imulq   64(y), %rax
         addq    %r8, %rax
 
-// Now the upper portion is [%rax;%r15;%r14;%r13;%r12;%r11;%r10;%r9;[z+64]].
+// Now the upper portion is [%rax;%r15;%r14;%r13;%r12;%r11;%r10;%r9;[%rsp+64]].
 // Rotate the upper portion right 9 bits since 2^512 == 2^-9 (mod p_521)
-// Let rotated result %rdx,%r15,%r14,...,%r8 be h (high) and z[0..7] be l (low)
+// Let rotated result %rdx,%r15,%r14,...,%r8 be h (high) and %rsp[0..7] be l (low)
 
-        movq    64(z), %r8
+        movq    64(%rsp), %r8
         movq    %r8, %rdx
         andq    $0x1FF, %rdx
         shrdq   $9, %r9, %r8
@@ -268,14 +271,14 @@ bignum_montmul_p521_alt:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adcq    (z), %r8
-        adcq    8(z), %r9
-        adcq    16(z), %r10
-        adcq    24(z), %r11
-        adcq    32(z), %r12
-        adcq    40(z), %r13
-        adcq    48(z), %r14
-        adcq    56(z), %r15
+        adcq    (%rsp), %r8
+        adcq    8(%rsp), %r9
+        adcq    16(%rsp), %r10
+        adcq    24(%rsp), %r11
+        adcq    32(%rsp), %r12
+        adcq    40(%rsp), %r13
+        adcq    48(%rsp), %r14
+        adcq    56(%rsp), %r15
         adcq    $~0x1FF, %rdx
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
@@ -325,6 +328,7 @@ bignum_montmul_p521_alt:
 
 // Restore registers and return
 
+        addq    $72, %rsp
         popq    %r15
         popq    %r14
         popq    %r13

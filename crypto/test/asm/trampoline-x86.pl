@@ -34,7 +34,7 @@ my $dir = $1;
 push(@INC, "${dir}", "${dir}../../perlasm");
 require "x86asm.pl";
 
-my $output = pop;
+my $output = $ARGV[1];
 open STDOUT, ">$output";
 
 &asm_init($ARGV[0]);

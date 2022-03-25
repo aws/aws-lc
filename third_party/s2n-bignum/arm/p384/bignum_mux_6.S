@@ -27,6 +27,7 @@
 // ----------------------------------------------------------------------------
 
         .globl  bignum_mux_6
+        .globl  _bignum_mux_6
         .text
         .balign 4
 
@@ -38,6 +39,7 @@
 
 
 bignum_mux_6:
+_bignum_mux_6:
 
                 cmp     p, #0                    // Set condition codes p = 0
 

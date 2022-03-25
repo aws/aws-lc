@@ -29,7 +29,6 @@ use strict;
 
 my $flavour = shift;
 my $output  = shift;
-if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/;
 my $dir = $1;

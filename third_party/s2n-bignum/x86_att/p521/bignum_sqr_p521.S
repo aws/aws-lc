@@ -24,6 +24,7 @@
 
 
         .globl  bignum_sqr_p521
+        .globl  _bignum_sqr_p521
         .text
 
 #define z %rdi
@@ -54,16 +55,18 @@
         adoxq   zero, high
 
 bignum_sqr_p521:
+_bignum_sqr_p521:
 
-// Save more registers to play with
+// Save more registers to play with and make temporary space on stack
 
         pushq   %rbp
         pushq   %r12
         pushq   %r13
         pushq   %r14
         pushq   %r15
+        subq    $64, %rsp
 
-// Do a basic 8x8 squaring writing back z[0..7] but keeping the
+// Do a basic 8x8 squaring stashing in %rsp[0..7] but keeping the
 // top half in the usual rotating register window %r15,...,%r8. Except
 // for the lack of full writeback this is the same as bignum_sqr_8_16.
 
@@ -71,10 +74,10 @@ bignum_sqr_p521:
 
         movq    (x), %rdx
         mulxq   8(x), %r9, %rax
-        movq    %r9, 8(z)
+        movq    %r9, 8(%rsp)
         mulxq   16(x), %r10, %rcx
         adcxq   %rax, %r10
-        movq    %r10, 16(z)
+        movq    %r10, 16(%rsp)
         mulxq   24(x), %r11, %rax
         adcxq   %rcx, %r11
         mulxq   32(x), %r12, %rcx
@@ -90,9 +93,9 @@ bignum_sqr_p521:
         xorl    zeroe, zeroe
         movq    8(x), %rdx
         mulpadd(%r12,%r11,16)
-        movq    %r11, 24(z)
+        movq    %r11, 24(%rsp)
         mulpadd(%r13,%r12,24)
-        movq    %r12, 32(z)
+        movq    %r12, 32(%rsp)
         mulpadd(%r14,%r13,32)
         mulpadd(%r15,%r14,40)
         mulpadd(%r8,%r15,48)
@@ -104,9 +107,9 @@ bignum_sqr_p521:
         xorl    zeroe, zeroe
         movq    16(x), %rdx
         mulpadd(%r14,%r13,24)
-        movq    %r13, 40(z)
+        movq    %r13, 40(%rsp)
         mulpadd(%r15,%r14,32)
-        movq    %r14, 48(z)
+        movq    %r14, 48(%rsp)
         mulpadd(%r8,%r15,40)
         mulpadd(%r9,%r8,48)
         mulpadd(%r10,%r9,56)
@@ -118,7 +121,7 @@ bignum_sqr_p521:
         xorl    zeroe, zeroe
         movq    24(x), %rdx
         mulpadd(%r8,%r15,32)
-        movq    %r15, 56(z)
+        movq    %r15, 56(%rsp)
         mulpadd(%r9,%r8,40)
         mulpadd(%r10,%r9,48)
         mulpadd(%r11,%r10,56)
@@ -131,44 +134,44 @@ bignum_sqr_p521:
         xorl    zeroe, zeroe
         movq    (x), %rdx
         mulxq   %rdx, %rax, %rcx
-        movq    %rax, (z)
-        movq    8(z), %rax
+        movq    %rax, (%rsp)
+        movq    8(%rsp), %rax
         adcxq   %rax, %rax
         adoxq   %rcx, %rax
-        movq    %rax, 8(z)
+        movq    %rax, 8(%rsp)
 
-        movq    16(z), %rax
+        movq    16(%rsp), %rax
         movq    8(x), %rdx
         mulxq   %rdx, %rdx, %rcx
         adcxq   %rax, %rax
         adoxq   %rdx, %rax
-        movq    %rax, 16(z)
-        movq    24(z), %rax
+        movq    %rax, 16(%rsp)
+        movq    24(%rsp), %rax
         adcxq   %rax, %rax
         adoxq   %rcx, %rax
-        movq    %rax, 24(z)
+        movq    %rax, 24(%rsp)
 
-        movq    32(z), %rax
+        movq    32(%rsp), %rax
         movq    16(x), %rdx
         mulxq   %rdx, %rdx, %rcx
         adcxq   %rax, %rax
         adoxq   %rdx, %rax
-        movq    %rax, 32(z)
-        movq    40(z), %rax
+        movq    %rax, 32(%rsp)
+        movq    40(%rsp), %rax
         adcxq   %rax, %rax
         adoxq   %rcx, %rax
-        movq    %rax, 40(z)
+        movq    %rax, 40(%rsp)
 
-        movq    48(z), %rax
+        movq    48(%rsp), %rax
         movq    24(x), %rdx
         mulxq   %rdx, %rdx, %rcx
         adcxq   %rax, %rax
         adoxq   %rdx, %rax
-        movq    %rax, 48(z)
-        movq    56(z), %rax
+        movq    %rax, 48(%rsp)
+        movq    56(%rsp), %rax
         adcxq   %rax, %rax
         adoxq   %rcx, %rax
-        movq    %rax, 56(z)
+        movq    %rax, 56(%rsp)
 
         movq    32(x), %rdx
         mulxq   %rdx, %rdx, %rcx
@@ -221,7 +224,7 @@ bignum_sqr_p521:
         adcq   $0, %rbp
 
 // Rotate the upper portion right 9 bits since 2^512 == 2^-9 (mod p_521)
-// Let rotated result %rbp,%r15,%r14,...,%r8 be h (high) and z[0..7] be l (low)
+// Let rotated result %rbp,%r15,%r14,...,%r8 be h (high) and %rsp[0..7] be l (low)
 
         movq    %r8, %rax
         andq    $0x1FF, %rax
@@ -240,14 +243,14 @@ bignum_sqr_p521:
 // but actually add all 1s in the top 53 bits to get simple carry out
 
         stc
-        adcq    (z), %r8
-        adcq    8(z), %r9
-        adcq    16(z), %r10
-        adcq    24(z), %r11
-        adcq    32(z), %r12
-        adcq    40(z), %r13
-        adcq    48(z), %r14
-        adcq    56(z), %r15
+        adcq    (%rsp), %r8
+        adcq    8(%rsp), %r9
+        adcq    16(%rsp), %r10
+        adcq    24(%rsp), %r11
+        adcq    32(%rsp), %r12
+        adcq    40(%rsp), %r13
+        adcq    48(%rsp), %r14
+        adcq    56(%rsp), %r15
         adcq    $~0x1FF, %rbp
 
 // Now CF is set <=> h + l + 1 >= 2^521 <=> h + l >= p_521,
@@ -279,6 +282,7 @@ bignum_sqr_p521:
 
 // Restore registers and return
 
+        addq    $64, %rsp
         popq    %r15
         popq    %r14
         popq    %r13

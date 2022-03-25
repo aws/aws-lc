@@ -74,10 +74,14 @@ if(PERL_EXECUTABLE)
       set(dir ".")
     endif()
 
+    if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+      set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
+    endif()
+
     add_custom_command(
       OUTPUT ${dest}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
+      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${dest} ${PERLASM_FLAGS}
       DEPENDS
       ${src}
       ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
@@ -182,10 +186,10 @@ if(ARCH STREQUAL "x86_64")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-x86_64.${ASM_EXT}
-    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
     cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-    hrss/asm/poly_rq_mul.S
+    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
     test/trampoline-x86_64.${ASM_EXT}
+    hrss/asm/poly_rq_mul.S
   )
 endif()
 
@@ -453,15 +457,15 @@ add_library(
   ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
+
 target_compile_definitions(crypto PRIVATE BORINGSSL_IMPLEMENTATION)
+
 if(FIPS_SHARED)
   # Rewrite libcrypto.so (or libcrypto.dylib) to inject the correct module
-  # hash value. For now we support the FIPS build only on Linux and macOS.
+  # hash value. For now we support the FIPS build only on Linux, macOS and iOS.
 
   if (APPLE)
-    set(INJECT_HASH_MACOS_FLAG "-macos")
-  else()
-    set(INJECT_HASH_MACOS_FLAG "")
+    set(INJECT_HASH_APPLE_FLAG "-apple")
   endif()
 
   add_custom_command(
@@ -469,7 +473,7 @@ if(FIPS_SHARED)
     COMMAND ${GO_EXECUTABLE} run
     ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
     -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-    -sha256 ${INJECT_HASH_MACOS_FLAG}
+    -sha256 ${INJECT_HASH_APPLE_FLAG}
     # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
     # go_executable isn't used (as it doesn't get built), but we list this
     # dependency anyway in case it starts working in some CMake version.
