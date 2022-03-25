@@ -29,7 +29,7 @@ mkdir -p "${PR_FOLDER_NAME}"/install
 cmake -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
   -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/install \
   -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/install \
-  -DBUILD_TESTING=OFF \
+  -DBUILD_TESTING=OFF
 ninja -C "${PR_FOLDER_NAME}"/build
 
 # build FIPS compliant version of AWSLC pr
