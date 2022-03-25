@@ -8,7 +8,9 @@ export CXX=clang++-10;
 source tests/ci/common_posix_setup.sh
 
 echo "Testing AWS-LC in debug mode."
-run_build
+run_build -DASAN=1
+# gdb --args ./test_build_dir/crypto/crypto_test --gtest_filter=All/PerTLSLegacyAEADTest*
+
 ./test_build_dir/crypto/crypto_test --gtest_filter=All/PerTLSLegacyAEADTest*
 
 

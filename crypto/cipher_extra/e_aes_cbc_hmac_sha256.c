@@ -27,21 +27,26 @@
 
 typedef struct {
   AES_KEY ks;
+  // Used to compute(init, update and final) HMAC-SHA256.
   SHA256_CTX head, tail, md;
-  size_t payload_length; /* AAD length in decrypt case */
+  // In encrypt case, it's eiv_len + plaintext_len. eiv is explicit iv(required TLS 1.1+).
+  // In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
+  size_t payload_length;
   union {
     unsigned int tls_ver;
-    unsigned char tls_aad[16]; /* 13 used */
+    // In encrypt case, it's not set.
+    // In decrypt case, it stores |additional_data|.
+    // https://datatracker.ietf.org/doc/html/rfc5246#section-6.2.3.3
+    unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
 } EVP_AES_HMAC_SHA256;
 
-#define NO_PAYLOAD_LENGTH ((size_t)-1)
+#define data(ctx) ((EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx))
 
 int aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
                          const AES_KEY *key, unsigned char iv[16],
                          SHA256_CTX *ctx, const void *in0);
 
-#define data(ctx) ((EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx))
 
 static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
                                           const unsigned char *inkey,

@@ -12,11 +12,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/evp.h>
-// TODO: check circuit of include.
+
 #include <openssl/aes.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/objects.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -27,25 +27,25 @@
 
 typedef struct {
   AES_KEY ks;
+  // Used to compute(init, update and final) HMAC-SHA1.
   SHA_CTX head, tail, md;
-  size_t payload_length; /* AAD length in decrypt case */
+  // In encrypt case, it's eiv_len + plaintext_len. eiv is explicit iv(required TLS 1.1+).
+  // In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
+  size_t payload_length;
   union {
     unsigned int tls_ver;
-    unsigned char tls_aad[16]; /* 13 used */
+    // In encrypt case, it's not set.
+    // In decrypt case, it stores |additional_data|.
+    // https://datatracker.ietf.org/doc/html/rfc5246#section-6.2.3.3
+    unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
 } EVP_AES_HMAC_SHA1;
 
-#define NO_PAYLOAD_LENGTH ((size_t)-1)
+#define data(ctx) ((EVP_AES_HMAC_SHA1 *)EVP_CIPHER_CTX_get_cipher_data(ctx))
 
 void aesni_cbc_sha1_enc(const void *inp, void *out, size_t blocks,
                         const AES_KEY *key, unsigned char iv[16], SHA_CTX *ctx,
                         const void *in0);
-
-void aesni256_cbc_sha1_dec(const void *inp, void *out, size_t blocks,
-                           const AES_KEY *key, unsigned char iv[16],
-                           SHA_CTX *ctx, const void *in0);
-
-#define data(ctx) ((EVP_AES_HMAC_SHA1 *)EVP_CIPHER_CTX_get_cipher_data(ctx))
 
 static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
                                         const unsigned char *inkey,

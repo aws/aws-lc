@@ -271,6 +271,7 @@ TEST_P(PerAEADTest, TestVector) {
   });
 }
 
+#if defined(AES_CBC_HMAC_SHA_STITCH)
 struct KnownTLSLegacyAEAD {
   const char name[40];
   const EVP_CIPHER *(*func)(void);
@@ -293,6 +294,22 @@ static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
 
     {"AES_128_CBC_SHA256_TLS_IMPLICIT_IV", EVP_aes_128_cbc_hmac_sha256,
      "aes_128_cbc_sha256_tls_stitch_implicit_iv_tests.txt",
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_256_CBC_SHA1_TLS", EVP_aes_256_cbc_hmac_sha1,
+     "aes_256_cbc_sha1_tls_stitch_tests.txt",
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+     {"AES_256_CBC_SHA1_TLS_IMPLICIT_IV", EVP_aes_256_cbc_hmac_sha1,
+     "aes_256_cbc_sha1_tls_stitch_implicit_iv_tests.txt",
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_256_CBC_SHA256_TLS", EVP_aes_256_cbc_hmac_sha256,
+     "aes_256_cbc_sha256_tls_stitch_tests.txt",
+     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_256_CBC_SHA256_TLS_IMPLICIT_IV", EVP_aes_256_cbc_hmac_sha256,
+     "aes_256_cbc_sha256_tls_stitch_implicit_iv_tests.txt",
      kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 };
 
@@ -319,7 +336,7 @@ static void set_TLS1_AAD(EVP_CIPHER_CTX *ctx, uint8_t *ad) {
   EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD, EVP_AEAD_TLS1_AAD_LEN, ad);
 }
 
-// |EVP_aes_128_cbc_hmac_sha1/256| tests.
+// |EVP_aes_128/256_cbc_hmac_sha1/256| tests.
 // Tests a TLS specific legacy AEAD against a series of test vectors from a file, using the
 // FileTest format. As an example, here's a valid test case:
 //
@@ -353,7 +370,8 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     }
     bool explicit_iv = !nonce.empty();
     const EVP_CIPHER *cipher = legacy_aead();
-    size_t key_block_size = EVP_CIPHER_block_size(cipher);
+    size_t aes_block_size = EVP_CIPHER_block_size(cipher);;
+    size_t key_block_size = EVP_CIPHER_key_length(cipher);
     size_t e_iv_len = 0;
     bssl::ScopedEVP_CIPHER_CTX ctx;
 
@@ -361,12 +379,12 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     // The |key| is Mac key + AES key + IV.
     size_t mac_key_size = tag_len;
     const uint8_t *aes_key = key.data() + mac_key_size;
-    std::vector<uint8_t> iv(EVP_CIPHER_block_size(cipher));
+    std::vector<uint8_t> iv(aes_block_size);
     if (explicit_iv) {
-      e_iv_len = key_block_size;
+      e_iv_len = aes_block_size;
       OPENSSL_memcpy(iv.data(), nonce.data(), nonce.size());
     } else {
-      OPENSSL_memcpy(iv.data(), key.data() + mac_key_size + key_block_size, key_block_size);
+      OPENSSL_memcpy(iv.data(), key.data() + mac_key_size + key_block_size, aes_block_size);
     }
     if (!t->HasAttribute("NO_SEAL") &&
         !(GetParam().flags & kNondeterministic)) {
@@ -446,6 +464,15 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     ERR_clear_error();
   });
 }
+#else
+// AES_CBC_HMAC_SHA_STITCH is not defined.
+TEST(TLSLegacyAEADTest, CipherShouldBeNull) {
+  ASSERT_TRUE(EVP_aes_128_cbc_hmac_sha1());
+  ASSERT_FALSE(EVP_aes_128_cbc_hmac_sha256());
+  ASSERT_FALSE(EVP_aes_256_cbc_hmac_sha1());
+  ASSERT_FALSE(EVP_aes_256_cbc_hmac_sha256());
+}
+#endif
 
 TEST_P(PerAEADTest, TestExtraInput) {
   const KnownAEAD &aead_config = GetParam();

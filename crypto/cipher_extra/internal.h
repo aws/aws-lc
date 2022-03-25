@@ -71,10 +71,12 @@ extern "C" {
 
 // TODO: exclude AMD x86_64. Be more specific on: stitch code in AMD x86_64 is slow.
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
-# define AES_CBC_HMAC_SHA_STITCH
+#define AES_CBC_HMAC_SHA_STITCH
 // TLS1_1_VERSION is also defined in ssl.h.
-# define TLS1_1_VERSION 0x0302
-# define SHA_LBLOCK 16
+#define TLS1_1_VERSION 0x0302
+#define SHA_LBLOCK 16
+#define NO_PAYLOAD_LENGTH ((size_t)-1)
+
 OPENSSL_INLINE void *EVP_CIPHER_CTX_get_cipher_data(const EVP_CIPHER_CTX *ctx) {
   return ctx->cipher_data;
 }
