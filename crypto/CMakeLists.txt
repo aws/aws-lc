@@ -192,7 +192,6 @@ if(ARCH STREQUAL "x86_64")
     cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
     cipher_extra/aesni-sha1-x86_64.${ASM_EXT}
     cipher_extra/aesni-sha256-x86_64.${ASM_EXT}
-    hrss/asm/poly_rq_mul.S
     test/trampoline-x86_64.${ASM_EXT}
     hrss/asm/poly_rq_mul.S
   )
