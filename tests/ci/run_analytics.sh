@@ -80,19 +80,19 @@ function run_build_and_collect_metrics {
   test_time=$((test_end-test_start))
   put_metric --metric-name TestTime --value "$test_time" --unit Seconds --dimensions "$size_common_dimensions"
 
-  libcrypto_size=$(du --bytes --apparent-size "${BUILD_ROOT}/crypto/libcrypto.${lib_extension}" | cut -f1)
-  libssl_size=$(du --bytes --apparent-size "${BUILD_ROOT}/ssl/libssl.${lib_extension}" | cut -f1)
+  libcrypto_size=$(size "${BUILD_ROOT}/crypto/libcrypto.${lib_extension}")
+  libssl_size=$(size "${BUILD_ROOT}/ssl/libssl.${lib_extension}")
   put_metric --metric-name LibCryptoSize --value "$libcrypto_size" --unit Bytes --dimensions "${size_common_dimensions}"
   put_metric --metric-name LibSSLSize --value "$libssl_size" --unit Bytes --dimensions "${size_common_dimensions}"
 
   pushd .
   cd "$BUILD_ROOT"
   for file_path in $(find . -type f -name "*.o"); do
-    size=$(du --bytes --apparent-size "${BUILD_ROOT}/${file_path}" | cut -f1)
+    object_size=$(size "${BUILD_ROOT}/${file_path}")
     # Cleanup the file names ./crypto/fipsmodule/CMakeFiles/fipsmodule.dir/bcm.c.o -> crypto/fipsmodule/bcm.c.o
     # sed has there own regex format, [[:alpha:]] matches one Alphabetic character
     file_name=$(sed -e "s/CMakeFiles\///g" -e "s/[[:alpha:]]*\.dir\///g" <<< "$file_path" | cut -c 3-)
-    put_metric --metric-name ObjectSize --value "$size" --unit Bytes --dimensions "File=${file_name},${size_common_dimensions}"
+    put_metric --metric-name ObjectSize --value "$object_size" --unit Bytes --dimensions "File=${file_name},${size_common_dimensions}"
   done
   popd
 }
