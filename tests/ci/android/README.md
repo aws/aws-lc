@@ -6,9 +6,10 @@ AWS-LC wants to ensure that our tests and build work correctly on Android. Insip
 2. `docker build -t ubuntu-20.04:android ../docker_images/linux-x86/ubuntu-20.04_android/`
 3. Run the docker image from root of aws-lc. The container needs access to aws-lc's source code to build.
    ```
-   docker run -it -v `pwd`:`pwd` -w `pwd` ubuntu-20.04:android`
+   cd ../../../
+   docker run -it -v `pwd`:`pwd` -w `pwd` ubuntu-20.04:android
    ```
-4. `cd AWSLCAndroidTestRunner`
+4. `cd tests/ci/android/AWSLCAndroidTestRunner`
 5. Run `./gradlew assembleDebug assembleAndroidTest` to build both the app and test apks with the AWS-LC non-FIPS debug build.
 6. Run `./gradlew assembleDebug assembleAndroidTest -PRelease` to build both the app and test apks with the AWS-LC non-FIPS release build.
 7. Run `./gradlew assembleDebug assembleAndroidTest -PFIPS` to build both the app and test apks with the AWS-LC FIPS build (only armv8 is supported).

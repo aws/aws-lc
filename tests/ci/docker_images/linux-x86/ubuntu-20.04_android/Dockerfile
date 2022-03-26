@@ -10,6 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ENV ANDROID_SDK_URL commandlinetools-linux-8092744_latest
 ENV ANDROID_HOME /opt/sdk
+ENV GRADLE_VERSION gradle-5.6.4
 
 # ------------------------------------------------------
 # --- Android SDK
@@ -40,17 +41,17 @@ RUN set -ex && \
     unzip  ${ANDROID_SDK_URL}.zip && \
 # move to its final location and export path
     mv ./cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
-    export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin && \
-    export PATH=$PATH:$ANDROID_HOME/platform-tools && \
     cd $ANDROID_HOME/cmdline-tools/latest/bin && \
-    sdkmanager --update && \
-    yes | sdkmanager --licenses && \
+    ./sdkmanager --update && \
+    yes | ./sdkmanager --licenses && \
 # Preinstall AWSLCAndroidTestRunner dependencies, so they don't need to be 
 # rebuilt for each new gradle build run.
-    sdkmanager "ndk;21.0.6113669" \
+    ./sdkmanager "ndk;21.0.6113669" \
     "build-tools;29.0.3" \
     "cmake;3.10.2.4988404" \
     "platforms;android-29" && \
+    cd /opt && \
+    wget -q https://services.gradle.org/distributions/${GRADLE_VERSION}-all.zip && \
     rm -rf /opt/cmdline-tools-tmp && \
     rm -rf /tmp/* 
 
