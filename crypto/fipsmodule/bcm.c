@@ -24,6 +24,12 @@
 #include <unistd.h>
 #endif
 
+#if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
+#pragma code_seg(".fipstx$b")
+#pragma data_seg(".fipsda$b")
+#pragma const_seg(".fipsda$b")
+#endif
+
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>

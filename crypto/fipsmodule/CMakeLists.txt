@@ -380,23 +380,13 @@ elseif(FIPS_SHARED)
     # Like the macOS linker MSVC doesn't have the ability to process linker scripts.
     add_custom_command(
       OUTPUT fips_msvc_start.obj
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c &&
-      ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl $$a fips_msvc_start.obj
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_msvc_end.obj
-      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c  &&
-      ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl $$c fips_msvc_end.obj
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl
-    )
-
-    # This touches the bcm_library and ninja sees that as dirty and will rebuild bcm_library unless we copy it
-    add_custom_command(
-      OUTPUT bcm_library_fips_sections.obj
-      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:bcm_library> bcm_library_fips_sections.obj &&
-      ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl $$b bcm_library_fips_sections.obj
-      DEPENDS bcm_library bcm.c ${CMAKE_CURRENT_SOURCE_DIR}/segrenam.pl
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 
     get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
@@ -404,8 +394,8 @@ elseif(FIPS_SHARED)
 
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj bcm_library_fips_sections.obj fips_msvc_end.obj /OUT:${BCM_NAME}
-      DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library_fips_sections.obj
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj $<TARGET_OBJECTS:bcm_library>  fips_msvc_end.obj /OUT:${BCM_NAME}
+      DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   else()

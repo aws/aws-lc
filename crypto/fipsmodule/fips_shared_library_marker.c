@@ -18,6 +18,11 @@
 #include <stdint.h>
 
 #if defined(AWSLC_FIPS_SHARED_START)
+#if defined(_MSC_VER)
+#pragma code_seg(".fipstx$a")
+#pragma data_seg(".fipsda$a")
+#pragma const_seg(".fipsda$a")
+#endif
 
 // Dummy but not empty function and array to avoid the compiler completely
 // optimizing out the symbols.
@@ -28,6 +33,11 @@ const uint8_t BORINGSSL_bcm_rodata_start[16] =
               {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}; 
 
 #elif defined(AWSLC_FIPS_SHARED_END)
+#if defined(_MSC_VER)
+#pragma code_seg(".fipstx$c")
+#pragma data_seg(".fipsda$c")
+#pragma const_seg(".fipsda$c")
+#endif
 
 // Dummy but not empty function and array to avoid the compiler completely
 // optimizing out the symbols.
