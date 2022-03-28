@@ -36,7 +36,10 @@ typedef struct {
     unsigned int tls_ver;
     // In encrypt case, it's not set.
     // In decrypt case, it stores |additional_data|.
-    // https://datatracker.ietf.org/doc/html/rfc5246#section-6.2.3.3
+    // additional_data = seq_num + content_type + protocol_version +
+    // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
+    // protocol_version: 2 octets long.
+    // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
     unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
 } EVP_AES_HMAC_SHA1;
@@ -96,7 +99,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     if (plen == NO_PAYLOAD_LENGTH) {
       // |EVP_CIPHER_CTX_ctrl| with |EVP_CTRL_AEAD_TLS1_AAD| operation is not
       // performed.
-      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_CTRL_OPERATION_NOT_PERFORMED);
       return 0;
     }
     if (len !=
@@ -119,13 +122,16 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       aesni_cbc_sha1_enc(in, out, blocks, &key->ks,
                          EVP_CIPHER_CTX_iv_noconst(ctx), &key->md,
                          in + iv + sha_off);
+      // Update the offset to record and skip the part processed
+      // (encrypted and hashed) by |aesni_cbc_sha1_enc|.
       blocks *= SHA_CBLOCK;
       aes_off += blocks;
       sha_off += blocks;
       key->md.Nh += blocks >> 29;
       key->md.Nl += blocks <<= 3;
-      if (key->md.Nl < (unsigned int)blocks)
+      if (key->md.Nl < (unsigned int)blocks) {
         key->md.Nh++;
+      }
     } else {
       sha_off = 0;
     }
@@ -136,33 +142,33 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       OPENSSL_memcpy(out + aes_off, in + aes_off, plen - aes_off);
     }
 
-    /* calculate HMAC and append it to payload */
+    // calculate HMAC and append it to payload.
     SHA1_Final(out + plen, &key->md);
     key->md = key->tail;
     SHA1_Update(&key->md, out + plen, SHA_DIGEST_LENGTH);
     SHA1_Final(out + plen, &key->md);
 
-    /* pad the payload|hmac */
+    // pad the payload|hmac.
     plen += SHA_DIGEST_LENGTH;
     for (unsigned int l = len - plen - 1; plen < len; plen++) {
       out[plen] = l;
     }
-    // TODO(DONE): investigate if |len - aes_off| includes partial of payload.
-    // In other words, if/why |aes_off| covers all bytes of payload.
-    // if not, what ensures ONLY HMAC|padding is encrytped.
-    // DONE: below does include some payload. This may not matter because aes
-    // is blocker cipher.
-    /* encrypt HMAC|padding at once */
+    // encrypt HMAC|padding at once.
     aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off, &key->ks,
                        EVP_CIPHER_CTX_iv_noconst(ctx), 1);
   } else {
+    if (plen != EVP_AEAD_TLS1_AAD_LEN) {
+      // |EVP_CIPHER_CTX_ctrl| with |EVP_CTRL_AEAD_TLS1_AAD| operation is not
+      // performed.
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_CTRL_OPERATION_NOT_PERFORMED);
+      return 0;
+    }
     union {
       unsigned int u[SHA_DIGEST_LENGTH / sizeof(unsigned int)];
       unsigned char c[32 + SHA_DIGEST_LENGTH];
     } mac, *pmac;
 
-    // TODO: 32 still makes sense today?
-    /* arrange cache line alignment */
+    // arrange cache line alignment.
     pmac = (void *)(((size_t)mac.c + 31) & ((size_t)0 - 32));
 
     size_t inp_len, mask, j, i;
@@ -350,6 +356,7 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
 
   switch (type) {
     case EVP_CTRL_AEAD_SET_MAC_KEY: {
+      // This CTRL operation is to perform |HMAC_Init_ex| with SHA1 on |ptr|.
       unsigned int i;
       unsigned char hmac_key[64];
 
@@ -384,7 +391,7 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       // additional_data = seq_num + content_type + protocol_version +
       // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
       // protocol_version: 2 octets long.
-      // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+
+      // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
       unsigned char *p = ptr;
       if (arg != EVP_AEAD_TLS1_AAD_LEN) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_AD_SIZE);

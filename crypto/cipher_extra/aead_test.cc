@@ -271,7 +271,6 @@ TEST_P(PerAEADTest, TestVector) {
   });
 }
 
-#if defined(AES_CBC_HMAC_SHA_STITCH)
 struct KnownTLSLegacyAEAD {
   const char name[40];
   const EVP_CIPHER *(*func)(void);
@@ -349,6 +348,10 @@ static void set_TLS1_AAD(EVP_CIPHER_CTX *ctx, uint8_t *ad) {
 // TAG: 9c6998bf3b172670c5f8613f479641468bbed4c68d093940c92de4
 // TAG_LEN: 20
 TEST_P(PerTLSLegacyAEADTest, TestVector) {
+  #if !defined(AES_CBC_HMAC_SHA_STITCH)
+      ASSERT_FALSE(legacy_aead());
+      return;
+  #endif
   std::string test_vectors = "crypto/cipher_extra/test/";
   test_vectors += GetParam().test_vectors;
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
@@ -464,15 +467,6 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     ERR_clear_error();
   });
 }
-#else
-// AES_CBC_HMAC_SHA_STITCH is not defined.
-TEST(TLSLegacyAEADTest, CipherShouldBeNull) {
-  ASSERT_TRUE(EVP_aes_128_cbc_hmac_sha1());
-  ASSERT_FALSE(EVP_aes_128_cbc_hmac_sha256());
-  ASSERT_FALSE(EVP_aes_256_cbc_hmac_sha1());
-  ASSERT_FALSE(EVP_aes_256_cbc_hmac_sha256());
-}
-#endif
 
 TEST_P(PerAEADTest, TestExtraInput) {
   const KnownAEAD &aead_config = GetParam();

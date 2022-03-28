@@ -69,8 +69,9 @@
 extern "C" {
 #endif
 
-// TODO: exclude AMD x86_64. Be more specific on: stitch code in AMD x86_64 is slow.
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
+// TODO: do not define AES_CBC_HMAC_SHA_STITCH on AMD x86_64.
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define AES_CBC_HMAC_SHA_STITCH
 // TLS1_1_VERSION is also defined in ssl.h.
 #define TLS1_1_VERSION 0x0302

@@ -36,7 +36,10 @@ typedef struct {
     unsigned int tls_ver;
     // In encrypt case, it's not set.
     // In decrypt case, it stores |additional_data|.
-    // https://datatracker.ietf.org/doc/html/rfc5246#section-6.2.3.3
+    // additional_data = seq_num + content_type + protocol_version +
+    // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
+    // protocol_version: 2 octets long.
+    // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
     unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
 } EVP_AES_HMAC_SHA256;
@@ -163,6 +166,12 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off, &key->ks,
                        EVP_CIPHER_CTX_iv_noconst(ctx), 1);
   } else {
+    if (plen != EVP_AEAD_TLS1_AAD_LEN) {
+      // |EVP_CIPHER_CTX_ctrl| with |EVP_CTRL_AEAD_TLS1_AAD| operation is not
+      // performed.
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
+      return 0;
+    }
     union {
       unsigned int u[SHA256_DIGEST_LENGTH / sizeof(unsigned int)];
       unsigned char c[64 + SHA256_DIGEST_LENGTH];
