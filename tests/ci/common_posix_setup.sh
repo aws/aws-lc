@@ -22,6 +22,8 @@ else
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
 fi
 
+PLATFORM=$(uname -m)
+
 function run_build {
   local cflags=("$@")
   rm -rf "$BUILD_ROOT"

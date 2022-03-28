@@ -31,6 +31,7 @@ add_library(
   ssl_session.cc
   ssl_stat.cc
   ssl_transcript.cc
+  ssl_transfer_asn1.cc
   ssl_versions.cc
   ssl_x509.cc
   t1_enc.cc
