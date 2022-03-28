@@ -1,0 +1,7 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+// SHA-384 is the third element in the list of HMAC digests
+let HMAC_MD_INDEX = 2;

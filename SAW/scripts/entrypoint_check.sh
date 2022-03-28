@@ -28,6 +28,7 @@ apply_patch "noinline-ec_point_mul_scalar_base"
 apply_patch "noinline-ec_get_x_coordinate_as_bytes"
 apply_patch "noinline-ec_get_x_coordinate_as_scalar"
 apply_patch "noinline-value_barrier_w"
+apply_patch "noinline-GetInPlaceMethods"
 
 # ...next, check the proofs using CMake's Release settings...
 

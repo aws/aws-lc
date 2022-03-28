@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/hmac/hmac.c b/crypto/fipsmodule/hmac/hmac.c
+index f726f4776..7327c8a14 100644
+--- a/crypto/fipsmodule/hmac/hmac.c
++++ b/crypto/fipsmodule/hmac/hmac.c
+@@ -144,6 +144,7 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
+   DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
+ }
+ 
++__attribute__((noinline))
+ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
+   const struct hmac_method_array_st *method_array = AWSLC_hmac_in_place_methods();
+   const HmacMethods *methods = method_array->methods;
