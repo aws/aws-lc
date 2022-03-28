@@ -368,7 +368,11 @@ elseif(FIPS_SHARED)
     )
   elseif(MSVC)
     set(BCM_NAME bcm.lib)
-    # Like the macOS linker MSVC doesn't have the ability to process linker scripts.
+    # Like the macOS linker MSVC doesn't support linker scripts. The Windows build uses the same start/end markers
+    # as the mac build to control the placement of symbols. However, on Windows the start/bcm/end object files also
+    # contain pragmas that instruct the compiler to put the code in specific FIPS sections. These sections have a
+    # specific suffix $a through $c that controls the order of the FIPS sections when it is linked together into a
+    # Grouped Section.
     add_custom_command(
       OUTPUT fips_msvc_start.obj
       COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
