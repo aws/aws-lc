@@ -29,8 +29,8 @@ typedef struct {
   AES_KEY ks;
   // Used to compute(init, update and final) HMAC-SHA256.
   SHA256_CTX head, tail, md;
-  // In encrypt case, it's eiv_len + plaintext_len. eiv is explicit iv(required TLS 1.1+).
-  // In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
+  // In encrypt case, it's eiv_len + plaintext_len. eiv is explicit iv(required
+  // TLS 1.1+). In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
   size_t payload_length;
   union {
     unsigned int tls_ver;
@@ -89,14 +89,28 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
   }
 
   if (EVP_CIPHER_CTX_encrypting(ctx)) {
-    if (plen == NO_PAYLOAD_LENGTH)
-      plen = len;
-    else if (len != ((plen + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) &
-                     -AES_BLOCK_SIZE)) {
+    // NOTE: Difference between openssl and aws-lc:
+    // In encrypt case, |plen| is set in the call |EVP_CIPHER_CTX_ctrl| with
+    // |EVP_CTRL_AEAD_TLS1_AAD| operation.
+    // When |plen == NO_PAYLOAD_LENGTH|, it means the call did not happen.
+    // In this case, aws-lc returns error(0) but openssl supports that with
+    // below explanation.
+    // https://mta.openssl.org/pipermail/openssl-users/2019-November/011458.html
+    // -- These stitched ciphers are specifically targeted at use by libssl
+    //    and are designed for use in SSL/TLS only.
+    if (plen == NO_PAYLOAD_LENGTH) {
+      // |EVP_CIPHER_CTX_ctrl| with |EVP_CTRL_AEAD_TLS1_AAD| operation is not
+      // performed.
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
+      return 0;
+    }
+    if (len !=
+        ((plen + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
-    } else if (key->aux.tls_ver >= TLS1_1_VERSION)
+    } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
       iv = AES_BLOCK_SIZE;
+    }
 
     /*
      * Assembly stitch handles AVX-capable processors, but its
@@ -132,27 +146,22 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     sha_off += iv;
     SHA256_Update(&key->md, in + sha_off, plen - sha_off);
 
-    if (plen != len) { /* "TLS" mode of operation */
-      if (in != out)
-        OPENSSL_memcpy(out + aes_off, in + aes_off, plen - aes_off);
+    if (in != out)
+      OPENSSL_memcpy(out + aes_off, in + aes_off, plen - aes_off);
 
-      /* calculate HMAC and append it to payload */
-      SHA256_Final(out + plen, &key->md);
-      key->md = key->tail;
-      SHA256_Update(&key->md, out + plen, SHA256_DIGEST_LENGTH);
-      SHA256_Final(out + plen, &key->md);
+    /* calculate HMAC and append it to payload */
+    SHA256_Final(out + plen, &key->md);
+    key->md = key->tail;
+    SHA256_Update(&key->md, out + plen, SHA256_DIGEST_LENGTH);
+    SHA256_Final(out + plen, &key->md);
 
-      /* pad the payload|hmac */
-      plen += SHA256_DIGEST_LENGTH;
-      for (l = len - plen - 1; plen < len; plen++)
-        out[plen] = l;
-      /* encrypt HMAC|padding at once */
-      aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off, &key->ks,
-                         EVP_CIPHER_CTX_iv_noconst(ctx), 1);
-    } else {
-      aes_hw_cbc_encrypt(in + aes_off, out + aes_off, len - aes_off, &key->ks,
-                         EVP_CIPHER_CTX_iv_noconst(ctx), 1);
-    }
+    /* pad the payload|hmac */
+    plen += SHA256_DIGEST_LENGTH;
+    for (l = len - plen - 1; plen < len; plen++)
+      out[plen] = l;
+    /* encrypt HMAC|padding at once */
+    aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off, &key->ks,
+                       EVP_CIPHER_CTX_iv_noconst(ctx), 1);
   } else {
     union {
       unsigned int u[SHA256_DIGEST_LENGTH / sizeof(unsigned int)];
@@ -166,125 +175,109 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     aes_hw_cbc_encrypt(in, out, len, &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx),
                        0);
 
-    if (plen != NO_PAYLOAD_LENGTH) { /* "TLS" mode of operation */
-      size_t inp_len, mask, j, i;
-      unsigned int res, maxpad, pad, bitlen;
-      int ret = 1;
-      union {
-        unsigned int u[SHA_LBLOCK];
-        unsigned char c[SHA256_CBLOCK];
-      } *data = (void *)key->md.data;
+    size_t inp_len, mask, j, i;
+    unsigned int res, maxpad, pad, bitlen;
+    int ret = 1;
+    union {
+      unsigned int u[SHA_LBLOCK];
+      unsigned char c[SHA256_CBLOCK];
+    } *data = (void *)key->md.data;
 
-      if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3]) >=
-          TLS1_1_VERSION)
-        iv = AES_BLOCK_SIZE;
+    if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3]) >=
+        TLS1_1_VERSION)
+      iv = AES_BLOCK_SIZE;
 
-      if (len < (iv + SHA256_DIGEST_LENGTH + 1)) {
-        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
-        return 0;
-      }
+    if (len < (iv + SHA256_DIGEST_LENGTH + 1)) {
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
+      return 0;
+    }
 
-      /* omit explicit iv */
-      out += iv;
-      len -= iv;
+    /* omit explicit iv */
+    out += iv;
+    len -= iv;
 
-      /* figure out payload length */
-      pad = out[len - 1];
-      maxpad = len - (SHA256_DIGEST_LENGTH + 1);
-      maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
-      maxpad &= 255;
+    /* figure out payload length */
+    pad = out[len - 1];
+    maxpad = len - (SHA256_DIGEST_LENGTH + 1);
+    maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
+    maxpad &= 255;
 
-      mask = constant_time_ge_8(maxpad, pad);
-      ret &= mask;
-      /*
-       * If pad is invalid then we will fail the above test but we must
-       * continue anyway because we are in constant time code. However,
-       * we'll use the maxpad value instead of the supplied pad to make
-       * sure we perform well defined pointer arithmetic.
-       */
-      pad = constant_time_select_8(mask, pad, maxpad);
+    mask = constant_time_ge_8(maxpad, pad);
+    ret &= mask;
+    /*
+     * If pad is invalid then we will fail the above test but we must
+     * continue anyway because we are in constant time code. However,
+     * we'll use the maxpad value instead of the supplied pad to make
+     * sure we perform well defined pointer arithmetic.
+     */
+    pad = constant_time_select_8(mask, pad, maxpad);
 
-      inp_len = len - (SHA256_DIGEST_LENGTH + pad + 1);
+    inp_len = len - (SHA256_DIGEST_LENGTH + pad + 1);
 
-      key->aux.tls_aad[plen - 2] = inp_len >> 8;
-      key->aux.tls_aad[plen - 1] = inp_len;
+    key->aux.tls_aad[plen - 2] = inp_len >> 8;
+    key->aux.tls_aad[plen - 1] = inp_len;
 
-      /* calculate HMAC */
-      key->md = key->head;
-      SHA256_Update(&key->md, key->aux.tls_aad, plen);
+    /* calculate HMAC */
+    key->md = key->head;
+    SHA256_Update(&key->md, key->aux.tls_aad, plen);
 
-      len -= SHA256_DIGEST_LENGTH; /* amend mac */
-      if (len >= (256 + SHA256_CBLOCK)) {
-        j = (len - (256 + SHA256_CBLOCK)) & (0 - SHA256_CBLOCK);
-        j += SHA256_CBLOCK - key->md.num;
-        SHA256_Update(&key->md, out, j);
-        out += j;
-        len -= j;
-        inp_len -= j;
-      }
+    len -= SHA256_DIGEST_LENGTH; /* amend mac */
+    if (len >= (256 + SHA256_CBLOCK)) {
+      j = (len - (256 + SHA256_CBLOCK)) & (0 - SHA256_CBLOCK);
+      j += SHA256_CBLOCK - key->md.num;
+      SHA256_Update(&key->md, out, j);
+      out += j;
+      len -= j;
+      inp_len -= j;
+    }
 
-      /* but pretend as if we hashed padded payload */
-      bitlen = key->md.Nl + (inp_len << 3); /* at most 18 bits */
-      bitlen = CRYPTO_bswap4(bitlen);
+    /* but pretend as if we hashed padded payload */
+    bitlen = key->md.Nl + (inp_len << 3); /* at most 18 bits */
+    bitlen = CRYPTO_bswap4(bitlen);
 
-      pmac->u[0] = 0;
-      pmac->u[1] = 0;
-      pmac->u[2] = 0;
-      pmac->u[3] = 0;
-      pmac->u[4] = 0;
-      pmac->u[5] = 0;
-      pmac->u[6] = 0;
-      pmac->u[7] = 0;
+    pmac->u[0] = 0;
+    pmac->u[1] = 0;
+    pmac->u[2] = 0;
+    pmac->u[3] = 0;
+    pmac->u[4] = 0;
+    pmac->u[5] = 0;
+    pmac->u[6] = 0;
+    pmac->u[7] = 0;
 
-      for (res = key->md.num, j = 0; j < len; j++) {
-        size_t c = out[j];
-        mask = (j - inp_len) >> (sizeof(j) * 8 - 8);
-        c &= mask;
-        c |= 0x80 & ~mask & ~((inp_len - j) >> (sizeof(j) * 8 - 8));
-        data->c[res++] = (unsigned char)c;
+    for (res = key->md.num, j = 0; j < len; j++) {
+      size_t c = out[j];
+      mask = (j - inp_len) >> (sizeof(j) * 8 - 8);
+      c &= mask;
+      c |= 0x80 & ~mask & ~((inp_len - j) >> (sizeof(j) * 8 - 8));
+      data->c[res++] = (unsigned char)c;
 
-        if (res != SHA256_CBLOCK)
-          continue;
+      if (res != SHA256_CBLOCK)
+        continue;
 
-        /* j is not incremented yet */
-        mask = 0 - ((inp_len + 7 - j) >> (sizeof(j) * 8 - 1));
-        data->u[SHA_LBLOCK - 1] |= bitlen & mask;
-        sha256_block_data_order(&key->md, data, 1);
-        mask &= 0 - ((j - inp_len - 72) >> (sizeof(j) * 8 - 1));
-        pmac->u[0] |= key->md.h[0] & mask;
-        pmac->u[1] |= key->md.h[1] & mask;
-        pmac->u[2] |= key->md.h[2] & mask;
-        pmac->u[3] |= key->md.h[3] & mask;
-        pmac->u[4] |= key->md.h[4] & mask;
-        pmac->u[5] |= key->md.h[5] & mask;
-        pmac->u[6] |= key->md.h[6] & mask;
-        pmac->u[7] |= key->md.h[7] & mask;
-        res = 0;
-      }
-
-      for (i = res; i < SHA256_CBLOCK; i++, j++)
-        data->c[i] = 0;
-
-      if (res > SHA256_CBLOCK - 8) {
-        mask = 0 - ((inp_len + 8 - j) >> (sizeof(j) * 8 - 1));
-        data->u[SHA_LBLOCK - 1] |= bitlen & mask;
-        sha256_block_data_order(&key->md, data, 1);
-        mask &= 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
-        pmac->u[0] |= key->md.h[0] & mask;
-        pmac->u[1] |= key->md.h[1] & mask;
-        pmac->u[2] |= key->md.h[2] & mask;
-        pmac->u[3] |= key->md.h[3] & mask;
-        pmac->u[4] |= key->md.h[4] & mask;
-        pmac->u[5] |= key->md.h[5] & mask;
-        pmac->u[6] |= key->md.h[6] & mask;
-        pmac->u[7] |= key->md.h[7] & mask;
-
-        OPENSSL_memset(data, 0, SHA256_CBLOCK);
-        j += 64;
-      }
-      data->u[SHA_LBLOCK - 1] = bitlen;
+      /* j is not incremented yet */
+      mask = 0 - ((inp_len + 7 - j) >> (sizeof(j) * 8 - 1));
+      data->u[SHA_LBLOCK - 1] |= bitlen & mask;
       sha256_block_data_order(&key->md, data, 1);
-      mask = 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
+      mask &= 0 - ((j - inp_len - 72) >> (sizeof(j) * 8 - 1));
+      pmac->u[0] |= key->md.h[0] & mask;
+      pmac->u[1] |= key->md.h[1] & mask;
+      pmac->u[2] |= key->md.h[2] & mask;
+      pmac->u[3] |= key->md.h[3] & mask;
+      pmac->u[4] |= key->md.h[4] & mask;
+      pmac->u[5] |= key->md.h[5] & mask;
+      pmac->u[6] |= key->md.h[6] & mask;
+      pmac->u[7] |= key->md.h[7] & mask;
+      res = 0;
+    }
+
+    for (i = res; i < SHA256_CBLOCK; i++, j++)
+      data->c[i] = 0;
+
+    if (res > SHA256_CBLOCK - 8) {
+      mask = 0 - ((inp_len + 8 - j) >> (sizeof(j) * 8 - 1));
+      data->u[SHA_LBLOCK - 1] |= bitlen & mask;
+      sha256_block_data_order(&key->md, data, 1);
+      mask &= 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
       pmac->u[0] |= key->md.h[0] & mask;
       pmac->u[1] |= key->md.h[1] & mask;
       pmac->u[2] |= key->md.h[2] & mask;
@@ -294,46 +287,58 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       pmac->u[6] |= key->md.h[6] & mask;
       pmac->u[7] |= key->md.h[7] & mask;
 
-      pmac->u[0] = CRYPTO_bswap4(pmac->u[0]);
-      pmac->u[1] = CRYPTO_bswap4(pmac->u[1]);
-      pmac->u[2] = CRYPTO_bswap4(pmac->u[2]);
-      pmac->u[3] = CRYPTO_bswap4(pmac->u[3]);
-      pmac->u[4] = CRYPTO_bswap4(pmac->u[4]);
-      pmac->u[5] = CRYPTO_bswap4(pmac->u[5]);
-      pmac->u[6] = CRYPTO_bswap4(pmac->u[6]);
-      pmac->u[7] = CRYPTO_bswap4(pmac->u[7]);
-      len += SHA256_DIGEST_LENGTH;
-      key->md = key->tail;
-      SHA256_Update(&key->md, pmac->c, SHA256_DIGEST_LENGTH);
-      SHA256_Final(pmac->c, &key->md);
-
-      /* verify HMAC */
-      out += inp_len;
-      len -= inp_len;
-      {
-        unsigned char *p = out + len - 1 - maxpad - SHA256_DIGEST_LENGTH;
-        size_t off = out - p;
-        unsigned int c, cmask;
-
-        maxpad += SHA256_DIGEST_LENGTH;
-        for (res = 0, i = 0, j = 0; j < maxpad; j++) {
-          c = p[j];
-          cmask =
-              ((int)(j - off - SHA256_DIGEST_LENGTH)) >> (sizeof(int) * 8 - 1);
-          res |= (c ^ pad) & ~cmask; /* ... and padding */
-          cmask &= ((int)(off - 1 - j)) >> (sizeof(int) * 8 - 1);
-          res |= (c ^ pmac->c[i]) & cmask;
-          i += 1 & cmask;
-        }
-        maxpad -= SHA256_DIGEST_LENGTH;
-
-        res = 0 - ((0 - res) >> (sizeof(res) * 8 - 1));
-        ret &= (int)~res;
-      }
-      return ret;
-    } else {
-      SHA256_Update(&key->md, out, len);
+      OPENSSL_memset(data, 0, SHA256_CBLOCK);
+      j += 64;
     }
+    data->u[SHA_LBLOCK - 1] = bitlen;
+    sha256_block_data_order(&key->md, data, 1);
+    mask = 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
+    pmac->u[0] |= key->md.h[0] & mask;
+    pmac->u[1] |= key->md.h[1] & mask;
+    pmac->u[2] |= key->md.h[2] & mask;
+    pmac->u[3] |= key->md.h[3] & mask;
+    pmac->u[4] |= key->md.h[4] & mask;
+    pmac->u[5] |= key->md.h[5] & mask;
+    pmac->u[6] |= key->md.h[6] & mask;
+    pmac->u[7] |= key->md.h[7] & mask;
+
+    pmac->u[0] = CRYPTO_bswap4(pmac->u[0]);
+    pmac->u[1] = CRYPTO_bswap4(pmac->u[1]);
+    pmac->u[2] = CRYPTO_bswap4(pmac->u[2]);
+    pmac->u[3] = CRYPTO_bswap4(pmac->u[3]);
+    pmac->u[4] = CRYPTO_bswap4(pmac->u[4]);
+    pmac->u[5] = CRYPTO_bswap4(pmac->u[5]);
+    pmac->u[6] = CRYPTO_bswap4(pmac->u[6]);
+    pmac->u[7] = CRYPTO_bswap4(pmac->u[7]);
+    len += SHA256_DIGEST_LENGTH;
+    key->md = key->tail;
+    SHA256_Update(&key->md, pmac->c, SHA256_DIGEST_LENGTH);
+    SHA256_Final(pmac->c, &key->md);
+
+    /* verify HMAC */
+    out += inp_len;
+    len -= inp_len;
+    {
+      unsigned char *p = out + len - 1 - maxpad - SHA256_DIGEST_LENGTH;
+      size_t off = out - p;
+      unsigned int c, cmask;
+
+      maxpad += SHA256_DIGEST_LENGTH;
+      for (res = 0, i = 0, j = 0; j < maxpad; j++) {
+        c = p[j];
+        cmask =
+            ((int)(j - off - SHA256_DIGEST_LENGTH)) >> (sizeof(int) * 8 - 1);
+        res |= (c ^ pad) & ~cmask; /* ... and padding */
+        cmask &= ((int)(off - 1 - j)) >> (sizeof(int) * 8 - 1);
+        res |= (c ^ pmac->c[i]) & cmask;
+        i += 1 & cmask;
+      }
+      maxpad -= SHA256_DIGEST_LENGTH;
+
+      res = 0 - ((0 - res) >> (sizeof(res) * 8 - 1));
+      ret &= (int)~res;
+    }
+    return ret;
   }
 
   return 1;
