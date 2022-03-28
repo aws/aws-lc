@@ -2,7 +2,7 @@
 AWS-LC wants to ensure that our tests and build work correctly on Android. Insipred from the CRT Team's [`AWSCRTAndroidTestRunner`](https://github.com/awslabs/aws-c-common/tree/main/AWSCRTAndroidTestRunner), this mini Android test harness is intended to be used within our Android CI with AWS Device Farm. The tests will include `crypto_test`, `urandom_test`, `decrepit_test` and `ssl_test`, referenced from regular test dimensions. This app can be tested with the docker image at `tests/ci/docker_images/linux-x86/ubuntu-20.04_android`.
 
 ## Setup
-The commands below help build the app within our Android CI's docker image. The docker image is only made to support cross-compiling AWS-LC with Android toolchains, building the `AWSLCAndroidTestRunner` apks, and uploading and kicking off the tests on AWS Device Farm. Running and testing on connected Android devices or emulators via `./gradlew cC` isn't configured within the docker image.
+The commands below help build the app within our Android CI's docker image. The docker image is only made to support cross-compiling AWS-LC with Android toolchains, building the `AWSLCAndroidTestRunner` apks, and uploading and kicking off the tests in AWS Device Farm. Running and testing on connected Android devices or emulators via `./gradlew cC` isn't configured within the docker image.
 1. Assuming all the commands are being run from this folder: `cd tests/ci/android`
 2. `docker build -t ubuntu-20.04:android ../docker_images/linux-x86/ubuntu-20.04_android/`
 3. Run the docker image from root of aws-lc. The container needs access to aws-lc's source code to build.
@@ -16,7 +16,7 @@ The commands below help build the app within our Android CI's docker image. The 
 7. Run `./gradlew assembleDebug assembleAndroidTest -PFIPS` to build both the app and test apks with the AWS-LC FIPS build (only armv8 is supported).
 
 ## Local testing
-Alternatively run `./gradlew cC` to build both apks, then run the tests locally on a connected Android device/emulator right after. Add the `-PRelease` or `-PFIPS` as needed. Emulators are not easily configurable out of the box on Linux, and it would be better to run it on `./gradlew cC` on a connected Android phone or an emulator running on MacOS. It's also worth noting that accessing your connected Android phone from a docker container will require extra configurations.
+Alternatively run `./gradlew cC` to build both apks, then run the tests locally on a connected Android device/emulator right after. Add the `-PRelease` or `-PFIPS` as needed. Emulators are not easily configurable out of the box on Linux, and it would be better to run `./gradlew cC` on a connected Android phone or an emulator running on MacOS. It's also worth noting that accessing your connected Android phone from a docker container will require extra configurations.
 
 ### Emulator
 1. To set up an emulator on Mac OS X, go to https://developer.android.com/studio and download the latest version for Android Studio. Launch and install the dmg file, and the set up wizard should guide you through the setup. Once installed, you get the Welcome to Android Studio window, where you can configure and use SDK manager to install Android SDKs and dependencies.
