@@ -178,7 +178,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     } mac, *pmac;
 
     /* arrange cache line alignment */
-    pmac = (void *)(((size_t)mac.c + 63) & ((size_t)0 - 64));
+    pmac = align_pointer(mac.c, 64);
 
     /* decrypt HMAC|padding at once */
     aes_hw_cbc_encrypt(in, out, len, &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx),

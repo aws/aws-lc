@@ -168,8 +168,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       unsigned char c[32 + SHA_DIGEST_LENGTH];
     } mac, *pmac;
 
-    // arrange cache line alignment.
-    pmac = (void *)(((size_t)mac.c + 31) & ((size_t)0 - 32));
+    pmac = align_pointer(mac.c, 32);
 
     size_t inp_len, mask, j, i;
     unsigned int res, maxpad, pad, bitlen;
