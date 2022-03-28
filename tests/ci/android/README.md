@@ -16,7 +16,8 @@ The commands below help build the app within our Android CI's docker image. The 
 7. Run `./gradlew assembleDebug assembleAndroidTest -PFIPS` to build both the app and test apks with the AWS-LC FIPS build (only armv8 is supported).
 
 ## Local testing
-Alternatively run `./gradlew cC` to build both apks, then run the tests locally on a connected Android device/emulator right after. Add the `-PRelease` or `-PFIPS` as needed. Emulators are not easily configurable out of the box on Linux, and it would be better to run `./gradlew cC` on a connected Android phone or an emulator running on MacOS. It's also worth noting that accessing your connected Android phone from a docker container will require extra configurations.
+Alternatively run `./gradlew cC` to build both apks, then run the tests locally on a connected Android device/emulator right after. Add the `-PRelease` or `-PFIPS` as needed.\
+Emulators are not easily configurable out of the box on Linux, and it would be better to run `./gradlew cC` on a connected Android phone or an emulator running on MacOS. It's also worth noting that accessing your connected Android phone from a docker container will require extra `adb` permission configurations. You could consider using the docker image to build the apks, `chown` on the build output files, and then running `./gradlew cC` to upload the apks on to your external device/emulator.
 
 ### Emulator
 1. To set up an emulator on Mac OS X, go to https://developer.android.com/studio and download the latest version for Android Studio. Launch and install the dmg file, and the set up wizard should guide you through the setup. Once installed, you get the Welcome to Android Studio window, where you can configure and use SDK manager to install Android SDKs and dependencies.
