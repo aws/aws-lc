@@ -122,6 +122,10 @@
 #include <valgrind/memcheck.h>
 #endif
 
+#if defined(BORINGSSL_FIPS_BREAK_TESTS)
+#include <stdlib.h>
+#endif
+
 #if !defined(__cplusplus)
 #if defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
@@ -934,23 +938,72 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 
 #if defined(AWSLC_FIPS)
 #define MAX_KEYGEN_ATTEMPTS  5
-// BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
-// fails. It prevents any further cryptographic operations by the current
-// process.
-void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
 #else
 #define MAX_KEYGEN_ATTEMPTS  1
 #endif
 
-// boringssl_fips_self_test runs the FIPS KAT-based self tests. It returns one
-// on success and zero on error.
-int boringssl_fips_self_test(void);
+#if defined(BORINGSSL_FIPS)
+
+// BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
+// fails. It prevents any further cryptographic operations by the current
+// process.
+void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+
+// boringssl_self_test_startup runs all startup self tests and returns one on
+// success or zero on error. Startup self tests do not include lazy tests.
+// Call |BORINGSSL_self_test| to run every self test.
+int boringssl_self_test_startup(void);
+
+// boringssl_ensure_rsa_self_test checks whether the RSA self-test has been run
+// in this address space. If not, it runs it and crashes the address space if
+// unsuccessful.
+void boringssl_ensure_rsa_self_test(void);
+
+// boringssl_ensure_ecc_self_test checks whether the ECDSA and ECDH self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_ecc_self_test(void);
+
+// boringssl_ensure_ffdh_self_test checks whether the FFDH self-test has been
+// run in this address space. If not, it runs it and crashes the address space
+// if unsuccessful.
+void boringssl_ensure_ffdh_self_test(void);
+
+#else
+
+// Outside of FIPS mode, the lazy tests are no-ops.
+
+OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ecc_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
+
+#endif  // FIPS
+
+// boringssl_self_test_sha256 performs a SHA-256 KAT.
+int boringssl_self_test_sha256(void);
+
+// boringssl_self_test_sha512 performs a SHA-512 KAT.
+int boringssl_self_test_sha512(void);
+
+// boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT.
+int boringssl_self_test_hmac_sha256(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 void boringssl_fips_inc_counter(enum fips_counter_t counter);
 #else
 OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
 #endif
+
+#if defined(BORINGSSL_FIPS_BREAK_TESTS)
+OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
+  const char *const value = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  return value != NULL && strcmp(value, test) == 0;
+}
+#else
+OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
+  return 0;
+}
+#endif  // BORINGSSL_FIPS_BREAK_TESTS
 
 
 // Runtime CPU feature support
@@ -976,7 +1029,71 @@ OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
 // Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
 // bits in XCR0, so it is not necessary to check those.
 extern uint32_t OPENSSL_ia32cap_P[4];
-#endif
+
+// See Intel manual, volume 2A, table 3-11.
+
+OPENSSL_INLINE int CRYPTO_is_FXSR_capable(void) {
+  return (OPENSSL_ia32cap_P[0] & (1 << 24)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_intel_cpu(void) {
+  // The reserved bit 30 is used to indicate an Intel CPU.
+  return (OPENSSL_ia32cap_P[0] & (1 << 30)) != 0;
+}
+
+// See Intel manual, volume 2A, table 3-10.
+
+OPENSSL_INLINE int CRYPTO_is_PCLMUL_capable(void) {
+  return (OPENSSL_ia32cap_P[1] & (1 << 1)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_SSSE3_capable(void) {
+  return (OPENSSL_ia32cap_P[1] & (1 << 9)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_SSE4_1_capable(void) {
+  return (OPENSSL_ia32cap_P[1] & (1 << 19)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_MOVBE_capable(void) {
+  return (OPENSSL_ia32cap_P[1] & (1 << 22)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_AESNI_capable(void) {
+  return (OPENSSL_ia32cap_P[1] & (1 << 25)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_AVX_capable(void) {
+  return (OPENSSL_ia32cap_P[1] & (1 << 28)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_RDRAND_capable(void) {
+  return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
+}
+
+// See Intel manual, volume 2A, table 3-8.
+
+OPENSSL_INLINE int CRYPTO_is_BMI1_capable(void) {
+  return (OPENSSL_ia32cap_P[2] & (1 << 3)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_AVX2_capable(void) {
+  return (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_BMI2_capable(void) {
+  return (OPENSSL_ia32cap_P[2] & (1 << 8)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
+  return (OPENSSL_ia32cap_P[2] & (1 << 19)) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
+  return (OPENSSL_ia32cap_P[2] & (1 << 29)) != 0;
+}
+
+#endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 

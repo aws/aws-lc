@@ -347,9 +347,9 @@ static int EVP_EC_KEY_check_fips(EC_KEY *key) {
       !EVP_DigestSign(ctx, sig_der, &sign_len, msg, msg_len)) {
     goto err;
   }
-  #if defined(BORINGSSL_FIPS_BREAK_ECDSA_PWCT)
+  if (boringssl_fips_break_test("ECDSA_PWCT")) {
     msg[0] = ~msg[0];
-  #endif
+  }
   if (!EVP_DigestVerifyInit(ctx, NULL, hash, NULL, evp_pkey) ||
       !EVP_DigestVerify(ctx, sig_der, sign_len, msg, msg_len)) {
     goto err;
@@ -516,6 +516,9 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   // We have to verify both |EC_KEY_generate_key| and |EC_KEY_check_fips| both
   // succeed before updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+
+  boringssl_ensure_ecc_self_test();
+
   do {
     ret = EC_KEY_generate_key(eckey);
     ret &= EC_KEY_check_fips(eckey);
