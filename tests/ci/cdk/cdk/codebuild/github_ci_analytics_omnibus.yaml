@@ -7,18 +7,18 @@ version: 0.2
 batch:
   build-list:
 
-    - identifier: ubuntu2004_clang10_x86_64_analytics
+    - identifier: amazonlinux2_gcc7x_x86_64_analytics
       buildspec: ./tests/ci/codebuild/common/run_analytics.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: X86_ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+        image: X86_ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
 
-    - identifier: ubuntu2004_clang10_arm_analytics
+    - identifier: amazonlinux2_gcc7x_arm_analytics
       buildspec: ./tests/ci/codebuild/common/run_analytics.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ARM_ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
+        image: ARM_ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
