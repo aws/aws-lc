@@ -1218,10 +1218,12 @@ class SSLBuffer {
   SSLBuffer(const SSLBuffer &) = delete;
   SSLBuffer &operator=(const SSLBuffer &) = delete;
 
+  uint8_t *buf_ptr() { return buf_; }
   uint8_t *data() { return buf_ + offset_; }
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
   size_t cap() const { return cap_; }
+  size_t buf_size() const { return buf_size_; }
 
   Span<uint8_t> span() { return MakeSpan(data(), size()); }
 
@@ -1251,6 +1253,12 @@ class SSLBuffer {
   // is now empty, it releases memory used by it.
   void DiscardConsumed();
 
+  // DoSerialization writes all fields into |cbb|.
+  bool DoSerialization(CBB *cbb);
+
+  // DoDeserialization recovers the states encoded via |DoSerialization|.
+  bool DoDeserialization(CBS *in);
+
  private:
   // buf_ is the memory allocated for this buffer.
   uint8_t *buf_ = nullptr;
@@ -1265,6 +1273,8 @@ class SSLBuffer {
   // buf_allocated_ is true if |buf_| points to allocated data and must be freed
   // or false if it points into |inline_buf_|.
   bool buf_allocated_ = false;
+  // buf_size_ is how much memory allocated for |buf_|. This is needed by |DoSerialization|.
+  size_t buf_size_ = 0;
 };
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
@@ -2616,14 +2626,19 @@ enum ssl_ech_status_t {
   ssl_ech_rejected,
 };
 
+#define SSL3_SEND_ALERT_SIZE 2
+#define TLS_SEQ_NUM_SIZE 8
+#define SSL3_CHANNEL_ID_SIZE 64
+#define PREV_FINISHED_MAX_SIZE 12
+
 struct SSL3_STATE {
   static constexpr bool kAllowUniquePtr = true;
 
   SSL3_STATE();
   ~SSL3_STATE();
 
-  uint8_t read_sequence[8] = {0};
-  uint8_t write_sequence[8] = {0};
+  uint8_t read_sequence[TLS_SEQ_NUM_SIZE] = {0};
+  uint8_t write_sequence[TLS_SEQ_NUM_SIZE] = {0};
 
   uint8_t server_random[SSL3_RANDOM_SIZE] = {0};
   uint8_t client_random[SSL3_RANDOM_SIZE] = {0};
@@ -2782,12 +2797,12 @@ struct SSL3_STATE {
   uint8_t exporter_secret_len = 0;
 
   // Connection binding to prevent renegotiation attacks
-  uint8_t previous_client_finished[12] = {0};
+  uint8_t previous_client_finished[PREV_FINISHED_MAX_SIZE] = {0};
   uint8_t previous_client_finished_len = 0;
   uint8_t previous_server_finished_len = 0;
-  uint8_t previous_server_finished[12] = {0};
+  uint8_t previous_server_finished[PREV_FINISHED_MAX_SIZE] = {0};
 
-  uint8_t send_alert[2] = {0};
+  uint8_t send_alert[SSL3_SEND_ALERT_SIZE] = {0};
 
   // established_session is the session established by the connection. This
   // session is only filled upon the completion of the handshake and is
@@ -2817,7 +2832,7 @@ struct SSL3_STATE {
   //     If |channel_id_valid| is true, then this contains the
   //     verified Channel ID from the client: a P256 point, (x,y), where
   //     each are big-endian values.
-  uint8_t channel_id[64] = {0};
+  uint8_t channel_id[SSL3_CHANNEL_ID_SIZE] = {0};
 
   // Contains the QUIC transport params received by the peer.
   Array<uint8_t> peer_quic_transport_params;
@@ -3325,6 +3340,15 @@ bool ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out);
 bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                   const SSL_CLIENT_HELLO *client_hello);
 bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *extensions);
+
+
+// SSL serialization.
+
+// ssl_transfer_supported returns true when the |in| is supported by
+// current SSL transfer scope. Specific support scope is included inside
+// the function.
+// Otherwise, it returns false.
+OPENSSL_EXPORT bool ssl_transfer_supported(const SSL *in);
 
 #define tlsext_tick_md EVP_sha256
 

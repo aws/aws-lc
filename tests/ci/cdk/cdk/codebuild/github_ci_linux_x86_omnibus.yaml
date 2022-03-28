@@ -246,7 +246,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENERAL1_2XLARGE
+        compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           HMAC_SELECTCHECK: 1

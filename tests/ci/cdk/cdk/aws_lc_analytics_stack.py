@@ -28,9 +28,11 @@ class AwsLcGitHubAnalyticsStack(core.Stack):
             webhook=True,
             webhook_filters=[
                 codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH)
+                # The current FIPS branch does not have the configuration needed to run the analytics, once we update
+                # the branch or create a new FIPS branch it should be updated to '(main)|(fips.*)'
+                .and_branch_is("main")
             ],
-            webhook_triggers_batch_build=True,
-            clone_depth=1)
+            webhook_triggers_batch_build=True)
 
         # Define a IAM role for this stack.
         metrics_policy = iam.PolicyDocument.from_json(code_build_publish_metrics_in_json())
