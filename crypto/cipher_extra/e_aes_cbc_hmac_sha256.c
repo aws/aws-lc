@@ -54,14 +54,14 @@ static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
   EVP_AES_HMAC_SHA256 *key = data(ctx);
   int ret;
 
-  if (enc)
-    ret = aes_hw_set_encrypt_key(inkey, EVP_CIPHER_CTX_key_length(ctx) * 8,
-                                 &key->ks);
-  else
-    ret = aes_hw_set_decrypt_key(inkey, EVP_CIPHER_CTX_key_length(ctx) * 8,
-                                 &key->ks);
+  int key_bits = EVP_CIPHER_CTX_key_length(ctx) * 8;
+  if (enc) {
+    ret = aes_hw_set_encrypt_key(inkey, key_bits, &key->ks);
+  } else {
+    ret = aes_hw_set_decrypt_key(inkey, key_bits, &key->ks);
+  }
 
-  SHA256_Init(&key->head); /* handy when benchmarking */
+  SHA256_Init(&key->head);
   key->tail = key->head;
   key->md = key->head;
 
@@ -76,12 +76,10 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                         const unsigned char *in, size_t len) {
   EVP_AES_HMAC_SHA256 *key = data(ctx);
   unsigned int l;
-  size_t plen = key->payload_length, iv = 0, /* explicit IV in TLS 1.1 and
-                                              * later */
-      sha_off = 0;
+  size_t plen = key->payload_length, iv = 0;
   size_t aes_off = 0, blocks;
 
-  sha_off = SHA256_CBLOCK - key->md.num;
+  size_t sha_off = SHA256_CBLOCK - key->md.num;
 
   key->payload_length = NO_PAYLOAD_LENGTH;
 
