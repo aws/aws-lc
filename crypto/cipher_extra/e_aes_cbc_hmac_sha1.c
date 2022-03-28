@@ -169,6 +169,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     } mac, *pmac;
 
     // arrange cache line alignment.
+    // TODO: replace below with |align_pointer|.
     pmac = (void *)(((size_t)mac.c + 31) & ((size_t)0 - 32));
 
     size_t inp_len, mask, j, i;
@@ -181,14 +182,12 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
     if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3]) >=
         TLS1_1_VERSION) {
-      // TODO: check input len >= RECORD_MAX_LENGTH + AES_BLOCK_SIZE +
-      // SHA_DIGEST_LENGTH + 256?
       if (len < (AES_BLOCK_SIZE + SHA_DIGEST_LENGTH + 1)) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
         return 0;
       }
 
-      /* omit explicit iv */
+      // omit explicit iv.
       OPENSSL_memcpy(EVP_CIPHER_CTX_iv_noconst(ctx), in, AES_BLOCK_SIZE);
       in += AES_BLOCK_SIZE;
       out += AES_BLOCK_SIZE;
@@ -197,34 +196,24 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     }
-    // TODO: in decryption, use the encrypted iv?
-    // TODO: continue: The encrypted iv is treated as normal block and
-    // decrypted with |ks|?
-    /* decrypt HMAC|padding at once */
+    // decrypt HMAC|padding at once.
     aes_hw_cbc_encrypt(in, out, len, &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx),
                        0);
 
-    /* figure out payload length */
+    // figure out payload length.
     pad = out[len - 1];
     // Below three lines of code is to get the min of maxpad.
     // maxpad = min(len - (SHA_DIGEST_LENGTH + 1), 255);
     maxpad = len - (SHA_DIGEST_LENGTH + 1);
-    // TODO: 256 is the max padding length from RFC5652?
-    // https://datatracker.ietf.org/doc/html/rfc5652
-    // "This padding method is well defined if and only if k is less than
-    // 256."
-    // TODO: what below two lines code are doing?
     maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
     maxpad &= 255;
 
     mask = constant_time_ge_8(maxpad, pad);
     ret &= mask;
-    /*
-     * If pad is invalid then we will fail the above test but we must
-     * continue anyway because we are in constant time code. However,
-     * we'll use the maxpad value instead of the supplied pad to make
-     * sure we perform well defined pointer arithmetic.
-     */
+    // If pad is invalid then we will fail the above test but we must
+    // continue anyway because we are in constant time code. However,
+    // we'll use the maxpad value instead of the supplied pad to make
+    // sure we perform well defined pointer arithmetic.
     pad = constant_time_select_8(mask, pad, maxpad);
 
     inp_len = len - (SHA_DIGEST_LENGTH + pad + 1);
@@ -232,12 +221,11 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     key->aux.tls_aad[plen - 2] = inp_len >> 8;
     key->aux.tls_aad[plen - 1] = inp_len;
 
-    /* calculate HMAC */
+    // calculate HMAC.
     key->md = key->head;
     SHA1_Update(&key->md, key->aux.tls_aad, plen);
 
     len -= SHA_DIGEST_LENGTH; /* amend mac */
-    // TODO: why below if special case?
     if (len >= (256 + SHA_CBLOCK)) {
       j = (len - (256 + SHA_CBLOCK)) & (0 - SHA_CBLOCK);
       j += SHA_CBLOCK - key->md.num;
