@@ -328,21 +328,12 @@ elseif(FIPS_SHARED)
 
   add_dependencies(fipsmodule global_target)
 
-  if(MSVC)
-    add_library(
-      bcm_library
-      OBJECT
-      bcm.c
-      ${BCM_ASM_SOURCES}
-    )
-  else()
-    add_library(
-      bcm_library
-      STATIC
-      bcm.c
-      ${BCM_ASM_SOURCES}
-    )
-  endif()
+  add_library(
+    bcm_library
+    STATIC
+    bcm.c
+    ${BCM_ASM_SOURCES}
+  )
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
   target_include_directories(bcm_library PRIVATE ../../include)
 
@@ -394,7 +385,10 @@ elseif(FIPS_SHARED)
 
     add_custom_command(
       OUTPUT ${BCM_NAME}
-      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj $<TARGET_OBJECTS:bcm_library>  fips_msvc_end.obj /OUT:${BCM_NAME}
+      # This takes bcm_library which is static library and possibly a collection of assembly files in a CMake list.
+      # lib.exe does not handle the CMake list which uses semicolons between items, this generator expression converts
+      # it to a list of quoted strings, it also needs to be itself string escaped
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
       DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
