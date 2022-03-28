@@ -182,7 +182,7 @@ def PerlAsm(output_filename, input_filename, perlasm_style, extra_args):
   if not os.path.isdir(base_dir):
     os.makedirs(base_dir)
   subprocess.check_call(
-      ['perl', input_filename, perlasm_style] + extra_args + [output_filename])
+      ['perl', input_filename, perlasm_style, output_filename] + extra_args)
 
 
 def ArchForAsmFilename(filename):
@@ -373,10 +373,10 @@ def main():
 
 if __name__ == '__main__':
   usage = '''%prog
-      
+
   This script generates intermediate build files for CMake builds without the need
-  to install Go or Perl as a dependency. These files are output to the |generated-src| 
-  directory and are used by the top-level CMakeLists.txt for AWS-LC if these depedencies 
+  to install Go or Perl as a dependency. These files are output to the |generated-src|
+  directory and are used by the top-level CMakeLists.txt for AWS-LC if these depedencies
   are not found.
   '''
 

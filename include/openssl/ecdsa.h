@@ -141,6 +141,13 @@ OPENSSL_EXPORT ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest,
 // of |digest|. It returns one on success or zero if the signature is invalid
 // or on error.
 //
+// We distinguish between a "mismatched" signature error and "bad" signature
+// error because of JCA expectations. Specifically:
+// * Error |ECDSA_R_BAD_SIGNATURE| is set if step (1) of SEC 1 v2 4.1.4 returns
+//   "invalid".
+// * Error |ECDSA_R_MISMATCHED_SIGNATURE| is set if steps (5) and (8) of SEC 1
+//   v2 4.1.4 returns "invalid".
+//
 // WARNING: |digest| must be the output of some hash function on the data to be
 // verified. Passing unhashed inputs will not result in a secure signature
 // scheme.
@@ -232,5 +239,6 @@ BSSL_NAMESPACE_END
 #define ECDSA_R_NOT_IMPLEMENTED 103
 #define ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED 104
 #define ECDSA_R_ENCODE_ERROR 105
+#define ECDSA_R_MISMATCHED_SIGNATURE 205
 
 #endif  // OPENSSL_HEADER_ECDSA_H

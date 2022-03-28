@@ -134,11 +134,15 @@
 # This file was patched in BoringSSL to remove the variable-time 4-bit
 # implementation.
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../../perlasm");
 require "x86asm.pl";
 
-$output=pop;
+$output=$ARGV[1];
 open STDOUT,">$output";
 
 &asm_init($ARGV[0],$x86only = $ARGV[$#ARGV] eq "386");

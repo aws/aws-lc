@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Non-physical true random number generator based on timing jitter.
  *
  * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2021
@@ -39,12 +39,12 @@
  * DAMAGE.
  */
 
+#ifndef _JITTERENTROPY_H
+#define _JITTERENTROPY_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#ifndef _JITTERENTROPY_H
-#define _JITTERENTROPY_H
 
 /***************************************************************************
  * Jitter RNG Configuration Section
@@ -53,7 +53,7 @@ extern "C" {
  ***************************************************************************/
 
 /*
- * Enable timer-less timer support
+ * Enable timer-less timer support with JENT_CONF_ENABLE_INTERNAL_TIMER
  *
  * In case the hardware is identified to not provide a high-resolution time
  * stamp, this option enables a built-in high-resolution time stamp mechanism.
@@ -63,7 +63,6 @@ extern "C" {
  * must offer POSIX threads. If this option is disabled, no linking
  * with the POSIX threads library is needed.
  */
-#define JENT_CONF_ENABLE_INTERNAL_TIMER
 
 /*
  * Disable the loop shuffle operation
@@ -89,11 +88,21 @@ extern "C" {
  */
 #define JENT_HEALTH_LAG_PREDICTOR
 
+/*
+ * Shall the jent_memaccess use a (statistically) random selection for the
+ * memory to update?
+ */
+#define JENT_RANDOM_MEMACCESS
+
 /***************************************************************************
  * Jitter RNG State Definition Section
  ***************************************************************************/
 
+#if defined(_MSC_VER)
+#include "arch/jitterentropy-base-windows.h"
+#else
 #include "jitterentropy-base-user.h"
+#endif
 
 #define SHA3_256_SIZE_DIGEST_BITS	256
 #define SHA3_256_SIZE_DIGEST		(SHA3_256_SIZE_DIGEST_BITS >> 3)
@@ -164,7 +173,7 @@ struct rand_data
 	 * of the RNG are marked as SENSITIVE. A user must not
 	 * access that information while the RNG executes its loops to
 	 * calculate the next random value. */
-	uint8_t data[SHA3_256_SIZE_DIGEST]; /* SENSITIVE Actual random number */
+	void *hash_state;		/* SENSITIVE hash state entropy pool */
 	uint64_t prev_time;		/* SENSITIVE Previous time stamp */
 #define DATA_SIZE_BITS (SHA3_256_SIZE_DIGEST_BITS)
 
@@ -175,19 +184,37 @@ struct rand_data
 
 	unsigned int flags;		/* Flags used to initialize */
 	unsigned int osr;		/* Oversampling rate */
-#ifndef JENT_MEMORY_BLOCKS
-# define JENT_MEMORY_BLOCKS 512
-#endif
-#ifndef JENT_MEMORY_BLOCKSIZE
-# define JENT_MEMORY_BLOCKSIZE 128
-#endif
+
+#ifdef JENT_RANDOM_MEMACCESS
+  /* The step size should be larger than the cacheline size. */
+# ifndef JENT_MEMORY_BITS
+#  define JENT_MEMORY_BITS 17
+# endif
+# ifndef JENT_MEMORY_SIZE
+#  define JENT_MEMORY_SIZE (UINT32_C(1)<<JENT_MEMORY_BITS)
+# endif
+#else /* JENT_RANDOM_MEMACCESS */
+# ifndef JENT_MEMORY_BLOCKS
+#  define JENT_MEMORY_BLOCKS 512
+# endif
+# ifndef JENT_MEMORY_BLOCKSIZE
+#  define JENT_MEMORY_BLOCKSIZE 128
+# endif
+# ifndef JENT_MEMORY_SIZE
+#  define JENT_MEMORY_SIZE (JENT_MEMORY_BLOCKS*JENT_MEMORY_BLOCKSIZE)
+# endif
+#endif /* JENT_RANDOM_MEMACCESS */
+
 #define JENT_MEMORY_ACCESSLOOPS 128
-#define JENT_MEMORY_SIZE (JENT_MEMORY_BLOCKS*JENT_MEMORY_BLOCKSIZE)
 	unsigned char *mem;		/* Memory access location with size of
-					 * memblocks * memblocksize */
+					 * JENT_MEMORY_SIZE or memsize */
+#ifdef JENT_RANDOM_MEMACCESS
+	uint32_t memmask;		/* Memory mask (size of memory - 1) */
+#else
 	unsigned int memlocation; 	/* Pointer to byte in *mem */
 	unsigned int memblocks;		/* Number of memory blocks in *mem */
 	unsigned int memblocksize; 	/* Size of one memory block in bytes */
+#endif
 	unsigned int memaccessloops;	/* Number of memory accesses per random
 					 * bit generation */
 
@@ -209,6 +236,7 @@ struct rand_data
 	unsigned int apt_base_set:1;	/* APT base reference set? */
 	unsigned int fips_enabled:1;
 	unsigned int enable_notime:1;	/* Use internal high-res timer */
+	unsigned int max_mem_set:1;	/* Maximum memory configured by user */
 
 #ifdef JENT_CONF_ENABLE_INTERNAL_TIMER
 	volatile uint8_t notime_interrupt;	/* indicator to interrupt ctr */
@@ -287,6 +315,30 @@ struct rand_data
 					     including full SP800-90B
 					     compliance. */
 
+/* Flags field limiting the amount of memory to be used for memory access */
+#define JENT_FLAGS_TO_MEMSIZE_SHIFT	28
+#define JENT_FLAGS_TO_MAX_MEMSIZE(val)	(val >> JENT_FLAGS_TO_MEMSIZE_SHIFT)
+#define JENT_MAX_MEMSIZE_TO_FLAGS(val)	(val << JENT_FLAGS_TO_MEMSIZE_SHIFT)
+#define JENT_MAX_MEMSIZE_32kB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 1))
+#define JENT_MAX_MEMSIZE_64kB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 2))
+#define JENT_MAX_MEMSIZE_128kB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 3))
+#define JENT_MAX_MEMSIZE_256kB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 4))
+#define JENT_MAX_MEMSIZE_512kB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 5))
+#define JENT_MAX_MEMSIZE_1MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 6))
+#define JENT_MAX_MEMSIZE_2MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 7))
+#define JENT_MAX_MEMSIZE_4MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 8))
+#define JENT_MAX_MEMSIZE_8MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C( 9))
+#define JENT_MAX_MEMSIZE_16MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C(10))
+#define JENT_MAX_MEMSIZE_32MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C(11))
+#define JENT_MAX_MEMSIZE_64MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C(12))
+#define JENT_MAX_MEMSIZE_128MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C(13))
+#define JENT_MAX_MEMSIZE_256MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C(14))
+#define JENT_MAX_MEMSIZE_512MB		JENT_MAX_MEMSIZE_TO_FLAGS(UINT32_C(15))
+#define JENT_MAX_MEMSIZE_MAX		JENT_MAX_MEMSIZE_512MB
+#define JENT_MAX_MEMSIZE_MASK		JENT_MAX_MEMSIZE_MAX
+/* We start at 32kB -> offset is log2(32768) */
+#define JENT_MAX_MEMSIZE_OFFSET		14
+
 #ifdef JENT_CONF_DISABLE_LOOP_SHUFFLE
 # define JENT_MIN_OSR	3
 #else
@@ -310,18 +362,19 @@ struct rand_data
 #ifdef JENT_PRIVATE_COMPILE
 # define JENT_PRIVATE_STATIC static
 #else /* JENT_PRIVATE_COMPILE */
-# define JENT_PRIVATE_STATIC __attribute__((visibility("default")))
+#if defined(_MSC_VER)
+#define JENT_PRIVATE_STATIC __declspec(dllexport)
+#else
+#define JENT_PRIVATE_STATIC __attribute__((visibility("default")))
+#endif
 #endif
 
 /* Number of low bits of the time value that we want to consider */
-
 /* get raw entropy */
 JENT_PRIVATE_STATIC
 ssize_t jent_read_entropy(struct rand_data *ec, char *data, size_t len);
-
 JENT_PRIVATE_STATIC
 ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len);
-
 /* initialize an instance of the entropy collector */
 JENT_PRIVATE_STATIC
 struct rand_data *jent_entropy_collector_alloc(unsigned int osr,
@@ -333,6 +386,17 @@ void jent_entropy_collector_free(struct rand_data *entropy_collector);
 /* initialization of entropy collector */
 JENT_PRIVATE_STATIC
 int jent_entropy_init(void);
+JENT_PRIVATE_STATIC
+int jent_entropy_init_ex(unsigned int osr, unsigned int flags);
+
+/*
+ * Set a callback to run on health failure in FIPS mode.
+ * This function will take an action determined by the caller.
+ */
+typedef void (*jent_fips_failure_cb)(struct rand_data *ec,
+				     unsigned int health_failure);
+JENT_PRIVATE_STATIC
+int jent_set_fips_failure_callback(jent_fips_failure_cb cb);
 
 /* return version number of core library */
 JENT_PRIVATE_STATIC
@@ -346,12 +410,12 @@ int jent_entropy_switch_notime_impl(struct jent_notime_thread *new_thread);
 
 /* -- BEGIN timer-less threading support functions to prevent code dupes -- */
 
+#ifdef JENT_CONF_ENABLE_INTERNAL_TIMER
+
 struct jent_notime_ctx {
 	pthread_attr_t notime_pthread_attr;	/* pthreads library */
 	pthread_t notime_thread_id;		/* pthreads thread ID */
 };
-
-#ifdef JENT_CONF_ENABLE_INTERNAL_TIMER
 
 JENT_PRIVATE_STATIC
 int jent_notime_init(void **ctx);
@@ -382,6 +446,7 @@ static inline void jent_notime_fini(void *ctx) { (void)ctx; }
 #define ERCT		10 /* RCT failed during initialization */
 #define EHASH		11 /* Hash self test failed */
 #define EMEM		12 /* Can't allocate memory for initialization */
+#define EGCD		13 /* GCD self-test failed */
 /* -- END error codes for init function -- */
 
 /* -- BEGIN error masks for health tests -- */
@@ -399,8 +464,8 @@ uint64_t jent_lfsr_var_stat(struct rand_data *ec, unsigned int min);
 
 /* -- END of statistical test function -- */
 
-#endif /* _JITTERENTROPY_H */
-
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* _JITTERENTROPY_H */

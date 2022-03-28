@@ -22,7 +22,6 @@
 #include "jitterentropy-timer.h"
 
 #ifdef JENT_CONF_ENABLE_INTERNAL_TIMER
-
 /***************************************************************************
  * Thread handler
  ***************************************************************************/
@@ -201,7 +200,9 @@ int jent_notime_enable(struct rand_data *ec, unsigned int flags)
 	/* Use internal timer */
 	if (jent_force_internal_timer || (flags & JENT_FORCE_INTERNAL_TIMER)) {
 		/* Self test not run yet */
-		if (!jent_force_internal_timer && jent_time_entropy_init(1))
+		if (!jent_force_internal_timer &&
+		    jent_time_entropy_init(ec->osr,
+					   flags | JENT_FORCE_INTERNAL_TIMER))
 			return EHEALTH;
 
 		ec->enable_notime = 1;

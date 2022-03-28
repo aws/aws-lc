@@ -951,3 +951,5 @@ CECPQ2		959
 ED448		960
 X448		961
 sha512_256		962
+aes_128_cbc_hmac_sha256		963
+aes_256_cbc_hmac_sha256		964

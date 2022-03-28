@@ -193,6 +193,14 @@ struct TestConfig {
   bool wait_for_debugger = false;
   std::string quic_early_data_context;
   int early_write_after_message = 0;
+  // When check_ssl_transfer is true, bssl checks if the ssl can be transferred.
+  bool check_ssl_transfer = false;
+  // when do_ssl_transfer is false, no transfer will happen.
+  // when do_ssl_transfer is true, transfer will happen if the ssl is server.
+  bool do_ssl_transfer = false;
+  // When not empty, this prefix with random suffix is used to create a file
+  // stores the output of |SSL_to_bytes|.
+  std::string ssl_fuzz_seed_path_prefix;
 
   int argc;
   char **argv;

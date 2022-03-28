@@ -98,9 +98,11 @@
 
 use strict;
 
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 my $flavour = shift;
-my $output;
-while (($output=shift) && ($output!~/\w[\w\-]*\.\w+$/)) {}
+my $output = shift;
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/;
 my $dir=$1;

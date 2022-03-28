@@ -1,0 +1,24 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
+batch:
+  build-list:
+
+    - identifier: amazonlinux2_gcc7x_x86_64_analytics
+      buildspec: ./tests/ci/codebuild/common/run_analytics.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_SMALL
+        image: X86_ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
+
+    - identifier: amazonlinux2_gcc7x_arm_analytics
+      buildspec: ./tests/ci/codebuild/common/run_analytics.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_SMALL
+        image: ARM_ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
