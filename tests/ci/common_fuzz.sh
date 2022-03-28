@@ -18,7 +18,6 @@ else
 fi
 echo "$BUILD_ID"
 
-PLATFORM=$(uname -m)
 DATE_NOW="$(date +%Y-%m-%d)"
 SHARED_FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
 LOCAL_RUN_ROOT="${BUILD_ROOT}/fuzz_run_root"

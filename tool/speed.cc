@@ -553,6 +553,76 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
+static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+
+  std::vector<uint8_t> key(key_len);
+  std::vector<uint8_t> iv(iv_len, 9);
+  std::vector<uint8_t> in, out;
+
+  // key = key1||key2 and key1 should not equal key2
+  std::generate(key.begin(), key.end(), [] {
+    static uint8_t i = 0;
+    return i++;
+  });
+
+  BM_NAMESPACE::ScopedEVP_CIPHER_CTX ctx;
+  // Benchmark initialisation and encryption
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data()) ||
+              !EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                 in.size())) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and encrypt",
+                           in_len);
+  }
+
+  // Benchmark initialisation and decryption
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data()) ||
+              !EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                 in.size())) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "AES-256-XTS initialisation or decryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and decrypt",
+                           in_len);
+  }
+
+  return true;
+}
+
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
@@ -589,6 +659,99 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 
   for (size_t chunk_len : g_chunk_lengths) {
     if (!SpeedHashChunk(md, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
+                           size_t chunk_len) {
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
+  uint8_t scratch[16384];
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  if (!HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */)) {
+    fprintf(stderr, "Failed to create HMAC_CTX.\n");
+  }
+  name += ChunkLenSuffix(chunk_len);
+  TimeResults results;
+  if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {
+        uint8_t digest[EVP_MAX_MD_SIZE];
+        unsigned int md_len;
+
+        return HMAC_Init_ex(ctx.get(), NULL, 0, NULL, NULL) &&
+               HMAC_Update(ctx.get(), scratch, chunk_len) &&
+               HMAC_Final(ctx.get(), digest, &md_len);
+      })) {
+    fprintf(stderr, "HMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedHmac(const EVP_MD *md, const std::string &name,
+                      const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedHmacChunk(md, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
+                           size_t chunk_len) {
+  uint8_t scratch[16384];
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  name += ChunkLenSuffix(chunk_len);
+  TimeResults results;
+  if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &scratch]() -> bool {
+
+        uint8_t digest[EVP_MAX_MD_SIZE] = {0};
+        unsigned int md_len = EVP_MAX_MD_SIZE;
+
+        return HMAC(md, key.get(), key_len, scratch, chunk_len, digest, &md_len) != nullptr;
+      })) {
+    fprintf(stderr, "HMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
+                      const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedHmacChunkOneShot(md, name, chunk_len)) {
       return false;
     }
   }
@@ -1391,6 +1554,7 @@ bool Speed(const std::vector<std::string> &args) {
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
+     !SpeedAES256XTS("AES-256-XTS", selected) ||
      !SpeedHash(EVP_md4(), "MD4", selected) ||
      !SpeedHash(EVP_md5(), "MD5", selected) ||
      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
@@ -1398,6 +1562,16 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
      !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+     !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
+     !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
+     !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
+     !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
+     !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+     !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
