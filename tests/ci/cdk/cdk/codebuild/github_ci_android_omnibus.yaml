@@ -1,0 +1,43 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
+batch:
+  build-list:
+    - identifier: ubuntu2004_android_nonfips_static_debug
+      buildspec: ./tests/ci/codebuild/android/run_android_static_debug.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_nonfips_static_release
+      buildspec: ./tests/ci/codebuild/android/run_android_static_release.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_nonfips_shared_debug
+      buildspec: ./tests/ci/codebuild/android/run_android_shared_debug.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_nonfips_shared_release
+      buildspec: ./tests/ci/codebuild/android/run_android_shared_release.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_fips
+      buildspec: ./tests/ci/codebuild/android/run_android_fips.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest

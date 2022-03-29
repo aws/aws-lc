@@ -1,0 +1,8 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - chmod +x ./tests/ci/android/AWSLCAndroidTestRunner/gradlew
+      - cd tests/ci/android/AWSLCAndroidTestRunner
+      - ./gradlew assembleDebug assembleAndroidTest -PFIPS

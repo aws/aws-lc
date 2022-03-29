@@ -1163,6 +1163,8 @@ TEST(ECTest, SmallGroupOrder) {
 }
 
 #else
+// AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+#if !defined(OPENSSL_ANDROID)
 
 TEST(ECDeathTest, SmallGroupOrderAndDie) {
   // Make a P-224 key and corrupt the group order to be small in order to fail
@@ -1217,6 +1219,7 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
   ASSERT_DEATH_IF_SUPPORTED(EC_KEY_generate_key_fips(key2.get()), "");
 }
 
+#endif
 #endif
 
 class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {
