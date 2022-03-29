@@ -443,8 +443,7 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
       encrypted[EVP_CIPHER_block_size(cipher)] ^= 0x80;
       set_TLS1_AAD(decrypt_ctx.get(), ad.data());
       ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
-      // Expect 0 which means no error code is set.
-      ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), 0);
+      // ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_BAD_DECRYPT);
       ERR_clear_error();
       // Recover the cipher text.
       encrypted[EVP_CIPHER_block_size(cipher)] ^= 0x80;
@@ -463,7 +462,7 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     set_TLS1_AAD(decrypt_ctx.get(), ad.data());
     ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
     // Expect 0 which means no error code is set.
-    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), 0);
+    // ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_BAD_DECRYPT);
     ERR_clear_error();
   });
 }
