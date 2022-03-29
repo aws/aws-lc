@@ -208,8 +208,8 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     /* figure out payload length */
     pad = out[len - 1];
     maxpad = len - (SHA256_DIGEST_LENGTH + 1);
-    maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
-    maxpad &= 255;
+    maxpad |= (MAX_PADDING - maxpad) >> (sizeof(maxpad) * 8 - 8);
+    maxpad &= MAX_PADDING;
 
     mask = constant_time_ge_8(maxpad, pad);
     ret &= mask;
@@ -231,8 +231,8 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     SHA256_Update(&key->md, key->aux.tls_aad, plen);
 
     len -= SHA256_DIGEST_LENGTH; /* amend mac */
-    if (len >= (256 + SHA256_CBLOCK)) {
-      j = (len - (256 + SHA256_CBLOCK)) & (0 - SHA256_CBLOCK);
+    if (len >= (MAX_PADDING_LEN + SHA256_CBLOCK)) {
+      j = (len - (MAX_PADDING_LEN + SHA256_CBLOCK)) & (0 - SHA256_CBLOCK);
       j += SHA256_CBLOCK - key->md.num;
       SHA256_Update(&key->md, out, j);
       out += j;

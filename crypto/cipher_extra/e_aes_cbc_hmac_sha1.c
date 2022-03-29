@@ -203,10 +203,10 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     // figure out payload length.
     pad = out[len - 1];
     // Below three lines of code is to get the min of maxpad.
-    // maxpad = min(len - (SHA_DIGEST_LENGTH + 1), 255);
+    // maxpad = min(len - (SHA_DIGEST_LENGTH + 1), MAX_PADDING);
     maxpad = len - (SHA_DIGEST_LENGTH + 1);
-    maxpad |= (255 - maxpad) >> (sizeof(maxpad) * 8 - 8);
-    maxpad &= 255;
+    maxpad |= (MAX_PADDING - maxpad) >> (sizeof(maxpad) * 8 - 8);
+    maxpad &= MAX_PADDING;
 
     mask = constant_time_ge_8(maxpad, pad);
     ret &= mask;
@@ -225,9 +225,12 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     key->md = key->head;
     SHA1_Update(&key->md, key->aux.tls_aad, plen);
 
+    // After lucky thirteen.
+    // https://github.com/openssl/openssl/blame/739d2bdfba536ff59e8444eb4295b53288ac5caf/crypto/evp/e_aes_cbc_hmac_sha1.c#L667-L686
+    // https://www.imperialviolet.org/2013/02/04/luckythirteen.html
     len -= SHA_DIGEST_LENGTH; /* amend mac */
-    if (len >= (256 + SHA_CBLOCK)) {
-      j = (len - (256 + SHA_CBLOCK)) & (0 - SHA_CBLOCK);
+    if (len >= (MAX_PADDING_LEN + SHA_CBLOCK)) {
+      j = (len - (MAX_PADDING_LEN + SHA_CBLOCK)) & (0 - SHA_CBLOCK);
       j += SHA_CBLOCK - key->md.num;
       SHA1_Update(&key->md, out, j);
       out += j;
@@ -235,8 +238,10 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       inp_len -= j;
     }
 
-    /* but pretend as if we hashed padded payload */
-    bitlen = key->md.Nl + (inp_len << 3); /* at most 18 bits */
+    // but pretend as if we hashed padded payload.
+    // TLS record max len is 16384(2**14), which needs space of 15 bits.
+    // Accordingly, |inp_len << 3| needs space at most 18 bits.
+    bitlen = key->md.Nl + (inp_len << 3);
     bitlen = CRYPTO_bswap4(bitlen);
 
     pmac->u[0] = 0;
@@ -247,9 +252,9 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
     for (res = key->md.num, j = 0; j < len; j++) {
       // preprocess partial block https://en.wikipedia.org/wiki/SHA-1
-      // When j is within the payload, out[j] is kept.
-      // when j is out of the payload, out[j] is appended with 0x80 and 0
-      // until the SHA_CBLOCK.
+      // When j is within the payload, data is append with out[j].
+      // when j is out of the payload, data is append the bit '1'.
+      // e.g. by adding 0x80 if message length is a multiple of 8 bits.
       size_t c = out[j];
       mask = (j - inp_len) >> (sizeof(j) * 8 - 8);
       c &= mask;

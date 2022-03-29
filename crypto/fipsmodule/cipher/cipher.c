@@ -81,13 +81,10 @@ EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void) {
 }
 
 int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c) {
-  if (c->cipher != NULL && c->cipher->cleanup != NULL && c->cipher->cleanup) {
+  if (c->cipher != NULL && c->cipher->cleanup) {
     c->cipher->cleanup(c);
   }
-  if (c->cipher_data) {
-    OPENSSL_free(c->cipher_data);
-  }
-  
+  OPENSSL_free(c->cipher_data);
 
   OPENSSL_memset(c, 0, sizeof(EVP_CIPHER_CTX));
   return 1;
