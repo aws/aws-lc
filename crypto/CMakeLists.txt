@@ -456,6 +456,7 @@ add_library(
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+
 function(build_libcrypto name module_source)
   add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
   add_dependencies(${name}  global_target)
@@ -474,7 +475,7 @@ function(build_libcrypto name module_source)
   if(FIPS)
     target_link_libraries(${name} PRIVATE jitterentropy)
   endif()
-  target_include_directories(crypto SYSTEM PUBLIC
+  target_include_directories(${name} SYSTEM PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
           $<INSTALL_INTERFACE:include>)
 endfunction()
