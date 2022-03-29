@@ -91,7 +91,6 @@ function create_github_ci_stack() {
   # TODO: re-enable 'aws-lc-ci-windows-x86' when CryptoAlg-826 is fixed.
 #  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
-  # TODO: re-enable 'aws-lc-ci-bm-framework' when it's ready.
   aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
