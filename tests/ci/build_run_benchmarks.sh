@@ -50,27 +50,17 @@ mkdir -p aws-lc-prod/fips_install
 cmake -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/fips_install" -DBUILD_SHARED_LIBS=TRUE -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/fips_install"
 ninja -C aws-lc-prod/fips_build
 
-./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -timeout 3 -json > aws-lc-pr_bm.json &
-pr_pid=$!
-./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -timeout 3 -json > aws-lc-pr_fips_bm.json &
-pr_fips_pid=$!
+./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -timeout 1 -json > aws-lc-pr_bm.json
+./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -timeout 1 -json > aws-lc-pr_fips_bm.json
 
-./aws-lc-prod/build/tool/awslc_bm -timeout 3 -json > aws-lc-prod_bm.json &
-prod_pid=$!
-./aws-lc-prod/fips_build/tool/awslc_bm -timeout 3 -json > aws-lc-prod_fips_bm.json &
-prod_fips_pid=$!
+./aws-lc-prod/build/tool/awslc_bm -timeout 1 -json > aws-lc-prod_bm.json
+./aws-lc-prod/fips_build/tool/awslc_bm -timeout 1 -json > aws-lc-prod_fips_bm.json
 
 
-# wait for benchmarks to finish
-wait "${pr_pid}"
-wait "${pr_fips_pid}"
-wait "${prod_pid}"
-wait "${prod_fips_pid}"
-
-./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-pr_tt_bm.json
-./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-pr_tt_fips_bm.json
-./aws-lc-prod/build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-prod_tt_bm.json
-./aws-lc-prod/fips_build/tool/awslc_bm -filter trusttoken -timeout 3 -json > aws-lc-prod_tt_fips_bm.json
+./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-pr_tt_bm.json
+./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-pr_tt_fips_bm.json
+./aws-lc-prod/build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-prod_tt_bm.json
+./aws-lc-prod/fips_build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-prod_tt_fips_bm.json
 
 # convert results from .json to .csv
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/convert_json_to_csv.py aws-lc-pr_bm.json
