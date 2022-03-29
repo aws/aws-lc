@@ -240,17 +240,6 @@ batch:
         variables:
           SHA512_384_SELECTCHECK: 1
 
-    # When 'HMAC_SELECTCHECK' is defined, HMAC-SHA384 formal verification is executed against more parameters.
-    - identifier: ubuntu2004_clang10x_formal_verification_hmac_selectcheck
-      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_formal-verification_latest
-        variables:
-          HMAC_SELECTCHECK: 1
-
     # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
     # Each dimension only checks |evp_cipher_update_len| from AES_GCM_SELECTCHECK_START to AES_GCM_SELECTCHECK_END.
     # https://github.com/awslabs/aws-lc-verification/blob/master/SAW/proof/AES/verify-AES-GCM-selectcheck-template.txt
