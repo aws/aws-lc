@@ -1152,7 +1152,7 @@ bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
 // get_ec_public_key_length computes the length of the public key corresponding
 // to |nid|. On success, it sets |*out_public_key_length| to the public key
 // length and returns true. Otherwise, it returns false.
-bool  get_ec_public_key_length(uint16_t *out_public_key_length, int nid);
+bool get_ec_public_key_length(uint16_t *out_public_key_length, int nid);
 
 // Handshake messages.
 
