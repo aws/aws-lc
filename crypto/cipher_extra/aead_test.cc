@@ -24,6 +24,7 @@
 #include <openssl/err.h>
 
 #include "../fipsmodule/cipher/internal.h"
+#include "../fipsmodule/aes/internal.h"
 #include "internal.h"
 #include "../internal.h"
 #include "../test/abi_test.h"
@@ -348,10 +349,14 @@ static void set_TLS1_AAD(EVP_CIPHER_CTX *ctx, uint8_t *ad) {
 // TAG: 9c6998bf3b172670c5f8613f479641468bbed4c68d093940c92de4
 // TAG_LEN: 20
 TEST_P(PerTLSLegacyAEADTest, TestVector) {
-  #if !defined(AES_CBC_HMAC_SHA_STITCH)
-      ASSERT_FALSE(legacy_aead());
-      return;
-  #endif
+  const EVP_CIPHER *cipher = legacy_aead();
+  if (!cipher) {
+    // This condition can happen when
+    // 1. !defined(AES_CBC_HMAC_SHA_STITCH).
+    // 2. |hwaes_capable| returns false.
+    //    -- Checked by Intel SDE. CPU is "mrm", "nhm", "pnr", "slt" and "p4p".
+    return;
+  }
   std::string test_vectors = "crypto/cipher_extra/test/";
   test_vectors += GetParam().test_vectors;
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
@@ -372,7 +377,6 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
       ASSERT_TRUE(tag_len);
     }
     bool explicit_iv = !nonce.empty();
-    const EVP_CIPHER *cipher = legacy_aead();
     size_t aes_block_size = EVP_CIPHER_block_size(cipher);;
     size_t key_block_size = EVP_CIPHER_key_length(cipher);
     size_t e_iv_len = 0;
