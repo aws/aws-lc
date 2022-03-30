@@ -116,6 +116,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     size_t sha_off = SHA_CBLOCK - key->md.num;
     size_t blocks;
 
+    // TODO: check CPU cap like e_aes_cbc_hmac_sha256.c?
     if (plen > (sha_off + iv) &&
         (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
       SHA1_Update(&key->md, in + iv, sha_off);

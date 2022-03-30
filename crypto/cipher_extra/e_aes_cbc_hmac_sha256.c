@@ -115,16 +115,15 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       iv = AES_BLOCK_SIZE;
     }
 
-    /*
-     * Assembly stitch handles AVX-capable processors, but its
-     * performance is not optimal on AMD Jaguar, ~40% worse, for
-     * unknown reasons. Incidentally processor in question supports
-     * AVX, but not AMD-specific XOP extension, which can be used
-     * to identify it and avoid stitch invocation. So that after we
-     * establish that current CPU supports AVX, we even see if it's
-     * either even XOP-capable Bulldozer-based or GenuineIntel one.
-     * But SHAEXT-capable go ahead...
-     */
+    // Assembly stitch handles AVX-capable processors, but its
+    // performance is not optimal on AMD Jaguar, ~40% worse, for
+    // unknown reasons. Incidentally processor in question supports
+    // AVX, but not AMD-specific XOP extension, which can be used
+    // to identify it and avoid stitch invocation. So that after we
+    // establish that current CPU supports AVX, we even see if it's
+    // either even XOP-capable Bulldozer-based or GenuineIntel one.
+    // But SHAEXT-capable go ahead...
+    // TODO: replace below with the unified CPU cap check func.
     if (((OPENSSL_ia32cap_P[2] & (1 << 29)) ||         /* SHAEXT? */
          ((OPENSSL_ia32cap_P[1] & (1 << (60 - 32))) && /* AVX? */
           ((OPENSSL_ia32cap_P[1] & (1 << (43 - 32)))   /* XOP? */
