@@ -743,6 +743,8 @@ if(BUILD_TESTING)
     file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
   endif()
   add_library(crypto_test_data OBJECT crypto_test_data.cc)
+  # Only build this if we are doing testing
+  add_subdirectory(util/fipstools/cavp)
 endif()
 
 add_subdirectory(crypto)
@@ -751,7 +753,6 @@ if(BUILD_LIBSSL)
   add_subdirectory(tool)
   add_subdirectory(decrepit)
 endif()
-add_subdirectory(util/fipstools/cavp)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
