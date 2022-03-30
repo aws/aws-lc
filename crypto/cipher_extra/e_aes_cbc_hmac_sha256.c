@@ -140,28 +140,31 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       sha_off += blocks;
       key->md.Nh += blocks >> 29;
       key->md.Nl += blocks <<= 3;
-      if (key->md.Nl < (unsigned int)blocks)
+      if (key->md.Nl < (unsigned int)blocks) {
         key->md.Nh++;
+      }
     } else {
       sha_off = 0;
     }
     sha_off += iv;
     SHA256_Update(&key->md, in + sha_off, plen - sha_off);
 
-    if (in != out)
+    if (in != out) {
       OPENSSL_memcpy(out + aes_off, in + aes_off, plen - aes_off);
+    }
 
-    /* calculate HMAC and append it to payload */
+    // calculate HMAC and append it to payload.
     SHA256_Final(out + plen, &key->md);
     key->md = key->tail;
     SHA256_Update(&key->md, out + plen, SHA256_DIGEST_LENGTH);
     SHA256_Final(out + plen, &key->md);
 
-    /* pad the payload|hmac */
+    // pad the payload|hmac.
     plen += SHA256_DIGEST_LENGTH;
-    for (l = len - plen - 1; plen < len; plen++)
+    for (l = len - plen - 1; plen < len; plen++) {
       out[plen] = l;
-    /* encrypt HMAC|padding at once */
+    }
+    // encrypt HMAC|padding at once.
     aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off, &key->ks,
                        EVP_CIPHER_CTX_iv_noconst(ctx), 1);
   } else {
@@ -176,10 +179,13 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       unsigned char c[64 + SHA256_DIGEST_LENGTH];
     } mac, *pmac;
 
-    /* arrange cache line alignment */
+    // TODO: replace below with |align_pointer|.
     pmac = (void *)(((size_t)mac.c + 63) & ((size_t)0 - 64));
 
-    /* decrypt HMAC|padding at once */
+    // decrypt HMAC|padding at once.
+    // stitch sha1 uses the 1st block of |in| as |iv| but decrypts the |in|
+    // starting from |in| + iv_len. Minor diff: the sha1 case does not change
+    // data of [|in|, |in| + iv_len].
     aes_hw_cbc_encrypt(in, out, len, &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx),
                        0);
 
@@ -192,15 +198,15 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     } *data = (void *)key->md.data;
 
     if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3]) >=
-        TLS1_1_VERSION)
+        TLS1_1_VERSION) {
       iv = AES_BLOCK_SIZE;
-
+    }
     if (len < (iv + SHA256_DIGEST_LENGTH + 1)) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     }
 
-    /* omit explicit iv */
+    // omit explicit iv.
     out += iv;
     len -= iv;
 
