@@ -12,7 +12,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
+        compute-type: BUILD_GENERAL1_LARGE
         image: X86_ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
 
     - identifier: amazonlinux2_gcc7x_arm_analytics
@@ -20,5 +20,5 @@ batch:
       env:
         type: ARM_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
+        compute-type: BUILD_GENERAL1_LARGE
         image: ARM_ECR_REPO_PLACEHOLDER:amazonlinux-2_gcc-7x_latest
