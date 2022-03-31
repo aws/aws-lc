@@ -25,6 +25,7 @@
 // is always true in practice because of address space limitations.
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -43,6 +44,13 @@
 
 bignum_bitsize:
 _bignum_bitsize:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Initialize the index i and also prepare default return value of 0 (i = %rax)
 
@@ -79,6 +87,10 @@ loop:
         addq    w, %rax
 
 end:
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

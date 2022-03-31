@@ -20,6 +20,7 @@
 //    extern uint64_t word_ctz (uint64_t a);
 //
 // Standard x86-64 ABI: RDI = a, returns RAX
+// Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -29,6 +30,12 @@
 
 word_ctz:
 _word_ctz:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+#endif
 
 // First just do %rax = bsf(a), which is right except (maybe) for zero inputs
 
@@ -40,6 +47,10 @@ _word_ctz:
         testq   %rdi, %rdi
         cmoveq  %rdx, %rax
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

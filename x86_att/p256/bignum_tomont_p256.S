@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -51,6 +52,13 @@
 
 bignum_tomont_p256:
 _bignum_tomont_p256:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // We are essentially just doing a Montgomery multiplication of x and the
 // precomputed constant y = 2^512 mod p, so the code is almost the same
@@ -182,6 +190,10 @@ _bignum_tomont_p256:
         popq    %r13
         popq    %r12
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

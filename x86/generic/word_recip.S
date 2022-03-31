@@ -25,6 +25,7 @@
 // special case a = 2^63 is the same thing as x' = floor(2^128 / a).
 //
 // Standard x86-64 ABI: RDI = a, returns RAX
+// Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -46,6 +47,12 @@
 
 word_recip:
 _word_recip:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+#endif
 
 // Scale the input down: b overestimates a/2^16 with b <= 2^48 and
 // x underestimates 2^64/b with b * x =~= 2^64, accurate to ~2 bits.
@@ -136,6 +143,10 @@ _word_recip:
 // Select either x or x + 1 accordingly as the final answer
 
         sbb     rax, 0
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

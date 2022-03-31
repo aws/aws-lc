@@ -22,6 +22,7 @@
 //     (uint64_t z[static 4], uint64_t p, uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = p, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = p, R8 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -44,6 +45,14 @@
 
 bignum_optneg_p256k1:
 _bignum_optneg_p256k1:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Load the 4 digits of x and let c be an OR of all the digits
 
@@ -84,6 +93,10 @@ _bignum_optneg_p256k1:
         sbb     n3, q
         mov     [z+24], n3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

@@ -27,6 +27,7 @@
 // for the length.
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, RDX = n, RCX = l, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, R8 = n, R9 = l, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -51,6 +52,15 @@
 
 bignum_bitfield:
 _bignum_bitfield:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
 
 // Initialize second of digit pair to zero and if length is zero finish
 // immediately; the digit e is also the return value in RAX
@@ -113,6 +123,10 @@ loop:
         andq    a, e
 
 end:
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

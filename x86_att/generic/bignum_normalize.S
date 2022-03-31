@@ -25,6 +25,7 @@
 // of bits shifted (nominally 64 * k in the case of zero input).
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -53,6 +54,13 @@
 
 bignum_normalize:
 _bignum_normalize:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Initialize shift count r = 0 and i = k - 1 but return immediately if k = 0.
 // Otherwise load top digit c, but then if k = 1 skip the digitwise part
@@ -115,6 +123,10 @@ bitloop:
         jc      bitloop
 
  end:
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

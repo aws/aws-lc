@@ -22,6 +22,7 @@
 //     (uint64_t z[static 6], uint64_t c, uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
 
@@ -59,6 +60,14 @@
 
 bignum_cmul_p384_alt:
 _bignum_cmul_p384_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // We seem to need (just!) one extra register, which we need to save and restore
 
@@ -166,6 +175,10 @@ _bignum_cmul_p384_alt:
 // Return
 
         popq    %r12
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

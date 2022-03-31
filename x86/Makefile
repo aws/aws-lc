@@ -24,9 +24,13 @@ ARCHTYPE_RESULT=$(shell uname -m)
 # by single-quote characters in comments, so we eliminate // comments first.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-PREPROCESS=sed -e 's/\/\/.*//' | cpp -xassembler-with-cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | cpp -DWINDOWS_ABI=0 -xassembler-with-cpp -
 else
-PREPROCESS=cpp -xassembler-with-cpp -
+ifeq ($(OSTYPE_RESULT),CYGWIN_NT-10.0)
+PREPROCESS=cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+else
+PREPROCESS=cpp -DWINDOWS_ABI=0 -xassembler-with-cpp -
+endif
 endif
 
 # Generally GNU-type assemblers are happy with multiple instructions on

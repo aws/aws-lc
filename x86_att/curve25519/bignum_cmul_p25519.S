@@ -22,6 +22,7 @@
 //     (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
 
@@ -55,6 +56,14 @@
 
 bignum_cmul_p25519:
 _bignum_cmul_p25519:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Shuffle inputs (since we want multiplier in %rdx)
 
@@ -103,6 +112,10 @@ _bignum_cmul_p25519:
         movq    d2, 16(z)
         movq    d3, 24(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

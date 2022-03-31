@@ -21,6 +21,7 @@
 //     (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 //
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, returns RAX
+// Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -41,6 +42,15 @@
 
 bignum_lt:
 _bignum_lt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
 
 // Zero the main index counter for both branches
 
@@ -72,6 +82,10 @@ xtest:
         jnz     xtoploop
         sbb     a, a
         neg     a
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 // The case where y is longer (n > m)
@@ -96,6 +110,10 @@ ytoploop:
 
         sbb     a, a
         neg     a
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

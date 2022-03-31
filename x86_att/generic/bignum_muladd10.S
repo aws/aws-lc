@@ -22,6 +22,7 @@
 // Although typically the input d < 10, this is not actually required.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = d, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = d, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -43,6 +44,14 @@
 
 bignum_muladd10:
 _bignum_muladd10:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Move carry input to permanent home, and if k = 0 skip the main loop
 
@@ -69,6 +78,10 @@ loop:
 
 end:
         movq    d, %rax
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

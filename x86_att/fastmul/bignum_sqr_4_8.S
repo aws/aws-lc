@@ -20,6 +20,7 @@
 //    extern void bignum_sqr_4_8 (uint64_t z[static 8], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -50,6 +51,13 @@
 
 bignum_sqr_4_8:
 _bignum_sqr_4_8:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -136,6 +144,10 @@ _bignum_sqr_4_8:
         popq    %r12
         popq    %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

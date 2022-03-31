@@ -27,6 +27,7 @@
 // Montgomery multiplication, assuming you have a reduced multiplier already.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = t
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = t
 // ----------------------------------------------------------------------------
 
 
@@ -72,6 +73,15 @@
 
 bignum_modifier:
 _bignum_modifier:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
 
 // Save some additional registers for use, copy args out of RCX and RDX
 
@@ -530,6 +540,10 @@ end:
         popq    %rbx
         popq    %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

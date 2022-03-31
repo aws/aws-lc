@@ -29,6 +29,7 @@
 // 1 if coprime(x,y) and 0 otherwise.
 //
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, R8 = t, returns RAX
+// Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, [RSP+40] = t, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -106,6 +107,16 @@
 
 bignum_coprime:
 _bignum_coprime:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
 
 // Save all required registers and make room on stack for all the above vars
 
@@ -510,6 +521,10 @@ end:
         popq    %rbx
         popq    %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

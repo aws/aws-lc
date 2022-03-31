@@ -27,6 +27,7 @@
 // It is interpreted negatively as z' - 2^{64k} * return = z - c * y.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = c, RCX = n, R8 = y, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = c, R9 = n, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -52,6 +53,16 @@
 
 bignum_cmnegadd:
 _bignum_cmnegadd:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
 
 // Seems hard to avoid one more register
 
@@ -142,6 +153,10 @@ end:
         mov     rax, h
 
         pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

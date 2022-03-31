@@ -25,6 +25,7 @@
 // assuming that a and b are coprime *and* that b is an odd number > 1.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = a, RCX = b, R8 = t
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = a, R9 = b, [RSP+40] = t
 // ----------------------------------------------------------------------------
 
 
@@ -107,6 +108,16 @@
 
 bignum_modinv:
 _bignum_modinv:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
 
 // Save all required registers and make room on stack for all the above vars
 
@@ -701,6 +712,10 @@ end:
         popq    %rbx
         popq    %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

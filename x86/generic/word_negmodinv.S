@@ -25,6 +25,7 @@
 // a * z will give -1.
 //
 // Standard x86-64 ABI: RDI = a, returns RAX
+// Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -34,6 +35,12 @@
 
 word_negmodinv:
 _word_negmodinv:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+#endif
 
 // Initial magical 5-bit approximation x = (a - a<<2) xor 2
 
@@ -68,6 +75,10 @@ _word_negmodinv:
         add     rdx, rcx
         imul    rax, rdx    // rax = x * (1 + e) * ... * * (1 + e^8)
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

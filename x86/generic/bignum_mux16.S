@@ -24,6 +24,7 @@
 // The pointer xs is to a contiguous array of size 16, elements size-k bignums
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = xs, RCX = i
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = xs, R9 = i
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -50,6 +51,15 @@
 
 bignum_mux16:
 _bignum_mux16:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
 
 
 // Copy size into decrementable counter, or skip everything if k = 0
@@ -82,6 +92,10 @@ loop:
         jnz     loop
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

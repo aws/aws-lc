@@ -20,6 +20,7 @@
 //    extern void bignum_sqr_8_16_alt (uint64_t z[static 16], uint64_t x[static 8]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -102,6 +103,13 @@
 
 bignum_sqr_8_16_alt:
 _bignum_sqr_8_16_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Result term 0
 
@@ -222,6 +230,10 @@ _bignum_sqr_8_16_alt:
 
 // Return
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

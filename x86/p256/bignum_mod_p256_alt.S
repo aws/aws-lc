@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t k, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = z, RSI = k, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = k, R8 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -51,6 +52,14 @@
 
 bignum_mod_p256_alt:
 _bignum_mod_p256_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Save extra registers
 
@@ -174,6 +183,10 @@ writeback:
 
         pop     r12
         pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 shortinput:

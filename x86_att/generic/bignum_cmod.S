@@ -22,6 +22,7 @@
 // Returns x mod m, assuming m is nonzero.
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, RDX = m, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, R8 = m, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -53,6 +54,14 @@
 
 bignum_cmod:
 _bignum_cmod:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Initialize l = 0 now for convenience (we eventually need to do it).
 // If the bignum is zero-length, l is already the right answer of 0
@@ -213,6 +222,10 @@ loop:
         subq    m, l
 end:
         cmovncq l, a
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

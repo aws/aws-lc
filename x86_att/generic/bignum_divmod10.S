@@ -20,6 +20,7 @@
 //    extern uint64_t bignum_divmod10 (uint64_t k, uint64_t *z);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -46,6 +47,13 @@
 
 bignum_divmod10:
 _bignum_divmod10:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Initialize remainder to 0 and if k = 0 return
 
@@ -89,6 +97,10 @@ divloop:
 // Return %rax = r as the final remainder
 
 end:
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

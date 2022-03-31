@@ -20,6 +20,7 @@
 //    extern uint64_t bignum_even (uint64_t k, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -29,6 +30,13 @@
 
 bignum_even:
 _bignum_even:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Load RAX with the lowest digit for k > 0, else 0
 
@@ -40,6 +48,10 @@ _bignum_even:
 
         and     rax, 1
         xor     rax, 1
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

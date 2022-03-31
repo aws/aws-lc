@@ -20,6 +20,7 @@
 //    extern uint64_t word_max (uint64_t a, uint64_t b);
 //
 // Standard x86-64 ABI: RDI = a, RSI = b, returns RAX
+// Microsoft x64 ABI:   RCX = a, RDX = b, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -33,9 +34,20 @@
 word_max:
 _word_max:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
         mov     rax, a
         cmp     a, b
         cmovc   rax, b
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

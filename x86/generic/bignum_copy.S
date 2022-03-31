@@ -21,6 +21,7 @@
 //      (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -40,6 +41,15 @@
 
 bignum_copy:
 _bignum_copy:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
 
 // Replace RDX = n with RDX = min(k,n) so we are definitely safe copying those
 // Initialize the element counter to 0
@@ -72,6 +82,10 @@ padloop:
         jc      padloop
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

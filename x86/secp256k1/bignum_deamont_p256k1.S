@@ -24,6 +24,7 @@
 // "almost" meaning any 4-digit input will work, with no range restriction.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -53,6 +54,13 @@
 
 bignum_deamont_p256k1:
 _bignum_deamont_p256k1:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Set up an initial 4-word window [d3,d2,d1,d0] = x
 
@@ -138,6 +146,10 @@ _bignum_deamont_p256k1:
         mov     [z+16], d2
         mov     [z+24], d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

@@ -24,6 +24,7 @@
 // guaranteed in particular if x < m, y < m initially (the "intended" case).
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = y, R8 = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = y, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -72,6 +73,16 @@
 
 bignum_montmul:
 _bignum_montmul:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
 
 // Save registers and allocate space on stack for non-register variable w
 
@@ -248,6 +259,10 @@ end:
         pop     rbp
         pop     rbx
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

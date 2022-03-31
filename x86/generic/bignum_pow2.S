@@ -22,6 +22,7 @@
 // The result is as usual mod 2^{64*k}, so will be zero if n >= 64*k.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -43,6 +44,14 @@
 
 bignum_pow2:
 _bignum_pow2:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // If k = 0 do nothing
 
@@ -71,6 +80,10 @@ loop:
         jc      loop
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

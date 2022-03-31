@@ -20,6 +20,7 @@
 //    extern uint64_t bignum_nonzero_6(uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = x, returns RAX
+// Microsoft x64 ABI:   RCX = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -37,6 +38,12 @@
 bignum_nonzero_6:
 _bignum_nonzero_6:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+#endif
+
 // Generate a = an OR of all the words in the bignum
 
         mov     a, [x]
@@ -52,6 +59,10 @@ _bignum_nonzero_6:
         mov     dshort, 1
         cmovnz  a, d
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

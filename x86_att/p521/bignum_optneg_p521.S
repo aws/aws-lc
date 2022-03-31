@@ -22,6 +22,7 @@
 //      (uint64_t z[static 9], uint64_t p, uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = p, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = p, R8 = x
 // ----------------------------------------------------------------------------
 
 
@@ -42,6 +43,14 @@
 
 bignum_optneg_p521:
 _bignum_optneg_p521:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Load most inputs (into the limited registers) and OR all of them to get q
 
@@ -97,6 +106,10 @@ _bignum_optneg_p521:
 
 // Return
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

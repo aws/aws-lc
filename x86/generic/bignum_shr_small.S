@@ -25,6 +25,7 @@
 // The return value is the inout mod 2^c'.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = c, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = c, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -53,6 +54,16 @@
 
 bignum_shr_small:
 _bignum_shr_small:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
 
 // Reshuffle registers to put the shift count into CL
 
@@ -102,6 +113,10 @@ trivial:
         and     b, a
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

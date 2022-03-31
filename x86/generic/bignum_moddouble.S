@@ -21,6 +21,7 @@
 //      (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -39,6 +40,15 @@
 
 bignum_moddouble:
 _bignum_moddouble:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
 
 // If k = 0 do nothing
 
@@ -82,6 +92,10 @@ corrloop:
         jc      corrloop
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

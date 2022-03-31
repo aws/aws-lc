@@ -27,6 +27,7 @@
 // answer.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = m, R9 = p
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m, [RSP+48] = p
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -71,6 +72,17 @@
 
 bignum_montredc:
 _bignum_montredc:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+        mov     r9, [rsp+64]
+#endif
 
 // Save registers and allocate space on stack for non-register variable w
 
@@ -251,6 +263,10 @@ end:
         pop     rbp
         pop     rbx
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

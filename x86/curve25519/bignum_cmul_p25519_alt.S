@@ -22,6 +22,7 @@
 //     (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -57,6 +58,14 @@
 
 bignum_cmul_p25519_alt:
 _bignum_cmul_p25519_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Shuffle inputs (since we want rdx for the high parts of products)
 
@@ -117,6 +126,10 @@ _bignum_cmul_p25519_alt:
         mov     [z+16], d2
         mov     [z+24], d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

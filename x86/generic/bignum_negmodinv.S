@@ -27,6 +27,7 @@
 // but is not necessarily reduced mod x.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -53,6 +54,14 @@
 
 bignum_negmodinv:
 _bignum_negmodinv:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
         push    rbx
         push    r12
@@ -176,6 +185,10 @@ finale:
 end:
         pop     r12
         pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

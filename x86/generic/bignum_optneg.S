@@ -24,6 +24,7 @@
 // Returns a carry, which is equivalent to "x is nonzero".
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = p, RCX = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = p, R9 = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -44,6 +45,15 @@
 
 bignum_optneg:
 _bignum_optneg:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
 
 // If k = 0 do nothing, but need to set zero return for the carry (c = rax)
 
@@ -78,6 +88,10 @@ loop:
         and     rax, 1
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

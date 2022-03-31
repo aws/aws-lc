@@ -31,6 +31,7 @@
 // 2^{64*k} * carryout + z = x + y [for addition]
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = p, R8 = y, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = p, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -53,6 +54,16 @@
 
 bignum_optsubadd:
 _bignum_optsubadd:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
 
 // Initialize top carry to zero in all cases (also return value)
 
@@ -97,6 +108,10 @@ loop:
         neg     rax
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

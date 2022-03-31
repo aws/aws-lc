@@ -20,6 +20,7 @@
 //    extern uint64_t bignum_nonzero (uint64_t k, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -33,6 +34,13 @@
 
 bignum_nonzero:
 _bignum_nonzero:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
         xor     a, a
         test    k,k
         jz      end
@@ -49,6 +57,10 @@ loop:
         neg     a
 
 end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

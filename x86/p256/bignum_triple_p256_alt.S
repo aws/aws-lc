@@ -24,6 +24,7 @@
 // and the result is always fully reduced, i.e. z = (3 * x) mod p_256.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -58,6 +59,13 @@
 
 bignum_triple_p256_alt:
 _bignum_triple_p256_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 // but immediately form the quotient estimate q = h + 1
@@ -128,6 +136,10 @@ _bignum_triple_p256_alt:
         adc     d3, d
         mov     [z+24],d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

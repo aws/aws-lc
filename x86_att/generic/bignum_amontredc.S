@@ -26,6 +26,7 @@
 // w.r.t. a k-digit modulus m giving a k-digit answer.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = m, R9 = p
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m, [RSP+48] = p
 // ----------------------------------------------------------------------------
 
 
@@ -70,6 +71,17 @@
 
 bignum_amontredc:
 _bignum_amontredc:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+        movq    64(%rsp), %r9
+#endif
 
 // Save registers and allocate space on stack for non-register variable w
 
@@ -233,6 +245,10 @@ end:
         popq    %rbp
         popq    %rbx
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

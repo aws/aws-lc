@@ -25,8 +25,8 @@
 // returning a top carry (0 or 1) in the p'th place, only adding the input
 // words below p (as well as m and n respectively) to get the sum and carry.
 //
-// Standard x86-64 ABI: RDI = p, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y,
-// returns RAX
+// Standard x86-64 ABI: RDI = p, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y, returns RAX
+// Microsoft x64 ABI:   RCX = p, RDX = z, R8 = m, R9 = x, [RSP+40] = n, [RSP+48] = y, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -49,6 +49,17 @@
 
 bignum_add:
 _bignum_add:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+        mov     r9, [rsp+64]
+#endif
 
 // Zero the main index counter for both branches
 
@@ -92,6 +103,10 @@ xtest:
         adc     a, 0
         test    p, p
         jnz     tails
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 // The case where y is longer (p >= n > m)
@@ -120,6 +135,10 @@ ytoploop:
         adc     a, 0
         test    p, p
         jnz     tails
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 // Adding a non-trivial tail, when p > max(m,n)
@@ -134,6 +153,10 @@ tail:
         inc     i
         dec     p
         jnz     tailloop
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

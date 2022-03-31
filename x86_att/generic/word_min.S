@@ -20,6 +20,7 @@
 //    extern uint64_t word_min (uint64_t a, uint64_t b);
 //
 // Standard x86-64 ABI: RDI = a, RSI = b, returns RAX
+// Microsoft x64 ABI:   RCX = a, RDX = b, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -33,9 +34,20 @@
 word_min:
 _word_min:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
+
         movq    a, %rax
         cmpq    b, a
         cmovncq b, %rax
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

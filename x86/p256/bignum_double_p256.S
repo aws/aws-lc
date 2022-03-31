@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -46,6 +47,13 @@
 
 bignum_double_p256:
 _bignum_double_p256:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Load the input and double it so that 2^256 * c + [d3;d2;d1;d0] = 2 * x
 // Could also consider using shld to decouple carries
@@ -90,6 +98,10 @@ _bignum_double_p256:
         adc     d3, n3
         mov     [z+24], d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

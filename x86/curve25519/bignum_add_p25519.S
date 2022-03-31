@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -50,6 +51,14 @@
 
 bignum_add_p25519:
 _bignum_add_p25519:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Add as [d3; d2; d1; d0] = x + y; since we assume x, y < 2^255 - 19
 // this sum fits in 256 bits.
@@ -93,6 +102,10 @@ _bignum_add_p25519:
         mov     [z+16], d2
         mov     [z+24], d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

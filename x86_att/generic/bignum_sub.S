@@ -25,8 +25,8 @@
 // returning a top borrow (0 or 1) in the p'th place, only subtracting input
 // words below p (as well as m and n respectively) to get the diff and borrow.
 //
-// Standard x86-64 ABI: RDI = p, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y,
-// returns RAX
+// Standard x86-64 ABI: RDI = p, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y, returns RAX
+// Microsoft x64 ABI:   RCX = p, RDX = z, R8 = m, R9 = x, [RSP+40] = n, [RSP+48] = y, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -49,6 +49,17 @@
 
 bignum_sub:
 _bignum_sub:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+        movq    64(%rsp), %r9
+#endif
 
 // Zero the main index counter for both branches
 
@@ -98,6 +109,10 @@ tailloop:
         jnz     tailloop
 tailskip:
         negq    a
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 // The case where y is longer (p >= n > m)
@@ -126,6 +141,10 @@ ytoploop:
         testq   p, p
         jnz     tailloop
         negq    a
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

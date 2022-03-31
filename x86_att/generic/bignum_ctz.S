@@ -26,6 +26,7 @@
 // is always true in practice because of address space limitations
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -45,6 +46,13 @@
 
 bignum_ctz:
 _bignum_ctz:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // If the bignum is zero-length, just return 0
 
@@ -78,6 +86,10 @@ loop:
         addq    i, %rax
 
 end:
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

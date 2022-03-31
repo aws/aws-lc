@@ -21,6 +21,7 @@
 //      (uint64_t z[static 8], uint64_t x[static 4], uint64_t y[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
 
@@ -71,6 +72,14 @@
 
 bignum_mul_4_8_alt:
 _bignum_mul_4_8_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Copy y into a safe register to start with
 
@@ -136,6 +145,10 @@ _bignum_mul_4_8_alt:
 
 // Return
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

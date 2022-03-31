@@ -25,6 +25,7 @@
 // case, use the variant "bignum_deamont_p256k1" instead.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -54,6 +55,13 @@
 
 bignum_demont_p256k1:
 _bignum_demont_p256k1:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Set up an initial 4-word window [d3,d2,d1,d0] = x
 
@@ -105,6 +113,10 @@ _bignum_demont_p256k1:
         sbbq    $0, d3
         movq    d3, 24(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

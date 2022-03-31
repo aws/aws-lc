@@ -22,6 +22,7 @@
 // In the case of a zero bignum as input the result is k
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -39,6 +40,13 @@
 
 bignum_cld:
 _bignum_cld:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Initialize the index i and also prepare default return value of 0 (i = %rax)
 
@@ -64,6 +72,10 @@ loop:
         addq    %rdi, %rax
 
 end:
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

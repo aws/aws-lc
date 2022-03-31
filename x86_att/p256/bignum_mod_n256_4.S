@@ -23,6 +23,7 @@
 // Reduction is modulo the group order of the NIST curve P-256.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -52,6 +53,13 @@
 
 bignum_mod_n256_4:
 _bignum_mod_n256_4:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load a set of registers [n3; 0; n1; n0] = 2^256 - n_256
 
@@ -91,6 +99,10 @@ _bignum_mod_n256_4:
         sbbq    n3, d3
         movq    d3, 24(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

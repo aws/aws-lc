@@ -26,6 +26,7 @@
 // only uses 65 elements of t (64 + 1 for a suspended carry).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = t
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = t
 // ----------------------------------------------------------------------------
 
 
@@ -41,6 +42,14 @@
 
 bignum_ksqr_32_64:
 _bignum_ksqr_32_64:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Save callee-preserved registers once and for all at the outset
 // Later we further reshuffle the input arguments to avoid extra saves
@@ -176,6 +185,10 @@ _bignum_ksqr_32_64:
         popq   %rbx
         popq   %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 // Local copy of the half-length subroutine

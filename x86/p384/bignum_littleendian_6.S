@@ -32,6 +32,7 @@
 // Since x86 is little-endian, this is just copying.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -54,6 +55,13 @@ _bignum_fromlebytes_6:
 bignum_tolebytes_6:
 _bignum_tolebytes_6:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
         mov     a, [x]
         mov     [z], a
 
@@ -72,6 +80,10 @@ _bignum_tolebytes_6:
         mov     a, [x+40]
         mov     [z+40], a
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

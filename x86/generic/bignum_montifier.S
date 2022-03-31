@@ -26,6 +26,7 @@
 // representation (2^{64k} * x) mod m just by Montgomery multiplication by z.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = t
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = t
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -71,6 +72,15 @@
 
 bignum_montifier:
 _bignum_montifier:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
 
 // Save some additional registers for use, copy args out of RCX and RDX
 
@@ -529,6 +539,10 @@ end:
         pop     rbx
         pop     rbp
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

@@ -20,6 +20,7 @@
 //    extern void bignum_neg_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -45,6 +46,13 @@
 
 bignum_neg_p256:
 _bignum_neg_p256:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load the input digits as [d3;d2;d1;d0] and also set a bitmask q
 // for the input being nonzero, so that we avoid doing -0 = p_256
@@ -84,6 +92,10 @@ _bignum_neg_p256:
         movq    d0, 16(z)
         movq    n3, 24(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

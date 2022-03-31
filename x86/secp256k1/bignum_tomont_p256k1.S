@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -49,6 +50,13 @@
 
 bignum_tomont_p256k1:
 _bignum_tomont_p256k1:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Since 2^256 == 4294968273 (mod p_256k1) we more or less just set
 // m = 4294968273 then devolve to a variant of bignum_cmul_p256k1;
@@ -96,6 +104,10 @@ _bignum_tomont_p256k1:
         sbb     d3, a
         mov     [z+24],d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

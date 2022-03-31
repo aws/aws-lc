@@ -20,6 +20,7 @@
 //    extern uint64_t bignum_nonzero_4(uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = x, returns RAX
+// Microsoft x64 ABI:   RCX = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -37,6 +38,12 @@
 bignum_nonzero_4:
 _bignum_nonzero_4:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+#endif
+
 // Generate a = an OR of all the words in the bignum
 
         movq    (x), a
@@ -50,6 +57,10 @@ _bignum_nonzero_4:
         movl    $1, dshort
         cmovnzq d, a
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

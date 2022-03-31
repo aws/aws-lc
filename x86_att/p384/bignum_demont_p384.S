@@ -24,6 +24,7 @@
 // use the variant "bignum_deamont_p384" instead.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -73,6 +74,13 @@
 
 bignum_demont_p384:
 _bignum_demont_p384:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -126,6 +134,10 @@ _bignum_demont_p384:
         popq    %r13
         popq    %r12
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

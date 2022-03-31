@@ -31,6 +31,7 @@
 // with zeros, then z_0 + q * m = 2^{128k} * c + z'.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = w, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = w, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -68,6 +69,15 @@
 
 bignum_emontredc:
 _bignum_emontredc:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
 
 // Save registers
 
@@ -144,6 +154,10 @@ end:
         popq    %r13
         popq    %r12
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)
