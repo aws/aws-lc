@@ -76,4 +76,6 @@ void ECDH_verify_service_indicator(const EC_KEY *ec_key);
 
 void TLSKDF_verify_service_indicator(const EVP_MD *dgst);
 
+void EC_KEY_keygen_verify_service_indicator(EC_KEY *eckey);
+
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
