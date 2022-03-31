@@ -33,6 +33,7 @@
 // word order, this is simply byte reversal and is implemented as such.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -62,6 +63,13 @@ _bignum_frombebytes_6:
 bignum_tobebytes_6:
 _bignum_tobebytes_6:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
+
 // 0 and 5 words
 
         movq    (x), a
@@ -89,6 +97,10 @@ _bignum_tobebytes_6:
         movq    a, 24(z)
         movq    b, 16(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)
