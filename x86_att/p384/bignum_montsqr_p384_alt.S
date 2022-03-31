@@ -24,6 +24,7 @@
 // guaranteed in particular if x < p_384 initially (the "intended" case).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -115,6 +116,13 @@
 
 bignum_montsqr_p384_alt:
 _bignum_montsqr_p384_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -326,6 +334,10 @@ _bignum_montsqr_p384_alt:
         popq    %r12
         popq    %rbp
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

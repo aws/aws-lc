@@ -25,6 +25,7 @@
 // the "usual" case x < p_384 and y < p_384).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // -----------------------------------------------------------------------------
 
 
@@ -118,6 +119,14 @@
 
 bignum_montmul_p384_alt:
 _bignum_montmul_p384_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Save more registers to play with
 
@@ -301,6 +310,10 @@ _bignum_montmul_p384_alt:
         popq    %rbp
         popq    %rbx
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

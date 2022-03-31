@@ -20,6 +20,7 @@
 //    extern void bignum_neg_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -40,6 +41,13 @@
 
 bignum_neg_p521:
 _bignum_neg_p521:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load most inputs (into the limited registers) and OR all of them to get p
 
@@ -93,6 +101,10 @@ _bignum_neg_p521:
 
 // Return
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

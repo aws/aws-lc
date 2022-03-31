@@ -22,6 +22,7 @@
 //     (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
 
@@ -62,6 +63,14 @@
 
 bignum_cmul_p521:
 _bignum_cmul_p521:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Save additional registers to use
 
@@ -162,6 +171,10 @@ _bignum_cmul_p521:
         popq    %rbp
         popq    %rbx
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)
