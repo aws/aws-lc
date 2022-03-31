@@ -24,6 +24,7 @@
 // and the result is always fully reduced, i.e. z = (3 * x) mod p_384.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -53,6 +54,13 @@
 
 bignum_triple_p384_alt:
 _bignum_triple_p384_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // We seem to need (just!) one extra register, which we need to save and restore
 
@@ -146,6 +154,10 @@ _bignum_triple_p384_alt:
 // Return
 
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

@@ -24,6 +24,7 @@
 // It is assumed that all numbers x, y and z have the same size 6 digits.
 //
 // Standard x86-64 ABI: RDI = p, RSI = z, RDX = x, RCX = y
+// Microsoft x64 ABI:   RCX = p, RDX = z, R8 = x, R9 = y
 // ----------------------------------------------------------------------------
 
 
@@ -41,6 +42,15 @@
 
 bignum_mux_6:
 _bignum_mux_6:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
         testq   p, p
 
         movq    (x), a
@@ -73,6 +83,10 @@ _bignum_mux_6:
         cmovzq  b, a
         movq    a, 40(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

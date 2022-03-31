@@ -21,6 +21,7 @@
 //     (uint64_t z[static 6], uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -95,6 +96,13 @@
 
 bignum_tomont_p384:
 _bignum_tomont_p384:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // We are essentially just doing a Montgomery multiplication of x and the
 // precomputed constant y = 2^768 mod p, so the code is almost the same
@@ -282,6 +290,10 @@ _bignum_tomont_p384:
         pop     r12
         pop     rbp
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

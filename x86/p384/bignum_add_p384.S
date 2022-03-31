@@ -21,6 +21,7 @@
 //     (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -51,6 +52,14 @@
 
 bignum_add_p384:
 _bignum_add_p384:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Add the inputs as 2^384 * c + [d5;d4;d3;d2;d1;d0] = x + y
 // This could be combined with the next block using ADCX and ADOX.
@@ -119,6 +128,10 @@ _bignum_add_p384:
         sbb     d5, 0
         mov     [z+40], d5
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)
