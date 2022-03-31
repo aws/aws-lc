@@ -389,7 +389,7 @@ class PQHybridKeyShare : public SSLKeyShare {
     }
 
     if (!CBB_add_u16(out_public_key, pq_kem_ctx_->kem->ciphertext_length) ||
-        !CBB_add_bytes(out_public_key, pq_kem_ctx_->ciphertext,pq_kem_ctx_->kem->ciphertext_length) ||
+        !CBB_add_bytes(out_public_key, pq_kem_ctx_->ciphertext, pq_kem_ctx_->kem->ciphertext_length) ||
         !out_secret ||
         !out_secret->Init(ec_secret.size() + pq_kem_ctx_->kem->shared_secret_length)) {
       return false;
