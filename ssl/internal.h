@@ -1124,20 +1124,21 @@ struct NamedGroup {
 // NamedGroups returns all supported groups.
 Span<const NamedGroup> NamedGroups();
 
-// PQGroup and PQGroups() are small helpers to encapsulate and keep track of
-// the component members of the hybrid named group.
-struct PQGroup {
+// HybridPQGroup and HybridPQGroups() are small helpers, similar to NamedGroup/s(), to
+// encapsulate and keep track of the component members of the hybrid PQ groups. All
+// supported hybrid PQ groups consist of one EC group and one PQ group.
+struct HybridPQGroup {
   uint16_t group_id;
-  int nid;
+  int group_nid;
   int ec_nid;
   int pq_nid;
 };
 
-Span<const PQGroup> PQGroups();
+Span<const HybridPQGroup> HybridPQGroups();
 
-// bool is_post_quantum_group returns True if |id| corresponds to a TLS 1.3 post-quantum
-// group. Otherwise, it returns false.
-bool is_post_quantum_group(uint16_t id);
+// bool is_hybrid_pq_group returns True if |id| corresponds to a TLS 1.3 hybrid
+// post-quantum group. Otherwise, it returns false.
+bool is_hybrid_pq_group(uint16_t id);
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns

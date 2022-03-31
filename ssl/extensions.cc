@@ -204,9 +204,9 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
   return true;
 }
 
-bool is_post_quantum_group(uint16_t id) {
-  for (const PQGroup &pq_group : PQGroups()) {
-    if (id == pq_group.group_id) {
+bool is_hybrid_pq_group(uint16_t id) {
+  for (const HybridPQGroup &hybrid_pq_group : HybridPQGroups()) {
+    if (id == hybrid_pq_group.group_id) {
       return true;
     }
   }
@@ -346,10 +346,10 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
   for (uint16_t pref_group : pref) {
     for (uint16_t supp_group : supp) {
       if (pref_group == supp_group &&
-          // PQ Groups don't fit in the u8-length-prefixed ECPoint field in
+          // Hybrid PQ Groups don't fit in the u8-length-prefixed ECPoint field in
           // TLS 1.2 and below.
           (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-           !is_post_quantum_group(pref_group))) {
+           !is_hybrid_pq_group(pref_group))) {
         *out_group_id = pref_group;
         return true;
       }
@@ -411,9 +411,9 @@ bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves) {
 }
 
 bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
-  if (is_post_quantum_group(group_id) &&
+  if (is_hybrid_pq_group(group_id) &&
       ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
-    // PQ groups require TLS 1.3.
+    // Hybrid PQ groups require TLS 1.3.
     return false;
   }
 
@@ -2301,8 +2301,8 @@ bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id) {
 
     group_id = groups[0];
 
-    if (is_post_quantum_group(group_id) && groups.size() >= 2) {
-      // PQ groups are not sent as the only initial key share. We'll include the
+    if (is_hybrid_pq_group(group_id) && groups.size() >= 2) {
+      // Hybrid PQ groups are not sent as the only initial key share. We'll include the
       // 2nd preference group too to avoid round-trips.
       second_group_id = groups[1];
       assert(second_group_id != group_id);
@@ -2546,7 +2546,7 @@ static bool ext_supported_groups_add_clienthello(const SSL_HANDSHAKE *hs,
   }
 
   for (uint16_t group : tls1_get_grouplist(hs)) {
-    if (is_post_quantum_group(group) &&
+    if (is_hybrid_pq_group(group) &&
         hs->max_version < TLS1_3_VERSION) {
       continue;
     }

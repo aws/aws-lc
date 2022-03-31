@@ -293,19 +293,16 @@ class CECPQ2KeyShare : public SSLKeyShare {
   HRSS_private_key hrss_private_key_;
 };
 
-// The hybrid key exchange implemented here is slightly different from the
-// key exchange used for CECPQ2. PQHybridKeyShare prepends 2 bytes to indicate
-// the length of each component public key immediately before the corresponding
-// key; CECPQ2 does not do this. PQHybridKeyShare is implemented according to:
+// HybridPQKeyShare is implemented according to:
 // https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
-class PQHybridKeyShare : public SSLKeyShare {
+class HybridPQKeyShare : public SSLKeyShare {
  public:
-  PQHybridKeyShare(uint16_t group_id)
+  HybridPQKeyShare(uint16_t group_id)
       : group_id_(group_id) {
-    for (const PQGroup &pq_group : PQGroups()) {
-      if (group_id == pq_group.group_id) {
-        ec_nid_ = pq_group.ec_nid;
-        pq_nid_ = pq_group.pq_nid;
+    for (const HybridPQGroup &hybrid_pq_group : HybridPQGroups()) {
+      if (group_id == hybrid_pq_group.group_id) {
+        ec_nid_ = hybrid_pq_group.ec_nid;
+        pq_nid_ = hybrid_pq_group.pq_nid;
         break;
       }
     }
@@ -480,7 +477,7 @@ CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_SECP256R1_KYBER512, SSL_CURVE_SECP256R1_KYBER512, "P-256_Kyber512", "prime256v1_kyber512"},
 };
 
-CONSTEXPR_ARRAY PQGroup kPQGroups[] = {
+CONSTEXPR_ARRAY HybridPQGroup kHybridPQGroups[] = {
     {SSL_CURVE_X25519_KYBER512, NID_X25519_KYBER512, NID_X25519, NID_KYBER512},
     {SSL_CURVE_SECP256R1_KYBER512, NID_SECP256R1_KYBER512, NID_X9_62_prime256v1, NID_KYBER512},
     {SSL_CURVE_CECPQ2, NID_CECPQ2, NID_X25519, NID_HRSS},
@@ -492,8 +489,8 @@ Span<const NamedGroup> NamedGroups() {
   return MakeConstSpan(kNamedGroups, OPENSSL_ARRAY_SIZE(kNamedGroups));
 }
 
-Span<const PQGroup> PQGroups() {
-  return MakeConstSpan(kPQGroups, OPENSSL_ARRAY_SIZE(kPQGroups));
+Span<const HybridPQGroup> HybridPQGroups() {
+  return MakeConstSpan(kHybridPQGroups, OPENSSL_ARRAY_SIZE(kHybridPQGroups));
 }
 
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
@@ -516,10 +513,10 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       return UniquePtr<SSLKeyShare>(New<CECPQ2KeyShare>());
     case SSL_CURVE_X25519_KYBER512:
       return UniquePtr<SSLKeyShare>(
-          New<PQHybridKeyShare>(SSL_CURVE_X25519_KYBER512));
+          New<HybridPQKeyShare>(SSL_CURVE_X25519_KYBER512));
     case SSL_CURVE_SECP256R1_KYBER512:
       return UniquePtr<SSLKeyShare>(
-          New<PQHybridKeyShare>(SSL_CURVE_SECP256R1_KYBER512));
+          New<HybridPQKeyShare>(SSL_CURVE_SECP256R1_KYBER512));
     default:
       return nullptr;
   }

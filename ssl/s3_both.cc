@@ -666,7 +666,7 @@ class CipherScorer {
  public:
   CipherScorer(uint16_t group_id)
       : aes_is_fine_(EVP_has_aes_hardware()),
-        security_128_is_fine_(!is_post_quantum_group(group_id)) {}
+        security_128_is_fine_(!is_hybrid_pq_group(group_id)) {}
 
   typedef std::tuple<bool, bool, bool> Score;
 
