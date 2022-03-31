@@ -20,6 +20,7 @@
 //    extern void bignum_neg_p384 (uint64_t z[static 6], uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -41,6 +42,13 @@
 
 bignum_neg_p384:
 _bignum_neg_p384:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Or together the input digits and create a bitmask q if this is nonzero, so
 // that we avoid doing -0 = p_384 and hence maintain strict modular reduction
@@ -85,6 +93,10 @@ _bignum_neg_p384:
         movq    n4, 32(z)
         movq    q, 40(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

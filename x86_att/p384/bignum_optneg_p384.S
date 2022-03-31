@@ -22,6 +22,7 @@
 //      (uint64_t z[static 6], uint64_t p, uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = p, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = p, R8 = x
 // ----------------------------------------------------------------------------
 
 
@@ -44,6 +45,14 @@
 
 bignum_optneg_p384:
 _bignum_optneg_p384:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Adjust q by zeroing it if the input is zero (to avoid giving -0 = p_384,
 // which is not strictly reduced even though it's correct modulo p_384).
@@ -106,6 +115,10 @@ _bignum_optneg_p384:
         xorq    q, n5
         movq    n5, 40(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)
