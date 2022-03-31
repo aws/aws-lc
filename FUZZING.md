@@ -84,7 +84,7 @@ cd fuzz
 ## Adding New Fuzz Test Targets
 When adding new functionality, adding new fuzz tests are important to provide additional testing and verification that we are correct.
 
-### Steps
+### Steps of generating Fuzz corpus
 1. `NEW_FUNCTION='name_of_new_fuzzing_target'`
 2. `touch fuzz/${NEW_FUNCTION}.cc` \
     Write fuzzing code for libfuzzer to parse in `fuzz/${NEW_FUNCTION}.cc`. The code in this file will be how Libfuzzer 
@@ -127,3 +127,63 @@ When adding new functionality, adding new fuzz tests are important to provide ad
     rmdir fuzz/${NEW_FUNCTION}_corpus_raw
     rm -r fuzz-*.log
     ```
+
+### Steps of verifying the generated Fuzz corpus.
+
+1. Verify if the generated corpus has good coverage.
+
+- 1.1. Add temporary patch.
+
+For example, below patch adds some print statements to check if the fuzz inputs check the code blocks.
+```
+$ git diff fuzz/ssl_serialization.cc
+diff --git a/fuzz/ssl_serialization.cc b/fuzz/ssl_serialization.cc
+index 9b4bc804d..c8b3208d8 100644
+--- a/fuzz/ssl_serialization.cc
++++ b/fuzz/ssl_serialization.cc
+@@ -24,6 +24,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+
+   // If the format was invalid, just return.
+   if (!ssl) {
++    fprintf(stderr, "SSL Serialization fuzz executed code block 1.\n");
+     return 0;
+   }
+
+@@ -31,6 +32,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+   size_t encoded_len;
+   uint8_t *encoded;
+   if (!SSL_to_bytes(ssl.get(), &encoded, &encoded_len)) {
++    fprintf(stderr, "SSL Serialization fuzz executed code block 2.\n");
+     uint32_t e = ERR_get_error();
+     if (e == 0) {
+       fprintf(stderr, "In Fuzz, SSL_to_bytes failed without giving a error code.\n");
+@@ -46,6 +48,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+     return 1;
+   }
+
++  fprintf(stderr, "SSL Serialization fuzz executed code block 3.\n");
+   OPENSSL_free(encoded);
+   return 0;
+ }
+```
+
+- 1.2. Run fuzz script.
+```sh
+rm -rf nohup.out && bash -c "nohup sh -c './tests/ci/run_fuzz_tests.sh' &" && sleep 2 && chmod a+rw nohup.out
+```
+
+- 1.3. Check the fuzz log.
+
+All the injected statements should be printed. That means the fuzz inputs cover the code blocks we expect.
+
+```
+$ cat nohup.out | grep "SSL Serialization fuzz executed code block 1" | wc -l
+13545099
+$ cat nohup.out | grep "SSL Serialization fuzz executed code block 2" | wc -l
+12303
+$ cat nohup.out | grep "SSL Serialization fuzz executed code block 3" | wc -l
+68918
+```
+
+### Fuzz corpus added by aws-lc
+1. `ssl_serialization`: detailed steps are in `CryptoAlg-850?selectedConversation=4ec5f34a-451e-4ae0-ae4c-0322b9f22108`.

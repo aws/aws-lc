@@ -60,6 +60,8 @@
 #include <openssl/base.h>
 
 #include <openssl/digest.h>
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -154,12 +156,23 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 
 
 // Private functions
+typedef struct hmac_methods_st HmacMethods;
+
+// We use a union to ensure that enough space is allocated and never actually bother with the named members.
+union md_ctx_union {
+  MD5_CTX md5;
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+  SHA512_CTX sha512;
+};
 
 struct hmac_ctx_st {
   const EVP_MD *md;
-  EVP_MD_CTX md_ctx;
-  EVP_MD_CTX i_ctx;
-  EVP_MD_CTX o_ctx;
+  const HmacMethods *methods;
+  union md_ctx_union md_ctx;
+  union md_ctx_union i_ctx;
+  union md_ctx_union o_ctx;
+  int8_t state;
 } /* HMAC_CTX */;
 
 
