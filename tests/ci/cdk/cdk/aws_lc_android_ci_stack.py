@@ -32,7 +32,7 @@ class AwsLcAndroidCIStack(core.Stack):
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
                     codebuild.EventAction.PULL_REQUEST_REOPENED)
             ],
-            clone_depth=1)
+            webhook_triggers_batch_build=True)
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(
@@ -60,14 +60,4 @@ class AwsLcAndroidCIStack(core.Stack):
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
-
-        # TODO: add build type BUILD_BATCH when CFN finishes the feature release. See CryptoAlg-575.
-
-        # Add 'BuildBatchConfig' property, which is not supported in CDK.
-        # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
-        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
-        cfn_build = project.node.default_child
-        cfn_build.add_override("Properties.BuildBatchConfig", {
-            "ServiceRole": role.role_arn,
-            "TimeoutInMins": 180
-        })
+        project.enable_batch_builds()

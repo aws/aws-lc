@@ -62,14 +62,6 @@ function destroy_docker_img_build_stack() {
   delete_s3_buckets
 }
 
-function destroy_android_ci_stack() {
-  if [[ "${CDK_DEPLOY_ACCOUNT}" == "620771051181" ]]; then
-    echo "destroy_ci should not be executed on team account."
-    exit 1
-  fi
-  cdk destroy aws-lc-devicefarm-android --force
-}
-
 function create_linux_docker_img_build_stack() {
   # Clean up build stacks if exists.
   destroy_docker_img_build_stack
@@ -237,10 +229,7 @@ function setup_ci() {
 }
 
 function create_android_ci_stack() {
-  cdk deploy aws-lc-devicefarm-android --require-approval never
-
-  # Need to use aws cli to change webhook build type because CFN is not ready yet.
-  aws codebuild update-webhook --project-name aws-lc-devicefarm-android --build-type BUILD_BATCH
+  cdk deploy aws-lc-ci-devicefarm-android --require-approval never
 }
 
 ###########################
@@ -355,17 +344,11 @@ function main() {
   update-ci)
     create_github_ci_stack
     ;;
-  update-android-ci)
-    create_android_ci_stack
-    ;;
   destroy-ci)
     destroy_ci
     ;;
   destroy-img-stack)
     destroy_docker_img_build_stack
-    ;;
-  destroy-android-ci)
-    destroy_android_ci_stack
     ;;
   build-linux-img)
     build_linux_docker_images

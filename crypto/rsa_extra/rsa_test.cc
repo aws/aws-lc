@@ -657,6 +657,7 @@ TEST(RSATest, GenerateSmallKey) {
 
 #else
 // AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+// GTEST issue: https://github.com/google/googletest/issues/1496.
 #if !defined(OPENSSL_ANDROID)
 
 // Attempting to generate an excessively small key should fail.
@@ -1016,6 +1017,7 @@ TEST(RSATest, KeygenFailOnce) {
 
 #else
 // AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+// GTEST issue: https://github.com/google/googletest/issues/1496.
 #if !defined(OPENSSL_ANDROID)
 
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.

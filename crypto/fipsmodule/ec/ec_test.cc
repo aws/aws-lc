@@ -1164,6 +1164,7 @@ TEST(ECTest, SmallGroupOrder) {
 
 #else
 // AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+// GTEST issue: https://github.com/google/googletest/issues/1496.
 #if !defined(OPENSSL_ANDROID)
 
 TEST(ECDeathTest, SmallGroupOrderAndDie) {
