@@ -225,11 +225,6 @@ function setup_ci() {
   build_win_docker_images
 
   create_github_ci_stack
-  create_android_ci_stack
-}
-
-function create_android_ci_stack() {
-  cdk deploy aws-lc-ci-devicefarm-android --require-approval never
 }
 
 ###########################
