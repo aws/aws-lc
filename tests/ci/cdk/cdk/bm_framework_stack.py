@@ -49,11 +49,15 @@ class BmFrameworkStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
         ec2_bm_framework_policy = iam.PolicyDocument.from_json(ec2_bm_framework_policies_in_json())
         ssm_bm_framework_policy = iam.PolicyDocument.from_json(ssm_bm_framework_policies_in_json())
+        s3_read_write_policy_prod_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
+        s3_read_write_policy_pr_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PR_BUCKET))
         s3_bm_framework_policy_prod_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PROD_BUCKET))
         s3_bm_framework_policy_pr_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PR_BUCKET))
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_bm_framework_policy": ec2_bm_framework_policy,
                                      "ssm_bm_framework_policy": ssm_bm_framework_policy,
+                                     "s3_read_write_policy_prod_bucket": s3_read_write_policy_prod_bucket,
+                                     "s3_read_write_policy_pr_bucket": s3_read_write_policy_pr_bucket,
                                      "s3_bm_framework_policy_prod_bucket": s3_bm_framework_policy_prod_bucket,
                                      "s3_bm_framework_policy_pr_bucket": s3_bm_framework_policy_pr_bucket}
         codebuild_role = iam.Role(scope=self,
@@ -90,34 +94,6 @@ class BmFrameworkStack(core.Stack):
             "TimeoutInMins": 180
         })
 
-        # create iam for ec2s
-        s3_read_write_policy_prod_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
-        s3_read_write_policy_pr_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PR_BUCKET))
-        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json([LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO]))
-        ec2_inline_policies = {"s3_read_write_policy_prod_bucket": s3_read_write_policy_prod_bucket,
-                               "s3_read_write_policy_pr_bucket": s3_read_write_policy_pr_bucket,
-                               "ecr_power_user_policy": ecr_power_user_policy}
-        ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
-                            role_name="{}-ec2-role".format(id),
-                            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
-                            inline_policies=ec2_inline_policies,
-                            managed_policies=[
-                                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
-                                iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
-                            ])
-        iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
-                               roles=["{}-ec2-role".format(id)],
-                               instance_profile_name="{}-ec2-profile".format(id))
-
-        # create vpc for ec2s
-        vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
-
-        # create security group with default rules
-        ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
-                          allow_all_outbound=True,
-                          vpc=vpc,
-                          security_group_name='bm_framework_ec2_sg')
-
         # use boto3 to determine if a bucket with the name that we want exists, and if it doesn't, create it
         s3_res = boto3.resource('s3')
         prod_bucket = s3_res.Bucket(S3_PROD_BUCKET)
@@ -129,7 +105,7 @@ class BmFrameworkStack(core.Stack):
                                               bucket_name=S3_PROD_BUCKET,
                                               enforce_ssl=True)
 
-            production_results_s3.grant_put(ec2_role)
+            production_results_s3.grant_put(codebuild_role)
 
         try:
             s3_res.meta.client.head_bucket(Bucket=pr_bucket.name)
@@ -138,7 +114,7 @@ class BmFrameworkStack(core.Stack):
                                       bucket_name=S3_PR_BUCKET,
                                       enforce_ssl=True)
 
-            pr_results_s3.grant_put(ec2_role)
+            pr_results_s3.grant_put(codebuild_role)
 
         # use boto3 to determine if a cloudwatch logs group with the name we want exists, and if it doesn't, create it
         logs_client = boto3.client('logs')
