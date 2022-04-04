@@ -1591,12 +1591,12 @@ ecp_nistz256_select_w5:
     mov     $Idx_ctr, #0
 
     // [$Ra-$Rf] := 0
-    eor     $Ra.16b, $Ra.16b, $Ra.16b
-    eor     $Rb.16b, $Rb.16b, $Rb.16b
-    eor     $Rc.16b, $Rc.16b, $Rc.16b
-    eor     $Rd.16b, $Rd.16b, $Rd.16b
-    eor     $Re.16b, $Re.16b, $Re.16b
-    eor     $Rf.16b, $Rf.16b, $Rf.16b
+    movi    $Ra.16b, #0
+    movi    $Rb.16b, #0
+    movi    $Rc.16b, #0
+    movi    $Rd.16b, #0
+    movi    $Re.16b, #0
+    movi    $Rf.16b, #0
 
 .Lselect_w5_loop:
     // Loop 16 times.
@@ -1652,10 +1652,10 @@ ecp_nistz256_select_w7:
     mov     $Idx_ctr, #0
 
     // [$Ra-$Rf] := 0
-    eor     $Ra.16b, $Ra.16b, $Ra.16b
-    eor     $Rb.16b, $Rb.16b, $Rb.16b
-    eor     $Rc.16b, $Rc.16b, $Rc.16b
-    eor     $Rd.16b, $Rd.16b, $Rd.16b
+    movi    $Ra.16b, #0
+    movi    $Rb.16b, #0
+    movi    $Rc.16b, #0
+    movi    $Rd.16b, #0
 
 .Lselect_w7_loop:
     // Loop 64 times.
