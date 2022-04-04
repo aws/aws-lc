@@ -508,20 +508,31 @@ if(FIPS_SHARED)
     endif()
 
     add_custom_command(
-            TARGET crypto POST_BUILD
-            COMMAND ${GO_EXECUTABLE} run
-            ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-            -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-            -sha256 ${INJECT_HASH_APPLE_FLAG}
-            # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-            # go_executable isn't used (as it doesn't get built), but we list this
-            # dependency anyway in case it starts working in some CMake version.
-            DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      TARGET crypto POST_BUILD
+      COMMAND ${GO_EXECUTABLE} run
+      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+      -sha256 ${INJECT_HASH_APPLE_FLAG}
+      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+      # go_executable isn't used (as it doesn't get built), but we list this
+      # dependency anyway in case it starts working in some CMake version.
+      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     )
   endif()
 else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+endif()
+
+# Every target depends on crypto, so we add libcxx as a dependency here to
+# simplify injecting it everywhere.
+if(USE_CUSTOM_LIBCXX)
+  install(TARGETS libcxx libcxxabi
+          EXPORT crypto-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          )
+  target_link_libraries(crypto PUBLIC libcxx)
 endif()
 
 if(BUILD_TESTING)
