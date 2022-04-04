@@ -505,21 +505,6 @@ else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
-add_dependencies(crypto global_target)
-
-if(FIPS_DELOCATE OR FIPS_SHARED)
-  add_dependencies(crypto bcm_o_target)
-endif()
-
-SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
-
-if(WIN32)
-  target_link_libraries(crypto PUBLIC ws2_32)
-endif()
-if(NOT WIN32 AND NOT ANDROID)
-  target_link_libraries(crypto PUBLIC pthread)
-endif()
-
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
 if(USE_CUSTOM_LIBCXX)
@@ -530,10 +515,6 @@ if(USE_CUSTOM_LIBCXX)
   )
   target_link_libraries(crypto PUBLIC libcxx)
 endif()
-
-target_include_directories(crypto SYSTEM PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-  $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
   add_subdirectory(test)
