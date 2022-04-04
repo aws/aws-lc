@@ -185,7 +185,8 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
 
-  HMAC_CTX ctx = {0};
+  HMAC_CTX ctx;
+  OPENSSL_memset(&ctx, 0, sizeof(HMAC_CTX));
   int result;
 
   // We have to avoid the underlying SHA services updating the indicator

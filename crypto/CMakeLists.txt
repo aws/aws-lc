@@ -457,25 +457,16 @@ add_library(
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 
-
 function(build_libcrypto name module_source)
   add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
-  add_dependencies(${name} global_target)
-  add_dependencies(${name} bcm_o_target)
-
-  target_compile_definitions(${name} PRIVATE BORINGSSL_IMPLEMENTATION)
+  add_dependencies(${name}  global_target)
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${name} bcm_o_target)
   endif()
-
   SET_TARGET_PROPERTIES(${name} PROPERTIES LINKER_LANGUAGE C)
-
   if(WIN32)
     target_link_libraries(${name} PUBLIC ws2_32)
-  endif()
-  if(MSVC)
-    target_link_options(${name} PRIVATE /NODEFAULTLIB:LIBCMT)
   endif()
   if(NOT WIN32 AND NOT ANDROID)
     target_link_libraries(${name} PUBLIC pthread)
@@ -487,17 +478,6 @@ function(build_libcrypto name module_source)
   target_include_directories(${name} SYSTEM PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
           $<INSTALL_INTERFACE:include>)
-
-  # Every target depends on crypto, so we add libcxx as a dependency here to
-  # simplify injecting it everywhere.
-  if(USE_CUSTOM_LIBCXX)
-    install(TARGETS libcxx libcxxabi
-            EXPORT crypto-targets
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            )
-    target_link_libraries(${name}  PUBLIC libcxx)
-  endif()
 endfunction()
 
 if(FIPS_SHARED)
