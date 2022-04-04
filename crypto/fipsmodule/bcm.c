@@ -24,6 +24,9 @@
 #include <unistd.h>
 #endif
 
+// On Windows place the bcm code in a specific section that uses Grouped Sections
+// to control the order. $b section will place bcm inbetween the start/end markers
+// which are in $a and $z.
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
