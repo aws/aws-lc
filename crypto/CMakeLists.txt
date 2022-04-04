@@ -230,8 +230,8 @@ else()
 endif()
 
 add_library(
-  crypto
-
+  crypto_objects
+  OBJECT
   asn1/a_bitstr.c
   asn1/a_bool.c
   asn1/a_d2i_fp.c
@@ -452,13 +452,35 @@ add_library(
   x509v3/v3_skey.c
   x509v3/v3_utl.c
 
-  $<TARGET_OBJECTS:fipsmodule>
-
   ${CRYPTO_ARCH_SOURCES}
-  ${CRYPTO_FIPS_OBJECTS}
 )
 
-target_compile_definitions(crypto PRIVATE BORINGSSL_IMPLEMENTATION)
+target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+
+function(build_libcrypto name module_source)
+  add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+  add_dependencies(${name}  global_target)
+
+  if(FIPS_DELOCATE OR FIPS_SHARED)
+    add_dependencies(${name} bcm_o_target)
+  endif()
+  SET_TARGET_PROPERTIES(${name} PROPERTIES LINKER_LANGUAGE C)
+  if(WIN32)
+    target_link_libraries(${name} PUBLIC ws2_32)
+  endif()
+  if(NOT WIN32 AND NOT ANDROID)
+    target_link_libraries(${name} PUBLIC pthread)
+  endif()
+
+  if(FIPS)
+    target_link_libraries(${name} PRIVATE jitterentropy)
+  endif()
+  target_include_directories(${name} SYSTEM PUBLIC
+          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+          $<INSTALL_INTERFACE:include>)
+endfunction()
+
+build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 
 if(FIPS_SHARED)
   # Rewrite libcrypto.so (or libcrypto.dylib) to inject the correct module
@@ -482,24 +504,8 @@ if(FIPS_SHARED)
   )
 endif()
 
-add_dependencies(crypto global_target)
 
-if(FIPS_DELOCATE OR FIPS_SHARED)
-  add_dependencies(crypto bcm_o_target)
-endif()
 
-SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
-
-if(WIN32)
-  target_link_libraries(crypto PUBLIC ws2_32)
-endif()
-if(NOT WIN32 AND NOT ANDROID)
-  target_link_libraries(crypto PUBLIC pthread)
-endif()
-
-if(FIPS)
-  target_link_libraries(crypto PRIVATE jitterentropy)
-endif()
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
@@ -511,10 +517,6 @@ if(USE_CUSTOM_LIBCXX)
   )
   target_link_libraries(crypto PUBLIC libcxx)
 endif()
-
-target_include_directories(crypto SYSTEM PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-  $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
   add_subdirectory(test)
