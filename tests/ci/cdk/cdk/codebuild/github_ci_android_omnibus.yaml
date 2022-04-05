@@ -6,6 +6,7 @@ version: 0.2
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
 batch:
   build-list:
+<<<<<<< HEAD
     # TODO(CryptoAlg-1286): Remove below when android dimension is copied to FIPS branches.
     # A dummy dimension is used here because the batch CodeBuild does not allow empty |build-list|.
     - identifier: batch_does_not_allow_empty_list
@@ -53,3 +54,40 @@ batch:
     #     privileged-mode: true
     #     compute-type: BUILD_GENERAL1_MEDIUM
     #     image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_android_latest
+=======
+    - identifier: ubuntu2004_android_nonfips_static_debug
+      buildspec: ./tests/ci/codebuild/android/run_android_static_debug.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_nonfips_static_release
+      buildspec: ./tests/ci/codebuild/android/run_android_static_release.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_nonfips_shared_debug
+      buildspec: ./tests/ci/codebuild/android/run_android_shared_debug.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_nonfips_shared_release
+      buildspec: ./tests/ci/codebuild/android/run_android_shared_release.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_fips
+      buildspec: ./tests/ci/codebuild/android/run_android_fips.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
+>>>>>>> da2d67fa5 (Add Android cross-compilation CI dimension with `AWSLCAndroidTestRunner`  (#448))
