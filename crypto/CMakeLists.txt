@@ -523,7 +523,7 @@ if(BUILD_TESTING)
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
   add_executable(
-    urandom_test
+    ${RANDOM_TEST_EXEC}
 
     fipsmodule/rand/urandom_test.cc
   )
@@ -532,16 +532,16 @@ if(BUILD_TESTING)
   # urandom_test should not be performed so we pass the compilation flag
   # and handle it in urandom_test.cc
   if(JITTER_ENTROPY)
-    target_compile_options(urandom_test PUBLIC -DJITTER_ENTROPY)
+    target_compile_options(${RANDOM_TEST_EXEC} PUBLIC -DJITTER_ENTROPY)
   endif()
 
-  target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
 
-  add_dependencies(urandom_test global_target)
-  add_dependencies(all_tests urandom_test)
+  add_dependencies(${RANDOM_TEST_EXEC} global_target)
+  add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
   add_executable(
-    crypto_test
+    ${CRYPTO_TEST_EXEC}
 
     abi_self_test.cc
     asn1/asn1_test.cc
@@ -616,13 +616,17 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
 
-  add_dependencies(crypto_test global_target)
+  add_dependencies(${CRYPTO_TEST_EXEC} global_target)
 
-  target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
-  if(WIN32)
-    target_link_libraries(crypto_test ws2_32)
+  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  if(FIPS)
+    target_link_libraries(${CRYPTO_TEST_EXEC} jitterentropy)
+    add_dependencies(${CRYPTO_TEST_EXEC} jitterentropy)
   endif()
-  add_dependencies(all_tests crypto_test)
+  if(WIN32)
+    target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
+  endif()
+  add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
 endif()
 
 install(TARGETS crypto
