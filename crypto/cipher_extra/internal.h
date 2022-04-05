@@ -69,7 +69,6 @@
 extern "C" {
 #endif
 
-// TODO: do not define AES_CBC_HMAC_SHA_STITCH on AMD x86_64.
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define AES_CBC_HMAC_SHA_STITCH
@@ -129,6 +128,8 @@ OPENSSL_EXPORT int EVP_sha1_final_with_secret_suffix(
     SHA_CTX *ctx, uint8_t out[SHA_DIGEST_LENGTH], const uint8_t *in, size_t len,
     size_t max_len);
 
+// EVP_sha256_final_with_secret_suffix performs the functionality same as
+// |EVP_sha1_final_with_secret_suffix| except it uses SHA256.
 OPENSSL_EXPORT int EVP_sha256_final_with_secret_suffix(
     SHA256_CTX *ctx, uint8_t out[SHA256_DIGEST_LENGTH], const uint8_t *in, size_t len,
     size_t max_len);
@@ -158,6 +159,8 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length);
 
+// EVP_tls_cbc_digest_record_sha256 performs the same functionality of 
+// EVP_tls_cbc_digest_record except it internally calls SHA256 instead of SHA1.
 int EVP_tls_cbc_digest_record_sha256(const EVP_MD *md, uint8_t *md_out,
                               size_t *md_out_size, const uint8_t header[13],
                               const uint8_t *data, size_t data_size,

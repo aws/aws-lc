@@ -42,6 +42,7 @@ typedef struct {
     // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
     unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
+  // Used after decryption.
   unsigned char hmac_key[64];
 } EVP_AES_HMAC_SHA1;
 
@@ -72,8 +73,6 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
 
   return ret < 0 ? 0 : 1;
 }
-
-void sha1_block_data_order(void *c, const void *p, size_t len);
 
 static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                       const unsigned char *in, size_t len) {

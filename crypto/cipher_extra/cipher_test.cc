@@ -525,6 +525,8 @@ TEST(CipherTest, SHA1WithSecretSuffix) {
   }
 }
 
+// This test performs the same check of TEST(CipherTest, SHA1WithSecretSuffix).
+// The difference is SHA1 is replaced with SHA256.
 TEST(CipherTest, SHA256WithSecretSuffix) {
   uint8_t buf[SHA_CBLOCK * 4];
   RAND_bytes(buf, sizeof(buf));

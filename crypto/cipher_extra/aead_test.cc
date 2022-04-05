@@ -421,7 +421,6 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), cipher, nullptr, aes_key, iv.data()));
     set_MAC_key(decrypt_ctx.get(), key.data(), mac_key_size);
     set_TLS1_AAD(decrypt_ctx.get(), ad.data());
-    // TODO: investigate munmap_chunk(): invalid pointer.
     std::vector<uint8_t> decrypted(encrypted.size());
     int ret = EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size());
     if (t->HasAttribute("FAILS")) {

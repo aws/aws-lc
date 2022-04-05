@@ -391,7 +391,9 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 
 // Legacy AEAD Functions.
 
-// The following functions are imported to provide AES CBC stitch impl.
+// EVP_aes_128/256_cbc_hmac_sha1/256 are imported from OpenSSL to provide AES CBC
+// HMAC SHA stitch implementation. These methods are TLS specific.
+// |TEST_P(PerTLSLegacyAEADTest, TestVector)| can be samples on how to use these APIs.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);

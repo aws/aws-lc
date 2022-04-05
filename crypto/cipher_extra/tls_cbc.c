@@ -437,8 +437,6 @@ int EVP_tls_cbc_digest_record_sha256(const EVP_MD *md, uint8_t *md_out,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length) {
   if (EVP_MD_type(md) != NID_sha256) {
-      // EVP_tls_cbc_record_digest_supported should have been called first to
-      // check that the hash function is supported.
       assert(0);
       *md_out_size = 0;
       return 0;

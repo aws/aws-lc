@@ -42,12 +42,13 @@ typedef struct {
     // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
     unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
+  // Used after decryption.
   unsigned char hmac_key[64];
 } EVP_AES_HMAC_SHA256;
 
 #define data(ctx) ((EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx))
 
-int aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
+void aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
                          const AES_KEY *key, unsigned char iv[16],
                          SHA256_CTX *ctx, const void *in0);
 
@@ -73,8 +74,6 @@ static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
 
   return ret < 0 ? 0 : 1;
 }
-
-void sha256_block_data_order(void *c, const void *p, size_t len);
 
 static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                         const unsigned char *in, size_t len) {
@@ -133,7 +132,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         (blocks = (plen - (sha_off + iv)) / SHA256_CBLOCK)) {
       SHA256_Update(&key->md, in + iv, sha_off);
 
-      (void)aesni_cbc_sha256_enc(in, out, blocks, &key->ks,
+      aesni_cbc_sha256_enc(in, out, blocks, &key->ks,
                                  EVP_CIPHER_CTX_iv_noconst(ctx), &key->md,
                                  in + iv + sha_off);
       blocks *= SHA256_CBLOCK;
@@ -354,17 +353,11 @@ static const EVP_CIPHER aesni_256_cbc_hmac_sha256_cipher = {
     aesni_cbc_hmac_sha256_ctrl};
 
 const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void) {
-  return (hwaes_capable() &&
-                  aesni_cbc_sha256_enc(NULL, NULL, 0, NULL, NULL, NULL, NULL)
-              ? &aesni_128_cbc_hmac_sha256_cipher
-              : NULL);
+  return hwaes_capable() ? &aesni_128_cbc_hmac_sha256_cipher : NULL;
 }
 
 const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void) {
-  return (hwaes_capable() &&
-                  aesni_cbc_sha256_enc(NULL, NULL, 0, NULL, NULL, NULL, NULL)
-              ? &aesni_256_cbc_hmac_sha256_cipher
-              : NULL);
+  return hwaes_capable() ? &aesni_256_cbc_hmac_sha256_cipher : NULL;
 }
 #else
 const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void) { return NULL; }
