@@ -12,6 +12,8 @@ run_build -DASAN=1
 # gdb --args ./test_build_dir/crypto/crypto_test --gtest_filter=All/PerTLSLegacyAEADTest*
 
 ./test_build_dir/crypto/crypto_test --gtest_filter=All/PerTLSLegacyAEADTest*
+./test_build_dir/crypto/crypto_test --gtest_filter=CipherTest.SHA256WithSecretSuffix*
+
 
 
 # echo "Testing AWS-LC in release mode."

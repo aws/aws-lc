@@ -42,6 +42,7 @@ typedef struct {
     // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
     unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
+  unsigned char hmac_key[64];
 } EVP_AES_HMAC_SHA256;
 
 #define data(ctx) ((EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx))
@@ -167,6 +168,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     // encrypt HMAC|padding at once.
     aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off, &key->ks,
                        EVP_CIPHER_CTX_iv_noconst(ctx), 1);
+    return 1;
   } else {
     if (plen != EVP_AEAD_TLS1_AAD_LEN) {
       // |EVP_CIPHER_CTX_ctrl| with |EVP_CTRL_AEAD_TLS1_AAD| operation is not
@@ -174,13 +176,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
       return 0;
     }
-    union {
-      unsigned int u[SHA256_DIGEST_LENGTH / sizeof(unsigned int)];
-      unsigned char c[64 + SHA256_DIGEST_LENGTH];
-    } mac, *pmac;
-
-    // TODO: replace below with |align_pointer|.
-    pmac = (void *)(((size_t)mac.c + 63) & ((size_t)0 - 64));
 
     // decrypt HMAC|padding at once.
     // stitch sha1 uses the 1st block of |in| as |iv| but decrypts the |in|
@@ -188,14 +183,6 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     // data of [|in|, |in| + iv_len].
     aes_hw_cbc_encrypt(in, out, len, &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx),
                        0);
-
-    size_t inp_len, mask, j, i;
-    unsigned int res, maxpad, pad, bitlen;
-    int ret = 1;
-    union {
-      unsigned int u[SHA_LBLOCK];
-      unsigned char c[SHA256_CBLOCK];
-    } *data = (void *)key->md.data;
 
     if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3]) >=
         TLS1_1_VERSION) {
@@ -209,153 +196,59 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     // omit explicit iv.
     out += iv;
     len -= iv;
+    CONSTTIME_SECRET(out, len);
 
-    /* figure out payload length */
-    pad = out[len - 1];
-    maxpad = len - (SHA256_DIGEST_LENGTH + 1);
-    maxpad |= (MAX_PADDING - maxpad) >> (sizeof(maxpad) * 8 - 8);
-    maxpad &= MAX_PADDING;
-
-    mask = constant_time_ge_8(maxpad, pad);
-    ret &= mask;
-    /*
-     * If pad is invalid then we will fail the above test but we must
-     * continue anyway because we are in constant time code. However,
-     * we'll use the maxpad value instead of the supplied pad to make
-     * sure we perform well defined pointer arithmetic.
-     */
-    pad = constant_time_select_8(mask, pad, maxpad);
-
-    inp_len = len - (SHA256_DIGEST_LENGTH + pad + 1);
-
-    key->aux.tls_aad[plen - 2] = inp_len >> 8;
-    key->aux.tls_aad[plen - 1] = inp_len;
-
-    /* calculate HMAC */
-    key->md = key->head;
-    SHA256_Update(&key->md, key->aux.tls_aad, plen);
-
-    len -= SHA256_DIGEST_LENGTH; /* amend mac */
-    if (len >= (MAX_PADDING_LEN + SHA256_CBLOCK)) {
-      j = (len - (MAX_PADDING_LEN + SHA256_CBLOCK)) & (0 - SHA256_CBLOCK);
-      j += SHA256_CBLOCK - key->md.num;
-      SHA256_Update(&key->md, out, j);
-      out += j;
-      len -= j;
-      inp_len -= j;
+    // Remove CBC padding. Code from here on is timing-sensitive with respect to
+    // |padding_ok| and |data_plus_mac_len| for CBC ciphers.
+    size_t data_plus_mac_len;
+    crypto_word_t padding_ok;
+    if (!EVP_tls_cbc_remove_padding(&padding_ok, &data_plus_mac_len, out, len,
+                                    EVP_CIPHER_CTX_block_size(ctx), SHA256_DIGEST_LENGTH)) {
+      // Publicly invalid. This can be rejected in non-constant time.
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+      return 0;
     }
 
-    /* but pretend as if we hashed padded payload */
-    bitlen = key->md.Nl + (inp_len << 3); /* at most 18 bits */
-    bitlen = CRYPTO_bswap4(bitlen);
+    size_t data_len = data_plus_mac_len - SHA256_DIGEST_LENGTH;
 
-    pmac->u[0] = 0;
-    pmac->u[1] = 0;
-    pmac->u[2] = 0;
-    pmac->u[3] = 0;
-    pmac->u[4] = 0;
-    pmac->u[5] = 0;
-    pmac->u[6] = 0;
-    pmac->u[7] = 0;
+    key->aux.tls_aad[11] = data_len >> 8;
+    key->aux.tls_aad[12] = data_len;
 
-    for (res = key->md.num, j = 0; j < len; j++) {
-      size_t c = out[j];
-      mask = (j - inp_len) >> (sizeof(j) * 8 - 8);
-      c &= mask;
-      c |= 0x80 & ~mask & ~((inp_len - j) >> (sizeof(j) * 8 - 8));
-      data->c[res++] = (unsigned char)c;
+    // Compute the MAC and extract the one in the record.
+    uint8_t mac[EVP_MAX_MD_SIZE];
+    size_t mac_len;
+    uint8_t record_mac_tmp[EVP_MAX_MD_SIZE];
+    uint8_t *record_mac;
+    if (!EVP_tls_cbc_digest_record_sha256(EVP_sha256(), mac, &mac_len, key->aux.tls_aad,
+                                   out, data_len, len, key->hmac_key, 64)) {
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+      return 0;
+    }
+    assert(mac_len == SHA256_DIGEST_LENGTH);
 
-      if (res != SHA256_CBLOCK)
-        continue;
+    record_mac = record_mac_tmp;
+    EVP_tls_cbc_copy_mac(record_mac, mac_len, out, data_plus_mac_len, len);
 
-      /* j is not incremented yet */
-      mask = 0 - ((inp_len + 7 - j) >> (sizeof(j) * 8 - 1));
-      data->u[SHA_LBLOCK - 1] |= bitlen & mask;
-      sha256_block_data_order(&key->md, data, 1);
-      mask &= 0 - ((j - inp_len - 72) >> (sizeof(j) * 8 - 1));
-      pmac->u[0] |= key->md.h[0] & mask;
-      pmac->u[1] |= key->md.h[1] & mask;
-      pmac->u[2] |= key->md.h[2] & mask;
-      pmac->u[3] |= key->md.h[3] & mask;
-      pmac->u[4] |= key->md.h[4] & mask;
-      pmac->u[5] |= key->md.h[5] & mask;
-      pmac->u[6] |= key->md.h[6] & mask;
-      pmac->u[7] |= key->md.h[7] & mask;
-      res = 0;
+    // Perform the MAC check and the padding check in constant-time. It should
+    // be safe to simply perform the padding check first, but it would not be
+    // under a different choice of MAC location on padding failure. See
+    // EVP_tls_cbc_remove_padding.
+    crypto_word_t good =
+        constant_time_eq_int(CRYPTO_memcmp(record_mac, mac, mac_len), 0);
+    good &= padding_ok;
+    CONSTTIME_DECLASSIFY(&good, sizeof(good));
+    if (!good) {
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+      // printf("not good\n");
+      return 0;
     }
 
-    for (i = res; i < SHA256_CBLOCK; i++, j++)
-      data->c[i] = 0;
+    CONSTTIME_DECLASSIFY(&data_len, sizeof(data_len));
+    CONSTTIME_DECLASSIFY(out, data_len);
 
-    if (res > SHA256_CBLOCK - 8) {
-      mask = 0 - ((inp_len + 8 - j) >> (sizeof(j) * 8 - 1));
-      data->u[SHA_LBLOCK - 1] |= bitlen & mask;
-      sha256_block_data_order(&key->md, data, 1);
-      mask &= 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
-      pmac->u[0] |= key->md.h[0] & mask;
-      pmac->u[1] |= key->md.h[1] & mask;
-      pmac->u[2] |= key->md.h[2] & mask;
-      pmac->u[3] |= key->md.h[3] & mask;
-      pmac->u[4] |= key->md.h[4] & mask;
-      pmac->u[5] |= key->md.h[5] & mask;
-      pmac->u[6] |= key->md.h[6] & mask;
-      pmac->u[7] |= key->md.h[7] & mask;
-
-      OPENSSL_memset(data, 0, SHA256_CBLOCK);
-      j += 64;
-    }
-    data->u[SHA_LBLOCK - 1] = bitlen;
-    sha256_block_data_order(&key->md, data, 1);
-    mask = 0 - ((j - inp_len - 73) >> (sizeof(j) * 8 - 1));
-    pmac->u[0] |= key->md.h[0] & mask;
-    pmac->u[1] |= key->md.h[1] & mask;
-    pmac->u[2] |= key->md.h[2] & mask;
-    pmac->u[3] |= key->md.h[3] & mask;
-    pmac->u[4] |= key->md.h[4] & mask;
-    pmac->u[5] |= key->md.h[5] & mask;
-    pmac->u[6] |= key->md.h[6] & mask;
-    pmac->u[7] |= key->md.h[7] & mask;
-
-    pmac->u[0] = CRYPTO_bswap4(pmac->u[0]);
-    pmac->u[1] = CRYPTO_bswap4(pmac->u[1]);
-    pmac->u[2] = CRYPTO_bswap4(pmac->u[2]);
-    pmac->u[3] = CRYPTO_bswap4(pmac->u[3]);
-    pmac->u[4] = CRYPTO_bswap4(pmac->u[4]);
-    pmac->u[5] = CRYPTO_bswap4(pmac->u[5]);
-    pmac->u[6] = CRYPTO_bswap4(pmac->u[6]);
-    pmac->u[7] = CRYPTO_bswap4(pmac->u[7]);
-    len += SHA256_DIGEST_LENGTH;
-    key->md = key->tail;
-    SHA256_Update(&key->md, pmac->c, SHA256_DIGEST_LENGTH);
-    SHA256_Final(pmac->c, &key->md);
-
-    /* verify HMAC */
-    out += inp_len;
-    len -= inp_len;
-    {
-      unsigned char *p = out + len - 1 - maxpad - SHA256_DIGEST_LENGTH;
-      size_t off = out - p;
-      unsigned int c, cmask;
-
-      maxpad += SHA256_DIGEST_LENGTH;
-      for (res = 0, i = 0, j = 0; j < maxpad; j++) {
-        c = p[j];
-        cmask =
-            ((int)(j - off - SHA256_DIGEST_LENGTH)) >> (sizeof(int) * 8 - 1);
-        res |= (c ^ pad) & ~cmask; /* ... and padding */
-        cmask &= ((int)(off - 1 - j)) >> (sizeof(int) * 8 - 1);
-        res |= (c ^ pmac->c[i]) & cmask;
-        i += 1 & cmask;
-      }
-      maxpad -= SHA256_DIGEST_LENGTH;
-
-      res = 0 - ((0 - res) >> (sizeof(res) * 8 - 1));
-      ret &= (int)~res;
-    }
-    return ret;
+    // End of timing-sensitive code.
+    return 1;
   }
-
-  return 1;
 }
 
 static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
@@ -370,8 +263,9 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
 
       OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
 
-      if (arg < 0)
+      if (arg < 0) {
         return -1;
+      }
 
       if (u_arg > sizeof(hmac_key)) {
         SHA256_Init(&key->head);
@@ -380,6 +274,7 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       } else {
         OPENSSL_memcpy(hmac_key, ptr, arg);
       }
+      OPENSSL_memcpy(&key->hmac_key, hmac_key, 64);
 
       for (i = 0; i < sizeof(hmac_key); i++)
         hmac_key[i] ^= 0x36; /* ipad */

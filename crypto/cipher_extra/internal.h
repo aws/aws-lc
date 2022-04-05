@@ -129,6 +129,10 @@ OPENSSL_EXPORT int EVP_sha1_final_with_secret_suffix(
     SHA_CTX *ctx, uint8_t out[SHA_DIGEST_LENGTH], const uint8_t *in, size_t len,
     size_t max_len);
 
+OPENSSL_EXPORT int EVP_sha256_final_with_secret_suffix(
+    SHA256_CTX *ctx, uint8_t out[SHA256_DIGEST_LENGTH], const uint8_t *in, size_t len,
+    size_t max_len);
+
 // EVP_tls_cbc_digest_record computes the MAC of a decrypted, padded TLS
 // record.
 //
@@ -148,6 +152,13 @@ OPENSSL_EXPORT int EVP_sha1_final_with_secret_suffix(
 // a padding byte and MAC. (If the padding was invalid, it might contain the
 // padding too. )
 int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
+                              size_t *md_out_size, const uint8_t header[13],
+                              const uint8_t *data, size_t data_size,
+                              size_t data_plus_mac_plus_padding_size,
+                              const uint8_t *mac_secret,
+                              unsigned mac_secret_length);
+
+int EVP_tls_cbc_digest_record_sha256(const EVP_MD *md, uint8_t *md_out,
                               size_t *md_out_size, const uint8_t header[13],
                               const uint8_t *data, size_t data_size,
                               size_t data_plus_mac_plus_padding_size,
