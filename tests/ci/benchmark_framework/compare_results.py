@@ -79,7 +79,7 @@ def main():
     compared_df2_avg_time = compared_df2_time.astype(float) / compared_df2_numCalls
 
     # Add regression data to the table
-    compared_df["Percentage Difference"] = 100 * (1 - (compared_df2_avg_time / compared_df1_avg_time))
+    compared_df.loc["Percentage Difference"] = 100 * (1 - (compared_df2_avg_time / compared_df1_avg_time))
 
     # If the compared dataframe isn't empty, there are significant regressions present
     if not compared_df.empty:
