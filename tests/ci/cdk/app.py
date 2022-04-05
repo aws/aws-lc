@@ -9,6 +9,7 @@ from cdk.bm_framework_stack import BmFrameworkStack
 from cdk.aws_lc_analytics_stack import  AwsLcGitHubAnalyticsStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
+from cdk.aws_lc_android_ci_stack import AwsLcAndroidCIStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
 from cdk.windows_docker_image_build_stack import WindowsDockerImageBuildStack
 from cdk.ecr_stack import EcrStack
@@ -48,7 +49,9 @@ AwsLcGitHubFuzzCIStack(app, "aws-lc-ci-fuzzing", LINUX_X86_ECR_REPO, LINUX_AARCH
 analytics_build_spec_file = "cdk/codebuild/github_ci_analytics_omnibus.yaml"
 AwsLcGitHubAnalyticsStack(app, "aws-lc-ci-analytics", LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, analytics_build_spec_file, env=env)
 # TODO: re-enable 'aws-lc-ci-bm-framework' when it's ready.
-# bm_framework_build_spec_file = "./cdk/codebuild/bm_framework_omnibus.yaml"
-# BmFrameworkStack(app, "aws-lc-ci-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
+bm_framework_build_spec_file = "./cdk/codebuild/bm_framework_omnibus.yaml"
+BmFrameworkStack(app, "aws-lc-ci-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
+android_build_spec_file = "cdk/codebuild/github_ci_android_omnibus.yaml"
+AwsLcAndroidCIStack(app, "aws-lc-ci-devicefarm-android", LINUX_X86_ECR_REPO, android_build_spec_file, env=env)
 
 app.synth()

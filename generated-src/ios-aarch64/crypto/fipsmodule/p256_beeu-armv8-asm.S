@@ -29,7 +29,7 @@ _beeu_mod_inverse_vartime:
     //    sp  <------------------- 112 bytes ----------------> old sp
     //   x29 (FP)
     //
-.long	0xd503233f      // paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-112]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -311,7 +311,7 @@ Lbeeu_finish:
 	ldp	x27,x28,[sp,#80]
 	ldp	x29,x30,[sp],#112
 
-.long	0xd50323bf      // autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 #endif  // !OPENSSL_NO_ASM

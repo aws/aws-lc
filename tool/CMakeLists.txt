@@ -62,6 +62,7 @@ endfunction()
 
 if(AWSLC_INSTALL_DIR)
   build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include crypto)
+  target_link_libraries(awslc_bm decrepit)
 
   if(NOT CMAKE_BUILD_TYPE)
     target_compile_options(awslc_bm PUBLIC -DCMAKE_BUILD_TYPE_DEBUG)
