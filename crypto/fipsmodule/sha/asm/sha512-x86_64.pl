@@ -134,8 +134,7 @@ die "can't locate x86_64-xlate.pl";
 # CFI annotations are wrong. It allocates stack in a loop and should be
 # rewritten to avoid this.
 $avx = 1;
-$shaext=1;	### set to zero if compiling for 1.0.1
-$avx = 1;
+$shaext=1;
 for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
