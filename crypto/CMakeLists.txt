@@ -496,8 +496,7 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
-    # generated_fipsmodule must stay in sync with fipsmodule in crypto/fipsmodule/CMakeLists.txt
-    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c fipsmodule/fips_windows_support.c)
+    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
@@ -531,7 +530,7 @@ if(USE_CUSTOM_LIBCXX)
           EXPORT crypto-targets
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          )
+  )
   target_link_libraries(crypto PUBLIC libcxx)
 endif()
 

@@ -306,7 +306,6 @@ if(FIPS_DELOCATE)
     OBJECT
 
     fips_shared_support.c
-    fips_windows_support.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -317,12 +316,10 @@ elseif(FIPS_SHARED)
   if(NOT BUILD_SHARED_LIBS)
     error("FIPS_SHARED set but not BUILD_SHARED_LIBS")
   endif()
-  # fipsmodule must stay in sync with generated_fipsmodule in crypto/CMakeLists.txt
   add_library(
     fipsmodule
     OBJECT
     fips_shared_support.c
-    fips_windows_support.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -425,7 +422,6 @@ else()
 
     bcm.c
     fips_shared_support.c
-    fips_windows_support.c
 
     ${BCM_ASM_SOURCES}
   )

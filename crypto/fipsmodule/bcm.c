@@ -210,13 +210,16 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
 
 #endif  // !ASAN
 
-#if defined(OPENSSL_WINDOWS)
-void BORINGSSL_bcm_power_on_self_test(void) {
+#if defined(_MSC_VER)
+#pragma section(".CRT$XCU", read)
+static void BORINGSSL_bcm_power_on_self_test(void);
+__declspec(allocate(".CRT$XCU")) void(*fips_library_init_constructor)(void) =
+    BORINGSSL_bcm_power_on_self_test;
 #else
-static void __attribute__((constructor))
-BORINGSSL_bcm_power_on_self_test(void) {
+static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor));
 #endif
 
+static void BORINGSSL_bcm_power_on_self_test(void) {
 #if !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
 #endif

@@ -107,12 +107,20 @@ DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list)
 DEFINE_STATIC_MUTEX(thread_states_list_lock)
 DEFINE_STATIC_MUTEX(state_clear_all_lock)
 
-#if defined(OPENSSL_WINDOWS)
-void rand_thread_state_clear_all(void) {
+#if defined(_MSC_VER)
+#pragma section(".CRT$XCU", read)
+static void rand_thread_state_clear_all(void);
+static void windows_install_rand_thread_state_clear_all(void) {
+  atexit(&rand_thread_state_clear_all);
+}
+__declspec(allocate(".CRT$XCU")) void(*fips_library_destructor)(void) =
+    windows_install_rand_thread_state_clear_all;
 #else
-static void rand_thread_state_clear_all(void) __attribute__((destructor));
-static void rand_thread_state_clear_all(void) {
+static void rand_thread_state_clear_all(void) __attribute__ ((destructor));
 #endif
+
+
+static void rand_thread_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
   CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
