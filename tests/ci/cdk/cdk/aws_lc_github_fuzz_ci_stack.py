@@ -5,7 +5,7 @@ from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as
 
 from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json, \
-    code_build_fuzz_policy_in_json
+    code_build_publish_metrics_in_json
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.yml_loader import YmlLoader
 
@@ -39,7 +39,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(
             code_build_batch_policy_in_json([id])
         )
-        fuzz_policy = iam.PolicyDocument.from_json(code_build_fuzz_policy_in_json())
+        fuzz_policy = iam.PolicyDocument.from_json(code_build_publish_metrics_in_json())
         inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                            "fuzz_policy": fuzz_policy}
         role = iam.Role(scope=self,

@@ -29,6 +29,7 @@ OPENSSL_UNUSED static void fiat_p384_set_one(uint32_t out1[6]);
 OPENSSL_UNUSED static void fiat_p384_msat(uint32_t out1[7]);
 OPENSSL_UNUSED static void fiat_p384_divstep(uint32_t* out1, uint32_t out2[7], uint32_t out3[7], uint32_t out4[6], uint32_t out5[6], uint32_t arg1, const uint32_t arg2[7], const uint32_t arg3[7], const uint32_t arg4[6], const uint32_t arg5[6]);
 OPENSSL_UNUSED static void fiat_p384_divstep_precomp(uint32_t out1[6]);
+OPENSSL_UNUSED static void fiat_p384_selectznz(uint32_t out1[12], fiat_p384_uint1 arg1, const uint32_t arg2[12], const uint32_t arg3[12]);
 
 /*
  * The function fiat_p384_addcarryx_u32 is an addition with carry.

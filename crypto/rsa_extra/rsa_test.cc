@@ -640,6 +640,7 @@ TEST(RSATest, BadExponent) {
 }
 
 #if !defined(AWSLC_FIPS)
+
 // Attempting to generate an excessively small key should fail.
 TEST(RSATest, GenerateSmallKey) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -653,7 +654,12 @@ TEST(RSATest, GenerateSmallKey) {
   EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
   EXPECT_EQ(RSA_R_KEY_SIZE_TOO_SMALL, ERR_GET_REASON(err));
 }
+
 #else
+// AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+// GTEST issue: https://github.com/google/googletest/issues/1496.
+#if !defined(OPENSSL_ANDROID)
+
 // Attempting to generate an excessively small key should fail.
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
 TEST(RSADeathTest, GenerateSmallKeyAndDie) {
@@ -663,10 +669,10 @@ TEST(RSADeathTest, GenerateSmallKeyAndDie) {
   ASSERT_TRUE(e);
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
-  ASSERT_DEATH(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr), "");
+  ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr), "");
 }
-
 #endif
+#endif 
 
 // Attempting to generate an funny RSA key length should round down.
 TEST(RSATest, RoundKeyLengths) {
@@ -920,6 +926,7 @@ TEST(RSATest, CheckKey) {
 }
 
 #if !defined(AWSLC_FIPS)
+
 TEST(RSATest, KeygenFail) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
@@ -1009,6 +1016,10 @@ TEST(RSATest, KeygenFailOnce) {
 }
 
 #else
+// AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+// GTEST issue: https://github.com/google/googletest/issues/1496.
+#if !defined(OPENSSL_ANDROID)
+
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
 TEST(RSADeathTest, KeygenFailAndDie) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -1026,7 +1037,7 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
   // Key generation should fail.
-  ASSERT_DEATH(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
+  ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
 
   // Failed key generations do not leave garbage in |rsa|.
   EXPECT_FALSE(rsa->n);
@@ -1053,7 +1064,7 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   ASSERT_TRUE(RSA_private_key_to_bytes(&der, &der_len, rsa.get()));
   bssl::UniquePtr<uint8_t> delete_der(der);
 
-  ASSERT_DEATH(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
+  ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
 
   uint8_t *der2;
   size_t der2_len;
@@ -1070,6 +1081,7 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   bssl::UniquePtr<uint8_t> delete_der3(der3);
   EXPECT_NE(Bytes(der, der_len), Bytes(der3, der3_len));
 }
+#endif
 
 // This is not a death test. It's similar to the test KeygenFailOnce
 // in the non-FIPS case, with the following differences:
@@ -1102,6 +1114,7 @@ TEST(RSATest, KeygenFailOnceThenSucceed) {
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
 }
+
 #endif
 
 

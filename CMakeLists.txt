@@ -190,6 +190,14 @@ macro(check_run file_to_test flag_to_set compile_flags)
   endif()
 endmacro()
 
+# Some ancient assemblers don't know about AVX instructions, which is an
+# assumption we make for some of the assembly implementations. This flag
+# can be set to handle such cases.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+endif()
+
 # Detect if memcmp is wrongly stripped like strcmp.
 # If exists, let CMake generate a warning.
 # memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
@@ -270,12 +278,17 @@ if(GCC OR CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
   endif()
 
+  if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "5")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wformat-signedness")
+  endif()
+
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_CXX_FLAGS} -Wmissing-prototypes -Wold-style-definition -Wstrict-prototypes")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_CXX_FLAGS} -Wmissing-declarations")
 
   if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     if(APPLE)
+      set(CMAKE_MACOSX_RPATH 1)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     endif()
     if(NOT BORINGSSL_ALLOW_CXX_RUNTIME)
@@ -381,8 +394,10 @@ if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.9.99") OR
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
 endif()
 
-# pthread_rwlock_t requires a feature flag.
-if(NOT WIN32)
+# pthread_rwlock_t on Linux requires a feature flag. However, it should not be
+# set on Apple platforms, where it instead disables APIs we use. See compat(5)
+# and sys/cdefs.h.
+if(NOT WIN32 AND NOT APPLE)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=700")
 endif()
 
@@ -586,10 +601,6 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
-if(OPENSSL_AARCH64_P256)
-  add_definitions(-DOPENSSL_AARCH64_P256)
-endif()
-
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
@@ -616,11 +627,6 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
-endif()
-
-if (ARCH STREQUAL "aarch64" AND CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
-  # Enable p256_nistz on ARMv8 (AArch64) by default
-  add_definitions(-DOPENSSL_AARCH64_P256)
 endif()
 
 if(ANDROID AND NOT ANDROID_NDK_REVISION AND ARCH STREQUAL "arm")
@@ -737,6 +743,19 @@ if(BUILD_TESTING)
     file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
   endif()
   add_library(crypto_test_data OBJECT crypto_test_data.cc)
+
+  # sets tests to compile an so executable file for testing in our Android app CI.
+  if(ANDROIDTESTRUNNER)
+    set(CRYPTO_TEST_EXEC crypto_test.so)
+    set(RANDOM_TEST_EXEC urandom_test.so)
+    set(SSL_TEST_EXEC ssl_test.so)
+    set(DECREPIT_TEST_EXEC decrepit_test.so)
+  else()
+    set(CRYPTO_TEST_EXEC crypto_test)
+    set(RANDOM_TEST_EXEC urandom_test)
+    set(SSL_TEST_EXEC ssl_test)
+    set(DECREPIT_TEST_EXEC decrepit_test)
+  endif()
 endif()
 
 add_subdirectory(crypto)
@@ -762,6 +781,7 @@ endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
     set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
   endif()
@@ -815,7 +835,7 @@ if(BUILD_TESTING)
           run_ssl_runner_tests
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
-                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER}
+                    ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
@@ -876,15 +896,6 @@ if(BUILD_TESTING)
     endif()
   endif()
 endif()
-
-# Copy awslc-config.cmake to build artifacts.
-configure_file("cmake/awslc-config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
-    @ONLY)
-
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/awslc-config.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake/"
-    COMPONENT Development)
 
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")

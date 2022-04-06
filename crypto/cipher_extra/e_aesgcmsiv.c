@@ -17,11 +17,11 @@
 #include <assert.h>
 
 #include <openssl/cipher.h>
-#include <openssl/cpu.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
 #include "../fipsmodule/cipher/internal.h"
+#include "../internal.h"
 
 
 #define EVP_AEAD_AES_GCM_SIV_NONCE_LEN 12
@@ -30,7 +30,7 @@
 // TODO(davidben): AES-GCM-SIV assembly is not correct for Windows. It must save
 // and restore xmm6 through xmm15.
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
-    !defined(OPENSSL_WINDOWS)
+    !defined(OPENSSL_WINDOWS) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define AES_GCM_SIV_ASM
 
 // Optimised AES-GCM-SIV

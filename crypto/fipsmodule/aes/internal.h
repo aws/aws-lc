@@ -19,6 +19,7 @@
 
 #include <openssl/cpu.h>
 #include "../service_indicator/internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -61,7 +62,9 @@ OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #define VPAES
 #define VPAES_CBC
 #define VPAES_CTR32
+#define HWAES_XTS
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
+OPENSSL_INLINE int hwaes_xts_available(void) { return CRYPTO_is_ARMv8_AES_capable(); }
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
@@ -134,6 +137,34 @@ void aes_hw_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                         const AES_KEY *key, const int enc);
 #endif  // HWAES_ECB
 
+#if defined(HWAES_XTS)
+void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                  const uint8_t iv[16]);
+void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                  const uint8_t iv[16]);
+OPENSSL_EXPORT int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
+                                      const AES_KEY *key1, const AES_KEY *key2,
+                                      const uint8_t iv[16], int enc);
+#else
+OPENSSL_INLINE int hwaes_xts_available(void) { return 0; }
+OPENSSL_INLINE void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                                       const uint8_t iv[16]) {
+  abort();
+}
+OPENSSL_INLINE void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
+                  const AES_KEY *key1, const AES_KEY *key2,
+                  const uint8_t iv[16]) {
+  abort();
+}
+OPENSSL_INLINE int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
+                                      const AES_KEY *key1, const AES_KEY *key2,
+                                      const uint8_t iv[16], int enc) {
+  abort();
+}
+#endif  // HWAES_XTS
 
 #if defined(BSAES)
 // Note |bsaes_cbc_encrypt| requires |enc| to be zero.

@@ -14,10 +14,10 @@
 
 #include <gtest/gtest.h>
 
-#include <openssl/cpu.h>
 #include <openssl/hrss.h>
 #include <openssl/rand.h>
 
+#include "../internal.h"
 #include "../test/abi_test.h"
 #include "../test/test_util.h"
 #include "internal.h"
@@ -451,7 +451,8 @@ TEST(HRSS, Golden) {
   EXPECT_EQ(Bytes(shared_key), Bytes(kExpectedFailureKey));
 }
 
-#if defined(POLY_RQ_MUL_ASM) && defined(SUPPORTS_ABI_TEST)
+#if defined(POLY_RQ_MUL_ASM) && defined(SUPPORTS_ABI_TEST) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 TEST(HRSS, ABI) {
   const bool has_avx2 = (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
   if (!has_avx2) {

@@ -508,6 +508,25 @@ OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);
 // |FILE| will be closed when |bio| is freed.
 OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);
 
+// BIO_tell returns the file offset of |bio|, or a negative number on error or
+// if |bio| does not support the operation.
+//
+// TODO(https://crbug.com/boringssl/465): On platforms where |long| is 32-bit,
+// this function cannot report 64-bit offsets.
+OPENSSL_EXPORT long BIO_tell(BIO *bio);
+
+// BIO_seek sets the file offset of |bio| to |offset|. It returns a non-negative
+// number on success and a negative number on error. If |bio| is a file
+// descriptor |BIO|, it returns the resulting file offset on success. If |bio|
+// is a file |BIO|, it returns zero on success.
+//
+// WARNING: This function's return value conventions differs from most functions
+// in this library.
+//
+// TODO(https://crbug.com/boringssl/465): On platforms where |long| is 32-bit,
+// this function cannot handle 64-bit offsets.
+OPENSSL_EXPORT long BIO_seek(BIO *bio, long offset);
+
 
 // Socket BIOs.
 //
@@ -646,10 +665,16 @@ OPENSSL_EXPORT void BIO_meth_free(BIO_METHOD *method);
 OPENSSL_EXPORT int BIO_meth_set_create(BIO_METHOD *method,
                                        int (*create)(BIO *));
 
+// BIO_meth_get_create returns |create| function of |method|.
+OPENSSL_EXPORT int (*BIO_meth_get_create(const BIO_METHOD *method)) (BIO *);
+
 // BIO_meth_set_destroy sets a function to release data associated with a |BIO|
 // and returns one. The function's return value is ignored.
 OPENSSL_EXPORT int BIO_meth_set_destroy(BIO_METHOD *method,
                                         int (*destroy)(BIO *));
+
+// BIO_meth_get_destroy returns |destroy| function of |method|.
+OPENSSL_EXPORT int (*BIO_meth_get_destroy(const BIO_METHOD *method)) (BIO *);
 
 // BIO_meth_set_write sets the implementation of |BIO_write| for |method| and
 // returns one. |BIO_METHOD|s which implement |BIO_write| should also implement
@@ -667,10 +692,24 @@ OPENSSL_EXPORT int BIO_meth_set_read(BIO_METHOD *method,
 OPENSSL_EXPORT int BIO_meth_set_gets(BIO_METHOD *method,
                                      int (*gets)(BIO *, char *, int));
 
+// BIO_meth_get_gets returns |gets| function of |method|.
+OPENSSL_EXPORT int (*BIO_meth_get_gets(const BIO_METHOD *method)) (BIO *, char *, int);
+
 // BIO_meth_set_ctrl sets the implementation of |BIO_ctrl| for |method| and
 // returns one.
 OPENSSL_EXPORT int BIO_meth_set_ctrl(BIO_METHOD *method,
                                      long (*ctrl)(BIO *, int, long, void *));
+
+// BIO_meth_get_ctrl returns |ctrl| function of |method|.
+OPENSSL_EXPORT long (*BIO_meth_get_ctrl(const BIO_METHOD *method)) (BIO *, int, long, void *);
+
+// BIO_meth_set_callback_ctrl sets the implementation of |callback_ctrl| for
+// |method| and returns one.
+OPENSSL_EXPORT int BIO_meth_set_callback_ctrl(BIO_METHOD *method,
+                                             long (*callback_ctrl)(BIO *, int, bio_info_cb));
+
+// BIO_meth_get_callback_ctrl returns |callback_ctrl| function of |method|.
+OPENSSL_EXPORT long (*BIO_meth_get_callback_ctrl(const BIO_METHOD *method)) (BIO *, int, bio_info_cb);
 
 // BIO_set_data sets custom data on |bio|. It may be retried with
 // |BIO_get_data|.
@@ -759,6 +798,8 @@ OPENSSL_EXPORT int BIO_get_shutdown(BIO *bio);
 OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
                                      int (*puts)(BIO *, const char *));
 
+// BIO_meth_get_puts returns |puts| function of |method|.
+OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *);
 
 // Private functions
 

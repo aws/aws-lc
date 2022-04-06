@@ -135,14 +135,6 @@ static int has_uint128_and_not_small() {
 #endif
 }
 
-static int awslc_fips() {
-#if defined(AWSLC_FIPS)
-  return 1;
-#else
-  return 0;
-#endif
-}
-
 // The following test is adapted from ECTest.LargeXCoordinateVectors
 TEST(ECDHTest, InvalidPubKeyLargeCoord) {
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
@@ -171,78 +163,71 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     EC_KEY_generate_key(priv_key.get());
 
     size_t len = BN_num_bytes(&group.get()->field); // Modulus byte-length
-    std::vector<uint8_t> shared_key((group.get()->curve_name == NID_secp521r1)?
+    std::vector<uint8_t> shared_key((group.get()->curve_name == NID_secp521r1) ?
                                     SHA512_DIGEST_LENGTH : len);
 
     ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group.get()));
-    // The following call converts the point to Montgomery form for P-256, 384 and 521.
+    // The following call converts the point to Montgomery form for P-256/384.
     // For P-224, when the functions from simple.c are used, i.e. when
-    // group->meth = EC_GFp_nistp224_method, the coordinate representation is not changed.
-    // This is determined based on compile flags in ec.c that are also used below
-    // in has_uint128_and_not_small().
+    // group->meth = EC_GFp_nistp224_method, the coordinate representation
+    // is not changed. This is determined based on compile flags in ec.c
+    // that are also used below in has_uint128_and_not_small().
+    // For P-521, the plain non-Motgomery representation is always used.
     ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
                   group.get(), pub_key.get(), x.get(), y.get(), nullptr));
     ASSERT_TRUE(EC_KEY_set_public_key(peer_key.get(), pub_key.get()));
-    ASSERT_TRUE(ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                      EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+    ASSERT_TRUE(ECDH_compute_key_fips(
+          shared_key.data(), shared_key.size(),
+          EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+
     // Ensure the pointers were not affected.
     ASSERT_TRUE(peer_key.get());
     ASSERT_TRUE(pub_key.get());
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes, (const uint8_t *)x.get()->d, len);
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.Y.bytes, (const uint8_t *)y.get()->d, len);
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes,
+                   (const uint8_t *)x.get()->d, len);
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.Y.bytes,
+                   (const uint8_t *)y.get()->d, len);
     OPENSSL_memset(peer_key.get()->pub_key->raw.Z.bytes, 0, len);
     peer_key.get()->pub_key->raw.Z.bytes[0] = 1;
-    // As mentioned, for P-224, setting the raw point directly with the coordinates
-    // still passes |EC_KEY_check_fips| and the rest of the computation.
-    // For P-256, 384 and 521, the failure is due to that the coordinates are
-    // not in Montgomery representation, and, hence, fail |EC_KEY_check_fips|, if in FIPS build;
-    // or the shared secret computation, otherwise.
+
+    // As mentioned, for P-224 and P-521, setting the raw point directly
+    // with the coordinates still passes |EC_KEY_check_fips|.
+    // For P-256 and 384, the failure is due to that the coordinates are
+    // not in Montgomery representation, hence the checks fail earlier in
+    // |EC_KEY_check_key| in the point-on-the-curve calculations, which use
+    // Montgomery arithmetic.
     ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                EC_KEY_get0_public_key(peer_key.get()), priv_key.get());
-    if (has_uint128_and_not_small() && (group.get()->curve_name == NID_secp224r1))
-    {
+                                EC_KEY_get0_public_key(peer_key.get()),
+                                priv_key.get());
+
+    int curve_nid = group.get()->curve_name;
+    if ((has_uint128_and_not_small() && (curve_nid == NID_secp224r1)) ||
+        (curve_nid == NID_secp521r1)) {
       ASSERT_TRUE(ret);
     } else {
       ASSERT_FALSE(ret);
-      if (awslc_fips()) {
-        // Fails in |EC_KEY_check_fips|.
-        EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      } else {
-        // Fails in the actual shared secret computation.
-        EXPECT_EQ(ECDH_R_POINT_ARITHMETIC_FAILURE,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      }
+      // Fails in |EC_KEY_check_fips|.
+      EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+                ERR_GET_REASON(ERR_peek_last_error()));
     }
     ASSERT_TRUE(peer_key.get());
     ASSERT_TRUE(pub_key.get());
 
     // Now replace the x-coordinate with the larger one, x+p;
-    // ECDH fails |EC_KEY_check_fips| or in the actual shared secret computation
-    // in all curves (except for P-224 in non-FIPS build).
-    // TODO: Do we want to widen the check the non-FIPS builds?.
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes, (const uint8_t *)xpp.get()->d, len);
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes,
+                   (const uint8_t *)xpp.get()->d, len);
     ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                    EC_KEY_get0_public_key(peer_key.get()), priv_key.get());
-    if (!awslc_fips() && has_uint128_and_not_small() && (group.get()->curve_name == NID_secp224r1)) {
-      ASSERT_TRUE(ret);
-    } else {
-      ASSERT_FALSE(ret);
-      if (awslc_fips()) {
-        // Fails in |EC_KEY_check_fips|.
-        EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      } else {
-        // Fails in the actual shared secret computation.
-        EXPECT_EQ(ECDH_R_POINT_ARITHMETIC_FAILURE,
-                  ERR_GET_REASON(ERR_peek_last_error()));
-      }
-      ASSERT_TRUE(peer_key.get());
-      ASSERT_TRUE(pub_key.get());
-    }
+                                EC_KEY_get0_public_key(peer_key.get()),
+                                priv_key.get());
+    ASSERT_FALSE(ret);
+    EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+              ERR_GET_REASON(ERR_peek_last_error()));
+
+    ASSERT_TRUE(peer_key.get());
+    ASSERT_TRUE(pub_key.get());
   });
 }
 

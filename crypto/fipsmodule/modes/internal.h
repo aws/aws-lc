@@ -52,7 +52,6 @@
 #include <openssl/base.h>
 
 #include <openssl/aes.h>
-#include <openssl/cpu.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -63,6 +62,9 @@
 extern "C" {
 #endif
 
+// The maximum permitted number of cipher blocks per data unit in XTS mode.
+// Reference IEEE Std 1619-2018.
+#define XTS_MAX_BLOCKS_PER_DATA_UNIT            (1<<20)
 
 // block128_f is the type of an AES block cipher implementation.
 //
@@ -265,7 +267,7 @@ void gcm_gmult_ssse3(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_ssse3(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                      size_t len);
 
-#if defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define GHASH_ASM_X86_64
 void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);

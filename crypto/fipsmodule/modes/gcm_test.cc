@@ -54,8 +54,8 @@
 #include <gtest/gtest.h>
 
 #include <openssl/aes.h>
-#include <openssl/cpu.h>
 
+#include "../../internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
@@ -119,7 +119,8 @@ TEST(GCMTest, ByteSwap) {
             CRYPTO_bswap8(UINT64_C(0x0102030405060708)));
 }
 
-#if defined(SUPPORTS_ABI_TEST) && !defined(OPENSSL_NO_ASM)
+#if defined(SUPPORTS_ABI_TEST) && !defined(OPENSSL_NO_ASM) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 TEST(GCMTest, ABI) {
   static const uint64_t kH[2] = {
       UINT64_C(0x66e94bd4ef8a2c3b),
@@ -219,4 +220,4 @@ TEST(GCMTest, ABI) {
   }
 #endif  // GHASH_ASM_PPC64LE
 }
-#endif  // SUPPORTS_ABI_TEST && !OPENSSL_NO_ASM
+#endif  // SUPPORTS_ABI_TEST && !OPENSSL_NO_ASM && !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX

@@ -16,15 +16,16 @@
 #define OPENSSL_HEADER_BN_RSAZ_EXP_H
 
 #include <openssl/bn.h>
-#include <openssl/cpu.h>
 
 #include "internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define RSAZ_ENABLED
 
 

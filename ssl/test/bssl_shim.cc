@@ -66,6 +66,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "mock_quic_transport.h"
 #include "packeted_bio.h"
 #include "settings_writer.h"
+#include "ssl_transfer.h"
 #include "test_config.h"
 #include "test_state.h"
 
@@ -173,9 +174,23 @@ class SocketCloser {
   const int sock_;
 };
 
+static bool TransferSSL(const TestConfig *config, bssl::UniquePtr<SSL> *in, SSL** ssl) {
+  if (!config || !in || !ssl) {
+    // No ssl transfer logic is executed.
+    return true;
+  }
+  SSLTransfer sslTransfer;
+  if (!sslTransfer.MarkOrReset(config, in)) {
+    return false;
+  }
+  *ssl = in->get();
+  return true;
+}
+
 // DoRead reads from |ssl|, resolving any asynchronous operations. It returns
 // the result value of the final |SSL_read| call.
-static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
+static int DoRead(bssl::UniquePtr<SSL> *in, uint8_t *out, size_t max_out) {
+  SSL *ssl = in->get();
   const TestConfig *config = GetTestConfig(ssl);
   TestState *test_state = GetTestState(ssl);
   if (test_state->quic_transport) {
@@ -208,6 +223,10 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
     }
   } while (RetryAsync(ssl, ret));
 
+  if (!TransferSSL(config, in, &ssl)) {
+    return false;
+  }
+
   if (config->peek_then_read && ret > 0) {
     std::unique_ptr<uint8_t[]> buf(new uint8_t[static_cast<size_t>(ret)]);
 
@@ -217,6 +236,11 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
         OPENSSL_memcmp(buf.get(), out, ret) != 0) {
       fprintf(stderr, "First and second SSL_peek did not match.\n");
       return -1;
+    }
+
+    // Do transfer again to test SSL_peek.
+    if (!TransferSSL(config, in, &ssl)) {
+      return false;
     }
 
     // SSL_read should synchronously return the same data and consume it.
@@ -410,9 +434,10 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   }
 
   if (config->expect_version != 0 &&
-      SSL_version(ssl) != config->expect_version) {
+      SSL_version(ssl) != int{config->expect_version}) {
+    uint16_t actual_version = static_cast<uint16_t>(SSL_version(ssl));
     fprintf(stderr, "want version %04x, got %04x\n", config->expect_version,
-            SSL_version(ssl));
+            actual_version);
     return false;
   }
 
@@ -578,9 +603,9 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
 
   if (config->expect_curve_id != 0) {
     uint16_t curve_id = SSL_get_curve_id(ssl);
-    if (static_cast<uint16_t>(config->expect_curve_id) != curve_id) {
+    if (config->expect_curve_id != curve_id) {
       fprintf(stderr, "curve_id was %04x, wanted %04x\n", curve_id,
-              static_cast<uint16_t>(config->expect_curve_id));
+              config->expect_curve_id);
       return false;
     }
   }
@@ -588,24 +613,24 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   uint16_t cipher_id = SSL_CIPHER_get_protocol_id(SSL_get_current_cipher(ssl));
   if (config->expect_cipher_aes != 0 &&
       EVP_has_aes_hardware() &&
-      static_cast<uint16_t>(config->expect_cipher_aes) != cipher_id) {
+      config->expect_cipher_aes != cipher_id) {
     fprintf(stderr, "Cipher ID was %04x, wanted %04x (has AES hardware)\n",
-            cipher_id, static_cast<uint16_t>(config->expect_cipher_aes));
+            cipher_id, config->expect_cipher_aes);
     return false;
   }
 
   if (config->expect_cipher_no_aes != 0 &&
       !EVP_has_aes_hardware() &&
-      static_cast<uint16_t>(config->expect_cipher_no_aes) != cipher_id) {
+      config->expect_cipher_no_aes != cipher_id) {
     fprintf(stderr, "Cipher ID was %04x, wanted %04x (no AES hardware)\n",
-            cipher_id, static_cast<uint16_t>(config->expect_cipher_no_aes));
+            cipher_id, config->expect_cipher_no_aes);
     return false;
   }
 
   if (config->expect_cipher != 0 &&
-      static_cast<uint16_t>(config->expect_cipher) != cipher_id) {
+      config->expect_cipher != cipher_id) {
     fprintf(stderr, "Cipher ID was %04x, wanted %04x\n", cipher_id,
-            static_cast<uint16_t>(config->expect_cipher));
+            config->expect_cipher);
     return false;
   }
 
@@ -884,6 +909,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   SSL *ssl = ssl_uniqueptr->get();
   SSL_CTX *session_ctx = SSL_get_SSL_CTX(ssl);
   TestState *test_state = GetTestState(ssl);
+  uint8_t tls_unique_before_transfer[16];
+  size_t tls_unique_len_before_transfer = 0;
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
@@ -904,6 +931,30 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return SSL_do_handshake(ssl);
       });
     } while (RetryAsync(ssl, ret));
+
+    SSLTransfer sslTransfer;
+    sslTransfer.MarkTest(config, ssl);
+    // Fetch tls_unique_len_before_transfer before SSL transfer.
+    if (config->do_ssl_transfer == 1 && sslTransfer.IsSupported(ssl)) {
+      if (config->tls_unique) {
+        if (!SSL_get_tls_unique(ssl, tls_unique_before_transfer,
+          &tls_unique_len_before_transfer,
+          sizeof(tls_unique_before_transfer))) {
+          fprintf(stderr, "failed to get tls-unique before ssl transfer\n");
+          return false;
+        }
+        if (tls_unique_len_before_transfer != 12) {
+          fprintf(stderr, "expected 12 bytes of tls-unique but got %u",
+            static_cast<unsigned>(tls_unique_len_before_transfer));
+          return false;
+        }
+      }
+    }
+
+    if (!sslTransfer.ResetSSL(config, ssl_uniqueptr)) {
+      return false;
+    }
+    ssl = ssl_uniqueptr->get();
 
     if (config->forbid_renegotiation_after_handshake) {
       SSL_set_renegotiate_mode(ssl, ssl_renegotiate_never);
@@ -1025,6 +1076,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       return false;
     }
 
+    if (tls_unique_len_before_transfer == 12 &&
+      !OPENSSL_memcmp(tls_unique, tls_unique_before_transfer, 12)) {
+      fprintf(stderr, "tls_unique_before_transfer is different from tls_unique.");
+      return false;
+    }
+
     if (WriteAll(ssl, tls_unique, tls_unique_len) < 0) {
       return false;
     }
@@ -1096,8 +1153,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
           read_size = config->read_size;
         }
         std::unique_ptr<uint8_t[]> buf(new uint8_t[read_size]);
-
-        int n = DoRead(ssl, buf.get(), read_size);
+        int n = DoRead(ssl_uniqueptr, buf.get(), read_size);
+        ssl = ssl_uniqueptr->get();
         int err = SSL_get_error(ssl, n);
         if (err == SSL_ERROR_ZERO_RETURN ||
             (n == 0 && err == SSL_ERROR_SYSCALL)) {

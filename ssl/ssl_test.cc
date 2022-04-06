@@ -39,6 +39,7 @@
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -74,19 +75,59 @@ namespace {
 struct VersionParam {
   uint16_t version;
   enum { is_tls, is_dtls } ssl_method;
-  const char name[8];
+  // This field is used to generate custom test name suffixes 
+  // based on the test parameters.
+  const char name[20];
+  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to another SSL.
+  // After transfer, the encoded SSL is freed. The decoded one is used to exchange data.
+  // This flag is to replay existing tests with the transferred SSL.
+  // If false, the tests use the original server SSL.
+  // If true, the tests are replayed with the transferred server SSL.
+  // Note: SSL transfer works only with TLS 1.2 after handshake finished.
+  bool transfer_ssl;
+};
+
+struct SSLTestParam {
+  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to another SSL.
+  // After transfer, the encoded SSL is freed. The decoded one is used to exchange data.
+  // This flag is to replay existing tests with the transferred SSL.
+  // If false, the tests use the original server SSL.
+  // If true, the tests are replayed with the transferred server SSL.
+  // Note: SSL transfer works only with TLS 1.2 after handshake finished.
+  bool transfer_ssl;
 };
 
 static const size_t kTicketKeyLen = 48;
 
+// If true, after handshake finished, the test uses the transferred SSL.
+static const bool TRANSFER_SSL = true;
+
 static const VersionParam kAllVersions[] = {
-    {TLS1_VERSION, VersionParam::is_tls, "TLS1"},
-    {TLS1_1_VERSION, VersionParam::is_tls, "TLS1_1"},
-    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2"},
-    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3"},
-    {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1"},
-    {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2"},
+    {TLS1_VERSION, VersionParam::is_tls, "TLS1", !TRANSFER_SSL},
+    {TLS1_1_VERSION, VersionParam::is_tls, "TLS1_1", !TRANSFER_SSL},
+    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2", !TRANSFER_SSL},
+    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3", !TRANSFER_SSL},
+    {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1", !TRANSFER_SSL},
+    {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2", !TRANSFER_SSL},
+    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2_SSL_TRANSFER", TRANSFER_SSL},
 };
+
+static const SSLTestParam kSSLTestParams[] = {
+    {!TRANSFER_SSL},
+    {TRANSFER_SSL},
+};
+
+class SSLTest : public testing::TestWithParam<SSLTestParam> {};
+
+INSTANTIATE_TEST_SUITE_P(SSLTests, SSLTest,
+                         testing::ValuesIn(kSSLTestParams),
+                         [](const testing::TestParamInfo<SSLTestParam> &i) {
+                           if (i.param.transfer_ssl) {
+                             return "SSL_Transfer";
+                           } else {
+                             return "NO_SSL_Transfer";
+                           }
+                         });
 
 struct ExpectedCipher {
   unsigned long id;
@@ -474,6 +515,71 @@ static bool CipherListsEqual(SSL_CTX *ctx,
   }
 
   return true;
+}
+
+// Functions used by SSL encode/decode tests.
+static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out) {
+  // Encoding SSL to bytes.
+  size_t encoded_len;
+  bssl::UniquePtr<uint8_t> encoded;
+  uint8_t *encoded_raw;
+  ASSERT_TRUE(SSL_to_bytes(in, &encoded_raw, &encoded_len));
+  ASSERT_TRUE(encoded_len)
+      << "SSL_to_bytes failed. Error code: "
+      << ERR_reason_error_string(ERR_get_error());
+  encoded.reset(encoded_raw);
+  // Decoding SSL from the bytes.
+  const uint8_t *ptr2 = encoded.get();
+  SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
+  ASSERT_TRUE(server2_)
+      << "SSL_from_bytes failed. Error code: "
+      << ERR_reason_error_string(ERR_get_error());
+  out->reset(server2_);
+}
+
+static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
+  // Fetch the bio.
+  BIO *rbio = SSL_get_rbio(from->get());
+  ASSERT_TRUE(rbio)
+      << "rbio is not set"
+      << ERR_reason_error_string(ERR_get_error());
+  BIO *wbio = SSL_get_wbio(from->get());
+  ASSERT_TRUE(wbio)
+      << "wbio is not set"
+      << ERR_reason_error_string(ERR_get_error());
+  // Move the bio.
+  // Increase ref count of |rbio|.
+  // |SSL_set_bio(to, rbio, wbio)| only increments the references of |rbio| by 1 when |rbio == wbio|.
+  // But |SSL_free| decreases the reference of |rbio| and |wbio|.
+  if (rbio == wbio) {
+    BIO_up_ref(rbio);
+  }
+  SSL_set_bio(to, rbio, wbio);
+  // TODO: test half read and write hold by SSL.
+  // TODO: add a test to check error code?
+  // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
+  SSL_free(from->release());
+}
+
+// TransferSSL performs SSL transfer by
+// 1. Encode the SSL of |in| into bytes.
+// 2. Decode the bytes into a new SSL.
+// 3. Free the SSL of |in|.
+// 4. If |out| is not nullptr, |out| will hold the decoded SSL.
+//    Else, |in| will get reset to hold the decoded SSL.
+static void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
+  bssl::UniquePtr<SSL> decoded_ssl;
+  EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl);
+  if (!decoded_ssl) {
+    return;
+  }
+  // Transfer the bio.
+  TransferBIOs(in, decoded_ssl.get());
+  if (out == nullptr) {
+    in->reset(decoded_ssl.release());
+  } else {
+    out->reset(decoded_ssl.release());
+  }
 }
 
 TEST(GrowableArrayTest, Resize) {
@@ -1498,6 +1604,8 @@ static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
 struct ClientConfig {
   SSL_SESSION *session = nullptr;
   std::string servername;
+  std::string verify_hostname;
+  unsigned hostflags = 0;
   bool early_data = false;
 };
 
@@ -1519,6 +1627,12 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   if (!config.servername.empty() &&
       !SSL_set_tlsext_host_name(client.get(), config.servername.c_str())) {
     return false;
+  }
+  if (!config.verify_hostname.empty()) {
+    if (!SSL_set1_host(client.get(), config.verify_hostname.c_str())) {
+      return false;
+    }
+    SSL_set_hostflags(client.get(), config.hostflags);
   }
 
   SSL_set_shed_handshake_config(client.get(), shed_handshake_config);
@@ -2519,9 +2633,21 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
   }
 
   bool Connect(const ClientConfig &config = ClientConfig()) {
-    return ConnectClientAndServer(&client_, &server_, client_ctx_.get(),
+    bool connected = ConnectClientAndServer(&client_, &server_, client_ctx_.get(),
                                   server_ctx_.get(), config,
                                   shed_handshake_config_);
+    if (connected) {
+      TransferServerSSL();
+    }
+    return connected;
+  }
+
+  void TransferServerSSL() {
+    if (!GetParam().transfer_ssl) {
+      return;
+    }
+    // |server_| is reset to hold the transferred SSL.
+    TransferSSL(&server_, server_ctx_.get(), nullptr);
   }
 
   uint16_t version() const { return GetParam().version; }
@@ -4601,7 +4727,7 @@ static void ConnectClientAndServerWithTicketMethod(
 }
 
 using TicketAEADMethodParam =
-    testing::tuple<uint16_t, unsigned, ssl_test_ticket_aead_failure_mode>;
+    testing::tuple<uint16_t, unsigned, ssl_test_ticket_aead_failure_mode, bool>;
 
 class TicketAEADMethodTest
     : public ::testing::TestWithParam<TicketAEADMethodParam> {};
@@ -4617,6 +4743,11 @@ TEST_P(TicketAEADMethodTest, Resume) {
   const unsigned retry_count = testing::get<1>(GetParam());
   const ssl_test_ticket_aead_failure_mode failure_mode =
       testing::get<2>(GetParam());
+  const bool transfer_ssl = testing::get<3>(GetParam());
+  if (transfer_ssl && (version == TLS1_3_VERSION)) {
+    // TODO: remove this condition when TLS1_3 is supported by SSL encode/decode.
+    return;
+  }
 
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
@@ -4635,6 +4766,11 @@ TEST_P(TicketAEADMethodTest, Resume) {
   ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
                                          server_ctx.get(), retry_count,
                                          failure_mode, nullptr);
+  // Only transfer when the code is to test SSL transfer and the connection is finished successuflly.
+  if (transfer_ssl && server) {
+    // |server| is reset to hold the transferred SSL.
+    TransferSSL(&server, server_ctx.get(), nullptr);
+  }
   switch (failure_mode) {
     case ssl_test_ticket_aead_ok:
     case ssl_test_ticket_aead_open_hard_fail:
@@ -4653,6 +4789,12 @@ TEST_P(TicketAEADMethodTest, Resume) {
   ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
                                          server_ctx.get(), retry_count,
                                          failure_mode, session.get());
+  // Do SSL transfer again.
+  // Only transfer when the code is to test SSL transfer and the connection is finished successuflly.
+  if (transfer_ssl && server) {
+    // |server| is reset to hold the transferred SSL.
+    TransferSSL(&server, server_ctx.get(), nullptr);
+  }
   switch (failure_mode) {
     case ssl_test_ticket_aead_ok:
       ASSERT_TRUE(client);
@@ -4685,7 +4827,7 @@ std::string TicketAEADMethodParamToString(
     }
   }
   char retry_count[256];
-  snprintf(retry_count, sizeof(retry_count), "%d", std::get<1>(params.param));
+  snprintf(retry_count, sizeof(retry_count), "%u", std::get<1>(params.param));
   ret += "_";
   ret += retry_count;
   ret += "Retries_";
@@ -4703,6 +4845,9 @@ std::string TicketAEADMethodParamToString(
       ret += "OpenHardFail";
       break;
   }
+  if (std::get<3>(params.param)) {
+    ret += "_SSLTransfer";
+  }
   return ret;
 }
 
@@ -4713,7 +4858,8 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(ssl_test_ticket_aead_ok,
                                      ssl_test_ticket_aead_seal_fail,
                                      ssl_test_ticket_aead_open_soft_fail,
-                                     ssl_test_ticket_aead_open_hard_fail)),
+                                     ssl_test_ticket_aead_open_hard_fail),
+                     testing::Values(TRANSFER_SSL, !TRANSFER_SSL)),
     TicketAEADMethodParamToString);
 
 TEST(SSLTest, SelectNextProto) {
@@ -4966,23 +5112,43 @@ TEST_P(SSLVersionTest, SSLPending) {
 
   ASSERT_TRUE(Connect());
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(5, SSL_write(server_.get(), "hello", 5));
   ASSERT_EQ(5, SSL_write(server_.get(), "world", 5));
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
   char buf[10];
   ASSERT_EQ(1, SSL_peek(client_.get(), buf, 1));
   EXPECT_EQ(5, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(1, SSL_read(client_.get(), buf, 1));
   EXPECT_EQ(4, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(4, SSL_read(client_.get(), buf, 10));
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  if (is_dtls()) {
+    // In DTLS, the two records would have been read as a single datagram and
+    // buffered inside |client_|. Thus, |SSL_has_pending| should return true.
+    //
+    // This test is slightly unrealistic. It relies on |ConnectClientAndServer|
+    // using a |BIO| pair, which does not preserve datagram boundaries. Reading
+    // 1 byte, then 4 bytes, from the first record also relies on
+    // https://crbug.com/boringssl/65. But it does test the codepaths. When
+    // fixing either of these bugs, this test may need to be redone.
+    EXPECT_EQ(1, SSL_has_pending(client_.get()));
+  } else {
+    // In TLS, we do not overread, so |SSL_has_pending| should report no data is
+    // buffered.
+    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+  }
 
   ASSERT_EQ(2, SSL_read(client_.get(), buf, 2));
   EXPECT_EQ(3, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
@@ -5468,6 +5634,38 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
   ASSERT_TRUE(
       SSL_apply_handoff(server.get(), {handoff, OPENSSL_ARRAY_SIZE(handoff)}));
   EXPECT_EQ(1u, server->config->supported_group_list.size());
+}
+
+TEST(SSLTest, EncodeAndDecodeKAT) {
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used to
+  // generate below bytes by adding print statement on the output of |SSL_to_bytes|
+  // in bssl_shim.cc.
+  const std::string data =
+    "308201173082011302010102020303020240003081fa020101040800000000000000010408000000"
+    "00000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb444f574e4752440104"
+    "20cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d942e99e42a604020000020100"
+    "020103040cb9b409f5129440622f87f84402010c040c1f49e2e989c66a263e9c227502010c020100"
+    "020100020100a05b3059020101020203030402cca80400043085668dcf9f0921094ebd7f91bf2a8c"
+    "60d276e4c279fd85a989402f678682324fd8098dc19d900b856d0a77e048e3ced2a104020204d2a2"
+    "0402021c20a4020400b1030101ffb20302011da206040474657374a7030101ff020108020100a003"
+    "0101ff";
+
+  std::vector<uint8_t> bytes;
+  ASSERT_TRUE(DecodeHex(&bytes, data));
+
+  // Check the bytes are decoded successfully.
+  bssl::UniquePtr<SSL> ssl(SSL_from_bytes(bytes.data(), bytes.size(), server_ctx.get()));
+  ASSERT_TRUE(ssl);
+  // Check the ssl can be encoded successfully.
+  size_t encoded_len;
+  uint8_t *encoded;
+  ASSERT_TRUE(SSL_to_bytes(ssl.get(), &encoded, &encoded_len));
+  bssl::UniquePtr<uint8_t> encoded_ptr;
+  encoded_ptr.reset(encoded);
+  // Check the encoded bytes are the same as the test input.
+  ASSERT_EQ(bytes.size(), encoded_len);
+  ASSERT_EQ(memcmp(bytes.data(), encoded, encoded_len), 0);
 }
 
 TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {
@@ -7369,7 +7567,7 @@ TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
   EXPECT_EQ(Bytes(SessionIDOf(client.get())), Bytes(SessionIDOf(server.get())));
 }
 
-TEST(SSLTest, WriteWhileExplicitRenegotiate) {
+TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(ctx);
 
@@ -7382,6 +7580,11 @@ TEST(SSLTest, WriteWhileExplicitRenegotiate) {
   ASSERT_TRUE(CreateClientAndServer(&client, &server, ctx.get(), ctx.get()));
   SSL_set_renegotiate_mode(client.get(), ssl_renegotiate_explicit);
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  if (GetParam().transfer_ssl) {
+    // |server| is reset to hold the transferred SSL.
+    TransferSSL(&server, ctx.get(), nullptr);
+  }
 
   static const uint8_t kInput[] = {'h', 'e', 'l', 'l', 'o'};
 
@@ -7979,6 +8182,108 @@ TEST(SSLTest, PermuteExtensions) {
       }
       EXPECT_TRUE(passed) << "Extensions were not permuted";
     }
+  }
+}
+
+TEST(SSLTest, HostMatching) {
+  static const char kCertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB9jCCAZ2gAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjApMRAw
+DgYDVQQKEwdBY21lIENvMRUwEwYDVQQDEwxleGFtcGxlMy5jb20wHhcNMjExMjA2
+MjA1NjU2WhcNMjIxMjA2MjA1NjU2WjApMRAwDgYDVQQKEwdBY21lIENvMRUwEwYD
+VQQDEwxleGFtcGxlMy5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS7l2VO
+Bl2TjVm9WfGk24+hMbVFUNB+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaW
+ULDDaoeDl1M0t4Hmo4GmMIGjMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggr
+BgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTTJWurcc1t+VPQBko3
+Gsw6cbcWSTBMBgNVHREERTBDggxleGFtcGxlMS5jb22CDGV4YW1wbGUyLmNvbYIP
+YSouZXhhbXBsZTQuY29tgg4qLmV4YW1wbGU1LmNvbYcEAQIDBDAKBggqhkjOPQQD
+AgNHADBEAiAAv0ljHJGrgyzZDkG6XvNZ5ewxRfnXcZuD0Y7E4giCZgIgNK1qjilu
+5DyVbfKeeJhOCtGxqE1dWLXyJBnoRomSYBY=
+-----END CERTIFICATE-----
+)";
+  bssl::UniquePtr<X509> cert(CertFromPEM(kCertPEM));
+  ASSERT_TRUE(cert);
+  static const char kCertNoSANsPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBqzCCAVGgAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjArMRIw
+EAYDVQQKEwlBY21lIENvIDIxFTATBgNVBAMTDGV4YW1wbGUzLmNvbTAeFw0yMTEy
+MDYyMDU2NTZaFw0yMjEyMDYyMDU2NTZaMCsxEjAQBgNVBAoTCUFjbWUgQ28gMjEV
+MBMGA1UEAxMMZXhhbXBsZTMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+u5dlTgZdk41ZvVnxpNuPoTG1RVDQfkVR1mwrxbzWQKFoiCds9+ESxiJ8mbwmfMSw
+L7LmllCww2qHg5dTNLeB5qNXMFUwDgYDVR0PAQH/BAQDAgKEMBMGA1UdJQQMMAoG
+CCsGAQUFBwMBMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFNMla6txzW35U9AG
+SjcazDpxtxZJMAoGCCqGSM49BAMCA0gAMEUCIG3YWGWtpVhbcGV7wFKQwTfmvwHW
+pw4qCFZlool4hCwsAiEA+2fc6NfSbNpFEtQkDOMJW2ANiScAVEmImNqPfb2klz4=
+-----END CERTIFICATE-----
+)";
+  bssl::UniquePtr<X509> cert_no_sans(CertFromPEM(kCertNoSANsPEM));
+  ASSERT_TRUE(cert_no_sans);
+
+  static const char kKeyPEM[] = R"(
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghsaSZhUzZAcQlLyJ
+MDuy7WPdyqNsAX9rmEP650LF/q2hRANCAAS7l2VOBl2TjVm9WfGk24+hMbVFUNB+
+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaWULDDaoeDl1M0t4Hm
+-----END PRIVATE KEY-----
+)";
+  bssl::UniquePtr<EVP_PKEY> key(KeyFromPEM(kKeyPEM));
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx.get()),
+                                  cert.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx.get()),
+                                  cert_no_sans.get()));
+  SSL_CTX_set_verify(client_ctx.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+
+  struct TestCase {
+    X509 *cert;
+    std::string hostname;
+    unsigned flags;
+    bool should_match;
+  };
+  std::vector<TestCase> kTests = {
+      // These two names are present as SANs in the certificate.
+      {cert.get(), "example1.com", 0, true},
+      {cert.get(), "example2.com", 0, true},
+      // This is the CN of the certificate, but that shouldn't matter if a SAN
+      // extension is present.
+      {cert.get(), "example3.com", 0, false},
+      // If the SAN is not present, we, for now, look for DNS names in the CN.
+      {cert_no_sans.get(), "example3.com", 0, true},
+      // ... but this can be turned off.
+      {cert_no_sans.get(), "example3.com", X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
+       false},
+      // a*.example4.com is a SAN, but is invalid.
+      {cert.get(), "abc.example4.com", 0, false},
+      // *.example5.com is a SAN in the certificate, which is a normal and valid
+      // wildcard.
+      {cert.get(), "abc.example5.com", 0, true},
+      // This name is not present.
+      {cert.get(), "notexample1.com", 0, false},
+      // The IPv4 address 1.2.3.4 is a SAN, but that shouldn't match against a
+      // hostname that happens to be its textual representation.
+      {cert.get(), "1.2.3.4", 0, false},
+  };
+
+  for (const TestCase &test : kTests) {
+    SCOPED_TRACE(test.hostname);
+
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), test.cert));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+    ClientConfig config;
+    bssl::UniquePtr<SSL> client, server;
+    config.verify_hostname = test.hostname;
+    config.hostflags = test.flags;
+    EXPECT_EQ(test.should_match,
+              ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), config));
   }
 }
 

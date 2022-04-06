@@ -127,3 +127,5 @@ If you discover a potential security issue in AWS-LC, we ask that you notify AWS
 Security via our
 [vulnerability reporting page](https://aws.amazon.com/security/vulnerability-reporting/).
 Please do **not** create a public GitHub issue.
+
+If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.

@@ -654,10 +654,18 @@ int BIO_meth_set_create(BIO_METHOD *method,
   return 1;
 }
 
+int (*BIO_meth_get_create(const BIO_METHOD *method)) (BIO *) {
+  return method->create;
+}
+
 int BIO_meth_set_destroy(BIO_METHOD *method,
                          int (*destroy)(BIO *)) {
   method->destroy = destroy;
   return 1;
+}
+
+int (*BIO_meth_get_destroy(const BIO_METHOD *method)) (BIO *) {
+  return method->destroy;
 }
 
 int BIO_meth_set_write(BIO_METHOD *method,
@@ -678,10 +686,28 @@ int BIO_meth_set_gets(BIO_METHOD *method,
   return 1;
 }
 
+int (*BIO_meth_get_gets(const BIO_METHOD *method)) (BIO *, char *, int) {
+  return method->bgets;
+}
+
 int BIO_meth_set_ctrl(BIO_METHOD *method,
                       long (*ctrl)(BIO *, int, long, void *)) {
   method->ctrl = ctrl;
   return 1;
+}
+
+long (*BIO_meth_get_ctrl(const BIO_METHOD *method)) (BIO *, int, long, void *) {
+  return method->ctrl;
+}
+
+int BIO_meth_set_callback_ctrl(BIO_METHOD *method,
+                               long (*callback_ctrl)(BIO *, int, bio_info_cb)) {
+  method->callback_ctrl = callback_ctrl;
+  return 1;
+}
+
+long (*BIO_meth_get_callback_ctrl(const BIO_METHOD *method)) (BIO *, int, bio_info_cb) {
+  return method->callback_ctrl;
 }
 
 void BIO_set_data(BIO *bio, void *ptr) { bio->ptr = ptr; }
@@ -699,4 +725,8 @@ int BIO_get_shutdown(BIO *bio) { return bio->shutdown; }
 int BIO_meth_set_puts(BIO_METHOD *method, int (*puts)(BIO *, const char *)) {
   // Ignore the parameter. We implement |BIO_puts| using |BIO_write|.
   return 1;
+}
+
+int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *) {
+  return method->bputs;
 }

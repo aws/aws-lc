@@ -111,9 +111,12 @@
 #
 # Modified from upstream OpenSSL to remove the XOP code.
 
+# The first two arguments should always be the flavour and output file path.
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
 $flavour = shift;
 $output  = shift;
-if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
 
 $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
@@ -129,8 +132,9 @@ die "can't locate x86_64-xlate.pl";
 # TODO(davidben): Enable AVX2 code after testing by setting $avx to 2. Is it
 # necessary to disable AVX2 code when SHA Extensions code is disabled? Upstream
 # did not tie them together until after $shaext was added.
-$avx = 1;
 $shaext=1;	### set to zero if compiling for 1.0.1
+$avx = 1;
+for (@ARGV) { $avx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;

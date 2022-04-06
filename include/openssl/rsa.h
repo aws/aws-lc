@@ -357,6 +357,13 @@ OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
 //
 // It returns one if the signature is valid and zero otherwise.
 //
+// We distinguish between a "mismatched" signature error and "bad" signature
+// error because of JCA expectations. Specifically:
+// * Error |RSA_R_BAD_SIGNATURE| is set if extra information is included beyond
+//   the signature as forbidden by FIPS 186-4 section 5.5 item (f).
+// * Error |RSA_R_MISMATCHED_SIGNATURE| is set if step (4) of RFC-8017
+//   section 8.2.2 detects a difference in the two encoded messages.
+//
 // WARNING: this differs from the original, OpenSSL function which additionally
 // returned -1 on error.
 //
@@ -617,6 +624,9 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 // constants.
 OPENSSL_EXPORT int RSA_flags(const RSA *rsa);
 
+// RSA_test_flags returns the subset of flags in |flags| which are set in |rsa|.
+OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);
+
 // RSA_blinding_on returns one.
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
 
@@ -856,5 +866,6 @@ BSSL_NAMESPACE_END
 #define RSA_R_PUBLIC_KEY_VALIDATION_FAILED 146
 #define RSA_R_D_OUT_OF_RANGE 147
 #define RSA_R_BLOCK_TYPE_IS_NOT_02 148
+#define RSA_R_MISMATCHED_SIGNATURE 248
 
 #endif  // OPENSSL_HEADER_RSA_H

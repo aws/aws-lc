@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && defined(__linux__)
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
+    defined(__linux__) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>

@@ -7,16 +7,20 @@
 # the same as the source code.
 
 set(JITTER_SOURCES
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
 
 include_directories(../../include)
 
-set(JITTER_COMPILE_FLAGS "-DAWSLC_FIPS -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -fPIC -O0 -fwrapv -Wconversion")
+if(MSVC)
+    set(JITTER_COMPILE_FLAGS "/Od /W4 /DYNAMICBASE /DAWSLC")
+else()
+    set(JITTER_COMPILE_FLAGS "-DAWSLC -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -fPIC -O0 -fwrapv -Wconversion")
+endif()
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS ${JITTER_COMPILE_FLAGS})
 add_library(jitterentropy STATIC ${JITTER_SOURCES})
 

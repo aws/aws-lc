@@ -201,7 +201,7 @@ OPENSSL_EXPORT int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
 //
 // WARNING: it is unsafe to call this function with unauthenticated
 // ciphertext if padding is enabled.
-OPENSSL_EXPORT int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out,
+OPENSSL_EXPORT int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                        int *out_len);
 
 // EVP_Cipher performs a one-shot encryption/decryption operation. No partial
@@ -407,6 +407,18 @@ OPENSSL_EXPORT int EVP_EncryptInit(EVP_CIPHER_CTX *ctx,
 OPENSSL_EXPORT int EVP_DecryptInit(EVP_CIPHER_CTX *ctx,
                                    const EVP_CIPHER *cipher, const uint8_t *key,
                                    const uint8_t *iv);
+
+// EVP_CipherFinal calls |EVP_CipherFinal_ex|.
+OPENSSL_EXPORT int EVP_CipherFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                   int *out_len);
+
+// EVP_EncryptFinal calls |EVP_EncryptFinal_ex|.
+OPENSSL_EXPORT int EVP_EncryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                    int *out_len);
+
+// EVP_DecryptFinal calls |EVP_DecryptFinal_ex|.
+OPENSSL_EXPORT int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                    int *out_len);
 
 // EVP_add_cipher_alias does nothing and returns one.
 OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
@@ -631,6 +643,7 @@ BSSL_NAMESPACE_END
 
 #endif
 
+
 #define CIPHER_R_AES_KEY_SETUP_FAILED 100
 #define CIPHER_R_BAD_DECRYPT 101
 #define CIPHER_R_BAD_KEY_LENGTH 102
@@ -657,5 +670,7 @@ BSSL_NAMESPACE_END
 #define CIPHER_R_WRONG_FINAL_BLOCK_LENGTH 123
 #define CIPHER_R_NO_DIRECTION_SET 124
 #define CIPHER_R_INVALID_NONCE 125
+#define CIPHER_R_XTS_DUPLICATED_KEYS 138
+#define CIPHER_R_XTS_DATA_UNIT_IS_TOO_LARGE 139
 
 #endif  // OPENSSL_HEADER_CIPHER_H

@@ -18,6 +18,7 @@ import (
 	"crypto/elliptic"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"os"
 )
@@ -35,6 +36,11 @@ func main() {
 
 	if err := writeP384Table("p384_table.h"); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing p384_table.h: %s\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeP521Table("p521_table.h"); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing p521_table.h: %s\n", err)
 		os.Exit(1)
 	}
 }
@@ -81,7 +87,7 @@ static const alignas(4096) PRECOMP256_ROW ecp_nistz256_precomputed[37] = `
 	if _, err := f.WriteString(fileHeader); err != nil {
 		return err
 	}
-	if err := writeTables(f, curve, tables, true, 4, writeBNMont); err != nil {
+	if err := writeTables(f, curve, tables, true, 4, writeBNMont, nil); err != nil {
 		return err
 	}
 	if _, err := f.WriteString(";\n"); err != nil {
@@ -161,13 +167,13 @@ static const fiat_p256_felem fiat_p256_g_pre_comp[2][15][2] = `
 	if _, err := f.WriteString(fileHeader); err != nil {
 		return err
 	}
-	if err := writeTables(f, curve, tables, true, 4, writeU64Mont); err != nil {
+	if err := writeTables(f, curve, tables, true, 4, writeU64Mont, nil); err != nil {
 		return err
 	}
 	if _, err := f.WriteString(";\n#else\nstatic const fiat_p256_felem fiat_p256_g_pre_comp[2][15][2] = "); err != nil {
 		return err
 	}
-	if err := writeTables(f, curve, tables, true, 4, writeU32Mont); err != nil {
+	if err := writeTables(f, curve, tables, true, 4, writeU32Mont, nil); err != nil {
 		return err
 	}
 	if _, err := f.WriteString(";\n#endif\n"); err != nil {
@@ -178,10 +184,15 @@ static const fiat_p256_felem fiat_p256_g_pre_comp[2][15][2] = `
 }
 
 func writeP384Table(path string) error {
+
+	win_size := 5 // window size for the comb multiplication
+	pts_per_subtable := (1 << win_size) >> 1 // we keep only the odd multiples
+	num_subtables := int(math.Ceil(float64(384) / float64(win_size * 4))) // we use comb mul with step 4
+
 	curve := elliptic.P384()
-	tables := make([][][2]*big.Int, 0, 14)
-	for i := 0; i < 14; i += 1 {
-		row := makeOddMultiples(curve, 64, i*28)
+	tables := make([][][2]*big.Int, 0, num_subtables)
+	for i := 0; i < num_subtables; i += 1 {
+		row := makeOddMultiples(curve, pts_per_subtable, i*win_size*4)
 		tables = append(tables, row)
 	}
 
@@ -203,35 +214,35 @@ func writeP384Table(path string) error {
 // P-384 base point pre computation
 // --------------------------------
 //
-// The precomputed table for the base point G of P-384, fiat_p384_g_pre_comp,
-// consists of 14 sub-tables, each holding 64 points. A point is represented
-// by a pair of field elements (x, y).
+// Based on windows size equal to 5, the precomputed table for the base point G
+// of P-384, |p384_g_pre_comp|, consists of 20 sub-tables, each holding 16
+// points. A point is represented by a pair of field elements (x, y).
 //
 // The j-th point of the i-th sub-table is:
-//     fiat_p384_g_pre_comp[i][j] = [(2j + 1)2^{20i}]G.
-// The table is populated with such points for i in [0, 13] and j in [0, 63];
+//     p384_g_pre_comp[i][j] = [(2j + 1)2^{20i}]G.
+// The table is populated with such points for i in [0, 19] and j in [0, 15];
 // and used in mul_base and mul_public functions in |p384.c| for computing
 // a scalar product with the Comb method (see the functions for details).
 //
 // The table and its usage in scalar multiplications are adapted from
 // ECCKiila project (https://arxiv.org/abs/2007.11481). The table generation
-// is based on the generation method in
-// https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L276,
-// with the difference that we use a window size of 7 instead of 5.
-// The windows size is chosen based on analysis analogous to the one in
-// |ec_GFp_nistp_recode_scalar_bits| function in |util.c| file.
-#if defined(BORINGSSL_NISTP384_64BIT)
-static const fiat_p384_felem fiat_p384_g_pre_comp[14][64][2] = `
-	if _, err := f.WriteString(fileHeader); err != nil {
+// is based on the generation method in:
+// https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
+
+#if defined(P384_USE_64BIT_LIMBS_FELEM)`
+
+	table_def_str := fmt.Sprintf("static const p384_felem p384_g_pre_comp[%d][%d][2] = ", num_subtables, pts_per_subtable)
+
+	if _, err := f.WriteString(fileHeader + "\n" + table_def_str); err != nil {
 		return err
 	}
-	if err := writeTables(f, curve, tables, true, 4, writeU64Mont); err != nil {
+	if err := writeTables(f, curve, tables, true, 4, writeU64Mont, nil); err != nil {
 		return err
 	}
-	if _, err := f.WriteString(";\n#else\nstatic const fiat_p384_felem fiat_p384_g_pre_comp[14][64][2] = "); err != nil {
+	if _, err := f.WriteString(";\n#else\n" + table_def_str); err != nil {
 		return err
 	}
-	if err := writeTables(f, curve, tables, true, 4, writeU32Mont); err != nil {
+	if err := writeTables(f, curve, tables, true, 4, writeU32Mont, nil); err != nil {
 		return err
 	}
 	if _, err := f.WriteString(";\n#endif\n"); err != nil {
@@ -241,6 +252,85 @@ static const fiat_p384_felem fiat_p384_g_pre_comp[14][64][2] = `
 	return nil
 }
 
+func writeP521Table(path string) error {
+
+	win_size := 5 // window size for the comb multiplication
+	pts_per_subtable := (1 << win_size) >> 1 // we keep only the odd multiples
+	num_subtables := int(math.Ceil(float64(521) / float64(win_size * 4))) // we use comb mul with step 4
+
+	curve := elliptic.P521()
+	tables := make([][][2]*big.Int, 0, num_subtables)
+	for i := 0; i < num_subtables; i += 1 {
+		row := makeOddMultiples(curve, pts_per_subtable, i*win_size*4)
+		tables = append(tables, row)
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	const fileHeader = `/*
+------------------------------------------------------------------------------------
+ Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ SPDX-License-Identifier: Apache-2.0
+------------------------------------------------------------------------------------
+*/
+
+// This file is generated by make_tables.go.
+
+// P-521 base point pre computation
+// --------------------------------
+//
+// Based on windows size equal to 5, the precomputed table for the base point G
+// of P-521, |p521_g_pre_comp|, consists of 27 sub-tables, each holding 16
+// points. A point is represented by a pair of field elements (x, y).
+//
+// The j-th point of the i-th sub-table is:
+//     p521_g_pre_comp[i][j] = [(2j + 1)2^{20i}]G.
+// The table is populated with such points for i in [0, 26] and j in [0, 15];
+// and used in mul_base and mul_public functions in |p521.c| for computing
+// a scalar product with the Comb method (see the functions for details).
+//
+// The table and its usage in scalar multiplications are adapted from
+// ECCKiila project (https://arxiv.org/abs/2007.11481). The table generation
+// is based on the generation method in:
+// https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
+
+#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)`
+
+	table_def_str := fmt.Sprintf("static const p521_felem p521_g_pre_comp[%d][%d][2] = ", num_subtables, pts_per_subtable)
+
+	if _, err := f.WriteString(fileHeader + "\n" + table_def_str); err != nil {
+		return err
+	}
+	if err := writeTables(f, curve, tables, true, 4, writeU64, nil); err != nil {
+		return err
+	}
+	if _, err := f.WriteString(";\n#else\n#if defined(P521_USE_64BIT_LIMBS_FELEM)\n" + table_def_str); err != nil {
+		return err
+	}
+	// P-521 Fiat-crypto implementation for 64-bit systems represents a field
+	// element by an array of 58-bit digits stored in 64-bit containers.
+	if err := writeTables(f, curve, tables, true, 4, writeU58, nil); err != nil {
+		return err
+	}
+	if _, err := f.WriteString(";\n#else\n" + table_def_str); err != nil {
+		return err
+	}
+	// P-521 Fiat-crypto implementation for 32-bit systems represents a field
+	// element by an array of digits where digits have bit-size as listed below.
+	var bitSizes = [...]uint {28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 27}
+	if err := writeTables(f, curve, tables, true, 4, writeU32Custom, bitSizes[:]); err != nil {
+		return err
+	}
+	if _, err := f.WriteString(";\n#endif\n#endif\n"); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // makeMultiples returns a table of the first n multiples of 2^shift * G,
 // starting from 1 * 2^shift * G.
@@ -278,8 +368,8 @@ func makeOddMultiples(curve elliptic.Curve, n, shift int) [][2]*big.Int {
 	x2, y2 := curve.Double(x, y)
 
 	for i := 1; i < n; i++ {
-	  x, y := curve.Add(ret[i-1][0], ret[i-1][1], x2, y2)
-	  ret[i] =[2]*big.Int{x, y}
+		x, y := curve.Add(ret[i-1][0], ret[i-1][1], x2, y2)
+		ret[i] =[2]*big.Int{x, y}
 	}
 
 	return ret
@@ -341,6 +431,35 @@ func bigIntToU64s(curve elliptic.Curve, n *big.Int) []uint64 {
 	return ret
 }
 
+// Convert big int to an array of 58-bit digits.
+// This is needed for P-521 Fiat-crypto implementation in third_party/fiat/p521_64.h.
+func bigIntToU58s(curve elliptic.Curve, n *big.Int) []uint64 {
+	words := (curve.Params().BitSize + 57) / 58
+	ret := make([]uint64, words)
+	mask := big.NewInt((1 << 58) - 1)
+	tmp := new(big.Int).Set(n)
+	for i := 0; i < words; i++ {
+		ret[i] = new(big.Int).And(tmp, mask).Uint64()
+		tmp.Rsh(tmp, 58)
+	}
+	return ret
+}
+
+// Convert big int to an array of digits where each digit
+// has bit-size as specified in the input bitSizes array
+// This is needed for P-521 Fiat-crypto implementation in third_party/fiat/p521_32.h.
+func bigIntToUCustom(curve elliptic.Curve, n *big.Int, bitSizes []uint) []uint64 {
+	words := len(bitSizes)
+	ret := make([]uint64, words)
+	tmp := new(big.Int).Set(n)
+	for i, bits := range bitSizes {
+		mask := big.NewInt((1 << bits) - 1)
+		ret[i] = new(big.Int).And(tmp, mask).Uint64()
+		tmp.Rsh(tmp, bits)
+	}
+	return ret
+}
+
 func bigIntToU32s(curve elliptic.Curve, n *big.Int) []uint64 {
 	words := (curve.Params().BitSize + 31) / 32
 	ret := make([]uint64, words)
@@ -390,21 +509,21 @@ func writeWords(w io.Writer, words []uint64, wrap, indent int, format func(uint6
 	return nil
 }
 
-func writeBNMont(w io.Writer, curve elliptic.Curve, n *big.Int, indent int) error {
+func writeBNMont(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error {
 	n = toMontgomery(curve, n)
 	return writeWords(w, bigIntToU64s(curve, n), 2, indent, func(word uint64) string {
 		return fmt.Sprintf("TOBN(0x%08x, 0x%08x)", uint32(word>>32), uint32(word))
 	})
 }
 
-func writeU64Mont(w io.Writer, curve elliptic.Curve, n *big.Int, indent int) error {
+func writeU64Mont(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error {
 	n = toMontgomery(curve, n)
 	return writeWords(w, bigIntToU64s(curve, n), 3, indent, func(word uint64) string {
 		return fmt.Sprintf("0x%016x", word)
 	})
 }
 
-func writeU32Mont(w io.Writer, curve elliptic.Curve, n *big.Int, indent int) error {
+func writeU32Mont(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error {
 	n = toMontgomery(curve, n)
 	return writeWords(w, bigIntToU32s(curve, n), 6, indent, func(word uint64) string {
 		if word >= 1<<32 {
@@ -414,9 +533,40 @@ func writeU32Mont(w io.Writer, curve elliptic.Curve, n *big.Int, indent int) err
 	})
 }
 
-type writeBigIntFunc func(w io.Writer, curve elliptic.Curve, n *big.Int, indent int) error
+func writeU64(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error {
+	return writeWords(w, bigIntToU64s(curve, n), 3, indent, func(word uint64) string {
+		return fmt.Sprintf("0x%016x", word)
+	})
+}
 
-func writeTable(w io.Writer, curve elliptic.Curve, table [][2]*big.Int, isRoot bool, indent int, writeBigInt writeBigIntFunc) error {
+// This is needed for P-521 Fiat-crypto implementation.
+func writeU58(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error {
+	return writeWords(w, bigIntToU58s(curve, n), 3, indent, func(word uint64) string {
+		return fmt.Sprintf("0x%016x", word)
+	})
+}
+
+// Write a big int to an array of digits where each digit
+// has bit-size as specified in the input bitSizes array
+// This is needed for P-521 Fiat-crypto implementation.
+func writeU32Custom(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error {
+	return writeWords(w, bigIntToUCustom(curve, n, bitSizes), 3, indent, func(word uint64) string {
+		return fmt.Sprintf("0x%08x", word)
+	})
+}
+
+func writeU32(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error {
+	return writeWords(w, bigIntToU32s(curve, n), 6, indent, func(word uint64) string {
+		if word >= 1<<32 {
+			panic(fmt.Sprintf("word too large: 0x%x", word))
+		}
+		return fmt.Sprintf("0x%08x", word)
+	})
+}
+
+type writeBigIntFunc func(w io.Writer, curve elliptic.Curve, n *big.Int, indent int, bitSizes []uint) error
+
+func writeTable(w io.Writer, curve elliptic.Curve, table [][2]*big.Int, isRoot bool, indent int, writeBigInt writeBigIntFunc, writeBigIntBitSizes []uint) error {
 	if _, err := io.WriteString(w, "{"); err != nil {
 		return err
 	}
@@ -442,7 +592,7 @@ func writeTable(w io.Writer, curve elliptic.Curve, table [][2]*big.Int, isRoot b
 		if _, err := io.WriteString(w, "{"); err != nil {
 			return err
 		}
-		if err := writeBigInt(w, curve, point[0], indent+1); err != nil {
+		if err := writeBigInt(w, curve, point[0], indent+1, writeBigIntBitSizes); err != nil {
 			return err
 		}
 		if _, err := io.WriteString(w, ",\n"); err != nil {
@@ -451,7 +601,7 @@ func writeTable(w io.Writer, curve elliptic.Curve, table [][2]*big.Int, isRoot b
 		if err := writeIndent(w, indent+1); err != nil {
 			return err
 		}
-		if err := writeBigInt(w, curve, point[1], indent+1); err != nil {
+		if err := writeBigInt(w, curve, point[1], indent+1, writeBigIntBitSizes); err != nil {
 			return err
 		}
 		if _, err := io.WriteString(w, "}"); err != nil {
@@ -464,7 +614,7 @@ func writeTable(w io.Writer, curve elliptic.Curve, table [][2]*big.Int, isRoot b
 	return nil
 }
 
-func writeTables(w io.Writer, curve elliptic.Curve, tables [][][2]*big.Int, isRoot bool, indent int, writeBigInt writeBigIntFunc) error {
+func writeTables(w io.Writer, curve elliptic.Curve, tables [][][2]*big.Int, isRoot bool, indent int, writeBigInt writeBigIntFunc, writeBigIntBitSizes []uint) error {
 	if _, err := io.WriteString(w, "{"); err != nil {
 		return err
 	}
@@ -487,7 +637,7 @@ func writeTables(w io.Writer, curve elliptic.Curve, tables [][][2]*big.Int, isRo
 				return err
 			}
 		}
-		if err := writeTable(w, curve, table, false, indent, writeBigInt); err != nil {
+		if err := writeTable(w, curve, table, false, indent, writeBigInt, writeBigIntBitSizes); err != nil {
 			return err
 		}
 	}
@@ -496,3 +646,4 @@ func writeTables(w io.Writer, curve elliptic.Curve, tables [][][2]*big.Int, isRo
 	}
 	return nil
 }
+
