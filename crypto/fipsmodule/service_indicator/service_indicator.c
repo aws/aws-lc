@@ -23,7 +23,6 @@ int is_fips_build(void) {
 // for approved services irrespective of whether the user queries it or not.
 // Hence, it is lazily initialized in any call to an approved service.
 static struct fips_service_indicator_state * FIPS_service_indicator_get(void) {
-
   struct fips_service_indicator_state *indicator =
     CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
 
@@ -48,7 +47,6 @@ static struct fips_service_indicator_state * FIPS_service_indicator_get(void) {
 }
 
 static uint64_t FIPS_service_indicator_get_counter(void) {
-
   struct fips_service_indicator_state *indicator = FIPS_service_indicator_get();
   if (indicator == NULL) {
     return 0;
@@ -65,36 +63,29 @@ uint64_t FIPS_service_indicator_after_call(void) {
 }
 
 int FIPS_service_indicator_check_approved(uint64_t before, uint64_t after) {
-
-  if (before < after) {
+  if (before != after) {
     return AWSLC_APPROVED;
   }
   return AWSLC_NOT_APPROVED;
 }
 
-// |FIPS_service_indicator_update_state|, |FIPS_service_indicator_lock_state|
-// and |FIPS_service_indicator_unlock_state| should not under/overflow in normal
-// operation. They are still checked and errors added to facilitate testing in
-// service_indicator_test.cc This should only happen if lock/unlock are called
-// in an incorrect order or multiple times in the same function.
 void FIPS_service_indicator_update_state(void) {
-
   struct fips_service_indicator_state *indicator = FIPS_service_indicator_get();
   if (indicator == NULL) {
     return;
   }
 
   if (indicator->lock_state == STATE_UNLOCKED) {
-    if (indicator->counter + 1 > indicator->counter) {
-      indicator->counter++;
-    } else {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
-    }
+    indicator->counter++;
   }
 }
 
+// |FIPS_service_indicator_lock_state| and |FIPS_service_indicator_unlock_state|
+// should not under/overflow in normal operation. They are still checked and
+// errors added to facilitate testing in service_indicator_test.cc This should
+// only happen if lock/unlock are called in an incorrect order or multiple times
+// in the same function.
 void FIPS_service_indicator_lock_state(void) {
-
   struct fips_service_indicator_state *indicator = FIPS_service_indicator_get();
   if (indicator == NULL) {
     return;
@@ -123,7 +114,6 @@ void FIPS_service_indicator_unlock_state(void) {
 
 void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx,
                                   const unsigned key_rounds) {
-
   if (ctx != NULL) {
     switch(EVP_CIPHER_CTX_nid(ctx)) {
       case NID_aes_128_ecb:
@@ -163,7 +153,6 @@ void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx,
 }
 
 void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
-
   // We only have support for 128 bit and 256 bit keys for AES-GCM. AES-GCM is
   // approved only with an internal IV, see SP 800-38D Sec 8.2.2.
   // Note: |EVP_AEAD_key_length| returns the length in bytes.
@@ -174,7 +163,6 @@ void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
 }
 
 void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
-
   // Only 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
   // Note: |EVP_AEAD_key_length| returns the length in bytes.
   if (EVP_AEAD_key_length(ctx->aead) == 16 && ctx->tag_len == 4) {
@@ -183,7 +171,6 @@ void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
 }
 
 void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx) {
-
   // Only 128 and 256 bit keys are approved for AES-CMAC.
   // Note: |key_len| is the length in bytes.
   size_t key_len = ctx->cipher_ctx.key_len;
@@ -193,7 +180,6 @@ void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx) {
 }
 
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
-
   // HMAC with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   switch (evp_md->type){
     case NID_sha1:
@@ -211,7 +197,6 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
 // Returns 1 if the curve corresponding to the given NID is FIPS approved, and
 // 0 otherwise. Only P-224, P-256, P-384, and P-521 curves are FIPS approved.
 static int is_ec_fips_approved(int curve_nid) {
-
   switch (curve_nid) {
     case NID_secp224r1:
     case NID_X9_62_prime256v1:
@@ -226,7 +211,6 @@ static int is_ec_fips_approved(int curve_nid) {
 // Updates the service indicator if the elliptic curve contained in |eckey|
 // is FIPS approved, otherwise does nothing.
 void EC_KEY_keygen_verify_service_indicator(EC_KEY *eckey) {
-
   int curve_nid = EC_GROUP_get_curve_name(eckey->group);
   if (is_ec_fips_approved(curve_nid)) {
     FIPS_service_indicator_update_state();
@@ -234,9 +218,7 @@ void EC_KEY_keygen_verify_service_indicator(EC_KEY *eckey) {
 }
 
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
-
   if (pkey->type == EVP_PKEY_RSA || pkey->type== EVP_PKEY_RSA_PSS) {
-
     // 2048, 3072 and 4096 bit keys are approved for RSA key generation.
     // EVP_PKEY_size returns the size of the key in bytes.
     // Note: |EVP_PKEY_size| returns the length in bytes.
@@ -250,9 +232,7 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
       default:
         break;
     }
-
   } else if (pkey->type == EVP_PKEY_EC) {
-
     // Note: even though the function is called |EC_GROUP_get_curve_name|
     // it actually returns the NID of the curve rather than the name.
     int curve_nid = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
@@ -265,7 +245,6 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
 // Returns 1 if the given message digest type is FIPS approved for signing, and
 // 0 otherwise. Only SHA2-224, SHA2-256, SHA2-384, and SHA2-512 are approved.
 static int is_md_fips_approved_for_signing(int md_type) {
-
   switch (md_type) {
     case NID_sha224:
     case NID_sha256:
@@ -278,11 +257,9 @@ static int is_md_fips_approved_for_signing(int md_type) {
 }
 
 void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
-
   int pkey_type = ctx->pctx->pmeth->pkey_id;
 
   if (pkey_type == EVP_PKEY_RSA || pkey_type == EVP_PKEY_RSA_PSS) {
-
     // Message digest used in the private key should be of the same type
     // as the given one, so we extract the MD type from the private key
     // and compare it with the type in |ctx|.
@@ -306,9 +283,7 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
 
       FIPS_service_indicator_update_state();
     }
-
   } else if (pkey_type == EVP_PKEY_EC) {
-
     int md_type = EVP_MD_CTX_type(ctx);
     // Note: even though the function is called |EC_GROUP_get_curve_name|
     // it actually returns the NID of the curve rather than the name.
@@ -326,7 +301,6 @@ void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
 // and 0 otherwise. Only SHA1, SHA2-224, SHA2-256, SHA2-384, and SHA2-512
 // are approved.
 static int is_md_fips_approved_for_verifying(int md_type) {
-
   switch (md_type) {
     case NID_sha1:
     case NID_sha224:
@@ -340,11 +314,9 @@ static int is_md_fips_approved_for_verifying(int md_type) {
 }
 
 void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
-
   int pkey_type = ctx->pctx->pmeth->pkey_id;
 
   if (pkey_type == EVP_PKEY_RSA || pkey_type == EVP_PKEY_RSA_PSS) {
-
     // Message digest used in the private key should be of the same type
     // as the given one, so we extract the MD type from the private key
     // and compare it with the type in |ctx|.
@@ -369,9 +341,7 @@ void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
 
       FIPS_service_indicator_update_state();
     }
-
   } else if (pkey_type == EVP_PKEY_EC) {
-
     int md_type = EVP_MD_CTX_type(ctx);
     // Note: even though the function is called |EC_GROUP_get_curve_name|
     // it actually returns the NID of the curve rather than the name.
@@ -386,8 +356,8 @@ void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
 }
 
 void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
-
   int curve_nid = ec_key->group->curve_name;
+
   if (is_ec_fips_approved(curve_nid)) {
     FIPS_service_indicator_update_state();
   }
