@@ -299,7 +299,7 @@ if(FIPS_DELOCATE)
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target
   # so that crypto can depend on it.
   add_custom_target(bcm_o_target DEPENDS bcm.o)
-  # fipsmodule must stay in sync with generated_fipsmodule in crypto/CMakeLists.txt
+
   add_library(
     fipsmodule
 
@@ -316,9 +316,12 @@ elseif(FIPS_SHARED)
   if(NOT BUILD_SHARED_LIBS)
     error("FIPS_SHARED set but not BUILD_SHARED_LIBS")
   endif()
+
   add_library(
     fipsmodule
+
     OBJECT
+
     fips_shared_support.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
@@ -327,8 +330,11 @@ elseif(FIPS_SHARED)
 
   add_library(
     bcm_library
+
     STATIC
+
     bcm.c
+
     ${BCM_ASM_SOURCES}
   )
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
