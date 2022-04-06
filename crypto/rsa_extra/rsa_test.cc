@@ -656,6 +656,9 @@ TEST(RSATest, GenerateSmallKey) {
 }
 
 #else
+// AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+// GTEST issue: https://github.com/google/googletest/issues/1496.
+#if !defined(OPENSSL_ANDROID)
 
 // Attempting to generate an excessively small key should fail.
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
@@ -668,8 +671,8 @@ TEST(RSADeathTest, GenerateSmallKeyAndDie) {
 
   ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr), "");
 }
-
 #endif
+#endif 
 
 // Attempting to generate an funny RSA key length should round down.
 TEST(RSATest, RoundKeyLengths) {
@@ -1013,6 +1016,9 @@ TEST(RSATest, KeygenFailOnce) {
 }
 
 #else
+// AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
+// GTEST issue: https://github.com/google/googletest/issues/1496.
+#if !defined(OPENSSL_ANDROID)
 
 // In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
 TEST(RSADeathTest, KeygenFailAndDie) {
@@ -1075,6 +1081,7 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   bssl::UniquePtr<uint8_t> delete_der3(der3);
   EXPECT_NE(Bytes(der, der_len), Bytes(der3, der3_len));
 }
+#endif
 
 // This is not a death test. It's similar to the test KeygenFailOnce
 // in the non-FIPS case, with the following differences:
