@@ -2,7 +2,11 @@
 #include <stdlib.h>
 
 #include <openssl/crypto.h>
-
+/*
+ * This program is used during the FIPS libcrypto build on Windows. It is the
+ * smallest possible executable that links with libcrypto and can trigger the
+ * power on self tests.
+ */
 int main(int argc, char *argv[]) {
   fprintf(stderr, "This should never print!\n");
   // To ensure the linker links libcrypto call something
