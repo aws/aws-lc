@@ -421,7 +421,7 @@ int EC_KEY_check_fips(const EC_KEY *key) {
 end:
   FIPS_service_indicator_unlock_state();
   if(ret){
-    FIPS_service_indicator_update_state();
+    EC_KEY_keygen_verify_service_indicator((EC_KEY*)key);
   }
   return ret;
 }
@@ -524,7 +524,7 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
 
   FIPS_service_indicator_unlock_state();
   if (ret) {
-    FIPS_service_indicator_update_state();
+    EC_KEY_keygen_verify_service_indicator(eckey);
     return 1;
   }
 
