@@ -1567,8 +1567,9 @@ ___
 
 ########################################################################
 # select subroutines
-# These select functions are ported from p256-x86_64-asm.pl
-# The x86_64 instructions are included here as comments starting with ////
+# These select functions are similar to those in p256-x86_64-asm.pl
+# They load all points in the lookup table
+# keeping in the output only the one corresponding to the input index.
 {
 my ($val,$in_t)=map("x$_",(0..1));
 my ($index)=("w2");
