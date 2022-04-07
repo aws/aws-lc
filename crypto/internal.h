@@ -1059,7 +1059,7 @@ OPENSSL_INLINE int CRYPTO_is_MOVBE_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << 22)) != 0;
 }
 
-OPENSSL_EXPORT OPENSSL_INLINE int CRYPTO_is_AESNI_capable(void) {
+OPENSSL_INLINE int CRYPTO_is_AESNI_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << 25)) != 0;
 }
 

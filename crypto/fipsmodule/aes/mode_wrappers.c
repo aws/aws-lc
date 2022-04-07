@@ -142,4 +142,11 @@ int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
   }
   return 1;
 }
-#endif
+
+#if defined(OPENSSL_X86_64)
+int CRYPTO_is_xts_AESNI_capable(void) {
+  return CRYPTO_is_AESNI_capable();
+}
+#endif // OPENSSL_X86_64
+
+#endif // HWAES_XTS
