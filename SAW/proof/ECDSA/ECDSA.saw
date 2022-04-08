@@ -136,8 +136,7 @@ let ECDSA_do_sign_spec = do {
   crucible_return res_ptr;
 };
 
-
-let ECDSA_do_verify_spec = do {
+let ecdsa_do_verify_no_self_test_spec = do {
   (digest, digest_ptr) <- ptr_to_fresh_readonly "digest" (llvm_array SHA_DIGEST_LENGTH i8);
 
   sig_ptr <- crucible_alloc_readonly (llvm_struct ecdsa_sig_st);
@@ -250,7 +249,7 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
     w4_unint_z3 ["inv0", "ec_point_affine_scalar_mul"];
   });
 
-ECDSA_do_verify_ov <- llvm_verify m "ECDSA_do_verify"
+ecdsa_do_verify_no_self_test_ov <- llvm_verify m "ecdsa_do_verify_no_self_test"
   [ BN_is_zero_ov
   , ec_bignum_to_scalar_ov
   , ec_simple_scalar_inv0_montgomery_ov
@@ -271,7 +270,7 @@ ECDSA_do_verify_ov <- llvm_verify m "ECDSA_do_verify"
   , ec_GFp_mont_cmp_x_coordinate_ov
   ]
   true
-  ECDSA_do_verify_spec
+  ecdsa_do_verify_no_self_test_spec
   (do {
     unfolding ["ECDSA_verify"];
     unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
@@ -356,7 +355,7 @@ llvm_verify m "EVP_DigestVerifyFinal"
     , sha512_block_data_order_ov
     , BN_num_bits_r_bits_ov
     , BN_num_bits_s_bits_ov
-    , ECDSA_do_verify_ov
+    , ecdsa_do_verify_no_self_test_ov
     ]
     OPENSSL_realloc_ovs)
   true
