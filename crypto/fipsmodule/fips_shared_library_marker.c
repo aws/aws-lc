@@ -34,9 +34,9 @@ const uint8_t BORINGSSL_bcm_rodata_start[16] =
 
 #elif defined(AWSLC_FIPS_SHARED_END)
 #if defined(_MSC_VER)
-#pragma code_seg(".fipstx$c")
-#pragma data_seg(".fipsda$c")
-#pragma const_seg(".fipsda$c")
+#pragma code_seg(".fipstx$z")
+#pragma data_seg(".fipsda$z")
+#pragma const_seg(".fipsda$z")
 #endif
 
 // Dummy but not empty function and array to avoid the compiler completely
