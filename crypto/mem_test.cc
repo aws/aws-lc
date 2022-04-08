@@ -1,6 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+// Weak symbols are only supported well on Linux platforms. The memory functions
+// that attempt to use weak symbols in mem.c are disabled on other platforms.
+// Therefore, only run these tests on supported platforms.
+#if defined(__ELF__) && defined(__GNUC__)
+
 #include <gtest/gtest.h>
 #include <openssl/mem.h>
 
@@ -39,7 +44,7 @@ extern "C" {
 }
 TEST(MemTest, BasicOverrides) {
   // The FIPS build which runs the power on self tests can call a lot of functions
-  // before this test. Therefore all of the expected counts are relative to the
+  // before this test. Therefore, all the expected counts are relative to the
   // starting point
   int starting_alloc = alloc_count;
   int starting_free = free_count;
@@ -93,3 +98,4 @@ TEST(MemTest, BasicOverrides) {
   ASSERT_EQ(0, size_count);
   OPENSSL_free(realloc_ptr_2);
 }
+#endif
