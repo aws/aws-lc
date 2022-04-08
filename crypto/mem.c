@@ -193,6 +193,9 @@ void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
     return OPENSSL_malloc(new_size);
   }
   if (OPENSSL_memory_realloc != NULL) {
+    assert(OPENSSL_memory_alloc != NULL);
+    assert(OPENSSL_memory_free != NULL);
+    assert(OPENSSL_memory_get_size != NULL);
     return OPENSSL_memory_realloc(orig_ptr, new_size);
   }
   size_t old_size;
