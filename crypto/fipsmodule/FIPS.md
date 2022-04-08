@@ -95,18 +95,20 @@ The Shared Windows FIPS integrity test differs in two key ways:
 1. How the start and end of the module are marked
 2. How the correct integrity hash is calculated
 
-Microsoft Visual C compiler (MSVC) does not support linker scripts which add symbols to mark the start and end of the text and rodata sections on Linux. Instead, fips_shared_library_marker.c is compiled twice to generate two object files that contain start/end functions and variables. MSVC `pragma` segment definitions are used to place the markers in specific sections (i.e. `.fipstx$a`). This partciular name format uses Portable Executable Grouped Sections to control what section the code is placed and the order within the section. With the start and end markers placed at `$a` and `$z` respectively, BCM puts everything in the `$b` section. When the final crypto.dll is built all the code is in the `.fipstx` section and in the correct order.
+Microsoft Visual C compiler (MSVC) does not support linker scripts which add symbols to mark the start and end of the text and rodata sections on Linux. Instead, fips_shared_library_marker.c is compiled twice to generate two object files that contain start/end functions and variables. MSVC `pragma` segment definitions are used to place the markers in specific sections (i.e. `.fipstx$a`). This particular name format uses Portable Executable Grouped Sections to control what section the code is placed and the order within the section. With the start and end markers placed at `$a` and `$z` respectively, BCM puts everything in the `$b` section. When the final crypto.dll is built all the code is in the `.fipstx` section, all data and constants is in `.fipsda`, and everything is in the correct order.
 
 The process to generate the expected integrity fingerprint is also different from Linux:
 1. Build the required object files once: `bcm.obj` from `bcm.c` and the start/end object files
+   1. `bcm.obj` places the power on self tests in the `.CRT$XCU` section which is run automatically by the Windows Common Runtime library (CRT) startup code
 2. Use MSVC's `lib.exe` to combine the start/end object files with `bcm.obj` into `bcm.lib`. MSVC does not support combining multiple object files together like the Apple build
-3. Build `fipsmodule` which contains the placeholder integrity hash and DllMain configuration to run the integrity test
+3. Build `fipsmodule` which contains the placeholder integrity hash
 4. Build `precrypto.dll` with `bcm.obj` and `fipsmodule`
 5. Build the small application `fips_empty_main.exe` and link it with `precrypto.dll`
 6. `capture-hash.go` runs `fips_empty_main.exe`
-   1. The DLLMain runs at startup and runs the BCM power on tests
-   2. BCM calculates the correct integrity value which will not match the placeholder value. Before aborting the process the correct value is printed
-   3. `capture-hash.go` reads the correct integrity value and writes it to `generated_fips_shared_support.c`
+   1. The CRT runs all functions in the `.CRT$XC*` sections in order starting with `.CRT$XCA`
+   2. The BCM power on tests are in `.CRT$XCU` and are run after all other Windows initialization is complete
+   3. BCM calculates the correct integrity value which will not match the placeholder value. Before aborting the process the correct value is printed
+   4. `capture-hash.go` reads the correct integrity value and writes it to `generated_fips_shared_support.c`
 7. `generated_fipsmodule` is built with `generated_fips_shared_support.c`
 8. `crypto.dll` is built with the same original `bcm.lib` and `generated_fipsmodule`
 
