@@ -12,10 +12,10 @@ int get_count = 0;
 int realloc_count = 0;
 
 extern "C" {
-  __attribute__((visibility("default"))) void *OPENSSL_memory_alloc(size_t size);
-  __attribute__((visibility("default"))) void OPENSSL_memory_free(void *ptr);
-  __attribute__((visibility("default"))) size_t OPENSSL_memory_get_size(void *ptr);
-  __attribute__((visibility("default"))) void *OPENSSL_memory_realloc(void *ptr, size_t size);
+  OPENSSL_EXPORT void *OPENSSL_memory_alloc(size_t size);
+  OPENSSL_EXPORT void OPENSSL_memory_free(void *ptr);
+  OPENSSL_EXPORT size_t OPENSSL_memory_get_size(void *ptr);
+  OPENSSL_EXPORT void *OPENSSL_memory_realloc(void *ptr, size_t size);
 
   void *OPENSSL_memory_alloc(size_t size) {
     alloc_count++;

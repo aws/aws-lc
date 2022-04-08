@@ -543,6 +543,7 @@ if(BUILD_TESTING)
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
   add_executable(${MEM_TEST} mem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
+  target_compile_definitions(${MEM_TEST} PRIVATE BORINGSSL_IMPLEMENTATION)
   add_dependencies(${MEM_TEST} global_target)
   target_link_libraries(${MEM_TEST} test_support_lib boringssl_gtest crypto)
   add_dependencies(all_tests ${MEM_TEST})
