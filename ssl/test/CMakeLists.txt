@@ -21,7 +21,7 @@ if(WIN32)
   target_link_libraries(bssl_shim ws2_32)
 endif()
 
-if(UNIX AND NOT APPLE AND NOT ANDROID)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(
     handshaker
 

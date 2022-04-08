@@ -77,10 +77,8 @@
 #include "cipher/aead.c"
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
-#include "cipher/e_des.c"
 #include "cipher/e_aesccm.c"
 #include "cmac/cmac.c"
-#include "des/des.c"
 #include "dh/check.c"
 #include "dh/dh.c"
 #include "digest/digest.c"
@@ -154,7 +152,6 @@ extern const uint8_t BORINGSSL_bcm_rodata_end[];
 // bounds of the integrity check. It checks that start <= symbol < end and
 // aborts otherwise.
 static void assert_within(const void *start, const void *symbol,
-                          const char *symbolName,
                           const void *end) {
   const uintptr_t start_val = (uintptr_t) start;
   const uintptr_t symbol_val = (uintptr_t) symbol;
@@ -166,13 +163,12 @@ static void assert_within(const void *start, const void *symbol,
 
   fprintf(
       stderr,
-      "FIPS module doesn't span expected symbol. Symbol %s expected %p <= %p < %p\n",
-      symbolName, start, symbol, end);
+      "FIPS module doesn't span expected symbol. Expected %p <= %p < %p\n",
+      start, symbol, end);
   BORINGSSL_FIPS_abort();
 }
 
 static void assert_not_within(const void *start, const void *symbol,
-                          const char *symbolName,
                           const void *end) {
   const uintptr_t start_val = (uintptr_t) start;
   const uintptr_t symbol_val = (uintptr_t) symbol;
@@ -184,8 +180,8 @@ static void assert_not_within(const void *start, const void *symbol,
 
   fprintf(
       stderr,
-      "FIPS module spans unexpected symbol. Symbol %s expected %p < %p || %p > %p\n",
-      symbolName, symbol, start, symbol, end);
+      "FIPS module spans unexpected symbol, expected %p < %p || %p > %p\n",
+      symbol, start, symbol, end);
   BORINGSSL_FIPS_abort();
 }
 
@@ -235,15 +231,15 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
-  assert_within(start, AES_encrypt, "AES_encrypt", end);
-  assert_within(start, RSA_sign, "RSA_sign", end);
-  assert_within(start, RAND_bytes, "RAND_bytes", end);
-  assert_within(start, EC_GROUP_cmp, "EC_GROUP_cmp", end);
-  assert_within(start, SHA256_Update, "SHA256_Update", end);
-  assert_within(start, ECDSA_do_verify, "ECDSA_do_verify", end);
-  assert_within(start, EVP_AEAD_CTX_seal, "EVP_AEAD_CTX_seal", end);
-  assert_not_within(start, OPENSSL_cleanse, "OPENSSL_cleanse", end);
-  assert_not_within(start, CRYPTO_chacha_20, "CRYPTO_chacha_20", end);
+  assert_within(start, AES_encrypt, end);
+  assert_within(start, RSA_sign, end);
+  assert_within(start, RAND_bytes, end);
+  assert_within(start, EC_GROUP_cmp, end);
+  assert_within(start, SHA256_Update, end);
+  assert_within(start, ECDSA_do_verify, end);
+  assert_within(start, EVP_AEAD_CTX_seal, end);
+  assert_not_within(start, OPENSSL_cleanse, end);
+  assert_not_within(start, CRYPTO_chacha_20, end);
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
@@ -254,20 +250,21 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *const rodata_end = BORINGSSL_bcm_text_end;
 #endif
 
-  assert_within(rodata_start, kPrimes, "kPrimes", rodata_end);
-  assert_within(rodata_start, des_skb, "des_skb", rodata_end);
-  assert_within(rodata_start, kP256Params, "kP256Params", rodata_end);
-  assert_within(rodata_start, kPKCS1SigPrefixes, "kPKCS1SigPrefixes", rodata_end);
+  assert_within(rodata_start, kPrimes, rodata_end);
+  assert_within(rodata_start, kP256Params, rodata_end);
+  assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
   // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
-  // check before the integrity check itself. So we first call the self-test
+  // check before the integrity check itself. So we first call
+  // SHA-256 and HMAC-SHA256
   // before we calculate the hash of the module.
-  if (!boringssl_fips_self_test()) {
-    goto err;
-  }
 
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
+  if (!boringssl_self_test_sha256() ||
+      !boringssl_self_test_hmac_sha256()) {
+    goto err;
+  }
 
   static const uint8_t kHMACKey[64] = {0};
   unsigned result_len;
@@ -301,19 +298,22 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
     fprintf(stderr, "HMAC failed.\n");
     goto err;
   }
-  HMAC_CTX_cleanup(&hmac_ctx);
+  HMAC_CTX_cleanse(&hmac_ctx); // FIPS 140-3, AS05.10.
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
+#if !defined(BORINGSSL_FIPS_BREAK_TESTS)
     goto err;
+#endif
   }
 
-#else // !defined(OPENSSL_ASAN)
-  if (!BORINGSSL_self_test()) {
+  OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
+#endif  // OPENSSL_ASAN
+
+  if (!boringssl_self_test_startup()) {
     goto err;
   }
-#endif  // OPENSSL_ASAN
 
   return;
 
