@@ -97,8 +97,12 @@ OPENSSL_EXPORT void HMAC_CTX_init(HMAC_CTX *ctx);
 // the resulting object.
 OPENSSL_EXPORT HMAC_CTX *HMAC_CTX_new(void);
 
-// HMAC_CTX_cleanup frees data owned by |ctx|. It does not free |ctx| itself.
+// HMAC_CTX_cleanup zeroises |ctx| since it's allocated on the stack.
+// This brings the context to its initial state.
 OPENSSL_EXPORT void HMAC_CTX_cleanup(HMAC_CTX *ctx);
+
+// HMAC_CTX_cleanse calls |HMAC_CTX_cleanup|.
+OPENSSL_EXPORT void HMAC_CTX_cleanse(HMAC_CTX *ctx);
 
 // HMAC_CTX_free calls |HMAC_CTX_cleanup| and then frees |ctx| itself.
 OPENSSL_EXPORT void HMAC_CTX_free(HMAC_CTX *ctx);
