@@ -394,10 +394,11 @@ if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.9.99") OR
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
 endif()
 
-# pthread_rwlock_t on Linux requires a feature flag. However, it should not be
-# set on Apple platforms, where it instead disables APIs we use. See compat(5)
-# and sys/cdefs.h.
-if(NOT WIN32 AND NOT APPLE)
+# pthread_rwlock_t on Linux requires a feature flag. We limit this to Linux
+# because, on Apple platforms, it instead disables APIs we use. See compat(5)
+# and sys/cdefs.h. Reportedly, FreeBSD also breaks when this is set. See
+# https://crbug.com/boringssl/471.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=700")
 endif()
 
@@ -764,7 +765,7 @@ if(BUILD_LIBSSL)
   add_subdirectory(tool)
   add_subdirectory(decrepit)
 endif()
-add_subdirectory(util/fipstools/cavp)
+add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
@@ -779,7 +780,16 @@ if(FUZZ)
   add_subdirectory(fuzz)
 endif()
 
-if(UNIX AND NOT APPLE AND NOT ANDROID)
+if(RUST_BINDINGS)
+  find_program(BINDGEN_EXECUTABLE bindgen)
+  if(NOT BINDGEN_EXECUTABLE)
+    message(FATAL_ERROR "Could not find bindgen but was asked to generate Rust bindings.")
+  else()
+    add_subdirectory(rust)
+  endif()
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
   set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
