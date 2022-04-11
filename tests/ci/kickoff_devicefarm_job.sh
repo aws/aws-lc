@@ -38,7 +38,7 @@ function export_global_variables() {
     export ANDROID_TEST_NAME='AWS-LC Android Test'
   fi
   if [[ -z "${DEVICEFARM_PROJECT+x}" || -z "${DEVICEFARM_PROJECT}" ]]; then
-    export DEVICEFARM_PROJECT='arn:aws:devicefarm:us-west-2:069218930244:project:e6898943-4414-4ab0-a5d5-b254e33ea53c'
+    export DEVICEFARM_PROJECT='arn:aws:devicefarm:us-west-2:620771051181:project:d1e78543-a776-49c5-9452-9a2b3448b728'
   fi
   if [[ -z "${FIPS+x}" || -z "${FIPS}" ]]; then
     export FIPS=false
@@ -52,10 +52,10 @@ function export_global_variables() {
   if [[ -z "${DEVICEFARM_DEVICE_POOL+x}" || -z "${DEVICEFARM_DEVICE_POOL}" ]]; then
     if [[ "${FIPS}" = true ]]; then
       # Device pool arn for FIPS.
-      export DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:069218930244:devicepool:e6898943-4414-4ab0-a5d5-b254e33ea53c/ba9f292c-6f3b-4364-9c85-88d9aca371ce'
+      export DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4726586b-cdbc-4dc0-98a5-38e7448e3691'
     else
       # Device pool arn for non-FIPS.
-      export DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:069218930244:devicepool:e6898943-4414-4ab0-a5d5-b254e33ea53c/d62026d5-fb81-45f1-9ef4-2158d654708c'
+      export DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4e72604c-86eb-41b6-9383-7797c04328b4'
     fi
   fi
 }
