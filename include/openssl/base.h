@@ -69,7 +69,7 @@
 #include <TargetConditionals.h>
 #endif
 
-// Include a BoringSSL-only header so consumers including this header without
+// Include an AWS-LC-only header so consumers including this header without
 // setting up include paths do not accidentally pick up the system
 // opensslconf.h.
 #include <openssl/is_awslc.h>
