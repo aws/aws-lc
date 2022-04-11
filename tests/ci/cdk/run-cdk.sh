@@ -224,6 +224,37 @@ function setup_ci() {
   build_win_docker_images
 
   create_github_ci_stack
+  create_android_resources
+}
+
+function create_android_resources() {
+  # Create Device Farm project and get project arn to create device pools.
+  DEVICEFARM_PROJECT=`aws devicefarm create-project --name aws-lc-android-ci | \
+                             python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["project"]["arn"])'`
+
+  DEVICEFARM_DEVICE_POOL=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
+    --name "aws-lc-device-pool" \
+    --description "AWS-LC Device Pool" \
+    --rules file://../android/devicepool_rules.json --max-devices 2 | \
+    python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+
+  DEVICEFARM_DEVICE_POOL_FIPS=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
+    --name "aws-lc-device-pool-fips" \
+    --description "AWS-LC FIPS Device Pool" \
+    --rules file://../android/devicepool_rules_fips.json --max-devices 2 | \
+    python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+
+  cat <<EOF
+
+DEVICEFARM_PROJECT arn value: ${DEVICEFARM_PROJECT}
+
+DEVICEFARM_DEVICE_POOL arn value: ${DEVICEFARM_DEVICE_POOL}
+
+DEVICEFARM_DEVICE_POOL_FIPS arn value: ${DEVICEFARM_DEVICE_POOL_FIPS}
+
+Take the corresponding Device Farm arn values and update the arn values at tests/ci/kickoff_devicefarm_job.sh
+
+EOF
 }
 
 ###########################
@@ -340,6 +371,9 @@ function main() {
     ;;
   destroy-ci)
     destroy_ci
+    ;;
+  update-android-resources)
+    create_android_resources
     ;;
   destroy-img-stack)
     destroy_docker_img_build_stack

@@ -6,14 +6,14 @@ with open("README.md") as fp:
 
 
 setuptools.setup(
-    name="cdk",
+    name="AWS-LC CI",
     version="0.0.1",
 
-    description="An empty CDK Python app",
+    description="AWS-LC CI python environment.",
     long_description=long_description,
     long_description_content_type="text/markdown",
 
-    author="author",
+    author="AWS-LC",
 
     package_dir={"": "cdk"},
     packages=setuptools.find_packages(where="cdk"),
@@ -29,7 +29,9 @@ setuptools.setup(
         # A formatter for Python code.
         "yapf==0.30.0",
         # Introduced by benchmark framework.
-        "boto3==1.18.11"
+        "boto3==1.18.11",
+        # Introduced by Android Device Farm CI.
+        "requests"
     ],
 
     python_requires=">=3.6",

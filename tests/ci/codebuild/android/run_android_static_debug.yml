@@ -4,5 +4,12 @@ phases:
   build:
     commands:
       - chmod +x ./tests/ci/android/AWSLCAndroidTestRunner/gradlew
-      - cd tests/ci/android/AWSLCAndroidTestRunner
-      - ./gradlew assembleDebug assembleAndroidTest
+      - cd tests/ci/
+      - python3 -m venv .env && . .env/bin/activate && pip install -r requirements.txt
+      - >
+        ./kickoff_devicefarm_job.sh
+        --test-name "AWS-LC Android Staticlib Debug Test ${CODEBUILD_RESOLVED_SOURCE_VERSION}"
+        --fips false
+        --release false
+        --shared false
+        --action start-job
