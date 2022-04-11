@@ -72,7 +72,7 @@
 // Include a BoringSSL-only header so consumers including this header without
 // setting up include paths do not accidentally pick up the system
 // opensslconf.h.
-#include <openssl/is_boringssl.h>
+#include <openssl/is_awslc.h>
 #include <openssl/opensslconf.h>
 
 #if defined(BORINGSSL_PREFIX)
@@ -186,6 +186,7 @@ extern "C" {
 #define OPENSSL_THREADS
 #endif
 
+#define AWSLC_VERSION_NAME "AWS-LC"
 #define OPENSSL_IS_AWSLC
 #define OPENSSL_VERSION_NUMBER 0x1010107f
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
