@@ -59,6 +59,12 @@ OPENSSL_EXPORT int CRYPTO_has_asm(void);
 // success and zero on error.
 OPENSSL_EXPORT int BORINGSSL_self_test(void);
 
+// BORINGSSL_integrity_test triggers the module's integrity test where the code
+// and data of the module is matched against a hash injected at build time. It
+// returns one on success or zero if there's a mismatch. This function only
+// exists if the module was built in FIPS mode without ASAN.
+OPENSSL_EXPORT int BORINGSSL_integrity_test(void);
+
 // CRYPTO_pre_sandbox_init initializes the crypto library, pre-acquiring some
 // unusual resources to aid running in sandboxed environments. It is safe to
 // call this function multiple times and concurrently from multiple threads.
@@ -171,6 +177,18 @@ OPENSSL_EXPORT void OPENSSL_cleanup(void);
 // FIPS_mode_set returns one if |on| matches whether BoringSSL was built with
 // |BORINGSSL_FIPS| and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);
+
+// FIPS_version returns the version of the FIPS module, or zero if the build
+// isn't exactly at a verified version. The version, expressed in base 10, will
+// be a date in the form yyyymmddXX where XX is often "00", but can be
+// incremented if multiple versions are defined on a single day.
+//
+// (This format exceeds a |uint32_t| in the year 4294.)
+OPENSSL_EXPORT uint32_t FIPS_version(void);
+
+// FIPS_query_algorithm_status returns one if |algorithm| is FIPS validated in
+// the current BoringSSL and zero otherwise.
+OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
 
 
 #if defined(__cplusplus)
