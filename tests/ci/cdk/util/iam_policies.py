@@ -202,42 +202,31 @@ def ecr_power_user_policy_in_json(ecr_repo_names):
         ]
     }
 
-def aws_secrets_manager_get_secret_policy_in_json(secret_arn):
+def device_farm_access_policy_in_json():
     """
-    Define an IAM policy statement for getting secret value.
+    Define an IAM policy statement for Device Farm operations.
     :return: an IAM policy statement in json.
     """
+    resources = []
+    resources.append("arn:aws:devicefarm:{}:{}:*:*".format(AWS_REGION, AWS_ACCOUNT))
     return {
         "Version": "2012-10-17",
         "Statement": [
             {
+                "Sid": "ViewProjectInfo",
                 "Effect": "Allow",
                 "Action": [
-                    "secretsmanager:GetSecretValue"
+                    "devicefarm:CreateUpload",
+                    "devicefarm:GetUpload",
+                    "devicefarm:GetRun",
+                    "devicefarm:ScheduleRun",
+                    "devicefarm:StopRun",
+                    "devicefarm:ListArtifacts",
+                    "devicefarm:ListJobs",
+                    "devicefarm:ListSuites",
+                    "devicefarm:ListTests",
                 ],
-                "Resource": [
-                    secret_arn
-                ]
-            }
-        ]
-    }
-
-def aws_secrets_manager_get_secret_policy_in_json(secret_arn):
-    """
-    Define an IAM policy statement for getting secret value.
-    :return: an IAM policy statement in json.
-    """
-    return {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "secretsmanager:GetSecretValue"
-                ],
-                "Resource": [
-                    secret_arn
-                ]
+                "Resource": resources
             }
         ]
     }
