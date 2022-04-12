@@ -538,6 +538,12 @@ endif()
 if(BUILD_TESTING)
   add_subdirectory(test)
 
+  add_executable(${MEM_TEST_EXEC} mem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
+  target_compile_definitions(${MEM_TEST_EXEC} PRIVATE BORINGSSL_IMPLEMENTATION)
+  add_dependencies(${MEM_TEST_EXEC} global_target)
+  target_link_libraries(${MEM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  add_dependencies(all_tests ${MEM_TEST_EXEC})
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
