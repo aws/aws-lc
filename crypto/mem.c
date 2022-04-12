@@ -184,6 +184,7 @@ void OPENSSL_free(void *orig_ptr) {
 // ASan knows to intercept malloc and free, but not sdallocx.
 #if defined(OPENSSL_ASAN)
   free(ptr);
+  (void) sdallocx;
 #else
   if (sdallocx) {
     sdallocx(ptr, size + OPENSSL_MALLOC_PREFIX, 0 /* flags */);
