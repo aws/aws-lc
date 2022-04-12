@@ -28,6 +28,7 @@ int FIPS_mode(void) {
 
 int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
+#if defined(BORINGSSL_FIPS_140_3)
 uint32_t FIPS_version(void) {
   return 0;
 }
@@ -66,6 +67,7 @@ int FIPS_query_algorithm_status(const char *algorithm) {
 
   return 0;
 }
+#endif // BORINGSSL_FIPS_140_3
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 
