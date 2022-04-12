@@ -153,13 +153,30 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
 // RSAPrivateKey structure (RFC 3447).
 static const uint64_t kVersionTwoPrime = 0;
 
-// Distinguisher for stripped ACCP RSA private keys.
-// Return 1 if ACCP stripped private key.
-// Return 0 otherwise.
-static int detect_stripped_accp_private_key(const RSA *key) {
-  return (key->e == NULL || BN_is_zero(key->e)) &&
-         (key->p == NULL || BN_is_zero(key->p)) &&
-         (key->q == NULL || BN_is_zero(key->q));
+// Distinguisher for stripped ACCP RSA private keys, sets zeroed values to NULL
+// because ASN.1 treats absent values as 0, but post-parsing validation logic
+// expects absent values to be NULL. Returns 1 if ACCP stripped private key, 0
+// otherwise.
+static int detect_stripped_accp_private_key(RSA *key) {
+  if (!BN_is_zero(key->d) && !BN_is_zero(key->n)
+          && BN_is_zero(key->e) && BN_is_zero(key->iqmp)
+          && BN_is_zero(key->p) && BN_is_zero(key->q)
+          && BN_is_zero(key->dmp1) && BN_is_zero(key->dmq1)) {
+    BN_free(key->e);
+    BN_free(key->p);
+    BN_free(key->q);
+    BN_free(key->dmp1);
+    BN_free(key->dmq1);
+    BN_free(key->iqmp);
+    key->e = NULL;
+    key->p = NULL;
+    key->q = NULL;
+    key->dmp1 = NULL;
+    key->dmq1 = NULL;
+    key->iqmp = NULL;
+    return 1;
+  }
+  return 0;
 }
 
 RSA *RSA_parse_private_key(CBS *cbs) {

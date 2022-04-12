@@ -597,7 +597,8 @@ TEST(RSATest, OnlyDGiven) {
   // validated and used with "NULL"ness indicating absence of various RSA
   // parameters, the actual parsing logic assumes that these NULL'd values are
   // present and zero-valued when being un/marshalled. So, we zero them out
-  // before marshalling, and re-NULL them when parsing back from DER.
+  // before marshalling, and assert that they were NULLed when parsing back
+  // from DER.
   //
   // Also, note that here and in the previous test we expect RSA_check_key to
   // return false for ACCP-style keys. The current implementation does not
@@ -607,9 +608,9 @@ TEST(RSATest, OnlyDGiven) {
   // from DER and special case that.
   //
   // At some point in the future, we will likely want to standardize on one of
-  // of NULL/0 for indicating parameter absence, as well as fix up
-  // RSA_check_key to accurately account for all the different types of RSA
-  // keys that we support.
+  // of NULL/0 for indicating parameter absence across the codebase, as well as
+  // fix up RSA_check_key to accurately account for all the different types of
+  // RSA keys that we support.
   ASSERT_TRUE(BN_hex2bn(&key2->e, "0"));
   ASSERT_TRUE(BN_hex2bn(&key2->p, "0"));
   ASSERT_TRUE(BN_hex2bn(&key2->q, "0"));
@@ -627,24 +628,12 @@ TEST(RSATest, OnlyDGiven) {
   EXPECT_TRUE(accpKey);
   accpKey->flags |= RSA_FLAG_NO_BLINDING;
 
-  ASSERT_TRUE(BN_is_zero(accpKey->e));
-  ASSERT_TRUE(BN_is_zero(accpKey->p));
-  ASSERT_TRUE(BN_is_zero(accpKey->q));
-  ASSERT_TRUE(BN_is_zero(accpKey->dmp1));
-  ASSERT_TRUE(BN_is_zero(accpKey->dmq1));
-  ASSERT_TRUE(BN_is_zero(accpKey->iqmp));
-  BN_free(accpKey->e);
-  BN_free(accpKey->p);
-  BN_free(accpKey->q);
-  BN_free(accpKey->dmp1);
-  BN_free(accpKey->dmq1);
-  BN_free(accpKey->iqmp);
-  accpKey->e = NULL;
-  accpKey->p = NULL;
-  accpKey->q = NULL;
-  accpKey->dmp1 = NULL;
-  accpKey->dmq1 = NULL;
-  accpKey->iqmp = NULL;
+  ASSERT_FALSE(accpKey->e);
+  ASSERT_FALSE(accpKey->p);
+  ASSERT_FALSE(accpKey->q);
+  ASSERT_FALSE(accpKey->dmp1);
+  ASSERT_FALSE(accpKey->dmq1);
+  ASSERT_FALSE(accpKey->iqmp);
 
   EXPECT_FALSE(RSA_check_key(accpKey.get()));
 

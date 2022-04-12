@@ -128,8 +128,7 @@ int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 extern const BN_ULONG kBoringSSLRSASqrtTwo[];
 extern const size_t kBoringSSLRSASqrtTwoLen;
 
-int RSA_validate_key(const RSA *rsa,
-  rsa_asn1_key_encoding_t key_enc_type);
+int RSA_validate_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type);
 
 // Functions that avoid self-tests.
 //

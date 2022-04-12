@@ -74,7 +74,9 @@
 
 
 int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type) {
-  if (rsa->n == NULL || rsa->e == NULL) {
+  // Despite its name, this function is used for validating all RSA keys. |n|
+  // is required for all keys, but stripped private keys do not have |e|.
+  if (rsa->n == NULL || (key_enc_type != RSA_STRIPPED_KEY && rsa->e == NULL)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
   }
@@ -95,7 +97,7 @@ int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type) {
     return 0;
   }
 
-  if (key_enc_type == RSA_STRIPPED_KEY || rsa->e == NULL || BN_is_zero(rsa->e)) {
+  if (key_enc_type == RSA_STRIPPED_KEY) {
     // Stripped RSA key doesn't have |e| set. Nothing more to do here.
     return 1;
   }
@@ -794,7 +796,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   // than the CRT attack, but there have likely been improvements since 1997.
   //
   // This check is cheap assuming |e| is small; it almost always is.
-  if (rsa->e != NULL && !BN_is_zero(rsa->e)) {
+  if (rsa->e != NULL) {
     BIGNUM *vrfy = BN_CTX_get(ctx);
     if (vrfy == NULL ||
         !BN_mod_exp_mont(vrfy, result, rsa->e, rsa->n, ctx, rsa->mont_n) ||
