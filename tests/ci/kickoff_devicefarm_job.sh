@@ -58,10 +58,15 @@ function export_global_variables() {
       export DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4e72604c-86eb-41b6-9383-7797c04328b4'
     fi
   fi
+  if [[ -z "${AWS_REGION+x}" || -z "${AWS_REGION}" ]]; then
+    export AWS_REGION='us-west-2'
+  fi
 }
 
 function compile_for_android() {
   # |ANDROID_APK| and |ANDROID_TEST_APK| are apk names corresponding to the settings in the test runner gradle file.
+  # The working directory of this script should under `tests/ci`. 
+  # AWSLCAndroidTestRunner should be at `tests/ci/android/AWSLCAndroidTestRunner`.
   cd android/AWSLCAndroidTestRunner
   export ANDROID_APK_LOCATION='android/AWSLCAndroidTestRunner/app/build/outputs/apk'
   if [[ "${FIPS}" = true ]]; then
