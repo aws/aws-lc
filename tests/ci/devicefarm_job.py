@@ -30,7 +30,7 @@ print(f"The unique identifier for this run is going to be {unique} -- all upload
 
 def upload_df_file(filename, type_, mime='application/octet-stream'):
     response = client.create_upload(projectArn=config['projectArn'],
-        name = (unique)+"_"+os.path.basename(filename),
+        name = os.path.basename(filename),
         type=type_,
         contentType=mime
         )
