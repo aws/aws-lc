@@ -228,7 +228,9 @@ function setup_ci() {
 }
 
 function create_android_resources() {
-  # Create Device Farm project and get project arn to create device pools.
+  # Use aws cli to create Device Farm project and get project arn to create device pools.
+  # TODO: Move resource creation to aws cdk when cdk has support for device form resource constructs.
+  # Issue: https://github.com/aws/aws-cdk/issues/17893
   DEVICEFARM_PROJECT=`aws devicefarm create-project --name aws-lc-android-ci | \
                              python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["project"]["arn"])'`
 

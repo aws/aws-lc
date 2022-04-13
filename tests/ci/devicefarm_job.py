@@ -84,7 +84,7 @@ print(f"Run can be observed at URL: {run_url} \n\n")
 try:
 
     while run_time_elapsed < run_time_limit:
-        run_time_elapsed = timedelta(seconds=0)
+        run_time_elapsed = datetime.timedelta(seconds=0)
         response = client.get_run(arn=run_arn)
         state = response['run']['status']
         if state == 'COMPLETED' or state == 'ERRORED':
