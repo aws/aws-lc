@@ -52,11 +52,11 @@ func printMultiples(name string, curve elliptic.Curve) {
 // secp256k1 curve is not available in the elliptic/crypto module
 // so we use the implementation from:
 //   github.com/ethereum/go-ethereum/tree/master/crypto/secp256k1
-func printMultiplesSECP256K1(name string) {
+func printMultiplesSECP256K1() {
 	curve := secp256k1.S256()
 	n := new(big.Int)
 	for i := -numPoints; i <= numPoints; i++ {
-		fmt.Printf("Curve = %s\n", name)
+		fmt.Printf("Curve = secp256k1\n")
 		n.SetInt64(int64(i))
 		if i < 0 {
 			n = n.Add(n, curve.Params().N)
@@ -90,6 +90,5 @@ func main() {
 	printMultiples("P-256", elliptic.P256())
 	printMultiples("P-384", elliptic.P384())
 	printMultiples("P-521", elliptic.P521())
-
-	printMultiplesSECP256K1("secp256k1")
+	printMultiplesSECP256K1()
 }
