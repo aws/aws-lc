@@ -47,8 +47,8 @@ def upload_df_file(filename, type_, mime='application/octet-stream'):
     started = datetime.datetime.now()
     upload_time_elapsed = datetime.timedelta(seconds=0)
     while upload_time_elapsed < upload_time_limit:
-        upload_time_elapsed = str(datetime.datetime.now() - started)
-        print(f"Upload of {filename} in state {response['upload']['status']} after "+upload_time_elapsed)
+        upload_time_elapsed = datetime.datetime.now() - started
+        print(f"Upload of {filename} in state {response['upload']['status']} after " + str(upload_time_elapsed))
         if response['upload']['status'] == 'FAILED':
             raise Exception("The upload failed processing. DeviceFarm says reason is: \n"+response['upload']['message'])
         if response['upload']['status'] == 'SUCCEEDED':
@@ -84,13 +84,13 @@ print(f"Run can be observed at URL: {run_url} \n\n")
 try:
 
     while run_time_elapsed < run_time_limit:
-        run_time_elapsed = datetime.timedelta(seconds=0)
+        run_time_elapsed = datetime.datetime.now() - started
         response = client.get_run(arn=run_arn)
         state = response['run']['status']
         if state == 'COMPLETED' or state == 'ERRORED':
             break
         else:
-            print(f" Run {unique} in state {state}, total time "+run_time_elapsed)
+            print(f" Run {unique} in state {state}, total time " + str(run_time_elapsed))
             time.sleep(10)
 except:
     # If something goes wrong in this process, we stop the run and exit.
