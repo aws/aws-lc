@@ -68,6 +68,72 @@
 
 #include "../internal.h"
 
+// Helper macro for the callback to determine whether an operator expects a len
+// parameter or not
+#define HAS_LEN_OPER(o) ((o) == BIO_CB_READ || (o) == BIO_CB_WRITE || \
+                        (o) == BIO_CB_GETS)
+
+#define HAS_CALLBACK(b) ((b)->callback != NULL || (b)->callback_ex != NULL)
+
+// Helper function to work out whether to call the new style callback or the old
+// one, and translate between the two. Prefer calling the new |callback_ex| over
+// |callback|. This has a long return type for consistency with the old callback.
+// Similarly, for the "long" used for "bio_ret"
+static long call_correct_bio_callback(BIO *b, int oper, const char *argp,
+                                  size_t len, int argi, long argl, long bio_ret,
+                                  size_t *processed) {
+  if (b->callback_ex != NULL) {
+    return b->callback_ex(b, oper, argp, len, argi, argl, bio_ret, processed);
+  }
+
+  // Strip off any BIO_CB_RETURN flag
+  int bareoper = oper & ~BIO_CB_RETURN;
+
+  // We have an old style callback, so we will have to do nasty casts and
+  // check for overflows.
+  if (HAS_LEN_OPER(bareoper)) {
+    // In this case |len| is set, and should be used instead of |argi|
+    if (len > INT_MAX) {
+      return -1;
+    }
+    argi = (int)len;
+  }
+
+  if (bio_ret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+    if (*processed > INT_MAX) {
+      return -1;
+    }
+    bio_ret = *processed;
+  }
+
+  long ret = b->callback(b, oper, argp, argi, argl, bio_ret);
+
+  if (ret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+    *processed = (size_t)ret;
+    ret = 1;
+  }
+  return ret;
+}
+
+// Helper function to create a placeholder |processed| that the callback can
+// modify and return to the caller. Used only in callbacks that pass in
+// |processed|.
+static int call_bio_callback_with_processed(BIO *bio, const int oper,
+                                        const void *buf, int len, int ret) {
+  if (HAS_CALLBACK(bio)) {
+    size_t processed = 0;
+    if (ret > 0) {
+      processed = ret;
+    }
+    ret = (int)call_correct_bio_callback(bio, oper, buf, len, 0, 0L, ret,
+                                         &processed);
+    if (ret > 0) {
+      // BIO will only read int |len| bytes
+      ret = processed;
+    }
+  }
+  return ret;
+}
 
 BIO *BIO_new(const BIO_METHOD *method) {
   BIO *ret = OPENSSL_malloc(sizeof(BIO));
@@ -80,6 +146,7 @@ BIO *BIO_new(const BIO_METHOD *method) {
   ret->method = method;
   ret->shutdown = 1;
   ret->references = 1;
+  ret->callback = NULL;
 
   if (method->create != NULL && !method->create(ret)) {
     OPENSSL_free(ret);
@@ -102,6 +169,13 @@ int BIO_free(BIO *bio) {
     if (bio->method != NULL && bio->method->destroy != NULL) {
       bio->method->destroy(bio);
     }
+    if (HAS_CALLBACK(bio)) {
+      int ret = (int)call_correct_bio_callback(bio, BIO_CB_FREE, NULL, 0, 0, 0L,
+                                               1L, NULL);
+      if (ret <= 0) {
+        return ret;
+      }
+    }
 
     OPENSSL_free(bio);
   }
@@ -122,9 +196,17 @@ void BIO_free_all(BIO *bio) {
 }
 
 int BIO_read(BIO *bio, void *buf, int len) {
+  int ret = 0;
   if (bio == NULL || bio->method == NULL || bio->method->bread == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
+  }
+  if (HAS_CALLBACK(bio)) {
+    ret = (int)call_correct_bio_callback(bio, BIO_CB_READ, buf, len, 0, 0L, 1L,
+                                         NULL);
+    if (ret <= 0) {
+      return ret;
+    }
   }
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
@@ -133,10 +215,14 @@ int BIO_read(BIO *bio, void *buf, int len) {
   if (len <= 0) {
     return 0;
   }
-  int ret = bio->method->bread(bio, buf, len);
+  ret = bio->method->bread(bio, buf, len);
   if (ret > 0) {
     bio->num_read += ret;
   }
+
+  ret = call_bio_callback_with_processed(bio, BIO_CB_READ | BIO_CB_RETURN, buf,
+                                         len, ret);
+
   return ret;
 }
 
@@ -160,10 +246,19 @@ int BIO_gets(BIO *bio, char *buf, int len) {
 }
 
 int BIO_write(BIO *bio, const void *in, int inl) {
+  int ret = 0;
   if (bio == NULL || bio->method == NULL || bio->method->bwrite == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
+  if (HAS_CALLBACK(bio)) {
+    ret = (int)call_correct_bio_callback(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L,
+                                         NULL);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
@@ -171,10 +266,14 @@ int BIO_write(BIO *bio, const void *in, int inl) {
   if (inl <= 0) {
     return 0;
   }
-  int ret = bio->method->bwrite(bio, in, inl);
+  ret = bio->method->bwrite(bio, in, inl);
   if (ret > 0) {
     bio->num_write += ret;
   }
+
+  ret = call_bio_callback_with_processed(bio, BIO_CB_WRITE | BIO_CB_RETURN, in,
+                                         inl, ret);
+
   return ret;
 }
 
@@ -729,4 +828,20 @@ int BIO_meth_set_puts(BIO_METHOD *method, int (*puts)(BIO *, const char *)) {
 
 int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *) {
   return method->bputs;
+}
+
+void BIO_set_callback(BIO *bio, BIO_callback_fn callback) {
+  bio->callback = callback;
+}
+
+void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback) {
+  bio->callback_ex = callback;
+}
+
+void BIO_set_callback_arg(BIO *bio, char *arg) {
+  bio->cb_arg = arg;
+}
+
+char *BIO_get_callback_arg(const BIO *bio) {
+  return bio->cb_arg;
 }
