@@ -1264,6 +1264,12 @@ struct ECDSATestVector kECDSATestVectors[] = {
     { NID_secp521r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
     { NID_secp521r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
     { NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { NID_secp256k1, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha224, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha384, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 };
 
 class ECDSA_ServiceIndicatorTest : public awslc::TestWithNoErrors<ECDSATestVector> {};
@@ -1500,6 +1506,11 @@ struct ECDHTestVector kECDHTestVectors[] = {
     { NID_secp521r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
     { NID_secp521r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
     { NID_secp521r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
+
+    { NID_secp256k1, SHA224_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA256_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA384_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA512_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
 };
 
 class ECDH_ServiceIndicatorTest : public awslc::TestWithNoErrors<ECDHTestVector> {};
@@ -1558,7 +1569,7 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   derive_output.resize(out_len);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_derive(our_ctx.get(), derive_output.data(), &out_len)));
   derive_output.resize(out_len);
-  ASSERT_EQ(approved, AWSLC_APPROVED);
+  ASSERT_EQ(approved, ecdhTestVector.expect_approved);
 }
 
 struct KDFTestVector {

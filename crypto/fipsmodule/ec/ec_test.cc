@@ -378,6 +378,48 @@ static const uint8_t kP521PublicKey_compressed_0x03[] = {
   0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b
 };
 
+static const uint8_t ksecp256k1PublicKey_uncompressed_0x02[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0xc5, 0xea, 0xe6, 0x37, 0xf3, 0xbd, 0x76, 0xad, 0x09, 0x64, 0x54, 0x9d,
+  0x52, 0xa6, 0x00, 0x46, 0x7e, 0xdb, 0x30, 0x3d, 0x9c, 0x32, 0xa8, 0xab,
+  0x12, 0xd0, 0xed, 0x0a, 0x88, 0x67, 0x59, 0x0b,
+  /* y-coordinate */
+  0xfc, 0x97, 0x38, 0x6b, 0xc9, 0x8f, 0xf5, 0xfc, 0x2d, 0xa5, 0x77, 0x96,
+  0x62, 0xd2, 0x72, 0x69, 0x6a, 0xd2, 0xac, 0xa3, 0x7b, 0x4d, 0x5c, 0x84,
+  0x6c, 0xa4, 0x2c, 0xec, 0xb2, 0x4c, 0x3d, 0x94
+};
+
+static const uint8_t ksecp256k1PublicKey_compressed_0x02[] = {
+  0x02,
+  /* x-coordinate */
+  0xc5, 0xea, 0xe6, 0x37, 0xf3, 0xbd, 0x76, 0xad, 0x09, 0x64, 0x54, 0x9d,
+  0x52, 0xa6, 0x00, 0x46, 0x7e, 0xdb, 0x30, 0x3d, 0x9c, 0x32, 0xa8, 0xab,
+  0x12, 0xd0, 0xed, 0x0a, 0x88, 0x67, 0x59, 0x0b
+};
+
+static const uint8_t ksecp256k1PublicKey_uncompressed_0x03[] = {
+  /* uncompressed */
+  0x04,
+  /* x-coordinate */
+  0xad, 0xa8, 0x37, 0xe6, 0x83, 0x94, 0x67, 0xbf, 0x79, 0xa8, 0xa8, 0x3b,
+  0x17, 0x3d, 0x4a, 0x56, 0x07, 0xa0, 0x57, 0x66, 0x19, 0xc6, 0x67, 0x56,
+  0xa2, 0x48, 0x8c, 0x6d, 0xff, 0xda, 0xf2, 0xa9,
+  /* y-coordinate */
+  0x50, 0xd1, 0x4b, 0xff, 0x7a, 0x83, 0xb7, 0x02, 0x4c, 0xeb, 0x29, 0x2e,
+  0xc8, 0x32, 0xa0, 0x16, 0xc5, 0x83, 0x74, 0x80, 0x1a, 0xf6, 0xc8, 0xb8,
+  0xb8, 0x1d, 0x6a, 0xa6, 0xdc, 0xae, 0xfe, 0x63
+};
+
+static const uint8_t ksecp256k1PublicKey_compressed_0x03[] = {
+  0x03,
+  /* x-coordinate */
+  0xad, 0xa8, 0x37, 0xe6, 0x83, 0x94, 0x67, 0xbf, 0x79, 0xa8, 0xa8, 0x3b,
+  0x17, 0x3d, 0x4a, 0x56, 0x07, 0xa0, 0x57, 0x66, 0x19, 0xc6, 0x67, 0x56,
+  0xa2, 0x48, 0x8c, 0x6d, 0xff, 0xda, 0xf2, 0xa9
+};
+
 struct ECPublicKeyTestInput {
   const uint8_t *input_key;
   size_t input_key_len;
@@ -412,6 +454,12 @@ struct ECPublicKeyTestInput {
     NID_secp521r1
   },
   {
+    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
+    NID_secp256k1
+  },
+  {
     kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
     POINT_CONVERSION_UNCOMPRESSED,
     kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
@@ -434,6 +482,12 @@ struct ECPublicKeyTestInput {
     POINT_CONVERSION_UNCOMPRESSED,
     kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
     NID_secp521r1
+  },
+  {
+    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
+    NID_secp256k1
   },
   /* Test 2: decode compressed |EC_KEY|, and then encode with the same |conv_form|. */
   {
@@ -461,6 +515,12 @@ struct ECPublicKeyTestInput {
     NID_secp521r1
   },
   {
+    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
+    NID_secp256k1
+  },
+  {
     kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
     POINT_CONVERSION_COMPRESSED,
     kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
@@ -483,6 +543,12 @@ struct ECPublicKeyTestInput {
     POINT_CONVERSION_COMPRESSED,
     kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
     NID_secp521r1
+  },
+  {
+    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
+    NID_secp256k1
   },
   /* Test 3: decode compressed |EC_KEY|, and then encode with uncompressed |conv_form|. */
   {
@@ -510,6 +576,12 @@ struct ECPublicKeyTestInput {
     NID_secp521r1
   },
   {
+    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
+    POINT_CONVERSION_UNCOMPRESSED,
+    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
+    NID_secp256k1
+  },
+  {
     kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
     POINT_CONVERSION_UNCOMPRESSED,
     kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
@@ -532,6 +604,12 @@ struct ECPublicKeyTestInput {
     POINT_CONVERSION_UNCOMPRESSED,
     kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
     NID_secp521r1
+  },
+  {
+    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
+    POINT_CONVERSION_UNCOMPRESSED,
+    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
+    NID_secp256k1
   },
   /* Test 4: decode uncompressed |EC_KEY|, and then encode with compressed |conv_form|. */
   {
@@ -559,6 +637,12 @@ struct ECPublicKeyTestInput {
     NID_secp521r1
   },
   {
+    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
+    POINT_CONVERSION_COMPRESSED,
+    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
+    NID_secp256k1
+  },
+  {
     kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
     POINT_CONVERSION_COMPRESSED,
     kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
@@ -581,6 +665,12 @@ struct ECPublicKeyTestInput {
     POINT_CONVERSION_COMPRESSED,
     kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
     NID_secp521r1
+  },
+  {
+    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
+    POINT_CONVERSION_COMPRESSED,
+    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
+    NID_secp256k1
   }
 };
 
@@ -1674,6 +1764,9 @@ static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
   }
   if (curve_name == "P-521") {
     return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp521r1));
+  }
+  if (curve_name == "secp256k1") {
+    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp256k1));
   }
 
   t->PrintLine("Unknown curve '%s'", curve_name.c_str());
