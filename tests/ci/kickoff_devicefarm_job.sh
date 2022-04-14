@@ -157,7 +157,7 @@ function main() {
   case ${ACTION} in
   start-job)
     compile_for_android
-    python3 ./devicefarm_job.py
+    python3 -u ./devicefarm_job.py
     ;;
   *)
     echo "--action is required. Use '--help' to see allowed actions."

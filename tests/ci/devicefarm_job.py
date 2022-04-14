@@ -91,7 +91,7 @@ try:
             break
         else:
             print(f" Run {unique} in state {state}, total time " + str(run_time_elapsed))
-            time.sleep(10)
+            time.sleep(30)
 except:
     # If something goes wrong in this process, we stop the run and exit.
 
