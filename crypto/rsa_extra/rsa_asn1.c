@@ -158,10 +158,10 @@ static const uint64_t kVersionTwoPrime = 0;
 // expects absent values to be NULL. Returns 1 if ACCP stripped private key, 0
 // otherwise.
 static int detect_stripped_accp_private_key(RSA *key) {
-  if (!BN_is_zero(key->d) && !BN_is_zero(key->n)
-          && BN_is_zero(key->e) && BN_is_zero(key->iqmp)
-          && BN_is_zero(key->p) && BN_is_zero(key->q)
-          && BN_is_zero(key->dmp1) && BN_is_zero(key->dmq1)) {
+  if (!BN_is_zero(key->d) && !BN_is_zero(key->n) &&
+       BN_is_zero(key->e) && BN_is_zero(key->iqmp) &&
+       BN_is_zero(key->p) && BN_is_zero(key->q) &&
+       BN_is_zero(key->dmp1) && BN_is_zero(key->dmq1)) {
     BN_free(key->e);
     BN_free(key->p);
     BN_free(key->q);
