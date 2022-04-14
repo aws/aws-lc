@@ -306,16 +306,16 @@ OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);
 OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback sets the |callback| for |bio|.
-void BIO_set_callback(BIO *bio, BIO_callback_fn callback);
+OPENSSL_EXPORT void BIO_set_callback(BIO *bio, BIO_callback_fn callback);
 
 // BIO_set_callback sets the |callback_ex| for |bio|.
-void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
+OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
 
 // BIO_set_callback_arg sets the callback |arg| for |bio|.
-void BIO_set_callback_arg(BIO *bio, char *arg);
+OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
 
 // BIO_get_callback_arg returns the callback argument for BIO |bio|.
-char *BIO_get_callback_arg(const BIO *bio);
+OPENSSL_EXPORT char *BIO_get_callback_arg(const BIO *bio);
 
 // Managing chains of BIOs.
 //
