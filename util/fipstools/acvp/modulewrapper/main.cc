@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 
 #if defined(_MSC_VER)
   if (_setmode( _fileno( stdin ), _O_BINARY ) < 0 || _setmode( _fileno( stdout ), _O_BINARY ) < 0) {
-      fprintf(stderr, "Setting binary mode to in/out failed.\n");
+      fprintf(stderr, "Setting binary mode to stdin/stdout failed.\n");
       return 4;
   }
 #endif
