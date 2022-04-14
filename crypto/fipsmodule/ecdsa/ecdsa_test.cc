@@ -192,6 +192,7 @@ TEST(ECDSATest, BuiltinCurves) {
       { NID_secp384r1, "secp384r1" },
       { NID_secp521r1, "secp521r1" },
       { NID_secp160r1, "secp160r1" },
+      { NID_secp256k1, "secp256k1" },
   };
 
   for (const auto &curve : kCurves) {
@@ -331,6 +332,9 @@ static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
   }
   if (curve_name == "P-521") {
     return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp521r1));
+  }
+  if (curve_name == "secp256k1") {
+    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp256k1));
   }
   if (curve_name == "secp160r1") {
     return NewSecp160r1Group();
