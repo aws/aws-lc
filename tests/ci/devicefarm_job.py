@@ -75,7 +75,7 @@ response = client.schedule_run(
 run_arn = response['run']['arn']
 project_arn_id = config['projectArn'].split(':')[6]
 run_arn_id = run_arn.split('/')[1]
-run_url = "https://"+ aws_region +"console.aws.amazon.com/devicefarm/home?region=" + aws_region + "#/mobile/projects/" + \
+run_url = "https://"+ aws_region +".console.aws.amazon.com/devicefarm/home?region=" + aws_region + "#/mobile/projects/" + \
             project_arn_id + "/runs/" + run_arn_id
 start_time = datetime.datetime.now()
 run_time_elapsed = datetime.timedelta(seconds=0)
