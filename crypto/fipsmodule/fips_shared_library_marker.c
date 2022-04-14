@@ -6,7 +6,7 @@
 */
 
 // The FIPS build on macOS/iOS/Windows is different than the build on Linux.
-// Apple and Windows's linker don't support linker scripts so we have to build
+// Apple's and Windows' linkers don't support linker scripts so we have to build
 // the module in a different way. This file is compiled twice:
 //    - with AWSLC_FIPS_SHARED_START flag to generate the start marker object file
 //    - with AWSLC_FIPS_SHARED_END flag to generate the end marker object file
