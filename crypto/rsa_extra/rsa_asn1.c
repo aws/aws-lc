@@ -153,11 +153,11 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
 // RSAPrivateKey structure (RFC 3447).
 static const uint64_t kVersionTwoPrime = 0;
 
-// Distinguisher for stripped ACCP RSA private keys, sets zeroed values to NULL
+// Distinguisher for stripped JCA RSA private keys, sets zeroed values to NULL
 // because ASN.1 treats absent values as 0, but post-parsing validation logic
-// expects absent values to be NULL. Returns 1 if ACCP stripped private key, 0
+// expects absent values to be NULL. Returns 1 if JCA stripped private key, 0
 // otherwise.
-static int detect_stripped_accp_private_key(RSA *key) {
+static int detect_stripped_jca_private_key(RSA *key) {
   if (!BN_is_zero(key->d) && !BN_is_zero(key->n) &&
        BN_is_zero(key->e) && BN_is_zero(key->iqmp) &&
        BN_is_zero(key->p) && BN_is_zero(key->q) &&
@@ -215,7 +215,7 @@ RSA *RSA_parse_private_key(CBS *cbs) {
   }
 
   rsa_asn1_key_encoding_t rsa_enc_key_type = RSA_CRT_KEY;
-  if (detect_stripped_accp_private_key(ret) == 1) {
+  if (detect_stripped_jca_private_key(ret) == 1) {
     rsa_enc_key_type = RSA_STRIPPED_KEY;
   }
 
