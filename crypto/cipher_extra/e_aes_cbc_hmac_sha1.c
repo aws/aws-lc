@@ -62,6 +62,9 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
   } else {
     ret = aes_hw_set_decrypt_key(inkey, key_bits, &key->ks);
   }
+  if (ret < 0) {
+    return 0;
+  }
 
   SHA1_Init(&key->head);
   key->tail = key->head;
@@ -69,7 +72,7 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
 
   key->payload_length = NO_PAYLOAD_LENGTH;
 
-  return ret < 0 ? 0 : 1;
+  return 1;
 }
 
 static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
