@@ -46,8 +46,6 @@ typedef struct {
   unsigned char hmac_key[64];
 } EVP_AES_HMAC_SHA256;
 
-#define data(ctx) ((EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx))
-
 void aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
                          const AES_KEY *key, unsigned char iv[16],
                          SHA256_CTX *ctx, const void *in0);
@@ -56,7 +54,7 @@ void aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
 static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
                                           const unsigned char *inkey,
                                           const unsigned char *iv, int enc) {
-  EVP_AES_HMAC_SHA256 *key = data(ctx);
+  EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx);
   int ret;
 
   int key_bits = EVP_CIPHER_CTX_key_length(ctx) * 8;
@@ -77,7 +75,7 @@ static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
 
 static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                         const unsigned char *in, size_t len) {
-  EVP_AES_HMAC_SHA256 *key = data(ctx);
+  EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx);
   unsigned int l;
   size_t plen = key->payload_length, iv = 0;
   size_t aes_off = 0, blocks;
@@ -252,7 +250,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
 static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                                       void *ptr) {
-  EVP_AES_HMAC_SHA256 *key = data(ctx);
+  EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)EVP_CIPHER_CTX_get_cipher_data(ctx);
   unsigned int u_arg = (unsigned int)arg;
 
   switch (type) {
