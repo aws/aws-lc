@@ -102,5 +102,8 @@
   {
     "cmd": ["ssl/ssl_test"],
     "skip_valgrind": true
+  },
+  {
+    "cmd": ["crypto/mem_test"]
   }
 ]

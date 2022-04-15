@@ -254,7 +254,6 @@ add_library(
   asn1/a_bool.c
   asn1/a_d2i_fp.c
   asn1/a_dup.c
-  asn1/a_enum.c
   asn1/a_gentm.c
   asn1/a_i2d_fp.c
   asn1/a_int.c
@@ -308,6 +307,7 @@ add_library(
   cipher_extra/e_chacha20poly1305.c
   cipher_extra/e_aes_cbc_hmac_sha1.c
   cipher_extra/e_aes_cbc_hmac_sha256.c
+  cipher_extra/e_des.c
   cipher_extra/e_null.c
   cipher_extra/e_rc2.c
   cipher_extra/e_rc4.c
@@ -317,6 +317,7 @@ add_library(
   crypto.c
   curve25519/curve25519.c
   curve25519/spake25519.c
+  des/des.c
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
@@ -540,6 +541,12 @@ endif()
 
 if(BUILD_TESTING)
   add_subdirectory(test)
+
+  add_executable(${MEM_TEST_EXEC} mem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
+  target_compile_definitions(${MEM_TEST_EXEC} PRIVATE BORINGSSL_IMPLEMENTATION)
+  add_dependencies(${MEM_TEST_EXEC} global_target)
+  target_link_libraries(${MEM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  add_dependencies(all_tests ${MEM_TEST_EXEC})
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before

@@ -102,7 +102,7 @@ RSA *RSA_parse_public_key(CBS *cbs) {
     return NULL;
   }
 
-  if (!RSA_check_key(ret)) {
+  if (!RSA_validate_key(ret, RSA_PUBLIC_KEY)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     RSA_free(ret);
     return NULL;
@@ -153,6 +153,32 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
 // RSAPrivateKey structure (RFC 3447).
 static const uint64_t kVersionTwoPrime = 0;
 
+// Distinguisher for stripped JCA RSA private keys, sets zeroed values to NULL
+// because ASN.1 treats absent values as 0, but post-parsing validation logic
+// expects absent values to be NULL. Returns 1 if JCA stripped private key, 0
+// otherwise.
+static int detect_stripped_jca_private_key(RSA *key) {
+  if (!BN_is_zero(key->d) && !BN_is_zero(key->n) &&
+       BN_is_zero(key->e) && BN_is_zero(key->iqmp) &&
+       BN_is_zero(key->p) && BN_is_zero(key->q) &&
+       BN_is_zero(key->dmp1) && BN_is_zero(key->dmq1)) {
+    BN_free(key->e);
+    BN_free(key->p);
+    BN_free(key->q);
+    BN_free(key->dmp1);
+    BN_free(key->dmq1);
+    BN_free(key->iqmp);
+    key->e = NULL;
+    key->p = NULL;
+    key->q = NULL;
+    key->dmp1 = NULL;
+    key->dmq1 = NULL;
+    key->iqmp = NULL;
+    return 1;
+  }
+  return 0;
+}
+
 RSA *RSA_parse_private_key(CBS *cbs) {
   RSA *ret = RSA_new();
   if (ret == NULL) {
@@ -188,7 +214,12 @@ RSA *RSA_parse_private_key(CBS *cbs) {
     goto err;
   }
 
-  if (!RSA_check_key(ret)) {
+  rsa_asn1_key_encoding_t rsa_enc_key_type = RSA_CRT_KEY;
+  if (detect_stripped_jca_private_key(ret) == 1) {
+    rsa_enc_key_type = RSA_STRIPPED_KEY;
+  }
+
+  if (!RSA_validate_key(ret, rsa_enc_key_type)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto err;
   }

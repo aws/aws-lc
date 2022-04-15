@@ -217,6 +217,8 @@ set(
   third_party/wycheproof_testvectors/ecdsa_secp384r1_sha384_test.txt
   third_party/wycheproof_testvectors/ecdsa_secp384r1_sha512_test.txt
   third_party/wycheproof_testvectors/ecdsa_secp521r1_sha512_test.txt
+  third_party/wycheproof_testvectors/ecdsa_secp256k1_sha256_test.txt
+  third_party/wycheproof_testvectors/ecdsa_secp256k1_sha512_test.txt
   third_party/wycheproof_testvectors/eddsa_test.txt
   third_party/wycheproof_testvectors/hkdf_sha1_test.txt
   third_party/wycheproof_testvectors/hkdf_sha256_test.txt
