@@ -35,16 +35,16 @@ func main() {
 		panic(fmt.Sprintf("Expected 4 lines in output but got %d", len(lines)))
 	}
 	num_lines := len(lines)
-	if lines[num_lines-4] != line0 {
+	if lines[0] != line0 {
 		fmt.Fprintf(os.Stderr, string(out))
 		panic(fmt.Sprintf("Expected \"%s\" got \"%s\"", line0, lines[0]))
 	}
 
-	if lines[num_lines-3] != line1 {
+	if lines[1] != line1 {
 		fmt.Fprintf(os.Stderr, string(out))
 		panic(fmt.Sprintf("Expected \"%s\" got \"%s\"", line1, lines[1]))
 	}
-	hash := strings.Split(lines[num_lines-2], " ")[1]
+	hash := strings.Split(lines[2], " ")[1]
 
 	if len(hash) != hash_len {
 		fmt.Fprintf(os.Stderr, string(out))

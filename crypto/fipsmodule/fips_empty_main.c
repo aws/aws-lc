@@ -5,10 +5,10 @@
 /*
  * This program is used during the FIPS libcrypto build on Windows. It is the
  * smallest possible executable that links with libcrypto and can trigger the
- * power on self tests.
+ * power-on self tests.
  */
 int main(int argc, char *argv[]) {
-  fprintf(stderr, "This should never print!\n");
+  fprintf(stderr, "This will only print if the power-on self-tests pass.\n");
   // To ensure the linker links libcrypto call something
   fprintf(stderr, "FIPS mode is %d\n", FIPS_mode());
 

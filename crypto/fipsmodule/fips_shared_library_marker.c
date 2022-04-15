@@ -22,6 +22,7 @@
 #pragma code_seg(".fipstx$a")
 #pragma data_seg(".fipsda$a")
 #pragma const_seg(".fipsda$a")
+#pragma bss_seg(".fipsda$a")
 #endif
 
 // Dummy but not empty function and array to avoid the compiler completely
@@ -37,6 +38,7 @@ const uint8_t BORINGSSL_bcm_rodata_start[16] =
 #pragma code_seg(".fipstx$z")
 #pragma data_seg(".fipsda$z")
 #pragma const_seg(".fipsda$z")
+#pragma bss_seg(".fipsda$a")
 #endif
 
 // Dummy but not empty function and array to avoid the compiler completely

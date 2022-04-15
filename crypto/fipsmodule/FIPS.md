@@ -84,14 +84,15 @@ Microsoft Visual C compiler (MSVC) does not support linker scripts which add sym
 
 The process to generate the expected integrity fingerprint is also different from Linux:
 1. Build the required object files once: `bcm.obj` from `bcm.c` and the start/end object files
-   1. `bcm.obj` places the power on self tests in the `.CRT$XCU` section which is run automatically by the Windows Common Runtime library (CRT) startup code
-2. Use MSVC's `lib.exe` to combine the start/end object files with `bcm.obj` into `bcm.lib`. MSVC does not support combining multiple object files together like the Apple build
+   1. `bcm.obj` places the power-on self tests in the `.CRT$XCU` section which is run automatically by the Windows Common Runtime library (CRT) startup code
+2. Use MSVC's `lib.exe` to combine the start/end object files with `bcm.obj` to create the static library `bcm.lib`.
+   1. MSVC does not support combining multiple object files into another object file like the Apple build.
 3. Build `fipsmodule` which contains the placeholder integrity hash
 4. Build `precrypto.dll` with `bcm.obj` and `fipsmodule`
 5. Build the small application `fips_empty_main.exe` and link it with `precrypto.dll`
 6. `capture-hash.go` runs `fips_empty_main.exe`
    1. The CRT runs all functions in the `.CRT$XC*` sections in order starting with `.CRT$XCA`
-   2. The BCM power on tests are in `.CRT$XCU` and are run after all other Windows initialization is complete
+   2. The BCM power-on tests are in `.CRT$XCU` and are run after all other Windows initialization is complete
    3. BCM calculates the correct integrity value which will not match the placeholder value. Before aborting the process the correct value is printed
    4. `capture-hash.go` reads the correct integrity value and writes it to `generated_fips_shared_support.c`
 7. `generated_fipsmodule` is built with `generated_fips_shared_support.c`
