@@ -1145,9 +1145,18 @@ struct HybridGroup {
 // HybridGroups returns all supported hybrid groups.
 Span<const HybridGroup> HybridGroups();
 
-// is_hybrid_group returns True if |id| corresponds to a TLS 1.3 hybrid
+// is_hybrid_group returns true if |id| corresponds to a TLS 1.3 hybrid
 // key exchange group. Otherwise, it returns false.
 bool is_hybrid_group(uint16_t id);
+
+// PQGroups returns all supported groups that are either a PQ group,
+// or a hybrid group containing a PQ group as a component.
+Span<const uint16_t> PQGroups();
+
+// is_pq_group returns true if |id| corresponds to either a PQ group,
+// or a hybrid group that contains a PQ group as a component. Otherwise,
+// it returns false.
+bool is_pq_group(uint16_t id);
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns

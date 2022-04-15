@@ -607,6 +607,13 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
     {SSL_CURVE_SECP256R1_KYBER512, {NID_X9_62_prime256v1, NID_KYBER512}},
 };
 
+CONSTEXPR_ARRAY uint16_t kPQGroups[] = {
+    SSL_CURVE_CECPQ2,
+    SSL_CURVE_KYBER512,
+    SSL_CURVE_SECP256R1_KYBER512,
+    SSL_CURVE_X25519_KYBER512,
+};
+
 }  // namespace
 
 Span<const NamedGroup> NamedGroups() {
@@ -615,6 +622,10 @@ Span<const NamedGroup> NamedGroups() {
 
 Span<const HybridGroup> HybridGroups() {
   return MakeConstSpan(kHybridGroups, OPENSSL_ARRAY_SIZE(kHybridGroups));
+}
+
+Span<const uint16_t> PQGroups() {
+  return MakeConstSpan(kPQGroups, OPENSSL_ARRAY_SIZE(kPQGroups));
 }
 
 // SSL_CURVE_KYBER512 is included in this list so that we can create

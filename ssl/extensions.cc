@@ -213,6 +213,15 @@ bool is_hybrid_group(uint16_t id) {
   return false;
 }
 
+bool is_pq_group(uint16_t id) {
+  for (const uint16_t pq_group_id : PQGroups()) {
+    if (id == pq_group_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
                            Span<const uint8_t> body) {
   CBS cbs = body;
