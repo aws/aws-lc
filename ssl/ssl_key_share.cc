@@ -31,7 +31,6 @@
 #include <openssl/rand.h>
 #include <openssl/pq_kem.h>
 
-#include "../crypto/fipsmodule/ec/internal.h"
 #include "internal.h"
 #include "../crypto/internal.h"
 
@@ -46,20 +45,20 @@ class ECKeyShare : public SSLKeyShare {
   uint16_t GroupID() const override { return group_id_; }
 
   bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
-    const struct built_in_curves *const curves = OPENSSL_built_in_curves();
-    for (size_t i = 0; i < OPENSSL_NUM_BUILT_IN_CURVES; i++) {
-      const struct built_in_curve *curve = &curves->curves[i];
-      if (nid_ == curve->nid) {
-        // As per https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2, an EC share has the form:
-        // uint8 legacy_form
-        // uint8_t x_coordinate[param_len]
-        // uint8_t y_coordinate[param_len]
-        *out_offer_key_share_size = ((2 * curve->param_len) + 1);
-        *out_accept_key_share_size = ((2 * curve->param_len) + 1);
-        return true;
-      }
+    EC_GROUP *curve = EC_GROUP_new_by_curve_name(nid_);
+    if (!curve) {
+      return false;
     }
-    return false;
+
+    const size_t param_len = (EC_GROUP_get_degree(curve) + 7) / 8;
+    // As per https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2,
+    // an EC share has the form:
+    // uint8 legacy_form
+    // uint8_t x_coordinate[param_len]
+    // uint8_t y_coordinate[param_len]
+    *out_offer_key_share_size = ((2 * param_len) + 1);
+    *out_accept_key_share_size = ((2 * param_len) + 1);
+    return true;
   }
 
   bool Offer(CBB *out) override {
