@@ -107,6 +107,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     }
     if (len !=
         ((plen + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
+      // The input should have space for plen(eiv + plaintext) + SHA256_DIGEST_LENGTH + padding.
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
@@ -122,6 +123,8 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     // either even XOP-capable Bulldozer-based or GenuineIntel one.
     // But SHAEXT-capable go ahead...
     // TODO: replace below with the unified CPU cap check func.
+    // Use stitch code |aesni_cbc_sha256_enc| when there are multiple of SHA_CBLOCK
+    // so |aesni_cbc_sha1_enc| can use AES and SHA on the same data block.
     if (((OPENSSL_ia32cap_P[2] & (1 << 29)) ||         /* SHAEXT? */
          ((OPENSSL_ia32cap_P[1] & (1 << (60 - 32))) && /* AVX? */
           ((OPENSSL_ia32cap_P[1] & (1 << (43 - 32)))   /* XOP? */
@@ -273,13 +276,15 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       }
       OPENSSL_memcpy(&key->hmac_key, hmac_key, 64);
 
-      for (i = 0; i < sizeof(hmac_key); i++)
+      for (i = 0; i < sizeof(hmac_key); i++) {
         hmac_key[i] ^= 0x36; /* ipad */
+      }
       SHA256_Init(&key->head);
       SHA256_Update(&key->head, hmac_key, sizeof(hmac_key));
 
-      for (i = 0; i < sizeof(hmac_key); i++)
+      for (i = 0; i < sizeof(hmac_key); i++) {
         hmac_key[i] ^= 0x36 ^ 0x5c; /* opad */
+      }
       SHA256_Init(&key->tail);
       SHA256_Update(&key->tail, hmac_key, sizeof(hmac_key));
 
@@ -288,20 +293,27 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       return 1;
     }
     case EVP_CTRL_AEAD_TLS1_AAD: {
+      if (arg != EVP_AEAD_TLS1_AAD_LEN) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_AD_SIZE);
+        return 0;
+      }
+      // p is
+      // additional_data = |seq_num + content_type + protocol_version + payload_eiv_len|.
+      // seq_num: 8 octets long.
+      // content_type: 1 octets long.
+      // protocol_version: 2 octets long.
+      // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
       unsigned char *p = ptr;
-      unsigned int len;
-
-      if (arg != EVP_AEAD_TLS1_AAD_LEN)
-        return -1;
-
-      len = p[arg - 2] << 8 | p[arg - 1];
+      unsigned int len = p[arg - 2] << 8 | p[arg - 1];
 
       if (EVP_CIPHER_CTX_encrypting(ctx)) {
         key->payload_length = len;
         if ((key->aux.tls_ver = p[arg - 4] << 8 | p[arg - 3]) >=
             TLS1_1_VERSION) {
-          if (len < AES_BLOCK_SIZE)
+          if (len < AES_BLOCK_SIZE) {
+            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_AD_SIZE);
             return 0;
+          }
           len -= AES_BLOCK_SIZE;
           p[arg - 2] = len >> 8;
           p[arg - 1] = len;
@@ -320,7 +332,8 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       }
     }
     default:
-      return -1;
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_CTRL_NOT_IMPLEMENTED);
+      return 0;
   }
 }
 

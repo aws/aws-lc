@@ -105,7 +105,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     }
     if (len !=
         ((plen + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
-      // The input should have space for eiv + plaintext + digest + padding.
+      // The input should have space for plen(eiv + plaintext) + SHA_DIGEST_LENGTH + padding.
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
@@ -117,6 +117,8 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     size_t blocks;
 
     // TODO: check CPU cap like e_aes_cbc_hmac_sha256.c?
+    // Use stitch code |aesni_cbc_sha1_enc| when there are multiple of SHA_CBLOCK
+    // so |aesni_cbc_sha1_enc| can use AES and SHA on the same data block.
     if (plen > (sha_off + iv) &&
         (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
       SHA1_Update(&key->md, in + iv, sha_off);
@@ -280,11 +282,11 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     }
     case EVP_CTRL_AEAD_TLS1_AAD: {
       // p is
-      // additional_data = seq_num + content_type + protocol_version +
-      // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
+      // additional_data = |seq_num + content_type + protocol_version + payload_eiv_len|.
+      // seq_num: 8 octets long.
+      // content_type: 1 octets long.
       // protocol_version: 2 octets long.
-      // payload_eiv_len: 2 octets long. eiv is explicit iv required by
-      // TLS 1.1+.
+      // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
       unsigned char *p = ptr;
       if (arg != EVP_AEAD_TLS1_AAD_LEN) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_AD_SIZE);
@@ -319,7 +321,7 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     }
     default:
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_CTRL_NOT_IMPLEMENTED);
-      return -1;
+      return 0;
   }
 }
 
