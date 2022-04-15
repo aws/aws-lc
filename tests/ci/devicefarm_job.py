@@ -102,7 +102,7 @@ except:
 
 # Check result of device farm run.
 result = response['run']['result']
-print(f"Tests finished in state {result} after "+str(datetime.datetime.now() - start_time))
+print(f"Tests finished in state {result} after "+str(datetime.datetime.now() - run_start_time))
 print(config['namePrefix'] + " Finished")
 if result != 'PASSED':
     exit(1)
