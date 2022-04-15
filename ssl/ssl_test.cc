@@ -423,10 +423,11 @@ static const CurveTest kCurveTests[] = {
     },
   },
   {
-    "X25519_Kyber512:P-256",
+    "X25519_Kyber512:P-256:prime256v1_kyber512",
     {
       SSL_CURVE_X25519_KYBER512,
       SSL_CURVE_SECP256R1,
+      SSL_CURVE_SECP256R1_KYBER512,
     },
   },
 };
@@ -440,6 +441,7 @@ static const char *kBadCurvesLists[] = {
   "P-256:RSA",
   "X25519:P-256:",
   ":X25519:P-256",
+  "X25519_Kyber512:Kyber512",
 };
 
 static std::string CipherListToString(SSL_CTX *ctx) {

@@ -1131,15 +1131,21 @@ struct NamedGroup {
 // NamedGroups returns all supported groups.
 Span<const NamedGroup> NamedGroups();
 
+// Our hybrid groups are implemented for TLS 1.3 according to
+// https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
+// The hybrid key exchange is composed of two or more component
+// key exchanges, each of which is executed independently and
+// the results are combined to complete the hybrid exchange.
 # define NUM_HYBRID_COMPONENTS 2
 struct HybridGroup {
   uint16_t group_id;
-  int component_group_ids[NUM_HYBRID_COMPONENTS];
+  uint16_t component_group_ids[NUM_HYBRID_COMPONENTS];
 };
 
+// HybridGroups returns all supported hybrid groups.
 Span<const HybridGroup> HybridGroups();
 
-// bool is_hybrid_group returns True if |id| corresponds to a TLS 1.3 hybrid
+// is_hybrid_group returns True if |id| corresponds to a TLS 1.3 hybrid
 // key exchange group. Otherwise, it returns false.
 bool is_hybrid_group(uint16_t id);
 
@@ -1153,10 +1159,6 @@ bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid);
 // true. Otherwise, it returns false.
 bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
 
-// get_ec_public_key_length computes the length of the public key corresponding
-// to |nid|. On success, it sets |*out_public_key_length| to the public key
-// length and returns true. Otherwise, it returns false.
-bool get_ec_public_key_length(uint16_t *out_public_key_length, int nid);
 
 // Handshake messages.
 

@@ -1,5 +1,4 @@
 /* Copyright (c) 2015, Google Inc.
- *fkdnjlirvnrgbhenftuggfeuvtketg
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -172,6 +171,7 @@ class X25519KeyShare : public SSLKeyShare {
   uint16_t GroupID() const override { return SSL_CURVE_X25519; }
 
   bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
+    // All x25519 key shares are 32 bytes
     *out_offer_key_share_size = 32;
     *out_accept_key_share_size = 32;
     return true;
@@ -227,7 +227,7 @@ class CECPQ2KeyShare : public SSLKeyShare {
   uint16_t GroupID() const override { return SSL_CURVE_CECPQ2; }
 
   bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
-    // X25519's share size is 32 bytes
+    // 32 bytes for the x25519 share
     *out_offer_key_share_size = 32 + HRSS_PUBLIC_KEY_BYTES;
     *out_accept_key_share_size = 32 + HRSS_CIPHERTEXT_BYTES;
     return true;
@@ -342,7 +342,11 @@ class PQKeyShare : public SSLKeyShare {
   }
 
   bool Offer(CBB *out) override {
-    assert(!pq_kem_ctx_);
+    if (pq_kem_ctx_) {
+      // pq_kem_ctx should not have been previously initialized
+      return false;
+    }
+
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
     if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_) ||
         !EVP_PQ_KEM_generate_keypair(pq_kem_ctx_) ||
@@ -354,17 +358,23 @@ class PQKeyShare : public SSLKeyShare {
   }
 
   bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
-    assert(!pq_kem_ctx_);
+    if (pq_kem_ctx_) {
+      // pq_kem_ctx should not have been previously initialized
+      return false;
+    }
+
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
     if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_)) {
       return false;
     }
 
-    // EVP_PQ_KEM_encapsulate() expects the public key to be written in pq_kem_ctx_;
-    // copy it, perform the encapsulation, and write the ciphertext to *out_public_key
     if (peer_key.size() != pq_kem_ctx_->kem->public_key_length) {
       return false;
     }
+
+    // EVP_PQ_KEM_encapsulate() expects the public key to have been written
+    // to pq_kem_ctx_->public_key; we copy it, perform the encapsulation, and
+    // write the ciphertext to *out_public_key
     OPENSSL_memcpy(pq_kem_ctx_->public_key, peer_key.data(), pq_kem_ctx_->kem->public_key_length);
     if (!EVP_PQ_KEM_encapsulate(pq_kem_ctx_) ||
         !CBB_add_bytes(out_public_key, pq_kem_ctx_->ciphertext, pq_kem_ctx_->kem->ciphertext_length)) {
@@ -383,15 +393,23 @@ class PQKeyShare : public SSLKeyShare {
   }
 
   bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
-    assert(pq_kem_ctx_);
+    if (!pq_kem_ctx_) {
+      // pq_kem_ctx should have been previously initialized by Offer()
+      return false;
+    }
 
-    // EVP_PQ_KEM_decapsulate() expects the ciphertext to be written in pq_kem_ctx_;
-    // copy it, perform the decapsulation, and write the shared secret to *out_secret
     if (peer_key.size() != pq_kem_ctx_->kem->ciphertext_length) {
       return false;
     }
-    OPENSSL_memcpy(pq_kem_ctx_->ciphertext, peer_key.data(),pq_kem_ctx_->kem->ciphertext_length);
 
+    // EVP_PQ_KEM_decapsulate() expects the ciphertext to have been written
+    // to pq_kem_ctx_->ciphertext; we copy it, and perform the decapsulation.
+    OPENSSL_memcpy(pq_kem_ctx_->ciphertext, peer_key.data(),pq_kem_ctx_->kem->ciphertext_length);
+    if (!EVP_PQ_KEM_decapsulate(pq_kem_ctx_)) {
+      return false;
+    }
+
+    // Copy the shared secret to *out_secret and free the PQ KEM context since it's no longer needed
     if (!out_secret ||
         !out_secret->Init(pq_kem_ctx_->kem->shared_secret_length)) {
       return false;
@@ -425,7 +443,7 @@ class HybridKeyShare : public SSLKeyShare {
     *out_accept_key_share_size = 0;
 
     for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
-      if (!key_shares_[i]) {
+      if (key_shares_[i] == nullptr) {
         return false;
       }
 
@@ -442,9 +460,11 @@ class HybridKeyShare : public SSLKeyShare {
   }
 
   bool Offer(CBB *out) override {
-    // TODO INIT()
+    if (!Init()) {
+      return false;
+    }
 
-    // Perform each key exchange's Offer() and concatenate each public key
+    // Perform each key exchange's Offer() and concatenate the public keys
     for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
       if (!key_shares_[i]->Offer(out)) {
         return false;
@@ -455,7 +475,9 @@ class HybridKeyShare : public SSLKeyShare {
   }
 
   bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
-    // TODO INIT()
+    if (!Init()) {
+      return false;
+    }
 
     Array<uint8_t> *component_secrets[NUM_HYBRID_COMPONENTS];
     size_t span_index = 0;
@@ -497,7 +519,7 @@ class HybridKeyShare : public SSLKeyShare {
   bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     // key_shares_ must have been initialized by a previous call to Offer()
     for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
-      if (!key_shares_[i]) {
+      if (key_shares_[i] == nullptr) {
         return false;
       }
     }
@@ -544,11 +566,20 @@ class HybridKeyShare : public SSLKeyShare {
     for (const HybridGroup &group : HybridGroups()) {
       if (group_id_ == group.group_id) {
         for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+          if (key_shares_[i] != nullptr) {
+            // If any of the key shares are NOT null, then Init() has been
+            // called previously, and we should abort.
+            return false;
+          }
+
+          // Creates the appropriate key share for each component of the hybrid group
           key_shares_[i] = SSLKeyShare::Create(group.component_group_ids[i]);
         }
         return true;
       }
     }
+    // If we reach this, it means that the provided group_id_ does
+    // not correspond with a recognized hybrid group.
     return false;
   }
 
@@ -556,6 +587,10 @@ class HybridKeyShare : public SSLKeyShare {
   UniquePtr<SSLKeyShare> key_shares_[NUM_HYBRID_COMPONENTS];
 };
 
+// SSL_CURVE_KYBER512 is purposefully excluded from this list. This list defines
+// the curves recognized by client/server TLS instances. We do not want these
+// instances to negotiate (non-hybrid) kyber yet. (See also: comment below
+// at SSLKeyShare::Create.)
 CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224", "secp224r1"},
     {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256", "prime256v1"},
@@ -582,6 +617,9 @@ Span<const HybridGroup> HybridGroups() {
   return MakeConstSpan(kHybridGroups, OPENSSL_ARRAY_SIZE(kHybridGroups));
 }
 
+// SSL_CURVE_KYBER512 is included in this list so that we can create
+// a kyber PQ key share to use as a component of a HybridGroup. (See
+// also: comment above at kNamedGroups[].)
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
   switch (group_id) {
     case SSL_CURVE_SECP224R1:
