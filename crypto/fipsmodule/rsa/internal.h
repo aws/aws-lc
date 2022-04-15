@@ -66,6 +66,11 @@
 extern "C" {
 #endif
 
+typedef enum {
+    RSA_STRIPPED_KEY,
+    RSA_CRT_KEY,
+    RSA_PUBLIC_KEY
+} rsa_asn1_key_encoding_t;
 
 // Default implementations of RSA operations.
 
@@ -110,7 +115,7 @@ int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
 
 // rsa_check_public_key checks that |rsa|'s public modulus and exponent are
 // within DoS bounds.
-int rsa_check_public_key(const RSA *rsa);
+int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type);
 
 // RSA_private_transform calls either the method-specific |private_transform|
 // function (if given) or the generic one. See the comment for
@@ -123,6 +128,7 @@ int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 extern const BN_ULONG kBoringSSLRSASqrtTwo[];
 extern const size_t kBoringSSLRSASqrtTwoLen;
 
+int RSA_validate_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type);
 
 // Functions that avoid self-tests.
 //
