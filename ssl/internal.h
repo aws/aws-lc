@@ -1085,6 +1085,13 @@ class SSLKeyShare {
   // GroupID returns the group ID.
   virtual uint16_t GroupID() const PURE_VIRTUAL;
 
+  // KeyShareSizes calculates the size, in bytes, of the public key
+  // shares assigned to |out_public_key| by the Offer and Accept
+  // functions. On success, it assigns the respective sizes to
+  // |out_offer_key_share_size| and |out_accept_key_share_size| and
+  // returns true, otherwise it returns false.
+  virtual bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) PURE_VIRTUAL;
+
   // Offer generates a keypair and writes the public value to
   // |out_public_key|. It returns true on success and false on error.
   virtual bool Offer(CBB *out_public_key) PURE_VIRTUAL;
@@ -1124,21 +1131,17 @@ struct NamedGroup {
 // NamedGroups returns all supported groups.
 Span<const NamedGroup> NamedGroups();
 
-// HybridPQGroup and HybridPQGroups() are small helpers, similar to NamedGroup/s(), to
-// encapsulate and keep track of the component members of the hybrid PQ groups. All
-// supported hybrid PQ groups consist of one EC group and one PQ group.
-struct HybridPQGroup {
+# define NUM_HYBRID_COMPONENTS 2
+struct HybridGroup {
   uint16_t group_id;
-  int group_nid;
-  int ec_nid;
-  int pq_nid;
+  int component_group_ids[NUM_HYBRID_COMPONENTS];
 };
 
-Span<const HybridPQGroup> HybridPQGroups();
+Span<const HybridGroup> HybridGroups();
 
-// bool is_hybrid_pq_group returns True if |id| corresponds to a TLS 1.3 hybrid
-// post-quantum group. Otherwise, it returns false.
-bool is_hybrid_pq_group(uint16_t id);
+// bool is_hybrid_group returns True if |id| corresponds to a TLS 1.3 hybrid
+// key exchange group. Otherwise, it returns false.
+bool is_hybrid_group(uint16_t id);
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns

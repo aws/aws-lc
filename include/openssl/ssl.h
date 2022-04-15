@@ -2336,6 +2336,7 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // https://github.com/open-quantum-safe/openssl/blob/474baededfff0b63668427dbe15841604f665949/oqs-template/oqs-kem-info.md
 #define SSL_CURVE_SECP256R1_KYBER512 0x2F3A
 #define SSL_CURVE_X25519_KYBER512 0x2F39
+#define SSL_CURVE_KYBER512 0x023A
 
 // SSL_get_curve_id returns the ID of the curve used by |ssl|'s most recently
 // completed handshake or 0 if not applicable.

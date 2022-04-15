@@ -204,9 +204,9 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
   return true;
 }
 
-bool is_hybrid_pq_group(uint16_t id) {
-  for (const HybridPQGroup &hybrid_pq_group : HybridPQGroups()) {
-    if (id == hybrid_pq_group.group_id) {
+bool is_hybrid_group(uint16_t id) {
+  for (const HybridGroup &group : HybridGroups()) {
+    if (id == group.group_id) {
       return true;
     }
   }

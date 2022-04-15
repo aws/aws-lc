@@ -1,4 +1,5 @@
 /* Copyright (c) 2015, Google Inc.
+ *fkdnjlirvnrgbhenftuggfeuvtketg
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -44,6 +45,23 @@ class ECKeyShare : public SSLKeyShare {
   ECKeyShare(int nid, uint16_t group_id) : nid_(nid), group_id_(group_id) {}
 
   uint16_t GroupID() const override { return group_id_; }
+
+  bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
+    const struct built_in_curves *const curves = OPENSSL_built_in_curves();
+    for (size_t i = 0; i < OPENSSL_NUM_BUILT_IN_CURVES; i++) {
+      const struct built_in_curve *curve = &curves->curves[i];
+      if (nid_ == curve->nid) {
+        // As per https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2, an EC share has the form:
+        // uint8 legacy_form
+        // uint8_t x_coordinate[param_len]
+        // uint8_t y_coordinate[param_len]
+        *out_offer_key_share_size = ((2 * curve->param_len) + 1);
+        *out_accept_key_share_size = ((2 * curve->param_len) + 1);
+        return true;
+      }
+    }
+    return false;
+  }
 
   bool Offer(CBB *out) override {
     assert(!private_key_);
@@ -153,6 +171,12 @@ class X25519KeyShare : public SSLKeyShare {
 
   uint16_t GroupID() const override { return SSL_CURVE_X25519; }
 
+  bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
+    *out_offer_key_share_size = 32;
+    *out_accept_key_share_size = 32;
+    return true;
+  }
+
   bool Offer(CBB *out) override {
     uint8_t public_key[32];
     X25519_keypair(public_key, private_key_);
@@ -201,6 +225,13 @@ class CECPQ2KeyShare : public SSLKeyShare {
   CECPQ2KeyShare() {}
 
   uint16_t GroupID() const override { return SSL_CURVE_CECPQ2; }
+
+  bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
+    // X25519's share size is 32 bytes
+    *out_offer_key_share_size = 32 + HRSS_PUBLIC_KEY_BYTES;
+    *out_accept_key_share_size = 32 + HRSS_CIPHERTEXT_BYTES;
+    return true;
+  }
 
   bool Offer(CBB *out) override {
     uint8_t x25519_public_key[32];
@@ -293,177 +324,236 @@ class CECPQ2KeyShare : public SSLKeyShare {
   HRSS_private_key hrss_private_key_;
 };
 
-// HybridPQKeyShare is implemented according to:
-// https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
-class HybridPQKeyShare : public SSLKeyShare {
+class PQKeyShare : public SSLKeyShare {
  public:
-  HybridPQKeyShare(uint16_t group_id)
-      : group_id_(group_id) {
-    for (const HybridPQGroup &hybrid_pq_group : HybridPQGroups()) {
-      if (group_id == hybrid_pq_group.group_id) {
-        ec_nid_ = hybrid_pq_group.ec_nid;
-        pq_nid_ = hybrid_pq_group.pq_nid;
-        break;
-      }
-    }
-  }
+  PQKeyShare(int nid, uint16_t group_id) : nid_(nid), group_id_(group_id) {}
 
   uint16_t GroupID() const override { return group_id_; }
 
-  bool Offer(CBB *out) override {
-    assert(!pq_kem_ctx_);
-    assert(!ec_key_share_);
-
-    uint16_t ec_group_id;
-    uint16_t ec_public_key_length;
-    if (!ssl_nid_to_group_id(&ec_group_id, ec_nid_) ||
-        !get_ec_public_key_length(&ec_public_key_length, ec_nid_) ||
-        !(ec_key_share_ = SSLKeyShare::Create(ec_group_id)) ||
-        !CBB_add_u16(out, ec_public_key_length) || !ec_key_share_->Offer(out)) {
+  bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
+    EVP_PQ_KEM_CTX *kem_ctx = EVP_PQ_KEM_CTX_new();
+    if (!EVP_PQ_KEM_CTX_init_by_nid(kem_ctx, nid_)) {
       return false;
     }
+    *out_offer_key_share_size = kem_ctx->kem->public_key_length;
+    *out_accept_key_share_size = kem_ctx->kem->ciphertext_length;
+    EVP_PQ_KEM_CTX_free(kem_ctx);
+    return true;
+  }
 
+  bool Offer(CBB *out) override {
+    assert(!pq_kem_ctx_);
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
-    if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, pq_nid_) ||
+    if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_) ||
         !EVP_PQ_KEM_generate_keypair(pq_kem_ctx_) ||
-        !CBB_add_u16(out, pq_kem_ctx_->kem->public_key_length) ||
-        !CBB_add_bytes(out, pq_kem_ctx_->public_key,
-                       pq_kem_ctx_->kem->public_key_length)) {
+        !CBB_add_bytes(out, pq_kem_ctx_->public_key, pq_kem_ctx_->kem->public_key_length)) {
       return false;
     }
 
     return true;
   }
 
-  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
-              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
+  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     assert(!pq_kem_ctx_);
-    assert(!ec_key_share_);
-
-    uint16_t ec_group_id;
-    uint16_t ec_public_key_length;
-    Array<uint8_t> ec_secret;
     pq_kem_ctx_ = EVP_PQ_KEM_CTX_new();
-
-    if (!ssl_nid_to_group_id(&ec_group_id, ec_nid_) ||
-        !get_ec_public_key_length(&ec_public_key_length, ec_nid_) ||
-        !EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, pq_nid_)) {
+    if (!EVP_PQ_KEM_CTX_init_by_nid(pq_kem_ctx_, nid_)) {
       return false;
     }
 
-    // Verify all lengths
-    if (peer_key.size() != ec_public_key_length + pq_kem_ctx_->kem->public_key_length + (2 * sizeof(uint16_t))) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+    // EVP_PQ_KEM_encapsulate() expects the public key to be written in pq_kem_ctx_;
+    // copy it, perform the encapsulation, and write the ciphertext to *out_public_key
+    if (peer_key.size() != pq_kem_ctx_->kem->public_key_length) {
       return false;
     }
-    uint16_t received_ec_size, received_pq_size;
-    CBS ec_cbs, pq_cbs;
-    CBS_init(&ec_cbs, peer_key.data(), sizeof(uint16_t));
-    CBS_init(&pq_cbs, peer_key.data() + sizeof(uint16_t) + ec_public_key_length, sizeof(uint16_t));
-    if (!CBS_get_u16(&ec_cbs, &received_ec_size) ||
-        received_ec_size != ec_public_key_length ||
-        !CBS_get_u16(&pq_cbs, &received_pq_size) ||
-        received_pq_size != pq_kem_ctx_->kem->public_key_length) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+    OPENSSL_memcpy(pq_kem_ctx_->public_key, peer_key.data(), pq_kem_ctx_->kem->public_key_length);
+    if (!EVP_PQ_KEM_encapsulate(pq_kem_ctx_) ||
+        !CBB_add_bytes(out_public_key, pq_kem_ctx_->ciphertext, pq_kem_ctx_->kem->ciphertext_length)) {
       return false;
     }
 
-    Span<const uint8_t> ec_peer_key = peer_key.subspan(sizeof(uint16_t), ec_public_key_length);
-    if (!(ec_key_share_ = SSLKeyShare::Create(ec_group_id)) ||
-        !CBB_add_u16(out_public_key, ec_public_key_length) ||
-        !ec_key_share_->Offer(out_public_key) ||
-        !ec_key_share_->Finish(&ec_secret, out_alert, ec_peer_key)) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+    // Copy the shared secret to *out_secret and free the PQ KEM context since it's no longer needed
+    if (!out_secret ||
+        !out_secret->Init(pq_kem_ctx_->kem->shared_secret_length)) {
       return false;
     }
-
-    OPENSSL_memcpy(pq_kem_ctx_->public_key, peer_key.data() + ec_public_key_length + (2 * sizeof(uint16_t)),
-                   pq_kem_ctx_->kem->public_key_length);
-    if (!EVP_PQ_KEM_encapsulate(pq_kem_ctx_)) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return false;
-    }
-
-    if (!CBB_add_u16(out_public_key, pq_kem_ctx_->kem->ciphertext_length) ||
-        !CBB_add_bytes(out_public_key, pq_kem_ctx_->ciphertext, pq_kem_ctx_->kem->ciphertext_length) ||
-        !out_secret ||
-        !out_secret->Init(ec_secret.size() + pq_kem_ctx_->kem->shared_secret_length)) {
-      return false;
-    }
-
-    OPENSSL_memcpy(out_secret->data(), ec_secret.data(), ec_secret.size());
-    OPENSSL_memcpy(out_secret->data() + ec_secret.size(), pq_kem_ctx_->shared_secret,
-                   pq_kem_ctx_->kem->shared_secret_length);
-
+    OPENSSL_memcpy(out_secret->data(), pq_kem_ctx_->shared_secret, pq_kem_ctx_->kem->shared_secret_length);
     EVP_PQ_KEM_CTX_free(pq_kem_ctx_);
 
     return true;
   }
 
-  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
-              Span<const uint8_t> peer_key) override {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
+  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     assert(pq_kem_ctx_);
-    assert(ec_key_share_);
 
-    uint16_t ec_public_key_length;
-    Array<uint8_t> ec_secret;
-
-    if (!get_ec_public_key_length(&ec_public_key_length, ec_nid_)) {
+    // EVP_PQ_KEM_decapsulate() expects the ciphertext to be written in pq_kem_ctx_;
+    // copy it, perform the decapsulation, and write the shared secret to *out_secret
+    if (peer_key.size() != pq_kem_ctx_->kem->ciphertext_length) {
       return false;
     }
-
-    // Verify all lengths
-    if (peer_key.size() != ec_public_key_length + pq_kem_ctx_->kem->ciphertext_length + (2 * sizeof(uint16_t))) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return false;
-    }
-    uint16_t received_ec_size, received_pq_size;
-    CBS ec_cbs, pq_cbs;
-    CBS_init(&ec_cbs, peer_key.data(), sizeof(uint16_t));
-    CBS_init(&pq_cbs, peer_key.data() + sizeof(uint16_t) + ec_public_key_length, sizeof(uint16_t));
-    if (!CBS_get_u16(&ec_cbs, &received_ec_size) ||
-        received_ec_size != ec_public_key_length ||
-        !CBS_get_u16(&pq_cbs, &received_pq_size) ||
-        received_pq_size != pq_kem_ctx_->kem->ciphertext_length) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return false;
-    }
-
-    Span<const uint8_t> ec_peer_key = peer_key.subspan(sizeof(uint16_t), ec_public_key_length);
-    if (!ec_key_share_->Finish(&ec_secret, out_alert, ec_peer_key)) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return false;
-    }
-
-    OPENSSL_memcpy(pq_kem_ctx_->ciphertext, peer_key.data() + ec_public_key_length + (2 * sizeof(uint16_t)),
-                   pq_kem_ctx_->kem->ciphertext_length);
-    if (!EVP_PQ_KEM_decapsulate(pq_kem_ctx_)) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return false;
-    }
+    OPENSSL_memcpy(pq_kem_ctx_->ciphertext, peer_key.data(),pq_kem_ctx_->kem->ciphertext_length);
 
     if (!out_secret ||
-        !out_secret->Init(ec_secret.size() + pq_kem_ctx_->kem->shared_secret_length)) {
+        !out_secret->Init(pq_kem_ctx_->kem->shared_secret_length)) {
       return false;
     }
-
-    OPENSSL_memcpy(out_secret->data(), ec_secret.data(), ec_secret.size());
-    OPENSSL_memcpy(out_secret->data() + ec_secret.size(), pq_kem_ctx_->shared_secret,
-                   pq_kem_ctx_->kem->shared_secret_length);
-
+    OPENSSL_memcpy(out_secret->data(), pq_kem_ctx_->shared_secret, pq_kem_ctx_->kem->shared_secret_length);
     EVP_PQ_KEM_CTX_free(pq_kem_ctx_);
 
     return true;
   }
 
  private:
-  int ec_nid_;
-  int pq_nid_;
+  int nid_;
   uint16_t group_id_;
-  UniquePtr<SSLKeyShare> ec_key_share_;
   EVP_PQ_KEM_CTX *pq_kem_ctx_;
+};
+
+// HybridKeyShare is implemented according to:
+// https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
+class HybridKeyShare : public SSLKeyShare {
+ public:
+  HybridKeyShare(uint16_t group_id) : group_id_(group_id) {
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      key_shares_[i] = nullptr;
+    }
+  }
+
+  uint16_t GroupID() const override { return group_id_; }
+
+  bool KeyShareSizes(uint16_t *out_offer_key_share_size, uint16_t *out_accept_key_share_size) override {
+    *out_offer_key_share_size = 0;
+    *out_accept_key_share_size = 0;
+
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      if (!key_shares_[i]) {
+        return false;
+      }
+
+      uint16_t component_offer_size;
+      uint16_t component_accept_size;
+      if (!key_shares_[i]->KeyShareSizes(&component_offer_size, &component_accept_size)) {
+        return false;
+      }
+      *out_offer_key_share_size += component_offer_size;
+      *out_accept_key_share_size += component_accept_size;
+    }
+
+    return true;
+  }
+
+  bool Offer(CBB *out) override {
+    // TODO INIT()
+
+    // Perform each key exchange's Offer() and concatenate each public key
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      if (!key_shares_[i]->Offer(out)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+    // TODO INIT()
+
+    Array<uint8_t> *component_secrets[NUM_HYBRID_COMPONENTS];
+    size_t span_index = 0;
+    size_t total_secret_size = 0;
+
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      // |peer_key| is the concatenation of all key shares produced by the peer's Offer function.
+      // We split |peer_key| into each key share and perform that key exchange's Accept.
+      uint16_t component_offer_size;
+      uint16_t component_accept_size;
+      if (!key_shares_[i]->KeyShareSizes(&component_offer_size, &component_accept_size)) {
+        return false;
+      }
+
+      Span<const uint8_t> component_peer_key = peer_key.subspan(span_index, component_offer_size);
+      span_index += component_offer_size;
+      if (!key_shares_[i]->Accept(out_public_key, component_secrets[i], out_alert, component_peer_key)) {
+        return false;
+      }
+
+      total_secret_size += component_secrets[i]->size();
+    }
+
+    // Concatenate + copy the component secrets to |out_secret| to form the hybrid shared secret
+    if (!out_secret ||
+        !out_secret->Init(total_secret_size)) {
+      return false;
+    }
+
+    size_t secret_index = 0;
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      OPENSSL_memcpy(out_secret->data() + secret_index, component_secrets[i]->data(), component_secrets[i]->size());
+      secret_index += component_secrets[i]->size();
+    }
+
+    return true;
+  }
+
+  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+    // key_shares_ must have been initialized by a previous call to Offer()
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      if (!key_shares_[i]) {
+        return false;
+      }
+    }
+
+    Array<uint8_t> *component_secrets[NUM_HYBRID_COMPONENTS];
+    size_t span_index = 0;
+    size_t total_secret_size = 0;
+
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      // |peer_key| is the concatenation of all key shares produced by the peer's Accept function.
+      // We split |peer_key| into each key share and perform that key exchange's Finish.
+      uint16_t component_offer_size;
+      uint16_t component_accept_size;
+      if (!key_shares_[i]->KeyShareSizes(&component_offer_size, &component_accept_size)) {
+        return false;
+      }
+
+      Span<const uint8_t> component_peer_key = peer_key.subspan(span_index, component_accept_size);
+      span_index += component_accept_size;
+      if (!key_shares_[i]->Finish(component_secrets[i], out_alert, component_peer_key)) {
+        return false;
+      }
+
+      total_secret_size += component_secrets[i]->size();
+    }
+
+    // Concatenate + copy the component secrets to |out_secret| to form the hybrid shared secret
+    if (!out_secret ||
+        !out_secret->Init(total_secret_size)) {
+      return false;
+    }
+
+    size_t secret_index = 0;
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      OPENSSL_memcpy(out_secret->data() + secret_index, component_secrets[i]->data(), component_secrets[i]->size());
+      secret_index += component_secrets[i]->size();
+    }
+
+    return true;
+  }
+
+ private:
+  bool Init() {
+    for (const HybridGroup &group : HybridGroups()) {
+      if (group_id_ == group.group_id) {
+        for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+          key_shares_[i] = SSLKeyShare::Create(group.component_group_ids[i]);
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  uint16_t group_id_;
+  UniquePtr<SSLKeyShare> key_shares_[NUM_HYBRID_COMPONENTS];
 };
 
 CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
@@ -477,10 +567,9 @@ CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_SECP256R1_KYBER512, SSL_CURVE_SECP256R1_KYBER512, "P-256_Kyber512", "prime256v1_kyber512"},
 };
 
-CONSTEXPR_ARRAY HybridPQGroup kHybridPQGroups[] = {
-    {SSL_CURVE_X25519_KYBER512, NID_X25519_KYBER512, NID_X25519, NID_KYBER512},
-    {SSL_CURVE_SECP256R1_KYBER512, NID_SECP256R1_KYBER512, NID_X9_62_prime256v1, NID_KYBER512},
-    {SSL_CURVE_CECPQ2, NID_CECPQ2, NID_X25519, NID_HRSS},
+CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
+    {SSL_CURVE_X25519_KYBER512, {NID_X25519, NID_KYBER512}},
+    {SSL_CURVE_SECP256R1_KYBER512, {NID_X9_62_prime256v1, NID_KYBER512}},
 };
 
 }  // namespace
@@ -489,8 +578,8 @@ Span<const NamedGroup> NamedGroups() {
   return MakeConstSpan(kNamedGroups, OPENSSL_ARRAY_SIZE(kNamedGroups));
 }
 
-Span<const HybridPQGroup> HybridPQGroups() {
-  return MakeConstSpan(kHybridPQGroups, OPENSSL_ARRAY_SIZE(kHybridPQGroups));
+Span<const HybridGroup> HybridGroups() {
+  return MakeConstSpan(kHybridGroups, OPENSSL_ARRAY_SIZE(kHybridGroups));
 }
 
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
@@ -512,11 +601,11 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
     case SSL_CURVE_CECPQ2:
       return UniquePtr<SSLKeyShare>(New<CECPQ2KeyShare>());
     case SSL_CURVE_X25519_KYBER512:
-      return UniquePtr<SSLKeyShare>(
-          New<HybridPQKeyShare>(SSL_CURVE_X25519_KYBER512));
+      return UniquePtr<SSLKeyShare>(New<HybridKeyShare>(SSL_CURVE_X25519_KYBER512));
     case SSL_CURVE_SECP256R1_KYBER512:
-      return UniquePtr<SSLKeyShare>(
-          New<HybridPQKeyShare>(SSL_CURVE_SECP256R1_KYBER512));
+      return UniquePtr<SSLKeyShare>(New<HybridKeyShare>(SSL_CURVE_SECP256R1_KYBER512));
+    case SSL_CURVE_KYBER512:
+      return UniquePtr<SSLKeyShare>(New<PQKeyShare>(NID_KYBER512, SSL_CURVE_KYBER512));
     default:
       return nullptr;
   }
@@ -578,23 +667,6 @@ bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) 
     }
   }
   return false;
-}
-
-bool  get_ec_public_key_length(uint16_t *out_public_key_length, int nid) {
-  if (nid == NID_X25519) {
-    *out_public_key_length = 32;
-    return true;
-  }
-
-  EC_GROUP *ec_group = EC_GROUP_new_by_curve_name(nid);
-  if (!ec_group) {
-    return false;
-  }
-  const size_t field_len = BN_num_bytes(&ec_group->field);
-  *out_public_key_length = 1 + (2 * field_len);
-  EC_GROUP_free(ec_group);
-
-  return true;
 }
 
 BSSL_NAMESPACE_END
