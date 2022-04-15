@@ -31,9 +31,9 @@
 #include <openssl/rand.h>
 #include <openssl/pq_kem.h>
 
+#include "../crypto/fipsmodule/ec/internal.h"
 #include "internal.h"
 #include "../crypto/internal.h"
-#include "../crypto/fipsmodule/ec/internal.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -479,7 +479,7 @@ class HybridKeyShare : public SSLKeyShare {
       return false;
     }
 
-    Array<uint8_t> *component_secrets[NUM_HYBRID_COMPONENTS];
+    Array<uint8_t> component_secrets[NUM_HYBRID_COMPONENTS];
     size_t span_index = 0;
     size_t total_secret_size = 0;
 
@@ -494,11 +494,11 @@ class HybridKeyShare : public SSLKeyShare {
 
       Span<const uint8_t> component_peer_key = peer_key.subspan(span_index, component_offer_size);
       span_index += component_offer_size;
-      if (!key_shares_[i]->Accept(out_public_key, component_secrets[i], out_alert, component_peer_key)) {
+      if (!key_shares_[i]->Accept(out_public_key, &component_secrets[i], out_alert, component_peer_key)) {
         return false;
       }
 
-      total_secret_size += component_secrets[i]->size();
+      total_secret_size += component_secrets[i].size();
     }
 
     // Concatenate + copy the component secrets to |out_secret| to form the hybrid shared secret
@@ -509,8 +509,8 @@ class HybridKeyShare : public SSLKeyShare {
 
     size_t secret_index = 0;
     for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
-      OPENSSL_memcpy(out_secret->data() + secret_index, component_secrets[i]->data(), component_secrets[i]->size());
-      secret_index += component_secrets[i]->size();
+      OPENSSL_memcpy(out_secret->data() + secret_index, component_secrets[i].data(), component_secrets[i].size());
+      secret_index += component_secrets[i].size();
     }
 
     return true;
@@ -524,7 +524,7 @@ class HybridKeyShare : public SSLKeyShare {
       }
     }
 
-    Array<uint8_t> *component_secrets[NUM_HYBRID_COMPONENTS];
+    Array<uint8_t> component_secrets[NUM_HYBRID_COMPONENTS];
     size_t span_index = 0;
     size_t total_secret_size = 0;
 
@@ -539,11 +539,11 @@ class HybridKeyShare : public SSLKeyShare {
 
       Span<const uint8_t> component_peer_key = peer_key.subspan(span_index, component_accept_size);
       span_index += component_accept_size;
-      if (!key_shares_[i]->Finish(component_secrets[i], out_alert, component_peer_key)) {
+      if (!key_shares_[i]->Finish(&component_secrets[i], out_alert, component_peer_key)) {
         return false;
       }
 
-      total_secret_size += component_secrets[i]->size();
+      total_secret_size += component_secrets[i].size();
     }
 
     // Concatenate + copy the component secrets to |out_secret| to form the hybrid shared secret
@@ -554,8 +554,8 @@ class HybridKeyShare : public SSLKeyShare {
 
     size_t secret_index = 0;
     for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
-      OPENSSL_memcpy(out_secret->data() + secret_index, component_secrets[i]->data(), component_secrets[i]->size());
-      secret_index += component_secrets[i]->size();
+      OPENSSL_memcpy(out_secret->data() + secret_index, component_secrets[i].data(), component_secrets[i].size());
+      secret_index += component_secrets[i].size();
     }
 
     return true;
