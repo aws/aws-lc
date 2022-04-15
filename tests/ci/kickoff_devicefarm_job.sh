@@ -11,6 +11,13 @@ set -exuo pipefail
 # -o pipefail: Makes sure to exit a pipeline with a non-zero error code if any command in the pipeline exists with a
 #              non-zero error code.
 
+# Device Farm project to designate Device Farm runs. The two device pools defined below should also belong to this project.
+AWSLC_DEVICEFARM_PROJECT='arn:aws:devicefarm:us-west-2:620771051181:project:d1e78543-a776-49c5-9452-9a2b3448b728'
+# Device pool arn for FIPS.
+AWSLC_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4726586b-cdbc-4dc0-98a5-38e7448e3691'
+# Device pool arn for non-FIPS.
+AWSLC_NON_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4e72604c-86eb-41b6-9383-7797c04328b4'
+
 ###########################
 # Main and related helper #
 ###########################
@@ -38,7 +45,7 @@ function export_global_variables() {
     export ANDROID_TEST_NAME='AWS-LC Android Test'
   fi
   if [[ -z "${DEVICEFARM_PROJECT+x}" || -z "${DEVICEFARM_PROJECT}" ]]; then
-    export DEVICEFARM_PROJECT='arn:aws:devicefarm:us-west-2:620771051181:project:d1e78543-a776-49c5-9452-9a2b3448b728'
+    export DEVICEFARM_PROJECT=$AWSLC_DEVICEFARM_PROJECT
   fi
   if [[ -z "${FIPS+x}" || -z "${FIPS}" ]]; then
     export FIPS=false
@@ -52,10 +59,10 @@ function export_global_variables() {
   if [[ -z "${DEVICEFARM_DEVICE_POOL+x}" || -z "${DEVICEFARM_DEVICE_POOL}" ]]; then
     if [[ "${FIPS}" = true ]]; then
       # Device pool arn for FIPS.
-      export DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4726586b-cdbc-4dc0-98a5-38e7448e3691'
+      export DEVICEFARM_DEVICE_POOL=$AWSLC_FIPS_DEVICEFARM_DEVICE_POOL
     else
       # Device pool arn for non-FIPS.
-      export DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4e72604c-86eb-41b6-9383-7797c04328b4'
+      export DEVICEFARM_DEVICE_POOL=$AWSLC_NON_FIPS_DEVICEFARM_DEVICE_POOL
     fi
   fi
   if [[ -z "${AWS_REGION+x}" || -z "${AWS_REGION}" ]]; then
@@ -70,26 +77,31 @@ function compile_for_android() {
   cd android/AWSLCAndroidTestRunner
   export ANDROID_APK_LOCATION='android/AWSLCAndroidTestRunner/app/build/outputs/apk'
   if [[ "${FIPS}" = true ]]; then
+    # FIPS (Release Shared)
     ./gradlew assembleDebug assembleAndroidTest -PFIPS
     export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_fips.apk"
     export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_fips-androidTest.apk"
   else
     if [[ "${RELEASE}" = true ]]; then
       if [[ "${SHARED}" = true ]]; then
+        # Release Shared
         ./gradlew assembleDebug assembleAndroidTest -PRelease -PShared
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_shared_rel.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_shared_rel-androidTest.apk"
       else
+        # Release Static
         ./gradlew assembleDebug assembleAndroidTest -PRelease
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_static_rel.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_static_rel-androidTest.apk"
       fi
     else
       if [[ "${SHARED}" = true ]]; then
+        # Debug Shared
         ./gradlew assembleDebug assembleAndroidTest -PShared
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_shared_dbg.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_shared_dbg-androidTest.apk"
       else
+        # Debug Static
         ./gradlew assembleDebug assembleAndroidTest
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_static_dbg.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_static_dbg-androidTest.apk"

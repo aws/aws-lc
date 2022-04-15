@@ -31,7 +31,8 @@ setuptools.setup(
         # Introduced by benchmark framework.
         "boto3==1.18.11",
         # Introduced by Android Device Farm CI.
-        "requests"
+        "requests",
+        "arnparse==0.0.2"
     ],
 
     python_requires=">=3.6",

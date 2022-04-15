@@ -8,6 +8,7 @@ import datetime
 import time
 import json
 from cdk.util.devicefarm_util import AWS_REGION, ANDROID_TEST_NAME, ANDROID_APK, ANDROID_TEST_APK, DEVICEFARM_PROJECT, DEVICEFARM_DEVICE_POOL
+from arnparse import arnparse
 
 
 config = {
@@ -34,6 +35,8 @@ def upload_df_file(filename, type_, mime='application/octet-stream'):
         type=type_,
         contentType=mime
         )
+    upload_start_time = datetime.datetime.now()
+    upload_time_elapsed = datetime.timedelta(seconds=0)
     # Get the upload ARN, which we'll return later.
     upload_arn = response['upload']['arn']
     # We're going to extract the URL of the upload and use Requests to upload it
@@ -44,10 +47,8 @@ def upload_df_file(filename, type_, mime='application/octet-stream'):
         print(' done')
         if not put_req.ok:
             raise Exception("Couldn't upload, requests said we're not ok. Requests says: "+put_req.reason)
-    started = datetime.datetime.now()
-    upload_time_elapsed = datetime.timedelta(seconds=0)
     while upload_time_elapsed < upload_time_limit:
-        upload_time_elapsed = datetime.datetime.now() - started
+        upload_time_elapsed = datetime.datetime.now() - upload_start_time
         print(f"Upload of {filename} in state {response['upload']['status']} after " + str(upload_time_elapsed))
         if response['upload']['status'] == 'FAILED':
             raise Exception("The upload failed processing. DeviceFarm says reason is: \n"+response['upload']['message'])
@@ -72,19 +73,19 @@ response = client.schedule_run(
         "testPackageArn": our_test_package_arn
         }
     )
+run_start_time = datetime.datetime.now()
+run_time_elapsed = datetime.timedelta(seconds=0)
 run_arn = response['run']['arn']
-project_arn_id = config['projectArn'].split(':')[6]
-run_arn_id = run_arn.split('/')[1]
+project_arn_id = arnparse(run_arn).resource.split('/')[0]
+run_arn_id = arnparse(run_arn).resource.split('/')[1]
 run_url = "https://"+ aws_region +".console.aws.amazon.com/devicefarm/home?region=" + aws_region + "#/mobile/projects/" + \
             project_arn_id + "/runs/" + run_arn_id
-start_time = datetime.datetime.now()
-run_time_elapsed = datetime.timedelta(seconds=0)
 print(f"\n\nRun {unique} is scheduled as arn: {run_arn} ")
 print(f"Run can be observed at URL: {run_url} \n\n")
 try:
 
     while run_time_elapsed < run_time_limit:
-        run_time_elapsed = datetime.datetime.now() - start_time
+        run_time_elapsed = datetime.datetime.now() - run_start_time
         response = client.get_run(arn=run_arn)
         state = response['run']['status']
         if state == 'COMPLETED' or state == 'ERRORED':
