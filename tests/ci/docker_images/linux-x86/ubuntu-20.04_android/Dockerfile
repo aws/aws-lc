@@ -44,7 +44,7 @@ RUN set -ex && \
     cd $ANDROID_HOME/cmdline-tools/latest/bin && \
     ./sdkmanager --update && \
     yes | ./sdkmanager --licenses && \
-# Preinstall AWSLCAndroidTestRunner dependencies, so they don't need to be 
+# Preinstall AWSLCAndroidTestRunner android dependencies, so they don't need to be
 # rebuilt for each new gradle build run.
     ./sdkmanager "ndk;21.0.6113669" \
     "build-tools;29.0.3" \
@@ -54,6 +54,12 @@ RUN set -ex && \
     wget -q https://services.gradle.org/distributions/${GRADLE_VERSION}-all.zip && \
     rm -rf /opt/cmdline-tools-tmp && \
     rm -rf /tmp/* 
+# Preinstall gradle dependencies, so they don't need to be redownloaded in the CI.
+COPY . /tmp/triggerGradleDownloads/
+RUN  cd /tmp/triggerGradleDownloads && \
+     ./gradlew --no-daemon --refresh-dependencies androidDependencies lint && \
+     rm -rf /tmp/triggerGradleDownloads
+
 
 ENV GOROOT=/usr/local/go
 ENV GO111MODULE=on
