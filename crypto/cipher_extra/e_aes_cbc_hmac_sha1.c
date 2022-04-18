@@ -116,10 +116,21 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     size_t sha_off = SHA_CBLOCK - key->md.num;
     size_t blocks;
 
-    // TODO: check CPU cap like e_aes_cbc_hmac_sha256.c?
     // Use stitch code |aesni_cbc_sha1_enc| when there are multiple of SHA_CBLOCK
     // so |aesni_cbc_sha1_enc| can use AES and SHA on the same data block.
-    if (plen > (sha_off + iv) &&
+    //
+    // Assembly stitch handles AVX-capable processors, but its
+    // performance is not optimal on AMD Jaguar, ~40% worse, for
+    // unknown reasons. Incidentally processor in question supports
+    // AVX, but not AMD-specific XOP extension, which can be used
+    // to identify it and avoid stitch invocation. So that after we
+    // establish that current CPU supports AVX, we even see if it's
+    // either even XOP-capable Bulldozer-based or GenuineIntel one.
+    // But SHAEXT-capable go ahead...
+    if ((CRYPTO_is_SHAEXT_capable() &&
+        (CRYPTO_is_AVX_capable() &&
+        (CRYPTO_is_AMD_XOP_support() | CRYPTO_is_intel_cpu()))) &&
+        plen > (sha_off + iv) &&
         (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
       SHA1_Update(&key->md, in + iv, sha_off);
 

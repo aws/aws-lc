@@ -58,7 +58,7 @@ die "can't locate x86_64-xlate.pl";
 # In OpenSSL, this is controlled by shelling out to the compiler to check
 # versions, but BoringSSL/awslc is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
-$avx=2;
+$avx=1;
 $shaext=1;	### set to zero if compiling for 1.0.1
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";

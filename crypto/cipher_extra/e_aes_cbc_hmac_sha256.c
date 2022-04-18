@@ -114,6 +114,9 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       iv = AES_BLOCK_SIZE;
     }
 
+    // Use stitch code |aesni_cbc_sha256_enc| when there are multiple of SHA_CBLOCK
+    // so |aesni_cbc_sha1_enc| can use AES and SHA on the same data block.
+    //
     // Assembly stitch handles AVX-capable processors, but its
     // performance is not optimal on AMD Jaguar, ~40% worse, for
     // unknown reasons. Incidentally processor in question supports
@@ -122,13 +125,9 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     // establish that current CPU supports AVX, we even see if it's
     // either even XOP-capable Bulldozer-based or GenuineIntel one.
     // But SHAEXT-capable go ahead...
-    // TODO: replace below with the unified CPU cap check func.
-    // Use stitch code |aesni_cbc_sha256_enc| when there are multiple of SHA_CBLOCK
-    // so |aesni_cbc_sha1_enc| can use AES and SHA on the same data block.
-    if (((OPENSSL_ia32cap_P[2] & (1 << 29)) ||         /* SHAEXT? */
-         ((OPENSSL_ia32cap_P[1] & (1 << (60 - 32))) && /* AVX? */
-          ((OPENSSL_ia32cap_P[1] & (1 << (43 - 32)))   /* XOP? */
-           | (OPENSSL_ia32cap_P[0] & (1 << 30))))) &&  /* "Intel CPU"? */
+    if ((CRYPTO_is_SHAEXT_capable() &&
+         (CRYPTO_is_AVX_capable() &&
+          (CRYPTO_is_AMD_XOP_support() | CRYPTO_is_intel_cpu()))) &&
         plen > (sha_off + iv) &&
         (blocks = (plen - (sha_off + iv)) / SHA256_CBLOCK)) {
       SHA256_Update(&key->md, in + iv, sha_off);
