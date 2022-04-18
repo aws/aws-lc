@@ -1,9 +1,10 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// capture_hash runs another executable that has been linked with libcrypto. It expects the libcrypto to run the power
-// on self tests and fail due to a fingerprint mismatch. capture_hash parses the output, takes the correct fingerprint
-// value, and generates a new C file that contains the correct fingerprint which is used to build the final libcrypto.
+// capture_hash runs another executable that has been linked with libcrypto. It expects the libcrypto to run the
+// power-on self-tests and fail due to a fingerprint mismatch. capture_hash parses the output, takes the correct
+// fingerprint value, and generates a new C file that contains the correct fingerprint which is used to build the
+// final libcrypto.
 
 package main
 
