@@ -31,7 +31,6 @@
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
 #pragma const_seg(".fipsda$b")
-#pragma bss_seg(".fipsda$b")
 #endif
 
 #include <openssl/digest.h>
