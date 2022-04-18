@@ -578,11 +578,72 @@ TEST(RSATest, OnlyDGiven) {
   ASSERT_TRUE(BN_hex2bn(&key2->d, kD));
   key2->flags |= RSA_FLAG_NO_BLINDING;
 
+  // While keys defined only in terms of |n| and |d| must be functional, our
+  // validation logic doesn't consider them "valid".
+  EXPECT_FALSE(RSA_check_key(key2.get()));
+
   ASSERT_LE(RSA_size(key2.get()), sizeof(buf));
   EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
                        &buf_len, key2.get()));
 
   // Verify the signature with |key|. |key2| has no public exponent.
+  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                         buf_len, key.get()));
+
+  // Perform the same test case as above ("JCA-style" key specified in terms of
+  // |d| and |n|, turn off blinding), but this time do a round trip to DER +
+  // ASN.1 first. This most closely replicates JCA's use-case of asking AWS-LC
+  // to encode to and decode from DER. While already-parsed keys tend to be
+  // validated and used with "NULL"ness indicating absence of various RSA
+  // parameters, the actual parsing logic assumes that these NULL'd values are
+  // present and zero-valued when being un/marshalled. So, we zero them out
+  // before marshalling, and assert that they were NULLed when parsing back
+  // from DER. Here are some examples of JCA-style stripped keys:
+  //
+  // https://github.com/corretto/amazon-corretto-crypto-provider/blob/develop/tst/com/amazon/corretto/crypto/provider/test/RsaCipherTest.java#L512-L529
+  // https://github.com/corretto/amazon-corretto-crypto-provider/blob/develop/tst/com/amazon/corretto/crypto/provider/test/EvpSignatureSpecificTest.java#L290-L302
+  //
+  // Also, note that here and in the previous test we expect RSA_check_key to
+  // return false for JCA-style keys. The current implementation does not
+  // consider JCA-style keys to be valid. We deliberately made this decision to
+  // avoid introducing potentially dangerous modifications to key validation
+  // and generation logic. Instead, we detect JCA-style keys only when parsing
+  // from DER and special case that.
+  //
+  // At some point in the future, we will likely want to standardize on one of
+  // of NULL/0 for indicating parameter absence across the codebase, as well as
+  // fix up |RSA_check_key| to accurately account for all the different types
+  // of RSA keys that we support.
+  ASSERT_TRUE(BN_hex2bn(&key2->e, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->p, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->q, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->dmp1, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->dmq1, "0"));
+  ASSERT_TRUE(BN_hex2bn(&key2->iqmp, "0"));
+
+  uint8_t *jcaKeyDER;
+  size_t jcaKeyDerLen;
+  EXPECT_TRUE(RSA_private_key_to_bytes(&jcaKeyDER, &jcaKeyDerLen, key2.get()));
+  EXPECT_TRUE(jcaKeyDerLen > 0);
+
+  bssl::UniquePtr<RSA> jcaKey(RSA_private_key_from_bytes(jcaKeyDER, jcaKeyDerLen));
+  OPENSSL_free(jcaKeyDER);
+  EXPECT_TRUE(jcaKey);
+  jcaKey->flags |= RSA_FLAG_NO_BLINDING;
+
+  ASSERT_FALSE(jcaKey->e);
+  ASSERT_FALSE(jcaKey->p);
+  ASSERT_FALSE(jcaKey->q);
+  ASSERT_FALSE(jcaKey->dmp1);
+  ASSERT_FALSE(jcaKey->dmq1);
+  ASSERT_FALSE(jcaKey->iqmp);
+
+  EXPECT_FALSE(RSA_check_key(jcaKey.get()));
+
+  ASSERT_LE(RSA_size(jcaKey.get()), sizeof(buf));
+  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
+                       &buf_len, jcaKey.get()));
+
   EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
                          buf_len, key.get()));
 }

@@ -213,6 +213,8 @@ var defaultInputs = []string{
 	"ecdsa_secp384r1_sha384_test.json",
 	"ecdsa_secp384r1_sha512_test.json",
 	"ecdsa_secp521r1_sha512_test.json",
+	"ecdsa_secp256k1_sha256_test.json",
+	"ecdsa_secp256k1_sha512_test.json",
 	"eddsa_test.json",
 	"hkdf_sha1_test.json",
 	"hkdf_sha256_test.json",
