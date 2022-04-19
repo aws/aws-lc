@@ -1898,7 +1898,7 @@ static bool FFDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({BIGNUMBytes(DH_get0_pub_key(dh.get())), z});
 }
 
-static constexpr struct {
+static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
   bool (*handler)(const Span<const uint8_t> args[], ReplyCallback write_reply);

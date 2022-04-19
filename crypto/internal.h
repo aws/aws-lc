@@ -894,7 +894,32 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
+#if defined(_MSC_VER)
+__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+#else
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+#endif
+
+// boringssl_self_test_startup runs all startup self tests and returns one on
+// success or zero on error. Startup self tests do not include lazy tests.
+// Call |BORINGSSL_self_test| to run every self test.
+int boringssl_self_test_startup(void);
+
+// boringssl_ensure_rsa_self_test checks whether the RSA self-test has been run
+// in this address space. If not, it runs it and crashes the address space if
+// unsuccessful.
+void boringssl_ensure_rsa_self_test(void);
+
+// boringssl_ensure_ecc_self_test checks whether the ECDSA and ECDH self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_ecc_self_test(void);
+
+// boringssl_ensure_ffdh_self_test checks whether the FFDH self-test has been
+// run in this address space. If not, it runs it and crashes the address space
+// if unsuccessful.
+void boringssl_ensure_ffdh_self_test(void);
+
 #else
 #define MAX_KEYGEN_ATTEMPTS  1
 #endif
