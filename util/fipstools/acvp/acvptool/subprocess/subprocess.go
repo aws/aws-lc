@@ -134,12 +134,12 @@ func (m *Subprocess) Transact(cmd string, expectedResults int, args ...[]byte) (
 	}
 
 	if _, err := m.stdin.Write(buf); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to write buff: %s", err)
 	}
 
 	buf = buf[:4]
 	if _, err := io.ReadFull(m.stdout, buf); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to read the length of sections section: %s", err)
 	}
 
 	numResults := binary.LittleEndian.Uint32(buf)
@@ -149,7 +149,7 @@ func (m *Subprocess) Transact(cmd string, expectedResults int, args ...[]byte) (
 
 	buf = make([]byte, 4*numResults)
 	if _, err := io.ReadFull(m.stdout, buf); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to read the length of each section: %s", err)
 	}
 
 	var resultsLength uint64
@@ -163,7 +163,7 @@ func (m *Subprocess) Transact(cmd string, expectedResults int, args ...[]byte) (
 
 	results := make([]byte, resultsLength)
 	if _, err := io.ReadFull(m.stdout, results); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to read total results: %s", err)
 	}
 
 	ret := make([][]byte, 0, numResults)
