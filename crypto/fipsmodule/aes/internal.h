@@ -171,7 +171,7 @@ OPENSSL_INLINE int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t len
   abort();
 }
 OPENSSL_INLINE int CRYPTO_is_xts_AESNI_capable(void) {
-    abort();
+    return 0;
 }
 #endif  // HWAES_XTS
 
