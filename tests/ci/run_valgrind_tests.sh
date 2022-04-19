@@ -6,3 +6,6 @@ source tests/ci/common_posix_setup.sh
 
 echo "Testing AWS-LC in debug mode under Valgrind."
 build_and_test_valgrind
+
+echo "Testing AWS-LC in debug mode under Valgrind with CONSTANT_TIME_VALIDATION."
+build_and_test_valgrind -DCONSTANT_TIME_VALIDATION=1
