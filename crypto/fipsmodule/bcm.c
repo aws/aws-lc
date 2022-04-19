@@ -19,9 +19,18 @@
 #include <openssl/crypto.h>
 
 #include <stdlib.h>
-#if defined(BORINGSSL_FIPS)
+#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
 #include <sys/mman.h>
 #include <unistd.h>
+#endif
+
+// On Windows place the bcm code in a specific section that uses Grouped Sections
+// to control the order. $b section will place bcm in between the start/end markers
+// which are in $a and $z.
+#if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
+#pragma code_seg(".fipstx$b")
+#pragma data_seg(".fipsda$b")
+#pragma const_seg(".fipsda$b")
 #endif
 
 #include <openssl/digest.h>
@@ -159,6 +168,23 @@ static void assert_within(const void *start, const void *symbol,
   BORINGSSL_FIPS_abort();
 }
 
+static void assert_not_within(const void *start, const void *symbol,
+                          const void *end) {
+  const uintptr_t start_val = (uintptr_t) start;
+  const uintptr_t symbol_val = (uintptr_t) symbol;
+  const uintptr_t end_val = (uintptr_t) end;
+
+  if (start_val >= symbol_val || symbol_val > end_val) {
+    return;
+  }
+
+  fprintf(
+      stderr,
+      "FIPS module spans unexpected symbol, expected %p < %p || %p > %p\n",
+      symbol, start, symbol, end);
+  BORINGSSL_FIPS_abort();
+}
+
 #if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
   // Android may be compiled in execute-only-memory mode, in which case the
@@ -176,16 +202,23 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
     perror("BoringSSL: mprotect");
   }
 }
-#else
-static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
 #endif  // !ANDROID
 
 #endif  // !ASAN
 
-static void __attribute__((constructor))
-BORINGSSL_bcm_power_on_self_test(void) {
+#if defined(_MSC_VER)
+#pragma section(".CRT$XCU", read)
+static void BORINGSSL_bcm_power_on_self_test(void);
+__declspec(allocate(".CRT$XCU")) void(*fips_library_init_constructor)(void) =
+    BORINGSSL_bcm_power_on_self_test;
+#else
+static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor));
+#endif
 
+static void BORINGSSL_bcm_power_on_self_test(void) {
+#if !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
+#endif
 
   if (jent_entropy_init()) {
     fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
@@ -205,6 +238,8 @@ BORINGSSL_bcm_power_on_self_test(void) {
   assert_within(start, SHA256_Update, end);
   assert_within(start, ECDSA_do_verify, end);
   assert_within(start, EVP_AEAD_CTX_seal, end);
+  assert_not_within(start, OPENSSL_cleanse, end);
+  assert_not_within(start, CRYPTO_chacha_20, end);
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
@@ -241,7 +276,9 @@ BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
+#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
   BORINGSSL_maybe_set_module_text_permissions(PROT_READ | PROT_EXEC);
+#endif
 #if defined(BORINGSSL_SHARED_LIBRARY)
   uint64_t length = end - start;
   HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
@@ -253,8 +290,9 @@ BORINGSSL_bcm_power_on_self_test(void) {
 #else
   HMAC_Update(&hmac_ctx, start, end - start);
 #endif
+#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
   BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
-
+#endif
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
