@@ -38,11 +38,8 @@ OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_AESNI_capable(); }
 #if defined(OPENSSL_X86_64)
 #define VPAES_CTR32
 #define HWAES_XTS
-// This function is defined within fipsmodule to be able to access
-// OPENSSL_ia32cap_P and give the result outside the module.
-OPENSSL_EXPORT int CRYPTO_is_xts_AESNI_capable(void);
 OPENSSL_INLINE int hwaes_xts_available(void) {
-  return CRYPTO_is_xts_AESNI_capable();
+  return CRYPTO_is_AESNI_capable();
 }
 #endif
 #define VPAES_CBC
@@ -169,9 +166,6 @@ OPENSSL_INLINE int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t len
                                       const AES_KEY *key1, const AES_KEY *key2,
                                       const uint8_t iv[16], int enc) {
   abort();
-}
-OPENSSL_INLINE int CRYPTO_is_xts_AESNI_capable(void) {
-    return 0;
 }
 #endif  // HWAES_XTS
 
