@@ -22,21 +22,3 @@ build_and_run_minimal_test -DDISABLE_GO=ON -DDISABLE_PERL=ON -DCMAKE_BUILD_TYPE=
 
 echo "Testing shared lib AWS-LC without Perl/Go in release mode."
 build_and_run_minimal_test -DDISABLE_GO=ON -DDISABLE_PERL=ON -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
-
-# Special build options
-
-## build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
-echo "Testing static lib AWS-LC with MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX build option in release mode."
-build_and_run_minimal_test -DCMAKE_BUILD_TYPE=Release -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
-
-echo "Testing shared lib AWS-LC with MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX build option in release mode."
-build_and_run_minimal_test -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
-
-echo "Testing static lib AWS-LC with MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX build option in debug mode."
-build_and_run_minimal_test -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
-
-echo "Testing shared lib AWS-LC with MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX build option in debug mode."
-build_and_run_minimal_test -DBUILD_SHARED_LIBS=1 -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
-
-echo "Testing shared lib AWS-LC with MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX build option in [FIPS, release] mode."
-build_and_run_minimal_test -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON -DFIPS=1
