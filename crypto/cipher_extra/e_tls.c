@@ -354,7 +354,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
   } else {
     // We should support the constant-time path for all CBC-mode ciphers
     // implemented.
-//    assert(EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) != EVP_CIPH_CBC_MODE);
+    assert(EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) != EVP_CIPH_CBC_MODE);
 
     unsigned mac_len_u;
     if (!HMAC_Init_ex(&tls_ctx->hmac_ctx, NULL, 0, NULL, NULL) ||
@@ -551,11 +551,11 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
-    SHA256_DIGEST_LENGTH + 16,  // key len (SHA1 + AES128)
-    16,                      // nonce len (IV)
-    16 + SHA256_DIGEST_LENGTH,  // overhead (padding + SHA1)
+    SHA256_DIGEST_LENGTH + 16,  // key len (SHA256 + AES128)
+    16,                         // nonce len (IV)
+    16 + SHA256_DIGEST_LENGTH,  // overhead (padding + SHA256)
     SHA256_DIGEST_LENGTH,       // max tag length
-    0,                       // seal_scatter_supports_extra_in
+    0,                          // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_128_cbc_sha256_tls_init,
@@ -568,11 +568,11 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
-    SHA256_DIGEST_LENGTH + 16 + 16,  // key len (SHA1 + AES128 + IV)
-    0,                            // nonce len
-    16 + SHA256_DIGEST_LENGTH,       // overhead (padding + SHA1)
+    SHA256_DIGEST_LENGTH + 16 + 16,  // key len (SHA256 + AES128 + IV)
+    0,                               // nonce len
+    16 + SHA256_DIGEST_LENGTH,       // overhead (padding + SHA256)
     SHA256_DIGEST_LENGTH,            // max tag length
-    0,                            // seal_scatter_supports_extra_in
+    0,                               // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_128_cbc_sha256_tls_implicit_iv_init,
@@ -585,11 +585,11 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha256_tls = {
-    SHA256_DIGEST_LENGTH + 32,  // key len (SHA1 + AES256)
-    16,                      // nonce len (IV)
-    16 + SHA256_DIGEST_LENGTH,  // overhead (padding + SHA1)
+    SHA256_DIGEST_LENGTH + 32,  // key len (SHA256 + AES256)
+    16,                         // nonce len (IV)
+    16 + SHA256_DIGEST_LENGTH,  // overhead (padding + SHA256)
     SHA256_DIGEST_LENGTH,       // max tag length
-    0,                       // seal_scatter_supports_extra_in
+    0,                          // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_256_cbc_sha256_tls_init,
@@ -602,11 +602,11 @@ static const EVP_AEAD aead_aes_256_cbc_sha256_tls = {
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha256_tls_implicit_iv = {
-    SHA256_DIGEST_LENGTH + 32 + 16,  // key len (SHA1 + AES256 + IV)
-    0,                            // nonce len
-    16 + SHA256_DIGEST_LENGTH,       // overhead (padding + SHA1)
+    SHA256_DIGEST_LENGTH + 32 + 16,  // key len (SHA256 + AES256 + IV)
+    0,                               // nonce len
+    16 + SHA256_DIGEST_LENGTH,       // overhead (padding + SHA256)
     SHA256_DIGEST_LENGTH,            // max tag length
-    0,                            // seal_scatter_supports_extra_in
+    0,                               // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_256_cbc_sha256_tls_implicit_iv_init,

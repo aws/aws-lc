@@ -208,6 +208,18 @@ static constexpr SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
+    // Cipher 3C
+    {
+     TLS1_TXT_RSA_WITH_AES_128_SHA256,
+     "TLS_RSA_WITH_AES_128_CBC_SHA256",
+     TLS1_CK_RSA_WITH_AES_128_SHA256,
+     SSL_kRSA,
+     SSL_aRSA,
+     SSL_AES128,
+     SSL_SHA256,
+     SSL_HANDSHAKE_MAC_SHA256,
+    },
+
     // PSK cipher suites.
 
     // Cipher 8C
@@ -348,14 +360,14 @@ static constexpr SSL_CIPHER kCiphers[] = {
 
     // Cipher C027
     {
-        TLS1_TXT_ECDHE_RSA_WITH_AES_128_SHA256,
-        "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
-        TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
-        SSL_kECDHE,
-        SSL_aRSA,
-        SSL_AES128,
-        SSL_SHA256,
-        SSL_HANDSHAKE_MAC_SHA256,
+     TLS1_TXT_ECDHE_RSA_WITH_AES_128_SHA256,
+     "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+     TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
+     SSL_kECDHE,
+     SSL_aRSA,
+     SSL_AES128,
+     SSL_SHA256,
+     SSL_HANDSHAKE_MAC_SHA256,
     },
 
     // GCM based TLS v1.2 ciphersuites from RFC 5289
@@ -547,6 +559,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, 0},
 
     // MAC aliases
+    {"SHA256", ~0u, ~0u, ~0u, SSL_SHA256, 0},
     {"SHA1", ~0u, ~0u, ~0u, SSL_SHA1, 0},
     {"SHA", ~0u, ~0u, ~0u, SSL_SHA1, 0},
 
@@ -562,7 +575,6 @@ static const CIPHER_ALIAS kCipherAliases[] = {
 
     // Temporary no-op aliases corresponding to removed SHA-2 legacy CBC
     // ciphers. These should be removed after 2018-05-14.
-    {"SHA256", 0, 0, 0, 0, 0},
     {"SHA384", 0, 0, 0, 0, 0},
 };
 
