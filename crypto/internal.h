@@ -947,7 +947,11 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
+#if defined(_MSC_VER)
+__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+#else
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+#endif
 
 // boringssl_self_test_startup runs all startup self tests and returns one on
 // success or zero on error. Startup self tests do not include lazy tests.
@@ -1125,7 +1129,7 @@ OPENSSL_EXPORT int CRYPTO_is_NEON_capable_at_runtime(void);
 
 // CRYPTO_is_ARMv8_AES_capable_at_runtime returns true if the current CPU
 // supports the ARMv8 AES instruction.
-OPENSSL_EXPORT int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
+int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
 
 // CRYPTO_is_ARMv8_PMULL_capable_at_runtime returns true if the current CPU
 // supports the ARMv8 PMULL instruction.

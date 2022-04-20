@@ -19,9 +19,9 @@
 
 #include <gtest/gtest.h>
 
-#include "../../crypto/internal.h"
-#include "../../crypto/fipsmodule/modes/internal.h"
-#include "../../crypto/test/test_util.h"
+#include "../internal.h"
+#include "../fipsmodule/modes/internal.h"
+#include "../test/test_util.h"
 
 
 struct XTSTestCase {

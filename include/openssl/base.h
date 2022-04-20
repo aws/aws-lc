@@ -202,7 +202,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 16
+#define AWSLC_API_VERSION 17
 
 // This string tracks the most current production release version on Github
 // https://github.com/awslabs/aws-lc/releases.

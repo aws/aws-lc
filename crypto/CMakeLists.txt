@@ -133,13 +133,13 @@ endif()
 add_subdirectory(fipsmodule)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES EXTERNAL_OBJECT true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES GENERATED true)
 
   set(
     CRYPTO_FIPS_OBJECTS
 
-    fipsmodule/bcm.o
+    fipsmodule/${BCM_NAME}
   )
 endif()
 
@@ -452,6 +452,7 @@ add_library(
   x509v3/v3_purp.c
   x509v3/v3_skey.c
   x509v3/v3_utl.c
+  xts/xts.c
 
   ${CRYPTO_ARCH_SOURCES}
 )
@@ -481,32 +482,48 @@ function(build_libcrypto name module_source)
           $<INSTALL_INTERFACE:include>)
 endfunction()
 
-build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
-
 if(FIPS_SHARED)
-  # Rewrite libcrypto.so (or libcrypto.dylib) to inject the correct module
-  # hash value. For now we support the FIPS build only on Linux, macOS and iOS.
+  # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
+  # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
+  if(MSVC)
+    # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
+    # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
+    build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
+    add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
+    target_link_libraries(fips_empty_main PUBLIC precrypto)
+    add_custom_command(OUTPUT generated_fips_shared_support.c
+            COMMAND ${GO_EXECUTABLE} run
+            ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            )
+    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
+  else()
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
+    # library.
+    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+    if (APPLE)
+      set(INJECT_HASH_APPLE_FLAG "-apple")
+    endif()
 
-  if (APPLE)
-    set(INJECT_HASH_APPLE_FLAG "-apple")
+    add_custom_command(
+      TARGET crypto POST_BUILD
+      COMMAND ${GO_EXECUTABLE} run
+      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+      -sha256 ${INJECT_HASH_APPLE_FLAG}
+      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+      # go_executable isn't used (as it doesn't get built), but we list this
+      # dependency anyway in case it starts working in some CMake version.
+      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    )
   endif()
-
-  add_custom_command(
-    TARGET crypto POST_BUILD
-    COMMAND ${GO_EXECUTABLE} run
-    ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-    -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-    -sha256 ${INJECT_HASH_APPLE_FLAG}
-    # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-    # go_executable isn't used (as it doesn't get built), but we list this
-    # dependency anyway in case it starts working in some CMake version.
-    DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  )
+else()
+  build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
-
-
-
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
@@ -619,6 +636,7 @@ if(BUILD_TESTING)
     x509/x509_test.cc
     x509/x509_time_test.cc
     x509v3/tab_test.cc
+    xts/xts_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
