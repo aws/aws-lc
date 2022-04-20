@@ -41,11 +41,11 @@ if [[ "${AWSLC_FUZZ}" == "1" ]]; then
   run_build -DFUZZ=1
 fi
 
-# Lightly verify that uncommon build options does not break anything. Fist
+# Lightly verify that uncommon build options does not break the build. Fist
 # define a list of typical build options to verify the special build option with
 build_options_to_test=("" "-DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release -DFIPS=1")
 
 ## Build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
 for build_option in "${build_options_to_test[@]}"; do
-  build_and_run_minimal_test ${build_option} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
+  run_build ${build_option} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
 done
