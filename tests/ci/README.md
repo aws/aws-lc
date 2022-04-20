@@ -86,7 +86,7 @@ The following Valgrind tests are run for a subset of targets in `utils/all_tests
 
 CI Tool|Compiler|CPU platform|OS| memcheck 
 ------------ | -------------| -------------|-------------|-------------
-CodeBuild|gcc 7.3.1|x86-64|AL2 | X
+CodeBuild|gcc 7.3.1|x86-64|Ubuntu 20.04 | X
 
 ### Fuzz tests
 All Fuzz tests under /fuzz are run in CodeBuild for an hour total.

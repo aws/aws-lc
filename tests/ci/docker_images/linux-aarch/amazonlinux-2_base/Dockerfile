@@ -11,7 +11,6 @@ ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
 # llvm, llvm-devel, libcxx, and libcxxabi are needed for the sanitizer tests.
 # 11.1.0 is the latest stable release as of 2021-02-16.
 # See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
-# Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
     yum -y update && yum install -y \
     cmake \
@@ -24,7 +23,6 @@ RUN set -ex && \
     wget \
     llvm \
     llvm-devel \
-    valgrind \
     unzip && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html \
     curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip" && \

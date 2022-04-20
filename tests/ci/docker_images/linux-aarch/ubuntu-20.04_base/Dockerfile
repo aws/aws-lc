@@ -18,6 +18,7 @@ RUN set -ex && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
     software-properties-common \
+    valgrind \
     cmake \
     ninja-build \
     perl \

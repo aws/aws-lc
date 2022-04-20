@@ -9,7 +9,6 @@ SHELL ["/bin/bash", "-c"]
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/add-repositories.html
 
 # gcc 7.3.1 is the latest version versions `yum --showduplicates list gcc`
-# Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
     yum -y update && yum install -y \
     # Without glibc.i686, running "./sde --help" generates error "bash: ./sde: /lib/ld-linux.so.2: bad ELF interpreter: No such file or directory"
