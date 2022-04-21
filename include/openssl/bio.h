@@ -104,10 +104,10 @@ OPENSSL_EXPORT int BIO_up_ref(BIO *bio);
 
 // Basic I/O.
 
-// BIO_read calls the |bio| |callback| or |callback_ex| if set with |BIO_CB_READ|,
-// attempts to read |len| bytes into |data|, then calls |callback| with
-// |BIO_CB_READ|+|BIO_CB_RETURN|. If |callback| is set BIO_read returns the value
-// from calling the |callback|, otherwise BIO_read returns the number of bytes read,
+// BIO_read calls the |bio| |callback_ex| if set with |BIO_CB_READ|, attempts to
+// read |len| bytes into |data|, then calls |callback_ex| with
+// |BIO_CB_READ|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_read returns the value
+// from calling the |callback_ex|, otherwise BIO_read returns the number of bytes read,
 // zero on EOF, or a negative number on error.
 OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 
@@ -121,11 +121,11 @@ OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 // return a line for this call, remove the warning above.
 OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);
 
-// BIO_write call the |bio| |callback| or |callback_ex| if set with |BIO_CB_WRITE|,
-// writes |len| bytes from |data| to |bio|, then calls |callback| with
-// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |callback| is set BIO_write returns the value
-// from calling the |callback|, otherwise BIO_write returns the number of bytes
-// written, or a negative number on error.
+// BIO_write call the |bio| |callback_ex| if set with |BIO_CB_WRITE|, writes
+// |len| bytes from |data| to |bio|, then calls |callback_ex| with
+// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_write returns the
+// value from calling the |callback_ex|, otherwise BIO_write returns the number
+// of bytes written, or a negative number on error.
 OPENSSL_EXPORT int BIO_write(BIO *bio, const void *data, int len);
 
 // BIO_write_all writes |len| bytes from |data| to |bio|, looping as necessary.
@@ -253,15 +253,6 @@ OPENSSL_EXPORT int BIO_method_type(const BIO *bio);
 typedef long (*bio_info_cb)(BIO *bio, int event, const char *parg, int cmd,
                             long larg, long return_value);
 
-// |BIO_callback_fn| parameters have the following meaning:
-//    |bio| the bio that made the call
-//    |oper| the operation being performed, may be or'd with |BIO_CB_RETURN|
-//    |argp|, |argi|, and |argl| depends on the value of oper
-//    |bio_ret| is the return value from the BIO method itself, if the callback
-//        is called before the operation the value 1 is used
-typedef long (*BIO_callback_fn)(BIO *bio, int oper, const char *argp, int argi,
-                                long argl, long bio_ret);
-
 // |BIO_callback_fn_ex| parameters have the following meaning:
 //    |bio| the bio that made the call
 //    |oper| the operation being performed, may be or'd with |BIO_CB_RETURN|
@@ -304,9 +295,6 @@ OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);
 // BIO_number_written returns the number of bytes that have been written to
 // |bio|.
 OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);
-
-// BIO_set_callback sets the |callback| for |bio|.
-OPENSSL_EXPORT void BIO_set_callback(BIO *bio, BIO_callback_fn callback);
 
 // BIO_set_callback sets the |callback_ex| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
@@ -906,15 +894,12 @@ struct bio_method_st {
 struct bio_st {
   const BIO_METHOD *method;
 
-  // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback| or
-  // |callback_ex|, with a preference for the latter. Callbacks are only called
-  // with for the following events: |BIO_CB_READ|, |BIO_CB_READ|+|BIO_CB_RETURN|,
-  // BIO_CB_WRITE|, |BIO_CB_WRITE|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
-  long (*callback) (struct bio_st *bio, int oper, const char *argp, int argi,
-                   long argl, long bio_ret);
-  long (*callback_ex)(BIO *bio, int oper, const char *argp, size_t len,
-                      int argi, long argl, int bio_ret, size_t *processed);
-  // First argument for callback. Only intended for applications.
+  // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback_ex|.
+  // Callbacks are only called with for the following events: |BIO_CB_READ|,
+  // |BIO_CB_READ|+|BIO_CB_RETURN|, BIO_CB_WRITE|,
+  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
+  BIO_callback_fn_ex callback_ex;
+  // Optional callback argument, only intended for applications use.
   char *cb_arg;
 
   // init is non-zero if this |BIO| has been initialised.

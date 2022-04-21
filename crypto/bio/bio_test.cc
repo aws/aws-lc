@@ -351,28 +351,6 @@ static long bio_cb_ex(BIO *b, int oper, const char *argp, size_t len,
   return ret;
 }
 
-static int test_count;
-static struct bio_st *param_b[CB_TEST_COUNT];
-static int param_oper[CB_TEST_COUNT];
-static const char *param_argp[CB_TEST_COUNT];
-static int param_argi[CB_TEST_COUNT];
-static long param_argl[CB_TEST_COUNT];
-static long param_ret[CB_TEST_COUNT];
-
-static long classic_bio_cb(struct bio_st * bio, int oper, const char *argp,  int argi, long argl, long ret) {
-  if (test_count >= CB_TEST_COUNT) {
-    return CALL_BACK_FAILURE;
-  }
-  param_b[test_count] = bio;
-  param_oper[test_count] = oper;
-  param_argp[test_count] = argp;
-  param_argi[test_count] = argi;
-  param_argl[test_count] = argl;
-  param_ret[test_count] = ret;
-  test_count++;
-  return ret;
-}
-
 static void bio_callback_cleanup() {
   // These mocks are used in multiple tests and need to be reset
   test_count_ex = 0;
@@ -384,14 +362,6 @@ static void bio_callback_cleanup() {
   OPENSSL_cleanse(param_ret_ex, sizeof(param_ret_ex));
   OPENSSL_cleanse(param_len_ex, sizeof(param_len_ex));
   OPENSSL_cleanse(param_processed_ex, sizeof(param_processed_ex));
-
-  test_count = 0;
-  OPENSSL_cleanse(param_b, sizeof(param_b));
-  OPENSSL_cleanse(param_oper, sizeof(param_oper));
-  OPENSSL_cleanse(param_argp, sizeof(param_argp));
-  OPENSSL_cleanse(param_argi, sizeof(param_argi));
-  OPENSSL_cleanse(param_argl, sizeof(param_argl));
-  OPENSSL_cleanse(param_ret, sizeof(param_ret));
 }
 
 #define TEST_BUF_LEN 20
@@ -406,7 +376,6 @@ TEST_P(BIOPairTest, TestCallbacks) {
     std::swap(bio1, bio2);
   }
 
-  BIO_set_callback(bio1, classic_bio_cb);
   BIO_set_callback_ex(bio2, bio_cb_ex);
 
   // Data written in one end may be read out the other.
@@ -416,36 +385,23 @@ TEST_P(BIOPairTest, TestCallbacks) {
   EXPECT_EQ(Bytes("12345"), Bytes(buf, TEST_DATA_WRITTEN));
 
   // Check that read or write was called first, then the combo with BIO_CB_RETURN
-  ASSERT_EQ(param_oper[0], BIO_CB_WRITE);
-  ASSERT_EQ(param_oper[1], BIO_CB_WRITE | BIO_CB_RETURN);
   ASSERT_EQ(param_oper_ex[0], BIO_CB_READ);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_READ | BIO_CB_RETURN);
 
   // argp is a pointer to a buffer for read/write operations. We don't care
   // where the buf is, but it should be the same before and after the BIO calls
-  ASSERT_EQ(param_argp[0], param_argp[1]);
   ASSERT_EQ(param_argp_ex[0], param_argp_ex[1]);
 
   // The calls before the BIO operation use 1 for the BIO's return value
-  ASSERT_EQ(param_ret[0], 1);
   ASSERT_EQ(param_ret_ex[0], 1);
 
   // The calls after the BIO call use the return value from the BIO, which is the
   // length of data read/written
-  ASSERT_EQ(param_ret[1], 5);
   ASSERT_EQ(param_ret_ex[1], 5);
-
-  // For old callbacks argi is the length read/written
-  ASSERT_EQ(param_argi[0], 5);
-  ASSERT_EQ(param_argi[1], 5);
 
   // For callback_ex the |len| param is the requested number of bytes to read/write
   ASSERT_EQ(param_len_ex[0], (size_t) TEST_BUF_LEN);
   ASSERT_EQ(param_len_ex[0], (size_t) TEST_BUF_LEN);
-
-  // For old callbacks arpl is unused
-  ASSERT_EQ(param_argl[0], 0);
-  ASSERT_EQ(param_argl[1], 0);
 
   // For callback_ex argi and arl are unused
   ASSERT_EQ(param_argi_ex[0], 0);
@@ -458,12 +414,10 @@ TEST_P(BIOPairTest, TestCallbacks) {
   ASSERT_EQ(param_processed_ex[1], 5u);
 
   // The mock should be "full" at this point
-  ASSERT_EQ(test_count, CB_TEST_COUNT);
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
 
   // If we attempt to read or write more from either BIO the callback fails
   // and the callback return value is returned to the caller
-  EXPECT_EQ(CALL_BACK_FAILURE, BIO_write(bio1, "fail", 4));
   ASSERT_EQ(CALL_BACK_FAILURE, BIO_read(bio2, buf, sizeof(buf)));
 
   // Run bio_callback_cleanup so the BIO_free to reset the mocks so BIO_free can
@@ -472,7 +426,6 @@ TEST_P(BIOPairTest, TestCallbacks) {
   ASSERT_EQ(BIO_free(bio1), 1);
   ASSERT_EQ(BIO_free(bio2), 1);
 
-  ASSERT_EQ(param_oper[0], BIO_CB_FREE);
   ASSERT_EQ(param_oper_ex[0], BIO_CB_FREE);
 
   ASSERT_EQ(param_argp_ex[0], nullptr);
@@ -480,11 +433,6 @@ TEST_P(BIOPairTest, TestCallbacks) {
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_ret_ex[0], 1);
   ASSERT_EQ(param_len_ex[0], 0u);
-
-  ASSERT_EQ(param_argp[0], nullptr);
-  ASSERT_EQ(param_argi[0], 0);
-  ASSERT_EQ(param_argl[0], 0);
-  ASSERT_EQ(param_ret[0], 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));
