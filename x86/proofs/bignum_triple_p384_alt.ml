@@ -90,7 +90,7 @@ let bignum_triple_p384_alt_mc = define_assert_from_elf "bignum_triple_p384_alt_m
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_TRIPLE_P384_ALT_EXEC = X86_MK_EXEC_RULE bignum_triple_p384_alt_mc;;
+let BIGNUM_TRIPLE_P384_ALT_EXEC = X86_MK_CORE_EXEC_RULE bignum_triple_p384_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -110,7 +110,7 @@ let BIGNUM_TRIPLE_P384_ALT_CORRECT = time prove
  (`!z x n pc.
         nonoverlapping (word pc,0xcf) (z,8 * 6)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_triple_p384_alt_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_triple_p384_alt_mc) /\
                   read RIP s = word(pc + 0x1) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,6) s = n)
@@ -244,6 +244,6 @@ let BIGNUM_TRIPLE_P384_ALT_SUBROUTINE_CORRECT = time prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,6);
                          memory :> bytes(word_sub stackpointer (word 8),8)])`,
-  X86_ADD_RETURN_STACK_TAC
-    BIGNUM_TRIPLE_P384_ALT_EXEC BIGNUM_TRIPLE_P384_ALT_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+    bignum_triple_p384_alt_mc BIGNUM_TRIPLE_P384_ALT_CORRECT
     `[RBX]` 8);;

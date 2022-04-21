@@ -69,7 +69,7 @@ let bignum_cmadd_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CMADD_EXEC = X86_MK_EXEC_RULE bignum_cmadd_mc;;
+let BIGNUM_CMADD_EXEC = X86_MK_CORE_EXEC_RULE bignum_cmadd_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -80,7 +80,7 @@ let BIGNUM_CMADD_CORRECT = prove
         nonoverlapping (word pc,0x80) (z,8 * val p) /\
         (x = z \/ nonoverlapping(x,8 * val n) (z,8 * val p))
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_cmadd_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_cmadd_mc) /\
                   read RIP s = word(pc + 0x1) /\
                   C_ARGUMENTS [p;z;c;n;x] s /\
                   bignum_from_memory(z,val p) s = d /\
@@ -519,5 +519,5 @@ let BIGNUM_CMADD_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val p);
                        memory :> bytes(word_sub stackpointer (word 8),8)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_CMADD_EXEC BIGNUM_CMADD_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_cmadd_mc BIGNUM_CMADD_CORRECT
    `[RBX]` 8);;

@@ -85,7 +85,7 @@ let bignum_triple_p256_mc = define_assert_from_elf "bignum_triple_p256_mc" "x86/
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_TRIPLE_P256_EXEC = X86_MK_EXEC_RULE bignum_triple_p256_mc;;
+let BIGNUM_TRIPLE_P256_EXEC = X86_MK_CORE_EXEC_RULE bignum_triple_p256_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -105,7 +105,7 @@ let BIGNUM_TRIPLE_P256_CORRECT = time prove
  (`!z x n pc.
         nonoverlapping (word pc,0xc0) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_triple_p256_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_triple_p256_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
@@ -241,5 +241,5 @@ let BIGNUM_TRIPLE_P256_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_TRIPLE_P256_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_triple_p256_mc
       BIGNUM_TRIPLE_P256_CORRECT);;

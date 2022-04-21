@@ -36,7 +36,7 @@ let bignum_iszero_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_ISZERO_EXEC = X86_MK_EXEC_RULE bignum_iszero_mc;;
+let BIGNUM_ISZERO_EXEC = X86_MK_CORE_EXEC_RULE bignum_iszero_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -45,7 +45,7 @@ let BIGNUM_ISZERO_EXEC = X86_MK_EXEC_RULE bignum_iszero_mc;;
 let BIGNUM_ISZERO_CORRECT = prove
  (`!k a x pc.
         ensures x86
-          (\s. bytes_loaded s (word pc) bignum_iszero_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_iszero_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [k;a] s /\
                bignum_from_memory(a,val k) s = x)
@@ -103,4 +103,4 @@ let BIGNUM_ISZERO_SUBROUTINE_CORRECT = prove
                 C_RETURN s' = if x = 0 then word 1 else word 0)
           (MAYCHANGE [RIP; RSP; RAX; RDI] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_ISZERO_EXEC BIGNUM_ISZERO_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_iszero_mc BIGNUM_ISZERO_CORRECT);;

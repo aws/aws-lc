@@ -205,7 +205,7 @@ let bignum_montsqr_p256_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MONTSQR_P256_EXEC = X86_MK_EXEC_RULE bignum_montsqr_p256_mc;;
+let BIGNUM_MONTSQR_P256_EXEC = X86_MK_CORE_EXEC_RULE bignum_montsqr_p256_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -217,7 +217,7 @@ let BIGNUM_MONTSQR_P256_CORRECT = time prove
  (`!z x a pc.
         nonoverlapping (word pc,0x216) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montsqr_p256_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montsqr_p256_mc) /\
                   read RIP s = word(pc + 0x0a) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
@@ -323,8 +323,8 @@ let BIGNUM_MONTSQR_P256_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4);
                        memory :> bytes(word_sub stackpointer (word 48),48)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTSQR_P256_EXEC BIGNUM_MONTSQR_P256_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_montsqr_p256_mc BIGNUM_MONTSQR_P256_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;
 
 (* ------------------------------------------------------------------------- *)
@@ -337,7 +337,7 @@ let BIGNUM_AMONTSQR_P256_CORRECT = time prove
  (`!z x a pc.
         nonoverlapping (word pc,0x216) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montsqr_p256_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montsqr_p256_mc) /\
                   read RIP s = word(pc + 0x0a) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
@@ -441,6 +441,6 @@ let BIGNUM_AMONTSQR_P256_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4);
                        memory :> bytes(word_sub stackpointer (word 48),48)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTSQR_P256_EXEC BIGNUM_AMONTSQR_P256_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_montsqr_p256_mc BIGNUM_AMONTSQR_P256_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;

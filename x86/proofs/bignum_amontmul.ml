@@ -143,7 +143,7 @@ let bignum_amontmul_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_AMONTMUL_EXEC = X86_MK_EXEC_RULE bignum_amontmul_mc;;
+let BIGNUM_AMONTMUL_EXEC = X86_MK_CORE_EXEC_RULE bignum_amontmul_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -179,7 +179,7 @@ let BIGNUM_AMONTMUL_CORRECT = time prove
           [(z,8 * val k); (stackpointer,8)]
           [(word pc,0x15e); (x,8 * val k); (y,8 * val k); (m,8 * val k)]
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_amontmul_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_amontmul_mc) /\
                 read RIP s = word (pc + 0xe) /\
                 read RSP s = stackpointer /\
                 C_ARGUMENTS [k; z; x; y; m] s /\
@@ -897,6 +897,6 @@ let BIGNUM_AMONTMUL_SUBROUTINE_CORRECT = time prove
             MAYCHANGE [memory :> bytes(z,8 * val k);
                        memory :> bytes(word_sub stackpointer (word 56),56)] ,,
             MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-    BIGNUM_AMONTMUL_EXEC BIGNUM_AMONTMUL_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+    bignum_amontmul_mc BIGNUM_AMONTMUL_CORRECT
     `[RBX; RBP; R12; R13; R14; R15]` 56);;

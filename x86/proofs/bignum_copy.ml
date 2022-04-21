@@ -43,7 +43,7 @@ let bignum_copy_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_COPY_EXEC = X86_MK_EXEC_RULE bignum_copy_mc;;
+let BIGNUM_COPY_EXEC = X86_MK_CORE_EXEC_RULE bignum_copy_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -54,7 +54,7 @@ let BIGNUM_COPY_CORRECT = prove
      nonoverlapping (word pc,0x34) (z,8 * val k) /\
      (x = z \/ nonoverlapping (x,8 * MIN (val n) (val k)) (z,8 * val k))
      ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_copy_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_copy_mc) /\
                 read RIP s = word pc /\
                 C_ARGUMENTS [k; z; n; x] s /\
                 bignum_from_memory (x,val n) s = a)
@@ -188,4 +188,4 @@ let BIGNUM_COPY_SUBROUTINE_CORRECT = prove
                 bignum_from_memory (z,val k) s =  lowdigits a (val k))
           (MAYCHANGE [RIP; RSP; RAX; RDX; R8] ,, MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_COPY_EXEC BIGNUM_COPY_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_copy_mc BIGNUM_COPY_CORRECT);;

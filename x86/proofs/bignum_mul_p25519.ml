@@ -192,7 +192,7 @@ let bignum_mul_p25519_mc = define_assert_from_elf "bignum_mul_p25519_mc" "x86/cu
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MUL_P25519_EXEC = X86_MK_EXEC_RULE bignum_mul_p25519_mc;;
+let BIGNUM_MUL_P25519_EXEC = X86_MK_CORE_EXEC_RULE bignum_mul_p25519_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -212,7 +212,7 @@ let BIGNUM_MUL_P25519_CORRECT = time prove
  (`!z x y m n pc.
         nonoverlapping (word pc,0x1df) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_mul_p25519_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_mul_p25519_mc) /\
                   read RIP s = word(pc + 0xa) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = m /\
@@ -390,6 +390,6 @@ let BIGNUM_MUL_P25519_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4);
                      memory :> bytes(word_sub stackpointer (word 48),48)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MUL_P25519_EXEC BIGNUM_MUL_P25519_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_mul_p25519_mc BIGNUM_MUL_P25519_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;

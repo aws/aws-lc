@@ -56,7 +56,7 @@ let bignum_modadd_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MODADD_EXEC = X86_MK_EXEC_RULE bignum_modadd_mc;;
+let BIGNUM_MODADD_EXEC = X86_MK_CORE_EXEC_RULE bignum_modadd_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -70,7 +70,7 @@ let BIGNUM_MODADD_CORRECT = prove
         (y = z \/ nonoverlapping(y,8 * val k) (z,8 * val k)) /\
         a < n /\ b < n
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_modadd_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_modadd_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [k;z;x;y;m] s /\
                   bignum_from_memory (x,val k) s = a /\
@@ -351,4 +351,4 @@ let BIGNUM_MODADD_SUBROUTINE_CORRECT = prove
              (MAYCHANGE [RIP; RSP; RAX; R9; R10; R11] ,,
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_MODADD_EXEC BIGNUM_MODADD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_modadd_mc BIGNUM_MODADD_CORRECT);;

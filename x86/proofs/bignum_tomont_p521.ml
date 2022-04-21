@@ -90,7 +90,7 @@ let bignum_tomont_p521_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_TOMONT_P521_EXEC = X86_MK_EXEC_RULE bignum_tomont_p521_mc;;
+let BIGNUM_TOMONT_P521_EXEC = X86_MK_CORE_EXEC_RULE bignum_tomont_p521_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -149,7 +149,7 @@ let BIGNUM_TOMONT_P521_CORRECT = time prove
  (`!z x n pc.
       nonoverlapping (word pc,0xd5) (z,8 * 9)
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_tomont_p521_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_tomont_p521_mc) /\
                 read RIP s = word (pc + 0x1) /\
                 C_ARGUMENTS [z; x] s /\
                 bignum_from_memory (x,9) s = n)
@@ -336,5 +336,5 @@ let BIGNUM_TOMONT_P521_SUBROUTINE_CORRECT = prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,9);
                       memory :> bytes(word_sub stackpointer (word 8),8)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_TOMONT_P521_EXEC BIGNUM_TOMONT_P521_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_tomont_p521_mc BIGNUM_TOMONT_P521_CORRECT
    `[RBX]` 8);;

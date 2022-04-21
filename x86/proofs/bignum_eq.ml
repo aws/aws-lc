@@ -50,7 +50,7 @@ let bignum_eq_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_EQ_EXEC = X86_MK_EXEC_RULE bignum_eq_mc;;
+let BIGNUM_EQ_EXEC = X86_MK_CORE_EXEC_RULE bignum_eq_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -59,7 +59,7 @@ let BIGNUM_EQ_EXEC = X86_MK_EXEC_RULE bignum_eq_mc;;
 let BIGNUM_EQ_CORRECT = prove
  (`!m a x n b y pc.
         ensures x86
-          (\s. bytes_loaded s (word pc) bignum_eq_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_eq_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [m;a;n;b] s /\
                bignum_from_memory(a,val m) s = x /\
@@ -295,4 +295,4 @@ let BIGNUM_EQ_SUBROUTINE_CORRECT = prove
                 C_RETURN s' = if x = y then word 1 else word 0)
           (MAYCHANGE [RIP; RSP; RDI; RDX; RCX; RAX] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_EQ_EXEC BIGNUM_EQ_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_eq_mc BIGNUM_EQ_CORRECT);;

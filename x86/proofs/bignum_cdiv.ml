@@ -212,7 +212,7 @@ let bignum_cdiv_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CDIV_EXEC = X86_MK_EXEC_RULE bignum_cdiv_mc;;
+let BIGNUM_CDIV_EXEC = X86_MK_CORE_EXEC_RULE bignum_cdiv_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -261,7 +261,7 @@ let BIGNUM_CDIV_CORRECT = prove
         nonoverlapping (word pc,0x24f) (z,8 * val k) /\
         (x = z \/ nonoverlapping(x,8 * val n) (z,8 * val k))
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_cdiv_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_cdiv_mc) /\
                   read RIP s = word(pc + 0x9) /\
                   C_ARGUMENTS [k;z;n;x;m] s /\
                   bignum_from_memory (x,val n) s = a)
@@ -309,7 +309,7 @@ let BIGNUM_CDIV_CORRECT = prove
 
     SUBGOAL_THEN
      `ensures x86
-       (\s. bytes_loaded s (word pc) bignum_cdiv_mc /\
+       (\s. bytes_loaded s (word pc) (BUTLAST bignum_cdiv_mc) /\
             read RIP s = word (pc + 0xf) /\
             read R9 s = word n /\
             read R10 s = x /\
@@ -405,7 +405,7 @@ let BIGNUM_CDIV_CORRECT = prove
 
       SUBGOAL_THEN
        `ensures x86
-         (\s. bytes_loaded s (word pc) bignum_cdiv_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_cdiv_mc) /\
               read RIP s = word (pc + 0x26) /\
               read R8 s = word n)
          (\s. read RIP s = word (pc + 0xec) /\
@@ -1960,5 +1960,5 @@ let BIGNUM_CDIV_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k);
                        memory :> bytes(word_sub stackpointer (word 40),40)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_CDIV_EXEC BIGNUM_CDIV_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_cdiv_mc BIGNUM_CDIV_CORRECT
     `[RBX; R12; R13; R14; R15]` 40);;

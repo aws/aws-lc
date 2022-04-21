@@ -56,7 +56,7 @@ let bignum_shl_small_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_SHL_SMALL_EXEC = X86_MK_EXEC_RULE bignum_shl_small_mc;;
+let BIGNUM_SHL_SMALL_EXEC = X86_MK_CORE_EXEC_RULE bignum_shl_small_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -67,7 +67,7 @@ let BIGNUM_SHL_SMALL_CORRECT = prove
         nonoverlapping (word pc,0x5d) (z,8 * val p) /\
         (x = z \/ nonoverlapping(x,8 * val n) (z,8 * val p))
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_shl_small_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_shl_small_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [p;z;n;x;c] s /\
                   bignum_from_memory (x,val n) s = a)
@@ -315,4 +315,4 @@ let BIGNUM_SHL_SMALL_SUBROUTINE_CORRECT = prove
              (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_SHL_SMALL_EXEC BIGNUM_SHL_SMALL_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_shl_small_mc BIGNUM_SHL_SMALL_CORRECT);;

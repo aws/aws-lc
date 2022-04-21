@@ -45,7 +45,7 @@ let bignum_optneg_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_OPTNEG_EXEC = X86_MK_EXEC_RULE bignum_optneg_mc;;
+let BIGNUM_OPTNEG_EXEC = X86_MK_CORE_EXEC_RULE bignum_optneg_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -56,7 +56,7 @@ let BIGNUM_OPTNEG_CORRECT = prove
        nonoverlapping (word pc,0x3b) (z,8 * val k) /\
        (x = z \/ nonoverlapping(x,8 * val k) (z,8 * val k))
        ==> ensures x86
-            (\s. bytes_loaded s (word pc) bignum_optneg_mc /\
+            (\s. bytes_loaded s (word pc) (BUTLAST bignum_optneg_mc) /\
                  read RIP s = word pc /\
                  C_ARGUMENTS [k;z;p;x] s /\
                  bignum_from_memory (x,val k) s = a)
@@ -213,4 +213,4 @@ let BIGNUM_OPTNEG_SUBROUTINE_CORRECT = prove
             (MAYCHANGE [RIP; RSP; RAX; RDX; R8; R9] ,,
              MAYCHANGE SOME_FLAGS ,,
              MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_OPTNEG_EXEC BIGNUM_OPTNEG_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optneg_mc BIGNUM_OPTNEG_CORRECT);;

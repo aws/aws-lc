@@ -469,7 +469,7 @@ let bignum_montsqr_p521_mc = define_assert_from_elf "bignum_montsqr_p521_mc" "x8
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MONTSQR_P521_EXEC = X86_MK_EXEC_RULE bignum_montsqr_p521_mc;;
+let BIGNUM_MONTSQR_P521_EXEC = X86_MK_CORE_EXEC_RULE bignum_montsqr_p521_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -530,7 +530,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
             [(word pc,0x515); (z,8 * 9); (x,8 * 9)] /\
         nonoverlapping (z,8 * 9) (word pc,0x515)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montsqr_p521_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montsqr_p521_mc) /\
                   read RIP s = word(pc + 0xd) /\
                   read RSP s = stackpointer /\
                   C_ARGUMENTS [z; x] s /\
@@ -812,6 +812,6 @@ let BIGNUM_MONTSQR_P521_SUBROUTINE_CORRECT = prove
               MAYCHANGE [memory :> bytes(z,8 * 9);
                      memory :> bytes(word_sub stackpointer (word 104),104)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTSQR_P521_EXEC BIGNUM_MONTSQR_P521_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_montsqr_p521_mc BIGNUM_MONTSQR_P521_CORRECT
    `[RBP; R12; R13; R14; R15]` 104);;

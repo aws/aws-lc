@@ -603,7 +603,7 @@ let bignum_mul_p521_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MUL_P521_EXEC = X86_MK_EXEC_RULE bignum_mul_p521_mc;;
+let BIGNUM_MUL_P521_EXEC = X86_MK_CORE_EXEC_RULE bignum_mul_p521_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -617,7 +617,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
             [(word pc,0x6a7); (z,8 * 9); (x,8 * 9); (y,8 * 9)] /\
         nonoverlapping (z,8 * 9) (word pc,0x6a7)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_mul_p521_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_mul_p521_mc) /\
                   read RIP s = word(pc + 0x0e) /\
                   read RSP s = stackpointer /\
                   C_ARGUMENTS [z; x; y] s /\
@@ -828,6 +828,6 @@ let BIGNUM_MUL_P521_SUBROUTINE_CORRECT = prove
               MAYCHANGE [memory :> bytes(z,8 * 9);
                        memory :> bytes(word_sub stackpointer (word 112),112)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MUL_P521_EXEC BIGNUM_MUL_P521_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_mul_p521_mc BIGNUM_MUL_P521_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 112);;

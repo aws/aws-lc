@@ -41,7 +41,7 @@ let bignum_pow2_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_POW2_EXEC = X86_MK_EXEC_RULE bignum_pow2_mc;;
+let BIGNUM_POW2_EXEC = X86_MK_CORE_EXEC_RULE bignum_pow2_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -51,7 +51,7 @@ let BIGNUM_POW2_CORRECT = prove
  (`!k z n pc.
         nonoverlapping (word pc,0x2e) (z,8 * val k)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_pow2_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_pow2_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [k;z;n] s)
              (\s. read RIP s = word(pc + 0x2d) /\
@@ -155,4 +155,4 @@ let BIGNUM_POW2_SUBROUTINE_CORRECT = prove
              (MAYCHANGE [RIP; RSP; RDX; RAX; RCX; R8] ,,
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_POW2_EXEC BIGNUM_POW2_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_pow2_mc BIGNUM_POW2_CORRECT);;

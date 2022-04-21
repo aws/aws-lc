@@ -30,7 +30,7 @@ let bignum_even_mc = define_assert_from_elf "bignum_even_mc" "x86/generic/bignum
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_EVEN_EXEC = X86_MK_EXEC_RULE bignum_even_mc;;
+let BIGNUM_EVEN_EXEC = X86_MK_CORE_EXEC_RULE bignum_even_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -39,7 +39,7 @@ let BIGNUM_EVEN_EXEC = X86_MK_EXEC_RULE bignum_even_mc;;
 let BIGNUM_EVEN_CORRECT = prove
  (`!k a x pc.
         ensures x86
-          (\s. bytes_loaded s (word pc) bignum_even_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_even_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [k;a] s /\
                bignum_from_memory(a,val k) s = x)
@@ -74,4 +74,4 @@ let BIGNUM_EVEN_SUBROUTINE_CORRECT = prove
                read RSP s = word_add stackpointer (word 8) /\
                C_RETURN s = if EVEN x then word 1 else word 0)
           (MAYCHANGE [RIP; RSP; RAX] ,, MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_EVEN_EXEC BIGNUM_EVEN_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_even_mc BIGNUM_EVEN_CORRECT);;

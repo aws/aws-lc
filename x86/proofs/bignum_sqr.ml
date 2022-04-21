@@ -92,7 +92,7 @@ let bignum_sqr_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_SQR_EXEC = X86_MK_EXEC_RULE bignum_sqr_mc;;
+let BIGNUM_SQR_EXEC = X86_MK_CORE_EXEC_RULE bignum_sqr_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -103,7 +103,7 @@ let BIGNUM_SQR_CORRECT = prove
      ALL (nonoverlapping (z,8 * val p))
          [(word pc,0xbe); (x,8 * val n)]
      ==> ensures x86
-          (\s. bytes_loaded s (word pc) bignum_sqr_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_sqr_mc) /\
                read RIP s = word(pc + 0xa) /\
                C_ARGUMENTS [p; z; n; x] s /\
                bignum_from_memory(x,val n) s = a)
@@ -600,5 +600,5 @@ let BIGNUM_SQR_SUBROUTINE_CORRECT = prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,val p);
                       memory :> bytes(word_sub stackpointer (word 48),56)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_SQR_EXEC BIGNUM_SQR_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_sqr_mc BIGNUM_SQR_CORRECT
     `[RBX; RBP; R12; R13; R14; R15]` 48);;

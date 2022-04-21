@@ -103,7 +103,7 @@ let bignum_demont_p256_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_DEMONT_P256_EXEC = X86_MK_EXEC_RULE bignum_demont_p256_mc;;
+let BIGNUM_DEMONT_P256_EXEC = X86_MK_CORE_EXEC_RULE bignum_demont_p256_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -115,7 +115,7 @@ let BIGNUM_DEMONT_P256_CORRECT = time prove
  (`!z x a pc.
         nonoverlapping (word pc,0xf2) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_demont_p256_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_demont_p256_mc) /\
                   read RIP s = word(pc + 0x01) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
@@ -185,5 +185,5 @@ let BIGNUM_DEMONT_P256_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4);
                        memory :> bytes(word_sub stackpointer (word 8),8)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-    BIGNUM_DEMONT_P256_EXEC BIGNUM_DEMONT_P256_CORRECT `[RBX]` 8);;
+  X86_PROMOTE_RETURN_STACK_TAC
+    bignum_demont_p256_mc BIGNUM_DEMONT_P256_CORRECT `[RBX]` 8);;

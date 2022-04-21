@@ -37,7 +37,7 @@ let bignum_mux_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MUX_EXEC = X86_MK_EXEC_RULE bignum_mux_mc;;
+let BIGNUM_MUX_EXEC = X86_MK_CORE_EXEC_RULE bignum_mux_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -49,7 +49,7 @@ let BIGNUM_MUX_CORRECT = prove
      (x = z \/ nonoverlapping (x,8 * val k) (z,8 * val k)) /\
      (y = z \/ nonoverlapping (y,8 * val k) (z,8 * val k))
      ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_mux_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_mux_mc) /\
                 read RIP s = word pc /\
                 C_ARGUMENTS [b; k; z; x; y] s /\
                 bignum_from_memory (x,val k) s = m /\
@@ -142,4 +142,4 @@ let BIGNUM_MUX_SUBROUTINE_CORRECT = prove
           (MAYCHANGE [RIP; RSP; RAX; RDI; RSI; R9] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_MUX_EXEC BIGNUM_MUX_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mux_mc BIGNUM_MUX_CORRECT);;

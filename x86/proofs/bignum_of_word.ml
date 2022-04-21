@@ -35,7 +35,7 @@ let bignum_of_word_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_OF_WORD_EXEC = X86_MK_EXEC_RULE bignum_of_word_mc;;
+let BIGNUM_OF_WORD_EXEC = X86_MK_CORE_EXEC_RULE bignum_of_word_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -45,7 +45,7 @@ let BIGNUM_OF_WORD_CORRECT = prove
  (`!k z n pc.
         nonoverlapping (word pc,0x1a) (z,8 * val k)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_of_word_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_of_word_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [k; z; n] s)
              (\s. read RIP s = word (pc + 0x19) /\
@@ -126,4 +126,4 @@ let BIGNUM_OF_WORD_SUBROUTINE_CORRECT = prove
                   val n MOD (2 EXP (64 * val k)))
              (MAYCHANGE [RIP; RSP; RDX; RDI] ,, MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_OF_WORD_EXEC BIGNUM_OF_WORD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_of_word_mc BIGNUM_OF_WORD_CORRECT);;

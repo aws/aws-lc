@@ -40,7 +40,7 @@ let bignum_littleendian_6_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_LITTLEENDIAN_6_EXEC = X86_MK_EXEC_RULE bignum_littleendian_6_mc;;
+let BIGNUM_LITTLEENDIAN_6_EXEC = X86_MK_CORE_EXEC_RULE bignum_littleendian_6_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof as a "fromlebytes" function.                                          *)
@@ -51,7 +51,7 @@ let BIGNUM_FROMLEBYTES_6_CORRECT = time prove
       nonoverlapping (word pc,0x2f) (z,8 * 6) /\
       (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 6))
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_littleendian_6_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_littleendian_6_mc) /\
                 read RIP s = word pc /\
                 C_ARGUMENTS [z; x] s /\
                 read (memory :> bytelist(x,48)) s = l)
@@ -104,7 +104,7 @@ let BIGNUM_FROMLEBYTES_6_SUBROUTINE_CORRECT = time prove
                 bignum_from_memory (z,6) s = num_of_bytelist l)
           (MAYCHANGE [RIP; RSP; RAX] ,,
            MAYCHANGE [memory :> bignum(z,6)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_LITTLEENDIAN_6_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_littleendian_6_mc
     BIGNUM_FROMLEBYTES_6_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -116,7 +116,7 @@ let BIGNUM_TOLEBYTES_6_CORRECT = time prove
       nonoverlapping (word pc,0x2f) (z,8 * 6) /\
       (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 6))
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_littleendian_6_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_littleendian_6_mc) /\
                 read RIP s = word pc /\
                 C_ARGUMENTS [z; x] s /\
                 bignum_from_memory(x,6) s = n)
@@ -152,7 +152,7 @@ let BIGNUM_TOLEBYTES_6_SUBROUTINE_CORRECT = time prove
                 read (memory :> bytelist(z,48)) s = bytelist_of_num 48 n)
           (MAYCHANGE [RIP; RSP; RAX] ,,
            MAYCHANGE [memory :> bignum(z,6)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_LITTLEENDIAN_6_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_littleendian_6_mc
     BIGNUM_TOLEBYTES_6_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -164,7 +164,7 @@ let BIGNUM_LITTLEENDIAN_6_CORRECT = time prove
       nonoverlapping (word pc,0x2f) (z,8 * 6) /\
       (x = z \/ nonoverlapping (x,8 * 6) (z,8 * 6))
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_littleendian_6_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_littleendian_6_mc) /\
                 read RIP s = word pc /\
                 C_ARGUMENTS [z; x] s /\
                 bignum_from_memory(x,6) s = n)
@@ -200,5 +200,5 @@ let BIGNUM_LITTLEENDIAN_6_SUBROUTINE_CORRECT = time prove
                 bignum_from_memory(z,6) s = n)
           (MAYCHANGE [RIP; RSP; RAX] ,,
            MAYCHANGE [memory :> bignum(z,6)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_LITTLEENDIAN_6_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_littleendian_6_mc
     BIGNUM_LITTLEENDIAN_6_CORRECT);;

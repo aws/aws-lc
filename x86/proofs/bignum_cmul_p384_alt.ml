@@ -96,7 +96,7 @@ let bignum_cmul_p384_alt_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CMUL_P384_ALT_EXEC = X86_MK_EXEC_RULE bignum_cmul_p384_alt_mc;;
+let BIGNUM_CMUL_P384_ALT_EXEC = X86_MK_CORE_EXEC_RULE bignum_cmul_p384_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -116,7 +116,7 @@ let BIGNUM_CMUL_P384_ALT_CORRECT = time prove
  (`!z c x a pc.
         nonoverlapping (word pc,0xe3) (z,8 * 6)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_cmul_p384_alt_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_cmul_p384_alt_mc) /\
                   read RIP s = word(pc + 0x02) /\
                   C_ARGUMENTS [z; c; x] s /\
                   bignum_from_memory (x,6) s = a)
@@ -249,6 +249,6 @@ let BIGNUM_CMUL_P384_ALT_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 6);
                          memory :> bytes(word_sub stackpointer (word 8),8)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-    BIGNUM_CMUL_P384_ALT_EXEC BIGNUM_CMUL_P384_ALT_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+    bignum_cmul_p384_alt_mc BIGNUM_CMUL_P384_ALT_CORRECT
     `[R12]` 8);;

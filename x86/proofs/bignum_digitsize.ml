@@ -35,7 +35,7 @@ let bignum_digitsize_mc = define_assert_from_elf "bignum_digitsize_mc" "x86/gene
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_DIGITSIZE_EXEC = X86_MK_EXEC_RULE bignum_digitsize_mc;;
+let BIGNUM_DIGITSIZE_EXEC = X86_MK_CORE_EXEC_RULE bignum_digitsize_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -44,7 +44,7 @@ let BIGNUM_DIGITSIZE_EXEC = X86_MK_EXEC_RULE bignum_digitsize_mc;;
 let BIGNUM_DIGITSIZE_CORRECT = prove
  (`!k a x pc.
         ensures x86
-         (\s. bytes_loaded s (word pc) bignum_digitsize_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_digitsize_mc) /\
               read RIP s = word pc /\
               C_ARGUMENTS [k;a] s /\
               bignum_from_memory(a,val k) s = x)
@@ -204,4 +204,4 @@ let BIGNUM_DIGITSIZE_SUBROUTINE_CORRECT = prove
                C_RETURN s' = word((bitsize x + 63) DIV 64))
          (MAYCHANGE [RIP; RSP; RDI; RDX; RCX; RAX] ,,
           MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_DIGITSIZE_EXEC BIGNUM_DIGITSIZE_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_digitsize_mc BIGNUM_DIGITSIZE_CORRECT);;

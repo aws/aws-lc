@@ -76,7 +76,7 @@ let bignum_emontredc_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_EMONTREDC_EXEC = X86_MK_EXEC_RULE bignum_emontredc_mc;;
+let BIGNUM_EMONTREDC_EXEC = X86_MK_CORE_EXEC_RULE bignum_emontredc_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -87,7 +87,7 @@ let BIGNUM_EMONTREDC_CORRECT = time prove
         nonoverlapping (word pc,0x92) (z,8 * 2 * val k) /\
         nonoverlapping (m,8 * val k) (z,8 * 2 * val k)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_emontredc_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_emontredc_mc) /\
                   read RIP s = word(pc + 0x7) /\
                   C_ARGUMENTS [k; z; m; w] s /\
                   bignum_from_memory (z,2 * val k) s = a /\
@@ -544,5 +544,5 @@ let BIGNUM_EMONTREDC_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
                       memory :> bytes(word_sub stackpointer (word 32),32)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_EMONTREDC_EXEC BIGNUM_EMONTREDC_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_emontredc_mc BIGNUM_EMONTREDC_CORRECT
    `[RBX;  R12; R13; R14]` 32);;

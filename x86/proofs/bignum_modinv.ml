@@ -481,7 +481,7 @@ let bignum_modinv_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MODINV_EXEC = X86_MK_EXEC_RULE bignum_modinv_mc;;
+let BIGNUM_MODINV_EXEC = X86_MK_CORE_EXEC_RULE bignum_modinv_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -538,7 +538,7 @@ let BIGNUM_MODINV_CORRECT = prove
           (x,8 * val k); (y,8 * val k)] /\
         val k < 2 EXP 57
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_modinv_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_modinv_mc) /\
                   read RIP s = word(pc + 0xe) /\
                   read RSP s = stackpointer /\
                   C_ARGUMENTS [k;z;x;y;w] s /\
@@ -4735,5 +4735,5 @@ let BIGNUM_MODINV_SUBROUTINE_CORRECT = prove
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bignum(w,3 * val k);
                     memory :> bytes(word_sub stackpointer (word 128),128)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_MODINV_EXEC BIGNUM_MODINV_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_modinv_mc BIGNUM_MODINV_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 128);;

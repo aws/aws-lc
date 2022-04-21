@@ -188,7 +188,7 @@ let bignum_montmul_p256k1_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MONTMUL_P256K1_EXEC = X86_MK_EXEC_RULE bignum_montmul_p256k1_mc;;
+let BIGNUM_MONTMUL_P256K1_EXEC = X86_MK_CORE_EXEC_RULE bignum_montmul_p256k1_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -218,7 +218,7 @@ let BIGNUM_MONTMUL_P256K1_CORRECT = time prove
  (`!z x y a b pc.
         nonoverlapping (word pc,0x1ec) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montmul_p256k1_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montmul_p256k1_mc) /\
                   read RIP s = word(pc + 0xa) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
@@ -359,6 +359,6 @@ let BIGNUM_MONTMUL_P256K1_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4);
                          memory :> bytes(word_sub stackpointer (word 48),48)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTMUL_P256K1_EXEC BIGNUM_MONTMUL_P256K1_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_montmul_p256k1_mc BIGNUM_MONTMUL_P256K1_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;

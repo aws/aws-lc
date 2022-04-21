@@ -108,6 +108,15 @@ let bytes_loaded_of_append3 = prove
           bytes_loaded s (word (pc + LENGTH l1)) l2`,
   REWRITE_TAC [WORD_ADD] THEN METIS_TAC [bytes_loaded_append]);;
 
+let BYTES_LOADED_BUTLAST = prove
+ (`!s pc l. bytes_loaded s pc l ==> bytes_loaded s pc (BUTLAST l)`,
+  REPEAT GEN_TAC THEN
+  ASM_CASES_TAC `l:byte list = []` THEN ASM_REWRITE_TAC[BUTLAST] THEN
+  FIRST_X_ASSUM(fun th ->
+   GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV)
+     [SYM(MATCH_MP APPEND_BUTLAST_LAST th)]) THEN
+  SIMP_TAC[bytes_loaded_append]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Shorthands for individual flags.                                          *)
 (* ------------------------------------------------------------------------- *)
@@ -1636,7 +1645,7 @@ let SOME_FLAGS = new_definition
  `SOME_FLAGS = [CF; PF; AF; ZF; SF; OF]`;;
 
 (* ------------------------------------------------------------------------- *)
-(* Nicer packaging for common patterns.                                      *)
+(* Standard System V AMD64 ABI as used on modern Unix/Linux/Mac OS.          *)
 (* ------------------------------------------------------------------------- *)
 
 (*** This is for the "System V AMD64 ABI", i.e. modern unixes     ***)
@@ -2642,60 +2651,36 @@ let X86_ADD_RETURN_STACK_TAC =
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];;
 
 (* ------------------------------------------------------------------------- *)
-(* Bounding rules (useful to show carries are zero sometimes).               *)
+(* Additional tools for refined "bytes_loaded ... (BUTLAST l)" variants.     *)
 (* ------------------------------------------------------------------------- *)
 
-let BOUND_RULE =
-  let dest_add = dest_binop `( + ):num->num->num`
-  and dest_mul = dest_binop `( * ):num->num->num`
-  and le_tm = `( <= ):num->num->bool`
-  and pth = prove
-   (`val(x:int64) <= 18446744073709551615`,
-    MP_TAC(ISPEC `x:int64` VAL_BOUND) THEN REWRITE_TAC[DIMINDEX_64] THEN
-    ARITH_TAC)
-  and qth = ARITH_RULE `!n:num. n <= n` in
-  let gives_bound tm th =
-    let ptm = concl th in
-    let rtm = mk_comb(le_tm,tm) in
-    if is_comb ptm && rator ptm = rtm && is_numeral(rand ptm)
-    then th else failwith "gives_bound" in
-  let rec bound bths tm =
-    if is_numeral tm then SPEC tm qth else
-    try
-      tryfind (gives_bound tm) bths
-    with Failure _ -> try
-      PART_MATCH lhand BITVAL_BOUND tm
-    with Failure _ -> try
-      PART_MATCH lhand pth tm
-    with Failure _ -> try
-      let ltm,rtm = dest_add tm in
-      let lth = bound bths ltm and rth = bound bths rtm in
-      CONV_RULE (RAND_CONV NUM_ADD_CONV) (MATCH_MP LE_ADD2 (CONJ lth rth))
-   with Failure _ -> try
-      let ltm,rtm = dest_mul tm in
-      let lth = bound bths ltm and rth = bound bths rtm in
-      CONV_RULE (RAND_CONV NUM_MULT_CONV) (MATCH_MP LE_MULT2 (CONJ lth rth))
-   with Failure _ -> failwith "BOUND_RULE" in
-  bound;;
+let X86_MK_CORE_EXEC_RULE =
+  let trimth = AP_TERM `BUTLAST:byte list->byte list`
+  and pushr = GEN_REWRITE_RULE (RAND_CONV o TOP_SWEEP_CONV)
+               [BUTLAST_CLAUSES] in
+  X86_MK_EXEC_RULE o pushr o trimth;;
 
-let DERIVE_BOUNDS_RULE =
-  let prule = (MATCH_MP o prove)
-   (`2 EXP 64 * x + val(y:int64) <= b
-     ==> x <= b DIV 18446744073709551616 /\
-         val y <= MIN 18446744073709551615 b`,
-    MP_TAC(ISPEC `y:int64` VAL_BOUND) THEN REWRITE_TAC[DIMINDEX_64] THEN
-    ARITH_TAC) in
-  let rec DERIVE_BOUNDS_RULE bths eths =
-    match eths with
-       [] -> bths
-    | eth::oeths ->
-        let newths =
-          try let etm = concl eth in
-              let ltm,rtm = dest_eq etm in
-              let rth = BOUND_RULE bths rtm in
-              let lth = GEN_REWRITE_RULE LAND_CONV [SYM eth] rth in
-              let mth = prule lth in
-              map (CONV_RULE(RAND_CONV NUM_REDUCE_CONV)) (CONJUNCTS mth)
-          with Failure _ -> [] in
-        DERIVE_BOUNDS_RULE (newths @ bths) oeths in
-  DERIVE_BOUNDS_RULE;;
+let X86_CORE_PROMOTE =
+  let lemma = prove
+   (`(ensures x86 (\s. bytes_loaded s (word pc) (BUTLAST l) /\ P s) Q C
+      ==> ensures x86 (\s. bytes_loaded s (word pc) l /\ P s) Q C) /\
+     ((A ==> ensures x86 (\s. bytes_loaded s (word pc) (BUTLAST l) /\ P s) Q C)
+      ==> A ==> ensures x86 (\s. bytes_loaded s (word pc) l /\ P s) Q C)`,
+    MATCH_MP_TAC(TAUT `(p ==> q) /\ p ==> p /\ q`) THEN
+    CONJ_TAC THENL [CONV_TAC TAUT; ALL_TAC] THEN
+    MATCH_MP_TAC(REWRITE_RULE[IMP_CONJ] ENSURES_PRECONDITION_THM) THEN
+    GEN_TAC THEN REWRITE_TAC[] THEN MATCH_MP_TAC MONO_AND THEN
+    REWRITE_TAC[BYTES_LOADED_BUTLAST]) in
+  let rule1 = MATCH_MP(CONJUNCT1 lemma)
+  and rule2 = MATCH_MP(CONJUNCT2 lemma) in
+  fun th -> let avs,bod = strip_forall(concl th) in
+            let sth = SPECL avs th in
+            let gth = try rule2 sth with Failure _ -> rule1 sth in
+            GENL avs gth;;
+
+let X86_PROMOTE_RETURN_NOSTACK_TAC mc core =
+  X86_ADD_RETURN_NOSTACK_TAC (X86_MK_EXEC_RULE mc) (X86_CORE_PROMOTE core);;
+
+let X86_PROMOTE_RETURN_STACK_TAC mc core regs off =
+  X86_ADD_RETURN_STACK_TAC
+    (X86_MK_EXEC_RULE mc) (X86_CORE_PROMOTE core) regs off;;

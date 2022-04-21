@@ -1744,7 +1744,7 @@ let bignum_kmul_16_32_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_KMUL_16_32_EXEC = X86_MK_EXEC_RULE bignum_kmul_16_32_mc;;
+let BIGNUM_KMUL_16_32_EXEC = X86_MK_CORE_EXEC_RULE bignum_kmul_16_32_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -1755,7 +1755,7 @@ let BIGNUM_KMUL_16_32_CORRECT = time prove
         ALL (nonoverlapping (z,8 * 32))
             [(word pc,0x1430); (x,8 * 16); (y,8 * 16)]
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_kmul_16_32_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_kmul_16_32_mc) /\
                   read RIP s = word(pc + 0x0a) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,16) s = a /\
@@ -1806,5 +1806,5 @@ let BIGNUM_KMUL_16_32_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 32);
                      memory :> bytes(word_sub stackpointer (word 48),48)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_KMUL_16_32_EXEC BIGNUM_KMUL_16_32_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_kmul_16_32_mc BIGNUM_KMUL_16_32_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;

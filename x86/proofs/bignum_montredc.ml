@@ -154,7 +154,7 @@ let bignum_montredc_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MONTREDC_EXEC = X86_MK_EXEC_RULE bignum_montredc_mc;;
+let BIGNUM_MONTREDC_EXEC = X86_MK_CORE_EXEC_RULE bignum_montredc_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -191,7 +191,7 @@ let BIGNUM_MONTREDC_CORRECT = time prove
         (x = z \/ nonoverlapping (x,8 * val r) (z,8 * val k)) /\
         val p < 2 EXP 61 /\ val r < 2 EXP 61
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montredc_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montredc_mc) /\
                   read RIP s = word(pc + 0xe) /\
                   read RSP s = stackpointer /\
                   C_ARGUMENTS [k; z; r; x; m; p] s /\
@@ -1094,5 +1094,5 @@ let BIGNUM_MONTREDC_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * val k);
                       memory :> bytes(word_sub stackpointer (word 56),56)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_MONTREDC_EXEC BIGNUM_MONTREDC_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_montredc_mc BIGNUM_MONTREDC_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 56);;

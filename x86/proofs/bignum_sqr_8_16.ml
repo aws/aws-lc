@@ -324,7 +324,7 @@ let bignum_sqr_8_16_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_SQR_8_16_EXEC = X86_MK_EXEC_RULE bignum_sqr_8_16_mc;;
+let BIGNUM_SQR_8_16_EXEC = X86_MK_CORE_EXEC_RULE bignum_sqr_8_16_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -335,7 +335,7 @@ let BIGNUM_SQR_8_16_CORRECT = time prove
      nonoverlapping (word pc,0x392) (z,8 * 16) /\
      nonoverlapping (x,8 * 8) (z,8 * 16)
      ==> ensures x86
-          (\s. bytes_loaded s (word pc) bignum_sqr_8_16_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_sqr_8_16_mc) /\
                read RIP s = word(pc + 0x09) /\
                C_ARGUMENTS [z; x] s /\
                bignum_from_memory (x,8) s = a)
@@ -378,5 +378,5 @@ let BIGNUM_SQR_8_16_SUBROUTINE_CORRECT = time prove
            MAYCHANGE [memory :> bytes(z,8 * 16);
                    memory :> bytes(word_sub stackpointer (word 40),40)] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_SQR_8_16_EXEC BIGNUM_SQR_8_16_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_sqr_8_16_mc BIGNUM_SQR_8_16_CORRECT
    `[RBP; R12; R13; R14; R15]` 40);;

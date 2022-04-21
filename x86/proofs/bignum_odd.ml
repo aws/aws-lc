@@ -29,7 +29,7 @@ let bignum_odd_mc = define_assert_from_elf "bignum_odd_mc" "x86/generic/bignum_o
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_ODD_EXEC = X86_MK_EXEC_RULE bignum_odd_mc;;
+let BIGNUM_ODD_EXEC = X86_MK_CORE_EXEC_RULE bignum_odd_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -38,7 +38,7 @@ let BIGNUM_ODD_EXEC = X86_MK_EXEC_RULE bignum_odd_mc;;
 let BIGNUM_ODD_CORRECT = prove
  (`!k a x pc.
         ensures x86
-          (\s. bytes_loaded s (word pc) bignum_odd_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_odd_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [k;a] s /\
                bignum_from_memory(a,val k) s = x)
@@ -72,4 +72,4 @@ let BIGNUM_ODD_SUBROUTINE_CORRECT = prove
                read RSP s = word_add stackpointer (word 8) /\
                C_RETURN s = if ODD x then word 1 else word 0)
           (MAYCHANGE [RAX; RSP; RIP] ,, MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_ODD_EXEC BIGNUM_ODD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_odd_mc BIGNUM_ODD_CORRECT);;

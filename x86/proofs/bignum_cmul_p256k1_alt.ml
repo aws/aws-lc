@@ -63,7 +63,7 @@ let bignum_cmul_p256k1_alt_mc = define_assert_from_elf "bignum_cmul_p256k1_alt_m
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CMUL_P256K1_ALT_EXEC = X86_MK_EXEC_RULE bignum_cmul_p256k1_alt_mc;;
+let BIGNUM_CMUL_P256K1_ALT_EXEC = X86_MK_CORE_EXEC_RULE bignum_cmul_p256k1_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -83,7 +83,7 @@ let BIGNUM_CMUL_P256K1_ALT_CORRECT = time prove
  (`!z c x a pc.
         nonoverlapping (word pc,0x84) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_cmul_p256k1_alt_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_cmul_p256k1_alt_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [z; c; x] s /\
                   bignum_from_memory (x,4) s = a)
@@ -196,5 +196,5 @@ let BIGNUM_CMUL_P256K1_ALT_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE [RIP; RSP; RSI; RAX; RDX; RCX; R8; R9; R10] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_CMUL_P256K1_ALT_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_cmul_p256k1_alt_mc
     BIGNUM_CMUL_P256K1_ALT_CORRECT);;

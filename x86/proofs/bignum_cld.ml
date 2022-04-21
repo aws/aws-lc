@@ -37,7 +37,7 @@ let bignum_cld_mc = define_assert_from_elf "bignum_cld_mc" "x86/generic/bignum_c
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CLD_EXEC = X86_MK_EXEC_RULE bignum_cld_mc;;
+let BIGNUM_CLD_EXEC = X86_MK_CORE_EXEC_RULE bignum_cld_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -46,7 +46,7 @@ let BIGNUM_CLD_EXEC = X86_MK_EXEC_RULE bignum_cld_mc;;
 let BIGNUM_CLD_CORRECT = prove
  (`!k a x pc.
         ensures x86
-         (\s. bytes_loaded s (word pc) bignum_cld_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_cld_mc) /\
               read RIP s = word pc /\
               C_ARGUMENTS [k;a] s /\
               bignum_from_memory(a,val k) s = x)
@@ -214,4 +214,4 @@ let BIGNUM_CLD_SUBROUTINE_CORRECT = prove
                C_RETURN s' = word((64 * val k - bitsize x) DIV 64))
          (MAYCHANGE [RIP; RSP; RDI; RDX; RCX; RAX] ,,
           MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_CLD_EXEC BIGNUM_CLD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_cld_mc BIGNUM_CLD_CORRECT);;

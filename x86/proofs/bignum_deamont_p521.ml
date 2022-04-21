@@ -97,7 +97,7 @@ let bignum_deamont_p521_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_DEAMONT_P521_EXEC = X86_MK_EXEC_RULE bignum_deamont_p521_mc;;
+let BIGNUM_DEAMONT_P521_EXEC = X86_MK_CORE_EXEC_RULE bignum_deamont_p521_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -109,7 +109,7 @@ let BIGNUM_DEAMONT_P521_CORRECT = time prove
  (`!z x a pc.
         nonoverlapping (word pc,0xe6) (z,8 * 9)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_deamont_p521_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_deamont_p521_mc) /\
                   read RIP s = word(pc + 0x06) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,9) s = a)
@@ -318,6 +318,6 @@ let BIGNUM_DEAMONT_P521_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 9);
                      memory :> bytes(word_sub stackpointer (word 32),32)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_DEAMONT_P521_EXEC BIGNUM_DEAMONT_P521_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_deamont_p521_mc BIGNUM_DEAMONT_P521_CORRECT
    `[RBX; R12; R13; RBP]` 32);;

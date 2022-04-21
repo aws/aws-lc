@@ -119,7 +119,7 @@ let bignum_demont_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_DEMONT_EXEC = X86_MK_EXEC_RULE bignum_demont_mc;;
+let BIGNUM_DEMONT_EXEC = X86_MK_CORE_EXEC_RULE bignum_demont_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -154,7 +154,7 @@ let BIGNUM_DEMONT_CORRECT = time prove
         nonoverlapping (m,8 * val k) (z,8 * val k) /\
         (x = z \/ nonoverlapping (x,8 * val k) (z,8 * val k))
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_demont_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_demont_mc) /\
                   read RIP s = word (pc + 0x4) /\
                   C_ARGUMENTS [k; z; x; m] s /\
                   bignum_from_memory (x,val k) s = a /\
@@ -762,5 +762,5 @@ let BIGNUM_DEMONT_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * val k);
                        memory :> bytes(word_sub stackpointer (word 24),24)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_DEMONT_EXEC BIGNUM_DEMONT_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_demont_mc BIGNUM_DEMONT_CORRECT
    `[RBX; RBP; R12]` 24);;

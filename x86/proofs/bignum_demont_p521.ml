@@ -64,7 +64,7 @@ let bignum_demont_p521_mc = define_assert_from_elf "bignum_demont_p521_mc" "x86/
 
 ];;
 
-let BIGNUM_DEMONT_P521_EXEC = X86_MK_EXEC_RULE bignum_demont_p521_mc;;
+let BIGNUM_DEMONT_P521_EXEC = X86_MK_CORE_EXEC_RULE bignum_demont_p521_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -124,7 +124,7 @@ let BIGNUM_DEMONT_P521_CORRECT = time prove
         nonoverlapping (word pc,0x7d) (z,8 * 9) /\
         (x = z \/ nonoverlapping(x,8 * 9) (z,8 * 9))
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_demont_p521_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_demont_p521_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,9) s = n)
@@ -189,5 +189,5 @@ let BIGNUM_DEMONT_P521_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [RIP; RSP; RAX; RDX; RCX] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,9)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_DEMONT_P521_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_demont_p521_mc
     BIGNUM_DEMONT_P521_CORRECT);;

@@ -82,7 +82,7 @@ let word_recip_mc = define_assert_from_elf "word_recip_mc" "x86/generic/word_rec
   0xc3                     (* RET *)
 ];;
 
-let WORD_RECIP_EXEC = X86_MK_EXEC_RULE word_recip_mc;;
+let WORD_RECIP_EXEC = X86_MK_CORE_EXEC_RULE word_recip_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -106,7 +106,7 @@ let WORD_ADD_MUL_MADD_LEMMA = prove
 let WORD_RECIP_CORRECT = prove
  (`!a pc.
     ensures x86
-      (\s. bytes_loaded s (word pc) word_recip_mc /\
+      (\s. bytes_loaded s (word pc) (BUTLAST word_recip_mc) /\
            read RIP s = word pc /\
            C_ARGUMENTS [a] s)
       (\s. read RIP s = word(pc + 0xc9) /\
@@ -726,4 +726,4 @@ let WORD_RECIP_SUBROUTINE_CORRECT = prove
                 &2 pow 128 / &(val a) <= &2 pow 64 + &(val(C_RETURN s)) + &1))
       (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; RSI] ,,
        MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC WORD_RECIP_EXEC WORD_RECIP_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC word_recip_mc WORD_RECIP_CORRECT);;

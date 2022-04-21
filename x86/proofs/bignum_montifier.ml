@@ -350,7 +350,7 @@ let bignum_montifier_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MONTIFIER_EXEC = X86_MK_EXEC_RULE bignum_montifier_mc;;
+let BIGNUM_MONTIFIER_EXEC = X86_MK_CORE_EXEC_RULE bignum_montifier_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -409,7 +409,7 @@ let BIGNUM_MONTIFIER_CORRECT = time prove
         ALLPAIRS nonoverlapping [(z,8 * val k); (t,8 * val k)]
                                 [(word pc,0x3bf); (m,8 * val k)]
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montifier_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montifier_mc) /\
                   read RIP s = word(pc + 0x6) /\
                   C_ARGUMENTS [k; z; m; t] s /\
                   bignum_from_memory (m,val k) s = n)
@@ -3115,5 +3115,5 @@ let BIGNUM_MONTIFIER_SUBROUTINE_CORRECT = time prove
                          memory :> bytes(t,8 * val k);
                        memory :> bytes(word_sub stackpointer (word 32),32)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_MONTIFIER_EXEC BIGNUM_MONTIFIER_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_montifier_mc BIGNUM_MONTIFIER_CORRECT
    `[RBX; RBP; R12; R13]` 32);;

@@ -897,6 +897,9 @@ let define_trim_ret_thm name th =
   let defn = define_relocs name (args [] df, tm) in
   defn, TRANS th (N_SUBLIST_CONV (SPEC_ALL defn) n tm1);; *)
 
+let define_from_elf name file =
+  define_word_list name (term_of_bytes (load_elf_contents_arm file));;
+
 let define_assert_from_elf name file =
   define_assert_word_list name (term_of_bytes (load_elf_contents_arm file));;
 

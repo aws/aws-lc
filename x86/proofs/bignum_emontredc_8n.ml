@@ -984,7 +984,7 @@ let bignum_emontredc_8n_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_EMONTREDC_8N_EXEC = X86_MK_EXEC_RULE bignum_emontredc_8n_mc;;
+let BIGNUM_EMONTREDC_8N_EXEC = X86_MK_CORE_EXEC_RULE bignum_emontredc_8n_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -1020,7 +1020,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
          [(z,8 * 2 * val k); (word_sub stackpointer (word 32),32)]
          [(word pc,0xb32); (m,8 * val k)]
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_emontredc_8n_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_emontredc_8n_mc) /\
                 read RIP s = word(pc + 0xa) /\
                 read RSP s = stackpointer /\
                 C_ARGUMENTS [k; z; m; w] s /\
@@ -1875,7 +1875,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
   REAL_ARITH_TAC);;
 
 (*** The above doesn't quite match what the heuristics in the automated
- *** X86_ADD_RETURN_STACK_TAC expects, partly because the core statement
+ *** X86_PROMOTE_RETURN_STACK_TAC expects, partly because the core statement
  *** has a negative stack offset and partly because the subsequent stack
  *** adjustment isn't just a single subtract after the initial pushes. So
  *** for now we just duplicate the basic argument in X86_ADD_RETURN_STACK_TAC
@@ -1910,7 +1910,8 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
             MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
                        memory :> bytes(word_sub stackpointer (word 80),80)] ,,
             MAYCHANGE SOME_FLAGS)`,
-  MP_TAC BIGNUM_EMONTREDC_8N_CORRECT THEN
+  let BIGNUM_EMONTREDC_8N_EXEC = X86_MK_EXEC_RULE bignum_emontredc_8n_mc in
+  MP_TAC (X86_CORE_PROMOTE BIGNUM_EMONTREDC_8N_CORRECT) THEN
   REPLICATE_TAC 7 (MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
   DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC 48 THEN MP_TAC th) THEN
   MATCH_MP_TAC MONO_FORALL THEN WORD_FORALL_OFFSET_TAC 32 THEN

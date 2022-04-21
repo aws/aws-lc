@@ -113,7 +113,7 @@ let bignum_negmodinv_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_NEGMODINV_EXEC = X86_MK_EXEC_RULE bignum_negmodinv_mc;;
+let BIGNUM_NEGMODINV_EXEC = X86_MK_CORE_EXEC_RULE bignum_negmodinv_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -147,7 +147,7 @@ let BIGNUM_NEGMODINV_CORRECT = prove
         nonoverlapping (word pc,0x112) (z,8 * val k) /\
         nonoverlapping (x,8 * val k) (z,8 * val k)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_negmodinv_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_negmodinv_mc) /\
                   read RIP s = word (pc + 0x3) /\
                   C_ARGUMENTS [k; z; x] s /\
                   bignum_from_memory (x,val k) s = m)
@@ -673,5 +673,5 @@ let BIGNUM_NEGMODINV_SUBROUTINE_CORRECT = prove
               MAYCHANGE [memory :> bytes(z,8 * val k);
                        memory :> bytes(word_sub stackpointer (word 16),16)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_NEGMODINV_EXEC BIGNUM_NEGMODINV_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_negmodinv_mc BIGNUM_NEGMODINV_CORRECT
     `[RBX; R12]` 16);;

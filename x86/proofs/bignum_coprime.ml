@@ -305,7 +305,7 @@ let bignum_coprime_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_COPRIME_EXEC = X86_MK_EXEC_RULE bignum_coprime_mc;;
+let BIGNUM_COPRIME_EXEC = X86_MK_CORE_EXEC_RULE bignum_coprime_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -336,7 +336,7 @@ let BIGNUM_COPRIME_CORRECT = prove
              (x,8 * val m); (y,8 * val n)] /\
         val m < 2 EXP 57 /\ val n < 2 EXP 57
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_coprime_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_coprime_mc) /\
                   read RIP s = word(pc + 0xe) /\
                   read RSP s = stackpointer /\
                   C_ARGUMENTS [m;x;n;y;w] s /\
@@ -3140,5 +3140,5 @@ let BIGNUM_COPRIME_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(w,2 * MAX (val m) (val n));
                        memory :> bytes(word_sub stackpointer (word 96),96)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_COPRIME_EXEC BIGNUM_COPRIME_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_coprime_mc BIGNUM_COPRIME_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 96);;

@@ -36,7 +36,7 @@ let bignum_digit_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_DIGIT_EXEC = X86_MK_EXEC_RULE bignum_digit_mc;;
+let BIGNUM_DIGIT_EXEC = X86_MK_CORE_EXEC_RULE bignum_digit_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -45,7 +45,7 @@ let BIGNUM_DIGIT_EXEC = X86_MK_EXEC_RULE bignum_digit_mc;;
 let BIGNUM_DIGIT_CORRECT = prove
  (`!k x n a pc.
         ensures x86
-         (\s. bytes_loaded s (word pc) bignum_digit_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_digit_mc) /\
               read RIP s = word pc /\
               C_ARGUMENTS [k;x;n] s /\
               bignum_from_memory (x,val k) s = a)
@@ -122,4 +122,4 @@ let BIGNUM_DIGIT_SUBROUTINE_CORRECT = prove
               C_RETURN s = word(bigdigit a (val n)))
          (MAYCHANGE [RIP; RSP; RAX; RCX; R8] ,,
           MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_DIGIT_EXEC BIGNUM_DIGIT_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_digit_mc BIGNUM_DIGIT_CORRECT);;

@@ -225,7 +225,7 @@ let bignum_mul_6_12_alt_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MUL_6_12_ALT_EXEC = X86_MK_EXEC_RULE bignum_mul_6_12_alt_mc;;
+let BIGNUM_MUL_6_12_ALT_EXEC = X86_MK_CORE_EXEC_RULE bignum_mul_6_12_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -236,7 +236,7 @@ let BIGNUM_MUL_6_12_ALT_CORRECT = time prove
      ALL (nonoverlapping (z,8 * 12))
          [(word pc,0x2b5); (x,8 * 6); (y,8 * 6)]
      ==> ensures x86
-          (\s. bytes_loaded s (word pc) bignum_mul_6_12_alt_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_mul_6_12_alt_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [z; x; y] s /\
                bignum_from_memory (x,6) s = a /\
@@ -279,5 +279,5 @@ let BIGNUM_MUL_6_12_ALT_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10] ,,
            MAYCHANGE [memory :> bytes(z,8 * 12)] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_MUL_6_12_ALT_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mul_6_12_alt_mc
      BIGNUM_MUL_6_12_ALT_CORRECT);;

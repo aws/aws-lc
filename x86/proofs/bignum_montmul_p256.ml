@@ -220,7 +220,7 @@ let bignum_montmul_p256_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MONTMUL_P256_EXEC = X86_MK_EXEC_RULE bignum_montmul_p256_mc;;
+let BIGNUM_MONTMUL_P256_EXEC = X86_MK_CORE_EXEC_RULE bignum_montmul_p256_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -232,7 +232,7 @@ let BIGNUM_MONTMUL_P256_CORRECT = time prove
  (`!z x y a b pc.
         nonoverlapping (word pc,0x242) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montmul_p256_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montmul_p256_mc) /\
                   read RIP s = word(pc + 0x09) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
@@ -343,8 +343,8 @@ let BIGNUM_MONTMUL_P256_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4);
                          memory :> bytes(word_sub stackpointer (word 40),40)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTMUL_P256_EXEC BIGNUM_MONTMUL_P256_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_montmul_p256_mc BIGNUM_MONTMUL_P256_CORRECT
    `[RBX; R12; R13; R14; R15]` 40);;
 
 (* ------------------------------------------------------------------------- *)
@@ -357,7 +357,7 @@ let BIGNUM_AMONTMUL_P256_CORRECT = time prove
  (`!z x y a b pc.
         nonoverlapping (word pc,0x242) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_montmul_p256_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_montmul_p256_mc) /\
                   read RIP s = word(pc + 0x09) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
@@ -466,6 +466,6 @@ let BIGNUM_AMONTMUL_P256_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4);
                          memory :> bytes(word_sub stackpointer (word 40),40)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTMUL_P256_EXEC BIGNUM_AMONTMUL_P256_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_montmul_p256_mc BIGNUM_AMONTMUL_P256_CORRECT
    `[RBX; R12; R13; R14; R15]` 40);;

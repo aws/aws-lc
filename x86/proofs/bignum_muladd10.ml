@@ -42,7 +42,7 @@ let bignum_muladd10_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MULADD10_EXEC = X86_MK_EXEC_RULE bignum_muladd10_mc;;
+let BIGNUM_MULADD10_EXEC = X86_MK_CORE_EXEC_RULE bignum_muladd10_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -52,7 +52,7 @@ let BIGNUM_MULADD10_CORRECT = time prove
  (`!k z d n pc.
         nonoverlapping (word pc,0x32) (z,8 * val k)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_muladd10_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_muladd10_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [k; z; d] s /\
                   bignum_from_memory (z,val k) s = n)
@@ -175,4 +175,4 @@ let BIGNUM_MULADD10_SUBROUTINE_CORRECT = time prove
               (MAYCHANGE [RIP; RSP; RDI; RAX; RCX; RDX; R8; R9] ,,
                MAYCHANGE SOME_FLAGS ,,
                MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_MULADD10_EXEC BIGNUM_MULADD10_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_muladd10_mc BIGNUM_MULADD10_CORRECT);;

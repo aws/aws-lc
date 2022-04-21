@@ -110,7 +110,7 @@ let bignum_mod_n521_9_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MOD_N521_9_EXEC = X86_MK_EXEC_RULE bignum_mod_n521_9_mc;;
+let BIGNUM_MOD_N521_9_EXEC = X86_MK_CORE_EXEC_RULE bignum_mod_n521_9_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -123,7 +123,7 @@ let BIGNUM_MOD_N521_9_CORRECT = time prove
       nonoverlapping (word pc,0x124) (z,8 * 9) /\
       (x = z \/ nonoverlapping(x,8 * 9) (z,8 * 9))
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_mod_n521_9_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_mod_n521_9_mc) /\
                 read RIP s = word pc /\
                 C_ARGUMENTS [z; x] s /\
                 bignum_from_memory (x,9) s = n)
@@ -308,5 +308,5 @@ let BIGNUM_MOD_N521_9_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,9)])`,
-  X86_ADD_RETURN_NOSTACK_TAC
-    BIGNUM_MOD_N521_9_EXEC BIGNUM_MOD_N521_9_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC
+    bignum_mod_n521_9_mc BIGNUM_MOD_N521_9_CORRECT);;

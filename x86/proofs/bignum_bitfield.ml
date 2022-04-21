@@ -57,7 +57,7 @@ let bignum_bitfield_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_BITFIELD_EXEC = X86_MK_EXEC_RULE bignum_bitfield_mc;;
+let BIGNUM_BITFIELD_EXEC = X86_MK_CORE_EXEC_RULE bignum_bitfield_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -66,7 +66,7 @@ let BIGNUM_BITFIELD_EXEC = X86_MK_EXEC_RULE bignum_bitfield_mc;;
 let BIGNUM_BITFIELD_CORRECT = prove
  (`!k x n l a pc.
         ensures x86
-         (\s. bytes_loaded s (word pc) bignum_bitfield_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_bitfield_mc) /\
               read RIP s = word pc /\
               C_ARGUMENTS [k;x;n;l] s /\
               bignum_from_memory (x,val k) s = a)
@@ -275,4 +275,4 @@ let BIGNUM_BITFIELD_SUBROUTINE_CORRECT = prove
               C_RETURN s = word((a DIV (2 EXP val n)) MOD (2 EXP val l)))
          (MAYCHANGE [RIP; RSP; RDX; RCX; RAX; R8; R9; R10; R11] ,,
           MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_BITFIELD_EXEC BIGNUM_BITFIELD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_bitfield_mc BIGNUM_BITFIELD_CORRECT);;

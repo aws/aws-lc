@@ -47,7 +47,7 @@ let bignum_modsub_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MODSUB_EXEC = X86_MK_EXEC_RULE bignum_modsub_mc;;
+let BIGNUM_MODSUB_EXEC = X86_MK_CORE_EXEC_RULE bignum_modsub_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -61,7 +61,7 @@ let BIGNUM_MODSUB_CORRECT = prove
         (y = z \/ nonoverlapping(y,8 * val k) (z,8 * val k)) /\
         a < n /\ b < n
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_modsub_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_modsub_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [k;z;x;y;m] s /\
                   bignum_from_memory (x,val k) s = a /\
@@ -293,4 +293,4 @@ let BIGNUM_MODSUB_SUBROUTINE_CORRECT = prove
              (MAYCHANGE [RIP; RSP; RAX; R9; R10; R11] ,,
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_MODSUB_EXEC BIGNUM_MODSUB_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_modsub_mc BIGNUM_MODSUB_CORRECT);;

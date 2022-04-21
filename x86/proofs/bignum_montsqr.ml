@@ -148,7 +148,7 @@ let bignum_montsqr_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MONTSQR_EXEC = X86_MK_EXEC_RULE bignum_montsqr_mc;;
+let BIGNUM_MONTSQR_EXEC = X86_MK_CORE_EXEC_RULE bignum_montsqr_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -182,7 +182,7 @@ let BIGNUM_MONTSQR_CORRECT = time prove
        ALL (nonoverlapping (z,8 * val k))
            [(word pc,0x16b); (x,8 * val k); (m,8 * val k)]
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_montsqr_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_montsqr_mc) /\
                 read RIP s = word (pc + 0xa) /\
                 C_ARGUMENTS [k; z; x; m] s /\
                 bignum_from_memory (x,val k) s = a /\
@@ -946,5 +946,5 @@ let BIGNUM_MONTSQR_SUBROUTINE_CORRECT = time prove
             MAYCHANGE [memory :> bytes(z,8 * val k);
                        memory :> bytes(word_sub stackpointer (word 48),48)] ,,
             MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_MONTSQR_EXEC BIGNUM_MONTSQR_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_montsqr_mc BIGNUM_MONTSQR_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;

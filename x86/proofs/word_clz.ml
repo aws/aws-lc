@@ -31,7 +31,7 @@ let word_clz_mc = define_assert_from_elf "word_clz_mc" "x86/generic/word_clz.o"
   0xc3                     (* RET *)
 ];;
 
-let WORD_CLZ_EXEC = X86_MK_EXEC_RULE word_clz_mc;;
+let WORD_CLZ_EXEC = X86_MK_CORE_EXEC_RULE word_clz_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -40,7 +40,7 @@ let WORD_CLZ_EXEC = X86_MK_EXEC_RULE word_clz_mc;;
 let WORD_CLZ_CORRECT = prove
  (`!a pc.
         ensures x86
-          (\s. bytes_loaded s (word pc) word_clz_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST word_clz_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [a] s)
           (\s. read RIP s = word(pc + 0x14) /\
@@ -71,4 +71,4 @@ let WORD_CLZ_SUBROUTINE_CORRECT = prove
                C_RETURN s = word(word_clz a))
           (MAYCHANGE [RIP; RSP; RAX; RDX] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC WORD_CLZ_EXEC WORD_CLZ_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC word_clz_mc WORD_CLZ_CORRECT);;

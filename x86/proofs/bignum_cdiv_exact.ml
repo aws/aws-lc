@@ -96,7 +96,7 @@ let bignum_cdiv_exact_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CDIV_EXACT_EXEC = X86_MK_EXEC_RULE bignum_cdiv_exact_mc;;
+let BIGNUM_CDIV_EXACT_EXEC = X86_MK_CORE_EXEC_RULE bignum_cdiv_exact_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -130,7 +130,7 @@ let BIGNUM_CDIV_EXACT_CORRECT = prove
         nonoverlapping (word pc,0xd2) (z,8 * val k) /\
         (x = z \/ nonoverlapping(x,8 * val n) (z,8 * val k))
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_cdiv_exact_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_cdiv_exact_mc) /\
                   read RIP s = word(pc + 0x7) /\
                   C_ARGUMENTS [k;z;n;x;m] s /\
                   bignum_from_memory (x,val n) s = a)
@@ -498,5 +498,5 @@ let BIGNUM_CDIV_EXACT_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k);
                        memory :> bytes(word_sub stackpointer (word 32),32)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_CDIV_EXACT_EXEC BIGNUM_CDIV_EXACT_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_cdiv_exact_mc BIGNUM_CDIV_EXACT_CORRECT
     `[RBX; R12; R13; R14]` 32);;

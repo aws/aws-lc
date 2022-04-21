@@ -55,7 +55,7 @@ let bignum_moddouble_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MODDOUBLE_EXEC = X86_MK_EXEC_RULE bignum_moddouble_mc;;
+let BIGNUM_MODDOUBLE_EXEC = X86_MK_CORE_EXEC_RULE bignum_moddouble_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -67,7 +67,7 @@ let BIGNUM_MODDOUBLE_CORRECT = prove
         nonoverlapping (m,8 * val k) (z,8 * val k) /\
         (x = z \/ nonoverlapping(x,8 * val k) (z,8 * val k))
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_moddouble_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_moddouble_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [k;z;x;m] s /\
                   bignum_from_memory (x,val k) s = a /\
@@ -378,4 +378,4 @@ let BIGNUM_MODDOUBLE_SUBROUTINE_CORRECT = prove
              (MAYCHANGE [RIP; RSP; RAX; R8; R9; R10] ,,
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_MODDOUBLE_EXEC BIGNUM_MODDOUBLE_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_moddouble_mc BIGNUM_MODDOUBLE_CORRECT);;

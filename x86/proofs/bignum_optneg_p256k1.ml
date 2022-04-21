@@ -52,7 +52,7 @@ let bignum_optneg_p256k1_mc = define_assert_from_elf "bignum_optneg_p256k1_mc" "
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_OPTNEG_P256K1_EXEC = X86_MK_EXEC_RULE bignum_optneg_p256k1_mc;;
+let BIGNUM_OPTNEG_P256K1_EXEC = X86_MK_CORE_EXEC_RULE bignum_optneg_p256k1_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -64,7 +64,7 @@ let BIGNUM_OPTNEG_P256K1_CORRECT = time prove
  (`!z q x n pc.
         nonoverlapping (word pc,0x5c) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_optneg_p256k1_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_optneg_p256k1_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [z; q; x] s /\
                   bignum_from_memory (x,4) s = n)
@@ -148,5 +148,5 @@ let BIGNUM_OPTNEG_P256K1_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; R8; R9; R10] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_OPTNEG_P256K1_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optneg_p256k1_mc
       BIGNUM_OPTNEG_P256K1_CORRECT);;
