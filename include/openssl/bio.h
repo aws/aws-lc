@@ -896,7 +896,7 @@ struct bio_st {
 
   // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback_ex|.
   // Callbacks are only called with for the following events: |BIO_CB_READ|,
-  // |BIO_CB_READ|+|BIO_CB_RETURN|, BIO_CB_WRITE|,
+  // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
   // |BIO_CB_WRITE|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
   BIO_callback_fn_ex callback_ex;
   // Optional callback argument, only intended for applications use.
