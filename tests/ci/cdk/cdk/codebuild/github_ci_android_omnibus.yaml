@@ -11,28 +11,28 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_MEDIUM
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
     - identifier: ubuntu2004_android_nonfips_static_release
       buildspec: ./tests/ci/codebuild/android/run_android_static_release.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_MEDIUM
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
     - identifier: ubuntu2004_android_nonfips_shared_debug
       buildspec: ./tests/ci/codebuild/android/run_android_shared_debug.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_MEDIUM
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
     - identifier: ubuntu2004_android_nonfips_shared_release
       buildspec: ./tests/ci/codebuild/android/run_android_shared_release.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_MEDIUM
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_android_latest
     - identifier: ubuntu2004_android_fips
       buildspec: ./tests/ci/codebuild/android/run_android_fips.yml
