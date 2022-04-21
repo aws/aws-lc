@@ -19,7 +19,6 @@ add_library(
   rsa/rsa_decrepit.c
   ssl/ssl_decrepit.c
   x509/x509_decrepit.c
-  xts/xts.c
 )
 target_compile_definitions(decrepit PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -36,7 +35,6 @@ if(BUILD_TESTING)
     cfb/cfb_test.cc
     evp/evp_test.cc
     ripemd/ripemd_test.cc
-    xts/xts_test.cc
 
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )

@@ -37,6 +37,10 @@ OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_AESNI_capable(); }
 #define VPAES
 #if defined(OPENSSL_X86_64)
 #define VPAES_CTR32
+#define HWAES_XTS
+OPENSSL_INLINE int hwaes_xts_available(void) {
+  return CRYPTO_is_AESNI_capable();
+}
 #endif
 #define VPAES_CBC
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_SSSE3_capable(); }
@@ -60,7 +64,10 @@ OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #define VPAES_CTR32
 #define HWAES_XTS
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
-OPENSSL_INLINE int hwaes_xts_available(void) { return CRYPTO_is_ARMv8_AES_capable(); }
+OPENSSL_INLINE int hwaes_xts_available(void) {
+  // same as hwaes_capable()
+  return CRYPTO_is_ARMv8_AES_capable();
+}
 #endif
 
 #elif defined(OPENSSL_PPC64LE)

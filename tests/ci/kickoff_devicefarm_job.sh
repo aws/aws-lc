@@ -78,31 +78,31 @@ function compile_for_android() {
   export ANDROID_APK_LOCATION='android/AWSLCAndroidTestRunner/app/build/outputs/apk'
   if [[ "${FIPS}" = true ]]; then
     # FIPS (Release Shared)
-    ./gradlew assembleDebug assembleAndroidTest -PFIPS
+    ./gradlew assembleDebug assembleAndroidTest -PFIPS --offline
     export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_fips.apk"
     export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_fips-androidTest.apk"
   else
     if [[ "${RELEASE}" = true ]]; then
       if [[ "${SHARED}" = true ]]; then
         # Release Shared
-        ./gradlew assembleDebug assembleAndroidTest -PRelease -PShared
+        ./gradlew assembleDebug assembleAndroidTest -PRelease -PShared --offline
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_shared_rel.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_shared_rel-androidTest.apk"
       else
         # Release Static
-        ./gradlew assembleDebug assembleAndroidTest -PRelease
+        ./gradlew assembleDebug assembleAndroidTest -PRelease --offline
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_static_rel.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_static_rel-androidTest.apk"
       fi
     else
       if [[ "${SHARED}" = true ]]; then
         # Debug Shared
-        ./gradlew assembleDebug assembleAndroidTest -PShared
+        ./gradlew assembleDebug assembleAndroidTest -PShared --offline
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_shared_dbg.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_shared_dbg-androidTest.apk"
       else
         # Debug Static
-        ./gradlew assembleDebug assembleAndroidTest
+        ./gradlew assembleDebug assembleAndroidTest --offline
         export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_static_dbg.apk"
         export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_static_dbg-androidTest.apk"
       fi
