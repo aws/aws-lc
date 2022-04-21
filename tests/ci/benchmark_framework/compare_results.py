@@ -65,8 +65,8 @@ def main():
     # Put both dataframes side by side for comparison
     dfs = pd.concat([df1, df2], axis=1)
 
-    # Filter out entries with a +15% regression
-    compared = np.where(((df2_avg_time / df1_avg_time) - 1) >= 0.15, df1.iloc[:, 0], np.nan)
+    # Filter out entries with a +5% regression
+    compared = np.where(((df2_avg_time / df1_avg_time) - 1) >= 0.05, df1.iloc[:, 0], np.nan)
 
     compared_df = dfs.loc[dfs.iloc[:, 0].isin(compared)]
 
