@@ -11,5 +11,6 @@
 # The wget version that comes with this docker image is too old to
 # download the cmake version from source, so we predownload the 
 # dependencies outside of the image and pull it in the container.
+# docker load --input ubuntu-7.04-gcc-4.1.2.tar
 wget -O ubuntu-7.10_gcc-4.1x/cmake-2.8.12.tar.gz https://cmake.org/files/v2.8/cmake-2.8.12.tar.gz
 docker build -t ubuntu-7.10:gcc-4.1x ubuntu-7.10_gcc-4.1x
