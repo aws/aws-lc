@@ -475,7 +475,6 @@ _bignum_kmul_16_32:
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
-        movq    %r9, %rcx
 #endif
 
 // Save more registers to play with

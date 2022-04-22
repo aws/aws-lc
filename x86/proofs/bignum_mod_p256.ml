@@ -125,7 +125,7 @@ let bignum_mod_p256_mc =
 let BIGNUM_MOD_P256_EXEC = X86_MK_EXEC_RULE bignum_mod_p256_mc;;
 
 (* ------------------------------------------------------------------------- *)
-(* Proof.                                                                    *)
+(* Common tactic for slightly different standard and Windows variants.       *)
 (* ------------------------------------------------------------------------- *)
 
 let p_256 = new_definition `p_256 = 115792089210356248762697446949407573530086143415290314195533631308867097853951`;;
@@ -139,19 +139,7 @@ let p256longredlemma = prove
            n < q * p_256 + p_256`,
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[p_256] THEN ARITH_TAC);;
 
-let BIGNUM_MOD_P256_CORRECT = time prove
- (`!z k x n pc.
-      nonoverlapping (word pc,0x12a) (z,32)
-      ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_mod_p256_mc /\
-                read RIP s = word(pc + 0x3) /\
-                C_ARGUMENTS [z; k; x] s /\
-                bignum_from_memory (x,val k) s = n)
-           (\s. read RIP s = word (pc + 0xfe) /\
-                bignum_from_memory (z,4) s = n MOD p_256)
-          (MAYCHANGE [RIP; RSI; RAX; RDX; RCX; RBX; R8; R9; R10; R11; R12] ,,
-           MAYCHANGE SOME_FLAGS ,,
-           MAYCHANGE [memory :> bignum(z,4)])`,
+let tac execth offset =
   X_GEN_TAC `z:int64` THEN W64_GEN_TAC `k:num` THEN
   MAP_EVERY X_GEN_TAC [`x:int64`; `n:num`; `pc:num`] THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN
@@ -175,17 +163,17 @@ let BIGNUM_MOD_P256_CORRECT = time prove
    DISCH_THEN(REPEAT_TCL DISJ_CASES_THEN SUBST_ALL_TAC) THEN
    EXPAND_TAC "n" THEN CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN
    ASM_REWRITE_TAC[] THENL
-    [X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (1--12);
-     X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (1--15);
-     X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (1--18);
-     X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (1--20)] THEN
+    [X86_STEPS_TAC execth (1--12);
+     X86_STEPS_TAC execth (1--15);
+     X86_STEPS_TAC execth (1--18);
+     X86_STEPS_TAC execth (1--20)] THEN
    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[VAL_WORD_0] THEN
    ARITH_TAC;
    FIRST_ASSUM(ASSUME_TAC o GEN_REWRITE_RULE I [NOT_LT])] THEN
 
   (*** Initial 4-digit modulus ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x5a`
+  ENSURES_SEQUENCE_TAC (offset 0x5a)
    `\s. bignum_from_memory(x,k) s = n /\
         read RDI s = z /\
         read RCX s = x /\
@@ -210,7 +198,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
     RULE_ASSUM_TAC(CONV_RULE(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV)) THEN
     BIGNUM_DIGITIZE_TAC "m_"
      `read (memory :> bytes (word_add x (word(8 * j)),8 * 4)) s0` THEN
-    X86_ACCSTEPS_TAC BIGNUM_MOD_P256_EXEC [9;11;13;14] (1--14) THEN
+    X86_ACCSTEPS_TAC execth [9;11;13;14] (1--14) THEN
     SUBGOAL_THEN `carry_s14 <=> m < p_256` SUBST_ALL_TAC THENL
      [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `256` THEN
       EXPAND_TAC "m" THEN REWRITE_TAC[p_256; GSYM REAL_OF_NUM_CLAUSES] THEN
@@ -218,7 +206,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
       DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
       REWRITE_TAC[REAL_BITVAL_NOT] THEN BOUNDER_TAC[];
       ALL_TAC] THEN
-    X86_ACCSTEPS_TAC BIGNUM_MOD_P256_EXEC (18--21) (15--21) THEN
+    X86_ACCSTEPS_TAC execth (18--21) (15--21) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     CONV_TAC SYM_CONV THEN MATCH_MP_TAC EQUAL_FROM_CONGRUENT_MOD_MOD THEN
     MAP_EVERY EXISTS_TAC
@@ -252,7 +240,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
     GHOST_INTRO_TAC `d2:int64` `read R10` THEN
     GHOST_INTRO_TAC `d3:int64` `read R11` THEN
     REWRITE_TAC[SUB_REFL; HIGHDIGITS_0] THEN
-    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (1--6) THEN
+    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--6) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     FIRST_X_ASSUM(fun th -> GEN_REWRITE_TAC RAND_CONV [SYM th]) THEN
     REWRITE_TAC[bignum_of_wordlist] THEN
@@ -265,7 +253,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
 
   (*** Setup of loop invariant ***)
 
-  ENSURES_WHILE_PDOWN_TAC `k - 4` `pc + 0x63` `pc + 0xe9`
+  ENSURES_WHILE_PDOWN_TAC `k - 4` (offset 0x63) (offset 0xe9)
    `\i s. (bignum_from_memory(x,k) s = n /\
            read RDI s = z /\
            read RCX s = x /\
@@ -275,19 +263,19 @@ let BIGNUM_MOD_P256_CORRECT = time prove
           (read ZF s <=> i = 0)` THEN
   ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
    [VAL_INT64_TAC `k - 4` THEN REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (1--2) THEN
+    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--2) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
     ALL_TAC; (*** Main loop invariant ***)
     X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
     ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_MOD_P256_EXEC [1] THEN
+    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
     GHOST_INTRO_TAC `d0:int64` `read R8` THEN
     GHOST_INTRO_TAC `d1:int64` `read R9` THEN
     GHOST_INTRO_TAC `d2:int64` `read R10` THEN
     GHOST_INTRO_TAC `d3:int64` `read R11` THEN
     REWRITE_TAC[SUB_REFL; HIGHDIGITS_0] THEN
-    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (1--5) THEN
+    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--5) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     FIRST_X_ASSUM(fun th -> GEN_REWRITE_TAC RAND_CONV [SYM th]) THEN
     REWRITE_TAC[bignum_of_wordlist] THEN
@@ -323,7 +311,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
   (*** The computation of the quotient estimate q ***)
 
   ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
-  X86_ACCSTEPS_TAC BIGNUM_MOD_P256_EXEC [7;8] (1--8) THEN
+  X86_ACCSTEPS_TAC execth [7;8] (1--8) THEN
   SUBGOAL_THEN
    `2 EXP 64 * bitval(read CF s8) + val(read RDX s8) =
     (m DIV 2 EXP 192 + m DIV 2 EXP 224 + 1) DIV 2 EXP 64`
@@ -339,7 +327,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
     W(MP_TAC o C SPEC VAL_BOUND_64 o rand o rand o lhand o lhand o snd) THEN
     ARITH_TAC;
     ASM_REWRITE_TAC[] THEN DISCH_TAC] THEN
-  X86_STEPS_TAC BIGNUM_MOD_P256_EXEC (9--10) THEN
+  X86_STEPS_TAC execth (9--10) THEN
   FIRST_X_ASSUM(MP_TAC o SPEC `word q:int64` o MATCH_MP (MESON[]
    `!q. read RDX s = q' ==> q' = q ==> read RDX s = q`)) THEN
   ANTS_TAC THENL
@@ -374,7 +362,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
 
   (*** Main reduction and correction ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MOD_P256_EXEC (11--22) (11--22) THEN
+  X86_ACCSTEPS_TAC execth (11--22) (11--22) THEN
   SUBGOAL_THEN
    `bignum_of_wordlist [sum_s12; sum_s17; sum_s18; sum_s21; sum_s22] +
     val(w:int64) * p_256 =
@@ -401,7 +389,7 @@ let BIGNUM_MOD_P256_CORRECT = time prove
       DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[]];
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
-  X86_ACCSTEPS_TAC BIGNUM_MOD_P256_EXEC [27;29;31;33] (23--35) THEN
+  X86_ACCSTEPS_TAC execth [27;29;31;33] (23--35) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
 
   MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN
@@ -426,7 +414,26 @@ let BIGNUM_MOD_P256_CORRECT = time prove
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
   BOOL_CASES_TAC `b:bool` THEN
   ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN CONV_TAC WORD_REDUCE_CONV THEN
-  DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
+  DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of standard ABI version.                                      *)
+(* ------------------------------------------------------------------------- *)
+
+let BIGNUM_MOD_P256_CORRECT = time prove
+ (`!z k x n pc.
+      nonoverlapping (word pc,0x12a) (z,32)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) bignum_mod_p256_mc /\
+                read RIP s = word(pc + 0x3) /\
+                C_ARGUMENTS [z; k; x] s /\
+                bignum_from_memory (x,val k) s = n)
+           (\s. read RIP s = word (pc + 0xfe) /\
+                bignum_from_memory (z,4) s = n MOD p_256)
+          (MAYCHANGE [RIP; RSI; RAX; RDX; RCX; RBX; R8; R9; R10; R11; R12] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,4)])`,
+  tac BIGNUM_MOD_P256_EXEC (curry mk_comb `(+) (pc:num)` o mk_small_numeral));;
 
 let BIGNUM_MOD_P256_SUBROUTINE_CORRECT = time prove
  (`!z k x n pc stackpointer returnaddress.
@@ -450,3 +457,50 @@ let BIGNUM_MOD_P256_SUBROUTINE_CORRECT = time prove
                  memory :> bytes(word_sub stackpointer (word 16),16)])`,
   X86_ADD_RETURN_STACK_TAC BIGNUM_MOD_P256_EXEC BIGNUM_MOD_P256_CORRECT
    `[RBX; R12]` 16);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mod_p256_mc = define_from_elf
+   "windows_bignum_mod_p256_mc" "x86/p256/bignum_mod_p256.obj";;
+
+let WINDOWS_BIGNUM_MOD_P256_CORRECT = time prove
+ (`!z k x n pc.
+      nonoverlapping (word pc,0x137) (z,32)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mod_p256_mc /\
+                read RIP s = word(pc + 0xe) /\
+                C_ARGUMENTS [z; k; x] s /\
+                bignum_from_memory (x,val k) s = n)
+           (\s. read RIP s = word (pc + 0x109) /\
+                bignum_from_memory (z,4) s = n MOD p_256)
+          (MAYCHANGE [RIP; RSI; RAX; RDX; RCX; RBX; R8; R9; R10; R11; R12] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,4)])`,
+  tac (X86_MK_EXEC_RULE windows_bignum_mod_p256_mc)
+      (curry mk_comb `(+) (pc:num)` o mk_small_numeral o (fun n -> n+11)));;
+
+let WINDOWS_BIGNUM_MOD_P256_SUBROUTINE_CORRECT = time prove
+ (`!z k x n pc stackpointer returnaddress.
+      nonoverlapping (word_sub stackpointer (word 32),40) (z,32) /\
+      ALL (nonoverlapping (word_sub stackpointer (word 32),32))
+          [(word pc,0x137); (x, 8 * val k)] /\
+      nonoverlapping (word pc,0x137) (z,32)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mod_p256_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [z; k; x] s /\
+                bignum_from_memory (x,val k) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                bignum_from_memory (z,4) s = n MOD p_256)
+          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,4);
+                 memory :> bytes(word_sub stackpointer (word 32),32)])`,
+  GEN_X86_ADD_RETURN_STACK_TAC (X86_MK_EXEC_RULE windows_bignum_mod_p256_mc)
+    WINDOWS_BIGNUM_MOD_P256_CORRECT
+    `[RDI; RSI; RBX; R12]` 32 (7,5));;

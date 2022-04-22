@@ -171,3 +171,34 @@ let BIGNUM_SQR_4_8_SUBROUTINE_CORRECT = time prove
            MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_sqr_4_8_mc BIGNUM_SQR_4_8_CORRECT
    `[RBP; R12; R13]` 24);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_sqr_4_8_mc = define_from_elf
+   "windows_bignum_sqr_4_8_mc" "x86/fastmul/bignum_sqr_4_8.obj";;
+
+let WINDOWS_BIGNUM_SQR_4_8_SUBROUTINE_CORRECT = time prove
+ (`!z x a pc stackpointer returnaddress.
+     nonoverlapping (word_sub stackpointer (word 40),48) (z,8 * 8) /\
+     ALL (nonoverlapping (word_sub stackpointer (word 40),40))
+         [(word pc,0x113); (x,8 * 4)] /\
+     nonoverlapping (word pc,0x113) (z,8 * 8) /\
+     (x = z \/ nonoverlapping (x,8 * 4) (z,8 * 8))
+     ==> ensures x86
+          (\s. bytes_loaded s (word pc) windows_bignum_sqr_4_8_mc /\
+               read RIP s = word pc /\
+               read RSP s = stackpointer /\
+               read (memory :> bytes64 stackpointer) s = returnaddress /\
+               WINDOWS_C_ARGUMENTS [z; x] s /\
+               bignum_from_memory (x,4) s = a)
+          (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+               bignum_from_memory (z,8) s = a EXP 2)
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE [memory :> bytes(z,8 * 8);
+                     memory :> bytes(word_sub stackpointer (word 40),40)] ,,
+           MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_sqr_4_8_mc bignum_sqr_4_8_mc
+    BIGNUM_SQR_4_8_CORRECT `[RBP; R12; R13]` 24);;

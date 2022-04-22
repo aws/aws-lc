@@ -247,3 +247,34 @@ let BIGNUM_TRIPLE_P384_ALT_SUBROUTINE_CORRECT = time prove
   X86_PROMOTE_RETURN_STACK_TAC
     bignum_triple_p384_alt_mc BIGNUM_TRIPLE_P384_ALT_CORRECT
     `[RBX]` 8);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_triple_p384_alt_mc = define_from_elf
+   "windows_bignum_triple_p384_alt_mc" "x86/p384/bignum_triple_p384_alt.obj";;
+
+let WINDOWS_BIGNUM_TRIPLE_P384_ALT_SUBROUTINE_CORRECT = time prove
+ (`!z x n pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 24),24) (x,8 * 6) /\
+        nonoverlapping (z,8 * 6) (word_sub stackpointer (word 24),32) /\
+        ALL (nonoverlapping (word pc,0xd9))
+            [(z,8 * 6); (word_sub stackpointer (word 24),24)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_triple_p384_alt_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,6) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory (z,6) s = (3 * n) MOD p_384)
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,6);
+                         memory :> bytes(word_sub stackpointer (word 24),24)])`,
+  WINDOWS_X86_WRAP_STACK_TAC
+    windows_bignum_triple_p384_alt_mc bignum_triple_p384_alt_mc
+    BIGNUM_TRIPLE_P384_ALT_CORRECT `[RBX]` 8);;

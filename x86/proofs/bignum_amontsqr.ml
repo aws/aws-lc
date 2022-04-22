@@ -871,3 +871,36 @@ let BIGNUM_AMONTSQR_SUBROUTINE_CORRECT = time prove
             MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_amontsqr_mc BIGNUM_AMONTSQR_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_amontsqr_mc = define_from_elf
+   "windows_bignum_amontsqr_mc" "x86/generic/bignum_amontsqr.obj";;
+
+let WINDOWS_BIGNUM_AMONTSQR_SUBROUTINE_CORRECT = time prove
+ (`!k z x m a n pc stackpointer returnaddress.
+       nonoverlapping (z,8 * val k) (word_sub stackpointer (word 64),72) /\
+       ALLPAIRS nonoverlapping
+           [(z,8 * val k); (word_sub stackpointer (word 64),64)]
+           [(word pc,0x161); (x,8 * val k); (m,8 * val k)]
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_amontsqr_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [k; z; x; m] s /\
+                bignum_from_memory (x,val k) s = a /\
+                bignum_from_memory (m,val k) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                (ODD n
+                 ==> (bignum_from_memory (z,val k) s ==
+                      inverse_mod n (2 EXP (64 * val k)) * a EXP 2) (mod n)))
+           (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10; R11] ,,
+            MAYCHANGE [memory :> bytes(z,8 * val k);
+                       memory :> bytes(word_sub stackpointer (word 64),64)] ,,
+            MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_amontsqr_mc bignum_amontsqr_mc
+   BIGNUM_AMONTSQR_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 48);;

@@ -75,3 +75,29 @@ let BIGNUM_EVEN_SUBROUTINE_CORRECT = prove
                C_RETURN s = if EVEN x then word 1 else word 0)
           (MAYCHANGE [RIP; RSP; RAX] ,, MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_even_mc BIGNUM_EVEN_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_even_mc = define_from_elf
+   "windows_bignum_even_mc" "x86/generic/bignum_even.obj";;
+
+let WINDOWS_BIGNUM_EVEN_SUBROUTINE_CORRECT = prove
+ (`!k a x pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x1d); (a,8 * val k)]
+        ==> ensures x86
+              (\s. bytes_loaded s (word pc) windows_bignum_even_mc /\
+                   read RIP s = word pc /\
+                   read RSP s = stackpointer /\
+                   read (memory :> bytes64 stackpointer) s = returnaddress /\
+                   WINDOWS_C_ARGUMENTS [k;a] s /\
+                   bignum_from_memory(a,val k) s = x)
+              (\s. read RIP s = returnaddress /\
+                   read RSP s = word_add stackpointer (word 8) /\
+                   WINDOWS_C_RETURN s = if EVEN x then word 1 else word 0)
+              (MAYCHANGE [RIP; RSP; RAX] ,, MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_even_mc bignum_even_mc
+    BIGNUM_EVEN_CORRECT);;

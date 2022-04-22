@@ -197,3 +197,31 @@ let BIGNUM_CTZ_SUBROUTINE_CORRECT = prove
          (MAYCHANGE [RIP; RSP; RDI; RDX; RCX; RAX] ,,
           MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_ctz_mc BIGNUM_CTZ_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_ctz_mc = define_from_elf
+   "windows_bignum_ctz_mc" "x86/generic/bignum_ctz.obj";;
+
+let WINDOWS_BIGNUM_CTZ_SUBROUTINE_CORRECT = prove
+ (`!k a x pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x41); (a,8 * val k)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_ctz_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k;a] s /\
+                  bignum_from_memory(a,val k) s = x)
+             (\s'. read RIP s' = returnaddress /\
+                   read RSP s' = word_add stackpointer (word 8) /\
+                   WINDOWS_C_RETURN s' = if x = 0 then word(64 * val k)
+                                 else word(index 2 x))
+             (MAYCHANGE [RIP; RSP; RDX; RCX; RAX] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_ctz_mc bignum_ctz_mc
+    BIGNUM_CTZ_CORRECT);;

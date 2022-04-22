@@ -622,7 +622,7 @@ let BIGNUM_SQR_P521_ALT_CORRECT = time prove
 let BIGNUM_SQR_P521_ALT_SUBROUTINE_CORRECT = prove
  (`!z x n pc stackpointer returnaddress.
         ALL (nonoverlapping (z,8 * 9))
-            [(word pc,0x500); (word_sub stackpointer (word 112),128)] /\
+            [(word pc,0x500); (word_sub stackpointer (word 112),120)] /\
         ALL (nonoverlapping (word_sub stackpointer (word 112),112))
             [(word pc,0x500); (x,8 * 9)]
         ==> ensures x86
@@ -643,3 +643,35 @@ let BIGNUM_SQR_P521_ALT_SUBROUTINE_CORRECT = prove
   X86_PROMOTE_RETURN_STACK_TAC
    bignum_sqr_p521_alt_mc BIGNUM_SQR_P521_ALT_CORRECT
    `[RBX; R12; R13; R14; R15]` 112);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_sqr_p521_alt_mc = define_from_elf
+   "windows_bignum_sqr_p521_alt_mc" "x86/p521/bignum_sqr_p521_alt.obj";;
+
+let WINDOWS_BIGNUM_SQR_P521_ALT_SUBROUTINE_CORRECT = prove
+ (`!z x n pc stackpointer returnaddress.
+        ALL (nonoverlapping (z,8 * 9))
+            [(word pc,0x50a); (word_sub stackpointer (word 128),136)] /\
+        ALL (nonoverlapping (word_sub stackpointer (word 128),128))
+            [(word pc,0x50a); (x,8 * 9)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_sqr_p521_alt_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,9) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (n < p_521
+                   ==> bignum_from_memory (z,9) s = n EXP 2 MOD p_521))
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 9);
+                     memory :> bytes(word_sub stackpointer (word 128),128)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC
+   windows_bignum_sqr_p521_alt_mc bignum_sqr_p521_alt_mc
+   BIGNUM_SQR_P521_ALT_CORRECT `[RBX; R12; R13; R14; R15]` 112);;

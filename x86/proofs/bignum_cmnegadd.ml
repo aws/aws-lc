@@ -499,3 +499,40 @@ let BIGNUM_CMNEGADD_SUBROUTINE_CORRECT = prove
                        memory :> bytes(word_sub stackpointer (word 8),8)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_cmnegadd_mc BIGNUM_CMNEGADD_CORRECT
    `[RBX]` 8);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_cmnegadd_mc = define_from_elf
+   "windows_bignum_cmnegadd_mc" "x86/generic/bignum_cmnegadd.obj";;
+
+let WINDOWS_BIGNUM_CMNEGADD_SUBROUTINE_CORRECT = prove
+ (`!p z d c n x a pc stackpointer returnaddress.
+        nonoverlapping (z,8 * val p) (word_sub stackpointer (word 24),32) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 24),24))
+            [(word pc,0xa4); (x,8 * val n)] /\
+        nonoverlapping (word pc,0xa4) (z,8 * val p) /\
+        (x = z \/ nonoverlapping(x,8 * val n) (z,8 * val p))
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_cmnegadd_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [p;z;c;n;x] s /\
+                  bignum_from_memory(z,val p) s = d /\
+                  bignum_from_memory(x,val n) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  &(bignum_from_memory (z,val p) s) =
+                  (&d - &(val c) * &a) rem (&2 pow (64 * val p)) /\
+                  (val n <= val p
+                   ==> &(bignum_from_memory (z,val p) s) -
+                       &2 pow (64 * val p) * &(val(WINDOWS_C_RETURN s)):int =
+                       &d - &(val c) * &a))
+             (MAYCHANGE [RIP; RSP; R8; RAX; RCX; RDX; R9; R10; R11] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val p);
+                       memory :> bytes(word_sub stackpointer (word 24),24)])`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_cmnegadd_mc bignum_cmnegadd_mc
+   BIGNUM_CMNEGADD_CORRECT `[RBX]` 8);;

@@ -118,3 +118,34 @@ let BIGNUM_FROMLEBYTES_P521_SUBROUTINE_CORRECT = prove
            MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_fromlebytes_p521_mc
     BIGNUM_FROMLEBYTES_P521_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_fromlebytes_p521_mc = define_from_elf
+   "windows_bignum_fromlebytes_p521_mc" "x86/p521/bignum_fromlebytes_p521.obj";;
+
+let WINDOWS_BIGNUM_FROMLEBYTES_P521_SUBROUTINE_CORRECT = prove
+ (`!z x l pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x53); (x,8 * 9)] /\
+      nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 9) /\
+      nonoverlapping (word pc,0x53) (z,8 * 9) /\
+      (x = z \/ nonoverlapping (x,66) (z,8 * 9))
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_fromlebytes_p521_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [z; x] s /\
+                read (memory :> bytelist(x,66)) s = l)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                bignum_from_memory (z,9) s = num_of_bytelist l)
+          (MAYCHANGE [RIP; RSP; RAX] ,,
+           MAYCHANGE [memory :> bignum(z,9);
+                      memory :> bytes(word_sub stackpointer (word 16),16)] ,,
+           MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_fromlebytes_p521_mc
+   bignum_fromlebytes_p521_mc BIGNUM_FROMLEBYTES_P521_CORRECT);;

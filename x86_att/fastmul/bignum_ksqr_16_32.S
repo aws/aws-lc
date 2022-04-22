@@ -473,7 +473,6 @@ _bignum_ksqr_16_32:
         pushq   %rsi
         movq    %rcx, %rdi
         movq    %rdx, %rsi
-        movq    %r8, %rdx
 #endif
 
 // Save more registers to play with

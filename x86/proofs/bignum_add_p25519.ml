@@ -62,7 +62,7 @@ let p_25519 = new_definition `p_25519 = 2 EXP 255 - 19`;;
 
 let BIGNUM_ADD_P25519_CORRECT = time prove
  (`!z x y m n pc.
-        nonoverlapping (word pc,0x60) (z,8 * 4)
+        nonoverlapping (word pc,0x5a) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST bignum_add_p25519_mc) /\
                   read RIP s = word pc /\
@@ -145,7 +145,7 @@ let BIGNUM_ADD_P25519_CORRECT = time prove
 
 let BIGNUM_ADD_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x y m n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x60) (z,8 * 4) /\
+        nonoverlapping (word pc,0x5a) (z,8 * 4) /\
         nonoverlapping (stackpointer,8) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_add_p25519_mc /\
@@ -163,3 +163,35 @@ let BIGNUM_ADD_P25519_SUBROUTINE_CORRECT = time prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_add_p25519_mc BIGNUM_ADD_P25519_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_add_p25519_mc = define_from_elf
+   "windows_bignum_add_p25519_mc" "x86/curve25519/bignum_add_p25519.obj";;
+
+let WINDOWS_BIGNUM_ADD_P25519_SUBROUTINE_CORRECT = time prove
+ (`!z x y m n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x67); (x,8 * 4); (y,8 * 4)] /\
+        nonoverlapping (word pc,0x67) (z,8 * 4) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 4)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_add_p25519_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x; y] s /\
+                  bignum_from_memory (x,4) s = m /\
+                  bignum_from_memory (y,4) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (m < p_25519 /\ n < p_25519
+                   ==> bignum_from_memory (z,4) s = (m + n) MOD p_25519))
+          (MAYCHANGE [RIP; RSP; RDX; RAX; RCX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,4);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_add_p25519_mc
+    bignum_add_p25519_mc BIGNUM_ADD_P25519_CORRECT);;

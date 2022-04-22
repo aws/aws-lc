@@ -101,3 +101,37 @@ let BIGNUM_MUX_4_SUBROUTINE_CORRECT = prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mux_4_mc BIGNUM_MUX_4_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mux_4_mc = define_from_elf
+   "windows_bignum_mux_4_mc" "x86/p256/bignum_mux_4.obj";;
+
+let WINDOWS_BIGNUM_MUX_4_SUBROUTINE_CORRECT = prove
+ (`!p z x y m n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x51); (x,8 * 4); (y,8 * 4)] /\
+     nonoverlapping (word pc,0x51) (z,8 * 4) /\
+     nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 4) /\
+     (x = z \/ nonoverlapping (x,8 * 4) (z,8 * 4)) /\
+     (y = z \/ nonoverlapping (y,8 * 4) (z,8 * 4))
+     ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mux_4_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [p; z; x; y] s /\
+                bignum_from_memory (x,4) s = m /\
+                bignum_from_memory (y,4) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                bignum_from_memory (z,4) s =
+                  if ~(p = word 0) then m else n)
+          (MAYCHANGE [RIP; RSP; RCX; RDX; RAX; R8] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,4);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_mux_4_mc bignum_mux_4_mc
+    BIGNUM_MUX_4_CORRECT);;

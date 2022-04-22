@@ -103,3 +103,30 @@ let BIGNUM_NONZERO_SUBROUTINE_CORRECT = prove
           (MAYCHANGE [RIP; RSP; RAX; RDI] ,,
            MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_nonzero_mc BIGNUM_NONZERO_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_nonzero_mc = define_from_elf
+   "windows_bignum_nonzero_mc" "x86/generic/bignum_nonzero.obj";;
+
+let WINDOWS_BIGNUM_NONZERO_SUBROUTINE_CORRECT = prove
+ (`!k a x pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x26); (a,8 * val k)]
+        ==> ensures x86
+              (\s. bytes_loaded s (word pc) windows_bignum_nonzero_mc /\
+                   read RIP s = word pc /\
+                   read RSP s = stackpointer /\
+                   read (memory :> bytes64 stackpointer) s = returnaddress /\
+                   WINDOWS_C_ARGUMENTS [k;a] s /\
+                   bignum_from_memory(a,val k) s = x)
+              (\s'. read RIP s' = returnaddress /\
+                    read RSP s' = word_add stackpointer (word 8) /\
+                    WINDOWS_C_RETURN s' = if ~(x = 0) then word 1 else word 0)
+              (MAYCHANGE [RIP; RSP; RAX] ,,
+               MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_nonzero_mc bignum_nonzero_mc
+    BIGNUM_NONZERO_CORRECT);;

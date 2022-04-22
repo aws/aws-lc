@@ -240,3 +240,35 @@ let BIGNUM_DEAMONT_P256K1_SUBROUTINE_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC
     bignum_deamont_p256k1_mc BIGNUM_DEAMONT_P256K1_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_deamont_p256k1_mc = define_from_elf
+   "windows_bignum_deamont_p256k1_mc" "x86/secp256k1/bignum_deamont_p256k1.obj";;
+
+let WINDOWS_BIGNUM_DEAMONT_P256K1_SUBROUTINE_CORRECT = time prove
+ (`!z x a pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0xce); (x,8 * 4)] /\
+        nonoverlapping (word pc,0xce) (z,8 * 4) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 4)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_deamont_p256k1_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,4) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory (z,4) s =
+                    (inverse_mod p_256k1 (2 EXP 256) * a) MOD p_256k1)
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4);
+                         memory :> bytes(word_sub stackpointer (word 16),16)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC
+    windows_bignum_deamont_p256k1_mc bignum_deamont_p256k1_mc
+    BIGNUM_DEAMONT_P256K1_CORRECT);;

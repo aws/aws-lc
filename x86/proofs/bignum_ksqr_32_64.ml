@@ -1763,16 +1763,28 @@ let BIGNUM_KSQR_32_64_EXEC = X86_MK_EXEC_RULE bignum_ksqr_32_64_mc;;
 (* The lemma for the embedded subroutine (close to bignum_sqr_16_32).        *)
 (* ------------------------------------------------------------------------- *)
 
-let BIGNUM_KSQR_32_64_LEMMA = prove
+let local_ksqr_16_32_mc_def = define
+ `local_ksqr_16_32_mc = ITER 0x8d6 TL bignum_ksqr_32_64_mc`;;
+
+let local_ksqr_16_32_mc =
+  GEN_REWRITE_RULE DEPTH_CONV [TL]
+    (REWRITE_RULE[bignum_ksqr_32_64_mc; CONJUNCT1 ITER]
+      (CONV_RULE(RAND_CONV(TOP_DEPTH_CONV
+         (RATOR_CONV(LAND_CONV num_CONV) THENC GEN_REWRITE_CONV I [ITER])))
+         local_ksqr_16_32_mc_def));;
+
+let LOCAL_KSQR_16_32_EXEC = X86_MK_EXEC_RULE local_ksqr_16_32_mc;;
+
+let LOCAL_KSQR_16_32_CORRECT = prove
  (`!z x a pc.
-     nonoverlapping (word pc,0x1646) (z,8 * 32) /\
+     nonoverlapping (word pc,3440) (z,8 * 32) /\
      nonoverlapping (x,8 * 16) (z,8 * 32)
      ==> ensures x86
-          (\s. bytes_loaded s (word(pc + 0x0)) bignum_ksqr_32_64_mc /\
-               read RIP s = word(pc + 0x8d6) /\
+          (\s. bytes_loaded s (word pc) local_ksqr_16_32_mc /\
+               read RIP s = word pc /\
                C_ARGUMENTS [z; x] s /\
                bignum_from_memory (x,16) s = a)
-          (\s. read RIP s = word (pc + 0x1645) /\
+          (\s. read RIP s = word (pc + 3439) /\
                bignum_from_memory (z,32) s = a EXP 2)
           (MAYCHANGE [RIP; RAX; RBP; RBX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -1784,23 +1796,209 @@ let BIGNUM_KSQR_32_64_LEMMA = prove
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,16) s0` THEN
-  X86_ACCSTEPS_TAC BIGNUM_KSQR_32_64_EXEC (1--607) (1--607) THEN
+  X86_ACCSTEPS_TAC LOCAL_KSQR_16_32_EXEC (1--607) (1--607) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   EXPAND_TAC "a" THEN REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC);;
 
-let BIGNUM_KSQR_32_64_LEMMA_TAC =
-  X86_SUBROUTINE_SIM_TAC
-    (bignum_ksqr_32_64_mc,BIGNUM_KSQR_32_64_EXEC,
-     0x0,bignum_ksqr_32_64_mc,BIGNUM_KSQR_32_64_LEMMA)
+(* ------------------------------------------------------------------------- *)
+(* Common tactic for the main part with standard and Windows ABIs            *)
+(* ------------------------------------------------------------------------- *)
+
+let tac mc execth pcinst =
+  let maintac = X86_SUBROUTINE_SIM_TAC
+   (mc,execth,dest_small_numeral(rand pcinst),
+    local_ksqr_16_32_mc,LOCAL_KSQR_16_32_CORRECT)
     [`read RDI s`; `read RSI s`;
      `read (memory :> bytes (read RSI s,8 * 16)) s`;
-     `pc:num`];;
+     pcinst]
+  and posttac =
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM ADD_ASSOC]) THEN
+    RULE_ASSUM_TAC(CONV_RULE(ONCE_DEPTH_CONV NUM_ADD_CONV)) in
+  let LOCAL_KSQR_16_32_TAC n = maintac n THEN posttac in
+
+  REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
+  BIGNUM_TERMRANGE_TAC `32` `a:num` THEN
+  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
+  MP_TAC(ISPECL [`x:int64`; `16`; `16`] BIGNUM_FROM_MEMORY_SPLIT) THEN
+  CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV(NUM_ADD_CONV ORELSEC NUM_MULT_CONV))) THEN
+  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
+  DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
+  ENSURES_INIT_TAC "s0" THEN
+  MAP_EVERY ABBREV_TAC
+   [`ahi = read (memory :> bytes (word_add x (word 128),8 * 16)) s0`;
+    `alo = read (memory :> bytes (x,8 * 16)) s0`] THEN
+
+  (*** First nested squaring: low part ***)
+
+  X86_STEPS_TAC execth (1--2) THEN
+  LOCAL_KSQR_16_32_TAC 3 THEN
+  X86_STEPS_TAC execth [4] THEN
+
+  (*** Second nested squaring: high part ***)
+
+  X86_STEPS_TAC execth (5--7) THEN
+  LOCAL_KSQR_16_32_TAC 8 THEN
+  X86_STEPS_TAC execth [9] THEN
+
+  (*** Absolute difference computation ***)
+
+  BIGNUM_LDIGITIZE_TAC "x_" `bignum_from_memory(x,32) s9` THEN
+  X86_ACCSTEPS_TAC execth
+   (map (fun n -> 11 + 3 * n) (0--15)) (10--59) THEN
+  SUBGOAL_THEN `carry_s56 <=> alo < ahi` (ASSUME_TAC o SYM) THENL
+   [MAP_EVERY EXPAND_TAC ["ahi"; "alo"] THEN
+    CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `1024` THEN
+    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
+    ALL_TAC] THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[VAL_EQ_0; WORD_NEG_EQ_0; WORD_BITVAL_EQ_0]) THEN
+  X86_ACCSTEPS_TAC execth
+   (map (fun n -> 63 + 6 * n) (0--15)) (60--155) THEN
+  SUBGOAL_THEN
+   `&(read (memory :> bytes (t,8 * 16)) s155):real = abs(&alo - &ahi)`
+  ASSUME_TAC THENL
+   [REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
+    MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
+    MAP_EVERY EXISTS_TAC [`64 * 16`; `&0:real`] THEN CONJ_TAC THENL
+     [REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0; BIGNUM_FROM_MEMORY_BOUND];
+      ALL_TAC] THEN
+    CONJ_TAC THENL
+     [REWRITE_TAC[REAL_ABS_POS] THEN MATCH_MP_TAC(REAL_ARITH
+       `&x < e /\ &y < e ==> abs(&x - &y):real < e`) THEN
+      REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+      MAP_EVERY EXPAND_TAC ["ahi"; "alo"] THEN
+      REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES; BIGNUM_FROM_MEMORY_BOUND];
+      REWRITE_TAC[INTEGER_CLOSED]] THEN
+    ASM_REWRITE_TAC[REAL_OF_NUM_LT; REAL_ARITH
+     `abs(&x - &y):real = if &x < &y then &y - &x else &x - &y`] THEN
+    MAP_EVERY EXPAND_TAC ["ahi"; "alo"] THEN
+    REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
+    CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
+    CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
+    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ) THEN
+    ASM_CASES_TAC `carry_s56:bool` THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
+    DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o CONJUNCTS) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
+    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
+
+  (*** Discard elementwise assignments and things to do with x ***)
+
+  DISCARD_MATCHING_ASSUMPTIONS [`read (memory :> bytes64 x) s = y`] THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+
+  (*** Digitize low and high products ***)
+
+  BIGNUM_LDIGITIZE_TAC "l_" `read (memory :> bytes (z,8 * 32)) s155` THEN
+  BIGNUM_LDIGITIZE_TAC "h_"
+   `read (memory :> bytes (word_add z (word 256),8 * 32)) s155` THEN
+
+  (*** Simulate the interlocking part, just deduce top carry zeroness ***)
+
+  X86_ACCSTEPS_TAC execth
+   (sort (<)  (map (fun n -> 158 + 4 * n) (0--31) @
+               map (fun n -> 159 + 4 * n) (0--31) @ [286]))
+   (156--287) THEN
+  UNDISCH_TAC
+   `&2 pow 64 * &(bitval carry_s286) + &(val(sum_s286:int64)) =
+    &(val(word(bitval carry_s283):int64)) + &(bitval carry_s282)` THEN
+  REWRITE_TAC[VAL_WORD_BITVAL] THEN
+  DISCH_THEN(MP_TAC o end_itlist CONJ o DECARRY_RULE o CONJUNCTS) THEN
+  STRIP_TAC THEN
+
+  (*** Third nested squaring: absolute difference ***)
+
+  ABBREV_TAC `adiff = read (memory :> bytes (t,8 * 16)) s287` THEN
+  X86_STEPS_TAC execth (288--291) THEN
+  LOCAL_KSQR_16_32_TAC 292 THEN
+  X86_STEPS_TAC execth [293] THEN
+
+  (*** Digitize the mid-product and simulate main bit of its subtraction ***)
+
+  BIGNUM_LDIGITIZE_TAC "m_"
+   `read (memory :> bytes (word_add t (word 256),8 * 32)) s293` THEN
+
+  X86_ACCSTEPS_TAC execth
+   (map (fun n -> 295 + 3 * n) (0--32)) (294--391) THEN
+
+  (*** Deduce that we don't wrap the suspended carry negative ***)
+
+  SUBGOAL_THEN
+   `(&0):real <= --(&2 pow 64) * &(bitval carry_s391) + &(val(sum_s391:int64))`
+  MP_TAC THENL
+   [ASM_REWRITE_TAC[REAL_SUB_RZERO] THEN
+    MATCH_MP_TAC REAL_LE_REVERSE_INTEGERS THEN
+    REPEAT(CONJ_TAC THENL [REAL_INTEGER_TAC; ALL_TAC]) THEN
+    MATCH_MP_TAC(REAL_ARITH
+     `!m:real. &0 <= m /\ m - &2 pow 2048 * cc < &2 pow 2048
+      ==> ~(cc + &1 <= &0)`) THEN
+    EXISTS_TAC `(&alo:real) pow 2 + &ahi pow 2 - (&alo - &ahi) pow 2` THEN
+    CONJ_TAC THENL
+     [CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN
+      REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0];
+      ALL_TAC] THEN
+    ONCE_REWRITE_TAC[GSYM REAL_POW2_ABS] THEN
+    UNDISCH_THEN `&adiff:real = abs(&alo - &ahi)` (SUBST1_TAC o SYM) THEN
+    REWRITE_TAC[REAL_ABS_NUM; REAL_OF_NUM_POW] THEN
+    REPEAT(FIRST_X_ASSUM(SUBST1_TAC o MATCH_MP (ARITH_RULE
+     `a = b EXP 2 ==> b EXP 2 = a`))) THEN
+    REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
+    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
+    CONV_TAC(LAND_CONV REAL_POLY_CONV) THEN BOUNDER_TAC[];
+    DISCH_THEN(MP_TAC o MATCH_MP (REAL_ARITH
+     `&0 <= --e * c + s
+      ==> s < e /\ (e * c < e * &1 ==> e * c = &0) ==> e * c = &0`)) THEN
+    SIMP_TAC[REAL_LT_LMUL_EQ; REAL_LT_POW2; REAL_ENTIRE] THEN
+    REWRITE_TAC[REAL_OF_NUM_CLAUSES; VAL_BOUND_64] THEN
+    CONV_TAC NUM_REDUCE_CONV THEN ANTS_TAC THENL [ARITH_TAC; ALL_TAC] THEN
+    DISCH_THEN SUBST_ALL_TAC THEN
+    RULE_ASSUM_TAC(REWRITE_RULE
+     [REAL_MUL_RZERO; REAL_ADD_LID; REAL_SUB_RZERO])] THEN
+
+  (*** Finish the carry propagation, and then the finale ***)
+
+  X86_ACCSTEPS_TAC execth
+   (393--408) (392--408) THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+  UNDISCH_THEN
+   `&(val(sum_s391:int64)) = &(val(sum_s286:int64)) - &(bitval carry_s388)`
+  SUBST_ALL_TAC THEN
+  UNDISCH_THEN
+   `&(val(sum_s286:int64)) = &(bitval carry_s283) + &(bitval carry_s282)`
+  SUBST_ALL_TAC THEN
+  SUBST1_TAC(ARITH_RULE `512 = 8 * 64`) THEN
+  REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES; GSYM REAL_OF_NUM_CLAUSES] THEN
+  MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
+  MAP_EVERY EXISTS_TAC [`64 * 64`; `&0:real`] THEN
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0; BIGNUM_FROM_MEMORY_BOUND] THEN
+  CONJ_TAC THENL
+   [REWRITE_TAC[EXP_ADD; ARITH_RULE `64 * 64 = 64 * 32 + 64 * 32`] THEN
+    ASM_SIMP_TAC[EXP_2; LT_MULT2];
+    REWRITE_TAC[INTEGER_CLOSED]] THEN
+  EXPAND_TAC "a" THEN REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+  ONCE_REWRITE_TAC[REAL_ARITH
+   `(e * h + l:real) pow 2 =
+    l pow 2 + e pow 2 * h pow 2 +
+    e * (h pow 2 + l pow 2 - (l - h) pow 2)`] THEN
+  ONCE_REWRITE_TAC[GSYM REAL_POW2_ABS] THEN
+  UNDISCH_THEN `&adiff:real = abs(&alo - &ahi)` (SUBST1_TAC o SYM) THEN
+  REWRITE_TAC[REAL_ABS_NUM; REAL_OF_NUM_POW] THEN
+  REPEAT(FIRST_X_ASSUM(SUBST1_TAC o MATCH_MP (ARITH_RULE
+   `a = b EXP 2 ==> b EXP 2 = a`))) THEN
+  CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN
+  ASM_REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist] THEN
+  CONV_TAC NUM_REDUCE_CONV THEN
+  ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
+  DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;;
 
 (* ------------------------------------------------------------------------- *)
-(* Proof.                                                                    *)
+(* Proof of the standard ABI version.                                        *)
 (* ------------------------------------------------------------------------- *)
 
 let BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = time prove
@@ -1866,183 +2064,82 @@ let BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = time prove
     X86_STEPS_TAC BIGNUM_KSQR_32_64_EXEC (8--14) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]] THEN
 
-  (*** Initialization and splitting of the input ***)
+  tac bignum_ksqr_32_64_mc BIGNUM_KSQR_32_64_EXEC `pc + 0x8d6`);;
 
-  REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
-  BIGNUM_TERMRANGE_TAC `32` `a:num` THEN
-  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
 
-  MP_TAC(ISPECL [`x:int64`; `16`; `16`] BIGNUM_FROM_MEMORY_SPLIT) THEN
-  CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV(NUM_ADD_CONV ORELSEC NUM_MULT_CONV))) THEN
-  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-  DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-  ENSURES_INIT_TAC "s0" THEN
-  MAP_EVERY ABBREV_TAC
-   [`ahi = read (memory :> bytes (word_add x (word 128),8 * 16)) s0`;
-    `alo = read (memory :> bytes (x,8 * 16)) s0`] THEN
+let windows_bignum_ksqr_32_64_mc = define_from_elf
+   "windows_bignum_ksqr_32_64_mc" "x86/fastmul/bignum_ksqr_32_64.obj";;
 
-  (*** First nested squaring: low part ***)
+let WINDOWS_BIGNUM_KSQR_32_64_EXEC =
+  X86_MK_EXEC_RULE windows_bignum_ksqr_32_64_mc;;
 
-  X86_STEPS_TAC BIGNUM_KSQR_32_64_EXEC (1--2) THEN
-  BIGNUM_KSQR_32_64_LEMMA_TAC 3 THEN
-  X86_STEPS_TAC BIGNUM_KSQR_32_64_EXEC [4] THEN
+let WINDOWS_BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = time prove
+ (`!z x t a pc stackpointer returnaddress.
+     ALL (nonoverlapping (word_sub stackpointer (word 72),80))
+         [(z,8 * 64); (t,8 * 72)] /\
+     ALL (nonoverlapping (word_sub stackpointer (word 72),72))
+         [(word pc,0x1653); (x,8 * 32)] /\
+     nonoverlapping (z,8 * 64) (t,8 * 72) /\
+     ALLPAIRS nonoverlapping
+         [(z,8 * 64); (t,8 * 72)] [(word pc,0x1653); (x,8 * 32)]
+     ==> ensures x86
+          (\s. bytes_loaded s (word pc) windows_bignum_ksqr_32_64_mc /\
+               read RIP s = word pc /\
+               read RSP s = stackpointer /\
+               read (memory :> bytes64 stackpointer) s = returnaddress /\
+               WINDOWS_C_ARGUMENTS [z; x; t] s /\
+               bignum_from_memory (x,32) s = a)
+          (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+               bignum_from_memory (z,64) s = a EXP 2)
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 72);
+                      memory :> bytes(word_sub stackpointer (word 72),72)] ,,
+           MAYCHANGE SOME_FLAGS)`,
+  MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `t:int64`; `a:num`; `pc:num`] THEN
+  WORD_FORALL_OFFSET_TAC 72 THEN
+  MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN
+  REWRITE_TAC[WINDOWS_C_ARGUMENTS; WINDOWS_C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[ALL; ALLPAIRS; NONOVERLAPPING_CLAUSES] THEN STRIP_TAC THEN
 
-  (*** Second nested squaring: high part ***)
-
-  X86_STEPS_TAC BIGNUM_KSQR_32_64_EXEC (5--7) THEN
-  BIGNUM_KSQR_32_64_LEMMA_TAC 8 THEN
-  X86_STEPS_TAC BIGNUM_KSQR_32_64_EXEC [9] THEN
-
-  (*** Absolute difference computation ***)
-
-  BIGNUM_LDIGITIZE_TAC "x_" `bignum_from_memory(x,32) s9` THEN
-  X86_ACCSTEPS_TAC BIGNUM_KSQR_32_64_EXEC
-   (map (fun n -> 11 + 3 * n) (0--15)) (10--59) THEN
-  SUBGOAL_THEN `carry_s56 <=> alo < ahi` (ASSUME_TAC o SYM) THENL
-   [MAP_EVERY EXPAND_TAC ["ahi"; "alo"] THEN
-    CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
-    MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `1024` THEN
-    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
-    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
-    ALL_TAC] THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[VAL_EQ_0; WORD_NEG_EQ_0; WORD_BITVAL_EQ_0]) THEN
-  X86_ACCSTEPS_TAC BIGNUM_KSQR_32_64_EXEC
-   (map (fun n -> 63 + 6 * n) (0--15)) (60--155) THEN
-  SUBGOAL_THEN
-   `&(read (memory :> bytes (t,8 * 16)) s155):real = abs(&alo - &ahi)`
-  ASSUME_TAC THENL
-   [REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
-    MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
-    MAP_EVERY EXISTS_TAC [`64 * 16`; `&0:real`] THEN CONJ_TAC THENL
-     [REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0; BIGNUM_FROM_MEMORY_BOUND];
-      ALL_TAC] THEN
-    CONJ_TAC THENL
-     [REWRITE_TAC[REAL_ABS_POS] THEN MATCH_MP_TAC(REAL_ARITH
-       `&x < e /\ &y < e ==> abs(&x - &y):real < e`) THEN
-      REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
-      MAP_EVERY EXPAND_TAC ["ahi"; "alo"] THEN
-      REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES; BIGNUM_FROM_MEMORY_BOUND];
-      REWRITE_TAC[INTEGER_CLOSED]] THEN
-    ASM_REWRITE_TAC[REAL_OF_NUM_LT; REAL_ARITH
-     `abs(&x - &y):real = if &x < &y then &y - &x else &x - &y`] THEN
-    MAP_EVERY EXPAND_TAC ["ahi"; "alo"] THEN
-    REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
-    CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
-    CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
-    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
-    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ) THEN
-    ASM_CASES_TAC `carry_s56:bool` THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
-    DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o CONJUNCTS) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
-    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
-
-  (*** Discard elementwise assignments and things to do with x ***)
-
-  DISCARD_MATCHING_ASSUMPTIONS [`read (memory :> bytes64 x) s = y`] THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
-
-  (*** Digitize low and high products ***)
-
-  BIGNUM_LDIGITIZE_TAC "l_" `read (memory :> bytes (z,8 * 32)) s155` THEN
-  BIGNUM_LDIGITIZE_TAC "h_"
-   `read (memory :> bytes (word_add z (word 256),8 * 32)) s155` THEN
-
-  (*** Simulate the interlocking part, just deduce top carry zeroness ***)
-
-  X86_ACCSTEPS_TAC BIGNUM_KSQR_32_64_EXEC
-   (sort (<)  (map (fun n -> 158 + 4 * n) (0--31) @
-               map (fun n -> 159 + 4 * n) (0--31) @ [286]))
-   (156--287) THEN
-  UNDISCH_TAC
-   `&2 pow 64 * &(bitval carry_s286) + &(val(sum_s286:int64)) =
-    &(val(word(bitval carry_s283):int64)) + &(bitval carry_s282)` THEN
-  REWRITE_TAC[VAL_WORD_BITVAL] THEN
-  DISCH_THEN(MP_TAC o end_itlist CONJ o DECARRY_RULE o CONJUNCTS) THEN
-  STRIP_TAC THEN
-
-  (*** Third nested squaring: absolute difference ***)
-
-  ABBREV_TAC `adiff = read (memory :> bytes (t,8 * 16)) s287` THEN
-  X86_STEPS_TAC BIGNUM_KSQR_32_64_EXEC (288--291) THEN
-  BIGNUM_KSQR_32_64_LEMMA_TAC 292 THEN
-  X86_STEPS_TAC BIGNUM_KSQR_32_64_EXEC [293] THEN
-
-  (*** Digitize the mid-product and simulate main bit of its subtraction ***)
-
-  BIGNUM_LDIGITIZE_TAC "m_"
-   `read (memory :> bytes (word_add t (word 256),8 * 32)) s293` THEN
-
-  X86_ACCSTEPS_TAC BIGNUM_KSQR_32_64_EXEC
-   (map (fun n -> 295 + 3 * n) (0--32)) (294--391) THEN
-
-  (*** Deduce that we don't wrap the suspended carry negative ***)
+  (*** Start and end boilerplate for save and restore of registers ***)
 
   SUBGOAL_THEN
-   `(&0):real <= --(&2 pow 64) * &(bitval carry_s391) + &(val(sum_s391:int64))`
-  MP_TAC THENL
-   [ASM_REWRITE_TAC[REAL_SUB_RZERO] THEN
-    MATCH_MP_TAC REAL_LE_REVERSE_INTEGERS THEN
-    REPEAT(CONJ_TAC THENL [REAL_INTEGER_TAC; ALL_TAC]) THEN
-    MATCH_MP_TAC(REAL_ARITH
-     `!m:real. &0 <= m /\ m - &2 pow 2048 * cc < &2 pow 2048
-      ==> ~(cc + &1 <= &0)`) THEN
-    EXISTS_TAC `(&alo:real) pow 2 + &ahi pow 2 - (&alo - &ahi) pow 2` THEN
-    CONJ_TAC THENL
-     [CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN
-      REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0];
-      ALL_TAC] THEN
-    ONCE_REWRITE_TAC[GSYM REAL_POW2_ABS] THEN
-    UNDISCH_THEN `&adiff:real = abs(&alo - &ahi)` (SUBST1_TAC o SYM) THEN
-    REWRITE_TAC[REAL_ABS_NUM; REAL_OF_NUM_POW] THEN
-    REPEAT(FIRST_X_ASSUM(SUBST1_TAC o MATCH_MP (ARITH_RULE
-     `a = b EXP 2 ==> b EXP 2 = a`))) THEN
-    REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-    CONV_TAC(LAND_CONV REAL_POLY_CONV) THEN BOUNDER_TAC[];
-    DISCH_THEN(MP_TAC o MATCH_MP (REAL_ARITH
-     `&0 <= --e * c + s
-      ==> s < e /\ (e * c < e * &1 ==> e * c = &0) ==> e * c = &0`)) THEN
-    SIMP_TAC[REAL_LT_LMUL_EQ; REAL_LT_POW2; REAL_ENTIRE] THEN
-    REWRITE_TAC[REAL_OF_NUM_CLAUSES; VAL_BOUND_64] THEN
-    CONV_TAC NUM_REDUCE_CONV THEN ANTS_TAC THENL [ARITH_TAC; ALL_TAC] THEN
-    DISCH_THEN SUBST_ALL_TAC THEN
-    RULE_ASSUM_TAC(REWRITE_RULE
-     [REAL_MUL_RZERO; REAL_ADD_LID; REAL_SUB_RZERO])] THEN
+   `ensures x86
+     (\s. bytes_loaded s (word pc) windows_bignum_ksqr_32_64_mc /\
+          read RIP s = word(pc + 0x15) /\
+          read RSP s = word_add stackpointer (word 8) /\
+          C_ARGUMENTS [z; x; t] s /\
+          bignum_from_memory (x,32) s = a)
+     (\s. read RIP s = word(pc + 0x8d6) /\
+          bignum_from_memory (z,64) s = a EXP 2)
+     (MAYCHANGE [RIP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11;
+                 RBX; RBP; R12; R13; R14; R15] ,,
+      MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 72);
+                 memory :> bytes(stackpointer,8)] ,,
+      MAYCHANGE SOME_FLAGS)`
+  MP_TAC THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THENL
+   [ENSURES_EXISTING_PRESERVED_TAC `RSP`;
+    DISCH_THEN(fun th ->
+      ENSURES_PRESERVED_TAC "rdi_init" `RDI` THEN
+      ENSURES_PRESERVED_TAC "rsi_init" `RSI` THEN
+      ENSURES_PRESERVED_TAC "rbx_init" `RBX` THEN
+      ENSURES_PRESERVED_TAC "rbp_init" `RBP` THEN
+      ENSURES_PRESERVED_TAC "r12_init" `R12` THEN
+      ENSURES_PRESERVED_TAC "r13_init" `R13` THEN
+      ENSURES_PRESERVED_TAC "r14_init" `R14` THEN
+      ENSURES_PRESERVED_TAC "r15_init" `R15` THEN
+      ENSURES_INIT_TAC "s0" THEN
+      X86_STEPS_TAC WINDOWS_BIGNUM_KSQR_32_64_EXEC (1--11) THEN
+      MP_TAC th) THEN
+    X86_BIGSTEP_TAC WINDOWS_BIGNUM_KSQR_32_64_EXEC "s12" THEN
+    X86_STEPS_TAC WINDOWS_BIGNUM_KSQR_32_64_EXEC (13--21) THEN
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]] THEN
 
-  (*** Finish the carry propagation, and then the finale ***)
-
-  X86_ACCSTEPS_TAC BIGNUM_KSQR_32_64_EXEC
-   (393--408) (392--408) THEN
-  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  UNDISCH_THEN
-   `&(val(sum_s391:int64)) = &(val(sum_s286:int64)) - &(bitval carry_s388)`
-  SUBST_ALL_TAC THEN
-  UNDISCH_THEN
-   `&(val(sum_s286:int64)) = &(bitval carry_s283) + &(bitval carry_s282)`
-  SUBST_ALL_TAC THEN
-  SUBST1_TAC(ARITH_RULE `512 = 8 * 64`) THEN
-  REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES; GSYM REAL_OF_NUM_CLAUSES] THEN
-  MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
-  MAP_EVERY EXISTS_TAC [`64 * 64`; `&0:real`] THEN
-  REWRITE_TAC[REAL_OF_NUM_CLAUSES; LE_0; BIGNUM_FROM_MEMORY_BOUND] THEN
-  CONJ_TAC THENL
-   [REWRITE_TAC[EXP_ADD; ARITH_RULE `64 * 64 = 64 * 32 + 64 * 32`] THEN
-    ASM_SIMP_TAC[EXP_2; LT_MULT2];
-    REWRITE_TAC[INTEGER_CLOSED]] THEN
-  EXPAND_TAC "a" THEN REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
-  ONCE_REWRITE_TAC[REAL_ARITH
-   `(e * h + l:real) pow 2 =
-    l pow 2 + e pow 2 * h pow 2 +
-    e * (h pow 2 + l pow 2 - (l - h) pow 2)`] THEN
-  ONCE_REWRITE_TAC[GSYM REAL_POW2_ABS] THEN
-  UNDISCH_THEN `&adiff:real = abs(&alo - &ahi)` (SUBST1_TAC o SYM) THEN
-  REWRITE_TAC[REAL_ABS_NUM; REAL_OF_NUM_POW] THEN
-  REPEAT(FIRST_X_ASSUM(SUBST1_TAC o MATCH_MP (ARITH_RULE
-   `a = b EXP 2 ==> b EXP 2 = a`))) THEN
-  CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN
-  ASM_REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist] THEN
-  CONV_TAC NUM_REDUCE_CONV THEN
-  ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
-  DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
+  tac windows_bignum_ksqr_32_64_mc WINDOWS_BIGNUM_KSQR_32_64_EXEC
+   `pc + 0x8e3`);;

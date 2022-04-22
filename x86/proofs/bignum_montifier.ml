@@ -3117,3 +3117,38 @@ let BIGNUM_MONTIFIER_SUBROUTINE_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_montifier_mc BIGNUM_MONTIFIER_CORRECT
    `[RBX; RBP; R12; R13]` 32);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_montifier_mc = define_from_elf
+   "windows_bignum_montifier_mc" "x86/generic/bignum_montifier.obj";;
+
+let WINDOWS_BIGNUM_MONTIFIER_SUBROUTINE_CORRECT = time prove
+ (`!k z m t n pc stackpointer returnaddress.
+        nonoverlapping (z,8 * val k) (t,8 * val k) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 48),56))
+            [(z,8 * val k); (t,8 * val k)] /\
+        ALLPAIRS nonoverlapping [(z,8 * val k); (t,8 * val k);
+                                 (word_sub stackpointer (word 48),48)]
+                                [(word pc,0x3cf); (m,8 * val k)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_montifier_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k; z; m; t] s /\
+                  bignum_from_memory (m,val k) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (ODD n
+                   ==> bignum_from_memory (z,val k) s =
+                        2 EXP (128 * val k) MOD n))
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * val k);
+                         memory :> bytes(t,8 * val k);
+                       memory :> bytes(word_sub stackpointer (word 48),48)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_montifier_mc bignum_montifier_mc
+   BIGNUM_MONTIFIER_CORRECT `[RBX; RBP; R12; R13]` 32);;

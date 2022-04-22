@@ -374,3 +374,34 @@ let BIGNUM_CMUL_P521_SUBROUTINE_CORRECT = time prove
              MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_cmul_p521_mc BIGNUM_CMUL_P521_CORRECT
    `[RBX; RBP; R12; R13]` 32);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_cmul_p521_mc = define_from_elf
+   "windows_bignum_cmul_p521_mc" "x86/p521/bignum_cmul_p521.obj";;
+
+let WINDOWS_BIGNUM_CMUL_P521_SUBROUTINE_CORRECT = time prove
+ (`!z c x a pc stackpointer returnaddress.
+       nonoverlapping (word_sub stackpointer (word 48),48) (x,8 * 9) /\
+       nonoverlapping (z,8 * 9) (word_sub stackpointer (word 48),56) /\
+       ALL (nonoverlapping (word pc,0xec))
+           [(z,8 * 9); (word_sub stackpointer (word 48),48)]
+       ==> ensures x86
+            (\s. bytes_loaded s (word pc) windows_bignum_cmul_p521_mc /\
+                 read RIP s = word pc /\
+                 read RSP s = stackpointer /\
+                 read (memory :> bytes64 stackpointer) s = returnaddress /\
+                 WINDOWS_C_ARGUMENTS [z; c; x] s /\
+                 bignum_from_memory (x,9) s = a)
+            (\s. read RIP s = returnaddress /\
+                 read RSP s = word_add stackpointer (word 8) /\
+                 (a < p_521
+                  ==> bignum_from_memory (z,9) s = (val c * a) MOD p_521))
+            (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             MAYCHANGE [memory :> bignum(z,9);
+                        memory :> bytes(word_sub stackpointer (word 48),48)] ,,
+             MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_cmul_p521_mc bignum_cmul_p521_mc
+    BIGNUM_CMUL_P521_CORRECT `[RBX; RBP; R12; R13]` 32);;

@@ -727,3 +727,31 @@ let WORD_RECIP_SUBROUTINE_CORRECT = prove
       (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; RSI] ,,
        MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC word_recip_mc WORD_RECIP_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_word_recip_mc = define_from_elf
+   "windows_word_recip_mc" "x86/generic/word_recip.obj";;
+
+let WINDOWS_WORD_RECIP_SUBROUTINE_CORRECT = prove
+ (`!a pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 16),16) (word pc,0xd1)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_word_recip_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [a] s)
+             (\s. read RIP s = returnaddress /\
+                  (bit 63 a
+                   ==> &2 pow 64 + &(val(WINDOWS_C_RETURN s)) <
+                       &2 pow 128 / &(val a) /\
+                       &2 pow 128 / &(val a) <=
+                       &2 pow 64 + &(val(WINDOWS_C_RETURN s)) + &1))
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_word_recip_mc word_recip_mc
+    WORD_RECIP_CORRECT);;

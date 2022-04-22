@@ -473,7 +473,6 @@ _bignum_ksqr_16_32:
         push    rsi
         mov     rdi, rcx
         mov     rsi, rdx
-        mov     rdx, r8
 #endif
 
 // Save more registers to play with

@@ -133,3 +133,33 @@ let BIGNUM_NEG_P384_SUBROUTINE_CORRECT = time prove
            MAYCHANGE [memory :> bignum(z,6)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_neg_p384_mc
       BIGNUM_NEG_P384_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_neg_p384_mc = define_from_elf
+   "windows_bignum_neg_p384_mc" "x86/p384/bignum_neg_p384.obj";;
+
+let WINDOWS_BIGNUM_NEG_P384_SUBROUTINE_CORRECT = time prove
+ (`!z x n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x81); (x,8 * 6)] /\
+        ALL (nonoverlapping (z,8 * 6)) [(word pc,0x81); (word_sub stackpointer (word 16),24)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_neg_p384_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,6) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (n <= p_384
+                   ==> bignum_from_memory (z,6) s = (p_384 - n) MOD p_384))
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,6);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_neg_p384_mc bignum_neg_p384_mc
+      BIGNUM_NEG_P384_CORRECT);;

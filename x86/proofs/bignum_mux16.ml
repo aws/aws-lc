@@ -291,3 +291,37 @@ let BIGNUM_MUX16_SUBROUTINE_CORRECT = prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mux16_mc BIGNUM_MUX16_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mux16_mc = define_from_elf
+   "windows_bignum_mux16_mc" "x86/generic/bignum_mux16.obj";;
+
+let WINDOWS_BIGNUM_MUX16_SUBROUTINE_CORRECT = prove
+ (`!k z xs i n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x112); (xs,8 * 16 * val k)] /\
+     nonoverlapping (word pc,0x112) (z,8 * val k) /\
+     nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * val k) /\
+     nonoverlapping (xs,8 * 16 * val k) (z,8 * val k)
+     ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mux16_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [k; z; xs; i] s /\
+                (!j. j < 16
+                     ==> bignum_from_memory
+                          (word_add xs (word(8 * val k * j)),val k) s = n j))
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                (val i < 16 ==> bignum_from_memory (z,val k) s = n (val i)))
+          (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,val k);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  CONV_TAC(ONCE_DEPTH_CONV EXPAND_CASES_CONV) THEN
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_mux16_mc bignum_mux16_mc
+    (CONV_RULE(ONCE_DEPTH_CONV EXPAND_CASES_CONV) BIGNUM_MUX16_CORRECT));;

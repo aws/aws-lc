@@ -122,3 +122,34 @@ let BIGNUM_NEG_P25519_SUBROUTINE_CORRECT = time prove
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_neg_p25519_mc
       BIGNUM_NEG_P25519_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_neg_p25519_mc = define_from_elf
+   "windows_bignum_neg_p25519_mc" "x86/curve25519/bignum_neg_p25519.obj";;
+
+let WINDOWS_BIGNUM_NEG_P25519_SUBROUTINE_CORRECT = time prove
+ (`!z x n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x5c); (x,8 * 4)] /\
+        ALL (nonoverlapping (z,8 * 4))
+            [(word pc,0x5c); (word_sub stackpointer (word 16),24)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_neg_p25519_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,4) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (n <= p_25519
+                   ==> bignum_from_memory (z,4) s = (p_25519 - n) MOD p_25519))
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,4);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_neg_p25519_mc bignum_neg_p25519_mc
+    BIGNUM_NEG_P25519_CORRECT);;

@@ -310,3 +310,35 @@ let BIGNUM_MOD_N521_9_SUBROUTINE_CORRECT = time prove
            MAYCHANGE [memory :> bignum(z,9)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC
     bignum_mod_n521_9_mc BIGNUM_MOD_N521_9_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mod_n521_9_mc = define_from_elf
+   "windows_bignum_mod_n521_9_mc" "x86/p521/bignum_mod_n521_9.obj";;
+
+let WINDOWS_BIGNUM_MOD_N521_9_SUBROUTINE_CORRECT = time prove
+ (`!z x n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x12e); (x,8 * 9)] /\
+      nonoverlapping (word pc,0x12e) (z,8 * 9) /\
+      nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 9) /\
+      (x = z \/ nonoverlapping(x,8 * 9) (z,8 * 9))
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mod_n521_9_mc /\
+                read RIP s = word pc /\
+                 read RSP s = stackpointer /\
+                 read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [z; x] s /\
+                bignum_from_memory (x,9) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                bignum_from_memory (z,9) s = n MOD n_521)
+          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,9);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC
+    windows_bignum_mod_n521_9_mc bignum_mod_n521_9_mc
+    BIGNUM_MOD_N521_9_CORRECT);;

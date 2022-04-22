@@ -570,3 +570,39 @@ let BIGNUM_MADD_SUBROUTINE_CORRECT = prove
                       memory :> bytes(word_sub stackpointer (word 48),56)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_madd_mc BIGNUM_MADD_CORRECT
     `[RBX; RBP; R12; R13; R14; R15]` 48);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_madd_mc = define_from_elf
+   "windows_bignum_madd_mc" "x86/generic/bignum_madd.obj";;
+
+let WINDOWS_BIGNUM_MADD_SUBROUTINE_CORRECT = prove
+ (`!p m n z x y a b c pc stackpointer returnaddress.
+     nonoverlapping (z,8 * val p) (word_sub stackpointer (word 64),72) /\
+     ALLPAIRS nonoverlapping
+              [(z,8 * val p); (word_sub stackpointer (word 64),72)]
+              [(word pc,0xa9); (x,8 * val m); (y,8 * val n)]
+     ==> ensures x86
+          (\s. bytes_loaded s (word pc) windows_bignum_madd_mc /\
+               read RIP s = word pc /\
+               read RSP s = stackpointer /\
+               read (memory :> bytes64 stackpointer) s = returnaddress /\
+               WINDOWS_C_ARGUMENTS [p; z; m; x; n; y] s /\
+               bignum_from_memory (x,val m) s = a /\
+               bignum_from_memory (y,val n) s = b /\
+               bignum_from_memory (z,val p) s = c)
+          (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+               bignum_from_memory (z,val p) s =
+               lowdigits (a * b + c) (val p) /\
+               (val m + val n <= val p
+                ==> 2 EXP (64 * val p) * val(WINDOWS_C_RETURN s) +
+                    bignum_from_memory (z,val p) s = a * b + c))
+          (MAYCHANGE [RIP; RSP; R9; R8; RCX; R10; R11; RAX; RDX] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,val p);
+                      memory :> bytes(word_sub stackpointer (word 64),72)])`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_madd_mc bignum_madd_mc
+    BIGNUM_MADD_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 48);;

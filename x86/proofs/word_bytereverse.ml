@@ -68,3 +68,29 @@ let WORD_BYTEREVERSE_SUBROUTINE_CORRECT = prove
                        word_subword a (8 * (7 - i),8))
           (MAYCHANGE [RIP; RSP; RAX])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC word_bytereverse_mc WORD_BYTEREVERSE_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_word_bytereverse_mc = define_from_elf
+   "windows_word_bytereverse_mc" "x86/generic/word_bytereverse.obj";;
+
+let WINDOWS_WORD_BYTEREVERSE_SUBROUTINE_CORRECT = prove
+ (`!a pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 16),16) (word pc,0xe)
+        ==> ensures x86
+              (\s. bytes_loaded s (word pc) windows_word_bytereverse_mc /\
+                   read RIP s = word pc /\
+                   read RSP s = stackpointer /\
+                   read (memory :> bytes64 stackpointer) s = returnaddress /\
+                   WINDOWS_C_ARGUMENTS [a] s)
+              (\s. read RIP s = returnaddress /\
+                   read RSP s = word_add stackpointer (word 8) /\
+                   !i. i < 8
+                       ==> word_subword (WINDOWS_C_RETURN s) (8 * i,8) :byte =
+                           word_subword a (8 * (7 - i),8))
+              (MAYCHANGE [RIP; RSP; RAX] ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC
+    windows_word_bytereverse_mc word_bytereverse_mc WORD_BYTEREVERSE_CORRECT);;

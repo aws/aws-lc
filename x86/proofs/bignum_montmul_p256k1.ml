@@ -362,3 +362,37 @@ let BIGNUM_MONTMUL_P256K1_SUBROUTINE_CORRECT = time prove
   X86_PROMOTE_RETURN_STACK_TAC
    bignum_montmul_p256k1_mc BIGNUM_MONTMUL_P256K1_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_montmul_p256k1_mc = define_from_elf
+   "windows_bignum_montmul_p256k1_mc" "x86/secp256k1/bignum_montmul_p256k1.obj";;
+
+let WINDOWS_BIGNUM_MONTMUL_P256K1_SUBROUTINE_CORRECT = time prove
+ (`!z x y a b pc stackpointer returnaddress.
+        nonoverlapping (z,8 * 4) (word_sub stackpointer (word 64),72) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 64),64))
+            [(word pc,0x1f9); (x,8 * 4); (y,8 * 4)] /\
+        nonoverlapping (word pc,0x1f9) (z,8 * 4)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_montmul_p256k1_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x; y] s /\
+                  bignum_from_memory (x,4) s = a /\
+                  bignum_from_memory (y,4) s = b)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (a * b <= 2 EXP 256 * p_256k1
+                   ==> bignum_from_memory (z,4) s =
+                       (inverse_mod p_256k1 (2 EXP 256) * a * b) MOD p_256k1))
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4);
+                         memory :> bytes(word_sub stackpointer (word 64),64)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC
+   windows_bignum_montmul_p256k1_mc bignum_montmul_p256k1_mc
+   BIGNUM_MONTMUL_P256K1_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 48);;

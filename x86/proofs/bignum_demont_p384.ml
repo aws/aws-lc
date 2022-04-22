@@ -296,3 +296,36 @@ let BIGNUM_DEMONT_P384_SUBROUTINE_CORRECT = time prove
   X86_PROMOTE_RETURN_STACK_TAC
    bignum_demont_p384_mc BIGNUM_DEMONT_P384_CORRECT
    `[R12; R13]` 16);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_demont_p384_mc = define_from_elf
+   "windows_bignum_demont_p384_mc" "x86/p384/bignum_demont_p384.obj";;
+
+let WINDOWS_BIGNUM_DEMONT_P384_SUBROUTINE_CORRECT = time prove
+ (`!z x a pc stackpointer returnaddress.
+        nonoverlapping (z,8 * 6) (word_sub stackpointer (word 32),40) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 32),32))
+            [(word pc,0x1f1); (x,8 * 6)] /\
+        nonoverlapping (word pc,0x1f1) (z,8 * 6)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_demont_p384_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,6) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (a < p_384
+                   ==> bignum_from_memory (z,6) s =
+                       (inverse_mod p_384 (2 EXP 384) * a) MOD p_384))
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 6);
+                     memory :> bytes(word_sub stackpointer (word 32),32)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC
+   windows_bignum_demont_p384_mc bignum_demont_p384_mc
+   BIGNUM_DEMONT_P384_CORRECT `[R12; R13]` 16);;

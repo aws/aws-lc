@@ -546,3 +546,41 @@ let BIGNUM_EMONTREDC_SUBROUTINE_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_emontredc_mc BIGNUM_EMONTREDC_CORRECT
    `[RBX;  R12; R13; R14]` 32);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_emontredc_mc = define_from_elf
+   "windows_bignum_emontredc_mc" "x86/generic/bignum_emontredc.obj";;
+
+let WINDOWS_BIGNUM_EMONTREDC_SUBROUTINE_CORRECT = time prove
+ (`!k z m w a n pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 48),56)
+                       (z,8 * 2 * val k) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 48),48))
+            [(word pc,0xa2); (m,8 * val k)] /\
+        nonoverlapping (word pc,0xa2) (z,8 * 2 * val k) /\
+        nonoverlapping (m,8 * val k) (z,8 * 2 * val k)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_emontredc_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k; z; m; w] s /\
+                  bignum_from_memory (z,2 * val k) s = a /\
+                  bignum_from_memory (m,val k) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  ((n * val w + 1 == 0) (mod (2 EXP 64))
+                   ==> n * bignum_from_memory (z,val k) s + a =
+                       2 EXP (64 * val k) *
+                       (2 EXP (64 * val k) * val(WINDOWS_C_RETURN s) +
+                        bignum_from_memory
+                          (word_add z (word(8 * val k)),val k) s)))
+             (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
+                      memory :> bytes(word_sub stackpointer (word 48),48)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_emontredc_mc bignum_emontredc_mc
+    BIGNUM_EMONTREDC_CORRECT `[RBX;  R12; R13; R14]` 32);;

@@ -279,3 +279,40 @@ let BIGNUM_OPTSUBADD_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optsubadd_mc BIGNUM_OPTSUBADD_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_optsubadd_mc = define_from_elf
+   "windows_bignum_optsubadd_mc" "x86/generic/bignum_optsubadd.obj";;
+
+let WINDOWS_BIGNUM_OPTSUBADD_SUBROUTINE_CORRECT = prove
+ (`!k z x p y a b pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x57); (x,8 * val k); (y,8 * val k)] /\
+        nonoverlapping (word pc,0x57) (z,8 * val k) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * val k) /\
+        (x = z \/ nonoverlapping(x,8 * val k) (z,8 * val k)) /\
+        (y = z \/ nonoverlapping(y,8 * val k) (z,8 * val k))
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_optsubadd_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k;z;x;p;y] s /\
+                  bignum_from_memory (x,val k) s = a /\
+                  bignum_from_memory (y,val k) s = b)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  &(bignum_from_memory(z,val k) s) =
+                  (&a + int_sgn(ival p) * &b) rem &2 pow (64 * val k) /\
+                  WINDOWS_C_RETURN s =
+                  iword(int_sgn(ival p) *
+                        (&a + int_sgn(ival p) * &b) div &2 pow (64 * val k)))
+             (MAYCHANGE [RIP; RSP; R8; RDX; RAX; RCX; R9; R10; R11] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val k);
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_optsubadd_mc bignum_optsubadd_mc
+    BIGNUM_OPTSUBADD_CORRECT);;

@@ -2729,19 +2729,30 @@ let BIGNUM_KMUL_32_64_EXEC = X86_MK_EXEC_RULE bignum_kmul_32_64_mc;;
 (* First of all the correctness lemma for the embedded bignum_kmul_16_32     *)
 (* ------------------------------------------------------------------------- *)
 
+let local_kmul_16_32_mc_def = define
+ `local_kmul_16_32_mc = ITER 0xe1a TL bignum_kmul_32_64_mc`;;
+
+let local_kmul_16_32_mc =
+  GEN_REWRITE_RULE DEPTH_CONV [TL]
+    (REWRITE_RULE[bignum_kmul_32_64_mc; CONJUNCT1 ITER]
+      (CONV_RULE(RAND_CONV(TOP_DEPTH_CONV
+         (RATOR_CONV(LAND_CONV num_CONV) THENC GEN_REWRITE_CONV I [ITER])))
+         local_kmul_16_32_mc_def));;
+
+let LOCAL_KMUL_16_32_EXEC = X86_MK_EXEC_RULE local_kmul_16_32_mc;;
+
 let LOCAL_KMUL_16_32_CORRECT = prove
  (`!z x y a b pc.
-      ALL (nonoverlapping (z,8 * 32))
-          [(word pc,0x2233); (x,8 * 16); (y,8 * 16)]
+      ALL (nonoverlapping (z,8 * 32)) [(word pc,5145); (x,8 * 16); (y,8 * 16)]
       ==> ensures x86
-            (\s. bytes_loaded s (word(pc + 0)) bignum_kmul_32_64_mc /\
-                 read RIP s = word(pc + 0xe1a) /\
+            (\s. bytes_loaded s (word pc) local_kmul_16_32_mc /\
+                 read RIP s = word pc /\
                  read RDI s = z /\
                  read RSI s = x /\
                  read RCX s = y /\
                  bignum_from_memory (x,16) s = a /\
                  bignum_from_memory (y,16) s = b)
-            (\s. read RIP s = word(pc + 0x2232) /\
+            (\s. read RIP s = word(pc + 5144) /\
                  read RDI s = word_add z (word 0x40) /\
                  read RSI s = word_add x (word 0x40) /\
                  read RCX s = y /\
@@ -2750,7 +2761,7 @@ let LOCAL_KMUL_16_32_CORRECT = prove
                         R8; R9; R10; R11; R12; R13; R14; R15] ,,
              MAYCHANGE [memory :> bytes(z,8 * 32)] ,,
              MAYCHANGE SOME_FLAGS)`,
-  REWRITE_TAC[ADD_CLAUSES] THEN MAP_EVERY X_GEN_TAC
+  MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
   REWRITE_TAC[ALLPAIRS; ALL; PAIRWISE] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
@@ -2758,7 +2769,7 @@ let LOCAL_KMUL_16_32_CORRECT = prove
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,16) s0` THEN
   BIGNUM_DIGITIZE_TAC "y_" `bignum_from_memory (y,16) s0` THEN
-  X86_XACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC
+  X86_XACCSTEPS_TAC LOCAL_KMUL_16_32_EXEC
    [`RDI`; `RSI`] (1--921) (1--921) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
@@ -2767,87 +2778,22 @@ let LOCAL_KMUL_16_32_CORRECT = prove
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC);;
 
-let LOCAL_KMUL_16_32_TAC =
-  X86_SUBROUTINE_SIM_TAC
-    (bignum_kmul_32_64_mc,BIGNUM_KMUL_32_64_EXEC,
-     0x0,bignum_kmul_32_64_mc,LOCAL_KMUL_16_32_CORRECT)
+(* ------------------------------------------------------------------------- *)
+(* Common tactic for the main part with standard and Windows ABIs            *)
+(* ------------------------------------------------------------------------- *)
+
+let tac mc execth pcinst =
+  let maintac = X86_SUBROUTINE_SIM_TAC
+    (mc,execth,dest_small_numeral(rand pcinst),
+     local_kmul_16_32_mc,LOCAL_KMUL_16_32_CORRECT)
     [`read RDI s`; `read RSI s`; `read RCX s`;
      `read (memory :> bytes (read RSI s,8 * 16)) s`;
      `read (memory :> bytes (read RCX s,8 * 16)) s`;
-     `pc:num`];;
-
-(* ------------------------------------------------------------------------- *)
-(* Now the main proof.                                                       *)
-(* ------------------------------------------------------------------------- *)
-
-let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
- (`!z x y a b t pc stackpointer returnaddress.
-      ALL (nonoverlapping (word_sub stackpointer (word 64),72))
-          [(z,8 * 64); (t,8 * 96)] /\
-      ALL (nonoverlapping (word_sub stackpointer (word 64),64))
-         [(word pc,0x2233); (x,8 * 32); (y,8 * 32)] /\
-      nonoverlapping (z,8 * 64) (t,8 * 96) /\
-      ALLPAIRS nonoverlapping
-       [(z,8 * 64); (t,8 * 96)]
-       [(word pc,0x2233); (x,8 * 32); (y,8 * 32)]
-      ==> ensures x86
-            (\s. bytes_loaded s (word pc) bignum_kmul_32_64_mc /\
-                 read RIP s = word pc /\
-                 read RSP s = stackpointer /\
-                 read (memory :> bytes64 stackpointer) s = returnaddress /\
-                 C_ARGUMENTS [z; x; y; t] s /\
-                 bignum_from_memory (x,32) s = a /\
-                 bignum_from_memory (y,32) s = b)
-            (\s. read RIP s = returnaddress /\
-                 read RSP s = word_add stackpointer (word 8) /\
-                 bignum_from_memory (z,64) s = a * b)
-            (MAYCHANGE [RIP; RSP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-             MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
-                        memory :> bytes(word_sub stackpointer (word 64),64)] ,,
-             MAYCHANGE SOME_FLAGS)`,
-  MAP_EVERY X_GEN_TAC
-   [`z:int64`; `x:int64`; `y:int64`;
-    `a:num`; `b:num`; `t:int64`; `pc:num`] THEN
-  WORD_FORALL_OFFSET_TAC 64 THEN
-  MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
-  REWRITE_TAC[ALL; ALLPAIRS; NONOVERLAPPING_CLAUSES] THEN STRIP_TAC THEN
-
-  (*** Start and end boilerplate for save and restore of registers ***)
-
-  SUBGOAL_THEN
-   `ensures x86
-     (\s. bytes_loaded s (word pc) bignum_kmul_32_64_mc /\
-          read RIP s = word(pc + 0xb) /\
-          read RSP s = word_add stackpointer (word 8) /\
-          C_ARGUMENTS [z; x; y] s /\
-          read (memory :> bytes64 (word_add stackpointer (word 8))) s = t /\
-          bignum_from_memory (x,32) s = a /\
-          bignum_from_memory (y,32) s = b)
-     (\s. read RIP s = word(pc + 0xe0e) /\
-          bignum_from_memory (z,64) s = a * b)
-     (MAYCHANGE [RIP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11;
-                 RBX; RBP; R12; R13; R14; R15] ,,
-      MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
-                 memory :> bytes(stackpointer,16)] ,,
-      MAYCHANGE SOME_FLAGS)`
-  MP_TAC THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
-  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THENL
-   [ENSURES_EXISTING_PRESERVED_TAC `RSP`;
-    DISCH_THEN(fun th ->
-      ENSURES_PRESERVED_TAC "rbx_init" `RBX` THEN
-      ENSURES_PRESERVED_TAC "rbp_init" `RBP` THEN
-      ENSURES_PRESERVED_TAC "r12_init" `R12` THEN
-      ENSURES_PRESERVED_TAC "r13_init" `R13` THEN
-      ENSURES_PRESERVED_TAC "r14_init" `R14` THEN
-      ENSURES_PRESERVED_TAC "r15_init" `R15` THEN
-      ENSURES_INIT_TAC "s0" THEN
-      X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (1--7) THEN
-      MP_TAC th) THEN
-    X86_BIGSTEP_TAC BIGNUM_KMUL_32_64_EXEC "s8" THEN
-    X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (9--16) THEN
-    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]] THEN
+     pcinst]
+  and posttac =
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM ADD_ASSOC]) THEN
+    RULE_ASSUM_TAC(CONV_RULE(ONCE_DEPTH_CONV NUM_ADD_CONV)) in
+  let LOCAL_KMUL_16_32_TAC n = maintac n THEN posttac in
 
   (*** Initialization and splitting of the inputs ***)
 
@@ -2870,22 +2816,22 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
 
   (*** First nested multiply: low part ***)
 
-  X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (1--2) THEN
+  X86_STEPS_TAC execth (1--2) THEN
   LOCAL_KMUL_16_32_TAC 3 THEN
 
   (*** Second nested multiply: high part ***)
 
-  X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (4--8) THEN
+  X86_STEPS_TAC execth (4--8) THEN
   LOCAL_KMUL_16_32_TAC 9 THEN
 
   (*** Reshuffling of pointers to get t back off the stack ***)
 
-  X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (10--13) THEN
+  X86_STEPS_TAC execth (10--13) THEN
 
   (*** First absolute difference computation, then throw away x data ***)
 
   BIGNUM_LDIGITIZE_TAC "x_" `bignum_from_memory(x,32) s13` THEN
-  X86_ACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC
+  X86_ACCSTEPS_TAC execth
    (map (fun n -> 15 + 3 * n) (0--15)) (14--63) THEN
   SUBGOAL_THEN `carry_s60 <=> alo < ahi` (ASSUME_TAC o SYM) THENL
    [MAP_EVERY EXPAND_TAC ["ahi"; "alo"] THEN
@@ -2896,7 +2842,7 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ALL_TAC] THEN
   RULE_ASSUM_TAC(REWRITE_RULE[VAL_EQ_0; WORD_NEG_EQ_0; WORD_BITVAL_EQ_0]) THEN
-  X86_ACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC
+  X86_ACCSTEPS_TAC execth
    (map (fun n -> 68 + 6 * n) (0--15)) (64--159) THEN
   SUBGOAL_THEN
    `&(read (memory :> bytes (t,8 * 16)) s159):real = abs(&alo - &ahi)`
@@ -2935,7 +2881,7 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
   (*** Second absolute difference computation, then throw away y data ***)
 
   BIGNUM_LDIGITIZE_TAC "y_" `bignum_from_memory(y,32) s159` THEN
-  X86_ACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC
+  X86_ACCSTEPS_TAC execth
    (map (fun n -> 161 + 3 * n) (0--15)) (160--209) THEN
   SUBGOAL_THEN `carry_s206 <=> bhi < blo` (ASSUME_TAC o SYM) THENL
    [MAP_EVERY EXPAND_TAC ["bhi"; "blo"] THEN
@@ -2946,7 +2892,7 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ALL_TAC] THEN
   RULE_ASSUM_TAC(REWRITE_RULE[VAL_EQ_0; WORD_NEG_EQ_0; WORD_BITVAL_EQ_0]) THEN
-  X86_ACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC
+  X86_ACCSTEPS_TAC execth
    (map (fun n -> 214 + 6 * n) (0--15)) (210--305) THEN
   SUBGOAL_THEN
    `&(read (memory :> bytes (word_add t (word 128),8 * 16)) s305):real =
@@ -2985,7 +2931,7 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
 
   (*** Stashing the combined sign ***)
 
-  X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC [306;307] THEN
+  X86_STEPS_TAC execth [306;307] THEN
   RULE_ASSUM_TAC(REWRITE_RULE[WORD_XOR_MASKS]) THEN
   ABBREV_TAC `sgn <=> ~(carry_s60 <=> carry_s206)` THEN
 
@@ -2994,9 +2940,9 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
   ABBREV_TAC `adiff = read (memory :> bytes (t,8 * 16)) s307` THEN
   ABBREV_TAC
    `bdiff = read (memory :> bytes (word_add t (word 128),8 * 16)) s307` THEN
-  X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (308--311) THEN
+  X86_STEPS_TAC execth (308--311) THEN
   LOCAL_KMUL_16_32_TAC 312 THEN
-  X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (313--314) THEN
+  X86_STEPS_TAC execth (313--314) THEN
 
   (*** Digitize low and high products ***)
 
@@ -3006,7 +2952,7 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
 
   (*** Simulate the interlocking part, just deduce top carry zeroness ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC
+  X86_ACCSTEPS_TAC execth
    (sort (<)  (map (fun n -> 317 + 4 * n) (0--31) @
                map (fun n -> 318 + 4 * n) (0--31) @ [445]))
    (315--445) THEN
@@ -3019,7 +2965,7 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
 
   (*** Refresh the sign after we pull it out of storage ***)
 
-  X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (446--448) THEN
+  X86_STEPS_TAC execth (446--448) THEN
   RULE_ASSUM_TAC(REWRITE_RULE
    [WORD_NEG_NEG; VAL_EQ_0; WORD_NEG_EQ_0; WORD_BITVAL_EQ_0]) THEN
 
@@ -3027,9 +2973,9 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
 
   BIGNUM_LDIGITIZE_TAC "m_"
    `read (memory :> bytes (word_add t (word 256),8 * 32)) s448` THEN
-  X86_ACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC
+  X86_ACCSTEPS_TAC execth
    (map (fun n -> 453 + 6 * n) (0--31) @ [641]) (449--641) THEN
-  X86_ACCSTEPS_TAC BIGNUM_KMUL_32_64_EXEC (643--658) (642--658) THEN
+  X86_ACCSTEPS_TAC execth (643--658) (642--658) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
 
   (*** The Karatsuba rearrangement ***)
@@ -3123,4 +3069,163 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
   REWRITE_TAC[COND_SWAP; GSYM WORD_BITVAL; VAL_WORD_BITVAL] THEN STRIP_TAC THEN
   ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-  CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN REAL_INTEGER_TAC);;
+  CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN REAL_INTEGER_TAC;;
+
+(* ------------------------------------------------------------------------- *)
+(* Proof of the standard ABI version.                                        *)
+(* ------------------------------------------------------------------------- *)
+
+let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
+ (`!z x y a b t pc stackpointer returnaddress.
+      ALL (nonoverlapping (word_sub stackpointer (word 64),72))
+          [(z,8 * 64); (t,8 * 96)] /\
+      ALL (nonoverlapping (word_sub stackpointer (word 64),64))
+         [(word pc,0x2233); (x,8 * 32); (y,8 * 32)] /\
+      nonoverlapping (z,8 * 64) (t,8 * 96) /\
+      ALLPAIRS nonoverlapping
+       [(z,8 * 64); (t,8 * 96)]
+       [(word pc,0x2233); (x,8 * 32); (y,8 * 32)]
+      ==> ensures x86
+            (\s. bytes_loaded s (word pc) bignum_kmul_32_64_mc /\
+                 read RIP s = word pc /\
+                 read RSP s = stackpointer /\
+                 read (memory :> bytes64 stackpointer) s = returnaddress /\
+                 C_ARGUMENTS [z; x; y; t] s /\
+                 bignum_from_memory (x,32) s = a /\
+                 bignum_from_memory (y,32) s = b)
+            (\s. read RIP s = returnaddress /\
+                 read RSP s = word_add stackpointer (word 8) /\
+                 bignum_from_memory (z,64) s = a * b)
+            (MAYCHANGE [RIP; RSP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
+                        memory :> bytes(word_sub stackpointer (word 64),64)] ,,
+             MAYCHANGE SOME_FLAGS)`,
+  MAP_EVERY X_GEN_TAC
+   [`z:int64`; `x:int64`; `y:int64`;
+    `a:num`; `b:num`; `t:int64`; `pc:num`] THEN
+  WORD_FORALL_OFFSET_TAC 64 THEN
+  MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[ALL; ALLPAIRS; NONOVERLAPPING_CLAUSES] THEN STRIP_TAC THEN
+
+  (*** Start and end boilerplate for save and restore of registers ***)
+
+  SUBGOAL_THEN
+   `ensures x86
+     (\s. bytes_loaded s (word pc) bignum_kmul_32_64_mc /\
+          read RIP s = word(pc + 0xb) /\
+          read RSP s = word_add stackpointer (word 8) /\
+          C_ARGUMENTS [z; x; y] s /\
+          read (memory :> bytes64 (word_add stackpointer (word 8))) s = t /\
+          bignum_from_memory (x,32) s = a /\
+          bignum_from_memory (y,32) s = b)
+     (\s. read RIP s = word(pc + 0xe0e) /\
+          bignum_from_memory (z,64) s = a * b)
+     (MAYCHANGE [RIP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11;
+                 RBX; RBP; R12; R13; R14; R15] ,,
+      MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
+                 memory :> bytes(stackpointer,16)] ,,
+      MAYCHANGE SOME_FLAGS)`
+  MP_TAC THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THENL
+   [ENSURES_EXISTING_PRESERVED_TAC `RSP`;
+    DISCH_THEN(fun th ->
+      ENSURES_PRESERVED_TAC "rbx_init" `RBX` THEN
+      ENSURES_PRESERVED_TAC "rbp_init" `RBP` THEN
+      ENSURES_PRESERVED_TAC "r12_init" `R12` THEN
+      ENSURES_PRESERVED_TAC "r13_init" `R13` THEN
+      ENSURES_PRESERVED_TAC "r14_init" `R14` THEN
+      ENSURES_PRESERVED_TAC "r15_init" `R15` THEN
+      ENSURES_INIT_TAC "s0" THEN
+      X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (1--7) THEN
+      MP_TAC th) THEN
+    X86_BIGSTEP_TAC BIGNUM_KMUL_32_64_EXEC "s8" THEN
+    X86_STEPS_TAC BIGNUM_KMUL_32_64_EXEC (9--16) THEN
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]] THEN
+
+  tac bignum_kmul_32_64_mc BIGNUM_KMUL_32_64_EXEC `pc + 0xe1a`);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_kmul_32_64_mc = define_from_elf
+   "windows_bignum_kmul_32_64_mc" "x86/fastmul/bignum_kmul_32_64.obj";;
+
+let WINDOWS_BIGNUM_KMUL_32_64_EXEC =
+  X86_MK_EXEC_RULE windows_bignum_kmul_32_64_mc;;
+
+let WINDOWS_BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
+ (`!z x y a b t pc stackpointer returnaddress.
+      ALL (nonoverlapping (word_sub stackpointer (word 80),88))
+          [(z,8 * 64); (t,8 * 96)] /\
+      ALL (nonoverlapping (word_sub stackpointer (word 80),80))
+         [(word pc,0x2243); (x,8 * 32); (y,8 * 32)] /\
+      nonoverlapping (z,8 * 64) (t,8 * 96) /\
+      ALLPAIRS nonoverlapping
+       [(z,8 * 64); (t,8 * 96)]
+       [(word pc,0x2243); (x,8 * 32); (y,8 * 32)]
+      ==> ensures x86
+            (\s. bytes_loaded s (word pc) windows_bignum_kmul_32_64_mc /\
+                 read RIP s = word pc /\
+                 read RSP s = stackpointer /\
+                 read (memory :> bytes64 stackpointer) s = returnaddress /\
+                 WINDOWS_C_ARGUMENTS [z; x; y; t] s /\
+                 bignum_from_memory (x,32) s = a /\
+                 bignum_from_memory (y,32) s = b)
+            (\s. read RIP s = returnaddress /\
+                 read RSP s = word_add stackpointer (word 8) /\
+                 bignum_from_memory (z,64) s = a * b)
+            (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
+                        memory :> bytes(word_sub stackpointer (word 80),80)] ,,
+             MAYCHANGE SOME_FLAGS)`,
+  MAP_EVERY X_GEN_TAC
+   [`z:int64`; `x:int64`; `y:int64`;
+    `a:num`; `b:num`; `t:int64`; `pc:num`] THEN
+  WORD_FORALL_OFFSET_TAC 80 THEN
+  MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN
+  REWRITE_TAC[WINDOWS_C_ARGUMENTS; WINDOWS_C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[ALL; ALLPAIRS; NONOVERLAPPING_CLAUSES] THEN STRIP_TAC THEN
+
+  (*** Start and end boilerplate for save and restore of registers ***)
+
+  SUBGOAL_THEN
+   `ensures x86
+     (\s. bytes_loaded s (word pc) windows_bignum_kmul_32_64_mc /\
+          read RIP s = word(pc + 0x19) /\
+          read RSP s = word_add stackpointer (word 8) /\
+          C_ARGUMENTS [z; x; y] s /\
+          read (memory :> bytes64 (word_add stackpointer (word 8))) s = t /\
+          bignum_from_memory (x,32) s = a /\
+          bignum_from_memory (y,32) s = b)
+     (\s. read RIP s = word(pc + 0xe1c) /\
+          bignum_from_memory (z,64) s = a * b)
+     (MAYCHANGE [RIP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11;
+                 RBX; RBP; R12; R13; R14; R15] ,,
+      MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
+                 memory :> bytes(stackpointer,16)] ,,
+      MAYCHANGE SOME_FLAGS)`
+  MP_TAC THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THENL
+   [ENSURES_EXISTING_PRESERVED_TAC `RSP`;
+    DISCH_THEN(fun th ->
+      ENSURES_PRESERVED_TAC "rdi_init" `RDI` THEN
+      ENSURES_PRESERVED_TAC "rsi_init" `RSI` THEN
+      ENSURES_PRESERVED_TAC "rbx_init" `RBX` THEN
+      ENSURES_PRESERVED_TAC "rbp_init" `RBP` THEN
+      ENSURES_PRESERVED_TAC "r12_init" `R12` THEN
+      ENSURES_PRESERVED_TAC "r13_init" `R13` THEN
+      ENSURES_PRESERVED_TAC "r14_init" `R14` THEN
+      ENSURES_PRESERVED_TAC "r15_init" `R15` THEN
+      ENSURES_INIT_TAC "s0" THEN
+      X86_STEPS_TAC WINDOWS_BIGNUM_KMUL_32_64_EXEC (1--13) THEN
+      MP_TAC th) THEN
+    X86_BIGSTEP_TAC WINDOWS_BIGNUM_KMUL_32_64_EXEC "s14" THEN
+    X86_STEPS_TAC WINDOWS_BIGNUM_KMUL_32_64_EXEC (15--24) THEN
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]] THEN
+
+  tac windows_bignum_kmul_32_64_mc WINDOWS_BIGNUM_KMUL_32_64_EXEC
+      `pc + 0xe2a`);;

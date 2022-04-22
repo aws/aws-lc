@@ -63,3 +63,28 @@ let WORD_MIN_SUBROUTINE_CORRECT = prove
           (MAYCHANGE [RIP; RSP; RAX] ,,
            MAYCHANGE SOME_FLAGS)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC word_min_mc WORD_MIN_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_word_min_mc = define_from_elf
+   "windows_word_min_mc" "x86/generic/word_min.obj";;
+
+let WINDOWS_WORD_MIN_SUBROUTINE_CORRECT = prove
+ (`!a b pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 16),16) (word pc,0x15)
+        ==> ensures x86
+              (\s. bytes_loaded s (word pc) windows_word_min_mc /\
+                   read RIP s = word pc /\
+                   read RSP s = stackpointer /\
+                   read (memory :> bytes64 stackpointer) s = returnaddress /\
+                   WINDOWS_C_ARGUMENTS [a; b] s)
+              (\s. read RIP s = returnaddress /\
+                   read RSP s = word_add stackpointer (word 8) /\
+                   WINDOWS_C_RETURN s = word_umin a b)
+              (MAYCHANGE [RIP; RSP; RAX] ,,
+               MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_word_min_mc word_min_mc
+    WORD_MIN_CORRECT);;

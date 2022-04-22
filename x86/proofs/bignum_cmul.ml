@@ -387,3 +387,38 @@ let BIGNUM_CMUL_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_cmul_mc BIGNUM_CMUL_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_cmul_mc = define_from_elf
+   "windows_bignum_cmul_mc" "x86/generic/bignum_cmul.obj";;
+
+let WINDOWS_BIGNUM_CMUL_SUBROUTINE_CORRECT = prove
+ (`!p z c n x a pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x7f); (x,8 * val n)] /\
+        nonoverlapping (word pc,0x7f) (z,8 * val p) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * val p) /\
+        (x = z \/ nonoverlapping(x,8 * val n) (z,8 * val p))
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_cmul_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [p;z;c;n;x] s /\
+                  bignum_from_memory (x,val n) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory (z,val p) s =
+                  lowdigits (val c * a) (val p) /\
+                  (p = n
+                   ==> WINDOWS_C_RETURN s =
+                       word(highdigits (val c * a) (val p))))
+             (MAYCHANGE [RIP; RSP; R8; RAX; RCX; RDX; R9; R10; R11] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val p);
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_cmul_mc bignum_cmul_mc
+    BIGNUM_CMUL_CORRECT);;

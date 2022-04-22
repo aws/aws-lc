@@ -148,7 +148,7 @@ let BIGNUM_OPTNEG_P384_CORRECT = time prove
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
 
 let BIGNUM_OPTNEG_P384_SUBROUTINE_CORRECT = time prove
- (`!z q x n pc.
+ (`!z q x n pc stackpointer returnaddress.
         nonoverlapping (word pc,0x9c) (z,8 * 6) /\
         nonoverlapping (stackpointer,8) (z,8 * 6)
         ==> ensures x86
@@ -168,3 +168,36 @@ let BIGNUM_OPTNEG_P384_SUBROUTINE_CORRECT = time prove
            MAYCHANGE [memory :> bignum(z,6)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optneg_p384_mc
       BIGNUM_OPTNEG_P384_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_optneg_p384_mc = define_from_elf
+   "windows_bignum_optneg_p384_mc" "x86/p384/bignum_optneg_p384.obj";;
+
+let WINDOWS_BIGNUM_OPTNEG_P384_SUBROUTINE_CORRECT = time prove
+ (`!z q x n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0xa9); (x,8 * 6)] /\
+        nonoverlapping (word pc,0xa9) (z,8 * 6) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 6)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_optneg_p384_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; q; x] s /\
+                  bignum_from_memory (x,6) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (n < p_384
+                   ==> (bignum_from_memory (z,6) s =
+                        if ~(q = word 0) then (p_384 - n) MOD p_384 else n)))
+          (MAYCHANGE [RIP; RSP; RDX; RAX; RCX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,6);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC
+    windows_bignum_optneg_p384_mc bignum_optneg_p384_mc
+    BIGNUM_OPTNEG_P384_CORRECT);;

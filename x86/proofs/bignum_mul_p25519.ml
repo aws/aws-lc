@@ -393,3 +393,35 @@ let BIGNUM_MUL_P25519_SUBROUTINE_CORRECT = time prove
   X86_PROMOTE_RETURN_STACK_TAC
    bignum_mul_p25519_mc BIGNUM_MUL_P25519_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mul_p25519_mc = define_from_elf
+   "windows_bignum_mul_p25519_mc" "x86/curve25519/bignum_mul_p25519.obj";;
+
+let WINDOWS_BIGNUM_MUL_P25519_SUBROUTINE_CORRECT = time prove
+ (`!z x y m n pc stackpointer returnaddress.
+        nonoverlapping (word pc,0x1ec) (z,8 * 4) /\
+        nonoverlapping (z,8 * 4) (word_sub stackpointer (word 64),72) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 64),64))
+            [(word pc,0x1ec); (x,8 * 4); (y,8 * 4)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_mul_p25519_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x; y] s /\
+                  bignum_from_memory(x,4) s = m /\
+                  bignum_from_memory (y,4) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory(z,4) s = (m * n) MOD p_25519)
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4);
+                     memory :> bytes(word_sub stackpointer (word 64),64)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC
+   windows_bignum_mul_p25519_mc bignum_mul_p25519_mc BIGNUM_MUL_P25519_CORRECT
+   `[RBX; RBP; R12; R13; R14; R15]` 48);;

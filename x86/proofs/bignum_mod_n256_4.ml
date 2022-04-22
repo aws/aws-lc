@@ -142,3 +142,33 @@ let BIGNUM_MOD_N256_4_SUBROUTINE_CORRECT = time prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mod_n256_4_mc BIGNUM_MOD_N256_4_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mod_n256_4_mc = define_from_elf
+   "windows_bignum_mod_n256_4_mc" "x86/p256/bignum_mod_n256_4.obj";;
+
+let WINDOWS_BIGNUM_MOD_N256_4_SUBROUTINE_CORRECT = time prove
+ (`!z x n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x6c); (x,8 * 4)] /\
+      nonoverlapping (word pc,0x6c) (z,8 * 4) /\
+      nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 4)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mod_n256_4_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [z; x] s /\
+                bignum_from_memory (x,4) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                bignum_from_memory (z,4) s = n MOD n_256)
+          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,4);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_mod_n256_4_mc
+    bignum_mod_n256_4_mc BIGNUM_MOD_N256_4_CORRECT);;

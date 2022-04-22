@@ -500,3 +500,36 @@ let BIGNUM_CDIV_EXACT_SUBROUTINE_CORRECT = prove
                        memory :> bytes(word_sub stackpointer (word 32),32)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_cdiv_exact_mc BIGNUM_CDIV_EXACT_CORRECT
     `[RBX; R12; R13; R14]` 32);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_cdiv_exact_mc = define_from_elf
+   "windows_bignum_cdiv_exact_mc" "x86/generic/bignum_cdiv_exact.obj";;
+
+let WINDOWS_BIGNUM_CDIV_EXACT_SUBROUTINE_CORRECT = prove
+ (`!k z n x m a pc stackpointer returnaddress.
+        nonoverlapping (z,8 * val k) (word_sub stackpointer (word 48),56) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 48),48))
+            [(word pc,0xe7); (x,8 * val n)] /\
+        nonoverlapping (word pc,0xe7) (z,8 * val k) /\
+        (x = z \/ nonoverlapping(x,8 * val n) (z,8 * val k))
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_cdiv_exact_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k;z;n;x;m] s /\
+                  bignum_from_memory (x,val n) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (~(val m = 0) /\ val m divides a
+                   ==> bignum_from_memory (z,val k) s =
+                       lowdigits (a DIV val m) (val k)))
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val k);
+                       memory :> bytes(word_sub stackpointer (word 48),48)])`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_cdiv_exact_mc bignum_cdiv_exact_mc
+    BIGNUM_CDIV_EXACT_CORRECT `[RBX; R12; R13; R14]` 32);;

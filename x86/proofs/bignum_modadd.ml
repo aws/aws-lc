@@ -352,3 +352,39 @@ let BIGNUM_MODADD_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_modadd_mc BIGNUM_MODADD_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_modadd_mc = define_from_elf
+   "windows_bignum_modadd_mc" "x86/generic/bignum_modadd.obj";;
+
+let WINDOWS_BIGNUM_MODADD_SUBROUTINE_CORRECT = prove
+ (`!k z x y m a b n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x75); (x,8 * val k); (y,8 * val k); (m,8 * val k)] /\
+        nonoverlapping (word pc,0x75) (z,8 * val k) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * val k) /\
+        nonoverlapping (m,8 * val k) (z,8 * val k) /\
+        (x = z \/ nonoverlapping(x,8 * val k) (z,8 * val k)) /\
+        (y = z \/ nonoverlapping(y,8 * val k) (z,8 * val k)) /\
+        a < n /\ b < n
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_modadd_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k;z;x;y;m] s /\
+                  bignum_from_memory (x,val k) s = a /\
+                  bignum_from_memory (y,val k) s = b /\
+                  bignum_from_memory (m,val k) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory (z,val k) s = (a + b) MOD n)
+             (MAYCHANGE [RIP; RSP; R8; RCX; RDX; RAX; R9; R10; R11] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val k);
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_modadd_mc bignum_modadd_mc
+    BIGNUM_MODADD_CORRECT);;
