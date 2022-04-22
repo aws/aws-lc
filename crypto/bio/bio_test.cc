@@ -397,7 +397,7 @@ TEST_P(BIOPairTest, TestCallbacks) {
 
   // The calls after the BIO call use the return value from the BIO, which is the
   // length of data read/written
-  ASSERT_EQ(param_ret_ex[1], 5);
+  ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
   // For callback_ex the |len| param is the requested number of bytes to read/write
   ASSERT_EQ(param_len_ex[0], (size_t) TEST_BUF_LEN);
@@ -420,8 +420,9 @@ TEST_P(BIOPairTest, TestCallbacks) {
   // and the callback return value is returned to the caller
   ASSERT_EQ(CALL_BACK_FAILURE, BIO_read(bio2, buf, sizeof(buf)));
 
-  // Run bio_callback_cleanup so the BIO_free to reset the mocks so BIO_free can
-  // call the callbacks successfully
+  // Run bio_callback_cleanup to reset the mock, without this when BIO_free calls
+  // the callback it would fail before freeing the memory and be detected as a
+  // memory leak.
   bio_callback_cleanup();
   ASSERT_EQ(BIO_free(bio1), 1);
   ASSERT_EQ(BIO_free(bio2), 1);
