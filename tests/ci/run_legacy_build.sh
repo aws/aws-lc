@@ -10,4 +10,4 @@ source tests/ci/common_posix_setup.sh
 # tools are insufficient to update the certificates.
 # The build flags used are the same as our ancient internal build.
 echo "Testing gcc 4.1.2 support."
-run_build  -DBUILD_TESTING="OFF" -DBUILD_LIBSSL="OFF" -DCMAKE_BUILD_TYPE="Debug" -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON -std=gnu99 -fgnu89-inline
+run_build  -DBUILD_TESTING="OFF" -DBUILD_LIBSSL="OFF" -DCMAKE_BUILD_TYPE="Debug" "-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON -std=gnu99 -fgnu89-inline"

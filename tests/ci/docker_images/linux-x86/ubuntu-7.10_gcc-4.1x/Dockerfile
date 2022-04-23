@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu-7.04-gcc-4.1.2:latest
+FROM ubuntu-7.10-gutsy_gcc-4.1x:latest
 
 COPY sources.list /etc/apt/sources.list
 
@@ -17,7 +17,9 @@ RUN apt-get update && \
 ENV CC=gcc-4.1
 ENV CXX=g++-4.1
 
-COPY cmake-2.8.12.tar.gz /tmp/cmake-2.8.12.tar.gz
+# Pull cmake as an external source since the wget version
+# on this image is too old to access the cmake repo.
+COPY dependencies/cmake-2.8.12.tar.gz /tmp/cmake-2.8.12.tar.gz
 RUN cd /tmp && \
     tar -xvf cmake-2.8.12.tar.gz && \
     cd cmake-2.8.12 && \
