@@ -188,8 +188,8 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     # the same as the non-alternative ones, so they are defined
     # in the corresponding "non-alt" files (bignum_<deamont|tomont>_p384.S)
     list(APPEND S2N_BIGNUM_ASM_SOURCES
-                ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384_alt.S
-                ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384_alt.S)
+                p384/bignum_tomont_p384_alt.S
+                p384/bignum_deamont_p384_alt.S)
   endif()
 endif()
 
