@@ -100,7 +100,7 @@ int EVP_tls_cbc_record_digest_supported(const EVP_MD *md);
 
 // EVP_sha1_final_with_secret_suffix and EVP_sha256_final_with_secret_suffix
 // compute the result of hashing |len| bytes from |in| to |ctx| and write the
-// resulting hash to |out|. |len| is treated as secret and must be at mos
+// resulting hash to |out|. |len| is treated as secret and must be at most
 // |max_len|, which is treated as public. |in| must point to a buffer of at
 // least |max_len| bytes. It returns one on success and zero if inputs are
 // too long.
