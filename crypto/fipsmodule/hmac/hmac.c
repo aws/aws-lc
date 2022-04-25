@@ -185,7 +185,8 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
 
-  HMAC_CTX ctx = {0};
+  HMAC_CTX ctx;
+  OPENSSL_memset(&ctx, 0, sizeof(HMAC_CTX));
   int result;
 
   // We have to avoid the underlying SHA services updating the indicator
@@ -224,6 +225,10 @@ HMAC_CTX *HMAC_CTX_new(void) {
 void HMAC_CTX_cleanup(HMAC_CTX *ctx) {
   // All of the contexts are flat and can simply be zeroed
   OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
+}
+
+void HMAC_CTX_cleanse(HMAC_CTX *ctx) {
+  HMAC_CTX_cleanup(ctx);
 }
 
 void HMAC_CTX_free(HMAC_CTX *ctx) {

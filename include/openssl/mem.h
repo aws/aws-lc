@@ -84,7 +84,8 @@ OPENSSL_EXPORT void OPENSSL_free(void *ptr);
 
 // OPENSSL_realloc returns a pointer to a buffer of |new_size| bytes that
 // contains the contents of |ptr|. Unlike |realloc|, a new buffer is always
-// allocated and the data at |ptr| is always wiped and freed.
+// allocated and the data at |ptr| is always wiped and freed. If |ptr| is null
+// |OPENSSL_malloc| is called instead.
 OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
 
 // OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to

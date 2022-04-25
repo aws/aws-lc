@@ -625,21 +625,21 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-  BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
-  uint8_t scratch[16384];
+  bssl::ScopedEVP_MD_CTX ctx;
+  uint8_t input[16384] = {0};
 
-  if (chunk_len > sizeof(scratch)) {
+  if (chunk_len > sizeof(input)) {
     return false;
   }
 
   name += ChunkLenSuffix(chunk_len);
   TimeResults results;
-  if (!TimeFunction(&results, [&ctx, md, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&ctx, md, chunk_len, &input]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
         return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
-               EVP_DigestUpdate(ctx.get(), scratch, chunk_len) &&
+               EVP_DigestUpdate(ctx.get(), input, chunk_len) &&
                EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
@@ -896,14 +896,16 @@ static bool SpeedECDH(const std::string &selected) {
   return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
          SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
          SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
-         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected);
+         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
+         SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
 }
 
 static bool SpeedECDSA(const std::string &selected) {
   return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
          SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
          SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
-         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected);
+         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected) &&
+         SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
 #if !defined(OPENSSL_BENCHMARK)
@@ -1193,6 +1195,29 @@ static bool SpeedBase64(const std::string &selected) {
     return false;
   }
   results.PrintWithBytes("base64 decode", strlen(kInput));
+  return true;
+}
+
+static bool SpeedSipHash(const std::string &selected) {
+  if (!selected.empty() && selected.find("siphash") == std::string::npos) {
+    return true;
+  }
+
+  uint64_t key[2] = {0};
+  for (size_t len : g_chunk_lengths) {
+    std::vector<uint8_t> input(len);
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          SIPHASH_24(key, input.data(), input.size());
+          return true;
+        })) {
+      fprintf(stderr, "SIPHASH_24 failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    results.PrintWithBytes("SipHash-2-4" + ChunkLenSuffix(len), len);
+  }
+
   return true;
 }
 
@@ -1605,7 +1630,8 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
-     !SpeedBase64(selected)
+     !SpeedBase64(selected) ||
+     !SpeedSipHash(selected)
 #endif
      ) {
     return false;

@@ -1,0 +1,17 @@
+[
+    {
+        "attribute": "PLATFORM",
+        "operator": "EQUALS",
+        "value": "\"ANDROID\""
+    },
+    {
+        "attribute": "OS_VERSION",
+        "operator": "GREATER_THAN",
+        "value": "\"10\""
+    },
+    {
+        "attribute": "AVAILABILITY",
+        "operator": "EQUALS",
+        "value": "\"HIGHLY_AVAILABLE\""
+    }
+]

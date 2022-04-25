@@ -290,7 +290,7 @@ static int parse_asn1_tag(CBS *cbs, unsigned *out) {
 
 static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
                                     size_t *out_header_len, int *out_ber_found,
-                                    int ber_ok) {
+                                    int *out_indefinite, int ber_ok) {
   CBS header = *cbs;
   CBS throwaway;
 
@@ -299,6 +299,10 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   }
   if (ber_ok) {
     *out_ber_found = 0;
+    *out_indefinite = 0;
+  } else {
+    assert(out_ber_found == NULL);
+    assert(out_indefinite == NULL);
   }
 
   unsigned tag;
@@ -338,6 +342,7 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
         *out_header_len = header_len;
       }
       *out_ber_found = 1;
+      *out_indefinite = 1;
       return CBS_get_bytes(cbs, out, header_len);
     }
 
@@ -400,16 +405,18 @@ int CBS_get_any_asn1(CBS *cbs, CBS *out, unsigned *out_tag) {
 
 int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
                                     size_t *out_header_len) {
-  return cbs_get_any_asn1_element(cbs, out, out_tag, out_header_len,
-                                  NULL, 0 /* DER only */);
+  return cbs_get_any_asn1_element(cbs, out, out_tag, out_header_len, NULL, NULL,
+                                  /*ber_ok=*/0);
 }
 
 int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
-                                 size_t *out_header_len, int *out_ber_found) {
+                                 size_t *out_header_len, int *out_ber_found,
+                                 int *out_indefinite) {
   int ber_found_temp;
   return cbs_get_any_asn1_element(
       cbs, out, out_tag, out_header_len,
-      out_ber_found ? out_ber_found : &ber_found_temp, 1 /* BER allowed */);
+      out_ber_found ? out_ber_found : &ber_found_temp, out_indefinite,
+      /*ber_ok=*/1);
 }
 
 static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,

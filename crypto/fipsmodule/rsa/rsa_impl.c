@@ -73,8 +73,10 @@
 #include "../rand/fork_detect.h"
 
 
-int rsa_check_public_key(const RSA *rsa) {
-  if (rsa->n == NULL || rsa->e == NULL) {
+int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type) {
+  // Despite its name, this function is used for validating all RSA keys. |n|
+  // is required for all keys, but stripped private keys do not have |e|.
+  if (rsa->n == NULL || (key_enc_type != RSA_STRIPPED_KEY && rsa->e == NULL)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
   }
@@ -85,6 +87,24 @@ int rsa_check_public_key(const RSA *rsa) {
     return 0;
   }
 
+  // Verify |n > e|. Comparing |n_bits| to |kMaxExponentBits| is a small
+  // shortcut to comparing |n| and |e| directly. In reality, |kMaxExponentBits|
+  // is much smaller than the minimum RSA key size that any application should
+  // accept.
+  static const unsigned kMaxExponentBits = 33;
+  if (n_bits <= kMaxExponentBits) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
+    return 0;
+  }
+
+  if (key_enc_type == RSA_STRIPPED_KEY) {
+    // Stripped RSA key doesn't have |e| set. Nothing more to do here.
+    return 1;
+  }
+
+  // Slighty more thorough validation of |n > e|/
+  assert(BN_ucmp(rsa->n, rsa->e) > 0);
+
   // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
   // the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
   // doesn't support values larger than 32 bits [3], so it is unlikely that
@@ -94,7 +114,6 @@ int rsa_check_public_key(const RSA *rsa) {
   // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
   // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
   // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-  static const unsigned kMaxExponentBits = 33;
   unsigned e_bits = BN_num_bits(rsa->e);
   if (e_bits > kMaxExponentBits ||
       // Additionally reject e = 1 or even e. e must be odd to be relatively
@@ -104,16 +123,6 @@ int rsa_check_public_key(const RSA *rsa) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
-
-  // Verify |n > e|. Comparing |n_bits| to |kMaxExponentBits| is a small
-  // shortcut to comparing |n| and |e| directly. In reality, |kMaxExponentBits|
-  // is much smaller than the minimum RSA key size that any application should
-  // accept.
-  if (n_bits <= kMaxExponentBits) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    return 0;
-  }
-  assert(BN_ucmp(rsa->n, rsa->e) > 0);
 
   return 1;
 }
@@ -261,7 +270,9 @@ size_t rsa_default_size(const RSA *rsa) {
 
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
-  if (!rsa_check_public_key(rsa)) {
+  boringssl_ensure_rsa_self_test();
+
+  if (!rsa_check_public_key(rsa, RSA_PUBLIC_KEY)) {
     return 0;
   }
 
@@ -528,6 +539,8 @@ err:
 
 int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                         const uint8_t *in, size_t in_len, int padding) {
+  boringssl_ensure_rsa_self_test();
+
   const unsigned rsa_size = RSA_size(rsa);
   uint8_t *buf = NULL;
   int ret = 0;
@@ -593,9 +606,10 @@ err:
 
 static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 
-int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding) {
-  if (!rsa_check_public_key(rsa)) {
+int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
+                                size_t max_out, const uint8_t *in,
+                                size_t in_len, int padding) {
+  if (!rsa_check_public_key(rsa, RSA_PUBLIC_KEY)) {
     return 0;
   }
 
@@ -684,6 +698,14 @@ err:
     OPENSSL_free(buf);
   }
   return ret;
+}
+
+int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
+                                size_t max_out, const uint8_t *in,
+                                size_t in_len, int padding) {
+  boringssl_ensure_rsa_self_test();
+  return rsa_verify_raw_no_self_test(rsa, out_len, out, max_out, in, in_len,
+                                     padding);
 }
 
 int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
@@ -1290,7 +1312,7 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
   // The key generation process is complex and thus error-prone. It could be
   // disastrous to generate and then use a bad key so double-check that the key
   // makes sense.
-  if (!RSA_check_key(rsa)) {
+  if (!RSA_validate_key(rsa, RSA_CRT_KEY)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INTERNAL_ERROR);
     goto err;
   }
@@ -1324,6 +1346,8 @@ static void replace_bn_mont_ctx(BN_MONT_CTX **out, BN_MONT_CTX **in) {
 static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
                                           const BIGNUM *e_value, BN_GENCB *cb,
                                           int check_fips) {
+  boringssl_ensure_rsa_self_test();
+
   RSA *tmp = NULL;
   uint32_t err;
   int ret = 0;
