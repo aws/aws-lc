@@ -651,7 +651,7 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     }
 
     *out_mac_secret_len = SHA_DIGEST_LENGTH;
-  } else if (cipher->algorithm_mac == SSL_SHA256){
+  } else if (cipher->algorithm_mac == SSL_SHA256) {
     if (cipher->algorithm_enc == SSL_AES128) {
       if (version == TLS1_VERSION) {
         *out_aead = EVP_aead_aes_128_cbc_sha256_tls_implicit_iv();
