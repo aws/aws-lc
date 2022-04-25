@@ -127,7 +127,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     // establish that current CPU supports AVX, we even see if it's
     // either even XOP-capable Bulldozer-based or GenuineIntel one.
     // But SHAEXT-capable go ahead...
-    if ((CRYPTO_is_SHAEXT_capable() &&
+    if ((CRYPTO_is_SHAEXT_capable() ||
         (CRYPTO_is_AVX_capable() &&
         (CRYPTO_is_AMD_XOP_support() | CRYPTO_is_intel_cpu()))) &&
         plen > (sha_off + iv) &&
