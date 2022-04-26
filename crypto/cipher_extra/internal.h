@@ -74,18 +74,7 @@ extern "C" {
 #define AES_CBC_HMAC_SHA_STITCH
 // TLS1_1_VERSION is also defined in ssl.h.
 #define TLS1_1_VERSION 0x0302
-#define SHA_LBLOCK 16
 #define NO_PAYLOAD_LENGTH ((size_t)-1)
-#define MAX_PADDING 255
-#define MAX_PADDING_LEN (MAX_PADDING + 1)
-
-OPENSSL_INLINE void *EVP_CIPHER_CTX_get_cipher_data(const EVP_CIPHER_CTX *ctx) {
-  return ctx->cipher_data;
-}
-
-OPENSSL_INLINE unsigned char *EVP_CIPHER_CTX_iv_noconst(EVP_CIPHER_CTX *ctx) {
-  return ctx->iv;
-}
 #endif
 
 // EVP_tls_cbc_get_padding determines the padding from the decrypted, TLS, CBC

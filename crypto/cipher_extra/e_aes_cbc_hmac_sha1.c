@@ -53,7 +53,7 @@ void aesni_cbc_sha1_enc(const void *inp, void *out, size_t blocks,
 static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
                                         const unsigned char *inkey,
                                         const unsigned char *iv, int enc) {
-  EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+  EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)(ctx->cipher_data);
   int ret;
 
   int key_bits = EVP_CIPHER_CTX_key_length(ctx) * 8;
@@ -77,7 +77,7 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
 
 static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                       const unsigned char *in, size_t len) {
-  EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+  EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)(ctx->cipher_data);
   size_t plen = key->payload_length, iv = 0;
 
   key->payload_length = NO_PAYLOAD_LENGTH;
@@ -135,7 +135,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       SHA1_Update(&key->md, in + iv, sha_off);
 
       aesni_cbc_sha1_enc(in, out, blocks, &key->ks,
-                         EVP_CIPHER_CTX_iv_noconst(ctx), &key->md,
+                         ctx->iv, &key->md,
                          in + iv + sha_off);
       // Update the offset to record and skip the part processed
       // (encrypted and hashed) by |aesni_cbc_sha1_enc|.
@@ -170,7 +170,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     }
     // encrypt HMAC|padding at once.
     aes_hw_cbc_encrypt(out + aes_off, out + aes_off, len - aes_off, &key->ks,
-                       EVP_CIPHER_CTX_iv_noconst(ctx), 1);
+                       ctx->iv, 1);
     return 1;
   } else {
     if (plen != EVP_AEAD_TLS1_AAD_LEN) {
@@ -188,7 +188,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       }
 
       // omit explicit iv.
-      OPENSSL_memcpy(EVP_CIPHER_CTX_iv_noconst(ctx), in, AES_BLOCK_SIZE);
+      OPENSSL_memcpy(ctx->iv, in, AES_BLOCK_SIZE);
       in += AES_BLOCK_SIZE;
       out += AES_BLOCK_SIZE;
       len -= AES_BLOCK_SIZE;
@@ -197,8 +197,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
       return 0;
     }
     // decrypt HMAC|padding at once.
-    aes_hw_cbc_encrypt(in, out, len, &key->ks, EVP_CIPHER_CTX_iv_noconst(ctx),
-                       0);
+    aes_hw_cbc_encrypt(in, out, len, &key->ks, ctx->iv, 0);
 
     CONSTTIME_SECRET(out, len);
 
@@ -256,7 +255,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
 static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                                     void *ptr) {
-  EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+  EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)(ctx->cipher_data);
 
   switch (type) {
     case EVP_CTRL_AEAD_SET_MAC_KEY: {
