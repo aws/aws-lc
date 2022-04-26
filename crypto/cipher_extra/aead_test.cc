@@ -281,35 +281,35 @@ struct KnownTLSLegacyAEAD {
 static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
     {"AES_128_CBC_SHA1_TLS", EVP_aes_128_cbc_hmac_sha1,
      "aes_128_cbc_sha1_tls_stitch_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
      {"AES_128_CBC_SHA1_TLS_IMPLICIT_IV", EVP_aes_128_cbc_hmac_sha1,
      "aes_128_cbc_sha1_tls_stitch_implicit_iv_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     {"AES_128_CBC_SHA256_TLS", EVP_aes_128_cbc_hmac_sha256,
      "aes_128_cbc_sha256_tls_stitch_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     {"AES_128_CBC_SHA256_TLS_IMPLICIT_IV", EVP_aes_128_cbc_hmac_sha256,
      "aes_128_cbc_sha256_tls_stitch_implicit_iv_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     {"AES_256_CBC_SHA1_TLS", EVP_aes_256_cbc_hmac_sha1,
      "aes_256_cbc_sha1_tls_stitch_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
      {"AES_256_CBC_SHA1_TLS_IMPLICIT_IV", EVP_aes_256_cbc_hmac_sha1,
      "aes_256_cbc_sha1_tls_stitch_implicit_iv_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     {"AES_256_CBC_SHA256_TLS", EVP_aes_256_cbc_hmac_sha256,
      "aes_256_cbc_sha256_tls_stitch_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 
     {"AES_256_CBC_SHA256_TLS_IMPLICIT_IV", EVP_aes_256_cbc_hmac_sha256,
      "aes_256_cbc_sha256_tls_stitch_implicit_iv_tests.txt",
-     kLimitedImplementation | RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 };
 
 class PerTLSLegacyAEADTest : public testing::TestWithParam<KnownTLSLegacyAEAD> {
@@ -392,14 +392,13 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
     } else {
       OPENSSL_memcpy(iv.data(), key.data() + mac_key_size + key_block_size, aes_block_size);
     }
-    if (!t->HasAttribute("NO_SEAL") &&
-        !(GetParam().flags & kNondeterministic)) {
+    if (!t->HasAttribute("NO_SEAL")) {
       // Even without |EVP_CIPHER_CTX_set_padding|, |EVP_Cipher| returns error code because
-      // |EVP_aes_128_cbc_hmac_sha1/256| does not automatically pad the input.
+      // |EVP_aes_128/256_cbc_hmac_sha1/256| does not automatically pad the input.
       ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), EVP_CIPH_NO_PADDING));
       ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, aes_key, iv.data()));
       set_MAC_key(ctx.get(), key.data(), mac_key_size);
-      // |EVP_aes_128_cbc_hmac_sha1/256| encrypts a TLS record, which should have space for
+      // |EVP_aes_128/256_cbc_hmac_sha1/256| encrypts a TLS record, which should have space for
       // explicit_iv(if applicable), payload, tag(hmac and padding).
       std::vector<uint8_t> record(in.size() + tag.size(), 0);
       OPENSSL_memcpy(record.data(), in.data(), in.size());
@@ -451,7 +450,7 @@ TEST_P(PerTLSLegacyAEADTest, TestVector) {
       encrypted[EVP_CIPHER_block_size(cipher)] ^= 0x80;
     }
 
-    // |EVP_aes_128_cbc_hmac_sha1/256| requires the input to be the integral multiple of AES_BLOCK_SIZE.
+    // |EVP_aes_128/256_cbc_hmac_sha1/256| requires the input to be the integral multiple of AES_BLOCK_SIZE.
     encrypted.resize(encrypted.size() + 1);
     set_TLS1_AAD(decrypt_ctx.get(), ad.data());
     ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
