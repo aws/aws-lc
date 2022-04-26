@@ -312,10 +312,7 @@ static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
      RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
 };
 
-class PerTLSLegacyAEADTest : public testing::TestWithParam<KnownTLSLegacyAEAD> {
- public:
-  const EVP_CIPHER *legacy_aead() { return GetParam().func(); }
-};
+class PerTLSLegacyAEADTest : public testing::TestWithParam<KnownTLSLegacyAEAD> {};
 
 INSTANTIATE_TEST_SUITE_P(All, PerTLSLegacyAEADTest, testing::ValuesIn(kTLSLegacyAEADs),
                          [](const testing::TestParamInfo<KnownTLSLegacyAEAD> &params)
@@ -348,7 +345,7 @@ static void set_TLS1_AAD(EVP_CIPHER_CTX *ctx, uint8_t *ad) {
 // TAG: 9c6998bf3b172670c5f8613f479641468bbed4c68d093940c92de4
 // TAG_LEN: 20
 TEST_P(PerTLSLegacyAEADTest, TestVector) {
-  const EVP_CIPHER *cipher = legacy_aead();
+  const EVP_CIPHER *cipher = GetParam().func();
   if (!cipher) {
     // This condition can happen when
     // 1. !defined(AES_CBC_HMAC_SHA_STITCH).
