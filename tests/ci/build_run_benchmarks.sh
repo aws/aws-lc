@@ -75,10 +75,7 @@ python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/convert_json_to_csv.py 
 
 # once we have csvs, we want to update the main benchmark results files with the sequential trusttoken results
 # files will be updated in place
-python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-pr_bm.csv aws-lc-pr_tt_bm.csv
-python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-pr_fips_bm.csv aws-lc-pr_tt_fips_bm.csv
-python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-prod_bm.csv aws-lc-prod_tt_bm.csv
-python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-prod_fips_bm.csv aws-lc-prod_tt_fips_bm.csv
+python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-pr_bm.csv aws-lc-pr_tt_bm.csv python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-pr_fips_bm.csv aws-lc-pr_tt_fips_bm.csv python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-prod_bm.csv aws-lc-prod_tt_bm.csv python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/update_results.py aws-lc-prod_fips_bm.csv aws-lc-prod_tt_fips_bm.csv
 
 # check for regressions!
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/compare_results.py aws-lc-prod_bm.csv aws-lc-pr_bm.csv prod_vs_pr.csv
@@ -87,28 +84,28 @@ python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/compare_results.py aws-
 prod_vs_pr_fips_code="$?"
 
 # upload results to s3
-aws s3 cp aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
-aws s3 cp aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
-aws s3 cp aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
-aws s3 cp aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
+aws s3 cp aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/aws-lc-pr_bm.csv"
+aws s3 cp aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/aws-lc-pr_fips_bm.csv"
+aws s3 cp aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${CODEBUILD_SOURCE_VERSION}/aws-lc-prod_bm.csv"
+aws s3 cp aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/${CODEBUILD_SOURCE_VERSION}/aws-lc-prod_fips_bm.csv"
 
 # upload results to lastest folders in s3
-aws s3 mv aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_bm.csv"
-aws s3 mv aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-aws-lc-pr_fips_bm.csv"
-aws s3 mv aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_bm.csv"
-aws s3 mv aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/${CPU_TYPE}${NOHW_TYPE}-aws-lc-prod_fips_bm.csv"
+aws s3 mv aws-lc-pr_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}/aws-lc-pr_bm.csv"
+aws s3 mv aws-lc-pr_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}/aws-lc-pr_fips_bm.csv"
+aws s3 mv aws-lc-prod_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/aws-lc-prod_bm.csv"
+aws s3 mv aws-lc-prod_fips_bm.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-prod-bucket/latest/aws-lc-prod_fips_bm.csv"
 
 # if any of the results gave an exit code of 5, there's a performance regression
 # we only want to actually fail the vote if we've detected a regression in the pr version of aws-lc and tip of main of aws-lc (for fips and non-fips)
 exit_fail=false
 if [ "${prod_vs_pr_code}" != 0 ]; then
-  aws s3 cp prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
-  aws s3 mv prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr.csv"
+  aws s3 cp prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/prod_vs_pr.csv"
+  aws s3 mv prod_vs_pr.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}/prod_vs_pr.csv"
   exit_fail=true
 fi
 if [ "${prod_vs_pr_fips_code}" != 0 ]; then
-  aws s3 cp prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${COMMIT_ID}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
-  aws s3 mv prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${PR_NUM}/${CPU_TYPE}${NOHW_TYPE}-prod_vs_pr_fips.csv"
+  aws s3 cp prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/${CODEBUILD_SOURCE_VERSION}/prod_vs_pr_fips.csv"
+  aws s3 mv prod_vs_pr_fips.csv s3://"${AWS_ACCOUNT_ID}-aws-lc-ci-bm-framework-pr-bucket/latest-${CODEBUILD_WEBHOOK_TRIGGER}/prod_vs_pr_fips.csv"
   exit_fail=true
 fi
 
