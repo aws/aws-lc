@@ -23,7 +23,6 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ARM_ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-10x_latest
 
-# Setting tag to an older image of cryptofuzz, fix is tracked in CryptoAlg-1066.
     - identifier: ubuntu2004_clang10_x86_64_cryptofuzz
       buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
       env:
