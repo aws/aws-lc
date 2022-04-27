@@ -362,4 +362,4 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:ubuntu-7.10_gcc-4.1x
+        image: ECR_REPO_PLACEHOLDER:ubuntu-7.10_gcc-4.1x_latest
