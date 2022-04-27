@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu-7.10-gutsy_gcc-4.1x:latest
+FROM ubuntu-7.10_gcc-4.1x:latest
 
 COPY sources.list /etc/apt/sources.list
 
