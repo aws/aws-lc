@@ -14,7 +14,7 @@ mkdir -p ${docker_name}/dependencies
 cd ${docker_name}/dependencies
 # Download ubuntu-7.10 iso image from the official website and 
 # create docker image from it using squashfs-tools.
-sudo apt-get -y --no-install-recommends install squashfs-tools
+sudo apt-get update && sudo apt-get -y --no-install-recommends install squashfs-tools
 wget -O ubuntu-7.10-desktop-amd64.iso http://old-releases.ubuntu.com/releases/gutsy/ubuntu-7.10-desktop-amd64.iso
 mkdir -p rootfs unquashfs
 sudo mount -o loop ubuntu-7.10-desktop-amd64.iso rootfs
