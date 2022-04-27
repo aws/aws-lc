@@ -18,7 +18,7 @@ echo "Testing AWS-LC in no asm mode."
 build_and_test -DOPENSSL_NO_ASM=1 -DCMAKE_BUILD_TYPE=Release
 
 echo "Testing building shared lib."
-run_build -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
+build_and_test -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
 
 if [[ "${AWSLC_FIPS}" == "1" ]]; then
   echo "Testing AWS-LC in FIPS release mode."
@@ -36,7 +36,11 @@ if [[ "${AWSLC_CODING_GUIDELINES_TEST}" == "1" ]]; then
   source ./tests/coding_guidelines/coding_guidelines_test.sh
 fi
 
-if [[ "${AWSLC_FUZZ}" == "1" ]]; then
-  echo "Testing building fuzz tests."
-  run_build -DFUZZ=1
-fi
+# Lightly verify that uncommon build options does not break the build. Fist
+# define a list of typical build options to verify the special build option with
+build_options_to_test=("" "-DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release")
+
+## Build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
+for build_option in "${build_options_to_test[@]}"; do
+  run_build ${build_option} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
+done
