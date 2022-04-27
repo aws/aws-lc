@@ -30,7 +30,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: X86_ECR_REPO_PLACEHOLDER:ubuntu-20.04_cryptofuzz_latest
+        image: X86_ECR_REPO_PLACEHOLDER:ubuntu-20.04_cryptofuzz_2021-10-05
 
 # Turn off the ARM Cryptofuzz, fix is tracked in CryptoAlg-742
 #    - identifier: ubuntu2004_clang10_arm_cryptofuzz
