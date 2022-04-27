@@ -210,7 +210,7 @@ int EVP_sha1_final_with_secret_suffix(SHA_CTX *ctx,
 
   // We now construct and process each expected block in constant-time.
   uint8_t block[SHA_CBLOCK] = {0};
-  uint32_t result[5] = {0};
+  uint32_t result[5] = {0}; // The size of SHA1 state = 160 bits = 5*32 bits.
   // input_idx is the index into |in| corresponding to the current block.
   // However, we allow this index to overflow beyond |max_len|, to simplify the
   // 0x80 byte.
@@ -370,7 +370,7 @@ int EVP_sha256_final_with_secret_suffix(SHA256_CTX *ctx,
 
   // We now construct and process each expected block in constant-time.
   uint8_t block[SHA256_CBLOCK] = {0};
-  uint32_t result[8] = {0};
+  uint32_t result[8] = {0}; // The size of SHA256 state = 256 bits = 8*32 bits.
   // input_idx is the index into |in| corresponding to the current block.
   // However, we allow this index to overflow beyond |max_len|, to simplify the
   // 0x80 byte.
