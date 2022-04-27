@@ -6,10 +6,10 @@
 TOKEN=$(curl "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)
 curl --head -H "Authorization: Bearer $TOKEN" https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest
 
-docker build -t amazonlinux-2-aarch:base amazonlinux-2_base
+# docker build -t amazonlinux-2-aarch:base amazonlinux-2_base
 # docker build -t amazonlinux-2-aarch:gcc-7x amazonlinux-2_gcc-7x
 # docker build -t amazonlinux-2-aarch:clang-7x amazonlinux-2_clang-7x
-# docker build -t ubuntu-20.04-aarch:base ubuntu-20.04_base
+docker build -t ubuntu-20.04-aarch:base ubuntu-20.04_base
 # docker build -t ubuntu-20.04-aarch:gcc-7x ubuntu-20.04_gcc-7x
 # docker build -t ubuntu-20.04-aarch:gcc-8x ubuntu-20.04_gcc-8x
 # docker build -t ubuntu-20.04-aarch:gcc-11x ubuntu-20.04_gcc-11x
