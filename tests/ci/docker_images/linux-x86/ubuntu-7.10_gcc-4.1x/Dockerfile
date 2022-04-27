@@ -19,8 +19,8 @@ ENV CXX=g++-4.1
 
 # Pull cmake as an external source since the wget version
 # on this image is too old to access the cmake repo.
-COPY dependencies/cmake-2.8.12.tar.gz /tmp/cmake-2.8.12.tar.gz
+COPY dependencies/cmake-3.9.6.tar.gz /tmp/cmake-3.9.6.tar.gz
 RUN cd /tmp && \
-    tar -xvf cmake-2.8.12.tar.gz && \
-    cd cmake-2.8.12 && \
+    tar -xvf cmake-3.9.6.tar.gz && \
+    cd cmake-3.9.6 && \
     ./configure && make && make install

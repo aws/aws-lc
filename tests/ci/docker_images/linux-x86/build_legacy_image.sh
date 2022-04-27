@@ -25,7 +25,7 @@ sudo tar -C unsquashfs -c . | docker import - ${docker_name}
 # The wget version that comes with this docker image is too old to
 # download the cmake version from source, so we predownload the 
 # dependencies outside of the image and pull it in the container.
-wget -O cmake-2.8.12.tar.gz https://cmake.org/files/v2.8/cmake-2.8.12.tar.gz
+wget -O cmake-3.9.6.tar.gz https://cmake.org/files/v3.9/cmake-3.9.6.tar.gz
 cd ..
 sudo docker build -t ubuntu-7.10:gcc-4.1x .
 
