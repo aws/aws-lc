@@ -659,13 +659,6 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
       } else {
         *out_aead = EVP_aead_aes_128_cbc_sha256_tls();
       }
-    } else if (cipher->algorithm_enc == SSL_AES256) {
-      if (version == TLS1_VERSION) {
-        *out_aead = EVP_aead_aes_256_cbc_sha256_tls_implicit_iv();
-        *out_fixed_iv_len = 16;
-      } else {
-        *out_aead = EVP_aead_aes_256_cbc_sha256_tls();
-      }
     } else {
       return false;
     }
