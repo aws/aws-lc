@@ -23,4 +23,5 @@ COPY dependencies/cmake-3.9.6.tar.gz /tmp/cmake-3.9.6.tar.gz
 RUN cd /tmp && \
     tar -xvf cmake-3.9.6.tar.gz && \
     cd cmake-3.9.6 && \
-    ./configure && make && make install
+    ./configure && make && make install && \
+    rm -rf /tmp/*
