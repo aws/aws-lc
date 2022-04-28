@@ -82,8 +82,10 @@ function run_build_and_collect_metrics {
 
   libcrypto_size=$(size "${BUILD_ROOT}/crypto/libcrypto.${lib_extension}")
   libssl_size=$(size "${BUILD_ROOT}/ssl/libssl.${lib_extension}")
+  tool_size=$(size "${BUILD_ROOT}/tool/bssl")
   put_metric --metric-name LibCryptoSize --value "$libcrypto_size" --unit Bytes --dimensions "${size_common_dimensions}"
   put_metric --metric-name LibSSLSize --value "$libssl_size" --unit Bytes --dimensions "${size_common_dimensions}"
+  put_metric --metric-name ToolSize --value "$tool_size" --unit Bytes --dimensions "${size_common_dimensions}"
 
   pushd .
   cd "$BUILD_ROOT"
