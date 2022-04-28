@@ -515,7 +515,7 @@ TEST(CipherTest, SHA1WithSecretSuffix) {
         SHA1_Init(&ctx);
         SHA1_Update(&ctx, buf, prefix);
         uint8_t computed[SHA_DIGEST_LENGTH];
-        ASSERT_TRUE(EVP_sha1_final_with_secret_suffix(
+        ASSERT_TRUE(EVP_final_with_secret_suffix_sha1(
             &ctx, computed, buf + prefix, secret_len, max_len));
 
         CONSTTIME_DECLASSIFY(computed, sizeof(computed));
@@ -562,7 +562,7 @@ TEST(CipherTest, SHA256WithSecretSuffix) {
         SHA256_Init(&ctx);
         SHA256_Update(&ctx, buf, prefix);
         uint8_t computed[SHA256_DIGEST_LENGTH];
-        ASSERT_TRUE(EVP_sha256_final_with_secret_suffix(
+        ASSERT_TRUE(EVP_final_with_secret_suffix_sha256(
             &ctx, computed, buf + prefix, secret_len, max_len));
 
         CONSTTIME_DECLASSIFY(computed, sizeof(computed));

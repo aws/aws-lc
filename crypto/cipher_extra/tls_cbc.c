@@ -61,6 +61,8 @@
 #include "internal.h"
 #include "../fipsmodule/cipher/internal.h"
 
+// The length of the additional data field in AES-CBC-HMAC based AEADs.
+#define AEAD_TLS_AES_CBC_HMAC_AD_LENGTH (13)
 
 int EVP_tls_cbc_remove_padding(crypto_word_t *out_padding_ok, size_t *out_len,
                                const uint8_t *in, size_t in_len,
@@ -174,7 +176,7 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, size_t md_size, const uint8_t *in,
   OPENSSL_memcpy(out, rotated_mac, md_size);
 }
 
-int EVP_sha1_final_with_secret_suffix(SHA_CTX *ctx,
+int EVP_final_with_secret_suffix_sha1(SHA_CTX *ctx,
                                       uint8_t out[SHA_DIGEST_LENGTH],
                                       const uint8_t *in, size_t len,
                                       size_t max_len) {
@@ -269,7 +271,8 @@ int EVP_sha1_final_with_secret_suffix(SHA_CTX *ctx,
 
 static int EVP_tls_cbc_digest_record_sha1(
               const EVP_MD *md, uint8_t *md_out,
-              size_t *md_out_size, const uint8_t header[13],
+              size_t *md_out_size,
+              const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH],
               const uint8_t *data, size_t data_size,
               size_t data_plus_mac_plus_padding_size,
               const uint8_t *mac_secret,
@@ -300,7 +303,7 @@ static int EVP_tls_cbc_digest_record_sha1(
   SHA_CTX ctx;
   SHA1_Init(&ctx);
   SHA1_Update(&ctx, hmac_pad, SHA_CBLOCK);
-  SHA1_Update(&ctx, header, 13);
+  SHA1_Update(&ctx, header, AEAD_TLS_AES_CBC_HMAC_AD_LENGTH);
 
   // There are at most 256 bytes of padding, so we can compute the public
   // minimum length for |data_size|.
@@ -315,7 +318,7 @@ static int EVP_tls_cbc_digest_record_sha1(
 
   // Hash the remaining data without leaking |data_size|.
   uint8_t mac_out[SHA_DIGEST_LENGTH];
-  if (!EVP_sha1_final_with_secret_suffix(
+  if (!EVP_final_with_secret_suffix_sha1(
           &ctx, mac_out, data + min_data_size, data_size - min_data_size,
           data_plus_mac_plus_padding_size - min_data_size)) {
     return 0;
@@ -334,7 +337,7 @@ static int EVP_tls_cbc_digest_record_sha1(
   return 1;
 }
 
-int EVP_sha256_final_with_secret_suffix(SHA256_CTX *ctx,
+int EVP_final_with_secret_suffix_sha256(SHA256_CTX *ctx,
                                         uint8_t out[SHA256_DIGEST_LENGTH],
                                         const uint8_t *in, size_t len,
                                         size_t max_len) {
@@ -429,7 +432,8 @@ int EVP_sha256_final_with_secret_suffix(SHA256_CTX *ctx,
 
 static int EVP_tls_cbc_digest_record_sha256(
               const EVP_MD *md, uint8_t *md_out,
-              size_t *md_out_size, const uint8_t header[13],
+              size_t *md_out_size,
+              const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH],
               const uint8_t *data, size_t data_size,
               size_t data_plus_mac_plus_padding_size,
               const uint8_t *mac_secret,
@@ -460,7 +464,7 @@ static int EVP_tls_cbc_digest_record_sha256(
   SHA256_CTX ctx;
   SHA256_Init(&ctx);
   SHA256_Update(&ctx, hmac_pad, SHA256_CBLOCK);
-  SHA256_Update(&ctx, header, 13);
+  SHA256_Update(&ctx, header, AEAD_TLS_AES_CBC_HMAC_AD_LENGTH);
 
   // There are at most 256 bytes of padding, so we can compute the public
   // minimum length for |data_size|.
@@ -475,7 +479,7 @@ static int EVP_tls_cbc_digest_record_sha256(
 
   // Hash the remaining data without leaking |data_size|.
   uint8_t mac_out[SHA256_DIGEST_LENGTH];
-  if (!EVP_sha256_final_with_secret_suffix(
+  if (!EVP_final_with_secret_suffix_sha256(
           &ctx, mac_out, data + min_data_size, data_size - min_data_size,
           data_plus_mac_plus_padding_size - min_data_size)) {
     return 0;
@@ -500,7 +504,8 @@ int EVP_tls_cbc_record_digest_supported(const EVP_MD *md) {
 }
 
 int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
-                              size_t *md_out_size, const uint8_t header[13],
+                              size_t *md_out_size,
+                              const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH],
                               const uint8_t *data, size_t data_size,
                               size_t data_plus_mac_plus_padding_size,
                               const uint8_t *mac_secret,

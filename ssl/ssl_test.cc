@@ -359,15 +359,16 @@ static const CipherTest kCipherTests[] = {
     },
     // SSLv3 matches everything that existed before TLS 1.2.
     {
-        "AES128-SHA:ECDHE-RSA-AES128-GCM-SHA256:!SSLv3",
+        "AES128-SHA:AES128-SHA256:ECDHE-RSA-AES128-GCM-SHA256:!SSLv3",
         {
+            {TLS1_CK_RSA_WITH_AES_128_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
         false,
     },
     // TLSv1.2 matches everything added in TLS 1.2.
     {
-        "AES128-SHA:ECDHE-RSA-AES128-GCM-SHA256:!TLSv1.2",
+        "AES128-SHA:AES128-SHA256:ECDHE-RSA-AES128-GCM-SHA256:!TLSv1.2",
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
         },
