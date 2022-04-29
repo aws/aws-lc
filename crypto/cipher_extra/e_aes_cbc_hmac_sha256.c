@@ -77,7 +77,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                         const uint8_t *in, size_t len) {
   EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)(ctx->cipher_data);
   unsigned int l;
-  size_t plen = key->payload_length, iv = 0;
+  size_t plen = key->payload_length, iv_len = 0;
   size_t aes_off = 0, blocks;
 
   size_t sha_off = SHA256_CBLOCK - key->md.num;
@@ -111,7 +111,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
-      iv = AES_BLOCK_SIZE;
+      iv_len = AES_BLOCK_SIZE;
     }
 
     // Use stitch code |aesni_cbc_sha256_enc| when there are multiple of SHA_CBLOCK
@@ -128,13 +128,15 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     if ((CRYPTO_is_SHAEXT_capable() ||
          (CRYPTO_is_AVX2_capable() &&
           (CRYPTO_is_AMD_XOP_support() | CRYPTO_is_intel_cpu()))) &&
-        plen > (sha_off + iv) &&
-        (blocks = (plen - (sha_off + iv)) / SHA256_CBLOCK)) {
-      SHA256_Update(&key->md, in + iv, sha_off);
+        plen > (sha_off + iv_len) &&
+        (blocks = (plen - (sha_off + iv_len)) / SHA256_CBLOCK)) {
+      // Before calling |aesni_cbc_sha256_enc|, |key->md| should not
+      // include not hashed data(partial data).
+      SHA256_Update(&key->md, in + iv_len, sha_off);
 
       aesni_cbc_sha256_enc(in, out, blocks, &key->ks,
                                  ctx->iv, &key->md,
-                                 in + iv + sha_off);
+                                 in + iv_len + sha_off);
       blocks *= SHA256_CBLOCK;
       aes_off += blocks;
       sha_off += blocks;
@@ -146,7 +148,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     } else {
       sha_off = 0;
     }
-    sha_off += iv;
+    sha_off += iv_len;
     SHA256_Update(&key->md, in + sha_off, plen - sha_off);
 
     if (in != out) {
@@ -184,16 +186,16 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 
     if ((key->aux.tls_aad[plen - 4] << 8 | key->aux.tls_aad[plen - 3]) >=
         TLS1_1_VERSION) {
-      iv = AES_BLOCK_SIZE;
+      iv_len = AES_BLOCK_SIZE;
     }
-    if (len < (iv + SHA256_DIGEST_LENGTH + 1)) {
+    if (len < (iv_len + SHA256_DIGEST_LENGTH + 1)) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     }
 
     // omit explicit iv.
-    out += iv;
-    len -= iv;
+    out += iv_len;
+    len -= iv_len;
     CONSTTIME_SECRET(out, len);
 
     // Remove CBC padding. Code from here on is timing-sensitive with respect to

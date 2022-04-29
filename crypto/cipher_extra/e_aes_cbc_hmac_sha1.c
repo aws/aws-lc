@@ -78,7 +78,7 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
 static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                       const uint8_t *in, size_t len) {
   EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)(ctx->cipher_data);
-  size_t plen = key->payload_length, iv = 0;
+  size_t plen = key->payload_length, iv_len = 0;
 
   key->payload_length = NO_PAYLOAD_LENGTH;
 
@@ -109,7 +109,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
-      iv = AES_BLOCK_SIZE;
+      iv_len = AES_BLOCK_SIZE;
     }
 
     size_t aes_off = 0;
@@ -130,13 +130,15 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     if ((CRYPTO_is_SHAEXT_capable() ||
         (CRYPTO_is_AVX_capable() &&
         (CRYPTO_is_AMD_XOP_support() | CRYPTO_is_intel_cpu()))) &&
-        plen > (sha_off + iv) &&
-        (blocks = (plen - (sha_off + iv)) / SHA_CBLOCK)) {
-      SHA1_Update(&key->md, in + iv, sha_off);
+        plen > (sha_off + iv_len) &&
+        (blocks = (plen - (sha_off + iv_len)) / SHA_CBLOCK)) {
+      // Before calling |aesni_cbc_sha1_enc|, |key->md| should not
+      // include not hashed data(partial data).
+      SHA1_Update(&key->md, in + iv_len, sha_off);
 
       aesni_cbc_sha1_enc(in, out, blocks, &key->ks,
                          ctx->iv, &key->md,
-                         in + iv + sha_off);
+                         in + iv_len + sha_off);
       // Update the offset to record and skip the part processed
       // (encrypted and hashed) by |aesni_cbc_sha1_enc|.
       blocks *= SHA_CBLOCK;
@@ -150,7 +152,7 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     } else {
       sha_off = 0;
     }
-    sha_off += iv;
+    sha_off += iv_len;
     SHA1_Update(&key->md, in + sha_off, plen - sha_off);
 
     if (in != out) {
