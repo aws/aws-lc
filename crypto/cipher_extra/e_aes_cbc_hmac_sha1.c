@@ -43,7 +43,7 @@ typedef struct {
     uint8_t tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
   // Used after decryption.
-  uint8_t hmac_key[64];
+  uint8_t hmac_key[HMAC_KEY_SIZE];
 } EVP_AES_HMAC_SHA1;
 
 void aesni_cbc_sha1_enc(const void *inp, void *out, size_t blocks,
@@ -261,7 +261,7 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     case EVP_CTRL_AEAD_SET_MAC_KEY: {
       // This CTRL operation is to perform |HMAC_Init_ex| with SHA1 on |ptr|.
       unsigned int i;
-      uint8_t hmac_key[64];
+      uint8_t hmac_key[HMAC_KEY_SIZE];
 
       OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
 
