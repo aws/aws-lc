@@ -93,7 +93,7 @@ static inline uint8_t p521_use_s2n_bignum_alt(void) {
 // are running on we stick with the default s2n-bignum functions. Except in
 // the case of M1, because we know that if the OS is macOS and the CPU is
 // aarch64 then the CPU must be M1 so the "_alt" functions will be faster.
-static inline uint8_t use_s2n_bignum_alt(void) {
+static inline uint8_t p521_use_s2n_bignum_alt(void) {
 #if defined(OPENSSL_MACOS)
   return 1;
 #else

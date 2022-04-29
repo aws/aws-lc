@@ -76,7 +76,7 @@ static const p384_felem p384_felem_one = {
 // for some of the functions. These instructions are not supported by
 // every x86 CPU so we have to check if they are available and in case
 // they are not we fallback to slightly slower but generic implementation.
-static inline uint8_t use_s2n_bignum_alt(void) {
+static inline uint8_t p384_use_s2n_bignum_alt(void) {
   return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) == 0) || // bmi2
          ((OPENSSL_ia32cap_P[2] & (1u << 19)) == 0);   // adx
 }
@@ -90,7 +90,7 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 // are running on we stick with the default s2n-bignum functions. Except in
 // the case of M1, because we know that if the OS is macOS and the CPU is
 // aarch64 then the CPU must be M1 so the "_alt" functions will be faster.
-static inline uint8_t use_s2n_bignum_alt(void) {
+static inline uint8_t p384_use_s2n_bignum_alt(void) {
 #if defined(OPENSSL_MACOS)
   return 1;
 #else
@@ -107,19 +107,19 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 
 // The following four functions need bmi2 and adx support.
 #define p384_felem_mul(out, in0, in1) \
-  if (use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, in0, in1); \
+  if (p384_use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, in0, in1); \
   else bignum_montmul_p384(out, in0, in1);
 
 #define p384_felem_sqr(out, in0) \
-  if (use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, in0); \
+  if (p384_use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, in0); \
   else bignum_montsqr_p384(out, in0);
 
 #define p384_felem_to_mont(out, in0) \
-  if (use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, in0); \
+  if (p384_use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, in0); \
   else bignum_tomont_p384(out, in0);
 
 #define p384_felem_from_mont(out, in0) \
-  if (use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, in0); \
+  if (p384_use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, in0); \
   else bignum_deamont_p384(out, in0);
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
