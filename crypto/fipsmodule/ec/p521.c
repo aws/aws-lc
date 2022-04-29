@@ -99,6 +99,7 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 #else
   return 0;
 #endif
+}
 #endif
 
 // s2n-bignum implementation of field arithmetic
