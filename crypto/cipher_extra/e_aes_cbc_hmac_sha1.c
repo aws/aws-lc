@@ -28,6 +28,9 @@
 typedef struct {
   AES_KEY ks;
   // Used to compute(init, update and final) HMAC-SHA1.
+  // head stores the initialised inner hash state.
+  // tail stores the outer hash state.
+  // These storage are for using in subsequent invocations with the same MAC key.
   SHA_CTX head, tail, md;
   // In encrypt case, it's eiv_len + plaintext_len. eiv is explicit iv(required
   // TLS 1.1+). In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
@@ -40,9 +43,13 @@ typedef struct {
     // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
     // protocol_version: 2 octets long.
     // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
+    // 
+    // TLS 1.0: https://www.rfc-editor.org/rfc/rfc2246.html#section-6.2.3.2
+    // TLS 1.1: https://www.ietf.org/rfc/rfc5246.html#section-6.2.3.2
+    // TLS 1.2: https://www.ietf.org/rfc/rfc5246.html#section-6.2.3.2
     uint8_t tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
-  // Used after decryption.
+  // Used to store the key computed in EVP_CTRL_AEAD_SET_MAC_KEY operation.
   uint8_t hmac_key[HMAC_KEY_SIZE];
 } EVP_AES_HMAC_SHA1;
 
@@ -75,6 +82,25 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
   return 1;
 }
 
+// aesni_cbc_hmac_sha1_cipher implements TLS-specific CBC-mode+HMAC-SHA1 cipher suite based encryption and decryption.
+//
+// For encryption in TLS version 1.0
+// |in|: payload/fragment
+// |len|: (|payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE
+// |out|: Must point to allocated memory of at least (|payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes
+// If the function returns successfully |out| will contain AES-CBC(aes_key, IV, payload || hmac-sha1(mac_key, aad || payload) || padding || padding_length)
+
+// For encryption in TLS version 1.1 and 1.2
+// |in|: payload/fragment
+// |len|: (|IV| + |payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE
+// |out|: Must point to allocated memory of at least (|IV| + |payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes
+// If the function returns successfully |out| will contain AES-CBC(aes_key, mask, IV || payload || hmac-sha1(mac_key, aad || payload) || padding || padding_length)
+// |len|: should be (eiv_len + plaintext_len + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE).
+// The mask and IV are according to method 2.b from https://datatracker.ietf.org/doc/html/rfc2246#section-6.2.3.2
+//
+// WARNING: Do not set explicit |IV| = |mask|. It will result in aes(aes_key, 0) being used at the effective IV for all records.
+//
+// In decryption, this function performs decrytion, removing padding, and verifying mac value.
 static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                       const uint8_t *in, size_t len) {
   EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)(ctx->cipher_data);
