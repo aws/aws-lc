@@ -33,7 +33,7 @@ typedef struct {
   // TLS 1.1+). In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
   size_t payload_length;
   union {
-    unsigned int tls_ver;
+    uint16_t tls_ver;
     // In encrypt case, it's not set.
     // In decrypt case, it stores |additional_data|.
     // additional_data = seq_num + content_type + protocol_version +
@@ -300,7 +300,7 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       // protocol_version: 2 octets long.
       // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
       uint8_t *p = ptr;
-      unsigned int len = p[arg - 2] << 8 | p[arg - 1];
+      uint16_t len = p[arg - 2] << 8 | p[arg - 1];
 
       if (EVP_CIPHER_CTX_encrypting(ctx)) {
         key->payload_length = len;
