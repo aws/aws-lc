@@ -85,11 +85,20 @@ static inline uint8_t p521_use_s2n_bignum_alt(void) {
 }
 #else
 // On aarch64 platforms s2n-bignum has two implementations of certain
-// functions. Depending on the architecture one version is faster than
-// the other. Until we find a clear way to determine in runtime which
-// implementation is faster on the CPU we are running on we stick with
-// one of the implementations.
-static inline uint8_t p521_use_s2n_bignum_alt(void) { return 0; }
+// functions -- the default one and the alternative (suffixed _alt).
+// Depending on the architecture one version is faster than the other.
+// Generally, the "_alt" functions are faster on architectures with higher
+// multiplier throughput, for example, Graviton 3 and Apple's M1 chips.
+// Until we find a clear way to determine in runtime which architecture we
+// are running on we stick with the default s2n-bignum functions. Except in
+// the case of M1, because we know that if the OS is macOS and the CPU is
+// aarch64 then the CPU must be M1 so the "_alt" functions will be faster.
+static inline uint8_t use_s2n_bignum_alt(void) {
+#if defined(OPENSSL_MACOS)
+  return 1;
+#else
+  return 0;
+#endif
 #endif
 
 // s2n-bignum implementation of field arithmetic
