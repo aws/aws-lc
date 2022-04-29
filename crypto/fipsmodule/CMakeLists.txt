@@ -147,7 +147,7 @@ endif()
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
 # and on x86_64 and aarch64 systems only.
 if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
-    UNIX AND NOT APPLE AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
   # Set the source directory for s2n-bignum assembly files
   if(ARCH STREQUAL "x86_64")
@@ -161,27 +161,26 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
   set(
     S2N_BIGNUM_ASM_SOURCES
 
-    ${S2N_BIGNUM_DIR}/p384/bignum_add_p384.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_sub_p384.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_neg_p384.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_montmul_p384_alt.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_montsqr_p384_alt.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_nonzero_6.S
-    ${S2N_BIGNUM_DIR}/p384/bignum_littleendian_6.S
-
-    ${S2N_BIGNUM_DIR}/p521/bignum_add_p521.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_sub_p521.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_neg_p521.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_mul_p521_alt.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_sqr_p521_alt.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_tolebytes_p521.S
-    ${S2N_BIGNUM_DIR}/p521/bignum_fromlebytes_p521.S
+    p384/bignum_add_p384.S
+    p384/bignum_sub_p384.S
+    p384/bignum_neg_p384.S
+    p384/bignum_tomont_p384.S
+    p384/bignum_deamont_p384.S
+    p384/bignum_montmul_p384.S
+    p384/bignum_montmul_p384_alt.S
+    p384/bignum_montsqr_p384.S
+    p384/bignum_montsqr_p384_alt.S
+    p384/bignum_nonzero_6.S
+    p384/bignum_littleendian_6.S
+    p521/bignum_add_p521.S
+    p521/bignum_sub_p521.S
+    p521/bignum_neg_p521.S
+    p521/bignum_mul_p521.S
+    p521/bignum_mul_p521_alt.S
+    p521/bignum_sqr_p521.S
+    p521/bignum_sqr_p521_alt.S
+    p521/bignum_tolebytes_p521.S
+    p521/bignum_fromlebytes_p521.S
   )
   if(ARCH STREQUAL "x86_64")
     # The files below contain the alternative functions for x86_64.
@@ -189,14 +188,8 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     # the same as the non-alternative ones, so they are defined
     # in the corresponding "non-alt" files (bignum_<deamont|tomont>_p384.S)
     list(APPEND S2N_BIGNUM_ASM_SOURCES
-                ${S2N_BIGNUM_DIR}/p384/bignum_tomont_p384_alt.S
-                ${S2N_BIGNUM_DIR}/p384/bignum_deamont_p384_alt.S)
-  endif()
-
-  if(NOT FIPS_DELOCATE)
-    # If we don't have to use the delocate script then s2n-bignum files
-    # are simply added to BCM_ASM_SOURCES.
-    list(APPEND BCM_ASM_SOURCES ${S2N_BIGNUM_ASM_SOURCES})
+                p384/bignum_tomont_p384_alt.S
+                p384/bignum_deamont_p384_alt.S)
   endif()
 endif()
 
@@ -216,6 +209,39 @@ function(cpreprocess dest src)
     WORKING_DIRECTORY .
   )
 endfunction()
+
+function(s2n_asm_cpreprocess dest src)
+  # s2n_asm_cpreprocess differs from cpreprocess in that is does additional post-processing
+  # based on s2n-bignum https://github.com/awslabs/s2n-bignum/blob/main/x86/Makefile#L264
+  get_filename_component(dir ${dest} DIRECTORY)
+  if (dir STREQUAL "")
+    set(dir ".")
+  endif()
+
+  set(TARGET "")
+  if(CMAKE_ASM_COMPILER_TARGET)
+    set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  endif()
+
+  string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+
+  add_custom_command(
+          OUTPUT ${dest}
+          COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${PROJECT_SOURCE_DIR}/include| tr \"\;\" \"\\n\" > ${dest}
+          DEPENDS
+          ${S2N_BIGNUM_DIR}/${src}
+          WORKING_DIRECTORY .
+)
+endfunction()
+
+if(S2N_BIGNUM_ASM_SOURCES)
+  # s2n-bignum assembly files need to be processed before use
+  foreach(asm ${S2N_BIGNUM_ASM_SOURCES})
+    s2n_asm_cpreprocess(${asm}.S ${asm})
+    list(APPEND BCM_ASM_SOURCES "${asm}.S")
+  endforeach()
+endif()
 
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)
@@ -248,15 +274,6 @@ if(FIPS_DELOCATE)
   else()
     # No preprocessing is required on other platforms.
     set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
-  endif()
-
-  if(S2N_BIGNUM_ASM_SOURCES)
-    # s2n-bignum assembly files need to pass through the C preprocessor
-    # before they can be parsed by delocate.
-    foreach(asm ${S2N_BIGNUM_ASM_SOURCES})
-      cpreprocess(${asm}.S ${asm})
-      list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.S")
-    endforeach()
   endif()
 
   add_dependencies(bcm_c_generated_asm global_target)
