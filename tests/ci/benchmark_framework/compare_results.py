@@ -65,8 +65,8 @@ def main():
     # Put both dataframes side by side for comparison
     dfs = pd.concat([df1, df2], axis=1)
 
-    # Filter out entries with a +15% regression
-    compared = np.where((1 - (df2_avg_time / df1_avg_time)) >= 0.15, df1.iloc[:, 0], np.nan)
+    # Filter out entries with a +10% regression
+    compared = np.where(((df2_avg_time / df1_avg_time) - 1) >= 0.10, df1.iloc[:, 0], np.nan)
 
     compared_df = dfs.loc[dfs.iloc[:, 0].isin(compared)]
 
@@ -79,7 +79,7 @@ def main():
     compared_df2_avg_time = compared_df2_time.astype(float) / compared_df2_numCalls
 
     # Add regression data to the table
-    compared_df.loc[:, "Percentage Difference"] = 100 * (1 - (compared_df2_avg_time / compared_df1_avg_time))
+    compared_df.loc[:, "Percentage Difference"] = 100 * ((compared_df2_avg_time / compared_df1_avg_time) - 1)
 
     # If the compared dataframe isn't empty, there are significant regressions present
     if not compared_df.empty:

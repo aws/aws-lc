@@ -38,3 +38,9 @@ docker build -t fedora-31:clang-9x fedora-31_clang-9x
 ###########################################################
 
 ./ubuntu-20.04_clang-10x_formal-verification/create_image.sh ubuntu-20.04:clang-10x_formal-verification
+
+###########################################################
+# Build older unofficial docker image that uses gcc 4.1.3 #
+###########################################################
+
+./build_legacy_image.sh ubuntu-7.10_gcc-4.1x
