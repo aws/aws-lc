@@ -252,19 +252,15 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                                       void *ptr) {
   EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)(ctx->cipher_data);
-  unsigned int u_arg = (unsigned int)arg;
 
   switch (type) {
     case EVP_CTRL_AEAD_SET_MAC_KEY: {
-      unsigned int i;
-      uint8_t hmac_key[HMAC_KEY_SIZE];
-
-      OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
-
       if (arg < 0) {
-        return -1;
+        return 0;
       }
-
+      uint8_t hmac_key[HMAC_KEY_SIZE];
+      OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
+      size_t u_arg = (size_t)arg;
       if (u_arg > sizeof(hmac_key)) {
         SHA256_Init(&key->head);
         SHA256_Update(&key->head, ptr, arg);
@@ -274,13 +270,13 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       }
       OPENSSL_memcpy(&key->hmac_key, hmac_key, 64);
 
-      for (i = 0; i < sizeof(hmac_key); i++) {
+      for (size_t i = 0; i < sizeof(hmac_key); i++) {
         hmac_key[i] ^= 0x36; /* ipad */
       }
       SHA256_Init(&key->head);
       SHA256_Update(&key->head, hmac_key, sizeof(hmac_key));
 
-      for (i = 0; i < sizeof(hmac_key); i++) {
+      for (size_t i = 0; i < sizeof(hmac_key); i++) {
         hmac_key[i] ^= 0x36 ^ 0x5c; /* opad */
       }
       SHA256_Init(&key->tail);

@@ -259,13 +259,14 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
 
   switch (type) {
     case EVP_CTRL_AEAD_SET_MAC_KEY: {
+      if (arg < 0) {
+        return 0;
+      }
       // This CTRL operation is to perform |HMAC_Init_ex| with SHA1 on |ptr|.
-      unsigned int i;
       uint8_t hmac_key[HMAC_KEY_SIZE];
-
       OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
-
-      if (arg > (int)sizeof(hmac_key)) {
+      size_t u_arg = (size_t)arg;
+      if (u_arg > sizeof(hmac_key)) {
         SHA1_Init(&key->head);
         SHA1_Update(&key->head, ptr, arg);
         SHA1_Final(hmac_key, &key->head);
@@ -274,13 +275,13 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       }
       OPENSSL_memcpy(&key->hmac_key, hmac_key, 64);
 
-      for (i = 0; i < sizeof(hmac_key); i++) {
+      for (size_t i = 0; i < sizeof(hmac_key); i++) {
         hmac_key[i] ^= 0x36; /* ipad */
       }
       SHA1_Init(&key->head);
       SHA1_Update(&key->head, hmac_key, sizeof(hmac_key));
 
-      for (i = 0; i < sizeof(hmac_key); i++) {
+      for (size_t i = 0; i < sizeof(hmac_key); i++) {
         hmac_key[i] ^= 0x36 ^ 0x5c; /* opad */
       }
       SHA1_Init(&key->tail);
