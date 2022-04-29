@@ -201,7 +201,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     size_t data_plus_mac_len;
     crypto_word_t padding_ok;
     if (!EVP_tls_cbc_remove_padding(&padding_ok, &data_plus_mac_len, out, len,
-                                    EVP_CIPHER_CTX_block_size(ctx), SHA256_DIGEST_LENGTH)) {
+                                    AES_BLOCK_SIZE, SHA256_DIGEST_LENGTH)) {
       // Publicly invalid. This can be rejected in non-constant time.
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
       return 0;
@@ -209,8 +209,8 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 
     size_t data_len = data_plus_mac_len - SHA256_DIGEST_LENGTH;
 
-    key->aux.tls_aad[11] = data_len >> 8;
-    key->aux.tls_aad[12] = data_len;
+    key->aux.tls_aad[11] = (uint8_t)(data_len >> 8);
+    key->aux.tls_aad[12] = (uint8_t)(data_len);
 
     // Compute the MAC and extract the one in the record.
     uint8_t mac[EVP_MAX_MD_SIZE];
@@ -230,7 +230,7 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     // Perform the MAC check and the padding check in constant-time. It should
     // be safe to simply perform the padding check first, but it would not be
     // under a different choice of MAC location on padding failure. See
-    // EVP_tls_cbc_remove_padding.
+    // |EVP_tls_cbc_remove_padding|.
     crypto_word_t good =
         constant_time_eq_int(CRYPTO_memcmp(record_mac, mac, mac_len), 0);
     good &= padding_ok;
