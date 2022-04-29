@@ -40,20 +40,20 @@ typedef struct {
     // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
     // protocol_version: 2 octets long.
     // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
-    unsigned char tls_aad[EVP_AEAD_TLS1_AAD_LEN];
+    uint8_t tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
   // Used after decryption.
-  unsigned char hmac_key[64];
+  uint8_t hmac_key[64];
 } EVP_AES_HMAC_SHA256;
 
 void aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
-                         const AES_KEY *key, unsigned char iv[16],
+                         const AES_KEY *key, uint8_t iv[AES_BLOCK_SIZE],
                          SHA256_CTX *ctx, const void *in0);
 
 
 static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
-                                          const unsigned char *inkey,
-                                          const unsigned char *iv, int enc) {
+                                          const uint8_t *inkey,
+                                          const uint8_t *iv, int enc) {
   EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)(ctx->cipher_data);
   int ret;
 
@@ -73,8 +73,8 @@ static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
   return ret < 0 ? 0 : 1;
 }
 
-static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
-                                        const unsigned char *in, size_t len) {
+static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                        const uint8_t *in, size_t len) {
   EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)(ctx->cipher_data);
   unsigned int l;
   size_t plen = key->payload_length, iv = 0;
@@ -257,7 +257,7 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
   switch (type) {
     case EVP_CTRL_AEAD_SET_MAC_KEY: {
       unsigned int i;
-      unsigned char hmac_key[64];
+      uint8_t hmac_key[64];
 
       OPENSSL_memset(hmac_key, 0, sizeof(hmac_key));
 
@@ -301,7 +301,7 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       // content_type: 1 octets long.
       // protocol_version: 2 octets long.
       // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
-      unsigned char *p = ptr;
+      uint8_t *p = ptr;
       unsigned int len = p[arg - 2] << 8 | p[arg - 1];
 
       if (EVP_CIPHER_CTX_encrypting(ctx)) {
