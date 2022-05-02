@@ -79,7 +79,7 @@ function fips_build_and_test {
   [[ "${expect_fips_mode}" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
   # Run tests.
   run_cmake_custom_target 'run_tests'
-  "${BUILD_ROOT}/util/fipstools/cavp/test_fips"
+  "${BUILD_ROOT}/util/fipstools/test_fips"
 }
 
 function build_and_test_valgrind {

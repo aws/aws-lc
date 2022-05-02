@@ -570,7 +570,7 @@ static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
 #else
 
 #if defined(OPENSSL_X86_64)
-  if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
+  if (!CRYPTO_is_AVX_capable()) {
     // No AVX support; fallback to generic code.
     return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
   }

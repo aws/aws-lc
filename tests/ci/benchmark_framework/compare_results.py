@@ -59,14 +59,14 @@ def main():
     df2_numCalls = df2['numCalls.2']
     df1_time = df1['microseconds.1']
     df2_time = df2['microseconds.2']
-    df1_avg_time = float(df1_time) / df1_numCalls
-    df2_avg_time = float(df2_time) / df2_numCalls
+    df1_avg_time = df1_time.astype(float) / df1_numCalls
+    df2_avg_time = df2_time.astype(float) / df2_numCalls
 
     # Put both dataframes side by side for comparison
     dfs = pd.concat([df1, df2], axis=1)
 
-    # Filter out entries with a +15% regression
-    compared = np.where((1 - (df2_avg_time / df1_avg_time)) >= 0.15, df1.iloc[:, 0], np.nan)
+    # Filter out entries with a +10% regression
+    compared = np.where(((df2_avg_time / df1_avg_time) - 1) >= 0.10, df1.iloc[:, 0], np.nan)
 
     compared_df = dfs.loc[dfs.iloc[:, 0].isin(compared)]
 
@@ -75,11 +75,11 @@ def main():
     compared_df2_numCalls = compared_df['numCalls.2']
     compared_df1_time = compared_df['microseconds.1']
     compared_df2_time = compared_df['microseconds.2']
-    compared_df1_avg_time = float(compared_df1_time) / compared_df1_numCalls
-    compared_df2_avg_time = float(compared_df2_time) / compared_df2_numCalls
+    compared_df1_avg_time = compared_df1_time.astype(float) / compared_df1_numCalls
+    compared_df2_avg_time = compared_df2_time.astype(float) / compared_df2_numCalls
 
     # Add regression data to the table
-    compared_df["Percentage Difference"] = 100 * (1 - (compared_df2_avg_time / compared_df1_avg_time))
+    compared_df.loc[:, "Percentage Difference"] = 100 * ((compared_df2_avg_time / compared_df1_avg_time) - 1)
 
     # If the compared dataframe isn't empty, there are significant regressions present
     if not compared_df.empty:

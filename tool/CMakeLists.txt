@@ -25,8 +25,6 @@ target_include_directories(bssl PUBLIC ${AWSLC_INSTALL_DIR}/include ${AWSLC_INST
 
 add_dependencies(bssl global_target)
 
-target_link_libraries(bssl decrepit)
-
 if(WIN32)
   target_link_libraries(bssl ws2_32)
 endif()
@@ -62,7 +60,6 @@ endfunction()
 
 if(AWSLC_INSTALL_DIR)
   build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include crypto)
-  target_link_libraries(awslc_bm decrepit)
 
   if(NOT CMAKE_BUILD_TYPE)
     target_compile_options(awslc_bm PUBLIC -DCMAKE_BUILD_TYPE_DEBUG)

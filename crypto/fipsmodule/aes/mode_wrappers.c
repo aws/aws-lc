@@ -142,4 +142,5 @@ int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
   }
   return 1;
 }
-#endif
+
+#endif // HWAES_XTS

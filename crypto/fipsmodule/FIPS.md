@@ -12,30 +12,21 @@ BoringCrypto has undergone the following validations:
 1. 2018-07-30: certificate [#3318](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3318), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Security-Policy-20180730.docx) (in docx format).
 1. 2019-08-08: certificate [#3678](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3678), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Security-Policy-20190808.docx) (in docx format).
 1. 2019-10-20: certificate [#3753](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3753), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Android-Security-Policy-20191020.docx) (in docx format).
+1. 2021-01-28: certificate [#4156](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/4156), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Android-Security-Policy-20210319.docx) (in docx format).
 
-## Running CAVP tests
+## Running ACVP tests
 
-CAVP results are calculated by `util/fipstools/cavp`, but that binary is almost always run by `util/fipstools/run_cavp.go`. The latter knows the set of tests to be processed and the flags needed to configure `cavp` for each one. It must be run from the top of a CAVP directory and needs the following options:
+See `util/fipstools/acvp/ACVP.md` for details of how ACVP testing is done.
 
-1. `-oracle-bin`: points to the location of `util/fipstools/cavp`
-2. `-no-fax`: this is needed to suppress checking of the FAX files, which are only included in sample sets.
+## Breaking known-answer and continuous tests
 
-## Breaking power-on and continuous tests
+Each known-answer test (KAT) uses a unique, random input value. `util/fipstools/break-kat.go` contains a listing of those values and can be used to corrupt a given test in a binary. Since changes to the KAT input values will invalidate the integrity test, `BORINGSSL_FIPS_BREAK_TESTS` can be defined in `fips_break_tests.h` to disable it for the purposes of testing.
 
-In order to demonstrate failures of the various FIPS 140 tests, BoringSSL can be built in ways that will trigger such failures. This is controlled by passing `-DFIPS_BREAK_TEST=`(test to break) to CMake, where the following tests can be specified:
+Some FIPS tests cannot be broken by replacing a known string in the binary. For those, when `BORINGSSL_FIPS_BREAK_TESTS` is defined, the environment variable `BORINGSSL_FIPS_BREAK_TEST` can be set to one of a number of values in order to break the corresponding test:
 
-1. AES\_CBC
-1. AES\_GCM
-1. DES
-1. SHA\_1
-1. SHA\_256
-1. SHA\_512
-1. RSA\_SIG
-1. ECDSA\_SIG
-1. DRBG
-1. RSA\_PWCT
-1. ECDSA\_PWCT
-1. TLS\_KDF
+1. `RSA_PWCT`
+1. `ECDSA_PWCT`
+1. `CRNG`
 
 ## Breaking the integrity test
 
@@ -61,12 +52,6 @@ There is a second interface to the RNG which allows the caller to supply bytes t
 
 FIPS requires that RNG state be zeroed when the process exits. In order to implement this, all per-thread RNG states are tracked in a linked list and a destructor function is included which clears them. In order for this to be safe in the presence of threads, a lock is used to stop all other threads from using the RNG once this process has begun. Thus the main thread exiting may cause other threads to deadlock, and drawing on entropy in a destructor function may also deadlock.
 
-## Self-test optimisation
-
-On Android, the self-tests are optimised in line with [IG](https://csrc.nist.gov/csrc/media/projects/cryptographic-module-validation-program/documents/fips140-2/fips1402ig.pdf) section 9.11. The module will always perform the integrity test at power-on, but the self-tests will test for the presence of a file named after the hex encoded, HMAC-SHA-256 hash of the module in `/dev/boringssl/selftest/`. If such a file is found then the self-tests are skipped. Otherwise, after the self-tests complete successfully, that file will be written. Any I/O errors are ignored and, if they occur when testing for the presence of the file, the module acts as if it's not present.
-
-It is intended that a `tmpfs` be mounted at that location in order to skip running the self tests for every process once they have already passed in a given instance of the operating system.
-
 ## Integrity Test
 
 FIPS-140 mandates that a module calculate an HMAC of its own code in a constructor function and compare the result to a known-good value. Typical code produced by a C compiler includes large numbers of relocations: places in the machine code where the linker needs to resolve and inject the final value of a symbolic expression. These relocations mean that the bytes that make up any specific bit of code generally aren't known until the final link has completed.
@@ -79,7 +64,7 @@ In order for the value to be calculated before the final link, there can be no r
 
 There are two build configurations supported: static and shared. The shared build produces `libcrypto.so`, which includes the FIPS module and is significantly more straightforward and so is described first:
 
-### Shared build
+### Linux Shared build
 
 First, all the C source files for the module are compiled as a single unit by compiling a single source file that `#include`s them all (this is `bcm.c`). This, along with some assembly sources, comprise the FIPS module.
 
@@ -88,6 +73,30 @@ The object files resulting from compiling (or assembling) those files is linked 
 One source of such data are `rel.ro` sections, which contain data that includes function pointers. Since these function pointers are absolute, they are written by the dynamic linker at run-time and so we must eliminate them. The pattern that causes them is when we have a static `EVP_MD` or `EVP_CIPHER` object thus, inside the module, this pattern is changed to instead reserve space in the BSS for the object, and to add a `CRYPTO_once_t` to protect its initialisation.
 
 Once the partially-linked result is linked again, with other parts of libcrypto, to produce `libcrypto.so`, the contents of the module are fixed, as required. The module code uses the linker-added symbols to find the its code and data at run-time and hashes them upon initialisation. The result is compared against a value stored inside `libcrypto.so`, but outside of the module. That value will, initially, be incorrect, but `inject-hash.go` can inject the correct value.
+
+### Windows Shared build
+
+The Shared Windows FIPS integrity test differs in two key ways:
+1. How the start and end of the module are marked
+2. How the correct integrity hash is calculated
+
+Microsoft Visual C compiler (MSVC) does not support linker scripts which add symbols to mark the start and end of the text and rodata sections on Linux. Instead, fips_shared_library_marker.c is compiled twice to generate two object files that contain start/end functions and variables. MSVC `pragma` segment definitions are used to place the markers in specific sections (e.g. `.fipstx$a`). This particular name format uses Portable Executable Grouped Sections to control what section the code is placed in and the order within the section. With the start and end markers placed at `$a` and `$z` respectively, BCM puts everything in the `$b` section. When the final crypto.dll is built all the code is in the `.fipstx` section, all data and constants is in `.fipsda`, and everything is in the correct order.
+
+The process to generate the expected integrity fingerprint is also different from Linux:
+1. Build the required object files once: `bcm.obj` from `bcm.c` and the start/end object files
+   1. `bcm.obj` places the power-on self tests in the `.CRT$XCU` section which is run automatically by the Windows Common Runtime library (CRT) startup code
+2. Use MSVC's `lib.exe` to combine the start/end object files with `bcm.obj` to create the static library `bcm.lib`.
+   1. MSVC does not support combining multiple object files into another object file like the Apple build.
+3. Build `fipsmodule` which contains the placeholder integrity hash
+4. Build `precrypto.dll` with `bcm.obj` and `fipsmodule`
+5. Build the small application `fips_empty_main.exe` and link it with `precrypto.dll`
+6. `capture-hash.go` runs `fips_empty_main.exe`
+   1. The CRT runs all functions in the `.CRT$XC*` sections in order starting with `.CRT$XCA`
+   2. The BCM power-on tests are in `.CRT$XCU` and are run after all other Windows initialization is complete
+   3. BCM calculates the correct integrity value which will not match the placeholder value. Before aborting the process the correct value is printed
+   4. `capture-hash.go` reads the correct integrity value and writes it to `generated_fips_shared_support.c`
+7. `generated_fipsmodule` is built with `generated_fips_shared_support.c`
+8. `crypto.dll` is built with the same original `bcm.lib` and `generated_fipsmodule`
 
 ### Static build
 

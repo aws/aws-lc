@@ -1694,85 +1694,61 @@ Loop_ord_sqr:
 .endef
 .align	4
 ecp_nistz256_select_w5:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-
-    // v0 (vec_4*32) := | 1 | 1 | 1 | 1 |
-    // v2 (vec_4*32) := | idx | idx | idx | idx |
-	movi	v0.4s, #1                     ////    movdqa  LOne(%rip), v0
-	dup	v2.4s, w2               ////    movd    w2, v2
-                                            ////    pshufd  $0, v2, v2
-
-    // [v16-v21] := 0
-	eor	v16.16b, v16.16b, v16.16b       ////    pxor    v16, v16
-	eor	v17.16b, v17.16b, v17.16b       ////    pxor    v17, v17
-	eor	v18.16b, v18.16b, v18.16b       ////    pxor    v18, v18
-	eor	v19.16b, v19.16b, v19.16b       ////    pxor    v19, v19
-	eor	v20.16b, v20.16b, v20.16b       ////    pxor    v20, v20
-	eor	v21.16b, v21.16b, v21.16b       ////    pxor    v21, v21
-
-    // v1 := v0
-	mov	v1.16b, v0.16b               ////    movdqa  v0, v1
+	AARCH64_VALID_CALL_TARGET
 
     // x10 := x0
-    // w9 := 16; loop counter
+    // w9 := 0; loop counter and incremented internal index
 	mov	x10, x0
-	mov	w9, #16                       ////    mov $16, %rax
+	mov	w9, #0
+
+    // [v16-v21] := 0
+	movi	v16.16b, #0
+	movi	v17.16b, #0
+	movi	v18.16b, #0
+	movi	v19.16b, #0
+	movi	v20.16b, #0
+	movi	v21.16b, #0
 
 Lselect_w5_loop:
+    // Loop 16 times.
+
+    // Increment index (loop counter); tested at the end of the loop
+	add	w9, w9, #1
+
     // [v22-v27] := Load a (3*256-bit = 6*128-bit) table entry starting at x1
     //  and advance x1 to point to the next entry
 	ld1	{v22.2d, v23.2d, v24.2d, v25.2d}, [x1],#64
-	ld1	{v26.2d, v27.2d}, [x1],#32 ////    movdqa  16*0(x1), v22
-                                            ////    movdqa  16*1(x1), v23
-                                            ////    movdqa  16*2(x1), v24
-                                            ////    movdqa  16*3(x1), v25
-                                            ////    movdqa  16*4(x1), v26
-                                            ////    movdqa  16*5(x1), v27
-                                            ////    lea 16*6(x1), x1
 
-    // v3 = (v1 == v2)? All 1s : All 0s
-	cmeq	v3.4s, v1.4s, v2.4s     ////    movdqa  v1, v3
-                                            ////    pcmpeqd v2, v3
-    // Increment v1 lanes
-	add	v1.4s, v1.4s, v0.4s         ////    paddd   v0, v1
+    // x11 := (w9 == w2)? All 1s : All 0s
+	cmp	w9, w2
+	csetm	x11, eq
 
-    // [v22-v27] := [v22-v27] AND v3
-    // values read from the table will be 0'd if v1 != v2
-    // [v16-v21] := [v16-v21] OR [v22-v27]
-    // values in output registers will remain the same if v1 != v2
-	and	v22.16b, v22.16b, v3.16b    ////    pand   v3, v22
-	and	v23.16b, v23.16b, v3.16b    ////    pand   v3, v23
-	orr	v16.16b, v16.16b, v22.16b       ////    por    v22, v16
-	orr	v17.16b, v17.16b, v23.16b       ////    pand   v3, v24
-                                             ////    por    v23, v17
-	and	v24.16b, v24.16b, v3.16b    ////    pand   v3, v25
-	and	v25.16b, v25.16b, v3.16b    ////    por    v24, v18
-	orr	v18.16b, v18.16b, v24.16b       ////    pand   v3, v26
-	orr	v19.16b, v19.16b, v25.16b       ////    por    v25, v19
-                                             ////    pand   v3, v27
-	and	v26.16b, v26.16b, v3.16b    ////    por    v26, v20
-	and	v27.16b, v27.16b, v3.16b    ////    por    v27, v21
-	orr	v20.16b, v20.16b, v26.16b
-	orr	v21.16b, v21.16b, v27.16b
+    // continue loading ...
+	ld1	{v26.2d, v27.2d}, [x1],#32
 
-    // Decrement loop counter; loop back if not 0
-	subs	w9, w9, #1                  ////    dec %rax
-	bne	Lselect_w5_loop                ////    jnz Lselect_loop_sse_w5
+    // duplicate mask_64 into Mask (all 0s or all 1s)
+	dup	v3.2d, x11
+
+    // [v16-v19] := (Mask == all 1s)? [v22-v25] : [v16-v19]
+    // i.e., values in output registers will remain the same if w9 != w2
+	bit	v16.16b, v22.16b, v3.16b
+	bit	v17.16b, v23.16b, v3.16b
+
+	bit	v18.16b, v24.16b, v3.16b
+	bit	v19.16b, v25.16b, v3.16b
+
+	bit	v20.16b, v26.16b, v3.16b
+	bit	v21.16b, v27.16b, v3.16b
+
+    // If bit #4 is not 0 (i.e. idx_ctr < 16) loop back
+	tbz	w9, #4, Lselect_w5_loop
 
     // Write [v16-v21] to memory at the output pointer
 	st1	{v16.2d, v17.2d, v18.2d, v19.2d}, [x10],#64
-	st1	{v20.2d, v21.2d}, [x10]     ////    movdqu	v16, 16*0(x0)
-                                            ////    movdqu	v17, 16*1(x0)
-                                            ////    movdqu	v18, 16*2(x0)
-                                            ////    movdqu	v19, 16*3(x0)
-                                            ////    movdqu	v20, 16*4(x0)
-                                            ////    movdqu	v21, 16*5(x0)
+	st1	{v20.2d, v21.2d}, [x10]
 
-	ldp	x29,x30,[sp],#16
-	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -1784,70 +1760,48 @@ Lselect_w5_loop:
 .endef
 .align	4
 ecp_nistz256_select_w7:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
+	AARCH64_VALID_CALL_TARGET
 
-    // v0 (vec_4*32) := | 1 | 1 | 1 | 1 |
-    // v2 (vec_4*32) := | idx | idx | idx | idx |
-	movi	v0.4s, #1                     ////    movdqa  LOne(%rip), v0
-	dup	v2.4s, w2               ////    movd    w2, v2
-                                            ////    pshufd  $0, v2, v2
-    // [v16-v19] := 0
-	eor	v16.16b, v16.16b, v16.16b       ////    pxor    v16, v16
-	eor	v17.16b, v17.16b, v17.16b       ////    pxor    v17, v17
-	eor	v18.16b, v18.16b, v18.16b       ////    pxor    v18, v18
-	eor	v19.16b, v19.16b, v19.16b       ////    pxor    v19, v19
+    // w9 := 0; loop counter and incremented internal index
+	mov	w9, #0
 
-    // v1 := v0
-	mov	v1.16b, v0.16b               ////    movdqa  v0, v1
-
-    // w9 := 64; loop counter
-	mov	w9, #64                       ////    mov $64, %rax
+    // [v16-v21] := 0
+	movi	v16.16b, #0
+	movi	v17.16b, #0
+	movi	v18.16b, #0
+	movi	v19.16b, #0
 
 Lselect_w7_loop:
-    // [T0a-T0d] := Load a (2 * 256-bit = 4 * 128-bit) table entry at in_t
-    //  and advance in_t to point to the next entry
+    // Loop 64 times.
+
+    // Increment index (loop counter); tested at the end of the loop
+	add	w9, w9, #1
+
+    // [v22-v25] := Load a (2*256-bit = 4*128-bit) table entry starting at x1
+    //  and advance x1 to point to the next entry
 	ld1	{v22.2d, v23.2d, v24.2d, v25.2d}, [x1],#64
-                                            ////    movdqa  16*0(x1), v22
-                                            ////    movdqa  16*1(x1), v23
-                                            ////    movdqa  16*2(x1), v24
-                                            ////    movdqa  16*3(x1), v25
-                                            ////    lea 16*4(x1), x1
 
-    // v3 = (v1 == v2)? All 1s : All 0s
-	cmeq	v3.4s, v1.4s, v2.4s     ////    movdqa  v1, v3
-                                            ////    pcmpeqd v2, v3
-    // Increment v1 lanes
-	add	v1.4s, v1.4s, v0.4s         ////    paddd   v0, v1
+    // x11 := (w9 == w2)? All 1s : All 0s
+	cmp	w9, w2
+	csetm	x11, eq
 
-    // [v22-v25] := [v22-v25] AND v3
-    // values read from the table will be 0'd if v1 != v2
-    // [v16-v19] := [v16-v19] OR [v22-v25]
-    // values in output registers will remain the same if v1 != v2
-	and	v22.16b, v22.16b, v3.16b    ////    pand   v3, v22
-	and	v23.16b, v23.16b, v3.16b    ////    pand   v3, v23
-	orr	v16.16b, v16.16b, v22.16b       ////    por    v22, v16
-	orr	v17.16b, v17.16b, v23.16b       ////    pand   v3, v24
-                                             ////    por    v23, v17
-	and	v24.16b, v24.16b, v3.16b    ////    pand   v3, v25
-	and	v25.16b, v25.16b, v3.16b    ////    por    v24, v18
-	orr	v18.16b, v18.16b, v24.16b       ////    por    v25, v19
-	orr	v19.16b, v19.16b, v25.16b
+    // duplicate mask_64 into Mask (all 0s or all 1s)
+	dup	v3.2d, x11
 
-    // Decrement loop counter; loop back if not 0
-	subs	w9, w9, #1                  ////    dec %rax
-	bne	Lselect_w7_loop                ////    jnz Lselect_loop_sse_w7
+    // [v16-v19] := (Mask == all 1s)? [v22-v25] : [v16-v19]
+    // i.e., values in output registers will remain the same if w9 != w2
+	bit	v16.16b, v22.16b, v3.16b
+	bit	v17.16b, v23.16b, v3.16b
+
+	bit	v18.16b, v24.16b, v3.16b
+	bit	v19.16b, v25.16b, v3.16b
+
+    // If bit #6 is not 0 (i.e. idx_ctr < 64) loop back
+	tbz	w9, #6, Lselect_w7_loop
 
     // Write [v16-v19] to memory at the output pointer
 	st1	{v16.2d, v17.2d, v18.2d, v19.2d}, [x0]
-                                            ////    movdqu	v16, 16*0(x0)
-                                            ////    movdqu	v17, 16*1(x0)
-                                            ////    movdqu	v18, 16*2(x0)
-                                            ////    movdqu	v19, 16*3(x0)
 
-	ldp	x29,x30,[sp],#16
-	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
 #endif

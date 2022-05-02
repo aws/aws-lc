@@ -69,10 +69,10 @@
 #include <TargetConditionals.h>
 #endif
 
-// Include a BoringSSL-only header so consumers including this header without
+// Include an AWS-LC-only header so consumers including this header without
 // setting up include paths do not accidentally pick up the system
 // opensslconf.h.
-#include <openssl/is_boringssl.h>
+#include <openssl/is_awslc.h>
 #include <openssl/opensslconf.h>
 
 #if defined(BORINGSSL_PREFIX)
@@ -186,6 +186,7 @@ extern "C" {
 #define OPENSSL_THREADS
 #endif
 
+#define AWSLC_VERSION_NAME "AWS-LC"
 #define OPENSSL_IS_AWSLC
 #define OPENSSL_VERSION_NUMBER 0x1010107f
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
@@ -201,7 +202,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 16
+#define AWSLC_API_VERSION 17
 
 // This string tracks the most current production release version on Github
 // https://github.com/awslabs/aws-lc/releases.
@@ -233,7 +234,11 @@ extern "C" {
 
 #else  // defined(BORINGSSL_SHARED_LIBRARY)
 
-#define OPENSSL_EXPORT
+#if defined(OPENSSL_WINDOWS)
+#define OPENSSL_EXPORT __declspec(dllexport)
+#else
+#define OPENSSL_EXPORT __attribute__((visibility("default")))
+#endif
 
 #endif  // defined(BORINGSSL_SHARED_LIBRARY)
 
