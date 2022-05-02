@@ -43,6 +43,10 @@ typedef struct {
     // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
     // protocol_version: 2 octets long.
     // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
+    // 
+    // TLS 1.0: https://www.rfc-editor.org/rfc/rfc2246.html#section-6.2.3.2
+    // TLS 1.1: https://www.ietf.org/rfc/rfc5246.html#section-6.2.3.2
+    // TLS 1.2: https://www.ietf.org/rfc/rfc5246.html#section-6.2.3.2
     uint8_t tls_aad[EVP_AEAD_TLS1_AAD_LEN];
   } aux;
   // Used to store the key computed in EVP_CTRL_AEAD_SET_MAC_KEY operation.
@@ -100,8 +104,8 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)(ctx->cipher_data);
   unsigned int l;
   size_t plen = key->payload_length, iv_len = 0;
-  size_t aes_off = 0, blocks;
-
+  size_t aes_off = 0;
+  size_t blocks;
   size_t sha_off = SHA256_CBLOCK - key->md.num;
 
   key->payload_length = NO_PAYLOAD_LENGTH;
