@@ -491,7 +491,7 @@ TEST(CipherTest, SHA1WithSecretSuffix) {
   // length wraps to the next block.
   static_assert(kSkip < 8, "kSkip is too large");
 
-  // |EVP_sha1_final_with_secret_suffix| is sensitive to the public length of
+  // |EVP_final_with_secret_suffix_sha1| is sensitive to the public length of
   // the partial block previously hashed. In TLS, this is the HMAC prefix, the
   // header, and the public minimum padding length.
   for (size_t prefix = 0; prefix < SHA_CBLOCK; prefix += kSkip) {
@@ -538,7 +538,7 @@ TEST(CipherTest, SHA256WithSecretSuffix) {
   // length wraps to the next block.
   static_assert(kSkip < 8, "kSkip is too large");
 
-  // |EVP_sha1_final_with_secret_suffix| is sensitive to the public length of
+  // |EVP_final_with_secret_suffix_sha256| is sensitive to the public length of
   // the partial block previously hashed. In TLS, this is the HMAC prefix, the
   // header, and the public minimum padding length.
   for (size_t prefix = 0; prefix < SHA256_CBLOCK; prefix += kSkip) {
