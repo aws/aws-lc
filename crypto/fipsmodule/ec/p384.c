@@ -29,7 +29,8 @@
 //   #define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
 // when s2n-bignum is used.
 //
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_LINUX) && \
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
@@ -75,17 +76,27 @@ static const p384_felem p384_felem_one = {
 // for some of the functions. These instructions are not supported by
 // every x86 CPU so we have to check if they are available and in case
 // they are not we fallback to slightly slower but generic implementation.
-static inline uint8_t use_s2n_bignum_alt(void) {
+static inline uint8_t p384_use_s2n_bignum_alt(void) {
   return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) == 0) || // bmi2
          ((OPENSSL_ia32cap_P[2] & (1u << 19)) == 0);   // adx
 }
 #else
 // On aarch64 platforms s2n-bignum has two implementations of certain
-// functions. Depending on the architecture one version is faster than
-// the other. Until we find a clear way to determine in runtime which
-// implementation is faster on the CPU we are running on we stick with
-// one of the implementations.
-static inline uint8_t use_s2n_bignum_alt(void) { return 0; }
+// functions -- the default one and the alternative (suffixed _alt).
+// Depending on the architecture one version is faster than the other.
+// Generally, the "_alt" functions are faster on architectures with higher
+// multiplier throughput, for example, Graviton 3 and Apple's M1 chips.
+// Until we find a clear way to determine in runtime which architecture we
+// are running on we stick with the default s2n-bignum functions. Except in
+// the case of M1, because we know that if the OS is macOS and the CPU is
+// aarch64 then the CPU must be M1 so the "_alt" functions will be faster.
+static inline uint8_t p384_use_s2n_bignum_alt(void) {
+#if defined(OPENSSL_MACOS)
+  return 1;
+#else
+  return 0;
+#endif
+}
 #endif
 
 #define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
@@ -96,26 +107,26 @@ static inline uint8_t use_s2n_bignum_alt(void) { return 0; }
 
 // The following four functions need bmi2 and adx support.
 #define p384_felem_mul(out, in0, in1) \
-  if (use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, in0, in1); \
+  if (p384_use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, in0, in1); \
   else bignum_montmul_p384(out, in0, in1);
 
 #define p384_felem_sqr(out, in0) \
-  if (use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, in0); \
+  if (p384_use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, in0); \
   else bignum_montsqr_p384(out, in0);
 
 #define p384_felem_to_mont(out, in0) \
-  if (use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, in0); \
+  if (p384_use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, in0); \
   else bignum_tomont_p384(out, in0);
 
 #define p384_felem_from_mont(out, in0) \
-  if (use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, in0); \
+  if (p384_use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, in0); \
   else bignum_deamont_p384(out, in0);
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return bignum_nonzero_6(in1);
 }
 
-#else // !NO_ASM && LINUX && (X86_64 || AARCH64)
+#else // P384_USE_S2N_BIGNUM_FIELD_ARITH
 
 // Fiat-crypto implementation of field arithmetic
 #define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
@@ -134,7 +145,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return ret;
 }
 
-#endif // !NO_ASM && LINUX && (X86_64 || AARCH64)
+#endif // P384_USE_S2N_BIGNUM_FIELD_ARITH
 
 static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
                            const p384_limb_t in1[P384_NLIMBS]) {
