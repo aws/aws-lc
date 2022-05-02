@@ -266,8 +266,11 @@ static bool SpeedRSA(const std::string &selected) {
     }
     results.Print(name + " verify (fresh key)");
 
+// |RSA_private_key_from_bytes| is not available in OpenSSL. This is only comparable
+// for AWS-LC self comparisons or AWS-LC vs BoringSSL.
+#if !defined(OPENSSL_BENCHMARK)
     if (!TimeFunction(&results, [&]() -> bool {
-          return bssl::UniquePtr<RSA>(RSA_private_key_from_bytes(
+          return BM_NAMESPACE::UniquePtr<RSA>(RSA_private_key_from_bytes(
                      kRSAKeys[i].key, kRSAKeys[i].key_len)) != nullptr;
         })) {
       fprintf(stderr, "Failed to parse %s key.\n", name.c_str());
@@ -275,6 +278,7 @@ static bool SpeedRSA(const std::string &selected) {
       return false;
     }
     results.Print(name + " private key parse");
+#endif
   }
 
   return true;
@@ -573,7 +577,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
     return i++;
   });
 
-  BM_NAMESPACE::ScopedEVP_CIPHER_CTX ctx;
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
   // Benchmark initialisation and encryption
   for (size_t in_len : g_chunk_lengths) {
     in.resize(in_len);
@@ -625,7 +629,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-  bssl::ScopedEVP_MD_CTX ctx;
+  BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
   uint8_t input[16384] = {0};
 
   if (chunk_len > sizeof(input)) {
