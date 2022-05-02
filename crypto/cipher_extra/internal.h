@@ -106,22 +106,21 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, size_t md_size, const uint8_t *in,
 // which EVP_tls_cbc_digest_record supports.
 int EVP_tls_cbc_record_digest_supported(const EVP_MD *md);
 
-// EVP_sha1_final_with_secret_suffix computes the result of hashing |len| bytes
-// from |in| to |ctx| and writes the resulting hash to |out|. |len| is treated
-// as secret and must be at most |max_len|, which is treated as public. |in|
-// must point to a buffer of at least |max_len| bytes. It returns one on success
-// and zero if inputs are too long.
+// EVP_final_with_secret_suffix_sha1 and EVP_final_with_secret_suffix_sha256
+// compute the result of hashing |len| bytes from |in| to |ctx| and write the
+// resulting hash to |out|. |len| is treated as secret and must be at most
+// |max_len|, which is treated as public. |in| must point to a buffer of at
+// least |max_len| bytes. It returns one on success and zero if inputs are
+// too long.
 //
-// This function is exported for unit tests.
-OPENSSL_EXPORT int EVP_sha1_final_with_secret_suffix(
+// The functions are exported for unit tests.
+OPENSSL_EXPORT int EVP_final_with_secret_suffix_sha1(
     SHA_CTX *ctx, uint8_t out[SHA_DIGEST_LENGTH], const uint8_t *in, size_t len,
     size_t max_len);
 
-// EVP_sha256_final_with_secret_suffix performs the functionality same as
-// |EVP_sha1_final_with_secret_suffix| except it uses SHA256.
-OPENSSL_EXPORT int EVP_sha256_final_with_secret_suffix(
-    SHA256_CTX *ctx, uint8_t out[SHA256_DIGEST_LENGTH], const uint8_t *in, size_t len,
-    size_t max_len);
+OPENSSL_EXPORT int EVP_final_with_secret_suffix_sha256(
+    SHA256_CTX *ctx, uint8_t out[SHA256_DIGEST_LENGTH], const uint8_t *in,
+    size_t len, size_t max_len);
 
 // EVP_tls_cbc_digest_record computes the MAC of a decrypted, padded TLS
 // record.
