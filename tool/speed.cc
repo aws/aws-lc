@@ -266,8 +266,9 @@ static bool SpeedRSA(const std::string &selected) {
     }
     results.Print(name + " verify (fresh key)");
 
-// |RSA_private_key_from_bytes| is not available in OpenSSL. This is only comparable
-// for AWS-LC self comparisons or AWS-LC vs BoringSSL.
+// |RSA_private_key_from_bytes| is not available in OpenSSL.
+// TODO: Add support for OpenSSL RSA private key parsing benchmarks. Tracked in
+//       CryptoAlg-1092.
 #if !defined(OPENSSL_BENCHMARK)
     if (!TimeFunction(&results, [&]() -> bool {
           return BM_NAMESPACE::UniquePtr<RSA>(RSA_private_key_from_bytes(
