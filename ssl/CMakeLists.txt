@@ -43,13 +43,16 @@ add_library(
   tls13_server.cc
 )
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
+target_include_directories(ssl INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+install(TARGETS ssl EXPORT OpenSSLTargets)
+set_property(TARGET ssl PROPERTY EXPORT_NAME SSL)
+
 add_dependencies(ssl global_target)
 
 target_link_libraries(ssl crypto)
-
-target_include_directories(ssl SYSTEM PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-  $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
   add_executable(

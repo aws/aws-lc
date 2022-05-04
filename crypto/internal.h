@@ -127,13 +127,21 @@
 #endif
 
 #if !defined(__cplusplus)
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
 #elif !defined(AWS_LC_STDALIGN_AVAILABLE)
 #define alignas(x) __attribute__ ((aligned (x)))
 #define alignof(x) __alignof__ (x)
 #else
+// With the exception of MSVC, we require C11 to build the library. C11 is a
+// prerequisite for improved refcounting performance. All our supported C
+// compilers have long implemented C11 and made it default. The most likely
+// cause of pre-C11 modes is stale -std=c99 or -std=gnu99 flags in build
+// configuration. Such flags can be removed.
+#if __STDC_VERSION__ < 201112L
+#error "BoringSSL must be built in C11 mode or higher."
+#endif
 #include <stdalign.h>
 #endif
 #endif

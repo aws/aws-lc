@@ -455,6 +455,12 @@ add_library(
 
   ${CRYPTO_ARCH_SOURCES}
 )
+target_include_directories(crypto INTERFACE
+ $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+ $<INSTALL_INTERFACE:include>
+)
+install(TARGETS crypto EXPORT OpenSSLTargets)
+set_property(TARGET crypto PROPERTY EXPORT_NAME Crypto)
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 
