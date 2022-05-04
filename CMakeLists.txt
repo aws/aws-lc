@@ -41,8 +41,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-include(GNUInstallDirs)
-
 # This is a dummy target which all other targets depend on (manually - see other
 # CMakeLists.txt files). This gives us a hook to add any targets which need to
 # run before all other targets.
@@ -714,7 +712,7 @@ if(USE_CUSTOM_LIBCXX)
     -DLIBCXX_BUILDING_LIBCXXABI
   )
   target_link_libraries(libcxx libcxxabi)
-  install(TARGETS libcxx EXPORT OpenSSLTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  install(TARGETS libcxx EXPORT OpenSSLTargets)
 endif()
 
 if(BUILD_TESTING)
@@ -922,7 +920,7 @@ if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY include/ TYPE INCLUDE)
 
 install(EXPORT OpenSSLTargets
   FILE OpenSSLTargets.cmake
