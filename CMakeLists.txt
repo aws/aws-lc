@@ -3,13 +3,6 @@ cmake_minimum_required(VERSION 2.8.12)
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
 
-# Don't install BoringSSL to system directories by default; it has no stable
-# ABI. Instead, default to an "install" directory under the source.
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install CACHE PATH "" FORCE)
-endif()
-
-
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
@@ -696,7 +689,6 @@ if(USE_CUSTOM_LIBCXX)
   set_target_properties(libcxxabi PROPERTIES COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough")
   # libc++abi depends on libc++ internal headers.
   set_property(TARGET libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
-  install(TARGETS libcxxabi EXPORT OpenSSLTargets)
 
   add_library(libcxx ${LIBCXX_SOURCES})
   if(ASAN OR MSAN OR TSAN)
@@ -712,7 +704,6 @@ if(USE_CUSTOM_LIBCXX)
     -DLIBCXX_BUILDING_LIBCXXABI
   )
   target_link_libraries(libcxx libcxxabi)
-  install(TARGETS libcxx EXPORT OpenSSLTargets)
 endif()
 
 if(BUILD_TESTING)
@@ -919,12 +910,3 @@ endif()
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
-
-install(DIRECTORY include/ TYPE INCLUDE)
-
-install(EXPORT OpenSSLTargets
-  FILE OpenSSLTargets.cmake
-  NAMESPACE OpenSSL::
-  DESTINATION lib/cmake/OpenSSL
-)
-install(FILES OpenSSLConfig.cmake DESTINATION lib/cmake/OpenSSL)

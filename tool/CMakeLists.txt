@@ -20,7 +20,6 @@ add_executable(
   tool.cc
   transport_common.cc
 )
-install(TARGETS bssl)
 
 target_include_directories(bssl PUBLIC ${AWSLC_INSTALL_DIR}/include ${AWSLC_INSTALL_DIR}/include/internal/tool)
 
