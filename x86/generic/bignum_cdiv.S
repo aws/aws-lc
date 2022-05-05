@@ -25,6 +25,7 @@
 // the true remainder x mod m.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -67,182 +68,192 @@
 bignum_cdiv:
 _bignum_cdiv:
 
-                push    rbx
-                push    r12
-                push    r13
-                push    r14
-                push    r15
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
+
+        push    rbx
+        push    r12
+        push    r13
+        push    r14
+        push    r15
 
 // Move parameters that need a new home
 
-                mov     n, rdx
-                mov     x, rcx
+        mov     n, rdx
+        mov     x, rcx
 
 // First do a modulus computation, slightly tweaked from bignum_cmod,
 // changing variables and avoiding modification of the size parameter.
 // Initialize l = 0 now for convenience (we eventually need to do it).
 // If the bignum is zero-length, l is already the right answer of 0
 
-                xor     l, l
-                test    n, n
-                jz      nomodulus
+        xor     l, l
+        test    n, n
+        jz      nomodulus
 
-                bsr     e, m
-                xor     e, 63
-                shl     m, cl
+        bsr     e, m
+        xor     e, 63
+        shl     m, cl
 
-                mov    r, m
-                mov    w, 0x1FFFFFFFFFFFF
-                shr    r, 16
-                xor    w, r
-                inc    r
-                shr    w, 32
-                mov    h, r
-                imul   h, w
-                neg    h
-                mov    a, h
-                shr    a, 49
-                imul   a, a
-                shr    h, 34
-                add    h, a
-                or     a, 0x40000000
-                imul   a, h
-                shr    a, 30
-                imul   a, w
-                shl    w, 30
-                add    w, a
-                shr    w, 30
-                mov    h, r
-                imul   h, w
-                neg    h
-                shr    h, 24
-                imul   h, w
-                shl    w, 16
-                shr    h, 24
-                add    w, h
-                mov    h, r
-                imul   h, w
-                neg    h
-                shr    h, 32
-                imul   h, w
-                shl    w, 31
-                shr    h, 17
-                add    w, h
-                mov    a, m
-                mul    w
-                shrd   a, h, 60
-                mov    h, w
-                shr    h, 33
-                not    a
-                imul   a, h
-                shl    w, 1
-                shr    a, 33
-                add    w, a
-                add    w, 1
-                mov    a, m
-                sbb    w, 0
-                mul    w
-                add    h, m
-                sbb    w, 0
+        mov    r, m
+        mov    w, 0x1FFFFFFFFFFFF
+        shr    r, 16
+        xor    w, r
+        inc    r
+        shr    w, 32
+        mov    h, r
+        imul   h, w
+        neg    h
+        mov    a, h
+        shr    a, 49
+        imul   a, a
+        shr    h, 34
+        add    h, a
+        or     a, 0x40000000
+        imul   a, h
+        shr    a, 30
+        imul   a, w
+        shl    w, 30
+        add    w, a
+        shr    w, 30
+        mov    h, r
+        imul   h, w
+        neg    h
+        shr    h, 24
+        imul   h, w
+        shl    w, 16
+        shr    h, 24
+        add    w, h
+        mov    h, r
+        imul   h, w
+        neg    h
+        shr    h, 32
+        imul   h, w
+        shl    w, 31
+        shr    h, 17
+        add    w, h
+        mov    a, m
+        mul    w
+        shrd   a, h, 60
+        mov    h, w
+        shr    h, 33
+        not    a
+        imul   a, h
+        shl    w, 1
+        shr    a, 33
+        add    w, a
+        add    w, 1
+        mov    a, m
+        sbb    w, 0
+        mul    w
+        add    h, m
+        sbb    w, 0
 
-                mov     r, m
-                imul    r, w
-                neg     r
+        mov     r, m
+        imul    r, w
+        neg     r
 
-                xor     hshort, hshort
-                mov     i, n
+        xor     hshort, hshort
+        mov     i, n
 modloop:
-                mov     a, h
-                mul     r
-                add     a, [x+8*i-8]
-                adc     h, l
-                mov     l, a
-                sbb     a, a
-                and     a, r
-                add     l, a
-                adc     h, 0
-                dec     i
-                jnz     modloop
+        mov     a, h
+        mul     r
+        add     a, [x+8*i-8]
+        adc     h, l
+        mov     l, a
+        sbb     a, a
+        and     a, r
+        add     l, a
+        adc     h, 0
+        dec     i
+        jnz     modloop
 
-                mov     i, h
-                mov     a, w
-                mul     h
-                add     h, i
-                sbb     r, r
-                and     r, m
+        mov     i, h
+        mov     a, w
+        mul     h
+        add     h, i
+        sbb     r, r
+        and     r, m
 
-                mov     a, h
-                mul     m
-                add     h, r
-                xor     r, r
-                sub     l, a
-                sbb     i, h
+        mov     a, h
+        mul     m
+        add     h, r
+        xor     r, r
+        sub     l, a
+        sbb     i, h
 
-                cmovnz  r, m
-                xor     ashort, ashort
-                sub     l, r
-                sbb     i, a
+        cmovnz  r, m
+        xor     ashort, ashort
+        sub     l, r
+        sbb     i, a
 
-                cmovnz  a, m
-                sub     l, a
+        cmovnz  a, m
+        sub     l, a
 
-                mov     a, w
-                mul     l
-                add     h, l
-                rcr     h, 1
+        mov     a, w
+        mul     l
+        add     h, l
+        rcr     h, 1
 
-                shr     m, cl
-                xor     e, 63
-                shr     h, cl
+        shr     m, cl
+        xor     e, 63
+        shr     h, cl
 
-                imul    h, m
-                sub     l, h
+        imul    h, m
+        sub     l, h
 
-                mov     r, l
-                sub     l, m
+        mov     r, l
+        sub     l, m
 nomodulus:
-                cmovnc  r, l
+        cmovnc  r, l
 
 // If k = 0 then there's no more to be done
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Let e be the number of trailing zeros in m (we can ignore m = 0)
 
-                bsf     e, m
+        bsf     e, m
 
 // Now just shift m right by e bits. So hereafter we can assume m is odd
 // but we first need to shift the input right by e bits then divide by m.
 
-                shr    m, cl
+        shr    m, cl
 
 // Compute the negated modular inverse w with w * m + 1 == 0 (mod 2^64)
 // This is essentially the same as word_negmodinv.
 
-                mov     a, m
-                mov     w, m
-                shl     a, 2
-                sub     w, a
-                xor     w, 2
-                mov     a, w
-                imul    a, m
-                mov     hshort, 2
-                add     h, a
-                add     a, 1
-                imul    w, h
-                imul    a, a
-                mov     hshort, 1
-                add     h, a
-                imul    w, h
-                imul    a, a
-                mov     hshort, 1
-                add     h, a
-                imul    w, h
-                imul    a, a
-                mov     hshort, 1
-                add     h, a
-                imul    w, h
+        mov     a, m
+        mov     w, m
+        shl     a, 2
+        sub     w, a
+        xor     w, 2
+        mov     a, w
+        imul    a, m
+        mov     hshort, 2
+        add     h, a
+        add     a, 1
+        imul    w, h
+        imul    a, a
+        mov     hshort, 1
+        add     h, a
+        imul    w, h
+        imul    a, a
+        mov     hshort, 1
+        add     h, a
+        imul    w, h
+        imul    a, a
+        mov     hshort, 1
+        add     h, a
+        imul    w, h
 
 // We have the remainder r, so now x = m * y + r for some quotient y
 // to be computed. Consider x' = x + (m - r) = m * (y + 1) and do a
@@ -262,69 +273,73 @@ nomodulus:
 // we need to shift the remainder too before subtracting from the
 // shifted m.
 
-                mov     d, r
-                shr     d, cl
-                mov     c, m
-                sub     c, d
-                xor     ishort, ishort
+        mov     d, r
+        shr     d, cl
+        mov     c, m
+        sub     c, d
+        xor     ishort, ishort
 
 // Unless n = 0, preload the zeroth digit and bump up the x pointer by
 // 8 and n down by 1, to ease indexing and comparison using the same
 // variable i in the main loop. When n = 0 we leave it alone, as the
 // comparison i < n will always fail and the x pointer is unused.
 
-                xor     d, d
-                test    n, n
-                jz      loop
-                mov     d, [x]
-                add     x, 8
-                dec     n
+        xor     d, d
+        test    n, n
+        jz      loop
+        mov     d, [x]
+        add     x, 8
+        dec     n
 
 loop:
 
 // Load the next digit up to get [l,d] then shift right e places
 
-                xor     l, l
-                cmp     i, n
-                jnc     noload
-                mov     l, [x+8*i]
+        xor     l, l
+        cmp     i, n
+        jnc     noload
+        mov     l, [x+8*i]
 noload:
-                shrd    d, l, cl
-                add     d, c
-                sbb     c, c
-                neg     c
+        shrd    d, l, cl
+        add     d, c
+        sbb     c, c
+        neg     c
 
 // Now the effective sum is [c,a] where the carry-in has been absorbed.
 // Do the main Montgomery step with the (odd) m, writing back ~q. Finally
 // set d to the next digit ready for the following iteration.
 
-                mov     a, w
-                imul    a, d
-                not     a
-                mov     [z+8*i], a
-                not     a
+        mov     a, w
+        imul    a, d
+        not     a
+        mov     [z+8*i], a
+        not     a
 
-                mul     m
-                add     a, d
-                adc     c, h
+        mul     m
+        add     a, d
+        adc     c, h
 
-                mov     d, l
+        mov     d, l
 
-                inc     i
-                cmp     i, k
-                jc      loop
+        inc     i
+        cmp     i, k
+        jc      loop
 
 // Return the modulus
 
 end:
-                mov     rax, r
+        mov     rax, r
 
-                pop     r15
-                pop     r14
-                pop     r13
-                pop     r12
-                pop     rbx
-                ret
+        pop     r15
+        pop     r14
+        pop     r13
+        pop     r12
+        pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

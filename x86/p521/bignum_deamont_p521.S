@@ -24,6 +24,7 @@
 // "almost" meaning any 9-digit input will work, with no range restriction.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -50,6 +51,13 @@
 
 bignum_deamont_p521:
 _bignum_deamont_p521:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Save more registers to play with
 
@@ -134,6 +142,10 @@ _bignum_deamont_p521:
         pop     r12
         pop     rbx
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

@@ -60,99 +60,99 @@ _bignum_mul_4_8_alt:
 
 // Load operands and set up row 0 = [u4;...;u0] = a0 * [b3;...;b0]
 
-                ldp     a0, a1, [x]
-                ldp     b0, b1, [y]
+        ldp     a0, a1, [x]
+        ldp     b0, b1, [y]
 
-                mul     u0, a0, b0
-                umulh   u1, a0, b0
-                mul     t, a0, b1
-                umulh   u2, a0, b1
-                adds    u1, u1, t
+        mul     u0, a0, b0
+        umulh   u1, a0, b0
+        mul     t, a0, b1
+        umulh   u2, a0, b1
+        adds    u1, u1, t
 
-                ldp     b2, b3, [y, #16]
+        ldp     b2, b3, [y, #16]
 
-                mul     t, a0, b2
-                umulh   u3, a0, b2
-                adcs    u2, u2, t
+        mul     t, a0, b2
+        umulh   u3, a0, b2
+        adcs    u2, u2, t
 
-                mul     t, a0, b3
-                umulh   u4, a0, b3
-                adcs    u3, u3, t
-                adc     u4, u4, xzr
+        mul     t, a0, b3
+        umulh   u4, a0, b3
+        adcs    u3, u3, t
+        adc     u4, u4, xzr
 
-                ldp     a2, a3, [x, #16]
+        ldp     a2, a3, [x, #16]
 
 // Row 1 = [u5;...;u0] = [a1;a0] * [b3;...;b0]
 
-                mul     t, a1, b0
-                adds    u1, u1, t
-                mul     t, a1, b1
-                adcs    u2, u2, t
-                mul     t, a1, b2
-                adcs    u3, u3, t
-                mul     t, a1, b3
-                adcs    u4, u4, t
-                umulh   u5, a1, b3
-                adc     u5, u5, xzr
+        mul     t, a1, b0
+        adds    u1, u1, t
+        mul     t, a1, b1
+        adcs    u2, u2, t
+        mul     t, a1, b2
+        adcs    u3, u3, t
+        mul     t, a1, b3
+        adcs    u4, u4, t
+        umulh   u5, a1, b3
+        adc     u5, u5, xzr
 
-                umulh   t, a1, b0
-                adds    u2, u2, t
-                umulh   t, a1, b1
-                adcs    u3, u3, t
-                umulh   t, a1, b2
-                adcs    u4, u4, t
-                adc     u5, u5, xzr
+        umulh   t, a1, b0
+        adds    u2, u2, t
+        umulh   t, a1, b1
+        adcs    u3, u3, t
+        umulh   t, a1, b2
+        adcs    u4, u4, t
+        adc     u5, u5, xzr
 
 // Row 2 = [u6;...;u0] = [a2;a1;a0] * [b3;...;b0]
 
-                mul     t, a2, b0
-                adds    u2, u2, t
-                mul     t, a2, b1
-                adcs    u3, u3, t
-                mul     t, a2, b2
-                adcs    u4, u4, t
-                mul     t, a2, b3
-                adcs    u5, u5, t
-                umulh   u6, a2, b3
-                adc     u6, u6, xzr
+        mul     t, a2, b0
+        adds    u2, u2, t
+        mul     t, a2, b1
+        adcs    u3, u3, t
+        mul     t, a2, b2
+        adcs    u4, u4, t
+        mul     t, a2, b3
+        adcs    u5, u5, t
+        umulh   u6, a2, b3
+        adc     u6, u6, xzr
 
-                umulh   t, a2, b0
-                adds    u3, u3, t
-                umulh   t, a2, b1
-                adcs    u4, u4, t
-                umulh   t, a2, b2
-                adcs    u5, u5, t
-                adc     u6, u6, xzr
+        umulh   t, a2, b0
+        adds    u3, u3, t
+        umulh   t, a2, b1
+        adcs    u4, u4, t
+        umulh   t, a2, b2
+        adcs    u5, u5, t
+        adc     u6, u6, xzr
 
 // Row 3 = [u7;...;u0] = [a3;...a0] * [b3;...;b0]
 
-                mul     t, a3, b0
-                adds    u3, u3, t
-                mul     t, a3, b1
-                adcs    u4, u4, t
-                mul     t, a3, b2
-                adcs    u5, u5, t
-                mul     t, a3, b3
-                adcs    u6, u6, t
-                umulh   u7, a3, b3
-                adc     u7, u7, xzr
+        mul     t, a3, b0
+        adds    u3, u3, t
+        mul     t, a3, b1
+        adcs    u4, u4, t
+        mul     t, a3, b2
+        adcs    u5, u5, t
+        mul     t, a3, b3
+        adcs    u6, u6, t
+        umulh   u7, a3, b3
+        adc     u7, u7, xzr
 
-                umulh   t, a3, b0
-                adds    u4, u4, t
-                umulh   t, a3, b1
-                adcs    u5, u5, t
-                umulh   t, a3, b2
-                adcs    u6, u6, t
-                adc     u7, u7, xzr
+        umulh   t, a3, b0
+        adds    u4, u4, t
+        umulh   t, a3, b1
+        adcs    u5, u5, t
+        umulh   t, a3, b2
+        adcs    u6, u6, t
+        adc     u7, u7, xzr
 
 // Store back final result [a3;...a0] * [b3;...;b0] = a * b
 
-                stp     u0, u1, [z]
-                stp     u2, u3, [z, #16]
-                stp     u4, u5, [z, #32]
-                stp     u6, u7, [z, #48]
+        stp     u0, u1, [z]
+        stp     u2, u3, [z, #16]
+        stp     u4, u5, [z, #32]
+        stp     u6, u7, [z, #48]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

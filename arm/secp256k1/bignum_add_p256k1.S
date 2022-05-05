@@ -45,46 +45,46 @@ _bignum_add_p256k1:
 // First just add the numbers as z = x + y = 2^256 * c + [d3; d2; d1; d0]
 // Also create dd = d3 AND d2 AND d1 to condense the later comparison
 
-                ldp     d0, d1, [x]
-                ldp     l, c, [y]
-                adds    d0, d0, l
-                adcs    d1, d1, c
-                ldp     d2, d3, [x, #16]
-                ldp     l, c, [y, #16]
-                adcs    d2, d2, l
-                and     dd, d1, d2
-                adcs    d3, d3, c
-                and     dd, dd, d3
-                adc     c, xzr, xzr
+        ldp     d0, d1, [x]
+        ldp     l, c, [y]
+        adds    d0, d0, l
+        adcs    d1, d1, c
+        ldp     d2, d3, [x, #16]
+        ldp     l, c, [y, #16]
+        adcs    d2, d2, l
+        and     dd, d1, d2
+        adcs    d3, d3, c
+        and     dd, dd, d3
+        adc     c, xzr, xzr
 
 // Let l = 4294968273 so that p_256k1 = 2^256 - l
 
-                mov     l, #977
-                orr     l, l, #0x100000000
+        mov     l, #977
+        orr     l, l, #0x100000000
 
 // Decide whether z >= p_256k1 <=> z + 4294968273 >= 2^256
 
-                adds    xzr, d0, l
-                adcs    xzr, dd, xzr
-                adcs    c, c, xzr
+        adds    xzr, d0, l
+        adcs    xzr, dd, xzr
+        adcs    c, c, xzr
 
 // Now c <> 0 <=> z >= p_256k1, so mask the constant l accordingly
 
-                csel    l, l, xzr, ne
+        csel    l, l, xzr, ne
 
 // If z >= p_256k1 do z := z - p_256k1, i.e. add l in 4 digits
 
-                adds    d0, d0, l
-                adcs    d1, d1, xzr
-                adcs    d2, d2, xzr
-                adc     d3, d3, xzr
+        adds    d0, d0, l
+        adcs    d1, d1, xzr
+        adcs    d2, d2, xzr
+        adc     d3, d3, xzr
 
 // Store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

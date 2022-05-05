@@ -438,7 +438,7 @@ let bignum_mul_8_16_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MUL_8_16_EXEC = X86_MK_EXEC_RULE bignum_mul_8_16_mc;;
+let BIGNUM_MUL_8_16_EXEC = X86_MK_CORE_EXEC_RULE bignum_mul_8_16_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -450,7 +450,7 @@ let BIGNUM_MUL_8_16_CORRECT = time prove
      nonoverlapping (x,8 * 8) (z,8 * 16) /\
      (y = z \/ nonoverlapping (y,8 * 8) (z,8 * 16))
      ==> ensures x86
-          (\s. bytes_loaded s (word pc) bignum_mul_8_16_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_mul_8_16_mc) /\
                read RIP s = word(pc + 0x0a) /\
                C_ARGUMENTS [z; x; y] s /\
                bignum_from_memory (x,8) s = a /\
@@ -499,5 +499,38 @@ let BIGNUM_MUL_8_16_SUBROUTINE_CORRECT = time prove
            MAYCHANGE [memory :> bytes(z,8 * 16);
                 memory :> bytes(word_sub stackpointer (word 48),48)] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_MUL_8_16_EXEC BIGNUM_MUL_8_16_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_mul_8_16_mc BIGNUM_MUL_8_16_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mul_8_16_mc = define_from_elf
+   "windows_bignum_mul_8_16_mc" "x86/fastmul/bignum_mul_8_16.obj";;
+
+let WINDOWS_BIGNUM_MUL_8_16_SUBROUTINE_CORRECT = time prove
+ (`!z x y a b pc stackpointer returnaddress.
+     nonoverlapping (word_sub stackpointer (word 64),72) (z,8 * 16) /\
+     ALL (nonoverlapping (word_sub stackpointer (word 64),64))
+         [(word pc,0x4d8); (x,8 * 8); (y,8 * 8)] /\
+     nonoverlapping (word pc,0x4d8) (z,8 * 16) /\
+     nonoverlapping (x,8 * 8) (z,8 * 16) /\
+     (y = z \/ nonoverlapping (y,8 * 8) (z,8 * 16))
+     ==> ensures x86
+          (\s. bytes_loaded s (word pc) windows_bignum_mul_8_16_mc /\
+               read RIP s = word pc /\
+               read RSP s = stackpointer /\
+               read (memory :> bytes64 stackpointer) s = returnaddress /\
+               WINDOWS_C_ARGUMENTS [z; x; y] s /\
+               bignum_from_memory (x,8) s = a /\
+               bignum_from_memory (y,8) s = b)
+          (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+               bignum_from_memory (z,16) s = a * b)
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE [memory :> bytes(z,8 * 16);
+                      memory :> bytes(word_sub stackpointer (word 64),64)] ,,
+           MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_mul_8_16_mc bignum_mul_8_16_mc
+    BIGNUM_MUL_8_16_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 48);;

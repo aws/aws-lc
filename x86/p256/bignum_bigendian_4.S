@@ -33,6 +33,7 @@
 // word order, this is simply byte reversal and is implemented as such.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -62,25 +63,36 @@ _bignum_frombebytes_4:
 bignum_tobebytes_4:
 _bignum_tobebytes_4:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // 0 and 3 words
 
-                mov     a, [x]
-                mov     b, [x+24]
-                bswap   a
-                bswap   b
-                mov     [z+24], a
-                mov     [z], b
+        mov     a, [x]
+        mov     b, [x+24]
+        bswap   a
+        bswap   b
+        mov     [z+24], a
+        mov     [z], b
 
 // 1 and 2 words
 
-                mov     a, [x+8]
-                mov     b, [x+16]
-                bswap   a
-                bswap   b
-                mov     [z+16], a
-                mov     [z+8], b
+        mov     a, [x+8]
+        mov     b, [x+16]
+        bswap   a
+        bswap   b
+        mov     [z+16], a
+        mov     [z+8], b
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

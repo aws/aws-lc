@@ -20,6 +20,7 @@
 //    extern uint64_t bignum_iszero (uint64_t k, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -33,23 +34,34 @@
 
 bignum_iszero:
 _bignum_iszero:
-                xor     a, a
-                test    k,k
-                jz      end
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+        xor     a, a
+        test    k,k
+        jz      end
 
 loop:
-                or      a, [x+8*k-8]
-                dec     k
-                jnz     loop
+        or      a, [x+8*k-8]
+        dec     k
+        jnz     loop
 
 // Set a standard C condition based on whether a is nonzero
 
-                neg     a
-                sbb     a, a
+        neg     a
+        sbb     a, a
 
 end:
-                inc     a
-                ret
+        inc     a
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

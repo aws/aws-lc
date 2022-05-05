@@ -24,6 +24,7 @@
 // But in general assumes that the input k is a multiple of 8.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = w, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = w, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -350,6 +351,15 @@ innerend:
 bignum_emontredc_8n:
 _bignum_emontredc_8n:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
+
 // Save more registers to play with
 
         pushq   %rbp
@@ -411,6 +421,10 @@ end:
         popq    %rbx
         popq    %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

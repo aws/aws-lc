@@ -21,6 +21,7 @@
 //      (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m
 // ----------------------------------------------------------------------------
 
 
@@ -40,49 +41,62 @@
 bignum_moddouble:
 _bignum_moddouble:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
+
 // If k = 0 do nothing
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Do (_::z) = 2 * x - m and generate a mask in c for 2 * x < m
 
-                xorq    c, c
-                xorq    i, i
-                xorq    b, b
+        xorq    c, c
+        xorq    i, i
+        xorq    b, b
 
 dubloop:
-                movq    (x,i,8), a
-                shrdq   $63, a, c
-                negq    b
-                sbbq    (m,i,8), c
-                sbbq    b, b
-                movq    c, (z,i,8)
-                movq    a, c
-                incq    i
-                cmpq    k, i
-                jc      dubloop
-                shrq    $63, c
+        movq    (x,i,8), a
+        shrdq   $63, a, c
+        negq    b
+        sbbq    (m,i,8), c
+        sbbq    b, b
+        movq    c, (z,i,8)
+        movq    a, c
+        incq    i
+        cmpq    k, i
+        jc      dubloop
+        shrq    $63, c
 
-                addq    b, c
+        addq    b, c
 
 // Now do a corrective masked addition z := z + [c] * m
 
-                xorq    i, i
-                xorq    b, b
+        xorq    i, i
+        xorq    b, b
 corrloop:
-                movq    (m,i,8), a
-                andq    c, a
-                negq    b
-                adcq    (z,i,8), a
-                sbbq    b, b
-                movq    a, (z,i,8)
-                incq    i
-                cmpq    k, i
-                jc      corrloop
+        movq    (m,i,8), a
+        andq    c, a
+        negq    b
+        adcq    (z,i,8), a
+        sbbq    b, b
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    k, i
+        jc      corrloop
 
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

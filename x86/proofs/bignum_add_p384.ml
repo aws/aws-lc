@@ -69,7 +69,7 @@ let bignum_add_p384_mc = define_assert_from_elf "bignum_add_p384_mc" "x86/p384/b
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_ADD_P384_EXEC = X86_MK_EXEC_RULE bignum_add_p384_mc;;
+let BIGNUM_ADD_P384_EXEC = X86_MK_CORE_EXEC_RULE bignum_add_p384_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -81,7 +81,7 @@ let BIGNUM_ADD_P384_CORRECT = time prove
  (`!z x y m n pc.
         nonoverlapping (word pc,0x9e) (z,8 * 6)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_add_p384_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_add_p384_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,6) s = m /\
@@ -173,4 +173,36 @@ let BIGNUM_ADD_P384_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,6)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_ADD_P384_EXEC BIGNUM_ADD_P384_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_add_p384_mc BIGNUM_ADD_P384_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_add_p384_mc = define_from_elf
+   "windows_bignum_add_p384_mc" "x86/p384/bignum_add_p384.obj";;
+
+let WINDOWS_BIGNUM_ADD_P384_SUBROUTINE_CORRECT = time prove
+ (`!z x y m n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0xab); (x,8 * 6); (y,8 * 6)] /\
+        nonoverlapping (word pc,0xab) (z,8 * 6) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 6)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_add_p384_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x; y] s /\
+                  bignum_from_memory (x,6) s = m /\
+                  bignum_from_memory (y,6) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (m < p_384 /\ n < p_384
+                   ==> bignum_from_memory (z,6) s = (m + n) MOD p_384))
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,6);
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_add_p384_mc bignum_add_p384_mc
+    BIGNUM_ADD_P384_CORRECT);;

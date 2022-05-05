@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -45,44 +46,55 @@
 bignum_half_p256:
 _bignum_half_p256:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // Load lowest digit and get a mask for its lowest bit in d0
 
-                mov     a, [x]
-                mov     d0short, 1
-                and     d0, a
-                neg     d0
+        mov     a, [x]
+        mov     d0short, 1
+        and     d0, a
+        neg     d0
 
 // Create a masked version of p_256
 
-                mov     d1short, 0x00000000ffffffff
-                xor     d3, d3
-                and     d1, d0
-                sub     d3, d1
-                xor     d2, d2
+        mov     d1short, 0x00000000ffffffff
+        xor     d3, d3
+        and     d1, d0
+        sub     d3, d1
+        xor     d2, d2
 
 // Perform addition with masked p_256. Catch the carry in a, as a bitmask
 // for convenience though we only use its LSB below with SHRD
 
-                add     d0, a
-                adc     d1, [x+8]
-                adc     d2, [x+16]
-                adc     d3, [x+24]
-                sbb     a, a
+        add     d0, a
+        adc     d1, [x+8]
+        adc     d2, [x+16]
+        adc     d3, [x+24]
+        sbb     a, a
 
 // Shift right, pushing the carry back down, and store back
 
-                shrd    d0, d1, 1
-                mov     [z], d0
-                shrd    d1, d2, 1
-                mov     [z+8], d1
-                shrd    d2, d3, 1
-                mov     [z+16], d2
-                shrd    d3, a, 1
-                mov     [z+24], d3
+        shrd    d0, d1, 1
+        mov     [z], d0
+        shrd    d1, d2, 1
+        mov     [z+8], d1
+        shrd    d2, d3, 1
+        mov     [z+16], d2
+        shrd    d3, a, 1
+        mov     [z+24], d3
 
 // Return
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

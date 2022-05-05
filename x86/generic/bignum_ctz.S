@@ -26,6 +26,7 @@
 // is always true in practice because of address space limitations
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -46,39 +47,50 @@
 bignum_ctz:
 _bignum_ctz:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // If the bignum is zero-length, just return 0
 
-                xor     rax, rax
-                test    k, k
-                jz      end
+        xor     rax, rax
+        test    k, k
+        jz      end
 
 // Use w = a[i-1] to store nonzero words in a top-down sweep
 // Set the initial default to be as if we had a 1 word directly above
 
-                mov     i, k
-                inc     i
-                mov     wshort, 1
+        mov     i, k
+        inc     i
+        mov     wshort, 1
 
 loop:
-                mov     a, [x+8*k-8]
-                test    a, a
-                cmovne  i, k
-                cmovne  w, a
-                dec     k
-                jnz     loop
+        mov     a, [x+8*k-8]
+        test    a, a
+        cmovne  i, k
+        cmovne  w, a
+        dec     k
+        jnz     loop
 
 // Now w = a[i-1] is the lowest nonzero word, or in the zero case the
 // default of the "extra" 1 = a[k]. We now want 64*(i-1) + ctz(w).
 // Note that this code does not rely on the behavior of the BSF instruction
 // for zero inputs, which is undefined according to the manual.
 
-                dec     i
-                shl     i, 6
-                bsf     rax, w
-                add     rax, i
+        dec     i
+        shl     i, 6
+        bsf     rax, w
+        add     rax, i
 
 end:
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

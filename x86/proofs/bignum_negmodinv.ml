@@ -113,7 +113,7 @@ let bignum_negmodinv_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_NEGMODINV_EXEC = X86_MK_EXEC_RULE bignum_negmodinv_mc;;
+let BIGNUM_NEGMODINV_EXEC = X86_MK_CORE_EXEC_RULE bignum_negmodinv_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -147,7 +147,7 @@ let BIGNUM_NEGMODINV_CORRECT = prove
         nonoverlapping (word pc,0x112) (z,8 * val k) /\
         nonoverlapping (x,8 * val k) (z,8 * val k)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_negmodinv_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_negmodinv_mc) /\
                   read RIP s = word (pc + 0x3) /\
                   C_ARGUMENTS [k; z; x] s /\
                   bignum_from_memory (x,val k) s = m)
@@ -673,5 +673,38 @@ let BIGNUM_NEGMODINV_SUBROUTINE_CORRECT = prove
               MAYCHANGE [memory :> bytes(z,8 * val k);
                        memory :> bytes(word_sub stackpointer (word 16),16)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_NEGMODINV_EXEC BIGNUM_NEGMODINV_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_negmodinv_mc BIGNUM_NEGMODINV_CORRECT
     `[RBX; R12]` 16);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_negmodinv_mc = define_from_elf
+   "windows_bignum_negmodinv_mc" "x86/generic/bignum_negmodinv.obj";;
+
+let WINDOWS_BIGNUM_NEGMODINV_SUBROUTINE_CORRECT = prove
+ (`!k z x m pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 32),40) (z,8 * val k) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 32),32))
+            [(word pc,0x11f);(x,8 * val k)] /\
+        nonoverlapping (word pc,0x11f) (z,8 * val k) /\
+        nonoverlapping (x,8 * val k) (z,8 * val k)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_negmodinv_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k; z; x] s /\
+                  bignum_from_memory (x,val k) s = m)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (ODD m
+                   ==> (m * bignum_from_memory(z,val k) s + 1 == 0)
+                       (mod (2 EXP (64 * val k)))))
+             (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * val k);
+                       memory :> bytes(word_sub stackpointer (word 32),32)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_negmodinv_mc bignum_negmodinv_mc
+    BIGNUM_NEGMODINV_CORRECT `[RBX; R12]` 16);;

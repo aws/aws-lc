@@ -20,6 +20,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       curve25519/bignum_cmul_p25519_alt.o \
       curve25519/bignum_mul_p25519.o \
       curve25519/bignum_mul_p25519_alt.o \
+      curve25519/bignum_neg_p25519.o \
       curve25519/bignum_sqr_p25519.o \
       curve25519/bignum_sqr_p25519_alt.o \
       curve25519/bignum_sub_p25519.o \
@@ -228,13 +229,13 @@ all: $(OBJ);
 
 %.o : %.S ; (cpp $< | as -o $@ -); (cd ../x86; cpp $< | as -o /tmp/original_object.o); cmp -s $@ /tmp/original_object.o
 
-curve25519/%.S :: ../x86/curve25519/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
-fastmul/%.S :: ../x86/fastmul/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
-generic/%.S :: ../x86/generic/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
-p256/%.S :: ../x86/p256/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
-p384/%.S :: ../x86/p384/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
-p521/%.S :: ../x86/p521/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
-secp256k1/%.S :: ../x86/secp256k1/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp $@ | as -o /tmp/translated_object.o) ; (cpp $< | as -o /tmp/original_object.o); cmp -s /tmp/translated_object.o /tmp/original_object.o
+curve25519/%.S :: ../x86/curve25519/%.S ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; (cpp -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; (cpp -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; (cpp -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+fastmul/%.S :: ../x86/fastmul/%.S       ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; (cpp -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; (cpp -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; (cpp -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+generic/%.S :: ../x86/generic/%.S       ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; (cpp -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; (cpp -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; (cpp -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+p256/%.S :: ../x86/p256/%.S             ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; (cpp -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; (cpp -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; (cpp -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+p384/%.S :: ../x86/p384/%.S             ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; (cpp -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; (cpp -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; (cpp -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+p521/%.S :: ../x86/p521/%.S             ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; (cpp -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; (cpp -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; (cpp -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+secp256k1/%.S :: ../x86/secp256k1/%.S   ; (cat $< | sed -E -f ./attrofy.sed >$@) && (cpp -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; (cpp -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; (cpp -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; (cpp -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
 
 clean:; rm -f */*.o
 

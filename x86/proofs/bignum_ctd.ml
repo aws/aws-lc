@@ -38,7 +38,7 @@ let bignum_ctd_mc = define_assert_from_elf "bignum_ctd_mc" "x86/generic/bignum_c
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CTD_EXEC = X86_MK_EXEC_RULE bignum_ctd_mc;;
+let BIGNUM_CTD_EXEC = X86_MK_CORE_EXEC_RULE bignum_ctd_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -47,7 +47,7 @@ let BIGNUM_CTD_EXEC = X86_MK_EXEC_RULE bignum_ctd_mc;;
 let BIGNUM_CTD_CORRECT = prove
  (`!k a x pc.
         ensures x86
-         (\s. bytes_loaded s (word pc) bignum_ctd_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_ctd_mc) /\
               read RIP s = word pc /\
               C_ARGUMENTS [k;a] s /\
               bignum_from_memory(a,val k) s = x)
@@ -182,4 +182,32 @@ let BIGNUM_CTD_SUBROUTINE_CORRECT = prove
                C_RETURN s' = if x = 0 then k else word(index 2 x DIV 64))
          (MAYCHANGE [RIP; RSP; RDI; RDX; RAX] ,,
           MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_CTD_EXEC BIGNUM_CTD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_ctd_mc BIGNUM_CTD_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_ctd_mc = define_from_elf
+   "windows_bignum_ctd_mc" "x86/generic/bignum_ctd.obj";;
+
+let WINDOWS_BIGNUM_CTD_SUBROUTINE_CORRECT = prove
+ (`!k a x pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x30); (a,8 * val k)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_ctd_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                   read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k;a] s /\
+                  bignum_from_memory(a,val k) s = x)
+             (\s'. read RIP s' = returnaddress /\
+                   read RSP s' = word_add stackpointer (word 8) /\
+                   WINDOWS_C_RETURN s' =
+                   if x = 0 then k else word(index 2 x DIV 64))
+             (MAYCHANGE [RIP; RSP; RDX; RAX] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_ctd_mc bignum_ctd_mc
+    BIGNUM_CTD_CORRECT);;

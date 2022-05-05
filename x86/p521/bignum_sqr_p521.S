@@ -20,6 +20,7 @@
 //    extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -56,6 +57,13 @@
 
 bignum_sqr_p521:
 _bignum_sqr_p521:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Save more registers to play with and make temporary space on stack
 
@@ -289,6 +297,10 @@ _bignum_sqr_p521:
         pop     r12
         pop     rbp
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

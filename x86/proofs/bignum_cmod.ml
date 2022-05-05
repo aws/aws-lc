@@ -136,7 +136,7 @@ let bignum_cmod_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_CMOD_EXEC = X86_MK_EXEC_RULE bignum_cmod_mc;;
+let BIGNUM_CMOD_EXEC = X86_MK_CORE_EXEC_RULE bignum_cmod_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -160,7 +160,7 @@ let WORD_ADD_MUL_MADD_LEMMA = prove
 let BIGNUM_CMOD_CORRECT = prove
  (`!k x m a pc.
       ensures x86
-         (\s. bytes_loaded s (word pc) bignum_cmod_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_cmod_mc) /\
               read RIP s = word pc /\
               C_ARGUMENTS [k;x;m] s /\
               bignum_from_memory (x,val k) s = a)
@@ -243,7 +243,7 @@ let BIGNUM_CMOD_CORRECT = prove
 
     SUBGOAL_THEN
      `ensures x86
-       (\s. bytes_loaded s (word pc) bignum_cmod_mc /\
+       (\s. bytes_loaded s (word pc) (BUTLAST bignum_cmod_mc) /\
             read RIP s = word (pc + 0x1a) /\
             read R8 s = word n)
        (\s. read RIP s = word (pc + 0xe0) /\
@@ -1396,4 +1396,31 @@ let BIGNUM_CMOD_SUBROUTINE_CORRECT = prove
               (~(val m = 0) ==> C_RETURN s = word(a MOD val m)))
          (MAYCHANGE [RIP; RSP; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
           MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_CMOD_EXEC BIGNUM_CMOD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_cmod_mc BIGNUM_CMOD_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_cmod_mc = define_from_elf
+   "windows_bignum_cmod_mc" "x86/generic/bignum_cmod.obj";;
+
+let WINDOWS_BIGNUM_CMOD_SUBROUTINE_CORRECT = prove
+ (`!k x m a pc stackpointer returnaddress.
+      ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+          [(word pc,0x17b); (x,8 * val k)]
+      ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_cmod_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k;x;m] s /\
+                  bignum_from_memory (x,val k) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (~(val m = 0) ==> WINDOWS_C_RETURN s = word(a MOD val m)))
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_cmod_mc bignum_cmod_mc
+    BIGNUM_CMOD_CORRECT);;

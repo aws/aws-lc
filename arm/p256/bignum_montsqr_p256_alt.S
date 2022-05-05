@@ -40,14 +40,14 @@
 // ---------------------------------------------------------------------------
 
 #define montreds(d4,d3,d2,d1,d0, t1,t0)                                     \
-                adds    d1, d1, d0, lsl #32;                                \
-                lsr     t1, d0, #32;                                        \
-                adcs    d2, d2, t1;                                         \
-                mov     t1, #0xFFFFFFFF00000001;                            \
-                mul     t0, d0, t1;                                         \
-                umulh   d4, d0, t1;                                         \
-                adcs    d3, d3, t0;                                         \
-                adc     d4, d4, xzr
+        adds    d1, d1, d0, lsl #32;                                \
+        lsr     t1, d0, #32;                                        \
+        adcs    d2, d2, t1;                                         \
+        mov     t1, #0xFFFFFFFF00000001;                            \
+        mul     t0, d0, t1;                                         \
+        umulh   d4, d0, t1;                                         \
+        adcs    d3, d3, t0;                                         \
+        adc     d4, d4, xzr
 
 #define z x0
 #define x x1
@@ -79,109 +79,109 @@ _bignum_montsqr_p256_alt:
 // and chain in the addition of 02 + 12 + 13 (no carry-out is possible).
 // This gives all the "heterogeneous" terms of the squaring ready to double
 
-                ldp     a0, a1, [x]
+        ldp     a0, a1, [x]
 
-                mul     u1, a0, a1
-                umulh   u2, a0, a1
+        mul     u1, a0, a1
+        umulh   u2, a0, a1
 
-                ldp     a2, a3, [x, #16]
+        ldp     a2, a3, [x, #16]
 
-                mul     u3, a0, a3
-                umulh   u4, a0, a3
+        mul     u3, a0, a3
+        umulh   u4, a0, a3
 
-                mul     l, a0, a2
-                umulh   h, a0, a2
-                adds    u2, u2, l
+        mul     l, a0, a2
+        umulh   h, a0, a2
+        adds    u2, u2, l
 
-                adcs    u3, u3, h
-                mul     l, a1, a2
-                umulh   h, a1, a2
-                adc     h, h, xzr
-                adds    u3, u3, l
+        adcs    u3, u3, h
+        mul     l, a1, a2
+        umulh   h, a1, a2
+        adc     h, h, xzr
+        adds    u3, u3, l
 
-                mul     u5, a2, a3
-                umulh   u6, a2, a3
+        mul     u5, a2, a3
+        umulh   u6, a2, a3
 
-                adcs    u4, u4, h
-                mul     l, a1, a3
-                umulh   h, a1, a3
-                adc     h, h, xzr
-                adds    u4, u4, l
+        adcs    u4, u4, h
+        mul     l, a1, a3
+        umulh   h, a1, a3
+        adc     h, h, xzr
+        adds    u4, u4, l
 
-                adcs    u5, u5, h
-                adc     u6, u6, xzr
+        adcs    u5, u5, h
+        adc     u6, u6, xzr
 
 // Now just double it; this simple approach seems to work better than extr
 
-                adds    u1, u1, u1
-                adcs    u2, u2, u2
-                adcs    u3, u3, u3
-                adcs    u4, u4, u4
-                adcs    u5, u5, u5
-                adcs    u6, u6, u6
-                cset    u7, cs
+        adds    u1, u1, u1
+        adcs    u2, u2, u2
+        adcs    u3, u3, u3
+        adcs    u4, u4, u4
+        adcs    u5, u5, u5
+        adcs    u6, u6, u6
+        cset    u7, cs
 
 // Add the homogeneous terms 00 + 11 + 22 + 33
 
-                umulh   l, a0, a0
-                mul     u0, a0, a0
-                adds    u1, u1, l
+        umulh   l, a0, a0
+        mul     u0, a0, a0
+        adds    u1, u1, l
 
-                mul     l, a1, a1
-                adcs    u2, u2, l
-                umulh   l, a1, a1
-                adcs    u3, u3, l
+        mul     l, a1, a1
+        adcs    u2, u2, l
+        umulh   l, a1, a1
+        adcs    u3, u3, l
 
-                mul     l, a2, a2
-                adcs    u4, u4, l
-                umulh   l, a2, a2
-                adcs    u5, u5, l
+        mul     l, a2, a2
+        adcs    u4, u4, l
+        umulh   l, a2, a2
+        adcs    u5, u5, l
 
-                mul     l, a3, a3
-                adcs    u6, u6, l
-                umulh   l, a3, a3
-                adc     u7, u7, l
+        mul     l, a3, a3
+        adcs    u6, u6, l
+        umulh   l, a3, a3
+        adc     u7, u7, l
 
 // Squaring complete. Perform 4 Montgomery steps to rotate the lower half
 
-                montreds(u0,u3,u2,u1,u0, a1,a0)
-                montreds(u1,u0,u3,u2,u1, a1,a0)
-                montreds(u2,u1,u0,u3,u2, a1,a0)
-                montreds(u3,u2,u1,u0,u3, a1,a0)
+        montreds(u0,u3,u2,u1,u0, a1,a0)
+        montreds(u1,u0,u3,u2,u1, a1,a0)
+        montreds(u2,u1,u0,u3,u2, a1,a0)
+        montreds(u3,u2,u1,u0,u3, a1,a0)
 
 // Add high and low parts, catching carry in a0
 
-                adds    u0, u0, u4
-                adcs    u1, u1, u5
-                adcs    u2, u2, u6
-                adcs    u3, u3, u7
-                cset    a0, cs
+        adds    u0, u0, u4
+        adcs    u1, u1, u5
+        adcs    u2, u2, u6
+        adcs    u3, u3, u7
+        cset    a0, cs
 
 // Set [a3;0;a1;-1] = p_256 and form [u7,u6,u5,u4] = [a0;u3;u2;u1;u0] - p_256
 
-                mov     a1, #0x00000000ffffffff
-                mov     a3, #0xffffffff00000001
+        mov     a1, #0x00000000ffffffff
+        mov     a3, #0xffffffff00000001
 
-                subs    u4, u0, #-1
-                sbcs    u5, u1, a1
-                sbcs    u6, u2, xzr
-                sbcs    u7, u3, a3
-                sbcs    xzr, a0, xzr
+        subs    u4, u0, #-1
+        sbcs    u5, u1, a1
+        sbcs    u6, u2, xzr
+        sbcs    u7, u3, a3
+        sbcs    xzr, a0, xzr
 
 // Now CF is clear if the comparison carried so the original was fine
 // Otherwise take the form with p_256 subtracted.
 
-                csel    u0, u0, u4, cc
-                csel    u1, u1, u5, cc
-                csel    u2, u2, u6, cc
-                csel    u3, u3, u7, cc
+        csel    u0, u0, u4, cc
+        csel    u1, u1, u5, cc
+        csel    u2, u2, u6, cc
+        csel    u3, u3, u7, cc
 
 // Store back final result
 
-                stp     u0, u1, [z]
-                stp     u2, u3, [z, #16]
+        stp     u0, u1, [z]
+        stp     u2, u3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

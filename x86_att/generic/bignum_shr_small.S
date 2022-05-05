@@ -25,6 +25,7 @@
 // The return value is the inout mod 2^c'.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = c, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = c, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -54,55 +55,69 @@
 bignum_shr_small:
 _bignum_shr_small:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
+
 // Reshuffle registers to put the shift count into CL
 
-                movq    %rcx, x
-                movq    %r8, c
+        movq    %rcx, x
+        movq    %r8, c
 
 // Set default carry-in word to 0, useful for other things too
 
-                xorq    b, b
+        xorq    b, b
 
 // First, if p > n then pad output on the left with p-n zeros
 
-                cmpq    p, n
-                jnc     nopad
+        cmpq    p, n
+        jnc     nopad
 padloop:
-                decq    p
-                movq    b, (z,p,8)
-                cmpq    p, n
-                jc      padloop
+        decq    p
+        movq    b, (z,p,8)
+        cmpq    p, n
+        jc      padloop
 nopad:
 
 // We now know that p <= n. If in fact p < n let carry word = x[p] instead of 0
 
-                jz      shiftstart
-                movq    (x,p,8), b
+        jz      shiftstart
+        movq    (x,p,8), b
 shiftstart:
-                testq   p, p
-                jz      trivial
+        testq   p, p
+        jz      trivial
 
 // Now the main loop
 
 loop:
-                movq    -8(x,p,8), a
-                movq    a, t
-                shrdq   %cl, b, a
-                movq    a, -8(z,p,8)
-                movq    t, b
-                decq    p
-                jnz     loop
+        movq    -8(x,p,8), a
+        movq    a, t
+        shrdq   %cl, b, a
+        movq    a, -8(z,p,8)
+        movq    t, b
+        decq    p
+        jnz     loop
 
 // Mask the carry word and return with that as RAX = b
 
 trivial:
-                movl    $1, ashort
-                shlq    %cl, a
-                decq    a
-                andq    a, b
+        movl    $1, ashort
+        shlq    %cl, a
+        decq    a
+        andq    a, b
 
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

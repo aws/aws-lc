@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -44,38 +45,49 @@
 bignum_neg_p256k1:
 _bignum_neg_p256k1:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // Load the 4 digits of x and let q be an OR of all the digits
 
-                mov     n0, [x]
-                mov     q, n0
-                mov     n1, [x+8]
-                or      q, n1
-                mov     n2, [x+16]
-                or      q, n2
-                mov     n3, [x+24]
-                or      q, n3
+        mov     n0, [x]
+        mov     q, n0
+        mov     n1, [x+8]
+        or      q, n1
+        mov     n2, [x+16]
+        or      q, n2
+        mov     n3, [x+24]
+        or      q, n3
 
 // Turn q into a strict bitmask, and c a masked constant -4294968273
 
-                neg     q
-                sbb     q, q
-                mov     c, -4294968273
-                and     c, q
+        neg     q
+        sbb     q, q
+        mov     c, -4294968273
+        and     c, q
 
 // Now just do [2^256 - 4294968273] - x where the constant is masked
 
-                sub     c, n0
-                mov     [z], c
-                mov     c, q
-                sbb     c, n1
-                mov     [z+8], c
-                mov     c, q
-                sbb     c, n2
-                mov     [z+16], c
-                sbb     q, n3
-                mov     [z+24], q
+        sub     c, n0
+        mov     [z], c
+        mov     c, q
+        sbb     c, n1
+        mov     [z+8], c
+        mov     c, q
+        sbb     c, n2
+        mov     [z+16], c
+        sbb     q, n3
+        mov     [z+24], q
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -23,6 +23,7 @@
 // It is assumed that all numbers x, y and z have the same size k digits.
 //
 // Standard x86-64 ABI: RDI = p, RSI = k, RDX = z, RCX = x, R8 = y
+// Microsoft x64 ABI:   RCX = p, RDX = k, R8 = z, R9 = x, [RSP+40] = y
 // ----------------------------------------------------------------------------
 
 
@@ -42,21 +43,35 @@
 
 bignum_mux:
 _bignum_mux:
-                testq   k, k
-                jz      end                     // If length = 0 do nothing
 
-                xorq    i, i
-                negq    b                       // CF <=> (b != 0)
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
+        testq   k, k
+        jz      end                     // If length = 0 do nothing
+
+        xorq    i, i
+        negq    b                       // CF <=> (b != 0)
 loop:
-                movq    (x,i,8), a
-                movq    (y,i,8), b
-                cmovncq b, a // CF ? a : b
-                movq    a, (z,i,8)
-                incq    i
-                decq    k
-                jnz     loop
+        movq    (x,i,8), a
+        movq    (y,i,8), b
+        cmovncq b, a // CF ? a : b
+        movq    a, (z,i,8)
+        incq    i
+        decq    k
+        jnz     loop
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

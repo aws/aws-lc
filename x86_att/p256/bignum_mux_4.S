@@ -24,6 +24,7 @@
 // It is assumed that all numbers x, y and z have the same size 4 digits.
 //
 // Standard x86-64 ABI: RDI = p, RSI = z, RDX = x, RCX = y
+// Microsoft x64 ABI:   RCX = p, RDX = z, R8 = x, R9 = y
 // ----------------------------------------------------------------------------
 
 
@@ -41,29 +42,42 @@
 
 bignum_mux_4:
 _bignum_mux_4:
-                testq   p, p
 
-                movq    (x), a
-                movq    (y), b
-                cmovzq  b, a
-                movq    a, (z)
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
+        testq   p, p
 
-                movq    8(x), a
-                movq    8(y), b
-                cmovzq  b, a
-                movq    a, 8(z)
+        movq    (x), a
+        movq    (y), b
+        cmovzq  b, a
+        movq    a, (z)
 
-                movq    16(x), a
-                movq    16(y), b
-                cmovzq  b, a
-                movq    a, 16(z)
+        movq    8(x), a
+        movq    8(y), b
+        cmovzq  b, a
+        movq    a, 8(z)
 
-                movq    24(x), a
-                movq    24(y), b
-                cmovzq  b, a
-                movq    a, 24(z)
+        movq    16(x), a
+        movq    16(y), b
+        cmovzq  b, a
+        movq    a, 16(z)
 
-                ret
+        movq    24(x), a
+        movq    24(y), b
+        cmovzq  b, a
+        movq    a, 24(z)
+
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

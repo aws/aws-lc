@@ -25,6 +25,7 @@
 // The return value is the "next word" of a p+1 bit result, if n <= p.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = c, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = c, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -53,66 +54,80 @@
 bignum_shl_small:
 _bignum_shl_small:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
+
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.
 
-                cmp     p, n
-                cmovc   n, p
+        cmp     p, n
+        cmovc   n, p
 
 // Initialize "previous word" carry b to zero and main index i also to zero.
 // Then just skip the main loop if n = 0
 
-                xor     b, b
-                xor     i, i
+        xor     b, b
+        xor     i, i
 
-                test    n, n
-                jz      tail
+        test    n, n
+        jz      tail
 
 // Reshuffle registers to put the shift count into CL
 
-                mov     x, rcx
-                mov     c, r8
+        mov     x, rcx
+        mov     c, r8
 
 // Now the main loop
 
 loop:
-                mov     a, [x+8*i]
-                mov     t, a
-                shld    a, b, cl
-                mov     [z+8*i],a
-                mov     b, t
-                inc     i
-                cmp     i, n
-                jc      loop
+        mov     a, [x+8*i]
+        mov     t, a
+        shld    a, b, cl
+        mov     [z+8*i],a
+        mov     b, t
+        inc     i
+        cmp     i, n
+        jc      loop
 
 // Shift the top word correspondingly. Using shld one more time is easier
 // than carefully producing a complementary shift with care over the zero case
 
-                xor     a, a
-                shld    a, b, cl
-                mov     b, a
+        xor     a, a
+        shld    a, b, cl
+        mov     b, a
 
 // If we are at the end, finish, otherwise write carry word then zeros
 
 tail:
-                cmp     i, p
-                jnc     end
-                mov     [z+8*i],b
-                xor     b, b
-                inc     i
-                cmp     i, p
-                jnc     end
+        cmp     i, p
+        jnc     end
+        mov     [z+8*i],b
+        xor     b, b
+        inc     i
+        cmp     i, p
+        jnc     end
 
 tloop:
-                mov     [z+8*i],b
-                inc     i
-                cmp     i, p
-                jc      tloop
+        mov     [z+8*i],b
+        inc     i
+        cmp     i, p
+        jc      tloop
 
 // Return, with RAX = b as the top word
 
 end:
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

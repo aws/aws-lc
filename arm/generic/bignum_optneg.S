@@ -45,37 +45,37 @@ _bignum_optneg:
 
 // if k = 0 do nothing. This also has the right top carry zero in x0
 
-                cbz     k, end
+        cbz     k, end
 
 // Convert p into a strict bitmask
 
-                cmp     p, xzr
-                csetm   p, ne
+        cmp     p, xzr
+        csetm   p, ne
 
 // Generate an initial carry-in for the negating case only to add 1; this
 // is because we are actually going to do complements of the words of x
 
-                adds    xzr, p, p
+        adds    xzr, p, p
 
 // Main loop
-                mov     i, xzr
+        mov     i, xzr
 loop:
-                ldr     a, [x, i]
-                eor     a, a, p
-                adcs    a, a, xzr
-                str     a, [z, i]
-                add     i, i, #8
-                sub     k, k, #1
-                cbnz    k, loop
+        ldr     a, [x, i]
+        eor     a, a, p
+        adcs    a, a, xzr
+        str     a, [z, i]
+        add     i, i, #8
+        sub     k, k, #1
+        cbnz    k, loop
 
 // Return carry flag, fixing up inversion for negative case
 
-                adc     x0, xzr, xzr
-                neg     p, p
-                eor     x0, x0, p
+        adc     x0, xzr, xzr
+        neg     p, p
+        eor     x0, x0, p
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

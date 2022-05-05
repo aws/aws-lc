@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -70,6 +71,14 @@
 
 bignum_mul_p256k1_alt:
 _bignum_mul_p256k1_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Save more registers to play with
 
@@ -201,6 +210,10 @@ _bignum_mul_p256k1_alt:
         pop     r13
         pop     r12
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

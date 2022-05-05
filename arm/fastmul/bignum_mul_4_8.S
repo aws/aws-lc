@@ -99,91 +99,91 @@
 bignum_mul_4_8:
 _bignum_mul_4_8:
 
-                stp     x19, x20, [sp, #-16]!
+        stp     x19, x20, [sp, #-16]!
 
 // Load operands
 
-                ldp     a0, a1, [x1]
-                ldp     b0, b1, [x2]
-                ldp     a2, a3, [x1, #16]
-                ldp     b2, b3, [x2, #16]
+        ldp     a0, a1, [x1]
+        ldp     b0, b1, [x2]
+        ldp     a2, a3, [x1, #16]
+        ldp     b2, b3, [x2, #16]
 
 // First accumulate all the "simple" products as [s4,s3,s2,s1,s0]
 
-                mul     s0, a0, b0
-                mul     s1, a1, b1
-                mul     s2, a2, b2
-                mul     s3, a3, b3
+        mul     s0, a0, b0
+        mul     s1, a1, b1
+        mul     s2, a2, b2
+        mul     s3, a3, b3
 
-                umulh   m, a0, b0
-                adds    s1, s1, m
-                umulh   m, a1, b1
-                adcs    s2, s2, m
-                umulh   m, a2, b2
-                adcs    s3, s3, m
-                umulh   m, a3, b3
-                adc     s4, m, xzr
+        umulh   m, a0, b0
+        adds    s1, s1, m
+        umulh   m, a1, b1
+        adcs    s2, s2, m
+        umulh   m, a2, b2
+        adcs    s3, s3, m
+        umulh   m, a3, b3
+        adc     s4, m, xzr
 
 // Multiply by B + 1 to get [t5;t4;t3;t2;t1;t0] where t0 == s0
 
-                adds    t1, s1, s0
-                adcs    t2, s2, s1
-                adcs    t3, s3, s2
-                adcs    t4, s4, s3
-                adc     t5, xzr, s4
+        adds    t1, s1, s0
+        adcs    t2, s2, s1
+        adcs    t3, s3, s2
+        adcs    t4, s4, s3
+        adc     t5, xzr, s4
 
 // Multiply by B^2 + 1 to get [u6;u5;u4;u3;u2;u1;-], writing back LSD
 // u0 == t0 == s0 and u1 == t1
 
-                str     u0, [x0]
-                adds    u2, t2, t0
-                adcs    u3, t3, t1
-                adcs    u4, t4, t2
-                adcs    u5, t5, t3
-                adcs    u6, xzr, t4
-                adc     u7, xzr, t5
+        str     u0, [x0]
+        adds    u2, t2, t0
+        adcs    u3, t3, t1
+        adcs    u4, t4, t2
+        adcs    u5, t5, t3
+        adcs    u6, xzr, t4
+        adc     u7, xzr, t5
 
 // Now add in all the "complicated" terms.
 
-                muldiffnadd u6,u5, c,h,l,t, a2,a3, b3,b2
-                adc     u7, u7, c
+        muldiffnadd u6,u5, c,h,l,t, a2,a3, b3,b2
+        adc     u7, u7, c
 
-                muldiffnadd u2,u1, c,h,l,t, a0,a1, b1,b0
-                str     u1, [x0, #8]
-                adcs    u3, u3, c
-                adcs    u4, u4, c
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd u2,u1, c,h,l,t, a0,a1, b1,b0
+        str     u1, [x0, #8]
+        adcs    u3, u3, c
+        adcs    u4, u4, c
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
-                muldiffnadd u5,u4, c,h,l,t, a1,a3, b3,b1
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd u5,u4, c,h,l,t, a1,a3, b3,b1
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
-                muldiffnadd u3,u2, c,h,l,t, a0,a2, b2,b0
-                adcs    u4, u4, c
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd u3,u2, c,h,l,t, a0,a2, b2,b0
+        adcs    u4, u4, c
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
-                muldiffnadd u4,u3, c,h,l,t, a0,a3, b3,b0
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
-                muldiffnadd u4,u3, c,h,l,t, a1,a2, b2,b1
-                adcs    u5, u5, c
-                adcs    u6, u6, c
-                adc     u7, u7, c
+        muldiffnadd u4,u3, c,h,l,t, a0,a3, b3,b0
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
+        muldiffnadd u4,u3, c,h,l,t, a1,a2, b2,b1
+        adcs    u5, u5, c
+        adcs    u6, u6, c
+        adc     u7, u7, c
 
-                stp     u2, u3, [x0, #16]
-                stp     u4, u5, [x0, #32]
-                stp     u6, u7, [x0, #48]
+        stp     u2, u3, [x0, #16]
+        stp     u4, u5, [x0, #32]
+        stp     u6, u7, [x0, #48]
 
 // Restore regs and return
 
-                ldp     x19, x20, [sp], #16
+        ldp     x19, x20, [sp], #16
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

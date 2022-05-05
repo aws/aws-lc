@@ -29,6 +29,7 @@
 // 1 if coprime(x,y) and 0 otherwise.
 //
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, R8 = t, returns RAX
+// Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, [RSP+40] = t, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -107,108 +108,118 @@
 bignum_coprime:
 _bignum_coprime:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
+
 // Save all required registers and make room on stack for all the above vars
 
-                pushq   %rbp
-                pushq   %rbx
-                pushq   %r12
-                pushq   %r13
-                pushq   %r14
-                pushq   %r15
-                subq    $STACKVARSIZE, %rsp
+        pushq   %rbp
+        pushq   %rbx
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
+        pushq   %r15
+        subq    $STACKVARSIZE, %rsp
 
 // Compute k = max(m,n), and if this is zero skip to the end. Note that
 // in this case k is also in %rax so serves as the right answer of "false"
 
-                movq    arg1, %rax
-                cmpq    arg3, %rax
-                cmovcq  arg3, %rax
-                movq    %rax, k
+        movq    arg1, %rax
+        cmpq    arg3, %rax
+        cmovcq  arg3, %rax
+        movq    %rax, k
 
-                testq   %rax, %rax
-                jz      end
+        testq   %rax, %rax
+        jz      end
 
 // Set up inside w two size-k buffers m and n
 
-                leaq    (m,k,8), n
+        leaq    (m,k,8), n
 
 // Copy the input x into the buffer m, padding with zeros as needed
 
-                xorq    i, i
-                testq   arg1, arg1
-                jz      xpadloop
+        xorq    i, i
+        testq   arg1, arg1
+        jz      xpadloop
 xloop:
-                movq    (arg2,i,8), a
-                movq    a, (m,i,8)
-                incq    i
-                cmpq    arg1, i
-                jc      xloop
-                cmpq    k, i
-                jnc     xskip
+        movq    (arg2,i,8), a
+        movq    a, (m,i,8)
+        incq    i
+        cmpq    arg1, i
+        jc      xloop
+        cmpq    k, i
+        jnc     xskip
 xpadloop:
-                movq    $0,  (m,i,8)
-                incq    i
-                cmpq    k, i
-                jc      xpadloop
+        movq    $0,  (m,i,8)
+        incq    i
+        cmpq    k, i
+        jc      xpadloop
 xskip:
 
 // Copy the input y into the buffer n, padding with zeros as needed
 
-                xorq    i, i
-                testq   arg3, arg3
-                jz      ypadloop
+        xorq    i, i
+        testq   arg3, arg3
+        jz      ypadloop
 yloop:
-                movq    (arg4,i,8), a
-                movq    a, (n,i,8)
-                incq    i
-                cmpq    arg3, i
-                jc      yloop
-                cmpq    k, i
-                jnc     yskip
+        movq    (arg4,i,8), a
+        movq    a, (n,i,8)
+        incq    i
+        cmpq    arg3, i
+        jc      yloop
+        cmpq    k, i
+        jnc     yskip
 ypadloop:
-                movq    $0,  (n,i,8)
-                incq    i
-                cmpq    k, i
-                jc      ypadloop
+        movq    $0,  (n,i,8)
+        incq    i
+        cmpq    k, i
+        jc      ypadloop
 yskip:
 
 // Set up the outer loop count of 64 * sum of input sizes.
 // The invariant is that m * n < 2^t at all times.
 
-                leaq    (arg1,arg3), a
-                shlq    $6, a
-                movq    a, t
+        leaq    (arg1,arg3), a
+        shlq    $6, a
+        movq    a, t
 
 // Record for the very end the OR of the lowest words.
 // If the bottom bit is zero we know both are even so the answer is false.
 // But since this is constant-time code we still execute all the main part.
 
-                movq    (m), a
-                movq    (n), b
-                orq     b, a
-                movq    a, evenor
+        movq    (m), a
+        movq    (n), b
+        orq     b, a
+        movq    a, evenor
 
 // Now if n is even trigger a swap of m and n. This ensures that if
 // one or other of m and n is odd then we make sure now that n is,
 // as expected by our invariant later on.
 
-                andq    $1, b
-                subq    $1, b
+        andq    $1, b
+        subq    $1, b
 
-                xorq    i, i
+        xorq    i, i
 swaploop:
-                movq    (m,i,8), a
-                movq    (n,i,8), c
-                movq    a, d
-                xorq    c, d
-                andq    b, d
-                xorq    d, a
-                xorq    d, c
-                movq    a, (m,i,8)
-                movq    c, (n,i,8)
-                incq    i
-                cmpq    k, i
-                jnz     swaploop
+        movq    (m,i,8), a
+        movq    (n,i,8), c
+        movq    a, d
+        xorq    c, d
+        andq    b, d
+        xorq    d, a
+        xorq    d, c
+        movq    a, (m,i,8)
+        movq    c, (n,i,8)
+        incq    i
+        cmpq    k, i
+        jnz     swaploop
 
 // Start of the main outer loop iterated t times
 
@@ -218,11 +229,11 @@ outerloop:
 // Either both m and n fit in l digits, or m has become zero and so
 // nothing happens in the loop anyway and this makes no difference.
 
-                movq    t, l
-                addq    $63, l
-                shrq    $6, l
-                cmpq    k, l
-                cmovncq k, l
+        movq    t, l
+        addq    $63, l
+        shrq    $6, l
+        cmpq    k, l
+        cmovncq k, l
 
 // Select upper and lower proxies for both m and n to drive the inner
 // loop. The lower proxies are simply the lowest digits themselves,
@@ -230,46 +241,46 @@ outerloop:
 // of the two inputs selected so their top bit (63) aligns with the
 // most significant bit of *either* of the two inputs.
 
-                xorq    h1, h1 // Previous high and low for m
-                xorq    l1, l1
-                xorq    h2, h2 // Previous high and low for n
-                xorq    l2, l2
-                xorq    c2, c2 // Mask flag: previous word of one was nonzero
-                                // and in this case h1 and h2 are those words
+        xorq    h1, h1 // Previous high and low for m
+        xorq    l1, l1
+        xorq    h2, h2 // Previous high and low for n
+        xorq    l2, l2
+        xorq    c2, c2 // Mask flag: previous word of one was nonzero
+        // and in this case h1 and h2 are those words
 
-                xorq    i, i
+        xorq    i, i
 toploop:
-                movq    (m,i,8), b
-                movq    (n,i,8), c
-                movq    c2, c1
-                andq    h1, c1
-                andq    h2, c2
-                movq    b, a
-                orq     c, a
-                negq    a
-                cmovcq  c1, l1
-                cmovcq  c2, l2
-                cmovcq  b, h1
-                cmovcq  c, h2
-                sbbq    c2, c2
-                incq    i
-                cmpq    l, i
-                jc      toploop
+        movq    (m,i,8), b
+        movq    (n,i,8), c
+        movq    c2, c1
+        andq    h1, c1
+        andq    h2, c2
+        movq    b, a
+        orq     c, a
+        negq    a
+        cmovcq  c1, l1
+        cmovcq  c2, l2
+        cmovcq  b, h1
+        cmovcq  c, h2
+        sbbq    c2, c2
+        incq    i
+        cmpq    l, i
+        jc      toploop
 
-                movq    h1, a
-                orq     h2, a
-                bsrq    a, c
-                xorq    $63, c
-                shldq   %cl, l1, h1
-                shldq   %cl, l2, h2
+        movq    h1, a
+        orq     h2, a
+        bsrq    a, c
+        xorq    $63, c
+        shldq   %cl, l1, h1
+        shldq   %cl, l2, h2
 
 // m_lo = m[0], n_lo = n[0];
 
-                movq    (m), %rax
-                movq    %rax, m_lo
+        movq    (m), %rax
+        movq    %rax, m_lo
 
-                movq    (n), %rax
-                movq    %rax, n_lo
+        movq    (n), %rax
+        movq    %rax, n_lo
 
 // Now the inner loop, with i as loop counter from CHUNKSIZE down.
 // This records a matrix of updates to apply to the initial
@@ -285,18 +296,18 @@ toploop:
 // is simply the parity of the number of times the first condition,
 // used as the swapping criterion, fires in this loop.
 
-                movl    $1, m_mshort
-                movl    $0, m_nshort
-                movl    $0, n_mshort
-                movl    $1, n_nshort
-                movl    $CHUNKSIZE, ishort
+        movl    $1, m_mshort
+        movl    $0, m_nshort
+        movl    $0, n_mshort
+        movl    $1, n_nshort
+        movl    $CHUNKSIZE, ishort
 
 // Stash more variables over the inner loop to free up regs
 
-                movq    k, mat_mn
-                movq    l, mat_nm
-                movq    m, mat_mm
-                movq    n, mat_nn
+        movq    k, mat_mn
+        movq    l, mat_nm
+        movq    m, mat_mm
+        movq    n, mat_nn
 
 // Conceptually in the inner loop we follow these steps:
 //
@@ -316,61 +327,61 @@ toploop:
 
 innerloop:
 
-                movq    n_hi, %rax
-                movq    n_lo, k
-                movq    n_m, l
-                movq    n_n, n
-                movq    $1, %rbx
-                negq    k
-                andq    m_lo, %rbx
-                cmovzq  %rbx, %rax
-                cmovzq  %rbx, k
-                cmovzq  %rbx, l
-                cmovzq  %rbx, n
-                movq    m_hi, %rbx
+        movq    n_hi, %rax
+        movq    n_lo, k
+        movq    n_m, l
+        movq    n_n, n
+        movq    $1, %rbx
+        negq    k
+        andq    m_lo, %rbx
+        cmovzq  %rbx, %rax
+        cmovzq  %rbx, k
+        cmovzq  %rbx, l
+        cmovzq  %rbx, n
+        movq    m_hi, %rbx
 
-                addq    m_lo, k
-                movq    k, m
-                negq    k
-                subq    %rax, %rbx
+        addq    m_lo, k
+        movq    k, m
+        negq    k
+        subq    %rax, %rbx
 
-                cmovcq  m_hi, n_hi
-                cmovcq  m_lo, n_lo
-                cmovcq  m_m, n_m
-                cmovcq  m_n, n_n
-                cmovncq m, k
-                movq    %rbx, m_hi
-                notq    %rbx
-                incq    %rbx
-                cmovcq  %rbx, m_hi
+        cmovcq  m_hi, n_hi
+        cmovcq  m_lo, n_lo
+        cmovcq  m_m, n_m
+        cmovcq  m_n, n_n
+        cmovncq m, k
+        movq    %rbx, m_hi
+        notq    %rbx
+        incq    %rbx
+        cmovcq  %rbx, m_hi
 
-                movq    k, m_lo
-                addq    l, m_m
-                addq    n, m_n
-                shrq    $1, m_hi
-                shrq    $1, m_lo
-                leaq    (n_m,n_m), n_m
-                leaq    (n_n,n_n), n_n
+        movq    k, m_lo
+        addq    l, m_m
+        addq    n, m_n
+        shrq    $1, m_hi
+        shrq    $1, m_lo
+        leaq    (n_m,n_m), n_m
+        leaq    (n_n,n_n), n_n
 
 // End of the inner for-loop
 
-                decq    i
-                jnz     innerloop
+        decq    i
+        jnz     innerloop
 
 // Unstash the temporary variables
 
-                movq    mat_mn, k
-                movq    mat_nm, l
-                movq    mat_mm, m
-                movq    mat_nn, n
+        movq    mat_mn, k
+        movq    mat_nm, l
+        movq    mat_mm, m
+        movq    mat_nn, n
 
 // Put the matrix entries in memory since we're out of registers
 // We pull them out repeatedly in the next loop
 
-                movq    m_m, mat_mm
-                movq    m_n, mat_mn
-                movq    n_m, mat_nm
-                movq    n_n, mat_nn
+        movq    m_m, mat_mm
+        movq    m_n, mat_mn
+        movq    n_m, mat_nm
+        movq    n_n, mat_nn
 
 // Now actually compute the updates to m and n corresponding to that matrix,
 // and correct the signs if they have gone negative. First we compute the
@@ -380,93 +391,93 @@ innerloop:
 //    h1::l1::m = m_m * m - m_n * n
 //    h2::l2::n = n_m * m - n_n * n
 
-                xorq    i, i
-                xorq    h1, h1
-                xorq    l1, l1
-                xorq    h2, h2
-                xorq    l2, l2
+        xorq    i, i
+        xorq    h1, h1
+        xorq    l1, l1
+        xorq    h2, h2
+        xorq    l2, l2
 crossloop:
 
-                movq    (m,i,8), c
-                movq    mat_mm, a
-                mulq    c
-                addq    a, l1
-                adcq    $0, d
-                movq    d, c1 // Now c1::l1 is +ve part 1
+        movq    (m,i,8), c
+        movq    mat_mm, a
+        mulq    c
+        addq    a, l1
+        adcq    $0, d
+        movq    d, c1 // Now c1::l1 is +ve part 1
 
-                movq    mat_nm, a
-                mulq    c
-                addq    a, l2
-                adcq    $0, d
-                movq    d, c2 // Now c2::l2 is +ve part 2
+        movq    mat_nm, a
+        mulq    c
+        addq    a, l2
+        adcq    $0, d
+        movq    d, c2 // Now c2::l2 is +ve part 2
 
-                movq    (n,i,8), c
-                movq    mat_mn, a
-                mulq    c
-                subq    h1, d // Now d::a is -ve part 1
+        movq    (n,i,8), c
+        movq    mat_mn, a
+        mulq    c
+        subq    h1, d // Now d::a is -ve part 1
 
-                subq    a, l1
-                sbbq    d, c1
-                sbbq    h1, h1
-                movq    l1, (m,i,8)
-                movq    c1, l1
+        subq    a, l1
+        sbbq    d, c1
+        sbbq    h1, h1
+        movq    l1, (m,i,8)
+        movq    c1, l1
 
-                movq    mat_nn, a
-                mulq    c
-                subq    h2, d // Now d::a is -ve part 2
+        movq    mat_nn, a
+        mulq    c
+        subq    h2, d // Now d::a is -ve part 2
 
-                subq    a, l2
-                sbbq    d, c2
-                sbbq    h2, h2
-                movq    l2, (n,i,8)
-                movq    c2, l2
+        subq    a, l2
+        sbbq    d, c2
+        sbbq    h2, h2
+        movq    l2, (n,i,8)
+        movq    c2, l2
 
-                incq    i
-                cmpq    l, i
-                jc      crossloop
+        incq    i
+        cmpq    l, i
+        jc      crossloop
 
 // Now fix the signs of m and n if they have gone negative
 
-                xorq    i, i
-                movq    h1, c1 // carry-in coded up as well
-                movq    h2, c2 // carry-in coded up as well
-                xorq    h1, l1 // for the end digit
-                xorq    h2, l2 // for the end digit
+        xorq    i, i
+        movq    h1, c1 // carry-in coded up as well
+        movq    h2, c2 // carry-in coded up as well
+        xorq    h1, l1 // for the end digit
+        xorq    h2, l2 // for the end digit
 optnegloop:
-                movq    (m,i,8), a
-                xorq    h1, a
-                negq    c1
-                adcq    $0, a
-                sbbq    c1, c1
-                movq    a, (m,i,8)
-                movq    (n,i,8), a
-                xorq    h2, a
-                negq    c2
-                adcq    $0, a
-                sbbq    c2, c2
-                movq    a, (n,i,8)
-                incq    i
-                cmpq    l, i
-                jc      optnegloop
-                subq    c1, l1
-                subq    c2, l2
+        movq    (m,i,8), a
+        xorq    h1, a
+        negq    c1
+        adcq    $0, a
+        sbbq    c1, c1
+        movq    a, (m,i,8)
+        movq    (n,i,8), a
+        xorq    h2, a
+        negq    c2
+        adcq    $0, a
+        sbbq    c2, c2
+        movq    a, (n,i,8)
+        incq    i
+        cmpq    l, i
+        jc      optnegloop
+        subq    c1, l1
+        subq    c2, l2
 
 // Now shift them right CHUNKSIZE bits
 
-                movq    l, i
+        movq    l, i
 shiftloop:
-                movq    -8(m,i,8), a
-                movq    a, h1
-                shrdq   $CHUNKSIZE, l1, a
-                movq    a, -8(m,i,8)
-                movq    h1, l1
-                movq    -8(n,i,8), a
-                movq    a, h2
-                shrdq   $CHUNKSIZE, l2, a
-                movq    a, -8(n,i,8)
-                movq    h2, l2
-                decq    i
-                jnz     shiftloop
+        movq    -8(m,i,8), a
+        movq    a, h1
+        shrdq   $CHUNKSIZE, l1, a
+        movq    a, -8(m,i,8)
+        movq    h1, l1
+        movq    -8(n,i,8), a
+        movq    a, h2
+        shrdq   $CHUNKSIZE, l2, a
+        movq    a, -8(n,i,8)
+        movq    h2, l2
+        decq    i
+        jnz     shiftloop
 
 // End of main loop. We can stop if t' <= 0 since then m * n < 2^0, which
 // since n is odd (in the main cases where we had one or other input odd)
@@ -474,43 +485,47 @@ shiftloop:
 // maintain strictly t > 0 in the main loop, or the computation of the
 // optimized digit bound l could collapse to 0.
 
-                subq    $CHUNKSIZE, t
-                jnbe    outerloop
+        subq    $CHUNKSIZE, t
+        jnbe    outerloop
 
 // Now compare n with 1 (OR of the XORs in a)
 
-                movq    (n), a
-                xorq    $1, a
-                cmpq    $1, k
-                jz      finalcomb
-                movl    $1, ishort
+        movq    (n), a
+        xorq    $1, a
+        cmpq    $1, k
+        jz      finalcomb
+        movl    $1, ishort
 compareloop:
-                orq     (n,i,8), a
-                incq    i
-                cmpq    k, i
-                jc      compareloop
+        orq     (n,i,8), a
+        incq    i
+        cmpq    k, i
+        jc      compareloop
 
 // Now combine that with original "evenor" oddness flag
 // The final condition is lsb(evenor) = 1 AND a = 0
 
 finalcomb:
-                negq    a
-                sbbq    a, a
-                incq    a
-                andq    evenor, a
+        negq    a
+        sbbq    a, a
+        incq    a
+        andq    evenor, a
 
 // The end
 
 end:
-                addq    $STACKVARSIZE, %rsp
-                popq    %r15
-                popq    %r14
-                popq    %r13
-                popq    %r12
-                popq    %rbx
-                popq    %rbp
+        addq    $STACKVARSIZE, %rsp
+        popq    %r15
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbx
+        popq    %rbp
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

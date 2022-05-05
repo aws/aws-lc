@@ -51,79 +51,79 @@ _bignum_sub:
 // we'll never need words past the p'th. Can now assume m <= p and n <= p.
 // Then compare the modified m and n and branch accordingly
 
-                cmp     m, p
-                csel    m, p, m, cs
-                cmp     n, p
-                csel    n, p, n, cs
-                cmp     m, n
-                bcc     ylonger
+        cmp     m, p
+        csel    m, p, m, cs
+        cmp     n, p
+        csel    n, p, n, cs
+        cmp     m, n
+        bcc     ylonger
 
 // The case where x is longer or of the same size (p >= m >= n)
 
-                sub     p, p, m
-                sub     m, m, n
-                subs    i, xzr, xzr
-                cbz     n, xmainskip
+        sub     p, p, m
+        sub     m, m, n
+        subs    i, xzr, xzr
+        cbz     n, xmainskip
 xmainloop:
-                ldr     a, [x, i, lsl #3]
-                ldr     d, [y, i, lsl #3]
-                sbcs    a, a, d
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                sub     n, n, #1
-                cbnz    n, xmainloop
+        ldr     a, [x, i, lsl #3]
+        ldr     d, [y, i, lsl #3]
+        sbcs    a, a, d
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        sub     n, n, #1
+        cbnz    n, xmainloop
 xmainskip:
-                cbz     m, xtopskip
+        cbz     m, xtopskip
 xtoploop:
-                ldr     a, [x, i, lsl #3]
-                sbcs    a, a, xzr
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                sub     m, m, #1
-                cbnz    m, xtoploop
+        ldr     a, [x, i, lsl #3]
+        sbcs    a, a, xzr
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        sub     m, m, #1
+        cbnz    m, xtoploop
 xtopskip:
-                cbnz    p, tails
-                cset    x0, cc
-                ret
+        cbnz    p, tails
+        cset    x0, cc
+        ret
 
 // The case where y is longer (p >= n > m)
 
 ylonger:
-                sub     p, p, n
-                sub     n, n, m
-                subs    i, xzr, xzr
-                cbz     m, ytoploop
+        sub     p, p, n
+        sub     n, n, m
+        subs    i, xzr, xzr
+        cbz     m, ytoploop
 ymainloop:
-                ldr     a, [x, i, lsl #3]
-                ldr     d, [y, i, lsl #3]
-                sbcs    a, a, d
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                sub     m, m, #1
-                cbnz    m, ymainloop
+        ldr     a, [x, i, lsl #3]
+        ldr     d, [y, i, lsl #3]
+        sbcs    a, a, d
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        sub     m, m, #1
+        cbnz    m, ymainloop
 ytoploop:
-                ldr     a, [y, i, lsl #3]
-                sbcs    a, xzr, a
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                sub     n, n, #1
-                cbnz    n, ytoploop
+        ldr     a, [y, i, lsl #3]
+        sbcs    a, xzr, a
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        sub     n, n, #1
+        cbnz    n, ytoploop
 ytopskip:
-                cbnz    p, tails
-                cset    x0, cc
-                ret
+        cbnz    p, tails
+        cset    x0, cc
+        ret
 
 // Adding a non-trivial tail, when p > max(m,n)
 
 tails:
-                csetm   a, cc
+        csetm   a, cc
 tailloop:
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                subs    p, p, #1
-                bne     tailloop
-                neg     x0, a
-                ret
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        subs    p, p, #1
+        bne     tailloop
+        neg     x0, a
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

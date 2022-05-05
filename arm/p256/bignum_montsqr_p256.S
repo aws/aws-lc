@@ -60,16 +60,16 @@
 /* Let w = d0, the original word we use as offset; d0 gets recycled */      \
 /* First let [t2;t1] = 2^32 * w                                     */      \
 /* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)      */      \
-                lsl     t1, d0, #32;                                        \
-                subs    t0, d0, t1;                                         \
-                lsr     t2, d0, #32;                                        \
-                sbc     d0, d0, t2;                                         \
+        lsl     t1, d0, #32;                                        \
+        subs    t0, d0, t1;                                         \
+        lsr     t2, d0, #32;                                        \
+        sbc     d0, d0, t2;                                         \
 /* Hence basic [d4;d3;d2;d1] += (2^256 - 2^224 + 2^192 + 2^96) * w  */      \
-                adds    d1, d1, t1;                                         \
-                adcs    d2, d2, t2;                                         \
-                adcs    d3, d3, t0;                                         \
-                adcs    d4, d4, d0;                                         \
-                adc     d5, xzr, xzr
+        adds    d1, d1, t1;                                         \
+        adcs    d2, d2, t2;                                         \
+        adcs    d3, d3, t0;                                         \
+        adcs    d4, d4, d0;                                         \
+        adc     d5, xzr, xzr
 
 // ---------------------------------------------------------------------------
 // Core one-step "short" Montgomery reduction macro. Takes input in
@@ -83,15 +83,15 @@
 /* Let w = d0, the original word we use as offset; d0 gets recycled      */ \
 /* First let [t2;t1] = 2^32 * w                                          */ \
 /* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)           */ \
-                lsl     t1, d0, #32;                                        \
-                subs    t0, d0, t1;                                         \
-                lsr     t2, d0, #32;                                        \
-                sbc     d0, d0, t2;                                         \
+        lsl     t1, d0, #32;                                        \
+        subs    t0, d0, t1;                                         \
+        lsr     t2, d0, #32;                                        \
+        sbc     d0, d0, t2;                                         \
 /* Hence [d4;..;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w */ \
-                adds    d1, d1, t1;                                         \
-                adcs    d2, d2, t2;                                         \
-                adcs    d3, d3, t0;                                         \
-                adc     d4, d0, xzr
+        adds    d1, d1, t1;                                         \
+        adcs    d2, d2, t2;                                         \
+        adcs    d3, d3, t0;                                         \
+        adc     d4, d0, xzr
 
 #define a0 x2
 #define a1 x3
@@ -118,76 +118,76 @@ _bignum_montsqr_p256:
 
 // Load in all words of the input
 
-                ldp     a0, a1, [x1]
-                ldp     a2, a3, [x1, #16]
+        ldp     a0, a1, [x1]
+        ldp     a2, a3, [x1, #16]
 
 // Square the low half, getting a result in [s3;s2;s1;s0]
 
-                mul     s0, a0, a0
-                mul     s2, a1, a1
-                mul     d1, a0, a1
+        mul     s0, a0, a0
+        mul     s2, a1, a1
+        mul     d1, a0, a1
 
-                umulh   s1, a0, a0
-                umulh   s3, a1, a1
-                umulh   d2, a0, a1
+        umulh   s1, a0, a0
+        umulh   s3, a1, a1
+        umulh   d2, a0, a1
 
-                adds    s1, s1, d1
-                adcs    s2, s2, d2
-                adc     s3, s3, xzr
+        adds    s1, s1, d1
+        adcs    s2, s2, d2
+        adc     s3, s3, xzr
 
-                adds    s1, s1, d1
-                adcs    s2, s2, d2
-                adc     s3, s3, xzr
+        adds    s1, s1, d1
+        adcs    s2, s2, d2
+        adc     s3, s3, xzr
 
 // Perform two "short" Montgomery steps on the low square
 // This shifts it to an offset compatible with middle product
 
-                montreds(s0,s3,s2,s1,s0, d1,d2,d3)
+        montreds(s0,s3,s2,s1,s0, d1,d2,d3)
 
-                montreds(s1,s0,s3,s2,s1, d1,d2,d3)
+        montreds(s1,s0,s3,s2,s1, d1,d2,d3)
 
 // Compute cross-product with ADK 2x2->4 multiplier as [c3;c2;c1;c0]
 
-                mul     c0, a0, a2
-                mul     d4, a1, a3
-                umulh   c2, a0, a2
-                muldiffn(d3,d2,d1, c4, a0,a1, a3,a2)
+        mul     c0, a0, a2
+        mul     d4, a1, a3
+        umulh   c2, a0, a2
+        muldiffn(d3,d2,d1, c4, a0,a1, a3,a2)
 
-                adds    c1, c0, c2
-                adc     c2, c2, xzr
+        adds    c1, c0, c2
+        adc     c2, c2, xzr
 
-                umulh   c3, a1, a3
+        umulh   c3, a1, a3
 
-                adds    c1, c1, d4
-                adcs    c2, c2, c3
-                adc     c3, c3, xzr
-                adds    c2, c2, d4
-                adc     c3, c3, xzr
+        adds    c1, c1, d4
+        adcs    c2, c2, c3
+        adc     c3, c3, xzr
+        adds    c2, c2, d4
+        adc     c3, c3, xzr
 
-                adds    xzr, d3, #1
-                adcs    c1, c1, d1
-                adcs    c2, c2, d2
-                adc     c3, c3, d3
+        adds    xzr, d3, #1
+        adcs    c1, c1, d1
+        adcs    c2, c2, d2
+        adc     c3, c3, d3
 
 // Double it and add the Montgomerified low square
 
-                adds    c0, c0, c0
-                adcs    c1, c1, c1
-                adcs    c2, c2, c2
-                adcs    c3, c3, c3
-                adc     c4, xzr, xzr
+        adds    c0, c0, c0
+        adcs    c1, c1, c1
+        adcs    c2, c2, c2
+        adcs    c3, c3, c3
+        adc     c4, xzr, xzr
 
-                adds    c0, c0, s2
-                adcs    c1, c1, s3
-                adcs    c2, c2, s0
-                adcs    c3, c3, s1
-                adc     c4, c4, xzr
+        adds    c0, c0, s2
+        adcs    c1, c1, s3
+        adcs    c2, c2, s0
+        adcs    c3, c3, s1
+        adc     c4, c4, xzr
 
 // Montgomery-reduce the combined low and middle term another twice
 
-                montrede(c0,c4,c3,c2,c1,c0, d1,d2,d3)
+        montrede(c0,c4,c3,c2,c1,c0, d1,d2,d3)
 
-                montrede(c1,c0,c4,c3,c2,c1, d1,d2,d3)
+        montrede(c1,c0,c4,c3,c2,c1, d1,d2,d3)
 
 // Our sum so far is in [c1,c0,c4,c3,c2]; choose more intuitive names
 
@@ -210,28 +210,28 @@ _bignum_montsqr_p256:
 
 // Add in the pure squares 22 + 33
 
-                mul     t1, a2, a2
-                adds    r0, r0, t1
-                mul     t2, a3, a3
-                umulh   t1, a2, a2
-                adcs    r1, r1, t1
-                adcs    r2, r2, t2
-                umulh   t2, a3, a3
-                adcs    r3, r3, t2
-                adc     c, c, xzr
+        mul     t1, a2, a2
+        adds    r0, r0, t1
+        mul     t2, a3, a3
+        umulh   t1, a2, a2
+        adcs    r1, r1, t1
+        adcs    r2, r2, t2
+        umulh   t2, a3, a3
+        adcs    r3, r3, t2
+        adc     c, c, xzr
 
 // Construct the 23 term, double and add it in
 
-                mul     t1, a2, a3
-                umulh   t2, a2, a3
-                adds    t1, t1, t1
-                adcs    t2, t2, t2
-                adc     t3, xzr, xzr
+        mul     t1, a2, a3
+        umulh   t2, a2, a3
+        adds    t1, t1, t1
+        adcs    t2, t2, t2
+        adc     t3, xzr, xzr
 
-                adds    r1, r1, t1
-                adcs    r2, r2, t2
-                adcs    r3, r3, t3
-                adcs    c, c, xzr
+        adds    r1, r1, t1
+        adcs    r2, r2, t2
+        adcs    r3, r3, t3
+        adcs    c, c, xzr
 
 // We know, writing B = 2^{4*64} that the full implicit result is
 // B^2 c <= z + (B - 1) * p < B * p + (B - 1) * p < 2 * B * p,
@@ -240,34 +240,34 @@ _bignum_montsqr_p256:
 // comparison to catch cases where the residue is >= p.
 // First set [t2;0;t1;-1] = p_256 since we use the constants twice.
 
-                mov     t1, #0x00000000ffffffff
-                mov     t2, #0xffffffff00000001
+        mov     t1, #0x00000000ffffffff
+        mov     t2, #0xffffffff00000001
 
 // Set CF (because of inversion) iff (0,p_256) <= (c,r3,r2,r1,r0)
 
-                subs    xzr, r0, #-1
-                sbcs    xzr, r1, t1
-                sbcs    xzr, r2, xzr
-                sbcs    xzr, r3, t2
-                sbcs    xzr, c, xzr
+        subs    xzr, r0, #-1
+        sbcs    xzr, r1, t1
+        sbcs    xzr, r2, xzr
+        sbcs    xzr, r3, t2
+        sbcs    xzr, c, xzr
 
 // Convert the condition into a bitmask and do a masked subtraction
 
-                csetm   c, cs
+        csetm   c, cs
 
-                subs    r0, r0, c
-                and     t1, t1, c
-                sbcs    r1, r1, t1
-                sbcs    r2, r2, xzr
-                and     t2, t2, c
-                sbc     r3, r3, t2
+        subs    r0, r0, c
+        and     t1, t1, c
+        sbcs    r1, r1, t1
+        sbcs    r2, r2, xzr
+        and     t2, t2, c
+        sbc     r3, r3, t2
 
 // Store things back in place
 
-                stp     r0, r1, [x0]
-                stp     r2, r3, [x0, #16]
+        stp     r0, r1, [x0]
+        stp     r2, r3, [x0, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

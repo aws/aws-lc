@@ -38,18 +38,18 @@ _bignum_nonzero_4:
 
 // Generate a = an OR of all the words in the bignum
 
-                ldp     a, d, [x]
-                orr     a, a, d
-                ldp     c, d, [x, #16]
-                orr     c, c, d
-                orr     a, a, c
+        ldp     a, d, [x]
+        orr     a, a, d
+        ldp     c, d, [x, #16]
+        orr     c, c, d
+        orr     a, a, c
 
 // Set a standard C condition based on whether a is nonzero
 
-                cmp     a, xzr
-                cset    x0, ne
+        cmp     a, xzr
+        cset    x0, ne
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

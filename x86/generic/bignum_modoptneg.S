@@ -22,6 +22,7 @@
 //      (uint64_t k, uint64_t *z, uint64_t p, uint64_t *x, uint64_t *m);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = p, RCX = x, R8 = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = p, R9 = x, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -43,49 +44,63 @@
 bignum_modoptneg:
 _bignum_modoptneg:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
+
 // Do nothing if k = 0
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Make an additional check for zero input, and force p to zero in this case.
 // This can be skipped if the input is known not to be zero a priori.
 
-                xor     i, i
-                xor     a, a
+        xor     i, i
+        xor     a, a
 cmploop:
-                or      a, [x+8*i]
-                inc     i
-                cmp     i, k
-                jc      cmploop
+        or      a, [x+8*i]
+        inc     i
+        cmp     i, k
+        jc      cmploop
 
-                cmp     a, 0
-                cmovz   p, a
+        cmp     a, 0
+        cmovz   p, a
 
 // Turn the input p into a strict bitmask
 
-                neg     p
-                sbb     p, p
+        neg     p
+        sbb     p, p
 
 // Main loop
 
-                xor     i, i
-                mov     c, p
+        xor     i, i
+        mov     c, p
 mainloop:
-                mov     a, [m+8*i]
-                and     a, p
-                mov     b, [x+8*i]
-                xor     b, p
-                neg     c
-                adc     a, b
-                sbb     c, c
-                mov     [z+8*i], a
-                inc     i
-                cmp     i, k
-                jc      mainloop
+        mov     a, [m+8*i]
+        and     a, p
+        mov     b, [x+8*i]
+        xor     b, p
+        neg     c
+        adc     a, b
+        sbb     c, c
+        mov     [z+8*i], a
+        inc     i
+        cmp     i, k
+        jc      mainloop
 
 end:
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

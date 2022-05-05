@@ -23,6 +23,7 @@
 // Reduction is modulo the group order of the secp256k1 curve.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -50,6 +51,13 @@
 
 bignum_mod_n256k1_4:
 _bignum_mod_n256k1_4:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load a set of registers [0; n2; n1; n0] = 2^256 - n_256k1
 
@@ -89,6 +97,10 @@ _bignum_mod_n256k1_4:
         sbbq    $0, d3
         movq    d3, 24(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

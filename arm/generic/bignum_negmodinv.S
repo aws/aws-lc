@@ -53,29 +53,29 @@ _bignum_negmodinv:
 
 // If k = 0 do nothing
 
-                cbz     k, end
+        cbz     k, end
 
 // Compute word-level negated modular inverse w for x[0].
 
-                ldr     a, [x]
-                lsl     w, a, #2
-                sub     w, a, w
-                eor     w, w, #2
-                mov     h, #1
-                madd    h, a, w, h
-                mul     l, h, h
-                madd    w, h, w, w
-                mul     h, l, l
-                madd    w, l, w, w
-                mul     l, h, h
-                madd    w, h, w, w
-                madd    w, l, w, w
+        ldr     a, [x]
+        lsl     w, a, #2
+        sub     w, a, w
+        eor     w, w, #2
+        mov     h, #1
+        madd    h, a, w, h
+        mul     l, h, h
+        madd    w, h, w, w
+        mul     h, l, l
+        madd    w, l, w, w
+        mul     l, h, h
+        madd    w, h, w, w
+        madd    w, l, w, w
 
 // Write that as lowest word of the output, then if k = 1 we're finished
 
-                str     w, [z]
-                cmp     k, #1
-                beq     end
+        str     w, [z]
+        cmp     k, #1
+        beq     end
 
 // Otherwise compute and write the other digits (1..k-1) of w * x + 1.
 // Note that at this point CF was set by the comparison (subtraction) "k - 1".
@@ -85,17 +85,17 @@ _bignum_negmodinv:
 // part of the product, since its only contribution is to set the carry
 // flag. Thus, we only calculate the high part of a * w explicitly.
 
-                umulh   h, a, w
-                mov     i, #1
+        umulh   h, a, w
+        mov     i, #1
 initloop:
-                ldr     a, [x, i, lsl #3]
-                mul     l, a, w
-                adcs    l, l, h
-                umulh   h, a, w
-                str     l, [z, i, lsl #3]
-                add     i, i, #1
-                sub     a, k, i
-                cbnz    a, initloop
+        ldr     a, [x, i, lsl #3]
+        mul     l, a, w
+        adcs    l, l, h
+        umulh   h, a, w
+        str     l, [z, i, lsl #3]
+        add     i, i, #1
+        sub     a, k, i
+        cbnz    a, initloop
 
 // For simpler indexing, z := z + 8 and k := k - 1 per outer iteration
 // Then we can use the same index for x and for z and effective size k.
@@ -106,41 +106,41 @@ initloop:
 // of needing the additional "finale" tail for the final iteration
 // since we do one outer loop iteration too few.
 
-                subs    k, k, #2
-                beq     finale
+        subs    k, k, #2
+        beq     finale
 
 outerloop:
-                add     z, z, #8
-                ldr     e, [z]
-                mul     m, e, w
-                str     m, [z]
-                ldr     a, [x]
-                umulh   h, a, m
-                subs    xzr, e, #1         // Effective carry from a * m + e
-                mov     i, #1
+        add     z, z, #8
+        ldr     e, [z]
+        mul     m, e, w
+        str     m, [z]
+        ldr     a, [x]
+        umulh   h, a, m
+        subs    xzr, e, #1         // Effective carry from a * m + e
+        mov     i, #1
 innerloop:
-                ldr     a, [x, i, lsl #3]
-                ldr     e, [z, i, lsl #3]
-                mul     l, a, m
-                adcs    e, e, h
-                umulh   h, a, m
-                adc     h, h, xzr
-                adds    e, e, l
-                str     e, [z, i, lsl #3]
-                sub     a, i, k
-                add     i, i, #1
-                cbnz    a, innerloop
+        ldr     a, [x, i, lsl #3]
+        ldr     e, [z, i, lsl #3]
+        mul     l, a, m
+        adcs    e, e, h
+        umulh   h, a, m
+        adc     h, h, xzr
+        adds    e, e, l
+        str     e, [z, i, lsl #3]
+        sub     a, i, k
+        add     i, i, #1
+        cbnz    a, innerloop
 
-                subs    k, k, #1
-                bne     outerloop
+        subs    k, k, #1
+        bne     outerloop
 
 finale:
-                ldr     e, [z, #8]
-                mul     m, e, w
-                str     m, [z, #8]
+        ldr     e, [z, #8]
+        mul     m, e, w
+        str     m, [z, #8]
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

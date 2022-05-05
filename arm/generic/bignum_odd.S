@@ -30,12 +30,12 @@
 bignum_odd:
 _bignum_odd:
 
-                cbz     x0, end                 // if k = 0, that's the return!
-                ldr     x0, [x1]
-                and     x0, x0, #1
+        cbz     x0, end                 // if k = 0, that's the return!
+        ldr     x0, [x1]
+        and     x0, x0, #1
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

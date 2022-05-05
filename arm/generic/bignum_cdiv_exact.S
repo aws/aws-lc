@@ -68,41 +68,41 @@ _bignum_cdiv_exact:
 
 // If k = 0 then there's nothing to be done
 
-                cbz     k, end
+        cbz     k, end
 
 // Let e be the number of trailing zeros in m. This implementation uses
 // 63 - clz(-m & m) which is a bit slicker than the main word_ctz function
 // but fails for m = 0. We don't have to worry about that case here.
 
-                neg     e, m
-                and     e, e, m
-                clz     e, e
-                eor     e, e, #63
+        neg     e, m
+        and     e, e, m
+        clz     e, e
+        eor     e, e, #63
 
 // Also generate a corresponding bitmask f for selecting bottom 64 - e bits.
 
-                mov     f, #-1
-                lsr     f, f, e
+        mov     f, #-1
+        lsr     f, f, e
 
 // Now just shift m right by e bits. So hereafter we can assume m is odd
 // but we first need to shift the input right by e bits then divide by m.
 
-                lsr     m, m, e
+        lsr     m, m, e
 
 // Compute the negated modular inverse w with w * m + 1 == 0 (mod 2^64)
 // This is essentially the same as word_negmodinv.
 
-                sub     w, m, m, lsl #2
-                eor     w, w, #2
-                mov     one, #1
-                madd    e1, m, w, one
-                mul     e2, e1, e1
-                madd    w, e1, w, w
-                mul     e4, e2, e2
-                madd    w, e2, w, w
-                mul     e8, e4, e4
-                madd    w, e4, w, w
-                madd    w, e8, w, w
+        sub     w, m, m, lsl #2
+        eor     w, w, #2
+        mov     one, #1
+        madd    e1, m, w, one
+        mul     e2, e1, e1
+        madd    w, e1, w, w
+        mul     e4, e2, e2
+        madd    w, e2, w, w
+        mul     e8, e4, e4
+        madd    w, e4, w, w
+        madd    w, e8, w, w
 
 // Consider x' = x + m and do a Montgomery reduction, keeping the cofactor z.
 // This gives us x' + m * z = 2^{64k} * c where c <= m. Assuming x = m * y
@@ -117,19 +117,19 @@ _bignum_cdiv_exact:
 // write back the logical complements of the cofactor as the answer.
 // Start with carry word c = m to make the initial tweak x' = x + m.
 
-                mov     c, m
-                mov     i, xzr
+        mov     c, m
+        mov     i, xzr
 
 // Unless n = 0, preload the zeroth digit shifted right e places and bump
 // up the x pointer by 8 and n down by 1, to ease indexing and comparison
 // using the same variable i in the main loop. When n = 0 we leave it alone,
 // as the comparison i < n will always fail and the x pointer is unused.
 
-                mov     d, xzr
-                cbz     n, loop
-                ldr     d, [x], #8
-                lsr     d, d, e
-                sub     n, n, 1
+        mov     d, xzr
+        cbz     n, loop
+        ldr     d, [x], #8
+        lsr     d, d, e
+        sub     n, n, 1
 
 loop:
 
@@ -137,37 +137,37 @@ loop:
 // eventually setting d back to the other part of the newly loaded digit
 // ready for the next time round the loop.
 
-                mov     l, xzr
-                cmp     i, n
-                bcs     noload
-                ldr     l, [x, i, lsl #3]
+        mov     l, xzr
+        cmp     i, n
+        bcs     noload
+        ldr     l, [x, i, lsl #3]
 noload:
-                rorv    l, l, e
-                bic     a, l, f
-                orr     a, d, a
-                and     d, l, f
+        rorv    l, l, e
+        bic     a, l, f
+        orr     a, d, a
+        and     d, l, f
 
 // Now a is the next digit after shifting right by e places, c the carry-in.
 // Do the main Montgomery step with the (odd) m, writing back ~q.
 
-                adds    a, a, c
-                mul     q, a, w
-                cset    c, cs
-                mvn     l, q
-                str     l, [z, i, lsl #3]
+        adds    a, a, c
+        mul     q, a, w
+        cset    c, cs
+        mvn     l, q
+        str     l, [z, i, lsl #3]
 
-                mul     l, q, m
-                umulh   h, q, m
+        mul     l, q, m
+        umulh   h, q, m
 
-                adds    l, l, a
-                adc     c, h, c
+        adds    l, l, a
+        adc     c, h, c
 
-                add     i, i, #1
-                cmp     i, k
-                bcc     loop
+        add     i, i, #1
+        cmp     i, k
+        bcc     loop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

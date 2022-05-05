@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -46,6 +47,13 @@
 
 bignum_mod_p256_4:
 _bignum_mod_p256_4:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Load the input and subtract to get [d3;d3;d1;d1] = x - p_256 (modulo 2^256)
 // The constants n1 and n3 in [n3; 0; n1; -1] = p_256 are saved for later
@@ -79,6 +87,10 @@ _bignum_mod_p256_4:
         adc     d3, n3
         mov     [z+24], d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

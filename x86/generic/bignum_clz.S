@@ -25,6 +25,7 @@
 // is always true in practice because of address space limitations
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -44,42 +45,53 @@
 bignum_clz:
 _bignum_clz:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // Initialize the index i and also prepare default return value of 0 (i = rax)
 
-                xor     i, i
+        xor     i, i
 
 // If the bignum is zero-length, just return 0
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Use w = a[i-1] to store nonzero words in a bottom-up sweep
 // Set the initial default to be as if we had a 11...11 word directly below
 
-                mov     w, -1
-                xor     j, j
+        mov     w, -1
+        xor     j, j
 loop:
-                mov     a, [x+8*j]
-                inc     j
-                test    a, a
-                cmovnz  i, j
-                cmovnz  w, a
-                cmp     j, k
-                jnz     loop
+        mov     a, [x+8*j]
+        inc     j
+        test    a, a
+        cmovnz  i, j
+        cmovnz  w, a
+        cmp     j, k
+        jnz     loop
 
 // Now w = a[i-1] is the highest nonzero word, or in the zero case the
 // default of the "extra" 11...11 = a[0-1]. We now want 64*(k - i) + clz(w) =
 // 64*(k - i) + (63 - bsr(w)). Note that this code does not rely on the
 // behavior of the bsr instruction for zero inputs, where it is undefined
 
-                sub     k, i
-                shl     k, 6
-                bsr     rax, w
-                xor     rax, 63
-                add     rax, k
+        sub     k, i
+        shl     k, 6
+        bsr     rax, w
+        xor     rax, 63
+        add     rax, k
 
 end:
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

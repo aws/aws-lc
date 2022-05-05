@@ -35,14 +35,14 @@ _word_ctz:
 // ctz(....1), on the behavior clz(0) = 64, which is guaranteed according
 // to the ARM manual.
 
-                mvn     x1, x0
-                sub     x0, x0, #1
-                and     x0, x0, x1
-                clz     x1, x0
-                mov     x0, #64
-                sub     x0, x0, x1
+        mvn     x1, x0
+        sub     x0, x0, #1
+        and     x0, x0, x1
+        clz     x1, x0
+        mov     x0, #64
+        sub     x0, x0, x1
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

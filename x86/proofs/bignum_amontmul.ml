@@ -143,7 +143,7 @@ let bignum_amontmul_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_AMONTMUL_EXEC = X86_MK_EXEC_RULE bignum_amontmul_mc;;
+let BIGNUM_AMONTMUL_EXEC = X86_MK_CORE_EXEC_RULE bignum_amontmul_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -179,7 +179,7 @@ let BIGNUM_AMONTMUL_CORRECT = time prove
           [(z,8 * val k); (stackpointer,8)]
           [(word pc,0x15e); (x,8 * val k); (y,8 * val k); (m,8 * val k)]
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_amontmul_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_amontmul_mc) /\
                 read RIP s = word (pc + 0xe) /\
                 read RSP s = stackpointer /\
                 C_ARGUMENTS [k; z; x; y; m] s /\
@@ -897,6 +897,41 @@ let BIGNUM_AMONTMUL_SUBROUTINE_CORRECT = time prove
             MAYCHANGE [memory :> bytes(z,8 * val k);
                        memory :> bytes(word_sub stackpointer (word 56),56)] ,,
             MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-    BIGNUM_AMONTMUL_EXEC BIGNUM_AMONTMUL_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+    bignum_amontmul_mc BIGNUM_AMONTMUL_CORRECT
+    `[RBX; RBP; R12; R13; R14; R15]` 56);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_amontmul_mc = define_from_elf
+   "windows_bignum_amontmul_mc" "x86/generic/bignum_amontmul.obj";;
+
+let WINDOWS_BIGNUM_AMONTMUL_SUBROUTINE_CORRECT = time prove
+ (`!k z x y m a b n pc stackpointer returnaddress.
+        nonoverlapping (z,8 * val k) (word_sub stackpointer (word 72),80) /\
+        ALLPAIRS nonoverlapping
+          [(z,8 * val k); (word_sub stackpointer (word 72),72)]
+          [(word pc,0x173); (x,8 * val k); (y,8 * val k); (m,8 * val k)]
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_amontmul_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [k; z; x; y; m] s /\
+                bignum_from_memory (x,val k) s = a /\
+                bignum_from_memory (y,val k) s = b /\
+                bignum_from_memory (m,val k) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                (ODD n
+                 ==> (bignum_from_memory (z,val k) s ==
+                      inverse_mod n (2 EXP (64 * val k)) * a * b) (mod n)))
+           (MAYCHANGE [RIP; RSP; R8; RCX; RAX; RDX; R9; R10; R11] ,,
+            MAYCHANGE [memory :> bytes(z,8 * val k);
+                       memory :> bytes(word_sub stackpointer (word 72),72)] ,,
+            MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC
+    windows_bignum_amontmul_mc bignum_amontmul_mc BIGNUM_AMONTMUL_CORRECT
     `[RBX; RBP; R12; R13; R14; R15]` 56);;

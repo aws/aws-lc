@@ -27,6 +27,7 @@
 // answer.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = m, R9 = p
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m, [RSP+48] = p
 // ----------------------------------------------------------------------------
 
 
@@ -72,186 +73,201 @@
 bignum_montredc:
 _bignum_montredc:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+        movq    64(%rsp), %r9
+#endif
+
 // Save registers and allocate space on stack for non-register variable w
 
-                pushq   %rbx
-                pushq   %rbp
-                pushq   %r12
-                pushq   %r13
-                pushq   %r14
-                pushq   %r15
-                subq    $8, %rsp
+        pushq   %rbx
+        pushq   %rbp
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
+        pushq   %r15
+        subq    $8, %rsp
 
 // If k = 0 the whole operation is trivial
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Move n input into its permanent home, since we need %rdx for multiplications
 
-                movq    %rdx, n
+        movq    %rdx, n
 
 // Compute word-level negated modular inverse w for m == m[0].
 
-                movq    (m), a
+        movq    (m), a
 
-                movq    a, t2
-                movq    a, t1
-                shlq    $2, t2
-                subq    t2, t1
-                xorq    $2, t1
+        movq    a, t2
+        movq    a, t1
+        shlq    $2, t2
+        subq    t2, t1
+        xorq    $2, t1
 
-                movq    t1, t2
-                imulq   a, t2
-                movl    $2, ashort
-                addq    t2, a
-                addq    $1, t2
+        movq    t1, t2
+        imulq   a, t2
+        movl    $2, ashort
+        addq    t2, a
+        addq    $1, t2
 
-                imulq   a, t1
+        imulq   a, t1
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, t1
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, t1
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, t1
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, t1
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, t1
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, t1
 
-                movq    t1, w
+        movq    t1, w
 
 // Initialize z to the lowest k digits of the input, zero-padding if n < k.
 
-                movq    k, j
-                cmpq    k, n
-                cmovcq  n, j
-                xorq    i, i
-                testq   j, j
-                jz      padloop
+        movq    k, j
+        cmpq    k, n
+        cmovcq  n, j
+        xorq    i, i
+        testq   j, j
+        jz      padloop
 copyloop:
-                movq    (x,i,8), a
-                movq    a, (z,i,8)
-                incq    i
-                cmpq    j, i
-                jc      copyloop
+        movq    (x,i,8), a
+        movq    a, (z,i,8)
+        incq    i
+        cmpq    j, i
+        jc      copyloop
 
-                cmpq    k, i
-                jnc     initialized
+        cmpq    k, i
+        jnc     initialized
 
-                xorq    j, j
+        xorq    j, j
 padloop:
-                movq    j, (z,i,8)
-                incq    i
-                cmpq    k, i
-                jc      padloop
+        movq    j, (z,i,8)
+        incq    i
+        cmpq    k, i
+        jc      padloop
 
 initialized:
-                xorq    c, c
+        xorq    c, c
 
 // Now if p = 0 we just need the corrective tail, and even that is
 // only needed for the case when the input is exactly the modulus,
 // to maintain the <= 2^64p * n precondition
 
-                testq   p, p
-                jz      corrective
+        testq   p, p
+        jz      corrective
 
 // Outer loop, just doing a standard Montgomery reduction on z
 
-                xorq    i, i
+        xorq    i, i
 outerloop:
-                movq    (z), e
-                movq    w, d
-                imulq   e, d
-                movq    (m), a
-                mulq    d
-                addq    e, a // Will be zero but want the carry
-                movq    %rdx, h
-                movl    $1, jshort
-                movq    k, t
-                decq    t
-                jz      montend
+        movq    (z), e
+        movq    w, d
+        imulq   e, d
+        movq    (m), a
+        mulq    d
+        addq    e, a // Will be zero but want the carry
+        movq    %rdx, h
+        movl    $1, jshort
+        movq    k, t
+        decq    t
+        jz      montend
 
 montloop:
-                adcq    (z,j,8), h
-                sbbq    e, e
-                movq    (m,j,8), a
-                mulq    d
-                subq    e, %rdx
-                addq    h, a
-                movq    a, -8(z,j,8)
-                movq    %rdx, h
-                incq    j
-                decq    t
-                jnz     montloop
+        adcq    (z,j,8), h
+        sbbq    e, e
+        movq    (m,j,8), a
+        mulq    d
+        subq    e, %rdx
+        addq    h, a
+        movq    a, -8(z,j,8)
+        movq    %rdx, h
+        incq    j
+        decq    t
+        jnz     montloop
 
 montend:
-                adcq    c, h
-                movl    $0, cshort
-                adcq    $0, c
+        adcq    c, h
+        movl    $0, cshort
+        adcq    $0, c
 
-                addq    i, j
-                cmpq    n, j
-                jnc     offtheend
-                movq    (x,j,8), a
-                addq    a, h
-                adcq    $0, c
+        addq    i, j
+        cmpq    n, j
+        jnc     offtheend
+        movq    (x,j,8), a
+        addq    a, h
+        adcq    $0, c
 offtheend:
-                movq    h, -8(z,k,8)
+        movq    h, -8(z,k,8)
 
 // End of outer loop.
 
-                incq    i
-                cmpq    p, i
-                jc      outerloop
+        incq    i
+        cmpq    p, i
+        jc      outerloop
 
 // Now do a comparison of (c::z) with (0::m) to set a final correction mask
 // indicating that (c::z) >= m and so we need to subtract m.
 
 corrective:
 
-                xorq    j, j
-                movq    k, n
+        xorq    j, j
+        movq    k, n
 cmploop:
-                movq    (z,j,8), a
-                sbbq    (m,j,8), a
-                incq    j
-                decq    n
-                jnz     cmploop
+        movq    (z,j,8), a
+        sbbq    (m,j,8), a
+        incq    j
+        decq    n
+        jnz     cmploop
 
-                sbbq    $0, c
-                sbbq    d, d
-                notq    d
+        sbbq    $0, c
+        sbbq    d, d
+        notq    d
 
 // Now do a masked subtraction of m for the final reduced result.
 
-                xorq    e, e
-                xorq    j, j
+        xorq    e, e
+        xorq    j, j
 corrloop:
-                movq    (m,j,8), a
-                andq    d, a
-                negq    e
-                sbbq    a, (z,j,8)
-                sbbq    e, e
-                incq    j
-                cmpq    k, j
-                jc      corrloop
+        movq    (m,j,8), a
+        andq    d, a
+        negq    e
+        sbbq    a, (z,j,8)
+        sbbq    e, e
+        incq    j
+        cmpq    k, j
+        jc      corrloop
 
 end:
-                addq    $8, %rsp
-                popq    %r15
-                popq    %r14
-                popq    %r13
-                popq    %r12
-                popq    %rbp
-                popq    %rbx
+        addq    $8, %rsp
+        popq    %r15
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbp
+        popq    %rbx
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

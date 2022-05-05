@@ -24,6 +24,7 @@
 // Truncates the result in general unless k >= 2 * n
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x
 // ----------------------------------------------------------------------------
 
 
@@ -61,6 +62,15 @@
 
 bignum_sqr:
 _bignum_sqr:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
 
 // We use too many registers, and also we need %rax:%rdx for multiplications
 
@@ -175,6 +185,10 @@ end:
         popq    %r12
         popq    %rbp
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

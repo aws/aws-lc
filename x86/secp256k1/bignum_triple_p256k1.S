@@ -24,6 +24,7 @@
 // p_256k1, and the result is always fully reduced, z = (3 * x) mod p_256k1.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -56,62 +57,73 @@
 bignum_triple_p256k1:
 _bignum_triple_p256k1:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 // but immediately form the quotient estimate q = h + 1
 
-                xor     ashort, ashort
+        xor     ashort, ashort
 
-                mov     q, [x]
-                mov     d0, q
-                adcx    q, q
-                adox    d0, q
-                mov     q, [x+8]
-                mov     d1, q
-                adcx    q, q
-                adox    d1, q
-                mov     q, [x+16]
-                mov     d2, q
-                adcx    q, q
-                adox    d2, q
-                mov     q, [x+24]
-                mov     d3, q
-                adcx    q, q
-                adox    d3, q
+        mov     q, [x]
+        mov     d0, q
+        adcx    q, q
+        adox    d0, q
+        mov     q, [x+8]
+        mov     d1, q
+        adcx    q, q
+        adox    d1, q
+        mov     q, [x+16]
+        mov     d2, q
+        adcx    q, q
+        adox    d2, q
+        mov     q, [x+24]
+        mov     d3, q
+        adcx    q, q
+        adox    d3, q
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256k1 <= z - q * p_256k1 < p_256k1.
 
-                mov     qshort, 1
-                adcx    q, a
-                adox    q, a
+        mov     qshort, 1
+        adcx    q, a
+        adox    q, a
 
 // Initial subtraction of z - q * p_256k1, actually by adding q * 4294968273.
 
-                mov     c, 4294968273
-                xor     a, a
-                imul    q, c
-                add     d0, q
-                adc     d1, a
-                adc     d2, a
-                adc     d3, a
+        mov     c, 4294968273
+        xor     a, a
+        imul    q, c
+        add     d0, q
+        adc     d1, a
+        adc     d2, a
+        adc     d3, a
 
 // With z = 2^256 * h + l, the underlying result z' is actually
 // (2^256 * h + l) - q * (2^256 - 4294968273) = (l + q * 4294968273) - 2^256
 // so carry-clear <=> z' is negative. Correct by subtracting in that case.
 // In any case, write final result to z as we go.
 
-                cmovc   c, a
+        cmovc   c, a
 
-                sub     d0, c
-                mov     [z], d0
-                sbb     d1, a
-                mov     [z+8], d1
-                sbb     d2, a
-                mov     [z+16],d2
-                sbb     d3, a
-                mov     [z+24],d3
+        sub     d0, c
+        mov     [z], d0
+        sbb     d1, a
+        mov     [z+8], d1
+        sbb     d2, a
+        mov     [z+16],d2
+        sbb     d3, a
+        mov     [z+24],d3
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

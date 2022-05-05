@@ -24,6 +24,7 @@
 // and the result is always fully reduced, i.e. z = (3 * x) mod p_256.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -59,76 +60,87 @@
 bignum_triple_p256_alt:
 _bignum_triple_p256_alt:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // First do the multiplication by 3, getting z = [h; d3; ...; d0]
 // but immediately form the quotient estimate q = h + 1
 
-                mov     cshort, 3
+        mov     cshort, 3
 
-                mov     a, [x]
-                mul     c
-                mov     d0, a
-                mov     d1, d
+        mov     a, [x]
+        mul     c
+        mov     d0, a
+        mov     d1, d
 
-                mov     a, [x+8]
-                xor     d2, d2
-                mul     c
-                add     d1, a
-                adc     d2, d
+        mov     a, [x+8]
+        xor     d2, d2
+        mul     c
+        add     d1, a
+        adc     d2, d
 
-                mov     a, [x+16]
-                xor     d3, d3
-                mul     c
-                add     d2, a
-                adc     d3, d
+        mov     a, [x+16]
+        xor     d3, d3
+        mul     c
+        add     d2, a
+        adc     d3, d
 
-                mov     a, [x+24]
-                mul     c
-                add     d3, a
+        mov     a, [x+24]
+        mul     c
+        add     d3, a
 
 // For this limited range a simple quotient estimate of q = h + 1 works, where
 // h = floor(z / 2^256). Then -p_256 <= z - q * p_256 < p_256, so we just need
 // to subtract q * p_256 and then if that's negative, add back p_256.
 
-                mov     qshort, 1
-                adc     q, d
+        mov     qshort, 1
+        adc     q, d
 
 // Now compute the initial pre-reduced result z - p_256 * q
 // = z - (2^256 - 2^224 + 2^192 + 2^96 - 1) * q
 // = z - 2^192 * 0xffffffff00000001 * q - 2^64 * 0x0000000100000000 * q + q
 // Since q is small just use q<<32 for 0x0000000100000000 * q.
 
-                mov     a, 0xffffffff00000001
-                mul     q
-                mov     x, q
-                shl     x, 32
-                add     d0, q
-                sbb     x, 0
-                sub     d1, x
-                sbb     d2, 0
-                sbb     d3, a
-                sbb     q, d
+        mov     a, 0xffffffff00000001
+        mul     q
+        mov     x, q
+        shl     x, 32
+        add     d0, q
+        sbb     x, 0
+        sub     d1, x
+        sbb     d2, 0
+        sbb     d3, a
+        sbb     q, d
 
 // q is now effectively the top word of the 5-digit result; this step
 // compensates for q = h + 1
 
-                dec     q
+        dec     q
 
 // Use that as a bitmask for a masked addition of p_256 and write back
 
-                mov     ashort, 0x00000000ffffffff
-                and     a, q
-                xor     dshort, dshort
-                sub     d, a
-                add     d0, q
-                mov     [z], d0
-                adc     d1, a
-                mov     [z+8], d1
-                adc     d2, 0
-                mov     [z+16],d2
-                adc     d3, d
-                mov     [z+24],d3
+        mov     ashort, 0x00000000ffffffff
+        and     a, q
+        xor     dshort, dshort
+        sub     d, a
+        add     d0, q
+        mov     [z], d0
+        adc     d1, a
+        mov     [z+8], d1
+        adc     d2, 0
+        mov     [z+16],d2
+        adc     d3, d
+        mov     [z+24],d3
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

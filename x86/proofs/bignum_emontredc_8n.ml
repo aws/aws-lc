@@ -984,7 +984,7 @@ let bignum_emontredc_8n_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_EMONTREDC_8N_EXEC = X86_MK_EXEC_RULE bignum_emontredc_8n_mc;;
+let BIGNUM_EMONTREDC_8N_EXEC = X86_MK_CORE_EXEC_RULE bignum_emontredc_8n_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -1020,7 +1020,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
          [(z,8 * 2 * val k); (word_sub stackpointer (word 32),32)]
          [(word pc,0xb32); (m,8 * val k)]
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_emontredc_8n_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_emontredc_8n_mc) /\
                 read RIP s = word(pc + 0xa) /\
                 read RSP s = stackpointer /\
                 C_ARGUMENTS [k; z; m; w] s /\
@@ -1875,7 +1875,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
   REAL_ARITH_TAC);;
 
 (*** The above doesn't quite match what the heuristics in the automated
- *** X86_ADD_RETURN_STACK_TAC expects, partly because the core statement
+ *** X86_PROMOTE_RETURN_STACK_TAC expects, partly because the core statement
  *** has a negative stack offset and partly because the subsequent stack
  *** adjustment isn't just a single subtract after the initial pushes. So
  *** for now we just duplicate the basic argument in X86_ADD_RETURN_STACK_TAC
@@ -1893,7 +1893,6 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
                 read RIP s = word pc /\
                 read RSP s = stackpointer /\
                 read (memory :> bytes64 stackpointer) s = returnaddress /\
-                read RSP s = stackpointer /\
                 C_ARGUMENTS [k; z; m; w] s /\
                 bignum_from_memory (z,2 * val k) s = a /\
                 bignum_from_memory (m,val k) s = n)
@@ -1910,7 +1909,8 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
             MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
                        memory :> bytes(word_sub stackpointer (word 80),80)] ,,
             MAYCHANGE SOME_FLAGS)`,
-  MP_TAC BIGNUM_EMONTREDC_8N_CORRECT THEN
+  let BIGNUM_EMONTREDC_8N_EXEC = X86_MK_EXEC_RULE bignum_emontredc_8n_mc in
+  MP_TAC (X86_CORE_PROMOTE BIGNUM_EMONTREDC_8N_CORRECT) THEN
   REPLICATE_TAC 7 (MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
   DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC 48 THEN MP_TAC th) THEN
   MATCH_MP_TAC MONO_FORALL THEN WORD_FORALL_OFFSET_TAC 32 THEN
@@ -1934,4 +1934,85 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
   X86_BIGSTEP_TAC BIGNUM_EMONTREDC_8N_EXEC "s7" THEN
   REWRITE_TAC(!simulation_precanon_thms) THEN
   X86_STEPS_TAC BIGNUM_EMONTREDC_8N_EXEC (8--14) THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_emontredc_8n_mc = define_from_elf
+   "windows_bignum_emontredc_8n_mc" "x86/fastmul/bignum_emontredc_8n.obj";;
+
+(*** Likewise, a manual tweak of WINDOWS_X86_WRAP_STACK_TAC
+ *** to get the Windows ABI version
+ ***)
+
+let WINDOWS_BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
+ (`!k z m w a n pc stackpointer returnaddress.
+      nonoverlapping (z,8 * 2 * val k) (word_sub stackpointer (word 96),104) /\
+      ALLPAIRS nonoverlapping
+         [(z,8 * 2 * val k); (word_sub stackpointer (word 96),96)]
+         [(word pc,0xb42); (m,8 * val k)]
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_emontredc_8n_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [k; z; m; w] s /\
+                bignum_from_memory (z,2 * val k) s = a /\
+                bignum_from_memory (m,val k) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                (8 divides val k /\
+                 (n * val w + 1 == 0) (mod (2 EXP 64))
+                 ==> n * bignum_from_memory (z,val k) s + a =
+                     2 EXP (64 * val k) *
+                     (2 EXP (64 * val k) * val(WINDOWS_C_RETURN s) +
+                      bignum_from_memory
+                        (word_add z (word(8 * val k)),val k) s)))
+           (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10; R11] ,,
+            MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
+                       memory :> bytes(word_sub stackpointer (word 96),96)] ,,
+            MAYCHANGE SOME_FLAGS)`,
+  let BIGNUM_EMONTREDC_8N_EXEC =
+    X86_MK_EXEC_RULE windows_bignum_emontredc_8n_mc
+  and pcofflemma = MESON[]
+    `!n:num. (!x. P(x + n) ==> Q x) ==> (!x. P x) ==> (!x. Q x)`
+  and subimpth =
+    CONV_RULE NUM_REDUCE_CONV (REWRITE_RULE [LENGTH]
+        (MATCH_MP bytes_loaded_of_append3
+          (TRANS windows_bignum_emontredc_8n_mc (N_SUBLIST_CONV
+             (SPEC_ALL (X86_TRIM_EXEC_RULE bignum_emontredc_8n_mc)) 14
+             (rhs(concl windows_bignum_emontredc_8n_mc)))))) in
+  MP_TAC BIGNUM_EMONTREDC_8N_CORRECT THEN
+  REPLICATE_TAC 6 (MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
+  MATCH_MP_TAC pcofflemma THEN EXISTS_TAC `0xe` THEN
+  X_GEN_TAC `pc:num` THEN
+  REWRITE_TAC[ARITH_RULE `(pc + 14) + n = pc + n + 14`] THEN
+  CONV_TAC(ONCE_DEPTH_CONV NUM_ADD_CONV) THEN
+  DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC 64 THEN MP_TAC th) THEN
+  MATCH_MP_TAC MONO_FORALL THEN WORD_FORALL_OFFSET_TAC 32 THEN
+  GEN_TAC THEN DISCH_THEN(fun th -> GEN_TAC THEN MP_TAC th) THEN
+  REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[WINDOWS_C_ARGUMENTS; WINDOWS_C_RETURN] THEN
+  DISCH_THEN(fun th ->
+    REPEAT GEN_TAC THEN
+    TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
+    MP_TAC th) THEN
+  ASM_REWRITE_TAC[] THEN
+  ANTS_TAC THENL
+   [REPEAT CONJ_TAC THEN TRY DISJ2_TAC THEN NONOVERLAPPING_TAC;
+    ALL_TAC] THEN
+  DISCH_THEN(fun th ->
+    MAP_EVERY (fun c -> ENSURES_PRESERVED_TAC ("init_"^fst(dest_const c)) c)
+              (dest_list `[RDI; RSI; RBX; RBP; R12; R13; R14; R15]`) THEN
+    REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
+    X86_STEPS_TAC BIGNUM_EMONTREDC_8N_EXEC (1--12) THEN
+    MP_TAC th) THEN
+  X86_BIGSTEP_TAC BIGNUM_EMONTREDC_8N_EXEC "s13" THENL
+   [MATCH_MP_TAC subimpth THEN FIRST_X_ASSUM ACCEPT_TAC;
+    ALL_TAC] THEN
+  REWRITE_TAC(!simulation_precanon_thms) THEN
+  X86_STEPS_TAC BIGNUM_EMONTREDC_8N_EXEC (14--22) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]);;

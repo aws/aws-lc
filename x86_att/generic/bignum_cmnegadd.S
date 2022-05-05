@@ -27,6 +27,7 @@
 // It is interpreted negatively as z' - 2^{64k} * return = z - c * y.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = c, RCX = n, R8 = y, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = c, R9 = n, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -53,56 +54,66 @@
 bignum_cmnegadd:
 _bignum_cmnegadd:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
+
 // Seems hard to avoid one more register
 
-                pushq   %rbx
+        pushq   %rbx
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.
 // Subtract p := p - min(n,p) so it holds the size of the extra tail needed
 
-                cmpq    n, p
-                cmovcq  p, n
-                subq    n, p
+        cmpq    n, p
+        cmovcq  p, n
+        subq    n, p
 
 // Initialize high part h = 0; if n = 0 do nothing but return that zero
 
-                xorq    h, h
-                testq   n, n
-                jz      end
+        xorq    h, h
+        testq   n, n
+        jz      end
 
 // Move c into a safer register as multiplies overwrite %rdx
 
-                movq    %rdx, c
+        movq    %rdx, c
 
 // Initialization of the loop: 2^64 * CF + [h,z_0'] = z_0 + c * ~x_0 + c
 
-                movq    (x), %rax
-                notq    %rax
-                mulq    c
-                addq    c, %rax
-                adcq    $0, %rdx
-                addq    %rax, (z)
-                movq    %rdx, h
-                movl    $1, ishort
-                decq    n
-                jz      tail
+        movq    (x), %rax
+        notq    %rax
+        mulq    c
+        addq    c, %rax
+        adcq    $0, %rdx
+        addq    %rax, (z)
+        movq    %rdx, h
+        movl    $1, ishort
+        decq    n
+        jz      tail
 
 // Main loop, where we always have CF + previous high part h to add in
 
 loop:
-                adcq    (z,i,8), h
-                sbbq    r, r
-                movq    (x,i,8), %rax
-                notq    %rax
-                mulq    c
-                subq    r, %rdx
-                addq    h, %rax
-                movq    %rax, (z,i,8)
-                movq    %rdx, h
-                incq    i
-                decq    n
-                jnz     loop
+        adcq    (z,i,8), h
+        sbbq    r, r
+        movq    (x,i,8), %rax
+        notq    %rax
+        mulq    c
+        subq    r, %rdx
+        addq    h, %rax
+        movq    %rax, (z,i,8)
+        movq    %rdx, h
+        incq    i
+        decq    n
+        jnz     loop
 
 // At this point we have 2^{64n} * (h + CF) + z' = z + c * (2^{64n} - x)
 // so z' - 2^{64n} * (c - (h + CF)) = z - c * x.
@@ -110,39 +121,43 @@ loop:
 // Accumulate the negative carry in h for consistency with trivial cases.
 
 tail:
-                sbbq    h, c
-                movq    c, h
+        sbbq    h, c
+        movq    c, h
 
 // Propagate the carry all the way to the end with h as extra carry word
 
-                testq   p, p
-                jz      end
+        testq   p, p
+        jz      end
 
-                subq    h, (z,i,8)
-                movl    $0, hshort
-                incq    i
-                decq    p
-                jz      highend
+        subq    h, (z,i,8)
+        movl    $0, hshort
+        incq    i
+        decq    p
+        jz      highend
 
 tloop:
-                sbbq    h, (z,i,8)
-                incq    i
-                decq    p
-                jnz     tloop
+        sbbq    h, (z,i,8)
+        incq    i
+        decq    p
+        jnz     tloop
 
 highend:
 
 // Adjust the high word with the carry from subtraction
 
-                adcq    $0, h
+        adcq    $0, h
 
 // Return the high/carry word
 
 end:
-                movq    h, %rax
+        movq    h, %rax
 
-                popq    %rbx
-                ret
+        popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

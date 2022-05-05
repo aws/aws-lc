@@ -31,6 +31,7 @@
 // 2^{64*k} * carryout + z = x + y [for addition]
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = p, R8 = y, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = p, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -54,49 +55,64 @@
 bignum_optsubadd:
 _bignum_optsubadd:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
+
 // Initialize top carry to zero in all cases (also return value)
 
-                xor     c, c
+        xor     c, c
 
 // If k = 0 do nothing
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Turn the input p into two bitmasks, m indicating to use the y input at
 // all (same register as p) and q indicating a sign-flip
 
-                mov     q, p
-                sar     q, 63
-                neg     p
-                sbb     m, m
+        mov     q, p
+        sar     q, 63
+        neg     p
+        sbb     m, m
 
 // Generate an initial carry-in for the negating case only to add 1; this
 // is because we are actually going to do complements of the words of y
 
-                mov     c, q
+        mov     c, q
 
 // Now go round the loop for i=0...k-1, saving the carry in c each iteration
 
-                xor     i, i
+        xor     i, i
 loop:
-                mov     a, [y+8*i]
-                xor     a, q
-                and     a, m
-                neg     c
-                adc     a, [x+8*i]
-                sbb     c, c
-                mov     [z+8*i], a
-                inc     i
-                cmp     i, k
-                jc      loop
+        mov     a, [y+8*i]
+        xor     a, q
+        and     a, m
+        neg     c
+        adc     a, [x+8*i]
+        sbb     c, c
+        mov     [z+8*i], a
+        inc     i
+        cmp     i, k
+        jc      loop
 
 // Return carry flag, fixing up inversion for negative case
 
-                xor     rax, q
-                neg     rax
+        xor     rax, q
+        neg     rax
 
-end:            ret
+end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

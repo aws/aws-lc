@@ -25,6 +25,7 @@
 // is why it is called *almost* Montgomery squaring.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m
 // ----------------------------------------------------------------------------
 
 
@@ -67,70 +68,79 @@
 bignum_amontsqr:
 _bignum_amontsqr:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
+
 // Save registers
 
-                pushq   %rbx
-                pushq   %rbp
-                pushq   %r12
-                pushq   %r13
-                pushq   %r14
-                pushq   %r15
+        pushq   %rbx
+        pushq   %rbp
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
+        pushq   %r15
 
 // If k = 0 the whole operation is trivial
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Move x input into its permanent home, since we need %rdx for multiplications
 
-                movq    %rdx, x
+        movq    %rdx, x
 
 // Compute word-level negated modular inverse w for m == m[0].
 
-                movq    (m), a
+        movq    (m), a
 
-                movq    a, t2
-                movq    a, w
-                shlq    $2, t2
-                subq    t2, w
-                xorq    $2, w
+        movq    a, t2
+        movq    a, w
+        shlq    $2, t2
+        subq    t2, w
+        xorq    $2, w
 
-                movq    w, t2
-                imulq   a, t2
-                movl    $2, ashort
-                addq    t2, a
-                addq    $1, t2
+        movq    w, t2
+        imulq   a, t2
+        movl    $2, ashort
+        addq    t2, a
+        addq    $1, t2
 
-                imulq   a, w
+        imulq   a, w
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, w
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, w
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, w
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, w
 
-                imulq   t2, t2
-                movl    $1, ashort
-                addq    t2, a
-                imulq   a, w
+        imulq   t2, t2
+        movl    $1, ashort
+        addq    t2, a
+        imulq   a, w
 
 // Initialize the output c0::z to zero so we can then consistently add rows.
 // It would be a bit more efficient to special-case the zeroth row, but
 // this keeps the code slightly simpler.
 
-                xorq    i, i // Also initializes i for main loop
-                xorq    j, j
+        xorq    i, i // Also initializes i for main loop
+        xorq    j, j
 zoop:
-                movq    i, (z,j,8)
-                incq    j
-                cmpq    k, j
-                jc      zoop
+        movq    i, (z,j,8)
+        incq    j
+        cmpq    k, j
+        jc      zoop
 
-                xorq    c0, c0
+        xorq    c0, c0
 
 // Outer loop pulling down digits d=x[i], multiplying by x and reducing
 
@@ -140,92 +150,96 @@ outerloop:
 // Note that in general we do need yet one more carry in this phase and hence
 // initialize c1 with the top carry.
 
-                movq    (x,i,8), d
-                xorq    j, j
-                xorq    h, h
-                xorq    c1, c1
-                movq    k, n
+        movq    (x,i,8), d
+        xorq    j, j
+        xorq    h, h
+        xorq    c1, c1
+        movq    k, n
 
 maddloop:
-                adcq    (z,j,8), h
-                sbbq    e, e
-                movq    (x,j,8), a
-                mulq    d
-                subq    e, %rdx
-                addq    h, a
-                movq    a, (z,j,8)
-                movq    %rdx, h
-                incq    j
-                decq    n
-                jnz     maddloop
-                adcq    h, c0
-                adcq    c1, c1
+        adcq    (z,j,8), h
+        sbbq    e, e
+        movq    (x,j,8), a
+        mulq    d
+        subq    e, %rdx
+        addq    h, a
+        movq    a, (z,j,8)
+        movq    %rdx, h
+        incq    j
+        decq    n
+        jnz     maddloop
+        adcq    h, c0
+        adcq    c1, c1
 
 // Montgomery reduction loop, similar but offsetting writebacks
 
-                movq    (z), e
-                movq    w, d
-                imulq   e, d
-                movq    (m), a
-                mulq    d
-                addq    e, a // Will be zero but want the carry
-                movq    %rdx, h
-                movl    $1, jshort
-                movq    k, n
-                decq    n
-                jz      montend
+        movq    (z), e
+        movq    w, d
+        imulq   e, d
+        movq    (m), a
+        mulq    d
+        addq    e, a // Will be zero but want the carry
+        movq    %rdx, h
+        movl    $1, jshort
+        movq    k, n
+        decq    n
+        jz      montend
 
 montloop:
-                adcq    (z,j,8), h
-                sbbq    e, e
-                movq    (m,j,8), a
-                mulq    d
-                subq    e, %rdx
-                addq    h, a
-                movq    a, -8(z,j,8)
-                movq    %rdx, h
-                incq    j
-                decq    n
-                jnz     montloop
+        adcq    (z,j,8), h
+        sbbq    e, e
+        movq    (m,j,8), a
+        mulq    d
+        subq    e, %rdx
+        addq    h, a
+        movq    a, -8(z,j,8)
+        movq    %rdx, h
+        incq    j
+        decq    n
+        jnz     montloop
 
 montend:
-                adcq    c0, h
-                adcq    $0, c1
-                movq    c1, c0
-                movq    h, -8(z,j,8)
+        adcq    c0, h
+        adcq    $0, c1
+        movq    c1, c0
+        movq    h, -8(z,j,8)
 
 // End of outer loop.
 
-                incq    i
-                cmpq    k, i
-                jc      outerloop
+        incq    i
+        cmpq    k, i
+        jc      outerloop
 
 // Now convert carry word, which is always in {0,1}, into a mask "d"
 // and do a masked subtraction of m for the final almost-Montgomery result.
 
-                xorq    d, d
-                subq    c0, d
-                xorq    e, e
-                xorq    j, j
+        xorq    d, d
+        subq    c0, d
+        xorq    e, e
+        xorq    j, j
 corrloop:
-                movq    (m,j,8), a
-                andq    d, a
-                negq    e
-                sbbq    a, (z,j,8)
-                sbbq    e, e
-                incq    j
-                cmpq    k, j
-                jc      corrloop
+        movq    (m,j,8), a
+        andq    d, a
+        negq    e
+        sbbq    a, (z,j,8)
+        sbbq    e, e
+        incq    j
+        cmpq    k, j
+        jc      corrloop
 
 end:
-                popq    %r15
-                popq    %r14
-                popq    %r13
-                popq    %r12
-                popq    %rbp
-                popq    %rbx
+        popq    %r15
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbp
+        popq    %rbx
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

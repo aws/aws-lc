@@ -1149,7 +1149,7 @@ let bignum_ksqr_16_32_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_KSQR_16_32_EXEC = X86_MK_EXEC_RULE bignum_ksqr_16_32_mc;;
+let BIGNUM_KSQR_16_32_EXEC = X86_MK_CORE_EXEC_RULE bignum_ksqr_16_32_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -1160,7 +1160,7 @@ let BIGNUM_KSQR_16_32_CORRECT = time prove
         nonoverlapping (word pc,0xd82) (z,8 * 32) /\
         nonoverlapping (x,8 * 16) (z,8 * 32)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_ksqr_16_32_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_ksqr_16_32_mc) /\
                   read RIP s = word(pc + 0x09) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,16) s = a)
@@ -1203,5 +1203,37 @@ let BIGNUM_KSQR_16_32_SUBROUTINE_CORRECT = time prove
            MAYCHANGE [memory :> bytes(z,8 * 32);
                    memory :> bytes(word_sub stackpointer (word 40),40)] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_KSQR_16_32_EXEC BIGNUM_KSQR_16_32_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_ksqr_16_32_mc BIGNUM_KSQR_16_32_CORRECT
+   `[RBP; R12; R13; R14; R15]` 40);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_ksqr_16_32_mc = define_from_elf
+   "windows_bignum_ksqr_16_32_mc" "x86/fastmul/bignum_ksqr_16_32.obj";;
+
+let WINDOWS_BIGNUM_KSQR_16_32_SUBROUTINE_CORRECT = time prove
+ (`!z x a pc stackpointer returnaddress.
+     nonoverlapping (word_sub stackpointer (word 56),64) (z,8 * 32) /\
+     ALL (nonoverlapping (word_sub stackpointer (word 56),56))
+         [(word pc,0xd8c); (x,8 * 16)] /\
+     nonoverlapping (word pc,0xd8c) (z,8 * 32) /\
+     nonoverlapping (x,8 * 16) (z,8 * 32)
+     ==> ensures x86
+          (\s. bytes_loaded s (word pc) windows_bignum_ksqr_16_32_mc /\
+               read RIP s = word pc /\
+               read RSP s = stackpointer /\
+               read (memory :> bytes64 stackpointer) s = returnaddress /\
+               WINDOWS_C_ARGUMENTS [z; x] s /\
+               bignum_from_memory (x,16) s = a)
+          (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+               bignum_from_memory (z,32) s = a EXP 2)
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE [memory :> bytes(z,8 * 32);
+                   memory :> bytes(word_sub stackpointer (word 56),56)] ,,
+           MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_ksqr_16_32_mc
+   bignum_ksqr_16_32_mc BIGNUM_KSQR_16_32_CORRECT
    `[RBP; R12; R13; R14; R15]` 40);;

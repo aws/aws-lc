@@ -20,6 +20,7 @@
 //    extern void bignum_sqr_6_12 (uint64_t z[static 12], uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -56,6 +57,13 @@
 
 bignum_sqr_6_12:
 _bignum_sqr_6_12:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -205,6 +213,10 @@ _bignum_sqr_6_12:
         popq    %rbx
         popq    %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

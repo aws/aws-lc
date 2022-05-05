@@ -27,6 +27,7 @@
 // actually only uses 65 elements of t (64 + 1 for a stashed sign).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y, RCX = t
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y, R9 = t
 // -----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -48,6 +49,15 @@
 
 bignum_kmul_32_64:
 _bignum_kmul_32_64:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
 
 // Save callee-saved registers and also push t onto the stack; we'll
 // use this space to back up both t and later z. Then move the y variable
@@ -209,6 +219,10 @@ _bignum_kmul_32_64:
         pop     r12
         pop     rbp
         pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 // Local copy of half-length subroutine. This has a slightly different

@@ -160,10 +160,10 @@ let bignum_mod_n384_alt_mc =
   0xeb; 0xa0               (* JMP (Imm8 (word 160)) *)
 ];;
 
-let BIGNUM_MOD_N384_EXEC_ALT_EXEC = X86_MK_EXEC_RULE bignum_mod_n384_alt_mc;;
+let BIGNUM_MOD_N384_ALT_EXEC = X86_MK_EXEC_RULE bignum_mod_n384_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
-(* Proof.                                                                    *)
+(* Common tactic for slightly different standard and Windows variants.       *)
 (* ------------------------------------------------------------------------- *)
 
 let n_384 = new_definition `n_384 = 39402006196394479212279040100143613805079739270465446667946905279627659399113263569398956308152294913554433653942643`;;
@@ -176,20 +176,7 @@ let n384longredlemma = prove
            n < q * n_384 + n_384`,
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[n_384] THEN ARITH_TAC);;
 
-let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
- (`!z k x n pc.
-      nonoverlapping (word pc,0x1b4) (z,48)
-      ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_mod_n384_alt_mc /\
-                read RIP s = word(pc + 0x8) /\
-                C_ARGUMENTS [z; k; x] s /\
-                bignum_from_memory (x,val k) s = n)
-           (\s. read RIP s = word (pc + 0x16b) /\
-                bignum_from_memory (z,6) s = n MOD n_384)
-          (MAYCHANGE [RIP; RSI; RAX; RDX; RCX; RBX; RBP; R8; R9;
-                      R10; R11; R12; R13; R14] ,,
-           MAYCHANGE SOME_FLAGS ,,
-           MAYCHANGE [memory :> bignum(z,6)])`,
+let tac execth offset =
   X_GEN_TAC `z:int64` THEN W64_GEN_TAC `k:num` THEN
   MAP_EVERY X_GEN_TAC [`x:int64`; `n:num`; `pc:num`] THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN
@@ -213,19 +200,19 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
    DISCH_THEN(REPEAT_TCL DISJ_CASES_THEN SUBST_ALL_TAC) THEN
    EXPAND_TAC "n" THEN CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN
    ASM_REWRITE_TAC[] THENL
-    [X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--16);
-     X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--19);
-     X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--22);
-     X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--25);
-     X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--28);
-     X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--30)] THEN
+    [X86_STEPS_TAC execth (1--16);
+     X86_STEPS_TAC execth (1--19);
+     X86_STEPS_TAC execth (1--22);
+     X86_STEPS_TAC execth (1--25);
+     X86_STEPS_TAC execth (1--28);
+     X86_STEPS_TAC execth (1--30)] THEN
    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[VAL_WORD_0] THEN
    ARITH_TAC;
    FIRST_ASSUM(ASSUME_TAC o GEN_REWRITE_RULE I [NOT_LT])] THEN
 
   (*** Initial 6-digit modulus ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x8d`
+  ENSURES_SEQUENCE_TAC (offset 0x8d)
    `\s. bignum_from_memory(x,k) s = n /\
         read RDI s = z /\
         read RCX s = x /\
@@ -251,7 +238,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
     RULE_ASSUM_TAC(CONV_RULE(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV)) THEN
     BIGNUM_DIGITIZE_TAC "m_"
      `read (memory :> bytes (word_add x (word(8 * j)),8 * 6)) s0` THEN
-    X86_ACCSTEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--19) (1--19) THEN
+    X86_ACCSTEPS_TAC execth (1--19) (1--19) THEN
     SUBGOAL_THEN `carry_s19 <=> n_384 <= m` SUBST_ALL_TAC THENL
      [MATCH_MP_TAC FLAG_FROM_CARRY_LE THEN EXISTS_TAC `384` THEN
       EXPAND_TAC "m" THEN REWRITE_TAC[n_384; GSYM REAL_OF_NUM_ADD] THEN
@@ -259,8 +246,8 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
       ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
       DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
       ALL_TAC] THEN
-    X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (20--24) THEN
-    X86_ACCSTEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (25--30) (25--30) THEN
+    X86_STEPS_TAC execth (20--24) THEN
+    X86_ACCSTEPS_TAC execth (25--30) (25--30) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[bignum_of_wordlist; ADD_CLAUSES; MULT_CLAUSES] THEN
     ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s30" THEN
@@ -303,7 +290,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
     GHOST_INTRO_TAC `d5:int64` `read R13` THEN
     REWRITE_TAC[SUB_REFL; HIGHDIGITS_0] THEN
     ENSURES_INIT_TAC "s0" THEN
-    X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--8) THEN
+    X86_STEPS_TAC execth (1--8) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     FIRST_X_ASSUM(fun th -> GEN_REWRITE_TAC RAND_CONV [SYM th]) THEN
     REWRITE_TAC[bignum_of_wordlist] THEN
@@ -316,7 +303,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
 
   (*** Setup of loop invariant ***)
 
-  ENSURES_WHILE_PDOWN_TAC `k - 6` `pc + 0x96` `pc + 0x14e`
+  ENSURES_WHILE_PDOWN_TAC `k - 6` (offset 0x96) (offset 0x14e)
    `\i s. (bignum_from_memory(x,k) s = n /\
            read RDI s = z /\
            read RCX s = x /\
@@ -328,13 +315,13 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
   ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
    [VAL_INT64_TAC `k - 6` THEN REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
     ENSURES_INIT_TAC "s0" THEN
-    X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--2) THEN
+    X86_STEPS_TAC execth (1--2) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
     ALL_TAC; (*** Main loop invariant ***)
     X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
     ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
     ENSURES_INIT_TAC "s0" THEN
-    X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC [1] THEN
+    X86_STEPS_TAC execth [1] THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
     GHOST_INTRO_TAC `d0:int64` `read R8` THEN
     GHOST_INTRO_TAC `d1:int64` `read R9` THEN
@@ -344,7 +331,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
     GHOST_INTRO_TAC `d5:int64` `read R13` THEN
     REWRITE_TAC[SUB_REFL; HIGHDIGITS_0] THEN
     ENSURES_INIT_TAC "s0" THEN
-    X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (1--7) THEN
+    X86_STEPS_TAC execth (1--7) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     FIRST_X_ASSUM(fun th -> GEN_REWRITE_TAC RAND_CONV [SYM th]) THEN
     REWRITE_TAC[bignum_of_wordlist] THEN
@@ -382,7 +369,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
   (*** The computation of the quotient estimate q ***)
 
   ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
-  X86_ACCSTEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC [2] (1--2) THEN
+  X86_ACCSTEPS_TAC execth [2] (1--2) THEN
 
   SUBGOAL_THEN
    `2 EXP 64 * bitval(read CF s2) + val(read RBP s2) = m DIV 2 EXP 384 + 1`
@@ -391,7 +378,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
     CONV_TAC(ONCE_DEPTH_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
     ASM_REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN REAL_ARITH_TAC;
     ASM_REWRITE_TAC[] THEN DISCH_TAC] THEN
-  X86_STEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (3--4) THEN
+  X86_STEPS_TAC execth (3--4) THEN
   FIRST_X_ASSUM(MP_TAC o SPEC `word q:int64` o MATCH_MP (MESON[]
    `!q. read RBP s = q' ==> q' = q ==> read RBP s = q`)) THEN
   ANTS_TAC THENL
@@ -427,7 +414,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
   (*** Subtraction of q * n_384 ***)
 
   MAP_EVERY (fun s ->
-    X86_SINGLE_STEP_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC s THEN
+    X86_SINGLE_STEP_TAC execth s THEN
     RULE_ASSUM_TAC(REWRITE_RULE[WORD_RULE
      `word_sub x (word_neg y):int64 = word_add x y`]) THEN
     TRY(ACCUMULATE_ARITH_TAC s) THEN CLARIFY_TAC)
@@ -460,7 +447,7 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
 
   (*** Final correction ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC (32--37) (26--44) THEN
+  X86_ACCSTEPS_TAC execth (32--37) (26--44) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN
   CONJ_TAC THENL [CONV_TAC WORD_RULE; DISCH_THEN SUBST1_TAC] THEN
@@ -482,9 +469,30 @@ let BIGNUM_MOD_N384_EXEC_ALT_CORRECT = time prove
   ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN POP_ASSUM_LIST(K ALL_TAC) THEN
   COND_CASES_TAC THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
-  CONV_TAC WORD_REDUCE_CONV THEN REAL_INTEGER_TAC);;
+  CONV_TAC WORD_REDUCE_CONV THEN REAL_INTEGER_TAC;;
 
-let BIGNUM_MOD_N384_EXEC_ALT_SUBROUTINE_CORRECT = time prove
+(* ------------------------------------------------------------------------- *)
+(* Correctness of standard ABI version.                                      *)
+(* ------------------------------------------------------------------------- *)
+
+let BIGNUM_MOD_N384_ALT_CORRECT = time prove
+ (`!z k x n pc.
+      nonoverlapping (word pc,0x1b4) (z,48)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) bignum_mod_n384_alt_mc /\
+                read RIP s = word(pc + 0x8) /\
+                C_ARGUMENTS [z; k; x] s /\
+                bignum_from_memory (x,val k) s = n)
+           (\s. read RIP s = word (pc + 0x16b) /\
+                bignum_from_memory (z,6) s = n MOD n_384)
+          (MAYCHANGE [RIP; RSI; RAX; RDX; RCX; RBX; RBP; R8; R9;
+                      R10; R11; R12; R13; R14] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,6)])`,
+  tac BIGNUM_MOD_N384_ALT_EXEC
+      (curry mk_comb `(+) (pc:num)` o mk_small_numeral));;
+
+let BIGNUM_MOD_N384_ALT_SUBROUTINE_CORRECT = time prove
  (`!z k x n pc stackpointer returnaddress.
       nonoverlapping (word_sub stackpointer (word 40),48) (z,48) /\
       ALL (nonoverlapping (word_sub stackpointer (word 40),40))
@@ -504,5 +512,53 @@ let BIGNUM_MOD_N384_EXEC_ALT_SUBROUTINE_CORRECT = time prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,6);
                 memory :> bytes(word_sub stackpointer (word 40),40)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_MOD_N384_EXEC_ALT_EXEC BIGNUM_MOD_N384_EXEC_ALT_CORRECT
+  X86_ADD_RETURN_STACK_TAC BIGNUM_MOD_N384_ALT_EXEC BIGNUM_MOD_N384_ALT_CORRECT
    `[RBX; RBP; R12; R13; R14]` 40);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mod_n384_alt_mc = define_from_elf
+   "windows_bignum_mod_n384_alt_mc" "x86/p384/bignum_mod_n384_alt.obj";;
+
+let WINDOWS_BIGNUM_MOD_N384_ALT_CORRECT = time prove
+ (`!z k x n pc.
+      nonoverlapping (word pc,0x1c1) (z,48)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mod_n384_alt_mc /\
+                read RIP s = word(pc + 0x13) /\
+                C_ARGUMENTS [z; k; x] s /\
+                bignum_from_memory (x,val k) s = n)
+           (\s. read RIP s = word (pc + 0x176) /\
+                bignum_from_memory (z,6) s = n MOD n_384)
+          (MAYCHANGE [RIP; RSI; RAX; RDX; RCX; RBX; RBP; R8; R9;
+                      R10; R11; R12; R13; R14] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,6)])`,
+  tac (X86_MK_EXEC_RULE windows_bignum_mod_n384_alt_mc)
+      (curry mk_comb `(+) (pc:num)` o mk_small_numeral o (fun n -> n + 11)));;
+
+let WINDOWS_BIGNUM_MOD_N384_ALT_SUBROUTINE_CORRECT = time prove
+ (`!z k x n pc stackpointer returnaddress.
+      nonoverlapping (word_sub stackpointer (word 56),64) (z,48) /\
+      ALL (nonoverlapping (word_sub stackpointer (word 56),56))
+          [(word pc,0x1c1); (x, 8 * val k)] /\
+      nonoverlapping (word pc,0x1c1) (z,48)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mod_n384_alt_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [z; k; x] s /\
+                bignum_from_memory (x,val k) s = n)
+           (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+                bignum_from_memory (z,6) s = n MOD n_384)
+          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,6);
+                memory :> bytes(word_sub stackpointer (word 56),56)])`,
+  GEN_X86_ADD_RETURN_STACK_TAC (X86_MK_EXEC_RULE windows_bignum_mod_n384_alt_mc)
+    WINDOWS_BIGNUM_MOD_N384_ALT_CORRECT
+    `[RDI; RSI; RBX; RBP; R12; R13; R14]` 56 (10,8));;

@@ -23,6 +23,7 @@
 // where n is a word. The "mod 2^k" only matters in the degenerate k = 0 case.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n
 // ----------------------------------------------------------------------------
 
 
@@ -33,18 +34,26 @@
 bignum_of_word:
 _bignum_of_word:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
+
 // If k = 0 do nothing
 
-                testq   %rdi, %rdi
-                jz      end
+        testq   %rdi, %rdi
+        jz      end
 
 bignum_of_word_nontrivial:
 
 // Write lowest word and jump to end if k = 1
 
-                movq    %rdx, (%rsi)
-                decq    %rdi
-                jz      end
+        movq    %rdx, (%rsi)
+        decq    %rdi
+        jz      end
 
 // Zero %rdx and write it to all z[i] for i = k-1 down to 1
 // It's a bit more compact to iterate "high to low" like this.
@@ -52,14 +61,18 @@ bignum_of_word_nontrivial:
 // each time round the loop (which also modifies one more reg)
 // we could go "low to high" if it helps with prefetch etc.
 
-                xorq    %rdx, %rdx
+        xorq    %rdx, %rdx
 loop:
-                movq    %rdx, (%rsi,%rdi,8)
-                decq    %rdi
-                jnz     loop
+        movq    %rdx, (%rsi,%rdi,8)
+        decq    %rdi
+        jnz     loop
 
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

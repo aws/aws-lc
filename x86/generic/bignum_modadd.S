@@ -21,6 +21,7 @@
 //     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = y, R8 = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = y, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -41,53 +42,67 @@
 bignum_modadd:
 _bignum_modadd:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
+
 // If k = 0 do nothing
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // First just add (c::z) := x + y
 
-                xor     c, c
-                mov     j, k
-                xor     i, i
+        xor     c, c
+        mov     j, k
+        xor     i, i
 addloop:
-                mov     a, [x+8*i]
-                adc     a, [y+8*i]
-                mov     [z+8*i], a
-                inc     i
-                dec     j
-                jnz     addloop
-                adc     c, 0
+        mov     a, [x+8*i]
+        adc     a, [y+8*i]
+        mov     [z+8*i], a
+        inc     i
+        dec     j
+        jnz     addloop
+        adc     c, 0
 
 // Now do a comparison subtraction (c::z) - m, recording mask for (c::z) >= m
 
-                mov     j, k
-                xor     i, i
+        mov     j, k
+        xor     i, i
 cmploop:
-                mov     a, [z+8*i]
-                sbb     a, [m+8*i]
-                inc     i
-                dec     j
-                jnz     cmploop
-                sbb     c, 0
-                not     c
+        mov     a, [z+8*i]
+        sbb     a, [m+8*i]
+        inc     i
+        dec     j
+        jnz     cmploop
+        sbb     c, 0
+        not     c
 
 // Now do a masked subtraction z := z - [c] * m
 
-                xor     i, i
+        xor     i, i
 subloop:
-                mov     a, [m+8*i]
-                and     a, c
-                neg     j
-                sbb     [z+8*i], a
-                sbb     j, j
-                inc     i
-                cmp     i, k
-                jc      subloop
+        mov     a, [m+8*i]
+        and     a, c
+        neg     j
+        sbb     [z+8*i], a
+        sbb     j, j
+        inc     i
+        cmp     i, k
+        jc      subloop
 
 end:
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

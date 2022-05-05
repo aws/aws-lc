@@ -64,57 +64,57 @@ _bignum_emontredc:
 
 // If k = 0 the whole operation is trivial; note we also get a return of c = 0
 
-                cbz     k, end
+        cbz     k, end
 
 // Initialize top carry to zero, and launch into the outer loop
 
-                mov     c, xzr
-                mov     i, xzr
+        mov     c, xzr
+        mov     i, xzr
 outerloop:
 
-                ldr     e, [z]
-                mul     d, e, w
-                ldr     a, [m]
-                mul     l, d, a
-                umulh   h, d, a
-                str     d, [z]
-                adds    xzr, e, l       // Will be zero but want the carry
-                mov     j, #1
-                sub     a, k, #1
-                cbz     a, montend
+        ldr     e, [z]
+        mul     d, e, w
+        ldr     a, [m]
+        mul     l, d, a
+        umulh   h, d, a
+        str     d, [z]
+        adds    xzr, e, l       // Will be zero but want the carry
+        mov     j, #1
+        sub     a, k, #1
+        cbz     a, montend
 montloop:
-                ldr     a, [m, j, lsl #3]
-                ldr     e, [z, j, lsl #3]
-                mul     l, d, a
-                adcs    e, e, h
-                umulh   h, d, a
-                adc     h, h, xzr
-                adds    e, e, l
-                str     e, [z, j, lsl #3]
-                add     j, j, #1
-                sub     a, j, k
-                cbnz    a, montloop
+        ldr     a, [m, j, lsl #3]
+        ldr     e, [z, j, lsl #3]
+        mul     l, d, a
+        adcs    e, e, h
+        umulh   h, d, a
+        adc     h, h, xzr
+        adds    e, e, l
+        str     e, [z, j, lsl #3]
+        add     j, j, #1
+        sub     a, j, k
+        cbnz    a, montloop
 montend:
-                adcs    h, h, c
-                adc     c, xzr, xzr
-                ldr     a, [z, k, lsl #3]
-                adds    h, h, a
-                adc     c, c, xzr
-                str     h, [z, k, lsl #3]
+        adcs    h, h, c
+        adc     c, xzr, xzr
+        ldr     a, [z, k, lsl #3]
+        adds    h, h, a
+        adc     c, c, xzr
+        str     h, [z, k, lsl #3]
 
 // End of outer loop
 
-                add     z, z, #8         // For simple indexing, z pointer moves
-                add     i, i, #1
-                cmp     i, k
-                bcc     outerloop
+        add     z, z, #8         // For simple indexing, z pointer moves
+        add     i, i, #1
+        cmp     i, k
+        bcc     outerloop
 
 // Return c in X0
 
-                mov     x0, c
+        mov     x0, c
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

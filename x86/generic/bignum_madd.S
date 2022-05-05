@@ -25,8 +25,8 @@
 // "carry" word. In the case where m + n <= p (i.e. the pure product would
 // fit in the destination) this is the remainder for the exact result.
 //
-// Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y,
-// returns RAX
+// Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = x, R8 = n, R9 = y, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = x, [RSP+40] = n, [RSP+48] = y, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -60,6 +60,17 @@
 
 bignum_madd:
 _bignum_madd:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+        mov     r9, [rsp+64]
+#endif
 
 // We use too many registers, and also we need rax:rdx for multiplications
 
@@ -150,6 +161,10 @@ end:
         pop     r12
         pop     rbp
         pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

@@ -290,7 +290,7 @@ let bignum_sqr_8_16_alt_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_SQR_8_16_ALT_EXEC = X86_MK_EXEC_RULE bignum_sqr_8_16_alt_mc;;
+let BIGNUM_SQR_8_16_ALT_EXEC = X86_MK_CORE_EXEC_RULE bignum_sqr_8_16_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -300,7 +300,7 @@ let BIGNUM_SQR_8_16_ALT_CORRECT = time prove
  (`!z x a pc.
      ALL (nonoverlapping (z,8 * 16)) [(word pc,0x386); (x,8 * 8)]
      ==> ensures x86
-          (\s. bytes_loaded s (word pc) bignum_sqr_8_16_alt_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_sqr_8_16_alt_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [z; x] s /\
                bignum_from_memory (x,8) s = a)
@@ -338,5 +338,36 @@ let BIGNUM_SQR_8_16_ALT_SUBROUTINE_CORRECT = time prove
           (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
            MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC
-   BIGNUM_SQR_8_16_ALT_EXEC BIGNUM_SQR_8_16_ALT_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC
+   bignum_sqr_8_16_alt_mc BIGNUM_SQR_8_16_ALT_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_sqr_8_16_alt_mc = define_from_elf
+   "windows_bignum_sqr_8_16_alt_mc" "x86/fastmul/bignum_sqr_8_16_alt.obj";;
+
+let WINDOWS_BIGNUM_SQR_8_16_ALT_SUBROUTINE_CORRECT = time prove
+ (`!z x a pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x390); (x,8 * 8)] /\
+     ALL (nonoverlapping (z,8 * 16))
+         [(word pc,0x390); (x,8 * 8); (word_sub stackpointer (word 16),24)]
+     ==> ensures x86
+          (\s. bytes_loaded s (word pc) windows_bignum_sqr_8_16_alt_mc /\
+               read RIP s = word pc /\
+               read RSP s = stackpointer /\
+               read (memory :> bytes64 stackpointer) s = returnaddress /\
+               WINDOWS_C_ARGUMENTS [z; x] s /\
+               bignum_from_memory (x,8) s = a)
+          (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+               bignum_from_memory (z,16) s = a EXP 2)
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE [memory :> bytes(z,8 * 16);
+                      memory :> bytes(word_sub stackpointer (word 16),16)] ,,
+           MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC
+   windows_bignum_sqr_8_16_alt_mc bignum_sqr_8_16_alt_mc
+   BIGNUM_SQR_8_16_ALT_CORRECT);;

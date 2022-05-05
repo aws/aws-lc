@@ -30,6 +30,7 @@
 // of the full result.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = c, RCX = n, R8 = y, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = c, R9 = n, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -51,71 +52,85 @@
 bignum_cmul:
 _bignum_cmul:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
+
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output. Now we can
 // assume that n <= p
 
-                cmpq    n, p
-                cmovcq  p, n
+        cmpq    n, p
+        cmovcq  p, n
 
 // Initialize current input/output pointer offset i and high part h.
 // But then if n = 0 skip the multiplication and go to the tail part
 
-                xorq    h, h
-                xorq    i, i
-                testq   n, n
-                jz      tail
+        xorq    h, h
+        xorq    i, i
+        testq   n, n
+        jz      tail
 
 // Move c into a safer register as multiplies overwrite %rdx
 
-                movq    %rdx, c
+        movq    %rdx, c
 
 // Initialization of the loop: [h,l] = c * x_0
 
-                movq    (x), %rax
-                mulq    c
-                movq    %rax, (z)
-                movq    %rdx, h
-                incq    i
-                cmpq    n, i
-                jz      tail
+        movq    (x), %rax
+        mulq    c
+        movq    %rax, (z)
+        movq    %rdx, h
+        incq    i
+        cmpq    n, i
+        jz      tail
 
 // Main loop doing the multiplications
 
 loop:
-                movq    (x,i,8), %rax
-                mulq    c
-                addq    h, %rax
-                adcq    $0, %rdx
-                movq    %rax, (z,i,8)
-                movq    %rdx, h
-                incq    i
-                cmpq    n, i
-                jc      loop
+        movq    (x,i,8), %rax
+        mulq    c
+        addq    h, %rax
+        adcq    $0, %rdx
+        movq    %rax, (z,i,8)
+        movq    %rdx, h
+        incq    i
+        cmpq    n, i
+        jc      loop
 
 // Add a tail when the destination is longer
 
 tail:
-                cmpq    p, i
-                jnc     end
-                movq    h, (z,i,8)
-                xorq    h, h
-                incq    i
-                cmpq    p, i
-                jnc     end
+        cmpq    p, i
+        jnc     end
+        movq    h, (z,i,8)
+        xorq    h, h
+        incq    i
+        cmpq    p, i
+        jnc     end
 
 tloop:
-                movq    h, (z,i,8)
-                incq    i
-                cmpq    p, i
-                jc      tloop
+        movq    h, (z,i,8)
+        incq    i
+        cmpq    p, i
+        jc      tloop
 
 // Return the high/carry word
 
 end:
-                movq    h, %rax
+        movq    h, %rax
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

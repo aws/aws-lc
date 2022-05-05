@@ -24,6 +24,7 @@
 // guaranteed in particular if x < p_256 initially (the "intended" case).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -66,6 +67,13 @@
 
 bignum_montsqr_p256_alt:
 _bignum_montsqr_p256_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -203,6 +211,10 @@ _bignum_montsqr_p256_alt:
         popq    %r12
         popq    %rbx
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

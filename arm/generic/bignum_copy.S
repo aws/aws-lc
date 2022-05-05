@@ -43,31 +43,32 @@ _bignum_copy:
 // Replace n with min(k,n) so we are definitely safe copying those
 // Initialize the element counter to 0
 
-                cmp     k, n
-                csel    n, k, n, cc
-                mov     i, #0
+        cmp     k, n
+        csel    n, k, n, cc
+        mov     i, #0
 
 // If min(k,n) = 0 jump to the padding stage
 
-                cbz     n, padding
+        cbz     n, padding
 
 copyloop:
-                ldr     a, [x, i, lsl #3]
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, n
-                bcc     copyloop
+        ldr     a, [x, i, lsl #3]
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, n
+        bcc     copyloop
 
 padding:
-                cmp     i, k
-                bcs     end
+        cmp     i, k
+        bcs     end
 padloop:
-                str     xzr, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, k
-                bcc     padloop
+        str     xzr, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, k
+        bcc     padloop
 
-end:            ret
+end:
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

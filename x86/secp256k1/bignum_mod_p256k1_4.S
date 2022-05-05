@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -42,6 +43,13 @@
 
 bignum_mod_p256k1_4:
 _bignum_mod_p256k1_4:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Load the inputs as [d3;d2;d1;d0] and let d be an AND of [d3;d2;d1] to
 // condense the comparison below.
@@ -74,6 +82,10 @@ _bignum_mod_p256k1_4:
         cmovc   d3, d
         mov     [z+24], d3
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

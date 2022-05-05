@@ -56,60 +56,60 @@ _bignum_cmul:
 // past the p'th term of the input to generate p-digit output.
 // Subtract p := p - min(n,p) so it holds the size of the extra tail needed
 
-                cmp     n, p
-                csel    n, p, n, cs
-                sub     p, p, n
+        cmp     n, p
+        csel    n, p, n, cs
+        sub     p, p, n
 
 // Initialize current input/output pointer offset i and high part h.
 // But then if n = 0 skip the multiplication and go to the tail part
 
-                mov     h, xzr
-                mov     i, xzr
-                cbz     n, tail
+        mov     h, xzr
+        mov     i, xzr
+        cbz     n, tail
 
 // Initialization of the loop: [h,l] = c * x_0
 
-                ldr     a, [x]
-                mul     l, c, a
-                umulh   h, c, a
-                str     l, [z]
-                add     i, i, #8
-                subs    n, n, #1
-                beq     tail
+        ldr     a, [x]
+        mul     l, c, a
+        umulh   h, c, a
+        str     l, [z]
+        add     i, i, #8
+        subs    n, n, #1
+        beq     tail
 
 // Main loop (force CF = 0 at the beginning)
 
-                adds    xzr, xzr, xzr
+        adds    xzr, xzr, xzr
 loop:
-                ldr     a, [x, i]
-                mul     l, c, a
-                adcs    l, l, h
-                umulh   h, c, a
-                str     l, [z, i]
-                add     i, i, #8
-                sub     n, n, #1
-                cbnz    n, loop
+        ldr     a, [x, i]
+        mul     l, c, a
+        adcs    l, l, h
+        umulh   h, c, a
+        str     l, [z, i]
+        add     i, i, #8
+        sub     n, n, #1
+        cbnz    n, loop
 
-                adc     h, h, xzr
+        adc     h, h, xzr
 
 tail:
-                cbz     p, end
-                str     h, [z, i]
-                mov     h, xzr
-                subs    p, p, #1
-                beq     end
+        cbz     p, end
+        str     h, [z, i]
+        mov     h, xzr
+        subs    p, p, #1
+        beq     end
 
 tloop:
-                add     i, i, #8
-                str     xzr, [z, i]
-                sub     p, p, #1
-                cbnz    p, tloop
+        add     i, i, #8
+        str     xzr, [z, i]
+        sub     p, p, #1
+        cbnz    p, tloop
 
 // Return the high/carry word
 
 end:
-                mov     x0, h
-                ret
+        mov     x0, h
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

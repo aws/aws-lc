@@ -25,6 +25,7 @@
 // assuming that a and b are coprime *and* that b is an odd number > 1.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = a, RCX = b, R8 = t
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = a, R9 = b, [RSP+40] = t
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -108,46 +109,56 @@
 bignum_modinv:
 _bignum_modinv:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
+
 // Save all required registers and make room on stack for all the above vars
 
-                push    rbp
-                push    rbx
-                push    r12
-                push    r13
-                push    r14
-                push    r15
-                sub     rsp, STACKVARSIZE
+        push    rbp
+        push    rbx
+        push    r12
+        push    r13
+        push    r14
+        push    r15
+        sub     rsp, STACKVARSIZE
 
 // If k = 0 then do nothing (this is out of scope anyway)
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Set up the additional two buffers m and n beyond w in temp space
 // and record all pointers m, n, w and z in stack-based variables
 
-                mov     z, rsi
-                mov     w, r8
-                mov     bm, rcx
-                lea     r10, [r8+8*k]
-                mov     m, r10
-                lea     p2, [r10+8*k]
+        mov     z, rsi
+        mov     w, r8
+        mov     bm, rcx
+        lea     r10, [r8+8*k]
+        mov     m, r10
+        lea     p2, [r10+8*k]
 
 // Initialize the main buffers with their starting values:
 // m = a, n = b, w = b (to be tweaked to b - 1) and z = 0
 
-                xor     r11, r11
-                xor     i, i
+        xor     r11, r11
+        xor     i, i
 copyloop:
-                mov     a, [rdx+8*i]
-                mov     b, [rcx+8*i]
-                mov     [r10+8*i], a
-                mov     [p2+8*i], b
-                mov     [r8+8*i], b
-                mov     [rsi+8*i], r11
-                inc     i
-                cmp     i, k
-                jc      copyloop
+        mov     a, [rdx+8*i]
+        mov     b, [rcx+8*i]
+        mov     [r10+8*i], a
+        mov     [p2+8*i], b
+        mov     [r8+8*i], b
+        mov     [rsi+8*i], r11
+        inc     i
+        cmp     i, k
+        jc      copyloop
 
 // Tweak down w to b - 1 (this crude approach is safe as b needs to be odd
 // for it to be in scope). We have then established the congruence invariant:
@@ -157,51 +168,51 @@ copyloop:
 //
 // This, with the bounds w <= b and z <= b, is maintained round the outer loop
 
-                mov     a, [r8]
-                mov     b, a
-                dec     b
-                mov     [r8], b
+        mov     a, [r8]
+        mov     b, a
+        dec     b
+        mov     [r8], b
 
 // Compute v = negated modular inverse of b mod 2^64, reusing a from above
 // This is used for Montgomery reduction operations each time round the loop
 
-                mov     h2, a
-                mov     h1, a
-                shl     h2, 2
-                sub     h1, h2
-                xor     h1, 2
+        mov     h2, a
+        mov     h1, a
+        shl     h2, 2
+        sub     h1, h2
+        xor     h1, 2
 
-                mov     h2, h1
-                imul    h2, a
-                mov     ashort, 2
-                add     a, h2
-                add     h2, 1
+        mov     h2, h1
+        imul    h2, a
+        mov     ashort, 2
+        add     a, h2
+        add     h2, 1
 
-                imul    h1, a
+        imul    h1, a
 
-                imul    h2, h2
-                mov     ashort, 1
-                add     a, h2
-                imul    h1, a
+        imul    h2, h2
+        mov     ashort, 1
+        add     a, h2
+        imul    h1, a
 
-                imul    h2, h2
-                mov     ashort, 1
-                add     a, h2
-                imul    h1, a
+        imul    h2, h2
+        mov     ashort, 1
+        add     a, h2
+        imul    h1, a
 
-                imul    h2, h2
-                mov     ashort, 1
-                add     a, h2
-                imul    h1, a
+        imul    h2, h2
+        mov     ashort, 1
+        add     a, h2
+        imul    h1, a
 
-                mov     v, h1
+        mov     v, h1
 
 // Set up the outer loop count of 128 * k
 // The invariant is that m * n < 2^t at all times.
 
-                mov     a, k
-                shl     a, 7
-                mov     t, a
+        mov     a, k
+        shl     a, 7
+        mov     t, a
 
 // Start of the main outer loop iterated t times
 
@@ -212,11 +223,11 @@ outerloop:
 // Either both m and n fit in l digits, or m has become zero and so
 // nothing happens in the loop anyway and this makes no difference.
 
-                mov     l, t
-                add     l, 63
-                shr     l, 6
-                cmp     l, k
-                cmovnc  l, k
+        mov     l, t
+        add     l, 63
+        shr     l, 6
+        cmp     l, k
+        cmovnc  l, k
 
 // Select upper and lower proxies for both m and n to drive the inner
 // loop. The lower proxies are simply the lowest digits themselves,
@@ -224,48 +235,48 @@ outerloop:
 // of the two inputs selected so their top bit (63) aligns with the
 // most significant bit of *either* of the two inputs.
 
-                xor     h1, h1  // Previous high and low for m
-                xor     l1, l1
-                xor     h2, h2  // Previous high and low for n
-                xor     l2, l2
-                xor     c2, c2  // Mask flag: previous word of one was nonzero
-                                // and in this case h1 and h2 are those words
+        xor     h1, h1  // Previous high and low for m
+        xor     l1, l1
+        xor     h2, h2  // Previous high and low for n
+        xor     l2, l2
+        xor     c2, c2  // Mask flag: previous word of one was nonzero
+        // and in this case h1 and h2 are those words
 
-                mov     p1, m
-                lea     p2, [p1+8*k]
-                xor     i, i
+        mov     p1, m
+        lea     p2, [p1+8*k]
+        xor     i, i
 toploop:
-                mov     b, [p1+8*i]
-                mov     c, [p2+8*i]
-                mov     c1, c2
-                and     c1, h1
-                and     c2, h2
-                mov     a, b
-                or      a, c
-                neg     a
-                cmovc   l1, c1
-                cmovc   l2, c2
-                cmovc   h1, b
-                cmovc   h2, c
-                sbb     c2, c2
-                inc     i
-                cmp     i, l
-                jc      toploop
+        mov     b, [p1+8*i]
+        mov     c, [p2+8*i]
+        mov     c1, c2
+        and     c1, h1
+        and     c2, h2
+        mov     a, b
+        or      a, c
+        neg     a
+        cmovc   l1, c1
+        cmovc   l2, c2
+        cmovc   h1, b
+        cmovc   h2, c
+        sbb     c2, c2
+        inc     i
+        cmp     i, l
+        jc      toploop
 
-                mov     a, h1
-                or      a, h2
-                bsr     c, a
-                xor     c, 63
-                shld    h1, l1, cl
-                shld    h2, l2, cl
+        mov     a, h1
+        or      a, h2
+        bsr     c, a
+        xor     c, 63
+        shld    h1, l1, cl
+        shld    h2, l2, cl
 
 // m_lo = m[0], n_lo = n[0];
 
-                mov     rax, [p1]
-                mov     m_lo, rax
+        mov     rax, [p1]
+        mov     m_lo, rax
 
-                mov     rax, [p2]
-                mov     n_lo, rax
+        mov     rax, [p2]
+        mov     n_lo, rax
 
 // Now the inner loop, with i as loop counter from CHUNKSIZE down.
 // This records a matrix of updates to apply to the initial
@@ -281,18 +292,18 @@ toploop:
 // is simply the parity of the number of times the first condition,
 // used as the swapping criterion, fires in this loop.
 
-                mov     m_mshort, 1
-                mov     m_nshort, 0
-                mov     n_mshort, 0
-                mov     n_nshort, 1
-                mov     ishort, CHUNKSIZE
+        mov     m_mshort, 1
+        mov     m_nshort, 0
+        mov     n_mshort, 0
+        mov     n_nshort, 1
+        mov     ishort, CHUNKSIZE
 
 // Stash more variables over the inner loop to free up regs
 
-                mov     mat_mn, k
-                mov     mat_nm, l
-                mov     mat_mm, p1
-                mov     mat_nn, p2
+        mov     mat_mn, k
+        mov     mat_nm, l
+        mov     mat_mm, p1
+        mov     mat_nn, p2
 
 // Conceptually in the inner loop we follow these steps:
 //
@@ -312,61 +323,61 @@ toploop:
 
 innerloop:
 
-                mov     rax, n_hi
-                mov     k, n_lo
-                mov     l, n_m
-                mov     p2, n_n
-                mov     rbx, 1
-                neg     k
-                and     rbx, m_lo
-                cmovz   rax, rbx
-                cmovz   k, rbx
-                cmovz   l, rbx
-                cmovz   p2, rbx
-                mov     rbx, m_hi
+        mov     rax, n_hi
+        mov     k, n_lo
+        mov     l, n_m
+        mov     p2, n_n
+        mov     rbx, 1
+        neg     k
+        and     rbx, m_lo
+        cmovz   rax, rbx
+        cmovz   k, rbx
+        cmovz   l, rbx
+        cmovz   p2, rbx
+        mov     rbx, m_hi
 
-                add     k, m_lo
-                mov     p1, k
-                neg     k
-                sub     rbx, rax
+        add     k, m_lo
+        mov     p1, k
+        neg     k
+        sub     rbx, rax
 
-                cmovc   n_hi, m_hi
-                cmovc   n_lo, m_lo
-                cmovc   n_m, m_m
-                cmovc   n_n, m_n
-                cmovnc  k, p1
-                mov     m_hi, rbx
-                not     rbx
-                inc     rbx
-                cmovc   m_hi, rbx
+        cmovc   n_hi, m_hi
+        cmovc   n_lo, m_lo
+        cmovc   n_m, m_m
+        cmovc   n_n, m_n
+        cmovnc  k, p1
+        mov     m_hi, rbx
+        not     rbx
+        inc     rbx
+        cmovc   m_hi, rbx
 
-                mov     m_lo, k
-                add     m_m, l
-                add     m_n, p2
-                shr     m_hi, 1
-                shr     m_lo, 1
-                lea     n_m, [n_m+n_m]
-                lea     n_n, [n_n+n_n]
+        mov     m_lo, k
+        add     m_m, l
+        add     m_n, p2
+        shr     m_hi, 1
+        shr     m_lo, 1
+        lea     n_m, [n_m+n_m]
+        lea     n_n, [n_n+n_n]
 
 // End of the inner for-loop
 
-                dec     i
-                jnz     innerloop
+        dec     i
+        jnz     innerloop
 
 // Unstash the temporary variables
 
-                mov     k,mat_mn
-                mov     l,mat_nm
-                mov     p1,mat_mm
-                mov     p2,mat_nn
+        mov     k,mat_mn
+        mov     l,mat_nm
+        mov     p1,mat_mm
+        mov     p2,mat_nn
 
 // Put the matrix entries in memory since we're out of registers
 // We pull them out repeatedly in the next loop
 
-                mov     mat_mm, m_m
-                mov     mat_mn, m_n
-                mov     mat_nm, n_m
-                mov     mat_nn, n_n
+        mov     mat_mm, m_m
+        mov     mat_mn, m_n
+        mov     mat_nm, n_m
+        mov     mat_nn, n_n
 
 // Apply the update to w and z, using addition in this case, and also take
 // the chance to shift an additional 6 = 64-CHUNKSIZE bits to be ready for a
@@ -379,175 +390,175 @@ innerloop:
 //
 // with c1 and c2 recording previous words for the shifting part
 
-                mov     p1, w
-                mov     p2, z
-                xor     l1, l1
-                xor     l2, l2
-                xor     c1, c1
-                xor     c2, c2
-                xor     i, i
+        mov     p1, w
+        mov     p2, z
+        xor     l1, l1
+        xor     l2, l2
+        xor     c1, c1
+        xor     c2, c2
+        xor     i, i
 congloop:
 
-                mov     c, [p1+8*i]
-                mov     a, mat_mm
-                mul     c
-                add     l1, a
-                adc     d, 0
-                mov     h1, d            // Now h1::l1 := m_m * w + l1_in
+        mov     c, [p1+8*i]
+        mov     a, mat_mm
+        mul     c
+        add     l1, a
+        adc     d, 0
+        mov     h1, d            // Now h1::l1 := m_m * w + l1_in
 
-                mov     a, mat_nm
-                mul     c
-                add     l2, a
-                adc     d, 0
-                mov     h2, d            // Now h2::l2 := n_m * w + l2_in
+        mov     a, mat_nm
+        mul     c
+        add     l2, a
+        adc     d, 0
+        mov     h2, d            // Now h2::l2 := n_m * w + l2_in
 
-                mov     c, [p2+8*i]
-                mov     a, mat_mn
-                mul     c
-                add     l1, a
-                adc     h1, d           // h1::l1 := m_m * w + m_n * z + l1_in
-                shrd    c1, l1, CHUNKSIZE
-                mov     [p1+8*i], c1
-                mov     c1, l1
-                mov     l1, h1
+        mov     c, [p2+8*i]
+        mov     a, mat_mn
+        mul     c
+        add     l1, a
+        adc     h1, d           // h1::l1 := m_m * w + m_n * z + l1_in
+        shrd    c1, l1, CHUNKSIZE
+        mov     [p1+8*i], c1
+        mov     c1, l1
+        mov     l1, h1
 
-                mov     a, mat_nn
-                mul     c
-                add     l2, a
-                adc     h2, d           // h2::l2 := n_m * w + n_n * z + l2_in
-                shrd    c2, l2, CHUNKSIZE
-                mov     [p2+8*i], c2
-                mov     c2, l2
-                mov     l2, h2
+        mov     a, mat_nn
+        mul     c
+        add     l2, a
+        adc     h2, d           // h2::l2 := n_m * w + n_n * z + l2_in
+        shrd    c2, l2, CHUNKSIZE
+        mov     [p2+8*i], c2
+        mov     c2, l2
+        mov     l2, h2
 
-                inc     i
-                cmp     i, k
-                jc      congloop
+        inc     i
+        cmp     i, k
+        jc      congloop
 
-                shld    l1, c1, 64-CHUNKSIZE
-                shld    l2, c2, 64-CHUNKSIZE
+        shld    l1, c1, 64-CHUNKSIZE
+        shld    l2, c2, 64-CHUNKSIZE
 
 // Do a Montgomery reduction of l1::w
 
-                mov     p2, bm
+        mov     p2, bm
 
-                mov     b, [p1]
-                mov     h1, v
-                imul    h1, b
-                mov     a, [p2]
-                mul     h1
-                add     a, b            // Will be zero but want the carry
-                mov     c1, rdx
-                mov     ishort, 1
-                mov     c, k
-                dec     c
-                jz      wmontend
+        mov     b, [p1]
+        mov     h1, v
+        imul    h1, b
+        mov     a, [p2]
+        mul     h1
+        add     a, b            // Will be zero but want the carry
+        mov     c1, rdx
+        mov     ishort, 1
+        mov     c, k
+        dec     c
+        jz      wmontend
 
 wmontloop:
-                adc     c1, [p1+8*i]
-                sbb     b, b
-                mov     a, [p2+8*i]
-                mul     h1
-                sub     rdx, b
-                add     a, c1
-                mov     [p1+8*i-8], a
-                mov     c1, rdx
-                inc     i
-                dec     c
-                jnz     wmontloop
+        adc     c1, [p1+8*i]
+        sbb     b, b
+        mov     a, [p2+8*i]
+        mul     h1
+        sub     rdx, b
+        add     a, c1
+        mov     [p1+8*i-8], a
+        mov     c1, rdx
+        inc     i
+        dec     c
+        jnz     wmontloop
 
 wmontend:
-                adc     c1, l1
-                mov     [p1+8*k-8], c1
-                sbb     c1, c1
-                neg     c1
+        adc     c1, l1
+        mov     [p1+8*k-8], c1
+        sbb     c1, c1
+        neg     c1
 
-                mov     c, k
-                xor     i, i
+        mov     c, k
+        xor     i, i
 wcmploop:
-                mov     a, [p1+8*i]
-                sbb     a, [p2+8*i]
-                inc     i
-                dec     c
-                jnz     wcmploop
-                sbb     c1, 0
-                sbb     c1, c1
-                not     c1
+        mov     a, [p1+8*i]
+        sbb     a, [p2+8*i]
+        inc     i
+        dec     c
+        jnz     wcmploop
+        sbb     c1, 0
+        sbb     c1, c1
+        not     c1
 
-                xor     c, c
-                xor     i, i
+        xor     c, c
+        xor     i, i
 wcorrloop:
-                mov     a, [p1+8*i]
-                mov     b, [p2+8*i]
-                and     b, c1
-                neg     c
-                sbb     a, b
-                sbb     c, c
-                mov     [p1+8*i], a
-                inc     i
-                cmp     i, k
-                jc      wcorrloop
+        mov     a, [p1+8*i]
+        mov     b, [p2+8*i]
+        and     b, c1
+        neg     c
+        sbb     a, b
+        sbb     c, c
+        mov     [p1+8*i], a
+        inc     i
+        cmp     i, k
+        jc      wcorrloop
 
 // Do a Montgomery reduction of l2::z
 
-                mov     p1, z
+        mov     p1, z
 
-                mov     b, [p1]
-                mov     h2, v
-                imul    h2, b
-                mov     a, [p2]
-                mul     h2
-                add     a, b            // Will be zero but want the carry
-                mov     c2, rdx
-                mov     ishort, 1
-                mov     c, k
-                dec     c
-                jz      zmontend
+        mov     b, [p1]
+        mov     h2, v
+        imul    h2, b
+        mov     a, [p2]
+        mul     h2
+        add     a, b            // Will be zero but want the carry
+        mov     c2, rdx
+        mov     ishort, 1
+        mov     c, k
+        dec     c
+        jz      zmontend
 
 zmontloop:
-                adc     c2, [p1+8*i]
-                sbb     b, b
-                mov     a, [p2+8*i]
-                mul     h2
-                sub     rdx, b
-                add     a, c2
-                mov     [p1+8*i-8], a
-                mov     c2, rdx
-                inc     i
-                dec     c
-                jnz     zmontloop
+        adc     c2, [p1+8*i]
+        sbb     b, b
+        mov     a, [p2+8*i]
+        mul     h2
+        sub     rdx, b
+        add     a, c2
+        mov     [p1+8*i-8], a
+        mov     c2, rdx
+        inc     i
+        dec     c
+        jnz     zmontloop
 
 zmontend:
-                adc     c2, l2
-                mov     [p1+8*k-8], c2
-                sbb     c2, c2
-                neg     c2
+        adc     c2, l2
+        mov     [p1+8*k-8], c2
+        sbb     c2, c2
+        neg     c2
 
-                mov     c, k
-                xor     i, i
+        mov     c, k
+        xor     i, i
 zcmploop:
-                mov     a, [p1+8*i]
-                sbb     a, [p2+8*i]
-                inc     i
-                dec     c
-                jnz     zcmploop
-                sbb     c2, 0
-                sbb     c2, c2
-                not     c2
+        mov     a, [p1+8*i]
+        sbb     a, [p2+8*i]
+        inc     i
+        dec     c
+        jnz     zcmploop
+        sbb     c2, 0
+        sbb     c2, c2
+        not     c2
 
-                xor     c, c
-                xor     i, i
+        xor     c, c
+        xor     i, i
 zcorrloop:
-                mov     a, [p1+8*i]
-                mov     b, [p2+8*i]
-                and     b, c2
-                neg     c
-                sbb     a, b
-                sbb     c, c
-                mov     [p1+8*i], a
-                inc     i
-                cmp     i, k
-                jc      zcorrloop
+        mov     a, [p1+8*i]
+        mov     b, [p2+8*i]
+        and     b, c2
+        neg     c
+        sbb     a, b
+        sbb     c, c
+        mov     [p1+8*i], a
+        inc     i
+        cmp     i, k
+        jc      zcorrloop
 
 // Now actually compute the updates to m and n corresponding to the matrix,
 // and correct the signs if they have gone negative. First we compute the
@@ -557,95 +568,95 @@ zcorrloop:
 //    h1::l1::m = m_m * m - m_n * n
 //    h2::l2::n = n_m * m - n_n * n
 
-                mov     p1, m
-                lea     p2, [p1+8*k]
-                xor     i, i
-                xor     h1, h1
-                xor     l1, l1
-                xor     h2, h2
-                xor     l2, l2
+        mov     p1, m
+        lea     p2, [p1+8*k]
+        xor     i, i
+        xor     h1, h1
+        xor     l1, l1
+        xor     h2, h2
+        xor     l2, l2
 crossloop:
 
-                mov     c, [p1+8*i]
-                mov     a, mat_mm
-                mul     c
-                add     l1, a
-                adc     d, 0
-                mov     c1, d            // Now c1::l1 is +ve part 1
+        mov     c, [p1+8*i]
+        mov     a, mat_mm
+        mul     c
+        add     l1, a
+        adc     d, 0
+        mov     c1, d            // Now c1::l1 is +ve part 1
 
-                mov     a, mat_nm
-                mul     c
-                add     l2, a
-                adc     d, 0
-                mov     c2, d            // Now c2::l2 is +ve part 2
+        mov     a, mat_nm
+        mul     c
+        add     l2, a
+        adc     d, 0
+        mov     c2, d            // Now c2::l2 is +ve part 2
 
-                mov     c, [p2+8*i]
-                mov     a, mat_mn
-                mul     c
-                sub     d, h1           // Now d::a is -ve part 1
+        mov     c, [p2+8*i]
+        mov     a, mat_mn
+        mul     c
+        sub     d, h1           // Now d::a is -ve part 1
 
-                sub     l1, a
-                sbb     c1, d
-                sbb     h1, h1
-                mov     [p1+8*i], l1
-                mov     l1, c1
+        sub     l1, a
+        sbb     c1, d
+        sbb     h1, h1
+        mov     [p1+8*i], l1
+        mov     l1, c1
 
-                mov     a, mat_nn
-                mul     c
-                sub     d, h2           // Now d::a is -ve part 2
+        mov     a, mat_nn
+        mul     c
+        sub     d, h2           // Now d::a is -ve part 2
 
-                sub     l2, a
-                sbb     c2, d
-                sbb     h2, h2
-                mov     [p2+8*i], l2
-                mov     l2, c2
+        sub     l2, a
+        sbb     c2, d
+        sbb     h2, h2
+        mov     [p2+8*i], l2
+        mov     l2, c2
 
-                inc     i
-                cmp     i, l
-                jc      crossloop
+        inc     i
+        cmp     i, l
+        jc      crossloop
 
 // Now fix the signs of m and n if they have gone negative
 
-                xor     i, i
-                mov     c1, h1  // carry-in coded up as well
-                mov     c2, h2  // carry-in coded up as well
-                xor     l1, h1  // for the end digit
-                xor     l2, h2  // for the end digit
+        xor     i, i
+        mov     c1, h1  // carry-in coded up as well
+        mov     c2, h2  // carry-in coded up as well
+        xor     l1, h1  // for the end digit
+        xor     l2, h2  // for the end digit
 optnegloop:
-                mov     a, [p1+8*i]
-                xor     a, h1
-                neg     c1
-                adc     a, 0
-                sbb     c1, c1
-                mov     [p1+8*i], a
-                mov     a, [p2+8*i]
-                xor     a, h2
-                neg     c2
-                adc     a, 0
-                sbb     c2, c2
-                mov     [p2+8*i], a
-                inc     i
-                cmp     i, l
-                jc      optnegloop
-                sub     l1, c1
-                sub     l2, c2
+        mov     a, [p1+8*i]
+        xor     a, h1
+        neg     c1
+        adc     a, 0
+        sbb     c1, c1
+        mov     [p1+8*i], a
+        mov     a, [p2+8*i]
+        xor     a, h2
+        neg     c2
+        adc     a, 0
+        sbb     c2, c2
+        mov     [p2+8*i], a
+        inc     i
+        cmp     i, l
+        jc      optnegloop
+        sub     l1, c1
+        sub     l2, c2
 
 // Now shift them right CHUNKSIZE bits
 
-                mov     i, l
+        mov     i, l
 shiftloop:
-                mov     a, [p1+8*i-8]
-                mov     c1, a
-                shrd    a, l1, CHUNKSIZE
-                mov     [p1+8*i-8],a
-                mov     l1, c1
-                mov     a, [p2+8*i-8]
-                mov     c2, a
-                shrd    a, l2, CHUNKSIZE
-                mov     [p2+8*i-8],a
-                mov     l2, c2
-                dec     i
-                jnz     shiftloop
+        mov     a, [p1+8*i-8]
+        mov     c1, a
+        shrd    a, l1, CHUNKSIZE
+        mov     [p1+8*i-8],a
+        mov     l1, c1
+        mov     a, [p2+8*i-8]
+        mov     c2, a
+        shrd    a, l2, CHUNKSIZE
+        mov     [p2+8*i-8],a
+        mov     l2, c2
+        dec     i
+        jnz     shiftloop
 
 // Finally, use the signs h1 and h2 to do optional modular negations of
 // w and z respectively, flipping h2 to make signs work. We don't make
@@ -655,33 +666,33 @@ shiftloop:
 // could not have z = b since it violates the coprimality assumption for
 // in-scope cases.
 
-                not     h2
-                mov     c, bm
-                mov     p1, w
-                mov     p2, z
-                mov     c1, h1
-                mov     c2, h2
-                xor     i, i
+        not     h2
+        mov     c, bm
+        mov     p1, w
+        mov     p2, z
+        mov     c1, h1
+        mov     c2, h2
+        xor     i, i
 fliploop:
-                mov     d, h2
-                mov     a, [c+8*i]
-                and     d, a
-                and     a, h1
-                mov     b, [p1+8*i]
-                xor     b, h1
-                neg     c1
-                adc     a, b
-                sbb     c1, c1
-                mov     [p1+8*i], a
-                mov     b, [p2+8*i]
-                xor     b, h2
-                neg     c2
-                adc     d, b
-                sbb     c2, c2
-                mov     [p2+8*i], d
-                inc     i
-                cmp     i, k
-                jc      fliploop
+        mov     d, h2
+        mov     a, [c+8*i]
+        and     d, a
+        and     a, h1
+        mov     b, [p1+8*i]
+        xor     b, h1
+        neg     c1
+        adc     a, b
+        sbb     c1, c1
+        mov     [p1+8*i], a
+        mov     b, [p2+8*i]
+        xor     b, h2
+        neg     c2
+        adc     d, b
+        sbb     c2, c2
+        mov     [p2+8*i], d
+        inc     i
+        cmp     i, k
+        jc      fliploop
 
 // End of main loop. We can stop if t' <= 0 since then m * n < 2^0, which
 // since n is odd and m and n are coprime (in the in-scope cases) means
@@ -689,19 +700,23 @@ fliploop:
 // Moreover we do in fact need to maintain strictly t > 0 in the main loop,
 // or the computation of the optimized digit bound l could collapse to 0.
 
-                sub     t, CHUNKSIZE
-                jnbe    outerloop
+        sub     t, CHUNKSIZE
+        jnbe    outerloop
 
 end:
-                add     rsp, STACKVARSIZE
-                pop     r15
-                pop     r14
-                pop     r13
-                pop     r12
-                pop     rbx
-                pop     rbp
+        add     rsp, STACKVARSIZE
+        pop     r15
+        pop     r14
+        pop     r13
+        pop     r12
+        pop     rbx
+        pop     rbp
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

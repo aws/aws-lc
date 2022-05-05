@@ -56,43 +56,43 @@ _bignum_demont_p256k1:
 // Load input and set up constants c = 4294968273 so p_256k1 = 2^256 - c,
 // and w the negated multiplicative inverse p_256k1 * w == -1 (mod 2^64).
 
-                ldp     d0, d1, [x]
-                movz    w, #0x3531
-                movk    w, #0xd225, lsl #16
-                ldp     d2, d3, [x, #16]
-                movk    w, #0x091d, lsl #32
-                movk    w, #0xd838, lsl #48
-                mov     c, #977
-                orr     c, c, #0x100000000
+        ldp     d0, d1, [x]
+        movz    w, #0x3531
+        movk    w, #0xd225, lsl #16
+        ldp     d2, d3, [x, #16]
+        movk    w, #0x091d, lsl #32
+        movk    w, #0xd838, lsl #48
+        mov     c, #977
+        orr     c, c, #0x100000000
 
 // Four stages of Montgomery reduction, rotating the register window
 
-                mul     d0, w, d0
-                umulh   t, d0, c
-                subs    d1, d1, t
+        mul     d0, w, d0
+        umulh   t, d0, c
+        subs    d1, d1, t
 
-                mul     d1, w, d1
-                umulh   t, d1, c
-                sbcs    d2, d2, t
+        mul     d1, w, d1
+        umulh   t, d1, c
+        sbcs    d2, d2, t
 
-                mul     d2, w, d2
-                umulh   t, d2, c
-                sbcs    d3, d3, t
+        mul     d2, w, d2
+        umulh   t, d2, c
+        sbcs    d3, d3, t
 
-                mul     d3, w, d3
-                umulh   t, d3, c
-                sbcs    d0, d0, t
+        mul     d3, w, d3
+        umulh   t, d3, c
+        sbcs    d0, d0, t
 
-                sbcs    d1, d1, xzr
-                sbcs    d2, d2, xzr
-                sbc     d3, d3, xzr
+        sbcs    d1, d1, xzr
+        sbcs    d2, d2, xzr
+        sbc     d3, d3, xzr
 
 // Write back result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

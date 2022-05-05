@@ -42,38 +42,38 @@ _bignum_half_p256k1:
 
 // Load the 4 digits of x
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
 
 // Let b be the LSB of the input (i.e. whether it is odd).
 // Create c = 4294968273 * b
 
-                mov     c, #977
-                orr     c, c, #0x100000000
-                tst     d0, #1
-                csel    c, c, xzr, ne
+        mov     c, #977
+        orr     c, c, #0x100000000
+        tst     d0, #1
+        csel    c, c, xzr, ne
 
 // We want (x + b * p_256k1) / 2 where b is that LSB, in {0,1}.
 // That amounts to (2^256 * b + x - 4294968273 * b) / 2, and
 // modulo 4 words that's the same as ([2^256 * c + x] - c) / 2.
 // So do that subtraction and shift a place right as we go.
 
-                subs    d0, d0, c
-                sbcs    d1, d1, xzr
-                extr    d0, d1, d0, #1
-                sbcs    d2, d2, xzr
-                extr    d1, d2, d1, #1
-                sbcs    d3, d3, xzr
-                extr    d2, d3, d2, #1
-                sbc     c, c, xzr
-                extr    d3, c, d3, #1
+        subs    d0, d0, c
+        sbcs    d1, d1, xzr
+        extr    d0, d1, d0, #1
+        sbcs    d2, d2, xzr
+        extr    d1, d2, d1, #1
+        sbcs    d3, d3, xzr
+        extr    d2, d3, d2, #1
+        sbc     c, c, xzr
+        extr    d3, c, d3, #1
 
 // Store back and return
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -28,6 +28,7 @@
 // cases it gives the top digit of the (p + 1)-digit result.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = c, RCX = n, R8 = y, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = c, R9 = n, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -54,85 +55,99 @@
 bignum_cmadd:
 _bignum_cmadd:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+        mov     r8, [rsp+56]
+#endif
+
 // Seems hard to avoid one more register
 
-                push    rbx
+        push    rbx
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.
 // Subtract p := p - min(n,p) so it holds the size of the extra tail needed
 
-                cmp     p, n
-                cmovc   n, p
-                sub     p, n
+        cmp     p, n
+        cmovc   n, p
+        sub     p, n
 
 // Initialize high part h = 0; if n = 0 do nothing but return that zero
 
-                xor     h, h
-                test    n, n
-                jz      end
+        xor     h, h
+        test    n, n
+        jz      end
 
 // Move c into a safer register as multiplies overwrite rdx
 
-                mov     c, rdx
+        mov     c, rdx
 
 // Initialization of the loop: 2^64 * CF + [h,z_0'] = z_0 + c * x_0
 
-                mov     rax, [x]
-                mul     c
-                add     [z], rax
-                mov     h, rdx
-                mov     ishort, 1
-                dec     n
-                jz      hightail
+        mov     rax, [x]
+        mul     c
+        add     [z], rax
+        mov     h, rdx
+        mov     ishort, 1
+        dec     n
+        jz      hightail
 
 // Main loop, where we always have CF + previous high part h to add in
 
 loop:
-                adc     h, [z+8*i]
-                sbb     r, r
-                mov     rax, [x+8*i]
-                mul     c
-                sub     rdx, r
-                add     rax, h
-                mov     [z+8*i], rax
-                mov     h, rdx
-                inc     i
-                dec     n
-                jnz     loop
+        adc     h, [z+8*i]
+        sbb     r, r
+        mov     rax, [x+8*i]
+        mul     c
+        sub     rdx, r
+        add     rax, h
+        mov     [z+8*i], rax
+        mov     h, rdx
+        inc     i
+        dec     n
+        jnz     loop
 
 hightail:
-                adc     h, 0
+        adc     h, 0
 
 // Propagate the carry all the way to the end with h as extra carry word
 
 tail:
-                test    p, p
-                jz      end
+        test    p, p
+        jz      end
 
-                add     [z+8*i], h
-                mov     hshort, 0
-                inc     i
-                dec     p
-                jz      highend
+        add     [z+8*i], h
+        mov     hshort, 0
+        inc     i
+        dec     p
+        jz      highend
 
 tloop:
-                adc     [z+8*i], h
-                inc     i
-                dec     p
-                jnz     tloop
+        adc     [z+8*i], h
+        inc     i
+        dec     p
+        jnz     tloop
 
 highend:
 
-                adc     h, 0
+        adc     h, 0
 
 // Return the high/carry word
 
 end:
-                mov     rax, h
+        mov     rax, h
 
-                pop     rbx
-                ret
+        pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

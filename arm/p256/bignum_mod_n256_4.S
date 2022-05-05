@@ -46,47 +46,47 @@
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                              \
-                movz    nn, n0;                                             \
-                movk    nn, n1, lsl #16;                                    \
-                movk    nn, n2, lsl #32;                                    \
-                movk    nn, n3, lsl #48
+        movz    nn, n0;                                             \
+        movk    nn, n1, lsl #16;                                    \
+        movk    nn, n2, lsl #32;                                    \
+        movk    nn, n3, lsl #48
 
 bignum_mod_n256_4:
 _bignum_mod_n256_4:
 
 // Load the complicated three words of n_256, the other being all 1s
 
-                movbig( n0, #0xf3b9, #0xcac2, #0xfc63, #0x2551)
-                movbig( n1, #0xbce6, #0xfaad, #0xa717, #0x9e84)
-                mov     n3, #0xffffffff00000000
+        movbig( n0, #0xf3b9, #0xcac2, #0xfc63, #0x2551)
+        movbig( n1, #0xbce6, #0xfaad, #0xa717, #0x9e84)
+        mov     n3, #0xffffffff00000000
 
 // Load the input number
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
 
 // Do the subtraction. Since word 2 of n_256 is all 1s, that can be
 // done by adding zero with carry, thanks to the inverted carry.
 
-                subs    n0, d0, n0
-                sbcs    n1, d1, n1
-                adcs    n2, d2, xzr
-                sbcs    n3, d3, n3
+        subs    n0, d0, n0
+        sbcs    n1, d1, n1
+        adcs    n2, d2, xzr
+        sbcs    n3, d3, n3
 
 // Now if the carry is *clear* (inversion at work) the subtraction carried
 // and hence we should have done nothing, so we reset each n_i = d_i
 
-                csel    n0, d0, n0, cc
-                csel    n1, d1, n1, cc
-                csel    n2, d2, n2, cc
-                csel    n3, d3, n3, cc
+        csel    n0, d0, n0, cc
+        csel    n1, d1, n1, cc
+        csel    n2, d2, n2, cc
+        csel    n3, d3, n3, cc
 
 // Store the end result
 
-                stp     n0, n1, [z]
-                stp     n2, n3, [z, #16]
+        stp     n0, n1, [z]
+        stp     n2, n3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

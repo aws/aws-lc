@@ -35,7 +35,7 @@ let bignum_of_word_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_OF_WORD_EXEC = X86_MK_EXEC_RULE bignum_of_word_mc;;
+let BIGNUM_OF_WORD_EXEC = X86_MK_CORE_EXEC_RULE bignum_of_word_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -45,7 +45,7 @@ let BIGNUM_OF_WORD_CORRECT = prove
  (`!k z n pc.
         nonoverlapping (word pc,0x1a) (z,8 * val k)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_of_word_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_of_word_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [k; z; n] s)
              (\s. read RIP s = word (pc + 0x19) /\
@@ -126,4 +126,34 @@ let BIGNUM_OF_WORD_SUBROUTINE_CORRECT = prove
                   val n MOD (2 EXP (64 * val k)))
              (MAYCHANGE [RIP; RSP; RDX; RDI] ,, MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_OF_WORD_EXEC BIGNUM_OF_WORD_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_of_word_mc BIGNUM_OF_WORD_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_of_word_mc = define_from_elf
+   "windows_bignum_of_word_mc" "x86/generic/bignum_of_word.obj";;
+
+let WINDOWS_BIGNUM_OF_WORD_SUBROUTINE_CORRECT = prove
+ (`!k z n pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x27)] /\
+        nonoverlapping (word pc,0x27) (z,8 * val k) /\
+        nonoverlapping (z,8 * val k) (word_sub stackpointer (word 16),24)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_of_word_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k; z; n] s)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory (z,val k) s =
+                  val n MOD (2 EXP (64 * val k)))
+             (MAYCHANGE [RIP; RSP; RDX] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val k);
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_of_word_mc bignum_of_word_mc
+    BIGNUM_OF_WORD_CORRECT);;

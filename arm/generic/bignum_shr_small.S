@@ -50,52 +50,52 @@ _bignum_shr_small:
 
 // Set default carry-in word to 0
 
-                mov     b, xzr
+        mov     b, xzr
 
 // First, if p > n then pad output on the left with p-n zeros
 
-                cmp     n, p
-                bcs     nopad
+        cmp     n, p
+        bcs     nopad
 padloop:
-                sub     p, p, #1
-                str     xzr, [z, p, lsl #3]
-                cmp     n, p
-                bcc     padloop
+        sub     p, p, #1
+        str     xzr, [z, p, lsl #3]
+        cmp     n, p
+        bcc     padloop
 
 // We now know that p <= n. If in fact p < n let carry word = x[p] instead of 0
 
 nopad:
-                beq     shiftstart
-                ldr     b, [x, p, lsl #3]
+        beq     shiftstart
+        ldr     b, [x, p, lsl #3]
 shiftstart:
 
 // Set up negated version of the shift and shift b in preparation.
 // Use a mask for nonzero shift to fake 64-bit left shift in zero case
 
-                neg     d, c
-                lsl     b, b, d
-                ands    xzr, c, #63
-                csetm   m, ne
-                and     b, b, m
+        neg     d, c
+        lsl     b, b, d
+        ands    xzr, c, #63
+        csetm   m, ne
+        and     b, b, m
 
 // Now the main loop
 
-                cbz     p, end
+        cbz     p, end
 loop:
-                sub     p, p, #1
-                ldr     t, [x, p, lsl #3]
-                lsr     a, t, c
-                orr     a, a, b
-                lsl     b, t, d
-                and     b, b, m
-                str     a, [z, p, lsl #3]
-                cbnz    p, loop
+        sub     p, p, #1
+        ldr     t, [x, p, lsl #3]
+        lsr     a, t, c
+        orr     a, a, b
+        lsl     b, t, d
+        and     b, b, m
+        str     a, [z, p, lsl #3]
+        cbnz    p, loop
 
 // Return top word, shifted back to be a modulus
 
 end:
-                lsr     x0, b, d
-                ret
+        lsr     x0, b, d
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

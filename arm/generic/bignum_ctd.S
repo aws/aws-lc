@@ -40,25 +40,25 @@ _bignum_ctd:
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 
-                cbz     k, end
+        cbz     k, end
 
 // Record in i that the lowest nonzero word is i, where i = k means
 // that the bignum was entirely zero
 
-                mov     i, k
+        mov     i, k
 loop:
-                sub     k, k, #1
-                ldr     a, [x, k, lsl #3]
-                cmp     a, #0
-                csel    i, k, i, ne
-                cbnz    k, loop
+        sub     k, k, #1
+        ldr     a, [x, k, lsl #3]
+        cmp     a, #0
+        csel    i, k, i, ne
+        cbnz    k, loop
 
 // Now return i
 
-                mov     x0, i
+        mov     x0, i
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

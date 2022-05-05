@@ -23,6 +23,7 @@
 // Reduction is modulo the group order of the NIST curve P-256.
 //
 // Standard x86-64 ABI: RDI = z, RSI = k, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = k, R8 = x
 // ----------------------------------------------------------------------------
 
 
@@ -52,150 +53,162 @@
 bignum_mod_n256:
 _bignum_mod_n256:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
+
 // Save extra registers
 
-                pushq   %rbx
-                pushq   %r12
+        pushq   %rbx
+        pushq   %r12
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 
-                cmpq    $4, k
-                jc      shortinput
+        cmpq    $4, k
+        jc      shortinput
 
 // Otherwise load the top 4 digits (top-down) and reduce k by 4
 
-                subq    $4, k
-                movq    24(%rdx,k,8), m3
-                movq    16(%rdx,k,8), m2
-                movq    8(%rdx,k,8), m1
-                movq    (%rdx,k,8), m0
+        subq    $4, k
+        movq    24(%rdx,k,8), m3
+        movq    16(%rdx,k,8), m2
+        movq    8(%rdx,k,8), m1
+        movq    (%rdx,k,8), m0
 
 // Move x into another register to leave %rdx free for multiplies and use of n3
 
-                movq    %rdx, x
+        movq    %rdx, x
 
 // Reduce the top 4 digits mod n_256 (a conditional subtraction of n_256)
 
-                movq    $0x0c46353d039cdaaf, n0
-                movq    $0x4319055258e8617b, n1
-                movl    $0x00000000ffffffff, n3short
+        movq    $0x0c46353d039cdaaf, n0
+        movq    $0x4319055258e8617b, n1
+        movl    $0x00000000ffffffff, n3short
 
-                addq    n0, m0
-                adcq    n1, m1
-                adcq    $0, m2
-                adcq    n3, m3
-                sbbq    d, d
-                notq    d
-                andq    d, n0
-                andq    d, n1
-                andq    d, n3
-                subq    n0, m0
-                sbbq    n1, m1
-                sbbq    $0, m2
-                sbbq    n3, m3
+        addq    n0, m0
+        adcq    n1, m1
+        adcq    $0, m2
+        adcq    n3, m3
+        sbbq    d, d
+        notq    d
+        andq    d, n0
+        andq    d, n1
+        andq    d, n3
+        subq    n0, m0
+        sbbq    n1, m1
+        sbbq    $0, m2
+        sbbq    n3, m3
 
 // Now do (k-4) iterations of 5->4 word modular reduction
 
-                testq   k, k
-                jz      writeback
+        testq   k, k
+        jz      writeback
 
 loop:
 
 // Writing the input as z = 2^256 * m3 + 2^192 * m2 + t = 2^192 * h + t, our
 // intended quotient approximation is MIN ((h + h>>32 + 1)>>64) (2^64 - 1).
 
-                movq    m3, n0
-                shldq   $32, m2, n0
-                movq    m3, q
-                shrq    $32, q
+        movq    m3, n0
+        shldq   $32, m2, n0
+        movq    m3, q
+        shrq    $32, q
 
-                xorq    n1, n1
-                subq    $1, n1
+        xorq    n1, n1
+        subq    $1, n1
 
-                adcq    m2, n0
-                adcq    m3, q
-                sbbq    n0, n0
-                orq     n0, q
+        adcq    m2, n0
+        adcq    m3, q
+        sbbq    n0, n0
+        orq     n0, q
 
 // Load the next digit so current m to reduce = [m3;m2;m1;m0;d]
 
-                movq    -8(x,k,8), d
+        movq    -8(x,k,8), d
 
 // Now form [m3;m2;m1;m0;d] = m - q * n_256
 
-                subq    q, m3
-                movq    $0x0c46353d039cdaaf, n0
-                mulxq   n0, n0, n1
-                addq    n0, d
-                adcq    n1, m0
-                movq    $0x4319055258e8617b, n0
-                mulxq   n0, n0, n1
-                adcq    $0, n1
-                addq    n0, m0
-                adcq    n1, m1
-                movl    $0x00000000ffffffff, n0short
-                mulxq   n0, n0, n1
-                adcq    n0, m2
-                adcq    n1, m3
+        subq    q, m3
+        movq    $0x0c46353d039cdaaf, n0
+        mulxq   n0, n0, n1
+        addq    n0, d
+        adcq    n1, m0
+        movq    $0x4319055258e8617b, n0
+        mulxq   n0, n0, n1
+        adcq    $0, n1
+        addq    n0, m0
+        adcq    n1, m1
+        movl    $0x00000000ffffffff, n0short
+        mulxq   n0, n0, n1
+        adcq    n0, m2
+        adcq    n1, m3
 
 // Now our top word m3 is either zero or all 1s. Use it for a masked
 // addition of n_256, which we can do by a *subtraction* of
 // 2^256 - n_256 from our portion
 
-                movq    $0x0c46353d039cdaaf, n0
-                andq    m3, n0
-                movq    $0x4319055258e8617b, n1
-                andq    m3, n1
-                movl    $0x00000000ffffffff, n3short
-                andq    m3, n3
+        movq    $0x0c46353d039cdaaf, n0
+        andq    m3, n0
+        movq    $0x4319055258e8617b, n1
+        andq    m3, n1
+        movl    $0x00000000ffffffff, n3short
+        andq    m3, n3
 
-                subq    n0, d
-                sbbq    n1, m0
-                sbbq    $0, m1
-                sbbq    n3, m2
+        subq    n0, d
+        sbbq    n1, m0
+        sbbq    $0, m1
+        sbbq    n3, m2
 
 // Now shuffle registers up and loop
 
-                movq    m2, m3
-                movq    m1, m2
-                movq    m0, m1
-                movq    d, m0
+        movq    m2, m3
+        movq    m1, m2
+        movq    m0, m1
+        movq    d, m0
 
-                decq    k
-                jnz     loop
+        decq    k
+        jnz     loop
 
 // Write back
 
 writeback:
 
-                movq    m0, (z)
-                movq    m1, 8(z)
-                movq    m2, 16(z)
-                movq    m3, 24(z)
+        movq    m0, (z)
+        movq    m1, 8(z)
+        movq    m2, 16(z)
+        movq    m3, 24(z)
 
 // Restore registers and return
 
-                popq    %r12
-                popq    %rbx
-                ret
+        popq    %r12
+        popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 shortinput:
 
-                xorq    m0, m0
-                xorq    m1, m1
-                xorq    m2, m2
-                xorq    m3, m3
+        xorq    m0, m0
+        xorq    m1, m1
+        xorq    m2, m2
+        xorq    m3, m3
 
-                testq   k, k
-                jz      writeback
-                movq    (%rdx), m0
-                decq    k
-                jz      writeback
-                movq    8(%rdx), m1
-                decq    k
-                jz      writeback
-                movq    16(%rdx), m2
-                jmp     writeback
+        testq   k, k
+        jz      writeback
+        movq    (%rdx), m0
+        decq    k
+        jz      writeback
+        movq    8(%rdx), m1
+        decq    k
+        jz      writeback
+        movq    16(%rdx), m2
+        jmp     writeback
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

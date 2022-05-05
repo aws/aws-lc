@@ -52,7 +52,7 @@ let word_negmodinv_mc = define_assert_from_elf "word_negmodinv_mc" "x86/generic/
   0xc3                     (* RET *)
 ];;
 
-let WORD_NEGMODINV_EXEC = X86_MK_EXEC_RULE word_negmodinv_mc;;
+let WORD_NEGMODINV_EXEC = X86_MK_CORE_EXEC_RULE word_negmodinv_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -84,7 +84,7 @@ let WORD_NEGMODINV_SEED_LEMMA_16 = prove
 let WORD_NEGMODINV_CORRECT = prove
  (`!a pc.
         ensures x86
-          (\s. bytes_loaded s (word pc) word_negmodinv_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST word_negmodinv_mc) /\
                read RIP s = word pc /\
                C_ARGUMENTS [a] s)
           (\s. read RIP s = word(pc + 0x58) /\
@@ -123,4 +123,31 @@ let WORD_NEGMODINV_SUBROUTINE_CORRECT = prove
                 ==> (val a * val(C_RETURN s) + 1 == 0) (mod (2 EXP 64))))
           (MAYCHANGE [RIP; RSP; RAX; RCX; RDX] ,,
            MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC WORD_NEGMODINV_EXEC WORD_NEGMODINV_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC word_negmodinv_mc WORD_NEGMODINV_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_word_negmodinv_mc = define_from_elf
+   "windows_word_negmodinv_mc" "x86/generic/word_negmodinv.obj";;
+
+let WINDOWS_WORD_NEGMODINV_SUBROUTINE_CORRECT = prove
+ (`!a pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 16),16) (word pc,0x60)
+        ==>  ensures x86
+              (\s. bytes_loaded s (word pc) windows_word_negmodinv_mc /\
+                   read RIP s = word pc /\
+                   read RSP s = stackpointer /\
+                   read (memory :> bytes64 stackpointer) s = returnaddress /\
+                   WINDOWS_C_ARGUMENTS [a] s)
+              (\s. read RIP s = returnaddress /\
+                   read RSP s = word_add stackpointer (word 8) /\
+                   (ODD(val a)
+                    ==> (val a * val(WINDOWS_C_RETURN s) + 1 == 0)
+                        (mod (2 EXP 64))))
+              (MAYCHANGE [RIP; RSP; RAX; RCX; RDX] ,,
+               MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_word_negmodinv_mc word_negmodinv_mc
+    WORD_NEGMODINV_CORRECT);;

@@ -43,29 +43,29 @@ _bignum_pow2:
 
 // If k = 0 the result is trivially zero
 
-                cbz     k, end
+        cbz     k, end
 
 // Create the index n at which to write the nonzero word and the word w itself
 // Note that the ARM manual explicitly says that shift counts are taken modulo
 // the datasize, so we don't need to mask the lower 6 bits of n ourselves.
 
-                mov     w, #1
-                lsl     w, w, n
-                lsr     n, n, #6
+        mov     w, #1
+        lsl     w, w, n
+        lsr     n, n, #6
 
 // Now in a constant-time fashion set the n'th word to w and others to zero
 
-                mov     i, xzr
+        mov     i, xzr
 loop:
-                cmp     i, n
-                csel    a, w, xzr, eq
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, k
-                bcc     loop
+        cmp     i, n
+        csel    a, w, xzr, eq
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, k
+        bcc     loop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

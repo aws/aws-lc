@@ -41,29 +41,29 @@
 bignum_mux_4:
 _bignum_mux_4:
 
-                cmp     p, #0                    // Set condition codes p = 0
+        cmp     p, #0                    // Set condition codes p = 0
 
-                ldr     a, [x]
-                ldr     p, [y]
-                csel    a, a, p, ne
-                str     a, [z]
+        ldr     a, [x]
+        ldr     p, [y]
+        csel    a, a, p, ne
+        str     a, [z]
 
-                ldr     a, [x, #8]
-                ldr     p, [y, #8]
-                csel    a, a, p, ne
-                str     a, [z, #8]
+        ldr     a, [x, #8]
+        ldr     p, [y, #8]
+        csel    a, a, p, ne
+        str     a, [z, #8]
 
-                ldr     a, [x, #16]
-                ldr     p, [y, #16]
-                csel    a, a, p, ne
-                str     a, [z, #16]
+        ldr     a, [x, #16]
+        ldr     p, [y, #16]
+        csel    a, a, p, ne
+        str     a, [z, #16]
 
-                ldr     a, [x, #24]
-                ldr     p, [y, #24]
-                csel    a, a, p, ne
-                str     a, [z, #24]
+        ldr     a, [x, #24]
+        ldr     p, [y, #24]
+        csel    a, a, p, ne
+        str     a, [z, #24]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

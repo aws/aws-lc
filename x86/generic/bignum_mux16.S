@@ -24,6 +24,7 @@
 // The pointer xs is to a contiguous array of size 16, elements size-k bignums
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = xs, RCX = i
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = xs, R9 = i
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -51,38 +52,51 @@
 bignum_mux16:
 _bignum_mux16:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
+
 
 // Copy size into decrementable counter, or skip everything if k = 0
 
-                test    k, k
-                jz      end                     // If length = 0 do nothing
-                mov     n, k
+        test    k, k
+        jz      end                     // If length = 0 do nothing
+        mov     n, k
 
 // Multiply i by k so we can compare pointer offsets directly with it
 
-                mov     rax, rcx
-                mov     rcx, rdx
-                mul     k
+        mov     rax, rcx
+        mov     rcx, rdx
+        mul     k
 
 // Main loop
 
 loop:
-                mov     a, [x]
-                mov     j, k
+        mov     a, [x]
+        mov     j, k
 .rep 15
-                mov     b, [x+8*j]
-                cmp     j, i
-                cmove   a, b
-                add     j, k
+        mov     b, [x+8*j]
+        cmp     j, i
+        cmove   a, b
+        add     j, k
 .endr
-                mov     [z], a
-                add     z, 8
-                add     x, 8
-                dec     n
-                jnz     loop
+        mov     [z], a
+        add     z, 8
+        add     x, 8
+        dec     n
+        jnz     loop
 
 end:
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

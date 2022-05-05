@@ -47,36 +47,36 @@ _bignum_mod_p256_4:
 
 // Load the three nonzero words of p_256 = [n3;0;n2;n1]
 
-                mov     n0, #0xffffffffffffffff
-                mov     n1, #0x00000000ffffffff
-                mov     n3, #0xffffffff00000001
+        mov     n0, #0xffffffffffffffff
+        mov     n1, #0x00000000ffffffff
+        mov     n3, #0xffffffff00000001
 
 // Load the input number
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
 
 // Do the subtraction.
 
-                subs    n0, d0, n0
-                sbcs    n1, d1, n1
-                sbcs    n2, d2, xzr
-                sbcs    n3, d3, n3
+        subs    n0, d0, n0
+        sbcs    n1, d1, n1
+        sbcs    n2, d2, xzr
+        sbcs    n3, d3, n3
 
 // Now if the carry is *clear* (inversion at work) the subtraction carried
 // and hence we should have done nothing, so we reset each n_i = d_i
 
-                csel    n0, d0, n0, cc
-                csel    n1, d1, n1, cc
-                csel    n2, d2, n2, cc
-                csel    n3, d3, n3, cc
+        csel    n0, d0, n0, cc
+        csel    n1, d1, n1, cc
+        csel    n2, d2, n2, cc
+        csel    n3, d3, n3, cc
 
 // Store the end result
 
-                stp     n0, n1, [z]
-                stp     n2, n3, [z, #16]
+        stp     n0, n1, [z]
+        stp     n2, n3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

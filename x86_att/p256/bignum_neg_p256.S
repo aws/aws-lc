@@ -20,6 +20,7 @@
 //    extern void bignum_neg_p256 (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -46,45 +47,56 @@
 bignum_neg_p256:
 _bignum_neg_p256:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
+
 // Load the input digits as [d3;d2;d1;d0] and also set a bitmask q
 // for the input being nonzero, so that we avoid doing -0 = p_256
 // and hence maintain strict modular reduction
 
-                movq    (x), d0
-                movq    8(x), d1
-                movq    d0, n1
-                orq     d1, n1
-                movq    16(x), d2
-                movq    24(x), d3
-                movq    d2, n3
-                orq     d3, n3
-                orq     n1, n3
-                negq    n3
-                sbbq    q, q
+        movq    (x), d0
+        movq    8(x), d1
+        movq    d0, n1
+        orq     d1, n1
+        movq    16(x), d2
+        movq    24(x), d3
+        movq    d2, n3
+        orq     d3, n3
+        orq     n1, n3
+        negq    n3
+        sbbq    q, q
 
 // Load the non-trivial words of p_256 = [n3;0;n1;-1] and mask them with q
 
-                movl    $0x00000000ffffffff, n1short
-                movq    $0xffffffff00000001, n3
-                andq    q, n1
-                andq    q, n3
+        movl    $0x00000000ffffffff, n1short
+        movq    $0xffffffff00000001, n3
+        andq    q, n1
+        andq    q, n3
 
 // Do the subtraction, getting it as [n3;d0;n1;q] to avoid moves
 
-                subq    d0, q
-                movl    $0, d0short
-                sbbq    d1, n1
-                sbbq    d2, d0
-                sbbq    d3, n3
+        subq    d0, q
+        movl    $0, d0short
+        sbbq    d1, n1
+        sbbq    d2, d0
+        sbbq    d3, n3
 
 // Write back
 
-                movq    q, (z)
-                movq    n1, 8(z)
-                movq    d0, 16(z)
-                movq    n3, 24(z)
+        movq    q, (z)
+        movq    n1, 8(z)
+        movq    d0, 16(z)
+        movq    n3, 24(z)
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

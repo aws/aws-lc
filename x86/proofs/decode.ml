@@ -2083,6 +2083,9 @@ let define_trim_ret_thm name th =
 
 needs "common/elf.ml";;
 
+let define_from_elf name file =
+  define_word_list name (term_of_bytes (load_elf_contents_x86 file));;
+
 let define_assert_from_elf name file =
   define_assert_word_list name (term_of_bytes (load_elf_contents_x86 file));;
 

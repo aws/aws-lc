@@ -56,11 +56,11 @@ _bignum_normalize:
 // If k = 0 the whole operation is trivial. Otherwise initialize
 // shift count r and top digit c, but then if k = 1 skip the digitwise part
 
-                subs    i, k, #1
-                bcc     end
-                ldr     c, [z, i, lsl #3]
-                mov     r, xzr
-                beq     bitpart
+        subs    i, k, #1
+        bcc     end
+        ldr     c, [z, i, lsl #3]
+        mov     r, xzr
+        beq     bitpart
 
 // Do a rather stupid but constant-time digit normalization, conditionally
 // shifting left (k-1) times based on whether the top word is zero.
@@ -68,52 +68,52 @@ _bignum_normalize:
 // while still retaining the constant-time style.
 
 normloop:
-                mov     j, xzr
-                cmp     c, xzr
-                cinc    r, r, eq
-                mov     a, xzr
+        mov     j, xzr
+        cmp     c, xzr
+        cinc    r, r, eq
+        mov     a, xzr
 shufloop:
-                mov     c, a
-                ldr     a, [z, j, lsl #3]
-                csel    c, c, a, eq
-                str     c, [z, j, lsl #3]
-                add     j, j, #1
-                sub     d, j, k
-                cbnz    d, shufloop
-                subs    i, i, #1
-                bne     normloop
+        mov     c, a
+        ldr     a, [z, j, lsl #3]
+        csel    c, c, a, eq
+        str     c, [z, j, lsl #3]
+        add     j, j, #1
+        sub     d, j, k
+        cbnz    d, shufloop
+        subs    i, i, #1
+        bne     normloop
 
 // We now have the top digit nonzero, assuming the input was nonzero,
 // and as per the invariant of the loop above, c holds that digit. So
 // now just count c's leading zeros and shift z bitwise that many bits.
 
 bitpart:
-                lsl     r, r, #6
-                clz     c, c
-                add     r, r, c
+        lsl     r, r, #6
+        clz     c, c
+        add     r, r, c
 
-                mov     b, xzr
-                mov     i, xzr
-                ands    xzr, c, #63
-                csetm   l, ne
-                neg     d, c
+        mov     b, xzr
+        mov     i, xzr
+        ands    xzr, c, #63
+        csetm   l, ne
+        neg     d, c
 bitloop:
-                ldr     j, [z, i, lsl #3]
-                lsl     a, j, c
-                orr     a, a, b
-                lsr     b, j, d
-                and     b, b, l
-                str     a, [z, i, lsl #3]
-                add     i, i, #1
-                cmp     i, k
-                bcc     bitloop
+        ldr     j, [z, i, lsl #3]
+        lsl     a, j, c
+        orr     a, a, b
+        lsr     b, j, d
+        and     b, b, l
+        str     a, [z, i, lsl #3]
+        add     i, i, #1
+        cmp     i, k
+        bcc     bitloop
 
 // Return the final shift count
 
-                mov     x0, r
+        mov     x0, r
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

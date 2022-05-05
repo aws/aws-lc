@@ -21,6 +21,7 @@
 //     (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 //
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, returns RAX
+// Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -42,61 +43,78 @@
 bignum_le:
 _bignum_le:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
+
 // Zero the main index counter for both branches
 
-                xorq    i, i
+        xorq    i, i
 
 // Speculatively form n := n - m and do case split
 
-                subq    m, n
-                jc      ylonger
+        subq    m, n
+        jc      ylonger
 
 // The case where y is longer or of the same size (n >= m)
 
-                incq    n
-                testq   m, m
-                jz      xtest
+        incq    n
+        testq   m, m
+        jz      xtest
 xmainloop:
-                movq    (y,i,8), a
-                sbbq    (x,i,8), a
-                incq    i
-                decq    m
-                jnz     xmainloop
-                jmp     xtest
+        movq    (y,i,8), a
+        sbbq    (x,i,8), a
+        incq    i
+        decq    m
+        jnz     xmainloop
+        jmp     xtest
 xtoploop:
-                movq    (y,i,8), a
-                sbbq    $0, a
-                incq    i
+        movq    (y,i,8), a
+        sbbq    $0, a
+        incq    i
 xtest:
-                decq    n
-                jnz     xtoploop
-                sbbq    a, a
-                incq    a
-                ret
+        decq    n
+        jnz     xtoploop
+        sbbq    a, a
+        incq    a
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 // The case where x is longer (m > n)
 
 ylonger:
-                addq    m, n
-                subq    n, m
-                testq   n, n
-                jz      ytoploop
+        addq    m, n
+        subq    n, m
+        testq   n, n
+        jz      ytoploop
 ymainloop:
-                movq    (y,i,8), a
-                sbbq    (x,i,8), a
-                incq    i
-                decq    n
-                jnz     ymainloop
+        movq    (y,i,8), a
+        sbbq    (x,i,8), a
+        incq    i
+        decq    n
+        jnz     ymainloop
 ytoploop:
-                movl    $0, ashort
-                sbbq    (x,i,8), a
-                incq    i
-                decq    m
-                jnz     ytoploop
+        movl    $0, ashort
+        sbbq    (x,i,8), a
+        incq    i
+        decq    m
+        jnz     ytoploop
 
-                sbbq    a, a
-                incq    a
-                ret
+        sbbq    a, a
+        incq    a
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

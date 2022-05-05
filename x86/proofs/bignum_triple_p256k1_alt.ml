@@ -63,7 +63,7 @@ let bignum_triple_p256k1_alt_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_TRIPLE_P256K1_ALT_EXEC = X86_MK_EXEC_RULE bignum_triple_p256k1_alt_mc;;
+let BIGNUM_TRIPLE_P256K1_ALT_EXEC = X86_MK_CORE_EXEC_RULE bignum_triple_p256k1_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -84,7 +84,7 @@ let BIGNUM_TRIPLE_P256K1_ALT_CORRECT = time prove
  (`!z x a pc.
         nonoverlapping (word pc,0x7f) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_triple_p256k1_alt_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_triple_p256k1_alt_mc) /\
                   read RIP s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
@@ -197,5 +197,36 @@ let BIGNUM_TRIPLE_P256K1_ALT_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_TRIPLE_P256K1_ALT_EXEC
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_triple_p256k1_alt_mc
+    BIGNUM_TRIPLE_P256K1_ALT_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_triple_p256k1_alt_mc = define_from_elf
+   "windows_bignum_triple_p256k1_alt_mc" "x86/secp256k1/bignum_triple_p256k1_alt.obj";;
+
+let WINDOWS_BIGNUM_TRIPLE_P256K1_ALT_SUBROUTINE_CORRECT = time prove
+ (`!z x a pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x89); (x,8 * 4)] /\
+        nonoverlapping (word pc,0x89) (z,8 * 4) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * 4)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_triple_p256k1_alt_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,4) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory (z,4) s = (3 * a) MOD p_256k1)
+             (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4);
+                         memory :> bytes(word_sub stackpointer (word 16),16)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC
+    windows_bignum_triple_p256k1_alt_mc bignum_triple_p256k1_alt_mc
     BIGNUM_TRIPLE_P256K1_ALT_CORRECT);;

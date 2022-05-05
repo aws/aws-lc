@@ -113,7 +113,7 @@ let bignum_triple_p521_mc = define_assert_from_elf "bignum_triple_p521_mc" "x86/
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_TRIPLE_P521_EXEC = X86_MK_EXEC_RULE bignum_triple_p521_mc;;
+let BIGNUM_TRIPLE_P521_EXEC = X86_MK_CORE_EXEC_RULE bignum_triple_p521_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -144,7 +144,7 @@ let BIGNUM_TRIPLE_P521_CORRECT = time prove
  (`!z x n pc.
         nonoverlapping (word pc,0x11b) (z,8 * 9)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_triple_p521_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_triple_p521_mc) /\
                   read RIP s = word(pc + 0x3) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,9) s = n)
@@ -358,5 +358,37 @@ let BIGNUM_TRIPLE_P521_SUBROUTINE_CORRECT = time prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,9);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_TRIPLE_P521_EXEC BIGNUM_TRIPLE_P521_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_triple_p521_mc BIGNUM_TRIPLE_P521_CORRECT
     `[RBX; R12]` 16);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_triple_p521_mc = define_from_elf
+   "windows_bignum_triple_p521_mc" "x86/p521/bignum_triple_p521.obj";;
+
+let WINDOWS_BIGNUM_TRIPLE_P521_SUBROUTINE_CORRECT = time prove
+ (`!z x n pc stackpointer returnaddress.
+        nonoverlapping (word_sub stackpointer (word 32),40) (z,8 * 9) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 32),32))
+            [(word pc,0x125); (x,8 * 9)] /\
+        nonoverlapping (word pc,0x125) (z,8 * 9)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_triple_p521_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,9) s = n)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  (n < p_521
+                   ==> bignum_from_memory (z,9) s = (3 * n) MOD p_521))
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,9);
+                      memory :> bytes(word_sub stackpointer (word 32),32)])`,
+  WINDOWS_X86_WRAP_STACK_TAC
+    windows_bignum_triple_p521_mc bignum_triple_p521_mc
+    BIGNUM_TRIPLE_P521_CORRECT `[RBX; R12]` 16);;

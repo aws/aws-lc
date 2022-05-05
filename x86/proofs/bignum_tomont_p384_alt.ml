@@ -359,7 +359,7 @@ let bignum_tomont_p384_alt_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_TOMONT_P384_ALT_EXEC = X86_MK_EXEC_RULE bignum_tomont_p384_alt_mc;;
+let BIGNUM_TOMONT_P384_ALT_EXEC = X86_MK_CORE_EXEC_RULE bignum_tomont_p384_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -391,7 +391,7 @@ let BIGNUM_TOMONT_P384_ALT_CORRECT = time prove
  (`!z x a pc.
         nonoverlapping (word pc,0x455) (z,8 * 6)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_tomont_p384_alt_mc /\
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_tomont_p384_alt_mc) /\
                   read RIP s = word(pc + 0x09) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,6) s = a)
@@ -527,6 +527,37 @@ let BIGNUM_TOMONT_P384_ALT_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 6);
                      memory :> bytes(word_sub stackpointer (word 40),40)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_STACK_TAC
-   BIGNUM_TOMONT_P384_ALT_EXEC BIGNUM_TOMONT_P384_ALT_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC
+   bignum_tomont_p384_alt_mc BIGNUM_TOMONT_P384_ALT_CORRECT
    `[RBX; R12; R13; R14; R15]` 40);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_tomont_p384_alt_mc = define_from_elf
+   "windows_bignum_tomont_p384_alt_mc" "x86/p384/bignum_tomont_p384_alt.obj";;
+
+let WINDOWS_BIGNUM_TOMONT_P384_ALT_SUBROUTINE_CORRECT = time prove
+ (`!z x a pc stackpointer returnaddress.
+        nonoverlapping (z,8 * 6) (word_sub stackpointer (word 56),64) /\
+        ALL (nonoverlapping (word_sub stackpointer (word 56),56))
+            [(word pc,0x45f); (x,8 * 6)] /\
+        nonoverlapping (word pc,0x45f) (z,8 * 6)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_tomont_p384_alt_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,6) s = a)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  bignum_from_memory (z,6) s = (2 EXP 384 * a) MOD p_384)
+             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX;R8; R9; R10; R11] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 6);
+                     memory :> bytes(word_sub stackpointer (word 56),56)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+  WINDOWS_X86_WRAP_STACK_TAC
+   windows_bignum_tomont_p384_alt_mc bignum_tomont_p384_alt_mc
+   BIGNUM_TOMONT_P384_ALT_CORRECT `[RBX; R12; R13; R14; R15]` 40);;

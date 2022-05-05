@@ -27,6 +27,7 @@
 // for the length.
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, RDX = n, RCX = l, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, R8 = n, R9 = l, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -52,68 +53,81 @@
 bignum_bitfield:
 _bignum_bitfield:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
+
 // Initialize second of digit pair to zero and if length is zero finish
 // immediately; the digit e is also the return value in RAX
 
-                xorq    e, e
-                testq   k, k
-                jz      end
+        xorq    e, e
+        testq   k, k
+        jz      end
 
 // Decompose the index into n = 64 * n + m, then increment n for next part
 
-                movl    $63, mshort
-                andq    n, m
-                shrq    $6, n
-                incq    n
+        movl    $63, mshort
+        andq    n, m
+        shrq    $6, n
+        incq    n
 
 // Run over the digits setting d = n'th and e = (n+1)'th
 
-                xorq    i, i
+        xorq    i, i
 loop:
-                movq    (x,i,8), a
-                cmpq    n, i
-                cmovcq  a, d
-                cmovzq  a, e
-                incq    i
-                cmpq    k, i
-                jc      loop
+        movq    (x,i,8), a
+        cmpq    n, i
+        cmovcq  a, d
+        cmovzq  a, e
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 // Put zero in a register, for several purposes
 
-                xorq    a, a
+        xorq    a, a
 
 // Override d with 0 if we ran off the end (e will retain original 0).
 
-                cmpq    n, i
-                cmovcq  a, d
+        cmpq    n, i
+        cmovcq  a, d
 
 // Override e if we have m = 0 (i.e. original n was divisible by 64)
 // This is because then we want to shift it right by 64 below.
 
-                testq   m, m
-                cmovzq  a, e
+        testq   m, m
+        cmovzq  a, e
 
 // Create a size-l bitmask first (while the shift is conveniently in CL)
 
-                cmpq    $64, l
-                adcq    a, a
-                shlq    %cl, a
-                decq    a
+        cmpq    $64, l
+        adcq    a, a
+        shlq    %cl, a
+        decq    a
 
 // Combine shifted digits to get the bitfield(n,64)
 
-                movq    m, l
-                shrq    %cl, d
-                negq    %rcx
-                shlq    %cl, e
-                orq     d, e
+        movq    m, l
+        shrq    %cl, d
+        negq    %rcx
+        shlq    %cl, e
+        orq     d, e
 
 // Now mask it down to get bitfield (n,l)
 
-                andq    a, e
+        andq    a, e
 
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

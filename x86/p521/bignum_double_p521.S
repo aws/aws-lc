@@ -21,6 +21,7 @@
 //     (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -38,6 +39,13 @@
 
 bignum_double_p521:
 _bignum_double_p521:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // We can decide whether 2 * x >= p_521 just by 2 * x >= 2^521, which
 // as we assume x < p_521 amounts to looking at bit 8 of the top word
@@ -85,6 +93,10 @@ _bignum_double_p521:
         and     c, 0x1FF
         mov     [z+64], c
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

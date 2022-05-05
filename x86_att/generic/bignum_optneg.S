@@ -24,6 +24,7 @@
 // Returns a carry, which is equivalent to "x is nonzero".
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = p, RCX = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = p, R9 = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -45,40 +46,53 @@
 bignum_optneg:
 _bignum_optneg:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+#endif
+
 // If k = 0 do nothing, but need to set zero return for the carry (c = %rax)
 
-                xorq    c, c
-                testq   k, k
-                jz      end
+        xorq    c, c
+        testq   k, k
+        jz      end
 
 // Convert p into a strict bitmask and set initial carry-in in c
 
-                negq    p
-                sbbq    p, p
-                subq    p, c
+        negq    p
+        sbbq    p, p
+        subq    p, c
 
 // Main loop
 
-                xorq    i, i
+        xorq    i, i
 loop:
 
-                movq    (x,i,8), a
-                xorq    p, a
-                addq    c, a
-                movl    $0, cshort
-                movq    a, (z,i,8)
-                adcq    $0, c
-                incq    i
-                cmpq    k, i
-                jc      loop
+        movq    (x,i,8), a
+        xorq    p, a
+        addq    c, a
+        movl    $0, cshort
+        movq    a, (z,i,8)
+        adcq    $0, c
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 // Return carry flag, fixing up inversion for negative case
 
-                xorq    p, %rax
-                andq    $1, %rax
+        xorq    p, %rax
+        andq    $1, %rax
 
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

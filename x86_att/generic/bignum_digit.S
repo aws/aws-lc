@@ -24,6 +24,7 @@
 // Returns zero if n >= k, i.e. we read a digit off the end of the bignum.
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, RDX = n, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, R8 = n, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -42,27 +43,39 @@
 bignum_digit:
 _bignum_digit:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
+
 // Set the default digit to 0, and for length zero finish immediately
 
-                xorq    d, d
-                testq   k, k
-                jz      end
+        xorq    d, d
+        testq   k, k
+        jz      end
 
 // Main loop: run over all the digits and take note of the n'th one
 
-                xorq    i, i
+        xorq    i, i
 loop:
-                movq    (x,i,8), a
-                cmpq    n, i
-                cmovzq  a, d
-                incq    i
-                cmpq    k, i
-                jc      loop
+        movq    (x,i,8), a
+        cmpq    n, i
+        cmovzq  a, d
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 // Return
 
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

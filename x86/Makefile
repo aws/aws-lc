@@ -24,9 +24,13 @@ ARCHTYPE_RESULT=$(shell uname -m)
 # by single-quote characters in comments, so we eliminate // comments first.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-PREPROCESS=sed -e 's/\/\/.*//' | cpp -xassembler-with-cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | cpp -DWINDOWS_ABI=0 -xassembler-with-cpp -
 else
-PREPROCESS=cpp -xassembler-with-cpp -
+ifeq ($(OSTYPE_RESULT),CYGWIN_NT-10.0)
+PREPROCESS=cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+else
+PREPROCESS=cpp -DWINDOWS_ABI=0 -xassembler-with-cpp -
+endif
 endif
 
 # Generally GNU-type assemblers are happy with multiple instructions on
@@ -54,6 +58,16 @@ ASSEMBLE=x86_64-linux-gnu-as
 endif
 endif
 
+# Alternative preprocessing that forces WINDOWS_ABI=1
+# This is used to generate additional .obj files purely
+# for proof-checking, not used for actual code execution.
+
+ifeq ($(OSTYPE_RESULT),Darwin)
+WINPREPROCESS=sed -e 's/\/\/.*//' | cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+else
+WINPREPROCESS=cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+endif
+
 # The x86 assembly (.S) files are all written for the GNU assembler
 
 OBJ = curve25519/bignum_add_p25519.o \
@@ -61,6 +75,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       curve25519/bignum_cmul_p25519_alt.o \
       curve25519/bignum_mul_p25519.o \
       curve25519/bignum_mul_p25519_alt.o \
+      curve25519/bignum_neg_p25519.o \
       curve25519/bignum_sqr_p25519.o \
       curve25519/bignum_sqr_p25519_alt.o \
       curve25519/bignum_sub_p25519.o \
@@ -261,11 +276,21 @@ OBJ = curve25519/bignum_add_p25519.o \
 
 .PHONY: bmi clean clobber
 
+# Actual object files for execution, with the "native" ABI
+
 %.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
+
+# Windows ABI variants used only for proof checking
+
+WINOBJ  = $(OBJ:.o=.obj)
+
+%.obj : %.S ; cat $< | $(WINPREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
-clean:; rm -f libs2nbignum.a */*.o */*.correct
+winobj: $(WINOBJ) ;
+
+clean:; rm -f libs2nbignum.a */*.o */*.obj */*.correct
 
 # Dynamically regenerate or destroy the files recording which functions
 # use BMI and/or ADX instructions in the x86 versions. These won't run
@@ -304,13 +329,13 @@ HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
 
 PROOFS = $(OBJ:.o=.correct)
 
-curve25519/%.correct: proofs/%.ml curve25519/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
-fastmul/%.correct: proofs/%.ml fastmul/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
-generic/%.correct: proofs/%.ml generic/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
-p256/%.correct: proofs/%.ml p256/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
-p384/%.correct: proofs/%.ml p384/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
-p521/%.correct: proofs/%.ml p521/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
-secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/%.correct: proofs/%.ml curve25519/%.o curve25519/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+fastmul/%.correct: proofs/%.ml fastmul/%.o fastmul/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+generic/%.correct: proofs/%.ml generic/%.o generic/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+p256/%.correct: proofs/%.ml p256/%.o p256/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+p384/%.correct: proofs/%.ml p384/%.o p384/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+p521/%.correct: proofs/%.ml p521/%.o p521/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+secp256k1/%.correct: proofs/%.ml secp256k1/%.o secp256k1/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 run_proofs: $(PROOFS);
 

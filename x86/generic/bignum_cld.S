@@ -22,6 +22,7 @@
 // In the case of a zero bignum as input the result is k
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -40,31 +41,42 @@
 bignum_cld:
 _bignum_cld:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
+
 // Initialize the index i and also prepare default return value of 0 (i = rax)
 
-                xor     i, i
+        xor     i, i
 
 // If the bignum is zero-length, just return k = 0
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Run over the words j = 0..i-1, and set i := j + 1 when hitting nonzero a[j]
 
-                xor     j, j
+        xor     j, j
 loop:
-                mov     a, [x+8*j]
-                inc     j
-                test    a, a
-                cmovnz  i, j
-                cmp     j, k
-                jnz     loop
+        mov     a, [x+8*j]
+        inc     j
+        test    a, a
+        cmovnz  i, j
+        cmp     j, k
+        jnz     loop
 
-                neg     rax
-                add     rax, rdi
+        neg     rax
+        add     rax, rdi
 
 end:
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -22,6 +22,7 @@
 //     (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -56,54 +57,66 @@
 bignum_cmul_p25519:
 _bignum_cmul_p25519:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
+
 // Shuffle inputs (since we want multiplier in rdx)
 
-                mov     x, rdx
-                mov     d, rsi
+        mov     x, rdx
+        mov     d, rsi
 
 // Multiply, accumulating the result as [d4;d3;d2;d1;d0]
 
-                mulx    d1, d0, [x]
-                mulx    d2, a, [x+8]
-                add     d1, a
-                mulx    d3, a, [x+16]
-                adc     d2, a
-                mulx    a, d, [x+24]
-                adc     d3, d
-                adc     a, 0
+        mulx    d1, d0, [x]
+        mulx    d2, a, [x+8]
+        add     d1, a
+        mulx    d3, a, [x+16]
+        adc     d2, a
+        mulx    a, d, [x+24]
+        adc     d3, d
+        adc     a, 0
 
 // Let [d4;d3;d2;d1;d0] = 2^255 * h + l, and use q = h + 1 as the initial
 // quotient estimate, which is either right or 1 too big.
 
-                shld    a, d3, 1
-                mov     cshort, 19
-                inc     a
-                bts     d3, 63
-                mul     c
-                xor     zeroe, zeroe
-                add     d0, a
-                adc     d1, d
-                adc     d2, zero
-                adc     d3, zero
+        shld    a, d3, 1
+        mov     cshort, 19
+        inc     a
+        bts     d3, 63
+        mul     c
+        xor     zeroe, zeroe
+        add     d0, a
+        adc     d1, d
+        adc     d2, zero
+        adc     d3, zero
 
 // Correct if CF = 0 by subtracting 19, either way masking to
 // 255 bits, i.e. by effectively adding p_25519 to the "full" answer
 
-                cmovc   c, zero
-                sub     d0, c
-                sbb     d1, zero
-                sbb     d2, zero
-                sbb     d3, zero
-                btr     d3, 63
+        cmovc   c, zero
+        sub     d0, c
+        sbb     d1, zero
+        sbb     d2, zero
+        sbb     d3, zero
+        btr     d3, 63
 
 // Write everything back
 
-                mov     [z], d0
-                mov     [z+8], d1
-                mov     [z+16], d2
-                mov     [z+24], d3
+        mov     [z], d0
+        mov     [z+8], d1
+        mov     [z+16], d2
+        mov     [z+24], d3
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

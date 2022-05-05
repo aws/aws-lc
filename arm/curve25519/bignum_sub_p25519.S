@@ -44,36 +44,36 @@ _bignum_sub_p25519:
 // First just subtract the numbers as [d3; d2; d1; d0] = x - y,
 // with the inverted carry flag meaning CF <=> x >= y.
 
-                ldp     d0, d1, [x]
-                ldp     l, c, [y]
-                subs    d0, d0, l
-                sbcs    d1, d1, c
-                ldp     d2, d3, [x, #16]
-                ldp     l, c, [y, #16]
-                sbcs    d2, d2, l
-                sbcs    d3, d3, c
+        ldp     d0, d1, [x]
+        ldp     l, c, [y]
+        subs    d0, d0, l
+        sbcs    d1, d1, c
+        ldp     d2, d3, [x, #16]
+        ldp     l, c, [y, #16]
+        sbcs    d2, d2, l
+        sbcs    d3, d3, c
 
 // Now if x < y we want to add back p_25519, which staying within 255 bits
 // means subtracting 19, since p_25519 = 2^255 - 19.
 // Let c be that constant 19 when x < y, zero otherwise.
 
-                mov     l, #19
-                csel    c, l, xzr, cc
+        mov     l, #19
+        csel    c, l, xzr, cc
 
 // Correct by adding the optional constant and masking to 255 bits
 
-                subs    d0, d0, c
-                sbcs    d1, d1, xzr
-                sbcs    d2, d2, xzr
-                sbc     d3, d3, xzr
-                and     d3, d3, #0x7FFFFFFFFFFFFFFF
+        subs    d0, d0, c
+        sbcs    d1, d1, xzr
+        sbcs    d2, d2, xzr
+        sbc     d3, d3, xzr
+        and     d3, d3, #0x7FFFFFFFFFFFFFFF
 
 // Store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

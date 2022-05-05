@@ -20,6 +20,7 @@
 //    extern uint64_t word_clz (uint64_t a);
 //
 // Standard x86-64 ABI: RDI = a, returns RAX
+// Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -29,6 +30,12 @@
 
 word_clz:
 _word_clz:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+#endif
 
 // First do %rax = 63 - bsr(a), which is right except (maybe) for zero inputs
 
@@ -41,6 +48,10 @@ _word_clz:
         testq   %rdi, %rdi
         cmoveq  %rdx, %rax
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

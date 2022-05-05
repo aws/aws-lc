@@ -72,7 +72,7 @@ let bignum_mod_p521_9_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_MOD_P521_9_EXEC = X86_MK_EXEC_RULE bignum_mod_p521_9_mc;;
+let BIGNUM_MOD_P521_9_EXEC = X86_MK_CORE_EXEC_RULE bignum_mod_p521_9_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -84,7 +84,7 @@ let BIGNUM_MOD_P521_9_CORRECT = time prove
  (`!z x n pc.
       nonoverlapping (word pc,0xa8) (z,8 * 9)
       ==> ensures x86
-           (\s. bytes_loaded s (word pc) bignum_mod_p521_9_mc /\
+           (\s. bytes_loaded s (word pc) (BUTLAST bignum_mod_p521_9_mc) /\
                 read RIP s = word (pc + 0x1) /\
                 C_ARGUMENTS [z; x] s /\
                 bignum_from_memory (x,9) s = n)
@@ -239,5 +239,35 @@ let BIGNUM_MOD_P521_9_SUBROUTINE_CORRECT = prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,9);
                       memory :> bytes(word_sub stackpointer (word 8),8)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_MOD_P521_9_EXEC BIGNUM_MOD_P521_9_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_mod_p521_9_mc BIGNUM_MOD_P521_9_CORRECT
    `[RBX]` 8);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_mod_p521_9_mc = define_from_elf
+   "windows_bignum_mod_p521_9_mc" "x86/p521/bignum_mod_p521_9.obj";;
+
+let WINDOWS_BIGNUM_MOD_P521_9_SUBROUTINE_CORRECT = prove
+ (`!z x n pc stackpointer returnaddress.
+      nonoverlapping (word_sub stackpointer (word 24),32) (z,8 * 9) /\
+      ALL (nonoverlapping (word_sub stackpointer (word 24),24))
+          [(word pc,0xb2); (x,8 * 9)] /\
+      nonoverlapping (word pc,0xb2) (z,8 * 9)
+      ==> ensures x86
+           (\s. bytes_loaded s (word pc) windows_bignum_mod_p521_9_mc /\
+                read RIP s = word pc /\
+                read RSP s = stackpointer /\
+                read (memory :> bytes64 stackpointer) s = returnaddress /\
+                WINDOWS_C_ARGUMENTS [z; x] s /\
+                bignum_from_memory (x,9) s = n)
+           (\s. read RIP s = returnaddress /\
+                read RSP s = word_add stackpointer (word 8) /\
+                bignum_from_memory (z,9) s = n MOD p_521)
+          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,9);
+                      memory :> bytes(word_sub stackpointer (word 24),24)])`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_mod_p521_9_mc bignum_mod_p521_9_mc
+    BIGNUM_MOD_P521_9_CORRECT `[RBX]` 8);;

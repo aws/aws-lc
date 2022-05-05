@@ -19,6 +19,7 @@
 //    extern uint64_t word_bytereverse (uint64_t a);
 //
 // Standard x86-64 ABI: RDI = a, returns RAX
+// Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -31,9 +32,19 @@
 word_bytereverse:
 _word_bytereverse:
 
-                mov     rax, rdi
-                bswap   rax
-                ret
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+#endif
+
+        mov     rax, rdi
+        bswap   rax
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

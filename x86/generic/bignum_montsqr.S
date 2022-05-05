@@ -24,6 +24,7 @@
 // guaranteed in particular if x < m initially (the "intended" case).
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -66,70 +67,79 @@
 bignum_montsqr:
 _bignum_montsqr:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
+
 // Save registers
 
-                push    rbx
-                push    rbp
-                push    r12
-                push    r13
-                push    r14
-                push    r15
+        push    rbx
+        push    rbp
+        push    r12
+        push    r13
+        push    r14
+        push    r15
 
 // If k = 0 the whole operation is trivial
 
-                test    k, k
-                jz      end
+        test    k, k
+        jz      end
 
 // Move x input into its permanent home, since we need rdx for multiplications
 
-                mov     x, rdx
+        mov     x, rdx
 
 // Compute word-level negated modular inverse w for m == m[0].
 
-                mov     a, [m]
+        mov     a, [m]
 
-                mov     t2, a
-                mov     w, a
-                shl     t2, 2
-                sub     w, t2
-                xor     w, 2
+        mov     t2, a
+        mov     w, a
+        shl     t2, 2
+        sub     w, t2
+        xor     w, 2
 
-                mov     t2, w
-                imul    t2, a
-                mov     ashort, 2
-                add     a, t2
-                add     t2, 1
+        mov     t2, w
+        imul    t2, a
+        mov     ashort, 2
+        add     a, t2
+        add     t2, 1
 
-                imul    w, a
+        imul    w, a
 
-                imul    t2, t2
-                mov     ashort, 1
-                add     a, t2
-                imul    w, a
+        imul    t2, t2
+        mov     ashort, 1
+        add     a, t2
+        imul    w, a
 
-                imul    t2, t2
-                mov     ashort, 1
-                add     a, t2
-                imul    w, a
+        imul    t2, t2
+        mov     ashort, 1
+        add     a, t2
+        imul    w, a
 
-                imul    t2, t2
-                mov     ashort, 1
-                add     a, t2
-                imul    w, a
+        imul    t2, t2
+        mov     ashort, 1
+        add     a, t2
+        imul    w, a
 
 // Initialize the output c0::z to zero so we can then consistently add rows.
 // It would be a bit more efficient to special-case the zeroth row, but
 // this keeps the code slightly simpler.
 
-                xor     i, i            // Also initializes i for main loop
-                xor     j, j
+        xor     i, i            // Also initializes i for main loop
+        xor     j, j
 zoop:
-                mov     [z+8*j], i
-                inc     j
-                cmp     j, k
-                jc      zoop
+        mov     [z+8*j], i
+        inc     j
+        cmp     j, k
+        jc      zoop
 
-                xor     c0, c0
+        xor     c0, c0
 
 // Outer loop pulling down digits d=x[i], multiplying by x and reducing
 
@@ -139,105 +149,109 @@ outerloop:
 // Note that in general we do need yet one more carry in this phase and hence
 // initialize c1 with the top carry.
 
-                mov     d, [x+8*i]
-                xor     j, j
-                xor     h, h
-                xor     c1, c1
-                mov     n, k
+        mov     d, [x+8*i]
+        xor     j, j
+        xor     h, h
+        xor     c1, c1
+        mov     n, k
 
 maddloop:
-                adc     h, [z+8*j]
-                sbb     e, e
-                mov     a, [x+8*j]
-                mul     d
-                sub     rdx, e
-                add     a, h
-                mov     [z+8*j], a
-                mov     h, rdx
-                inc     j
-                dec     n
-                jnz     maddloop
-                adc     c0, h
-                adc     c1, c1
+        adc     h, [z+8*j]
+        sbb     e, e
+        mov     a, [x+8*j]
+        mul     d
+        sub     rdx, e
+        add     a, h
+        mov     [z+8*j], a
+        mov     h, rdx
+        inc     j
+        dec     n
+        jnz     maddloop
+        adc     c0, h
+        adc     c1, c1
 
 // Montgomery reduction loop, similar but offsetting writebacks
 
-                mov     e, [z]
-                mov     d, w
-                imul    d, e
-                mov     a, [m]
-                mul     d
-                add     a, e            // Will be zero but want the carry
-                mov     h, rdx
-                mov     jshort, 1
-                mov     n, k
-                dec     n
-                jz      montend
+        mov     e, [z]
+        mov     d, w
+        imul    d, e
+        mov     a, [m]
+        mul     d
+        add     a, e            // Will be zero but want the carry
+        mov     h, rdx
+        mov     jshort, 1
+        mov     n, k
+        dec     n
+        jz      montend
 
 montloop:
-                adc     h, [z+8*j]
-                sbb     e, e
-                mov     a, [m+8*j]
-                mul     d
-                sub     rdx, e
-                add     a, h
-                mov     [z+8*j-8], a
-                mov     h, rdx
-                inc     j
-                dec     n
-                jnz     montloop
+        adc     h, [z+8*j]
+        sbb     e, e
+        mov     a, [m+8*j]
+        mul     d
+        sub     rdx, e
+        add     a, h
+        mov     [z+8*j-8], a
+        mov     h, rdx
+        inc     j
+        dec     n
+        jnz     montloop
 
 montend:
-                adc     h, c0
-                adc     c1, 0
-                mov     c0, c1
-                mov     [z+8*j-8], h
+        adc     h, c0
+        adc     c1, 0
+        mov     c0, c1
+        mov     [z+8*j-8], h
 
 // End of outer loop.
 
-                inc     i
-                cmp     i, k
-                jc      outerloop
+        inc     i
+        cmp     i, k
+        jc      outerloop
 
 // Now do a comparison of (c0::z) with (0::m) to set a final correction mask
 // indicating that (c0::z) >= m and so we need to subtract m.
 
-                xor     j, j
-                mov     n, k
+        xor     j, j
+        mov     n, k
 cmploop:
-                mov     a, [z+8*j]
-                sbb     a, [m+8*j]
-                inc     j
-                dec     n
-                jnz     cmploop
+        mov     a, [z+8*j]
+        sbb     a, [m+8*j]
+        inc     j
+        dec     n
+        jnz     cmploop
 
-                sbb     c0, 0
-                sbb     d, d
-                not     d
+        sbb     c0, 0
+        sbb     d, d
+        not     d
 
 // Now do a masked subtraction of m for the final reduced result.
 
-                xor     e, e
-                xor     j, j
+        xor     e, e
+        xor     j, j
 corrloop:
-                mov     a, [m+8*j]
-                and     a, d
-                neg     e
-                sbb     [z+8*j], a
-                sbb     e, e
-                inc     j
-                cmp     j, k
-                jc      corrloop
+        mov     a, [m+8*j]
+        and     a, d
+        neg     e
+        sbb     [z+8*j], a
+        sbb     e, e
+        inc     j
+        cmp     j, k
+        jc      corrloop
 
 end:
-                pop     r15
-                pop     r14
-                pop     r13
-                pop     r12
-                pop     rbp
-                pop     rbx
+        pop     r15
+        pop     r14
+        pop     r13
+        pop     r12
+        pop     rbp
+        pop     rbx
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

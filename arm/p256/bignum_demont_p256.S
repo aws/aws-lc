@@ -45,15 +45,15 @@
 /* Let w = d0, the original word we use as offset; d0 gets recycled      */ \
 /* First let [t2;t1] = 2^32 * w                                          */ \
 /* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)           */ \
-                lsl     t1, d0, #32;                                        \
-                subs    t0, d0, t1;                                         \
-                lsr     t2, d0, #32;                                        \
-                sbc     d0, d0, t2;                                         \
+        lsl     t1, d0, #32;                                        \
+        subs    t0, d0, t1;                                         \
+        lsr     t2, d0, #32;                                        \
+        sbc     d0, d0, t2;                                         \
 /* Hence [d4;..;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w */ \
-                adds    d1, d1, t1;                                         \
-                adcs    d2, d2, t2;                                         \
-                adcs    d3, d3, t0;                                         \
-                adc     d4, d0, xzr
+        adds    d1, d1, t1;                                         \
+        adcs    d2, d2, t2;                                         \
+        adcs    d3, d3, t0;                                         \
+        adc     d4, d0, xzr
 
 // Input parameters
 
@@ -80,25 +80,25 @@ _bignum_demont_p256_alt:
 
 // Set up an initial window with the input x and an extra leading zero
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
 
 // Systematically scroll left doing 1-step reductions
 
-                montreds(d0,d3,d2,d1,d0, u,v,w)
+        montreds(d0,d3,d2,d1,d0, u,v,w)
 
-                montreds(d1,d0,d3,d2,d1, u,v,w)
+        montreds(d1,d0,d3,d2,d1, u,v,w)
 
-                montreds(d2,d1,d0,d3,d2, u,v,w)
+        montreds(d2,d1,d0,d3,d2, u,v,w)
 
-                montreds(d3,d2,d1,d0,d3, u,v,w)
+        montreds(d3,d2,d1,d0,d3, u,v,w)
 
 // Write back result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

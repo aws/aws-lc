@@ -22,6 +22,7 @@
 // Although typically the input d < 10, this is not actually required.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = d, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = d, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -44,32 +45,44 @@
 bignum_muladd10:
 _bignum_muladd10:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
+
 // Move carry input to permanent home, and if k = 0 skip the main loop
 
-                mov     d, rdx
-                test    k, k
-                jz      end
+        mov     d, rdx
+        test    k, k
+        jz      end
 
 // Simple loop
 
-                xor     i, i
-                mov     tenshort, 10
+        xor     i, i
+        mov     tenshort, 10
 loop:
-                mov     a, [z+8*i]
-                mul     ten
-                add     l, d
-                mov     [z+8*i], l
-                adc     h, 0
-                mov     d, h
-                inc     i
-                cmp     i, k
-                jc      loop
+        mov     a, [z+8*i]
+        mul     ten
+        add     l, d
+        mov     [z+8*i], l
+        adc     h, 0
+        mov     d, h
+        inc     i
+        cmp     i, k
+        jc      loop
 
 // Return the final carry
 
 end:
-                mov     rax, d
-                ret
+        mov     rax, d
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

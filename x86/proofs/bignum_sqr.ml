@@ -92,7 +92,7 @@ let bignum_sqr_mc =
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_SQR_EXEC = X86_MK_EXEC_RULE bignum_sqr_mc;;
+let BIGNUM_SQR_EXEC = X86_MK_CORE_EXEC_RULE bignum_sqr_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -103,7 +103,7 @@ let BIGNUM_SQR_CORRECT = prove
      ALL (nonoverlapping (z,8 * val p))
          [(word pc,0xbe); (x,8 * val n)]
      ==> ensures x86
-          (\s. bytes_loaded s (word pc) bignum_sqr_mc /\
+          (\s. bytes_loaded s (word pc) (BUTLAST bignum_sqr_mc) /\
                read RIP s = word(pc + 0xa) /\
                C_ARGUMENTS [p; z; n; x] s /\
                bignum_from_memory(x,val n) s = a)
@@ -600,5 +600,35 @@ let BIGNUM_SQR_SUBROUTINE_CORRECT = prove
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,val p);
                       memory :> bytes(word_sub stackpointer (word 48),56)])`,
-  X86_ADD_RETURN_STACK_TAC BIGNUM_SQR_EXEC BIGNUM_SQR_CORRECT
+  X86_PROMOTE_RETURN_STACK_TAC bignum_sqr_mc BIGNUM_SQR_CORRECT
     `[RBX; RBP; R12; R13; R14; R15]` 48);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_sqr_mc = define_from_elf
+   "windows_bignum_sqr_mc" "x86/generic/bignum_sqr.obj";;
+
+let WINDOWS_BIGNUM_SQR_SUBROUTINE_CORRECT = prove
+ (`!p n z x a pc stackpointer returnaddress.
+     nonoverlapping (z,8 * val p) (word_sub stackpointer (word 64),72) /\
+     ALLPAIRS nonoverlapping
+              [(z,8 * val p); (word_sub stackpointer (word 64),72)]
+              [(word pc,0xce); (x,8 * val n)]
+     ==> ensures x86
+          (\s. bytes_loaded s (word pc) windows_bignum_sqr_mc /\
+               read RIP s = word pc /\
+               read RSP s = stackpointer /\
+               read (memory :> bytes64 stackpointer) s = returnaddress /\
+               WINDOWS_C_ARGUMENTS [p; z; n; x] s /\
+               bignum_from_memory (x,val n) s = a)
+          (\s. read RIP s = returnaddress /\
+               read RSP s = word_add stackpointer (word 8) /\
+               bignum_from_memory (z,val p) s = lowdigits (a EXP 2) (val p))
+          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,val p);
+                      memory :> bytes(word_sub stackpointer (word 64),72)])`,
+  WINDOWS_X86_WRAP_STACK_TAC windows_bignum_sqr_mc bignum_sqr_mc
+    BIGNUM_SQR_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 48);;

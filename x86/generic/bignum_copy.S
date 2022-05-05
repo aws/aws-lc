@@ -21,6 +21,7 @@
 //      (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -41,35 +42,51 @@
 bignum_copy:
 _bignum_copy:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
+
 // Replace RDX = n with RDX = min(k,n) so we are definitely safe copying those
 // Initialize the element counter to 0
 
-                cmp     k, n
-                cmovc   n, k
-                xor     i, i
+        cmp     k, n
+        cmovc   n, k
+        xor     i, i
 
 // If min(k,n) = 0 jump to the padding stage
 
-                test    n, n
-                jz      padding
+        test    n, n
+        jz      padding
 
-copyloop:       mov     a, [x+8*i]
-                mov     [z+8*i], a
-                inc     i
-                cmp     i, n
-                jc      copyloop
+copyloop:
+        mov     a, [x+8*i]
+        mov     [z+8*i], a
+        inc     i
+        cmp     i, n
+        jc      copyloop
 
 padding:
-                cmp     i, k
-                jnc     end
-                xor     a, a
+        cmp     i, k
+        jnc     end
+        xor     a, a
 
-padloop:        mov     [z+8*i], a
-                inc     i
-                cmp     i, k
-                jc      padloop
+padloop:
+        mov     [z+8*i], a
+        inc     i
+        cmp     i, k
+        jc      padloop
 
-end:            ret
+end:
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

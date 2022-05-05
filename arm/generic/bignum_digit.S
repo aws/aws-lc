@@ -45,26 +45,26 @@ _bignum_digit:
 
 // For length zero finish immediately (the return value in x0 is 0)
 
-                cbz     k, end
+        cbz     k, end
 
 // Set default of zero, run over all the digits and take note of the n'th one
 
-                mov     d, xzr
-                mov     i, xzr
+        mov     d, xzr
+        mov     i, xzr
 loop:
-                ldr     a, [x, i, lsl #3]
-                cmp     i, n
-                csel    d, a, d, eq
-                add     i, i, #1
-                cmp     i, k
-                bcc     loop
+        ldr     a, [x, i, lsl #3]
+        cmp     i, n
+        csel    d, a, d, eq
+        add     i, i, #1
+        cmp     i, k
+        bcc     loop
 
 // Return
 
-                mov     x0, d
+        mov     x0, d
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

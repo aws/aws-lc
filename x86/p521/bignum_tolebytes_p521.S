@@ -25,6 +25,7 @@
 // Since x86 is little-endian, this is just copying.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -39,34 +40,45 @@
 bignum_tolebytes_p521:
 _bignum_tolebytes_p521:
 
-                mov     a, [x]
-                mov     [z], a
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
-                mov     a, [x+8]
-                mov     [z+8], a
+        mov     a, [x]
+        mov     [z], a
 
-                mov     a, [x+16]
-                mov     [z+16], a
+        mov     a, [x+8]
+        mov     [z+8], a
 
-                mov     a, [x+24]
-                mov     [z+24], a
+        mov     a, [x+16]
+        mov     [z+16], a
 
-                mov     a, [x+32]
-                mov     [z+32], a
+        mov     a, [x+24]
+        mov     [z+24], a
 
-                mov     a, [x+40]
-                mov     [z+40], a
+        mov     a, [x+32]
+        mov     [z+32], a
 
-                mov     a, [x+48]
-                mov     [z+48], a
+        mov     a, [x+40]
+        mov     [z+40], a
 
-                mov     a, [x+56]
-                mov     [z+56], a
+        mov     a, [x+48]
+        mov     [z+48], a
 
-                mov     a, [x+64]
-                mov     [z+64], ax
+        mov     a, [x+56]
+        mov     [z+56], a
 
-                ret
+        mov     a, [x+64]
+        mov     [z+64], ax
+
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

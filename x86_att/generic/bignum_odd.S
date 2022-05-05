@@ -20,6 +20,7 @@
 //    extern uint64_t bignum_odd (uint64_t k, uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -30,16 +31,27 @@
 bignum_odd:
 _bignum_odd:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
+
 // Load RAX with the lowest digit for k > 0, else 0
 
-                xorq    %rax, %rax
-                testq   %rdi, %rdi
-                cmovnzq (%rsi), %rax
+        xorq    %rax, %rax
+        testq   %rdi, %rdi
+        cmovnzq (%rsi), %rax
 
 // Now just return the LSB
 
-                andq    $1, %rax
-                ret
+        andq    $1, %rax
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

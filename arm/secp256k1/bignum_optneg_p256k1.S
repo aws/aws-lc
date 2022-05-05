@@ -44,42 +44,42 @@ _bignum_optneg_p256k1:
 
 // Load the 4 digits of x and let c be an OR of all the digits
 
-                ldp     d0, d1, [x]
-                orr     c, d0, d1
-                ldp     d2, d3, [x, #16]
-                orr     c, c, d2
-                orr     c, c, d3
+        ldp     d0, d1, [x]
+        orr     c, d0, d1
+        ldp     d2, d3, [x, #16]
+        orr     c, c, d2
+        orr     c, c, d3
 
 // Turn p into a strict bitmask. Force it to zero if the input is zero,
 // to avoid giving -0 = p_256k1, which is not reduced though correct modulo.
 
-                cmp     p, xzr
-                csetm   p, ne
-                cmp     c, xzr
-                csel    p, xzr, p, eq
+        cmp     p, xzr
+        csetm   p, ne
+        cmp     c, xzr
+        csel    p, xzr, p, eq
 
 // We want z := if p then (2^256 - 4294968273) - x else x
 // which is: [if p then ~x else x] - [if p then 4294968272 else 0]
 
-                mov     c, #976
-                orr     c, c, #0x100000000
-                and     c, c, p
+        mov     c, #976
+        orr     c, c, #0x100000000
+        and     c, c, p
 
-                eor     d0, d0, p
-                subs    d0, d0, c
-                eor     d1, d1, p
-                sbcs    d1, d1, xzr
-                eor     d2, d2, p
-                sbcs    d2, d2, xzr
-                eor     d3, d3, p
-                sbc     d3, d3, xzr
+        eor     d0, d0, p
+        subs    d0, d0, c
+        eor     d1, d1, p
+        sbcs    d1, d1, xzr
+        eor     d2, d2, p
+        sbcs    d2, d2, xzr
+        eor     d3, d3, p
+        sbc     d3, d3, xzr
 
 // Write back result and return
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

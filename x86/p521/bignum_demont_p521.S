@@ -24,6 +24,7 @@
 // use the variant "bignum_deamont_p521" instead.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -50,6 +51,13 @@
 
 bignum_demont_p521:
 _bignum_demont_p521:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Rotate, as a 521-bit quantity, by 9*64 - 521 = 55 bits right.
 
@@ -83,6 +91,10 @@ _bignum_demont_p521:
         mov     [z+56], d7
         shr     d8, 55
         mov     [z+64], d8
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

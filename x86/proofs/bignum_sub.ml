@@ -84,29 +84,10 @@ let bignum_sub_mc =
 let BIGNUM_SUB_EXEC = X86_MK_EXEC_RULE bignum_sub_mc;;
 
 (* ------------------------------------------------------------------------- *)
-(* Correctness proof.                                                        *)
+(* Common tactic for slightly different standard and Windows variants.       *)
 (* ------------------------------------------------------------------------- *)
 
-let BIGNUM_SUB_CORRECT = prove
- (`!p z m x a n y b pc.
-        nonoverlapping (word pc,0xa6) (z,8 * val p) /\
-        (x = z \/ nonoverlapping(x,8 * val m) (z,8 * val p)) /\
-        (y = z \/ nonoverlapping(y,8 * val n) (z,8 * val p))
-        ==> ensures x86
-             (\s. bytes_loaded s (word pc) bignum_sub_mc /\
-                  read RIP s = word pc /\
-                  C_ARGUMENTS [p;z;m;x;n;y] s /\
-                  bignum_from_memory (x,val m) s = a /\
-                  bignum_from_memory (y,val n) s = b)
-             (\s. (read RIP s = word(pc + 0x65) \/
-                   read RIP s = word(pc + 0xa5)) /\
-                  &(bignum_from_memory (z,val p) s) =
-                  (&a - &b) rem &2 pow (64 * val p) /\
-                  2 EXP (64 * val p) * val(C_RETURN s) + lowdigits a (val p) =
-                  bignum_from_memory (z,val p) s + lowdigits b (val p))
-             (MAYCHANGE [RIP; RAX; RDI; RDX; R8; R10] ,,
-              MAYCHANGE SOME_FLAGS ,,
-              MAYCHANGE [memory :> bignum(z,val p)])`,
+let tac execth cleanpost offset =
   W64_GEN_TAC `p:num` THEN X_GEN_TAC `z:int64` THEN
   W64_GEN_TAC `m:num` THEN MAP_EVERY X_GEN_TAC [`x:int64`; `a:num`] THEN
   W64_GEN_TAC `n:num` THEN MAP_EVERY X_GEN_TAC [`y:int64`; `b:num`] THEN
@@ -115,12 +96,7 @@ let BIGNUM_SUB_CORRECT = prove
 
   (*** Remove redundancy in the conclusion ***)
 
-  ENSURES_POSTCONDITION_TAC
-   `\s. (read RIP s = word(pc + 0x65) \/
-         read RIP s = word(pc + 0xa5)) /\
-        2 EXP (64 * p) * val(read RAX s) + lowdigits a p =
-        bignum_from_memory (z,p) s + lowdigits b p` THEN
-  REWRITE_TAC[] THEN CONJ_TAC THENL
+  ENSURES_POSTCONDITION_TAC cleanpost THEN REWRITE_TAC[] THEN CONJ_TAC THENL
    [X_GEN_TAC `s:x86state` THEN MATCH_MP_TAC MONO_AND THEN REWRITE_TAC[] THEN
     ASM_SIMP_TAC[lowdigits; MOD_LT] THEN
     REWRITE_TAC[GSYM INT_OF_NUM_EQ; GSYM INT_OF_NUM_ADD; GSYM INT_OF_NUM_REM;
@@ -136,7 +112,7 @@ let BIGNUM_SUB_CORRECT = prove
 
   (*** Reshuffle to handle clamping and just assume m <= p and n <= p ***)
 
-  ENSURES_SEQUENCE_TAC `pc + 0x11`
+  ENSURES_SEQUENCE_TAC (offset 0x11)
    `\s. read RDI s = word p /\
         read RSI s = z /\
         read RDX s = word(MIN m p) /\
@@ -148,7 +124,7 @@ let BIGNUM_SUB_CORRECT = prove
         bignum_from_memory(y,MIN n p) s = lowdigits b p` THEN
   CONJ_TAC THENL
    [REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--5) THEN
+    ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--5) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     ASM_REWRITE_TAC[lowdigits; REWRITE_RULE[BIGNUM_FROM_MEMORY_BYTES]
         (GSYM BIGNUM_FROM_MEMORY_MOD)] THEN
@@ -199,7 +175,7 @@ let BIGNUM_SUB_CORRECT = prove
       ASM_REWRITE_TAC[LE_EXP; ARITH_EQ; LE_MULT_LCANCEL];
       ALL_TAC] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x49`
+    ENSURES_SEQUENCE_TAC (offset 0x49)
      `\s. read RDI s = word(p - m) /\
           read RSI s = z /\
           read RDX s = word(m - n + 1) /\
@@ -214,7 +190,7 @@ let BIGNUM_SUB_CORRECT = prove
      [ASM_CASES_TAC `n = 0` THENL
        [UNDISCH_THEN `n = 0` SUBST_ALL_TAC THEN
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_0] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--7) THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--7) THEN
         ENSURES_FINAL_STATE_TAC THEN
         ASM_REWRITE_TAC[LOWDIGITS_0; HIGHDIGITS_0; BITVAL_CLAUSES] THEN
         REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
@@ -223,7 +199,7 @@ let BIGNUM_SUB_CORRECT = prove
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
         ASM_REWRITE_TAC[WORD_SUB] THEN CONV_TAC WORD_RULE;
         ALL_TAC] THEN
-      ENSURES_WHILE_PUP_TAC `n:num` `pc + 0x24` `pc + 0x36`
+      ENSURES_WHILE_PUP_TAC `n:num` (offset 0x24) (offset 0x36)
        `\i s. (read RDI s = word(p - m) /\
                read RSI s = z /\
                read RDX s = word(m - n + 1) /\
@@ -240,7 +216,7 @@ let BIGNUM_SUB_CORRECT = prove
               (read ZF s <=> i = n)` THEN
       ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
        [REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_0] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--7) THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--7) THEN
         ENSURES_FINAL_STATE_TAC THEN
         ASM_REWRITE_TAC[LOWDIGITS_0; HIGHDIGITS_0; BITVAL_CLAUSES] THEN
         REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
@@ -251,10 +227,10 @@ let BIGNUM_SUB_CORRECT = prove
         ALL_TAC; (*** Main loop invariant ***)
         X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
         REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
-        X86_STEPS_TAC BIGNUM_SUB_EXEC (1--2) THEN
+        X86_STEPS_TAC execth (1--2) THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]] THEN
       X_GEN_TAC `i:num` THEN STRIP_TAC THEN
       REWRITE_TAC[BIGNUM_FROM_MEMORY_STEP] THEN
@@ -266,7 +242,7 @@ let BIGNUM_SUB_CORRECT = prove
        [ONCE_REWRITE_RULE[BIGNUM_FROM_MEMORY_BYTES]
        BIGNUM_FROM_MEMORY_OFFSET_EQ_HIGHDIGITS])) THEN
       ASM_REWRITE_TAC[SUB_EQ_0; GSYM NOT_LT] THEN STRIP_TAC THEN STRIP_TAC THEN
-      X86_STEPS_TAC BIGNUM_SUB_EXEC (1--5) THEN
+      X86_STEPS_TAC execth (1--5) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       ASM_REWRITE_TAC[ARITH_RULE `n - (i + 1) = n - i - 1`] THEN
       MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN CONJ_TAC THENL
@@ -289,7 +265,7 @@ let BIGNUM_SUB_CORRECT = prove
       ARITH_TAC;
       ALL_TAC] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x4e`
+    ENSURES_SEQUENCE_TAC (offset 0x4e)
      `\s. read RDI s = word(p - m) /\
           read RSI s = z /\
           read R10 s = word m /\
@@ -300,13 +276,13 @@ let BIGNUM_SUB_CORRECT = prove
        [UNDISCH_THEN `m:num = n` SUBST_ALL_TAC THEN
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_REFL] THEN
         GHOST_INTRO_TAC `cin:bool` `read CF` THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--2) THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--2) THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[VAL_WORD_BITVAL];
         ALL_TAC] THEN
       SUBGOAL_THEN `n < m /\ 0 < m - n /\ ~(m - n = 0)` STRIP_ASSUME_TAC THENL
        [SIMPLE_ARITH_TAC; ALL_TAC] THEN
       VAL_INT64_TAC `m - n:num` THEN
-      ENSURES_WHILE_PUP_TAC `m - n:num` `pc + 0x3a` `pc + 0x4c`
+      ENSURES_WHILE_PUP_TAC `m - n:num` (offset 0x3a) (offset 0x4c)
        `\i s. (read RDI s = word(p - m) /\
                read RSI s = z /\
                read RCX s = x /\
@@ -320,17 +296,17 @@ let BIGNUM_SUB_CORRECT = prove
               (read ZF s <=> i = m - n)` THEN
       ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
        [REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_0] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--2) THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--2) THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES] THEN
         ASM_REWRITE_TAC[WORD_RULE `word_sub (word(n + 1)) (word 1) = word n`];
         ALL_TAC; (*** Main loop invariant ***)
         X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
         ASM_SIMP_TAC[ARITH_RULE `n:num <= m ==> n + m - n = m`] THEN
         REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[VAL_WORD_BITVAL]] THEN
       ASM_SIMP_TAC[ARITH_RULE
        `n:num < m
@@ -346,7 +322,7 @@ let BIGNUM_SUB_CORRECT = prove
        [ONCE_REWRITE_RULE[BIGNUM_FROM_MEMORY_BYTES]
        BIGNUM_FROM_MEMORY_OFFSET_EQ_HIGHDIGITS]) THEN
       ASM_REWRITE_TAC[SUB_EQ_0; GSYM NOT_LT] THEN STRIP_TAC THEN
-      X86_STEPS_TAC BIGNUM_SUB_EXEC (1--5) THEN
+      X86_STEPS_TAC execth (1--5) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       ASM_REWRITE_TAC[ARITH_RULE `n - (i + 1) = n - i - 1`] THEN
       MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN CONJ_TAC THENL
@@ -377,7 +353,7 @@ let BIGNUM_SUB_CORRECT = prove
     ASM_CASES_TAC `m:num = p` THENL
      [UNDISCH_THEN `m:num = p` SUBST_ALL_TAC THEN
       ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--4) THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--4) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       REWRITE_TAC[WORD_NEG_NEG; VAL_WORD_BITVAL] THEN
       FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (NUM_RING
@@ -389,7 +365,7 @@ let BIGNUM_SUB_CORRECT = prove
     SUBGOAL_THEN `0 < p - m /\ ~(p - m = 0)` STRIP_ASSUME_TAC THENL
      [SIMPLE_ARITH_TAC; ALL_TAC] THEN
     VAL_INT64_TAC `p - m:num` THEN
-    ENSURES_WHILE_PUP_TAC `p - m:num` `pc + 0x56` `pc + 0x60`
+    ENSURES_WHILE_PUP_TAC `p - m:num` (offset 0x56) (offset 0x60)
      `\i s. (read RDI s = word(p - m - i) /\
              read R10 s = word(m + i) /\
              read RSI s = z /\
@@ -399,17 +375,17 @@ let BIGNUM_SUB_CORRECT = prove
             (read ZF s <=> i = p - m)` THEN
     ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
      [REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_0] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--3) THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--3) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES];
       ALL_TAC; (*** Main loop invariant ***)
       X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
       GHOST_INTRO_TAC `z:num` `bignum_from_memory(z,m + i)` THEN
       ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
       ASM_SIMP_TAC[ARITH_RULE `0 < m - n ==> n + m - n = m`] THEN
       REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--2) THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--2) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       REWRITE_TAC[WORD_NEG_NEG; VAL_WORD_BITVAL] THEN
       FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (NUM_RING
@@ -432,7 +408,7 @@ let BIGNUM_SUB_CORRECT = prove
     VAL_INT64_TAC `i:num` THEN
     REWRITE_TAC[BIGNUM_FROM_MEMORY_STEP] THEN
     REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
-    X86_STEPS_TAC BIGNUM_SUB_EXEC (1--3) THEN
+    X86_STEPS_TAC execth (1--3) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[VAL_WORD_0; MULT_CLAUSES; ADD_CLAUSES] THEN
     REWRITE_TAC[ARITH_RULE `p - (i + 1) = p - i - 1`] THEN
@@ -467,7 +443,7 @@ let BIGNUM_SUB_CORRECT = prove
       ASM_REWRITE_TAC[LE_EXP; ARITH_EQ; LE_MULT_LCANCEL];
       ALL_TAC] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x85`
+    ENSURES_SEQUENCE_TAC (offset 0x85)
      `\s. read RDI s = word(p - n) /\
           read RSI s = z /\
           read R8 s = word(n - m) /\
@@ -482,7 +458,7 @@ let BIGNUM_SUB_CORRECT = prove
      [ASM_CASES_TAC `m = 0` THENL
        [UNDISCH_THEN `m = 0` SUBST_ALL_TAC THEN
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_0] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--6) THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--6) THEN
         ENSURES_FINAL_STATE_TAC THEN
         ASM_REWRITE_TAC[LOWDIGITS_0; HIGHDIGITS_0; BITVAL_CLAUSES] THEN
         REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
@@ -491,7 +467,7 @@ let BIGNUM_SUB_CORRECT = prove
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
         ASM_REWRITE_TAC[WORD_SUB] THEN CONV_TAC WORD_RULE;
         ALL_TAC] THEN
-      ENSURES_WHILE_PUP_TAC `m:num` `pc + 0x71` `pc + 0x83`
+      ENSURES_WHILE_PUP_TAC `m:num` (offset 0x71) (offset 0x83)
        `\i s. (read RDI s = word(p - n) /\
                read RSI s = z /\
                read R8 s = word(n - m) /\
@@ -508,7 +484,7 @@ let BIGNUM_SUB_CORRECT = prove
               (read ZF s <=> i = m)` THEN
       ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
        [REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_0] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--6) THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--6) THEN
         ENSURES_FINAL_STATE_TAC THEN
         ASM_REWRITE_TAC[LOWDIGITS_0; HIGHDIGITS_0; BITVAL_CLAUSES] THEN
         REWRITE_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
@@ -519,10 +495,10 @@ let BIGNUM_SUB_CORRECT = prove
         ALL_TAC; (*** Main loop invariant ***)
         X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
         REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
-        X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+        X86_STEPS_TAC execth [1] THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]] THEN
       X_GEN_TAC `i:num` THEN STRIP_TAC THEN
       REWRITE_TAC[BIGNUM_FROM_MEMORY_STEP] THEN
@@ -534,7 +510,7 @@ let BIGNUM_SUB_CORRECT = prove
        [ONCE_REWRITE_RULE[BIGNUM_FROM_MEMORY_BYTES]
        BIGNUM_FROM_MEMORY_OFFSET_EQ_HIGHDIGITS])) THEN
       ASM_REWRITE_TAC[SUB_EQ_0; GSYM NOT_LT] THEN STRIP_TAC THEN STRIP_TAC THEN
-      X86_STEPS_TAC BIGNUM_SUB_EXEC (1--5) THEN
+      X86_STEPS_TAC execth (1--5) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       ASM_REWRITE_TAC[ARITH_RULE `m - (i + 1) = m - i - 1`] THEN
       MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN CONJ_TAC THENL
@@ -557,7 +533,7 @@ let BIGNUM_SUB_CORRECT = prove
       ARITH_TAC;
       ALL_TAC] THEN
 
-    ENSURES_SEQUENCE_TAC `pc + 0x9a`
+    ENSURES_SEQUENCE_TAC (offset 0x9a)
      `\s. read RDI s = word(p - n) /\
           read RSI s = z /\
           read R10 s = word n /\
@@ -567,7 +543,7 @@ let BIGNUM_SUB_CORRECT = prove
      [SUBGOAL_THEN `~(m = n) /\ 0 < n - m /\ ~(n - m = 0)`
       STRIP_ASSUME_TAC THENL [SIMPLE_ARITH_TAC; ALL_TAC] THEN
       VAL_INT64_TAC `n - m:num` THEN
-      ENSURES_WHILE_PUP_TAC `n - m:num` `pc + 0x85` `pc + 0x98`
+      ENSURES_WHILE_PUP_TAC `n - m:num` (offset 0x85) (offset 0x98)
        `\i s. (read RDI s = word(p - n) /\
                read RSI s = z /\
                read R9 s = y /\
@@ -587,12 +563,12 @@ let BIGNUM_SUB_CORRECT = prove
         ALL_TAC; (*** Main loop invariant ***)
         X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
         ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
         ASM_SIMP_TAC[ARITH_RULE `m:num <= n ==> m + n - m = n`] THEN
         REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
         GHOST_INTRO_TAC `cin:bool` `read CF` THEN
-        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+        ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
         ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[VAL_WORD_BITVAL]] THEN
       ASM_SIMP_TAC[ARITH_RULE
        `m:num < n
@@ -608,7 +584,7 @@ let BIGNUM_SUB_CORRECT = prove
        [ONCE_REWRITE_RULE[BIGNUM_FROM_MEMORY_BYTES]
        BIGNUM_FROM_MEMORY_OFFSET_EQ_HIGHDIGITS]) THEN
       ASM_REWRITE_TAC[SUB_EQ_0; GSYM NOT_LT] THEN STRIP_TAC THEN
-      X86_STEPS_TAC BIGNUM_SUB_EXEC (1--5) THEN
+      X86_STEPS_TAC execth (1--5) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       ASM_REWRITE_TAC[ARITH_RULE `m - (i + 1) = m - i - 1`] THEN
       MATCH_MP_TAC(TAUT `p /\ (p ==> q) ==> p /\ q`) THEN CONJ_TAC THENL
@@ -642,7 +618,7 @@ let BIGNUM_SUB_CORRECT = prove
     ASM_CASES_TAC `n:num = p` THENL
      [UNDISCH_THEN `n:num = p` SUBST_ALL_TAC THEN
       ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--4) THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--4) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       REWRITE_TAC[WORD_NEG_NEG; VAL_WORD_BITVAL] THEN
       FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (NUM_RING
@@ -654,7 +630,7 @@ let BIGNUM_SUB_CORRECT = prove
     SUBGOAL_THEN `0 < p - n /\ ~(p - n = 0)` STRIP_ASSUME_TAC THENL
      [SIMPLE_ARITH_TAC; ALL_TAC] THEN
     VAL_INT64_TAC `p - n:num` THEN
-    ENSURES_WHILE_PUP_TAC `p - n:num` `pc + 0x56` `pc + 0x60`
+    ENSURES_WHILE_PUP_TAC `p - n:num` (offset 0x56) (offset 0x60)
      `\i s. (read RDI s = word(p - n - i) /\
              read R10 s = word(n + i) /\
              read RSI s = z /\
@@ -664,17 +640,17 @@ let BIGNUM_SUB_CORRECT = prove
             (read ZF s <=> i = p - n)` THEN
     ASM_REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
      [REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES; SUB_0] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--3) THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--3) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES];
       ALL_TAC; (*** Main loop invariant ***)
       X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
       GHOST_INTRO_TAC `z:num` `bignum_from_memory(z,n + i)` THEN
       ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC [1] THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth [1] THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];
       ASM_SIMP_TAC[ARITH_RULE `0 < m - n ==> n + m - n = m`] THEN
       REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC BIGNUM_SUB_EXEC (1--2) THEN
+      ENSURES_INIT_TAC "s0" THEN X86_STEPS_TAC execth (1--2) THEN
       ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
       REWRITE_TAC[WORD_NEG_NEG; VAL_WORD_BITVAL] THEN
       FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (NUM_RING
@@ -697,7 +673,7 @@ let BIGNUM_SUB_CORRECT = prove
     VAL_INT64_TAC `i:num` THEN
     REWRITE_TAC[BIGNUM_FROM_MEMORY_STEP] THEN
     REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
-    X86_STEPS_TAC BIGNUM_SUB_EXEC (1--3) THEN
+    X86_STEPS_TAC execth (1--3) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[VAL_WORD_0; MULT_CLAUSES; ADD_CLAUSES] THEN
     REWRITE_TAC[ARITH_RULE `p - (i + 1) = p - i - 1`] THEN
@@ -721,7 +697,38 @@ let BIGNUM_SUB_CORRECT = prove
       ASM_SIMP_TAC[ARITH_RULE `i < p ==> (i + 1 = p <=> p - i - 1 = 0)`] THEN
       REWRITE_TAC[VAL_EQ_0] THEN MATCH_MP_TAC WORD_EQ_0 THEN
       REWRITE_TAC[DIMINDEX_64] THEN UNDISCH_TAC `p < 2 EXP 64` THEN
-      ARITH_TAC]]);;
+      ARITH_TAC]];;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of standard ABI version.                                      *)
+(* ------------------------------------------------------------------------- *)
+
+let BIGNUM_SUB_CORRECT = prove
+ (`!p z m x a n y b pc.
+        nonoverlapping (word pc,0xa6) (z,8 * val p) /\
+        (x = z \/ nonoverlapping(x,8 * val m) (z,8 * val p)) /\
+        (y = z \/ nonoverlapping(y,8 * val n) (z,8 * val p))
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) bignum_sub_mc /\
+                  read RIP s = word pc /\
+                  C_ARGUMENTS [p;z;m;x;n;y] s /\
+                  bignum_from_memory (x,val m) s = a /\
+                  bignum_from_memory (y,val n) s = b)
+             (\s. (read RIP s = word(pc + 0x65) \/
+                   read RIP s = word(pc + 0xa5)) /\
+                  &(bignum_from_memory (z,val p) s) =
+                  (&a - &b) rem &2 pow (64 * val p) /\
+                  2 EXP (64 * val p) * val(C_RETURN s) + lowdigits a (val p) =
+                  bignum_from_memory (z,val p) s + lowdigits b (val p))
+             (MAYCHANGE [RIP; RAX; RDI; RDX; R8; R10] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val p)])`,
+  tac BIGNUM_SUB_EXEC
+   `\s. (read RIP s = word(pc + 0x65) \/
+         read RIP s = word(pc + 0xa5)) /\
+        2 EXP (64 * p) * val(read RAX s) + lowdigits a p =
+        bignum_from_memory (z,p) s + lowdigits b p`
+ (curry mk_comb `(+) (pc:num)` o mk_small_numeral));;
 
 let BIGNUM_SUB_SUBROUTINE_CORRECT = prove
  (`!p z m x a n y b pc stackpointer returnaddress.
@@ -747,3 +754,70 @@ let BIGNUM_SUB_SUBROUTINE_CORRECT = prove
               MAYCHANGE SOME_FLAGS ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   X86_ADD_RETURN_NOSTACK_TAC BIGNUM_SUB_EXEC BIGNUM_SUB_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_sub_mc = define_from_elf
+   "windows_bignum_sub_mc" "x86/generic/bignum_sub.obj";;
+
+let WINDOWS_BIGNUM_SUB_CORRECT = prove
+ (`!p z m x a n y b pc.
+        nonoverlapping (word pc,0xc2) (z,8 * val p) /\
+        (x = z \/ nonoverlapping(x,8 * val m) (z,8 * val p)) /\
+        (y = z \/ nonoverlapping(y,8 * val n) (z,8 * val p))
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_sub_mc /\
+                  read RIP s = word(pc + 0x18) /\
+                  C_ARGUMENTS [p;z;m;x;n;y] s /\
+                  bignum_from_memory (x,val m) s = a /\
+                  bignum_from_memory (y,val n) s = b)
+             (\s. (read RIP s = word(pc + 0x7d) \/
+                   read RIP s = word(pc + 0xbf)) /\
+                  &(bignum_from_memory (z,val p) s) =
+                  (&a - &b) rem &2 pow (64 * val p) /\
+                  2 EXP (64 * val p) * val(C_RETURN s) + lowdigits a (val p) =
+                  bignum_from_memory (z,val p) s + lowdigits b (val p))
+             (MAYCHANGE [RIP; RAX; RDI; RDX; R8; R10] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val p)])`,
+  tac (X86_MK_EXEC_RULE windows_bignum_sub_mc)
+   `\s. (read RIP s = word(pc + 0x7d) \/
+         read RIP s = word(pc + 0xbf)) /\
+        2 EXP (64 * p) * val(read RAX s) + lowdigits a p =
+        bignum_from_memory (z,p) s + lowdigits b p`
+   (curry mk_comb `(+) (pc:num)` o mk_small_numeral o
+    (fun n -> if n < 0x65 then n + 24 else n + 26)));;
+
+let WINDOWS_BIGNUM_SUB_SUBROUTINE_CORRECT = prove
+ (`!p z m x a n y b pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0xc2); (x,8 * val m); (y,8 * val n)] /\
+        nonoverlapping (word pc,0xc2) (z,8 * val p) /\
+        nonoverlapping (word_sub stackpointer (word 16),24) (z,8 * val p) /\
+        (x = z \/ nonoverlapping(x,8 * val m) (z,8 * val p)) /\
+        (y = z \/ nonoverlapping(y,8 * val n) (z,8 * val p))
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_sub_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [p;z;m;x;n;y] s /\
+                  bignum_from_memory (x,val m) s = a /\
+                  bignum_from_memory (y,val n) s = b)
+             (\s. read RIP s = returnaddress /\
+                  read RSP s = word_add stackpointer (word 8) /\
+                  &(bignum_from_memory (z,val p) s) =
+                  (&a - &b) rem &2 pow (64 * val p) /\
+                  2 EXP (64 * val p) * val(WINDOWS_C_RETURN s) +
+                  lowdigits a (val p) =
+                  bignum_from_memory (z,val p) s + lowdigits b (val p))
+             (MAYCHANGE [RIP; RSP; R9; RCX; RAX; RDX; R8; R10] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,val p);
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
+  GEN_X86_ADD_RETURN_STACK_TAC (X86_MK_EXEC_RULE windows_bignum_sub_mc)
+    WINDOWS_BIGNUM_SUB_CORRECT
+    `[RDI; RSI]` 16 (8,3));;

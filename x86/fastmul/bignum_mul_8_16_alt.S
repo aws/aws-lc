@@ -21,6 +21,7 @@
 //     (uint64_t z[static 16], uint64_t x[static 8], uint64_t y[static 8]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -71,6 +72,14 @@
 
 bignum_mul_8_16_alt:
 _bignum_mul_8_16_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Copy y into a safe register to start with
 
@@ -223,6 +232,10 @@ _bignum_mul_8_16_alt:
 
 // Return
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

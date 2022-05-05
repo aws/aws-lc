@@ -21,6 +21,7 @@
 //     (uint64_t z[static 6], uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -49,6 +50,13 @@
 
 bignum_double_p384:
 _bignum_double_p384:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load the input and double it so that 2^384 * c + [d5;d4;d3;d2;d1;d0] = 2 * x
 // Could also consider using shld to decouple carries *or* combining this
@@ -118,6 +126,10 @@ _bignum_double_p384:
         sbbq    $0, d5
         movq    d5, 40(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

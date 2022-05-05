@@ -44,30 +44,30 @@ _bignum_muladd10:
 
 // If k = 0 just return the input d as the carry (out of zero digits)
 
-                cbz     k, end
+        cbz     k, end
 
 // Simple loop
 
-                mov     i, xzr
+        mov     i, xzr
 loop:
-                ldr     a, [z, i, lsl #3]
-                lsr     h, a, #61
-                add     l, a, a
-                add     h, h, h, lsr #2
-                adds    l, l, l, lsl #2
-                adc     h, h, xzr
-                adds    a, l, d
-                str     a, [z, i, lsl #3]
-                adc     d, h, xzr
-                add     i, i, 1
-                cmp     i, k
-                bcc     loop
+        ldr     a, [z, i, lsl #3]
+        lsr     h, a, #61
+        add     l, a, a
+        add     h, h, h, lsr #2
+        adds    l, l, l, lsl #2
+        adc     h, h, xzr
+        adds    a, l, d
+        str     a, [z, i, lsl #3]
+        adc     d, h, xzr
+        add     i, i, 1
+        cmp     i, k
+        bcc     loop
 
 // Return the final carry
 
 end:
-                mov     x0, d
-                ret
+        mov     x0, d
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

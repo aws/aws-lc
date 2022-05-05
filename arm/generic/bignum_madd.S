@@ -58,78 +58,78 @@ _bignum_madd:
 // Note that fortuitously our "carry/remainder" term is still right!
 // As it's a multiply-add, could also do this if either argument is trivial
 
-                cbz     p, end
+        cbz     p, end
 
 // initialize (h,l) = 0, saving c = 0 for inside the loop
 
-                mov     l, xzr
-                mov     h, xzr
+        mov     l, xzr
+        mov     h, xzr
 
 // Iterate outer loop from k = 0 ... k = p - 1 producing result digits
 
-                mov     k, xzr
+        mov     k, xzr
 outerloop:
 
 // Add the existing z[k] and (h,l) to get initial (c,h,l) combination
 
-                ldr     c, [z, k, lsl #3]
-                adds    l, l, c
-                adcs    h, h, xzr
-                adc     c, xzr, xzr
+        ldr     c, [z, k, lsl #3]
+        adds    l, l, c
+        adcs    h, h, xzr
+        adc     c, xzr, xzr
 
 // First let a = MAX 0 (k + 1 - n) and b = MIN (k + 1) m
 // We want to accumulate all x[i] * y[k - i] for a <= i < b
 
-                add     a, k, #1
-                cmp     a, m
-                csel    b, a, m, cc
-                subs    a, a, n
-                csel    a, a, xzr, cs
+        add     a, k, #1
+        cmp     a, m
+        csel    b, a, m, cc
+        subs    a, a, n
+        csel    a, a, xzr, cs
 
 // Set loop count i = b - a, and skip everything if it's <= 0
 
-                subs    i, b, a
-                bls     innerend
+        subs    i, b, a
+        bls     innerend
 
 // Use temporary pointers xx = x + 8 * a and yy = y + 8 * (k - b)
 // Increment xx per iteration but just use loop counter with yy
 // So we start with [xx] = x[a] and [yy] = y[(k - b) + (b - a)] = y[k - a]
 
-                lsl     xx, a, #3
-                add     xx, xx, x
+        lsl     xx, a, #3
+        add     xx, xx, x
 
-                sub     yy, k, b
-                lsl     yy, yy, #3
-                add     yy, yy, y
+        sub     yy, k, b
+        lsl     yy, yy, #3
+        add     yy, yy, y
 
 // And index using the loop counter i = b - a, ..., i = 1
 
 innerloop:
-                ldr     a, [xx], #8
-                ldr     b, [yy, i, lsl #3]
-                mul     d, a, b
-                umulh   a, a, b
-                adds    l, l, d
-                adcs    h, h, a
-                adc     c, c, xzr
-                subs    i, i, #1
-                bne     innerloop
+        ldr     a, [xx], #8
+        ldr     b, [yy, i, lsl #3]
+        mul     d, a, b
+        umulh   a, a, b
+        adds    l, l, d
+        adcs    h, h, a
+        adc     c, c, xzr
+        subs    i, i, #1
+        bne     innerloop
 
 innerend:
-                str     l, [z, k, lsl #3]
-                mov     l, h
-                mov     h, c
+        str     l, [z, k, lsl #3]
+        mov     l, h
+        mov     h, c
 
-                add     k, k, #1
-                cmp     k, p
-                bcc     outerloop                       // Inverted carry flag!
+        add     k, k, #1
+        cmp     k, p
+        bcc     outerloop                       // Inverted carry flag!
 
 // Return the "carry/remainder" term
 
-                mov     x0, l
+        mov     x0, l
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

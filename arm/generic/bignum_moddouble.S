@@ -42,42 +42,42 @@
 bignum_moddouble:
 _bignum_moddouble:
 
-                adds    j, k, xzr               // j = k and ZF = (k = 0)
-                beq     end                     // if k = 0 do nothing
+        adds    j, k, xzr               // j = k and ZF = (k = 0)
+        beq     end                     // if k = 0 do nothing
 
 // Do (_::z) = 2 * x - m and generate a mask in c for 2 * x < m
 
-                mov     c, xzr
-                subs    i, xzr, xzr             // i = 0 and CF = 1
+        mov     c, xzr
+        subs    i, xzr, xzr             // i = 0 and CF = 1
 dubloop:
-                ldr     a, [x, i]
-                extr    c, a, c, #63
-                ldr     b, [m, i]
-                sbcs    c, c, b
-                str     c, [z, i]
-                mov     c, a
-                add     i, i, #8
-                sub     j, j, #1
-                cbnz    j, dubloop
-                lsr     c, c, #63
-                sbc     c, c, xzr
+        ldr     a, [x, i]
+        extr    c, a, c, #63
+        ldr     b, [m, i]
+        sbcs    c, c, b
+        str     c, [z, i]
+        mov     c, a
+        add     i, i, #8
+        sub     j, j, #1
+        cbnz    j, dubloop
+        lsr     c, c, #63
+        sbc     c, c, xzr
 
 // Now do a corrective masked addition z := z + [c] * m
 
-                mov     j, k
-                adds    i, xzr, xzr
+        mov     j, k
+        adds    i, xzr, xzr
 corrloop:
-                ldr     a, [z, i]
-                ldr     b, [m, i]
-                and     b, b, c
-                adcs    a, a, b
-                str     a, [z, i]
-                add     i, i, #8
-                sub     j, j, #1
-                cbnz    j, corrloop
+        ldr     a, [z, i]
+        ldr     b, [m, i]
+        and     b, b, c
+        adcs    a, a, b
+        str     a, [z, i]
+        add     i, i, #8
+        sub     j, j, #1
+        cbnz    j, corrloop
 
 end:
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

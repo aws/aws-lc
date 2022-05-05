@@ -108,6 +108,15 @@ let bytes_loaded_of_append3 = prove
           bytes_loaded s (word (pc + LENGTH l1)) l2`,
   REWRITE_TAC [WORD_ADD] THEN METIS_TAC [bytes_loaded_append]);;
 
+let BYTES_LOADED_BUTLAST = prove
+ (`!s pc l. bytes_loaded s pc l ==> bytes_loaded s pc (BUTLAST l)`,
+  REPEAT GEN_TAC THEN
+  ASM_CASES_TAC `l:byte list = []` THEN ASM_REWRITE_TAC[BUTLAST] THEN
+  FIRST_X_ASSUM(fun th ->
+   GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV)
+     [SYM(MATCH_MP APPEND_BUTLAST_LAST th)]) THEN
+  SIMP_TAC[bytes_loaded_append]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Shorthands for individual flags.                                          *)
 (* ------------------------------------------------------------------------- *)
@@ -1636,7 +1645,7 @@ let SOME_FLAGS = new_definition
  `SOME_FLAGS = [CF; PF; AF; ZF; SF; OF]`;;
 
 (* ------------------------------------------------------------------------- *)
-(* Nicer packaging for common patterns.                                      *)
+(* Standard System V AMD64 ABI as used on modern Unix/Linux/Mac OS.          *)
 (* ------------------------------------------------------------------------- *)
 
 (*** This is for the "System V AMD64 ABI", i.e. modern unixes     ***)
@@ -1669,6 +1678,41 @@ let PRESERVED_GPRS = define
 
 let MODIFIABLE_GPRS = define
  `MODIFIABLE_GPRS = [RAX; RCX; RDX; RSI; RDI; R8; R9; R10; R11]`;;
+
+(* ------------------------------------------------------------------------- *)
+(* Microsoft x86 fastcall ABI (the return value is in fact the same).        *)
+(* ------------------------------------------------------------------------- *)
+
+let WINDOWS_C_ARGUMENTS = define
+ `(WINDOWS_C_ARGUMENTS [a1;a2;a3;a4;a5;a6] s <=>
+        read RCX s = a1 /\ read RDX s = a2 /\ read R8 s = a3 /\
+        read R9 s = a4 /\
+        read (memory :> bytes64 (word_add (read RSP s) (word 40))) s = a5 /\
+        read (memory :> bytes64 (word_add (read RSP s) (word 48))) s = a6) /\
+  (WINDOWS_C_ARGUMENTS [a1;a2;a3;a4;a5] s <=>
+        read RCX s = a1 /\ read RDX s = a2 /\ read R8 s = a3 /\
+        read R9 s = a4 /\
+        read (memory :> bytes64 (word_add (read RSP s) (word 40))) s = a5) /\
+  (WINDOWS_C_ARGUMENTS [a1;a2;a3;a4] s <=>
+        read RCX s = a1 /\ read RDX s = a2 /\ read R8 s = a3 /\
+        read R9 s = a4) /\
+  (WINDOWS_C_ARGUMENTS [a1;a2;a3] s <=>
+        read RCX s = a1 /\ read RDX s = a2 /\ read R8 s = a3) /\
+  (WINDOWS_C_ARGUMENTS [a1;a2] s <=>
+        read RCX s = a1 /\ read RDX s = a2) /\
+  (WINDOWS_C_ARGUMENTS [a1] s <=>
+        read RCX s = a1) /\
+  (WINDOWS_C_ARGUMENTS [] s <=>
+        T)`;;
+
+let WINDOWS_C_RETURN = define
+ `WINDOWS_C_RETURN = read RAX`;;
+
+let WINDOWS_PRESERVED_GPRS = define
+ `WINDOWS_PRESERVED_GPRS = [RSP; RBX; RBP; RSI; RDI; R12; R13; R14; R15]`;;
+
+let WINDOWS_MODIFIABLE_GPRS = define
+ `WINDOWS_MODIFIABLE_GPRS = [RAX; RCX; RDX; R8; R9; R10; R11]`;;
 
 (* ------------------------------------------------------------------------- *)
 (* Clausal theorems and other execution assistance.                          *)
@@ -2605,12 +2649,11 @@ let X86_ADD_RETURN_NOSTACK_TAC =
 (* Version with register save/restore and stack adjustment.                  *)
 (* ------------------------------------------------------------------------- *)
 
-let X86_ADD_RETURN_STACK_TAC =
+let GEN_X86_ADD_RETURN_STACK_TAC =
   let mono2lemma = MESON[]
    `(!x. (!y. P x y) ==> (!y. Q x y)) ==> (!x y. P x y) ==> (!x y. Q x y)` in
-  fun execth coreth reglist stackoff ->
+  fun execth coreth reglist stackoff (n,m) ->
     let regs = dest_list reglist in
-    let n = let n0 = length regs in if 8 * n0 = stackoff then n0 else n0 + 1 in
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
     (if free_in `RSP` (concl coreth) then
@@ -2622,6 +2665,7 @@ let X86_ADD_RETURN_STACK_TAC =
         WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th)) THEN
     REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
     REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    REWRITE_TAC[WINDOWS_C_ARGUMENTS; WINDOWS_C_RETURN] THEN
     DISCH_THEN(fun th ->
       REPEAT GEN_TAC THEN
       TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
@@ -2638,64 +2682,206 @@ let X86_ADD_RETURN_STACK_TAC =
       MP_TAC th) THEN
     X86_BIGSTEP_TAC execth ("s"^string_of_int(n+1)) THEN
     REWRITE_TAC(!simulation_precanon_thms) THEN
-    X86_STEPS_TAC execth ((n+2)--(2*n+2)) THEN
+    X86_STEPS_TAC execth ((n+2)--(m+n+1)) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];;
 
+let X86_ADD_RETURN_STACK_TAC execth coreth reglist stackoff =
+  let n0 = length(dest_list reglist) in
+  let n = if 8 * n0 = stackoff then n0 else n0 + 1 in
+  GEN_X86_ADD_RETURN_STACK_TAC execth coreth reglist stackoff (n,n+1);;
+
 (* ------------------------------------------------------------------------- *)
-(* Bounding rules (useful to show carries are zero sometimes).               *)
+(* Additional tools for refined "bytes_loaded ... (BUTLAST l)" variants.     *)
 (* ------------------------------------------------------------------------- *)
 
-let BOUND_RULE =
-  let dest_add = dest_binop `( + ):num->num->num`
-  and dest_mul = dest_binop `( * ):num->num->num`
-  and le_tm = `( <= ):num->num->bool`
-  and pth = prove
-   (`val(x:int64) <= 18446744073709551615`,
-    MP_TAC(ISPEC `x:int64` VAL_BOUND) THEN REWRITE_TAC[DIMINDEX_64] THEN
-    ARITH_TAC)
-  and qth = ARITH_RULE `!n:num. n <= n` in
-  let gives_bound tm th =
-    let ptm = concl th in
-    let rtm = mk_comb(le_tm,tm) in
-    if is_comb ptm && rator ptm = rtm && is_numeral(rand ptm)
-    then th else failwith "gives_bound" in
-  let rec bound bths tm =
-    if is_numeral tm then SPEC tm qth else
-    try
-      tryfind (gives_bound tm) bths
-    with Failure _ -> try
-      PART_MATCH lhand BITVAL_BOUND tm
-    with Failure _ -> try
-      PART_MATCH lhand pth tm
-    with Failure _ -> try
-      let ltm,rtm = dest_add tm in
-      let lth = bound bths ltm and rth = bound bths rtm in
-      CONV_RULE (RAND_CONV NUM_ADD_CONV) (MATCH_MP LE_ADD2 (CONJ lth rth))
-   with Failure _ -> try
-      let ltm,rtm = dest_mul tm in
-      let lth = bound bths ltm and rth = bound bths rtm in
-      CONV_RULE (RAND_CONV NUM_MULT_CONV) (MATCH_MP LE_MULT2 (CONJ lth rth))
-   with Failure _ -> failwith "BOUND_RULE" in
-  bound;;
+let X86_TRIM_EXEC_RULE =
+  let trimth = AP_TERM `BUTLAST:byte list->byte list`
+  and pushr = GEN_REWRITE_RULE (RAND_CONV o TOP_SWEEP_CONV)
+               [BUTLAST_CLAUSES] in
+  pushr o trimth;;
 
-let DERIVE_BOUNDS_RULE =
-  let prule = (MATCH_MP o prove)
-   (`2 EXP 64 * x + val(y:int64) <= b
-     ==> x <= b DIV 18446744073709551616 /\
-         val y <= MIN 18446744073709551615 b`,
-    MP_TAC(ISPEC `y:int64` VAL_BOUND) THEN REWRITE_TAC[DIMINDEX_64] THEN
-    ARITH_TAC) in
-  let rec DERIVE_BOUNDS_RULE bths eths =
-    match eths with
-       [] -> bths
-    | eth::oeths ->
-        let newths =
-          try let etm = concl eth in
-              let ltm,rtm = dest_eq etm in
-              let rth = BOUND_RULE bths rtm in
-              let lth = GEN_REWRITE_RULE LAND_CONV [SYM eth] rth in
-              let mth = prule lth in
-              map (CONV_RULE(RAND_CONV NUM_REDUCE_CONV)) (CONJUNCTS mth)
-          with Failure _ -> [] in
-        DERIVE_BOUNDS_RULE (newths @ bths) oeths in
-  DERIVE_BOUNDS_RULE;;
+let X86_MK_CORE_EXEC_RULE = X86_MK_EXEC_RULE o X86_TRIM_EXEC_RULE;;
+
+let X86_CORE_PROMOTE =
+  let lemma = prove
+   (`(ensures x86 (\s. bytes_loaded s (word pc) (BUTLAST l) /\ P s) Q C
+      ==> ensures x86 (\s. bytes_loaded s (word pc) l /\ P s) Q C) /\
+     ((A ==> ensures x86 (\s. bytes_loaded s (word pc) (BUTLAST l) /\ P s) Q C)
+      ==> A ==> ensures x86 (\s. bytes_loaded s (word pc) l /\ P s) Q C)`,
+    MATCH_MP_TAC(TAUT `(p ==> q) /\ p ==> p /\ q`) THEN
+    CONJ_TAC THENL [CONV_TAC TAUT; ALL_TAC] THEN
+    MATCH_MP_TAC(REWRITE_RULE[IMP_CONJ] ENSURES_PRECONDITION_THM) THEN
+    GEN_TAC THEN REWRITE_TAC[] THEN MATCH_MP_TAC MONO_AND THEN
+    REWRITE_TAC[BYTES_LOADED_BUTLAST]) in
+  let rule1 = MATCH_MP(CONJUNCT1 lemma)
+  and rule2 = MATCH_MP(CONJUNCT2 lemma) in
+  fun th -> let avs,bod = strip_forall(concl th) in
+            let sth = SPECL avs th in
+            let gth = try rule2 sth with Failure _ -> rule1 sth in
+            GENL avs gth;;
+
+let X86_PROMOTE_RETURN_NOSTACK_TAC mc core =
+  X86_ADD_RETURN_NOSTACK_TAC (X86_MK_EXEC_RULE mc) (X86_CORE_PROMOTE core);;
+
+let X86_PROMOTE_RETURN_STACK_TAC mc core regs off =
+  X86_ADD_RETURN_STACK_TAC
+    (X86_MK_EXEC_RULE mc) (X86_CORE_PROMOTE core) regs off;;
+
+(* ------------------------------------------------------------------------- *)
+(* Wrap up function for the Windows ABI                                      *)
+(* ------------------------------------------------------------------------- *)
+
+let WINDOWS_ABI_STACK_THM = prove
+ (`(read RSP s = stackpointer /\ P /\
+    WINDOWS_C_ARGUMENTS [a1; a2; a3; a4; a5] s /\ Q <=>
+    read RSP s = stackpointer /\ P /\
+    (WINDOWS_C_ARGUMENTS [a1; a2; a3; a4] s /\
+     read (memory :> bytes64 (word_add stackpointer (word 40))) s = a5) /\
+    Q) /\
+   (read RSP s = stackpointer /\ P /\
+    WINDOWS_C_ARGUMENTS [a1; a2; a3; a4; a5; a6] s /\ Q <=>
+    read RSP s = stackpointer /\ P /\
+    (WINDOWS_C_ARGUMENTS [a1; a2; a3; a4] s /\
+     read (memory :> bytes64 (word_add stackpointer (word 40))) s = a5 /\
+     read (memory :> bytes64 (word_add stackpointer (word 48))) s = a6) /\
+    Q) /\
+   (read RSP s = stackpointer /\ P /\
+    WINDOWS_C_ARGUMENTS [a1; a2; a3; a4; a5] s <=>
+    read RSP s = stackpointer /\ P /\
+    (WINDOWS_C_ARGUMENTS [a1; a2; a3; a4] s /\
+     read (memory :> bytes64 (word_add stackpointer (word 40))) s = a5)) /\
+   (read RSP s = stackpointer /\ P /\
+    WINDOWS_C_ARGUMENTS [a1; a2; a3; a4; a5; a6] s <=>
+    read RSP s = stackpointer /\ P /\
+    (WINDOWS_C_ARGUMENTS [a1; a2; a3; a4] s /\
+     read (memory :> bytes64 (word_add stackpointer (word 40))) s = a5 /\
+     read (memory :> bytes64 (word_add stackpointer (word 48))) s = a6))`,
+  REWRITE_TAC[WINDOWS_C_ARGUMENTS] THEN MESON_TAC[]);;
+
+let WINDOWS_X86_WRAP_NOSTACK_TAC =
+  let mono2lemma = MESON[]
+     `(!x. (!y. P x y) ==> (!y. Q x y)) ==> (!x y. P x y) ==> (!x y. Q x y)`
+  and pcofflemma = MESON[]
+    `!n:num. (!x. P(x + n) ==> Q x) ==> (!x. P x) ==> (!x. Q x)`
+  and pcplusplus_conv =
+    GEN_REWRITE_CONV I
+     [MESON[ADD_ASSOC] `word((pc + m) + n) = word(pc + m + n)`] THENC
+    RAND_CONV(RAND_CONV NUM_ADD_CONV)
+  and count_args =
+    let argy = `WINDOWS_C_ARGUMENTS` in
+    let is_nargle t = is_comb t && rator t = argy in
+    length o dest_list o rand o find_term is_nargle in
+  fun winmc stdmc coreth (asl,w) ->
+    let nargs = count_args w in
+    let prolog_len = 2 + nargs
+    and epilog_len = 3
+    and stackoff = 16
+    and pcoff = match nargs with
+      1 -> 5 | 2 -> 8 | 3 -> 11 | 4 -> 14 | 5 -> 19 | 6 -> 24 | _ -> 0 in
+    let interstate = "s"^string_of_int(prolog_len+1)
+    and subimpth =
+      CONV_RULE NUM_REDUCE_CONV (REWRITE_RULE [LENGTH]
+        (MATCH_MP bytes_loaded_of_append3
+          (TRANS winmc (N_SUBLIST_CONV
+             (SPEC_ALL (X86_TRIM_EXEC_RULE stdmc)) pcoff
+             (rhs(concl winmc))))))
+    and winexecth = X86_MK_EXEC_RULE winmc in
+   (PURE_REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
+    MP_TAC coreth THEN
+    REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
+    MATCH_MP_TAC pcofflemma THEN
+    EXISTS_TAC (mk_small_numeral pcoff) THEN GEN_TAC THEN
+    CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV pcplusplus_conv)) THEN
+    DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
+    REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
+    REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    REWRITE_TAC[WINDOWS_C_ARGUMENTS; WINDOWS_C_RETURN; SOME_FLAGS] THEN
+    DISCH_THEN(fun th ->
+        REPEAT GEN_TAC THEN
+        TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
+        MP_TAC th) THEN
+    ASM_REWRITE_TAC[] THEN
+    TRY(ANTS_TAC THENL
+     [REPEAT CONJ_TAC THEN TRY DISJ2_TAC THEN NONOVERLAPPING_TAC;
+      ALL_TAC]) THEN
+    DISCH_THEN(fun th ->
+        ENSURES_PRESERVED_TAC "init_rsi" `RSI` THEN
+        ENSURES_PRESERVED_TAC "init_rdi" `RDI` THEN
+        REWRITE_TAC(!simulation_precanon_thms) THEN
+        ENSURES_INIT_TAC "s0" THEN
+        X86_STEPS_TAC winexecth (1--prolog_len) THEN
+        MP_TAC th) THEN
+    X86_BIGSTEP_TAC winexecth interstate THENL
+     [MATCH_MP_TAC subimpth THEN FIRST_X_ASSUM ACCEPT_TAC;
+      ALL_TAC] THEN
+    X86_STEPS_TAC winexecth ((prolog_len+2)--(prolog_len+epilog_len+1)) THEN
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]) (asl,w);;
+
+let WINDOWS_X86_WRAP_STACK_TAC =
+  let monopsrlemma = MESON[]
+     `(!x. P x ==> !p s r. Q x p s r)
+      ==> (!x. P x) ==> (!x p s r. Q x p s r)`
+  and pcofflemma = MESON[]
+    `!n:num. (!x. P(x + n) ==> Q x) ==> (!x. P x) ==> (!x. Q x)`
+  and pcplusplus_conv =
+    GEN_REWRITE_CONV I
+     [MESON[ADD_ASSOC] `word((pc + m) + n) = word(pc + m + n)`] THENC
+    RAND_CONV(RAND_CONV NUM_ADD_CONV)
+  and count_args =
+    let argy = `WINDOWS_C_ARGUMENTS` in
+    let is_nargle t = is_comb t && rator t = argy in
+    length o dest_list o rand o find_term is_nargle in
+  fun winmc stdmc coreth reglist stdstackoff (asl,w) ->
+    let stdregs = dest_list reglist in
+    let n =
+      let n0 = length stdregs in if 8 * n0 = stdstackoff then n0 else n0 + 1 in
+    let regs = [`RSI`; `RDI`] @ stdregs
+    and stackoff = stdstackoff + 16 in
+    let nargs = count_args w in
+    let prolog_len = 2 + nargs + n
+    and epilog_len = 3 + n in
+    let pcoff =  match nargs with
+      1 -> 5 | 2 -> 8 | 3 -> 11 | 4 -> 14 | 5 -> 19 | 6 -> 24 | _ -> 0 in
+    let interstate = "s"^string_of_int(prolog_len+1)
+    and subimpth =
+      CONV_RULE NUM_REDUCE_CONV (REWRITE_RULE [LENGTH]
+        (MATCH_MP bytes_loaded_of_append3
+          (TRANS winmc (N_SUBLIST_CONV
+             (SPEC_ALL (X86_TRIM_EXEC_RULE stdmc)) pcoff
+             (rhs(concl winmc))))))
+    and winexecth = X86_MK_EXEC_RULE winmc in
+   (PURE_REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
+    MP_TAC coreth THEN
+    REPEAT(MATCH_MP_TAC monopsrlemma THEN GEN_TAC) THEN
+    MATCH_MP_TAC pcofflemma THEN
+    EXISTS_TAC (mk_small_numeral pcoff) THEN GEN_TAC THEN
+    CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV pcplusplus_conv)) THEN
+    (if free_in `RSP` (concl coreth) then
+     DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
+     MATCH_MP_TAC MONO_FORALL THEN GEN_TAC
+    else
+     DISCH_THEN(fun th ->
+       WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th)) THEN
+    REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
+    REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    REWRITE_TAC[WINDOWS_C_ARGUMENTS; WINDOWS_C_RETURN; SOME_FLAGS] THEN
+    DISCH_THEN(fun th ->
+        REPEAT GEN_TAC THEN
+        TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
+        MP_TAC th) THEN
+    ASM_REWRITE_TAC[] THEN
+    TRY(ANTS_TAC THENL
+     [REPEAT CONJ_TAC THEN TRY DISJ2_TAC THEN NONOVERLAPPING_TAC;
+      ALL_TAC]) THEN
+     DISCH_THEN(fun th ->
+      MAP_EVERY (fun c ->
+                    ENSURES_PRESERVED_TAC ("init_"^fst(dest_const c)) c)
+                regs THEN
+      REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
+      X86_STEPS_TAC winexecth (1--prolog_len) THEN
+      MP_TAC th) THEN
+    X86_BIGSTEP_TAC winexecth interstate THENL
+     [MATCH_MP_TAC subimpth THEN FIRST_X_ASSUM ACCEPT_TAC;
+      ALL_TAC] THEN
+    X86_STEPS_TAC winexecth ((prolog_len+2)--(prolog_len+epilog_len+1)) THEN
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]) (asl,w);;

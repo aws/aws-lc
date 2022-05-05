@@ -22,6 +22,7 @@
 // Returns x mod m, assuming m is nonzero.
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, RDX = m, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, R8 = m, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -54,84 +55,92 @@
 bignum_cmod:
 _bignum_cmod:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
+
 // Initialize l = 0 now for convenience (we eventually need to do it).
 // If the bignum is zero-length, l is already the right answer of 0
 
-                xorq    l, l
-                testq   k, k
-                jz      end
+        xorq    l, l
+        testq   k, k
+        jz      end
 
 // Move m into its permanent home (also used for n).
 // Find number of leading zeros of m and let n = 2^e m so that for an
 // in-scope (nonzero) input m we have n >= 2^63, e <= 63.
 
-                movq    %rdx, m
-                bsrq    m, e
-                xorq    $63, e
-                shlq    %cl, m
+        movq    %rdx, m
+        bsrq    m, e
+        xorq    $63, e
+        shlq    %cl, m
 
 // A near-clone of word_recip so 2^64 + w = ceil(2^128 / n) - 1
 
-                movq   n, r
-                movq   $0x1FFFFFFFFFFFF, w
-                shrq   $16, r
-                xorq   r, w
-                incq   r
-                shrq   $32, w
-                movq   r, h
-                imulq  w, h
-                negq   h
-                movq   h, a
-                shrq   $49, a
-                imulq  a, a
-                shrq   $34, h
-                addq   a, h
-                orq    $0x40000000, a
-                imulq  h, a
-                shrq   $30, a
-                imulq  w, a
-                shlq   $30, w
-                addq   a, w
-                shrq   $30, w
-                movq   r, h
-                imulq  w, h
-                negq   h
-                shrq   $24, h
-                imulq  w, h
-                shlq   $16, w
-                shrq   $24, h
-                addq   h, w
-                movq   r, h
-                imulq  w, h
-                negq   h
-                shrq   $32, h
-                imulq  w, h
-                shlq   $31, w
-                shrq   $17, h
-                addq   h, w
-                movq   n, a
-                mulq   w
-                shrdq  $60, h, a
-                movq   w, h
-                shrq   $33, h
-                notq   a
-                imulq  h, a
-                shlq   $1, w
-                shrq   $33, a
-                addq   a, w
-                addq   $1, w
-                movq   n, a
-                sbbq   $0, w
-                mulq   w
-                addq   n, h
-                sbbq   $0, w
+        movq   n, r
+        movq   $0x1FFFFFFFFFFFF, w
+        shrq   $16, r
+        xorq   r, w
+        incq   r
+        shrq   $32, w
+        movq   r, h
+        imulq  w, h
+        negq   h
+        movq   h, a
+        shrq   $49, a
+        imulq  a, a
+        shrq   $34, h
+        addq   a, h
+        orq    $0x40000000, a
+        imulq  h, a
+        shrq   $30, a
+        imulq  w, a
+        shlq   $30, w
+        addq   a, w
+        shrq   $30, w
+        movq   r, h
+        imulq  w, h
+        negq   h
+        shrq   $24, h
+        imulq  w, h
+        shlq   $16, w
+        shrq   $24, h
+        addq   h, w
+        movq   r, h
+        imulq  w, h
+        negq   h
+        shrq   $32, h
+        imulq  w, h
+        shlq   $31, w
+        shrq   $17, h
+        addq   h, w
+        movq   n, a
+        mulq   w
+        shrdq  $60, h, a
+        movq   w, h
+        shrq   $33, h
+        notq   a
+        imulq  h, a
+        shlq   $1, w
+        shrq   $33, a
+        addq   a, w
+        addq   $1, w
+        movq   n, a
+        sbbq   $0, w
+        mulq   w
+        addq   n, h
+        sbbq   $0, w
 
 // Take the residue r = 2^128 - (2^64 + w) * n, which by the above bound
 // we know fits in 64 bits. We know 2^128 == r (mod n) and hence (mod m).
 
-                movq    n, r
-                imulq   w, r
-                negq    r
+        movq    n, r
+        imulq   w, r
+        negq    r
 
 // Now just go down through the digits accumulating [h;l] == x (mod n)
 // by 2^64 * [h;l] + d = 2^128 * h + [l;d] == r * h + [l; d]. That addition
@@ -141,19 +150,19 @@ _bignum_cmod:
 // overflow is r * h + [l; d] - (2^128 - r) = r * (h + 1) + [l; d] - 2^128
 // < 2^128 so we stay inside 2 words
 
-                xorl    hshort, hshort
+        xorl    hshort, hshort
 loop:
-                movq    h, a
-                mulq    r
-                addq    -8(x,k,8), a
-                adcq    l, h
-                movq    a, l
-                sbbq    a, a
-                andq    r, a
-                addq    a, l
-                adcq    $0, h
-                decq    k
-                jnz     loop
+        movq    h, a
+        mulq    r
+        addq    -8(x,k,8), a
+        adcq    l, h
+        movq    a, l
+        sbbq    a, a
+        andq    r, a
+        addq    a, l
+        adcq    $0, h
+        decq    k
+        jnz     loop
 
 // Now do reciprocal multiplication to reduce the 2-word modular equivalent
 // [h;l] to the single word l. If we assume the truncations are as follows
@@ -167,53 +176,57 @@ loop:
 // of n can't itself overflow, since we know it's an underestimate of
 // the initial residue.
 
-                movq    h, k // back up h for muls
-                movq    w, a
-                mulq    h
-                addq    k, h
-                sbbq    r, r
-                andq    n, r // So q = (r;h)
+        movq    h, k // back up h for muls
+        movq    w, a
+        mulq    h
+        addq    k, h
+        sbbq    r, r
+        andq    n, r // So q = (r;h)
 
-                movq    h, a
-                mulq    n
-                addq    r, h
-                xorq    r, r
-                subq    a, l
-                sbbq    h, k // (k,l) = first reduction
+        movq    h, a
+        mulq    n
+        addq    r, h
+        xorq    r, r
+        subq    a, l
+        sbbq    h, k // (k,l) = first reduction
 
-                cmovnzq n, r
-                xorl    ashort, ashort
-                subq    r, l
-                sbbq    a, k
+        cmovnzq n, r
+        xorl    ashort, ashort
+        subq    r, l
+        sbbq    a, k
 
-                cmovnzq n, a
-                subq    a, l
+        cmovnzq n, a
+        subq    a, l
 
 // One more reciprocal multiplication to do a modular reduction, but now in
 // one word and in terms of the original m. For the quotient estimate we want
 // q = ((2^64 + w) * l) / 2^{128-e} = ((2^64 + w) * l) / 2^65 / 2^{63-e}.
 
-                movq    w, a
-                mulq    l
-                addq    l, h
-                rcr     $1, h
+        movq    w, a
+        mulq    l
+        addq    l, h
+        rcr     $1, h
 
-                shrq    %cl, m
-                xorq    $63, e
-                shrq    %cl, h
+        shrq    %cl, m
+        xorq    $63, e
+        shrq    %cl, h
 
-                imulq   m, h
-                subq    h, l
+        imulq   m, h
+        subq    h, l
 
 // Note that since there is no neglected "low" part of the single word,
 // one round of correction suffices; in the analog of the above l = 0
 // and hence the residue so far is already < 2 * m.
 
-                movq    l, a
-                subq    m, l
+        movq    l, a
+        subq    m, l
 end:
-                cmovncq l, a
-                ret
+        cmovncq l, a
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

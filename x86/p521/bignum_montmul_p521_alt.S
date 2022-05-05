@@ -26,6 +26,7 @@
 // can be considered a Montgomery operation to base 2^521.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -68,6 +69,14 @@
 
 bignum_montmul_p521_alt:
 _bignum_montmul_p521_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
 
 // Make more registers available and make temporary space on stack
 
@@ -333,6 +342,10 @@ _bignum_montmul_p521_alt:
         pop     r14
         pop     r13
         pop     r12
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

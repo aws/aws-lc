@@ -24,6 +24,7 @@
 // But in general assumes that the input k is a multiple of 8.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = m, RCX = w, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = w, returns RAX
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -350,6 +351,15 @@ innerend:
 bignum_emontredc_8n:
 _bignum_emontredc_8n:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+        mov     rcx, r9
+#endif
+
 // Save more registers to play with
 
         push    rbp
@@ -411,6 +421,10 @@ end:
         pop     rbx
         pop     rbp
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

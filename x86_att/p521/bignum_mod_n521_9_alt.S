@@ -23,6 +23,7 @@
 // Reduction is modulo the group order of the NIST curve P-521.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -50,6 +51,13 @@
 
 bignum_mod_n521_9_alt:
 _bignum_mod_n521_9_alt:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load the top digit, putting a bit-stuffed version in output buffer.
 // The initial quotient estimate is q = h + 1 where x = 2^521 * h + t
@@ -148,6 +156,10 @@ _bignum_mod_n521_9_alt:
         andl    $0x1FF, cshort
         movq    c, 64(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

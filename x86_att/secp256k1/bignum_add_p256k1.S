@@ -21,6 +21,7 @@
 //     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
 
@@ -46,6 +47,14 @@
 
 bignum_add_p256k1:
 _bignum_add_p256k1:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Load and add the two inputs as 2^256 * (-c) + [d3;d2;d1;d0] = x + y
 
@@ -91,6 +100,10 @@ _bignum_add_p256k1:
         adcq    $0, d3
         movq    d3, 24(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

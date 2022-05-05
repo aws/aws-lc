@@ -22,6 +22,7 @@
 //      (uint64_t z[static 9], uint64_t p, uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = p, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = p, R8 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -43,61 +44,73 @@
 bignum_optneg_p521:
 _bignum_optneg_p521:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
+
 // Load most inputs (into the limited registers) and OR all of them to get q
 
-                mov     d0, [x]
-                mov     q, d0
-                mov     d1, [x+8]
-                or      q, d1
-                mov     d2, [x+16]
-                or      q, d2
-                mov     d3, [x+24]
-                or      q, d3
-                mov     d4, [x+32]
-                or      q, d4
-                or      q, [x+40]
-                or      q, [x+48]
-                or      q, [x+56]
-                or      q, [x+64]
+        mov     d0, [x]
+        mov     q, d0
+        mov     d1, [x+8]
+        or      q, d1
+        mov     d2, [x+16]
+        or      q, d2
+        mov     d3, [x+24]
+        or      q, d3
+        mov     d4, [x+32]
+        or      q, d4
+        or      q, [x+40]
+        or      q, [x+48]
+        or      q, [x+56]
+        or      q, [x+64]
 
 // Turn q into a bitmask for "input is nonzero and p is nonzero", so that
 // we avoid doing -0 = p_521 and hence maintain strict modular reduction
 
-                neg     q
-                sbb     q, q
-                test    p, p
-                cmovz   q, p
+        neg     q
+        sbb     q, q
+        test    p, p
+        cmovz   q, p
 
 // Since p_521 is all 1s, the subtraction is just an exclusive-or with q
 // to give an optional inversion, with a slight fiddle for the top digit.
 
-                xor     d0, q
-                mov     [z], d0
-                xor     d1, q
-                mov     [z+8], d1
-                xor     d2, q
-                mov     [z+16], d2
-                xor     d3, q
-                mov     [z+24], d3
-                xor     d4, q
-                mov     [z+32], d4
-                mov     d0, [x+40]
-                xor     d0, q
-                mov     [z+40], d0
-                mov     d1, [x+48]
-                xor     d1, q
-                mov     [z+48], d1
-                mov     d2, [x+56]
-                xor     d2, q
-                mov     [z+56], d2
-                mov     d3, [x+64]
-                and     q, 0x1FF
-                xor     d3, q
-                mov     [z+64], d3
+        xor     d0, q
+        mov     [z], d0
+        xor     d1, q
+        mov     [z+8], d1
+        xor     d2, q
+        mov     [z+16], d2
+        xor     d3, q
+        mov     [z+24], d3
+        xor     d4, q
+        mov     [z+32], d4
+        mov     d0, [x+40]
+        xor     d0, q
+        mov     [z+40], d0
+        mov     d1, [x+48]
+        xor     d1, q
+        mov     [z+48], d1
+        mov     d2, [x+56]
+        xor     d2, q
+        mov     [z+56], d2
+        mov     d3, [x+64]
+        and     q, 0x1FF
+        xor     d3, q
+        mov     [z+64], d3
 
 // Return
 
-                ret
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

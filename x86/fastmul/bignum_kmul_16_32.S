@@ -25,6 +25,7 @@
 // it is retained in the prototype above for API consistency with ARM.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y, RCX = t
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y, R9 = t
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -468,6 +469,14 @@
 bignum_kmul_16_32:
 _bignum_kmul_16_32:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
+
 // Save more registers to play with
 
         push    rbx
@@ -498,6 +507,10 @@ _bignum_kmul_16_32:
         pop     rbp
         pop     rbx
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

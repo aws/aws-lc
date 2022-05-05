@@ -42,7 +42,7 @@ let bignum_bitsize_mc = define_assert_from_elf "bignum_bitsize_mc" "x86/generic/
   0xc3                     (* RET *)
 ];;
 
-let BIGNUM_BITSIZE_EXEC = X86_MK_EXEC_RULE bignum_bitsize_mc;;
+let BIGNUM_BITSIZE_EXEC = X86_MK_CORE_EXEC_RULE bignum_bitsize_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Correctness proof.                                                        *)
@@ -51,7 +51,7 @@ let BIGNUM_BITSIZE_EXEC = X86_MK_EXEC_RULE bignum_bitsize_mc;;
 let BIGNUM_BITSIZE_CORRECT = prove
  (`!k a x pc.
         ensures x86
-         (\s. bytes_loaded s (word pc) bignum_bitsize_mc /\
+         (\s. bytes_loaded s (word pc) (BUTLAST bignum_bitsize_mc) /\
               read RIP s = word pc /\
               C_ARGUMENTS [k;a] s /\
               bignum_from_memory(a,val k) s = x)
@@ -226,4 +226,31 @@ let BIGNUM_BITSIZE_SUBROUTINE_CORRECT = prove
                C_RETURN s' = word(bitsize x))
          (MAYCHANGE [RIP; RSP; RDI; RDX; RCX; RAX; R8] ,,
           MAYCHANGE SOME_FLAGS)`,
-  X86_ADD_RETURN_NOSTACK_TAC BIGNUM_BITSIZE_EXEC BIGNUM_BITSIZE_CORRECT);;
+  X86_PROMOTE_RETURN_NOSTACK_TAC bignum_bitsize_mc BIGNUM_BITSIZE_CORRECT);;
+
+(* ------------------------------------------------------------------------- *)
+(* Correctness of Windows ABI version.                                       *)
+(* ------------------------------------------------------------------------- *)
+
+let windows_bignum_bitsize_mc = define_from_elf
+   "windows_bignum_bitsize_mc" "x86/generic/bignum_bitsize.obj";;
+
+let WINDOWS_BIGNUM_BITSIZE_SUBROUTINE_CORRECT = prove
+ (`!k a x pc stackpointer returnaddress.
+        ALL (nonoverlapping (word_sub stackpointer (word 16),16))
+            [(word pc,0x43); (a,8 * val k)]
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) windows_bignum_bitsize_mc /\
+                  read RIP s = word pc /\
+                  read RSP s = stackpointer /\
+                  read (memory :> bytes64 stackpointer) s = returnaddress /\
+                  WINDOWS_C_ARGUMENTS [k;a] s /\
+                  bignum_from_memory(a,val k) s = x)
+             (\s'. read RIP s' = returnaddress /\
+                   read RSP s' = word_add stackpointer (word 8) /\
+                   WINDOWS_C_RETURN s' = word(bitsize x))
+             (MAYCHANGE [RIP; RSP; RDX; RCX; RAX; R8] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
+  WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_bitsize_mc bignum_bitsize_mc
+    BIGNUM_BITSIZE_CORRECT);;

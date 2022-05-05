@@ -25,6 +25,7 @@
 // is always true in practice because of address space limitations.
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
+// Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
 
@@ -44,28 +45,35 @@
 bignum_bitsize:
 _bignum_bitsize:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
+
 // Initialize the index i and also prepare default return value of 0 (i = %rax)
 
-                xorq    i, i
+        xorq    i, i
 
 // If the bignum is zero-length, just return 0
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Use w = a[i-1] to store nonzero words in a bottom-up sweep
 // Set the initial default to be as if we had a 11...11 word directly below
 
-                movq    $-1, w
-                xorq    j, j
+        movq    $-1, w
+        xorq    j, j
 loop:
-                movq    (x,j,8), a
-                incq    j
-                testq   a, a
-                cmovnzq j, i
-                cmovnzq a, w
-                cmpq    k, j
-                jnz     loop
+        movq    (x,j,8), a
+        incq    j
+        testq   a, a
+        cmovnzq j, i
+        cmovnzq a, w
+        cmpq    k, j
+        jnz     loop
 
 // Now w = a[i-1] is the highest nonzero word, or in the zero case the
 // default of the "extra" 11...11 = a[0-1]. We now want 64* i - clz(w) =
@@ -73,13 +81,17 @@ loop:
 // does not rely on the behavior of the bsr instruction for zero inputs,
 // which is undefined.
 
-                shlq    $6, i
-                subq    $63, i
-                bsrq    w, w
-                addq    w, %rax
+        shlq    $6, i
+        subq    $63, i
+        bsrq    w, w
+        addq    w, %rax
 
 end:
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

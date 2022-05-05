@@ -25,6 +25,7 @@
 // the true remainder x mod m.
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x, R8 = m
+// Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
 
@@ -67,182 +68,192 @@
 bignum_cdiv:
 _bignum_cdiv:
 
-                pushq   %rbx
-                pushq   %r12
-                pushq   %r13
-                pushq   %r14
-                pushq   %r15
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+        movq    %r9, %rcx
+        movq    56(%rsp), %r8
+#endif
+
+        pushq   %rbx
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
+        pushq   %r15
 
 // Move parameters that need a new home
 
-                movq    %rdx, n
-                movq    %rcx, x
+        movq    %rdx, n
+        movq    %rcx, x
 
 // First do a modulus computation, slightly tweaked from bignum_cmod,
 // changing variables and avoiding modification of the size parameter.
 // Initialize l = 0 now for convenience (we eventually need to do it).
 // If the bignum is zero-length, l is already the right answer of 0
 
-                xorq    l, l
-                testq   n, n
-                jz      nomodulus
+        xorq    l, l
+        testq   n, n
+        jz      nomodulus
 
-                bsrq    m, e
-                xorq    $63, e
-                shlq    %cl, m
+        bsrq    m, e
+        xorq    $63, e
+        shlq    %cl, m
 
-                movq   m, r
-                movq   $0x1FFFFFFFFFFFF, w
-                shrq   $16, r
-                xorq   r, w
-                incq   r
-                shrq   $32, w
-                movq   r, h
-                imulq  w, h
-                negq   h
-                movq   h, a
-                shrq   $49, a
-                imulq  a, a
-                shrq   $34, h
-                addq   a, h
-                orq    $0x40000000, a
-                imulq  h, a
-                shrq   $30, a
-                imulq  w, a
-                shlq   $30, w
-                addq   a, w
-                shrq   $30, w
-                movq   r, h
-                imulq  w, h
-                negq   h
-                shrq   $24, h
-                imulq  w, h
-                shlq   $16, w
-                shrq   $24, h
-                addq   h, w
-                movq   r, h
-                imulq  w, h
-                negq   h
-                shrq   $32, h
-                imulq  w, h
-                shlq   $31, w
-                shrq   $17, h
-                addq   h, w
-                movq   m, a
-                mulq   w
-                shrdq  $60, h, a
-                movq   w, h
-                shrq   $33, h
-                notq   a
-                imulq  h, a
-                shlq   $1, w
-                shrq   $33, a
-                addq   a, w
-                addq   $1, w
-                movq   m, a
-                sbbq   $0, w
-                mulq   w
-                addq   m, h
-                sbbq   $0, w
+        movq   m, r
+        movq   $0x1FFFFFFFFFFFF, w
+        shrq   $16, r
+        xorq   r, w
+        incq   r
+        shrq   $32, w
+        movq   r, h
+        imulq  w, h
+        negq   h
+        movq   h, a
+        shrq   $49, a
+        imulq  a, a
+        shrq   $34, h
+        addq   a, h
+        orq    $0x40000000, a
+        imulq  h, a
+        shrq   $30, a
+        imulq  w, a
+        shlq   $30, w
+        addq   a, w
+        shrq   $30, w
+        movq   r, h
+        imulq  w, h
+        negq   h
+        shrq   $24, h
+        imulq  w, h
+        shlq   $16, w
+        shrq   $24, h
+        addq   h, w
+        movq   r, h
+        imulq  w, h
+        negq   h
+        shrq   $32, h
+        imulq  w, h
+        shlq   $31, w
+        shrq   $17, h
+        addq   h, w
+        movq   m, a
+        mulq   w
+        shrdq  $60, h, a
+        movq   w, h
+        shrq   $33, h
+        notq   a
+        imulq  h, a
+        shlq   $1, w
+        shrq   $33, a
+        addq   a, w
+        addq   $1, w
+        movq   m, a
+        sbbq   $0, w
+        mulq   w
+        addq   m, h
+        sbbq   $0, w
 
-                movq    m, r
-                imulq   w, r
-                negq    r
+        movq    m, r
+        imulq   w, r
+        negq    r
 
-                xorl    hshort, hshort
-                movq    n, i
+        xorl    hshort, hshort
+        movq    n, i
 modloop:
-                movq    h, a
-                mulq    r
-                addq    -8(x,i,8), a
-                adcq    l, h
-                movq    a, l
-                sbbq    a, a
-                andq    r, a
-                addq    a, l
-                adcq    $0, h
-                decq    i
-                jnz     modloop
+        movq    h, a
+        mulq    r
+        addq    -8(x,i,8), a
+        adcq    l, h
+        movq    a, l
+        sbbq    a, a
+        andq    r, a
+        addq    a, l
+        adcq    $0, h
+        decq    i
+        jnz     modloop
 
-                movq    h, i
-                movq    w, a
-                mulq    h
-                addq    i, h
-                sbbq    r, r
-                andq    m, r
+        movq    h, i
+        movq    w, a
+        mulq    h
+        addq    i, h
+        sbbq    r, r
+        andq    m, r
 
-                movq    h, a
-                mulq    m
-                addq    r, h
-                xorq    r, r
-                subq    a, l
-                sbbq    h, i
+        movq    h, a
+        mulq    m
+        addq    r, h
+        xorq    r, r
+        subq    a, l
+        sbbq    h, i
 
-                cmovnzq m, r
-                xorl    ashort, ashort
-                subq    r, l
-                sbbq    a, i
+        cmovnzq m, r
+        xorl    ashort, ashort
+        subq    r, l
+        sbbq    a, i
 
-                cmovnzq m, a
-                subq    a, l
+        cmovnzq m, a
+        subq    a, l
 
-                movq    w, a
-                mulq    l
-                addq    l, h
-                rcr     $1, h
+        movq    w, a
+        mulq    l
+        addq    l, h
+        rcr     $1, h
 
-                shrq    %cl, m
-                xorq    $63, e
-                shrq    %cl, h
+        shrq    %cl, m
+        xorq    $63, e
+        shrq    %cl, h
 
-                imulq   m, h
-                subq    h, l
+        imulq   m, h
+        subq    h, l
 
-                movq    l, r
-                subq    m, l
+        movq    l, r
+        subq    m, l
 nomodulus:
-                cmovncq l, r
+        cmovncq l, r
 
 // If k = 0 then there's no more to be done
 
-                testq   k, k
-                jz      end
+        testq   k, k
+        jz      end
 
 // Let e be the number of trailing zeros in m (we can ignore m = 0)
 
-                bsfq    m, e
+        bsfq    m, e
 
 // Now just shift m right by e bits. So hereafter we can assume m is odd
 // but we first need to shift the input right by e bits then divide by m.
 
-                shrq   %cl, m
+        shrq   %cl, m
 
 // Compute the negated modular inverse w with w * m + 1 == 0 (mod 2^64)
 // This is essentially the same as word_negmodinv.
 
-                movq    m, a
-                movq    m, w
-                shlq    $2, a
-                subq    a, w
-                xorq    $2, w
-                movq    w, a
-                imulq   m, a
-                movl    $2, hshort
-                addq    a, h
-                addq    $1, a
-                imulq   h, w
-                imulq   a, a
-                movl    $1, hshort
-                addq    a, h
-                imulq   h, w
-                imulq   a, a
-                movl    $1, hshort
-                addq    a, h
-                imulq   h, w
-                imulq   a, a
-                movl    $1, hshort
-                addq    a, h
-                imulq   h, w
+        movq    m, a
+        movq    m, w
+        shlq    $2, a
+        subq    a, w
+        xorq    $2, w
+        movq    w, a
+        imulq   m, a
+        movl    $2, hshort
+        addq    a, h
+        addq    $1, a
+        imulq   h, w
+        imulq   a, a
+        movl    $1, hshort
+        addq    a, h
+        imulq   h, w
+        imulq   a, a
+        movl    $1, hshort
+        addq    a, h
+        imulq   h, w
+        imulq   a, a
+        movl    $1, hshort
+        addq    a, h
+        imulq   h, w
 
 // We have the remainder r, so now x = m * y + r for some quotient y
 // to be computed. Consider x' = x + (m - r) = m * (y + 1) and do a
@@ -262,69 +273,73 @@ nomodulus:
 // we need to shift the remainder too before subtracting from the
 // shifted m.
 
-                movq    r, d
-                shrq    %cl, d
-                movq    m, c
-                subq    d, c
-                xorl    ishort, ishort
+        movq    r, d
+        shrq    %cl, d
+        movq    m, c
+        subq    d, c
+        xorl    ishort, ishort
 
 // Unless n = 0, preload the zeroth digit and bump up the x pointer by
 // 8 and n down by 1, to ease indexing and comparison using the same
 // variable i in the main loop. When n = 0 we leave it alone, as the
 // comparison i < n will always fail and the x pointer is unused.
 
-                xorq    d, d
-                testq   n, n
-                jz      loop
-                movq    (x), d
-                addq    $8, x
-                decq    n
+        xorq    d, d
+        testq   n, n
+        jz      loop
+        movq    (x), d
+        addq    $8, x
+        decq    n
 
 loop:
 
 // Load the next digit up to get [l,d] then shift right e places
 
-                xorq    l, l
-                cmpq    n, i
-                jnc     noload
-                movq    (x,i,8), l
+        xorq    l, l
+        cmpq    n, i
+        jnc     noload
+        movq    (x,i,8), l
 noload:
-                shrdq   %cl, l, d
-                addq    c, d
-                sbbq    c, c
-                negq    c
+        shrdq   %cl, l, d
+        addq    c, d
+        sbbq    c, c
+        negq    c
 
 // Now the effective sum is [c,a] where the carry-in has been absorbed.
 // Do the main Montgomery step with the (odd) m, writing back ~q. Finally
 // set d to the next digit ready for the following iteration.
 
-                movq    w, a
-                imulq   d, a
-                notq    a
-                movq    a, (z,i,8)
-                notq    a
+        movq    w, a
+        imulq   d, a
+        notq    a
+        movq    a, (z,i,8)
+        notq    a
 
-                mulq    m
-                addq    d, a
-                adcq    h, c
+        mulq    m
+        addq    d, a
+        adcq    h, c
 
-                movq    l, d
+        movq    l, d
 
-                incq    i
-                cmpq    k, i
-                jc      loop
+        incq    i
+        cmpq    k, i
+        jc      loop
 
 // Return the modulus
 
 end:
-                movq    r, %rax
+        movq    r, %rax
 
-                popq    %r15
-                popq    %r14
-                popq    %r13
-                popq    %r12
-                popq    %rbx
-                ret
+        popq    %r15
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
