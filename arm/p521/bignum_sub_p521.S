@@ -49,50 +49,50 @@ _bignum_sub_p521:
 
 // First just subtract the numbers as [d8;d7;d6;d5;d4;d3;d2;d1;d0] = x - y
 
-                ldp     d0, d1, [x]
-                ldp     l, h, [y]
-                subs    d0, d0, l
-                sbcs    d1, d1, h
-                ldp     d2, d3, [x, #16]
-                ldp     l, h, [y, #16]
-                sbcs    d2, d2, l
-                sbcs    d3, d3, h
-                ldp     d4, d5, [x, #32]
-                ldp     l, h, [y, #32]
-                sbcs    d4, d4, l
-                sbcs    d5, d5, h
-                ldp     d6, d7, [x, #48]
-                ldp     l, h, [y, #48]
-                sbcs    d6, d6, l
-                sbcs    d7, d7, h
-                ldr     d8, [x, #64]
-                ldr     l, [y, #64]
-                sbcs    d8, d8, l
+        ldp     d0, d1, [x]
+        ldp     l, h, [y]
+        subs    d0, d0, l
+        sbcs    d1, d1, h
+        ldp     d2, d3, [x, #16]
+        ldp     l, h, [y, #16]
+        sbcs    d2, d2, l
+        sbcs    d3, d3, h
+        ldp     d4, d5, [x, #32]
+        ldp     l, h, [y, #32]
+        sbcs    d4, d4, l
+        sbcs    d5, d5, h
+        ldp     d6, d7, [x, #48]
+        ldp     l, h, [y, #48]
+        sbcs    d6, d6, l
+        sbcs    d7, d7, h
+        ldr     d8, [x, #64]
+        ldr     l, [y, #64]
+        sbcs    d8, d8, l
 
 // Now if x < y we want (x - y) + p_521 == (x - y) - 1 (mod 2^521)
 // Otherwise we just want the existing x - y result. So subtract
 // 1 iff the initial subtraction carried, then mask to 521 bits.
 
-                sbcs    d0, d0, xzr
-                sbcs    d1, d1, xzr
-                sbcs    d2, d2, xzr
-                sbcs    d3, d3, xzr
-                sbcs    d4, d4, xzr
-                sbcs    d5, d5, xzr
-                sbcs    d6, d6, xzr
-                sbcs    d7, d7, xzr
-                sbcs    d8, d8, xzr
-                and     d8, d8, #0x1FF
+        sbcs    d0, d0, xzr
+        sbcs    d1, d1, xzr
+        sbcs    d2, d2, xzr
+        sbcs    d3, d3, xzr
+        sbcs    d4, d4, xzr
+        sbcs    d5, d5, xzr
+        sbcs    d6, d6, xzr
+        sbcs    d7, d7, xzr
+        sbcs    d8, d8, xzr
+        and     d8, d8, #0x1FF
 
 // Store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
-                stp     d4, d5, [z, #32]
-                stp     d6, d7, [z, #48]
-                str     d8, [z, #64]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
+        stp     d4, d5, [z, #32]
+        stp     d6, d7, [z, #48]
+        str     d8, [z, #64]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
