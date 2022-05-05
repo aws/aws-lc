@@ -100,7 +100,9 @@ static inline uint8_t p521_use_s2n_bignum_alt(void) {
 #define p521_felem_add(out, in0, in1)   bignum_add_p521(out, in0, in1)
 #define p521_felem_sub(out, in0, in1)   bignum_sub_p521(out, in0, in1)
 #define p521_felem_opp(out, in0)        bignum_neg_p521(out, in0)
+// TODO: Convert to p521_felem_to_words
 #define p521_felem_to_bytes(out, in0)   bignum_tolebytes_p521(out, in0)
+// TODO: Convert to p521_felem_from_words
 #define p521_felem_from_bytes(out, in0) bignum_fromlebytes_p521(out, in0)
 
 // The following two functions need bmi2 and adx support.
@@ -171,7 +173,9 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 #define p521_felem_opp(out, in0)        fiat_secp521r1_carry_opp(out, in0)
 #define p521_felem_mul(out, in0, in1)   fiat_secp521r1_carry_mul(out, in0, in1)
 #define p521_felem_sqr(out, in0)        fiat_secp521r1_carry_square(out, in0)
+// TODO: Convert to p521_felem_to_words
 #define p521_felem_to_bytes(out, in0)   fiat_secp521r1_to_bytes(out, in0)
+// TODO: Convert to p521_felem_from_words
 #define p521_felem_from_bytes(out, in0) fiat_secp521r1_from_bytes(out, in0)
 
 #endif // P521_USE_S2N_BIGNUM_FIELD_ARITH
@@ -216,14 +220,14 @@ static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
 
 // NOTE: the input and output are in little-endian representation.
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
-  p521_felem_from_bytes(out, in->bytes);
+  p521_felem_from_bytes(out, (const uint8_t *)in->words);
 }
 
 // NOTE: the input and output are in little-endian representation.
 static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
   // |p521_felem_to_bytes| function will write the result to the first 66 bytes
   // of |out| which is exactly how many bytes are needed to represent a 521-bit
-  // element. However, EC_FELEM is a union of uint8_t array and BN_ULONG array.
+  // element.
   // The number of BN_ULONGs to represent a 521-bit value is 9 and 17, when
   // BN_ULONG is 64-bit and 32-bit, respectively. Nine 64-bit BN_ULONGs
   // translate to 72 bytes, which means that we have to make sure that the
@@ -231,7 +235,7 @@ static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
   // systems and Fiat's vs. ours representation we zero out the whole element.
   OPENSSL_memset((uint8_t*)out->words, 0, sizeof(out->words));
   // Convert the element to bytes.
-  p521_felem_to_bytes(out->bytes, in);
+  p521_felem_to_bytes((uint8_t *)out->words, in);
 }
 
 // Finite field inversion using Fermat Little Theorem.
@@ -583,11 +587,17 @@ static void ec_GFp_nistp521_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
 // |make_tables.go| script.
 
 // p521_get_bit returns the |i|-th bit in |in|
-static crypto_word_t p521_get_bit(const uint8_t *in, int i) {
+static crypto_word_t p521_get_bit(const EC_SCALAR *in, int i) {
   if (i < 0 || i >= 521) {
     return 0;
   }
-  return (in[i >> 3] >> (i & 7)) & 1;
+#if defined(OPENSSL_64_BIT)
+  assert(sizeof(BN_ULONG) == 8);
+  return (in->words[i >> 6] >> (i & 63)) & 1;
+#else
+  assert(sizeof(BN_ULONG) == 4);
+  return (in->words[i >> 5] >> (i & 31)) & 1;
+#endif
 }
 
 // Constants for scalar encoding in the scalar multiplication functions.
@@ -617,10 +627,10 @@ OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
 // It forces an odd scalar and outputs digits in
 // {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
 // i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
-static void p521_felem_mul_scalar_rwnaf(int16_t *out, const unsigned char *in) {
+static void p521_felem_mul_scalar_rwnaf(int16_t *out, const EC_SCALAR *in) {
   int16_t window, d;
 
-  window = (in[0] & P521_MUL_WSIZE_MASK) | 1;
+  window = (in->words[0] & P521_MUL_WSIZE_MASK) | 1;
   for (size_t i = 0; i < P521_MUL_NWINDOWS - 1; i++) {
     d = (window & P521_MUL_WSIZE_MASK) - P521_MUL_TWO_TO_WSIZE;
     out[i] = d;
@@ -719,7 +729,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 
   // Recode the scalar.
   int16_t rnaf[P521_MUL_NWINDOWS] = {0};
-  p521_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
+  p521_felem_mul_scalar_rwnaf(rnaf, scalar);
 
   // Initialize the accumulator |res| with the table entry corresponding to
   // the most significant digit of the recoded scalar (note that this digit
@@ -765,9 +775,9 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                  0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
 
   // Select |res| or |tmp| based on the |scalar| parity, in constant-time.
-  p521_felem_cmovznz(res[0], scalar->bytes[0] & 1, tmp[0], res[0]);
-  p521_felem_cmovznz(res[1], scalar->bytes[0] & 1, tmp[1], res[1]);
-  p521_felem_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
+  p521_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
+  p521_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
+  p521_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
 
   // Copy the result to the output.
   p521_to_generic(&r->X, res[0]);
@@ -843,7 +853,7 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
   int16_t rnaf[P521_MUL_NWINDOWS] = {0};
 
   // Recode the scalar.
-  p521_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
+  p521_felem_mul_scalar_rwnaf(rnaf, scalar);
 
   // Process the 4 groups of digits starting from group (3) down to group (0).
   for (int i = 3; i >= 0; i--) {
@@ -899,9 +909,9 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
                  1 /* mixed */, tmp[0], tmp[1], p521_felem_one);
 
   // Select |res| or |tmp| based on the |scalar| parity.
-  p521_felem_cmovznz(res[0], scalar->bytes[0] & 1, tmp[0], res[0]);
-  p521_felem_cmovznz(res[1], scalar->bytes[0] & 1, tmp[1], res[1]);
-  p521_felem_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
+  p521_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
+  p521_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
+  p521_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
 
   // Copy the result to the output.
   p521_to_generic(&r->X, res[0]);

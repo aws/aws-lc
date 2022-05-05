@@ -98,7 +98,9 @@ static inline uint8_t p384_use_s2n_bignum_alt(void) {
 #define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
 #define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
 #define p384_felem_opp(out, in0)        bignum_neg_p384(out, in0)
+// TODO: convert to p384_felem_to_words
 #define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, in0)
+// TODO: convert to p384_felem_from_words
 #define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, in0)
 
 // The following four functions need bmi2 and adx support.
@@ -132,7 +134,9 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
 #define p384_felem_sqr(out, in0)        fiat_p384_square(out, in0)
 #define p384_felem_to_mont(out, in0)    fiat_p384_to_montgomery(out, in0)
 #define p384_felem_from_mont(out, in0)  fiat_p384_from_montgomery(out, in0)
+// TODO: convert to p384_felem_to_words
 #define p384_felem_to_bytes(out, in0)   fiat_p384_to_bytes(out, in0)
+// TODO: convert to p384_felem_from_words
 #define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
@@ -162,7 +166,7 @@ static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
 
 // NOTE: the input and output are in little-endian representation.
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
-  p384_felem_from_bytes(out, in->bytes);
+  p384_felem_from_bytes(out, (const uint8_t *)in->words);
 }
 
 // NOTE: the input and output are in little-endian representation.
@@ -172,7 +176,7 @@ static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
   OPENSSL_STATIC_ASSERT(
       384 / 8 == sizeof(BN_ULONG) * ((384 + BN_BITS2 - 1) / BN_BITS2),
       p384_felem_to_bytes_leaves_bytes_uninitialized);
-  p384_felem_to_bytes(out->bytes, in);
+  p384_felem_to_bytes((uint8_t *)out->words, in);
 }
 
 // p384_inv_square calculates |out| = |in|^{-2}
@@ -547,10 +551,8 @@ static void ec_GFp_nistp384_mont_felem_to_bytes(
   p384_felem_from_mont(tmp, tmp);
   p384_to_generic(&felem_tmp, tmp);
 
-  // Convert to a big-endian byte array.
-  for (size_t i = 0; i < len; i++) {
-    out[i] = felem_tmp.bytes[len - 1 - i];
-  }
+  bn_words_to_big_endian(out, len, felem_tmp.words, group->order.width);
+
   *out_len = len;
 }
 
@@ -584,7 +586,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   p384_felem_mul(Z2_mont, Z2_mont, Z2_mont);
 
   p384_felem r_Z2;
-  p384_felem_from_bytes(r_Z2, r->bytes);  // r < order < p, so this is valid.
+  p384_felem_from_bytes(r_Z2, (const uint8_t*)r->words);  // r < order < p, so this is valid.
   p384_felem_mul(r_Z2, r_Z2, Z2_mont);
 
   p384_felem X;
@@ -651,11 +653,17 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 
 
 // p384_get_bit returns the |i|-th bit in |in|
-static crypto_word_t p384_get_bit(const uint8_t *in, int i) {
+static crypto_word_t p384_get_bit(const EC_SCALAR *in, int i) {
   if (i < 0 || i >= 384) {
     return 0;
   }
-  return (in[i >> 3] >> (i & 7)) & 1;
+#if defined(OPENSSL_64_BIT)
+  assert(sizeof(BN_ULONG) == 8);
+  return (in->words[i >> 6] >> (i & 63)) & 1;
+#else
+  assert(sizeof(BN_ULONG) == 4);
+  return (in->words[i >> 5] >> (i & 31)) & 1;
+#endif
 }
 
 // Constants for scalar encoding in the scalar multiplication functions.
@@ -685,10 +693,10 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
 // It forces an odd scalar and outputs digits in
 // {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
 // i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
-static void p384_felem_mul_scalar_rwnaf(int16_t *out, const unsigned char *in) {
+static void p384_felem_mul_scalar_rwnaf(int16_t *out, const EC_SCALAR *in) {
   int16_t window, d;
 
-  window = (in[0] & P384_MUL_WSIZE_MASK) | 1;
+  window = (in->words[0] & P384_MUL_WSIZE_MASK) | 1;
   for (size_t i = 0; i < P384_MUL_NWINDOWS - 1; i++) {
     d = (window & P384_MUL_WSIZE_MASK) - P384_MUL_TWO_TO_WSIZE;
     out[i] = d;
@@ -787,7 +795,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 
   // Recode the scalar.
   int16_t rnaf[P384_MUL_NWINDOWS] = {0};
-  p384_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
+  p384_felem_mul_scalar_rwnaf(rnaf, scalar);
 
   // Initialize the accumulator |res| with the table entry corresponding to
   // the most significant digit of the recoded scalar (note that this digit
@@ -833,9 +841,9 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                  0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
 
   // Select |res| or |tmp| based on the |scalar| parity, in constant-time.
-  p384_felem_cmovznz(res[0], scalar->bytes[0] & 1, tmp[0], res[0]);
-  p384_felem_cmovznz(res[1], scalar->bytes[0] & 1, tmp[1], res[1]);
-  p384_felem_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
+  p384_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
+  p384_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
+  p384_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
 
   // Copy the result to the output.
   p384_to_generic(&r->X, res[0]);
@@ -911,7 +919,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
   int16_t rnaf[P384_MUL_NWINDOWS] = {0};
 
   // Recode the scalar.
-  p384_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
+  p384_felem_mul_scalar_rwnaf(rnaf, scalar);
 
   // Process the 4 groups of digits starting from group (3) down to group (0).
   for (int i = 3; i >= 0; i--) {
@@ -967,9 +975,9 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
                  1 /* mixed */, tmp[0], tmp[1], p384_felem_one);
 
   // Select |res| or |tmp| based on the |scalar| parity.
-  p384_felem_cmovznz(res[0], scalar->bytes[0] & 1, tmp[0], res[0]);
-  p384_felem_cmovznz(res[1], scalar->bytes[0] & 1, tmp[1], res[1]);
-  p384_felem_cmovznz(res[2], scalar->bytes[0] & 1, tmp[2], res[2]);
+  p384_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
+  p384_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
+  p384_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
 
   // Copy the result to the output.
   p384_to_generic(&r->X, res[0]);
