@@ -21,6 +21,7 @@
 //     (uint64_t z[static 6], uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -87,32 +88,39 @@
 
 #define montredc(d7,d6,d5,d4,d3,d2,d1,d0)                               \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                mov     rbx, d0;                                        \
-                shl     rbx, 32;                                        \
-                add     rbx, d0;                                        \
+        mov     rbx, d0;                                        \
+        shl     rbx, 32;                                        \
+        add     rbx, d0;                                        \
 /* Construct [rcx;rdx;rax;-] = (2^384 - p_384) * w */                   \
 /* We know the lowest word will cancel so we can re-use d0 as a temp */ \
-                xor     ecx, ecx;                                       \
-                mov     rax, 0xffffffff00000001;                        \
-                mul     rbx;                                            \
-                mov     d0, rdx;                                        \
-                mov     rax, 0x00000000ffffffff;                        \
-                mul     rbx;                                            \
-                add     rax, d0;                                        \
-                adc     rdx, rbx;                                       \
-                adc     ecx, ecx;                                       \
+        xor     ecx, ecx;                                       \
+        mov     rax, 0xffffffff00000001;                        \
+        mul     rbx;                                            \
+        mov     d0, rdx;                                        \
+        mov     rax, 0x00000000ffffffff;                        \
+        mul     rbx;                                            \
+        add     rax, d0;                                        \
+        adc     rdx, rbx;                                       \
+        adc     ecx, ecx;                                       \
 /*  Now subtract that and add 2^384 * w */                              \
-                sub     d1, rax;                                        \
-                sbb     d2, rdx;                                        \
-                sbb     d3, rcx;                                        \
-                sbb     d4, 0;                                          \
-                sbb     d5, 0;                                          \
-                sbb     rbx, 0;                                         \
-                add     d6, rbx;                                        \
-                adc     d7, 0
+        sub     d1, rax;                                        \
+        sbb     d2, rdx;                                        \
+        sbb     d3, rcx;                                        \
+        sbb     d4, 0;                                          \
+        sbb     d5, 0;                                          \
+        sbb     rbx, 0;                                         \
+        add     d6, rbx;                                        \
+        adc     d7, 0
 
 bignum_tomont_p384_alt:
 _bignum_tomont_p384_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // We are essentially just doing a Montgomery multiplication of x and the
 // precomputed constant y = 2^768 mod p, so the code is almost the same
@@ -311,6 +319,10 @@ _bignum_tomont_p384_alt:
         pop     r12
         pop     rbx
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

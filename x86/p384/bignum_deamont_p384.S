@@ -24,6 +24,7 @@
 // "almost" meaning any 6-digit input will work, with no range restriction.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -56,31 +57,38 @@
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                mov     rdx, d0;                                        \
-                shl     rdx, 32;                                        \
-                add     rdx, d0;                                        \
+        mov     rdx, d0;                                        \
+        shl     rdx, 32;                                        \
+        add     rdx, d0;                                        \
 /* Construct [rsi;rcx;rax;-] = (2^384 - p_384) * w           */         \
 /* We know the lowest word will cancel so we can re-use d0   */         \
 /* as a temp.                                                */         \
-                xor     rsi, rsi;                                       \
-                mov     rax, 0xffffffff00000001;                        \
-                mulx    rax, rcx, rax;                                  \
-                mov     ecx, 0x00000000ffffffff;                        \
-                mulx    rcx, d0, rcx;                                   \
-                adc     rax, d0;                                        \
-                adc     rcx, rdx;                                       \
-                adc     rsi, 0;                                         \
+        xor     rsi, rsi;                                       \
+        mov     rax, 0xffffffff00000001;                        \
+        mulx    rax, rcx, rax;                                  \
+        mov     ecx, 0x00000000ffffffff;                        \
+        mulx    rcx, d0, rcx;                                   \
+        adc     rax, d0;                                        \
+        adc     rcx, rdx;                                       \
+        adc     rsi, 0;                                         \
 /* Now subtract that and add 2^384 * w                       */         \
-                sub     d1, rax;                                        \
-                sbb     d2, rcx;                                        \
-                sbb     d3, rsi;                                        \
-                sbb     d4, 0;                                          \
-                sbb     d5, 0;                                          \
-                mov     d6, rdx;                                        \
-                sbb     d6, 0
+        sub     d1, rax;                                        \
+        sbb     d2, rcx;                                        \
+        sbb     d3, rsi;                                        \
+        sbb     d4, 0;                                          \
+        sbb     d5, 0;                                          \
+        mov     d6, rdx;                                        \
+        sbb     d6, 0
 
 bignum_deamont_p384:
 _bignum_deamont_p384:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Save more registers to play with
 
@@ -171,6 +179,10 @@ _bignum_deamont_p384:
         pop     r13
         pop     r12
 
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

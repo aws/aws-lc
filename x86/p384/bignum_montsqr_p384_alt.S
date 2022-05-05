@@ -24,6 +24,7 @@
 // guaranteed in particular if x < p_384 initially (the "intended" case).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -89,32 +90,39 @@
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                mov     rbx, d0;                                        \
-                shl     rbx, 32;                                        \
-                add     rbx, d0;                                        \
+        mov     rbx, d0;                                        \
+        shl     rbx, 32;                                        \
+        add     rbx, d0;                                        \
 /* Construct [rax;rdx;d0;-] = (2^384 - p_384) * w            */         \
 /* We know the lowest word will cancel so we can re-use d0   */         \
 /* and rbx as temps.                                         */         \
-                mov     rax, 0xffffffff00000001;                        \
-                mul     rbx;                                            \
-                mov     d0, rdx;                                        \
-                mov     rax, 0x00000000ffffffff;                        \
-                mul     rbx;                                            \
-                add     d0, rax;                                        \
-                mov     eax, 0;                                         \
-                adc     rdx, rbx;                                       \
-                adc     eax, eax;                                       \
+        mov     rax, 0xffffffff00000001;                        \
+        mul     rbx;                                            \
+        mov     d0, rdx;                                        \
+        mov     rax, 0x00000000ffffffff;                        \
+        mul     rbx;                                            \
+        add     d0, rax;                                        \
+        mov     eax, 0;                                         \
+        adc     rdx, rbx;                                       \
+        adc     eax, eax;                                       \
 /* Now subtract that and add 2^384 * w                       */         \
-                sub     d1, d0;                                         \
-                sbb     d2, rdx;                                        \
-                sbb     d3, rax;                                        \
-                sbb     d4, 0;                                          \
-                sbb     d5, 0;                                          \
-                mov     d6, rbx;                                        \
-                sbb     d6, 0
+        sub     d1, d0;                                         \
+        sbb     d2, rdx;                                        \
+        sbb     d3, rax;                                        \
+        sbb     d4, 0;                                          \
+        sbb     d5, 0;                                          \
+        mov     d6, rbx;                                        \
+        sbb     d6, 0
 
 bignum_montsqr_p384_alt:
 _bignum_montsqr_p384_alt:
+
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+#endif
 
 // Save more registers to play with
 
@@ -326,6 +334,10 @@ _bignum_montsqr_p384_alt:
         pop     r12
         pop     rbp
         pop     rbx
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

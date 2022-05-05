@@ -23,6 +23,7 @@
 // Reduction is modulo the group order of the NIST curve P-384.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -50,6 +51,13 @@
 
 bignum_mod_n384_6:
 _bignum_mod_n384_6:
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load the input and compute x + (2^384 - n_384)
 
@@ -106,6 +114,10 @@ _bignum_mod_n384_6:
         sbbq    $0, d5
         movq    d5, 40(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

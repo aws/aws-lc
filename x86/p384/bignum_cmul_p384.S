@@ -22,6 +22,7 @@
 //     (uint64_t z[static 6], uint64_t c, uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
@@ -56,14 +57,22 @@
 bignum_cmul_p384:
 _bignum_cmul_p384:
 
+#if WINDOWS_ABI
+        push    rdi
+        push    rsi
+        mov     rdi, rcx
+        mov     rsi, rdx
+        mov     rdx, r8
+#endif
+
 // We seem to need (just!) one extra register, which we need to save and restore
 
-                push    r12
+        push    r12
 
 // Shuffle inputs (since we want multiplier in rdx)
 
-                mov     x, rdx
-                mov     m, rsi
+        mov     x, rdx
+        mov     m, rsi
 
 // Multiply, accumulating the result as 2^384 * h + [d5;d4;d3;d2;d1;d0]
 // but actually immediately producing q = h + 1, our quotient approximation,
@@ -71,18 +80,18 @@ _bignum_cmul_p384:
 // product is <= (2^64 - 1) * (p_384 - 1) and hence  h <= 2^64 - 2, meaning
 // there is no danger this addition of 1 could wrap.
 
-                mulx    d1, d0, [x]
-                mulx    d2, a, [x+8]
-                add     d1, a
-                mulx    d3,a, [x+16]
-                adc     d2, a
-                mulx    d4,a, [x+24]
-                adc     d3, a
-                mulx    d5,a, [x+32]
-                adc     d4, a
-                mulx    q,a, [x+40]
-                adc     d5, a
-                adc     q, 1
+        mulx    d1, d0, [x]
+        mulx    d2, a, [x+8]
+        add     d1, a
+        mulx    d3,a, [x+16]
+        adc     d2, a
+        mulx    d4,a, [x+24]
+        adc     d3, a
+        mulx    d5,a, [x+32]
+        adc     d4, a
+        mulx    q,a, [x+40]
+        adc     d5, a
+        adc     q, 1
 
 // It's easy to see -p_384 <= z - q * p_384 < p_384, so we just need to
 // subtract q * p_384 and then correct if that is negative by adding p_384.
@@ -94,24 +103,24 @@ _bignum_cmul_p384:
 //       = 2^384 * (h - q) + (l + q * r)
 //       = 2^384 * (-1) + (l + q * r)
 
-                xor     c, c
-                mov     a, 0xffffffff00000001
-                mulx    c, a, a
-                adcx    d0, a
-                adox    d1, c
-                mov     ashort, 0x00000000ffffffff
-                mulx    c, a, a
-                adcx    d1, a
-                adox    d2, c
-                adcx    d2, q
-                mov     ashort, 0
-                mov     cshort, 0
-                adox    a, a
-                adc     d3, a
-                adc     d4, c
-                adc     d5, c
-                adc     c, c
-                sub     c, 1
+        xor     c, c
+        mov     a, 0xffffffff00000001
+        mulx    c, a, a
+        adcx    d0, a
+        adox    d1, c
+        mov     ashort, 0x00000000ffffffff
+        mulx    c, a, a
+        adcx    d1, a
+        adox    d2, c
+        adcx    d2, q
+        mov     ashort, 0
+        mov     cshort, 0
+        adox    a, a
+        adc     d3, a
+        adc     d4, c
+        adc     d5, c
+        adc     c, c
+        sub     c, 1
 
 // The net c value is now the top word of the 7-word answer, hence will
 // be -1 if we need a corrective addition, 0 otherwise, usable as a mask.
@@ -119,29 +128,33 @@ _bignum_cmul_p384:
 // fact done by a masked subtraction of 2^384 - p_384, so that we only
 // have three nonzero digits and so can avoid using another register.
 
-                mov     qshort, 0x00000000ffffffff
-                xor     a, a
-                and     q, c
-                sub     a, q
-                and     c, 1
+        mov     qshort, 0x00000000ffffffff
+        xor     a, a
+        and     q, c
+        sub     a, q
+        and     c, 1
 
-                sub     d0, a
-                mov     [z], d0
-                sbb     d1, q
-                mov     [z+8], d1
-                sbb     d2, c
-                mov     [z+16], d2
-                sbb     d3, 0
-                mov     [z+24], d3
-                sbb     d4, 0
-                mov     [z+32], d4
-                sbb     d5, 0
-                mov     [z+40], d5
+        sub     d0, a
+        mov     [z], d0
+        sbb     d1, q
+        mov     [z+8], d1
+        sbb     d2, c
+        mov     [z+16], d2
+        sbb     d3, 0
+        mov     [z+24], d3
+        sbb     d4, 0
+        mov     [z+32], d4
+        sbb     d5, 0
+        mov     [z+40], d5
 
 // Return
 
-                pop     r12
-                ret
+        pop     r12
+#if WINDOWS_ABI
+        pop    rsi
+        pop    rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
