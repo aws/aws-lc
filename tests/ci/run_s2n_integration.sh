@@ -27,7 +27,7 @@ function aws_lc_build() {
 }
 
 function s2n_tls_build() {
-	cmake s2n-tls -GNinja "-B${S2N_TLS_BUILD_FOLDER}" "-DCMAKE_PREFIX_PATH=${AWS_LC_INSTALL_FOLDER}" "$@"
+	cmake s2n -GNinja "-B${S2N_TLS_BUILD_FOLDER}" "-DCMAKE_PREFIX_PATH=${AWS_LC_INSTALL_FOLDER}" "$@"
 	ninja -C ${S2N_TLS_BUILD_FOLDER}
 	ls -R ${S2N_TLS_BUILD_FOLDER}
 }
@@ -45,7 +45,7 @@ function s2n_tls_prepare_new_build() {
 # Get latest s2n-tls version.
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${S2N_TLS_BUILD_FOLDER}
-git clone https://github.com/aws/s2n-tls.git
+git clone https://github.com/torben-hansen/s2n.git
 ls
 
 # s2n-tls's FindLibCrypto.cmake expects to find both the static and shared
