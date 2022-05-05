@@ -53,13 +53,14 @@ bool ReadAll(std::vector<uint8_t> *out, FILE *file) {
   }
 }
 
-bool WriteToFile(const std::string &path, bssl::Span<const uint8_t> in) {
+bool WriteToFile(const std::string &path, const uint8_t *in,
+                        size_t in_len) {
   ScopedFILE file(fopen(path.c_str(), "wb"));
   if (!file) {
     fprintf(stderr, "Failed to open '%s': %s\n", path.c_str(), strerror(errno));
     return false;
   }
-  if (fwrite(in.data(), in.size(), 1, file.get()) != 1) {
+  if (fwrite(in, in_len, 1, file.get()) != 1) {
     fprintf(stderr, "Failed to write to '%s': %s\n", path.c_str(),
             strerror(errno));
     return false;
