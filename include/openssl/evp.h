@@ -691,6 +691,21 @@ OPENSSL_EXPORT int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
 // containing the result. It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 
+OPENSSL_EXPORT int EVP_PKEY_encapsulate_init(EVP_PKEY_CTX *ctx,
+                                             const OSSL_PARAM params[]);
+OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
+                                        unsigned char *wrappedkey,
+                                        size_t *wrappedkeylen,
+                                        unsigned char *genkey,
+                                        size_t *genkeylen);
+OPENSSL_EXPORT int EVP_PKEY_decapsulate_init(EVP_PKEY_CTX *ctx,
+                                             const OSSL_PARAM params[]);
+OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
+                                        unsigned char *unwrapped,
+                                        size_t *unwrappedlen,
+                                        const unsigned char *wrapped,
+                                        size_t wrappedlen);
+
 // EVP_PKEY_paramgen_init initialises an |EVP_PKEY_CTX| for a parameter
 // generation operation. It should be called before |EVP_PKEY_paramgen|.
 //
@@ -1078,6 +1093,31 @@ struct evp_pkey_st {
   const EVP_PKEY_ASN1_METHOD *ameth;
 } /* EVP_PKEY */;
 
+struct evp_kem_st {
+  int name_id;
+  const char *type_name;
+  const char *description;
+
+  int (*encapsulate_init)(void *ctx,
+                          void *provkey,
+                          const OSSL_PARAM params[]);
+  int (*encapsulate)(void *ctx,
+                     unsigned char *out,
+                     size_t *outlen,
+                     unsigned char *secret,
+                     size_t *secretlen);
+  int (*decapsulate_init)(void *ctx,
+                          void *provkey,
+                          const OSSL_PARAM params[]);
+  int (*decapsulate)(void *ctx,
+                     unsigned char *out,
+                     size_t *outlen,
+                     const unsigned char *in,
+                     size_t inlen);
+
+} /* EVP_KEM */;
+
+extern const EVP_KEM EVP_KEM_kyber512;
 
 #if defined(__cplusplus)
 }  // extern C

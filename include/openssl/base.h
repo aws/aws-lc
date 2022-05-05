@@ -424,6 +424,7 @@ typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;
 typedef struct evp_hpke_kdf_st EVP_HPKE_KDF;
 typedef struct evp_hpke_kem_st EVP_HPKE_KEM;
 typedef struct evp_hpke_key_st EVP_HPKE_KEY;
+typedef struct evp_kem_st EVP_KEM;
 typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
@@ -432,6 +433,7 @@ typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
+typedef struct ossl_param_st OSSL_PARAM;
 typedef struct pkcs12_st PKCS12;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
 typedef struct private_key_st X509_PKEY;
@@ -476,6 +478,13 @@ typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
 
+struct ossl_param_st {
+  const char *key;             /* the name of the parameter */
+  unsigned int data_type;      /* declare what kind of content is in buffer */
+  void *data;                  /* value being passed in or out */
+  size_t data_size;            /* data size */
+  size_t return_size;          /* returned content size */
+}; /* OSSL_PARAM */
 
 #if defined(__cplusplus)
 }  // extern C

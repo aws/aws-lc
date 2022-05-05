@@ -4,9 +4,10 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "../evp_extra/internal.h"
+#include "kem_kyber.h"
 
 
 static void kyber512_free(EVP_PKEY *pkey) {
@@ -15,12 +16,12 @@ static void kyber512_free(EVP_PKEY *pkey) {
 }
 
 static int kyber512_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
-  if (len != KYBER512_SECRETKEY_BYTES) {
+  if (len != KYBER512_PRIVATE_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_KEYBITS);
     return 0;
   }
 
-  KYBER_512_KEY *key = OPENSSL_malloc(sizeof(KYBER_512_KEY));
+  KYBER512_KEY *key = OPENSSL_malloc(sizeof(KYBER512_KEY));
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -35,12 +36,12 @@ static int kyber512_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) 
 }
 
 static int kyber512_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
-  if (len != KYBER512_PUBLICKEY_BYTES) {
+  if (len != KYBER512_PUBLIC_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_KEYBITS);
     return 0;
   }
 
-  KYBER_512_KEY *key = OPENSSL_malloc(sizeof(KYBER_512_KEY));
+  KYBER512_KEY *key = OPENSSL_malloc(sizeof(KYBER512_KEY));
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -56,57 +57,57 @@ static int kyber512_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
 
 static int kyber512_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
                                 size_t *out_len) {
-  const KYBER_512_KEY *key = pkey->pkey.ptr;
+  const KYBER512_KEY *key = pkey->pkey.ptr;
   if (!key->has_private) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
 
   if (out == NULL) {
-    *out_len = KYBER512_SECRETKEY_BYTES;
+    *out_len = KYBER512_PRIVATE_KEY_BYTES;
     return 1;
   }
 
-  if (*out_len < KYBER512_SECRETKEY_BYTES) {
+  if (*out_len < KYBER512_PRIVATE_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
-  OPENSSL_memcpy(out, key->priv, KYBER512_SECRETKEY_BYTES);
-  *out_len = KYBER512_SECRETKEY_BYTES;
+  OPENSSL_memcpy(out, key->priv, KYBER512_PRIVATE_KEY_BYTES);
+  *out_len = KYBER512_PRIVATE_KEY_BYTES;
   return 1;
 }
 
 static int kyber512_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
                                size_t *out_len) {
-  const KYBER_512_KEY *key = pkey->pkey.ptr;
+  const KYBER512_KEY *key = pkey->pkey.ptr;
   if (out == NULL) {
-    *out_len = KYBER512_PUBLICKEY_BYTES;
+    *out_len = KYBER512_PUBLIC_KEY_BYTES;
     return 1;
   }
 
-  if (*out_len < KYBER512_PUBLICKEY_BYTES) {
+  if (*out_len < KYBER512_PUBLIC_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
-  OPENSSL_memcpy(out, key->pub, KYBER512_PUBLICKEY_BYTES);
-  *out_len = KYBER512_PUBLICKEY_BYTES;
+  OPENSSL_memcpy(out, key->pub, KYBER512_PUBLIC_KEY_BYTES);
+  *out_len = KYBER512_PUBLIC_KEY_BYTES;
   return 1;
 }
 
 static int kyber512_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  const KYBER_512_KEY *a_key = a->pkey.ptr;
-  const KYBER_512_KEY *b_key = b->pkey.ptr;
-  return OPENSSL_memcmp(a_key->pub, b_key->pub, KYBER512_PUBLICKEY_BYTES) == 0;
+  const KYBER512_KEY *a_key = a->pkey.ptr;
+  const KYBER512_KEY *b_key = b->pkey.ptr;
+  return OPENSSL_memcmp(a_key->pub, b_key->pub, KYBER512_PUBLIC_KEY_BYTES) == 0;
 }
 
 static int kyber512_size(const EVP_PKEY *pkey) {
-  return KYBER512_PUBLICKEY_BYTES + KYBER512_SECRETKEY_BYTES;
+  return KYBER512_PUBLIC_KEY_BYTES + KYBER512_PRIVATE_KEY_BYTES;
 }
 
 static int kyber512_bits(const EVP_PKEY *pkey) {
-  return 8 * (KYBER512_PUBLICKEY_BYTES + KYBER512_SECRETKEY_BYTES);
+  return 8 * (KYBER512_PUBLIC_KEY_BYTES + KYBER512_PRIVATE_KEY_BYTES);
 }
 
 const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {

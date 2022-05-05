@@ -201,6 +201,17 @@ struct evp_pkey_ctx_st {
   int operation;
   // Algorithm specific data
   void *data;
+
+  //Currently, only the KEM operations are supported through this op variable.
+  //As more operations are added or migrated over to the OpenSSL 3 style, this
+  //union can be augmented with additional operation structures
+  //(e.g. encryption, signing)
+  union {
+    struct {
+      EVP_KEM *kem;
+      void *algctx; /* opaque KEM-specific context */
+    } encap;
+  } op;
 } /* EVP_PKEY_CTX */;
 
 struct evp_pkey_method_st {
