@@ -34,7 +34,7 @@ function s2n_tls_build() {
 
 function s2n_tls_run_tests() {
 	cd ${S2N_TLS_BUILD_FOLDER}
-	ctest3 -j 8 --output-on-failure
+	ctest -j 8 --output-on-failure
 	cd ${ROOT}
 }
 
