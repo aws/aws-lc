@@ -43,10 +43,6 @@ most recent stable version of each tool.
     Recent versions of GCC (6.1+) and Clang should work on non-Windows
     platforms, and maybe on Windows too.
 
-  * The most recent stable version of [Go](https://golang.org/dl/) is required.
-    Note Go is exempt from the five year support window. If not found by CMake,
-    the go executable may be configured explicitly by setting `GO_EXECUTABLE`.
-
   * On x86_64 Linux, the tests have an optional
     [libunwind](https://www.nongnu.org/libunwind/) dependency to test the
     assembly more thoroughly.
