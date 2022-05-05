@@ -16,3 +16,7 @@
    OpenSSL easier. */
 
 #include "crypto.h"
+
+//  |OPENSSL_VERSION_NUMBER| is kept to provide better compatibility with
+//  services that expect the value here.
+#define OPENSSL_VERSION_NUMBER 0x1010107f

@@ -17,6 +17,7 @@
 
 #include <openssl/base.h>
 #include <openssl/sha.h>
+#include <openssl/opensslv.h>
 
 // Upstream OpenSSL defines |OPENSSL_malloc|, etc., in crypto.h rather than
 // mem.h.
