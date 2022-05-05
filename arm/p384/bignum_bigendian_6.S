@@ -66,122 +66,122 @@ _bignum_tobebytes_6:
 
 // 0 and 5 words
 
-                ldrb    dshort, [x, #7]
-                extr    a, d, xzr, #8
-                ldrb    dshort, [x, #6]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #5]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #4]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #3]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #2]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #1]
-                extr    a, d, a, #8
-                ldrb    dshort, [x]
-                extr    a, d, a, #8
+        ldrb    dshort, [x, #7]
+        extr    a, d, xzr, #8
+        ldrb    dshort, [x, #6]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #5]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #4]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #3]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #2]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #1]
+        extr    a, d, a, #8
+        ldrb    dshort, [x]
+        extr    a, d, a, #8
 
-                ldrb    dshort, [x, #47]
-                extr    c, d, xzr, #8
-                ldrb    dshort, [x, #46]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #45]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #44]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #43]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #42]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #41]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #40]
-                extr    c, d, c, #8
+        ldrb    dshort, [x, #47]
+        extr    c, d, xzr, #8
+        ldrb    dshort, [x, #46]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #45]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #44]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #43]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #42]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #41]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #40]
+        extr    c, d, c, #8
 
-                str     a, [z, #40]
-                str     c, [z]
+        str     a, [z, #40]
+        str     c, [z]
 
 // 1 and 4 words
 
-                ldrb    dshort, [x, #15]
-                extr    a, d, xzr, #8
-                ldrb    dshort, [x, #14]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #13]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #12]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #11]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #10]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #9]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #8]
-                extr    a, d, a, #8
+        ldrb    dshort, [x, #15]
+        extr    a, d, xzr, #8
+        ldrb    dshort, [x, #14]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #13]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #12]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #11]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #10]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #9]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #8]
+        extr    a, d, a, #8
 
-                ldrb    dshort, [x, #39]
-                extr    c, d, xzr, #8
-                ldrb    dshort, [x, #38]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #37]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #36]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #35]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #34]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #33]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #32]
-                extr    c, d, c, #8
+        ldrb    dshort, [x, #39]
+        extr    c, d, xzr, #8
+        ldrb    dshort, [x, #38]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #37]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #36]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #35]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #34]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #33]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #32]
+        extr    c, d, c, #8
 
-                str     a, [z, #32]
-                str     c, [z, #8]
+        str     a, [z, #32]
+        str     c, [z, #8]
 
 // 2 and 3 words
 
-                ldrb    dshort, [x, #23]
-                extr    a, d, xzr, #8
-                ldrb    dshort, [x, #22]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #21]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #20]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #19]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #18]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #17]
-                extr    a, d, a, #8
-                ldrb    dshort, [x, #16]
-                extr    a, d, a, #8
+        ldrb    dshort, [x, #23]
+        extr    a, d, xzr, #8
+        ldrb    dshort, [x, #22]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #21]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #20]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #19]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #18]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #17]
+        extr    a, d, a, #8
+        ldrb    dshort, [x, #16]
+        extr    a, d, a, #8
 
-                ldrb    dshort, [x, #31]
-                extr    c, d, xzr, #8
-                ldrb    dshort, [x, #30]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #29]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #28]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #27]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #26]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #25]
-                extr    c, d, c, #8
-                ldrb    dshort, [x, #24]
-                extr    c, d, c, #8
+        ldrb    dshort, [x, #31]
+        extr    c, d, xzr, #8
+        ldrb    dshort, [x, #30]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #29]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #28]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #27]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #26]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #25]
+        extr    c, d, c, #8
+        ldrb    dshort, [x, #24]
+        extr    c, d, c, #8
 
-                str     a, [z, #24]
-                str     c, [z, #16]
+        str     a, [z, #24]
+        str     c, [z, #16]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

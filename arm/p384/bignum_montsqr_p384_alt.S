@@ -44,25 +44,25 @@
 #define montreds(d6,d5,d4,d3,d2,d1,d0, t3,t2,t1)                            \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64            */  \
 /* Store it in d6 to make the 2^384 * w contribution already            */  \
-                lsl     t1, d0, #32;                                        \
-                add     d6, t1, d0;                                         \
+        lsl     t1, d0, #32;                                        \
+        add     d6, t1, d0;                                         \
 /* Now let [t3;t2;t1;-] = (2^384 - p_384) * w                    */         \
 /* We know the lowest word will cancel d0 so we don't need it    */         \
-                mov     t1, #0xffffffff00000001;                            \
-                umulh   t1, t1, d6;                                         \
-                mov     t2, #0x00000000ffffffff;                            \
-                mul     t3, t2, d6;                                         \
-                umulh   t2, t2, d6;                                         \
-                adds    t1, t1, t3;                                         \
-                adcs    t2, t2, d6;                                         \
-                adc     t3, xzr, xzr;                                       \
+        mov     t1, #0xffffffff00000001;                            \
+        umulh   t1, t1, d6;                                         \
+        mov     t2, #0x00000000ffffffff;                            \
+        mul     t3, t2, d6;                                         \
+        umulh   t2, t2, d6;                                         \
+        adds    t1, t1, t3;                                         \
+        adcs    t2, t2, d6;                                         \
+        adc     t3, xzr, xzr;                                       \
 /* Now add it, by subtracting from 2^384 * w + x */                         \
-                subs    d1, d1, t1;                                         \
-                sbcs    d2, d2, t2;                                         \
-                sbcs    d3, d3, t3;                                         \
-                sbcs    d4, d4, xzr;                                        \
-                sbcs    d5, d5, xzr;                                        \
-                sbc     d6, d6, xzr
+        subs    d1, d1, t1;                                         \
+        sbcs    d2, d2, t2;                                         \
+        sbcs    d3, d3, t3;                                         \
+        sbcs    d4, d4, xzr;                                        \
+        sbcs    d5, d5, xzr;                                        \
+        sbc     d6, d6, xzr
 
 #define z x0
 #define x x1
@@ -95,185 +95,185 @@ _bignum_montsqr_p384_alt:
 
 // It's convenient to have two more registers to play with
 
-                stp     x19, x20, [sp, #-16]!
+        stp     x19, x20, [sp, #-16]!
 
 // Load all the elements as [a5;a4;a3;a2;a1;a0], set up an initial
 // window [u8;u7; u6;u5; u4;u3; u2;u1] = [34;05;03;01], and then
 // chain in the addition of 02 + 12 + 13 + 14 + 15 to that window
 // (no carry-out possible since we add it to the top of a product).
 
-                ldp     a0, a1, [x]
+        ldp     a0, a1, [x]
 
-                mul     u1, a0, a1
-                umulh   u2, a0, a1
+        mul     u1, a0, a1
+        umulh   u2, a0, a1
 
-                ldp     a2, a3, [x, #16]
+        ldp     a2, a3, [x, #16]
 
-                mul     l, a0, a2
-                adds    u2, u2, l
+        mul     l, a0, a2
+        adds    u2, u2, l
 
-                mul     u3, a0, a3
-                mul     l, a1, a2
-                adcs    u3, u3, l
+        mul     u3, a0, a3
+        mul     l, a1, a2
+        adcs    u3, u3, l
 
-                umulh   u4, a0, a3
-                mul     l, a1, a3
-                adcs    u4, u4, l
+        umulh   u4, a0, a3
+        mul     l, a1, a3
+        adcs    u4, u4, l
 
-                ldp     a4, a5, [x, #32]
+        ldp     a4, a5, [x, #32]
 
-                mul     u5, a0, a5
-                mul     l, a1, a4
-                adcs    u5, u5, l
+        mul     u5, a0, a5
+        mul     l, a1, a4
+        adcs    u5, u5, l
 
-                umulh   u6, a0, a5
-                mul     l, a1, a5
-                adcs    u6, u6, l
+        umulh   u6, a0, a5
+        mul     l, a1, a5
+        adcs    u6, u6, l
 
-                mul     u7, a3, a4
-                adcs    u7, u7, xzr
+        mul     u7, a3, a4
+        adcs    u7, u7, xzr
 
-                umulh   u8, a3, a4
-                adc     u8, u8, xzr
+        umulh   u8, a3, a4
+        adc     u8, u8, xzr
 
-                umulh   l, a0, a2
-                adds    u3, u3, l
-                umulh   l, a1, a2
-                adcs    u4, u4, l
-                umulh   l, a1, a3
-                adcs    u5, u5, l
-                umulh   l, a1, a4
-                adcs    u6, u6, l
-                umulh   l, a1, a5
-                adcs    u7, u7, l
-                adc     u8, u8, xzr
+        umulh   l, a0, a2
+        adds    u3, u3, l
+        umulh   l, a1, a2
+        adcs    u4, u4, l
+        umulh   l, a1, a3
+        adcs    u5, u5, l
+        umulh   l, a1, a4
+        adcs    u6, u6, l
+        umulh   l, a1, a5
+        adcs    u7, u7, l
+        adc     u8, u8, xzr
 
 // Now chain in the 04 + 23 + 24 + 25 + 35 + 45 terms
 
-                mul     l, a0, a4
-                adds    u4, u4, l
-                mul     l, a2, a3
-                adcs    u5, u5, l
-                mul     l, a2, a4
-                adcs    u6, u6, l
-                mul     l, a2, a5
-                adcs    u7, u7, l
-                mul     l, a3, a5
-                adcs    u8, u8, l
-                mul     u9, a4, a5
-                adcs    u9, u9, xzr
-                umulh   u10, a4, a5
-                adc     u10, u10, xzr
+        mul     l, a0, a4
+        adds    u4, u4, l
+        mul     l, a2, a3
+        adcs    u5, u5, l
+        mul     l, a2, a4
+        adcs    u6, u6, l
+        mul     l, a2, a5
+        adcs    u7, u7, l
+        mul     l, a3, a5
+        adcs    u8, u8, l
+        mul     u9, a4, a5
+        adcs    u9, u9, xzr
+        umulh   u10, a4, a5
+        adc     u10, u10, xzr
 
-                umulh   l, a0, a4
-                adds    u5, u5, l
-                umulh   l, a2, a3
-                adcs    u6, u6, l
-                umulh   l, a2, a4
-                adcs    u7, u7, l
-                umulh   l, a2, a5
-                adcs    u8, u8, l
-                umulh   l, a3, a5
-                adcs    u9, u9, l
-                adc     u10, u10, xzr
+        umulh   l, a0, a4
+        adds    u5, u5, l
+        umulh   l, a2, a3
+        adcs    u6, u6, l
+        umulh   l, a2, a4
+        adcs    u7, u7, l
+        umulh   l, a2, a5
+        adcs    u8, u8, l
+        umulh   l, a3, a5
+        adcs    u9, u9, l
+        adc     u10, u10, xzr
 
 // Double that, with u11 holding the top carry
 
-                adds    u1, u1, u1
-                adcs    u2, u2, u2
-                adcs    u3, u3, u3
-                adcs    u4, u4, u4
-                adcs    u5, u5, u5
-                adcs    u6, u6, u6
-                adcs    u7, u7, u7
-                adcs    u8, u8, u8
-                adcs    u9, u9, u9
-                adcs    u10, u10, u10
-                cset    u11, cs
+        adds    u1, u1, u1
+        adcs    u2, u2, u2
+        adcs    u3, u3, u3
+        adcs    u4, u4, u4
+        adcs    u5, u5, u5
+        adcs    u6, u6, u6
+        adcs    u7, u7, u7
+        adcs    u8, u8, u8
+        adcs    u9, u9, u9
+        adcs    u10, u10, u10
+        cset    u11, cs
 
 // Add the homogeneous terms 00 + 11 + 22 + 33 + 44 + 55
 
-                umulh   l, a0, a0
-                mul     u0, a0, a0
-                adds    u1, u1, l
+        umulh   l, a0, a0
+        mul     u0, a0, a0
+        adds    u1, u1, l
 
-                mul     l, a1, a1
-                adcs    u2, u2, l
-                umulh   l, a1, a1
-                adcs    u3, u3, l
+        mul     l, a1, a1
+        adcs    u2, u2, l
+        umulh   l, a1, a1
+        adcs    u3, u3, l
 
-                mul     l, a2, a2
-                adcs    u4, u4, l
-                umulh   l, a2, a2
-                adcs    u5, u5, l
+        mul     l, a2, a2
+        adcs    u4, u4, l
+        umulh   l, a2, a2
+        adcs    u5, u5, l
 
-                mul     l, a3, a3
-                adcs    u6, u6, l
-                umulh   l, a3, a3
-                adcs    u7, u7, l
+        mul     l, a3, a3
+        adcs    u6, u6, l
+        umulh   l, a3, a3
+        adcs    u7, u7, l
 
-                mul     l, a4, a4
-                adcs    u8, u8, l
-                umulh   l, a4, a4
-                adcs    u9, u9, l
+        mul     l, a4, a4
+        adcs    u8, u8, l
+        umulh   l, a4, a4
+        adcs    u9, u9, l
 
-                mul     l, a5, a5
-                adcs    u10, u10, l
-                umulh   l, a5, a5
-                adc     u11, u11, l
+        mul     l, a5, a5
+        adcs    u10, u10, l
+        umulh   l, a5, a5
+        adc     u11, u11, l
 
 // Montgomery rotate the low half
 
-                montreds(u0,u5,u4,u3,u2,u1,u0, a1,a2,a3)
-                montreds(u1,u0,u5,u4,u3,u2,u1, a1,a2,a3)
-                montreds(u2,u1,u0,u5,u4,u3,u2, a1,a2,a3)
-                montreds(u3,u2,u1,u0,u5,u4,u3, a1,a2,a3)
-                montreds(u4,u3,u2,u1,u0,u5,u4, a1,a2,a3)
-                montreds(u5,u4,u3,u2,u1,u0,u5, a1,a2,a3)
+        montreds(u0,u5,u4,u3,u2,u1,u0, a1,a2,a3)
+        montreds(u1,u0,u5,u4,u3,u2,u1, a1,a2,a3)
+        montreds(u2,u1,u0,u5,u4,u3,u2, a1,a2,a3)
+        montreds(u3,u2,u1,u0,u5,u4,u3, a1,a2,a3)
+        montreds(u4,u3,u2,u1,u0,u5,u4, a1,a2,a3)
+        montreds(u5,u4,u3,u2,u1,u0,u5, a1,a2,a3)
 
 // Add up the high and low parts as [h; u5;u4;u3;u2;u1;u0] = z
 
-                adds    u0, u0, u6
-                adcs    u1, u1, u7
-                adcs    u2, u2, u8
-                adcs    u3, u3, u9
-                adcs    u4, u4, u10
-                adcs    u5, u5, u11
-                adc     h, xzr, xzr
+        adds    u0, u0, u6
+        adcs    u1, u1, u7
+        adcs    u2, u2, u8
+        adcs    u3, u3, u9
+        adcs    u4, u4, u10
+        adcs    u5, u5, u11
+        adc     h, xzr, xzr
 
 // Now add [h; u11;u10;u9;u8;u7;u6] = z + (2^384 - p_384)
 
-                mov     l, #0xffffffff00000001
-                adds    u6, u0, l
-                mov     l, #0x00000000ffffffff
-                adcs    u7, u1, l
-                mov     l, #0x0000000000000001
-                adcs    u8, u2, l
-                adcs    u9, u3, xzr
-                adcs    u10, u4, xzr
-                adcs    u11, u5, xzr
-                adcs    h, h, xzr
+        mov     l, #0xffffffff00000001
+        adds    u6, u0, l
+        mov     l, #0x00000000ffffffff
+        adcs    u7, u1, l
+        mov     l, #0x0000000000000001
+        adcs    u8, u2, l
+        adcs    u9, u3, xzr
+        adcs    u10, u4, xzr
+        adcs    u11, u5, xzr
+        adcs    h, h, xzr
 
 // Now z >= p_384 iff h is nonzero, so select accordingly
 
-                csel    u0, u0, u6, eq
-                csel    u1, u1, u7, eq
-                csel    u2, u2, u8, eq
-                csel    u3, u3, u9, eq
-                csel    u4, u4, u10, eq
-                csel    u5, u5, u11, eq
+        csel    u0, u0, u6, eq
+        csel    u1, u1, u7, eq
+        csel    u2, u2, u8, eq
+        csel    u3, u3, u9, eq
+        csel    u4, u4, u10, eq
+        csel    u5, u5, u11, eq
 
 // Store back final result
 
-                stp     u0, u1, [z]
-                stp     u2, u3, [z, #16]
-                stp     u4, u5, [z, #32]
+        stp     u0, u1, [z]
+        stp     u2, u3, [z, #16]
+        stp     u4, u5, [z, #32]
 
 // Restore registers
 
-                ldp     x19, x20, [sp], #16
+        ldp     x19, x20, [sp], #16
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
