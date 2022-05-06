@@ -566,6 +566,7 @@ BSSL_NAMESPACE_BEGIN
 #define SSL_SHA1 0x00000001u
 // SSL_AEAD is set for all AEADs.
 #define SSL_AEAD 0x00000002u
+#define SSL_SHA256 0x00000003u
 
 // Bits for |algorithm_prf| (handshake digest).
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1
@@ -1218,10 +1219,12 @@ class SSLBuffer {
   SSLBuffer(const SSLBuffer &) = delete;
   SSLBuffer &operator=(const SSLBuffer &) = delete;
 
+  uint8_t *buf_ptr() { return buf_; }
   uint8_t *data() { return buf_ + offset_; }
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
   size_t cap() const { return cap_; }
+  size_t buf_size() const { return buf_size_; }
 
   Span<uint8_t> span() { return MakeSpan(data(), size()); }
 
@@ -1251,6 +1254,12 @@ class SSLBuffer {
   // is now empty, it releases memory used by it.
   void DiscardConsumed();
 
+  // DoSerialization writes all fields into |cbb|.
+  bool DoSerialization(CBB *cbb);
+
+  // DoDeserialization recovers the states encoded via |DoSerialization|.
+  bool DoDeserialization(CBS *in);
+
  private:
   // buf_ is the memory allocated for this buffer.
   uint8_t *buf_ = nullptr;
@@ -1265,6 +1274,8 @@ class SSLBuffer {
   // buf_allocated_ is true if |buf_| points to allocated data and must be freed
   // or false if it points into |inline_buf_|.
   bool buf_allocated_ = false;
+  // buf_size_ is how much memory allocated for |buf_|. This is needed by |DoSerialization|.
+  size_t buf_size_ = 0;
 };
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
@@ -1498,17 +1509,19 @@ enum ssl_client_hello_type_t {
 // ClientHelloOuter |client_hello_outer|. If successful, it writes the recovered
 // ClientHelloInner to |out_client_hello_inner|. It returns true on success and
 // false on failure.
+//
+// This function is exported for fuzzing.
 OPENSSL_EXPORT bool ssl_decode_client_hello_inner(
     SSL *ssl, uint8_t *out_alert, Array<uint8_t> *out_client_hello_inner,
     Span<const uint8_t> encoded_client_hello_inner,
     const SSL_CLIENT_HELLO *client_hello_outer);
 
-// ssl_client_hello_decrypt attempts to decrypt the |payload| and writes the
-// result to |*out|. |payload| must point into |client_hello_outer|. It returns
-// true on success and false on error. On error, it sets |*out_is_decrypt_error|
-// to whether the failure was due to a bad ciphertext.
-bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out,
-                              bool *out_is_decrypt_error,
+// ssl_client_hello_decrypt attempts to decrypt and decode the |payload|. It
+// writes the result to |*out|. |payload| must point into |client_hello_outer|.
+// It returns true on success and false on error. On error, it sets
+// |*out_is_decrypt_error| to whether the failure was due to a bad ciphertext.
+bool ssl_client_hello_decrypt(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                              bool *out_is_decrypt_error, Array<uint8_t> *out,
                               const SSL_CLIENT_HELLO *client_hello_outer,
                               Span<const uint8_t> payload);
 
@@ -2616,14 +2629,19 @@ enum ssl_ech_status_t {
   ssl_ech_rejected,
 };
 
+#define SSL3_SEND_ALERT_SIZE 2
+#define TLS_SEQ_NUM_SIZE 8
+#define SSL3_CHANNEL_ID_SIZE 64
+#define PREV_FINISHED_MAX_SIZE 12
+
 struct SSL3_STATE {
   static constexpr bool kAllowUniquePtr = true;
 
   SSL3_STATE();
   ~SSL3_STATE();
 
-  uint8_t read_sequence[8] = {0};
-  uint8_t write_sequence[8] = {0};
+  uint8_t read_sequence[TLS_SEQ_NUM_SIZE] = {0};
+  uint8_t write_sequence[TLS_SEQ_NUM_SIZE] = {0};
 
   uint8_t server_random[SSL3_RANDOM_SIZE] = {0};
   uint8_t client_random[SSL3_RANDOM_SIZE] = {0};
@@ -2782,12 +2800,12 @@ struct SSL3_STATE {
   uint8_t exporter_secret_len = 0;
 
   // Connection binding to prevent renegotiation attacks
-  uint8_t previous_client_finished[12] = {0};
+  uint8_t previous_client_finished[PREV_FINISHED_MAX_SIZE] = {0};
   uint8_t previous_client_finished_len = 0;
   uint8_t previous_server_finished_len = 0;
-  uint8_t previous_server_finished[12] = {0};
+  uint8_t previous_server_finished[PREV_FINISHED_MAX_SIZE] = {0};
 
-  uint8_t send_alert[2] = {0};
+  uint8_t send_alert[SSL3_SEND_ALERT_SIZE] = {0};
 
   // established_session is the session established by the connection. This
   // session is only filled upon the completion of the handshake and is
@@ -2817,7 +2835,7 @@ struct SSL3_STATE {
   //     If |channel_id_valid| is true, then this contains the
   //     verified Channel ID from the client: a P256 point, (x,y), where
   //     each are big-endian values.
-  uint8_t channel_id[64] = {0};
+  uint8_t channel_id[SSL3_CHANNEL_ID_SIZE] = {0};
 
   // Contains the QUIC transport params received by the peer.
   Array<uint8_t> peer_quic_transport_params;
@@ -3326,6 +3344,15 @@ bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                   const SSL_CLIENT_HELLO *client_hello);
 bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *extensions);
 
+
+// SSL serialization.
+
+// ssl_transfer_supported returns true when the |in| is supported by
+// current SSL transfer scope. Specific support scope is included inside
+// the function.
+// Otherwise, it returns false.
+OPENSSL_EXPORT bool ssl_transfer_supported(const SSL *in);
+
 #define tlsext_tick_md EVP_sha256
 
 // ssl_process_ticket processes a session ticket from the client. It returns
@@ -3511,7 +3538,7 @@ struct ssl_ctx_st {
   bssl::UniquePtr<bssl::CERT> cert;
 
   // callback that allows applications to peek at protocol messages
-  void (*msg_callback)(int write_p, int version, int content_type,
+  void (*msg_callback)(int is_write, int version, int content_type,
                        const void *buf, size_t len, SSL *ssl,
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;

@@ -91,8 +91,7 @@ function create_github_ci_stack() {
   # TODO: re-enable 'aws-lc-ci-windows-x86' when CryptoAlg-826 is fixed.
 #  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
   aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
-  # TODO: re-enable 'aws-lc-ci-bm-framework' when it's ready.
-#  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
+  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
 function run_linux_img_build() {
@@ -225,6 +224,39 @@ function setup_ci() {
   build_win_docker_images
 
   create_github_ci_stack
+  create_android_resources
+}
+
+function create_android_resources() {
+  # Use aws cli to create Device Farm project and get project arn to create device pools.
+  # TODO: Move resource creation to aws cdk when cdk has support for device form resource constructs.
+  # Issue: https://github.com/aws/aws-cdk/issues/17893
+  DEVICEFARM_PROJECT=`aws devicefarm create-project --name aws-lc-android-ci | \
+                             python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["project"]["arn"])'`
+
+  DEVICEFARM_DEVICE_POOL=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
+    --name "aws-lc-device-pool" \
+    --description "AWS-LC Device Pool" \
+    --rules file://../android/devicepool_rules.json --max-devices 2 | \
+    python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+
+  DEVICEFARM_DEVICE_POOL_FIPS=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
+    --name "aws-lc-device-pool-fips" \
+    --description "AWS-LC FIPS Device Pool" \
+    --rules file://../android/devicepool_rules_fips.json --max-devices 2 | \
+    python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+
+  cat <<EOF
+
+DEVICEFARM_PROJECT arn value: ${DEVICEFARM_PROJECT}
+
+DEVICEFARM_DEVICE_POOL arn value: ${DEVICEFARM_DEVICE_POOL}
+
+DEVICEFARM_DEVICE_POOL_FIPS arn value: ${DEVICEFARM_DEVICE_POOL_FIPS}
+
+Take the corresponding Device Farm arn values and update the arn values at tests/ci/kickoff_devicefarm_job.sh
+
+EOF
 }
 
 ###########################
@@ -341,6 +373,9 @@ function main() {
     ;;
   destroy-ci)
     destroy_ci
+    ;;
+  update-android-resources)
+    create_android_resources
     ;;
   destroy-img-stack)
     destroy_docker_img_build_stack

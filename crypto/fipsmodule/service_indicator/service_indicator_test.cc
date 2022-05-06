@@ -21,12 +21,22 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/service_indicator.h>
+#include <openssl/err.h>
 
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
 #include "../rand/internal.h"
 #include "../tls/internal.h"
+
+namespace awslc {
+  template <typename T>
+  class TestWithNoErrors : public testing::TestWithParam<T> {
+    void TearDown() override {
+      ASSERT_EQ(ERR_get_error(), 0u);
+    }
+  };
+}
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
@@ -664,7 +674,7 @@ struct AEADTestVector {
         kAESKey, 16, kAESCCMCiphertext, 64, AWSLC_APPROVED, false },
 };
 
-class AEAD_ServiceIndicatorTest : public testing::TestWithParam<AEADTestVector> {};
+class AEAD_ServiceIndicatorTest : public awslc::TestWithNoErrors<AEADTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, AEAD_ServiceIndicatorTest, testing::ValuesIn(nAEADTestVectors));
 
@@ -712,6 +722,7 @@ TEST_P(AEAD_ServiceIndicatorTest, EVP_AEAD) {
          encrypt_output.data(), &out_len, encrypt_output.size(), nonce.data(), EVP_AEAD_nonce_length(aeadTestVector.cipher),
          kPlaintext, sizeof(kPlaintext), nullptr, 0)));
     ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_INVALID_NONCE);
   }
 }
 
@@ -738,7 +749,7 @@ struct CipherTestVector {
   { EVP_des_ede3_cbc(), kAESKey_192, 24, KTDES_EDE3_CBCCipherText, 64, false, AWSLC_NOT_APPROVED }
 };
 
-class EVP_ServiceIndicatorTest : public testing::TestWithParam<CipherTestVector> {};
+class EVP_ServiceIndicatorTest : public awslc::TestWithNoErrors<CipherTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, EVP_ServiceIndicatorTest, testing::ValuesIn(nTestVectors));
 
@@ -792,7 +803,7 @@ struct DigestTestVector {
     { sha512_256, kOutput_sha512_256, AWSLC_APPROVED }
 };
 
-class EVP_MD_ServiceIndicatorTest : public testing::TestWithParam<DigestTestVector> {};
+class EVP_MD_ServiceIndicatorTest : public awslc::TestWithNoErrors<DigestTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, EVP_MD_ServiceIndicatorTest, testing::ValuesIn(kDigestTestVectors));
 
@@ -847,7 +858,7 @@ struct HMACTestVector {
     { EVP_sha512_256, kHMACOutput_sha512_256, AWSLC_NOT_APPROVED }
 };
 
-class HMAC_ServiceIndicatorTest : public testing::TestWithParam<HMACTestVector> {};
+class HMAC_ServiceIndicatorTest : public awslc::TestWithNoErrors<HMACTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, HMAC_ServiceIndicatorTest, testing::ValuesIn(kHMACTestVectors));
 
@@ -1018,7 +1029,7 @@ struct RSATestVector kRSATestVectors[] = {
     { 4096, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
-class RSA_ServiceIndicatorTest : public testing::TestWithParam<RSATestVector> {};
+class RSA_ServiceIndicatorTest : public awslc::TestWithNoErrors<RSATestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, RSA_ServiceIndicatorTest, testing::ValuesIn(kRSATestVectors));
 
@@ -1253,9 +1264,15 @@ struct ECDSATestVector kECDSATestVectors[] = {
     { NID_secp521r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
     { NID_secp521r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
     { NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { NID_secp256k1, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha224, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha384, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 };
 
-class ECDSA_ServiceIndicatorTest : public testing::TestWithParam<ECDSATestVector> {};
+class ECDSA_ServiceIndicatorTest : public awslc::TestWithNoErrors<ECDSATestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, ECDSA_ServiceIndicatorTest, testing::ValuesIn(kECDSATestVectors));
 
@@ -1489,9 +1506,14 @@ struct ECDHTestVector kECDHTestVectors[] = {
     { NID_secp521r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
     { NID_secp521r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
     { NID_secp521r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
+
+    { NID_secp256k1, SHA224_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA256_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA384_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA512_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
 };
 
-class ECDH_ServiceIndicatorTest : public testing::TestWithParam<ECDHTestVector> {};
+class ECDH_ServiceIndicatorTest : public awslc::TestWithNoErrors<ECDHTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, ECDH_ServiceIndicatorTest, testing::ValuesIn(kECDHTestVectors));
 
@@ -1547,7 +1569,7 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   derive_output.resize(out_len);
   CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(EVP_PKEY_derive(our_ctx.get(), derive_output.data(), &out_len)));
   derive_output.resize(out_len);
-  ASSERT_EQ(approved, AWSLC_APPROVED);
+  ASSERT_EQ(approved, ecdhTestVector.expect_approved);
 }
 
 struct KDFTestVector {
@@ -1565,7 +1587,7 @@ struct KDFTestVector {
     { EVP_sha512, kTLSOutput_sha512, AWSLC_APPROVED },
 };
 
-class KDF_ServiceIndicatorTest : public testing::TestWithParam<KDFTestVector> {};
+class KDF_ServiceIndicatorTest : public awslc::TestWithNoErrors<KDFTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, KDF_ServiceIndicatorTest, testing::ValuesIn(kKDFTestVectors));
 
@@ -2138,7 +2160,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.0.1");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.1.0");
 }
 
 #else
@@ -2183,6 +2205,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.0.1");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.1.0");
 }
 #endif // AWSLC_FIPS

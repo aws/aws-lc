@@ -99,7 +99,7 @@ def code_build_batch_policy_in_json(project_ids):
         ]
     }
 
-def code_build_fuzz_policy_in_json():
+def code_build_publish_metrics_in_json():
     """
     Define an IAM policy that only grants access to publish CloudWatch metrics to the current region in the same
     namespace used in the calls to PutMetricData in tests/ci/common_fuzz.sh.
@@ -117,7 +117,8 @@ def code_build_fuzz_policy_in_json():
                             AWS_REGION
                         ],
                         "cloudwatch:namespace": [
-                            "AWS-LC-Fuzz"
+                            "AWS-LC-Fuzz",
+                            "AWS-LC"
                         ]
                     }
                 }
@@ -198,6 +199,35 @@ def ecr_power_user_policy_in_json(ecr_repo_names):
                     "ecr:PutImage"
                 ],
                 "Resource": ecr_arns
+            }
+        ]
+    }
+
+def device_farm_access_policy_in_json():
+    """
+    Define an IAM policy statement for Device Farm operations.
+    :return: an IAM policy statement in json.
+    """
+    resources = []
+    resources.append("arn:aws:devicefarm:{}:{}:*:*".format(AWS_REGION, AWS_ACCOUNT))
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "ViewProjectInfo",
+                "Effect": "Allow",
+                "Action": [
+                    "devicefarm:CreateUpload",
+                    "devicefarm:GetUpload",
+                    "devicefarm:GetRun",
+                    "devicefarm:ScheduleRun",
+                    "devicefarm:StopRun",
+                    "devicefarm:ListArtifacts",
+                    "devicefarm:ListJobs",
+                    "devicefarm:ListSuites",
+                    "devicefarm:ListTests",
+                ],
+                "Resource": resources
             }
         ]
     }

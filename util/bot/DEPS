@@ -53,9 +53,13 @@ deps = {
     'dep_type': 'cipd',
   },
 
+  # TODO(davidben): Merge cmake-linux64 and cmake-mac. Now that we use CIPD,
+  # which supports a ${{platform}} marker, there is nothing platform-specific
+  # about this anymore. However, the recipe still expects CMake to be found at
+  # these directories, so this needs to be coordinated with a change there.
   'boringssl/util/bot/cmake-linux64': {
     'packages': [{
-      'package': 'infra/3pp/tools/cmake/linux-amd64',
+      'package': 'infra/3pp/tools/cmake/${{platform}}',
       'version': Var('cmake_version'),
     }],
     'condition': 'host_os == "linux"',
@@ -64,7 +68,7 @@ deps = {
 
   'boringssl/util/bot/cmake-mac': {
     'packages': [{
-      'package': 'infra/3pp/tools/cmake/mac-amd64',
+      'package': 'infra/3pp/tools/cmake/${{platform}}',
       'version': Var('cmake_version'),
     }],
     'condition': 'host_os == "mac"',
@@ -183,7 +187,7 @@ hooks = [
     'action': [ 'download_from_google_storage',
                 '--no_resume',
                 '--bucket', 'chrome-boringssl-sde',
-                '-s', 'boringssl/util/bot/sde-linux64.tar.bz2.sha1'
+                '-s', 'boringssl/util/bot/sde-linux64.tar.xz.sha1'
     ],
   },
   {
@@ -192,7 +196,7 @@ hooks = [
     'condition': 'checkout_sde and host_os == "linux"',
     'action': [ 'python3',
                 'boringssl/util/bot/extract.py',
-                'boringssl/util/bot/sde-linux64.tar.bz2',
+                'boringssl/util/bot/sde-linux64.tar.xz',
                 'boringssl/util/bot/sde-linux64/',
     ],
   },
@@ -203,7 +207,7 @@ hooks = [
     'action': [ 'download_from_google_storage',
                 '--no_resume',
                 '--bucket', 'chrome-boringssl-sde',
-                '-s', 'boringssl/util/bot/sde-win32.tar.bz2.sha1'
+                '-s', 'boringssl/util/bot/sde-win32.tar.xz.sha1'
     ],
   },
   {
@@ -212,7 +216,7 @@ hooks = [
     'condition': 'checkout_sde and host_os == "win"',
     'action': [ 'python3',
                 'boringssl/util/bot/extract.py',
-                'boringssl/util/bot/sde-win32.tar.bz2',
+                'boringssl/util/bot/sde-win32.tar.xz',
                 'boringssl/util/bot/sde-win32/',
     ],
   },

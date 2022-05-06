@@ -33,9 +33,6 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
-
-  # Set the source directory for s2n-bignum assembly files
-  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att/p384)
 endif()
 
 if(ARCH STREQUAL "x86")
@@ -88,9 +85,6 @@ if(ARCH STREQUAL "aarch64")
     sha512-armv8.${ASM_EXT}
     vpaes-armv8.${ASM_EXT}
   )
-
-  # Set the source directory for s2n-bignum assembly files
-  set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm/p384)
 endif()
 
 if(ARCH STREQUAL "ppc64le")
@@ -150,24 +144,43 @@ if(PERL_EXECUTABLE)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 endif()
 
-# s2n-bignum files can be compiled on Unix platforms only (except Apple)
-if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+# s2n-bignum files can be compiled on Unix platforms only (except Apple),
+# and on x86_64 and aarch64 systems only.
+if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
+    UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+
+  # Set the source directory for s2n-bignum assembly files
+  if(ARCH STREQUAL "x86_64")
+    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att)
+  else()
+    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm)
+  endif()
+
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
   set(
     S2N_BIGNUM_ASM_SOURCES
 
-    bignum_add_p384.S
-    bignum_sub_p384.S
-    bignum_neg_p384.S
-    bignum_tomont_p384.S
-    bignum_deamont_p384.S
-    bignum_montmul_p384.S
-    bignum_montmul_p384_alt.S
-    bignum_montsqr_p384.S
-    bignum_montsqr_p384_alt.S
-    bignum_nonzero_6.S
-    bignum_littleendian_6.S
+    p384/bignum_add_p384.S
+    p384/bignum_sub_p384.S
+    p384/bignum_neg_p384.S
+    p384/bignum_tomont_p384.S
+    p384/bignum_deamont_p384.S
+    p384/bignum_montmul_p384.S
+    p384/bignum_montmul_p384_alt.S
+    p384/bignum_montsqr_p384.S
+    p384/bignum_montsqr_p384_alt.S
+    p384/bignum_nonzero_6.S
+    p384/bignum_littleendian_6.S
+    p521/bignum_add_p521.S
+    p521/bignum_sub_p521.S
+    p521/bignum_neg_p521.S
+    p521/bignum_mul_p521.S
+    p521/bignum_mul_p521_alt.S
+    p521/bignum_sqr_p521.S
+    p521/bignum_sqr_p521_alt.S
+    p521/bignum_tolebytes_p521.S
+    p521/bignum_fromlebytes_p521.S
   )
   if(ARCH STREQUAL "x86_64")
     # The files below contain the alternative functions for x86_64.
@@ -175,19 +188,8 @@ if (S2N_BIGNUM_DIR AND UNIX AND NOT APPLE AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AV
     # the same as the non-alternative ones, so they are defined
     # in the corresponding "non-alt" files (bignum_<deamont|tomont>_p384.S)
     list(APPEND S2N_BIGNUM_ASM_SOURCES
-                bignum_tomont_p384_alt.S
-                bignum_deamont_p384_alt.S)
-  endif()
-
-  # Copy s2n-bignum files to the current binary dir
-  foreach(f ${S2N_BIGNUM_ASM_SOURCES})
-    file(COPY ${S2N_BIGNUM_DIR}/${f} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-  endforeach()
-
-  if(NOT FIPS_DELOCATE)
-    # If we don't have to use the delocate script then s2n-bignum files
-    # are simply added to BCM_ASM_SOURCES.
-    list(APPEND BCM_ASM_SOURCES ${S2N_BIGNUM_ASM_SOURCES})
+                p384/bignum_tomont_p384_alt.S
+                p384/bignum_deamont_p384_alt.S)
   endif()
 endif()
 
@@ -207,6 +209,39 @@ function(cpreprocess dest src)
     WORKING_DIRECTORY .
   )
 endfunction()
+
+function(s2n_asm_cpreprocess dest src)
+  # s2n_asm_cpreprocess differs from cpreprocess in that is does additional post-processing
+  # based on s2n-bignum https://github.com/awslabs/s2n-bignum/blob/main/x86/Makefile#L264
+  get_filename_component(dir ${dest} DIRECTORY)
+  if (dir STREQUAL "")
+    set(dir ".")
+  endif()
+
+  set(TARGET "")
+  if(CMAKE_ASM_COMPILER_TARGET)
+    set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  endif()
+
+  string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+
+  add_custom_command(
+          OUTPUT ${dest}
+          COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${PROJECT_SOURCE_DIR}/include| tr \"\;\" \"\\n\" > ${dest}
+          DEPENDS
+          ${S2N_BIGNUM_DIR}/${src}
+          WORKING_DIRECTORY .
+)
+endfunction()
+
+if(S2N_BIGNUM_ASM_SOURCES)
+  # s2n-bignum assembly files need to be processed before use
+  foreach(asm ${S2N_BIGNUM_ASM_SOURCES})
+    s2n_asm_cpreprocess(${asm}.S ${asm})
+    list(APPEND BCM_ASM_SOURCES "${asm}.S")
+  endforeach()
+endif()
 
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)
@@ -239,15 +274,6 @@ if(FIPS_DELOCATE)
   else()
     # No preprocessing is required on other platforms.
     set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
-  endif()
-
-  if(S2N_BIGNUM_ASM_SOURCES)
-    # s2n-bignum assembly files need to pass through the C preprocessor
-    # before they can be parsed by delocate.
-    foreach(asm ${S2N_BIGNUM_ASM_SOURCES})
-      cpreprocess(${asm}.S ${asm})
-      list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.S")
-    endforeach()
   endif()
 
   add_dependencies(bcm_c_generated_asm global_target)
@@ -329,10 +355,11 @@ elseif(FIPS_SHARED)
     ${BCM_ASM_SOURCES}
   )
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
+  target_include_directories(bcm_library PRIVATE ../../include)
 
   add_dependencies(bcm_library global_target)
-
   if (APPLE)
+    set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
     # so we build the FIPS module differently than on Linux. Similarly to
     # what OpenSSL does we produce two object files: fips_apple_{start, end}.o
@@ -344,13 +371,13 @@ elseif(FIPS_SHARED)
     # respective start and end markers.
     add_custom_command(
       OUTPUT fips_apple_start.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c -DAWSLC_FIPS_APPLE_START -o fips_apple_start.o
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_apple_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_apple_end.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c -DAWSLC_FIPS_APPLE_END -o fips_apple_end.o
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_apple_support.c
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_apple_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 
     add_custom_command(
@@ -359,10 +386,38 @@ elseif(FIPS_SHARED)
       DEPENDS bcm_library fips_apple_start.o fips_apple_end.o
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+  elseif(MSVC)
+    set(BCM_NAME bcm.lib)
+    # Like the macOS linker MSVC doesn't support linker scripts. The Windows build uses the same start/end markers
+    # as the mac build to control the placement of symbols. However, on Windows the start/bcm/end object files also
+    # contain pragmas that instruct the compiler to put the code in specific FIPS sections. These sections have a
+    # specific suffix $a through $c that controls the order of the FIPS sections when it is linked together into a
+    # Grouped Section.
+    add_custom_command(
+      OUTPUT fips_msvc_start.obj
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    add_custom_command(
+      OUTPUT fips_msvc_end.obj
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
 
+    get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
+    set(MSVC_LIB "${MSVC_BIN}/lib.exe")
+
+    add_custom_command(
+      OUTPUT ${BCM_NAME}
+      # This takes bcm_library which is static library and possibly a collection of assembly files in a CMake list.
+      # lib.exe does not handle the CMake list which uses semicolons between items, this generator expression converts
+      # it to a list of quoted strings, it also needs to be itself string escaped
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
+      DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   else()
-    # Linux is the only OS other than macOS/iOS on which we build FIPS.
-
+    set(BCM_NAME bcm.o)
     # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
     set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
     if (GCC)
@@ -372,15 +427,16 @@ elseif(FIPS_SHARED)
     endif()
 
     add_custom_command(
-      OUTPUT bcm.o
-      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+      OUTPUT ${BCM_NAME}
+      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library>
       DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
   endif()
 
+  add_custom_target(bcm_o_target DEPENDS ${BCM_NAME})
+  set(BCM_NAME ${BCM_NAME} PARENT_SCOPE)
 
-  add_custom_target(bcm_o_target DEPENDS bcm.o)
 else()
   add_library(
     fipsmodule
@@ -396,3 +452,4 @@ else()
 
   add_dependencies(fipsmodule global_target)
 endif()
+

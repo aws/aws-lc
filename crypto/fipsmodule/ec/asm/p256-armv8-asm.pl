@@ -77,7 +77,7 @@ $code.=<<___;
 .type	ecp_nistz256_to_mont,%function
 .align	6
 ecp_nistz256_to_mont:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -93,7 +93,7 @@ ecp_nistz256_to_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_to_mont,.-ecp_nistz256_to_mont
 
@@ -102,7 +102,7 @@ ecp_nistz256_to_mont:
 .type	ecp_nistz256_from_mont,%function
 .align	4
 ecp_nistz256_from_mont:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -118,7 +118,7 @@ ecp_nistz256_from_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_from_mont,.-ecp_nistz256_from_mont
 
@@ -128,7 +128,7 @@ ecp_nistz256_from_mont:
 .type	ecp_nistz256_mul_mont,%function
 .align	4
 ecp_nistz256_mul_mont:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -143,7 +143,7 @@ ecp_nistz256_mul_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_mul_mont,.-ecp_nistz256_mul_mont
 
@@ -152,7 +152,7 @@ ecp_nistz256_mul_mont:
 .type	ecp_nistz256_sqr_mont,%function
 .align	4
 ecp_nistz256_sqr_mont:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -166,7 +166,7 @@ ecp_nistz256_sqr_mont:
 
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_sqr_mont,.-ecp_nistz256_sqr_mont
 
@@ -175,7 +175,7 @@ ecp_nistz256_sqr_mont:
 .type	ecp_nistz256_div_by_2,%function
 .align	4
 ecp_nistz256_div_by_2:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -187,7 +187,7 @@ ecp_nistz256_div_by_2:
 	bl	__ecp_nistz256_div_by_2
 
 	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		//  autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_div_by_2,.-ecp_nistz256_div_by_2
 
@@ -196,7 +196,7 @@ ecp_nistz256_div_by_2:
 .type	ecp_nistz256_mul_by_2,%function
 .align	4
 ecp_nistz256_mul_by_2:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -212,7 +212,7 @@ ecp_nistz256_mul_by_2:
 	bl	__ecp_nistz256_add_to	// ret = a+a	// 2*a
 
 	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_mul_by_2,.-ecp_nistz256_mul_by_2
 
@@ -221,7 +221,7 @@ ecp_nistz256_mul_by_2:
 .type	ecp_nistz256_mul_by_3,%function
 .align	4
 ecp_nistz256_mul_by_3:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -248,7 +248,7 @@ ecp_nistz256_mul_by_3:
 	bl	__ecp_nistz256_add_to	// ret += a	// 2*a+a=3*a
 
 	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_mul_by_3,.-ecp_nistz256_mul_by_3
 
@@ -258,7 +258,7 @@ ecp_nistz256_mul_by_3:
 .type	ecp_nistz256_sub,%function
 .align	4
 ecp_nistz256_sub:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -270,7 +270,7 @@ ecp_nistz256_sub:
 	bl	__ecp_nistz256_sub_from
 
 	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_sub,.-ecp_nistz256_sub
 
@@ -279,7 +279,7 @@ ecp_nistz256_sub:
 .type	ecp_nistz256_neg,%function
 .align	4
 ecp_nistz256_neg:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -294,7 +294,7 @@ ecp_nistz256_neg:
 	bl	__ecp_nistz256_sub_from
 
 	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_neg,.-ecp_nistz256_neg
 
@@ -655,7 +655,7 @@ $code.=<<___;
 .type	ecp_nistz256_point_double,%function
 .align	5
 ecp_nistz256_point_double:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -790,7 +790,7 @@ ecp_nistz256_point_double:
 	ldp	x19,x20,[x29,#16]
 	ldp	x21,x22,[x29,#32]
 	ldp	x29,x30,[sp],#96
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_point_double,.-ecp_nistz256_point_double
 ___
@@ -813,7 +813,7 @@ $code.=<<___;
 .type	ecp_nistz256_point_add,%function
 .align	5
 ecp_nistz256_point_add:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1048,7 +1048,7 @@ $code.=<<___;
 	ldp	x25,x26,[x29,#64]
 	ldp	x27,x28,[x29,#80]
 	ldp	x29,x30,[sp],#96
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_point_add,.-ecp_nistz256_point_add
 ___
@@ -1070,7 +1070,7 @@ $code.=<<___;
 .type	ecp_nistz256_point_add_affine,%function
 .align	5
 ecp_nistz256_point_add_affine:
-	.inst	0xd503233f		// paciasp
+	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1259,7 +1259,7 @@ $code.=<<___;
 	ldp	x23,x24,[x29,#48]
 	ldp	x25,x26,[x29,#64]
 	ldp	x29,x30,[sp],#80
-	.inst	0xd50323bf		// autiasp
+	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	ecp_nistz256_point_add_affine,.-ecp_nistz256_point_add_affine
 ___
@@ -1277,6 +1277,8 @@ $code.=<<___;
 .type	ecp_nistz256_ord_mul_mont,%function
 .align	4
 ecp_nistz256_ord_mul_mont:
+	AARCH64_VALID_CALL_TARGET
+	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	stp	x29,x30,[sp,#-64]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1418,6 +1420,8 @@ $code.=<<___;
 .type	ecp_nistz256_ord_sqr_mont,%function
 .align	4
 ecp_nistz256_ord_sqr_mont:
+	AARCH64_VALID_CALL_TARGET
+	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	stp	x29,x30,[sp,#-64]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1563,13 +1567,14 @@ ___
 
 ########################################################################
 # select subroutines
-# These select functions are ported from p256-x86_64-asm.pl
-# The x86_64 instructions are included here as comments starting with ////
+# These select functions are similar to those in p256-x86_64-asm.pl
+# They load all points in the lookup table
+# keeping in the output only the one corresponding to the input index.
 {
 my ($val,$in_t)=map("x$_",(0..1));
 my ($index)=("w2");
-my ($Ctr,$Val_in)=("w9", "x10");
-my ($ONE,$M0,$INDEX,$TMP0)=map("v$_",(0..3));
+my ($Idx_ctr,$Val_in, $Mask_64)=("w9", "x10", "x11");
+my ($Mask)=("v3");
 my ($Ra,$Rb,$Rc,$Rd,$Re,$Rf)=map("v$_",(16..21));
 my ($T0a,$T0b,$T0c,$T0d,$T0e,$T0f)=map("v$_",(22..27));
 $code.=<<___;
@@ -1579,86 +1584,62 @@ $code.=<<___;
 .type	ecp_nistz256_select_w5,%function
 .align	4
 ecp_nistz256_select_w5:
-	.inst	0xd503233f		// paciasp
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-
-    // $ONE (vec_4*32) := | 1 | 1 | 1 | 1 |
-    // $INDEX (vec_4*32) := | idx | idx | idx | idx |
-    movi    $ONE.4s, #1                     ////    movdqa  .LOne(%rip), $ONE
-    dup     $INDEX.4s, $index               ////    movd    $index, $INDEX
-                                            ////    pshufd  \$0, $INDEX, $INDEX
-
-    // [$Ra-$Rf] := 0
-    eor     $Ra.16b, $Ra.16b, $Ra.16b       ////    pxor    $Ra, $Ra
-    eor     $Rb.16b, $Rb.16b, $Rb.16b       ////    pxor    $Rb, $Rb
-    eor     $Rc.16b, $Rc.16b, $Rc.16b       ////    pxor    $Rc, $Rc
-    eor     $Rd.16b, $Rd.16b, $Rd.16b       ////    pxor    $Rd, $Rd
-    eor     $Re.16b, $Re.16b, $Re.16b       ////    pxor    $Re, $Re
-    eor     $Rf.16b, $Rf.16b, $Rf.16b       ////    pxor    $Rf, $Rf
-
-    // $M0 := $ONE
-    mov     $M0.16b, $ONE.16b               ////    movdqa  $ONE, $M0
+    AARCH64_VALID_CALL_TARGET
 
     // $Val_in := $val
-    // $Ctr := 16; loop counter
+    // $Idx_ctr := 0; loop counter and incremented internal index
     mov     $Val_in, $val
-    mov     $Ctr, #16                       ////    mov \$16, %rax
+    mov     $Idx_ctr, #0
+
+    // [$Ra-$Rf] := 0
+    movi    $Ra.16b, #0
+    movi    $Rb.16b, #0
+    movi    $Rc.16b, #0
+    movi    $Rd.16b, #0
+    movi    $Re.16b, #0
+    movi    $Rf.16b, #0
 
 .Lselect_w5_loop:
+    // Loop 16 times.
+
+    // Increment index (loop counter); tested at the end of the loop
+    add $Idx_ctr, $Idx_ctr, #1
+
     // [$T0a-$T0f] := Load a (3*256-bit = 6*128-bit) table entry starting at $in_t
     //  and advance $in_t to point to the next entry
     ld1     {$T0a.2d, $T0b.2d, $T0c.2d, $T0d.2d}, [$in_t],#64
-    ld1     {$T0e.2d, $T0f.2d}, [$in_t],#32 ////    movdqa  16*0($in_t), $T0a
-                                            ////    movdqa  16*1($in_t), $T0b
-                                            ////    movdqa  16*2($in_t), $T0c
-                                            ////    movdqa  16*3($in_t), $T0d
-                                            ////    movdqa  16*4($in_t), $T0e
-                                            ////    movdqa  16*5($in_t), $T0f
-                                            ////    lea 16*6($in_t), $in_t
 
-    // $TMP0 = ($M0 == $INDEX)? All 1s : All 0s
-    cmeq    $TMP0.4s, $M0.4s, $INDEX.4s     ////    movdqa  $M0, $TMP0
-                                            ////    pcmpeqd $INDEX, $TMP0
-    // Increment $M0 lanes
-    add     $M0.4s, $M0.4s, $ONE.4s         ////    paddd   $ONE, $M0
+    // $Mask_64 := ($Idx_ctr == $index)? All 1s : All 0s
+    cmp     $Idx_ctr, $index
+    csetm   $Mask_64, eq
 
-    // [$T0a-$T0f] := [$T0a-$T0f] AND $TMP0
-    // values read from the table will be 0'd if $M0 != $INDEX
-    // [$Ra-$Rf] := [$Ra-$Rf] OR [$T0a-$T0f]
-    // values in output registers will remain the same if $M0 != $INDEX
-    and     $T0a.16b, $T0a.16b, $TMP0.16b    ////    pand   $TMP0, $T0a
-    and     $T0b.16b, $T0b.16b, $TMP0.16b    ////    pand   $TMP0, $T0b
-    orr     $Ra.16b, $Ra.16b, $T0a.16b       ////    por    $T0a, $Ra
-    orr     $Rb.16b, $Rb.16b, $T0b.16b       ////    pand   $TMP0, $T0c
-                                             ////    por    $T0b, $Rb
-    and     $T0c.16b, $T0c.16b, $TMP0.16b    ////    pand   $TMP0, $T0d
-    and     $T0d.16b, $T0d.16b, $TMP0.16b    ////    por    $T0c, $Rc
-    orr     $Rc.16b, $Rc.16b, $T0c.16b       ////    pand   $TMP0, $T0e
-    orr     $Rd.16b, $Rd.16b, $T0d.16b       ////    por    $T0d, $Rd
-                                             ////    pand   $TMP0, $T0f
-    and     $T0e.16b, $T0e.16b, $TMP0.16b    ////    por    $T0e, $Re
-    and     $T0f.16b, $T0f.16b, $TMP0.16b    ////    por    $T0f, $Rf
-    orr     $Re.16b, $Re.16b, $T0e.16b
-    orr     $Rf.16b, $Rf.16b, $T0f.16b
+    // continue loading ...
+    ld1     {$T0e.2d, $T0f.2d}, [$in_t],#32
 
-    // Decrement loop counter; loop back if not 0
-    subs    $Ctr, $Ctr, #1                  ////    dec %rax
-    bne     .Lselect_w5_loop                ////    jnz .Lselect_loop_sse_w5
+    // duplicate mask_64 into Mask (all 0s or all 1s)
+    dup     $Mask.2d, $Mask_64
+
+    // [$Ra-$Rd] := (Mask == all 1s)? [$T0a-$T0d] : [$Ra-$Rd]
+    // i.e., values in output registers will remain the same if $Idx_ctr != $index
+    bit     $Ra.16b, $T0a.16b, $Mask.16b
+    bit     $Rb.16b, $T0b.16b, $Mask.16b
+
+    bit     $Rc.16b, $T0c.16b, $Mask.16b
+    bit     $Rd.16b, $T0d.16b, $Mask.16b
+
+    bit     $Re.16b, $T0e.16b, $Mask.16b
+    bit     $Rf.16b, $T0f.16b, $Mask.16b
+
+    // If bit #4 is not 0 (i.e. idx_ctr < 16) loop back
+    tbz    $Idx_ctr, #4, .Lselect_w5_loop
 
     // Write [$Ra-$Rf] to memory at the output pointer
     st1     {$Ra.2d, $Rb.2d, $Rc.2d, $Rd.2d}, [$Val_in],#64
-    st1     {$Re.2d, $Rf.2d}, [$Val_in]     ////    movdqu	$Ra, 16*0($val)
-                                            ////    movdqu	$Rb, 16*1($val)
-                                            ////    movdqu	$Rc, 16*2($val)
-                                            ////    movdqu	$Rd, 16*3($val)
-                                            ////    movdqu	$Re, 16*4($val)
-                                            ////    movdqu	$Rf, 16*5($val)
+    st1     {$Re.2d, $Rf.2d}, [$Val_in]
 
-	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		// autiasp
 	ret
 .size	ecp_nistz256_select_w5,.-ecp_nistz256_select_w5
+
 
 ////////////////////////////////////////////////////////////////////////
 // void ecp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
@@ -1666,70 +1647,48 @@ ecp_nistz256_select_w5:
 .type	ecp_nistz256_select_w7,%function
 .align	4
 ecp_nistz256_select_w7:
-	.inst	0xd503233f		// paciasp
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
+    AARCH64_VALID_CALL_TARGET
 
-    // $ONE (vec_4*32) := | 1 | 1 | 1 | 1 |
-    // $INDEX (vec_4*32) := | idx | idx | idx | idx |
-    movi    $ONE.4s, #1                     ////    movdqa  .LOne(%rip), $ONE
-    dup     $INDEX.4s, $index               ////    movd    $index, $INDEX
-                                            ////    pshufd  \$0, $INDEX, $INDEX
-    // [$Ra-$Rd] := 0
-    eor     $Ra.16b, $Ra.16b, $Ra.16b       ////    pxor    $Ra, $Ra
-    eor     $Rb.16b, $Rb.16b, $Rb.16b       ////    pxor    $Rb, $Rb
-    eor     $Rc.16b, $Rc.16b, $Rc.16b       ////    pxor    $Rc, $Rc
-    eor     $Rd.16b, $Rd.16b, $Rd.16b       ////    pxor    $Rd, $Rd
+    // $Idx_ctr := 0; loop counter and incremented internal index
+    mov     $Idx_ctr, #0
 
-    // $M0 := $ONE
-    mov     $M0.16b, $ONE.16b               ////    movdqa  $ONE, $M0
-
-    // $Ctr := 64; loop counter
-    mov     $Ctr, #64                       ////    mov \$64, %rax
+    // [$Ra-$Rf] := 0
+    movi    $Ra.16b, #0
+    movi    $Rb.16b, #0
+    movi    $Rc.16b, #0
+    movi    $Rd.16b, #0
 
 .Lselect_w7_loop:
-    // [T0a-T0d] := Load a (2 * 256-bit = 4 * 128-bit) table entry at in_t
-    //  and advance in_t to point to the next entry
+    // Loop 64 times.
+
+    // Increment index (loop counter); tested at the end of the loop
+    add $Idx_ctr, $Idx_ctr, #1
+
+    // [$T0a-$T0d] := Load a (2*256-bit = 4*128-bit) table entry starting at $in_t
+    //  and advance $in_t to point to the next entry
     ld1     {$T0a.2d, $T0b.2d, $T0c.2d, $T0d.2d}, [$in_t],#64
-                                            ////    movdqa  16*0($in_t), $T0a
-                                            ////    movdqa  16*1($in_t), $T0b
-                                            ////    movdqa  16*2($in_t), $T0c
-                                            ////    movdqa  16*3($in_t), $T0d
-                                            ////    lea 16*4($in_t), $in_t
 
-    // $TMP0 = ($M0 == $INDEX)? All 1s : All 0s
-    cmeq    $TMP0.4s, $M0.4s, $INDEX.4s     ////    movdqa  $M0, $TMP0
-                                            ////    pcmpeqd $INDEX, $TMP0
-    // Increment $M0 lanes
-    add     $M0.4s, $M0.4s, $ONE.4s         ////    paddd   $ONE, $M0
+    // $Mask_64 := ($Idx_ctr == $index)? All 1s : All 0s
+    cmp     $Idx_ctr, $index
+    csetm   $Mask_64, eq
 
-    // [$T0a-$T0d] := [$T0a-$T0d] AND $TMP0
-    // values read from the table will be 0'd if $M0 != $INDEX
-    // [$Ra-$Rd] := [$Ra-$Rd] OR [$T0a-$T0d]
-    // values in output registers will remain the same if $M0 != $INDEX
-    and     $T0a.16b, $T0a.16b, $TMP0.16b    ////    pand   $TMP0, $T0a
-    and     $T0b.16b, $T0b.16b, $TMP0.16b    ////    pand   $TMP0, $T0b
-    orr     $Ra.16b, $Ra.16b, $T0a.16b       ////    por    $T0a, $Ra
-    orr     $Rb.16b, $Rb.16b, $T0b.16b       ////    pand   $TMP0, $T0c
-                                             ////    por    $T0b, $Rb
-    and     $T0c.16b, $T0c.16b, $TMP0.16b    ////    pand   $TMP0, $T0d
-    and     $T0d.16b, $T0d.16b, $TMP0.16b    ////    por    $T0c, $Rc
-    orr     $Rc.16b, $Rc.16b, $T0c.16b       ////    por    $T0d, $Rd
-    orr     $Rd.16b, $Rd.16b, $T0d.16b
+    // duplicate mask_64 into Mask (all 0s or all 1s)
+    dup     $Mask.2d, $Mask_64
 
-    // Decrement loop counter; loop back if not 0
-    subs    $Ctr, $Ctr, #1                  ////    dec %rax
-    bne     .Lselect_w7_loop                ////    jnz .Lselect_loop_sse_w7
+    // [$Ra-$Rd] := (Mask == all 1s)? [$T0a-$T0d] : [$Ra-$Rd]
+    // i.e., values in output registers will remain the same if $Idx_ctr != $index
+    bit     $Ra.16b, $T0a.16b, $Mask.16b
+    bit     $Rb.16b, $T0b.16b, $Mask.16b
+
+    bit     $Rc.16b, $T0c.16b, $Mask.16b
+    bit     $Rd.16b, $T0d.16b, $Mask.16b
+
+    // If bit #6 is not 0 (i.e. idx_ctr < 64) loop back
+    tbz    $Idx_ctr, #6, .Lselect_w7_loop
 
     // Write [$Ra-$Rd] to memory at the output pointer
     st1     {$Ra.2d, $Rb.2d, $Rc.2d, $Rd.2d}, [$val]
-                                            ////    movdqu	$Ra, 16*0($val)
-                                            ////    movdqu	$Rb, 16*1($val)
-                                            ////    movdqu	$Rc, 16*2($val)
-                                            ////    movdqu	$Rd, 16*3($val)
 
-	ldp	x29,x30,[sp],#16
-	.inst	0xd50323bf		// autiasp
 	ret
 .size	ecp_nistz256_select_w7,.-ecp_nistz256_select_w7
 ___

@@ -19,7 +19,11 @@
 #include <string.h>
 
 #if defined(BORINGSSL_FIPS)
+#if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
+#else
+#include <io.h>
+#endif
 #include "../../../third_party/jitterentropy/jitterentropy.h"
 #endif
 
@@ -103,7 +107,19 @@ DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list)
 DEFINE_STATIC_MUTEX(thread_states_list_lock)
 DEFINE_STATIC_MUTEX(state_clear_all_lock)
 
-static void rand_thread_state_clear_all(void) __attribute__((destructor));
+#if defined(_MSC_VER)
+#pragma section(".CRT$XCU", read)
+static void rand_thread_state_clear_all(void);
+static void windows_install_rand_thread_state_clear_all(void) {
+  atexit(&rand_thread_state_clear_all);
+}
+__declspec(allocate(".CRT$XCU")) void(*fips_library_destructor)(void) =
+    windows_install_rand_thread_state_clear_all;
+#else
+static void rand_thread_state_clear_all(void) __attribute__ ((destructor));
+#endif
+
+
 static void rand_thread_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
   CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
@@ -217,11 +233,11 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
     abort();
   }
 
-#if defined(BORINGSSL_FIPS_BREAK_CRNG)
-  // This breaks the "continuous random number generator test" defined in FIPS
-  // 140-2, section 4.9.2, and implemented in |rand_get_seed|.
-  OPENSSL_memset(out_entropy, 0, out_entropy_len);
-#endif
+  if (boringssl_fips_break_test("CRNG")) {
+    // This breaks the "continuous random number generator test" defined in FIPS
+    // 140-2, section 4.9.2, and implemented in |rand_get_seed|.
+    OPENSSL_memset(out_entropy, 0, out_entropy_len);
+  }
 }
 
 // rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if

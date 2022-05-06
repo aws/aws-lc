@@ -10,6 +10,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -48,6 +49,8 @@ OSSL_MAKE_DELETER(EC_KEY, EC_KEY_free)
 OSSL_MAKE_DELETER(EC_POINT, EC_POINT_free)
 OSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 OSSL_MAKE_DELETER(EVP_MD_CTX, EVP_MD_CTX_free)
+OSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
+OSSL_MAKE_DELETER(HMAC_CTX, HMAC_CTX_free)
 } // namespace ossl
 
 #endif //OPENSSL_HEADER_TOOL_OSSLBM_H

@@ -33,6 +33,10 @@ typedef uint32_t fiat_secp521r1_tight_field_element[19];
 #error "This code only works on a two's complement system"
 #endif
 
+OPENSSL_UNUSED static void fiat_secp521r1_selectznz(uint32_t out1[19],
+                                     fiat_secp521r1_uint1 arg1,
+                                     const uint32_t arg2[19],
+                                     const uint32_t arg3[19]);
 /*
  * The function fiat_secp521r1_addcarryx_u28 is an addition with carry.
  *

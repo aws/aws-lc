@@ -3560,6 +3560,20 @@ BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQB
 -----END CERTIFICATE-----
 )";
 
+// kHighTagNumber is an X.509 certificate where the outermost SEQUENCE tag uses
+// high tag number form.
+static const char kHighTagNumber[] = R"(
+-----BEGIN CERTIFICATE-----
+PxCCASAwgcagAwIBAgICBNIwCgYIKoZIzj0EAwIwDzENMAsGA1UEAxMEVGVzdDAg
+Fw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsGA1UEAxMEVGVz
+dDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWXa7ep
+Hg1G+92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsGjEDAO
+MAwGA1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKFHiAq
+cml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh4qnk
+soBsxWI=
+-----END CERTIFICATE-----
+)";
+
 TEST(X509Test, BER) {
   // Constructed strings are forbidden in DER.
   EXPECT_FALSE(CertFromPEM(kConstructedBitString));
@@ -3568,6 +3582,9 @@ TEST(X509Test, BER) {
   EXPECT_FALSE(CertFromPEM(kIndefiniteLength));
   // Padding bits in BIT STRINGs must be zero in BER.
   EXPECT_FALSE(CertFromPEM(kNonZeroPadding));
+  // Tags must be minimal in both BER and DER, though many BER decoders
+  // incorrectly support non-minimal tags.
+  EXPECT_FALSE(CertFromPEM(kHighTagNumber));
 }
 
 TEST(X509Test, Names) {
@@ -3889,5 +3906,44 @@ TEST(X509Test, Names) {
                          X509_VERIFY_PARAM_set_hostflags(param, t.flags);
                        }));
     }
+  }
+}
+
+TEST(X509Test, AddDuplicates) {
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  bssl::UniquePtr<X509> a(CertFromPEM(kCrossSigningRootPEM));
+  bssl::UniquePtr<X509> b(CertFromPEM(kRootCAPEM));
+
+  ASSERT_TRUE(store);
+  ASSERT_TRUE(a);
+  ASSERT_TRUE(b);
+
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+
+  EXPECT_EQ(sk_X509_OBJECT_num(X509_STORE_get0_objects(store.get())), 2u);
+}
+
+TEST(X509Test, BytesToHex) {
+  struct {
+    std::vector<uint8_t> bytes;
+    const char *hex;
+  } kTests[] = {
+      {{}, ""},
+      {{0x00}, "00"},
+      {{0x00, 0x11, 0x22}, "00:11:22"},
+      {{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+       "01:23:45:67:89:AB:CD:EF"},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.bytes));
+    bssl::UniquePtr<char> hex(
+        x509v3_bytes_to_hex(t.bytes.data(), t.bytes.size()));
+    ASSERT_TRUE(hex);
+    EXPECT_STREQ(hex.get(), t.hex);
   }
 }
