@@ -166,6 +166,7 @@ void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx) {
   }
   EVP_PKEY_free(ctx->pkey);
   EVP_PKEY_free(ctx->peerkey);
+  OPENSSL_free(ctx->op.encap.kem);
   OPENSSL_free(ctx);
 }
 

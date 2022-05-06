@@ -2,6 +2,7 @@
 #include <openssl/evp.h>
 #include <openssl/randombytes.h>
 #include <vector>
+#include "../fipsmodule/evp/internal.h"
 #include "../kyber/kem_kyber.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -45,12 +46,14 @@ static void RunTest(FileTest *t)
   ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
   EXPECT_EQ(Bytes(ct),
             Bytes(ciphertext, KYBER512_KEM_CIPHERTEXT_BYTES));
+  //Specifically free the KEM because decapsulate_init on the reused ctx will
+  //allocate a new one, orphaning this one.
+  OPENSSL_free(kyber_pkey_ctx->op.encap.kem);
   ASSERT_TRUE(EVP_PKEY_decapsulate_init(kyber_pkey_ctx, NULL));
   ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
   EXPECT_EQ(Bytes(ss),
             Bytes(shared_secret, KYBER512_KEM_SHARED_SECRET_BYTES));
 
-  EVP_PKEY_free(kyber_pkey);
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 

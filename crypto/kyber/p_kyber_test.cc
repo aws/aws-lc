@@ -55,7 +55,6 @@ TEST(Kyber512Test, EVP_PKEY_keygen) {
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
   OPENSSL_free(buf);
 
-  EVP_PKEY_free(kyber_pkey);
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
@@ -84,8 +83,6 @@ TEST(Kyber512Test, EVP_PKEY_cmp) {
   EXPECT_EQ(1, EVP_PKEY_cmp(kyber_pkey1, kyber_pkey1));
   EXPECT_EQ(1, EVP_PKEY_cmp(kyber_pkey2, kyber_pkey2));
 
-  EVP_PKEY_free(kyber_pkey1);
-  EVP_PKEY_free(kyber_pkey2);
   EVP_PKEY_CTX_free(kyber_pkey_ctx1);
   EVP_PKEY_CTX_free(kyber_pkey_ctx2);
 }
@@ -130,7 +127,6 @@ TEST(Kyber512Test, EVP_PKEY_new_raw) {
   EXPECT_EQ(0, OPENSSL_memcmp(kyber512Key->priv, newKyber512Key->priv, KYBER512_PRIVATE_KEY_BYTES));
 
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
-  EVP_PKEY_free(kyber_pkey);
   EVP_PKEY_free(new_public);
   EVP_PKEY_free(new_private);
 }
@@ -148,7 +144,6 @@ TEST(Kyber512Test, EVP_PKEY_size) {
   EXPECT_EQ(KYBER512_PUBLIC_KEY_BYTES + KYBER512_PRIVATE_KEY_BYTES, EVP_PKEY_size(kyber_pkey));
   EXPECT_EQ(8*(KYBER512_PUBLIC_KEY_BYTES + KYBER512_PRIVATE_KEY_BYTES), EVP_PKEY_bits(kyber_pkey));
 
-  EVP_PKEY_free(kyber_pkey);
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
@@ -207,8 +202,6 @@ TEST(Kyber512Test, EVP_KEM_operations_test) {
   }
   EXPECT_NE(tmp, 0);
 
-  EVP_PKEY_free(kyber_pkey_alice);
-  EVP_PKEY_free(kyber_pkey_bob);
   EVP_PKEY_CTX_free(kyber_pkey_ctx_alice);
   EVP_PKEY_CTX_free(kyber_pkey_ctx_bob);
 }
@@ -232,7 +225,6 @@ TEST(Kyber512Test, EVP_KEM_size_checks_test) {
   ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, NULL, &shared_secret_len, NULL, ciphertext_len));
   EXPECT_EQ(shared_secret_len, (size_t)KYBER512_KEM_SHARED_SECRET_BYTES);
 
-  EVP_PKEY_free(kyber_pkey);
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
@@ -259,7 +251,9 @@ TEST(Kyber512Test, EVP_KEM_invalid_key_type_test) {
   kyber_pkey_ctx->pkey = rsa_pkey;
   ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
   ASSERT_FALSE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
-  EVP_PKEY_free(kyber_pkey);
+  //Swap the key back to the original one so that the cleanups happen correctly
+  kyber_pkey_ctx->pkey = kyber_pkey;
+
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
   EVP_PKEY_CTX_free(rsa_pkey_ctx);
 }
@@ -289,6 +283,6 @@ TEST(Kyber512Test, EVP_KEM_failure_modes_test) {
   EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
   ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
   ASSERT_FALSE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
-  EVP_PKEY_free(kyber_pkey);
+
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
