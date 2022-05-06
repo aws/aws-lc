@@ -83,3 +83,36 @@ extern void bignum_tolebytes_6(uint8_t z[static 48], const uint64_t x[static 6])
 // Input x[6]; output function return
 extern uint64_t bignum_nonzero_6(const uint64_t x[static 6]);
 
+// Add modulo p_521, z := (x + y) mod p_521, assuming x and y reduced
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_add_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
+
+// Subtract modulo p_521, z := (x - y) mod p_521
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_sub_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
+
+// Negate modulo p_521, z := (-x) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_neg_p521(uint64_t z[static 9], const uint64_t x[static 9]);
+
+// Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_mul_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
+
+// Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
+// Inputs x[9], y[9]; output z[9]
+extern void bignum_mul_p521_alt(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
+
+// Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_sqr_p521(uint64_t z[static 9], const uint64_t x[static 9]);
+
+// Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
+// Input x[9]; output z[9]
+extern void bignum_sqr_p521_alt(uint64_t z[static 9], const uint64_t x[static 9]);
+
+// Convert little-endian bytes to 9-digit 528-bit bignum
+extern void bignum_fromlebytes_p521(uint64_t z[static 9], const uint8_t x[static 66]);
+
+// Convert 9-digit 528-bit bignum to little-endian bytes
+extern void bignum_tolebytes_p521(uint8_t z[static 66], const uint64_t x[static 9]);

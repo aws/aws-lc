@@ -125,6 +125,15 @@ static const struct KnownAEAD kAEADs[] = {
      "aes_128_cbc_sha1_tls_implicit_iv_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
 
+    {"AES_128_CBC_SHA256_TLS", EVP_aead_aes_128_cbc_sha256_tls,
+     "aes_128_cbc_sha256_tls_tests.txt",
+     kLimitedImplementation | RequiresADLength(11)},
+
+    {"AES_128_CBC_SHA256_TLSImplicitIV",
+     EVP_aead_aes_128_cbc_sha256_tls_implicit_iv,
+     "aes_128_cbc_sha256_tls_implicit_iv_tests.txt",
+     kLimitedImplementation | RequiresADLength(11)},
+
     {"AES_256_CBC_SHA1_TLS", EVP_aead_aes_256_cbc_sha1_tls,
      "aes_256_cbc_sha1_tls_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
@@ -1007,4 +1016,8 @@ TEST(AEADTest, WycheproofXChaCha20Poly1305) {
         t->IgnoreInstruction("keySize");
         RunWycheproofTestCase(t, EVP_aead_xchacha20_poly1305());
       });
+}
+
+TEST(AEADTest, FreeNull) {
+  EVP_AEAD_CTX_free(nullptr);
 }

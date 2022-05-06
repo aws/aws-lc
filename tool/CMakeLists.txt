@@ -84,4 +84,3 @@ if(BORINGSSL_INSTALL_DIR)
     target_link_libraries(bssl_bm pthread)
   endif()
 endif()
-

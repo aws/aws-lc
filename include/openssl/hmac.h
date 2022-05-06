@@ -60,6 +60,8 @@
 #include <openssl/base.h>
 
 #include <openssl/digest.h>
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -95,8 +97,12 @@ OPENSSL_EXPORT void HMAC_CTX_init(HMAC_CTX *ctx);
 // the resulting object.
 OPENSSL_EXPORT HMAC_CTX *HMAC_CTX_new(void);
 
-// HMAC_CTX_cleanup frees data owned by |ctx|. It does not free |ctx| itself.
+// HMAC_CTX_cleanup zeroises |ctx| since it's allocated on the stack.
+// This brings the context to its initial state.
 OPENSSL_EXPORT void HMAC_CTX_cleanup(HMAC_CTX *ctx);
+
+// HMAC_CTX_cleanse calls |HMAC_CTX_cleanup|.
+OPENSSL_EXPORT void HMAC_CTX_cleanse(HMAC_CTX *ctx);
 
 // HMAC_CTX_free calls |HMAC_CTX_cleanup| and then frees |ctx| itself.
 OPENSSL_EXPORT void HMAC_CTX_free(HMAC_CTX *ctx);
@@ -154,12 +160,23 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 
 
 // Private functions
+typedef struct hmac_methods_st HmacMethods;
+
+// We use a union to ensure that enough space is allocated and never actually bother with the named members.
+union md_ctx_union {
+  MD5_CTX md5;
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+  SHA512_CTX sha512;
+};
 
 struct hmac_ctx_st {
   const EVP_MD *md;
-  EVP_MD_CTX md_ctx;
-  EVP_MD_CTX i_ctx;
-  EVP_MD_CTX o_ctx;
+  const HmacMethods *methods;
+  union md_ctx_union md_ctx;
+  union md_ctx_union i_ctx;
+  union md_ctx_union o_ctx;
+  int8_t state;
 } /* HMAC_CTX */;
 
 

@@ -266,8 +266,12 @@ static bool SpeedRSA(const std::string &selected) {
     }
     results.Print(name + " verify (fresh key)");
 
+// |RSA_private_key_from_bytes| is not available in OpenSSL.
+// TODO: Add support for OpenSSL RSA private key parsing benchmarks. Tracked in
+//       CryptoAlg-1092.
+#if !defined(OPENSSL_BENCHMARK)
     if (!TimeFunction(&results, [&]() -> bool {
-          return bssl::UniquePtr<RSA>(RSA_private_key_from_bytes(
+          return BM_NAMESPACE::UniquePtr<RSA>(RSA_private_key_from_bytes(
                      kRSAKeys[i].key, kRSAKeys[i].key_len)) != nullptr;
         })) {
       fprintf(stderr, "Failed to parse %s key.\n", name.c_str());
@@ -275,6 +279,7 @@ static bool SpeedRSA(const std::string &selected) {
       return false;
     }
     results.Print(name + " private key parse");
+#endif
   }
 
   return true;
@@ -553,23 +558,93 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
+static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+
+  std::vector<uint8_t> key(key_len);
+  std::vector<uint8_t> iv(iv_len, 9);
+  std::vector<uint8_t> in, out;
+
+  // key = key1||key2 and key1 should not equal key2
+  std::generate(key.begin(), key.end(), [] {
+    static uint8_t i = 0;
+    return i++;
+  });
+
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  // Benchmark initialisation and encryption
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data()) ||
+              !EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                 in.size())) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and encrypt",
+                           in_len);
+  }
+
+  // Benchmark initialisation and decryption
+  for (size_t in_len : g_chunk_lengths) {
+    in.resize(in_len);
+    out.resize(in_len);
+    std::fill(in.begin(), in.end(), 0x5a);
+    int len;
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data()) ||
+              !EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(),
+                                 in.size())) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "AES-256-XTS initialisation or decryption failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and decrypt",
+                           in_len);
+  }
+
+  return true;
+}
+
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
-  uint8_t scratch[16384];
+  uint8_t input[16384] = {0};
 
-  if (chunk_len > sizeof(scratch)) {
+  if (chunk_len > sizeof(input)) {
     return false;
   }
 
   name += ChunkLenSuffix(chunk_len);
   TimeResults results;
-  if (!TimeFunction(&results, [&ctx, md, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&ctx, md, chunk_len, &input]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
         return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
-               EVP_DigestUpdate(ctx.get(), scratch, chunk_len) &&
+               EVP_DigestUpdate(ctx.get(), input, chunk_len) &&
                EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
@@ -589,6 +664,99 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 
   for (size_t chunk_len : g_chunk_lengths) {
     if (!SpeedHashChunk(md, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
+                           size_t chunk_len) {
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
+  uint8_t scratch[16384];
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  if (!HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */)) {
+    fprintf(stderr, "Failed to create HMAC_CTX.\n");
+  }
+  name += ChunkLenSuffix(chunk_len);
+  TimeResults results;
+  if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {
+        uint8_t digest[EVP_MAX_MD_SIZE];
+        unsigned int md_len;
+
+        return HMAC_Init_ex(ctx.get(), NULL, 0, NULL, NULL) &&
+               HMAC_Update(ctx.get(), scratch, chunk_len) &&
+               HMAC_Final(ctx.get(), digest, &md_len);
+      })) {
+    fprintf(stderr, "HMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedHmac(const EVP_MD *md, const std::string &name,
+                      const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedHmacChunk(md, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
+                           size_t chunk_len) {
+  uint8_t scratch[16384];
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  name += ChunkLenSuffix(chunk_len);
+  TimeResults results;
+  if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &scratch]() -> bool {
+
+        uint8_t digest[EVP_MAX_MD_SIZE] = {0};
+        unsigned int md_len = EVP_MAX_MD_SIZE;
+
+        return HMAC(md, key.get(), key_len, scratch, chunk_len, digest, &md_len) != nullptr;
+      })) {
+    fprintf(stderr, "HMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
+                      const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedHmacChunkOneShot(md, name, chunk_len)) {
       return false;
     }
   }
@@ -733,14 +901,16 @@ static bool SpeedECDH(const std::string &selected) {
   return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
          SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
          SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
-         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected);
+         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
+         SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
 }
 
 static bool SpeedECDSA(const std::string &selected) {
   return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
          SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
          SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
-         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected);
+         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected) &&
+         SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
 #if !defined(OPENSSL_BENCHMARK)
@@ -1030,6 +1200,29 @@ static bool SpeedBase64(const std::string &selected) {
     return false;
   }
   results.PrintWithBytes("base64 decode", strlen(kInput));
+  return true;
+}
+
+static bool SpeedSipHash(const std::string &selected) {
+  if (!selected.empty() && selected.find("siphash") == std::string::npos) {
+    return true;
+  }
+
+  uint64_t key[2] = {0};
+  for (size_t len : g_chunk_lengths) {
+    std::vector<uint8_t> input(len);
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          SIPHASH_24(key, input.data(), input.size());
+          return true;
+        })) {
+      fprintf(stderr, "SIPHASH_24 failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    results.PrintWithBytes("SipHash-2-4" + ChunkLenSuffix(len), len);
+  }
+
   return true;
 }
 
@@ -1391,6 +1584,7 @@ bool Speed(const std::vector<std::string> &args) {
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
+     !SpeedAES256XTS("AES-256-XTS", selected) ||
      !SpeedHash(EVP_md4(), "MD4", selected) ||
      !SpeedHash(EVP_md5(), "MD5", selected) ||
      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
@@ -1398,6 +1592,16 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
      !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+     !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
+     !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
+     !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
+     !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
+     !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+     !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
+     !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
@@ -1431,7 +1635,8 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
-     !SpeedBase64(selected)
+     !SpeedBase64(selected) ||
+     !SpeedSipHash(selected)
 #endif
      ) {
     return false;

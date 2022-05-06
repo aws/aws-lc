@@ -16,11 +16,13 @@
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/hrss.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/siphash.h>
 #include <openssl/trust_token.h>
 #include <openssl/cipher.h>
 
