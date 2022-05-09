@@ -307,7 +307,7 @@ int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
   return 1;
 }
 
-long BIO_get_mem_data(BIO *bio, char **contents) {
+long BIO_get_mem_data(BIO *bio, const char **contents) {
   return BIO_ctrl(bio, BIO_CTRL_INFO, 0, (char *) contents);
 }
 

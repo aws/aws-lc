@@ -427,7 +427,7 @@ OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
 // WARNING: don't use this, use |BIO_mem_contents|. A return value of zero from
 // this function can mean either that it failed or that the memory buffer is
 // empty.
-OPENSSL_EXPORT long BIO_get_mem_data(BIO *bio, char **contents);
+OPENSSL_EXPORT long BIO_get_mem_data(BIO *bio, const char **contents);
 
 // BIO_get_mem_ptr sets |*out| to a BUF_MEM containing the current contents of
 // |bio|. It returns one on success or zero on error.
