@@ -14,21 +14,21 @@
 int kyber512_keypair(uint8_t *public_key, uint8_t *secret_key);
 
 int kyber512_encapsulate_init(void *ctx,
-                              void *provkey,
+                              void *prov_key,
                               const OSSL_PARAM params[]);
 int kyber512_encapsulate(void *ctx,
                          unsigned char *out,
-                         size_t *outlen,
+                         size_t *out_len,
                          unsigned char *secret,
-                         size_t *secretlen);
+                         size_t *secret_len);
 int kyber512_decapsulate_init(void *ctx,
-                              void *provkey,
+                              void *prov_key,
                               const OSSL_PARAM params[]);
 int kyber512_decapsulate(void *ctx,
                          unsigned char *out,
-                         size_t *outlen,
+                         size_t *out_len,
                          const unsigned char *in,
-                         size_t inlen);
+                         size_t in_len);
 
 #endif
 

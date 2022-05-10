@@ -88,7 +88,7 @@ TEST(Kyber512Test, EVP_PKEY_cmp) {
 }
 
 TEST(Kyber512Test, EVP_PKEY_new_raw) {
-  //Source key
+  // Source key
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_NE(kyber_pkey_ctx, nullptr);
 
@@ -100,7 +100,7 @@ TEST(Kyber512Test, EVP_PKEY_new_raw) {
   ASSERT_NE(kyber_pkey->pkey.ptr, nullptr);
   const KYBER512_KEY *kyber512Key = (KYBER512_KEY *)(kyber_pkey->pkey.ptr);
 
-  //New raw public key
+  // New raw public key
   EVP_PKEY *new_public = EVP_PKEY_new_raw_public_key(EVP_PKEY_KYBER512,
                                                      NULL,
                                                      kyber512Key->pub,
@@ -114,10 +114,10 @@ TEST(Kyber512Test, EVP_PKEY_new_raw) {
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
 
-  //EVP_PKEY_cmp just compares the public keys so this should return 1
+  // EVP_PKEY_cmp just compares the public keys so this should return 1
   EXPECT_EQ(1, EVP_PKEY_cmp(kyber_pkey, new_public));
 
-  //New raw private key
+  // New raw private key
   EVP_PKEY *new_private = EVP_PKEY_new_raw_private_key(EVP_PKEY_KYBER512,
                                                        NULL,
                                                        kyber512Key->priv,
@@ -234,24 +234,24 @@ TEST(Kyber512Test, EVP_KEM_invalid_key_type_test) {
   uint8_t shared_secret[KYBER512_KEM_SHARED_SECRET_BYTES];
   uint8_t ciphertext[KYBER512_KEM_CIPHERTEXT_BYTES];
 
-  //kem_fetch step of encap/decap init should fail on wrong key type
+  // kem_fetch step of encap/decap init should fail on wrong key type
   EVP_PKEY_CTX *rsa_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr);
   EVP_PKEY *rsa_pkey = EVP_PKEY_new();
   rsa_pkey_ctx->pkey = rsa_pkey;
   ASSERT_FALSE(EVP_PKEY_encapsulate_init(rsa_pkey_ctx, NULL));
   ASSERT_FALSE(EVP_PKEY_decapsulate_init(rsa_pkey_ctx, NULL));
 
-  //encap and decap should fail on wrong key type
+  // encap and decap should fail on wrong key type
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   EVP_PKEY *kyber_pkey = EVP_PKEY_new();
   EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
   EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
   ASSERT_TRUE(EVP_PKEY_encapsulate_init(kyber_pkey_ctx, NULL));
-  //Swap the key for invalid type
+  // Swap the key for invalid type
   kyber_pkey_ctx->pkey = rsa_pkey;
   ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
   ASSERT_FALSE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
-  //Swap the key back to the original one so that the cleanups happen correctly
+  // Swap the key back to the original one so that the cleanups happen correctly
   kyber_pkey_ctx->pkey = kyber_pkey;
 
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
@@ -264,19 +264,19 @@ TEST(Kyber512Test, EVP_KEM_failure_modes_test) {
   uint8_t shared_secret[KYBER512_KEM_SHARED_SECRET_BYTES];
   uint8_t ciphertext[KYBER512_KEM_CIPHERTEXT_BYTES];
 
-  //NULL EVP_PKEY_CTX
+  // NULL EVP_PKEY_CTX
   ASSERT_FALSE(EVP_PKEY_encapsulate_init(NULL, NULL));
   ASSERT_FALSE(EVP_PKEY_decapsulate_init(NULL, NULL));
   ASSERT_FALSE(EVP_PKEY_encapsulate(NULL, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
   ASSERT_FALSE(EVP_PKEY_decapsulate(NULL, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
 
-  //Uninitialized ctx->pkey during init
+  // Uninitialized ctx->pkey during init
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_FALSE(EVP_PKEY_encapsulate_init(kyber_pkey_ctx, NULL));
   ASSERT_FALSE(EVP_PKEY_decapsulate_init(kyber_pkey_ctx, NULL));
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 
-  //Uninitialized KEM
+  // Uninitialized KEM
   kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   EVP_PKEY *kyber_pkey = EVP_PKEY_new();
   EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
