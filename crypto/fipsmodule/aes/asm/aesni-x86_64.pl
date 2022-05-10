@@ -1769,7 +1769,7 @@ ___
 #	const AES_KEY *key1, const AES_KEY *key2
 #	const unsigned char iv[16]);
 #
-if (0) {  # Omit these functions in BoringSSL
+{
 my @tweak=map("%xmm$_",(10..15));
 my ($twmask,$twres,$twtmp)=("%xmm8","%xmm9",@tweak[4]);
 my ($key2,$ivp,$len_)=("%r8","%r9","%r9");

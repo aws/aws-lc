@@ -113,7 +113,7 @@ const char *SSLeay_version(int which) { return OpenSSL_version(which); }
 const char *OpenSSL_version(int which) {
   switch (which) {
     case OPENSSL_VERSION:
-      return "BoringSSL";
+      return AWSLC_VERSION_NAME;
     case OPENSSL_CFLAGS:
       return "compiler: n/a";
     case OPENSSL_BUILT_ON:

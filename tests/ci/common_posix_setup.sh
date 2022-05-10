@@ -22,6 +22,8 @@ else
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
 fi
 
+PLATFORM=$(uname -m)
+
 function run_build {
   local cflags=("$@")
   rm -rf "$BUILD_ROOT"
@@ -77,7 +79,7 @@ function fips_build_and_test {
   [[ "${expect_fips_mode}" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
   # Run tests.
   run_cmake_custom_target 'run_tests'
-  "${BUILD_ROOT}/util/fipstools/cavp/test_fips"
+  "${BUILD_ROOT}/util/fipstools/test_fips"
 }
 
 function build_and_test_valgrind {

@@ -22,4 +22,3 @@ build_and_run_minimal_test -DDISABLE_GO=ON -DDISABLE_PERL=ON -DCMAKE_BUILD_TYPE=
 
 echo "Testing shared lib AWS-LC without Perl/Go in release mode."
 build_and_run_minimal_test -DDISABLE_GO=ON -DDISABLE_PERL=ON -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
-

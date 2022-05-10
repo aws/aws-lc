@@ -385,6 +385,9 @@ std::vector<Flag> SortedFlags() {
                  &TestConfig::quic_early_data_context),
       IntFlag("-early-write-after-message",
               &TestConfig::early_write_after_message),
+      BoolFlag("-check-ssl-transfer", &TestConfig::check_ssl_transfer),
+      BoolFlag("-do-ssl-transfer", &TestConfig::do_ssl_transfer),
+      StringFlag("-ssl-fuzz-seed-path-prefix", &TestConfig::ssl_fuzz_seed_path_prefix),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -602,6 +605,7 @@ static void MessageCallback(int is_write, int version, int content_type,
       state->msg_callback_text += "v2clienthello\n";
       return;
 
+    case SSL3_RT_CLIENT_HELLO_INNER:
     case SSL3_RT_HANDSHAKE: {
       CBS cbs;
       CBS_init(&cbs, buf_u8, len);
@@ -619,10 +623,19 @@ static void MessageCallback(int is_write, int version, int content_type,
         return;
       }
       char text[16];
-      snprintf(text, sizeof(text), "hs %d\n", type);
-      state->msg_callback_text += text;
-      if (!is_write) {
-        state->last_message_received = type;
+      if (content_type == SSL3_RT_CLIENT_HELLO_INNER) {
+        if (type != SSL3_MT_CLIENT_HELLO) {
+          fprintf(stderr, "Invalid header for ClientHelloInner.\n");
+          state->msg_callback_ok = false;
+          return;
+        }
+        state->msg_callback_text += "clienthelloinner\n";
+      } else {
+        snprintf(text, sizeof(text), "hs %d\n", type);
+        state->msg_callback_text += text;
+        if (!is_write) {
+          state->last_message_received = type;
+        }
       }
       return;
     }

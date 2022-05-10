@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/base.h>
+#include <iostream>
 
 #include <functional>
 #include <memory>
@@ -39,15 +40,15 @@ class RequestBuffer {
   static std::unique_ptr<RequestBuffer> New();
 };
 
-// ParseArgsFromFd returns a span of arguments, the first of which is the name
-// of the requested function, from |fd|. The return values point into |buffer|
+// ParseArgsFromStream returns a span of arguments, the first of which is the name
+// of the requested function, from |stream|. The return values point into |buffer|
 // and so must not be used after |buffer| has been freed or reused for a
 // subsequent call. It returns an empty span on error, because std::optional
 // is still too new.
-Span<const Span<const uint8_t>> ParseArgsFromFd(int fd, RequestBuffer *buffer);
+Span<const Span<const uint8_t>> ParseArgsFromStream(std::istream *stream, RequestBuffer *buffer);
 
-// WriteReplyToFd writes a reply to the given file descriptor.
-bool WriteReplyToFd(int fd, const std::vector<Span<const uint8_t>> &spans);
+// WriteReplyToStream writes a reply to the given stream.
+bool WriteReplyToStream(std::ostream *stream, const std::vector<Span<const uint8_t>> &spans);
 
 // ReplyCallback is the type of a callback that writes a reply to an ACVP
 // request.

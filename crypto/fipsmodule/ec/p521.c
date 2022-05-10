@@ -17,17 +17,113 @@
 #include "../delocate.h"
 #include "internal.h"
 
-#if defined(BORINGSSL_HAS_UINT128)
-#define BORINGSSL_NISTP521_64BIT 1
-#include "../../../third_party/fiat/p521_64.h"
+// We have two implementations of the field arithmetic for P-521 curve:
+//   - Fiat-crypto
+//   - s2n-bignum
+// Both Fiat-crypto and s2n-bignum implementations are formally verified.
+// Fiat-crypto implementation is fully portable C code, while s2n-bignum
+// implements the operations in assembly for x86_64 and aarch64 platforms.
+// All the P-521 field operations supported by Fiat-crypto are supported
+// by s2n-bignum as well, so s2n-bignum can be used as a drop-in replacement
+// when appropriate. To do that we define macros for the functions.
+// For example, field addition macro is either defined as
+//   #define p521_felem_add(out, in0, in1) fiat_p521_add(out, in0, in1)
+// when Fiat-crypto is used, or as:
+//   #define p521_felem_add(out, in0, in1) bignum_add_p521(out, in0, in1)
+// when s2n-bignum is used.
+//
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_LINUX) ||  defined(OPENSSL_APPLE)) && \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+
+#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#  define P521_USE_S2N_BIGNUM_FIELD_ARITH 1
+
 #else
-#include "../../../third_party/fiat/p521_32.h"
+
+// Fiat-crypto has both 64-bit and 32-bit implementation for P-521.
+#  if defined(BORINGSSL_HAS_UINT128)
+#    include "../../../third_party/fiat/p521_64.h"
+#    define P521_USE_64BIT_LIMBS_FELEM 1
+#  else
+#    include "../../../third_party/fiat/p521_32.h"
+#  endif
+
 #endif
 
-#if defined(BORINGSSL_NISTP521_64BIT)
+#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
 
 #define P521_NLIMBS (9)
-// NOTE: Fiat-crypto represents a field element by 9 58-bit digits.
+
+typedef uint64_t p521_limb_t;
+typedef uint64_t p521_felem[P521_NLIMBS]; // field element
+
+static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
+    0x0000000000000001, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000};
+
+// The field characteristic p.
+static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff,
+    0x1ff};
+
+#if defined(OPENSSL_X86_64)
+// On x86_64 platforms s2n-bignum uses bmi2 and adx instruction sets
+// for some of the functions. These instructions are not supported by
+// every x86 CPU so we have to check if they are available and in case
+// they are not we fallback to slightly slower but generic implementation.
+static inline uint8_t p521_use_s2n_bignum_alt(void) {
+  return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) == 0) || // bmi2
+         ((OPENSSL_ia32cap_P[2] & (1u << 19)) == 0);   // adx
+}
+#else
+// On aarch64 platforms s2n-bignum has two implementations of certain
+// functions -- the default one and the alternative (suffixed _alt).
+// Depending on the architecture one version is faster than the other.
+// Generally, the "_alt" functions are faster on architectures with higher
+// multiplier throughput, for example, Graviton 3 and Apple's M1 chips.
+// Until we find a clear way to determine in runtime which architecture we
+// are running on we stick with the default s2n-bignum functions. Except in
+// the case of M1, because we know that if the OS is macOS and the CPU is
+// aarch64 then the CPU must be M1 so the "_alt" functions will be faster.
+static inline uint8_t p521_use_s2n_bignum_alt(void) {
+#if defined(OPENSSL_MACOS)
+  return 1;
+#else
+  return 0;
+#endif
+}
+#endif
+
+// s2n-bignum implementation of field arithmetic
+#define p521_felem_add(out, in0, in1)   bignum_add_p521(out, in0, in1)
+#define p521_felem_sub(out, in0, in1)   bignum_sub_p521(out, in0, in1)
+#define p521_felem_opp(out, in0)        bignum_neg_p521(out, in0)
+#define p521_felem_to_bytes(out, in0)   bignum_tolebytes_p521(out, in0)
+#define p521_felem_from_bytes(out, in0) bignum_fromlebytes_p521(out, in0)
+
+// The following two functions need bmi2 and adx support.
+#define p521_felem_mul(out, in0, in1) \
+  if (p521_use_s2n_bignum_alt()) bignum_mul_p521_alt(out, in0, in1); \
+  else bignum_mul_p521(out, in0, in1);
+
+#define p521_felem_sqr(out, in0) \
+  if (p521_use_s2n_bignum_alt()) bignum_sqr_p521_alt(out, in0); \
+  else bignum_sqr_p521(out, in0);
+
+#else // P521_USE_S2N_BIGNUM_FIELD_ARITH
+
+#if defined(P521_USE_64BIT_LIMBS_FELEM)
+
+// In the 64-bit case Fiat-crypto represents a field element by 9 58-bit digits.
+#define P521_NLIMBS (9)
 
 typedef uint64_t p521_felem[P521_NLIMBS]; // field element
 typedef uint64_t p521_limb_t;
@@ -42,18 +138,18 @@ static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
 
 // The field characteristic p in Fiat-crypto's representation (58-bit digits).
 static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x3ffffffffffffff, 0x3ffffffffffffff,
-    0x1ffffffffffffff};
-
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x01ffffffffffffff};
 
 #else  // 64BIT; else 32BIT
 
-#define P521_NLIMBS (19)
-// NOTE: Fiat-crypto represents a field element by 19 digits with bit sizes:
+// In the 32-bit case Fiat-crypto represents a field element by 19 digits
+// with the following bit sizes:
 // [28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 27].
+#define P521_NLIMBS (19)
 
 typedef uint32_t p521_felem[P521_NLIMBS]; // field element
 typedef uint32_t p521_limb_t;
@@ -75,9 +171,6 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
     0xfffffff, 0x7ffffff, 0x7ffffff};
 #endif  // 64BIT
 
-
-// dkostic: these macro definitions will make sense once we add s2n-bignum
-// functions as in p384.c
 // Fiat-crypto implementation of field arithmetic
 #define p521_felem_add(out, in0, in1)   fiat_secp521r1_carry_add(out, in0, in1)
 #define p521_felem_sub(out, in0, in1)   fiat_secp521r1_carry_sub(out, in0, in1)
@@ -87,11 +180,17 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 #define p521_felem_to_bytes(out, in0)   fiat_secp521r1_to_bytes(out, in0)
 #define p521_felem_from_bytes(out, in0) fiat_secp521r1_from_bytes(out, in0)
 
+#endif // P521_USE_S2N_BIGNUM_FIELD_ARITH
+
 static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
   p521_limb_t is_not_zero = 0;
   for (int i = 0; i < P521_NLIMBS; i++) {
     is_not_zero |= in1[i];
   }
+
+#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
+  return is_not_zero;
+#else
   // Fiat-crypto functions may return p (the field characteristic)
   // instead of 0 in some cases, so we also check for that.
   p521_limb_t is_not_p = 0;
@@ -99,7 +198,9 @@ static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
     is_not_p |= (in1[i] ^ p521_felem_p[i]);
   }
 
-  return (is_not_zero && is_not_p);
+  return ~(constant_time_is_zero_w(is_not_p) |
+           constant_time_is_zero_w(is_not_zero));
+#endif
 }
 
 static void p521_felem_copy(p521_limb_t out[P521_NLIMBS],
@@ -113,7 +214,10 @@ static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
                                p521_limb_t t,
                                const p521_limb_t z[P521_NLIMBS],
                                const p521_limb_t nz[P521_NLIMBS]) {
-  fiat_secp521r1_selectznz(out, !!t, z, nz);
+  p521_limb_t mask = constant_time_is_zero_w(t);
+  for (size_t i = 0; i < P521_NLIMBS; i++) {
+    out[i] = constant_time_select_w(mask, z[i], nz[i]);
+  }
 }
 
 // NOTE: the input and output are in little-endian representation.
@@ -247,7 +351,9 @@ static void p521_point_double(p521_felem x_out,
 
   // z' = (y + z)^2 - gamma - delta
   // The following calculation differs from that in p256.c:
-  // An add is replaced with a sub in order to save 5 cmovznz.
+  // an add is replaced with a sub. This saves us 5 cmovznz operations
+  // when Fiat-crypto implementation of felem_add and felem_sub is used,
+  // and also a certain number of intructions when s2n-bignum is used.
   p521_felem_add(ftmp, y_in, z_in);
   p521_felem_sqr(z_out, ftmp);
   p521_felem_sub(z_out, z_out, gamma);
@@ -491,11 +597,11 @@ static crypto_word_t p521_get_bit(const uint8_t *in, int i) {
 }
 
 // Constants for scalar encoding in the scalar multiplication functions.
-#define P521_MUL_WSIZE        (7) // window size w
-// Assert the window size is 7 because the pre-computed table in |p521_table.h|
-// is generated for window size 7.
-OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 7,
-    p521_scalar_mul_window_size_is_not_equal_to_seven)
+#define P521_MUL_WSIZE        (5) // window size w
+// Assert the window size is 5 because the pre-computed table in |p521_table.h|
+// is generated for window size 5.
+OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
+    p521_scalar_mul_window_size_is_not_equal_to_five)
 
 #define P521_MUL_TWO_TO_WSIZE (1 << P521_MUL_WSIZE)
 #define P521_MUL_WSIZE_MASK   ((P521_MUL_TWO_TO_WSIZE << 1) - 1)
@@ -565,27 +671,27 @@ static void p521_select_point_affine(p521_felem out[2],
 // The product is computed with the use of a small table generated on-the-fly
 // and the scalar recoded in the regular-wNAF representation.
 //
-// The precomputed (on-the-fly) table |p_pre_comp| holds 64 odd multiples of P:
-//     [2i + 1]P for i in [0, 63].
+// The precomputed (on-the-fly) table |p_pre_comp| holds 16 odd multiples of P:
+//     [2i + 1]P for i in [0, 15].
 // Computing the negation of a point P = (x, y) is relatively easy:
 //     -P = (x, -y).
-// So we may assume that instead of the above-mentioned 64, we have 128 points:
-//     [\pm 1]P, [\pm 3]P, [\pm 5]P, ..., [\pm 127]P.
+// So we may assume that instead of the above-mentioned 16, we have 32 points:
+//     [\pm 1]P, [\pm 3]P, [\pm 5]P, ..., [\pm 31]P.
 //
-// The 521-bit scalar is recoded (regular-wNAF encoding) into 75 signed digits
-// each of length 7 bits, as explained in the |p521_felem_mul_scalar_rwnaf|
+// The 521-bit scalar is recoded (regular-wNAF encoding) into 105 signed digits
+// each of length 5 bits, as explained in the |p521_felem_mul_scalar_rwnaf|
 // function. Namely,
-//     scalar' = s_0 + s_1*2^7 + s_2*2^14 + ... + s_74*2^518,
-// where digits s_i are in [\pm 1, \pm 3, ..., \pm 127]. Note that for an odd
+//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_104*2^520,
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
 // scalar we have that scalar = scalar', while in the case of an even
 // scalar we have that scalar = scalar' - 1.
 //
 // The required product, [scalar]P, is computed by the following algorithm.
 //     1. Initialize the accumulator with the point from |p_pre_comp|
-//        corresponding to the most significant digit s_74 of the scalar.
-//     2. For digits s_i starting from s_73 down to s_0:
-//     3.   Double the accumulator 7 times. (note that doubling a point [a]P
-//          seven times results in [2^7*a]P).
+//        corresponding to the most significant digit s_104 of the scalar.
+//     2. For digits s_i starting from s_104 down to s_0:
+//     3.   Double the accumulator 5 times. (note that doubling a point [a]P
+//          seven times results in [2^5*a]P).
 //     4.   Read from |p_pre_comp| the point corresponding to abs(s_i),
 //          negate it if s_i is negative, and add it to the accumulator.
 //
@@ -596,7 +702,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 
   p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
 
-  // Table of multiples of P:  [2i + 1]P for i in [0, 63].
+  // Table of multiples of P:  [2i + 1]P for i in [0, 15].
   p521_felem p_pre_comp[P521_MUL_TABLE_SIZE][3];
 
   // Set the first point in the table to P.
@@ -608,7 +714,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   p521_point_double(tmp[0], tmp[1], tmp[2],
                     p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
 
-  // Generate the remaining 63 multiples of P.
+  // Generate the remaining 15 multiples of P.
   for (size_t i = 1; i < P521_MUL_TABLE_SIZE; i++) {
     p521_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
                    tmp[0], tmp[1], tmp[2], 0 /* both Jacobian */,
@@ -628,7 +734,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   p521_select_point(res, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
 
   // Process the remaining digits of the scalar.
-  for (size_t i = P521_MUL_NWINDOWS - 2; i < P521_MUL_NWINDOWS - 1; i--) {
+  for (int i = P521_MUL_NWINDOWS - 2; i >= 0; i--) {
     // Double |res| 7 times in each iteration.
     for (size_t j = 0; j < P521_MUL_WSIZE; j++) {
       p521_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
@@ -636,7 +742,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 
     int16_t d = rnaf[i];
     // is_neg = (d < 0) ? 1 : 0
-    int16_t is_neg = (d >> 7) & 1;
+    int16_t is_neg = (d >> 15) & 1;
     // d = abs(d)
     d = (d ^ -is_neg) + is_neg;
 
@@ -683,53 +789,53 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 // |p521_g_pre_comp| from |p521_table.h| file and the regular-wNAF scalar
 // encoding.
 //
-// The |p521_g_pre_comp| table has 19 sub-tables each holding 64 points:
-//      0 :       [1]G,       [3]G,  ...,       [127]G
-//      1 :  [1*2^28]G,  [3*2^28]G,  ...,  [127*2^28]G
+// The |p521_g_pre_comp| table has 27 sub-tables each holding 16 points:
+//      0 :       [1]G,       [3]G,  ...,       [31]G
+//      1 :  [1*2^20]G,  [3*2^20]G,  ...,  [31*2^20]G
 //                         ...
-//      i : [1*2^28i]G, [3*2^28i]G,  ..., [127*2^28i]G
+//      i : [1*2^20i]G, [3*2^20i]G,  ..., [31*2^20i]G
 //                         ...
-//     18 :   [2^504]G, [3*2^504]G,  ..., [127*2^504]G
+//     26 :   [2^520]G, [3*2^520]G,  ..., [31*2^520]G
 // Computing the negation of a point P = (x, y) is relatively easy:
 //     -P = (x, -y).
-// So we may assume that for each sub-table we have 128 points instead of 64:
-//     [\pm 1*2^28i]G, [\pm 3*2^28i]G, ..., [\pm 127*2^28i]G.
+// So we may assume that for each sub-table we have 32 points instead of 16:
+//     [\pm 1*2^20i]G, [\pm 3*2^20i]G, ..., [\pm 31*2^20i]G.
 //
-// The 521-bit |scalar| is recoded (regular-wNAF encoding) into 75 signed
-// digits, each of length 7 bits, as explained in the
+// The 521-bit |scalar| is recoded (regular-wNAF encoding) into 105 signed
+// digits, each of length 5 bits, as explained in the
 // |p521_felem_mul_scalar_rwnaf| function. Namely,
-//     scalar' = s_0 + s_1*2^7 + s_2*2^14 + ... + s_74*2^518,
-// where digits s_i are in [\pm 1, \pm 3, ..., \pm 127]. Note that for an odd
+//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_104*2^520,
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
 // scalar we have that scalar = scalar', while in the case of an even
 // scalar we have that scalar = scalar' - 1.
 //
 // To compute the required product, [scalar]G, we may do the following.
 // Group the recoded digits of the scalar in 4 groups:
-//                                           |   corresponding multiples in
-//                   digits                  |   the recoded representation
-//    -------------------------------------------------------------------------
-//    (0): {s_0, s_4,  s_8, ..., s_68, s_72} |  { 2^0, 2^28, ...,      , 2^504}
-//    (1): {s_1, s_5,  s_9, ..., s_69, s_73} |  { 2^7, 2^35, ...,      , 2^511}
-//    (2): {s_2, s_6, s_10, ..., s_70, s_74} |  {2^14, 2^42, ...,      , 2^518}
-//    (3): {s_3, s_7, s_11, ..., s_71}       |  {2^21, 2^49, ..., 2^497}
-//         corresponding sub-table lookup    |  {  T0,   T1, ...,   T17,   T18}
+//                                            |   corresponding multiples in
+//                  digits                    |   the recoded representation
+//   -------------------------------------------------------------------------
+//   (0): {s_0, s_4,  s_8, ..., s_100, s_104} |  { 2^0, 2^20, ..., 2^500, 2^520}
+//   (1): {s_1, s_5,  s_9, ..., s_101}        |  { 2^5, 2^25, ..., 2^505}
+//   (2): {s_2, s_6, s_10, ..., s_102}        |  {2^10, 2^30, ..., 2^510}
+//   (3): {s_3, s_7, s_11, ..., s_103}        |  {2^15, 2^35, ..., 2^515}
+//        corresponding sub-table lookup      |  {  T0,   T1, ...,   T25,   T26}
 //
 // The group (0) digits correspond precisely to the multiples of G that are
-// held in the 19 precomputed sub-tables, so we may simply read the appropriate
+// held in the 27 precomputed sub-tables, so we may simply read the appropriate
 // points from the sub-tables and sum them all up (negating if needed, i.e., if
 // a digit s_i is negative, we read the point corresponding to the abs(s_i) and
 // negate it before adding it to the sum).
 // The remaining three groups (1), (2), and (3), correspond to the multiples
-// of G from the sub-tables multiplied additionally by 2^7, 2^14, and 2^21,
+// of G from the sub-tables multiplied additionally by 2^5, 2^10, and 2^15,
 // respectively. Therefore, for these groups we may read the appropriate points
-// from the table, double them 7, 14, or 21 times, respectively, and add them
+// from the table, double them 5, 10, or 15 times, respectively, and add them
 // to the final result.
 //
 // To minimize the number of required doubling operations we process the digits
 // of the scalar from left to right. In other words, the algorithm is:
 //   1. Read the points corresponding to the group (3) digits from the table
 //      and add them to an accumulator.
-//   2. Double the accumulator 7 times.
+//   2. Double the accumulator 5 times.
 //   3. Repeat steps 1. and 2. for groups (2) and (1),
 //      and perform step 1. for group (0).
 //   4. If the scalar is even subtract G from the accumulator.
@@ -746,19 +852,20 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
   p521_felem_mul_scalar_rwnaf(rnaf, scalar->bytes);
 
   // Process the 4 groups of digits starting from group (3) down to group (0).
-  for (size_t i = 0; i < 4; i++) {
-    // Double |res| 7 times in each iteration, except in the first one.
-    for (size_t j = 0; i != 0 && j < P521_MUL_WSIZE; j++) {
+  for (int i = 3; i >= 0; i--) {
+    // Double |res| 5 times in each iteration, except in the first one.
+    for (size_t j = 0; i != 3 && j < P521_MUL_WSIZE; j++) {
       p521_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
     }
 
     // Process the digits in the current group from the most to the least
     // significant one (this is a requirement to ensure that the case of point
     // doubling can't happen).
-    // For group (3) we process digits s_71 to s_3, for group (2) s_74 to s_2,
-    // group (1) s_73 to s_1, and for group (0) s_72 to s_0.
-    const size_t start_idx = P521_MUL_NWINDOWS - i - (i == 0 ? 4 : 0);
-    for (size_t j = start_idx; j < P521_MUL_NWINDOWS; j -= 4) {
+    // For group (3) we process digits s_103 to s_3, for group (2) s_102 to s_2,
+    // group (1) s_101 to s_1, and for group (0) s_104 to s_0.
+    const size_t start_idx = ((P521_MUL_NWINDOWS - i - 1)/4)*4 + i;
+
+    for (int j = start_idx; j >= 0; j -= 4) {
       // For each digit |d| in the current group read the corresponding point
       // from the table and add it to |res|. If |d| is negative, negate
       // the point before adding it to |res|.
@@ -812,10 +919,10 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
 // curve, and P is the given point |p|.
 //
 // Both scalar products are computed by the same "textbook" wNAF method,
-// with w = 7 for g_scalar and w = 5 for p_scalar.
+// with w = 5 for g_scalar and w = 5 for p_scalar.
 // For the base point G product we use the first sub-table of the precomputed
-// table |p521_g_pre_comp| from p521_table.h file, while for P we generate
-// |p_pre_comp| table on-the-fly. The tables hold the first 64 odd multiples
+// table |p521_g_pre_comp| from |p521_table.h| file, while for P we generate
+// |p_pre_comp| table on-the-fly. The tables hold the first 16 odd multiples
 // of G or P:
 //     g_pre_comp = {[1]G, [3]G, ..., [31]G},
 //     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
@@ -879,7 +986,7 @@ static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
   int16_t res_is_inf = 1;
   int16_t d, is_neg, idx;
 
-  for (size_t i = 521; i < 522; i--) {
+  for (int i = 521; i >= 0; i--) {
 
     // If |res| is point-at-infinity there is no point in doubling so skip it.
     if (!res_is_inf) {
@@ -992,8 +1099,6 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp521_method) {
       ec_simple_scalar_to_montgomery_inv_vartime;
   out->cmp_x_coordinate = ec_GFp_simple_cmp_x_coordinate;
 }
-
-#undef BORINGSSL_NISTP521_64BIT
 
 // ----------------------------------------------------------------------------
 //  Analysis of the doubling case occurrence in the Joye-Tunstall recoding:
