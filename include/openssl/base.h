@@ -188,6 +188,7 @@ extern "C" {
 
 #define AWSLC_VERSION_NAME "AWS-LC"
 #define OPENSSL_IS_AWSLC
+// |OPENSSL_VERSION_NUMBER| should match the version number in opensslv.h.
 #define OPENSSL_VERSION_NUMBER 0x1010107f
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
 
