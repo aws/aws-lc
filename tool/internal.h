@@ -123,7 +123,7 @@ void PrintUsage(const argument_t *templates);
 bool GetUnsigned(unsigned *out, const std::string &arg_name, unsigned default_value, const args_map_t &args);
 
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
-bool WriteToFile(const std::string &path, bssl::Span<const uint8_t> in);
+bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
 
 bool Ciphers(const std::vector<std::string> &args);
 bool Client(const std::vector<std::string> &args);
