@@ -24,6 +24,5 @@ int kyber512_decapsulate(uint8_t *shared_secret    /* OUT */,
                          const uint8_t *ciphertext /* IN  */,
                          const uint8_t *secret_key /* IN  */);
 
-
 #endif
 

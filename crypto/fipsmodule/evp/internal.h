@@ -71,52 +71,52 @@ extern "C" {
 #define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX   0x0400
 
 struct evp_pkey_asn1_method_st {
-  int pkey_id;
-  uint8_t oid[11];
-  uint8_t oid_len;
+    int pkey_id;
+    uint8_t oid[11];
+    uint8_t oid_len;
 
-  // pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
-  // and writes the result into |out|. It returns one on success and zero on
-  // error. |params| is the AlgorithmIdentifier after the OBJECT IDENTIFIER
-  // type field, and |key| is the contents of the subjectPublicKey with the
-  // leading padding byte checked and removed. Although X.509 uses BIT STRINGs
-  // to represent SubjectPublicKeyInfo, every key type defined encodes the key
-  // as a byte string with the same conversion to BIT STRING.
-  int (*pub_decode)(EVP_PKEY *out, CBS *params, CBS *key);
+    // pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
+    // and writes the result into |out|. It returns one on success and zero on
+    // error. |params| is the AlgorithmIdentifier after the OBJECT IDENTIFIER
+    // type field, and |key| is the contents of the subjectPublicKey with the
+    // leading padding byte checked and removed. Although X.509 uses BIT STRINGs
+    // to represent SubjectPublicKeyInfo, every key type defined encodes the key
+    // as a byte string with the same conversion to BIT STRING.
+    int (*pub_decode)(EVP_PKEY *out, CBS *params, CBS *key);
 
-  // pub_encode encodes |key| as a SubjectPublicKeyInfo and appends the result
-  // to |out|. It returns one on success and zero on error.
-  int (*pub_encode)(CBB *out, const EVP_PKEY *key);
+    // pub_encode encodes |key| as a SubjectPublicKeyInfo and appends the result
+    // to |out|. It returns one on success and zero on error.
+    int (*pub_encode)(CBB *out, const EVP_PKEY *key);
 
-  int (*pub_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
+    int (*pub_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
 
-  // priv_decode decodes |params| and |key| as a PrivateKeyInfo and writes the
-  // result into |out|. It returns one on success and zero on error. |params| is
-  // the AlgorithmIdentifier after the OBJECT IDENTIFIER type field, and |key|
-  // is the contents of the OCTET STRING privateKey field.
-  int (*priv_decode)(EVP_PKEY *out, CBS *params, CBS *key);
+    // priv_decode decodes |params| and |key| as a PrivateKeyInfo and writes the
+    // result into |out|. It returns one on success and zero on error. |params| is
+    // the AlgorithmIdentifier after the OBJECT IDENTIFIER type field, and |key|
+    // is the contents of the OCTET STRING privateKey field.
+    int (*priv_decode)(EVP_PKEY *out, CBS *params, CBS *key);
 
-  // priv_encode encodes |key| as a PrivateKeyInfo and appends the result to
-  // |out|. It returns one on success and zero on error.
-  int (*priv_encode)(CBB *out, const EVP_PKEY *key);
+    // priv_encode encodes |key| as a PrivateKeyInfo and appends the result to
+    // |out|. It returns one on success and zero on error.
+    int (*priv_encode)(CBB *out, const EVP_PKEY *key);
 
-  int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
-  int (*set_pub_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
-  int (*get_priv_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
-  int (*get_pub_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
+    int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
+    int (*set_pub_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
+    int (*get_priv_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
+    int (*get_pub_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
 
-  // pkey_opaque returns 1 if the |pk| is opaque. Opaque keys are backed by
-  // custom implementations which do not expose key material and parameters.
-  int (*pkey_opaque)(const EVP_PKEY *pk);
+    // pkey_opaque returns 1 if the |pk| is opaque. Opaque keys are backed by
+    // custom implementations which do not expose key material and parameters.
+    int (*pkey_opaque)(const EVP_PKEY *pk);
 
-  int (*pkey_size)(const EVP_PKEY *pk);
-  int (*pkey_bits)(const EVP_PKEY *pk);
+    int (*pkey_size)(const EVP_PKEY *pk);
+    int (*pkey_bits)(const EVP_PKEY *pk);
 
-  int (*param_missing)(const EVP_PKEY *pk);
-  int (*param_copy)(EVP_PKEY *to, const EVP_PKEY *from);
-  int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
+    int (*param_missing)(const EVP_PKEY *pk);
+    int (*param_copy)(EVP_PKEY *to, const EVP_PKEY *from);
+    int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
 
-  void (*pkey_free)(EVP_PKEY *pkey);
+    void (*pkey_free)(EVP_PKEY *pkey);
 }; // EVP_PKEY_ASN1_METHOD
 
 
@@ -194,66 +194,66 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
 
 struct evp_pkey_ctx_st {
-  // Method associated with this operation
-  const EVP_PKEY_METHOD *pmeth;
-  // Engine that implements this method or NULL if builtin
-  ENGINE *engine;
-  // Key: may be NULL
-  EVP_PKEY *pkey;
-  // Peer key for key agreement, may be NULL
-  EVP_PKEY *peerkey;
-  // operation contains one of the |EVP_PKEY_OP_*| values.
-  int operation;
-  // Algorithm specific data
-  void *data;
+    // Method associated with this operation
+    const EVP_PKEY_METHOD *pmeth;
+    // Engine that implements this method or NULL if builtin
+    ENGINE *engine;
+    // Key: may be NULL
+    EVP_PKEY *pkey;
+    // Peer key for key agreement, may be NULL
+    EVP_PKEY *peerkey;
+    // operation contains one of the |EVP_PKEY_OP_*| values.
+    int operation;
+    // Algorithm specific data
+    void *data;
 }; // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
-  int pkey_id;
+    int pkey_id;
 
-  int (*init)(EVP_PKEY_CTX *ctx);
-  int (*copy)(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src);
-  void (*cleanup)(EVP_PKEY_CTX *ctx);
+    int (*init)(EVP_PKEY_CTX *ctx);
+    int (*copy)(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src);
+    void (*cleanup)(EVP_PKEY_CTX *ctx);
 
-  int (*keygen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
+    int (*keygen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
-  int (*sign_init)(EVP_PKEY_CTX *ctx);
-  int (*sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
-              const uint8_t *tbs, size_t tbslen);
-
-  int (*sign_message)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
-                      const uint8_t *tbs, size_t tbslen);
-  int (*verify_init)(EVP_PKEY_CTX *ctx);
-  int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
+    int (*sign_init)(EVP_PKEY_CTX *ctx);
+    int (*sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
                 const uint8_t *tbs, size_t tbslen);
 
-  int (*verify_message)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
+    int (*sign_message)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
                         const uint8_t *tbs, size_t tbslen);
+    int (*verify_init)(EVP_PKEY_CTX *ctx);
+    int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
+                  const uint8_t *tbs, size_t tbslen);
 
-  int (*verify_recover)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
-                        const uint8_t *sig, size_t sig_len);
+    int (*verify_message)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
+                          const uint8_t *tbs, size_t tbslen);
 
-  int (*encrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
-                 const uint8_t *in, size_t inlen);
+    int (*verify_recover)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
+                          const uint8_t *sig, size_t sig_len);
 
-  int (*decrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
-                 const uint8_t *in, size_t inlen);
+    int (*encrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
+                   const uint8_t *in, size_t inlen);
 
-  int (*derive)(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *keylen);
+    int (*decrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
+                   const uint8_t *in, size_t inlen);
 
-  int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
+    int (*derive)(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *keylen);
 
-  int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
+    int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
-  // Encapsulate and decapsulate are operations defined for a
-  // Key Encapsulation Mechanism (KEM).
-  int (*encapsulate)(EVP_PKEY_CTX *ctx,
-                     uint8_t *ciphertext, size_t *ciphertext_len,
-                     uint8_t *shared_secret, size_t *shared_secret_len);
+    int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 
-  int (*decapsulate)(EVP_PKEY_CTX *ctx,
-                     uint8_t *shared_secret, size_t *shared_secret_len,
-                     const uint8_t *ciphertext, size_t ciphertext_len);
+    // Encapsulate and decapsulate are operations defined for a
+    // Key Encapsulation Mechanism (KEM).
+    int (*encapsulate)(EVP_PKEY_CTX *ctx,
+                       uint8_t *ciphertext, size_t *ciphertext_len,
+                       uint8_t *shared_secret, size_t *shared_secret_len);
+
+    int (*decapsulate)(EVP_PKEY_CTX *ctx,
+                       uint8_t *shared_secret, size_t *shared_secret_len,
+                       const uint8_t *ciphertext, size_t ciphertext_len);
 }; // EVP_PKEY_METHOD
 
 #define FIPS_EVP_PKEY_METHODS 4
@@ -261,7 +261,7 @@ struct evp_pkey_method_st {
 #define ASN1_EVP_PKEY_METHODS 7
 
 struct fips_evp_pkey_methods {
-  const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];
+    const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];
 };
 
 const EVP_PKEY_METHOD *EVP_PKEY_rsa_pkey_meth(void);

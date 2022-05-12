@@ -148,6 +148,87 @@ TEST(Kyber512Test, KeySize) {
 }
 
 TEST(Kyber512Test, KEMOperations) {
+  // Basic functional test for KYBER512
+  // Simulate two sides of the key exchange mechanism.
+  size_t shared_secret_len = KYBER512_KEM_SHARED_SECRET_BYTES;
+  size_t ciphertext_len = KYBER512_KEM_CIPHERTEXT_BYTES;
+  uint8_t shared_secret_alice[KYBER512_KEM_SHARED_SECRET_BYTES];
+  uint8_t shared_secret_bob[KYBER512_KEM_SHARED_SECRET_BYTES];
+  uint8_t ciphertext_alice[KYBER512_KEM_CIPHERTEXT_BYTES];
+  uint8_t ciphertext_bob[KYBER512_KEM_CIPHERTEXT_BYTES];
+
+  // Alice generates the key pair.
+  EVP_PKEY_CTX *kyber_pkey_ctx_alice = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
+  EVP_PKEY *kyber_pkey_alice = EVP_PKEY_new();
+  EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx_alice));
+  EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx_alice, &kyber_pkey_alice));
+
+  // Alice passes the public key to Bob.
+  const KYBER512_KEY *kyber_key_alice = (KYBER512_KEY *)(kyber_pkey_alice->pkey.ptr);
+
+  EVP_PKEY_CTX *kyber_pkey_ctx_bob = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
+  EVP_PKEY *kyber_pkey_bob = EVP_PKEY_new_raw_public_key(EVP_PKEY_KYBER512,
+                                                         NULL,
+                                                         kyber_key_alice->pub, /* this method performs a memcpy internally */
+                                                         KYBER512_PUBLIC_KEY_BYTES);
+  kyber_pkey_ctx_bob->pkey = kyber_pkey_bob;
+
+  // Bob generates a shared secret and encapsulates it.
+  ASSERT_TRUE(EVP_PKEY_encapsulate_init(kyber_pkey_ctx_bob, NULL));
+  ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx_bob, ciphertext_bob, &ciphertext_len, shared_secret_bob, &shared_secret_len));
+
+  // Bob sends the ciphertext to Alice.
+  OPENSSL_memcpy(ciphertext_alice, ciphertext_bob, ciphertext_len);
+
+  // Alice decapsulates the ciphertext to obtain the shared secret.
+  ASSERT_TRUE(EVP_PKEY_decapsulate_init(kyber_pkey_ctx_alice, NULL));
+  ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx_alice, shared_secret_alice, &shared_secret_len, ciphertext_alice, ciphertext_len));
+
+  // Verify that Alice and Bob have the same shared secret.
+  for (size_t i = 0; i < shared_secret_len; i++) {
+    EXPECT_EQ(shared_secret_alice[i], shared_secret_bob[i]);
+  }
+
+  // Invalidate the ciphertext and run decapsulate on it.
+  ciphertext_alice[0] ^= 1;
+
+  // Decapsulate should return success.
+  ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx_alice, shared_secret_alice, &shared_secret_len, ciphertext_alice, ciphertext_len));
+
+  // But the shared secret should be different from Bob's.
+  unsigned char tmp = 0;
+  for (size_t i = 0; i < shared_secret_len; i++) {
+    tmp |= (shared_secret_alice[i] ^ shared_secret_bob[i]);
+  }
+  EXPECT_NE(tmp, 0);
+
+  EVP_PKEY_CTX_free(kyber_pkey_ctx_alice);
+  EVP_PKEY_CTX_free(kyber_pkey_ctx_bob);
+}
+
+TEST(Kyber512Test, KEMSizeChecks) {
+  size_t shared_secret_len = 0;
+  size_t ciphertext_len = 0;
+
+  EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
+  EVP_PKEY *kyber_pkey = EVP_PKEY_new();
+  EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
+
+  ASSERT_TRUE(EVP_PKEY_encapsulate_init(kyber_pkey_ctx, NULL));
+  ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, NULL, &ciphertext_len, NULL, &shared_secret_len));
+  EXPECT_EQ(shared_secret_len, (size_t)KYBER512_KEM_SHARED_SECRET_BYTES);
+  EXPECT_EQ(ciphertext_len, (size_t)KYBER512_KEM_CIPHERTEXT_BYTES);
+
+  shared_secret_len = 0;
+
+  ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, NULL, &shared_secret_len, NULL, ciphertext_len));
+  EXPECT_EQ(shared_secret_len, (size_t)KYBER512_KEM_SHARED_SECRET_BYTES);
+
+  EVP_PKEY_CTX_free(kyber_pkey_ctx);
+}
+
+TEST(Kyber512Test, KEMOperations) {
   // Basic functional test for KYBER512.
   // Simulate two sides of the key exchange mechanism.
   size_t shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
