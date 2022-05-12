@@ -57,6 +57,6 @@ static void RunTest(FileTest *t)
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
-TEST(Kyber512Test, KAT_tests) {
+TEST(Kyber512Test, KAT) {
  FileTestGTest("crypto/evp_extra/pq_kem_kat_tests_kyber512.txt", RunTest);
 }

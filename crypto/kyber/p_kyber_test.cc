@@ -9,7 +9,7 @@
 #include "../internal.h"
 #include "kem_kyber.h"
 
-TEST(Kyber512Test, EVP_PKEY_keygen) {
+TEST(Kyber512Test, KeyGeneration) {
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_NE(kyber_pkey_ctx, nullptr);
 
@@ -58,7 +58,7 @@ TEST(Kyber512Test, EVP_PKEY_keygen) {
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
-TEST(Kyber512Test, EVP_PKEY_cmp) {
+TEST(Kyber512Test, KeyComparison) {
   EVP_PKEY_CTX *kyber_pkey_ctx1 = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_NE(kyber_pkey_ctx1, nullptr);
 
@@ -87,7 +87,7 @@ TEST(Kyber512Test, EVP_PKEY_cmp) {
   EVP_PKEY_CTX_free(kyber_pkey_ctx2);
 }
 
-TEST(Kyber512Test, EVP_PKEY_new_raw) {
+TEST(Kyber512Test, NewKeyFromBytes) {
   // Source key
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_NE(kyber_pkey_ctx, nullptr);
@@ -131,7 +131,7 @@ TEST(Kyber512Test, EVP_PKEY_new_raw) {
   EVP_PKEY_free(new_private);
 }
 
-TEST(Kyber512Test, EVP_PKEY_size) {
+TEST(Kyber512Test, KeySize) {
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_NE(kyber_pkey_ctx, nullptr);
 
@@ -147,7 +147,7 @@ TEST(Kyber512Test, EVP_PKEY_size) {
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
-TEST(Kyber512Test, EVP_KEM_operations_test) {
+TEST(Kyber512Test, KEMOperations) {
   // Basic functional test for KYBER512
   // Simulate two sides of the key exchange mechanism.
   size_t shared_secret_len = KYBER512_KEM_SHARED_SECRET_BYTES;
@@ -206,7 +206,7 @@ TEST(Kyber512Test, EVP_KEM_operations_test) {
   EVP_PKEY_CTX_free(kyber_pkey_ctx_bob);
 }
 
-TEST(Kyber512Test, EVP_KEM_size_checks_test) {
+TEST(Kyber512Test, KEMSizeChecks) {
   size_t shared_secret_len = 0;
   size_t ciphertext_len = 0;
 
@@ -228,7 +228,7 @@ TEST(Kyber512Test, EVP_KEM_size_checks_test) {
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
-TEST(Kyber512Test, EVP_KEM_invalid_key_type_test) {
+TEST(Kyber512Test, KEMInvalidKeyType) {
   size_t shared_secret_len = KYBER512_KEM_SHARED_SECRET_BYTES;
   size_t ciphertext_len = KYBER512_KEM_CIPHERTEXT_BYTES;
   uint8_t shared_secret[KYBER512_KEM_SHARED_SECRET_BYTES];
@@ -258,7 +258,7 @@ TEST(Kyber512Test, EVP_KEM_invalid_key_type_test) {
   EVP_PKEY_CTX_free(rsa_pkey_ctx);
 }
 
-TEST(Kyber512Test, EVP_KEM_failure_modes_test) {
+TEST(Kyber512Test, KEMFailureModes) {
   size_t shared_secret_len = KYBER512_KEM_SHARED_SECRET_BYTES;
   size_t ciphertext_len = KYBER512_KEM_CIPHERTEXT_BYTES;
   uint8_t shared_secret[KYBER512_KEM_SHARED_SECRET_BYTES];
