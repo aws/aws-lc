@@ -8,7 +8,7 @@
 #include "kem_kyber.h"
 
 static int pkey_kyber512_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
-  KYBER_512_KEY *key = OPENSSL_malloc(sizeof(KYBER_512_KEY));
+  KYBER512_KEY *key = OPENSSL_malloc(sizeof(KYBER512_KEY));
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -19,11 +19,13 @@ static int pkey_kyber512_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  kyber_512_keypair(key->pub, key->priv);
+  kyber512_keypair(key->pub, key->priv);
   key->has_private = 1;
 
   OPENSSL_free(pkey->pkey.ptr);
   pkey->pkey.ptr = key;
+  ctx->pkey = pkey;
+
   return 1;
 }
 

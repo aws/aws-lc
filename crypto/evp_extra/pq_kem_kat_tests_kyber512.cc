@@ -1,7 +1,9 @@
-#include <vector>
 #include <gtest/gtest.h>
+#include <openssl/evp.h>
 #include <openssl/randombytes.h>
-#include <openssl/pq_kem.h>
+#include <vector>
+#include "../fipsmodule/evp/internal.h"
+#include "../kyber/kem_kyber.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "./internal.h"
@@ -10,6 +12,12 @@ static void RunTest(FileTest *t)
 {
   std::string count;
   std::vector<uint8_t> seed, pk, sk, ct, ss;
+
+  size_t shared_secret_len = KYBER512_KEM_SHARED_SECRET_BYTES;
+  size_t ciphertext_len = KYBER512_KEM_CIPHERTEXT_BYTES;
+  uint8_t shared_secret[KYBER512_KEM_SHARED_SECRET_BYTES];
+  uint8_t ciphertext[KYBER512_KEM_CIPHERTEXT_BYTES];
+
   ASSERT_TRUE(t->GetAttribute(&count, "count"));
   ASSERT_TRUE(t->GetBytes(&seed, "seed"));
   ASSERT_TRUE(t->GetBytes(&pk, "pk"));
@@ -20,29 +28,35 @@ static void RunTest(FileTest *t)
   use_deterministic_randombytes_for_testing();
   randombytes_init_for_testing(seed.data());
 
-  const EVP_PQ_KEM *kyber_kem = &EVP_PQ_KEM_kyber512;
-  EXPECT_NE(kyber_kem, nullptr);
+  EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
+  ASSERT_NE(kyber_pkey_ctx, nullptr);
 
-  EVP_PQ_KEM_CTX *ctx = EVP_PQ_KEM_CTX_new();
-  EXPECT_NE(ctx, nullptr);
+  EVP_PKEY *kyber_pkey = EVP_PKEY_new();
+  ASSERT_NE(kyber_pkey, nullptr);
 
-  ASSERT_TRUE(EVP_PQ_KEM_CTX_init(ctx, kyber_kem));
-  ASSERT_TRUE(EVP_PQ_KEM_generate_keypair(ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
+  const KYBER512_KEY *kyber512Key = (KYBER512_KEY *)(kyber_pkey->pkey.ptr);
   EXPECT_EQ(Bytes(pk),
-            Bytes(ctx->public_key, kyber_kem->public_key_length));
+            Bytes(kyber512Key->pub, KYBER512_PUBLIC_KEY_BYTES));
   EXPECT_EQ(Bytes(sk),
-            Bytes(ctx->private_key, kyber_kem->private_key_length));
+            Bytes(kyber512Key->priv, KYBER512_PRIVATE_KEY_BYTES));
 
-  ASSERT_TRUE(EVP_PQ_KEM_encapsulate(ctx));
+  ASSERT_TRUE(EVP_PKEY_encapsulate_init(kyber_pkey_ctx, NULL));
+  ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
   EXPECT_EQ(Bytes(ct),
-            Bytes(ctx->ciphertext, kyber_kem->ciphertext_length));
-
-  ASSERT_TRUE(EVP_PQ_KEM_decapsulate(ctx));
+            Bytes(ciphertext, KYBER512_KEM_CIPHERTEXT_BYTES));
+  //Specifically free the KEM because decapsulate_init on the reused ctx will
+  //allocate a new one, orphaning this one.
+  OPENSSL_free(kyber_pkey_ctx->op.encap.kem);
+  ASSERT_TRUE(EVP_PKEY_decapsulate_init(kyber_pkey_ctx, NULL));
+  ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
   EXPECT_EQ(Bytes(ss),
-            Bytes(ctx->shared_secret, kyber_kem->shared_secret_length));
-  EVP_PQ_KEM_CTX_free(ctx);
+            Bytes(shared_secret, KYBER512_KEM_SHARED_SECRET_BYTES));
+
+  EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
-TEST(Kyber512Test, KAT_tests) {
+TEST(Kyber512Test, KAT) {
  FileTestGTest("crypto/evp_extra/pq_kem_kat_tests_kyber512.txt", RunTest);
 }

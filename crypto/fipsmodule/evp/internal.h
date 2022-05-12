@@ -117,7 +117,7 @@ struct evp_pkey_asn1_method_st {
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
 
   void (*pkey_free)(EVP_PKEY *pkey);
-} /* EVP_PKEY_ASN1_METHOD */;
+}; // EVP_PKEY_ASN1_METHOD
 
 
 #define EVP_PKEY_OP_UNDEFINED 0
@@ -201,7 +201,18 @@ struct evp_pkey_ctx_st {
   int operation;
   // Algorithm specific data
   void *data;
-} /* EVP_PKEY_CTX */;
+
+  // Currently, only the KEM operations are supported through this op variable.
+  // As more operations are added or migrated over to the OpenSSL 3 style, this
+  // union can be augmented with additional operation structures
+  // (e.g. encryption, signing)
+  union {
+    struct {
+      EVP_KEM *kem;
+      void *algctx; // opaque KEM-specific context
+    } encap;
+  } op;
+}; // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
   int pkey_id;
@@ -239,7 +250,7 @@ struct evp_pkey_method_st {
   int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
-} /* EVP_PKEY_METHOD */;
+}; // EVP_PKEY_METHOD
 
 #define FIPS_EVP_PKEY_METHODS 3
 #define NON_FIPS_EVP_PKEY_METHODS 3

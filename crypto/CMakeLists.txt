@@ -322,7 +322,6 @@ add_library(
   evp_extra/p_methods.c
   evp_extra/pbkdf.c
   evp_extra/print.c
-  evp_extra/pq_kem.c
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
@@ -610,7 +609,6 @@ if(BUILD_TESTING)
     evp_extra/evp_test.cc
     evp_extra/pbkdf_test.cc
     evp_extra/pq_kem_kat_tests_kyber512.cc
-    evp_extra/pq_kem_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
