@@ -306,8 +306,12 @@ OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
                                   DH *dh);
 
-// No-op low level DH function from OpenSSL that has been deprecated without
-// replacement. Only provided because MySQL still uses it.
+// Standard parameters. These parameters are taken from RFC 5114.
+// This function returns a new DH object with standard parameters. It returns
+// NULL on allocation failure.
+// 
+// WARNING: Don't use this, this function has been deprecated and is only 
+// provided because to support MySQL.
 OPENSSL_EXPORT DH *DH_get_2048_256(void);
 
 struct dh_st {

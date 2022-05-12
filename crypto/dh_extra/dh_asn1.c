@@ -158,5 +158,3 @@ int i2d_DHparams(const DH *in, uint8_t **outp) {
   }
   return CBB_finish_i2d(&cbb, outp);
 }
-
-DH *DH_get_2048_256(void) { return NULL; }
