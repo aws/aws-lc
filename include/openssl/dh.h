@@ -310,8 +310,8 @@ OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
 // This function returns a new DH object with standard parameters. It returns
 // NULL on allocation failure.
 // 
-// WARNING: Don't use this, this function has been deprecated and is only 
-// provided because to support MySQL.
+// WARNING: Don't use this, this function has been deprecated.
+// Please use |DH_get_rfc7919_2048| instead.
 OPENSSL_EXPORT DH *DH_get_2048_256(void);
 
 struct dh_st {
