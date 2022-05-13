@@ -18,13 +18,12 @@
 .private_extern	_md5_block_asm_data_order
 
 _md5_block_asm_data_order:
-        // Save IP0, IP1, and all callee-saved registers
-	stp	x16,x17,[sp,#-96]!
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
-	stp	x23,x24,[sp,#48]
-	stp	x25,x26,[sp,#64]
-	stp	x27,x28,[sp,#80]
+        // Save all callee-saved registers
+	stp	x19,x20,[sp,#-80]!
+	stp	x21,x22,[sp,#16]
+	stp	x23,x24,[sp,#32]
+	stp	x25,x26,[sp,#48]
+	stp	x27,x28,[sp,#64]
 
 	ldp	w10, w11, [x0, #0]        // Load MD5 state->A and state->B
 	ldp	w12, w13, [x0, #8]        // Load MD5 state->C and state->D
@@ -662,12 +661,11 @@ md5_blocks_loop:
 	subs	w2, w2, #1               // Decrement block counter
 	b.ne	md5_blocks_loop
 
-	ldp	x19,x20,[sp,#16]
-	ldp	x21,x22,[sp,#32]
-	ldp	x23,x24,[sp,#48]
-	ldp	x25,x26,[sp,#64]
-	ldp	x27,x28,[sp,#80]
-	ldp	x16,x17,[sp],#96
+	ldp	x21,x22,[sp,#16]
+	ldp	x23,x24,[sp,#32]
+	ldp	x25,x26,[sp,#48]
+	ldp	x27,x28,[sp,#64]
+	ldp	x19,x20,[sp],#80
 	ret
 
 #endif  // !OPENSSL_NO_ASM
