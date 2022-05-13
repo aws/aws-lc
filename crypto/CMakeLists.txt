@@ -33,7 +33,7 @@ if(NOT OPENSSL_NO_ASM)
     set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
 
     # Clang's integerated assembler does not support debug symbols.
-    if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" || CMAKE_ASM_COMPILER MATCHES "clang")
+    if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
       message(STATUS "Disabling debug symbols for Clang internal assembler")
     else()
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
