@@ -927,3 +927,18 @@ endif()
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
+
+# Parse |OPENSSL_VERSION_NUMBER| in both files and make sure they match.
+# |OPENSSL_VERSION_NUMBER| exists in `opensslv.h` only to support
+# MySQL's CMake build.
+FILE(STRINGS "include/openssl/base.h"
+      BASE_VERSION_NUMBER
+      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
+      )
+FILE(STRINGS "include/openssl/opensslv.h"
+      OPENSSLV_VERSION_NUMBER
+      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
+      )
+if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
+  message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
+endif()
