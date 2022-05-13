@@ -52,7 +52,7 @@ let BIGNUM_SUB_P25519_EXEC = X86_MK_CORE_EXEC_RULE bignum_sub_p25519_mc;;
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
 
-let p_25519 = new_definition `p_25519 = 2 EXP 255 - 19`;;
+let p_25519 = new_definition `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
 
 let BIGNUM_SUB_P25519_CORRECT = time prove
  (`!z x y m n pc.
