@@ -60,6 +60,7 @@
 #include <stdlib.h>
 
 #include <openssl/base.h>
+#include <openssl/cipher.h>
 #include <openssl/type_check.h>
 
 #include "../internal.h"
@@ -68,6 +69,14 @@
 extern "C" {
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#define AES_CBC_HMAC_SHA_STITCH
+// TLS1_1_VERSION is also defined in ssl.h.
+#define TLS1_1_VERSION 0x0302
+#define NO_PAYLOAD_LENGTH ((size_t)-1)
+#define HMAC_KEY_SIZE 64
+#endif
 
 // EVP_tls_cbc_get_padding determines the padding from the decrypted, TLS, CBC
 // record in |in|. This decrypted record should not include any "decrypted"
@@ -133,6 +142,15 @@ OPENSSL_EXPORT int EVP_final_with_secret_suffix_sha256(
 // a padding byte and MAC. (If the padding was invalid, it might contain the
 // padding too. )
 int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
+                              size_t *md_out_size, const uint8_t header[13],
+                              const uint8_t *data, size_t data_size,
+                              size_t data_plus_mac_plus_padding_size,
+                              const uint8_t *mac_secret,
+                              unsigned mac_secret_length);
+
+// EVP_tls_cbc_digest_record_sha256 performs the same functionality of 
+// EVP_tls_cbc_digest_record except it internally calls SHA256 instead of SHA1.
+int EVP_tls_cbc_digest_record_sha256(const EVP_MD *md, uint8_t *md_out,
                               size_t *md_out_size, const uint8_t header[13],
                               const uint8_t *data, size_t data_size,
                               size_t data_plus_mac_plus_padding_size,
