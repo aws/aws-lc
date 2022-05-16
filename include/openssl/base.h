@@ -203,7 +203,9 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 17
+// Bump version from 17 to 18.
+//   - Import new APIs |EVP_aes_128/256_cbc_hmac_sha1/256| from OpenSSL.
+#define AWSLC_API_VERSION 18
 
 // This string tracks the most current production release version on Github
 // https://github.com/awslabs/aws-lc/releases.

@@ -33,7 +33,9 @@ if(NOT OPENSSL_NO_ASM)
     set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
 
     # Clang's integerated assembler does not support debug symbols.
-    if(NOT CMAKE_ASM_COMPILER_ID MATCHES "Clang")
+    if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
+      message(STATUS "Disabling debug symbols for Clang internal assembler")
+    else()
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
     endif()
 
@@ -101,6 +103,10 @@ if(PERL_EXECUTABLE)
   perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_armv8.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_armv8.pl)
+  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+      perlasm(cipher_extra/aesni-sha1-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha1-x86_64.pl)
+      perlasm(cipher_extra/aesni-sha256-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha256-x86_64.pl)
+  endif()
   perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
   perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
   perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
@@ -182,15 +188,34 @@ if(ARCH STREQUAL "x86")
 endif()
 
 if(ARCH STREQUAL "x86_64")
-  set(
-    CRYPTO_ARCH_SOURCES
+  if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    # CryptoAlg-1091:
+    # Stitch code |aesni-sha1/256-x86_64.${ASM_EXT}| are not enabled due
+    # to some build issues and lack of tools to measure the performance gap.
+    # The disable is safer choice because |EVP_aes_128/256_cbc_hmac_sha1/256|
+    # are deprecated.
+    set(
+      CRYPTO_ARCH_SOURCES
 
-    chacha/chacha-x86_64.${ASM_EXT}
-    cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
-    test/trampoline-x86_64.${ASM_EXT}
-    hrss/asm/poly_rq_mul.S
-  )
+      chacha/chacha-x86_64.${ASM_EXT}
+      cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+      cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+      test/trampoline-x86_64.${ASM_EXT}
+      hrss/asm/poly_rq_mul.S
+    )
+  else()
+    set(
+      CRYPTO_ARCH_SOURCES
+
+      chacha/chacha-x86_64.${ASM_EXT}
+      cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+      cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+      cipher_extra/aesni-sha1-x86_64.${ASM_EXT}
+      cipher_extra/aesni-sha256-x86_64.${ASM_EXT}
+      test/trampoline-x86_64.${ASM_EXT}
+      hrss/asm/poly_rq_mul.S
+    )
+  endif()
 endif()
 
 if(GO_EXECUTABLE)
@@ -287,6 +312,8 @@ add_library(
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
+  cipher_extra/e_aes_cbc_hmac_sha1.c
+  cipher_extra/e_aes_cbc_hmac_sha256.c
   cipher_extra/e_des.c
   cipher_extra/e_null.c
   cipher_extra/e_rc2.c
