@@ -104,8 +104,6 @@ struct hmac_methods_st {
       sizeof(HASH_CTX) <= sizeof(union md_ctx_union),                         \
       HASH_NAME##_has_overlarge_context_t)
 
-#define MD_TRAMPOLINES(HASH_NAME) MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_NAME)
-
 // The maximum number of HMAC implementations
 #define HMAC_METHOD_MAX 7
 
