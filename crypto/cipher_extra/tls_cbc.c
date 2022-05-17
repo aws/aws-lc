@@ -430,7 +430,7 @@ int EVP_final_with_secret_suffix_sha256(SHA256_CTX *ctx,
   return 1;
 }
 
-static int EVP_tls_cbc_digest_record_sha256(
+int EVP_tls_cbc_digest_record_sha256(
               const EVP_MD *md, uint8_t *md_out,
               size_t *md_out_size,
               const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH],

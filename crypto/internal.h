@@ -1075,6 +1075,10 @@ OPENSSL_INLINE int CRYPTO_is_RDRAND_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_AMD_XOP_support(void) {
+  return (OPENSSL_ia32cap_P[1] & (1 << 11)) != 0;
+}
+
 // See Intel manual, volume 2A, table 3-8.
 
 OPENSSL_INLINE int CRYPTO_is_BMI1_capable(void) {

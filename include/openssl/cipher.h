@@ -389,6 +389,17 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // their needs). Thus this exists only to allow code to compile.
 #define EVP_CIPH_FLAG_NON_FIPS_ALLOW 0
 
+// Legacy AEAD Functions. Deprecated. Don't take a dependency on these ciphers.
+
+// EVP_aes_128/256_cbc_hmac_sha1/256 are imported from OpenSSL to provide AES CBC
+// HMAC SHA stitch implementation. These methods are TLS specific.
+//
+// WARNING: these APIs usage can get wrong easily. Below functions include details.
+//     |aesni_cbc_hmac_sha1_cipher| and |aesni_cbc_hmac_sha256_cipher|.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void);
 
 // Deprecated functions
 
@@ -582,6 +593,14 @@ typedef struct evp_cipher_info_st {
   unsigned char iv[EVP_MAX_IV_LENGTH];
 } EVP_CIPHER_INFO;
 
+// The following constants are used by AES-CBC stitch ctrl methods.
+// AEAD cipher deduces payload length and returns number of bytes required to
+// store MAC and eventual padding. Subsequent call to EVP_Cipher even
+// appends/verifies MAC.
+#define EVP_CTRL_AEAD_TLS1_AAD 0x16
+// RFC 5246 defines additional data to be 13 bytes in length.
+#define EVP_AEAD_TLS1_AAD_LEN 13
+
 struct evp_cipher_st {
   // type contains a NID identifing the cipher. (e.g. NID_aes_128_gcm.)
   int nid;
@@ -672,5 +691,6 @@ BSSL_NAMESPACE_END
 #define CIPHER_R_INVALID_NONCE 125
 #define CIPHER_R_XTS_DUPLICATED_KEYS 138
 #define CIPHER_R_XTS_DATA_UNIT_IS_TOO_LARGE 139
+#define CIPHER_R_CTRL_OPERATION_NOT_PERFORMED 140
 
 #endif  // OPENSSL_HEADER_CIPHER_H
