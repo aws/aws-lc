@@ -81,41 +81,39 @@ struct hmac_methods_st {
 // while the destination functions have specific pointer types for the relevant contexts.
 //
 // This also includes hash-specific static assertions as they can be added.
-#define MD_TRAMPOLINES_EXPLICIT(HASH_NAME, CTX_PREFIX)                        \
+#define MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_CTX, HASH_CBLOCK)             \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *);                    \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *, const void *,     \
                                                     size_t);                  \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);        \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *ctx) {                \
-    return HASH_NAME##_Init((CTX_PREFIX##_CTX *)ctx);                         \
+    return HASH_NAME##_Init((HASH_CTX *)ctx);                                 \
   }                                                                           \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(                          \
       void *ctx, const void *key, size_t key_len) {                           \
-    return HASH_NAME##_Update((CTX_PREFIX##_CTX *)ctx, key, key_len);         \
+    return HASH_NAME##_Update((HASH_CTX *)ctx, key, key_len);                 \
   }                                                                           \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *out, void *ctx) { \
-    return HASH_NAME##_Final(out, (CTX_PREFIX##_CTX *)ctx);                   \
+    return HASH_NAME##_Final(out, (HASH_CTX *)ctx);                           \
   }                                                                           \
-  OPENSSL_STATIC_ASSERT(CTX_PREFIX##_CBLOCK % 8 == 0,                         \
+  OPENSSL_STATIC_ASSERT(HASH_CBLOCK% 8 == 0,                                  \
                         HASH_NAME##_has_blocksize_not_divisible_by_eight_t)   \
-  OPENSSL_STATIC_ASSERT(CTX_PREFIX##_CBLOCK <= EVP_MAX_MD_BLOCK_SIZE,         \
+  OPENSSL_STATIC_ASSERT(HASH_CBLOCK <= EVP_MAX_MD_BLOCK_SIZE,                 \
                         HASH_NAME##_has_overlarge_blocksize_t)                \
   OPENSSL_STATIC_ASSERT(                                                      \
-      sizeof(CTX_PREFIX##_CTX) <= sizeof(union md_ctx_union),                 \
+      sizeof(HASH_CTX) <= sizeof(union md_ctx_union),                         \
       HASH_NAME##_has_overlarge_context_t)
-
-#define MD_TRAMPOLINES(HASH_NAME) MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_NAME)
 
 // The maximum number of HMAC implementations
 #define HMAC_METHOD_MAX 7
 
-MD_TRAMPOLINES(MD5);
-MD_TRAMPOLINES_EXPLICIT(SHA1, SHA);
-MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256);
-MD_TRAMPOLINES(SHA256);
-MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512);
-MD_TRAMPOLINES(SHA512);
-MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512);
+MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK);
+MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK);
+MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256_CTX, SHA256_CBLOCK);
+MD_TRAMPOLINES_EXPLICIT(SHA256, SHA256_CTX, SHA256_CBLOCK);
+MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512_CTX, SHA512_CBLOCK);
+MD_TRAMPOLINES_EXPLICIT(SHA512, SHA512_CTX, SHA512_CBLOCK);
+MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512_CTX, SHA512_CBLOCK);
 
 struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
