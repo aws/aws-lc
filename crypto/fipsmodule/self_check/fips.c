@@ -29,6 +29,9 @@ int FIPS_mode(void) {
 int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
 #if defined(BORINGSSL_FIPS_140_3)
+
+const char *FIPS_module_name(void) { return "AWSLCCrypto"; }
+
 uint32_t FIPS_version(void) {
   return 0;
 }
