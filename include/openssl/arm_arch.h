@@ -78,6 +78,56 @@
 // ARMV8_SHA512 indicates support for hardware SHA-512 instructions.
 #define ARMV8_SHA512 (1 << 6)
 
+// ARMV8_SHA3 indicates support for hardware SHA-3 instructions including EOR3.
+#define ARMV8_SHA3  (1 << 11)
+
+// ARMV8_AES_GCM_UNROLL8 indicates that the microarchitecture
+// support the 8x unrolling function of GCM due to a wider pipeline.
+#define ARMV8_AES_GCM_UNROLL8 (1 << 12)
+
+//
+// MIDR_EL1 system register
+//
+// 63___ _ ___32_31___ _ ___24_23_____20_19_____16_15__ _ __4_3_______0
+// |            |             |         |         |          |        |
+// |RES0        | Implementer | Variant | Arch    | PartNum  |Revision|
+// |____ _ _____|_____ _ _____|_________|_______ _|____ _ ___|________|
+//
+
+# define ARM_CPU_IMP_ARM           0x41
+
+# define ARM_CPU_PART_CORTEX_A72   0xD08
+# define ARM_CPU_PART_N1           0xD0C
+# define ARM_CPU_PART_V1           0xD40
+
+# define MIDR_PARTNUM_SHIFT       4
+# define MIDR_PARTNUM_MASK        (0xfff << MIDR_PARTNUM_SHIFT)
+# define MIDR_PARTNUM(midr)       \
+           (((midr) & MIDR_PARTNUM_MASK) >> MIDR_PARTNUM_SHIFT)
+
+# define MIDR_IMPLEMENTER_SHIFT   24
+# define MIDR_IMPLEMENTER_MASK    (0xff << MIDR_IMPLEMENTER_SHIFT)
+# define MIDR_IMPLEMENTER(midr)   \
+           (((midr) & MIDR_IMPLEMENTER_MASK) >> MIDR_IMPLEMENTER_SHIFT)
+
+# define MIDR_ARCHITECTURE_SHIFT  16
+# define MIDR_ARCHITECTURE_MASK   (0xf << MIDR_ARCHITECTURE_SHIFT)
+# define MIDR_ARCHITECTURE(midr)  \
+           (((midr) & MIDR_ARCHITECTURE_MASK) >> MIDR_ARCHITECTURE_SHIFT)
+
+# define MIDR_CPU_MODEL_MASK \
+           (MIDR_IMPLEMENTER_MASK | \
+            MIDR_PARTNUM_MASK     | \
+            MIDR_ARCHITECTURE_MASK)
+
+# define MIDR_CPU_MODEL(imp, partnum) \
+           (((imp)     << MIDR_IMPLEMENTER_SHIFT)  | \
+            (0xf       << MIDR_ARCHITECTURE_SHIFT) | \
+            ((partnum) << MIDR_PARTNUM_SHIFT))
+
+# define MIDR_IS_CPU_MODEL(midr, imp, partnum) \
+           (((midr) & MIDR_CPU_MODEL_MASK) == MIDR_CPU_MODEL(imp, partnum))
+
 #if defined(__ASSEMBLER__)
 
 // We require the ARM assembler provide |__ARM_ARCH| from Arm C Language
