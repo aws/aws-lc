@@ -22,12 +22,13 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_sub_p521
-        .private_extern bignum_sub_p521
+        S2N_ASM_HIDDEN(bignum_sub_p521)
 
         .globl _bignum_sub_p521
-        .private_extern _bignum_sub_p521
+        S2N_ASM_HIDDEN(_bignum_sub_p521)
 
         .text
         .balign 4

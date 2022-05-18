@@ -26,13 +26,13 @@
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
 // -----------------------------------------------------------------------------
-
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_montmul_p384_alt
-        .private_extern bignum_montmul_p384_alt
+        S2N_ASM_HIDDEN(bignum_montmul_p384_alt)
 
         .globl _bignum_montmul_p384_alt
-        .private_extern _bignum_montmul_p384_alt
+        S2N_ASM_HIDDEN(_bignum_montmul_p384_alt)
 
         .text
 

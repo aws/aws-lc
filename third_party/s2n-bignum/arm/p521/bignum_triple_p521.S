@@ -22,18 +22,19 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_triple_p521
-        .private_extern bignum_triple_p521
+        S2N_ASM_HIDDEN(bignum_triple_p521)
 
         .globl _bignum_triple_p521
-        .private_extern _bignum_triple_p521
+        S2N_ASM_HIDDEN(_bignum_triple_p521)
 
         .globl bignum_triple_p521_alt
-        .private_extern bignum_triple_p521_alt
+        S2N_ASM_HIDDEN(bignum_triple_p521_alt)
 
         .globl _bignum_triple_p521_alt
-        .private_extern _bignum_triple_p521_alt
+        S2N_ASM_HIDDEN(_bignum_triple_p521_alt)
 
         .text
         .balign 4
