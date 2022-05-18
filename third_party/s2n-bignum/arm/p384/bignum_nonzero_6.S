@@ -21,12 +21,13 @@
 //
 // Standard ARM ABI: X0 = x, returns X0
 // ----------------------------------------------------------------------------
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_nonzero_6
-        .private_extern bignum_nonzero_6
+        S2N_ASM_HIDDEN(bignum_nonzero_6)
 
         .globl _bignum_nonzero_6
-        .private_extern _bignum_nonzero_6
+        S2N_ASM_HIDDEN(_bignum_nonzero_6)
 
         .text
         .balign 4

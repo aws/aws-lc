@@ -25,13 +25,13 @@
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
-
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_deamont_p521
-        .private_extern bignum_deamont_p521
+        S2N_ASM_HIDDEN(bignum_deamont_p521)
 
         .globl _bignum_deamont_p521
-        .private_extern _bignum_deamont_p521
+        S2N_ASM_HIDDEN(_bignum_deamont_p521)
 
         .text
 

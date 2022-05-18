@@ -25,12 +25,13 @@
 //
 // Standard ARM ABI: X0 = p, X1 = z, X2 = x, X3 = y
 // ----------------------------------------------------------------------------
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_mux_6
-        .private_extern bignum_mux_6
+        S2N_ASM_HIDDEN(bignum_mux_6)
 
         .globl _bignum_mux_6
-        .private_extern _bignum_mux_6
+        S2N_ASM_HIDDEN(_bignum_mux_6)
 
         .text
         .balign 4

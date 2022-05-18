@@ -33,25 +33,25 @@
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
-
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_littleendian_6
-        .private_extern bignum_littleendian_6
+        S2N_ASM_HIDDEN(bignum_littleendian_6)
 
         .globl _bignum_littleendian_6
-        .private_extern _bignum_littleendian_6
+        S2N_ASM_HIDDEN(_bignum_littleendian_6)
 
         .globl bignum_fromlebytes_6
-        .private_extern bignum_fromlebytes_6
+        S2N_ASM_HIDDEN(bignum_fromlebytes_6)
 
         .globl _bignum_fromlebytes_6
-        .private_extern _bignum_fromlebytes_6
+        S2N_ASM_HIDDEN(_bignum_fromlebytes_6)
 
         .globl bignum_tolebytes_6
-        .private_extern bignum_tolebytes_6
+        S2N_ASM_HIDDEN(bignum_tolebytes_6)
 
         .globl _bignum_tolebytes_6
-        .private_extern _bignum_tolebytes_6
+        S2N_ASM_HIDDEN(_bignum_tolebytes_6)
 
         .text
 

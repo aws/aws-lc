@@ -26,12 +26,13 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_montmul_p384
-        .private_extern bignum_montmul_p384
+        S2N_ASM_HIDDEN(bignum_montmul_p384)
 
         .globl _bignum_montmul_p384
-        .private_extern _bignum_montmul_p384
+        S2N_ASM_HIDDEN(_bignum_montmul_p384)
 
         .text
         .balign 4

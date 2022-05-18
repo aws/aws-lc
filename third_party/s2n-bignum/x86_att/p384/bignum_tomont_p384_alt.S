@@ -22,13 +22,13 @@
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
-
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_tomont_p384_alt
-        .private_extern bignum_tomont_p384_alt
+        S2N_ASM_HIDDEN(bignum_tomont_p384_alt)
 
         .globl _bignum_tomont_p384_alt
-        .private_extern _bignum_tomont_p384_alt
+        S2N_ASM_HIDDEN(_bignum_tomont_p384_alt)
 
         .text
 

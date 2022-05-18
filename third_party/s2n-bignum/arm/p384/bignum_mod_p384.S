@@ -22,18 +22,19 @@
 //
 // Standard ARM ABI: X0 = z, X1 = k, X2 = x
 // ----------------------------------------------------------------------------
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_mod_p384
-        .private_extern bignum_mod_p384
+        S2N_ASM_HIDDEN(bignum_mod_p384)
 
         .globl _bignum_mod_p384
-        .private_extern _bignum_mod_p384
+        S2N_ASM_HIDDEN(_bignum_mod_p384)
 
         .globl bignum_mod_p384_alt
-        .private_extern bignum_mod_p384_alt
+        S2N_ASM_HIDDEN(bignum_mod_p384_alt)
 
         .globl _bignum_mod_p384_alt
-        .private_extern _bignum_mod_p384_alt
+        S2N_ASM_HIDDEN(_bignum_mod_p384_alt)
 
         .text
         .balign 4

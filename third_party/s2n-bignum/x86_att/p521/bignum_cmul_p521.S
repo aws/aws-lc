@@ -23,13 +23,13 @@
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
 // ----------------------------------------------------------------------------
-
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_cmul_p521
-        .private_extern bignum_cmul_p521
+        S2N_ASM_HIDDEN(bignum_cmul_p521)
 
         .globl _bignum_cmul_p521
-        .private_extern _bignum_cmul_p521
+        S2N_ASM_HIDDEN(_bignum_cmul_p521)
 
         .text
 

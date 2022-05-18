@@ -25,13 +25,13 @@
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
-
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_demont_p384
-        .private_extern bignum_demont_p384
+        S2N_ASM_HIDDEN(bignum_demont_p384)
 
         .globl _bignum_demont_p384
-        .private_extern _bignum_demont_p384
+        S2N_ASM_HIDDEN(_bignum_demont_p384)
 
         .text
 

@@ -24,13 +24,13 @@
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // ----------------------------------------------------------------------------
-
+#include "../../_internal_s2n_bignum.h"
 
         .globl bignum_mod_n521_9_alt
-        .private_extern bignum_mod_n521_9_alt
+        S2N_ASM_HIDDEN(bignum_mod_n521_9_alt)
 
         .globl _bignum_mod_n521_9_alt
-        .private_extern _bignum_mod_n521_9_alt
+        S2N_ASM_HIDDEN(_bignum_mod_n521_9_alt)
 
         .text
 
