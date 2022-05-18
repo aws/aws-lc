@@ -26,8 +26,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_mod_n521_9_alt
-        .globl  _bignum_mod_n521_9_alt
+        .globl bignum_mod_n521_9_alt
+        .private_extern bignum_mod_n521_9_alt
+
+        .globl _bignum_mod_n521_9_alt
+        .private_extern _bignum_mod_n521_9_alt
+
         .text
 
 #define z %rdi

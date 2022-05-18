@@ -22,8 +22,12 @@
 // Standard ARM ABI: X0 = x, returns X0
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_nonzero_6
-        .globl  _bignum_nonzero_6
+        .globl bignum_nonzero_6
+        .private_extern bignum_nonzero_6
+
+        .globl _bignum_nonzero_6
+        .private_extern _bignum_nonzero_6
+
         .text
         .balign 4
 

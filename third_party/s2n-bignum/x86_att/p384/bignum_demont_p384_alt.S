@@ -27,8 +27,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_demont_p384_alt
-        .globl  _bignum_demont_p384_alt
+        .globl bignum_demont_p384_alt
+        .private_extern bignum_demont_p384_alt
+
+        .globl _bignum_demont_p384_alt
+        .private_extern _bignum_demont_p384_alt
+
         .text
 
 #define z %rdi

@@ -23,8 +23,12 @@
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_mul_p521_alt
-        .globl  _bignum_mul_p521_alt
+        .globl bignum_mul_p521_alt
+        .private_extern bignum_mul_p521_alt
+
+        .globl _bignum_mul_p521_alt
+        .private_extern _bignum_mul_p521_alt
+
         .text
         .balign 4
 

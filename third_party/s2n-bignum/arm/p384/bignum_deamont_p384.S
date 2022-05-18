@@ -26,10 +26,18 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_deamont_p384
-        .globl  _bignum_deamont_p384
-        .globl  bignum_deamont_p384_alt
-        .globl  _bignum_deamont_p384_alt
+        .globl bignum_deamont_p384
+        .private_extern bignum_deamont_p384
+
+        .globl _bignum_deamont_p384
+        .private_extern _bignum_deamont_p384
+
+        .globl bignum_deamont_p384_alt
+        .private_extern bignum_deamont_p384_alt
+
+        .globl _bignum_deamont_p384_alt
+        .private_extern _bignum_deamont_p384_alt
+
         .text
         .balign 4
 

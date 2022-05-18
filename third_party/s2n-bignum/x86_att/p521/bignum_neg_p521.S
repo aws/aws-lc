@@ -23,8 +23,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_neg_p521
-        .globl  _bignum_neg_p521
+        .globl bignum_neg_p521
+        .private_extern bignum_neg_p521
+
+        .globl _bignum_neg_p521
+        .private_extern _bignum_neg_p521
+
         .text
 
 #define z %rdi

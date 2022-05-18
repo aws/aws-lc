@@ -27,8 +27,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_deamont_p521
-        .globl  _bignum_deamont_p521
+        .globl bignum_deamont_p521
+        .private_extern bignum_deamont_p521
+
+        .globl _bignum_deamont_p521
+        .private_extern _bignum_deamont_p521
+
         .text
 
 #define z %rdi

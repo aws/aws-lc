@@ -26,8 +26,12 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_montsqr_p384
-        .globl  _bignum_montsqr_p384
+        .globl bignum_montsqr_p384
+        .private_extern bignum_montsqr_p384
+
+        .globl _bignum_montsqr_p384
+        .private_extern _bignum_montsqr_p384
+
         .text
         .balign 4
 

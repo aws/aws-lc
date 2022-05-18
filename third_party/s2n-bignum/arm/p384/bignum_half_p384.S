@@ -23,8 +23,12 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_half_p384
-        .globl  _bignum_half_p384
+        .globl bignum_half_p384
+        .private_extern bignum_half_p384
+
+        .globl _bignum_half_p384
+        .private_extern _bignum_half_p384
+
         .text
         .balign 4
 

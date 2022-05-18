@@ -27,8 +27,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_triple_p384
-        .globl  _bignum_triple_p384
+        .globl bignum_triple_p384
+        .private_extern bignum_triple_p384
+
+        .globl _bignum_triple_p384
+        .private_extern _bignum_triple_p384
+
         .text
 
 #define z %rdi

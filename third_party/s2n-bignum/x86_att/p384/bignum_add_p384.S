@@ -24,8 +24,14 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_add_p384
-        .globl  _bignum_add_p384
+        .globl bignum_add_p384
+        .private_extern bignum_add_p384
+
+        .private_extern  bignum_add_p384
+        .globl _bignum_add_p384
+        .private_extern _bignum_add_p384
+
+        .private_extern  _bignum_add_p384
         .text
 
 #define z %rdi

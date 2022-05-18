@@ -24,8 +24,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_half_p384
-        .globl  _bignum_half_p384
+        .globl bignum_half_p384
+        .private_extern bignum_half_p384
+
+        .globl _bignum_half_p384
+        .private_extern _bignum_half_p384
+
         .text
 
 #define z %rdi
