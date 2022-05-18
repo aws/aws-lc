@@ -23,10 +23,18 @@
 // Standard ARM ABI: X0 = z, X1 = k, X2 = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_mod_p384
-        .globl  _bignum_mod_p384
-        .globl  bignum_mod_p384_alt
-        .globl  _bignum_mod_p384_alt
+        .globl bignum_mod_p384
+        .private_extern bignum_mod_p384
+
+        .globl _bignum_mod_p384
+        .private_extern _bignum_mod_p384
+
+        .globl bignum_mod_p384_alt
+        .private_extern bignum_mod_p384_alt
+
+        .globl _bignum_mod_p384_alt
+        .private_extern _bignum_mod_p384_alt
+
         .text
         .balign 4
 

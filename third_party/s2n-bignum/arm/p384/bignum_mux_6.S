@@ -26,8 +26,12 @@
 // Standard ARM ABI: X0 = p, X1 = z, X2 = x, X3 = y
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_mux_6
-        .globl  _bignum_mux_6
+        .globl bignum_mux_6
+        .private_extern bignum_mux_6
+
+        .globl _bignum_mux_6
+        .private_extern _bignum_mux_6
+
         .text
         .balign 4
 

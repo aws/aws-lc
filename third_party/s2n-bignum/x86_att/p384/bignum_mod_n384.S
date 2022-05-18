@@ -26,8 +26,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_mod_n384
-        .globl  _bignum_mod_n384
+        .globl bignum_mod_n384
+        .private_extern bignum_mod_n384
+
+        .globl _bignum_mod_n384
+        .private_extern _bignum_mod_n384
+
         .text
 
 #define z %rdi

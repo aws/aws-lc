@@ -23,10 +23,18 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_triple_p521
-        .globl  _bignum_triple_p521
-        .globl  bignum_triple_p521_alt
-        .globl  _bignum_triple_p521_alt
+        .globl bignum_triple_p521
+        .private_extern bignum_triple_p521
+
+        .globl _bignum_triple_p521
+        .private_extern _bignum_triple_p521
+
+        .globl bignum_triple_p521_alt
+        .private_extern bignum_triple_p521_alt
+
+        .globl _bignum_triple_p521_alt
+        .private_extern _bignum_triple_p521_alt
+
         .text
         .balign 4
 

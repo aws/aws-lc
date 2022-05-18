@@ -24,8 +24,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_mod_p384_alt
-        .globl  _bignum_mod_p384_alt
+        .globl bignum_mod_p384_alt
+        .private_extern bignum_mod_p384_alt
+
+        .globl _bignum_mod_p384_alt
+        .private_extern _bignum_mod_p384_alt
+
         .text
 
 #define z %rdi

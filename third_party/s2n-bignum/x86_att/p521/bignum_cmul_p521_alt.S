@@ -25,8 +25,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_cmul_p521_alt
-        .globl  _bignum_cmul_p521_alt
+        .globl bignum_cmul_p521_alt
+        .private_extern bignum_cmul_p521_alt
+
+        .globl _bignum_cmul_p521_alt
+        .private_extern _bignum_cmul_p521_alt
+
         .text
 
 #define z %rdi

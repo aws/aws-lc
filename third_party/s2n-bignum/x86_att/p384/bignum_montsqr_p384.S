@@ -27,8 +27,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_montsqr_p384
-        .globl  _bignum_montsqr_p384
+        .globl bignum_montsqr_p384
+        .private_extern bignum_montsqr_p384
+
+        .globl _bignum_montsqr_p384
+        .private_extern _bignum_montsqr_p384
+
         .text
 
 #define z %rdi

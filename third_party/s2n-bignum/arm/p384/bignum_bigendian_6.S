@@ -36,12 +36,24 @@
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 
-        .globl  bignum_bigendian_6
-        .globl  _bignum_bigendian_6
-        .globl  bignum_frombebytes_6
-        .globl  _bignum_frombebytes_6
-        .globl  bignum_tobebytes_6
-        .globl  _bignum_tobebytes_6
+        .globl bignum_bigendian_6
+        .private_extern bignum_bigendian_6
+
+        .globl _bignum_bigendian_6
+        .private_extern _bignum_bigendian_6
+
+        .globl bignum_frombebytes_6
+        .private_extern bignum_frombebytes_6
+
+        .globl _bignum_frombebytes_6
+        .private_extern _bignum_frombebytes_6
+
+        .globl bignum_tobebytes_6
+        .private_extern bignum_tobebytes_6
+
+        .globl _bignum_tobebytes_6
+        .private_extern _bignum_tobebytes_6
+
         .text
         .balign 4
 

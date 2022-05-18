@@ -24,8 +24,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_tomont_p384_alt
-        .globl  _bignum_tomont_p384_alt
+        .globl bignum_tomont_p384_alt
+        .private_extern bignum_tomont_p384_alt
+
+        .globl _bignum_tomont_p384_alt
+        .private_extern _bignum_tomont_p384_alt
+
         .text
 
 #define z %rdi

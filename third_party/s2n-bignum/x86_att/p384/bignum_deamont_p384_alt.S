@@ -27,8 +27,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_deamont_p384_alt
-        .globl  _bignum_deamont_p384_alt
+        .globl bignum_deamont_p384_alt
+        .private_extern bignum_deamont_p384_alt
+
+        .globl _bignum_deamont_p384_alt
+        .private_extern _bignum_deamont_p384_alt
+
         .text
 
 #define z %rdi

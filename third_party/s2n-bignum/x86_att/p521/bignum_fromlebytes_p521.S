@@ -28,8 +28,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_fromlebytes_p521
-        .globl  _bignum_fromlebytes_p521
+        .globl bignum_fromlebytes_p521
+        .private_extern bignum_fromlebytes_p521
+
+        .globl _bignum_fromlebytes_p521
+        .private_extern _bignum_fromlebytes_p521
+
         .text
 
 #define z %rdi

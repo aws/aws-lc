@@ -24,8 +24,12 @@
 // ----------------------------------------------------------------------------
 
 
-        .globl  bignum_tomont_p521
-        .globl  _bignum_tomont_p521
+        .globl bignum_tomont_p521
+        .private_extern bignum_tomont_p521
+
+        .globl _bignum_tomont_p521
+        .private_extern _bignum_tomont_p521
+
         .text
 
 #define z %rdi
