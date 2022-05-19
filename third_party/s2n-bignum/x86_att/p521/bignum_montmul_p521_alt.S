@@ -26,14 +26,13 @@
 // can be considered a Montgomery operation to base 2^521.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
 
-        .globl bignum_montmul_p521_alt
-        S2N_ASM_HIDDEN(bignum_montmul_p521_alt)
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl _bignum_montmul_p521_alt
-        S2N_ASM_HIDDEN(_bignum_montmul_p521_alt)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p521_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p521_alt)
 
         .text
 
@@ -70,8 +69,15 @@
         addq    %rax, l ;                         \
         adcq    %rdx, h
 
-bignum_montmul_p521_alt:
-_bignum_montmul_p521_alt:
+S2N_BN_SYMBOL(bignum_montmul_p521_alt):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Make more registers available and make temporary space on stack
 
@@ -337,6 +343,10 @@ _bignum_montmul_p521_alt:
         popq    %r14
         popq    %r13
         popq    %r12
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

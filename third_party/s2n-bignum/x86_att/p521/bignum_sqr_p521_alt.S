@@ -20,14 +20,13 @@
 //    extern void bignum_sqr_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
 
-        .globl bignum_sqr_p521_alt
-        S2N_ASM_HIDDEN(bignum_sqr_p521_alt)
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl _bignum_sqr_p521_alt
-        S2N_ASM_HIDDEN(_bignum_sqr_p521_alt)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_p521_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_p521_alt)
 
         .text
 
@@ -93,8 +92,14 @@
         adcq    %rdx, h ;                         \
         adcq    $0, c
 
-bignum_sqr_p521_alt:
-_bignum_sqr_p521_alt:
+S2N_BN_SYMBOL(bignum_sqr_p521_alt):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Make more registers available and make temporary space on stack
 
@@ -305,6 +310,10 @@ _bignum_sqr_p521_alt:
         popq    %r13
         popq    %r12
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

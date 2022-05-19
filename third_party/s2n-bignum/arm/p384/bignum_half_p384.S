@@ -22,14 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl bignum_half_p384
-        S2N_ASM_HIDDEN(bignum_half_p384)
-
-        .globl _bignum_half_p384
-        S2N_ASM_HIDDEN(_bignum_half_p384)
-
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_half_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_half_p384)
         .text
         .balign 4
 
@@ -48,54 +44,53 @@
 #define n x11
 
 
-bignum_half_p384:
-_bignum_half_p384:
+S2N_BN_SYMBOL(bignum_half_p384):
 
 // Load the 4 digits of x
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
-                ldp     d4, d5, [x, #32]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
+        ldp     d4, d5, [x, #32]
 
 // Get a bitmask corresponding to the lowest bit of the input
 
-                and     m, d0, #1
-                neg     m, m
+        and     m, d0, #1
+        neg     m, m
 
 // Do a masked addition of p_384, catching carry in a 7th word
 
-                mov     n, #0x00000000ffffffff
-                and     n, n, m
-                adds    d0, d0, n
-                mov     n, #0xffffffff00000000
-                and     n, n, m
-                adcs    d1, d1, n
-                mov     n, #0xfffffffffffffffe
-                and     n, n, m
-                adcs    d2, d2, n
-                adcs    d3, d3, m
-                adcs    d4, d4, m
-                adcs    d5, d5, m
-                adc     d6, xzr, xzr
+        mov     n, #0x00000000ffffffff
+        and     n, n, m
+        adds    d0, d0, n
+        mov     n, #0xffffffff00000000
+        and     n, n, m
+        adcs    d1, d1, n
+        mov     n, #0xfffffffffffffffe
+        and     n, n, m
+        adcs    d2, d2, n
+        adcs    d3, d3, m
+        adcs    d4, d4, m
+        adcs    d5, d5, m
+        adc     d6, xzr, xzr
 
 // Now shift that sum right one place
 
-                extr    d0, d1, d0, #1
-                extr    d1, d2, d1, #1
-                extr    d2, d3, d2, #1
-                extr    d3, d4, d3, #1
-                extr    d4, d5, d4, #1
-                extr    d5, d6, d5, #1
+        extr    d0, d1, d0, #1
+        extr    d1, d2, d1, #1
+        extr    d2, d3, d2, #1
+        extr    d3, d4, d3, #1
+        extr    d4, d5, d4, #1
+        extr    d5, d6, d5, #1
 
 // Store back
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
-                stp     d4, d5, [z, #32]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
+        stp     d4, d5, [z, #32]
 
 // Return
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

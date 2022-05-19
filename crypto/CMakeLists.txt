@@ -1,5 +1,7 @@
 include_directories(../include)
 
+set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS=1")
+
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
     if(ARCH STREQUAL "aarch64")

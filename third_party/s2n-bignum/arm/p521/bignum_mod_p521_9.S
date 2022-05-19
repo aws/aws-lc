@@ -22,14 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl bignum_mod_p521_9
-        S2N_ASM_HIDDEN(bignum_mod_p521_9)
-
-        .globl _bignum_mod_p521_9
-        S2N_ASM_HIDDEN(_bignum_mod_p521_9)
-
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p521_9)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p521_9)
         .text
         .balign 4
 
@@ -48,15 +44,14 @@
 #define d7 x11
 #define d8 x12
 
-bignum_mod_p521_9:
-_bignum_mod_p521_9:
+S2N_BN_SYMBOL(bignum_mod_p521_9):
 
 // Load top digit first and get its upper bits in h so that we
 // separate out x = 2^521 * H + L with h = H. Now x mod p_521 =
 // (H + L) mod p_521 = if H + L >= p_521 then H + L - p_521 else H + L.
 
-                ldr     d8, [x, #64]
-                lsr     h, d8, #9
+        ldr     d8, [x, #64]
+        lsr     h, d8, #9
 
 // Load in the other digits and decide whether H + L >= p_521. This is
 // equivalent to H + L + 1 >= 2^521, and since this can only happen if
@@ -65,45 +60,45 @@ _bignum_mod_p521_9:
 // This condenses only three pairs; the payoff beyond that seems limited.
 // By stuffing in 1 bits from 521 position upwards, get CF directly
 
-                subs    xzr, xzr, xzr
-                ldp     d0, d1, [x]
-                adcs    xzr, d0, h
-                adcs    xzr, d1, xzr
-                ldp     d2, d3, [x, #16]
-                and     t, d2, d3
-                adcs    xzr, t, xzr
-                ldp     d4, d5, [x, #32]
-                and     t, d4, d5
-                adcs    xzr, t, xzr
-                ldp     d6, d7, [x, #48]
-                and     t, d6, d7
-                adcs    xzr, t, xzr
-                orr     t, d8, #~0x1FF
-                adcs    t, t, xzr
+        subs    xzr, xzr, xzr
+        ldp     d0, d1, [x]
+        adcs    xzr, d0, h
+        adcs    xzr, d1, xzr
+        ldp     d2, d3, [x, #16]
+        and     t, d2, d3
+        adcs    xzr, t, xzr
+        ldp     d4, d5, [x, #32]
+        and     t, d4, d5
+        adcs    xzr, t, xzr
+        ldp     d6, d7, [x, #48]
+        and     t, d6, d7
+        adcs    xzr, t, xzr
+        orr     t, d8, #~0x1FF
+        adcs    t, t, xzr
 
 // Now H + L >= p_521 <=> H + L + 1 >= 2^521 <=> CF from this comparison.
 // So if CF is set we want (H + L) - p_521 = (H + L + 1) - 2^521
 // while otherwise we want just H + L. So mask H + L + CF to 521 bits.
 
-                adcs    d0, d0, h
-                adcs    d1, d1, xzr
-                adcs    d2, d2, xzr
-                adcs    d3, d3, xzr
-                adcs    d4, d4, xzr
-                adcs    d5, d5, xzr
-                adcs    d6, d6, xzr
-                adcs    d7, d7, xzr
-                adc     d8, d8, xzr
-                and     d8, d8, #0x1FF
+        adcs    d0, d0, h
+        adcs    d1, d1, xzr
+        adcs    d2, d2, xzr
+        adcs    d3, d3, xzr
+        adcs    d4, d4, xzr
+        adcs    d5, d5, xzr
+        adcs    d6, d6, xzr
+        adcs    d7, d7, xzr
+        adc     d8, d8, xzr
+        and     d8, d8, #0x1FF
 
 // Store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
-                stp     d4, d5, [z, #32]
-                stp     d6, d7, [z, #48]
-                str     d8, [z, #64]
-                ret
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
+        stp     d4, d5, [z, #32]
+        stp     d6, d7, [z, #48]
+        str     d8, [z, #64]
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

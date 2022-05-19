@@ -25,20 +25,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl bignum_deamont_p384
-        S2N_ASM_HIDDEN(bignum_deamont_p384)
-
-        .globl _bignum_deamont_p384
-        S2N_ASM_HIDDEN(_bignum_deamont_p384)
-
-        .globl bignum_deamont_p384_alt
-        S2N_ASM_HIDDEN(bignum_deamont_p384_alt)
-
-        .globl _bignum_deamont_p384_alt
-        S2N_ASM_HIDDEN(_bignum_deamont_p384_alt)
-
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_deamont_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_deamont_p384)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_deamont_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_deamont_p384_alt)
         .text
         .balign 4
 
@@ -55,29 +47,29 @@
 #define montreds(d6,d5,d4,d3,d2,d1,d0, t3,t2,t1)                            \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64            */  \
 /* Recycle d0 (which we know gets implicitly cancelled) to store it     */  \
-                lsl     t1, d0, #32;                                        \
-                add     d0, t1, d0;                                         \
+        lsl     t1, d0, #32;                                        \
+        add     d0, t1, d0;                                         \
 /* Now let [t2;t1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)     */  \
 /* We need to subtract 2^32 * this, and we can ignore its lower 32      */  \
 /* bits since by design it will cancel anyway; we only need the w_hi    */  \
 /* part to get the carry propagation going.                             */  \
-                lsr     t1, d0, #32;                                        \
-                subs    t1, t1, d0;                                         \
-                sbc     t2, d0, xzr;                                        \
+        lsr     t1, d0, #32;                                        \
+        subs    t1, t1, d0;                                         \
+        sbc     t2, d0, xzr;                                        \
 /* Now select in t1 the field to subtract from d1                       */  \
-                extr    t1, t2, t1, #32;                                    \
+        extr    t1, t2, t1, #32;                                    \
 /* And now get the terms to subtract from d2 and d3                     */  \
-                lsr     t2, t2, #32;                                        \
-                adds    t2, t2, d0;                                         \
-                adc     t3, xzr, xzr;                                       \
+        lsr     t2, t2, #32;                                        \
+        adds    t2, t2, d0;                                         \
+        adc     t3, xzr, xzr;                                       \
 /* Do the subtraction of that portion                                   */  \
-                subs    d1, d1, t1;                                         \
-                sbcs    d2, d2, t2;                                         \
-                sbcs    d3, d3, t3;                                         \
-                sbcs    d4, d4, xzr;                                        \
-                sbcs    d5, d5, xzr;                                        \
+        subs    d1, d1, t1;                                         \
+        sbcs    d2, d2, t2;                                         \
+        sbcs    d3, d3, t3;                                         \
+        sbcs    d4, d4, xzr;                                        \
+        sbcs    d5, d5, xzr;                                        \
 /* Now effectively add 2^384 * w by taking d0 as the input for last sbc */  \
-                sbc     d6, d0, xzr
+        sbc     d6, d0, xzr
 
 // Input parameters
 
@@ -99,67 +91,66 @@
 #define v x9
 #define w x10
 
-bignum_deamont_p384:
-_bignum_deamont_p384:
-bignum_deamont_p384_alt:
-_bignum_deamont_p384_alt:
+S2N_BN_SYMBOL(bignum_deamont_p384):
+
+S2N_BN_SYMBOL(bignum_deamont_p384_alt):
 
 // Set up an initial window with the input x and an extra leading zero
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
-                ldp     d4, d5, [x, #32]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
+        ldp     d4, d5, [x, #32]
 
 // Systematically scroll left doing 1-step reductions
 
-                montreds(d0,d5,d4,d3,d2,d1,d0, u,v,w)
+        montreds(d0,d5,d4,d3,d2,d1,d0, u,v,w)
 
-                montreds(d1,d0,d5,d4,d3,d2,d1, u,v,w)
+        montreds(d1,d0,d5,d4,d3,d2,d1, u,v,w)
 
-                montreds(d2,d1,d0,d5,d4,d3,d2, u,v,w)
+        montreds(d2,d1,d0,d5,d4,d3,d2, u,v,w)
 
-                montreds(d3,d2,d1,d0,d5,d4,d3, u,v,w)
+        montreds(d3,d2,d1,d0,d5,d4,d3, u,v,w)
 
-                montreds(d4,d3,d2,d1,d0,d5,d4, u,v,w)
+        montreds(d4,d3,d2,d1,d0,d5,d4, u,v,w)
 
-                montreds(d5,d4,d3,d2,d1,d0,d5, u,v,w)
+        montreds(d5,d4,d3,d2,d1,d0,d5, u,v,w)
 
 // Now compare end result in [d5;d4;d3;d2;d1;d0] = dd with p_384 by *adding*
 // 2^384 - p_384 = [0;0;0;w;v;u]. This will set CF if
 // dd + (2^384 - p_384) >= 2^384, hence iff dd >= p_384
 
-                mov     u, #0xffffffff00000001
-                mov     v, #0x00000000ffffffff
-                mov     w, #0x0000000000000001
+        mov     u, #0xffffffff00000001
+        mov     v, #0x00000000ffffffff
+        mov     w, #0x0000000000000001
 
-                adds    xzr, d0, u
-                adcs    xzr, d1, v
-                adcs    xzr, d2, w
-                adcs    xzr, d3, xzr
-                adcs    xzr, d4, xzr
-                adcs    xzr, d5, xzr
+        adds    xzr, d0, u
+        adcs    xzr, d1, v
+        adcs    xzr, d2, w
+        adcs    xzr, d3, xzr
+        adcs    xzr, d4, xzr
+        adcs    xzr, d5, xzr
 
 // Convert the condition dd >= p_384 into a bitmask in w and do a masked
 // subtraction of p_384, via a masked addition of 2^384 - p_384:
 
-                csetm   w, cs
-                and     u, u, w
-                adds    d0, d0, u
-                and     v, v, w
-                adcs    d1, d1, v
-                and     w, w, #1
-                adcs    d2, d2, w
-                adcs    d3, d3, xzr
-                adcs    d4, d4, xzr
-                adc     d5, d5, xzr
+        csetm   w, cs
+        and     u, u, w
+        adds    d0, d0, u
+        and     v, v, w
+        adcs    d1, d1, v
+        and     w, w, #1
+        adcs    d2, d2, w
+        adcs    d3, d3, xzr
+        adcs    d4, d4, xzr
+        adc     d5, d5, xzr
 
 // Store it back
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
-                stp     d4, d5, [z, #32]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
+        stp     d4, d5, [z, #32]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

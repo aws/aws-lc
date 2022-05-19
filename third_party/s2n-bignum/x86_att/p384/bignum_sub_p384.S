@@ -21,14 +21,13 @@
 //     (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
 
-        .globl bignum_sub_p384
-        S2N_ASM_HIDDEN(bignum_sub_p384)
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl _bignum_sub_p384
-        S2N_ASM_HIDDEN(_bignum_sub_p384)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sub_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sub_p384)
 
         .text
 
@@ -52,8 +51,15 @@
 
 
 
-bignum_sub_p384:
-_bignum_sub_p384:
+S2N_BN_SYMBOL(bignum_sub_p384):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Subtract the inputs as [d5;d4;d3;d2;d1;d0] = x - y (modulo 2^384)
 // Capture the top carry as a bitmask for the condition x < y
@@ -107,6 +113,10 @@ _bignum_sub_p384:
         sbbq    $0, d5
         movq    d5, 40(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

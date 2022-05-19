@@ -21,14 +21,10 @@
 //
 // Standard ARM ABI: X0 = x, returns X0
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl bignum_nonzero_6
-        S2N_ASM_HIDDEN(bignum_nonzero_6)
-
-        .globl _bignum_nonzero_6
-        S2N_ASM_HIDDEN(_bignum_nonzero_6)
-
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_nonzero_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero_6)
         .text
         .balign 4
 
@@ -38,26 +34,25 @@
 #define c x3
 
 
-bignum_nonzero_6:
-_bignum_nonzero_6:
+S2N_BN_SYMBOL(bignum_nonzero_6):
 
 // Generate a = an OR of all the words in the bignum
 
-                ldp     a, d, [x]
-                orr     a, a, d
-                ldp     c, d, [x, #16]
-                orr     c, c, d
-                orr     a, a, c
-                ldp     c, d, [x, #32]
-                orr     c, c, d
-                orr     a, a, c
+        ldp     a, d, [x]
+        orr     a, a, d
+        ldp     c, d, [x, #16]
+        orr     c, c, d
+        orr     a, a, c
+        ldp     c, d, [x, #32]
+        orr     c, c, d
+        orr     a, a, c
 
 // Set a standard C condition based on whether a is nonzero
 
-                cmp     a, xzr
-                cset    x0, ne
+        cmp     a, xzr
+        cset    x0, ne
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

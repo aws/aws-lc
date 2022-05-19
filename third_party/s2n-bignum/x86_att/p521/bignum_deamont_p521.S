@@ -24,14 +24,13 @@
 // "almost" meaning any 9-digit input will work, with no range restriction.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
 
-        .globl bignum_deamont_p521
-        S2N_ASM_HIDDEN(bignum_deamont_p521)
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl _bignum_deamont_p521
-        S2N_ASM_HIDDEN(_bignum_deamont_p521)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_deamont_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_deamont_p521)
 
         .text
 
@@ -52,8 +51,14 @@
 #define d7 %r13
 #define d8 %rbp
 
-bignum_deamont_p521:
-_bignum_deamont_p521:
+S2N_BN_SYMBOL(bignum_deamont_p521):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -138,6 +143,10 @@ _bignum_deamont_p521:
         popq    %r12
         popq    %rbx
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

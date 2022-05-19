@@ -24,14 +24,13 @@
 // use the variant "bignum_deamont_p521" instead.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
 
-        .globl bignum_demont_p521
-        S2N_ASM_HIDDEN(bignum_demont_p521)
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl _bignum_demont_p521
-        S2N_ASM_HIDDEN(_bignum_demont_p521)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont_p521)
 
         .text
 
@@ -52,8 +51,14 @@
 #define d7 %rcx
 #define d8 %rdx
 
-bignum_demont_p521:
-_bignum_demont_p521:
+S2N_BN_SYMBOL(bignum_demont_p521):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Rotate, as a 521-bit quantity, by 9*64 - 521 = 55 bits right.
 
@@ -87,6 +92,10 @@ _bignum_demont_p521:
         movq    d7, 56(z)
         shrq    $55, d8
         movq    d8, 64(z)
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

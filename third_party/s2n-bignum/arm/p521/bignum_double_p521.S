@@ -22,14 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "../../_internal_s2n_bignum.h"
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl bignum_double_p521
-        S2N_ASM_HIDDEN(bignum_double_p521)
-
-        .globl _bignum_double_p521
-        S2N_ASM_HIDDEN(_bignum_double_p521)
-
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_double_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_double_p521)
         .text
         .balign 4
 
@@ -40,44 +36,43 @@
 #define h x3
 #define l x4
 
-bignum_double_p521:
-_bignum_double_p521:
+S2N_BN_SYMBOL(bignum_double_p521):
 
 // We can decide whether 2 * x >= p_521 just by 2 * x >= 2^521, which
 // amounts to whether the top word is >= 256
 
-                ldr     c, [x, #64]
-                subs    xzr, c, #256
+        ldr     c, [x, #64]
+        subs    xzr, c, #256
 
 // Now if 2 * x >= p_521 we want 2 * x - p_521 = (2 * x + 1) - 2^521
 // and otherwise just 2 * x. Feed in the condition as the carry bit
 // to get 2 * x + [2 * x >= p_521] then just mask it off to 521 bits.
 
-                ldp     l, h, [x]
-                adcs    l, l, l
-                adcs    h, h, h
-                stp     l, h, [z]
+        ldp     l, h, [x]
+        adcs    l, l, l
+        adcs    h, h, h
+        stp     l, h, [z]
 
-                ldp     l, h, [x, #16]
-                adcs    l, l, l
-                adcs    h, h, h
-                stp     l, h, [z, #16]
+        ldp     l, h, [x, #16]
+        adcs    l, l, l
+        adcs    h, h, h
+        stp     l, h, [z, #16]
 
-                ldp     l, h, [x, #32]
-                adcs    l, l, l
-                adcs    h, h, h
-                stp     l, h, [z, #32]
+        ldp     l, h, [x, #32]
+        adcs    l, l, l
+        adcs    h, h, h
+        stp     l, h, [z, #32]
 
-                ldp     l, h, [x, #48]
-                adcs    l, l, l
-                adcs    h, h, h
-                stp     l, h, [z, #48]
+        ldp     l, h, [x, #48]
+        adcs    l, l, l
+        adcs    h, h, h
+        stp     l, h, [z, #48]
 
-                adc     c, c, c
-                and     c, c, #0x1FF
-                str     c, [z, #64]
+        adc     c, c, c
+        and     c, c, #0x1FF
+        str     c, [z, #64]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
