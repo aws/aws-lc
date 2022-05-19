@@ -24,11 +24,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_n521_9
-        .globl  _bignum_mod_n521_9
-        .globl  bignum_mod_n521_9_alt
-        .globl  _bignum_mod_n521_9_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n521_9)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n521_9)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n521_9_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n521_9_alt)
         .text
         .balign 4
 
@@ -63,10 +64,9 @@
         movk    nn, n2, lsl #32;                                    \
         movk    nn, n3, lsl #48
 
-bignum_mod_n521_9:
-_bignum_mod_n521_9:
-bignum_mod_n521_9_alt:
-_bignum_mod_n521_9_alt:
+S2N_BN_SYMBOL(bignum_mod_n521_9):
+
+S2N_BN_SYMBOL(bignum_mod_n521_9_alt):
 
 // Load the top digit first into d8.
 // The initial quotient estimate is q = h + 1 where x = 2^521 * h + t
