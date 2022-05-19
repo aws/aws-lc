@@ -146,15 +146,10 @@ int SHA224_Update(SHA256_CTX *ctx, const void *data, size_t len) {
   return SHA256_Update(ctx, data, len);
 }
 
-static int sha256_final_impl(uint8_t *out, SHA256_CTX *c) {
+static int sha256_final_impl(uint8_t *out, size_t md_len, SHA256_CTX *c) {
   crypto_md32_final(&sha256_block_data_order, c->h, c->data, SHA256_CBLOCK,
                     &c->num, c->Nh, c->Nl, /*is_big_endian=*/1);
-
-  // TODO(davidben): This overflow check one of the few places a low-level hash
-  // 'final' function can fail. SHA-512 does not have a corresponding check.
-  // These functions already misbehave if the caller arbitrarily mutates |c|, so
-  // can we assume one of |SHA256_Init| or |SHA224_Init| was used?
-  if (c->md_len > SHA256_DIGEST_LENGTH) {
+  if (c->md_len != md_len) {
     return 0;
   }
 
@@ -169,18 +164,11 @@ static int sha256_final_impl(uint8_t *out, SHA256_CTX *c) {
 }
 
 int SHA256_Final(uint8_t out[SHA256_DIGEST_LENGTH], SHA256_CTX *c) {
-  // Ideally we would assert |sha->md_len| is |SHA256_DIGEST_LENGTH| to match
-  // the size hint, but calling code often pairs |SHA224_Init| with
-  // |SHA256_Final| and expects |sha->md_len| to carry the size over.
-  //
-  // TODO(davidben): Add an assert and fix code to match them up.
-  return sha256_final_impl(out, c);
+  return sha256_final_impl(out, SHA256_DIGEST_LENGTH, c);
 }
+
 int SHA224_Final(uint8_t out[SHA224_DIGEST_LENGTH], SHA256_CTX *ctx) {
-  // SHA224_Init sets |ctx->md_len| to |SHA224_DIGEST_LENGTH|, so this has a
-  // smaller output.
-  assert(ctx->md_len == SHA224_DIGEST_LENGTH);
-  return sha256_final_impl(out, ctx);
+  return sha256_final_impl(out, SHA224_DIGEST_LENGTH, ctx);
 }
 
 #ifndef SHA256_ASM
