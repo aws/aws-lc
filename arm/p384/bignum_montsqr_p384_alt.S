@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_montsqr_p384_alt
-        .globl  _bignum_montsqr_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr_p384_alt)
         .text
         .balign 4
 
@@ -90,8 +91,7 @@
 #define u11 x20
 #define h x6 // same as a4
 
-bignum_montsqr_p384_alt:
-_bignum_montsqr_p384_alt:
+S2N_BN_SYMBOL(bignum_montsqr_p384_alt):
 
 // It's convenient to have two more registers to play with
 

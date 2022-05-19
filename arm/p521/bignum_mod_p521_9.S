@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_p521_9
-        .globl  _bignum_mod_p521_9
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p521_9)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p521_9)
         .text
         .balign 4
 
@@ -43,8 +44,7 @@
 #define d7 x11
 #define d8 x12
 
-bignum_mod_p521_9:
-_bignum_mod_p521_9:
+S2N_BN_SYMBOL(bignum_mod_p521_9):
 
 // Load top digit first and get its upper bits in h so that we
 // separate out x = 2^521 * H + L with h = H. Now x mod p_521 =
