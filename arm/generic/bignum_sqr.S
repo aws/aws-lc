@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr
-        .globl  _bignum_sqr
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr)
         .text
         .balign 4
 
@@ -49,8 +50,7 @@
 #define hh x14
 #define ll x15
 
-bignum_sqr:
-_bignum_sqr:
+S2N_BN_SYMBOL(bignum_sqr):
 
 // If p = 0 the result is trivial and nothing needs doing
 

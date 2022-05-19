@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = x, X4 = n, X5 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mul
-        .globl  _bignum_mul
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul)
         .text
         .balign 4
 
@@ -50,8 +51,7 @@
 #define yy x15
 
 
-bignum_mul:
-_bignum_mul:
+S2N_BN_SYMBOL(bignum_mul):
 
 // If p = 0 the result is trivial and nothing needs doing
 

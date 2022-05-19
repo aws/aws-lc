@@ -27,9 +27,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_montmul_p521_alt
-        .globl  _bignum_montmul_p521_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p521_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p521_alt)
         .text
         .balign 4
 
@@ -82,8 +83,7 @@
 #define u15 x20
 #define u16 x21
 
-bignum_montmul_p521_alt:
-_bignum_montmul_p521_alt:
+S2N_BN_SYMBOL(bignum_montmul_p521_alt):
 
 // Save more registers and make space for the temporary buffer
 

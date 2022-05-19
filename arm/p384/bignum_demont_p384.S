@@ -25,11 +25,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_demont_p384
-        .globl  _bignum_demont_p384
-        .globl  bignum_demont_p384_alt
-        .globl  _bignum_demont_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont_p384)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont_p384_alt)
         .text
         .balign 4
 
@@ -90,10 +91,9 @@
 #define v x9
 #define w x10
 
-bignum_demont_p384:
-_bignum_demont_p384:
-bignum_demont_p384_alt:
-_bignum_demont_p384_alt:
+S2N_BN_SYMBOL(bignum_demont_p384):
+
+S2N_BN_SYMBOL(bignum_demont_p384_alt):
 
 // Set up an initial window with the input x and an extra leading zero
 
