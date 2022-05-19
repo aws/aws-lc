@@ -29,8 +29,8 @@
 // -----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_montmul_p384
-        .globl  _bignum_montmul_p384
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p384)
         .text
 
 #define z rdi
@@ -95,8 +95,7 @@
         add     d6, rdx;                                        \
         adc     d7, 0
 
-bignum_montmul_p384:
-_bignum_montmul_p384:
+S2N_BN_SYMBOL(bignum_montmul_p384):
 
 #if WINDOWS_ABI
         push    rdi

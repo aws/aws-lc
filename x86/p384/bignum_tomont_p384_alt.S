@@ -25,8 +25,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_tomont_p384_alt
-        .globl  _bignum_tomont_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p384_alt)
         .text
 
 #define z rdi
@@ -112,8 +112,7 @@
         add     d6, rbx;                                        \
         adc     d7, 0
 
-bignum_tomont_p384_alt:
-_bignum_tomont_p384_alt:
+S2N_BN_SYMBOL(bignum_tomont_p384_alt):
 
 #if WINDOWS_ABI
         push    rdi

@@ -27,10 +27,10 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_demont_p384_alt
-        .globl  _bignum_demont_p384_alt
-        .text
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont_p384_alt)
 
 #define z %rdi
 #define x %rsi
@@ -72,8 +72,7 @@
         movq    %rcx, d6 ;                                        \
         sbbq    $0, d6
 
-bignum_demont_p384_alt:
-_bignum_demont_p384_alt:
+S2N_BN_SYMBOL(bignum_demont_p384_alt):
 
 #if WINDOWS_ABI
         pushq   %rdi

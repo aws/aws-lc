@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_sub_p384
-        .globl  _bignum_sub_p384
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sub_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sub_p384)
         .text
         .balign 4
 
@@ -42,8 +43,7 @@
 #define d5 x10
 
 
-bignum_sub_p384:
-_bignum_sub_p384:
+S2N_BN_SYMBOL(bignum_sub_p384):
 
 // First just subtract the numbers as [d5; d4; d3; d2; d1; d0]
 // Set a mask based on (inverted) carry indicating x < y = correction is needed
