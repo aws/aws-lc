@@ -191,9 +191,29 @@ BORINGSSL_bcm_power_on_self_test(void) {
     goto err;
   }
 
+  // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
+  // check before the integrity check itself. So we first call the self-test
+  // before we calculate the hash of the module.
+  if (!boringssl_fips_self_test()) {
+    goto err;
+  }
+
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
   // .text section, which triggers the global-buffer overflow detection.
+  if (!BORINGSSL_integrity_test()) {
+    goto err;
+  }
+#endif // OPENSSL_ASAN
+
+  return;
+
+err:
+  BORINGSSL_FIPS_abort();
+}
+
+#if !defined(OPENSSL_ASAN)
+int BORINGSSL_integrity_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
@@ -219,13 +239,6 @@ BORINGSSL_bcm_power_on_self_test(void) {
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
-  // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
-  // check before the integrity check itself. So we first call the self-test
-  // before we calculate the hash of the module.
-  if (!boringssl_fips_self_test()) {
-    goto err;
-  }
-
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
 
@@ -236,7 +249,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
   if (!HMAC_Init_ex(&hmac_ctx, kHMACKey, sizeof(kHMACKey), kHashFunction,
                     NULL /* no ENGINE */)) {
     fprintf(stderr, "HMAC_Init_ex failed.\n");
-    goto err;
+    return 0;
   }
 
   BORINGSSL_maybe_set_module_text_permissions(PROT_READ | PROT_EXEC);
@@ -256,27 +269,20 @@ BORINGSSL_bcm_power_on_self_test(void) {
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
-    goto err;
+    return 0;
   }
   HMAC_CTX_cleanup(&hmac_ctx);
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
-    goto err;
+    return 0;
   }
 
-#else
-  if (!BORINGSSL_self_test()) {
-    goto err;
-  }
-#endif  // OPENSSL_ASAN
-
-  return;
-
-err:
-  BORINGSSL_FIPS_abort();
+  OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
+  return 1;
 }
+#endif  // OPENSSL_ASAN
 
 void BORINGSSL_FIPS_abort(void) {
   for (;;) {
