@@ -214,7 +214,7 @@ func listSymbolsMachO(contents []byte) ([]string, error) {
 		)
 
 		// Only include exported, defined symbols.
-		if sym.Type&N_EXT != 0 && sym.Type&N_TYPE != N_UNDF {
+		if sym.Type&N_EXT != 0 && sym.Type&N_TYPE != N_UNDF && sym.Type&N_PEXT == 0 {
 			if len(sym.Name) == 0 || sym.Name[0] != '_' {
 				return nil, fmt.Errorf("unexpected symbol without underscore prefix: %q", sym.Name)
 			}
