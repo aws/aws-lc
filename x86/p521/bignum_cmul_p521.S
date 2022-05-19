@@ -26,8 +26,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_cmul_p521
-        .globl  _bignum_cmul_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p521)
         .text
 
 #define z rdi
@@ -61,8 +61,7 @@
 
 #define h d9
 
-bignum_cmul_p521:
-_bignum_cmul_p521:
+S2N_BN_SYMBOL(bignum_cmul_p521):
 
 #if WINDOWS_ABI
         push    rdi

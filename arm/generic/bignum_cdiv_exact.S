@@ -27,9 +27,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x, X4 = m
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_cdiv_exact
-        .globl  _bignum_cdiv_exact
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cdiv_exact)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cdiv_exact)
         .text
         .balign 4
 
@@ -63,8 +64,7 @@
 #define e4 x6
 #define e8 x7
 
-bignum_cdiv_exact:
-_bignum_cdiv_exact:
+S2N_BN_SYMBOL(bignum_cdiv_exact):
 
 // If k = 0 then there's nothing to be done
 

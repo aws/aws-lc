@@ -25,8 +25,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_sqr_p25519_alt
-        .globl  _bignum_sqr_p25519_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_p25519_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_p25519_alt)
         .text
 
 #define z rdi
@@ -68,8 +68,7 @@
         adc     h, rdx;                         \
         adc     c, 0
 
-bignum_sqr_p25519_alt:
-_bignum_sqr_p25519_alt:
+S2N_BN_SYMBOL(bignum_sqr_p25519_alt):
 
 #if WINDOWS_ABI
         push    rdi

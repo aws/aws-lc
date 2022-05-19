@@ -30,8 +30,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_ctz
-        .globl  _bignum_ctz
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_ctz)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_ctz)
         .text
 
 #define k rdi
@@ -44,8 +44,7 @@
 
 
 
-bignum_ctz:
-_bignum_ctz:
+S2N_BN_SYMBOL(bignum_ctz):
 
 #if WINDOWS_ABI
         push    rdi

@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = m
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_moddouble
-        .globl  _bignum_moddouble
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_moddouble)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_moddouble)
         .text
         .balign 4
 
@@ -39,10 +40,9 @@
 #define c x8
 
 
-bignum_moddouble:
-_bignum_moddouble:
+S2N_BN_SYMBOL(bignum_moddouble):
 
-        adds    j, k, xzr               // j = k and ZF = (k = 0)
+adds    j, k, xzr               // j = k and ZF = (k = 0)
         beq     end                     // if k = 0 do nothing
 
 // Do (_::z) = 2 * x - m and generate a mask in c for 2 * x < m

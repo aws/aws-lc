@@ -23,9 +23,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = p, X2 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_optneg_p256
-        .globl  _bignum_optneg_p256
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg_p256)
         .text
         .balign 4
 
@@ -43,8 +44,7 @@
 #define n3 x10
 
 
-bignum_optneg_p256:
-_bignum_optneg_p256:
+S2N_BN_SYMBOL(bignum_optneg_p256):
 
 // Load the 4 digits of x
 

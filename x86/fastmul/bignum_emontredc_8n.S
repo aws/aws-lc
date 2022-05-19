@@ -28,8 +28,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_emontredc_8n
-        .globl  _bignum_emontredc_8n
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc_8n)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc_8n)
         .text
 
 // Original input parameters are here
@@ -348,8 +348,7 @@ innerend:
 // Main code.
 // -----------------------------------------------------------------------------
 
-bignum_emontredc_8n:
-_bignum_emontredc_8n:
+S2N_BN_SYMBOL(bignum_emontredc_8n):
 
 #if WINDOWS_ABI
         push    rdi

@@ -25,8 +25,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_moddouble
-        .globl  _bignum_moddouble
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_moddouble)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_moddouble)
         .text
 
 #define k rdi
@@ -38,8 +38,7 @@
 #define c rax
 #define b r10
 
-bignum_moddouble:
-_bignum_moddouble:
+S2N_BN_SYMBOL(bignum_moddouble):
 
 #if WINDOWS_ABI
         push    rdi

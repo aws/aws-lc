@@ -23,11 +23,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = c, X2 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_cmul_p521
-        .globl  _bignum_cmul_p521
-        .globl  bignum_cmul_p521_alt
-        .globl  _bignum_cmul_p521_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p521)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p521_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p521_alt)
         .text
         .balign 4
 
@@ -63,10 +64,9 @@
 #define a8 x14
 #define dd x15
 
-bignum_cmul_p521:
-_bignum_cmul_p521:
-bignum_cmul_p521_alt:
-_bignum_cmul_p521_alt:
+S2N_BN_SYMBOL(bignum_cmul_p521):
+
+S2N_BN_SYMBOL(bignum_cmul_p521_alt):
 
 // First do the multiply, getting [d9; ...; d0], and as this is done
 // accumulate an AND "dd" of digits d7,...,d1 for later use

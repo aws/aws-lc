@@ -23,9 +23,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_pow2
-        .globl  _bignum_pow2
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_pow2)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_pow2)
         .text
         .balign 4
 
@@ -38,8 +39,7 @@
 #define a x5
 
 
-bignum_pow2:
-_bignum_pow2:
+S2N_BN_SYMBOL(bignum_pow2):
 
 // If k = 0 the result is trivially zero
 

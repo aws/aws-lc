@@ -28,8 +28,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_montsqr
-        .globl  _bignum_montsqr
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr)
         .text
 
 // We copy x into r9 but it comes in in rdx originally
@@ -64,8 +64,7 @@
 #define jshort ebx
 
 
-bignum_montsqr:
-_bignum_montsqr:
+S2N_BN_SYMBOL(bignum_montsqr):
 
 #if WINDOWS_ABI
         push    rdi

@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mul_6_12
-        .globl  _bignum_mul_6_12
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_6_12)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_6_12)
         .text
         .balign 4
 
@@ -158,10 +159,9 @@
         adc     s5, s5, c
 .endm
 
-bignum_mul_6_12:
-_bignum_mul_6_12:
+S2N_BN_SYMBOL(bignum_mul_6_12):
 
-        stp     x19, x20, [sp, #-16]!
+stp     x19, x20, [sp, #-16]!
 
 // Multiply the low halves using ADK 3x3->6
 

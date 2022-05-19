@@ -21,9 +21,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr_6_12
-        .globl  _bignum_sqr_6_12
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_6_12)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_6_12)
         .text
         .balign 4
 
@@ -64,8 +65,7 @@
 #define d3 x16
 #define d4 x17
 
-bignum_sqr_6_12:
-_bignum_sqr_6_12:
+S2N_BN_SYMBOL(bignum_sqr_6_12):
 
 // Load in all words of the input
 

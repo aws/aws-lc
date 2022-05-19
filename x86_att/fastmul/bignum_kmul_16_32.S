@@ -28,9 +28,10 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y, R9 = t
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_kmul_16_32
-        .globl  _bignum_kmul_16_32
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_kmul_16_32)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_kmul_16_32)
         .text
 
 // These parameters are kept where they come in
@@ -466,8 +467,7 @@
 .endm
 
 
-bignum_kmul_16_32:
-_bignum_kmul_16_32:
+S2N_BN_SYMBOL(bignum_kmul_16_32):
 
 #if WINDOWS_ABI
         pushq   %rdi

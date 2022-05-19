@@ -24,9 +24,10 @@
 //
 // Standard ARM ABI: X0 = p, X1 = k, X2 = z, X3 = x, X4 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mux
-        .globl  _bignum_mux
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux)
         .text
         .balign 4
 
@@ -38,10 +39,9 @@
 #define a x5
 
 
-bignum_mux:
-_bignum_mux:
+S2N_BN_SYMBOL(bignum_mux):
 
-        cbz     k, end                  // if k = 0 skip the loop
+cbz     k, end                  // if k = 0 skip the loop
         cmp     b, #0                    // Set condition codes b = 0
 
 // We've set cc's from b once and for all and can now re-use "b" as a temporary

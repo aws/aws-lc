@@ -28,8 +28,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_optneg
-        .globl  _bignum_optneg
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg)
         .text
 
 #define k rdi
@@ -43,8 +43,7 @@
 
 #define cshort eax
 
-bignum_optneg:
-_bignum_optneg:
+S2N_BN_SYMBOL(bignum_optneg):
 
 #if WINDOWS_ABI
         push    rdi

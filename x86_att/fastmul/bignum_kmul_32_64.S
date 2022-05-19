@@ -30,9 +30,10 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y, R9 = t
 // -----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_kmul_32_64
-        .globl  _bignum_kmul_32_64
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_kmul_32_64)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_kmul_32_64)
         .text
 
 #define K 16
@@ -47,8 +48,7 @@
 
 #define t %rcx
 
-bignum_kmul_32_64:
-_bignum_kmul_32_64:
+S2N_BN_SYMBOL(bignum_kmul_32_64):
 
 #if WINDOWS_ABI
         pushq   %rdi

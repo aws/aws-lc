@@ -25,8 +25,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_mul_p25519_alt
-        .globl  _bignum_mul_p25519_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_p25519_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_p25519_alt)
         .text
 
 // These are actually right
@@ -71,8 +71,7 @@
         add     l, rax;                         \
         adc     h, rdx
 
-bignum_mul_p25519_alt:
-_bignum_mul_p25519_alt:
+S2N_BN_SYMBOL(bignum_mul_p25519_alt):
 
 #if WINDOWS_ABI
         push    rdi

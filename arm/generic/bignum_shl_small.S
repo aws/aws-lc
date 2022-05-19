@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x, X4 = c, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_shl_small
-        .globl  _bignum_shl_small
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_shl_small)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_shl_small)
         .text
         .balign 4
 
@@ -46,8 +47,7 @@
 #define i x10
 
 
-bignum_shl_small:
-_bignum_shl_small:
+S2N_BN_SYMBOL(bignum_shl_small):
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.

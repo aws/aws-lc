@@ -22,11 +22,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = k, X2 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_p256
-        .globl  _bignum_mod_p256
-        .globl  bignum_mod_p256_alt
-        .globl  _bignum_mod_p256_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p256_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p256_alt)
         .text
         .balign 4
 
@@ -51,10 +52,9 @@
 #define q x14
 
 
-bignum_mod_p256:
-_bignum_mod_p256:
-bignum_mod_p256_alt:
-_bignum_mod_p256_alt:
+S2N_BN_SYMBOL(bignum_mod_p256):
+
+S2N_BN_SYMBOL(bignum_mod_p256_alt):
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 

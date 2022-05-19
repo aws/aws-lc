@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = p, X1 = z, X2 = x, X3 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mux_4
-        .globl  _bignum_mux_4
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux_4)
         .text
         .balign 4
 
@@ -38,10 +39,9 @@
 #define a x4
 
 
-bignum_mux_4:
-_bignum_mux_4:
+S2N_BN_SYMBOL(bignum_mux_4):
 
-        cmp     p, #0                    // Set condition codes p = 0
+cmp     p, #0                    // Set condition codes p = 0
 
         ldr     a, [x]
         ldr     p, [y]

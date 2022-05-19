@@ -31,8 +31,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_bitfield
-        .globl  _bignum_bitfield
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bitfield)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bitfield)
         .text
 
 #define k rdi
@@ -50,8 +50,7 @@
 
 
 
-bignum_bitfield:
-_bignum_bitfield:
+S2N_BN_SYMBOL(bignum_bitfield):
 
 #if WINDOWS_ABI
         push    rdi

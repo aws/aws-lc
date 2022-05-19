@@ -25,8 +25,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_eq
-        .globl  _bignum_eq
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_eq)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_eq)
         .text
 
 #define m rdi
@@ -37,8 +37,7 @@
 // We can re-use n for this, not needed when d appears
 #define d rdx
 
-bignum_eq:
-_bignum_eq:
+S2N_BN_SYMBOL(bignum_eq):
 
 #if WINDOWS_ABI
         push    rdi

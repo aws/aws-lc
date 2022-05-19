@@ -35,13 +35,15 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_littleendian_4
-        .globl  _bignum_littleendian_4
-        .globl  bignum_fromlebytes_4
-        .globl  _bignum_fromlebytes_4
-        .globl  bignum_tolebytes_4
-        .globl  _bignum_tolebytes_4
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_littleendian_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_littleendian_4)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_fromlebytes_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_fromlebytes_4)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tolebytes_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tolebytes_4)
+
         .text
         .balign 4
 
@@ -52,12 +54,10 @@
 #define dshort w2
 #define a x3
 
-bignum_littleendian_4:
-_bignum_littleendian_4:
-bignum_fromlebytes_4:
-_bignum_fromlebytes_4:
-bignum_tolebytes_4:
-_bignum_tolebytes_4:
+S2N_BN_SYMBOL(bignum_bignum_littleendian_4):
+
+S2N_BN_SYMBOL(bignum_bignum_fromlebytes_4):
+S2N_BN_SYMBOL(bignum_bignum_tolebytes_4):
 
 // word 0
 

@@ -30,9 +30,10 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m, [RSP+48] = p
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_montredc
-        .globl  _bignum_montredc
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montredc)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montredc)
         .text
 
  // We copy n into %r10 but it comes in in %rdx originally
@@ -70,8 +71,7 @@
 #define jshort %ebx
 
 
-bignum_montredc:
-_bignum_montredc:
+S2N_BN_SYMBOL(bignum_montredc):
 
 #if WINDOWS_ABI
         pushq   %rdi

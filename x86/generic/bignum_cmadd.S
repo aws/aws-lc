@@ -32,8 +32,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_cmadd
-        .globl  _bignum_cmadd
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmadd)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmadd)
         .text
 
 #define p rdi
@@ -52,8 +52,7 @@
 
 
 
-bignum_cmadd:
-_bignum_cmadd:
+S2N_BN_SYMBOL(bignum_cmadd):
 
 #if WINDOWS_ABI
         push    rdi

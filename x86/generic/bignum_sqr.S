@@ -28,8 +28,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_sqr
-        .globl  _bignum_sqr
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr)
         .text
 
 // First three are where arguments come in, but n is moved.
@@ -60,8 +60,7 @@
 
 #define llshort ebp
 
-bignum_sqr:
-_bignum_sqr:
+S2N_BN_SYMBOL(bignum_sqr):
 
 #if WINDOWS_ABI
         push    rdi

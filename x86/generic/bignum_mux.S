@@ -27,8 +27,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_mux
-        .globl  _bignum_mux
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux)
         .text
 
 #define b rdi
@@ -41,8 +41,7 @@
 
 
 
-bignum_mux:
-_bignum_mux:
+S2N_BN_SYMBOL(bignum_mux):
 
 #if WINDOWS_ABI
         push    rdi

@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_add_p256k1
-        .globl  _bignum_add_p256k1
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add_p256k1)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add_p256k1)
         .text
         .balign 4
 
@@ -39,8 +40,7 @@
 #define d3 x8
 #define dd x9
 
-bignum_add_p256k1:
-_bignum_add_p256k1:
+S2N_BN_SYMBOL(bignum_add_p256k1):
 
 // First just add the numbers as z = x + y = 2^256 * c + [d3; d2; d1; d0]
 // Also create dd = d3 AND d2 AND d1 to condense the later comparison

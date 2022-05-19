@@ -21,9 +21,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr_8_16
-        .globl  _bignum_sqr_8_16
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_8_16)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_8_16)
         .text
         .balign 4
 
@@ -155,8 +156,7 @@
 // The main code
 // ---------------------------------------------------------------------------
 
-bignum_sqr_8_16:
-_bignum_sqr_8_16:
+S2N_BN_SYMBOL(bignum_sqr_8_16):
 
 // Save registers
 

@@ -26,8 +26,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_cmul_p256
-        .globl  _bignum_cmul_p256
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p256)
         .text
 
 #define z rdi
@@ -52,8 +52,7 @@
 #define q rdx
 
 
-bignum_cmul_p256:
-_bignum_cmul_p256:
+S2N_BN_SYMBOL(bignum_cmul_p256):
 
 #if WINDOWS_ABI
         push    rdi

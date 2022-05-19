@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_double_p521
-        .globl  _bignum_double_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_double_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_double_p521)
         .text
         .balign 4
 
@@ -35,8 +36,7 @@
 #define h x3
 #define l x4
 
-bignum_double_p521:
-_bignum_double_p521:
+S2N_BN_SYMBOL(bignum_double_p521):
 
 // We can decide whether 2 * x >= p_521 just by 2 * x >= 2^521, which
 // amounts to whether the top word is >= 256

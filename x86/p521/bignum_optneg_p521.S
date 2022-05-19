@@ -26,8 +26,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_optneg_p521
-        .globl  _bignum_optneg_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg_p521)
         .text
 
 #define z rdi
@@ -41,8 +41,7 @@
 #define d3 r10
 #define d4 r11
 
-bignum_optneg_p521:
-_bignum_optneg_p521:
+S2N_BN_SYMBOL(bignum_optneg_p521):
 
 #if WINDOWS_ABI
         push    rdi

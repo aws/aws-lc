@@ -22,11 +22,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_tomont_p256
-        .globl  _bignum_tomont_p256
-        .globl  bignum_tomont_p256_alt
-        .globl  _bignum_tomont_p256_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p256_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p256_alt)
         .text
         .balign 4
 
@@ -83,10 +84,9 @@
 #define t2 x8
 #define t3 x9
 
-bignum_tomont_p256:
-_bignum_tomont_p256:
-bignum_tomont_p256_alt:
-_bignum_tomont_p256_alt:
+S2N_BN_SYMBOL(bignum_tomont_p256):
+
+S2N_BN_SYMBOL(bignum_tomont_p256_alt):
 
 // Load the input
 

@@ -27,8 +27,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_mod_n521_9_alt
-        .globl  _bignum_mod_n521_9_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n521_9_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n521_9_alt)
         .text
 
 #define z rdi
@@ -49,8 +49,7 @@
 #define cshort ecx
 #define qshort edx
 
-bignum_mod_n521_9_alt:
-_bignum_mod_n521_9_alt:
+S2N_BN_SYMBOL(bignum_mod_n521_9_alt):
 
 #if WINDOWS_ABI
         push    rdi

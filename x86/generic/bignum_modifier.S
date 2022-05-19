@@ -31,8 +31,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_modifier
-        .globl  _bignum_modifier
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modifier)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modifier)
         .text
 
 #define k rdi
@@ -71,8 +71,7 @@
 #define qshort r8d
 
 
-bignum_modifier:
-_bignum_modifier:
+S2N_BN_SYMBOL(bignum_modifier):
 
 #if WINDOWS_ABI
         push    rdi

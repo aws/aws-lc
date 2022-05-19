@@ -30,8 +30,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_madd
-        .globl  _bignum_madd
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_madd)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_madd)
         .text
 
 // These are actually right
@@ -58,8 +58,7 @@
 
 
 
-bignum_madd:
-_bignum_madd:
+S2N_BN_SYMBOL(bignum_madd):
 
 #if WINDOWS_ABI
         push    rdi

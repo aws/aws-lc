@@ -25,8 +25,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_gt
-        .globl  _bignum_gt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_gt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_gt)
         .text
 
 #define m rdi
@@ -40,8 +40,7 @@
 
 
 
-bignum_gt:
-_bignum_gt:
+S2N_BN_SYMBOL(bignum_gt):
 
 #if WINDOWS_ABI
         push    rdi

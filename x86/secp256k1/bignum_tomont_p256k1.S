@@ -25,8 +25,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_tomont_p256k1
-        .globl  _bignum_tomont_p256k1
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p256k1)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p256k1)
         .text
 
 #define z rdi
@@ -48,8 +48,7 @@
 #define h rsi
 #define c rsi
 
-bignum_tomont_p256k1:
-_bignum_tomont_p256k1:
+S2N_BN_SYMBOL(bignum_tomont_p256k1):
 
 #if WINDOWS_ABI
         push    rdi

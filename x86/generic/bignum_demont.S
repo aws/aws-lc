@@ -29,8 +29,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_demont
-        .globl  _bignum_demont
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont)
         .text
 
 #define k rdi
@@ -62,8 +62,7 @@
 #define jshort ebx
 
 
-bignum_demont:
-_bignum_demont:
+S2N_BN_SYMBOL(bignum_demont):
 
 #if WINDOWS_ABI
         push    rdi

@@ -28,9 +28,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, X2 = n, X3 = l, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_bitfield
-        .globl  _bignum_bitfield
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bitfield)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bitfield)
         .text
         .balign 4
 
@@ -46,8 +47,7 @@
 #define m x8
 
 
-bignum_bitfield:
-_bignum_bitfield:
+S2N_BN_SYMBOL(bignum_bitfield):
 
 // For length zero finish immediately (the return value in x0 is 0)
 

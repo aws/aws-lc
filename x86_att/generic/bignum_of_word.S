@@ -26,13 +26,13 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_of_word
-        .globl  _bignum_of_word
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_of_word)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_of_word)
         .text
 
-bignum_of_word:
-_bignum_of_word:
+S2N_BN_SYMBOL(bignum_of_word):
 
 #if WINDOWS_ABI
         pushq   %rdi

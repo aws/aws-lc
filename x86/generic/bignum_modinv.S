@@ -29,8 +29,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_modinv
-        .globl  _bignum_modinv
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modinv)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modinv)
         .text
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a few for proxy errors
@@ -106,8 +106,7 @@
 #define n_mshort ecx
 #define n_nshort edx
 
-bignum_modinv:
-_bignum_modinv:
+S2N_BN_SYMBOL(bignum_modinv):
 
 #if WINDOWS_ABI
         push    rdi

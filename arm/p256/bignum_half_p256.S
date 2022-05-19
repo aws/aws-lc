@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_half_p256
-        .globl  _bignum_half_p256
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_half_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_half_p256)
         .text
         .balign 4
 
@@ -40,8 +41,7 @@
 #define n x8
 
 
-bignum_half_p256:
-_bignum_half_p256:
+S2N_BN_SYMBOL(bignum_half_p256):
 
 // Load the 4 digits of x
 

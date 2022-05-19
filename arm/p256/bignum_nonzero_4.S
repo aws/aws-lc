@@ -21,9 +21,10 @@
 //
 // Standard ARM ABI: X0 = x, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_nonzero_4
-        .globl  _bignum_nonzero_4
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_nonzero_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero_4)
         .text
         .balign 4
 
@@ -33,8 +34,7 @@
 #define c x3
 
 
-bignum_nonzero_4:
-_bignum_nonzero_4:
+S2N_BN_SYMBOL(bignum_nonzero_4):
 
 // Generate a = an OR of all the words in the bignum
 

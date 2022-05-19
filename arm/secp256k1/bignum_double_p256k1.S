@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_double_p256k1
-        .globl  _bignum_double_p256k1
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_double_p256k1)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_double_p256k1)
         .text
         .balign 4
 
@@ -38,8 +39,7 @@
 #define dd x7
 #define l x8
 
-bignum_double_p256k1:
-_bignum_double_p256k1:
+S2N_BN_SYMBOL(bignum_double_p256k1):
 
 // Load the inputs and double top-down as z = 2^256 * c + [d3;d2;d1;d0]
 // While doing this, create an AND dd of [d3;d2;d1] to condense comparison

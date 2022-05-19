@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr_8_16_alt
-        .globl  _bignum_sqr_8_16_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_8_16_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_8_16_alt)
         .text
         .balign 4
 
@@ -59,8 +60,7 @@
 #define u14 x25
 #define u15 x26
 
-bignum_sqr_8_16_alt:
-_bignum_sqr_8_16_alt:
+S2N_BN_SYMBOL(bignum_sqr_8_16_alt):
 
 // It's convenient to have more registers to play with
 

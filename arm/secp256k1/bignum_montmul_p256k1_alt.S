@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_montmul_p256k1_alt
-        .globl  _bignum_montmul_p256k1_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p256k1_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p256k1_alt)
         .text
         .balign 4
 
@@ -65,8 +66,7 @@
 #define t x2
 #define uu b3
 
-bignum_montmul_p256k1_alt:
-_bignum_montmul_p256k1_alt:
+S2N_BN_SYMBOL(bignum_montmul_p256k1_alt):
 
 // Load operands and set up row 0 = [u4;...;u0] = a0 * [b3;...;b0]
 

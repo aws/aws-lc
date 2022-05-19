@@ -27,8 +27,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_mod_n384_alt
-        .globl  _bignum_mod_n384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n384_alt)
         .text
 
 #define z rdi
@@ -53,8 +53,7 @@
 #define n0short eax
 #define qshort ebp
 
-bignum_mod_n384_alt:
-_bignum_mod_n384_alt:
+S2N_BN_SYMBOL(bignum_mod_n384_alt):
 
 #if WINDOWS_ABI
         push    rdi

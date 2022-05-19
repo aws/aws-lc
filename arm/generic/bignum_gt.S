@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_gt
-        .globl  _bignum_gt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_gt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_gt)
         .text
         .balign 4
 
@@ -37,8 +38,7 @@
 #define d x6
 
 
-bignum_gt:
-_bignum_gt:
+S2N_BN_SYMBOL(bignum_gt):
 
 // Zero the main index counter for both branches
 

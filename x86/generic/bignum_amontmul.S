@@ -29,8 +29,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_amontmul
-        .globl  _bignum_amontmul
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_amontmul)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_amontmul)
         .text
 
 // We copy x into r9 but it comes in in rdx originally
@@ -72,8 +72,7 @@
 #define jshort ebx
 
 
-bignum_amontmul:
-_bignum_amontmul:
+S2N_BN_SYMBOL(bignum_amontmul):
 
 #if WINDOWS_ABI
         push    rdi

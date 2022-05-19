@@ -29,8 +29,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_cdiv
-        .globl  _bignum_cdiv
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cdiv)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cdiv)
         .text
 
 #define k rdi
@@ -65,8 +65,7 @@
 
 #define r r15
 
-bignum_cdiv:
-_bignum_cdiv:
+S2N_BN_SYMBOL(bignum_cdiv):
 
 #if WINDOWS_ABI
         push    rdi

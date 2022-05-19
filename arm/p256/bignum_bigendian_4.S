@@ -35,13 +35,15 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_bigendian_4
-        .globl  _bignum_bigendian_4
-        .globl  bignum_frombebytes_4
-        .globl  _bignum_frombebytes_4
-        .globl  bignum_tobebytes_4
-        .globl  _bignum_tobebytes_4
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bigendian_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bigendian_4)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_frombebytes_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_frombebytes_4)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tobebytes_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tobebytes_4)
+
         .text
         .balign 4
 
@@ -57,12 +59,9 @@
 // to allow x and z to point to the same buffer without using more
 // intermediate registers.
 
-bignum_bigendian_4:
-_bignum_bigendian_4:
-bignum_frombebytes_4:
-_bignum_frombebytes_4:
-bignum_tobebytes_4:
-_bignum_tobebytes_4:
+S2N_BN_SYMBOL(bignum_bigendian_4):
+S2N_BN_SYMBOL(bignum_frombebytes_4):
+S2N_BN_SYMBOL(bignum_tobebytes_4):
 
 // 0 and 3 words
 

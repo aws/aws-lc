@@ -30,8 +30,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_cdiv_exact
-        .globl  _bignum_cdiv_exact
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cdiv_exact)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cdiv_exact)
         .text
 
 #define k rdi
@@ -61,8 +61,7 @@
 #define ishort ebx
 #define hshort edx
 
-bignum_cdiv_exact:
-_bignum_cdiv_exact:
+S2N_BN_SYMBOL(bignum_cdiv_exact):
 
 #if WINDOWS_ABI
         push    rdi

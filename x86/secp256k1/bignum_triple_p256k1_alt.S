@@ -28,8 +28,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_triple_p256k1_alt
-        .globl  _bignum_triple_p256k1_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_triple_p256k1_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_triple_p256k1_alt)
         .text
 
 #define z rdi
@@ -56,8 +56,7 @@
 #define ashort eax
 #define qshort edx
 
-bignum_triple_p256k1_alt:
-_bignum_triple_p256k1_alt:
+S2N_BN_SYMBOL(bignum_triple_p256k1_alt):
 
 #if WINDOWS_ABI
         push    rdi

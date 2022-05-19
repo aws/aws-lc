@@ -28,8 +28,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_mux_6
-        .globl  _bignum_mux_6
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux_6)
         .text
 
 #define p rdi
@@ -40,8 +40,7 @@
 #define b r8
 
 
-bignum_mux_6:
-_bignum_mux_6:
+S2N_BN_SYMBOL(bignum_mux_6):
 
 #if WINDOWS_ABI
         push    rdi

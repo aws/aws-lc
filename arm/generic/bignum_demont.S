@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = m
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_demont
-        .globl  _bignum_demont
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont)
         .text
         .balign 4
 
@@ -61,8 +62,7 @@
 #define e8 x6
 
 
-bignum_demont:
-_bignum_demont:
+S2N_BN_SYMBOL(bignum_demont):
 
 // If k = 0 the whole operation is trivial
 

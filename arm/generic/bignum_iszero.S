@@ -21,9 +21,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_iszero
-        .globl  _bignum_iszero
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_iszero)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_iszero)
         .text
         .balign 4
 
@@ -33,10 +34,9 @@
 #define c x3
 
 
-bignum_iszero:
-_bignum_iszero:
+S2N_BN_SYMBOL(bignum_iszero):
 
-        mov     c, xzr                  // c will be or of the digits
+mov     c, xzr                  // c will be or of the digits
         cbz     k, end                  // if k = 0 skip the loop
 
 loop:

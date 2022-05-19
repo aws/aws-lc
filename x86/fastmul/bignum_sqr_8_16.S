@@ -24,8 +24,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_sqr_8_16
-        .globl  _bignum_sqr_8_16
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_8_16)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_8_16)
         .text
 
 // These are actually right
@@ -267,8 +267,7 @@
 .endm
 
 
-bignum_sqr_8_16:
-_bignum_sqr_8_16:
+S2N_BN_SYMBOL(bignum_sqr_8_16):
 
 #if WINDOWS_ABI
         push    rdi

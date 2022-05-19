@@ -23,11 +23,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = c, X2 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_cmul_p25519
-        .globl  _bignum_cmul_p25519
-        .globl  bignum_cmul_p25519_alt
-        .globl  _bignum_cmul_p25519_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p25519)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p25519)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p25519_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p25519_alt)
         .text
         .balign 4
 
@@ -53,10 +54,9 @@
 #define d4 x10
 #define h x10
 
-bignum_cmul_p25519:
-_bignum_cmul_p25519:
-bignum_cmul_p25519_alt:
-_bignum_cmul_p25519_alt:
+S2N_BN_SYMBOL(bignum_cmul_p25519):
+
+S2N_BN_SYMBOL(bignum_cmul_p25519_alt):
 
 // First do the multiply, straightforwardly to get [d4;d3;d2;d1;d0]
 

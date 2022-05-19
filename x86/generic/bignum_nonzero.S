@@ -24,16 +24,15 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_nonzero
-        .globl  _bignum_nonzero
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_nonzero)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero)
         .text
 
 #define a rax
 #define k rdi
 #define x rsi
 
-bignum_nonzero:
-_bignum_nonzero:
+S2N_BN_SYMBOL(bignum_nonzero):
 
 #if WINDOWS_ABI
         push    rdi

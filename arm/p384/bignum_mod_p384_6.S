@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_p384_6
-        .globl  _bignum_mod_p384_6
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p384_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p384_6)
         .text
         .balign 4
 
@@ -46,8 +47,7 @@
 #define d5 x13
 
 
-bignum_mod_p384_6:
-_bignum_mod_p384_6:
+S2N_BN_SYMBOL(bignum_mod_p384_6):
 
 // Load the complicated lower three words of p_384 = [-1;-1;-1;n2;n1;n0]
 

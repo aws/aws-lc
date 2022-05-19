@@ -28,8 +28,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_optadd
-        .globl  _bignum_optadd
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optadd)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optadd)
         .text
 
 #define k rdi
@@ -44,8 +44,7 @@
 #define a r11
 
 
-bignum_optadd:
-_bignum_optadd:
+S2N_BN_SYMBOL(bignum_optadd):
 
 #if WINDOWS_ABI
         push    rdi

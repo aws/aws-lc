@@ -23,11 +23,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = c, X2 = x
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_cmul_p256
-        .globl  _bignum_cmul_p256
-        .globl  bignum_cmul_p256_alt
-        .globl  _bignum_cmul_p256_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p256_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p256_alt)
         .text
         .balign 4
 
@@ -50,10 +51,9 @@
 #define q x12
 
 
-bignum_cmul_p256:
-_bignum_cmul_p256:
-bignum_cmul_p256_alt:
-_bignum_cmul_p256_alt:
+S2N_BN_SYMBOL(bignum_cmul_p256):
+
+S2N_BN_SYMBOL(bignum_cmul_p256_alt):
 
 // First do the multiply, straightforwardly to [d;d3;d2;d1;d0]
 

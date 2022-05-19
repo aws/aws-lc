@@ -27,9 +27,10 @@
 //
 // Standard ARM ABI: X0 = p, X1 = z, X2 = m, X3 = x, X4 = n, X5 = y, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_add
-        .globl  _bignum_add
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add)
         .text
         .balign 4
 
@@ -44,8 +45,7 @@
 #define d x8
 
 
-bignum_add:
-_bignum_add:
+S2N_BN_SYMBOL(bignum_add):
 
 // First clamp the two input sizes m := min(p,m) and n := min(p,n) since
 // we'll never need words past the p'th. Can now assume m <= p and n <= p.

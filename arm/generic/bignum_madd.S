@@ -27,9 +27,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = x, X4 = n, X5 = y, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_madd
-        .globl  _bignum_madd
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_madd)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_madd)
         .text
         .balign 4
 
@@ -51,8 +52,7 @@
 #define yy x15
 
 
-bignum_madd:
-_bignum_madd:
+S2N_BN_SYMBOL(bignum_madd):
 
 // If p = 0 the result is trivial and nothing needs doing
 // Note that fortuitously our "carry/remainder" term is still right!

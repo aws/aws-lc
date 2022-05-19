@@ -23,9 +23,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_neg_p521
-        .globl  _bignum_neg_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_neg_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_neg_p521)
+
         .text
 
 #define z %rdi
@@ -39,8 +41,7 @@
 #define d4 %r10
 #define d5 %r11
 
-bignum_neg_p521:
-_bignum_neg_p521:
+S2N_BN_SYMBOL(bignum_neg_p521):
 
 #if WINDOWS_ABI
         pushq   %rdi

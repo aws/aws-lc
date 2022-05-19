@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x, X4 = c, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_shr_small
-        .globl  _bignum_shr_small
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_shr_small)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_shr_small)
         .text
         .balign 4
 
@@ -45,8 +46,7 @@
 #define t x9
 
 
-bignum_shr_small:
-_bignum_shr_small:
+S2N_BN_SYMBOL(bignum_shr_small):
 
 // Set default carry-in word to 0
 

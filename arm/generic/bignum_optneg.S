@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = p, X3 = x, returns X0
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_optneg
-        .globl  _bignum_optneg
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg)
         .text
         .balign 4
 
@@ -40,8 +41,7 @@
 #define i x5
 
 
-bignum_optneg:
-_bignum_optneg:
+S2N_BN_SYMBOL(bignum_optneg):
 
 // if k = 0 do nothing. This also has the right top carry zero in x0
 

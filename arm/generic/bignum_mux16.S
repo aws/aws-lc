@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = xs, X3 = i
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_mux16
-        .globl  _bignum_mux16
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux16)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux16)
         .text
         .balign 4
 
@@ -42,8 +43,7 @@
 #define n x7
 
 
-bignum_mux16:
-_bignum_mux16:
+S2N_BN_SYMBOL(bignum_mux16):
 
 // Copy size into decrementable counter, skip everything if k = 0
 

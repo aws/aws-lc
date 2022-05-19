@@ -30,9 +30,10 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, R8 = n, R9 = l, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
 
-        .globl  bignum_bitfield
-        .globl  _bignum_bitfield
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bitfield)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bitfield)
         .text
 
 #define k %rdi
@@ -50,8 +51,7 @@
 
 
 
-bignum_bitfield:
-_bignum_bitfield:
+S2N_BN_SYMBOL(bignum_bitfield):
 
 #if WINDOWS_ABI
         pushq   %rdi

@@ -30,8 +30,8 @@
 // ----------------------------------------------------------------------------
 
         .intel_syntax noprefix
-        .globl  bignum_montifier
-        .globl  _bignum_montifier
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montifier)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montifier)
         .text
 
 #define k rdi
@@ -70,8 +70,7 @@
 #define qshort r8d
 
 
-bignum_montifier:
-_bignum_montifier:
+S2N_BN_SYMBOL(bignum_montifier):
 
 #if WINDOWS_ABI
         push    rdi
