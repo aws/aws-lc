@@ -59,10 +59,9 @@
 // to allow x and z to point to the same buffer without using more
 // intermediate registers.
 
-S2N_BN_SYMBOL(bignum_bignum_bigendian_6):
-
-S2N_BN_SYMBOL(bignum_bignum_frombebytes_6):
-S2N_BN_SYMBOL(bignum_bignum_tobebytes_6):
+S2N_BN_SYMBOL(bignum_bigendian_6):
+S2N_BN_SYMBOL(bignum_frombebytes_6):
+S2N_BN_SYMBOL(bignum_tobebytes_6):
 
 // 0 and 5 words
 
