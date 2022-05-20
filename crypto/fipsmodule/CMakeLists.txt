@@ -228,7 +228,7 @@ function(s2n_asm_cpreprocess dest src)
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${PROJECT_SOURCE_DIR}/include| tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS=1 -E ${S2N_BIGNUM_DIR}/${src} -I${PROJECT_SOURCE_DIR}/include| tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .
