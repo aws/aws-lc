@@ -23,13 +23,14 @@
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  word_ctz
-        .globl  _word_ctz
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_ctz)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_ctz)
         .text
 
-word_ctz:
-_word_ctz:
+S2N_BN_SYMBOL(word_ctz):
 
 #if WINDOWS_ABI
         push    rdi

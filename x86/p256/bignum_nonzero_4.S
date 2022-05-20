@@ -23,6 +23,8 @@
 // Microsoft x64 ABI:   RCX = x, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_nonzero_4)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero_4)

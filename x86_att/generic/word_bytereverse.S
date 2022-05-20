@@ -21,16 +21,15 @@
 // Standard x86-64 ABI: RDI = a, returns RAX
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
+#include "../../include/_internal_s2n_bignum.h"
 
-
-        .globl  word_bytereverse
-        .globl  _word_bytereverse
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_bytereverse)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_bytereverse)
         .text
 
 // Just uses the x86 BSWAP instruction, which does the job directly
 
-word_bytereverse:
-_word_bytereverse:
+S2N_BN_SYMBOL(word_bytereverse):
 
 #if WINDOWS_ABI
         pushq   %rdi

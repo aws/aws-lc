@@ -28,6 +28,8 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // -----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p384)

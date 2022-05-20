@@ -28,9 +28,11 @@
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  word_recip
-        .globl  _word_recip
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_recip)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_recip)
         .text
 
 #define a rdi
@@ -45,8 +47,7 @@
 #define d rdx
 #define h rdx
 
-word_recip:
-_word_recip:
+S2N_BN_SYMBOL(word_recip):
 
 #if WINDOWS_ABI
         push    rdi

@@ -28,6 +28,8 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m
 // ----------------------------------------------------------------------------
 
+#include "../../include/_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont)
