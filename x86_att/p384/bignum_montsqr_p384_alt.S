@@ -27,7 +27,7 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr_p384_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr_p384_alt)
