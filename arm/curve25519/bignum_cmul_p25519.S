@@ -55,7 +55,6 @@
 #define h x10
 
 S2N_BN_SYMBOL(bignum_cmul_p25519):
-
 S2N_BN_SYMBOL(bignum_cmul_p25519_alt):
 
 // First do the multiply, straightforwardly to get [d4;d3;d2;d1;d0]

@@ -54,10 +54,9 @@
 #define dshort w2
 #define a x3
 
-S2N_BN_SYMBOL(bignum_bignum_littleendian_4):
-
-S2N_BN_SYMBOL(bignum_bignum_fromlebytes_4):
-S2N_BN_SYMBOL(bignum_bignum_tolebytes_4):
+S2N_BN_SYMBOL(bignum_littleendian_4):
+S2N_BN_SYMBOL(bignum_fromlebytes_4):
+S2N_BN_SYMBOL(bignum_tolebytes_4):
 
 // word 0
 
