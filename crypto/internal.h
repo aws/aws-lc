@@ -1126,18 +1126,22 @@ OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
 #endif
 
 #if !defined(OPENSSL_STATIC_ARMCAP)
-// CRYPTO_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
-// unit. Note that |OPENSSL_armcap_P| also exists and contains the same
-// information in a form that's easier for assembly to use.
-OPENSSL_EXPORT int CRYPTO_is_NEON_capable_at_runtime(void);
+
+#include <openssl/arm_arch.h>
+
+extern uint32_t OPENSSL_armcap_P;
 
 // CRYPTO_is_ARMv8_AES_capable_at_runtime returns true if the current CPU
 // supports the ARMv8 AES instruction.
-int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
+static int CRYPTO_is_ARMv8_AES_capable_at_runtime(void) {
+  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+}
 
 // CRYPTO_is_ARMv8_PMULL_capable_at_runtime returns true if the current CPU
 // supports the ARMv8 PMULL instruction.
-int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void);
+static int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void) {
+  return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
+}
 #endif  // !OPENSSL_STATIC_ARMCAP
 
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If

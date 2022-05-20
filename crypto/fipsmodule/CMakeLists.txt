@@ -316,6 +316,7 @@ if(FIPS_DELOCATE)
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target
   # so that crypto can depend on it.
   add_custom_target(bcm_o_target DEPENDS bcm.o)
+  set(BCM_NAME bcm.o PARENT_SCOPE)
 
   add_library(
     fipsmodule
@@ -323,6 +324,14 @@ if(FIPS_DELOCATE)
     OBJECT
 
     fips_shared_support.c
+    cpucap/cpucap.c
+    cpucap/cpu_arm_linux.c
+    cpucap/cpu_aarch64_win.c
+    cpucap/cpu_aarch64_apple.c
+    cpucap/cpu_aarch64_linux.c
+    cpucap/cpu_aarch64_fuchsia.c
+    cpucap/cpu_intel.c
+    cpucap/cpu_ppc64le.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -340,6 +349,14 @@ elseif(FIPS_SHARED)
     OBJECT
 
     fips_shared_support.c
+    cpucap/cpucap.c
+    cpucap/cpu_arm_linux.c
+    cpucap/cpu_aarch64_win.c
+    cpucap/cpu_aarch64_apple.c
+    cpucap/cpu_aarch64_linux.c
+    cpucap/cpu_aarch64_fuchsia.c
+    cpucap/cpu_intel.c
+    cpucap/cpu_ppc64le.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -445,6 +462,14 @@ else()
 
     bcm.c
     fips_shared_support.c
+    cpucap/cpucap.c
+    cpucap/cpu_arm_linux.c
+    cpucap/cpu_aarch64_win.c
+    cpucap/cpu_aarch64_apple.c
+    cpucap/cpu_aarch64_linux.c
+    cpucap/cpu_aarch64_fuchsia.c
+    cpucap/cpu_intel.c
+    cpucap/cpu_ppc64le.c
 
     ${BCM_ASM_SOURCES}
   )

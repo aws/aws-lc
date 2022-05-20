@@ -4,8 +4,11 @@
 
 source tests/ci/common_posix_setup.sh
 
-echo "Testing AWS-LC in FIPS Release mode."
+echo "Testing AWS-LC shared library in FIPS Release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
+
+echo "Testing AWS-LC static library in FIPS Release mode."
+fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
 if [[ "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then

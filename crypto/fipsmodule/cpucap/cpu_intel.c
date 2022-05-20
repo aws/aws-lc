@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/base.h>
+#include "../../internal.h"
 
 #if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
@@ -156,6 +157,8 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
     out[1] = v >> 32;
   }
 }
+
+extern uint32_t OPENSSL_ia32cap_P[4];
 
 void OPENSSL_cpuid_setup(void) {
   // Determine the vendor and maximum input value.
