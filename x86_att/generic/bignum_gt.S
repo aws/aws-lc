@@ -24,7 +24,7 @@
 // Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_gt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_gt)

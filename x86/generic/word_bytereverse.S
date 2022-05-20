@@ -22,7 +22,7 @@
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         .intel_syntax noprefix
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_bytereverse)

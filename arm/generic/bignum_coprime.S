@@ -30,7 +30,7 @@
 //
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, X4 = t, returns X0
 // ----------------------------------------------------------------------------
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_coprime)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_coprime)

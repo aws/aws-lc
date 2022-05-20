@@ -23,7 +23,7 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_divmod10)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_divmod10)

@@ -23,7 +23,7 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, X2 = m, returns X0
 // ----------------------------------------------------------------------------
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmod)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmod)

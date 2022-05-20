@@ -27,7 +27,7 @@
 // Microsoft x64 ABI:   RCX = p, RDX = z, R8 = x, R9 = y
 // ----------------------------------------------------------------------------
 
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         .intel_syntax noprefix
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux_6)

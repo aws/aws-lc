@@ -21,7 +21,7 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
-#include "../../include/_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_ctz)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_ctz)
