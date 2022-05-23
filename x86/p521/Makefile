@@ -42,7 +42,7 @@ OBJ = bignum_add_p521.o \
       bignum_triple_p521.o \
       bignum_triple_p521_alt.o
 
-%.o : %.S ; cpp $< | as -o $@ -
+%.o : %.S ; $(CXX) -E -I../../include $< | as -o $@ -
 
 default: $(OBJ);
 

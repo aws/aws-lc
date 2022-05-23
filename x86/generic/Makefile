@@ -83,7 +83,7 @@ OBJ = bignum_add.o \
       word_negmodinv.o \
       word_recip.o
 
-%.o : %.S ; cpp $< | as -o $@ -
+%.o : %.S ; $(CXX) -E -I../../include $< | as -o $@ -
 
 default: $(OBJ);
 

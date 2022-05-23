@@ -33,7 +33,7 @@ OBJ = bignum_emontredc_8n.o \
       bignum_sqr_8_16.o \
       bignum_sqr_8_16_alt.o
 
-%.o : %.S ; cpp $< | as -o $@ -
+%.o : %.S ; $(CXX) -E -I../../include $< | as -o $@ -
 
 default: $(OBJ);
 

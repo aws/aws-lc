@@ -25,9 +25,9 @@ ARCHTYPE_RESULT=$(shell uname -m)
 
 ifeq ($(OSTYPE_RESULT),Darwin)
 ifeq ($(ARCHTYPE_RESULT),arm64)
-PREPROCESS=sed -e 's/\/\/.*//' | cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include -
 else
-PREPROCESS=sed -e 's/\/\/.*//' | cpp -xassembler-with-cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include -xassembler-with-cpp -
 endif
 else
 PREPROCESS=cpp -xassembler-with-cpp -

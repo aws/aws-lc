@@ -40,7 +40,7 @@ OBJ = bignum_add_p25519.o \
       bignum_sqr_p25519_alt.o \
       bignum_sub_p25519.o
 
-%.o : %.S ; cpp $< | $(GAS) -o $@ -
+%.o : %.S ; $(CXX) -E -I../../include $< | $(GAS) -o $@ -
 
 default: $(OBJ);
 
