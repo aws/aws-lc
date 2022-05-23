@@ -55,7 +55,7 @@ OBJ = bignum_add_p521.o \
       bignum_tomont_p521.o \
       bignum_triple_p521.o
 
-%.o : %.S ; cpp $< | $(GAS) -o $@ -
+%.o : %.S ; $(CXX) -E -I../../include $< | $(GAS) -o $@ -
 
 default: $(OBJ);
 
