@@ -33,6 +33,7 @@
 // word order, this is simply byte reversal and is implemented as such.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -62,34 +63,45 @@ _bignum_frombebytes_6:
 bignum_tobebytes_6:
 _bignum_tobebytes_6:
 
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
+
 // 0 and 5 words
 
-                movq    (x), a
-                movq    40(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 40(z)
-                movq    b, (z)
+        movq    (x), a
+        movq    40(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 40(z)
+        movq    b, (z)
 
 // 1 and 4 words
 
-                movq    8(x), a
-                movq    32(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 32(z)
-                movq    b, 8(z)
+        movq    8(x), a
+        movq    32(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 32(z)
+        movq    b, 8(z)
 
 // 2 and 3 words
 
-                movq    16(x), a
-                movq    24(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 24(z)
-                movq    b, 16(z)
+        movq    16(x), a
+        movq    24(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 24(z)
+        movq    b, 16(z)
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

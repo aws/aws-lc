@@ -32,6 +32,7 @@
 // Since x86 is little-endian, this is just copying.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
 
@@ -54,25 +55,36 @@ _bignum_fromlebytes_6:
 bignum_tolebytes_6:
 _bignum_tolebytes_6:
 
-                movq    (x), a
-                movq    a, (z)
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
-                movq    8(x), a
-                movq    a, 8(z)
+        movq    (x), a
+        movq    a, (z)
 
-                movq    16(x), a
-                movq    a, 16(z)
+        movq    8(x), a
+        movq    a, 8(z)
 
-                movq    24(x), a
-                movq    a, 24(z)
+        movq    16(x), a
+        movq    a, 16(z)
 
-                movq    32(x), a
-                movq    a, 32(z)
+        movq    24(x), a
+        movq    a, 24(z)
 
-                movq    40(x), a
-                movq    a, 40(z)
+        movq    32(x), a
+        movq    a, 32(z)
 
-                ret
+        movq    40(x), a
+        movq    a, 40(z)
+
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
