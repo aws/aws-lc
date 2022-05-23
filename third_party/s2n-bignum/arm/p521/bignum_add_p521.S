@@ -50,56 +50,56 @@ _bignum_add_p521:
 // Force carry-in to get s = [d8;d7;d6;d5;d4;d3;d2;d1;d0] = x + y + 1.
 // We ignore the carry-out, assuming inputs are reduced so there is none.
 
-                subs    xzr, xzr, xzr
-                ldp     d0, d1, [x]
-                ldp     l, h, [y]
-                adcs    d0, d0, l
-                adcs    d1, d1, h
-                ldp     d2, d3, [x, #16]
-                ldp     l, h, [y, #16]
-                adcs    d2, d2, l
-                adcs    d3, d3, h
-                ldp     d4, d5, [x, #32]
-                ldp     l, h, [y, #32]
-                adcs    d4, d4, l
-                adcs    d5, d5, h
-                ldp     d6, d7, [x, #48]
-                ldp     l, h, [y, #48]
-                adcs    d6, d6, l
-                adcs    d7, d7, h
-                ldr     d8, [x, #64]
-                ldr     l, [y, #64]
-                adc     d8, d8, l
+        subs    xzr, xzr, xzr
+        ldp     d0, d1, [x]
+        ldp     l, h, [y]
+        adcs    d0, d0, l
+        adcs    d1, d1, h
+        ldp     d2, d3, [x, #16]
+        ldp     l, h, [y, #16]
+        adcs    d2, d2, l
+        adcs    d3, d3, h
+        ldp     d4, d5, [x, #32]
+        ldp     l, h, [y, #32]
+        adcs    d4, d4, l
+        adcs    d5, d5, h
+        ldp     d6, d7, [x, #48]
+        ldp     l, h, [y, #48]
+        adcs    d6, d6, l
+        adcs    d7, d7, h
+        ldr     d8, [x, #64]
+        ldr     l, [y, #64]
+        adc     d8, d8, l
 
 // Now x + y >= p_521 <=> s = x + y + 1 >= 2^521
 // Set CF <=> s = x + y + 1 >= 2^521 and make it a mask in l as well
 
-                subs    l, d8, #512
-                csetm   l, cs
+        subs    l, d8, #512
+        csetm   l, cs
 
 // Now if CF is set (and l is all 1s), we want (x + y) - p_521 = s - 2^521
 // while otherwise we want x + y = s - 1 (from existing CF, which is nice)
 
-                sbcs    d0, d0, xzr
-                and     l, l, #512
-                sbcs    d1, d1, xzr
-                sbcs    d2, d2, xzr
-                sbcs    d3, d3, xzr
-                sbcs    d4, d4, xzr
-                sbcs    d5, d5, xzr
-                sbcs    d6, d6, xzr
-                sbcs    d7, d7, xzr
-                sbc     d8, d8, l
+        sbcs    d0, d0, xzr
+        and     l, l, #512
+        sbcs    d1, d1, xzr
+        sbcs    d2, d2, xzr
+        sbcs    d3, d3, xzr
+        sbcs    d4, d4, xzr
+        sbcs    d5, d5, xzr
+        sbcs    d6, d6, xzr
+        sbcs    d7, d7, xzr
+        sbc     d8, d8, l
 
 // Store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
-                stp     d4, d5, [z, #32]
-                stp     d6, d7, [z, #48]
-                str     d8, [z, #64]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
+        stp     d4, d5, [z, #32]
+        stp     d6, d7, [z, #48]
+        str     d8, [z, #64]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
