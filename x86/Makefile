@@ -27,9 +27,9 @@ ifeq ($(OSTYPE_RESULT),Darwin)
 PREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include -DWINDOWS_ABI=0 -xassembler-with-cpp -
 else
 ifeq ($(OSTYPE_RESULT),CYGWIN_NT-10.0)
-PREPROCESS=cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+PREPROCESS=$(CXX) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
 else
-PREPROCESS=cpp -DWINDOWS_ABI=0 -xassembler-with-cpp -
+PREPROCESS=$(CXX) -E -I../include -DWINDOWS_ABI=0 -xassembler-with-cpp -
 endif
 endif
 
@@ -65,7 +65,7 @@ endif
 ifeq ($(OSTYPE_RESULT),Darwin)
 WINPREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
 else
-WINPREPROCESS=cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+WINPREPROCESS=$(CXX) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
 endif
 
 # The x86 assembly (.S) files are all written for the GNU assembler

@@ -30,7 +30,7 @@ else
 PREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include -xassembler-with-cpp -
 endif
 else
-PREPROCESS=cpp -xassembler-with-cpp -
+PREPROCESS=$(CXX) -E -I../include -xassembler-with-cpp -
 endif
 
 # Generally GNU-type assemblers are happy with multiple instructions on
