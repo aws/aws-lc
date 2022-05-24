@@ -532,7 +532,6 @@ if(FIPS_SHARED)
 
       generated_fips_shared_support.c
       ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpucap.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_arm.c
       ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_arm_linux.c
       ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_win.c
       ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_apple.c
