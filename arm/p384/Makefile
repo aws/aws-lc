@@ -55,7 +55,7 @@ OBJ = bignum_add_p384.o \
       bignum_tomont_p384.o \
       bignum_triple_p384.o
 
-%.o : %.S ; $(CXX) -E -I../../include $< | $(GAS) -o $@ -
+%.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
 default: $(OBJ);
 
