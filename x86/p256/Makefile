@@ -46,7 +46,7 @@ OBJ = bignum_add_p256.o \
       bignum_triple_p256.o \
       bignum_triple_p256_alt.o
 
-%.o : %.S ; $(CXX) -E -I../../include $< | as -o $@ -
+%.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -
 
 default: $(OBJ);
 

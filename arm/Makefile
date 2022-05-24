@@ -39,12 +39,12 @@ endif
 
 ifeq ($(OSTYPE_RESULT),Darwin)
 ifeq ($(ARCHTYPE_RESULT),arm64)
-PREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include $(SYMBOL_HIDING) -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include $(SYMBOL_HIDING) -
 else
-PREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
 endif
 else
-PREPROCESS=$(CXX) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
+PREPROCESS=$(CC) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
 endif
 
 # Generally GNU-type assemblers are happy with multiple instructions on

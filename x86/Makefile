@@ -37,12 +37,12 @@ endif
 # by single-quote characters in comments, so we eliminate // comments first.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-PREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include -DWINDOWS_ABI=0 $(SYMBOL_HIDING) -xassembler-with-cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include -DWINDOWS_ABI=0 $(SYMBOL_HIDING) -xassembler-with-cpp -
 else
 ifeq ($(OSTYPE_RESULT),CYGWIN_NT-10.0)
-PREPROCESS=$(CXX) -E -I../include -DWINDOWS_ABI=1 $(SYMBOL_HIDING) -xassembler-with-cpp -
+PREPROCESS=$(CC) -E -I../include -DWINDOWS_ABI=1 $(SYMBOL_HIDING) -xassembler-with-cpp -
 else
-PREPROCESS=$(CXX) -E -I../include -DWINDOWS_ABI=0 $(SYMBOL_HIDING) -xassembler-with-cpp -
+PREPROCESS=$(CC) -E -I../include -DWINDOWS_ABI=0 $(SYMBOL_HIDING) -xassembler-with-cpp -
 endif
 endif
 
@@ -76,9 +76,9 @@ endif
 # for proof-checking, not used for actual code execution.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-WINPREPROCESS=sed -e 's/\/\/.*//' | $(CXX) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
+WINPREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
 else
-WINPREPROCESS=$(CXX) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
+WINPREPROCESS=$(CC) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
 endif
 
 # The x86 assembly (.S) files are all written for the GNU assembler
