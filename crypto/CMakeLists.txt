@@ -525,7 +525,22 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
-    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    add_library(
+      generated_fipsmodule
+
+      OBJECT
+
+      generated_fips_shared_support.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpucap.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_arm.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_arm_linux.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_win.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_apple.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_linux.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_fuchsia.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_intel.c
+      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_ppc64le.c
+    )
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final

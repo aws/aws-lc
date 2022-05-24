@@ -325,6 +325,7 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
     cpucap/cpucap.c
+    cpucap/cpu_arm.c
     cpucap/cpu_arm_linux.c
     cpucap/cpu_aarch64_win.c
     cpucap/cpu_aarch64_apple.c
@@ -350,6 +351,7 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
     cpucap/cpucap.c
+    cpucap/cpu_arm.c
     cpucap/cpu_arm_linux.c
     cpucap/cpu_aarch64_win.c
     cpucap/cpu_aarch64_apple.c
@@ -463,6 +465,7 @@ else()
     bcm.c
     fips_shared_support.c
     cpucap/cpucap.c
+    cpucap/cpu_arm.c
     cpucap/cpu_arm_linux.c
     cpucap/cpu_aarch64_win.c
     cpucap/cpu_aarch64_apple.c
