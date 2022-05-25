@@ -62,6 +62,7 @@
 #include <string.h>
 
 #include "../../internal.h"
+#include "../../fipsmodule/cipher/internal.h"
 #include "../macros.h"
 
 

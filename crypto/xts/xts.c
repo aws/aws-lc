@@ -56,6 +56,7 @@
 
 #include "../fipsmodule/modes/internal.h"
 #include "../fipsmodule/aes/internal.h"
+#include "../fipsmodule/cipher/internal.h"
 
 typedef struct xts128_context {
   AES_KEY *key1, *key2;

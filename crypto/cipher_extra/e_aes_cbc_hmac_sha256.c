@@ -21,6 +21,7 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include "../fipsmodule/aes/internal.h"
+#include "../fipsmodule/cipher/internal.h"
 #include "internal.h"
 
 #if defined(AES_CBC_HMAC_SHA_STITCH)
@@ -43,7 +44,7 @@ typedef struct {
     // payload_eiv_len seq_num: 8 octets long. content_type: 1 octets long.
     // protocol_version: 2 octets long.
     // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
-    // 
+    //
     // TLS 1.0: https://www.rfc-editor.org/rfc/rfc2246.html#section-6.2.3.2
     // TLS 1.1: https://www.ietf.org/rfc/rfc5246.html#section-6.2.3.2
     // TLS 1.2: https://www.ietf.org/rfc/rfc5246.html#section-6.2.3.2
