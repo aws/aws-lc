@@ -317,9 +317,10 @@ OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 // responsible for freeing |pctx|. Calling |EVP_MD_CTX_cleanup| will not free
 // |pctx|.
 //
-// A NULL |pctx| pointer is also allowed to clear the |EVP_PKEY_CTX| assigned to
-// |ctx|. However, even when doing so, the caller is still responsible for
-// freeing the |pctx| pointer that had originally been associated.
+// A NULL |pctx| pointer is also allowed to set the |EVP_PKEY_CTX| reference
+// inside |ctx| to NULL. However, even when doing so, the caller is still
+// responsible for freeing the |pctx| pointer that had originally been
+// associated.
 //
 // |EVP_MD_CTX_set_pkey_ctx| will overwrite any |EVP_PKEY_CTX| object associated
 // to |ctx|. If it was not associated through a previous |EVP_MD_CTX_set_pkey_ctx|
