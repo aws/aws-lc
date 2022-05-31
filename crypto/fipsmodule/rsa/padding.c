@@ -356,8 +356,6 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   uint8_t *seed = to + 1;
   uint8_t *db = to + mdlen + 1;
 
-  uint8_t *dbmask = NULL;
-  int ret = 0;
   FIPS_service_indicator_lock_state();
   if (!EVP_Digest(param, param_len, db, NULL, md, NULL)) {
     goto out;

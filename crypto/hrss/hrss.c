@@ -935,6 +935,16 @@ struct poly_vec {
   vec_t vectors[VECS_PER_POLY];
 };
 
+static void poly_vec2poly(struct poly *p, const struct poly_vec *pv)
+{
+  OPENSSL_memcpy(p, pv, sizeof(*p));
+}
+static void poly2poly_vec(struct poly_vec *pv, const struct poly *p)
+{
+  OPENSSL_memcpy(pv, p, sizeof(*p));
+}
+#endif
+
 // poly_normalize zeros out the excess elements of |x| which are included only
 // for alignment.
 static void poly_normalize(struct poly *x) {
@@ -1241,6 +1251,11 @@ static void poly_mul_vec(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
                         struct_poly_has_incorrect_alignment)
   poly_assert_normalized(x);
   poly_assert_normalized(y);
+
+  struct poly_vec x_vec = {{{0}}};
+  struct poly_vec y_vec = {{{0}}};
+  poly2poly_vec(&x_vec, x);
+  poly2poly_vec(&y_vec, y);
 
   vec_t *const prod = scratch->u.vec.prod;
   vec_t *const aux_scratch = scratch->u.vec.scratch;

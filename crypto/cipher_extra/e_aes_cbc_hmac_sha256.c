@@ -21,6 +21,7 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include "../fipsmodule/aes/internal.h"
+#include "../fipsmodule/cipher/internal.h"
 #include "internal.h"
 
 #if defined(AES_CBC_HMAC_SHA_STITCH)
