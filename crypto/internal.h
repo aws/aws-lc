@@ -894,19 +894,6 @@ static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
-static inline crypto_word_t CRYPTO_load_word_be(const void *in) {
-  crypto_word_t v;
-  OPENSSL_memcpy(&v, in, sizeof(v));
-#if defined(OPENSSL_64_BIT)
-  OPENSSL_STATIC_ASSERT(sizeof(v) == 8, crypto_word_t_has_unexpected_size);
-  return CRYPTO_bswap8(v);
-#else
-  OPENSSL_STATIC_ASSERT(sizeof(v) == 4, crypto_word_t_has_unexpected_size);
-  return CRYPTO_bswap4(v);
-#endif
-}
-
-
 // Bit rotation functions.
 //
 // Note these functions use |(-shift) & 31|, etc., because shifting by the bit

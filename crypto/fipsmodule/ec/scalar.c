@@ -54,7 +54,9 @@ int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
 void ec_scalar_to_bytes(const EC_GROUP *group, uint8_t *out, size_t *out_len,
                         const EC_SCALAR *in) {
   size_t len = BN_num_bytes(&group->order);
-  bn_words_to_big_endian(out, len, in->words, group->order.width);
+  for (size_t i = 0; i < len; i++) {
+    out[len - i - 1] = in->bytes[i];
+  }
   *out_len = len;
 }
 
@@ -65,7 +67,11 @@ int ec_scalar_from_bytes(const EC_GROUP *group, EC_SCALAR *out,
     return 0;
   }
 
-  bn_big_endian_to_words(out->words, group->order.width, in, len);
+  OPENSSL_memset(out, 0, sizeof(EC_SCALAR));
+
+  for (size_t i = 0; i < len; i++) {
+    out->bytes[i] = in[len - i - 1];
+  }
 
   if (!bn_less_than_words(out->words, group->order.d, group->order.width)) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
