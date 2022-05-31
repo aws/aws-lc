@@ -1191,19 +1191,13 @@ static int aead_aes_gcm_seal_scatter_randnonce(
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
   // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
   // functions to avoid updating the service indicator with the DRBG functions.
   FIPS_service_indicator_lock_state();
   RAND_bytes(nonce, sizeof(nonce));
   FIPS_service_indicator_unlock_state();
-<<<<<<< HEAD
-=======
 
->>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
   if (!aead_aes_gcm_seal_scatter_impl(gcm_ctx, out, out_tag, out_tag_len,
@@ -1217,11 +1211,8 @@ static int aead_aes_gcm_seal_scatter_randnonce(
   assert(*out_tag_len + sizeof(nonce) <= max_out_tag_len);
   memcpy(out_tag + *out_tag_len, nonce, sizeof(nonce));
   *out_tag_len += sizeof(nonce);
-<<<<<<< HEAD
-  // Only internal IV for AES-GCM is approved.
-=======
 
->>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
+  // Only internal IV for AES-GCM is approved.
   AEAD_GCM_verify_service_indicator(ctx);
   return 1;
 }
@@ -1245,28 +1236,17 @@ static int aead_aes_gcm_open_gather_randnonce(
 
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
-<<<<<<< HEAD
 
   int ret = aead_aes_gcm_open_gather_impl(
       gcm_ctx, out, nonce, AES_GCM_NONCE_LENGTH, in, in_len, in_tag,
       in_tag_len - AES_GCM_NONCE_LENGTH, ad, ad_len,
       ctx->tag_len - AES_GCM_NONCE_LENGTH);
+
   // Only internal IV for AES-GCM is approved.
   if(ret) {
     AEAD_GCM_verify_service_indicator(ctx);
   }
   return ret;
-=======
-  if (!aead_aes_gcm_open_gather_impl(
-      gcm_ctx, out, nonce, AES_GCM_NONCE_LENGTH, in, in_len, in_tag,
-      in_tag_len - AES_GCM_NONCE_LENGTH, ad, ad_len,
-      ctx->tag_len - AES_GCM_NONCE_LENGTH)) {
-    return 0;
-  }
-
-  AEAD_GCM_verify_service_indicator(ctx);
-  return 1;
->>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_randnonce) {
@@ -1356,7 +1336,6 @@ static int aead_aes_gcm_tls12_seal_scatter(
 
   gcm_ctx->min_next_nonce = given_counter + 1;
 
-<<<<<<< HEAD
   if(aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
                                    max_out_tag_len, nonce, nonce_len, in,
                                    in_len, extra_in, extra_in_len, ad, ad_len)) {
@@ -1364,16 +1343,6 @@ static int aead_aes_gcm_tls12_seal_scatter(
     return 1;
   }
   return 0;
-=======
-  if (!aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
-                                 max_out_tag_len, nonce, nonce_len, in, in_len,
-                                 extra_in, extra_in_len, ad, ad_len)) {
-    return 0;
-  }
-
-  AEAD_GCM_verify_service_indicator(ctx);
-  return 1;
->>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls12) {
@@ -1477,7 +1446,6 @@ static int aead_aes_gcm_tls13_seal_scatter(
 
   gcm_ctx->min_next_nonce = given_counter + 1;
 
-<<<<<<< HEAD
   if(aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
                                    max_out_tag_len, nonce, nonce_len, in,
                                    in_len, extra_in, extra_in_len, ad, ad_len)) {
@@ -1485,16 +1453,6 @@ static int aead_aes_gcm_tls13_seal_scatter(
     return 1;
   }
   return 0;
-=======
-  if (!aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
-                                 max_out_tag_len, nonce, nonce_len, in, in_len,
-                                 extra_in, extra_in_len, ad, ad_len)) {
-    return 0;
-  }
-
-  AEAD_GCM_verify_service_indicator(ctx);
-  return 1;
->>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls13) {

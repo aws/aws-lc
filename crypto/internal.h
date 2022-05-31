@@ -898,10 +898,10 @@ static inline crypto_word_t CRYPTO_load_word_be(const void *in) {
   crypto_word_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
 #if defined(OPENSSL_64_BIT)
-  static_assert(sizeof(v) == 8, "crypto_word_t has unexpected size");
+  OPENSSL_STATIC_ASSERT(sizeof(v) == 8, crypto_word_t_has_unexpected_size);
   return CRYPTO_bswap8(v);
 #else
-  static_assert(sizeof(v) == 4, "crypto_word_t has unexpected size");
+  OPENSSL_STATIC_ASSERT(sizeof(v) == 4, crypto_word_t_has_unexpected_size);
   return CRYPTO_bswap4(v);
 #endif
 }

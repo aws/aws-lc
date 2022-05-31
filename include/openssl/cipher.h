@@ -556,6 +556,14 @@ OPENSSL_EXPORT void EVP_CIPHER_CTX_set_flags(const EVP_CIPHER_CTX *ctx,
 #define EVP_MAX_IV_LENGTH 16
 #define EVP_MAX_BLOCK_LENGTH 32
 
+// The following constants are used by AES-CBC stitch ctrl methods.
+// AEAD cipher deduces payload length and returns number of bytes required to
+// store MAC and eventual padding. Subsequent call to EVP_Cipher even
+// appends/verifies MAC.
+#define EVP_CTRL_AEAD_TLS1_AAD 0x16
+// RFC 5246 defines additional data to be 13 bytes in length.
+#define EVP_AEAD_TLS1_AAD_LEN 13
+
 struct evp_cipher_ctx_st {
   // cipher contains the underlying cipher for this context.
   const EVP_CIPHER *cipher;
