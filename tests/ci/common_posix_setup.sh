@@ -98,12 +98,18 @@ function build_and_run_minimal_test {
 }
 
 function print_system_and_dependency_information {
-  echo ""
-  echo "CMake version:"
-  cmake --version
-  echo ""
-  echo "Go version:"
-  go version
+  if command -v cmake &> /dev/null
+  then
+    echo ""
+    echo "CMake version:"
+    cmake --version
+  fi
+  if command -v go &> /dev/null
+  then
+    echo ""
+    echo "Go version:"
+    go version
+  fi
   if command -v perl &> /dev/null
   then
     echo ""
@@ -117,6 +123,7 @@ function print_system_and_dependency_information {
     echo "Ninja version"
     ninja-build --version
   elif command -v ninja &> /dev/null
+  then
     echo ""
     echo "Ninja version"
     ninja --version
