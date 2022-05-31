@@ -115,9 +115,10 @@
 #include <openssl/rand.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
 #include "../../internal.h"
 #include "../rand/internal.h"
+#include "../service_indicator/internal.h"
+#include "internal.h"
 
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
@@ -280,8 +281,10 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
 
     // Steps 4 and 5. Use |words| and |mask| together to obtain a string of N
     // bits, where N is the bit length of |max_exclusive|.
+    FIPS_service_indicator_lock_state();
     RAND_bytes_with_additional_data((uint8_t *)out, words * sizeof(BN_ULONG),
                                     additional_data);
+    FIPS_service_indicator_unlock_state();
     out[words - 1] &= mask;
 
     // If out >= max_exclusive or out < min_inclusive, retry. This implements
@@ -333,7 +336,9 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
   }
 
   // Select a uniform random number with num_bits(max_exclusive) bits.
+  FIPS_service_indicator_lock_state();
   RAND_bytes((uint8_t *)r->d, words * sizeof(BN_ULONG));
+  FIPS_service_indicator_unlock_state();
   r->d[words - 1] &= mask;
 
   // Check, in constant-time, if the value is in range.

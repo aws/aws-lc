@@ -199,6 +199,7 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
 
   // Regardless of our success we need to zeroize our working state.
   HMAC_CTX_cleanup(&ctx);
+
   if (result) {
     HMAC_verify_service_indicator(evp_md);
     return out;

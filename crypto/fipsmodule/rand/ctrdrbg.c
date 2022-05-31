@@ -19,6 +19,7 @@
 
 #include "internal.h"
 #include "../cipher/internal.h"
+#include "../service_indicator/internal.h"
 
 
 // Section references in this file refer to SP 800-90Ar1:

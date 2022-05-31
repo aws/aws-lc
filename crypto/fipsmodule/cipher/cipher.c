@@ -65,6 +65,7 @@
 #include <openssl/nid.h>
 
 #include "internal.h"
+#include "../service_indicator/internal.h"
 #include "../../internal.h"
 
 
@@ -329,6 +330,9 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   // the hood instead of |EVP_Cipher|, so the service indicator does not need
   // locking here.
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
+    // When EVP_CIPH_FLAG_CUSTOM_CIPHER is set, the return value of |cipher| is
+    // the number of bytes written, or -1 on error. Otherwise the return value
+    // is one on success and zero on error.
     custom_ret = ctx->cipher->cipher(ctx, out, NULL, 0);
     if (custom_ret < 0) {
       goto end;
@@ -362,10 +366,12 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   for (i = bl; i < b; i++) {
     ctx->buf[i] = n;
   }
+
   ret = ctx->cipher->cipher(ctx, out, ctx->buf, b);
   if (ret) {
     *out_len = b;
   }
+  *out_len = b;
 
 end:
   if(ret > 0) {
@@ -494,6 +500,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
 
 success:
   AES_verify_service_indicator(ctx, 0);
+
   return 1;
 }
 
@@ -503,6 +510,7 @@ int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   if(ret > 0) {
     AES_verify_service_indicator(ctx, 0);
   }
+
   return ret;
 }
 

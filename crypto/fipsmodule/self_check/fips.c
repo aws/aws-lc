@@ -28,6 +28,12 @@ int FIPS_mode(void) {
 
 int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
+const char *FIPS_module_name(void) { return "BoringCrypto"; }
+
+uint32_t FIPS_version(void) {
+  return 0;
+}
+
 #if defined(BORINGSSL_FIPS_COUNTERS)
 
 size_t FIPS_read_counter(enum fips_counter_t counter) {

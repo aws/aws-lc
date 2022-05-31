@@ -61,6 +61,7 @@
 #include "../../internal.h"
 #include "../aes/internal.h"
 #include "../modes/internal.h"
+#include "../service_indicator/internal.h"
 #include "../delocate.h"
 
 
@@ -485,14 +486,14 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (arg) {
         OPENSSL_memcpy(gctx->iv, ptr, arg);
       }
-      // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
-      // functions to avoid updating the service indicator with the DRBG functions.
-      FIPS_service_indicator_lock_state();
-      if (c->encrypt && !RAND_bytes(gctx->iv + arg, gctx->ivlen - arg)) {
+      if (c->encrypt) {
+        // |RAND_bytes| calls within the fipsmodule should be wrapped with state
+        // lock functions to avoid updating the service indicator with the DRBG
+        // functions.
+        FIPS_service_indicator_lock_state();
+        RAND_bytes(gctx->iv + arg, gctx->ivlen - arg);
         FIPS_service_indicator_unlock_state();
-        return 0;
       }
-      FIPS_service_indicator_unlock_state();
       gctx->iv_gen = 1;
       return 1;
 
@@ -602,7 +603,7 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   }
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_cbc_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_cbc) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_cbc;
@@ -615,7 +616,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_cbc_generic) {
   out->cipher = aes_cbc_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ctr_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ctr) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_ctr;
@@ -640,7 +641,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ecb_generic) {
   out->cipher = aes_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ofb_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ofb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_ofb128;
@@ -653,7 +654,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ofb_generic) {
   out->cipher = aes_ofb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_gcm_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_gcm) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_gcm;
@@ -670,7 +671,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_gcm_generic) {
   out->ctrl = aes_gcm_ctrl;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_cbc_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_cbc) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_cbc;
@@ -683,7 +684,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_cbc_generic) {
   out->cipher = aes_cbc_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ctr_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ctr) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_ctr;
@@ -708,7 +709,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ecb_generic) {
   out->cipher = aes_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ofb_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ofb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_ofb128;
@@ -721,7 +722,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ofb_generic) {
   out->cipher = aes_ofb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_gcm_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_gcm) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_gcm;
@@ -738,7 +739,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_gcm_generic) {
   out->ctrl = aes_gcm_ctrl;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_cbc_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_cbc) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_cbc;
@@ -751,7 +752,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_cbc_generic) {
   out->cipher = aes_cbc_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ctr_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ctr) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_ctr;
@@ -776,7 +777,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ecb_generic) {
   out->cipher = aes_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ofb_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ofb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_ofb128;
@@ -789,7 +790,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ofb_generic) {
   out->cipher = aes_ofb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_gcm_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_gcm) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_gcm;
@@ -873,26 +874,6 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_hw_256_ecb) {
   }
 
 #endif  // HWAES_ECB
-
-#define EVP_CIPHER_FUNCTION(keybits, mode)             \
-  const EVP_CIPHER *EVP_aes_##keybits##_##mode(void) { \
-    return aes_##keybits##_##mode##_generic();         \
-  }
-
-EVP_CIPHER_FUNCTION(128, cbc)
-EVP_CIPHER_FUNCTION(128, ctr)
-EVP_CIPHER_FUNCTION(128, ofb)
-EVP_CIPHER_FUNCTION(128, gcm)
-
-EVP_CIPHER_FUNCTION(192, cbc)
-EVP_CIPHER_FUNCTION(192, ctr)
-EVP_CIPHER_FUNCTION(192, ofb)
-EVP_CIPHER_FUNCTION(192, gcm)
-
-EVP_CIPHER_FUNCTION(256, cbc)
-EVP_CIPHER_FUNCTION(256, ctr)
-EVP_CIPHER_FUNCTION(256, ofb)
-EVP_CIPHER_FUNCTION(256, gcm)
 
 EVP_ECB_CIPHER_FUNCTION(128)
 EVP_ECB_CIPHER_FUNCTION(192)
@@ -1104,9 +1085,14 @@ static int aead_aes_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *in_tag, size_t in_tag_len,
                                     const uint8_t *ad, size_t ad_len) {
   struct aead_aes_gcm_ctx *gcm_ctx = (struct aead_aes_gcm_ctx *)&ctx->state;
-  return aead_aes_gcm_open_gather_impl(gcm_ctx, out, nonce, nonce_len, in,
-                                       in_len, in_tag, in_tag_len, ad, ad_len,
-                                       ctx->tag_len);
+  if (!aead_aes_gcm_open_gather_impl(gcm_ctx, out, nonce, nonce_len, in, in_len,
+                                     in_tag, in_tag_len, ad, ad_len,
+                                     ctx->tag_len)) {
+    return 0;
+  }
+
+  AEAD_GCM_verify_service_indicator(ctx);
+  return 1;
 }
 
 static int aead_aes_gcm_tls_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
@@ -1205,11 +1191,19 @@ static int aead_aes_gcm_seal_scatter_randnonce(
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
   // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
   // functions to avoid updating the service indicator with the DRBG functions.
   FIPS_service_indicator_lock_state();
   RAND_bytes(nonce, sizeof(nonce));
   FIPS_service_indicator_unlock_state();
+<<<<<<< HEAD
+=======
+
+>>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
   if (!aead_aes_gcm_seal_scatter_impl(gcm_ctx, out, out_tag, out_tag_len,
@@ -1223,7 +1217,11 @@ static int aead_aes_gcm_seal_scatter_randnonce(
   assert(*out_tag_len + sizeof(nonce) <= max_out_tag_len);
   memcpy(out_tag + *out_tag_len, nonce, sizeof(nonce));
   *out_tag_len += sizeof(nonce);
+<<<<<<< HEAD
   // Only internal IV for AES-GCM is approved.
+=======
+
+>>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
   AEAD_GCM_verify_service_indicator(ctx);
   return 1;
 }
@@ -1247,6 +1245,7 @@ static int aead_aes_gcm_open_gather_randnonce(
 
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;
+<<<<<<< HEAD
 
   int ret = aead_aes_gcm_open_gather_impl(
       gcm_ctx, out, nonce, AES_GCM_NONCE_LENGTH, in, in_len, in_tag,
@@ -1257,6 +1256,17 @@ static int aead_aes_gcm_open_gather_randnonce(
     AEAD_GCM_verify_service_indicator(ctx);
   }
   return ret;
+=======
+  if (!aead_aes_gcm_open_gather_impl(
+      gcm_ctx, out, nonce, AES_GCM_NONCE_LENGTH, in, in_len, in_tag,
+      in_tag_len - AES_GCM_NONCE_LENGTH, ad, ad_len,
+      ctx->tag_len - AES_GCM_NONCE_LENGTH)) {
+    return 0;
+  }
+
+  AEAD_GCM_verify_service_indicator(ctx);
+  return 1;
+>>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_randnonce) {
@@ -1346,6 +1356,7 @@ static int aead_aes_gcm_tls12_seal_scatter(
 
   gcm_ctx->min_next_nonce = given_counter + 1;
 
+<<<<<<< HEAD
   if(aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
                                    max_out_tag_len, nonce, nonce_len, in,
                                    in_len, extra_in, extra_in_len, ad, ad_len)) {
@@ -1353,6 +1364,16 @@ static int aead_aes_gcm_tls12_seal_scatter(
     return 1;
   }
   return 0;
+=======
+  if (!aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
+                                 max_out_tag_len, nonce, nonce_len, in, in_len,
+                                 extra_in, extra_in_len, ad, ad_len)) {
+    return 0;
+  }
+
+  AEAD_GCM_verify_service_indicator(ctx);
+  return 1;
+>>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls12) {
@@ -1456,6 +1477,7 @@ static int aead_aes_gcm_tls13_seal_scatter(
 
   gcm_ctx->min_next_nonce = given_counter + 1;
 
+<<<<<<< HEAD
   if(aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
                                    max_out_tag_len, nonce, nonce_len, in,
                                    in_len, extra_in, extra_in_len, ad, ad_len)) {
@@ -1463,6 +1485,16 @@ static int aead_aes_gcm_tls13_seal_scatter(
     return 1;
   }
   return 0;
+=======
+  if (!aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
+                                 max_out_tag_len, nonce, nonce_len, in, in_len,
+                                 extra_in, extra_in_len, ad, ad_len)) {
+    return 0;
+  }
+
+  AEAD_GCM_verify_service_indicator(ctx);
+  return 1;
+>>>>>>> 67d4f28357eb3e48fba5a4fa0ff2e9805d3bab3f
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls13) {

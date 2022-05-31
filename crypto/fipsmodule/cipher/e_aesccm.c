@@ -56,6 +56,7 @@
 
 #include "internal.h"
 #include "../delocate.h"
+#include "../service_indicator/internal.h"
 
 
 struct ccm128_context {
@@ -414,7 +415,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth) {
   out->cleanup = aead_aes_ccm_cleanup;
   out->seal_scatter = aead_aes_ccm_seal_scatter;
   out->open_gather = aead_aes_ccm_open_gather;
-};
+}
 
 static int aead_aes_ccm_bluetooth_8_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                          size_t key_len, size_t tag_len) {
@@ -434,4 +435,4 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth_8) {
   out->cleanup = aead_aes_ccm_cleanup;
   out->seal_scatter = aead_aes_ccm_seal_scatter;
   out->open_gather = aead_aes_ccm_open_gather;
-};
+}

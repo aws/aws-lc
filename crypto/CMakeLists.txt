@@ -540,7 +540,7 @@ if(FIPS_SHARED)
       COMMAND ${GO_EXECUTABLE} run
       ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-      -sha256 ${INJECT_HASH_APPLE_FLAG}
+      ${INJECT_HASH_APPLE_FLAG}
       # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
       # go_executable isn't used (as it doesn't get built), but we list this
       # dependency anyway in case it starts working in some CMake version.

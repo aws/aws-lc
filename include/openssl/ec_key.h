@@ -198,7 +198,9 @@ OPENSSL_EXPORT size_t EC_KEY_key2buf(const EC_KEY *key,
 OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
 
 // EC_KEY_generate_key_fips behaves like |EC_KEY_generate_key| but performs
-// additional checks for FIPS compliance.
+// additional checks for FIPS compliance. This function is applicable when
+// generating keys for either signing/verification or key agreement because
+// both types of consistency check (PCT) are performed.
 OPENSSL_EXPORT int EC_KEY_generate_key_fips(EC_KEY *key);
 
 // EC_KEY_derive_from_secret deterministically derives a private key for |group|

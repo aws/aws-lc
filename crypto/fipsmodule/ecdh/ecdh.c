@@ -81,6 +81,7 @@
 int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub_key,
                                const EC_KEY *priv_key) {
   boringssl_ensure_ecc_self_test();
+
   if (priv_key->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
     return 0;

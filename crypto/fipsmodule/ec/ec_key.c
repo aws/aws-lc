@@ -309,6 +309,9 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   }
 
   // Check the public and private keys match.
+  //
+  // NOTE: this is a FIPS pair-wise consistency check for the ECDH case. See SP
+  // 800-56Ar3, page 36.
   if (eckey->priv_key != NULL) {
     EC_RAW_POINT point;
     if (!ec_point_mul_scalar_base(eckey->group, &point,
@@ -418,11 +421,13 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   }
 
   ret = 1;
+
 end:
   FIPS_service_indicator_unlock_state();
   if(ret){
     EC_KEY_keygen_verify_service_indicator((EC_KEY*)key);
   }
+
   return ret;
 }
 

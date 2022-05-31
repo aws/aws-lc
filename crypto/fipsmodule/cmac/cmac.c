@@ -56,6 +56,7 @@
 #include <openssl/mem.h>
 
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 
 struct cmac_ctx_st {
@@ -85,6 +86,8 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
              const uint8_t *in, size_t in_len) {
   const EVP_CIPHER *cipher;
   switch (key_len) {
+    // WARNING: this code assumes that all supported key sizes are FIPS
+    // Approved.
     case 16:
       cipher = EVP_aes_128_cbc();
       break;
@@ -94,20 +97,19 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
     default:
       return 0;
   }
-
-  // We have to verify that all the CMAC services actually succeed before
-  // updating the indicator state, so we lock the state here.
-  FIPS_service_indicator_lock_state();
   
   size_t scratch_out_len;
   CMAC_CTX ctx;
   CMAC_CTX_init(&ctx);
 
+  // We have to verify that all the CMAC services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   const int ok = CMAC_Init(&ctx, key, key_len, cipher, NULL /* engine */) &&
                  CMAC_Update(&ctx, in, in_len) &&
                  CMAC_Final(&ctx, out, &scratch_out_len);
-
   FIPS_service_indicator_unlock_state();
+
   if(ok) {
     AES_CMAC_verify_service_indicator(&ctx);
   }
@@ -184,6 +186,7 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
   // We have to avoid the underlying AES-CBC |EVP_CIPHER| services updating the
   // indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+
   int ret = 0;
   uint8_t scratch[AES_BLOCK_SIZE];
 
@@ -218,9 +221,10 @@ int CMAC_Reset(CMAC_CTX *ctx) {
 }
 
 int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
+  int ret = 0;
+
   // We have to avoid the underlying AES-CBC |EVP_Cipher| services updating the
   // indicator state, so we lock the state here.
-  int ret = 0;
   FIPS_service_indicator_lock_state();
 
   size_t block_size = EVP_CIPHER_CTX_block_size(&ctx->cipher_ctx);
@@ -266,8 +270,8 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
 
   OPENSSL_memcpy(ctx->block, in, in_len);
   ctx->block_used = in_len;
-
   ret = 1;
+
 end:
   FIPS_service_indicator_unlock_state();
   return ret;
@@ -277,6 +281,7 @@ int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   // We have to avoid the underlying AES-CBC |EVP_Cipher| services updating the
   // indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+
   int ret = 0;
   size_t block_size = EVP_CIPHER_CTX_block_size(&ctx->cipher_ctx);
   assert(block_size <= AES_BLOCK_SIZE);

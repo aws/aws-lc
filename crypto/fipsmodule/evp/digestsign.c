@@ -169,9 +169,10 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
     EVP_MD_CTX_cleanup(&tmp_ctx);
 
     FIPS_service_indicator_unlock_state();
-    if(ret > 0) {
+    if (ret) {
       DigestSign_verify_service_indicator(ctx);
     }
+
     return ret;
   } else {
     // This only determines the size of the signature. This case of

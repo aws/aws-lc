@@ -62,6 +62,7 @@
 
 #include "../../internal.h"
 #include "../digest/md32_common.h"
+#include "../service_indicator/internal.h"
 #include "internal.h"
 
 

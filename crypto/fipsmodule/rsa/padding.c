@@ -67,6 +67,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
+#include "../service_indicator/internal.h"
 #include "../../internal.h"
 
 
@@ -145,26 +146,17 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
   return 1;
 }
 
-static int rand_nonzero(uint8_t *out, size_t len) {
-  // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
-  // functions to avoid updating the service indicator with the DRBG functions.
+static void rand_nonzero(uint8_t *out, size_t len) {
   FIPS_service_indicator_lock_state();
-  int ret = 0;
-  if (!RAND_bytes(out, len)) {
-    goto end;
-  }
+  RAND_bytes(out, len);
 
   for (size_t i = 0; i < len; i++) {
     while (out[i] == 0) {
-      if (!RAND_bytes(out + i, 1)) {
-        goto end;
-      }
+      RAND_bytes(out + i, 1);
     }
   }
-  ret = 1;
-end:
+
   FIPS_service_indicator_unlock_state();
-  return ret;
 }
 
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
@@ -184,10 +176,7 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
   to[1] = 2;
 
   size_t padding_len = to_len - 3 - from_len;
-  if (!rand_nonzero(to + 2, padding_len)) {
-    return 0;
-  }
-
+  rand_nonzero(to + 2, padding_len);
   to[2 + padding_len] = 0;
   OPENSSL_memcpy(to + to_len - from_len, from, from_len);
   return 1;
@@ -284,6 +273,7 @@ static int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
   int ret = 0;
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
+  FIPS_service_indicator_lock_state();
 
   size_t md_len = EVP_MD_size(md);
 
@@ -320,6 +310,7 @@ static int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
 err:
   FIPS_service_indicator_unlock_state();
   EVP_MD_CTX_cleanup(&ctx);
+  FIPS_service_indicator_unlock_state();
   return ret;
 }
 
@@ -351,7 +342,6 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
     goto out;
   }
 
-
   if (from_len > emlen - 2 * mdlen - 1) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto out;
@@ -366,6 +356,9 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   uint8_t *seed = to + 1;
   uint8_t *db = to + mdlen + 1;
 
+  uint8_t *dbmask = NULL;
+  int ret = 0;
+  FIPS_service_indicator_lock_state();
   if (!EVP_Digest(param, param_len, db, NULL, md, NULL)) {
     goto out;
   }
@@ -395,6 +388,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
 out:
   FIPS_service_indicator_unlock_state();
   OPENSSL_free(dbmask);
+  FIPS_service_indicator_unlock_state();
   return ret;
 }
 
@@ -427,6 +421,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
   }
 
   size_t dblen = from_len - mdlen - 1;
+  FIPS_service_indicator_lock_state();
   db = OPENSSL_malloc(dblen);
   if (db == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
@@ -488,6 +483,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
   OPENSSL_memcpy(out, db + one_index, mlen);
   *out_len = mlen;
   OPENSSL_free(db);
+  FIPS_service_indicator_unlock_state();
   return 1;
 
 decoding_err:
@@ -497,6 +493,7 @@ decoding_err:
  err:
   FIPS_service_indicator_unlock_state();
   OPENSSL_free(db);
+  FIPS_service_indicator_unlock_state();
   return 0;
 }
 
@@ -523,6 +520,7 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   }
 
   hLen = EVP_MD_size(Hash);
+  FIPS_service_indicator_lock_state();
 
   // Negative sLen has special meanings:
   //   RSA_PSS_SALTLEN_DIGEST  sLen == hLen
@@ -601,6 +599,7 @@ err:
   FIPS_service_indicator_unlock_state();
   OPENSSL_free(DB);
   EVP_MD_CTX_cleanup(&ctx);
+  FIPS_service_indicator_unlock_state();
 
   return ret;
 }
@@ -621,6 +620,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
     mgf1Hash = Hash;
   }
 
+  FIPS_service_indicator_lock_state();
   hLen = EVP_MD_size(Hash);
 
   if (BN_is_zero(rsa->n)) {
@@ -717,6 +717,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
 err:
   FIPS_service_indicator_unlock_state();
   OPENSSL_free(salt);
+  FIPS_service_indicator_unlock_state();
 
   return ret;
 }

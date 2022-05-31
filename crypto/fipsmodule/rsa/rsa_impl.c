@@ -66,11 +66,12 @@
 #include <openssl/thread.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
 #include "../delocate.h"
 #include "../rand/fork_detect.h"
+#include "../service_indicator/internal.h"
+#include "internal.h"
 
 
 int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type) {
@@ -1448,6 +1449,7 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
             BN_set_word(e, RSA_F4) &&
             RSA_generate_key_ex_maybe_fips(rsa, bits, e, cb, /*check_fips=*/1);
   BN_free(e);
+
   if(ret) {
     // Approved key size check step is already done at start of function.
     FIPS_service_indicator_update_state();

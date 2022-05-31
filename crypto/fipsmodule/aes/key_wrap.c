@@ -55,6 +55,7 @@
 #include <openssl/mem.h>
 
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 
 // kDefaultIV is the default IV value given in RFC 3394, 2.2.3.1.
@@ -246,7 +247,7 @@ int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   }
 
   *out_len = constant_time_select_w(ok, claimed_len, 0);
-  int ret = ok & 1;
+  const int ret = ok & 1;
   if(ret) {
     AES_verify_service_indicator(NULL, key->rounds);
   }

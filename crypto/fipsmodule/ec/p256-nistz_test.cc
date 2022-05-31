@@ -108,6 +108,7 @@ TEST(P256_NistzTest, BEEU) {
     return;
   }
 #endif
+
   bssl::UniquePtr<EC_GROUP> group(
       EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_TRUE(group);
@@ -151,8 +152,8 @@ TEST(P256_NistzTest, BEEU) {
     EXPECT_TRUE(bn_less_than_words(out, order_words, P256_LIMBS));
 
     // Calculate out*in and confirm that it equals one, modulo the order.
-    OPENSSL_memcpy(in_scalar.bytes, in, sizeof(in));
-    OPENSSL_memcpy(out_scalar.bytes, out, sizeof(out));
+    OPENSSL_memcpy(in_scalar.words, in, sizeof(in));
+    OPENSSL_memcpy(out_scalar.words, out, sizeof(out));
     ec_scalar_to_montgomery(group.get(), &in_scalar, &in_scalar);
     ec_scalar_to_montgomery(group.get(), &out_scalar, &out_scalar);
     ec_scalar_mul_montgomery(group.get(), &result, &in_scalar, &out_scalar);

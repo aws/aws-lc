@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.12)
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
 
-if(MSVC)
+if(WIN32)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
   set(CMAKE_GENERATOR_CC cl)
@@ -33,6 +33,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
+
+include(GNUInstallDirs)
 
 # This is a dummy target which all other targets depend on (manually - see other
 # CMakeLists.txt files). This gives us a hook to add any targets which need to
@@ -228,6 +230,7 @@ if(GCC OR CLANG)
   if(FIPS AND NOT APPLE)
     check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
   endif()
+
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
