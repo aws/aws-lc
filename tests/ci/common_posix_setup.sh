@@ -98,8 +98,42 @@ function build_and_run_minimal_test {
 }
 
 function print_system_and_dependency_information {
+  echo ""
   echo "CMake version:"
   cmake --version
+  echo ""
+  echo "Go version:"
+  go version
+  echo ""
+  echo "Perl version:"
+  perl --version
+  echo ""
+  echo "Ninja version"
+  # Ninja executable names are not uniform
+  if command -v ninja-build &> /dev/null
+  then
+    ninja-build --version
+  else
+    ninja --version
+  fi
+  if command -v gcc &> /dev/null
+  then
+    echo ""
+    echo "GCC version:"
+    gcc --version
+    echo ""
+    echo "G++ version:"
+    g++ --version
+  elif command -v clang &> /dev/null
+  then
+    echo ""
+    echo "Clang version:"
+    clang --version
+  fi
+  echo ""
   echo "Operating system information:"
   uname -a
+  echo ""
+  echo "Environment variables"
+  env
 }
