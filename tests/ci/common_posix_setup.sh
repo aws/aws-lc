@@ -96,3 +96,10 @@ function build_and_run_minimal_test {
   run_build "$@"
   run_cmake_custom_target 'run_minimal_tests'
 }
+
+function print_system_and_dependency_information {
+  echo "CMake version:"
+  cmake --version
+  echo "Operating system information:"
+  uname -a
+}
