@@ -104,16 +104,21 @@ function print_system_and_dependency_information {
   echo ""
   echo "Go version:"
   go version
-  echo ""
-  echo "Perl version:"
-  perl --version
-  echo ""
-  echo "Ninja version"
+  if command -v perl &> /dev/null
+  then
+    echo ""
+    echo "Perl version:"
+    perl --version
+  fi
   # Ninja executable names are not uniform
   if command -v ninja-build &> /dev/null
   then
+    echo ""
+    echo "Ninja version"
     ninja-build --version
-  else
+  elif command -v ninja &> /dev/null
+    echo ""
+    echo "Ninja version"
     ninja --version
   fi
   if command -v gcc &> /dev/null
@@ -129,6 +134,12 @@ function print_system_and_dependency_information {
     echo ""
     echo "Clang version:"
     clang --version
+  fi
+  if command -v make &> /dev/null
+  then
+    echo ""
+    echo "Make version:"
+    make --version
   fi
   echo ""
   echo "Operating system information:"
