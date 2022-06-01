@@ -105,5 +105,8 @@
   },
   {
     "cmd": ["crypto/mem_test"]
+  },
+  {
+    "cmd": ["crypto/mem_set_test"]
   }
 ]

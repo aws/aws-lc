@@ -165,6 +165,18 @@ OPENSSL_EXPORT void CRYPTO_free(void *ptr, const char *file, int line);
 // allocations on free, but we define |OPENSSL_clear_free| for compatibility.
 OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 
+// CRYPTO_set_mem_functions is imported to be compatible with OpenSSL 1.1.1.
+// It's used to override the implementation of |OPENSSL_malloc/free/realloc|.
+// Before this import, |OPENSSL_malloc/free/realloc| can be customized by
+// defining |OPENSSL_memory_alloc/free/realloc|.
+// Below warning is also applicable here.
+// -- https://github.com/awslabs/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
+// This function is only recommended for debug purpose(e.g. track mem usage).
+// It returns one on success and zero otherwise.
+OPENSSL_EXPORT int CRYPTO_set_mem_functions(
+  void *(*m)(size_t, const char *, int),
+  void *(*r)(void *, size_t, const char *, int),
+  void (*f)(void *, const char *, int));
 
 #if defined(__cplusplus)
 }  // extern C
