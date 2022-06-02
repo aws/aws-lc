@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Set up environment
+# Set up environment.
 
 AWS_LC_DIR=${PWD##*/}
 cd ../
@@ -12,7 +12,7 @@ AWS_LC_BUILD_FOLDER="${ROOT}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${ROOT}/aws-lc-install"
 S2N_TLS_BUILD_FOLDER="${ROOT}/s2n-tls-build"
 
-# Test helpers
+# Test helpers.
 
 function fail() {
     echo "test failure: $1"
@@ -23,15 +23,13 @@ function aws_lc_build() {
 	cmake ${AWS_LC_DIR} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
 	ninja -C ${AWS_LC_BUILD_FOLDER} install
 	ls -R ${AWS_LC_INSTALL_FOLDER}
-	cat ${AWS_LC_INSTALL_FOLDER}/lib64/crypto/cmake/shared/crypto-targets-release.cmake
-	ls -R ${AWS_LC_INSTALL_FOLDER}/lib64/crypto/cmake
 	rm -rf ${AWS_LC_BUILD_FOLDER}/*
 }
 
 function s2n_tls_build() {
 	cmake s2n -GNinja "-B${S2N_TLS_BUILD_FOLDER}" "-DCMAKE_PREFIX_PATH=${AWS_LC_INSTALL_FOLDER}" "$@"
 	ninja -C ${S2N_TLS_BUILD_FOLDER}
-	#ls -R ${S2N_TLS_BUILD_FOLDER}
+	ls -R ${S2N_TLS_BUILD_FOLDER}
 }
 
 function s2n_tls_run_tests() {
@@ -64,13 +62,13 @@ aws_lc_build -DBUILD_SHARED_LIBS=1
 # Build s2n-tls+aws-lc and run s2n-tls tests. First using static aws-lc
 # libcrypto and then shared aws-lc libcrypto.
 
-#s2n_tls_build
-#s2n_tls_run_tests
-#s2n_tls_prepare_new_build
+s2n_tls_build
+s2n_tls_run_tests
+s2n_tls_prepare_new_build
 
-#s2n_tls_build -DBUILD_SHARED_LIBS=1
-#s2n_tls_run_tests
-#s2n_tls_prepare_new_build
+s2n_tls_build -DBUILD_SHARED_LIBS=1
+s2n_tls_run_tests
+s2n_tls_prepare_new_build
 
 # Test interned s2n-tls+aws-lc against both static and shared aws-lc libcrypto.
 
