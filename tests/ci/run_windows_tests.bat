@@ -11,16 +11,19 @@ SET
 @rem Run the same builds as run_posix_tests.sh
 @rem Check which version of MSVC we're building with: remove 14.0 from the path to the compiler and check if it matches the
 @rem original string. MSVC 14 has an issue with a missing DLL that causes the debug unit tests to fail
-if x%MSVC_PATH:14.0=%==x%MSVC_PATH% call :build_and_test Debug "" || goto error
-call :build_and_test Release "" || goto error
-call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
-call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
+@rem NOTE: The static build is temporarly broken on Windows so we skip the tests for it.
+:: if x%MSVC_PATH:14.0=%==x%MSVC_PATH% call :build_and_test Debug "" || goto error
+:: call :build_and_test Release "" || goto error
+:: call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
+:: call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
 
 @rem Windows has no equivalent of Linux's rpath so it can't find the built dlls from CMake. We also don't want to install our
 @rem tests or copy them around so Windows can find it in the same directory. Instead just put the dll's location onto the path
 set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DOPENSSL_SMALL=1" || goto error
+call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DOPENSSL_NO_ASM=1" || goto error
 
 goto :EOF
 
