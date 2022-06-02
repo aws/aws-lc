@@ -47,7 +47,7 @@ function s2n_tls_prepare_new_build() {
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${S2N_TLS_BUILD_FOLDER}
 git clone https://github.com/torben-hansen/s2n.git
 cd s2n
-git checkout test_something
+git checkout fix_cmake_interning_build
 cd ..
 ls
 
