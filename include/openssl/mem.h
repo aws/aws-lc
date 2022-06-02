@@ -167,11 +167,17 @@ OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 
 // CRYPTO_set_mem_functions is imported to be compatible with OpenSSL 1.1.1.
 // It's used to override the implementation of |OPENSSL_malloc/free/realloc|.
+//
 // Before this import, |OPENSSL_malloc/free/realloc| can be customized by
 // defining |OPENSSL_memory_alloc/free/realloc|.
 // Below warning is also applicable here.
 // -- https://github.com/awslabs/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
 // This function is only recommended for debug purpose(e.g. track mem usage).
+//
+// One difference is OpenSSL memory functions always receive __FILE__ and __LINE__.
+// https://github.com/openssl/openssl/blame/b7ce611887cfac633aacc052b2e71a7f195418b8/include/openssl/crypto.h#L117-L144
+// But AWS-LC memory functions for now ignores the file and line parameters.
+//
 // It returns one on success and zero otherwise.
 OPENSSL_EXPORT int CRYPTO_set_mem_functions(
   void *(*m)(size_t, const char *, int),

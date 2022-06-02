@@ -173,10 +173,7 @@ void *OPENSSL_malloc(size_t size) {
     assert(OPENSSL_memory_get_size == NULL);
     assert(realloc_impl != NULL);
     assert(free_impl != NULL);
-    // For compatibility with OpenSSL:
-    // OpenSSL memory functions always receive __FILE__ and __LINE__.
-    // https://github.com/openssl/openssl/blame/b7ce611887cfac633aacc052b2e71a7f195418b8/include/openssl/crypto.h#L117-L144
-    return malloc_impl(size, OPENSSL_FILE, OPENSSL_LINE);
+    return malloc_impl(size, AWSLC_FILE, AWSLC_LINE);
   }
   if (OPENSSL_memory_alloc != NULL) {
     assert(OPENSSL_memory_free != NULL);
@@ -218,10 +215,8 @@ void OPENSSL_free(void *orig_ptr) {
     assert(OPENSSL_memory_get_size == NULL);
     assert(malloc_impl != NULL);
     assert(realloc_impl != NULL);
-    // For compatibility with OpenSSL:
-    // OpenSSL memory functions always receive __FILE__ and __LINE__.
-    // https://github.com/openssl/openssl/blame/b7ce611887cfac633aacc052b2e71a7f195418b8/include/openssl/crypto.h#L117-L144
-    return free_impl(orig_ptr, OPENSSL_FILE, OPENSSL_LINE);
+    free_impl(orig_ptr, AWSLC_FILE, AWSLC_LINE);
+    return;
   }
 
   if (OPENSSL_memory_free != NULL) {
@@ -252,10 +247,7 @@ void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
     assert(OPENSSL_memory_get_size == NULL);
     assert(malloc_impl != NULL);
     assert(free_impl != NULL);
-    // For compatibility with OpenSSL:
-    // OpenSSL memory functions always receive __FILE__ and __LINE__.
-    // https://github.com/openssl/openssl/blame/b7ce611887cfac633aacc052b2e71a7f195418b8/include/openssl/crypto.h#L117-L144
-    return realloc_impl(orig_ptr, new_size, OPENSSL_FILE, OPENSSL_LINE);
+    return realloc_impl(orig_ptr, new_size, AWSLC_FILE, AWSLC_LINE);
   }
   if (OPENSSL_memory_realloc != NULL) {
     assert(OPENSSL_memory_alloc != NULL);
