@@ -176,7 +176,7 @@ OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 //
 // One difference is OpenSSL memory functions always receive __FILE__ and __LINE__.
 // https://github.com/openssl/openssl/blame/b7ce611887cfac633aacc052b2e71a7f195418b8/include/openssl/crypto.h#L117-L144
-// But AWS-LC memory functions for now ignores the file and line parameters.
+// But AWS-LC memory functions for now ignore the file and line parameters.
 //
 // It returns one on success and zero otherwise.
 OPENSSL_EXPORT int CRYPTO_set_mem_functions(
