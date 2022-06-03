@@ -150,6 +150,7 @@ int CRYPTO_set_mem_functions(
       OPENSSL_memory_get_size != NULL ||
       OPENSSL_memory_realloc != NULL) {
     // |OPENSSL_malloc/free/realloc| are customized by overriding the symbols.
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
   malloc_impl = m;
