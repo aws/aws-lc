@@ -28,13 +28,10 @@
         .text
         .balign 4
 
-S2N_BN_SYMBOL(word_max):
-
 #define a x0
 #define b x1
 
-word_max:
-_word_max:
+S2N_BN_SYMBOL(word_max):
 
         cmp     a, b
         csel    x0, a, b, cs

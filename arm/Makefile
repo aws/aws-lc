@@ -38,11 +38,7 @@ endif
 # by single-quote characters in comments, so we eliminate // comments first.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-ifeq ($(ARCHTYPE_RESULT),arm64)
-PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include $(SYMBOL_HIDING) -
-else
 PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
-endif
 else
 PREPROCESS=$(CC) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
 endif
