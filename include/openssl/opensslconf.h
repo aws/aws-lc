@@ -66,7 +66,4 @@
 #define OPENSSL_NO_STORE
 #define OPENSSL_NO_WHIRLPOOL
 
-#define AWSLC_FILE ""
-#define AWSLC_LINE 0
-
 #endif  // OPENSSL_HEADER_OPENSSLCONF_H

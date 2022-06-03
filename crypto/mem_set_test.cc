@@ -34,7 +34,7 @@ void *new_realloc_impl(void *ptr, size_t size, const char *file, int line) {
 
 // This test is copy of |MemTest.BasicOverrides| in mem_test.cc.
 // |MemTest.BasicOverrides| changed the |OPENSSL_malloc/free/realloc| by overriding related weak symbols.
-// This test achived the mem behavior change by calling |CRYPTO_set_mem_functions|.
+// This test achieved the mem behavior change by calling |CRYPTO_set_mem_functions|.
 TEST(MemTest, BasicMemSet) {
   // The FIPS build which runs the power on self tests can call a lot of functions
   // before this test. Therefore, all the expected counts are relative to the
