@@ -4,13 +4,20 @@
 
 # Set up environment.
 
-AWS_LC_DIR=${PWD##*/}
+AWS_LC_DIR_NAME=${PWD##*/}
 cd ../
 ROOT=$(pwd)
+AWS_LC_DIR=${ROOT}/${AWS_LC_DIR_NAME}
 
-AWS_LC_BUILD_FOLDER="${ROOT}/aws-lc-build"
-AWS_LC_INSTALL_FOLDER="${ROOT}/aws-lc-install"
-S2N_TLS_BUILD_FOLDER="${ROOT}/s2n-tls-build"
+SCRATCH_FOLDER=${ROOT}/"SCRATCH_AWSLC_S2N_INTERN_TEST"
+AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
+AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+S2N_TLS_BUILD_FOLDER="${SCRATCH_FOLDER}/s2n-tls-build"
+
+# Make script execution idempotent.
+mkdir -p ${SCRATCH_FOLDER}
+rm -rf ${SCRATCH_FOLDER}/*
+cd ${SCRATCH_FOLDER}
 
 # Test helpers.
 
@@ -35,7 +42,7 @@ function s2n_tls_build() {
 function s2n_tls_run_tests() {
 	cd ${S2N_TLS_BUILD_FOLDER}
 	ctest -j 8 --output-on-failure
-	cd ${ROOT}
+	cd ${SCRATCH_FOLDER}
 }
 
 function s2n_tls_prepare_new_build() {
