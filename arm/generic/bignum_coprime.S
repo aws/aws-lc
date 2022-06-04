@@ -30,9 +30,10 @@
 //
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, X4 = t, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_coprime
-        .globl  _bignum_coprime
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_coprime)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_coprime)
         .text
         .balign 4
 
@@ -92,8 +93,7 @@
 #define tt x20
 
 
-bignum_coprime:
-_bignum_coprime:
+S2N_BN_SYMBOL(bignum_coprime):
 
 // We make use of just a couple of additional registers
 

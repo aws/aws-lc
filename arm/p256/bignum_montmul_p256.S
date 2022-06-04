@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_montmul_p256
-        .globl  _bignum_montmul_p256
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p256)
         .text
         .balign 4
 
@@ -91,8 +92,7 @@
 #define t3 x1
 #define s4 x2
 
-bignum_montmul_p256:
-_bignum_montmul_p256:
+S2N_BN_SYMBOL(bignum_montmul_p256):
 
 // Load in all words of both inputs
 

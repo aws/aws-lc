@@ -22,11 +22,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_tomont_p256k1
-        .globl  _bignum_tomont_p256k1
-        .globl  bignum_tomont_p256k1_alt
-        .globl  _bignum_tomont_p256k1_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p256k1)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p256k1)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p256k1_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p256k1_alt)
         .text
         .balign 4
 
@@ -49,10 +50,9 @@
 #define h x10
 #define q x10
 
-bignum_tomont_p256k1:
-_bignum_tomont_p256k1:
-bignum_tomont_p256k1_alt:
-_bignum_tomont_p256k1_alt:
+S2N_BN_SYMBOL(bignum_tomont_p256k1):
+
+S2N_BN_SYMBOL(bignum_tomont_p256k1_alt):
 
 // Since 2^256 == 4294968273 (mod p_256k1) we more or less just set
 // m = 4294968273 then devolve to a near-clone of bignum_cmul_p256k1;

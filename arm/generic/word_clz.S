@@ -21,14 +21,14 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  word_clz
-        .globl  _word_clz
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_clz)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_clz)
         .text
         .balign 4
 
-word_clz:
-_word_clz:
+S2N_BN_SYMBOL(word_clz):
         clz     x0, x0
         ret
 

@@ -34,9 +34,10 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = w, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_emontredc
-        .globl  _bignum_emontredc
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc)
         .text
 
 // Argument m comes in in %rdx but we copy it to %r8
@@ -67,8 +68,7 @@
 #define jshort %r10d
 
 
-bignum_emontredc:
-_bignum_emontredc:
+S2N_BN_SYMBOL(bignum_emontredc):
 
 #if WINDOWS_ABI
         pushq   %rdi

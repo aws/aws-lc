@@ -27,9 +27,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_deamont_p256_alt
-        .globl  _bignum_deamont_p256_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_deamont_p256_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_deamont_p256_alt)
         .text
 
 #define z rdi
@@ -82,8 +84,7 @@
         add     low, rax;               \
         adc     high, rdx
 
-bignum_deamont_p256_alt:
-_bignum_deamont_p256_alt:
+S2N_BN_SYMBOL(bignum_deamont_p256_alt):
 
 #if WINDOWS_ABI
         push    rdi

@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x, X4 = m, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_cdiv
-        .globl  _bignum_cdiv
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cdiv)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cdiv)
         .text
         .balign 4
 
@@ -66,8 +67,7 @@
 
 #define r x14
 
-bignum_cdiv:
-_bignum_cdiv:
+S2N_BN_SYMBOL(bignum_cdiv):
 
 // Effectively the same dataflow as bignum_cmod, with some basic
 // variable changes (using n for the size not k, returning r, etc.)

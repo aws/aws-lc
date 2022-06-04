@@ -16,6 +16,20 @@
 OSTYPE_RESULT=$(shell uname -s)
 ARCHTYPE_RESULT=$(shell uname -m)
 
+# Assembler directives that mark symbols as .hidden
+# or .private_extern can be enabled by passing
+# in the S2N_BN_HIDE_SYMBOLS parameter as:
+#
+#    make S2N_BN_HIDE_SYMBOLS=1
+#
+
+ifeq ($(S2N_BN_HIDE_SYMBOLS),1)
+SYMBOL_HIDING=-DS2N_BN_HIDE_SYMBOLS=1
+else
+SYMBOL_HIDING=
+endif
+
+
 # Add explicit language input parameter to cpp, otherwise the use of #n for
 # numeric literals in ARM code is a problem when used inside #define macros
 # since normally that means stringization.
@@ -24,13 +38,9 @@ ARCHTYPE_RESULT=$(shell uname -m)
 # by single-quote characters in comments, so we eliminate // comments first.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-ifeq ($(ARCHTYPE_RESULT),arm64)
-PREPROCESS=sed -e 's/\/\/.*//' | cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
 else
-PREPROCESS=sed -e 's/\/\/.*//' | cpp -xassembler-with-cpp -
-endif
-else
-PREPROCESS=cpp -xassembler-with-cpp -
+PREPROCESS=$(CC) -E -I../include $(SYMBOL_HIDING) -xassembler-with-cpp -
 endif
 
 # Generally GNU-type assemblers are happy with multiple instructions on

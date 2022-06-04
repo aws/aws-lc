@@ -22,17 +22,16 @@
 // Standard x86-64 ABI: RDI = a, RSI = b, returns RAX
 // Microsoft x64 ABI:   RCX = a, RDX = b, returns RAX
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-
-        .globl  word_max
-        .globl  _word_max
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_max)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_max)
         .text
 
 #define a %rdi
 #define b %rsi
 
-word_max:
-_word_max:
+S2N_BN_SYMBOL(word_max):
 
 #if WINDOWS_ABI
         pushq   %rdi

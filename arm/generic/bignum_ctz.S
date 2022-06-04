@@ -27,9 +27,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_ctz
-        .globl  _bignum_ctz
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_ctz)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_ctz)
         .text
         .balign 4
 
@@ -40,8 +41,7 @@
 #define a x4
 
 
-bignum_ctz:
-_bignum_ctz:
+S2N_BN_SYMBOL(bignum_ctz):
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 

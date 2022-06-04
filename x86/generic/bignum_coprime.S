@@ -32,9 +32,11 @@
 // Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, [RSP+40] = t, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_coprime
-        .globl  _bignum_coprime
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_coprime)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_coprime)
         .text
 
 // We get CHUNKSIZE bits per outer iteration, 64 minus a bit for proxy errors
@@ -105,8 +107,7 @@
 #define arg3 rdx
 #define arg4 rcx
 
-bignum_coprime:
-_bignum_coprime:
+S2N_BN_SYMBOL(bignum_coprime):
 
 #if WINDOWS_ABI
         push    rdi

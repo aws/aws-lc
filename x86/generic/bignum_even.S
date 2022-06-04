@@ -23,13 +23,14 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_even
-        .globl  _bignum_even
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_even)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_even)
         .text
 
-bignum_even:
-_bignum_even:
+S2N_BN_SYMBOL(bignum_even):
 
 #if WINDOWS_ABI
         push    rdi

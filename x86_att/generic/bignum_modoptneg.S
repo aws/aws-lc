@@ -25,9 +25,10 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = p, R9 = x, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_modoptneg
-        .globl  _bignum_modoptneg
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modoptneg)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modoptneg)
         .text
 
 #define k %rdi
@@ -41,8 +42,7 @@
 #define b %r10
 #define i %r11
 
-bignum_modoptneg:
-_bignum_modoptneg:
+S2N_BN_SYMBOL(bignum_modoptneg):
 
 #if WINDOWS_ABI
         pushq   %rdi

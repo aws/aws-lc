@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_half_p521
-        .globl  _bignum_half_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_half_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_half_p521)
         .text
         .balign 4
 
@@ -45,8 +46,7 @@
 #define a x6
 
 
-bignum_half_p521:
-_bignum_half_p521:
+S2N_BN_SYMBOL(bignum_half_p521):
 
 // We do a 521-bit rotation one bit right, since 2^521 == 1 (mod p_521)
 

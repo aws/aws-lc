@@ -29,9 +29,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = c, X3 = n, X4 = y, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_cmadd
-        .globl  _bignum_cmadd
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmadd)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmadd)
         .text
         .balign 4
 
@@ -49,8 +50,7 @@
 #define b x9
 
 
-bignum_cmadd:
-_bignum_cmadd:
+S2N_BN_SYMBOL(bignum_cmadd):
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.

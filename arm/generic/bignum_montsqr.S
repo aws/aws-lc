@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = m
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_montsqr
-        .globl  _bignum_montsqr
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr)
         .text
         .balign 4
 
@@ -69,8 +70,7 @@
 #define e8 x6
 
 
-bignum_montsqr:
-_bignum_montsqr:
+S2N_BN_SYMBOL(bignum_montsqr):
 
 // If k = 0 the whole operation is trivial
 

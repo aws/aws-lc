@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mul_4_8
-        .globl  _bignum_mul_4_8
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_4_8)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_4_8)
         .text
         .balign 4
 
@@ -96,10 +97,9 @@
 #define l x19
 #define t x20
 
-bignum_mul_4_8:
-_bignum_mul_4_8:
+S2N_BN_SYMBOL(bignum_mul_4_8):
 
-        stp     x19, x20, [sp, #-16]!
+stp     x19, x20, [sp, #-16]!
 
 // Load operands
 

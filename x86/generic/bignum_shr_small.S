@@ -28,9 +28,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = c, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_shr_small
-        .globl  _bignum_shr_small
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_shr_small)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_shr_small)
         .text
 
 #define p rdi
@@ -52,8 +54,7 @@
 
 
 
-bignum_shr_small:
-_bignum_shr_small:
+S2N_BN_SYMBOL(bignum_shr_small):
 
 #if WINDOWS_ABI
         push    rdi

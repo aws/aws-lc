@@ -21,9 +21,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_divmod10
-        .globl  _bignum_divmod10
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_divmod10)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_divmod10)
         .text
         .balign 4
 
@@ -41,8 +42,7 @@
 #define w x5
 #define s x6
 
-bignum_divmod10:
-_bignum_divmod10:
+S2N_BN_SYMBOL(bignum_divmod10):
 
 // If k = 0 then return; the return in x0 is indeed 0 mod 10 = 0
 

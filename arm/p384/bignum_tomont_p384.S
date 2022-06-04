@@ -22,11 +22,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_tomont_p384
-        .globl  _bignum_tomont_p384
-        .globl  bignum_tomont_p384_alt
-        .globl  _bignum_tomont_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p384)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p384_alt)
         .text
         .balign 4
 
@@ -72,10 +73,9 @@
         adcs    d4, d4, t3;                                         \
         adc     d5, d5, t3
 
-bignum_tomont_p384:
-_bignum_tomont_p384:
-bignum_tomont_p384_alt:
-_bignum_tomont_p384_alt:
+S2N_BN_SYMBOL(bignum_tomont_p384):
+
+S2N_BN_SYMBOL(bignum_tomont_p384_alt):
 
 #define d0 x2
 #define d1 x3

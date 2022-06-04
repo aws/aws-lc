@@ -29,9 +29,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = t
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_ksqr_32_64
-        .globl  _bignum_ksqr_32_64
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_ksqr_32_64)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_ksqr_32_64)
         .text
 
 #define K 16
@@ -40,8 +42,7 @@
 #define x rsi
 #define t rcx
 
-bignum_ksqr_32_64:
-_bignum_ksqr_32_64:
+S2N_BN_SYMBOL(bignum_ksqr_32_64):
 
 #if WINDOWS_ABI
         push    rdi

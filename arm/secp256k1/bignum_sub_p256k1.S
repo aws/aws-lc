@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_sub_p256k1
-        .globl  _bignum_sub_p256k1
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sub_p256k1)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sub_p256k1)
         .text
         .balign 4
 
@@ -38,8 +39,7 @@
 #define d2 x7
 #define d3 x8
 
-bignum_sub_p256k1:
-_bignum_sub_p256k1:
+S2N_BN_SYMBOL(bignum_sub_p256k1):
 
 // First just subtract the numbers as [d3; d2; d1; d0] = x - y,
 // with the inverted carry flag meaning CF <=> x >= y.

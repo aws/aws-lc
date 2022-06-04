@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = a, X3 = b, X4 = t
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_modinv
-        .globl  _bignum_modinv
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modinv)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modinv)
         .text
         .balign 4
 
@@ -101,8 +102,7 @@
 #define e4 t2
 #define e8 t1
 
-bignum_modinv:
-_bignum_modinv:
+S2N_BN_SYMBOL(bignum_modinv):
 
 // We make use of registers beyond the modifiable
 

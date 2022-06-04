@@ -23,9 +23,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, X2 = m, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_cmod
-        .globl  _bignum_cmod
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmod)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmod)
         .text
         .balign 4
 
@@ -48,8 +49,7 @@
 
 #define q x0
 
-bignum_cmod:
-_bignum_cmod:
+S2N_BN_SYMBOL(bignum_cmod):
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 

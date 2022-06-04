@@ -22,9 +22,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_add_p25519
-        .globl  _bignum_add_p25519
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add_p25519)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add_p25519)
+
         .text
         .balign 4
 
@@ -40,8 +42,7 @@
 #define c2 x9
 #define c3 x10
 
-bignum_add_p25519:
-_bignum_add_p25519:
+S2N_BN_SYMBOL(bignum_add_p25519):
 
 // Add as [d3; d2; d1; d0] = x + y; since we assume x, y < 2^255 - 19
 // this sum fits in 256 bits

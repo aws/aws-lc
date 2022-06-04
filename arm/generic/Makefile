@@ -99,7 +99,7 @@ OBJ = bignum_add.o \
       word_negmodinv.o \
       word_recip.o
 
-%.o : %.S ; cpp $< | $(GAS) -o $@ -
+%.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
 default: $(OBJ);
 

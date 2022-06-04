@@ -21,17 +21,17 @@
 //
 // Standard ARM ABI: X0 = a, X1 = b, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  word_max
-        .globl  _word_max
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_max)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_max)
         .text
         .balign 4
 
 #define a x0
 #define b x1
 
-word_max:
-_word_max:
+S2N_BN_SYMBOL(word_max):
 
         cmp     a, b
         csel    x0, a, b, cs

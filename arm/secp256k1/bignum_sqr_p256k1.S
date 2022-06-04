@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr_p256k1
-        .globl  _bignum_sqr_p256k1
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_p256k1)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_p256k1)
         .text
         .balign 4
 
@@ -59,8 +60,7 @@
 #define q u4
 #define a3 u7
 
-bignum_sqr_p256k1:
-_bignum_sqr_p256k1:
+S2N_BN_SYMBOL(bignum_sqr_p256k1):
 
 // First just a near-clone of bignum_sqr_4_8 to get the square, using
 // different registers to collect full product without writeback.

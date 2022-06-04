@@ -27,9 +27,10 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = t
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_ksqr_16_32
-        .globl  _bignum_ksqr_16_32
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_ksqr_16_32)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_ksqr_16_32)
         .text
 
 #define z %rdi
@@ -465,8 +466,7 @@
 
 
 
-bignum_ksqr_16_32:
-_bignum_ksqr_16_32:
+S2N_BN_SYMBOL(bignum_ksqr_16_32):
 
 #if WINDOWS_ABI
         pushq   %rdi

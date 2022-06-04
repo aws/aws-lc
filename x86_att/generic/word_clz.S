@@ -22,14 +22,13 @@
 // Standard x86-64 ABI: RDI = a, returns RAX
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-
-        .globl  word_clz
-        .globl  _word_clz
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_clz)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_clz)
         .text
 
-word_clz:
-_word_clz:
+S2N_BN_SYMBOL(word_clz):
 
 #if WINDOWS_ABI
         pushq   %rdi

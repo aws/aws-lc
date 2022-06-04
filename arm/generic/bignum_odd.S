@@ -21,16 +21,16 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_odd
-        .globl  _bignum_odd
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_odd)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_odd)
         .text
         .balign 4
 
-bignum_odd:
-_bignum_odd:
+S2N_BN_SYMBOL(bignum_odd):
 
-        cbz     x0, end                 // if k = 0, that's the return!
+cbz     x0, end                 // if k = 0, that's the return!
         ldr     x0, [x1]
         and     x0, x0, #1
 

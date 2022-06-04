@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y, X3 = t
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_kmul_32_64
-        .globl  _bignum_kmul_32_64
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_kmul_32_64)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_kmul_32_64)
         .text
         .balign 4
 
@@ -42,8 +43,7 @@
 
 #define c x16
 
-bignum_kmul_32_64:
-_bignum_kmul_32_64:
+S2N_BN_SYMBOL(bignum_kmul_32_64):
 
 // Save extra registers and return address, store parameters safely
 

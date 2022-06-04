@@ -23,9 +23,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = p, X3 = x, X4 = m
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_modoptneg
-        .globl  _bignum_modoptneg
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modoptneg)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modoptneg)
         .text
         .balign 4
 
@@ -39,8 +40,7 @@
 #define b x7
 
 
-bignum_modoptneg:
-_bignum_modoptneg:
+S2N_BN_SYMBOL(bignum_modoptneg):
 
 // Do nothing if k = 0
 

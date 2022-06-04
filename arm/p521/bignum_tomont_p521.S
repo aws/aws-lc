@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_tomont_p521
-        .globl  _bignum_tomont_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p521)
         .text
         .balign 4
 
@@ -43,8 +44,7 @@
 #define d7 x11
 #define d8 x12
 
-bignum_tomont_p521:
-_bignum_tomont_p521:
+S2N_BN_SYMBOL(bignum_tomont_p521):
 
 // Load top digit first and get its upper bits in h so that we
 // separate out x = 2^521 * H + L with h = H. Now x mod p_521 =

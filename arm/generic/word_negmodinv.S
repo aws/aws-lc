@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  word_negmodinv
-        .globl  _word_negmodinv
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_negmodinv)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_negmodinv)
         .text
         .balign 4
 
@@ -50,8 +51,7 @@
 #define e4 x2
 #define e8 x0
 
-word_negmodinv:
-_word_negmodinv:
+S2N_BN_SYMBOL(word_negmodinv):
 
 // Initial magical 5-bit approximation x = (a - a<<2) xor 2
 

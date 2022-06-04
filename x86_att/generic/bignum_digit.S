@@ -27,9 +27,10 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, R8 = n, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_digit
-        .globl  _bignum_digit
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_digit)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_digit)
         .text
 
 #define k %rdi
@@ -40,8 +41,7 @@
 #define i %rcx
 #define a %r8
 
-bignum_digit:
-_bignum_digit:
+S2N_BN_SYMBOL(bignum_digit):
 
 #if WINDOWS_ABI
         pushq   %rdi

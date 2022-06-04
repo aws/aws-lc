@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_p256_4
-        .globl  _bignum_mod_p256_4
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p256_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p256_4)
         .text
         .balign 4
 
@@ -42,8 +43,7 @@
 #define d3 x9
 
 
-bignum_mod_p256_4:
-_bignum_mod_p256_4:
+S2N_BN_SYMBOL(bignum_mod_p256_4):
 
 // Load the three nonzero words of p_256 = [n3;0;n2;n1]
 
