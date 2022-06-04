@@ -11,9 +11,9 @@ int size_count = 0;
 int realloc_count = 0;
 
 extern "C" {
-  OPENSSL_EXPORT void *new_malloc_impl(size_t size, const char *file, int line);
-  OPENSSL_EXPORT void new_free_impl(void *ptr, const char *file, int line);
-  OPENSSL_EXPORT void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
+  void *new_malloc_impl(size_t size, const char *file, int line);
+  void new_free_impl(void *ptr, const char *file, int line);
+  void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
 }
 
 void *new_malloc_impl(size_t size, const char *file, int line) {

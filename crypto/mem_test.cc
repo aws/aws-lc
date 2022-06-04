@@ -21,9 +21,9 @@ extern "C" {
   OPENSSL_EXPORT size_t OPENSSL_memory_get_size(void *ptr);
   OPENSSL_EXPORT void *OPENSSL_memory_realloc(void *ptr, size_t size);
 
-  OPENSSL_EXPORT void *new_malloc_impl(size_t size, const char *file, int line);
-  OPENSSL_EXPORT void new_free_impl(void *ptr, const char *file, int line);
-  OPENSSL_EXPORT void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
+  void *new_malloc_impl(size_t size, const char *file, int line);
+  void new_free_impl(void *ptr, const char *file, int line);
+  void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
 }
 
 void *OPENSSL_memory_alloc(size_t size) {
