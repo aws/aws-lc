@@ -22,11 +22,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = k, X2 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_p384
-        .globl  _bignum_mod_p384
-        .globl  bignum_mod_p384_alt
-        .globl  _bignum_mod_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p384)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p384_alt)
         .text
         .balign 4
 
@@ -53,10 +54,9 @@
 #define n2 x17
 
 
-bignum_mod_p384:
-_bignum_mod_p384:
-bignum_mod_p384_alt:
-_bignum_mod_p384_alt:
+S2N_BN_SYMBOL(bignum_mod_p384):
+
+S2N_BN_SYMBOL(bignum_mod_p384_alt):
 
 // If the input is already <= 5 words long, go to a trivial "copy" path
 

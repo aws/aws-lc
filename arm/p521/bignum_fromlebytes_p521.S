@@ -24,9 +24,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_fromlebytes_p521
-        .globl  _bignum_fromlebytes_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_fromlebytes_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_fromlebytes_p521)
         .text
         .balign 4
 
@@ -37,8 +38,7 @@
 #define dshort w2
 #define a x3
 
-bignum_fromlebytes_p521:
-_bignum_fromlebytes_p521:
+S2N_BN_SYMBOL(bignum_fromlebytes_p521):
 
 // word 0
 

@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_emontredc_8n
-        .globl  _bignum_emontredc_8n
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc_8n)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc_8n)
         .text
         .balign 4
 
@@ -208,10 +209,9 @@
 // Main code
 // *****************************************************
 
-bignum_emontredc_8n:
-_bignum_emontredc_8n:
+S2N_BN_SYMBOL(bignum_emontredc_8n):
 
-        stp     x19, x20, [sp, #-16]!
+stp     x19, x20, [sp, #-16]!
         stp     x21, x22, [sp, #-16]!
         stp     x23, x24, [sp, #-16]!
         stp     x25, x26, [sp, #-16]!
