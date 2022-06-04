@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mul_p521
-        .globl  _bignum_mul_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_p521)
         .text
         .balign 4
 
@@ -153,8 +154,7 @@
         adcs    s6, s6, c;                                      \
         adc     s7, s7, c                                       \
 
-bignum_mul_p521:
-_bignum_mul_p521:
+S2N_BN_SYMBOL(bignum_mul_p521):
 
 // Save registers and make space for the temporary buffer
 
