@@ -46,7 +46,7 @@ OBJ = bignum_add_p384.o \
       bignum_triple_p384.o \
       bignum_triple_p384_alt.o
 
-%.o : %.S ; cpp $< | as -o $@ -
+%.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -
 
 default: $(OBJ);
 

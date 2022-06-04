@@ -16,6 +16,19 @@
 OSTYPE_RESULT=$(shell uname -s)
 ARCHTYPE_RESULT=$(shell uname -m)
 
+# Assembler directives that mark symbols as .hidden
+# or .private_extern can be enabled by passing
+# in the S2N_BN_HIDE_SYMBOLS parameter as:
+#
+#    make S2N_BN_HIDE_SYMBOLS=1
+#
+
+ifeq ($(S2N_BN_HIDE_SYMBOLS),1)
+SYMBOL_HIDING=-DS2N_BN_HIDE_SYMBOLS=1
+else
+SYMBOL_HIDING=
+endif
+
 # Add explicit language input parameter to cpp, otherwise the use of #n for
 # numeric literals in ARM code is a problem when used inside #define macros
 # since normally that means stringization.
@@ -24,12 +37,12 @@ ARCHTYPE_RESULT=$(shell uname -m)
 # by single-quote characters in comments, so we eliminate // comments first.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-PREPROCESS=sed -e 's/\/\/.*//' | cpp -DWINDOWS_ABI=0 -xassembler-with-cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include -DWINDOWS_ABI=0 $(SYMBOL_HIDING) -xassembler-with-cpp -
 else
 ifeq ($(OSTYPE_RESULT),CYGWIN_NT-10.0)
-PREPROCESS=cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+PREPROCESS=$(CC) -E -I../include -DWINDOWS_ABI=1 $(SYMBOL_HIDING) -xassembler-with-cpp -
 else
-PREPROCESS=cpp -DWINDOWS_ABI=0 -xassembler-with-cpp -
+PREPROCESS=$(CC) -E -I../include -DWINDOWS_ABI=0 $(SYMBOL_HIDING) -xassembler-with-cpp -
 endif
 endif
 
@@ -63,9 +76,9 @@ endif
 # for proof-checking, not used for actual code execution.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-WINPREPROCESS=sed -e 's/\/\/.*//' | cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+WINPREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
 else
-WINPREPROCESS=cpp -DWINDOWS_ABI=1 -xassembler-with-cpp -
+WINPREPROCESS=$(CC) -E -I../include -DWINDOWS_ABI=1 -xassembler-with-cpp -
 endif
 
 # The x86 assembly (.S) files are all written for the GNU assembler

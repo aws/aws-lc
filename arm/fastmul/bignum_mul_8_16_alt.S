@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mul_8_16_alt
-        .globl  _bignum_mul_8_16_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_8_16_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_8_16_alt)
         .text
         .balign 4
 
@@ -73,8 +74,7 @@
 #define u14 x19
 #define u15 x20
 
-bignum_mul_8_16_alt:
-_bignum_mul_8_16_alt:
+S2N_BN_SYMBOL(bignum_mul_8_16_alt):
 
 // Save more registers
 

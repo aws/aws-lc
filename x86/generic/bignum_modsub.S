@@ -24,9 +24,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = y, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_modsub
-        .globl  _bignum_modsub
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modsub)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modsub)
         .text
 
 #define k rdi
@@ -39,8 +41,7 @@
 #define a rax
 #define c r11
 
-bignum_modsub:
-_bignum_modsub:
+S2N_BN_SYMBOL(bignum_modsub):
 
 #if WINDOWS_ABI
         push    rdi

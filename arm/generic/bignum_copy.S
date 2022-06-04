@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_copy
-        .globl  _bignum_copy
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_copy)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_copy)
         .text
         .balign 4
 
@@ -37,8 +38,7 @@
 #define a x5
 
 
-bignum_copy:
-_bignum_copy:
+S2N_BN_SYMBOL(bignum_copy):
 
 // Replace n with min(k,n) so we are definitely safe copying those
 // Initialize the element counter to 0

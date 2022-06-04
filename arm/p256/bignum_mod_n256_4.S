@@ -24,9 +24,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_n256_4
-        .globl  _bignum_mod_n256_4
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n256_4)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n256_4)
         .text
         .balign 4
 
@@ -51,8 +52,7 @@
         movk    nn, n2, lsl #32;                                    \
         movk    nn, n3, lsl #48
 
-bignum_mod_n256_4:
-_bignum_mod_n256_4:
+S2N_BN_SYMBOL(bignum_mod_n256_4):
 
 // Load the complicated three words of n_256, the other being all 1s
 

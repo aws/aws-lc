@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mul_p25519_alt
-        .globl  _bignum_mul_p25519_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_p25519_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_p25519_alt)
         .text
         .balign 4
 
@@ -59,8 +60,7 @@
 #define q b1
 #define h b2
 
-bignum_mul_p25519_alt:
-_bignum_mul_p25519_alt:
+S2N_BN_SYMBOL(bignum_mul_p25519_alt):
 
 // Load operands and set up row 0 = [u4;...;u0] = a0 * [b3;...;b0]
 

@@ -24,9 +24,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_of_word
-        .globl  _bignum_of_word
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_of_word)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_of_word)
         .text
         .balign 4
 
@@ -35,10 +36,9 @@
 #define n x2
 
 
-bignum_of_word:
-_bignum_of_word:
+S2N_BN_SYMBOL(bignum_of_word):
 
-        cbz     k, end                  // if k = 0 do nothing
+cbz     k, end                  // if k = 0 do nothing
 
         str     n, [z]                  // Set zeroth word to n
         subs    k, k, #1                 // k := k - 1

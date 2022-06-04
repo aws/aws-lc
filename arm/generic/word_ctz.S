@@ -21,14 +21,14 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  word_ctz
-        .globl  _word_ctz
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_ctz)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_ctz)
         .text
         .balign 4
 
-word_ctz:
-_word_ctz:
+S2N_BN_SYMBOL(word_ctz):
 
 // ARM doesn't have a direct word ctz instruction, so we emulate it via
 // ctz(w) = 64 - clz(~w & (w-1)). This is depending, for cases of the form

@@ -29,9 +29,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m, [RSP+48] = p
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_amontredc
-        .globl  _bignum_amontredc
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_amontredc)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_amontredc)
         .text
 
 // We copy x into r10 but it comes in in rdx originally
@@ -69,8 +71,7 @@
 #define jshort ebx
 
 
-bignum_amontredc:
-_bignum_amontredc:
+S2N_BN_SYMBOL(bignum_amontredc):
 
 #if WINDOWS_ABI
         push    rdi

@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_normalize
-        .globl  _bignum_normalize
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_normalize)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_normalize)
         .text
         .balign 4
 
@@ -50,8 +51,7 @@
 #define l x9
 
 
-bignum_normalize:
-_bignum_normalize:
+S2N_BN_SYMBOL(bignum_normalize):
 
 // If k = 0 the whole operation is trivial. Otherwise initialize
 // shift count r and top digit c, but then if k = 1 skip the digitwise part

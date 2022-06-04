@@ -25,11 +25,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_triple_p256
-        .globl  _bignum_triple_p256
-        .globl  bignum_triple_p256_alt
-        .globl  _bignum_triple_p256_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_triple_p256)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_triple_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_triple_p256_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_triple_p256_alt)
         .text
         .balign 4
 
@@ -60,10 +61,9 @@
 #define t1 x9
 
 
-bignum_triple_p256:
-_bignum_triple_p256:
-bignum_triple_p256_alt:
-_bignum_triple_p256_alt:
+S2N_BN_SYMBOL(bignum_triple_p256):
+
+S2N_BN_SYMBOL(bignum_triple_p256_alt):
 
 // Load the inputs
 

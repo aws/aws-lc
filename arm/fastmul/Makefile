@@ -49,7 +49,7 @@ OBJ = bignum_emontredc_8n.o \
       bignum_sqr_8_16.o \
       bignum_sqr_8_16_alt.o
 
-%.o : %.S ; cpp $< | $(GAS) -o $@ -
+%.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
 default: $(OBJ);
 

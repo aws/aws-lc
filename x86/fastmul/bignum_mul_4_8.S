@@ -24,9 +24,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_mul_4_8
-        .globl  _bignum_mul_4_8
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_4_8)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_4_8)
         .text
 
 // These are actually right
@@ -112,8 +114,7 @@
 
 
 
-bignum_mul_4_8:
-_bignum_mul_4_8:
+S2N_BN_SYMBOL(bignum_mul_4_8):
 
 #if WINDOWS_ABI
         push    rdi

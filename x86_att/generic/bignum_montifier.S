@@ -29,9 +29,10 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = t
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_montifier
-        .globl  _bignum_montifier
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montifier)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montifier)
         .text
 
 #define k %rdi
@@ -70,8 +71,7 @@
 #define qshort %r8d
 
 
-bignum_montifier:
-_bignum_montifier:
+S2N_BN_SYMBOL(bignum_montifier):
 
 #if WINDOWS_ABI
         pushq   %rdi

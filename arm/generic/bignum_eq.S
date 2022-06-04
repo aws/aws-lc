@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_eq
-        .globl  _bignum_eq
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_eq)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_eq)
         .text
         .balign 4
 
@@ -38,8 +39,7 @@
 #define d x2
 
 
-bignum_eq:
-_bignum_eq:
+S2N_BN_SYMBOL(bignum_eq):
 
 // Initialize the accumulated OR of differences to zero
 

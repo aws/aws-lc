@@ -32,9 +32,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_emontredc
-        .globl  _bignum_emontredc
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc)
         .text
         .balign 4
 
@@ -59,8 +60,7 @@
 #define a x11
 
 
-bignum_emontredc:
-_bignum_emontredc:
+S2N_BN_SYMBOL(bignum_emontredc):
 
 // If k = 0 the whole operation is trivial; note we also get a return of c = 0
 

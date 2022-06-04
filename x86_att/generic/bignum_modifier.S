@@ -30,9 +30,10 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = t
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_modifier
-        .globl  _bignum_modifier
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modifier)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modifier)
         .text
 
 #define k %rdi
@@ -71,8 +72,7 @@
 #define qshort %r8d
 
 
-bignum_modifier:
-_bignum_modifier:
+S2N_BN_SYMBOL(bignum_modifier):
 
 #if WINDOWS_ABI
         pushq   %rdi

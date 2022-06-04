@@ -24,9 +24,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_triple_p521_alt
-        .globl  _bignum_triple_p521_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_triple_p521_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_triple_p521_alt)
         .text
 
 #define z rdi
@@ -50,8 +52,7 @@
 #define a rax
 #define d rdx
 
-bignum_triple_p521_alt:
-_bignum_triple_p521_alt:
+S2N_BN_SYMBOL(bignum_triple_p521_alt):
 
 #if WINDOWS_ABI
         push    rdi

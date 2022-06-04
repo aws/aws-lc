@@ -21,9 +21,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr_p521
-        .globl  _bignum_sqr_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_p521)
         .text
         .balign 4
 
@@ -67,8 +68,7 @@
 #define d7 x9
 #define d8 x10
 
-bignum_sqr_p521:
-_bignum_sqr_p521:
+S2N_BN_SYMBOL(bignum_sqr_p521):
 
 // Save registers
 

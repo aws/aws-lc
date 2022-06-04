@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = y, X4 = m
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_modadd
-        .globl  _bignum_modadd
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modadd)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modadd)
         .text
         .balign 4
 
@@ -40,10 +41,9 @@
 #define c x9
 
 
-bignum_modadd:
-_bignum_modadd:
+S2N_BN_SYMBOL(bignum_modadd):
 
-        adds    j, k, xzr               // j = k and ZF = (k = 0)
+adds    j, k, xzr               // j = k and ZF = (k = 0)
         beq     end                     // if k = 0 do nothing
         adds    i, xzr, xzr             // i = 0 and CF = 0
 

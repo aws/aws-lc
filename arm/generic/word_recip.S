@@ -26,9 +26,10 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  word_recip
-        .globl  _word_recip
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_recip)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_recip)
         .text
         .balign 4
 
@@ -45,8 +46,7 @@
 #define d x4
 #define h x4
 
-word_recip:
-_word_recip:
+S2N_BN_SYMBOL(word_recip):
 
 // Scale the input down: b overestimates a/2^16 with b <= 2^48 and
 // x underestimates 2^64/b with b * x =~= 2^64, accurate to ~2 bits.

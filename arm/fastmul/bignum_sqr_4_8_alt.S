@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr_4_8_alt
-        .globl  _bignum_sqr_4_8_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_4_8_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_4_8_alt)
         .text
         .balign 4
 
@@ -51,8 +52,7 @@
 
 #define u7 h
 
-bignum_sqr_4_8_alt:
-_bignum_sqr_4_8_alt:
+S2N_BN_SYMBOL(bignum_sqr_4_8_alt):
 
 // Load all the elements, set up an initial window [u6;...u1] = [23;03;01]
 // and chain in the addition of 02 + 12 + 13 (no carry-out is possible).

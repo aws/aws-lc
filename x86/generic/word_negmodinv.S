@@ -28,13 +28,14 @@
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  word_negmodinv
-        .globl  _word_negmodinv
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_negmodinv)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(word_negmodinv)
         .text
 
-word_negmodinv:
-_word_negmodinv:
+S2N_BN_SYMBOL(word_negmodinv):
 
 #if WINDOWS_ABI
         push    rdi

@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = t
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_amontifier
-        .globl  _bignum_amontifier
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_amontifier)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_amontifier)
         .text
         .balign 4
 
@@ -53,8 +54,7 @@
 #define q x11
 
 
-bignum_amontifier:
-_bignum_amontifier:
+S2N_BN_SYMBOL(bignum_amontifier):
 
 // If k = 0 the whole operation is trivial
 

@@ -28,9 +28,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_negmodinv
-        .globl  _bignum_negmodinv
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_negmodinv)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_negmodinv)
         .text
         .balign 4
 
@@ -48,8 +49,7 @@
 
 
 
-bignum_negmodinv:
-_bignum_negmodinv:
+S2N_BN_SYMBOL(bignum_negmodinv):
 
 // If k = 0 do nothing
 

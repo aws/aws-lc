@@ -25,9 +25,10 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, X2 = n, returns X0
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_digit
-        .globl  _bignum_digit
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_digit)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_digit)
         .text
         .balign 4
 
@@ -40,8 +41,7 @@
 #define a x5
 
 
-bignum_digit:
-_bignum_digit:
+S2N_BN_SYMBOL(bignum_digit):
 
 // For length zero finish immediately (the return value in x0 is 0)
 

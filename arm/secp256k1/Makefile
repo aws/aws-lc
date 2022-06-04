@@ -53,7 +53,7 @@ OBJ = bignum_add_p256k1.o \
       bignum_tomont_p256k1.o \
       bignum_triple_p256k1.o
 
-%.o : %.S ; cpp $< | $(GAS) -o $@ -
+%.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
 default: $(OBJ);
 
