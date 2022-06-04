@@ -36,13 +36,16 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
+
         .intel_syntax noprefix
-        .globl  bignum_bigendian_6
-        .globl  _bignum_bigendian_6
-        .globl  bignum_frombebytes_6
-        .globl  _bignum_frombebytes_6
-        .globl  bignum_tobebytes_6
-        .globl  _bignum_tobebytes_6
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bigendian_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bigendian_6)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_frombebytes_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_frombebytes_6)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tobebytes_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tobebytes_6)
+
         .text
 
 #define z rdi
@@ -56,12 +59,9 @@
 // pairs (0-5, 1-4, 2-3) to allow x and z to point to the same buffer
 // without using more intermediate registers.
 
-bignum_bigendian_6:
-_bignum_bigendian_6:
-bignum_frombebytes_6:
-_bignum_frombebytes_6:
-bignum_tobebytes_6:
-_bignum_tobebytes_6:
+S2N_BN_SYMBOL(bignum_bigendian_6):
+S2N_BN_SYMBOL(bignum_frombebytes_6):
+S2N_BN_SYMBOL(bignum_tobebytes_6):
 
 #if WINDOWS_ABI
         push    rdi

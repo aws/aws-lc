@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_add_p384
-        .globl  _bignum_add_p384
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add_p384)
         .text
         .balign 4
 
@@ -41,8 +42,7 @@
 #define d5 x10
 
 
-bignum_add_p384:
-_bignum_add_p384:
+S2N_BN_SYMBOL(bignum_add_p384):
 
 // First just add the numbers as c + [d5; d4; d3; d2; d1; d0]
 
