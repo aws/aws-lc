@@ -22,9 +22,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_add_p521
-        .globl  _bignum_add_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add_p521)
         .text
         .balign 4
 
@@ -44,8 +45,7 @@
 #define d8 x13
 
 
-bignum_add_p521:
-_bignum_add_p521:
+S2N_BN_SYMBOL(bignum_add_p521):
 
 // Force carry-in to get s = [d8;d7;d6;d5;d4;d3;d2;d1;d0] = x + y + 1.
 // We ignore the carry-out, assuming inputs are reduced so there is none.
