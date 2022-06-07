@@ -1,6 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# If having trouble reaching proxy.golang.org, uncomment the following:
+#go env -w GOPROXY=direct
 
 if [ -v CODEBUILD_SRC_DIR ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
@@ -58,6 +60,36 @@ function run_cmake_custom_target {
 
 function build_and_test {
   run_build "$@"
+  run_cmake_custom_target 'run_tests'
+}
+
+function generate_symbols_file {
+  # read_symbols.go currently only support static libraries
+  if [ ! -f  "$BUILD_ROOT"/crypto/libcrypto.a ]; then
+    echo "Static library not found: ${BUILD_ROOT}/crypto/libcrypto.a"
+    print_system_and_dependency_information
+    exit 1
+  fi
+
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_crypto.txt "$BUILD_ROOT"/crypto/libcrypto.a
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
+
+  # The $BUILD_ROOT gets deleted on each run. symbols.txt must be placed elsewhere.
+  cat "$BUILD_ROOT"/symbols_crypto.txt  "$BUILD_ROOT"/symbols_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols.txt
+}
+
+
+function verify_symbols_prefixed {
+  nm -g "$BUILD_ROOT"/crypto/libcrypto.a | grep "aws_lc_1_1_0"
+  nm -g "$BUILD_ROOT"/ssl/libssl.a | grep "aws_lc_1_1_0"
+}
+
+
+function build_prefix_and_test {
+  run_build "$@"
+  generate_symbols_file
+  run_build "$@" "-DBORINGSSL_PREFIX=aws_lc_1_1_0" "-DBORINGSSL_PREFIX_SYMBOLS=${SRC_ROOT}/symbols.txt"
+  verify_symbols_prefixed
   run_cmake_custom_target 'run_tests'
 }
 
