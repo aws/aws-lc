@@ -39,7 +39,7 @@
 
 struct MD {
   // name is the name of the digest.
-  const char* name;
+  const char *name;
   // md_func is the digest to test.
   const EVP_MD *(*func)(void);
   // one_shot_func is the convenience one-shot version of the
@@ -47,17 +47,17 @@ struct MD {
   uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *);
 };
 
-static const MD md4 = { "MD4", &EVP_md4, nullptr };
-static const MD md5 = { "MD5", &EVP_md5, &MD5 };
-static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1 };
-static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224 };
-static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
-static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
-static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
-static const MD sha512_256 = { "SHA512-256", &EVP_sha512_256, &SHA512_256 };
-static const MD sha3_256 = { "SHA3-256", &EVP_sha3_256, &SHA3_256 };
-static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
-static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr };
+static const MD md4 = {"MD4", &EVP_md4, nullptr};
+static const MD md5 = {"MD5", &EVP_md5, &MD5};
+static const MD sha1 = {"SHA1", &EVP_sha1, &SHA1};
+static const MD sha224 = {"SHA224", &EVP_sha224, &SHA224};
+static const MD sha256 = {"SHA256", &EVP_sha256, &SHA256};
+static const MD sha384 = {"SHA384", &EVP_sha384, &SHA384};
+static const MD sha512 = {"SHA512", &EVP_sha512, &SHA512};
+static const MD sha512_256 = {"SHA512-256", &EVP_sha512_256, &SHA512_256};
+static const MD sha3_256 = {"SHA3-256", &EVP_sha3_256, &SHA3_256};
+static const MD md5_sha1 = {"MD5-SHA1", &EVP_md5_sha1, nullptr};
+static const MD blake2b256 = {"BLAKE2b-256", &EVP_blake2b256, nullptr};
 
 struct DigestTestVector {
   // md is the digest to test.
@@ -147,27 +147,36 @@ static const DigestTestVector kTestVectors[] = {
 
     // SHA3-256 tests checked with
     // https://emn178.github.io/online-tools/sha3_256.html
-    {sha3_256, "", 1, "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
-    {sha3_256, "123", 1, "a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67"},
-    {sha3_256, "abcdef", 1, "59890c1d183aa279505750422e6384ccb1499c793872d6f31bb3bcaa4bc9f5a5"},
-    {sha3_256, "a", 1, "80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b"},
-    {sha3_256, "abc", 3, "d334a32046b2c342b4e7eb17d7338155c51ef2c12bd5b238667cbb23218982d0"},
-    {sha3_256, "message digest", 1, "edcdb2069366e75243860c18c3a11465eca34bce6143d30c8665cefcfd32bffd"},
-    {sha3_256, "abcdefghijklmnopqrstuvwxyz", 1, "7cab2dc765e21b241dbc1c255ce620b29f527c6d5e7f5f843e56288f0d707521"},
-    {sha3_256, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 1, "a79d6a9da47f04a3b9a9323ec9991f2105d4c78a7bc7beeb103855a7a11dfb9f"},
-    {sha3_256, "1234567890", 8, "293e5ce4ce54ee71990ab06e511b7ccd62722b1beb414f5ff65c8274e0f5be1d"},
+    {sha3_256, "", 1,
+     "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
+    {sha3_256, "123", 1,
+     "a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67"},
+    {sha3_256, "abcdef", 1,
+     "59890c1d183aa279505750422e6384ccb1499c793872d6f31bb3bcaa4bc9f5a5"},
+    {sha3_256, "a", 1,
+     "80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b"},
+    {sha3_256, "abc", 3,
+     "d334a32046b2c342b4e7eb17d7338155c51ef2c12bd5b238667cbb23218982d0"},
+    {sha3_256, "message digest", 1,
+     "edcdb2069366e75243860c18c3a11465eca34bce6143d30c8665cefcfd32bffd"},
+    {sha3_256, "abcdefghijklmnopqrstuvwxyz", 1,
+     "7cab2dc765e21b241dbc1c255ce620b29f527c6d5e7f5f843e56288f0d707521"},
+    {sha3_256, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+     1, "a79d6a9da47f04a3b9a9323ec9991f2105d4c78a7bc7beeb103855a7a11dfb9f"},
+    {sha3_256, "1234567890", 8,
+     "293e5ce4ce54ee71990ab06e511b7ccd62722b1beb414f5ff65c8274e0f5be1d"},
 
     // MD5-SHA1 tests.
     {md5_sha1, "abc", 1,
-     "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d"},
+     "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89"
+     "d"},
 
     // BLAKE2b-256 tests.
     {blake2b256, "abc", 1,
      "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319"},
 };
 
-static void CompareDigest(const DigestTestVector *test,
-                          const uint8_t *digest,
+static void CompareDigest(const DigestTestVector *test, const uint8_t *digest,
                           size_t digest_len) {
   EXPECT_EQ(test->expected_hex,
             EncodeHex(bssl::MakeConstSpan(digest, digest_len)));
@@ -334,7 +343,7 @@ TEST(DigestTest, ASN1) {
 TEST(DigestTest, TransformBlocks) {
   uint8_t blocks[SHA256_CBLOCK * 10];
   for (size_t i = 0; i < sizeof(blocks); i++) {
-    blocks[i] = i*3;
+    blocks[i] = i * 3;
   }
 
   SHA256_CTX ctx1;

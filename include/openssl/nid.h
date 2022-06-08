@@ -2995,7 +2995,7 @@ extern "C" {
 
 #define SN_sha3_256 "SHA3_256"
 #define LN_sha3_256 "sha3-256"
-#define NID_sha3_256 676
+#define NID_sha3_256 964
 #define OBJ_sha3_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
 
 #define SN_sha384 "SHA384"

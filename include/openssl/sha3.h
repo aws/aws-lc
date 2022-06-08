@@ -9,19 +9,6 @@
 
 /* This header can move into provider when legacy support is removed */
 
-// File sha3.h is imported from OpenSSL.
-// https://github.com/openssl/openssl/blob/479b9adb88b9050186c1e9fc94879906f378b14b/include/internal/sha3.h
-
-// The naming of the functions is modified as: openssl_sha3_xxx --> SHA3_Xxx,
-// where xxx and Xxx function name with lower and upper case letter,
-// respectively.
-
-// The rest of the modifications are marked with comments and are detailed in
-// the Design Document.
-// https://quip-amazon.com/woerA5mYZ4Ch/Integration-and-Optimization-Design-Doc-SHA3-API-Interface-integration-into-AWS-LC-and-ARMv85-Graviton-3-ASM-optimizations
-
-
-
 #ifndef OSSL_INTERNAL_SHA3_H
 #define OSSL_INTERNAL_SHA3_H
 
