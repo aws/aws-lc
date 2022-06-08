@@ -62,10 +62,6 @@
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
 
-
-#File keccak1600-armv8.pl is imported from OpenSSL.
-#https://github.com/openssl/openssl/blob/479b9adb88b9050186c1e9fc94879906f378b14b/crypto/sha/asm/keccak1600-armv8.pl
-
 $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
 $flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
 
