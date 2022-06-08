@@ -63,6 +63,7 @@
 #include <openssl/md5.h>
 #include <openssl/nid.h>
 #include <openssl/sha.h>
+#include <openssl/sha3.h>
 
 #include "internal.h"
 #include "../delocate.h"
@@ -266,6 +267,33 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
   out->ctx_size = sizeof(SHA512_CTX);
 }
 
+//Create a new MVP_MD for SHA3_256
+//#Section 1.1 in DesignDoc
+//Created in acordance with https://github.com/awslabs/aws-lc/blob/8144c46592552f2359b1fd2b0fe9ac3cff2a4a2f/crypto/fipsmodule/digest/digests.c#L186
+static void sha3_256_init(EVP_MD_CTX *ctx) {
+  unsigned char ack = 6;
+  size_t size = 256;
+  CHECK(SHA3_Init(ctx->md_data, ack , size));
+}
+
+static void sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  CHECK(SHA3_Update(ctx->md_data, data, count));
+}
+
+static void sha3_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
+  CHECK(SHA3_Final(md, ctx->md_data));
+}
+
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_256) {
+  out->type = NID_sha3_256;
+  out->md_size = SHA3_256_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = sha3_256_init;
+  out->update = sha3_256_update;
+  out->final = sha3_256_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(KECCAK1600_CTX);
+}
 
 typedef struct {
   MD5_CTX md5;

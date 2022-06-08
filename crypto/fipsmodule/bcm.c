@@ -36,6 +36,7 @@
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
+#include <openssl/sha3.h>
 
 #include "../internal.h"
 
@@ -130,6 +131,8 @@
 #include "sha/sha1.c"
 #include "sha/sha256.c"
 #include "sha/sha512.c"
+#include "sha/sha3.c"
+#include "sha/keccak1600.c"
 #include "tls/kdf.c"
 
 

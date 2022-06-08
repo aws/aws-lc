@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/sha.h>
+#include <openssl/sha3.h>
 
 #include <gtest/gtest.h>
 
