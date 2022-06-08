@@ -31,6 +31,7 @@
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_triple_p256)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_triple_p256)
+        .text
 
 #define z %rdi
 #define x %rsi
