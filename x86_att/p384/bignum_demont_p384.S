@@ -31,6 +31,7 @@
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont_p384)
+        .text
 
 #define z %rdi
 #define x %rsi
