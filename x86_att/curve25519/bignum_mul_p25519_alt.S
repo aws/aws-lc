@@ -26,6 +26,7 @@
 
 #include "_internal_s2n_bignum.h"
 
+
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_p25519_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_p25519_alt)
         .text
