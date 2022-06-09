@@ -21,7 +21,9 @@
 // Standard x86-64 ABI: RDI = a, returns RAX
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
+
 #include "_internal_s2n_bignum.h"
+
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_bytereverse)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_bytereverse)
