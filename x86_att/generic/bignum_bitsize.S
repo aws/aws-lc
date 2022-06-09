@@ -30,6 +30,7 @@
 
 #include "_internal_s2n_bignum.h"
 
+
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bitsize)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bitsize)
         .text
