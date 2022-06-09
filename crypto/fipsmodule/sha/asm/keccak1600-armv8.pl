@@ -84,7 +84,6 @@ $code.=<<___;
 #include <openssl/arm_arch.h>
 
 .text
-
 .align 8	// strategic alignment and padding that allows to use
 		// address value as loop termination condition...
 	.quad	0,0,0,0,0,0,0,0
