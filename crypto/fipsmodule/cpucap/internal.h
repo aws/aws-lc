@@ -128,8 +128,12 @@ OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
 
 extern uint32_t OPENSSL_armcap_P;
 
-// CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
-// this is known statically, it is a constant inline function.
+// CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit.
+// If this is known statically, it is a constant inline function.
+// Otherwise, the capability is checked at runtime by checking the corresponding
+// bit in |OPENSSL_armcap_P|. This is also the same for
+// |CRYPTO_is_ARMv8_AES_capable| and |CRYPTO_is_ARMv8_PMULL_capable|
+// for checking the support for AES and PMULL instructions, respectively.
 OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON)
   return 1;
@@ -139,6 +143,7 @@ OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
   return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
 #endif
 }
+
 OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_AES)
   return 1;
@@ -148,6 +153,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_AES) != 0;
 #endif
 }
+
 OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_AES)
   return 1;

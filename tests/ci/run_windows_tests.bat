@@ -11,7 +11,7 @@ SET
 @rem Run the same builds as run_posix_tests.sh
 @rem Check which version of MSVC we're building with: remove 14.0 from the path to the compiler and check if it matches the
 @rem original string. MSVC 14 has an issue with a missing DLL that causes the debug unit tests to fail
-@rem NOTE: The static build is temporarly broken on Windows so we skip the tests for it.
+@rem NOTE: The static build is currently broken on Windows so we skip the tests for it.
 :: if x%MSVC_PATH:14.0=%==x%MSVC_PATH% call :build_and_test Debug "" || goto error
 :: call :build_and_test Release "" || goto error
 :: call :build_and_test Release "-DOPENSSL_SMALL=1" || goto error
