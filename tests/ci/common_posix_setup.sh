@@ -96,3 +96,62 @@ function build_and_run_minimal_test {
   run_build "$@"
   run_cmake_custom_target 'run_minimal_tests'
 }
+
+function print_system_and_dependency_information {
+  if command -v cmake &> /dev/null
+  then
+    echo ""
+    echo "CMake version:"
+    cmake --version
+  fi
+  if command -v go &> /dev/null
+  then
+    echo ""
+    echo "Go version:"
+    go version
+  fi
+  if command -v perl &> /dev/null
+  then
+    echo ""
+    echo "Perl version:"
+    perl --version
+  fi
+  # Ninja executable names are not uniform
+  if command -v ninja-build &> /dev/null
+  then
+    echo ""
+    echo "Ninja version"
+    ninja-build --version
+  elif command -v ninja &> /dev/null
+  then
+    echo ""
+    echo "Ninja version"
+    ninja --version
+  fi
+  if command -v gcc &> /dev/null
+  then
+    echo ""
+    echo "GCC version:"
+    gcc --version
+    echo ""
+    echo "G++ version:"
+    g++ --version
+  elif command -v clang &> /dev/null
+  then
+    echo ""
+    echo "Clang version:"
+    clang --version
+  fi
+  if command -v make &> /dev/null
+  then
+    echo ""
+    echo "Make version:"
+    make --version
+  fi
+  echo ""
+  echo "Operating system information:"
+  uname -a
+  echo ""
+  echo "Environment variables"
+  env
+}

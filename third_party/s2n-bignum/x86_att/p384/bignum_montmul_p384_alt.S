@@ -25,11 +25,14 @@
 // the "usual" case x < p_384 and y < p_384).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
+// Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // -----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_montmul_p384_alt
-        .globl  _bignum_montmul_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p384_alt)
+
         .text
 
 #define z %rdi
@@ -92,32 +95,39 @@
 
 #define montredc(d7,d6,d5,d4,d3,d2,d1,d0)                               \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                movq    d0, %rbx ;                                        \
-                shlq    $32, %rbx ;                                        \
-                addq    d0, %rbx ;                                        \
+        movq    d0, %rbx ;                                        \
+        shlq    $32, %rbx ;                                        \
+        addq    d0, %rbx ;                                        \
 /* Construct [%rbp;%rdx;%rax;-] = (2^384 - p_384) * w */                   \
 /* We know the lowest word will cancel so we can re-use d0 as a temp */ \
-                xorl    %ebp, %ebp ;                                       \
-                movq    $0xffffffff00000001, %rax ;                        \
-                mulq    %rbx;                                            \
-                movq    %rdx, d0 ;                                        \
-                movq    $0x00000000ffffffff, %rax ;                        \
-                mulq    %rbx;                                            \
-                addq    d0, %rax ;                                        \
-                adcq    %rbx, %rdx ;                                       \
-                adcl    %ebp, %ebp ;                                       \
+        xorl    %ebp, %ebp ;                                       \
+        movq    $0xffffffff00000001, %rax ;                        \
+        mulq    %rbx;                                            \
+        movq    %rdx, d0 ;                                        \
+        movq    $0x00000000ffffffff, %rax ;                        \
+        mulq    %rbx;                                            \
+        addq    d0, %rax ;                                        \
+        adcq    %rbx, %rdx ;                                       \
+        adcl    %ebp, %ebp ;                                       \
 /*  Now subtract that and add 2^384 * w */                              \
-                subq    %rax, d1 ;                                        \
-                sbbq    %rdx, d2 ;                                        \
-                sbbq    %rbp, d3 ;                                        \
-                sbbq    $0, d4 ;                                          \
-                sbbq    $0, d5 ;                                          \
-                sbbq    $0, %rbx ;                                         \
-                addq    %rbx, d6 ;                                        \
-                adcq    $0, d7
+        subq    %rax, d1 ;                                        \
+        sbbq    %rdx, d2 ;                                        \
+        sbbq    %rbp, d3 ;                                        \
+        sbbq    $0, d4 ;                                          \
+        sbbq    $0, d5 ;                                          \
+        sbbq    $0, %rbx ;                                         \
+        addq    %rbx, d6 ;                                        \
+        adcq    $0, d7
 
-bignum_montmul_p384_alt:
-_bignum_montmul_p384_alt:
+S2N_BN_SYMBOL(bignum_montmul_p384_alt):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Save more registers to play with
 
@@ -301,6 +311,10 @@ _bignum_montmul_p384_alt:
         popq    %rbp
         popq    %rbx
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

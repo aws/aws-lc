@@ -20,11 +20,14 @@
 //    extern uint64_t bignum_nonzero_6(uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = x, returns RAX
+// Microsoft x64 ABI:   RCX = x, returns RAX
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_nonzero_6
-        .globl  _bignum_nonzero_6
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_nonzero_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero_6)
+
         .text
 
 #define x %rdi
@@ -34,25 +37,34 @@
 
 
 
-bignum_nonzero_6:
-_bignum_nonzero_6:
+S2N_BN_SYMBOL(bignum_nonzero_6):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+#endif
 
 // Generate a = an OR of all the words in the bignum
 
-                movq    (x), a
-                movq    8(x), d
-                orq     16(x), a
-                orq     24(x), d
-                orq     32(x), a
-                orq     40(x), d
-                orq     d, a
+        movq    (x), a
+        movq    8(x), d
+        orq     16(x), a
+        orq     24(x), d
+        orq     32(x), a
+        orq     40(x), d
+        orq     d, a
 
 // Set a standard C condition based on whether a is nonzero
 
-                movl    $1, dshort
-                cmovnzq d, a
+        movl    $1, dshort
+        cmovnzq d, a
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

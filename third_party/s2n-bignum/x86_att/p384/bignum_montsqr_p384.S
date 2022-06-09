@@ -24,11 +24,14 @@
 // guaranteed in particular if x < p_384 initially (the "intended" case).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_montsqr_p384
-        .globl  _bignum_montsqr_p384
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr_p384)
+
         .text
 
 #define z %rdi
@@ -68,31 +71,37 @@
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                movq    d0, %rdx ;                                        \
-                shlq    $32, %rdx ;                                        \
-                addq    d0, %rdx ;                                        \
+        movq    d0, %rdx ;                                        \
+        shlq    $32, %rdx ;                                        \
+        addq    d0, %rdx ;                                        \
 /* Construct [%rbx;d0;%rax;-] = (2^384 - p_384) * w            */         \
 /* We know the lowest word will cancel so we can re-use d0   */         \
 /* and %rbx as temps.                                         */         \
-                movq    $0xffffffff00000001, %rax ;                        \
-                mulxq   %rax, d0, %rax ;                                   \
-                movl    $0x00000000ffffffff, %ebx ;                        \
-                mulxq   %rbx, %rbx, d0 ;                                   \
-                addq    %rbx, %rax ;                                       \
-                adcq    %rdx, d0 ;                                        \
-                movl    $0, %ebx ;                                         \
-                adcq    %rbx, %rbx ;                                       \
+        movq    $0xffffffff00000001, %rax ;                        \
+        mulxq   %rax, d0, %rax ;                                   \
+        movl    $0x00000000ffffffff, %ebx ;                        \
+        mulxq   %rbx, %rbx, d0 ;                                   \
+        addq    %rbx, %rax ;                                       \
+        adcq    %rdx, d0 ;                                        \
+        movl    $0, %ebx ;                                         \
+        adcq    %rbx, %rbx ;                                       \
 /* Now subtract that and add 2^384 * w                       */         \
-                subq    %rax, d1 ;                                        \
-                sbbq    d0, d2 ;                                         \
-                sbbq    %rbx, d3 ;                                        \
-                sbbq    $0, d4 ;                                          \
-                sbbq    $0, d5 ;                                          \
-                movq    %rdx, d6 ;                                        \
-                sbbq    $0, d6
+        subq    %rax, d1 ;                                        \
+        sbbq    d0, d2 ;                                         \
+        sbbq    %rbx, d3 ;                                        \
+        sbbq    $0, d4 ;                                          \
+        sbbq    $0, d5 ;                                          \
+        movq    %rdx, d6 ;                                        \
+        sbbq    $0, d6
 
-bignum_montsqr_p384:
-_bignum_montsqr_p384:
+S2N_BN_SYMBOL(bignum_montsqr_p384):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -281,6 +290,10 @@ _bignum_montsqr_p384:
         popq    %r12
         popq    %rbp
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

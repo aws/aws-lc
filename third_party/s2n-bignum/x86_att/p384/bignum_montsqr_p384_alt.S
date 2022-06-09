@@ -24,11 +24,14 @@
 // guaranteed in particular if x < p_384 initially (the "intended" case).
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_montsqr_p384_alt
-        .globl  _bignum_montsqr_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr_p384_alt)
+
         .text
 
 #define z %rdi
@@ -89,32 +92,38 @@
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-                movq    d0, %rbx ;                                        \
-                shlq    $32, %rbx ;                                        \
-                addq    d0, %rbx ;                                        \
+        movq    d0, %rbx ;                                        \
+        shlq    $32, %rbx ;                                        \
+        addq    d0, %rbx ;                                        \
 /* Construct [%rax;%rdx;d0;-] = (2^384 - p_384) * w            */         \
 /* We know the lowest word will cancel so we can re-use d0   */         \
 /* and %rbx as temps.                                         */         \
-                movq    $0xffffffff00000001, %rax ;                        \
-                mulq    %rbx;                                            \
-                movq    %rdx, d0 ;                                        \
-                movq    $0x00000000ffffffff, %rax ;                        \
-                mulq    %rbx;                                            \
-                addq    %rax, d0 ;                                        \
-                movl    $0, %eax ;                                         \
-                adcq    %rbx, %rdx ;                                       \
-                adcl    %eax, %eax ;                                       \
+        movq    $0xffffffff00000001, %rax ;                        \
+        mulq    %rbx;                                            \
+        movq    %rdx, d0 ;                                        \
+        movq    $0x00000000ffffffff, %rax ;                        \
+        mulq    %rbx;                                            \
+        addq    %rax, d0 ;                                        \
+        movl    $0, %eax ;                                         \
+        adcq    %rbx, %rdx ;                                       \
+        adcl    %eax, %eax ;                                       \
 /* Now subtract that and add 2^384 * w                       */         \
-                subq    d0, d1 ;                                         \
-                sbbq    %rdx, d2 ;                                        \
-                sbbq    %rax, d3 ;                                        \
-                sbbq    $0, d4 ;                                          \
-                sbbq    $0, d5 ;                                          \
-                movq    %rbx, d6 ;                                        \
-                sbbq    $0, d6
+        subq    d0, d1 ;                                         \
+        sbbq    %rdx, d2 ;                                        \
+        sbbq    %rax, d3 ;                                        \
+        sbbq    $0, d4 ;                                          \
+        sbbq    $0, d5 ;                                          \
+        movq    %rbx, d6 ;                                        \
+        sbbq    $0, d6
 
-bignum_montsqr_p384_alt:
-_bignum_montsqr_p384_alt:
+S2N_BN_SYMBOL(bignum_montsqr_p384_alt):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with
 
@@ -326,6 +335,10 @@ _bignum_montsqr_p384_alt:
         popq    %r12
         popq    %rbp
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

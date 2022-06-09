@@ -78,6 +78,7 @@ if(ARCH STREQUAL "aarch64")
     armv8-mont.${ASM_EXT}
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
+    md5-armv8.${ASM_EXT}
     p256-armv8-asm.${ASM_EXT}
     p256_beeu-armv8-asm.${ASM_EXT}
     sha1-armv8.${ASM_EXT}
@@ -116,6 +117,7 @@ if(PERL_EXECUTABLE)
   perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
   perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
   perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
+  perlasm(md5-armv8.${ASM_EXT} md5/asm/md5-armv8.pl)
   perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
   perlasm(p256-x86_64-asm.${ASM_EXT} ec/asm/p256-x86_64-asm.pl)
   perlasm(p256_beeu-x86_64-asm.${ASM_EXT} ec/asm/p256_beeu-x86_64-asm.pl)
@@ -155,6 +157,8 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
   else()
     set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm)
   endif()
+
+  set(S2N_BIGNUM_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/include)
 
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
@@ -228,7 +232,7 @@ function(s2n_asm_cpreprocess dest src)
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${PROJECT_SOURCE_DIR}/include| tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR}| tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .

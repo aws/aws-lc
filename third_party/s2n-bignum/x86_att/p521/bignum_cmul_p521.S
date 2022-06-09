@@ -22,11 +22,14 @@
 //     (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_cmul_p521
-        .globl  _bignum_cmul_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p521)
+
         .text
 
 #define z %rdi
@@ -60,41 +63,48 @@
 
 #define h d9
 
-bignum_cmul_p521:
-_bignum_cmul_p521:
+S2N_BN_SYMBOL(bignum_cmul_p521):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // Save additional registers to use
 
-                pushq   %rbx
-                pushq   %rbp
-                pushq   %r12
-                pushq   %r13
+        pushq   %rbx
+        pushq   %rbp
+        pushq   %r12
+        pushq   %r13
 
 // Shuffle inputs (since we want the multiplier in %rdx)
 
-                movq    %rdx, x
-                movq    %rsi, c
+        movq    %rdx, x
+        movq    %rsi, c
 
 // Multiply as [d9; ...; d0] = c * x.
 
-                mulxq   (x), d0, d1
-                mulxq   8(x), a, d2
-                addq    a, d1
-                mulxq   16(x), a, d3
-                adcq    a, d2
-                mulxq   24(x), a, d4
-                adcq    a, d3
-                mulxq   32(x), a, d5
-                adcq    a, d4
-                mulxq   40(x), a, d6
-                adcq    a, d5
-                mulxq   48(x), a, d7
-                adcq    a, d6
-                mulxq   56(x), a, d8
-                adcq    a, d7
-                mulxq   64(x), a, d9
-                adcq    a, d8
-                adcq    $0, d9
+        mulxq   (x), d0, d1
+        mulxq   8(x), a, d2
+        addq    a, d1
+        mulxq   16(x), a, d3
+        adcq    a, d2
+        mulxq   24(x), a, d4
+        adcq    a, d3
+        mulxq   32(x), a, d5
+        adcq    a, d4
+        mulxq   40(x), a, d6
+        adcq    a, d5
+        mulxq   48(x), a, d7
+        adcq    a, d6
+        mulxq   56(x), a, d8
+        adcq    a, d7
+        mulxq   64(x), a, d9
+        adcq    a, d8
+        adcq    $0, d9
 
 // Create an AND "dd" of digits d7,...,d1, a computation we hope will
 // get nicely interleaved with the multiplication chain above.
@@ -102,19 +112,19 @@ _bignum_cmul_p521:
 // bunch it up here since AND destroys the flags and we overwrite the
 // register used as a stage temporary variable for the multiplications.
 
-                movq    d1, dd
-                andq    d2, dd
-                andq    d3, dd
-                andq    d4, dd
-                andq    d5, dd
-                andq    d6, dd
-                andq    d7, dd
+        movq    d1, dd
+        andq    d2, dd
+        andq    d3, dd
+        andq    d4, dd
+        andq    d5, dd
+        andq    d6, dd
+        andq    d7, dd
 
 // Extract the high part h==d9 and mask off the low part l = [d8;d7;...;d0]
 // but stuff d8 with 1 bits at the left to ease a comparison below
 
-                shldq   $55, d8, h
-                orq     $~0x1FF, d8
+        shldq   $55, d8, h
+        orq     $~0x1FF, d8
 
 // Decide whether h + l >= p_521 <=> h + l + 1 >= 2^521. Since this can only
 // happen if digits d7,...d1 are all 1s, we use the AND of them "dd" to
@@ -123,46 +133,50 @@ _bignum_cmul_p521:
 // Since x was assumed reduced, h cannot be maximal, so the "lea" is safe,
 // i.e. does not carry or wrap round.
 
-                leaq    1(h), c
-                addq    d0, c
-                movl    $0, cshort
-                adcq    c, dd
-                movq    d8, a
-                adcq    c, a
+        leaq    1(h), c
+        addq    d0, c
+        movl    $0, cshort
+        adcq    c, dd
+        movq    d8, a
+        adcq    c, a
 
 // Now if CF is set we want (h + l) - p_521 = (h + l + 1) - 2^521
 // while otherwise we want just h + l. So mask h + l + CF to 521 bits.
 // This masking also gets rid of the stuffing with 1s we did above.
 // Write back the digits as they are generated.
 
-                adcq    h, d0
-                movq    d0, (z)
-                adcq    c, d1
-                movq    d1, 8(z)
-                adcq    c, d2
-                movq    d2, 16(z)
-                adcq    c, d3
-                movq    d3, 24(z)
-                adcq    c, d4
-                movq    d4, 32(z)
-                adcq    c, d5
-                movq    d5, 40(z)
-                adcq    c, d6
-                movq    d6, 48(z)
-                adcq    c, d7
-                movq    d7, 56(z)
-                adcq    c, d8
-                andq    $0x1FF, d8
-                movq    d8, 64(z)
+        adcq    h, d0
+        movq    d0, (z)
+        adcq    c, d1
+        movq    d1, 8(z)
+        adcq    c, d2
+        movq    d2, 16(z)
+        adcq    c, d3
+        movq    d3, 24(z)
+        adcq    c, d4
+        movq    d4, 32(z)
+        adcq    c, d5
+        movq    d5, 40(z)
+        adcq    c, d6
+        movq    d6, 48(z)
+        adcq    c, d7
+        movq    d7, 56(z)
+        adcq    c, d8
+        andq    $0x1FF, d8
+        movq    d8, 64(z)
 
 // Restore registers and return
 
-                popq    %r13
-                popq    %r12
-                popq    %rbp
-                popq    %rbx
+        popq    %r13
+        popq    %r12
+        popq    %rbp
+        popq    %rbx
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

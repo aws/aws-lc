@@ -33,15 +33,18 @@
 // word order, this is simply byte reversal and is implemented as such.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_bigendian_6
-        .globl  _bignum_bigendian_6
-        .globl  bignum_frombebytes_6
-        .globl  _bignum_frombebytes_6
-        .globl  bignum_tobebytes_6
-        .globl  _bignum_tobebytes_6
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bigendian_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bigendian_6)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_frombebytes_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_frombebytes_6)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tobebytes_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tobebytes_6)
+
         .text
 
 #define z %rdi
@@ -55,41 +58,49 @@
 // pairs (0-5, 1-4, 2-3) to allow x and z to point to the same buffer
 // without using more intermediate registers.
 
-bignum_bigendian_6:
-_bignum_bigendian_6:
-bignum_frombebytes_6:
-_bignum_frombebytes_6:
-bignum_tobebytes_6:
-_bignum_tobebytes_6:
+S2N_BN_SYMBOL(bignum_bigendian_6):
+S2N_BN_SYMBOL(bignum_frombebytes_6):
+S2N_BN_SYMBOL(bignum_tobebytes_6):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // 0 and 5 words
 
-                movq    (x), a
-                movq    40(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 40(z)
-                movq    b, (z)
+        movq    (x), a
+        movq    40(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 40(z)
+        movq    b, (z)
 
 // 1 and 4 words
 
-                movq    8(x), a
-                movq    32(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 32(z)
-                movq    b, 8(z)
+        movq    8(x), a
+        movq    32(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 32(z)
+        movq    b, 8(z)
 
 // 2 and 3 words
 
-                movq    16(x), a
-                movq    24(x), b
-                bswapq  a
-                bswapq  b
-                movq    a, 24(z)
-                movq    b, 16(z)
+        movq    16(x), a
+        movq    24(x), b
+        bswapq  a
+        bswapq  b
+        movq    a, 24(z)
+        movq    b, 16(z)
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

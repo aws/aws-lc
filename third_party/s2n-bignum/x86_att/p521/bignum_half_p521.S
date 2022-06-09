@@ -21,11 +21,14 @@
 //     (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_half_p521
-        .globl  _bignum_half_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_half_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_half_p521)
+
         .text
 
 #define z %rdi
@@ -47,54 +50,64 @@
 
 
 
-bignum_half_p521:
-_bignum_half_p521:
+S2N_BN_SYMBOL(bignum_half_p521):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // We do a 521-bit rotation one bit right, since 2^521 == 1 (mod p_521)
 
-                movq    (x), d0
-                movl    $1, ashort
-                andq    d0, a
+        movq    (x), d0
+        movl    $1, ashort
+        andq    d0, a
 
-                movq    8(x), d1
-                shrdq   $1, d1, d0
-                movq    d0, (z)
+        movq    8(x), d1
+        shrdq   $1, d1, d0
+        movq    d0, (z)
 
-                movq    16(x), d2
-                shrdq   $1, d2, d1
-                movq    d1, 8(z)
+        movq    16(x), d2
+        shrdq   $1, d2, d1
+        movq    d1, 8(z)
 
-                movq    24(x), d3
-                shrdq   $1, d3, d2
-                movq    d2, 16(z)
+        movq    24(x), d3
+        shrdq   $1, d3, d2
+        movq    d2, 16(z)
 
-                movq    32(x), d4
-                shrdq   $1, d4, d3
-                movq    d3, 24(z)
+        movq    32(x), d4
+        shrdq   $1, d4, d3
+        movq    d3, 24(z)
 
-                movq    40(x), d5
-                shrdq   $1, d5, d4
-                movq    d4, 32(z)
+        movq    40(x), d5
+        shrdq   $1, d5, d4
+        movq    d4, 32(z)
 
-                movq    48(x), d6
-                shrdq   $1, d6, d5
-                movq    d5, 40(z)
+        movq    48(x), d6
+        shrdq   $1, d6, d5
+        movq    d5, 40(z)
 
-                movq    56(x), d7
-                shrdq   $1, d7, d6
-                movq    d6, 48(z)
+        movq    56(x), d7
+        shrdq   $1, d7, d6
+        movq    d6, 48(z)
 
-                movq    64(x), d8
-                shrdq   $1, d8, d7
-                movq    d7, 56(z)
+        movq    64(x), d8
+        shrdq   $1, d8, d7
+        movq    d7, 56(z)
 
-                shlq    $55, d8
-                shrdq   $56, a, d8
-                movq    d8, 64(z)
+        shlq    $55, d8
+        shrdq   $56, a, d8
+        movq    d8, 64(z)
 
 // Return
 
-                ret
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

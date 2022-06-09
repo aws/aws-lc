@@ -21,11 +21,14 @@
 //     (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_p521_9
-        .globl  _bignum_mod_p521_9
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p521_9)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p521_9)
+
         .text
 
 #define z %rdi
@@ -47,8 +50,14 @@
 
 #define d7 %rsi
 
-bignum_mod_p521_9:
-_bignum_mod_p521_9:
+S2N_BN_SYMBOL(bignum_mod_p521_9):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save one more register
 
@@ -111,6 +120,10 @@ _bignum_mod_p521_9:
 // Restore register
 
         popq    %rbx
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)
