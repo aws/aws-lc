@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# This CMakeLists.txt file defines the rules to build libjitterentropy.a.
+# This CMakeLists.txt file defines the rules to build Jitter entropy lib.
 # The compilation flags that are used are taken from Makefile in:
 #   https://github.com/smuellerDD/jitterentropy-library,
 # the same as the source code.
@@ -22,7 +22,7 @@ else()
     set(JITTER_COMPILE_FLAGS "-DAWSLC -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -fPIC -O0 -fwrapv -Wconversion")
 endif()
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS ${JITTER_COMPILE_FLAGS})
-add_library(jitterentropy STATIC ${JITTER_SOURCES})
+add_library(jitterentropy OBJECT ${JITTER_SOURCES})
 
 if(NOT BUILD_SHARED_LIBS)
     install(TARGETS jitterentropy
