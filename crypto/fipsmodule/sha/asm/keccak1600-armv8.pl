@@ -66,17 +66,21 @@
 #File keccak1600-armv8.pl is imported from OpenSSL.
 #https://github.com/openssl/openssl/blob/479b9adb88b9050186c1e9fc94879906f378b14b/crypto/sha/asm/keccak1600-armv8.pl
 
-$output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
-$flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
-
-$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
-( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
-die "can't locate arm-xlate.pl";
-
-open OUT,"| \"$^X\" $xlate $flavour \"$output\""
-    or die "can't call $xlate: $!";
-*STDOUT=*OUT;
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+$flavour = shift;
+$output = shift;
+if ($flavour && $flavour ne "void") {
+    $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
+    ( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
+    ( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
+    die "can't locate arm-xlate.pl";
+    open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
+    *STDOUT=*OUT;
+} else {
+    open OUT,">$output";
+    *STDOUT=*OUT;
+}
 
 my @rhotates = ([  0,  1, 62, 28, 27 ],
                 [ 36, 44,  6, 55, 20 ],
