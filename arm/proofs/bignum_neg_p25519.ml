@@ -50,7 +50,7 @@ let BIGNUM_NEG_P25519_EXEC = ARM_MK_EXEC_RULE bignum_neg_p25519_mc;;
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
 
-let p_25519 = new_definition `p_25519 = 2 EXP 255 - 19`;;
+let p_25519 = new_definition `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
 
 let BIGNUM_NEG_P25519_CORRECT = time prove
  (`!z x n pc.

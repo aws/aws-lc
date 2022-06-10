@@ -517,6 +517,16 @@ let (ARM_BIGSTEP_TAC:thm->string->tactic) =
 (* Simulate a subroutine, instantiating it from the state.                   *)
 (* ------------------------------------------------------------------------- *)
 
+let TWEAK_PC_OFFSET =
+  let conv =
+   GEN_REWRITE_CONV (RAND_CONV o RAND_CONV) [ARITH_RULE `pc = pc + 0`]
+  and tweakneeded tm =
+    match tm with
+      Comb(Comb(Const("aligned_bytes_loaded",_),Var(_,_)),
+           Comb(Const("word",_),Var("pc",_))) -> true
+    | _ -> false in
+  CONV_RULE(ONCE_DEPTH_CONV(conv o check tweakneeded));;
+
 let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
   let subimpth =
     let th = MATCH_MP aligned_bytes_loaded_of_append3
@@ -533,7 +543,7 @@ let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
     let svar = mk_var(sname,`:armstate`)
     and svar0 = mk_var("s",`:armstate`) in
     let ilist = map (vsubst[svar,svar0]) ilist0 in
-    MP_TAC(SPECL ilist subth) THEN
+    MP_TAC(TWEAK_PC_OFFSET(SPECL ilist subth)) THEN
     ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
     REWRITE_TAC[ALLPAIRS; ALL; PAIRWISE; NONOVERLAPPING_CLAUSES] THEN
     ANTS_TAC THENL
@@ -557,6 +567,71 @@ let ARM_SUBROUTINE_SIM_ABBREV_TAC tupper ilist0 =
         (vsubst[svar,svar0;svar',svar0'] comp0))) in
     (tac n THEN
      ABBREV_TAC(mk_eq(mk_var(abn,type_of comp1),comp1))) (asl,w);;
+
+(* ------------------------------------------------------------------------- *)
+(* Simulate a macro, generating subgoal from a template                      *)
+(* ------------------------------------------------------------------------- *)
+
+let ARM_MACRO_SIM_ABBREV_TAC =
+  let dest_pc tm =
+    match tm with
+      Comb(Const("word",_),Var("pc",_)) -> 0
+    | Comb(Const("word",_),Comb(Comb(Const("+",_),Var("pc",_)),n)) ->
+          dest_small_numeral n
+    | _ -> failwith "dest_pc"
+  and mk_pc =
+    let pat0 = `word pc:int64`
+    and patn = `word(pc + n):int64`
+    and pan = `n:num` in
+    fun n ->  if n = 0 then pat0
+              else vsubst[mk_small_numeral n,pan] patn
+  and grab_dest =
+    let pat = `read (memory :> bytes(p,8 * n))` in
+    fun th ->
+      let cortm = rand(body(lhand(repeat (snd o dest_imp) (concl th)))) in
+      hd(find_terms (can (term_match [] pat)) cortm) in
+  let get_statenpc =
+    let fils = can (term_match [] `read PC s = word n`) o concl o snd in
+    fun asl ->
+      let rips = concl(snd(find fils asl)) in
+      rand(lhand rips),dest_pc(rand rips) in
+  let simprule =
+    CONV_RULE (ONCE_DEPTH_CONV NORMALIZE_ADD_SUBTRACT_WORD_CONV) o
+    GEN_REWRITE_RULE ONCE_DEPTH_CONV
+     [WORD_RULE `word_add z (word 0):int64 = z`] in
+  fun mc ->
+    let execth = ARM_MK_EXEC_RULE mc in
+    fun codelen localvars template core_tac prep ilist ->
+      let main_tac (asl,w) =
+        let svp,pc = get_statenpc asl in
+        let gv = genvar(type_of svp) in
+        let n = int_of_string(implode(tl(explode(fst(dest_var svp))))) + 1 in
+        let svn = mk_var("s"^string_of_int n,`:armstate`) in
+        let pc' = pc + 4 * codelen in
+        let svs = svp::(mk_pc pc)::(mk_pc pc')::
+                  end_itlist (@) (map (C assoc localvars) ilist) in
+        let rawsg = simprule(SPECL svs (ASSUME template)) in
+        let insig = PURE_REWRITE_RULE
+         (filter (is_eq o concl) (map snd asl)) rawsg in
+        let subg = mk_forall(gv,vsubst[gv,svp] (concl(simprule insig))) in
+        let avoids = itlist (union o thm_frees o snd) asl (frees w) in
+        let abv = mk_primed_var avoids (mk_var(hd ilist,`:num`)) in
+        (SUBGOAL_THEN subg MP_TAC THENL
+         [X_GEN_TAC gv THEN POP_ASSUM_LIST(K ALL_TAC) THEN
+          REPEAT(GEN_TAC THEN DISCH_THEN(K ALL_TAC o SYM)) THEN
+          core_tac THEN NO_TAC;
+          ALL_TAC] THEN
+         DISCH_THEN(MP_TAC o SPEC svp) THEN
+         GEN_REWRITE_TAC (REPEATC o LAND_CONV) [FORALL_UNWIND_THM1] THEN
+         DISCH_THEN(fun subth ->
+          let dest = grab_dest subth in
+          ARM_SUBROUTINE_SIM_TAC(mc,execth,0,mc,subth) [] n THEN
+          ABBREV_TAC (mk_eq(abv,mk_comb(dest,svn)))))
+        (asl,w) in
+     fun (asl,w) ->
+        let sv,_ = get_statenpc asl in
+        let n = int_of_string(implode(tl(explode(fst(dest_var sv))))) in
+        (ARM_STEPS_TAC execth ((n+1)--(n+prep)) THEN main_tac) (asl,w);;
 
 (* ------------------------------------------------------------------------- *)
 (* Fix up call/return boilerplate given core correctness.                    *)

@@ -2517,6 +2517,32 @@ let (NONOVERLAPPING_TAC:tactic) =
         with Failure _ -> TAC_PROOF (g, SIMPLE_ARITH_TAC) in
       cache := th::!cache; th) in
 
+  let num_ty = `:num`
+  and ap_tm = `a':num`
+  and a1_tm = `a1:num`
+  and a2_tm = `a2:num`
+  and ai_tm = `a:int64`
+  and a_tm = `a:num`
+  and bp_tm = `b':num`
+  and bi_tm = `b:int64`
+  and b_tm = `b:num`
+  and i1_tm = `i1:num`
+  and i2_tm = `i2:num`
+  and mle_tm = `m <= 2 EXP 64`
+  and m_tm = `m:num`
+  and n1_tm = `n1:num`
+  and n2_tm = `n2:num`
+  and n_tm = `n:num`
+  and nx_tm = `nx:num`
+  and ny_tm = `ny:num`
+  and ppp_tm = `p':num#num`
+  and p1_tm = `p1:num#num`
+  and p2_tm = `p2:num#num`
+  and pp_tm = `p:num#num`
+  and p_tm = `p:num`
+  and x_tm = `x:int64`
+  and y_tm = `y:int64` in
+
   let prove_le =
     let ADD_0_CONV = REWRITE_CONV [
       (EQT_ELIM o REWRITE_CONV [ADD_CLAUSES]) `x + 0 = x /\ 0 + x = x`]
@@ -2525,7 +2551,9 @@ let (NONOVERLAPPING_TAC:tactic) =
       ARITH_RULE `1 <= n <=> 0 < n`]
     and MULT_ASSOC4 = (EQT_ELIM o REWRITE_CONV [MULT_AC])
       `(a * b) * (c * d):num = (a * c) * (b * d)`
-    and MULT_1 = (EQT_ELIM o REWRITE_CONV [MULT_CLAUSES]) `x = 1 * x` in
+    and MULT_1 = (EQT_ELIM o REWRITE_CONV [MULT_CLAUSES]) `x = 1 * x`
+    and mul_tm = `( * ):num->num->num`
+    and true_tm = `T` in
     let FACTOR_CONV t =
       let rec factor = function
       | Comb(Comb(Const("<=",_),t1),t2) -> gcd (factor t1) (factor t2)
@@ -2549,8 +2577,8 @@ let (NONOVERLAPPING_TAC:tactic) =
         let i = factor t in
         if i = 1 then PART_MATCH lhs MULT_1 t else
         SYM (NUM_MULT_CONV (
-          mk_comb (mk_comb (`( * ):num->num->num`, mk_numeral (Int n)),
-            mk_numeral (Int (i / n))))) in
+          mk_comb (mk_comb (mul_tm, mk_small_numeral n),
+            mk_small_numeral (i / n)))) in
       mk_theorem (factor t) t in
     let AFTER th k = EQ_MP (SYM th) (k (rhs (concl th))) in
     fun (asl:(string*thm)list) t ->
@@ -2559,14 +2587,14 @@ let (NONOVERLAPPING_TAC:tactic) =
        (try PART_MATCH I LE_REFL t with Failure _ ->
         try PART_MATCH I LE_0 t with Failure _ ->
         AFTER (NUM_REDUCE_CONV t) (fun t ->
-        if t = `T` then TRUTH else
+        if t = true_tm then TRUTH else
         AFTER (FACTOR_CONV t) (fun t ->
         try PART_MATCH I LE_REFL t with Failure _ ->
         AFTER (ADD_1_LE_CONV t) (curry fallback asl))))
       | _ -> failwith "prove_le") in
 
   let normalize =
-    let pth_num = SPECL [`a:num`; `2 EXP 64`] CONG_REFL
+    let pth_num = SPECL [a_tm; `2 EXP 64`] CONG_REFL
     and pth_int64 = prove
      (`(a:int64) = word (val a)`, REWRITE_TAC [WORD_VAL])
     and pth_val = (UNDISCH_ALL o prove)
@@ -2586,33 +2614,34 @@ let (NONOVERLAPPING_TAC:tactic) =
     let rec norm = function
     | Comb(Const("val",_),t) ->
       let th = norm t in
-      PROVE_HYP th (INST [t,`a:int64`; rand(rand(concl th)),`b:num`] pth_val)
+      PROVE_HYP th (INST [t,ai_tm; rand(rand(concl th)),b_tm] pth_val)
     | Comb(Const("word",_),t) ->
       let th = norm t in
-      PROVE_HYP th (INST [t,`a:num`; rand(rator(concl th)),`b:num`] pth_word)
+      PROVE_HYP th (INST [t,a_tm; rand(rator(concl th)),b_tm] pth_word)
     | Comb(Comb(Const("word_add",_),t1),t2) ->
       let th1 = norm t1 and th2 = norm t2 in
       (PROVE_HYP th1 o PROVE_HYP th2)
-        (INST [t1,`a:int64`; rand(rand(concl th1)),`a':num`;
-               t2,`b:int64`; rand(rand(concl th2)),`b':num`] pth_word_add)
+        (INST [t1,ai_tm; rand(rand(concl th1)),ap_tm;
+               t2,bi_tm; rand(rand(concl th2)),bp_tm] pth_word_add)
     | Comb(Comb(Const("+",_),t),b) ->
       let th = norm t in
       let t' = rand (rator (concl th)) in
-      PROVE_HYP th (INST [t,`a:num`; t',`a':num`; b,`b:num`] pth_add)
-    | t when type_of t = `:num` -> INST [t,`a:num`] pth_num
-    | t -> INST [t,`a:int64`] pth_int64 in
+      PROVE_HYP th (INST [t,a_tm; t',ap_tm; b,b_tm] pth_add)
+    | t when type_of t = num_ty -> INST [t,a_tm] pth_num
+    | t -> INST [t,ai_tm] pth_int64 in
 
     let pth1 = SYM (SPEC_ALL ADD_ASSOC)
     and pth2 = SYM (SPEC_ALL ADD_0) in
     let rec split_base = function
     | Comb(Comb(Const("+",_),Comb(Comb(Const("+",_),t1),t2)),t3) ->
-      CONV_RHS_RULE split_base (INST [t1,`m:num`; t2,`n:num`; t3,`p:num`] pth1)
+      CONV_RHS_RULE split_base (INST [t1,m_tm; t2,n_tm; t3,p_tm] pth1)
     | Comb(Comb(Const("+",_),_),_) as t -> REFL t
-    | t -> INST [t,`m:num`] pth2 in
+    | t -> INST [t,m_tm] pth2 in
     CONV_RULE (RATOR_CONV (RAND_CONV split_base)) o norm in
 
+  let is_le = is_binop `(<=):num->num->bool` in
   let prove_hyps f th = itlist (fun h ->
-    if is_binop `<=` h then PROVE_HYP (f h) else I) (hyp th) th in
+    if is_le h then PROVE_HYP (f h) else I) (hyp th) th in
   let prove_les asl = prove_hyps (prove_le asl) in
 
   let prove_contains =
@@ -2636,8 +2665,8 @@ let (NONOVERLAPPING_TAC:tactic) =
       let th1 = normalize a1 and th2 = normalize a2 in
       let a,i1 = (rand F_F I) (dest_comb (rand (rator (concl th1))))
       and i2 = rand (rand (rator (concl th2))) in
-      let th = INST [a,`a:num`; a1,`a1:num`; a2,`a2:num`;
-        i1,`i1:num`; i2,`i2:num`; n1,`n1:num`; n2,`n2:num`] pth in
+      let th = INST [a,a_tm; a1,a1_tm; a2,a2_tm;
+        i1,i1_tm; i2,i2_tm; n1,n1_tm; n2,n2_tm] pth in
       PROVE_HYP th1 (PROVE_HYP th2 (prove_les asl th)) in
 
   let base =
@@ -2738,7 +2767,7 @@ let (NONOVERLAPPING_TAC:tactic) =
     with Failure _ -> failwith "NONOVERLAPPING_TAC: cmp" in
 
   let LE_TRANS' = UNDISCH_ALL (REWRITE_RULE [IMP_CONJ]
-    (SPECL [`m:num`; `n:num`; `2 EXP 64`] LE_TRANS))
+    (SPECL [m_tm; n_tm; `2 EXP 64`] LE_TRANS))
   and DISJ_NONOVERLAPPING_MODULO_SYM = MESON [NONOVERLAPPING_MODULO_SYM]
    `x = y \/ nonoverlapping_modulo n (val x,k) (val y,l) <=>
     y = x \/ nonoverlapping_modulo n (val y,l) (val x,k)` in
@@ -2752,8 +2781,8 @@ let (NONOVERLAPPING_TAC:tactic) =
     let th = if b1 = b2 then
       let th1 = normalize e1 and th2 = normalize e2 in
       let i1,i2 = W f_f_ (rand o rand o rator o concl) (th1,th2) in
-      let th = INST [e1,`a1:num`; e2,`a2:num`; i1,`i1:num`; i2,`i2:num`;
-        n1,`n1:num`; n2,`n2:num`; b1,`a:num`]
+      let th = INST [e1,a1_tm; e2,a2_tm; i1,i1_tm; i2,i2_tm;
+        n1,n1_tm; n2,n2_tm; b1,a_tm]
           (if cmp i1 i2 then pth_lt else pth_gt) in
       let f h = try
         let n = tryfind (fun _,h ->
@@ -2763,8 +2792,8 @@ let (NONOVERLAPPING_TAC:tactic) =
             if base e1' = b1 then n1' else
             if base e2' = b1 then n2' else fail ()
           | _ -> fail ()) asl
-        and _,ls,_ = term_match [] `m <= 2 EXP 64` h in
-        prove_les asl (INST ((n,`n:num`)::ls) LE_TRANS')
+        and _,ls,_ = term_match [] mle_tm h in
+        prove_les asl (INST ((n,n_tm)::ls) LE_TRANS')
       with Failure _ -> prove_le asl h in
       PROVE_HYP th1 (PROVE_HYP th2 (prove_hyps f th))
     else
@@ -2793,9 +2822,9 @@ let (NONOVERLAPPING_TAC:tactic) =
           dest_comb o rand o rator o concl) (th1,th2) in
         if i1 = i2 then failwith "NONOVERLAPPING_TAC: same offset" else
         let nx,ny = (rand o rand F_F rand) (dest_comb (rand (concl h))) in
-        let f = prove_les asl o INST [e1,`a1:num`; e2,`a2:num`;
-          i1,`i1:num`; i2,`i2:num`; n1,`n1:num`; n2,`n2:num`;
-          nx,`nx:num`; ny,`ny:num`; x,`x:int64`; y,`y:int64`] in
+        let f = prove_les asl o INST [e1,a1_tm; e2,a2_tm;
+          i1,i1_tm; i2,i2_tm; n1,n1_tm; n2,n2_tm;
+          nx,nx_tm; ny,ny_tm; x,x_tm; y,y_tm] in
         let th = if cmp i1 i2
           then try f dth_lt with Failure _ -> f dth_lt2
           else try f dth_gt with Failure _ -> f dth_gt2 in
@@ -2804,15 +2833,15 @@ let (NONOVERLAPPING_TAC:tactic) =
         let h =
           let p1' = lhand (concl h) in
           if p1 = p1' then h else
-          let th = INST [p1',`p:num#num`; p1,`p':num#num`;
-            rand (concl h),`p2:num#num`] pth_l in
+          let th = INST [p1',pp_tm; p1,ppp_tm;
+            rand (concl h),p2_tm] pth_l in
           let th = PROVE_HYP h th in
           PROVE_HYP (prove_contains asl p1 p1') th in
         let h =
           let p2' = rand (concl h) in
           if p2 = p2' then h else
-          let th = INST [p2',`p:num#num`; p2,`p':num#num`;
-            lhand (concl h),`p1:num#num`] pth_r in
+          let th = INST [p2',pp_tm; p2,ppp_tm;
+            lhand (concl h),p1_tm] pth_r in
           let th = PROVE_HYP h th in
           PROVE_HYP (prove_contains asl p2 p2') th in
         h in

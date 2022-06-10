@@ -58,7 +58,7 @@ let BIGNUM_ADD_P25519_EXEC = X86_MK_CORE_EXEC_RULE bignum_add_p25519_mc;;
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
 
-let p_25519 = new_definition `p_25519 = 2 EXP 255 - 19`;;
+let p_25519 = new_definition `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
 
 let BIGNUM_ADD_P25519_CORRECT = time prove
  (`!z x y m n pc.
@@ -130,7 +130,7 @@ let BIGNUM_ADD_P25519_CORRECT = time prove
   REWRITE_TAC[GSYM NOT_LE; COND_SWAP] THEN
   COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
   REWRITE_TAC[p_25519] THEN MATCH_MP_TAC(ARITH_RULE
-   `l + 2 EXP 255 = m + n + 19 ==> l = (m + n) - (2 EXP 255 - 19)`) THEN
+   `l + 2 EXP 255 = m + n + 19 ==> l = (m + n) - (57896044618658097711785492504343953926634992332820282019728792003956564819949)`) THEN
   FIRST_X_ASSUM(fun th -> GEN_REWRITE_TAC RAND_CONV [SYM th]) THEN
   REWRITE_TAC[bignum_of_wordlist; LEFT_ADD_DISTRIB; GSYM ADD_ASSOC] THEN
   REWRITE_TAC[ADD_CLAUSES; MULT_CLAUSES] THEN REPEAT AP_TERM_TAC THEN

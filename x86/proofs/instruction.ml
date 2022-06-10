@@ -171,14 +171,14 @@ and zmm31 = define `zmm31 = Simdreg (word 31) Full_512`;;
 let opmaskreg_INDUCT,opmaskreg_RECURSION = define_type
  "opmaskreg = Opmaskreg (3 word)";;
 
-let k0 = define `k0 = Opmaskreg (word 0)`;;
-let k1 = define `k1 = Opmaskreg (word 1)`;;
-let k2 = define `k2 = Opmaskreg (word 2)`;;
-let k3 = define `k3 = Opmaskreg (word 3)`;;
-let k4 = define `k4 = Opmaskreg (word 4)`;;
-let k5 = define `k5 = Opmaskreg (word 5)`;;
-let k6 = define `k6 = Opmaskreg (word 6)`;;
-let k7 = define `k7 = Opmaskreg (word 7)`;;
+let kmask0 = define `kmask0 = Opmaskreg (word 0)`;;
+let kmask1 = define `kmask1 = Opmaskreg (word 1)`;;
+let kmask2 = define `kmask2 = Opmaskreg (word 2)`;;
+let kmask3 = define `kmask3 = Opmaskreg (word 3)`;;
+let kmask4 = define `kmask4 = Opmaskreg (word 4)`;;
+let kmask5 = define `kmask5 = Opmaskreg (word 5)`;;
+let kmask6 = define `kmask6 = Opmaskreg (word 6)`;;
+let kmask7 = define `kmask7 = Opmaskreg (word 7)`;;
 
 (* ------------------------------------------------------------------------- *)
 (* Condition codes for conditional operations.                               *)
