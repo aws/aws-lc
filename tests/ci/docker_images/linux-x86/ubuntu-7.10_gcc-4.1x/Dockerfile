@@ -7,6 +7,12 @@ COPY sources.list /etc/apt/sources.list
 
 CMD ["/bin/bash"]
 
+# The following hack is to avoid a problem where glibc update fails b/c kernel revision is >255
+# https://bugs.launchpad.net/ubuntu/+source/glibc/+bug/1962225
+RUN mv /bin/uname /bin/uname.orig
+RUN printf '#!/bin/bash\n\nif [[ "$1" == "-r" ]] ;then\n echo '4.9.250'\n exit\nelse\n uname.orig "$@"\nfi' > /bin/uname
+RUN chmod 755 /bin/uname
+
 RUN apt-get update && \
     apt-get -y --no-install-recommends install \
     gcc-4.1 \
