@@ -45,11 +45,6 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
-#define SHA3_256_ASM
-#endif
-
-
 #if defined(__cplusplus)
 }  // extern "C"
 #endif

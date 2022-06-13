@@ -51,7 +51,6 @@ void SHA3_Squeeze(uint64_t A[5][5], unsigned char *out, size_t len, size_t r);
 
 #define ROL32(a, offset) (((a) << (offset)) | ((a) >> ((32 - (offset)) & 31)))
 
-#ifndef SHA3_256_ASM
 static uint64_t ROL64(uint64_t val, int offset)
 {
     if (offset == 0) {
@@ -76,7 +75,6 @@ static uint64_t ROL64(uint64_t val, int offset)
         return ((uint64_t)hi << 32) | lo;
     }
 }
-#endif // !SHA3_256_ASM
 
 static const unsigned char rhotates[5][5] = {
     {  0,  1, 62, 28, 27 },
@@ -252,7 +250,6 @@ static void KeccakF1600(uint64_t A[5][5])
 
 
 #elif defined(KECCAK_1X)
-#ifndef SHA3_256_ASM
 /*
  * This implementation is optimization of above code featuring unroll
  * of even y-loops, their fusion and code motion. It also minimizes
@@ -373,7 +370,6 @@ static void Round(uint64_t A[5][5], size_t i)
     A[4][3] = C[3] ^ (~C[4] & C[0]);
     A[4][4] = C[4] ^ (~C[0] & C[1]);
 }
-#endif //! SHA3_256_ASM
 
 static void KeccakF1600(uint64_t A[5][5])
 {
@@ -385,7 +381,6 @@ static void KeccakF1600(uint64_t A[5][5])
 }
 
 #elif defined(KECCAK_1X_ALT)
-#ifndef SHA3_256_ASM
 /*
  * This is variant of above KECCAK_1X that reduces requirement for
  * temporary storage even further, but at cost of more updates to A[][].
@@ -518,7 +513,6 @@ static void Round(uint64_t A[5][5], size_t i)
     A[4][4] ^= (~C[4]    & D[4]);
     A[0][0] ^= iotas[i];
 }
-#endif // !SHA3_256_ASM
 
 static void KeccakF1600(uint64_t A[5][5])
 {
@@ -530,7 +524,6 @@ static void KeccakF1600(uint64_t A[5][5])
 }
 
 #elif defined(KECCAK_2X)
-#ifndef SHA3_256_ASM
 /*
  * This implementation is variant of KECCAK_1X above with outer-most
  * round loop unrolled twice. This allows to take temporary storage
@@ -658,9 +651,7 @@ static void Round(uint64_t R[5][5], uint64_t A[5][5], size_t i)
     R[4][4] = C[4] ^ (~C[0] & C[1]);
 #endif
 }
-#endif // !SHA3_256_ASM
 
-#ifndef SHA3_256_ASM
 static void KeccakF1600(uint64_t A[5][5])
 {
     uint64_t T[5][5];
@@ -689,7 +680,6 @@ static void KeccakF1600(uint64_t A[5][5])
     A[4][0] = ~A[4][0];
 #endif
 }
-#endif // !SHA3_256_ASM
 
 #else   /* define KECCAK_INPLACE to compile this code path */
 /*
@@ -993,7 +983,6 @@ static void KeccakF1600(uint64_t A[5][5])
 
 #endif
 
-#ifndef SHA3_256_ASM
 static uint64_t BitInterleave(uint64_t Ai)
 {
     if (BIT_INTERLEAVE) {
@@ -1029,9 +1018,7 @@ static uint64_t BitInterleave(uint64_t Ai)
 
     return Ai;
 }
-#endif // !SHA3_256_ASM
 
-#ifndef SHA3_256_ASM
 static uint64_t BitDeinterleave(uint64_t Ai)
 {
     if (BIT_INTERLEAVE) {
@@ -1067,9 +1054,7 @@ static uint64_t BitDeinterleave(uint64_t Ai)
 
     return Ai;
 }
-#endif // !SHA3_256_ASM
 
-#ifndef SHA3_256_ASM
 /*
  * SHA3_Absorb can be called multiple times, but at each invocation
  * largest multiple of |r| out of |len| bytes are processed. Then
@@ -1104,9 +1089,7 @@ size_t SHA3_Absorb(uint64_t A[5][5], const unsigned char *inp, size_t len,
 
     return len;
 }
-#endif  // !SHA3_256_ASM
 
-#ifndef SHA3_256_ASM
 /*
  * sha3_Squeeze is called once at the end to generate |out| hash value
  * of |len| bytes.
@@ -1145,9 +1128,6 @@ void SHA3_Squeeze(uint64_t A[5][5], unsigned char *out, size_t len, size_t r)
             KeccakF1600(A);
     }
 }
-#endif  // !SHA3_256_ASM
-
-
 #endif
 
 

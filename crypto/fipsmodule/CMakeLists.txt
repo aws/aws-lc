@@ -84,7 +84,6 @@ if(ARCH STREQUAL "aarch64")
     sha1-armv8.${ASM_EXT}
     sha256-armv8.${ASM_EXT}
     sha512-armv8.${ASM_EXT}
-    keccak1600-armv8.${ASM_EXT}
     vpaes-armv8.${ASM_EXT}
   )
 endif()
@@ -138,7 +137,6 @@ if(PERL_EXECUTABLE)
   perlasm(sha512-armv4.${ASM_EXT} sha/asm/sha512-armv4.pl)
   perlasm(sha512-armv8.${ASM_EXT} sha/asm/sha512-armv8.pl)
   perlasm(sha512-x86_64.${ASM_EXT} sha/asm/sha512-x86_64.pl)
-  perlasm(keccak1600-armv8.${ASM_EXT} sha/asm/keccak1600-armv8.pl)
   perlasm(vpaes-armv7.${ASM_EXT} aes/asm/vpaes-armv7.pl)
   perlasm(vpaes-armv8.${ASM_EXT} aes/asm/vpaes-armv8.pl)
   perlasm(vpaes-x86_64.${ASM_EXT} aes/asm/vpaes-x86_64.pl)
