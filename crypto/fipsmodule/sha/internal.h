@@ -45,6 +45,7 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
+
 #if defined(__cplusplus)
 }  // extern "C"
 #endif
