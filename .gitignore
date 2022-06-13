@@ -34,6 +34,5 @@ util/bot/yasm-win32.exe
 test_build_dir/
 cmake-build-debug/
 symbols.txt
-/.idea
 
 .DS_Store

@@ -85,16 +85,22 @@ function generate_symbols_file {
 
 
 function verify_symbols_prefixed {
-  nm -g "$BUILD_ROOT"/crypto/libcrypto.a | grep "aws_lc_1_1_0"
-  nm -g "$BUILD_ROOT"/ssl/libssl.a | grep "aws_lc_1_1_0"
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_crypto.txt "$BUILD_ROOT"/crypto/libcrypto.a
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
+  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols_final.txt
+  if [ $(grep -c -v ${CUSTOM_PREFIX}  "$SRC_ROOT"/symbols_final.txt) -ne 0 ]; then
+    echo "Symbol(s) missing prefix!"
+    exit 1
+  fi
 }
 
 
 function build_prefix_and_test {
+  CUSTOM_PREFIX=aws_lc_1_1_0
   run_build "$@"
   generate_symbols_file
   PREBUILD_CUSTOM_TARGET="boringssl_prefix_symbols"
-  run_build "$@" "-DBORINGSSL_PREFIX=aws_lc_1_1_0" "-DBORINGSSL_PREFIX_SYMBOLS=${SRC_ROOT}/symbols.txt"
+  run_build "$@" "-DBORINGSSL_PREFIX=${CUSTOM_PREFIX}" "-DBORINGSSL_PREFIX_SYMBOLS=${SRC_ROOT}/symbols.txt"
   PREBUILD_CUSTOM_TARGET=""
   verify_symbols_prefixed
   run_cmake_custom_target 'run_tests'

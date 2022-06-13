@@ -186,7 +186,7 @@ func listSymbolsELF(contents []byte) ([]string, error) {
 			}
 		}
 	} else if err != elf.ErrNoSymbols {
-	// When `OPENSSL_NO_ASM` build flag is set, some assembly files will produce object files w/o a Symbols section
+		// When `OPENSSL_NO_ASM` build flag is set, some assembly files will produce object files w/o a Symbols section
 		return nil, err
 	}
 	return names, nil
