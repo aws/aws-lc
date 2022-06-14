@@ -329,13 +329,6 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
     cpucap/cpucap.c
-    cpucap/cpu_arm_linux.c
-    cpucap/cpu_aarch64_win.c
-    cpucap/cpu_aarch64_apple.c
-    cpucap/cpu_aarch64_linux.c
-    cpucap/cpu_aarch64_fuchsia.c
-    cpucap/cpu_intel.c
-    cpucap/cpu_ppc64le.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -354,13 +347,6 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
     cpucap/cpucap.c
-    cpucap/cpu_arm_linux.c
-    cpucap/cpu_aarch64_win.c
-    cpucap/cpu_aarch64_apple.c
-    cpucap/cpu_aarch64_linux.c
-    cpucap/cpu_aarch64_fuchsia.c
-    cpucap/cpu_intel.c
-    cpucap/cpu_ppc64le.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -467,13 +453,6 @@ else()
     bcm.c
     fips_shared_support.c
     cpucap/cpucap.c
-    cpucap/cpu_arm_linux.c
-    cpucap/cpu_aarch64_win.c
-    cpucap/cpu_aarch64_apple.c
-    cpucap/cpu_aarch64_linux.c
-    cpucap/cpu_aarch64_fuchsia.c
-    cpucap/cpu_intel.c
-    cpucap/cpu_ppc64le.c
 
     ${BCM_ASM_SOURCES}
   )

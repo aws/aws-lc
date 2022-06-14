@@ -68,6 +68,15 @@
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
 #include "cipher/e_aesccm.c"
+
+#include "cpucap/cpu_aarch64_apple.c"
+#include "cpucap/cpu_aarch64_fuchsia.c"
+#include "cpucap/cpu_aarch64_linux.c"
+#include "cpucap/cpu_aarch64_win.c"
+#include "cpucap/cpu_arm_linux.c"
+#include "cpucap/cpu_intel.c"
+#include "cpucap/cpu_ppc64le.c"
+
 #include "cmac/cmac.c"
 #include "dh/check.c"
 #include "dh/dh.c"

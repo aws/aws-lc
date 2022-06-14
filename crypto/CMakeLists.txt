@@ -531,19 +531,12 @@ if(FIPS_SHARED)
       OBJECT
 
       generated_fips_shared_support.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpucap.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_arm_linux.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_win.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_apple.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_linux.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_aarch64_fuchsia.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_intel.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fipsmodule/cpucap/cpu_ppc64le.c
+      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
-    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
-    # library.
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
+    # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
