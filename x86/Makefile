@@ -92,6 +92,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       curve25519/bignum_sqr_p25519.o \
       curve25519/bignum_sqr_p25519_alt.o \
       curve25519/bignum_sub_p25519.o \
+      curve25519/curve25519_ladderstep.o \
+      curve25519/curve25519_ladderstep_alt.o \
       fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
       fastmul/bignum_kmul_32_64.o \
@@ -309,8 +311,8 @@ clean:; rm -f libs2nbignum.a */*.o */*.obj */*.correct
 # use BMI and/or ADX instructions in the x86 versions. These won't run
 # on some older x86 machines
 
-yesbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' && grep '\.globl' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/.globl//; s/ *//g' | grep -v '^_' | sort >yesbmi_functions
-nonbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' || grep '\.globl' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/.globl//; s/ *//g' | grep -v '^_' | sort >nonbmi_functions
+yesbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' && grep 'S2N_BN_SYMBOL' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/S2N_BN_SYMBOL(//; s/)://' | sort >yesbmi_functions
+nonbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' || grep 'S2N_BN_SYMBOL' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/S2N_BN_SYMBOL(//; s/)://' | sort >nonbmi_functions
 
 bmi: yesbmi_functions nonbmi_functions ; [ `cat ???bmi_functions | sort | uniq | wc -l` -eq `grep '^extern' ../include/s2n-bignum.h | wc -l` ]
 

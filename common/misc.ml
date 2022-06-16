@@ -22,6 +22,16 @@ needs "Library/rstc.ml";;
 needs "Library/floor.ml";;
 
 (* ------------------------------------------------------------------------- *)
+(* Could be a general word lemma.                                            *)
+(* ------------------------------------------------------------------------- *)
+
+let REAL_VAL_WORD_XOR = prove
+ (`!x y:N word. &(val(word_xor x y)):real =
+                (&(val x) + &(val y)) - &2 * &(val(word_and x y))`,
+  REWRITE_TAC[REAL_OF_NUM_CLAUSES; VAL_WORD_ADD_AND_XOR] THEN
+  REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN REAL_ARITH_TAC);;
+
+(* ------------------------------------------------------------------------- *)
 (* Combined word and number and a few other things reduction.                *)
 (* ------------------------------------------------------------------------- *)
 

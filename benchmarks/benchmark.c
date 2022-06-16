@@ -642,6 +642,9 @@ void call_bignum_mux16__32()
   repeat(bignum_mux16(32,b0,(uint64_t *)bb,b2[0]%16));
 }
 
+void call_curve25519_ladderstep(void) repeat(curve25519_ladderstep(b0,b1,b2,*b3))
+void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1,b2,*b3))
+
 int main(void)
 {
   int bmi = full_isa_support();
@@ -911,6 +914,8 @@ int main(void)
   timingtest(all,"bignum_triple_p384_alt",call_bignum_triple_p384_alt);
   timingtest(bmi,"bignum_triple_p521",call_bignum_triple_p521);
   timingtest(all,"bignum_triple_p521_alt",call_bignum_triple_p521_alt);
+  timingtest(bmi,"curve25519_ladderstep",call_curve25519_ladderstep);
+  timingtest(all,"curve25519_ladderstep_alt",call_curve25519_ladderstep_alt);
   timingtest(all,"word_bytereverse",call_word_bytereverse);
   timingtest(all,"word_clz",call_word_clz);
   timingtest(all,"word_ctz",call_word_ctz);

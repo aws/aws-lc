@@ -269,6 +269,8 @@ enum {
        TEST_BIGNUM_TRIPLE_P384_ALT,
        TEST_BIGNUM_TRIPLE_P521,
        TEST_BIGNUM_TRIPLE_P521_ALT,
+       TEST_CURVE25519_LADDERSTEP,
+       TEST_CURVE25519_LADDERSTEP_ALT,
        TEST_WORD_BYTEREVERSE,
        TEST_WORD_CLZ,
        TEST_WORD_CTZ,
@@ -947,6 +949,52 @@ void reference_tolebytes(uint64_t k,uint8_t *z,uint64_t n,uint64_t *x)
 
   for (i = 0; i < k; ++i)
     z[i] = x[i/8] >> (8*(i%8));
+}
+
+// ****************************************************************************
+// References for point operations (sometimes using generic bignum_xxx)
+// ****************************************************************************
+
+void reference_p25519xzdouble(uint64_t res[8],uint64_t point[8])
+{ uint64_t *x = point, *z = point+4;
+  uint64_t s[4], d[4], p[4];
+  bignum_add_p25519(s,x,z);
+  bignum_sqr_p25519_alt(s,s);
+  bignum_sub_p25519(d,x,z);
+  bignum_sqr_p25519_alt(d,d);
+  bignum_mul_p25519_alt(res,s,d);
+  bignum_sub_p25519(p,s,d);
+  bignum_cmul_p25519_alt(s,121666,p);
+  bignum_add_p25519(d,d,s);
+  bignum_mul_p25519_alt(res+4,p,d);
+}
+
+void reference_p25519xzdiffadd(uint64_t res[8],uint64_t x[4],uint64_t n[8],uint64_t m[8])
+{ uint64_t *xm = m, *zm = m+4, *xn = n, *zn = n+4;
+  uint64_t sm[4], sn[4], dm[4], dn[4], p[4], q[4], s[4], d[4];
+  bignum_add_p25519(sm,xm,zm);
+  bignum_add_p25519(sn,xn,zn);
+  bignum_sub_p25519(dm,xm,zm);
+  bignum_sub_p25519(dn,xn,zn);
+  bignum_mul_p25519_alt(p,dm,sn);
+  bignum_mul_p25519_alt(q,sm,dn);
+  bignum_add_p25519(s,p,q);
+  bignum_sqr_p25519_alt(res,s);
+  bignum_sub_p25519(d,p,q);
+  bignum_sqr_p25519_alt(d,d);
+  bignum_mul_p25519_alt(res+4,x,d);
+}
+
+void reference_curve25519ladderstep
+  (uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b)
+{ if (b != 0)
+   { reference_p25519xzdiffadd(rr,point,pp,pp+8);
+     reference_p25519xzdouble(rr+8,pp+8);
+   }
+  else
+   { reference_p25519xzdouble(rr,pp);
+     reference_p25519xzdiffadd(rr+8,point,pp,pp+8);
+   }
 }
 
 // ****************************************************************************
@@ -7254,6 +7302,80 @@ int test_bignum_triple_p521_alt(void)
   return 0;
 }
 
+int test_curve25519_ladderstep(void)
+{ uint64_t t, k, b;
+  printf("Testing curve25519_ladderstep with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+3*k,b0,p_25519);
+     b = (rand() & 1) ? rand() : 0;
+     curve25519_ladderstep(b3,b1,b2,b);
+     reference_curve25519ladderstep(b4,b1,b2,b);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "step_%d [...0x%016"PRIx64"] (<...0x%016"PRIx64">,<...0x%016"PRIx64">) = "
+               "(<...0x%016"PRIx64">,<...0x%016"PRIx64">) not "
+               "(<...0x%016"PRIx64">,<...0x%016"PRIx64">)\n",
+               k,(b != 0),b1[0],b2[0],b2[4],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "step_%d [...0x%016"PRIx64"] (<...0x%016"PRIx64">,<...0x%016"PRIx64">) = "
+               "(<...0x%016"PRIx64">,<...0x%016"PRIx64">)\n",
+               k,(b != 0),b1[0],b2[0],b2[4],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_ladderstep_alt(void)
+{ uint64_t t, k, b;
+  printf("Testing curve25519_ladderstep_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+3*k,b0,p_25519);
+     b = (rand() & 1) ? rand() : 0;
+     curve25519_ladderstep_alt(b3,b1,b2,b);
+     reference_curve25519ladderstep(b4,b1,b2,b);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "step_%d [...0x%016"PRIx64"] (<...0x%016"PRIx64">,<...0x%016"PRIx64">) = "
+               "(<...0x%016"PRIx64">,<...0x%016"PRIx64">) not "
+               "(<...0x%016"PRIx64">,<...0x%016"PRIx64">)\n",
+               k,(b != 0),b1[0],b2[0],b2[4],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "step_%d [...0x%016"PRIx64"] (<...0x%016"PRIx64">,<...0x%016"PRIx64">) = "
+               "(<...0x%016"PRIx64">,<...0x%016"PRIx64">)\n",
+               k,(b != 0),b1[0],b2[0],b2[4],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_bytereverse(void)
 { uint64_t i, a, x, y;
   printf("Testing word_bytereverse with %d cases\n",tests);
@@ -7637,6 +7759,8 @@ int test_all(void)
   dotest(test_bignum_triple_p384_alt);
   dotest(test_bignum_triple_p521);
   dotest(test_bignum_triple_p521_alt);
+  dotest(test_curve25519_ladderstep);
+  dotest(test_curve25519_ladderstep_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -7830,6 +7954,7 @@ int test_allnonbmi()
   dotest(test_bignum_triple_p256k1_alt);
   dotest(test_bignum_triple_p384_alt);
   dotest(test_bignum_triple_p521_alt);
+  dotest(test_curve25519_ladderstep_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -8115,6 +8240,8 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_TRIPLE_P384_ALT:    return test_bignum_triple_p384_alt();
      case TEST_BIGNUM_TRIPLE_P521:        return test_bignum_triple_p521();
      case TEST_BIGNUM_TRIPLE_P521_ALT:    return test_bignum_triple_p521_alt();
+     case TEST_CURVE25519_LADDERSTEP:     return test_curve25519_ladderstep();
+     case TEST_CURVE25519_LADDERSTEP_ALT: return test_curve25519_ladderstep_alt();
      case TEST_WORD_BYTEREVERSE:          return test_word_bytereverse();
      case TEST_WORD_CLZ:                  return test_word_clz();
      case TEST_WORD_CTZ:                  return test_word_ctz();

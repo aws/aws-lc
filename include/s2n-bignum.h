@@ -728,6 +728,11 @@ extern void bignum_triple_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 extern void bignum_triple_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 extern void bignum_triple_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
+// Montgomery ladder step for curve25519
+// Inputs point[8], pp[16], b; output rr[16]
+extern void curve25519_ladderstep(uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b);
+extern void curve25519_ladderstep_alt(uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b);
+
 // Reverse the bytes in a single word
 // Input a; output function return
 extern uint64_t word_bytereverse (uint64_t a);

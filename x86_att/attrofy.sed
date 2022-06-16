@@ -47,6 +47,14 @@ s/ +,/,/
 
 s/^(([a-z_0-9]+\:)* +[a-z_0-9]+ +)(([-~+*/()A-Z0-9]*(0x[a-zA-Z0-9]*)*)* *\,)/\1$\3/
 
+# Translate relative addresses with uppercase base variable
+# Turn defined offset fields into explicit indirections to match
+
+s/^([^/][^[]+)[[]([A-Z_0-9]+)[]]/\1\2/
+s/^([^/][^[]+)[[]([A-Z][A-Z_0-9]*) *\+ *([^]]+)[]]/\1\3\+\2/
+
+s/^\#define *([a-z][a-z_0-9]*) *([a-z][a-z_0-9]*) *\+(.*)/\#define \1 \3\(\2\)/
+
 # Translate relative addresses
 
 s/^([^/][^[]+)[[]([a-z_0-9]+)[]]/\1\(\2\)/
