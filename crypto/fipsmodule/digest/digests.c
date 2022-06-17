@@ -267,9 +267,11 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
   out->ctx_size = sizeof(SHA512_CTX);
 }
 
-
+//MVP_MD for SHA3_256
 static void sha3_256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, PAD_CHAR , SHA3_256_DIGEST_BITLENGTH));
+  unsigned char ack = 6;
+  size_t size = 256;
+  CHECK(SHA3_Init(ctx->md_data, ack , size));
 }
 
 static void sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -287,7 +289,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_256) {
   out->init = sha3_256_init;
   out->update = sha3_256_update;
   out->final = sha3_256_final;
-  out->block_size = SHA3_256_BLOCK_SIZE;
+  out->block_size = 64;
   out->ctx_size = sizeof(KECCAK1600_CTX);
 }
 

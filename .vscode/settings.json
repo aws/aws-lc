@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "__locale": "c",
-        "ios": "c",
-        "random": "c",
-        "*.tcc": "c"
-    }
-}
