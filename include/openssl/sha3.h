@@ -19,16 +19,18 @@
 extern "C" {
 #endif
 
+#define PAD_CHAR 6
 #define SHA3_256_DIGEST_LENGTH 32
+#define SHA3_256_DIGEST_BITLENGTH 256
+#define SHA3_256_BLOCK_SIZE 136
 
-// Single-Shot API SHA3_256
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]);
 
 #define KECCAK1600_WIDTH 1600
-#define SHA3_MDSIZE(bitlen) (bitlen / 8)
-#define KMAC_MDSIZE(bitlen) 2 * (bitlen / 8)
-#define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
+#define SHA3_MDSIZE(bit_len) (bit_len / 8)
+#define KMAC_MDSIZE(bit_len) 2 * (bit_len / 8)
+#define SHA3_BLOCKSIZE(bit_len) (KECCAK1600_WIDTH - bit_len * 2) / 8
 
 typedef struct keccak_st KECCAK1600_CTX;
 
@@ -44,7 +46,7 @@ struct keccak_st {
   uint64_t A[5][5];
   size_t block_size; /* cached ctx->digest->block_size */
   size_t md_size;    /* output length, variable in XOF */
-  size_t bufsz;      /* used bytes in below buffer */
+  size_t buf_size;      /* used bytes in below buffer */
   unsigned char buf[KECCAK1600_WIDTH / 8 - 32];
   unsigned char pad;
   PROV_SHA3_METHOD meth;
@@ -52,9 +54,7 @@ struct keccak_st {
 
 OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad,
-                             size_t bitlen);
-OPENSSL_EXPORT int SHA3_keccak_kmac_Init(KECCAK1600_CTX *ctx, unsigned char pad,
-                                         size_t bitlen);
+                             size_t bit_len);
 OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *_inp,
                                size_t len);
 OPENSSL_EXPORT int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx);
