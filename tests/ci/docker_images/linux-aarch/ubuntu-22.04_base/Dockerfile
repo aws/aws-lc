@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM arm64v8/ubuntu:20.04
+FROM arm64v8/ubuntu:22.04
 
 SHELL ["/bin/bash", "-c"]
 
@@ -54,6 +54,6 @@ RUN set -ex && \
     rm -rf /tmp/*
 
 ENV GOROOT=/usr/local/go
-ENV PATH="$GOROOT/bin:$PATH"
 ENV GO111MODULE=on
 ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+ENV PATH="$GOROOT/bin:$PATH"

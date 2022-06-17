@@ -175,17 +175,19 @@ func listSymbolsELF(contents []byte) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	syms, err := f.Symbols()
-	if err != nil {
-		return nil, err
-	}
 
 	var names []string
-	for _, sym := range syms {
-		// Only include exported, defined symbols
-		if elf.ST_BIND(sym.Info) != elf.STB_LOCAL && sym.Section != elf.SHN_UNDEF {
-			names = append(names, sym.Name)
+	syms, err := f.Symbols()
+	if err == nil {
+		for _, sym := range syms {
+			// Only include exported, defined symbols
+			if elf.ST_BIND(sym.Info) != elf.STB_LOCAL && sym.Section != elf.SHN_UNDEF {
+				names = append(names, sym.Name)
+			}
 		}
+	} else if err != elf.ErrNoSymbols {
+		// When `OPENSSL_NO_ASM` build flag is set, some assembly files will produce object files w/o a Symbols section
+		return nil, err
 	}
 	return names, nil
 }
