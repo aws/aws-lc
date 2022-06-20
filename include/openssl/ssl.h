@@ -771,7 +771,11 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
 // before sending certificates to the peer. This flag is set (and the feature
 // disabled) by default.
-// TODO(davidben): Remove this behavior. https://crbug.com/boringssl/42.
+// OpenSSL does not set this flag by default. This might cause issues for
+// services migrating to AWS-LC, if the service was relying on the default
+// behavior. We highly recommend not to disable this flag, but if a consumer
+// had been relying on this default behavior, they can revert locally with
+// |SSL_(CTX_)clear_mode|.
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
 // SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
