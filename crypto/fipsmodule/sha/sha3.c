@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2017-2020 The OpenSSL Project Authors. All Rights Reserved.
  *
@@ -8,13 +7,13 @@
  * https://www.openssl.org/source/license.html
  */
 
-#include <openssl/sha3.h>
+#include "internal.h"
 #include <string.h>
 
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
   KECCAK1600_CTX ctx;
-  SHA3_Init(&ctx, PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
+  SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
   SHA3_Update(&ctx, data, len) &&
   SHA3_Final(out, &ctx);
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -43,36 +42,38 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   size_t block_size = ctx->block_size;
   size_t num, rem;
 
-  if (len == 0){
+  if (len == 0) {
     return 1;
   }
-  
-  if ((num = ctx->buf_load) != 0) { /* process intermediate buffer? */
+
+  // process intermediate buffer
+  num = ctx->buf_load;
+  if (num != 0) { 
     rem = block_size - num;
     if (len < rem) {
       memcpy(ctx->buf + num, data_ptr_copy, len);
       ctx->buf_load += len;
       return 1;
     }
-    /*
-     * We have enough data to fill or overflow the intermediate
-     * buffer. So we append |rem| bytes and process the block,
-     * leaving the rest for later processing...
-     */
+
+     // We have enough data to fill or overflow the intermediate
+     // buffer. So we append |rem| bytes and process the block,
+     // leaving the rest for later processing...
     memcpy(ctx->buf + num, data_ptr_copy, rem);
-    data_ptr_copy += rem, len -= rem;
-    (void)SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size);
+    data_ptr_copy += rem;
+    len = SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size);
     ctx->buf_load = 0;
-    /* ctx->buf is processed, ctx->num is guaranteed to be zero */
+    // ctx->buf is processed, ctx->num is guaranteed to be zero
   }
-  if (len >= block_size){
+
+  if (len >= block_size) {
     rem = SHA3_Absorb(ctx->A, data_ptr_copy, len, block_size);
   }
   else{
     rem = len;
   }
 
-  if (rem) {
+  if (rem != 0) {
     memcpy(ctx->buf, data_ptr_copy + len - rem, rem);
     ctx->buf_load = rem;
   }
@@ -84,7 +85,7 @@ int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 
-  if (ctx->md_size == 0){
+  if (ctx->md_size == 0) {
     return 1;
   }
 
@@ -95,7 +96,9 @@ int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx) {
   ctx->buf[num] = ctx->pad;
   ctx->buf[block_size - 1] |= 0x80;
 
-  (void)SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size);
+  if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0){
+    return 0;
+  }
 
   SHA3_Squeeze(ctx->A, md, ctx->md_size, block_size);
 

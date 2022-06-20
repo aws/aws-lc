@@ -63,11 +63,11 @@
 #include <openssl/md5.h>
 #include <openssl/nid.h>
 #include <openssl/sha.h>
-#include <openssl/sha3.h>
 
-#include "internal.h"
-#include "../delocate.h"
 #include "../../internal.h"
+#include "../delocate.h"
+#include "../sha/internal.h"
+#include "internal.h"
 
 #if defined(NDEBUG)
 #define CHECK(x) (void) (x)
@@ -269,7 +269,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
 
 
 static void sha3_256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, PAD_CHAR , SHA3_256_DIGEST_BITLENGTH));
+  CHECK(SHA3_Init(ctx->md_data, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH));
 }
 
 static void sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -287,7 +287,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_256) {
   out->init = sha3_256_init;
   out->update = sha3_256_update;
   out->final = sha3_256_final;
-  out->block_size = SHA3_256_BLOCK_SIZE;
+  out->block_size = SHA3_BLOCKSIZE(SHA3_256_DIGEST_BITLENGTH);
   out->ctx_size = sizeof(KECCAK1600_CTX);
 }
 

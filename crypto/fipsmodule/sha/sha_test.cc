@@ -13,13 +13,11 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/sha.h>
-#include <openssl/sha3.h>
 
 #include <gtest/gtest.h>
 
-#include "internal.h"
 #include "../../test/abi_test.h"
-
+#include "internal.h"
 
 #if defined(SHA1_ASM) && defined(SUPPORTS_ABI_TEST)
 TEST(SHATest, SHA1ABI) {

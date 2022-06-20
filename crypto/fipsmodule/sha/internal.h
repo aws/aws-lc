@@ -15,12 +15,29 @@
 #ifndef OPENSSL_HEADER_SHA_INTERNAL_H
 #define OPENSSL_HEADER_SHA_INTERNAL_H
 
-#include <openssl/base.h>
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+//SHA3_256 constants
+#define KECCAK1600_WIDTH 1600
+#define SHA3_256_CAPACITY_BYTES 64
+#define SHA3_256_DIGEST_BITLENGTH 256
+#define SHA3_256_DIGEST_LENGTH 32
+#define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
+#define SHA3_PAD_CHAR 6
+#define SHA3_ROW_SIZE 5
+
+typedef struct keccak_st KECCAK1600_CTX;
+
+struct keccak_st {
+  uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE];
+  size_t block_size;   // cached ctx->digest->block_size
+  size_t md_size;      // output length, variable in XOF
+  size_t buf_load;     // used bytes in below buffer
+  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_256_CAPACITY_BYTES];
+  unsigned char pad;
+};
 
 #if defined(OPENSSL_PPC64LE) ||                          \
     (!defined(OPENSSL_NO_ASM) &&                         \
@@ -44,6 +61,36 @@ void sha256_block_data_order(uint32_t *state, const uint8_t *in,
 void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
+
+// SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
+OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
+                                 uint8_t out[SHA3_256_DIGEST_LENGTH]);  
+
+// SHA3_Reset zeros the bitstate and the amount of processed input.
+OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
+
+// SHA3_Init initialises ctx fields and returns 1 on success.
+OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad,
+                             size_t bitlen);
+
+// SHA3_Update processes all data blocks that do need pad through SHA3_Absorb and returns 1.
+OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
+                               size_t len);
+
+// SHA3_Final pads the last block of data and proccess through SHA3_Absorb. 
+// It processes the data through SHA3_Squeeze and returns 1.
+OPENSSL_EXPORT int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx);
+
+// SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and 
+// returns the remaining amount of bytes. 
+OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], const unsigned char *data,
+                                  size_t len, size_t r);
+
+// SHA3_Squeeze generate |out| hash value of |len| bytes.
+OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], unsigned char *out,
+                                 size_t len, size_t r);
+
 
 #if defined(__cplusplus)
 }  // extern "C"

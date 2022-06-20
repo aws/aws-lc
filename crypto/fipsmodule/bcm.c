@@ -36,7 +36,6 @@
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
-#include <openssl/sha3.h>
 
 #include "../internal.h"
 
@@ -127,12 +126,12 @@
 #include "self_check/fips.c"
 #include "self_check/self_check.c"
 #include "service_indicator/service_indicator.c"
+#include "sha/keccak1600.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"
 #include "sha/sha3.c"
 #include "sha/sha512.c"
-#include "sha/keccak1600.c"
 #include "tls/kdf.c"
 
 
