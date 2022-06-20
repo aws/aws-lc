@@ -130,8 +130,8 @@
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"
-#include "sha/sha512.c"
 #include "sha/sha3.c"
+#include "sha/sha512.c"
 #include "sha/keccak1600.c"
 #include "tls/kdf.c"
 

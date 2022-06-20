@@ -11,66 +11,47 @@
 #include <openssl/sha3.h>
 #include <string.h>
 
-// Single-Shot SHA3-256
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
-  // We have to verify that all the SHA services actually succeed before
-  // updating the indicator state, so we lock the state here.
-
-  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
-  size_t size = 256;
-  unsigned char ack = 6;
-  const int ok = SHA3_Init(&ctx, ack, size) && SHA3_Update(&ctx, data, len) &&
-                 SHA3_Final(out, &ctx);
-  FIPS_service_indicator_unlock_state();
-  if (ok) {
-    FIPS_service_indicator_update_state();
-  }
+  SHA3_Init(&ctx, PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
+  SHA3_Update(&ctx, data, len) &&
+  SHA3_Final(out, &ctx);
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
 
 void SHA3_Reset(KECCAK1600_CTX *ctx) {
   memset(ctx->A, 0, sizeof(ctx->A));
-  ctx->bufsz = 0;
+  ctx->buf_load = 0;
 }
 
-int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad, size_t bitlen) {
-  size_t bsz = SHA3_BLOCKSIZE(bitlen);
-  if (bsz <= sizeof(ctx->buf)) {
+int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad, size_t bit_len) {
+  size_t block_size = SHA3_BLOCKSIZE(bit_len);
+  if (block_size <= sizeof(ctx->buf)) {
     SHA3_Reset(ctx);
-    ctx->block_size = bsz;
-    ctx->md_size = bitlen / 8;
+    ctx->block_size = block_size;
+    ctx->md_size = bit_len / 8;
     ctx->pad = pad;
     return 1;
   }
   return 0;
 }
 
-int SHA3_keccak_kmac_Init(KECCAK1600_CTX *ctx, unsigned char pad,
-                          size_t bitlen) {
-  int ret = SHA3_Init(ctx, pad, bitlen);
-
-  if (ret)
-    ctx->md_size *= 2;
-  return ret;
-}
-
-int SHA3_Update(KECCAK1600_CTX *ctx, const void *_inp, size_t len) {
-  unsigned char *inp = (unsigned char *)_inp;
-  size_t bsz = ctx->block_size;
+int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
+  unsigned char *data_ptr_copy = (unsigned char *) data;
+  size_t block_size = ctx->block_size;
   size_t num, rem;
 
-  if (len == 0)
+  if (len == 0){
     return 1;
-
-  if ((num = ctx->bufsz) != 0) { /* process intermediate buffer? */
-
-    rem = bsz - num;
+  }
+  
+  if ((num = ctx->buf_load) != 0) { /* process intermediate buffer? */
+    rem = block_size - num;
     if (len < rem) {
-      memcpy(ctx->buf + num, inp, len);
-      ctx->bufsz += len;
+      memcpy(ctx->buf + num, data_ptr_copy, len);
+      ctx->buf_load += len;
       return 1;
     }
     /*
@@ -78,44 +59,45 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *_inp, size_t len) {
      * buffer. So we append |rem| bytes and process the block,
      * leaving the rest for later processing...
      */
-    memcpy(ctx->buf + num, inp, rem);
-    inp += rem, len -= rem;
-    (void)SHA3_Absorb(ctx->A, ctx->buf, bsz, bsz);
-    ctx->bufsz = 0;
+    memcpy(ctx->buf + num, data_ptr_copy, rem);
+    data_ptr_copy += rem, len -= rem;
+    (void)SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size);
+    ctx->buf_load = 0;
     /* ctx->buf is processed, ctx->num is guaranteed to be zero */
   }
-  if (len >= bsz)
-    rem = SHA3_Absorb(ctx->A, inp, len, bsz);
-  else
+  if (len >= block_size){
+    rem = SHA3_Absorb(ctx->A, data_ptr_copy, len, block_size);
+  }
+  else{
     rem = len;
+  }
 
   if (rem) {
-    memcpy(ctx->buf, inp + len - rem, rem);
-    ctx->bufsz = rem;
+    memcpy(ctx->buf, data_ptr_copy + len - rem, rem);
+    ctx->buf_load = rem;
   }
 
   return 1;
 }
 
 int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx) {
-  size_t bsz = ctx->block_size;
-  size_t num = ctx->bufsz;
+  size_t block_size = ctx->block_size;
+  size_t num = ctx->buf_load;
 
-  if (ctx->md_size == 0)
+  if (ctx->md_size == 0){
     return 1;
+  }
 
-  /*
-   * Pad the data with 10*1. Note that |num| can be |bsz - 1|
-   * in which case both byte operations below are performed on
-   * same byte...
-   */
-  memset(ctx->buf + num, 0, bsz - num);
+   // Pad the data with 10*1. Note that |num| can be |block_size - 1|
+   // in which case both byte operations below are performed on
+   // the same byte...
+  memset(ctx->buf + num, 0, block_size - num);
   ctx->buf[num] = ctx->pad;
-  ctx->buf[bsz - 1] |= 0x80;
+  ctx->buf[block_size - 1] |= 0x80;
 
-  (void)SHA3_Absorb(ctx->A, ctx->buf, bsz, bsz);
+  (void)SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size);
 
-  SHA3_Squeeze(ctx->A, md, ctx->md_size, bsz);
+  SHA3_Squeeze(ctx->A, md, ctx->md_size, block_size);
 
   return 1;
 }
