@@ -775,7 +775,7 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // services migrating to AWS-LC, if the service was relying on the default
 // behavior. We highly recommend not to disable this flag, but if a consumer
 // had been relying on this default behavior, they can temporarily revert
-// locally with |SSL_(CTX_)clear_mode|. However, it is still expected of the
+// locally with |SSL_[CTX_]clear_mode|. However, it is still expected of the
 // AWS-LC consumer to structure their code to not rely on certificate
 // auto-chaining in general.
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
