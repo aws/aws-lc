@@ -64,8 +64,8 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
      // buffer. So we append |rem| bytes and process the block,
      // leaving the rest for later processing...
     memcpy(ctx->buf + num, data_ptr_copy, rem);
-    data_ptr_copy += rem;
-    len = SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size);
+    data_ptr_copy += rem, len -= rem;
+    SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size);
     ctx->buf_load = 0;
     // ctx->buf is processed, ctx->num is guaranteed to be zero
   }
