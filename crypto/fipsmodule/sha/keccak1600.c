@@ -12,7 +12,6 @@
 
 
 #if !defined(KECCAK1600_ASM)
-
  // Default to KECCAK_2X variant
 #if !defined(KECCAK_REF) && !defined(KECCAK_1X) && !defined(KECCAK_1X_ALT) && \
     !defined(KECCAK_2X) && !defined(KECCAK_INPLACE)

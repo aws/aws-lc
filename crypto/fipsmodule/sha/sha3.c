@@ -16,7 +16,7 @@ uint8_t *SHA3_256(const uint8_t *data, size_t len,
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
-            
+
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   if (ok == 0){
     return NULL;
