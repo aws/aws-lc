@@ -79,6 +79,7 @@ if(ARCH STREQUAL "aarch64")
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
     keccak1600-armv8.${ASM_EXT}
+    aes-gcm-armv8-unroll8.${ASM_EXT}
     md5-armv8.${ASM_EXT}
     p256-armv8-asm.${ASM_EXT}
     p256_beeu-armv8-asm.${ASM_EXT}
@@ -118,6 +119,7 @@ if(PERL_EXECUTABLE)
   perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
   perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
   perlasm(keccak1600-armv8.${ASM_EXT} sha/asm/keccak1600-armv8.pl)
+  perlasm(aes-gcm-armv8-unroll8.${ASM_EXT} modes/asm/aes-gcm-armv8-unroll8.pl)
   perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
   perlasm(md5-armv8.${ASM_EXT} md5/asm/md5-armv8.pl)
   perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)

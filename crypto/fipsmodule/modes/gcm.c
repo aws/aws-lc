@@ -323,6 +323,48 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   return 1;
 }
 
+#if defined(AES_ARMV8_GCM)
+static size_t aesv8_gcm_8x_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                            const AES_KEY *key, uint8_t ivec[16],
+                            uint64_t *Xi) {
+  switch(key->rounds) {
+    // Only AES-128-GCM and AES-256-GCM are supported.
+  case 10:
+    return aesv8_gcm_8x_enc_128(in, len, out, key, ivec, Xi);
+    break;
+  case 14:
+    return aesv8_gcm_8x_enc_256(in, len, out, key, ivec, Xi);
+    break;
+  default:
+    // This function is allowed to process no input;
+    // the subsequent logic after calling it can process
+    // the entire input.
+    return 0;
+    break;
+  }
+}
+
+static size_t aesv8_gcm_8x_decrypt(const uint8_t *in, uint8_t *out, size_t len,
+                            const AES_KEY *key, uint8_t ivec[16],
+                            uint64_t *Xi) {
+  switch(key->rounds) {
+    // Only AES-128-GCM and AES-256-GCM are supported.
+  case 10:
+    return aesv8_gcm_8x_dec_128(in, len, out, key, ivec, Xi);
+    break;
+  case 14:
+    return aesv8_gcm_8x_dec_256(in, len, out, key, ivec, Xi);
+    break;
+  default:
+    // This function is allowed to process no input;
+    // the subsequent logic after calling it can process
+    // the entire input.
+    return 0;
+    break;
+  }
+}
+#endif // AES_ARMV8_GCM
+
 int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const uint8_t *in, uint8_t *out, size_t len) {
   block128_f block = ctx->gcm_key.block;
@@ -554,6 +596,14 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     out += bulk;
     len -= bulk;
   }
+#elif defined(AES_ARMV8_GCM)
+  // Check |len| to work around a C language bug. See https://crbug.com/1019588.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable && len > 0) {
+    size_t bulk = aesv8_gcm_8x_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
+    in += bulk;
+    out += bulk;
+    len -= bulk;
+  }
 #endif
 
   uint32_t ctr = CRYPTO_bswap4(ctx->Yi.d[3]);
@@ -638,6 +688,14 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     // |aesni_gcm_decrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
+    in += bulk;
+    out += bulk;
+    len -= bulk;
+  }
+#elif defined(AES_ARMV8_GCM)
+  // Check |len| to work around a C language bug. See https://crbug.com/1019588.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable && len > 0) {
+    size_t bulk = aesv8_gcm_8x_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
     in += bulk;
     out += bulk;
     len -= bulk;

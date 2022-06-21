@@ -315,6 +315,20 @@ void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
 
+#if defined(OPENSSL_AARCH64)
+#define AES_ARMV8_GCM
+// Note that in the argument list, |len| and |out| are interchanged compared
+// to |aesni_gcm_encrypt|.
+size_t aesv8_gcm_8x_enc_128(const uint8_t *in, size_t len, uint8_t *out,
+                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+size_t aesv8_gcm_8x_dec_128(const uint8_t *in, size_t len, uint8_t *out,
+                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t len, uint8_t *out,
+                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t len, uint8_t *out,
+                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+#endif
+
 #elif defined(OPENSSL_PPC64LE)
 #define GHASH_ASM_PPC64LE
 #define GCM_FUNCREF
