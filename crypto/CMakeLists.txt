@@ -33,7 +33,9 @@ if(NOT OPENSSL_NO_ASM)
     set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
 
     # Clang's integerated assembler does not support debug symbols.
-    if(NOT CMAKE_ASM_COMPILER_ID MATCHES "Clang")
+    if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
+      message(STATUS "Disabling debug symbols for Clang internal assembler")
+    else()
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
     endif()
 
@@ -101,6 +103,10 @@ if(PERL_EXECUTABLE)
   perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_armv8.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_armv8.pl)
+  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+      perlasm(cipher_extra/aesni-sha1-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha1-x86_64.pl)
+      perlasm(cipher_extra/aesni-sha256-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha256-x86_64.pl)
+  endif()
   perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
   perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
   perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
@@ -133,13 +139,13 @@ endif()
 add_subdirectory(fipsmodule)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES EXTERNAL_OBJECT true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES GENERATED true)
 
   set(
     CRYPTO_FIPS_OBJECTS
 
-    fipsmodule/bcm.o
+    fipsmodule/${BCM_NAME}
   )
 endif()
 
@@ -182,15 +188,34 @@ if(ARCH STREQUAL "x86")
 endif()
 
 if(ARCH STREQUAL "x86_64")
-  set(
-    CRYPTO_ARCH_SOURCES
+  if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    # CryptoAlg-1091:
+    # Stitch code |aesni-sha1/256-x86_64.${ASM_EXT}| are not enabled due
+    # to some build issues and lack of tools to measure the performance gap.
+    # The disable is safer choice because |EVP_aes_128/256_cbc_hmac_sha1/256|
+    # are deprecated.
+    set(
+      CRYPTO_ARCH_SOURCES
 
-    chacha/chacha-x86_64.${ASM_EXT}
-    cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
-    test/trampoline-x86_64.${ASM_EXT}
-    hrss/asm/poly_rq_mul.S
-  )
+      chacha/chacha-x86_64.${ASM_EXT}
+      cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+      cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+      test/trampoline-x86_64.${ASM_EXT}
+      hrss/asm/poly_rq_mul.S
+    )
+  else()
+    set(
+      CRYPTO_ARCH_SOURCES
+
+      chacha/chacha-x86_64.${ASM_EXT}
+      cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+      cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+      cipher_extra/aesni-sha1-x86_64.${ASM_EXT}
+      cipher_extra/aesni-sha256-x86_64.${ASM_EXT}
+      test/trampoline-x86_64.${ASM_EXT}
+      hrss/asm/poly_rq_mul.S
+    )
+  endif()
 endif()
 
 if(GO_EXECUTABLE)
@@ -287,6 +312,8 @@ add_library(
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
+  cipher_extra/e_aes_cbc_hmac_sha1.c
+  cipher_extra/e_aes_cbc_hmac_sha256.c
   cipher_extra/e_des.c
   cipher_extra/e_null.c
   cipher_extra/e_rc2.c
@@ -452,6 +479,7 @@ add_library(
   x509v3/v3_purp.c
   x509v3/v3_skey.c
   x509v3/v3_utl.c
+  xts/xts.c
 
   ${CRYPTO_ARCH_SOURCES}
 )
@@ -481,32 +509,48 @@ function(build_libcrypto name module_source)
           $<INSTALL_INTERFACE:include>)
 endfunction()
 
-build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
-
 if(FIPS_SHARED)
-  # Rewrite libcrypto.so (or libcrypto.dylib) to inject the correct module
-  # hash value. For now we support the FIPS build only on Linux, macOS and iOS.
+  # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
+  # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
+  if(MSVC)
+    # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
+    # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
+    build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
+    add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
+    target_link_libraries(fips_empty_main PUBLIC precrypto)
+    add_custom_command(OUTPUT generated_fips_shared_support.c
+            COMMAND ${GO_EXECUTABLE} run
+            ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            )
+    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
+  else()
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
+    # library.
+    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+    if (APPLE)
+      set(INJECT_HASH_APPLE_FLAG "-apple")
+    endif()
 
-  if (APPLE)
-    set(INJECT_HASH_APPLE_FLAG "-apple")
+    add_custom_command(
+      TARGET crypto POST_BUILD
+      COMMAND ${GO_EXECUTABLE} run
+      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+      -sha256 ${INJECT_HASH_APPLE_FLAG}
+      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+      # go_executable isn't used (as it doesn't get built), but we list this
+      # dependency anyway in case it starts working in some CMake version.
+      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    )
   endif()
-
-  add_custom_command(
-    TARGET crypto POST_BUILD
-    COMMAND ${GO_EXECUTABLE} run
-    ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-    -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-    ${INJECT_HASH_APPLE_FLAG}
-    # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-    # go_executable isn't used (as it doesn't get built), but we list this
-    # dependency anyway in case it starts working in some CMake version.
-    DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  )
+else()
+  build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
-
-
-
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
@@ -521,6 +565,12 @@ endif()
 
 if(BUILD_TESTING)
   add_subdirectory(test)
+
+  add_executable(${MEM_TEST_EXEC} mem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
+  target_compile_definitions(${MEM_TEST_EXEC} PRIVATE BORINGSSL_IMPLEMENTATION)
+  add_dependencies(${MEM_TEST_EXEC} global_target)
+  target_link_libraries(${MEM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  add_dependencies(all_tests ${MEM_TEST_EXEC})
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
@@ -613,6 +663,7 @@ if(BUILD_TESTING)
     x509/x509_test.cc
     x509/x509_time_test.cc
     x509v3/tab_test.cc
+    xts/xts_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>

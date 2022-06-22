@@ -20,6 +20,8 @@ import (
 	"math/big"
 )
 
+import "github.com/ethereum/go-ethereum/crypto/secp256k1"
+
 const numPoints = 64
 
 func printPadded(key string, n, max *big.Int) {
@@ -46,6 +48,37 @@ func printMultiples(name string, curve elliptic.Curve) {
 	}
 }
 
+
+// secp256k1 curve is not available in the elliptic/crypto module
+// so we use the implementation from:
+//   github.com/ethereum/go-ethereum/tree/master/crypto/secp256k1
+func printMultiplesSECP256K1() {
+	curve := secp256k1.S256()
+	n := new(big.Int)
+	for i := -numPoints; i <= numPoints; i++ {
+		fmt.Printf("Curve = secp256k1\n")
+		n.SetInt64(int64(i))
+		if i < 0 {
+			n = n.Add(n, curve.Params().N)
+		}
+		fmt.Printf("# N = %d\n", i)
+		printPadded("N", n, curve.Params().N)
+		x, y := curve.ScalarBaseMult(n.Bytes())
+
+		// This secp256k1 implementation of the scalar multiplication
+		// returns (nil, nil) when the scalar is 0 so we have to handle
+		// that case separately.
+		if i == 0 && x == nil && y == nil {
+				printPadded("X", new(big.Int).SetInt64(0), curve.Params().P)
+				printPadded("Y", new(big.Int).SetInt64(0), curve.Params().P)
+		} else {
+				printPadded("X", x, curve.Params().P)
+				printPadded("Y", y, curve.Params().P)
+		}
+		fmt.Printf("\n")
+	}
+}
+
 func main() {
 	fmt.Printf(`# This file contains multiples of the base point for various curves. The point
 # at infinity is represented as X = 0, Y = 0.
@@ -57,4 +90,5 @@ func main() {
 	printMultiples("P-256", elliptic.P256())
 	printMultiples("P-384", elliptic.P384())
 	printMultiples("P-521", elliptic.P521())
+	printMultiplesSECP256K1()
 }

@@ -20,6 +20,7 @@ call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
 @rem tests or copy them around so Windows can find it in the same directory. Instead just put the dll's location onto the path
 set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
+call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
 
 goto :EOF
 
@@ -30,7 +31,6 @@ goto :EOF
 call :build %1 %2 || goto error
 call :test %1 %2 || goto error
 exit /b 0
-
 
 @rem Use the same parameters as build_and_test
 :build

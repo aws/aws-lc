@@ -125,6 +125,15 @@ static const struct KnownAEAD kAEADs[] = {
      "aes_128_cbc_sha1_tls_implicit_iv_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
 
+    {"AES_128_CBC_SHA256_TLS", EVP_aead_aes_128_cbc_sha256_tls,
+     "aes_128_cbc_sha256_tls_tests.txt",
+     kLimitedImplementation | RequiresADLength(11)},
+
+    {"AES_128_CBC_SHA256_TLSImplicitIV",
+     EVP_aead_aes_128_cbc_sha256_tls_implicit_iv,
+     "aes_128_cbc_sha256_tls_implicit_iv_tests.txt",
+     kLimitedImplementation | RequiresADLength(11)},
+
     {"AES_256_CBC_SHA1_TLS", EVP_aead_aes_256_cbc_sha1_tls,
      "aes_256_cbc_sha1_tls_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
@@ -267,6 +276,199 @@ TEST_P(PerAEADTest, TestVector) {
         ctx.get(), out2.data(), &out2_len, out2.size(), nonce.data(),
         nonce.size(), out.data(), out.size(), ad.data(), ad.size()))
         << "Decrypted bad data with corrupted byte.";
+    ERR_clear_error();
+  });
+}
+
+struct KnownTLSLegacyAEAD {
+  const char name[40];
+  const EVP_CIPHER *(*func)(void);
+  const char *test_vectors;
+  uint32_t flags;
+};
+
+static const struct KnownTLSLegacyAEAD kTLSLegacyAEADs[] = {
+    {"AES_128_CBC_SHA1_TLS", EVP_aes_128_cbc_hmac_sha1,
+     "aes_128_cbc_sha1_tls_stitch_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+     {"AES_128_CBC_SHA1_TLS_IMPLICIT_IV", EVP_aes_128_cbc_hmac_sha1,
+     "aes_128_cbc_sha1_tls_stitch_implicit_iv_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_128_CBC_SHA256_TLS", EVP_aes_128_cbc_hmac_sha256,
+     "aes_128_cbc_sha256_tls_stitch_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_128_CBC_SHA256_TLS_IMPLICIT_IV", EVP_aes_128_cbc_hmac_sha256,
+     "aes_128_cbc_sha256_tls_stitch_implicit_iv_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_256_CBC_SHA1_TLS", EVP_aes_256_cbc_hmac_sha1,
+     "aes_256_cbc_sha1_tls_stitch_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+     {"AES_256_CBC_SHA1_TLS_IMPLICIT_IV", EVP_aes_256_cbc_hmac_sha1,
+     "aes_256_cbc_sha1_tls_stitch_implicit_iv_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_256_CBC_SHA256_TLS", EVP_aes_256_cbc_hmac_sha256,
+     "aes_256_cbc_sha256_tls_stitch_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+
+    {"AES_256_CBC_SHA256_TLS_IMPLICIT_IV", EVP_aes_256_cbc_hmac_sha256,
+     "aes_256_cbc_sha256_tls_stitch_implicit_iv_tests.txt",
+     RequiresADLength(EVP_AEAD_TLS1_AAD_LEN)},
+};
+
+class PerTLSLegacyAEADTest : public testing::TestWithParam<KnownTLSLegacyAEAD> {};
+
+INSTANTIATE_TEST_SUITE_P(All, PerTLSLegacyAEADTest, testing::ValuesIn(kTLSLegacyAEADs),
+                         [](const testing::TestParamInfo<KnownTLSLegacyAEAD> &params)
+                             -> std::string { return params.param.name; });
+
+static void set_MAC_key(EVP_CIPHER_CTX *ctx, uint8_t *key, size_t mac_key_size) {
+  // In each TLS session, only need to set EVP_CTRL_AEAD_SET_MAC_KEY once.
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY, mac_key_size, key))
+    << "EVP_CTRL_AEAD_SET_MAC_KEY failed: "
+    << ERR_reason_error_string(ERR_get_error());
+}
+
+static void set_TLS1_AAD(EVP_CIPHER_CTX *ctx, uint8_t *ad) {
+  // In each TLS session, ad should be set before each read/write operation because it includes sequence_num.
+  // Below ctrl returns hmac|pad len for encryption.
+  // For decryption, it returns digest size.
+  EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD, EVP_AEAD_TLS1_AAD_LEN, ad);
+}
+
+// |EVP_aes_128/256_cbc_hmac_sha1/256| tests.
+// Tests a TLS specific legacy AEAD against a series of test vectors from a file, using the
+// FileTest format. As an example, here's a valid test case:
+//
+// # DIGEST: 918c0df73de553b5bdffb7365f93a430292f6eea
+// KEY: 2993a340b9b3c589c7481df3f4183aa23fd8d7efd88503f78b8ed1c8e9ba2fd6773e0d0c
+// NONCE: 302a5f47e037446f5891d77df660ed82
+// IN: 302a5f47e037446f5891d77df660ed8286d641b877
+// AD: 97b684e0fb56f97c3903020015
+// CT: 6854710b76c79c9be84b3669fc4f05b17e67a9cc14
+// TAG: 9c6998bf3b172670c5f8613f479641468bbed4c68d093940c92de4
+// TAG_LEN: 20
+TEST_P(PerTLSLegacyAEADTest, TestVector) {
+  const EVP_CIPHER *cipher = GetParam().func();
+  if (!cipher) {
+    // This condition can happen when
+    // 1. !defined(AES_CBC_HMAC_SHA_STITCH).
+    // 2. |hwaes_capable| returns false.
+    //    -- Checked by Intel SDE. CPU is "mrm", "nhm", "pnr", "slt" and "p4p".
+    return;
+  }
+  std::string test_vectors = "crypto/cipher_extra/test/";
+  test_vectors += GetParam().test_vectors;
+  FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> key, nonce, in, ad, ct, tag;
+    ASSERT_TRUE(t->GetBytes(&key, "KEY"));
+    ASSERT_TRUE(t->GetBytes(&nonce, "NONCE"));
+    ASSERT_TRUE(t->GetBytes(&in, "IN"));
+    ASSERT_TRUE(t->GetBytes(&ad, "AD"));
+    ASSERT_TRUE(t->GetBytes(&ct, "CT"));
+    ASSERT_TRUE(t->GetBytes(&tag, "TAG"));
+    size_t tag_len = tag.size();
+    if (t->HasAttribute("TAG_LEN")) {
+      // Legacy AEADs are MAC-then-encrypt and may include padding in the TAG
+      // field. TAG_LEN contains the actual size of the digest in that case.
+      std::string tag_len_str;
+      ASSERT_TRUE(t->GetAttribute(&tag_len_str, "TAG_LEN"));
+      tag_len = strtoul(tag_len_str.c_str(), nullptr, 10);
+      ASSERT_TRUE(tag_len);
+    }
+    bool explicit_iv = !nonce.empty();
+    size_t aes_block_size = EVP_CIPHER_block_size(cipher);;
+    size_t key_block_size = EVP_CIPHER_key_length(cipher);
+    size_t e_iv_len = 0;
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+
+    std::vector<uint8_t> encrypted(ct.size() + tag.size());
+    // The |key| is Mac key + AES key + IV.
+    size_t mac_key_size = tag_len;
+    const uint8_t *aes_key = key.data() + mac_key_size;
+    std::vector<uint8_t> iv(aes_block_size);
+    if (explicit_iv) {
+      e_iv_len = aes_block_size;
+      OPENSSL_memcpy(iv.data(), nonce.data(), nonce.size());
+    } else {
+      OPENSSL_memcpy(iv.data(), key.data() + mac_key_size + key_block_size, aes_block_size);
+    }
+    if (!t->HasAttribute("NO_SEAL")) {
+      // Even without |EVP_CIPHER_CTX_set_padding|, |EVP_Cipher| returns error code because
+      // |EVP_aes_128/256_cbc_hmac_sha1/256| does not automatically pad the input.
+      ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), EVP_CIPH_NO_PADDING));
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, aes_key, iv.data()));
+      set_MAC_key(ctx.get(), key.data(), mac_key_size);
+      // |EVP_aes_128/256_cbc_hmac_sha1/256| encrypts a TLS record, which should have space for
+      // explicit_iv(if applicable), payload, tag(hmac and padding).
+      std::vector<uint8_t> record(in.size() + tag.size(), 0);
+      OPENSSL_memcpy(record.data(), in.data(), in.size());
+      set_TLS1_AAD(ctx.get(), ad.data());
+      ASSERT_TRUE(EVP_Cipher(ctx.get(), encrypted.data(), record.data(), record.size()))
+        << "EVP_Cipher encryption failed: "
+        << ERR_reason_error_string(ERR_get_error());
+      EXPECT_EQ(Bytes(ct), Bytes(encrypted.data(), ct.size()));
+      EXPECT_EQ(Bytes(tag), Bytes(encrypted.data() + ct.size(), tag.size()));
+    } else {
+      encrypted.resize(ct.size() + tag.size());
+      OPENSSL_memcpy(encrypted.data(), ct.data(), ct.size());
+      OPENSSL_memcpy(encrypted.data() + ct.size(), tag.data(), tag.size());
+    }
+
+    // Decryption side(TLS client/server) always has a separated EVP_CIPHER_CTX.
+    bssl::ScopedEVP_CIPHER_CTX decrypt_ctx;
+    ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(decrypt_ctx.get(), EVP_CIPH_NO_PADDING));
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), cipher, nullptr, aes_key, iv.data()));
+    set_MAC_key(decrypt_ctx.get(), key.data(), mac_key_size);
+    set_TLS1_AAD(decrypt_ctx.get(), ad.data());
+    std::vector<uint8_t> decrypted(encrypted.size());
+    int ret = EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size());
+    if (t->HasAttribute("FAILS")) {
+      ASSERT_TRUE(ret <= 0) << "Decrypted bad data.";
+      ERR_clear_error();
+      return;
+    }
+
+    // Integrity check.
+    ASSERT_EQ(ret, 1) << "EVP_Cipher integrity check failed.";
+    // Check payload data.
+    size_t payload_len = in.size() - e_iv_len;
+    std::vector<uint8_t> expect(payload_len, 0);
+    OPENSSL_memcpy(expect.data(), in.data() + e_iv_len, payload_len);
+    std::vector<uint8_t> actual(payload_len, 0);
+    OPENSSL_memcpy(actual.data(), decrypted.data() + e_iv_len, payload_len);
+    ASSERT_EQ(Bytes(expect), Bytes(actual));
+    // Integrity check after modifying some bytes of the cipher text.
+    // Some |in| only include explicit iv(if applicable) without payload.
+    if (in.size() > e_iv_len) {
+      // Modify the cipher text.
+      encrypted[EVP_CIPHER_block_size(cipher)] ^= 0x80;
+      set_TLS1_AAD(decrypt_ctx.get(), ad.data());
+      ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
+      ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_BAD_DECRYPT);
+      ERR_clear_error();
+      // Recover the cipher text.
+      encrypted[EVP_CIPHER_block_size(cipher)] ^= 0x80;
+    }
+
+    // |EVP_aes_128/256_cbc_hmac_sha1/256| requires the input to be the integral multiple of AES_BLOCK_SIZE.
+    encrypted.resize(encrypted.size() + 1);
+    set_TLS1_AAD(decrypt_ctx.get(), ad.data());
+    ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
+    ERR_clear_error();
+
+    // Garbage at the end isn't ignored.
+    encrypted.resize(encrypted.size() + EVP_CIPHER_block_size(cipher) - 1);
+    decrypted.resize(encrypted.size());
+    set_TLS1_AAD(decrypt_ctx.get(), ad.data());
+    ASSERT_FALSE(EVP_Cipher(decrypt_ctx.get(), decrypted.data(), encrypted.data(), encrypted.size()));
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_BAD_DECRYPT);
     ERR_clear_error();
   });
 }

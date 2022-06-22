@@ -103,7 +103,7 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 // linked. This isn't an ideal result, but its helps in some cases.
 WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags));
 
-// The following three functions can be defined to override default heap
+// The following four functions can be defined to override default heap
 // allocation and freeing. If defined, it is the responsibility of
 // |OPENSSL_memory_free| to zero out the memory before returning it to the
 // system. |OPENSSL_memory_free| will not be passed NULL pointers.
@@ -124,6 +124,7 @@ WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags));
 WEAK_SYMBOL_FUNC(void*, OPENSSL_memory_alloc, (size_t size))
 WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr))
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr))
+WEAK_SYMBOL_FUNC(void*, OPENSSL_memory_realloc, (void *ptr, size_t size))
 
 // kBoringSSLBinaryTag is a distinctive byte sequence to identify binaries that
 // are linking in BoringSSL and, roughly, what version they are using.
@@ -198,7 +199,12 @@ void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
   if (orig_ptr == NULL) {
     return OPENSSL_malloc(new_size);
   }
-
+  if (OPENSSL_memory_realloc != NULL) {
+    assert(OPENSSL_memory_alloc != NULL);
+    assert(OPENSSL_memory_free != NULL);
+    assert(OPENSSL_memory_get_size != NULL);
+    return OPENSSL_memory_realloc(orig_ptr, new_size);
+  }
   size_t old_size;
   if (OPENSSL_memory_get_size != NULL) {
     old_size = OPENSSL_memory_get_size(orig_ptr);

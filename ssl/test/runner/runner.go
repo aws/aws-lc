@@ -1258,6 +1258,9 @@ type shimProcess struct {
 	waitChan       chan error
 	listener       *net.TCPListener
 	stdout, stderr bytes.Buffer
+	// default value is false.
+	// This is marked as true in |(s *shimProcess) wait()|.
+	idled          bool
 }
 
 // newShimProcess starts a new shim with the specified executable, flags, and
@@ -1295,7 +1298,7 @@ func newShimProcess(shimPath string, flags []string, env []string) (*shimProcess
 		shim.listener.Close()
 		return nil, err
 	}
-
+	shim.idled = false
 	shim.waitChan = make(chan error, 1)
 	go func() { shim.waitChan <- shim.cmd.Wait() }()
 	return shim, nil
@@ -1337,6 +1340,13 @@ func (s *shimProcess) wait() error {
 
 	if !useDebugger() {
 		waitTimeout := time.AfterFunc(*idleTimeout, func() {
+			// Enable below code to debug why the shimProcess is idle.
+			// time.Sleep(20 * time.Minute)
+			// stderr := strings.Replace(s.stderr.String(), "\r\n", "\n", -1)
+			// fmt.Fprintf(os.Stderr, "idleTimeout reached. Process %d is idled with output %s", s.cmd.Process.Pid, stderr)
+			// Mark the bssl_shim process as idled.
+			// The further action is to retry the test case.
+			s.idled = true
 			s.cmd.Process.Kill()
 		})
 		defer waitTimeout.Stop()
@@ -1652,6 +1662,18 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 	localErr := doExchanges(test, shim, resumeCount, &transcripts)
 	childErr := shim.wait()
 
+	// shim is marked as idled only when |idleTimeout| is reached.
+	// This retry fix is scoped with "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords".
+	if shim.idled && test.name == "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords" {
+		shim, err = newShimProcess(shimPath, flags, env)
+		if err != nil {
+			return err
+		}
+		defer shim.close()
+		localErr = doExchanges(test, shim, resumeCount, &transcripts)
+		childErr = shim.wait()
+	}
+
 	// Now that the shim has exited, all the settings files have been
 	// written. Append the saved transcripts.
 	for i, transcript := range transcripts {
@@ -1851,6 +1873,7 @@ var testCipherSuites = []testCipherSuite{
 	{"RSA_WITH_3DES_EDE_CBC_SHA", TLS_RSA_WITH_3DES_EDE_CBC_SHA},
 	{"RSA_WITH_AES_128_GCM_SHA256", TLS_RSA_WITH_AES_128_GCM_SHA256},
 	{"RSA_WITH_AES_128_CBC_SHA", TLS_RSA_WITH_AES_128_CBC_SHA},
+	{"RSA_WITH_AES_128_CBC_SHA256", TLS_RSA_WITH_AES_128_CBC_SHA256},
 	{"RSA_WITH_AES_256_GCM_SHA384", TLS_RSA_WITH_AES_256_GCM_SHA384},
 	{"RSA_WITH_AES_256_CBC_SHA", TLS_RSA_WITH_AES_256_CBC_SHA},
 	{"ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
@@ -1860,6 +1883,7 @@ var testCipherSuites = []testCipherSuite{
 	{"ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256", TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256},
 	{"ECDHE_RSA_WITH_AES_128_GCM_SHA256", TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 	{"ECDHE_RSA_WITH_AES_128_CBC_SHA", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+	{"ECDHE_RSA_WITH_AES_128_CBC_SHA256", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
 	{"ECDHE_RSA_WITH_AES_256_GCM_SHA384", TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
 	{"ECDHE_RSA_WITH_AES_256_CBC_SHA", TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA},
 	{"ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256", TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},

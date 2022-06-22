@@ -128,17 +128,25 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   # CMake automatically connects include_directories to the NASM command-line,
   # but not add_definitions.
   set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
 
   # Use "symbol_prefix_include" to store generated header files
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include)
+
+  if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
+  else()
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+  endif()
+
   add_custom_command(
     OUTPUT symbol_prefix_include/boringssl_prefix_symbols.h
            symbol_prefix_include/boringssl_prefix_symbols_asm.h
            symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include
-    COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS}
+    COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS_PATH}
     DEPENDS util/make_prefix_headers.go
-            ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+            ${BORINGSSL_PREFIX_SYMBOLS_PATH})
 
   # add_dependencies needs a target, not a file, so we add an intermediate
   # target.
@@ -196,6 +204,7 @@ endmacro()
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
 endif()
 
 # Detect if memcmp is wrongly stripped like strcmp.
@@ -232,8 +241,8 @@ if(GCC OR CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
-  if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2"))
-    # GCC 4.1.2 and below do not support all of these flags or they raise false positives.
+  if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3"))
+    # GCC 4.1.3 and below do not support all of these flags or they raise false positives.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
@@ -267,9 +276,9 @@ if(GCC OR CLANG)
 
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
-  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2")
+  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
-    # and declare that the code is trying to free a stack pointer. GCC 4.1.2 and lower
+    # and declare that the code is trying to free a stack pointer. GCC 4.1.3 and lower
     # doesn't support this flag and can't use it.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
@@ -307,7 +316,7 @@ if(GCC OR CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
 
-  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.2")
+  if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
@@ -363,7 +372,14 @@ elseif(MSVC)
       "C5027" # move assignment operator was implicitly defined as deleted
       "C5045" # Compiler will insert Spectre mitigation for memory load if
               # /Qspectre switch specified
-      )
+      "C4255" # no function prototype given: converting '()' to '(void)'
+      "C4152" # non standard extension, function/data ptr conversion in expression
+              # used in bcm.c to check functions are inside the FIPS module memory region
+      "C4295" # array is too small to include a terminating null character
+      "C4701" # potentially uninitialized local
+      "C4505" # unreferenced local function has been removed
+      "C4702" # unreachable code in bcm.c power on tests
+          )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
       "C4265" # class has virtual functions, but destructor is not virtual
@@ -528,7 +544,7 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
-  if(FIPS_SHARED)
+  if(FIPS_SHARED AND ANDROID)
     # The Android CMake files set -ffunction-sections and -fdata-sections,
     # which is incompatible with FIPS_SHARED.
     set(CMAKE_C_FLAGS
@@ -751,11 +767,13 @@ if(BUILD_TESTING)
     set(RANDOM_TEST_EXEC urandom_test.so)
     set(SSL_TEST_EXEC ssl_test.so)
     set(DECREPIT_TEST_EXEC decrepit_test.so)
+    set(MEM_TEST_EXEC mem_test.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
     set(SSL_TEST_EXEC ssl_test)
     set(DECREPIT_TEST_EXEC decrepit_test)
+    set(MEM_TEST_EXEC mem_test)
   endif()
 endif()
 
@@ -817,16 +835,23 @@ endif()
 if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
+      if(MSVC)
+        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool.exe)
+        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper.exe)
+      else()
+        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool)
+        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper)
+      endif()
       add_custom_target(
         acvp_tests
-        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/acvptool
+        COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
-        COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_BINARY_DIR}/testmodulewrapper
+        COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
         COMMAND cd util/fipstools/acvp/acvptool/test &&
                 ${GO_EXECUTABLE} run check_expected.go
-                -tool ${CMAKE_BINARY_DIR}/acvptool
-                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${CMAKE_BINARY_DIR}/testmodulewrapper
+                -tool ${ACVP_TOOL}
+                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
                 -tests tests.json
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         DEPENDS modulewrapper
@@ -909,4 +934,19 @@ endif()
 
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
+endif()
+
+# Parse |OPENSSL_VERSION_NUMBER| in both files and make sure they match.
+# |OPENSSL_VERSION_NUMBER| exists in `opensslv.h` only to support
+# MySQL's CMake build.
+FILE(STRINGS "include/openssl/base.h"
+      BASE_VERSION_NUMBER
+      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
+      )
+FILE(STRINGS "include/openssl/opensslv.h"
+      OPENSSLV_VERSION_NUMBER
+      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
+      )
+if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
+  message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
 endif()
