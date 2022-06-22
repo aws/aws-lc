@@ -465,8 +465,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "SHA2-512/256"
           ]
         }]
-      },
-      {
+      },)"
+   R"({
         "algorithm": "RSA",
         "mode": "keyGen",
         "revision": "FIPS186-4",
