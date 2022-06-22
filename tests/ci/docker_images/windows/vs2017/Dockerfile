@@ -6,11 +6,21 @@
 # Keep parity with the upstream tags at https://hub.docker.com/_/microsoft-windows-servercore
 FROM aws-lc/windows_base:2019
 
-# Install Visual C++ Build Tools, as per: https://chocolatey.org/packages/visualcpp-build-tools
-RUN powershell -NoProfile -InputFormat None -Command `
-    choco install visualcpp-build-tools -version 15.0.26228.20170424 -y; `
-    Write-Host 'Waiting for Visual C++ Build Tools to finish'; `
-    Wait-Process -Name vs_installer
+SHELL ["cmd", "/S", "/C"]
+RUN `
+    # Download the Build Tools bootstrapper.
+    curl -SL --output vs_buildtools.exe https://aka.ms/vs/15/release/vs_buildtools.exe `
+    `
+    # Install MSVC2017 Build Tools.
+    # Reference: https://docs.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-2017/install/workload-component-id-vs-build-tools?view=vs-2017
+    && (start /w vs_buildtools.exe --quiet --wait --norestart --nocache `
+        --add Microsoft.VisualStudio.Component.VC.CLI.Support `
+        --add Microsoft.VisualStudio.Component.VC.CMake.Project `
+        || IF "%ERRORLEVEL%"=="3010" EXIT 0) `
+    `
+    # Cleanup
+    && del /q vs_buildtools.exe
+
 
 RUN setx /M PATH "%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin"
 
