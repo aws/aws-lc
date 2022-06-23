@@ -23,9 +23,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = p, X2 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_optneg_p521
-        .globl  _bignum_optneg_p521
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg_p521)
         .text
         .balign 4
 
@@ -44,8 +45,7 @@
 #define d7 x11
 #define d8 x12
 
-bignum_optneg_p521:
-_bignum_optneg_p521:
+S2N_BN_SYMBOL(bignum_optneg_p521):
 
 // Load the 9 digits of x and generate q = the OR of them all
 
