@@ -14,8 +14,7 @@ batch:
         type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        # Build failure on Docker image `vs2015_latest`, tracked in CryptoAlg-741.
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2015-2020-12-08-01
+        image: ECR_REPO_PLACEHOLDER:vs2015_latest
 
     - identifier: windows_msvc2017_x64
       buildspec: ./tests/ci/codebuild/windows-x86/windows-msvc2017.yml
