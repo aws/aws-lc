@@ -14,6 +14,7 @@ RUN `
     # Install MSVC2017 Build Tools.
     # Reference: https://docs.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-2017/install/workload-component-id-vs-build-tools?view=vs-2017
     && (start /w vs_buildtools.exe --quiet --wait --norestart --nocache `
+        --add Microsoft.VisualStudio.Workload.VCTools `
         --add Microsoft.VisualStudio.Component.VC.CLI.Support `
         --add Microsoft.VisualStudio.Component.VC.CMake.Project `
         || IF "%ERRORLEVEL%"=="3010" EXIT 0) `
