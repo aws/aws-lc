@@ -38,7 +38,9 @@ OBJ = bignum_add_p25519.o \
       bignum_neg_p25519.o \
       bignum_sqr_p25519.o \
       bignum_sqr_p25519_alt.o \
-      bignum_sub_p25519.o
+      bignum_sub_p25519.o \
+      curve25519_ladderstep.o \
+      curve25519_ladderstep_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 

@@ -44,3 +44,4 @@ bignum_triple_p256
 bignum_triple_p256k1
 bignum_triple_p384
 bignum_triple_p521
+curve25519_ladderstep

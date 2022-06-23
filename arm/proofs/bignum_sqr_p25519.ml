@@ -206,7 +206,7 @@ let BIGNUM_SQR_P25519_CORRECT = time prove
              (\s. read PC s = word (pc + 0x1c8) /\
                   bignum_from_memory (z,4) s = (n EXP 2) MOD p_25519)
           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9;
-                      X10; X11; X12; X13; X14; X15; X16; X17] ,,
+                      X10; X11; X12; X13; X14; X15; X16] ,,
            MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
            MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `n:num`; `pc:num`] THEN
@@ -414,7 +414,7 @@ let BIGNUM_SQR_P25519_SUBROUTINE_CORRECT = time prove
              (\s. read PC s = returnaddress /\
                   bignum_from_memory(z,4) s = (n EXP 2) MOD p_25519)
              (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9;
-                         X10; X11; X12; X13; X14; X15; X16; X17] ,,
+                         X10; X11; X12; X13; X14; X15; X16] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
   ARM_ADD_RETURN_NOSTACK_TAC
