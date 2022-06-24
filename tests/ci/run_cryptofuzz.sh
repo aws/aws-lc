@@ -31,6 +31,10 @@ if [[ -z "${CUSTOM_CRYPTOFUZZ_REPO_DIR}" ]]; then
   echo "CUSTOM_CRYPTOFUZZ_REPO_DIR is empty."
 else
   export CRYPTOFUZZ_SRC="${CUSTOM_CRYPTOFUZZ_REPO_DIR}"
+  # Local development does not need differential fuzzing.
+  # Remove these libs related build flags.
+  export CXXFLAGS="${CXXFLAGS// -DCRYPTOFUZZ_BOTAN/}"
+  export CXXFLAGS="${CXXFLAGS// -DCRYPTOFUZZ_CRYPTOPP/}"
   cd "$CRYPTOFUZZ_SRC"
   # This step is to generate required header and cpp files.
   python3 gen_repository.py
