@@ -3,6 +3,10 @@
 
 #include <openssl/base.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
 // OPENSSL_cpuid_setup initializes the platform-specific feature cache.
@@ -175,5 +179,9 @@ int CRYPTO_is_PPC64LE_vcrypto_capable(void);
 extern unsigned long OPENSSL_ppc64le_hwcap2;
 
 #endif  // OPENSSL_PPC64LE
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif // OPENSSL_HEADER_CPUCAP_INTERNAL_H
