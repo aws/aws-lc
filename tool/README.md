@@ -27,6 +27,7 @@ In order to build the above-mentioned benchmarking tools, absolute paths to each
 | awslc_bm | -DAWSLC_INSTALL_DIR |
 | bssl_bm | -DBORINGSSL_INSTALL_DIR |
 | ossl_bm | -DOPENSSL_INSTALL_DIR |
+| ossl3_bm | -DOPENSSL3_INSTALL_DIR |
 
 ### Expected Directory Structure
 Additionally, the benchmarking tools expects specific directory structures for the provided install locations for each library. Namely, each library must be built into a folder called `build` located in the base directory of the library.
@@ -46,11 +47,27 @@ Additionally, the benchmarking tools expects specific directory structures for t
 ----libcrypto.a
 ```
 
-**OpenSSL**
+**OpenSSL1.x**
 ```
 -openssl_install_dir/
 --include/
---build/
----lib/
-----libcrypto.a
+--lib/
+---libcrypto.a
+```
+
+**OpenSSL3.0**
+```
+-openssl_install_dir/
+--include/
+--lib/
+---libcrypto.a
+```
+or
+
+**OpenSSL3.0**
+```
+-openssl_install_dir/
+--include/
+--lib64/
+---libcrypto.a
 ```

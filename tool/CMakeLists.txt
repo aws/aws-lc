@@ -1,4 +1,3 @@
-
 add_executable(
   bssl
 
@@ -66,13 +65,29 @@ if(AWSLC_INSTALL_DIR)
   endif()
 endif()
 
-# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in build/
+# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
 if(OPENSSL_INSTALL_DIR)
-  build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
+  build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/lib/libcrypto.a)
 
   target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK)
   if(NOT MSVC AND NOT ANDROID)
     target_link_libraries(ossl_bm pthread dl)
+  endif()
+endif()
+
+# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
+if(OPENSSL3_INSTALL_DIR)
+  add_definitions("-Wno-deprecated-declarations")
+  if(NOT EXISTS ${OPENSSL3_INSTALL_DIR}/lib/libcrypto.a)
+    build_benchmark(ossl3_bm ${OPENSSL3_INSTALL_DIR}/include ${OPENSSL3_INSTALL_DIR}/lib64/libcrypto.a)
+  else()
+    build_benchmark(ossl3_bm ${OPENSSL3_INSTALL_DIR}/include ${OPENSSL3_INSTALL_DIR}/lib/libcrypto.a)
+  endif()
+
+
+  target_compile_options(ossl3_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL3_BENCHMARK)
+  if(NOT MSVC AND NOT ANDROID)
+    target_link_libraries(ossl3_bm pthread dl)
   endif()
 endif()
 
