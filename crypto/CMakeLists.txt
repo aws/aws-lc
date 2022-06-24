@@ -352,7 +352,6 @@ add_library(
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
-  hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
@@ -636,7 +635,7 @@ if(BUILD_TESTING)
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
-    hkdf/hkdf_test.cc
+    fipsmodule/hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
