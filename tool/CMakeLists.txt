@@ -77,6 +77,8 @@ endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
 if(OPENSSL3_INSTALL_DIR)
+  # The low-level function calls are deprecated for OpenSSL 3.0. We should revisit using these in the future, 
+  # but disabling the warnings works for now
   add_definitions("-Wno-deprecated-declarations")
   if(NOT EXISTS ${OPENSSL3_INSTALL_DIR}/lib/libcrypto.a)
     build_benchmark(ossl3_bm ${OPENSSL3_INSTALL_DIR}/include ${OPENSSL3_INSTALL_DIR}/lib64/libcrypto.a)
