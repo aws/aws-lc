@@ -104,6 +104,7 @@
 #include "evp/evp_ctx.c"
 #include "evp/p_ec.c"
 #include "evp/p_rsa.c"
+#include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
