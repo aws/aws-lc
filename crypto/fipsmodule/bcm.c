@@ -39,16 +39,6 @@
 
 #include "../internal.h"
 
-#include "cpucap/cpucap.c"
-#include "cpucap/cpu_aarch64_apple.c"
-#include "cpucap/cpu_aarch64_fuchsia.c"
-#include "cpucap/cpu_aarch64_linux.c"
-#include "cpucap/cpu_aarch64_win.c"
-#include "cpucap/cpu_arm_linux.c"
-#include "cpucap/cpu_arm.c"
-#include "cpucap/cpu_intel.c"
-#include "cpucap/cpu_ppc64le.c"
-
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"
@@ -79,6 +69,15 @@
 #include "cipher/e_aes.c"
 #include "cipher/e_des.c"
 #include "cipher/e_aesccm.c"
+
+#include "cpucap/cpu_aarch64_apple.c"
+#include "cpucap/cpu_aarch64_fuchsia.c"
+#include "cpucap/cpu_aarch64_linux.c"
+#include "cpucap/cpu_aarch64_win.c"
+#include "cpucap/cpu_arm_linux.c"
+#include "cpucap/cpu_intel.c"
+#include "cpucap/cpu_ppc64le.c"
+
 #include "cmac/cmac.c"
 #include "des/des.c"
 #include "dh/check.c"

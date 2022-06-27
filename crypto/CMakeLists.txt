@@ -498,11 +498,18 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
-    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    add_library(
+      generated_fipsmodule
+
+      OBJECT
+
+      generated_fips_shared_support.c
+      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+    )
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
-    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
-    # library.
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
+    # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
