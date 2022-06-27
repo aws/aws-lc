@@ -27,6 +27,7 @@
 
 #include "internal.h"
 #include "../bn/internal.h"
+#include "../cpucap/internal.h"
 #include "../../internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"

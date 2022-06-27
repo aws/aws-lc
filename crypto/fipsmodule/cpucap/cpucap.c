@@ -22,16 +22,8 @@
 #define HIDDEN __attribute__((visibility("hidden")))
 #endif
 
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 
-// The capability variables are defined in this file in order to work around a
-// linker bug. When linking with a .a, if no symbols in a .o are referenced
-// then the .o is discarded, even if it has constructor functions.
-//
-// This still means that any binaries that don't include some functionality
-// that tests the capability values will still skip the constructor but, so
-// far, the init constructor function only sets the capability variables.
-
-#if defined(BORINGSSL_DISPATCH_TEST)
 // This value must be explicitly initialised to zero in order to work around a
 // bug in libtool or the linker on OS X.
 //
@@ -39,12 +31,6 @@
 // archive, linking on OS X will fail to resolve common symbols. By
 // initialising it to zero, it becomes a "data symbol", which isn't so
 // affected.
-HIDDEN uint8_t BORINGSSL_function_hit[7] = {0};
-#endif
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-
-// This value must be explicitly initialized to zero. See similar comment above.
 HIDDEN uint32_t OPENSSL_ia32cap_P[4] = {0};
 
 #elif defined(OPENSSL_PPC64LE)
@@ -81,3 +67,9 @@ HIDDEN uint32_t OPENSSL_armcap_P = 0;
 #endif
 
 #endif
+
+#if defined(BORINGSSL_DISPATCH_TEST)
+// This value must be explicitly initialized to zero. See similar comment above.
+HIDDEN uint8_t BORINGSSL_function_hit[7] = {0};
+#endif
+

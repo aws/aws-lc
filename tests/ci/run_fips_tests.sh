@@ -7,13 +7,12 @@ source tests/ci/common_posix_setup.sh
 echo "Testing AWS-LC shared library in FIPS Release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
-# TODO: re-enable below dimensions in new FIPS branch. The main branch has this build dimension fixed.
-# # Static FIPS build works only on x86_64 Linux platforms (both gcc and clang),
-# # and on aarch64 Linux platforms with clang.
-# if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || (("$(uname -p)" == 'aarch64') && ("$CC" == 'clang'*))) ]]; then
-#   echo "Testing AWS-LC static library in FIPS Release mode."
-#   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
-# fi
+# Static FIPS build works only on x86_64 Linux platforms (both gcc and clang),
+# and on aarch64 Linux platforms with clang.
+if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || (("$(uname -p)" == 'aarch64') && ("$CC" == 'clang'*))) ]]; then
+  echo "Testing AWS-LC static library in FIPS Release mode."
+  fips_build_and_test -DCMAKE_BUILD_TYPE=Release
+fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
 if [[ "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then
