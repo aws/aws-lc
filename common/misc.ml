@@ -324,6 +324,33 @@ let MOD_UNIQ_BALANCED_REAL = prove
   REWRITE_TAC[bitval] THEN COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
   ASM_REAL_ARITH_TAC);;
 
+let INT_REM_UNIQ_BALANCED = prove
+ (`!n p z q.
+      q * p <= n + p /\ n < q * p + p /\
+      q * p + z = &(bitval(n < q * p)) * p + n
+      ==> n rem p = z`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[bitval] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES; MULT_CLAUSES] THEN
+  REPEAT STRIP_TAC THEN MATCH_MP_TAC INT_REM_UNIQ THENL
+   [EXISTS_TAC `q - &1:int`; EXISTS_TAC `q:int`] THEN
+  ASM_INT_ARITH_TAC);;
+
+let INT_REM_UNIQ_BALANCED_MOD = prove
+ (`!n p z q k.
+      &0 <= p /\ p < &2 pow k /\
+      &0 <= z /\ z < &2 pow k /\
+      q * p <= n + p /\ n < q * p + p /\
+      (q * p + z == &(bitval(n < q * p)) * p + n) (mod (&2 pow k))
+      ==> n rem p = z`,
+  REPEAT STRIP_TAC THEN MATCH_MP_TAC INT_REM_UNIQ_BALANCED THEN
+  EXISTS_TAC `q:int` THEN ASM_REWRITE_TAC[] THEN
+  ONCE_REWRITE_TAC[INT_ARITH `a + b:int = c <=> b = c - a`] THEN
+  MATCH_MP_TAC INT_CONG_IMP_EQ THEN EXISTS_TAC `(&2:int) pow k` THEN
+  ASM_REWRITE_TAC[INTEGER_RULE
+   `(b:int == c - a) (mod p) <=> (a + b == c) (mod p)`] THEN
+  REWRITE_TAC[bitval] THEN COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  ASM_INT_ARITH_TAC);;
+
 let VAL_WORD_SUBWORD_JOIN_64 = prove
  (`!(h:int64) (l:int64) k.
     k <= 64

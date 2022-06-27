@@ -44,7 +44,7 @@ let reduced_quadruple = new_definition
     m < p /\ n < p /\ r < p /\ s < p`;;
 
 simulation_precanon_thms :=
- union [bignum_quadruple_from_memory; bignum_pair_from_memory]
+ union [bignum_quadruple_from_memory; bignum_triple_from_memory; bignum_pair_from_memory]
        (!simulation_precanon_thms);;
 
 (* ------------------------------------------------------------------------- *)

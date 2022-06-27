@@ -32,12 +32,10 @@ let bignum_sub_p256_mc = define_assert_from_elf "bignum_sub_p256_mc" "arm/p256/b
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
   0xda9f23e3;       (* arm_CSETM X3 Condition_CC *)
   0xab0300a5;       (* arm_ADDS X5 X5 X3 *)
-  0xb2407fe4;       (* arm_MOV X4 (rvalue (word 4294967295)) *)
-  0x8a030084;       (* arm_AND X4 X4 X3 *)
+  0x92407c64;       (* arm_AND X4 X3 (rvalue (word 4294967295)) *)
   0xba0400c6;       (* arm_ADCS X6 X6 X4 *)
   0xba1f00e7;       (* arm_ADCS X7 X7 XZR *)
-  0xb26083e4;       (* arm_MOV X4 (rvalue (word 18446744069414584321)) *)
-  0x8a030084;       (* arm_AND X4 X4 X3 *)
+  0x92608064;       (* arm_AND X4 X3 (rvalue (word 18446744069414584321)) *)
   0x9a040108;       (* arm_ADC X8 X8 X4 *)
   0xa9001805;       (* arm_STP X5 X6 X0 (Immediate_Offset (iword (&0))) *)
   0xa9012007;       (* arm_STP X7 X8 X0 (Immediate_Offset (iword (&16))) *)
@@ -54,14 +52,14 @@ let p_256 = new_definition `p_256 = 11579208921035624876269744694940757353008614
 
 let BIGNUM_SUB_P256_CORRECT = time prove
  (`!z x y m n pc.
-        nonoverlapping (word pc,0x50) (z,8 * 4)
+        nonoverlapping (word pc,0x48) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_sub_p256_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = m /\
                   bignum_from_memory (y,4) s = n)
-             (\s. read PC s = word (pc + 0x4c) /\
+             (\s. read PC s = word (pc + 0x44) /\
                   (m < p_256 /\ n < p_256
                    ==> &(bignum_from_memory (z,4) s) = (&m - &n) rem &p_256))
           (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8] ,,
@@ -88,11 +86,11 @@ let BIGNUM_SUB_P256_CORRECT = time prove
 
   ARM_STEPS_TAC BIGNUM_SUB_P256_EXEC [9] THEN
   RULE_ASSUM_TAC(REWRITE_RULE[WORD_UNMASK_64; NOT_LE]) THEN
-  ARM_ACCSTEPS_TAC BIGNUM_SUB_P256_EXEC (10--19) (10--19) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_SUB_P256_EXEC (10--17) (10--17) THEN
 
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
   CONV_TAC(LAND_CONV(RAND_CONV BIGNUM_EXPAND_CONV)) THEN
-  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s19" THEN
+  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s17" THEN
 
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC INT_REM_UNIQ THEN
   EXISTS_TAC `--(&(bitval(m < n))):int` THEN REWRITE_TAC[INT_ABS_NUM] THEN
@@ -133,7 +131,7 @@ let BIGNUM_SUB_P256_CORRECT = time prove
 
 let BIGNUM_SUB_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y m n pc returnaddress.
-        nonoverlapping (word pc,0x50) (z,8 * 4)
+        nonoverlapping (word pc,0x48) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_sub_p256_mc /\
                   read PC s = word pc /\

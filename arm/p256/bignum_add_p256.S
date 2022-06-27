@@ -56,8 +56,7 @@ S2N_BN_SYMBOL(bignum_add_p256):
 
 // Now compare [d3; d2; d1; d0] with p_256
 
-        mov     l, #0xffffffffffffffff
-        subs    xzr, d0, l
+        subs    xzr, d0, #0xffffffffffffffff
         mov     l, #0x00000000ffffffff
         sbcs    xzr, d1, l
         sbcs    xzr, d2, xzr
@@ -73,12 +72,10 @@ S2N_BN_SYMBOL(bignum_add_p256):
 // Now correct by subtracting masked p_256
 
         subs    d0, d0, c
-        mov     l, #0x00000000ffffffff
-        and     l, l, c
+        and     l, c, #0x00000000ffffffff
         sbcs    d1, d1, l
         sbcs    d2, d2, xzr
-        mov     l, #0xffffffff00000001
-        and     l, l, c
+        and     l, c, #0xffffffff00000001
         sbc     d3, d3, l
 
 // Store the result

@@ -31,8 +31,7 @@ let bignum_add_p256_mc = define_assert_from_elf "bignum_add_p256_mc" "arm/p256/b
   0xba0400e7;       (* arm_ADCS X7 X7 X4 *)
   0xba030108;       (* arm_ADCS X8 X8 X3 *)
   0x9a1f03e3;       (* arm_ADC X3 XZR XZR *)
-  0x92800004;       (* arm_MOVN X4 (word 0) 0 *)
-  0xeb0400bf;       (* arm_CMP X5 X4 *)
+  0xb10004bf;       (* arm_CMN X5 (rvalue (word 1)) *)
   0xb2407fe4;       (* arm_MOV X4 (rvalue (word 4294967295)) *)
   0xfa0400df;       (* arm_SBCS XZR X6 X4 *)
   0xfa1f00ff;       (* arm_SBCS XZR X7 XZR *)
@@ -41,12 +40,10 @@ let bignum_add_p256_mc = define_assert_from_elf "bignum_add_p256_mc" "arm/p256/b
   0xba1f0063;       (* arm_ADCS X3 X3 XZR *)
   0xda9f03e3;       (* arm_CSETM X3 Condition_NE *)
   0xeb0300a5;       (* arm_SUBS X5 X5 X3 *)
-  0xb2407fe4;       (* arm_MOV X4 (rvalue (word 4294967295)) *)
-  0x8a030084;       (* arm_AND X4 X4 X3 *)
+  0x92407c64;       (* arm_AND X4 X3 (rvalue (word 4294967295)) *)
   0xfa0400c6;       (* arm_SBCS X6 X6 X4 *)
   0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
-  0xb26083e4;       (* arm_MOV X4 (rvalue (word 18446744069414584321)) *)
-  0x8a030084;       (* arm_AND X4 X4 X3 *)
+  0x92608064;       (* arm_AND X4 X3 (rvalue (word 18446744069414584321)) *)
   0xda040108;       (* arm_SBC X8 X8 X4 *)
   0xa9001805;       (* arm_STP X5 X6 X0 (Immediate_Offset (iword (&0))) *)
   0xa9012007;       (* arm_STP X7 X8 X0 (Immediate_Offset (iword (&16))) *)
@@ -63,14 +60,14 @@ let p_256 = new_definition `p_256 = 11579208921035624876269744694940757353008614
 
 let BIGNUM_ADD_P256_CORRECT = time prove
  (`!z x y m n pc.
-        nonoverlapping (word pc,0x74) (z,8 * 4)
+        nonoverlapping (word pc,0x68) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_add_p256_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = m /\
                   bignum_from_memory (y,4) s = n)
-             (\s. read PC s = word (pc + 0x70) /\
+             (\s. read PC s = word (pc + 0x64) /\
                   (m < p_256 /\ n < p_256
                    ==> bignum_from_memory (z,4) s = (m + n) MOD p_256))
           (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8] ,,
@@ -99,10 +96,11 @@ let BIGNUM_ADD_P256_CORRECT = time prove
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_ADD_P256_EXEC (10--16) (10--16) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_ADD_P256_EXEC (10--15) (10--15) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[REAL_BITVAL_NOT]) THEN
 
   SUBGOAL_THEN
-   `carry_s16 <=>
+   `carry_s15 <=>
     bignum_of_wordlist [sum_s3; sum_s4; sum_s7; sum_s8] < p_256`
   SUBST_ALL_TAC THENL
    [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `256` THEN
@@ -114,7 +112,7 @@ let BIGNUM_ADD_P256_CORRECT = time prove
     CONV_TAC(BINOP_CONV(BINOP_CONV REAL_POLY_CONV)) THEN BOUNDER_TAC[];
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
-  ARM_STEPS_TAC BIGNUM_ADD_P256_EXEC [17;18] THEN
+  ARM_STEPS_TAC BIGNUM_ADD_P256_EXEC [16;17] THEN
 
   FIRST_X_ASSUM(MP_TAC o
     SPEC `word_neg(word(bitval(p_256 <= m + n))):int64` o
@@ -132,10 +130,10 @@ let BIGNUM_ADD_P256_CORRECT = time prove
     REWRITE_TAC[p_256] THEN ARITH_TAC;
     DISCH_TAC] THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_ADD_P256_EXEC (19--28) (19--28) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_ADD_P256_EXEC (18--25) (18--25) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN
-  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s28" THEN
+  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s25" THEN
 
   ASM_SIMP_TAC[MOD_CASES; ARITH_RULE `m < p /\ n < p ==> m + n < 2 * p`] THEN
   REWRITE_TAC[GSYM REAL_OF_NUM_EQ] THEN ONCE_REWRITE_TAC[COND_RAND] THEN
@@ -167,7 +165,7 @@ let BIGNUM_ADD_P256_CORRECT = time prove
 
 let BIGNUM_ADD_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y m n pc returnaddress.
-        nonoverlapping (word pc,0x74) (z,8 * 4)
+        nonoverlapping (word pc,0x68) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_add_p256_mc /\
                   read PC s = word pc /\
