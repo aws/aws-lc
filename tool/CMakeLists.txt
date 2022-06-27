@@ -79,12 +79,10 @@ endif()
 if(OPENSSL3_INSTALL_DIR)
   # The low-level function calls are deprecated for OpenSSL 3.0. We should revisit using these in the future, 
   # but disabling the warnings works for now
+  find_library(OPENSSL3_LIB_PATH libcrypto.a PATHS ${OPENSSL3_INSTALL_DIR}/lib64/ ${OPENSSL3_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
+
   add_definitions("-Wno-deprecated-declarations")
-  if(NOT EXISTS ${OPENSSL3_INSTALL_DIR}/lib/libcrypto.a)
-    build_benchmark(ossl3_bm ${OPENSSL3_INSTALL_DIR}/include ${OPENSSL3_INSTALL_DIR}/lib64/libcrypto.a)
-  else()
-    build_benchmark(ossl3_bm ${OPENSSL3_INSTALL_DIR}/include ${OPENSSL3_INSTALL_DIR}/lib/libcrypto.a)
-  endif()
+  build_benchmark(ossl3_bm ${OPENSSL3_INSTALL_DIR}/include ${OPENSSL3_LIB_PATH})
 
 
   target_compile_options(ossl3_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL3_BENCHMARK)
