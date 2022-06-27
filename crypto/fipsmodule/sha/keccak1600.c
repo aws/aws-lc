@@ -7,34 +7,31 @@
  * https://www.openssl.org/source/license.html
  */
 
-#include <assert.h>
+#include <openssl/e_os2.h>
 #include <string.h>
-
+#include <assert.h>
 
 #if !defined(KECCAK1600_ASM)
- // Default to KECCAK_2X variant
-#if !defined(KECCAK_REF) && !defined(KECCAK_1X) && !defined(KECCAK_1X_ALT) && \
-    !defined(KECCAK_2X) && !defined(KECCAK_INPLACE)
-# define KECCAK_2X     
-#endif
 
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
     (defined(__x86_64) && !defined(__BMI__)) || defined(_M_X64) || \
     defined(__mips) || defined(__riscv) || defined(__s390__) || \
     defined(__EMSCRIPTEN__)
-
- // These don't have "and with complement" instruction, so minimize amount
- // of "not"-s. Implemented only in the [default] KECCAK_2X variant.
+/*
+ * These don't have "and with complement" instruction, so minimize amount
+ * of "not"-s. Implemented only in the [default] KECCAK_2X variant.
+ */
 # define KECCAK_COMPLEMENTING_TRANSFORM
 #endif
 
 #if defined(__x86_64__) || defined(__aarch64__) || \
     defined(__mips64) || defined(__ia64) || \
     (defined(__VMS) && !defined(__vax))
-
- // These are available even in ILP32 flavours, but even then they are
- // capable of performing 64-bit operations as efficiently as in *P64.
- // Since it's not given that we can use sizeof(void *), just shunt it.
+/*
+ * These are available even in ILP32 flavours, but even then they are
+ * capable of performing 64-bit operations as efficiently as in *P64.
+ * Since it's not given that we can use sizeof(void *), just shunt it.
+ */
 # define BIT_INTERLEAVE (0)
 #else
 # define BIT_INTERLEAVE (sizeof(void *) < 8)
@@ -51,7 +48,7 @@ static uint64_t ROL64(uint64_t val, int offset)
     } else {
         uint32_t hi = (uint32_t)(val >> 32), lo = (uint32_t)val;
 
-        if ((offset & 1) != 0) {
+        if (offset & 1) {
             uint32_t tmp = hi;
 
             offset >>= 1;
@@ -66,8 +63,9 @@ static uint64_t ROL64(uint64_t val, int offset)
         return ((uint64_t)hi << 32) | lo;
     }
 }
+#endif // !SHA3_256_ASM
 
-static const unsigned char rhotates[SHA3_ROW_SIZE][SHA3_ROW_SIZE] = {
+static const unsigned char rhotates[5][5] = {
     {  0,  1, 62, 28, 27 },
     { 36, 44,  6, 55, 20 },
     {  3, 10, 43, 25, 39 },
@@ -102,422 +100,18 @@ static const uint64_t iotas[] = {
     BIT_INTERLEAVE ? 0x8000808200000000ULL : 0x8000000080008008ULL
 };
 
-#if defined(KECCAK_REF)
-
- // This is straightforward or "maximum clarity" implementation aiming
- // to resemble section 3.2 of the FIPS PUB 202 "SHA-3 Standard:
- // Permutation-Based Hash and Extendible-Output Functions" as much as
- // possible. With one caveat. Because of the way C stores matrices,
- // references to A[x,y] in the specification are presented as A[y][x].
- // Implementation unrolls inner x-loops so that modulo 5 operations are
- // explicitly pre-computed.
-static void Theta(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
+/*
+ * This implementation is variant of KECCAK_1X above with outer-most
+ * round loop unrolled twice. This allows to take temporary storage
+ * out of round procedure and simplify references to it by alternating
+ * it with actual data (see round loop below). Originally it was meant
+ * rather as reference for an assembly implementation, but it seems to
+ * play best with compilers [as well as provide best instruction per
+ * processed byte ratio at minimal round unroll factor]...
+ */
+static void Round(uint64_t R[5][5], uint64_t A[5][5], size_t i)
 {
-    uint64_t C[SHA3_ROW_SIZE], D[SHA3_ROW_SIZE];
-    size_t y;
-
-    C[0] = A[0][0];
-    C[1] = A[0][1];
-    C[2] = A[0][2];
-    C[3] = A[0][3];
-    C[4] = A[0][4];
-
-    for (y = 1; y < 5; y++) {
-        C[0] ^= A[y][0];
-        C[1] ^= A[y][1];
-        C[2] ^= A[y][2];
-        C[3] ^= A[y][3];
-        C[4] ^= A[y][4];
-    }
-
-    D[0] = ROL64(C[1], 1) ^ C[4];
-    D[1] = ROL64(C[2], 1) ^ C[0];
-    D[2] = ROL64(C[3], 1) ^ C[1];
-    D[3] = ROL64(C[4], 1) ^ C[2];
-    D[4] = ROL64(C[0], 1) ^ C[3];
-
-    for (y = 0; y < 5; y++) {
-        A[y][0] ^= D[0];
-        A[y][1] ^= D[1];
-        A[y][2] ^= D[2];
-        A[y][3] ^= D[3];
-        A[y][4] ^= D[4];
-    }
-}
-
-static void Rho(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
-{
-    size_t y;
-
-    for (y = 0; y < 5; y++) {
-        A[y][0] = ROL64(A[y][0], rhotates[y][0]);
-        A[y][1] = ROL64(A[y][1], rhotates[y][1]);
-        A[y][2] = ROL64(A[y][2], rhotates[y][2]);
-        A[y][3] = ROL64(A[y][3], rhotates[y][3]);
-        A[y][4] = ROL64(A[y][4], rhotates[y][4]);
-    }
-}
-
-static void Pi(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
-{
-    uint64_t T[SHA3_ROW_SIZE][SHA3_ROW_SIZE];
-
-    memcpy(T, A, sizeof(T));
-
-    A[0][0] = T[0][0];
-    A[0][1] = T[1][1];
-    A[0][2] = T[2][2];
-    A[0][3] = T[3][3];
-    A[0][4] = T[4][4];
-
-    A[1][0] = T[0][3];
-    A[1][1] = T[1][4];
-    A[1][2] = T[2][0];
-    A[1][3] = T[3][1];
-    A[1][4] = T[4][2];
-
-    A[2][0] = T[0][1];
-    A[2][1] = T[1][2];
-    A[2][2] = T[2][3];
-    A[2][3] = T[3][4];
-    A[2][4] = T[4][0];
-
-    A[3][0] = T[0][4];
-    A[3][1] = T[1][0];
-    A[3][2] = T[2][1];
-    A[3][3] = T[3][2];
-    A[3][4] = T[4][3];
-
-    A[4][0] = T[0][2];
-    A[4][1] = T[1][3];
-    A[4][2] = T[2][4];
-    A[4][3] = T[3][0];
-    A[4][4] = T[4][1];
-}
-
-static void Chi(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
-{
-    uint64_t C[SHA3_ROW_SIZE];
-    size_t y;
-
-    for (y = 0; y < 5; y++) {
-        C[0] = A[y][0] ^ (~A[y][1] & A[y][2]);
-        C[1] = A[y][1] ^ (~A[y][2] & A[y][3]);
-        C[2] = A[y][2] ^ (~A[y][3] & A[y][4]);
-        C[3] = A[y][3] ^ (~A[y][4] & A[y][0]);
-        C[4] = A[y][4] ^ (~A[y][0] & A[y][1]);
-
-        A[y][0] = C[0];
-        A[y][1] = C[1];
-        A[y][2] = C[2];
-        A[y][3] = C[3];
-        A[y][4] = C[4];
-    }
-}
-
-static void Iota(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], size_t i)
-{
-    assert(i < (sizeof(iotas) / sizeof(iotas[0])));
-    A[0][0] ^= iotas[i];
-}
-
-static void KeccakF1600(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
-{
-    size_t i;
-
-    for (i = 0; i < 24; i++) {
-        Theta(A);
-        Rho(A);
-        Pi(A);
-        Chi(A);
-        Iota(A, i);
-    }
-}
-
-
-#elif defined(KECCAK_1X)
-
- // This implementation is optimization of above code featuring unroll
- // of even y-loops, their fusion and code motion. It also minimizes
- // temporary storage. Compiler would normally do all these things for
- // you, purpose of manual optimization is to provide "unobscured"
- // reference for assembly implementation [in case this approach is
- // chosen for implementation on some platform]. In the nutshell it's
- // equivalent of "plane-per-plane processing" approach discussed in
- // section 2.4 of "Keccak implementation overview".
-static void Round(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], size_t i)
-{
-    uint64_t C[SHA3_ROW_SIZE], E[2];        /* registers */
-    uint64_t D[SHA3_ROW_SIZE], T[2][SHA3_ROW_SIZE];     /* memory    */
-
-    assert(i < (sizeof(iotas) / sizeof(iotas[0])));
-
-    C[0] = A[0][0] ^ A[1][0] ^ A[2][0] ^ A[3][0] ^ A[4][0];
-    C[1] = A[0][1] ^ A[1][1] ^ A[2][1] ^ A[3][1] ^ A[4][1];
-    C[2] = A[0][2] ^ A[1][2] ^ A[2][2] ^ A[3][2] ^ A[4][2];
-    C[3] = A[0][3] ^ A[1][3] ^ A[2][3] ^ A[3][3] ^ A[4][3];
-    C[4] = A[0][4] ^ A[1][4] ^ A[2][4] ^ A[3][4] ^ A[4][4];
-
-#if defined(__arm__)
-    D[1] = E[0] = ROL64(C[2], 1) ^ C[0];
-    D[4] = E[1] = ROL64(C[0], 1) ^ C[3];
-    D[0] = C[0] = ROL64(C[1], 1) ^ C[4];
-    D[2] = C[1] = ROL64(C[3], 1) ^ C[1];
-    D[3] = C[2] = ROL64(C[4], 1) ^ C[2];
-
-    T[0][0] = A[3][0] ^ C[0]; /* borrow T[0][0] */
-    T[0][1] = A[0][1] ^ E[0]; /* D[1] */
-    T[0][2] = A[0][2] ^ C[1]; /* D[2] */
-    T[0][3] = A[0][3] ^ C[2]; /* D[3] */
-    T[0][4] = A[0][4] ^ E[1]; /* D[4] */
-
-    C[3] = ROL64(A[3][3] ^ C[2], rhotates[3][3]);   /* D[3] */
-    C[4] = ROL64(A[4][4] ^ E[1], rhotates[4][4]);   /* D[4] */
-    C[0] =       A[0][0] ^ C[0]; /* rotate by 0 */  /* D[0] */
-    C[2] = ROL64(A[2][2] ^ C[1], rhotates[2][2]);   /* D[2] */
-    C[1] = ROL64(A[1][1] ^ E[0], rhotates[1][1]);   /* D[1] */
-#else
-    D[0] = ROL64(C[1], 1) ^ C[4];
-    D[1] = ROL64(C[2], 1) ^ C[0];
-    D[2] = ROL64(C[3], 1) ^ C[1];
-    D[3] = ROL64(C[4], 1) ^ C[2];
-    D[4] = ROL64(C[0], 1) ^ C[3];
-
-    T[0][0] = A[3][0] ^ D[0]; /* borrow T[0][0] */
-    T[0][1] = A[0][1] ^ D[1];
-    T[0][2] = A[0][2] ^ D[2];
-    T[0][3] = A[0][3] ^ D[3];
-    T[0][4] = A[0][4] ^ D[4];
-
-    C[0] =       A[0][0] ^ D[0]; /* rotate by 0 */
-    C[1] = ROL64(A[1][1] ^ D[1], rhotates[1][1]);
-    C[2] = ROL64(A[2][2] ^ D[2], rhotates[2][2]);
-    C[3] = ROL64(A[3][3] ^ D[3], rhotates[3][3]);
-    C[4] = ROL64(A[4][4] ^ D[4], rhotates[4][4]);
-#endif
-    A[0][0] = C[0] ^ (~C[1] & C[2]) ^ iotas[i];
-    A[0][1] = C[1] ^ (~C[2] & C[3]);
-    A[0][2] = C[2] ^ (~C[3] & C[4]);
-    A[0][3] = C[3] ^ (~C[4] & C[0]);
-    A[0][4] = C[4] ^ (~C[0] & C[1]);
-
-    T[1][0] = A[1][0] ^ (C[3] = D[0]);
-    T[1][1] = A[2][1] ^ (C[4] = D[1]); /* borrow T[1][1] */
-    T[1][2] = A[1][2] ^ (E[0] = D[2]);
-    T[1][3] = A[1][3] ^ (E[1] = D[3]);
-    T[1][4] = A[2][4] ^ (C[2] = D[4]); /* borrow T[1][4] */
-
-    C[0] = ROL64(T[0][3],        rhotates[0][3]);
-    C[1] = ROL64(A[1][4] ^ C[2], rhotates[1][4]);   /* D[4] */
-    C[2] = ROL64(A[2][0] ^ C[3], rhotates[2][0]);   /* D[0] */
-    C[3] = ROL64(A[3][1] ^ C[4], rhotates[3][1]);   /* D[1] */
-    C[4] = ROL64(A[4][2] ^ E[0], rhotates[4][2]);   /* D[2] */
-
-    A[1][0] = C[0] ^ (~C[1] & C[2]);
-    A[1][1] = C[1] ^ (~C[2] & C[3]);
-    A[1][2] = C[2] ^ (~C[3] & C[4]);
-    A[1][3] = C[3] ^ (~C[4] & C[0]);
-    A[1][4] = C[4] ^ (~C[0] & C[1]);
-
-    C[0] = ROL64(T[0][1],        rhotates[0][1]);
-    C[1] = ROL64(T[1][2],        rhotates[1][2]);
-    C[2] = ROL64(A[2][3] ^ D[3], rhotates[2][3]);
-    C[3] = ROL64(A[3][4] ^ D[4], rhotates[3][4]);
-    C[4] = ROL64(A[4][0] ^ D[0], rhotates[4][0]);
-
-    A[2][0] = C[0] ^ (~C[1] & C[2]);
-    A[2][1] = C[1] ^ (~C[2] & C[3]);
-    A[2][2] = C[2] ^ (~C[3] & C[4]);
-    A[2][3] = C[3] ^ (~C[4] & C[0]);
-    A[2][4] = C[4] ^ (~C[0] & C[1]);
-
-    C[0] = ROL64(T[0][4],        rhotates[0][4]);
-    C[1] = ROL64(T[1][0],        rhotates[1][0]);
-    C[2] = ROL64(T[1][1],        rhotates[2][1]); /* originally A[2][1] */
-    C[3] = ROL64(A[3][2] ^ D[2], rhotates[3][2]);
-    C[4] = ROL64(A[4][3] ^ D[3], rhotates[4][3]);
-
-    A[3][0] = C[0] ^ (~C[1] & C[2]);
-    A[3][1] = C[1] ^ (~C[2] & C[3]);
-    A[3][2] = C[2] ^ (~C[3] & C[4]);
-    A[3][3] = C[3] ^ (~C[4] & C[0]);
-    A[3][4] = C[4] ^ (~C[0] & C[1]);
-
-    C[0] = ROL64(T[0][2],        rhotates[0][2]);
-    C[1] = ROL64(T[1][3],        rhotates[1][3]);
-    C[2] = ROL64(T[1][4],        rhotates[2][4]); /* originally A[2][4] */
-    C[3] = ROL64(T[0][0],        rhotates[3][0]); /* originally A[3][0] */
-    C[4] = ROL64(A[4][1] ^ D[1], rhotates[4][1]);
-
-    A[4][0] = C[0] ^ (~C[1] & C[2]);
-    A[4][1] = C[1] ^ (~C[2] & C[3]);
-    A[4][2] = C[2] ^ (~C[3] & C[4]);
-    A[4][3] = C[3] ^ (~C[4] & C[0]);
-    A[4][4] = C[4] ^ (~C[0] & C[1]);
-}
-
-static void KeccakF1600(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
-{
-    size_t i;
-
-    for (i = 0; i < 24; i++) {
-        Round(A, i);
-    }
-}
-
-#elif defined(KECCAK_1X_ALT)
-
- // This is variant of above KECCAK_1X that reduces requirement for
- // temporary storage even further, but at cost of more updates to A[][].
- // It's less suitable if A[][] is memory bound, but better if it's
- // register bound.
-static void Round(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], size_t i)
-{
-    uint64_t C[SHA3_ROW_SIZE], D[SHA3_ROW_SIZE];
-
-    assert(i < (sizeof(iotas) / sizeof(iotas[0])));
-
-    C[0] = A[0][0] ^ A[1][0] ^ A[2][0] ^ A[3][0] ^ A[4][0];
-    C[1] = A[0][1] ^ A[1][1] ^ A[2][1] ^ A[3][1] ^ A[4][1];
-    C[2] = A[0][2] ^ A[1][2] ^ A[2][2] ^ A[3][2] ^ A[4][2];
-    C[3] = A[0][3] ^ A[1][3] ^ A[2][3] ^ A[3][3] ^ A[4][3];
-    C[4] = A[0][4] ^ A[1][4] ^ A[2][4] ^ A[3][4] ^ A[4][4];
-
-    D[1] = C[0] ^  ROL64(C[2], 1);
-    D[2] = C[1] ^  ROL64(C[3], 1);
-    D[3] = C[2] ^= ROL64(C[4], 1);
-    D[4] = C[3] ^= ROL64(C[0], 1);
-    D[0] = C[4] ^= ROL64(C[1], 1);
-
-    A[0][1] ^= D[1];
-    A[1][1] ^= D[1];
-    A[2][1] ^= D[1];
-    A[3][1] ^= D[1];
-    A[4][1] ^= D[1];
-
-    A[0][2] ^= D[2];
-    A[1][2] ^= D[2];
-    A[2][2] ^= D[2];
-    A[3][2] ^= D[2];
-    A[4][2] ^= D[2];
-
-    A[0][3] ^= C[2];
-    A[1][3] ^= C[2];
-    A[2][3] ^= C[2];
-    A[3][3] ^= C[2];
-    A[4][3] ^= C[2];
-
-    A[0][4] ^= C[3];
-    A[1][4] ^= C[3];
-    A[2][4] ^= C[3];
-    A[3][4] ^= C[3];
-    A[4][4] ^= C[3];
-
-    A[0][0] ^= C[4];
-    A[1][0] ^= C[4];
-    A[2][0] ^= C[4];
-    A[3][0] ^= C[4];
-    A[4][0] ^= C[4];
-
-    C[1] = A[0][1];
-    C[2] = A[0][2];
-    C[3] = A[0][3];
-    C[4] = A[0][4];
-
-    A[0][1] = ROL64(A[1][1], rhotates[1][1]);
-    A[0][2] = ROL64(A[2][2], rhotates[2][2]);
-    A[0][3] = ROL64(A[3][3], rhotates[3][3]);
-    A[0][4] = ROL64(A[4][4], rhotates[4][4]);
-
-    A[1][1] = ROL64(A[1][4], rhotates[1][4]);
-    A[2][2] = ROL64(A[2][3], rhotates[2][3]);
-    A[3][3] = ROL64(A[3][2], rhotates[3][2]);
-    A[4][4] = ROL64(A[4][1], rhotates[4][1]);
-
-    A[1][4] = ROL64(A[4][2], rhotates[4][2]);
-    A[2][3] = ROL64(A[3][4], rhotates[3][4]);
-    A[3][2] = ROL64(A[2][1], rhotates[2][1]);
-    A[4][1] = ROL64(A[1][3], rhotates[1][3]);
-
-    A[4][2] = ROL64(A[2][4], rhotates[2][4]);
-    A[3][4] = ROL64(A[4][3], rhotates[4][3]);
-    A[2][1] = ROL64(A[1][2], rhotates[1][2]);
-    A[1][3] = ROL64(A[3][1], rhotates[3][1]);
-
-    A[2][4] = ROL64(A[4][0], rhotates[4][0]);
-    A[4][3] = ROL64(A[3][0], rhotates[3][0]);
-    A[1][2] = ROL64(A[2][0], rhotates[2][0]);
-    A[3][1] = ROL64(A[1][0], rhotates[1][0]);
-
-    A[1][0] = ROL64(C[3],    rhotates[0][3]);
-    A[2][0] = ROL64(C[1],    rhotates[0][1]);
-    A[3][0] = ROL64(C[4],    rhotates[0][4]);
-    A[4][0] = ROL64(C[2],    rhotates[0][2]);
-
-    C[0] = A[0][0];
-    C[1] = A[1][0];
-    D[0] = A[0][1];
-    D[1] = A[1][1];
-
-    A[0][0] ^= (~A[0][1] & A[0][2]);
-    A[1][0] ^= (~A[1][1] & A[1][2]);
-    A[0][1] ^= (~A[0][2] & A[0][3]);
-    A[1][1] ^= (~A[1][2] & A[1][3]);
-    A[0][2] ^= (~A[0][3] & A[0][4]);
-    A[1][2] ^= (~A[1][3] & A[1][4]);
-    A[0][3] ^= (~A[0][4] & C[0]);
-    A[1][3] ^= (~A[1][4] & C[1]);
-    A[0][4] ^= (~C[0]    & D[0]);
-    A[1][4] ^= (~C[1]    & D[1]);
-
-    C[2] = A[2][0];
-    C[3] = A[3][0];
-    D[2] = A[2][1];
-    D[3] = A[3][1];
-
-    A[2][0] ^= (~A[2][1] & A[2][2]);
-    A[3][0] ^= (~A[3][1] & A[3][2]);
-    A[2][1] ^= (~A[2][2] & A[2][3]);
-    A[3][1] ^= (~A[3][2] & A[3][3]);
-    A[2][2] ^= (~A[2][3] & A[2][4]);
-    A[3][2] ^= (~A[3][3] & A[3][4]);
-    A[2][3] ^= (~A[2][4] & C[2]);
-    A[3][3] ^= (~A[3][4] & C[3]);
-    A[2][4] ^= (~C[2]    & D[2]);
-    A[3][4] ^= (~C[3]    & D[3]);
-
-    C[4] = A[4][0];
-    D[4] = A[4][1];
-
-    A[4][0] ^= (~A[4][1] & A[4][2]);
-    A[4][1] ^= (~A[4][2] & A[4][3]);
-    A[4][2] ^= (~A[4][3] & A[4][4]);
-    A[4][3] ^= (~A[4][4] & C[4]);
-    A[4][4] ^= (~C[4]    & D[4]);
-    A[0][0] ^= iotas[i];
-}
-
-static void KeccakF1600(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
-{
-    size_t i;
-
-    for (i = 0; i < 24; i++) {
-        Round(A, i);
-    }
-}
-
-#elif defined(KECCAK_2X)
-
- // This implementation is variant of KECCAK_1X above with outer-most
- // round loop unrolled twice. This allows to take temporary storage
- // out of round procedure and simplify references to it by alternating
- // it with actual data (see round loop below). Originally it was meant
- // rather as reference for an assembly implementation, but it seems to
- // play best with compilers [as well as provide best instruction per
- // processed byte ratio at minimal round unroll factor]...
-static void Round(uint64_t R[SHA3_ROW_SIZE][SHA3_ROW_SIZE], uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], size_t i)
-{
-    uint64_t C[SHA3_ROW_SIZE], D[SHA3_ROW_SIZE];
+    uint64_t C[5], D[5];
 
     assert(i < (sizeof(iotas) / sizeof(iotas[0])));
 
@@ -634,9 +228,9 @@ static void Round(uint64_t R[SHA3_ROW_SIZE][SHA3_ROW_SIZE], uint64_t A[SHA3_ROW_
 #endif
 }
 
-static void KeccakF1600(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
+static void KeccakF1600(uint64_t A[5][5])
 {
-    uint64_t T[SHA3_ROW_SIZE][SHA3_ROW_SIZE];
+    uint64_t T[5][5];
     size_t i;
 
 #ifdef KECCAK_COMPLEMENTING_TRANSFORM
@@ -662,307 +256,6 @@ static void KeccakF1600(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
     A[4][0] = ~A[4][0];
 #endif
 }
-
-#else   /* define KECCAK_INPLACE to compile this code path */
-
- // This implementation is KECCAK_1X from above combined 4 times with
- // a twist that allows to omit temporary storage and perform in-place
- // processing. It's discussed in section 2.5 of "Keccak implementation
- // overview". It's likely to be best suited for processors with large
- // register bank... On the other hand processor with large register
- // bank can as well use KECCAK_1X_ALT, it would be as fast but much
- // more compact...
-static void FourRounds(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], size_t i)
-{
-    uint64_t B[SHA3_ROW_SIZE], C[SHA3_ROW_SIZE], D[SHA3_ROW_SIZE];
-
-    assert(i <= (sizeof(iotas) / sizeof(iotas[0]) - 4));
-
-    /* Round 4*n */
-    C[0] = A[0][0] ^ A[1][0] ^ A[2][0] ^ A[3][0] ^ A[4][0];
-    C[1] = A[0][1] ^ A[1][1] ^ A[2][1] ^ A[3][1] ^ A[4][1];
-    C[2] = A[0][2] ^ A[1][2] ^ A[2][2] ^ A[3][2] ^ A[4][2];
-    C[3] = A[0][3] ^ A[1][3] ^ A[2][3] ^ A[3][3] ^ A[4][3];
-    C[4] = A[0][4] ^ A[1][4] ^ A[2][4] ^ A[3][4] ^ A[4][4];
-
-    D[0] = ROL64(C[1], 1) ^ C[4];
-    D[1] = ROL64(C[2], 1) ^ C[0];
-    D[2] = ROL64(C[3], 1) ^ C[1];
-    D[3] = ROL64(C[4], 1) ^ C[2];
-    D[4] = ROL64(C[0], 1) ^ C[3];
-
-    B[0] =       A[0][0] ^ D[0]; /* rotate by 0 */
-    B[1] = ROL64(A[1][1] ^ D[1], rhotates[1][1]);
-    B[2] = ROL64(A[2][2] ^ D[2], rhotates[2][2]);
-    B[3] = ROL64(A[3][3] ^ D[3], rhotates[3][3]);
-    B[4] = ROL64(A[4][4] ^ D[4], rhotates[4][4]);
-
-    C[0] = A[0][0] = B[0] ^ (~B[1] & B[2]) ^ iotas[i];
-    C[1] = A[1][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] = A[2][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] = A[3][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] = A[4][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[0][3] ^ D[3], rhotates[0][3]);
-    B[1] = ROL64(A[1][4] ^ D[4], rhotates[1][4]);
-    B[2] = ROL64(A[2][0] ^ D[0], rhotates[2][0]);
-    B[3] = ROL64(A[3][1] ^ D[1], rhotates[3][1]);
-    B[4] = ROL64(A[4][2] ^ D[2], rhotates[4][2]);
-
-    C[0] ^= A[2][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[3][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[4][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[0][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[1][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[0][1] ^ D[1], rhotates[0][1]);
-    B[1] = ROL64(A[1][2] ^ D[2], rhotates[1][2]);
-    B[2] = ROL64(A[2][3] ^ D[3], rhotates[2][3]);
-    B[3] = ROL64(A[3][4] ^ D[4], rhotates[3][4]);
-    B[4] = ROL64(A[4][0] ^ D[0], rhotates[4][0]);
-
-    C[0] ^= A[4][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[0][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[1][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[2][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[3][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[0][4] ^ D[4], rhotates[0][4]);
-    B[1] = ROL64(A[1][0] ^ D[0], rhotates[1][0]);
-    B[2] = ROL64(A[2][1] ^ D[1], rhotates[2][1]);
-    B[3] = ROL64(A[3][2] ^ D[2], rhotates[3][2]);
-    B[4] = ROL64(A[4][3] ^ D[3], rhotates[4][3]);
-
-    C[0] ^= A[1][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[2][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[3][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[4][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[0][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[0][2] ^ D[2], rhotates[0][2]);
-    B[1] = ROL64(A[1][3] ^ D[3], rhotates[1][3]);
-    B[2] = ROL64(A[2][4] ^ D[4], rhotates[2][4]);
-    B[3] = ROL64(A[3][0] ^ D[0], rhotates[3][0]);
-    B[4] = ROL64(A[4][1] ^ D[1], rhotates[4][1]);
-
-    C[0] ^= A[3][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[4][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[0][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[1][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[2][4] = B[4] ^ (~B[0] & B[1]);
-
-    /* Round 4*n+1 */
-    D[0] = ROL64(C[1], 1) ^ C[4];
-    D[1] = ROL64(C[2], 1) ^ C[0];
-    D[2] = ROL64(C[3], 1) ^ C[1];
-    D[3] = ROL64(C[4], 1) ^ C[2];
-    D[4] = ROL64(C[0], 1) ^ C[3];
-
-    B[0] =       A[0][0] ^ D[0]; /* rotate by 0 */
-    B[1] = ROL64(A[3][1] ^ D[1], rhotates[1][1]);
-    B[2] = ROL64(A[1][2] ^ D[2], rhotates[2][2]);
-    B[3] = ROL64(A[4][3] ^ D[3], rhotates[3][3]);
-    B[4] = ROL64(A[2][4] ^ D[4], rhotates[4][4]);
-
-    C[0] = A[0][0] = B[0] ^ (~B[1] & B[2]) ^ iotas[i + 1];
-    C[1] = A[3][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] = A[1][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] = A[4][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] = A[2][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[3][3] ^ D[3], rhotates[0][3]);
-    B[1] = ROL64(A[1][4] ^ D[4], rhotates[1][4]);
-    B[2] = ROL64(A[4][0] ^ D[0], rhotates[2][0]);
-    B[3] = ROL64(A[2][1] ^ D[1], rhotates[3][1]);
-    B[4] = ROL64(A[0][2] ^ D[2], rhotates[4][2]);
-
-    C[0] ^= A[4][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[2][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[0][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[3][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[1][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[1][1] ^ D[1], rhotates[0][1]);
-    B[1] = ROL64(A[4][2] ^ D[2], rhotates[1][2]);
-    B[2] = ROL64(A[2][3] ^ D[3], rhotates[2][3]);
-    B[3] = ROL64(A[0][4] ^ D[4], rhotates[3][4]);
-    B[4] = ROL64(A[3][0] ^ D[0], rhotates[4][0]);
-
-    C[0] ^= A[3][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[1][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[4][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[2][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[0][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[4][4] ^ D[4], rhotates[0][4]);
-    B[1] = ROL64(A[2][0] ^ D[0], rhotates[1][0]);
-    B[2] = ROL64(A[0][1] ^ D[1], rhotates[2][1]);
-    B[3] = ROL64(A[3][2] ^ D[2], rhotates[3][2]);
-    B[4] = ROL64(A[1][3] ^ D[3], rhotates[4][3]);
-
-    C[0] ^= A[2][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[0][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[3][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[1][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[4][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[2][2] ^ D[2], rhotates[0][2]);
-    B[1] = ROL64(A[0][3] ^ D[3], rhotates[1][3]);
-    B[2] = ROL64(A[3][4] ^ D[4], rhotates[2][4]);
-    B[3] = ROL64(A[1][0] ^ D[0], rhotates[3][0]);
-    B[4] = ROL64(A[4][1] ^ D[1], rhotates[4][1]);
-
-    C[0] ^= A[1][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[4][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[2][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[0][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[3][4] = B[4] ^ (~B[0] & B[1]);
-
-    /* Round 4*n+2 */
-    D[0] = ROL64(C[1], 1) ^ C[4];
-    D[1] = ROL64(C[2], 1) ^ C[0];
-    D[2] = ROL64(C[3], 1) ^ C[1];
-    D[3] = ROL64(C[4], 1) ^ C[2];
-    D[4] = ROL64(C[0], 1) ^ C[3];
-
-    B[0] =       A[0][0] ^ D[0]; /* rotate by 0 */
-    B[1] = ROL64(A[2][1] ^ D[1], rhotates[1][1]);
-    B[2] = ROL64(A[4][2] ^ D[2], rhotates[2][2]);
-    B[3] = ROL64(A[1][3] ^ D[3], rhotates[3][3]);
-    B[4] = ROL64(A[3][4] ^ D[4], rhotates[4][4]);
-
-    C[0] = A[0][0] = B[0] ^ (~B[1] & B[2]) ^ iotas[i + 2];
-    C[1] = A[2][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] = A[4][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] = A[1][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] = A[3][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[4][3] ^ D[3], rhotates[0][3]);
-    B[1] = ROL64(A[1][4] ^ D[4], rhotates[1][4]);
-    B[2] = ROL64(A[3][0] ^ D[0], rhotates[2][0]);
-    B[3] = ROL64(A[0][1] ^ D[1], rhotates[3][1]);
-    B[4] = ROL64(A[2][2] ^ D[2], rhotates[4][2]);
-
-    C[0] ^= A[3][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[0][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[2][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[4][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[1][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[3][1] ^ D[1], rhotates[0][1]);
-    B[1] = ROL64(A[0][2] ^ D[2], rhotates[1][2]);
-    B[2] = ROL64(A[2][3] ^ D[3], rhotates[2][3]);
-    B[3] = ROL64(A[4][4] ^ D[4], rhotates[3][4]);
-    B[4] = ROL64(A[1][0] ^ D[0], rhotates[4][0]);
-
-    C[0] ^= A[1][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[3][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[0][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[2][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[4][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[2][4] ^ D[4], rhotates[0][4]);
-    B[1] = ROL64(A[4][0] ^ D[0], rhotates[1][0]);
-    B[2] = ROL64(A[1][1] ^ D[1], rhotates[2][1]);
-    B[3] = ROL64(A[3][2] ^ D[2], rhotates[3][2]);
-    B[4] = ROL64(A[0][3] ^ D[3], rhotates[4][3]);
-
-    C[0] ^= A[4][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[1][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[3][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[0][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[2][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[1][2] ^ D[2], rhotates[0][2]);
-    B[1] = ROL64(A[3][3] ^ D[3], rhotates[1][3]);
-    B[2] = ROL64(A[0][4] ^ D[4], rhotates[2][4]);
-    B[3] = ROL64(A[2][0] ^ D[0], rhotates[3][0]);
-    B[4] = ROL64(A[4][1] ^ D[1], rhotates[4][1]);
-
-    C[0] ^= A[2][0] = B[0] ^ (~B[1] & B[2]);
-    C[1] ^= A[4][1] = B[1] ^ (~B[2] & B[3]);
-    C[2] ^= A[1][2] = B[2] ^ (~B[3] & B[4]);
-    C[3] ^= A[3][3] = B[3] ^ (~B[4] & B[0]);
-    C[4] ^= A[0][4] = B[4] ^ (~B[0] & B[1]);
-
-    /* Round 4*n+3 */
-    D[0] = ROL64(C[1], 1) ^ C[4];
-    D[1] = ROL64(C[2], 1) ^ C[0];
-    D[2] = ROL64(C[3], 1) ^ C[1];
-    D[3] = ROL64(C[4], 1) ^ C[2];
-    D[4] = ROL64(C[0], 1) ^ C[3];
-
-    B[0] =       A[0][0] ^ D[0]; /* rotate by 0 */
-    B[1] = ROL64(A[0][1] ^ D[1], rhotates[1][1]);
-    B[2] = ROL64(A[0][2] ^ D[2], rhotates[2][2]);
-    B[3] = ROL64(A[0][3] ^ D[3], rhotates[3][3]);
-    B[4] = ROL64(A[0][4] ^ D[4], rhotates[4][4]);
-
-    /* C[0] = */ A[0][0] = B[0] ^ (~B[1] & B[2]) ^ iotas[i + 3];
-    /* C[1] = */ A[0][1] = B[1] ^ (~B[2] & B[3]);
-    /* C[2] = */ A[0][2] = B[2] ^ (~B[3] & B[4]);
-    /* C[3] = */ A[0][3] = B[3] ^ (~B[4] & B[0]);
-    /* C[4] = */ A[0][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[1][3] ^ D[3], rhotates[0][3]);
-    B[1] = ROL64(A[1][4] ^ D[4], rhotates[1][4]);
-    B[2] = ROL64(A[1][0] ^ D[0], rhotates[2][0]);
-    B[3] = ROL64(A[1][1] ^ D[1], rhotates[3][1]);
-    B[4] = ROL64(A[1][2] ^ D[2], rhotates[4][2]);
-
-    /* C[0] ^= */ A[1][0] = B[0] ^ (~B[1] & B[2]);
-    /* C[1] ^= */ A[1][1] = B[1] ^ (~B[2] & B[3]);
-    /* C[2] ^= */ A[1][2] = B[2] ^ (~B[3] & B[4]);
-    /* C[3] ^= */ A[1][3] = B[3] ^ (~B[4] & B[0]);
-    /* C[4] ^= */ A[1][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[2][1] ^ D[1], rhotates[0][1]);
-    B[1] = ROL64(A[2][2] ^ D[2], rhotates[1][2]);
-    B[2] = ROL64(A[2][3] ^ D[3], rhotates[2][3]);
-    B[3] = ROL64(A[2][4] ^ D[4], rhotates[3][4]);
-    B[4] = ROL64(A[2][0] ^ D[0], rhotates[4][0]);
-
-    /* C[0] ^= */ A[2][0] = B[0] ^ (~B[1] & B[2]);
-    /* C[1] ^= */ A[2][1] = B[1] ^ (~B[2] & B[3]);
-    /* C[2] ^= */ A[2][2] = B[2] ^ (~B[3] & B[4]);
-    /* C[3] ^= */ A[2][3] = B[3] ^ (~B[4] & B[0]);
-    /* C[4] ^= */ A[2][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[3][4] ^ D[4], rhotates[0][4]);
-    B[1] = ROL64(A[3][0] ^ D[0], rhotates[1][0]);
-    B[2] = ROL64(A[3][1] ^ D[1], rhotates[2][1]);
-    B[3] = ROL64(A[3][2] ^ D[2], rhotates[3][2]);
-    B[4] = ROL64(A[3][3] ^ D[3], rhotates[4][3]);
-
-    /* C[0] ^= */ A[3][0] = B[0] ^ (~B[1] & B[2]);
-    /* C[1] ^= */ A[3][1] = B[1] ^ (~B[2] & B[3]);
-    /* C[2] ^= */ A[3][2] = B[2] ^ (~B[3] & B[4]);
-    /* C[3] ^= */ A[3][3] = B[3] ^ (~B[4] & B[0]);
-    /* C[4] ^= */ A[3][4] = B[4] ^ (~B[0] & B[1]);
-
-    B[0] = ROL64(A[4][2] ^ D[2], rhotates[0][2]);
-    B[1] = ROL64(A[4][3] ^ D[3], rhotates[1][3]);
-    B[2] = ROL64(A[4][4] ^ D[4], rhotates[2][4]);
-    B[3] = ROL64(A[4][0] ^ D[0], rhotates[3][0]);
-    B[4] = ROL64(A[4][1] ^ D[1], rhotates[4][1]);
-
-    /* C[0] ^= */ A[4][0] = B[0] ^ (~B[1] & B[2]);
-    /* C[1] ^= */ A[4][1] = B[1] ^ (~B[2] & B[3]);
-    /* C[2] ^= */ A[4][2] = B[2] ^ (~B[3] & B[4]);
-    /* C[3] ^= */ A[4][3] = B[3] ^ (~B[4] & B[0]);
-    /* C[4] ^= */ A[4][4] = B[4] ^ (~B[0] & B[1]);
-}
-
-static void KeccakF1600(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE])
-{
-    size_t i;
-
-    for (i = 0; i < 24; i += 4) {
-        FourRounds(A, i);
-    }
-}
-
-#endif
 
 static uint64_t BitInterleave(uint64_t Ai)
 {
@@ -1044,7 +337,7 @@ static uint64_t BitDeinterleave(uint64_t Ai)
  // 72, but can also be (1600 - 448)/8 = 144. All this means that message
  // padding and intermediate sub-block buffering, byte- or bitwise, is
  // caller's responsibility.
-size_t SHA3_Absorb(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], const unsigned char *data, size_t len,
+size_t SHA3_Absorb(uint64_t A[5][5], const unsigned char *inp, size_t len,
                    size_t r)
 {
     uint64_t *A_flat = (uint64_t *)A;
@@ -1054,11 +347,11 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], const unsigned char
 
     while (len >= r) {
         for (i = 0; i < w; i++) {
-            uint64_t Ai = (uint64_t)data[0]       | (uint64_t)data[1] << 8  |
-                          (uint64_t)data[2] << 16 | (uint64_t)data[3] << 24 |
-                          (uint64_t)data[4] << 32 | (uint64_t)data[SHA3_ROW_SIZE] << 40 |
-                          (uint64_t)data[6] << 48 | (uint64_t)data[7] << 56;
-            data += 8;
+            uint64_t Ai = (uint64_t)inp[0]       | (uint64_t)inp[1] << 8  |
+                          (uint64_t)inp[2] << 16 | (uint64_t)inp[3] << 24 |
+                          (uint64_t)inp[4] << 32 | (uint64_t)inp[5] << 40 |
+                          (uint64_t)inp[6] << 48 | (uint64_t)inp[7] << 56;
+            inp += 8;
 
             A_flat[i] ^= BitInterleave(Ai);
         }
@@ -1071,9 +364,8 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], const unsigned char
 
  // SHA3_Squeeze is called once at the end to generate |out| hash value
  // of |len| bytes.
-void SHA3_Squeeze(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], unsigned char *out, size_t len, size_t r)
+void SHA3_Squeeze(uint64_t A[5][5], unsigned char *out, size_t len, size_t r)
 {
-    
     uint64_t *A_flat = (uint64_t *)A;
     size_t i, w = r / 8;
 
@@ -1096,17 +388,13 @@ void SHA3_Squeeze(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], unsigned char *out, 
             out[2] = (unsigned char)(Ai >> 16);
             out[3] = (unsigned char)(Ai >> 24);
             out[4] = (unsigned char)(Ai >> 32);
-            out[SHA3_ROW_SIZE] = (unsigned char)(Ai >> 40);
+            out[5] = (unsigned char)(Ai >> 40);
             out[6] = (unsigned char)(Ai >> 48);
             out[7] = (unsigned char)(Ai >> 56);
             out += 8;
             len -= 8;
-
-            
         }
-        if (len != 0){
+        if (len)
             KeccakF1600(A);
-        }
     }
 }
-#endif
