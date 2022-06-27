@@ -152,14 +152,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 extern "C" {
 #endif
 
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
-    defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
-// OPENSSL_cpuid_setup initializes the platform-specific feature cache.
-void OPENSSL_cpuid_setup(void);
-#endif
-
-
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
@@ -933,6 +925,33 @@ void boringssl_fips_inc_counter(enum fips_counter_t counter);
 #else
 OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
 #endif
+
+#if defined(BORINGSSL_FIPS_BREAK_TESTS)
+OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
+  const char *const value = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  return value != NULL && strcmp(value, test) == 0;
+}
+#else
+OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
+  return 0;
+}
+#endif  // BORINGSSL_FIPS_BREAK_TESTS
+
+#if defined(BORINGSSL_DISPATCH_TEST)
+// Runtime CPU dispatch testing support
+
+// BORINGSSL_function_hit is an array of flags. The following functions will
+// set these flags if BORINGSSL_DISPATCH_TEST is defined.
+//   0: aes_hw_ctr32_encrypt_blocks
+//   1: aes_hw_encrypt
+//   2: aesni_gcm_encrypt
+//   3: aes_hw_set_encrypt_key
+//   4: vpaes_encrypt
+//   5: vpaes_set_encrypt_key
+//   6: sha256_block_data_order_shaext
+extern uint8_t BORINGSSL_function_hit[7];
+#endif  // BORINGSSL_DISPATCH_TEST
+
 
 #if defined(__cplusplus)
 }  // extern C

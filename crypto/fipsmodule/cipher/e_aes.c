@@ -59,10 +59,11 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
-#include "../../internal.h"
+#include "../cpucap/internal.h"
 #include "../aes/internal.h"
 #include "../modes/internal.h"
 #include "../delocate.h"
+#include "../../internal.h"
 
 
 OPENSSL_MSVC_PRAGMA(warning(push))

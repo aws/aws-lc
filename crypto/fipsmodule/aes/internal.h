@@ -19,6 +19,8 @@
 
 #include <openssl/cpu.h>
 #include "../service_indicator/internal.h"
+#include "../cpucap/internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

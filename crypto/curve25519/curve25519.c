@@ -32,6 +32,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 
 // Various pre-computed constants.

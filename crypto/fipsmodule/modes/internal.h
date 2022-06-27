@@ -58,6 +58,7 @@
 #include <string.h>
 
 #include "../../internal.h"
+#include "../cpucap/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

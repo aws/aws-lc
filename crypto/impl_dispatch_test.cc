@@ -29,6 +29,7 @@
 #include <gtest/gtest.h>
 
 #include "internal.h"
+#include "fipsmodule/cpucap/internal.h"
 
 
 class ImplDispatchTest : public ::testing::Test {
