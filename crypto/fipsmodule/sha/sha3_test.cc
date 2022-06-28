@@ -34,9 +34,9 @@ class SHA3TestVector {
   
   void NISTTestVectors() const {
    
-    uint32_t digest_length = SHA512_DIGEST_LENGTH;
+    uint32_t digest_length = SHA3_256_DIGEST_LENGTH;
     const EVP_MD* algorithm = EVP_sha3_256();
-    uint8_t* digest = static_cast<uint8_t*>(OPENSSL_malloc(digest_length));
+    uint8_t digest[SHA3_256_DIGEST_LENGTH];
     EVP_MD_CTX* context = EVP_MD_CTX_new();
 
     ASSERT_TRUE(EVP_DigestInit(context, algorithm));
@@ -45,8 +45,6 @@ class SHA3TestVector {
    
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
               Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
-
-    OPENSSL_free(digest);
       
   }
 
