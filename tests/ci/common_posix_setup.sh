@@ -149,6 +149,12 @@ function print_system_and_dependency_information {
     echo "CMake version:"
     cmake --version
   fi
+  if command -v cmake3 &> /dev/null
+  then
+    echo ""
+    echo "CMake version (cmake3 executable):"
+    cmake3 --version
+  fi
   if command -v go &> /dev/null
   then
     echo ""
