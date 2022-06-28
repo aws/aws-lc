@@ -1,5 +1,5 @@
 [package]
-name = "bssl-sys"
+name = "aws-lc-sys"
 version = "0.1.0"
 authors = ["Benjamin Brittain <bwb@google.com>"]
 edition = "2018"
