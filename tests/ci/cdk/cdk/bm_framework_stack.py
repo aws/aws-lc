@@ -117,7 +117,7 @@ class BmFrameworkStack(core.Stack):
             pr_results_s3.grant_put(codebuild_role)
 
         # use boto3 to determine if a cloudwatch logs group with the name we want exists, and if it doesn't, create it
-        logs_client = boto3.client('logs')
+        logs_client = boto3.client('logs', region_name=AWS_REGION)
         try:
             logs_client.describe_log_groups(logGroupNamePrefix=CLOUDWATCH_LOGS)
         except ClientError:

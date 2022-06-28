@@ -39,16 +39,6 @@
 
 #include "../internal.h"
 
-#include "cpucap/cpucap.c"
-#include "cpucap/cpu_aarch64_apple.c"
-#include "cpucap/cpu_aarch64_fuchsia.c"
-#include "cpucap/cpu_aarch64_linux.c"
-#include "cpucap/cpu_aarch64_win.c"
-#include "cpucap/cpu_arm_linux.c"
-#include "cpucap/cpu_arm.c"
-#include "cpucap/cpu_intel.c"
-#include "cpucap/cpu_ppc64le.c"
-
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"
@@ -78,6 +68,15 @@
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
 #include "cipher/e_aesccm.c"
+
+#include "cpucap/cpu_aarch64_apple.c"
+#include "cpucap/cpu_aarch64_fuchsia.c"
+#include "cpucap/cpu_aarch64_linux.c"
+#include "cpucap/cpu_aarch64_win.c"
+#include "cpucap/cpu_arm_linux.c"
+#include "cpucap/cpu_intel.c"
+#include "cpucap/cpu_ppc64le.c"
+
 #include "cmac/cmac.c"
 #include "dh/check.c"
 #include "dh/dh.c"
@@ -105,6 +104,7 @@
 #include "evp/evp_ctx.c"
 #include "evp/p_ec.c"
 #include "evp/p_rsa.c"
+#include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
 #include "md4/md4.c"
 #include "md5/md5.c"

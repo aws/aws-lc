@@ -24,7 +24,10 @@ RUN set -ex && \
     wget \
     llvm \
     llvm-devel \
+    # valgrind is just the application and core resources.
     valgrind \
+    # valgrind/memcheck.h is provided by the valgrind-devel package on AL2. see P63119011.
+    valgrind-devel \
     unzip && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
