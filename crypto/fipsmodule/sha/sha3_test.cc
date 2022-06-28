@@ -37,15 +37,16 @@ class SHA3TestVector {
     uint32_t digest_length = SHA3_256_DIGEST_LENGTH;
     const EVP_MD* algorithm = EVP_sha3_256();
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
-    EVP_MD_CTX* context = EVP_MD_CTX_new();
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
-    ASSERT_TRUE(EVP_DigestInit(context, algorithm));
-    ASSERT_TRUE(EVP_DigestUpdate(context, msg_.data(), len_ / 8));
-    ASSERT_TRUE(EVP_DigestFinal(context, digest, &digest_length));
+    ASSERT_TRUE(EVP_DigestInit(ctx, algorithm));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
+    ASSERT_TRUE(EVP_DigestFinal(ctx, digest, &digest_length));
    
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
               Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
-      
+    
+    OPENSSL_cleanse(ctx, sizeof(EVP_MD_CTX));
   }
 
  private:
