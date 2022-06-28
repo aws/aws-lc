@@ -46,7 +46,7 @@ class SHA3TestVector {
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
               Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
     
-    OPENSSL_cleanse(ctx, sizeof(EVP_MD_CTX));
+    OPENSSL_free(ctx);
   }
 
  private:
