@@ -53,6 +53,9 @@ function determine_cmake_command {
   fi
 }
 
+determine_cmake_command
+determine_build_command
+
 function run_build {
   local cflags=("$@")
   rm -rf "$BUILD_ROOT"
@@ -62,9 +65,6 @@ function run_build {
   if [[ "${AWSLC_32BIT}" == "1" ]]; then
     cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
   fi
-
-  determine_cmake_command
-  determine_build_command
 
   ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
   if [[ "${PREBUILD_CUSTOM_TARGET}" != "" ]]; then
