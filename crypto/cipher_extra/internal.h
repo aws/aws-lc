@@ -64,13 +64,14 @@
 #include <openssl/type_check.h>
 
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && !defined(AWSLC_FIPS)
 #define AES_CBC_HMAC_SHA_STITCH
 // TLS1_1_VERSION is also defined in ssl.h.
 #define TLS1_1_VERSION 0x0302
