@@ -733,6 +733,18 @@ extern void bignum_triple_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 extern void curve25519_ladderstep(uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b);
 extern void curve25519_ladderstep_alt(uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b);
 
+// Point addition on SECG curve secp256k1 in Jacobian coordinates
+// Inputs p1[12], p2[12]; output p3[12]
+extern void secp256k1_jadd(uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 12]);
+
+// Point doubling on SECG curve secp256k1 in Jacobian coordinates
+// Input p1[12]; output p3[12]
+extern void secp256k1_jdouble(uint64_t p3[static 12],uint64_t p1[static 12]);
+
+// Point mixed addition on SECG curve secp256k1 in Jacobian coordinates
+// Inputs p1[12], p2[8]; output p3[12]
+extern void secp256k1_jmixadd(uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 8]);
+
 // Reverse the bytes in a single word
 // Input a; output function return
 extern uint64_t word_bytereverse (uint64_t a);

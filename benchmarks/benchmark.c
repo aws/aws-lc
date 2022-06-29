@@ -645,6 +645,10 @@ void call_bignum_mux16__32()
 void call_curve25519_ladderstep(void) repeat(curve25519_ladderstep(b0,b1,b2,*b3))
 void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1,b2,*b3))
 
+void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
+void call_secp256k1_jdouble(void) repeat(secp256k1_jdouble(b1,b2))
+void call_secp256k1_jmixadd(void) repeat(secp256k1_jmixadd(b1,b2,b3))
+
 int main(void)
 {
   int bmi = full_isa_support();
@@ -916,6 +920,9 @@ int main(void)
   timingtest(all,"bignum_triple_p521_alt",call_bignum_triple_p521_alt);
   timingtest(bmi,"curve25519_ladderstep",call_curve25519_ladderstep);
   timingtest(all,"curve25519_ladderstep_alt",call_curve25519_ladderstep_alt);
+  timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
+  timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);
+  timingtest(bmi,"secp256k1_jmixadd",call_secp256k1_jmixadd);
   timingtest(all,"word_bytereverse",call_word_bytereverse);
   timingtest(all,"word_clz",call_word_clz);
   timingtest(all,"word_ctz",call_word_ctz);

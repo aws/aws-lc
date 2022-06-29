@@ -271,6 +271,9 @@ enum {
        TEST_BIGNUM_TRIPLE_P521_ALT,
        TEST_CURVE25519_LADDERSTEP,
        TEST_CURVE25519_LADDERSTEP_ALT,
+       TEST_SECP256K1_JADD,
+       TEST_SECP256K1_JDOUBLE,
+       TEST_SECP256K1_JMIXADD,
        TEST_WORD_BYTEREVERSE,
        TEST_WORD_CLZ,
        TEST_WORD_CTZ,
@@ -995,6 +998,197 @@ void reference_curve25519ladderstep
    { reference_p25519xzdouble(rr,pp);
      reference_p25519xzdiffadd(rr+8,point,pp,pp+8);
    }
+}
+
+void reference_montjdouble
+  (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *a,uint64_t *m)
+{ uint64_t *xx = alloca(8 * k);
+  uint64_t *yy  = alloca(8 * k);
+  uint64_t *yyyy = alloca(8 * k);
+  uint64_t *zz  = alloca(8 * k);
+  uint64_t *s  = alloca(8 * k);
+  uint64_t *mm  = alloca(8 * k);
+  uint64_t *t0  = alloca(8 * k);
+  uint64_t *t1  = alloca(8 * k);
+  uint64_t *t2  = alloca(8 * k);
+  uint64_t *t3 = alloca(8 * k);
+  uint64_t *t4  = alloca(8 * k);
+  uint64_t *t5  = alloca(8 * k);
+  uint64_t *t6  = alloca(8 * k);
+  uint64_t *t7  = alloca(8 * k);
+  uint64_t *t8 = alloca(8 * k);
+  uint64_t *t9 = alloca(8 * k);
+  uint64_t *t10 = alloca(8 * k);
+  uint64_t *t11 = alloca(8 * k);
+  uint64_t *t12 = alloca(8 * k);
+  uint64_t *t13 = alloca(8 * k);
+  uint64_t *t14 = alloca(8 * k);
+  uint64_t *x1 = p1, *y1 = p1 + k, *z1 = p1 + 2*k;
+  uint64_t *x3 = p3, *y3 = p3 + k, *z3 = p3 + 2*k;
+  bignum_montsqr(k,xx,x1,m);
+  bignum_montsqr(k,yy,y1,m);
+  bignum_montsqr(k,yyyy,yy,m);
+  bignum_montsqr(k,zz,z1,m);
+  bignum_modadd(k,t0,x1,yy,m);
+  bignum_montsqr(k,t1,t0,m);
+  bignum_modsub(k,t2,t1,xx,m);
+  bignum_modsub(k,t3,t2,yyyy,m);
+  bignum_moddouble(k,s,t3,m);
+  bignum_montsqr(k,t4,zz,m);
+  bignum_montmul(k,t5,a,t4,m);
+  bignum_moddouble(k,t6,xx,m);
+    bignum_modadd(k,t6,t6,xx,m);
+  bignum_modadd(k,mm,t6,t5,m);
+  bignum_montsqr(k,t7,mm,m);
+  bignum_moddouble(k,t8,s,m);
+  bignum_modsub(k,x3,t7,t8,m);
+  bignum_modsub(k,t9,s,x3,m);
+  bignum_moddouble(k,t10,yyyy,m);
+    bignum_moddouble(k,t10,t10,m); bignum_moddouble(k,t10,t10,m);
+  bignum_montmul(k,t11,mm,t9,m);
+  bignum_modsub(k,y3,t11,t10,m);
+  bignum_modadd(k,t12,y1,z1,m);
+  bignum_montsqr(k,t13,t12,m);
+  bignum_modsub(k,t14,t13,yy,m);
+  bignum_modsub(k,z3,t14,zz,m);
+}
+
+void reference_jdouble
+  (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *a,uint64_t *m)
+{ uint64_t *i = alloca(8 * k);
+  uint64_t *t = alloca(8 * k);
+  bignum_montifier(k,i,m,t);
+  bignum_montmul(k,t,i,p1,m); bignum_copy(k,p1,k,t);
+  bignum_montmul(k,t,i,p1+k,m); bignum_copy(k,p1+k,k,t);
+  bignum_montmul(k,t,i,p1+2*k,m); bignum_copy(k,p1+2*k,k,t);
+  bignum_montmul(k,t,i,a,m); bignum_copy(k,a,k,t);
+  reference_montjdouble(k,p3,p1,a,m);
+  bignum_montredc(k,t,k,p3,m,k); bignum_copy(k,p3,k,t);
+  bignum_montredc(k,t,k,p3+k,m,k); bignum_copy(k,p3+k,k,t);
+  bignum_montredc(k,t,k,p3+2*k,m,k); bignum_copy(k,p3+2*k,k,t);
+}
+
+void reference_montjmixadd
+  (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *p2,uint64_t *m)
+{ uint64_t *z12 = alloca(8 * k);
+  uint64_t *y2z1  = alloca(8 * k);
+  uint64_t *s = alloca(8 * k);
+  uint64_t *u  = alloca(8 * k);
+  uint64_t *v  = alloca(8 * k);
+  uint64_t *w  = alloca(8 * k);
+  uint64_t *v2  = alloca(8 * k);
+  uint64_t *w2  = alloca(8 * k);
+  uint64_t *v3  = alloca(8 * k);
+  uint64_t *rv2 = alloca(8 * k);
+  uint64_t *t0  = alloca(8 * k);
+  uint64_t *t1  = alloca(8 * k);
+  uint64_t *t2  = alloca(8 * k);
+  uint64_t *t3  = alloca(8 * k);
+  uint64_t *t4 = alloca(8 * k);
+  uint64_t *x1 = p1, *y1 = p1 + k, *z1 = p1 + 2*k;
+  uint64_t *x2 = p2, *y2 = p2 + k;
+  uint64_t *x3 = p3, *y3 = p3 + k, *z3 = p3 + 2*k;
+  bignum_montsqr(k,z12,z1,m);
+  bignum_montmul(k,y2z1,y2,z1,m);
+  bignum_montmul(k,s,x2,z12,m);
+  bignum_montmul(k,u,y2z1,z12,m);
+  bignum_modsub(k,v,s,x1,m);
+  bignum_modsub(k,w,u,y1,m);
+  bignum_montsqr(k,v2,v,m);
+  bignum_montsqr(k,w2,w,m);
+  bignum_montmul(k,v3,v,v2,m);
+  bignum_montmul(k,rv2,x1,v2,m);
+  bignum_modsub(k,t0,w2,v3,m);
+  bignum_modsub(k,t1,t0,rv2,m);
+  bignum_modsub(k,x3,t1,rv2,m);
+  bignum_modsub(k,t2,rv2,x3,m);
+  bignum_montmul(k,t3,v3,y1,m);
+  bignum_montmul(k,t4,w,t2,m);
+  bignum_modsub(k,y3,t4,t3,m);
+  bignum_montmul(k,z3,z1,v,m);
+}
+
+void reference_jmixadd
+  (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *p2,uint64_t *m)
+{ uint64_t *i = alloca(8 * k);
+  uint64_t *t = alloca(8 * k);
+  bignum_montifier(k,i,m,t);
+  bignum_montmul(k,t,i,p1,m); bignum_copy(k,p1,k,t);
+  bignum_montmul(k,t,i,p1+k,m); bignum_copy(k,p1+k,k,t);
+  bignum_montmul(k,t,i,p1+2*k,m); bignum_copy(k,p1+2*k,k,t);
+  bignum_montmul(k,t,i,p2,m); bignum_copy(k,p2,k,t);
+  bignum_montmul(k,t,i,p2+k,m); bignum_copy(k,p2+k,k,t);
+  reference_montjmixadd(k,p3,p1,p2,m);
+  bignum_montredc(k,t,k,p3,m,k); bignum_copy(k,p3,k,t);
+  bignum_montredc(k,t,k,p3+k,m,k); bignum_copy(k,p3+k,k,t);
+  bignum_montredc(k,t,k,p3+2*k,m,k); bignum_copy(k,p3+2*k,k,t);
+}
+
+void reference_montjadd
+  (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *p2,uint64_t *m)
+{ uint64_t *z22 = alloca(8 * k);
+  uint64_t *z12 = alloca(8 * k);
+  uint64_t *y1z2 = alloca(8 * k);
+  uint64_t *y2z1 = alloca(8 * k);
+  uint64_t *r = alloca(8 * k);
+  uint64_t *s = alloca(8 * k);
+  uint64_t *t = alloca(8 * k);
+  uint64_t *u = alloca(8 * k);
+  uint64_t *v = alloca(8 * k);
+  uint64_t *w = alloca(8 * k);
+  uint64_t *v2 = alloca(8 * k);
+  uint64_t *w2 = alloca(8 * k);
+  uint64_t *v3 = alloca(8 * k);
+  uint64_t *rv2 = alloca(8 * k);
+  uint64_t *t0 = alloca(8 * k);
+  uint64_t *t1 = alloca(8 * k);
+  uint64_t *t2 = alloca(8 * k);
+  uint64_t *t3 = alloca(8 * k);
+  uint64_t *t4 = alloca(8 * k);
+  uint64_t *t5 = alloca(8 * k);
+  uint64_t *x1 = p1, *y1 = p1 + k, *z1 = p1 + 2*k;
+  uint64_t *x2 = p2, *y2 = p2 + k, *z2 = p2 + 2*k;
+  uint64_t *x3 = p3, *y3 = p3 + k, *z3 = p3 + 2*k;
+  bignum_montsqr(k,z22,z2,m);
+  bignum_montsqr(k,z12,z1,m);
+  bignum_montmul(k,y1z2,y1,z2,m);
+  bignum_montmul(k,y2z1,y2,z1,m);
+  bignum_montmul(k,r,x1,z22,m);
+  bignum_montmul(k,s,x2,z12,m);
+  bignum_montmul(k,t,y1z2,z22,m);
+  bignum_montmul(k,u,y2z1,z12,m);
+  bignum_modsub(k,v,s,r,m);
+  bignum_modsub(k,w,u,t,m);
+  bignum_montsqr(k,v2,v,m);
+  bignum_montsqr(k,w2,w,m);
+  bignum_montmul(k,v3,v,v2,m);
+  bignum_montmul(k,rv2,r,v2,m);
+  bignum_modsub(k,t0,w2,v3,m);
+  bignum_modsub(k,t1,t0,rv2,m);
+  bignum_modsub(k,x3,t1,rv2,m);
+  bignum_modsub(k,t2,rv2,x3,m);
+  bignum_montmul(k,t3,v3,t,m);
+  bignum_montmul(k,t4,w,t2,m);
+  bignum_modsub(k,y3,t4,t3,m);
+  bignum_montmul(k,t5,z1,z2,m);
+  bignum_montmul(k,z3,t5,v,m);
+}
+
+void reference_jadd
+  (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *p2,uint64_t *m)
+{ uint64_t *i = alloca(8 * k);
+  uint64_t *t = alloca(8 * k);
+  bignum_montifier(k,i,m,t);
+  bignum_montmul(k,t,i,p1,m); bignum_copy(k,p1,k,t);
+  bignum_montmul(k,t,i,p1+k,m); bignum_copy(k,p1+k,k,t);
+  bignum_montmul(k,t,i,p1+2*k,m); bignum_copy(k,p1+2*k,k,t);
+  bignum_montmul(k,t,i,p2,m); bignum_copy(k,p2,k,t);
+  bignum_montmul(k,t,i,p2+k,m); bignum_copy(k,p2+k,k,t);
+  bignum_montmul(k,t,i,p2+2*k,m); bignum_copy(k,p2+2*k,k,t);
+  reference_montjadd(k,p3,p1,p2,m);
+  bignum_montredc(k,t,k,p3,m,k); bignum_copy(k,p3,k,t);
+  bignum_montredc(k,t,k,p3+k,m,k); bignum_copy(k,p3+k,k,t);
+  bignum_montredc(k,t,k,p3+2*k,m,k); bignum_copy(k,p3+2*k,k,t);
 }
 
 // ****************************************************************************
@@ -7376,6 +7570,110 @@ int test_curve25519_ladderstep_alt(void)
   return 0;
 }
 
+int test_secp256k1_jadd(void)
+{ uint64_t t, k;
+  printf("Testing secp256k1_jadd with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_256k1);
+
+     secp256k1_jadd(b3,b1,b2);
+     reference_jadd(k,b4,b1,b2,p_256k1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_secp256k1_jdouble(void)
+{ uint64_t t, k;
+  printf("Testing secp256k1_jdouble with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_256k1);
+     bignum_of_word(k,b2,0);
+
+     secp256k1_jdouble(b3,b1);
+     reference_jdouble(k,b4,b1,b2,p_256k1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_secp256k1_jmixadd(void)
+{ uint64_t t, k;
+  printf("Testing secp256k1_jmixadd with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_256k1);
+     secp256k1_jmixadd(b3,b1,b2);
+     reference_jmixadd(k,b4,b1,b2,p_256k1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_bytereverse(void)
 { uint64_t i, a, x, y;
   printf("Testing word_bytereverse with %d cases\n",tests);
@@ -7761,6 +8059,9 @@ int test_all(void)
   dotest(test_bignum_triple_p521_alt);
   dotest(test_curve25519_ladderstep);
   dotest(test_curve25519_ladderstep_alt);
+  dotest(test_secp256k1_jadd);
+  dotest(test_secp256k1_jdouble);
+  dotest(test_secp256k1_jmixadd);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -8242,6 +8543,9 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_TRIPLE_P521_ALT:    return test_bignum_triple_p521_alt();
      case TEST_CURVE25519_LADDERSTEP:     return test_curve25519_ladderstep();
      case TEST_CURVE25519_LADDERSTEP_ALT: return test_curve25519_ladderstep_alt();
+     case TEST_SECP256K1_JADD:            return test_secp256k1_jadd();
+     case TEST_SECP256K1_JDOUBLE:         return test_secp256k1_jdouble();
+     case TEST_SECP256K1_JMIXADD:         return test_secp256k1_jmixadd();
      case TEST_WORD_BYTEREVERSE:          return test_word_bytereverse();
      case TEST_WORD_CLZ:                  return test_word_clz();
      case TEST_WORD_CTZ:                  return test_word_ctz();

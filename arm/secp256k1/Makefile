@@ -51,7 +51,10 @@ OBJ = bignum_add_p256k1.o \
       bignum_sqr_p256k1_alt.o \
       bignum_sub_p256k1.o \
       bignum_tomont_p256k1.o \
-      bignum_triple_p256k1.o
+      bignum_triple_p256k1.o \
+      secp256k1_jadd.o \
+      secp256k1_jdouble.o \
+      secp256k1_jmixadd.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 

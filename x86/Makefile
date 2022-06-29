@@ -287,7 +287,10 @@ OBJ = curve25519/bignum_add_p25519.o \
       secp256k1/bignum_tomont_p256k1.o \
       secp256k1/bignum_tomont_p256k1_alt.o \
       secp256k1/bignum_triple_p256k1.o \
-      secp256k1/bignum_triple_p256k1_alt.o
+      secp256k1/bignum_triple_p256k1_alt.o \
+      secp256k1/secp256k1_jadd.o \
+      secp256k1/secp256k1_jdouble.o \
+      secp256k1/secp256k1_jmixadd.o
 
 .PHONY: bmi clean clobber
 
