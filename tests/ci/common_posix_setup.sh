@@ -28,19 +28,6 @@ fi
 
 PLATFORM=$(uname -m)
 
-if [[ -x "$(command -v ninja)" ]]; then
-  echo "Using Ninja build system (ninja)."
-  BUILD_COMMAND="ninja"
-  cflags+=(-GNinja)
-elif [[ -x "$(command -v ninja-build)" ]]; then
-  echo "Using Ninja build system (ninja-build)."
-  BUILD_COMMAND="ninja-build"
-  cflags+=(-GNinja)
-else
-  echo "Using Make."
-  BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
-fi
-
 # Pick cmake3 if possible. This will capture Amazon Linux 2. We don't know of
 # any OS that installs a cmake3 executable that is not at least version 3.0.
 if [[ -x "$(command -v cmake3)" ]] ; then
@@ -57,6 +44,19 @@ function run_build {
 
   if [[ "${AWSLC_32BIT}" == "1" ]]; then
     cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
+  fi
+
+  if [[ -x "$(command -v ninja)" ]]; then
+    echo "Using Ninja build system (ninja)."
+    BUILD_COMMAND="ninja"
+    cflags+=(-GNinja)
+  elif [[ -x "$(command -v ninja-build)" ]]; then
+    echo "Using Ninja build system (ninja-build)."
+    BUILD_COMMAND="ninja-build"
+    cflags+=(-GNinja)
+  else
+    echo "Using Make."
+    BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
   ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
