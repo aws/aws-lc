@@ -20,7 +20,7 @@ fn main() {
     let dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let crate_path = Path::new(&dir);
     let parent_path = crate_path.parent().unwrap();
-
+/*
     // Statically link libraries.
     println!(
         "cargo:rustc-link-search=native={}",
@@ -35,5 +35,5 @@ fn main() {
     println!("cargo:rustc-link-lib=static=ssl");
 
     println!("cargo:rustc-link-search=native={}", crate_path.display());
-    println!("cargo:rustc-link-lib=static=rust_wrapper");
+ */
 }

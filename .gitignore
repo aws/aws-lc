@@ -10,6 +10,8 @@ doc/doc.css
 bindings/rust/Cargo.lock
 bindings/rust/target
 bindings/rust/tmp/*
+bindings/rust/generate/target
+bindings/rust/generate/Cargo.lock
 
 util/bot/android_ndk
 util/bot/android_sdk/public

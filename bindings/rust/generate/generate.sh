@@ -27,13 +27,13 @@ if [[ ! -d ${AWS_LC_DIR} || ! -d ${TMP_DIR} ]]; then
   exit 1
 fi
 
-if [[ ! -r "${TMP_DIR}/symbols.txt" ]]; then
+if [[ ! -r "${TMP_DIR}"/symbols.txt ]]; then
   echo Symbol file not found.
   echo Performing build for supported platforms.
   ${SCRIPT_DIR}/_run_supported_symbol_builds.sh ${AWS_ACCOUNT_ID}
 fi
 
-if [[ ! -r "${TMP_DIR}/symbols.txt" ]]; then
+if [[ ! -r "${TMP_DIR}"/symbols.txt ]]; then
   echo Symbol file not found after builds performed.
   exit 1
 fi
@@ -65,3 +65,10 @@ cp -r  "${AWS_LC_DIR}"/third_party/googletest "${AWS_LC_DIR}"/third_party/s2n-bi
 
 mkdir -p  "${CRATE_DEPS_DIR}"/aws-lc/tests/compiler_features_tests
 cp "${AWS_LC_DIR}"/tests/compiler_features_tests/*.c "${CRATE_DEPS_DIR}"/aws-lc/tests/compiler_features_tests
+
+go run "${AWS_LC_DIR}"/util/make_prefix_headers.go -out "${CRATE_DEPS_DIR}"/aws-lc/include "${TMP_DIR}"/symbols.txt
+
+pushd ${SCRIPT_DIR}
+
+cargo run -- "${CRATE_DIR}" "${TMP_DIR}"/symbols.txt
+
