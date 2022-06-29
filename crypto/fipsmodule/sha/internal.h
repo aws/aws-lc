@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-//SHA3_256 constants
+// SHA3_256 constants
 #define KECCAK1600_WIDTH 1600
 #define SHA3_256_CAPACITY_BYTES 64
 #define SHA3_256_DIGEST_BITLENGTH 256
