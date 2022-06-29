@@ -5006,8 +5006,7 @@ OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 
 // SSL_add_dir_cert_subjects_to_stack lists files in directory |dir|. It calls
 // |SSL_add_file_cert_subjects_to_stack| on each file and returns one on success
-// or zero on error. This function is only available from the libdecrepit
-// library.
+// or zero on error. This function is deprecated.
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
 
