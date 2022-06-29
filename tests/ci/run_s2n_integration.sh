@@ -44,14 +44,14 @@ function fail() {
 }
 
 function aws_lc_build() {
-	cmake ${AWS_LC_DIR} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
+	${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
 	ninja -C ${AWS_LC_BUILD_FOLDER} install
 	ls -R ${AWS_LC_INSTALL_FOLDER}
 	rm -rf ${AWS_LC_BUILD_FOLDER}/*
 }
 
 function s2n_tls_build() {
-	cmake s2n-tls -GNinja "-B${S2N_TLS_BUILD_FOLDER}" "-DCMAKE_PREFIX_PATH=${AWS_LC_INSTALL_FOLDER}" "$@"
+	${CMAKE_COMMAND} s2n-tls -GNinja "-B${S2N_TLS_BUILD_FOLDER}" "-DCMAKE_PREFIX_PATH=${AWS_LC_INSTALL_FOLDER}" "$@"
 	ninja -C ${S2N_TLS_BUILD_FOLDER}
 	ls -R ${S2N_TLS_BUILD_FOLDER}
 }

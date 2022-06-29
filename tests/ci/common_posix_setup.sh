@@ -28,16 +28,7 @@ fi
 
 PLATFORM=$(uname -m)
 
-function run_build {
-  local cflags=("$@")
-  rm -rf "$BUILD_ROOT"
-  mkdir -p "$BUILD_ROOT"
-  cd "$BUILD_ROOT" || exit 1
-
-  if [[ "${AWSLC_32BIT}" == "1" ]]; then
-    cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
-  fi
-
+function determine_build_command {
   if [[ -x "$(command -v ninja)" ]]; then
     echo "Using Ninja build system (ninja)."
     BUILD_COMMAND="ninja"
@@ -50,8 +41,32 @@ function run_build {
     echo "Using Make."
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
+}
 
-  cmake "${cflags[@]}" "$SRC_ROOT"
+function determine_cmake_command {
+  # Pick cmake3 if possible. This will capture Amazon Linux 2. We don't know of
+  # any OS that installs a cmake3 executable that is not at least version 3.0.
+  if [[ -x "$(command -v cmake3)" ]] ; then
+    CMAKE_COMMAND="cmake3"
+  else
+    CMAKE_COMMAND="cmake"
+  fi
+}
+
+function run_build {
+  local cflags=("$@")
+  rm -rf "$BUILD_ROOT"
+  mkdir -p "$BUILD_ROOT"
+  cd "$BUILD_ROOT" || exit 1
+
+  if [[ "${AWSLC_32BIT}" == "1" ]]; then
+    cflags+=("-DCMAKE_TOOLCHAIN_FILE=${SRC_ROOT}/util/32-bit-toolchain.cmake")
+  fi
+
+  determine_cmake_command
+  determine_build_command
+
+  ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
   if [[ "${PREBUILD_CUSTOM_TARGET}" != "" ]]; then
     run_cmake_custom_target "${PREBUILD_CUSTOM_TARGET}"
   fi
