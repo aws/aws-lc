@@ -352,7 +352,6 @@ add_library(
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
-  hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
@@ -525,11 +524,18 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
-    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    add_library(
+      generated_fipsmodule
+
+      OBJECT
+
+      generated_fips_shared_support.c
+      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+    )
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
-    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
-    # library.
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
+    # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
@@ -635,7 +641,7 @@ if(BUILD_TESTING)
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
-    hkdf/hkdf_test.cc
+    fipsmodule/hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc

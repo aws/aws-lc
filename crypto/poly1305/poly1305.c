@@ -22,6 +22,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 
 #if !defined(BORINGSSL_HAS_UINT128) || !defined(OPENSSL_X86_64)

@@ -64,6 +64,7 @@
 #include <openssl/type_check.h>
 
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
