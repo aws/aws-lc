@@ -28,33 +28,26 @@ fi
 
 PLATFORM=$(uname -m)
 
-function determine_build_command {
-  if [[ -x "$(command -v ninja)" ]]; then
-    echo "Using Ninja build system (ninja)."
-    BUILD_COMMAND="ninja"
-    cflags+=(-GNinja)
-  elif [[ -x "$(command -v ninja-build)" ]]; then
-    echo "Using Ninja build system (ninja-build)."
-    BUILD_COMMAND="ninja-build"
-    cflags+=(-GNinja)
-  else
-    echo "Using Make."
-    BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
-  fi
-}
+if [[ -x "$(command -v ninja)" ]]; then
+  echo "Using Ninja build system (ninja)."
+  BUILD_COMMAND="ninja"
+  cflags+=(-GNinja)
+elif [[ -x "$(command -v ninja-build)" ]]; then
+  echo "Using Ninja build system (ninja-build)."
+  BUILD_COMMAND="ninja-build"
+  cflags+=(-GNinja)
+else
+  echo "Using Make."
+  BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
+fi
 
-function determine_cmake_command {
-  # Pick cmake3 if possible. This will capture Amazon Linux 2. We don't know of
-  # any OS that installs a cmake3 executable that is not at least version 3.0.
-  if [[ -x "$(command -v cmake3)" ]] ; then
-    CMAKE_COMMAND="cmake3"
-  else
-    CMAKE_COMMAND="cmake"
-  fi
-}
-
-determine_cmake_command
-determine_build_command
+# Pick cmake3 if possible. This will capture Amazon Linux 2. We don't know of
+# any OS that installs a cmake3 executable that is not at least version 3.0.
+if [[ -x "$(command -v cmake3)" ]] ; then
+  CMAKE_COMMAND="cmake3"
+else
+  CMAKE_COMMAND="cmake"
+fi
 
 function run_build {
   local cflags=("$@")
