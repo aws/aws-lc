@@ -386,7 +386,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x-bm-framework
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x-bm-framework_latest
 
     - identifier: ubuntu710_gcc4_1x_x86_64_build
       buildspec: ./tests/ci/codebuild/linux-x86/run_legacy_build.yml
