@@ -60,9 +60,6 @@ function run_build {
   fi
 
   ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
-  if [[ "${PREBUILD_CUSTOM_TARGET}" != "" ]]; then
-    run_cmake_custom_target "${PREBUILD_CUSTOM_TARGET}"
-  fi
   $BUILD_COMMAND
   cd "$SRC_ROOT"
 }
@@ -107,9 +104,7 @@ function build_prefix_and_test {
   CUSTOM_PREFIX=aws_lc_1_1_0
   run_build "$@"
   generate_symbols_file
-  PREBUILD_CUSTOM_TARGET="boringssl_prefix_symbols"
   run_build "$@" "-DBORINGSSL_PREFIX=${CUSTOM_PREFIX}" "-DBORINGSSL_PREFIX_SYMBOLS=${SRC_ROOT}/symbols.txt"
-  PREBUILD_CUSTOM_TARGET=""
   verify_symbols_prefixed
   run_cmake_custom_target 'run_tests'
 }
