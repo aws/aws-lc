@@ -58,6 +58,9 @@ function run_build {
   fi
 
   ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
+  if [[ "${PREBUILD_CUSTOM_TARGET}" != "" ]]; then
+    run_cmake_custom_target "${PREBUILD_CUSTOM_TARGET}"
+  fi
   $BUILD_COMMAND
   cd "$SRC_ROOT"
 }

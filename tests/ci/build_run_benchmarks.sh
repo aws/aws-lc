@@ -30,26 +30,30 @@ cmake -Bboringssl/build -Hboringssl -GNinja -DCMAKE_BUILD_TYPE=Release
 ninja -C boringssl/build
 
 # build AWSLC pr
-mkdir "${PR_FOLDER_NAME}"/build
-cmake -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
-  -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}" \
-  -DBORINGSSL_INSTALL_DIR="${BORINGSSL_ROOT}" \
-  -DOPENSSL_INSTALL_DIR="${OPENSSL_ROOT}"
+mkdir -p "${PR_FOLDER_NAME}"/build
+mkdir -p "${PR_FOLDER_NAME}"/install
+${CMAKE_COMMAND} -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
+  -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/install \
+  -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/install \
+  -DBUILD_TESTING=OFF
 ninja -C "${PR_FOLDER_NAME}"/build
 
 # build FIPS compliant version of AWSLC pr
-mkdir "${PR_FOLDER_NAME}"/fips_build
-cmake -B"${PR_FOLDER_NAME}"/fips_build -H"${PR_FOLDER_NAME}" -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"
+mkdir -p "${PR_FOLDER_NAME}"/fips_build
+mkdir -p "${PR_FOLDER_NAME}"/fips_install
+${CMAKE_COMMAND} -B"${PR_FOLDER_NAME}"/fips_build -H"${PR_FOLDER_NAME}" -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/fips_install -DBUILD_SHARED_LIBS=TRUE -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/fips_install
 ninja -C "${PR_FOLDER_NAME}"/fips_build
 
 # build AWSLC prod
-mkdir aws-lc-prod/build
-cmake -Baws-lc-prod/build -Haws-lc-prod -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}"
+mkdir -p aws-lc-prod/build
+mkdir -p aws-lc-prod/install
+${CMAKE_COMMAND} -Baws-lc-prod/build -Haws-lc-prod -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/install" -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/install" -DBUILD_TESTING=OFF
 ninja -C aws-lc-prod/build
 
 #build FIPS compliant version of AWSLC prod
-mkdir aws-lc-prod/fips_build
-cmake -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}"
+mkdir -p aws-lc-prod/fips_build
+mkdir -p aws-lc-prod/fips_install
+${CMAKE_COMMAND} -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/fips_install" -DBUILD_SHARED_LIBS=TRUE -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/fips_install"
 ninja -C aws-lc-prod/fips_build
 
 # avoid cpus 0-3 since there are a lot of other things running on them
