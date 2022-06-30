@@ -28,8 +28,8 @@ fi
 
 PLATFORM=$(uname -m)
 
-# Pick cmake3 if possible. This will capture Amazon Linux 2. We don't know of
-# any OS that installs a cmake3 executable that is not at least version 3.0.
+# Pick cmake3 if possible. We don't know of any OS that installs a cmake3
+# executable that is not at least version 3.0.
 if [[ -x "$(command -v cmake3)" ]] ; then
   CMAKE_COMMAND="cmake3"
 else
