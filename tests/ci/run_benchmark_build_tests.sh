@@ -48,7 +48,7 @@ run_build -DOPENSSL_INSTALL_DIR="${install_dir}/openssl-1.1"
 
 build_openssl_3_0
 echo "Testing ossl_bm with OpenSSL 3.0"
-run_build -DOPENSSL_INSTALL_DIR="${install_dir}/openssl-3.0"
+run_build -DOPENSSL3_INSTALL_DIR="${install_dir}/openssl-3.0"
 "${BUILD_ROOT}/tool/ossl3_bm"
 
 # echo "Testing ossl_bm with OpenSSL 1.1"
