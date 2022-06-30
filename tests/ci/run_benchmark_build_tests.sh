@@ -22,10 +22,10 @@ rm -rf "../openssl-1.1"
 
 
 mkdir -p "${install_dir}"
-# echo "Testing awslc_bm"
-# mkdir "${install_dir}/aws_lc"
-# run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws_lc"
-# "${BUILD_ROOT}/tool/awslc_bm"
+echo "Testing awslc_bm"
+mkdir "${install_dir}/aws_lc"
+run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws_lc"
+"${BUILD_ROOT}/tool/awslc_bm"
 
 build_openssl_1_1
 echo "Testing ossl_bm with OpenSSL 1.1"
@@ -35,6 +35,3 @@ run_build -DOPENSSL_INSTALL_DIR="${install_dir}/openssl-1.1"
 
 # echo "Testing ossl_bm with OpenSSL 1.1"
 # run_build -DOPENSSL_INSTALL_DIR="${install_dir}"
-
-rm -rf "${install_dir}"
-
