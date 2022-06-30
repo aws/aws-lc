@@ -29,6 +29,10 @@ export OPENSSL_LIBCRYPTO_A_PATH=`realpath ${BUILD_ROOT}/crypto/libcrypto.a`
 CUSTOM_CRYPTOFUZZ_REPO_DIR=''
 if [[ -z "${CUSTOM_CRYPTOFUZZ_REPO_DIR}" ]]; then
   echo "CUSTOM_CRYPTOFUZZ_REPO_DIR is empty."
+  # Remove botan temporarily. Details are in CryptoAlg-1175.
+  # TODO: re-enable botan when https://github.com/randombit/botan/issues/2999 gets resolved.
+  # This re-enable will require Docker image build.
+  export CXXFLAGS="${CXXFLAGS// -DCRYPTOFUZZ_BOTAN/}"
 else
   export CRYPTOFUZZ_SRC="${CUSTOM_CRYPTOFUZZ_REPO_DIR}"
   # Local development does not need differential fuzzing.
