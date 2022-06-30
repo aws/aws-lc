@@ -30,7 +30,7 @@ In order to build the above-mentioned benchmarking tools, absolute paths to each
 | ossl3_bm | -DOPENSSL3_INSTALL_DIR |
 
 ### Expected Directory Structure
-Additionally, the benchmarking tools expects specific directory structures for the provided install locations for each library. Each package should have it's own instructions for proividing an install directory, and once installed to that directory you can simply use the appropriate `INSTALL_DIR` flag to point the benchmarking tool to it.
+Additionally, the benchmarking tools expects specific directory structures for the provided install locations for each library. Each package should have its own instructions for proividing an install directory, and once installed to that directory you can simply use the appropriate `INSTALL_DIR` flag to point the benchmarking tool to it.
 
 **AWS-LC**
 ```
