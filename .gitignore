@@ -7,8 +7,6 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 doc/doc.css
-bindings/rust/Cargo.lock
-bindings/rust/target
 bindings/rust/tmp/*
 bindings/rust/generate/target
 bindings/rust/generate/Cargo.lock
