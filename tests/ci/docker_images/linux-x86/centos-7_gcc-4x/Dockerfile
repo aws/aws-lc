@@ -20,6 +20,7 @@ RUN set -ex && \
     libstdc++-devel.x86_64 \
     libstdc++-devel.i686 \
     cmake \
+    cmake3 \
     ninja-build \
     perl \
     wget \
