@@ -645,6 +645,10 @@ void call_bignum_mux16__32()
 void call_curve25519_ladderstep(void) repeat(curve25519_ladderstep(b0,b1,b2,*b3))
 void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1,b2,*b3))
 
+void call_p256_montjadd(void) repeat(p256_montjadd(b1,b2,b3))
+void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
+void call_p256_montjmixadd(void) repeat(p256_montjmixadd(b1,b2,b3))
+
 void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
 void call_secp256k1_jdouble(void) repeat(secp256k1_jdouble(b1,b2))
 void call_secp256k1_jmixadd(void) repeat(secp256k1_jmixadd(b1,b2,b3))
@@ -920,6 +924,9 @@ int main(void)
   timingtest(all,"bignum_triple_p521_alt",call_bignum_triple_p521_alt);
   timingtest(bmi,"curve25519_ladderstep",call_curve25519_ladderstep);
   timingtest(all,"curve25519_ladderstep_alt",call_curve25519_ladderstep_alt);
+  timingtest(bmi,"p256_montjadd",call_p256_montjadd);
+  timingtest(bmi,"p256_montjdouble",call_p256_montjdouble);
+  timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);
   timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
   timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);
   timingtest(bmi,"secp256k1_jmixadd",call_secp256k1_jmixadd);

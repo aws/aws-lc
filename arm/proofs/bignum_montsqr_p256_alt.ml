@@ -103,7 +103,6 @@ let bignum_montsqr_p256_alt_mc =
   0xba07016b;       (* arm_ADCS X11 X11 X7 *)
   0x9a9f37e2;       (* arm_CSET X2 Condition_CS *)
   0xb2407fe3;       (* arm_MOV X3 (rvalue (word 4294967295)) *)
-  0xb26083e5;       (* arm_MOV X5 (rvalue (word 18446744069414584321)) *)
   0xb100050c;       (* arm_ADDS X12 X8 (rvalue (word 1)) *)
   0xfa03012d;       (* arm_SBCS X13 X9 X3 *)
   0xfa1f014e;       (* arm_SBCS X14 X10 XZR *)
@@ -128,13 +127,13 @@ let p_256 = new_definition `p_256 = 11579208921035624876269744694940757353008614
 
 let BIGNUM_MONTSQR_P256_ALT_CORRECT = time prove
  (`!z x a pc.
-        nonoverlapping (word pc,0x174) (z,8 * 4)
+        nonoverlapping (word pc,0x170) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_p256_alt_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
-             (\s. read PC s = word (pc + 0x170) /\
+             (\s. read PC s = word (pc + 0x16c) /\
                   (a EXP 2 <= 2 EXP 256 * p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 (2 EXP 256) * a EXP 2) MOD p_256))
@@ -149,7 +148,7 @@ let BIGNUM_MONTSQR_P256_ALT_CORRECT = time prove
   (*** Globalize the a EXP 2 <= 2 EXP 256 * p_256  assumption ***)
 
   ASM_CASES_TAC `a EXP 2 <= 2 EXP 256 * p_256` THENL
-   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTSQR_P256_ALT_EXEC (1--92)] THEN
+   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTSQR_P256_ALT_EXEC (1--91)] THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,4) s0` THEN
 
@@ -181,7 +180,7 @@ let BIGNUM_MONTSQR_P256_ALT_CORRECT = time prove
 
   (*** Final correction stage ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_ALT_EXEC (82--86) (80--92) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_ALT_EXEC (81--85) (80--91) THEN
   RULE_ASSUM_TAC(REWRITE_RULE
    [GSYM WORD_BITVAL; COND_SWAP; REAL_BITVAL_NOT]) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
@@ -205,7 +204,7 @@ let BIGNUM_MONTSQR_P256_ALT_CORRECT = time prove
     ASM_SIMP_TAC[MOD_CASES] THEN
     GEN_REWRITE_TAC LAND_CONV [COND_RAND] THEN
     SIMP_TAC[REAL_OF_NUM_SUB; GSYM NOT_LT]] THEN
-  SUBGOAL_THEN `carry_s86 <=> t < p_256` SUBST_ALL_TAC THENL
+  SUBGOAL_THEN `carry_s85 <=> t < p_256` SUBST_ALL_TAC THENL
    [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `320` THEN
     EXPAND_TAC "t" THEN
     REWRITE_TAC[p_256; bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
@@ -221,7 +220,7 @@ let BIGNUM_MONTSQR_P256_ALT_CORRECT = time prove
 
 let BIGNUM_MONTSQR_P256_ALT_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
-        nonoverlapping (word pc,0x174) (z,8 * 4)
+        nonoverlapping (word pc,0x170) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_p256_alt_mc /\
                   read PC s = word pc /\
@@ -247,13 +246,13 @@ let BIGNUM_MONTSQR_P256_ALT_SUBROUTINE_CORRECT = time prove
 
 let BIGNUM_AMONTSQR_P256_ALT_CORRECT = time prove
  (`!z x a pc.
-        nonoverlapping (word pc,0x174) (z,8 * 4)
+        nonoverlapping (word pc,0x170) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_p256_alt_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
-             (\s. read PC s = word (pc + 0x170) /\
+             (\s. read PC s = word (pc + 0x16c) /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a EXP 2) (mod p_256))
              (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
@@ -296,7 +295,7 @@ let BIGNUM_AMONTSQR_P256_ALT_CORRECT = time prove
 
   (*** Final correction stage ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_ALT_EXEC (82--86) (80--92) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P256_ALT_EXEC (81--85) (80--91) THEN
   RULE_ASSUM_TAC(REWRITE_RULE
    [GSYM WORD_BITVAL; COND_SWAP; REAL_BITVAL_NOT]) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
@@ -308,7 +307,7 @@ let BIGNUM_AMONTSQR_P256_ALT_CORRECT = time prove
   REWRITE_TAC[INVERSE_MOD_RMUL_EQ; COPRIME_REXP; COPRIME_2] THEN
   CONJ_TAC THENL
    [REWRITE_TAC[p_256] THEN CONV_TAC NUM_REDUCE_CONV; ALL_TAC] THEN
-  SUBGOAL_THEN `carry_s86 <=> t < p_256` SUBST_ALL_TAC THENL
+  SUBGOAL_THEN `carry_s85 <=> t < p_256` SUBST_ALL_TAC THENL
    [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `320` THEN
     EXPAND_TAC "t" THEN
     REWRITE_TAC[p_256; bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
@@ -340,7 +339,7 @@ let BIGNUM_AMONTSQR_P256_ALT_CORRECT = time prove
 
 let BIGNUM_AMONTSQR_P256_ALT_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
-        nonoverlapping (word pc,0x174) (z,8 * 4)
+        nonoverlapping (word pc,0x170) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_p256_alt_mc /\
                   read PC s = word pc /\

@@ -208,6 +208,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       p256/bignum_tomont_p256_alt.o \
       p256/bignum_triple_p256.o \
       p256/bignum_triple_p256_alt.o \
+      p256/p256_montjadd.o \
+      p256/p256_montjdouble.o \
+      p256/p256_montjmixadd.o \
       p384/bignum_add_p384.o \
       p384/bignum_bigendian_6.o \
       p384/bignum_cmul_p384.o \

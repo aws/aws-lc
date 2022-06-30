@@ -162,9 +162,9 @@ S2N_BN_SYMBOL(bignum_montsqr_p256_alt):
         cset    a0, cs
 
 // Set [a3;0;a1;-1] = p_256 and form [u7,u6,u5,u4] = [a0;u3;u2;u1;u0] - p_256
+// Note that a3 == mc was already set above
 
         mov     a1, #0x00000000ffffffff
-        mov     a3, #0xffffffff00000001
 
         subs    u4, u0, #-1
         sbcs    u5, u1, a1

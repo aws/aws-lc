@@ -734,6 +734,18 @@ extern void bignum_triple_p521_alt (uint64_t z[9], uint64_t x[9]);
 extern void curve25519_ladderstep(uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b);
 extern void curve25519_ladderstep_alt(uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b);
 
+/* Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates */
+/* Inputs p1[12], p2[12]; output p3[12] */
+extern void p256_montjadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[12]);
+
+/* Point doubling on NIST curve P-256 in Montgomery-Jacobian coordinates */
+/* Inputs p1[12]; output p3[12] */
+extern void p256_montjdouble(uint64_t p3[12],uint64_t p1[12]);
+
+/* Point mixed addition on NIST curve P-256 in Montgomery-Jacobian coordinates */
+/* Inputs p1[12], p2[8]; output p3[12] */
+extern void p256_montjmixadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
+
 /* Point addition on SECG curve secp256k1 in Jacobian coordinates */
 /* Inputs p1[12], p2[12]; output p3[12] */
 extern void secp256k1_jadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[12]);
