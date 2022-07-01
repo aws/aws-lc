@@ -7,65 +7,20 @@
  * https://www.openssl.org/source/license.html
  */
 
-#include <openssl/e_os2.h>
-#include <string.h>
 #include <assert.h>
-
-#if !defined(KECCAK1600_ASM)
-
-#if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
-    (defined(__x86_64) && !defined(__BMI__)) || defined(_M_X64) || \
-    defined(__mips) || defined(__riscv) || defined(__s390__) || \
-    defined(__EMSCRIPTEN__)
-/*
- * These don't have "and with complement" instruction, so minimize amount
- * of "not"-s. Implemented only in the [default] KECCAK_2X variant.
- */
-# define KECCAK_COMPLEMENTING_TRANSFORM
-#endif
 
 #if defined(__x86_64__) || defined(__aarch64__) || \
     defined(__mips64) || defined(__ia64) || \
     (defined(__VMS) && !defined(__vax))
-/*
- * These are available even in ILP32 flavours, but even then they are
- * capable of performing 64-bit operations as efficiently as in *P64.
- * Since it's not given that we can use sizeof(void *), just shunt it.
- */
+
+ // Facilitate ILP32 model, the above platforms are capable of performing
+ // 64-bit operations as efficiently as *P64.
 # define BIT_INTERLEAVE (0)
 #else
 # define BIT_INTERLEAVE (sizeof(void *) < 8)
 #endif
 
-#define ROL32(a, offset) (((a) << (offset)) | ((a) >> ((32 - (offset)) & 31)))
-
-static uint64_t ROL64(uint64_t val, int offset)
-{
-    if (offset == 0) {
-        return val;
-    } else if (!BIT_INTERLEAVE) {
-        return (val << offset) | (val >> (64-offset));
-    } else {
-        uint32_t hi = (uint32_t)(val >> 32), lo = (uint32_t)val;
-
-        if (offset & 1) {
-            uint32_t tmp = hi;
-
-            offset >>= 1;
-            hi = ROL32(lo, offset);
-            lo = ROL32(tmp, offset + 1);
-        } else {
-            offset >>= 1;
-            lo = ROL32(lo, offset);
-            hi = ROL32(hi, offset);
-        }
-
-        return ((uint64_t)hi << 32) | lo;
-    }
-}
-#endif // !SHA3_256_ASM
-
-static const unsigned char rhotates[5][5] = {
+static const unsigned char rhotates[SHA3_ROWS][SHA3_ROWS] = {
     {  0,  1, 62, 28, 27 },
     { 36, 44,  6, 55, 20 },
     {  3, 10, 43, 25, 39 },
@@ -100,18 +55,56 @@ static const uint64_t iotas[] = {
     BIT_INTERLEAVE ? 0x8000808200000000ULL : 0x8000000080008008ULL
 };
 
-/*
- * This implementation is variant of KECCAK_1X above with outer-most
- * round loop unrolled twice. This allows to take temporary storage
- * out of round procedure and simplify references to it by alternating
- * it with actual data (see round loop below). Originally it was meant
- * rather as reference for an assembly implementation, but it seems to
- * play best with compilers [as well as provide best instruction per
- * processed byte ratio at minimal round unroll factor]...
- */
-static void Round(uint64_t R[5][5], uint64_t A[5][5], size_t i)
+#if !defined(KECCAK1600_ASM)
+
+#if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
+    (defined(__x86_64) && !defined(__BMI__)) || defined(_M_X64) || \
+    defined(__mips) || defined(__riscv) || defined(__s390__) || \
+    defined(__EMSCRIPTEN__)
+
+ // These platforms don't support "logical and with complement" instruction;
+# define KECCAK_COMPLEMENTING_TRANSFORM
+#endif
+
+#define ROL32(a, offset) (((a) << (offset)) | ((a) >> ((32 - (offset)) & 31)))
+
+static uint64_t ROL64(uint64_t val, int offset)
 {
-    uint64_t C[5], D[5];
+    if (offset == 0) {
+        return val;
+    } else if (!BIT_INTERLEAVE) {
+        return (val << offset) | (val >> (64-offset));
+    } else {
+        uint32_t hi = (uint32_t)(val >> 32), lo = (uint32_t)val;
+
+        if (offset & 1) {
+            uint32_t tmp = hi;
+
+            offset >>= 1;
+            hi = ROL32(lo, offset);
+            lo = ROL32(tmp, offset + 1);
+        } else {
+            offset >>= 1;
+            lo = ROL32(lo, offset);
+            hi = ROL32(hi, offset);
+        }
+
+        return ((uint64_t)hi << 32) | lo;
+    }
+}
+
+ // KECCAK_2X:
+ // This is the default implementation used in OpenSSL and the most efficient;
+ // the other implementations were removed from this file.
+ // This implementation is a variant of KECCAK_1X (see OpenSSL)
+ // This implementation allows to take temporary storage
+ // out of round procedure and simplify references to it by alternating
+ // it with actual data (see round loop below). 
+ // It ensures best compiler interpretation to assembly and provides best 
+ // instruction per processed byte ratio at minimal round unroll factor.
+static void Round(uint64_t R[SHA3_ROWS][SHA3_ROWS], uint64_t A[SHA3_ROWS][SHA3_ROWS], size_t i)
+{
+    uint64_t C[SHA3_ROWS], D[SHA3_ROWS];
 
     assert(i < (sizeof(iotas) / sizeof(iotas[0])));
 
@@ -127,7 +120,7 @@ static void Round(uint64_t R[5][5], uint64_t A[5][5], size_t i)
     D[3] = ROL64(C[4], 1) ^ C[2];
     D[4] = ROL64(C[0], 1) ^ C[3];
 
-    C[0] =       A[0][0] ^ D[0]; /* rotate by 0 */
+    C[0] =       A[0][0] ^ D[0];
     C[1] = ROL64(A[1][1] ^ D[1], rhotates[1][1]);
     C[2] = ROL64(A[2][2] ^ D[2], rhotates[2][2]);
     C[3] = ROL64(A[3][3] ^ D[3], rhotates[3][3]);
@@ -228,9 +221,9 @@ static void Round(uint64_t R[5][5], uint64_t A[5][5], size_t i)
 #endif
 }
 
-static void KeccakF1600(uint64_t A[5][5])
+static void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS])
 {
-    uint64_t T[5][5];
+    uint64_t T[SHA3_ROWS][SHA3_ROWS];
     size_t i;
 
 #ifdef KECCAK_COMPLEMENTING_TRANSFORM
@@ -329,15 +322,15 @@ static uint64_t BitDeinterleave(uint64_t Ai)
     return Ai;
 }
 
- // SHA3_Absorb can be called multiple times, but at each invocation
- // largest multiple of |r| out of |len| bytes are processed. Then
+ // SHA3_Absorb can be called multiple times; at each invocation the
+ // largest multiple of |r| out of |len| bytes are processed. The
  // remaining amount of bytes is returned. This is done to spare caller
  // trouble of calculating the largest multiple of |r|. |r| can be viewed
  // as blocksize. It is commonly (1600 - 256*n)/8, e.g. 168, 136, 104,
  // 72, but can also be (1600 - 448)/8 = 144. All this means that message
  // padding and intermediate sub-block buffering, byte- or bitwise, is
  // caller's responsibility.
-size_t SHA3_Absorb(uint64_t A[5][5], const unsigned char *inp, size_t len,
+size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const unsigned char *inp, size_t len,
                    size_t r)
 {
     uint64_t *A_flat = (uint64_t *)A;
@@ -364,7 +357,7 @@ size_t SHA3_Absorb(uint64_t A[5][5], const unsigned char *inp, size_t len,
 
  // SHA3_Squeeze is called once at the end to generate |out| hash value
  // of |len| bytes.
-void SHA3_Squeeze(uint64_t A[5][5], unsigned char *out, size_t len, size_t r)
+void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], unsigned char *out, size_t len, size_t r)
 {
     uint64_t *A_flat = (uint64_t *)A;
     size_t i, w = r / 8;
@@ -398,3 +391,4 @@ void SHA3_Squeeze(uint64_t A[5][5], unsigned char *out, size_t len, size_t r)
             KeccakF1600(A);
     }
 }
+#endif // !KECCAK1600_ASM

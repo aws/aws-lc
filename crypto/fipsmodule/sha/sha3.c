@@ -50,7 +50,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
     return 1;
   }
 
-  // process intermediate buffer
+  // Process intermediate buffer.
   num = ctx->buf_load;
   if (num != 0) { 
     rem = block_size - num;
@@ -60,16 +60,16 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
       return 1;
     }
 
-     // We have enough data to fill or overflow the intermediate
+     // There is enough data to fill or overflow the intermediate
      // buffer. So we append |rem| bytes and process the block,
-     // leaving the rest for later processing...
+     // leaving the rest for later processing.
     memcpy(ctx->buf + num, data_ptr_copy, rem);
     data_ptr_copy += rem, len -= rem;
     if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0 ){
       return 0;
     }
     ctx->buf_load = 0;
-    // ctx->buf is processed, ctx->num is guaranteed to be zero
+    // ctx->buf is processed, ctx->buf_load is guaranteed to be zero
   }
 
   if (len >= block_size) {
@@ -97,7 +97,7 @@ int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx) {
 
    // Pad the data with 10*1. Note that |num| can be |block_size - 1|
    // in which case both byte operations below are performed on
-   // the same byte...
+   // the same byte.
   memset(ctx->buf + num, 0, block_size - num);
   ctx->buf[num] = ctx->pad;
   ctx->buf[block_size - 1] |= 0x80;

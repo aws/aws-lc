@@ -25,15 +25,15 @@ extern "C" {
 #define SHA3_256_DIGEST_BITLENGTH 256
 #define SHA3_256_DIGEST_LENGTH 32
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
-#define SHA3_PAD_CHAR 6
-#define SHA3_ROW_SIZE 5
+#define SHA3_PAD_CHAR 0x06
+#define SHA3_ROWS 5
 
 typedef struct keccak_st KECCAK1600_CTX;
 
 struct keccak_st {
-  uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE];
+  uint64_t A[SHA3_ROWS][SHA3_ROWS];
   size_t block_size;   // cached ctx->digest->block_size
-  size_t md_size;      // output length, variable in XOF
+  size_t md_size;      // output length, variable in XOF (SHAKE)
   size_t buf_load;     // used bytes in below buffer
   uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_256_CAPACITY_BYTES];
   unsigned char pad;
@@ -84,11 +84,11 @@ OPENSSL_EXPORT int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx);
 
 // SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and 
 // returns the remaining amount of bytes. 
-OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], const unsigned char *data,
+OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const unsigned char *data,
                                   size_t len, size_t r);
 
 // SHA3_Squeeze generate |out| hash value of |len| bytes.
-OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROW_SIZE][SHA3_ROW_SIZE], unsigned char *out,
+OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], unsigned char *out,
                                  size_t len, size_t r);
 
 
