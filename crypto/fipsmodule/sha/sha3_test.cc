@@ -42,6 +42,9 @@ class SHA3TestVector {
     ASSERT_TRUE(EVP_DigestInit(ctx, algorithm));
     ASSERT_TRUE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_TRUE(EVP_DigestFinal(ctx, digest, &digest_length));
+    
+    // Alternatively, the correctness can be tested via the single shot API.
+    //ASSERT_TRUE(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL));
    
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
               Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
