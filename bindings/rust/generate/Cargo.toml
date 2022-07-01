@@ -9,3 +9,4 @@ publish = false
 
 [dependencies]
 bindgen = "0.60.1"
+regex = "1"

@@ -1,11 +1,16 @@
 use std::path::{Path, PathBuf};
 use std::collections::HashSet;
+use std::{fs, io};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+use regex::Regex;
+
 /*
+// See PR: https://github.com/rust-lang/rust-bindgen/pull/2228
+
 #[derive(Debug)]
 struct SymbolCallback {
     prefix: String,
@@ -32,35 +37,31 @@ impl bindgen::callbacks::ParseCallbacks for SymbolCallback {
 }
 */
 
+fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()>{
+    // Needed until this issue is resolved: https://github.com/rust-lang/rust-bindgen/issues/1375
 
-
-fn main() {
-    let out_dir = std::env::args().nth(1).expect("missing sys dir");
-    let out_dir = Path::new(&out_dir);
-
-    let symbol_file = std::env::args().nth(2).expect("missing symbol file");
-    let symbol_file = Path::new(&symbol_file);
-
-    let symbol_set = collect_symbols(symbol_file);
-
-    let bindings_file = out_dir.join("src").join("bindings.rs");
-
-    let builder = prepare_bindings_builder(out_dir, None);
-    let bindings = builder.generate().expect("Unable to generate bindings.");
-    bindings.write_to_file(bindings_file).expect("Unable to write bindings to file.");
-
-    println!("There are {} symbols.", symbol_set.len());
-}
-
-fn collect_symbols(symbol_file: &Path) -> HashSet<String> {
-    let mut symbol_set = HashSet::new();
-    let symbol_file = File::open(symbol_file).unwrap();
-    let reader = BufReader::new(symbol_file);
-    for line in reader.lines() {
-        symbol_set.insert(line.unwrap());
+    let prefix_func_detector = Regex::new(&format!("(^\\s+)pub\\s+fn\\s+{}_(\\w*)(.*)", prefix)).unwrap();
+    let output_path = bindings_path.parent().unwrap().join("updated_bindings.rs");
+    let bindings_reader = BufReader::new(File::open(&bindings_path)?);
+    let mut bindings_writer = BufWriter::new(File::create(&output_path)?);
+    for line in bindings_reader.lines() {
+        let line = line.unwrap().clone();
+        if let Some(captures) = prefix_func_detector.captures(&line) {
+            let line_start = &captures[1];
+            let name_position = line_start.len();
+            let fn_name = &captures[2];
+            let line_end = &captures[3];
+            let link_line_start = (0..name_position).map(|_| " ").collect::<String>();
+            bindings_writer.write_fmt(format_args!("{}#[link_name=\"{}_{}\"]\n", link_line_start, prefix, fn_name))?;
+            bindings_writer.write_fmt(format_args!("{}pub fn {}{}\n", line_start, fn_name, line_end))?;
+        } else {
+            bindings_writer.write_fmt(format_args!("{}\n", &line))?;
+        }
     }
-
-    symbol_set
+    bindings_writer.flush()?;
+    fs::remove_file(bindings_path)?;
+    fs::rename(output_path, bindings_path)?;
+    Ok(())
 }
 
 fn find_include_path(out_dir: &Path) -> PathBuf {
@@ -68,6 +69,10 @@ fn find_include_path(out_dir: &Path) -> PathBuf {
         .join("deps")
         .join("aws-lc")
         .join("include")
+}
+
+fn compute_prefix(version: &str) -> String {
+    format!("aws_lc_{}", version.to_string().replace('.', "_"))
 }
 
 fn prepare_clang_args(out_dir: &Path, build_prefix: Option<&str>) -> Vec<String> {
@@ -115,4 +120,21 @@ fn prepare_bindings_builder(out_dir: &Path, build_prefix: Option<&str>) -> bindg
         .header(find_include_path(out_dir).join("rust_wrapper.h").display().to_string());
 
     builder
+}
+
+fn main() -> io::Result<()> {
+    let out_dir = std::env::args().nth(1).expect("missing sys dir");
+    let out_dir = Path::new(&out_dir);
+
+    let aws_lc_sys_version = std::env::args().nth(2).expect("missing aws-lc-sys version");
+    let prefix = compute_prefix(&aws_lc_sys_version);
+
+    let bindings_file = out_dir.join("src").join("bindings.rs");
+
+    let builder = prepare_bindings_builder(out_dir, Some(&prefix));
+    let bindings = builder.generate().expect("Unable to generate bindings.");
+    bindings.write_to_file(&bindings_file).expect("Unable to write bindings to file.");
+    modify_bindings(&bindings_file, &prefix)?;
+
+    Ok(())
 }

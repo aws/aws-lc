@@ -1,6 +1,6 @@
 [package]
 name = "aws-lc-sys"
-version = "0.1.0"
+version = "__AWS_LC_SYS_VERSION__"
 authors = ["AWS-LC"]
 edition = "2021"
 

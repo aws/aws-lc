@@ -73,6 +73,11 @@ fn get_cmake_config() -> cmake::Config {
     cmake::Config::new(pwd.join(AWS_LC_PATH))
 }
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+fn prefix_string() -> String {
+    format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
+}
+
 fn verify_fips_clang_version() -> (&'static str, &'static str) {
     fn version(tool: &str) -> String {
         let output = match Command::new(tool).arg("--version").output() {
@@ -145,7 +150,7 @@ fn prepare_cmake_build(
 }
 
 fn build_aws_lc() -> Result<PathBuf, String> {
-    let mut cmake_cfg = prepare_cmake_build(false, None);
+    let mut cmake_cfg = prepare_cmake_build(false, Some(&prefix_string()));
     let output_dir = cmake_cfg.build_target("ssl").build();
 
     Ok(output_dir)

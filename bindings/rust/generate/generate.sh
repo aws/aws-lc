@@ -2,6 +2,7 @@
 set -e
 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+AWS_LC_SYS_VERSION="0.1.0"
 
 AWS_ACCOUNT_ID="${1}"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -76,7 +77,7 @@ function create_bindings {
 
     echo Generating bindings.
     pushd ${SCRIPT_DIR}
-    cargo run -- "${CRATE_DIR}" "${SYMBOLS_FILE}"
+    cargo run -- "${CRATE_DIR}" "${AWS_LC_SYS_VERSION}"
   fi
 
   if [[ ! -r "${BINDINGS_FILE}" || "${PREFIX_HEADERS_FILE}" -nt "${BINDINGS_FILE}" ]]; then
@@ -93,6 +94,7 @@ function prepare_crate_dir {
   mkdir -p "${CRATE_AWS_LC_DIR}"/
 
   cp -r "${CRATE_TEMPLATE_DIR}"/* "${CRATE_DIR}"/
+  perl -pi -e "s/__AWS_LC_SYS_VERSION__/${AWS_LC_SYS_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
 
   cp -r "${AWS_LC_DIR}"/crypto  \
         "${AWS_LC_DIR}"/ssl  \
