@@ -14,7 +14,7 @@ mkdir -p "$BUILD_ROOT"
 cd "$BUILD_ROOT"
 
 # Build AWS-LC based on https://github.com/guidovranken/cryptofuzz/blob/master/docs/openssl.md
-cmake -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 \
+${CMAKE_COMMAND} -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_C_FLAGS="$CFLAGS" -DBORINGSSL_ALLOW_CXX_RUNTIME=1 \
   -GNinja -DBUILD_TESTING=OFF -DBUILD_LIBSSL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 ninja
 cd ../
