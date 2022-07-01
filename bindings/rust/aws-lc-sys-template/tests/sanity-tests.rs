@@ -6,7 +6,7 @@ use aws_lc_sys;
 use sha1::{Sha1, Digest};
 
 fn sha1_tester(input: &[u8]) -> [u8; 20] {
-    let mut hash = mem::MaybeUninit::<[u8; 20]>::uninit();
+    let mut hash = MaybeUninit::<[u8; 20]>::uninit();
 
     unsafe {
         aws_lc_sys::SHA1(input.as_ptr(), input.len(), hash.as_mut_ptr().cast());

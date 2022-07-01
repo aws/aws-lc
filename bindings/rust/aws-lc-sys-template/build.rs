@@ -17,7 +17,6 @@
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use cmake;
 
 const AWS_LC_PATH: &str = "deps/aws-lc";
 
@@ -34,12 +33,6 @@ enum OutputLibType {
 }
 
 impl OutputLibType {
-    fn file_extension(&self) -> &str {
-        match self {
-            OutputLibType::Static => "a",
-            OutputLibType::Dynamic => "so",
-        }
-    }
     fn rust_lib_type(&self) -> &str {
         match self {
             OutputLibType::Static => "static",
@@ -68,14 +61,6 @@ impl OutputLib {
         path.join(Path::new(&format!("build/{}", self.libname(None))))
             .join(get_platform_output_path())
     }
-
-    fn locate(&self, path: &Path, lib_type: OutputLibType, prefix: Option<&str>) -> PathBuf {
-        self.locate_dir(path).join(Path::new(&format!(
-            "lib{}.{}",
-            self.libname(prefix),
-            lib_type.file_extension()
-        )))
-    }
 }
 
 fn get_platform_output_path() -> PathBuf {
@@ -84,9 +69,8 @@ fn get_platform_output_path() -> PathBuf {
 
 fn get_cmake_config() -> cmake::Config {
     let pwd = env::current_dir().unwrap();
-    let cmake_cfg = cmake::Config::new(pwd.join(AWS_LC_PATH));
 
-    cmake_cfg
+    cmake::Config::new(pwd.join(AWS_LC_PATH))
 }
 
 fn verify_fips_clang_version() -> (&'static str, &'static str) {

@@ -71,10 +71,11 @@ fn find_include_path(out_dir: &Path) -> PathBuf {
 }
 
 fn prepare_clang_args(out_dir: &Path, build_prefix: Option<&str>) -> Vec<String> {
-    let mut clang_args: Vec<String> = Vec::new();
+    let mut clang_args: Vec<String> = vec![
+        "-I".to_string(),
+        find_include_path(out_dir).display().to_string()
+    ];
 
-    clang_args.push("-I".to_string());
-    clang_args.push(find_include_path(out_dir).display().to_string());
     if let Some(prefix) = build_prefix {
         clang_args.push(format!("-DBORINGSSL_PREFIX={}", prefix));
     }
