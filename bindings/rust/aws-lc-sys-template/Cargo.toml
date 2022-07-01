@@ -10,3 +10,6 @@ cmake = "0.1.48"
 [dependencies]
 libc = "0.2"
 
+[dev-dependencies]
+sha1 = "0.10.1"
+
