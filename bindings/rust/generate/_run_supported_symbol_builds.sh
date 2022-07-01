@@ -13,7 +13,7 @@ set -e
 ###    $ DOCKER_IMAGE_HOST=${AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com
 ### 3) Login:
 ###    $ aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin ${DOCKER_IMAGE_HOST}
-### 4) Pull docker images: 
+### 4) Pull docker images:
 ###    $ docker pull ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG}
 
 function usage {
