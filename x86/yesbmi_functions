@@ -48,6 +48,9 @@ curve25519_ladderstep
 p256_montjadd
 p256_montjdouble
 p256_montjmixadd
+p384_montjadd
+p384_montjdouble
+p384_montjmixadd
 secp256k1_jadd
 secp256k1_jdouble
 secp256k1_jmixadd

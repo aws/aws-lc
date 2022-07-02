@@ -217,6 +217,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       p384/bignum_sub_p384.o \
       p384/bignum_tomont_p384.o \
       p384/bignum_triple_p384.o \
+      p384/p384_montjadd.o \
+      p384/p384_montjdouble.o \
+      p384/p384_montjmixadd.o \
       p521/bignum_add_p521.o \
       p521/bignum_cmul_p521.o \
       p521/bignum_deamont_p521.o \
