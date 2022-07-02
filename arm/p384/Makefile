@@ -53,7 +53,10 @@ OBJ = bignum_add_p384.o \
       bignum_optneg_p384.o \
       bignum_sub_p384.o \
       bignum_tomont_p384.o \
-      bignum_triple_p384.o
+      bignum_triple_p384.o \
+      p384_montjadd.o \
+      p384_montjdouble.o \
+      p384_montjmixadd.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
