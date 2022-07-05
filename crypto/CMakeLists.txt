@@ -483,7 +483,6 @@ add_library(
   decrepit/blowfish/blowfish.c
   decrepit/cast/cast_tables.c
   decrepit/cfb/cfb.c
-  decrepit/des/cfb64ede.c
   decrepit/dh/dh_decrepit.c
   decrepit/dsa/dsa_decrepit.c
   decrepit/evp/dss1.c
