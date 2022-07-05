@@ -28,6 +28,14 @@ fi
 
 PLATFORM=$(uname -m)
 
+# Pick cmake3 if possible. We don't know of any OS that installs a cmake3
+# executable that is not at least version 3.0.
+if [[ -x "$(command -v cmake3)" ]] ; then
+  CMAKE_COMMAND="cmake3"
+else
+  CMAKE_COMMAND="cmake"
+fi
+
 function run_build {
   local cflags=("$@")
   rm -rf "$BUILD_ROOT"
@@ -51,7 +59,7 @@ function run_build {
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
-  cmake "${cflags[@]}" "$SRC_ROOT"
+  ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
   if [[ "${PREBUILD_CUSTOM_TARGET}" != "" ]]; then
     run_cmake_custom_target "${PREBUILD_CUSTOM_TARGET}"
   fi
@@ -148,6 +156,12 @@ function print_system_and_dependency_information {
     echo ""
     echo "CMake version:"
     cmake --version
+  fi
+  if command -v cmake3 &> /dev/null
+  then
+    echo ""
+    echo "CMake version (cmake3 executable):"
+    cmake3 --version
   fi
   if command -v go &> /dev/null
   then
