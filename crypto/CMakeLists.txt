@@ -484,7 +484,6 @@ add_library(
   decrepit/cast/cast_tables.c
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
-  decrepit/dsa/dsa_decrepit.c
   decrepit/evp/dss1.c
   decrepit/evp/evp_do_all.c
   decrepit/obj/obj_decrepit.c
