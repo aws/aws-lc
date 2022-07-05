@@ -60,6 +60,7 @@
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../aes/internal.h"
+#include "../cpucap/internal.h"
 #include "internal.h"
 
 
