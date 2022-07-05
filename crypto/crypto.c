@@ -131,6 +131,8 @@ unsigned long SSLeay(void) { return OPENSSL_VERSION_NUMBER; }
 
 unsigned long OpenSSL_version_num(void) { return OPENSSL_VERSION_NUMBER; }
 
+unsigned long awslc_api_version_num(void) { return AWSLC_API_VERSION; }
+
 int CRYPTO_malloc_init(void) { return 1; }
 
 int OPENSSL_malloc_init(void) { return 1; }
