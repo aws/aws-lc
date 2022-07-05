@@ -486,7 +486,6 @@ add_library(
   decrepit/dh/dh_decrepit.c
   decrepit/evp/dss1.c
   decrepit/evp/evp_do_all.c
-  decrepit/obj/obj_decrepit.c
   decrepit/rc4/rc4_decrepit.c
   decrepit/ripemd/ripemd.c
   decrepit/rsa/rsa_decrepit.c

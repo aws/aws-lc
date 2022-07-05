@@ -867,12 +867,6 @@ OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
                                                           void *arg),
                                          void *arg);
 
-OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
-                                                   const char *name,
-                                                   const char *unused,
-                                                   void *arg),
-                                  void *arg);
-
 // i2d_PrivateKey marshals a private key from |key| to type-specific format, as
 // described in |i2d_SAMPLE|.
 //
