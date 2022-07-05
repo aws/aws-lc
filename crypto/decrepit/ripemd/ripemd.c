@@ -81,11 +81,6 @@ int RIPEMD160_Init(RIPEMD160_CTX *ctx) {
 static void ripemd160_block_data_order(uint32_t h[5], const uint8_t *data,
                                        size_t num);
 
-void RIPEMD160_Transform(RIPEMD160_CTX *c,
-                         const uint8_t data[RIPEMD160_CBLOCK]) {
-  ripemd160_block_data_order(c->h, data, 1);
-}
-
 int RIPEMD160_Update(RIPEMD160_CTX *c, const void *data, size_t len) {
   crypto_md32_update(&ripemd160_block_data_order, c->h, c->data,
                      RIPEMD160_CBLOCK, &c->num, &c->Nh, &c->Nl, data, len);
