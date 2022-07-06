@@ -61,7 +61,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "../../crypto/internal.h"
+#include "../../internal.h"
 #include "../macros.h"
 
 

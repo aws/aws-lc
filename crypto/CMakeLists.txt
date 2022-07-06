@@ -479,21 +479,21 @@ add_library(
   x509v3/v3_skey.c
   x509v3/v3_utl.c
   xts/xts.c
-  ../decrepit/bio/base64_bio.c
-  ../decrepit/blowfish/blowfish.c
-  ../decrepit/cast/cast.c
-  ../decrepit/cast/cast_tables.c
-  ../decrepit/cfb/cfb.c
-  ../decrepit/des/cfb64ede.c
-  ../decrepit/dh/dh_decrepit.c
-  ../decrepit/dsa/dsa_decrepit.c
-  ../decrepit/evp/dss1.c
-  ../decrepit/evp/evp_do_all.c
-  ../decrepit/obj/obj_decrepit.c
-  ../decrepit/rc4/rc4_decrepit.c
-  ../decrepit/ripemd/ripemd.c
-  ../decrepit/rsa/rsa_decrepit.c
-  ../decrepit/x509/x509_decrepit.c
+  decrepit/bio/base64_bio.c
+  decrepit/blowfish/blowfish.c
+  decrepit/cast/cast.c
+  decrepit/cast/cast_tables.c
+  decrepit/cfb/cfb.c
+  decrepit/des/cfb64ede.c
+  decrepit/dh/dh_decrepit.c
+  decrepit/dsa/dsa_decrepit.c
+  decrepit/evp/dss1.c
+  decrepit/evp/evp_do_all.c
+  decrepit/obj/obj_decrepit.c
+  decrepit/rc4/rc4_decrepit.c
+  decrepit/ripemd/ripemd.c
+  decrepit/rsa/rsa_decrepit.c
+  decrepit/x509/x509_decrepit.c
 
   ${CRYPTO_ARCH_SOURCES}
 )
@@ -685,11 +685,11 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     xts/xts_test.cc
-    ../decrepit/blowfish/blowfish_test.cc
-    ../decrepit/cast/cast_test.cc
-    ../decrepit/cfb/cfb_test.cc
-    ../decrepit/evp/evp_test.cc
-    ../decrepit/ripemd/ripemd_test.cc
+    decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
+    decrepit/cfb/cfb_test.cc
+    decrepit/evp/evp_test.cc
+    decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>

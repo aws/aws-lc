@@ -58,8 +58,8 @@
 
 #include <openssl/des.h>
 
-#include "../../crypto/des/internal.h"
-#include "../../crypto/internal.h"
+#include "../../des/internal.h"
+#include "../../internal.h"
 
 
 // The input and output encrypted as though 64bit cfb mode is being used. The

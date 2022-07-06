@@ -41,7 +41,7 @@ add_library(
   tls13_client.cc
   tls13_enc.cc
   tls13_server.cc
-  ../decrepit/ssl/ssl_decrepit.c
+  ssl_decrepit.c
 )
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 add_dependencies(ssl global_target)
