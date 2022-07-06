@@ -485,9 +485,9 @@ add_library(
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 
-if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
-  add_dependencies(crypto_objects global_target)
-endif()
+# We need this for the prefix build because the object files needs the prefix
+# header files to build.
+add_dependencies(crypto_objects global_target)
 
 function(build_libcrypto name module_source)
   add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
