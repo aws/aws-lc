@@ -106,6 +106,8 @@ fn prepare_bindings_builder(out_dir: &Path, build_prefix: Option<&str>) -> bindg
         .derive_debug(true)
         .derive_default(true)
         .derive_eq(true)
+        .allowlist_file(".*/openssl/[^/]+\\.h")
+        .allowlist_file(".*/rust_wrapper\\.h")
         .default_enum_style(bindgen::EnumVariation::NewType { is_bitfield: false })
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate_comments(true)

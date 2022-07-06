@@ -15,10 +15,12 @@ CRATE_AWS_LC_DIR="${CRATE_DIR}"/deps/aws-lc
 PREFIX_HEADERS_FILE="${CRATE_AWS_LC_DIR}"/include/boringssl_prefix_symbols.h
 BINDINGS_FILE="${CRATE_DIR}"/src/bindings.rs
 
-if [[ ! -d ${AWS_LC_DIR} || ! -d ${TMP_DIR} ]]; then
+if [[ ! -d ${AWS_LC_DIR} ]]; then
   echo "$(basename $0)" Sanity Check Failed
   exit 1
 fi
+
+mkdir -p "${TMP_DIR}"
 
 function usage {
   echo
