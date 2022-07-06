@@ -16,8 +16,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../../crypto/internal.h"
-#include "../../crypto/test/test_util.h"
+#include "../../internal.h"
+#include "../../test/test_util.h"
 
 struct CFBTestCase {
   size_t key_len;
