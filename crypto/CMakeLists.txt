@@ -486,7 +486,7 @@ add_library(
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 
 if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
-  add_dependencies(crypto_objects boringssl_prefix_symbols)
+  add_dependencies(crypto_objects global_target)
 endif()
 
 function(build_libcrypto name module_source)
