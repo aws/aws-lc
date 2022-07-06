@@ -58,9 +58,6 @@ function run_build {
   fi
 
   ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
-  if [[ "${PREBUILD_CUSTOM_TARGET}" != "" ]]; then
-    run_cmake_custom_target "${PREBUILD_CUSTOM_TARGET}"
-  fi
   $BUILD_COMMAND
   cd "$SRC_ROOT"
 }
@@ -71,6 +68,42 @@ function run_cmake_custom_target {
 
 function build_and_test {
   run_build "$@"
+  run_cmake_custom_target 'run_tests'
+}
+
+function generate_symbols_file {
+  # read_symbols.go currently only support static libraries
+  if [ ! -f  "$BUILD_ROOT"/crypto/libcrypto.a ]; then
+    echo "Static library not found: ${BUILD_ROOT}/crypto/libcrypto.a"
+    print_system_and_dependency_information
+    exit 1
+  fi
+
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_crypto.txt "$BUILD_ROOT"/crypto/libcrypto.a
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
+
+  # The $BUILD_ROOT gets deleted on each run. symbols.txt must be placed elsewhere.
+  cat "$BUILD_ROOT"/symbols_crypto.txt  "$BUILD_ROOT"/symbols_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols.txt
+}
+
+
+function verify_symbols_prefixed {
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_crypto.txt "$BUILD_ROOT"/crypto/libcrypto.a
+  go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
+  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols_final.txt
+  if [ $(grep -c -v ${CUSTOM_PREFIX}  "$SRC_ROOT"/symbols_final.txt) -ne 0 ]; then
+    echo "Symbol(s) missing prefix!"
+    exit 1
+  fi
+}
+
+
+function build_prefix_and_test {
+  CUSTOM_PREFIX=aws_lc_1_1_0
+  run_build "$@"
+  generate_symbols_file
+  run_build "$@" "-DBORINGSSL_PREFIX=${CUSTOM_PREFIX}" "-DBORINGSSL_PREFIX_SYMBOLS=${SRC_ROOT}/symbols.txt"
+  verify_symbols_prefixed
   run_cmake_custom_target 'run_tests'
 }
 
