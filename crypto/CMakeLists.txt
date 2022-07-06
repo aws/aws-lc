@@ -682,18 +682,10 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     xts/xts_test.cc
-<<<<<<< HEAD
     decrepit/blowfish/blowfish_test.cc
-    decrepit/cast/cast_test.cc
     decrepit/cfb/cfb_test.cc
     decrepit/evp/evp_test.cc
     decrepit/ripemd/ripemd_test.cc
-=======
-    ../decrepit/blowfish/blowfish_test.cc
-    ../decrepit/cfb/cfb_test.cc
-    ../decrepit/evp/evp_test.cc
-    ../decrepit/ripemd/ripemd_test.cc
->>>>>>> 22f53b4b1... Remove cast.h/c.
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
