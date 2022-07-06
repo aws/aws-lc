@@ -19,7 +19,7 @@
 
 #include <openssl/evp.h>
 
-#include "../../crypto/internal.h"
+#include "../../internal.h"
 
 
 struct wrapped_callback {

@@ -65,7 +65,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 
-#include "../../crypto/internal.h"
+#include "../../internal.h"
 
 
 #define B64_BLOCK_SIZE 1024
