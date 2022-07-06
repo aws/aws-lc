@@ -11,8 +11,6 @@ else
 fi
 echo "$SRC_ROOT"
 
-PREBUILD_CUSTOM_TARGET=""
-
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
