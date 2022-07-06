@@ -352,7 +352,6 @@ add_library(
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
-  hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
@@ -480,11 +479,29 @@ add_library(
   x509v3/v3_skey.c
   x509v3/v3_utl.c
   xts/xts.c
+  decrepit/bio/base64_bio.c
+  decrepit/blowfish/blowfish.c
+  decrepit/cast/cast.c
+  decrepit/cast/cast_tables.c
+  decrepit/cfb/cfb.c
+  decrepit/des/cfb64ede.c
+  decrepit/dh/dh_decrepit.c
+  decrepit/dsa/dsa_decrepit.c
+  decrepit/evp/dss1.c
+  decrepit/evp/evp_do_all.c
+  decrepit/obj/obj_decrepit.c
+  decrepit/rc4/rc4_decrepit.c
+  decrepit/ripemd/ripemd.c
+  decrepit/rsa/rsa_decrepit.c
+  decrepit/x509/x509_decrepit.c
 
   ${CRYPTO_ARCH_SOURCES}
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+
+# For the prefix build, the object files need the prefix header files to build.
+add_dependencies(crypto_objects global_target)
 
 function(build_libcrypto name module_source)
   add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
@@ -525,11 +542,18 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
-    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    add_library(
+      generated_fipsmodule
+
+      OBJECT
+
+      generated_fips_shared_support.c
+      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+    )
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
-    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
-    # library.
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
+    # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
@@ -645,7 +669,7 @@ if(BUILD_TESTING)
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
-    hkdf/hkdf_test.cc
+    fipsmodule/hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
@@ -673,6 +697,11 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     xts/xts_test.cc
+    decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
+    decrepit/cfb/cfb_test.cc
+    decrepit/evp/evp_test.cc
+    decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>

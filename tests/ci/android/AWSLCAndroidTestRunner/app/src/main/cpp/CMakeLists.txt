@@ -20,7 +20,6 @@ set(ANDROID_TEST_CASES "" CACHE INTERNAL "Test cases valid for this configuratio
 # Registers a test case by name
 list(APPEND ANDROID_TEST_CASES "crypto_test")
 list(APPEND ANDROID_TEST_CASES "urandom_test")
-list(APPEND ANDROID_TEST_CASES "decrepit_test")
 list(APPEND ANDROID_TEST_CASES "ssl_test")
 
 # Generate Kotlin test classes

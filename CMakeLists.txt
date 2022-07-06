@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0)
 
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
@@ -123,12 +123,15 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
          "${${VAR}_RELEASE}")
 endforeach()
 
-if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
+if(BORINGSSL_PREFIX)
   add_definitions(-DBORINGSSL_PREFIX=${BORINGSSL_PREFIX})
   # CMake automatically connects include_directories to the NASM command-line,
   # but not add_definitions.
   set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
   set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
+endif()
+
+if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
 
   # Use "symbol_prefix_include" to store generated header files
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include)
@@ -156,6 +159,15 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
             symbol_prefix_include/boringssl_prefix_symbols_asm.h
             symbol_prefix_include/boringssl_prefix_symbols_nasm.inc)
   add_dependencies(global_target boringssl_prefix_symbols)
+elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
+
+  if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
+  else()
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
+  endif()
+
+  include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
@@ -520,18 +532,17 @@ if(GCOV)
 endif()
 
 if(FIPS)
+
+  if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
+    message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
+  endif()
+
+  if(NOT BUILD_SHARED_LIBS AND NOT (UNIX AND NOT APPLE))
+    message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
+  endif()
+
   add_subdirectory(third_party/jitterentropy)
-endif()
 
-if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
-  message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
-endif()
-
-if(FIPS AND NOT BUILD_SHARED_LIBS)
-  message(FATAL_ERROR "Building AWS-LC for FIPS only supports the shared build, you must pass in '-DBUILD_SHARED_LIBS=TRUE'")
-endif()
-
-if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
@@ -766,14 +777,12 @@ if(BUILD_TESTING)
     set(CRYPTO_TEST_EXEC crypto_test.so)
     set(RANDOM_TEST_EXEC urandom_test.so)
     set(SSL_TEST_EXEC ssl_test.so)
-    set(DECREPIT_TEST_EXEC decrepit_test.so)
     set(MEM_TEST_EXEC mem_test.so)
     set(MEM_SET_TEST_EXEC mem_set_test.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
     set(SSL_TEST_EXEC ssl_test)
-    set(DECREPIT_TEST_EXEC decrepit_test)
     set(MEM_TEST_EXEC mem_test)
     set(MEM_SET_TEST_EXEC mem_set_test)
   endif()
@@ -783,7 +792,6 @@ add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
-  add_subdirectory(decrepit)
 endif()
 add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
@@ -917,7 +925,6 @@ if(BUILD_TESTING)
           COMMAND crypto_test
           COMMAND urandom_test
           COMMAND ssl_test
-          COMMAND decrepit_test
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})

@@ -96,10 +96,6 @@
     "skip_valgrind": true
   },
   {
-    "cmd": ["decrepit/decrepit_test"],
-    "skip_valgrind": true
-  },
-  {
     "cmd": ["ssl/ssl_test"],
     "skip_valgrind": true
   },

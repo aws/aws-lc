@@ -789,7 +789,13 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
 // before sending certificates to the peer. This flag is set (and the feature
 // disabled) by default.
-// TODO(davidben): Remove this behavior. https://crbug.com/boringssl/42.
+// OpenSSL does not set this flag by default. This might cause issues for
+// services migrating to AWS-LC, if the service was relying on the default
+// behavior. We highly recommend not to disable this flag, but if a consumer
+// had been relying on this default behavior, they can temporarily revert
+// locally with |SSL_[CTX_]clear_mode|. However, it is still expected of the
+// AWS-LC consumer to structure their code to not rely on certificate
+// auto-chaining in general.
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
 // SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
@@ -5006,8 +5012,7 @@ OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 
 // SSL_add_dir_cert_subjects_to_stack lists files in directory |dir|. It calls
 // |SSL_add_file_cert_subjects_to_stack| on each file and returns one on success
-// or zero on error. This function is only available from the libdecrepit
-// library.
+// or zero on error. This function is deprecated.
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
 
