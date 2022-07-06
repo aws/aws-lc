@@ -485,8 +485,7 @@ add_library(
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 
-# We need this for the prefix build because the object files needs the prefix
-# header files to build.
+# For the prefix build, the object files need the prefix header files to build.
 add_dependencies(crypto_objects global_target)
 
 function(build_libcrypto name module_source)
