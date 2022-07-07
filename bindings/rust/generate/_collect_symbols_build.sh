@@ -22,9 +22,15 @@ echo Building in: ${BUILD_DIR}
 mkdir -p ${BUILD_DIR}
 pushd ${BUILD_DIR}
 
+if [[ $(type -P "cmake3") ]]; then
+  CMAKE=cmake3
+else
+  CMAKE=cmake
+fi
+
 go env -w GOPROXY=direct
-cmake ${AWS_LC_DIR} -GNinja
-cmake --build . --target ssl
+${CMAKE} ${AWS_LC_DIR} -GNinja
+${CMAKE} --build . --target ssl
 
 go run ${AWS_LC_DIR}/util/read_symbols.go -out symbols-crypto.txt ./crypto/libcrypto.a
 go run ${AWS_LC_DIR}/util/read_symbols.go -out symbols-ssl.txt ./ssl/libssl.a
