@@ -26,6 +26,7 @@ enum OutputLib {
     Ssl,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum OutputLibType {
     Static,
@@ -121,10 +122,22 @@ fn verify_fips_clang_version() -> (&'static str, &'static str) {
     unreachable!()
 }
 
+fn test_cmake_command(executable: &str) -> bool {
+    if let Ok(output) = Command::new(executable).arg("--version").output() {
+        return output.status.success();
+    }
+    false
+}
 
 fn prepare_cmake_build(
     build_fips: bool,
     build_prefix: Option<&str>) -> cmake::Config {
+
+    if test_cmake_command("cmake3") {
+        env::set_var("CMAKE", "cmake3");
+    } else {
+        env::set_var("CMAKE", "cmake");
+    }
 
     let mut cmake_cfg = get_cmake_config();
 
@@ -176,8 +189,6 @@ fn main() -> Result<(), String> {
         Static.rust_lib_type(),
         Ssl.libname(None)
     );
-
-    //println!("cargo:rustc-link-search=native={}", crate_path.display());
 
     Ok(())
 }

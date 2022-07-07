@@ -1,4 +1,3 @@
-use std::mem;
 use std::mem::MaybeUninit;
 use Vec;
 use aws_lc_sys;
