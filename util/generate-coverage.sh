@@ -30,7 +30,7 @@ cd "$BUILD"
 cmake "$SRC" -GNinja -DGCOV=1
 ninja
 
-cp -r "$SRC/crypto" "$SRC/decrepit" "$SRC/include" "$SRC/ssl" "$SRC/tool" \
+cp -r "$SRC/crypto" "$SRC/include" "$SRC/ssl" "$SRC/tool" \
   "$BUILD_SRC"
 cp -r "$BUILD"/* "$BUILD_SRC"
 mkdir "$BUILD/callgrind/"

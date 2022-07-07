@@ -314,7 +314,7 @@ func (t test) getGTestShards() ([]test, error) {
 	}
 
 	// Only shard the three GTest-based tests.
-	if t.Cmd[0] != "crypto/crypto_test" && t.Cmd[0] != "ssl/ssl_test" && t.Cmd[0] != "decrepit/decrepit_test" {
+	if t.Cmd[0] != "crypto/crypto_test" && t.Cmd[0] != "ssl/ssl_test" {
 		return []test{t}, nil
 	}
 
@@ -421,7 +421,7 @@ func main() {
 			}
 
 			if !(*sslTests) {
-				if strings.Contains(fmt.Sprint(test.Cmd), "ssl_test") || strings.Contains(fmt.Sprint(test.Cmd), "decrepit_test") {
+				if strings.Contains(fmt.Sprint(test.Cmd), "ssl_test") {
 					continue
 				}
 			}
