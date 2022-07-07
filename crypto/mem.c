@@ -93,6 +93,9 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 #define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
 #endif
 
+#define AWSLC_FILE ""
+#define AWSLC_LINE 0
+
 // sdallocx is a sized |free| function. By passing the size (which we happen to
 // always know in BoringSSL), the malloc implementation can save work. We cannot
 // depend on |sdallocx| being available, however, so it's a weak symbol.
@@ -126,6 +129,36 @@ WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr))
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr))
 WEAK_SYMBOL_FUNC(void*, OPENSSL_memory_realloc, (void *ptr, size_t size))
 
+// Below can be customized by |CRYPTO_set_mem_functions| only once.
+static void *(*malloc_impl)(size_t, const char *, int) = NULL;
+static void *(*realloc_impl)(void *, size_t, const char *, int) = NULL;
+static void (*free_impl)(void *, const char *, int) = NULL;
+
+int CRYPTO_set_mem_functions(
+  void *(*m)(size_t, const char *, int),
+  void *(*r)(void *, size_t, const char *, int),
+  void (*f)(void *, const char *, int)) {
+  if (m == NULL || r == NULL || f == NULL) {
+    return 0;
+  }
+  // |malloc_impl|, |realloc_impl| and |free_impl| can be set only once.
+  if (malloc_impl != NULL || realloc_impl != NULL || free_impl != NULL) {
+    return 0;
+  }
+  if (OPENSSL_memory_alloc != NULL ||
+      OPENSSL_memory_free != NULL ||
+      OPENSSL_memory_get_size != NULL ||
+      OPENSSL_memory_realloc != NULL) {
+    // |OPENSSL_malloc/free/realloc| are customized by overriding the symbols.
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  malloc_impl = m;
+  realloc_impl = r;
+  free_impl = f;
+  return 1;
+}
+
 // kBoringSSLBinaryTag is a distinctive byte sequence to identify binaries that
 // are linking in BoringSSL and, roughly, what version they are using.
 static const uint8_t kBoringSSLBinaryTag[18] = {
@@ -137,6 +170,15 @@ static const uint8_t kBoringSSLBinaryTag[18] = {
 };
 
 void *OPENSSL_malloc(size_t size) {
+  if (malloc_impl != NULL) {
+    assert(OPENSSL_memory_alloc == NULL);
+    assert(OPENSSL_memory_realloc == NULL);
+    assert(OPENSSL_memory_free == NULL);
+    assert(OPENSSL_memory_get_size == NULL);
+    assert(realloc_impl != NULL);
+    assert(free_impl != NULL);
+    return malloc_impl(size, AWSLC_FILE, AWSLC_LINE);
+  }
   if (OPENSSL_memory_alloc != NULL) {
     assert(OPENSSL_memory_free != NULL);
     assert(OPENSSL_memory_get_size != NULL);
@@ -170,6 +212,16 @@ void OPENSSL_free(void *orig_ptr) {
   if (orig_ptr == NULL) {
     return;
   }
+  if (free_impl != NULL) {
+    assert(OPENSSL_memory_alloc == NULL);
+    assert(OPENSSL_memory_realloc == NULL);
+    assert(OPENSSL_memory_free == NULL);
+    assert(OPENSSL_memory_get_size == NULL);
+    assert(malloc_impl != NULL);
+    assert(realloc_impl != NULL);
+    free_impl(orig_ptr, AWSLC_FILE, AWSLC_LINE);
+    return;
+  }
 
   if (OPENSSL_memory_free != NULL) {
     OPENSSL_memory_free(orig_ptr);
@@ -191,6 +243,15 @@ void OPENSSL_free(void *orig_ptr) {
 void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
   if (orig_ptr == NULL) {
     return OPENSSL_malloc(new_size);
+  }
+  if (realloc_impl != NULL) {
+    assert(OPENSSL_memory_alloc == NULL);
+    assert(OPENSSL_memory_realloc == NULL);
+    assert(OPENSSL_memory_free == NULL);
+    assert(OPENSSL_memory_get_size == NULL);
+    assert(malloc_impl != NULL);
+    assert(free_impl != NULL);
+    return realloc_impl(orig_ptr, new_size, AWSLC_FILE, AWSLC_LINE);
   }
   if (OPENSSL_memory_realloc != NULL) {
     assert(OPENSSL_memory_alloc != NULL);
