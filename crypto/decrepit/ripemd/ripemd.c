@@ -58,8 +58,8 @@
 
 #include <string.h>
 
-#include "../../crypto/internal.h"
-#include "../../crypto/fipsmodule/digest/md32_common.h"
+#include "../../internal.h"
+#include "../../fipsmodule/digest/md32_common.h"
 
 
 #define RIPEMD160_A 0x67452301L

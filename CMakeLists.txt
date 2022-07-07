@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0)
 
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
@@ -777,13 +777,11 @@ if(BUILD_TESTING)
     set(CRYPTO_TEST_EXEC crypto_test.so)
     set(RANDOM_TEST_EXEC urandom_test.so)
     set(SSL_TEST_EXEC ssl_test.so)
-    set(DECREPIT_TEST_EXEC decrepit_test.so)
     set(MEM_TEST_EXEC mem_test.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
     set(SSL_TEST_EXEC ssl_test)
-    set(DECREPIT_TEST_EXEC decrepit_test)
     set(MEM_TEST_EXEC mem_test)
   endif()
 endif()
@@ -792,7 +790,6 @@ add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
-  add_subdirectory(decrepit)
 endif()
 add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
@@ -926,7 +923,6 @@ if(BUILD_TESTING)
           COMMAND crypto_test
           COMMAND urandom_test
           COMMAND ssl_test
-          COMMAND decrepit_test
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})

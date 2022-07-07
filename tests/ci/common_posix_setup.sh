@@ -11,8 +11,6 @@ else
 fi
 echo "$SRC_ROOT"
 
-PREBUILD_CUSTOM_TARGET=""
-
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
@@ -27,6 +25,14 @@ else
 fi
 
 PLATFORM=$(uname -m)
+
+# Pick cmake3 if possible. We don't know of any OS that installs a cmake3
+# executable that is not at least version 3.0.
+if [[ -x "$(command -v cmake3)" ]] ; then
+  CMAKE_COMMAND="cmake3"
+else
+  CMAKE_COMMAND="cmake"
+fi
 
 function run_build {
   local cflags=("$@")
@@ -51,10 +57,7 @@ function run_build {
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
-  cmake "${cflags[@]}" "$SRC_ROOT"
-  if [[ "${PREBUILD_CUSTOM_TARGET}" != "" ]]; then
-    run_cmake_custom_target "${PREBUILD_CUSTOM_TARGET}"
-  fi
+  ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
   $BUILD_COMMAND
   cd "$SRC_ROOT"
 }
@@ -99,9 +102,7 @@ function build_prefix_and_test {
   CUSTOM_PREFIX=aws_lc_1_1_0
   run_build "$@"
   generate_symbols_file
-  PREBUILD_CUSTOM_TARGET="boringssl_prefix_symbols"
   run_build "$@" "-DBORINGSSL_PREFIX=${CUSTOM_PREFIX}" "-DBORINGSSL_PREFIX_SYMBOLS=${SRC_ROOT}/symbols.txt"
-  PREBUILD_CUSTOM_TARGET=""
   verify_symbols_prefixed
   run_cmake_custom_target 'run_tests'
 }

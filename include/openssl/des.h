@@ -165,7 +165,7 @@ OPENSSL_EXPORT void DES_ede3_cfb_encrypt(const uint8_t *in, uint8_t *out,
 
 // Private functions.
 //
-// These functions are only exported for use in |decrepit|.
+// These functions are deprecated.
 
 OPENSSL_EXPORT void DES_decrypt3(uint32_t *data, const DES_key_schedule *ks1,
                                  const DES_key_schedule *ks2,
