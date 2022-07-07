@@ -19,7 +19,7 @@
 #include <openssl/aes.h>
 #include <openssl/obj.h>
 
-#include "../../crypto/internal.h"
+#include "../../internal.h"
 
 typedef struct {
   AES_KEY ks;
