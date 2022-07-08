@@ -4,7 +4,7 @@ set -e
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 ### If you need the images used by this script, you can retrieve them from ECR:
-### 1) Retrieve creds from Isengard. Paste into shell.
+### 1) Retrieve creds for AWS account. Paste into shell.
 ### 2) Setup the environment:
 ###    $ AWS_ACCOUNT_ID=???
 ###    $ DOCKER_IMAGE_REPO_NAME=aws-lc-docker-images-linux-

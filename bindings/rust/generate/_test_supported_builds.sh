@@ -4,7 +4,7 @@ set -e -x
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 ### If you need the images used by this script, you can retrieve them from ECR:
-### 1) Retrieve creds from Isengard. Paste into shell.
+### 1) Retrieve creds for AWS account. Paste into shell.
 ### 2) Setup the environment:
 ###    $ AWS_ACCOUNT_ID=???
 ###    $ DOCKER_IMAGE_REPO_NAME=aws-lc-docker-images-linux-
@@ -52,7 +52,8 @@ DI_ARCH=x86
 DI_TAG=ubuntu-22.04_gcc-12x_latest
 ###
 ###
-docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
+# TODO: Since bindings are generated during the build, libclang must be available on image.
+#docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
 
 ###
 ###

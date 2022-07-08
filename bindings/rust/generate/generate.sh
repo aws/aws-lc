@@ -136,24 +136,6 @@ function create_prefix_headers {
   fi
 }
 
-function create_bindings {
-  if [[ ! -r "${BINDINGS_FILE}" || "${PREFIX_HEADERS_FILE}" -nt "${BINDINGS_FILE}" ]]; then
-    echo Bindings not up to date.
-    create_prefix_headers
-
-    echo Generating bindings.
-    pushd ${SCRIPT_DIR}
-    cargo run -- "${CRATE_DIR}" "${AWS_LC_SYS_VERSION}"
-  fi
-
-  if [[ ! -r "${BINDINGS_FILE}" || "${PREFIX_HEADERS_FILE}" -nt "${BINDINGS_FILE}" ]]; then
-    echo Bindings not up to date after generation.
-    exit 1
-  else
-    echo Bindings generation complete
-  fi
-}
-
 function prepare_crate_dir {
   echo Preparing crate directory: ${CRATE_DIR}
   mkdir -p "${CRATE_DIR}"
@@ -183,6 +165,6 @@ function prepare_crate_dir {
 }
 
 prepare_crate_dir
-create_bindings
+create_prefix_headers
 
 "${SCRIPT_DIR}"/_test_supported_builds.sh  ${AWS_ACCOUNT_ID}

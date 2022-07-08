@@ -24,6 +24,8 @@ include = [
 
 [build-dependencies]
 cmake = "0.1.48"
+bindgen = "0.60.1"
+regex = "1"
 
 [dependencies]
 libc = "0.2"
