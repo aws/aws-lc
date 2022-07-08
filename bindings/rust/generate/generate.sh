@@ -121,11 +121,4 @@ function prepare_crate_dir {
 prepare_crate_dir
 create_bindings
 
-pushd "${CRATE_DIR}"
-
-cargo build \
-  && cargo test \
-  && cargo test --release \
-  && cargo publish --dry-run --allow-dirty
-
-popd
+"${SCRIPT_DIR}"/_test_supported_builds.sh  ${AWS_ACCOUNT_ID}
