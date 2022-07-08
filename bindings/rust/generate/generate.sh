@@ -2,6 +2,40 @@
 set -e
 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+
+function usage {
+  echo
+  echo "Usage: $(basename $0) [-d] [-b] [-u] [AWS_ACCOUNT_ID]"
+  echo
+  echo "    AWS_ACCOUNT_ID - The account providing docker images for the build."
+  echo
+}
+
+IGNORE_DIRTY=0
+IGNORE_BRANCH=0
+IGNORE_UPSTREAM=0
+
+while getopts "dbu" option; do
+  case ${option} in
+  d )
+    IGNORE_DIRTY=1
+    ;;
+  b )
+    IGNORE_BRANCH=1
+    ;;
+  u )
+    IGNORE_UPSTREAM=1
+    ;;
+  * )
+    usage
+    exit 1
+    ;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
 AWS_LC_SYS_VERSION="0.1.0"
 
 AWS_ACCOUNT_ID="${1}"
@@ -20,21 +54,51 @@ if [[ ! -d ${AWS_LC_DIR} ]]; then
   exit 1
 fi
 
+pushd "${AWS_LC_DIR}"
+
+if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
+  echo Workspace is dirty.
+  if [[ ${IGNORE_DIRTY} -eq 0 ]]; then
+    echo Aborting. Use '-d' to ignore.
+    echo
+    exit 1
+  else
+    echo Ignoring dirty workspace.
+    echo
+  fi
+fi
+
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "${CURRENT_BRANCH}" != "main" ]
+then
+  echo Branch is not main.
+  if [[ ${IGNORE_BRANCH} -eq 0 ]]; then
+    echo Aborting. Use '-b' to ignore.
+    echo
+    exit 1
+  else
+    echo Ignoring wrong branch.
+    echo
+  fi
+fi
+
+git fetch
+LOCAL_HASH=$(git rev-parse HEAD)
+UPSTREAM_HASH=$(git rev-parse "${CURRENT_BRANCH}"@{upstream})
+
+if [[ ! "${LOCAL_HASH}" == "${UPSTREAM_HASH}" ]]; then
+  echo ${CURRENT_BRANCH} not up to date with upstream.
+  if [[ ${IGNORE_UPSTREAM} -eq 0 ]]; then
+    echo Aborting. Use '-u' to ignore.
+    echo
+    exit 1
+  else
+    echo Ignoring branch not up to date.
+    echo
+  fi
+fi
+
 mkdir -p "${TMP_DIR}"
-
-function usage {
-  echo
-  echo "Usage: $(basename $0) [AWS_ACCOUNT_ID]"
-  echo
-  echo "    AWS_ACCOUNT_ID - The account providing docker images for the build."
-  echo
-}
-
-# if [ -z "${1}" ]; then
-#   usage
-#   exit 1
-# fi
-
 
 function create_symbol_file {
   if [[ ! -r "${SYMBOLS_FILE}" ]]; then
