@@ -14,10 +14,10 @@ included for x86 and ARM.
 Fork AWS-LC on GitHub and run the following commands to build AWS-LC with optimizations
 and debug info, run all tests, and install it:
 ```bash
-sudo yum install cmake ninja-build clang perl golang
+sudo yum install cmake3 ninja-build clang perl golang
 git clone https://github.com/${YOUR_GITHUB_ACCOUNT_NAME}/aws-lc.git
 mkdir aws-lc-build && cd aws-lc-build
-cmake -GNinja \
+cmake3 -GNinja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_INSTALL_PREFIX=../aws-lc-install \
     ../aws-lc
