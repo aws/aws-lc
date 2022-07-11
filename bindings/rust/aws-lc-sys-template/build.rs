@@ -14,15 +14,15 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-use std::{env, fs, io};
-use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs, io};
 
 use regex::Regex;
 
-fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()>{
+fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     // Needed until this issue is resolved: https://github.com/rust-lang/rust-bindgen/issues/1375
 
     // This function modifies the generated bindings. The bindings are generated from our header files
@@ -47,7 +47,8 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()>{
     //  |                               |- 2: original function name
     //  |- 1: indentation at the beginning of the line
 
-    let prefix_func_detector = Regex::new(&format!("^(\\s+)pub\\s+fn\\s+{}_(\\w*)(.*)", prefix)).unwrap();
+    let prefix_func_detector =
+        Regex::new(&format!("^(\\s+)pub\\s+fn\\s+{}_(\\w*)(.*)", prefix)).unwrap();
     let output_path = bindings_path.parent().unwrap().join("updated_bindings.rs");
     let bindings_reader = BufReader::new(File::open(&bindings_path)?);
     let mut bindings_writer = BufWriter::new(File::create(&output_path)?);
@@ -55,12 +56,16 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()>{
         let line = line.unwrap().clone();
         if let Some(captures) = prefix_func_detector.captures(&line) {
             let line_start = &captures[1];
-            let name_position = line_start.len();
             let fn_name = &captures[2];
             let line_end = &captures[3];
-            let link_line_start = (0..name_position).map(|_| " ").collect::<String>();
-            bindings_writer.write_fmt(format_args!("{}#[link_name=\"{}_{}\"]\n", link_line_start, prefix, fn_name))?;
-            bindings_writer.write_fmt(format_args!("{}pub fn {}{}\n", line_start, fn_name, line_end))?;
+            bindings_writer.write_fmt(format_args!(
+                "{}#[link_name=\"{}_{}\"]\n",
+                line_start, prefix, fn_name
+            ))?;
+            bindings_writer.write_fmt(format_args!(
+                "{}pub fn {}{}\n",
+                line_start, fn_name, line_end
+            ))?;
         } else {
             bindings_writer.write_fmt(format_args!("{}\n", &line))?;
         }
@@ -72,16 +77,13 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()>{
 }
 
 fn find_include_path(out_dir: &Path) -> PathBuf {
-    out_dir
-        .join("deps")
-        .join("aws-lc")
-        .join("include")
+    out_dir.join("deps").join("aws-lc").join("include")
 }
 
 fn prepare_clang_args(out_dir: &Path, build_prefix: Option<&str>) -> Vec<String> {
     let mut clang_args: Vec<String> = vec![
         "-I".to_string(),
-        find_include_path(out_dir).display().to_string()
+        find_include_path(out_dir).display().to_string(),
     ];
 
     if let Some(prefix) = build_prefix {
@@ -101,7 +103,6 @@ const PRELUDE: &str = r#"
 "#;
 
 fn prepare_bindings_builder(out_dir: &Path, build_prefix: Option<&str>) -> bindgen::Builder {
-
     let clang_args = prepare_clang_args(out_dir, build_prefix);
 
     let builder = bindgen::Builder::default()
@@ -122,11 +123,15 @@ fn prepare_bindings_builder(out_dir: &Path, build_prefix: Option<&str>) -> bindg
         .clang_args(clang_args)
         .raw_line(COPYRIGHT)
         .raw_line(PRELUDE)
-        .header(find_include_path(out_dir).join("rust_wrapper.h").display().to_string());
+        .header(
+            find_include_path(out_dir)
+                .join("rust_wrapper.h")
+                .display()
+                .to_string(),
+        );
 
     builder
 }
-
 
 const AWS_LC_PATH: &str = "deps/aws-lc";
 
@@ -239,10 +244,7 @@ fn test_cmake_command(executable: &str) -> bool {
     false
 }
 
-fn prepare_cmake_build(
-    build_fips: bool,
-    build_prefix: Option<&str>) -> cmake::Config {
-
+fn prepare_cmake_build(build_fips: bool, build_prefix: Option<&str>) -> cmake::Config {
     if test_cmake_command("cmake3") {
         env::set_var("CMAKE", "cmake3");
     } else {
@@ -290,7 +292,9 @@ fn main() -> Result<(), String> {
 
     let builder = prepare_bindings_builder(out_dir, Some(&prefix));
     let bindings = builder.generate().expect("Unable to generate bindings.");
-    bindings.write_to_file(&bindings_file).expect("Unable to write bindings to file.");
+    bindings
+        .write_to_file(&bindings_file)
+        .expect("Unable to write bindings to file.");
     modify_bindings(&bindings_file, &prefix).map_err(|err| err.to_string())?;
 
     let aws_lc_dir = build_aws_lc();
