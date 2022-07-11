@@ -25,7 +25,29 @@ use regex::Regex;
 fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()>{
     // Needed until this issue is resolved: https://github.com/rust-lang/rust-bindgen/issues/1375
 
-    let prefix_func_detector = Regex::new(&format!("(^\\s+)pub\\s+fn\\s+{}_(\\w*)(.*)", prefix)).unwrap();
+    // This function modifies the generated bindings. The bindings are generated from our header files
+    // with symbol prefixing applied.
+    // This function will transform a line looking like this:
+    //
+    //     pub fn aws_lc_0_1_0_ERR_load_BIO_strings();
+    //
+    // Into lines like this:
+    //
+    //     #[link_name="aws_lc_0_1_0_ERR_load_BIO_strings"]
+    //     pub fn ERR_load_BIO_strings();
+    //
+    // This allows the function to appear with its original name (e.g., ERR_load_BIO_strings)
+    // in our bindings, while still being linked to the prefixed (e.g., aws_lc_0_1_0_ERR_load_BIO_strings)
+    // function name.
+
+    // The RE expression here has 3 capture groups.
+    // After the prefix is interpolated into the RE, it will have a form like this:
+    // ^(\\s+)pub\\s+fn\\s+aws_lc_0_1_0_(\\w*)(.*)
+    //  ^                               ^     ^- 3: remainder of the line
+    //  |                               |- 2: original function name
+    //  |- 1: indentation at the beginning of the line
+
+    let prefix_func_detector = Regex::new(&format!("^(\\s+)pub\\s+fn\\s+{}_(\\w*)(.*)", prefix)).unwrap();
     let output_path = bindings_path.parent().unwrap().join("updated_bindings.rs");
     let bindings_reader = BufReader::new(File::open(&bindings_path)?);
     let mut bindings_writer = BufWriter::new(File::create(&output_path)?);
@@ -250,11 +272,10 @@ fn prepare_cmake_build(
     cmake_cfg
 }
 
-fn build_aws_lc() -> Result<PathBuf, String> {
+fn build_aws_lc() -> PathBuf {
     let mut cmake_cfg = prepare_cmake_build(false, Some(&prefix_string()));
-    let output_dir = cmake_cfg.build_target("ssl").build();
 
-    Ok(output_dir)
+    cmake_cfg.build_target("ssl").build()
 }
 
 fn main() -> Result<(), String> {
@@ -272,7 +293,7 @@ fn main() -> Result<(), String> {
     bindings.write_to_file(&bindings_file).expect("Unable to write bindings to file.");
     modify_bindings(&bindings_file, &prefix).map_err(|err| err.to_string())?;
 
-    let aws_lc_dir = build_aws_lc()?;
+    let aws_lc_dir = build_aws_lc();
 
     let libcrypto_dir = Crypto.locate_dir(&aws_lc_dir);
     let libssl_dir = Ssl.locate_dir(&aws_lc_dir);
