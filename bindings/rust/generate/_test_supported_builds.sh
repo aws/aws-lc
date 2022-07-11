@@ -69,8 +69,7 @@ DI_ARCH=aarch
 DI_TAG=ubuntu-20.04_clang-10x_latest
 ###
 ###
-# TODO: The ARM64 images fail the Rust build with a strange message. I suspect it's due to Docker emulation on my Mac.
-#docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
+docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
 
 ###
 ###
@@ -78,7 +77,7 @@ DI_ARCH=aarch
 DI_TAG=amazonlinux-2_gcc-7x_latest
 ###
 ###
-# TODO: The ARM64 images fail the Rust build with a strange message. I suspect it's due to Docker emulation on my Mac.
+# TODO: Since bindings are generated during the build, libclang must be available on image.
 #docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
 
 popd
