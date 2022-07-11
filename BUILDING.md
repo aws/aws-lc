@@ -49,8 +49,8 @@ most recent stable version of each tool.
 
 ## Building
 
-We use CMake to manage the build process. Note that the CMake executable name
-for version 3.0 and later differs depending on the OS. For example, on Amazon
+We use CMake to manage the build process. Note that the executable name for
+CMake version 3.0 and later differs depending on the OS. For example, on Amazon
 Linux 2 the executable name is `cmake3` while on Ubuntu 20.04 the executable
 name is `cmake`. Modify command snippets below accordingly.
 
