@@ -563,8 +563,7 @@ if(FIPS_SHARED)
       TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
       ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-      -sha256 ${INJECT_HASH_APPLE_FLAG}
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
       # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
       # go_executable isn't used (as it doesn't get built), but we list this
       # dependency anyway in case it starts working in some CMake version.
@@ -590,11 +589,20 @@ endif()
 if(BUILD_TESTING)
   add_subdirectory(test)
 
-  add_executable(${MEM_TEST_EXEC} mem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
-  target_compile_definitions(${MEM_TEST_EXEC} PRIVATE BORINGSSL_IMPLEMENTATION)
-  add_dependencies(${MEM_TEST_EXEC} global_target)
-  target_link_libraries(${MEM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
-  add_dependencies(all_tests ${MEM_TEST_EXEC})
+  macro(add_test_executable executable_name test_file)
+    message(STATUS "Generating test executable ${executable_name}.")
+    add_executable(${executable_name} ${test_file} $<TARGET_OBJECTS:boringssl_gtest_main>)
+    target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
+    add_dependencies(${executable_name} global_target)
+    target_link_libraries(${executable_name} test_support_lib boringssl_gtest crypto)
+    add_dependencies(all_tests ${executable_name})
+  endmacro()
+
+  # Below tests are added as new executables to be executed in single process.
+  # mem_test.cc tests memory overrides via defining strong symbols.
+  add_test_executable(${MEM_TEST_EXEC} mem_test.cc)
+  # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
+  add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before

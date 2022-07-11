@@ -311,7 +311,7 @@ if(FIPS_DELOCATE)
                 boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> -sha256
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
     DEPENDS bcm_hashunset inject_hash
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
@@ -460,4 +460,3 @@ else()
 
   add_dependencies(fipsmodule global_target)
 endif()
-

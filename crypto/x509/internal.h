@@ -106,13 +106,14 @@ struct x509_attributes_st {
   STACK_OF(ASN1_TYPE) *set;
 } /* X509_ATTRIBUTE */;
 
-struct x509_cert_aux_st {
+typedef struct x509_cert_aux_st {
   STACK_OF(ASN1_OBJECT) *trust;   // trusted uses
   STACK_OF(ASN1_OBJECT) *reject;  // rejected uses
   ASN1_UTF8STRING *alias;         // "friendly name"
   ASN1_OCTET_STRING *keyid;       // key id of private key
-  STACK_OF(X509_ALGOR) *other;    // other unspecified info
-} /* X509_CERT_AUX */;
+} X509_CERT_AUX;
+
+DECLARE_ASN1_FUNCTIONS(X509_CERT_AUX)
 
 struct X509_extension_st {
   ASN1_OBJECT *object;
@@ -155,7 +156,7 @@ struct x509_st {
   STACK_OF(DIST_POINT) *crldp;
   STACK_OF(GENERAL_NAME) *altname;
   NAME_CONSTRAINTS *nc;
-  unsigned char sha1_hash[SHA_DIGEST_LENGTH];
+  unsigned char cert_hash[SHA256_DIGEST_LENGTH];
   X509_CERT_AUX *aux;
   CRYPTO_BUFFER *buf;
   CRYPTO_MUTEX lock;
@@ -218,7 +219,7 @@ struct X509_crl_st {
   // CRL and base CRL numbers for delta processing
   ASN1_INTEGER *crl_number;
   ASN1_INTEGER *base_crl_number;
-  unsigned char sha1_hash[SHA_DIGEST_LENGTH];
+  unsigned char crl_hash[SHA256_DIGEST_LENGTH];
   STACK_OF(GENERAL_NAMES) *issuers;
   const X509_CRL_METHOD *meth;
   void *meth_data;
@@ -369,6 +370,8 @@ struct x509_store_ctx_st {
 } /* X509_STORE_CTX */;
 
 ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
+
+int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 
 
 /* RSA-PSS functions. */
