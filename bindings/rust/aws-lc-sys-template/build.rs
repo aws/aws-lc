@@ -40,7 +40,7 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     // in our bindings, while still being linked to the prefixed (e.g., aws_lc_0_1_0_ERR_load_BIO_strings)
     // function name.
 
-    // The RE expression here has 3 capture groups.
+    // The regular expression here has 3 capture groups.
     // After the prefix is interpolated into the RE, it will have a form like this:
     // ^(\\s+)pub\\s+fn\\s+aws_lc_0_1_0_(\\w*)(.*)
     //  ^                               ^     ^- 3: remainder of the line
