@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-set -e -x
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+set -e -x
 
 ### If you need the images used by this script, you can retrieve them from ECR:
 ### 1) Retrieve creds for AWS account. Paste into shell.

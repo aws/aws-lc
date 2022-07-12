@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 set -e -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -48,11 +51,12 @@ fi
 pushd "${CRATE_DIR}"
 
 export GOPROXY=direct
-cargo clean \
-  && cargo build \
-  && cargo test \
-  && cargo test --release \
-  && cargo publish --dry-run --allow-dirty \
-  && cargo clean
+
+cargo clean
+cargo build
+cargo test
+cargo test --release
+cargo publish --dry-run --allow-dirty
+cargo clean
 
 popd

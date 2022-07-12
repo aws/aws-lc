@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-set -e
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
+# SPDX-License-Identifier: Apache-2.0
+set -e
 
 function usage {
   echo
@@ -148,7 +147,6 @@ function prepare_crate_dir {
         "${AWS_LC_DIR}"/ssl  \
         "${AWS_LC_DIR}"/include \
         "${AWS_LC_DIR}"/tool \
-        "${AWS_LC_DIR}"/decrepit \
         "${AWS_LC_DIR}"/CMakeLists.txt \
         "${AWS_LC_DIR}"/LICENSE \
         "${AWS_LC_DIR}"/sources.cmake \
