@@ -1,8 +1,10 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 use std::mem::MaybeUninit;
 use Vec;
 use aws_lc_sys;
 
-use sha1::{Sha1, Digest};
+use openssl;
 
 fn sha1_tester(input: &[u8]) -> [u8; 20] {
     let mut hash = MaybeUninit::<[u8; 20]>::uninit();
@@ -22,8 +24,8 @@ fn compare(result: &[u8], expected_result: &[u8]) {
 fn sha1() {
     let input1 = b"hello";
     let result1 = sha1_tester(input1);
-    let expected_result1 = Sha1::digest(input1);
-    compare(&result1, &expected_result1);
+    let openssl_result1 = openssl::sha::sha1(input1);
+    compare(&result1, &openssl_result1);
 }
 
 #[test]

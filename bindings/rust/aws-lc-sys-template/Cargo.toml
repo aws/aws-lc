@@ -31,5 +31,4 @@ regex = "1"
 libc = "0.2"
 
 [dev-dependencies]
-sha1 = "0.10.1"
-
+openssl = { version = "0.10", features = ["vendored"] }
