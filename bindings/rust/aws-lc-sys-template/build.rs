@@ -77,14 +77,14 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn find_include_path(out_dir: &Path) -> PathBuf {
+fn get_include_path(out_dir: &PathBuf) -> PathBuf {
     out_dir.join("deps").join("aws-lc").join("include")
 }
 
-fn prepare_clang_args(out_dir: &Path, build_prefix: Option<&str>) -> Vec<String> {
+fn prepare_clang_args(out_dir: &PathBuf, build_prefix: Option<&str>) -> Vec<String> {
     let mut clang_args: Vec<String> = vec![
         "-I".to_string(),
-        find_include_path(out_dir).display().to_string(),
+        get_include_path(&out_dir).display().to_string(),
     ];
 
     if let Some(prefix) = build_prefix {
@@ -103,7 +103,7 @@ const PRELUDE: &str = r#"
 #![allow(unused_imports, non_camel_case_types, non_snake_case, non_upper_case_globals, improper_ctypes)]
 "#;
 
-fn prepare_bindings_builder(out_dir: &Path, build_prefix: Option<&str>) -> bindgen::Builder {
+fn prepare_bindings_builder(out_dir: &PathBuf, build_prefix: Option<&str>) -> bindgen::Builder {
     let clang_args = prepare_clang_args(out_dir, build_prefix);
 
     let builder = bindgen::Builder::default()
@@ -125,7 +125,7 @@ fn prepare_bindings_builder(out_dir: &Path, build_prefix: Option<&str>) -> bindg
         .raw_line(COPYRIGHT)
         .raw_line(PRELUDE)
         .header(
-            find_include_path(out_dir)
+            get_include_path(&out_dir)
                 .join("rust_wrapper.h")
                 .display()
                 .to_string(),
@@ -136,6 +136,7 @@ fn prepare_bindings_builder(out_dir: &Path, build_prefix: Option<&str>) -> bindg
 
 const AWS_LC_PATH: &str = "deps/aws-lc";
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum OutputLib {
     Crypto,
@@ -278,20 +279,20 @@ fn prepare_cmake_build(build_fips: bool, build_prefix: Option<&str>) -> cmake::C
 fn build_aws_lc() -> PathBuf {
     let mut cmake_cfg = prepare_cmake_build(false, Some(&prefix_string()));
 
-    cmake_cfg.build_target("ssl").build()
+    cmake_cfg.build_target("crypto").build()
 }
 
 fn main() -> Result<(), String> {
-    use crate::OutputLib::{Crypto, Ssl};
+    use crate::OutputLib::Crypto;
     use crate::OutputLibType::Static;
 
     let out_dir = env::current_dir().unwrap();
-    let out_dir = Path::new(&out_dir);
+    let out_dir = dunce::canonicalize(&Path::new(&out_dir)).unwrap();
     let prefix = prefix_string();
 
     let bindings_file = out_dir.join("src").join("bindings.rs");
 
-    let builder = prepare_bindings_builder(out_dir, Some(&prefix));
+    let builder = prepare_bindings_builder(&out_dir, Some(&prefix));
     let bindings = builder.generate().expect("Unable to generate bindings.");
     bindings
         .write_to_file(&bindings_file)
@@ -301,19 +302,15 @@ fn main() -> Result<(), String> {
     let aws_lc_dir = build_aws_lc();
 
     let libcrypto_dir = Crypto.locate_dir(&aws_lc_dir);
-    let libssl_dir = Ssl.locate_dir(&aws_lc_dir);
     println!("cargo:rustc-link-search=native={}", libcrypto_dir.display());
-    println!("cargo:rustc-link-search=native={}", libssl_dir.display());
     println!(
         "cargo:rustc-link-lib={}={}",
         Static.rust_lib_type(),
         Crypto.libname(None)
     );
-    println!(
-        "cargo:rustc-link-lib={}={}",
-        Static.rust_lib_type(),
-        Ssl.libname(None)
-    );
+
+    println!("cargo:include={}", get_include_path(&out_dir).display());
+    println!("cargo:rerun-if-changed=build.rs");
 
     Ok(())
 }

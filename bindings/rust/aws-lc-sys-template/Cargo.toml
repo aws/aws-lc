@@ -26,6 +26,7 @@ include = [
 cmake = "0.1.48"
 bindgen = "0.60.1"
 regex = "1"
+dunce = "1.0"
 
 [dependencies]
 libc = "0.2"

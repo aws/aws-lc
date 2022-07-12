@@ -31,11 +31,10 @@ fi
 
 go env -w GOPROXY=direct
 ${CMAKE} ${AWS_LC_DIR} -GNinja
-${CMAKE} --build . --target ssl
+${CMAKE} --build . --target clean
+${CMAKE} --build . --target crypto
 
-go run ${AWS_LC_DIR}/util/read_symbols.go -out symbols-crypto.txt ./crypto/libcrypto.a
-go run ${AWS_LC_DIR}/util/read_symbols.go -out symbols-ssl.txt ./ssl/libssl.a
-cat symbols-crypto.txt symbols-ssl.txt | sort | uniq | grep -v -e '^_\?bignum' > symbols.txt
+go run ${AWS_LC_DIR}/util/read_symbols.go -out symbols.txt ./crypto/libcrypto.a
 
 popd
 echo DONE

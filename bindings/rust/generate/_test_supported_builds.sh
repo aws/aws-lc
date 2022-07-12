@@ -50,15 +50,6 @@ pushd "${AWS_LC_DIR}"
 DOCKER_IMAGE_HOST=${AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com
 DOCKER_IMAGE_REPO_NAME=aws-lc-docker-images-linux-
 DI_ARCH=x86
-DI_TAG=ubuntu-22.04_gcc-12x_latest
-###
-###
-# TODO: Since bindings are generated during the build, libclang must be available on image.
-#docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
-
-###
-###
-DI_ARCH=x86
 DI_TAG=amazonlinux-2_clang-7x_latest
 ###
 ###
@@ -71,14 +62,5 @@ DI_TAG=ubuntu-20.04_clang-10x_latest
 ###
 ###
 docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
-
-###
-###
-DI_ARCH=aarch
-DI_TAG=amazonlinux-2_gcc-7x_latest
-###
-###
-# TODO: Since bindings are generated during the build, libclang must be available on image.
-#docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
 
 popd
