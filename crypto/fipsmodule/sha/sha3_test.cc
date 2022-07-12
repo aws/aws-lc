@@ -39,12 +39,26 @@ class SHA3TestVector {
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
+    // Test the correctness via the Init, Update and Final Digest APIs.
     ASSERT_TRUE(EVP_DigestInit(ctx, algorithm));
     ASSERT_TRUE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_TRUE(EVP_DigestFinal(ctx, digest, &digest_length));
     
-    // Alternatively, the correctness can be tested via the single shot API.
-    //ASSERT_TRUE(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL));
+    ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
+              Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
+    
+    OPENSSL_free(ctx);
+  }
+
+    void NISTTestVectors_SingleShot() const {
+   
+    uint32_t digest_length = SHA3_256_DIGEST_LENGTH;
+    const EVP_MD* algorithm = EVP_sha3_256();
+    uint8_t digest[SHA3_256_DIGEST_LENGTH];
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    
+    // Test the correctness via the single shot API.
+    ASSERT_TRUE(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL));
    
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
               Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
@@ -98,5 +112,13 @@ TEST(SHA3Test, NISTTestVectors) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors();
+  });
+}
+
+TEST(SHA3Test, NISTTestVectors_SignleShot) {
+  FileTestGTest("crypto/fipsmodule/sha/SHA3_256ShortMsg.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    test_vec.NISTTestVectors_SingleShot();
   });
 }

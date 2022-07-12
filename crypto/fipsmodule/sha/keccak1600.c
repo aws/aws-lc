@@ -21,6 +21,8 @@
 # define BIT_INTERLEAVE (sizeof(void *) < 8)
 #endif
 
+#if !defined(KECCAK1600_ASM)
+
 static const unsigned char rhotates[SHA3_ROWS][SHA3_ROWS] = {
     {  0,  1, 62, 28, 27 },
     { 36, 44,  6, 55, 20 },
@@ -55,8 +57,6 @@ static const uint64_t iotas[] = {
     BIT_INTERLEAVE ? 0x0000800000000001ULL : 0x0000000080000001ULL,
     BIT_INTERLEAVE ? 0x8000808200000000ULL : 0x8000000080008008ULL
 };
-
-#if !defined(KECCAK1600_ASM)
 
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
     (defined(__x86_64) && !defined(__BMI__)) || defined(_M_X64) || \
