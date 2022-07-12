@@ -152,6 +152,8 @@ function prepare_crate_dir {
         "${AWS_LC_DIR}"/sources.cmake \
         "${CRATE_AWS_LC_DIR}"/
 
+  cp "${AWS_LC_DIR}"/LICENSE  "${CRATE_AWS_LC_DIR}"/
+
   mkdir -p "${CRATE_AWS_LC_DIR}"/util
   cp -r  "${AWS_LC_DIR}"/util/fipstools "${CRATE_AWS_LC_DIR}"/util
 
