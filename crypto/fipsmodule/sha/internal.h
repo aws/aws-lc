@@ -36,7 +36,7 @@ struct keccak_st {
   size_t md_size;      // output length, variable in XOF (SHAKE)
   size_t buf_load;     // used bytes in below buffer
   uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_256_CAPACITY_BYTES];
-  unsigned char pad;
+  uint8_t pad;
 };
 
 #if defined(OPENSSL_PPC64LE) ||                          \
@@ -71,7 +71,7 @@ OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
 OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 
 // SHA3_Init initialises ctx fields and returns 1 on success.
-OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad,
+OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
                              size_t bitlen);
 
 // SHA3_Update processes all data blocks that don't need pad through SHA3_Absorb and returns 1.
@@ -80,15 +80,15 @@ OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
 
 // SHA3_Final pads the last block of data and proccesses it through SHA3_Absorb. 
 // It processes the data through SHA3_Squeeze and returns 1.
-OPENSSL_EXPORT int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx);
+OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
 // SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and 
 // returns the remaining amount of bytes. 
-OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const unsigned char *data,
+OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *data,
                                   size_t len, size_t r);
 
 // SHA3_Squeeze generate |out| hash value of |len| bytes.
-OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], unsigned char *out,
+OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out,
                                  size_t len, size_t r);
 
 

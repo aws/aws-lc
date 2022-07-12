@@ -33,7 +33,6 @@ class SHA3TestVector {
   bool ReadFromFileTest(FileTest *t);
   
   void NISTTestVectors() const {
-   
     uint32_t digest_length = SHA3_256_DIGEST_LENGTH;
     const EVP_MD* algorithm = EVP_sha3_256();
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
@@ -50,8 +49,7 @@ class SHA3TestVector {
     OPENSSL_free(ctx);
   }
 
-    void NISTTestVectors_SingleShot() const {
-   
+  void NISTTestVectors_SingleShot() const {
     uint32_t digest_length = SHA3_256_DIGEST_LENGTH;
     const EVP_MD* algorithm = EVP_sha3_256();
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
@@ -115,7 +113,7 @@ TEST(SHA3Test, NISTTestVectors) {
   });
 }
 
-TEST(SHA3Test, NISTTestVectors_SignleShot) {
+TEST(SHA3Test, NISTTestVectors_SingleShot) {
   FileTestGTest("crypto/fipsmodule/sha/SHA3_256ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));

@@ -29,7 +29,7 @@ void SHA3_Reset(KECCAK1600_CTX *ctx) {
   ctx->buf_load = 0;
 }
 
-int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad, size_t bit_len) {
+int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
   size_t block_size = SHA3_BLOCKSIZE(bit_len);
   if (block_size <= sizeof(ctx->buf)) {
     SHA3_Reset(ctx);
@@ -42,7 +42,7 @@ int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad, size_t bit_len) {
 }
 
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
-  unsigned char *data_ptr_copy = (unsigned char *) data;
+  uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
 
@@ -87,7 +87,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   return 1;
 }
 
-int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx) {
+int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 

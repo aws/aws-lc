@@ -23,7 +23,7 @@
 
 #if !defined(KECCAK1600_ASM)
 
-static const unsigned char rhotates[SHA3_ROWS][SHA3_ROWS] = {
+static const uint8_t rhotates[SHA3_ROWS][SHA3_ROWS] = {
     {  0,  1, 62, 28, 27 },
     { 36, 44,  6, 55, 20 },
     {  3, 10, 43, 25, 39 },
@@ -331,7 +331,7 @@ static uint64_t BitDeinterleave(uint64_t Ai)
  // 72, but can also be (1600 - 448)/8 = 144. All this means that message
  // padding and intermediate sub-block buffering, byte- or bitwise, is
  // caller's responsibility.
-size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const unsigned char *inp, size_t len,
+size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t len,
                    size_t r)
 {
     uint64_t *A_flat = (uint64_t *)A;
@@ -358,7 +358,7 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const unsigned char *inp, s
 
  // SHA3_Squeeze is called once at the end to generate |out| hash value
  // of |len| bytes.
-void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], unsigned char *out, size_t len, size_t r)
+void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r)
 {
     uint64_t *A_flat = (uint64_t *)A;
     size_t i, w = r / 8;
@@ -371,20 +371,20 @@ void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], unsigned char *out, size_t l
 
             if (len < 8) {
                 for (i = 0; i < len; i++) {
-                    *out++ = (unsigned char)Ai;
+                    *out++ = (uint8_t)Ai;
                     Ai >>= 8;
                 }
                 return;
             }
 
-            out[0] = (unsigned char)(Ai);
-            out[1] = (unsigned char)(Ai >> 8);
-            out[2] = (unsigned char)(Ai >> 16);
-            out[3] = (unsigned char)(Ai >> 24);
-            out[4] = (unsigned char)(Ai >> 32);
-            out[5] = (unsigned char)(Ai >> 40);
-            out[6] = (unsigned char)(Ai >> 48);
-            out[7] = (unsigned char)(Ai >> 56);
+            out[0] = (uint8_t)(Ai);
+            out[1] = (uint8_t)(Ai >> 8);
+            out[2] = (uint8_t)(Ai >> 16);
+            out[3] = (uint8_t)(Ai >> 24);
+            out[4] = (uint8_t)(Ai >> 32);
+            out[5] = (uint8_t)(Ai >> 40);
+            out[6] = (uint8_t)(Ai >> 48);
+            out[7] = (uint8_t)(Ai >> 56);
             out += 8;
             len -= 8;
         }
