@@ -63,6 +63,7 @@
 extern "C" {
 #endif
 
+
 // Previously we defined |OPENSSL_STATIC_ASSERT| to use one of two keywords:
 // |Static_assert| or |static_assert|. The latter was used if we were compiling
 // a C++ translation unit or on Windows (excluding when using a Clang compiler).
