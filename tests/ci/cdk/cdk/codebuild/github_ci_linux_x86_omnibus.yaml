@@ -380,7 +380,7 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
 
-    - identifier: ubuntu2004_clang9x_x86_64_benchmark
+    - identifier: ubuntu2004_clang7x_x86_64_benchmark
       buildspec: ./tests/ci/codebuild/linux-x86/run_bm_build_test.yml
       env:
         type: LINUX_CONTAINER
