@@ -18,8 +18,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../../test/test_util.h"
 #include "../../test/file_test.h"
+#include "../../test/test_util.h"
 #include "internal.h"
 
 // SHA3TestVector corresponds to one test case of the NIST published file

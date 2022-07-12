@@ -18,7 +18,7 @@ uint8_t *SHA3_256(const uint8_t *data, size_t len,
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
-  if (ok == 0){
+  if (ok == 0) {
     return NULL;
   }
   return out;
@@ -65,7 +65,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
      // leaving the rest for later processing.
     memcpy(ctx->buf + num, data_ptr_copy, rem);
     data_ptr_copy += rem, len -= rem;
-    if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0 ){
+    if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0 ) {
       return 0;
     }
     ctx->buf_load = 0;
@@ -75,7 +75,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   if (len >= block_size) {
     rem = SHA3_Absorb(ctx->A, data_ptr_copy, len, block_size);
   }
-  else{
+  else {
     rem = len;
   }
 
@@ -102,7 +102,7 @@ int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx) {
   ctx->buf[num] = ctx->pad;
   ctx->buf[block_size - 1] |= 0x80;
 
-  if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0){
+  if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0) {
     return 0;
   }
 

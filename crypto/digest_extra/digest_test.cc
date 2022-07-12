@@ -145,7 +145,7 @@ static const DigestTestVector kTestVectors[] = {
      "klmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
      1, "3928e184fb8690f840da3988121d31be65cb9d3ef83ee6146feac861e19b563a"},
 
-    // SHA3-256 tests, from
+    // SHA3-256 tests, from NIST.
     // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
     {sha3_256, "", 1, "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
     {sha3_256, "\xe9", 1, "f0d04dd1e6cfc29a4460d521796852f25d9ef8d28b44ee91ff5b759d72c1e6d6"},

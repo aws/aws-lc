@@ -74,11 +74,11 @@ OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, unsigned char pad,
                              size_t bitlen);
 
-// SHA3_Update processes all data blocks that do need pad through SHA3_Absorb and returns 1.
+// SHA3_Update processes all data blocks that don't need pad through SHA3_Absorb and returns 1.
 OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
-// SHA3_Final pads the last block of data and proccess through SHA3_Absorb. 
+// SHA3_Final pads the last block of data and proccesses it through SHA3_Absorb. 
 // It processes the data through SHA3_Squeeze and returns 1.
 OPENSSL_EXPORT int SHA3_Final(unsigned char *md, KECCAK1600_CTX *ctx);
 

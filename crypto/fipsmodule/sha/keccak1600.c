@@ -13,8 +13,9 @@
     defined(__mips64) || defined(__ia64) || \
     (defined(__VMS) && !defined(__vax))
 
- // Facilitate ILP32 model, the above platforms are capable of performing
- // 64-bit operations as efficiently as *P64.
+ // These are available even in ILP32 flavours, but even then they are
+ // capable of performing 64-bit operations as efficiently as in *P64.
+ // Since it's not given that we can use sizeof(void *), just shunt it.
 # define BIT_INTERLEAVE (0)
 #else
 # define BIT_INTERLEAVE (sizeof(void *) < 8)
@@ -62,7 +63,7 @@ static const uint64_t iotas[] = {
     defined(__mips) || defined(__riscv) || defined(__s390__) || \
     defined(__EMSCRIPTEN__)
 
- // These platforms don't support "logical and with complement" instruction;
+ // These platforms don't support "logical and with complement" instruction.
 # define KECCAK_COMPLEMENTING_TRANSFORM
 #endif
 
@@ -77,7 +78,7 @@ static uint64_t ROL64(uint64_t val, int offset)
     } else {
         uint32_t hi = (uint32_t)(val >> 32), lo = (uint32_t)val;
 
-        if (offset & 1) {
+        if ((offset & 1) != 0) {
             uint32_t tmp = hi;
 
             offset >>= 1;
@@ -387,8 +388,9 @@ void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], unsigned char *out, size_t l
             out += 8;
             len -= 8;
         }
-        if (len)
+        if (len != 0) {
             KeccakF1600(A);
+        }
     }
 }
 #endif // !KECCAK1600_ASM
