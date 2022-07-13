@@ -1,4 +1,5 @@
-/* Copyright (c) 2018, Google Inc.
+/* Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
