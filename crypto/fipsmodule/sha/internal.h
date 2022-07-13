@@ -79,7 +79,7 @@ OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
 // SHA3_Final pads the last block of data and proccesses it through |SHA3_Absorb|. 
-// It processes the data through SHA3_Squeeze and returns 1.
+// It processes the data through |SHA3_Squeeze| and returns 1.
 OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
 // SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and 
