@@ -15,7 +15,7 @@ fn sha1_tester(input: &[u8]) -> [u8; 20] {
 }
 
 fn compare(result: &[u8], expected_result: &[u8]) {
-    //println!("Comparing: {:?} to {:?}", result, expected_result);
+    println!("Comparing: {:?} to {:?}", result, expected_result);
     assert_eq!(result, expected_result);
 }
 

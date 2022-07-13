@@ -11,8 +11,9 @@ function usage {
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
-RAND_NAME=$(od -vN 8 -An -tx1 /dev/urandom | tr -d " \n" )
-BUILD_DIR=${TMP_DIR}/BUILD-${RAND_NAME}
+BUILD_DIR=`mktemp -d`
+SYMBOLS_TEMP_FILE="${BUILD_DIR}"/symbols-temp.txt
+SYMBOLS_COLLECT_FILE="${TMP_DIR}"/symbol-collect.txt
 
 if [[ ! -d ${TMP_DIR} ]]; then
   echo "$(basename $0)" Sanity Check Failed
@@ -34,7 +35,12 @@ ${CMAKE} ${AWS_LC_DIR} -GNinja
 ${CMAKE} --build . --target clean
 ${CMAKE} --build . --target crypto
 
-go run ${AWS_LC_DIR}/util/read_symbols.go -out symbols.txt ./crypto/libcrypto.a
+pushd "${AWS_LC_DIR}"
+go run ./util/read_symbols.go -out ${SYMBOLS_TEMP_FILE} "${BUILD_DIR}"/crypto/libcrypto.a
+popd
+
+cat "${SYMBOLS_TEMP_FILE}" >> "${SYMBOLS_COLLECT_FILE}"
 
 popd
 echo DONE
+

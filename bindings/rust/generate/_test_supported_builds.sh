@@ -41,7 +41,7 @@ if [[ ! "${OSTYPE}" == "darwin"* ]]; then
   echo This scipt must be run on a Mac
   exit 1
 fi
-${SCRIPT_DIR}/_crate_test_build.sh
+"${SCRIPT_DIR}"/_crate_test_build.sh
 
 pushd "${AWS_LC_DIR}"
 

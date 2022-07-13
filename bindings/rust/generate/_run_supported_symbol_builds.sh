@@ -31,6 +31,7 @@ AWS_ACCOUNT_ID="${1}"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
+SYMBOLS_COLLECT_FILE="${TMP_DIR}"/symbols-collect.txt
 SYMBOLS_FILE="${TMP_DIR}"/symbols.txt
 
 rm -rf "${TMP_DIR}"/BUILD-*
@@ -52,7 +53,6 @@ DI_TAG=ubuntu-22.04_gcc-12x_latest
 ###
 docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
 
-
 ###
 ###
 DI_ARCH=aarch
@@ -61,7 +61,7 @@ DI_TAG=ubuntu-20.04_clang-10x_latest
 ###
 docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
 
-cat ${TMP_DIR}/*/symbols.txt | sort | uniq > "${SYMBOLS_FILE}"
+cat "${SYMBOLS_COLLECT_FILE}" | sort | uniq > "${SYMBOLS_FILE}"
 
 popd
 
