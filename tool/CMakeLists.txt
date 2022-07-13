@@ -43,7 +43,7 @@ else()
 endif()
 
 install(TARGETS bssl
-        RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 function(build_benchmark target_name additional_include_dir lib_crypto)
   message("-- Building ${target_name} benchmark using header files from ${additional_include_dir} and libcrypto from ${lib_crypto}.")
