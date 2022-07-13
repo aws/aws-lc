@@ -70,7 +70,7 @@ OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
 // SHA3_Reset zeros the bitstate and the amount of processed input.
 OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 
-// SHA3_Init initialises ctx fields and returns 1 on success.
+// SHA3_Init initialises |ctx| fields and returns 1 on success.
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
                              size_t bitlen);
 
