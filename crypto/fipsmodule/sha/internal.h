@@ -74,7 +74,7 @@ OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
                              size_t bitlen);
 
-// SHA3_Update processes all data blocks that don't need pad through SHA3_Absorb and returns 1.
+// SHA3_Update processes all data blocks that don't need pad through |SHA3_Absorb| and returns 1.
 OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
