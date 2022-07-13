@@ -196,48 +196,6 @@ fn prefix_string() -> String {
     format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
 }
 
-fn verify_fips_clang_version() -> (&'static str, &'static str) {
-    fn version(tool: &str) -> String {
-        let output = match Command::new(tool).arg("--version").output() {
-            Ok(o) => o,
-            Err(e) => {
-                eprintln!("warning: missing {}, trying other compilers: {}", tool, e);
-                // NOTE: hard-codes that the loop below checks the version
-                return String::new();
-            }
-        };
-        assert!(output.status.success());
-        let output = std::str::from_utf8(&output.stdout).expect("invalid utf8 output");
-        output.lines().next().expect("empty output").to_string()
-    }
-
-    const REQUIRED_CLANG_VERSION: &str = "7.0.1";
-    for (cc, cxx) in [
-        ("clang-7", "clang++-7"),
-        ("clang", "clang++"),
-        ("cc", "c++"),
-    ] {
-        let cc_version = version(cc);
-        if cc_version.contains(REQUIRED_CLANG_VERSION) {
-            assert!(
-                version(cxx).contains(REQUIRED_CLANG_VERSION),
-                "mismatched versions of cc and c++"
-            );
-            return (cc, cxx);
-        } else if cc == "cc" {
-            panic!(
-                "unsupported clang version \"{}\": FIPS requires clang {}",
-                cc_version, REQUIRED_CLANG_VERSION
-            );
-        } else if !cc_version.is_empty() {
-            eprintln!(
-                "warning: FIPS requires clang version {}, skipping incompatible version \"{}\"",
-                REQUIRED_CLANG_VERSION, cc_version
-            );
-        }
-    }
-    unreachable!()
-}
 
 fn test_cmake_command(executable: &str) -> bool {
     if let Ok(output) = Command::new(executable).arg("--version").output() {
@@ -246,7 +204,7 @@ fn test_cmake_command(executable: &str) -> bool {
     false
 }
 
-fn prepare_cmake_build(build_fips: bool, build_prefix: Option<&str>) -> cmake::Config {
+fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
     if test_cmake_command("cmake3") {
         env::set_var("CMAKE", "cmake3");
     } else {
@@ -254,14 +212,6 @@ fn prepare_cmake_build(build_fips: bool, build_prefix: Option<&str>) -> cmake::C
     }
 
     let mut cmake_cfg = get_cmake_config();
-
-    if build_fips {
-        let (clang, clangxx) = verify_fips_clang_version();
-        cmake_cfg.define("CMAKE_C_COMPILER", clang);
-        cmake_cfg.define("CMAKE_CXX_COMPILER", clangxx);
-        cmake_cfg.define("CMAKE_ASM_COMPILER", clang);
-        cmake_cfg.define("FIPS", "1");
-    }
 
     if let Some(symbol_prefix) = build_prefix {
         cmake_cfg.define("BORINGSSL_PREFIX", symbol_prefix);
@@ -277,7 +227,7 @@ fn prepare_cmake_build(build_fips: bool, build_prefix: Option<&str>) -> cmake::C
 }
 
 fn build_aws_lc() -> PathBuf {
-    let mut cmake_cfg = prepare_cmake_build(false, Some(&prefix_string()));
+    let mut cmake_cfg = prepare_cmake_build(Some(&prefix_string()));
 
     cmake_cfg.build_target("crypto").build()
 }
