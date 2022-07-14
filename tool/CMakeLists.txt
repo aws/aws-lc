@@ -78,6 +78,16 @@ if(OPENSSL_INSTALL_DIR)
   endif()
 endif()
 
+# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
+if(OPENSSL_1_0_INSTALL_DIR)
+  build_benchmark(ossl_bm ${OPENSSL_1_0_INSTALL_DIR}/include ${OPENSSL_1_0_INSTALL_DIR}/lib/libcrypto.a)
+
+  target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_0_BENCHMARK)
+  if(NOT MSVC AND NOT ANDROID)
+    target_link_libraries(ossl_bm pthread dl)
+  endif()
+endif()
+
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
 if(OPENSSL3_INSTALL_DIR)
   # The low-level function calls are deprecated for OpenSSL 3.0. We should revisit using these in the future, 
