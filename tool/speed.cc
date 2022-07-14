@@ -1611,7 +1611,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedAES256XTS("AES-256-XTS", selected) ||
 #endif
      // OpenSSL 3.0 doesn't allow MD4 calls
-#if !defined(OPENSSL3_BENCHMARK)
+#if !defined(OPENSSL_3_0_BENCHMARK)
      !SpeedHash(EVP_md4(), "MD4", selected) ||
 #endif
      !SpeedHash(EVP_md5(), "MD5", selected) ||
