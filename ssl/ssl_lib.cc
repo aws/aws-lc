@@ -2010,6 +2010,10 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
                                 false /* not strict */);
 }
 
+int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
+  return 1;
+}
+
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   if (!ssl->config) {
     return 0;
