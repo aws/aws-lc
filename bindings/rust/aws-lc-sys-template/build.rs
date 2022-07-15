@@ -15,13 +15,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+use regex::Regex;
+use std::{env, fs, io};
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{env, fs, io};
-
-use regex::Regex;
 
 fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     // Needed until this issue is resolved: https://github.com/rust-lang/rust-bindgen/issues/1375
@@ -77,14 +76,14 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn get_include_path(manifest_dir: &PathBuf) -> PathBuf {
+fn get_include_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join("deps").join("aws-lc").join("include")
 }
 
-fn prepare_clang_args(manifest_dir: &PathBuf, build_prefix: Option<&str>) -> Vec<String> {
+fn prepare_clang_args(manifest_dir: &Path, build_prefix: Option<&str>) -> Vec<String> {
     let mut clang_args: Vec<String> = vec![
         "-I".to_string(),
-        get_include_path(&manifest_dir).display().to_string(),
+        get_include_path(manifest_dir).display().to_string(),
     ];
 
     if let Some(prefix) = build_prefix {
@@ -103,7 +102,10 @@ const PRELUDE: &str = r#"
 #![allow(unused_imports, non_camel_case_types, non_snake_case, non_upper_case_globals, improper_ctypes)]
 "#;
 
-fn prepare_bindings_builder(manifest_dir: &PathBuf, build_prefix: Option<&str>) -> bindgen::Builder {
+fn prepare_bindings_builder(
+    manifest_dir: &Path,
+    build_prefix: Option<&str>,
+) -> bindgen::Builder {
     let clang_args = prepare_clang_args(manifest_dir, build_prefix);
 
     let builder = bindgen::Builder::default()
@@ -125,7 +127,7 @@ fn prepare_bindings_builder(manifest_dir: &PathBuf, build_prefix: Option<&str>) 
         .raw_line(COPYRIGHT)
         .raw_line(PRELUDE)
         .header(
-            get_include_path(&manifest_dir)
+            get_include_path(manifest_dir)
                 .join("rust_wrapper.h")
                 .display()
                 .to_string(),
@@ -192,10 +194,10 @@ fn get_cmake_config() -> cmake::Config {
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn prefix_string() -> String {
     format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
 }
-
 
 fn test_cmake_command(executable: &str) -> bool {
     if let Ok(output) = Command::new(executable).arg("--version").output() {
@@ -259,7 +261,10 @@ fn main() -> Result<(), String> {
         Crypto.libname(None)
     );
 
-    println!("cargo:include={}", get_include_path(&manifest_dir).display());
+    println!(
+        "cargo:include={}",
+        get_include_path(&manifest_dir).display()
+    );
     println!("cargo:rerun-if-changed=build.rs");
 
     Ok(())

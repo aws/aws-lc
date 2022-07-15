@@ -1,12 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-mod bindings;
 pub use bindings::*;
+
+mod bindings;
 
 #[allow(non_snake_case)]
 pub unsafe fn ERR_GET_LIB(packed_error: u32) -> i32 {
-     ERR_GET_LIB_RUST(packed_error)
+    ERR_GET_LIB_RUST(packed_error)
 }
 
 #[allow(non_snake_case)]
