@@ -5,9 +5,7 @@ set -e
 
 function usage {
   echo
-  echo "Usage: $(basename $0) [-d] [-b] [-u] [AWS_ACCOUNT_ID]"
-  echo
-  echo "    AWS_ACCOUNT_ID - The account providing docker images for the build."
+  echo "Usage: $(basename $0) [-d] [-b] [-u]"
   echo
 }
 
@@ -37,7 +35,6 @@ shift $(($OPTIND - 1))
 
 AWS_LC_SYS_VERSION="0.1.0"
 
-AWS_ACCOUNT_ID="${1}"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 CRATE_TEMPLATE_DIR="${AWS_LC_DIR}"/bindings/rust/aws-lc-sys-template
@@ -101,13 +98,9 @@ mkdir -p "${TMP_DIR}"
 
 function create_symbol_file {
   if [[ ! -r "${SYMBOLS_FILE}" ]]; then
-    if [[ -z "${AWS_ACCOUNT_ID}" ]]; then
-      usage
-      exit 1
-    fi
     echo Symbol file not found
     echo Performing build for supported platforms.
-    ${SCRIPT_DIR}/_run_supported_symbol_builds.sh ${AWS_ACCOUNT_ID}
+    ${SCRIPT_DIR}/_run_supported_symbol_builds.sh
   fi
 
   if [[ ! -r "${SYMBOLS_FILE}" ]]; then
@@ -147,6 +140,7 @@ function prepare_crate_dir {
         "${AWS_LC_DIR}"/ssl  \
         "${AWS_LC_DIR}"/include \
         "${AWS_LC_DIR}"/tool \
+        "${AWS_LC_DIR}"/generated-src \
         "${AWS_LC_DIR}"/CMakeLists.txt \
         "${AWS_LC_DIR}"/LICENSE \
         "${AWS_LC_DIR}"/sources.cmake \
@@ -167,4 +161,4 @@ function prepare_crate_dir {
 prepare_crate_dir
 create_prefix_headers
 
-"${SCRIPT_DIR}"/_test_supported_builds.sh  ${AWS_ACCOUNT_ID}
+"${SCRIPT_DIR}"/_test_supported_builds.sh

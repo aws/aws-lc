@@ -4,29 +4,6 @@
 
 set -e -x
 
-### If you need the images used by this script, you can retrieve them from ECR:
-### 1) Retrieve creds for AWS account. Paste into shell.
-### 2) Setup the environment:
-###    $ AWS_ACCOUNT_ID=???
-###    $ DOCKER_IMAGE_REPO_NAME=aws-lc-docker-images-linux-
-###    $ DI_ARCH=x86
-###    $ DI_TAG=ubuntu-22.04_gcc-12x_latest
-###    $ DOCKER_IMAGE_HOST=${AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com
-### 3) Login:
-###    $ aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin ${DOCKER_IMAGE_HOST}
-### 4) Pull docker images:
-###    $ docker pull ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG}
-
-function usage {
-  echo "Usage: $(basename $0) AWS_ACCOUNT_ID "
-}
-
-if [[ ! "${1}" -gt 0  ]]; then
-  usage
-  exit 1
-fi
-
-AWS_ACCOUNT_ID="${1}"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
@@ -45,22 +22,17 @@ fi
 
 pushd "${AWS_LC_DIR}"
 
-###
-###
-DOCKER_IMAGE_HOST=${AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com
-DOCKER_IMAGE_REPO_NAME=aws-lc-docker-images-linux-
-DI_ARCH=x86
-DI_TAG=amazonlinux-2_clang-7x_latest
-###
-###
-docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
+##
+## These docker image can be built from Dockerfiles under: <AWS-LC-DIR>/tests/ci/docker_images/rust
+##
 
-###
-###
-DI_ARCH=aarch
-DI_TAG=ubuntu-20.04_clang-10x_latest
-###
-###
-docker run -v `pwd`:`pwd` -w `pwd` --rm ${DOCKER_IMAGE_HOST}/${DOCKER_IMAGE_REPO_NAME}${DI_ARCH}:${DI_TAG} /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
+## 386 test
+docker run -v `pwd`:`pwd` -w `pwd` --rm --platform linux/386 rust:linux-386 /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
+
+## x86_64 test
+docker run -v `pwd`:`pwd` -w `pwd` --rm --platform linux/amd64 rust:linux-x86_64 /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
+
+## arm64 test
+docker run -v `pwd`:`pwd` -w `pwd` --rm --platform linux/arm64 rust:linux-arm64 /bin/bash "${SCRIPT_DIR}"/_crate_test_build.sh
 
 popd

@@ -13,7 +13,7 @@ AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
 BUILD_DIR=`mktemp -d`
 SYMBOLS_TEMP_FILE="${BUILD_DIR}"/symbols-temp.txt
-SYMBOLS_COLLECT_FILE="${TMP_DIR}"/symbol-collect.txt
+SYMBOLS_COLLECT_FILE="${TMP_DIR}"/symbols-collect.txt
 
 if [[ ! -d ${TMP_DIR} ]]; then
   echo "$(basename $0)" Sanity Check Failed
@@ -31,7 +31,7 @@ else
 fi
 
 go env -w GOPROXY=direct
-${CMAKE} ${AWS_LC_DIR} -GNinja
+${CMAKE} ${AWS_LC_DIR} -DDISABLE_GO=ON -DDISABLE_PERL=ON
 ${CMAKE} --build . --target clean
 ${CMAKE} --build . --target crypto
 
