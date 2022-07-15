@@ -1,6 +1,3 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-
 /* Copyright (c) 2022, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -14,6 +11,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+
+// SPDX-License-Identifier: Apache-2.0
+// Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 #ifndef OPENSSL_HEADER_RUST_WRAPPER_H
 #define OPENSSL_HEADER_RUST_WRAPPER_H
