@@ -1,6 +1,3 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-
 /* Copyright (c) 2022, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -16,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "rust_wrapper.h"
+
 
 int ERR_GET_LIB_RUST(uint32_t packed_error) {
   return ERR_GET_LIB(packed_error);

@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update && \
     apt-get -y install clang cmake golang && \
     rustup update && \
-    rustup component add rustfmt && \
+    rustup component add rustfmt clippy && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \

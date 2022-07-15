@@ -5,7 +5,6 @@ set -e
 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-AWS_ACCOUNT_ID="${1}"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
@@ -21,15 +20,15 @@ pushd "${AWS_LC_DIR}"
 ##
 
 ## 386 build
-docker run -v `pwd`:`pwd` -w `pwd` --rm --platform linux/386 rust:linux-386 /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
+docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/386 rust:linux-386 /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
 
 ## x86_64 build
-docker run -v `pwd`:`pwd` -w `pwd` --rm --platform linux/amd64 rust:linux-x86_64 /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
+docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/amd64 rust:linux-x86_64 /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
 
 ## arm64 build
-docker run -v `pwd`:`pwd` -w `pwd` --rm --platform linux/arm64 rust:linux-arm64 /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
+docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/arm64 rust:linux-arm64 /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
 
-cat "${SYMBOLS_COLLECT_FILE}" | sort | uniq > "${SYMBOLS_FILE}"
+sort "${SYMBOLS_COLLECT_FILE}" | uniq > "${SYMBOLS_FILE}"
 
 popd
 

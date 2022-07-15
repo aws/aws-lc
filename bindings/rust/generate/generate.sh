@@ -5,15 +5,16 @@ set -e
 
 function usage {
   echo
-  echo "Usage: $(basename $0) [-d] [-b] [-u]"
+  echo "Usage: $(basename "${0}") [-d] [-b] [-u] [-m]"
   echo
 }
 
 IGNORE_DIRTY=0
 IGNORE_BRANCH=0
 IGNORE_UPSTREAM=0
+IGNORE_MACOS=0
 
-while getopts "dbu" option; do
+while getopts "dbum" option; do
   case ${option} in
   d )
     IGNORE_DIRTY=1
@@ -24,14 +25,18 @@ while getopts "dbu" option; do
   u )
     IGNORE_UPSTREAM=1
     ;;
+  m )
+    IGNORE_MACOS=1
+    ;;
   * )
+    echo Invalid argument: -"${?}"
     usage
     exit 1
     ;;
   esac
 done
 
-shift $(($OPTIND - 1))
+shift $((OPTIND - 1))
 
 AWS_LC_SYS_VERSION="0.1.0"
 
@@ -43,10 +48,9 @@ SYMBOLS_FILE="${TMP_DIR}"/symbols.txt
 CRATE_DIR="${TMP_DIR}"/aws-lc-sys
 CRATE_AWS_LC_DIR="${CRATE_DIR}"/deps/aws-lc
 PREFIX_HEADERS_FILE="${CRATE_AWS_LC_DIR}"/include/boringssl_prefix_symbols.h
-BINDINGS_FILE="${CRATE_DIR}"/src/bindings.rs
 
 if [[ ! -d ${AWS_LC_DIR} ]]; then
-  echo "$(basename $0)" Sanity Check Failed
+  echo "$(basename "${0}")" Sanity Check Failed
   exit 1
 fi
 
@@ -80,10 +84,10 @@ fi
 
 git fetch
 LOCAL_HASH=$(git rev-parse HEAD)
-UPSTREAM_HASH=$(git rev-parse "${CURRENT_BRANCH}"@{upstream})
+UPSTREAM_HASH=$(git rev-parse "${CURRENT_BRANCH}"'@{upstream}')
 
 if [[ ! "${LOCAL_HASH}" == "${UPSTREAM_HASH}" ]]; then
-  echo ${CURRENT_BRANCH} not up to date with upstream.
+  echo "${CURRENT_BRANCH}" not up to date with upstream.
   if [[ ${IGNORE_UPSTREAM} -eq 0 ]]; then
     echo Aborting. Use '-u' to ignore.
     echo
@@ -94,13 +98,25 @@ if [[ ! "${LOCAL_HASH}" == "${UPSTREAM_HASH}" ]]; then
   fi
 fi
 
+if [[ ! "${OSTYPE}" == "darwin"* ]]; then
+  echo This script is not running on MacOS.
+  if [[ ${IGNORE_MACOS} -eq 0 ]]; then
+    echo Aborting. Use '-m' to ignore.
+    echo
+    exit 1
+  else
+    echo Ignoring non-MacOS. Crate will not be tested for Mac.
+    echo
+  fi
+fi
+
 mkdir -p "${TMP_DIR}"
 
 function create_symbol_file {
   if [[ ! -r "${SYMBOLS_FILE}" ]]; then
     echo Symbol file not found
     echo Performing build for supported platforms.
-    ${SCRIPT_DIR}/_run_supported_symbol_builds.sh
+    "${SCRIPT_DIR}"/_run_supported_symbol_builds.sh
   fi
 
   if [[ ! -r "${SYMBOLS_FILE}" ]]; then
@@ -129,7 +145,7 @@ function create_prefix_headers {
 }
 
 function prepare_crate_dir {
-  echo Preparing crate directory: ${CRATE_DIR}
+  echo Preparing crate directory: "${CRATE_DIR}"
   mkdir -p "${CRATE_DIR}"
   mkdir -p "${CRATE_AWS_LC_DIR}"/
 
@@ -162,4 +178,4 @@ function prepare_crate_dir {
 prepare_crate_dir
 create_prefix_headers
 
-"${SCRIPT_DIR}"/_test_supported_builds.sh
+"${SCRIPT_DIR}"/_test_supported_builds.sh "$( [ ${IGNORE_MACOS} -eq 1 ] && echo '-m' )"
