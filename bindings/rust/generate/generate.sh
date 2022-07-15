@@ -147,6 +147,7 @@ function prepare_crate_dir {
         "${CRATE_AWS_LC_DIR}"/
 
   cp "${AWS_LC_DIR}"/LICENSE  "${CRATE_AWS_LC_DIR}"/
+  cp "${AWS_LC_DIR}"/LICENSE  "${CRATE_DIR}"/
 
   mkdir -p "${CRATE_AWS_LC_DIR}"/util
   cp -r  "${AWS_LC_DIR}"/util/fipstools "${CRATE_AWS_LC_DIR}"/util
