@@ -176,8 +176,15 @@ static void CompareDigest(const DigestTestVector *test,
 }
 
 static void TestDigest(const DigestTestVector *test) {
-  bssl::ScopedEVP_MD_CTX ctx;
+  
+  // Test SHA3 only when |experimental_unstable_enable_sha3| is enabled
+  // |experimental_unstable_enable_sha3| is desabled by default
+  // SHA3 tests enabling |experimental_unstable_enable_sha3| are implemented in /fipsmodule/sha/sha3_test.cc
+  if ((strcmp(test->md.name, "SHA3-256") == 0) && *experimental_unstable_enable_sha3_get() == 0) {
+    return;
+  }
 
+  bssl::ScopedEVP_MD_CTX ctx;
   // Test the input provided.
   ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
   for (size_t i = 0; i < test->repeat; i++) {
