@@ -58,16 +58,17 @@
 #define OPENSSL_HEADER_DIGEST_H
 
 #include <openssl/base.h>
-#include "../crypto/fipsmodule/delocate.h"
+#include <stdbool.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 // Setter for |experimental_unstable_enable_sha3|.
-OPENSSL_EXPORT void experimental_unstable_enable_sha3_set(char enable);
+OPENSSL_EXPORT void experimental_unstable_enable_sha3_set(bool enable);
+
 // Getter for |experimental_unstable_enable_sha3|. Returns a pointer to |experimental_unstable_enable_sha3|. 
-OPENSSL_EXPORT char* experimental_unstable_enable_sha3_get(void);
+OPENSSL_EXPORT bool experimental_unstable_enable_sha3_get(void);
 
 // Digest functions.
 //

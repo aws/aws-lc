@@ -26,16 +26,14 @@ class SHA3TestVector {
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
-    // Test SHA3 when |experimental_unstable_enable_sha3| is disabled
-    // |experimental_unstable_enable_sha3| is desabled by default
-    // SHA3 should fail when |experimental_unstable_enable_sha3| is disabled
-    if (*experimental_unstable_enable_sha3_get() == 0){
+    // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it!
+    if (experimental_unstable_enable_sha3_get() == false){
       ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
       ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
       ASSERT_FALSE(EVP_DigestFinal(ctx, digest, &digest_length));
     }
 
-    // Set the value of|experimental_unstable_enable_sha3| to true and test SHA3
+    // Enable SHA3
     experimental_unstable_enable_sha3_set(true);
 
     // Test the correctness via the Init, Update and Final Digest APIs.
@@ -46,7 +44,7 @@ class SHA3TestVector {
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
               Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
     
-    // Set the value of|experimental_unstable_enable_sha3| back to false and test SHA3
+    // Disable SHA3
     experimental_unstable_enable_sha3_set(false);
 
     // Test again SHA3 when |experimental_unstable_enable_sha3| is disabled
@@ -63,14 +61,12 @@ class SHA3TestVector {
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     
-    // Test SHA3 when |experimental_unstable_enable_sha3| is disabled
-    // |experimental_unstable_enable_sha3| is desabled by default
-    // SHA3 should fail when |experimental_unstable_enable_sha3| is disabled
-    if (*experimental_unstable_enable_sha3_get() == 0){
+    // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it!
+    if (experimental_unstable_enable_sha3_get() == false) {
       ASSERT_FALSE(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL));
     }
 
-     // Set the value of|experimental_unstable_enable_sha3| to true and test SHA3
+    // Enable SHA3
     experimental_unstable_enable_sha3_set(true);
 
     // Test the correctness via the Init, Update and Final Digest APIs.
@@ -79,7 +75,7 @@ class SHA3TestVector {
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
               Bytes(digest_.data(), SHA3_256_DIGEST_LENGTH));
 
-    // Set the value of|experimental_unstable_enable_sha3| back to false and test SHA3
+    // Disable SHA3
     experimental_unstable_enable_sha3_set(false);
 
     // Test again SHA3 when |experimental_unstable_enable_sha3| is disabled

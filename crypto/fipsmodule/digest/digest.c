@@ -57,25 +57,27 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
+
 
 #include "internal.h"
 #include "../../internal.h"
 #include "../evp/internal.h"
 
 
-DEFINE_BSS_GET(char, experimental_unstable_enabled_sha3_flag)
+DEFINE_BSS_GET(bool, experimental_unstable_enabled_sha3_flag)
 
-void experimental_unstable_enable_sha3_set(char enable){
-      char *experimental_unstable_enabled_sha3 = experimental_unstable_enabled_sha3_flag_bss_get(); 
+void experimental_unstable_enable_sha3_set(bool enable){
+      bool *experimental_unstable_enabled_sha3 = experimental_unstable_enabled_sha3_flag_bss_get(); 
       *experimental_unstable_enabled_sha3 = enable;
 }
 
-char* experimental_unstable_enable_sha3_get(){
-      char* experimental_unstable_enabled_sha3 = experimental_unstable_enabled_sha3_flag_bss_get(); 
-      return experimental_unstable_enabled_sha3;
+bool experimental_unstable_enable_sha3_get(void){
+      bool* experimental_unstable_enabled_sha3 = experimental_unstable_enabled_sha3_flag_bss_get(); 
+      return *experimental_unstable_enabled_sha3;
 }
 
 
@@ -219,7 +221,7 @@ int EVP_MD_CTX_reset(EVP_MD_CTX *ctx) {
 
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {  
   // Check Digest Algorithms and value of |experimental_unstable_enabled_sha3_flag|
-  if (type->type == NID_sha3_256 && *experimental_unstable_enabled_sha3_flag_bss_get() == 0) {
+  if (type->type == NID_sha3_256 && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
     // Return error is |experimental_unstable_enabled_sha3_flag| is disabled
     return 0;
   }
@@ -244,17 +246,16 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
 }
 
 int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
-  if (type->type == NID_sha3_256 && *experimental_unstable_enabled_sha3_flag_bss_get() == 0) {
+  if (type->type == NID_sha3_256 && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
     return 0;
   }
 
   EVP_MD_CTX_init(ctx);
-  EVP_DigestInit_ex(ctx, type, NULL);
-  return 1;
+  return EVP_DigestInit_ex(ctx, type, NULL);
 }
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
-  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == 0) {
+  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
     return 0;
   }
 
@@ -263,7 +264,7 @@ int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
 }
 
 int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
-  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == 0) {
+  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
     return 0;
   }
   assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
@@ -276,7 +277,7 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
 }
 
 int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
-  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == 0) {
+  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
     return 0;
   }
 
@@ -289,7 +290,7 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
                unsigned int *out_size, const EVP_MD *type, ENGINE *impl) {
   EVP_MD_CTX ctx;
   int ret;
-  if (type->type == NID_sha3_256 && (*experimental_unstable_enabled_sha3_flag_bss_get() == 0)) {
+  if (type->type == NID_sha3_256 && (*experimental_unstable_enabled_sha3_flag_bss_get() == false)) {
     return 0;
   }
 

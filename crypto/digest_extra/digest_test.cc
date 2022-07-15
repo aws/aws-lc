@@ -180,7 +180,7 @@ static void TestDigest(const DigestTestVector *test) {
   // Test SHA3 only when |experimental_unstable_enable_sha3| is enabled
   // |experimental_unstable_enable_sha3| is desabled by default
   // SHA3 tests enabling |experimental_unstable_enable_sha3| are implemented in /fipsmodule/sha/sha3_test.cc
-  if ((strcmp(test->md.name, "SHA3-256") == 0) && *experimental_unstable_enable_sha3_get() == 0) {
+  if ((strcmp(test->md.name, "SHA3-256") == 0) && experimental_unstable_enable_sha3_get() == false) {
     return;
   }
 
