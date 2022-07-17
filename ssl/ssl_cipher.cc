@@ -1743,6 +1743,16 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
   return buf;
 }
 
+bool print_all_supported_ciphers(bool use_openssl_name) {
+
+  for (const SSL_CIPHER cipher : kCiphers) {
+    fprintf(stdout, "%s\n", use_openssl_name ? SSL_CIPHER_get_name(&cipher)
+                                             : SSL_CIPHER_standard_name(&cipher));
+  }
+
+  return true;
+}
+
 const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher) {
   return "TLSv1/SSLv3";
 }

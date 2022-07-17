@@ -533,6 +533,9 @@ struct ssl_cipher_st {
   uint32_t algorithm_prf;
 };
 
+// print_all_supported_ciphers prints all supported ciphers to stdout.
+bool print_all_supported_ciphers(bool use_openssl_name);
+
 BSSL_NAMESPACE_BEGIN
 
 // Bits for |algorithm_mkey| (key exchange algorithm).
