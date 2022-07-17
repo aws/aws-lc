@@ -534,7 +534,7 @@ struct ssl_cipher_st {
 };
 
 // print_all_supported_ciphers prints all supported ciphers to stdout.
-bool print_all_supported_ciphers(bool use_openssl_name);
+OPENSSL_EXPORT bool print_all_supported_ciphers(bool use_openssl_name);
 
 BSSL_NAMESPACE_BEGIN
 
