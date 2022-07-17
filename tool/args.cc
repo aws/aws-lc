@@ -115,6 +115,7 @@ bool GetString(std::string *out, const std::string &arg_name,
     return true;
   }
 
+  const std::string &value = it->second;
   *out = static_cast<std::string>(value.c_str());
 
   return true;
@@ -133,3 +134,4 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
 
   return true;
 }
+
