@@ -148,11 +148,13 @@ function print_executable_information {
   EXE_ARGUMENT=${2}
   LABEL=${3}
 
+  echo ""
+  echo "${LABEL}:"
   if command -v ${EXE_NAME} &> /dev/null
   then
-    echo ""
-    echo "${LABEL}:"
     ${EXE_NAME} ${EXE_ARGUMENT}
+  else
+    echo "${EXE_NAME} not found"
   fi
 }
 
@@ -164,10 +166,14 @@ function print_system_and_dependency_information {
   # Ninja executable names are not uniform over operating systems
   print_executable_information "ninja-build" "--version" "Ninja version (ninja-build executable)"
   print_executable_information "ninja" "--version" "Ninja version (ninja executable)"
-  print_executable_information "gcc" "--version" "GCC version"
-  print_executable_information "g++" "--version" "G++ version"
-  print_executable_information "clang" "--version" "Clang version"
+  print_executable_information "gcc" "--version" "gcc version"
+  print_executable_information "g++" "--version" "g++ version"
+  print_executable_information "clang" "--version" "clang version"
+  print_executable_information "clang++" "--version" "clang++ version"
+  print_executable_information "cc" "--version" "cc version"
+  print_executable_information "c++" "--version" "c++ version"
   print_executable_information "make" "--version" "Make version"
+  print_executable_information "rustup" "show" "Rust toolchain"
   echo ""
   echo "Operating system information:"
   uname -a
