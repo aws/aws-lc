@@ -208,11 +208,6 @@ OPENSSL_EXPORT size_t EVP_MD_size(const EVP_MD *md);
 // EVP_MD_block_size returns the native block-size of |md|, in bytes.
 OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 
-// EVP_MD_FLAG_PKEY_DIGEST indicates that the digest function is used with a
-// specific public key in order to verify signatures. (For example,
-// EVP_dss1.)
-#define EVP_MD_FLAG_PKEY_DIGEST 1
-
 // EVP_MD_FLAG_DIGALGID_ABSENT indicates that the parameter type in an X.509
 // DigestAlgorithmIdentifier representing this digest function should be
 // undefined rather than NULL.
@@ -274,12 +269,6 @@ OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
 // EVP_get_digestbyname returns an |EVP_MD| given a human readable name in
 // |name|, or NULL if the name is unknown.
 OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyname(const char *);
-
-// EVP_dss1 returns the value of EVP_sha1(). This was provided by OpenSSL to
-// specifiy the original DSA signatures, which were fixed to use SHA-1. Note,
-// however, that attempting to sign or verify DSA signatures with the EVP
-// interface will always fail.
-OPENSSL_EXPORT const EVP_MD *EVP_dss1(void);
 
 // EVP_MD_CTX_create calls |EVP_MD_CTX_new|.
 OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_create(void);
