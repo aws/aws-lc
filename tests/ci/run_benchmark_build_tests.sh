@@ -12,7 +12,7 @@ openssl_3_0_branch='openssl-3.0'
 
 function build_openssl_1_0 {
     echo "building OpenSSL 1.0"
-    git clone --branch "${openssl_1_0_branch}" "${openssl_url}" "../openssl-1.1"
+    git clone --branch "${openssl_1_0_branch}" "${openssl_url}" "../openssl-1.0"
     pushd "../openssl-1.0"
     mkdir -p "${install_dir}/openssl-1.0"
     ./config --prefix="${install_dir}/openssl-1.0" --openssldir="${install_dir}/openssl-1.0"
