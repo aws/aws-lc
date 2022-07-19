@@ -533,8 +533,9 @@ struct ssl_cipher_st {
   uint32_t algorithm_prf;
 };
 
-// print_all_supported_ciphers prints all supported ciphers to stdout.
-OPENSSL_EXPORT bool print_all_supported_ciphers(bool use_openssl_name);
+// tls_print_all_supported_cipher_suites prints all supported cipher suites for
+// all TLS versions to stdout.
+OPENSSL_EXPORT bool tls_print_all_supported_cipher_suites(bool use_openssl_name);
 
 BSSL_NAMESPACE_BEGIN
 

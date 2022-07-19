@@ -1743,7 +1743,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
   return buf;
 }
 
-bool print_all_supported_ciphers(bool use_openssl_name) {
+bool tls_print_all_supported_cipher_suites(bool use_openssl_name) {
 
   for (const SSL_CIPHER cipher : kCiphers) {
     fprintf(stdout, "%s\n", use_openssl_name ? SSL_CIPHER_get_name(&cipher)

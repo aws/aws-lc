@@ -126,7 +126,7 @@ bool GetString(std::string *out, const std::string &arg_name, std::string defaul
 
 // GetBoolArgument assigns |out| the value |true| if |arg_name|, of
 // type |kBooleanArgument|, from the map |args| is present. If |arg_name| is not
-// found in |args| it assigns |out| to the value |false.
+// found in |args| it assigns |out| to the value |false|.
 bool GetBoolArgument(bool *out, const std::string &arg_name, const args_map_t &args);
 
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);

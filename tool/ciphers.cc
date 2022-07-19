@@ -65,7 +65,7 @@ bool Ciphers(const std::vector<std::string> &args) {
   }
 
   if (print_all) {
-    return print_all_supported_ciphers(openssl_name);
+    return tls_print_all_supported_cipher_suites(openssl_name);
   }
 
   // Use a lambda to conditionally initialise const.
