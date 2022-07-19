@@ -105,3 +105,33 @@ bool GetUnsigned(unsigned *out, const std::string &arg_name,
 
   return true;
 }
+
+bool GetString(std::string *out, const std::string &arg_name,
+               std::string default_value, const args_map_t &args) {
+
+  const auto &it = args.find(arg_name);
+  if (it == args.end()) {
+    *out = default_value;
+    return true;
+  }
+
+  const std::string &value = it->second;
+  *out = static_cast<std::string>(value.c_str());
+
+  return true;
+}
+
+bool GetBoolArgument(bool *out, const std::string &arg_name,
+                     const args_map_t &args) {
+
+  const auto &it = args.find(arg_name);
+  if (it == args.end()) {
+    // Boolean argument not found
+    *out = false;
+  } else {
+    *out = true;
+  }
+
+  return true;
+}
+
