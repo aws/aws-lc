@@ -94,13 +94,6 @@ OPENSSL_EXPORT int RIPEMD160_Final(uint8_t out[RIPEMD160_DIGEST_LENGTH],
 OPENSSL_EXPORT uint8_t *RIPEMD160(const uint8_t *data, size_t len,
                                   uint8_t out[RIPEMD160_DIGEST_LENGTH]);
 
-// RIPEMD160_Transform is a low-level function that performs a single,
-// RIPEMD160 block transformation using the state from |ctx| and 64 bytes from
-// |block|.
-OPENSSL_EXPORT void RIPEMD160_Transform(RIPEMD160_CTX *ctx,
-                                        const uint8_t block[RIPEMD160_CBLOCK]);
-
-
 #if defined(__cplusplus)
 }  // extern C
 #endif
