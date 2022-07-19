@@ -533,6 +533,10 @@ struct ssl_cipher_st {
   uint32_t algorithm_prf;
 };
 
+// tls_print_all_supported_cipher_suites prints all supported cipher suites for
+// all TLS versions to stdout.
+OPENSSL_EXPORT bool tls_print_all_supported_cipher_suites(bool use_openssl_name);
+
 BSSL_NAMESPACE_BEGIN
 
 // Bits for |algorithm_mkey| (key exchange algorithm).
