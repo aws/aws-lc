@@ -253,8 +253,8 @@ static bool SpeedRSA(const std::string &selected) {
 #if defined(OPENSSL_1_0_BENCHMARK)
           const BIGNUM *temp_n = key.get()->n;
           const BIGNUM *temp_e = key.get()->e;
-	  verify_key.get()->n = BN_dup(temp_n);
-	  verify_key.get()->e = BN_dup(temp_e);
+          verify_key.get()->n = BN_dup(temp_n);
+          verify_key.get()->e = BN_dup(temp_e);
 #else
           const BIGNUM *temp_n = NULL;
           const BIGNUM *temp_e = NULL;
