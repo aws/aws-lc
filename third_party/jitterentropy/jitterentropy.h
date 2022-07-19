@@ -1,7 +1,7 @@
 /*
  * Non-physical true random number generator based on timing jitter.
  *
- * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2021
+ * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2022
  *
  * License
  * =======
