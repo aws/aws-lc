@@ -201,17 +201,6 @@ struct evp_pkey_ctx_st {
   int operation;
   // Algorithm specific data
   void *data;
-
-  // Currently, only the KEM operations are supported through this op variable.
-  // As more operations are added or migrated over to the OpenSSL 3 style, this
-  // union can be augmented with additional operation structures
-  // (e.g. encryption, signing)
-  union {
-    struct {
-      EVP_KEM *kem;
-      void *algctx; // opaque KEM-specific context
-    } encap;
-  } op;
 }; // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
@@ -250,6 +239,17 @@ struct evp_pkey_method_st {
   int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
+
+  // Encapsulate and decapsulate are operations defined for a KEM
+  // (Key Encapsulation Mechanism). So far, they are used only for
+  // Kyber post-quantum KEM.
+  int (*encapsulate)(EVP_PKEY_CTX *ctx,
+                     uint8_t *ciphertext, size_t *ciphertext_len,
+                     uint8_t *shared_secret, size_t *shared_secret_len);
+
+  int (*decapsulate)(EVP_PKEY_CTX *ctx,
+                     uint8_t *shared_secret, size_t *shared_secret_len,
+                     uint8_t *ciphertext, size_t ciphertext_len);
 }; // EVP_PKEY_METHOD
 
 #define FIPS_EVP_PKEY_METHODS 3

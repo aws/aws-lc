@@ -691,20 +691,23 @@ OPENSSL_EXPORT int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
 // containing the result. It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 
-OPENSSL_EXPORT int EVP_PKEY_encapsulate_init(EVP_PKEY_CTX *ctx,
-                                             const OSSL_PARAM params[]);
+// EVP_PKEY_encapsulate is operation defined for a KEM (Key Encapsulation
+// Mechanism). The function generates a shared secret and a ciphertext which
+// encapsulates the shared secret using the public key given within |ctx|.
 OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
-                                        unsigned char *wrapped_key,
-                                        size_t *wrapped_key_len,
-                                        unsigned char *gen_key,
-                                        size_t *gen_key_len);
-OPENSSL_EXPORT int EVP_PKEY_decapsulate_init(EVP_PKEY_CTX *ctx,
-                                             const OSSL_PARAM params[]);
+                                        uint8_t *ciphertext,
+                                        size_t *ciphertext_len,
+                                        uint8_t *shared_secret_key,
+                                        size_t *shared_secret_len);
+
+// EVP_PKEY_decapsulate is operation defined for a KEM (Key Encapsulation
+// Mechanism). The function decapsulates the shared secret from the given
+// ciphertext using the private key given within |ctx|.
 OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
-                                        unsigned char *unwrapped,
-                                        size_t *unwrapped_len,
-                                        const unsigned char *wrapped,
-                                        size_t wrapped_len);
+                                        uint8_t *shared_secret,
+                                        size_t *shared_secret_len,
+                                        uint8_t *ciphertext,
+                                        size_t ciphertext_len);
 
 // EVP_PKEY_paramgen_init initialises an |EVP_PKEY_CTX| for a parameter
 // generation operation. It should be called before |EVP_PKEY_paramgen|.
@@ -1092,32 +1095,6 @@ struct evp_pkey_st {
   // methods for the key type.
   const EVP_PKEY_ASN1_METHOD *ameth;
 }; // EVP_PKEY
-
-struct evp_kem_st {
-  int name_id;
-  const char *type_name;
-  const char *description;
-
-  int (*encapsulate_init)(void *ctx,
-                          void *prov_key,
-                          const OSSL_PARAM params[]);
-  int (*encapsulate)(void *ctx,
-                     unsigned char *out,
-                     size_t *out_len,
-                     unsigned char *secret,
-                     size_t *secret_len);
-  int (*decapsulate_init)(void *ctx,
-                          void *prov_key,
-                          const OSSL_PARAM params[]);
-  int (*decapsulate)(void *ctx,
-                     unsigned char *out,
-                     size_t *out_len,
-                     const unsigned char *in,
-                     size_t in_len);
-
-}; // EVP_KEM
-
-extern const EVP_KEM EVP_KEM_kyber512;
 
 #if defined(__cplusplus)
 }  // extern C

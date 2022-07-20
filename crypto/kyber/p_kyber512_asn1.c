@@ -16,7 +16,7 @@ static void kyber512_free(EVP_PKEY *pkey) {
 }
 
 static int kyber512_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
-  if (len != KYBER512_PRIVATE_KEY_BYTES) {
+  if (len != KYBER512_SECRET_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_KEYBITS);
     return 0;
   }
@@ -64,17 +64,17 @@ static int kyber512_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
   }
 
   if (out == NULL) {
-    *out_len = KYBER512_PRIVATE_KEY_BYTES;
+    *out_len = KYBER512_SECRET_KEY_BYTES;
     return 1;
   }
 
-  if (*out_len < KYBER512_PRIVATE_KEY_BYTES) {
+  if (*out_len < KYBER512_SECRET_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
-  OPENSSL_memcpy(out, key->priv, KYBER512_PRIVATE_KEY_BYTES);
-  *out_len = KYBER512_PRIVATE_KEY_BYTES;
+  OPENSSL_memcpy(out, key->priv, KYBER512_SECRET_KEY_BYTES);
+  *out_len = KYBER512_SECRET_KEY_BYTES;
   return 1;
 }
 
@@ -103,11 +103,11 @@ static int kyber512_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 static int kyber512_size(const EVP_PKEY *pkey) {
-  return KYBER512_PUBLIC_KEY_BYTES + KYBER512_PRIVATE_KEY_BYTES;
+  return KYBER512_PUBLIC_KEY_BYTES + KYBER512_SECRET_KEY_BYTES;
 }
 
 static int kyber512_bits(const EVP_PKEY *pkey) {
-  return 8 * (KYBER512_PUBLIC_KEY_BYTES + KYBER512_PRIVATE_KEY_BYTES);
+  return 8 * (KYBER512_PUBLIC_KEY_BYTES + KYBER512_SECRET_KEY_BYTES);
 }
 
 const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {
