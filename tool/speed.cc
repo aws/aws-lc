@@ -639,11 +639,9 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-  // OpenSSL 1.0 doesn't use ptr types for EVP_MD_CTX
-  // so we create a unique_ptr using the std library instead
-  // of the custom unique_ptr
+  // OpenSSL 1.0.x has a different API to create an EVP_MD_CTX
 #if defined(OPENSSL_1_0_BENCHMARK)
-  std::unique_ptr<EVP_MD_CTX> ctx = std::unique_ptr<EVP_MD_CTX>(new EVP_MD_CTX);
+  BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_create());
 #else
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
 #endif
