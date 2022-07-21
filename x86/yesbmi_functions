@@ -51,6 +51,9 @@ p256_montjmixadd
 p384_montjadd
 p384_montjdouble
 p384_montjmixadd
+p521_jadd
+p521_jdouble
+p521_jmixadd
 secp256k1_jadd
 secp256k1_jdouble
 secp256k1_jmixadd

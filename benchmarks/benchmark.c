@@ -653,6 +653,10 @@ void call_p384_montjadd(void) repeat(p384_montjadd(b1,b2,b3))
 void call_p384_montjdouble(void) repeat(p384_montjdouble(b1,b2))
 void call_p384_montjmixadd(void) repeat(p384_montjmixadd(b1,b2,b3))
 
+void call_p521_jadd(void) repeat(p521_jadd(b1,b2,b3))
+void call_p521_jdouble(void) repeat(p521_jdouble(b1,b2))
+void call_p521_jmixadd(void) repeat(p521_jmixadd(b1,b2,b3))
+
 void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
 void call_secp256k1_jdouble(void) repeat(secp256k1_jdouble(b1,b2))
 void call_secp256k1_jmixadd(void) repeat(secp256k1_jmixadd(b1,b2,b3))
@@ -934,6 +938,9 @@ int main(void)
   timingtest(bmi,"p384_montjadd",call_p384_montjadd);
   timingtest(bmi,"p384_montjdouble",call_p384_montjdouble);
   timingtest(bmi,"p384_montjmixadd",call_p384_montjmixadd);
+  timingtest(bmi,"p521_jadd",call_p521_jadd);
+  timingtest(bmi,"p521_jdouble",call_p521_jdouble);
+  timingtest(bmi,"p521_jmixadd",call_p521_jmixadd);
   timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
   timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);
   timingtest(bmi,"secp256k1_jmixadd",call_secp256k1_jmixadd);

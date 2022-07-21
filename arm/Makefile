@@ -243,6 +243,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       p521/bignum_tolebytes_p521.o \
       p521/bignum_tomont_p521.o \
       p521/bignum_triple_p521.o \
+      p521/p521_jadd.o \
+      p521/p521_jdouble.o \
+      p521/p521_jmixadd.o \
       secp256k1/bignum_add_p256k1.o \
       secp256k1/bignum_cmul_p256k1.o \
       secp256k1/bignum_deamont_p256k1.o \

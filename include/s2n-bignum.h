@@ -757,6 +757,18 @@ extern void p384_montjdouble(uint64_t p3[static 18],uint64_t p1[static 18]);
 // Inputs p1[18], p2[12]; output p3[18]
 extern void p384_montjmixadd(uint64_t p3[static 18],uint64_t p1[static 18],uint64_t p2[static 12]);
 
+// Point addition on NIST curve P-521 in Jacobian coordinates
+// Inputs p1[27], p2[27]; output p3[27]
+extern void p521_jadd(uint64_t p3[static 27],uint64_t p1[static 27],uint64_t p2[static 27]);
+
+// Point doubling on NIST curve P-521 in Jacobian coordinates
+// Input p1[27]; output p3[27]
+extern void p521_jdouble(uint64_t p3[static 27],uint64_t p1[static 27]);
+
+// Point mixed addition on NIST curve P-521 in Jacobian coordinates
+// Inputs p1[27], p2[18]; output p3[27]
+extern void p521_jmixadd(uint64_t p3[static 27],uint64_t p1[static 27],uint64_t p2[static 18]);
+
 // Point addition on SECG curve secp256k1 in Jacobian coordinates
 // Inputs p1[12], p2[12]; output p3[12]
 extern void secp256k1_jadd(uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 12]);
