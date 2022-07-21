@@ -43,7 +43,7 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     // The regular expression here has 3 capture groups.
     // After the prefix is interpolated into the RE, it will have a form like this:
     // ^(\\s+)pub\\s+(fn|static)\\s+aws_lc_0_1_0_(\\w*)(.*)
-    let prefix_func_detector =
+    let prefix_symbol_detector =
         Regex::new(&format!("^(\\s+)pub\\s+(fn|static)\\s+{}_(\\w*)(.*)", prefix)).unwrap();
     //                        ^            ^                 ^     ^- 4: remainder
     //                        |            |                 |- 3: original name
@@ -55,7 +55,7 @@ fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     let mut bindings_writer = BufWriter::new(File::create(&output_path)?);
     for line in bindings_reader.lines() {
         let line = line.unwrap().clone();
-        if let Some(captures) = prefix_func_detector.captures(&line) {
+        if let Some(captures) = prefix_symbol_detector.captures(&line) {
             let line_start = &captures[1];
             let symbol_type = &captures[2];
             let symbol_name = &captures[3];
