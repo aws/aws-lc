@@ -687,8 +687,11 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 
 static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
+  // OpenSSL 1.0.x doesn't use pointer types for HMAC so we need
+  // wrap it in a pointer and do initialization logic at the start
 #if defined(OPENSSL_1_0_BENCHMARK)
-  std::unique_ptr<HMAC_CTX> ctx = std::unique_ptr<HMAC_CTX>(new HMAC_CTX);
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(new HMAC_CTX);
+  HMAC_CTX_init(ctx.get());
 #else
   BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
 #endif

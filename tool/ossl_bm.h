@@ -51,13 +51,22 @@ OSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 OSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
 
 // OpenSSL 1.0.x uses structs for HMAC and a different API for EVP_MD_CTX
-// We use the default deleter and a standard unique_ptr for HMAC to 
-// limit the amount of custom code for OpenSSL 1.0.x
+// We need to add more custom logic to HMAC to let it properly delete the
+// pointer we create and we need to specify the seperate API for EVP here
 #if !defined(OPENSSL_1_0_BENCHMARK)
 OSSL_MAKE_DELETER(EVP_MD_CTX, EVP_MD_CTX_free)
 OSSL_MAKE_DELETER(HMAC_CTX, HMAC_CTX_free)
 #else
 OSSL_MAKE_DELETER(EVP_MD_CTX, EVP_MD_CTX_destroy)
+// This code lets us properly cleanup and delete HMAC_CTX ptrs
+    namespace internal {
+    template <> struct DeleterImpl<HMAC_CTX> {
+        static void Free(HMAC_CTX *ptr) { 
+	    HMAC_CTX_cleanup(ptr); 
+	    delete ptr;
+	}
+    };
+    }
 #endif
 } // namespace ossl
 
