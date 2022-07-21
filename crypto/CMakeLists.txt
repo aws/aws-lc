@@ -487,10 +487,8 @@ add_library(
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 
 function(build_libcrypto name module_source)
-  if(FIPS_SHARED)
-    add_library(${name} SHARED $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
-  elseif(FIPS_DELOCATE)
-    add_library(${name} STATIC $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
+  if(FIPS)
+    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
   else()
     add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
   endif()
