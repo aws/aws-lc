@@ -148,3 +148,25 @@ TEST(CryptoTest, FIPSdownstreamPrecompilationFlag) {
 #endif
 }
 #endif // defined(BORINGSSL_FIPS)
+
+#if defined(BORINGSSL_FIPS_140_3)
+TEST(Crypto, QueryAlgorithmStatus) {
+#if defined(BORINGSSL_FIPS)
+  const bool is_fips_build = true;
+#else
+  const bool is_fips_build = false;
+#endif
+
+  EXPECT_EQ(FIPS_query_algorithm_status("AES-GCM"), is_fips_build);
+  EXPECT_EQ(FIPS_query_algorithm_status("AES-ECB"), is_fips_build);
+
+  EXPECT_FALSE(FIPS_query_algorithm_status("FakeEncrypt"));
+  EXPECT_FALSE(FIPS_query_algorithm_status(""));
+}
+#endif //BORINGSSL_FIPS_140_3
+
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)
+TEST(Crypto, OnDemandIntegrityTest) {
+  BORINGSSL_integrity_test();
+}
+#endif

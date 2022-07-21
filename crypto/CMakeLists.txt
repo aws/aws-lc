@@ -352,7 +352,6 @@ add_library(
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
-  hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
@@ -480,11 +479,23 @@ add_library(
   x509v3/v3_skey.c
   x509v3/v3_utl.c
   xts/xts.c
+  decrepit/bio/base64_bio.c
+  decrepit/blowfish/blowfish.c
+  decrepit/cast/cast_tables.c
+  decrepit/cfb/cfb.c
+  decrepit/dh/dh_decrepit.c
+  decrepit/evp/evp_do_all.c
+  decrepit/ripemd/ripemd.c
+  decrepit/rsa/rsa_decrepit.c
+  decrepit/x509/x509_decrepit.c
 
   ${CRYPTO_ARCH_SOURCES}
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+
+# For the prefix build, the object files need the prefix header files to build.
+add_dependencies(crypto_objects global_target)
 
 function(build_libcrypto name module_source)
   if(FIPS)
@@ -527,11 +538,18 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
-    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    add_library(
+      generated_fipsmodule
+
+      OBJECT
+
+      generated_fips_shared_support.c
+      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+    )
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
-    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
-    # library.
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
+    # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
@@ -541,8 +559,7 @@ if(FIPS_SHARED)
       TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
       ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
-      -sha256 ${INJECT_HASH_APPLE_FLAG}
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
       # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
       # go_executable isn't used (as it doesn't get built), but we list this
       # dependency anyway in case it starts working in some CMake version.
@@ -568,11 +585,20 @@ endif()
 if(BUILD_TESTING)
   add_subdirectory(test)
 
-  add_executable(${MEM_TEST_EXEC} mem_test.cc $<TARGET_OBJECTS:boringssl_gtest_main>)
-  target_compile_definitions(${MEM_TEST_EXEC} PRIVATE BORINGSSL_IMPLEMENTATION)
-  add_dependencies(${MEM_TEST_EXEC} global_target)
-  target_link_libraries(${MEM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
-  add_dependencies(all_tests ${MEM_TEST_EXEC})
+  macro(add_test_executable executable_name test_file)
+    message(STATUS "Generating test executable ${executable_name}.")
+    add_executable(${executable_name} ${test_file} $<TARGET_OBJECTS:boringssl_gtest_main>)
+    target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
+    add_dependencies(${executable_name} global_target)
+    target_link_libraries(${executable_name} test_support_lib boringssl_gtest crypto)
+    add_dependencies(all_tests ${executable_name})
+  endmacro()
+
+  # Below tests are added as new executables to be executed in single process.
+  # mem_test.cc tests memory overrides via defining strong symbols.
+  add_test_executable(${MEM_TEST_EXEC} mem_test.cc)
+  # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
+  add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
@@ -638,7 +664,7 @@ if(BUILD_TESTING)
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
-    hkdf/hkdf_test.cc
+    fipsmodule/hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
@@ -666,6 +692,10 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     xts/xts_test.cc
+    decrepit/blowfish/blowfish_test.cc
+    decrepit/cfb/cfb_test.cc
+    decrepit/evp/evp_test.cc
+    decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>

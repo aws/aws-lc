@@ -232,7 +232,7 @@ function(s2n_asm_cpreprocess dest src)
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR}| tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} -DS2N_BN_HIDE_SYMBOLS| tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .
@@ -311,7 +311,7 @@ if(FIPS_DELOCATE)
                 boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> -sha256
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
     DEPENDS bcm_hashunset inject_hash
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
@@ -320,6 +320,7 @@ if(FIPS_DELOCATE)
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target
   # so that crypto can depend on it.
   add_custom_target(bcm_o_target DEPENDS bcm.o)
+  set(BCM_NAME bcm.o PARENT_SCOPE)
 
   add_library(
     fipsmodule
@@ -327,6 +328,7 @@ if(FIPS_DELOCATE)
     OBJECT
 
     fips_shared_support.c
+    cpucap/cpucap.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -344,6 +346,7 @@ elseif(FIPS_SHARED)
     OBJECT
 
     fips_shared_support.c
+    cpucap/cpucap.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -449,6 +452,7 @@ else()
 
     bcm.c
     fips_shared_support.c
+    cpucap/cpucap.c
 
     ${BCM_ASM_SOURCES}
   )
@@ -456,4 +460,3 @@ else()
 
   add_dependencies(fipsmodule global_target)
 endif()
-

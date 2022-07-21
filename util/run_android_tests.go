@@ -370,7 +370,6 @@ func main() {
 		libraries = []string{
 			"libboringssl_gtest.so",
 			"crypto/libcrypto.so",
-			"decrepit/libdecrepit.so",
 			"ssl/libssl.so",
 		}
 	} else if !os.IsNotExist(err) {

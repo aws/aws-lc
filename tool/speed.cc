@@ -1585,7 +1585,10 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
      !SpeedAES256XTS("AES-256-XTS", selected) ||
+     // OpenSSL 3.0 doesn't allow MD4 calls
+#if !defined(OPENSSL3_BENCHMARK)
      !SpeedHash(EVP_md4(), "MD4", selected) ||
+#endif
      !SpeedHash(EVP_md5(), "MD5", selected) ||
      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
      !SpeedHash(EVP_sha224(), "sha-224", selected) ||

@@ -64,13 +64,14 @@
 #include <openssl/type_check.h>
 
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && !defined(AWSLC_FIPS)
 #define AES_CBC_HMAC_SHA_STITCH
 // TLS1_1_VERSION is also defined in ssl.h.
 #define TLS1_1_VERSION 0x0302
@@ -202,7 +203,7 @@ OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) {
 #endif
 }
 
-// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It decrypts
+// chacha20_poly1305_open is defined in chacha20_poly1305_*.pl. It decrypts
 // |plaintext_len| bytes from |ciphertext| and writes them to |out_plaintext|.
 // Additional input parameters are passed in |aead_data->in|. On exit, it will
 // write calculated tag value to |aead_data->out.tag|, which the caller must
@@ -213,7 +214,7 @@ extern void chacha20_poly1305_open(uint8_t *out_plaintext,
                                    size_t ad_len,
                                    union chacha20_poly1305_open_data *data);
 
-// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It encrypts
+// chacha20_poly1305_open is defined in chacha20_poly1305_*.pl. It encrypts
 // |plaintext_len| bytes from |plaintext| and writes them to |out_ciphertext|.
 // Additional input parameters are passed in |aead_data->in|. The calculated tag
 // value is over the computed ciphertext concatenated with |extra_ciphertext|

@@ -284,6 +284,13 @@ static int parse_asn1_tag(CBS *cbs, unsigned *out) {
 
   tag |= tag_number;
 
+  // Tag [UNIVERSAL 0] is reserved for use by the encoding. Reject it here to
+  // avoid some ambiguity around ANY values and BER indefinite-length EOCs. See
+  // https://crbug.com/boringssl/455.
+  if ((tag & ~CBS_ASN1_CONSTRUCTED) == 0) {
+    return 0;
+  }
+
   *out = tag;
   return 1;
 }
@@ -482,16 +489,6 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
   return 1;
 }
 
-// Adding warning suppression as temporary fix for gcc11 ARM build issue
-// https://github.com/awslabs/aws-lc/issues/184
-// First two warnings are turned on to avoid incompatibilites with older compilers.
-#if defined(__GNUC__) && __GNUC__ == 11 // gcc x 11
-
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wstringop-overflow"
-
-#endif // __GNUC__
-
 int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
   int is_negative;
   CBS bytes;
@@ -515,11 +512,6 @@ int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
   *out = u.i;
   return 1;
 }
-#if defined(__GNUC__) && __GNUC__ == 11 // gcc x 11
-
-# pragma GCC diagnostic pop
-
-#endif // __GNUC__
 
 int CBS_get_asn1_bool(CBS *cbs, int *out) {
   CBS bytes;

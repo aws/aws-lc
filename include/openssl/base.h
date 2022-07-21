@@ -329,24 +329,6 @@ extern "C" {
 #endif
 #endif  // OPENSSL_ASM_INCOMPATIBLE
 
-#if defined(__cplusplus)
-// enums can be predeclared, but only in C++ and only if given an explicit type.
-// C doesn't support setting an explicit type for enums thus a #define is used
-// to do this only for C++. However, the ABI type between C and C++ need to have
-// equal sizes, which is confirmed in a unittest.
-#define BORINGSSL_ENUM_INT : int
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT;
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT;
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT;
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT;
-enum ssl_verify_result_t BORINGSSL_ENUM_INT;
-#else
-#define BORINGSSL_ENUM_INT
-#endif
-
 // CRYPTO_THREADID is a dummy value.
 typedef int CRYPTO_THREADID;
 
@@ -471,7 +453,6 @@ typedef struct trust_token_issuer_st TRUST_TOKEN_ISSUER;
 typedef struct trust_token_method_st TRUST_TOKEN_METHOD;
 typedef struct v3_ext_ctx X509V3_CTX;
 typedef struct x509_attributes_st X509_ATTRIBUTE;
-typedef struct x509_cert_aux_st X509_CERT_AUX;
 typedef struct x509_crl_method_st X509_CRL_METHOD;
 typedef struct x509_lookup_st X509_LOOKUP;
 typedef struct x509_lookup_method_st X509_LOOKUP_METHOD;

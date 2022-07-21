@@ -56,13 +56,29 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
 
-    - identifier: ubuntu2004_gcc11x_x86_64
+    - identifier: ubuntu2204_gcc11x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-11x_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-22.04_gcc-11x_latest
+
+    - identifier: ubuntu2204_gcc12x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-22.04_gcc-12x_latest
+
+    - identifier: ubuntu2204_gcc11x_x86_64_prefix
+      buildspec: ./tests/ci/codebuild/linux-x86/run_prefix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:ubuntu-22.04_gcc-11x_latest
 
     - identifier: ubuntu2004_clang7x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -158,6 +174,14 @@ batch:
 
     - identifier: amazonlinux2_clang7x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: ECR_REPO_PLACEHOLDER:amazonlinux-2_clang-7x_latest
+
+    - identifier: amazonlinux2_clang7x_x86_64_prefix
+      buildspec: ./tests/ci/codebuild/linux-x86/run_prefix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -355,6 +379,14 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+
+    - identifier: ubuntu2004_clang7x_x86_64_benchmark
+      buildspec: ./tests/ci/codebuild/linux-x86/run_bm_build_test.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_SMALL
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x-bm-framework_latest
 
     - identifier: ubuntu710_gcc4_1x_x86_64_build
       buildspec: ./tests/ci/codebuild/linux-x86/run_legacy_build.yml
