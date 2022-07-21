@@ -691,7 +691,7 @@ OPENSSL_EXPORT int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
 // containing the result. It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 
-// EVP_PKEY_encapsulate is operation defined for a KEM (Key Encapsulation
+// EVP_PKEY_encapsulate is an operation defined for a KEM (Key Encapsulation
 // Mechanism). The function generates a shared secret and a ciphertext which
 // encapsulates the shared secret using the public key given within |ctx|.
 OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
@@ -700,7 +700,7 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
                                         uint8_t *shared_secret_key,
                                         size_t *shared_secret_len);
 
-// EVP_PKEY_decapsulate is operation defined for a KEM (Key Encapsulation
+// EVP_PKEY_decapsulate is an operation defined for a KEM (Key Encapsulation
 // Mechanism). The function decapsulates the shared secret from the given
 // ciphertext using the private key given within |ctx|.
 OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
