@@ -148,7 +148,7 @@ TEST(Kyber512Test, KeySize) {
 }
 
 TEST(Kyber512Test, KEMOperations) {
-  // Basic functional test for KYBER512
+  // Basic functional test for KYBER512.
   // Simulate two sides of the key exchange mechanism.
   size_t shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
   size_t ciphertext_len = KYBER512_CIPHERTEXT_BYTES;
