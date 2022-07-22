@@ -84,7 +84,7 @@ void EVP_MD_unstable_sha3_enable(bool enable) {
       CRYPTO_STATIC_MUTEX_unlock_write( unstable_sha3_flag_lock_bss_get());
 }
 
-bool EVP_MD_unstable_sha3_is_enabled(void){
+bool EVP_MD_unstable_sha3_is_enabled(void) {
       // Lock the sha3_enable while reading so that it is not overwritten meanwhile
       // Allow concurrent reads, do not allow write access to the sha3_flag
       CRYPTO_STATIC_MUTEX_lock_read( unstable_sha3_flag_lock_bss_get());
