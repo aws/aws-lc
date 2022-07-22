@@ -70,11 +70,11 @@
 // Create and initialize a static variable |unstable_enabled_sha3_flag| to enable/disable the use of SHA3.
 DEFINE_BSS_GET(bool, unstable_enabled_sha3_flag)
 
-// Create and initiazlize a static mutex to lock/unlock the update of the |unstable_enabled_sha3_flag|.
+// Create and initialize a static mutex to lock/unlock the update of the |unstable_enabled_sha3_flag|.
 DEFINE_STATIC_MUTEX(unstable_sha3_flag_lock)
 
 
-void EVP_MD_unstable_sha3_enable(bool enable){
+void EVP_MD_unstable_sha3_enable(bool enable) {
       // Lock the sha3_enable for rest of threads
       CRYPTO_STATIC_MUTEX_lock_write( unstable_sha3_flag_lock_bss_get());
 
@@ -84,7 +84,7 @@ void EVP_MD_unstable_sha3_enable(bool enable){
       CRYPTO_STATIC_MUTEX_unlock_write( unstable_sha3_flag_lock_bss_get());
 }
 
-bool EVP_MD_unstable_sha3_is_enabled(void){
+bool EVP_MD_unstable_sha3_is_enabled(void) {
       // Lock the sha3_enable while reading so that it is not overwritten meanwhile
       // Allow concurrent reads, do not allow write access to the sha3_flag
       CRYPTO_STATIC_MUTEX_lock_read( unstable_sha3_flag_lock_bss_get());

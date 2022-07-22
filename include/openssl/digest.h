@@ -68,7 +68,7 @@ extern "C" {
 // EVP_MD_unstable_sha3_enable updates the value of |unstable_enable_sha3|.
 OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
 
-// EVP_MD_unstable_sha3_is_enabled returns the value of |unstable_enable_sha3|.
+// EVP_MD_unstable_sha3_is_enabled returns wheather SHA3 is enabled.
 OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
 
 // Digest functions.

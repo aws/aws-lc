@@ -28,10 +28,12 @@ class SHA3TestVector {
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
+    #if !defined(OPENSSL_ANDROID)
     // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestInit(ctx, algorithm), "");
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8), "");
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestFinal(ctx, digest, &digest_length), "");
+    #endif  // OPENSSL_ANDROID
 
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
@@ -47,10 +49,12 @@ class SHA3TestVector {
     // Disable SHA3
     EVP_MD_unstable_sha3_enable(false);
 
+    #if !defined(OPENSSL_ANDROID)
     // Test again SHA3 when |unstable_enable_sha3| is disabled
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestInit(ctx, algorithm), "");
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8), "");
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestFinal(ctx, digest, &digest_length), "");
+    #endif  // OPENSSL_ANDROID
 
     OPENSSL_free(ctx);
   }
@@ -61,8 +65,10 @@ class SHA3TestVector {
     uint8_t digest[SHA3_256_DIGEST_LENGTH];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     
+    #if !defined(OPENSSL_ANDROID)
     // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
-      ASSERT_DEATH_IF_SUPPORTED(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL), "");
+    ASSERT_DEATH_IF_SUPPORTED(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL), "");
+    #endif  // OPENSSL_ANDROID
 
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
@@ -76,8 +82,10 @@ class SHA3TestVector {
     // Disable SHA3
     EVP_MD_unstable_sha3_enable(false);
 
+    #if !defined(OPENSSL_ANDROID)
     // Test again SHA3 when |unstable_enable_sha3| is disabled
     ASSERT_DEATH_IF_SUPPORTED(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL), "");
+    #endif  // OPENSSL_ANDROID
     
     OPENSSL_free(ctx);
 
