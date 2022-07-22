@@ -50,7 +50,7 @@ OSSL_MAKE_DELETER(EC_POINT, EC_POINT_free)
 OSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 OSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
 
-// OpenSSL 1.0.x uses structs for HMAC and a different API for EVP_MD_CTX
+// OpenSSL 1.0.x has different APIs for EVP_MD_CTX and HMAC
 // We need to add more custom logic to HMAC to let it properly delete the
 // pointer we create and we need to specify the seperate API for EVP here
 #if !defined(OPENSSL_1_0_BENCHMARK)
