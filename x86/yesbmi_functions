@@ -45,3 +45,15 @@ bignum_triple_p256k1
 bignum_triple_p384
 bignum_triple_p521
 curve25519_ladderstep
+p256_montjadd
+p256_montjdouble
+p256_montjmixadd
+p384_montjadd
+p384_montjdouble
+p384_montjmixadd
+p521_jadd
+p521_jdouble
+p521_jmixadd
+secp256k1_jadd
+secp256k1_jdouble
+secp256k1_jmixadd

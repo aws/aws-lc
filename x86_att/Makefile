@@ -140,6 +140,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       p256/bignum_tomont_p256_alt.o \
       p256/bignum_triple_p256.o \
       p256/bignum_triple_p256_alt.o \
+      p256/p256_montjadd.o \
+      p256/p256_montjdouble.o \
+      p256/p256_montjmixadd.o \
       p384/bignum_add_p384.o \
       p384/bignum_bigendian_6.o \
       p384/bignum_cmul_p384.o \
@@ -170,6 +173,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       p384/bignum_tomont_p384_alt.o \
       p384/bignum_triple_p384.o \
       p384/bignum_triple_p384_alt.o \
+      p384/p384_montjadd.o \
+      p384/p384_montjdouble.o \
+      p384/p384_montjmixadd.o \
       p521/bignum_add_p521.o \
       p521/bignum_cmul_p521.o \
       p521/bignum_cmul_p521_alt.o \
@@ -196,6 +202,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       p521/bignum_tomont_p521.o \
       p521/bignum_triple_p521.o \
       p521/bignum_triple_p521_alt.o \
+      p521/p521_jadd.o \
+      p521/p521_jdouble.o \
+      p521/p521_jmixadd.o \
       secp256k1/bignum_add_p256k1.o \
       secp256k1/bignum_cmul_p256k1.o \
       secp256k1/bignum_cmul_p256k1_alt.o \
@@ -219,7 +228,10 @@ OBJ = curve25519/bignum_add_p25519.o \
       secp256k1/bignum_tomont_p256k1.o \
       secp256k1/bignum_tomont_p256k1_alt.o \
       secp256k1/bignum_triple_p256k1.o \
-      secp256k1/bignum_triple_p256k1_alt.o
+      secp256k1/bignum_triple_p256k1_alt.o \
+      secp256k1/secp256k1_jadd.o \
+      secp256k1/secp256k1_jdouble.o \
+      secp256k1/secp256k1_jmixadd.o
 
 # The AT&T syntax source files
 

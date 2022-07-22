@@ -44,9 +44,8 @@
         adds    d1, d1, d0, lsl #32;                                \
         lsr     t1, d0, #32;                                        \
         adcs    d2, d2, t1;                                         \
-        mov     t1, #0xFFFFFFFF00000001;                            \
-        mul     t0, d0, t1;                                         \
-        umulh   d4, d0, t1;                                         \
+        mul     t0, d0, mc;                                         \
+        umulh   d4, d0, mc;                                         \
         adcs    d3, d3, t0;                                         \
         adc     d4, d4, xzr
 
@@ -72,6 +71,10 @@
 // This one is the same as h, which is safe with this computation sequence
 
 #define u7 h
+
+// This one is the same as a3, and is used for the Montgomery constant 0xFFFFFFFF00000001
+
+#define mc x5
 
 S2N_BN_SYMBOL(bignum_montsqr_p256_alt):
 
@@ -144,6 +147,7 @@ S2N_BN_SYMBOL(bignum_montsqr_p256_alt):
 
 // Squaring complete. Perform 4 Montgomery steps to rotate the lower half
 
+        mov     mc, #0xFFFFFFFF00000001
         montreds(u0,u3,u2,u1,u0, a1,a0)
         montreds(u1,u0,u3,u2,u1, a1,a0)
         montreds(u2,u1,u0,u3,u2, a1,a0)
@@ -158,9 +162,9 @@ S2N_BN_SYMBOL(bignum_montsqr_p256_alt):
         cset    a0, cs
 
 // Set [a3;0;a1;-1] = p_256 and form [u7,u6,u5,u4] = [a0;u3;u2;u1;u0] - p_256
+// Note that a3 == mc was already set above
 
         mov     a1, #0x00000000ffffffff
-        mov     a3, #0xffffffff00000001
 
         subs    u4, u0, #-1
         sbcs    u5, u1, a1

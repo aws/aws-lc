@@ -645,6 +645,22 @@ void call_bignum_mux16__32()
 void call_curve25519_ladderstep(void) repeat(curve25519_ladderstep(b0,b1,b2,*b3))
 void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1,b2,*b3))
 
+void call_p256_montjadd(void) repeat(p256_montjadd(b1,b2,b3))
+void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
+void call_p256_montjmixadd(void) repeat(p256_montjmixadd(b1,b2,b3))
+
+void call_p384_montjadd(void) repeat(p384_montjadd(b1,b2,b3))
+void call_p384_montjdouble(void) repeat(p384_montjdouble(b1,b2))
+void call_p384_montjmixadd(void) repeat(p384_montjmixadd(b1,b2,b3))
+
+void call_p521_jadd(void) repeat(p521_jadd(b1,b2,b3))
+void call_p521_jdouble(void) repeat(p521_jdouble(b1,b2))
+void call_p521_jmixadd(void) repeat(p521_jmixadd(b1,b2,b3))
+
+void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
+void call_secp256k1_jdouble(void) repeat(secp256k1_jdouble(b1,b2))
+void call_secp256k1_jmixadd(void) repeat(secp256k1_jmixadd(b1,b2,b3))
+
 int main(void)
 {
   int bmi = full_isa_support();
@@ -916,6 +932,18 @@ int main(void)
   timingtest(all,"bignum_triple_p521_alt",call_bignum_triple_p521_alt);
   timingtest(bmi,"curve25519_ladderstep",call_curve25519_ladderstep);
   timingtest(all,"curve25519_ladderstep_alt",call_curve25519_ladderstep_alt);
+  timingtest(bmi,"p256_montjadd",call_p256_montjadd);
+  timingtest(bmi,"p256_montjdouble",call_p256_montjdouble);
+  timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);
+  timingtest(bmi,"p384_montjadd",call_p384_montjadd);
+  timingtest(bmi,"p384_montjdouble",call_p384_montjdouble);
+  timingtest(bmi,"p384_montjmixadd",call_p384_montjmixadd);
+  timingtest(bmi,"p521_jadd",call_p521_jadd);
+  timingtest(bmi,"p521_jdouble",call_p521_jdouble);
+  timingtest(bmi,"p521_jmixadd",call_p521_jmixadd);
+  timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
+  timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);
+  timingtest(bmi,"secp256k1_jmixadd",call_secp256k1_jmixadd);
   timingtest(all,"word_bytereverse",call_word_bytereverse);
   timingtest(all,"word_clz",call_word_clz);
   timingtest(all,"word_ctz",call_word_ctz);

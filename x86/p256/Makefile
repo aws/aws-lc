@@ -44,7 +44,10 @@ OBJ = bignum_add_p256.o \
       bignum_tomont_p256.o \
       bignum_tomont_p256_alt.o \
       bignum_triple_p256.o \
-      bignum_triple_p256_alt.o
+      bignum_triple_p256_alt.o \
+      p256_montjadd.o \
+      p256_montjdouble.o \
+      p256_montjmixadd.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -
 
