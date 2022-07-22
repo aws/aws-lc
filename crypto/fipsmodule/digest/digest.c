@@ -70,7 +70,7 @@
 // Create and initialize a static variable |unstable_enabled_sha3_flag| to enable/disable the use of SHA3.
 DEFINE_BSS_GET(bool, unstable_enabled_sha3_flag)
 
-// Create and initiazlize a static mutex to lock/unlock the update of the |unstable_enabled_sha3_flag|.
+// Create and initialize a static mutex to lock/unlock the update of the |unstable_enabled_sha3_flag|.
 DEFINE_STATIC_MUTEX(unstable_sha3_flag_lock)
 
 
