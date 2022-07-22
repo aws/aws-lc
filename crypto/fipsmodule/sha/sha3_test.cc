@@ -50,7 +50,7 @@ class SHA3TestVector {
     EVP_MD_unstable_sha3_enable(false);
 
     #if !defined(OPENSSL_ANDROID)
-    // Test again SHA3 when |unstable_enable_sha3| is disabled
+    // Test again SHA3 when |unstable_sha3_enabled_flag| is disabled.
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestInit(ctx, algorithm), "");
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8), "");
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestFinal(ctx, digest, &digest_length), "");
@@ -73,7 +73,7 @@ class SHA3TestVector {
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
 
-    // Test the correctness via the Init, Update and Final Digest APIs.
+    // Test the correctness via the Single-Shot EVP_Digest APIs.
     ASSERT_TRUE(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL));
    
     ASSERT_EQ(Bytes(digest, SHA3_256_DIGEST_LENGTH),
@@ -83,7 +83,7 @@ class SHA3TestVector {
     EVP_MD_unstable_sha3_enable(false);
 
     #if !defined(OPENSSL_ANDROID)
-    // Test again SHA3 when |unstable_enable_sha3| is disabled
+    // Test again SHA3 when |unstable_sha3_enabled_flag| is disabled.
     ASSERT_DEATH_IF_SUPPORTED(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL), "");
     #endif  // OPENSSL_ANDROID
     
