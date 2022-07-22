@@ -56,6 +56,7 @@ static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
 static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
 static const MD sha512_256 = { "SHA512-256", &EVP_sha512_256, &SHA512_256 };
 static const MD sha3_256 = { "SHA3-256", &EVP_sha3_256, &SHA3_256 };
+static const MD sha3_512 = { "SHA3-512", &EVP_sha3_512, &SHA3_512 };
 static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
 static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr };
 
@@ -159,6 +160,19 @@ static const DigestTestVector kTestVectors[] = {
     {sha3_256, "\x56\xea\x14\xd7\xfc\xb0\xdb\x74\x8f\xf6\x49\xaa\xa5\xd0\xaf\xdc\x23\x57\x52\x8a\x9a\xad\x60\x76\xd7\x3b\x28\x05\xb5\x3d\x89\xe7\x36\x81\xab\xfa\xd2\x6b\xee\x6c\x0f\x3d\x20\x21\x52\x95\xf3\x54\xf5\x38\xae\x80\x99\x0d\x22\x81\xbe\x6d\xe0\xf6\x91\x9a\xa9\xeb\x04\x8c\x26\xb5\x24\xf4\xd9\x1c\xa8\x7b\x54\xc0\xc5\x4a\xa9\xb5\x4a\xd0\x21\x71\xe8\xbf\x31\xe8\xd1\x58\xa9\xf5\x86\xe9\x2f\xfc\xe9\x94\xec\xce\x9a\x51\x85\xcc\x80\x36\x4d\x50\xa6\xf7\xb9\x48\x49\xa9\x14\x24\x2f\xcb\x73\xf3\x3a\x86\xec\xc8\x3c\x34\x03\x63\x0d\x20\x65\x0d\xdb\x8c\xd9\xc4", 
     1, "4beae3515ba35ec8cbd1d94567e22b0d7809c466abfbafe9610349597ba15b45"},
 
+    // SHA3-512 tests checked with
+    // https://emn178.github.io/online-tools/sha3_512.html
+    {sha3_512, "", 1, "a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26"},
+    {sha3_512, "123", 1, "48c8947f69c054a5caa934674ce8881d02bb18fb59d5a63eeaddff735b0e9801e87294783281ae49fc8287a0fd86779b27d7972d3e84f0fa0d826d7cb67dfefc"},
+    {sha3_512, "abcdef", 1, "01309a45c57cd7faef9ee6bb95fed29e5e2e0312af12a95fffeee340e5e5948b4652d26ae4b75976a53cc1612141af6e24df36517a61f46a1a05f59cf667046a"},
+    {sha3_512, "a", 1, "697f2d856172cb8309d6b8b97dac4de344b549d4dee61edfb4962d8698b7fa803f4f93ff24393586e28b5b957ac3d1d369420ce53332712f997bd336d09ab02a"},
+    {sha3_512, "abc", 3, "82734a349a25b5017fbc9208a9fd545b5ea7ab795a1ce00eafd27e1ddbc89378bd6bedb6bbde3d748057c085e14c6f928fd18ea2257b8ab329e16b9cc39a105f"},
+    {sha3_512, "message digest", 1, "3444e155881fa15511f57726c7d7cfe80302a7433067b29d59a71415ca9dd141ac892d310bc4d78128c98fda839d18d7f0556f2fe7acb3c0cda4bff3a25f5f59"},
+    {sha3_512, "abcdefghijklmnopqrstuvwxyz", 1, "af328d17fa28753a3c9f5cb72e376b90440b96f0289e5703b729324a975ab384eda565fc92aaded143669900d761861687acdc0a5ffa358bd0571aaad80aca68"},
+    {sha3_512, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 1, "d1db17b4745b255e5eb159f66593cc9c143850979fc7a3951796aba80165aab536b46174ce19e3f707f0e5c6487f5f03084bc0ec9461691ef20113e42ad28163"},
+    {sha3_512, "1234567890",1, "36dde7d288a2166a651d51ec6ded9e70e72cf6b366293d6f513c75393c57d6f33b949879b9d5e7f7c21cd8c02ede75e74fc54ea15bd043b4df008533fc68ae69"},
+
+
     // MD5-SHA1 tests.
     {md5_sha1, "abc", 1,
      "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d"},
@@ -179,8 +193,8 @@ static void TestDigest(const DigestTestVector *test) {
     // Test SHA3 only when |unstable_enable_sha3| is enabled
     // |unstable_enable_sha3| is desabled by default
     // SHA3 tests enabling |unstable_enable_sha3| are implemented in /fipsmodule/sha/sha3_test.cc
-    bool sha3_enabled_state = EVP_MD_unstable_sha3_is_enabled();
-    if ((strcmp(test->md.name, "SHA3-256") == 0) && EVP_MD_unstable_sha3_is_enabled() == false) {
+    //bool sha3_enabled_state = EVP_MD_unstable_sha3_is_enabled();
+    if ((strcmp(test->md.name, "SHA3-256") == 0 ||  strcmp(test->md.name, "SHA3-512") == 0) && EVP_MD_unstable_sha3_is_enabled() == false) {
       EVP_MD_unstable_sha3_enable(true);
     }
 
@@ -272,9 +286,9 @@ static void TestDigest(const DigestTestVector *test) {
     EXPECT_EQ(digest.get(), out);
     CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
 
-    if (sha3_enabled_state == false) {
+    //if (sha3_enabled_state == false) {
       EVP_MD_unstable_sha3_enable(false);
-    }
+    //}
   }
 }
 

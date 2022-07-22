@@ -4264,6 +4264,11 @@ extern "C" {
 #define NID_sha3_256 965
 #define OBJ_sha3_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
 
+#define SN_sha3_512 "SHA3_512"
+#define LN_sha3_512 "sha3-512"
+#define NID_sha3_512 966
+#define OBJ_sha3_512 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
+
 
 #if defined(__cplusplus)
 } /* extern C */
