@@ -74,7 +74,7 @@ DEFINE_BSS_GET(bool, unstable_enabled_sha3_flag)
 DEFINE_STATIC_MUTEX(unstable_sha3_flag_lock)
 
 
-void EVP_MD_unstable_sha3_enable(bool enable){
+void EVP_MD_unstable_sha3_enable(bool enable) {
       // Lock the sha3_enable for rest of threads
       CRYPTO_STATIC_MUTEX_lock_write( unstable_sha3_flag_lock_bss_get());
 
