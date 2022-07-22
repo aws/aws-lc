@@ -65,7 +65,6 @@
 #include <openssl/sha.h>
 
 #include "../../internal.h"
-#include "../delocate.h"
 #include "../sha/internal.h"
 #include "internal.h"
 

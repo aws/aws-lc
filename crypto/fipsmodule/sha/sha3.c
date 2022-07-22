@@ -10,6 +10,7 @@
 #include "internal.h"
 #include <string.h>
 
+
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
   KECCAK1600_CTX ctx;
@@ -30,6 +31,10 @@ void SHA3_Reset(KECCAK1600_CTX *ctx) {
 }
 
 int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
+  if (EVP_MD_unstable_sha3_is_enabled() == false) {
+        exit(1);
+  }
+
   size_t block_size = SHA3_BLOCKSIZE(bit_len);
   if (block_size <= sizeof(ctx->buf)) {
     SHA3_Reset(ctx);
@@ -42,6 +47,10 @@ int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
 }
 
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
+  if (EVP_MD_unstable_sha3_is_enabled() == 0) {
+         exit(1);
+  }
+
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
@@ -88,6 +97,10 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 }
 
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
+  if (EVP_MD_unstable_sha3_is_enabled() == 0) {
+         exit(1);
+  }
+
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 

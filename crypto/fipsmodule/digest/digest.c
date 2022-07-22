@@ -62,24 +62,38 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-
 #include "internal.h"
 #include "../../internal.h"
 #include "../evp/internal.h"
 
 
-DEFINE_BSS_GET(bool, experimental_unstable_enabled_sha3_flag)
+// Create and initialize a static variable |unstable_enabled_sha3_flag| to enable/disable the use of SHA3.
+DEFINE_BSS_GET(bool, unstable_enabled_sha3_flag)
 
-void experimental_unstable_enable_sha3_set(bool enable){
-      bool *experimental_unstable_enabled_sha3 = experimental_unstable_enabled_sha3_flag_bss_get(); 
-      *experimental_unstable_enabled_sha3 = enable;
+// Create and initiazlize a static mutex to lock/unlock the update of the |unstable_enabled_sha3_flag|.
+DEFINE_STATIC_MUTEX(unstable_sha3_flag_lock)
+
+
+void EVP_MD_unstable_sha3_enable(bool enable){
+      // Lock the sha3_enable for rest of threads
+      CRYPTO_STATIC_MUTEX_lock_write( unstable_sha3_flag_lock_bss_get());
+
+      bool *unstable_enabled_sha3 = unstable_enabled_sha3_flag_bss_get(); 
+      *unstable_enabled_sha3 = enable;
+
+      CRYPTO_STATIC_MUTEX_unlock_write( unstable_sha3_flag_lock_bss_get());
 }
 
-bool experimental_unstable_enable_sha3_get(void){
-      bool* experimental_unstable_enabled_sha3 = experimental_unstable_enabled_sha3_flag_bss_get(); 
-      return *experimental_unstable_enabled_sha3;
-}
+bool EVP_MD_unstable_sha3_is_enabled(void){
+      // Lock the sha3_enable while reading so that it is not overwritten meanwhile
+      // Allow concurrent reads, do not allow write access to the sha3_flag
+      CRYPTO_STATIC_MUTEX_lock_read( unstable_sha3_flag_lock_bss_get());
 
+      bool *unstable_enabled_sha3 = unstable_enabled_sha3_flag_bss_get(); 
+
+      CRYPTO_STATIC_MUTEX_unlock_read( unstable_sha3_flag_lock_bss_get());
+      return *unstable_enabled_sha3;
+}
 
 int EVP_MD_type(const EVP_MD *md) { return md->type; }
 
@@ -90,6 +104,7 @@ uint32_t EVP_MD_flags(const EVP_MD *md) { return md->flags; }
 size_t EVP_MD_size(const EVP_MD *md) { return md->md_size; }
 
 size_t EVP_MD_block_size(const EVP_MD *md) { return md->block_size; }
+
 
 void EVP_MD_CTX_init(EVP_MD_CTX *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(EVP_MD_CTX));
@@ -219,13 +234,7 @@ int EVP_MD_CTX_reset(EVP_MD_CTX *ctx) {
   return 1;
 }
 
-int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {  
-  // Check Digest Algorithms and value of |experimental_unstable_enabled_sha3_flag|
-  if (type->type == NID_sha3_256 && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
-    // Return error is |experimental_unstable_enabled_sha3_flag| is disabled
-    return 0;
-  }
-
+int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   if (ctx->digest != type) {
     assert(type->ctx_size != 0);
     uint8_t *md_data = OPENSSL_malloc(type->ctx_size);
@@ -246,27 +255,16 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
 }
 
 int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
-  if (type->type == NID_sha3_256 && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
-    return 0;
-  }
-
   EVP_MD_CTX_init(ctx);
   return EVP_DigestInit_ex(ctx, type, NULL);
 }
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
-  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
-    return 0;
-  }
-
   ctx->digest->update(ctx, data, len);
   return 1;
 }
 
 int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
-  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
-    return 0;
-  }
   assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
   ctx->digest->final(ctx, md_out);
   if (size != NULL) {
@@ -277,10 +275,6 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
 }
 
 int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
-  if ((ctx->digest == NULL || ctx->digest->type == NID_sha3_256) && *experimental_unstable_enabled_sha3_flag_bss_get() == false) {
-    return 0;
-  }
-
   (void)EVP_DigestFinal_ex(ctx, md, size);
   EVP_MD_CTX_cleanup(ctx);
   return 1;
@@ -290,9 +284,6 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
                unsigned int *out_size, const EVP_MD *type, ENGINE *impl) {
   EVP_MD_CTX ctx;
   int ret;
-  if (type->type == NID_sha3_256 && (*experimental_unstable_enabled_sha3_flag_bss_get() == false)) {
-    return 0;
-  }
 
   EVP_MD_CTX_init(&ctx);
   ret = EVP_DigestInit_ex(&ctx, type, impl) &&

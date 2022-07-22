@@ -57,18 +57,19 @@
 #ifndef OPENSSL_HEADER_DIGEST_H
 #define OPENSSL_HEADER_DIGEST_H
 
-#include <openssl/base.h>
 #include <stdbool.h>
+
+#include <openssl/base.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-// Setter for |experimental_unstable_enable_sha3|.
-OPENSSL_EXPORT void experimental_unstable_enable_sha3_set(bool enable);
+// EVP_MD_unstable_sha3_enable updates the value of |unstable_enable_sha3|.
+OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
 
-// Getter for |experimental_unstable_enable_sha3|. Returns a pointer to |experimental_unstable_enable_sha3|. 
-OPENSSL_EXPORT bool experimental_unstable_enable_sha3_get(void);
+// EVP_MD_unstable_sha3_is_enabled returns the value of |unstable_enable_sha3|.
+OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
 
 // Digest functions.
 //
