@@ -273,7 +273,7 @@ static void TestDigest(const DigestTestVector *test) {
     CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
 
     if (sha3_enabled_state == false) {
-      EVP_MD_unstable_sha3_enable(flase);
+      EVP_MD_unstable_sha3_enable(false);
     }
   }
 }
