@@ -179,8 +179,7 @@ static void TestDigest(const DigestTestVector *test) {
     // Test SHA3 only when |unstable_enable_sha3| is enabled
     // |unstable_enable_sha3| is desabled by default
     // SHA3 tests enabling |unstable_enable_sha3| are implemented in /fipsmodule/sha/sha3_test.cc
-    bool sha3_enabled_state = EVP_MD_unstable_sha3_is_enabled();
-    if ((strcmp(test->md.name, "SHA3-256") == 0) && EVP_MD_unstable_sha3_is_enabled() == false) {
+    if ((strcmp(test->md.name, "SHA3-256") == 0)) {
       EVP_MD_unstable_sha3_enable(true);
     }
 
@@ -272,9 +271,7 @@ static void TestDigest(const DigestTestVector *test) {
     EXPECT_EQ(digest.get(), out);
     CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
 
-    if (sha3_enabled_state == false) {
-      EVP_MD_unstable_sha3_enable(false);
-    }
+    EVP_MD_unstable_sha3_enable(false);
   }
 }
 
