@@ -1996,12 +1996,12 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
 
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
   return ssl_create_cipher_list(&ctx->cipher_list, str, false /* not strict */,
-                                false /* not tls1.3 only */);
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
   return ssl_create_cipher_list(&ctx->cipher_list, str, true /* strict */,
-                                false /* not tls1.3 only */);
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_set_cipher_list(SSL *ssl, const char *str) {
@@ -2009,7 +2009,8 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
     return 0;
   }
   return ssl_create_cipher_list(&ssl->config->cipher_list, str,
-                                false /* not strict */, false /* not tls1.3 only */);
+                                false /* not strict */,
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
@@ -2021,7 +2022,8 @@ int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
     return 0;
   }
   return ssl_create_cipher_list(&ssl->config->cipher_list, str,
-                                true /* strict */, false /* not tls1.3 only */);
+                                true /* strict */,
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {

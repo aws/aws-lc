@@ -647,12 +647,12 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // ssl_create_cipher_list evaluates |rule_str|. It sets |*out_cipher_list| to a
 // newly-allocated |SSLCipherPreferenceList| containing the result. It returns
 // true on success and false on failure. If |strict| is true, nonsense will be
-// rejected. If false, nonsense will be silently ignored. If |tls13_only| is true,
+// rejected. If false, nonsense will be silently ignored. If |config_tls13| is true,
 // only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If false,
 // TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|. An empty
-// result is considered an error regardless of |strict| or |tls13_only|.
+// result is considered an error regardless of |strict| or |config_tls13|.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict, bool tls13_only);
+                            const char *rule_str, bool strict, bool config_tls13);
 
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
 // values suitable for use with |key| in TLS 1.2 and below.
