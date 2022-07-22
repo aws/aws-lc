@@ -97,7 +97,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 }
 
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
-  if (EVP_MD_unstable_sha3_is_enabled() == 0) {
+  if (EVP_MD_unstable_sha3_is_enabled() == false) {
          exit(1);
   }
 
