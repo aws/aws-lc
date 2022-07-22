@@ -484,12 +484,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cbc(void);
 // EVP_bf_cfb is Blowfish in 64-bit CFB mode and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cfb(void);
 
-// EVP_cast5_ecb is CAST5 in ECB mode and is deprecated.
-OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_ecb(void);
-
-// EVP_cast5_cbc is CAST5 in CBC mode and is deprecated.
-OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_cbc(void);
-
 // The following flags do nothing and are included only to make it easier to
 // compile code with BoringSSL.
 #define EVP_CIPH_CCM_MODE (-1)
