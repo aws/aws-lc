@@ -1,6 +1,6 @@
 /* Jitter RNG: SHA-3 Implementation
  *
- * Copyright (C) 2021, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2021 - 2022, Stephan Mueller <smueller@chronox.de>
  *
  * License: see LICENSE file in root directory
  *

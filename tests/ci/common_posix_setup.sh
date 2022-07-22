@@ -143,63 +143,37 @@ function build_and_run_minimal_test {
   run_cmake_custom_target 'run_minimal_tests'
 }
 
+function print_executable_information {
+  EXE_NAME=${1}
+  EXE_ARGUMENT=${2}
+  LABEL=${3}
+
+  echo ""
+  echo "${LABEL}:"
+  if command -v ${EXE_NAME} &> /dev/null
+  then
+    ${EXE_NAME} ${EXE_ARGUMENT}
+  else
+    echo "${EXE_NAME} not found"
+  fi
+}
+
 function print_system_and_dependency_information {
-  if command -v cmake &> /dev/null
-  then
-    echo ""
-    echo "CMake version:"
-    cmake --version
-  fi
-  if command -v cmake3 &> /dev/null
-  then
-    echo ""
-    echo "CMake version (cmake3 executable):"
-    cmake3 --version
-  fi
-  if command -v go &> /dev/null
-  then
-    echo ""
-    echo "Go version:"
-    go version
-  fi
-  if command -v perl &> /dev/null
-  then
-    echo ""
-    echo "Perl version:"
-    perl --version
-  fi
-  # Ninja executable names are not uniform
-  if command -v ninja-build &> /dev/null
-  then
-    echo ""
-    echo "Ninja version"
-    ninja-build --version
-  elif command -v ninja &> /dev/null
-  then
-    echo ""
-    echo "Ninja version"
-    ninja --version
-  fi
-  if command -v gcc &> /dev/null
-  then
-    echo ""
-    echo "GCC version:"
-    gcc --version
-    echo ""
-    echo "G++ version:"
-    g++ --version
-  elif command -v clang &> /dev/null
-  then
-    echo ""
-    echo "Clang version:"
-    clang --version
-  fi
-  if command -v make &> /dev/null
-  then
-    echo ""
-    echo "Make version:"
-    make --version
-  fi
+  print_executable_information "cmake" "--version" "CMake version"
+  print_executable_information "cmake3" "--version" "CMake version (cmake3 executable)"
+  print_executable_information "go" "version" "Go version"
+  print_executable_information "perl" "--version" "Perl version"
+  # Ninja executable names are not uniform over operating systems
+  print_executable_information "ninja-build" "--version" "Ninja version (ninja-build executable)"
+  print_executable_information "ninja" "--version" "Ninja version (ninja executable)"
+  print_executable_information "gcc" "--version" "gcc version"
+  print_executable_information "g++" "--version" "g++ version"
+  print_executable_information "clang" "--version" "clang version"
+  print_executable_information "clang++" "--version" "clang++ version"
+  print_executable_information "cc" "--version" "cc version"
+  print_executable_information "c++" "--version" "c++ version"
+  print_executable_information "make" "--version" "Make version"
+  print_executable_information "rustup" "show" "Rust toolchain"
   echo ""
   echo "Operating system information:"
   uname -a
