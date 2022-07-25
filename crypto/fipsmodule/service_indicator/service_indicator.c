@@ -32,6 +32,9 @@ struct fips_service_indicator_state {
   uint64_t counter;
 };
 
+// service_indicator_get returns a pointer to the |fips_service_indicator_state|
+// for the current thread. It returns NULL on error.
+//
 // FIPS 140-3 requires that the module should provide the service indicator
 // for approved services irrespective of whether the user queries it or not.
 // Hence, it is lazily initialized in any call to an approved service.
@@ -317,13 +320,13 @@ void EVP_Cipher_verify_service_indicator(const EVP_CIPHER_CTX *ctx) {
 }
 
 void EVP_DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx) {
-  return evp_md_ctx_verify_service_indicator(ctx, /*rsa_1024_ok=*/1,
-                                             is_md_fips_approved_for_verifying);
+  evp_md_ctx_verify_service_indicator(ctx, /*rsa_1024_ok=*/1,
+                                      is_md_fips_approved_for_verifying);
 }
 
 void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
-  return evp_md_ctx_verify_service_indicator(ctx, /*rsa_1024_ok=*/0,
-                                             is_md_fips_approved_for_signing);
+  evp_md_ctx_verify_service_indicator(ctx, /*rsa_1024_ok=*/0,
+                                      is_md_fips_approved_for_signing);
 }
 
 // TODO: FIPS validate SHA512/256 for HMAC.
