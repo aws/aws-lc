@@ -661,6 +661,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/fork_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
+    fipsmodule/sha/sha3_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
     fipsmodule/hkdf/hkdf_test.cc
     hpke/hpke_test.cc
