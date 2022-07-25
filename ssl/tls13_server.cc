@@ -116,7 +116,14 @@ static const SSL_CIPHER *choose_tls13_cipher(
 
   const uint16_t version = ssl_protocol_version(ssl);
 
-  return ssl_choose_tls13_cipher(cipher_suites, version, group_id);
+  STACK_OF(SSL_CIPHER) *tls13_ciphers = nullptr;
+  if (ssl->ctx->tls13_cipher_list &&
+      ssl->ctx->tls13_cipher_list.get()->ciphers &&
+      sk_SSL_CIPHER_num(ssl->ctx->tls13_cipher_list.get()->ciphers.get()) > 0) {
+    tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
+  }
+
+  return ssl_choose_tls13_cipher(cipher_suites, version, group_id, tls13_ciphers);
 }
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {

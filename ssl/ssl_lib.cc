@@ -2014,7 +2014,8 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
-  return 1;
+  return ssl_create_cipher_list(&ctx->tls13_cipher_list, str, false /* not strict */,
+                                true /* only configure TLSv1.3 ciphers */);
 }
 
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
