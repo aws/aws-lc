@@ -314,7 +314,6 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_512) {
   out->ctx_size = sizeof(KECCAK1600_CTX);
 }
 
-
 typedef struct {
   MD5_CTX md5;
   SHA_CTX sha1;

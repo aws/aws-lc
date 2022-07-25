@@ -742,7 +742,8 @@ static void ll_append_head(CIPHER_ORDER **head, CIPHER_ORDER *curr,
 
 static bool ssl_cipher_collect_ciphers(Array<CIPHER_ORDER> *out_co_list,
                                        CIPHER_ORDER **out_head,
-                                       CIPHER_ORDER **out_tail) {
+                                       CIPHER_ORDER **out_tail,
+                                       bool config_tls13) {
   Array<CIPHER_ORDER> co_list;
   if (!co_list.Init(OPENSSL_ARRAY_SIZE(kCiphers))) {
     return false;
@@ -750,8 +751,11 @@ static bool ssl_cipher_collect_ciphers(Array<CIPHER_ORDER> *out_co_list,
 
   size_t co_list_num = 0;
   for (const SSL_CIPHER &cipher : kCiphers) {
-    // TLS 1.3 ciphers do not participate in this mechanism.
-    if (cipher.algorithm_mkey != SSL_kGENERIC) {
+    // config_tls13 tells if only TLS 1.3 ciphers should
+    // participate in this mechanism. When false, only non-TLS-1.3 ciphers
+    // participate in this mechanism.
+    if ((config_tls13 && cipher.algorithm_mkey == SSL_kGENERIC) ||
+        (!config_tls13 && cipher.algorithm_mkey != SSL_kGENERIC)) {
       co_list[co_list_num].cipher = &cipher;
       co_list[co_list_num].next = NULL;
       co_list[co_list_num].prev = NULL;
@@ -1007,7 +1011,8 @@ static bool ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
 
 static bool ssl_cipher_process_rulestr(const char *rule_str,
                                        CIPHER_ORDER **head_p,
-                                       CIPHER_ORDER **tail_p, bool strict) {
+                                       CIPHER_ORDER **tail_p, bool strict,
+                                       bool config_tls13) {
   uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
   uint16_t min_version;
   const char *l, *buf;
@@ -1115,6 +1120,10 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
       if (!multi && ch != '+') {
         for (j = 0; j < OPENSSL_ARRAY_SIZE(kCiphers); j++) {
           const SSL_CIPHER *cipher = &kCiphers[j];
+          if ((config_tls13 && cipher->algorithm_mkey != SSL_kGENERIC) ||
+            (!config_tls13 && cipher->algorithm_mkey == SSL_kGENERIC)) {
+            continue;
+          }
           if (rule_equals(cipher->name, buf, buf_len) ||
               rule_equals(cipher->standard_name, buf, buf_len)) {
             cipher_id = cipher->id;
@@ -1187,7 +1196,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
 }
 
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict) {
+                            const char *rule_str, bool strict, bool config_tls13) {
   // Return with error if nothing to do.
   if (rule_str == NULL || out_cipher_list == NULL) {
     return false;
@@ -1198,15 +1207,17 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   // allocation.
   Array<CIPHER_ORDER> co_list;
   CIPHER_ORDER *head = nullptr, *tail = nullptr;
-  if (!ssl_cipher_collect_ciphers(&co_list, &head, &tail)) {
+  if (!ssl_cipher_collect_ciphers(&co_list, &head, &tail, config_tls13)) {
     return false;
   }
 
   // Now arrange all ciphers by preference:
   // TODO(davidben): Compute this order once and copy it.
 
-  // Everything else being equal, prefer ECDHE_ECDSA and ECDHE_RSA over other
-  // key exchange mechanisms
+  ssl_cipher_apply_rule(0, SSL_kGENERIC, SSL_aGENERIC, ~0u, ~0u, 0, CIPHER_ADD,
+                        -1, false, &head, &tail);
+  // Everything else being equal, prefer ECDHE_ECDSA then ECDHE_RSA over other
+  // key exchange mechanisms.
   ssl_cipher_apply_rule(0, SSL_kECDHE, SSL_aECDSA, ~0u, ~0u, 0, CIPHER_ADD, -1,
                         false, &head, &tail);
   ssl_cipher_apply_rule(0, SSL_kECDHE, ~0u, ~0u, ~0u, 0, CIPHER_ADD, -1, false,
@@ -1260,7 +1271,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   const char *rule_p = rule_str;
   if (strncmp(rule_str, "DEFAULT", 7) == 0) {
     if (!ssl_cipher_process_rulestr(SSL_DEFAULT_CIPHER_LIST, &head, &tail,
-                                    strict)) {
+                                    strict, config_tls13)) {
       return false;
     }
     rule_p += 7;
@@ -1270,7 +1281,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   }
 
   if (*rule_p != '\0' &&
-      !ssl_cipher_process_rulestr(rule_p, &head, &tail, strict)) {
+      !ssl_cipher_process_rulestr(rule_p, &head, &tail, strict, config_tls13)) {
     return false;
   }
 
