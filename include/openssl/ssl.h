@@ -1537,6 +1537,8 @@ OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
 //
 // Prefer to use |SSL_CTX_set_strict_cipher_list|. This function tolerates
 // garbage inputs, unless an empty cipher list results.
+//
+// Note: this API only sets the TLSv1.2 and below ciphers.
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
 // SSL_set_strict_cipher_list configures the cipher list for |ssl|, evaluating

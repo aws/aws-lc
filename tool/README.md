@@ -26,8 +26,9 @@ In order to build the above-mentioned benchmarking tools, absolute paths to each
 | ------------- | ------------- |
 | awslc_bm | -DAWSLC_INSTALL_DIR |
 | bssl_bm | -DBORINGSSL_INSTALL_DIR |
-| ossl_bm | -DOPENSSL_INSTALL_DIR |
-| ossl3_bm | -DOPENSSL3_INSTALL_DIR |
+| ossl_1_0_bm | -DOPENSSL_1_0_INSTALL_DIR |
+| ossl_1_1_bm | -DOPENSSL_1_1_INSTALL_DIR |
+| ossl_3_0_bm | -DOPENSSL_3_0_INSTALL_DIR |
 
 ### Expected Directory Structure
 Additionally, the benchmarking tools expects specific directory structures for the provided install locations for each library. Each package should have its own instructions for proividing an install directory, and once installed to that directory you can simply use the appropriate `INSTALL_DIR` flag to point the benchmarking tool to it.
