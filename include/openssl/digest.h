@@ -57,12 +57,24 @@
 #ifndef OPENSSL_HEADER_DIGEST_H
 #define OPENSSL_HEADER_DIGEST_H
 
+#include <stdbool.h>
+
 #include <openssl/base.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+// If |enable| is true the SHA3 implementation will be enabled. If |enable| is
+// false, the SHA3 implementation will be disabled. If the SHA3 implementation
+// is disabled, using the implementation in any way will cause AWS-LC to exit
+// the process.
+// |unstable_sha3_enabled_flag| is configured globally.
+OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
+
+// EVP_MD_unstable_sha3_is_enabled returns wheather SHA3 is enabled.
+// |unstable_sha3_enabled_flag| is configured globally.
+OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
 
 // Digest functions.
 //
@@ -84,6 +96,7 @@ OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512_256(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha3_256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_blake2b256(void);
 
 // EVP_md5_sha1 is a TLS-specific |EVP_MD| which computes the concatenation of
