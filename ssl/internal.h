@@ -647,10 +647,12 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // ssl_create_cipher_list evaluates |rule_str|. It sets |*out_cipher_list| to a
 // newly-allocated |SSLCipherPreferenceList| containing the result. It returns
 // true on success and false on failure. If |strict| is true, nonsense will be
-// rejected. If false, nonsense will be silently ignored. An empty result is
-// considered an error regardless of |strict|.
+// rejected. If false, nonsense will be silently ignored. If |config_tls13| is true,
+// only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If false,
+// TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|. An empty
+// result is considered an error regardless of |strict| or |config_tls13|.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict);
+                            const char *rule_str, bool strict, bool config_tls13);
 
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
 // values suitable for use with |key| in TLS 1.2 and below.
@@ -2079,6 +2081,11 @@ struct SSL_HANDSHAKE {
   uint8_t grease_seed[ssl_grease_last_index + 1] = {0};
 };
 
+// kMaxTickets is the maximum number of tickets to send immediately after the
+// handshake. We use a one-byte ticket nonce, and there is no point in sending
+// so many tickets.
+constexpr size_t kMaxTickets = 16;
+
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
 
 // ssl_check_message_type checks if |msg| has type |type|. If so it returns
@@ -3452,6 +3459,11 @@ struct ssl_ctx_st {
   // |SSL_CTX_set_min_proto_version|. Note this version is normalized in DTLS
   // and is further constrainted by |SSL_OP_NO_*|.
   uint16_t conf_min_version = 0;
+
+  // num_tickets is the number of tickets to send immediately after the TLS 1.3
+  // handshake. TLS 1.3 recommends single-use tickets so, by default, issue two
+  /// in case the client makes several connections before getting a renewal.
+  uint8_t num_tickets = 2;
 
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;

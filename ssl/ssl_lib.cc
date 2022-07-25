@@ -140,6 +140,8 @@
 
 #include <openssl/ssl.h>
 
+#include <algorithm>
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1995,11 +1997,13 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
 }
 
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
-  return ssl_create_cipher_list(&ctx->cipher_list, str, false /* not strict */);
+  return ssl_create_cipher_list(&ctx->cipher_list, str, false /* not strict */,
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
-  return ssl_create_cipher_list(&ctx->cipher_list, str, true /* strict */);
+  return ssl_create_cipher_list(&ctx->cipher_list, str, true /* strict */,
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_set_cipher_list(SSL *ssl, const char *str) {
@@ -2007,7 +2011,8 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
     return 0;
   }
   return ssl_create_cipher_list(&ssl->config->cipher_list, str,
-                                false /* not strict */);
+                                false /* not strict */,
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
@@ -2019,7 +2024,8 @@ int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
     return 0;
   }
   return ssl_create_cipher_list(&ssl->config->cipher_list, str,
-                                true /* strict */);
+                                true /* strict */,
+                                false /* don't configure TLSv1.3 ciphers */);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {
@@ -3027,6 +3033,13 @@ SSL_SESSION *SSL_process_tls13_new_session_ticket(SSL *ssl, const uint8_t *buf,
     return nullptr;
   }
   return session.release();
+}
+
+int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets) {
+  num_tickets = std::min(num_tickets, kMaxTickets);
+  static_assert(kMaxTickets <= 0xff, "Too many tickets.");
+  ctx->num_tickets = static_cast<uint8_t>(num_tickets);
+  return 1;
 }
 
 int SSL_set_tlsext_status_type(SSL *ssl, int type) {

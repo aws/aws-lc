@@ -1537,6 +1537,8 @@ OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
 //
 // Prefer to use |SSL_CTX_set_strict_cipher_list|. This function tolerates
 // garbage inputs, unless an empty cipher list results.
+//
+// Note: this API only sets the TLSv1.2 and below ciphers.
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
 // SSL_set_strict_cipher_list configures the cipher list for |ssl|, evaluating
@@ -2307,6 +2309,13 @@ OPENSSL_EXPORT void SSL_CTX_set_ticket_aead_method(
 // clients that are handling the record layer externally.
 OPENSSL_EXPORT SSL_SESSION *SSL_process_tls13_new_session_ticket(
     SSL *ssl, const uint8_t *buf, size_t buf_len);
+
+// SSL_CTX_set_num_tickets configures |ctx| to send |num_tickets| immediately
+// after a successful TLS 1.3 handshake as a server. It returns one. Large
+// values of |num_tickets| will be capped within the library.
+//
+// By default, BoringSSL sends two tickets.
+OPENSSL_EXPORT int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets);
 
 
 // Elliptic curve Diffie-Hellman.

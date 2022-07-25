@@ -672,6 +672,10 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
                       const std::string &selected) {
+  if (name.compare("SHA3-256") == 0 || name.compare("SHA3-512") == 0) {
+    EVP_MD_unstable_sha3_enable(true);
+  }
+
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
@@ -682,6 +686,7 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
     }
   }
 
+  EVP_MD_unstable_sha3_enable(false);
   return true;
 }
 
@@ -1623,6 +1628,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
      !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
+     !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
      !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
      !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
      !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||

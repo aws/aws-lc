@@ -65,7 +65,10 @@
 extern "C" {
 #endif
 
-// EVP_MD_unstable_sha3_enable updates the value of |unstable_sha3_enabled_flag|.
+// If |enable| is true the SHA3 implementation will be enabled. If |enable| is
+// false, the SHA3 implementation will be disabled. If the SHA3 implementation
+// is disabled, using the implementation in any way will cause AWS-LC to exit
+// the process.
 // |unstable_sha3_enabled_flag| is configured globally.
 OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
 
@@ -94,6 +97,7 @@ OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512_256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha3_256(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha3_512(void);
 OPENSSL_EXPORT const EVP_MD *EVP_blake2b256(void);
 
 // EVP_md5_sha1 is a TLS-specific |EVP_MD| which computes the concatenation of

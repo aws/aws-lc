@@ -19,11 +19,16 @@
 extern "C" {
 #endif
 
-// SHA3_256 constants
+// SHA3 constants
 #define KECCAK1600_WIDTH 1600
 #define SHA3_256_CAPACITY_BYTES 64
 #define SHA3_256_DIGEST_BITLENGTH 256
 #define SHA3_256_DIGEST_LENGTH 32
+
+#define SHA3_512_CAPACITY_BYTES 128
+#define SHA3_512_DIGEST_BITLENGTH 512
+#define SHA3_512_DIGEST_LENGTH 64
+
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
 #define SHA3_PAD_CHAR 0x06
 #define SHA3_ROWS 5
@@ -66,6 +71,11 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]);  
+
+// SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
+OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_512_DIGEST_LENGTH]);
 
 // SHA3_Reset zeros the bitstate and the amount of processed input.
 OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
