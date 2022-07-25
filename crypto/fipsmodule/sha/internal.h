@@ -74,7 +74,7 @@ OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
 
 // SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
-uint8_t *SHA3_512(const uint8_t *data, size_t len,
+OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_512_DIGEST_LENGTH]);
 
 // SHA3_Reset zeros the bitstate and the amount of processed input.
