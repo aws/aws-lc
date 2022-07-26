@@ -21,16 +21,25 @@ extern "C" {
 
 // SHA3 constants
 #define KECCAK1600_WIDTH 1600
+
+#define SHA3_224_CAPACITY_BYTES 56
+#define SHA3_224_DIGEST_BITLENGTH 224
+#define SHA3_224_DIGEST_LENGTH 28
+
 #define SHA3_256_CAPACITY_BYTES 64
 #define SHA3_256_DIGEST_BITLENGTH 256
 #define SHA3_256_DIGEST_LENGTH 32
+
+#define SHA3_384_CAPACITY_BYTES 96
+#define SHA3_384_DIGEST_BITLENGTH 384
+#define SHA3_384_DIGEST_LENGTH 48
 
 #define SHA3_512_CAPACITY_BYTES 128
 #define SHA3_512_DIGEST_BITLENGTH 512
 #define SHA3_512_DIGEST_LENGTH 64
 
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
-#define SHA3_MIN_CAPACITY_BYTES 64
+#define SHA3_MIN_CAPACITY_BYTES 56
 #define SHA3_PAD_CHAR 0x06
 #define SHA3_ROWS 5
 
@@ -68,11 +77,23 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
+// SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
+// On failure SHA3_224 returns NULL.
+OPENSSL_EXPORT uint8_t *SHA3_224(const uint8_t *data, size_t len,
+                                 uint8_t out[SHA3_224_DIGEST_LENGTH]);  
+                                 
 // SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
 // On failure SHA3_256 returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
-                                 uint8_t out[SHA3_256_DIGEST_LENGTH]);  
+                                 uint8_t out[SHA3_256_DIGEST_LENGTH]); 
+
+// SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// There must be at least |SHA3_384_DIGEST_LENGTH| bytes of space in |out|.
+// On failure SHA3_384 returns NULL.
+OPENSSL_EXPORT uint8_t *SHA3_384(const uint8_t *data, size_t len,
+                                 uint8_t out[SHA3_384_DIGEST_LENGTH]); 
 
 // SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
