@@ -62,6 +62,10 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
+#define KECCAK1600_ASM
+#endif
+
 // SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
