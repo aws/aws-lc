@@ -141,7 +141,7 @@ $code.=<<___;
 #endif
 
 .text
-.align 8	// strategic alignment and padding that allows to use
+.align	8	// strategic alignment and padding that allows to use
 		// address value as loop termination condition...
 	.quad	0,0,0,0,0,0,0,0
 .type	iotas,%object
