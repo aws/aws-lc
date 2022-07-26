@@ -685,8 +685,8 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
       return false;
     }
   }
-  
-  EVP_MD_unstable_sha3_enable(true);
+
+  EVP_MD_unstable_sha3_enable(false);
   return true;
 }
 
