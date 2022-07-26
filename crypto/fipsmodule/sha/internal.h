@@ -30,6 +30,7 @@ extern "C" {
 #define SHA3_512_DIGEST_LENGTH 64
 
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
+#define SHA3_MIN_CAPACITY_BYTES 64
 #define SHA3_PAD_CHAR 0x06
 #define SHA3_ROWS 5
 
@@ -40,7 +41,7 @@ struct keccak_st {
   size_t block_size;   // cached ctx->digest->block_size
   size_t md_size;      // output length, variable in XOF (SHAKE)
   size_t buf_load;     // used bytes in below buffer
-  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_256_CAPACITY_BYTES];
+  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_MIN_CAPACITY_BYTES];
   uint8_t pad;
 };
 
@@ -69,11 +70,13 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 
 // SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
+// On failure SHA3_256 returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]);  
 
 // SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
+// On failure SHA3_512 returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_512_DIGEST_LENGTH]);
 

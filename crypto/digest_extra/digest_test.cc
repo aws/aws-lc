@@ -190,10 +190,10 @@ static void CompareDigest(const DigestTestVector *test,
 }
 
 static void TestDigest(const DigestTestVector *test) {
-    // Test SHA3 only when |unstable_enable_sha3| is enabled
-    // |unstable_enable_sha3| is desabled by default
-    // SHA3 tests enabling |unstable_enable_sha3| are implemented in /fipsmodule/sha/sha3_test.cc
-    if (strcmp(test->md.name, "SHA3-256") == 0 ||  strcmp(test->md.name, "SHA3-512") == 0) {
+    // Test SHA3 by enabling |unstable_sha3_enabled_flag|, then disable it
+    // |unstable_sha3_enabled_flag| is desabled by default
+    // SHA3 negative tests are implemented in /fipsmodule/sha/sha3_test.cc
+    if (strstr(test->md.name, "SHA3") != NULL) {
       EVP_MD_unstable_sha3_enable(true);
     }
 
@@ -281,7 +281,7 @@ static void TestDigest(const DigestTestVector *test) {
     if (test->md.one_shot_func && test->repeat == 1) {
       uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
                                             strlen(test->input), digest.get());
-      // One-shot functions return their supplied buffers.
+    // One-shot functions return their supplied buffers.
     EXPECT_EQ(digest.get(), out);
     CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
 

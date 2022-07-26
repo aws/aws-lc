@@ -22,8 +22,9 @@ class SHA3TestVector {
 
   bool ReadFromFileTest(FileTest *t);
   
-  void NISTTestVectors(const EVP_MD *algorithm, uint8_t *digest) const {
+  void NISTTestVectors(const EVP_MD *algorithm) const {
     uint32_t digest_length;
+    uint8_t *digest  = new uint8_t[EVP_MD_size(algorithm)];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
     #if !defined(OPENSSL_ANDROID)
@@ -54,11 +55,13 @@ class SHA3TestVector {
     ASSERT_DEATH_IF_SUPPORTED(EVP_DigestFinal(ctx, digest, &digest_length), "");
     #endif  // OPENSSL_ANDROID
 
+    delete [] digest;
     OPENSSL_free(ctx);
   }
 
-  void NISTTestVectors_SingleShot(const EVP_MD *algorithm, uint8_t *digest) const {
+  void NISTTestVectors_SingleShot(const EVP_MD *algorithm) const {
     uint32_t digest_length;
+    uint8_t *digest  = new uint8_t[EVP_MD_size(algorithm)];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     
     #if !defined(OPENSSL_ANDROID)
@@ -82,7 +85,8 @@ class SHA3TestVector {
     // Test again SHA3 when |unstable_sha3_enabled_flag| is disabled.
     ASSERT_DEATH_IF_SUPPORTED(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL), "");
     #endif  // OPENSSL_ANDROID
-    
+
+    delete [] digest;
     OPENSSL_free(ctx);
 
   }
@@ -132,16 +136,14 @@ TEST(SHA3Test, NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/SHA3_256ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    uint8_t digest[SHA3_256_DIGEST_LENGTH];
     const EVP_MD* algorithm = EVP_sha3_256();
-    test_vec.NISTTestVectors(algorithm, digest);
+    test_vec.NISTTestVectors(algorithm);
   });
   FileTestGTest("crypto/fipsmodule/sha/SHA3_512ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    uint8_t digest[SHA3_512_DIGEST_LENGTH];
     const EVP_MD* algorithm = EVP_sha3_512();
-    test_vec.NISTTestVectors(algorithm, digest);
+    test_vec.NISTTestVectors(algorithm);
   });
 }
 
@@ -149,15 +151,13 @@ TEST(SHA3Test, NISTTestVectors_SingleShot) {
   FileTestGTest("crypto/fipsmodule/sha/SHA3_256ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    uint8_t digest[SHA3_256_DIGEST_LENGTH];
     const EVP_MD* algorithm = EVP_sha3_256();
-    test_vec.NISTTestVectors_SingleShot(algorithm, digest);
+    test_vec.NISTTestVectors_SingleShot(algorithm);
   });
   FileTestGTest("crypto/fipsmodule/sha/SHA3_512ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    uint8_t digest[SHA3_512_DIGEST_LENGTH];
     const EVP_MD* algorithm = EVP_sha3_512();
-    test_vec.NISTTestVectors_SingleShot(algorithm, digest);
+    test_vec.NISTTestVectors_SingleShot(algorithm);
   });
 }
