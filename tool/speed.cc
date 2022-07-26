@@ -672,6 +672,10 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
                       const std::string &selected) {
+  if (name.find("SHA3") != std::string::npos) {
+    EVP_MD_unstable_sha3_enable(true);
+  }
+
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
@@ -682,6 +686,7 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
     }
   }
 
+  EVP_MD_unstable_sha3_enable(false);
   return true;
 }
 
