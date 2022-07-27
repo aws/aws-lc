@@ -19,7 +19,8 @@
 extern "C" {
 #endif
 
-// SHA3 constants
+// SHA3 constants, from NIST FIPS202.
+// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define KECCAK1600_WIDTH 1600
 
 #define SHA3_224_CAPACITY_BYTES 56
@@ -38,6 +39,11 @@ extern "C" {
 #define SHA3_512_DIGEST_BITLENGTH 512
 #define SHA3_512_DIGEST_LENGTH 64
 
+// The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
+// lowest security level capacity.
+// The data block size increases when the capacity decreases.
+// The data buffer should have at least the maximum 
+// block size bytes to fit any digest length.
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
 #define SHA3_MIN_CAPACITY_BYTES SHA3_224_CAPACITY_BYTES
 #define SHA3_PAD_CHAR 0x06
@@ -47,10 +53,10 @@ typedef struct keccak_st KECCAK1600_CTX;
 
 struct keccak_st {
   uint64_t A[SHA3_ROWS][SHA3_ROWS];
-  size_t block_size;   // cached ctx->digest->block_size
-  size_t md_size;      // output length, variable in XOF (SHAKE)
-  size_t buf_load;     // used bytes in below buffer
-  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_MIN_CAPACITY_BYTES];
+  size_t block_size;                                             // cached ctx->digest->block_size
+  size_t md_size;                                                // output length, variable in XOF (SHAKE)
+  size_t buf_load;                                               // used bytes in below buffer
+  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_MIN_CAPACITY_BYTES];   // should have at least the max data block size bytes
   uint8_t pad;
 };
 
