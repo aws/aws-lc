@@ -39,7 +39,7 @@ extern "C" {
 #define SHA3_512_DIGEST_LENGTH 64
 
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
-#define SHA3_MIN_CAPACITY_BYTES 56
+#define SHA3_MIN_CAPACITY_BYTES SHA3_224_CAPACITY_BYTES
 #define SHA3_PAD_CHAR 0x06
 #define SHA3_ROWS 5
 
@@ -79,25 +79,25 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 
 // SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
-// On failure SHA3_224 returns NULL.
+// On failure |SHA3_224| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_224(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_224_DIGEST_LENGTH]);  
                                  
 // SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
-// On failure SHA3_256 returns NULL.
+// On failure |SHA3_256| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]); 
 
 // SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_384_DIGEST_LENGTH| bytes of space in |out|.
-// On failure SHA3_384 returns NULL.
+// On failure |SHA3_384| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_384(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_384_DIGEST_LENGTH]); 
 
 // SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
-// On failure SHA3_512 returns NULL.
+// On failure |SHA3_512| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_512_DIGEST_LENGTH]);
 
