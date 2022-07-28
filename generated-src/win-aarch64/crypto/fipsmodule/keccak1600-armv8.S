@@ -575,7 +575,7 @@ Labsorbed:
 .endef
 .align	5
 SHA3_Squeeze_armv8:
-.SHA3_Squeeze_armv8_ext:
+.SHA3_Squeeze_armv8_org:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
@@ -1029,7 +1029,7 @@ Labsorbed_ce:
 .endef
 .align	5
 SHA3_Squeeze_cext:
-.SHA3_Squeeze_armv8_org:
+.SHA3_Squeeze_armv8_ext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0

@@ -110,13 +110,9 @@ SHA3_Absorb:
 	adrp	x16,:pg_hi21:OPENSSL_armcap_P
 #endif
 	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
-___
-$code.=<<___;
 	tst	w16,#ARMV8_SHA3
 	b.ne	.SHA3_Absorb_armv8_ext
 	b       .SHA3_Absorb_armv8_org
-___
-$code.=<<___;
 #endif
 
 .globl	SHA3_Squeeze
@@ -131,13 +127,9 @@ SHA3_Squeeze:
 	adrp	x16,:pg_hi21:OPENSSL_armcap_P
 #endif
 	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
-___
-$code.=<<___;
 	tst	w16,#ARMV8_SHA3
 	b.ne	.SHA3_Squeeze_armv8_ext
 	b       .SHA3_Squeeze_armv8_org
-___
-$code.=<<___;
 #endif
 
 .text
@@ -531,7 +523,7 @@ $code.=<<___;
 .type	SHA3_Squeeze_armv8,%function
 .align	5
 SHA3_Squeeze_armv8:
-.SHA3_Squeeze_armv8_ext:
+.SHA3_Squeeze_armv8_org:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
@@ -846,7 +838,7 @@ $code.=<<___;
 .type	SHA3_Squeeze_cext,%function
 .align	5
 SHA3_Squeeze_cext:
-.SHA3_Squeeze_armv8_org:
+.SHA3_Squeeze_armv8_ext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
