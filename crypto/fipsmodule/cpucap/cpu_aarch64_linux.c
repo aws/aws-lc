@@ -89,6 +89,7 @@ void OPENSSL_cpuid_setup(void) {
   static const unsigned long kSHA1 = 1 << 5;
   static const unsigned long kSHA256 = 1 << 6;
   static const unsigned long kSHA512 = 1 << 21;
+  static const unsigned long kSHA3 = 1 << 17;
 
   if ((hwcap & kNEON) == 0) {
     // Matching OpenSSL, if NEON is missing, don't report other features
