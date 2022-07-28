@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Template to build a CodeBuild Project, assumes that GitHub credentials are already set up."
-Parameters: 
-  ProjectName: 
+Parameters:
+  ProjectName:
     Type: String
     Description: The name of the CodeBuild Project
     Default: s2n-bignum
@@ -13,13 +13,13 @@ Parameters:
     Description: The https GitHub URL for the project
     Default: https://github.com/awslabs/s2n-bignum
 
-Metadata: 
-  AWS::CloudFormation::Interface: 
-    ParameterGroups: 
-      - 
-        Label: 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
           default: "s2n-bignum CodeBuild Project Template"
-        Parameters: 
+        Parameters:
           - ProjectName
           - ProjectDescription
           - SourceLocation
@@ -34,16 +34,16 @@ Resources:
         Location: !Ref SourceLocation
         BuildSpec: codebuild/tests.yml
         GitCloneDepth: 1
-        GitSubmodulesConfig: 
+        GitSubmodulesConfig:
           FetchSubmodules: true
         InsecureSsl: false
         ReportBuildStatus: true
         Type: "GITHUB"
-      Artifacts: 
+      Artifacts:
         Type: "NO_ARTIFACTS"
-      Cache: 
+      Cache:
         Type: "NO_CACHE"
-      Environment: 
+      Environment:
         ComputeType: "BUILD_GENERAL1_LARGE"
         Image: "aws/codebuild/standard:4.0"
         ImagePullCredentialsType: "CODEBUILD"
@@ -81,10 +81,10 @@ Resources:
             - Type: ACTOR_ACCOUNT_ID
               Pattern: 829871 # SalusaSecondus / rubin@amazon.com
               ExcludeMatchedPattern: false
-      LogsConfig: 
-        CloudWatchLogs: 
+      LogsConfig:
+        CloudWatchLogs:
           Status: "ENABLED"
-        S3Logs: 
+        S3Logs:
           Status: "DISABLED"
           EncryptionDisabled: false
 
@@ -97,16 +97,16 @@ Resources:
         Location: !Ref SourceLocation
         BuildSpec: codebuild/tests.yml
         GitCloneDepth: 1
-        GitSubmodulesConfig: 
+        GitSubmodulesConfig:
           FetchSubmodules: true
         InsecureSsl: false
         ReportBuildStatus: true
         Type: "GITHUB"
-      Artifacts: 
+      Artifacts:
         Type: "NO_ARTIFACTS"
-      Cache: 
+      Cache:
         Type: "NO_CACHE"
-      Environment: 
+      Environment:
         ComputeType: "BUILD_GENERAL1_LARGE"
         Image: "aws/codebuild/amazonlinux2-aarch64-standard:2.0"
         ImagePullCredentialsType: "CODEBUILD"
@@ -144,10 +144,10 @@ Resources:
             - Type: ACTOR_ACCOUNT_ID
               Pattern: 829871 # SalusaSecondus / rubin@amazon.com
               ExcludeMatchedPattern: false
-      LogsConfig: 
-        CloudWatchLogs: 
+      LogsConfig:
+        CloudWatchLogs:
           Status: "ENABLED"
-        S3Logs: 
+        S3Logs:
           Status: "DISABLED"
           EncryptionDisabled: false
 
@@ -160,22 +160,22 @@ Resources:
         Location: !Ref SourceLocation
         BuildSpec: codebuild/proofs.yml
         GitCloneDepth: 1
-        GitSubmodulesConfig: 
+        GitSubmodulesConfig:
           FetchSubmodules: true
         InsecureSsl: false
         ReportBuildStatus: true
         Type: "GITHUB"
       SecondarySources:
-        - 
+        -
           Type: "GITHUB"
           Location: https://github.com/jrh13/hol-light
           ReportBuildStatus: false
           SourceIdentifier: hol_light
-      Artifacts: 
+      Artifacts:
         Type: "NO_ARTIFACTS"
-      Cache: 
+      Cache:
         Type: "NO_CACHE"
-      Environment: 
+      Environment:
         ComputeType: "BUILD_GENERAL1_2XLARGE"
         Image: "aws/codebuild/standard:4.0"
         ImagePullCredentialsType: "CODEBUILD"
@@ -186,7 +186,7 @@ Resources:
             Type: PLAINTEXT
             Value: x86
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      TimeoutInMinutes: 300
+      TimeoutInMinutes: 480
       QueuedTimeoutInMinutes: 480
       EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
       BadgeEnabled: true
@@ -213,10 +213,10 @@ Resources:
             - Type: ACTOR_ACCOUNT_ID
               Pattern: 829871 # SalusaSecondus / rubin@amazon.com
               ExcludeMatchedPattern: false
-      LogsConfig: 
-        CloudWatchLogs: 
+      LogsConfig:
+        CloudWatchLogs:
           Status: "ENABLED"
-        S3Logs: 
+        S3Logs:
           Status: "DISABLED"
           EncryptionDisabled: false
 
@@ -229,22 +229,22 @@ Resources:
         Location: !Ref SourceLocation
         BuildSpec: codebuild/proofs.yml
         GitCloneDepth: 1
-        GitSubmodulesConfig: 
+        GitSubmodulesConfig:
           FetchSubmodules: true
         InsecureSsl: false
         ReportBuildStatus: true
         Type: "GITHUB"
       SecondarySources:
-        - 
+        -
           Type: "GITHUB"
           Location: https://github.com/jrh13/hol-light
           ReportBuildStatus: false
           SourceIdentifier: hol_light
-      Artifacts: 
+      Artifacts:
         Type: "NO_ARTIFACTS"
-      Cache: 
+      Cache:
         Type: "NO_CACHE"
-      Environment: 
+      Environment:
         ComputeType: "BUILD_GENERAL1_2XLARGE"
         Image: "aws/codebuild/standard:4.0"
         ImagePullCredentialsType: "CODEBUILD"
@@ -255,7 +255,7 @@ Resources:
             Type: PLAINTEXT
             Value: arm
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      TimeoutInMinutes: 300
+      TimeoutInMinutes: 480
       QueuedTimeoutInMinutes: 480
       EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
       BadgeEnabled: true
@@ -282,10 +282,10 @@ Resources:
             - Type: ACTOR_ACCOUNT_ID
               Pattern: 829871 # SalusaSecondus / rubin@amazon.com
               ExcludeMatchedPattern: false
-      LogsConfig: 
-        CloudWatchLogs: 
+      LogsConfig:
+        CloudWatchLogs:
           Status: "ENABLED"
-        S3Logs: 
+        S3Logs:
           Status: "DISABLED"
           EncryptionDisabled: false
 

@@ -1117,3 +1117,12 @@ let DEABBREV_TAC tm =
 let CLARIFY_TAC =
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* Apply cacheing (memoization) to arbitrary function with naive assoc list. *)
+(* ------------------------------------------------------------------------- *)
+
+let cache f =
+  let memo = ref [] in
+  fun x -> try assoc x (!memo) with Failure _ ->
+           (let y = f x in (memo := (x,y) :: (!memo); y));;
