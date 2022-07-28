@@ -25,7 +25,7 @@
 _SHA3_Absorb:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
 	adrp	x16,:pg_hi21_nc:_OPENSSL_armcap_P
 #else
 	adrp	x16,_OPENSSL_armcap_P@PAGE
@@ -45,7 +45,7 @@ _SHA3_Absorb:
 _SHA3_Squeeze:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
 	adrp	x16,:pg_hi21_nc:_OPENSSL_armcap_P
 #else
 	adrp	x16,_OPENSSL_armcap_P@PAGE
