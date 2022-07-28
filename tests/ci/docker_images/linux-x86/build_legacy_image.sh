@@ -5,7 +5,7 @@
 if [ -n "$1" ]; then
   docker_name="$1"
 else
-  docker_name='ubuntu-7.10_gcc-4.1x'
+  docker_name='ubuntu-10.04_gcc-4.1x'
 fi
 
 mkdir -p ${docker_name}/dependencies
@@ -16,7 +16,7 @@ cd ${docker_name}/dependencies
 # dependencies outside of the image and pull it in the container.
 wget -O cmake-3.9.6.tar.gz https://cmake.org/files/v3.9/cmake-3.9.6.tar.gz
 cd ..
-sudo docker build -t ubuntu-7.10:gcc-4.1x .
+sudo docker build -t ubuntu-10.04_gcc-4.1x .
 
 sudo rm -rf dependencies
 cd ..

@@ -45,4 +45,4 @@ docker build -t fedora-31:clang-9x fedora-31_clang-9x
 # Build older unofficial docker image that uses gcc 4.1.3 #
 ###########################################################
 
-./build_legacy_image.sh ubuntu-7.10_gcc-4.1x
+./build_legacy_image.sh ubuntu-10.04_gcc-4.1x
