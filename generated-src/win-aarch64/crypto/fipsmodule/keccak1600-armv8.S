@@ -38,6 +38,8 @@ SHA3_Absorb:
 	b.ne	.SHA3_Absorb_armv8_ext
 	b	.SHA3_Absorb_armv8_org
 #endif
+	ret
+
 
 .globl	SHA3_Squeeze
 
@@ -58,6 +60,8 @@ SHA3_Squeeze:
 	b.ne	.SHA3_Squeeze_armv8_ext
 	b	.SHA3_Squeeze_armv8_org
 #endif
+	ret
+
 
 .text
 .align	8	// strategic alignment and padding that allows to use
