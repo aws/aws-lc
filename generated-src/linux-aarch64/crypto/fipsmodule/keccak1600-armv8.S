@@ -557,7 +557,7 @@ SHA3_Absorb_armv8:
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb,.-SHA3_Absorb
+.size	SHA3_Absorb_armv8,.-SHA3_Absorb_armv8
 .globl	SHA3_Squeeze_armv8
 .hidden	SHA3_Squeeze_armv8
 .type	SHA3_Squeeze_armv8,%function
@@ -629,7 +629,7 @@ SHA3_Squeeze_armv8:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze,.-SHA3_Squeeze
+.size	SHA3_Squeeze_armv8,.-SHA3_Squeeze_armv8
 .type	KeccakF1600_ce,%function
 .align	5
 KeccakF1600_ce:

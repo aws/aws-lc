@@ -514,7 +514,7 @@ $code.=<<___;
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb,.-SHA3_Absorb
+.size	SHA3_Absorb_armv8,.-SHA3_Absorb_armv8
 ___
 {
 my ($A_flat,$out,$len,$bsz) = map("x$_",(19..22));
@@ -589,7 +589,7 @@ SHA3_Squeeze_armv8:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze,.-SHA3_Squeeze
+.size	SHA3_Squeeze_armv8,.-SHA3_Squeeze_armv8
 ___
 }								}}}
 
