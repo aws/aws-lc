@@ -113,6 +113,9 @@ void OPENSSL_cpuid_setup(void) {
   if (hwcap & kSHA512) {
     OPENSSL_armcap_P |= ARMV8_SHA512;
   }
+  if (hwcap & kSHA3) {
+    OPENSSL_armcap_P |= ARMV8_SHA3;
+  }
 
   // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to
   // indicate a hex value. Prior to the 32-bit value, a '~' or '|' may be given.
