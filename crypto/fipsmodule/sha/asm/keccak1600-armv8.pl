@@ -85,11 +85,11 @@ if ($flavour && $flavour ne "void") {
     *STDOUT=*OUT;
 }
 
-my @rhotates = ([  0,  1, 62, 28, 27 ],
-                [ 36, 44,  6, 55, 20 ],
-                [  3, 10, 43, 25, 39 ],
-                [ 41, 45, 15, 21,  8 ],
-                [ 18,  2, 61, 56, 14 ]);
+my @subrhotates = ([  64,  63, 2, 36, 37 ],
+                [ 28, 20,  58, 9, 44 ],
+                [  61, 54, 21, 39, 25 ],
+                [ 23, 19, 49, 43,  56 ],
+                [ 46,  62, 3, 8, 50 ]);
 
 $code.=<<___;
 #include <openssl/arm_arch.h>
@@ -216,38 +216,38 @@ $code.=<<___;
 
 	////////////////////////////////////////// Rho+Pi
 	mov	$C[3],$A[0][1]
-	ror	$A[0][1],$A[1][1],#64-$rhotates[1][1]
+	ror	$A[0][1],$A[1][1],#$subrhotates[1][1]
 	//mov	$C[1],$A[0][2]
-	ror	$A[0][2],$A[2][2],#64-$rhotates[2][2]
+	ror	$A[0][2],$A[2][2],#$subrhotates[2][2]
 	//mov	$C[0],$A[0][3]
-	ror	$A[0][3],$A[3][3],#64-$rhotates[3][3]
+	ror	$A[0][3],$A[3][3],#$subrhotates[3][3]
 	//mov	$C[2],$A[0][4]
-	ror	$A[0][4],$A[4][4],#64-$rhotates[4][4]
+	ror	$A[0][4],$A[4][4],#$subrhotates[4][4]
 
-	ror	$A[1][1],$A[1][4],#64-$rhotates[1][4]
-	ror	$A[2][2],$A[2][3],#64-$rhotates[2][3]
-	ror	$A[3][3],$A[3][2],#64-$rhotates[3][2]
-	ror	$A[4][4],$A[4][1],#64-$rhotates[4][1]
+	ror	$A[1][1],$A[1][4],#$subrhotates[1][4]
+	ror	$A[2][2],$A[2][3],#$subrhotates[2][3]
+	ror	$A[3][3],$A[3][2],#$subrhotates[3][2]
+	ror	$A[4][4],$A[4][1],#$subrhotates[4][1]
 
-	ror	$A[1][4],$A[4][2],#64-$rhotates[4][2]
-	ror	$A[2][3],$A[3][4],#64-$rhotates[3][4]
-	ror	$A[3][2],$A[2][1],#64-$rhotates[2][1]
-	ror	$A[4][1],$A[1][3],#64-$rhotates[1][3]
+	ror	$A[1][4],$A[4][2],#$subrhotates[4][2]
+	ror	$A[2][3],$A[3][4],#$subrhotates[3][4]
+	ror	$A[3][2],$A[2][1],#$subrhotates[2][1]
+	ror	$A[4][1],$A[1][3],#$subrhotates[1][3]
 
-	ror	$A[4][2],$A[2][4],#64-$rhotates[2][4]
-	ror	$A[3][4],$A[4][3],#64-$rhotates[4][3]
-	ror	$A[2][1],$A[1][2],#64-$rhotates[1][2]
-	ror	$A[1][3],$A[3][1],#64-$rhotates[3][1]
+	ror	$A[4][2],$A[2][4],#$subrhotates[2][4]
+	ror	$A[3][4],$A[4][3],#$subrhotates[4][3]
+	ror	$A[2][1],$A[1][2],#$subrhotates[1][2]
+	ror	$A[1][3],$A[3][1],#$subrhotates[3][1]
 
-	ror	$A[2][4],$A[4][0],#64-$rhotates[4][0]
-	ror	$A[4][3],$A[3][0],#64-$rhotates[3][0]
-	ror	$A[1][2],$A[2][0],#64-$rhotates[2][0]
-	ror	$A[3][1],$A[1][0],#64-$rhotates[1][0]
+	ror	$A[2][4],$A[4][0],#$subrhotates[4][0]
+	ror	$A[4][3],$A[3][0],#$subrhotates[3][0]
+	ror	$A[1][2],$A[2][0],#$subrhotates[2][0]
+	ror	$A[3][1],$A[1][0],#$subrhotates[1][0]
 
-	ror	$A[1][0],$C[0],#64-$rhotates[0][3]
-	ror	$A[2][0],$C[3],#64-$rhotates[0][1]
-	ror	$A[3][0],$C[2],#64-$rhotates[0][4]
-	ror	$A[4][0],$C[1],#64-$rhotates[0][2]
+	ror	$A[1][0],$C[0],#$subrhotates[0][3]
+	ror	$A[2][0],$C[3],#$subrhotates[0][1]
+	ror	$A[3][0],$C[2],#$subrhotates[0][4]
+	ror	$A[4][0],$C[1],#$subrhotates[0][2]
 
 	////////////////////////////////////////// Chi+Iota
 	bic	$C[0],$A[0][2],$A[0][1]
@@ -380,7 +380,7 @@ KeccakF1600:
 SHA3_Absorb:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
 	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
 #else
 	adrp	x16,:pg_hi21:OPENSSL_armcap_P
@@ -502,7 +502,7 @@ $code.=<<___;
 SHA3_Squeeze:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
 	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
 #else
 	adrp	x16,:pg_hi21:OPENSSL_armcap_P
@@ -617,39 +617,39 @@ KeccakF1600_ce:
 	rax1	$C[4],$C[4],$C[1]			// D[0]
 
 	////////////////////////////////////////////////// Theta+Rho+Pi
-	xar	$C[0],   $A[0][1],$D[1],#64-$rhotates[0][1] // C[0]=A[2][0]
+	xar	$C[0],   $A[0][1],$D[1],#$subrhotates[0][1] // C[0]=A[2][0]
 
-	xar	$A[0][1],$A[1][1],$D[1],#64-$rhotates[1][1]
-	xar	$A[1][1],$A[1][4],$D[4],#64-$rhotates[1][4]
-	xar	$A[1][4],$A[4][2],$D[2],#64-$rhotates[4][2]
-	xar	$A[4][2],$A[2][4],$D[4],#64-$rhotates[2][4]
-	xar	$A[2][4],$A[4][0],$D[0],#64-$rhotates[4][0]
+	xar	$A[0][1],$A[1][1],$D[1],#$subrhotates[1][1]
+	xar	$A[1][1],$A[1][4],$D[4],#$subrhotates[1][4]
+	xar	$A[1][4],$A[4][2],$D[2],#$subrhotates[4][2]
+	xar	$A[4][2],$A[2][4],$D[4],#$subrhotates[2][4]
+	xar	$A[2][4],$A[4][0],$D[0],#$subrhotates[4][0]
 
-	xar	$C[1],   $A[0][2],$D[2],#64-$rhotates[0][2] // C[1]=A[4][0]
+	xar	$C[1],   $A[0][2],$D[2],#$subrhotates[0][2] // C[1]=A[4][0]
 
-	xar	$A[0][2],$A[2][2],$D[2],#64-$rhotates[2][2]
-	xar	$A[2][2],$A[2][3],$D[3],#64-$rhotates[2][3]
-	xar	$A[2][3],$A[3][4],$D[4],#64-$rhotates[3][4]
-	xar	$A[3][4],$A[4][3],$D[3],#64-$rhotates[4][3]
-	xar	$A[4][3],$A[3][0],$D[0],#64-$rhotates[3][0]
+	xar	$A[0][2],$A[2][2],$D[2],#$subrhotates[2][2]
+	xar	$A[2][2],$A[2][3],$D[3],#$subrhotates[2][3]
+	xar	$A[2][3],$A[3][4],$D[4],#$subrhotates[3][4]
+	xar	$A[3][4],$A[4][3],$D[3],#$subrhotates[4][3]
+	xar	$A[4][3],$A[3][0],$D[0],#$subrhotates[3][0]
 
-	xar	$A[3][0],$A[0][4],$D[4],#64-$rhotates[0][4]
+	xar	$A[3][0],$A[0][4],$D[4],#$subrhotates[0][4]
 
-	xar	$D[4],   $A[4][4],$D[4],#64-$rhotates[4][4] // D[4]=A[0][4]
-	xar	$A[4][4],$A[4][1],$D[1],#64-$rhotates[4][1]
-	xar	$A[1][3],$A[1][3],$D[3],#64-$rhotates[1][3] // A[1][3]=A[4][1]
-	xar	$A[0][4],$A[3][1],$D[1],#64-$rhotates[3][1] // A[0][4]=A[1][3]
-	xar	$A[3][1],$A[1][0],$D[0],#64-$rhotates[1][0]
+	xar	$D[4],   $A[4][4],$D[4],#$subrhotates[4][4] // D[4]=A[0][4]
+	xar	$A[4][4],$A[4][1],$D[1],#$subrhotates[4][1]
+	xar	$A[1][3],$A[1][3],$D[3],#$subrhotates[1][3] // A[1][3]=A[4][1]
+	xar	$A[0][4],$A[3][1],$D[1],#$subrhotates[3][1] // A[0][4]=A[1][3]
+	xar	$A[3][1],$A[1][0],$D[0],#$subrhotates[1][0]
 
-	xar	$A[1][0],$A[0][3],$D[3],#64-$rhotates[0][3]
+	xar	$A[1][0],$A[0][3],$D[3],#$subrhotates[0][3]
 
 	eor	$A[0][0],$A[0][0],$D[0]
 
-	xar	$D[3],   $A[3][3],$D[3],#64-$rhotates[3][3] // D[3]=A[0][3]
-	xar	$A[0][3],$A[3][2],$D[2],#64-$rhotates[3][2] // A[0][3]=A[3][3]
-	xar	$D[1],   $A[2][1],$D[1],#64-$rhotates[2][1] // D[1]=A[3][2]
-	xar	$D[2],   $A[1][2],$D[2],#64-$rhotates[1][2] // D[2]=A[2][1]
-	xar	$D[0],   $A[2][0],$D[0],#64-$rhotates[2][0] // D[0]=A[1][2]
+	xar	$D[3],   $A[3][3],$D[3],#$subrhotates[3][3] // D[3]=A[0][3]
+	xar	$A[0][3],$A[3][2],$D[2],#$subrhotates[3][2] // A[0][3]=A[3][3]
+	xar	$D[1],   $A[2][1],$D[1],#$subrhotates[2][1] // D[1]=A[3][2]
+	xar	$D[2],   $A[1][2],$D[2],#$subrhotates[1][2] // D[2]=A[2][1]
+	xar	$D[0],   $A[2][0],$D[0],#$subrhotates[2][0] // D[0]=A[1][2]
 
 	////////////////////////////////////////////////// Chi+Iota
 	bcax	$A[4][0],$C[1],   $A[4][2],$A[1][3]	// A[1][3]=A[4][1]

@@ -120,38 +120,38 @@ KeccakF1600_int:
 
 	////////////////////////////////////////// Rho+Pi
 	mov	x30,x1
-	ror	x1,x6,#64-44
+	ror	x1,x6,#20
 	//mov	x27,x2
-	ror	x2,x12,#64-43
+	ror	x2,x12,#21
 	//mov	x26,x3
-	ror	x3,x25,#64-21
+	ror	x3,x25,#43
 	//mov	x28,x4
-	ror	x4,x24,#64-14
+	ror	x4,x24,#50
 
-	ror	x6,x9,#64-20
-	ror	x12,x13,#64-25
-	ror	x25,x17,#64-15
-	ror	x24,x21,#64-2
+	ror	x6,x9,#44
+	ror	x12,x13,#39
+	ror	x25,x17,#49
+	ror	x24,x21,#62
 
-	ror	x9,x22,#64-61
-	ror	x13,x19,#64-8
-	ror	x17,x11,#64-10
-	ror	x21,x8,#64-55
+	ror	x9,x22,#3
+	ror	x13,x19,#56
+	ror	x17,x11,#54
+	ror	x21,x8,#9
 
-	ror	x22,x14,#64-39
-	ror	x19,x23,#64-56
-	ror	x11,x7,#64-6
-	ror	x8,x16,#64-45
+	ror	x22,x14,#25
+	ror	x19,x23,#8
+	ror	x11,x7,#58
+	ror	x8,x16,#19
 
-	ror	x14,x20,#64-18
-	ror	x23,x15,#64-41
-	ror	x7,x10,#64-3
-	ror	x16,x5,#64-36
+	ror	x14,x20,#46
+	ror	x23,x15,#23
+	ror	x7,x10,#61
+	ror	x16,x5,#28
 
-	ror	x5,x26,#64-28
-	ror	x10,x30,#64-1
-	ror	x15,x28,#64-27
-	ror	x20,x27,#64-62
+	ror	x5,x26,#36
+	ror	x10,x30,#63
+	ror	x15,x28,#37
+	ror	x20,x27,#2
 
 	////////////////////////////////////////// Chi+Iota
 	bic	x26,x2,x1
@@ -285,7 +285,7 @@ KeccakF1600:
 SHA3_Absorb:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
 	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
 #else
 	adrp	x16,OPENSSL_armcap_P
@@ -540,7 +540,7 @@ SHA3_Absorb:
 SHA3_Squeeze:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
 	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
 #else
 	adrp	x16,OPENSSL_armcap_P
@@ -643,39 +643,39 @@ KeccakF1600_ce:
 .inst	0xce7a8fbd	//rax1 v29.16b,v29.16b,v26.16b			// D[0]
 
 	////////////////////////////////////////////////// Theta+Rho+Pi
-.inst	0xce9efc39	//xar v25.16b,   v1.16b,v30.16b,#64-1 // C[0]=A[2][0]
+.inst	0xce9efc39	//xar v25.16b,   v1.16b,v30.16b,#63 // C[0]=A[2][0]
 
-.inst	0xce9e50c1	//xar v1.16b,v6.16b,v30.16b,#64-44
-.inst	0xce9cb126	//xar v6.16b,v9.16b,v28.16b,#64-20
-.inst	0xce9f0ec9	//xar v9.16b,v22.16b,v31.16b,#64-61
-.inst	0xce9c65d6	//xar v22.16b,v14.16b,v28.16b,#64-39
-.inst	0xce9dba8e	//xar v14.16b,v20.16b,v29.16b,#64-18
+.inst	0xce9e50c1	//xar v1.16b,v6.16b,v30.16b,#20
+.inst	0xce9cb126	//xar v6.16b,v9.16b,v28.16b,#44
+.inst	0xce9f0ec9	//xar v9.16b,v22.16b,v31.16b,#3
+.inst	0xce9c65d6	//xar v22.16b,v14.16b,v28.16b,#25
+.inst	0xce9dba8e	//xar v14.16b,v20.16b,v29.16b,#46
 
-.inst	0xce9f085a	//xar v26.16b,   v2.16b,v31.16b,#64-62 // C[1]=A[4][0]
+.inst	0xce9f085a	//xar v26.16b,   v2.16b,v31.16b,#2 // C[1]=A[4][0]
 
-.inst	0xce9f5582	//xar v2.16b,v12.16b,v31.16b,#64-43
-.inst	0xce9b9dac	//xar v12.16b,v13.16b,v27.16b,#64-25
-.inst	0xce9ce26d	//xar v13.16b,v19.16b,v28.16b,#64-8
-.inst	0xce9b22f3	//xar v19.16b,v23.16b,v27.16b,#64-56
-.inst	0xce9d5df7	//xar v23.16b,v15.16b,v29.16b,#64-41
+.inst	0xce9f5582	//xar v2.16b,v12.16b,v31.16b,#21
+.inst	0xce9b9dac	//xar v12.16b,v13.16b,v27.16b,#39
+.inst	0xce9ce26d	//xar v13.16b,v19.16b,v28.16b,#56
+.inst	0xce9b22f3	//xar v19.16b,v23.16b,v27.16b,#8
+.inst	0xce9d5df7	//xar v23.16b,v15.16b,v29.16b,#23
 
-.inst	0xce9c948f	//xar v15.16b,v4.16b,v28.16b,#64-27
+.inst	0xce9c948f	//xar v15.16b,v4.16b,v28.16b,#37
 
-.inst	0xce9ccb1c	//xar v28.16b,   v24.16b,v28.16b,#64-14 // D[4]=A[0][4]
-.inst	0xce9efab8	//xar v24.16b,v21.16b,v30.16b,#64-2
-.inst	0xce9b2508	//xar v8.16b,v8.16b,v27.16b,#64-55 // A[1][3]=A[4][1]
-.inst	0xce9e4e04	//xar v4.16b,v16.16b,v30.16b,#64-45 // A[0][4]=A[1][3]
-.inst	0xce9d70b0	//xar v16.16b,v5.16b,v29.16b,#64-36
+.inst	0xce9ccb1c	//xar v28.16b,   v24.16b,v28.16b,#50 // D[4]=A[0][4]
+.inst	0xce9efab8	//xar v24.16b,v21.16b,v30.16b,#62
+.inst	0xce9b2508	//xar v8.16b,v8.16b,v27.16b,#9 // A[1][3]=A[4][1]
+.inst	0xce9e4e04	//xar v4.16b,v16.16b,v30.16b,#19 // A[0][4]=A[1][3]
+.inst	0xce9d70b0	//xar v16.16b,v5.16b,v29.16b,#28
 
-.inst	0xce9b9065	//xar v5.16b,v3.16b,v27.16b,#64-28
+.inst	0xce9b9065	//xar v5.16b,v3.16b,v27.16b,#36
 
 	eor	v0.16b,v0.16b,v29.16b
 
-.inst	0xce9bae5b	//xar v27.16b,   v18.16b,v27.16b,#64-21 // D[3]=A[0][3]
-.inst	0xce9fc623	//xar v3.16b,v17.16b,v31.16b,#64-15 // A[0][3]=A[3][3]
-.inst	0xce9ed97e	//xar v30.16b,   v11.16b,v30.16b,#64-10 // D[1]=A[3][2]
-.inst	0xce9fe8ff	//xar v31.16b,   v7.16b,v31.16b,#64-6 // D[2]=A[2][1]
-.inst	0xce9df55d	//xar v29.16b,   v10.16b,v29.16b,#64-3 // D[0]=A[1][2]
+.inst	0xce9bae5b	//xar v27.16b,   v18.16b,v27.16b,#43 // D[3]=A[0][3]
+.inst	0xce9fc623	//xar v3.16b,v17.16b,v31.16b,#49 // A[0][3]=A[3][3]
+.inst	0xce9ed97e	//xar v30.16b,   v11.16b,v30.16b,#54 // D[1]=A[3][2]
+.inst	0xce9fe8ff	//xar v31.16b,   v7.16b,v31.16b,#58 // D[2]=A[2][1]
+.inst	0xce9df55d	//xar v29.16b,   v10.16b,v29.16b,#61 // D[0]=A[1][2]
 
 	////////////////////////////////////////////////// Chi+Iota
 .inst	0xce362354	//bcax v20.16b,v26.16b,   v22.16b,v8.16b	// A[1][3]=A[4][1]
