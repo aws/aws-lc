@@ -298,7 +298,7 @@ SHA3_Absorb:
 #endif
 	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
 	tst	w16,#ARMV8_SHA3
-	b	.SHA3_Absorb_armv8_ext
+	b.ne	.SHA3_Absorb_armv8_ext
 #endif
 
 	AARCH64_SIGN_LINK_REGISTER
@@ -555,7 +555,7 @@ SHA3_Squeeze:
 #endif
 	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
 	tst	w16,#ARMV8_SHA3
-	b	.SHA3_Squeeze_armv8_ext
+	b.ne	.SHA3_Squeeze_armv8_ext
 #endif
 
 	AARCH64_SIGN_LINK_REGISTER
