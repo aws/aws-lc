@@ -461,7 +461,6 @@ class GrowableArray {
 // CBBFinishArray behaves like |CBB_finish| but stores the result in an Array.
 OPENSSL_EXPORT bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
 
-
 // Protocol versions.
 //
 // Due to DTLS's historical wire version differences, we maintain two notions of
@@ -675,10 +674,11 @@ bool ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 // ssl_choose_tls13_cipher returns an |SSL_CIPHER| corresponding with the best
-// available from |cipher_suites| compatible with |version| and |group_id|. It
-// returns NULL if there isn't a compatible cipher.
+// available from |cipher_suites| compatible with |version|, |group_id| and
+// configured |tls13_ciphers|. It returns NULL if there isn't a compatible cipher.
 const SSL_CIPHER *ssl_choose_tls13_cipher(CBS cipher_suites, uint16_t version,
-                                          uint16_t group_id);
+                                          uint16_t group_id,
+                                          const STACK_OF(SSL_CIPHER) *tls13_ciphers);
 
 
 // Transcript layer.
@@ -3468,7 +3468,12 @@ struct ssl_ctx_st {
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
 
+  // Currently, cipher_list holds the tls1.2 and below ciphersuites.
+  // TODO: move |tls13_cipher_list| to |cipher_list| during cipher configuration.
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> cipher_list;
+
+  // tls13_cipher_list holds the tls1.3 and above ciphersuites.
+  bssl::UniquePtr<bssl::SSLCipherPreferenceList> tls13_cipher_list;
 
   X509_STORE *cert_store = nullptr;
   LHASH_OF(SSL_SESSION) *sessions = nullptr;

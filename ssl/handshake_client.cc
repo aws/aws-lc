@@ -215,6 +215,33 @@ static void ssl_get_client_disabled(const SSL_HANDSHAKE *hs,
   }
 }
 
+// collect_cipher_protocol_ids uses |cbb| to collect IANA-assigned numbers
+// of |ciphers|. |mask_a|, |mask_k|, |max_version| and |min_version|
+// are used to filter the |ciphers|. |any_enabled| will be true if not all
+// ciphers are filtered out. 
+// It returns true when success. It returns false otherwise.
+static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers,
+  CBB *cbb, uint32_t mask_k, uint32_t mask_a, uint16_t max_version,
+  uint16_t min_version, bool *any_enabled) {
+  *any_enabled = false;
+  for (const SSL_CIPHER *cipher : ciphers) {
+    // Skip disabled ciphers
+    if ((cipher->algorithm_mkey & mask_k) ||
+        (cipher->algorithm_auth & mask_a)) {
+      continue;
+    }
+    if (SSL_CIPHER_get_min_version(cipher) > max_version ||
+        SSL_CIPHER_get_max_version(cipher) < min_version) {
+      continue;
+    }
+    *any_enabled = true;
+    if (!CBB_add_u16(cbb, SSL_CIPHER_get_protocol_id(cipher))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
                                          ssl_client_hello_type_t type) {
   const SSL *const ssl = hs->ssl;
@@ -232,9 +259,23 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
     return false;
   }
 
-  // Add TLS 1.3 ciphers. Order ChaCha20-Poly1305 relative to AES-GCM based on
-  // hardware support.
-  if (hs->max_version >= TLS1_3_VERSION) {
+  // Add TLS 1.3 ciphers.
+  if (hs->max_version >= TLS1_3_VERSION && ssl->ctx->tls13_cipher_list) {
+    // Use the configured TLSv1.3 ciphers list.
+    STACK_OF(SSL_CIPHER) *ciphers = ssl->ctx->tls13_cipher_list->ciphers.get();
+    bool any_enabled = false;
+    if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
+      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+      return false;
+    }
+    // If all ciphers were disabled, return the error to the caller.
+    if (!any_enabled) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
+      return false;
+    }
+  } else if (hs->max_version >= TLS1_3_VERSION) {
+    // Use the built in TLSv1.3 ciphers. Order ChaCha20-Poly1305 relative to
+    // AES-GCM based on hardware support.
     if (!EVP_has_aes_hardware() &&
         !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
       return false;
@@ -251,22 +292,10 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
 
   if (hs->min_version < TLS1_3_VERSION && type != ssl_client_hello_inner) {
     bool any_enabled = false;
-    for (const SSL_CIPHER *cipher : SSL_get_ciphers(ssl)) {
-      // Skip disabled ciphers
-      if ((cipher->algorithm_mkey & mask_k) ||
-          (cipher->algorithm_auth & mask_a)) {
-        continue;
-      }
-      if (SSL_CIPHER_get_min_version(cipher) > hs->max_version ||
-          SSL_CIPHER_get_max_version(cipher) < hs->min_version) {
-        continue;
-      }
-      any_enabled = true;
-      if (!CBB_add_u16(&child, SSL_CIPHER_get_protocol_id(cipher))) {
-        return false;
-      }
+    if (!collect_cipher_protocol_ids(SSL_get_ciphers(ssl), &child, mask_k,
+      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+      return false;
     }
-
     // If all ciphers were disabled, return the error to the caller.
     if (!any_enabled && hs->max_version < TLS1_3_VERSION) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
