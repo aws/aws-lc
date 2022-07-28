@@ -31,7 +31,7 @@ _SHA3_Absorb:
 	adrp	x16,_OPENSSL_armcap_P@PAGE
 #endif
 	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-	tst	w16,#ARMV8_SHA3
+	tst	w16,#ARMV8_SHA256
 	b	.SHA3_Absorb_armv8_org
 #endif
 
@@ -48,7 +48,7 @@ _SHA3_Squeeze:
 	adrp	x16,_OPENSSL_armcap_P@PAGE
 #endif
 	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-	tst	w16,#ARMV8_SHA3
+	tst	w16,#ARMV8_SHA256
 	b	.SHA3_Squeeze_armv8_org
 #endif
 
