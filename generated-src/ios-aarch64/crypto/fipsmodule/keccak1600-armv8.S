@@ -18,48 +18,6 @@
 .private_extern	_OPENSSL_armcap_P
 
 .text
-
-.globl	_SHA3_Absorb
-.private_extern	_SHA3_Absorb
-
-.align	4
-_SHA3_Absorb:
-	AARCH64_VALID_CALL_TARGET
-#ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
-	adrp	x16,:pg_hi21_nc:_OPENSSL_armcap_P
-#else
-	adrp	x16,_OPENSSL_armcap_P@PAGE
-#endif
-	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-	tst	w16,#ARMV8_SHA3
-	b.ne	.SHA3_Absorb_armv8_ext
-	b	.SHA3_Absorb_armv8_org
-#endif
-	ret
-
-
-.globl	_SHA3_Squeeze
-.private_extern	_SHA3_Squeeze
-
-.align	4
-_SHA3_Squeeze:
-	AARCH64_VALID_CALL_TARGET
-#ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
-	adrp	x16,:pg_hi21_nc:_OPENSSL_armcap_P
-#else
-	adrp	x16,_OPENSSL_armcap_P@PAGE
-#endif
-	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-	tst	w16,#ARMV8_SHA3
-	b.ne	.SHA3_Squeeze_armv8_ext
-	b	.SHA3_Squeeze_armv8_org
-#endif
-	ret
-
-
-.text
 .align	8	// strategic alignment and padding that allows to use
 		// address value as loop termination condition...
 .quad	0,0,0,0,0,0,0,0
@@ -319,12 +277,23 @@ KeccakF1600:
 	ret
 
 
-.globl	_SHA3_Absorb_armv8
-.private_extern	_SHA3_Absorb_armv8
+.globl	_SHA3_Absorb
+.private_extern	_SHA3_Absorb
 
 .align	5
-_SHA3_Absorb_armv8:
-.SHA3_Absorb_armv8_org:
+_SHA3_Absorb:
+	AARCH64_VALID_CALL_TARGET
+#ifndef	__KERNEL__
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+	adrp	x16,:pg_hi21_nc:_OPENSSL_armcap_P
+#else
+	adrp	x16,_OPENSSL_armcap_P@PAGE
+#endif
+	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
+	tst	w16,#ARMV8_SHA3
+	b.ne	.SHA3_Absorb_armv8_ext
+#endif
+
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -562,12 +531,24 @@ Labsorbed:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_SHA3_Squeeze_armv8
-.private_extern	_SHA3_Squeeze_armv8
+
+.globl	_SHA3_Squeeze
+.private_extern	_SHA3_Squeeze
 
 .align	5
-_SHA3_Squeeze_armv8:
-.SHA3_Squeeze_armv8_org:
+_SHA3_Squeeze:
+	AARCH64_VALID_CALL_TARGET
+#ifndef	__KERNEL__
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+	adrp	x16,:pg_hi21_nc:_OPENSSL_armcap_P
+#else
+	adrp	x16,_OPENSSL_armcap_P@PAGE
+#endif
+	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
+	tst	w16,#ARMV8_SHA3
+	b.ne	.SHA3_Squeeze_armv8_ext
+#endif
+
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
