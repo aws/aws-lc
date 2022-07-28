@@ -1539,6 +1539,7 @@ OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
 // garbage inputs, unless an empty cipher list results.
 //
 // Note: this API only sets the TLSv1.2 and below ciphers.
+// Use |SSL_CTX_set_ciphersuites| to configure TLS 1.3 specific ciphers.
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
 // SSL_set_strict_cipher_list configures the cipher list for |ssl|, evaluating
@@ -1546,7 +1547,8 @@ OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 // meaningless. It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 
-// SSL_CTX_set_ciphersuites does nothing and returns one.
+// SSL_CTX_set_ciphersuites configure the available TLSv1.3 ciphersuites for |ctx|,
+// evaluating |str| as a cipher string. It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as

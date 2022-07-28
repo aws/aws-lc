@@ -201,6 +201,8 @@ struct TestConfig {
   // When not empty, this prefix with random suffix is used to create a file
   // stores the output of |SSL_to_bytes|.
   std::string ssl_fuzz_seed_path_prefix;
+  // When not empty, the value is passed to |SSL_CTX_set_ciphersuites|.
+  std::string tls13_ciphersuites;
 
   int argc;
   char **argv;
