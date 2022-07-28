@@ -290,8 +290,8 @@ _SHA3_Absorb:
 	adrp	x16,_OPENSSL_armcap_P@PAGE
 #endif
 	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-	tst	w16,#ARMV8_SHA3
-	b.ne	.SHA3_Absorb_armv8_ext
+	//tst	w16,#ARMV8_SHA3
+	b	.SHA3_Absorb_armv8_ext
 #endif
 
 	AARCH64_SIGN_LINK_REGISTER
@@ -545,8 +545,8 @@ _SHA3_Squeeze:
 	adrp	x16,_OPENSSL_armcap_P@PAGE
 #endif
 	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-	tst	w16,#ARMV8_SHA3
-	b.ne	.SHA3_Squeeze_armv8_ext
+	//tst	w16,#ARMV8_SHA3
+	b	.SHA3_Squeeze_armv8_ext
 #endif
 
 	AARCH64_SIGN_LINK_REGISTER
