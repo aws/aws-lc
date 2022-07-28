@@ -21,7 +21,7 @@
 .globl	_SHA3_Absorb
 .private_extern	_SHA3_Absorb
 
-.align	6
+.align	4
 _SHA3_Absorb:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
@@ -31,15 +31,15 @@ _SHA3_Absorb:
 	adrp	x16,_OPENSSL_armcap_P@PAGE
 #endif
 	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-    //tst	w16, #ARMV8_SHA3
-	//b.ne	.SHA3_Absorb_armv8_ext
+	tst	w16, #ARMV8_SHA3
+	b.ne	.SHA3_Absorb_armv8_ext
 	b	.SHA3_Absorb_armv8_org
 #endif
 
 .globl	_SHA3_Squeeze
 .private_extern	_SHA3_Squeeze
 
-.align	6
+.align	4
 _SHA3_Squeeze:
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
@@ -49,8 +49,8 @@ _SHA3_Squeeze:
 	adrp	x16,_OPENSSL_armcap_P@PAGE
 #endif
 	ldr	w16,[x16,_OPENSSL_armcap_P@PAGEOFF]
-    //tst	w16, #ARMV8_SHA3
-	//b.ne	.SHA3_Squeeze_armv8_ext
+	tst	w16, #ARMV8_SHA3
+	b.ne	.SHA3_Squeeze_armv8_ext
 	b	.SHA3_Squeeze_armv8_org
 #endif
 
