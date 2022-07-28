@@ -15,10 +15,11 @@
 #endif
 #include <openssl/arm_arch.h>
 
-.text
-
 
 .hidden	OPENSSL_armcap_P
+
+.text
+
 .globl	SHA3_Absorb
 .hidden	SHA3_Absorb
 .type	SHA3_Absorb,%function
@@ -32,7 +33,7 @@ SHA3_Absorb:
 	adrp	x16,OPENSSL_armcap_P
 #endif
 	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
-	tst	w16, #ARMV8_SHA3
+	tst	w16,#ARMV8_SHA3
 	b.ne	.SHA3_Absorb_armv8_ext
 	b	.SHA3_Absorb_armv8_org
 #endif
@@ -52,7 +53,7 @@ SHA3_Squeeze:
 	adrp	x16,OPENSSL_armcap_P
 #endif
 	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
-	tst	w16, #ARMV8_SHA3
+	tst	w16,#ARMV8_SHA3
 	b.ne	.SHA3_Squeeze_armv8_ext
 	b	.SHA3_Squeeze_armv8_org
 #endif
