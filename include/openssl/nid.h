@@ -4259,6 +4259,11 @@ extern "C" {
 #define LN_aes_256_cbc_hmac_sha256 "aes-256-cbc-hmac-sha256"
 #define NID_aes_256_cbc_hmac_sha256 964
 
+#define SN_sha3_256 "SHA3_256"
+#define LN_sha3_256 "sha3-256"
+#define NID_sha3_256 965
+#define OBJ_sha3_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
+
 
 #if defined(__cplusplus)
 } /* extern C */

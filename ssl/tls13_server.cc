@@ -116,7 +116,14 @@ static const SSL_CIPHER *choose_tls13_cipher(
 
   const uint16_t version = ssl_protocol_version(ssl);
 
-  return ssl_choose_tls13_cipher(cipher_suites, version, group_id);
+  STACK_OF(SSL_CIPHER) *tls13_ciphers = nullptr;
+  if (ssl->ctx->tls13_cipher_list &&
+      ssl->ctx->tls13_cipher_list.get()->ciphers &&
+      sk_SSL_CIPHER_num(ssl->ctx->tls13_cipher_list.get()->ciphers.get()) > 0) {
+    tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
+  }
+
+  return ssl_choose_tls13_cipher(cipher_suites, version, group_id, tls13_ciphers);
 }
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
@@ -131,15 +138,12 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
     return true;
   }
 
-  // TLS 1.3 recommends single-use tickets, so issue multiple tickets in case
-  // the client makes several connections before getting a renewal.
-  static const int kNumTickets = 2;
-
   // Rebase the session timestamp so that it is measured from ticket
   // issuance.
   ssl_session_rebase_time(ssl, hs->new_session.get());
 
-  for (int i = 0; i < kNumTickets; i++) {
+  assert(ssl->session_ctx->num_tickets <= kMaxTickets);
+  for (size_t i = 0; i < ssl->session_ctx->num_tickets; i++) {
     UniquePtr<SSL_SESSION> session(
         SSL_SESSION_dup(hs->new_session.get(), SSL_SESSION_INCLUDE_NONAUTH));
     if (!session) {
@@ -160,7 +164,8 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
           ssl->quic_method != nullptr ? 0xffffffff : kMaxEarlyDataAccepted;
     }
 
-    static_assert(kNumTickets < 256, "Too many tickets");
+    static_assert(kMaxTickets < 256, "Too many tickets");
+    assert(i < 256);
     uint8_t nonce[] = {static_cast<uint8_t>(i)};
 
     ScopedCBB cbb;
